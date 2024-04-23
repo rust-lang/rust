@@ -1,57 +1,59 @@
 //! Processes out #[cfg] and #[cfg_attr] attributes from the input for the derive macro
 use std::iter::Peekable;
 
+use base_db::CrateId;
 use cfg::{CfgAtom, CfgExpr};
 use rustc_hash::FxHashSet;
 use syntax::{
     ast::{self, Attr, HasAttrs, Meta, VariantList},
-    AstNode, NodeOrToken, SyntaxElement, SyntaxNode, T,
+    AstNode, NodeOrToken, SyntaxElement, SyntaxKind, SyntaxNode, T,
 };
 use tracing::{debug, warn};
 use tt::SmolStr;
 
 use crate::{db::ExpandDatabase, proc_macro::ProcMacroKind, MacroCallLoc, MacroDefKind};
 
-fn check_cfg_attr(attr: &Attr, loc: &MacroCallLoc, db: &dyn ExpandDatabase) -> Option<bool> {
+fn check_cfg(db: &dyn ExpandDatabase, attr: &Attr, krate: CrateId) -> Option<bool> {
     if !attr.simple_name().as_deref().map(|v| v == "cfg")? {
         return None;
     }
-    debug!("Evaluating cfg {}", attr);
     let cfg = parse_from_attr_meta(attr.meta()?)?;
-    debug!("Checking cfg {:?}", cfg);
-    let enabled = db.crate_graph()[loc.krate].cfg_options.check(&cfg) != Some(false);
+    let enabled = db.crate_graph()[krate].cfg_options.check(&cfg) != Some(false);
     Some(enabled)
 }
 
-fn check_cfg_attr_attr(attr: &Attr, loc: &MacroCallLoc, db: &dyn ExpandDatabase) -> Option<bool> {
+fn check_cfg_attr(db: &dyn ExpandDatabase, attr: &Attr, krate: CrateId) -> Option<bool> {
     if !attr.simple_name().as_deref().map(|v| v == "cfg_attr")? {
         return None;
     }
-    debug!("Evaluating cfg_attr {}", attr);
     let cfg_expr = parse_from_attr_meta(attr.meta()?)?;
-    debug!("Checking cfg_attr {:?}", cfg_expr);
-    let enabled = db.crate_graph()[loc.krate].cfg_options.check(&cfg_expr) != Some(false);
+    let enabled = db.crate_graph()[krate].cfg_options.check(&cfg_expr) != Some(false);
     Some(enabled)
 }
 
 fn process_has_attrs_with_possible_comma<I: HasAttrs>(
-    items: impl Iterator<Item = I>,
-    loc: &MacroCallLoc,
     db: &dyn ExpandDatabase,
+    items: impl Iterator<Item = I>,
+    krate: CrateId,
     remove: &mut FxHashSet<SyntaxElement>,
 ) -> Option<()> {
     for item in items {
         let field_attrs = item.attrs();
         'attrs: for attr in field_attrs {
-            if check_cfg_attr(&attr, loc, db).map(|enabled| !enabled).unwrap_or_default() {
-                debug!("censoring type {:?}", item.syntax());
-                remove.insert(item.syntax().clone().into());
-                // We need to remove the , as well
-                remove_possible_comma(&item, remove);
-                break 'attrs;
+            if let Some(enabled) = check_cfg(db, &attr, krate) {
+                if enabled {
+                    debug!("censoring {:?}", attr.syntax());
+                    remove.insert(attr.syntax().clone().into());
+                } else {
+                    debug!("censoring {:?}", item.syntax());
+                    remove.insert(item.syntax().clone().into());
+                    // We need to remove the , as well
+                    remove_possible_comma(&item, remove);
+                    break 'attrs;
+                }
             }
 
-            if let Some(enabled) = check_cfg_attr_attr(&attr, loc, db) {
+            if let Some(enabled) = check_cfg_attr(db, &attr, krate) {
                 if enabled {
                     debug!("Removing cfg_attr tokens {:?}", attr);
                     let meta = attr.meta()?;
@@ -60,13 +62,13 @@ fn process_has_attrs_with_possible_comma<I: HasAttrs>(
                 } else {
                     debug!("censoring type cfg_attr {:?}", item.syntax());
                     remove.insert(attr.syntax().clone().into());
-                    continue;
                 }
             }
         }
     }
     Some(())
 }
+
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 enum CfgExprStage {
     /// Stripping the CFGExpr part of the attribute
@@ -78,6 +80,7 @@ enum CfgExprStage {
     // Related Issue: https://github.com/rust-lang/rust-analyzer/issues/10110
     EverythingElse,
 }
+
 /// This function creates its own set of tokens to remove. To help prevent malformed syntax as input.
 fn remove_tokens_within_cfg_attr(meta: Meta) -> Option<FxHashSet<SyntaxElement>> {
     let mut remove: FxHashSet<SyntaxElement> = FxHashSet::default();
@@ -131,23 +134,28 @@ fn remove_possible_comma(item: &impl AstNode, res: &mut FxHashSet<SyntaxElement>
     }
 }
 fn process_enum(
-    variants: VariantList,
-    loc: &MacroCallLoc,
     db: &dyn ExpandDatabase,
+    variants: VariantList,
+    krate: CrateId,
     remove: &mut FxHashSet<SyntaxElement>,
 ) -> Option<()> {
     'variant: for variant in variants.variants() {
         for attr in variant.attrs() {
-            if check_cfg_attr(&attr, loc, db).map(|enabled| !enabled).unwrap_or_default() {
-                // Rustc does not strip the attribute if it is enabled. So we will leave it
-                debug!("censoring type {:?}", variant.syntax());
-                remove.insert(variant.syntax().clone().into());
-                // We need to remove the , as well
-                remove_possible_comma(&variant, remove);
-                continue 'variant;
-            };
+            if let Some(enabled) = check_cfg(db, &attr, krate) {
+                if enabled {
+                    debug!("censoring {:?}", attr.syntax());
+                    remove.insert(attr.syntax().clone().into());
+                } else {
+                    // Rustc does not strip the attribute if it is enabled. So we will leave it
+                    debug!("censoring type {:?}", variant.syntax());
+                    remove.insert(variant.syntax().clone().into());
+                    // We need to remove the , as well
+                    remove_possible_comma(&variant, remove);
+                    continue 'variant;
+                }
+            }
 
-            if let Some(enabled) = check_cfg_attr_attr(&attr, loc, db) {
+            if let Some(enabled) = check_cfg_attr(db, &attr, krate) {
                 if enabled {
                     debug!("Removing cfg_attr tokens {:?}", attr);
                     let meta = attr.meta()?;
@@ -156,17 +164,16 @@ fn process_enum(
                 } else {
                     debug!("censoring type cfg_attr {:?}", variant.syntax());
                     remove.insert(attr.syntax().clone().into());
-                    continue;
                 }
             }
         }
         if let Some(fields) = variant.field_list() {
             match fields {
                 ast::FieldList::RecordFieldList(fields) => {
-                    process_has_attrs_with_possible_comma(fields.fields(), loc, db, remove)?;
+                    process_has_attrs_with_possible_comma(db, fields.fields(), krate, remove)?;
                 }
                 ast::FieldList::TupleFieldList(fields) => {
-                    process_has_attrs_with_possible_comma(fields.fields(), loc, db, remove)?;
+                    process_has_attrs_with_possible_comma(db, fields.fields(), krate, remove)?;
                 }
             }
         }
@@ -175,9 +182,9 @@ fn process_enum(
 }
 
 pub(crate) fn process_cfg_attrs(
+    db: &dyn ExpandDatabase,
     node: &SyntaxNode,
     loc: &MacroCallLoc,
-    db: &dyn ExpandDatabase,
 ) -> Option<FxHashSet<SyntaxElement>> {
     // FIXME: #[cfg_eval] is not implemented. But it is not stable yet
     let is_derive = match loc.def.kind {
@@ -193,36 +200,35 @@ pub(crate) fn process_cfg_attrs(
 
     let item = ast::Item::cast(node.clone())?;
     for attr in item.attrs() {
-        if let Some(enabled) = check_cfg_attr_attr(&attr, loc, db) {
+        if let Some(enabled) = check_cfg_attr(db, &attr, loc.krate) {
             if enabled {
                 debug!("Removing cfg_attr tokens {:?}", attr);
                 let meta = attr.meta()?;
                 let removes_from_cfg_attr = remove_tokens_within_cfg_attr(meta)?;
                 remove.extend(removes_from_cfg_attr);
             } else {
-                debug!("censoring type cfg_attr {:?}", item.syntax());
+                debug!("Removing type cfg_attr {:?}", item.syntax());
                 remove.insert(attr.syntax().clone().into());
-                continue;
             }
         }
     }
     match item {
         ast::Item::Struct(it) => match it.field_list()? {
             ast::FieldList::RecordFieldList(fields) => {
-                process_has_attrs_with_possible_comma(fields.fields(), loc, db, &mut remove)?;
+                process_has_attrs_with_possible_comma(db, fields.fields(), loc.krate, &mut remove)?;
             }
             ast::FieldList::TupleFieldList(fields) => {
-                process_has_attrs_with_possible_comma(fields.fields(), loc, db, &mut remove)?;
+                process_has_attrs_with_possible_comma(db, fields.fields(), loc.krate, &mut remove)?;
             }
         },
         ast::Item::Enum(it) => {
-            process_enum(it.variant_list()?, loc, db, &mut remove)?;
+            process_enum(db, it.variant_list()?, loc.krate, &mut remove)?;
         }
         ast::Item::Union(it) => {
             process_has_attrs_with_possible_comma(
-                it.record_field_list()?.fields(),
-                loc,
                 db,
+                it.record_field_list()?.fields(),
+                loc.krate,
                 &mut remove,
             )?;
         }
@@ -234,8 +240,20 @@ pub(crate) fn process_cfg_attrs(
 /// Parses a `cfg` attribute from the meta
 fn parse_from_attr_meta(meta: Meta) -> Option<CfgExpr> {
     let tt = meta.token_tree()?;
-    let mut iter = tt.token_trees_and_tokens().skip(1).peekable();
+    let mut iter = tt
+        .token_trees_and_tokens()
+        .filter(is_not_whitespace)
+        .skip(1)
+        .take_while(is_not_closing_paren)
+        .peekable();
     next_cfg_expr_from_syntax(&mut iter)
+}
+
+fn is_not_closing_paren(element: &NodeOrToken<ast::TokenTree, syntax::SyntaxToken>) -> bool {
+    !matches!(element, NodeOrToken::Token(token) if (token.kind() == syntax::T![')']))
+}
+fn is_not_whitespace(element: &NodeOrToken<ast::TokenTree, syntax::SyntaxToken>) -> bool {
+    !matches!(element, NodeOrToken::Token(token) if (token.kind() == SyntaxKind::WHITESPACE))
 }
 
 fn next_cfg_expr_from_syntax<I>(iter: &mut Peekable<I>) -> Option<CfgExpr>
@@ -256,14 +274,13 @@ where
             let Some(NodeOrToken::Node(tree)) = iter.next() else {
                 return Some(CfgExpr::Invalid);
             };
-            let mut tree_iter = tree.token_trees_and_tokens().skip(1).peekable();
-            while tree_iter
-                .peek()
-                .filter(
-                    |element| matches!(element, NodeOrToken::Token(token) if (token.kind() != syntax::T![')'])),
-                )
-                .is_some()
-            {
+            let mut tree_iter = tree
+                .token_trees_and_tokens()
+                .filter(is_not_whitespace)
+                .skip(1)
+                .take_while(is_not_closing_paren)
+                .peekable();
+            while tree_iter.peek().is_some() {
                 let pred = next_cfg_expr_from_syntax(&mut tree_iter);
                 if let Some(pred) = pred {
                     preds.push(pred);
@@ -310,7 +327,7 @@ mod tests {
     use crate::cfg_process::parse_from_attr_meta;
 
     fn check_dnf_from_syntax(input: &str, expect: Expect) {
-        let parse = SourceFile::parse(input);
+        let parse = SourceFile::parse(input, span::Edition::CURRENT);
         let node = match parse.tree().syntax().descendants().find_map(Attr::cast) {
             Some(it) => it,
             None => {

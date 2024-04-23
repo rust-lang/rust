@@ -1,7 +1,6 @@
 //@ compile-flags: -O -Z merge-functions=disabled
 //@ only-x86_64
 #![crate_type = "lib"]
-#![feature(generic_nonzero)]
 
 // CHECK-LABEL: @array_eq_value
 #[no_mangle]

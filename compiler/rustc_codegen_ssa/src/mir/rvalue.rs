@@ -9,7 +9,7 @@ use crate::MemFlags;
 
 use rustc_hir as hir;
 use rustc_middle::mir;
-use rustc_middle::mir::Operand;
+use rustc_middle::mir::{AggregateKind, Operand};
 use rustc_middle::ty::cast::{CastTy, IntTy};
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, adjustment::PointerCoercion, Instance, Ty, TyCtxt};
@@ -720,6 +720,24 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 OperandRef { val: OperandValue::Immediate(static_), layout }
             }
             mir::Rvalue::Use(ref operand) => self.codegen_operand(bx, operand),
+            mir::Rvalue::Aggregate(box mir::AggregateKind::RawPtr(..), ref fields) => {
+                let ty = rvalue.ty(self.mir, self.cx.tcx());
+                let layout = self.cx.layout_of(self.monomorphize(ty));
+                let [data, meta] = &*fields.raw else {
+                    bug!("RawPtr fields: {fields:?}");
+                };
+                let data = self.codegen_operand(bx, data);
+                let meta = self.codegen_operand(bx, meta);
+                match (data.val, meta.val) {
+                    (p @ OperandValue::Immediate(_), OperandValue::ZeroSized) => {
+                        OperandRef { val: p, layout }
+                    }
+                    (OperandValue::Immediate(p), OperandValue::Immediate(m)) => {
+                        OperandRef { val: OperandValue::Pair(p, m), layout }
+                    }
+                    _ => bug!("RawPtr operands {data:?} {meta:?}"),
+                }
+            }
             mir::Rvalue::Repeat(..) | mir::Rvalue::Aggregate(..) => {
                 // According to `rvalue_creates_operand`, only ZST
                 // aggregate rvalues are allowed to be operands.
@@ -1032,6 +1050,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::Rvalue::ThreadLocalRef(_) |
             mir::Rvalue::Use(..) => // (*)
                 true,
+            // This always produces a `ty::RawPtr`, so will be Immediate or Pair
+            mir::Rvalue::Aggregate(box AggregateKind::RawPtr(..), ..) => true,
             mir::Rvalue::Repeat(..) |
             mir::Rvalue::Aggregate(..) => {
                 let ty = rvalue.ty(self.mir, self.cx.tcx());

@@ -1,6 +1,8 @@
 //! Various extensions traits for Chalk types.
 
-use chalk_ir::{cast::Cast, FloatTy, IntTy, Mutability, Scalar, TyVariableKind, UintTy};
+use chalk_ir::{
+    cast::Cast, FloatTy, IntTy, Mutability, Scalar, TyVariableKind, TypeOutlives, UintTy,
+};
 use hir_def::{
     builtin_type::{BuiltinFloat, BuiltinInt, BuiltinType, BuiltinUint},
     generics::TypeOrConstParamData,
@@ -312,7 +314,7 @@ impl TyExt for Ty {
                                 .generic_predicates(id.parent)
                                 .iter()
                                 .map(|pred| pred.clone().substitute(Interner, &substs))
-                                .filter(|wc| match &wc.skip_binders() {
+                                .filter(|wc| match wc.skip_binders() {
                                     WhereClause::Implemented(tr) => {
                                         &tr.self_type_parameter(Interner) == self
                                     }
@@ -320,6 +322,9 @@ impl TyExt for Ty {
                                         alias: AliasTy::Projection(proj),
                                         ty: _,
                                     }) => &proj.self_type_parameter(db) == self,
+                                    WhereClause::TypeOutlives(TypeOutlives { ty, lifetime: _ }) => {
+                                        ty == self
+                                    }
                                     _ => false,
                                 })
                                 .collect::<Vec<_>>();

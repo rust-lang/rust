@@ -81,14 +81,15 @@ fn field_fix(ctx: &DiagnosticsContext<'_>, d: &hir::UnresolvedField) -> Option<A
     let adt = d.receiver.strip_references().as_adt()?;
     let target_module = adt.module(ctx.sema.db);
 
-    let suggested_type =
-        if let Some(new_field_type) = ctx.sema.type_of_expr(&expr).map(|v| v.adjusted()) {
-            let display =
-                new_field_type.display_source_code(ctx.sema.db, target_module.into(), false).ok();
-            make::ty(display.as_deref().unwrap_or("()"))
-        } else {
-            make::ty("()")
-        };
+    let suggested_type = if let Some(new_field_type) =
+        ctx.sema.type_of_expr(&expr).map(|v| v.adjusted()).filter(|it| !it.is_unknown())
+    {
+        let display =
+            new_field_type.display_source_code(ctx.sema.db, target_module.into(), false).ok();
+        make::ty(display.as_deref().unwrap_or("()"))
+    } else {
+        make::ty("()")
+    };
 
     if !is_editable_crate(target_module.krate(), ctx.sema.db) {
         return None;

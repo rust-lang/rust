@@ -1,6 +1,8 @@
 //! Make sure that a retag acts like a write for the data race model.
 //@revisions: stack tree
 //@compile-flags: -Zmiri-preemption-rate=0
+// Avoid accidental synchronization via address reuse inside `thread::spawn`.
+//@compile-flags: -Zmiri-address-reuse-cross-thread-rate=0
 //@[tree]compile-flags: -Zmiri-tree-borrows
 #[derive(Copy, Clone)]
 struct SendPtr(*mut u8);

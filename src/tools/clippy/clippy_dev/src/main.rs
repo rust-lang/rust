@@ -46,6 +46,13 @@ fn main() {
             }
         },
         Some(("setup", sub_command)) => match sub_command.subcommand() {
+            Some(("git-hook", matches)) => {
+                if matches.get_flag("remove") {
+                    setup::git_hook::remove_hook();
+                } else {
+                    setup::git_hook::install_hook(matches.get_flag("force-override"));
+                }
+            },
             Some(("intellij", matches)) => {
                 if matches.get_flag("remove") {
                     setup::intellij::remove_rustc_src();
@@ -57,12 +64,12 @@ fn main() {
                     );
                 }
             },
-            Some(("git-hook", matches)) => {
-                if matches.get_flag("remove") {
-                    setup::git_hook::remove_hook();
-                } else {
-                    setup::git_hook::install_hook(matches.get_flag("force-override"));
-                }
+            Some(("toolchain", matches)) => {
+                setup::toolchain::create(
+                    matches.get_flag("force"),
+                    matches.get_flag("release"),
+                    matches.get_one::<String>("name").unwrap(),
+                );
             },
             Some(("vscode-tasks", matches)) => {
                 if matches.get_flag("remove") {
@@ -210,6 +217,19 @@ fn get_clap_config() -> ArgMatches {
                 .about("Support for setting up your personal development environment")
                 .arg_required_else_help(true)
                 .subcommands([
+                    Command::new("git-hook")
+                        .about("Add a pre-commit git hook that formats your code to make it look pretty")
+                        .args([
+                            Arg::new("remove")
+                                .long("remove")
+                                .action(ArgAction::SetTrue)
+                                .help("Remove the pre-commit hook added with 'cargo dev setup git-hook'"),
+                            Arg::new("force-override")
+                                .long("force-override")
+                                .short('f')
+                                .action(ArgAction::SetTrue)
+                                .help("Forces the override of an existing git pre-commit hook"),
+                        ]),
                     Command::new("intellij")
                         .about("Alter dependencies so Intellij Rust can find rustc internals")
                         .args([
@@ -225,18 +245,23 @@ fn get_clap_config() -> ArgMatches {
                                 .conflicts_with("remove")
                                 .required(true),
                         ]),
-                    Command::new("git-hook")
-                        .about("Add a pre-commit git hook that formats your code to make it look pretty")
+                    Command::new("toolchain")
+                        .about("Install a rustup toolchain pointing to the local clippy build")
                         .args([
-                            Arg::new("remove")
-                                .long("remove")
-                                .action(ArgAction::SetTrue)
-                                .help("Remove the pre-commit hook added with 'cargo dev setup git-hook'"),
-                            Arg::new("force-override")
-                                .long("force-override")
+                            Arg::new("force")
+                                .long("force")
                                 .short('f')
                                 .action(ArgAction::SetTrue)
-                                .help("Forces the override of an existing git pre-commit hook"),
+                                .help("Override an existing toolchain"),
+                            Arg::new("release")
+                                .long("release")
+                                .short('r')
+                                .action(ArgAction::SetTrue)
+                                .help("Point to --release clippy binaries"),
+                            Arg::new("name")
+                                .long("name")
+                                .default_value("clippy")
+                                .help("The name of the created toolchain"),
                         ]),
                     Command::new("vscode-tasks")
                         .about("Add several tasks to vscode for formatting, validation and testing")

@@ -219,7 +219,7 @@ fn assert_expand(
     span: Span,
 ) -> ExpandResult<tt::Subtree> {
     let call_site_span = span_with_call_site_ctxt(db, span, id);
-    let args = parse_exprs_with_sep(tt, ',', call_site_span);
+    let args = parse_exprs_with_sep(tt, ',', call_site_span, Edition::CURRENT);
     let dollar_crate = dollar_crate(span);
     let expanded = match &*args {
         [cond, panic_args @ ..] => {

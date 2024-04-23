@@ -9,6 +9,7 @@
     unused_lifetimes,
     unused_qualifications
 )]
+#![allow(clippy::missing_panics_doc)]
 
 // The `rustc_driver` crate seems to be required in order to use the `rust_lexer` crate.
 #[allow(unused_extern_crates)]

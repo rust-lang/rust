@@ -1,9 +1,11 @@
 use std::fmt;
 
 use ast::HasName;
-use cfg::CfgExpr;
-use hir::{db::HirDatabase, AsAssocItem, HasAttrs, HasSource, HirFileIdExt, Semantics};
-use ide_assists::utils::test_related_attribute;
+use cfg::{CfgAtom, CfgExpr};
+use hir::{
+    db::HirDatabase, AsAssocItem, AttrsWithOwner, HasAttrs, HasSource, HirFileIdExt, Semantics,
+};
+use ide_assists::utils::{has_test_related_attribute, test_related_attribute_syn};
 use ide_db::{
     base_db::{FilePosition, FileRange},
     defs::Definition,
@@ -280,7 +282,7 @@ fn find_related_tests_in_module(
 }
 
 fn as_test_runnable(sema: &Semantics<'_, RootDatabase>, fn_def: &ast::Fn) -> Option<Runnable> {
-    if test_related_attribute(fn_def).is_some() {
+    if test_related_attribute_syn(fn_def).is_some() {
         let function = sema.to_def(fn_def)?;
         runnable_fn(sema, function)
     } else {
@@ -293,7 +295,7 @@ fn parent_test_module(sema: &Semantics<'_, RootDatabase>, fn_def: &ast::Fn) -> O
         let module = ast::Module::cast(node)?;
         let module = sema.to_def(&module)?;
 
-        if has_test_function_or_multiple_test_submodules(sema, &module) {
+        if has_test_function_or_multiple_test_submodules(sema, &module, false) {
             Some(module)
         } else {
             None
@@ -305,7 +307,8 @@ pub(crate) fn runnable_fn(
     sema: &Semantics<'_, RootDatabase>,
     def: hir::Function,
 ) -> Option<Runnable> {
-    let kind = if def.is_main(sema.db) {
+    let under_cfg_test = has_cfg_test(def.module(sema.db).attrs(sema.db));
+    let kind = if !under_cfg_test && def.is_main(sema.db) {
         RunnableKind::Bin
     } else {
         let test_id = || {
@@ -342,7 +345,8 @@ pub(crate) fn runnable_mod(
     sema: &Semantics<'_, RootDatabase>,
     def: hir::Module,
 ) -> Option<Runnable> {
-    if !has_test_function_or_multiple_test_submodules(sema, &def) {
+    if !has_test_function_or_multiple_test_submodules(sema, &def, has_cfg_test(def.attrs(sema.db)))
+    {
         return None;
     }
     let path = def
@@ -384,12 +388,17 @@ pub(crate) fn runnable_impl(
     Some(Runnable { use_name_in_title: false, nav, kind: RunnableKind::DocTest { test_id }, cfg })
 }
 
+fn has_cfg_test(attrs: AttrsWithOwner) -> bool {
+    attrs.cfgs().any(|cfg| matches!(cfg, CfgExpr::Atom(CfgAtom::Flag(s)) if s == "test"))
+}
+
 /// Creates a test mod runnable for outline modules at the top of their definition.
 fn runnable_mod_outline_definition(
     sema: &Semantics<'_, RootDatabase>,
     def: hir::Module,
 ) -> Option<Runnable> {
-    if !has_test_function_or_multiple_test_submodules(sema, &def) {
+    if !has_test_function_or_multiple_test_submodules(sema, &def, has_cfg_test(def.attrs(sema.db)))
+    {
         return None;
     }
     let path = def
@@ -522,20 +531,28 @@ fn has_runnable_doc_test(attrs: &hir::Attrs) -> bool {
 fn has_test_function_or_multiple_test_submodules(
     sema: &Semantics<'_, RootDatabase>,
     module: &hir::Module,
+    consider_exported_main: bool,
 ) -> bool {
     let mut number_of_test_submodules = 0;
 
     for item in module.declarations(sema.db) {
         match item {
             hir::ModuleDef::Function(f) => {
-                if let Some(it) = f.source(sema.db) {
-                    if test_related_attribute(&it.value).is_some() {
-                        return true;
-                    }
+                if has_test_related_attribute(&f.attrs(sema.db)) {
+                    return true;
+                }
+                if consider_exported_main && f.exported_main(sema.db) {
+                    // an exported main in a test module can be considered a test wrt to custom test
+                    // runners
+                    return true;
                 }
             }
             hir::ModuleDef::Module(submodule) => {
-                if has_test_function_or_multiple_test_submodules(sema, &submodule) {
+                if has_test_function_or_multiple_test_submodules(
+                    sema,
+                    &submodule,
+                    consider_exported_main,
+                ) {
                     number_of_test_submodules += 1;
                 }
             }
@@ -1480,6 +1497,41 @@ mod r#mod {
                     "(DocTest, NavigationTarget { file_id: FileId(0), full_range: 216..260, name: \"r#fn\" })",
                     "(DocTest, NavigationTarget { file_id: FileId(0), full_range: 323..367, name: \"r#fn\" })",
                     "(DocTest, NavigationTarget { file_id: FileId(0), full_range: 401..459, focus_range: 445..456, name: \"impl\", kind: Impl })",
+                ]
+            "#]],
+        )
+    }
+
+    #[test]
+    fn exported_main_is_test_in_cfg_test_mod() {
+        check(
+            r#"
+//- /lib.rs crate:foo cfg:test
+$0
+mod not_a_test_module_inline {
+    #[export_name = "main"]
+    fn exp_main() {}
+}
+#[cfg(test)]
+mod test_mod_inline {
+    #[export_name = "main"]
+    fn exp_main() {}
+}
+mod not_a_test_module;
+#[cfg(test)]
+mod test_mod;
+//- /not_a_test_module.rs
+#[export_name = "main"]
+fn exp_main() {}
+//- /test_mod.rs
+#[export_name = "main"]
+fn exp_main() {}
+"#,
+            expect![[r#"
+                [
+                    "(Bin, NavigationTarget { file_id: FileId(0), full_range: 36..80, focus_range: 67..75, name: \"exp_main\", kind: Function })",
+                    "(TestMod, NavigationTarget { file_id: FileId(0), full_range: 83..168, focus_range: 100..115, name: \"test_mod_inline\", kind: Module, description: \"mod test_mod_inline\" }, Atom(Flag(\"test\")))",
+                    "(TestMod, NavigationTarget { file_id: FileId(0), full_range: 192..218, focus_range: 209..217, name: \"test_mod\", kind: Module, description: \"mod test_mod\" }, Atom(Flag(\"test\")))",
                 ]
             "#]],
         )

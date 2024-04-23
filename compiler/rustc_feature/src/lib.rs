@@ -12,7 +12,6 @@
 //! symbol to the `accepted` or `removed` modules respectively.
 
 #![allow(internal_features)]
-#![feature(generic_nonzero)]
 #![feature(rustdoc_internals)]
 #![doc(rust_logo)]
 #![feature(lazy_cell)]

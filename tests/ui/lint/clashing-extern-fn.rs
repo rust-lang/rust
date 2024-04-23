@@ -2,7 +2,6 @@
 //@ aux-build:external_extern_fn.rs
 #![crate_type = "lib"]
 #![warn(clashing_extern_declarations)]
-#![feature(generic_nonzero)]
 
 mod redeclared_different_signature {
     mod a {

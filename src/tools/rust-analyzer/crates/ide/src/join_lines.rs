@@ -316,7 +316,7 @@ mod tests {
         };
 
         let (before_cursor_pos, before) = extract_offset(ra_fixture_before);
-        let file = SourceFile::parse(&before).ok().unwrap();
+        let file = SourceFile::parse(&before, span::Edition::CURRENT).ok().unwrap();
 
         let range = TextRange::empty(before_cursor_pos);
         let result = join_lines(&config, &file, range);
@@ -342,7 +342,7 @@ mod tests {
         };
 
         let (sel, before) = extract_range(ra_fixture_before);
-        let parse = SourceFile::parse(&before);
+        let parse = SourceFile::parse(&before, span::Edition::CURRENT);
         let result = join_lines(&config, &parse.tree(), sel);
         let actual = {
             let mut actual = before;

@@ -26,6 +26,7 @@ indexmap.workspace = true
 memchr = "2.6.4"
 triomphe.workspace = true
 nohash-hasher.workspace = true
+bitflags.workspace = true
 
 # local deps
 base-db.workspace = true

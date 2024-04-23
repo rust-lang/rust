@@ -1865,7 +1865,8 @@ impl ExitStatusError {
     /// # Examples
     ///
     /// ```
-    /// #![feature(exit_status_error, generic_nonzero)]
+    /// #![feature(exit_status_error)]
+    ///
     /// # if cfg!(unix) {
     /// use std::num::NonZero;
     /// use std::process::Command;

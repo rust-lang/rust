@@ -438,7 +438,7 @@ impl<'history, 'ecx, 'mir, 'tcx> DiagnosticCx<'history, 'ecx, 'mir, 'tcx> {
             .machine
             .threads
             .all_stacks()
-            .flatten()
+            .flat_map(|(_id, stack)| stack)
             .map(|frame| {
                 frame.extra.borrow_tracker.as_ref().expect("we should have borrow tracking data")
             })

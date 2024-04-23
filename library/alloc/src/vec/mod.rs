@@ -1991,15 +1991,17 @@ impl<T, A: Allocator> Vec<T, A> {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_confusables("push_back", "put", "append")]
     pub fn push(&mut self, value: T) {
+        // Inform codegen that the length does not change across grow_one().
+        let len = self.len;
         // This will panic or abort if we would allocate > isize::MAX bytes
         // or if the length increment would overflow for zero-sized types.
-        if self.len == self.buf.capacity() {
+        if len == self.buf.capacity() {
             self.buf.grow_one();
         }
         unsafe {
-            let end = self.as_mut_ptr().add(self.len);
+            let end = self.as_mut_ptr().add(len);
             ptr::write(end, value);
-            self.len += 1;
+            self.len = len + 1;
         }
     }
 

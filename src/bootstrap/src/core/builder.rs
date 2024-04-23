@@ -132,8 +132,7 @@ impl RunConfig<'_> {
             Alias::Compiler => self.builder.in_tree_crates("rustc-main", Some(self.target)),
         };
 
-        let crate_names = crates.into_iter().map(|krate| krate.name.to_string()).collect();
-        crate_names
+        crates.into_iter().map(|krate| krate.name.to_string()).collect()
     }
 }
 
@@ -323,16 +322,13 @@ const PATH_REMAP: &[(&str, &[&str])] = &[
 fn remap_paths(paths: &mut Vec<&Path>) {
     let mut remove = vec![];
     let mut add = vec![];
-    for (i, path) in paths
-        .iter()
-        .enumerate()
-        .filter_map(|(i, path)| if let Some(s) = path.to_str() { Some((i, s)) } else { None })
+    for (i, path) in paths.iter().enumerate().filter_map(|(i, path)| path.to_str().map(|s| (i, s)))
     {
         for &(search, replace) in PATH_REMAP {
             // Remove leading and trailing slashes so `tests/` and `tests` are equivalent
             if path.trim_matches(std::path::is_separator) == search {
                 remove.push(i);
-                add.extend(replace.into_iter().map(Path::new));
+                add.extend(replace.iter().map(Path::new));
                 break;
             }
         }
@@ -1318,7 +1314,7 @@ impl<'a> Builder<'a> {
         } else if let Some(subcmd) = cmd.strip_prefix("miri") {
             // Command must be "miri-X".
             let subcmd = subcmd
-                .strip_prefix("-")
+                .strip_prefix('-')
                 .unwrap_or_else(|| panic!("expected `miri-$subcommand`, but got {}", cmd));
             cargo = self.cargo_miri_cmd(compiler);
             cargo.arg("miri").arg(subcmd);
@@ -1438,7 +1434,7 @@ impl<'a> Builder<'a> {
             // rustc_llvm. But if LLVM is stale, that'll be a tiny amount
             // of work comparatively, and we'd likely need to rebuild it anyway,
             // so that's okay.
-            if crate::core::build_steps::llvm::prebuilt_llvm_config(self, target).is_err() {
+            if crate::core::build_steps::llvm::prebuilt_llvm_config(self, target).should_build() {
                 cargo.env("RUST_CHECK", "1");
             }
         }
@@ -1540,7 +1536,7 @@ impl<'a> Builder<'a> {
         // `rustflags` without `cargo` making it required.
         rustflags.arg("-Zunstable-options");
         for (restricted_mode, name, values) in EXTRA_CHECK_CFGS {
-            if *restricted_mode == None || *restricted_mode == Some(mode) {
+            if restricted_mode.is_none() || *restricted_mode == Some(mode) {
                 rustflags.arg(&check_cfg_arg(name, *values));
             }
         }
@@ -2216,22 +2212,18 @@ impl<'a> Builder<'a> {
             let file = File::open(src.join(".gitmodules")).unwrap();
 
             let mut submodules_paths = vec![];
-            for line in BufReader::new(file).lines() {
-                if let Ok(line) = line {
-                    let line = line.trim();
-
-                    if line.starts_with("path") {
-                        let actual_path =
-                            line.split(' ').last().expect("Couldn't get value of path");
-                        submodules_paths.push(actual_path.to_owned());
-                    }
+            for line in BufReader::new(file).lines().map_while(Result::ok) {
+                let line = line.trim();
+                if line.starts_with("path") {
+                    let actual_path = line.split(' ').last().expect("Couldn't get value of path");
+                    submodules_paths.push(actual_path.to_owned());
                 }
             }
 
             submodules_paths
         };
 
-        &SUBMODULES_PATHS.get_or_init(|| init_submodules_paths(&self.src))
+        SUBMODULES_PATHS.get_or_init(|| init_submodules_paths(&self.src))
     }
 
     /// Ensure that a given step is built *only if it's supposed to be built by default*, returning

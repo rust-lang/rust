@@ -176,7 +176,7 @@ pub fn insert_use(scope: &ImportScope, path: ast::Path, cfg: &InsertUseConfig) {
 
 pub fn insert_use_as_alias(scope: &ImportScope, path: ast::Path, cfg: &InsertUseConfig) {
     let text: &str = "use foo as _";
-    let parse = syntax::SourceFile::parse(text);
+    let parse = syntax::SourceFile::parse(text, span::Edition::CURRENT);
     let node = parse
         .tree()
         .syntax()

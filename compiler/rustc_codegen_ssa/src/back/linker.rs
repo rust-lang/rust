@@ -902,52 +902,45 @@ impl<'a> Linker for MsvcLinker<'a> {
         }
     }
 
-    fn debuginfo(&mut self, strip: Strip, natvis_debugger_visualizers: &[PathBuf]) {
-        match strip {
-            Strip::None => {
-                // This will cause the Microsoft linker to generate a PDB file
-                // from the CodeView line tables in the object files.
-                self.cmd.arg("/DEBUG");
+    fn debuginfo(&mut self, _strip: Strip, natvis_debugger_visualizers: &[PathBuf]) {
+        // This will cause the Microsoft linker to generate a PDB file
+        // from the CodeView line tables in the object files.
+        self.cmd.arg("/DEBUG");
 
-                // Default to emitting only the file name of the PDB file into
-                // the binary instead of the full path. Emitting the full path
-                // may leak private information (such as user names).
-                // See https://github.com/rust-lang/rust/issues/87825.
-                //
-                // This default behavior can be overridden by explicitly passing
-                // `-Clink-arg=/PDBALTPATH:...` to rustc.
-                self.cmd.arg("/PDBALTPATH:%_PDB%");
+        // Default to emitting only the file name of the PDB file into
+        // the binary instead of the full path. Emitting the full path
+        // may leak private information (such as user names).
+        // See https://github.com/rust-lang/rust/issues/87825.
+        //
+        // This default behavior can be overridden by explicitly passing
+        // `-Clink-arg=/PDBALTPATH:...` to rustc.
+        self.cmd.arg("/PDBALTPATH:%_PDB%");
 
-                // This will cause the Microsoft linker to embed .natvis info into the PDB file
-                let natvis_dir_path = self.sess.sysroot.join("lib\\rustlib\\etc");
-                if let Ok(natvis_dir) = fs::read_dir(&natvis_dir_path) {
-                    for entry in natvis_dir {
-                        match entry {
-                            Ok(entry) => {
-                                let path = entry.path();
-                                if path.extension() == Some("natvis".as_ref()) {
-                                    let mut arg = OsString::from("/NATVIS:");
-                                    arg.push(path);
-                                    self.cmd.arg(arg);
-                                }
-                            }
-                            Err(error) => {
-                                self.sess.dcx().emit_warn(errors::NoNatvisDirectory { error });
-                            }
+        // This will cause the Microsoft linker to embed .natvis info into the PDB file
+        let natvis_dir_path = self.sess.sysroot.join("lib\\rustlib\\etc");
+        if let Ok(natvis_dir) = fs::read_dir(&natvis_dir_path) {
+            for entry in natvis_dir {
+                match entry {
+                    Ok(entry) => {
+                        let path = entry.path();
+                        if path.extension() == Some("natvis".as_ref()) {
+                            let mut arg = OsString::from("/NATVIS:");
+                            arg.push(path);
+                            self.cmd.arg(arg);
                         }
                     }
+                    Err(error) => {
+                        self.sess.dcx().emit_warn(errors::NoNatvisDirectory { error });
+                    }
                 }
+            }
+        }
 
-                // This will cause the Microsoft linker to embed .natvis info for all crates into the PDB file
-                for path in natvis_debugger_visualizers {
-                    let mut arg = OsString::from("/NATVIS:");
-                    arg.push(path);
-                    self.cmd.arg(arg);
-                }
-            }
-            Strip::Debuginfo | Strip::Symbols => {
-                self.cmd.arg("/DEBUG:NONE");
-            }
+        // This will cause the Microsoft linker to embed .natvis info for all crates into the PDB file
+        for path in natvis_debugger_visualizers {
+            let mut arg = OsString::from("/NATVIS:");
+            arg.push(path);
+            self.cmd.arg(arg);
         }
     }
 

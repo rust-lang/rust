@@ -5,8 +5,8 @@ fn type_param<T>() -> impl use<> Sized {}
 //~^ ERROR `impl Trait` must mention all type parameters in scope
 
 trait Foo {
-//~^ ERROR `impl Trait` must mention all type parameters in scope
     fn bar() -> impl use<> Sized;
+    //~^ ERROR `impl Trait` must mention the `Self` type of the trait
 }
 
 fn main() {}

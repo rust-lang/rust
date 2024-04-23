@@ -85,7 +85,7 @@ fn render_dyn_for_ty() {
 trait Foo<'a> {}
 
 fn foo(foo: &dyn for<'a> Foo<'a>) {}
-    // ^^^ &dyn Foo<'static>
+    // ^^^ &dyn Foo<'_>
 "#,
     );
 }

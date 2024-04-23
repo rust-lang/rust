@@ -2,6 +2,8 @@
 
 use crate::fmt;
 use crate::hash::{Hash, Hasher};
+#[cfg(not(bootstrap))]
+use crate::intrinsics::aggregate_raw_ptr;
 use crate::marker::Freeze;
 
 /// Provides the pointer metadata type of any pointed-to type.
@@ -113,10 +115,17 @@ pub const fn from_raw_parts<T: ?Sized>(
     data_pointer: *const (),
     metadata: <T as Pointee>::Metadata,
 ) -> *const T {
-    // SAFETY: Accessing the value from the `PtrRepr` union is safe since *const T
-    // and PtrComponents<T> have the same memory layouts. Only std can make this
-    // guarantee.
-    unsafe { PtrRepr { components: PtrComponents { data_pointer, metadata } }.const_ptr }
+    #[cfg(bootstrap)]
+    {
+        // SAFETY: Accessing the value from the `PtrRepr` union is safe since *const T
+        // and PtrComponents<T> have the same memory layouts. Only std can make this
+        // guarantee.
+        unsafe { PtrRepr { components: PtrComponents { data_pointer, metadata } }.const_ptr }
+    }
+    #[cfg(not(bootstrap))]
+    {
+        aggregate_raw_ptr(data_pointer, metadata)
+    }
 }
 
 /// Performs the same functionality as [`from_raw_parts`], except that a
@@ -130,10 +139,17 @@ pub const fn from_raw_parts_mut<T: ?Sized>(
     data_pointer: *mut (),
     metadata: <T as Pointee>::Metadata,
 ) -> *mut T {
-    // SAFETY: Accessing the value from the `PtrRepr` union is safe since *const T
-    // and PtrComponents<T> have the same memory layouts. Only std can make this
-    // guarantee.
-    unsafe { PtrRepr { components: PtrComponents { data_pointer, metadata } }.mut_ptr }
+    #[cfg(bootstrap)]
+    {
+        // SAFETY: Accessing the value from the `PtrRepr` union is safe since *const T
+        // and PtrComponents<T> have the same memory layouts. Only std can make this
+        // guarantee.
+        unsafe { PtrRepr { components: PtrComponents { data_pointer, metadata } }.mut_ptr }
+    }
+    #[cfg(not(bootstrap))]
+    {
+        aggregate_raw_ptr(data_pointer, metadata)
+    }
 }
 
 #[repr(C)]

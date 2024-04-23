@@ -352,5 +352,16 @@ help: try
 LL | /// `ABes`
    |     ~~~~~~
 
-error: aborting due to 32 previous errors
+error: item in documentation is missing backticks
+  --> tests/ui/doc/doc-fixable.rs:240:9
+   |
+LL |     /// foo()
+   |         ^^^^^
+   |
+help: try
+   |
+LL |     /// `foo()`
+   |         ~~~~~~~
+
+error: aborting due to 33 previous errors
 

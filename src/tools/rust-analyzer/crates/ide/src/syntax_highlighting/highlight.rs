@@ -444,7 +444,6 @@ pub(super) fn highlight_def(
         Definition::Variant(_) => Highlight::new(HlTag::Symbol(SymbolKind::Variant)),
         Definition::Const(konst) => {
             let mut h = Highlight::new(HlTag::Symbol(SymbolKind::Const)) | HlMod::Const;
-
             if let Some(item) = konst.as_assoc_item(db) {
                 h |= HlMod::Associated;
                 h |= HlMod::Static;

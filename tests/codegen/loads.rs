@@ -1,7 +1,6 @@
 //@ compile-flags: -C no-prepopulate-passes -Zmir-opt-level=0 -O
 
 #![crate_type = "lib"]
-#![feature(generic_nonzero)]
 
 use std::mem::MaybeUninit;
 use std::num::NonZero;

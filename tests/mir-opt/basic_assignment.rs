@@ -1,4 +1,4 @@
-//@ unit-test: ElaborateDrops
+//@ test-mir-pass: ElaborateDrops
 //@ needs-unwind
 // this tests move up progration, which is not yet implemented
 

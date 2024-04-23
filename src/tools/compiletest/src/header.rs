@@ -244,7 +244,7 @@ mod directives {
     pub const STDERR_PER_BITWIDTH: &'static str = "stderr-per-bitwidth";
     pub const INCREMENTAL: &'static str = "incremental";
     pub const KNOWN_BUG: &'static str = "known-bug";
-    pub const MIR_UNIT_TEST: &'static str = "unit-test";
+    pub const TEST_MIR_PASS: &'static str = "test-mir-pass";
     pub const REMAP_SRC_BASE: &'static str = "remap-src-base";
     pub const COMPARE_OUTPUT_LINES_BY_SUBSET: &'static str = "compare-output-lines-by-subset";
     pub const LLVM_COV_FLAGS: &'static str = "llvm-cov-flags";
@@ -549,7 +549,7 @@ impl TestProps {
 
                     config.set_name_value_directive(
                         ln,
-                        MIR_UNIT_TEST,
+                        TEST_MIR_PASS,
                         &mut self.mir_unit_test,
                         |s| s.trim().to_string(),
                     );
@@ -922,7 +922,7 @@ const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "should-fail",
     "should-ice",
     "stderr-per-bitwidth",
-    "unit-test",
+    "test-mir-pass",
     "unset-exec-env",
     "unset-rustc-env",
     // tidy-alphabetical-end

@@ -7,7 +7,6 @@
 //
 // This test checks panic emitted from `mem::{uninitialized,zeroed}`.
 #![allow(deprecated, invalid_value)]
-#![feature(generic_nonzero)]
 #![feature(never_type)]
 
 use std::{

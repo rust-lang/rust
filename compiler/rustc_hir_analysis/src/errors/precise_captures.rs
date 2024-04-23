@@ -6,10 +6,20 @@ use rustc_span::{Span, Symbol};
 #[note]
 pub struct ParamNotCaptured {
     #[primary_span]
-    pub param_span: Span,
-    #[label]
     pub opaque_span: Span,
+    #[label]
+    pub param_span: Span,
     pub kind: &'static str,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_self_ty_not_captured)]
+#[note]
+pub struct SelfTyNotCaptured {
+    #[primary_span]
+    pub opaque_span: Span,
+    #[label]
+    pub trait_span: Span,
 }
 
 #[derive(Diagnostic)]
@@ -18,7 +28,7 @@ pub struct LifetimeNotCaptured {
     #[primary_span]
     pub use_span: Span,
     #[label(hir_analysis_param_label)]
-    pub param_span: Option<Span>,
+    pub param_span: Span,
     #[label]
     pub opaque_span: Span,
 }

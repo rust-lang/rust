@@ -1,4 +1,4 @@
-//@ unit-test: GVN
+//@ test-mir-pass: GVN
 
 // EMIT_MIR mult_by_zero.test.GVN.diff
 fn test(x: i32) -> i32 {

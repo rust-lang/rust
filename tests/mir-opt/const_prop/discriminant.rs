@@ -1,4 +1,4 @@
-//@ unit-test: GVN
+//@ test-mir-pass: GVN
 
 // FIXME(wesleywiser): Ideally, we could const-prop away all of this and just be left with
 // `let x = 42` but that doesn't work because const-prop doesn't support `Operand::Indirect`

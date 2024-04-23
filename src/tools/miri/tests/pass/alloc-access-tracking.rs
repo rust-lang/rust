@@ -1,6 +1,6 @@
 #![feature(start)]
 #![no_std]
-//@compile-flags: -Zmiri-track-alloc-id=17 -Zmiri-track-alloc-accesses -Cpanic=abort
+//@compile-flags: -Zmiri-track-alloc-id=18 -Zmiri-track-alloc-accesses -Cpanic=abort
 //@only-target-linux: alloc IDs differ between OSes for some reason
 
 extern "Rust" {

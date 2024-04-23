@@ -1,5 +1,5 @@
 warning: the feature `specialization` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/specialization-transmute.rs:4:12
+  --> $DIR/specialization-transmute.rs:3:12
    |
 LL | #![feature(specialization)]
    |            ^^^^^^^^^^^^^^
@@ -11,31 +11,31 @@ LL | #![feature(specialization)]
 error: cannot normalize `<T as Default>::Id: '_`
 
 error[E0284]: type annotations needed: cannot satisfy `<T as Default>::Id == _`
-  --> $DIR/specialization-transmute.rs:16:23
+  --> $DIR/specialization-transmute.rs:15:23
    |
 LL |     fn intu(&self) -> &Self::Id {
    |                       ^^^^^^^^^ cannot satisfy `<T as Default>::Id == _`
 
 error[E0284]: type annotations needed: cannot satisfy `T <: <T as Default>::Id`
-  --> $DIR/specialization-transmute.rs:18:9
+  --> $DIR/specialization-transmute.rs:17:9
    |
 LL |         self
    |         ^^^^ cannot satisfy `T <: <T as Default>::Id`
 
 error[E0284]: type annotations needed: cannot satisfy `<u8 as Default>::Id == Option<NonZero<u8>>`
-  --> $DIR/specialization-transmute.rs:29:13
+  --> $DIR/specialization-transmute.rs:28:13
    |
 LL |     let s = transmute::<u8, Option<NonZero<u8>>>(0);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot satisfy `<u8 as Default>::Id == Option<NonZero<u8>>`
    |
 note: required by a bound in `transmute`
-  --> $DIR/specialization-transmute.rs:22:25
+  --> $DIR/specialization-transmute.rs:21:25
    |
 LL | fn transmute<T: Default<Id = U>, U: Copy>(t: T) -> U {
    |                         ^^^^^^ required by this bound in `transmute`
 
 error[E0282]: type annotations needed
-  --> $DIR/specialization-transmute.rs:14:23
+  --> $DIR/specialization-transmute.rs:13:23
    |
 LL |     default type Id = T;
    |                       ^ cannot infer type for associated type `<T as Default>::Id`

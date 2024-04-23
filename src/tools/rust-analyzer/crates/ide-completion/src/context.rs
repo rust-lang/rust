@@ -17,7 +17,7 @@ use ide_db::{
 };
 use syntax::{
     ast::{self, AttrKind, NameOrNameRef},
-    AstNode, SmolStr,
+    AstNode, Edition, SmolStr,
     SyntaxKind::{self, *},
     SyntaxToken, TextRange, TextSize, T,
 };
@@ -667,7 +667,8 @@ impl<'a> CompletionContext<'a> {
         let file_with_fake_ident = {
             let parse = db.parse(file_id);
             let edit = Indel::insert(offset, COMPLETION_MARKER.to_owned());
-            parse.reparse(&edit).tree()
+            // FIXME: Edition
+            parse.reparse(&edit, Edition::CURRENT).tree()
         };
 
         // always pick the token to the immediate left of the cursor, as that is what we are actually

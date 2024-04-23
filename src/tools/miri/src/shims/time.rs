@@ -236,11 +236,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             .unwrap_or_else(|| now.checked_add(Duration::from_secs(3600)).unwrap());
 
         let active_thread = this.get_active_thread();
-        this.block_thread(active_thread);
+        this.block_thread(active_thread, BlockReason::Sleep);
 
         this.register_timeout_callback(
             active_thread,
-            Time::Monotonic(timeout_time),
+            CallbackTime::Monotonic(timeout_time),
             Box::new(UnblockCallback { thread_to_unblock: active_thread }),
         );
 
@@ -259,11 +259,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let timeout_time = this.machine.clock.now().checked_add(duration).unwrap();
 
         let active_thread = this.get_active_thread();
-        this.block_thread(active_thread);
+        this.block_thread(active_thread, BlockReason::Sleep);
 
         this.register_timeout_callback(
             active_thread,
-            Time::Monotonic(timeout_time),
+            CallbackTime::Monotonic(timeout_time),
             Box::new(UnblockCallback { thread_to_unblock: active_thread }),
         );
 
@@ -281,7 +281,7 @@ impl VisitProvenance for UnblockCallback {
 
 impl<'mir, 'tcx: 'mir> MachineCallback<'mir, 'tcx> for UnblockCallback {
     fn call(&self, ecx: &mut MiriInterpCx<'mir, 'tcx>) -> InterpResult<'tcx> {
-        ecx.unblock_thread(self.thread_to_unblock);
+        ecx.unblock_thread(self.thread_to_unblock, BlockReason::Sleep);
         Ok(())
     }
 }

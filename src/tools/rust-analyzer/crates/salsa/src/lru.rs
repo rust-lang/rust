@@ -1,4 +1,3 @@
-//!
 use oorandom::Rand64;
 use parking_lot::Mutex;
 use std::fmt::Debug;

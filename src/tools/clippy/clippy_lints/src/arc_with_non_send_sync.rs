@@ -56,7 +56,12 @@ impl<'tcx> LateLintPass<'tcx> for ArcWithNonSendSync {
             && let Some(send) = cx.tcx.get_diagnostic_item(sym::Send)
             && let Some(sync) = cx.tcx.lang_items().sync_trait()
             && let [is_send, is_sync] = [send, sync].map(|id| implements_trait(cx, arg_ty, id, &[]))
-            && !(is_send && is_sync)
+            && let reason = match (is_send, is_sync) {
+                (false, false) => "neither `Send` nor `Sync`",
+                (false, true) => "not `Send`",
+                (true, false) => "not `Sync`",
+                _ => return,
+            }
             && !is_from_proc_macro(cx, expr)
         {
             span_lint_and_then(
@@ -66,21 +71,12 @@ impl<'tcx> LateLintPass<'tcx> for ArcWithNonSendSync {
                 "usage of an `Arc` that is not `Send` and `Sync`",
                 |diag| {
                     with_forced_trimmed_paths!({
-                        diag.note(format!("`Arc<{arg_ty}>` is not `Send` and `Sync` as:"));
-
-                        if !is_send {
-                            diag.note(format!("- the trait `Send` is not implemented for `{arg_ty}`"));
-                        }
-                        if !is_sync {
-                            diag.note(format!("- the trait `Sync` is not implemented for `{arg_ty}`"));
-                        }
-
-                        diag.help("consider using an `Rc` instead. `Arc` does not provide benefits for non `Send` and `Sync` types");
-
-                        diag.note("if you intend to use `Arc` with `Send` and `Sync` traits");
-
                         diag.note(format!(
-                            "wrap the inner type with a `Mutex` or implement `Send` and `Sync` for `{arg_ty}`"
+                            "`Arc<{arg_ty}>` is not `Send` and `Sync` as `{arg_ty}` is {reason}"
+                        ));
+                        diag.help("if the `Arc` will not used be across threads replace it with an `Rc`");
+                        diag.help(format!(
+                            "otherwise make `{arg_ty}` `Send` and `Sync` or consider a wrapper type such as `Mutex`"
                         ));
                     });
                 },

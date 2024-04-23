@@ -74,8 +74,12 @@ ui/associated-type-bounds/issue-99828.rs
 ui/associated-type-bounds/return-type-notation/issue-120208-higher-ranked-const.rs
 ui/associated-types/issue-18655.rs
 ui/associated-types/issue-19081.rs
+ui/associated-types/issue-19129-1.rs
+ui/associated-types/issue-19129-2.rs
 ui/associated-types/issue-19883.rs
 ui/associated-types/issue-20005.rs
+ui/associated-types/issue-20763-1.rs
+ui/associated-types/issue-20763-2.rs
 ui/associated-types/issue-20825-2.rs
 ui/associated-types/issue-20825.rs
 ui/associated-types/issue-21363.rs
@@ -281,6 +285,8 @@ ui/auxiliary/issue-18502.rs
 ui/auxiliary/issue-24106.rs
 ui/auxiliary/issue-76387.rs
 ui/bench/issue-32062.rs
+ui/binding/issue-40402-1.rs
+ui/binding/issue-40402-2.rs
 ui/binding/issue-53114-borrow-checks.rs
 ui/binding/issue-53114-safety-checks.rs
 ui/binop/issue-25916.rs
@@ -431,12 +437,16 @@ ui/closures/issue-111932.rs
 ui/closures/issue-113087.rs
 ui/closures/issue-11873.rs
 ui/closures/issue-1460.rs
+ui/closures/issue-22864-1.rs
+ui/closures/issue-22864-2.rs
 ui/closures/issue-23012-supertrait-signature-inference.rs
 ui/closures/issue-25439.rs
 ui/closures/issue-41366.rs
 ui/closures/issue-42463.rs
 ui/closures/issue-46742.rs
 ui/closures/issue-48109.rs
+ui/closures/issue-5239-1.rs
+ui/closures/issue-5239-2.rs
 ui/closures/issue-52437.rs
 ui/closures/issue-67123.rs
 ui/closures/issue-6801.rs
@@ -482,6 +492,8 @@ ui/coercion/issue-101066.rs
 ui/coercion/issue-14589.rs
 ui/coercion/issue-26905-rpass.rs
 ui/coercion/issue-26905.rs
+ui/coercion/issue-32122-1.rs
+ui/coercion/issue-32122-2.rs
 ui/coercion/issue-36007.rs
 ui/coercion/issue-37655.rs
 ui/coercion/issue-3794.rs
@@ -721,6 +733,8 @@ ui/consts/issue-17718-references.rs
 ui/consts/issue-17718.rs
 ui/consts/issue-17756.rs
 ui/consts/issue-18294.rs
+ui/consts/issue-19244-1.rs
+ui/consts/issue-19244-2.rs
 ui/consts/issue-19244.rs
 ui/consts/issue-21562.rs
 ui/consts/issue-21721.rs
@@ -845,6 +859,8 @@ ui/cycle-trait/issue-12511.rs
 ui/debuginfo/issue-105386-debuginfo-ub.rs
 ui/deprecation/issue-66340-deprecated-attr-non-meta-grammar.rs
 ui/deprecation/issue-84637-deprecated-associated-function.rs
+ui/deref-patterns/issue-71676-1.rs
+ui/deref-patterns/issue-71676-2.rs
 ui/derived-errors/issue-30580.rs
 ui/derived-errors/issue-31997-1.rs
 ui/derived-errors/issue-31997.rs
@@ -952,7 +968,12 @@ ui/enum-discriminant/issue-70453-polymorphic-ctfe.rs
 ui/enum-discriminant/issue-70509-partial_eq.rs
 ui/enum-discriminant/issue-72554.rs
 ui/enum-discriminant/issue-90038.rs
+ui/enum/auxiliary/issue-19340-1.rs
 ui/enum/issue-1821.rs
+ui/enum/issue-19340-1.rs
+ui/enum/issue-19340-2.rs
+ui/enum/issue-23304-1.rs
+ui/enum/issue-23304-2.rs
 ui/enum/issue-42747.rs
 ui/enum/issue-67945-1.rs
 ui/enum/issue-67945-2.rs
@@ -965,6 +986,8 @@ ui/errors/issue-104621-extern-not-file.rs
 ui/errors/issue-89280-emitter-overflow-splice-lines.rs
 ui/errors/issue-99572-impl-trait-on-pointer.rs
 ui/expr/if/issue-4201.rs
+ui/expr/issue-22933-1.rs
+ui/expr/issue-22933-2.rs
 ui/extern/auxiliary/issue-80074-macro-2.rs
 ui/extern/auxiliary/issue-80074-macro.rs
 ui/extern/issue-10025.rs
@@ -1400,7 +1423,6 @@ ui/issues/auxiliary/issue-18711.rs
 ui/issues/auxiliary/issue-18913-1.rs
 ui/issues/auxiliary/issue-18913-2.rs
 ui/issues/auxiliary/issue-19293.rs
-ui/issues/auxiliary/issue-19340-1.rs
 ui/issues/auxiliary/issue-20389.rs
 ui/issues/auxiliary/issue-21202.rs
 ui/issues/auxiliary/issue-2170-lib.rs
@@ -1492,8 +1514,6 @@ ui/issues/issue-11592.rs
 ui/issues/issue-11677.rs
 ui/issues/issue-11680.rs
 ui/issues/issue-11681.rs
-ui/issues/issue-11692-1.rs
-ui/issues/issue-11692-2.rs
 ui/issues/issue-11709.rs
 ui/issues/issue-11740.rs
 ui/issues/issue-11771.rs
@@ -1504,8 +1524,6 @@ ui/issues/issue-11958.rs
 ui/issues/issue-12033.rs
 ui/issues/issue-12041.rs
 ui/issues/issue-12127.rs
-ui/issues/issue-12187-1.rs
-ui/issues/issue-12187-2.rs
 ui/issues/issue-12285.rs
 ui/issues/issue-12567.rs
 ui/issues/issue-12612.rs
@@ -1713,14 +1731,8 @@ ui/issues/issue-19097.rs
 ui/issues/issue-19098.rs
 ui/issues/issue-19100.rs
 ui/issues/issue-19127.rs
-ui/issues/issue-19129-1.rs
-ui/issues/issue-19129-2.rs
 ui/issues/issue-19135.rs
-ui/issues/issue-19244-1.rs
-ui/issues/issue-19244-2.rs
 ui/issues/issue-19293.rs
-ui/issues/issue-19340-1.rs
-ui/issues/issue-19340-2.rs
 ui/issues/issue-19367.rs
 ui/issues/issue-19380.rs
 ui/issues/issue-19398.rs
@@ -1761,8 +1773,6 @@ ui/issues/issue-20644.rs
 ui/issues/issue-20676.rs
 ui/issues/issue-20714.rs
 ui/issues/issue-2074.rs
-ui/issues/issue-20763-1.rs
-ui/issues/issue-20763-2.rs
 ui/issues/issue-20772.rs
 ui/issues/issue-20797.rs
 ui/issues/issue-20803.rs
@@ -1835,15 +1845,11 @@ ui/issues/issue-22789.rs
 ui/issues/issue-2281-part1.rs
 ui/issues/issue-22814.rs
 ui/issues/issue-2284.rs
-ui/issues/issue-22864-1.rs
-ui/issues/issue-22864-2.rs
 ui/issues/issue-22872.rs
 ui/issues/issue-22874.rs
 ui/issues/issue-2288.rs
 ui/issues/issue-22886.rs
 ui/issues/issue-22894.rs
-ui/issues/issue-22933-1.rs
-ui/issues/issue-22933-2.rs
 ui/issues/issue-22992-2.rs
 ui/issues/issue-22992.rs
 ui/issues/issue-23024.rs
@@ -1854,8 +1860,6 @@ ui/issues/issue-23073.rs
 ui/issues/issue-2311-2.rs
 ui/issues/issue-2311.rs
 ui/issues/issue-2312.rs
-ui/issues/issue-23122-1.rs
-ui/issues/issue-23122-2.rs
 ui/issues/issue-2316-c.rs
 ui/issues/issue-23173.rs
 ui/issues/issue-23189.rs
@@ -1863,8 +1867,6 @@ ui/issues/issue-23217.rs
 ui/issues/issue-23253.rs
 ui/issues/issue-23261.rs
 ui/issues/issue-23281.rs
-ui/issues/issue-23304-1.rs
-ui/issues/issue-23304-2.rs
 ui/issues/issue-23311.rs
 ui/issues/issue-23336.rs
 ui/issues/issue-23354-2.rs
@@ -2092,9 +2094,6 @@ ui/issues/issue-31910.rs
 ui/issues/issue-32004.rs
 ui/issues/issue-32008.rs
 ui/issues/issue-32086.rs
-ui/issues/issue-32122-deref-coercions-composition/issue-32122-1.rs
-ui/issues/issue-32122-deref-coercions-composition/issue-32122-2.rs
-ui/issues/issue-3214.rs
 ui/issues/issue-3220.rs
 ui/issues/issue-32292.rs
 ui/issues/issue-32324.rs
@@ -2243,8 +2242,6 @@ ui/issues/issue-4025.rs
 ui/issues/issue-40288-2.rs
 ui/issues/issue-40288.rs
 ui/issues/issue-40350.rs
-ui/issues/issue-40402-ref-hints/issue-40402-1.rs
-ui/issues/issue-40402-ref-hints/issue-40402-2.rs
 ui/issues/issue-40408.rs
 ui/issues/issue-40610.rs
 ui/issues/issue-40749.rs
@@ -2438,8 +2435,6 @@ ui/issues/issue-51947.rs
 ui/issues/issue-52049.rs
 ui/issues/issue-52126-assign-op-invariance.rs
 ui/issues/issue-52262.rs
-ui/issues/issue-5239-1.rs
-ui/issues/issue-5239-2.rs
 ui/issues/issue-52489.rs
 ui/issues/issue-52533.rs
 ui/issues/issue-52717.rs
@@ -2491,8 +2486,6 @@ ui/issues/issue-57162.rs
 ui/issues/issue-5718.rs
 ui/issues/issue-57198-pass.rs
 ui/issues/issue-57271.rs
-ui/issues/issue-57362-1.rs
-ui/issues/issue-57362-2.rs
 ui/issues/issue-57399-self-return-impl-trait.rs
 ui/issues/issue-5741.rs
 ui/issues/issue-5754.rs
@@ -2578,8 +2571,6 @@ ui/issues/issue-70724-add_type_neq_err_label-unwrap.rs
 ui/issues/issue-70746.rs
 ui/issues/issue-7092.rs
 ui/issues/issue-71406.rs
-ui/issues/issue-71676-suggest-deref/issue-71676-1.rs
-ui/issues/issue-71676-suggest-deref/issue-71676-2.rs
 ui/issues/issue-7178.rs
 ui/issues/issue-72002.rs
 ui/issues/issue-72076.rs
@@ -2600,8 +2591,6 @@ ui/issues/issue-7563.rs
 ui/issues/issue-75704.rs
 ui/issues/issue-7575.rs
 ui/issues/issue-76042.rs
-ui/issues/issue-7607-1.rs
-ui/issues/issue-7607-2.rs
 ui/issues/issue-76077-inaccesible-private-fields/issue-76077-1.rs
 ui/issues/issue-76077-inaccesible-private-fields/issue-76077.rs
 ui/issues/issue-76191.rs
@@ -2851,6 +2840,8 @@ ui/macros/issue-109237.rs
 ui/macros/issue-111749.rs
 ui/macros/issue-112342-1.rs
 ui/macros/issue-112342-2.rs
+ui/macros/issue-11692-1.rs
+ui/macros/issue-11692-2.rs
 ui/macros/issue-118048.rs
 ui/macros/issue-118786.rs
 ui/macros/issue-16098.rs
@@ -3162,6 +3153,8 @@ ui/nll/issue-57265-return-type-wf-check.rs
 ui/nll/issue-57280-1-flipped.rs
 ui/nll/issue-57280-1.rs
 ui/nll/issue-57280.rs
+ui/nll/issue-57362-1.rs
+ui/nll/issue-57362-2.rs
 ui/nll/issue-57642-higher-ranked-subtype.rs
 ui/nll/issue-57843.rs
 ui/nll/issue-57960.rs
@@ -3218,6 +3211,8 @@ ui/packed/issue-27060.rs
 ui/packed/issue-46152.rs
 ui/panics/issue-47429-short-backtraces.rs
 ui/parser/issue-116781.rs
+ui/parser/issue-12187-1.rs
+ui/parser/issue-12187-2.rs
 ui/parser/issues/auxiliary/issue-21146-inc.rs
 ui/parser/issues/auxiliary/issue-89971-outer-attr-following-inner-attr-ice.rs
 ui/parser/issues/auxiliary/issue-94340-inc.rs
@@ -3613,6 +3608,8 @@ ui/reachable/issue-11225-1.rs
 ui/reachable/issue-11225-2.rs
 ui/reachable/issue-11225-3.rs
 ui/reachable/issue-948.rs
+ui/recursion/issue-23122-1.rs
+ui/recursion/issue-23122-2.rs
 ui/recursion/issue-23302-1.rs
 ui/recursion/issue-23302-2.rs
 ui/recursion/issue-23302-3.rs
@@ -3692,6 +3689,7 @@ ui/resolve/issue-30535.rs
 ui/resolve/issue-3099-a.rs
 ui/resolve/issue-3099-b.rs
 ui/resolve/issue-31845.rs
+ui/resolve/issue-3214.rs
 ui/resolve/issue-33876.rs
 ui/resolve/issue-35675.rs
 ui/resolve/issue-3907-2.rs
@@ -4203,6 +4201,8 @@ ui/type/issue-102598.rs
 ui/type/issue-103271.rs
 ui/type/issue-58355.rs
 ui/type/issue-67690-type-alias-bound-diagnostic-crash.rs
+ui/type/issue-7607-1.rs
+ui/type/issue-7607-2.rs
 ui/type/issue-91268.rs
 ui/type/issue-94187-verbose-type-name.rs
 ui/type/type-check/issue-116967-cannot-coerce-returned-result.rs

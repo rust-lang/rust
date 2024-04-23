@@ -398,7 +398,7 @@ mod desc {
     pub const parse_optimization_fuel: &str = "crate=integer";
     pub const parse_dump_mono_stats: &str = "`markdown` (default) or `json`";
     pub const parse_instrument_coverage: &str = parse_bool;
-    pub const parse_coverage_options: &str = "`branch` or `no-branch`";
+    pub const parse_coverage_options: &str = "either  `no-branch`, `branch` or `mcdc`";
     pub const parse_instrument_xray: &str = "either a boolean (`yes`, `no`, `on`, `off`, etc), or a comma separated list of settings: `always` or `never` (mutually exclusive), `ignore-loops`, `instruction-threshold=N`, `skip-entry`, `skip-exit`";
     pub const parse_unpretty: &str = "`string` or `string=string`";
     pub const parse_treat_err_as_bug: &str = "either no value or a non-negative number";
@@ -949,17 +949,19 @@ mod parse {
         let Some(v) = v else { return true };
 
         for option in v.split(',') {
-            let (option, enabled) = match option.strip_prefix("no-") {
-                Some(without_no) => (without_no, false),
-                None => (option, true),
-            };
-            let slot = match option {
-                "branch" => &mut slot.branch,
+            match option {
+                "no-branch" => {
+                    slot.branch = false;
+                    slot.mcdc = false;
+                }
+                "branch" => slot.branch = true,
+                "mcdc" => {
+                    slot.branch = true;
+                    slot.mcdc = true;
+                }
                 _ => return false,
-            };
-            *slot = enabled;
+            }
         }
-
         true
     }
 

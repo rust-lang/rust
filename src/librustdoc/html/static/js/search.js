@@ -1464,16 +1464,7 @@ function initSearch(rawSearchIndex) {
                 return 0;
             });
 
-            const transformed = transformResults(result_list);
-            const descs = await Promise.all(transformed.map(result => {
-                return searchIndexEmptyDesc.get(result.crate).contains(result.bitIndex) ?
-                    "" :
-                    searchState.loadDesc(result);
-            }));
-            for (const [i, result] of transformed.entries()) {
-                result.desc = descs[i];
-            }
-            return transformed;
+            return transformResults(result_list);
         }
 
         /**
@@ -2517,6 +2508,16 @@ function initSearch(rawSearchIndex) {
             sorted_others,
             parsedQuery);
         handleAliases(ret, parsedQuery.original.replace(/"/g, ""), filterCrates, currentCrate);
+        await Promise.all([ret.others, ret.returned, ret.in_args].map(async list => {
+            const descs = await Promise.all(list.map(result => {
+                return searchIndexEmptyDesc.get(result.crate).contains(result.bitIndex) ?
+                    "" :
+                    searchState.loadDesc(result);
+            }));
+            for (const [i, result] of list.entries()) {
+                result.desc = descs[i];
+            }
+        }));
         if (parsedQuery.error !== null && ret.others.length !== 0) {
             // It means some doc aliases were found so let's "remove" the error!
             ret.query.error = null;

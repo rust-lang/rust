@@ -3285,7 +3285,7 @@ fn maybe_get_relative_path(from: &DefPath, to: &DefPath, max_super: usize) -> St
             Right(r) => Right(r.data),
         });
 
-    // 2. for the remaning segments, construct relative path using only mod names and `super`
+    // 2. for the remaining segments, construct relative path using only mod names and `super`
     let mut go_up_by = 0;
     let mut path = Vec::new();
     for el in unique_parts {

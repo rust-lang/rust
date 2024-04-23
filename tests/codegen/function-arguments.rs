@@ -1,7 +1,6 @@
 //@ compile-flags: -O -C no-prepopulate-passes
 #![crate_type = "lib"]
 #![feature(dyn_star)]
-#![feature(generic_nonzero)]
 #![feature(allocator_api)]
 
 use std::mem::MaybeUninit;

@@ -6,7 +6,6 @@
 //@ check-pass
 //@ compile-flags: --crate-type=lib
 //@ only-x86
-#![feature(generic_nonzero)]
 #![feature(repr_simd)]
 
 use std::cell::{UnsafeCell, RefCell, Cell};

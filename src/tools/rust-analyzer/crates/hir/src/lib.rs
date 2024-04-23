@@ -239,7 +239,7 @@ impl Crate {
         db: &dyn DefDatabase,
         query: import_map::Query,
     ) -> impl Iterator<Item = Either<ModuleDef, Macro>> {
-        let _p = tracing::span!(tracing::Level::INFO, "query_external_importables");
+        let _p = tracing::span!(tracing::Level::INFO, "query_external_importables").entered();
         import_map::search_dependencies(db, self.into(), &query).into_iter().map(|item| {
             match ItemInNs::from(item) {
                 ItemInNs::Types(mod_id) | ItemInNs::Values(mod_id) => Either::Left(mod_id),
@@ -260,11 +260,11 @@ impl Crate {
         doc_url.map(|s| s.trim_matches('"').trim_end_matches('/').to_owned() + "/")
     }
 
-    pub fn cfg(&self, db: &dyn HirDatabase) -> CfgOptions {
+    pub fn cfg(&self, db: &dyn HirDatabase) -> Arc<CfgOptions> {
         db.crate_graph()[self.id].cfg_options.clone()
     }
 
-    pub fn potential_cfg(&self, db: &dyn HirDatabase) -> CfgOptions {
+    pub fn potential_cfg(&self, db: &dyn HirDatabase) -> Arc<CfgOptions> {
         let data = &db.crate_graph()[self.id];
         data.potential_cfg_options.clone().unwrap_or_else(|| data.cfg_options.clone())
     }
@@ -548,8 +548,8 @@ impl Module {
         acc: &mut Vec<AnyDiagnostic>,
         style_lints: bool,
     ) {
-        let name = self.name(db);
-        let _p = tracing::span!(tracing::Level::INFO, "Module::diagnostics", ?name);
+        let _p = tracing::span!(tracing::Level::INFO, "Module::diagnostics", name = ?self.name(db))
+            .entered();
         let def_map = self.id.def_map(db.upcast());
         for diag in def_map.diagnostics() {
             if diag.in_module != self.id.local_id {
@@ -653,7 +653,7 @@ impl Module {
                     GenericParamId::LifetimeParamId(LifetimeParamId { parent, local_id })
                 });
                 let type_params = generic_params
-                    .iter()
+                    .iter_type_or_consts()
                     .filter(|(_, it)| it.type_param().is_some())
                     .map(|(local_id, _)| {
                         GenericParamId::TypeParamId(TypeParamId::from_unchecked(
@@ -684,7 +684,7 @@ impl Module {
                 let items = &db.trait_data(trait_.into()).items;
                 let required_items = items.iter().filter(|&(_, assoc)| match *assoc {
                     AssocItemId::FunctionId(it) => !db.function_data(it).has_body(),
-                    AssocItemId::ConstId(id) => Const::from(id).value(db).is_none(),
+                    AssocItemId::ConstId(id) => !db.const_data(id).has_body,
                     AssocItemId::TypeAliasId(it) => db.type_alias_data(it).type_ref.is_none(),
                 });
                 impl_assoc_items_scratch.extend(db.impl_data(impl_def.id).items.iter().filter_map(
@@ -1418,16 +1418,14 @@ impl Adt {
     }
 
     pub fn layout(self, db: &dyn HirDatabase) -> Result<Layout, LayoutError> {
-        if !db.generic_params(self.into()).is_empty() {
-            return Err(LayoutError::HasPlaceholder);
-        }
-        let krate = self.krate(db).id;
         db.layout_of_adt(
             self.into(),
-            Substitution::empty(Interner),
+            TyBuilder::adt(db, self.into())
+                .fill_with_defaults(db, || TyKind::Error.intern(Interner))
+                .build_into_subst(),
             db.trait_environment(self.into()),
         )
-        .map(|layout| Layout(layout, db.target_data_layout(krate).unwrap()))
+        .map(|layout| Layout(layout, db.target_data_layout(self.krate(db).id).unwrap()))
     }
 
     /// Turns this ADT into a type. Any type parameters of the ADT will be
@@ -1630,7 +1628,6 @@ impl DefWithBody {
         acc: &mut Vec<AnyDiagnostic>,
         style_lints: bool,
     ) {
-        db.unwind_if_cancelled();
         let krate = self.module(db).id.krate();
 
         let (body, source_map) = db.body_with_source_map(self.into());
@@ -1678,6 +1675,7 @@ impl DefWithBody {
         for d in &infer.diagnostics {
             acc.extend(AnyDiagnostic::inference_diagnostic(db, self.into(), d, &source_map));
         }
+
         for (pat_or_expr, mismatch) in infer.type_mismatches() {
             let expr_or_pat = match pat_or_expr {
                 ExprOrPatId::ExprId(expr) => source_map.expr_syntax(expr).map(Either::Left),
@@ -1763,7 +1761,9 @@ impl DefWithBody {
                         need_mut = &mir::MutabilityReason::Not;
                     }
                     let local = Local { parent: self.into(), binding_id };
-                    match (need_mut, local.is_mut(db)) {
+                    let is_mut = body[binding_id].mode == BindingAnnotation::Mutable;
+
+                    match (need_mut, is_mut) {
                         (mir::MutabilityReason::Unused, _) => {
                             let should_ignore = matches!(body[binding_id].name.as_str(), Some(it) if it.starts_with('_'));
                             if !should_ignore {
@@ -2007,12 +2007,15 @@ impl Function {
 
     /// is this a `fn main` or a function with an `export_name` of `main`?
     pub fn is_main(self, db: &dyn HirDatabase) -> bool {
-        if !self.module(db).is_crate_root() {
-            return false;
-        }
         let data = db.function_data(self.id);
+        data.attrs.export_name() == Some("main")
+            || self.module(db).is_crate_root() && data.name.to_smol_str() == "main"
+    }
 
-        data.name.to_smol_str() == "main" || data.attrs.export_name() == Some("main")
+    /// Is this a function with an `export_name` of `main`?
+    pub fn exported_main(self, db: &dyn HirDatabase) -> bool {
+        let data = db.function_data(self.id);
+        data.attrs.export_name() == Some("main")
     }
 
     /// Does this function have the ignore attribute?
@@ -3909,7 +3912,7 @@ impl Type {
         inner.derived(
             TyKind::Ref(
                 if m.is_mut() { hir_ty::Mutability::Mut } else { hir_ty::Mutability::Not },
-                hir_ty::static_lifetime(),
+                hir_ty::error_lifetime(),
                 inner.ty.clone(),
             )
             .intern(Interner),
@@ -4492,7 +4495,7 @@ impl Type {
         name: Option<&Name>,
         mut callback: impl FnMut(Function) -> Option<T>,
     ) -> Option<T> {
-        let _p = tracing::span!(tracing::Level::INFO, "iterate_method_candidates");
+        let _p = tracing::span!(tracing::Level::INFO, "iterate_method_candidates").entered();
         let mut slot = None;
 
         self.iterate_method_candidates_dyn(
@@ -4580,7 +4583,7 @@ impl Type {
         name: Option<&Name>,
         mut callback: impl FnMut(AssocItem) -> Option<T>,
     ) -> Option<T> {
-        let _p = tracing::span!(tracing::Level::INFO, "iterate_path_candidates");
+        let _p = tracing::span!(tracing::Level::INFO, "iterate_path_candidates").entered();
         let mut slot = None;
         self.iterate_path_candidates_dyn(
             db,
@@ -4647,7 +4650,7 @@ impl Type {
         &'a self,
         db: &'a dyn HirDatabase,
     ) -> impl Iterator<Item = Trait> + 'a {
-        let _p = tracing::span!(tracing::Level::INFO, "applicable_inherent_traits");
+        let _p = tracing::span!(tracing::Level::INFO, "applicable_inherent_traits").entered();
         self.autoderef_(db)
             .filter_map(|ty| ty.dyn_trait())
             .flat_map(move |dyn_trait_id| hir_ty::all_super_traits(db.upcast(), dyn_trait_id))
@@ -4655,7 +4658,7 @@ impl Type {
     }
 
     pub fn env_traits<'a>(&'a self, db: &'a dyn HirDatabase) -> impl Iterator<Item = Trait> + 'a {
-        let _p = tracing::span!(tracing::Level::INFO, "env_traits");
+        let _p = tracing::span!(tracing::Level::INFO, "env_traits").entered();
         self.autoderef_(db)
             .filter(|ty| matches!(ty.kind(Interner), TyKind::Placeholder(_)))
             .flat_map(|ty| {
@@ -4709,10 +4712,12 @@ impl Type {
                 if let WhereClause::Implemented(trait_ref) = pred.skip_binders() {
                     cb(type_.clone());
                     // skip the self type. it's likely the type we just got the bounds from
-                    for ty in
-                        trait_ref.substitution.iter(Interner).skip(1).filter_map(|a| a.ty(Interner))
-                    {
-                        walk_type(db, &type_.derived(ty.clone()), cb);
+                    if let [self_ty, params @ ..] = trait_ref.substitution.as_slice(Interner) {
+                        for ty in
+                            params.iter().filter(|&ty| ty != self_ty).filter_map(|a| a.ty(Interner))
+                        {
+                            walk_type(db, &type_.derived(ty.clone()), cb);
+                        }
                     }
                 }
             }

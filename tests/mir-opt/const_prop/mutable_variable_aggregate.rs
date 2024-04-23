@@ -1,4 +1,4 @@
-//@ unit-test: GVN
+//@ test-mir-pass: GVN
 
 // EMIT_MIR mutable_variable_aggregate.main.GVN.diff
 fn main() {

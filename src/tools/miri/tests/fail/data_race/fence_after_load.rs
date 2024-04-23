@@ -1,5 +1,8 @@
 // We want to control preemption here. Stacked borrows interferes by having its own accesses.
 //@compile-flags: -Zmiri-preemption-rate=0 -Zmiri-disable-stacked-borrows
+// Avoid accidental synchronization via address reuse inside `thread::spawn`.
+//@compile-flags: -Zmiri-address-reuse-cross-thread-rate=0
+
 use std::sync::atomic::{fence, AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::thread;

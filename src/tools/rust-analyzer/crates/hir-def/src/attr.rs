@@ -5,7 +5,7 @@ pub mod builtin;
 #[cfg(test)]
 mod tests;
 
-use std::{hash::Hash, ops, slice::Iter as SliceIter};
+use std::{borrow::Cow, hash::Hash, ops, slice::Iter as SliceIter};
 
 use base_db::CrateId;
 use cfg::{CfgExpr, CfgOptions};
@@ -139,6 +139,10 @@ impl Attrs {
             }
             None => Some(first),
         }
+    }
+
+    pub fn cfgs(&self) -> impl Iterator<Item = CfgExpr> + '_ {
+        self.by_key("cfg").tt_values().map(CfgExpr::parse)
     }
 
     pub(crate) fn is_cfg_enabled(&self, cfg_options: &CfgOptions) -> bool {
@@ -567,6 +571,10 @@ impl<'attr> AttrQuery<'attr> {
 
     pub fn string_value(self) -> Option<&'attr str> {
         self.attrs().find_map(|attr| attr.string_value())
+    }
+
+    pub fn string_value_unescape(self) -> Option<Cow<'attr, str>> {
+        self.attrs().find_map(|attr| attr.string_value_unescape())
     }
 
     pub fn exists(self) -> bool {

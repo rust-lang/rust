@@ -214,7 +214,7 @@ pub struct Permissions(fs_imp::FilePermissions);
 /// A structure representing a type of file with accessors for each file type.
 /// It is returned by [`Metadata::file_type`] method.
 #[stable(feature = "file_type", since = "1.1.0")]
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(not(test), rustc_diagnostic_item = "FileType")]
 pub struct FileType(fs_imp::FileType);
 
@@ -1410,15 +1410,20 @@ impl Metadata {
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for Metadata {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Metadata")
-            .field("file_type", &self.file_type())
-            .field("is_dir", &self.is_dir())
-            .field("is_file", &self.is_file())
-            .field("permissions", &self.permissions())
-            .field("modified", &self.modified())
-            .field("accessed", &self.accessed())
-            .field("created", &self.created())
-            .finish_non_exhaustive()
+        let mut debug = f.debug_struct("Metadata");
+        debug.field("file_type", &self.file_type());
+        debug.field("permissions", &self.permissions());
+        debug.field("len", &self.len());
+        if let Ok(modified) = self.modified() {
+            debug.field("modified", &modified);
+        }
+        if let Ok(accessed) = self.accessed() {
+            debug.field("accessed", &accessed);
+        }
+        if let Ok(created) = self.created() {
+            debug.field("created", &created);
+        }
+        debug.finish_non_exhaustive()
     }
 }
 
@@ -1681,6 +1686,17 @@ impl FileType {
     #[stable(feature = "file_type", since = "1.1.0")]
     pub fn is_symlink(&self) -> bool {
         self.0.is_symlink()
+    }
+}
+
+#[stable(feature = "std_debug", since = "1.16.0")]
+impl fmt::Debug for FileType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("FileType")
+            .field("is_file", &self.is_file())
+            .field("is_dir", &self.is_dir())
+            .field("is_symlink", &self.is_symlink())
+            .finish_non_exhaustive()
     }
 }
 

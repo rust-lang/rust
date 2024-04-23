@@ -1,5 +1,6 @@
 #![warn(clippy::arithmetic_side_effects)]
 
+mod alloc;
 mod backtrace;
 #[cfg(target_os = "linux")]
 pub mod ffi_support;

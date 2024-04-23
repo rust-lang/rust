@@ -50,7 +50,7 @@ mod tests {
     fn test_matching_brace() {
         fn do_check(before: &str, after: &str) {
             let (pos, before) = extract_offset(before);
-            let parse = SourceFile::parse(&before);
+            let parse = SourceFile::parse(&before, span::Edition::CURRENT);
             let new_pos = match matching_brace(&parse.tree(), pos) {
                 None => pos,
                 Some(pos) => pos,

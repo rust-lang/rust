@@ -1,6 +1,6 @@
 // skip-filecheck
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
-//@ unit-test: GVN
+//@ test-mir-pass: GVN
 //@ compile-flags: -Zmir-opt-level=1
 
 trait NeedsDrop: Sized {

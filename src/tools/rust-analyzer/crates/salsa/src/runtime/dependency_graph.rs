@@ -1,4 +1,3 @@
-//!
 use triomphe::Arc;
 
 use crate::{DatabaseKeyIndex, RuntimeId};

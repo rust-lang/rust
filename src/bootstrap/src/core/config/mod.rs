@@ -1,4 +1,5 @@
-pub(crate) mod config;
+#[allow(clippy::module_inception)]
+mod config;
 pub(crate) mod flags;
 #[cfg(test)]
 mod tests;

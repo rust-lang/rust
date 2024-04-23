@@ -19,7 +19,8 @@
 
 mod build_scripts;
 mod cargo_workspace;
-mod cfg_flag;
+mod cfg;
+mod env;
 mod manifest_path;
 mod project_json;
 mod rustc_cfg;
@@ -47,10 +48,11 @@ pub use crate::{
         CargoConfig, CargoFeatures, CargoWorkspace, Package, PackageData, PackageDependency,
         RustLibSource, Target, TargetData, TargetKind,
     },
+    cfg::CfgOverrides,
     manifest_path::ManifestPath,
     project_json::{ProjectJson, ProjectJsonData},
     sysroot::Sysroot,
-    workspace::{CfgOverrides, PackageRoot, ProjectWorkspace},
+    workspace::{FileLoader, PackageRoot, ProjectWorkspace},
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Ord, PartialOrd)]

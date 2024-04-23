@@ -57,5 +57,41 @@ error: no need to put clippy lints behind a `clippy` cfg
 LL | #![cfg_attr(clippy, deny(clippy::non_minimal_cfg, clippy::maybe_misused_cfg))]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `#![deny(clippy::non_minimal_cfg, clippy::maybe_misused_cfg)]`
 
-error: aborting due to 8 previous errors
+error: duplicated attribute
+  --> tests/ui/unnecessary_clippy_cfg.rs:8:26
+   |
+LL | #![cfg_attr(clippy, deny(dead_code, clippy::non_minimal_cfg, clippy::maybe_misused_cfg))]
+   |                          ^^^^^^^^^
+   |
+note: first defined here
+  --> tests/ui/unnecessary_clippy_cfg.rs:6:26
+   |
+LL | #![cfg_attr(clippy, deny(dead_code, clippy::non_minimal_cfg))]
+   |                          ^^^^^^^^^
+help: remove this attribute
+  --> tests/ui/unnecessary_clippy_cfg.rs:8:26
+   |
+LL | #![cfg_attr(clippy, deny(dead_code, clippy::non_minimal_cfg, clippy::maybe_misused_cfg))]
+   |                          ^^^^^^^^^
+   = note: `-D clippy::duplicated-attributes` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::duplicated_attributes)]`
+
+error: duplicated attribute
+  --> tests/ui/unnecessary_clippy_cfg.rs:17:25
+   |
+LL | #[cfg_attr(clippy, deny(dead_code, clippy::non_minimal_cfg, clippy::maybe_misused_cfg))]
+   |                         ^^^^^^^^^
+   |
+note: first defined here
+  --> tests/ui/unnecessary_clippy_cfg.rs:15:25
+   |
+LL | #[cfg_attr(clippy, deny(dead_code, clippy::non_minimal_cfg))]
+   |                         ^^^^^^^^^
+help: remove this attribute
+  --> tests/ui/unnecessary_clippy_cfg.rs:17:25
+   |
+LL | #[cfg_attr(clippy, deny(dead_code, clippy::non_minimal_cfg, clippy::maybe_misused_cfg))]
+   |                         ^^^^^^^^^
+
+error: aborting due to 10 previous errors
 

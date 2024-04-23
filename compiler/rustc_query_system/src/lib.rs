@@ -1,6 +1,5 @@
 #![feature(assert_matches)]
 #![feature(core_intrinsics)]
-#![feature(generic_nonzero)]
 #![feature(hash_raw_entry)]
 #![feature(min_specialization)]
 #![feature(let_chains)]

@@ -317,7 +317,8 @@ fn main() {
     #[test]
     fn mismatched_types_issue_15883() {
         // Check we don't panic.
-        check_diagnostics_no_bails(
+        cov_mark::check!(validate_match_bailed_out);
+        check_diagnostics(
             r#"
 //- minicore: option
 fn main() {

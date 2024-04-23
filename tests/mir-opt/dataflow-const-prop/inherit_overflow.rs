@@ -1,5 +1,5 @@
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
-//@ unit-test: DataflowConstProp
+//@ test-mir-pass: DataflowConstProp
 //@ compile-flags: -Zmir-enable-passes=+Inline
 
 // EMIT_MIR inherit_overflow.main.DataflowConstProp.diff

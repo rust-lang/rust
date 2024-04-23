@@ -27,7 +27,7 @@ pub(crate) fn expr(s: &str) -> Result<SyntaxNode, ()> {
 pub(crate) fn stmt(s: &str) -> Result<SyntaxNode, ()> {
     let template = "const _: () = { {}; };";
     let input = template.replace("{}", s);
-    let parse = syntax::SourceFile::parse(&input);
+    let parse = syntax::SourceFile::parse(&input, syntax::Edition::CURRENT);
     if !parse.errors().is_empty() {
         return Err(());
     }
@@ -48,7 +48,7 @@ pub(crate) fn stmt(s: &str) -> Result<SyntaxNode, ()> {
 fn fragment<T: AstNode>(template: &str, s: &str) -> Result<SyntaxNode, ()> {
     let s = s.trim();
     let input = template.replace("{}", s);
-    let parse = syntax::SourceFile::parse(&input);
+    let parse = syntax::SourceFile::parse(&input, syntax::Edition::CURRENT);
     if !parse.errors().is_empty() {
         return Err(());
     }

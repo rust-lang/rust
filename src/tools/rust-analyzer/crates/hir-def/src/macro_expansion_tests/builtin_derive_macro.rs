@@ -610,6 +610,10 @@ struct Foo {
     field1: i32,
     #[cfg(never)]
     field2: (),
+    #[cfg(feature = "never")]
+    field3: (),
+    #[cfg(not(feature = "never"))]
+    field4: (),
 }
 #[derive(Default)]
 enum Bar {
@@ -618,12 +622,16 @@ enum Bar {
     Bar,
 }
 "#,
-        expect![[r#"
+        expect![[r##"
 #[derive(Default)]
 struct Foo {
     field1: i32,
     #[cfg(never)]
     field2: (),
+    #[cfg(feature = "never")]
+    field3: (),
+    #[cfg(not(feature = "never"))]
+    field4: (),
 }
 #[derive(Default)]
 enum Bar {
@@ -635,7 +643,7 @@ enum Bar {
 impl < > $crate::default::Default for Foo< > where {
     fn default() -> Self {
         Foo {
-            field1: $crate::default::Default::default(),
+            field1: $crate::default::Default::default(), field4: $crate::default::Default::default(),
         }
     }
 }
@@ -643,6 +651,6 @@ impl < > $crate::default::Default for Bar< > where {
     fn default() -> Self {
         Bar::Bar
     }
-}"#]],
+}"##]],
     );
 }

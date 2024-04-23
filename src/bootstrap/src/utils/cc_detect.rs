@@ -41,9 +41,7 @@ fn cc2ar(cc: &Path, target: TargetSelection) -> Option<PathBuf> {
         Some(PathBuf::from(ar))
     } else if target.is_msvc() {
         None
-    } else if target.contains("musl") {
-        Some(PathBuf::from("ar"))
-    } else if target.contains("openbsd") {
+    } else if target.contains("musl") || target.contains("openbsd") {
         Some(PathBuf::from("ar"))
     } else if target.contains("vxworks") {
         Some(PathBuf::from("wr-ar"))

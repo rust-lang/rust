@@ -537,7 +537,11 @@ impl () {}
 /// ## 4. Get it from C.
 ///
 /// ```
-/// # #![feature(rustc_private)]
+/// # mod libc {
+/// # pub unsafe fn malloc(_size: usize) -> *mut core::ffi::c_void { core::ptr::NonNull::dangling().as_ptr() }
+/// # pub unsafe fn free(_ptr: *mut core::ffi::c_void) {}
+/// # }
+/// # #[cfg(any())]
 /// #[allow(unused_extern_crates)]
 /// extern crate libc;
 ///
@@ -548,7 +552,7 @@ impl () {}
 ///     if my_num.is_null() {
 ///         panic!("failed to allocate memory");
 ///     }
-///     libc::free(my_num as *mut libc::c_void);
+///     libc::free(my_num as *mut core::ffi::c_void);
 /// }
 /// ```
 ///

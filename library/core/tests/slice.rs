@@ -2678,3 +2678,16 @@ fn test_get_many_mut_duplicate() {
     let mut v = vec![1, 2, 3, 4, 5];
     assert!(v.get_many_mut([1, 3, 3, 4]).is_err());
 }
+
+#[test]
+fn test_slice_from_raw_parts_in_const() {
+    static FANCY: i32 = 4;
+    static FANCY_SLICE: &[i32] = unsafe { std::slice::from_raw_parts(&FANCY, 1) };
+    assert_eq!(FANCY_SLICE.as_ptr(), std::ptr::addr_of!(FANCY));
+    assert_eq!(FANCY_SLICE.len(), 1);
+
+    const EMPTY_SLICE: &[i32] =
+        unsafe { std::slice::from_raw_parts(std::ptr::without_provenance(123456), 0) };
+    assert_eq!(EMPTY_SLICE.as_ptr().addr(), 123456);
+    assert_eq!(EMPTY_SLICE.len(), 0);
+}

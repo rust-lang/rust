@@ -53,7 +53,7 @@ fn main() {
     println!("Creating {}", src_dir.display());
     std::fs::create_dir_all(src_dir).unwrap();
 
-    for item_els in [&["Cargo.toml"][..], &["src", "lib.rs"]] {
+    for item_els in [&["Cargo.toml"][..], &["build.rs"][..], &["src", "lib.rs"]] {
         let mut src = imp_dir.clone();
         let mut dst = staging_dir.clone();
         for el in item_els {

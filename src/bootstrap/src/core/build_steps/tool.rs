@@ -135,6 +135,7 @@ impl Step for ToolBuild {
     }
 }
 
+#[allow(clippy::too_many_arguments)] // FIXME: reduce the number of args and remove this.
 pub fn prepare_tool_cargo(
     builder: &Builder<'_>,
     compiler: Compiler,
@@ -545,7 +546,7 @@ impl Step for Cargo {
     }
 
     fn run(self, builder: &Builder<'_>) -> PathBuf {
-        let cargo_bin_path = builder.ensure(ToolBuild {
+        builder.ensure(ToolBuild {
             compiler: self.compiler,
             target: self.target,
             tool: "cargo",
@@ -554,8 +555,7 @@ impl Step for Cargo {
             source_type: SourceType::Submodule,
             extra_features: Vec::new(),
             allow_features: "",
-        });
-        cargo_bin_path
+        })
     }
 }
 
@@ -573,7 +573,7 @@ impl Step for LldWrapper {
     }
 
     fn run(self, builder: &Builder<'_>) -> PathBuf {
-        let src_exe = builder.ensure(ToolBuild {
+        builder.ensure(ToolBuild {
             compiler: self.compiler,
             target: self.target,
             tool: "lld-wrapper",
@@ -582,9 +582,7 @@ impl Step for LldWrapper {
             source_type: SourceType::InTree,
             extra_features: Vec::new(),
             allow_features: "",
-        });
-
-        src_exe
+        })
     }
 }
 

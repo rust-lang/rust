@@ -145,7 +145,7 @@ fn used_once_in_scope(ctx: &AssistContext<'_>, def: Definition, scopes: &Vec<Sea
     for scope in scopes {
         let mut search_non_import = |_, r: FileReference| {
             // The import itself is a use; we must skip that.
-            if r.category != Some(ReferenceCategory::Import) {
+            if !r.category.contains(ReferenceCategory::IMPORT) {
                 found = true;
                 true
             } else {

@@ -432,19 +432,19 @@ impl<'tcx> TyCtxt<'tcx> {
             .filter(|&(_, k)| {
                 match k.unpack() {
                     GenericArgKind::Lifetime(region) => match region.kind() {
-                        ty::ReEarlyParam(ref ebr) => {
+                        ty::ReEarlyParam(ebr) => {
                             !impl_generics.region_param(ebr, self).pure_wrt_drop
                         }
                         // Error: not a region param
                         _ => false,
                     },
-                    GenericArgKind::Type(ty) => match ty.kind() {
-                        ty::Param(ref pt) => !impl_generics.type_param(pt, self).pure_wrt_drop,
+                    GenericArgKind::Type(ty) => match *ty.kind() {
+                        ty::Param(pt) => !impl_generics.type_param(pt, self).pure_wrt_drop,
                         // Error: not a type param
                         _ => false,
                     },
                     GenericArgKind::Const(ct) => match ct.kind() {
-                        ty::ConstKind::Param(ref pc) => {
+                        ty::ConstKind::Param(pc) => {
                             !impl_generics.const_param(pc, self).pure_wrt_drop
                         }
                         // Error: not a const param

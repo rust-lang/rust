@@ -76,10 +76,11 @@ check-aux:
 		$(BOOTSTRAP) miri --stage 2 library/std \
 		--doc -- \
 		--skip fs:: --skip net:: --skip process:: --skip sys::pal::
-	# Also test some very target-specific modules on other targets.
+	# Also test some very target-specific modules on other targets
+	# (making sure to cover an i686 target as well).
 	$(Q)MIRIFLAGS="-Zmiri-disable-isolation" BOOTSTRAP_SKIP_TARGET_SANITY=1 \
 		$(BOOTSTRAP) miri --stage 2 library/std \
-		--target aarch64-apple-darwin,i686-pc-windows-gnu \
+		--target aarch64-apple-darwin,i686-pc-windows-msvc \
 		--no-doc -- \
 		time:: sync:: thread:: env::
 dist:

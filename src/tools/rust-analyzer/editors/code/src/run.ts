@@ -2,7 +2,6 @@ import * as vscode from "vscode";
 import type * as lc from "vscode-languageclient";
 import * as ra from "./lsp_ext";
 import * as tasks from "./tasks";
-import * as toolchain from "./toolchain";
 
 import type { CtxInit } from "./ctx";
 import { makeDebugConfig } from "./debug";
@@ -112,22 +111,12 @@ export async function createTask(runnable: ra.Runnable, config: Config): Promise
         throw `Unexpected runnable kind: ${runnable.kind}`;
     }
 
-    let program: string;
-    let args = createArgs(runnable);
-    if (runnable.args.overrideCargo) {
-        // Split on spaces to allow overrides like "wrapper cargo".
-        const cargoParts = runnable.args.overrideCargo.split(" ");
+    const args = createArgs(runnable);
 
-        program = unwrapUndefinable(cargoParts[0]);
-        args = [...cargoParts.slice(1), ...args];
-    } else {
-        program = await toolchain.cargoPath();
-    }
-
-    const definition: tasks.RustTargetDefinition = {
+    const definition: tasks.CargoTaskDefinition = {
         type: tasks.TASK_TYPE,
-        program,
-        args,
+        command: unwrapUndefinable(args[0]), // run, test, etc...
+        args: args.slice(1),
         cwd: runnable.args.workspaceRoot || ".",
         env: prepareEnv(runnable, config.runnablesExtraEnv),
         overrideCargo: runnable.args.overrideCargo,

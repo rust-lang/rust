@@ -1,0 +1,21 @@
+error[E0433]: failed to resolve: use of undeclared type `E`
+  --> $DIR/non-ADT-struct-pattern-box-pattern-ice-121463.rs:6:17
+   |
+LL |     let mut a = E::StructVar { boxed: Box::new(5_i32) };
+   |                 ^
+   |                 |
+   |                 use of undeclared type `E`
+   |                 help: a trait with a similar name exists: `Eq`
+
+error[E0433]: failed to resolve: use of undeclared type `E`
+  --> $DIR/non-ADT-struct-pattern-box-pattern-ice-121463.rs:9:9
+   |
+LL |         E::StructVar { box boxed } => { }
+   |         ^
+   |         |
+   |         use of undeclared type `E`
+   |         help: a trait with a similar name exists: `Eq`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0433`.

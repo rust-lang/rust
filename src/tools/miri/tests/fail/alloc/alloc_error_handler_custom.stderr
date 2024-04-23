@@ -1,0 +1,27 @@
+custom alloc error handler: Layout { size: 4, align: 4 (1 << 2) }
+error: abnormal termination: the program aborted execution
+  --> $DIR/alloc_error_handler_custom.rs:LL:CC
+   |
+LL |     core::intrinsics::abort();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ the program aborted execution
+   |
+   = note: BACKTRACE:
+   = note: inside `alloc_error_handler` at $DIR/alloc_error_handler_custom.rs:LL:CC
+note: inside `_::__rg_oom`
+  --> $DIR/alloc_error_handler_custom.rs:LL:CC
+   |
+LL | #[alloc_error_handler]
+   | ---------------------- in this procedural macro expansion
+LL | fn alloc_error_handler(layout: Layout) -> ! {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: inside `alloc::alloc::handle_alloc_error::rt_error` at RUSTLIB/alloc/src/alloc.rs:LL:CC
+   = note: inside `alloc::alloc::handle_alloc_error` at RUSTLIB/alloc/src/alloc.rs:LL:CC
+note: inside `start`
+  --> $DIR/alloc_error_handler_custom.rs:LL:CC
+   |
+LL |     handle_alloc_error(Layout::for_value(&0));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: this error originates in the attribute macro `alloc_error_handler` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 1 previous error
+

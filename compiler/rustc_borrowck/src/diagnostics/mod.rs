@@ -1070,7 +1070,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     // LL | blk();
                     //    | ----- this value implements `FnOnce`, which causes it to be moved when called
                     // ```
-                    if let ty::Param(param_ty) = self_ty.kind()
+                    if let ty::Param(param_ty) = *self_ty.kind()
                         && let generics = self.infcx.tcx.generics_of(self.mir_def_id())
                         && let param = generics.type_param(param_ty, self.infcx.tcx)
                         && let Some(hir_generics) = self

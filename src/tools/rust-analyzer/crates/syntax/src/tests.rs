@@ -5,6 +5,7 @@ use std::{
 
 use ast::HasName;
 use expect_test::expect_file;
+use parser::Edition;
 use rayon::prelude::*;
 use stdx::format_to_acc;
 use test_utils::{bench, bench_fixture, project_root};
@@ -19,7 +20,7 @@ fn main() {
 }
     "#;
 
-    let parse = SourceFile::parse(code);
+    let parse = SourceFile::parse(code, Edition::CURRENT);
     // eprintln!("{:#?}", parse.syntax_node());
     assert!(parse.ok().is_ok());
 }
@@ -33,7 +34,7 @@ fn benchmark_parser() {
     let data = bench_fixture::glorious_old_parser();
     let tree = {
         let _b = bench("parsing");
-        let p = SourceFile::parse(&data);
+        let p = SourceFile::parse(&data, Edition::CURRENT);
         assert!(p.errors().is_empty());
         assert_eq!(p.tree().syntax.text_range().len(), 352474.into());
         p.tree()
@@ -50,7 +51,7 @@ fn benchmark_parser() {
 #[test]
 fn validation_tests() {
     dir_tests(&test_data_dir(), &["parser/validation"], "rast", |text, path| {
-        let parse = SourceFile::parse(text);
+        let parse = SourceFile::parse(text, Edition::CURRENT);
         let errors = parse.errors();
         assert_errors_are_present(&errors, path);
         parse.debug_dump()
@@ -110,7 +111,7 @@ fn self_hosting_parsing() {
         .into_par_iter()
         .filter_map(|file| {
             let text = read_text(&file);
-            match SourceFile::parse(&text).ok() {
+            match SourceFile::parse(&text, Edition::CURRENT).ok() {
                 Ok(_) => None,
                 Err(err) => Some((file, err)),
             }

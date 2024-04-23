@@ -23,16 +23,18 @@ use serde::Deserialize;
 use toolchain::Tool;
 
 use crate::{
-    cfg_flag::CfgFlag, utf8_stdout, CargoConfig, CargoFeatures, CargoWorkspace, InvocationLocation,
+    cfg::CfgFlag, utf8_stdout, CargoConfig, CargoFeatures, CargoWorkspace, InvocationLocation,
     InvocationStrategy, Package, Sysroot, TargetKind,
 };
 
+/// Output of the build script and proc-macro building steps for a workspace.
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct WorkspaceBuildScripts {
     outputs: ArenaMap<Package, BuildScriptOutput>,
     error: Option<String>,
 }
 
+/// Output of the build script and proc-macro building step for a concrete package.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub(crate) struct BuildScriptOutput {
     /// List of config flags defined by this package's build script.
@@ -86,7 +88,9 @@ impl WorkspaceBuildScripts {
                 // --all-targets includes tests, benches and examples in addition to the
                 // default lib and bins. This is an independent concept from the --target
                 // flag below.
-                cmd.arg("--all-targets");
+                if config.all_targets {
+                    cmd.arg("--all-targets");
+                }
 
                 if let Some(target) = &config.target {
                     cmd.args(["--target", target]);
@@ -235,7 +239,7 @@ impl WorkspaceBuildScripts {
             },
             progress,
         )?;
-        res.iter_mut().for_each(|it| it.error = errors.clone());
+        res.iter_mut().for_each(|it| it.error.clone_from(&errors));
         collisions.into_iter().for_each(|(id, workspace, package)| {
             if let Some(&(p, w)) = by_id.get(id) {
                 res[workspace].outputs[package] = res[w].outputs[p].clone();

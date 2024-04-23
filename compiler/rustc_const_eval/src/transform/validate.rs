@@ -923,6 +923,47 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         }
                     }
                 }
+                AggregateKind::RawPtr(pointee_ty, mutability) => {
+                    if !matches!(self.mir_phase, MirPhase::Runtime(_)) {
+                        // It would probably be fine to support this in earlier phases,
+                        // but at the time of writing it's only ever introduced from intrinsic lowering,
+                        // so earlier things just `bug!` on it.
+                        self.fail(location, "RawPtr should be in runtime MIR only");
+                    }
+
+                    if fields.len() != 2 {
+                        self.fail(location, "raw pointer aggregate must have 2 fields");
+                    } else {
+                        let data_ptr_ty = fields.raw[0].ty(self.body, self.tcx);
+                        let metadata_ty = fields.raw[1].ty(self.body, self.tcx);
+                        if let ty::RawPtr(in_pointee, in_mut) = data_ptr_ty.kind() {
+                            if *in_mut != mutability {
+                                self.fail(location, "input and output mutability must match");
+                            }
+
+                            // FIXME: check `Thin` instead of `Sized`
+                            if !in_pointee.is_sized(self.tcx, self.param_env) {
+                                self.fail(location, "input pointer must be thin");
+                            }
+                        } else {
+                            self.fail(
+                                location,
+                                "first operand to raw pointer aggregate must be a raw pointer",
+                            );
+                        }
+
+                        // FIXME: Check metadata more generally
+                        if pointee_ty.is_slice() {
+                            if !self.mir_assign_valid_types(metadata_ty, self.tcx.types.usize) {
+                                self.fail(location, "slice metadata must be usize");
+                            }
+                        } else if pointee_ty.is_sized(self.tcx, self.param_env) {
+                            if metadata_ty != self.tcx.types.unit {
+                                self.fail(location, "metadata for pointer-to-thin must be unit");
+                            }
+                        }
+                    }
+                }
             },
             Rvalue::Ref(_, BorrowKind::Fake, _) => {
                 if self.mir_phase >= MirPhase::Runtime(RuntimePhase::Initial) {

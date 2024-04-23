@@ -1,5 +1,5 @@
 error[E0433]: failed to resolve: use of undeclared type `NonZero`
-  --> $DIR/core-std-import-order-issue-83564.rs:9:14
+  --> $DIR/core-std-import-order-issue-83564.rs:8:14
    |
 LL |     let _x = NonZero::new(5u32).unwrap();
    |              ^^^^^^^ use of undeclared type `NonZero`

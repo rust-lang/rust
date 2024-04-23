@@ -357,7 +357,7 @@ impl Printer<'_> {
                 wln!(self, "}}");
             }
             ModItem::Const(it) => {
-                let Const { name, visibility, type_ref, ast_id } = &self.tree[it];
+                let Const { name, visibility, type_ref, ast_id, has_body: _ } = &self.tree[it];
                 self.print_ast_id(ast_id.erase());
                 self.print_visibility(*visibility);
                 w!(self, "const ");

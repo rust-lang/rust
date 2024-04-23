@@ -1,4 +1,6 @@
 //@compile-flags: -Zmiri-disable-data-race-detector
+// Avoid non-determinism
+//@compile-flags: -Zmiri-preemption-rate=0 -Zmiri-address-reuse-cross-thread-rate=0
 
 use std::thread::spawn;
 

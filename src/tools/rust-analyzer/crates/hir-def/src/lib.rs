@@ -422,6 +422,10 @@ impl ModuleId {
         }
     }
 
+    pub fn crate_def_map(self, db: &dyn DefDatabase) -> Arc<DefMap> {
+        db.crate_def_map(self.krate)
+    }
+
     pub fn krate(self) -> CrateId {
         self.krate
     }
@@ -438,6 +442,8 @@ impl ModuleId {
         })
     }
 
+    /// Returns the module containing `self`, either the parent `mod`, or the module (or block) containing
+    /// the block, if `self` corresponds to a block expression.
     pub fn containing_module(self, db: &dyn DefDatabase) -> Option<ModuleId> {
         self.def_map(db).containing_module(self.local_id)
     }
@@ -927,6 +933,18 @@ impl GenericDefId {
             GenericDefId::ImplId(it) => file_id_and_params_of_item_loc(db, it),
             // We won't be using this ID anyway
             GenericDefId::EnumVariantId(_) => (FileId::BOGUS.into(), None),
+        }
+    }
+
+    pub fn assoc_trait_container(self, db: &dyn DefDatabase) -> Option<TraitId> {
+        match match self {
+            GenericDefId::FunctionId(f) => f.lookup(db).container,
+            GenericDefId::TypeAliasId(t) => t.lookup(db).container,
+            GenericDefId::ConstId(c) => c.lookup(db).container,
+            _ => return None,
+        } {
+            ItemContainerId::TraitId(trait_) => Some(trait_),
+            _ => None,
         }
     }
 }

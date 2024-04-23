@@ -722,7 +722,7 @@ impl<'db> SemanticsImpl<'db> {
         mut token: SyntaxToken,
         f: &mut dyn FnMut(InFile<SyntaxToken>) -> ControlFlow<()>,
     ) {
-        let _p = tracing::span!(tracing::Level::INFO, "descend_into_macros");
+        let _p = tracing::span!(tracing::Level::INFO, "descend_into_macros").entered();
         let (sa, span, file_id) =
             match token.parent().and_then(|parent| self.analyze_no_infer(&parent)) {
                 Some(sa) => match sa.file_id.file_id() {
@@ -1246,6 +1246,17 @@ impl<'db> SemanticsImpl<'db> {
             .map_or(false, |m| matches!(m.id, MacroId::ProcMacroId(..)))
     }
 
+    pub fn resolve_macro_call_arm(&self, macro_call: &ast::MacroCall) -> Option<u32> {
+        let sa = self.analyze(macro_call.syntax())?;
+        self.db
+            .parse_macro_expansion(
+                sa.expand(self.db, self.wrap_node_infile(macro_call.clone()).as_ref())?,
+            )
+            .value
+            .1
+            .matched_arm
+    }
+
     pub fn is_unsafe_macro_call(&self, macro_call: &ast::MacroCall) -> bool {
         let sa = match self.analyze(macro_call.syntax()) {
             Some(it) => it,
@@ -1359,7 +1370,7 @@ impl<'db> SemanticsImpl<'db> {
         offset: Option<TextSize>,
         infer_body: bool,
     ) -> Option<SourceAnalyzer> {
-        let _p = tracing::span!(tracing::Level::INFO, "Semantics::analyze_impl");
+        let _p = tracing::span!(tracing::Level::INFO, "Semantics::analyze_impl").entered();
         let node = self.find_file(node);
 
         let container = self.with_ctx(|ctx| ctx.find_container(node))?;

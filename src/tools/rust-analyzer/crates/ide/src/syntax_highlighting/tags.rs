@@ -77,6 +77,7 @@ pub enum HlMod {
     Library,
     /// Used to differentiate individual elements within macro calls.
     Macro,
+    /// Used to differentiate individual elements within proc-macro calls.
     ProcMacro,
     /// Mutable binding.
     Mutable,
@@ -113,7 +114,7 @@ pub enum HlPunct {
     Semi,
     /// ! (only for macro calls)
     MacroBang,
-    ///
+    /// Other punctutations
     Other,
 }
 
@@ -127,7 +128,7 @@ pub enum HlOperator {
     Logical,
     /// >, <, ==, >=, <=, !=
     Comparison,
-    ///
+    /// Other operators
     Other,
 }
 
@@ -225,8 +226,8 @@ impl HlMod {
         HlMod::IntraDocLink,
         HlMod::Library,
         HlMod::Macro,
-        HlMod::ProcMacro,
         HlMod::Mutable,
+        HlMod::ProcMacro,
         HlMod::Public,
         HlMod::Reference,
         HlMod::Static,
@@ -262,6 +263,7 @@ impl HlMod {
     }
 
     fn mask(self) -> u32 {
+        debug_assert!(Self::ALL.len() <= 32, "HlMod::mask is not enough to cover all variants");
         1 << (self as u32)
     }
 }

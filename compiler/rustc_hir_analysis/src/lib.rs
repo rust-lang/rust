@@ -63,7 +63,6 @@ This API is completely unstable and subject to change.
 #![feature(rustdoc_internals)]
 #![allow(internal_features)]
 #![feature(control_flow_enum)]
-#![feature(generic_nonzero)]
 #![feature(if_let_guard)]
 #![feature(is_sorted)]
 #![feature(iter_intersperse)]

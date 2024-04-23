@@ -75,7 +75,7 @@ macro_rules! doc_std {
             $stage,
             TargetSelection::from_user(stringify!($target)),
             &builder,
-            DocumentationFormat::HTML,
+            DocumentationFormat::Html,
         )
     }};
 }

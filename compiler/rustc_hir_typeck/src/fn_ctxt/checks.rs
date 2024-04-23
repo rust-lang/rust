@@ -2144,7 +2144,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let callee_ty = callee_ty.peel_refs();
             match *callee_ty.kind() {
                 ty::Param(param) => {
-                    let param = self.tcx.generics_of(self.body_id).type_param(&param, self.tcx);
+                    let param = self.tcx.generics_of(self.body_id).type_param(param, self.tcx);
                     if param.kind.is_synthetic() {
                         // if it's `impl Fn() -> ..` then just fall down to the def-id based logic
                         def_id = param.def_id;

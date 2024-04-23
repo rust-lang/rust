@@ -391,6 +391,36 @@ fn main() {
 }
 
 #[test]
+fn doctest_convert_from_to_tryfrom() {
+    check_doc_test(
+        "convert_from_to_tryfrom",
+        r#####"
+//- minicore: from
+impl $0From<usize> for Thing {
+    fn from(val: usize) -> Self {
+        Thing {
+            b: val.to_string(),
+            a: val
+        }
+    }
+}
+"#####,
+        r#####"
+impl TryFrom<usize> for Thing {
+    type Error = ${0:()};
+
+    fn try_from(val: usize) -> Result<Self, Self::Error> {
+        Ok(Thing {
+            b: val.to_string(),
+            a: val
+        })
+    }
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_convert_if_to_bool_then() {
     check_doc_test(
         "convert_if_to_bool_then",
@@ -1820,13 +1850,13 @@ fn print(_: &str) {}
 
 fn bar() {
     {
-        let word = "안녕하세요";
+        let word: &str = "안녕하세요";
         if !word.is_empty() {
             print(word);
         }
     };
     {
-        let word = "여러분";
+        let word: &str = "여러분";
         if !word.is_empty() {
             print(word);
         }
@@ -3148,6 +3178,25 @@ fn foo() -> i32$0 { 42i32 }
 "#####,
         r#####"
 fn foo() -> Result<i32, ${0:_}> { Ok(42i32) }
+"#####,
+    )
+}
+
+#[test]
+fn doctest_wrap_unwrap_cfg_attr() {
+    check_doc_test(
+        "wrap_unwrap_cfg_attr",
+        r#####"
+#[derive$0(Debug)]
+struct S {
+   field: i32
+}
+"#####,
+        r#####"
+#[cfg_attr($0, derive(Debug))]
+struct S {
+   field: i32
+}
 "#####,
     )
 }

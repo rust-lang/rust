@@ -1,4 +1,3 @@
-//!
 /// Describes how likely a value is to change -- how "durable" it is.
 /// By default, inputs have `Durability::LOW` and interned values have
 /// `Durability::HIGH`. But inputs can be explicitly set with other

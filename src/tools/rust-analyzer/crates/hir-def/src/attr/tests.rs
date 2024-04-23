@@ -11,7 +11,7 @@ use syntax::{ast, AstNode, TextRange};
 use crate::attr::{DocAtom, DocExpr};
 
 fn assert_parse_result(input: &str, expected: DocExpr) {
-    let source_file = ast::SourceFile::parse(input).ok().unwrap();
+    let source_file = ast::SourceFile::parse(input, span::Edition::CURRENT).ok().unwrap();
     let tt = source_file.syntax().descendants().find_map(ast::TokenTree::cast).unwrap();
     let map = SpanMap::RealSpanMap(Arc::new(RealSpanMap::absolute(FileId::from_raw(0))));
     let tt = syntax_node_to_token_tree(

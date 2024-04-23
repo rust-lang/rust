@@ -482,7 +482,7 @@ fn is_impossible_associated_item(
         type Result = ControlFlow<()>;
         fn visit_ty(&mut self, t: Ty<'tcx>) -> Self::Result {
             // If this is a parameter from the trait item's own generics, then bail
-            if let ty::Param(param) = t.kind()
+            if let ty::Param(param) = *t.kind()
                 && let param_def_id = self.generics.type_param(param, self.tcx).def_id
                 && self.tcx.parent(param_def_id) == self.trait_item_def_id
             {
@@ -492,7 +492,7 @@ fn is_impossible_associated_item(
         }
         fn visit_region(&mut self, r: ty::Region<'tcx>) -> Self::Result {
             if let ty::ReEarlyParam(param) = r.kind()
-                && let param_def_id = self.generics.region_param(&param, self.tcx).def_id
+                && let param_def_id = self.generics.region_param(param, self.tcx).def_id
                 && self.tcx.parent(param_def_id) == self.trait_item_def_id
             {
                 return ControlFlow::Break(());
@@ -501,7 +501,7 @@ fn is_impossible_associated_item(
         }
         fn visit_const(&mut self, ct: ty::Const<'tcx>) -> Self::Result {
             if let ty::ConstKind::Param(param) = ct.kind()
-                && let param_def_id = self.generics.const_param(&param, self.tcx).def_id
+                && let param_def_id = self.generics.const_param(param, self.tcx).def_id
                 && self.tcx.parent(param_def_id) == self.trait_item_def_id
             {
                 return ControlFlow::Break(());

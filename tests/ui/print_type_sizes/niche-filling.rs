@@ -15,7 +15,6 @@
 //  ^-- needed because `--pass check` does not emit the output needed.
 //      FIXME: consider using an attribute instead of side-effects.
 #![allow(dead_code)]
-#![feature(generic_nonzero)]
 #![feature(rustc_attrs)]
 
 use std::num::NonZero;

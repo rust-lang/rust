@@ -1,6 +1,5 @@
 #![allow(dead_code)]
 #![deny(improper_ctypes)]
-#![feature(generic_nonzero)]
 #![feature(ptr_internals)]
 #![feature(transparent_unions)]
 

@@ -7,5 +7,5 @@ test does_not_work_on_miri ... ignored
 test fail_index_check - should panic ... ok
 test simple ... ok
 
-test result: ok. 5 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out
+test result: ok. 5 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in $TIME
 

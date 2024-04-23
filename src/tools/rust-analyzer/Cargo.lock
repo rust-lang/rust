@@ -161,9 +161,9 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
 name = "chalk-derive"
-version = "0.96.0"
+version = "0.97.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5676cea088c32290fe65c82895be9d06dd21e0fa49bb97ca840529e9417ab71a"
+checksum = "92a0aedc4ac2adc5c0b7dc9ec38c5c816284ad28da6d4ecd01873b9683f54972"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -173,20 +173,19 @@ dependencies = [
 
 [[package]]
 name = "chalk-ir"
-version = "0.96.0"
+version = "0.97.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ff550c2cdd63ff74394214dce03d06386928a641c0f08837535f04af573a966d"
+checksum = "db18493569b190f7266a04901e520fc3a5c00564475154287906f8a27302c119"
 dependencies = [
  "bitflags 2.4.2",
  "chalk-derive",
- "lazy_static",
 ]
 
 [[package]]
 name = "chalk-recursive"
-version = "0.96.0"
+version = "0.97.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4c4559e5c9b200240453b07d893f9c3c74413b53b0d33cbe272c68b0b77aa1c3"
+checksum = "ae4ba8ce5bd2e1b59f1f79495bc8704db09a8285e51cc5ddf01d9baee1bf447d"
 dependencies = [
  "chalk-derive",
  "chalk-ir",
@@ -197,9 +196,9 @@ dependencies = [
 
 [[package]]
 name = "chalk-solve"
-version = "0.96.0"
+version = "0.97.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0882e68ce9eb5a0a2413806538494d19df6ee520ab17d1faf489e952f32e98b8"
+checksum = "b2ec1b3b7f7b1ec38f099ef39c2bc3ea29335be1b8316d114baff46d96d131e9"
 dependencies = [
  "chalk-derive",
  "chalk-ir",
@@ -552,6 +551,7 @@ dependencies = [
  "la-arena 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "limit",
  "mbe",
+ "parser",
  "rustc-hash",
  "smallvec",
  "span",
@@ -695,6 +695,7 @@ version = "0.0.0"
 dependencies = [
  "arrayvec",
  "base-db",
+ "bitflags 2.4.2",
  "cov-mark",
  "crossbeam-channel",
  "either",
@@ -781,6 +782,7 @@ checksum = "7b0b929d511467233429c45a44ac1dcaa21ba0f5ba11e4879e6ed28ddb4f9df4"
 dependencies = [
  "equivalent",
  "hashbrown",
+ "serde",
 ]
 
 [[package]]
@@ -1594,6 +1596,7 @@ dependencies = [
  "ide",
  "ide-db",
  "ide-ssr",
+ "indexmap",
  "itertools",
  "load-cargo",
  "lsp-server 0.7.6 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1622,6 +1625,7 @@ dependencies = [
  "test-fixture",
  "test-utils",
  "tikv-jemallocator",
+ "toml",
  "toolchain",
  "tracing",
  "tracing-subscriber",
@@ -1776,6 +1780,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "serde_spanned"
+version = "0.6.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "eb3622f419d1296904700073ea6cc23ad690adbd66f13ea683df73298736f0c1"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "sharded-slab"
 version = "0.1.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1822,6 +1835,7 @@ dependencies = [
  "salsa",
  "stdx",
  "syntax",
+ "text-size",
  "vfs",
 ]
 
@@ -2024,6 +2038,40 @@ name = "tinyvec_macros"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1f3ccbac311fea05f86f61904b462b55fb3df8837a366dfc601a0161d0532f20"
+
+[[package]]
+name = "toml"
+version = "0.8.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a1a195ec8c9da26928f773888e0742ca3ca1040c6cd859c919c9f59c1954ab35"
+dependencies = [
+ "serde",
+ "serde_spanned",
+ "toml_datetime",
+ "toml_edit",
+]
+
+[[package]]
+name = "toml_datetime"
+version = "0.6.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3550f4e9685620ac18a50ed434eb3aec30db8ba93b0287467bca5826ea25baf1"
+dependencies = [
+ "serde",
+]
+
+[[package]]
+name = "toml_edit"
+version = "0.21.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d34d383cd00a163b4a5b85053df514d45bc330f6de7737edfe0a93311d1eaa03"
+dependencies = [
+ "indexmap",
+ "serde",
+ "serde_spanned",
+ "toml_datetime",
+ "winnow",
+]
 
 [[package]]
 name = "toolchain"
@@ -2400,6 +2448,15 @@ name = "windows_x86_64_msvc"
 version = "0.52.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "32b752e52a2da0ddfbdbcc6fceadfeede4c939ed16d13e648833a61dfb611ed8"
+
+[[package]]
+name = "winnow"
+version = "0.5.32"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8434aeec7b290e8da5c3f0d628cb0eac6cabcb31d14bb74f779a08109a5914d6"
+dependencies = [
+ "memchr",
+]
 
 [[package]]
 name = "write-json"

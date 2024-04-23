@@ -295,8 +295,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         &niche_start_val,
                     )?
                     .to_scalar()
-                    .try_to_int()
-                    .unwrap();
+                    .assert_int();
                 Ok(Some((tag, tag_field)))
             }
         }

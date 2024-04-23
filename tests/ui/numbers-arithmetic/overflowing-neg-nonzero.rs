@@ -3,7 +3,6 @@
 //@ ignore-emscripten no processes
 //@ compile-flags: -C debug-assertions
 #![allow(arithmetic_overflow)]
-#![feature(generic_nonzero)]
 
 use std::num::NonZero;
 

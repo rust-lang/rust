@@ -2,7 +2,7 @@
 //@ normalize-stderr-test "(the raw bytes of the constant) \(size: [0-9]*, align: [0-9]*\)" -> "$1 (size: $$SIZE, align: $$ALIGN)"
 //@ normalize-stderr-test "([0-9a-f][0-9a-f] |╾─*ALLOC[0-9]+(\+[a-z0-9]+)?─*╼ )+ *│.*" -> "HEX_DUMP"
 #![allow(invalid_value)] // make sure we cannot allow away the errors tested here
-#![feature(generic_nonzero, rustc_attrs, ptr_metadata)]
+#![feature(rustc_attrs, ptr_metadata)]
 
 use std::mem;
 use std::ptr::NonNull;

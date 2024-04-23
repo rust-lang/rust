@@ -214,8 +214,6 @@ pub(super) fn print_item(cx: &mut Context<'_>, item: &clean::Item, buf: &mut Buf
         &mut stability_since_raw,
         item.stable_since(cx.tcx()),
         item.const_stability(cx.tcx()),
-        None,
-        None,
     );
     let stability_since_raw: String = stability_since_raw.into_inner();
 
@@ -825,7 +823,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
             write!(w, "<details class=\"toggle{method_toggle_class}\" open><summary>");
         }
         write!(w, "<section id=\"{id}\" class=\"method\">");
-        render_rightside(w, cx, m, t, RenderMode::Normal);
+        render_rightside(w, cx, m, RenderMode::Normal);
         write!(w, "<h4 class=\"code-header\">");
         render_assoc_item(
             w,
@@ -1686,8 +1684,6 @@ fn item_variants(
             w,
             variant.stable_since(tcx),
             variant.const_stability(tcx),
-            it.stable_since(tcx),
-            it.const_stable_since(tcx),
             " rightside",
         );
         w.write_str("<h3 class=\"code-header\">");

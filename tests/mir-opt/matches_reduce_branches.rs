@@ -1,4 +1,4 @@
-//@ unit-test: MatchBranchSimplification
+//@ test-mir-pass: MatchBranchSimplification
 
 #![feature(repr128)]
 #![feature(core_intrinsics)]
@@ -75,9 +75,7 @@ enum EnumAu8 {
 // EMIT_MIR matches_reduce_branches.match_u8_i16.MatchBranchSimplification.diff
 fn match_u8_i16(i: EnumAu8) -> i16 {
     // CHECK-LABEL: fn match_u8_i16(
-    // CHECK-NOT: switchInt
-    // CHECK: _0 = _3 as i16 (IntToInt);
-    // CHECH: return
+    // CHECK: switchInt
     match i {
         EnumAu8::A => 1,
         EnumAu8::B => 2,
@@ -146,9 +144,7 @@ enum EnumBu8 {
 // EMIT_MIR matches_reduce_branches.match_u8_u16.MatchBranchSimplification.diff
 fn match_u8_u16(i: EnumBu8) -> u16 {
     // CHECK-LABEL: fn match_u8_u16(
-    // CHECK-NOT: switchInt
-    // CHECK: _0 = _3 as u16 (IntToInt);
-    // CHECH: return
+    // CHECK: switchInt
     match i {
         EnumBu8::A => 1,
         EnumBu8::B => 2,
@@ -204,9 +200,7 @@ enum EnumAi8 {
 // EMIT_MIR matches_reduce_branches.match_i8_i16.MatchBranchSimplification.diff
 fn match_i8_i16(i: EnumAi8) -> i16 {
     // CHECK-LABEL: fn match_i8_i16(
-    // CHECK-NOT: switchInt
-    // CHECK: _0 = _3 as i16 (IntToInt);
-    // CHECH: return
+    // CHECK: switchInt
     match i {
         EnumAi8::A => -1,
         EnumAi8::B => 2,
@@ -235,9 +229,7 @@ enum EnumAi16 {
 // EMIT_MIR matches_reduce_branches.match_i16_i8.MatchBranchSimplification.diff
 fn match_i16_i8(i: EnumAi16) -> i8 {
     // CHECK-LABEL: fn match_i16_i8(
-    // CHECK-NOT: switchInt
-    // CHECK: _0 = _3 as i8 (IntToInt);
-    // CHECH: return
+    // CHECK: switchInt
     match i {
         EnumAi16::A => -1,
         EnumAi16::B => 2,
@@ -256,9 +248,7 @@ enum EnumAi128 {
 // EMIT_MIR matches_reduce_branches.match_i128_u128.MatchBranchSimplification.diff
 fn match_i128_u128(i: EnumAi128) -> u128 {
     // CHECK-LABEL: fn match_i128_u128(
-    // CHECK-NOT: switchInt
-    // CHECK: _0 = _3 as u128 (IntToInt);
-    // CHECH: return
+    // CHECK: switchInt
     match i {
         EnumAi128::A => 1,
         EnumAi128::B => 2,

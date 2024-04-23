@@ -1602,7 +1602,7 @@ fn weird_bounds() {
         r#"
 //- minicore: sized
 trait Trait {}
-fn test(
+fn test<'lifetime>(
     a: impl Trait + 'lifetime,
     b: impl 'lifetime,
     c: impl (Trait),
@@ -1612,13 +1612,13 @@ fn test(
 ) {}
 "#,
         expect![[r#"
-            28..29 'a': impl Trait
-            59..60 'b': impl Sized
-            82..83 'c': impl Trait
-            103..104 'd': impl Sized
-            128..129 'e': impl ?Sized
-            148..149 'f': impl Trait + ?Sized
-            173..175 '{}': ()
+            39..40 'a': impl Trait + 'lifetime
+            70..71 'b': impl 'lifetime
+            93..94 'c': impl Trait
+            114..115 'd': impl 'lifetime
+            139..140 'e': impl ?Sized
+            159..160 'f': impl Trait + ?Sized
+            184..186 '{}': ()
         "#]],
     );
 }

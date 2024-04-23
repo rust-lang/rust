@@ -11,7 +11,7 @@
 //! term, it will be replaced with direct tree manipulation.
 
 use itertools::Itertools;
-use parser::T;
+use parser::{Edition, T};
 use rowan::NodeOrToken;
 use stdx::{format_to, format_to_acc, never};
 
@@ -1127,7 +1127,7 @@ pub fn token_tree(
 
 #[track_caller]
 fn ast_from_text<N: AstNode>(text: &str) -> N {
-    let parse = SourceFile::parse(text);
+    let parse = SourceFile::parse(text, Edition::CURRENT);
     let node = match parse.tree().syntax().descendants().find_map(N::cast) {
         Some(it) => it,
         None => {
@@ -1153,12 +1153,13 @@ pub fn token(kind: SyntaxKind) -> SyntaxToken {
 
 pub mod tokens {
     use once_cell::sync::Lazy;
+    use parser::Edition;
 
     use crate::{ast, AstNode, Parse, SourceFile, SyntaxKind::*, SyntaxToken};
 
     pub(super) static SOURCE_FILE: Lazy<Parse<SourceFile>> = Lazy::new(|| {
         SourceFile::parse(
-            "const C: <()>::Item = ( true && true , true || true , 1 != 1, 2 == 2, 3 < 3, 4 <= 4, 5 > 5, 6 >= 6, !true, *p, &p , &mut p, { let a @ [] })\n;\n\nimpl A for B where: {}",
+            "const C: <()>::Item = ( true && true , true || true , 1 != 1, 2 == 2, 3 < 3, 4 <= 4, 5 > 5, 6 >= 6, !true, *p, &p , &mut p, { let a @ [] })\n;\n\nimpl A for B where: {}", Edition::CURRENT,
         )
     });
 
@@ -1186,13 +1187,13 @@ pub mod tokens {
 
     pub fn whitespace(text: &str) -> SyntaxToken {
         assert!(text.trim().is_empty());
-        let sf = SourceFile::parse(text).ok().unwrap();
+        let sf = SourceFile::parse(text, Edition::CURRENT).ok().unwrap();
         sf.syntax().clone_for_update().first_child_or_token().unwrap().into_token().unwrap()
     }
 
     pub fn doc_comment(text: &str) -> SyntaxToken {
         assert!(!text.trim().is_empty());
-        let sf = SourceFile::parse(text).ok().unwrap();
+        let sf = SourceFile::parse(text, Edition::CURRENT).ok().unwrap();
         sf.syntax().first_child_or_token().unwrap().into_token().unwrap()
     }
 
@@ -1240,7 +1241,7 @@ pub mod tokens {
 
     impl WsBuilder {
         pub fn new(text: &str) -> WsBuilder {
-            WsBuilder(SourceFile::parse(text).ok().unwrap())
+            WsBuilder(SourceFile::parse(text, Edition::CURRENT).ok().unwrap())
         }
         pub fn ws(&self) -> SyntaxToken {
             self.0.syntax().first_child_or_token().unwrap().into_token().unwrap()

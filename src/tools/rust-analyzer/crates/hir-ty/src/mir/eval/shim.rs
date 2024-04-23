@@ -9,11 +9,14 @@ use hir_def::{
     resolver::HasResolver,
 };
 
-use crate::mir::eval::{
-    name, pad16, static_lifetime, Address, AdtId, Arc, BuiltinType, Evaluator, FunctionId,
-    HasModule, HirDisplay, Interned, InternedClosure, Interner, Interval, IntervalAndTy,
-    IntervalOrOwned, ItemContainerId, LangItem, Layout, Locals, Lookup, MirEvalError, MirSpan,
-    Mutability, Result, Substitution, Ty, TyBuilder, TyExt,
+use crate::{
+    error_lifetime,
+    mir::eval::{
+        name, pad16, Address, AdtId, Arc, BuiltinType, Evaluator, FunctionId, HasModule,
+        HirDisplay, Interned, InternedClosure, Interner, Interval, IntervalAndTy, IntervalOrOwned,
+        ItemContainerId, LangItem, Layout, Locals, Lookup, MirEvalError, MirSpan, Mutability,
+        Result, Substitution, Ty, TyBuilder, TyExt,
+    },
 };
 
 mod simd;
@@ -247,7 +250,7 @@ impl Evaluator<'_> {
             let tmp = self.heap_allocate(self.ptr_size(), self.ptr_size())?;
             let arg = IntervalAndTy {
                 interval: Interval { addr: tmp, size: self.ptr_size() },
-                ty: TyKind::Ref(Mutability::Not, static_lifetime(), ty.clone()).intern(Interner),
+                ty: TyKind::Ref(Mutability::Not, error_lifetime(), ty.clone()).intern(Interner),
             };
             let offset = layout.fields.offset(i).bytes_usize();
             self.write_memory(tmp, &addr.offset(offset).to_bytes())?;

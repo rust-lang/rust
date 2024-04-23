@@ -1,4 +1,3 @@
-//!
 use crate::debug::TableEntry;
 use crate::durability::Durability;
 use crate::intern_id::InternId;

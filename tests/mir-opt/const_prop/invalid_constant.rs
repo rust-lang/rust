@@ -1,5 +1,5 @@
 // skip-filecheck
-//@ unit-test: GVN
+//@ test-mir-pass: GVN
 //@ compile-flags: -Zmir-enable-passes=+RemoveZsts
 // Verify that we can pretty print invalid constants.
 

@@ -1,6 +1,5 @@
 use std::time::SystemTime;
 
-use crate::concurrency::sync::CondvarLock;
 use crate::concurrency::thread::MachineCallback;
 use crate::*;
 
@@ -225,9 +224,10 @@ fn cond_set_clock_id<'mir, 'tcx: 'mir>(
 fn reacquire_cond_mutex<'mir, 'tcx: 'mir>(
     ecx: &mut MiriInterpCx<'mir, 'tcx>,
     thread: ThreadId,
+    condvar: CondvarId,
     mutex: MutexId,
 ) -> InterpResult<'tcx> {
-    ecx.unblock_thread(thread);
+    ecx.unblock_thread(thread, BlockReason::Condvar(condvar));
     if ecx.mutex_is_locked(mutex) {
         ecx.mutex_enqueue_and_block(mutex, thread);
     } else {
@@ -242,9 +242,10 @@ fn reacquire_cond_mutex<'mir, 'tcx: 'mir>(
 fn post_cond_signal<'mir, 'tcx: 'mir>(
     ecx: &mut MiriInterpCx<'mir, 'tcx>,
     thread: ThreadId,
+    condvar: CondvarId,
     mutex: MutexId,
 ) -> InterpResult<'tcx> {
-    reacquire_cond_mutex(ecx, thread, mutex)?;
+    reacquire_cond_mutex(ecx, thread, condvar, mutex)?;
     // Waiting for the mutex is not included in the waiting time because we need
     // to acquire the mutex always even if we get a timeout.
     ecx.unregister_timeout_callback_if_exists(thread);
@@ -256,6 +257,7 @@ fn post_cond_signal<'mir, 'tcx: 'mir>(
 fn release_cond_mutex_and_block<'mir, 'tcx: 'mir>(
     ecx: &mut MiriInterpCx<'mir, 'tcx>,
     active_thread: ThreadId,
+    condvar: CondvarId,
     mutex: MutexId,
 ) -> InterpResult<'tcx> {
     if let Some(old_locked_count) = ecx.mutex_unlock(mutex, active_thread) {
@@ -265,7 +267,7 @@ fn release_cond_mutex_and_block<'mir, 'tcx: 'mir>(
     } else {
         throw_ub_format!("awaiting on unlocked or owned by a different thread mutex");
     }
-    ecx.block_thread(active_thread);
+    ecx.block_thread(active_thread, BlockReason::Condvar(condvar));
     Ok(())
 }
 
@@ -792,12 +794,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     fn pthread_cond_signal(&mut self, cond_op: &OpTy<'tcx, Provenance>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
         let id = cond_get_id(this, cond_op)?;
-        if let Some((thread, lock)) = this.condvar_signal(id) {
-            if let CondvarLock::Mutex(mutex) = lock {
-                post_cond_signal(this, thread, mutex)?;
-            } else {
-                panic!("condvar should not have an rwlock on unix");
-            }
+        if let Some((thread, mutex)) = this.condvar_signal(id) {
+            post_cond_signal(this, thread, id, mutex)?;
         }
 
         Ok(0)
@@ -810,12 +808,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let this = self.eval_context_mut();
         let id = cond_get_id(this, cond_op)?;
 
-        while let Some((thread, lock)) = this.condvar_signal(id) {
-            if let CondvarLock::Mutex(mutex) = lock {
-                post_cond_signal(this, thread, mutex)?;
-            } else {
-                panic!("condvar should not have an rwlock on unix");
-            }
+        while let Some((thread, mutex)) = this.condvar_signal(id) {
+            post_cond_signal(this, thread, id, mutex)?;
         }
 
         Ok(0)
@@ -832,8 +826,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let mutex_id = mutex_get_id(this, mutex_op)?;
         let active_thread = this.get_active_thread();
 
-        release_cond_mutex_and_block(this, active_thread, mutex_id)?;
-        this.condvar_wait(id, active_thread, CondvarLock::Mutex(mutex_id));
+        release_cond_mutex_and_block(this, active_thread, id, mutex_id)?;
+        this.condvar_wait(id, active_thread, mutex_id);
 
         Ok(0)
     }
@@ -866,15 +860,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
         let timeout_time = if clock_id == this.eval_libc_i32("CLOCK_REALTIME") {
             this.check_no_isolation("`pthread_cond_timedwait` with `CLOCK_REALTIME`")?;
-            Time::RealTime(SystemTime::UNIX_EPOCH.checked_add(duration).unwrap())
+            CallbackTime::RealTime(SystemTime::UNIX_EPOCH.checked_add(duration).unwrap())
         } else if clock_id == this.eval_libc_i32("CLOCK_MONOTONIC") {
-            Time::Monotonic(this.machine.clock.anchor().checked_add(duration).unwrap())
+            CallbackTime::Monotonic(this.machine.clock.anchor().checked_add(duration).unwrap())
         } else {
             throw_unsup_format!("unsupported clock id: {}", clock_id);
         };
 
-        release_cond_mutex_and_block(this, active_thread, mutex_id)?;
-        this.condvar_wait(id, active_thread, CondvarLock::Mutex(mutex_id));
+        release_cond_mutex_and_block(this, active_thread, id, mutex_id)?;
+        this.condvar_wait(id, active_thread, mutex_id);
 
         // We return success for now and override it in the timeout callback.
         this.write_scalar(Scalar::from_i32(0), dest)?;
@@ -897,7 +891,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             fn call(&self, ecx: &mut MiriInterpCx<'mir, 'tcx>) -> InterpResult<'tcx> {
                 // We are not waiting for the condvar any more, wait for the
                 // mutex instead.
-                reacquire_cond_mutex(ecx, self.active_thread, self.mutex_id)?;
+                reacquire_cond_mutex(ecx, self.active_thread, self.id, self.mutex_id)?;
 
                 // Remove the thread from the conditional variable.
                 ecx.condvar_remove_waiter(self.id, self.active_thread);

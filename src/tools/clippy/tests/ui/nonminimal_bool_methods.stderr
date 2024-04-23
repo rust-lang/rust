@@ -79,5 +79,23 @@ error: this boolean expression can be simplified
 LL |     if !res.is_none() {}
    |        ^^^^^^^^^^^^^^ help: try: `res.is_some()`
 
-error: aborting due to 13 previous errors
+error: this boolean expression can be simplified
+  --> tests/ui/nonminimal_bool_methods.rs:115:8
+   |
+LL |     if !(a as u64 >= b) {}
+   |        ^^^^^^^^^^^^^^^^ help: try: `(a as u64) < b`
+
+error: this boolean expression can be simplified
+  --> tests/ui/nonminimal_bool_methods.rs:116:8
+   |
+LL |     if !((a as u64) >= b) {}
+   |        ^^^^^^^^^^^^^^^^^^ help: try: `(a as u64) < b`
+
+error: this boolean expression can be simplified
+  --> tests/ui/nonminimal_bool_methods.rs:117:8
+   |
+LL |     if !(a as u64 <= b) {}
+   |        ^^^^^^^^^^^^^^^^ help: try: `a as u64 > b`
+
+error: aborting due to 16 previous errors
 

@@ -225,12 +225,12 @@ pub fn format(build: &Builder<'_>, check: bool, paths: &[PathBuf]) {
         Some(first) => {
             let find_shortcut_candidates = |p: &PathBuf| {
                 let mut candidates = Vec::new();
-                for candidate in WalkBuilder::new(src.clone()).max_depth(Some(3)).build() {
-                    if let Ok(entry) = candidate {
-                        if let Some(dir_name) = p.file_name() {
-                            if entry.path().is_dir() && entry.file_name() == dir_name {
-                                candidates.push(entry.into_path());
-                            }
+                for entry in
+                    WalkBuilder::new(src.clone()).max_depth(Some(3)).build().map_while(Result::ok)
+                {
+                    if let Some(dir_name) = p.file_name() {
+                        if entry.path().is_dir() && entry.file_name() == dir_name {
+                            candidates.push(entry.into_path());
                         }
                     }
                 }

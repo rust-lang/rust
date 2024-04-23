@@ -33,7 +33,7 @@ tt.workspace = true
 span.workspace = true
 
 [features]
-in-rust-tree = []
+in-rust-tree = ["hir-expand/in-rust-tree"]
 
 [lints]
 workspace = true

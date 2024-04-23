@@ -490,14 +490,14 @@ impl<'tcx> Validator<'_, 'tcx> {
                                 }
                                 _ => None,
                             };
-                            match rhs_val.map(|x| x.try_to_uint(sz).unwrap()) {
+                            match rhs_val.map(|x| x.assert_uint(sz)) {
                                 // for the zero test, int vs uint does not matter
                                 Some(x) if x != 0 => {}        // okay
                                 _ => return Err(Unpromotable), // value not known or 0 -- not okay
                             }
                             // Furthermore, for signed divison, we also have to exclude `int::MIN / -1`.
                             if lhs_ty.is_signed() {
-                                match rhs_val.map(|x| x.try_to_int(sz).unwrap()) {
+                                match rhs_val.map(|x| x.assert_int(sz)) {
                                     Some(-1) | None => {
                                         // The RHS is -1 or unknown, so we have to be careful.
                                         // But is the LHS int::MIN?
@@ -508,7 +508,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                                             _ => None,
                                         };
                                         let lhs_min = sz.signed_int_min();
-                                        match lhs_val.map(|x| x.try_to_int(sz).unwrap()) {
+                                        match lhs_val.map(|x| x.assert_int(sz)) {
                                             Some(x) if x != lhs_min => {}  // okay
                                             _ => return Err(Unpromotable), // value not known or int::MIN -- not okay
                                         }

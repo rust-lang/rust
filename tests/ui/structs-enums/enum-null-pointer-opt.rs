@@ -1,5 +1,4 @@
 //@ run-pass
-#![feature(generic_nonzero)]
 #![feature(transparent_unions)]
 
 use std::mem::size_of;

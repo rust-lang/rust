@@ -71,7 +71,7 @@ pub fn extract_trivial_expression(block_expr: &ast::BlockExpr) -> Option<ast::Ex
 ///
 /// It may produce false positives, for example, `#[wasm_bindgen_test]` requires a different command to run the test,
 /// but it's better than not to have the runnables for the tests at all.
-pub fn test_related_attribute(fn_def: &ast::Fn) -> Option<ast::Attr> {
+pub fn test_related_attribute_syn(fn_def: &ast::Fn) -> Option<ast::Attr> {
     fn_def.attrs().find_map(|attr| {
         let path = attr.path()?;
         let text = path.syntax().text().to_string();
@@ -80,6 +80,19 @@ pub fn test_related_attribute(fn_def: &ast::Fn) -> Option<ast::Attr> {
         } else {
             None
         }
+    })
+}
+
+pub fn has_test_related_attribute(attrs: &hir::AttrsWithOwner) -> bool {
+    attrs.iter().any(|attr| {
+        let path = attr.path();
+        (|| {
+            Some(
+                path.segments().first()?.as_text()?.starts_with("test")
+                    || path.segments().last()?.as_text()?.ends_with("test"),
+            )
+        })()
+        .unwrap_or_default()
     })
 }
 

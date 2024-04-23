@@ -41,7 +41,10 @@ impl<'tcx> MirPass<'tcx> for MatchBranchSimplification {
                 should_cleanup = true;
                 continue;
             }
-            if SimplifyToExp::default().simplify(tcx, body, bb_idx, param_env).is_some() {
+            // unsound: https://github.com/rust-lang/rust/issues/124150
+            if tcx.sess.opts.unstable_opts.unsound_mir_opts
+                && SimplifyToExp::default().simplify(tcx, body, bb_idx, param_env).is_some()
+            {
                 should_cleanup = true;
                 continue;
             }
@@ -369,8 +372,7 @@ impl<'tcx> SimplifyMatch<'tcx> for SimplifyToExp {
         }
 
         fn int_equal(l: ScalarInt, r: impl Into<u128>, size: Size) -> bool {
-            l.try_to_int(l.size()).unwrap()
-                == ScalarInt::try_from_uint(r, size).unwrap().try_to_int(size).unwrap()
+            l.assert_int(l.size()) == ScalarInt::try_from_uint(r, size).unwrap().assert_int(size)
         }
 
         // We first compare the two branches, and then the other branches need to fulfill the same conditions.

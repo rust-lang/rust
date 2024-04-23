@@ -603,6 +603,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                         AggregateKind::Adt(_, variant, _, _, _) => variant,
                         AggregateKind::Array(_)
                         | AggregateKind::Tuple
+                        | AggregateKind::RawPtr(_, _)
                         | AggregateKind::Closure(_, _)
                         | AggregateKind::Coroutine(_, _)
                         | AggregateKind::CoroutineClosure(_, _) => VariantIdx::ZERO,
@@ -796,7 +797,7 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
                 if let Some(ref value) = self.eval_operand(discr)
                     && let Some(value_const) = self.use_ecx(|this| this.ecx.read_scalar(value))
                     && let Ok(constant) = value_const.try_to_int()
-                    && let Ok(constant) = constant.to_bits(constant.size())
+                    && let Ok(constant) = constant.try_to_bits(constant.size())
                 {
                     // We managed to evaluate the discriminant, so we know we only need to visit
                     // one target.

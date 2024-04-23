@@ -1,4 +1,4 @@
-//@ unit-test: InstSimplify
+//@ test-mir-pass: InstSimplify
 
 // EMIT_MIR bool_compare.eq_true.InstSimplify.diff
 fn eq_true(x: bool) -> u32 {

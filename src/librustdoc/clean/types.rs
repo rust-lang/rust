@@ -600,13 +600,6 @@ impl Item {
         }
     }
 
-    pub(crate) fn const_stable_since(&self, tcx: TyCtxt<'_>) -> Option<StableSince> {
-        match self.const_stability(tcx)?.level {
-            StabilityLevel::Stable { since, .. } => Some(since),
-            StabilityLevel::Unstable { .. } => None,
-        }
-    }
-
     pub(crate) fn is_non_exhaustive(&self) -> bool {
         self.attrs.other_attrs.iter().any(|a| a.has_name(sym::non_exhaustive))
     }

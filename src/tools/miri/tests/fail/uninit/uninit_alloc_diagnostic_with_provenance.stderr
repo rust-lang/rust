@@ -15,8 +15,6 @@ note: inside `main`
 LL |         drop(slice1.cmp(slice2));
    |              ^^^^^^^^^^^^^^^^^^
 
-note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
-
 Uninitialized memory occurred at ALLOC[0x4..0x8], in this allocation:
 ALLOC (Rust heap, size: 16, align: 8) {
     ╾42[ALLOC]<TAG> (1 ptr byte)╼ 12 13 ╾43[ALLOC]<TAG> (1 ptr byte)╼ __ __ __ __ __ __ __ __ __ __ __ __ │ ━..━░░░░░░░░░░░░
@@ -27,6 +25,8 @@ ALLOC (global (static or const), size: 1, align: 1) {
 ALLOC (global (static or const), size: 1, align: 1) {
     00                                              │ .
 }
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 
 error: aborting due to 1 previous error
 

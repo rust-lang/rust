@@ -226,7 +226,7 @@ pub(crate) fn complete_ascribed_type(
     if !path_ctx.is_trivial_path() {
         return None;
     }
-    let x = match ascription {
+    let ty = match ascription {
         TypeAscriptionTarget::Let(pat) | TypeAscriptionTarget::FnParam(pat) => {
             ctx.sema.type_of_pat(pat.as_ref()?)
         }
@@ -235,7 +235,9 @@ pub(crate) fn complete_ascribed_type(
         }
     }?
     .adjusted();
-    let ty_string = x.display_source_code(ctx.db, ctx.module.into(), true).ok()?;
-    acc.add(render_type_inference(ty_string, ctx));
+    if !ty.is_unknown() {
+        let ty_string = ty.display_source_code(ctx.db, ctx.module.into(), true).ok()?;
+        acc.add(render_type_inference(ty_string, ctx));
+    }
     None
 }

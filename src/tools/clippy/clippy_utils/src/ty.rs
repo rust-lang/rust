@@ -10,7 +10,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{Expr, FnDecl, LangItem, TyKind, Unsafety};
-use rustc_infer::infer::type_variable::{TypeVariableOrigin};
+use rustc_infer::infer::type_variable::TypeVariableOrigin;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::LateContext;
 use rustc_middle::mir::interpret::Scalar;

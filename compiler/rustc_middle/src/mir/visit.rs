@@ -751,6 +751,9 @@ macro_rules! make_mir_visitor {
                             ) => {
                                 self.visit_args(coroutine_closure_args, location);
                             }
+                            AggregateKind::RawPtr(ty, _) => {
+                                self.visit_ty($(& $mutability)? *ty, TyContext::Location(location));
+                            }
                         }
 
                         for operand in operands {

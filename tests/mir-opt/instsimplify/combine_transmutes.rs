@@ -1,9 +1,8 @@
-//@ unit-test: InstSimplify
+//@ test-mir-pass: InstSimplify
 //@ compile-flags: -C panic=abort
 #![crate_type = "lib"]
 #![feature(core_intrinsics)]
 #![feature(custom_mir)]
-#![feature(generic_nonzero)]
 
 use std::intrinsics::mir::*;
 use std::mem::{MaybeUninit, ManuallyDrop, transmute};

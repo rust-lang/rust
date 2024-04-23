@@ -36,7 +36,6 @@ impl<T> Context for io::Result<T> {
 /// # Errors
 ///
 /// This function errors out if the files couldn't be created or written to.
-#[allow(clippy::missing_panics_doc)]
 pub fn create(
     pass: &String,
     lint_name: Option<&String>,

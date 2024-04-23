@@ -3,11 +3,12 @@
 //! Note that HIR pretty printing is layered on top of this crate.
 
 mod expr;
+mod fixup;
 mod item;
 
 use crate::pp::Breaks::{Consistent, Inconsistent};
 use crate::pp::{self, Breaks};
-use crate::pprust::state::expr::FixupContext;
+use crate::pprust::state::fixup::FixupContext;
 use ast::TraitBoundModifiers;
 use rustc_ast::attr::AttrIdGenerator;
 use rustc_ast::ptr::P;
@@ -15,7 +16,6 @@ use rustc_ast::token::{self, BinOpToken, CommentKind, Delimiter, Nonterminal, To
 use rustc_ast::tokenstream::{Spacing, TokenStream, TokenTree};
 use rustc_ast::util::classify;
 use rustc_ast::util::comments::{Comment, CommentStyle};
-use rustc_ast::util::parser;
 use rustc_ast::{self as ast, AttrArgs, AttrArgsEq, BlockCheckMode, PatKind};
 use rustc_ast::{attr, BindingMode, ByRef, DelimArgs, RangeEnd, RangeSyntax, Term};
 use rustc_ast::{GenericArg, GenericBound, SelfKind};
@@ -1252,22 +1252,14 @@ impl<'a> State<'a> {
             ast::StmtKind::Item(item) => self.print_item(item),
             ast::StmtKind::Expr(expr) => {
                 self.space_if_not_bol();
-                self.print_expr_outer_attr_style(
-                    expr,
-                    false,
-                    FixupContext { stmt: true, ..FixupContext::default() },
-                );
+                self.print_expr_outer_attr_style(expr, false, FixupContext::new_stmt());
                 if classify::expr_requires_semi_to_be_stmt(expr) {
                     self.word(";");
                 }
             }
             ast::StmtKind::Semi(expr) => {
                 self.space_if_not_bol();
-                self.print_expr_outer_attr_style(
-                    expr,
-                    false,
-                    FixupContext { stmt: true, ..FixupContext::default() },
-                );
+                self.print_expr_outer_attr_style(expr, false, FixupContext::new_stmt());
                 self.word(";");
             }
             ast::StmtKind::Empty => {
@@ -1319,11 +1311,7 @@ impl<'a> State<'a> {
                 ast::StmtKind::Expr(expr) if i == blk.stmts.len() - 1 => {
                     self.maybe_print_comment(st.span.lo());
                     self.space_if_not_bol();
-                    self.print_expr_outer_attr_style(
-                        expr,
-                        false,
-                        FixupContext { stmt: true, ..FixupContext::default() },
-                    );
+                    self.print_expr_outer_attr_style(expr, false, FixupContext::new_stmt());
                     self.maybe_print_trailing_comment(expr.span, Some(blk.span.hi()));
                 }
                 _ => self.print_stmt(st),
@@ -1367,8 +1355,7 @@ impl<'a> State<'a> {
         self.word_space("=");
         self.print_expr_cond_paren(
             expr,
-            fixup.parenthesize_exterior_struct_lit && parser::contains_exterior_struct_lit(expr)
-                || parser::needs_par_as_let_scrutinee(expr.precedence().order()),
+            fixup.needs_par_as_let_scrutinee(expr),
             FixupContext::default(),
         );
     }

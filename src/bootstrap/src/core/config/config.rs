@@ -55,6 +55,7 @@ pub enum DryRun {
 pub enum DebuginfoLevel {
     #[default]
     None,
+    LineDirectivesOnly,
     LineTablesOnly,
     Limited,
     Full,
@@ -70,16 +71,22 @@ impl<'de> Deserialize<'de> for DebuginfoLevel {
         use serde::de::Error;
 
         Ok(match Deserialize::deserialize(deserializer)? {
-            StringOrInt::String("none") | StringOrInt::Int(0) => DebuginfoLevel::None,
-            StringOrInt::String("line-tables-only") => DebuginfoLevel::LineTablesOnly,
-            StringOrInt::String("limited") | StringOrInt::Int(1) => DebuginfoLevel::Limited,
-            StringOrInt::String("full") | StringOrInt::Int(2) => DebuginfoLevel::Full,
+            StringOrInt::String(s) if s == "none" => DebuginfoLevel::None,
+            StringOrInt::Int(0) => DebuginfoLevel::None,
+            StringOrInt::String(s) if s == "line-directives-only" => {
+                DebuginfoLevel::LineDirectivesOnly
+            }
+            StringOrInt::String(s) if s == "line-tables-only" => DebuginfoLevel::LineTablesOnly,
+            StringOrInt::String(s) if s == "limited" => DebuginfoLevel::Limited,
+            StringOrInt::Int(1) => DebuginfoLevel::Limited,
+            StringOrInt::String(s) if s == "full" => DebuginfoLevel::Full,
+            StringOrInt::Int(2) => DebuginfoLevel::Full,
             StringOrInt::Int(n) => {
                 let other = serde::de::Unexpected::Signed(n);
                 return Err(D::Error::invalid_value(other, &"expected 0, 1, or 2"));
             }
             StringOrInt::String(s) => {
-                let other = serde::de::Unexpected::Str(s);
+                let other = serde::de::Unexpected::Str(&s);
                 return Err(D::Error::invalid_value(
                     other,
                     &"expected none, line-tables-only, limited, or full",
@@ -95,6 +102,7 @@ impl Display for DebuginfoLevel {
         use DebuginfoLevel::*;
         f.write_str(match self {
             None => "0",
+            LineDirectivesOnly => "line-directives-only",
             LineTablesOnly => "line-tables-only",
             Limited => "1",
             Full => "2",
@@ -1021,8 +1029,8 @@ impl RustOptimize {
 
 #[derive(Deserialize)]
 #[serde(untagged)]
-enum StringOrInt<'a> {
-    String(&'a str),
+enum StringOrInt {
+    String(String),
     Int(i64),
 }
 
@@ -1209,10 +1217,7 @@ impl Config {
                 .and_then(|table: toml::Value| TomlConfig::deserialize(table))
                 .unwrap_or_else(|err| {
                     if let Ok(Some(changes)) = toml::from_str(&contents)
-                        .and_then(|table: toml::Value| ChangeIdWrapper::deserialize(table))
-                        .and_then(|change_id| {
-                            Ok(change_id.inner.map(|id| crate::find_recent_config_change_ids(id)))
-                        })
+                        .and_then(|table: toml::Value| ChangeIdWrapper::deserialize(table)).map(|change_id| change_id.inner.map(crate::find_recent_config_change_ids))
                     {
                         if !changes.is_empty() {
                             println!(
@@ -1791,17 +1796,17 @@ impl Config {
             if let Some(v) = link_shared {
                 config.llvm_link_shared.set(Some(v));
             }
-            config.llvm_targets = targets.clone();
-            config.llvm_experimental_targets = experimental_targets.clone();
+            config.llvm_targets.clone_from(&targets);
+            config.llvm_experimental_targets.clone_from(&experimental_targets);
             config.llvm_link_jobs = link_jobs;
-            config.llvm_version_suffix = version_suffix.clone();
-            config.llvm_clang_cl = clang_cl.clone();
+            config.llvm_version_suffix.clone_from(&version_suffix);
+            config.llvm_clang_cl.clone_from(&clang_cl);
 
-            config.llvm_cflags = cflags.clone();
-            config.llvm_cxxflags = cxxflags.clone();
-            config.llvm_ldflags = ldflags.clone();
+            config.llvm_cflags.clone_from(&cflags);
+            config.llvm_cxxflags.clone_from(&cxxflags);
+            config.llvm_ldflags.clone_from(&ldflags);
             set(&mut config.llvm_use_libcxx, use_libcxx);
-            config.llvm_use_linker = use_linker.clone();
+            config.llvm_use_linker.clone_from(&use_linker);
             config.llvm_allow_old_toolchain = allow_old_toolchain.unwrap_or(false);
             config.llvm_polly = polly.unwrap_or(false);
             config.llvm_clang = clang.unwrap_or(false);

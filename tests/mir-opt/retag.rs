@@ -1,5 +1,5 @@
 // skip-filecheck
-//@ unit-test: AddRetag
+//@ test-mir-pass: AddRetag
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 // ignore-tidy-linelength
 //@ compile-flags: -Z mir-emit-retag -Z mir-opt-level=0 -Z span_free_formats

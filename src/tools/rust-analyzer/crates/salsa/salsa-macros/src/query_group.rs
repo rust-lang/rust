@@ -1,4 +1,4 @@
-//!
+//! Implementation for `[salsa::query_group]` decorator.
 
 use crate::parenthesized::Parenthesized;
 use heck::ToUpperCamelCase;

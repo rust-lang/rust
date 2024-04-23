@@ -280,7 +280,7 @@ fn generate_descriptor_clippy(buf: &mut String, path: &Path) {
             let line = &line[..up_to];
 
             let clippy_lint = clippy_lints.last_mut().expect("clippy lint must already exist");
-            clippy_lint.help = unescape(line).trim().to_owned();
+            unescape(line).trim().clone_into(&mut clippy_lint.help);
         }
     }
     clippy_lints.sort_by(|lint, lint2| lint.id.cmp(&lint2.id));

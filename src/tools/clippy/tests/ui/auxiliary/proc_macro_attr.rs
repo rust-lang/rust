@@ -176,3 +176,17 @@ pub fn with_empty_docs(_attr: TokenStream, input: TokenStream) -> TokenStream {
     }
     .into()
 }
+
+#[proc_macro_attribute]
+pub fn duplicated_attr(_attr: TokenStream, input: TokenStream) -> TokenStream {
+    let item = parse_macro_input!(input as syn::Item);
+    let attrs: Vec<syn::Attribute> = vec![];
+    quote! {
+        #(#attrs)*
+        #[allow(unused)]
+        #[allow(unused)]
+        #[allow(unused)]
+        #item
+    }
+    .into()
+}

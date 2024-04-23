@@ -510,6 +510,7 @@ pub struct ConstData {
     pub type_ref: Interned<TypeRef>,
     pub visibility: RawVisibility,
     pub rustc_allow_incoherent_impl: bool,
+    pub has_body: bool,
 }
 
 impl ConstData {
@@ -533,6 +534,7 @@ impl ConstData {
             type_ref: konst.type_ref.clone(),
             visibility,
             rustc_allow_incoherent_impl,
+            has_body: konst.has_body,
         })
     }
 }
@@ -737,7 +739,7 @@ impl<'a> AssocItemCollector<'a> {
                     &AstIdWithPath::new(file_id, ast_id, Clone::clone(path)),
                     ctxt,
                     expand_to,
-                    self.expander.module.krate(),
+                    self.expander.krate(),
                     resolver,
                 ) {
                     Ok(Some(call_id)) => {

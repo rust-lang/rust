@@ -1,5 +1,5 @@
 use crate::pp::Breaks::Inconsistent;
-use crate::pprust::state::expr::FixupContext;
+use crate::pprust::state::fixup::FixupContext;
 use crate::pprust::state::{AnnNode, PrintState, State, INDENT_UNIT};
 
 use ast::StaticItem;

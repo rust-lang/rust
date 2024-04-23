@@ -3,7 +3,6 @@
 //@ [DBG] compile-flags: -C opt-level=0 -C no-prepopulate-passes
 //@ only-64bit (so I don't need to worry about usize)
 #![crate_type = "lib"]
-#![feature(generic_nonzero)]
 
 use std::mem::transmute;
 use std::num::NonZero;

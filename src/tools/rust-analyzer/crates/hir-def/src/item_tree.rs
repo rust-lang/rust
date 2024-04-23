@@ -716,6 +716,7 @@ pub struct Const {
     pub visibility: RawVisibilityId,
     pub type_ref: Interned<TypeRef>,
     pub ast_id: FileAstId<ast::Const>,
+    pub has_body: bool,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]

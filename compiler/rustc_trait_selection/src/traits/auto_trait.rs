@@ -152,7 +152,6 @@ impl<'tcx> AutoTraitFinder<'tcx> {
              with {:?}",
             trait_ref, full_env
         );
-        infcx.clear_caches();
 
         // At this point, we already have all of the bounds we need. FulfillmentContext is used
         // to store all of the necessary region/lifetime bounds in the InferContext, as well as
@@ -176,9 +175,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
 
         AutoTraitResult::PositiveImpl(auto_trait_callback(info))
     }
-}
 
-impl<'tcx> AutoTraitFinder<'tcx> {
     /// The core logic responsible for computing the bounds for our synthesized impl.
     ///
     /// To calculate the bounds, we call `SelectionContext.select` in a loop. Like
@@ -255,8 +252,6 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         let dummy_cause = ObligationCause::dummy();
 
         while let Some(pred) = predicates.pop_front() {
-            infcx.clear_caches();
-
             if !already_visited.insert(pred) {
                 continue;
             }

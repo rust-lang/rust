@@ -1,4 +1,4 @@
-//@ unit-test: DataflowConstProp
+//@ test-mir-pass: DataflowConstProp
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 
 #![feature(offset_of_nested)]

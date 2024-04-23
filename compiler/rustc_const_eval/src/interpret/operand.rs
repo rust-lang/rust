@@ -6,9 +6,10 @@ use std::assert_matches::assert_matches;
 use either::{Either, Left, Right};
 
 use rustc_hir::def::Namespace;
+use rustc_middle::mir::interpret::ScalarSizeMismatch;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::print::{FmtPrinter, PrettyPrinter};
-use rustc_middle::ty::{ConstInt, Ty, TyCtxt};
+use rustc_middle::ty::{ConstInt, ScalarInt, Ty, TyCtxt};
 use rustc_middle::{mir, ty};
 use rustc_target::abi::{self, Abi, HasDataLayout, Size};
 
@@ -211,6 +212,12 @@ impl<'tcx, Prov: Provenance> ImmTy<'tcx, Prov> {
     }
 
     #[inline]
+    pub fn from_scalar_int(s: ScalarInt, layout: TyAndLayout<'tcx>) -> Self {
+        assert_eq!(s.size(), layout.size);
+        Self::from_scalar(Scalar::from(s), layout)
+    }
+
+    #[inline]
     pub fn try_from_uint(i: impl Into<u128>, layout: TyAndLayout<'tcx>) -> Option<Self> {
         Some(Self::from_scalar(Scalar::try_from_uint(i, layout.size)?, layout))
     }
@@ -223,7 +230,6 @@ impl<'tcx, Prov: Provenance> ImmTy<'tcx, Prov> {
     pub fn try_from_int(i: impl Into<i128>, layout: TyAndLayout<'tcx>) -> Option<Self> {
         Some(Self::from_scalar(Scalar::try_from_int(i, layout.size)?, layout))
     }
-
     #[inline]
     pub fn from_int(i: impl Into<i128>, layout: TyAndLayout<'tcx>) -> Self {
         Self::from_scalar(Scalar::from_int(i, layout.size), layout)
@@ -240,6 +246,20 @@ impl<'tcx, Prov: Provenance> ImmTy<'tcx, Prov> {
         let ty = tcx.ty_ordering_enum(None);
         let layout = tcx.layout_of(ty::ParamEnv::reveal_all().and(ty)).unwrap();
         Self::from_scalar(Scalar::from_i8(c as i8), layout)
+    }
+
+    /// Return the immediate as a `ScalarInt`. Ensures that it has the size that the layout of the
+    /// immediate indicates.
+    #[inline]
+    pub fn to_scalar_int(&self) -> InterpResult<'tcx, ScalarInt> {
+        let s = self.to_scalar().to_scalar_int()?;
+        if s.size() != self.layout.size {
+            throw_ub!(ScalarSizeMismatch(ScalarSizeMismatch {
+                target_size: self.layout.size.bytes(),
+                data_size: s.size().bytes(),
+            }));
+        }
+        Ok(s)
     }
 
     #[inline]

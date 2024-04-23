@@ -1,7 +1,6 @@
 //@ compile-flags: -O -Zmerge-functions=disabled
 //@ min-llvm-version: 18
 #![crate_type = "lib"]
-#![feature(generic_nonzero)]
 
 extern crate core;
 use core::cmp::Ordering;

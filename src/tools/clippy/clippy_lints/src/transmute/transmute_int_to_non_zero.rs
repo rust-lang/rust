@@ -27,7 +27,7 @@ pub(super) fn check<'tcx>(
     };
 
     // FIXME: This can be simplified once `NonZero<T>` is stable.
-    let coercable_types = [
+    let coercible_types = [
         ("NonZeroU8", tcx.types.u8),
         ("NonZeroU16", tcx.types.u16),
         ("NonZeroU32", tcx.types.u32),
@@ -44,7 +44,7 @@ pub(super) fn check<'tcx>(
 
     let int_type = substs.type_at(0);
 
-    let Some(nonzero_alias) = coercable_types.iter().find_map(|(nonzero_alias, t)| {
+    let Some(nonzero_alias) = coercible_types.iter().find_map(|(nonzero_alias, t)| {
         if *t == int_type && *t == from_ty {
             Some(nonzero_alias)
         } else {

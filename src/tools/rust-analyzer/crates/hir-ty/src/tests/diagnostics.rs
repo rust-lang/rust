@@ -136,3 +136,20 @@ impl Trait for () {
 "#,
     );
 }
+
+#[test]
+fn no_mismatches_with_unresolved_projections() {
+    check_no_mismatches(
+        r#"
+// `Thing` is `{unknown}`
+fn create() -> Option<(i32, Thing)> {
+    Some((69420, Thing))
+}
+
+fn consume() -> Option<()> {
+    let (number, thing) = create()?;
+    Some(())
+}
+"#,
+    );
+}

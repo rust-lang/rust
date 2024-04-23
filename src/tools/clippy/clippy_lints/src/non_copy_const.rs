@@ -18,7 +18,7 @@ use rustc_middle::mir::interpret::{ErrorHandled, EvalToValTreeResult, GlobalId};
 use rustc_middle::ty::adjustment::Adjust;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::impl_lint_pass;
-use rustc_span::{sym, DUMMY_SP, InnerSpan, Span};
+use rustc_span::{sym, InnerSpan, Span, DUMMY_SP};
 use rustc_target::abi::VariantIdx;
 
 // FIXME: this is a correctness problem but there's no suitable
@@ -297,12 +297,7 @@ impl NonCopyConst {
     fn is_value_unfrozen_expr<'tcx>(&self, cx: &LateContext<'tcx>, hir_id: HirId, def_id: DefId, ty: Ty<'tcx>) -> bool {
         let args = cx.typeck_results().node_args(hir_id);
 
-        let result = Self::const_eval_resolve(
-            cx.tcx,
-            cx.param_env,
-            ty::UnevaluatedConst::new(def_id, args),
-            DUMMY_SP,
-        );
+        let result = Self::const_eval_resolve(cx.tcx, cx.param_env, ty::UnevaluatedConst::new(def_id, args), DUMMY_SP);
         self.is_value_unfrozen_raw(cx, result, ty)
     }
 

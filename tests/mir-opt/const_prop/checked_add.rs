@@ -1,5 +1,5 @@
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
-//@ unit-test: GVN
+//@ test-mir-pass: GVN
 //@ compile-flags: -C overflow-checks=on
 
 // EMIT_MIR checked_add.main.GVN.diff

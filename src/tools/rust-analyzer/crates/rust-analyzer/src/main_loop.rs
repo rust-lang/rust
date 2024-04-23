@@ -7,7 +7,7 @@ use std::{
 };
 
 use always_assert::always;
-use crossbeam_channel::{never, select, Receiver};
+use crossbeam_channel::{select, Receiver};
 use ide_db::base_db::{SourceDatabase, SourceDatabaseExt, VfsPath};
 use lsp_server::{Connection, Notification, Request};
 use lsp_types::{notification::Notification as _, TextDocumentIdentifier};
@@ -220,7 +220,7 @@ impl GlobalState {
             recv(self.flycheck_receiver) -> task =>
                 Some(Event::Flycheck(task.unwrap())),
 
-            recv(self.test_run_session.as_ref().map(|s| s.receiver()).unwrap_or(&never())) -> task =>
+            recv(self.test_run_receiver) -> task =>
                 Some(Event::TestResult(task.unwrap())),
 
         }
@@ -337,9 +337,7 @@ impl GlobalState {
                         .entered();
                 self.handle_cargo_test_msg(message);
                 // Coalesce many test result event into a single loop turn
-                while let Some(message) =
-                    self.test_run_session.as_ref().and_then(|r| r.receiver().try_recv().ok())
-                {
+                while let Ok(message) = self.test_run_receiver.try_recv() {
                     self.handle_cargo_test_msg(message);
                 }
             }
@@ -350,11 +348,7 @@ impl GlobalState {
         let memdocs_added_or_removed = self.mem_docs.take_changes();
 
         if self.is_quiescent() {
-            let became_quiescent = !(was_quiescent
-                || self.fetch_workspaces_queue.op_requested()
-                || self.fetch_build_data_queue.op_requested()
-                || self.fetch_proc_macros_queue.op_requested());
-
+            let became_quiescent = !was_quiescent;
             if became_quiescent {
                 if self.config.check_on_save() {
                     // Project has loaded properly, kick off initial flycheck
@@ -365,7 +359,7 @@ impl GlobalState {
                 }
             }
 
-            let client_refresh = !was_quiescent || state_changed;
+            let client_refresh = became_quiescent || state_changed;
             if client_refresh {
                 // Refresh semantic tokens if the client supports it.
                 if self.config.semantic_tokens_refresh() {
@@ -379,17 +373,17 @@ impl GlobalState {
                 }
 
                 // Refresh inlay hints if the client supports it.
-                if self.send_hint_refresh_query && self.config.inlay_hints_refresh() {
+                if self.config.inlay_hints_refresh() {
                     self.send_request::<lsp_types::request::InlayHintRefreshRequest>((), |_, _| ());
-                    self.send_hint_refresh_query = false;
                 }
             }
 
-            let things_changed = !was_quiescent || state_changed || memdocs_added_or_removed;
-            if things_changed && self.config.publish_diagnostics() {
+            let project_or_mem_docs_changed =
+                became_quiescent || state_changed || memdocs_added_or_removed;
+            if project_or_mem_docs_changed && self.config.publish_diagnostics() {
                 self.update_diagnostics();
             }
-            if things_changed && self.config.test_explorer() {
+            if project_or_mem_docs_changed && self.config.test_explorer() {
                 self.update_tests();
             }
         }
@@ -411,7 +405,7 @@ impl GlobalState {
                 // See https://github.com/rust-lang/rust-analyzer/issues/13130
                 let patch_empty = |message: &mut String| {
                     if message.is_empty() {
-                        *message = " ".to_owned();
+                        " ".clone_into(message);
                     }
                 };
 
@@ -434,7 +428,7 @@ impl GlobalState {
             }
         }
 
-        if self.config.cargo_autoreload() {
+        if self.config.cargo_autoreload_config() {
             if let Some((cause, force_crate_graph_reload)) =
                 self.fetch_workspaces_queue.should_start_op()
             {
@@ -643,7 +637,6 @@ impl GlobalState {
                         }
 
                         self.switch_workspaces("fetched build data".to_owned());
-                        self.send_hint_refresh_query = true;
 
                         (Some(Progress::End), None)
                     }
@@ -660,7 +653,6 @@ impl GlobalState {
                     ProcMacroProgress::End(proc_macro_load_result) => {
                         self.fetch_proc_macros_queue.op_completed(true);
                         self.set_proc_macros(proc_macro_load_result);
-                        self.send_hint_refresh_query = true;
                         (Some(Progress::End), None)
                     }
                 };
@@ -792,8 +784,11 @@ impl GlobalState {
             }
             flycheck::CargoTestMessage::Suite => (),
             flycheck::CargoTestMessage::Finished => {
-                self.send_notification::<lsp_ext::EndRunTest>(());
-                self.test_run_session = None;
+                self.test_run_remaining_jobs = self.test_run_remaining_jobs.saturating_sub(1);
+                if self.test_run_remaining_jobs == 0 {
+                    self.send_notification::<lsp_ext::EndRunTest>(());
+                    self.test_run_session = None;
+                }
             }
             flycheck::CargoTestMessage::Custom { text } => {
                 self.send_notification::<lsp_ext::AppendOutputToRunTest>(text);

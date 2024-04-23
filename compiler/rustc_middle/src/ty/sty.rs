@@ -1379,7 +1379,7 @@ impl<'tcx> ParamTy {
         Ty::new_param(tcx, self.index, self.name)
     }
 
-    pub fn span_from_generics(&self, tcx: TyCtxt<'tcx>, item_with_generics: DefId) -> Span {
+    pub fn span_from_generics(self, tcx: TyCtxt<'tcx>, item_with_generics: DefId) -> Span {
         let generics = tcx.generics_of(item_with_generics);
         let type_param = generics.type_param(self, tcx);
         tcx.def_span(type_param.def_id)
