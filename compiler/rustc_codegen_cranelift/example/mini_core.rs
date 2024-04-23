@@ -627,7 +627,7 @@ pub mod intrinsics {
         pub fn min_align_of_val<T: ?::Sized>(val: *const T) -> usize;
         pub fn copy<T>(src: *const T, dst: *mut T, count: usize);
         pub fn transmute<T, U>(e: T) -> U;
-        pub fn ctlz_nonzero<T>(x: T) -> T;
+        pub fn ctlz_nonzero<T>(x: T) -> u32;
         #[rustc_safe_intrinsic]
         pub fn needs_drop<T: ?::Sized>() -> bool;
         #[rustc_safe_intrinsic]

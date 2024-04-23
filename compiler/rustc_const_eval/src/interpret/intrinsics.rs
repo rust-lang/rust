@@ -173,7 +173,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let ty = instance_args.type_at(0);
                 let layout = self.layout_of(ty)?;
                 let val = self.read_scalar(&args[0])?;
-                let out_val = self.numeric_intrinsic(intrinsic_name, val, layout)?;
+
+                let out_val = self.numeric_intrinsic(intrinsic_name, val, layout, dest.layout)?;
                 self.write_scalar(out_val, dest)?;
             }
             sym::saturating_add | sym::saturating_sub => {
@@ -200,12 +201,15 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             sym::rotate_left | sym::rotate_right => {
                 // rotate_left: (X << (S % BW)) | (X >> ((BW - S) % BW))
                 // rotate_right: (X << ((BW - S) % BW)) | (X >> (S % BW))
-                let layout = self.layout_of(instance_args.type_at(0))?;
+                let layout_val = self.layout_of(instance_args.type_at(0))?;
                 let val = self.read_scalar(&args[0])?;
-                let val_bits = val.to_bits(layout.size)?;
+                let val_bits = val.to_bits(layout_val.size)?;
+
+                let layout_raw_shift = self.layout_of(self.tcx.types.u32)?;
                 let raw_shift = self.read_scalar(&args[1])?;
-                let raw_shift_bits = raw_shift.to_bits(layout.size)?;
-                let width_bits = u128::from(layout.size.bits());
+                let raw_shift_bits = raw_shift.to_bits(layout_raw_shift.size)?;
+
+                let width_bits = u128::from(layout_val.size.bits());
                 let shift_bits = raw_shift_bits % width_bits;
                 let inv_shift_bits = (width_bits - shift_bits) % width_bits;
                 let result_bits = if intrinsic_name == sym::rotate_left {
@@ -213,8 +217,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 } else {
                     (val_bits >> shift_bits) | (val_bits << inv_shift_bits)
                 };
-                let truncated_bits = self.truncate(result_bits, layout);
-                let result = Scalar::from_uint(truncated_bits, layout.size);
+                let truncated_bits = self.truncate(result_bits, layout_val);
+                let result = Scalar::from_uint(truncated_bits, layout_val.size);
                 self.write_scalar(result, dest)?;
             }
             sym::copy => {
@@ -472,6 +476,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         name: Symbol,
         val: Scalar<M::Provenance>,
         layout: TyAndLayout<'tcx>,
+        ret_layout: TyAndLayout<'tcx>,
     ) -> InterpResult<'tcx, Scalar<M::Provenance>> {
         assert!(layout.ty.is_integral(), "invalid type for numeric intrinsic: {}", layout.ty);
         let bits = val.to_bits(layout.size)?;
@@ -483,11 +488,17 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
             sym::ctlz | sym::ctlz_nonzero => u128::from(bits.leading_zeros()) - extra,
             sym::cttz | sym::cttz_nonzero => u128::from((bits << extra).trailing_zeros()) - extra,
-            sym::bswap => (bits << extra).swap_bytes(),
-            sym::bitreverse => (bits << extra).reverse_bits(),
+            sym::bswap => {
+                assert_eq!(layout, ret_layout);
+                (bits << extra).swap_bytes()
+            }
+            sym::bitreverse => {
+                assert_eq!(layout, ret_layout);
+                (bits << extra).reverse_bits()
+            }
             _ => bug!("not a numeric intrinsic: {}", name),
         };
-        Ok(Scalar::from_uint(bits_out, layout.size))
+        Ok(Scalar::from_uint(bits_out, ret_layout.size))
     }
 
     pub fn exact_div(
