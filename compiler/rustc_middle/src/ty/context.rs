@@ -565,13 +565,6 @@ impl<'tcx> TyCtxt<'tcx> {
         TyCtxtFeed { tcx: self, key: () }
     }
 
-    /// Can only be fed before queries are run, and is thus exempt from any
-    /// incremental issues. Do not use except for the initial query feeding.
-    pub fn feed_local_crate(self) -> TyCtxtFeed<'tcx, CrateNum> {
-        self.dep_graph.assert_ignored();
-        TyCtxtFeed { tcx: self, key: LOCAL_CRATE }
-    }
-
     /// Only used in the resolver to register the `CRATE_DEF_ID` `DefId` and feed
     /// some queries for it. It will panic if used twice.
     pub fn create_local_crate_def_id(self, span: Span) -> TyCtxtFeed<'tcx, LocalDefId> {
@@ -1151,7 +1144,12 @@ impl<'tcx> TyCtxt<'tcx> {
         if stable_crate_id == self.stable_crate_id(LOCAL_CRATE) {
             LOCAL_CRATE
         } else {
-            self.cstore_untracked().stable_crate_id_to_crate_num(stable_crate_id)
+            *self
+                .untracked()
+                .stable_crate_ids
+                .read()
+                .get(&stable_crate_id)
+                .unwrap_or_else(|| bug!("uninterned StableCrateId: {stable_crate_id:?}"))
         }
     }
 
@@ -1265,6 +1263,19 @@ impl<'tcx> TyCtxt<'tcx> {
         }
 
         feed
+    }
+
+    pub fn create_crate_num(
+        self,
+        stable_crate_id: StableCrateId,
+    ) -> Result<TyCtxtFeed<'tcx, CrateNum>, CrateNum> {
+        if let Some(&existing) = self.untracked().stable_crate_ids.read().get(&stable_crate_id) {
+            return Err(existing);
+        }
+
+        let num = CrateNum::new(self.untracked().stable_crate_ids.read().len());
+        self.untracked().stable_crate_ids.write().insert(stable_crate_id, num);
+        Ok(TyCtxtFeed { key: num, tcx: self })
     }
 
     pub fn iter_local_def_id(self) -> impl Iterator<Item = LocalDefId> + 'tcx {
