@@ -520,7 +520,9 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
                     validate,
                 )?;
                 if global.track_outdated_loads && recency == LoadRecency::Outdated {
-                    this.emit_diagnostic(NonHaltingDiagnostic::WeakMemoryOutdatedLoad);
+                    this.emit_diagnostic(NonHaltingDiagnostic::WeakMemoryOutdatedLoad {
+                        ptr: place.ptr(),
+                    });
                 }
 
                 return Ok(loaded);
