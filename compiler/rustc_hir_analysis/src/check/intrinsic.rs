@@ -412,13 +412,11 @@ pub fn check_intrinsic_type(
                 (1, 0, vec![Ty::new_mut_ptr(tcx, param(0)), param(0)], Ty::new_unit(tcx))
             }
 
-            sym::ctpop
-            | sym::ctlz
-            | sym::ctlz_nonzero
-            | sym::cttz
-            | sym::cttz_nonzero
-            | sym::bswap
-            | sym::bitreverse => (1, 0, vec![param(0)], param(0)),
+            sym::ctpop | sym::ctlz | sym::ctlz_nonzero | sym::cttz | sym::cttz_nonzero => {
+                (1, 0, vec![param(0)], tcx.types.u32)
+            }
+
+            sym::bswap | sym::bitreverse => (1, 0, vec![param(0)], param(0)),
 
             sym::three_way_compare => {
                 (1, 0, vec![param(0), param(0)], tcx.ty_ordering_enum(Some(span)))
@@ -461,7 +459,7 @@ pub fn check_intrinsic_type(
                 (1, 0, vec![param(0), param(0)], param(0))
             }
             sym::unchecked_shl | sym::unchecked_shr => (2, 0, vec![param(0), param(1)], param(0)),
-            sym::rotate_left | sym::rotate_right => (1, 0, vec![param(0), param(0)], param(0)),
+            sym::rotate_left | sym::rotate_right => (1, 0, vec![param(0), tcx.types.u32], param(0)),
             sym::unchecked_add | sym::unchecked_sub | sym::unchecked_mul => {
                 (1, 0, vec![param(0), param(0)], param(0))
             }
