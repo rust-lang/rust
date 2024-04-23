@@ -830,6 +830,12 @@ fn copy_src_dirs(
             return false;
         }
 
+        // Cargo tests use some files like `.gitignore` that we would otherwise exclude.
+        const CARGO_TESTS: &[&str] = &["tools/cargo/tests", "tools\\cargo\\tests"];
+        if CARGO_TESTS.iter().any(|path| spath.contains(path)) {
+            return true;
+        }
+
         let full_path = Path::new(dir).join(path);
         if exclude_dirs.iter().any(|excl| full_path == Path::new(excl)) {
             return false;
