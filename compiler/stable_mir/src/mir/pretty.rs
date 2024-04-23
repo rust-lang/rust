@@ -8,7 +8,7 @@ use std::{fmt, io, iter};
 
 use super::{AssertMessage, BinOp, TerminatorKind};
 
-use super::BorrowKind;
+use super::{BorrowKind, FakeBorrowKind};
 
 impl Display for Ty {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
@@ -352,7 +352,8 @@ fn pretty_rvalue<W: Write>(writer: &mut W, rval: &Rvalue) -> io::Result<()> {
         Rvalue::Ref(_, borrowkind, place) => {
             let kind = match borrowkind {
                 BorrowKind::Shared => "&",
-                BorrowKind::Fake => "&fake ",
+                BorrowKind::Fake(FakeBorrowKind::Deep) => "&fake ",
+                BorrowKind::Fake(FakeBorrowKind::Shallow) => "&fake shallow ",
                 BorrowKind::Mut { .. } => "&mut ",
             };
             write!(writer, "{kind}{:?}", place)

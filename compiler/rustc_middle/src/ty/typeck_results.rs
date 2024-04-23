@@ -451,7 +451,7 @@ impl<'tcx> TypeckResults<'tcx> {
     /// This is computed from the typeck results since we want to make
     /// sure to apply any match-ergonomics adjustments, which we cannot
     /// determine from the HIR alone.
-    pub fn pat_has_ref_mut_binding(&self, pat: &'tcx hir::Pat<'tcx>) -> bool {
+    pub fn pat_has_ref_mut_binding(&self, pat: &hir::Pat<'_>) -> bool {
         let mut has_ref_mut = false;
         pat.walk(|pat| {
             if let hir::PatKind::Binding(_, id, _, _) = pat.kind

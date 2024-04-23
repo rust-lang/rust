@@ -685,7 +685,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             fake_borrow_temp.into(),
                             Rvalue::Ref(
                                 tcx.lifetimes.re_erased,
-                                BorrowKind::Fake,
+                                BorrowKind::Fake(FakeBorrowKind::Shallow),
                                 Place { local: base_place.local, projection },
                             ),
                         );

@@ -10,10 +10,7 @@ use crate::build::scope::DropKind;
 use crate::build::ForGuard::{self, OutsideGuard, RefWithinGuard};
 use crate::build::{BlockAnd, BlockAndExtension, Builder};
 use crate::build::{GuardFrame, GuardFrameLocal, LocalsForNode};
-use rustc_data_structures::{
-    fx::{FxHashSet, FxIndexMap, FxIndexSet},
-    stack::ensure_sufficient_stack,
-};
+use rustc_data_structures::{fx::FxIndexMap, stack::ensure_sufficient_stack};
 use rustc_hir::{BindingMode, ByRef};
 use rustc_middle::middle::region;
 use rustc_middle::mir::{self, *};
@@ -211,7 +208,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// 2. Create the decision tree ([Builder::lower_match_tree]).
     /// 3. Determine the fake borrows that are needed from the places that were
     ///    matched against and create the required temporaries for them
-    ///    ([Builder::calculate_fake_borrows]).
+    ///    ([util::collect_fake_borrows]).
     /// 4. Create everything else: the guards and the arms ([Builder::lower_match_arms]).
     ///
     /// ## False edges
@@ -380,12 +377,19 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         match_start_span: Span,
         match_has_guard: bool,
         candidates: &mut [&mut Candidate<'pat, 'tcx>],
-    ) -> Vec<(Place<'tcx>, Local)> {
-        // The set of places that we are creating fake borrows of. If there are
-        // no match guards then we don't need any fake borrows, so don't track
-        // them.
-        let fake_borrows = match_has_guard
-            .then(|| util::FakeBorrowCollector::collect_fake_borrows(self, candidates));
+    ) -> Vec<(Place<'tcx>, Local, FakeBorrowKind)> {
+        // The set of places that we are creating fake borrows of. If there are no match guards then
+        // we don't need any fake borrows, so don't track them.
+        let fake_borrows: Vec<(Place<'tcx>, Local, FakeBorrowKind)> = if match_has_guard {
+            util::collect_fake_borrows(
+                self,
+                candidates,
+                scrutinee_span,
+                scrutinee_place_builder.base(),
+            )
+        } else {
+            Vec::new()
+        };
 
         // See the doc comment on `match_candidates` for why we have an
         // otherwise block. Match checking will ensure this is actually
@@ -439,11 +443,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             });
         }
 
-        if let Some(ref borrows) = fake_borrows {
-            self.calculate_fake_borrows(borrows, scrutinee_span)
-        } else {
-            Vec::new()
-        }
+        fake_borrows
     }
 
     /// Lower the bindings, guards and arm bodies of a `match` expression.
@@ -459,7 +459,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         scrutinee_span: Span,
         arm_candidates: Vec<(&'_ Arm<'tcx>, Candidate<'_, 'tcx>)>,
         outer_source_info: SourceInfo,
-        fake_borrow_temps: Vec<(Place<'tcx>, Local)>,
+        fake_borrow_temps: Vec<(Place<'tcx>, Local, FakeBorrowKind)>,
     ) -> BlockAnd<()> {
         let arm_end_blocks: Vec<_> = arm_candidates
             .into_iter()
@@ -543,7 +543,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         outer_source_info: SourceInfo,
         candidate: Candidate<'_, 'tcx>,
-        fake_borrow_temps: &[(Place<'tcx>, Local)],
+        fake_borrow_temps: &[(Place<'tcx>, Local, FakeBorrowKind)],
         scrutinee_span: Span,
         arm_match_scope: Option<(&Arm<'tcx>, region::Scope)>,
         storages_alive: bool,
@@ -940,7 +940,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 self.visit_primary_bindings(subpattern, pattern_user_ty.deref(), f);
             }
 
-            PatKind::DerefPattern { ref subpattern } => {
+            PatKind::DerefPattern { ref subpattern, .. } => {
                 self.visit_primary_bindings(subpattern, UserTypeProjections::none(), f);
             }
 
@@ -1165,6 +1165,7 @@ enum TestCase<'pat, 'tcx> {
     Constant { value: mir::Const<'tcx> },
     Range(&'pat PatRange<'tcx>),
     Slice { len: usize, variable_length: bool },
+    Deref { temp: Place<'tcx>, mutability: Mutability },
     Or { pats: Box<[FlatPat<'pat, 'tcx>]> },
 }
 
@@ -1224,6 +1225,13 @@ enum TestKind<'tcx> {
 
     /// Test that the length of the slice is equal to `len`.
     Len { len: u64, op: BinOp },
+
+    /// Call `Deref::deref[_mut]` on the value.
+    Deref {
+        /// Temporary to store the result of `deref()`/`deref_mut()`.
+        temp: Place<'tcx>,
+        mutability: Mutability,
+    },
 }
 
 /// A test to perform to determine which [`Candidate`] matches a value.
@@ -1905,81 +1913,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             target_blocks,
         );
     }
-
-    /// Determine the fake borrows that are needed from a set of places that
-    /// have to be stable across match guards.
-    ///
-    /// Returns a list of places that need a fake borrow and the temporary
-    /// that's used to store the fake borrow.
-    ///
-    /// Match exhaustiveness checking is not able to handle the case where the
-    /// place being matched on is mutated in the guards. We add "fake borrows"
-    /// to the guards that prevent any mutation of the place being matched.
-    /// There are a some subtleties:
-    ///
-    /// 1. Borrowing `*x` doesn't prevent assigning to `x`. If `x` is a shared
-    ///    reference, the borrow isn't even tracked. As such we have to add fake
-    ///    borrows of any prefixes of a place
-    /// 2. We don't want `match x { _ => (), }` to conflict with mutable
-    ///    borrows of `x`, so we only add fake borrows for places which are
-    ///    bound or tested by the match.
-    /// 3. We don't want the fake borrows to conflict with `ref mut` bindings,
-    ///    so we use a special BorrowKind for them.
-    /// 4. The fake borrows may be of places in inactive variants, so it would
-    ///    be UB to generate code for them. They therefore have to be removed
-    ///    by a MIR pass run after borrow checking.
-    fn calculate_fake_borrows<'b>(
-        &mut self,
-        fake_borrows: &'b FxIndexSet<Place<'tcx>>,
-        temp_span: Span,
-    ) -> Vec<(Place<'tcx>, Local)> {
-        let tcx = self.tcx;
-
-        debug!("add_fake_borrows fake_borrows = {:?}", fake_borrows);
-
-        let mut all_fake_borrows = Vec::with_capacity(fake_borrows.len());
-
-        // Insert a Shallow borrow of the prefixes of any fake borrows.
-        for place in fake_borrows {
-            let mut cursor = place.projection.as_ref();
-            while let [proj_base @ .., elem] = cursor {
-                cursor = proj_base;
-
-                if let ProjectionElem::Deref = elem {
-                    // Insert a shallow borrow after a deref. For other
-                    // projections the borrow of prefix_cursor will
-                    // conflict with any mutation of base.
-                    all_fake_borrows.push(PlaceRef { local: place.local, projection: proj_base });
-                }
-            }
-
-            all_fake_borrows.push(place.as_ref());
-        }
-
-        // Deduplicate
-        let mut dedup = FxHashSet::default();
-        all_fake_borrows.retain(|b| dedup.insert(*b));
-
-        debug!("add_fake_borrows all_fake_borrows = {:?}", all_fake_borrows);
-
-        all_fake_borrows
-            .into_iter()
-            .map(|matched_place_ref| {
-                let matched_place = Place {
-                    local: matched_place_ref.local,
-                    projection: tcx.mk_place_elems(matched_place_ref.projection),
-                };
-                let fake_borrow_deref_ty = matched_place.ty(&self.local_decls, tcx).ty;
-                let fake_borrow_ty =
-                    Ty::new_imm_ref(tcx, tcx.lifetimes.re_erased, fake_borrow_deref_ty);
-                let mut fake_borrow_temp = LocalDecl::new(fake_borrow_ty, temp_span);
-                fake_borrow_temp.local_info = ClearCrossCrate::Set(Box::new(LocalInfo::FakeBorrow));
-                let fake_borrow_temp = self.local_decls.push(fake_borrow_temp);
-
-                (matched_place, fake_borrow_temp)
-            })
-            .collect()
-    }
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -2044,7 +1977,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         candidate: Candidate<'pat, 'tcx>,
         parent_data: &[PatternExtraData<'tcx>],
-        fake_borrows: &[(Place<'tcx>, Local)],
+        fake_borrows: &[(Place<'tcx>, Local, FakeBorrowKind)],
         scrutinee_span: Span,
         arm_match_scope: Option<(&Arm<'tcx>, region::Scope)>,
         schedule_drops: bool,
@@ -2174,8 +2107,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             let re_erased = tcx.lifetimes.re_erased;
             let scrutinee_source_info = self.source_info(scrutinee_span);
-            for &(place, temp) in fake_borrows {
-                let borrow = Rvalue::Ref(re_erased, BorrowKind::Fake, place);
+            for &(place, temp, kind) in fake_borrows {
+                let borrow = Rvalue::Ref(re_erased, BorrowKind::Fake(kind), place);
                 self.cfg.push_assign(block, scrutinee_source_info, Place::from(temp), borrow);
             }
 
@@ -2198,7 +2131,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let guard_frame = self.guard_context.pop().unwrap();
             debug!("Exiting guard building context with locals: {:?}", guard_frame);
 
-            for &(_, temp) in fake_borrows {
+            for &(_, temp, _) in fake_borrows {
                 let cause = FakeReadCause::ForMatchGuard;
                 self.cfg.push_fake_read(post_guard_block, guard_end, cause, Place::from(temp));
             }
