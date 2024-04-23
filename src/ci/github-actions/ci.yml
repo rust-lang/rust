@@ -351,24 +351,6 @@ jobs:
     # This hack is taken from https://github.com/ferrocene/ferrocene/blob/d43edc6b7697cf1719ec1c17c54904ab94825763/.github/workflows/release.yml#L75-L82
     if: fromJSON(needs.calculate_matrix.outputs.jobs)[0] != null
 
-  master:
-    name: master
-    runs-on: ubuntu-latest
-    env:
-      <<: [*prod-variables]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/master' && github.repository == 'rust-lang-ci/rust'
-    steps:
-      - name: checkout the source code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
-
-      - name: publish toolstate
-        run: src/ci/publish_toolstate.sh
-        shell: bash
-        env:
-          TOOLSTATE_REPO_ACCESS_TOKEN: ${{ secrets.TOOLSTATE_REPO_ACCESS_TOKEN }}
-
   # These jobs don't actually test anything, but they're used to tell bors the
   # build completed, as there is no practical way to detect when a workflow is
   # successful listening to webhooks only.
@@ -383,7 +365,15 @@ jobs:
   auto-success:
     needs: [ job ]
     if: "success() && github.event_name == 'push' && github.ref == 'refs/heads/auto' && github.repository == 'rust-lang-ci/rust'"
-    <<: *base-success-job
+    <<: *base-outcome-job
+    steps:
+      - name: publish toolstate
+        run: src/ci/publish_toolstate.sh
+        shell: bash
+        if: success() && (github.event_name == 'push' || env.DEPLOY == '1' || env.DEPLOY_ALT == '1')
+        env:
+          TOOLSTATE_REPO_ACCESS_TOKEN: ${{ secrets.TOOLSTATE_REPO_ACCESS_TOKEN }}
+
   auto-failure:
     needs: [ job ]
     if: "!success() && github.event_name == 'push' && github.ref == 'refs/heads/auto' && github.repository == 'rust-lang-ci/rust'"
