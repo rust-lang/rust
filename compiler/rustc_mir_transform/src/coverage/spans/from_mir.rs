@@ -13,7 +13,7 @@ use rustc_span::{ExpnKind, MacroKind, Span, Symbol};
 use crate::coverage::graph::{
     BasicCoverageBlock, BasicCoverageBlockData, CoverageGraph, START_BCB,
 };
-use crate::coverage::spans::{BcbMapping, BcbMappingKind};
+use crate::coverage::spans::{BcbBranchPair, BcbMapping, BcbMappingKind};
 use crate::coverage::ExtractedHirInfo;
 
 /// Traverses the MIR body to produce an initial collection of coverage-relevant
@@ -366,15 +366,10 @@ impl SpanFromMir {
     }
 }
 
-pub(super) fn extract_branch_mappings(
+fn resolve_block_markers(
+    branch_info: &mir::coverage::BranchInfo,
     mir_body: &mir::Body<'_>,
-    body_span: Span,
-    basic_coverage_blocks: &CoverageGraph,
-) -> Vec<BcbMapping> {
-    let Some(branch_info) = mir_body.coverage_branch_info.as_deref() else {
-        return vec![];
-    };
-
+) -> IndexVec<BlockMarkerId, Option<BasicBlock>> {
     let mut block_markers = IndexVec::<BlockMarkerId, Option<BasicBlock>>::from_elem_n(
         None,
         branch_info.num_block_markers,
@@ -388,6 +383,58 @@ pub(super) fn extract_branch_mappings(
             }
         }
     }
+
+    block_markers
+}
+
+// FIXME: There is currently a lot of redundancy between
+// `extract_branch_pairs` and `extract_mcdc_mappings`. This is needed so
+// that they can each be modified without interfering with the other, but in
+// the long term we should try to bring them together again when branch coverage
+// and MC/DC coverage support are more mature.
+
+pub(super) fn extract_branch_pairs(
+    mir_body: &mir::Body<'_>,
+    hir_info: &ExtractedHirInfo,
+    basic_coverage_blocks: &CoverageGraph,
+) -> Vec<BcbBranchPair> {
+    let Some(branch_info) = mir_body.coverage_branch_info.as_deref() else { return vec![] };
+
+    let block_markers = resolve_block_markers(branch_info, mir_body);
+
+    branch_info
+        .branch_spans
+        .iter()
+        .filter_map(|&BranchSpan { span: raw_span, true_marker, false_marker }| {
+            // For now, ignore any branch span that was introduced by
+            // expansion. This makes things like assert macros less noisy.
+            if !raw_span.ctxt().outer_expn_data().is_root() {
+                return None;
+            }
+            let (span, _) =
+                unexpand_into_body_span_with_visible_macro(raw_span, hir_info.body_span)?;
+
+            let bcb_from_marker =
+                |marker: BlockMarkerId| basic_coverage_blocks.bcb_from_bb(block_markers[marker]?);
+
+            let true_bcb = bcb_from_marker(true_marker)?;
+            let false_bcb = bcb_from_marker(false_marker)?;
+
+            Some(BcbBranchPair { span, true_bcb, false_bcb })
+        })
+        .collect::<Vec<_>>()
+}
+
+pub(super) fn extract_mcdc_mappings(
+    mir_body: &mir::Body<'_>,
+    body_span: Span,
+    basic_coverage_blocks: &CoverageGraph,
+) -> Vec<BcbMapping> {
+    let Some(branch_info) = mir_body.coverage_branch_info.as_deref() else {
+        return vec![];
+    };
+
+    let block_markers = resolve_block_markers(branch_info, mir_body);
 
     let bcb_from_marker =
         |marker: BlockMarkerId| basic_coverage_blocks.bcb_from_bb(block_markers[marker]?);
@@ -405,12 +452,6 @@ pub(super) fn extract_branch_mappings(
             let false_bcb = bcb_from_marker(false_marker)?;
             Some((span, true_bcb, false_bcb))
         };
-
-    let branch_filter_map = |&BranchSpan { span: raw_span, true_marker, false_marker }| {
-        check_branch_bcb(raw_span, true_marker, false_marker).map(|(span, true_bcb, false_bcb)| {
-            BcbMapping { kind: BcbMappingKind::Branch { true_bcb, false_bcb }, span }
-        })
-    };
 
     let mcdc_branch_filter_map =
         |&MCDCBranchSpan { span: raw_span, true_marker, false_marker, condition_info }| {
@@ -446,10 +487,7 @@ pub(super) fn extract_branch_mappings(
         })
     };
 
-    branch_info
-        .branch_spans
-        .iter()
-        .filter_map(branch_filter_map)
+    std::iter::empty()
         .chain(branch_info.mcdc_branch_spans.iter().filter_map(mcdc_branch_filter_map))
         .chain(branch_info.mcdc_decision_spans.iter().filter_map(decision_filter_map))
         .collect::<Vec<_>>()

@@ -132,7 +132,6 @@
 // cdb-command: dx -r2 arbitrary_discr2,d
 // cdb-check: arbitrary_discr2,d : Def [Type: enum2$<msvc_pretty_enums::ArbitraryDiscr>]
 // cdb-check:     [+0x[...]] __0              : 5678 [Type: unsigned int]
-#![feature(generic_nonzero)]
 #![feature(rustc_attrs)]
 #![feature(repr128)]
 #![feature(arbitrary_enum_discriminant)]

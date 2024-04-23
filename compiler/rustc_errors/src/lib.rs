@@ -15,7 +15,6 @@
 #![feature(box_patterns)]
 #![feature(error_reporter)]
 #![feature(extract_if)]
-#![feature(generic_nonzero)]
 #![feature(let_chains)]
 #![feature(negative_impls)]
 #![feature(never_type)]

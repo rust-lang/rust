@@ -2371,7 +2371,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
             // type_param_sugg_span is (span, has_bounds)
             let (type_scope, type_param_sugg_span) = match bound_kind {
-                GenericKind::Param(ref param) => {
+                GenericKind::Param(param) => {
                     let generics = self.tcx.generics_of(generic_param_scope);
                     let def_id = generics.type_param(param, self.tcx).def_id.expect_local();
                     let scope = self.tcx.local_def_id_to_hir_id(def_id).owner.def_id;
