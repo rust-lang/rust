@@ -1,7 +1,6 @@
 // Require a gdb or lldb that can read DW_TAG_variant_part.
 //@ min-gdb-version: 8.2
-//@ needs-rust-lldb
-
+//@ min-lldb-version: 1800
 //@ compile-flags:-g
 
 // === GDB TESTS ===================================================================================
@@ -27,15 +26,19 @@
 // lldb-command:run
 
 // lldb-command:v case1
+// lldbg-check:(struct_style_enum::Regular) case1 = { value = { a = 0 b = 31868 c = 31868 d = 31868 e = 31868 } $discr$ = 0 }
 // lldbr-check:(struct_style_enum::Regular::Case1) case1 = { a = 0 b = 31868 c = 31868 d = 31868 e = 31868 }
 
 // lldb-command:v case2
+// lldbg-check:(struct_style_enum::Regular) case2 = { value = { a = 0 b = 286331153 c = 286331153 } $discr$ = 1 }
 // lldbr-check:(struct_style_enum::Regular::Case2) case2 = Case2 { Case1: 0, Case2: 286331153, Case3: 286331153 }
 
 // lldb-command:v case3
+// lldbg-check:(struct_style_enum::Regular) case3 = { value = { a = 0 b = 6438275382588823897 } $discr$ = 2 }
 // lldbr-check:(struct_style_enum::Regular::Case3) case3 = Case3 { Case1: 0, Case2: 6438275382588823897 }
 
 // lldb-command:v univariant
+// lldbg-check:(struct_style_enum::Univariant) univariant = { value = { a = -1 } }
 // lldbr-check:(struct_style_enum::Univariant) univariant = Univariant { TheOnlyCase: TheOnlyCase { a: -1 } }
 
 #![allow(unused_variables)]
