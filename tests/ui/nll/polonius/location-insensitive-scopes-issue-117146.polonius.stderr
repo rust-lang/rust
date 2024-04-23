@@ -1,6 +1,8 @@
 error[E0597]: `a` does not live long enough
   --> $DIR/location-insensitive-scopes-issue-117146.rs:10:18
    |
+LL |     let a = ();
+   |         - binding `a` declared here
 LL |     let b = |_| &a;
    |             --- -^
    |             |   ||

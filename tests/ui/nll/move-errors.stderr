@@ -8,7 +8,10 @@ note: if `A` implemented `Clone`, you could clone the value
   --> $DIR/move-errors.rs:1:1
    |
 LL | struct A(String);
-   | ^^^^^^^^
+   | ^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     let b = *a;
+   |             -- you could clone this value
 help: consider removing the dereference here
    |
 LL -     let b = *a;
@@ -28,7 +31,10 @@ note: if `A` implemented `Clone`, you could clone the value
   --> $DIR/move-errors.rs:1:1
    |
 LL | struct A(String);
-   | ^^^^^^^^
+   | ^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     let b = a[0];
+   |             ---- you could clone this value
 help: consider borrowing here
    |
 LL |     let b = &a[0];
@@ -44,7 +50,10 @@ note: if `A` implemented `Clone`, you could clone the value
   --> $DIR/move-errors.rs:1:1
    |
 LL | struct A(String);
-   | ^^^^^^^^
+   | ^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     let s = **r;
+   |             --- you could clone this value
 help: consider removing the dereference here
    |
 LL -     let s = **r;
@@ -61,7 +70,10 @@ note: if `A` implemented `Clone`, you could clone the value
   --> $DIR/move-errors.rs:1:1
    |
 LL | struct A(String);
-   | ^^^^^^^^
+   | ^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     let s = *r;
+   |             -- you could clone this value
 help: consider removing the dereference here
    |
 LL -     let s = *r;
@@ -81,7 +93,10 @@ note: if `A` implemented `Clone`, you could clone the value
   --> $DIR/move-errors.rs:1:1
    |
 LL | struct A(String);
-   | ^^^^^^^^
+   | ^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     let a = [A("".to_string())][0];
+   |             ---------------------- you could clone this value
 help: consider borrowing here
    |
 LL |     let a = &[A("".to_string())][0];
@@ -126,7 +141,10 @@ note: if `A` implemented `Clone`, you could clone the value
   --> $DIR/move-errors.rs:1:1
    |
 LL | struct A(String);
-   | ^^^^^^^^
+   | ^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     b = *a;
+   |         -- you could clone this value
 
 error[E0508]: cannot move out of type `[B; 1]`, a non-copy array
   --> $DIR/move-errors.rs:74:11
