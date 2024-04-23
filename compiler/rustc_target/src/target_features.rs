@@ -146,6 +146,7 @@ const AARCH64_ALLOWED_FEATURES: &[(&str, Stability)] = &[
     ("rcpc2", Stable),
     // FEAT_RDM
     ("rdm", Stable),
+    ("reserve-x18", Stable),
     // FEAT_SB
     ("sb", Stable),
     // FEAT_SHA1 & FEAT_SHA256
