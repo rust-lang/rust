@@ -339,6 +339,7 @@ impl Iterator for EscapeDebug {
         }
     }
 
+    #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         let n = self.len();
         (n, Some(n))
