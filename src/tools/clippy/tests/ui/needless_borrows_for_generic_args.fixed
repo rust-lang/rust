@@ -9,7 +9,7 @@ use core::ops::Deref;
 use std::any::Any;
 use std::ffi::OsStr;
 use std::fmt::{Debug, Display};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 fn main() {
@@ -124,7 +124,7 @@ fn main() {
         }
         #[allow(unused_mut)]
         fn warn(mut x: &mut Iter) {
-            takes_iter(x)
+            takes_iter(&mut x)
         }
     }
     #[clippy::msrv = "1.52.0"]
@@ -141,8 +141,8 @@ fn main() {
         let f = |arg| {
             let loc = "loc".to_owned();
             let _ = std::fs::write("x", &env); // Don't lint. In environment
-            let _ = std::fs::write("x", arg);
-            let _ = std::fs::write("x", loc);
+            let _ = std::fs::write("x", &arg);
+            let _ = std::fs::write("x", &loc);
         };
         let _ = std::fs::write("x", &env); // Don't lint. Borrowed by `f`
         f(arg);
@@ -164,7 +164,7 @@ fn main() {
         fn f(_: impl AsRef<str>) {}
 
         let x = String::new();
-        f(x);
+        f(&x);
     }
     {
         fn f(_: impl AsRef<str>) {}
@@ -298,5 +298,30 @@ fn main() {
             let owner = CustomDrop(String::default());
             check_str(&owner.0); // Don't lint. `owner` can't be partially moved because it impl Drop
         }
+    }
+    {
+        #[derive(Debug)]
+        struct X(Vec<u8>);
+
+        fn f(_: impl Debug) {}
+
+        let x = X(vec![]);
+        f(&x); // Don't lint, makes x unavailable later
+    }
+    {
+        #[derive(Debug)]
+        struct X;
+
+        impl Drop for X {
+            fn drop(&mut self) {}
+        }
+
+        fn f(_: impl Debug) {}
+
+        #[derive(Debug)]
+        struct Y(X);
+
+        let y = Y(X);
+        f(&y); // Don't lint. Has significant drop
     }
 }

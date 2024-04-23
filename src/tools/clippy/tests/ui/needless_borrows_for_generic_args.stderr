@@ -38,34 +38,10 @@ LL |         multiple_constraints_normalizes_to_same(&X, X);
    |                                                 ^^ help: change this to: `X`
 
 error: the borrowed expression implements the required traits
-  --> tests/ui/needless_borrows_for_generic_args.rs:127:24
-   |
-LL |             takes_iter(&mut x)
-   |                        ^^^^^^ help: change this to: `x`
-
-error: the borrowed expression implements the required traits
   --> tests/ui/needless_borrows_for_generic_args.rs:136:41
    |
 LL |         let _ = Command::new("ls").args(&["-a", "-l"]).status().unwrap();
    |                                         ^^^^^^^^^^^^^ help: change this to: `["-a", "-l"]`
-
-error: the borrowed expression implements the required traits
-  --> tests/ui/needless_borrows_for_generic_args.rs:144:41
-   |
-LL |             let _ = std::fs::write("x", &arg);
-   |                                         ^^^^ help: change this to: `arg`
-
-error: the borrowed expression implements the required traits
-  --> tests/ui/needless_borrows_for_generic_args.rs:145:41
-   |
-LL |             let _ = std::fs::write("x", &loc);
-   |                                         ^^^^ help: change this to: `loc`
-
-error: the borrowed expression implements the required traits
-  --> tests/ui/needless_borrows_for_generic_args.rs:167:11
-   |
-LL |         f(&x);
-   |           ^^ help: change this to: `x`
 
 error: the borrowed expression implements the required traits
   --> tests/ui/needless_borrows_for_generic_args.rs:247:13
@@ -73,5 +49,5 @@ error: the borrowed expression implements the required traits
 LL |         foo(&a);
    |             ^^ help: change this to: `a`
 
-error: aborting due to 12 previous errors
+error: aborting due to 8 previous errors
 
