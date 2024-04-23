@@ -7,6 +7,7 @@
     tuple_trait,
     unboxed_closures
 )]
+#![allow(internal_features)]
 
 #[cfg(target_arch = "x86_64")]
 use std::arch::x86_64::*;
