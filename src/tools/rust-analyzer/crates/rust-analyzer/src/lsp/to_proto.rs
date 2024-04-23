@@ -92,12 +92,13 @@ pub(crate) fn structure_node_kind(kind: StructureNodeKind) -> lsp_types::SymbolK
 pub(crate) fn document_highlight_kind(
     category: ReferenceCategory,
 ) -> Option<lsp_types::DocumentHighlightKind> {
-    match category {
-        ReferenceCategory::Read => Some(lsp_types::DocumentHighlightKind::READ),
-        ReferenceCategory::Write => Some(lsp_types::DocumentHighlightKind::WRITE),
-        ReferenceCategory::Import => None,
-        ReferenceCategory::Test => None,
+    if category.contains(ReferenceCategory::WRITE) {
+        return Some(lsp_types::DocumentHighlightKind::WRITE);
     }
+    if category.contains(ReferenceCategory::READ) {
+        return Some(lsp_types::DocumentHighlightKind::READ);
+    }
+    None
 }
 
 pub(crate) fn diagnostic_severity(severity: Severity) -> lsp_types::DiagnosticSeverity {
@@ -233,7 +234,7 @@ pub(crate) fn completion_items(
         completion_item(&mut res, config, line_index, &tdpp, max_relevance, item);
     }
 
-    if let Some(limit) = config.completion().limit {
+    if let Some(limit) = config.completion(None).limit {
         res.sort_by(|item1, item2| item1.sort_text.cmp(&item2.sort_text));
         res.truncate(limit);
     }
@@ -317,7 +318,7 @@ fn completion_item(
 
     set_score(&mut lsp_item, max_relevance, item.relevance);
 
-    if config.completion().enable_imports_on_the_fly && !item.import_to_add.is_empty() {
+    if config.completion(None).enable_imports_on_the_fly && !item.import_to_add.is_empty() {
         let imports = item
             .import_to_add
             .into_iter()
@@ -479,7 +480,11 @@ pub(crate) fn inlay_hint(
 
     let data = match resolve_hash {
         Some(hash) if something_to_resolve => Some(
-            to_value(lsp_ext::InlayHintResolveData { file_id: file_id.index(), hash }).unwrap(),
+            to_value(lsp_ext::InlayHintResolveData {
+                file_id: file_id.index(),
+                hash: hash.to_string(),
+            })
+            .unwrap(),
         ),
         _ => None,
     };
@@ -650,97 +655,99 @@ pub(crate) fn semantic_token_delta(
 fn semantic_token_type_and_modifiers(
     highlight: Highlight,
 ) -> (lsp_types::SemanticTokenType, semantic_tokens::ModifierSet) {
+    use semantic_tokens::{modifiers as mods, types};
+
     let ty = match highlight.tag {
         HlTag::Symbol(symbol) => match symbol {
-            SymbolKind::Attribute => semantic_tokens::DECORATOR,
-            SymbolKind::Derive => semantic_tokens::DERIVE,
-            SymbolKind::DeriveHelper => semantic_tokens::DERIVE_HELPER,
-            SymbolKind::Module => semantic_tokens::NAMESPACE,
-            SymbolKind::Impl => semantic_tokens::TYPE_ALIAS,
-            SymbolKind::Field => semantic_tokens::PROPERTY,
-            SymbolKind::TypeParam => semantic_tokens::TYPE_PARAMETER,
-            SymbolKind::ConstParam => semantic_tokens::CONST_PARAMETER,
-            SymbolKind::LifetimeParam => semantic_tokens::LIFETIME,
-            SymbolKind::Label => semantic_tokens::LABEL,
-            SymbolKind::ValueParam => semantic_tokens::PARAMETER,
-            SymbolKind::SelfParam => semantic_tokens::SELF_KEYWORD,
-            SymbolKind::SelfType => semantic_tokens::SELF_TYPE_KEYWORD,
-            SymbolKind::Local => semantic_tokens::VARIABLE,
-            SymbolKind::Method => semantic_tokens::METHOD,
-            SymbolKind::Function => semantic_tokens::FUNCTION,
-            SymbolKind::Const => semantic_tokens::VARIABLE,
-            SymbolKind::Static => semantic_tokens::VARIABLE,
-            SymbolKind::Struct => semantic_tokens::STRUCT,
-            SymbolKind::Enum => semantic_tokens::ENUM,
-            SymbolKind::Variant => semantic_tokens::ENUM_MEMBER,
-            SymbolKind::Union => semantic_tokens::UNION,
-            SymbolKind::TypeAlias => semantic_tokens::TYPE_ALIAS,
-            SymbolKind::Trait => semantic_tokens::INTERFACE,
-            SymbolKind::TraitAlias => semantic_tokens::INTERFACE,
-            SymbolKind::Macro => semantic_tokens::MACRO,
-            SymbolKind::ProcMacro => semantic_tokens::PROC_MACRO,
-            SymbolKind::BuiltinAttr => semantic_tokens::BUILTIN_ATTRIBUTE,
-            SymbolKind::ToolModule => semantic_tokens::TOOL_MODULE,
+            SymbolKind::Attribute => types::DECORATOR,
+            SymbolKind::Derive => types::DERIVE,
+            SymbolKind::DeriveHelper => types::DERIVE_HELPER,
+            SymbolKind::Module => types::NAMESPACE,
+            SymbolKind::Impl => types::TYPE_ALIAS,
+            SymbolKind::Field => types::PROPERTY,
+            SymbolKind::TypeParam => types::TYPE_PARAMETER,
+            SymbolKind::ConstParam => types::CONST_PARAMETER,
+            SymbolKind::LifetimeParam => types::LIFETIME,
+            SymbolKind::Label => types::LABEL,
+            SymbolKind::ValueParam => types::PARAMETER,
+            SymbolKind::SelfParam => types::SELF_KEYWORD,
+            SymbolKind::SelfType => types::SELF_TYPE_KEYWORD,
+            SymbolKind::Local => types::VARIABLE,
+            SymbolKind::Method => types::METHOD,
+            SymbolKind::Function => types::FUNCTION,
+            SymbolKind::Const => types::CONST,
+            SymbolKind::Static => types::STATIC,
+            SymbolKind::Struct => types::STRUCT,
+            SymbolKind::Enum => types::ENUM,
+            SymbolKind::Variant => types::ENUM_MEMBER,
+            SymbolKind::Union => types::UNION,
+            SymbolKind::TypeAlias => types::TYPE_ALIAS,
+            SymbolKind::Trait => types::INTERFACE,
+            SymbolKind::TraitAlias => types::INTERFACE,
+            SymbolKind::Macro => types::MACRO,
+            SymbolKind::ProcMacro => types::PROC_MACRO,
+            SymbolKind::BuiltinAttr => types::BUILTIN_ATTRIBUTE,
+            SymbolKind::ToolModule => types::TOOL_MODULE,
         },
-        HlTag::AttributeBracket => semantic_tokens::ATTRIBUTE_BRACKET,
-        HlTag::BoolLiteral => semantic_tokens::BOOLEAN,
-        HlTag::BuiltinType => semantic_tokens::BUILTIN_TYPE,
-        HlTag::ByteLiteral | HlTag::NumericLiteral => semantic_tokens::NUMBER,
-        HlTag::CharLiteral => semantic_tokens::CHAR,
-        HlTag::Comment => semantic_tokens::COMMENT,
-        HlTag::EscapeSequence => semantic_tokens::ESCAPE_SEQUENCE,
-        HlTag::InvalidEscapeSequence => semantic_tokens::INVALID_ESCAPE_SEQUENCE,
-        HlTag::FormatSpecifier => semantic_tokens::FORMAT_SPECIFIER,
-        HlTag::Keyword => semantic_tokens::KEYWORD,
-        HlTag::None => semantic_tokens::GENERIC,
+        HlTag::AttributeBracket => types::ATTRIBUTE_BRACKET,
+        HlTag::BoolLiteral => types::BOOLEAN,
+        HlTag::BuiltinType => types::BUILTIN_TYPE,
+        HlTag::ByteLiteral | HlTag::NumericLiteral => types::NUMBER,
+        HlTag::CharLiteral => types::CHAR,
+        HlTag::Comment => types::COMMENT,
+        HlTag::EscapeSequence => types::ESCAPE_SEQUENCE,
+        HlTag::InvalidEscapeSequence => types::INVALID_ESCAPE_SEQUENCE,
+        HlTag::FormatSpecifier => types::FORMAT_SPECIFIER,
+        HlTag::Keyword => types::KEYWORD,
+        HlTag::None => types::GENERIC,
         HlTag::Operator(op) => match op {
-            HlOperator::Bitwise => semantic_tokens::BITWISE,
-            HlOperator::Arithmetic => semantic_tokens::ARITHMETIC,
-            HlOperator::Logical => semantic_tokens::LOGICAL,
-            HlOperator::Comparison => semantic_tokens::COMPARISON,
-            HlOperator::Other => semantic_tokens::OPERATOR,
+            HlOperator::Bitwise => types::BITWISE,
+            HlOperator::Arithmetic => types::ARITHMETIC,
+            HlOperator::Logical => types::LOGICAL,
+            HlOperator::Comparison => types::COMPARISON,
+            HlOperator::Other => types::OPERATOR,
         },
-        HlTag::StringLiteral => semantic_tokens::STRING,
-        HlTag::UnresolvedReference => semantic_tokens::UNRESOLVED_REFERENCE,
+        HlTag::StringLiteral => types::STRING,
+        HlTag::UnresolvedReference => types::UNRESOLVED_REFERENCE,
         HlTag::Punctuation(punct) => match punct {
-            HlPunct::Bracket => semantic_tokens::BRACKET,
-            HlPunct::Brace => semantic_tokens::BRACE,
-            HlPunct::Parenthesis => semantic_tokens::PARENTHESIS,
-            HlPunct::Angle => semantic_tokens::ANGLE,
-            HlPunct::Comma => semantic_tokens::COMMA,
-            HlPunct::Dot => semantic_tokens::DOT,
-            HlPunct::Colon => semantic_tokens::COLON,
-            HlPunct::Semi => semantic_tokens::SEMICOLON,
-            HlPunct::Other => semantic_tokens::PUNCTUATION,
-            HlPunct::MacroBang => semantic_tokens::MACRO_BANG,
+            HlPunct::Bracket => types::BRACKET,
+            HlPunct::Brace => types::BRACE,
+            HlPunct::Parenthesis => types::PARENTHESIS,
+            HlPunct::Angle => types::ANGLE,
+            HlPunct::Comma => types::COMMA,
+            HlPunct::Dot => types::DOT,
+            HlPunct::Colon => types::COLON,
+            HlPunct::Semi => types::SEMICOLON,
+            HlPunct::Other => types::PUNCTUATION,
+            HlPunct::MacroBang => types::MACRO_BANG,
         },
     };
 
     let mut mods = semantic_tokens::ModifierSet::default();
     for modifier in highlight.mods.iter() {
         let modifier = match modifier {
-            HlMod::Associated => semantic_tokens::ASSOCIATED,
-            HlMod::Async => semantic_tokens::ASYNC,
-            HlMod::Attribute => semantic_tokens::ATTRIBUTE_MODIFIER,
-            HlMod::Callable => semantic_tokens::CALLABLE,
-            HlMod::Const => semantic_tokens::CONSTANT,
-            HlMod::Consuming => semantic_tokens::CONSUMING,
-            HlMod::ControlFlow => semantic_tokens::CONTROL_FLOW,
-            HlMod::CrateRoot => semantic_tokens::CRATE_ROOT,
-            HlMod::DefaultLibrary => semantic_tokens::DEFAULT_LIBRARY,
-            HlMod::Definition => semantic_tokens::DECLARATION,
-            HlMod::Documentation => semantic_tokens::DOCUMENTATION,
-            HlMod::Injected => semantic_tokens::INJECTED,
-            HlMod::IntraDocLink => semantic_tokens::INTRA_DOC_LINK,
-            HlMod::Library => semantic_tokens::LIBRARY,
-            HlMod::Macro => semantic_tokens::MACRO_MODIFIER,
-            HlMod::ProcMacro => semantic_tokens::PROC_MACRO_MODIFIER,
-            HlMod::Mutable => semantic_tokens::MUTABLE,
-            HlMod::Public => semantic_tokens::PUBLIC,
-            HlMod::Reference => semantic_tokens::REFERENCE,
-            HlMod::Static => semantic_tokens::STATIC,
-            HlMod::Trait => semantic_tokens::TRAIT_MODIFIER,
-            HlMod::Unsafe => semantic_tokens::UNSAFE,
+            HlMod::Associated => mods::ASSOCIATED,
+            HlMod::Async => mods::ASYNC,
+            HlMod::Attribute => mods::ATTRIBUTE_MODIFIER,
+            HlMod::Callable => mods::CALLABLE,
+            HlMod::Const => mods::CONSTANT,
+            HlMod::Consuming => mods::CONSUMING,
+            HlMod::ControlFlow => mods::CONTROL_FLOW,
+            HlMod::CrateRoot => mods::CRATE_ROOT,
+            HlMod::DefaultLibrary => mods::DEFAULT_LIBRARY,
+            HlMod::Definition => mods::DECLARATION,
+            HlMod::Documentation => mods::DOCUMENTATION,
+            HlMod::Injected => mods::INJECTED,
+            HlMod::IntraDocLink => mods::INTRA_DOC_LINK,
+            HlMod::Library => mods::LIBRARY,
+            HlMod::Macro => mods::MACRO_MODIFIER,
+            HlMod::ProcMacro => mods::PROC_MACRO_MODIFIER,
+            HlMod::Mutable => mods::MUTABLE,
+            HlMod::Public => mods::PUBLIC,
+            HlMod::Reference => mods::REFERENCE,
+            HlMod::Static => mods::STATIC,
+            HlMod::Trait => mods::TRAIT_MODIFIER,
+            HlMod::Unsafe => mods::UNSAFE,
         };
         mods |= modifier;
     }

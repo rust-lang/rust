@@ -27,6 +27,7 @@ use crate::{
     consteval::ConstEvalError,
     db::{HirDatabase, InternedClosure},
     display::HirDisplay,
+    error_lifetime,
     infer::{CaptureKind, CapturedItem, TypeMismatch},
     inhabitedness::is_ty_uninhabited_from,
     layout::LayoutError,
@@ -90,7 +91,7 @@ pub enum MirLowerError {
     UnresolvedField,
     UnsizedTemporary(Ty),
     MissingFunctionDefinition(DefWithBodyId, ExprId),
-    TypeMismatch(TypeMismatch),
+    TypeMismatch(Option<TypeMismatch>),
     /// This should never happen. Type mismatch should catch everything.
     TypeError(&'static str),
     NotSupported(String),
@@ -170,14 +171,15 @@ impl MirLowerError {
                     body.pretty_print_expr(db.upcast(), *owner, *it)
                 )?;
             }
-            MirLowerError::TypeMismatch(e) => {
-                writeln!(
+            MirLowerError::TypeMismatch(e) => match e {
+                Some(e) => writeln!(
                     f,
                     "Type mismatch: Expected {}, found {}",
                     e.expected.display(db),
                     e.actual.display(db),
-                )?;
-            }
+                )?,
+                None => writeln!(f, "Type mismatch: types mismatch with {{unknown}}",)?,
+            },
             MirLowerError::GenericArgNotProvided(id, subst) => {
                 let parent = id.parent;
                 let param = &db.generic_params(parent).type_or_consts[id.local_id];
@@ -493,9 +495,11 @@ impl<'ctx> MirLowerCtx<'ctx> {
                                     ty,
                                     value: chalk_ir::ConstValue::BoundVar(BoundVar::new(
                                         DebruijnIndex::INNERMOST,
-                                        gen.param_idx(p.into()).ok_or(MirLowerError::TypeError(
-                                            "fail to lower const generic param",
-                                        ))?,
+                                        gen.type_or_const_param_idx(p.into()).ok_or(
+                                            MirLowerError::TypeError(
+                                                "fail to lower const generic param",
+                                            ),
+                                        )?,
                                     )),
                                 }
                                 .intern(Interner),
@@ -1702,7 +1706,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
     }
 
     fn is_uninhabited(&self, expr_id: ExprId) -> bool {
-        is_ty_uninhabited_from(&self.infer[expr_id], self.owner.module(self.db.upcast()), self.db)
+        is_ty_uninhabited_from(self.db, &self.infer[expr_id], self.owner.module(self.db.upcast()))
     }
 
     /// This function push `StorageLive` statement for the binding, and applies changes to add `StorageDead` and
@@ -2032,10 +2036,12 @@ pub fn mir_body_for_closure_query(
     let closure_local = ctx.result.locals.alloc(Local {
         ty: match kind {
             FnTrait::FnOnce => infer[expr].clone(),
-            FnTrait::FnMut => TyKind::Ref(Mutability::Mut, static_lifetime(), infer[expr].clone())
-                .intern(Interner),
-            FnTrait::Fn => TyKind::Ref(Mutability::Not, static_lifetime(), infer[expr].clone())
-                .intern(Interner),
+            FnTrait::FnMut => {
+                TyKind::Ref(Mutability::Mut, error_lifetime(), infer[expr].clone()).intern(Interner)
+            }
+            FnTrait::Fn => {
+                TyKind::Ref(Mutability::Not, error_lifetime(), infer[expr].clone()).intern(Interner)
+            }
         },
     });
     ctx.result.param_locals.push(closure_local);
@@ -2152,8 +2158,10 @@ pub fn lower_to_mir(
     // need to take this input explicitly.
     root_expr: ExprId,
 ) -> Result<MirBody> {
-    if let Some((_, it)) = infer.type_mismatches().next() {
-        return Err(MirLowerError::TypeMismatch(it.clone()));
+    if infer.has_errors {
+        return Err(MirLowerError::TypeMismatch(
+            infer.type_mismatches().next().map(|(_, it)| it.clone()),
+        ));
     }
     let mut ctx = MirLowerCtx::new(db, owner, body, infer);
     // 0 is return local

@@ -1522,6 +1522,7 @@ extern "C" void LLVMRustFreeOperandBundleDef(OperandBundleDef *Bundle) {
   delete Bundle;
 }
 
+// OpBundlesIndirect is an array of pointers (*not* a pointer to an array).
 extern "C" LLVMValueRef LLVMRustBuildCall(LLVMBuilderRef B, LLVMTypeRef Ty, LLVMValueRef Fn,
                                           LLVMValueRef *Args, unsigned NumArgs,
                                           OperandBundleDef **OpBundlesIndirect,
@@ -1544,6 +1545,33 @@ extern "C" LLVMValueRef LLVMRustBuildCall(LLVMBuilderRef B, LLVMTypeRef Ty, LLVM
 extern "C" LLVMValueRef LLVMRustGetInstrProfIncrementIntrinsic(LLVMModuleRef M) {
   return wrap(llvm::Intrinsic::getDeclaration(
       unwrap(M), llvm::Intrinsic::instrprof_increment));
+}
+
+extern "C" LLVMValueRef LLVMRustGetInstrProfMCDCParametersIntrinsic(LLVMModuleRef M) {
+#if LLVM_VERSION_GE(18, 0)
+  return wrap(llvm::Intrinsic::getDeclaration(
+      unwrap(M), llvm::Intrinsic::instrprof_mcdc_parameters));
+#else
+  report_fatal_error("LLVM 18.0 is required for mcdc intrinsic functions");
+#endif
+}
+
+extern "C" LLVMValueRef LLVMRustGetInstrProfMCDCTVBitmapUpdateIntrinsic(LLVMModuleRef M) {
+#if LLVM_VERSION_GE(18, 0)
+  return wrap(llvm::Intrinsic::getDeclaration(
+      unwrap(M), llvm::Intrinsic::instrprof_mcdc_tvbitmap_update));
+#else
+  report_fatal_error("LLVM 18.0 is required for mcdc intrinsic functions");
+#endif
+}
+
+extern "C" LLVMValueRef LLVMRustGetInstrProfMCDCCondBitmapIntrinsic(LLVMModuleRef M) {
+#if LLVM_VERSION_GE(18, 0)
+  return wrap(llvm::Intrinsic::getDeclaration(
+      unwrap(M), llvm::Intrinsic::instrprof_mcdc_condbitmap_update));
+#else
+  report_fatal_error("LLVM 18.0 is required for mcdc intrinsic functions");
+#endif
 }
 
 extern "C" LLVMValueRef LLVMRustBuildMemCpy(LLVMBuilderRef B,
@@ -1574,6 +1602,7 @@ extern "C" LLVMValueRef LLVMRustBuildMemSet(LLVMBuilderRef B,
       unwrap(Dst), unwrap(Val), unwrap(Size), MaybeAlign(DstAlign), IsVolatile));
 }
 
+// OpBundlesIndirect is an array of pointers (*not* a pointer to an array).
 extern "C" LLVMValueRef
 LLVMRustBuildInvoke(LLVMBuilderRef B, LLVMTypeRef Ty, LLVMValueRef Fn,
                     LLVMValueRef *Args, unsigned NumArgs,
@@ -1596,6 +1625,7 @@ LLVMRustBuildInvoke(LLVMBuilderRef B, LLVMTypeRef Ty, LLVMValueRef Fn,
                                       Name));
 }
 
+// OpBundlesIndirect is an array of pointers (*not* a pointer to an array).
 extern "C" LLVMValueRef
 LLVMRustBuildCallBr(LLVMBuilderRef B, LLVMTypeRef Ty, LLVMValueRef Fn,
                     LLVMBasicBlockRef DefaultDest,

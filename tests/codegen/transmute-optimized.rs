@@ -1,6 +1,5 @@
 //@ compile-flags: -O -Z merge-functions=disabled
 #![crate_type = "lib"]
-#![feature(generic_nonzero)]
 
 // This tests that LLVM can optimize based on the niches in the source or
 // destination types for transmutes.

@@ -1,4 +1,4 @@
-//@ unit-test: DataflowConstProp
+//@ test-mir-pass: DataflowConstProp
 
 // EMIT_MIR self_assign_add.main.DataflowConstProp.diff
 

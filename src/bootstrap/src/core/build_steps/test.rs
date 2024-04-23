@@ -923,7 +923,7 @@ impl Step for RustdocJSStd {
             builder.top_stage,
             self.target,
             builder,
-            DocumentationFormat::HTML,
+            DocumentationFormat::Html,
         ));
         let _guard = builder.msg(
             Kind::Test,
@@ -1389,10 +1389,9 @@ impl Step for RunMakeSupport {
         builder.run(&mut cargo);
 
         let lib_name = "librun_make_support.rlib";
-        let lib = builder.tools_dir(self.compiler).join(&lib_name);
+        let lib = builder.tools_dir(self.compiler).join(lib_name);
 
-        let cargo_out =
-            builder.cargo_out(self.compiler, Mode::ToolStd, self.target).join(&lib_name);
+        let cargo_out = builder.cargo_out(self.compiler, Mode::ToolStd, self.target).join(lib_name);
         builder.copy_link(&cargo_out, &lib);
         lib
     }
@@ -1434,8 +1433,8 @@ host_test!(RustdocJson { path: "tests/rustdoc-json", mode: "rustdoc-json", suite
 
 host_test!(Pretty { path: "tests/pretty", mode: "pretty", suite: "pretty" });
 
-// Special-handling is needed for `run-make`, so don't use `default_test` for defining `RunMake`
-// tests.
+/// Special-handling is needed for `run-make`, so don't use `default_test` for defining `RunMake`
+/// tests.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct RunMake {
     pub compiler: Compiler,
@@ -1528,10 +1527,10 @@ impl Coverage {
 
 impl Step for Coverage {
     type Output = ();
-    // We rely on the individual CoverageMap/CoverageRun steps to run themselves.
+    /// We rely on the individual CoverageMap/CoverageRun steps to run themselves.
     const DEFAULT: bool = false;
-    // When manually invoked, try to run as much as possible.
-    // Compiletest will automatically skip the "coverage-run" tests if necessary.
+    /// When manually invoked, try to run as much as possible.
+    /// Compiletest will automatically skip the "coverage-run" tests if necessary.
     const ONLY_HOSTS: bool = false;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -2483,6 +2482,7 @@ impl Step for CrateLibrustc {
 /// Given a `cargo test` subcommand, add the appropriate flags and run it.
 ///
 /// Returns whether the test succeeded.
+#[allow(clippy::too_many_arguments)] // FIXME: reduce the number of args and remove this.
 fn run_cargo_test<'a>(
     cargo: impl Into<Command>,
     libtest_args: &[&str],

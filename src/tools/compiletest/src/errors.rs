@@ -118,7 +118,7 @@ fn parse_expected(
     //     //[rev1]~
     //     //[rev1,rev2]~^^
     static RE: Lazy<Regex> =
-        Lazy::new(|| Regex::new(r"//(?:\[(?P<revs>[\w,]+)])?~(?P<adjust>\||\^*)").unwrap());
+        Lazy::new(|| Regex::new(r"//(?:\[(?P<revs>[\w\-,]+)])?~(?P<adjust>\||\^*)").unwrap());
 
     let captures = RE.captures(line)?;
 
@@ -178,3 +178,6 @@ fn parse_expected(
     );
     Some((which, Error { line_num, kind, msg }))
 }
+
+#[cfg(test)]
+mod tests;

@@ -351,8 +351,8 @@ $ llvm-cov report \
 This unstable option provides finer control over some aspects of coverage
 instrumentation. Pass one or more of the following values, separated by commas.
 
-- `branch` or `no-branch`
-  - Enables or disables branch coverage instrumentation.
+- Either `no-branch`, `branch` or `mcdc`
+  - `branch` enables branch coverage instrumentation and `mcdc` further enables modified condition/decision coverage instrumentation. `no-branch` disables branch coverage instrumentation, which is same as do not pass `branch` or `mcdc`.
 
 ## Other references
 

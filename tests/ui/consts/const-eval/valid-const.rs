@@ -1,7 +1,6 @@
 //@ check-pass
 //
 // Some constants that *are* valid
-#![feature(generic_nonzero)]
 
 use std::mem;
 use std::ptr::NonNull;

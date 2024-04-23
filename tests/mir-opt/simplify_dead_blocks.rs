@@ -1,4 +1,4 @@
-//@ unit-test: SimplifyCfg-after-unreachable-enum-branching
+//@ test-mir-pass: SimplifyCfg-after-unreachable-enum-branching
 #![feature(custom_mir, core_intrinsics)]
 #![crate_type = "lib"]
 

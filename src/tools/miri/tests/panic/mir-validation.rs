@@ -1,9 +1,13 @@
 //! Ensure that the MIR validator runs on Miri's input.
-//@normalize-stderr-test: "\n +[0-9]+:[^\n]+" -> ""
-//@normalize-stderr-test: "\n +at [^\n]+" -> ""
-//@normalize-stderr-test: "\n +\[\.\.\. omitted [0-9]+ frames? \.\.\.\]" -> ""
+//@rustc-env:RUSTC_ICE=0
+//@normalize-stderr-test: "\n +[0-9]+:.+" -> ""
+//@normalize-stderr-test: "\n +at .+" -> ""
+//@normalize-stderr-test: "\n +\[\.\.\. omitted [0-9]+ frames? \.\.\.\].*" -> ""
 //@normalize-stderr-test: "\n[ =]*note:.*" -> ""
 //@normalize-stderr-test: "DefId\([^()]*\)" -> "DefId"
+// Somehow on rustc Windows CI, the "Miri caused an ICE" message is not shown
+// and we don't even get a regular panic; rustc aborts with a different exit code instead.
+//@ignore-host-windows
 #![feature(custom_mir, core_intrinsics)]
 use core::intrinsics::mir::*;
 

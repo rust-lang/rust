@@ -158,6 +158,9 @@ pub trait Context {
     /// Check if this is an empty DropGlue shim.
     fn is_empty_drop_shim(&self, def: InstanceDef) -> bool;
 
+    /// Check if this is an empty AsyncDropGlueCtor shim.
+    fn is_empty_async_drop_ctor_shim(&self, def: InstanceDef) -> bool;
+
     /// Convert a non-generic crate item into an instance.
     /// This function will panic if the item is generic.
     fn mono_instance(&self, def_id: DefId) -> Instance;

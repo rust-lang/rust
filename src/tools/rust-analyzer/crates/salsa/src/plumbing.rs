@@ -1,4 +1,3 @@
-//!
 #![allow(missing_docs)]
 
 use crate::debug::TableEntry;

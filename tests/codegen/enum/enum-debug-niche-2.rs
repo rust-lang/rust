@@ -7,7 +7,7 @@
 // CHECK: {{.*}}DICompositeType{{.*}}tag: DW_TAG_variant_part,{{.*}}size: 32,{{.*}}
 // CHECK: {{.*}}DIDerivedType{{.*}}tag: DW_TAG_member,{{.*}}name: "Placeholder",{{.*}}extraData: i128 4294967295{{[,)].*}}
 // CHECK: {{.*}}DIDerivedType{{.*}}tag: DW_TAG_member,{{.*}}name: "Error",{{.*}}extraData: i128 0{{[,)].*}}
-#![feature(generic_nonzero, never_type)]
+#![feature(never_type)]
 
 #[derive(Copy, Clone)]
 pub struct Entity {

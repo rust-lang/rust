@@ -55,7 +55,9 @@ pub(super) fn mangle<'tcx>(
     printer
         .print_def_path(
             def_id,
-            if let ty::InstanceDef::DropGlue(_, _) = instance.def {
+            if let ty::InstanceDef::DropGlue(_, _) | ty::InstanceDef::AsyncDropGlueCtorShim(_, _) =
+                instance.def
+            {
                 // Add the name of the dropped type to the symbol name
                 &*instance.args
             } else {

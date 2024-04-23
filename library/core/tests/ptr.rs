@@ -1163,3 +1163,11 @@ fn test_null_array_as_slice() {
     assert!(ptr.is_null());
     assert_eq!(ptr.len(), 4);
 }
+
+#[test]
+fn test_ptr_from_raw_parts_in_const() {
+    const EMPTY_SLICE_PTR: *const [i32] =
+        std::ptr::slice_from_raw_parts(std::ptr::without_provenance(123), 456);
+    assert_eq!(EMPTY_SLICE_PTR.addr(), 123);
+    assert_eq!(EMPTY_SLICE_PTR.len(), 456);
+}

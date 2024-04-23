@@ -130,7 +130,7 @@ impl<'tcx> OpaqueTypeCollector<'tcx> {
         TaitInBodyFinder { collector: self }.visit_expr(body);
     }
 
-    fn visit_opaque_ty(&mut self, alias_ty: &ty::AliasTy<'tcx>) {
+    fn visit_opaque_ty(&mut self, alias_ty: ty::AliasTy<'tcx>) {
         if !self.seen.insert(alias_ty.def_id.expect_local()) {
             return;
         }
@@ -205,7 +205,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
     #[instrument(skip(self), ret, level = "trace")]
     fn visit_ty(&mut self, t: Ty<'tcx>) {
         t.super_visit_with(self);
-        match t.kind() {
+        match *t.kind() {
             ty::Alias(ty::Opaque, alias_ty) if alias_ty.def_id.is_local() => {
                 self.visit_opaque_ty(alias_ty);
             }
@@ -279,7 +279,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
                     // assumption to the `param_env` of the default method. We also separately
                     // rely on that assumption here.
                     let ty = self.tcx.type_of(alias_ty.def_id).instantiate(self.tcx, alias_ty.args);
-                    let ty::Alias(ty::Opaque, alias_ty) = ty.kind() else { bug!("{ty:?}") };
+                    let ty::Alias(ty::Opaque, alias_ty) = *ty.kind() else { bug!("{ty:?}") };
                     self.visit_opaque_ty(alias_ty);
                 }
             }

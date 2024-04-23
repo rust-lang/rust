@@ -760,7 +760,7 @@ fn test_unstable_options_tracking_hash() {
     );
     tracked!(codegen_backend, Some("abc".to_string()));
     tracked!(collapse_macro_debuginfo, CollapseMacroDebuginfo::Yes);
-    tracked!(coverage_options, CoverageOptions { branch: true });
+    tracked!(coverage_options, CoverageOptions { branch: true, mcdc: true });
     tracked!(crate_attr, vec!["abc".to_string()]);
     tracked!(cross_crate_inline_threshold, InliningThreshold::Always);
     tracked!(debug_info_for_profiling, true);

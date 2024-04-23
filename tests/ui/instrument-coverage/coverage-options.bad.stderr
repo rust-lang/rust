@@ -1,2 +1,2 @@
-error: incorrect value `bad` for unstable option `coverage-options` - `branch` or `no-branch` was expected
+error: incorrect value `bad` for unstable option `coverage-options` - either  `no-branch`, `branch` or `mcdc` was expected
 

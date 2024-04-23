@@ -1,4 +1,4 @@
-//@ unit-test: InstSimplify
+//@ test-mir-pass: InstSimplify
 //@ compile-flags: -Cdebug-assertions=no -Zinline-mir
 
 // EMIT_MIR ub_check.unwrap_unchecked.InstSimplify.diff

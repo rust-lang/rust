@@ -174,6 +174,9 @@ pub use self::deref::Receiver;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::drop::Drop;
 
+#[cfg(not(bootstrap))]
+pub(crate) use self::drop::fallback_surface_drop;
+
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::function::{Fn, FnMut, FnOnce};
 
