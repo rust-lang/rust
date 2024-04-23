@@ -1952,3 +1952,234 @@ pub struct UnitBindingsDiag {
 #[help]
 #[note]
 pub struct BuiltinNamedAsmLabel;
+
+#[derive(Subdiagnostic)]
+pub struct UnexpectedCfgNameSub {
+    #[subdiagnostic]
+    pub code_sugg: unexpected_cfg_name::CodeSuggestion,
+    #[subdiagnostic]
+    pub invocation_sugg: unexpected_cfg_name::InvocationSuggestion,
+}
+
+pub mod unexpected_cfg_name {
+    use rustc_errors::DiagSymbolList;
+    use rustc_macros::Subdiagnostic;
+    use rustc_span::{Span, Symbol};
+
+    #[derive(Subdiagnostic)]
+    pub enum InvocationSuggestion {
+        #[note(lint_unexpected_cfg_name_doc_cargo)]
+        Cargo {
+            #[subdiagnostic]
+            sub: Option<AddBuildRsPrintln>,
+        },
+        #[help(lint_unexpected_cfg_name_add_cmdline_arg)]
+        #[note(lint_unexpected_cfg_name_doc_rustc)]
+        Rustc { cmdline_arg: String },
+    }
+
+    #[derive(Subdiagnostic)]
+    #[help(lint_unexpected_cfg_name_add_cargo_feature)]
+    pub struct AddBuildRsPrintln {
+        pub build_rs_println: String,
+    }
+
+    #[derive(Subdiagnostic)]
+    pub enum CodeSuggestion {
+        #[help(lint_unexpected_cfg_name_define_features)]
+        ConsiderDefiningFeatures,
+        #[suggestion(
+            lint_unexpected_cfg_name_similar_name_value,
+            applicability = "maybe-incorrect",
+            code = "{code}"
+        )]
+        SimilarNameAndValue {
+            #[primary_span]
+            span: Span,
+            code: String,
+        },
+        #[suggestion(
+            lint_unexpected_cfg_name_similar_name_no_value,
+            applicability = "maybe-incorrect",
+            code = "{code}"
+        )]
+        SimilarNameNoValue {
+            #[primary_span]
+            span: Span,
+            code: String,
+        },
+        #[suggestion(
+            lint_unexpected_cfg_name_similar_name_different_values,
+            applicability = "maybe-incorrect",
+            code = "{code}"
+        )]
+        SimilarNameDifferentValues {
+            #[primary_span]
+            span: Span,
+            code: String,
+            #[subdiagnostic]
+            expected: Option<ExpectedValues>,
+        },
+        #[suggestion(
+            lint_unexpected_cfg_name_similar_name,
+            applicability = "maybe-incorrect",
+            code = "{code}"
+        )]
+        SimilarName {
+            #[primary_span]
+            span: Span,
+            code: String,
+            #[subdiagnostic]
+            expected: Option<ExpectedValues>,
+        },
+        SimilarValues {
+            #[subdiagnostic]
+            with_similar_values: Vec<FoundWithSimilarValue>,
+            #[subdiagnostic]
+            expected_names: Option<ExpectedNames>,
+        },
+    }
+
+    #[derive(Subdiagnostic)]
+    #[help(lint_unexpected_cfg_name_expected_values)]
+    pub struct ExpectedValues {
+        pub best_match: Symbol,
+        pub possibilities: DiagSymbolList,
+    }
+
+    #[derive(Subdiagnostic)]
+    #[suggestion(
+        lint_unexpected_cfg_name_with_similar_value,
+        applicability = "maybe-incorrect",
+        code = "{code}"
+    )]
+    pub struct FoundWithSimilarValue {
+        #[primary_span]
+        pub span: Span,
+        pub code: String,
+    }
+
+    #[derive(Subdiagnostic)]
+    #[help_once(lint_unexpected_cfg_name_expected_names)]
+    pub struct ExpectedNames {
+        pub possibilities: DiagSymbolList,
+        pub and_more: usize,
+    }
+}
+
+#[derive(Subdiagnostic)]
+pub struct UnexpectedCfgValueSub {
+    #[subdiagnostic]
+    pub code_sugg: unexpected_cfg_value::CodeSuggestion,
+    #[subdiagnostic]
+    pub invocation_sugg: unexpected_cfg_value::InvocationSuggestion,
+}
+
+pub mod unexpected_cfg_value {
+    use rustc_errors::DiagSymbolList;
+    use rustc_macros::Subdiagnostic;
+    use rustc_span::{Span, Symbol};
+
+    #[derive(Subdiagnostic)]
+    pub enum CodeSuggestion {
+        ChangeValue {
+            #[subdiagnostic]
+            expected_values: ExpectedValues,
+            #[subdiagnostic]
+            suggestion: Option<ChangeValueSuggestion>,
+        },
+        #[note(lint_unexpected_cfg_value_no_expected_value)]
+        RemoveValue {
+            #[subdiagnostic]
+            suggestion: Option<RemoveValueSuggestion>,
+
+            name: Symbol,
+        },
+        #[note(lint_unexpected_cfg_value_no_expected_values)]
+        RemoveCondition {
+            #[subdiagnostic]
+            suggestion: RemoveConditionSuggestion,
+
+            name: Symbol,
+        },
+    }
+
+    #[derive(Subdiagnostic)]
+    pub enum ChangeValueSuggestion {
+        #[suggestion(
+            lint_unexpected_cfg_value_similar_name,
+            code = r#""{best_match}""#,
+            applicability = "maybe-incorrect"
+        )]
+        SimilarName {
+            #[primary_span]
+            span: Span,
+            best_match: Symbol,
+        },
+        #[suggestion(
+            lint_unexpected_cfg_value_specify_value,
+            code = r#" = "{first_possibility}""#,
+            applicability = "maybe-incorrect"
+        )]
+        SpecifyValue {
+            #[primary_span]
+            span: Span,
+            first_possibility: Symbol,
+        },
+    }
+
+    #[derive(Subdiagnostic)]
+    #[suggestion(
+        lint_unexpected_cfg_value_remove_value,
+        code = "",
+        applicability = "maybe-incorrect"
+    )]
+    pub struct RemoveValueSuggestion {
+        #[primary_span]
+        pub span: Span,
+    }
+
+    #[derive(Subdiagnostic)]
+    #[suggestion(
+        lint_unexpected_cfg_value_remove_condition,
+        code = "",
+        applicability = "maybe-incorrect"
+    )]
+    pub struct RemoveConditionSuggestion {
+        #[primary_span]
+        pub span: Span,
+    }
+
+    #[derive(Subdiagnostic)]
+    #[note(lint_unexpected_cfg_value_expected_values)]
+    pub struct ExpectedValues {
+        pub name: Symbol,
+        pub have_none_possibility: bool,
+        pub possibilities: DiagSymbolList,
+        pub and_more: usize,
+    }
+
+    #[derive(Subdiagnostic)]
+    pub enum InvocationSuggestion {
+        #[note(lint_unexpected_cfg_value_doc_cargo)]
+        Cargo(#[subdiagnostic] Option<CargoHelp>),
+        #[note(lint_unexpected_cfg_value_doc_rustc)]
+        Rustc(#[subdiagnostic] Option<RustcHelp>),
+    }
+
+    #[derive(Subdiagnostic)]
+    pub enum CargoHelp {
+        #[help(lint_unexpected_cfg_value_add_feature)]
+        AddFeature { value: Symbol },
+        #[help(lint_unexpected_cfg_value_define_features)]
+        DefineFeatures,
+        #[help(lint_unexpected_cfg_value_use_features_or_build_rs)]
+        UseFeatureOrBuildRs { build_rs_println: String },
+    }
+
+    #[derive(Subdiagnostic)]
+    #[help(lint_unexpected_cfg_value_add_cmdline_arg)]
+    pub struct RustcHelp {
+        pub cmdline_arg: String,
+    }
+}
