@@ -19,8 +19,10 @@ import yaml
 
 JOBS_YAML_PATH = Path(__file__).absolute().parent / "jobs.yml"
 
+Job = Dict[str, Any]
 
-def name_jobs(jobs: List[Dict], prefix: str) -> List[Dict]:
+
+def name_jobs(jobs: List[Dict], prefix: str) -> List[Job]:
     """
     Add a `name` attribute to each job, based on its image and the given `prefix`.
     """
@@ -29,7 +31,7 @@ def name_jobs(jobs: List[Dict], prefix: str) -> List[Dict]:
     return jobs
 
 
-def add_base_env(jobs: List[Dict], environment: Dict[str, str]) -> List[Dict]:
+def add_base_env(jobs: List[Job], environment: Dict[str, str]) -> List[Job]:
     """
     Prepends `environment` to the `env` attribute of each job.
     The `env` of each job has higher precedence than `environment`.
@@ -77,7 +79,7 @@ def find_job_type(ctx: GitHubCtx) -> Optional[JobType]:
     return None
 
 
-def calculate_jobs(job_type: JobType, job_data: Dict[str, Any]) -> List[Dict[str, Any]]:
+def calculate_jobs(job_type: JobType, job_data: Dict[str, Any]) -> List[Job]:
     if job_type == JobType.PR:
         return add_base_env(name_jobs(job_data["pr"], "PR"), job_data["envs"]["pr"])
     elif job_type == JobType.Try:
