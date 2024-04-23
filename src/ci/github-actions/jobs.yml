@@ -88,103 +88,103 @@ auto:
   #   Linux/Docker builders   #
   #############################
 
-  - name: aarch64-gnu
+  - image: aarch64-gnu
     <<: *job-aarch64-linux
 
-  - name: arm-android
+  - image: arm-android
     <<: *job-linux-8c
 
-  - name: armhf-gnu
+  - image: armhf-gnu
     <<: *job-linux-8c
 
-  - name: dist-aarch64-linux
+  - image: dist-aarch64-linux
     env:
       CODEGEN_BACKENDS: llvm,cranelift
     <<: *job-linux-8c
 
-  - name: dist-android
+  - image: dist-android
     <<: *job-linux-8c
 
-  - name: dist-arm-linux
+  - image: dist-arm-linux
     <<: *job-linux-16c
 
-  - name: dist-armhf-linux
+  - image: dist-armhf-linux
     <<: *job-linux-8c
 
-  - name: dist-armv7-linux
+  - image: dist-armv7-linux
     <<: *job-linux-8c
 
-  - name: dist-i586-gnu-i586-i686-musl
+  - image: dist-i586-gnu-i586-i686-musl
     <<: *job-linux-8c
 
-  - name: dist-i686-linux
+  - image: dist-i686-linux
     <<: *job-linux-8c
 
-  - name: dist-loongarch64-linux
+  - image: dist-loongarch64-linux
     <<: *job-linux-8c
 
-  - name: dist-ohos
+  - image: dist-ohos
     <<: *job-linux-8c
 
-  - name: dist-powerpc-linux
+  - image: dist-powerpc-linux
     <<: *job-linux-8c
 
-  - name: dist-powerpc64-linux
+  - image: dist-powerpc64-linux
     <<: *job-linux-8c
 
-  - name: dist-powerpc64le-linux
+  - image: dist-powerpc64le-linux
     <<: *job-linux-8c
 
-  - name: dist-riscv64-linux
+  - image: dist-riscv64-linux
     <<: *job-linux-8c
 
-  - name: dist-s390x-linux
+  - image: dist-s390x-linux
     <<: *job-linux-8c
 
-  - name: dist-various-1
+  - image: dist-various-1
     <<: *job-linux-8c
 
-  - name: dist-various-2
+  - image: dist-various-2
     <<: *job-linux-8c
 
-  - name: dist-x86_64-freebsd
+  - image: dist-x86_64-freebsd
     <<: *job-linux-8c
 
-  - name: dist-x86_64-illumos
+  - image: dist-x86_64-illumos
     <<: *job-linux-8c
 
-  - name: dist-x86_64-linux
+  - image: dist-x86_64-linux
     env:
       CODEGEN_BACKENDS: llvm,cranelift
     <<: *job-linux-16c
 
-  - name: dist-x86_64-linux-alt
+  - image: dist-x86_64-linux-alt
     env:
       IMAGE: dist-x86_64-linux
       CODEGEN_BACKENDS: llvm,cranelift
     <<: *job-linux-16c
 
-  - name: dist-x86_64-musl
+  - image: dist-x86_64-musl
     env:
       CODEGEN_BACKENDS: llvm,cranelift
     <<: *job-linux-8c
 
-  - name: dist-x86_64-netbsd
+  - image: dist-x86_64-netbsd
     <<: *job-linux-8c
 
-  - name: i686-gnu
+  - image: i686-gnu
     <<: *job-linux-8c
 
-  - name: i686-gnu-nopt
+  - image: i686-gnu-nopt
     <<: *job-linux-8c
 
-  - name: mingw-check
+  - image: mingw-check
     <<: *job-linux-4c
 
-  - name: test-various
+  - image: test-various
     <<: *job-linux-8c
 
-  - name: x86_64-gnu
+  - image: x86_64-gnu
     <<: *job-linux-4c
 
   # This job ensures commits landing on nightly still pass the full
@@ -192,7 +192,7 @@ auto:
   # depend on the channel being built (for example if they include the
   # channel name on the output), and this builder prevents landing
   # changes that would result in broken builds after a promotion.
-  - name: x86_64-gnu-stable
+  - image: x86_64-gnu-stable
     env:
       IMAGE: x86_64-gnu
       RUST_CI_OVERRIDE_RELEASE_CHANNEL: stable
@@ -202,10 +202,10 @@ auto:
       CI_ONLY_WHEN_CHANNEL: nightly
     <<: *job-linux-4c
 
-  - name: x86_64-gnu-aux
+  - image: x86_64-gnu-aux
     <<: *job-linux-4c
 
-  - name: x86_64-gnu-integration
+  - image: x86_64-gnu-integration
     env:
       # Only run this job on the nightly channel. Fuchsia requires
       # nightly features to compile, and this job would fail if
@@ -213,26 +213,26 @@ auto:
       CI_ONLY_WHEN_CHANNEL: nightly
     <<: *job-linux-8c
 
-  - name: x86_64-gnu-debug
+  - image: x86_64-gnu-debug
     <<: *job-linux-8c
 
-  - name: x86_64-gnu-distcheck
+  - image: x86_64-gnu-distcheck
     <<: *job-linux-8c
 
-  - name: x86_64-gnu-llvm-18
+  - image: x86_64-gnu-llvm-18
     env:
       RUST_BACKTRACE: 1
     <<: *job-linux-8c
 
-  - name: x86_64-gnu-llvm-17
+  - image: x86_64-gnu-llvm-17
     env:
       RUST_BACKTRACE: 1
     <<: *job-linux-8c
 
-  - name: x86_64-gnu-nopt
+  - image: x86_64-gnu-nopt
     <<: *job-linux-4c
 
-  - name: x86_64-gnu-tools
+  - image: x86_64-gnu-tools
     env:
       DEPLOY_TOOLSTATES_JSON: toolstates-linux.json
     <<: *job-linux-8c
@@ -241,7 +241,7 @@ auto:
   #  macOS Builders  #
   ####################
 
-  - name: dist-x86_64-apple
+  - image: dist-x86_64-apple
     env:
       SCRIPT: ./x.py dist bootstrap --include-default-paths --host=x86_64-apple-darwin --target=x86_64-apple-darwin
       RUST_CONFIGURE_ARGS: --enable-full-tools --enable-sanitizers --enable-profiler --set rust.jemalloc --set rust.lto=thin --set rust.codegen-units=1
@@ -255,7 +255,7 @@ auto:
       CODEGEN_BACKENDS: llvm,cranelift
     <<: *job-macos-xl
 
-  - name: dist-apple-various
+  - image: dist-apple-various
     env:
       SCRIPT: ./x.py dist bootstrap --include-default-paths --host='' --target=aarch64-apple-ios,x86_64-apple-ios,aarch64-apple-ios-sim
       RUST_CONFIGURE_ARGS: --enable-sanitizers --enable-profiler --set rust.jemalloc
@@ -267,7 +267,7 @@ auto:
       NO_OVERFLOW_CHECKS: 1
     <<: *job-macos-xl
 
-  - name: x86_64-apple-1
+  - image: x86_64-apple-1
     env: &env-x86_64-apple-tests
       SCRIPT: ./x.py --stage 2 test --skip tests/ui --skip tests/rustdoc --skip tests/run-make-fulldeps
       RUST_CONFIGURE_ARGS: --build=x86_64-apple-darwin --enable-sanitizers --enable-profiler --set rust.jemalloc
@@ -280,14 +280,14 @@ auto:
       NO_OVERFLOW_CHECKS: 1
     <<: *job-macos-xl
 
-  - name: x86_64-apple-2
+  - image: x86_64-apple-2
     env:
       SCRIPT: ./x.py --stage 2 test tests/ui tests/rustdoc tests/run-make-fulldeps
       <<: *env-x86_64-apple-tests
     <<: *job-macos-xl
 
   # This target only needs to support 11.0 and up as nothing else supports the hardware
-  - name: dist-aarch64-apple
+  - image: dist-aarch64-apple
     env:
       SCRIPT: ./x.py dist bootstrap --include-default-paths --host=aarch64-apple-darwin --target=aarch64-apple-darwin
       RUST_CONFIGURE_ARGS: >-
@@ -309,7 +309,7 @@ auto:
     <<: *job-macos-m1
 
   # This target only needs to support 11.0 and up as nothing else supports the hardware
-  - name: aarch64-apple
+  - image: aarch64-apple
     env:
       SCRIPT: ./x.py --stage 2 test --host=aarch64-apple-darwin --target=aarch64-apple-darwin
       RUST_CONFIGURE_ARGS: >-
@@ -330,19 +330,19 @@ auto:
   #  Windows Builders  #
   ######################
 
-  - name: x86_64-msvc
+  - image: x86_64-msvc
     env:
       RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-profiler
       SCRIPT: make ci-msvc
     <<: *job-windows-8c
 
-  - name: i686-msvc
+  - image: i686-msvc
     env:
       RUST_CONFIGURE_ARGS: --build=i686-pc-windows-msvc
       SCRIPT: make ci-msvc
     <<: *job-windows-8c
 
-  - name: x86_64-msvc-ext
+  - image: x86_64-msvc-ext
     env:
       SCRIPT: python x.py --stage 2 test src/tools/cargotest src/tools/cargo && src/ci/docker/host-x86_64/x86_64-gnu-tools/checktools.sh x.py /tmp/toolstate/toolstates.json windows
       HOST_TARGET: x86_64-pc-windows-msvc
@@ -366,7 +366,7 @@ auto:
   # came from the mingw-w64 SourceForge download site. Unfortunately
   # SourceForge is notoriously flaky, so we mirror it on our own infrastructure.
 
-  - name: i686-mingw
+  - image: i686-mingw
     env:
       RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu
       SCRIPT: make ci-mingw
@@ -376,7 +376,7 @@ auto:
       CUSTOM_MINGW: 1
     <<: *job-windows-8c
 
-  - name: x86_64-mingw
+  - image: x86_64-mingw
     env:
       SCRIPT: make ci-mingw
       RUST_CONFIGURE_ARGS: >-
@@ -388,7 +388,7 @@ auto:
       CUSTOM_MINGW: 1
     <<: *job-windows-8c
 
-  - name: dist-x86_64-msvc
+  - image: dist-x86_64-msvc
     env:
       RUST_CONFIGURE_ARGS: >-
         --build=x86_64-pc-windows-msvc
@@ -401,7 +401,7 @@ auto:
       DIST_REQUIRE_ALL_TOOLS: 1
     <<: *job-windows-8c
 
-  - name: dist-i686-msvc
+  - image: dist-i686-msvc
     env:
       RUST_CONFIGURE_ARGS: >-
         --build=i686-pc-windows-msvc
@@ -413,7 +413,7 @@ auto:
       DIST_REQUIRE_ALL_TOOLS: 1
     <<: *job-windows-8c
 
-  - name: dist-aarch64-msvc
+  - image: dist-aarch64-msvc
     env:
       RUST_CONFIGURE_ARGS: >-
         --build=x86_64-pc-windows-msvc
@@ -424,7 +424,7 @@ auto:
       DIST_REQUIRE_ALL_TOOLS: 1
     <<: *job-windows-8c
 
-  - name: dist-i686-mingw
+  - image: dist-i686-mingw
     env:
       RUST_CONFIGURE_ARGS: >-
         --build=i686-pc-windows-gnu
@@ -438,7 +438,7 @@ auto:
       DIST_REQUIRE_ALL_TOOLS: 1
     <<: *job-windows-8c
 
-  - name: dist-x86_64-mingw
+  - image: dist-x86_64-mingw
     env:
       SCRIPT: python x.py dist bootstrap --include-default-paths
       RUST_CONFIGURE_ARGS: >-
@@ -452,7 +452,7 @@ auto:
       DIST_REQUIRE_ALL_TOOLS: 1
     <<: *job-windows-8c
 
-  - name: dist-x86_64-msvc-alt
+  - image: dist-x86_64-msvc-alt
     env:
       RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-extended --enable-profiler
       SCRIPT: python x.py dist bootstrap --include-default-paths
