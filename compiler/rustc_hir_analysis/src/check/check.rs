@@ -10,11 +10,10 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::Node;
 use rustc_infer::infer::{RegionVariableOrigin, TyCtxtInferExt};
-use rustc_infer::traits::{Obligation, TraitEngineExt as _};
+use rustc_infer::traits::Obligation;
 use rustc_lint_defs::builtin::REPR_TRANSPARENT_EXTERNAL_PRIVATE_FIELDS;
 use rustc_middle::middle::resolve_bound_vars::ResolvedArg;
 use rustc_middle::middle::stability::EvalResult;
-use rustc_middle::traits::ObligationCauseCode;
 use rustc_middle::ty::fold::BottomUpFolder;
 use rustc_middle::ty::layout::{LayoutError, MAX_SIMD_LANES};
 use rustc_middle::ty::util::{Discr, InspectCoroutineFields, IntTypeExt};
@@ -24,10 +23,10 @@ use rustc_middle::ty::{
 };
 use rustc_session::lint::builtin::{UNINHABITED_STATIC, UNSUPPORTED_CALLING_CONVENTIONS};
 use rustc_target::abi::FieldIdx;
+use rustc_trait_selection::traits;
 use rustc_trait_selection::traits::error_reporting::on_unimplemented::OnUnimplementedDirective;
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
 use rustc_trait_selection::traits::outlives_bounds::InferCtxtExt as _;
-use rustc_trait_selection::traits::{self, TraitEngine, TraitEngineExt as _};
 use rustc_type_ir::fold::TypeFoldable;
 
 use std::cell::LazyCell;
@@ -1715,55 +1714,31 @@ fn opaque_type_cycle_error(
     err.emit()
 }
 
-// FIXME(@lcnr): This should not be computed per coroutine, but instead once for
-// each typeck root.
 pub(super) fn check_coroutine_obligations(
     tcx: TyCtxt<'_>,
     def_id: LocalDefId,
 ) -> Result<(), ErrorGuaranteed> {
-    debug_assert!(tcx.is_coroutine(def_id.to_def_id()));
+    debug_assert!(!tcx.is_typeck_child(def_id.to_def_id()));
 
-    let typeck = tcx.typeck(def_id);
-    let param_env = tcx.param_env(typeck.hir_owner.def_id);
+    let typeck_results = tcx.typeck(def_id);
+    let param_env = tcx.param_env(def_id);
 
-    let coroutine_interior_predicates = &typeck.coroutine_interior_predicates[&def_id];
-    debug!(?coroutine_interior_predicates);
+    debug!(?typeck_results.coroutine_stalled_predicates);
 
     let infcx = tcx
         .infer_ctxt()
         // typeck writeback gives us predicates with their regions erased.
         // As borrowck already has checked lifetimes, we do not need to do it again.
         .ignoring_regions()
-        // Bind opaque types to type checking root, as they should have been checked by borrowck,
-        // but may show up in some cases, like when (root) obligations are stalled in the new solver.
-        .with_opaque_type_inference(typeck.hir_owner.def_id)
+        .with_opaque_type_inference(def_id)
         .build();
 
-    let mut fulfillment_cx = <dyn TraitEngine<'_>>::new(&infcx);
-    for (predicate, cause) in coroutine_interior_predicates {
-        let obligation = Obligation::new(tcx, cause.clone(), param_env, *predicate);
-        fulfillment_cx.register_predicate_obligation(&infcx, obligation);
+    let ocx = ObligationCtxt::new(&infcx);
+    for (predicate, cause) in &typeck_results.coroutine_stalled_predicates {
+        ocx.register_obligation(Obligation::new(tcx, cause.clone(), param_env, *predicate));
     }
 
-    if (tcx.features().unsized_locals || tcx.features().unsized_fn_params)
-        && let Some(coroutine) = tcx.mir_coroutine_witnesses(def_id)
-    {
-        for field_ty in coroutine.field_tys.iter() {
-            fulfillment_cx.register_bound(
-                &infcx,
-                param_env,
-                field_ty.ty,
-                tcx.require_lang_item(hir::LangItem::Sized, Some(field_ty.source_info.span)),
-                ObligationCause::new(
-                    field_ty.source_info.span,
-                    def_id,
-                    ObligationCauseCode::SizedCoroutineInterior(def_id),
-                ),
-            );
-        }
-    }
-
-    let errors = fulfillment_cx.select_all_or_error(&infcx);
+    let errors = ocx.select_all_or_error();
     debug!(?errors);
     if !errors.is_empty() {
         return Err(infcx.err_ctxt().report_fulfillment_errors(errors));

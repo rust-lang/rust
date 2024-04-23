@@ -384,7 +384,7 @@ impl<'tcx> Validator<'_, 'tcx> {
         match kind {
             // Reject these borrow types just to be safe.
             // FIXME(RalfJung): could we allow them? Should we? No point in it until we have a usecase.
-            BorrowKind::Fake | BorrowKind::Mut { kind: MutBorrowKind::ClosureCapture } => {
+            BorrowKind::Fake(_) | BorrowKind::Mut { kind: MutBorrowKind::ClosureCapture } => {
                 return Err(Unpromotable);
             }
 

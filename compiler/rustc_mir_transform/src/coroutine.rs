@@ -80,6 +80,10 @@ use rustc_span::symbol::sym;
 use rustc_span::Span;
 use rustc_target::abi::{FieldIdx, VariantIdx};
 use rustc_target::spec::PanicStrategy;
+use rustc_trait_selection::infer::TyCtxtInferExt as _;
+use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
+use rustc_trait_selection::traits::ObligationCtxt;
+use rustc_trait_selection::traits::{ObligationCause, ObligationCauseCode};
 use std::{iter, ops};
 
 pub struct StateTransform;
@@ -1584,8 +1588,44 @@ pub(crate) fn mir_coroutine_witnesses<'tcx>(
     let (_, coroutine_layout, _) = compute_layout(liveness_info, body);
 
     check_suspend_tys(tcx, &coroutine_layout, body);
+    check_field_tys_sized(tcx, &coroutine_layout, def_id);
 
     Some(coroutine_layout)
+}
+
+fn check_field_tys_sized<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    coroutine_layout: &CoroutineLayout<'tcx>,
+    def_id: LocalDefId,
+) {
+    // No need to check if unsized_locals/unsized_fn_params is disabled,
+    // since we will error during typeck.
+    if !tcx.features().unsized_locals && !tcx.features().unsized_fn_params {
+        return;
+    }
+
+    let infcx = tcx.infer_ctxt().ignoring_regions().build();
+    let param_env = tcx.param_env(def_id);
+
+    let ocx = ObligationCtxt::new(&infcx);
+    for field_ty in &coroutine_layout.field_tys {
+        ocx.register_bound(
+            ObligationCause::new(
+                field_ty.source_info.span,
+                def_id,
+                ObligationCauseCode::SizedCoroutineInterior(def_id),
+            ),
+            param_env,
+            field_ty.ty,
+            tcx.require_lang_item(hir::LangItem::Sized, Some(field_ty.source_info.span)),
+        );
+    }
+
+    let errors = ocx.select_all_or_error();
+    debug!(?errors);
+    if !errors.is_empty() {
+        infcx.err_ctxt().report_fulfillment_errors(errors);
+    }
 }
 
 impl<'tcx> MirPass<'tcx> for StateTransform {

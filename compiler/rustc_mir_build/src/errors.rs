@@ -423,7 +423,7 @@ impl Subdiagnostic for UnsafeNotInheritedLintNote {
     fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
-        _f: F,
+        _f: &F,
     ) {
         diag.span_note(self.signature_span, fluent::mir_build_unsafe_fn_safe_body);
         let body_start = self.body_span.shrink_to_lo();
@@ -871,7 +871,7 @@ impl<'tcx> Subdiagnostic for AdtDefinedHere<'tcx> {
     fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
-        _f: F,
+        _f: &F,
     ) {
         diag.arg("ty", self.ty);
         let mut spans = MultiSpan::from(self.adt_def_span);

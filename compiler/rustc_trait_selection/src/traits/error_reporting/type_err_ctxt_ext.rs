@@ -2938,17 +2938,28 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             }
             _ => {}
         };
+
         // Didn't add an indirection suggestion, so add a general suggestion to relax `Sized`.
-        let (span, separator) = if let Some(s) = generics.bounds_span_for_suggestions(param.def_id)
-        {
-            (s, " +")
+        let (span, separator, open_paren_sp) =
+            if let Some((s, open_paren_sp)) = generics.bounds_span_for_suggestions(param.def_id) {
+                (s, " +", open_paren_sp)
+            } else {
+                (param.name.ident().span.shrink_to_hi(), ":", None)
+            };
+
+        let mut suggs = vec![];
+        let suggestion = format!("{separator} ?Sized");
+
+        if let Some(open_paren_sp) = open_paren_sp {
+            suggs.push((open_paren_sp, "(".to_string()));
+            suggs.push((span, format!("){suggestion}")));
         } else {
-            (param.name.ident().span.shrink_to_hi(), ":")
-        };
-        err.span_suggestion_verbose(
-            span,
+            suggs.push((span, suggestion));
+        }
+
+        err.multipart_suggestion_verbose(
             "consider relaxing the implicit `Sized` restriction",
-            format!("{separator} ?Sized"),
+            suggs,
             Applicability::MachineApplicable,
         );
     }

@@ -294,7 +294,7 @@ impl BorrowKind {
 
             // We have no type corresponding to a shallow borrow, so use
             // `&` as an approximation.
-            BorrowKind::Fake => hir::Mutability::Not,
+            BorrowKind::Fake(_) => hir::Mutability::Not,
         }
     }
 }

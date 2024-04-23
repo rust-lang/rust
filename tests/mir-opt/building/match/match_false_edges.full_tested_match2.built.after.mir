@@ -4,8 +4,8 @@ fn full_tested_match2() -> () {
     let mut _0: ();
     let mut _1: (i32, i32);
     let mut _2: std::option::Option<i32>;
-    let mut _3: isize;
-    let mut _4: &std::option::Option<i32>;
+    let mut _3: &std::option::Option<i32>;
+    let mut _4: isize;
     let _5: i32;
     let _6: &i32;
     let mut _7: bool;
@@ -27,8 +27,8 @@ fn full_tested_match2() -> () {
         StorageLive(_2);
         _2 = Option::<i32>::Some(const 42_i32);
         PlaceMention(_2);
-        _3 = discriminant(_2);
-        switchInt(move _3) -> [0: bb5, 1: bb2, otherwise: bb1];
+        _4 = discriminant(_2);
+        switchInt(move _4) -> [0: bb5, 1: bb2, otherwise: bb1];
     }
 
     bb1: {
@@ -66,7 +66,7 @@ fn full_tested_match2() -> () {
     bb7: {
         StorageLive(_6);
         _6 = &((_2 as Some).0: i32);
-        _4 = &fake _2;
+        _3 = &fake shallow _2;
         StorageLive(_7);
         _7 = guard() -> [return: bb8, unwind: bb16];
     }
@@ -77,7 +77,7 @@ fn full_tested_match2() -> () {
 
     bb9: {
         StorageDead(_7);
-        FakeRead(ForMatchGuard, _4);
+        FakeRead(ForMatchGuard, _3);
         FakeRead(ForGuardBinding, _6);
         StorageLive(_5);
         _5 = ((_2 as Some).0: i32);

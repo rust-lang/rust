@@ -2548,7 +2548,13 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
 
     let mut search_paths = vec![];
     for s in &matches.opt_strs("L") {
-        search_paths.push(SearchPath::from_cli_opt(&sysroot, &target_triple, early_dcx, s));
+        search_paths.push(SearchPath::from_cli_opt(
+            &sysroot,
+            &target_triple,
+            early_dcx,
+            s,
+            unstable_opts.unstable_options,
+        ));
     }
 
     let working_dir = std::env::current_dir().unwrap_or_else(|e| {

@@ -7,10 +7,8 @@ use crate::{
         GenericArgs, GenericArgsRef, Ty, UserArgs,
     },
 };
-use rustc_data_structures::{
-    fx::FxIndexMap,
-    unord::{ExtendUnord, UnordItems, UnordSet},
-};
+use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
+use rustc_data_structures::unord::{ExtendUnord, UnordItems, UnordSet};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::{
     self as hir,
@@ -201,8 +199,7 @@ pub struct TypeckResults<'tcx> {
 
     /// Stores the predicates that apply on coroutine witness types.
     /// formatting modified file tests/ui/coroutine/retain-resume-ref.rs
-    pub coroutine_interior_predicates:
-        LocalDefIdMap<Vec<(ty::Predicate<'tcx>, ObligationCause<'tcx>)>>,
+    pub coroutine_stalled_predicates: FxIndexSet<(ty::Predicate<'tcx>, ObligationCause<'tcx>)>,
 
     /// We sometimes treat byte string literals (which are of type `&[u8; N]`)
     /// as `&[u8]`, depending on the pattern in which they are used.
@@ -243,7 +240,7 @@ impl<'tcx> TypeckResults<'tcx> {
             closure_min_captures: Default::default(),
             closure_fake_reads: Default::default(),
             rvalue_scopes: Default::default(),
-            coroutine_interior_predicates: Default::default(),
+            coroutine_stalled_predicates: Default::default(),
             treat_byte_string_as_slice: Default::default(),
             closure_size_eval: Default::default(),
             offset_of_data: Default::default(),
@@ -451,7 +448,7 @@ impl<'tcx> TypeckResults<'tcx> {
     /// This is computed from the typeck results since we want to make
     /// sure to apply any match-ergonomics adjustments, which we cannot
     /// determine from the HIR alone.
-    pub fn pat_has_ref_mut_binding(&self, pat: &'tcx hir::Pat<'tcx>) -> bool {
+    pub fn pat_has_ref_mut_binding(&self, pat: &hir::Pat<'_>) -> bool {
         let mut has_ref_mut = false;
         pat.walk(|pat| {
             if let hir::PatKind::Binding(_, id, _, _) = pat.kind

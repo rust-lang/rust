@@ -867,11 +867,9 @@ pub enum BorrowKind {
     /// Data must be immutable and is aliasable.
     Shared,
 
-    /// The immediately borrowed place must be immutable, but projections from
-    /// it don't need to be. This is used to prevent match guards from replacing
-    /// the scrutinee. For example, a fake borrow of `a.b` doesn't
-    /// conflict with a mutable borrow of `a.b.c`.
-    Fake,
+    /// An immutable, aliasable borrow that is discarded after borrow-checking. Can behave either
+    /// like a normal shared borrow or like a special shallow borrow (see [`FakeBorrowKind`]).
+    Fake(FakeBorrowKind),
 
     /// Data is mutable and not aliasable.
     Mut {
@@ -886,7 +884,7 @@ impl BorrowKind {
             BorrowKind::Mut { .. } => Mutability::Mut,
             BorrowKind::Shared => Mutability::Not,
             // FIXME: There's no type corresponding to a shallow borrow, so use `&` as an approximation.
-            BorrowKind::Fake => Mutability::Not,
+            BorrowKind::Fake(_) => Mutability::Not,
         }
     }
 }
@@ -896,6 +894,17 @@ pub enum MutBorrowKind {
     Default,
     TwoPhaseBorrow,
     ClosureCapture,
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum FakeBorrowKind {
+    /// A shared (deep) borrow. Data must be immutable and is aliasable.
+    Deep,
+    /// The immediately borrowed place must be immutable, but projections from
+    /// it don't need to be. This is used to prevent match guards from replacing
+    /// the scrutinee. For example, a fake borrow of `a.b` doesn't
+    /// conflict with a mutable borrow of `a.b.c`.
+    Shallow,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]

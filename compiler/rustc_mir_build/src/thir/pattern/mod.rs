@@ -264,7 +264,9 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             }
 
             hir::PatKind::Deref(subpattern) => {
-                PatKind::DerefPattern { subpattern: self.lower_pattern(subpattern) }
+                let mutable = self.typeck_results.pat_has_ref_mut_binding(subpattern);
+                let mutability = if mutable { hir::Mutability::Mut } else { hir::Mutability::Not };
+                PatKind::DerefPattern { subpattern: self.lower_pattern(subpattern), mutability }
             }
             hir::PatKind::Ref(subpattern, _) | hir::PatKind::Box(subpattern) => {
                 PatKind::Deref { subpattern: self.lower_pattern(subpattern) }

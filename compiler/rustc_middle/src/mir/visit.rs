@@ -655,7 +655,7 @@ macro_rules! make_mir_visitor {
                             BorrowKind::Shared => PlaceContext::NonMutatingUse(
                                 NonMutatingUseContext::SharedBorrow
                             ),
-                            BorrowKind::Fake => PlaceContext::NonMutatingUse(
+                            BorrowKind::Fake(_) => PlaceContext::NonMutatingUse(
                                 NonMutatingUseContext::FakeBorrow
                             ),
                             BorrowKind::Mut { .. } =>
@@ -1284,6 +1284,8 @@ pub enum NonMutatingUseContext {
     /// Shared borrow.
     SharedBorrow,
     /// A fake borrow.
+    /// FIXME: do we need to distinguish shallow and deep fake borrows? In fact, do we need to
+    /// distinguish fake and normal deep borrows?
     FakeBorrow,
     /// AddressOf for *const pointer.
     AddressOf,
