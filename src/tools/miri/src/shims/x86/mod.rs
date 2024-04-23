@@ -488,7 +488,7 @@ enum ShiftOp {
 ///
 /// For logic shifts, when right is larger than BITS - 1, zero is produced.
 /// For arithmetic right-shifts, when right is larger than BITS - 1, the sign
-/// bit is copied to remaining bits.
+/// bit is copied to all bits.
 fn shift_simd_by_scalar<'tcx>(
     this: &mut crate::MiriInterpCx<'_, 'tcx>,
     left: &OpTy<'tcx, Provenance>,
@@ -544,7 +544,7 @@ fn shift_simd_by_scalar<'tcx>(
 ///
 /// For logic shifts, when right is larger than BITS - 1, zero is produced.
 /// For arithmetic right-shifts, when right is larger than BITS - 1, the sign
-/// bit is copied to remaining bits.
+/// bit is copied to all bits.
 fn shift_simd_by_simd<'tcx>(
     this: &mut crate::MiriInterpCx<'_, 'tcx>,
     left: &OpTy<'tcx, Provenance>,
