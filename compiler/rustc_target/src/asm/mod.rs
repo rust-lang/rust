@@ -5,7 +5,7 @@ use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::Symbol;
 
-use crate::abi::Size;
+use crate::abi::{Endian, Size};
 use crate::spec::{RelocModel, Target};
 
 pub struct ModifierInfo {
@@ -893,6 +893,7 @@ pub enum InlineAsmClobberAbi {
     RiscV,
     LoongArch,
     S390x,
+    PowerPC64ElfV2,
 }
 
 impl InlineAsmClobberAbi {
@@ -944,6 +945,12 @@ impl InlineAsmClobberAbi {
             },
             InlineAsmArch::S390x => match name {
                 "C" | "system" => Ok(InlineAsmClobberAbi::S390x),
+                _ => Err(&["C", "system"]),
+            },
+            InlineAsmArch::PowerPC64 => match name {
+                "C" | "system" if target.endian == Endian::Little => {
+                    Ok(InlineAsmClobberAbi::PowerPC64ElfV2)
+                }
                 _ => Err(&["C", "system"]),
             },
             _ => Err(&[]),
@@ -1123,6 +1130,13 @@ impl InlineAsmClobberAbi {
                     // a0-a1 are reserved, other access registers are volatile
                     a2, a3, a4, a5, a6, a7,
                     a8, a9, a10, a11, a12, a13, a14, a15,
+                }
+            },
+            InlineAsmClobberAbi::PowerPC64ElfV2 => clobbered_regs! {
+                PowerPC PowerPCInlineAsmReg {
+                    r0, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12,
+                    xer, cr0, cr1, cr5, cr6, cr7,
+                    f0, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13,
                 }
             },
         }
