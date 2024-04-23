@@ -34,7 +34,7 @@ type J = impl Sized;
 fn j(a: J) {
     let x = match true {
         true => bar::<J>,
-        false => foo::<()>, //~ ERROR: incompatible types
+        false => foo::<()>,
     };
     x(a);
     x(());
@@ -49,7 +49,7 @@ fn k() -> impl Sized {
             let f = foo;
             bind(k(), f)
         }
-        false => bar::<()>, //~ ERROR: incompatible types
+        false => bar::<()>,
     };
     todo!()
 }

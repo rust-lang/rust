@@ -33,45 +33,6 @@ help: use parentheses to call this function
 LL |     x = foo::<I>(/* I */);
    |                 +++++++++
 
-error[E0308]: `match` arms have incompatible types
-  --> $DIR/fn_def_opaque_coercion_to_fn_ptr.rs:37:18
-   |
-LL |   type J = impl Sized;
-   |            ---------- the expected opaque type
-...
-LL |       let x = match true {
-   |  _____________-
-LL | |         true => bar::<J>,
-   | |                 -------- this is found to be of type `fn(J) -> J {bar::<J>}`
-LL | |         false => foo::<()>,
-   | |                  ^^^^^^^^^ expected opaque type, found `()`
-LL | |     };
-   | |_____- `match` arms have incompatible types
-   |
-   = note: expected fn item `fn(J) -> J {bar::<J>}`
-              found fn item `fn(()) {foo::<()>}`
-
-error[E0308]: `match` arms have incompatible types
-  --> $DIR/fn_def_opaque_coercion_to_fn_ptr.rs:52:18
-   |
-LL |   fn k() -> impl Sized {
-   |             ---------- the expected opaque type
-...
-LL |       let x = match true {
-   |  _____________-
-LL | |         true => {
-LL | |             let f = foo;
-LL | |             bind(k(), f)
-   | |             ------------ this is found to be of type `fn(impl Sized) -> impl Sized {foo::<impl Sized>}`
-LL | |         }
-LL | |         false => bar::<()>,
-   | |                  ^^^^^^^^^ expected opaque type, found `()`
-LL | |     };
-   | |_____- `match` arms have incompatible types
-   |
-   = note: expected fn item `fn(impl Sized) -> impl Sized {foo::<impl Sized>}`
-              found fn item `fn(()) {bar::<()>}`
-
-error: aborting due to 4 previous errors
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0308`.
