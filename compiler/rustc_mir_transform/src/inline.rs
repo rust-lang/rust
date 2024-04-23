@@ -720,18 +720,12 @@ impl<'tcx> Inliner<'tcx> {
             kind: TerminatorKind::Goto { target: integrator.map_block(START_BLOCK) },
         });
 
-        // Copy only unevaluated constants from the callee_body into the caller_body.
-        // Although we are only pushing `ConstKind::Unevaluated` consts to
-        // `required_consts`, here we may not only have `ConstKind::Unevaluated`
-        // because we are calling `instantiate_and_normalize_erasing_regions`.
-        caller_body.required_consts.extend(callee_body.required_consts.iter().copied().filter(
-            |&ct| match ct.const_ {
-                Const::Ty(_) => {
-                    bug!("should never encounter ty::UnevaluatedConst in `required_consts`")
-                }
-                Const::Val(..) | Const::Unevaluated(..) => true,
-            },
-        ));
+        // Copy required constants from the callee_body into the caller_body. Although we are only
+        // pushing unevaluated consts to `required_consts`, here they may have been evaluated
+        // because we are calling `instantiate_and_normalize_erasing_regions` -- so we filter again.
+        caller_body.required_consts.extend(
+            callee_body.required_consts.into_iter().filter(|ct| ct.const_.is_required_const()),
+        );
         // Now that we incorporated the callee's `required_consts`, we can remove the callee from
         // `mentioned_items` -- but we have to take their `mentioned_items` in return. This does
         // some extra work here to save the monomorphization collector work later. It helps a lot,
@@ -747,8 +741,9 @@ impl<'tcx> Inliner<'tcx> {
             caller_body.mentioned_items.remove(idx);
             caller_body.mentioned_items.extend(callee_body.mentioned_items);
         } else {
-            // If we can't find the callee, there's no point in adding its items.
-            // Probably it already got removed by being inlined elsewhere in the same function.
+            // If we can't find the callee, there's no point in adding its items. Probably it
+            // already got removed by being inlined elsewhere in the same function, so we already
+            // took its items.
         }
     }
 
