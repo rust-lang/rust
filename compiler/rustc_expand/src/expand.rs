@@ -778,7 +778,8 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     if let SyntaxExtensionKind::Derive(..) = ext {
                         self.gate_proc_macro_input(&item);
                     }
-                    // FIX THIS LATER
+                    // The `MetaItem` representing the trait to derive can't
+                    // have an unsafe around it (as of now).
                     let meta = ast::MetaItem {
                         unsafety: ast::Unsafe::No,
                         kind: MetaItemKind::Word,
