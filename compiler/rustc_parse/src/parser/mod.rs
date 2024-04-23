@@ -162,7 +162,6 @@ pub struct Parser<'a> {
     ///
     /// See the comments in the `parse_path_segment` function for more details.
     unmatched_angle_bracket_count: u16,
-    max_angle_bracket_count: u16,
     angle_bracket_nesting: u16,
 
     last_unexpected_token_span: Option<Span>,
@@ -430,7 +429,6 @@ impl<'a> Parser<'a> {
             num_bump_calls: 0,
             break_last_token: false,
             unmatched_angle_bracket_count: 0,
-            max_angle_bracket_count: 0,
             angle_bracket_nesting: 0,
             last_unexpected_token_span: None,
             subparser_name,
@@ -778,7 +776,6 @@ impl<'a> Parser<'a> {
         if ate {
             // See doc comment for `unmatched_angle_bracket_count`.
             self.unmatched_angle_bracket_count += 1;
-            self.max_angle_bracket_count += 1;
             debug!("eat_lt: (increment) count={:?}", self.unmatched_angle_bracket_count);
         }
         ate
