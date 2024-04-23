@@ -24,7 +24,7 @@ declare_clippy_lint! {
     ///
     /// ### Limitations
     /// This lint does not check for implied bounds transitively. Meaning that
-    /// it does't check for implied bounds from supertraits of supertraits
+    /// it doesn't check for implied bounds from supertraits of supertraits
     /// (e.g. `trait A {} trait B: A {} trait C: B {}`, then having an `fn() -> impl A + C`)
     ///
     /// ### Example
