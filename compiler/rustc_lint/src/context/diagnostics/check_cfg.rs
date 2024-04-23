@@ -1,44 +1,28 @@
-use rustc_errors::{Applicability, Diag};
+use rustc_errors::Diag;
 use rustc_middle::bug;
 use rustc_session::{config::ExpectedValues, Session};
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::{sym, Span, Symbol};
 
+use crate::lints;
+
 const MAX_CHECK_CFG_NAMES_OR_VALUES: usize = 35;
 
-fn check_cfg_expected_note(
+fn sort_and_truncate_possibilities(
     sess: &Session,
-    possibilities: &[Symbol],
-    type_: &str,
-    name: Option<Symbol>,
-    suffix: &str,
-) -> String {
-    use std::fmt::Write;
-
+    mut possibilities: Vec<Symbol>,
+) -> (Vec<Symbol>, usize) {
     let n_possibilities = if sess.opts.unstable_opts.check_cfg_all_expected {
         possibilities.len()
     } else {
         std::cmp::min(possibilities.len(), MAX_CHECK_CFG_NAMES_OR_VALUES)
     };
 
-    let mut possibilities = possibilities.iter().map(Symbol::as_str).collect::<Vec<_>>();
-    possibilities.sort();
+    possibilities.sort_by(|s1, s2| s1.as_str().cmp(s2.as_str()));
 
     let and_more = possibilities.len().saturating_sub(n_possibilities);
-    let possibilities = possibilities[..n_possibilities].join("`, `");
-
-    let mut note = String::with_capacity(50 + possibilities.len());
-
-    write!(&mut note, "expected {type_}").unwrap();
-    if let Some(name) = name {
-        write!(&mut note, " for `{name}`").unwrap();
-    }
-    write!(&mut note, " are: {suffix}`{possibilities}`").unwrap();
-    if and_more > 0 {
-        write!(&mut note, " and {and_more} more").unwrap();
-    }
-
-    note
+    possibilities.truncate(n_possibilities);
+    (possibilities, and_more)
 }
 
 enum EscapeQuotes {
@@ -87,106 +71,115 @@ pub(super) fn unexpected_cfg_name(
     let is_from_cargo = rustc_session::utils::was_invoked_from_cargo();
     let mut is_feature_cfg = name == sym::feature;
 
-    if is_feature_cfg && is_from_cargo {
-        diag.help("consider defining some features in `Cargo.toml`");
+    let code_sugg = if is_feature_cfg && is_from_cargo {
+        lints::unexpected_cfg_name::CodeSuggestion::DefineFeatures
     // Suggest the most probable if we found one
     } else if let Some(best_match) = find_best_match_for_name(&possibilities, name, None) {
+        is_feature_cfg |= best_match == sym::feature;
+
         if let Some(ExpectedValues::Some(best_match_values)) =
             sess.psess.check_config.expecteds.get(&best_match)
         {
             // We will soon sort, so the initial order does not matter.
             #[allow(rustc::potential_query_instability)]
-            let mut possibilities =
-                best_match_values.iter().flatten().map(Symbol::as_str).collect::<Vec<_>>();
-            possibilities.sort();
+            let mut possibilities = best_match_values.iter().flatten().collect::<Vec<_>>();
+            possibilities.sort_by_key(|s| s.as_str());
 
-            let mut should_print_possibilities = true;
+            let get_possibilities_sub = || {
+                if !possibilities.is_empty() {
+                    let possibilities =
+                        possibilities.iter().copied().cloned().collect::<Vec<_>>().into();
+                    Some(lints::unexpected_cfg_name::ExpectedValues { best_match, possibilities })
+                } else {
+                    None
+                }
+            };
+
             if let Some((value, value_span)) = value {
                 if best_match_values.contains(&Some(value)) {
-                    diag.span_suggestion(
-                        name_span,
-                        "there is a config with a similar name and value",
-                        best_match,
-                        Applicability::MaybeIncorrect,
-                    );
-                    should_print_possibilities = false;
+                    lints::unexpected_cfg_name::CodeSuggestion::SimilarNameAndValue {
+                        span: name_span,
+                        code: best_match.to_string(),
+                    }
                 } else if best_match_values.contains(&None) {
-                    diag.span_suggestion(
-                        name_span.to(value_span),
-                        "there is a config with a similar name and no value",
-                        best_match,
-                        Applicability::MaybeIncorrect,
-                    );
-                    should_print_possibilities = false;
+                    lints::unexpected_cfg_name::CodeSuggestion::SimilarNameNoValue {
+                        span: name_span.to(value_span),
+                        code: best_match.to_string(),
+                    }
                 } else if let Some(first_value) = possibilities.first() {
-                    diag.span_suggestion(
-                        name_span.to(value_span),
-                        "there is a config with a similar name and different values",
-                        format!("{best_match} = \"{first_value}\""),
-                        Applicability::MaybeIncorrect,
-                    );
+                    lints::unexpected_cfg_name::CodeSuggestion::SimilarNameDifferentValues {
+                        span: name_span.to(value_span),
+                        code: format!("{best_match} = \"{first_value}\""),
+                        expected: get_possibilities_sub(),
+                    }
                 } else {
-                    diag.span_suggestion(
-                        name_span.to(value_span),
-                        "there is a config with a similar name and different values",
-                        best_match,
-                        Applicability::MaybeIncorrect,
-                    );
-                };
+                    lints::unexpected_cfg_name::CodeSuggestion::SimilarNameDifferentValues {
+                        span: name_span.to(value_span),
+                        code: best_match.to_string(),
+                        expected: get_possibilities_sub(),
+                    }
+                }
             } else {
-                diag.span_suggestion(
-                    name_span,
-                    "there is a config with a similar name",
-                    best_match,
-                    Applicability::MaybeIncorrect,
-                );
-            }
-
-            if !possibilities.is_empty() && should_print_possibilities {
-                let possibilities = possibilities.join("`, `");
-                diag.help(format!("expected values for `{best_match}` are: `{possibilities}`"));
+                lints::unexpected_cfg_name::CodeSuggestion::SimilarName {
+                    span: name_span,
+                    code: best_match.to_string(),
+                    expected: get_possibilities_sub(),
+                }
             }
         } else {
-            diag.span_suggestion(
-                name_span,
-                "there is a config with a similar name",
-                best_match,
-                Applicability::MaybeIncorrect,
-            );
-        }
-
-        is_feature_cfg |= best_match == sym::feature;
-    } else {
-        if !names_possibilities.is_empty() && names_possibilities.len() <= 3 {
-            names_possibilities.sort();
-            for cfg_name in names_possibilities.iter() {
-                diag.span_suggestion(
-                    name_span,
-                    "found config with similar value",
-                    format!("{cfg_name} = \"{name}\""),
-                    Applicability::MaybeIncorrect,
-                );
+            lints::unexpected_cfg_name::CodeSuggestion::SimilarName {
+                span: name_span,
+                code: best_match.to_string(),
+                expected: None,
             }
         }
-        if !possibilities.is_empty() {
-            diag.help_once(check_cfg_expected_note(sess, &possibilities, "names", None, ""));
+    } else {
+        let similar_values = if !names_possibilities.is_empty() && names_possibilities.len() <= 3 {
+            names_possibilities.sort();
+            names_possibilities
+                .iter()
+                .map(|cfg_name| lints::unexpected_cfg_name::FoundWithSimilarValue {
+                    span: name_span,
+                    code: format!("{cfg_name} = \"{name}\""),
+                })
+                .collect()
+        } else {
+            vec![]
+        };
+        let expected_names = if !possibilities.is_empty() {
+            let (possibilities, and_more) = sort_and_truncate_possibilities(sess, possibilities);
+            Some(lints::unexpected_cfg_name::ExpectedNames {
+                possibilities: possibilities.into(),
+                and_more,
+            })
+        } else {
+            None
+        };
+        lints::unexpected_cfg_name::CodeSuggestion::SimilarValues {
+            with_similar_values: similar_values,
+            expected_names,
         }
-    }
+    };
 
     let inst = |escape_quotes| to_check_cfg_arg(name, value.map(|(v, _s)| v), escape_quotes);
 
-    if is_from_cargo {
-        if !is_feature_cfg {
-            diag.help(format!("consider using a Cargo feature instead"));
-            diag.help(format!("or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:\n [lints.rust]\n unexpected_cfgs = {{ level = \"warn\", check-cfg = ['{}'] }}", inst(EscapeQuotes::No)));
-            diag.help(format!("or consider adding `println!(\"cargo::rustc-check-cfg={}\");` to the top of the `build.rs`", inst(EscapeQuotes::Yes)));
-        }
-        diag.note("see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration");
+    let invocation_help = if is_from_cargo {
+        let sub = if !is_feature_cfg {
+            Some(lints::UnexpectedCfgCargoHelp::new(
+                &inst(EscapeQuotes::No),
+                &inst(EscapeQuotes::Yes),
+            ))
+        } else {
+            None
+        };
+        lints::unexpected_cfg_name::InvocationHelp::Cargo { sub }
     } else {
-        let inst = inst(EscapeQuotes::No);
-        diag.help(format!("to expect this configuration use `--check-cfg={inst}`",));
-        diag.note("see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration");
-    }
+        lints::unexpected_cfg_name::InvocationHelp::Rustc(lints::UnexpectedCfgRustcHelp::new(
+            &inst(EscapeQuotes::No),
+        ))
+    };
+
+    diag.subdiagnostic(diag.dcx, lints::UnexpectedCfgNameSub { code_sugg, invocation_help });
 }
 
 pub(super) fn unexpected_cfg_value(
@@ -214,53 +207,53 @@ pub(super) fn unexpected_cfg_value(
 
     // Show the full list if all possible values for a given name, but don't do it
     // for names as the possibilities could be very long
-    if !possibilities.is_empty() {
-        diag.note(check_cfg_expected_note(
-            sess,
-            &possibilities,
-            "values",
-            Some(name),
-            if have_none_possibility { "(none), " } else { "" },
-        ));
+    let code_sugg = if !possibilities.is_empty() {
+        let expected_values = {
+            let (possibilities, and_more) =
+                sort_and_truncate_possibilities(sess, possibilities.clone());
+            lints::unexpected_cfg_value::ExpectedValues {
+                name,
+                have_none_possibility,
+                possibilities: possibilities.into(),
+                and_more,
+            }
+        };
 
-        if let Some((value, value_span)) = value {
+        let suggestion = if let Some((value, value_span)) = value {
             // Suggest the most probable if we found one
             if let Some(best_match) = find_best_match_for_name(&possibilities, value, None) {
-                diag.span_suggestion(
-                    value_span,
-                    "there is a expected value with a similar name",
-                    format!("\"{best_match}\""),
-                    Applicability::MaybeIncorrect,
-                );
+                Some(lints::unexpected_cfg_value::ChangeValueSuggestion::SimilarName {
+                    span: value_span,
+                    best_match,
+                })
+            } else {
+                None
             }
         } else if let &[first_possibility] = &possibilities[..] {
-            diag.span_suggestion(
-                name_span.shrink_to_hi(),
-                "specify a config value",
-                format!(" = \"{first_possibility}\""),
-                Applicability::MaybeIncorrect,
-            );
-        }
-    } else if have_none_possibility {
-        diag.note(format!("no expected value for `{name}`"));
-        if let Some((_value, value_span)) = value {
-            diag.span_suggestion(
-                name_span.shrink_to_hi().to(value_span),
-                "remove the value",
-                "",
-                Applicability::MaybeIncorrect,
-            );
-        }
-    } else {
-        diag.note(format!("no expected values for `{name}`"));
+            Some(lints::unexpected_cfg_value::ChangeValueSuggestion::SpecifyValue {
+                span: name_span.shrink_to_hi(),
+                first_possibility,
+            })
+        } else {
+            None
+        };
 
-        let sp = if let Some((_value, value_span)) = value {
+        lints::unexpected_cfg_value::CodeSuggestion::ChangeValue { expected_values, suggestion }
+    } else if have_none_possibility {
+        let suggestion =
+            value.map(|(_value, value_span)| lints::unexpected_cfg_value::RemoveValueSuggestion {
+                span: name_span.shrink_to_hi().to(value_span),
+            });
+        lints::unexpected_cfg_value::CodeSuggestion::RemoveValue { suggestion, name }
+    } else {
+        let span = if let Some((_value, value_span)) = value {
             name_span.to(value_span)
         } else {
             name_span
         };
-        diag.span_suggestion(sp, "remove the condition", "", Applicability::MaybeIncorrect);
-    }
+        let suggestion = lints::unexpected_cfg_value::RemoveConditionSuggestion { span };
+        lints::unexpected_cfg_value::CodeSuggestion::RemoveCondition { suggestion, name }
+    };
 
     // We don't want to suggest adding values to well known names
     // since those are defined by rustc it-self. Users can still
@@ -269,24 +262,30 @@ pub(super) fn unexpected_cfg_value(
 
     let inst = |escape_quotes| to_check_cfg_arg(name, value.map(|(v, _s)| v), escape_quotes);
 
-    if is_from_cargo {
-        if name == sym::feature {
+    let invocation_help = if is_from_cargo {
+        let help = if name == sym::feature {
             if let Some((value, _value_span)) = value {
-                diag.help(format!("consider adding `{value}` as a feature in `Cargo.toml`"));
+                Some(lints::unexpected_cfg_value::CargoHelp::AddFeature { value })
             } else {
-                diag.help("consider defining some features in `Cargo.toml`");
+                Some(lints::unexpected_cfg_value::CargoHelp::DefineFeatures)
             }
         } else if !is_cfg_a_well_know_name {
-            diag.help(format!("consider using a Cargo feature instead"));
-            diag.help(format!("or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:\n [lints.rust]\n unexpected_cfgs = {{ level = \"warn\", check-cfg = ['{}'] }}", inst(EscapeQuotes::No)));
-            diag.help(format!("or consider adding `println!(\"cargo::rustc-check-cfg={}\");` to the top of the `build.rs`", inst(EscapeQuotes::Yes)));
-        }
-        diag.note("see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration");
+            Some(lints::unexpected_cfg_value::CargoHelp::Other(lints::UnexpectedCfgCargoHelp::new(
+                &inst(EscapeQuotes::No),
+                &inst(EscapeQuotes::Yes),
+            )))
+        } else {
+            None
+        };
+        lints::unexpected_cfg_value::InvocationHelp::Cargo(help)
     } else {
-        if !is_cfg_a_well_know_name {
-            let inst = inst(EscapeQuotes::No);
-            diag.help(format!("to expect this configuration use `--check-cfg={inst}`",));
-        }
-        diag.note("see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration");
-    }
+        let help = if !is_cfg_a_well_know_name {
+            Some(lints::UnexpectedCfgRustcHelp::new(&inst(EscapeQuotes::No)))
+        } else {
+            None
+        };
+        lints::unexpected_cfg_value::InvocationHelp::Rustc(help)
+    };
+
+    diag.subdiagnostic(diag.dcx, lints::UnexpectedCfgValueSub { code_sugg, invocation_help });
 }

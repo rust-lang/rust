@@ -593,6 +593,40 @@ lint_undropped_manually_drops = calls to `std::mem::drop` with `std::mem::Manual
     .label = argument has type `{$arg_ty}`
     .suggestion = use `std::mem::ManuallyDrop::into_inner` to get the inner value
 
+lint_unexpected_cfg_add_build_rs_println = or consider adding `{$build_rs_println}` to the top of the `build.rs`
+lint_unexpected_cfg_add_cargo_feature = consider using a Cargo feature instead
+lint_unexpected_cfg_add_cargo_toml_lint_cfg = or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:{$cargo_toml_lint_cfg}
+lint_unexpected_cfg_add_cmdline_arg = to expect this configuration use `{$cmdline_arg}`
+lint_unexpected_cfg_define_features = consider defining some features in `Cargo.toml`
+lint_unexpected_cfg_doc_cargo = see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+lint_unexpected_cfg_doc_rustc = see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+
+lint_unexpected_cfg_name_expected_names = expected names are: {$possibilities}{$and_more ->
+        [0] {""}
+        *[other] {" "}and {$and_more} more
+    }
+lint_unexpected_cfg_name_expected_values = expected values for `{$best_match}` are: {$possibilities}
+lint_unexpected_cfg_name_similar_name = there is a config with a similar name
+lint_unexpected_cfg_name_similar_name_different_values = there is a config with a similar name and different values
+lint_unexpected_cfg_name_similar_name_no_value = there is a config with a similar name and no value
+lint_unexpected_cfg_name_similar_name_value = there is a config with a similar name and value
+lint_unexpected_cfg_name_with_similar_value = found config with similar value
+
+lint_unexpected_cfg_value_add_feature = consider adding `{$value}` as a feature in `Cargo.toml`
+lint_unexpected_cfg_value_expected_values = expected values for `{$name}` are: {$have_none_possibility ->
+        [true] {"(none), "}
+        *[false] {""}
+    }{$possibilities}{$and_more ->
+        [0] {""}
+        *[other] {" "}and {$and_more} more
+    }
+lint_unexpected_cfg_value_no_expected_value = no expected value for `{$name}`
+lint_unexpected_cfg_value_no_expected_values = no expected values for `{$name}`
+lint_unexpected_cfg_value_remove_condition = remove the condition
+lint_unexpected_cfg_value_remove_value = remove the value
+lint_unexpected_cfg_value_similar_name = there is a expected value with a similar name
+lint_unexpected_cfg_value_specify_value = specify a config value
+
 lint_ungated_async_fn_track_caller = `#[track_caller]` on async functions is a no-op
      .label = this function will not propagate the caller location
 
