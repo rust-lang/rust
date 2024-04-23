@@ -63,6 +63,7 @@ jobs:
     strategy:
       matrix:
         include: "${{ fromJSON(needs.calculate_matrix.outputs.jobs) }}"
+    if: "fromJSON(needs.calculate_matrix.outputs.jobs)[0] != null"
     defaults:
       run:
         shell: "${{ contains(matrix.os, 'windows') && 'msys2 {0}' || 'bash' }}"
