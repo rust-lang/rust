@@ -232,12 +232,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     }
                     Ok(abs_filename) => {
                         Scalar::from_u32(helpers::windows_check_buffer_size(
-                            this.write_path_to_wide_str(
-                                &abs_filename,
-                                buffer,
-                                size.into(),
-                                /*truncate*/ false,
-                            )?,
+                            this.write_path_to_wide_str(&abs_filename, buffer, size.into())?,
                         ))
                         // This can in fact return 0. It is up to the caller to set last_error to 0
                         // beforehand and check it afterwards to exclude that case.
@@ -608,15 +603,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
                 // Using the host current_exe is a bit off, but consistent with Linux
                 // (where stdlib reads /proc/self/exe).
-                // Unfortunately this Windows function has a crazy behavior so we can't just use
-                // `write_path_to_wide_str`...
                 let path = std::env::current_exe().unwrap();
-                let (all_written, size_needed) = this.write_path_to_wide_str(
-                    &path,
-                    filename,
-                    size.into(),
-                    /*truncate*/ true,
-                )?;
+                let (all_written, size_needed) =
+                    this.write_path_to_wide_str_truncated(&path, filename, size.into())?;
 
                 if all_written {
                     // If the function succeeds, the return value is the length of the string that
@@ -656,12 +645,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     Some(err) => format!("{err}"),
                     None => format!("<unknown error in FormatMessageW: {message_id}>"),
                 };
-                let (complete, length) = this.write_os_str_to_wide_str(
-                    OsStr::new(&formatted),
-                    buffer,
-                    size.into(),
-                    /*truncate*/ false,
-                )?;
+                let (complete, length) =
+                    this.write_os_str_to_wide_str(OsStr::new(&formatted), buffer, size.into())?;
                 if !complete {
                     // The API docs don't say what happens when the buffer is not big enough...
                     // Let's just bail.

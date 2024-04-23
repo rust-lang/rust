@@ -178,7 +178,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     &var,
                     buf_ptr,
                     buf_size.into(),
-                    /*truncate*/ false,
                 )?))
                 // This can in fact return 0. It is up to the caller to set last_error to 0
                 // beforehand and check it afterwards to exclude that case.
@@ -380,7 +379,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 // This can in fact return 0. It is up to the caller to set last_error to 0
                 // beforehand and check it afterwards to exclude that case.
                 return Ok(Scalar::from_u32(windows_check_buffer_size(
-                    this.write_path_to_wide_str(&cwd, buf, size, /*truncate*/ false)?,
+                    this.write_path_to_wide_str(&cwd, buf, size)?,
                 )));
             }
             Err(e) => this.set_last_error_from_io_error(e.kind())?,
@@ -535,12 +534,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 };
                 // Of course we cannot use `windows_check_buffer_size` here since this uses
                 // a different method for dealing with a too-small buffer than the other functions...
-                let (success, len) = this.write_path_to_wide_str(
-                    home,
-                    buf,
-                    size_avail.into(),
-                    /*truncate*/ false,
-                )?;
+                let (success, len) = this.write_path_to_wide_str(home, buf, size_avail.into())?;
                 // The Windows docs just say that this is written on failure. But std
                 // seems to rely on it always being written.
                 this.write_scalar(Scalar::from_u32(len.try_into().unwrap()), &size)?;
