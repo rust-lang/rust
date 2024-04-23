@@ -1318,7 +1318,10 @@ impl Inner {
     fn parker(&self) -> Pin<&Parker> {
         match self {
             Self::Main => {
-                // Safety: MAIN_PARKER only ever has a mutable reference when Inner::Main is initialised.
+                // Safety: MAIN_PARKER is only ever read in this function, which requires access
+                // to an existing `&Inner` value, which can only be accessed via the main thread
+                // giving away such an instance from `current()`, implying that initialization,
+                // the only write to `MAIN_PARKER`, has been completed.
                 let static_ref: &'static MaybeUninit<Parker> = unsafe { &*MAIN_PARKER.get() };
 
                 // Safety: MAIN_PARKER is initialised when Inner::Main is initialised.
