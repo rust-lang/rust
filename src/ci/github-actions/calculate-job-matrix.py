@@ -17,6 +17,7 @@ from typing import List, Dict, Any, Optional
 
 import yaml
 
+CI_DIR = Path(__file__).absolute().parent.parent
 JOBS_YAML_PATH = Path(__file__).absolute().parent / "jobs.yml"
 
 Job = Dict[str, Any]
@@ -90,6 +91,13 @@ def calculate_jobs(job_type: JobType, job_data: Dict[str, Any]) -> List[Job]:
     return []
 
 
+def skip_jobs(jobs: List[Dict[str, Any]], channel: str) -> List[Job]:
+    """
+    Skip CI jobs that are not supposed to be executed on the given `channel`.
+    """
+    return [j for j in jobs if j.get("CI_ONLY_WHEN_CHANNEL", channel) == channel]
+
+
 def get_github_ctx() -> GitHubCtx:
     return GitHubCtx(
         event_name=os.environ["GITHUB_EVENT_NAME"],
@@ -109,9 +117,13 @@ if __name__ == "__main__":
     job_type = find_job_type(github_ctx)
     logging.info(f"Job type: {job_type}")
 
+    with open(CI_DIR / "channel") as f:
+        channel = f.read().strip()
+
     jobs = []
     if job_type is not None:
         jobs = calculate_jobs(job_type, data)
+    jobs = skip_jobs(jobs, channel)
 
     logging.info(f"Output:\n{yaml.dump(jobs, indent=4)}")
     print(f"jobs={json.dumps(jobs)}")
