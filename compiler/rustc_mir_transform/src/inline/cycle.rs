@@ -94,8 +94,10 @@ pub(crate) fn mir_callgraph_reachable<'tcx>(
                 | InstanceDef::CloneShim(..) => {}
 
                 // This shim does not call any other functions, thus there can be no recursion.
-                InstanceDef::FnPtrAddrShim(..) => continue,
-                InstanceDef::DropGlue(..) => {
+                InstanceDef::FnPtrAddrShim(..) => {
+                    continue;
+                }
+                InstanceDef::DropGlue(..) | InstanceDef::AsyncDropGlueCtorShim(..) => {
                     // FIXME: A not fully instantiated drop shim can cause ICEs if one attempts to
                     // have its MIR built. Likely oli-obk just screwed up the `ParamEnv`s, so this
                     // needs some more analysis.

@@ -22,6 +22,8 @@ use crate::{
 use rustc_middle::mir::patch::MirPatch;
 use rustc_mir_dataflow::elaborate_drops::{self, DropElaborator, DropFlagMode, DropStyle};
 
+mod async_destructor_ctor;
+
 pub fn provide(providers: &mut Providers) {
     providers.mir_shims = make_shim;
 }
@@ -127,6 +129,9 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> Body<'
         ty::InstanceDef::ThreadLocalShim(..) => build_thread_local_shim(tcx, instance),
         ty::InstanceDef::CloneShim(def_id, ty) => build_clone_shim(tcx, def_id, ty),
         ty::InstanceDef::FnPtrAddrShim(def_id, ty) => build_fn_ptr_addr_shim(tcx, def_id, ty),
+        ty::InstanceDef::AsyncDropGlueCtorShim(def_id, ty) => {
+            async_destructor_ctor::build_async_destructor_ctor_shim(tcx, def_id, ty)
+        }
         ty::InstanceDef::Virtual(..) => {
             bug!("InstanceDef::Virtual ({:?}) is for direct calls only", instance)
         }

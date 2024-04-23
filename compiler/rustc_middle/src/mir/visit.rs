@@ -350,12 +350,14 @@ macro_rules! make_mir_visitor {
                             receiver_by_ref: _,
                         } |
                         ty::InstanceDef::CoroutineKindShim { coroutine_def_id: _def_id } |
+                        ty::InstanceDef::AsyncDropGlueCtorShim(_def_id, None) |
                         ty::InstanceDef::DropGlue(_def_id, None) => {}
 
                         ty::InstanceDef::FnPtrShim(_def_id, ty) |
                         ty::InstanceDef::DropGlue(_def_id, Some(ty)) |
                         ty::InstanceDef::CloneShim(_def_id, ty) |
-                        ty::InstanceDef::FnPtrAddrShim(_def_id, ty) => {
+                        ty::InstanceDef::FnPtrAddrShim(_def_id, ty) |
+                        ty::InstanceDef::AsyncDropGlueCtorShim(_def_id, Some(ty)) => {
                             // FIXME(eddyb) use a better `TyContext` here.
                             self.visit_ty($(& $mutability)? *ty, TyContext::Location(location));
                         }
