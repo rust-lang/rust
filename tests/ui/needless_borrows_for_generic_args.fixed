@@ -141,8 +141,8 @@ fn main() {
         let f = |arg| {
             let loc = "loc".to_owned();
             let _ = std::fs::write("x", &env); // Don't lint. In environment
-            let _ = std::fs::write("x", arg);
-            let _ = std::fs::write("x", loc);
+            let _ = std::fs::write("x", &arg);
+            let _ = std::fs::write("x", &loc);
         };
         let _ = std::fs::write("x", &env); // Don't lint. Borrowed by `f`
         f(arg);
@@ -158,13 +158,13 @@ fn main() {
         fn f(_: impl Debug) {}
 
         let x = X;
-        f(&x); // Don't lint. Has significant drop
+        f(&x); // Don't lint, not copy, passed by a reference to a variable
     }
     {
         fn f(_: impl AsRef<str>) {}
 
         let x = String::new();
-        f(x);
+        f(&x);
     }
     {
         fn f(_: impl AsRef<str>) {}
@@ -298,5 +298,39 @@ fn main() {
             let owner = CustomDrop(String::default());
             check_str(&owner.0); // Don't lint. `owner` can't be partially moved because it impl Drop
         }
+    }
+    {
+        #[derive(Debug)]
+        struct X(Vec<u8>);
+
+        fn f(_: impl Debug) {}
+
+        let x = X(vec![]);
+        f(&x); // Don't lint, makes x unavailable later
+    }
+    {
+        #[derive(Debug)]
+        struct X;
+
+        impl Drop for X {
+            fn drop(&mut self) {}
+        }
+
+        fn f(_: impl Debug) {}
+
+        #[derive(Debug)]
+        struct Y(X);
+
+        let y = Y(X);
+        f(&y); // Don't lint. Not copy, passed by a reference to value
+    }
+    {
+        fn f(_: impl AsRef<str>) {}
+        let x = String::new();
+        f(&x); // Don't lint, not a copy, makes it unavailable later
+        f(String::new()); // Lint, makes no difference
+        let y = "".to_owned();
+        f(&y); // Don't lint
+        f("".to_owned()); // Lint
     }
 }

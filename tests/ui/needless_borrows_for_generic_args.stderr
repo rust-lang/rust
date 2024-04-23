@@ -50,28 +50,22 @@ LL |         let _ = Command::new("ls").args(&["-a", "-l"]).status().unwrap();
    |                                         ^^^^^^^^^^^^^ help: change this to: `["-a", "-l"]`
 
 error: the borrowed expression implements the required traits
-  --> tests/ui/needless_borrows_for_generic_args.rs:144:41
-   |
-LL |             let _ = std::fs::write("x", &arg);
-   |                                         ^^^^ help: change this to: `arg`
-
-error: the borrowed expression implements the required traits
-  --> tests/ui/needless_borrows_for_generic_args.rs:145:41
-   |
-LL |             let _ = std::fs::write("x", &loc);
-   |                                         ^^^^ help: change this to: `loc`
-
-error: the borrowed expression implements the required traits
-  --> tests/ui/needless_borrows_for_generic_args.rs:167:11
-   |
-LL |         f(&x);
-   |           ^^ help: change this to: `x`
-
-error: the borrowed expression implements the required traits
   --> tests/ui/needless_borrows_for_generic_args.rs:247:13
    |
 LL |         foo(&a);
    |             ^^ help: change this to: `a`
 
-error: aborting due to 12 previous errors
+error: the borrowed expression implements the required traits
+  --> tests/ui/needless_borrows_for_generic_args.rs:331:11
+   |
+LL |         f(&String::new()); // Lint, makes no difference
+   |           ^^^^^^^^^^^^^^ help: change this to: `String::new()`
+
+error: the borrowed expression implements the required traits
+  --> tests/ui/needless_borrows_for_generic_args.rs:334:11
+   |
+LL |         f(&"".to_owned()); // Lint
+   |           ^^^^^^^^^^^^^^ help: change this to: `"".to_owned()`
+
+error: aborting due to 11 previous errors
 
