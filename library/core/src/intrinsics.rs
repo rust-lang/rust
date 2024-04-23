@@ -987,6 +987,7 @@ pub const unsafe fn assume(b: bool) {
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic]
 #[rustc_nounwind]
+#[cfg_attr(not(bootstrap), miri::intrinsic_fallback_checks_ub)]
 pub const fn likely(b: bool) -> bool {
     b
 }
@@ -1006,6 +1007,7 @@ pub const fn likely(b: bool) -> bool {
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic]
 #[rustc_nounwind]
+#[cfg_attr(not(bootstrap), miri::intrinsic_fallback_checks_ub)]
 pub const fn unlikely(b: bool) -> bool {
     b
 }
@@ -2526,6 +2528,7 @@ extern "rust-intrinsic" {
 #[rustc_nounwind]
 #[rustc_do_not_const_check]
 #[inline]
+#[cfg_attr(not(bootstrap), miri::intrinsic_fallback_checks_ub)]
 pub const fn ptr_guaranteed_cmp<T>(ptr: *const T, other: *const T) -> u8 {
     (ptr == other) as u8
 }

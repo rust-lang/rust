@@ -16,6 +16,7 @@ pub(crate) enum MinMax {
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     /// Calls the simd intrinsic `intrinsic`; the `simd_` prefix has already been removed.
+    /// Returns `Ok(true)` if the intrinsic was handled.
     fn emulate_simd_intrinsic(
         &mut self,
         intrinsic_name: &str,

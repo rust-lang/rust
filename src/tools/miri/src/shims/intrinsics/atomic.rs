@@ -14,6 +14,7 @@ pub enum AtomicOp {
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     /// Calls the atomic intrinsic `intrinsic`; the `atomic_` prefix has already been removed.
+    /// Returns `Ok(true)` if the intrinsic was handled.
     fn emulate_atomic_intrinsic(
         &mut self,
         intrinsic_name: &str,

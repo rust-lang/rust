@@ -11,6 +11,7 @@ use rustc_middle::{
     ty::{self, FloatTy},
 };
 use rustc_target::abi::Size;
+use rustc_span::{sym, Symbol};
 
 use crate::*;
 use atomic::EvalContextExt as _;
@@ -48,6 +49,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
         // All remaining supported intrinsics have a return place.
         let ret = match ret {
+            // FIXME: add fallback body support once we actually have a diverging intrinsic with a fallback body
             None => throw_unsup_format!("unimplemented (diverging) intrinsic: `{intrinsic_name}`"),
             Some(p) => p,
         };
@@ -63,8 +65,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
         // The rest jumps to `ret` immediately.
         if !this.emulate_intrinsic_by_name(intrinsic_name, instance.args, args, dest)? {
+            // We haven't handled the intrinsic, let's see if we can use a fallback body.
             if this.tcx.intrinsic(instance.def_id()).unwrap().must_be_overridden {
                 throw_unsup_format!("unimplemented intrinsic: `{intrinsic_name}`")
+            }
+            let intrinsic_fallback_checks_ub = Symbol::intern("intrinsic_fallback_checks_ub");
+            if this.tcx.get_attrs_by_path(instance.def_id(), &[sym::miri, intrinsic_fallback_checks_ub]).next().is_none() {
+                throw_unsup_format!("miri can only use intrinsic fallback bodies that check UB. After verifying that `{intrinsic_name}` does so, add the `#[miri::intrinsic_fallback_checks_ub]` attribute to it; also ping @rust-lang/miri when you do that");
             }
             return Ok(Some(ty::Instance {
                 def: ty::InstanceDef::Item(instance.def_id()),
@@ -78,6 +85,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     }
 
     /// Emulates a Miri-supported intrinsic (not supported by the core engine).
+    /// Returns `Ok(true)` if the intrinsic was handled.
     fn emulate_intrinsic_by_name(
         &mut self,
         intrinsic_name: &str,

@@ -468,7 +468,8 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
 
         // CTFE-specific intrinsics.
         let Some(ret) = target else {
-            // Handle diverging intrinsics.
+            // Handle diverging intrinsics. We can't handle any of them (that are not already
+            // handled above), but check if there is a fallback body.
             if ecx.tcx.intrinsic(instance.def_id()).unwrap().must_be_overridden {
                 throw_unsup_format!(
                     "intrinsic `{intrinsic_name}` is not supported at compile-time"
