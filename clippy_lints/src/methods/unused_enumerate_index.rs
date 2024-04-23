@@ -78,7 +78,7 @@ pub(super) fn check(cx: &LateContext<'_>, call_expr: &Expr<'_>, recv: &Expr<'_>,
         && match_def_path(cx, enumerate_defid, &CORE_ITER_ENUMERATE_METHOD)
     {
         // Check if the tuple type was explicit. It may be the type system _needs_ the type of the element
-        // that would be explicited in the closure.
+        // that would be explicitly in the closure.
         let new_closure_param = match find_elem_explicit_type_span(closure.fn_decl) {
             // We have an explicit type. Get its snippet, that of the binding name, and do `binding: ty`.
             // Fallback to `..` if we fail getting either snippet.
