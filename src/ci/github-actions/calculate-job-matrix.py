@@ -7,6 +7,7 @@ be executed on CI.
 It reads job definitions from `src/ci/github-actions/jobs.yml`
 and filters them based on the event that happened on CI.
 """
+import dataclasses
 import enum
 import json
 import logging
@@ -46,28 +47,31 @@ class JobType(enum.Enum):
     Auto = enum.auto()
 
 
-def find_job_type(github_ctx: Dict[str, Any]) -> Optional[JobType]:
-    event_name = github_ctx["event_name"]
-    ref = github_ctx["ref"]
-    repository = github_ctx["repository"]
+@dataclasses.dataclass
+class GitHubCtx:
+    event_name: str
+    ref: str
+    repository: str
 
-    if event_name == "pull_request":
+
+def find_job_type(ctx: GitHubCtx) -> Optional[JobType]:
+    if ctx.event_name == "pull_request":
         return JobType.PR
-    elif event_name == "push":
+    elif ctx.event_name == "push":
         old_bors_try_build = (
-            ref in ("refs/heads/try", "refs/heads/try-perf") and
-            repository == "rust-lang-ci/rust"
+            ctx.ref in ("refs/heads/try", "refs/heads/try-perf") and
+            ctx.repository == "rust-lang-ci/rust"
         )
         new_bors_try_build = (
-            ref == "refs/heads/automation/bors/try" and
-            repository == "rust-lang/rust"
+            ctx.ref == "refs/heads/automation/bors/try" and
+            ctx.repository == "rust-lang/rust"
         )
         try_build = old_bors_try_build or new_bors_try_build
 
         if try_build:
             return JobType.Try
 
-        if ref == "refs/heads/auto" and repository == "rust-lang-ci/rust":
+        if ctx.ref == "refs/heads/auto" and ctx.repository == "rust-lang-ci/rust":
             return JobType.Auto
 
     return None
@@ -84,13 +88,21 @@ def calculate_jobs(job_type: JobType, job_data: Dict[str, Any]) -> List[Dict[str
     return []
 
 
+def get_github_ctx() -> GitHubCtx:
+    return GitHubCtx(
+        event_name=os.environ["GITHUB_EVENT_NAME"],
+        ref=os.environ["GITHUB_REF"],
+        repository=os.environ["GITHUB_REPOSITORY"]
+    )
+
+
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
 
     with open(JOBS_YAML_PATH) as f:
         data = yaml.safe_load(f)
 
-    github_ctx = json.loads(os.environ["GITHUB_CTX"])
+    github_ctx = get_github_ctx()
 
     job_type = find_job_type(github_ctx)
     logging.info(f"Job type: {job_type}")

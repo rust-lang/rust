@@ -45,8 +45,6 @@ jobs:
       - name: Checkout the source code
         uses: actions/checkout@v4
       - name: Calculate the CI job matrix
-        env:
-          GITHUB_CTX: "${{ toJSON(github) }}"
         run: python3 src/ci/github-actions/calculate-job-matrix.py >> $GITHUB_OUTPUT
         id: jobs
   job:
