@@ -1398,7 +1398,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                         self.tcx.predicates_of(impl_def_id).instantiate(self.tcx, impl_args);
                     let impl_bounds = ocx.normalize(cause, self.param_env, impl_bounds);
                     // Convert the bounds into obligations.
-                    ocx.register_obligations(traits::predicates_for_generics(
+                    let predicates: Vec<_> = traits::predicates_for_generics(
                         |idx, span| {
                             let code = if span.is_dummy() {
                                 traits::ExprItemObligation(impl_def_id, self.scope_expr_id, idx)
@@ -1414,7 +1414,21 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                         },
                         self.param_env,
                         impl_bounds,
-                    ));
+                    )
+                    .collect();
+                    if let Some(obligation) = predicates.iter().find(|obligation| {
+                        !self.infcx.next_trait_solver()
+                            && !self.infcx.predicate_may_hold(&obligation)
+                    }) {
+                        result = ProbeResult::NoMatch;
+                        possibly_unsatisfied_predicates.push((
+                            self.resolve_vars_if_possible(obligation.predicate),
+                            None,
+                            Some(obligation.cause.clone()),
+                        ));
+                    } else {
+                        ocx.register_obligations(predicates);
+                    }
                 }
                 TraitCandidate(poly_trait_ref) => {
                     // Some trait methods are excluded for arrays before 2021.
@@ -1507,22 +1521,25 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             }
 
             // Evaluate those obligations to see if they might possibly hold.
-            for error in ocx.select_where_possible() {
-                result = ProbeResult::NoMatch;
-                let nested_predicate = self.resolve_vars_if_possible(error.obligation.predicate);
-                if let Some(trait_predicate) = trait_predicate
-                    && nested_predicate == self.resolve_vars_if_possible(trait_predicate)
-                {
-                    // Don't report possibly unsatisfied predicates if the root
-                    // trait obligation from a `TraitCandidate` is unsatisfied.
-                    // That just means the candidate doesn't hold.
-                } else {
-                    possibly_unsatisfied_predicates.push((
-                        nested_predicate,
-                        Some(self.resolve_vars_if_possible(error.root_obligation.predicate))
-                            .filter(|root_predicate| *root_predicate != nested_predicate),
-                        Some(error.obligation.cause),
-                    ));
+            if let ProbeResult::Match = result {
+                for error in ocx.select_where_possible() {
+                    result = ProbeResult::NoMatch;
+                    let nested_predicate =
+                        self.resolve_vars_if_possible(error.obligation.predicate);
+                    if let Some(trait_predicate) = trait_predicate
+                        && nested_predicate == self.resolve_vars_if_possible(trait_predicate)
+                    {
+                        // Don't report possibly unsatisfied predicates if the root
+                        // trait obligation from a `TraitCandidate` is unsatisfied.
+                        // That just means the candidate doesn't hold.
+                    } else {
+                        possibly_unsatisfied_predicates.push((
+                            nested_predicate,
+                            Some(self.resolve_vars_if_possible(error.root_obligation.predicate))
+                                .filter(|root_predicate| *root_predicate != nested_predicate),
+                            Some(error.obligation.cause),
+                        ));
+                    }
                 }
             }
 

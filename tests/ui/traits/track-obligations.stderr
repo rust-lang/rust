@@ -4,23 +4,26 @@ error[E0599]: the method `check` exists for struct `Client<()>`, but its trait b
 LL | struct ALayer<C>(C);
    | ---------------- doesn't satisfy `ALayer<()>: ParticularServiceLayer<()>`
 ...
-LL | struct AService;
-   | --------------- doesn't satisfy `<AService as Service<Req>>::Response = Res`
-...
 LL | struct Client<C>(C);
    | ---------------- method `check` not found for this struct
 ...
 LL |     Client(()).check();
    |                ^^^^^ method cannot be called on `Client<()>` due to unsatisfied trait bounds
    |
-note: trait bound `<AService as Service<Req>>::Response = Res` was not satisfied
-  --> $DIR/track-obligations.rs:24:21
+note: trait bound `ALayer<()>: ParticularServiceLayer<()>` was not satisfied
+  --> $DIR/track-obligations.rs:71:16
    |
-LL | impl<T> ParticularService for T
-   |         -----------------     -
+LL | impl<C> Client<C>
+   |         ---------
 LL | where
-LL |     T: Service<Req, Response = Res>,
-   |                     ^^^^^^^^^^^^^^ unsatisfied trait bound introduced here
+LL |     ALayer<C>: ParticularServiceLayer<C>,
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^ unsatisfied trait bound introduced here
+note: the trait `ParticularServiceLayer` must be implemented
+  --> $DIR/track-obligations.rs:34:1
+   |
+LL | / pub trait ParticularServiceLayer<C>:
+LL | |     Layer<C, Service = <Self as ParticularServiceLayer<C>>::Service>
+   | |____________________________________________________________________^
 
 error[E0271]: type mismatch resolving `<AService as Service<Req>>::Response == Res`
   --> $DIR/track-obligations.rs:87:11
