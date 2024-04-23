@@ -157,7 +157,10 @@ impl Instance {
     /// When generating code for a Drop terminator, users can ignore an empty drop glue.
     /// These shims are only needed to generate a valid Drop call done via VTable.
     pub fn is_empty_shim(&self) -> bool {
-        self.kind == InstanceKind::Shim && with(|cx| cx.is_empty_drop_shim(self.def))
+        self.kind == InstanceKind::Shim
+            && with(|cx| {
+                cx.is_empty_drop_shim(self.def) || cx.is_empty_async_drop_ctor_shim(self.def)
+            })
     }
 
     /// Try to constant evaluate the instance into a constant with the given type.

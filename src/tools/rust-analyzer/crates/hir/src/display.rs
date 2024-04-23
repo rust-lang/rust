@@ -1,4 +1,5 @@
 //! HirDisplay implementations for various hir types.
+use either::Either;
 use hir_def::{
     data::adt::{StructKind, VariantData},
     generics::{
@@ -13,7 +14,7 @@ use hir_ty::{
         write_bounds_like_dyn_trait_with_prefix, write_visibility, HirDisplay, HirDisplayError,
         HirFormatter, SizedByDefault,
     },
-    Interner, TraitRefExt, WhereClause,
+    AliasEq, AliasTy, Interner, ProjectionTyExt, TraitRefExt, TyKind, WhereClause,
 };
 
 use crate::{
@@ -363,16 +364,52 @@ impl HirDisplay for TypeOrConstParam {
 
 impl HirDisplay for TypeParam {
     fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
-        write!(f, "{}", self.name(f.db).display(f.db.upcast()))?;
+        let params = f.db.generic_params(self.id.parent());
+        let param_data = &params.type_or_consts[self.id.local_id()];
+        let substs = TyBuilder::placeholder_subst(f.db, self.id.parent());
+        let krate = self.id.parent().krate(f.db).id;
+        let ty =
+            TyKind::Placeholder(hir_ty::to_placeholder_idx(f.db, self.id.into())).intern(Interner);
+        let predicates = f.db.generic_predicates(self.id.parent());
+        let predicates = predicates
+            .iter()
+            .cloned()
+            .map(|pred| pred.substitute(Interner, &substs))
+            .filter(|wc| match wc.skip_binders() {
+                WhereClause::Implemented(tr) => tr.self_type_parameter(Interner) == ty,
+                WhereClause::AliasEq(AliasEq { alias: AliasTy::Projection(proj), ty: _ }) => {
+                    proj.self_type_parameter(f.db) == ty
+                }
+                WhereClause::AliasEq(_) => false,
+                WhereClause::TypeOutlives(to) => to.ty == ty,
+                WhereClause::LifetimeOutlives(_) => false,
+            })
+            .collect::<Vec<_>>();
+
+        match param_data {
+            TypeOrConstParamData::TypeParamData(p) => match p.provenance {
+                TypeParamProvenance::TypeParamList | TypeParamProvenance::TraitSelf => {
+                    write!(f, "{}", p.name.clone().unwrap().display(f.db.upcast()))?
+                }
+                TypeParamProvenance::ArgumentImplTrait => {
+                    return write_bounds_like_dyn_trait_with_prefix(
+                        f,
+                        "impl",
+                        Either::Left(&ty),
+                        &predicates,
+                        SizedByDefault::Sized { anchor: krate },
+                    );
+                }
+            },
+            TypeOrConstParamData::ConstParamData(p) => {
+                write!(f, "{}", p.name.display(f.db.upcast()))?;
+            }
+        }
+
         if f.omit_verbose_types() {
             return Ok(());
         }
 
-        let bounds = f.db.generic_predicates_for_param(self.id.parent(), self.id.into(), None);
-        let substs = TyBuilder::placeholder_subst(f.db, self.id.parent());
-        let predicates: Vec<_> =
-            bounds.iter().cloned().map(|b| b.substitute(Interner, &substs)).collect();
-        let krate = self.id.parent().krate(f.db).id;
         let sized_trait =
             f.db.lang_item(krate, LangItem::Sized).and_then(|lang_item| lang_item.as_trait());
         let has_only_sized_bound = predicates.iter().all(move |pred| match pred.skip_binders() {
@@ -382,7 +419,16 @@ impl HirDisplay for TypeParam {
         let has_only_not_sized_bound = predicates.is_empty();
         if !has_only_sized_bound || has_only_not_sized_bound {
             let default_sized = SizedByDefault::Sized { anchor: krate };
-            write_bounds_like_dyn_trait_with_prefix(f, ":", &predicates, default_sized)?;
+            write_bounds_like_dyn_trait_with_prefix(
+                f,
+                ":",
+                Either::Left(
+                    &hir_ty::TyKind::Placeholder(hir_ty::to_placeholder_idx(f.db, self.id.into()))
+                        .intern(Interner),
+                ),
+                &predicates,
+                default_sized,
+            )?;
         }
         Ok(())
     }

@@ -351,7 +351,7 @@ hir_analysis_param_in_ty_of_assoc_const_binding =
         *[normal] the {$param_def_kind} `{$param_name}` is defined here
     }
 
-hir_analysis_param_not_captured = `impl Trait` must mention all {$kind} parameters in scope
+hir_analysis_param_not_captured = `impl Trait` must mention all {$kind} parameters in scope in `use<...>`
     .label = {$kind} parameter is implicitly captured by this `impl Trait`
     .note = currently, all {$kind} parameters are required to be mentioned in the precise captures list
 
@@ -404,6 +404,10 @@ hir_analysis_rpitit_refined = impl trait in impl method signature does not match
 hir_analysis_self_in_impl_self =
     `Self` is not valid in the self type of an impl block
     .note = replace `Self` with a different type
+
+hir_analysis_self_ty_not_captured = `impl Trait` must mention the `Self` type of the trait in `use<...>`
+    .label = `Self` type parameter is implicitly captured by this `impl Trait`
+    .note = currently, all type parameters are required to be mentioned in the precise captures list
 
 hir_analysis_simd_ffi_highly_experimental = use of SIMD type{$snip} in FFI is highly experimental and may result in invalid code
     .help = add `#![feature(simd_ffi)]` to the crate attributes to enable

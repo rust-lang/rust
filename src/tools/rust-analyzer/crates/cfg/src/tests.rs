@@ -1,12 +1,12 @@
 use arbitrary::{Arbitrary, Unstructured};
 use expect_test::{expect, Expect};
 use mbe::{syntax_node_to_token_tree, DummyTestSpanMap, DUMMY};
-use syntax::{ast, AstNode};
+use syntax::{ast, AstNode, Edition};
 
 use crate::{CfgAtom, CfgExpr, CfgOptions, DnfExpr};
 
 fn assert_parse_result(input: &str, expected: CfgExpr) {
-    let source_file = ast::SourceFile::parse(input).ok().unwrap();
+    let source_file = ast::SourceFile::parse(input, Edition::CURRENT).ok().unwrap();
     let tt = source_file.syntax().descendants().find_map(ast::TokenTree::cast).unwrap();
     let tt = syntax_node_to_token_tree(tt.syntax(), DummyTestSpanMap, DUMMY);
     let cfg = CfgExpr::parse(&tt);
@@ -14,7 +14,7 @@ fn assert_parse_result(input: &str, expected: CfgExpr) {
 }
 
 fn check_dnf(input: &str, expect: Expect) {
-    let source_file = ast::SourceFile::parse(input).ok().unwrap();
+    let source_file = ast::SourceFile::parse(input, Edition::CURRENT).ok().unwrap();
     let tt = source_file.syntax().descendants().find_map(ast::TokenTree::cast).unwrap();
     let tt = syntax_node_to_token_tree(tt.syntax(), DummyTestSpanMap, DUMMY);
     let cfg = CfgExpr::parse(&tt);
@@ -23,7 +23,7 @@ fn check_dnf(input: &str, expect: Expect) {
 }
 
 fn check_why_inactive(input: &str, opts: &CfgOptions, expect: Expect) {
-    let source_file = ast::SourceFile::parse(input).ok().unwrap();
+    let source_file = ast::SourceFile::parse(input, Edition::CURRENT).ok().unwrap();
     let tt = source_file.syntax().descendants().find_map(ast::TokenTree::cast).unwrap();
     let tt = syntax_node_to_token_tree(tt.syntax(), DummyTestSpanMap, DUMMY);
     let cfg = CfgExpr::parse(&tt);
@@ -34,7 +34,7 @@ fn check_why_inactive(input: &str, opts: &CfgOptions, expect: Expect) {
 
 #[track_caller]
 fn check_enable_hints(input: &str, opts: &CfgOptions, expected_hints: &[&str]) {
-    let source_file = ast::SourceFile::parse(input).ok().unwrap();
+    let source_file = ast::SourceFile::parse(input, Edition::CURRENT).ok().unwrap();
     let tt = source_file.syntax().descendants().find_map(ast::TokenTree::cast).unwrap();
     let tt = syntax_node_to_token_tree(tt.syntax(), DummyTestSpanMap, DUMMY);
     let cfg = CfgExpr::parse(&tt);

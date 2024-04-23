@@ -1315,7 +1315,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     }
                     AggregateKind::Adt(..)
                     | AggregateKind::Array(..)
-                    | AggregateKind::Tuple { .. } => (),
+                    | AggregateKind::Tuple { .. }
+                    | AggregateKind::RawPtr(..) => (),
                 }
 
                 for operand in operands {

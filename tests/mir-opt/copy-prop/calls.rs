@@ -1,6 +1,6 @@
 // skip-filecheck
 // Check that CopyProp does propagate return values of call terminators.
-//@ unit-test: CopyProp
+//@ test-mir-pass: CopyProp
 //@ needs-unwind
 
 #![feature(custom_mir, core_intrinsics)]

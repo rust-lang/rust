@@ -4,7 +4,6 @@
 //@ compile-flags: -O --edition=2021 -Zmerge-functions=disabled
 //@ only-64bit (because the LLVM type of i64 for usize shows up)
 #![crate_type = "lib"]
-#![feature(generic_nonzero)]
 
 use core::ptr::NonNull;
 use core::num::NonZero;

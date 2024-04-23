@@ -65,11 +65,11 @@ pub(crate) const KINDS_SRC: KindsSrc<'_> = KindsSrc {
         (">>=", "SHREQ"),
     ],
     keywords: &[
-        "as", "async", "await", "box", "break", "const", "continue", "crate", "do", "dyn", "else",
-        "enum", "extern", "false", "fn", "for", "if", "impl", "in", "let", "loop", "macro",
-        "match", "mod", "move", "mut", "pub", "ref", "return", "become", "self", "Self", "static",
-        "struct", "super", "trait", "true", "try", "type", "unsafe", "use", "where", "while",
-        "yield",
+        "abstract", "as", "async", "await", "become", "box", "break", "const", "continue", "crate",
+        "do", "dyn", "else", "enum", "extern", "false", "final", "fn", "for", "if", "impl", "in",
+        "let", "loop", "macro", "match", "mod", "move", "mut", "override", "priv", "pub", "ref",
+        "return", "self", "Self", "static", "struct", "super", "trait", "true", "try", "type",
+        "typeof", "unsafe", "unsized", "use", "virtual", "where", "while", "yield",
     ],
     contextual_keywords: &[
         "auto",

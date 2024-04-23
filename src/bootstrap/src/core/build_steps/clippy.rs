@@ -24,7 +24,7 @@ use super::compile::std_cargo;
 use super::tool::prepare_tool_cargo;
 use super::tool::SourceType;
 
-// Disable the most spammy clippy lints
+/// Disable the most spammy clippy lints
 const IGNORED_RULES_FOR_STD_AND_RUSTC: &[&str] = &[
     "many_single_char_names", // there are a lot in stdarch
     "collapsible_if",

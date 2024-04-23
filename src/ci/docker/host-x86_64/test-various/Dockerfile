@@ -28,8 +28,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   qemu-system-x86 \
   && rm -rf /var/lib/apt/lists/*
 
-RUN curl -sL https://nodejs.org/dist/v18.12.0/node-v18.12.0-linux-x64.tar.xz | \
-  tar -xJ
+COPY scripts/nodejs.sh /scripts/
+RUN sh /scripts/nodejs.sh /node
+ENV PATH="/node/bin:${PATH}"
 
 WORKDIR /build/
 COPY scripts/musl-toolchain.sh /build/
@@ -45,7 +46,6 @@ ENV WASI_SDK_PATH=/wasi-sdk-22.0
 
 ENV RUST_CONFIGURE_ARGS \
   --musl-root-x86_64=/usr/local/x86_64-linux-musl \
-  --set build.nodejs=/node-v18.12.0-linux-x64/bin/node \
   --set rust.lld
 
 # Some run-make tests have assertions about code size, and enabling debug

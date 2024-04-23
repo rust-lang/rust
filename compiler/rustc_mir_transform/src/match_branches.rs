@@ -41,7 +41,10 @@ impl<'tcx> MirPass<'tcx> for MatchBranchSimplification {
                 should_cleanup = true;
                 continue;
             }
-            if SimplifyToExp::default().simplify(tcx, body, bb_idx, param_env).is_some() {
+            // unsound: https://github.com/rust-lang/rust/issues/124150
+            if tcx.sess.opts.unstable_opts.unsound_mir_opts
+                && SimplifyToExp::default().simplify(tcx, body, bb_idx, param_env).is_some()
+            {
                 should_cleanup = true;
                 continue;
             }

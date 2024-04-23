@@ -88,7 +88,7 @@ fn syntax_tree_for_token(node: &SyntaxToken, text_range: TextRange) -> Option<St
         // Remove custom markers
         .replace("$0", "");
 
-    let parsed = SourceFile::parse(&text);
+    let parsed = SourceFile::parse(&text, span::Edition::CURRENT);
 
     // If the "file" parsed without errors,
     // return its syntax

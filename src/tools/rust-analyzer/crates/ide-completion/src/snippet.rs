@@ -200,7 +200,7 @@ fn validate_snippet(
 ) -> Option<(Box<[GreenNode]>, String, Option<Box<str>>)> {
     let mut imports = Vec::with_capacity(requires.len());
     for path in requires.iter() {
-        let use_path = ast::SourceFile::parse(&format!("use {path};"))
+        let use_path = ast::SourceFile::parse(&format!("use {path};"), syntax::Edition::CURRENT)
             .syntax_node()
             .descendants()
             .find_map(ast::Path::cast)?;

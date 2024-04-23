@@ -32,7 +32,6 @@
 #![feature(box_patterns)]
 #![feature(control_flow_enum)]
 #![feature(extract_if)]
-#![feature(generic_nonzero)]
 #![feature(if_let_guard)]
 #![feature(iter_order_by)]
 #![feature(let_chains)]

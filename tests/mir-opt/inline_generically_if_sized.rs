@@ -1,5 +1,5 @@
 // skip-filecheck
-//@ unit-test: Inline
+//@ test-mir-pass: Inline
 //@ compile-flags: --crate-type=lib -C panic=abort
 
 trait Foo {

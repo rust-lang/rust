@@ -813,6 +813,19 @@ fn codegen_stmt<'tcx>(
                     );
                     lval.write_cvalue(fx, val);
                 }
+                Rvalue::Aggregate(ref kind, ref operands)
+                    if matches!(**kind, AggregateKind::RawPtr(..)) =>
+                {
+                    let ty = to_place_and_rval.1.ty(&fx.mir.local_decls, fx.tcx);
+                    let layout = fx.layout_of(fx.monomorphize(ty));
+                    let [data, meta] = &*operands.raw else {
+                        bug!("RawPtr fields: {operands:?}");
+                    };
+                    let data = codegen_operand(fx, data);
+                    let meta = codegen_operand(fx, meta);
+                    let ptr_val = CValue::pointer_from_data_and_meta(data, meta, layout);
+                    lval.write_cvalue(fx, ptr_val);
+                }
                 Rvalue::Aggregate(ref kind, ref operands) => {
                     let (variant_index, variant_dest, active_field_index) = match **kind {
                         mir::AggregateKind::Adt(_, variant_index, _, _, active_field_index) => {

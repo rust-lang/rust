@@ -312,14 +312,15 @@ const RISCV_ALLOWED_FEATURES: &[(&str, Stability)] = &[
 const WASM_ALLOWED_FEATURES: &[(&str, Stability)] = &[
     // tidy-alphabetical-start
     ("atomics", Unstable(sym::wasm_target_feature)),
-    ("bulk-memory", Unstable(sym::wasm_target_feature)),
+    ("bulk-memory", Stable),
     ("exception-handling", Unstable(sym::wasm_target_feature)),
+    ("extended-const", Stable),
     ("multivalue", Unstable(sym::wasm_target_feature)),
-    ("mutable-globals", Unstable(sym::wasm_target_feature)),
-    ("nontrapping-fptoint", Unstable(sym::wasm_target_feature)),
+    ("mutable-globals", Stable),
+    ("nontrapping-fptoint", Stable),
     ("reference-types", Unstable(sym::wasm_target_feature)),
     ("relaxed-simd", Unstable(sym::wasm_target_feature)),
-    ("sign-ext", Unstable(sym::wasm_target_feature)),
+    ("sign-ext", Stable),
     ("simd128", Stable),
     // tidy-alphabetical-end
 ];

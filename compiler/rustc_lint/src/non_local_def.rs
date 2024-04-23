@@ -264,7 +264,19 @@ fn impl_trait_ref_has_enough_non_local_candidates<'tcx>(
     binder: EarlyBinder<TraitRef<'tcx>>,
     mut did_has_local_parent: impl FnMut(DefId) -> bool,
 ) -> bool {
-    let infcx = tcx.infer_ctxt().build();
+    let infcx = tcx
+        .infer_ctxt()
+        // We use the new trait solver since the obligation we are trying to
+        // prove here may overflow and those are fatal in the old trait solver.
+        // Which is unacceptable for a lint.
+        //
+        // Thanksfully the part we use here are very similar to the
+        // new-trait-solver-as-coherence, which is in stabilization.
+        //
+        // https://github.com/rust-lang/rust/issues/123573
+        .with_next_trait_solver(true)
+        .build();
+
     let trait_ref = binder.instantiate(tcx, infcx.fresh_args_for_item(infer_span, trait_def_id));
 
     let trait_ref = trait_ref.fold_with(&mut ReplaceLocalTypesWithInfer {

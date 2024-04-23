@@ -1,4 +1,4 @@
-//@ unit-test: EarlyOtherwiseBranch
+//@ test-mir-pass: EarlyOtherwiseBranch
 //@ compile-flags: -Zmir-enable-passes=+UnreachableEnumBranching
 
 // must not optimize as it does not follow the pattern of

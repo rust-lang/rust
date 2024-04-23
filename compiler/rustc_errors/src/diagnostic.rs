@@ -730,7 +730,7 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
     } }
 
     #[rustc_lint_diagnostics]
-    fn highlighted_note(&mut self, msg: Vec<StringPart>) -> &mut Self {
+    pub fn highlighted_note(&mut self, msg: Vec<StringPart>) -> &mut Self {
         self.sub_with_highlights(Level::Note, msg, MultiSpan::new());
         self
     }

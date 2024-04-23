@@ -54,6 +54,28 @@ fn resolve_instance<'tcx>(
                 debug!(" => trivial drop glue");
                 ty::InstanceDef::DropGlue(def_id, None)
             }
+        } else if Some(def_id) == tcx.lang_items().async_drop_in_place_fn() {
+            let ty = args.type_at(0);
+
+            if !ty.is_async_destructor_noop(tcx, param_env) {
+                match *ty.kind() {
+                    ty::Closure(..)
+                    | ty::CoroutineClosure(..)
+                    | ty::Coroutine(..)
+                    | ty::Tuple(..)
+                    | ty::Adt(..)
+                    | ty::Dynamic(..)
+                    | ty::Array(..)
+                    | ty::Slice(..) => {}
+                    // Async destructor ctor shims can only be built from ADTs.
+                    _ => return Ok(None),
+                }
+                debug!(" => nontrivial async drop glue ctor");
+                ty::InstanceDef::AsyncDropGlueCtorShim(def_id, Some(ty))
+            } else {
+                debug!(" => trivial async drop glue ctor");
+                ty::InstanceDef::AsyncDropGlueCtorShim(def_id, None)
+            }
         } else {
             debug!(" => free item");
             // FIXME(effects): we may want to erase the effect param if that is present on this item.

@@ -72,9 +72,9 @@ ENV GCC_EXEC_PREFIX="/usr/lib/gcc/"
 
 COPY host-x86_64/x86_64-gnu-tools/checktools.sh /tmp/
 
-RUN curl -sL https://nodejs.org/dist/v14.20.0/node-v14.20.0-linux-x64.tar.xz | tar -xJ
-ENV NODE_FOLDER=/node-v14.20.0-linux-x64/bin
-ENV PATH="$NODE_FOLDER:${PATH}"
+COPY scripts/nodejs.sh /scripts/
+RUN sh /scripts/nodejs.sh /node
+ENV PATH="/node/bin:${PATH}"
 
 COPY host-x86_64/x86_64-gnu-tools/browser-ui-test.version /tmp/
 

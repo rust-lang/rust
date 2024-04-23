@@ -543,6 +543,9 @@ impl<'tcx> Stable<'tcx> for mir::AggregateKind<'tcx> {
             mir::AggregateKind::CoroutineClosure(..) => {
                 todo!("FIXME(async_closures): Lower these to SMIR")
             }
+            mir::AggregateKind::RawPtr(ty, mutability) => {
+                stable_mir::mir::AggregateKind::RawPtr(ty.stable(tables), mutability.stable(tables))
+            }
         }
     }
 }

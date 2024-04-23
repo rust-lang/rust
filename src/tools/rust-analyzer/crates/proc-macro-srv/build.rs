@@ -4,6 +4,8 @@
 use std::{env, fs::File, io::Write, path::PathBuf, process::Command};
 
 fn main() {
+    println!("cargo:rustc-check-cfg=cfg(rust_analyzer)");
+
     let mut path = PathBuf::from(env::var_os("OUT_DIR").unwrap());
     path.push("rustc_version.rs");
     let mut f = File::create(&path).unwrap();
