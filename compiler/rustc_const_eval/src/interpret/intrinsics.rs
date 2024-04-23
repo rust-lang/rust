@@ -414,7 +414,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 }
                 self.copy_op(&self.project_index(&input, index)?, dest)?;
             }
-            sym::likely | sym::unlikely | sym::black_box => {
+            sym::black_box => {
                 // These just return their argument
                 self.copy_op(&args[0], dest)?;
             }

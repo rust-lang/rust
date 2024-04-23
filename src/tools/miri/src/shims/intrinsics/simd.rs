@@ -22,7 +22,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         generic_args: ty::GenericArgsRef<'tcx>,
         args: &[OpTy<'tcx, Provenance>],
         dest: &MPlaceTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx> {
+    ) -> InterpResult<'tcx, bool> {
         let this = self.eval_context_mut();
         match intrinsic_name {
             #[rustfmt::skip]
@@ -743,9 +743,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 }
             }
 
-            name => throw_unsup_format!("unimplemented intrinsic: `simd_{name}`"),
+            _ => return Ok(false),
         }
-        Ok(())
+        Ok(true)
     }
 
     fn fminmax_op(
