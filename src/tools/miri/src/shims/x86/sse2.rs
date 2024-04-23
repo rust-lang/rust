@@ -420,7 +420,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
                 };
 
                 let res = this.float_to_int_checked(&op, dest.layout, rnd)?.unwrap_or_else(|| {
-                    // Fallback to minimum acording to SSE semantics.
+                    // Fallback to minimum according to SSE semantics.
                     ImmTy::from_int(dest.layout.size.signed_int_min(), dest.layout)
                 });
 
@@ -447,7 +447,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
                 let res0 = this.float_to_float_or_int(&right0, dest0.layout)?;
                 this.write_immediate(*res0, &dest0)?;
 
-                // Copy remianing from `left`
+                // Copy remaining from `left`
                 for i in 1..dest_len {
                     this.copy_op(&this.project_index(&left, i)?, &this.project_index(&dest, i)?)?;
                 }

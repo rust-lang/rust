@@ -650,7 +650,7 @@ fn convert_float_to_int<'tcx>(
         let dest = this.project_index(&dest, i)?;
 
         let res = this.float_to_int_checked(&op, dest.layout, rnd)?.unwrap_or_else(|| {
-            // Fallback to minimum acording to SSE/AVX semantics.
+            // Fallback to minimum according to SSE/AVX semantics.
             ImmTy::from_int(dest.layout.size.signed_int_min(), dest.layout)
         });
         this.write_immediate(*res, &dest)?;
