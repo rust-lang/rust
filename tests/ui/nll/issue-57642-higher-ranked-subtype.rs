@@ -28,7 +28,8 @@ impl<T> Y for fn(T) {
 }
 
 fn higher_ranked_region_has_lost_its_binder() {
-    let x = <fn (&())>::make_g(); //~ ERROR the function
+    let x = <fn (&())>::make_g();
+    //~^ ERROR no function or associated item named `make_g` found for fn pointer `for<'a> fn(&'a ())` in the current scope
 }
 
 fn magical() {
