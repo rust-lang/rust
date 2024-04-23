@@ -5,7 +5,7 @@
 // Test that the simd_f{min,max} intrinsics produce the correct results.
 
 #![feature(repr_simd, core_intrinsics)]
-#![allow(non_camel_case_types)]
+#![allow(internal_features, non_camel_case_types)]
 
 #[repr(simd)]
 #[derive(Copy, Clone, PartialEq, Debug)]
