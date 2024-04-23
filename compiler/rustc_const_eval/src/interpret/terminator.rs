@@ -803,11 +803,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let (vptr, dyn_ty, adjusted_receiver) = if let ty::Dynamic(data, _, ty::DynStar) =
                     receiver_place.layout.ty.kind()
                 {
-                    let (recv, vptr) = self.unpack_dyn_star(&receiver_place)?;
-                    let (dyn_ty, dyn_trait) = self.get_ptr_vtable(vptr)?;
-                    if dyn_trait != data.principal() {
-                        throw_ub_custom!(fluent::const_eval_dyn_star_call_vtable_mismatch);
-                    }
+                    let (recv, vptr) = self.unpack_dyn_star(&receiver_place, data)?;
+                    let (dyn_ty, _dyn_trait) = self.get_ptr_vtable(vptr)?;
 
                     (vptr, dyn_ty, recv.ptr())
                 } else {
@@ -829,7 +826,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     let vptr = receiver_place.meta().unwrap_meta().to_pointer(self)?;
                     let (dyn_ty, dyn_trait) = self.get_ptr_vtable(vptr)?;
                     if dyn_trait != data.principal() {
-                        throw_ub_custom!(fluent::const_eval_dyn_call_vtable_mismatch);
+                        throw_ub!(InvalidVTableTrait {
+                            expected_trait: data,
+                            vtable_trait: dyn_trait,
+                        });
                     }
 
                     // It might be surprising that we use a pointer as the receiver even if this
@@ -939,13 +939,13 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let place = self.force_allocation(place)?;
 
         let place = match place.layout.ty.kind() {
-            ty::Dynamic(_, _, ty::Dyn) => {
+            ty::Dynamic(data, _, ty::Dyn) => {
                 // Dropping a trait object. Need to find actual drop fn.
-                self.unpack_dyn_trait(&place)?.0
+                self.unpack_dyn_trait(&place, data)?.0
             }
-            ty::Dynamic(_, _, ty::DynStar) => {
+            ty::Dynamic(data, _, ty::DynStar) => {
                 // Dropping a `dyn*`. Need to find actual drop fn.
-                self.unpack_dyn_star(&place)?.0
+                self.unpack_dyn_star(&place, data)?.0
             }
             _ => {
                 debug_assert_eq!(
