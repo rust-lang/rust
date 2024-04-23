@@ -321,6 +321,10 @@ environment variable. We first document the most relevant and most commonly used
 * `-Zmiri-env-forward=<var>` forwards the `var` environment variable to the interpreted program. Can
   be used multiple times to forward several variables. Execution will still be deterministic if the
   value of forwarded variables stays the same. Has no effect if `-Zmiri-disable-isolation` is set.
+* `-Zmiri-env-set=<var>=<value>` sets the `var` environment variable to `value` in the interpreted program.
+  It can be used to pass environment variables without needing to alter the host environment. It can
+  be used multiple times to set several variables. If `-Zmiri-disable-isolation` or `-Zmiri-env-forward`
+  is set, values set with this option will have priority over values from the host environment.
 * `-Zmiri-ignore-leaks` disables the memory leak checker, and also allows some
   remaining threads to exist when the main thread exits.
 * `-Zmiri-isolation-error=<action>` configures Miri's response to operations
