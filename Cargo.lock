@@ -3341,6 +3341,7 @@ dependencies = [
 name = "run_make_support"
 version = "0.0.0"
 dependencies = [
+ "gimli",
  "object 0.34.0",
  "regex",
  "wasmparser",
