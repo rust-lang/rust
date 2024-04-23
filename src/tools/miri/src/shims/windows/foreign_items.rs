@@ -231,7 +231,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                         Scalar::from_u32(0) // return zero upon failure
                     }
                     Ok(abs_filename) => {
-                        this.set_last_error(Scalar::from_u32(0))?; // make sure this is unambiguously not an error
                         Scalar::from_u32(helpers::windows_check_buffer_size(
                             this.write_path_to_wide_str(
                                 &abs_filename,
@@ -240,6 +239,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                                 /*truncate*/ false,
                             )?,
                         ))
+                        // This can in fact return 0. It is up to the caller to set last_error to 0
+                        // beforehand and check it afterwards to exclude that case.
                     }
                 };
                 this.write_scalar(result, dest)?;

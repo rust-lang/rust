@@ -160,10 +160,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         this.assert_target_os("windows", "GetEnvironmentVariableW");
 
         let name_ptr = this.read_pointer(name_op)?;
+        let buf_ptr = this.read_pointer(buf_op)?;
+        let buf_size = this.read_scalar(size_op)?.to_u32()?; // in characters
+
         let name = this.read_os_str_from_wide_str(name_ptr)?;
         Ok(match this.machine.env_vars.map.get(&name) {
             Some(&var_ptr) => {
-                this.set_last_error(Scalar::from_u32(0))?; // make sure this is unambiguously not an error
                 // The offset is used to strip the "{name}=" part of the string.
                 #[rustfmt::skip]
                 let name_offset_bytes = u64::try_from(name.len()).unwrap()
@@ -172,14 +174,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let var_ptr = var_ptr.offset(Size::from_bytes(name_offset_bytes), this)?;
                 let var = this.read_os_str_from_wide_str(var_ptr)?;
 
-                let buf_ptr = this.read_pointer(buf_op)?;
-                // `buf_size` represents the size in characters.
-                let buf_size = u64::from(this.read_scalar(size_op)?.to_u32()?);
-                Scalar::from_u32(windows_check_buffer_size(
-                    this.write_os_str_to_wide_str(
-                        &var, buf_ptr, buf_size, /*truncate*/ false,
-                    )?,
-                ))
+                Scalar::from_u32(windows_check_buffer_size(this.write_os_str_to_wide_str(
+                    &var,
+                    buf_ptr,
+                    buf_size.into(),
+                    /*truncate*/ false,
+                )?))
+                // This can in fact return 0. It is up to the caller to set last_error to 0
+                // beforehand and check it afterwards to exclude that case.
             }
             None => {
                 let envvar_not_found = this.eval_windows("c", "ERROR_ENVVAR_NOT_FOUND");
@@ -375,7 +377,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         // If we cannot get the current directory, we return 0
         match env::current_dir() {
             Ok(cwd) => {
-                this.set_last_error(Scalar::from_u32(0))?; // make sure this is unambiguously not an error
+                // This can in fact return 0. It is up to the caller to set last_error to 0
+                // beforehand and check it afterwards to exclude that case.
                 return Ok(Scalar::from_u32(windows_check_buffer_size(
                     this.write_path_to_wide_str(&cwd, buf, size, /*truncate*/ false)?,
                 )));
