@@ -9,8 +9,8 @@ impl A for () {
     type Assoc = Foo<()>;
 }
 
-struct Foo<T: A>(T::Assoc);
+struct Foo<T: A>(T::Assoc, ());
 
 fn main() {
-    Foo::<()>(todo!());
+    Foo::<()>(todo!(), ());
 }
