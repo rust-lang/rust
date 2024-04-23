@@ -1,4 +1,4 @@
-use super::{ReentrantLock, ReentrantLockGuard};
+use super::ReentrantLock;
 use crate::cell::RefCell;
 use crate::sync::Arc;
 use crate::thread;
@@ -50,11 +50,4 @@ fn trylock_works() {
     .join()
     .unwrap();
     let _lock3 = l.try_lock();
-}
-
-pub struct Answer<'a>(pub ReentrantLockGuard<'a, RefCell<u32>>);
-impl Drop for Answer<'_> {
-    fn drop(&mut self) {
-        *self.0.borrow_mut() = 42;
-    }
 }
