@@ -2130,10 +2130,10 @@ declare_lint! {
     /// [issue #51443]: https://github.com/rust-lang/rust/issues/51443
     /// [future-incompatible]: ../index.md#future-incompatible-lints
     pub WHERE_CLAUSES_OBJECT_SAFETY,
-    Warn,
+    Deny,
     "checks the object safety of where clauses",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
+        reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
         reference: "issue #51443 <https://github.com/rust-lang/rust/issues/51443>",
     };
 }
