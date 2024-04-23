@@ -135,6 +135,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let result = this.SetCurrentDirectoryW(path)?;
                 this.write_scalar(result, dest)?;
             }
+            "GetUserProfileDirectoryW" => {
+                let [token, buf, size] =
+                    this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
+                let result = this.GetUserProfileDirectoryW(token, buf, size)?;
+                this.write_scalar(result, dest)?;
+            }
 
             // File related shims
             "NtWriteFile" => {

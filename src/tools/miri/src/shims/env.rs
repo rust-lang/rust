@@ -494,9 +494,65 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     fn GetCurrentProcessId(&mut self) -> InterpResult<'tcx, u32> {
         let this = self.eval_context_mut();
         this.assert_target_os("windows", "GetCurrentProcessId");
-
         this.check_no_isolation("`GetCurrentProcessId`")?;
 
         Ok(std::process::id())
+    }
+
+    #[allow(non_snake_case)]
+    fn GetUserProfileDirectoryW(
+        &mut self,
+        token: &OpTy<'tcx, Provenance>, // HANDLE
+        buf: &OpTy<'tcx, Provenance>,   // LPWSTR
+        size: &OpTy<'tcx, Provenance>,  // LPDWORD
+    ) -> InterpResult<'tcx, Scalar<Provenance>> // returns BOOL
+    {
+        let this = self.eval_context_mut();
+        this.assert_target_os("windows", "GetUserProfileDirectoryW");
+        this.check_no_isolation("`GetUserProfileDirectoryW`")?;
+
+        let token = this.read_target_isize(token)?;
+        let buf = this.read_pointer(buf)?;
+        let size = this.deref_pointer(size)?;
+
+        if token != -4 {
+            throw_unsup_format!(
+                "GetUserProfileDirectoryW: only CURRENT_PROCESS_TOKEN is supported"
+            );
+        }
+
+        // See <https://learn.microsoft.com/en-us/windows/win32/api/userenv/nf-userenv-getuserprofiledirectoryw> for docs.
+        Ok(match directories::UserDirs::new() {
+            Some(dirs) => {
+                let home = dirs.home_dir();
+                let size_avail = if this.ptr_is_null(size.ptr())? {
+                    0 // if the buf pointer is null, we can't write to it; `size` will be updated to the required length
+                } else {
+                    this.read_scalar(&size)?.to_u32()?
+                };
+                // Of course we cannot use `windows_check_buffer_size` here since this uses
+                // a different method for dealing with a too-small buffer than the other functions...
+                let (success, len) = this.write_path_to_wide_str(
+                    home,
+                    buf,
+                    size_avail.into(),
+                    /*truncate*/ false,
+                )?;
+                // The Windows docs just say that this is written on failure. But std
+                // seems to rely on it always being written.
+                this.write_scalar(Scalar::from_u32(len.try_into().unwrap()), &size)?;
+                if success {
+                    Scalar::from_i32(1) // return TRUE
+                } else {
+                    this.set_last_error(this.eval_windows("c", "ERROR_INSUFFICIENT_BUFFER"))?;
+                    Scalar::from_i32(0) // return FALSE
+                }
+            }
+            None => {
+                // We have to pick some error code.
+                this.set_last_error(this.eval_windows("c", "ERROR_BAD_USER_PROFILE"))?;
+                Scalar::from_i32(0) // return FALSE
+            }
+        })
     }
 }
