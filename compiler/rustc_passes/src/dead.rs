@@ -4,7 +4,7 @@
 // is dead.
 
 use hir::def_id::{LocalDefIdMap, LocalDefIdSet};
-use hir::ItemKind;
+use hir::{ExprKind, ItemKind};
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::MultiSpan;
 use rustc_hir as hir;
@@ -547,6 +547,29 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
             hir::ExprKind::Path(ref qpath @ hir::QPath::TypeRelative(..)) => {
                 let res = self.typeck_results().qpath_res(qpath, expr.hir_id);
                 self.handle_res(res);
+            }
+            hir::ExprKind::Call(callee, args) => {
+                // To avoid "never read" warnings for fields used by debugging format (":?"),
+                // check callee is format_argument::new_debug and mark the argument as "read".
+                if let Node::Expr(expr) = self.tcx.hir_node(callee.hir_id)
+                    && let ExprKind::Path(hir::QPath::TypeRelative(ty, new_debug_path)) = expr.kind
+                    && let TyKind::Path(hir::QPath::Resolved(_, path)) = ty.kind
+                    && let Some(def_id) = path.res.opt_def_id()
+                    && self.tcx.opt_item_name(def_id) == Some(sym::Argument)
+                    && let [segment] = path.segments
+                    && segment.ident.name == sym::format_argument
+                    && new_debug_path.ident.name == sym::new_debug
+                    && let [arg] = args
+                {
+                    let arg_ty = self.typeck_results().expr_ty(arg);
+                    if let Some(adt) = arg_ty.peel_refs().ty_adt_def() {
+                        for variant in adt.variants() {
+                            for field in &variant.fields {
+                                self.live_symbols.insert(field.did.expect_local());
+                            }
+                        }
+                    }
+                }
             }
             hir::ExprKind::MethodCall(..) => {
                 self.lookup_and_handle_method(expr.hir_id);
