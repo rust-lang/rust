@@ -192,6 +192,7 @@ symbols! {
         Duration,
         Encodable,
         Encoder,
+        Enumerate,
         Eq,
         Equal,
         Err,
