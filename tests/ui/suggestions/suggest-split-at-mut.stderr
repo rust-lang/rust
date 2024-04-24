@@ -21,7 +21,7 @@ LL |     let b = &mut foo[2..];
 LL |     a[0] = 5;
    |     ---- first borrow later used here
    |
-   = help: use `.split_at_mut(position)` or similar method to obtain two mutable non-overlapping sub-slices
+   = help: use `.split_at_mut(position)` to obtain two mutable non-overlapping sub-slices
 
 error: aborting due to 2 previous errors
 
