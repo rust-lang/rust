@@ -588,12 +588,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             obligations
                 .extend(self.fulfillment_cx.borrow_mut().drain_unstalled_obligations(&self.infcx));
 
-            let obligations = obligations.into_iter().map(|o| (o.predicate, o.cause)).collect();
-            debug!(?obligations);
-            self.typeck_results
-                .borrow_mut()
-                .coroutine_interior_predicates
-                .insert(expr_def_id, obligations);
+            let obligations = obligations.into_iter().map(|o| (o.predicate, o.cause));
+            self.typeck_results.borrow_mut().coroutine_stalled_predicates.extend(obligations);
         }
     }
 

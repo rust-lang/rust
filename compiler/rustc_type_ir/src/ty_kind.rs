@@ -227,7 +227,7 @@ pub enum TyKind<I: Interner> {
     /// A placeholder type, used during higher ranked subtyping to instantiate
     /// bound variables.
     ///
-    /// It is conventional to render anonymous placeholer types like `!N` or `!U_N`,
+    /// It is conventional to render anonymous placeholder types like `!N` or `!U_N`,
     /// where `N` is the placeholder variable's anonymous index (which corresponds
     /// to the bound variable's index from the binder from which it was instantiated),
     /// and `U` is the universe index in which it is instantiated, or totally omitted

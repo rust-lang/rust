@@ -333,6 +333,8 @@ fn mir_promoted(
         body.tainted_by_errors = Some(error_reported);
     }
 
+    // Collect `required_consts` *before* promotion, so if there are any consts being promoted
+    // we still add them to the list in the outer MIR body.
     let mut required_consts = Vec::new();
     let mut required_consts_visitor = RequiredConstsVisitor::new(&mut required_consts);
     for (bb, bb_data) in traversal::reverse_postorder(&body) {

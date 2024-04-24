@@ -1,10 +1,13 @@
-//@ known-bug: #124031
+// Regression test for issue #124031
+// Checks that we don't ICE when the tail
+// of an ADT has a type error
 
 trait Trait {
     type RefTarget;
 }
 
 impl Trait for () {}
+//~^ ERROR not all trait items implemented, missing: `RefTarget`
 
 struct Other {
     data: <() as Trait>::RefTarget,

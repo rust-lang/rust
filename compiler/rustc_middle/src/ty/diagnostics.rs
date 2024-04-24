@@ -279,24 +279,29 @@ pub fn suggest_constraining_type_params<'a>(
         constraint.sort();
         constraint.dedup();
         let constraint = constraint.join(" + ");
-        let mut suggest_restrict = |span, bound_list_non_empty| {
-            suggestions.push((
-                span,
-                if span_to_replace.is_some() {
-                    constraint.clone()
-                } else if constraint.starts_with('<') {
-                    constraint.to_string()
-                } else if bound_list_non_empty {
-                    format!(" + {constraint}")
-                } else {
-                    format!(" {constraint}")
-                },
-                SuggestChangingConstraintsMessage::RestrictBoundFurther,
-            ))
+        let mut suggest_restrict = |span, bound_list_non_empty, open_paren_sp| {
+            let suggestion = if span_to_replace.is_some() {
+                constraint.clone()
+            } else if constraint.starts_with('<') {
+                constraint.to_string()
+            } else if bound_list_non_empty {
+                format!(" + {constraint}")
+            } else {
+                format!(" {constraint}")
+            };
+
+            use SuggestChangingConstraintsMessage::RestrictBoundFurther;
+
+            if let Some(open_paren_sp) = open_paren_sp {
+                suggestions.push((open_paren_sp, "(".to_string(), RestrictBoundFurther));
+                suggestions.push((span, format!("){suggestion}"), RestrictBoundFurther));
+            } else {
+                suggestions.push((span, suggestion, RestrictBoundFurther));
+            }
         };
 
         if let Some(span) = span_to_replace {
-            suggest_restrict(span, true);
+            suggest_restrict(span, true, None);
             continue;
         }
 
@@ -327,8 +332,8 @@ pub fn suggest_constraining_type_params<'a>(
         //          --
         //          |
         //          replace with: `T: Bar +`
-        if let Some(span) = generics.bounds_span_for_suggestions(param.def_id) {
-            suggest_restrict(span, true);
+        if let Some((span, open_paren_sp)) = generics.bounds_span_for_suggestions(param.def_id) {
+            suggest_restrict(span, true, open_paren_sp);
             continue;
         }
 

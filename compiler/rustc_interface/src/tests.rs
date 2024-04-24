@@ -321,6 +321,7 @@ fn test_search_paths_tracking_hash_different_order() {
             &opts.target_triple,
             &early_dcx,
             search_path,
+            false,
         ));
     };
 

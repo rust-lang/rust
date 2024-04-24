@@ -635,7 +635,16 @@ impl Options {
         let libs = matches
             .opt_strs("L")
             .iter()
-            .map(|s| SearchPath::from_cli_opt(&sysroot, &target, early_dcx, s))
+            .map(|s| {
+                SearchPath::from_cli_opt(
+                    &sysroot,
+                    &target,
+                    early_dcx,
+                    s,
+                    #[allow(rustc::bad_opt_access)] // we have no `Session` here
+                    unstable_opts.unstable_options,
+                )
+            })
             .collect();
 
         let show_coverage = matches.opt_present("show-coverage");

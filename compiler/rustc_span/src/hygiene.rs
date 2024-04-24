@@ -1251,7 +1251,7 @@ struct HygieneDecodeContextInner {
     // global `HygieneData`. When we deserialize a `SyntaxContext`, we need to create
     // a new id in the global `HygieneData`. This map tracks the ID we end up picking,
     // so that multiple occurrences of the same serialized id are decoded to the same
-    // `SyntaxContext`. This only stores `SyntaxContext`s which are completly decoded.
+    // `SyntaxContext`. This only stores `SyntaxContext`s which are completely decoded.
     remapped_ctxts: Vec<Option<SyntaxContext>>,
 
     /// Maps serialized `SyntaxContext` ids that are currently being decoded to a `SyntaxContext`.

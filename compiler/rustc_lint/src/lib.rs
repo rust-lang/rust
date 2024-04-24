@@ -312,6 +312,8 @@ fn register_builtins(store: &mut LintStore) {
                                        // MACRO_USE_EXTERN_CRATE
     );
 
+    add_lint_group!("keyword_idents", KEYWORD_IDENTS_2018, KEYWORD_IDENTS_2024);
+
     add_lint_group!(
         "refining_impl_trait",
         REFINING_IMPL_TRAIT_REACHABLE,
@@ -324,7 +326,7 @@ fn register_builtins(store: &mut LintStore) {
     store.register_renamed("bare_trait_object", "bare_trait_objects");
     store.register_renamed("unstable_name_collision", "unstable_name_collisions");
     store.register_renamed("unused_doc_comment", "unused_doc_comments");
-    store.register_renamed("async_idents", "keyword_idents");
+    store.register_renamed("async_idents", "keyword_idents_2018");
     store.register_renamed("exceeding_bitshifts", "arithmetic_overflow");
     store.register_renamed("redundant_semicolon", "redundant_semicolons");
     store.register_renamed("overlapping_patterns", "overlapping_range_endpoints");

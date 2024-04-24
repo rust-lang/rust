@@ -73,7 +73,7 @@ Tests can be run on AArch64 Windows 11 devices.
 
 ## Cross-compilation toolchains and C code
 
-C code can be built using the Arm64-targetting MSVC or Clang toolchain.
+C code can be built using the Arm64-targeting MSVC or Clang toolchain.
 
 To compile:
 

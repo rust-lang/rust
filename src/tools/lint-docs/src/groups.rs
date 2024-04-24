@@ -20,6 +20,10 @@ static GROUP_DESCRIPTIONS: &[(&str, &str)] = &[
         "refining-impl-trait",
         "Detects refinement of `impl Trait` return types by trait implementations",
     ),
+    (
+        "keyword-idents",
+        "Lints that detect identifiers which will be come keywords in later editions",
+    ),
 ];
 
 type LintGroups = BTreeMap<String, BTreeSet<String>>;

@@ -18,8 +18,10 @@ impl<'a> X for fn(&'a ()) {
     }
 }
 
+// FIXME(@compiler-errors): This error message is less than helpful.
 fn g() {
-    let x = <fn (&())>::make_g(); //~ ERROR the function
+    let x = <fn (&())>::make_g();
+    //~^ ERROR no function or associated item named `make_g` found for fn pointer `for<'a> fn(&'a ())` in the current scope
 }
 
 fn main() {}

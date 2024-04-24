@@ -338,6 +338,10 @@ impl<'tcx> SizeSkeleton<'tcx> {
                         debug_assert!(tail.has_non_region_param());
                         Ok(SizeSkeleton::Pointer { non_zero, tail: tcx.erase_regions(tail) })
                     }
+                    ty::Error(guar) => {
+                        // Fixes ICE #124031
+                        return Err(tcx.arena.alloc(LayoutError::ReferencesError(*guar)));
+                    }
                     _ => bug!(
                         "SizeSkeleton::compute({ty}): layout errored ({err:?}), yet \
                               tail `{tail}` is not a type parameter or a projection",

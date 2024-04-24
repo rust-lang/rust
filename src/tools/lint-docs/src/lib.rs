@@ -25,6 +25,7 @@ static RENAMES: &[(Level, &[(&str, &str)])] = &[
             ("elided-lifetime-in-path", "elided-lifetimes-in-paths"),
             ("async-idents", "keyword-idents"),
             ("disjoint-capture-migration", "rust-2021-incompatible-closure-captures"),
+            ("keyword-idents", "keyword-idents-2018"),
             ("or-patterns-back-compat", "rust-2021-incompatible-or-patterns"),
         ],
     ),

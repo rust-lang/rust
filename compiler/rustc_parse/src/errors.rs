@@ -496,6 +496,15 @@ pub(crate) struct OuterAttributeNotAllowedOnIfElse {
 }
 
 #[derive(Diagnostic)]
+#[diag(parse_outer_attr_ambiguous)]
+pub(crate) struct AmbiguousOuterAttributes {
+    #[primary_span]
+    pub span: Span,
+    #[subdiagnostic]
+    pub sugg: WrapInParentheses,
+}
+
+#[derive(Diagnostic)]
 #[diag(parse_missing_in_in_for_loop)]
 pub(crate) struct MissingInInForLoop {
     #[primary_span]
@@ -1463,7 +1472,7 @@ impl Subdiagnostic for FnTraitMissingParen {
     fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
-        _: F,
+        _: &F,
     ) {
         diag.span_label(self.span, crate::fluent_generated::parse_fn_trait_missing_paren);
         let applicability = if self.machine_applicable {
@@ -2986,5 +2995,14 @@ pub(crate) struct InvalidOffsetOf(#[primary_span] pub Span);
 #[diag(parse_async_impl)]
 pub(crate) struct AsyncImpl {
     #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_expr_rarrow_call)]
+#[help]
+pub(crate) struct ExprRArrowCall {
+    #[primary_span]
+    #[suggestion(style = "short", applicability = "machine-applicable", code = ".")]
     pub span: Span,
 }
