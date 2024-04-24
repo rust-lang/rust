@@ -59,7 +59,7 @@ languages compiled to WebAssembly, for example C/C++. Any ABI differences or
 mismatches are considered bugs that need to be fixed.
 
 By default the WASI targets in Rust ship in rustup with a precompiled copy of
-[`wasi-libc`] meaning that a WebAssembly-targetting-Clang is not required to
+[`wasi-libc`] meaning that a WebAssembly-targeting-Clang is not required to
 use the WASI targets from Rust.  If there is no actual interoperation with C
 then `rustup target add wasm32-wasip1` is all that's needed to get
 started with WASI.

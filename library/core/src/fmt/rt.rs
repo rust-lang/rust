@@ -153,7 +153,7 @@ impl<'a> Argument<'a> {
     ///
     /// # Safety
     ///
-    /// This argument must actually be a placeholer argument.
+    /// This argument must actually be a placeholder argument.
     ///
     // FIXME: Transmuting formatter in new and indirectly branching to/calling
     // it here is an explicit CFI violation.
