@@ -453,7 +453,7 @@ fn report_conflicting_impls<'tcx>(
             overlap.trait_ref.print_trait_sugared(),
             overlap.self_ty.map_or_else(String::new, |ty| format!(" for type `{ty}`")),
             match used_to_be_allowed {
-                Some(FutureCompatOverlapErrorKind::Issue33140) => ": (E0119)",
+                Some(FutureCompatOverlapErrorKind::OrderDepTraitObjects) => ": (E0119)",
                 _ => "",
             }
         )
@@ -480,7 +480,7 @@ fn report_conflicting_impls<'tcx>(
         }
         Some(kind) => {
             let lint = match kind {
-                FutureCompatOverlapErrorKind::Issue33140 => ORDER_DEPENDENT_TRAIT_OBJECTS,
+                FutureCompatOverlapErrorKind::OrderDepTraitObjects => ORDER_DEPENDENT_TRAIT_OBJECTS,
                 FutureCompatOverlapErrorKind::LeakCheck => COHERENCE_LEAK_CHECK,
             };
             tcx.node_span_lint(
