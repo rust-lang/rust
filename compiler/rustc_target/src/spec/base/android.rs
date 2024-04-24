@@ -1,5 +1,7 @@
 use crate::spec::{base, SanitizerSet, TargetOptions, TlsModel};
 
+use crate::spec::cvs;
+
 pub fn opts() -> TargetOptions {
     let mut base = base::linux::opts();
     base.os = "android".into();
