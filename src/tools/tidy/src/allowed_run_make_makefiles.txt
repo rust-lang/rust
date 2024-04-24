@@ -317,7 +317,6 @@ run-make/unstable-flag-required/Makefile
 run-make/use-suggestions-rust-2018/Makefile
 run-make/used-cdylib-macos/Makefile
 run-make/used/Makefile
-run-make/valid-print-requests/Makefile
 run-make/volatile-intrinsics/Makefile
 run-make/wasm-exceptions-nostd/Makefile
 run-make/wasm-override-linker/Makefile
