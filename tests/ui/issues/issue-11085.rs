@@ -1,8 +1,7 @@
 //@ run-pass
-#![allow(dead_code)]
-//@ compile-flags: --cfg foo
-
 //@ pretty-expanded FIXME #23616
+
+#![allow(dead_code)]
 
 struct Foo {
     #[cfg(FALSE)]
@@ -11,7 +10,7 @@ struct Foo {
 }
 
 struct Foo2 {
-    #[cfg(foo)]
+    #[cfg(all())]
     foo: isize,
 }
 
