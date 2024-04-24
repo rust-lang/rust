@@ -104,7 +104,7 @@ enum Option<T> { None, Some(T) }
 fn test() {
     let a = if true { Option::None } else { Option::Some(return) };
     a;
-  //^ Option<&str>
+  //^ Option<&'static str>
     match 42 {
         42 => a,
         _ => Option::Some("str"),
@@ -317,8 +317,8 @@ fn diverging_expression_2() {
             63..81 '{ loop...foo" }': u32
             65..72 'loop {}': !
             70..72 '{}': ()
-            74..79 '"foo"': &str
-            74..79: expected u32, got &str
+            74..79 '"foo"': &'static str
+            74..79: expected u32, got &'static str
         "#]],
     );
 }
@@ -365,8 +365,8 @@ fn diverging_expression_3_break() {
             151..172 'for a ...eak; }': {unknown}
             151..172 'for a ...eak; }': !
             151..172 'for a ...eak; }': {unknown}
-            151..172 'for a ...eak; }': &mut {unknown}
-            151..172 'for a ...eak; }': fn next<{unknown}>(&mut {unknown}) -> Option<<{unknown} as Iterator>::Item>
+            151..172 'for a ...eak; }': &'? mut {unknown}
+            151..172 'for a ...eak; }': fn next<{unknown}>(&'? mut {unknown}) -> Option<<{unknown} as Iterator>::Item>
             151..172 'for a ...eak; }': Option<{unknown}>
             151..172 'for a ...eak; }': ()
             151..172 'for a ...eak; }': ()
@@ -381,8 +381,8 @@ fn diverging_expression_3_break() {
             237..250 'for a in b {}': {unknown}
             237..250 'for a in b {}': !
             237..250 'for a in b {}': {unknown}
-            237..250 'for a in b {}': &mut {unknown}
-            237..250 'for a in b {}': fn next<{unknown}>(&mut {unknown}) -> Option<<{unknown} as Iterator>::Item>
+            237..250 'for a in b {}': &'? mut {unknown}
+            237..250 'for a in b {}': fn next<{unknown}>(&'? mut {unknown}) -> Option<<{unknown} as Iterator>::Item>
             237..250 'for a in b {}': Option<{unknown}>
             237..250 'for a in b {}': ()
             237..250 'for a in b {}': ()
@@ -396,8 +396,8 @@ fn diverging_expression_3_break() {
             315..337 'for a ...urn; }': {unknown}
             315..337 'for a ...urn; }': !
             315..337 'for a ...urn; }': {unknown}
-            315..337 'for a ...urn; }': &mut {unknown}
-            315..337 'for a ...urn; }': fn next<{unknown}>(&mut {unknown}) -> Option<<{unknown} as Iterator>::Item>
+            315..337 'for a ...urn; }': &'? mut {unknown}
+            315..337 'for a ...urn; }': fn next<{unknown}>(&'? mut {unknown}) -> Option<<{unknown} as Iterator>::Item>
             315..337 'for a ...urn; }': Option<{unknown}>
             315..337 'for a ...urn; }': ()
             315..337 'for a ...urn; }': ()

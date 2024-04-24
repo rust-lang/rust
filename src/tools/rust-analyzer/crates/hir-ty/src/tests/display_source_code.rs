@@ -67,11 +67,11 @@ trait B: A {}
 
 fn test(
     _: &(dyn A<Assoc = ()> + Send),
-  //^ &(dyn A<Assoc = ()> + Send)
+  //^ &'_ (dyn A<Assoc = ()> + Send)
     _: &(dyn Send + A<Assoc = ()>),
-  //^ &(dyn A<Assoc = ()> + Send)
+  //^ &'_ (dyn A<Assoc = ()> + Send)
     _: &dyn B<Assoc = ()>,
-  //^ &(dyn B<Assoc = ()>)
+  //^ &'_ (dyn B<Assoc = ()>)
 ) {}
         "#,
     );
@@ -85,7 +85,7 @@ fn render_dyn_for_ty() {
 trait Foo<'a> {}
 
 fn foo(foo: &dyn for<'a> Foo<'a>) {}
-    // ^^^ &dyn Foo<'_>
+    // ^^^ &'_ dyn Foo<'_>
 "#,
     );
 }
@@ -111,11 +111,11 @@ fn test(
     b;
   //^ impl Foo
     c;
-  //^ &impl Foo + ?Sized
+  //^ &'_ impl Foo + ?Sized
     d;
   //^ S<impl Foo>
     ref_any;
-  //^^^^^^^ &impl ?Sized
+  //^^^^^^^ &'_ impl ?Sized
     empty;
 } //^^^^^ impl Sized
 "#,
@@ -192,7 +192,7 @@ fn test(
     b;
   //^ fn(impl Foo) -> impl Foo
     c;
-} //^ fn(&impl Foo + ?Sized) -> &impl Foo + ?Sized
+} //^ fn(&'_ impl Foo + ?Sized) -> &'_ impl Foo + ?Sized
 "#,
     );
 }
