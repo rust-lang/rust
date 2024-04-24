@@ -76,7 +76,7 @@ impl<'tcx> BorrowExplanation<'tcx> {
                 && let Some(body_id) = node.body_id()
             {
                 let body = tcx.hir().body(body_id);
-                let mut expr_finder = FindExprBySpan::new(span);
+                let mut expr_finder = FindExprBySpan::new(span, tcx);
                 expr_finder.visit_expr(body.value);
                 if let Some(mut expr) = expr_finder.result {
                     while let hir::ExprKind::AddrOf(_, _, inner)
