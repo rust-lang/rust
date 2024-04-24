@@ -19,7 +19,7 @@ struct Foo<'lt, T, const C: usize> where $0 {}
             en Enum      Enum
             ma makro!(…) macro_rules! makro
             md module
-            st Foo<…>    Foo<'{error}, {unknown}, _>
+            st Foo<…>    Foo<{unknown}, _>
             st Record    Record
             st Tuple     Tuple
             st Unit      Unit
@@ -92,7 +92,7 @@ struct Foo<'lt, T, const C: usize> where for<'a> $0 {}
             en Enum      Enum
             ma makro!(…) macro_rules! makro
             md module
-            st Foo<…>    Foo<'{error}, {unknown}, _>
+            st Foo<…>    Foo<{unknown}, _>
             st Record    Record
             st Tuple     Tuple
             st Unit      Unit
