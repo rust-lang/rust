@@ -1139,7 +1139,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // are the same function and their parameters have a LUB.
                         match self.commit_if_ok(|_| {
                             self.at(cause, self.param_env).lub(
-                                DefineOpaqueTypes::No,
+                                DefineOpaqueTypes::Yes,
                                 prev_ty,
                                 new_ty,
                             )
