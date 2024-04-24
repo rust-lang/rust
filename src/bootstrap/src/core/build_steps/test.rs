@@ -1371,6 +1371,7 @@ impl Step for RunMakeSupport {
         run.builder.ensure(RunMakeSupport { compiler, target: run.build_triple() });
     }
 
+    /// Builds run-make-support and returns the path to the resulting rlib.
     fn run(self, builder: &Builder<'_>) -> PathBuf {
         builder.ensure(compile::Std::new(self.compiler, self.target));
 
@@ -1394,6 +1395,53 @@ impl Step for RunMakeSupport {
         let cargo_out = builder.cargo_out(self.compiler, Mode::ToolStd, self.target).join(lib_name);
         builder.copy_link(&cargo_out, &lib);
         lib
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct CrateRunMakeSupport {
+    host: TargetSelection,
+}
+
+impl Step for CrateRunMakeSupport {
+    type Output = ();
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/tools/run-make-support")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(CrateRunMakeSupport { host: run.target });
+    }
+
+    /// Runs `cargo test` for run-make-support.
+    fn run(self, builder: &Builder<'_>) {
+        let host = self.host;
+        let compiler = builder.compiler(builder.top_stage, host);
+
+        builder.ensure(compile::Std::new(compiler, host));
+        let mut cargo = tool::prepare_tool_cargo(
+            builder,
+            compiler,
+            Mode::ToolStd,
+            host,
+            "test",
+            "src/tools/run-make-support",
+            SourceType::InTree,
+            &[],
+        );
+        cargo.allow_features("test");
+        run_cargo_test(
+            cargo,
+            &[],
+            &[],
+            "run-make-support",
+            "run-make-support self test",
+            compiler,
+            host,
+            builder,
+        );
     }
 }
 
