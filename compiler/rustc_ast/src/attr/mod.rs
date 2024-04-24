@@ -464,8 +464,9 @@ impl NestedMetaItem {
         self.meta_item().and_then(|meta_item| meta_item.meta_item_list())
     }
 
-    /// Returns a name and single literal value tuple of the `MetaItem`.
-    pub fn name_value_literal(&self) -> Option<(Symbol, &MetaItemLit)> {
+    /// If it's a singleton list of the form `foo(lit)`, returns the `foo` and
+    /// the `lit`.
+    pub fn singleton_lit_list(&self) -> Option<(Symbol, &MetaItemLit)> {
         self.meta_item().and_then(|meta_item| {
             meta_item.meta_item_list().and_then(|meta_item_list| {
                 if meta_item_list.len() == 1
