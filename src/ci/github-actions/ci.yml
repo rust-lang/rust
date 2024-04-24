@@ -284,6 +284,41 @@ x--expand-yaml-anchors--remove:
         if: success() && !env.SKIP_JOB && (github.event_name == 'push' || env.DEPLOY == '1' || env.DEPLOY_ALT == '1')
         <<: *step
 
+      - name: gather collected metrics
+        run: src/ci/scripts/gather-metrics.sh build
+        if: always() && !env.SKIP_JOB
+        <<: *step
+
+      - name: upload metrics to GitHub Artifact for windows
+        uses: actions/upload-artifact@v3
+        with:
+          name: metrics-${CI_JOB_NAME}
+          path: |
+            build\cpu-${CI_JOB_NAME}.csv
+            build\metrics-${CI_JOB_NAME}.json
+          if-no-files-found: ignore
+          retention-days: 5
+        # Having `always` makes metric collection always happen even if the prior
+        # steps fail. This is useful  because the whole point of metrics is to
+        # help gathering information about the runtime of the CI.
+        if: always() && !env.SKIP_JOB && contains(matrix.os, 'windows')
+        <<: *step
+
+      - name: upload metrics to GitHub Artifact for linux
+        uses: actions/upload-artifact@v3
+        with:
+          name: metrics-${CI_JOB_NAME}
+          path: |
+            obj/build/cpu-${CI_JOB_NAME}.csv
+            obj/build/metrics-${CI_JOB_NAME}.json
+          if-no-files-found: ignore
+          retention-days: 5
+        # Having `always` makes metric collection always happen even if the prior
+        # steps fail. This is useful  because the whole point of metrics is to
+        # help gathering information about the runtime of the CI.
+        if: always() && !env.SKIP_JOB && (contains(matrix.os, 'linux') || contains(matrix.os, 'ubuntu'))
+        <<: *step
+
   # These snippets are used by the try-success, try-failure, auto-success and auto-failure jobs.
   # Check out their documentation for more information on why they're needed.
 
