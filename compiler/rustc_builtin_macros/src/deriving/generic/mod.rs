@@ -320,7 +320,7 @@ impl SkippedDerives {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub enum IsTuple {
     No,
     Yes,
@@ -1250,7 +1250,7 @@ impl<'a> MethodDef<'a> {
                 .collect();
 
             let self_expr = discr_exprs.remove(0);
-            let other_selflike_exprs = descr_exprs;
+            let other_selflike_exprs = discr_exprs;
             let discr_field = FieldInfo {
                 span,
                 name: None,
@@ -1629,12 +1629,12 @@ impl<'a> TraitDef<'a> {
                                     skipped_derives.add(path.segments[0].ident.name)
                                 } else {
                                     let traits = SUPPORTED_TRAITS.iter().map(|s| format!("`{s}`")).collect::<Vec<_>>().join(", ");
-                                    cx.parse_sess().buffer_lint_with_diagnostic(
+                                    cx.psess().buffer_lint_with_diagnostic(
                                         rustc_session::lint::builtin::UNSUPPORTED_DERIVE_SKIP,
                                         span,
                                         cx.current_expansion.lint_node_id,
                                         crate::fluent_generated::builtin_macros_derive_skip_unsupported,
-                                        rustc_session::lint::BuiltinLintDiagnostics::DeriveSkipUnsupported { traits },
+                                        rustc_session::lint::BuiltinLintDiag::DeriveSkipUnsupported { traits },
                                     )
                                 }
                             }
