@@ -95,7 +95,7 @@ def skip_jobs(jobs: List[Dict[str, Any]], channel: str) -> List[Job]:
     """
     Skip CI jobs that are not supposed to be executed on the given `channel`.
     """
-    return [j for j in jobs if j.get("CI_ONLY_WHEN_CHANNEL", channel) == channel]
+    return [j for j in jobs if j.get("only_on_channel", channel) == channel]
 
 
 def get_github_ctx() -> GitHubCtx:
