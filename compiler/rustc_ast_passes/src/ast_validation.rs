@@ -1192,7 +1192,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             ForeignItemKind::MacCall(..) => {}
         }
 
-        visit::walk_foreign_item(self, fi)
+        visit::walk_item(self, fi)
     }
 
     // Mirrors `visit::walk_generic_args`, but tracks relevant state.
