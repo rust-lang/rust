@@ -1377,8 +1377,10 @@ impl Thread {
     ///
     /// This must only ever be called once, and must be called on the main thread.
     pub(crate) unsafe fn new_main() -> Thread {
-        // Safety: Caller responsible for holding the mutable invariant and
-        // Parker::new_in_place does not read from the uninit value.
+        // Safety: As this is only called once and on the main thread, nothing else is accessing MAIN_PARKER
+        // as the only other read occurs after Inner::Main has been constructed, after this call finishes.
+        //
+        // Pre-main thread spawning cannot hit this either, as the caller holds that this is only called on the main thread.
         unsafe { Parker::new_in_place(MAIN_PARKER.get().cast()) }
 
         Self(Inner::Main)
