@@ -836,13 +836,14 @@ pub(crate) fn handle_runnables(
     let config = snap.config.runnables();
     match cargo_spec {
         Some(spec) => {
+            let is_crate_no_std = snap.analysis.is_crate_no_std(spec.crate_id)?;
             for cmd in ["check", "run", "test"] {
                 if cmd == "run" && spec.target_kind != TargetKind::Bin {
                     continue;
                 }
                 let mut cargo_args =
                     vec![cmd.to_owned(), "--package".to_owned(), spec.package.clone()];
-                let all_targets = cmd != "run" && !snap.analysis.is_crate_no_std(spec.crate_id)?;
+                let all_targets = cmd != "run" && !is_crate_no_std;
                 if all_targets {
                     cargo_args.push("--all-targets".to_owned());
                 }
