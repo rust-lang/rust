@@ -1964,11 +1964,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             try_emit("recursive delegation");
         }
 
-        let sig = self.tcx().fn_sig(sig_id).instantiate_identity();
-        if sig.output().has_opaque_types() {
-            try_emit("delegation to a function with opaque type");
-        }
-
         let sig_generics = self.tcx().generics_of(sig_id);
         let parent = self.tcx().parent(self.item_def_id());
         let parent_generics = self.tcx().generics_of(parent);
@@ -1989,29 +1984,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 == ty::AssocItemContainer::TraitContainer
         {
             try_emit("delegation to a trait method from a free function");
-        }
-
-        if self.tcx().asyncness(sig_id) == ty::Asyncness::Yes {
-            try_emit("delegation to async functions");
-        }
-
-        if self.tcx().constness(sig_id) == hir::Constness::Const {
-            try_emit("delegation to const functions");
-        }
-
-        if sig.c_variadic() {
-            try_emit("delegation to variadic functions");
-            // variadic functions are also `unsafe` and `extern "C"`.
-            // Do not emit same error multiple times.
-            return error_occured;
-        }
-
-        if let hir::Unsafety::Unsafe = sig.unsafety() {
-            try_emit("delegation to unsafe functions");
-        }
-
-        if abi::Abi::Rust != sig.abi() {
-            try_emit("delegation to non Rust ABI functions");
         }
 
         error_occured

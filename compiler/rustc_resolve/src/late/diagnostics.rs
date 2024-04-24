@@ -2039,7 +2039,8 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                         ast::AssocItemKind::Fn(..) => AssocSuggestion::AssocFn { called },
                         ast::AssocItemKind::Type(..) => AssocSuggestion::AssocType,
                         ast::AssocItemKind::Delegation(..)
-                            if self.r.has_self.contains(&self.r.local_def_id(assoc_item.id)) =>
+                            if self.r.delegation_fn_sigs[&self.r.local_def_id(assoc_item.id)]
+                                .has_self =>
                         {
                             AssocSuggestion::MethodWithSelf { called }
                         }
@@ -2062,7 +2063,9 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 if filter_fn(res) {
                     let def_id = res.def_id();
                     let has_self = match def_id.as_local() {
-                        Some(def_id) => self.r.has_self.contains(&def_id),
+                        Some(def_id) => {
+                            self.r.delegation_fn_sigs.get(&def_id).map_or(false, |sig| sig.has_self)
+                        }
                         None => self
                             .r
                             .tcx
