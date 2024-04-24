@@ -173,6 +173,10 @@ else
     # included with LLVM, since a dynamic libstdcpp may not be available.
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set llvm.static-libstdcpp"
   fi
+
+  if [ "$NO_DOWNLOAD_CI_RUSTC" = "" ]; then
+    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.download-rustc=if-unchanged"
+  fi
 fi
 
 if [ "$ENABLE_GCC_CODEGEN" = "1" ]; then
