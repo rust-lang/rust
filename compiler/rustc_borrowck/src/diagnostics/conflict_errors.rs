@@ -1527,7 +1527,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 BorrowKind::Mut { kind: MutBorrowKind::Default | MutBorrowKind::TwoPhaseBorrow },
             ) => {
                 first_borrow_desc = "mutable ";
-                self.cannot_reborrow_already_borrowed(
+                let mut err = self.cannot_reborrow_already_borrowed(
                     span,
                     &desc_place,
                     &msg_place,
@@ -1537,7 +1537,15 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     "mutable",
                     &msg_borrow,
                     None,
-                )
+                );
+                self.suggest_slice_method_if_applicable(
+                    &mut err,
+                    place,
+                    issued_borrow.borrowed_place,
+                    span,
+                    issued_span,
+                );
+                err
             }
             (
                 BorrowKind::Mut { kind: MutBorrowKind::Default | MutBorrowKind::TwoPhaseBorrow },
@@ -1554,6 +1562,13 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     "immutable",
                     &msg_borrow,
                     None,
+                );
+                self.suggest_slice_method_if_applicable(
+                    &mut err,
+                    place,
+                    issued_borrow.borrowed_place,
+                    span,
+                    issued_span,
                 );
                 self.suggest_binding_for_closure_capture_self(&mut err, &issued_spans);
                 self.suggest_using_closure_argument_instead_of_capture(

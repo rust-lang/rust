@@ -9,6 +9,8 @@ LL |     p[0] = 5;
 LL |
 LL |     println!("{}", *q);
    |                    -- immutable borrow later used here
+   |
+   = help: use `.split_at_mut(position)` to obtain two mutable non-overlapping sub-slices
 
 error[E0502]: cannot borrow `p` as mutable because it is also borrowed as immutable
   --> $DIR/borrowck-assign-comp-idx.rs:27:9
