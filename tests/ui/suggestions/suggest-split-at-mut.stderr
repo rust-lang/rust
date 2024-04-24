@@ -8,8 +8,7 @@ LL |     let b = &mut foo[3];
 LL |     *a = 5;
    |     ------ first borrow later used here
    |
-   = help: consider using `.split_at_mut(position)` or similar method to obtain two mutable non-overlapping sub-slices
-   = help: consider using `.swap(index_1, index_2)` to swap elements at the specified indices
+   = help: use `.split_at_mut(position)` to obtain two mutable non-overlapping sub-slices
 
 error[E0499]: cannot borrow `foo` as mutable more than once at a time
   --> $DIR/suggest-split-at-mut.rs:13:18
@@ -59,8 +58,7 @@ LL |     *b = 6;
 LL |     println!("{:?} {:?}", a, b);
    |                           - immutable borrow later used here
    |
-   = help: consider using `.split_at_mut(position)` or similar method to obtain two mutable non-overlapping sub-slices
-   = help: consider using `.swap(index_1, index_2)` to swap elements at the specified indices
+   = help: use `.split_at_mut(position)` to obtain two mutable non-overlapping sub-slices
 
 error[E0502]: cannot borrow `foo[_]` as immutable because it is also borrowed as mutable
   --> $DIR/suggest-split-at-mut.rs:46:13
@@ -72,8 +70,7 @@ LL |     let b = &foo[2];
 LL |     *a = 5;
    |     ------ mutable borrow later used here
    |
-   = help: consider using `.split_at_mut(position)` or similar method to obtain two mutable non-overlapping sub-slices
-   = help: consider using `.swap(index_1, index_2)` to swap elements at the specified indices
+   = help: use `.split_at_mut(position)` to obtain two mutable non-overlapping sub-slices
 
 error[E0502]: cannot borrow `foo` as immutable because it is also borrowed as mutable
   --> $DIR/suggest-split-at-mut.rs:54:14

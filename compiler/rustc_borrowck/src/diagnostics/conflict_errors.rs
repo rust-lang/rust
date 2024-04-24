@@ -2116,7 +2116,13 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     None
                 }
             }) else {
-                note_default_suggestion();
+                let hir::Node::Expr(parent) = tcx.parent_hir_node(index1.hir_id) else { return };
+                let hir::ExprKind::Index(_, idx1, _) = parent.kind else { return };
+                let hir::Node::Expr(parent) = tcx.parent_hir_node(index2.hir_id) else { return };
+                let hir::ExprKind::Index(_, idx2, _) = parent.kind else { return };
+                if !idx1.equals(idx2) {
+                    err.help("use `.split_at_mut(position)` to obtain two mutable non-overlapping sub-slices");
+                }
                 return;
             };
 
