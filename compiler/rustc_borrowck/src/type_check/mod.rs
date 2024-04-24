@@ -1349,7 +1349,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 }
 
                 self.check_rvalue(body, rv, location);
-                if !self.unsized_feature_enabled() {
+                if !(self.unsized_feature_enabled() || place_ty.is_scalable_simd()) {
                     let trait_ref = ty::TraitRef::from_lang_item(
                         tcx,
                         LangItem::Sized,
@@ -1857,7 +1857,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         if !self.unsized_feature_enabled() {
             let span = local_decl.source_info.span;
             let ty = local_decl.ty;
-            self.ensure_place_sized(ty, span);
+            if !ty.is_scalable_simd() {
+                self.ensure_place_sized(ty, span);
+            }
         }
     }
 

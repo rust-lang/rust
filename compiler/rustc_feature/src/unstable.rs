@@ -620,8 +620,22 @@ declare_features! (
     /// Allows unnamed fields of struct and union type
     (incomplete, unnamed_fields, "1.74.0", Some(49804)),
     /// Allows unsized fn parameters.
+    ///
+    /// Note: `repr_scalable` depends on this feature. Rather than forcing the developer to also
+    /// enable this feature to use scalable SIMD, we have done a check along side this feature to
+    /// check if the type is a scalable SIMD type. If this feature becomes stable, those checks
+    /// should be safe to remove so we can just use this feature. The check has been done specific
+    /// to the type rather than enabling this feature on their behalf to avoid enabling more unsized
+    /// than is actually required for what they are using.
     (unstable, unsized_fn_params, "1.49.0", Some(48055)),
     /// Allows unsized rvalues at arguments and parameters.
+    ///
+    /// Note: `repr_scalable` depends on this feature. Rather than forcing the developer to also
+    /// enable this feature to use scalable SIMD, we have done a check along side this feature to
+    /// check if the type is a scalable SIMD type. If this feature becomes stable, those checks
+    /// should be safe to remove so we can just use this feature. The check has been done specific
+    /// to the type rather than enabling this feature on their behalf to avoid enabling more unsized
+    /// than is actually required for what they are using.
     (incomplete, unsized_locals, "1.30.0", Some(48055)),
     /// Allows unsized tuple coercion.
     (unstable, unsized_tuple_coercion, "1.20.0", Some(42877)),
