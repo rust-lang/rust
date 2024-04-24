@@ -198,6 +198,7 @@ pub enum InferenceDiagnostic {
     NoSuchField {
         field: ExprOrPatId,
         private: bool,
+        variant: VariantId,
     },
     PrivateField {
         expr: ExprId,
