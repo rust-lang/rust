@@ -417,7 +417,7 @@ warning: 1 warning emitted
 
 This lint is **warn-by-default**. It detects explicit links that are the same
 as computed automatic links.
-This usually means the explicit links are removeable. For example:
+This usually means the explicit links are removable. For example:
 
 ```rust
 #![warn(rustdoc::redundant_explicit_links)] // note: unnecessary - warns by default.
