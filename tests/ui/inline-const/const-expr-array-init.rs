@@ -1,7 +1,5 @@
 //@ build-pass
 
-#![feature(inline_const)]
-
 use std::cell::Cell;
 
 fn main() {

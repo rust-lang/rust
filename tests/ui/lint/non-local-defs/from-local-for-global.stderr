@@ -1,5 +1,5 @@
 warning: non-local `impl` definition, they should be avoided as they go against expectation
-  --> $DIR/from-local-for-global.rs:10:5
+  --> $DIR/from-local-for-global.rs:8:5
    |
 LL | /     impl From<Cat> for () {
 LL | |
@@ -16,7 +16,7 @@ LL | |     }
    = note: `#[warn(non_local_definitions)]` on by default
 
 warning: non-local `impl` definition, they should be avoided as they go against expectation
-  --> $DIR/from-local-for-global.rs:20:5
+  --> $DIR/from-local-for-global.rs:18:5
    |
 LL | /     impl From<Wrap<Wrap<Elephant>>> for () {
 LL | |
@@ -32,7 +32,7 @@ LL | |     }
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, they should be avoided as they go against expectation
-  --> $DIR/from-local-for-global.rs:34:5
+  --> $DIR/from-local-for-global.rs:32:5
    |
 LL |     impl StillNonLocal for &Foo {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -43,7 +43,7 @@ LL |     impl StillNonLocal for &Foo {}
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, they should be avoided as they go against expectation
-  --> $DIR/from-local-for-global.rs:42:5
+  --> $DIR/from-local-for-global.rs:40:5
    |
 LL | /     impl From<Local1> for GlobalSameFunction {
 LL | |
@@ -59,7 +59,7 @@ LL | |     }
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, they should be avoided as they go against expectation
-  --> $DIR/from-local-for-global.rs:50:5
+  --> $DIR/from-local-for-global.rs:48:5
    |
 LL | /     impl From<Local2> for GlobalSameFunction {
 LL | |

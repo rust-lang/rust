@@ -1,4 +1,3 @@
-#![feature(inline_const)]
 const unsafe fn require_unsafe() -> usize {
     1
 }

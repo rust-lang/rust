@@ -1,5 +1,5 @@
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/promotion.rs:17:37
+  --> $DIR/promotion.rs:16:37
    |
 LL |             let _x: &'static i32 = &div_by_zero();
    |                     ------------    ^^^^^^^^^^^^^ creates a temporary value which is freed while still in use

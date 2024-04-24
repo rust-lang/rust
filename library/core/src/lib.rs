@@ -201,6 +201,7 @@
 //
 // Language features:
 // tidy-alphabetical-start
+#![cfg_attr(bootstrap, feature(inline_const))]
 #![feature(abi_unadjusted)]
 #![feature(adt_const_params)]
 #![feature(allow_internal_unsafe)]
@@ -231,7 +232,6 @@
 #![feature(fundamental)]
 #![feature(generic_arg_infer)]
 #![feature(if_let_guard)]
-#![feature(inline_const)]
 #![feature(intra_doc_pointers)]
 #![feature(intrinsics)]
 #![feature(lang_items)]

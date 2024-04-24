@@ -1,4 +1,4 @@
-#![feature(inline_const, generic_const_exprs)]
+#![feature(generic_const_exprs)]
 //~^ WARN the feature `generic_const_exprs` is incomplete
 
 fn foo<T>() {

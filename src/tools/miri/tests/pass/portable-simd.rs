@@ -1,5 +1,5 @@
 //@compile-flags: -Zmiri-strict-provenance
-#![feature(portable_simd, adt_const_params, inline_const, core_intrinsics)]
+#![feature(portable_simd, adt_const_params, core_intrinsics)]
 #![allow(incomplete_features, internal_features)]
 use std::intrinsics::simd as intrinsics;
 use std::ptr;
