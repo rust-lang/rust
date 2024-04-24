@@ -1,8 +1,8 @@
-error: Undefined Behavior: upcast on a pointer whose vtable does not match its type
+error: Undefined Behavior: using vtable for trait `Baz` but trait `Bar` was expected
   --> $DIR/dyn-upcast-trait-mismatch.rs:LL:CC
    |
-LL |     let _err = baz_fake as &dyn Foo;
-   |                ^^^^^^^^ upcast on a pointer whose vtable does not match its type
+LL |     let _err = baz_fake as *const dyn Foo;
+   |                ^^^^^^^^ using vtable for trait `Baz` but trait `Bar` was expected
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

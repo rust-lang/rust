@@ -44,16 +44,6 @@ impl<'tcx> Bounds<'tcx> {
         span: Span,
         polarity: ty::PredicatePolarity,
     ) {
-        self.push_trait_bound_inner(tcx, trait_ref, span, polarity);
-    }
-
-    fn push_trait_bound_inner(
-        &mut self,
-        tcx: TyCtxt<'tcx>,
-        trait_ref: ty::PolyTraitRef<'tcx>,
-        span: Span,
-        polarity: ty::PredicatePolarity,
-    ) {
         let clause = (
             trait_ref
                 .map_bound(|trait_ref| {

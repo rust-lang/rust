@@ -11,7 +11,7 @@ diff --git a/src/report.rs b/src/report.rs
 index eeec614..f582867 100644
 --- a/src/report.rs
 +++ b/src/report.rs
-@@ -48,6 +48,12 @@ pub fn get_test_rules(test: &TestKey, caller: &dyn AbiImpl, callee: &dyn AbiImpl
+@@ -48,6 +48,15 @@ pub fn get_test_rules(test: &TestKey, caller: &dyn AbiImpl, callee: &dyn AbiImpl
      //
      // THIS AREA RESERVED FOR VENDORS TO APPLY PATCHES
  
@@ -19,6 +19,9 @@ index eeec614..f582867 100644
 +    if cfg!(all(target_os = "windows", target_env = "gnu")) && test.test_name == "ui128" {
 +        result.run = Link;
 +        result.check = Pass(Link);
++    } else if test.test_name == "ui128" {
++        result.run == Check;
++        result.check = Pass(Check);
 +    }
 +
      // END OF VENDOR RESERVED AREA

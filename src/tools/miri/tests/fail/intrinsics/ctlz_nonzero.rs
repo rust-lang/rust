@@ -2,7 +2,7 @@
 
 mod rusti {
     extern "rust-intrinsic" {
-        pub fn ctlz_nonzero<T>(x: T) -> T;
+        pub fn ctlz_nonzero<T>(x: T) -> u32;
     }
 }
 

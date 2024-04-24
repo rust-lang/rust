@@ -1,4 +1,4 @@
-use rustc_errors::{codes::*, Applicability, MultiSpan};
+use rustc_errors::{codes::*, Applicability, ElidedLifetimeInPathSubdiag, MultiSpan};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{
     symbol::{Ident, Symbol},
@@ -907,6 +907,8 @@ pub(crate) struct ExplicitAnonymousLivetimeReportError {
 pub(crate) struct ImplicitElidedLifetimeNotAllowedHere {
     #[primary_span]
     pub(crate) span: Span,
+    #[subdiagnostic]
+    pub(crate) subdiag: ElidedLifetimeInPathSubdiag,
 }
 
 #[derive(Diagnostic)]

@@ -104,7 +104,7 @@ impl Subdiagnostic for AdjustSignatureBorrow {
     fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
-        _f: F,
+        _f: &F,
     ) {
         match self {
             AdjustSignatureBorrow::Borrow { to_borrow } => {

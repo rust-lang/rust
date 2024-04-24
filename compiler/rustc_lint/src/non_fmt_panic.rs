@@ -53,7 +53,7 @@ impl<'tcx> LateLintPass<'tcx> for NonPanicFmt {
 
                 if Some(def_id) == cx.tcx.lang_items().begin_panic_fn()
                     || Some(def_id) == cx.tcx.lang_items().panic_fn()
-                    || f_diagnostic_name == Some(sym::panic_str)
+                    || f_diagnostic_name == Some(sym::panic_str_2015)
                 {
                     if let Some(id) = f.span.ctxt().outer_expn_data().macro_def_id {
                         if matches!(

@@ -975,10 +975,6 @@ rustc_queries! {
         cache_on_disk_if { true }
     }
 
-    query has_typeck_results(def_id: DefId) -> bool {
-        desc { |tcx| "checking whether `{}` has a body", tcx.def_path_str(def_id) }
-    }
-
     query coherent_trait(def_id: DefId) -> Result<(), ErrorGuaranteed> {
         desc { |tcx| "coherence checking all impls of trait `{}`", tcx.def_path_str(def_id) }
         ensure_forwards_result_if_red

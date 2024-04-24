@@ -1769,13 +1769,13 @@ impl EarlyLintPass for EllipsisInclusiveRangePatterns {
 }
 
 declare_lint! {
-    /// The `keyword_idents` lint detects edition keywords being used as an
+    /// The `keyword_idents_2018` lint detects edition keywords being used as an
     /// identifier.
     ///
     /// ### Example
     ///
     /// ```rust,edition2015,compile_fail
-    /// #![deny(keyword_idents)]
+    /// #![deny(keyword_idents_2018)]
     /// // edition 2015
     /// fn dyn() {}
     /// ```
@@ -1804,7 +1804,7 @@ declare_lint! {
     /// [editions]: https://doc.rust-lang.org/edition-guide/
     /// [raw identifier]: https://doc.rust-lang.org/reference/identifiers.html
     /// [`cargo fix`]: https://doc.rust-lang.org/cargo/commands/cargo-fix.html
-    pub KEYWORD_IDENTS,
+    pub KEYWORD_IDENTS_2018,
     Allow,
     "detects edition keywords being used as an identifier",
     @future_incompatible = FutureIncompatibleInfo {
@@ -1813,9 +1813,54 @@ declare_lint! {
     };
 }
 
+declare_lint! {
+    /// The `keyword_idents_2024` lint detects edition keywords being used as an
+    /// identifier.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,edition2015,compile_fail
+    /// #![deny(keyword_idents_2024)]
+    /// // edition 2015
+    /// fn gen() {}
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Rust [editions] allow the language to evolve without breaking
+    /// backwards compatibility. This lint catches code that uses new keywords
+    /// that are added to the language that are used as identifiers (such as a
+    /// variable name, function name, etc.). If you switch the compiler to a
+    /// new edition without updating the code, then it will fail to compile if
+    /// you are using a new keyword as an identifier.
+    ///
+    /// You can manually change the identifiers to a non-keyword, or use a
+    /// [raw identifier], for example `r#gen`, to transition to a new edition.
+    ///
+    /// This lint solves the problem automatically. It is "allow" by default
+    /// because the code is perfectly valid in older editions. The [`cargo
+    /// fix`] tool with the `--edition` flag will switch this lint to "warn"
+    /// and automatically apply the suggested fix from the compiler (which is
+    /// to use a raw identifier). This provides a completely automated way to
+    /// update old code for a new edition.
+    ///
+    /// [editions]: https://doc.rust-lang.org/edition-guide/
+    /// [raw identifier]: https://doc.rust-lang.org/reference/identifiers.html
+    /// [`cargo fix`]: https://doc.rust-lang.org/cargo/commands/cargo-fix.html
+    pub KEYWORD_IDENTS_2024,
+    Allow,
+    "detects edition keywords being used as an identifier",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: FutureIncompatibilityReason::EditionError(Edition::Edition2024),
+        reference: "issue #49716 <https://github.com/rust-lang/rust/issues/49716>",
+    };
+}
+
 declare_lint_pass!(
     /// Check for uses of edition keywords used as an identifier.
-    KeywordIdents => [KEYWORD_IDENTS]
+    KeywordIdents => [KEYWORD_IDENTS_2018, KEYWORD_IDENTS_2024]
 );
 
 struct UnderMacro(bool);
@@ -1841,42 +1886,39 @@ impl KeywordIdents {
         UnderMacro(under_macro): UnderMacro,
         ident: Ident,
     ) {
-        let next_edition = match cx.sess().edition() {
-            Edition::Edition2015 => {
-                match ident.name {
-                    kw::Async | kw::Await | kw::Try => Edition::Edition2018,
+        let (lint, edition) = match ident.name {
+            kw::Async | kw::Await | kw::Try => (KEYWORD_IDENTS_2018, Edition::Edition2018),
 
-                    // rust-lang/rust#56327: Conservatively do not
-                    // attempt to report occurrences of `dyn` within
-                    // macro definitions or invocations, because `dyn`
-                    // can legitimately occur as a contextual keyword
-                    // in 2015 code denoting its 2018 meaning, and we
-                    // do not want rustfix to inject bugs into working
-                    // code by rewriting such occurrences.
-                    //
-                    // But if we see `dyn` outside of a macro, we know
-                    // its precise role in the parsed AST and thus are
-                    // assured this is truly an attempt to use it as
-                    // an identifier.
-                    kw::Dyn if !under_macro => Edition::Edition2018,
+            // rust-lang/rust#56327: Conservatively do not
+            // attempt to report occurrences of `dyn` within
+            // macro definitions or invocations, because `dyn`
+            // can legitimately occur as a contextual keyword
+            // in 2015 code denoting its 2018 meaning, and we
+            // do not want rustfix to inject bugs into working
+            // code by rewriting such occurrences.
+            //
+            // But if we see `dyn` outside of a macro, we know
+            // its precise role in the parsed AST and thus are
+            // assured this is truly an attempt to use it as
+            // an identifier.
+            kw::Dyn if !under_macro => (KEYWORD_IDENTS_2018, Edition::Edition2018),
 
-                    _ => return,
-                }
-            }
+            kw::Gen => (KEYWORD_IDENTS_2024, Edition::Edition2024),
 
-            // There are no new keywords yet for the 2018 edition and beyond.
             _ => return,
         };
 
         // Don't lint `r#foo`.
-        if cx.sess().psess.raw_identifier_spans.contains(ident.span) {
+        if ident.span.edition() >= edition
+            || cx.sess().psess.raw_identifier_spans.contains(ident.span)
+        {
             return;
         }
 
         cx.emit_span_lint(
-            KEYWORD_IDENTS,
+            lint,
             ident.span,
-            BuiltinKeywordIdents { kw: ident, next: next_edition, suggestion: ident.span },
+            BuiltinKeywordIdents { kw: ident, next: edition, suggestion: ident.span },
         );
     }
 }

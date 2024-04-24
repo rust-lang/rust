@@ -527,7 +527,12 @@ macro_rules! nonzero_integer {
             #[inline]
             pub const fn leading_zeros(self) -> u32 {
                 // SAFETY: since `self` cannot be zero, it is safe to call `ctlz_nonzero`.
-                unsafe { intrinsics::ctlz_nonzero(self.get() as $UnsignedPrimitive) as u32 }
+                unsafe {
+                    #[cfg(not(bootstrap))]
+                    return intrinsics::ctlz_nonzero(self.get() as $UnsignedPrimitive);
+                    #[cfg(bootstrap)]
+                    return intrinsics::ctlz_nonzero(self.get() as $UnsignedPrimitive) as u32;
+                }
             }
 
             /// Returns the number of trailing zeros in the binary representation
@@ -551,7 +556,12 @@ macro_rules! nonzero_integer {
             #[inline]
             pub const fn trailing_zeros(self) -> u32 {
                 // SAFETY: since `self` cannot be zero, it is safe to call `cttz_nonzero`.
-                unsafe { intrinsics::cttz_nonzero(self.get() as $UnsignedPrimitive) as u32 }
+                unsafe {
+                    #[cfg(not(bootstrap))]
+                    return intrinsics::cttz_nonzero(self.get() as $UnsignedPrimitive);
+                    #[cfg(bootstrap)]
+                    return intrinsics::cttz_nonzero(self.get() as $UnsignedPrimitive) as u32;
+                }
             }
 
             /// Returns the number of ones in the binary representation of `self`.

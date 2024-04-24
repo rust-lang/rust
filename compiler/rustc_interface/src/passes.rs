@@ -759,7 +759,9 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
     tcx.hir().par_body_owners(|def_id| {
         if tcx.is_coroutine(def_id.to_def_id()) {
             tcx.ensure().mir_coroutine_witnesses(def_id);
-            tcx.ensure().check_coroutine_obligations(def_id);
+            tcx.ensure().check_coroutine_obligations(
+                tcx.typeck_root_def_id(def_id.to_def_id()).expect_local(),
+            );
         }
     });
     sess.time("layout_testing", || layout_test::test_layout(tcx));

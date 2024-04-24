@@ -44,7 +44,7 @@ impl Subdiagnostic for InvalidAbiReason {
     fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
-        _: F,
+        _: &F,
     ) {
         #[allow(rustc::untranslatable_diagnostic)]
         diag.note(self.0);

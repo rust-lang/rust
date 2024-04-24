@@ -1883,20 +1883,18 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                     //     async fn foo(_: std::cell::Ref<u32>) { ... }
                     LifetimeRibKind::AnonymousCreateParameter { report_in_path: true, .. }
                     | LifetimeRibKind::AnonymousWarn(_) => {
-                        let mut err =
-                            self.r.dcx().create_err(errors::ImplicitElidedLifetimeNotAllowedHere {
-                                span: path_span,
-                            });
                         let sess = self.r.tcx.sess;
-                        rustc_errors::add_elided_lifetime_in_path_suggestion(
+                        let subdiag = rustc_errors::elided_lifetime_in_path_suggestion(
                             sess.source_map(),
-                            &mut err,
                             expected_lifetimes,
                             path_span,
                             !segment.has_generic_args,
                             elided_lifetime_span,
                         );
-                        err.emit();
+                        self.r.dcx().emit_err(errors::ImplicitElidedLifetimeNotAllowedHere {
+                            span: path_span,
+                            subdiag,
+                        });
                         should_lint = false;
 
                         for id in node_ids {

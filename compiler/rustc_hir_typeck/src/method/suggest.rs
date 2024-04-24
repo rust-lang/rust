@@ -3291,14 +3291,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 param.name.ident(),
                             ));
                             let bounds_span = hir_generics.bounds_span_for_suggestions(def_id);
-                            if rcvr_ty.is_ref() && param.is_impl_trait() && bounds_span.is_some() {
+                            if rcvr_ty.is_ref()
+                                && param.is_impl_trait()
+                                && let Some((bounds_span, _)) = bounds_span
+                            {
                                 err.multipart_suggestions(
                                     msg,
                                     candidates.iter().map(|t| {
                                         vec![
                                             (param.span.shrink_to_lo(), "(".to_string()),
                                             (
-                                                bounds_span.unwrap(),
+                                                bounds_span,
                                                 format!(" + {})", self.tcx.def_path_str(t.def_id)),
                                             ),
                                         ]
@@ -3308,32 +3311,46 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 return;
                             }
 
-                            let (sp, introducer) = if let Some(span) = bounds_span {
-                                (span, Introducer::Plus)
-                            } else if let Some(colon_span) = param.colon_span {
-                                (colon_span.shrink_to_hi(), Introducer::Nothing)
-                            } else if param.is_impl_trait() {
-                                (param.span.shrink_to_hi(), Introducer::Plus)
-                            } else {
-                                (param.span.shrink_to_hi(), Introducer::Colon)
-                            };
+                            let (sp, introducer, open_paren_sp) =
+                                if let Some((span, open_paren_sp)) = bounds_span {
+                                    (span, Introducer::Plus, open_paren_sp)
+                                } else if let Some(colon_span) = param.colon_span {
+                                    (colon_span.shrink_to_hi(), Introducer::Nothing, None)
+                                } else if param.is_impl_trait() {
+                                    (param.span.shrink_to_hi(), Introducer::Plus, None)
+                                } else {
+                                    (param.span.shrink_to_hi(), Introducer::Colon, None)
+                                };
 
-                            err.span_suggestions(
-                                sp,
+                            let all_suggs = candidates.iter().map(|cand| {
+                                let suggestion = format!(
+                                    "{} {}",
+                                    match introducer {
+                                        Introducer::Plus => " +",
+                                        Introducer::Colon => ":",
+                                        Introducer::Nothing => "",
+                                    },
+                                    self.tcx.def_path_str(cand.def_id)
+                                );
+
+                                let mut suggs = vec![];
+
+                                if let Some(open_paren_sp) = open_paren_sp {
+                                    suggs.push((open_paren_sp, "(".to_string()));
+                                    suggs.push((sp, format!("){suggestion}")));
+                                } else {
+                                    suggs.push((sp, suggestion));
+                                }
+
+                                suggs
+                            });
+
+                            err.multipart_suggestions(
                                 msg,
-                                candidates.iter().map(|t| {
-                                    format!(
-                                        "{} {}",
-                                        match introducer {
-                                            Introducer::Plus => " +",
-                                            Introducer::Colon => ":",
-                                            Introducer::Nothing => "",
-                                        },
-                                        self.tcx.def_path_str(t.def_id)
-                                    )
-                                }),
+                                all_suggs,
                                 Applicability::MaybeIncorrect,
                             );
+
                             return;
                         }
                         Node::Item(hir::Item {

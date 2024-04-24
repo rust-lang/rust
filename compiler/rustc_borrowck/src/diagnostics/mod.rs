@@ -654,7 +654,7 @@ impl UseSpans<'_> {
                     match kind {
                         Some(kd) => match kd {
                             rustc_middle::mir::BorrowKind::Shared
-                            | rustc_middle::mir::BorrowKind::Fake => {
+                            | rustc_middle::mir::BorrowKind::Fake(_) => {
                                 CaptureVarKind::Immut { kind_span: capture_kind_span }
                             }
 

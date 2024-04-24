@@ -1042,7 +1042,7 @@ pub struct Resolver<'a, 'tcx> {
     block_map: NodeMap<Module<'a>>,
     /// A fake module that contains no definition and no prelude. Used so that
     /// some AST passes can generate identifiers that only resolve to local or
-    /// language items.
+    /// lang items.
     empty_module: Module<'a>,
     module_map: FxHashMap<DefId, Module<'a>>,
     binding_parent_modules: FxHashMap<NameBinding<'a>, Module<'a>>,

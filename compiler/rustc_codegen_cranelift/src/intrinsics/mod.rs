@@ -26,6 +26,7 @@ use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{sym, Symbol};
 
 pub(crate) use self::llvm::codegen_llvm_intrinsic_call;
+use crate::cast::clif_intcast;
 use crate::prelude::*;
 
 fn bug_on_incorrect_arg_count(intrinsic: impl std::fmt::Display) -> ! {
@@ -627,7 +628,8 @@ fn codegen_regular_intrinsic_call<'tcx>(
 
             // FIXME trap on `ctlz_nonzero` with zero arg.
             let res = fx.bcx.ins().clz(val);
-            let res = CValue::by_val(res, arg.layout());
+            let res = clif_intcast(fx, res, types::I32, false);
+            let res = CValue::by_val(res, ret.layout());
             ret.write_cvalue(fx, res);
         }
         sym::cttz | sym::cttz_nonzero => {
@@ -636,7 +638,8 @@ fn codegen_regular_intrinsic_call<'tcx>(
 
             // FIXME trap on `cttz_nonzero` with zero arg.
             let res = fx.bcx.ins().ctz(val);
-            let res = CValue::by_val(res, arg.layout());
+            let res = clif_intcast(fx, res, types::I32, false);
+            let res = CValue::by_val(res, ret.layout());
             ret.write_cvalue(fx, res);
         }
         sym::ctpop => {
@@ -644,7 +647,8 @@ fn codegen_regular_intrinsic_call<'tcx>(
             let val = arg.load_scalar(fx);
 
             let res = fx.bcx.ins().popcnt(val);
-            let res = CValue::by_val(res, arg.layout());
+            let res = clif_intcast(fx, res, types::I32, false);
+            let res = CValue::by_val(res, ret.layout());
             ret.write_cvalue(fx, res);
         }
         sym::bitreverse => {

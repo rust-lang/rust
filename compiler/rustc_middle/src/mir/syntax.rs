@@ -165,13 +165,16 @@ pub enum BorrowKind {
     /// Data must be immutable and is aliasable.
     Shared,
 
-    /// The immediately borrowed place must be immutable, but projections from
-    /// it don't need to be. For example, a shallow borrow of `a.b` doesn't
-    /// conflict with a mutable borrow of `a.b.c`.
+    /// An immutable, aliasable borrow that is discarded after borrow-checking. Can behave either
+    /// like a normal shared borrow or like a special shallow borrow (see [`FakeBorrowKind`]).
     ///
-    /// This is used when lowering matches: when matching on a place we want to
-    /// ensure that place have the same value from the start of the match until
-    /// an arm is selected. This prevents this code from compiling:
+    /// This is used when lowering index expressions and matches. This is used to prevent code like
+    /// the following from compiling:
+    /// ```compile_fail,E0510
+    /// let mut x: &[_] = &[[0, 1]];
+    /// let y: &[_] = &[];
+    /// let _ = x[0][{x = y; 1}];
+    /// ```
     /// ```compile_fail,E0510
     /// let mut x = &Some(0);
     /// match *x {
@@ -180,11 +183,8 @@ pub enum BorrowKind {
     ///     Some(_) => (),
     /// }
     /// ```
-    /// This can't be a shared borrow because mutably borrowing (*x as Some).0
-    /// should not prevent `if let None = x { ... }`, for example, because the
-    /// mutating `(*x as Some).0` can't affect the discriminant of `x`.
     /// We can also report errors with this kind of borrow differently.
-    Fake,
+    Fake(FakeBorrowKind),
 
     /// Data is mutable and not aliasable.
     Mut { kind: MutBorrowKind },
@@ -238,6 +238,57 @@ pub enum MutBorrowKind {
     /// This solves the problem. For simplicity, we don't give users the way to express this
     /// borrow, it's just used when translating closures.
     ClosureCapture,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, TyEncodable, TyDecodable)]
+#[derive(Hash, HashStable)]
+pub enum FakeBorrowKind {
+    /// A shared shallow borrow. The immediately borrowed place must be immutable, but projections
+    /// from it don't need to be. For example, a shallow borrow of `a.b` doesn't conflict with a
+    /// mutable borrow of `a.b.c`.
+    ///
+    /// This is used when lowering matches: when matching on a place we want to ensure that place
+    /// have the same value from the start of the match until an arm is selected. This prevents this
+    /// code from compiling:
+    /// ```compile_fail,E0510
+    /// let mut x = &Some(0);
+    /// match *x {
+    ///     None => (),
+    ///     Some(_) if { x = &None; false } => (),
+    ///     Some(_) => (),
+    /// }
+    /// ```
+    /// This can't be a shared borrow because mutably borrowing `(*x as Some).0` should not checking
+    /// the discriminant or accessing other variants, because the mutating `(*x as Some).0` can't
+    /// affect the discriminant of `x`. E.g. the following is allowed:
+    /// ```rust
+    /// let mut x = Some(0);
+    /// match x {
+    ///     Some(_)
+    ///         if {
+    ///             if let Some(ref mut y) = x {
+    ///                 *y += 1;
+    ///             };
+    ///             true
+    ///         } => {}
+    ///     _ => {}
+    /// }
+    /// ```
+    Shallow,
+    /// A shared (deep) borrow. Data must be immutable and is aliasable.
+    ///
+    /// This is used when lowering deref patterns, where shallow borrows wouldn't prevent something
+    /// like:
+    // ```compile_fail
+    // let mut b = Box::new(false);
+    // match b {
+    //     deref!(true) => {} // not reached because `*b == false`
+    //     _ if { *b = true; false } => {} // not reached because the guard is `false`
+    //     deref!(false) => {} // not reached because the guard changed it
+    //     // UB because we reached the unreachable.
+    // }
+    // ```
+    Deep,
 }
 
 ///////////////////////////////////////////////////////////////////////////
