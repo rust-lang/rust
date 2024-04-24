@@ -508,7 +508,7 @@ fn get_argc_argv<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         let ptr_size = bx.tcx().data_layout.pointer_size;
         let ptr_align = bx.tcx().data_layout.pointer_align.abi;
         let arg_argc = bx.const_int(cx.type_isize(), 2);
-        let arg_argv = bx.alloca(cx.type_array(cx.type_ptr(), 2), ptr_align);
+        let arg_argv = bx.alloca(2 * ptr_size, ptr_align);
         bx.store(param_handle, arg_argv, ptr_align);
         let arg_argv_el1 = bx.inbounds_ptradd(arg_argv, bx.const_usize(ptr_size.bytes()));
         bx.store(param_system_table, arg_argv_el1, ptr_align);

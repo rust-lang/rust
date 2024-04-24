@@ -153,7 +153,7 @@ pub unsafe fn check_from_newtype(x: Scalar64) -> u64 {
 // CHECK-LABEL: @check_aggregate_to_bool(
 #[no_mangle]
 pub unsafe fn check_aggregate_to_bool(x: Aggregate8) -> bool {
-    // CHECK: %x = alloca %Aggregate8, align 1
+    // CHECK: %x = alloca [1 x i8], align 1
     // CHECK: %[[BYTE:.+]] = load i8, ptr %x, align 1
     // CHECK: %[[BOOL:.+]] = trunc i8 %[[BYTE]] to i1
     // CHECK: ret i1 %[[BOOL]]
@@ -163,7 +163,7 @@ pub unsafe fn check_aggregate_to_bool(x: Aggregate8) -> bool {
 // CHECK-LABEL: @check_aggregate_from_bool(
 #[no_mangle]
 pub unsafe fn check_aggregate_from_bool(x: bool) -> Aggregate8 {
-    // CHECK: %_0 = alloca %Aggregate8, align 1
+    // CHECK: %_0 = alloca [1 x i8], align 1
     // CHECK: %[[BYTE:.+]] = zext i1 %x to i8
     // CHECK: store i8 %[[BYTE]], ptr %_0, align 1
     transmute(x)
@@ -190,7 +190,7 @@ pub unsafe fn check_byte_from_bool(x: bool) -> u8 {
 // CHECK-LABEL: @check_to_pair(
 #[no_mangle]
 pub unsafe fn check_to_pair(x: u64) -> Option<i32> {
-    // CHECK: %_0 = alloca %"core::option::Option<i32>", align 4
+    // CHECK: %_0 = alloca [8 x i8], align 4
     // CHECK: store i64 %x, ptr %_0, align 4
     transmute(x)
 }
@@ -202,7 +202,7 @@ pub unsafe fn check_from_pair(x: Option<i32>) -> u64 {
     // immediates so we can write using the destination alloca's alignment.
     const { assert!(std::mem::align_of::<Option<i32>>() == 4) };
 
-    // CHECK: %_0 = alloca i64, align 8
+    // CHECK: %_0 = alloca [8 x i8], align 8
     // CHECK: store i32 %x.0, ptr %_0, align 8
     // CHECK: store i32 %x.1, ptr %0, align 4
     // CHECK: %[[R:.+]] = load i64, ptr %_0, align 8
@@ -248,7 +248,7 @@ pub unsafe fn check_from_bytes(x: [u8; 4]) -> u32 {
 // CHECK-LABEL: @check_to_aggregate(
 #[no_mangle]
 pub unsafe fn check_to_aggregate(x: u64) -> Aggregate64 {
-    // CHECK: %_0 = alloca %Aggregate64, align 4
+    // CHECK: %_0 = alloca [8 x i8], align 4
     // CHECK: store i64 %x, ptr %_0, align 4
     // CHECK: %0 = load i64, ptr %_0, align 4
     // CHECK: ret i64 %0
@@ -258,7 +258,7 @@ pub unsafe fn check_to_aggregate(x: u64) -> Aggregate64 {
 // CHECK-LABEL: @check_from_aggregate(
 #[no_mangle]
 pub unsafe fn check_from_aggregate(x: Aggregate64) -> u64 {
-    // CHECK: %x = alloca %Aggregate64, align 4
+    // CHECK: %x = alloca [8 x i8], align 4
     // CHECK: %[[VAL:.+]] = load i64, ptr %x, align 4
     // CHECK: ret i64 %[[VAL]]
     transmute(x)
@@ -452,7 +452,7 @@ pub struct HighAlignScalar(u8);
 // CHECK-LABEL: @check_to_overalign(
 #[no_mangle]
 pub unsafe fn check_to_overalign(x: u64) -> HighAlignScalar {
-    // CHECK: %_0 = alloca %HighAlignScalar, align 8
+    // CHECK: %_0 = alloca [8 x i8], align 8
     // CHECK: store i64 %x, ptr %_0, align 8
     // CHECK: %0 = load i64, ptr %_0, align 8
     // CHECK: ret i64 %0
@@ -462,7 +462,7 @@ pub unsafe fn check_to_overalign(x: u64) -> HighAlignScalar {
 // CHECK-LABEL: @check_from_overalign(
 #[no_mangle]
 pub unsafe fn check_from_overalign(x: HighAlignScalar) -> u64 {
-    // CHECK: %x = alloca %HighAlignScalar, align 8
+    // CHECK: %x = alloca [8 x i8], align 8
     // CHECK: %[[VAL:.+]] = load i64, ptr %x, align 8
     // CHECK: ret i64 %[[VAL]]
     transmute(x)

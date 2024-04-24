@@ -18,7 +18,7 @@ pub fn array_load(a: &[u8; 4]) -> [u8; 4] {
 #[no_mangle]
 pub fn array_store(a: [u8; 4], p: &mut [u8; 4]) {
     // CHECK-NOT: alloca
-    // CHECK: %[[TEMP:.+]] = alloca i32, [[TEMPALIGN:align [0-9]+]]
+    // CHECK: %[[TEMP:.+]] = alloca [4 x i8], [[TEMPALIGN:align [0-9]+]]
     // CHECK-NOT: alloca
     // CHECK: %a = alloca [4 x i8]
     // CHECK-NOT: alloca
