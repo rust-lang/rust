@@ -38,6 +38,7 @@ use rustc_trait_selection::traits::query::method_autoderef::{
     CandidateStep, MethodAutoderefStepsResult,
 };
 use rustc_trait_selection::traits::query::CanonicalTyGoal;
+use rustc_trait_selection::traits::NormalizeExt;
 use rustc_trait_selection::traits::ObligationCtxt;
 use rustc_trait_selection::traits::{self, ObligationCause};
 use std::cell::RefCell;
@@ -1376,7 +1377,9 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     let impl_ty = self.tcx.type_of(impl_def_id).instantiate(self.tcx, impl_args);
                     (xform_self_ty, xform_ret_ty) =
                         self.xform_self_ty(probe.item, impl_ty, impl_args);
-                    xform_self_ty = ocx.normalize(cause, self.param_env, xform_self_ty);
+                    let InferOk { value: normalized, mut obligations } =
+                        self.at(cause, self.param_env).normalize(xform_self_ty);
+                    xform_self_ty = normalized;
                     // FIXME: Make this `ocx.sup` once we define opaques more eagerly.
                     match self.at(cause, self.param_env).sup(
                         DefineOpaqueTypes::No,
@@ -1398,7 +1401,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     let impl_bounds =
                         self.tcx.predicates_of(impl_def_id).instantiate(self.tcx, impl_args);
                     let impl_bounds = ocx.normalize(cause, self.param_env, impl_bounds);
-                    for obligation in traits::predicates_for_generics(
+                    obligations.extend(traits::predicates_for_generics(
                         |idx, span| {
                             let code = if span.is_dummy() {
                                 traits::ExprItemObligation(impl_def_id, self.scope_expr_id, idx)
@@ -1414,7 +1417,9 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                         },
                         self.param_env,
                         impl_bounds,
-                    ) {
+                    ));
+
+                    for obligation in obligations {
                         if self.infcx.next_trait_solver() {
                             ocx.register_obligation(obligation);
                         } else {
@@ -1460,7 +1465,11 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     let trait_ref = ocx.normalize(cause, self.param_env, trait_ref);
                     (xform_self_ty, xform_ret_ty) =
                         self.xform_self_ty(probe.item, trait_ref.self_ty(), trait_ref.args);
-                    xform_self_ty = ocx.normalize(cause, self.param_env, xform_self_ty);
+
+                    let InferOk { value: normalized, obligations: normalize_obligations } =
+                        self.at(cause, self.param_env).normalize(xform_self_ty);
+                    xform_self_ty = normalized;
+
                     // FIXME: Make this `ocx.sup` once we define opaques more eagerly.
                     match self.at(cause, self.param_env).sup(
                         DefineOpaqueTypes::No,
@@ -1475,6 +1484,33 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                             return ProbeResult::NoMatch;
                         }
                     }
+
+                    for obligation in normalize_obligations {
+                        if self.infcx.next_trait_solver() {
+                            ocx.register_obligation(obligation);
+                        } else {
+                            match self.infcx.evaluate_obligation_no_overflow(&obligation) {
+                                EvaluationResult::EvaluatedToOk => {
+                                    // No side-effects, no need to register obligations.
+                                }
+                                EvaluationResult::EvaluatedToOkModuloRegions
+                                | EvaluationResult::EvaluatedToOkModuloOpaqueTypes
+                                | EvaluationResult::EvaluatedToAmbig
+                                | EvaluationResult::EvaluatedToAmbigStackDependent => {
+                                    ocx.register_obligation(obligation);
+                                }
+                                EvaluationResult::EvaluatedToErr => {
+                                    result = ProbeResult::NoMatch;
+                                    possibly_unsatisfied_predicates.push((
+                                        self.resolve_vars_if_possible(obligation.predicate),
+                                        None,
+                                        Some(obligation.cause.clone()),
+                                    ));
+                                }
+                            }
+                        }
+                    }
+
                     let obligation = traits::Obligation::new(
                         self.tcx,
                         cause.clone(),
@@ -1527,7 +1563,10 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     );
                     (xform_self_ty, xform_ret_ty) =
                         self.xform_self_ty(probe.item, trait_ref.self_ty(), trait_ref.args);
-                    xform_self_ty = ocx.normalize(cause, self.param_env, xform_self_ty);
+                    let InferOk { value: normalized, obligations: normalize_obligations } =
+                        self.at(cause, self.param_env).normalize(xform_self_ty);
+                    xform_self_ty = normalized;
+
                     // FIXME: Make this `ocx.sup` once we define opaques more eagerly.
                     match self.at(cause, self.param_env).sup(
                         DefineOpaqueTypes::No,
@@ -1540,6 +1579,32 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                         Err(err) => {
                             debug!("--> cannot relate self-types {:?}", err);
                             return ProbeResult::NoMatch;
+                        }
+                    }
+
+                    for obligation in normalize_obligations {
+                        if self.infcx.next_trait_solver() {
+                            ocx.register_obligation(obligation);
+                        } else {
+                            match self.infcx.evaluate_obligation_no_overflow(&obligation) {
+                                EvaluationResult::EvaluatedToOk => {
+                                    // No side-effects, no need to register obligations.
+                                }
+                                EvaluationResult::EvaluatedToOkModuloRegions
+                                | EvaluationResult::EvaluatedToOkModuloOpaqueTypes
+                                | EvaluationResult::EvaluatedToAmbig
+                                | EvaluationResult::EvaluatedToAmbigStackDependent => {
+                                    ocx.register_obligation(obligation);
+                                }
+                                EvaluationResult::EvaluatedToErr => {
+                                    result = ProbeResult::NoMatch;
+                                    possibly_unsatisfied_predicates.push((
+                                        self.resolve_vars_if_possible(obligation.predicate),
+                                        None,
+                                        Some(obligation.cause.clone()),
+                                    ));
+                                }
+                            }
                         }
                     }
                 }
