@@ -1,10 +1,3 @@
-//@ check-pass
-//@ known-bug: #98117
-
-// Should fail. Functions are responsible for checking the well-formedness of
-// their own where clauses, so this should fail and require an explicit bound
-// `T: 'static`.
-
 use std::fmt::Display;
 
 trait Static: 'static {}
@@ -19,5 +12,6 @@ where
 
 fn main() {
     let s = foo(&String::from("blah blah blah"));
+    //~^ ERROR temporary value dropped while borrowed
     println!("{}", s);
 }
