@@ -1016,15 +1016,12 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 walk_list!(self, visit_attribute, &item.attrs);
                 return; // Avoid visiting again.
             }
-            ItemKind::ForeignMod(ForeignMod { abi, safety, .. }) => {
+            ItemKind::ForeignMod(ForeignMod { abi, .. }) => {
                 let old_item = mem::replace(&mut self.extern_mod, Some(item));
                 self.visibility_not_permitted(
                     &item.vis,
                     errors::VisibilityNotPermittedNote::IndividualForeignItems,
                 );
-                if let &Safety::Unsafe(span) = safety {
-                    self.dcx().emit_err(errors::UnsafeItem { span, kind: "extern block" });
-                }
                 if abi.is_none() {
                     self.maybe_lint_missing_abi(item.span, item.id);
                 }

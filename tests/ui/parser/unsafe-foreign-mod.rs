@@ -1,5 +1,5 @@
-unsafe extern "C" {
-    //~^ ERROR extern block cannot be declared unsafe
-}
+//@ build-pass
+
+unsafe extern "C" {}
 
 fn main() {}
