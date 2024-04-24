@@ -48,6 +48,14 @@ fn bat() {
     println!("{:?} {:?}", a, b);
 }
 
+fn ang() {
+    let mut foo = [1,2,3,4];
+    let a = &mut foo[0..];
+    let b = &foo[0..]; //~ ERROR cannot borrow `foo` as immutable because it is also borrowed as mutable
+    a[0] = 5;
+    println!("{:?} {:?}", a, b);
+}
+
 fn main() {
     foo();
     bar();

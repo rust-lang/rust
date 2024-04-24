@@ -2136,10 +2136,14 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         }
         let Some(index1) = self.find_expr(span) else { return };
         let hir::Node::Expr(parent) = tcx.parent_hir_node(index1.hir_id) else { return };
-        let hir::ExprKind::Index(..) = parent.kind else { return };
+        let hir::ExprKind::Index(_, idx1, _) = parent.kind else { return };
         let Some(index2) = self.find_expr(issued_span) else { return };
         let hir::Node::Expr(parent) = tcx.parent_hir_node(index2.hir_id) else { return };
-        let hir::ExprKind::Index(..) = parent.kind else { return };
+        let hir::ExprKind::Index(_, idx2, _) = parent.kind else { return };
+        if idx1.equals(idx2) {
+            // `let a = &mut foo[0]` and `let b = &mut foo[0]`? Don't mention `split_at_mut`
+            return;
+        }
         err.help("use `.split_at_mut(position)` to obtain two mutable non-overlapping sub-slices");
     }
 
