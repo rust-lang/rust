@@ -32,7 +32,7 @@ jobs:
     env:
       HOST_TARGET: ${{ matrix.host_target }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Show Rust version (stable toolchain)
         run: |
@@ -85,7 +85,7 @@ jobs:
     name: style checks
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       # This is exactly duplicated from above. GHA is pretty terrible when it comes
       # to avoiding code duplication.
@@ -191,7 +191,7 @@ jobs:
           The Miri Cronjobs Bot'
 
       # Attempt to auto-sync with rustc
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 256 # get a bit more of the history
       - name: install josh-proxy
