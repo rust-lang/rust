@@ -91,6 +91,7 @@ found in [`header.rs`] from the compiletest source.
     * [`error-pattern`](ui.md#error-pattern) — errors not on a line
     * `incremental` — incremental tests not in the incremental test-suite
     * `no-prefer-dynamic` — don't use `-C prefer-dynamic`, don't build as a dylib
+    * `no-auto-check-cfg` — disable auto check-cfg (only for `--check-cfg` tests)
     * `force-host` — build only for the host target
     * [`revisions`](compiletest.md#revisions) — compile multiple times
     * [`forbid-output`](compiletest.md#incremental-tests) — incremental cfail rejects output pattern
