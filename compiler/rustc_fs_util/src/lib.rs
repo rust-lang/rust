@@ -1,5 +1,3 @@
-#![feature(absolute_path)]
-
 use std::ffi::CString;
 use std::fs;
 use std::io;
