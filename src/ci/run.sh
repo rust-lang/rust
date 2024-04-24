@@ -169,6 +169,8 @@ else
   if [ "$NO_DOWNLOAD_CI_LLVM" = "" ]; then
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set llvm.download-ci-llvm=if-unchanged"
   else
+    # CI rustc requires CI LLVM to be enabled (see https://github.com/rust-lang/rust/issues/123586).
+    NO_DOWNLOAD_CI_RUSTC=1
     # When building for CI we want to use the static C++ Standard library
     # included with LLVM, since a dynamic libstdcpp may not be available.
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set llvm.static-libstdcpp"
