@@ -150,7 +150,7 @@ pub fn opts(os: &'static str, arch: Arch) -> TargetOptions {
         function_sections: false,
         dynamic_linking: true,
         pre_link_args: pre_link_args(os, arch, abi),
-        families: cvs!["unix"],
+        families: cvs!["apple", "unix"],
         is_like_osx: true,
         // LLVM notes that macOS 10.11+ and iOS 9+ default
         // to v4, so we do the same.
