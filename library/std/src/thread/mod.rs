@@ -1296,7 +1296,9 @@ struct OtherInner {
 /// The internal representation of a `Thread` handle.
 #[derive(Clone)]
 enum Inner {
+    /// Represents the main thread. May only be constructed by Thread::new_main.
     Main,
+    /// Represents any other thread.
     Other(Pin<Arc<OtherInner>>),
 }
 
@@ -1378,9 +1380,10 @@ impl Thread {
     /// This must only ever be called once, and must be called on the main thread.
     pub(crate) unsafe fn new_main() -> Thread {
         // Safety: As this is only called once and on the main thread, nothing else is accessing MAIN_PARKER
-        // as the only other read occurs after Inner::Main has been constructed, after this call finishes.
+        // as the only other read occurs in Inner::parker *after* Inner::Main has been constructed,
+        // and this function is the only one that constructs Inner::Main.
         //
-        // Pre-main thread spawning cannot hit this either, as the caller holds that this is only called on the main thread.
+        // Pre-main thread spawning cannot hit this either, as the caller promises that this is only called on the main thread.
         unsafe { Parker::new_in_place(MAIN_PARKER.get().cast()) }
 
         Self(Inner::Main)
