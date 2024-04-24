@@ -1,6 +1,8 @@
-//! Toolstate checks to keep tools building
+//! [Toolstate] checks to keep tools building
 //!
 //! Reachable via `./x.py test` but mostly relevant for CI, since it isn't run locally by default.
+//!
+//! [Toolstate]: https://forge.rust-lang.org/infra/toolstate.html
 
 use crate::core::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::utils::helpers::t;
