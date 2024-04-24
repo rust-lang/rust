@@ -578,6 +578,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         infer::BoundRegionConversionTime::FnCall,
                         fn_sig.input(i),
                     );
+
+                    if input.is_scalable_simd() {
+                        continue;
+                    }
+
                     self.require_type_is_sized_deferred(
                         input,
                         span,
