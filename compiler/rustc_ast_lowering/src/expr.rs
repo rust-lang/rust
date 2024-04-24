@@ -8,6 +8,7 @@ use super::errors::{
 };
 use super::ResolverAstLoweringExt;
 use super::{ImplTraitContext, LoweringContext, ParamMode, ParenthesizedGenericArgs};
+use crate::errors::YieldInClosure;
 use crate::{FnDeclKind, ImplTraitPosition};
 use rustc_ast::ptr::P as AstP;
 use rustc_ast::*;
@@ -217,6 +218,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         binder,
                         *capture_clause,
                         e.id,
+                        hir_id,
                         *constness,
                         *movability,
                         fn_decl,
@@ -955,6 +957,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         binder: &ClosureBinder,
         capture_clause: CaptureBy,
         closure_id: NodeId,
+        closure_hir_id: hir::HirId,
         constness: Const,
         movability: Movability,
         decl: &FnDecl,
@@ -965,8 +968,17 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let (binder_clause, generic_params) = self.lower_closure_binder(binder);
 
         let (body_id, closure_kind) = self.with_new_scopes(fn_decl_span, move |this| {
-            let mut coroutine_kind = None;
+            let mut coroutine_kind = if this
+                .attrs
+                .get(&closure_hir_id.local_id)
+                .is_some_and(|attrs| attrs.iter().any(|attr| attr.has_name(sym::coroutine)))
+            {
+                Some(hir::CoroutineKind::Coroutine(Movability::Movable))
+            } else {
+                None
+            };
             let body_id = this.lower_fn_body(decl, |this| {
+                this.coroutine_kind = coroutine_kind;
                 let e = this.lower_expr_mut(body);
                 coroutine_kind = this.coroutine_kind;
                 e
@@ -1565,7 +1577,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     )
                     .emit();
                 }
+                let suggestion = self.current_item.map(|s| s.shrink_to_lo());
+                self.dcx().emit_err(YieldInClosure { span, suggestion });
                 self.coroutine_kind = Some(hir::CoroutineKind::Coroutine(Movability::Movable));
+
                 false
             }
         };

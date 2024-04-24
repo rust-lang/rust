@@ -8,7 +8,7 @@ fn main() {
 }
 
 fn foo() {
-    || {
+    #[coroutine] || {
         yield drop(Config {
             nickname: NonCopy,
             b: NonCopy2,

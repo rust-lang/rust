@@ -32,6 +32,7 @@ where
 
 #[rustc_polymorphize_error]
 pub fn unused_type<T>() -> impl Coroutine<(), Yield = u32, Return = u32> + Unpin {
+    #[coroutine]
     || {
         //~^ ERROR item has unused generic parameters
         yield 1;
@@ -41,6 +42,7 @@ pub fn unused_type<T>() -> impl Coroutine<(), Yield = u32, Return = u32> + Unpin
 
 #[rustc_polymorphize_error]
 pub fn used_type_in_yield<Y: Default>() -> impl Coroutine<(), Yield = Y, Return = u32> + Unpin {
+    #[coroutine]
     || {
         yield Y::default();
         2
@@ -49,6 +51,7 @@ pub fn used_type_in_yield<Y: Default>() -> impl Coroutine<(), Yield = Y, Return 
 
 #[rustc_polymorphize_error]
 pub fn used_type_in_return<R: Default>() -> impl Coroutine<(), Yield = u32, Return = R> + Unpin {
+    #[coroutine]
     || {
         yield 3;
         R::default()
@@ -57,6 +60,7 @@ pub fn used_type_in_return<R: Default>() -> impl Coroutine<(), Yield = u32, Retu
 
 #[rustc_polymorphize_error]
 pub fn unused_const<const T: u32>() -> impl Coroutine<(), Yield = u32, Return = u32> + Unpin {
+    #[coroutine]
     || {
         //~^ ERROR item has unused generic parameters
         yield 1;
@@ -67,6 +71,7 @@ pub fn unused_const<const T: u32>() -> impl Coroutine<(), Yield = u32, Return = 
 #[rustc_polymorphize_error]
 pub fn used_const_in_yield<const Y: u32>() -> impl Coroutine<(), Yield = u32, Return = u32> + Unpin
 {
+    #[coroutine]
     || {
         yield Y;
         2
@@ -76,6 +81,7 @@ pub fn used_const_in_yield<const Y: u32>() -> impl Coroutine<(), Yield = u32, Re
 #[rustc_polymorphize_error]
 pub fn used_const_in_return<const R: u32>() -> impl Coroutine<(), Yield = u32, Return = u32> + Unpin
 {
+    #[coroutine]
     || {
         yield 4;
         R

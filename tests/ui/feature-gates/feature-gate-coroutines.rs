@@ -5,9 +5,11 @@ fn main() {
     yield true; //~ ERROR yield syntax is experimental
                 //~^ ERROR yield expression outside of coroutine literal
                 //[none]~^^ ERROR yield syntax is experimental
+                //~^^^ ERROR `yield` can only be used
 
     let _ = || yield true; //~ ERROR yield syntax is experimental
     //[none]~^ ERROR yield syntax is experimental
+    //~^^ ERROR `yield` can only be used
 }
 
 #[cfg(FALSE)]

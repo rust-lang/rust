@@ -1,4 +1,4 @@
-#![feature(coroutines, coroutine_trait)]
+#![feature(coroutines, coroutine_trait, stmt_expr_attributes)]
 
 use std::cell::Cell;
 use std::ops::{Coroutine, CoroutineState};
@@ -9,7 +9,7 @@ fn borrow_local_inline() {
     //
     // (This error occurs because the region shows up in the type of
     // `b` and gets extended by region inference.)
-    let mut b = move || {
+    let mut b = #[coroutine] move || {
         let a = &mut 3;
         //~^ ERROR borrow may still be in use when coroutine yields
         yield ();
@@ -20,7 +20,7 @@ fn borrow_local_inline() {
 
 fn borrow_local_inline_done() {
     // No error here -- `a` is not in scope at the point of `yield`.
-    let mut b = move || {
+    let mut b = #[coroutine] move || {
         {
             let a = &mut 3;
         }
@@ -34,7 +34,7 @@ fn borrow_local() {
     //
     // (This error occurs because the region shows up in the type of
     // `b` and gets extended by region inference.)
-    let mut b = move || {
+    let mut b = #[coroutine] move || {
         let a = 3;
         {
             let b = &a;

@@ -534,6 +534,12 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         EncodeCrossCrate::Yes, experimental!(cfi_encoding)
     ),
 
+    // `#[coroutine]` attribute to be applied to closures to make them coroutines instead
+    gated!(
+        coroutine, Normal, template!(Word), ErrorFollowing,
+        EncodeCrossCrate::No, coroutines, experimental!(coroutines)
+    ),
+
     // ==========================================================================
     // Internal attributes: Stability, deprecation, and unsafe:
     // ==========================================================================

@@ -35,6 +35,7 @@
 #![feature(const_type_name)]
 #![feature(discriminant_kind)]
 #![feature(coroutines)]
+#![feature(stmt_expr_attributes)]
 #![feature(if_let_guard)]
 #![feature(inline_const)]
 #![feature(iter_from_coroutine)]

@@ -1,6 +1,7 @@
 #![feature(
     core_intrinsics,
     coroutines,
+    stmt_expr_attributes,
     coroutine_trait,
     is_sorted,
     repr_simd,
@@ -123,9 +124,12 @@ fn main() {
         test_simd();
     }
 
-    Box::pin(move |mut _task_context| {
-        yield ();
-    })
+    Box::pin(
+        #[coroutine]
+        move |mut _task_context| {
+            yield ();
+        },
+    )
     .as_mut()
     .resume(0);
 

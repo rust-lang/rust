@@ -1,6 +1,6 @@
 //@revisions: stack tree
 //@[tree]compile-flags: -Zmiri-tree-borrows
-#![feature(coroutines, coroutine_trait, never_type)]
+#![feature(coroutines, coroutine_trait, never_type, stmt_expr_attributes)]
 
 use std::fmt::Debug;
 use std::mem::ManuallyDrop;
@@ -43,9 +43,9 @@ fn basic() {
         panic!()
     }
 
-    finish(1, false, || yield 1);
+    finish(1, false, #[coroutine] || yield 1);
 
-    finish(3, false, || {
+    finish(3, false, #[coroutine] || {
         let mut x = 0;
         yield 1;
         x += 1;
@@ -55,27 +55,27 @@ fn basic() {
         assert_eq!(x, 2);
     });
 
-    finish(7 * 8 / 2, false, || {
+    finish(7 * 8 / 2, false, #[coroutine] || {
         for i in 0..8 {
             yield i;
         }
     });
 
-    finish(1, false, || {
+    finish(1, false, #[coroutine] || {
         if true {
             yield 1;
         } else {
         }
     });
 
-    finish(1, false, || {
+    finish(1, false, #[coroutine] || {
         if false {
         } else {
             yield 1;
         }
     });
 
-    finish(2, false, || {
+    finish(2, false, #[coroutine] || {
         if {
             yield 1;
             false
@@ -88,7 +88,7 @@ fn basic() {
 
     // also test self-referential coroutines
     assert_eq!(
-        finish(5, true, static || {
+        finish(5, true, #[coroutine] static || {
             let mut x = 5;
             let y = &mut x;
             *y = 5;
@@ -99,7 +99,7 @@ fn basic() {
         10
     );
     assert_eq!(
-        finish(5, true, || {
+        finish(5, true, #[coroutine] || {
             let mut x = Box::new(5);
             let y = &mut *x;
             *y = 5;
@@ -111,7 +111,7 @@ fn basic() {
     );
 
     let b = true;
-    finish(1, false, || {
+    finish(1, false, #[coroutine] || {
         yield 1;
         if b {
             return;
@@ -123,7 +123,7 @@ fn basic() {
         drop(x);
     });
 
-    finish(3, false, || {
+    finish(3, false, #[coroutine] || {
         yield 1;
         #[allow(unreachable_code)]
         let _x: (String, !) = (String::new(), {
@@ -172,7 +172,7 @@ fn smoke_resume_arg() {
     }
 
     drain(
-        &mut |mut b| {
+        &mut #[coroutine] |mut b| {
             while b != 0 {
                 b = yield (b + 1);
             }
@@ -181,21 +181,21 @@ fn smoke_resume_arg() {
         vec![(1, Yielded(2)), (-45, Yielded(-44)), (500, Yielded(501)), (0, Complete(-1))],
     );
 
-    expect_drops(2, || drain(&mut |a| yield a, vec![(DropMe, Yielded(DropMe))]));
+    expect_drops(2, || drain(&mut #[coroutine] |a| yield a, vec![(DropMe, Yielded(DropMe))]));
 
     expect_drops(6, || {
         drain(
-            &mut |a| yield yield a,
+            &mut #[coroutine] |a| yield yield a,
             vec![(DropMe, Yielded(DropMe)), (DropMe, Yielded(DropMe)), (DropMe, Complete(DropMe))],
         )
     });
 
     #[allow(unreachable_code)]
-    expect_drops(2, || drain(&mut |a| yield return a, vec![(DropMe, Complete(DropMe))]));
+    expect_drops(2, || drain(&mut #[coroutine] |a| yield return a, vec![(DropMe, Complete(DropMe))]));
 
     expect_drops(2, || {
         drain(
-            &mut |a: DropMe| {
+            &mut #[coroutine] |a: DropMe| {
                 if false { yield () } else { a }
             },
             vec![(DropMe, Complete(DropMe))],
@@ -205,7 +205,7 @@ fn smoke_resume_arg() {
     expect_drops(4, || {
         drain(
             #[allow(unused_assignments, unused_variables)]
-            &mut |mut a: DropMe| {
+            &mut #[coroutine] |mut a: DropMe| {
                 a = yield;
                 a = yield;
                 a = yield;
@@ -228,7 +228,7 @@ fn uninit_fields() {
     }
 
     fn run<T>(x: bool, y: bool) {
-        let mut c = || {
+        let mut c = #[coroutine] || {
             if x {
                 let _a: T;
                 if y {

@@ -1,9 +1,10 @@
 //@ run-pass
 
-#![feature(coroutines)]
+#![feature(coroutines, stmt_expr_attributes)]
 
 fn main() {
-    let a = || {
+    let a = #[coroutine]
+    || {
         {
             let w: i32 = 4;
             yield;

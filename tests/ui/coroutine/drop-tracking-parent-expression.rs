@@ -1,4 +1,4 @@
-#![feature(coroutines, negative_impls, rustc_attrs)]
+#![feature(coroutines, negative_impls, rustc_attrs, stmt_expr_attributes)]
 
 macro_rules! type_combinations {
     (
@@ -14,7 +14,7 @@ macro_rules! type_combinations {
         // Struct update syntax. This fails because the Client used in the update is considered
         // dropped *after* the yield.
         {
-            let g = move || match drop($name::Client { ..$name::Client::default() }) {
+            let g = #[coroutine] move || match drop($name::Client { ..$name::Client::default() }) {
             //~^ `significant_drop::Client` which is not `Send`
             //~| `insignificant_dtor::Client` which is not `Send`
             //~| `derived_drop::Client` which is not `Send`
@@ -29,7 +29,7 @@ macro_rules! type_combinations {
         // Simple owned value. This works because the Client is considered moved into `drop`,
         // even though the temporary expression doesn't end until after the yield.
         {
-            let g = move || match drop($name::Client::default()) {
+            let g = #[coroutine] move || match drop($name::Client::default()) {
                 _ => yield,
             };
             assert_send(g);

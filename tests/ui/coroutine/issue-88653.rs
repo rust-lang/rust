@@ -11,6 +11,7 @@ fn foo(bar: bool) -> impl Coroutine<(bool,)> {
     //~| NOTE: expected coroutine signature `fn((bool,)) -> _`
     //~| NOTE: in this expansion of desugaring of `impl Trait`
     //~| NOTE: in this expansion of desugaring of `impl Trait`
+    #[coroutine]
     |bar| {
         //~^ NOTE: found signature defined here
         if bar {
