@@ -386,10 +386,9 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
 
             let main_ptr = ecx.fn_ptr(FnVal::Instance(entry_instance));
 
-            // Inlining of `DEFAULT` from
-            // https://github.com/rust-lang/rust/blob/master/compiler/rustc_session/src/config/sigpipe.rs.
             // Always using DEFAULT is okay since we don't support signals in Miri anyway.
-            let sigpipe = 2;
+            // (This means we are effectively ignoring `#[unix_sigpipe]`.)
+            let sigpipe = rustc_session::config::sigpipe::DEFAULT;
 
             ecx.call_function(
                 start_instance,
