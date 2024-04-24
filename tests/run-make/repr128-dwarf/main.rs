@@ -1,4 +1,3 @@
-#![crate_type = "lib"]
 #![feature(repr128)]
 
 // Use .to_le() to ensure that the bytes are in the same order on both little- and big-endian
@@ -21,3 +20,7 @@ pub enum I128Enum {
 }
 
 pub fn f(_: U128Enum, _: I128Enum) {}
+
+fn main() {
+    f(U128Enum::U128A, I128Enum::I128A);
+}
