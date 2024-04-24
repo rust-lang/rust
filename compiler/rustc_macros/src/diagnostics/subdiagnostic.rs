@@ -510,11 +510,11 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
             .map(|binding| self.generate_field_attr_code(binding, kind_stats))
             .collect();
 
-        if kind_slugs.is_empty() {
+        if kind_slugs.is_empty() && !self.has_subdiagnostic {
             if self.is_enum {
                 // It's okay for a variant to not be a subdiagnostic at all..
                 return Ok(quote! {});
-            } else if !self.has_subdiagnostic {
+            } else {
                 // ..but structs should always be _something_.
                 throw_span_err!(
                     self.variant.ast().ident.span().unwrap(),
