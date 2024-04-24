@@ -79,7 +79,7 @@ pr:
     <<: *job-linux-16c
 
 # Jobs that run when you perform a try build (@bors try)
-# These jobs automatically inherit envs.production, to avoid repeating
+# These jobs automatically inherit envs.try, to avoid repeating
 # it in each job definition.
 try:
   - image: dist-x86_64-linux
@@ -88,7 +88,7 @@ try:
     <<: *job-linux-16c
 
 # Main CI jobs that have to be green to merge a commit into master
-# These jobs automatically inherit envs.production, to avoid repeating
+# These jobs automatically inherit envs.auto, to avoid repeating
 # it in each job definition.
 auto:
   #############################
