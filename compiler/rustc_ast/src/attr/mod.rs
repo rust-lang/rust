@@ -298,7 +298,10 @@ impl MetaItem {
     }
 
     pub fn value_str(&self) -> Option<Symbol> {
-        self.kind.value_str()
+        match &self.kind {
+            MetaItemKind::NameValue(v) => v.kind.str(),
+            _ => None,
+        }
     }
 
     fn from_tokens<'a, I>(tokens: &mut iter::Peekable<I>) -> Option<MetaItem>
@@ -362,13 +365,6 @@ impl MetaItem {
 }
 
 impl MetaItemKind {
-    pub fn value_str(&self) -> Option<Symbol> {
-        match self {
-            MetaItemKind::NameValue(v) => v.kind.str(),
-            _ => None,
-        }
-    }
-
     fn list_from_tokens(tokens: TokenStream) -> Option<ThinVec<NestedMetaItem>> {
         let mut tokens = tokens.trees().peekable();
         let mut result = ThinVec::new();
