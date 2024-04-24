@@ -16,7 +16,7 @@ macro_rules! emit {
 }
 
 // item
-compiles_fine!(bar);
+compiles_fine!(FALSE);
 emit!(foo);
 
 fn foo() {
@@ -25,7 +25,7 @@ fn foo() {
 
 pub fn main() {
     // statement
-    compiles_fine!(baz);
-    emit!(baz);
+    compiles_fine!(FALSE);
+    emit!(FALSE);
     println!("{}", MISTYPED);
 }
