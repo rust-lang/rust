@@ -1,5 +1,4 @@
 //@compile-flags: -Zmiri-disable-isolation
-#![feature(absolute_path)]
 use std::path::{absolute, Path};
 
 #[track_caller]

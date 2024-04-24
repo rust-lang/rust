@@ -3332,7 +3332,6 @@ impl Error for StripPrefixError {
 /// ## Posix paths
 ///
 /// ```
-/// #![feature(absolute_path)]
 /// # #[cfg(unix)]
 /// fn main() -> std::io::Result<()> {
 ///   use std::path::{self, Path};
@@ -3357,7 +3356,6 @@ impl Error for StripPrefixError {
 /// ## Windows paths
 ///
 /// ```
-/// #![feature(absolute_path)]
 /// # #[cfg(windows)]
 /// fn main() -> std::io::Result<()> {
 ///   use std::path::{self, Path};
@@ -3382,7 +3380,7 @@ impl Error for StripPrefixError {
 ///
 /// [posix-semantics]: https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap04.html#tag_04_13
 /// [windows-path]: https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-getfullpathnamew
-#[unstable(feature = "absolute_path", issue = "92750")]
+#[stable(feature = "absolute_path", since = "CURRENT_RUSTC_VERSION")]
 pub fn absolute<P: AsRef<Path>>(path: P) -> io::Result<PathBuf> {
     let path = path.as_ref();
     if path.as_os_str().is_empty() {
