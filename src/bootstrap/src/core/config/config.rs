@@ -250,6 +250,8 @@ pub struct Config {
     pub llvm_ldflags: Option<String>,
     pub llvm_use_libcxx: bool,
 
+    pub gcc_download_gccjit: bool,
+
     // rust codegen options
     pub rust_optimize: RustOptimize,
     pub rust_codegen_units: Option<u32>,
@@ -592,6 +594,7 @@ pub(crate) struct TomlConfig {
     build: Option<Build>,
     install: Option<Install>,
     llvm: Option<Llvm>,
+    gcc: Option<Gcc>,
     rust: Option<Rust>,
     target: Option<HashMap<String, TomlTarget>>,
     dist: Option<Dist>,
@@ -626,7 +629,7 @@ trait Merge {
 impl Merge for TomlConfig {
     fn merge(
         &mut self,
-        TomlConfig { build, install, llvm, rust, dist, target, profile: _, change_id }: Self,
+        TomlConfig { build, install, llvm, rust, dist, target, profile: _, change_id, gcc }: Self,
         replace: ReplaceOpt,
     ) {
         fn do_merge<T: Merge>(x: &mut Option<T>, y: Option<T>, replace: ReplaceOpt) {
@@ -644,6 +647,7 @@ impl Merge for TomlConfig {
         do_merge(&mut self.llvm, llvm, replace);
         do_merge(&mut self.rust, rust, replace);
         do_merge(&mut self.dist, dist, replace);
+        do_merge(&mut self.gcc, gcc, replace);
         assert!(target.is_none(), "merging target-specific config is not currently supported");
     }
 }
@@ -896,6 +900,13 @@ define_config! {
         compression_formats: Option<Vec<String>> = "compression-formats",
         compression_profile: Option<String> = "compression-profile",
         include_mingw_linker: Option<bool> = "include-mingw-linker",
+    }
+}
+
+define_config! {
+    /// TOML representation of how the GCC backend is configured.
+    struct Gcc {
+        download_gccjit: Option<bool> = "download-gccjit",
     }
 }
 
@@ -1724,6 +1735,14 @@ impl Config {
             ci_channel.clone_into(&mut config.channel);
         }
 
+        if let Some(gcc) = toml.gcc {
+            let Gcc { download_gccjit } = gcc;
+            config.gcc_download_gccjit = download_gccjit.unwrap_or(false);
+        }
+        if config.gcc_enabled(config.build) {
+            config.maybe_download_gccjit();
+        }
+
         if let Some(llvm) = toml.llvm {
             let Llvm {
                 optimize: optimize_toml,
@@ -2327,6 +2346,18 @@ impl Config {
 
     pub fn llvm_enabled(&self, target: TargetSelection) -> bool {
         self.codegen_backends(target).contains(&"llvm".to_owned())
+    }
+
+    pub fn gcc_enabled(&self, target: TargetSelection) -> bool {
+        self.codegen_backends(target).contains(&"gcc".to_owned())
+    }
+
+    pub fn libgccjit_folder(&self, gcc_sha: &str) -> PathBuf {
+        assert!(self.gcc_download_gccjit);
+        let cache_prefix = format!("libgccjit-{gcc_sha}");
+        let cache_dst =
+            self.bootstrap_cache_path.as_ref().cloned().unwrap_or_else(|| self.out.join("cache"));
+        cache_dst.join(cache_prefix)
     }
 
     pub fn llvm_libunwind(&self, target: TargetSelection) -> LlvmLibunwind {

@@ -598,3 +598,22 @@ pub fn check_cfg_arg(name: &str, values: Option<&[&str]>) -> String {
     };
     format!("--check-cfg=cfg({name}{next})")
 }
+
+/// This retrieves the gccjit sha we use.
+pub fn detect_gccjit_sha() -> String {
+    // FIXME: This is absolutely ugly. Please find another way to do that.
+    let content = include_str!("../../../ci/docker/host-x86_64/dist-x86_64-linux/build-gccjit.sh");
+    if let Some(commit) = content
+        .lines()
+        .filter_map(|line| line.strip_prefix("GIT_COMMIT=\""))
+        .filter_map(|commit| commit.strip_suffix('"'))
+        .next()
+    {
+        if !commit.is_empty() {
+            return commit.to_string();
+        }
+    }
+
+    eprintln!("error: could not find commit hash for downloading libgccjit");
+    panic!();
+}

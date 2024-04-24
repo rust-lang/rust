@@ -3503,6 +3503,7 @@ impl Step for CodegenGCC {
             // Avoid incremental cache issues when changing rustc
             cargo.env("CARGO_BUILD_INCREMENTAL", "false");
             cargo.rustflag("-Cpanic=abort");
+            cargo.add_rustc_lib_path(builder);
 
             cargo
         };

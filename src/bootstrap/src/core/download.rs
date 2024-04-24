@@ -12,7 +12,7 @@ use build_helper::ci::CiEnv;
 use build_helper::stage0_parser::VersionMetadata;
 use xz2::bufread::XzDecoder;
 
-use crate::utils::helpers::{check_run, exe, move_file, program_out_of_date};
+use crate::utils::helpers::{check_run, detect_gccjit_sha, exe, move_file, program_out_of_date};
 use crate::{core::build_steps::llvm::detect_llvm_sha, utils::helpers::hex_encode};
 use crate::{t, Config};
 
@@ -229,7 +229,7 @@ impl Config {
             tempfile.to_str().unwrap(),
             "--retry",
             "3",
-            "-SRf",
+            "-SRfL",
         ]);
         // Don't print progress in CI; the \r wrapping looks bad and downloads don't take long enough for progress to be useful.
         if CiEnv::is_ci() {
@@ -741,6 +741,38 @@ download-rustc = false
         }
         let llvm_root = self.ci_llvm_root();
         self.unpack(&tarball, &llvm_root, "rust-dev");
+    }
+
+    pub(crate) fn maybe_download_gccjit(&self) {
+        if !self.gcc_download_gccjit {
+            return;
+        }
+        self.download_gccjit(&detect_gccjit_sha());
+    }
+
+    fn download_gccjit(&self, gcc_sha: &str) {
+        let help_on_error = "ERROR: failed to download libgccjit
+
+    HELP: There could be two reasons behind this:
+        1) The host triple is not supported for `download-gccjit`.
+        2) Old builds get deleted after a certain time.
+    ";
+        if !self.build.triple.contains("linux") || !self.build.triple.contains("x86_64") {
+            eprintln!("{help_on_error}");
+            return;
+        }
+        let rustc_cache = self.libgccjit_folder(gcc_sha);
+        if !rustc_cache.exists() {
+            t!(fs::create_dir_all(&rustc_cache));
+        }
+
+        let lib_path = rustc_cache.join("libgccjit.so.0");
+        if !lib_path.exists() {
+            let url = format!(
+                "https://github.com/rust-lang/gcc/releases/download/master-{gcc_sha}/libgccjit.so",
+            );
+            self.download_file(&url, &lib_path, help_on_error);
+        }
     }
 }
 

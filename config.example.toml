@@ -156,6 +156,13 @@
 #build-config = {}
 
 # =============================================================================
+# General configuration options for the GCC backend
+# =============================================================================
+[gcc]
+# Change to `true` if you want to use the version used in Rust CI.
+# download-gccjit = false
+
+# =============================================================================
 # General build configuration options
 # =============================================================================
 [build]

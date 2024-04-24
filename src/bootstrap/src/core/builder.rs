@@ -21,8 +21,10 @@ use crate::core::config::flags::{Color, Subcommand};
 use crate::core::config::{DryRun, SplitDebuginfo, TargetSelection};
 use crate::prepare_behaviour_dump_dir;
 use crate::utils::cache::Cache;
-use crate::utils::helpers::{self, add_dylib_path, add_link_lib_path, exe, linker_args};
-use crate::utils::helpers::{check_cfg_arg, libdir, linker_flags, output, t, LldThreads};
+use crate::utils::helpers::{
+    self, add_dylib_path, add_link_lib_path, check_cfg_arg, detect_gccjit_sha, exe, libdir,
+    linker_args, linker_flags, output, t, LldThreads,
+};
 use crate::EXTRA_CHECK_CFGS;
 use crate::{Build, CLang, Crate, DocTests, GitRepo, Mode};
 
@@ -1195,6 +1197,10 @@ impl<'a> Builder<'a> {
         if self.config.llvm_from_ci {
             let ci_llvm_lib = self.out.join(&*compiler.host.triple).join("ci-llvm").join("lib");
             dylib_dirs.push(ci_llvm_lib);
+        }
+        if self.config.gcc_download_gccjit {
+            let libgccjit_path = self.config.libgccjit_folder(&detect_gccjit_sha());
+            dylib_dirs.push(libgccjit_path);
         }
 
         dylib_dirs

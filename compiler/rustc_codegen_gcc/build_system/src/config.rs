@@ -444,15 +444,17 @@ impl ConfigInfo {
             "build_sysroot/sysroot/lib/rustlib/{}/lib",
             self.target_triple,
         ));
-        let ld_library_path = format!(
-            "{target}:{sysroot}:{gcc_path}",
-            target = self.cargo_target_dir,
-            sysroot = sysroot.display(),
-            gcc_path = self.gcc_path,
-        );
-        env.insert("LIBRARY_PATH".to_string(), ld_library_path.clone());
-        env.insert("LD_LIBRARY_PATH".to_string(), ld_library_path.clone());
-        env.insert("DYLD_LIBRARY_PATH".to_string(), ld_library_path);
+        if !use_system_gcc {
+            let ld_library_path = format!(
+                "{target}:{sysroot}:{gcc_path}",
+                target = self.cargo_target_dir,
+                sysroot = sysroot.display(),
+                gcc_path = self.gcc_path,
+            );
+            env.insert("LIBRARY_PATH".to_string(), ld_library_path.clone());
+            env.insert("LD_LIBRARY_PATH".to_string(), ld_library_path.clone());
+            env.insert("DYLD_LIBRARY_PATH".to_string(), ld_library_path);
+        }
 
         // NOTE: To avoid the -fno-inline errors, use /opt/gcc/bin/gcc instead of cc.
         // To do so, add a symlink for cc to /opt/gcc/bin/gcc in our PATH.
