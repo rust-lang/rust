@@ -158,7 +158,9 @@ impl DiagnosticDeriveVariantBuilder {
         let slug = subdiag.slug.unwrap_or_else(|| match subdiag.kind {
             SubdiagnosticKind::Label => parse_quote! { _subdiag::label },
             SubdiagnosticKind::Note => parse_quote! { _subdiag::note },
+            SubdiagnosticKind::NoteOnce => parse_quote! { _subdiag::note_once },
             SubdiagnosticKind::Help => parse_quote! { _subdiag::help },
+            SubdiagnosticKind::HelpOnce => parse_quote! { _subdiag::help_once },
             SubdiagnosticKind::Warn => parse_quote! { _subdiag::warn },
             SubdiagnosticKind::Suggestion { .. } => parse_quote! { _subdiag::suggestion },
             SubdiagnosticKind::MultipartSuggestion { .. } => unreachable!(),
@@ -233,9 +235,11 @@ impl DiagnosticDeriveVariantBuilder {
         };
         let fn_ident = format_ident!("{}", subdiag);
         match subdiag {
-            SubdiagnosticKind::Note | SubdiagnosticKind::Help | SubdiagnosticKind::Warn => {
-                Ok(self.add_subdiagnostic(&fn_ident, slug))
-            }
+            SubdiagnosticKind::Note
+            | SubdiagnosticKind::NoteOnce
+            | SubdiagnosticKind::Help
+            | SubdiagnosticKind::HelpOnce
+            | SubdiagnosticKind::Warn => Ok(self.add_subdiagnostic(&fn_ident, slug)),
             SubdiagnosticKind::Label | SubdiagnosticKind::Suggestion { .. } => {
                 throw_invalid_attr!(attr, |diag| diag
                     .help("`#[label]` and `#[suggestion]` can only be applied to fields"));
@@ -347,7 +351,11 @@ impl DiagnosticDeriveVariantBuilder {
                 report_error_if_not_applied_to_span(attr, &info)?;
                 Ok(self.add_spanned_subdiagnostic(binding, &fn_ident, slug))
             }
-            SubdiagnosticKind::Note | SubdiagnosticKind::Help | SubdiagnosticKind::Warn => {
+            SubdiagnosticKind::Note
+            | SubdiagnosticKind::NoteOnce
+            | SubdiagnosticKind::Help
+            | SubdiagnosticKind::HelpOnce
+            | SubdiagnosticKind::Warn => {
                 let inner = info.ty.inner_type();
                 if type_matches_path(inner, &["rustc_span", "Span"])
                     || type_matches_path(inner, &["rustc_span", "MultiSpan"])
