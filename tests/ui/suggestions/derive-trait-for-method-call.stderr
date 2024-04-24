@@ -2,7 +2,10 @@ error[E0599]: the method `test` exists for struct `Foo<Enum, CloneEnum>`, but it
   --> $DIR/derive-trait-for-method-call.rs:28:15
    |
 LL | enum Enum {
-   | --------- doesn't satisfy `Enum: Clone`
+   | --------- doesn't satisfy `Enum: Clone` or `Enum: Default`
+...
+LL | enum CloneEnum {
+   | -------------- doesn't satisfy `CloneEnum: Default`
 ...
 LL | struct Foo<X, Y> (X, Y);
    | ---------------- method `test` not found for this struct
@@ -10,13 +13,20 @@ LL | struct Foo<X, Y> (X, Y);
 LL |     let y = x.test();
    |               ^^^^ method cannot be called on `Foo<Enum, CloneEnum>` due to unsatisfied trait bounds
    |
-note: trait bound `Enum: Clone` was not satisfied
+note: the following trait bounds were not satisfied:
+      `CloneEnum: Default`
+      `Enum: Clone`
+      `Enum: Default`
   --> $DIR/derive-trait-for-method-call.rs:20:9
    |
 LL | impl<X: Clone + Default + , Y: Clone + Default> Foo<X, Y> {
-   |         ^^^^^                                   ---------
-   |         |
+   |         ^^^^^   ^^^^^^^                ^^^^^^^  ---------
+   |         |       |                      |
+   |         |       |                      unsatisfied trait bound introduced here
+   |         |       unsatisfied trait bound introduced here
    |         unsatisfied trait bound introduced here
+note: the trait `Default` must be implemented
+  --> $SRC_DIR/core/src/default.rs:LL:COL
 help: consider annotating `Enum` with `#[derive(Clone)]`
    |
 LL + #[derive(Clone)]
@@ -27,7 +37,10 @@ error[E0599]: the method `test` exists for struct `Foo<Struct, CloneStruct>`, bu
   --> $DIR/derive-trait-for-method-call.rs:34:15
    |
 LL | struct Struct {
-   | ------------- doesn't satisfy `Struct: Clone`
+   | ------------- doesn't satisfy `Struct: Clone` or `Struct: Default`
+...
+LL | struct CloneStruct {
+   | ------------------ doesn't satisfy `CloneStruct: Default`
 ...
 LL | struct Foo<X, Y> (X, Y);
    | ---------------- method `test` not found for this struct
@@ -35,16 +48,26 @@ LL | struct Foo<X, Y> (X, Y);
 LL |     let y = x.test();
    |               ^^^^ method cannot be called on `Foo<Struct, CloneStruct>` due to unsatisfied trait bounds
    |
-note: trait bound `Struct: Clone` was not satisfied
+note: the following trait bounds were not satisfied:
+      `CloneStruct: Default`
+      `Struct: Clone`
+      `Struct: Default`
   --> $DIR/derive-trait-for-method-call.rs:20:9
    |
 LL | impl<X: Clone + Default + , Y: Clone + Default> Foo<X, Y> {
-   |         ^^^^^                                   ---------
-   |         |
+   |         ^^^^^   ^^^^^^^                ^^^^^^^  ---------
+   |         |       |                      |
+   |         |       |                      unsatisfied trait bound introduced here
+   |         |       unsatisfied trait bound introduced here
    |         unsatisfied trait bound introduced here
-help: consider annotating `Struct` with `#[derive(Clone)]`
+help: consider annotating `CloneStruct` with `#[derive(Default)]`
    |
-LL + #[derive(Clone)]
+LL + #[derive(Default)]
+LL | struct CloneStruct {
+   |
+help: consider annotating `Struct` with `#[derive(Clone, Default)]`
+   |
+LL + #[derive(Clone, Default)]
 LL | struct Struct {
    |
 
@@ -57,12 +80,15 @@ LL | struct Foo<X, Y> (X, Y);
 LL |     let y = x.test();
    |               ^^^^ method cannot be called on `Foo<Vec<Enum>, Instant>` due to unsatisfied trait bounds
    |
-note: trait bound `Vec<Enum>: Clone` was not satisfied
+note: the following trait bounds were not satisfied:
+      `Instant: Default`
+      `Vec<Enum>: Clone`
   --> $DIR/derive-trait-for-method-call.rs:20:9
    |
 LL | impl<X: Clone + Default + , Y: Clone + Default> Foo<X, Y> {
-   |         ^^^^^                                   ---------
-   |         |
+   |         ^^^^^                          ^^^^^^^  ---------
+   |         |                              |
+   |         |                              unsatisfied trait bound introduced here
    |         unsatisfied trait bound introduced here
 
 error: aborting due to 3 previous errors

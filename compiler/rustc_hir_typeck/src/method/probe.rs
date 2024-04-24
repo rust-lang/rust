@@ -15,6 +15,7 @@ use rustc_infer::infer::canonical::{Canonical, QueryResponse};
 use rustc_infer::infer::error_reporting::TypeAnnotationNeeded::E0282;
 use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_infer::infer::{self, InferOk, TyCtxtInferExt};
+use rustc_infer::traits::EvaluationResult;
 use rustc_middle::middle::stability;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::fast_reject::{simplify_type, TreatParams};
@@ -1397,8 +1398,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     let impl_bounds =
                         self.tcx.predicates_of(impl_def_id).instantiate(self.tcx, impl_args);
                     let impl_bounds = ocx.normalize(cause, self.param_env, impl_bounds);
-                    // Convert the bounds into obligations.
-                    let predicates: Vec<_> = traits::predicates_for_generics(
+                    for obligation in traits::predicates_for_generics(
                         |idx, span| {
                             let code = if span.is_dummy() {
                                 traits::ExprItemObligation(impl_def_id, self.scope_expr_id, idx)
@@ -1414,20 +1414,30 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                         },
                         self.param_env,
                         impl_bounds,
-                    )
-                    .collect();
-                    if let Some(obligation) = predicates.iter().find(|obligation| {
-                        !self.infcx.next_trait_solver()
-                            && !self.infcx.predicate_may_hold(&obligation)
-                    }) {
-                        result = ProbeResult::NoMatch;
-                        possibly_unsatisfied_predicates.push((
-                            self.resolve_vars_if_possible(obligation.predicate),
-                            None,
-                            Some(obligation.cause.clone()),
-                        ));
-                    } else {
-                        ocx.register_obligations(predicates);
+                    ) {
+                        if self.infcx.next_trait_solver() {
+                            ocx.register_obligation(obligation);
+                        } else {
+                            match self.infcx.evaluate_obligation_no_overflow(&obligation) {
+                                EvaluationResult::EvaluatedToOk => {
+                                    // No side-effects, no need to register obligations.
+                                }
+                                EvaluationResult::EvaluatedToOkModuloRegions
+                                | EvaluationResult::EvaluatedToOkModuloOpaqueTypes
+                                | EvaluationResult::EvaluatedToAmbig
+                                | EvaluationResult::EvaluatedToAmbigStackDependent => {
+                                    ocx.register_obligation(obligation);
+                                }
+                                EvaluationResult::EvaluatedToErr => {
+                                    result = ProbeResult::NoMatch;
+                                    possibly_unsatisfied_predicates.push((
+                                        self.resolve_vars_if_possible(obligation.predicate),
+                                        None,
+                                        Some(obligation.cause.clone()),
+                                    ));
+                                }
+                            }
+                        }
                     }
                 }
                 TraitCandidate(poly_trait_ref) => {
@@ -1472,21 +1482,36 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                         ty::Binder::dummy(trait_ref),
                     );
 
-                    // FIXME(-Znext-solver): We only need this hack to deal with fatal
-                    // overflow in the old solver.
-                    if self.infcx.next_trait_solver() || self.infcx.predicate_may_hold(&obligation)
-                    {
+                    if self.infcx.next_trait_solver() {
                         ocx.register_obligation(obligation);
                     } else {
-                        result = ProbeResult::NoMatch;
-                        if let Ok(Some(candidate)) = self.select_trait_candidate(trait_ref) {
-                            for nested_obligation in candidate.nested_obligations() {
-                                if !self.infcx.predicate_may_hold(&nested_obligation) {
-                                    possibly_unsatisfied_predicates.push((
-                                        self.resolve_vars_if_possible(nested_obligation.predicate),
-                                        Some(self.resolve_vars_if_possible(obligation.predicate)),
-                                        Some(nested_obligation.cause),
-                                    ));
+                        match self.infcx.evaluate_obligation_no_overflow(&obligation) {
+                            EvaluationResult::EvaluatedToOk => {
+                                // No side-effects, no need to register obligations.
+                            }
+                            EvaluationResult::EvaluatedToOkModuloRegions
+                            | EvaluationResult::EvaluatedToOkModuloOpaqueTypes
+                            | EvaluationResult::EvaluatedToAmbig
+                            | EvaluationResult::EvaluatedToAmbigStackDependent => {
+                                ocx.register_obligation(obligation);
+                            }
+                            EvaluationResult::EvaluatedToErr => {
+                                result = ProbeResult::NoMatch;
+                                if let Ok(Some(candidate)) = self.select_trait_candidate(trait_ref)
+                                {
+                                    for nested_obligation in candidate.nested_obligations() {
+                                        if !self.infcx.predicate_may_hold(&nested_obligation) {
+                                            possibly_unsatisfied_predicates.push((
+                                                self.resolve_vars_if_possible(
+                                                    nested_obligation.predicate,
+                                                ),
+                                                Some(self.resolve_vars_if_possible(
+                                                    obligation.predicate,
+                                                )),
+                                                Some(nested_obligation.cause),
+                                            ));
+                                        }
+                                    }
                                 }
                             }
                         }
