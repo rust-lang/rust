@@ -53,11 +53,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
         // First, we do some basic argument validation as required by mmap
         if (flags & (map_private | map_shared)).count_ones() != 1 {
-            this.set_last_error(Scalar::from_i32(this.eval_libc_i32("EINVAL")))?;
+            this.set_last_error(this.eval_libc("EINVAL"))?;
             return Ok(this.eval_libc("MAP_FAILED"));
         }
         if length == 0 {
-            this.set_last_error(Scalar::from_i32(this.eval_libc_i32("EINVAL")))?;
+            this.set_last_error(this.eval_libc("EINVAL"))?;
             return Ok(this.eval_libc("MAP_FAILED"));
         }
 
@@ -77,7 +77,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         //
         // Miri doesn't support MAP_FIXED or any any protections other than PROT_READ|PROT_WRITE.
         if flags & map_fixed != 0 || prot != prot_read | prot_write {
-            this.set_last_error(Scalar::from_i32(this.eval_libc_i32("ENOTSUP")))?;
+            this.set_last_error(this.eval_libc("ENOTSUP"))?;
             return Ok(this.eval_libc("MAP_FAILED"));
         }
 
@@ -96,11 +96,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
         let align = this.machine.page_align();
         let Some(map_length) = length.checked_next_multiple_of(this.machine.page_size) else {
-            this.set_last_error(Scalar::from_i32(this.eval_libc_i32("EINVAL")))?;
+            this.set_last_error(this.eval_libc("EINVAL"))?;
             return Ok(this.eval_libc("MAP_FAILED"));
         };
         if map_length > this.target_usize_max() {
-            this.set_last_error(Scalar::from_i32(this.eval_libc_i32("EINVAL")))?;
+            this.set_last_error(this.eval_libc("EINVAL"))?;
             return Ok(this.eval_libc("MAP_FAILED"));
         }
 
@@ -131,16 +131,16 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         // as a dealloc.
         #[allow(clippy::arithmetic_side_effects)] // PAGE_SIZE is nonzero
         if addr.addr().bytes() % this.machine.page_size != 0 {
-            this.set_last_error(Scalar::from_i32(this.eval_libc_i32("EINVAL")))?;
+            this.set_last_error(this.eval_libc("EINVAL"))?;
             return Ok(Scalar::from_i32(-1));
         }
 
         let Some(length) = length.checked_next_multiple_of(this.machine.page_size) else {
-            this.set_last_error(Scalar::from_i32(this.eval_libc_i32("EINVAL")))?;
+            this.set_last_error(this.eval_libc("EINVAL"))?;
             return Ok(Scalar::from_i32(-1));
         };
         if length > this.target_usize_max() {
-            this.set_last_error(Scalar::from_i32(this.eval_libc_i32("EINVAL")))?;
+            this.set_last_error(this.eval_libc("EINVAL"))?;
             return Ok(this.eval_libc("MAP_FAILED"));
         }
 
