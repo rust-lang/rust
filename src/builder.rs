@@ -898,26 +898,20 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         self.gcc_checked_binop(oop, typ, lhs, rhs)
     }
 
-    fn alloca(&mut self, ty: Type<'gcc>, align: Align) -> RValue<'gcc> {
-        // FIXME(antoyo): this check that we don't call get_aligned() a second time on a type.
-        // Ideally, we shouldn't need to do this check.
-        let aligned_type = if ty == self.cx.u128_type || ty == self.cx.i128_type {
-            ty
-        } else {
-            ty.get_aligned(align.bytes())
-        };
+    fn alloca(&mut self, size: Size, align: Align) -> RValue<'gcc> {
+        let ty = self.cx.type_array(self.cx.type_i8(), size.bytes()).get_aligned(align.bytes());
         // TODO(antoyo): It might be better to return a LValue, but fixing the rustc API is non-trivial.
         self.stack_var_count.set(self.stack_var_count.get() + 1);
         self.current_func()
             .new_local(
                 self.location,
-                aligned_type,
+                ty,
                 &format!("stack_var_{}", self.stack_var_count.get()),
             )
             .get_address(self.location)
     }
 
-    fn byte_array_alloca(&mut self, _len: RValue<'gcc>, _align: Align) -> RValue<'gcc> {
+    fn dynamic_alloca(&mut self, _len: RValue<'gcc>, _align: Align) -> RValue<'gcc> {
         unimplemented!();
     }
 
