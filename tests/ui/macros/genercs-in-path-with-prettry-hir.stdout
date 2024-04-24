@@ -1,0 +1,15 @@
+#[prelude_import]
+use ::std::prelude::rust_2015::*;
+#[macro_use]
+extern crate std;
+//@ compile-flags: -Zunpretty=hir
+
+// issue#97006
+
+macro_rules! m { ($attr_path: path) => { #[$attr_path] fn f() {} } }
+#[
+
+inline]
+fn f() { }
+
+fn main() { }

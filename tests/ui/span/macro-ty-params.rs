@@ -11,5 +11,4 @@ fn main() {
     foo::<>!(); //~ ERROR generic arguments in macro path
     m!(Default<>);
     //~^ ERROR unexpected generic arguments in path
-    //~^^ ERROR generic arguments in macro path
 }
