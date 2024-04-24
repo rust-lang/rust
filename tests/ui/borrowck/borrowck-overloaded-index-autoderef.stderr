@@ -17,6 +17,8 @@ LL |     let q = &mut f[&s];
    |                  ^ second mutable borrow occurs here
 LL |     p.use_mut();
    |     - first borrow later used here
+   |
+   = help: use `.split_at_mut(position)` or similar method to obtain two mutable non-overlapping sub-slices
 
 error[E0499]: cannot borrow `f.foo` as mutable more than once at a time
   --> $DIR/borrowck-overloaded-index-autoderef.rs:53:18
@@ -27,6 +29,8 @@ LL |     let q = &mut f.foo[&s];
    |                  ^^^^^ second mutable borrow occurs here
 LL |     p.use_mut();
    |     - first borrow later used here
+   |
+   = help: use `.split_at_mut(position)` or similar method to obtain two mutable non-overlapping sub-slices
 
 error[E0502]: cannot borrow `f.foo` as mutable because it is also borrowed as immutable
   --> $DIR/borrowck-overloaded-index-autoderef.rs:65:18

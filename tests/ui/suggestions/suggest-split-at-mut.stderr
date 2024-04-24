@@ -11,6 +11,18 @@ LL |     *a = 5;
    = help: consider using `.split_at_mut(position)` or similar method to obtain two mutable non-overlapping sub-slices
    = help: consider using `.swap(index_1, index_2)` to swap elements at the specified indices
 
-error: aborting due to 1 previous error
+error[E0499]: cannot borrow `foo` as mutable more than once at a time
+  --> $DIR/suggest-split-at-mut.rs:13:18
+   |
+LL |     let a = &mut foo[..2];
+   |                  --- first mutable borrow occurs here
+LL |     let b = &mut foo[2..];
+   |                  ^^^ second mutable borrow occurs here
+LL |     a[0] = 5;
+   |     ---- first borrow later used here
+   |
+   = help: use `.split_at_mut(position)` or similar method to obtain two mutable non-overlapping sub-slices
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0499`.
