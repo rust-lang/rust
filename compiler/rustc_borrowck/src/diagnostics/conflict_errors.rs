@@ -1527,7 +1527,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 BorrowKind::Mut { kind: MutBorrowKind::Default | MutBorrowKind::TwoPhaseBorrow },
             ) => {
                 first_borrow_desc = "mutable ";
-                self.cannot_reborrow_already_borrowed(
+                let mut err = self.cannot_reborrow_already_borrowed(
                     span,
                     &desc_place,
                     &msg_place,
@@ -1537,7 +1537,15 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     "mutable",
                     &msg_borrow,
                     None,
-                )
+                );
+                self.suggest_slice_method_if_applicable(
+                    &mut err,
+                    place,
+                    issued_borrow.borrowed_place,
+                    span,
+                    issued_span,
+                );
+                err
             }
             (
                 BorrowKind::Mut { kind: MutBorrowKind::Default | MutBorrowKind::TwoPhaseBorrow },
@@ -1554,6 +1562,13 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     "immutable",
                     &msg_borrow,
                     None,
+                );
+                self.suggest_slice_method_if_applicable(
+                    &mut err,
+                    place,
+                    issued_borrow.borrowed_place,
+                    span,
+                    issued_span,
                 );
                 self.suggest_binding_for_closure_capture_self(&mut err, &issued_spans);
                 self.suggest_using_closure_argument_instead_of_capture(
@@ -1581,6 +1596,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     &mut err,
                     place,
                     issued_borrow.borrowed_place,
+                    span,
+                    issued_span,
                 );
                 self.suggest_using_closure_argument_instead_of_capture(
                     &mut err,
@@ -2011,40 +2028,47 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         err: &mut Diag<'_>,
         place: Place<'tcx>,
         borrowed_place: Place<'tcx>,
+        span: Span,
+        issued_span: Span,
     ) {
         let tcx = self.infcx.tcx;
         let hir = tcx.hir();
 
+        let has_split_at_mut = |ty: Ty<'tcx>| {
+            let ty = ty.peel_refs();
+            match ty.kind() {
+                ty::Array(..) | ty::Slice(..) => true,
+                ty::Adt(def, _) if tcx.get_diagnostic_item(sym::Vec) == Some(def.did()) => true,
+                _ if ty == tcx.types.str_ => true,
+                _ => false,
+            }
+        };
         if let ([ProjectionElem::Index(index1)], [ProjectionElem::Index(index2)])
         | (
             [ProjectionElem::Deref, ProjectionElem::Index(index1)],
             [ProjectionElem::Deref, ProjectionElem::Index(index2)],
         ) = (&place.projection[..], &borrowed_place.projection[..])
         {
+            let decl1 = &self.body.local_decls[*index1];
+            let decl2 = &self.body.local_decls[*index2];
+
             let mut note_default_suggestion = || {
                 err.help(
-                    "consider using `.split_at_mut(position)` or similar method to obtain \
-                         two mutable non-overlapping sub-slices",
+                    "consider using `.split_at_mut(position)` or similar method to obtain two \
+                     mutable non-overlapping sub-slices",
                 )
-                .help("consider using `.swap(index_1, index_2)` to swap elements at the specified indices");
+                .help(
+                    "consider using `.swap(index_1, index_2)` to swap elements at the specified \
+                     indices",
+                );
             };
 
-            let Some(body_id) = tcx.hir_node(self.mir_hir_id()).body_id() else {
+            let Some(index1) = self.find_expr(decl1.source_info.span) else {
                 note_default_suggestion();
                 return;
             };
 
-            let mut expr_finder =
-                FindExprBySpan::new(self.body.local_decls[*index1].source_info.span, tcx);
-            expr_finder.visit_expr(hir.body(body_id).value);
-            let Some(index1) = expr_finder.result else {
-                note_default_suggestion();
-                return;
-            };
-
-            expr_finder = FindExprBySpan::new(self.body.local_decls[*index2].source_info.span, tcx);
-            expr_finder.visit_expr(hir.body(body_id).value);
-            let Some(index2) = expr_finder.result else {
+            let Some(index2) = self.find_expr(decl2.source_info.span) else {
                 note_default_suggestion();
                 return;
             };
@@ -2092,7 +2116,13 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     None
                 }
             }) else {
-                note_default_suggestion();
+                let hir::Node::Expr(parent) = tcx.parent_hir_node(index1.hir_id) else { return };
+                let hir::ExprKind::Index(_, idx1, _) = parent.kind else { return };
+                let hir::Node::Expr(parent) = tcx.parent_hir_node(index2.hir_id) else { return };
+                let hir::ExprKind::Index(_, idx2, _) = parent.kind else { return };
+                if !idx1.equivalent_for_indexing(idx2) {
+                    err.help("use `.split_at_mut(position)` to obtain two mutable non-overlapping sub-slices");
+                }
                 return;
             };
 
@@ -2102,7 +2132,25 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 format!("{obj_str}.swap({index1_str}, {index2_str})"),
                 Applicability::MachineApplicable,
             );
+            return;
         }
+        let place_ty = PlaceRef::ty(&place.as_ref(), self.body, tcx).ty;
+        let borrowed_place_ty = PlaceRef::ty(&borrowed_place.as_ref(), self.body, tcx).ty;
+        if !has_split_at_mut(place_ty) && !has_split_at_mut(borrowed_place_ty) {
+            // Only mention `split_at_mut` on `Vec`, array and slices.
+            return;
+        }
+        let Some(index1) = self.find_expr(span) else { return };
+        let hir::Node::Expr(parent) = tcx.parent_hir_node(index1.hir_id) else { return };
+        let hir::ExprKind::Index(_, idx1, _) = parent.kind else { return };
+        let Some(index2) = self.find_expr(issued_span) else { return };
+        let hir::Node::Expr(parent) = tcx.parent_hir_node(index2.hir_id) else { return };
+        let hir::ExprKind::Index(_, idx2, _) = parent.kind else { return };
+        if idx1.equivalent_for_indexing(idx2) {
+            // `let a = &mut foo[0]` and `let b = &mut foo[0]`? Don't mention `split_at_mut`
+            return;
+        }
+        err.help("use `.split_at_mut(position)` to obtain two mutable non-overlapping sub-slices");
     }
 
     /// Suggest using `while let` for call `next` on an iterator in a for loop.
