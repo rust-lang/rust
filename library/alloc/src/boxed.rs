@@ -183,6 +183,9 @@ use crate::vec::Vec;
 #[unstable(feature = "thin_box", issue = "92791")]
 pub use thin::ThinBox;
 
+#[cfg(not(no_global_oom_handling))]
+use crate::sync::Arc;
+
 mod thin;
 
 /// A pointer type that uniquely owns a heap allocation of type `T`.
@@ -1281,6 +1284,15 @@ impl Default for Box<str> {
             Unique::new_unchecked(bytes.as_ptr() as *mut str)
         };
         Box(ptr, Global)
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Default for Arc<str> {
+    #[inline]
+    fn default() -> Self {
+        Arc::from("")
     }
 }
 
