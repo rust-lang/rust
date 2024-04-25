@@ -10,5 +10,5 @@ fn main() {
         .unwrap()
         .stdout;
     let version = std::str::from_utf8(&version).unwrap().strip_prefix("rustc ").unwrap().trim_end();
-    assert_ne!(version, signalled_version);
+    assert_eq!(version, signalled_version);
 }
