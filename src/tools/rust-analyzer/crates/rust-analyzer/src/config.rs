@@ -315,8 +315,10 @@ config_data! {
         /// How to render the size information in a memory layout hover.
         hover_memoryLayout_size: Option<MemoryLayoutHoverRenderKindDef> = Some(MemoryLayoutHoverRenderKindDef::Both),
 
-        /// How many fields of a struct to display when hovering a struct.
-        hover_show_structFields: Option<usize> = None,
+        /// How many variants of an enum to display when hovering on. Show none if empty.
+        hover_show_enumVariants: Option<usize> = Some(5),
+        /// How many fields of a struct, variant or union to display when hovering on. Show none if empty.
+        hover_show_fields: Option<usize> = Some(5),
         /// How many associated items of a trait to display when hovering a trait.
         hover_show_traitAssocItems: Option<usize> = None,
 
@@ -1126,7 +1128,8 @@ impl Config {
             },
             keywords: self.hover_documentation_keywords_enable().to_owned(),
             max_trait_assoc_items_count: self.hover_show_traitAssocItems().to_owned(),
-            max_struct_field_count: self.hover_show_structFields().to_owned(),
+            max_fields_count: self.hover_show_fields().to_owned(),
+            max_enum_variants_count: self.hover_show_enumVariants().to_owned(),
         }
     }
 

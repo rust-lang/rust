@@ -1145,9 +1145,18 @@
                         }
                     ]
                 },
-                "rust-analyzer.hover.show.structFields": {
-                    "markdownDescription": "How many fields of a struct to display when hovering a struct.",
-                    "default": null,
+                "rust-analyzer.hover.show.enumVariants": {
+                    "markdownDescription": "How many variants of an enum to display when hovering on. Show none if empty.",
+                    "default": 5,
+                    "type": [
+                        "null",
+                        "integer"
+                    ],
+                    "minimum": 0
+                },
+                "rust-analyzer.hover.show.fields": {
+                    "markdownDescription": "How many fields of a struct, variant or union to display when hovering on. Show none if empty.",
+                    "default": 5,
                     "type": [
                         "null",
                         "integer"
