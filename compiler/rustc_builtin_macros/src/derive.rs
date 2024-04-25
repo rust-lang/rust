@@ -10,7 +10,9 @@ use rustc_session::Session;
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::{ErrorGuaranteed, Span};
 
-pub(crate) struct Expander(pub bool);
+pub(crate) struct Expander {
+    pub is_const: bool,
+}
 
 impl MultiItemModifier for Expander {
     fn expand(
@@ -58,7 +60,7 @@ impl MultiItemModifier for Expander {
                                 report_path_args(sess, meta);
                                 meta.path.clone()
                             })
-                            .map(|path| (path, dummy_annotatable(), None, self.0))
+                            .map(|path| (path, dummy_annotatable(), None, self.is_const))
                             .collect()
                     }
                     _ => vec![],
