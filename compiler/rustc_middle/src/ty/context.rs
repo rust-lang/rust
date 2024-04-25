@@ -993,6 +993,25 @@ impl<'tcx> TyCtxt<'tcx> {
         self.type_of(ordering_enum).no_bound_vars().unwrap()
     }
 
+    pub fn default_traits(self) -> &'static [rustc_hir::LangItem] {
+        match self.sess.opts.unstable_opts.experimental_default_bounds {
+            true => &[
+                LangItem::Sized,
+                LangItem::DefaultTrait1,
+                LangItem::DefaultTrait2,
+                LangItem::DefaultTrait3,
+                LangItem::DefaultTrait4,
+            ],
+            false => &[LangItem::Sized],
+        }
+    }
+
+    pub fn is_default_trait(self, def_id: DefId) -> bool {
+        self.default_traits()
+            .iter()
+            .any(|&default_trait| self.lang_items().get(default_trait) == Some(def_id))
+    }
+
     /// Obtain the given diagnostic item's `DefId`. Use `is_diagnostic_item` if you just want to
     /// compare against another `DefId`, since `is_diagnostic_item` is cheaper.
     pub fn get_diagnostic_item(self, name: Symbol) -> Option<DefId> {

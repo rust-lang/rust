@@ -2334,7 +2334,12 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             | ty::Error(_)
             | ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
             | ty::Never
+            | ty::Foreign(..)
             | ty::Char => ty::Binder::dummy(Vec::new()),
+
+            // Used for proving `DispatchFromDyn` for default auto traits.
+            // See `receiver_is_dispatchable`.
+            ty::Param(param) if param == ty::ParamTy::dummy() => ty::Binder::dummy(Vec::new()),
 
             // Treat this like `struct str([u8]);`
             ty::Str => ty::Binder::dummy(vec![Ty::new_slice(self.tcx(), self.tcx().types.u8)]),
@@ -2342,7 +2347,6 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             ty::Placeholder(..)
             | ty::Dynamic(..)
             | ty::Param(..)
-            | ty::Foreign(..)
             | ty::Alias(ty::Projection | ty::Inherent | ty::Weak, ..)
             | ty::Bound(..)
             | ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {

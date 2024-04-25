@@ -30,8 +30,8 @@ fn associated_type_bounds<'tcx>(
 
     let icx = ItemCtxt::new(tcx, assoc_item_def_id);
     let mut bounds = icx.lowerer().lower_mono_bounds(item_ty, hir_bounds, filter);
-    // Associated types are implicitly sized unless a `?Sized` bound is found
-    icx.lowerer().add_sized_bound(&mut bounds, item_ty, hir_bounds, None, span);
+    // Implicit bounds are added to associated types unless a `?Trait` bound is found
+    icx.lowerer().add_implicit_traits(&mut bounds, item_ty, hir_bounds, None, span);
 
     let trait_def_id = tcx.local_parent(assoc_item_def_id);
     let trait_predicates = tcx.trait_explicit_predicates_and_bounds(trait_def_id);
@@ -70,8 +70,8 @@ fn opaque_type_bounds<'tcx>(
     ty::print::with_reduced_queries!({
         let icx = ItemCtxt::new(tcx, opaque_def_id);
         let mut bounds = icx.lowerer().lower_mono_bounds(item_ty, hir_bounds, filter);
-        // Opaque types are implicitly sized unless a `?Sized` bound is found
-        icx.lowerer().add_sized_bound(&mut bounds, item_ty, hir_bounds, None, span);
+        // Implicit bounds are added to opaque types unless a `?Trait` bound is found
+        icx.lowerer().add_implicit_traits(&mut bounds, item_ty, hir_bounds, None, span);
         debug!(?bounds);
 
         tcx.arena.alloc_from_iter(bounds.clauses())

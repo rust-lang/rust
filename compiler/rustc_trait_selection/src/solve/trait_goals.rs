@@ -1011,6 +1011,26 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         goal: Goal<'tcx, TraitPredicate<'tcx>>,
     ) -> Option<QueryResult<'tcx>> {
         let self_ty = goal.predicate.self_ty();
+
+        let check_impls = || {
+            let mut disqualifying_impl = None;
+            self.tcx().for_each_relevant_impl_treating_projections(
+                goal.predicate.def_id(),
+                goal.predicate.self_ty(),
+                TreatProjections::NextSolverLookup,
+                |impl_def_id| {
+                    disqualifying_impl = Some(impl_def_id);
+                },
+            );
+            if let Some(def_id) = disqualifying_impl {
+                debug!(?def_id, ?goal, "disqualified auto-trait implementation");
+                // No need to actually consider the candidate here,
+                // since we do that in `consider_impl_candidate`.
+                Some(Err(NoSolution))
+            } else {
+                None
+            }
+        };
         match *self_ty.kind() {
             // Stall int and float vars until they are resolved to a concrete
             // numerical type. That's because the check for impls below treats
@@ -1020,6 +1040,12 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             ty::Infer(ty::IntVar(_) | ty::FloatVar(_)) => {
                 Some(self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS))
             }
+
+            // Backward compatibility for default auto traits.
+            // Test: ui/traits/default_auto_traits/extern-types.rs
+            ty::Foreign(..) if self.tcx().is_default_trait(goal.predicate.def_id()) => {
+                check_impls()
+            },
 
             // These types cannot be structurally decomposed into constituent
             // types, and therefore have no built-in auto impl.
@@ -1075,25 +1101,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             | ty::Adt(_, _)
             // FIXME: Handling opaques here is kinda sus. Especially because we
             // simplify them to SimplifiedType::Placeholder.
-            | ty::Alias(ty::Opaque, _) => {
-                let mut disqualifying_impl = None;
-                self.tcx().for_each_relevant_impl_treating_projections(
-                    goal.predicate.def_id(),
-                    goal.predicate.self_ty(),
-                    TreatProjections::NextSolverLookup,
-                    |impl_def_id| {
-                        disqualifying_impl = Some(impl_def_id);
-                    },
-                );
-                if let Some(def_id) = disqualifying_impl {
-                    debug!(?def_id, ?goal, "disqualified auto-trait implementation");
-                    // No need to actually consider the candidate here,
-                    // since we do that in `consider_impl_candidate`.
-                    return Some(Err(NoSolution));
-                } else {
-                    None
-                }
-            }
+            | ty::Alias(ty::Opaque, _) => check_impls(),
             ty::Error(_) => None,
         }
     }
