@@ -88,82 +88,57 @@ jobs:
         run: "echo \"[CI_PR_NUMBER=$num]\""
         env:
           num: "${{ github.event.number }}"
-        if: "success() && !env.SKIP_JOB && github.event_name == 'pull_request'"
+        if: "success() && github.event_name == 'pull_request'"
       - name: add extra environment variables
         run: src/ci/scripts/setup-environment.sh
         env:
           EXTRA_VARIABLES: "${{ toJson(matrix.env) }}"
-        if: success() && !env.SKIP_JOB
-      - name: decide whether to skip this job
-        run: src/ci/scripts/should-skip-this.sh
-        if: success() && !env.SKIP_JOB
       - name: ensure the channel matches the target branch
         run: src/ci/scripts/verify-channel.sh
-        if: success() && !env.SKIP_JOB
       - name: collect CPU statistics
         run: src/ci/scripts/collect-cpu-stats.sh
-        if: success() && !env.SKIP_JOB
       - name: show the current environment
         run: src/ci/scripts/dump-environment.sh
-        if: success() && !env.SKIP_JOB
       - name: install awscli
         run: src/ci/scripts/install-awscli.sh
-        if: success() && !env.SKIP_JOB
       - name: install sccache
         run: src/ci/scripts/install-sccache.sh
-        if: success() && !env.SKIP_JOB
       - name: select Xcode
         run: src/ci/scripts/select-xcode.sh
-        if: success() && !env.SKIP_JOB
       - name: install clang
         run: src/ci/scripts/install-clang.sh
-        if: success() && !env.SKIP_JOB
       - name: install tidy
         run: src/ci/scripts/install-tidy.sh
-        if: success() && !env.SKIP_JOB
       - name: install WIX
         run: src/ci/scripts/install-wix.sh
-        if: success() && !env.SKIP_JOB
       - name: disable git crlf conversion
         run: src/ci/scripts/disable-git-crlf-conversion.sh
-        if: success() && !env.SKIP_JOB
       - name: checkout submodules
         run: src/ci/scripts/checkout-submodules.sh
-        if: success() && !env.SKIP_JOB
       - name: install MSYS2
         run: src/ci/scripts/install-msys2.sh
-        if: success() && !env.SKIP_JOB
       - name: install MinGW
         run: src/ci/scripts/install-mingw.sh
-        if: success() && !env.SKIP_JOB
       - name: install ninja
         run: src/ci/scripts/install-ninja.sh
-        if: success() && !env.SKIP_JOB
       - name: enable ipv6 on Docker
         run: src/ci/scripts/enable-docker-ipv6.sh
-        if: success() && !env.SKIP_JOB
       - name: disable git crlf conversion
         run: src/ci/scripts/disable-git-crlf-conversion.sh
-        if: success() && !env.SKIP_JOB
       - name: ensure line endings are correct
         run: src/ci/scripts/verify-line-endings.sh
-        if: success() && !env.SKIP_JOB
       - name: ensure backported commits are in upstream branches
         run: src/ci/scripts/verify-backported-commits.sh
-        if: success() && !env.SKIP_JOB
       - name: ensure the stable version number is correct
         run: src/ci/scripts/verify-stable-version-number.sh
-        if: success() && !env.SKIP_JOB
       - name: run the build
         run: src/ci/scripts/run-build-from-ci.sh 2>&1
         env:
           AWS_ACCESS_KEY_ID: "${{ env.CACHES_AWS_ACCESS_KEY_ID }}"
           AWS_SECRET_ACCESS_KEY: "${{ secrets[format('AWS_SECRET_ACCESS_KEY_{0}', env.CACHES_AWS_ACCESS_KEY_ID)] }}"
           TOOLSTATE_REPO_ACCESS_TOKEN: "${{ secrets.TOOLSTATE_REPO_ACCESS_TOKEN }}"
-        if: success() && !env.SKIP_JOB
       - name: create github artifacts
         run: src/ci/scripts/create-doc-artifacts.sh
-        if: success() && !env.SKIP_JOB
       - name: upload artifacts to github
         uses: actions/upload-artifact@v4
         with:
@@ -171,13 +146,12 @@ jobs:
           path: obj/artifacts/doc
           if-no-files-found: ignore
           retention-days: 5
-        if: success() && !env.SKIP_JOB
       - name: upload artifacts to S3
         run: src/ci/scripts/upload-artifacts.sh
         env:
           AWS_ACCESS_KEY_ID: "${{ env.ARTIFACTS_AWS_ACCESS_KEY_ID }}"
           AWS_SECRET_ACCESS_KEY: "${{ secrets[format('AWS_SECRET_ACCESS_KEY_{0}', env.ARTIFACTS_AWS_ACCESS_KEY_ID)] }}"
-        if: "success() && !env.SKIP_JOB && (github.event_name == 'push' || env.DEPLOY == '1' || env.DEPLOY_ALT == '1')"
+        if: "success() && (github.event_name == 'push' || env.DEPLOY == '1' || env.DEPLOY_ALT == '1')"
   master:
     name: master
     runs-on: ubuntu-latest
@@ -202,7 +176,6 @@ jobs:
         shell: bash
         env:
           TOOLSTATE_REPO_ACCESS_TOKEN: "${{ secrets.TOOLSTATE_REPO_ACCESS_TOKEN }}"
-        if: success() && !env.SKIP_JOB
   try-success:
     needs:
       - job
