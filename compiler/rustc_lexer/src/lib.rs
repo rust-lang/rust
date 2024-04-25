@@ -630,7 +630,7 @@ impl Cursor<'_> {
                 // with a number
                 self.bump();
                 let mut empty_exponent = false;
-                if self.first().is_digit(10) {
+                if self.first().is_ascii_digit() {
                     self.eat_decimal_digits();
                     match self.first() {
                         'e' | 'E' => {
@@ -661,7 +661,7 @@ impl Cursor<'_> {
             // If the first symbol is valid for identifier, it can be a lifetime.
             // Also check if it's a number for a better error reporting (so '0 will
             // be reported as invalid lifetime and not as unterminated char literal).
-            is_id_start(self.first()) || self.first().is_digit(10)
+            is_id_start(self.first()) || self.first().is_ascii_digit()
         };
 
         if !can_be_a_lifetime {
@@ -677,7 +677,7 @@ impl Cursor<'_> {
         // Either a lifetime or a character literal with
         // length greater than 1.
 
-        let starts_with_number = self.first().is_digit(10);
+        let starts_with_number = self.first().is_ascii_digit();
 
         // Skip the literal contents.
         // First symbol can be a number (which isn't a valid identifier start),
