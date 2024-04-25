@@ -347,7 +347,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         mpi: MovePathIndex,
         err: &mut Diag<'tcx>,
         in_pattern: &mut bool,
-        move_spans: UseSpans<'_>,
+        move_spans: UseSpans<'tcx>,
     ) {
         let move_span = match move_spans {
             UseSpans::ClosureUse { capture_kind_span, .. } => capture_kind_span,
@@ -491,11 +491,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     ..
                 } = move_spans
                 {
-                    self.suggest_cloning(err, ty, expr, None);
+                    self.suggest_cloning(err, ty, expr, None, Some(move_spans));
                 } else if self.suggest_hoisting_call_outside_loop(err, expr) {
                     // The place where the the type moves would be misleading to suggest clone.
                     // #121466
-                    self.suggest_cloning(err, ty, expr, None);
+                    self.suggest_cloning(err, ty, expr, None, Some(move_spans));
                 }
             }
             if let Some(pat) = finder.pat {
@@ -1085,6 +1085,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         ty: Ty<'tcx>,
         mut expr: &'cx hir::Expr<'cx>,
         mut other_expr: Option<&'cx hir::Expr<'cx>>,
+        use_spans: Option<UseSpans<'tcx>>,
     ) {
         if let hir::ExprKind::Struct(_, _, Some(_)) = expr.kind {
             // We have `S { foo: val, ..base }`. In `check_aggregate_rvalue` we have a single
@@ -1197,14 +1198,50 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     .all(|field| self.implements_clone(field.ty(self.infcx.tcx, args)))
             })
         {
+            let ty_span = self.infcx.tcx.def_span(def.did());
+            let mut span: MultiSpan = ty_span.into();
+            span.push_span_label(ty_span, "consider implementing `Clone` for this type");
+            span.push_span_label(expr.span, "you could clone this value");
             err.span_note(
-                self.infcx.tcx.def_span(def.did()),
+                span,
+                format!("if `{ty}` implemented `Clone`, you could clone the value"),
+            );
+        } else if let ty::Param(param) = ty.kind()
+            && let Some(_clone_trait_def) = self.infcx.tcx.lang_items().clone_trait()
+            && let generics = self.infcx.tcx.generics_of(self.mir_def_id())
+            && let generic_param = generics.type_param(*param, self.infcx.tcx)
+            && let param_span = self.infcx.tcx.def_span(generic_param.def_id)
+            && if let Some(UseSpans::FnSelfUse { kind, .. }) = use_spans
+                && let CallKind::FnCall { fn_trait_id, self_ty } = kind
+                && let ty::Param(_) = self_ty.kind()
+                && ty == self_ty
+                && [
+                    self.infcx.tcx.lang_items().fn_once_trait(),
+                    self.infcx.tcx.lang_items().fn_mut_trait(),
+                    self.infcx.tcx.lang_items().fn_trait(),
+                ]
+                .contains(&Some(fn_trait_id))
+            {
+                // Do not suggest `F: FnOnce() + Clone`.
+                false
+            } else {
+                true
+            }
+        {
+            let mut span: MultiSpan = param_span.into();
+            span.push_span_label(
+                param_span,
+                "consider constraining this type parameter with `Clone`",
+            );
+            span.push_span_label(expr.span, "you could clone this value");
+            err.span_help(
+                span,
                 format!("if `{ty}` implemented `Clone`, you could clone the value"),
             );
         }
     }
 
-    fn implements_clone(&self, ty: Ty<'tcx>) -> bool {
+    pub(crate) fn implements_clone(&self, ty: Ty<'tcx>) -> bool {
         let Some(clone_trait_def) = self.infcx.tcx.lang_items().clone_trait() else { return false };
         self.infcx
             .type_implements_trait(clone_trait_def, [ty], self.param_env)
@@ -1403,7 +1440,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         if let Some(expr) = self.find_expr(borrow_span)
             && let Some(ty) = typeck_results.node_type_opt(expr.hir_id)
         {
-            self.suggest_cloning(&mut err, ty, expr, self.find_expr(span));
+            self.suggest_cloning(&mut err, ty, expr, self.find_expr(span), Some(move_spans));
         }
         self.buffer_error(err);
     }
@@ -1964,7 +2001,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     pub(crate) fn find_expr(&self, span: Span) -> Option<&hir::Expr<'_>> {
         let tcx = self.infcx.tcx;
         let body_id = tcx.hir_node(self.mir_hir_id()).body_id()?;
-        let mut expr_finder = FindExprBySpan::new(span);
+        let mut expr_finder = FindExprBySpan::new(span, tcx);
         expr_finder.visit_expr(tcx.hir().body(body_id).value);
         expr_finder.result
     }
@@ -1998,14 +2035,14 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             };
 
             let mut expr_finder =
-                FindExprBySpan::new(self.body.local_decls[*index1].source_info.span);
+                FindExprBySpan::new(self.body.local_decls[*index1].source_info.span, tcx);
             expr_finder.visit_expr(hir.body(body_id).value);
             let Some(index1) = expr_finder.result else {
                 note_default_suggestion();
                 return;
             };
 
-            expr_finder = FindExprBySpan::new(self.body.local_decls[*index2].source_info.span);
+            expr_finder = FindExprBySpan::new(self.body.local_decls[*index2].source_info.span, tcx);
             expr_finder.visit_expr(hir.body(body_id).value);
             let Some(index2) = expr_finder.result else {
                 note_default_suggestion();

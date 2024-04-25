@@ -1,7 +1,8 @@
 warning: unused coroutine that must be used
-  --> $DIR/reborrow-mut-upvar.rs:6:5
+  --> $DIR/reborrow-mut-upvar.rs:6:18
    |
-LL | /     || {
+LL |       #[coroutine] || {
+   |  __________________^
 LL | |         {
 LL | |             let _baz = &*bar;
 LL | |             yield;

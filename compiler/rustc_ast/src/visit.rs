@@ -382,11 +382,12 @@ pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) -> V::Resu
         }
         ItemKind::MacCall(mac) => try_visit!(visitor.visit_mac_call(mac)),
         ItemKind::MacroDef(ts) => try_visit!(visitor.visit_mac_def(ts, item.id)),
-        ItemKind::Delegation(box Delegation { id, qself, path, body }) => {
+        ItemKind::Delegation(box Delegation { id, qself, path, rename, body }) => {
             if let Some(qself) = qself {
                 try_visit!(visitor.visit_ty(&qself.ty));
             }
             try_visit!(visitor.visit_path(path, *id));
+            visit_opt!(visitor, visit_ident, *rename);
             visit_opt!(visitor, visit_block, body);
         }
     }
@@ -782,11 +783,12 @@ pub fn walk_assoc_item<'a, V: Visitor<'a>>(
         AssocItemKind::MacCall(mac) => {
             try_visit!(visitor.visit_mac_call(mac));
         }
-        AssocItemKind::Delegation(box Delegation { id, qself, path, body }) => {
+        AssocItemKind::Delegation(box Delegation { id, qself, path, rename, body }) => {
             if let Some(qself) = qself {
                 try_visit!(visitor.visit_ty(&qself.ty));
             }
             try_visit!(visitor.visit_path(path, *id));
+            visit_opt!(visitor, visit_ident, *rename);
             visit_opt!(visitor, visit_block, body);
         }
     }

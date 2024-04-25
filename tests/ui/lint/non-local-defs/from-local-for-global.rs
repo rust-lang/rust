@@ -1,8 +1,6 @@
 //@ check-pass
 //@ edition:2021
 
-#![feature(inline_const)]
-
 struct Cat;
 struct Wrap<T>(T);
 

@@ -183,7 +183,7 @@ pub enum TyKind<I: Interner> {
     ///
     /// ```
     /// #![feature(coroutines)]
-    /// static |a| {
+    /// #[coroutine] static |a| {
     ///     let x = &vec![3];
     ///     yield a;
     ///     yield x[0];

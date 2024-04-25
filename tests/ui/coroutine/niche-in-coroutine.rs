@@ -2,7 +2,7 @@
 
 //@ run-pass
 
-#![feature(coroutines)]
+#![feature(coroutines, stmt_expr_attributes)]
 
 use std::mem::size_of_val;
 
@@ -10,7 +10,7 @@ fn take<T>(_: T) {}
 
 fn main() {
     let x = false;
-    let gen1 = || {
+    let gen1 = #[coroutine] || {
         yield;
         take(x);
     };

@@ -2,13 +2,14 @@
 // Verifies that non-static coroutines can be cloned/copied if all their upvars and locals held
 // across awaits can be cloned/copied.
 
-#![feature(coroutines, coroutine_clone)]
+#![feature(coroutines, coroutine_clone, stmt_expr_attributes)]
 
 struct NonClone;
 
 fn test1() {
     let copyable: u32 = 123;
-    let gen_copy_0 = move || {
+    let gen_copy_0 = #[coroutine]
+    move || {
         yield;
         drop(copyable);
     };
@@ -18,7 +19,8 @@ fn test1() {
 
 fn test2() {
     let copyable: u32 = 123;
-    let gen_copy_1 = move || {
+    let gen_copy_1 = #[coroutine]
+    move || {
         /*
         let v = vec!['a'];
         let n = NonClone;
@@ -37,7 +39,8 @@ fn test2() {
 
 fn test3() {
     let clonable_0: Vec<u32> = Vec::new();
-    let gen_clone_0 = move || {
+    let gen_clone_0 = #[coroutine]
+    move || {
         let v = vec!['a'];
         yield;
         drop(v);
@@ -51,7 +54,8 @@ fn test3() {
 
 fn test4() {
     let clonable_1: Vec<u32> = Vec::new();
-    let gen_clone_1 = move || {
+    let gen_clone_1 = #[coroutine]
+    move || {
         let v = vec!['a'];
         /*
         let n = NonClone;
@@ -71,7 +75,8 @@ fn test4() {
 
 fn test5() {
     let non_clonable: NonClone = NonClone;
-    let gen_non_clone = move || {
+    let gen_non_clone = #[coroutine]
+    move || {
         yield;
         drop(non_clonable);
     };

@@ -1,8 +1,8 @@
 error[E0733]: recursion in a coroutine requires boxing
-  --> $DIR/recursive-coroutine-indirect.rs:11:5
+  --> $DIR/recursive-coroutine-indirect.rs:11:18
    |
-LL |     move || {
-   |     ^^^^^^^
+LL |     #[coroutine] move || {
+   |                  ^^^^^^^
 LL |         let x = coroutine_hold();
    |             - recursive call here
 

@@ -11,6 +11,12 @@ LL |         let _h = to_fn_once(move || -> isize { *bar });
    |                             |                  variable moved due to use in closure
    |                             |                  move occurs because `bar` has type `Box<isize>`, which does not implement the `Copy` trait
    |                             `bar` is moved here
+   |
+help: clone the value before moving it into the closure
+   |
+LL ~         let value = bar.clone();
+LL ~         let _h = to_fn_once(move || -> isize { value });
+   |
 
 error: aborting due to 1 previous error
 

@@ -8,7 +8,7 @@ LL | #![feature(unsized_locals)]
    = note: `#[warn(incomplete_features)]` on by default
 
 error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
-  --> $DIR/unsized-capture-across-yield.rs:11:27
+  --> $DIR/unsized-capture-across-yield.rs:12:27
    |
 LL |     move || {
    |          -- this closure captures all values by move

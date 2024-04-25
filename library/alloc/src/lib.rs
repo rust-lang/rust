@@ -128,7 +128,6 @@
 #![feature(fn_traits)]
 #![feature(hasher_prefixfree_extras)]
 #![feature(hint_assert_unchecked)]
-#![feature(inline_const)]
 #![feature(inplace_iteration)]
 #![feature(iter_advance_by)]
 #![feature(iter_next_chunk)]
@@ -169,6 +168,7 @@
 // Language features:
 // tidy-alphabetical-start
 #![cfg_attr(bootstrap, feature(associated_type_bounds))]
+#![cfg_attr(bootstrap, feature(inline_const))]
 #![cfg_attr(not(bootstrap), rustc_preserve_ub_checks)]
 #![cfg_attr(not(test), feature(coroutine_trait))]
 #![cfg_attr(test, feature(panic_update_hook))]

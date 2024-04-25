@@ -9,8 +9,8 @@ LL |             yield();
 error[E0502]: cannot borrow `x` as immutable because it is also borrowed as mutable
   --> $DIR/yield-while-iterating.rs:58:20
    |
-LL |     let mut b = || {
-   |                 -- mutable borrow occurs here
+LL |     let mut b = #[coroutine] || {
+   |                              -- mutable borrow occurs here
 LL |         for p in &mut x {
    |                       - first borrow occurs due to use of `x` in coroutine
 ...

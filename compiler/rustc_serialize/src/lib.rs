@@ -11,7 +11,7 @@
 #![cfg_attr(bootstrap, feature(associated_type_bounds))]
 #![feature(const_option)]
 #![feature(core_intrinsics)]
-#![feature(inline_const)]
+#![cfg_attr(bootstrap, feature(inline_const))]
 #![feature(min_specialization)]
 #![feature(never_type)]
 #![feature(ptr_sub_ptr)]

@@ -5,7 +5,7 @@
 //@ compile-flags: -Clto -Cno-prepopulate-passes -Copt-level=0 -Zsanitizer=cfi -Ctarget-feature=-crt-static
 
 #![crate_type="lib"]
-#![feature(inline_const, type_alias_impl_trait)]
+#![feature(type_alias_impl_trait)]
 
 extern crate core;
 

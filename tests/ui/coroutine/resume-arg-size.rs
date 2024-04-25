@@ -1,4 +1,4 @@
-#![feature(coroutines)]
+#![feature(coroutines, stmt_expr_attributes)]
 #![allow(dropping_copy_types)]
 
 //@ run-pass
@@ -7,7 +7,8 @@ use std::mem::size_of_val;
 
 fn main() {
     // Coroutine taking a `Copy`able resume arg.
-    let gen_copy = |mut x: usize| {
+    let gen_copy = #[coroutine]
+    |mut x: usize| {
         loop {
             drop(x);
             x = yield;
@@ -15,7 +16,8 @@ fn main() {
     };
 
     // Coroutine taking a non-`Copy` resume arg.
-    let gen_move = |mut x: Box<usize>| {
+    let gen_move = #[coroutine]
+    |mut x: Box<usize>| {
         loop {
             drop(x);
             x = yield;

@@ -10,7 +10,7 @@
     arithmetic_overflow,
     unconditional_panic
 )]
-#![feature(const_mut_refs, inline_const)]
+#![feature(const_mut_refs)]
 #![warn(clippy::arithmetic_side_effects)]
 
 extern crate proc_macro_derive;

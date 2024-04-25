@@ -152,6 +152,7 @@ fn r#match() {
 }
 
 fn i_yield() {
+    #[coroutine]
     static || {
         yield yield yield yield yield yield yield yield yield;
     };

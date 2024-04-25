@@ -1,6 +1,5 @@
 //@ pp-exact
 
-#![feature(inline_const)]
 #![feature(inline_const_pat)]
 #![feature(rustc_attrs)]
 #![feature(stmt_expr_attributes)]

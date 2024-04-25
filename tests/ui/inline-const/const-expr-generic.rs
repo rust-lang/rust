@@ -1,5 +1,4 @@
 //@ check-pass
-#![feature(inline_const)]
 
 fn foo<T>() -> usize {
     const { std::mem::size_of::<T>() }

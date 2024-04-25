@@ -23,6 +23,13 @@ LL | fn copy<T: Magic>(x: T) -> (T, T) { (x, x) }
    |                   |                  value moved here
    |                   move occurs because `x` has type `T`, which does not implement the `Copy` trait
    |
+help: if `T` implemented `Clone`, you could clone the value
+  --> $DIR/typeck-auto-trait-no-supertraits-2.rs:8:9
+   |
+LL | fn copy<T: Magic>(x: T) -> (T, T) { (x, x) }
+   |         ^                            - you could clone this value
+   |         |
+   |         consider constraining this type parameter with `Clone`
 help: consider further restricting this bound
    |
 LL | fn copy<T: Magic + Copy>(x: T) -> (T, T) { (x, x) }

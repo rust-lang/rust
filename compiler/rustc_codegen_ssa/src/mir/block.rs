@@ -1517,7 +1517,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 //   when passed by value, making it larger.
                 let copy_bytes = cmp::min(scratch_size.bytes(), arg.layout.size.bytes());
                 // Allocate some scratch space...
-                let llscratch = bx.alloca(bx.cast_backend_type(cast), scratch_align);
+                let llscratch = bx.alloca(scratch_size, scratch_align);
                 bx.lifetime_start(llscratch, scratch_size);
                 // ...memcpy the value...
                 bx.memcpy(

@@ -1,4 +1,4 @@
-#![feature(coroutines, coroutine_trait)]
+#![feature(coroutines, coroutine_trait, stmt_expr_attributes)]
 
 use std::ops::{Coroutine, CoroutineState};
 use std::pin::Pin;
@@ -16,7 +16,8 @@ fn drop_using_coroutine() -> i32 {
     let z = &mut y;
     let r;
     {
-        let mut g = move |r| {
+        let mut g = #[coroutine]
+        move |r| {
             let _s = SetToNone(r);
             yield;
         };
