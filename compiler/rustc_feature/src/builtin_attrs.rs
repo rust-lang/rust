@@ -183,17 +183,6 @@ macro_rules! template {
 }
 
 macro_rules! ungated {
-    ($attr:ident, $typ:expr, $tpl:expr, $duplicates:expr, $encode_cross_crate:expr $(,)?) => {
-        BuiltinAttribute {
-            name: sym::$attr,
-            encode_cross_crate: $encode_cross_crate,
-            type_: $typ,
-            safety: AttributeSafety::Normal,
-            template: $tpl,
-            gate: Ungated,
-            duplicates: $duplicates,
-        }
-    };
     (unsafe $attr:ident, $typ:expr, $tpl:expr, $duplicates:expr, $encode_cross_crate:expr $(,)?) => {
         BuiltinAttribute {
             name: sym::$attr,
@@ -205,31 +194,20 @@ macro_rules! ungated {
             duplicates: $duplicates,
         }
     };
+    ($attr:ident, $typ:expr, $tpl:expr, $duplicates:expr, $encode_cross_crate:expr $(,)?) => {
+        BuiltinAttribute {
+            name: sym::$attr,
+            encode_cross_crate: $encode_cross_crate,
+            type_: $typ,
+            safety: AttributeSafety::Normal,
+            template: $tpl,
+            gate: Ungated,
+            duplicates: $duplicates,
+        }
+    };
 }
 
 macro_rules! gated {
-    ($attr:ident, $typ:expr, $tpl:expr, $duplicates:expr, $encode_cross_crate:expr, $gate:ident, $msg:expr $(,)?) => {
-        BuiltinAttribute {
-            name: sym::$attr,
-            encode_cross_crate: $encode_cross_crate,
-            type_: $typ,
-            safety: AttributeSafety::Normal,
-            template: $tpl,
-            duplicates: $duplicates,
-            gate: Gated(Stability::Unstable, sym::$gate, $msg, cfg_fn!($gate)),
-        }
-    };
-    ($attr:ident, $typ:expr, $tpl:expr, $duplicates:expr, $encode_cross_crate:expr, $msg:expr $(,)?) => {
-        BuiltinAttribute {
-            name: sym::$attr,
-            encode_cross_crate: $encode_cross_crate,
-            type_: $typ,
-            safety: AttributeSafety::Normal,
-            template: $tpl,
-            duplicates: $duplicates,
-            gate: Gated(Stability::Unstable, sym::$attr, $msg, cfg_fn!($attr)),
-        }
-    };
     (unsafe $attr:ident, $typ:expr, $tpl:expr, $duplicates:expr, $encode_cross_crate:expr, $gate:ident, $msg:expr $(,)?) => {
         BuiltinAttribute {
             name: sym::$attr,
@@ -247,6 +225,28 @@ macro_rules! gated {
             encode_cross_crate: $encode_cross_crate,
             type_: $typ,
             safety: AttributeSafety::Unsafe,
+            template: $tpl,
+            duplicates: $duplicates,
+            gate: Gated(Stability::Unstable, sym::$attr, $msg, cfg_fn!($attr)),
+        }
+    };
+    ($attr:ident, $typ:expr, $tpl:expr, $duplicates:expr, $encode_cross_crate:expr, $gate:ident, $msg:expr $(,)?) => {
+        BuiltinAttribute {
+            name: sym::$attr,
+            encode_cross_crate: $encode_cross_crate,
+            type_: $typ,
+            safety: AttributeSafety::Normal,
+            template: $tpl,
+            duplicates: $duplicates,
+            gate: Gated(Stability::Unstable, sym::$gate, $msg, cfg_fn!($gate)),
+        }
+    };
+    ($attr:ident, $typ:expr, $tpl:expr, $duplicates:expr, $encode_cross_crate:expr, $msg:expr $(,)?) => {
+        BuiltinAttribute {
+            name: sym::$attr,
+            encode_cross_crate: $encode_cross_crate,
+            type_: $typ,
+            safety: AttributeSafety::Normal,
             template: $tpl,
             duplicates: $duplicates,
             gate: Gated(Stability::Unstable, sym::$attr, $msg, cfg_fn!($attr)),
