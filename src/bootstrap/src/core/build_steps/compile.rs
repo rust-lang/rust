@@ -1079,6 +1079,10 @@ pub fn rustc_cargo(
         ));
     }
 
+    if compiler.stage != 0 {
+        cargo.rustflag("-Cpanic=abort");
+    }
+
     rustc_cargo_env(builder, cargo, target, compiler.stage);
 }
 
