@@ -11,6 +11,7 @@
 
 use rustc_ast_ir::try_visit;
 use rustc_ast_ir::visit::VisitorResult;
+use rustc_infer::infer::resolve::EagerResolver;
 use rustc_infer::infer::type_variable::TypeVariableOrigin;
 use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, InferOk};
 use rustc_middle::infer::unify_key::ConstVariableOrigin;
@@ -19,6 +20,7 @@ use rustc_middle::traits::solve::{inspect, QueryResult};
 use rustc_middle::traits::solve::{Certainty, Goal};
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty;
+use rustc_middle::ty::TypeFoldable;
 use rustc_span::Span;
 
 use crate::solve::eval_ctxt::canonical;
@@ -254,7 +256,7 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
                 infcx,
                 depth,
                 orig_values,
-                goal: infcx.resolve_vars_if_possible(root.uncanonicalized_goal),
+                goal: root.uncanonicalized_goal.fold_with(&mut EagerResolver::new(infcx)),
                 evaluation: root,
             },
             inspect::GoalEvaluationKind::Nested { .. } => unreachable!(),
