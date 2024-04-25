@@ -57,6 +57,8 @@ impl ThreadId {
     pub fn to_u32(self) -> u32 {
         self.0
     }
+
+    pub const MAIN_THREAD: ThreadId = ThreadId(0);
 }
 
 impl Idx for ThreadId {
@@ -401,7 +403,7 @@ impl<'mir, 'tcx> Default for ThreadManager<'mir, 'tcx> {
         // Create the main thread and add it to the list of threads.
         threads.push(Thread::new(Some("main"), None));
         Self {
-            active_thread: ThreadId::new(0),
+            active_thread: ThreadId::MAIN_THREAD,
             threads,
             sync: SynchronizationState::default(),
             thread_local_alloc_ids: Default::default(),
@@ -416,10 +418,12 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
         ecx: &mut MiriInterpCx<'mir, 'tcx>,
         on_main_stack_empty: StackEmptyCallback<'mir, 'tcx>,
     ) {
-        ecx.machine.threads.threads[ThreadId::new(0)].on_stack_empty = Some(on_main_stack_empty);
+        ecx.machine.threads.threads[ThreadId::MAIN_THREAD].on_stack_empty =
+            Some(on_main_stack_empty);
         if ecx.tcx.sess.target.os.as_ref() != "windows" {
             // The main thread can *not* be joined on except on windows.
-            ecx.machine.threads.threads[ThreadId::new(0)].join_status = ThreadJoinStatus::Detached;
+            ecx.machine.threads.threads[ThreadId::MAIN_THREAD].join_status =
+                ThreadJoinStatus::Detached;
         }
     }
 

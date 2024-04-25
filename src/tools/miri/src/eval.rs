@@ -9,7 +9,7 @@ use std::thread;
 
 use crate::concurrency::thread::TlsAllocAction;
 use crate::diagnostics::report_leaks;
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::{
@@ -100,6 +100,8 @@ pub struct MiriConfig {
     pub ignore_leaks: bool,
     /// Environment variables that should always be forwarded from the host.
     pub forwarded_env_vars: Vec<String>,
+    /// Additional environment variables that should be set in the interpreted program.
+    pub set_env_vars: FxHashMap<String, String>,
     /// Command-line arguments passed to the interpreted program.
     pub args: Vec<String>,
     /// The seed to use when non-determinism or randomness are required (e.g. ptr-to-int cast, `getrandom()`).
@@ -167,6 +169,7 @@ impl Default for MiriConfig {
             isolated_op: IsolatedOp::Reject(RejectOpWith::Abort),
             ignore_leaks: false,
             forwarded_env_vars: vec![],
+            set_env_vars: FxHashMap::default(),
             args: vec![],
             seed: None,
             tracked_pointer_tags: FxHashSet::default(),
@@ -383,10 +386,9 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
 
             let main_ptr = ecx.fn_ptr(FnVal::Instance(entry_instance));
 
-            // Inlining of `DEFAULT` from
-            // https://github.com/rust-lang/rust/blob/master/compiler/rustc_session/src/config/sigpipe.rs.
             // Always using DEFAULT is okay since we don't support signals in Miri anyway.
-            let sigpipe = 2;
+            // (This means we are effectively ignoring `#[unix_sigpipe]`.)
+            let sigpipe = rustc_session::config::sigpipe::DEFAULT;
 
             ecx.call_function(
                 start_instance,

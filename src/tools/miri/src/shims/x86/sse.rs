@@ -182,7 +182,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
                 };
 
                 let res = this.float_to_int_checked(&op, dest.layout, rnd)?.unwrap_or_else(|| {
-                    // Fallback to minimum acording to SSE semantics.
+                    // Fallback to minimum according to SSE semantics.
                     ImmTy::from_int(dest.layout.size.signed_int_min(), dest.layout)
                 });
 

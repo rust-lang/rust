@@ -125,7 +125,9 @@ pub enum NonHaltingDiagnostic {
     Int2Ptr {
         details: bool,
     },
-    WeakMemoryOutdatedLoad,
+    WeakMemoryOutdatedLoad {
+        ptr: Pointer<Option<Provenance>>,
+    },
 }
 
 /// Level of Miri specific diagnostics
@@ -583,7 +585,8 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
             | AccessedAlloc(..)
             | FreedAlloc(..)
             | ProgressReport { .. }
-            | WeakMemoryOutdatedLoad => ("tracking was triggered".to_string(), DiagLevel::Note),
+            | WeakMemoryOutdatedLoad { .. } =>
+                ("tracking was triggered".to_string(), DiagLevel::Note),
         };
 
         let msg = match &e {
@@ -610,8 +613,8 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
             ProgressReport { .. } =>
                 format!("progress report: current operation being executed is here"),
             Int2Ptr { .. } => format!("integer-to-pointer cast"),
-            WeakMemoryOutdatedLoad =>
-                format!("weak memory emulation: outdated value returned from load"),
+            WeakMemoryOutdatedLoad { ptr } =>
+                format!("weak memory emulation: outdated value returned from load at {ptr}"),
         };
 
         let notes = match &e {

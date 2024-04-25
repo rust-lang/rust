@@ -32,7 +32,7 @@ jobs:
     env:
       HOST_TARGET: ${{ matrix.host_target }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Show Rust version (stable toolchain)
         run: |
@@ -57,12 +57,12 @@ jobs:
             ~/.cargo/bin
             ~/.cargo/.crates.toml
             ~/.cargo/.crates2.json
-          key: cargo-${{ runner.os }}-reset20240331-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: cargo-${{ runner.os }}-reset20240331
+          key: cargo-${{ runner.os }}-reset20240425-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: cargo-${{ runner.os }}-reset20240425
 
-      - name: Install rustup-toolchain-install-master
+      - name: Install tools
         if: ${{ steps.cache.outputs.cache-hit != 'true' }}
-        run: cargo install -f rustup-toolchain-install-master
+        run: cargo install -f rustup-toolchain-install-master hyperfine
 
       - name: Install miri toolchain
         run: |
@@ -85,7 +85,7 @@ jobs:
     name: style checks
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       # This is exactly duplicated from above. GHA is pretty terrible when it comes
       # to avoiding code duplication.
@@ -165,7 +165,7 @@ jobs:
     name: cronjob failure notification
     runs-on: ubuntu-latest
     needs: [build, style]
-    if: github.event_name == 'schedule' && (failure() || cancelled())
+    if: github.event_name == 'schedule' && failure()
     steps:
       # Send a Zulip notification
       - name: Install zulip-send
@@ -191,7 +191,7 @@ jobs:
           The Miri Cronjobs Bot'
 
       # Attempt to auto-sync with rustc
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 256 # get a bit more of the history
       - name: install josh-proxy

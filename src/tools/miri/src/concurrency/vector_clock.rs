@@ -13,15 +13,13 @@ use super::data_race::NaReadType;
 /// but in some cases one vector index may be shared with
 /// multiple thread ids if it's safe to do so.
 #[derive(Clone, Copy, Debug, PartialOrd, Ord, PartialEq, Eq, Hash)]
-pub struct VectorIdx(u32);
+pub(super) struct VectorIdx(u32);
 
 impl VectorIdx {
     #[inline(always)]
-    pub fn to_u32(self) -> u32 {
+    fn to_u32(self) -> u32 {
         self.0
     }
-
-    pub const MAX_INDEX: VectorIdx = VectorIdx(u32::MAX);
 }
 
 impl Idx for VectorIdx {
@@ -51,7 +49,7 @@ const SMALL_VECTOR: usize = 4;
 /// a 32-bit unsigned integer which is the actual timestamp, and a `Span`
 /// so that diagnostics can report what code was responsible for an operation.
 #[derive(Clone, Copy, Debug)]
-pub struct VTimestamp {
+pub(super) struct VTimestamp {
     /// The lowest bit indicates read type, the rest is the time.
     /// `1` indicates a retag read, `0` a regular read.
     time_and_read_type: u32,
@@ -87,7 +85,7 @@ impl VTimestamp {
     }
 
     #[inline]
-    pub fn read_type(&self) -> NaReadType {
+    pub(super) fn read_type(&self) -> NaReadType {
         if self.time_and_read_type & 1 == 0 { NaReadType::Read } else { NaReadType::Retag }
     }
 
@@ -97,7 +95,7 @@ impl VTimestamp {
     }
 
     #[inline]
-    pub fn span_data(&self) -> SpanData {
+    pub(super) fn span_data(&self) -> SpanData {
         self.span.data()
     }
 }

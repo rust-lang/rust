@@ -213,6 +213,50 @@ fn test_posix_gettimeofday() {
     assert_eq!(is_error, -1);
 }
 
+fn test_localtime_r() {
+    use std::ffi::CStr;
+    use std::{env, ptr};
+
+    // Set timezone to GMT.
+    let key = "TZ";
+    env::set_var(key, "GMT");
+
+    const TIME_SINCE_EPOCH: libc::time_t = 1712475836;
+    let custom_time_ptr = &TIME_SINCE_EPOCH;
+    let mut tm = libc::tm {
+        tm_sec: 0,
+        tm_min: 0,
+        tm_hour: 0,
+        tm_mday: 0,
+        tm_mon: 0,
+        tm_year: 0,
+        tm_wday: 0,
+        tm_yday: 0,
+        tm_isdst: 0,
+        tm_gmtoff: 0,
+        tm_zone: std::ptr::null_mut::<libc::c_char>(),
+    };
+    let res = unsafe { libc::localtime_r(custom_time_ptr, &mut tm) };
+
+    assert_eq!(tm.tm_sec, 56);
+    assert_eq!(tm.tm_min, 43);
+    assert_eq!(tm.tm_hour, 7);
+    assert_eq!(tm.tm_mday, 7);
+    assert_eq!(tm.tm_mon, 3);
+    assert_eq!(tm.tm_year, 124);
+    assert_eq!(tm.tm_wday, 0);
+    assert_eq!(tm.tm_yday, 97);
+    assert_eq!(tm.tm_isdst, -1);
+    assert_eq!(tm.tm_gmtoff, 0);
+    unsafe { assert_eq!(CStr::from_ptr(tm.tm_zone).to_str().unwrap(), "+00") };
+
+    // The returned value is the pointer passed in.
+    assert!(ptr::eq(res, &mut tm));
+
+    //Remove timezone setting.
+    env::remove_var(key);
+}
+
 fn test_isatty() {
     // Testing whether our isatty shim returns the right value would require controlling whether
     // these streams are actually TTYs, which is hard.
@@ -365,6 +409,7 @@ fn main() {
     test_posix_realpath_errors();
 
     test_thread_local_errno();
+    test_localtime_r();
 
     test_isatty();
 

@@ -44,19 +44,13 @@ impl<'tcx> EnvVars<'tcx> {
                 let forward = ecx.machine.communicate()
                     || config.forwarded_env_vars.iter().any(|v| **v == *name);
                 if forward {
-                    let var_ptr = match ecx.tcx.sess.target.os.as_ref() {
-                        _ if ecx.target_os_is_unix() =>
-                            alloc_env_var_as_c_str(name.as_ref(), value.as_ref(), ecx)?,
-                        "windows" => alloc_env_var_as_wide_str(name.as_ref(), value.as_ref(), ecx)?,
-                        unsupported =>
-                            throw_unsup_format!(
-                                "environment support for target OS `{}` not yet available",
-                                unsupported
-                            ),
-                    };
-                    ecx.machine.env_vars.map.insert(name.clone(), var_ptr);
+                    add_env_var(ecx, name, value)?;
                 }
             }
+        }
+
+        for (name, value) in &config.set_env_vars {
+            add_env_var(ecx, OsStr::new(name), OsStr::new(value))?;
         }
 
         // Initialize the `environ` pointer when needed.
@@ -87,6 +81,24 @@ impl<'tcx> EnvVars<'tcx> {
         }
         Ok(())
     }
+}
+
+fn add_env_var<'mir, 'tcx>(
+    ecx: &mut InterpCx<'mir, 'tcx, MiriMachine<'mir, 'tcx>>,
+    name: &OsStr,
+    value: &OsStr,
+) -> InterpResult<'tcx, ()> {
+    let var_ptr = match ecx.tcx.sess.target.os.as_ref() {
+        _ if ecx.target_os_is_unix() => alloc_env_var_as_c_str(name, value, ecx)?,
+        "windows" => alloc_env_var_as_wide_str(name, value, ecx)?,
+        unsupported =>
+            throw_unsup_format!(
+                "environment support for target OS `{}` not yet available",
+                unsupported
+            ),
+    };
+    ecx.machine.env_vars.map.insert(name.to_os_string(), var_ptr);
+    Ok(())
 }
 
 fn alloc_env_var_as_c_str<'mir, 'tcx>(
@@ -148,10 +160,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         this.assert_target_os("windows", "GetEnvironmentVariableW");
 
         let name_ptr = this.read_pointer(name_op)?;
+        let buf_ptr = this.read_pointer(buf_op)?;
+        let buf_size = this.read_scalar(size_op)?.to_u32()?; // in characters
+
         let name = this.read_os_str_from_wide_str(name_ptr)?;
         Ok(match this.machine.env_vars.map.get(&name) {
             Some(&var_ptr) => {
-                this.set_last_error(Scalar::from_u32(0))?; // make sure this is unambiguously not an error
                 // The offset is used to strip the "{name}=" part of the string.
                 #[rustfmt::skip]
                 let name_offset_bytes = u64::try_from(name.len()).unwrap()
@@ -160,14 +174,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let var_ptr = var_ptr.offset(Size::from_bytes(name_offset_bytes), this)?;
                 let var = this.read_os_str_from_wide_str(var_ptr)?;
 
-                let buf_ptr = this.read_pointer(buf_op)?;
-                // `buf_size` represents the size in characters.
-                let buf_size = u64::from(this.read_scalar(size_op)?.to_u32()?);
-                Scalar::from_u32(windows_check_buffer_size(
-                    this.write_os_str_to_wide_str(
-                        &var, buf_ptr, buf_size, /*truncate*/ false,
-                    )?,
-                ))
+                Scalar::from_u32(windows_check_buffer_size(this.write_os_str_to_wide_str(
+                    &var,
+                    buf_ptr,
+                    buf_size.into(),
+                )?))
+                // This can in fact return 0. It is up to the caller to set last_error to 0
+                // beforehand and check it afterwards to exclude that case.
             }
             None => {
                 let envvar_not_found = this.eval_windows("c", "ERROR_ENVVAR_NOT_FOUND");
@@ -363,9 +376,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         // If we cannot get the current directory, we return 0
         match env::current_dir() {
             Ok(cwd) => {
-                this.set_last_error(Scalar::from_u32(0))?; // make sure this is unambiguously not an error
+                // This can in fact return 0. It is up to the caller to set last_error to 0
+                // beforehand and check it afterwards to exclude that case.
                 return Ok(Scalar::from_u32(windows_check_buffer_size(
-                    this.write_path_to_wide_str(&cwd, buf, size, /*truncate*/ false)?,
+                    this.write_path_to_wide_str(&cwd, buf, size)?,
                 )));
             }
             Err(e) => this.set_last_error_from_io_error(e.kind())?,
@@ -482,9 +496,60 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     fn GetCurrentProcessId(&mut self) -> InterpResult<'tcx, u32> {
         let this = self.eval_context_mut();
         this.assert_target_os("windows", "GetCurrentProcessId");
-
         this.check_no_isolation("`GetCurrentProcessId`")?;
 
         Ok(std::process::id())
+    }
+
+    #[allow(non_snake_case)]
+    fn GetUserProfileDirectoryW(
+        &mut self,
+        token: &OpTy<'tcx, Provenance>, // HANDLE
+        buf: &OpTy<'tcx, Provenance>,   // LPWSTR
+        size: &OpTy<'tcx, Provenance>,  // LPDWORD
+    ) -> InterpResult<'tcx, Scalar<Provenance>> // returns BOOL
+    {
+        let this = self.eval_context_mut();
+        this.assert_target_os("windows", "GetUserProfileDirectoryW");
+        this.check_no_isolation("`GetUserProfileDirectoryW`")?;
+
+        let token = this.read_target_isize(token)?;
+        let buf = this.read_pointer(buf)?;
+        let size = this.deref_pointer(size)?;
+
+        if token != -4 {
+            throw_unsup_format!(
+                "GetUserProfileDirectoryW: only CURRENT_PROCESS_TOKEN is supported"
+            );
+        }
+
+        // See <https://learn.microsoft.com/en-us/windows/win32/api/userenv/nf-userenv-getuserprofiledirectoryw> for docs.
+        Ok(match directories::UserDirs::new() {
+            Some(dirs) => {
+                let home = dirs.home_dir();
+                let size_avail = if this.ptr_is_null(size.ptr())? {
+                    0 // if the buf pointer is null, we can't write to it; `size` will be updated to the required length
+                } else {
+                    this.read_scalar(&size)?.to_u32()?
+                };
+                // Of course we cannot use `windows_check_buffer_size` here since this uses
+                // a different method for dealing with a too-small buffer than the other functions...
+                let (success, len) = this.write_path_to_wide_str(home, buf, size_avail.into())?;
+                // The Windows docs just say that this is written on failure. But std
+                // seems to rely on it always being written.
+                this.write_scalar(Scalar::from_u32(len.try_into().unwrap()), &size)?;
+                if success {
+                    Scalar::from_i32(1) // return TRUE
+                } else {
+                    this.set_last_error(this.eval_windows("c", "ERROR_INSUFFICIENT_BUFFER"))?;
+                    Scalar::from_i32(0) // return FALSE
+                }
+            }
+            None => {
+                // We have to pick some error code.
+                this.set_last_error(this.eval_windows("c", "ERROR_BAD_USER_PROFILE"))?;
+                Scalar::from_i32(0) // return FALSE
+            }
+        })
     }
 }

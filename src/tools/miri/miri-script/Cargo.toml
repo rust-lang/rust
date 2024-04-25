@@ -8,7 +8,9 @@ version = "0.1.0"
 default-run = "miri-script"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[workspace]
+# We make this a workspace root so that cargo does not go looking in ../Cargo.toml for the workspace root.
+# This is needed to make this package build on stable when the parent package uses unstable cargo features.
 
 [dependencies]
 which = "4.4"

@@ -506,6 +506,11 @@ fn main() {
             );
         } else if let Some(param) = arg.strip_prefix("-Zmiri-env-forward=") {
             miri_config.forwarded_env_vars.push(param.to_owned());
+        } else if let Some(param) = arg.strip_prefix("-Zmiri-env-set=") {
+            let Some((name, value)) = param.split_once('=') else {
+                show_error!("-Zmiri-env-set requires an argument of the form <name>=<value>");
+            };
+            miri_config.set_env_vars.insert(name.to_owned(), value.to_owned());
         } else if let Some(param) = arg.strip_prefix("-Zmiri-track-pointer-tag=") {
             let ids: Vec<u64> = parse_comma_list(param).unwrap_or_else(|err| {
                 show_error!("-Zmiri-track-pointer-tag requires a comma separated list of valid `u64` arguments: {err}")

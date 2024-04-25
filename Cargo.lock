@@ -491,9 +491,9 @@ checksum = "fd16c4719339c4530435d38e511904438d07cce7950afa3718a84ac36c10e89e"
 
 [[package]]
 name = "chrono"
-version = "0.4.37"
+version = "0.4.38"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8a0d04d43504c61aa6c7531f1871dd0d418d91130162063b789da00fd7057a5e"
+checksum = "a21f936df1771bf62b77f047b726c4625ff2e8aa607c01ec06e5a05bd8463401"
 dependencies = [
  "android-tzdata",
  "iana-time-zone",
@@ -2493,8 +2493,10 @@ name = "miri"
 version = "0.1.0"
 dependencies = [
  "aes",
+ "chrono",
  "colored",
  "ctrlc",
+ "directories",
  "getrandom",
  "jemalloc-sys",
  "lazy_static",

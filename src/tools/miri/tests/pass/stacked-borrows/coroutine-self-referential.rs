@@ -8,7 +8,8 @@ use std::{
 };
 
 fn firstn() -> impl Coroutine<Yield = u64, Return = ()> {
-    #[coroutine] static move || {
+    #[coroutine]
+    static move || {
         let mut num = 0;
         let num = &mut num;
 

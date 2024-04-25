@@ -69,7 +69,7 @@ fn basic() {
     }
 
     let baz: &dyn Baz = &1;
-    let _: &dyn fmt::Debug = baz;
+    let _up: &dyn fmt::Debug = baz;
     assert_eq!(*baz, 1);
     assert_eq!(baz.a(), 100);
     assert_eq!(baz.b(), 200);
@@ -79,7 +79,7 @@ fn basic() {
     assert_eq!(baz.w(), 21);
 
     let bar: &dyn Bar = baz;
-    let _: &dyn fmt::Debug = bar;
+    let _up: &dyn fmt::Debug = bar;
     assert_eq!(*bar, 1);
     assert_eq!(bar.a(), 100);
     assert_eq!(bar.b(), 200);
@@ -88,14 +88,14 @@ fn basic() {
     assert_eq!(bar.w(), 21);
 
     let foo: &dyn Foo = baz;
-    let _: &dyn fmt::Debug = foo;
+    let _up: &dyn fmt::Debug = foo;
     assert_eq!(*foo, 1);
     assert_eq!(foo.a(), 100);
     assert_eq!(foo.z(), 11);
     assert_eq!(foo.y(), 12);
 
     let foo: &dyn Foo = bar;
-    let _: &dyn fmt::Debug = foo;
+    let _up: &dyn fmt::Debug = foo;
     assert_eq!(*foo, 1);
     assert_eq!(foo.a(), 100);
     assert_eq!(foo.z(), 11);
@@ -168,7 +168,7 @@ fn diamond() {
     }
 
     let baz: &dyn Baz = &1;
-    let _: &dyn fmt::Debug = baz;
+    let _up: &dyn fmt::Debug = baz;
     assert_eq!(*baz, 1);
     assert_eq!(baz.a(), 100);
     assert_eq!(baz.b(), 200);
@@ -180,7 +180,7 @@ fn diamond() {
     assert_eq!(baz.v(), 31);
 
     let bar1: &dyn Bar1 = baz;
-    let _: &dyn fmt::Debug = bar1;
+    let _up: &dyn fmt::Debug = bar1;
     assert_eq!(*bar1, 1);
     assert_eq!(bar1.a(), 100);
     assert_eq!(bar1.b(), 200);
@@ -189,7 +189,7 @@ fn diamond() {
     assert_eq!(bar1.w(), 21);
 
     let bar2: &dyn Bar2 = baz;
-    let _: &dyn fmt::Debug = bar2;
+    let _up: &dyn fmt::Debug = bar2;
     assert_eq!(*bar2, 1);
     assert_eq!(bar2.a(), 100);
     assert_eq!(bar2.c(), 300);
@@ -198,17 +198,17 @@ fn diamond() {
     assert_eq!(bar2.v(), 31);
 
     let foo: &dyn Foo = baz;
-    let _: &dyn fmt::Debug = foo;
+    let _up: &dyn fmt::Debug = foo;
     assert_eq!(*foo, 1);
     assert_eq!(foo.a(), 100);
 
     let foo: &dyn Foo = bar1;
-    let _: &dyn fmt::Debug = foo;
+    let _up: &dyn fmt::Debug = foo;
     assert_eq!(*foo, 1);
     assert_eq!(foo.a(), 100);
 
     let foo: &dyn Foo = bar2;
-    let _: &dyn fmt::Debug = foo;
+    let _up: &dyn fmt::Debug = foo;
     assert_eq!(*foo, 1);
     assert_eq!(foo.a(), 100);
 }
