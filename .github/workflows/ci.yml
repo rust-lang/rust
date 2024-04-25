@@ -180,7 +180,6 @@ jobs:
       - name: publish toolstate
         run: src/ci/publish_toolstate.sh
         shell: bash
-        if: "success() && (github.event_name == 'push' || env.DEPLOY == '1' || env.DEPLOY_ALT == '1')"
         env:
           TOOLSTATE_REPO_ACCESS_TOKEN: "${{ secrets.TOOLSTATE_REPO_ACCESS_TOKEN }}"
     name: bors build finished
