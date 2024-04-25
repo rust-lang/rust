@@ -658,7 +658,7 @@ fn infer_call_trait_method_on_generic_param_1() {
         }
         "#,
         expect![[r#"
-            29..33 'self': &Self
+            29..33 'self': &'? Self
             63..64 't': T
             69..88 '{     ...d(); }': ()
             75..76 't': T
@@ -679,7 +679,7 @@ fn infer_call_trait_method_on_generic_param_2() {
         }
         "#,
         expect![[r#"
-            32..36 'self': &Self
+            32..36 'self': &'? Self
             70..71 't': T
             76..95 '{     ...d(); }': ()
             82..83 't': T
@@ -757,7 +757,7 @@ struct S;
 impl Clone for S {}
 impl Clone for &S {}
 fn test() { (S.clone(), (&S).clone(), (&&S).clone()); }
-          //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (S, S, &S)
+          //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (S, S, &'? S)
 "#,
     );
 }
@@ -1150,12 +1150,12 @@ fn dyn_trait_super_trait_not_in_scope() {
         }
         "#,
         expect![[r#"
-            51..55 'self': &Self
+            51..55 'self': &'? Self
             64..69 '{ 0 }': u32
             66..67 '0': u32
-            176..177 'd': &dyn Trait
+            176..177 'd': &'? dyn Trait
             191..207 '{     ...o(); }': ()
-            197..198 'd': &dyn Trait
+            197..198 'd': &'? dyn Trait
             197..204 'd.foo()': u32
         "#]],
     );
@@ -1182,15 +1182,15 @@ fn test() {
 }
 "#,
         expect![[r#"
-            75..79 'self': &S
+            75..79 'self': &'? S
             89..109 '{     ...     }': bool
             99..103 'true': bool
             123..167 '{     ...o(); }': ()
-            133..134 's': &S
-            137..151 'unsafe { f() }': &S
-            146..147 'f': fn f() -> &S
-            146..149 'f()': &S
-            157..158 's': &S
+            133..134 's': &'? S
+            137..151 'unsafe { f() }': &'static S
+            146..147 'f': fn f() -> &'static S
+            146..149 'f()': &'static S
+            157..158 's': &'? S
             157..164 's.foo()': bool
         "#]],
     );
@@ -1601,11 +1601,11 @@ use core::IntoIterator;
 fn f() {
     let v = [4].into_iter();
     v;
-  //^ &i32
+  //^ &'? i32
 
     let a = [0, 1].into_iter();
     a;
-  //^ &i32
+  //^ &'? i32
 }
 
 //- /main2021.rs crate:main2021 deps:core edition:2021
@@ -1618,7 +1618,7 @@ fn f() {
 
     let a = [0, 1].into_iter();
     a;
-  //^ &i32
+  //^ &'? i32
 }
 
 //- /core.rs crate:core
@@ -1767,7 +1767,7 @@ fn test() {
     let a2 = A(make(), 1i32);
     let _: &str = a2.thing();
     a2;
-  //^^ A<C<&str>, i32>
+  //^^ A<C<&'? str>, i32>
 }
 "#,
     );
