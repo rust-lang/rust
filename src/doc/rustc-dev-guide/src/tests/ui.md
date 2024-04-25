@@ -363,7 +363,7 @@ with the different outputs of the different revisions.
 
 > Note: cfg revisions also work inside the source code with `#[cfg]` attributes.
 > 
-> By-convention the `FALSE` cfg is used to have an always false config.
+> By convention, the `FALSE` cfg is used to have an always-false config.
 
 ## Controlling pass/fail expectations
 
