@@ -3664,3 +3664,21 @@ fn main() {
 "#,
     );
 }
+
+#[test]
+fn inline_const_expression() {
+    check(
+        r#"
+fn main() {
+    let foo = 0;
+    const {
+        let bar = 1;
+        let unresolved = foo;
+         // ^^^^^^^^^^ type: {unknown}
+        let resolved = bar;
+         // ^^^^^^^^ type: i32
+    }
+}
+"#,
+    );
+}
