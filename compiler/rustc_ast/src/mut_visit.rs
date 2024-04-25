@@ -1248,11 +1248,11 @@ pub fn noop_flat_map_item<K: NoopVisitItemKind>(
     visitor: &mut impl MutVisitor,
 ) -> SmallVec<[P<Item<K>>; 1]> {
     let Item { ident, attrs, id, kind, vis, span, tokens } = item.deref_mut();
-    visitor.visit_ident(ident);
-    visit_attrs(attrs, visitor);
     visitor.visit_id(id);
-    kind.noop_visit(visitor);
+    visit_attrs(attrs, visitor);
     visitor.visit_vis(vis);
+    visitor.visit_ident(ident);
+    kind.noop_visit(visitor);
     visitor.visit_span(span);
     visit_lazy_tts(tokens, visitor);
     smallvec![item]
