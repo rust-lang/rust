@@ -786,7 +786,7 @@ fn fn_abi_adjust_for_abi<'tcx>(
                     // an LLVM aggregate type for this leads to bad optimizations,
                     // so we pick an appropriately sized integer type instead.
                     arg.cast_to(Reg { kind: RegKind::Integer, size });
-                } else if size <= data_pointer_size * 2 && size.bytes() % 2 == 0 {
+                } else if size == data_pointer_size * 2 && size.bytes() % 2 == 0 {
                     // Aggregates like `[usize; 2]` or (on 64-bit arch) `[u128; 1]`
                     // can be passed as a scalar pair.
                     let part_size = Size::from_bytes(size.bytes() / 2);
