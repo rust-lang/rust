@@ -10,7 +10,7 @@ use rustc_parse::{parser, validate_attr};
 use rustc_session::errors::report_lit_error;
 use rustc_span::{BytePos, Span, Symbol};
 
-pub fn check_builtin_macro_attribute(ecx: &ExtCtxt<'_>, meta_item: &MetaItem, name: Symbol) {
+pub(crate) fn check_builtin_macro_attribute(ecx: &ExtCtxt<'_>, meta_item: &MetaItem, name: Symbol) {
     // All the built-in macro attributes are "words" at the moment.
     let template = AttributeTemplate { word: true, ..Default::default() };
     validate_attr::check_builtin_meta_item(
@@ -24,7 +24,7 @@ pub fn check_builtin_macro_attribute(ecx: &ExtCtxt<'_>, meta_item: &MetaItem, na
 
 /// Emit a warning if the item is annotated with the given attribute. This is used to diagnose when
 /// an attribute may have been mistakenly duplicated.
-pub fn warn_on_duplicate_attribute(ecx: &ExtCtxt<'_>, item: &Annotatable, name: Symbol) {
+pub(crate) fn warn_on_duplicate_attribute(ecx: &ExtCtxt<'_>, item: &Annotatable, name: Symbol) {
     let attrs: Option<&[Attribute]> = match item {
         Annotatable::Item(item) => Some(&item.attrs),
         Annotatable::TraitItem(item) => Some(&item.attrs),

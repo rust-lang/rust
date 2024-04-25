@@ -107,7 +107,7 @@ fn handle_array_element(
     None
 }
 
-pub fn expand_concat_bytes(
+pub(crate) fn expand_concat_bytes(
     cx: &mut ExtCtxt<'_>,
     sp: Span,
     tts: TokenStream,

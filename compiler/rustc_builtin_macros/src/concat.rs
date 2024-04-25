@@ -6,7 +6,7 @@ use rustc_expand::base::{DummyResult, ExpandResult, ExtCtxt, MacEager, MacroExpa
 use rustc_session::errors::report_lit_error;
 use rustc_span::symbol::Symbol;
 
-pub fn expand_concat(
+pub(crate) fn expand_concat(
     cx: &mut ExtCtxt<'_>,
     sp: rustc_span::Span,
     tts: TokenStream,

@@ -26,7 +26,7 @@ use std::rc::Rc;
 // a given file into the current one.
 
 /// line!(): expands to the current line number
-pub fn expand_line(
+pub(crate) fn expand_line(
     cx: &mut ExtCtxt<'_>,
     sp: Span,
     tts: TokenStream,
@@ -41,7 +41,7 @@ pub fn expand_line(
 }
 
 /* column!(): expands to the current column number */
-pub fn expand_column(
+pub(crate) fn expand_column(
     cx: &mut ExtCtxt<'_>,
     sp: Span,
     tts: TokenStream,
@@ -58,7 +58,7 @@ pub fn expand_column(
 /// file!(): expands to the current filename */
 /// The source_file (`loc.file`) contains a bunch more information we could spit
 /// out if we wanted.
-pub fn expand_file(
+pub(crate) fn expand_file(
     cx: &mut ExtCtxt<'_>,
     sp: Span,
     tts: TokenStream,
@@ -78,7 +78,7 @@ pub fn expand_file(
     )))
 }
 
-pub fn expand_stringify(
+pub(crate) fn expand_stringify(
     cx: &mut ExtCtxt<'_>,
     sp: Span,
     tts: TokenStream,
@@ -88,7 +88,7 @@ pub fn expand_stringify(
     ExpandResult::Ready(MacEager::expr(cx.expr_str(sp, Symbol::intern(&s))))
 }
 
-pub fn expand_mod(
+pub(crate) fn expand_mod(
     cx: &mut ExtCtxt<'_>,
     sp: Span,
     tts: TokenStream,
@@ -104,7 +104,7 @@ pub fn expand_mod(
 /// include! : parse the given file as an expr
 /// This is generally a bad idea because it's going to behave
 /// unhygienically.
-pub fn expand_include<'cx>(
+pub(crate) fn expand_include<'cx>(
     cx: &'cx mut ExtCtxt<'_>,
     sp: Span,
     tts: TokenStream,
@@ -181,7 +181,7 @@ pub fn expand_include<'cx>(
 }
 
 /// `include_str!`: read the given file, insert it as a literal string expr
-pub fn expand_include_str(
+pub(crate) fn expand_include_str(
     cx: &mut ExtCtxt<'_>,
     sp: Span,
     tts: TokenStream,
@@ -210,7 +210,7 @@ pub fn expand_include_str(
     })
 }
 
-pub fn expand_include_bytes(
+pub(crate) fn expand_include_bytes(
     cx: &mut ExtCtxt<'_>,
     sp: Span,
     tts: TokenStream,

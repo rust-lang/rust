@@ -25,7 +25,7 @@ fn lookup_env<'cx>(cx: &'cx ExtCtxt<'_>, var: Symbol) -> Result<Symbol, VarError
     Ok(Symbol::intern(&env::var(var)?))
 }
 
-pub fn expand_option_env<'cx>(
+pub(crate) fn expand_option_env<'cx>(
     cx: &'cx mut ExtCtxt<'_>,
     sp: Span,
     tts: TokenStream,
@@ -65,7 +65,7 @@ pub fn expand_option_env<'cx>(
     ExpandResult::Ready(MacEager::expr(e))
 }
 
-pub fn expand_env<'cx>(
+pub(crate) fn expand_env<'cx>(
     cx: &'cx mut ExtCtxt<'_>,
     sp: Span,
     tts: TokenStream,

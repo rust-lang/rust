@@ -579,7 +579,7 @@ pub(crate) struct FormatUnknownTrait<'a> {
     style = "tool-only",
     applicability = "maybe-incorrect"
 )]
-pub struct FormatUnknownTraitSugg {
+pub(crate) struct FormatUnknownTraitSugg {
     #[primary_span]
     pub span: Span,
     pub fmt: &'static str,

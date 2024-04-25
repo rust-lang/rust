@@ -5,7 +5,7 @@ use rustc_ast::tokenstream::TokenStream;
 use rustc_expand::base::{DummyResult, ExpandResult, ExtCtxt, MacroExpanderResult};
 use rustc_span::Span;
 
-pub fn expand_compile_error<'cx>(
+pub(crate) fn expand_compile_error<'cx>(
     cx: &'cx mut ExtCtxt<'_>,
     sp: Span,
     tts: TokenStream,
