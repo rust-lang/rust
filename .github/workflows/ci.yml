@@ -22,7 +22,6 @@ name: CI
       - try
       - try-perf
       - automation/bors/try
-      - master
   pull_request:
     branches:
       - "**"
