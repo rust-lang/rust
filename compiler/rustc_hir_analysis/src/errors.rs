@@ -1641,3 +1641,13 @@ pub struct NonConstRange {
     #[primary_span]
     pub span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_invalid_receiver_ty, code = E0307)]
+#[note]
+#[help(hir_analysis_invalid_receiver_ty_help)]
+pub struct InvalidReceiverTy<'tcx> {
+    #[primary_span]
+    pub span: Span,
+    pub receiver_ty: Ty<'tcx>,
+}
