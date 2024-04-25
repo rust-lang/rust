@@ -1,3 +1,6 @@
+use crate::util::{
+    check_zero_tts, get_single_str_from_tts, get_single_str_spanned_from_tts, parse_expr,
+};
 use rustc_ast as ast;
 use rustc_ast::ptr::P;
 use rustc_ast::token;
@@ -5,11 +8,8 @@ use rustc_ast::tokenstream::TokenStream;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::sync::Lrc;
 use rustc_expand::base::{
-    check_zero_tts, get_single_str_from_tts, get_single_str_spanned_from_tts, parse_expr,
-    resolve_path,
+    resolve_path, DummyResult, ExpandResult, ExtCtxt, MacEager, MacResult, MacroExpanderResult,
 };
-use rustc_expand::base::{DummyResult, ExpandResult, ExtCtxt};
-use rustc_expand::base::{MacEager, MacResult, MacroExpanderResult};
 use rustc_expand::module::DirOwnership;
 use rustc_parse::new_parser_from_file;
 use rustc_parse::parser::{ForceCollect, Parser};

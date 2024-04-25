@@ -842,3 +842,26 @@ pub(crate) struct ExpectedRegisterClassOrExplicitRegister {
     #[primary_span]
     pub(crate) span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_expected_comma_in_list)]
+pub(crate) struct ExpectedCommaInList {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_only_one_argument)]
+pub(crate) struct OnlyOneArgument<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub name: &'a str,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_takes_no_arguments)]
+pub(crate) struct TakesNoArguments<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub name: &'a str,
+}

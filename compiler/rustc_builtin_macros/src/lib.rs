@@ -50,13 +50,13 @@ mod pattern_type;
 mod source_util;
 mod test;
 mod trace_macros;
-mod util;
 
 pub mod asm;
 pub mod cmdline_attrs;
 pub mod proc_macro_harness;
 pub mod standard_library_imports;
 pub mod test_harness;
+pub mod util;
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 

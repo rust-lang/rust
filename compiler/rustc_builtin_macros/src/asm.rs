@@ -1,3 +1,5 @@
+use crate::errors;
+use crate::util::expr_to_spanned_string;
 use ast::token::IdentIsRaw;
 use rustc_ast as ast;
 use rustc_ast::ptr::P;
@@ -15,8 +17,6 @@ use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::{ErrorGuaranteed, InnerSpan, Span};
 use rustc_target::asm::InlineAsmArch;
 use smallvec::smallvec;
-
-use crate::errors;
 
 pub struct AsmArgs {
     pub templates: Vec<P<ast::Expr>>,
