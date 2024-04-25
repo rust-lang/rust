@@ -9,7 +9,7 @@ use rustc_session::config::OptLevel;
 use rustc_span::def_id::DefId;
 use rustc_target::abi::call::{
     ArgAbi, ArgAttribute, ArgAttributes, ArgExtension, Conv, FnAbi, PassMode, Reg, RegKind,
-    RiscvInterruptKind,
+    RiscvInterruptKind, Uniform,
 };
 use rustc_target::abi::*;
 use rustc_target::spec::abi::Abi as SpecAbi;
@@ -779,11 +779,23 @@ fn fn_abi_adjust_for_abi<'tcx>(
             assert!(is_indirect_not_on_stack, "{:?}", arg);
 
             let size = arg.layout.size;
-            if !arg.layout.is_unsized() && size <= Pointer(AddressSpace::DATA).size(cx) {
-                // We want to pass small aggregates as immediates, but using
-                // an LLVM aggregate type for this leads to bad optimizations,
-                // so we pick an appropriately sized integer type instead.
-                arg.cast_to(Reg { kind: RegKind::Integer, size });
+            if !arg.layout.is_unsized() {
+                let data_pointer_size = Pointer(AddressSpace::DATA).size(cx);
+                if size <= data_pointer_size {
+                    // We want to pass small aggregates as immediates, but using
+                    // an LLVM aggregate type for this leads to bad optimizations,
+                    // so we pick an appropriately sized integer type instead.
+                    arg.cast_to(Reg { kind: RegKind::Integer, size });
+                } else if size <= data_pointer_size * 2 && size.bytes() % 2 == 0 {
+                    // Aggregates like `[usize; 2]` or (on 64-bit arch) `[u128; 1]`
+                    // can be passed as a scalar pair.
+                    let part_size = Size::from_bytes(size.bytes() / 2);
+                    arg.cast_to(Uniform {
+                        unit: Reg { kind: RegKind::Integer, size: part_size },
+                        total: size,
+                        is_consecutive: false,
+                    });
+                }
             }
 
             // If we deduced that this parameter was read-only, add that to the attribute list now.
