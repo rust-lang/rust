@@ -152,49 +152,25 @@ jobs:
           AWS_ACCESS_KEY_ID: "${{ env.ARTIFACTS_AWS_ACCESS_KEY_ID }}"
           AWS_SECRET_ACCESS_KEY: "${{ secrets[format('AWS_SECRET_ACCESS_KEY_{0}', env.ARTIFACTS_AWS_ACCESS_KEY_ID)] }}"
         if: "success() && (github.event_name == 'push' || env.DEPLOY == '1' || env.DEPLOY_ALT == '1')"
-  try-success:
-    needs:
-      - job
-    if: "success() && github.event_name == 'push' && (github.ref == 'refs/heads/try' || github.ref == 'refs/heads/try-perf') && github.repository == 'rust-lang-ci/rust'"
-    steps:
-      - name: mark the job as a success
-        run: exit 0
-        shell: bash
+  outcome:
     name: bors build finished
     runs-on: ubuntu-latest
-  try-failure:
     needs:
       - job
-    if: "!success() && github.event_name == 'push' && (github.ref == 'refs/heads/try' || github.ref == 'refs/heads/try-perf') && github.repository == 'rust-lang-ci/rust'"
-    steps:
-      - name: mark the job as a failure
-        run: exit 1
-        shell: bash
-    name: bors build finished
-    runs-on: ubuntu-latest
-  auto-success:
-    needs:
-      - job
-    if: "success() && github.event_name == 'push' && github.ref == 'refs/heads/auto' && github.repository == 'rust-lang-ci/rust'"
+    if: "!cancelled() && github.event_name == 'push'"
     steps:
       - name: checkout the source code
         uses: actions/checkout@v4
         with:
           fetch-depth: 2
+      - name: calculate the correct exit status
+        id: status
+        run: "jq --exit-status 'all(.result == \"success\" or .result == \"skipped\")' <<< '${{ toJson(needs) }}'\necho \"status=$?\" >> $GITHUB_OUTPUT\n"
       - name: publish toolstate
         run: src/ci/publish_toolstate.sh
         shell: bash
+        if: "steps.outputs.status == 0 && github.event_name == 'push' && github.ref == 'refs/heads/auto' && github.repository == 'rust-lang-ci/rust'"
         env:
           TOOLSTATE_REPO_ACCESS_TOKEN: "${{ secrets.TOOLSTATE_REPO_ACCESS_TOKEN }}"
-    name: bors build finished
-    runs-on: ubuntu-latest
-  auto-failure:
-    needs:
-      - job
-    if: "!success() && github.event_name == 'push' && github.ref == 'refs/heads/auto' && github.repository == 'rust-lang-ci/rust'"
-    steps:
-      - name: mark the job as a failure
-        run: exit 1
-        shell: bash
-    name: bors build finished
-    runs-on: ubuntu-latest
+      - name: set the correct exit status
+        run: "exit ${{ steps.outputs.status == 0 }}"

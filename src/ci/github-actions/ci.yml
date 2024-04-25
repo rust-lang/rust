@@ -270,33 +270,32 @@ jobs:
         # erroring about invalid credentials instead.
         if: success() && (github.event_name == 'push' || env.DEPLOY == '1' || env.DEPLOY_ALT == '1')
 
-  # These jobs don't actually test anything, but they're used to tell bors the
-  # build completed, as there is no practical way to detect when a workflow is
-  # successful listening to webhooks only.
-  try-success:
+  # This job isused to tell bors the final status of the build, as there is no practical way to detect
+  # when a workflow is successful listening to webhooks only in our current bors implementation (homu).
+  outcome:
+    name: bors build finished
+    runs-on: ubuntu-latest
     needs: [ job ]
-    if: "success() && github.event_name == 'push' && (github.ref == 'refs/heads/try' || github.ref == 'refs/heads/try-perf') && github.repository == 'rust-lang-ci/rust'"
-    <<: *base-success-job
-  try-failure:
-    needs: [ job ]
-    if: "!success() && github.event_name == 'push' && (github.ref == 'refs/heads/try' || github.ref == 'refs/heads/try-perf') && github.repository == 'rust-lang-ci/rust'"
-    <<: *base-failure-job
-  auto-success:
-    needs: [ job ]
-    if: "success() && github.event_name == 'push' && github.ref == 'refs/heads/auto' && github.repository == 'rust-lang-ci/rust'"
-    <<: *base-outcome-job
+    # !cancelled() executes the job regardless of whether the previous jobs passed or failed
+    if: "!cancelled() && github.event_name == 'push'"
     steps:
       - name: checkout the source code
         uses: actions/checkout@v4
         with:
           fetch-depth: 2
+      # Calculate the exit status of the whole CI workflow (0 if all dependent jobs were either successful
+      # or skipped, otherwise 1).
+      - name: calculate the correct exit status
+        id: status
+        run: |
+          jq --exit-status 'all(.result == "success" or .result == "skipped")' <<< '${{ toJson(needs) }}'
+          echo "status=$?" >> $GITHUB_OUTPUT
+      # Publish the toolstate if an auto build succeeds (just before push to master)
       - name: publish toolstate
         run: src/ci/publish_toolstate.sh
         shell: bash
+        if: steps.outputs.status == 0 && github.event_name == 'push' && github.ref == 'refs/heads/auto' && github.repository == 'rust-lang-ci/rust'
         env:
           TOOLSTATE_REPO_ACCESS_TOKEN: ${{ secrets.TOOLSTATE_REPO_ACCESS_TOKEN }}
-
-  auto-failure:
-    needs: [ job ]
-    if: "!success() && github.event_name == 'push' && github.ref == 'refs/heads/auto' && github.repository == 'rust-lang-ci/rust'"
-    <<: *base-failure-job
+      - name: set the correct exit status
+        run: exit ${{ steps.outputs.status }}
