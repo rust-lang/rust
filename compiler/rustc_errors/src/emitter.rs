@@ -984,7 +984,7 @@ impl HumanEmitter {
         // 4 |   }
         //   |
         for pos in 0..=line_len {
-            draw_col_separator(buffer, line_offset + pos + 1, width_offset - 2);
+            draw_col_separator_no_space(buffer, line_offset + pos + 1, width_offset - 2);
         }
 
         // Write the horizontal lines for multiline annotations
@@ -2260,13 +2260,23 @@ impl HumanEmitter {
                     buffer.puts(*row_num, max_line_num_len + 1, "+ ", Style::Addition);
                 }
                 [] => {
-                    draw_col_separator(buffer, *row_num, max_line_num_len + 1);
+                    draw_col_separator_no_space(buffer, *row_num, max_line_num_len + 1);
                 }
                 _ => {
                     buffer.puts(*row_num, max_line_num_len + 1, "~ ", Style::Addition);
                 }
             }
-            buffer.append(*row_num, &normalize_whitespace(line_to_add), Style::NoStyle);
+            //   LL | line_to_add
+            //   ++^^^
+            //    |  |
+            //    |  magic `3`
+            //    `max_line_num_len`
+            buffer.puts(
+                *row_num,
+                max_line_num_len + 3,
+                &normalize_whitespace(line_to_add),
+                Style::NoStyle,
+            );
         } else if let DisplaySuggestion::Add = show_code_change {
             buffer.puts(*row_num, 0, &self.maybe_anonymized(line_num), Style::LineNumber);
             buffer.puts(*row_num, max_line_num_len + 1, "+ ", Style::Addition);
