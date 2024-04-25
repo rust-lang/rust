@@ -197,7 +197,9 @@ impl Config {
     fn download_file(&self, url: &str, dest_path: &Path, help_on_error: &str) {
         self.verbose(|| println!("download {url}"));
         // Use a temporary file in case we crash while downloading, to avoid a corrupt download in cache/.
-        let tempfile = self.tempdir().join(dest_path.file_name().unwrap());
+        // Download to the same directory as the final file to avoid having to move it across file systems.
+        let mut tempfile = dest_path.to_owned();
+        tempfile.set_extension("incomplete-bootstrap-download");
         // While bootstrap itself only supports http and https downloads, downstream forks might
         // need to download components from other protocols. The match allows them adding more
         // protocols without worrying about merge conflicts if we change the HTTP implementation.
