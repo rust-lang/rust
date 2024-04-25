@@ -968,7 +968,12 @@ impl SyntaxExtension {
 /// Error type that denotes indeterminacy.
 pub struct Indeterminate;
 
-pub type DeriveResolutions = Vec<(ast::Path, Annotatable, Option<Lrc<SyntaxExtension>>, bool)>;
+pub struct DeriveResolution {
+    pub path: ast::Path,
+    pub item: Annotatable,
+    pub exts: Option<Lrc<SyntaxExtension>>,
+    pub is_const: bool,
+}
 
 pub trait ResolverExpand {
     fn next_node_id(&mut self) -> NodeId;
@@ -1011,11 +1016,11 @@ pub trait ResolverExpand {
         &mut self,
         expn_id: LocalExpnId,
         force: bool,
-        derive_paths: &dyn Fn() -> DeriveResolutions,
+        derive_paths: &dyn Fn() -> Vec<DeriveResolution>,
     ) -> Result<(), Indeterminate>;
     /// Take resolutions for paths inside the `#[derive(...)]` attribute with the given `ExpnId`
     /// back from resolver.
-    fn take_derive_resolutions(&mut self, expn_id: LocalExpnId) -> Option<DeriveResolutions>;
+    fn take_derive_resolutions(&mut self, expn_id: LocalExpnId) -> Option<Vec<DeriveResolution>>;
     /// Path resolution logic for `#[cfg_accessible(path)]`.
     fn cfg_accessible(
         &mut self,
