@@ -128,7 +128,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         match obligation.cause.code() {
             ObligationCauseCode::BuiltinDerivedObligation(..)
             | ObligationCauseCode::ImplDerivedObligation(..)
-            | ObligationCauseCode::DerivedObligation(..) => {}
+            | ObligationCauseCode::WellFormedDerivedObligation(..) => {}
             _ => {
                 // this is a "direct", user-specified, rather than derived,
                 // obligation.
