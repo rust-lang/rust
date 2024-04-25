@@ -1815,7 +1815,7 @@ impl Expr<'_> {
     ///
     /// This is only used for diagnostics to see if we have things like `foo[i]` where `foo` is
     /// borrowed multiple times with `i`.
-    pub fn equals(&self, other: &Expr<'_>) -> bool {
+    pub fn equivalent_for_indexing(&self, other: &Expr<'_>) -> bool {
         match (self.kind, other.kind) {
             (ExprKind::Lit(lit1), ExprKind::Lit(lit2)) => lit1.node == lit2.node,
             (
@@ -1837,11 +1837,14 @@ impl Expr<'_> {
             | (
                 ExprKind::Struct(QPath::LangItem(LangItem::RangeFrom, _), [val1], None),
                 ExprKind::Struct(QPath::LangItem(LangItem::RangeFrom, _), [val2], None),
-            ) => val1.expr.equals(val2.expr),
+            ) => val1.expr.equivalent_for_indexing(val2.expr),
             (
                 ExprKind::Struct(QPath::LangItem(LangItem::Range, _), [val1, val3], None),
                 ExprKind::Struct(QPath::LangItem(LangItem::Range, _), [val2, val4], None),
-            ) => val1.expr.equals(val2.expr) && val3.expr.equals(val4.expr),
+            ) => {
+                val1.expr.equivalent_for_indexing(val2.expr)
+                    && val3.expr.equivalent_for_indexing(val4.expr)
+            }
             _ => false,
         }
     }

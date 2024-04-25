@@ -2120,7 +2120,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 let hir::ExprKind::Index(_, idx1, _) = parent.kind else { return };
                 let hir::Node::Expr(parent) = tcx.parent_hir_node(index2.hir_id) else { return };
                 let hir::ExprKind::Index(_, idx2, _) = parent.kind else { return };
-                if !idx1.equals(idx2) {
+                if !idx1.equivalent_for_indexing(idx2) {
                     err.help("use `.split_at_mut(position)` to obtain two mutable non-overlapping sub-slices");
                 }
                 return;
@@ -2146,7 +2146,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let Some(index2) = self.find_expr(issued_span) else { return };
         let hir::Node::Expr(parent) = tcx.parent_hir_node(index2.hir_id) else { return };
         let hir::ExprKind::Index(_, idx2, _) = parent.kind else { return };
-        if idx1.equals(idx2) {
+        if idx1.equivalent_for_indexing(idx2) {
             // `let a = &mut foo[0]` and `let b = &mut foo[0]`? Don't mention `split_at_mut`
             return;
         }
