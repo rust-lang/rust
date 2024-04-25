@@ -1,5 +1,6 @@
 //@ run-pass
-//@ compile-flags: --cfg bar -D warnings
+//@ compile-flags: --cfg bar --check-cfg=cfg(bar) -D warnings
+
 #![cfg(bar)]
 
 fn main() {}

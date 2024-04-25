@@ -1,4 +1,5 @@
 //@ check-pass
+//@ no-auto-check-cfg
 //@ revisions: cargo rustc
 //@ [rustc]unset-rustc-env:CARGO_CRATE_NAME
 //@ [cargo]rustc-env:CARGO_CRATE_NAME=foo

@@ -1,6 +1,7 @@
 // Check that no warning is emitted for unknown cfg value
 //
 //@ check-pass
+//@ no-auto-check-cfg
 //@ revisions: simple mixed with_values
 //@ compile-flags: --check-cfg=cfg(simple,mixed,with_values)
 //@ [simple]compile-flags: --check-cfg=cfg(foo,values(any()))
