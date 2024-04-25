@@ -78,8 +78,8 @@ function run_tests {
     done
   fi
   if [ -n "${TEST_BENCH-}" ]; then
-    # Check that the benchmarks build and run, but without actually benchmarking.
-    time HYPERFINE="'$BASH' -c" ./miri bench
+    # Check that the benchmarks build and run, but only once.
+    time HYPERFINE="hyperfine -w0 -r1" ./miri bench
   fi
 
   ## test-cargo-miri

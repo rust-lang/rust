@@ -57,12 +57,12 @@ jobs:
             ~/.cargo/bin
             ~/.cargo/.crates.toml
             ~/.cargo/.crates2.json
-          key: cargo-${{ runner.os }}-reset20240331-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: cargo-${{ runner.os }}-reset20240331
+          key: cargo-${{ runner.os }}-reset20240425-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: cargo-${{ runner.os }}-reset20240425
 
-      - name: Install rustup-toolchain-install-master
+      - name: Install tools
         if: ${{ steps.cache.outputs.cache-hit != 'true' }}
-        run: cargo install -f rustup-toolchain-install-master
+        run: cargo install -f rustup-toolchain-install-master hyperfine
 
       - name: Install miri toolchain
         run: |
