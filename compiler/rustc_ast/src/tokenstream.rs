@@ -140,9 +140,8 @@ impl fmt::Debug for LazyAttrTokenStream {
 }
 
 impl<S: SpanEncoder> Encodable<S> for LazyAttrTokenStream {
-    fn encode(&self, s: &mut S) {
-        // Used by AST json printing.
-        Encodable::encode(&self.to_attr_token_stream(), s);
+    fn encode(&self, _s: &mut S) {
+        panic!("Attempted to encode LazyAttrTokenStream");
     }
 }
 

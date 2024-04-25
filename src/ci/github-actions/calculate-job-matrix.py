@@ -17,10 +17,13 @@ from typing import List, Dict, Any, Optional
 
 import yaml
 
+CI_DIR = Path(__file__).absolute().parent.parent
 JOBS_YAML_PATH = Path(__file__).absolute().parent / "jobs.yml"
 
+Job = Dict[str, Any]
 
-def name_jobs(jobs: List[Dict], prefix: str) -> List[Dict]:
+
+def name_jobs(jobs: List[Dict], prefix: str) -> List[Job]:
     """
     Add a `name` attribute to each job, based on its image and the given `prefix`.
     """
@@ -29,7 +32,7 @@ def name_jobs(jobs: List[Dict], prefix: str) -> List[Dict]:
     return jobs
 
 
-def add_base_env(jobs: List[Dict], environment: Dict[str, str]) -> List[Dict]:
+def add_base_env(jobs: List[Job], environment: Dict[str, str]) -> List[Job]:
     """
     Prepends `environment` to the `env` attribute of each job.
     The `env` of each job has higher precedence than `environment`.
@@ -77,7 +80,7 @@ def find_job_type(ctx: GitHubCtx) -> Optional[JobType]:
     return None
 
 
-def calculate_jobs(job_type: JobType, job_data: Dict[str, Any]) -> List[Dict[str, Any]]:
+def calculate_jobs(job_type: JobType, job_data: Dict[str, Any]) -> List[Job]:
     if job_type == JobType.PR:
         return add_base_env(name_jobs(job_data["pr"], "PR"), job_data["envs"]["pr"])
     elif job_type == JobType.Try:
@@ -86,6 +89,13 @@ def calculate_jobs(job_type: JobType, job_data: Dict[str, Any]) -> List[Dict[str
         return add_base_env(name_jobs(job_data["auto"], "auto"), job_data["envs"]["auto"])
 
     return []
+
+
+def skip_jobs(jobs: List[Dict[str, Any]], channel: str) -> List[Job]:
+    """
+    Skip CI jobs that are not supposed to be executed on the given `channel`.
+    """
+    return [j for j in jobs if j.get("only_on_channel", channel) == channel]
 
 
 def get_github_ctx() -> GitHubCtx:
@@ -107,9 +117,13 @@ if __name__ == "__main__":
     job_type = find_job_type(github_ctx)
     logging.info(f"Job type: {job_type}")
 
+    with open(CI_DIR / "channel") as f:
+        channel = f.read().strip()
+
     jobs = []
     if job_type is not None:
         jobs = calculate_jobs(job_type, data)
+    jobs = skip_jobs(jobs, channel)
 
     logging.info(f"Output:\n{yaml.dump(jobs, indent=4)}")
     print(f"jobs={json.dumps(jobs)}")
