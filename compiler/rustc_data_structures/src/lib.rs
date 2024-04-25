@@ -144,9 +144,9 @@ pub fn make_display(f: impl Fn(&mut fmt::Formatter<'_>) -> fmt::Result) -> impl 
     Printer { f }
 }
 
-// See comments in compiler/rustc_middle/src/tests.rs
+// See comment in compiler/rustc_middle/src/tests.rs and issue #27438.
 #[doc(hidden)]
-pub fn __noop_fix_for_27438() {}
+pub fn __noop_fix_for_windows_dllimport_issue() {}
 
 #[macro_export]
 macro_rules! external_bitflags_debug {
