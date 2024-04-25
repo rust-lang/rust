@@ -101,18 +101,11 @@ fn resolve_associated_item<'tcx>(
 
     let vtbl = match tcx.codegen_select_candidate((param_env, trait_ref)) {
         Ok(vtbl) => vtbl,
-        Err(CodegenObligationError::Ambiguity) => {
-            let reported = tcx.dcx().span_delayed_bug(
-                tcx.def_span(trait_item_id),
-                format!(
-                    "encountered ambiguity selecting `{trait_ref:?}` during codegen, presuming due to \
-                     overflow or prior type error",
-                ),
-            );
-            return Err(reported);
-        }
-        Err(CodegenObligationError::Unimplemented) => return Ok(None),
-        Err(CodegenObligationError::FulfillmentError) => return Ok(None),
+        Err(
+            CodegenObligationError::Ambiguity
+            | CodegenObligationError::Unimplemented
+            | CodegenObligationError::FulfillmentError,
+        ) => return Ok(None),
     };
 
     // Now that we know which impl is being used, we can dispatch to

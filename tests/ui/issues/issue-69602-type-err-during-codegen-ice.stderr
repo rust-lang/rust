@@ -13,12 +13,6 @@ LL |     type MyA: TraitA;
 LL | impl TraitB for B {
    | ^^^^^^^^^^^^^^^^^ missing `MyA` in implementation
 
-note: erroneous constant encountered
-  --> $DIR/issue-69602-type-err-during-codegen-ice.rs:21:17
-   |
-LL |     let _ = [0; B::VALUE];
-   |                 ^^^^^^^^
-
 error: aborting due to 2 previous errors
 
 Some errors have detailed explanations: E0046, E0437.
