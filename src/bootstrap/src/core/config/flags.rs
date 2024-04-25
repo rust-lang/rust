@@ -420,7 +420,7 @@ pub enum Subcommand {
     Arguments:
         This subcommand accepts a number of paths to tools to build and run. For
         example:
-            ./x.py run src/tools/expand-yaml-anchors
+            ./x.py run src/tools/bump-stage0
         At least a tool needs to be called.")]
     /// Run tools contained in this repository
     Run {
