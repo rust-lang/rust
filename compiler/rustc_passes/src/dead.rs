@@ -562,10 +562,14 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
                     && let [arg] = args
                 {
                     let arg_ty = self.typeck_results().expr_ty(arg);
-                    if let Some(adt) = arg_ty.peel_refs().ty_adt_def() {
+                    if let Some(adt) = arg_ty.peel_refs().ty_adt_def()
+                        && adt.is_enum()
+                    {
                         for variant in adt.variants() {
                             for field in &variant.fields {
-                                self.live_symbols.insert(field.did.expect_local());
+                                if let Some(local_id) = field.did.as_local() {
+                                    self.live_symbols.insert(local_id);
+                                }
                             }
                         }
                     }
