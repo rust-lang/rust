@@ -128,6 +128,12 @@ pub fn from_fn_attrs<'gcc, 'tcx>(
         .join(",");
     if !target_features.is_empty() {
         #[cfg(feature = "master")]
-        func.add_attribute(FnAttribute::Target(&target_features));
+        match cx.sess().target.arch.as_ref() {
+            "x86" | "x86_64" | "powerpc" => {
+                func.add_attribute(FnAttribute::Target(&target_features))
+            }
+            // The target attribute is not supported on other targets in GCC.
+            _ => (),
+        }
     }
 }

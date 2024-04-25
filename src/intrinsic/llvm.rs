@@ -629,14 +629,22 @@ pub fn intrinsic<'gcc, 'tcx>(name: &str, cx: &CodegenCx<'gcc, 'tcx>) -> Function
 
 #[cfg(feature = "master")]
 pub fn intrinsic<'gcc, 'tcx>(name: &str, cx: &CodegenCx<'gcc, 'tcx>) -> Function<'gcc> {
-    if name == "llvm.prefetch" {
-        let gcc_name = "__builtin_prefetch";
-        let func = cx.context.get_builtin_function(gcc_name);
-        cx.functions.borrow_mut().insert(gcc_name.to_string(), func);
-        return func;
-    }
-
     let gcc_name = match name {
+        "llvm.prefetch" => {
+            let gcc_name = "__builtin_prefetch";
+            let func = cx.context.get_builtin_function(gcc_name);
+            cx.functions.borrow_mut().insert(gcc_name.to_string(), func);
+            return func;
+        }
+
+        "llvm.aarch64.isb" => {
+            // FIXME: GCC doesn't support __builtin_arm_isb yet, check if this builtin is OK.
+            let gcc_name = "__atomic_thread_fence";
+            let func = cx.context.get_builtin_function(gcc_name);
+            cx.functions.borrow_mut().insert(gcc_name.to_string(), func);
+            return func;
+        }
+
         "llvm.x86.xgetbv" => "__builtin_ia32_xgetbv",
         // NOTE: this doc specifies the equivalent GCC builtins: http://huonw.github.io/llvmint/llvmint/x86/index.html
         "llvm.sqrt.v2f64" => "__builtin_ia32_sqrtpd",

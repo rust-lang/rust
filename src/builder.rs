@@ -1129,7 +1129,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         // the following cast is required to avoid this error:
         // gcc_jit_context_new_call: mismatching types for argument 2 of function "__atomic_store_4": assignment to param arg1 (type: int) from loadedValue3577 (type: unsigned int  __attribute__((aligned(4))))
         let int_type = atomic_store.get_param(1).to_rvalue().get_type();
-        let value = self.context.new_cast(self.location, value, int_type);
+        let value = self.context.new_bitcast(self.location, value, int_type);
         self.llbb().add_eval(
             self.location,
             self.context.new_call(self.location, atomic_store, &[ptr, value, ordering]),
