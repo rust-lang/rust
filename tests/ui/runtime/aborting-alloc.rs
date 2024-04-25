@@ -6,20 +6,34 @@
 //@ run-fail
 //@ compile-flags: -Cprefer-dynamic=no
 
-pub struct AbortingAllocator;
+use std::{sync::atomic::{AtomicBool, Ordering}, alloc::System};
+
+static ABORT: AtomicBool = AtomicBool::new(true);
+
+pub struct AbortingAllocator(System);
 
 unsafe impl std::alloc::GlobalAlloc for AbortingAllocator {
-    unsafe fn alloc(&self, _: std::alloc::Layout) -> *mut u8 {
-        std::process::abort()
+    unsafe fn alloc(&self, layout: std::alloc::Layout) -> *mut u8 {
+        if ABORT.swap(false, Ordering::SeqCst) {
+            println!("{}", std::backtrace::Backtrace::force_capture());
+            std::process::abort();
+        }
+
+        self.0.alloc(layout)
     }
 
-    unsafe fn dealloc(&self, _: *mut u8, _: std::alloc::Layout) {
-        std::process::abort()
+    unsafe fn dealloc(&self, ptr: *mut u8, layout: std::alloc::Layout) {
+        if ABORT.swap(false, Ordering::SeqCst) {
+            println!("{}", std::backtrace::Backtrace::force_capture());
+            std::process::abort();
+        }
+
+        self.0.dealloc(ptr, layout)
     }
 }
 
 #[global_allocator]
-static ALLOCATOR: AbortingAllocator = AbortingAllocator;
+static ALLOCATOR: AbortingAllocator = AbortingAllocator(System);
 
 fn main() {
     std::hint::black_box(String::from("An allocation"));
