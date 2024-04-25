@@ -68,10 +68,10 @@ use crate::{
 pub struct RawVisibilityId(u32);
 
 impl RawVisibilityId {
-    pub const PUB: Self = RawVisibilityId(u32::max_value());
-    pub const PRIV_IMPLICIT: Self = RawVisibilityId(u32::max_value() - 1);
-    pub const PRIV_EXPLICIT: Self = RawVisibilityId(u32::max_value() - 2);
-    pub const PUB_CRATE: Self = RawVisibilityId(u32::max_value() - 3);
+    pub const PUB: Self = RawVisibilityId(u32::MAX);
+    pub const PRIV_IMPLICIT: Self = RawVisibilityId(u32::MAX - 1);
+    pub const PRIV_EXPLICIT: Self = RawVisibilityId(u32::MAX - 2);
+    pub const PUB_CRATE: Self = RawVisibilityId(u32::MAX - 3);
 }
 
 impl fmt::Debug for RawVisibilityId {
