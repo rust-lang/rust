@@ -487,7 +487,7 @@ pub enum WellFormedLoc {
         /// The index of the parameter to use.
         /// Parameters are indexed from 0, with the return type
         /// being the last 'parameter'
-        param_idx: u16,
+        param_idx: usize,
     },
 }
 
