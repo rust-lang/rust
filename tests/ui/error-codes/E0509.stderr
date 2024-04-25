@@ -11,7 +11,10 @@ note: if `FancyNum` implemented `Clone`, you could clone the value
   --> $DIR/E0509.rs:1:1
    |
 LL | struct FancyNum {
-   | ^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     let fancy_field = drop_struct.fancy;
+   |                       ----------------- you could clone this value
 help: consider borrowing here
    |
 LL |     let fancy_field = &drop_struct.fancy;

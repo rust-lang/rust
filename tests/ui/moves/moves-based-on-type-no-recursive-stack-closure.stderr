@@ -17,6 +17,13 @@ LL |     let mut r = R {c: Box::new(f)};
 LL |     f(&mut r, false)
    |     ^ value borrowed here after move
    |
+help: if `F` implemented `Clone`, you could clone the value
+  --> $DIR/moves-based-on-type-no-recursive-stack-closure.rs:30:16
+   |
+LL | fn conspirator<F>(mut f: F) where F: FnMut(&mut R, bool) {
+   |                ^ consider constraining this type parameter with `Clone`
+LL |     let mut r = R {c: Box::new(f)};
+   |                                - you could clone this value
 help: consider mutably borrowing `f`
    |
 LL |     let mut r = R {c: Box::new(&mut f)};
