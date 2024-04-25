@@ -1,6 +1,6 @@
 //@ build-pass
 
-#![feature(coroutines)]
+#![feature(coroutines, stmt_expr_attributes)]
 
 static mut A: [i32; 5] = [1, 2, 3, 4, 5];
 
@@ -8,13 +8,15 @@ fn is_send_sync<T: Send + Sync>(_: T) {}
 
 fn main() {
     unsafe {
-        let gen_index = static || {
+        let gen_index = #[coroutine]
+        static || {
             let u = A[{
                 yield;
                 1
             }];
         };
-        let gen_match = static || match A {
+        let gen_match = #[coroutine]
+        static || match A {
             i if {
                 yield;
                 true

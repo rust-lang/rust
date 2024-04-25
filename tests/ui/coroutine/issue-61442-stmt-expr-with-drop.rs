@@ -4,7 +4,7 @@
 //@ check-pass
 //@ edition:2018
 
-#![feature(coroutines, coroutine_trait)]
+#![feature(coroutines, coroutine_trait, stmt_expr_attributes)]
 
 use std::ops::Coroutine;
 
@@ -14,12 +14,14 @@ async fn drop_and_await() {
 }
 
 fn drop_and_yield() {
-    let x = || {
+    let x = #[coroutine]
+    || {
         String::new();
         yield;
     };
     Box::pin(x).as_mut().resume(());
-    let y = static || {
+    let y = #[coroutine]
+    static || {
         String::new();
         yield;
     };

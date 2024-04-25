@@ -2,14 +2,14 @@
 //@ needs-unwind
 
 
-#![feature(coroutines, coroutine_trait)]
+#![feature(coroutines, coroutine_trait, stmt_expr_attributes)]
 
 use std::ops::Coroutine;
 use std::pin::Pin;
 use std::panic;
 
 fn main() {
-    let mut foo = || {
+    let mut foo = #[coroutine] || {
         if true {
             panic!();
         }

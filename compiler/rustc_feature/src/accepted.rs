@@ -211,6 +211,8 @@ declare_features! (
     (accepted, inclusive_range_syntax, "1.26.0", Some(28237)),
     /// Allows inferring outlives requirements (RFC 2093).
     (accepted, infer_outlives_requirements, "1.30.0", Some(44493)),
+    /// Allow anonymous constants from an inline `const` block
+    (accepted, inline_const, "CURRENT_RUSTC_VERSION", Some(76001)),
     /// Allows irrefutable patterns in `if let` and `while let` statements (RFC 2086).
     (accepted, irrefutable_let_patterns, "1.33.0", Some(44495)),
     /// Allows `#[instruction_set(_)]` attribute.

@@ -8,7 +8,10 @@ note: if `Foo` implemented `Clone`, you could clone the value
   --> $DIR/issue-17718-static-move.rs:1:1
    |
 LL | struct Foo;
-   | ^^^^^^^^^^
+   | ^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     let _a = FOO;
+   |              --- you could clone this value
 help: consider borrowing here
    |
 LL |     let _a = &FOO;

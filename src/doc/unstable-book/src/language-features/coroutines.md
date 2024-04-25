@@ -26,13 +26,13 @@ tweaks to the overall design.
 A syntactical example of a coroutine is:
 
 ```rust
-#![feature(coroutines, coroutine_trait)]
+#![feature(coroutines, coroutine_trait, stmt_expr_attributes)]
 
 use std::ops::{Coroutine, CoroutineState};
 use std::pin::Pin;
 
 fn main() {
-    let mut coroutine = || {
+    let mut coroutine = #[coroutine] || {
         yield 1;
         return "foo"
     };
@@ -48,7 +48,8 @@ fn main() {
 }
 ```
 
-Coroutines are closure-like literals which can contain a `yield` statement. The
+Coroutines are closure-like literals which are annotated with `#[coroutine]`
+and can contain a `yield` statement. The
 `yield` statement takes an optional expression of a value to yield out of the
 coroutine. All coroutine literals implement the `Coroutine` trait in the
 `std::ops` module. The `Coroutine` trait has one main method, `resume`, which
@@ -58,13 +59,13 @@ An example of the control flow of coroutines is that the following example
 prints all numbers in order:
 
 ```rust
-#![feature(coroutines, coroutine_trait)]
+#![feature(coroutines, coroutine_trait, stmt_expr_attributes)]
 
 use std::ops::Coroutine;
 use std::pin::Pin;
 
 fn main() {
-    let mut coroutine = || {
+    let mut coroutine = #[coroutine] || {
         println!("2");
         yield;
         println!("4");
@@ -78,9 +79,9 @@ fn main() {
 }
 ```
 
-At this time the main intended use case of coroutines is an implementation
-primitive for async/await syntax, but coroutines will likely be extended to
-ergonomic implementations of iterators and other primitives in the future.
+At this time the main use case of coroutines is an implementation
+primitive for `async`/`await` and `gen` syntax, but coroutines
+will likely be extended to other primitives in the future.
 Feedback on the design and usage is always appreciated!
 
 ### The `Coroutine` trait
@@ -163,14 +164,14 @@ which point all state is saved off in the coroutine and a value is returned.
 Let's take a look at an example to see what's going on here:
 
 ```rust
-#![feature(coroutines, coroutine_trait)]
+#![feature(coroutines, coroutine_trait, stmt_expr_attributes)]
 
 use std::ops::Coroutine;
 use std::pin::Pin;
 
 fn main() {
     let ret = "foo";
-    let mut coroutine = move || {
+    let mut coroutine = #[coroutine] move || {
         yield 1;
         return ret
     };
@@ -183,7 +184,7 @@ fn main() {
 This coroutine literal will compile down to something similar to:
 
 ```rust
-#![feature(arbitrary_self_types, coroutines, coroutine_trait)]
+#![feature(arbitrary_self_types, coroutine_trait)]
 
 use std::ops::{Coroutine, CoroutineState};
 use std::pin::Pin;

@@ -203,7 +203,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 body,
                 ..
             }) => {
-                self.with_new_scopes(ident.span, |this| {
+                self.with_new_scopes(*fn_sig_span, |this| {
                     // Note: we don't need to change the return type from `T` to
                     // `impl Future<Output = T>` here because lower_body
                     // only cares about the input argument patterns in the function
@@ -1344,7 +1344,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         (generics, hir::FnSig { header, decl, span: self.lower_span(sig.span) })
     }
 
-    fn lower_fn_header(&mut self, h: FnHeader) -> hir::FnHeader {
+    pub(super) fn lower_fn_header(&mut self, h: FnHeader) -> hir::FnHeader {
         let asyncness = if let Some(CoroutineKind::Async { span, .. }) = h.coroutine_kind {
             hir::IsAsync::Async(span)
         } else {

@@ -1,11 +1,11 @@
-#![feature(coroutines, coroutine_trait)]
+#![feature(coroutines, coroutine_trait, stmt_expr_attributes)]
 #![allow(unused_assignments)]
 
 use std::ops::{Coroutine, CoroutineState};
 use std::pin::Pin;
 
 fn main() {
-    let mut coroutine = || {
+    let mut coroutine = #[coroutine] || {
         yield 1;
         return "foo";
     };
@@ -19,7 +19,7 @@ fn main() {
         _ => panic!("unexpected value from resume"),
     }
 
-    let mut coroutine = || {
+    let mut coroutine = #[coroutine] || {
         yield 1;
         yield 2;
         yield 3;

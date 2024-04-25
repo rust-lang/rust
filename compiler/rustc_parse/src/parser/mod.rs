@@ -1252,8 +1252,6 @@ impl<'a> Parser<'a> {
     fn parse_const_block(&mut self, span: Span, pat: bool) -> PResult<'a, P<Expr>> {
         if pat {
             self.psess.gated_spans.gate(sym::inline_const_pat, span);
-        } else {
-            self.psess.gated_spans.gate(sym::inline_const, span);
         }
         self.eat_keyword(kw::Const);
         let (attrs, blk) = self.parse_inner_attrs_and_block()?;

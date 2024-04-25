@@ -13,8 +13,11 @@ LL |             self.b;
 note: if `StructB` implemented `Clone`, you could clone the value
   --> $DIR/issue-103624.rs:23:1
    |
+LL |             self.b;
+   |             ------ you could clone this value
+...
 LL | struct StructB {}
-   | ^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^ consider implementing `Clone` for this type
 
 error[E0521]: borrowed data escapes outside of method
   --> $DIR/issue-103624.rs:14:9

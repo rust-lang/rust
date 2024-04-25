@@ -1,8 +1,8 @@
-error[E0271]: type mismatch resolving `<{coroutine@$DIR/coroutine-yielding-or-returning-itself.rs:15:34: 15:36} as Coroutine>::Return == {coroutine@$DIR/coroutine-yielding-or-returning-itself.rs:15:34: 15:36}`
-  --> $DIR/coroutine-yielding-or-returning-itself.rs:15:34
+error[E0271]: type mismatch resolving `<{coroutine@$DIR/coroutine-yielding-or-returning-itself.rs:15:47: 15:49} as Coroutine>::Return == {coroutine@$DIR/coroutine-yielding-or-returning-itself.rs:15:47: 15:49}`
+  --> $DIR/coroutine-yielding-or-returning-itself.rs:15:47
    |
-LL |       want_cyclic_coroutine_return(|| {
-   |  _____----------------------------_^
+LL |       want_cyclic_coroutine_return(#[coroutine] || {
+   |  _____----------------------------______________^
    | |     |
    | |     required by a bound introduced by this call
 LL | |
@@ -23,11 +23,11 @@ LL | pub fn want_cyclic_coroutine_return<T>(_: T)
 LL |     where T: Coroutine<Yield = (), Return = T>
    |                                    ^^^^^^^^^^ required by this bound in `want_cyclic_coroutine_return`
 
-error[E0271]: type mismatch resolving `<{coroutine@$DIR/coroutine-yielding-or-returning-itself.rs:28:33: 28:35} as Coroutine>::Yield == {coroutine@$DIR/coroutine-yielding-or-returning-itself.rs:28:33: 28:35}`
-  --> $DIR/coroutine-yielding-or-returning-itself.rs:28:33
+error[E0271]: type mismatch resolving `<{coroutine@$DIR/coroutine-yielding-or-returning-itself.rs:28:46: 28:48} as Coroutine>::Yield == {coroutine@$DIR/coroutine-yielding-or-returning-itself.rs:28:46: 28:48}`
+  --> $DIR/coroutine-yielding-or-returning-itself.rs:28:46
    |
-LL |       want_cyclic_coroutine_yield(|| {
-   |  _____---------------------------_^
+LL |       want_cyclic_coroutine_yield(#[coroutine] || {
+   |  _____---------------------------______________^
    | |     |
    | |     required by a bound introduced by this call
 LL | |

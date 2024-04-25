@@ -1,5 +1,5 @@
 error[E0133]: call to unsafe function `require_unsafe` is unsafe and requires unsafe function or block
-  --> $DIR/expr-unsafe-err.rs:8:9
+  --> $DIR/expr-unsafe-err.rs:7:9
    |
 LL |         require_unsafe();
    |         ^^^^^^^^^^^^^^^^ call to unsafe function

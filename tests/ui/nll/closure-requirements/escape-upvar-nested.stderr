@@ -37,6 +37,9 @@ LL | fn test() {
 error[E0597]: `y` does not live long enough
   --> $DIR/escape-upvar-nested.rs:21:40
    |
+LL |         let y = 22;
+   |             - binding `y` declared here
+LL |
 LL |         let mut closure = || {
    |                           -- value captured here
 LL |             let mut closure1 = || p = &y;

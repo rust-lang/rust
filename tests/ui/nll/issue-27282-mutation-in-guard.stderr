@@ -7,6 +7,10 @@ LL |                 (|| { let bar = foo; bar.take() })();
    |                  `foo` is moved here
    |
    = note: variables bound in patterns cannot be moved from until after the end of the pattern guard
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |                 (|| { let bar = foo.clone(); bar.take() })();
+   |                                    ++++++++
 
 error[E0507]: cannot move out of `foo` in pattern guard
   --> $DIR/issue-27282-mutation-in-guard.rs:20:18
@@ -17,6 +21,10 @@ LL |                 (|| { let bar = foo; bar.take() })();
    |                  `foo` is moved here
    |
    = note: variables bound in patterns cannot be moved from until after the end of the pattern guard
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |                 (|| { let bar = foo.clone(); bar.take() })();
+   |                                    ++++++++
 
 error: aborting due to 2 previous errors
 
