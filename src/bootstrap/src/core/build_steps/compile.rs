@@ -1081,6 +1081,7 @@ pub fn rustc_cargo(
 
     if compiler.stage != 0 {
         cargo.rustflag("-Cpanic=abort");
+        cargo.rustflag("-Cforce-unwind-tables=yes");
     }
 
     rustc_cargo_env(builder, cargo, target, compiler.stage);
