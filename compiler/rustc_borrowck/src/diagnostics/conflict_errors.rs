@@ -3743,7 +3743,6 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             | None => (self.describe_any_place(place.as_ref()), assigned_span),
             Some(decl) => (self.describe_any_place(err_place.as_ref()), decl.source_info.span),
         };
-
         let mut err = self.cannot_reassign_immutable(span, &place_description, from_arg);
         let msg = if from_arg {
             "cannot assign to immutable argument"
@@ -3763,6 +3762,22 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 format!("mut {name}"),
                 Applicability::MachineApplicable,
             );
+            if !from_arg
+                && matches!(
+                    decl.local_info(),
+                    LocalInfo::User(BindingForm::Var(VarBindingForm {
+                        opt_match_place: Some((Some(_), _)),
+                        ..
+                    }))
+                )
+            {
+                err.span_suggestion(
+                    decl.source_info.span,
+                    "to modify the original value, take a borrow instead",
+                    format!("ref mut {name}"),
+                    Applicability::MaybeIncorrect,
+                );
+            }
         }
         err.span_label(span, msg);
         self.buffer_error(err);
