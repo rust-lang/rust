@@ -1424,11 +1424,11 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                             ocx.register_obligation(obligation);
                         } else {
                             match self.infcx.evaluate_obligation_no_overflow(&obligation) {
-                                EvaluationResult::EvaluatedToOk => {
+                                EvaluationResult::EvaluatedToOk
+                                | EvaluationResult::EvaluatedToOkModuloRegions => {
                                     // No side-effects, no need to register obligations.
                                 }
-                                EvaluationResult::EvaluatedToOkModuloRegions
-                                | EvaluationResult::EvaluatedToOkModuloOpaqueTypes
+                                EvaluationResult::EvaluatedToOkModuloOpaqueTypes
                                 | EvaluationResult::EvaluatedToAmbig
                                 | EvaluationResult::EvaluatedToAmbigStackDependent => {
                                     ocx.register_obligation(obligation);
@@ -1490,11 +1490,11 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                             ocx.register_obligation(obligation);
                         } else {
                             match self.infcx.evaluate_obligation_no_overflow(&obligation) {
-                                EvaluationResult::EvaluatedToOk => {
+                                EvaluationResult::EvaluatedToOk
+                                | EvaluationResult::EvaluatedToOkModuloRegions => {
                                     // No side-effects, no need to register obligations.
                                 }
-                                EvaluationResult::EvaluatedToOkModuloRegions
-                                | EvaluationResult::EvaluatedToOkModuloOpaqueTypes
+                                EvaluationResult::EvaluatedToOkModuloOpaqueTypes
                                 | EvaluationResult::EvaluatedToAmbig
                                 | EvaluationResult::EvaluatedToAmbigStackDependent => {
                                     ocx.register_obligation(obligation);
