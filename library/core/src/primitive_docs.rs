@@ -270,8 +270,8 @@ mod prim_bool {}
 ///
 /// # Never type fallback
 ///
-/// When the compiler sees a value of type `!` it implicitly inserts a coercion (if possible),
-/// to allow type check to infer any type:
+/// When the compiler sees a value of type `!` it implicitly inserts a coercion (if possible)
+/// to allow type checker to infer any type:
 ///
 /// ```rust,ignore (illustrative-and-has-placeholders)
 /// // this
@@ -297,8 +297,13 @@ mod prim_bool {}
 /// { absurd(panic!()) }; // error: can't infer the type of `absurd`
 /// ```
 ///
-/// To prevent such errors, compiler remembers where it inserted `absurd` calls, and if it can't
-/// infer their type, it sets the type to the fallback type. `{ absurd::<Fallback>(panic!()) };`.
+/// To prevent such errors, the compiler remembers where it inserted `absurd` calls, and
+/// if it can't infer their type, it sets the type to the fallback type:
+/// ```rust, ignore
+/// type Fallback = /* An arbitrarily selected type! */;
+/// { absurd::<Fallback>(panic!()) }
+/// ```
+///
 /// This is what is known as "never type fallback".
 ///
 /// Historically fallback was [`()`], causing confusing behavior where `!` spontaneously coerced
