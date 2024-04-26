@@ -4,14 +4,5 @@ error: expected `{`, found keyword `unsafe`
 LL | extern "C" unsafe {
    |            ^^^^^^ expected `{`
 
-error: functions in `extern` blocks cannot have qualifiers
-  --> $DIR/unsafe-foreign-mod-2.rs:3:5
-   |
-LL | extern "C" unsafe {
-   | ----------------- in this `extern` block
-LL |
-LL |     unsafe fn foo();
-   |     ^^^^^^ help: remove this qualifier
-
-error: aborting due to 2 previous errors
+error: aborting due to 1 previous error
 

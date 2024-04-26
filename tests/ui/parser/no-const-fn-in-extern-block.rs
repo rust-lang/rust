@@ -3,7 +3,6 @@ extern "C" {
     //~^ ERROR functions in `extern` blocks cannot have qualifiers
     const unsafe fn bar();
     //~^ ERROR functions in `extern` blocks cannot have qualifiers
-    //~| ERROR functions in `extern` blocks cannot have qualifiers
 }
 
 fn main() {}

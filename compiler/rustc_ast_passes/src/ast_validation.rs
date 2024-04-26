@@ -519,7 +519,7 @@ impl<'a> AstValidator<'a> {
     fn check_foreign_fn_headerless(
         &self,
         // Deconstruct to ensure exhaustiveness
-        FnHeader { safety, coroutine_kind, constness, ext }: FnHeader,
+        FnHeader { safety: _, coroutine_kind, constness, ext }: FnHeader,
     ) {
         let report_err = |span| {
             self.dcx().emit_err(errors::FnQualifierInExtern {
@@ -527,10 +527,6 @@ impl<'a> AstValidator<'a> {
                 block: self.current_extern_span(),
             });
         };
-        match safety {
-            Safety::Unsafe(span) => report_err(span),
-            Safety::Default => (),
-        }
         match coroutine_kind {
             Some(knd) => report_err(knd.span()),
             None => (),
