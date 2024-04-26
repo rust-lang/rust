@@ -385,7 +385,12 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
 
         // A built-in `Fn` impl only holds if the output is sized.
         // (FIXME: technically we only need to check this if the type is a fn ptr...)
-        Self::consider_implied_clause(ecx, goal, pred, [goal.with(tcx, output_is_sized_pred)])
+        Self::probe_and_consider_implied_clause(
+            ecx,
+            goal,
+            pred,
+            [goal.with(tcx, output_is_sized_pred)],
+        )
     }
 
     fn consider_builtin_async_fn_trait_candidates(
@@ -461,7 +466,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
 
         // A built-in `AsyncFn` impl only holds if the output is sized.
         // (FIXME: technically we only need to check this if the type is a fn ptr...)
-        Self::consider_implied_clause(
+        Self::probe_and_consider_implied_clause(
             ecx,
             goal,
             pred,
@@ -623,7 +628,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
 
         let term = args.as_coroutine().return_ty().into();
 
-        Self::consider_implied_clause(
+        Self::probe_and_consider_implied_clause(
             ecx,
             goal,
             ty::ProjectionPredicate {
@@ -654,7 +659,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
 
         let term = args.as_coroutine().yield_ty().into();
 
-        Self::consider_implied_clause(
+        Self::probe_and_consider_implied_clause(
             ecx,
             goal,
             ty::ProjectionPredicate {
@@ -737,7 +742,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
             bug!("unexpected associated item `<{self_ty} as Coroutine>::{name}`")
         };
 
-        Self::consider_implied_clause(
+        Self::probe_and_consider_implied_clause(
             ecx,
             goal,
             ty::ProjectionPredicate {

@@ -56,7 +56,7 @@ pub(super) trait GoalKind<'tcx>:
     /// Consider a clause, which consists of a "assumption" and some "requirements",
     /// to satisfy a goal. If the requirements hold, then attempt to satisfy our
     /// goal by equating it with the assumption.
-    fn consider_implied_clause(
+    fn probe_and_consider_implied_clause(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
         assumption: ty::Clause<'tcx>,
@@ -73,7 +73,7 @@ pub(super) trait GoalKind<'tcx>:
     /// Consider a clause specifically for a `dyn Trait` self type. This requires
     /// additionally checking all of the supertraits and object bounds to hold,
     /// since they're not implied by the well-formedness of the object type.
-    fn consider_object_bound_candidate(
+    fn probe_and_consider_object_bound_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
         assumption: ty::Clause<'tcx>,
@@ -81,7 +81,7 @@ pub(super) trait GoalKind<'tcx>:
         Self::probe_and_match_goal_against_assumption(ecx, goal, assumption, |ecx| {
             let tcx = ecx.tcx();
             let ty::Dynamic(bounds, _, _) = *goal.predicate.self_ty().kind() else {
-                bug!("expected object type in `consider_object_bound_candidate`");
+                bug!("expected object type in `probe_and_consider_object_bound_candidate`");
             };
             // FIXME(-Znext-solver=coinductive): Should this be `GoalSource::ImplWhereBound`?
             ecx.add_goals(
@@ -557,7 +557,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         candidates: &mut Vec<Candidate<'tcx>>,
     ) {
         for (i, assumption) in goal.param_env.caller_bounds().iter().enumerate() {
-            match G::consider_implied_clause(self, goal, assumption, []) {
+            match G::probe_and_consider_implied_clause(self, goal, assumption, []) {
                 Ok(result) => {
                     candidates.push(Candidate { source: CandidateSource::ParamEnv(i), result })
                 }
@@ -648,7 +648,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         for assumption in
             self.tcx().item_bounds(alias_ty.def_id).instantiate(self.tcx(), alias_ty.args)
         {
-            match G::consider_implied_clause(self, goal, assumption, []) {
+            match G::probe_and_consider_implied_clause(self, goal, assumption, []) {
                 Ok(result) => {
                     candidates.push(Candidate { source: CandidateSource::AliasBound, result });
                 }
@@ -728,7 +728,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                 }
                 ty::ExistentialPredicate::Projection(_)
                 | ty::ExistentialPredicate::AutoTrait(_) => {
-                    match G::consider_object_bound_candidate(
+                    match G::probe_and_consider_object_bound_candidate(
                         self,
                         goal,
                         bound.with_self_ty(tcx, self_ty),
@@ -749,7 +749,11 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         if let Some(principal) = bounds.principal() {
             let principal_trait_ref = principal.with_self_ty(tcx, self_ty);
             self.walk_vtable(principal_trait_ref, |ecx, assumption, vtable_base, _| {
-                match G::consider_object_bound_candidate(ecx, goal, assumption.to_predicate(tcx)) {
+                match G::probe_and_consider_object_bound_candidate(
+                    ecx,
+                    goal,
+                    assumption.to_predicate(tcx),
+                ) {
                     Ok(result) => candidates.push(Candidate {
                         source: CandidateSource::BuiltinImpl(BuiltinImplSource::Object {
                             vtable_base,
