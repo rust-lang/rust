@@ -70,21 +70,19 @@ macro_rules! iterator {
         $into_ref:ident,
         {$($extra:tt)*}
     ) => {
-        // Returns the first element and moves the start of the iterator forwards by 1.
-        // Greatly improves performance compared to an inlined function. The iterator
-        // must not be empty.
-        macro_rules! next_unchecked {
-            ($self: ident) => { $self.post_inc_start(1).$into_ref() }
-        }
-
-        // Returns the last element and moves the end of the iterator backwards by 1.
-        // Greatly improves performance compared to an inlined function. The iterator
-        // must not be empty.
-        macro_rules! next_back_unchecked {
-            ($self: ident) => { $self.pre_dec_end(1).$into_ref() }
-        }
-
         impl<'a, T> $name<'a, T> {
+            /// Returns the last element and moves the end of the iterator backwards by 1.
+            ///
+            /// # Safety
+            ///
+            /// The iterator must not be empty
+            #[inline]
+            unsafe fn next_back_unchecked(&mut self) -> $elem {
+                // SAFETY: the caller promised it's not empty, so
+                // the offsetting is in-bounds and there's an element to return.
+                unsafe { self.pre_dec_end(1).$into_ref() }
+            }
+
             // Helper function for creating a slice from the iterator.
             #[inline(always)]
             fn make_slice(&self) -> &'a [T] {
@@ -156,13 +154,13 @@ macro_rules! iterator {
             fn next(&mut self) -> Option<$elem> {
                 // could be implemented with slices, but this avoids bounds checks
 
-                // SAFETY: The call to `next_unchecked!` is
+                // SAFETY: The call to `next_unchecked` is
                 // safe since we check if the iterator is empty first.
                 unsafe {
                     if is_empty!(self) {
                         None
                     } else {
-                        Some(next_unchecked!(self))
+                        Some(self.next_unchecked())
                     }
                 }
             }
@@ -191,7 +189,7 @@ macro_rules! iterator {
                 // SAFETY: We are in bounds. `post_inc_start` does the right thing even for ZSTs.
                 unsafe {
                     self.post_inc_start(n);
-                    Some(next_unchecked!(self))
+                    Some(self.next_unchecked())
                 }
             }
 
@@ -392,13 +390,13 @@ macro_rules! iterator {
             fn next_back(&mut self) -> Option<$elem> {
                 // could be implemented with slices, but this avoids bounds checks
 
-                // SAFETY: The call to `next_back_unchecked!`
+                // SAFETY: The call to `next_back_unchecked`
                 // is safe since we check if the iterator is empty first.
                 unsafe {
                     if is_empty!(self) {
                         None
                     } else {
-                        Some(next_back_unchecked!(self))
+                        Some(self.next_back_unchecked())
                     }
                 }
             }
@@ -416,7 +414,7 @@ macro_rules! iterator {
                 // SAFETY: We are in bounds. `pre_dec_end` does the right thing even for ZSTs.
                 unsafe {
                     self.pre_dec_end(n);
-                    Some(next_back_unchecked!(self))
+                    Some(self.next_back_unchecked())
                 }
             }
 
@@ -436,10 +434,11 @@ macro_rules! iterator {
         unsafe impl<T> TrustedLen for $name<'_, T> {}
 
         impl<'a, T> UncheckedIterator for $name<'a, T> {
+            #[inline]
             unsafe fn next_unchecked(&mut self) -> $elem {
                 // SAFETY: The caller promised there's at least one more item.
                 unsafe {
-                    next_unchecked!(self)
+                    self.post_inc_start(1).$into_ref()
                 }
             }
         }
