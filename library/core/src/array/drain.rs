@@ -1,7 +1,8 @@
 use crate::iter::{TrustedLen, UncheckedIterator};
+use crate::marker::PhantomData;
 use crate::mem::ManuallyDrop;
-use crate::ptr::drop_in_place;
-use crate::slice;
+use crate::ptr::NonNull;
+use crate::slice::{self, DrainRaw};
 
 /// A situationally-optimized version of `array.into_iter().for_each(func)`.
 ///
@@ -21,37 +22,29 @@ pub(crate) fn drain_array_with<T, R, const N: usize>(
     func: impl for<'a> FnOnce(Drain<'a, T>) -> R,
 ) -> R {
     let mut array = ManuallyDrop::new(array);
-    // SAFETY: Now that the local won't drop it, it's ok to construct the `Drain` which will.
-    let drain = Drain(array.iter_mut());
+    // SAFETY: Now that the local won't drop it, it's ok to construct the `DrainRaw` which will.
+    // We ensure via the lifetime that it can't be used after the function returns,
+    // and thus the local `array` will always exist while iterating it.
+    let raw = unsafe { DrainRaw::from_parts(NonNull::new_unchecked(array.as_mut_ptr()), N) };
+    let drain = Drain(raw, PhantomData);
     func(drain)
 }
 
 /// See [`drain_array_with`] -- this is `pub(crate)` only so it's allowed to be
 /// mentioned in the signature of that method.  (Otherwise it hits `E0446`.)
-// INVARIANT: It's ok to drop the remainder of the inner iterator.
-pub(crate) struct Drain<'a, T>(slice::IterMut<'a, T>);
-
-impl<T> Drop for Drain<'_, T> {
-    fn drop(&mut self) {
-        // SAFETY: By the type invariant, we're allowed to drop all these.
-        unsafe { drop_in_place(self.0.as_mut_slice()) }
-    }
-}
+pub(crate) struct Drain<'a, T>(slice::DrainRaw<T>, PhantomData<&'a mut [T]>);
 
 impl<T> Iterator for Drain<'_, T> {
     type Item = T;
 
     #[inline]
     fn next(&mut self) -> Option<T> {
-        let p: *const T = self.0.next()?;
-        // SAFETY: The iterator was already advanced, so we won't drop this later.
-        Some(unsafe { p.read() })
+        self.0.next()
     }
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let n = self.len();
-        (n, Some(n))
+        self.0.size_hint()
     }
 }
 
@@ -69,8 +62,6 @@ impl<T> UncheckedIterator for Drain<'_, T> {
     unsafe fn next_unchecked(&mut self) -> T {
         // SAFETY: `Drain` is 1:1 with the inner iterator, so if the caller promised
         // that there's an element left, the inner iterator has one too.
-        let p: *const T = unsafe { self.0.next_unchecked() };
-        // SAFETY: The iterator was already advanced, so we won't drop this later.
-        unsafe { p.read() }
+        unsafe { self.0.next_unchecked() }
     }
 }
