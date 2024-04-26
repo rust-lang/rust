@@ -37,7 +37,7 @@ jobs:
       run: sudo apt-get install ninja-build ripgrep
 
     - name: Download artifact
-      run: curl -LO https://github.com/antoyo/gcc/releases/latest/download/gcc-13.deb
+      run: curl -LO https://github.com/rust-lang/gcc/releases/latest/download/gcc-13.deb
 
     - name: Setup path to libgccjit
       run: |
