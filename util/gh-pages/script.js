@@ -406,7 +406,7 @@
                 }
 
                 // Search by id
-                if (lint.id.indexOf(searchStr.replace("-", "_")) !== -1) {
+                if (lint.id.indexOf(searchStr.replaceAll("-", "_")) !== -1) {
                     return true;
                 }
 
