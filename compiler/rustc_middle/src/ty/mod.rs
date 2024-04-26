@@ -54,7 +54,7 @@ use rustc_session::lint::LintBuffer;
 pub use rustc_session::lint::RegisteredTools;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{hygiene, ExpnId, ExpnKind, Span};
+use rustc_span::{ExpnId, ExpnKind, Span};
 use rustc_target::abi::{Align, FieldIdx, Integer, IntegerType, VariantIdx};
 pub use rustc_target::abi::{ReprFlags, ReprOptions};
 pub use rustc_type_ir::{DebugWithInfcx, InferCtxtLike, WithInfcx};
@@ -2011,22 +2011,6 @@ impl<'tcx> TyCtxt<'tcx> {
             .and_then(|actual_expansion| actual_expansion.expn_data().parent_module)
             .unwrap_or_else(|| self.parent_module(block).to_def_id());
         (ident, scope)
-    }
-
-    /// Returns corrected span if the debuginfo for `span` should be collapsed to the outermost
-    /// expansion site (with collapse_debuginfo attribute if the corresponding feature enabled).
-    /// Only applies when `Span` is the result of macro expansion.
-    ///
-    /// - If the `collapse_debuginfo` feature is enabled then debuginfo is not collapsed by default
-    ///   and only when a (some enclosing) macro definition is annotated with `#[collapse_debuginfo]`.
-    /// - If `collapse_debuginfo` is not enabled, then debuginfo is collapsed by default.
-    ///
-    /// When `-Zdebug-macros` is provided then debuginfo will never be collapsed.
-    pub fn collapsed_debuginfo(self, span: Span, upto: Span) -> Span {
-        if self.sess.opts.unstable_opts.debug_macros || !span.from_expansion() {
-            return span;
-        }
-        hygiene::walk_chain_collapsed(span, upto, self.features().collapse_debuginfo)
     }
 
     #[inline]

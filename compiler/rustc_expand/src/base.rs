@@ -789,55 +789,50 @@ impl SyntaxExtension {
         }
     }
 
-    fn collapse_debuginfo_by_name(sess: &Session, attr: &Attribute) -> CollapseMacroDebuginfo {
-        use crate::errors::CollapseMacroDebuginfoIllegal;
-        // #[collapse_debuginfo] without enum value (#[collapse_debuginfo(no/external/yes)])
-        // considered as `yes`
-        attr.meta_item_list().map_or(CollapseMacroDebuginfo::Yes, |l| {
-            let [NestedMetaItem::MetaItem(item)] = &l[..] else {
-                sess.dcx().emit_err(CollapseMacroDebuginfoIllegal { span: attr.span });
-                return CollapseMacroDebuginfo::Unspecified;
-            };
-            if !item.is_word() {
-                sess.dcx().emit_err(CollapseMacroDebuginfoIllegal { span: item.span });
-                CollapseMacroDebuginfo::Unspecified
-            } else {
-                match item.name_or_empty() {
-                    sym::no => CollapseMacroDebuginfo::No,
-                    sym::external => CollapseMacroDebuginfo::External,
-                    sym::yes => CollapseMacroDebuginfo::Yes,
-                    _ => {
-                        sess.dcx().emit_err(CollapseMacroDebuginfoIllegal { span: item.span });
-                        CollapseMacroDebuginfo::Unspecified
-                    }
-                }
-            }
-        })
+    fn collapse_debuginfo_by_name(attr: &Attribute) -> Result<CollapseMacroDebuginfo, Span> {
+        let list = attr.meta_item_list();
+        let Some([NestedMetaItem::MetaItem(item)]) = list.as_deref() else {
+            return Err(attr.span);
+        };
+        if !item.is_word() {
+            return Err(item.span);
+        }
+
+        match item.name_or_empty() {
+            sym::no => Ok(CollapseMacroDebuginfo::No),
+            sym::external => Ok(CollapseMacroDebuginfo::External),
+            sym::yes => Ok(CollapseMacroDebuginfo::Yes),
+            _ => Err(item.path.span),
+        }
     }
 
     /// if-ext - if macro from different crate (related to callsite code)
     /// | cmd \ attr    | no  | (unspecified) | external | yes |
     /// | no            | no  | no            | no       | no  |
-    /// | (unspecified) | no  | no            | if-ext   | yes |
+    /// | (unspecified) | no  | if-ext        | if-ext   | yes |
     /// | external      | no  | if-ext        | if-ext   | yes |
     /// | yes           | yes | yes           | yes      | yes |
-    fn get_collapse_debuginfo(sess: &Session, attrs: &[ast::Attribute], is_local: bool) -> bool {
-        let mut collapse_debuginfo_attr = attr::find_by_name(attrs, sym::collapse_debuginfo)
-            .map(|v| Self::collapse_debuginfo_by_name(sess, v))
-            .unwrap_or(CollapseMacroDebuginfo::Unspecified);
-        if collapse_debuginfo_attr == CollapseMacroDebuginfo::Unspecified
-            && attr::contains_name(attrs, sym::rustc_builtin_macro)
-        {
-            collapse_debuginfo_attr = CollapseMacroDebuginfo::Yes;
-        }
-
-        let flag = sess.opts.unstable_opts.collapse_macro_debuginfo;
-        let attr = collapse_debuginfo_attr;
-        let ext = !is_local;
+    fn get_collapse_debuginfo(sess: &Session, attrs: &[ast::Attribute], ext: bool) -> bool {
+        let flag = sess.opts.cg.collapse_macro_debuginfo;
+        let attr = attr::find_by_name(attrs, sym::collapse_debuginfo)
+            .and_then(|attr| {
+                Self::collapse_debuginfo_by_name(attr)
+                    .map_err(|span| {
+                        sess.dcx().emit_err(errors::CollapseMacroDebuginfoIllegal { span })
+                    })
+                    .ok()
+            })
+            .unwrap_or_else(|| {
+                if attr::contains_name(attrs, sym::rustc_builtin_macro) {
+                    CollapseMacroDebuginfo::Yes
+                } else {
+                    CollapseMacroDebuginfo::Unspecified
+                }
+            });
         #[rustfmt::skip]
         let collapse_table = [
             [false, false, false, false],
-            [false, false, ext,   true],
+            [false, ext,   ext,   true],
             [false, ext,   ext,   true],
             [true,  true,  true,  true],
         ];
@@ -864,7 +859,7 @@ impl SyntaxExtension {
         let local_inner_macros = attr::find_by_name(attrs, sym::macro_export)
             .and_then(|macro_export| macro_export.meta_item_list())
             .is_some_and(|l| attr::list_contains_name(&l, sym::local_inner_macros));
-        let collapse_debuginfo = Self::get_collapse_debuginfo(sess, attrs, is_local);
+        let collapse_debuginfo = Self::get_collapse_debuginfo(sess, attrs, !is_local);
         tracing::debug!(?name, ?local_inner_macros, ?collapse_debuginfo, ?allow_internal_unsafe);
 
         let (builtin_name, helper_attrs) = attr::find_by_name(attrs, sym::rustc_builtin_macro)

@@ -600,6 +600,7 @@ fn test_codegen_options_tracking_hash() {
     // Make sure that changing a [TRACKED] option changes the hash.
     // tidy-alphabetical-start
     tracked!(code_model, Some(CodeModel::Large));
+    tracked!(collapse_macro_debuginfo, CollapseMacroDebuginfo::Yes);
     tracked!(control_flow_guard, CFGuard::Checks);
     tracked!(debug_assertions, Some(true));
     tracked!(debuginfo, DebugInfo::Limited);
@@ -760,12 +761,10 @@ fn test_unstable_options_tracking_hash() {
         })
     );
     tracked!(codegen_backend, Some("abc".to_string()));
-    tracked!(collapse_macro_debuginfo, CollapseMacroDebuginfo::Yes);
     tracked!(coverage_options, CoverageOptions { branch: true, mcdc: true });
     tracked!(crate_attr, vec!["abc".to_string()]);
     tracked!(cross_crate_inline_threshold, InliningThreshold::Always);
     tracked!(debug_info_for_profiling, true);
-    tracked!(debug_macros, true);
     tracked!(default_hidden_visibility, Some(true));
     tracked!(dep_info_omit_d_target, true);
     tracked!(direct_access_external_data, Some(true));

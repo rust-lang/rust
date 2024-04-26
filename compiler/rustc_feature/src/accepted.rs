@@ -98,6 +98,8 @@ declare_features! (
     (accepted, closure_to_fn_coercion, "1.19.0", Some(39817)),
     /// Allows using the CMPXCHG16B target feature.
     (accepted, cmpxchg16b_target_feature, "1.69.0", Some(44839)),
+    /// Allows use of the `#[collapse_debuginfo]` attribute.
+    (accepted, collapse_debuginfo, "CURRENT_RUSTC_VERSION", Some(100758)),
     /// Allows usage of the `compile_error!` macro.
     (accepted, compile_error, "1.20.0", Some(40872)),
     /// Allows `impl Trait` in function return types.
