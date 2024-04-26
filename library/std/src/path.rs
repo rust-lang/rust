@@ -1158,12 +1158,6 @@ impl FusedIterator for Ancestors<'_> {}
 /// Which method works best depends on what kind of situation you're in.
 #[cfg_attr(not(test), rustc_diagnostic_item = "PathBuf")]
 #[stable(feature = "rust1", since = "1.0.0")]
-// `PathBuf::as_mut_vec` current implementation relies
-// on `PathBuf` being layout-compatible with `Vec<u8>`.
-// However, `PathBuf` layout is considered an implementation detail and must not be relied upon. We
-// want `repr(transparent)` but we don't want it to show up in rustdoc, so we hide it under
-// `cfg(doc)`. This is an ad-hoc implementation of attribute privacy.
-#[cfg_attr(not(doc), repr(transparent))]
 pub struct PathBuf {
     inner: OsString,
 }
@@ -1171,7 +1165,7 @@ pub struct PathBuf {
 impl PathBuf {
     #[inline]
     fn as_mut_vec(&mut self) -> &mut Vec<u8> {
-        unsafe { &mut *(self as *mut PathBuf as *mut Vec<u8>) }
+        self.inner.as_mut_vec_for_path_buf()
     }
 
     /// Allocates an empty `PathBuf`.
