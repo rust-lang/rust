@@ -74,15 +74,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             // Environment related shims
             "_NSGetEnviron" => {
                 let [] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                this.write_pointer(
-                    this.machine
-                        .env_vars
-                        .environ
-                        .as_ref()
-                        .expect("machine must be initialized")
-                        .ptr(),
-                    dest,
-                )?;
+                let environ = this.machine.env_vars.unix().environ();
+                this.write_pointer(environ, dest)?;
             }
 
             // Time related shims

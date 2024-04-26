@@ -1,5 +1,6 @@
 pub mod foreign_items;
 
+mod env;
 mod fd;
 mod fs;
 mod mem;
@@ -11,9 +12,11 @@ mod freebsd;
 mod linux;
 mod macos;
 
+pub use env::UnixEnvVars;
 pub use fd::{FdTable, FileDescriptor};
 pub use fs::DirTable;
-// All the unix-specific extension traits
+// All the Unix-specific extension traits
+pub use env::EvalContextExt as _;
 pub use fd::EvalContextExt as _;
 pub use fs::EvalContextExt as _;
 pub use mem::EvalContextExt as _;

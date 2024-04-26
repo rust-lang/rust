@@ -10,11 +10,10 @@ use rustc_target::spec::abi::Abi;
 
 use crate::shims::alloc::EvalContextExt as _;
 use crate::shims::os_str::bytes_to_os_str;
+use crate::shims::windows::*;
 use crate::*;
 use shims::foreign_items::EmulateForeignItemResult;
-use shims::windows::handle::{EvalContextExt as _, Handle, PseudoHandle};
-use shims::windows::sync::EvalContextExt as _;
-use shims::windows::thread::EvalContextExt as _;
+use shims::windows::handle::{Handle, PseudoHandle};
 
 fn is_dyn_sym(name: &str) -> bool {
     // std does dynamic detection for these symbols
