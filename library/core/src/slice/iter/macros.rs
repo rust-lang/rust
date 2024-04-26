@@ -65,9 +65,6 @@ macro_rules! iterator {
     (
         struct $name:ident -> $ptr:ty,
         $elem:ty,
-        $raw_mut:tt,
-        {$( $mut_:tt )?},
-        $into_ref:ident,
         {$($extra:tt)*}
     ) => {
         impl<'a, T> $name<'a, T> {
@@ -80,16 +77,22 @@ macro_rules! iterator {
             unsafe fn next_back_unchecked(&mut self) -> $elem {
                 // SAFETY: the caller promised it's not empty, so
                 // the offsetting is in-bounds and there's an element to return.
-                unsafe { self.pre_dec_end(1).$into_ref() }
+                unsafe { Self::non_null_to_item(self.pre_dec_end(1)) }
             }
 
             // Helper function for creating a slice from the iterator.
-            #[inline(always)]
-            fn make_slice(&self) -> &'a [T] {
-                // SAFETY: the iterator was created from a slice with pointer
-                // `self.ptr` and length `len!(self)`. This guarantees that all
-                // the prerequisites for `from_raw_parts` are fulfilled.
-                unsafe { from_raw_parts(self.ptr.as_ptr(), len!(self)) }
+            #[inline]
+            pub(crate) fn make_nonnull_slice(&self) -> NonNull<[T]> {
+                NonNull::slice_from_raw_parts(self.ptr, len!(self))
+            }
+
+            #[inline]
+            pub(crate) fn make_shortlived_slice<'b>(&'b self) -> &'b [T] {
+                // SAFETY: Everything expanded with this macro is readable while
+                // the iterator exists and is unchanged, so by tying this to the
+                // shorter-than-`'a` self borrow we can make this safe to call.
+                // (Elision would be fine here, but using `'b` for emphasis.)
+                unsafe { self.make_nonnull_slice().as_ref() }
             }
 
             // Helper function for moving the start of the iterator forwards by `offset` elements,
@@ -229,7 +232,7 @@ macro_rules! iterator {
                 loop {
                     // SAFETY: the loop iterates `i in 0..len`, which always is in bounds of
                     // the slice allocation
-                    acc = f(acc, unsafe { & $( $mut_ )? *self.ptr.add(i).as_ptr() });
+                    acc = f(acc, unsafe { Self::non_null_to_item(self.ptr.add(i)) });
                     // SAFETY: `i` can't overflow since it'll only reach usize::MAX if the
                     // slice had that length, in which case we'll break out of the loop
                     // after the increment
@@ -380,7 +383,7 @@ macro_rules! iterator {
                 // that will access this subslice are called, so it is valid
                 // for the returned reference to be mutable in the case of
                 // `IterMut`
-                unsafe { & $( $mut_ )? * self.ptr.as_ptr().add(idx) }
+                unsafe { Self::non_null_to_item(self.ptr.add(idx)) }
             }
 
             $($extra)*
@@ -440,7 +443,7 @@ macro_rules! iterator {
             unsafe fn next_unchecked(&mut self) -> $elem {
                 // SAFETY: The caller promised there's at least one more item.
                 unsafe {
-                    self.post_inc_start(1).$into_ref()
+                    Self::non_null_to_item(self.post_inc_start(1))
                 }
             }
         }
@@ -455,7 +458,7 @@ macro_rules! iterator {
             /// assert_eq!(iter.len(), 0);
             /// ```
             fn default() -> Self {
-                (& $( $mut_ )? []).into_iter()
+                Self::empty()
             }
         }
     }
