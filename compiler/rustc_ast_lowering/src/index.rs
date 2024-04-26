@@ -61,7 +61,7 @@ pub(super) fn index_hir<'hir>(
         if let Node::Err(span) = node.node {
             let hir_id = HirId { owner: item.def_id(), local_id };
             let msg = format!("ID {hir_id} not encountered when visiting item HIR");
-            tcx.dcx().span_delayed_bug(*span, msg);
+            tcx.dcx().span_delayed_bug(span, msg);
         }
     }
 

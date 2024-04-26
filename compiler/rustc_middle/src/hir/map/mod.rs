@@ -912,7 +912,7 @@ impl<'hir> Map<'hir> {
             Node::ArrayLenInfer(inf) => inf.span,
             Node::PreciseCapturingNonLifetimeArg(param) => param.ident.span,
             Node::Synthetic => unreachable!(),
-            Node::Err(span) => *span,
+            Node::Err(span) => span,
         }
     }
 

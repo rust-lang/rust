@@ -3442,15 +3442,13 @@ impl<'hir> OwnerNode<'hir> {
         }
     }
 
-    // Span by reference to pass to `Node::Err`.
-    #[allow(rustc::pass_by_value)]
-    pub fn span(&self) -> &'hir Span {
+    pub fn span(&self) -> Span {
         match self {
             OwnerNode::Item(Item { span, .. })
             | OwnerNode::ForeignItem(ForeignItem { span, .. })
             | OwnerNode::ImplItem(ImplItem { span, .. })
-            | OwnerNode::TraitItem(TraitItem { span, .. }) => span,
-            OwnerNode::Crate(Mod { spans: ModSpans { inner_span, .. }, .. }) => inner_span,
+            | OwnerNode::TraitItem(TraitItem { span, .. }) => *span,
+            OwnerNode::Crate(Mod { spans: ModSpans { inner_span, .. }, .. }) => *inner_span,
             OwnerNode::Synthetic => unreachable!(),
         }
     }
@@ -3595,9 +3593,7 @@ pub enum Node<'hir> {
     PreciseCapturingNonLifetimeArg(&'hir PreciseCapturingNonLifetimeArg),
     // Created by query feeding
     Synthetic,
-    // Span by reference to minimize `Node`'s size
-    #[allow(rustc::pass_by_value)]
-    Err(&'hir Span),
+    Err(Span),
 }
 
 impl<'hir> Node<'hir> {
