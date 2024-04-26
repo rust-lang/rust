@@ -115,18 +115,25 @@ impl<'a, 'tcx> SigDropChecker<'a, 'tcx> {
         }
     }
 
-    fn get_type(&self, ex: &'tcx Expr<'_>) -> Ty<'tcx> {
-        self.cx.typeck_results().expr_ty(ex)
+    fn is_sig_drop_expr(&mut self, ex: &'tcx Expr<'_>) -> bool {
+        self.has_sig_drop_attr(self.cx.typeck_results().expr_ty(ex))
     }
 
-    fn has_sig_drop_attr(&mut self, cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
+    fn has_sig_drop_attr(&mut self, ty: Ty<'tcx>) -> bool {
         self.seen_types.clear();
-        self.has_sig_drop_attr_impl(cx, ty)
+        self.has_sig_drop_attr_impl(ty)
     }
 
-    fn has_sig_drop_attr_impl(&mut self, cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
+    fn has_sig_drop_attr_impl(&mut self, ty: Ty<'tcx>) -> bool {
         if let Some(adt) = ty.ty_adt_def() {
-            if get_attr(cx.sess(), cx.tcx.get_attrs_unchecked(adt.did()), "has_significant_drop").count() > 0 {
+            if get_attr(
+                self.cx.sess(),
+                self.cx.tcx.get_attrs_unchecked(adt.did()),
+                "has_significant_drop",
+            )
+            .count()
+                > 0
+            {
                 return true;
             }
         }
@@ -139,8 +146,8 @@ impl<'a, 'tcx> SigDropChecker<'a, 'tcx> {
             rustc_middle::ty::Adt(adt, args) => {
                 // if some field has significant drop,
                 adt.all_fields()
-                    .map(|field| field.ty(cx.tcx, args))
-                    .any(|ty| self.has_sig_drop_attr(cx, ty))
+                    .map(|field| field.ty(self.cx.tcx, args))
+                    .any(|ty| self.has_sig_drop_attr_impl(ty))
                     // or if there is no generic lifetime and..
                     // (to avoid false positive on `Ref<'a, MutexGuard<Foo>>`)
                     || (args
@@ -154,10 +161,10 @@ impl<'a, 'tcx> SigDropChecker<'a, 'tcx> {
                                 GenericArgKind::Type(ty) => Some(ty),
                                 _ => None,
                             })
-                            .any(|ty| self.has_sig_drop_attr(cx, ty)))
+                            .any(|ty| self.has_sig_drop_attr_impl(ty)))
             },
-            rustc_middle::ty::Tuple(tys) => tys.iter().any(|ty| self.has_sig_drop_attr(cx, ty)),
-            rustc_middle::ty::Array(ty, _) | rustc_middle::ty::Slice(ty) => self.has_sig_drop_attr(cx, *ty),
+            rustc_middle::ty::Tuple(tys) => tys.iter().any(|ty| self.has_sig_drop_attr_impl(ty)),
+            rustc_middle::ty::Array(ty, _) | rustc_middle::ty::Slice(ty) => self.has_sig_drop_attr_impl(*ty),
             _ => false,
         };
 
@@ -240,7 +247,7 @@ impl<'a, 'tcx> SigDropHelper<'a, 'tcx> {
         if self.current_sig_drop.is_some() {
             return;
         }
-        let ty = self.sig_drop_checker.get_type(expr);
+        let ty = self.cx.typeck_results().expr_ty(expr);
         if ty.is_ref() {
             // We checked that the type was ref, so builtin_deref will return Some TypeAndMut,
             // but let's avoid any chance of an ICE
@@ -287,11 +294,7 @@ impl<'a, 'tcx> SigDropHelper<'a, 'tcx> {
 
 impl<'a, 'tcx> Visitor<'tcx> for SigDropHelper<'a, 'tcx> {
     fn visit_expr(&mut self, ex: &'tcx Expr<'_>) {
-        if !self.is_chain_end
-            && self
-                .sig_drop_checker
-                .has_sig_drop_attr(self.cx, self.sig_drop_checker.get_type(ex))
-        {
+        if !self.is_chain_end && self.sig_drop_checker.is_sig_drop_expr(ex) {
             self.has_significant_drop = true;
             return;
         }
@@ -395,10 +398,7 @@ fn has_significant_drop_in_arms<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'
 
 impl<'a, 'tcx> Visitor<'tcx> for ArmSigDropHelper<'a, 'tcx> {
     fn visit_expr(&mut self, ex: &'tcx Expr<'tcx>) {
-        if self
-            .sig_drop_checker
-            .has_sig_drop_attr(self.sig_drop_checker.cx, self.sig_drop_checker.get_type(ex))
-        {
+        if self.sig_drop_checker.is_sig_drop_expr(ex) {
             self.found_sig_drop_spans.insert(ex.span);
             return;
         }
