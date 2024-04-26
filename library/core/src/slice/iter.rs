@@ -138,13 +138,23 @@ impl<'a, T> Iter<'a, T> {
         // SAFETY: the type invariant guarantees the pointer represents a valid reference
         unsafe { p.as_ref() }
     }
+}
 
-    fn empty() -> Self {
+#[stable(feature = "default_iters", since = "1.70.0")]
+impl<T> Default for Iter<'_, T> {
+    /// Creates an empty slice iterator.
+    ///
+    /// ```
+    /// # use core::slice::Iter;
+    /// let iter: Iter<'_, u8> = Default::default();
+    /// assert_eq!(iter.len(), 0);
+    /// ```
+    fn default() -> Self {
         (&[]).into_iter()
     }
 }
 
-iterator! {struct Iter -> *const T, &'a T, {
+iterator! {struct Iter<'a, T> => *const T, &'a T, {
     fn is_sorted_by<F>(self, mut compare: F) -> bool
     where
         Self: Sized,
@@ -368,8 +378,18 @@ impl<'a, T> IterMut<'a, T> {
         // SAFETY: the type invariant guarantees the pointer represents a valid item
         unsafe { p.as_mut() }
     }
+}
 
-    fn empty() -> Self {
+#[stable(feature = "default_iters", since = "1.70.0")]
+impl<T> Default for IterMut<'_, T> {
+    /// Creates an empty slice iterator.
+    ///
+    /// ```
+    /// # use core::slice::IterMut;
+    /// let iter: IterMut<'_, u8> = Default::default();
+    /// assert_eq!(iter.len(), 0);
+    /// ```
+    fn default() -> Self {
         (&mut []).into_iter()
     }
 }
@@ -389,7 +409,85 @@ impl<T> AsRef<[T]> for IterMut<'_, T> {
 //     }
 // }
 
-iterator! {struct IterMut -> *mut T, &'a mut T, {}}
+iterator! {struct IterMut<'a, T> => *mut T, &'a mut T, {}}
+
+/// Iterator over all the `NonNull<T>` pointers to the elements of a slice.
+#[unstable(feature = "slice_non_null_iter", issue = "none")]
+#[must_use = "iterators are lazy and do nothing unless consumed"]
+pub struct NonNullIter<T> {
+    /// The pointer to the next element to return, or the past-the-end location
+    /// if the iterator is empty.
+    ///
+    /// This address will be used for all ZST elements, never changed.
+    ptr: NonNull<T>,
+    /// For non-ZSTs, the non-null pointer to the past-the-end element.
+    ///
+    /// For ZSTs, this is `ptr::without_provenance(len)`.
+    end_or_len: *const T,
+}
+
+#[unstable(feature = "slice_non_null_iter", issue = "none")]
+impl<T: fmt::Debug> fmt::Debug for NonNullIter<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("NonNullIter").field(&self.make_shortlived_slice()).finish()
+    }
+}
+
+impl<T> NonNullIter<T> {
+    /// Turn an iterator giving `&T`s into one giving `NonNull<T>`s.
+    #[unstable(feature = "slice_non_null_iter", issue = "none")]
+    pub fn from_slice_iter(Iter { ptr, end_or_len, .. }: Iter<'_, T>) -> Self {
+        Self { ptr, end_or_len }
+    }
+
+    /// Turn an iterator giving `&mut T`s into one giving `NonNull<T>`s.
+    #[unstable(feature = "slice_non_null_iter", issue = "none")]
+    pub fn from_slice_iter_mut(IterMut { ptr, end_or_len, .. }: IterMut<'_, T>) -> Self {
+        Self { ptr, end_or_len }
+    }
+
+    /// Creates a new iterator over the `len` items starting at `ptr`
+    ///
+    /// # Safety
+    ///
+    /// - `ptr` through `ptr.add(len)` must be a single allocated object
+    ///   such that that it's sound to `offset` through it.
+    /// - All those elements must be readable
+    /// - The caller must ensure both as long as the iterator is in use.
+    #[unstable(feature = "slice_non_null_iter", issue = "none")]
+    #[inline]
+    pub unsafe fn from_parts(ptr: NonNull<T>, len: usize) -> Self {
+        // SAFETY: There are several things here:
+        //
+        // `ptr` has been obtained by `slice.as_ptr()` where `slice` is a valid
+        // reference thus it is non-NUL and safe to use and pass to
+        // `NonNull::new_unchecked` .
+        //
+        // Adding `slice.len()` to the starting pointer gives a pointer
+        // at the end of `slice`. `end` will never be dereferenced, only checked
+        // for direct pointer equality with `ptr` to check if the iterator is
+        // done.
+        //
+        // In the case of a ZST, the end pointer is just the length.  It's never
+        // used as a pointer at all, and thus it's fine to have no provenance.
+        //
+        // See the `next_unchecked!` and `is_empty!` macros as well as the
+        // `post_inc_start` method for more information.
+        unsafe {
+            let end_or_len =
+                if T::IS_ZST { without_provenance_mut(len) } else { ptr.as_ptr().add(len) };
+
+            Self { ptr, end_or_len }
+        }
+    }
+
+    #[inline]
+    unsafe fn non_null_to_item(p: NonNull<T>) -> <Self as Iterator>::Item {
+        p
+    }
+}
+
+iterator! {struct NonNullIter<T> => *const T, NonNull<T>, {}}
 
 /// An internal abstraction over the splitting iterators, so that
 /// splitn, splitn_mut etc can be implemented once.

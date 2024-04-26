@@ -63,11 +63,12 @@ macro_rules! len {
 // The shared definition of the `Iter` and `IterMut` iterators
 macro_rules! iterator {
     (
-        struct $name:ident -> $ptr:ty,
+        struct $name:ty => $ptr:ty,
         $elem:ty,
         {$($extra:tt)*}
     ) => {
-        impl<'a, T> $name<'a, T> {
+        #[allow(unused_lifetimes)]
+        impl<'a, T> $name {
             /// Returns the last element and moves the end of the iterator backwards by 1.
             ///
             /// # Safety
@@ -138,8 +139,9 @@ macro_rules! iterator {
             }
         }
 
+        #[allow(unused_lifetimes)]
         #[stable(feature = "rust1", since = "1.0.0")]
-        impl<T> ExactSizeIterator for $name<'_, T> {
+        impl<'a, T> ExactSizeIterator for $name {
             #[inline(always)]
             fn len(&self) -> usize {
                 len!(self)
@@ -151,8 +153,9 @@ macro_rules! iterator {
             }
         }
 
+        #[allow(unused_lifetimes)]
         #[stable(feature = "rust1", since = "1.0.0")]
-        impl<'a, T> Iterator for $name<'a, T> {
+        impl<'a, T> Iterator for $name {
             type Item = $elem;
 
             #[inline]
@@ -389,8 +392,9 @@ macro_rules! iterator {
             $($extra)*
         }
 
+        #[allow(unused_lifetimes)]
         #[stable(feature = "rust1", since = "1.0.0")]
-        impl<'a, T> DoubleEndedIterator for $name<'a, T> {
+        impl<'a, T> DoubleEndedIterator for $name {
             #[inline]
             fn next_back(&mut self) -> Option<$elem> {
                 // could be implemented with slices, but this avoids bounds checks
@@ -432,33 +436,22 @@ macro_rules! iterator {
             }
         }
 
+        #[allow(unused_lifetimes)]
         #[stable(feature = "fused", since = "1.26.0")]
-        impl<T> FusedIterator for $name<'_, T> {}
+        impl<'a, T> FusedIterator for $name {}
 
+        #[allow(unused_lifetimes)]
         #[unstable(feature = "trusted_len", issue = "37572")]
-        unsafe impl<T> TrustedLen for $name<'_, T> {}
+        unsafe impl<'a, T> TrustedLen for $name {}
 
-        impl<'a, T> UncheckedIterator for $name<'a, T> {
+        #[allow(unused_lifetimes)]
+        impl<'a, T> UncheckedIterator for $name {
             #[inline]
             unsafe fn next_unchecked(&mut self) -> $elem {
                 // SAFETY: The caller promised there's at least one more item.
                 unsafe {
                     Self::non_null_to_item(self.post_inc_start(1))
                 }
-            }
-        }
-
-        #[stable(feature = "default_iters", since = "1.70.0")]
-        impl<T> Default for $name<'_, T> {
-            /// Creates an empty slice iterator.
-            ///
-            /// ```
-            #[doc = concat!("# use core::slice::", stringify!($name), ";")]
-            #[doc = concat!("let iter: ", stringify!($name<'_, u8>), " = Default::default();")]
-            /// assert_eq!(iter.len(), 0);
-            /// ```
-            fn default() -> Self {
-                Self::empty()
             }
         }
     }

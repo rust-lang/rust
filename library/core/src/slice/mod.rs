@@ -45,6 +45,8 @@ mod specialize;
 #[doc(hidden)]
 pub use ascii::is_ascii_simple;
 
+#[unstable(feature = "slice_non_null_iter", issue = "none")]
+pub use iter::NonNullIter;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use iter::{Chunks, ChunksMut, Windows};
 #[stable(feature = "rust1", since = "1.0.0")]
