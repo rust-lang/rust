@@ -375,7 +375,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         }
     }
 
-    fn visit_array_length(&mut self, len: &'hir ArrayLen) {
+    fn visit_array_length(&mut self, len: &'hir ArrayLen<'hir>) {
         match len {
             ArrayLen::Infer(inf) => self.insert(inf.span, inf.hir_id, Node::ArrayLenInfer(inf)),
             ArrayLen::Body(..) => intravisit::walk_array_len(self, len),

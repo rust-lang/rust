@@ -1588,11 +1588,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             }),
                         )),
                     )),
-                    default: Some(hir::AnonConst {
+                    default: Some(self.arena.alloc(hir::AnonConst {
                         def_id: anon_const,
                         hir_id: const_id,
                         body: const_body,
-                    }),
+                    })),
                     is_host_effect: true,
                 },
                 colon_span: None,
