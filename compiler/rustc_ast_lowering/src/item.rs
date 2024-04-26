@@ -1592,6 +1592,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         def_id: anon_const,
                         hir_id: const_id,
                         body: const_body,
+                        span,
                     })),
                     is_host_effect: true,
                 },

@@ -232,7 +232,6 @@ impl<'hir> PathSegment<'hir> {
 #[derive(Clone, Copy, Debug, HashStable_Generic)]
 pub struct ConstArg<'hir> {
     pub value: &'hir AnonConst,
-    pub span: Span,
     /// Indicates whether this comes from a `~const` desugaring.
     pub is_desugared_from_effects: bool,
 }
@@ -262,7 +261,7 @@ impl GenericArg<'_> {
         match self {
             GenericArg::Lifetime(l) => l.ident.span,
             GenericArg::Type(t) => t.span,
-            GenericArg::Const(c) => c.span,
+            GenericArg::Const(c) => c.value.span,
             GenericArg::Infer(i) => i.span,
         }
     }
@@ -1591,6 +1590,7 @@ pub struct AnonConst {
     pub hir_id: HirId,
     pub def_id: LocalDefId,
     pub body: BodyId,
+    pub span: Span,
 }
 
 /// An inline constant expression `const { something }`.
