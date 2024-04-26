@@ -43,7 +43,7 @@ FPU support.
 
 If a target ends if `eabihf`, that target uses the so-called *hard-float ABI*:
 functions which take `f32` or `f64` as arguments will have them passed via FPU
-registers. These target therefore require the use of an FPU and will assume the
+registers. These targets therefore require the use of an FPU and will assume the
 minimum support FPU for that architecture is available. More advanced FPU
 instructions (e.g. ones that work on double-precision `f64` values) may be
 generated if the code is compiled with a `target-cpu` or `target-feature` option
@@ -66,10 +66,10 @@ scheduling and support for the features you do have. More details are available
 in the detailed target-specific documentation.
 
 **Note:** Many target-features are currently unstable and subject to change, and
-if you use them you should dissassmble the compiler output and manually inspect
+if you use them you should disassemble the compiler output and manually inspect
 it to ensure only appropriate instructions for your CPU have been generated.
 
-If do you wish to use the *target-cpu* and *target-feature* options, you can add
+If you wish to use the *target-cpu* and *target-feature* options, you can add
 them to your `.cargo/config.toml` file alongside any other flags your project
 uses (likely linker related ones):
 
