@@ -412,7 +412,6 @@ impl<T> AsRef<[T]> for IterMut<'_, T> {
 iterator! {struct IterMut<'a, T> => *mut T, &'a mut T, {}}
 
 /// Iterator over all the `NonNull<T>` pointers to the elements of a slice.
-#[unstable(feature = "slice_non_null_iter", issue = "none")]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 pub struct NonNullIter<T> {
     /// The pointer to the next element to return, or the past-the-end location
@@ -426,7 +425,6 @@ pub struct NonNullIter<T> {
     end_or_len: *const T,
 }
 
-#[unstable(feature = "slice_non_null_iter", issue = "none")]
 impl<T: fmt::Debug> fmt::Debug for NonNullIter<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("NonNullIter").field(&self.make_shortlived_slice()).finish()
@@ -434,18 +432,6 @@ impl<T: fmt::Debug> fmt::Debug for NonNullIter<T> {
 }
 
 impl<T> NonNullIter<T> {
-    /// Turn an iterator giving `&T`s into one giving `NonNull<T>`s.
-    #[unstable(feature = "slice_non_null_iter", issue = "none")]
-    pub fn from_slice_iter(Iter { ptr, end_or_len, .. }: Iter<'_, T>) -> Self {
-        Self { ptr, end_or_len }
-    }
-
-    /// Turn an iterator giving `&mut T`s into one giving `NonNull<T>`s.
-    #[unstable(feature = "slice_non_null_iter", issue = "none")]
-    pub fn from_slice_iter_mut(IterMut { ptr, end_or_len, .. }: IterMut<'_, T>) -> Self {
-        Self { ptr, end_or_len }
-    }
-
     /// Creates a new iterator over the `len` items starting at `ptr`
     ///
     /// # Safety
@@ -454,7 +440,6 @@ impl<T> NonNullIter<T> {
     ///   such that that it's sound to `offset` through it.
     /// - All those elements must be readable
     /// - The caller must ensure both as long as the iterator is in use.
-    #[unstable(feature = "slice_non_null_iter", issue = "none")]
     #[inline]
     pub unsafe fn from_parts(ptr: NonNull<T>, len: usize) -> Self {
         // SAFETY: There are several things here:
@@ -482,7 +467,16 @@ impl<T> NonNullIter<T> {
     }
 
     #[inline]
-    unsafe fn non_null_to_item(p: NonNull<T>) -> <Self as Iterator>::Item {
+    pub fn exhaust(&mut self) {
+        if T::IS_ZST {
+            self.end_or_len = without_provenance_mut(0);
+        } else {
+            self.end_or_len = self.ptr.as_ptr();
+        }
+    }
+
+    #[inline]
+    fn non_null_to_item(p: NonNull<T>) -> <Self as Iterator>::Item {
         p
     }
 }

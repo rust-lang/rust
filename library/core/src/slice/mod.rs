@@ -35,6 +35,7 @@ pub mod sort;
 
 mod ascii;
 mod cmp;
+mod drain;
 pub(crate) mod index;
 mod iter;
 mod raw;
@@ -45,8 +46,6 @@ mod specialize;
 #[doc(hidden)]
 pub use ascii::is_ascii_simple;
 
-#[unstable(feature = "slice_non_null_iter", issue = "none")]
-pub use iter::NonNullIter;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use iter::{Chunks, ChunksMut, Windows};
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -71,6 +70,11 @@ pub use iter::ArrayWindows;
 
 #[stable(feature = "slice_group_by", since = "1.77.0")]
 pub use iter::{ChunkBy, ChunkByMut};
+
+use iter::NonNullIter;
+
+#[unstable(feature = "slice_drain_raw_iter", issue = "none")]
+pub use drain::DrainRaw;
 
 #[stable(feature = "split_inclusive", since = "1.51.0")]
 pub use iter::{SplitInclusive, SplitInclusiveMut};

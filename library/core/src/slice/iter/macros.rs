@@ -137,6 +137,26 @@ macro_rules! iterator {
                     },
                 )
             }
+
+            // This is not used on every type that uses this macro, but is more
+            // convenient to implement here so it can use `post_inc_start`.
+            #[allow(dead_code)]
+            #[inline]
+            pub(crate) unsafe fn skip_forward_unchecked(&mut self, offset: usize) -> NonNull<[T]> {
+                // SAFETY: The caller guarantees the provided offset is in-bounds.
+                let old_begin = unsafe { self.post_inc_start(offset) };
+                NonNull::slice_from_raw_parts(old_begin, offset)
+            }
+
+            // This is not used on every type that uses this macro, but is more
+            // convenient to implement here so it can use `pre_dec_end`.
+            #[allow(dead_code)]
+            #[inline]
+            pub(crate) unsafe fn skip_backward_unchecked(&mut self, offset: usize) -> NonNull<[T]> {
+                // SAFETY: The caller guarantees the provided offset is in-bounds.
+                let new_end = unsafe { self.pre_dec_end(offset) };
+                NonNull::slice_from_raw_parts(new_end, offset)
+            }
         }
 
         #[allow(unused_lifetimes)]
