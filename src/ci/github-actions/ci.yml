@@ -107,9 +107,6 @@ x--expand-yaml-anchors--remove:
   - &job-aarch64-linux
     os: [self-hosted, ARM64, linux]
 
-  - &step
-    if: success() && !env.SKIP_JOB
-
   - &base-ci-job
     defaults:
       run:
@@ -151,7 +148,7 @@ x--expand-yaml-anchors--remove:
         run: echo "[CI_PR_NUMBER=$num]"
         env:
           num: ${{ github.event.number }}
-        if: success() && !env.SKIP_JOB && github.event_name == 'pull_request'
+        if: success() && github.event_name == 'pull_request'
 
       - name: add extra environment variables
         run: src/ci/scripts/setup-environment.sh
@@ -161,71 +158,51 @@ x--expand-yaml-anchors--remove:
           # are passed to the `setup-environment.sh` script encoded in JSON,
           # which then uses log commands to actually set them.
           EXTRA_VARIABLES: ${{ toJson(matrix.env) }}
-        <<: *step
-
-      - name: decide whether to skip this job
-        run: src/ci/scripts/should-skip-this.sh
-        <<: *step
 
       - name: ensure the channel matches the target branch
         run: src/ci/scripts/verify-channel.sh
-        <<: *step
 
       - name: collect CPU statistics
         run: src/ci/scripts/collect-cpu-stats.sh
-        <<: *step
 
       - name: show the current environment
         run: src/ci/scripts/dump-environment.sh
-        <<: *step
 
       - name: install awscli
         run: src/ci/scripts/install-awscli.sh
-        <<: *step
 
       - name: install sccache
         run: src/ci/scripts/install-sccache.sh
-        <<: *step
 
       - name: select Xcode
         run: src/ci/scripts/select-xcode.sh
-        <<: *step
 
       - name: install clang
         run: src/ci/scripts/install-clang.sh
-        <<: *step
 
       - name: install tidy
         run: src/ci/scripts/install-tidy.sh
-        <<: *step
 
       - name: install WIX
         run: src/ci/scripts/install-wix.sh
-        <<: *step
 
       - name: disable git crlf conversion
         run: src/ci/scripts/disable-git-crlf-conversion.sh
-        <<: *step
 
       - name: checkout submodules
         run: src/ci/scripts/checkout-submodules.sh
-        <<: *step
 
       - name: install MSYS2
         run: src/ci/scripts/install-msys2.sh
-        <<: *step
 
       - name: install MinGW
         run: src/ci/scripts/install-mingw.sh
-        <<: *step
 
       - name: install ninja
         run: src/ci/scripts/install-ninja.sh
-        <<: *step
 
       - name: enable ipv6 on Docker
         run: src/ci/scripts/enable-docker-ipv6.sh
-        <<: *step
 
       # Disable automatic line ending conversion (again). On Windows, when we're
       # installing dependencies, something switches the git configuration directory or
@@ -234,19 +211,15 @@ x--expand-yaml-anchors--remove:
       # appropriate line endings.
       - name: disable git crlf conversion
         run: src/ci/scripts/disable-git-crlf-conversion.sh
-        <<: *step
 
       - name: ensure line endings are correct
         run: src/ci/scripts/verify-line-endings.sh
-        <<: *step
 
       - name: ensure backported commits are in upstream branches
         run: src/ci/scripts/verify-backported-commits.sh
-        <<: *step
 
       - name: ensure the stable version number is correct
         run: src/ci/scripts/verify-stable-version-number.sh
-        <<: *step
 
       - name: run the build
         # Redirect stderr to stdout to avoid reordering the two streams in the GHA logs.
@@ -255,11 +228,9 @@ x--expand-yaml-anchors--remove:
           AWS_ACCESS_KEY_ID: ${{ env.CACHES_AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets[format('AWS_SECRET_ACCESS_KEY_{0}', env.CACHES_AWS_ACCESS_KEY_ID)] }}
           TOOLSTATE_REPO_ACCESS_TOKEN: ${{ secrets.TOOLSTATE_REPO_ACCESS_TOKEN }}
-        <<: *step
 
       - name: create github artifacts
         run: src/ci/scripts/create-doc-artifacts.sh
-        <<: *step
 
       - name: upload artifacts to github
         uses: actions/upload-artifact@v4
@@ -269,7 +240,6 @@ x--expand-yaml-anchors--remove:
           path: obj/artifacts/doc
           if-no-files-found: ignore
           retention-days: 5
-        <<: *step
 
       - name: upload artifacts to S3
         run: src/ci/scripts/upload-artifacts.sh
@@ -281,8 +251,7 @@ x--expand-yaml-anchors--remove:
         # adding the condition is helpful as this way CI will not silently skip
         # deploying artifacts from a dist builder if the variables are misconfigured,
         # erroring about invalid credentials instead.
-        if: success() && !env.SKIP_JOB && (github.event_name == 'push' || env.DEPLOY == '1' || env.DEPLOY_ALT == '1')
-        <<: *step
+        if: success() && (github.event_name == 'push' || env.DEPLOY == '1' || env.DEPLOY_ALT == '1')
 
   # These snippets are used by the try-success, try-failure, auto-success and auto-failure jobs.
   # Check out their documentation for more information on why they're needed.
@@ -399,7 +368,6 @@ jobs:
         shell: bash
         env:
           TOOLSTATE_REPO_ACCESS_TOKEN: ${{ secrets.TOOLSTATE_REPO_ACCESS_TOKEN }}
-        <<: *step
 
   # These jobs don't actually test anything, but they're used to tell bors the
   # build completed, as there is no practical way to detect when a workflow is

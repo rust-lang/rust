@@ -2294,7 +2294,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
                     next_code = Some(&cause.derived.parent_code);
                 }
-                ObligationCauseCode::DerivedObligation(derived_obligation)
+                ObligationCauseCode::WellFormedDerivedObligation(derived_obligation)
                 | ObligationCauseCode::BuiltinDerivedObligation(derived_obligation) => {
                     let ty = derived_obligation.parent_trait_pred.skip_binder().self_ty();
                     debug!(
@@ -3423,7 +3423,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     )
                 });
             }
-            ObligationCauseCode::DerivedObligation(ref data) => {
+            ObligationCauseCode::WellFormedDerivedObligation(ref data) => {
                 let parent_trait_ref = self.resolve_vars_if_possible(data.parent_trait_pred);
                 let parent_predicate = parent_trait_ref;
                 // #74711: avoid a stack overflow

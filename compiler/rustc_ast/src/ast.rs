@@ -2786,6 +2786,7 @@ pub enum AttrKind {
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct NormalAttr {
     pub item: AttrItem,
+    // Tokens for the full attribute, e.g. `#[foo]`, `#![bar]`.
     pub tokens: Option<LazyAttrTokenStream>,
 }
 
@@ -2802,6 +2803,7 @@ impl NormalAttr {
 pub struct AttrItem {
     pub path: Path,
     pub args: AttrArgs,
+    // Tokens for the meta item, e.g. just the `foo` within `#[foo]` or `#![foo]`.
     pub tokens: Option<LazyAttrTokenStream>,
 }
 

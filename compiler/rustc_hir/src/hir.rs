@@ -1811,6 +1811,44 @@ impl Expr<'_> {
         }
     }
 
+    /// Whether this and the `other` expression are the same for purposes of an indexing operation.
+    ///
+    /// This is only used for diagnostics to see if we have things like `foo[i]` where `foo` is
+    /// borrowed multiple times with `i`.
+    pub fn equivalent_for_indexing(&self, other: &Expr<'_>) -> bool {
+        match (self.kind, other.kind) {
+            (ExprKind::Lit(lit1), ExprKind::Lit(lit2)) => lit1.node == lit2.node,
+            (
+                ExprKind::Path(QPath::LangItem(item1, _)),
+                ExprKind::Path(QPath::LangItem(item2, _)),
+            ) => item1 == item2,
+            (
+                ExprKind::Path(QPath::Resolved(None, path1)),
+                ExprKind::Path(QPath::Resolved(None, path2)),
+            ) => path1.res == path2.res,
+            (
+                ExprKind::Struct(QPath::LangItem(LangItem::RangeTo, _), [val1], None),
+                ExprKind::Struct(QPath::LangItem(LangItem::RangeTo, _), [val2], None),
+            )
+            | (
+                ExprKind::Struct(QPath::LangItem(LangItem::RangeToInclusive, _), [val1], None),
+                ExprKind::Struct(QPath::LangItem(LangItem::RangeToInclusive, _), [val2], None),
+            )
+            | (
+                ExprKind::Struct(QPath::LangItem(LangItem::RangeFrom, _), [val1], None),
+                ExprKind::Struct(QPath::LangItem(LangItem::RangeFrom, _), [val2], None),
+            ) => val1.expr.equivalent_for_indexing(val2.expr),
+            (
+                ExprKind::Struct(QPath::LangItem(LangItem::Range, _), [val1, val3], None),
+                ExprKind::Struct(QPath::LangItem(LangItem::Range, _), [val2, val4], None),
+            ) => {
+                val1.expr.equivalent_for_indexing(val2.expr)
+                    && val3.expr.equivalent_for_indexing(val4.expr)
+            }
+            _ => false,
+        }
+    }
+
     pub fn method_ident(&self) -> Option<Ident> {
         match self.kind {
             ExprKind::MethodCall(receiver_method, ..) => Some(receiver_method.ident),
