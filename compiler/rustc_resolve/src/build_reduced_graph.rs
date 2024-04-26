@@ -1304,11 +1304,7 @@ impl<'a, 'b, 'tcx> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                 visit::walk_item(self, item);
                 macro_rules_scope
             }
-            ItemKind::MacCall(..) => {
-                let macro_rules_scope = self.visit_invoc_in_module(item.id);
-                visit::walk_item(self, item);
-                macro_rules_scope
-            }
+            ItemKind::MacCall(..) => self.visit_invoc_in_module(item.id),
             _ => {
                 let orig_macro_rules_scope = self.parent_scope.macro_rules;
                 self.build_reduced_graph_for_item(item);
