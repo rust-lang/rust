@@ -133,6 +133,24 @@ impl Sysroot {
         }
     }
 
+    pub fn check_has_core(&self) -> Result<(), String> {
+        let Some(Ok(src_root)) = &self.src_root else { return Ok(()) };
+        let has_core = match &self.mode {
+            SysrootMode::Workspace(ws) => ws.packages().any(|p| ws[p].name == "core"),
+            SysrootMode::Stitched(stitched) => stitched.by_name("core").is_some(),
+        };
+        if !has_core {
+            let var_note = if env::var_os("RUST_SRC_PATH").is_some() {
+                " (`RUST_SRC_PATH` might be incorrect, try unsetting it)"
+            } else {
+                " try running `rustup component add rust-src` to possible fix this"
+            };
+            Err(format!("could not find libcore in loaded sysroot at `{}`{var_note}", src_root,))
+        } else {
+            Ok(())
+        }
+    }
+
     pub fn num_packages(&self) -> usize {
         match &self.mode {
             SysrootMode::Workspace(ws) => ws.packages().count(),

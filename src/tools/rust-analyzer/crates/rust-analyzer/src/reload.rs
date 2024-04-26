@@ -103,79 +103,48 @@ impl GlobalState {
             health: lsp_ext::Health::Ok,
             quiescent: self.is_quiescent(),
             message: None,
+            workspace_info: None,
         };
         let mut message = String::new();
 
+        if !self.config.cargo_autoreload()
+            && self.is_quiescent()
+            && self.fetch_workspaces_queue.op_requested()
+        {
+            status.health |= lsp_ext::Health::Warning;
+            message.push_str("Auto-reloading is disabled and the workspace has changed, a manual workspace reload is required.\n\n");
+        }
+
         if self.build_deps_changed {
-            status.health = lsp_ext::Health::Warning;
+            status.health |= lsp_ext::Health::Warning;
             message.push_str(
                 "Proc-macros and/or build scripts have changed and need to be rebuilt.\n\n",
             );
         }
         if self.fetch_build_data_error().is_err() {
-            status.health = lsp_ext::Health::Warning;
+            status.health |= lsp_ext::Health::Warning;
             message.push_str("Failed to run build scripts of some packages.\n\n");
         }
-        if self.proc_macro_clients.iter().any(|it| it.is_err()) {
-            status.health = lsp_ext::Health::Warning;
-            message.push_str("Failed to spawn one or more proc-macro servers.\n\n");
-            for err in self.proc_macro_clients.iter() {
-                if let Err(err) = err {
-                    format_to!(message, "- {err}\n");
-                }
-            }
-        }
-        if !self.config.cargo_autoreload()
-            && self.is_quiescent()
-            && self.fetch_workspaces_queue.op_requested()
-        {
-            status.health = lsp_ext::Health::Warning;
-            message.push_str("Auto-reloading is disabled and the workspace has changed, a manual workspace reload is required.\n\n");
-        }
-        if self.config.linked_or_discovered_projects().is_empty()
-            && self.config.detached_files().is_empty()
-            && self.config.notifications().cargo_toml_not_found
-        {
-            status.health = lsp_ext::Health::Warning;
-            message.push_str("Failed to discover workspace.\n");
-            message.push_str("Consider adding the `Cargo.toml` of the workspace to the [`linkedProjects`](https://rust-analyzer.github.io/manual.html#rust-analyzer.linkedProjects) setting.\n\n");
-        }
+
         if let Some(err) = &self.config_errors {
-            status.health = lsp_ext::Health::Warning;
+            status.health |= lsp_ext::Health::Warning;
             format_to!(message, "{err}\n");
         }
         if let Some(err) = &self.last_flycheck_error {
-            status.health = lsp_ext::Health::Warning;
+            status.health |= lsp_ext::Health::Warning;
             message.push_str(err);
             message.push('\n');
         }
 
-        for ws in self.workspaces.iter() {
-            let sysroot = ws.sysroot.as_ref();
-            match sysroot {
-                Err(None) => (),
-                Err(Some(e)) => {
-                    status.health = lsp_ext::Health::Warning;
-                    message.push_str(e);
-                    message.push_str("\n\n");
-                }
-                Ok(s) => {
-                    if let Some(e) = s.loading_warning() {
-                        status.health = lsp_ext::Health::Warning;
-                        message.push_str(&e);
-                        message.push_str("\n\n");
-                    }
-                }
-            }
-            if let ProjectWorkspaceKind::Cargo { rustc: Err(Some(e)), .. } = &ws.kind {
-                status.health = lsp_ext::Health::Warning;
-                message.push_str(e);
-                message.push_str("\n\n");
-            }
+        if self.config.linked_or_discovered_projects().is_empty()
+            && self.config.detached_files().is_empty()
+        {
+            status.health |= lsp_ext::Health::Warning;
+            message.push_str("Failed to discover workspace.\n");
+            message.push_str("Consider adding the `Cargo.toml` of the workspace to the [`linkedProjects`](https://rust-analyzer.github.io/manual.html#rust-analyzer.linkedProjects) setting.\n\n");
         }
-
         if self.fetch_workspace_error().is_err() {
-            status.health = lsp_ext::Health::Error;
+            status.health |= lsp_ext::Health::Error;
             message.push_str("Failed to load workspaces.");
 
             if self.config.has_linked_projects() {
@@ -191,9 +160,63 @@ impl GlobalState {
             message.push_str("\n\n");
         }
 
+        if !self.workspaces.is_empty() {
+            let proc_macro_clients =
+                self.proc_macro_clients.iter().map(Some).chain(iter::repeat_with(|| None));
+
+            let mut workspace_info = "Loaded workspaces:\n".to_owned();
+            for (ws, proc_macro_client) in self.workspaces.iter().zip(proc_macro_clients) {
+                format_to!(workspace_info, "- `{}`\n", ws.manifest_or_root());
+                format_to!(workspace_info, "    - sysroot:");
+
+                match ws.sysroot.as_ref() {
+                    Err(None) => format_to!(workspace_info, " None"),
+                    Err(Some(e)) => {
+                        status.health |= lsp_ext::Health::Warning;
+                        format_to!(workspace_info, " {e}");
+                    }
+                    Ok(s) => {
+                        format_to!(workspace_info, " `{}`", s.root().to_string());
+                        if let Some(err) = s
+                            .check_has_core()
+                            .err()
+                            .inspect(|_| status.health |= lsp_ext::Health::Warning)
+                        {
+                            format_to!(workspace_info, " ({err})");
+                        }
+                        if let Some(src_root) = s.src_root() {
+                            format_to!(
+                                workspace_info,
+                                "\n        - sysroot source: `{}`",
+                                src_root
+                            );
+                        }
+                        format_to!(workspace_info, "\n");
+                    }
+                }
+
+                if let ProjectWorkspaceKind::Cargo { rustc: Err(Some(e)), .. } = &ws.kind {
+                    status.health |= lsp_ext::Health::Warning;
+                    format_to!(workspace_info, "    - rustc workspace: {e}\n");
+                };
+                if let Some(proc_macro_client) = proc_macro_client {
+                    format_to!(workspace_info, "    - proc-macro server: ");
+                    match proc_macro_client {
+                        Ok(it) => format_to!(workspace_info, "`{}`\n", it.path()),
+                        Err(e) => {
+                            status.health |= lsp_ext::Health::Warning;
+                            format_to!(workspace_info, "{e}\n")
+                        }
+                    }
+                }
+            }
+            status.workspace_info = Some(workspace_info);
+        }
+
         if !message.is_empty() {
             status.message = Some(message.trim_end().to_owned());
         }
+
         status
     }
 
@@ -520,7 +543,7 @@ impl GlobalState {
                 };
                 tracing::info!("Using proc-macro server at {path}");
 
-                ProcMacroServer::spawn(path.clone(), &env).map_err(|err| {
+                ProcMacroServer::spawn(&path, &env).map_err(|err| {
                     tracing::error!(
                         "Failed to run proc-macro server from path {path}, error: {err:?}",
                     );

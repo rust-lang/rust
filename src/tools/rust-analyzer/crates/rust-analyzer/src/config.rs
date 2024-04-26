@@ -1323,7 +1323,7 @@ impl Config {
                             .map(Into::into)
                     }
                     ManifestOrProjectJson::ProjectJson(it) => {
-                        Some(ProjectJson::new(&self.root_path, it.clone()).into())
+                        Some(ProjectJson::new(None, &self.root_path, it.clone()).into())
                     }
                 })
                 .collect(),
