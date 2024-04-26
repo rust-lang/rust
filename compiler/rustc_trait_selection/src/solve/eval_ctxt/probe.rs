@@ -1,6 +1,7 @@
 use crate::solve::assembly::Candidate;
 
 use super::EvalCtxt;
+use rustc_infer::traits::BuiltinImplSource;
 use rustc_middle::traits::{
     query::NoSolution,
     solve::{inspect, CandidateSource, QueryResult},
@@ -75,24 +76,12 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         ProbeCtxt { ecx: self, probe_kind, _result: PhantomData }
     }
 
-    pub(in crate::solve) fn probe_misc_candidate(
+    pub(in crate::solve) fn probe_builtin_trait_candidate(
         &mut self,
-        name: &'static str,
-    ) -> ProbeCtxt<
-        '_,
-        'a,
-        'tcx,
-        impl FnOnce(&QueryResult<'tcx>) -> inspect::ProbeKind<'tcx>,
-        QueryResult<'tcx>,
-    > {
-        ProbeCtxt {
-            ecx: self,
-            probe_kind: move |result: &QueryResult<'tcx>| inspect::ProbeKind::MiscCandidate {
-                name,
-                result: *result,
-            },
-            _result: PhantomData,
-        }
+        source: BuiltinImplSource,
+    ) -> TraitProbeCtxt<'_, 'a, 'tcx, impl FnOnce(&QueryResult<'tcx>) -> inspect::ProbeKind<'tcx>>
+    {
+        self.probe_trait_candidate(CandidateSource::BuiltinImpl(source))
     }
 
     pub(in crate::solve) fn probe_trait_candidate(

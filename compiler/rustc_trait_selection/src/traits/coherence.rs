@@ -1078,9 +1078,8 @@ impl<'a, 'tcx> ProofTreeVisitor<'tcx> for AmbiguityCausesVisitor<'a, 'tcx> {
         // Add ambiguity causes for unknowable goals.
         let mut ambiguity_cause = None;
         for cand in goal.candidates() {
-            // FIXME: boiiii, using string comparisions here sure is scuffed.
-            if let inspect::ProbeKind::MiscCandidate {
-                name: "coherence unknowable",
+            if let inspect::ProbeKind::TraitCandidate {
+                source: CandidateSource::CoherenceUnknowable,
                 result: Ok(_),
             } = cand.kind()
             {

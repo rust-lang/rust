@@ -198,7 +198,8 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
         match probe.kind {
             inspect::ProbeKind::NormalizedSelfTyAssembly
             | inspect::ProbeKind::UnsizeAssembly
-            | inspect::ProbeKind::UpcastProjectionCompatibility => (),
+            | inspect::ProbeKind::UpcastProjectionCompatibility
+            | inspect::ProbeKind::OpaqueTypeStorageLookup => (),
             // We add a candidate for the root evaluation if there
             // is only one way to prove a given goal, e.g. for `WellFormed`.
             //
@@ -218,8 +219,7 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
                     })
                 }
             }
-            inspect::ProbeKind::MiscCandidate { name: _, result }
-            | inspect::ProbeKind::TraitCandidate { source: _, result } => {
+            inspect::ProbeKind::TraitCandidate { source: _, result } => {
                 candidates.push(InspectCandidate {
                     goal: self,
                     kind: probe.kind,

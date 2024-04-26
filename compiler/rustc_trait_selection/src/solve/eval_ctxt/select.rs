@@ -107,6 +107,8 @@ impl<'tcx> InferCtxt<'tcx> {
                     Ok(Some(ImplSource::Param(vec![])))
                 }
 
+                (_, CandidateSource::CoherenceUnknowable) => bug!(),
+
                 (Certainty::Maybe(_), _) => Ok(None),
             }
         })
