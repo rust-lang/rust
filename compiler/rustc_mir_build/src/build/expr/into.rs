@@ -148,43 +148,90 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             ExprKind::LogicalOp { op, lhs, rhs } => {
                 let condition_scope = this.local_scope();
                 let source_info = this.source_info(expr.span);
-                // We first evaluate the left-hand side of the predicate ...
-                let (then_block, else_block) =
-                    this.in_if_then_scope(condition_scope, expr.span, |this| {
-                        this.then_else_break(
-                            block,
-                            lhs,
-                            Some(condition_scope), // Temp scope
-                            source_info,
-                            // This flag controls how inner `let` expressions are lowered,
-                            // but either way there shouldn't be any of those in here.
-                            true,
-                        )
-                    });
-                let (short_circuit, continuation, constant) = match op {
-                    LogicalOp::And => (else_block, then_block, false),
-                    LogicalOp::Or => (then_block, else_block, true),
+
+                let push_constant_bool = |this: &mut Builder<'a, 'tcx>, bb, dest, value| {
+                    this.cfg.push_assign_constant(
+                        bb,
+                        source_info,
+                        dest,
+                        ConstOperand {
+                            span: expr.span,
+                            user_ty: None,
+                            const_: Const::from_bool(this.tcx, value),
+                        },
+                    );
                 };
-                // At this point, the control flow splits into a short-circuiting path
-                // and a continuation path.
-                // - If the operator is `&&`, passing `lhs` leads to continuation of evaluation on `rhs`;
-                //   failing it leads to the short-circuting path which assigns `false` to the place.
-                // - If the operator is `||`, failing `lhs` leads to continuation of evaluation on `rhs`;
-                //   passing it leads to the short-circuting path which assigns `true` to the place.
-                this.cfg.push_assign_constant(
-                    short_circuit,
-                    source_info,
-                    destination,
-                    ConstOperand {
-                        span: expr.span,
-                        user_ty: None,
-                        const_: Const::from_bool(this.tcx, constant),
-                    },
-                );
-                let rhs = unpack!(this.expr_into_dest(destination, continuation, rhs));
+                // A simple optimization on boolean expression with short-circuit
+                // operators is to not create a branch for the last operand.
+                // Example:
+                //      let x: bool = a && b;
+                //  would be compiled into something semantically closer to
+                //      let x = if a { b } else { false };
+                //  rather than
+                //      let x = if a && b { true } else { false };
+                //
+                // In case `a` is true, evaluate `b` and assign it to `x`,
+                // thus there is no need to create an actual branch for `b`.
+                // Otherwise, assign false to `x`.
+                //
+                // The exception is when we instrument the code for condition coverage,
+                // which tracks the outcome of all operands of boolean expressions.
+
+                let (outcome1, outcome2) = if this.tcx.sess.instrument_coverage_condition() {
+                    // We first evaluate the left-hand side of the predicate ...
+                    let (then_block, else_block) =
+                        this.in_if_then_scope(condition_scope, expr.span, |this| {
+                            this.then_else_break(
+                                block,
+                                expr_id,
+                                Some(condition_scope), // Temp scope
+                                source_info,
+                                // This flag controls how inner `let` expressions are lowered,
+                                // but either way there shouldn't be any of those in here.
+                                true,
+                            )
+                        });
+
+                    // Write true on expression success...
+                    push_constant_bool(this, then_block, destination, true);
+                    // ...and false on failure.
+                    push_constant_bool(this, else_block, destination, false);
+
+                    (then_block, else_block)
+                } else {
+                    // We first evaluate the left-hand side of the predicate ...
+                    let (then_block, else_block) =
+                        this.in_if_then_scope(condition_scope, expr.span, |this| {
+                            this.then_else_break(
+                                block,
+                                lhs,
+                                Some(condition_scope), // Temp scope
+                                source_info,
+                                // This flag controls how inner `let` expressions are lowered,
+                                // but either way there shouldn't be any of those in here.
+                                true,
+                            )
+                        });
+                    let (short_circuit, continuation, constant) = match op {
+                        LogicalOp::And => (else_block, then_block, false),
+                        LogicalOp::Or => (then_block, else_block, true),
+                    };
+                    // At this point, the control flow splits into a short-circuiting path
+                    // and a continuation path.
+                    // - If the operator is `&&`, passing `lhs` leads to continuation of evaluation on `rhs`;
+                    //   failing it leads to the short-circuting path which assigns `false` to the place.
+                    // - If the operator is `||`, failing `lhs` leads to continuation of evaluation on `rhs`;
+                    //   passing it leads to the short-circuting path which assigns `true` to the place.
+                    push_constant_bool(this, short_circuit, destination, constant);
+
+                    let rhs = unpack!(this.expr_into_dest(destination, continuation, rhs));
+
+                    (short_circuit, rhs)
+                };
+
                 let target = this.cfg.start_new_block();
-                this.cfg.goto(rhs, source_info, target);
-                this.cfg.goto(short_circuit, source_info, target);
+                this.cfg.goto(outcome1, source_info, target);
+                this.cfg.goto(outcome2, source_info, target);
                 target.unit()
             }
             ExprKind::Loop { body } => {
