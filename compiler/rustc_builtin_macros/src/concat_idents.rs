@@ -8,7 +8,7 @@ use rustc_span::Span;
 
 use crate::errors;
 
-pub fn expand_concat_idents<'cx>(
+pub(crate) fn expand_concat_idents<'cx>(
     cx: &'cx mut ExtCtxt<'_>,
     sp: Span,
     tts: TokenStream,

@@ -15,7 +15,7 @@ use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use thin_vec::thin_vec;
 
-pub fn expand_assert<'cx>(
+pub(crate) fn expand_assert<'cx>(
     cx: &'cx mut ExtCtxt<'_>,
     span: Span,
     tts: TokenStream,
