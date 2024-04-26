@@ -11,8 +11,6 @@ use crate::str;
 use crate::sync::Arc;
 use crate::sys_common::{AsInner, IntoInner};
 
-use core::str::Utf8Chunks;
-
 #[cfg(test)]
 mod tests;
 
@@ -29,7 +27,7 @@ pub struct Slice {
 
 impl fmt::Debug for Slice {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Debug::fmt(&Utf8Chunks::new(&self.inner).debug(), f)
+        fmt::Debug::fmt(&self.inner.utf8_chunks().debug(), f)
     }
 }
 
@@ -41,7 +39,7 @@ impl fmt::Display for Slice {
             return "".fmt(f);
         }
 
-        for chunk in Utf8Chunks::new(&self.inner) {
+        for chunk in self.inner.utf8_chunks() {
             let valid = chunk.valid();
             // If we successfully decoded the whole chunk as a valid string then
             // we can return a direct formatting of the string which will also

@@ -1,10 +1,8 @@
-use core::str::Utf8Chunks;
-
 #[test]
 fn chunks() {
     macro_rules! assert_chunks {
         ( $string:expr, $(($valid:expr, $invalid:expr)),* $(,)? ) => {{
-            let mut iter = Utf8Chunks::new($string);
+            let mut iter = $string.utf8_chunks();
             $(
                 let chunk = iter.next().expect("missing chunk");
                 assert_eq!($valid, chunk.valid());
@@ -79,7 +77,7 @@ fn debug() {
         "\"Hello\\xC0\\x80 There\\xE6\\x83 Goodbye\\u{10d4ea}\"",
         &format!(
             "{:?}",
-            Utf8Chunks::new(b"Hello\xC0\x80 There\xE6\x83 Goodbye\xf4\x8d\x93\xaa").debug(),
+            b"Hello\xC0\x80 There\xE6\x83 Goodbye\xf4\x8d\x93\xaa".utf8_chunks().debug(),
         ),
     );
 }

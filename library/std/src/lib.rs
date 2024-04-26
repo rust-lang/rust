@@ -314,7 +314,6 @@
 #![feature(thread_local)]
 #![feature(try_blocks)]
 #![feature(type_alias_impl_trait)]
-#![feature(utf8_chunks)]
 // tidy-alphabetical-end
 //
 // Library features (core):
