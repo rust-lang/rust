@@ -220,7 +220,6 @@ run-make/pretty-print-to-file/Makefile
 run-make/pretty-print-with-dep-file/Makefile
 run-make/print-calling-conventions/Makefile
 run-make/print-cfg/Makefile
-run-make/print-native-static-libs/Makefile
 run-make/print-target-list/Makefile
 run-make/profile/Makefile
 run-make/prune-link-args/Makefile
