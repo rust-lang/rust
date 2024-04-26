@@ -16,7 +16,7 @@ extern crate run_make_support;
 
 use std::io::BufRead;
 
-use run_make_support::rustc;
+use run_make_support::{rustc, is_msvc};
 
 fn main() {
     // build supporting crate
@@ -45,10 +45,23 @@ fn main() {
 
         let args: Vec<&str> = args.trim().split_ascii_whitespace().collect();
 
-        assert!(args.contains(&"-lglib-2.0")); // in bar.rs
-        assert!(args.contains(&"-lsystemd")); // in foo.rs
-        assert!(args.contains(&"-lbar_cli"));
-        assert!(args.contains(&"-lfoo_cli"));
+        macro_rules! assert_contains_lib {
+            ($lib:literal in $args:ident) => {{
+                let lib = format!(
+                    "{}{}{}",
+                    if !is_msvc() { "-l" } else { "" },
+                    $lib,
+                    if !is_msvc() { "" } else { ".lib" },
+                );
+                let found = $args.contains(&&*lib);
+                assert!(found, "unable to find lib `{}` in those linker args: {:?}", lib, $args);
+            }}
+        }
+
+        assert_contains_lib!("glib-2.0" in args); // in bar.rs
+        assert_contains_lib!("systemd" in args);  // in foo.rs
+        assert_contains_lib!("bar_cli" in args);
+        assert_contains_lib!("foo_cli" in args);
 
         // make sure that no args are consecutively present
         let dedup_args: Vec<&str> = {
