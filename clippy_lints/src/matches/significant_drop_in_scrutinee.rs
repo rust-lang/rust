@@ -119,41 +119,49 @@ impl<'a, 'tcx> SigDropChecker<'a, 'tcx> {
         self.cx.typeck_results().expr_ty(ex)
     }
 
-    fn has_seen_type(&mut self, ty: Ty<'tcx>) -> bool {
-        !self.seen_types.insert(ty)
+    fn has_sig_drop_attr(&mut self, cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
+        self.seen_types.clear();
+        self.has_sig_drop_attr_impl(cx, ty)
     }
 
-    fn has_sig_drop_attr(&mut self, cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
+    fn has_sig_drop_attr_impl(&mut self, cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
         if let Some(adt) = ty.ty_adt_def() {
             if get_attr(cx.sess(), cx.tcx.get_attrs_unchecked(adt.did()), "has_significant_drop").count() > 0 {
                 return true;
             }
         }
 
-        match ty.kind() {
-            rustc_middle::ty::Adt(a, b) => {
-                for f in a.all_fields() {
-                    let ty = f.ty(cx.tcx, b);
-                    if !self.has_seen_type(ty) && self.has_sig_drop_attr(cx, ty) {
-                        return true;
-                    }
-                }
-
-                for generic_arg in *b {
-                    if let GenericArgKind::Type(ty) = generic_arg.unpack() {
-                        if self.has_sig_drop_attr(cx, ty) {
-                            return true;
-                        }
-                    }
-                }
-                false
-            },
-            rustc_middle::ty::Array(ty, _)
-            | rustc_middle::ty::RawPtr(ty, _)
-            | rustc_middle::ty::Ref(_, ty, _)
-            | rustc_middle::ty::Slice(ty) => self.has_sig_drop_attr(cx, *ty),
-            _ => false,
+        if !self.seen_types.insert(ty) {
+            return false;
         }
+
+        let result = match ty.kind() {
+            rustc_middle::ty::Adt(adt, args) => {
+                // if some field has significant drop,
+                adt.all_fields()
+                    .map(|field| field.ty(cx.tcx, args))
+                    .any(|ty| self.has_sig_drop_attr(cx, ty))
+                    // or if there is no generic lifetime and..
+                    // (to avoid false positive on `Ref<'a, MutexGuard<Foo>>`)
+                    || (args
+                        .iter()
+                        .all(|arg| !matches!(arg.unpack(), GenericArgKind::Lifetime(_)))
+                        // some generic parameter has significant drop
+                        // (to avoid false negative on `Box<MutexGuard<Foo>>`)
+                        && args
+                            .iter()
+                            .filter_map(|arg| match arg.unpack() {
+                                GenericArgKind::Type(ty) => Some(ty),
+                                _ => None,
+                            })
+                            .any(|ty| self.has_sig_drop_attr(cx, ty)))
+            },
+            rustc_middle::ty::Tuple(tys) => tys.iter().any(|ty| self.has_sig_drop_attr(cx, ty)),
+            rustc_middle::ty::Array(ty, _) | rustc_middle::ty::Slice(ty) => self.has_sig_drop_attr(cx, *ty),
+            _ => false,
+        };
+
+        result
     }
 }
 

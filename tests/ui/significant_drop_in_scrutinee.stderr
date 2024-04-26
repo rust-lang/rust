@@ -28,6 +28,9 @@ LL |     match s.lock_m().get_the_value() {
 LL |             println!("{}", s.lock_m().get_the_value());
    |                            ---------- another value with significant `Drop` created here
 ...
+LL |             println!("{}", s.lock_m().get_the_value());
+   |                            ---------- another value with significant `Drop` created here
+...
 LL |     }
    |      - temporary lives until here
    |
@@ -43,6 +46,9 @@ error: temporary with significant `Drop` in `match` scrutinee will live until th
    |
 LL |     match s.lock_m_m().get_the_value() {
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL |             println!("{}", s.lock_m().get_the_value());
+   |                            ---------- another value with significant `Drop` created here
 ...
 LL |             println!("{}", s.lock_m().get_the_value());
    |                            ---------- another value with significant `Drop` created here
@@ -360,7 +366,7 @@ LL |     match s.lock().deref().deref() {
    |           ^^^^^^^^^^^^^^^^^^^^^^^^
 ...
 LL |         _ => println!("Value is {}", s.lock().deref()),
-   |                                      ---------------- another value with significant `Drop` created here
+   |                                      -------- another value with significant `Drop` created here
 LL |     };
    |      - temporary lives until here
    |
@@ -378,7 +384,7 @@ LL |     match s.lock().deref().deref() {
    |           ^^^^^^^^^^^^^^^^^^^^^^^^
 ...
 LL |         matcher => println!("Value is {}", s.lock().deref()),
-   |                                            ---------------- another value with significant `Drop` created here
+   |                                            -------- another value with significant `Drop` created here
 LL |         _ => println!("Value was not a match"),
 LL |     };
    |      - temporary lives until here
