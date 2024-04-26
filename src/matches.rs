@@ -105,7 +105,7 @@ pub(crate) fn rewrite_match(
     } else {
         let shape = match context.config.version() {
             Version::One => shape,
-            _ => shape.block_indent(context.config.tab_spaces())
+            _ => shape.block_indent(context.config.tab_spaces()),
         };
         inner_attrs
             .rewrite(context, shape)
