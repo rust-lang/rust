@@ -5,27 +5,26 @@ use crate::module::DirOwnership;
 
 use rustc_ast::attr::MarkedAttrs;
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, Nonterminal};
+use rustc_ast::token::Nonterminal;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::visit::{AssocCtxt, Visitor};
 use rustc_ast::{self as ast, AttrVec, Attribute, HasAttrs, Item, NodeId, PatKind};
 use rustc_attr::{self as attr, Deprecation, Stability};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync::{self, Lrc};
-use rustc_errors::{Applicability, Diag, DiagCtxt, ErrorGuaranteed, PResult};
+use rustc_errors::{DiagCtxt, ErrorGuaranteed, PResult};
 use rustc_feature::Features;
 use rustc_lint_defs::builtin::PROC_MACRO_BACK_COMPAT;
 use rustc_lint_defs::{BufferedEarlyLint, BuiltinLintDiag, RegisteredTools};
 use rustc_parse::{parser, MACRO_ARGUMENTS};
 use rustc_session::config::CollapseMacroDebuginfo;
-use rustc_session::errors::report_lit_error;
 use rustc_session::{parse::ParseSess, Limit, Session};
 use rustc_span::def_id::{CrateNum, DefId, LocalDefId};
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::{AstPass, ExpnData, ExpnKind, LocalExpnId};
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{BytePos, FileName, Span, DUMMY_SP};
+use rustc_span::{FileName, Span, DUMMY_SP};
 use smallvec::{smallvec, SmallVec};
 use std::default::Default;
 use std::iter;
@@ -963,7 +962,12 @@ impl SyntaxExtension {
 /// Error type that denotes indeterminacy.
 pub struct Indeterminate;
 
-pub type DeriveResolutions = Vec<(ast::Path, Annotatable, Option<Lrc<SyntaxExtension>>, bool)>;
+pub struct DeriveResolution {
+    pub path: ast::Path,
+    pub item: Annotatable,
+    pub exts: Option<Lrc<SyntaxExtension>>,
+    pub is_const: bool,
+}
 
 pub trait ResolverExpand {
     fn next_node_id(&mut self) -> NodeId;
@@ -1006,11 +1010,11 @@ pub trait ResolverExpand {
         &mut self,
         expn_id: LocalExpnId,
         force: bool,
-        derive_paths: &dyn Fn() -> DeriveResolutions,
+        derive_paths: &dyn Fn() -> Vec<DeriveResolution>,
     ) -> Result<(), Indeterminate>;
     /// Take resolutions for paths inside the `#[derive(...)]` attribute with the given `ExpnId`
     /// back from resolver.
-    fn take_derive_resolutions(&mut self, expn_id: LocalExpnId) -> Option<DeriveResolutions>;
+    fn take_derive_resolutions(&mut self, expn_id: LocalExpnId) -> Option<Vec<DeriveResolution>>;
     /// Path resolution logic for `#[cfg_accessible(path)]`.
     fn cfg_accessible(
         &mut self,
@@ -1262,181 +1266,6 @@ pub fn resolve_path(sess: &Session, path: impl Into<PathBuf>, span: Span) -> PRe
     } else {
         Ok(path)
     }
-}
-
-/// `Ok` represents successfully retrieving the string literal at the correct
-/// position, e.g., `println("abc")`.
-type ExprToSpannedStringResult<'a> = Result<(Symbol, ast::StrStyle, Span), UnexpectedExprKind<'a>>;
-
-/// - `Ok` is returned when the conversion to a string literal is unsuccessful,
-/// but another type of expression is obtained instead.
-/// - `Err` is returned when the conversion process fails.
-type UnexpectedExprKind<'a> = Result<(Diag<'a>, bool /* has_suggestions */), ErrorGuaranteed>;
-
-/// Extracts a string literal from the macro expanded version of `expr`,
-/// returning a diagnostic error of `err_msg` if `expr` is not a string literal.
-/// The returned bool indicates whether an applicable suggestion has already been
-/// added to the diagnostic to avoid emitting multiple suggestions. `Err(Err(ErrorGuaranteed))`
-/// indicates that an ast error was encountered.
-// FIXME(Nilstrieb) Make this function setup translatable
-#[allow(rustc::untranslatable_diagnostic)]
-pub fn expr_to_spanned_string<'a>(
-    cx: &'a mut ExtCtxt<'_>,
-    expr: P<ast::Expr>,
-    err_msg: &'static str,
-) -> ExpandResult<ExprToSpannedStringResult<'a>, ()> {
-    if !cx.force_mode
-        && let ast::ExprKind::MacCall(m) = &expr.kind
-        && cx.resolver.macro_accessible(cx.current_expansion.id, &m.path).is_err()
-    {
-        return ExpandResult::Retry(());
-    }
-
-    // Perform eager expansion on the expression.
-    // We want to be able to handle e.g., `concat!("foo", "bar")`.
-    let expr = cx.expander().fully_expand_fragment(AstFragment::Expr(expr)).make_expr();
-
-    ExpandResult::Ready(Err(match expr.kind {
-        ast::ExprKind::Lit(token_lit) => match ast::LitKind::from_token_lit(token_lit) {
-            Ok(ast::LitKind::Str(s, style)) => {
-                return ExpandResult::Ready(Ok((s, style, expr.span)));
-            }
-            Ok(ast::LitKind::ByteStr(..)) => {
-                let mut err = cx.dcx().struct_span_err(expr.span, err_msg);
-                let span = expr.span.shrink_to_lo();
-                err.span_suggestion(
-                    span.with_hi(span.lo() + BytePos(1)),
-                    "consider removing the leading `b`",
-                    "",
-                    Applicability::MaybeIncorrect,
-                );
-                Ok((err, true))
-            }
-            Ok(ast::LitKind::Err(guar)) => Err(guar),
-            Err(err) => Err(report_lit_error(&cx.sess.psess, err, token_lit, expr.span)),
-            _ => Ok((cx.dcx().struct_span_err(expr.span, err_msg), false)),
-        },
-        ast::ExprKind::Err(guar) => Err(guar),
-        ast::ExprKind::Dummy => {
-            cx.dcx().span_bug(expr.span, "tried to get a string literal from `ExprKind::Dummy`")
-        }
-        _ => Ok((cx.dcx().struct_span_err(expr.span, err_msg), false)),
-    }))
-}
-
-/// Extracts a string literal from the macro expanded version of `expr`,
-/// emitting `err_msg` if `expr` is not a string literal. This does not stop
-/// compilation on error, merely emits a non-fatal error and returns `Err`.
-pub fn expr_to_string(
-    cx: &mut ExtCtxt<'_>,
-    expr: P<ast::Expr>,
-    err_msg: &'static str,
-) -> ExpandResult<Result<(Symbol, ast::StrStyle), ErrorGuaranteed>, ()> {
-    expr_to_spanned_string(cx, expr, err_msg).map(|res| {
-        res.map_err(|err| match err {
-            Ok((err, _)) => err.emit(),
-            Err(guar) => guar,
-        })
-        .map(|(symbol, style, _)| (symbol, style))
-    })
-}
-
-/// Non-fatally assert that `tts` is empty. Note that this function
-/// returns even when `tts` is non-empty, macros that *need* to stop
-/// compilation should call `cx.diagnostic().abort_if_errors()`
-/// (this should be done as rarely as possible).
-pub fn check_zero_tts(cx: &ExtCtxt<'_>, span: Span, tts: TokenStream, name: &str) {
-    if !tts.is_empty() {
-        cx.dcx().emit_err(errors::TakesNoArguments { span, name });
-    }
-}
-
-/// Parse an expression. On error, emit it, advancing to `Eof`, and return `Err`.
-pub fn parse_expr(p: &mut parser::Parser<'_>) -> Result<P<ast::Expr>, ErrorGuaranteed> {
-    let guar = match p.parse_expr() {
-        Ok(expr) => return Ok(expr),
-        Err(err) => err.emit(),
-    };
-    while p.token != token::Eof {
-        p.bump();
-    }
-    Err(guar)
-}
-
-/// Interpreting `tts` as a comma-separated sequence of expressions,
-/// expect exactly one string literal, or emit an error and return `Err`.
-pub fn get_single_str_from_tts(
-    cx: &mut ExtCtxt<'_>,
-    span: Span,
-    tts: TokenStream,
-    name: &str,
-) -> ExpandResult<Result<Symbol, ErrorGuaranteed>, ()> {
-    get_single_str_spanned_from_tts(cx, span, tts, name).map(|res| res.map(|(s, _)| s))
-}
-
-pub fn get_single_str_spanned_from_tts(
-    cx: &mut ExtCtxt<'_>,
-    span: Span,
-    tts: TokenStream,
-    name: &str,
-) -> ExpandResult<Result<(Symbol, Span), ErrorGuaranteed>, ()> {
-    let mut p = cx.new_parser_from_tts(tts);
-    if p.token == token::Eof {
-        let guar = cx.dcx().emit_err(errors::OnlyOneArgument { span, name });
-        return ExpandResult::Ready(Err(guar));
-    }
-    let ret = match parse_expr(&mut p) {
-        Ok(ret) => ret,
-        Err(guar) => return ExpandResult::Ready(Err(guar)),
-    };
-    let _ = p.eat(&token::Comma);
-
-    if p.token != token::Eof {
-        cx.dcx().emit_err(errors::OnlyOneArgument { span, name });
-    }
-    expr_to_spanned_string(cx, ret, "argument must be a string literal").map(|res| {
-        res.map_err(|err| match err {
-            Ok((err, _)) => err.emit(),
-            Err(guar) => guar,
-        })
-        .map(|(symbol, _style, span)| (symbol, span))
-    })
-}
-
-/// Extracts comma-separated expressions from `tts`.
-/// On error, emit it, and return `Err`.
-pub fn get_exprs_from_tts(
-    cx: &mut ExtCtxt<'_>,
-    tts: TokenStream,
-) -> ExpandResult<Result<Vec<P<ast::Expr>>, ErrorGuaranteed>, ()> {
-    let mut p = cx.new_parser_from_tts(tts);
-    let mut es = Vec::new();
-    while p.token != token::Eof {
-        let expr = match parse_expr(&mut p) {
-            Ok(expr) => expr,
-            Err(guar) => return ExpandResult::Ready(Err(guar)),
-        };
-        if !cx.force_mode
-            && let ast::ExprKind::MacCall(m) = &expr.kind
-            && cx.resolver.macro_accessible(cx.current_expansion.id, &m.path).is_err()
-        {
-            return ExpandResult::Retry(());
-        }
-
-        // Perform eager expansion on the expression.
-        // We want to be able to handle e.g., `concat!("foo", "bar")`.
-        let expr = cx.expander().fully_expand_fragment(AstFragment::Expr(expr)).make_expr();
-
-        es.push(expr);
-        if p.eat(&token::Comma) {
-            continue;
-        }
-        if p.token != token::Eof {
-            let guar = cx.dcx().emit_err(errors::ExpectedCommaInList { span: p.token.span });
-            return ExpandResult::Ready(Err(guar));
-        }
-    }
-    ExpandResult::Ready(Ok(es))
 }
 
 pub fn parse_macro_name_and_helper_attrs(

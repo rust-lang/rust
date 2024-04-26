@@ -482,7 +482,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                             derive_invocations.reserve(derives.len());
                             derives
                                 .into_iter()
-                                .map(|(path, item, _exts, is_const)| {
+                                .map(|DeriveResolution { path, item, exts: _, is_const }| {
                                     // FIXME: Consider using the derive resolutions (`_exts`)
                                     // instead of enqueuing the derives to be resolved again later.
                                     let expn_id = LocalExpnId::fresh_empty();

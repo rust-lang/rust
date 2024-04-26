@@ -50,13 +50,13 @@ mod pattern_type;
 mod source_util;
 mod test;
 mod trace_macros;
-mod util;
 
 pub mod asm;
 pub mod cmdline_attrs;
 pub mod proc_macro_harness;
 pub mod standard_library_imports;
 pub mod test_harness;
+pub mod util;
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
@@ -109,8 +109,8 @@ pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
         bench: test::expand_bench,
         cfg_accessible: cfg_accessible::Expander,
         cfg_eval: cfg_eval::expand,
-        derive: derive::Expander(false),
-        derive_const: derive::Expander(true),
+        derive: derive::Expander { is_const: false },
+        derive_const: derive::Expander { is_const: true },
         global_allocator: global_allocator::expand,
         test: test::expand_test,
         test_case: test::expand_test_case,
