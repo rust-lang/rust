@@ -224,6 +224,7 @@
 #![feature(doc_cfg)]
 #![feature(doc_cfg_hide)]
 #![feature(doc_notable_trait)]
+#![feature(dropck_eyepatch)]
 #![feature(effects)]
 #![feature(extern_types)]
 #![feature(f128)]
