@@ -948,6 +948,7 @@ mod parse {
             match option {
                 "block" => slot.level = CoverageLevel::Block,
                 "branch" => slot.level = CoverageLevel::Branch,
+                "condition" => slot.level = CoverageLevel::Condition,
                 "mcdc" => slot.level = CoverageLevel::Mcdc,
                 _ => return false,
             }
