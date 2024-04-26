@@ -31,6 +31,16 @@
   ```rust
   const _: () = builtin # offset_of(x, x);
   ```
+- When using `version=Two` inner attributes in `match` expressions are correctly indented [#6147](https://github.com/rust-lang/rustfmt/issues/6147)
+  ```rust
+  pub fn main() {
+      match x {
+          #![attr1]
+          #![attr2]
+          _ => (),
+      }
+  }
+  ```
 
 [log crate]: https://crates.io/crates/log
 [unicode normalization form]: https://unicode.org/reports/tr15/
