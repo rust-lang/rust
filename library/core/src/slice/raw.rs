@@ -106,7 +106,7 @@ use crate::ub_checks;
 ///         // SAFETY: see function docstring.
 ///         unsafe { slice::from_raw_parts(ptr, len) }
 ///     };
-///     data.sum()
+///     data.into_iter().sum()
 /// }
 ///
 /// // This could be the result of C++'s std::vector::data():
