@@ -254,7 +254,7 @@ impl GlobalState {
 
     pub(crate) fn process_changes(&mut self) -> bool {
         let _p = span!(Level::INFO, "GlobalState::process_changes").entered();
-        let mut file_changes = FxHashMap::<_, (bool, ChangedFile)>::default();
+        let mut file_changes = FxHashMap::<_, ChangedFile>::default();
         let (change, modified_rust_files, workspace_structure_change) = {
             let mut change = ChangeWithProcMacros::new();
             let mut guard = self.vfs.write();
@@ -263,8 +263,6 @@ impl GlobalState {
                 return false;
             }
 
-            let _p =
-                span!(Level::INFO, "GlobalState::process_changes/gather_changed_files").entered();
             // downgrade to read lock to allow more readers while we are normalizing text
             let guard = RwLockWriteGuard::downgrade_to_upgradable(guard);
             let vfs: &Vfs = &guard.0;
@@ -275,53 +273,40 @@ impl GlobalState {
                 use vfs::Change::*;
                 match file_changes.entry(changed_file.file_id) {
                     Entry::Occupied(mut o) => {
-                        let (just_created, change) = o.get_mut();
-                        match (&mut change.change, just_created, changed_file.change) {
+                        let change = o.get_mut();
+                        match (&mut change.change, changed_file.change) {
                             // latter `Delete` wins
-                            (change, _, Delete) => *change = Delete,
+                            (change, Delete) => *change = Delete,
                             // merge `Create` with `Create` or `Modify`
-                            (Create(prev), _, Create(new) | Modify(new)) => *prev = new,
+                            (Create(prev), Create(new) | Modify(new)) => *prev = new,
                             // collapse identical `Modify`es
-                            (Modify(prev), _, Modify(new)) => *prev = new,
+                            (Modify(prev), Modify(new)) => *prev = new,
                             // equivalent to `Modify`
-                            (change @ Delete, just_created, Create(new)) => {
+                            (change @ Delete, Create(new)) => {
                                 *change = Modify(new);
-                                *just_created = true;
                             }
                             // shouldn't occur, but collapse into `Create`
-                            (change @ Delete, just_created, Modify(new)) => {
+                            (change @ Delete, Modify(new)) => {
+                                stdx::never!();
                                 *change = Create(new);
-                                *just_created = true;
                             }
                             // shouldn't occur, but keep the Create
-                            (prev @ Modify(_), _, new @ Create(_)) => *prev = new,
+                            (prev @ Modify(_), new @ Create(_)) => *prev = new,
                         }
                     }
-                    Entry::Vacant(v) => {
-                        _ = v.insert((matches!(&changed_file.change, Create(_)), changed_file))
-                    }
+                    Entry::Vacant(v) => _ = v.insert(changed_file),
                 }
             }
-
-            let _p = span!(Level::INFO, "GlobalState::process_changes/calculate_changed_files")
-                .entered();
-            let changed_files: Vec<_> = file_changes
-                .into_iter()
-                .filter(|(_, (just_created, change))| {
-                    !(*just_created && matches!(change.change, vfs::Change::Delete))
-                })
-                .map(|(file_id, (_, change))| vfs::ChangedFile { file_id, ..change })
-                .collect();
 
             let mut workspace_structure_change = None;
             // A file was added or deleted
             let mut has_structure_changes = false;
             let mut bytes = vec![];
             let mut modified_rust_files = vec![];
-            for file in changed_files {
+            for file in file_changes.into_values() {
                 let vfs_path = vfs.file_path(file.file_id);
                 if let Some(path) = vfs_path.as_path() {
-                    has_structure_changes = file.is_created_or_deleted();
+                    has_structure_changes |= file.is_created_or_deleted();
 
                     if file.is_modified() && path.extension() == Some("rs") {
                         modified_rust_files.push(file.file_id);
