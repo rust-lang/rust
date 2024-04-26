@@ -159,7 +159,23 @@ pub enum CoverageLevel {
     Block,
     /// Also instrument branch points (includes block coverage).
     Branch,
-    /// Instrument for MC/DC. Mostly a superset of branch coverage, but might
+    /// Same as branch coverage, but also adds branch instrumentation for
+    /// certain boolean expressions that are not directly used for branching.
+    ///
+    /// For example, in the following code, `b` does not directly participate
+    /// in a branch, but condition coverage will instrument it as its own
+    /// artificial branch:
+    /// ```
+    /// # let (a, b) = (false, true);
+    /// let x = a && b;
+    /// //           ^ last operand
+    /// ```
+    ///
+    /// This level is mainly intended to be a stepping-stone towards full MC/DC
+    /// instrumentation, so it might be removed in the future when MC/DC is
+    /// sufficiently complete, or if it is making MC/DC changes difficult.
+    Condition,
+    /// Instrument for MC/DC. Mostly a superset of condition coverage, but might
     /// differ in some corner cases.
     Mcdc,
 }

@@ -395,7 +395,7 @@ mod desc {
     pub const parse_optimization_fuel: &str = "crate=integer";
     pub const parse_dump_mono_stats: &str = "`markdown` (default) or `json`";
     pub const parse_instrument_coverage: &str = parse_bool;
-    pub const parse_coverage_options: &str = "`block` | `branch` | `mcdc`";
+    pub const parse_coverage_options: &str = "`block` | `branch` | `condition` | `mcdc`";
     pub const parse_instrument_xray: &str = "either a boolean (`yes`, `no`, `on`, `off`, etc), or a comma separated list of settings: `always` or `never` (mutually exclusive), `ignore-loops`, `instruction-threshold=N`, `skip-entry`, `skip-exit`";
     pub const parse_unpretty: &str = "`string` or `string=string`";
     pub const parse_treat_err_as_bug: &str = "either no value or a non-negative number";
@@ -961,6 +961,7 @@ mod parse {
             match option {
                 "block" => slot.level = CoverageLevel::Block,
                 "branch" => slot.level = CoverageLevel::Branch,
+                "condition" => slot.level = CoverageLevel::Condition,
                 "mcdc" => slot.level = CoverageLevel::Mcdc,
                 _ => return false,
             }
