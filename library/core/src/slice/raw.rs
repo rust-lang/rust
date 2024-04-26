@@ -92,11 +92,16 @@ use crate::ub_checks;
 /// ```
 /// use std::slice;
 ///
+/// /// # Safety
+/// ///
+/// /// If ptr is not NULL, it must be correctly aligned and
+/// /// point to `len` initialized items of type `f32`.
 /// unsafe extern "C" fn handle_slice(ptr: *const f32, len: usize) {
 ///     let data = if ptr.is_null() {
 ///         // `len` is assumed to be 0.
 ///         &[]
 ///     } else {
+///         // SAFETY: see function docstring.
 ///         unsafe { slice::from_raw_parts(ptr, len) }
 ///     };
 ///     dbg!(data);
