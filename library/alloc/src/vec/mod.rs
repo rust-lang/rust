@@ -64,6 +64,8 @@ use core::marker::PhantomData;
 use core::mem::{self, ManuallyDrop, MaybeUninit, SizedTypeProperties};
 use core::ops::{self, Index, IndexMut, Range, RangeBounds};
 use core::ptr::{self, NonNull};
+#[cfg(not(no_global_oom_handling))]
+use core::slice::DrainRaw;
 use core::slice::{self, SliceIndex};
 
 use crate::alloc::{Allocator, Global};
@@ -3000,14 +3002,10 @@ impl<T, A: Allocator> IntoIterator for Vec<T, A> {
             let me = ManuallyDrop::new(self);
             let alloc = ManuallyDrop::new(ptr::read(me.allocator()));
             let buf = me.buf.non_null();
-            let begin = buf.as_ptr();
-            let end = if T::IS_ZST {
-                begin.wrapping_byte_add(me.len())
-            } else {
-                begin.add(me.len()) as *const T
-            };
+            let len = me.len();
             let cap = me.buf.capacity();
-            IntoIter { buf, phantom: PhantomData, cap, alloc, ptr: buf, end }
+            let drain = DrainRaw::from_parts(buf, len);
+            IntoIter { buf, phantom: PhantomData, cap, alloc, drain }
         }
     }
 }

@@ -11,23 +11,12 @@ use core::iter::{
     TrustedRandomAccessNoCoerce,
 };
 use core::marker::PhantomData;
-use core::mem::{ManuallyDrop, MaybeUninit, SizedTypeProperties};
+use core::mem::{ManuallyDrop, SizedTypeProperties};
 use core::num::NonZero;
 #[cfg(not(no_global_oom_handling))]
 use core::ops::Deref;
-use core::ptr::{self, NonNull};
-use core::slice::{self};
-
-macro non_null {
-    (mut $place:expr, $t:ident) => {{
-        #![allow(unused_unsafe)] // we're sometimes used within an unsafe block
-        unsafe { &mut *(ptr::addr_of_mut!($place) as *mut NonNull<$t>) }
-    }},
-    ($place:expr, $t:ident) => {{
-        #![allow(unused_unsafe)] // we're sometimes used within an unsafe block
-        unsafe { *(ptr::addr_of!($place) as *const NonNull<$t>) }
-    }},
-}
+use core::ptr::NonNull;
+use core::slice::DrainRaw;
 
 /// An iterator that moves out of a vector.
 ///
@@ -52,12 +41,7 @@ pub struct IntoIter<
     // the drop impl reconstructs a RawVec from buf, cap and alloc
     // to avoid dropping the allocator twice we need to wrap it into ManuallyDrop
     pub(super) alloc: ManuallyDrop<A>,
-    pub(super) ptr: NonNull<T>,
-    /// If T is a ZST, this is actually ptr+len. This encoding is picked so that
-    /// ptr == end is a quick test for the Iterator being empty, that works
-    /// for both ZST and non-ZST.
-    /// For non-ZSTs the pointer is treated as `NonNull<T>`
-    pub(super) end: *const T,
+    pub(super) drain: DrainRaw<T>,
 }
 
 #[stable(feature = "vec_intoiter_debug", since = "1.13.0")]
@@ -81,7 +65,7 @@ impl<T, A: Allocator> IntoIter<T, A> {
     /// ```
     #[stable(feature = "vec_into_iter_as_slice", since = "1.15.0")]
     pub fn as_slice(&self) -> &[T] {
-        unsafe { slice::from_raw_parts(self.ptr.as_ptr(), self.len()) }
+        unsafe { self.drain.as_nonnull_slice().as_ref() }
     }
 
     /// Returns the remaining items of this iterator as a mutable slice.
@@ -99,7 +83,7 @@ impl<T, A: Allocator> IntoIter<T, A> {
     /// ```
     #[stable(feature = "vec_into_iter_as_slice", since = "1.15.0")]
     pub fn as_mut_slice(&mut self) -> &mut [T] {
-        unsafe { &mut *self.as_raw_mut_slice() }
+        unsafe { self.drain.as_nonnull_slice().as_mut() }
     }
 
     /// Returns a reference to the underlying allocator.
@@ -107,10 +91,6 @@ impl<T, A: Allocator> IntoIter<T, A> {
     #[inline]
     pub fn allocator(&self) -> &A {
         &self.alloc
-    }
-
-    fn as_raw_mut_slice(&mut self) -> *mut [T] {
-        ptr::slice_from_raw_parts_mut(self.ptr.as_ptr(), self.len())
     }
 
     /// Drops remaining elements and relinquishes the backing allocation.
@@ -130,28 +110,26 @@ impl<T, A: Allocator> IntoIter<T, A> {
     /// documentation for an overview.
     #[cfg(not(no_global_oom_handling))]
     pub(super) fn forget_allocation_drop_remaining(&mut self) {
-        let remaining = self.as_raw_mut_slice();
-
         // overwrite the individual fields instead of creating a new
         // struct and then overwriting &mut self.
         // this creates less assembly
         self.cap = 0;
         self.buf = RawVec::NEW.non_null();
-        self.ptr = self.buf;
-        self.end = self.buf.as_ptr();
 
         // Dropping the remaining elements can panic, so this needs to be
         // done only after updating the other fields.
-        unsafe {
-            ptr::drop_in_place(remaining);
-        }
+        self.drain.drop_remaining();
+    }
+
+    /// Returns a pointer to the start of the part of the buffer that has not yet been dropped.
+    #[inline]
+    pub(crate) fn ptr(&self) -> NonNull<T> {
+        self.drain.as_nonnull_slice().as_non_null_ptr()
     }
 
     /// Forgets to Drop the remaining elements while still allowing the backing allocation to be freed.
     pub(crate) fn forget_remaining_elements(&mut self) {
-        // For the ZST case, it is crucial that we mutate `end` here, not `ptr`.
-        // `ptr` must stay aligned, while `end` may be unaligned.
-        self.end = self.ptr.as_ptr();
+        self.drain.forget_remaining();
     }
 
     #[cfg(not(no_global_oom_handling))]
@@ -167,17 +145,19 @@ impl<T, A: Allocator> IntoIter<T, A> {
         // Taking `alloc` is ok because nothing else is going to look at it,
         // since our `Drop` impl isn't going to run so there's no more code.
         unsafe {
-            let buf = this.buf.as_ptr();
-            let initialized = if T::IS_ZST {
+            let buf = this.buf;
+            let len = this.drain.len();
+            let start = if T::IS_ZST {
                 // All the pointers are the same for ZSTs, so it's fine to
                 // say that they're all at the beginning of the "allocation".
-                0..this.len()
+                0
             } else {
-                this.ptr.sub_ptr(this.buf)..this.end.sub_ptr(buf)
+                this.ptr().sub_ptr(buf)
             };
+            let initialized = start..(start + len);
             let cap = this.cap;
             let alloc = ManuallyDrop::take(&mut this.alloc);
-            VecDeque::from_contiguous_raw_parts_in(buf, initialized, cap, alloc)
+            VecDeque::from_contiguous_raw_parts_in(buf.as_ptr(), initialized, cap, alloc)
         }
     }
 }
@@ -200,51 +180,17 @@ impl<T, A: Allocator> Iterator for IntoIter<T, A> {
 
     #[inline]
     fn next(&mut self) -> Option<T> {
-        let ptr = if T::IS_ZST {
-            if self.ptr.as_ptr() == self.end as *mut T {
-                return None;
-            }
-            // `ptr` has to stay where it is to remain aligned, so we reduce the length by 1 by
-            // reducing the `end`.
-            self.end = self.end.wrapping_byte_sub(1);
-            self.ptr
-        } else {
-            if self.ptr == non_null!(self.end, T) {
-                return None;
-            }
-            let old = self.ptr;
-            self.ptr = unsafe { old.add(1) };
-            old
-        };
-        Some(unsafe { ptr.read() })
+        self.drain.next()
     }
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let exact = if T::IS_ZST {
-            self.end.addr().wrapping_sub(self.ptr.as_ptr().addr())
-        } else {
-            unsafe { non_null!(self.end, T).sub_ptr(self.ptr) }
-        };
-        (exact, Some(exact))
+        self.drain.size_hint()
     }
 
     #[inline]
     fn advance_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
-        let step_size = self.len().min(n);
-        let to_drop = ptr::slice_from_raw_parts_mut(self.ptr.as_ptr(), step_size);
-        if T::IS_ZST {
-            // See `next` for why we sub `end` here.
-            self.end = self.end.wrapping_byte_sub(step_size);
-        } else {
-            // SAFETY: the min() above ensures that step_size is in bounds
-            self.ptr = unsafe { self.ptr.add(step_size) };
-        }
-        // SAFETY: the min() above ensures that step_size is in bounds
-        unsafe {
-            ptr::drop_in_place(to_drop);
-        }
-        NonZero::new(n - step_size).map_or(Ok(()), Err)
+        self.drain.advance_by(n)
     }
 
     #[inline]
@@ -253,46 +199,17 @@ impl<T, A: Allocator> Iterator for IntoIter<T, A> {
     }
 
     #[inline]
-    fn next_chunk<const N: usize>(&mut self) -> Result<[T; N], core::array::IntoIter<T, N>> {
-        let mut raw_ary = MaybeUninit::uninit_array();
-
-        let len = self.len();
-
-        if T::IS_ZST {
-            if len < N {
-                self.forget_remaining_elements();
-                // Safety: ZSTs can be conjured ex nihilo, only the amount has to be correct
-                return Err(unsafe { array::IntoIter::new_unchecked(raw_ary, 0..len) });
-            }
-
-            self.end = self.end.wrapping_byte_sub(N);
-            // Safety: ditto
-            return Ok(unsafe { raw_ary.transpose().assume_init() });
-        }
-
-        if len < N {
-            // Safety: `len` indicates that this many elements are available and we just checked that
-            // it fits into the array.
-            unsafe {
-                ptr::copy_nonoverlapping(self.ptr.as_ptr(), raw_ary.as_mut_ptr() as *mut T, len);
-                self.forget_remaining_elements();
-                return Err(array::IntoIter::new_unchecked(raw_ary, 0..len));
-            }
-        }
-
-        // Safety: `len` is larger than the array size. Copy a fixed amount here to fully initialize
-        // the array.
-        return unsafe {
-            ptr::copy_nonoverlapping(self.ptr.as_ptr(), raw_ary.as_mut_ptr() as *mut T, N);
-            self.ptr = self.ptr.add(N);
-            Ok(raw_ary.transpose().assume_init())
-        };
+    fn next_chunk<const N: usize>(&mut self) -> Result<[T; N], array::IntoIter<T, N>> {
+        self.drain.next_chunk()
     }
 
     unsafe fn __iterator_get_unchecked(&mut self, i: usize) -> Self::Item
     where
         Self: TrustedRandomAccessNoCoerce,
     {
+        // FIXME: for some reason, just `self.drain.__iterator_get_unchecked(i)`
+        // never worked for me.  If you know a way to fix that, please do.
+
         // SAFETY: the caller must guarantee that `i` is in bounds of the
         // `Vec<T>`, so `i` cannot overflow an `isize`, and the `self.ptr.add(i)`
         // is guaranteed to pointer to an element of the `Vec<T>` and
@@ -301,7 +218,7 @@ impl<T, A: Allocator> Iterator for IntoIter<T, A> {
         // Also note the implementation of `Self: TrustedRandomAccess` requires
         // that `T: Copy` so reading elements from the buffer doesn't invalidate
         // them for `Drop`.
-        unsafe { self.ptr.add(i).read() }
+        unsafe { self.ptr().add(i).read() }
     }
 }
 
@@ -309,54 +226,22 @@ impl<T, A: Allocator> Iterator for IntoIter<T, A> {
 impl<T, A: Allocator> DoubleEndedIterator for IntoIter<T, A> {
     #[inline]
     fn next_back(&mut self) -> Option<T> {
-        if T::IS_ZST {
-            if self.ptr.as_ptr() == self.end as *mut _ {
-                return None;
-            }
-            // See above for why 'ptr.offset' isn't used
-            self.end = self.end.wrapping_byte_sub(1);
-            // Note that even though this is next_back() we're reading from `self.ptr`, not
-            // `self.end`. We track our length using the byte offset from `self.ptr` to `self.end`,
-            // so the end pointer may not be suitably aligned for T.
-            Some(unsafe { ptr::read(self.ptr.as_ptr()) })
-        } else {
-            if self.ptr == non_null!(self.end, T) {
-                return None;
-            }
-            unsafe {
-                self.end = self.end.sub(1);
-                Some(ptr::read(self.end))
-            }
-        }
+        self.drain.next_back()
     }
 
     #[inline]
     fn advance_back_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
-        let step_size = self.len().min(n);
-        if T::IS_ZST {
-            // SAFETY: same as for advance_by()
-            self.end = self.end.wrapping_byte_sub(step_size);
-        } else {
-            // SAFETY: same as for advance_by()
-            self.end = unsafe { self.end.sub(step_size) };
-        }
-        let to_drop = ptr::slice_from_raw_parts_mut(self.end as *mut T, step_size);
-        // SAFETY: same as for advance_by()
-        unsafe {
-            ptr::drop_in_place(to_drop);
-        }
-        NonZero::new(n - step_size).map_or(Ok(()), Err)
+        self.drain.advance_back_by(n)
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, A: Allocator> ExactSizeIterator for IntoIter<T, A> {
     fn is_empty(&self) -> bool {
-        if T::IS_ZST {
-            self.ptr.as_ptr() == self.end as *mut _
-        } else {
-            self.ptr == non_null!(self.end, T)
-        }
+        self.drain.is_empty()
+    }
+    fn len(&self) -> usize {
+        self.drain.len()
     }
 }
 
@@ -440,9 +325,7 @@ unsafe impl<#[may_dangle] T, A: Allocator> Drop for IntoIter<T, A> {
 
         let guard = DropGuard(self);
         // destroy the remaining elements
-        unsafe {
-            ptr::drop_in_place(guard.0.as_raw_mut_slice());
-        }
+        guard.0.drain.drop_remaining();
         // now `guard` will be dropped and do the rest
     }
 }

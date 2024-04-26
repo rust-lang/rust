@@ -253,12 +253,14 @@ where
 {
     let (src_buf, src_ptr, src_cap, mut dst_buf, dst_end, dst_cap) = unsafe {
         let inner = iterator.as_inner().as_into_iter();
+        let inner_ptr = inner.ptr();
+        let inner_end = inner_ptr.add(inner.len());
         (
             inner.buf,
-            inner.ptr,
+            inner_ptr,
             inner.cap,
             inner.buf.cast::<T>(),
-            inner.end as *const T,
+            inner_end.as_ptr() as *const T,
             inner.cap * mem::size_of::<I::Src>() / mem::size_of::<T>(),
         )
     };
@@ -275,9 +277,9 @@ where
     // check InPlaceIterable contract. This is only possible if the iterator advanced the
     // source pointer at all. If it uses unchecked access via TrustedRandomAccess
     // then the source pointer will stay in its initial position and we can't use it as reference
-    if src.ptr != src_ptr {
+    if src.ptr() != src_ptr {
         debug_assert!(
-            unsafe { dst_buf.add(len).cast() } <= src.ptr,
+            unsafe { dst_buf.add(len).cast() } <= src.ptr(),
             "InPlaceIterable contract violation, write pointer advanced beyond read pointer"
         );
     }

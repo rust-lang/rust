@@ -6,14 +6,18 @@ fn vec_move(_1: Vec<impl Sized>) -> () {
     let mut _2: std::vec::IntoIter<impl Sized>;
     let mut _3: std::vec::IntoIter<impl Sized>;
     let mut _4: &mut std::vec::IntoIter<impl Sized>;
-    let mut _5: std::option::Option<impl Sized>;
-    let mut _6: isize;
-    let _8: ();
+    let mut _6: std::option::Option<impl Sized>;
+    let mut _7: isize;
+    let _9: ();
     scope 1 {
         debug iter => _3;
-        let _7: impl Sized;
+        let _8: impl Sized;
         scope 2 {
-            debug x => _7;
+            debug x => _8;
+        }
+        scope 3 (inlined <std::vec::IntoIter<impl Sized> as Iterator>::next) {
+            debug self => _4;
+            let mut _5: &mut core::slice::drain::DrainRaw<impl Sized>;
         }
     }
 
@@ -29,20 +33,21 @@ fn vec_move(_1: Vec<impl Sized>) -> () {
     }
 
     bb2: {
-        StorageLive(_5);
-        StorageLive(_4);
+        StorageLive(_6);
         _4 = &mut _3;
-        _5 = <std::vec::IntoIter<impl Sized> as Iterator>::next(move _4) -> [return: bb3, unwind: bb9];
+        StorageLive(_5);
+        _5 = &mut (_3.4: core::slice::drain::DrainRaw<impl Sized>);
+        _6 = <core::slice::drain::DrainRaw<impl Sized> as Iterator>::next(move _5) -> [return: bb3, unwind: bb9];
     }
 
     bb3: {
-        StorageDead(_4);
-        _6 = discriminant(_5);
-        switchInt(move _6) -> [0: bb4, 1: bb6, otherwise: bb8];
+        StorageDead(_5);
+        _7 = discriminant(_6);
+        switchInt(move _7) -> [0: bb4, 1: bb6, otherwise: bb8];
     }
 
     bb4: {
-        StorageDead(_5);
+        StorageDead(_6);
         drop(_3) -> [return: bb5, unwind continue];
     }
 
@@ -53,12 +58,12 @@ fn vec_move(_1: Vec<impl Sized>) -> () {
     }
 
     bb6: {
-        _7 = move ((_5 as Some).0: impl Sized);
-        _8 = opaque::<impl Sized>(move _7) -> [return: bb7, unwind: bb9];
+        _8 = move ((_6 as Some).0: impl Sized);
+        _9 = opaque::<impl Sized>(move _8) -> [return: bb7, unwind: bb9];
     }
 
     bb7: {
-        StorageDead(_5);
+        StorageDead(_6);
         goto -> bb2;
     }
 
