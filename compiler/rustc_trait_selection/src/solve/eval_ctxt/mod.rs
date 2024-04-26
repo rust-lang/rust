@@ -34,7 +34,7 @@ use super::{search_graph::SearchGraph, Goal};
 use super::{GoalSource, SolverMode};
 pub use select::InferCtxtSelectExt;
 
-mod canonical;
+pub(super) mod canonical;
 mod probe;
 mod select;
 
@@ -84,7 +84,7 @@ pub struct EvalCtxt<'a, 'tcx> {
 
     pub(super) search_graph: &'a mut SearchGraph<'tcx>,
 
-    pub(super) nested_goals: NestedGoals<'tcx>,
+    nested_goals: NestedGoals<'tcx>,
 
     // Has this `EvalCtxt` errored out with `NoSolution` in `try_evaluate_added_goals`?
     //
@@ -161,7 +161,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
     /// Creates a root evaluation context and search graph. This should only be
     /// used from outside of any evaluation, and other methods should be preferred
     /// over using this manually (such as [`InferCtxtEvalExt::evaluate_root_goal`]).
-    fn enter_root<R>(
+    pub(super) fn enter_root<R>(
         infcx: &InferCtxt<'tcx>,
         generate_proof_tree: GenerateProofTree,
         f: impl FnOnce(&mut EvalCtxt<'_, 'tcx>) -> R,
@@ -242,7 +242,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
             search_graph,
             nested_goals: NestedGoals::new(),
             tainted: Ok(()),
-            inspect: canonical_goal_evaluation.new_goal_evaluation_step(input),
+            inspect: canonical_goal_evaluation.new_goal_evaluation_step(var_values, input),
         };
 
         for &(key, ty) in &input.predefined_opaques_in_body.opaque_types {
@@ -255,7 +255,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         }
 
         let result = f(&mut ecx, input.goal);
-
+        ecx.inspect.probe_final_state(ecx.infcx, ecx.max_input_universe);
         canonical_goal_evaluation.goal_evaluation_step(ecx.inspect);
 
         // When creating a query response we clone the opaque type constraints
@@ -338,7 +338,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
     /// storage.
     // FIXME(-Znext-solver=coinduction): `_source` is currently unused but will
     // be necessary once we implement the new coinduction approach.
-    fn evaluate_goal_raw(
+    pub(super) fn evaluate_goal_raw(
         &mut self,
         goal_evaluation_kind: GoalEvaluationKind,
         _source: GoalSource,
@@ -458,13 +458,23 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         }
     }
 
+    #[instrument(level = "debug", skip(self))]
+    pub(super) fn add_normalizes_to_goal(&mut self, goal: Goal<'tcx, ty::NormalizesTo<'tcx>>) {
+        self.inspect.add_normalizes_to_goal(self.infcx, self.max_input_universe, goal);
+        self.nested_goals.normalizes_to_goals.push(goal);
+    }
+
+    #[instrument(level = "debug", skip(self))]
+    pub(super) fn add_goal(&mut self, source: GoalSource, goal: Goal<'tcx, ty::Predicate<'tcx>>) {
+        self.inspect.add_goal(self.infcx, self.max_input_universe, source, goal);
+        self.nested_goals.goals.push((source, goal));
+    }
+
     // Recursively evaluates all the goals added to this `EvalCtxt` to completion, returning
     // the certainty of all the goals.
     #[instrument(level = "debug", skip(self))]
     pub(super) fn try_evaluate_added_goals(&mut self) -> Result<Certainty, NoSolution> {
-        let inspect = self.inspect.new_evaluate_added_goals();
-        let inspect = core::mem::replace(&mut self.inspect, inspect);
-
+        self.inspect.start_evaluate_added_goals();
         let mut response = Ok(Certainty::overflow(false));
         for _ in 0..FIXPOINT_STEP_LIMIT {
             // FIXME: This match is a bit ugly, it might be nice to change the inspect
@@ -482,14 +492,11 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
             }
         }
 
-        self.inspect.eval_added_goals_result(response);
+        self.inspect.evaluate_added_goals_result(response);
 
         if response.is_err() {
             self.tainted = Err(NoSolution);
         }
-
-        let goal_evaluations = std::mem::replace(&mut self.inspect, inspect);
-        self.inspect.added_goals_evaluation(goal_evaluations);
 
         response
     }
@@ -499,9 +506,8 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
     /// Goals for the next step get directly added to the nested goals of the `EvalCtxt`.
     fn evaluate_added_goals_step(&mut self) -> Result<Option<Certainty>, NoSolution> {
         let tcx = self.tcx();
+        self.inspect.start_evaluate_added_goals_step();
         let mut goals = core::mem::take(&mut self.nested_goals);
-
-        self.inspect.evaluate_added_goals_loop_start();
 
         // If this loop did not result in any progress, what's our final certainty.
         let mut unchanged_certainty = Some(Certainty::Yes);
@@ -586,17 +592,23 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         self.infcx.tcx
     }
 
-    pub(super) fn next_ty_infer(&self) -> Ty<'tcx> {
-        self.infcx.next_ty_var(TypeVariableOrigin { param_def_id: None, span: DUMMY_SP })
+    pub(super) fn next_ty_infer(&mut self) -> Ty<'tcx> {
+        let ty = self.infcx.next_ty_var(TypeVariableOrigin { param_def_id: None, span: DUMMY_SP });
+        self.inspect.add_var_value(ty);
+        ty
     }
 
-    pub(super) fn next_const_infer(&self, ty: Ty<'tcx>) -> ty::Const<'tcx> {
-        self.infcx.next_const_var(ty, ConstVariableOrigin { param_def_id: None, span: DUMMY_SP })
+    pub(super) fn next_const_infer(&mut self, ty: Ty<'tcx>) -> ty::Const<'tcx> {
+        let ct = self
+            .infcx
+            .next_const_var(ty, ConstVariableOrigin { param_def_id: None, span: DUMMY_SP });
+        self.inspect.add_var_value(ct);
+        ct
     }
 
     /// Returns a ty infer or a const infer depending on whether `kind` is a `Ty` or `Const`.
     /// If `kind` is an integer inference variable this will still return a ty infer var.
-    pub(super) fn next_term_infer_of_kind(&self, kind: ty::Term<'tcx>) -> ty::Term<'tcx> {
+    pub(super) fn next_term_infer_of_kind(&mut self, kind: ty::Term<'tcx>) -> ty::Term<'tcx> {
         match kind.unpack() {
             ty::TermKind::Ty(_) => self.next_ty_infer().into(),
             ty::TermKind::Const(ct) => self.next_const_infer(ct.ty()).into(),
