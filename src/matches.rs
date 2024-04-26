@@ -103,10 +103,9 @@ pub(crate) fn rewrite_match(
     let inner_attrs_str = if inner_attrs.is_empty() {
         String::new()
     } else {
-        let shape = if context.config.version() == Version::One {
-            shape
-        } else {
-            shape.block_indent(context.config.tab_spaces())
+        let shape = match context.config.version()  {
+            Version::One => shape,
+            _ => shape.block_indent(context.config.tab_spaces())
         };
         inner_attrs
             .rewrite(context, shape)
