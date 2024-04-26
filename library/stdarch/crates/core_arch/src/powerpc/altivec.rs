@@ -1642,6 +1642,52 @@ mod sealed {
     }
 
     #[unstable(feature = "stdarch_powerpc", issue = "111145")]
+    pub trait VectorMul {
+        unsafe fn vec_mul(self, b: Self) -> Self;
+    }
+
+    #[inline]
+    #[target_feature(enable = "altivec")]
+    #[cfg_attr(test, assert_instr(vmuluwm))]
+    unsafe fn vec_vmuluwm(a: vector_signed_int, b: vector_signed_int) -> vector_signed_int {
+        transmute(simd_mul::<i32x4>(transmute(a), transmute(b)))
+    }
+
+    #[inline]
+    #[target_feature(enable = "altivec")]
+    #[cfg_attr(test, assert_instr(xvmulsp))]
+    unsafe fn vec_xvmulsp(a: vector_float, b: vector_float) -> vector_float {
+        transmute(simd_mul::<f32x4>(transmute(a), transmute(b)))
+    }
+
+    #[unstable(feature = "stdarch_powerpc", issue = "111145")]
+    impl VectorMul for vector_signed_int {
+        #[inline]
+        #[target_feature(enable = "altivec")]
+        unsafe fn vec_mul(self, b: Self) -> Self {
+            vec_vmuluwm(self, b)
+        }
+    }
+
+    #[unstable(feature = "stdarch_powerpc", issue = "111145")]
+    impl VectorMul for vector_unsigned_int {
+        #[inline]
+        #[target_feature(enable = "altivec")]
+        unsafe fn vec_mul(self, b: Self) -> Self {
+            transmute(simd_mul::<u32x4>(transmute(self), transmute(b)))
+        }
+    }
+
+    #[unstable(feature = "stdarch_powerpc", issue = "111145")]
+    impl VectorMul for vector_float {
+        #[inline]
+        #[target_feature(enable = "altivec")]
+        unsafe fn vec_mul(self, b: Self) -> Self {
+            vec_xvmulsp(self, b)
+        }
+    }
+
+    #[unstable(feature = "stdarch_powerpc", issue = "111145")]
     pub trait VectorMule<Result> {
         unsafe fn vec_mule(self, b: Self) -> Result;
     }
@@ -4045,6 +4091,23 @@ mod endian {
     {
         a.vec_mule(b)
     }
+}
+
+/// Vector Multiply
+///
+/// ## Purpose
+/// Compute the products of corresponding elements of two vectors.
+///
+/// ## Result value
+/// Each element of r receives the product of the corresponding elements of a and b.
+#[inline]
+#[target_feature(enable = "altivec")]
+#[unstable(feature = "stdarch_powerpc", issue = "111145")]
+pub unsafe fn vec_mul<T>(a: T, b: T) -> T
+where
+    T: sealed::VectorMul,
+{
+    a.vec_mul(b)
 }
 
 /// Vector Multiply Add Saturated
