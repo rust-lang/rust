@@ -18,7 +18,7 @@ pub fn compute_abi_info<Ty>(fn_abi: &mut FnAbi<'_, Ty>) {
                 // FIXME(eddyb) there should be a size cap here
                 // (probably what clang calls "illegal vectors").
             }
-            Abi::ScalableVector { .. } => {}
+            Abi::ScalableVector { .. } => unreachable!(),
             Abi::Scalar(_) => {
                 if a.layout.size.bytes() > 8 {
                     a.make_indirect();

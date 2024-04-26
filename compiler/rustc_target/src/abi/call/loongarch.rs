@@ -76,9 +76,10 @@ where
                 }
             }
         },
-        Abi::Vector { .. } | Abi::ScalableVector { .. } | Abi::Uninhabited => {
+        Abi::Vector { .. } | Abi::Uninhabited => {
             return Err(CannotUseFpConv);
         }
+        Abi::ScalableVector { .. } => unreachable!(),
         Abi::ScalarPair(..) | Abi::Aggregate { .. } => match arg_layout.fields {
             FieldsShape::Primitive => {
                 unreachable!("aggregates can't have `FieldsShape::Primitive`")

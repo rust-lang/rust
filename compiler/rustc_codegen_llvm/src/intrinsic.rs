@@ -1388,6 +1388,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             InvalidMonomorphization::MismatchedLengths { span, name, m_len, v_len }
         );
         match m_elem_ty.kind() {
+            // Arm SVE has a svbool type and we need to represent that as a bool in the type system.
             ty::Int(_) | ty::Bool => {}
             _ => return_error!(InvalidMonomorphization::MaskType { span, name, ty: m_elem_ty }),
         }

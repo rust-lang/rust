@@ -126,6 +126,10 @@ impl LlvmType for Reg {
                 _ => bug!("unsupported float: {:?}", self),
             },
             RegKind::Vector => cx.type_vector(cx.type_i8(), self.size.bytes()),
+            // Generate a LLVM type such as <vscale x 16 x i8>, like above for a non scalable
+            // vector. The use of 16 here is chosen as that will generate a valid type with both
+            // Arm SVE and RISC-V RVV. In the future with other architectures this might not be
+            // valid and might have to be configured by the target.
             RegKind::ScalableVector => cx.type_scalable_vector(cx.type_i8(), 16),
         }
     }

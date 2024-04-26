@@ -553,12 +553,6 @@ fn layout_of_uncached<'tcx>(
                     return Err(error(cx, LayoutError::Unknown(ty)));
                 }
 
-                if def.repr().scalable()
-                    && variants[FIRST_VARIANT].iter().all(|field| !field.0.is_zst())
-                {
-                    bug!("Fields for a Scalable vector should be a ZST");
-                }
-
                 return Ok(tcx.mk_layout(
                     cx.layout_of_union(&def.repr(), &variants)
                         .ok_or_else(|| error(cx, LayoutError::Unknown(ty)))?,

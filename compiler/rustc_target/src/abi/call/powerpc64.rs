@@ -35,7 +35,7 @@ where
             RegKind::Integer => false,
             RegKind::Float => true,
             RegKind::Vector => arg.layout.size.bits() == 128,
-            RegKind::ScalableVector => true,
+            RegKind::ScalableVector => unreachable!(),
         };
 
         valid_unit.then_some(Uniform::consecutive(unit, arg.layout.size))
