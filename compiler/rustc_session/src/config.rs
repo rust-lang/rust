@@ -159,8 +159,24 @@ pub enum CoverageLevel {
     Block,
     /// Also instrument branch points (includes block coverage).
     Branch,
-    /// Instrument for MC/DC. Mostly a superset of branch coverage, but might
-    /// differ in some corner cases.
+    /// Same as branch condition, with a single different case:
+    /// In boolean expressions that are not inside a control-flow decision,
+    /// it will intentionally insert an instrumented branch for the last operand.
+    ///
+    /// Example:
+    /// ```
+    /// # let (a, b) = (false, true);
+    /// let x = a && b;
+    /// //           ^ last operand
+    /// ```
+    /// Condition coverage does track true/false coverage for `b`,
+    /// but branch coverage doesn't.
+    ///
+    /// The main purpose of this coverage level is to be reused by MCDC.
+    Condition,
+    /// Instrument for MC/DC. Enables condition coverage under the hood.
+    /// Mostly a superset of branch coverage, but might differ in some
+    /// corner cases.
     Mcdc,
 }
 
