@@ -6,7 +6,7 @@ use std::{
     sync::Arc,
 };
 
-use paths::{AbsPath, AbsPathBuf};
+use paths::AbsPath;
 use rustc_hash::FxHashMap;
 use stdx::JodChild;
 
@@ -28,11 +28,11 @@ pub(crate) struct ProcMacroProcessSrv {
 
 impl ProcMacroProcessSrv {
     pub(crate) fn run(
-        process_path: AbsPathBuf,
+        process_path: &AbsPath,
         env: &FxHashMap<String, String>,
     ) -> io::Result<ProcMacroProcessSrv> {
         let create_srv = |null_stderr| {
-            let mut process = Process::run(process_path.clone(), env, null_stderr)?;
+            let mut process = Process::run(process_path, env, null_stderr)?;
             let (stdin, stdout) = process.stdio().expect("couldn't access child stdio");
 
             io::Result::Ok(ProcMacroProcessSrv {
@@ -153,11 +153,11 @@ struct Process {
 
 impl Process {
     fn run(
-        path: AbsPathBuf,
+        path: &AbsPath,
         env: &FxHashMap<String, String>,
         null_stderr: bool,
     ) -> io::Result<Process> {
-        let child = JodChild(mk_child(&path, env, null_stderr)?);
+        let child = JodChild(mk_child(path, env, null_stderr)?);
         Ok(Process { child })
     }
 

@@ -131,7 +131,7 @@ pub struct SemanticsImpl<'db> {
     pub db: &'db dyn HirDatabase,
     s2d_cache: RefCell<SourceToDefCache>,
     /// Rootnode to HirFileId cache
-    cache: RefCell<FxHashMap<SyntaxNode, HirFileId>>,
+    root_to_file_cache: RefCell<FxHashMap<SyntaxNode, HirFileId>>,
     // These 2 caches are mainly useful for semantic highlighting as nothing else descends a lot of tokens
     // So we might wanna move them out into something specific for semantic highlighting
     expansion_info_cache: RefCell<FxHashMap<MacroFileId, ExpansionInfo>>,
@@ -294,7 +294,7 @@ impl<'db> SemanticsImpl<'db> {
         SemanticsImpl {
             db,
             s2d_cache: Default::default(),
-            cache: Default::default(),
+            root_to_file_cache: Default::default(),
             expansion_info_cache: Default::default(),
             macro_call_cache: Default::default(),
         }
@@ -690,6 +690,7 @@ impl<'db> SemanticsImpl<'db> {
                 exp_info
             });
 
+            // FIXME: uncached parse
             // Create the source analyzer for the macro call scope
             let Some(sa) = self.analyze_no_infer(&self.parse_or_expand(expansion_info.call_file()))
             else {
@@ -1025,6 +1026,7 @@ impl<'db> SemanticsImpl<'db> {
                 None => {
                     let call_node = file_id.macro_file()?.call_node(db);
                     // cache the node
+                    // FIXME: uncached parse
                     self.parse_or_expand(call_node.file_id);
                     Some(call_node)
                 }
@@ -1397,7 +1399,7 @@ impl<'db> SemanticsImpl<'db> {
 
     fn cache(&self, root_node: SyntaxNode, file_id: HirFileId) {
         assert!(root_node.parent().is_none());
-        let mut cache = self.cache.borrow_mut();
+        let mut cache = self.root_to_file_cache.borrow_mut();
         let prev = cache.insert(root_node, file_id);
         assert!(prev.is_none() || prev == Some(file_id))
     }
@@ -1407,7 +1409,7 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     fn lookup(&self, root_node: &SyntaxNode) -> Option<HirFileId> {
-        let cache = self.cache.borrow();
+        let cache = self.root_to_file_cache.borrow();
         cache.get(root_node).copied()
     }
 
@@ -1427,7 +1429,7 @@ impl<'db> SemanticsImpl<'db> {
                  known nodes: {}\n\n",
                 node,
                 root_node,
-                self.cache
+                self.root_to_file_cache
                     .borrow()
                     .keys()
                     .map(|it| format!("{it:?}"))

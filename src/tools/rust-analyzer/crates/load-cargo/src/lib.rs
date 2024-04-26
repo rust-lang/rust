@@ -68,9 +68,9 @@ pub fn load_workspace(
     let proc_macro_server = match &load_config.with_proc_macro_server {
         ProcMacroServerChoice::Sysroot => ws
             .find_sysroot_proc_macro_srv()
-            .and_then(|it| ProcMacroServer::spawn(it, extra_env).map_err(Into::into)),
+            .and_then(|it| ProcMacroServer::spawn(&it, extra_env).map_err(Into::into)),
         ProcMacroServerChoice::Explicit(path) => {
-            ProcMacroServer::spawn(path.clone(), extra_env).map_err(Into::into)
+            ProcMacroServer::spawn(path, extra_env).map_err(Into::into)
         }
         ProcMacroServerChoice::None => Err(anyhow::format_err!("proc macro server disabled")),
     };

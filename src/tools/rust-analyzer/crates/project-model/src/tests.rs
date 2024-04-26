@@ -152,7 +152,7 @@ fn rooted_project_json(data: ProjectJsonData) -> ProjectJson {
     replace_root(&mut root, true);
     let path = Utf8Path::new(&root);
     let base = AbsPath::assert(path);
-    ProjectJson::new(base, data)
+    ProjectJson::new(None, base, data)
 }
 
 fn to_crate_graph(project_workspace: ProjectWorkspace) -> (CrateGraph, ProcMacroPaths) {
