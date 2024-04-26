@@ -312,6 +312,16 @@ static Attribute::AttrKind fromRust(LLVMRustAttribute Kind) {
     return Attribute::SafeStack;
   case FnRetThunkExtern:
     return Attribute::FnRetThunkExtern;
+#if LLVM_VERSION_GE(18, 0)
+  case Writable:
+    return Attribute::Writable;
+  case DeadOnUnwind:
+    return Attribute::DeadOnUnwind;
+#else
+  case Writable:
+  case DeadOnUnwind:
+    report_fatal_error("Not supported on this LLVM version");
+#endif
   }
   report_fatal_error("bad AttributeKind");
 }

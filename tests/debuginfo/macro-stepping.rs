@@ -87,6 +87,7 @@ extern crate macro_stepping; // exports new_scope!()
 // lldb-command:frame select
 // lldb-check:[...] #inc-loc3 [...]
 
+#[collapse_debuginfo(yes)]
 macro_rules! foo {
     () => {
         let a = 1; opaque(a);
@@ -95,6 +96,7 @@ macro_rules! foo {
     };
 }
 
+#[collapse_debuginfo(yes)]
 macro_rules! foo2 {
     () => {
         foo!();

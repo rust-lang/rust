@@ -435,7 +435,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
             sym::repr => {
                 codegen_fn_attrs.alignment = if let Some(items) = attr.meta_item_list()
                     && let [item] = items.as_slice()
-                    && let Some((sym::align, literal)) = item.name_value_literal()
+                    && let Some((sym::align, literal)) = item.singleton_lit_list()
                 {
                     rustc_attr::parse_alignment(&literal.kind)
                         .map_err(|msg| {

@@ -21,7 +21,7 @@ LL |     [0; [|&_: _ &_| {}; 0 ].len()]
    |                help: missing `,`
 
 error: expected identifier, found reserved identifier `_`
-  --> $DIR/issue-66706.rs:18:26
+  --> $DIR/issue-66706.rs:19:26
    |
 LL |     [0; match [|f @ &ref _| () ] {} ]
    |         -----            ^ expected identifier, found reserved identifier
@@ -34,6 +34,12 @@ error[E0282]: type annotations needed
 LL |     [0; [|_: _ &_| ()].len()]
    |           ^ cannot infer type
 
-error: aborting due to 5 previous errors
+error[E0282]: type annotations needed
+  --> $DIR/issue-66706.rs:13:11
+   |
+LL |     [0; [|&_: _ &_| {}; 0 ].len()]
+   |           ^^^^^ cannot infer type
+
+error: aborting due to 6 previous errors
 
 For more information about this error, try `rustc --explain E0282`.

@@ -1,9 +1,7 @@
 //@ ignore-lldb
-#![feature(collapse_debuginfo)]
 
 // Test that statement, skipped/added/reordered by macros, is correctly processed in debuginfo
 // Performed step-over and step-into debug stepping through call statements.
-// collapse_debuginfo feature enabled.
 
 //@ compile-flags:-g
 
@@ -94,7 +92,7 @@ fn myprintln_impl(text: &str) {
     println!("{}", text)
 }
 
-#[collapse_debuginfo]
+#[collapse_debuginfo(yes)]
 macro_rules! myprintln {
     ($($arg:tt)*) => {{
         myprintln_impl($($arg)*);

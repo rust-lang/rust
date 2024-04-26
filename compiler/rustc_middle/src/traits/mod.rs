@@ -328,11 +328,16 @@ pub enum ObligationCauseCode<'tcx> {
     /// `static` items must have `Sync` type.
     SharedStatic,
 
+    /// Derived obligation (i.e. theoretical `where` clause) on a built-in
+    /// implementation like `Copy` or `Sized`.
     BuiltinDerivedObligation(DerivedObligationCause<'tcx>),
 
+    /// Derived obligation (i.e. `where` clause) on an user-provided impl
+    /// or a trait alias.
     ImplDerivedObligation(Box<ImplDerivedObligationCause<'tcx>>),
 
-    DerivedObligation(DerivedObligationCause<'tcx>),
+    /// Derived obligation for WF goals.
+    WellFormedDerivedObligation(DerivedObligationCause<'tcx>),
 
     FunctionArgumentObligation {
         /// The node of the relevant argument in the function call.
@@ -487,7 +492,7 @@ pub enum WellFormedLoc {
         /// The index of the parameter to use.
         /// Parameters are indexed from 0, with the return type
         /// being the last 'parameter'
-        param_idx: u16,
+        param_idx: usize,
     },
 }
 
@@ -534,7 +539,7 @@ impl<'tcx> ObligationCauseCode<'tcx> {
         match self {
             FunctionArgumentObligation { parent_code, .. } => Some((parent_code, None)),
             BuiltinDerivedObligation(derived)
-            | DerivedObligation(derived)
+            | WellFormedDerivedObligation(derived)
             | ImplDerivedObligation(box ImplDerivedObligationCause { derived, .. }) => {
                 Some((&derived.parent_code, Some(derived.parent_trait_pred)))
             }

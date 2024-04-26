@@ -200,6 +200,8 @@ pub enum AttributeKind {
     AllocAlign = 39,
     SanitizeSafeStack = 40,
     FnRetThunkExtern = 41,
+    Writable = 42,
+    DeadOnUnwind = 43,
 }
 
 /// LLVMIntPredicate

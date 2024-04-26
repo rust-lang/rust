@@ -986,7 +986,7 @@ pub fn parse_repr_attr(sess: &Session, attr: &Attribute) -> Vec<ReprAttr> {
                     recognised = true;
                     acc.push(h);
                 }
-            } else if let Some((name, value)) = item.name_value_literal() {
+            } else if let Some((name, value)) = item.singleton_lit_list() {
                 let mut literal_error = None;
                 let mut err_span = item.span();
                 if name == sym::align {
