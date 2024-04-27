@@ -797,22 +797,25 @@ impl HirDisplay for Ty {
                 c.hir_fmt(f)?;
                 write!(f, "]")?;
             }
-            TyKind::Raw(m, t) | TyKind::Ref(m, _, t) => {
-                if matches!(self.kind(Interner), TyKind::Raw(..)) {
+            kind @ (TyKind::Raw(m, t) | TyKind::Ref(m, _, t)) => {
+                if let TyKind::Ref(_, l, _) = kind {
+                    f.write_char('&')?;
+                    if cfg!(test) {
+                        // rendering these unconditionally is probably too much (at least for inlay
+                        // hints) so we gate it to testing only for the time being
+                        l.hir_fmt(f)?;
+                        f.write_char(' ')?;
+                    }
+                    match m {
+                        Mutability::Not => (),
+                        Mutability::Mut => f.write_str("mut ")?,
+                    }
+                } else {
                     write!(
                         f,
                         "*{}",
                         match m {
                             Mutability::Not => "const ",
-                            Mutability::Mut => "mut ",
-                        }
-                    )?;
-                } else {
-                    write!(
-                        f,
-                        "&{}",
-                        match m {
-                            Mutability::Not => "",
                             Mutability::Mut => "mut ",
                         }
                     )?;
@@ -1330,7 +1333,18 @@ fn hir_fmt_generics(
     }
 
     let parameters_to_write = generic_args_sans_defaults(f, generic_def, parameters);
-    if !parameters_to_write.is_empty() {
+
+    // FIXME: Remote this
+    // most of our lifetimes will be errors as we lack elision and inference
+    // so don't render them for now
+    let only_err_lifetimes = !cfg!(test)
+        && parameters_to_write.iter().all(|arg| {
+            matches!(
+                arg.data(Interner),
+                chalk_ir::GenericArgData::Lifetime(it) if *it.data(Interner) == LifetimeData::Error
+            )
+        });
+    if !parameters_to_write.is_empty() && !only_err_lifetimes {
         write!(f, "<")?;
         hir_fmt_generic_arguments(f, parameters_to_write)?;
         write!(f, ">")?;
@@ -1403,6 +1417,18 @@ fn hir_fmt_generic_arguments(
         None => (parameters, &[][..]),
     };
     for generic_arg in lifetimes.iter().chain(ty_or_const) {
+        // FIXME: Remove this
+        // most of our lifetimes will be errors as we lack elision and inference
+        // so don't render them for now
+        if !cfg!(test)
+            && matches!(
+                generic_arg.lifetime(Interner),
+                Some(l) if ***l.interned() == LifetimeData::Error
+            )
+        {
+            continue;
+        }
+
         if !first {
             write!(f, ", ")?;
         }
@@ -1728,9 +1754,9 @@ impl HirDisplay for LifetimeData {
             LifetimeData::BoundVar(idx) => idx.hir_fmt(f),
             LifetimeData::InferenceVar(_) => write!(f, "_"),
             LifetimeData::Static => write!(f, "'static"),
-            LifetimeData::Error => write!(f, "'{{error}}"),
-            LifetimeData::Erased => Ok(()),
-            LifetimeData::Phantom(_, _) => Ok(()),
+            LifetimeData::Error => write!(f, "'?"),
+            LifetimeData::Erased => write!(f, "'<erased>"),
+            LifetimeData::Phantom(void, _) => match *void {},
         }
     }
 }

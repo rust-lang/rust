@@ -56,6 +56,8 @@ pub use crate::{
 };
 pub use paths::{AbsPath, AbsPathBuf};
 
+use tracing::{span, Level};
+
 /// Handle to a file in [`Vfs`]
 ///
 /// Most functions in rust-analyzer use this when they need to refer to a file.
@@ -210,6 +212,7 @@ impl Vfs {
     /// If the path does not currently exists in the `Vfs`, allocates a new
     /// [`FileId`] for it.
     pub fn set_file_contents(&mut self, path: VfsPath, contents: Option<Vec<u8>>) -> bool {
+        let _p = span!(Level::INFO, "Vfs::set_file_contents").entered();
         let file_id = self.alloc_file_id(path);
         let state = self.get(file_id);
         let change_kind = match (state, contents) {
@@ -236,6 +239,7 @@ impl Vfs {
 
     /// Drain and returns all the changes in the `Vfs`.
     pub fn take_changes(&mut self) -> Vec<ChangedFile> {
+        let _p = span!(Level::INFO, "Vfs::take_changes").entered();
         for file_id in self.created_this_cycle.drain(..) {
             if self.data[file_id.0 as usize] == FileState::Created {
                 // downgrade the file from `Created` to `Exists` as the cycle is done

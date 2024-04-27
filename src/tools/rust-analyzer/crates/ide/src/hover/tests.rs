@@ -18,7 +18,8 @@ const HOVER_BASE_CONFIG: HoverConfig = HoverConfig {
     format: HoverDocFormat::Markdown,
     keywords: true,
     max_trait_assoc_items_count: None,
-    max_struct_field_count: None,
+    max_fields_count: Some(5),
+    max_enum_variants_count: Some(5),
 };
 
 fn check_hover_no_result(ra_fixture: &str) {
@@ -51,13 +52,43 @@ fn check(ra_fixture: &str, expect: Expect) {
 }
 
 #[track_caller]
-fn check_hover_struct_limit(count: usize, ra_fixture: &str, expect: Expect) {
+fn check_hover_fields_limit(
+    fields_count: impl Into<Option<usize>>,
+    ra_fixture: &str,
+    expect: Expect,
+) {
     let (analysis, position) = fixture::position(ra_fixture);
     let hover = analysis
         .hover(
             &HoverConfig {
                 links_in_hover: true,
-                max_struct_field_count: Some(count),
+                max_fields_count: fields_count.into(),
+                ..HOVER_BASE_CONFIG
+            },
+            FileRange { file_id: position.file_id, range: TextRange::empty(position.offset) },
+        )
+        .unwrap()
+        .unwrap();
+
+    let content = analysis.db.file_text(position.file_id);
+    let hovered_element = &content[hover.range];
+
+    let actual = format!("*{hovered_element}*\n{}\n", hover.info.markup);
+    expect.assert_eq(&actual)
+}
+
+#[track_caller]
+fn check_hover_enum_variants_limit(
+    variants_count: impl Into<Option<usize>>,
+    ra_fixture: &str,
+    expect: Expect,
+) {
+    let (analysis, position) = fixture::position(ra_fixture);
+    let hover = analysis
+        .hover(
+            &HoverConfig {
+                links_in_hover: true,
+                max_enum_variants_count: variants_count.into(),
                 ..HOVER_BASE_CONFIG
             },
             FileRange { file_id: position.file_id, range: TextRange::empty(position.offset) },
@@ -876,7 +907,9 @@ struct Foo$0 { field: u32 }
 
             ```rust
             // size = 4, align = 4
-            struct Foo
+            struct Foo {
+                field: u32,
+            }
             ```
         "#]],
     );
@@ -896,6 +929,9 @@ struct Foo$0 where u32: Copy { field: u32 }
             struct Foo
             where
                 u32: Copy,
+            {
+                field: u32,
+            }
             ```
         "#]],
     );
@@ -903,7 +939,7 @@ struct Foo$0 where u32: Copy { field: u32 }
 
 #[test]
 fn hover_record_struct_limit() {
-    check_hover_struct_limit(
+    check_hover_fields_limit(
         3,
         r#"
     struct Foo$0 { a: u32, b: i32, c: i32 }
@@ -917,7 +953,7 @@ fn hover_record_struct_limit() {
 
             ```rust
             // size = 12 (0xC), align = 4
-            struct Foo  {
+            struct Foo {
                 a: u32,
                 b: i32,
                 c: i32,
@@ -925,7 +961,7 @@ fn hover_record_struct_limit() {
             ```
         "#]],
     );
-    check_hover_struct_limit(
+    check_hover_fields_limit(
         3,
         r#"
     struct Foo$0 { a: u32 }
@@ -939,13 +975,13 @@ fn hover_record_struct_limit() {
 
             ```rust
             // size = 4, align = 4
-            struct Foo  {
+            struct Foo {
                 a: u32,
             }
             ```
         "#]],
     );
-    check_hover_struct_limit(
+    check_hover_fields_limit(
         3,
         r#"
     struct Foo$0 { a: u32, b: i32, c: i32, d: u32 }
@@ -959,12 +995,344 @@ fn hover_record_struct_limit() {
 
             ```rust
             // size = 16 (0x10), align = 4
-            struct Foo  {
+            struct Foo {
                 a: u32,
                 b: i32,
                 c: i32,
                 /* … */
             }
+            ```
+        "#]],
+    );
+    check_hover_fields_limit(
+        None,
+        r#"
+    struct Foo$0 { a: u32, b: i32, c: i32 }
+    "#,
+        expect![[r#"
+            *Foo*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            // size = 12 (0xC), align = 4
+            struct Foo
+            ```
+        "#]],
+    );
+    check_hover_fields_limit(
+        0,
+        r#"
+    struct Foo$0 { a: u32, b: i32, c: i32 }
+    "#,
+        expect![[r#"
+            *Foo*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            // size = 12 (0xC), align = 4
+            struct Foo { /* … */ }
+            ```
+        "#]],
+    );
+
+    // No extra spaces within `{}` when there are no fields
+    check_hover_fields_limit(
+        5,
+        r#"
+    struct Foo$0 {}
+    "#,
+        expect![[r#"
+            *Foo*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            // size = 0, align = 1
+            struct Foo {}
+            ```
+        "#]],
+    );
+}
+
+#[test]
+fn hover_record_variant_limit() {
+    check_hover_fields_limit(
+        3,
+        r#"
+    enum Foo { A$0 { a: u32, b: i32, c: i32 } }
+    "#,
+        expect![[r#"
+            *A*
+
+            ```rust
+            test::Foo
+            ```
+
+            ```rust
+            // size = 12 (0xC), align = 4
+            A { a: u32, b: i32, c: i32, }
+            ```
+        "#]],
+    );
+    check_hover_fields_limit(
+        3,
+        r#"
+    enum Foo { A$0 { a: u32 } }
+    "#,
+        expect![[r#"
+            *A*
+
+            ```rust
+            test::Foo
+            ```
+
+            ```rust
+            // size = 4, align = 4
+            A { a: u32, }
+            ```
+        "#]],
+    );
+    check_hover_fields_limit(
+        3,
+        r#"
+    enum Foo { A$0 { a: u32, b: i32, c: i32, d: u32 } }
+    "#,
+        expect![[r#"
+            *A*
+
+            ```rust
+            test::Foo
+            ```
+
+            ```rust
+            // size = 16 (0x10), align = 4
+            A { a: u32, b: i32, c: i32, /* … */ }
+            ```
+        "#]],
+    );
+    check_hover_fields_limit(
+        None,
+        r#"
+    enum Foo { A$0 { a: u32, b: i32, c: i32 } }
+    "#,
+        expect![[r#"
+            *A*
+
+            ```rust
+            test::Foo
+            ```
+
+            ```rust
+            // size = 12 (0xC), align = 4
+            A
+            ```
+        "#]],
+    );
+    check_hover_fields_limit(
+        0,
+        r#"
+    enum Foo { A$0 { a: u32, b: i32, c: i32 } }
+    "#,
+        expect![[r#"
+            *A*
+
+            ```rust
+            test::Foo
+            ```
+
+            ```rust
+            // size = 12 (0xC), align = 4
+            A { /* … */ }
+            ```
+        "#]],
+    );
+}
+
+#[test]
+fn hover_enum_limit() {
+    check_hover_enum_variants_limit(
+        5,
+        r#"enum Foo$0 { A, B }"#,
+        expect![[r#"
+            *Foo*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            // size = 1, align = 1, niches = 254
+            enum Foo {
+                A,
+                B,
+            }
+            ```
+        "#]],
+    );
+    check_hover_enum_variants_limit(
+        1,
+        r#"enum Foo$0 { A, B }"#,
+        expect![[r#"
+            *Foo*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            // size = 1, align = 1, niches = 254
+            enum Foo {
+                A,
+                /* … */
+            }
+            ```
+        "#]],
+    );
+    check_hover_enum_variants_limit(
+        0,
+        r#"enum Foo$0 { A, B }"#,
+        expect![[r#"
+            *Foo*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            // size = 1, align = 1, niches = 254
+            enum Foo { /* … */ }
+            ```
+        "#]],
+    );
+    check_hover_enum_variants_limit(
+        None,
+        r#"enum Foo$0 { A, B }"#,
+        expect![[r#"
+            *Foo*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            // size = 1, align = 1, niches = 254
+            enum Foo
+            ```
+        "#]],
+    );
+    check_hover_enum_variants_limit(
+        7,
+        r#"enum Enum$0 {
+               Variant {},
+               Variant2 { field: i32 },
+               Variant3 { field: i32, field2: i32 },
+               Variant4(),
+               Variant5(i32),
+               Variant6(i32, i32),
+               Variant7,
+               Variant8,
+           }"#,
+        expect![[r#"
+            *Enum*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            // size = 12 (0xC), align = 4, niches = 4294967288
+            enum Enum {
+                Variant {},
+                Variant2 { /* … */ },
+                Variant3 { /* … */ },
+                Variant4(),
+                Variant5( /* … */ ),
+                Variant6( /* … */ ),
+                Variant7,
+                /* … */
+            }
+            ```
+        "#]],
+    );
+}
+
+#[test]
+fn hover_union_limit() {
+    check_hover_fields_limit(
+        5,
+        r#"union Foo$0 { a: u32, b: i32 }"#,
+        expect![[r#"
+            *Foo*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            // size = 4, align = 4
+            union Foo {
+                a: u32,
+                b: i32,
+            }
+            ```
+        "#]],
+    );
+    check_hover_fields_limit(
+        1,
+        r#"union Foo$0 { a: u32, b: i32 }"#,
+        expect![[r#"
+            *Foo*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            // size = 4, align = 4
+            union Foo {
+                a: u32,
+                /* … */
+            }
+            ```
+        "#]],
+    );
+    check_hover_fields_limit(
+        0,
+        r#"union Foo$0 { a: u32, b: i32 }"#,
+        expect![[r#"
+            *Foo*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            // size = 4, align = 4
+            union Foo { /* … */ }
+            ```
+        "#]],
+    );
+    check_hover_fields_limit(
+        None,
+        r#"union Foo$0 { a: u32, b: i32 }"#,
+        expect![[r#"
+            *Foo*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            // size = 4, align = 4
+            union Foo
             ```
         "#]],
     );
@@ -1431,11 +1799,14 @@ impl Thing {
                 ```
 
                 ```rust
-                struct Thing
+                struct Thing {
+                    x: u32,
+                }
                 ```
             "#]],
     );
-    check(
+    check_hover_fields_limit(
+        None,
         r#"
 struct Thing { x: u32 }
 impl Thing {
@@ -1456,9 +1827,9 @@ impl Thing {
     );
     check(
         r#"
-enum Thing { A }
+struct Thing { x: u32 }
 impl Thing {
-    pub fn new() -> Self$0 { Thing::A }
+    fn new() -> Self$0 { Self { x: 0 } }
 }
 "#,
         expect![[r#"
@@ -1469,11 +1840,32 @@ impl Thing {
                 ```
 
                 ```rust
-                enum Thing {
-                    A,
+                struct Thing {
+                    x: u32,
                 }
                 ```
             "#]],
+    );
+    check(
+        r#"
+enum Thing { A }
+impl Thing {
+    pub fn new() -> Self$0 { Thing::A }
+}
+"#,
+        expect![[r#"
+            *Self*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            enum Thing {
+                A,
+            }
+            ```
+        "#]],
     );
     check(
         r#"
@@ -1483,18 +1875,18 @@ impl Thing {
 }
 "#,
         expect![[r#"
-                *Self*
+            *Self*
 
-                ```rust
-                test
-                ```
+            ```rust
+            test
+            ```
 
-                ```rust
-                enum Thing {
-                    A,
-                }
-                ```
-            "#]],
+            ```rust
+            enum Thing {
+                A,
+            }
+            ```
+        "#]],
     );
     check(
         r#"
@@ -2382,8 +2774,8 @@ fn test_hover_layout_of_enum() {
             ```rust
             // size = 16 (0x10), align = 8, niches = 254
             enum Foo {
-                Variant1(u8, u16),
-                Variant2(i32, u8, i64),
+                Variant1( /* … */ ),
+                Variant2( /* … */ ),
             }
             ```
         "#]],
@@ -6554,7 +6946,7 @@ enum Enum {
 
             ```rust
             // size = 4, align = 4
-            RecordV { field: u32 }
+            RecordV { field: u32, }
             ```
         "#]],
     );
@@ -7936,7 +8328,9 @@ struct Pedro$0<'a> {
 
             ```rust
             // size = 16 (0x10), align = 8, niches = 1
-            struct Pedro<'a>
+            struct Pedro<'a> {
+                hola: &str,
+            }
             ```
         "#]],
     )

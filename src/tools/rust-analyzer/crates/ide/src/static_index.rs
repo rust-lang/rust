@@ -167,7 +167,8 @@ impl StaticIndex<'_> {
             keywords: true,
             format: crate::HoverDocFormat::Markdown,
             max_trait_assoc_items_count: None,
-            max_struct_field_count: None,
+            max_fields_count: Some(5),
+            max_enum_variants_count: Some(5),
         };
         let tokens = tokens.filter(|token| {
             matches!(

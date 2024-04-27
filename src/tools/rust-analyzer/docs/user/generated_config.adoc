@@ -529,10 +529,15 @@ How to render the offset information in a memory layout hover.
 --
 How to render the size information in a memory layout hover.
 --
-[[rust-analyzer.hover.show.structFields]]rust-analyzer.hover.show.structFields (default: `null`)::
+[[rust-analyzer.hover.show.enumVariants]]rust-analyzer.hover.show.enumVariants (default: `5`)::
 +
 --
-How many fields of a struct to display when hovering a struct.
+How many variants of an enum to display when hovering on. Show none if empty.
+--
+[[rust-analyzer.hover.show.fields]]rust-analyzer.hover.show.fields (default: `5`)::
++
+--
+How many fields of a struct, variant or union to display when hovering on. Show none if empty.
 --
 [[rust-analyzer.hover.show.traitAssocItems]]rust-analyzer.hover.show.traitAssocItems (default: `null`)::
 +

@@ -15,6 +15,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use semver::Version;
 use span::Edition;
 use toolchain::Tool;
+use tracing::instrument;
 use triomphe::Arc;
 
 use crate::{
@@ -198,7 +199,8 @@ impl ProjectWorkspace {
                 let data = serde_json::from_str(&file)
                     .with_context(|| format!("Failed to deserialize json file {project_json}"))?;
                 let project_location = project_json.parent().to_path_buf();
-                let project_json: ProjectJson = ProjectJson::new(&project_location, data);
+                let project_json: ProjectJson =
+                    ProjectJson::new(Some(project_json.clone()), &project_location, data);
                 ProjectWorkspace::load_inline(
                     project_json,
                     config.target.as_deref(),
@@ -554,7 +556,7 @@ impl ProjectWorkspace {
     pub fn manifest_or_root(&self) -> &AbsPath {
         match &self.kind {
             ProjectWorkspaceKind::Cargo { cargo, .. } => cargo.manifest_path(),
-            ProjectWorkspaceKind::Json(project) => project.path(),
+            ProjectWorkspaceKind::Json(project) => project.manifest_or_root(),
             ProjectWorkspaceKind::DetachedFile { file, .. } => file,
         }
     }
@@ -885,6 +887,7 @@ impl ProjectWorkspace {
     }
 }
 
+#[instrument(skip_all)]
 fn project_json_to_crate_graph(
     rustc_cfg: Vec<CfgFlag>,
     load: FileLoader<'_>,

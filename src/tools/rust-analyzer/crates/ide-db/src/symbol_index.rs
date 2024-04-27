@@ -301,8 +301,8 @@ impl SymbolIndex {
     }
 
     fn range_to_map_value(start: usize, end: usize) -> u64 {
-        debug_assert![start <= (std::u32::MAX as usize)];
-        debug_assert![end <= (std::u32::MAX as usize)];
+        debug_assert![start <= (u32::MAX as usize)];
+        debug_assert![end <= (u32::MAX as usize)];
 
         ((start as u64) << 32) | end as u64
     }

@@ -285,7 +285,7 @@ where
 
 impl Default for LruIndex {
     fn default() -> Self {
-        Self { index: AtomicUsize::new(std::usize::MAX) }
+        Self { index: AtomicUsize::new(usize::MAX) }
     }
 }
 
@@ -299,11 +299,11 @@ impl LruIndex {
     }
 
     fn clear(&self) {
-        self.store(std::usize::MAX);
+        self.store(usize::MAX);
     }
 
     fn is_in_lru(&self) -> bool {
-        self.load() != std::usize::MAX
+        self.load() != usize::MAX
     }
 }
 

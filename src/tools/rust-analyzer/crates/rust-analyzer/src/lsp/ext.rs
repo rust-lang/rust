@@ -2,6 +2,7 @@
 
 #![allow(clippy::disallowed_types)]
 
+use std::ops;
 use std::path::PathBuf;
 
 use ide_db::line_index::WideEncoding;
@@ -494,10 +495,12 @@ impl Notification for ServerStatusNotification {
 }
 
 #[derive(Deserialize, Serialize, PartialEq, Eq, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct ServerStatusParams {
     pub health: Health,
     pub quiescent: bool,
     pub message: Option<String>,
+    pub workspace_info: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
@@ -506,6 +509,16 @@ pub enum Health {
     Ok,
     Warning,
     Error,
+}
+
+impl ops::BitOrAssign for Health {
+    fn bitor_assign(&mut self, rhs: Self) {
+        *self = match (*self, rhs) {
+            (Health::Error, _) | (_, Health::Error) => Health::Error,
+            (Health::Warning, _) | (_, Health::Warning) => Health::Warning,
+            _ => Health::Ok,
+        }
+    }
 }
 
 pub enum CodeActionRequest {}
