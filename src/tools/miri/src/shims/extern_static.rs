@@ -47,20 +47,14 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
                     &["__cxa_thread_atexit_impl", "getrandom", "statx", "__clock_gettime64"],
                 )?;
                 // "environ"
-                Self::add_extern_static(
-                    this,
-                    "environ",
-                    this.machine.env_vars.environ.as_ref().unwrap().ptr(),
-                );
+                let environ = this.machine.env_vars.unix().environ();
+                Self::add_extern_static(this, "environ", environ);
             }
             "freebsd" => {
                 Self::null_ptr_extern_statics(this, &["__cxa_thread_atexit_impl"])?;
                 // "environ"
-                Self::add_extern_static(
-                    this,
-                    "environ",
-                    this.machine.env_vars.environ.as_ref().unwrap().ptr(),
-                );
+                let environ = this.machine.env_vars.unix().environ();
+                Self::add_extern_static(this, "environ", environ);
             }
             "android" => {
                 Self::null_ptr_extern_statics(this, &["bsd_signal"])?;
