@@ -1987,9 +1987,7 @@ impl String {
 
     /// Replaces the leftmost occurrence of a pattern with another string, in-place.
     ///
-    /// This method should be preferred over [`str::replacen(..., 1)`] as it can use the `String`'s existing capacity to prevent a reallocation if sufficient space is available.
-    ///
-    /// [`str::replacen(..., 1)`]: str::replacen
+    /// This method should be preferred over [`str::replacen(..., 1)`](../../std/primitive.str.html#method.replacen) as it can use the `String`'s existing capacity to prevent a reallocation if sufficient space is available.
     ///
     /// # Examples
     ///
