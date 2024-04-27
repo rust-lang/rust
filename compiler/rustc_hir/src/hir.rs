@@ -2604,7 +2604,7 @@ impl PrimTy {
 
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub struct BareFnTy<'hir> {
-    pub unsafety: Unsafety,
+    pub safety: Safety,
     pub abi: Abi,
     pub generic_params: &'hir [GenericParam<'hir>],
     pub decl: &'hir FnDecl<'hir>,
@@ -3208,6 +3208,31 @@ impl fmt::Display for Unsafety {
     }
 }
 
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(Encodable, Decodable, HashStable_Generic)]
+pub enum Safety {
+    Unsafe,
+    Default,
+}
+
+impl Safety {
+    pub fn prefix_str(self) -> &'static str {
+        match self {
+            Self::Unsafe => "unsafe ",
+            Self::Default => "",
+        }
+    }
+}
+
+impl fmt::Display for Safety {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match *self {
+            Self::Unsafe => "unsafe",
+            Self::Default => "normal",
+        })
+    }
+}
+
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Encodable, Decodable, HashStable_Generic)]
 pub enum Constness {
     Const,
@@ -3225,7 +3250,7 @@ impl fmt::Display for Constness {
 
 #[derive(Copy, Clone, Debug, HashStable_Generic)]
 pub struct FnHeader {
-    pub unsafety: Unsafety,
+    pub safety: Safety,
     pub constness: Constness,
     pub asyncness: IsAsync,
     pub abi: Abi,
@@ -3241,7 +3266,7 @@ impl FnHeader {
     }
 
     pub fn is_unsafe(&self) -> bool {
-        matches!(&self.unsafety, Unsafety::Unsafe)
+        matches!(&self.safety, Safety::Unsafe)
     }
 }
 

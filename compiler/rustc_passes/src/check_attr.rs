@@ -17,7 +17,7 @@ use rustc_hir::{self as hir};
 use rustc_hir::{
     self, FnSig, ForeignItem, HirId, Item, ItemKind, TraitItem, CRATE_HIR_ID, CRATE_OWNER_ID,
 };
-use rustc_hir::{MethodKind, Target, Unsafety};
+use rustc_hir::{MethodKind, Safety, Target};
 use rustc_macros::LintDiagnostic;
 use rustc_middle::bug;
 use rustc_middle::hir::nested_filter;
@@ -2335,7 +2335,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             }),
             token_stream,
             false,
-            Unsafety::Normal,
+            Safety::Default,
             Abi::Rust,
         );
 

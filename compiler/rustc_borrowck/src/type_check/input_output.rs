@@ -98,7 +98,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 user_provided_sig.inputs().iter().copied(),
                 output_ty,
                 user_provided_sig.c_variadic,
-                user_provided_sig.unsafety,
+                user_provided_sig.safety,
                 user_provided_sig.abi,
             );
         }

@@ -1013,7 +1013,7 @@ fn fmt_type<'cx>(
         }
         clean::BareFunction(ref decl) => {
             print_higher_ranked_params_with_space(&decl.generic_params, cx).fmt(f)?;
-            decl.unsafety.print_with_space().fmt(f)?;
+            decl.safety.print_with_space().fmt(f)?;
             print_abi_with_space(decl.abi).fmt(f)?;
             if f.alternate() {
                 f.write_str("fn")?;
@@ -1303,7 +1303,7 @@ impl clean::Impl {
                 // Link should match `# Trait implementations`
 
                 print_higher_ranked_params_with_space(&bare_fn.generic_params, cx).fmt(f)?;
-                bare_fn.unsafety.print_with_space().fmt(f)?;
+                bare_fn.safety.print_with_space().fmt(f)?;
                 print_abi_with_space(bare_fn.abi).fmt(f)?;
                 let ellipsis = if bare_fn.decl.c_variadic { ", ..." } else { "" };
                 primitive_link_fragment(
@@ -1609,6 +1609,15 @@ impl PrintWithSpace for hir::Unsafety {
         match self {
             hir::Unsafety::Unsafe => "unsafe ",
             hir::Unsafety::Normal => "",
+        }
+    }
+}
+
+impl PrintWithSpace for hir::Safety {
+    fn print_with_space(&self) -> &str {
+        match self {
+            hir::Safety::Unsafe => "unsafe ",
+            hir::Safety::Default => "",
         }
     }
 }

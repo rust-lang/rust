@@ -1098,7 +1098,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 liberated_sig.inputs().iter().copied(),
                 peeled_ty,
                 liberated_sig.c_variadic,
-                hir::Unsafety::Normal,
+                hir::Safety::Default,
                 rustc_target::spec::abi::Abi::Rust,
             )),
         );

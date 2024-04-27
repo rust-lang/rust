@@ -5,8 +5,8 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::intravisit::{self, walk_block, walk_expr, Visitor};
 use rustc_hir::{
-    AnonConst, Arm, Block, BlockCheckMode, Body, BodyId, Expr, ExprKind, HirId, ItemId, ItemKind, LetExpr, Pat, QPath,
-    Stmt, UnOp, UnsafeSource, Unsafety,
+    AnonConst, Arm, Block, BlockCheckMode, Body, BodyId, Expr, ExprKind, Safety, HirId, ItemId, ItemKind, LetExpr,
+    Pat, QPath, Stmt, UnOp, UnsafeSource, Unsafety,
 };
 use rustc_lint::LateContext;
 use rustc_middle::hir::nested_filter;
@@ -421,16 +421,16 @@ pub fn is_expr_unsafe<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> bool {
                         .typeck_results()
                         .type_dependent_def_id(e.hir_id)
                         .map_or(false, |id| {
-                            self.cx.tcx.fn_sig(id).skip_binder().unsafety() == Unsafety::Unsafe
+                            self.cx.tcx.fn_sig(id).skip_binder().safety() == Safety::Unsafe
                         }) =>
                 {
                     self.is_unsafe = true;
                 },
                 ExprKind::Call(func, _) => match *self.cx.typeck_results().expr_ty(func).peel_refs().kind() {
-                    ty::FnDef(id, _) if self.cx.tcx.fn_sig(id).skip_binder().unsafety() == Unsafety::Unsafe => {
+                    ty::FnDef(id, _) if self.cx.tcx.fn_sig(id).skip_binder().safety() == Safety::Unsafe => {
                         self.is_unsafe = true;
                     },
-                    ty::FnPtr(sig) if sig.unsafety() == Unsafety::Unsafe => self.is_unsafe = true,
+                    ty::FnPtr(sig) if sig.safety() == Safety::Unsafe => self.is_unsafe = true,
                     _ => walk_expr(self, e),
                 },
                 ExprKind::Path(ref p)

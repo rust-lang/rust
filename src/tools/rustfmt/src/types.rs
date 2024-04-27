@@ -899,7 +899,7 @@ fn rewrite_bare_fn(
         result.push_str("> ");
     }
 
-    result.push_str(crate::utils::format_unsafety(bare_fn.unsafety));
+    result.push_str(crate::utils::format_safety(bare_fn.safety));
 
     result.push_str(&format_extern(
         bare_fn.ext,

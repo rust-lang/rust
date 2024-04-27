@@ -636,17 +636,17 @@ impl Item {
                 ty::Asyncness::Yes => hir::IsAsync::Async(DUMMY_SP),
                 ty::Asyncness::No => hir::IsAsync::NotAsync,
             };
-            hir::FnHeader { unsafety: sig.unsafety(), abi: sig.abi(), constness, asyncness }
+            hir::FnHeader { safety: sig.safety(), abi: sig.abi(), constness, asyncness }
         }
         let header = match *self.kind {
             ItemKind::ForeignFunctionItem(_) => {
                 let def_id = self.def_id().unwrap();
                 let abi = tcx.fn_sig(def_id).skip_binder().abi();
                 hir::FnHeader {
-                    unsafety: if abi == Abi::RustIntrinsic {
+                    safety: if abi == Abi::RustIntrinsic {
                         intrinsic_operation_unsafety(tcx, def_id.expect_local())
                     } else {
-                        hir::Unsafety::Unsafe
+                        hir::Safety::Unsafe
                     },
                     abi,
                     constness: if abi == Abi::RustIntrinsic
@@ -2344,7 +2344,7 @@ pub(crate) struct OpaqueTy {
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub(crate) struct BareFunctionDecl {
-    pub(crate) unsafety: hir::Unsafety,
+    pub(crate) safety: hir::Safety,
     pub(crate) generic_params: Vec<GenericParamDef>,
     pub(crate) decl: FnDecl,
     pub(crate) abi: Abi,

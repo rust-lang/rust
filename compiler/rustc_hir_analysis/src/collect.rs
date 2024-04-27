@@ -1286,7 +1286,7 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<ty::PolyFnSig<
             {
                 icx.lowerer().lower_fn_ty(
                     hir_id,
-                    sig.header.unsafety,
+                    sig.header.safety,
                     sig.header.abi,
                     sig.decl,
                     Some(generics),
@@ -1301,14 +1301,9 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<ty::PolyFnSig<
             kind: TraitItemKind::Fn(FnSig { header, decl, span: _ }, _),
             generics,
             ..
-        }) => icx.lowerer().lower_fn_ty(
-            hir_id,
-            header.unsafety,
-            header.abi,
-            decl,
-            Some(generics),
-            None,
-        ),
+        }) => {
+            icx.lowerer().lower_fn_ty(hir_id, header.safety, header.abi, decl, Some(generics), None)
+        }
 
         ForeignItem(&hir::ForeignItem { kind: ForeignItemKind::Fn(fn_decl, _, _), .. }) => {
             let abi = tcx.hir().get_foreign_abi(hir_id);
@@ -1321,8 +1316,8 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<ty::PolyFnSig<
             let inputs = data.fields().iter().map(|f| tcx.type_of(f.def_id).instantiate_identity());
             // constructors for structs with `layout_scalar_valid_range` are unsafe to call
             let safety = match tcx.layout_scalar_valid_range(adt_def_id) {
-                (Bound::Unbounded, Bound::Unbounded) => hir::Unsafety::Normal,
-                _ => hir::Unsafety::Unsafe,
+                (Bound::Unbounded, Bound::Unbounded) => hir::Safety::Default,
+                _ => hir::Safety::Unsafe,
             };
             ty::Binder::dummy(tcx.mk_fn_sig(inputs, ty, false, safety, abi::Abi::Rust))
         }
@@ -1409,13 +1404,13 @@ fn infer_return_ty_for_fn_sig<'tcx>(
                 fn_sig.inputs().iter().copied(),
                 recovered_ret_ty.unwrap_or_else(|| Ty::new_error(tcx, guar)),
                 fn_sig.c_variadic,
-                fn_sig.unsafety,
+                fn_sig.safety,
                 fn_sig.abi,
             ))
         }
         None => icx.lowerer().lower_fn_ty(
             hir_id,
-            sig.header.unsafety,
+            sig.header.safety,
             sig.header.abi,
             sig.decl,
             Some(generics),
@@ -1685,14 +1680,14 @@ fn compute_sig_of_foreign_fn_decl<'tcx>(
     decl: &'tcx hir::FnDecl<'tcx>,
     abi: abi::Abi,
 ) -> ty::PolyFnSig<'tcx> {
-    let unsafety = if abi == abi::Abi::RustIntrinsic {
+    let safety = if abi == abi::Abi::RustIntrinsic {
         intrinsic_operation_unsafety(tcx, def_id)
     } else {
-        hir::Unsafety::Unsafe
+        hir::Safety::Unsafe
     };
     let hir_id = tcx.local_def_id_to_hir_id(def_id);
     let fty =
-        ItemCtxt::new(tcx, def_id).lowerer().lower_fn_ty(hir_id, unsafety, abi, decl, None, None);
+        ItemCtxt::new(tcx, def_id).lowerer().lower_fn_ty(hir_id, safety, abi, decl, None, None);
 
     // Feature gate SIMD types in FFI, since I am not sure that the
     // ABIs are handled at all correctly. -huonw

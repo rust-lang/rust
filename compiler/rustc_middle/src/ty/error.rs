@@ -35,6 +35,7 @@ pub enum TypeError<'tcx> {
     ConstnessMismatch(ExpectedFound<ty::BoundConstness>),
     PolarityMismatch(ExpectedFound<ty::PredicatePolarity>),
     UnsafetyMismatch(ExpectedFound<hir::Unsafety>),
+    SafetyMismatch(ExpectedFound<hir::Safety>),
     AbiMismatch(ExpectedFound<abi::Abi>),
     Mutability,
     ArgumentMutability(usize),
@@ -108,6 +109,9 @@ impl<'tcx> TypeError<'tcx> {
                     .into()
             }
             UnsafetyMismatch(values) => {
+                format!("expected {} fn, found {} fn", values.expected, values.found).into()
+            }
+            SafetyMismatch(values) => {
                 format!("expected {} fn, found {} fn", values.expected, values.found).into()
             }
             AbiMismatch(values) => {
@@ -204,10 +208,10 @@ impl<'tcx> TypeError<'tcx> {
     pub fn must_include_note(self) -> bool {
         use self::TypeError::*;
         match self {
-            CyclicTy(_) | CyclicConst(_) | UnsafetyMismatch(_) | ConstnessMismatch(_)
-            | PolarityMismatch(_) | Mismatch | AbiMismatch(_) | FixedArraySize(_)
-            | ArgumentSorts(..) | Sorts(_) | IntMismatch(_) | FloatMismatch(_)
-            | VariadicMismatch(_) | TargetFeatureCast(_) => false,
+            CyclicTy(_) | CyclicConst(_) | UnsafetyMismatch(_) | SafetyMismatch(_)
+            | ConstnessMismatch(_) | PolarityMismatch(_) | Mismatch | AbiMismatch(_)
+            | FixedArraySize(_) | ArgumentSorts(..) | Sorts(_) | IntMismatch(_)
+            | FloatMismatch(_) | VariadicMismatch(_) | TargetFeatureCast(_) => false,
 
             Mutability
             | ArgumentMutability(_)

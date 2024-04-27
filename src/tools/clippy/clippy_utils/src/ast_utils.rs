@@ -605,7 +605,7 @@ fn eq_opt_coroutine_kind(l: Option<CoroutineKind>, r: Option<CoroutineKind>) -> 
 }
 
 pub fn eq_fn_header(l: &FnHeader, r: &FnHeader) -> bool {
-    matches!(l.unsafety, Unsafe::No) == matches!(r.unsafety, Unsafe::No)
+    matches!(l.safety, Safety::Default) == matches!(r.safety, Safety::Default)
         && eq_opt_coroutine_kind(l.coroutine_kind, r.coroutine_kind)
         && matches!(l.constness, Const::No) == matches!(r.constness, Const::No)
         && eq_ext(&l.ext, &r.ext)
@@ -712,7 +712,7 @@ pub fn eq_ty(l: &Ty, r: &Ty) -> bool {
             both(ll, rl, |l, r| eq_id(l.ident, r.ident)) && l.mutbl == r.mutbl && eq_ty(&l.ty, &r.ty)
         },
         (BareFn(l), BareFn(r)) => {
-            l.unsafety == r.unsafety
+            l.safety == r.safety
                 && eq_ext(&l.ext, &r.ext)
                 && over(&l.generic_params, &r.generic_params, eq_generic_param)
                 && eq_fn_decl(&l.decl, &r.decl)

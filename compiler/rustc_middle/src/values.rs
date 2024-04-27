@@ -65,7 +65,7 @@ impl<'tcx> Value<TyCtxt<'tcx>> for ty::Binder<'_, ty::FnSig<'_>> {
             std::iter::repeat(err).take(arity),
             err,
             false,
-            rustc_hir::Unsafety::Normal,
+            rustc_hir::Safety::Default,
             rustc_target::spec::abi::Abi::Rust,
         ));
 

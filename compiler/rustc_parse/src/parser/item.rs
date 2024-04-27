@@ -2456,7 +2456,7 @@ impl<'a> Parser<'a> {
         let coroutine_kind = self.parse_coroutine_kind(case);
 
         let unsafe_start_sp = self.token.span;
-        let unsafety = self.parse_unsafety(case);
+        let safety = self.parse_safety(case);
 
         let ext_start_sp = self.token.span;
         let ext = self.parse_extern(case);
@@ -2494,7 +2494,7 @@ impl<'a> Parser<'a> {
                     // We may be able to recover
                     let mut recover_constness = constness;
                     let mut recover_coroutine_kind = coroutine_kind;
-                    let mut recover_unsafety = unsafety;
+                    let mut recover_safety = safety;
                     // This will allow the machine fix to directly place the keyword in the correct place or to indicate
                     // that the keyword is already present and the second instance should be removed.
                     let wrong_kw = if self.check_keyword(kw::Const) {
@@ -2532,10 +2532,10 @@ impl<'a> Parser<'a> {
                             }
                         }
                     } else if self.check_keyword(kw::Unsafe) {
-                        match unsafety {
-                            Unsafe::Yes(sp) => Some(WrongKw::Duplicated(sp)),
-                            Unsafe::No => {
-                                recover_unsafety = Unsafe::Yes(self.token.span);
+                        match safety {
+                            Safety::Unsafe(sp) => Some(WrongKw::Duplicated(sp)),
+                            Safety::Default => {
+                                recover_safety = Safety::Unsafe(self.token.span);
                                 Some(WrongKw::Misplaced(ext_start_sp))
                             }
                         }
@@ -2620,7 +2620,7 @@ impl<'a> Parser<'a> {
                         err.emit();
                         return Ok(FnHeader {
                             constness: recover_constness,
-                            unsafety: recover_unsafety,
+                            safety: recover_safety,
                             coroutine_kind: recover_coroutine_kind,
                             ext,
                         });
@@ -2631,7 +2631,7 @@ impl<'a> Parser<'a> {
             }
         }
 
-        Ok(FnHeader { constness, unsafety, coroutine_kind, ext })
+        Ok(FnHeader { constness, safety, coroutine_kind, ext })
     }
 
     /// Parses the parameter list and result type of a function declaration.

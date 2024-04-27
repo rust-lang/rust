@@ -10,7 +10,7 @@ use rustc_span::Symbol;
 use stable_mir::abi::Layout;
 use stable_mir::mir::alloc::AllocId;
 use stable_mir::mir::mono::{Instance, MonoItem, StaticDef};
-use stable_mir::mir::{BinOp, Mutability, Place, ProjectionElem, Unsafe};
+use stable_mir::mir::{BinOp, Mutability, Place, ProjectionElem, Safety, Unsafe};
 use stable_mir::ty::{
     Abi, AdtDef, Binder, BoundRegionKind, BoundTyKind, BoundVariableKind, ClosureKind, Const,
     DynKind, ExistentialPredicate, ExistentialProjection, ExistentialTraitRef, FloatTy, FnSig,
@@ -216,7 +216,7 @@ impl RustcInternal for FnSig {
         tcx.lift(rustc_ty::FnSig {
             inputs_and_output: tcx.mk_type_list(&self.inputs_and_output.internal(tables, tcx)),
             c_variadic: self.c_variadic,
-            unsafety: self.unsafety.internal(tables, tcx),
+            safety: self.safety.internal(tables, tcx),
             abi: self.abi.internal(tables, tcx),
         })
         .unwrap()
@@ -491,6 +491,16 @@ impl RustcInternal for Unsafe {
     }
 }
 
+impl RustcInternal for Safety {
+    type T<'tcx> = rustc_hir::Safety;
+
+    fn internal<'tcx>(&self, _tables: &mut Tables<'_>, _tcx: TyCtxt<'tcx>) -> Self::T<'tcx> {
+        match self {
+            Safety::Unsafe => rustc_hir::Safety::Unsafe,
+            Safety::Default => rustc_hir::Safety::Default,
+        }
+    }
+}
 impl RustcInternal for Span {
     type T<'tcx> = rustc_span::Span;
 

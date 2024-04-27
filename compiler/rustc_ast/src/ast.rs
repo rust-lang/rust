@@ -2105,7 +2105,7 @@ impl Ty {
 
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct BareFnTy {
-    pub unsafety: Unsafe,
+    pub safety: Safety,
     pub ext: Extern,
     pub generic_params: ThinVec<GenericParam>,
     pub decl: P<FnDecl>,
@@ -2489,6 +2489,17 @@ pub enum IsAuto {
 pub enum Unsafe {
     Yes(Span),
     No,
+}
+
+/// Safety of items (for now only used on inner extern block items).
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Encodable, Decodable, Debug)]
+#[derive(HashStable_Generic)]
+pub enum Safety {
+    /// `unsafe` an item is explicitly marked as `unsafe`.
+    Unsafe(Span),
+    /// Default means no value was provided, it will take a default value given the context in
+    /// which is used.
+    Default,
 }
 
 /// Describes what kind of coroutine markers, if any, a function has.
@@ -3011,8 +3022,8 @@ impl Extern {
 /// included in this struct (e.g., `async unsafe fn` or `const extern "C" fn`).
 #[derive(Clone, Copy, Encodable, Decodable, Debug)]
 pub struct FnHeader {
-    /// The `unsafe` keyword, if any
-    pub unsafety: Unsafe,
+    /// The safety keyword, if any
+    pub safety: Safety,
     /// Whether this is `async`, `gen`, or nothing.
     pub coroutine_kind: Option<CoroutineKind>,
     /// The `const` keyword, if any
@@ -3024,8 +3035,8 @@ pub struct FnHeader {
 impl FnHeader {
     /// Does this function header have any qualifiers or is it empty?
     pub fn has_qualifiers(&self) -> bool {
-        let Self { unsafety, coroutine_kind, constness, ext } = self;
-        matches!(unsafety, Unsafe::Yes(_))
+        let Self { safety, coroutine_kind, constness, ext } = self;
+        matches!(safety, Safety::Unsafe(_))
             || coroutine_kind.is_some()
             || matches!(constness, Const::Yes(_))
             || !matches!(ext, Extern::None)
@@ -3035,7 +3046,7 @@ impl FnHeader {
 impl Default for FnHeader {
     fn default() -> FnHeader {
         FnHeader {
-            unsafety: Unsafe::No,
+            safety: Safety::Default,
             coroutine_kind: None,
             constness: Const::No,
             ext: Extern::None,

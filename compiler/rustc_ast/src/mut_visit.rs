@@ -499,8 +499,8 @@ pub fn noop_visit_ty<T: MutVisitor>(ty: &mut P<Ty>, vis: &mut T) {
             vis.visit_mt(mt);
         }
         TyKind::BareFn(bft) => {
-            let BareFnTy { unsafety, ext: _, generic_params, decl, decl_span } = bft.deref_mut();
-            visit_unsafety(unsafety, vis);
+            let BareFnTy { safety, ext: _, generic_params, decl, decl_span } = bft.deref_mut();
+            visit_safety(safety, vis);
             generic_params.flat_map_in_place(|param| vis.flat_map_generic_param(param));
             vis.visit_fn_decl(decl);
             vis.visit_span(decl_span);
@@ -863,6 +863,13 @@ fn visit_unsafety<T: MutVisitor>(unsafety: &mut Unsafe, vis: &mut T) {
     match unsafety {
         Unsafe::Yes(span) => vis.visit_span(span),
         Unsafe::No => {}
+    }
+}
+
+fn visit_safety<T: MutVisitor>(safety: &mut Safety, vis: &mut T) {
+    match safety {
+        Safety::Unsafe(span) => vis.visit_span(span),
+        Safety::Default => {}
     }
 }
 
@@ -1254,10 +1261,10 @@ fn visit_const_item<T: MutVisitor>(
 }
 
 fn noop_visit_fn_header<T: MutVisitor>(header: &mut FnHeader, vis: &mut T) {
-    let FnHeader { unsafety, coroutine_kind, constness, ext: _ } = header;
+    let FnHeader { safety, coroutine_kind, constness, ext: _ } = header;
     visit_constness(constness, vis);
     coroutine_kind.as_mut().map(|coroutine_kind| vis.visit_coroutine_kind(coroutine_kind));
-    visit_unsafety(unsafety, vis);
+    visit_safety(safety, vis);
 }
 
 pub fn noop_visit_crate<T: MutVisitor>(krate: &mut Crate, vis: &mut T) {

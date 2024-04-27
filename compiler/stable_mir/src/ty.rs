@@ -1,6 +1,5 @@
 use super::{
-    mir::Unsafe,
-    mir::{Body, Mutability},
+    mir::{Body, Mutability, Safety, Unsafe},
     with, DefId, Error, Symbol,
 };
 use crate::abi::Layout;
@@ -909,7 +908,7 @@ pub type PolyFnSig = Binder<FnSig>;
 pub struct FnSig {
     pub inputs_and_output: Vec<Ty>,
     pub c_variadic: bool,
-    pub unsafety: Unsafe,
+    pub safety: Safety,
     pub abi: Abi,
 }
 

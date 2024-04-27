@@ -619,10 +619,10 @@ impl FromWithTcx<clean::Term> for Term {
 
 impl FromWithTcx<clean::BareFunctionDecl> for FunctionPointer {
     fn from_tcx(bare_decl: clean::BareFunctionDecl, tcx: TyCtxt<'_>) -> Self {
-        let clean::BareFunctionDecl { unsafety, generic_params, decl, abi } = bare_decl;
+        let clean::BareFunctionDecl { safety, generic_params, decl, abi } = bare_decl;
         FunctionPointer {
             header: Header {
-                unsafe_: matches!(unsafety, rustc_hir::Unsafety::Unsafe),
+                unsafe_: matches!(safety, rustc_hir::Safety::Unsafe),
                 const_: false,
                 async_: false,
                 abi: convert_abi(abi),

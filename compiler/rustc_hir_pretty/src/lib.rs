@@ -287,7 +287,7 @@ impl<'a> State<'a> {
                 self.pclose();
             }
             hir::TyKind::BareFn(f) => {
-                self.print_ty_fn(f.abi, f.unsafety, f.decl, None, f.generic_params, f.param_names);
+                self.print_ty_fn(f.abi, f.safety, f.decl, None, f.generic_params, f.param_names);
             }
             hir::TyKind::OpaqueDef(..) => self.word("/*impl Trait*/"),
             hir::TyKind::Path(ref qpath) => self.print_qpath(qpath, false),
@@ -351,7 +351,7 @@ impl<'a> State<'a> {
                 self.print_fn(
                     decl,
                     hir::FnHeader {
-                        unsafety: hir::Unsafety::Normal,
+                        safety: hir::Safety::Default,
                         constness: hir::Constness::NotConst,
                         abi: Abi::Rust,
                         asyncness: hir::IsAsync::NotAsync,
@@ -2234,7 +2234,7 @@ impl<'a> State<'a> {
     fn print_ty_fn(
         &mut self,
         abi: Abi,
-        unsafety: hir::Unsafety,
+        safety: hir::Safety,
         decl: &hir::FnDecl<'_>,
         name: Option<Symbol>,
         generic_params: &[hir::GenericParam<'_>],
@@ -2246,7 +2246,7 @@ impl<'a> State<'a> {
         self.print_fn(
             decl,
             hir::FnHeader {
-                unsafety,
+                safety,
                 abi,
                 constness: hir::Constness::NotConst,
                 asyncness: hir::IsAsync::NotAsync,
@@ -2267,7 +2267,7 @@ impl<'a> State<'a> {
             hir::IsAsync::Async(_) => self.word_nbsp("async"),
         }
 
-        self.print_unsafety(header.unsafety);
+        self.print_safety(header.safety);
 
         if header.abi != Abi::Rust {
             self.word_nbsp("extern");
@@ -2288,6 +2288,13 @@ impl<'a> State<'a> {
         match s {
             hir::Unsafety::Normal => {}
             hir::Unsafety::Unsafe => self.word_nbsp("unsafe"),
+        }
+    }
+
+    fn print_safety(&mut self, s: hir::Safety) {
+        match s {
+            hir::Safety::Default => {}
+            hir::Safety::Unsafe => self.word_nbsp("unsafe"),
         }
     }
 

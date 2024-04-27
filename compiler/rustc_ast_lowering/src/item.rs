@@ -1360,7 +1360,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             hir::IsAsync::NotAsync
         };
         hir::FnHeader {
-            unsafety: self.lower_unsafety(h.unsafety),
+            safety: self.lower_safety(h.safety),
             asyncness: asyncness,
             constness: self.lower_constness(h.constness),
             abi: self.lower_extern(h.ext),
@@ -1414,6 +1414,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
         match u {
             Unsafe::Yes(_) => hir::Unsafety::Unsafe,
             Unsafe::No => hir::Unsafety::Normal,
+        }
+    }
+
+    pub(super) fn lower_safety(&mut self, u: Safety) -> hir::Safety {
+        match u {
+            Safety::Unsafe(_) => hir::Safety::Unsafe,
+            Safety::Default => hir::Safety::Default,
         }
     }
 

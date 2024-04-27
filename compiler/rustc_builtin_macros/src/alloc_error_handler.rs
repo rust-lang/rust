@@ -3,7 +3,7 @@ use crate::util::check_builtin_macro_attribute;
 
 use rustc_ast::ptr::P;
 use rustc_ast::{self as ast, FnHeader, FnSig, Generics, StmtKind};
-use rustc_ast::{Fn, ItemKind, Stmt, TyKind, Unsafe};
+use rustc_ast::{Fn, ItemKind, Safety, Stmt, TyKind};
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Span;
@@ -78,7 +78,7 @@ fn generate_handler(cx: &ExtCtxt<'_>, handler: Ident, span: Span, sig_span: Span
     let never = ast::FnRetTy::Ty(cx.ty(span, TyKind::Never));
     let params = thin_vec![cx.param(span, size, ty_usize.clone()), cx.param(span, align, ty_usize)];
     let decl = cx.fn_decl(params, never);
-    let header = FnHeader { unsafety: Unsafe::Yes(span), ..FnHeader::default() };
+    let header = FnHeader { safety: Safety::Unsafe(span), ..FnHeader::default() };
     let sig = FnSig { decl, header, span: span };
 
     let body = Some(cx.block_expr(call));

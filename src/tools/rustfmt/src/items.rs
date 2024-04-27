@@ -290,7 +290,7 @@ pub(crate) struct FnSig<'a> {
     coroutine_kind: Cow<'a, Option<ast::CoroutineKind>>,
     constness: ast::Const,
     defaultness: ast::Defaultness,
-    unsafety: ast::Unsafe,
+    safety: ast::Safety,
     visibility: &'a ast::Visibility,
 }
 
@@ -301,7 +301,7 @@ impl<'a> FnSig<'a> {
         visibility: &'a ast::Visibility,
     ) -> FnSig<'a> {
         FnSig {
-            unsafety: method_sig.header.unsafety,
+            safety: method_sig.header.safety,
             coroutine_kind: Cow::Borrowed(&method_sig.header.coroutine_kind),
             constness: method_sig.header.constness,
             defaultness: ast::Defaultness::Final,
@@ -330,7 +330,7 @@ impl<'a> FnSig<'a> {
                 constness: fn_sig.header.constness,
                 coroutine_kind: Cow::Borrowed(&fn_sig.header.coroutine_kind),
                 defaultness,
-                unsafety: fn_sig.header.unsafety,
+                safety: fn_sig.header.safety,
                 visibility: vis,
             },
             _ => unreachable!(),
@@ -345,7 +345,7 @@ impl<'a> FnSig<'a> {
         result.push_str(format_constness(self.constness));
         self.coroutine_kind
             .map(|coroutine_kind| result.push_str(format_coro(&coroutine_kind)));
-        result.push_str(format_unsafety(self.unsafety));
+        result.push_str(format_safety(self.safety));
         result.push_str(&format_extern(
             self.ext,
             context.config.force_explicit_abi(),

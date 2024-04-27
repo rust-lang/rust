@@ -116,6 +116,14 @@ pub(crate) fn format_unsafety(unsafety: ast::Unsafe) -> &'static str {
 }
 
 #[inline]
+pub(crate) fn format_safety(unsafety: ast::Safety) -> &'static str {
+    match unsafety {
+        ast::Safety::Unsafe(..) => "unsafe ",
+        ast::Safety::Default => "",
+    }
+}
+
+#[inline]
 pub(crate) fn format_auto(is_auto: ast::IsAuto) -> &'static str {
     match is_auto {
         ast::IsAuto::Yes => "auto ",

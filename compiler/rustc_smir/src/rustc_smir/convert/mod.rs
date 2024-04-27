@@ -19,6 +19,16 @@ impl<'tcx> Stable<'tcx> for rustc_hir::Unsafety {
     }
 }
 
+impl<'tcx> Stable<'tcx> for rustc_hir::Safety {
+    type T = stable_mir::mir::Safety;
+    fn stable(&self, _: &mut Tables<'_>) -> Self::T {
+        match self {
+            rustc_hir::Safety::Unsafe => stable_mir::mir::Safety::Unsafe,
+            rustc_hir::Safety::Default => stable_mir::mir::Safety::Default,
+        }
+    }
+}
+
 impl<'tcx> Stable<'tcx> for FieldIdx {
     type T = usize;
     fn stable(&self, _: &mut Tables<'_>) -> Self::T {

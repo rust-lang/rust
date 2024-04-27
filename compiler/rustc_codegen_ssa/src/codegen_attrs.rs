@@ -276,7 +276,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
             sym::target_feature => {
                 if !tcx.is_closure_like(did.to_def_id())
                     && let Some(fn_sig) = fn_sig()
-                    && fn_sig.skip_binder().unsafety() == hir::Unsafety::Normal
+                    && fn_sig.skip_binder().safety() == hir::Safety::Default
                 {
                     if tcx.sess.target.is_like_wasm || tcx.sess.opts.actually_rustdoc {
                         // The `#[target_feature]` attribute is allowed on

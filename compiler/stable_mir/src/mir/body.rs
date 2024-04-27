@@ -920,6 +920,12 @@ pub enum Unsafe {
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum Safety {
+    Unsafe,
+    Default,
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum PointerCoercion {
     /// Go from a fn-item type to a fn-pointer type.
     ReifyFnPointer,
@@ -929,7 +935,7 @@ pub enum PointerCoercion {
 
     /// Go from a non-capturing closure to a fn pointer or an unsafe fn pointer.
     /// It cannot convert a closure that requires unsafe.
-    ClosureFnPointer(Unsafe),
+    ClosureFnPointer(Safety),
 
     /// Go from a mut raw pointer to a const raw pointer.
     MutToConstPointer,
