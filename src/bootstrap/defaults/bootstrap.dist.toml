@@ -24,6 +24,8 @@ channel = "auto-detect"
 download-rustc = false
 # Build the llvm-bitcode-linker
 llvm-bitcode-linker = true
+# Fail compilation when there are warnings.
+deny-warnings = true
 
 [dist]
 # Use better compression when preparing tarballs.
