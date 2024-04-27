@@ -1,7 +1,7 @@
 use super::lazy::LazyKeyInner;
 use crate::cell::Cell;
 use crate::sys::thread_local_dtor::register_dtor;
-use crate::{fmt, mem, panic};
+use crate::{fmt, mem, panic, ptr};
 
 #[doc(hidden)]
 #[allow_internal_unstable(thread_local_internals, cfg_target_thread_local, thread_local)]
@@ -237,8 +237,9 @@ unsafe extern "C" fn destroy_value<T>(ptr: *mut u8) {
     // Wrap the call in a catch to ensure unwinding is caught in the event
     // a panic takes place in a destructor.
     if let Err(_) = panic::catch_unwind(panic::AssertUnwindSafe(|| unsafe {
-        let value = (*ptr).inner.take();
-        (*ptr).dtor_state.set(DtorState::RunningOrHasRun);
+        let Key { inner, dtor_state } = &*ptr;
+        let value = inner.take();
+        dtor_state.set(DtorState::RunningOrHasRun);
         drop(value);
     })) {
         rtabort!("thread local panicked on drop");

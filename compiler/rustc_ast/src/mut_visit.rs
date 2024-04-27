@@ -34,6 +34,10 @@ impl<A: Array> ExpectOne<A> for SmallVec<A> {
     }
 }
 
+pub trait NoopVisitItemKind {
+    fn noop_visit(&mut self, visitor: &mut impl MutVisitor);
+}
+
 pub trait MutVisitor: Sized {
     /// Mutable token visiting only exists for the `macro_rules` token marker and should not be
     /// used otherwise. Token visitor would be entirely separate from the regular visitor if
@@ -90,7 +94,7 @@ pub trait MutVisitor: Sized {
     }
 
     fn flat_map_foreign_item(&mut self, ni: P<ForeignItem>) -> SmallVec<[P<ForeignItem>; 1]> {
-        noop_flat_map_foreign_item(ni, self)
+        noop_flat_map_item(ni, self)
     }
 
     fn flat_map_item(&mut self, i: P<Item>) -> SmallVec<[P<Item>; 1]> {
@@ -105,16 +109,12 @@ pub trait MutVisitor: Sized {
         noop_flat_map_field_def(fd, self)
     }
 
-    fn visit_item_kind(&mut self, i: &mut ItemKind) {
-        noop_visit_item_kind(i, self);
-    }
-
     fn flat_map_trait_item(&mut self, i: P<AssocItem>) -> SmallVec<[P<AssocItem>; 1]> {
-        noop_flat_map_assoc_item(i, self)
+        noop_flat_map_item(i, self)
     }
 
     fn flat_map_impl_item(&mut self, i: P<AssocItem>) -> SmallVec<[P<AssocItem>; 1]> {
-        noop_flat_map_assoc_item(i, self)
+        noop_flat_map_item(i, self)
     }
 
     fn visit_fn_decl(&mut self, d: &mut P<FnDecl>) {
@@ -1068,149 +1068,151 @@ pub fn noop_visit_block<T: MutVisitor>(block: &mut P<Block>, vis: &mut T) {
     visit_lazy_tts(tokens, vis);
 }
 
-pub fn noop_visit_item_kind<T: MutVisitor>(kind: &mut ItemKind, vis: &mut T) {
-    match kind {
-        ItemKind::ExternCrate(_orig_name) => {}
-        ItemKind::Use(use_tree) => vis.visit_use_tree(use_tree),
-        ItemKind::Static(box StaticItem { ty, mutability: _, expr }) => {
-            vis.visit_ty(ty);
-            visit_opt(expr, |expr| vis.visit_expr(expr));
-        }
-        ItemKind::Const(item) => {
-            visit_const_item(item, vis);
-        }
-        ItemKind::Fn(box Fn { defaultness, generics, sig, body }) => {
-            visit_defaultness(defaultness, vis);
-            visit_fn_sig(sig, vis);
-            vis.visit_generics(generics);
-            visit_opt(body, |body| vis.visit_block(body));
-        }
-        ItemKind::Mod(unsafety, mod_kind) => {
-            visit_unsafety(unsafety, vis);
-            match mod_kind {
-                ModKind::Loaded(items, _inline, ModSpans { inner_span, inject_use_span }) => {
-                    vis.visit_span(inner_span);
-                    vis.visit_span(inject_use_span);
-                    items.flat_map_in_place(|item| vis.flat_map_item(item));
+pub fn noop_visit_item_kind(kind: &mut impl NoopVisitItemKind, vis: &mut impl MutVisitor) {
+    kind.noop_visit(vis)
+}
+
+impl NoopVisitItemKind for ItemKind {
+    fn noop_visit(&mut self, vis: &mut impl MutVisitor) {
+        match self {
+            ItemKind::ExternCrate(_orig_name) => {}
+            ItemKind::Use(use_tree) => vis.visit_use_tree(use_tree),
+            ItemKind::Static(box StaticItem { ty, mutability: _, expr }) => {
+                vis.visit_ty(ty);
+                visit_opt(expr, |expr| vis.visit_expr(expr));
+            }
+            ItemKind::Const(item) => {
+                visit_const_item(item, vis);
+            }
+            ItemKind::Fn(box Fn { defaultness, generics, sig, body }) => {
+                visit_defaultness(defaultness, vis);
+                visit_fn_sig(sig, vis);
+                vis.visit_generics(generics);
+                visit_opt(body, |body| vis.visit_block(body));
+            }
+            ItemKind::Mod(unsafety, mod_kind) => {
+                visit_unsafety(unsafety, vis);
+                match mod_kind {
+                    ModKind::Loaded(items, _inline, ModSpans { inner_span, inject_use_span }) => {
+                        vis.visit_span(inner_span);
+                        vis.visit_span(inject_use_span);
+                        items.flat_map_in_place(|item| vis.flat_map_item(item));
+                    }
+                    ModKind::Unloaded => {}
                 }
-                ModKind::Unloaded => {}
             }
-        }
-        ItemKind::ForeignMod(nm) => vis.visit_foreign_mod(nm),
-        ItemKind::GlobalAsm(asm) => vis.visit_inline_asm(asm),
-        ItemKind::TyAlias(box TyAlias {
-            defaultness, generics, where_clauses, bounds, ty, ..
-        }) => {
-            visit_defaultness(defaultness, vis);
-            vis.visit_generics(generics);
-            vis.visit_span(&mut where_clauses.before.span);
-            vis.visit_span(&mut where_clauses.after.span);
-            visit_bounds(bounds, vis);
-            visit_opt(ty, |ty| vis.visit_ty(ty));
-        }
-        ItemKind::Enum(EnumDef { variants }, generics) => {
-            variants.flat_map_in_place(|variant| vis.flat_map_variant(variant));
-            vis.visit_generics(generics);
-        }
-        ItemKind::Struct(variant_data, generics) | ItemKind::Union(variant_data, generics) => {
-            vis.visit_variant_data(variant_data);
-            vis.visit_generics(generics);
-        }
-        ItemKind::Impl(box Impl {
-            defaultness,
-            unsafety,
-            generics,
-            constness,
-            polarity,
-            of_trait,
-            self_ty,
-            items,
-        }) => {
-            visit_defaultness(defaultness, vis);
-            visit_unsafety(unsafety, vis);
-            vis.visit_generics(generics);
-            visit_constness(constness, vis);
-            visit_polarity(polarity, vis);
-            visit_opt(of_trait, |trait_ref| vis.visit_trait_ref(trait_ref));
-            vis.visit_ty(self_ty);
-            items.flat_map_in_place(|item| vis.flat_map_impl_item(item));
-        }
-        ItemKind::Trait(box Trait { unsafety, is_auto: _, generics, bounds, items }) => {
-            visit_unsafety(unsafety, vis);
-            vis.visit_generics(generics);
-            visit_bounds(bounds, vis);
-            items.flat_map_in_place(|item| vis.flat_map_trait_item(item));
-        }
-        ItemKind::TraitAlias(generics, bounds) => {
-            vis.visit_generics(generics);
-            visit_bounds(bounds, vis);
-        }
-        ItemKind::MacCall(m) => vis.visit_mac_call(m),
-        ItemKind::MacroDef(def) => vis.visit_macro_def(def),
-        ItemKind::Delegation(box Delegation { id, qself, path, rename, body }) => {
-            vis.visit_id(id);
-            vis.visit_qself(qself);
-            vis.visit_path(path);
-            if let Some(rename) = rename {
-                vis.visit_ident(rename);
+            ItemKind::ForeignMod(nm) => vis.visit_foreign_mod(nm),
+            ItemKind::GlobalAsm(asm) => vis.visit_inline_asm(asm),
+            ItemKind::TyAlias(box TyAlias {
+                defaultness,
+                generics,
+                where_clauses,
+                bounds,
+                ty,
+                ..
+            }) => {
+                visit_defaultness(defaultness, vis);
+                vis.visit_generics(generics);
+                vis.visit_span(&mut where_clauses.before.span);
+                vis.visit_span(&mut where_clauses.after.span);
+                visit_bounds(bounds, vis);
+                visit_opt(ty, |ty| vis.visit_ty(ty));
             }
-            if let Some(body) = body {
-                vis.visit_block(body);
+            ItemKind::Enum(EnumDef { variants }, generics) => {
+                variants.flat_map_in_place(|variant| vis.flat_map_variant(variant));
+                vis.visit_generics(generics);
+            }
+            ItemKind::Struct(variant_data, generics) | ItemKind::Union(variant_data, generics) => {
+                vis.visit_variant_data(variant_data);
+                vis.visit_generics(generics);
+            }
+            ItemKind::Impl(box Impl {
+                defaultness,
+                unsafety,
+                generics,
+                constness,
+                polarity,
+                of_trait,
+                self_ty,
+                items,
+            }) => {
+                visit_defaultness(defaultness, vis);
+                visit_unsafety(unsafety, vis);
+                vis.visit_generics(generics);
+                visit_constness(constness, vis);
+                visit_polarity(polarity, vis);
+                visit_opt(of_trait, |trait_ref| vis.visit_trait_ref(trait_ref));
+                vis.visit_ty(self_ty);
+                items.flat_map_in_place(|item| vis.flat_map_impl_item(item));
+            }
+            ItemKind::Trait(box Trait { unsafety, is_auto: _, generics, bounds, items }) => {
+                visit_unsafety(unsafety, vis);
+                vis.visit_generics(generics);
+                visit_bounds(bounds, vis);
+                items.flat_map_in_place(|item| vis.flat_map_trait_item(item));
+            }
+            ItemKind::TraitAlias(generics, bounds) => {
+                vis.visit_generics(generics);
+                visit_bounds(bounds, vis);
+            }
+            ItemKind::MacCall(m) => vis.visit_mac_call(m),
+            ItemKind::MacroDef(def) => vis.visit_macro_def(def),
+            ItemKind::Delegation(box Delegation { id, qself, path, rename, body }) => {
+                vis.visit_id(id);
+                vis.visit_qself(qself);
+                vis.visit_path(path);
+                if let Some(rename) = rename {
+                    vis.visit_ident(rename);
+                }
+                if let Some(body) = body {
+                    vis.visit_block(body);
+                }
             }
         }
     }
 }
 
-pub fn noop_flat_map_assoc_item<T: MutVisitor>(
-    mut item: P<AssocItem>,
-    visitor: &mut T,
-) -> SmallVec<[P<AssocItem>; 1]> {
-    let Item { id, ident, vis, attrs, kind, span, tokens } = item.deref_mut();
-    visitor.visit_id(id);
-    visitor.visit_ident(ident);
-    visitor.visit_vis(vis);
-    visit_attrs(attrs, visitor);
-    match kind {
-        AssocItemKind::Const(item) => {
-            visit_const_item(item, visitor);
-        }
-        AssocItemKind::Fn(box Fn { defaultness, generics, sig, body }) => {
-            visit_defaultness(defaultness, visitor);
-            visitor.visit_generics(generics);
-            visit_fn_sig(sig, visitor);
-            visit_opt(body, |body| visitor.visit_block(body));
-        }
-        AssocItemKind::Type(box TyAlias {
-            defaultness,
-            generics,
-            where_clauses,
-            bounds,
-            ty,
-            ..
-        }) => {
-            visit_defaultness(defaultness, visitor);
-            visitor.visit_generics(generics);
-            visitor.visit_span(&mut where_clauses.before.span);
-            visitor.visit_span(&mut where_clauses.after.span);
-            visit_bounds(bounds, visitor);
-            visit_opt(ty, |ty| visitor.visit_ty(ty));
-        }
-        AssocItemKind::MacCall(mac) => visitor.visit_mac_call(mac),
-        AssocItemKind::Delegation(box Delegation { id, qself, path, rename, body }) => {
-            visitor.visit_id(id);
-            visitor.visit_qself(qself);
-            visitor.visit_path(path);
-            if let Some(rename) = rename {
-                visitor.visit_ident(rename);
+impl NoopVisitItemKind for AssocItemKind {
+    fn noop_visit(&mut self, visitor: &mut impl MutVisitor) {
+        match self {
+            AssocItemKind::Const(item) => {
+                visit_const_item(item, visitor);
             }
-            if let Some(body) = body {
-                visitor.visit_block(body);
+            AssocItemKind::Fn(box Fn { defaultness, generics, sig, body }) => {
+                visit_defaultness(defaultness, visitor);
+                visitor.visit_generics(generics);
+                visit_fn_sig(sig, visitor);
+                visit_opt(body, |body| visitor.visit_block(body));
+            }
+            AssocItemKind::Type(box TyAlias {
+                defaultness,
+                generics,
+                where_clauses,
+                bounds,
+                ty,
+                ..
+            }) => {
+                visit_defaultness(defaultness, visitor);
+                visitor.visit_generics(generics);
+                visitor.visit_span(&mut where_clauses.before.span);
+                visitor.visit_span(&mut where_clauses.after.span);
+                visit_bounds(bounds, visitor);
+                visit_opt(ty, |ty| visitor.visit_ty(ty));
+            }
+            AssocItemKind::MacCall(mac) => visitor.visit_mac_call(mac),
+            AssocItemKind::Delegation(box Delegation { id, qself, path, rename, body }) => {
+                visitor.visit_id(id);
+                visitor.visit_qself(qself);
+                visitor.visit_path(path);
+                if let Some(rename) = rename {
+                    visitor.visit_ident(rename);
+                }
+                if let Some(body) = body {
+                    visitor.visit_block(body);
+                }
             }
         }
     }
-    visitor.visit_span(span);
-    visit_lazy_tts(tokens, visitor);
-    smallvec![item]
 }
 
 fn visit_const_item<T: MutVisitor>(
@@ -1241,62 +1243,52 @@ pub fn noop_visit_crate<T: MutVisitor>(krate: &mut Crate, vis: &mut T) {
 }
 
 // Mutates one item into possibly many items.
-pub fn noop_flat_map_item<T: MutVisitor>(
-    mut item: P<Item>,
-    visitor: &mut T,
-) -> SmallVec<[P<Item>; 1]> {
+pub fn noop_flat_map_item<K: NoopVisitItemKind>(
+    mut item: P<Item<K>>,
+    visitor: &mut impl MutVisitor,
+) -> SmallVec<[P<Item<K>>; 1]> {
     let Item { ident, attrs, id, kind, vis, span, tokens } = item.deref_mut();
-    visitor.visit_ident(ident);
-    visit_attrs(attrs, visitor);
     visitor.visit_id(id);
-    visitor.visit_item_kind(kind);
+    visit_attrs(attrs, visitor);
     visitor.visit_vis(vis);
+    visitor.visit_ident(ident);
+    kind.noop_visit(visitor);
     visitor.visit_span(span);
     visit_lazy_tts(tokens, visitor);
-
     smallvec![item]
 }
 
-pub fn noop_flat_map_foreign_item<T: MutVisitor>(
-    mut item: P<ForeignItem>,
-    visitor: &mut T,
-) -> SmallVec<[P<ForeignItem>; 1]> {
-    let Item { ident, attrs, id, kind, vis, span, tokens } = item.deref_mut();
-    visitor.visit_id(id);
-    visitor.visit_ident(ident);
-    visitor.visit_vis(vis);
-    visit_attrs(attrs, visitor);
-    match kind {
-        ForeignItemKind::Static(ty, _, expr) => {
-            visitor.visit_ty(ty);
-            visit_opt(expr, |expr| visitor.visit_expr(expr));
+impl NoopVisitItemKind for ForeignItemKind {
+    fn noop_visit(&mut self, visitor: &mut impl MutVisitor) {
+        match self {
+            ForeignItemKind::Static(ty, _, expr) => {
+                visitor.visit_ty(ty);
+                visit_opt(expr, |expr| visitor.visit_expr(expr));
+            }
+            ForeignItemKind::Fn(box Fn { defaultness, generics, sig, body }) => {
+                visit_defaultness(defaultness, visitor);
+                visitor.visit_generics(generics);
+                visit_fn_sig(sig, visitor);
+                visit_opt(body, |body| visitor.visit_block(body));
+            }
+            ForeignItemKind::TyAlias(box TyAlias {
+                defaultness,
+                generics,
+                where_clauses,
+                bounds,
+                ty,
+                ..
+            }) => {
+                visit_defaultness(defaultness, visitor);
+                visitor.visit_generics(generics);
+                visitor.visit_span(&mut where_clauses.before.span);
+                visitor.visit_span(&mut where_clauses.after.span);
+                visit_bounds(bounds, visitor);
+                visit_opt(ty, |ty| visitor.visit_ty(ty));
+            }
+            ForeignItemKind::MacCall(mac) => visitor.visit_mac_call(mac),
         }
-        ForeignItemKind::Fn(box Fn { defaultness, generics, sig, body }) => {
-            visit_defaultness(defaultness, visitor);
-            visitor.visit_generics(generics);
-            visit_fn_sig(sig, visitor);
-            visit_opt(body, |body| visitor.visit_block(body));
-        }
-        ForeignItemKind::TyAlias(box TyAlias {
-            defaultness,
-            generics,
-            where_clauses,
-            bounds,
-            ty,
-            ..
-        }) => {
-            visit_defaultness(defaultness, visitor);
-            visitor.visit_generics(generics);
-            visitor.visit_span(&mut where_clauses.before.span);
-            visitor.visit_span(&mut where_clauses.after.span);
-            visit_bounds(bounds, visitor);
-            visit_opt(ty, |ty| visitor.visit_ty(ty));
-        }
-        ForeignItemKind::MacCall(mac) => visitor.visit_mac_call(mac),
     }
-    visitor.visit_span(span);
-    visit_lazy_tts(tokens, visitor);
-    smallvec![item]
 }
 
 pub fn noop_visit_pat<T: MutVisitor>(pat: &mut P<Pat>, vis: &mut T) {

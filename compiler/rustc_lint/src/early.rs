@@ -99,7 +99,7 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
 
     fn visit_foreign_item(&mut self, it: &'a ast::ForeignItem) {
         self.with_lint_attrs(it.id, &it.attrs, |cx| {
-            ast_visit::walk_foreign_item(cx, it);
+            ast_visit::walk_item(cx, it);
         })
     }
 
