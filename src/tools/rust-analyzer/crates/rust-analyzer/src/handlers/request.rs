@@ -1859,7 +1859,7 @@ pub(crate) fn handle_view_recursive_memory_layout(
     snap: GlobalStateSnapshot,
     params: lsp_types::TextDocumentPositionParams,
 ) -> anyhow::Result<Option<lsp_ext::RecursiveMemoryLayout>> {
-    let _p = tracing::span!(tracing::Level::INFO, "view_recursive_memory_layout").entered();
+    let _p = tracing::span!(tracing::Level::INFO, "handle_view_recursive_memory_layout").entered();
     let file_id = from_proto::file_id(&snap, &params.text_document.uri)?;
     let line_index = snap.file_line_index(file_id)?;
     let offset = from_proto::offset(&line_index, params.position)?;

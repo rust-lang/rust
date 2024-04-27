@@ -349,7 +349,7 @@ fn run_flycheck(state: &mut GlobalState, vfs_path: VfsPath) -> bool {
 }
 
 pub(crate) fn handle_cancel_flycheck(state: &mut GlobalState, _: ()) -> anyhow::Result<()> {
-    let _p = tracing::span!(tracing::Level::INFO, "handle_stop_flycheck").entered();
+    let _p = tracing::span!(tracing::Level::INFO, "handle_cancel_flycheck").entered();
     state.flycheck.iter().for_each(|flycheck| flycheck.cancel());
     Ok(())
 }

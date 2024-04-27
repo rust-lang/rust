@@ -352,7 +352,8 @@ fn load_crate_graph(
                 }
             }
             vfs::loader::Message::Loaded { files } | vfs::loader::Message::Changed { files } => {
-                let _p = tracing::span!(Level::INFO, "LoadCargo::load_file_contents").entered();
+                let _p = tracing::span!(Level::INFO, "load_cargo::load_crate_craph/LoadedChanged")
+                    .entered();
                 for (path, contents) in files {
                     vfs.set_file_contents(path.into(), contents);
                 }

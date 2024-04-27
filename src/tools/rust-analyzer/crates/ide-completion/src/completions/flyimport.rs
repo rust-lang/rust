@@ -296,7 +296,7 @@ fn import_on_the_fly_pat_(
     position: SyntaxNode,
     potential_import_name: String,
 ) -> Option<()> {
-    let _p = tracing::span!(tracing::Level::INFO, "import_on_the_fly_pat", ?potential_import_name)
+    let _p = tracing::span!(tracing::Level::INFO, "import_on_the_fly_pat_", ?potential_import_name)
         .entered();
 
     ImportScope::find_insert_use_container(&position, &ctx.sema)?;

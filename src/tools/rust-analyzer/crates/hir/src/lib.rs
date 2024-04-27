@@ -4503,7 +4503,8 @@ impl Type {
         name: Option<&Name>,
         mut callback: impl FnMut(Function) -> Option<T>,
     ) -> Option<T> {
-        let _p = tracing::span!(tracing::Level::INFO, "iterate_method_candidates").entered();
+        let _p =
+            tracing::span!(tracing::Level::INFO, "iterate_method_candidates_with_traits").entered();
         let mut slot = None;
 
         self.iterate_method_candidates_dyn(
