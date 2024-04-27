@@ -42,26 +42,24 @@ impl<'tcx> fmt::Debug for VtblEntry<'tcx> {
 impl<'tcx> TyCtxt<'tcx> {
     pub const COMMON_VTABLE_ENTRIES: &'tcx [VtblEntry<'tcx>] =
         &[VtblEntry::MetadataDropInPlace, VtblEntry::MetadataSize, VtblEntry::MetadataAlign];
+
+    pub fn supertrait_def_ids(self, trait_def_id: DefId) -> SupertraitDefIds<'tcx> {
+        SupertraitDefIds {
+            tcx: self,
+            stack: vec![trait_def_id],
+            visited: Some(trait_def_id).into_iter().collect(),
+        }
+    }
 }
 
 pub const COMMON_VTABLE_ENTRIES_DROPINPLACE: usize = 0;
 pub const COMMON_VTABLE_ENTRIES_SIZE: usize = 1;
 pub const COMMON_VTABLE_ENTRIES_ALIGN: usize = 2;
 
-// FIXME: This is duplicating equivalent code in compiler/rustc_trait_selection/src/traits/util.rs
-// But that is a downstream crate, and this code is pretty simple. Probably OK for now.
-struct SupertraitDefIds<'tcx> {
+pub struct SupertraitDefIds<'tcx> {
     tcx: TyCtxt<'tcx>,
     stack: Vec<DefId>,
     visited: FxHashSet<DefId>,
-}
-
-fn supertrait_def_ids(tcx: TyCtxt<'_>, trait_def_id: DefId) -> SupertraitDefIds<'_> {
-    SupertraitDefIds {
-        tcx,
-        stack: vec![trait_def_id],
-        visited: Some(trait_def_id).into_iter().collect(),
-    }
 }
 
 impl Iterator for SupertraitDefIds<'_> {
@@ -100,7 +98,7 @@ pub(crate) fn vtable_min_entries<'tcx>(
     };
 
     // This includes self in supertraits.
-    for def_id in supertrait_def_ids(tcx, trait_ref.def_id()) {
+    for def_id in tcx.supertrait_def_ids(trait_ref.def_id()) {
         count += tcx.own_existential_vtable_entries(def_id).len();
     }
 

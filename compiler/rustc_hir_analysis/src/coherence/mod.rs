@@ -12,7 +12,6 @@ use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
 use rustc_session::parse::feature_err;
 use rustc_span::{sym, ErrorGuaranteed};
-use rustc_trait_selection::traits;
 
 mod builtin;
 mod inherent_impls;
@@ -199,7 +198,7 @@ fn check_object_overlap<'tcx>(
                 // With the feature enabled, the trait is not implemented automatically,
                 // so this is valid.
             } else {
-                let mut supertrait_def_ids = traits::supertrait_def_ids(tcx, component_def_id);
+                let mut supertrait_def_ids = tcx.supertrait_def_ids(component_def_id);
                 if supertrait_def_ids.any(|d| d == trait_def_id) {
                     let span = tcx.def_span(impl_def_id);
                     return Err(struct_span_code_err!(

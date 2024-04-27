@@ -45,7 +45,8 @@ pub fn hir_ty_lowering_object_safety_violations(
     trait_def_id: DefId,
 ) -> Vec<ObjectSafetyViolation> {
     debug_assert!(tcx.generics_of(trait_def_id).has_self);
-    let violations = traits::supertrait_def_ids(tcx, trait_def_id)
+    let violations = tcx
+        .supertrait_def_ids(trait_def_id)
         .map(|def_id| predicates_reference_self(tcx, def_id, true))
         .filter(|spans| !spans.is_empty())
         .map(ObjectSafetyViolation::SupertraitSelf)
@@ -59,7 +60,7 @@ fn object_safety_violations(tcx: TyCtxt<'_>, trait_def_id: DefId) -> &'_ [Object
     debug!("object_safety_violations: {:?}", trait_def_id);
 
     tcx.arena.alloc_from_iter(
-        traits::supertrait_def_ids(tcx, trait_def_id)
+        tcx.supertrait_def_ids(trait_def_id)
             .flat_map(|def_id| object_safety_violations_for_trait(tcx, def_id)),
     )
 }
