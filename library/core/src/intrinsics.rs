@@ -2767,7 +2767,7 @@ pub const unsafe fn typed_swap<T>(x: *mut T, y: *mut T) {
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[inline(always)]
 #[cfg_attr(not(bootstrap), rustc_intrinsic)] // just make it a regular fn in bootstrap
-pub(crate) const fn ub_checks() -> bool {
+pub const fn ub_checks() -> bool {
     cfg!(debug_assertions)
 }
 

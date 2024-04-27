@@ -356,6 +356,7 @@
 #![feature(str_internals)]
 #![feature(strict_provenance)]
 #![feature(strict_provenance_atomic_ptr)]
+#![feature(ub_checks)]
 // tidy-alphabetical-end
 //
 // Library features (alloc):
