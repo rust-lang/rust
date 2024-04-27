@@ -2019,7 +2019,7 @@ impl HumanEmitter {
                     let offset: isize = offsets
                         .iter()
                         .filter_map(
-                            |(start, v)| if span_start_pos <= *start { None } else { Some(v) },
+                            |(start, v)| if span_start_pos < *start { None } else { Some(v) },
                         )
                         .sum();
                     let underline_start = (span_start_pos + start) as isize + offset;
@@ -2028,7 +2028,7 @@ impl HumanEmitter {
                     let padding: usize = max_line_num_len + 3;
                     for p in underline_start..underline_end {
                         if let DisplaySuggestion::Underline = show_code_change {
-                            // If this is a replacement, underline with `^`, if this is an addition
+                            // If this is a replacement, underline with `~`, if this is an addition
                             // underline with `+`.
                             buffer.putc(
                                 row_num,
