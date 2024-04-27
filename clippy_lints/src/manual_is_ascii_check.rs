@@ -1,6 +1,6 @@
 use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::macros::root_macro_call;
+use clippy_utils::macros::matching_root_macro_call;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::{higher, in_constant};
 use rustc_ast::ast::RangeLimits;
@@ -9,7 +9,6 @@ use rustc_errors::Applicability;
 use rustc_hir::{BorrowKind, Expr, ExprKind, PatKind, RangeEnd};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
-use rustc_span::def_id::DefId;
 use rustc_span::{sym, Span};
 
 declare_clippy_lint! {
@@ -97,9 +96,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualIsAsciiCheck {
             return;
         }
 
-        if let Some(macro_call) = root_macro_call(expr.span)
-            && is_matches_macro(cx, macro_call.def_id)
-        {
+        if let Some(macro_call) = matching_root_macro_call(cx, expr.span, sym::matches_macro) {
             if let ExprKind::Match(recv, [arm, ..], _) = expr.kind {
                 let range = check_pat(&arm.pat.kind);
                 check_is_ascii(cx, macro_call.span, recv, &range);
@@ -186,12 +183,4 @@ fn check_range(start: &Expr<'_>, end: &Expr<'_>) -> CharRange {
     } else {
         CharRange::Otherwise
     }
-}
-
-fn is_matches_macro(cx: &LateContext<'_>, macro_def_id: DefId) -> bool {
-    if let Some(name) = cx.tcx.get_diagnostic_name(macro_def_id) {
-        return sym::matches_macro == name;
-    }
-
-    false
 }
