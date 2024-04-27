@@ -116,7 +116,7 @@ jobs:
         run: echo "[CI_PR_NUMBER=$num]"
         env:
           num: ${{ github.event.number }}
-        if: success() && github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request'
 
       - name: add extra environment variables
         run: src/ci/scripts/setup-environment.sh
@@ -219,7 +219,7 @@ jobs:
         # adding the condition is helpful as this way CI will not silently skip
         # deploying artifacts from a dist builder if the variables are misconfigured,
         # erroring about invalid credentials instead.
-        if: success() && (github.event_name == 'push' || env.DEPLOY == '1' || env.DEPLOY_ALT == '1')
+        if: github.event_name == 'push' || env.DEPLOY == '1' || env.DEPLOY_ALT == '1'
 
   # This job isused to tell bors the final status of the build, as there is no practical way to detect
   # when a workflow is successful listening to webhooks only in our current bors implementation (homu).
