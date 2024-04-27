@@ -1335,7 +1335,7 @@ impl<'a, 'b, 'tcx> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b, 'tcx> {
         }
 
         self.build_reduced_graph_for_foreign_item(foreign_item);
-        visit::walk_foreign_item(self, foreign_item);
+        visit::walk_item(self, foreign_item);
     }
 
     fn visit_block(&mut self, block: &'b Block) {
