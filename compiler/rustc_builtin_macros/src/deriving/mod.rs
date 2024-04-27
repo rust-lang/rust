@@ -27,6 +27,7 @@ pub mod decodable;
 pub mod default;
 pub mod encodable;
 pub mod hash;
+pub mod smart_ptr;
 
 #[path = "cmp/eq.rs"]
 pub mod eq;
