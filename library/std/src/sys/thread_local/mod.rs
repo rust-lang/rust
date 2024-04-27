@@ -94,7 +94,7 @@ mod lazy {
         /// Watch out: unsynchronized internal mutability!
         ///
         /// # Safety
-        /// Unsound if called while any `&'static T` is active.
+        /// Causes UB if any reference to the value is used after this.
         #[allow(unused)]
         pub(crate) unsafe fn take(&self) -> Option<T> {
             let mutable: *mut _ = UnsafeCell::get(&self.inner);
