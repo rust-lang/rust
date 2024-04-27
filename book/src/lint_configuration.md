@@ -132,6 +132,16 @@ Whether `unwrap` should be allowed in test functions or `#[cfg(test)]`
 * [`unwrap_used`](https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used)
 
 
+## `allow-useless-vec-in-tests`
+Whether `useless_vec` should ignore test functions or `#[cfg(test)]`
+
+**Default Value:** `false`
+
+---
+**Affected lints:**
+* [`useless_vec`](https://rust-lang.github.io/rust-clippy/master/index.html#useless_vec)
+
+
 ## `allowed-dotfiles`
 Additional dotfiles (files or directories starting with a dot) to allow
 
