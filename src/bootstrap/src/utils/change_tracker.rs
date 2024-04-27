@@ -626,4 +626,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "New `--verbose-run-make-subprocess-output` flag for `x.py test` (defaults to true). Set `--verbose-run-make-subprocess-output=false` to suppress verbose subprocess output for passing run-make tests when using `--no-capture`.",
     },
+    ChangeInfo {
+        change_id: 124439,
+        severity: ChangeSeverity::Info,
+        summary: "Default for `rust.deny-warnings` on `compiler`, `library` and `tools` profiles changed to `false`",
+    },
 ];
