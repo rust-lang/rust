@@ -243,6 +243,6 @@ jobs:
       - name: publish toolstate
         run: src/ci/publish_toolstate.sh
         shell: bash
-        if: success() && github.event_name == 'push' && github.ref == 'refs/heads/auto' && github.repository == 'rust-lang-ci/rust'
+        if: github.event_name == 'push' && github.ref == 'refs/heads/auto' && github.repository == 'rust-lang-ci/rust'
         env:
           TOOLSTATE_REPO_ACCESS_TOKEN: ${{ secrets.TOOLSTATE_REPO_ACCESS_TOKEN }}
