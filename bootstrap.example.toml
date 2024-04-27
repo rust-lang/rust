@@ -826,9 +826,18 @@
 # in the sysroot. It is required for running nvptx tests.
 #rust.llvm-bitcode-linker = false
 
-# Whether to deny warnings in crates. Set to `false` to avoid
-# error: warnings are denied by `build.warnings` configuration
-#rust.deny-warnings = true
+# Whether to deny warnings in crates.
+#
+# Set to `true` to fail the build if there are warnings in crates,
+# to not accidentally miss warnings in long build output.
+#
+# Set to `false` to avoid "error: warnings are denied by `build.warnings` configuration"
+# and have easier time iterating on your changes.
+#
+# This is set to `true` by default for the `dist` profile and to `false` otherwise.
+#
+# Note that CI denies warnings.
+#rust.deny-warnings = false
 
 # Print backtrace on internal compiler errors during bootstrap
 #rust.backtrace-on-ice = false
