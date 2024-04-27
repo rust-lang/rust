@@ -211,7 +211,7 @@ mod tests {
     use super::*;
 
     use ide::Edition;
-    use mbe::{syntax_node_to_token_tree, DummyTestSpanMap, DUMMY};
+    use mbe::{syntax_node_to_token_tree, DocCommentDesugarMode, DummyTestSpanMap, DUMMY};
     use syntax::{
         ast::{self, AstNode},
         SmolStr,
@@ -221,7 +221,12 @@ mod tests {
         let cfg_expr = {
             let source_file = ast::SourceFile::parse(cfg, Edition::CURRENT).ok().unwrap();
             let tt = source_file.syntax().descendants().find_map(ast::TokenTree::cast).unwrap();
-            let tt = syntax_node_to_token_tree(tt.syntax(), &DummyTestSpanMap, DUMMY);
+            let tt = syntax_node_to_token_tree(
+                tt.syntax(),
+                &DummyTestSpanMap,
+                DUMMY,
+                DocCommentDesugarMode::Mbe,
+            );
             CfgExpr::parse(&tt)
         };
 

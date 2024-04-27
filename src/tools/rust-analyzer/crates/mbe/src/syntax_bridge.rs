@@ -69,18 +69,28 @@ pub(crate) mod dummy_test_span_utils {
     }
 }
 
+/// Doc comment desugaring differs between mbe and proc-macros.
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub enum DocCommentDesugarMode {
+    /// Desugars doc comments as quoted raw strings
+    Mbe,
+    /// Desugars doc comments as quoted strings
+    ProcMacro,
+}
+
 /// Converts a syntax tree to a [`tt::Subtree`] using the provided span map to populate the
 /// subtree's spans.
 pub fn syntax_node_to_token_tree<Ctx, SpanMap>(
     node: &SyntaxNode,
     map: SpanMap,
     span: SpanData<Ctx>,
+    mode: DocCommentDesugarMode,
 ) -> tt::Subtree<SpanData<Ctx>>
 where
     SpanData<Ctx>: Copy + fmt::Debug,
     SpanMap: SpanMapper<SpanData<Ctx>>,
 {
-    let mut c = Converter::new(node, map, Default::default(), Default::default(), span);
+    let mut c = Converter::new(node, map, Default::default(), Default::default(), span, mode);
     convert_tokens(&mut c)
 }
 
@@ -93,12 +103,13 @@ pub fn syntax_node_to_token_tree_modified<Ctx, SpanMap>(
     append: FxHashMap<SyntaxElement, Vec<tt::Leaf<SpanData<Ctx>>>>,
     remove: FxHashSet<SyntaxElement>,
     call_site: SpanData<Ctx>,
+    mode: DocCommentDesugarMode,
 ) -> tt::Subtree<SpanData<Ctx>>
 where
     SpanMap: SpanMapper<SpanData<Ctx>>,
     SpanData<Ctx>: Copy + fmt::Debug,
 {
-    let mut c = Converter::new(node, map, append, remove, call_site);
+    let mut c = Converter::new(node, map, append, remove, call_site, mode);
     convert_tokens(&mut c)
 }
 
@@ -165,7 +176,8 @@ where
     if lexed.errors().next().is_some() {
         return None;
     }
-    let mut conv = RawConverter { lexed, anchor, pos: 0, ctx };
+    let mut conv =
+        RawConverter { lexed, anchor, pos: 0, ctx, mode: DocCommentDesugarMode::ProcMacro };
     Some(convert_tokens(&mut conv))
 }
 
@@ -178,7 +190,8 @@ where
     if lexed.errors().next().is_some() {
         return None;
     }
-    let mut conv = StaticRawConverter { lexed, pos: 0, span };
+    let mut conv =
+        StaticRawConverter { lexed, pos: 0, span, mode: DocCommentDesugarMode::ProcMacro };
     Some(convert_tokens(&mut conv))
 }
 
@@ -405,7 +418,7 @@ fn is_single_token_op(kind: SyntaxKind) -> bool {
 /// That is, strips leading `///` (or `/**`, etc)
 /// and strips the ending `*/`
 /// And then quote the string, which is needed to convert to `tt::Literal`
-fn doc_comment_text(comment: &ast::Comment) -> SmolStr {
+fn doc_comment_text(comment: &ast::Comment, mode: DocCommentDesugarMode) -> SmolStr {
     let prefix_len = comment.prefix().len();
     let mut text = &comment.text()[prefix_len..];
 
@@ -414,26 +427,34 @@ fn doc_comment_text(comment: &ast::Comment) -> SmolStr {
         text = &text[0..text.len() - 2];
     }
 
-    let mut num_of_hashes = 0;
-    let mut count = 0;
-    for ch in text.chars() {
-        count = match ch {
-            '"' => 1,
-            '#' if count > 0 => count + 1,
-            _ => 0,
-        };
-        num_of_hashes = num_of_hashes.max(count);
-    }
+    let text = match mode {
+        DocCommentDesugarMode::Mbe => {
+            let mut num_of_hashes = 0;
+            let mut count = 0;
+            for ch in text.chars() {
+                count = match ch {
+                    '"' => 1,
+                    '#' if count > 0 => count + 1,
+                    _ => 0,
+                };
+                num_of_hashes = num_of_hashes.max(count);
+            }
 
-    // Quote raw string with delimiters
-    // Note that `tt::Literal` expect an escaped string
-    let text = format!("r{delim}\"{text}\"{delim}", delim = "#".repeat(num_of_hashes));
+            // Quote raw string with delimiters
+            // Note that `tt::Literal` expect an escaped string
+            format!(r#"r{delim}"{text}"{delim}"#, delim = "#".repeat(num_of_hashes))
+        }
+        // Quote string with delimiters
+        // Note that `tt::Literal` expect an escaped string
+        DocCommentDesugarMode::ProcMacro => format!(r#""{}""#, text.escape_debug()),
+    };
     text.into()
 }
 
 fn convert_doc_comment<S: Copy>(
     token: &syntax::SyntaxToken,
     span: S,
+    mode: DocCommentDesugarMode,
 ) -> Option<Vec<tt::TokenTree<S>>> {
     cov_mark::hit!(test_meta_doc_comments);
     let comment = ast::Comment::cast(token.clone())?;
@@ -451,7 +472,7 @@ fn convert_doc_comment<S: Copy>(
     };
 
     let mk_doc_literal = |comment: &ast::Comment| {
-        let lit = tt::Literal { text: doc_comment_text(comment), span };
+        let lit = tt::Literal { text: doc_comment_text(comment, mode), span };
 
         tt::TokenTree::from(tt::Leaf::from(lit))
     };
@@ -479,12 +500,14 @@ struct RawConverter<'a, Ctx> {
     pos: usize,
     anchor: SpanAnchor,
     ctx: Ctx,
+    mode: DocCommentDesugarMode,
 }
 /// A raw token (straight from lexer) converter that gives every token the same span.
 struct StaticRawConverter<'a, S> {
     lexed: parser::LexedStr<'a>,
     pos: usize,
     span: S,
+    mode: DocCommentDesugarMode,
 }
 
 trait SrcToken<Ctx, S> {
@@ -553,7 +576,7 @@ where
         span: SpanData<Ctx>,
     ) -> Option<Vec<tt::TokenTree<SpanData<Ctx>>>> {
         let text = self.lexed.text(token);
-        convert_doc_comment(&doc_comment(text), span)
+        convert_doc_comment(&doc_comment(text), span, self.mode)
     }
 
     fn bump(&mut self) -> Option<(Self::Token, TextRange)> {
@@ -592,7 +615,7 @@ where
 
     fn convert_doc_comment(&self, &token: &usize, span: S) -> Option<Vec<tt::TokenTree<S>>> {
         let text = self.lexed.text(token);
-        convert_doc_comment(&doc_comment(text), span)
+        convert_doc_comment(&doc_comment(text), span, self.mode)
     }
 
     fn bump(&mut self) -> Option<(Self::Token, TextRange)> {
@@ -634,6 +657,7 @@ struct Converter<SpanMap, S> {
     append: FxHashMap<SyntaxElement, Vec<tt::Leaf<S>>>,
     remove: FxHashSet<SyntaxElement>,
     call_site: S,
+    mode: DocCommentDesugarMode,
 }
 
 impl<SpanMap, S> Converter<SpanMap, S> {
@@ -643,6 +667,7 @@ impl<SpanMap, S> Converter<SpanMap, S> {
         append: FxHashMap<SyntaxElement, Vec<tt::Leaf<S>>>,
         remove: FxHashSet<SyntaxElement>,
         call_site: S,
+        mode: DocCommentDesugarMode,
     ) -> Self {
         let mut this = Converter {
             current: None,
@@ -654,6 +679,7 @@ impl<SpanMap, S> Converter<SpanMap, S> {
             remove,
             call_site,
             current_leaves: vec![],
+            mode,
         };
         let first = this.next_token();
         this.current = first;
@@ -755,7 +781,7 @@ where
 {
     type Token = SynToken<S>;
     fn convert_doc_comment(&self, token: &Self::Token, span: S) -> Option<Vec<tt::TokenTree<S>>> {
-        convert_doc_comment(token.token(), span)
+        convert_doc_comment(token.token(), span, self.mode)
     }
 
     fn bump(&mut self) -> Option<(Self::Token, TextRange)> {

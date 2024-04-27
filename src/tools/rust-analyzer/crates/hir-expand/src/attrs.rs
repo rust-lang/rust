@@ -5,7 +5,7 @@ use base_db::CrateId;
 use cfg::CfgExpr;
 use either::Either;
 use intern::Interned;
-use mbe::{syntax_node_to_token_tree, DelimiterKind, Punct};
+use mbe::{syntax_node_to_token_tree, DelimiterKind, DocCommentDesugarMode, Punct};
 use smallvec::{smallvec, SmallVec};
 use span::{Span, SyntaxContextId};
 use syntax::unescape;
@@ -239,7 +239,12 @@ impl Attr {
                 span,
             })))
         } else if let Some(tt) = ast.token_tree() {
-            let tree = syntax_node_to_token_tree(tt.syntax(), span_map, span);
+            let tree = syntax_node_to_token_tree(
+                tt.syntax(),
+                span_map,
+                span,
+                DocCommentDesugarMode::ProcMacro,
+            );
             Some(Interned::new(AttrInput::TokenTree(Box::new(tree))))
         } else {
             None
