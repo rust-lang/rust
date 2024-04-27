@@ -1600,85 +1600,6 @@ fn f(s: S) {
 }
 
 #[test]
-fn rust_161_option_clone() {
-    check_types(
-        r#"
-//- minicore: option, drop
-
-fn test(o: &Option<i32>) {
-    o.my_clone();
-  //^^^^^^^^^^^^ Option<i32>
-}
-
-pub trait MyClone: Sized {
-    fn my_clone(&self) -> Self;
-}
-
-impl<T> const MyClone for Option<T>
-where
-    T: ~const MyClone + ~const Drop + ~const Destruct,
-{
-    fn my_clone(&self) -> Self {
-        match self {
-            Some(x) => Some(x.my_clone()),
-            None => None,
-        }
-    }
-}
-
-impl const MyClone for i32 {
-    fn my_clone(&self) -> Self {
-        *self
-    }
-}
-
-pub trait Destruct {}
-
-impl<T: ?Sized> const Destruct for T {}
-"#,
-    );
-}
-
-#[test]
-fn rust_162_option_clone() {
-    check_types(
-        r#"
-//- minicore: option, drop
-
-fn test(o: &Option<i32>) {
-    o.my_clone();
-  //^^^^^^^^^^^^ Option<i32>
-}
-
-pub trait MyClone: Sized {
-    fn my_clone(&self) -> Self;
-}
-
-impl<T> const MyClone for Option<T>
-where
-    T: ~const MyClone + ~const Destruct,
-{
-    fn my_clone(&self) -> Self {
-        match self {
-            Some(x) => Some(x.my_clone()),
-            None => None,
-        }
-    }
-}
-
-impl const MyClone for i32 {
-    fn my_clone(&self) -> Self {
-        *self
-    }
-}
-
-#[lang = "destruct"]
-pub trait Destruct {}
-"#,
-    );
-}
-
-#[test]
 fn tuple_struct_pattern_with_unmatched_args_crash() {
     check_infer(
         r#"
@@ -2037,6 +1958,20 @@ fn main() {
     let Alias::Unit{} = loop {};
       //^^^^^^^^^^^^^ Enum
 }
+"#,
+    )
+}
+
+#[test]
+fn cfg_first_trait_param_16141() {
+    check_no_mismatches(
+        r#"
+//- minicore: sized, coerce_unsized
+trait Bar {
+    fn bar(&self) {}
+}
+
+impl<#[cfg(feature = "a-feature")] A> Bar for (){}
 "#,
     )
 }

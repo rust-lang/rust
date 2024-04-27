@@ -5,7 +5,7 @@
 
 use std::{cmp::Ordering, iter, mem, ops::Not};
 
-use base_db::{CrateId, Dependency, FileId};
+use base_db::{CrateId, CrateOrigin, Dependency, FileId, LangCrateOrigin};
 use cfg::{CfgExpr, CfgOptions};
 use either::Either;
 use hir_expand::{
@@ -279,7 +279,8 @@ impl DefCollector<'_> {
     fn seed_with_top_level(&mut self) {
         let _p = tracing::span!(tracing::Level::INFO, "seed_with_top_level").entered();
 
-        let file_id = self.db.crate_graph()[self.def_map.krate].root_file_id;
+        let crate_graph = self.db.crate_graph();
+        let file_id = crate_graph[self.def_map.krate].root_file_id;
         let item_tree = self.db.file_item_tree(file_id.into());
         let attrs = item_tree.top_level_attrs(self.db, self.def_map.krate);
         let crate_data = Arc::get_mut(&mut self.def_map.data).unwrap();
@@ -318,8 +319,43 @@ impl DefCollector<'_> {
                         self.is_proc_macro = true;
                     }
                 }
-                () if *attr_name == hir_expand::name![no_core] => crate_data.no_core = true,
-                () if *attr_name == hir_expand::name![no_std] => crate_data.no_std = true,
+                () if *attr_name == hir_expand::name![no_core] => {
+                    if let Some((core, _)) =
+                        crate_data.extern_prelude.iter().find(|(_, (root, _))| {
+                            matches!(
+                                crate_graph[root.krate].origin,
+                                CrateOrigin::Lang(LangCrateOrigin::Core)
+                            )
+                        })
+                    {
+                        crate_data.extern_prelude.remove(&core.clone());
+                    }
+
+                    crate_data.no_core = true
+                }
+                () if *attr_name == hir_expand::name![no_std] => {
+                    if let Some((alloc, _)) =
+                        crate_data.extern_prelude.iter().find(|(_, (root, _))| {
+                            matches!(
+                                crate_graph[root.krate].origin,
+                                CrateOrigin::Lang(LangCrateOrigin::Alloc)
+                            )
+                        })
+                    {
+                        crate_data.extern_prelude.remove(&alloc.clone());
+                    }
+                    if let Some((std, _)) =
+                        crate_data.extern_prelude.iter().find(|(_, (root, _))| {
+                            matches!(
+                                crate_graph[root.krate].origin,
+                                CrateOrigin::Lang(LangCrateOrigin::Std)
+                            )
+                        })
+                    {
+                        crate_data.extern_prelude.remove(&std.clone());
+                    }
+                    crate_data.no_std = true
+                }
                 () if attr_name.as_text().as_deref() == Some("rustc_coherence_is_core") => {
                     crate_data.rustc_coherence_is_core = true;
                 }

@@ -1056,23 +1056,7 @@ impl<'a> TyLoweringContext<'a> {
         let clause = match bound.as_ref() {
             TypeBound::Path(path, TraitBoundModifier::None) => {
                 trait_ref = self.lower_trait_ref_from_path(path, Some(self_ty));
-                trait_ref
-                    .clone()
-                    .filter(|tr| {
-                        // ignore `T: Drop` or `T: Destruct` bounds.
-                        // - `T: ~const Drop` has a special meaning in Rust 1.61 that we don't implement.
-                        //   (So ideally, we'd only ignore `~const Drop` here)
-                        // - `Destruct` impls are built-in in 1.62 (current nightly as of 08-04-2022), so until
-                        //   the builtin impls are supported by Chalk, we ignore them here.
-                        if let Some(lang) = self.db.lang_attr(tr.hir_trait_id().into()) {
-                            if matches!(lang, LangItem::Drop | LangItem::Destruct) {
-                                return false;
-                            }
-                        }
-                        true
-                    })
-                    .map(WhereClause::Implemented)
-                    .map(crate::wrap_empty_binders)
+                trait_ref.clone().map(WhereClause::Implemented).map(crate::wrap_empty_binders)
             }
             TypeBound::Path(path, TraitBoundModifier::Maybe) => {
                 let sized_trait = self

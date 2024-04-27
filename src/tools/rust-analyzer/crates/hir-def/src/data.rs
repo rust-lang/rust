@@ -698,9 +698,14 @@ impl<'a> AssocItemCollector<'a> {
         match item {
             AssocItem::Function(id) => {
                 let item = &item_tree[id];
-
                 let def =
                     FunctionLoc { container, id: ItemTreeId::new(tree_id, id) }.intern(self.db);
+                self.items.push((item.name.clone(), def.into()));
+            }
+            AssocItem::TypeAlias(id) => {
+                let item = &item_tree[id];
+                let def =
+                    TypeAliasLoc { container, id: ItemTreeId::new(tree_id, id) }.intern(self.db);
                 self.items.push((item.name.clone(), def.into()));
             }
             AssocItem::Const(id) => {
@@ -708,13 +713,6 @@ impl<'a> AssocItemCollector<'a> {
                 let Some(name) = item.name.clone() else { return };
                 let def = ConstLoc { container, id: ItemTreeId::new(tree_id, id) }.intern(self.db);
                 self.items.push((name, def.into()));
-            }
-            AssocItem::TypeAlias(id) => {
-                let item = &item_tree[id];
-
-                let def =
-                    TypeAliasLoc { container, id: ItemTreeId::new(tree_id, id) }.intern(self.db);
-                self.items.push((item.name.clone(), def.into()));
             }
             AssocItem::MacroCall(call) => {
                 let file_id = self.expander.current_file_id();
