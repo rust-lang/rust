@@ -3,7 +3,7 @@
 use base_db::{salsa, CrateId, FileId, SourceDatabase};
 use either::Either;
 use limit::Limit;
-use mbe::{syntax_node_to_token_tree, MatchedArmIndex};
+use mbe::{syntax_node_to_token_tree, DocCommentDesugarMode, MatchedArmIndex};
 use rustc_hash::FxHashSet;
 use span::{AstIdMap, Span, SyntaxContextData, SyntaxContextId};
 use syntax::{ast, AstNode, Parse, SyntaxElement, SyntaxError, SyntaxNode, SyntaxToken, T};
@@ -156,11 +156,25 @@ pub fn expand_speculative(
     // Build the subtree and token mapping for the speculative args
     let (mut tt, undo_info) = match loc.kind {
         MacroCallKind::FnLike { .. } => (
-            mbe::syntax_node_to_token_tree(speculative_args, span_map, span),
+            mbe::syntax_node_to_token_tree(
+                speculative_args,
+                span_map,
+                span,
+                if loc.def.is_proc_macro() {
+                    DocCommentDesugarMode::ProcMacro
+                } else {
+                    DocCommentDesugarMode::Mbe
+                },
+            ),
             SyntaxFixupUndoInfo::NONE,
         ),
         MacroCallKind::Attr { .. } if loc.def.is_attribute_derive() => (
-            mbe::syntax_node_to_token_tree(speculative_args, span_map, span),
+            mbe::syntax_node_to_token_tree(
+                speculative_args,
+                span_map,
+                span,
+                DocCommentDesugarMode::ProcMacro,
+            ),
             SyntaxFixupUndoInfo::NONE,
         ),
         MacroCallKind::Derive { derive_attr_index: index, .. }
@@ -176,7 +190,12 @@ pub fn expand_speculative(
 
             let censor_cfg =
                 cfg_process::process_cfg_attrs(db, speculative_args, &loc).unwrap_or_default();
-            let mut fixups = fixup::fixup_syntax(span_map, speculative_args, span);
+            let mut fixups = fixup::fixup_syntax(
+                span_map,
+                speculative_args,
+                span,
+                DocCommentDesugarMode::ProcMacro,
+            );
             fixups.append.retain(|it, _| match it {
                 syntax::NodeOrToken::Token(_) => true,
                 it => !censor.contains(it) && !censor_cfg.contains(it),
@@ -191,6 +210,7 @@ pub fn expand_speculative(
                     fixups.append,
                     fixups.remove,
                     span,
+                    DocCommentDesugarMode::ProcMacro,
                 ),
                 fixups.undo_info,
             )
@@ -212,7 +232,12 @@ pub fn expand_speculative(
             }?;
             match attr.token_tree() {
                 Some(token_tree) => {
-                    let mut tree = syntax_node_to_token_tree(token_tree.syntax(), span_map, span);
+                    let mut tree = syntax_node_to_token_tree(
+                        token_tree.syntax(),
+                        span_map,
+                        span,
+                        DocCommentDesugarMode::ProcMacro,
+                    );
                     tree.delimiter = tt::Delimiter::invisible_spanned(span);
 
                     Some(tree)
@@ -432,7 +457,16 @@ fn macro_arg(db: &dyn ExpandDatabase, id: MacroCallId) -> MacroArgResult {
                 return dummy_tt(kind);
             }
 
-            let mut tt = mbe::syntax_node_to_token_tree(tt.syntax(), map.as_ref(), span);
+            let mut tt = mbe::syntax_node_to_token_tree(
+                tt.syntax(),
+                map.as_ref(),
+                span,
+                if loc.def.is_proc_macro() {
+                    DocCommentDesugarMode::ProcMacro
+                } else {
+                    DocCommentDesugarMode::Mbe
+                },
+            );
             if loc.def.is_proc_macro() {
                 // proc macros expect their inputs without parentheses, MBEs expect it with them included
                 tt.delimiter.kind = tt::DelimiterKind::Invisible;
@@ -469,7 +503,8 @@ fn macro_arg(db: &dyn ExpandDatabase, id: MacroCallId) -> MacroArgResult {
     let (mut tt, undo_info) = {
         let syntax = item_node.syntax();
         let censor_cfg = cfg_process::process_cfg_attrs(db, syntax, &loc).unwrap_or_default();
-        let mut fixups = fixup::fixup_syntax(map.as_ref(), syntax, span);
+        let mut fixups =
+            fixup::fixup_syntax(map.as_ref(), syntax, span, DocCommentDesugarMode::ProcMacro);
         fixups.append.retain(|it, _| match it {
             syntax::NodeOrToken::Token(_) => true,
             it => !censor.contains(it) && !censor_cfg.contains(it),
@@ -484,6 +519,7 @@ fn macro_arg(db: &dyn ExpandDatabase, id: MacroCallId) -> MacroArgResult {
                 fixups.append,
                 fixups.remove,
                 span,
+                DocCommentDesugarMode::ProcMacro,
             ),
             fixups.undo_info,
         )

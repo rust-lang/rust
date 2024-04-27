@@ -5,7 +5,7 @@ use triomphe::Arc;
 
 use base_db::FileId;
 use hir_expand::span_map::{RealSpanMap, SpanMap};
-use mbe::syntax_node_to_token_tree;
+use mbe::{syntax_node_to_token_tree, DocCommentDesugarMode};
 use syntax::{ast, AstNode, TextRange};
 
 use crate::attr::{DocAtom, DocExpr};
@@ -18,6 +18,7 @@ fn assert_parse_result(input: &str, expected: DocExpr) {
         tt.syntax(),
         map.as_ref(),
         map.span_for_range(TextRange::empty(0.into())),
+        DocCommentDesugarMode::ProcMacro,
     );
     let cfg = DocExpr::parse(&tt);
     assert_eq!(cfg, expected);
