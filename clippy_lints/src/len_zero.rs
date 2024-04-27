@@ -253,7 +253,7 @@ fn check_trait_items(cx: &LateContext<'_>, visited_trait: &Item<'_>, trait_items
     // fill the set with current and super traits
     fn fill_trait_set(traitt: DefId, set: &mut DefIdSet, cx: &LateContext<'_>) {
         if set.insert(traitt) {
-            for supertrait in rustc_trait_selection::traits::supertrait_def_ids(cx.tcx, traitt) {
+            for supertrait in cx.tcx.supertrait_def_ids(traitt) {
                 fill_trait_set(supertrait, set, cx);
             }
         }
