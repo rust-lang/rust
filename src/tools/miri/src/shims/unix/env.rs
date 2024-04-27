@@ -70,6 +70,27 @@ impl<'tcx> UnixEnvVars<'tcx> {
     pub(crate) fn environ(&self) -> Pointer<Option<Provenance>> {
         self.environ.ptr()
     }
+
+    /// Implementation detail for [`InterpCx::get_var`]. This basically does `getenv`, complete
+    /// with the reads of the environment, but returns an [`OsString`] instead of a pointer.
+    pub(crate) fn get<'mir>(
+        &self,
+        ecx: &InterpCx<'mir, 'tcx, MiriMachine<'mir, 'tcx>>,
+        name: &OsStr,
+    ) -> InterpResult<'tcx, Option<OsString>> {
+        // We don't care about the value as we have the `map` to keep track of everything,
+        // but we do want to do this read so it shows up as a data race.
+        let _vars_ptr = ecx.read_pointer(&self.environ)?;
+        let Some(var_ptr) = self.map.get(name) else {
+            return Ok(None);
+        };
+        // The offset is used to strip the "{name}=" part of the string.
+        let var_ptr = var_ptr.offset(
+            Size::from_bytes(u64::try_from(name.len()).unwrap().checked_add(1).unwrap()),
+            ecx,
+        )?;
+        ecx.read_os_str_from_c_str(var_ptr).map(|s| Some(s.to_owned()))
+    }
 }
 
 fn alloc_env_var<'mir, 'tcx>(
