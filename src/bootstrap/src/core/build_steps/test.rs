@@ -1,7 +1,7 @@
-//! Implementation of the test-related targets of the build system.
+//! Build-and-run steps for `./x.py test` test fixtures
 //!
-//! This file implements the various regression test suites that we execute on
-//! our CI.
+//! `./x.py test` (aka [`Kind::Test`]) is currently allowed to reach build steps in other modules.
+//! However, this contains ~all test parts we expect people to be able to build and run locally.
 
 use std::env;
 use std::ffi::OsStr;
