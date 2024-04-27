@@ -84,6 +84,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ ((github.ref == 'refs/heads/try' || github.ref == 'refs/heads/try-perf') && github.sha) || github.ref }}
   cancel-in-progress: true
 
+env:
+  TOOLSTATE_REPO: https://github.com/rust-lang-nursery/rust-toolstate
+
 jobs:
   # The job matrix for `calculate_matrix` is defined in src/ci/github-actions/jobs.yml.
   # It calculates which jobs should be executed, based on the data of the ${{ github }} context.
@@ -114,7 +117,6 @@ jobs:
       HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
       DOCKER_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       SCCACHE_BUCKET: rust-lang-ci-sccache2
-      TOOLSTATE_REPO: https://github.com/rust-lang-nursery/rust-toolstate
       CACHE_DOMAIN: ci-caches.rust-lang.org
     continue-on-error: ${{ matrix.continue_on_error || false }}
     strategy:
