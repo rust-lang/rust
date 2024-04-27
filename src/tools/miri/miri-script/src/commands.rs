@@ -257,11 +257,25 @@ impl Command {
             })
             .context("FAILED to fetch new commits, something went wrong (committing the rust-version file has been undone)")?;
 
+        // This should not add any new root commits. So count those before and after merging.
+        let num_roots = || -> Result<u32> {
+            Ok(cmd!(sh, "git rev-list HEAD --max-parents=0 --count")
+                .read()
+                .context("failed to determine the number of root commits")?
+                .parse::<u32>()?)
+        };
+        let num_roots_before = num_roots()?;
+
         // Merge the fetched commit.
         const MERGE_COMMIT_MESSAGE: &str = "Merge from rustc";
         cmd!(sh, "git merge FETCH_HEAD --no-verify --no-ff -m {MERGE_COMMIT_MESSAGE}")
             .run()
             .context("FAILED to merge new commits, something went wrong")?;
+
+        // Check that the number of roots did not increase.
+        if num_roots()? != num_roots_before {
+            bail!("Josh created a new root commit. This is probably not the history you want.");
+        }
 
         drop(josh);
         Ok(())
