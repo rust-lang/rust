@@ -440,6 +440,8 @@ declare_features! (
     (unstable, deprecated_suggestion, "1.61.0", Some(94785)),
     /// Allows deref patterns.
     (incomplete, deref_patterns, "CURRENT_RUSTC_VERSION", Some(87121)),
+    /// Allows using the `#[skip]` attribute in derives
+    (unstable, derive_skip, "CURRENT_RUSTC_VERSION", Some(121050)),
     /// Controls errors in trait implementations.
     (unstable, do_not_recommend, "1.67.0", Some(51992)),
     /// Tells rustdoc to automatically generate `#[doc(cfg(...))]`.

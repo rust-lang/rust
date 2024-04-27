@@ -267,7 +267,7 @@ pub trait PartialEq<Rhs: ?Sized = Self> {
 
 /// Derive macro generating an impl of the trait [`PartialEq`].
 /// The behavior of this macro is described in detail [here](PartialEq#derivable).
-#[rustc_builtin_macro]
+#[rustc_builtin_macro(PartialEq, attributes(skip))]
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
 #[allow_internal_unstable(core_intrinsics, structural_match)]
 pub macro PartialEq($item:item) {
@@ -917,7 +917,7 @@ pub trait Ord: Eq + PartialOrd<Self> {
 
 /// Derive macro generating an impl of the trait [`Ord`].
 /// The behavior of this macro is described in detail [here](Ord#derivable).
-#[rustc_builtin_macro]
+#[rustc_builtin_macro(Ord, attributes(skip))]
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
 #[allow_internal_unstable(core_intrinsics)]
 pub macro Ord($item:item) {
@@ -1236,7 +1236,7 @@ pub trait PartialOrd<Rhs: ?Sized = Self>: PartialEq<Rhs> {
 
 /// Derive macro generating an impl of the trait [`PartialOrd`].
 /// The behavior of this macro is described in detail [here](PartialOrd#derivable).
-#[rustc_builtin_macro]
+#[rustc_builtin_macro(PartialOrd, attributes(skip))]
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
 #[allow_internal_unstable(core_intrinsics)]
 pub macro PartialOrd($item:item) {

@@ -116,6 +116,7 @@ declare_lint_pass! {
         UNSTABLE_NAME_COLLISIONS,
         UNSTABLE_SYNTAX_PRE_EXPANSION,
         UNSUPPORTED_CALLING_CONVENTIONS,
+        UNSUPPORTED_DERIVE_SKIP,
         UNUSED_ASSIGNMENTS,
         UNUSED_ASSOCIATED_TYPE_BOUNDS,
         UNUSED_ATTRIBUTES,
@@ -4740,4 +4741,32 @@ declare_lint! {
         reference: "issue #71871 <https://github.com/rust-lang/rust/issues/71871>",
     };
     crate_level_only
+}
+
+declare_lint! {
+    /// The `unsupported_derive_skip` lint detects the use of `#[skip]` specifying
+    /// an unsupported trait.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// # #![allow(unused)]
+    /// #[derive(Clone)]
+    /// struct Unsupported {
+    ///     #[skip(Clone)]
+    ///     field: usize,
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// The `#[skip]` attribute allows ignoring a field during the derivation
+    /// of specific traits. This is not supported for other traits, e.g. it wouldd
+    /// not be possible to clone a structure without cloning all fields..
+    pub UNSUPPORTED_DERIVE_SKIP,
+    Warn,
+    "an unsupported trait was passed to `#[skip]`",
+    @feature_gate = sym::derive_skip;
 }

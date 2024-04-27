@@ -622,7 +622,7 @@ pub trait Debug {
 // Separate module to reexport the macro `Debug` from prelude without the trait `Debug`.
 pub(crate) mod macros {
     /// Derive macro generating an impl of the trait `Debug`.
-    #[rustc_builtin_macro]
+    #[rustc_builtin_macro(Debug, attributes(skip))]
     #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
     #[allow_internal_unstable(core_intrinsics, fmt_helpers_for_derive)]
     pub macro Debug($item:item) {
