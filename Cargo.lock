@@ -760,11 +760,9 @@ dependencies = [
  "glob",
  "home",
  "indexmap",
- "lazycell",
  "libc",
  "miow",
  "miropt-test-tools",
- "once_cell",
  "regex",
  "rustfix 0.8.1",
  "serde",
@@ -2150,12 +2148,6 @@ name = "lazy_static"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
-
-[[package]]
-name = "lazycell"
-version = "1.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "830d08ce1d1d941e6b30645f1a0eb5643013d835ce3779a5fc208261dbe10f55"
 
 [[package]]
 name = "leb128"

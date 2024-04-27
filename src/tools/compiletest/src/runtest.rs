@@ -36,7 +36,6 @@ use std::sync::Arc;
 
 use anyhow::Context;
 use glob::glob;
-use once_cell::sync::Lazy;
 use tracing::*;
 
 use crate::extract_gdb_version;
@@ -47,6 +46,13 @@ use debugger::DebuggerCommands;
 
 #[cfg(test)]
 mod tests;
+
+macro_rules! static_regex {
+    ($re:literal) => {{
+        static RE: ::std::sync::OnceLock<::regex::Regex> = ::std::sync::OnceLock::new();
+        RE.get_or_init(|| ::regex::Regex::new($re).unwrap())
+    }};
+}
 
 const FAKE_SRC_BASE: &str = "fake-test-src-base";
 
@@ -765,28 +771,23 @@ impl<'test> TestCx<'test> {
         // `  100|` => `   LL|`
         // `  | 1000|`    => `  |   LL|`
         // `  |  | 1000|` => `  |  |   LL|`
-        static LINE_NUMBER_RE: Lazy<Regex> =
-            Lazy::new(|| Regex::new(r"(?m:^)(?<prefix>(?:  \|)*) *[0-9]+\|").unwrap());
-        let coverage = LINE_NUMBER_RE.replace_all(&coverage, "${prefix}   LL|");
+        let coverage = static_regex!(r"(?m:^)(?<prefix>(?:  \|)*) *[0-9]+\|")
+            .replace_all(&coverage, "${prefix}   LL|");
 
         // `  |  Branch (1:`     => `  |  Branch (LL:`
         // `  |  |  Branch (10:` => `  |  |  Branch (LL:`
-        static BRANCH_LINE_NUMBER_RE: Lazy<Regex> =
-            Lazy::new(|| Regex::new(r"(?m:^)(?<prefix>(?:  \|)+  Branch \()[0-9]+:").unwrap());
-        let coverage = BRANCH_LINE_NUMBER_RE.replace_all(&coverage, "${prefix}LL:");
+        let coverage = static_regex!(r"(?m:^)(?<prefix>(?:  \|)+  Branch \()[0-9]+:")
+            .replace_all(&coverage, "${prefix}LL:");
 
         // `  |---> MC/DC Decision Region (1:30) to (2:`     => `  |---> MC/DC Decision Region (LL:30) to (LL:`
-        static MCDC_DECISION_LINE_NUMBER_RE: Lazy<Regex> = Lazy::new(|| {
-            Regex::new(r"(?m:^)(?<prefix>(?:  \|)+---> MC/DC Decision Region \()[0-9]+:(?<middle>[0-9]+\) to \()[0-9]+:").unwrap()
-        });
         let coverage =
-            MCDC_DECISION_LINE_NUMBER_RE.replace_all(&coverage, "${prefix}LL:${middle}LL:");
+            static_regex!(r"(?m:^)(?<prefix>(?:  \|)+---> MC/DC Decision Region \()[0-9]+:(?<middle>[0-9]+\) to \()[0-9]+:")
+            .replace_all(&coverage, "${prefix}LL:${middle}LL:");
 
         // `  |     Condition C1 --> (1:`     => `  |     Condition C1 --> (LL:`
-        static MCDC_CONDITION_LINE_NUMBER_RE: Lazy<Regex> = Lazy::new(|| {
-            Regex::new(r"(?m:^)(?<prefix>(?:  \|)+     Condition C[0-9]+ --> \()[0-9]+:").unwrap()
-        });
-        let coverage = MCDC_CONDITION_LINE_NUMBER_RE.replace_all(&coverage, "${prefix}LL:");
+        let coverage =
+            static_regex!(r"(?m:^)(?<prefix>(?:  \|)+     Condition C[0-9]+ --> \()[0-9]+:")
+                .replace_all(&coverage, "${prefix}LL:");
 
         coverage.into_owned()
     }
@@ -3471,13 +3472,12 @@ impl<'test> TestCx<'test> {
         // the form <crate-name1>.<crate-disambiguator1>-in-<crate-name2>.<crate-disambiguator2>,
         // remove all crate-disambiguators.
         fn remove_crate_disambiguator_from_cgu(cgu: &str) -> String {
-            static RE: Lazy<Regex> = Lazy::new(|| {
-                Regex::new(r"^[^\.]+(?P<d1>\.[[:alnum:]]+)(-in-[^\.]+(?P<d2>\.[[:alnum:]]+))?")
-                    .unwrap()
-            });
-
-            let captures =
-                RE.captures(cgu).unwrap_or_else(|| panic!("invalid cgu name encountered: {}", cgu));
+            let Some(captures) =
+                static_regex!(r"^[^\.]+(?P<d1>\.[[:alnum:]]+)(-in-[^\.]+(?P<d2>\.[[:alnum:]]+))?")
+                    .captures(cgu)
+            else {
+                panic!("invalid cgu name encountered: {cgu}");
+            };
 
             let mut new_name = cgu.to_owned();
 
@@ -4073,18 +4073,16 @@ impl<'test> TestCx<'test> {
                 // 'uploaded "$TEST_BUILD_DIR/<test_executable>, waiting for result"'
                 // is printed to stdout by the client and then captured in the ProcRes,
                 // so it needs to be removed when comparing the run-pass test execution output.
-                static REMOTE_TEST_RE: Lazy<Regex> = Lazy::new(|| {
-                    Regex::new(
-                        "^uploaded \"\\$TEST_BUILD_DIR(/[[:alnum:]_\\-.]+)+\", waiting for result\n"
-                    )
-                    .unwrap()
-                });
-                normalized_stdout = REMOTE_TEST_RE.replace(&normalized_stdout, "").to_string();
+                normalized_stdout = static_regex!(
+                    "^uploaded \"\\$TEST_BUILD_DIR(/[[:alnum:]_\\-.]+)+\", waiting for result\n"
+                )
+                .replace(&normalized_stdout, "")
+                .to_string();
                 // When there is a panic, the remote-test-client also prints "died due to signal";
                 // that needs to be removed as well.
-                static SIGNAL_DIED_RE: Lazy<Regex> =
-                    Lazy::new(|| Regex::new("^died due to signal [0-9]+\n").unwrap());
-                normalized_stdout = SIGNAL_DIED_RE.replace(&normalized_stdout, "").to_string();
+                normalized_stdout = static_regex!("^died due to signal [0-9]+\n")
+                    .replace(&normalized_stdout, "")
+                    .to_string();
                 // FIXME: it would be much nicer if we could just tell the remote-test-client to not
                 // print these things.
             }
@@ -4556,10 +4554,9 @@ impl<'test> TestCx<'test> {
         // with placeholders as we do not want tests needing updated when compiler source code
         // changes.
         // eg. $SRC_DIR/libcore/mem.rs:323:14 becomes $SRC_DIR/libcore/mem.rs:LL:COL
-        static SRC_DIR_RE: Lazy<Regex> =
-            Lazy::new(|| Regex::new("SRC_DIR(.+):\\d+:\\d+(: \\d+:\\d+)?").unwrap());
-
-        normalized = SRC_DIR_RE.replace_all(&normalized, "SRC_DIR$1:LL:COL").into_owned();
+        normalized = static_regex!("SRC_DIR(.+):\\d+:\\d+(: \\d+:\\d+)?")
+            .replace_all(&normalized, "SRC_DIR$1:LL:COL")
+            .into_owned();
 
         normalized = Self::normalize_platform_differences(&normalized);
         normalized = normalized.replace("\t", "\\t"); // makes tabs visible
@@ -4568,34 +4565,29 @@ impl<'test> TestCx<'test> {
         // since they duplicate actual errors and make the output hard to read.
         // This mirrors the regex in src/tools/tidy/src/style.rs, please update
         // both if either are changed.
-        static ANNOTATION_RE: Lazy<Regex> =
-            Lazy::new(|| Regex::new("\\s*//(\\[.*\\])?~.*").unwrap());
-
-        normalized = ANNOTATION_RE.replace_all(&normalized, "").into_owned();
+        normalized =
+            static_regex!("\\s*//(\\[.*\\])?~.*").replace_all(&normalized, "").into_owned();
 
         // This code normalizes various hashes in v0 symbol mangling that is
         // emitted in the ui and mir-opt tests.
-        static V0_CRATE_HASH_PREFIX_RE: Lazy<Regex> =
-            Lazy::new(|| Regex::new(r"_R.*?Cs[0-9a-zA-Z]+_").unwrap());
-        static V0_CRATE_HASH_RE: Lazy<Regex> =
-            Lazy::new(|| Regex::new(r"Cs[0-9a-zA-Z]+_").unwrap());
+        let v0_crate_hash_prefix_re = static_regex!(r"_R.*?Cs[0-9a-zA-Z]+_");
+        let v0_crate_hash_re = static_regex!(r"Cs[0-9a-zA-Z]+_");
 
         const V0_CRATE_HASH_PLACEHOLDER: &str = r"CsCRATE_HASH_";
-        if V0_CRATE_HASH_PREFIX_RE.is_match(&normalized) {
+        if v0_crate_hash_prefix_re.is_match(&normalized) {
             // Normalize crate hash
             normalized =
-                V0_CRATE_HASH_RE.replace_all(&normalized, V0_CRATE_HASH_PLACEHOLDER).into_owned();
+                v0_crate_hash_re.replace_all(&normalized, V0_CRATE_HASH_PLACEHOLDER).into_owned();
         }
 
-        static V0_BACK_REF_PREFIX_RE: Lazy<Regex> =
-            Lazy::new(|| Regex::new(r"\(_R.*?B[0-9a-zA-Z]_").unwrap());
-        static V0_BACK_REF_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"B[0-9a-zA-Z]_").unwrap());
+        let v0_back_ref_prefix_re = static_regex!(r"\(_R.*?B[0-9a-zA-Z]_");
+        let v0_back_ref_re = static_regex!(r"B[0-9a-zA-Z]_");
 
         const V0_BACK_REF_PLACEHOLDER: &str = r"B<REF>_";
-        if V0_BACK_REF_PREFIX_RE.is_match(&normalized) {
+        if v0_back_ref_prefix_re.is_match(&normalized) {
             // Normalize back references (see RFC 2603)
             normalized =
-                V0_BACK_REF_RE.replace_all(&normalized, V0_BACK_REF_PLACEHOLDER).into_owned();
+                v0_back_ref_re.replace_all(&normalized, V0_BACK_REF_PLACEHOLDER).into_owned();
         }
 
         // AllocId are numbered globally in a compilation session. This can lead to changes
@@ -4608,26 +4600,22 @@ impl<'test> TestCx<'test> {
             let mut seen_allocs = indexmap::IndexSet::new();
 
             // The alloc-id appears in pretty-printed allocations.
-            static ALLOC_ID_PP_RE: Lazy<Regex> = Lazy::new(|| {
-                Regex::new(r"╾─*a(lloc)?([0-9]+)(\+0x[0-9]+)?(<imm>)?( \([0-9]+ ptr bytes\))?─*╼")
-                    .unwrap()
-            });
-            normalized = ALLOC_ID_PP_RE
-                .replace_all(&normalized, |caps: &Captures<'_>| {
-                    // Renumber the captured index.
-                    let index = caps.get(2).unwrap().as_str().to_string();
-                    let (index, _) = seen_allocs.insert_full(index);
-                    let offset = caps.get(3).map_or("", |c| c.as_str());
-                    let imm = caps.get(4).map_or("", |c| c.as_str());
-                    // Do not bother keeping it pretty, just make it deterministic.
-                    format!("╾ALLOC{index}{offset}{imm}╼")
-                })
-                .into_owned();
+            normalized = static_regex!(
+                r"╾─*a(lloc)?([0-9]+)(\+0x[0-9]+)?(<imm>)?( \([0-9]+ ptr bytes\))?─*╼"
+            )
+            .replace_all(&normalized, |caps: &Captures<'_>| {
+                // Renumber the captured index.
+                let index = caps.get(2).unwrap().as_str().to_string();
+                let (index, _) = seen_allocs.insert_full(index);
+                let offset = caps.get(3).map_or("", |c| c.as_str());
+                let imm = caps.get(4).map_or("", |c| c.as_str());
+                // Do not bother keeping it pretty, just make it deterministic.
+                format!("╾ALLOC{index}{offset}{imm}╼")
+            })
+            .into_owned();
 
             // The alloc-id appears in a sentence.
-            static ALLOC_ID_RE: Lazy<Regex> =
-                Lazy::new(|| Regex::new(r"\balloc([0-9]+)\b").unwrap());
-            normalized = ALLOC_ID_RE
+            normalized = static_regex!(r"\balloc([0-9]+)\b")
                 .replace_all(&normalized, |caps: &Captures<'_>| {
                     let index = caps.get(1).unwrap().as_str().to_string();
                     let (index, _) = seen_allocs.insert_full(index);
@@ -4650,12 +4638,13 @@ impl<'test> TestCx<'test> {
     /// Replaces backslashes in paths with forward slashes, and replaces CRLF line endings
     /// with LF.
     fn normalize_platform_differences(output: &str) -> String {
-        /// Used to find Windows paths.
-        ///
-        /// It's not possible to detect paths in the error messages generally, but this is a
-        /// decent enough heuristic.
-        static PATH_BACKSLASH_RE: Lazy<Regex> = Lazy::new(|| {
-            Regex::new(
+        let output = output.replace(r"\\", r"\");
+
+        // Used to find Windows paths.
+        //
+        // It's not possible to detect paths in the error messages generally, but this is a
+        // decent enough heuristic.
+        static_regex!(
                 r#"(?x)
                 (?:
                   # Match paths that don't include spaces.
@@ -4663,14 +4652,8 @@ impl<'test> TestCx<'test> {
                 |
                   # If the path starts with a well-known root, then allow spaces and no file extension.
                   \$(?:DIR|SRC_DIR|TEST_BUILD_DIR|BUILD_DIR|LIB_DIR)(?:\\[\pL\pN\.\-_'\ ]+)+
-                )"#,
+                )"#
             )
-            .unwrap()
-        });
-
-        let output = output.replace(r"\\", r"\");
-
-        PATH_BACKSLASH_RE
             .replace_all(&output, |caps: &Captures<'_>| {
                 println!("{}", &caps[0]);
                 caps[0].replace(r"\", "/")
