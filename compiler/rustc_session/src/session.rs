@@ -37,8 +37,9 @@ use rustc_target::spec::{
 use crate::code_stats::CodeStats;
 pub use crate::code_stats::{DataTypeKind, FieldInfo, FieldKind, SizeKind, VariantInfo};
 use crate::config::{
-    self, CoverageLevel, CrateType, ErrorOutputType, FunctionReturn, Input, InstrumentCoverage,
-    OptLevel, OutFileName, OutputType, RemapPathScopeComponents, SwitchWithOptPath,
+    self, CoverageLevel, CrateType, DebugInfo, ErrorOutputType, FunctionReturn, Input,
+    InstrumentCoverage, OptLevel, OutFileName, OutputType, RemapPathScopeComponents,
+    SwitchWithOptPath,
 };
 use crate::parse::{add_feature_diagnostics, ParseSess};
 use crate::search_paths::{PathKind, SearchPath};
@@ -1298,6 +1299,26 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
     {
         sess.dcx()
             .emit_err(errors::SplitDebugInfoUnstablePlatform { debuginfo: sess.split_debuginfo() });
+    }
+
+    if sess.opts.unstable_opts.embed_source {
+        let dwarf_version =
+            sess.opts.unstable_opts.dwarf_version.unwrap_or(sess.target.default_dwarf_version);
+
+        let uses_llvm_backend =
+            matches!(sess.opts.unstable_opts.codegen_backend.as_deref(), None | Some("llvm"));
+
+        if dwarf_version < 5 {
+            sess.dcx().emit_warn(errors::EmbedSourceInsufficientDwarfVersion { dwarf_version });
+        }
+
+        if sess.opts.debuginfo == DebugInfo::None {
+            sess.dcx().emit_warn(errors::EmbedSourceRequiresDebugInfo);
+        }
+
+        if !uses_llvm_backend {
+            sess.dcx().emit_warn(errors::EmbedSourceRequiresLLVMBackend);
+        }
     }
 
     if sess.opts.unstable_opts.instrument_xray.is_some() && !sess.target.options.supports_xray {
