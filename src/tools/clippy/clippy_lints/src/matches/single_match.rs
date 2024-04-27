@@ -75,7 +75,7 @@ fn report_single_pattern(
 ) {
     let lint = if els.is_some() { SINGLE_MATCH_ELSE } else { SINGLE_MATCH };
     let ctxt = expr.span.ctxt();
-    let mut app = Applicability::HasPlaceholders;
+    let mut app = Applicability::MachineApplicable;
     let els_str = els.map_or(String::new(), |els| {
         format!(" else {}", expr_block(cx, els, ctxt, "..", Some(expr.span), &mut app))
     });
