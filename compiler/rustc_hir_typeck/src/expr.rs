@@ -1,6 +1,6 @@
 //! Type checking expressions.
 //!
-//! See `mod.rs` for more context on type checking in general.
+//! See [`rustc_hir_analysis::check`] for more context on type checking in general.
 
 use crate::cast;
 use crate::coercion::CoerceMany;
