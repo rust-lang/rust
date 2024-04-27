@@ -35,13 +35,34 @@ use once_cell::sync::Lazy;
 #[cfg(test)]
 mod tests;
 
+/// Builds and performs different [`Self::kind`]s of stuff and actions, taking
+/// into account build configuration from e.g. config.toml.
 pub struct Builder<'a> {
+    /// Build configuration from e.g. config.toml.
     pub build: &'a Build,
+
+    /// The stage to use. Either implicitly determined based on subcommand, or
+    /// explicitly specified with `--stage N`. Normally this is the stage we
+    /// use, but sometimes we want to run steps with a lower stage than this.
     pub top_stage: u32,
+
+    /// What to build or what action to perform.
     pub kind: Kind,
+
+    /// A cache of outputs of [`Step`]s so we can avoid running steps we already
+    /// ran.
     cache: Cache,
+
+    /// A stack of [`Step`]s to run before we can run this builder. The output
+    /// of steps is cached in [`Self::cache`].
     stack: RefCell<Vec<Box<dyn Any>>>,
+
+    /// The total amount of time we spent running [`Step`]s in [`Self::stack`].
     time_spent_on_dependencies: Cell<Duration>,
+
+    /// The paths passed on the command line. Used by steps to figure out what
+    /// to do. For example: with `./x check foo bar` we get `paths=["foo",
+    /// "bar"]`.
     pub paths: Vec<PathBuf>,
 }
 

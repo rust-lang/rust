@@ -345,6 +345,8 @@ pub struct Config {
     #[cfg(test)]
     pub initial_rustfmt: RefCell<RustfmtState>,
 
+    /// The paths to work with. For example: with `./x check foo bar` we get
+    /// `paths=["foo", "bar"]`.
     pub paths: Vec<PathBuf>,
 }
 
