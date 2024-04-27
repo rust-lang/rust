@@ -106,6 +106,17 @@ def get_github_ctx() -> GitHubCtx:
     )
 
 
+def format_run_type(run_type: WorkflowRunType) -> str:
+    if run_type == WorkflowRunType.PR:
+        return "pr"
+    elif run_type == WorkflowRunType.Auto:
+        return "auto"
+    elif run_type == WorkflowRunType.Try:
+        return "try"
+    else:
+        raise AssertionError()
+
+
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
 
@@ -124,6 +135,8 @@ if __name__ == "__main__":
     if run_type is not None:
         jobs = calculate_jobs(run_type, data)
     jobs = skip_jobs(jobs, channel)
+    run_type = format_run_type(run_type)
 
-    logging.info(f"Output:\n{yaml.dump(jobs, indent=4)}")
+    logging.info(f"Output:\n{yaml.dump(dict(jobs=jobs, run_type=run_type), indent=4)}")
     print(f"jobs={json.dumps(jobs)}")
+    print(f"run_type={run_type}")

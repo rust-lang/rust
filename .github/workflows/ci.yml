@@ -47,6 +47,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       jobs: ${{ steps.jobs.outputs.jobs }}
+      run_type: ${{ steps.jobs.outputs.run_type }}
     steps:
       - name: Checkout the source code
         uses: actions/checkout@v4
@@ -116,7 +117,7 @@ jobs:
         run: echo "[CI_PR_NUMBER=$num]"
         env:
           num: ${{ github.event.number }}
-        if: github.event_name == 'pull_request'
+        if: needs.calculate_matrix.outputs.run_type == 'pr'
 
       - name: add extra environment variables
         run: src/ci/scripts/setup-environment.sh
@@ -226,9 +227,9 @@ jobs:
   outcome:
     name: bors build finished
     runs-on: ubuntu-latest
-    needs: [ job ]
+    needs: [ calculate_matrix, job ]
     # !cancelled() executes the job regardless of whether the previous jobs passed or failed
-    if: "!cancelled() && github.event_name == 'push'"
+    if: ${{ !cancelled() && contains(fromJSON('["auto", "try"]'), needs.calculate_matrix.outputs.run_type) }}
     steps:
       - name: checkout the source code
         uses: actions/checkout@v4
@@ -243,6 +244,6 @@ jobs:
       - name: publish toolstate
         run: src/ci/publish_toolstate.sh
         shell: bash
-        if: github.event_name == 'push' && github.ref == 'refs/heads/auto' && github.repository == 'rust-lang-ci/rust'
+        if: needs.calculate_matrix.outputs.run_type == 'auto'
         env:
           TOOLSTATE_REPO_ACCESS_TOKEN: ${{ secrets.TOOLSTATE_REPO_ACCESS_TOKEN }}
