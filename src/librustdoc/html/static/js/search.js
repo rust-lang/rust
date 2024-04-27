@@ -15,6 +15,15 @@ if (!Array.prototype.toSpliced) {
     };
 }
 
+function takeFromArray(array, count) {
+    const result = [];
+    while (count > 0) {
+        result.push(array.shift());
+        count -= 1;
+    }
+    return result;
+}
+
 (function() {
 // This mapping table should match the discriminants of
 // `rustdoc::formats::item_type::ItemType` type in Rust.
@@ -78,8 +87,10 @@ const longItemTypes = [
 ];
 
 // used for special search precedence
+const TY_PRIMITIVE = itemTypes.indexOf("primitive");
 const TY_GENERIC = itemTypes.indexOf("generic");
 const TY_IMPORT = itemTypes.indexOf("import");
+const TY_TRAIT = itemTypes.indexOf("trait");
 const ROOT_PATH = typeof window !== "undefined" ? window.rootPath : "../";
 
 // Hard limit on how deep to recurse into generics when doing type-driven search.
@@ -309,6 +320,14 @@ function initSearch(rawSearchIndex) {
      * Special type name IDs for searching higher order functions (`->` syntax).
      */
     const typeNameIdOfHof = buildTypeMapIndex("->");
+    /**
+     * Special type name IDs the output assoc type.
+     */
+    const typeNameIdOfOutput = buildTypeMapIndex("output", true);
+    /**
+     * Special type name IDs for searching by reference.
+     */
+    const typeNameIdOfReference = buildTypeMapIndex("reference");
 
     /**
      * Add an item to the type Name->ID map, or, if one already exists, use it.
@@ -1342,18 +1361,21 @@ function initSearch(rawSearchIndex) {
          * marked for removal.
          *
          * @param {[ResultObject]} results
+         * @param {"sig"|"elems"|"returned"|null} typeInfo
+         * @param {ParsedQuery} query
          * @returns {[ResultObject]}
          */
-        function transformResults(results) {
+        function transformResults(results, typeInfo) {
             const duplicates = new Set();
             const out = [];
 
             for (const result of results) {
                 if (result.id !== -1) {
-                    const obj = searchIndex[result.id];
-                    obj.dist = result.dist;
-                    const res = buildHrefAndPath(obj);
-                    obj.displayPath = pathSplitter(res[0]);
+                    const res = buildHrefAndPath(searchIndex[result.id]);
+                    const obj = Object.assign({
+                        dist: result.dist,
+                        displayPath: pathSplitter(res[0]),
+                    }, searchIndex[result.id]);
 
                     // To be sure than it some items aren't considered as duplicate.
                     obj.fullPath = res[2] + "|" + obj.ty;
@@ -1372,6 +1394,11 @@ function initSearch(rawSearchIndex) {
                     duplicates.add(obj.fullPath);
                     duplicates.add(res[2]);
 
+                    if (typeInfo !== null) {
+                        obj.displayTypeSignature =
+                            formatDisplayTypeSignature(obj, typeInfo);
+                    }
+
                     obj.href = res[1];
                     out.push(obj);
                     if (out.length >= MAX_RESULTS) {
@@ -1383,15 +1410,288 @@ function initSearch(rawSearchIndex) {
         }
 
         /**
+         * Add extra data to result objects, and filter items that have been
+         * marked for removal.
+         *
+         * The output is formatted as an array of hunks, where odd numbered
+         * hunks are highlighted and even numbered ones are not.
+         *
+         * @param {ResultObject} obj
+         * @param {"sig"|"elems"|"returned"|null} typeInfo
+         * @param {ParsedQuery} query
+         * @returns {Promise<{
+         *   "type": Array<string>,
+         *   "mappedNames": Map<string, string>,
+         *   "whereClause": Map<string, Array<string>>,
+         * }>}
+         */
+        async function formatDisplayTypeSignature(obj, typeInfo) {
+            let fnInputs = null;
+            let fnOutput = null;
+            let mgens = null;
+            if (typeInfo === "elems") {
+                fnInputs = unifyFunctionTypes(
+                    obj.type.inputs,
+                    parsedQuery.elems,
+                    obj.type.where_clause,
+                    null,
+                    mgensOut => {
+                        mgens = mgensOut;
+                        return true;
+                    },
+                    0,
+                );
+            } else if (typeInfo === "returned") {
+                fnOutput = unifyFunctionTypes(
+                    obj.type.output,
+                    parsedQuery.elems,
+                    obj.type.where_clause,
+                    null,
+                    mgensOut => {
+                        mgens = mgensOut;
+                        return true;
+                    },
+                    0,
+                );
+            } else {
+                fnInputs = unifyFunctionTypes(
+                    obj.type.inputs,
+                    parsedQuery.elems,
+                    obj.type.where_clause,
+                    null,
+                    mgensScratch => {
+                        fnOutput = unifyFunctionTypes(
+                            obj.type.output,
+                            parsedQuery.returned,
+                            obj.type.where_clause,
+                            mgensScratch,
+                            mgensOut => {
+                                mgens = mgensOut;
+                                return true;
+                            },
+                            0,
+                        );
+                        return !!fnOutput;
+                    },
+                    0,
+                );
+            }
+            if (!fnInputs) {
+                fnInputs = obj.type.inputs;
+            }
+            if (!fnOutput) {
+                fnOutput = obj.type.output;
+            }
+            const mappedNames = new Map();
+            const whereClause = new Map();
+
+            const fnParamNames = (await searchState.loadParamNames(obj.crate))[obj.bitIndex - 1];
+            const queryParamNames = [];
+            /** @param {QueryElement} queryElem */
+            function remapQuery(queryElem) {
+                if (queryElem.id < 0) {
+                    queryParamNames[-1 - queryElem.id] = queryElem.name;
+                }
+                if (queryElem.generics.length > 0) {
+                    queryElem.generics.forEach(remapQuery);
+                }
+                if (queryElem.bindings.size > 0) {
+                    [...queryElem.bindings.values()].flat().forEach(remapQuery);
+                }
+            }
+            parsedQuery.elems.forEach(remapQuery);
+            parsedQuery.returned.forEach(remapQuery);
+            function pushText(fnType, result) {
+                // If !!(result.length % 2) == false, then pushing a new slot starts an even
+                // numbered slot. Even numbered slots are not highlighted.
+                if (!!(result.length % 2) === !!fnType.highlighted) {
+                    result.push("");
+                } else if (result.length === 0 && !!fnType.highlighted) {
+                    result.push("");
+                    result.push("");
+                }
+                result[result.length - 1] += fnType.name;
+            }
+            function writeHof(fnType, result) {
+                const hofOutput = fnType.bindings.get(typeNameIdOfOutput) || [];
+                const hofInputs = fnType.generics;
+                pushText(fnType, result);
+                pushText({name: " (", highlighted: false}, result);
+                let needsComma = false;
+                for (const fnType of hofInputs) {
+                    if (needsComma) {
+                        pushText({ name: ", ", highlighted: false }, result);
+                    }
+                    needsComma = true;
+                    writeFn(fnType, result);
+                }
+                pushText({
+                    name: hofOutput.length === 0 ? ")" : ") -> ",
+                    highlighted: false,
+                }, result);
+                if (hofOutput.length > 1) {
+                    pushText({name: "(", highlighted: false}, result);
+                }
+                needsComma = false;
+                for (const fnType of hofOutput) {
+                    if (needsComma) {
+                        pushText({ name: ", ", highlighted: false }, result);
+                    }
+                    needsComma = true;
+                    writeFn(fnType, result);
+                }
+                if (hofOutput.length > 1) {
+                    pushText({name: ")", highlighted: false}, result);
+                }
+            }
+            /**
+             * @param {FunctionType} fnType
+             * @param {[string]} result
+             */
+            function writeFn(fnType, result) {
+                if (fnType.id < 0) {
+                    const queryId =  mgens && mgens.has(fnType.id) ? mgens.get(fnType.id) : null;
+                    if (fnParamNames[-1 - fnType.id] === "") {
+                        for (const nested of fnType.generics) {
+                            writeFn(nested, result);
+                        }
+                        return;
+                    } else if (queryId < 0) {
+                        mappedNames.set(
+                            fnParamNames[-1 - fnType.id],
+                            queryParamNames[-1 - queryId],
+                        );
+                    }
+                    pushText({
+                        name: fnParamNames[-1 - fnType.id],
+                        highlighted: !!fnType.highlighted,
+                    }, result);
+                    const where = [];
+                    for (const nested of fnType.generics) {
+                        writeFn(nested, where);
+                    }
+                    whereClause.set(fnParamNames[-1 - fnType.id], where);
+                } else {
+                    if (fnType.ty === TY_PRIMITIVE) {
+                        if (fnType.id === typeNameIdOfArray || fnType.id === typeNameIdOfSlice ||
+                            fnType.id === typeNameIdOfTuple || fnType.id === typeNameIdOfUnit) {
+                            const [ob, sb] =
+                                fnType.id === typeNameIdOfArray || fnType.id === typeNameIdOfSlice ?
+                                ["[", "]"] :
+                                ["(", ")"];
+                            pushText({ name: ob, highlighted: fnType.highlighted }, result);
+                            let needsComma = false;
+                            for (const value of fnType.generics) {
+                                if (needsComma) {
+                                    pushText({ name: ", ", highlighted: false }, result);
+                                }
+                                needsComma = true;
+                                writeFn(value, result);
+                            }
+                            pushText({ name: sb, highlighted: fnType.highlighted }, result);
+                            return;
+                        } else if (fnType.id === typeNameIdOfReference) {
+                            pushText({ name: "&", highlighted: fnType.highlighted }, result);
+                            let needsSpace = false;
+                            let prevHighlighted = false;
+                            for (const value of fnType.generics) {
+                                if (needsSpace) {
+                                    pushText({
+                                        name: " ",
+                                        highlighted: prevHighlighted && value.highlighted,
+                                    }, result);
+                                }
+                                needsSpace = true;
+                                prevHighlighted = value.highlighted;
+                                writeFn(value, result);
+                            }
+                            return;
+                        } else if (fnType.id === typeNameIdOfFn) {
+                            writeHof(fnType, result);
+                            return;
+                        }
+                    } else if (fnType.ty === TY_TRAIT &&
+                        (fnType.id === typeNameIdOfFn ||
+                            fnType.id === typeNameIdOfFnMut ||
+                            fnType.id === typeNameIdOfFnOnce)) {
+                        writeHof(fnType, result);
+                        return;
+                    }
+                    pushText(fnType, result);
+                    if (fnType.bindings.length > 0 || fnType.generics.length > 0) {
+                        pushText({ name: "<", highlighted: false }, result);
+                    }
+                    let needsComma = false;
+                    if (fnType.bindings.length > 0) {
+                        for (const [key, values] of fnType.bindings) {
+                            if (needsComma) {
+                                pushText({ name: ", ", highlighted: false }, result);
+                            }
+                            needsComma = true;
+                            writeFn(key, result);
+                            pushText({
+                                name: values.length > 1 ? "=(" : "=",
+                                highlighted: false,
+                            }, result);
+                            let needsPlus = false;
+                            for (const value of values) {
+                                if (needsPlus) {
+                                    pushText({ name: " + ", highlighted: false }, result);
+                                }
+                                needsPlus = true;
+                                writeFn(value, result);
+                            }
+                            if (values.length > 1) {
+                                pushText({ name: ")", highlighted: false }, result);
+                            }
+                        }
+                    }
+                    if (fnType.generics.length > 0) {
+                        for (const value of fnType.generics) {
+                            if (needsComma) {
+                                pushText({ name: ", ", highlighted: false }, result);
+                            }
+                            needsComma = true;
+                            writeFn(value, result);
+                        }
+                    }
+                    if (fnType.bindings.length > 0 || fnType.generics.length > 0) {
+                        pushText({ name: ">", highlighted: false }, result);
+                    }
+                }
+            }
+            const type = [];
+            let needsComma = false;
+            for (const fnType of fnInputs) {
+                if (needsComma) {
+                    pushText({ name: ", ", highlighted: false }, type);
+                }
+                needsComma = true;
+                writeFn(fnType, type);
+            }
+            pushText({ name: " -> ", highlighted: false }, type);
+            needsComma = false;
+            for (const fnType of fnOutput) {
+                if (needsComma) {
+                    pushText({ name: ", ", highlighted: false }, type);
+                }
+                needsComma = true;
+                writeFn(fnType, type);
+            }
+
+            return {type, mappedNames, whereClause};
+        }
+
+        /**
          * This function takes a result map, and sorts it by various criteria, including edit
          * distance, substring match, and the crate it comes from.
          *
          * @param {Results} results
-         * @param {boolean} isType
+         * @param {"sig"|"elems"|"returned"|null} typeInfo
          * @param {string} preferredCrate
          * @returns {Promise<[ResultObject]>}
          */
-        async function sortResults(results, isType, preferredCrate) {
+        async function sortResults(results, typeInfo, preferredCrate) {
             const userQuery = parsedQuery.userQuery;
             const result_list = [];
             for (const result of results.values()) {
@@ -1493,7 +1793,7 @@ function initSearch(rawSearchIndex) {
                 return 0;
             });
 
-            return transformResults(result_list);
+            return transformResults(result_list, typeInfo);
         }
 
         /**
@@ -1559,13 +1859,28 @@ function initSearch(rawSearchIndex) {
                         mgensScratch.set(fnType.id, queryElem.id);
                         if (!solutionCb || solutionCb(mgensScratch)) {
                             const highlighted = [...fnTypesIn];
-                            highlighted[i] = Object.assign({ highlighted: true }, fnType);
+                            highlighted[i] = Object.assign({
+                                highlighted: true,
+                            }, fnType, {
+                                generics: whereClause[-1 - fnType.id],
+                            });
                             return highlighted;
                         }
                     } else if (!solutionCb || solutionCb(mgens ? new Map(mgens) : null)) {
                         // unifyFunctionTypeIsMatchCandidate already checks that ids match
                         const highlighted = [...fnTypesIn];
-                        highlighted[i] = Object.assign({ highlighted: true }, fnType);
+                        highlighted[i] = Object.assign({
+                            highlighted: true,
+                        }, fnType, {
+                            generics: unifyFunctionTypes(
+                                fnType.generics,
+                                queryElem.generics,
+                                whereClause,
+                                mgens ? new Map(mgens) : null,
+                                solutionCb,
+                                unboxingDepth,
+                            ) || fnType.generics,
+                        });
                         return highlighted;
                     }
                 }
@@ -1586,21 +1901,26 @@ function initSearch(rawSearchIndex) {
                         }
                         const mgensScratch = new Map(mgens);
                         mgensScratch.set(fnType.id, 0);
-                        if (unifyFunctionTypes(
+                        const highlightedGenerics = unifyFunctionTypes(
                             whereClause[(-fnType.id) - 1],
                             queryElems,
                             whereClause,
                             mgensScratch,
                             solutionCb,
                             unboxingDepth + 1,
-                        )) {
+                        );
+                        if (highlightedGenerics) {
                             const highlighted = [...fnTypesIn];
-                            highlighted[i] = Object.assign({ highlighted: true }, fnType);
+                            highlighted[i] = Object.assign({
+                                highlighted: true,
+                            }, fnType, {
+                                generics: highlightedGenerics,
+                            });
                             return highlighted;
                         }
                     } else {
                         const highlightedGenerics = unifyFunctionTypes(
-                            [...fnType.generics, ...Array.from(fnType.bindings.values()).flat() ],
+                            [...Array.from(fnType.bindings.values()).flat(), ...fnType.generics],
                             queryElems,
                             whereClause,
                             mgens ? new Map(mgens) : null,
@@ -1609,11 +1929,12 @@ function initSearch(rawSearchIndex) {
                         );
                         if (highlightedGenerics) {
                             const highlighted = [...fnTypesIn];
-                            highlighted[i] = Object.assign({
+                            highlighted[i] = Object.assign({}, fnType, {
                                 generics: highlightedGenerics,
-                                bindings: new Map(),
-                                highlighted: false,
-                            }, fnType);
+                                bindings: new Map([...fnType.bindings.entries()].map(([k, v]) => {
+                                    return [k, takeFromArray(highlightedGenerics, v.length)];
+                                })),
+                            });
                             return highlighted;
                         }
                     }
@@ -1672,6 +1993,8 @@ function initSearch(rawSearchIndex) {
                 if (!queryElemsTmp) {
                     queryElemsTmp = queryElems.slice(0, qlast);
                 }
+                let unifiedGenerics = [];
+                let unifiedGenericsMgens = null;
                 const passesUnification = unifyFunctionTypes(
                     fnTypes,
                     queryElemsTmp,
@@ -1694,7 +2017,7 @@ function initSearch(rawSearchIndex) {
                         }
                         const simplifiedGenerics = solution.simplifiedGenerics;
                         for (const simplifiedMgens of solution.mgens) {
-                            const passesUnification = unifyFunctionTypes(
+                            unifiedGenerics = unifyFunctionTypes(
                                 simplifiedGenerics,
                                 queryElem.generics,
                                 whereClause,
@@ -1702,7 +2025,8 @@ function initSearch(rawSearchIndex) {
                                 solutionCb,
                                 unboxingDepth,
                             );
-                            if (passesUnification) {
+                            if (unifiedGenerics) {
+                                unifiedGenericsMgens = simplifiedMgens;
                                 return true;
                             }
                         }
@@ -1711,11 +2035,23 @@ function initSearch(rawSearchIndex) {
                     unboxingDepth,
                 );
                 if (passesUnification) {
-                    return fnTypesIn.map(innerFnType => {
-                        const highlighted = fnType === innerFnType ||
-                            passesUnification.indexOf(innerFnType) !== -1;
-                        return Object.assign({ highlighted }, innerFnType);
+                    passesUnification.length = fl;
+                    passesUnification[flast] = passesUnification[i];
+                    passesUnification[i] = Object.assign({}, fnType, {
+                        highlighted: true,
+                        generics: unifiedGenerics,
+                        bindings: new Map([...fnType.bindings.entries()].map(([k, v]) => {
+                            return [k, queryElem.bindings.has(k) ? unifyFunctionTypes(
+                                v,
+                                queryElem.bindings.get(k),
+                                whereClause,
+                                unifiedGenericsMgens,
+                                solutionCb,
+                                unboxingDepth,
+                            ) : takeFromArray(unifiedGenerics, v.length)];
+                        })),
                     });
+                    return passesUnification;
                 }
                 // backtrack
                 fnTypes[flast] = fnTypes[i];
@@ -1750,7 +2086,7 @@ function initSearch(rawSearchIndex) {
                     Array.from(fnType.bindings.values()).flat() :
                     [];
                 const passesUnification = unifyFunctionTypes(
-                    fnTypes.toSpliced(i, 1, ...generics, ...bindings),
+                    fnTypes.toSpliced(i, 1, ...bindings, ...generics),
                     queryElems,
                     whereClause,
                     mgensScratch,
@@ -1758,24 +2094,21 @@ function initSearch(rawSearchIndex) {
                     unboxingDepth + 1,
                 );
                 if (passesUnification) {
-                    return fnTypesIn.map(innerFnType => {
-                        if (fnType === innerFnType) {
-                            return Object.assign({
-                                generics: unifyFunctionTypes(
-                                    [...generics, ...bindings],
-                                    [queryElem],
-                                    whereClause,
-                                    mgensScratch,
-                                    solutionCb,
-                                    unboxingDepth + 1,
-                                ) || [],
-                                bindings: new Map(),
-                                highlighted: false,
-                            }, innerFnType);
-                        }
-                        const highlighted = passesUnification.indexOf(innerFnType) !== -1;
-                        return Object.assign({ highlighted }, innerFnType);
+                    const highlightedGenerics = passesUnification.slice(
+                        i,
+                        i + generics.length + bindings.length,
+                    );
+                    const highlightedFnType = Object.assign({}, fnType, {
+                        generics: highlightedGenerics,
+                        bindings: new Map([...fnType.bindings.entries()].map(([k, v]) => {
+                            return [k, takeFromArray(highlightedGenerics, v.length)];
+                        })),
                     });
+                    return passesUnification.toSpliced(
+                        i,
+                        generics.length + bindings.length,
+                        highlightedFnType,
+                    );
                 }
             }
             return null;
@@ -1949,7 +2282,7 @@ function initSearch(rawSearchIndex) {
                     }
                 });
                 if (simplifiedGenerics.length > 0) {
-                    simplifiedGenerics = [...simplifiedGenerics, ...binds];
+                    simplifiedGenerics = [...binds, ...simplifiedGenerics];
                 } else {
                     simplifiedGenerics = binds;
                 }
@@ -2567,10 +2900,11 @@ function initSearch(rawSearchIndex) {
             innerRunQuery();
         }
 
+        const isType = parsedQuery.foundElems !== 1 || parsedQuery.returned.length !== 0;
         const [sorted_in_args, sorted_returned, sorted_others] = await Promise.all([
-            sortResults(results_in_args, true, currentCrate),
-            sortResults(results_returned, true, currentCrate),
-            sortResults(results_others, false, currentCrate),
+            sortResults(results_in_args, "elems", currentCrate),
+            sortResults(results_returned, "returned", currentCrate),
+            sortResults(results_others, (isType ? "query" : null), currentCrate),
         ]);
         const ret = createQueryResults(
             sorted_in_args,
@@ -2688,6 +3022,7 @@ function initSearch(rawSearchIndex) {
      * @param {Array<?>}    array   - The search results for this tab
      * @param {ParsedQuery} query
      * @param {boolean}     display - True if this is the active tab
+     * @param {"sig"|"elems"|"returned"|null} typeInfo
      */
     async function addTab(array, query, display) {
         const extraClass = display ? " active" : "";
@@ -2696,7 +3031,7 @@ function initSearch(rawSearchIndex) {
         if (array.length > 0) {
             output.className = "search-results " + extraClass;
 
-            for (const item of array) {
+            const links = Promise.all(array.map(async item => {
                 const name = item.name;
                 const type = itemTypes[item.ty];
                 const longType = longItemTypes[item.ty];
@@ -2728,11 +3063,75 @@ ${item.displayPath}<span class="${type}">${name}</span>\
 
                 const description = document.createElement("div");
                 description.className = "desc";
+                if (item.displayTypeSignature) {
+                    const {type, mappedNames, whereClause} = await item.displayTypeSignature;
+                    const displayType = document.createElement("div");
+                    if (mappedNames.size > 0 || whereClause.size > 0) {
+                        const tooltip = document.createElement("a");
+                        tooltip.tabIndex = -1;
+                        tooltip.id = `tooltip-${item.id}`;
+                        const tooltipCode = document.createElement("code");
+                        for (const [name, qname] of mappedNames) {
+                            const line = document.createElement("div");
+                            line.className = "where";
+                            line.appendChild(document.createTextNode(`${name} is ${qname}`));
+                            tooltipCode.appendChild(line);
+                        }
+                        for (const [name, innerType] of whereClause) {
+                            if (innerType.length === 0) {
+                                continue;
+                            }
+                            const line = document.createElement("div");
+                            line.className = "where";
+                            line.appendChild(document.createTextNode(`${name}: `));
+                            innerType.forEach((value, index) => {
+                                if (index % 2 !== 0) {
+                                    const highlight = document.createElement("strong");
+                                    highlight.appendChild(document.createTextNode(value));
+                                    line.appendChild(highlight);
+                                } else {
+                                    line.appendChild(document.createTextNode(value));
+                                }
+                            });
+                            tooltipCode.appendChild(line);
+                        }
+                        tooltip.RUSTDOC_TOOLTIP_DOM = document.createElement("div");
+                        tooltip.RUSTDOC_TOOLTIP_DOM.className = "content";
+                        const tooltipH3 = document.createElement("h3");
+                        tooltipH3.innerHTML = "About this result";
+                        tooltip.RUSTDOC_TOOLTIP_DOM.appendChild(tooltipH3);
+                        const tooltipPre = document.createElement("pre");
+                        tooltipPre.appendChild(tooltipCode);
+                        tooltip.RUSTDOC_TOOLTIP_DOM.appendChild(tooltipPre);
+                        tooltip.typeWhereClause = whereClause;
+                        tooltip.innerText = "ⓘ";
+                        tooltip.className = "tooltip";
+                        window.rustdocConfigureTooltip(tooltip);
+                        displayType.appendChild(tooltip);
+                        displayType.appendChild(document.createTextNode(" "));
+                    }
+                    type.forEach((value, index) => {
+                        if (index % 2 !== 0) {
+                            const highlight = document.createElement("strong");
+                            highlight.appendChild(document.createTextNode(value));
+                            displayType.appendChild(highlight);
+                        } else {
+                            displayType.appendChild(document.createTextNode(value));
+                        }
+                    });
+                    displayType.className = "type-signature";
+                    description.appendChild(displayType);
+                }
                 description.insertAdjacentHTML("beforeend", item.desc);
 
                 link.appendChild(description);
-                output.appendChild(link);
-            }
+                return link;
+            }));
+            links.then(links => {
+                for (const link of links) {
+                    output.appendChild(link);
+                }
+            });
         } else if (query.error === null) {
             output.className = "search-failed" + extraClass;
             output.innerHTML = "No results :(<br/>" +
@@ -2749,7 +3148,7 @@ ${item.displayPath}<span class="${type}">${name}</span>\
                 "href=\"https://docs.rs\">Docs.rs</a> for documentation of crates released on" +
                 " <a href=\"https://crates.io/\">crates.io</a>.</li></ul>";
         }
-        return [output, array.length];
+        return output;
     }
 
     function makeTabHeader(tabNb, text, nbElems) {
@@ -2807,24 +3206,18 @@ ${item.displayPath}<span class="${type}">${name}</span>\
 
         currentResults = results.query.userQuery;
 
-        const [ret_others, ret_in_args, ret_returned] = await Promise.all([
-            addTab(results.others, results.query, true),
-            addTab(results.in_args, results.query, false),
-            addTab(results.returned, results.query, false),
-        ]);
-
         // Navigate to the relevant tab if the current tab is empty, like in case users search
         // for "-> String". If they had selected another tab previously, they have to click on
         // it again.
         let currentTab = searchState.currentTab;
-        if ((currentTab === 0 && ret_others[1] === 0) ||
-                (currentTab === 1 && ret_in_args[1] === 0) ||
-                (currentTab === 2 && ret_returned[1] === 0)) {
-            if (ret_others[1] !== 0) {
+        if ((currentTab === 0 && results.others.length === 0) ||
+                (currentTab === 1 && results.in_args.length === 0) ||
+                (currentTab === 2 && results.returned.length === 0)) {
+            if (results.others.length !== 0) {
                 currentTab = 0;
-            } else if (ret_in_args[1] !== 0) {
+            } else if (results.in_args.length !== 0) {
                 currentTab = 1;
-            } else if (ret_returned[1] !== 0) {
+            } else if (results.returned.length !== 0) {
                 currentTab = 2;
             }
         }
@@ -2852,14 +3245,14 @@ ${item.displayPath}<span class="${type}">${name}</span>\
             });
             output += `<h3 class="error">Query parser error: "${error.join("")}".</h3>`;
             output += "<div id=\"search-tabs\">" +
-                makeTabHeader(0, "In Names", ret_others[1]) +
+                makeTabHeader(0, "In Names", results.others.length.length) +
                 "</div>";
             currentTab = 0;
         } else if (results.query.foundElems <= 1 && results.query.returned.length === 0) {
             output += "<div id=\"search-tabs\">" +
-                makeTabHeader(0, "In Names", ret_others[1]) +
-                makeTabHeader(1, "In Parameters", ret_in_args[1]) +
-                makeTabHeader(2, "In Return Types", ret_returned[1]) +
+                makeTabHeader(0, "In Names", results.others.length) +
+                makeTabHeader(1, "In Parameters", results.in_args.length) +
+                makeTabHeader(2, "In Return Types", results.returned.length) +
                 "</div>";
         } else {
             const signatureTabTitle =
@@ -2867,7 +3260,7 @@ ${item.displayPath}<span class="${type}">${name}</span>\
                 results.query.returned.length === 0 ? "In Function Parameters" :
                 "In Function Signatures";
             output += "<div id=\"search-tabs\">" +
-                makeTabHeader(0, signatureTabTitle, ret_others[1]) +
+                makeTabHeader(0, signatureTabTitle, results.others.length) +
                 "</div>";
             currentTab = 0;
         }
@@ -2889,11 +3282,17 @@ ${item.displayPath}<span class="${type}">${name}</span>\
                 `Consider searching for "${targ}" instead.</h3>`;
         }
 
+        const [ret_others, ret_in_args, ret_returned] = await Promise.all([
+            addTab(results.others, results.query, currentTab === 0),
+            addTab(results.in_args, results.query, currentTab === 1),
+            addTab(results.returned, results.query, currentTab === 2),
+        ]);
+
         const resultsElem = document.createElement("div");
         resultsElem.id = "results";
-        resultsElem.appendChild(ret_others[0]);
-        resultsElem.appendChild(ret_in_args[0]);
-        resultsElem.appendChild(ret_returned[0]);
+        resultsElem.appendChild(ret_others);
+        resultsElem.appendChild(ret_in_args);
+        resultsElem.appendChild(ret_returned);
 
         search.innerHTML = output;
         const crateSearch = document.getElementById("crate-search");
@@ -2984,9 +3383,9 @@ ${item.displayPath}<span class="${type}">${name}</span>\
      *
      * @return {Array<FunctionSearchType>}
      */
-    function buildItemSearchTypeAll(types, lowercasePaths) {
+    function buildItemSearchTypeAll(types, paths, lowercasePaths) {
         return types.length > 0 ?
-            types.map(type => buildItemSearchType(type, lowercasePaths)) :
+            types.map(type => buildItemSearchType(type, paths, lowercasePaths)) :
             EMPTY_GENERICS_ARRAY;
     }
 
@@ -3017,7 +3416,7 @@ ${item.displayPath}<span class="${type}">${name}</span>\
      *
      * @param {RawFunctionType} type
      */
-    function buildItemSearchType(type, lowercasePaths, isAssocType) {
+    function buildItemSearchType(type, paths, lowercasePaths, isAssocType) {
         const PATH_INDEX_DATA = 0;
         const GENERICS_DATA = 1;
         const BINDINGS_DATA = 2;
@@ -3030,6 +3429,7 @@ ${item.displayPath}<span class="${type}">${name}</span>\
             pathIndex = type[PATH_INDEX_DATA];
             generics = buildItemSearchTypeAll(
                 type[GENERICS_DATA],
+                paths,
                 lowercasePaths,
             );
             if (type.length > BINDINGS_DATA && type[BINDINGS_DATA].length > 0) {
@@ -3046,8 +3446,8 @@ ${item.displayPath}<span class="${type}">${name}</span>\
                     //
                     // As a result, the key should never have generics on it.
                     return [
-                        buildItemSearchType(assocType, lowercasePaths, true).id,
-                        buildItemSearchTypeAll(constraints, lowercasePaths),
+                        buildItemSearchType(assocType, paths, lowercasePaths, true).id,
+                        buildItemSearchTypeAll(constraints, paths, lowercasePaths),
                     ];
                 }));
             } else {
@@ -3063,6 +3463,7 @@ ${item.displayPath}<span class="${type}">${name}</span>\
             // the actual names of generic parameters aren't stored, since they aren't API
             result = {
                 id: pathIndex,
+                name: "",
                 ty: TY_GENERIC,
                 path: null,
                 exactPath: null,
@@ -3073,6 +3474,7 @@ ${item.displayPath}<span class="${type}">${name}</span>\
             // `0` is used as a sentinel because it's fewer bytes than `null`
             result = {
                 id: null,
+                name: "",
                 ty: null,
                 path: null,
                 exactPath: null,
@@ -3083,6 +3485,7 @@ ${item.displayPath}<span class="${type}">${name}</span>\
             const item = lowercasePaths[pathIndex - 1];
             result = {
                 id: buildTypeMapIndex(item.name, isAssocType),
+                name: paths[pathIndex - 1].name,
                 ty: item.ty,
                 path: item.path,
                 exactPath: item.exactPath,
@@ -3124,7 +3527,7 @@ ${item.displayPath}<span class="${type}">${name}</span>\
             }
             if (cr.ty === result.ty && cr.path === result.path
                 && cr.bindings === result.bindings && cr.generics === result.generics
-                && cr.ty === result.ty
+                && cr.ty === result.ty && cr.name === result.name
             ) {
                 return cr;
             }
@@ -3143,11 +3546,12 @@ ${item.displayPath}<span class="${type}">${name}</span>\
      * The raw function search type format is generated using serde in
      * librustdoc/html/render/mod.rs: IndexItemFunctionType::write_to_string
      *
+     * @param {Array<{name: string, ty: number}>} paths
      * @param {Array<{name: string, ty: number}>} lowercasePaths
      *
      * @return {null|FunctionSearchType}
      */
-    function buildFunctionSearchTypeCallback(lowercasePaths) {
+    function buildFunctionSearchTypeCallback(paths, lowercasePaths) {
         return functionSearchType => {
             if (functionSearchType === 0) {
                 return null;
@@ -3156,19 +3560,29 @@ ${item.displayPath}<span class="${type}">${name}</span>\
             const OUTPUT_DATA = 1;
             let inputs, output;
             if (typeof functionSearchType[INPUTS_DATA] === "number") {
-                inputs = [buildItemSearchType(functionSearchType[INPUTS_DATA], lowercasePaths)];
+                inputs = [buildItemSearchType(
+                    functionSearchType[INPUTS_DATA],
+                    paths,
+                    lowercasePaths,
+                )];
             } else {
                 inputs = buildItemSearchTypeAll(
                     functionSearchType[INPUTS_DATA],
+                    paths,
                     lowercasePaths,
                 );
             }
             if (functionSearchType.length > 1) {
                 if (typeof functionSearchType[OUTPUT_DATA] === "number") {
-                    output = [buildItemSearchType(functionSearchType[OUTPUT_DATA], lowercasePaths)];
+                    output = [buildItemSearchType(
+                        functionSearchType[OUTPUT_DATA],
+                        paths,
+                        lowercasePaths,
+                    )];
                 } else {
                     output = buildItemSearchTypeAll(
                         functionSearchType[OUTPUT_DATA],
+                        paths,
                         lowercasePaths,
                     );
                 }
@@ -3179,8 +3593,8 @@ ${item.displayPath}<span class="${type}">${name}</span>\
             const l = functionSearchType.length;
             for (let i = 2; i < l; ++i) {
                 where_clause.push(typeof functionSearchType[i] === "number"
-                    ? [buildItemSearchType(functionSearchType[i], lowercasePaths)]
-                    : buildItemSearchTypeAll(functionSearchType[i], lowercasePaths));
+                    ? [buildItemSearchType(functionSearchType[i], paths, lowercasePaths)]
+                    : buildItemSearchTypeAll(functionSearchType[i], paths, lowercasePaths));
             }
             return {
                 inputs, output, where_clause,
@@ -3588,7 +4002,7 @@ ${item.displayPath}<span class="${type}">${name}</span>\
             // a string representing the list of function types
             const itemFunctionDecoder = new VlqHexDecoder(
                 crateCorpus.f,
-                buildFunctionSearchTypeCallback(lowercasePaths),
+                buildFunctionSearchTypeCallback(paths, lowercasePaths),
             );
 
             // convert `rawPaths` entries into object form

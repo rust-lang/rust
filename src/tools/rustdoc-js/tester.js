@@ -2,6 +2,13 @@
 const fs = require("fs");
 const path = require("path");
 
+function arrayToCode(array) {
+    return array.map((value, index) => {
+        value = value.split("&nbsp;").join(" ");
+        return (index % 2 === 1) ? ("`" + value + "`") : value;
+    }).join("");
+}
+
 function loadContent(content) {
     const Module = module.constructor;
     const m = new Module();
@@ -177,19 +184,11 @@ function valueCheck(fullPath, expected, result, error_text, queryName) {
                 break;
             }
             let result_v = result[key];
-            if (result_v !== null && key === "error") {
+            if (result_v !== null && (key === "error")) {
                 if (!result_v.forEach) {
                     throw result_v;
                 }
-                result_v.forEach((value, index) => {
-                    value = value.split("&nbsp;").join(" ");
-                    if (index % 2 === 1) {
-                        result_v[index] = "`" + value + "`";
-                    } else {
-                        result_v[index] = value;
-                    }
-                });
-                result_v = result_v.join("");
+                result_v = arrayToCode(result_v);
             }
             const obj_path = fullPath + (fullPath.length > 0 ? "." : "") + key;
             valueCheck(obj_path, expected[key], result_v, error_text, queryName);
@@ -430,6 +429,33 @@ function loadSearchJS(doc_folder, resource_suffix) {
             //console.log(this.descShards);
             this.descShards.get(crate)[shard].resolve(data.split("\n"));
         },
+        paramNameShards: new Map(),
+        paramNameResolvers: new Map(),
+        loadParamNames: async function(crate) {
+            if (this.paramNameShards.has(crate)) {
+                return this.paramNameShards.get(crate);
+            } else {
+                const promise = new Promise((resolve, reject) => {
+                    this.paramNameResolvers.set(crate, resolve);
+                    const fname = `${crate}-param-names${resource_suffix}.js`;
+                    fs.readFile(
+                        `${doc_folder}/search.desc/${crate}/${fname}`,
+                        (err, data) => {
+                            if (err) {
+                                reject(err);
+                            } else {
+                                eval(data.toString("utf8"));
+                            }
+                        },
+                    );
+                });
+                this.paramNameShards.set(crate, promise);
+                return promise;
+            }
+        },
+        loadedParamNames: function(crate, data) {
+            this.paramNameResolvers.get(crate)(JSON.parse(data));
+        },
     };
 
     const staticFiles = path.join(doc_folder, "static.files");
@@ -438,9 +464,41 @@ function loadSearchJS(doc_folder, resource_suffix) {
     searchModule.initSearch(searchIndex.searchIndex);
 
     return {
-        doSearch: function(queryStr, filterCrate, currentCrate) {
-            return searchModule.execQuery(searchModule.parseQuery(queryStr),
+        doSearch: async function(queryStr, filterCrate, currentCrate) {
+            const result = await searchModule.execQuery(searchModule.parseQuery(queryStr),
                 filterCrate, currentCrate);
+            for (const tab in result) {
+                if (!Object.prototype.hasOwnProperty.call(result, tab)) {
+                    continue;
+                }
+                if (!(result[tab] instanceof Array)) {
+                    continue;
+                }
+                for (const entry of result[tab]) {
+                    for (const key in entry) {
+                        if (!Object.prototype.hasOwnProperty.call(entry, key)) {
+                            continue;
+                        }
+                        if (key === "displayTypeSignature") {
+                            const {type, mappedNames, whereClause} =
+                                await entry.displayTypeSignature;
+                            entry.displayType = arrayToCode(type);
+                            entry.displayMappedNames = [...mappedNames.entries()]
+                                .map(([name, qname]) => {
+                                    return `${name} = ${qname}`;
+                                }).join(", ");
+                            entry.displayWhereClause = [...whereClause.entries()]
+                                .flatMap(([name, value]) => {
+                                    if (value.length === 0) {
+                                        return [];
+                                    }
+                                    return [`${name}: ${arrayToCode(value)}`];
+                                }).join(", ");
+                        }
+                    }
+                }
+            }
+            return result;
         },
         getCorrections: function(queryStr, filterCrate, currentCrate) {
             const parsedQuery = searchModule.parseQuery(queryStr);

@@ -370,8 +370,7 @@ else if (window.initSearch) window.initSearch(searchIndex);
         std::fs::write(
             &path,
             &format!(
-                r##"searchState.loadedParamNames({kratename}, JSON.parse('{data}'))"##,
-                kratename = serde_json::to_string(&kratename).unwrap(),
+                r##"searchState.loadedParamNames('{kratename}','{data}')"##,
                 data = search_index.param_names,
             )
             .into_bytes()
