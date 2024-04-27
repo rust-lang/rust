@@ -1127,6 +1127,13 @@ fn pmulhrsw<'tcx>(
     Ok(())
 }
 
+/// Packs two N-bit integer vectors to a single N/2-bit integers.
+///
+/// The conversion from N-bit to N/2-bit should be provided by `f`.
+///
+/// Each 128-bit chunk is treated independently (i.e., the value for
+/// the is i-th 128-bit chunk of `dest` is calculated with the i-th
+/// 128-bit chunks of `left` and `right`).
 fn pack_generic<'tcx>(
     this: &mut crate::MiriInterpCx<'_, 'tcx>,
     left: &OpTy<'tcx, Provenance>,
