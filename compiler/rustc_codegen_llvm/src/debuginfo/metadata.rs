@@ -639,6 +639,8 @@ pub fn file_metadata<'ll>(cx: &CodegenCx<'ll, '_>, source_file: &SourceFile) -> 
         };
         let hash_value = hex_encode(source_file.src_hash.hash_bytes());
 
+        let source = cx.sess().opts.cg.embed_source.then_some(()).and(source_file.src.as_ref());
+
         unsafe {
             llvm::LLVMRustDIBuilderCreateFile(
                 DIB(cx),
@@ -649,6 +651,8 @@ pub fn file_metadata<'ll>(cx: &CodegenCx<'ll, '_>, source_file: &SourceFile) -> 
                 hash_kind,
                 hash_value.as_ptr().cast(),
                 hash_value.len(),
+                source.map(|x| x.as_ptr().cast()).unwrap_or(ptr::null()),
+                source.map(|x| x.len()).unwrap_or(0),
             )
         }
     }
@@ -669,6 +673,8 @@ pub fn unknown_file_metadata<'ll>(cx: &CodegenCx<'ll, '_>) -> &'ll DIFile {
             llvm::ChecksumKind::None,
             hash_value.as_ptr().cast(),
             hash_value.len(),
+            ptr::null(),
+            0,
         )
     })
 }
@@ -913,6 +919,8 @@ pub fn build_compile_unit_di_node<'ll, 'tcx>(
             work_dir.as_ptr().cast(),
             work_dir.len(),
             llvm::ChecksumKind::None,
+            ptr::null(),
+            0,
             ptr::null(),
             0,
         );

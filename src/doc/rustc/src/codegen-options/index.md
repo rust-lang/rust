@@ -146,6 +146,10 @@ at start-up, because the combination is invalid.
 > reason for that is that it's how it was for rustc 1.44 and prior. In 1.45 this
 > option was added to turn off what had always been the default.
 
+## embed-source
+
+TODO
+
 ## extra-filename
 
 This option allows you to put extra data in each output filename. It takes a

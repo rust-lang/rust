@@ -605,6 +605,7 @@ fn test_codegen_options_tracking_hash() {
     tracked!(debug_assertions, Some(true));
     tracked!(debuginfo, DebugInfo::Limited);
     tracked!(embed_bitcode, false);
+    tracked!(embed_source, true);
     tracked!(force_frame_pointers, FramePointer::Always);
     tracked!(force_unwind_tables, Some(true));
     tracked!(inline_threshold, Some(0xf007ba11));

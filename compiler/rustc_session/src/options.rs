@@ -1489,6 +1489,8 @@ options! {
         "import library generation tool (ignored except when targeting windows-gnu)"),
     embed_bitcode: bool = (true, parse_bool, [TRACKED],
         "emit bitcode in rlibs (default: yes)"),
+    embed_source: bool = (false, parse_bool, [TRACKED],
+        "embed source text in DWARF debug sections (default: no)"),
     extra_filename: String = (String::new(), parse_string, [UNTRACKED],
         "extra data to put in each output filename"),
     force_frame_pointers: FramePointer = (FramePointer::MayOmit, parse_frame_pointer, [TRACKED],
