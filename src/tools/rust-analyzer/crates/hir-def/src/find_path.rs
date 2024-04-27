@@ -1177,6 +1177,8 @@ pub mod fmt {
 //- /main.rs crate:main deps:alloc,std
 #![no_std]
 
+extern crate alloc;
+
 $0
 
 //- /std.rs crate:std deps:alloc

@@ -20,7 +20,7 @@ use triomphe::Arc;
 use crate::{
     db::DefDatabase,
     expander::Expander,
-    item_tree::{GenericsItemTreeNode, ItemTree},
+    item_tree::{AttrOwner, FileItemTreeId, GenericModItem, GenericsItemTreeNode, ItemTree},
     lower::LowerCtx,
     nameres::{DefMap, MacroSubNs},
     type_ref::{ConstRef, LifetimeRef, TypeBound, TypeRef},
@@ -456,56 +456,67 @@ impl GenericParams {
         let cfg_options = &cfg_options[krate].cfg_options;
 
         // Returns the generic parameters that are enabled under the current `#[cfg]` options
-        let enabled_params = |params: &Interned<GenericParams>, item_tree: &ItemTree| {
-            let enabled = |param| item_tree.attrs(db, krate, param).is_cfg_enabled(cfg_options);
+        let enabled_params =
+            |params: &Interned<GenericParams>, item_tree: &ItemTree, parent: GenericModItem| {
+                let enabled = |param| item_tree.attrs(db, krate, param).is_cfg_enabled(cfg_options);
+                let attr_owner_ct = |param| AttrOwner::TypeOrConstParamData(parent, param);
+                let attr_owner_lt = |param| AttrOwner::LifetimeParamData(parent, param);
 
-            // In the common case, no parameters will by disabled by `#[cfg]` attributes.
-            // Therefore, make a first pass to check if all parameters are enabled and, if so,
-            // clone the `Interned<GenericParams>` instead of recreating an identical copy.
-            let all_type_or_consts_enabled =
-                params.type_or_consts.iter().all(|(idx, _)| enabled(idx.into()));
-            let all_lifetimes_enabled = params.lifetimes.iter().all(|(idx, _)| enabled(idx.into()));
+                // In the common case, no parameters will by disabled by `#[cfg]` attributes.
+                // Therefore, make a first pass to check if all parameters are enabled and, if so,
+                // clone the `Interned<GenericParams>` instead of recreating an identical copy.
+                let all_type_or_consts_enabled =
+                    params.type_or_consts.iter().all(|(idx, _)| enabled(attr_owner_ct(idx)));
+                let all_lifetimes_enabled =
+                    params.lifetimes.iter().all(|(idx, _)| enabled(attr_owner_lt(idx)));
 
-            if all_type_or_consts_enabled && all_lifetimes_enabled {
-                params.clone()
-            } else {
-                Interned::new(GenericParams {
-                    type_or_consts: all_type_or_consts_enabled
-                        .then(|| params.type_or_consts.clone())
-                        .unwrap_or_else(|| {
-                            params
-                                .type_or_consts
-                                .iter()
-                                .filter(|(idx, _)| enabled((*idx).into()))
-                                .map(|(_, param)| param.clone())
-                                .collect()
-                        }),
-                    lifetimes: all_lifetimes_enabled
-                        .then(|| params.lifetimes.clone())
-                        .unwrap_or_else(|| {
-                            params
-                                .lifetimes
-                                .iter()
-                                .filter(|(idx, _)| enabled((*idx).into()))
-                                .map(|(_, param)| param.clone())
-                                .collect()
-                        }),
-                    where_predicates: params.where_predicates.clone(),
-                })
-            }
-        };
+                if all_type_or_consts_enabled && all_lifetimes_enabled {
+                    params.clone()
+                } else {
+                    Interned::new(GenericParams {
+                        type_or_consts: all_type_or_consts_enabled
+                            .then(|| params.type_or_consts.clone())
+                            .unwrap_or_else(|| {
+                                params
+                                    .type_or_consts
+                                    .iter()
+                                    .filter(|&(idx, _)| enabled(attr_owner_ct(idx)))
+                                    .map(|(_, param)| param.clone())
+                                    .collect()
+                            }),
+                        lifetimes: all_lifetimes_enabled
+                            .then(|| params.lifetimes.clone())
+                            .unwrap_or_else(|| {
+                                params
+                                    .lifetimes
+                                    .iter()
+                                    .filter(|&(idx, _)| enabled(attr_owner_lt(idx)))
+                                    .map(|(_, param)| param.clone())
+                                    .collect()
+                            }),
+                        where_predicates: params.where_predicates.clone(),
+                    })
+                }
+            };
         fn id_to_generics<Id: GenericsItemTreeNode>(
             db: &dyn DefDatabase,
             id: impl for<'db> Lookup<
                 Database<'db> = dyn DefDatabase + 'db,
                 Data = impl ItemTreeLoc<Id = Id>,
             >,
-            enabled_params: impl Fn(&Interned<GenericParams>, &ItemTree) -> Interned<GenericParams>,
-        ) -> Interned<GenericParams> {
+            enabled_params: impl Fn(
+                &Interned<GenericParams>,
+                &ItemTree,
+                GenericModItem,
+            ) -> Interned<GenericParams>,
+        ) -> Interned<GenericParams>
+        where
+            FileItemTreeId<Id>: Into<GenericModItem>,
+        {
             let id = id.lookup(db).item_tree_id();
             let tree = id.item_tree(db);
             let item = &tree[id.value];
-            enabled_params(item.generic_params(), &tree)
+            enabled_params(item.generic_params(), &tree, id.value.into())
         }
 
         match def {
@@ -514,7 +525,8 @@ impl GenericParams {
                 let tree = loc.id.item_tree(db);
                 let item = &tree[loc.id.value];
 
-                let enabled_params = enabled_params(&item.explicit_generic_params, &tree);
+                let enabled_params =
+                    enabled_params(&item.explicit_generic_params, &tree, loc.id.value.into());
 
                 let module = loc.container.module(db);
                 let func_data = db.function_data(id);

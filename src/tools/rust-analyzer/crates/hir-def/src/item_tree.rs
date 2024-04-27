@@ -57,11 +57,11 @@ use triomphe::Arc;
 use crate::{
     attr::Attrs,
     db::DefDatabase,
-    generics::{GenericParams, LifetimeParamData, TypeOrConstParamData},
+    generics::GenericParams,
     path::{GenericArgs, ImportAlias, ModPath, Path, PathKind},
     type_ref::{Mutability, TraitRef, TypeBound, TypeRef},
     visibility::{RawVisibility, VisibilityExplicitness},
-    BlockId, Lookup,
+    BlockId, LocalLifetimeParamId, LocalTypeOrConstParamId, Lookup,
 };
 
 #[derive(Copy, Clone, Eq, PartialEq)]
@@ -293,8 +293,8 @@ pub enum AttrOwner {
     Variant(FileItemTreeId<Variant>),
     Field(Idx<Field>),
     Param(Idx<Param>),
-    TypeOrConstParamData(Idx<TypeOrConstParamData>),
-    LifetimeParamData(Idx<LifetimeParamData>),
+    TypeOrConstParamData(GenericModItem, LocalTypeOrConstParamId),
+    LifetimeParamData(GenericModItem, LocalLifetimeParamId),
 }
 
 macro_rules! from_attrs {
@@ -314,8 +314,6 @@ from_attrs!(
     Variant(FileItemTreeId<Variant>),
     Field(Idx<Field>),
     Param(Idx<Param>),
-    TypeOrConstParamData(Idx<TypeOrConstParamData>),
-    LifetimeParamData(Idx<LifetimeParamData>),
 );
 
 /// Trait implemented by all nodes in the item tree.
@@ -465,12 +463,49 @@ macro_rules! mod_items {
             )+
         }
 
+        #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
+        pub enum GenericModItem {
+            $(
+                $(
+                    #[cfg_attr(FALSE, $generic_params)]
+                    $typ(FileItemTreeId<$typ>),
+                )?
+            )+
+        }
+
+        impl From<GenericModItem> for ModItem {
+            fn from(id: GenericModItem) -> ModItem {
+                match id {
+                    $(
+                        $(
+                            #[cfg_attr(FALSE, $generic_params)]
+                            GenericModItem::$typ(id) => ModItem::$typ(id),
+                        )?
+                    )+
+                }
+            }
+        }
+
+        impl From<GenericModItem> for AttrOwner {
+            fn from(t: GenericModItem) -> AttrOwner {
+                AttrOwner::ModItem(t.into())
+            }
+        }
+
         $(
             impl From<FileItemTreeId<$typ>> for ModItem {
                 fn from(id: FileItemTreeId<$typ>) -> ModItem {
                     ModItem::$typ(id)
                 }
             }
+            $(
+                #[cfg_attr(FALSE, $generic_params)]
+                impl From<FileItemTreeId<$typ>> for GenericModItem {
+                    fn from(id: FileItemTreeId<$typ>) -> GenericModItem {
+                        GenericModItem::$typ(id)
+                    }
+                }
+            )?
         )+
 
         $(

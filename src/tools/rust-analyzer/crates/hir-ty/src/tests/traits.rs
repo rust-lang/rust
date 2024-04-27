@@ -238,6 +238,7 @@ fn infer_for_loop() {
 //- minicore: iterator
 //- /main.rs crate:main deps:alloc
 #![no_std]
+extern crate alloc;
 use alloc::collections::Vec;
 
 fn test() {
