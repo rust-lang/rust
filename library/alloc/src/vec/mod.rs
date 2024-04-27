@@ -64,9 +64,7 @@ use core::marker::PhantomData;
 use core::mem::{self, ManuallyDrop, MaybeUninit, SizedTypeProperties};
 use core::ops::{self, Index, IndexMut, Range, RangeBounds};
 use core::ptr::{self, NonNull};
-#[cfg(not(no_global_oom_handling))]
-use core::slice::DrainRaw;
-use core::slice::{self, SliceIndex};
+use core::slice::{self, DrainRaw, SliceIndex};
 
 use crate::alloc::{Allocator, Global};
 use crate::borrow::{Cow, ToOwned};

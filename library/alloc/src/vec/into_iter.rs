@@ -11,7 +11,9 @@ use core::iter::{
     TrustedRandomAccessNoCoerce,
 };
 use core::marker::PhantomData;
-use core::mem::{ManuallyDrop, SizedTypeProperties};
+use core::mem::ManuallyDrop;
+#[cfg(not(no_global_oom_handling))]
+use core::mem::SizedTypeProperties;
 use core::num::NonZero;
 #[cfg(not(no_global_oom_handling))]
 use core::ops::Deref;
@@ -128,6 +130,7 @@ impl<T, A: Allocator> IntoIter<T, A> {
     }
 
     /// Forgets to Drop the remaining elements while still allowing the backing allocation to be freed.
+    #[cfg(not(no_global_oom_handling))]
     pub(crate) fn forget_remaining_elements(&mut self) {
         self.drain.forget_remaining();
     }
