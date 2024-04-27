@@ -3029,13 +3029,10 @@ impl<T: ?Sized, A: Allocator> Weak<T, A> {
     /// [`as_ptr`]: Weak::as_ptr
     #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
-    pub fn into_raw_and_alloc(self) -> (*const T, A)
-    where
-        A: Clone,
-    {
-        let result = self.as_ptr();
-        let alloc = self.alloc.clone();
-        mem::forget(self);
+    pub fn into_raw_and_alloc(self) -> (*const T, A) {
+        let rc = mem::ManuallyDrop::new(self);
+        let result = rc.as_ptr();
+        let alloc = unsafe { ptr::read(&rc.alloc) };
         (result, alloc)
     }
 
