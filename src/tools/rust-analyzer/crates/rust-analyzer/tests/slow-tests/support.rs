@@ -207,8 +207,8 @@ impl Project<'_> {
 
         change.change_client_config(self.config);
         let mut error_sink = ConfigError::default();
-        assert!(error_sink.is_empty());
-        config = config.apply_change(change, &mut error_sink);
+        assert!(error_sink.is_empty(), "{error_sink:?}");
+        (config, _) = config.apply_change(change, &mut error_sink);
         config.rediscover_workspaces();
 
         Server::new(tmp_dir.keep(), config)

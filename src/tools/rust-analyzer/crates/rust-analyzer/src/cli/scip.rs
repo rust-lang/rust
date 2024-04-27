@@ -46,7 +46,7 @@ impl flags::Scip {
             let mut change = ConfigChange::default();
             change.change_client_config(json);
             let mut error_sink = ConfigError::default();
-            config = config.apply_change(change, &mut error_sink);
+            (config, _) = config.apply_change(change, &mut error_sink);
             // FIXME @alibektas : What happens to errors without logging?
             error!(?error_sink, "Config Error(s)");
         }

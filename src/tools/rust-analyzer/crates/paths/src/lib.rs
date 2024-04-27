@@ -150,7 +150,7 @@ impl AbsPathBuf {
     /// * if `self` has a verbatim prefix (e.g. `\\?\C:\windows`)
     ///   and `path` is not empty, the new path is normalized: all references
     ///   to `.` and `..` are removed.
-    pub fn push(&mut self, suffix: &str) {
+    pub fn push<P: AsRef<Utf8Path>>(&mut self, suffix: P) {
         self.0.push(suffix)
     }
 }

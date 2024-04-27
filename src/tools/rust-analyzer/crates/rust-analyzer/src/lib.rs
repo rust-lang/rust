@@ -39,7 +39,7 @@ pub mod tracing {
 }
 
 pub mod config;
-pub mod global_state;
+mod global_state;
 pub mod lsp;
 use self::lsp::ext as lsp_ext;
 

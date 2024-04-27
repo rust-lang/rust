@@ -9,7 +9,7 @@ use crossbeam_channel::{unbounded, Receiver, Sender};
 use flycheck::FlycheckHandle;
 use hir::ChangeWithProcMacros;
 use ide::{Analysis, AnalysisHost, Cancellable, FileId, SourceRootId};
-use ide_db::base_db::{CrateId, ProcMacroPaths};
+use ide_db::base_db::{CrateId, ProcMacroPaths, SourceDatabaseExt};
 use load_cargo::SourceRootConfig;
 use lsp_types::{SemanticTokens, Url};
 use nohash_hasher::IntMap;
@@ -266,8 +266,8 @@ impl GlobalState {
         let mut ratoml_text_map: FxHashMap<FileId, (vfs::VfsPath, Option<String>)> =
             FxHashMap::default();
 
-        let mut user_config_file: Option<(FileId, Option<String>)> = None;
-        let mut root_path_ratoml: Option<(FileId, Option<String>)> = None;
+        let mut user_config_file: Option<Option<String>> = None;
+        let mut root_path_ratoml: Option<Option<String>> = None;
 
         let root_vfs_path = {
             let mut root_vfs_path = self.config.root_path().to_path_buf();
@@ -336,30 +336,23 @@ impl GlobalState {
                 bytes.push((file.file_id, text));
             }
             let (vfs, line_endings_map) = &mut *RwLockUpgradableReadGuard::upgrade(guard);
-            bytes.into_iter().for_each(|(file_id, text)| match text {
-                None => {
-                    change.change_file(file_id, None);
-                    if let Some(vfs_path) = modified_ratoml_files.get(&file_id) {
-                        if vfs_path == self.config.user_config_path() {
-                            user_config_file = Some((file_id, None));
-                        } else if vfs_path == &root_vfs_path {
-                            root_path_ratoml = Some((file_id, None));
-                        } else {
-                            ratoml_text_map.insert(file_id, (vfs_path.clone(), None));
-                        }
+            bytes.into_iter().for_each(|(file_id, text)| {
+                let text = match text {
+                    None => None,
+                    Some((text, line_endings)) => {
+                        line_endings_map.insert(file_id, line_endings);
+                        Some(text)
                     }
-                }
-                Some((text, line_endings)) => {
-                    line_endings_map.insert(file_id, line_endings);
-                    change.change_file(file_id, Some(text.clone()));
-                    if let Some(vfs_path) = modified_ratoml_files.get(&file_id) {
-                        if vfs_path == self.config.user_config_path() {
-                            user_config_file = Some((file_id, Some(text.clone())));
-                        } else if vfs_path == &root_vfs_path {
-                            root_path_ratoml = Some((file_id, Some(text.clone())));
-                        } else {
-                            ratoml_text_map.insert(file_id, (vfs_path.clone(), Some(text.clone())));
-                        }
+                };
+
+                change.change_file(file_id, text.clone());
+                if let Some(vfs_path) = modified_ratoml_files.get(&file_id) {
+                    if vfs_path == self.config.user_config_path() {
+                        user_config_file = Some(text);
+                    } else if vfs_path == &root_vfs_path {
+                        root_path_ratoml = Some(text);
+                    } else {
+                        ratoml_text_map.insert(file_id, (vfs_path.clone(), text));
                     }
                 }
             });
@@ -372,53 +365,54 @@ impl GlobalState {
 
         let _p = span!(Level::INFO, "GlobalState::process_changes/apply_change").entered();
         self.analysis_host.apply_change(change);
+        if !(ratoml_text_map.is_empty() && user_config_file.is_none() && root_path_ratoml.is_none())
+        {
+            let config_change = {
+                let mut change = ConfigChange::default();
+                let db = self.analysis_host.raw_database();
 
-        let config_change = {
-            let mut change = ConfigChange::default();
-            let snap = self.analysis_host.analysis();
-
-            for (file_id, (vfs_path, text)) in ratoml_text_map {
-                // If change has been made to a ratoml file that
-                // belongs to a non-local source root, we will ignore it.
-                // As it doesn't make sense a users to use external config files.
-                if let Ok(source_root) = snap.source_root_id(file_id) {
-                    if let Ok(true) = snap.is_local_source_root(source_root) {
-                        if let Some((old_file, old_path, old_text)) =
-                            change.change_ratoml(source_root, file_id, vfs_path.clone(), text)
+                for (file_id, (vfs_path, text)) in ratoml_text_map {
+                    // If change has been made to a ratoml file that
+                    // belongs to a non-local source root, we will ignore it.
+                    // As it doesn't make sense a users to use external config files.
+                    let sr_id = db.file_source_root(file_id);
+                    let sr = db.source_root(sr_id);
+                    if !sr.is_library {
+                        if let Some((old_path, old_text)) =
+                            change.change_ratoml(sr_id, vfs_path.clone(), text)
                         {
                             // SourceRoot has more than 1 RATOML files. In this case lexicographically smaller wins.
                             if old_path < vfs_path {
                                 span!(Level::ERROR, "Two `rust-analyzer.toml` files were found inside the same crate. {vfs_path} has no effect.");
                                 // Put the old one back in.
-                                change.change_ratoml(source_root, old_file, old_path, old_text);
+                                change.change_ratoml(sr_id, old_path, old_text);
                             }
                         }
+                    } else {
+                        // Mapping to a SourceRoot should always end up in `Ok`
+                        span!(Level::ERROR, "Mapping to SourceRootId failed.");
                     }
-                } else {
-                    // Mapping to a SourceRoot should always end up in `Ok`
-                    span!(Level::ERROR, "Mapping to SourceRootId failed.");
                 }
+
+                if let Some(Some(txt)) = user_config_file {
+                    change.change_user_config(Some(txt));
+                }
+
+                if let Some(Some(txt)) = root_path_ratoml {
+                    change.change_root_ratoml(Some(txt));
+                }
+
+                change
+            };
+            let mut error_sink = ConfigError::default();
+            let (config, should_update) = self.config.apply_change(config_change, &mut error_sink);
+
+            if should_update {
+                self.update_configuration(config);
+            } else {
+                // No global or client level config was changed. So we can just naively replace config.
+                self.config = Arc::new(config);
             }
-
-            if let Some((file_id, Some(txt))) = user_config_file {
-                change.change_user_config(Some((file_id, txt)));
-            }
-
-            if let Some((file_id, Some(txt))) = root_path_ratoml {
-                change.change_root_ratoml(Some((file_id, txt)));
-            }
-
-            change
-        };
-
-        let mut error_sink = ConfigError::default();
-        let config = self.config.apply_change(config_change, &mut error_sink);
-
-        if config.should_update() {
-            self.update_configuration(config);
-        } else {
-            // No global or client level config was changed. So we can just naively replace config.
-            self.config = Arc::new(config);
         }
 
         {

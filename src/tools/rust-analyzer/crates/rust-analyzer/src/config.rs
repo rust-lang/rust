@@ -29,12 +29,11 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use semver::Version;
 use serde::{
     de::{DeserializeOwned, Error},
-    ser::SerializeStruct,
     Deserialize, Serialize,
 };
 use stdx::format_to_acc;
 use triomphe::Arc;
-use vfs::{AbsPath, AbsPathBuf, FileId, VfsPath};
+use vfs::{AbsPath, AbsPathBuf, VfsPath};
 
 use crate::{
     caps::completion_item_edit_resolve,
@@ -667,7 +666,7 @@ pub struct Config {
     default_config: DefaultConfigData,
     /// Config node that obtains its initial value during the server initialization and
     /// by receiving a `lsp_types::notification::DidChangeConfiguration`.
-    client_config: ClientConfig,
+    client_config: FullConfigInput,
 
     /// Path to the root configuration file. This can be seen as a generic way to define what would be `$XDG_CONFIG_HOME/rust-analyzer/rust-analyzer.toml` in Linux.
     /// If not specified by init of a `Config` object this value defaults to :
@@ -681,139 +680,48 @@ pub struct Config {
 
     /// FIXME @alibektas : Change this to sth better.
     /// Config node whose values apply to **every** Rust project.
-    user_config: Option<RatomlNode>,
+    user_config: Option<GlobalLocalConfigInput>,
 
     /// A special file for this session whose path is set to `self.root_path.join("rust-analyzer.toml")`
     root_ratoml_path: VfsPath,
 
     /// This file can be used to make global changes while having only a workspace-wide scope.
-    root_ratoml: Option<RatomlNode>,
+    root_ratoml: Option<GlobalLocalConfigInput>,
 
     /// For every `SourceRoot` there can be at most one RATOML file.
-    ratoml_files: FxHashMap<SourceRootId, RatomlNode>,
+    ratoml_files: FxHashMap<SourceRootId, GlobalLocalConfigInput>,
 
     /// Clone of the value that is stored inside a `GlobalState`.
     source_root_parent_map: Arc<FxHashMap<SourceRootId, SourceRootId>>,
 
-    /// Changes made to client and global configurations will partially not be reflected even after `.apply_change()` was called.
-    /// This field signals that the `GlobalState` should call its `update_configuration()` method.
-    should_update: bool,
-}
-
-#[derive(Clone, Debug)]
-struct RatomlNode {
-    node: GlobalLocalConfigInput,
-    file_id: FileId,
-}
-
-#[derive(Debug, Clone, Default)]
-struct ClientConfig {
-    node: FullConfigInput,
     detached_files: Vec<AbsPathBuf>,
 }
 
-impl Serialize for RatomlNode {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        let mut s = serializer.serialize_struct("RatomlNode", 2)?;
-        s.serialize_field("file_id", &self.file_id.index())?;
-        s.serialize_field("config", &self.node)?;
-        s.end()
-    }
-}
-
-#[derive(Debug, Hash, Eq, PartialEq)]
-pub(crate) enum ConfigNodeKey {
-    Ratoml(SourceRootId),
-    Client,
-    User,
-}
-
-impl Serialize for ConfigNodeKey {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        match self {
-            ConfigNodeKey::Ratoml(source_root_id) => serializer.serialize_u32(source_root_id.0),
-            ConfigNodeKey::Client => serializer.serialize_str("client"),
-            ConfigNodeKey::User => serializer.serialize_str("user"),
-        }
-    }
-}
-
-#[derive(Debug, Serialize)]
-enum ConfigNodeValue<'a> {
-    /// `rust-analyzer::config` module works by setting
-    /// a mapping between `SourceRootId` and `ConfigInput`.
-    /// Storing a `FileId` is mostly for debugging purposes.
-    Ratoml(&'a RatomlNode),
-    Client(&'a FullConfigInput),
-}
-
 impl Config {
-    /// FIXME @alibektas : Before integration tests, I thought I would
-    /// get the debug output of the config tree and do assertions based on it.
-    /// The reason why I didn't delete this is that we may want to have a lsp_ext
-    /// like "DebugConfigTree" so that it is easier for users to get a snapshot of
-    /// the config state for us to debug.
-    #[allow(dead_code)]
-    /// Walk towards the root starting from a specified `ConfigNode`
-    fn traverse(
-        &self,
-        start: ConfigNodeKey,
-    ) -> impl Iterator<Item = (ConfigNodeKey, ConfigNodeValue<'_>)> {
-        let mut v = vec![];
-
-        if let ConfigNodeKey::Ratoml(start) = start {
-            let mut par: Option<SourceRootId> = Some(start);
-            while let Some(source_root_id) = par {
-                par = self.source_root_parent_map.get(&start).copied();
-                if let Some(config) = self.ratoml_files.get(&source_root_id) {
-                    v.push((
-                        ConfigNodeKey::Ratoml(source_root_id),
-                        ConfigNodeValue::Ratoml(config),
-                    ));
-                }
-            }
-        }
-
-        v.push((ConfigNodeKey::Client, ConfigNodeValue::Client(&self.client_config.node)));
-
-        if let Some(user_config) = self.user_config.as_ref() {
-            v.push((ConfigNodeKey::User, ConfigNodeValue::Ratoml(user_config)));
-        }
-
-        v.into_iter()
-    }
-
     pub fn user_config_path(&self) -> &VfsPath {
         &self.user_config_path
     }
 
-    pub fn should_update(&self) -> bool {
-        self.should_update
-    }
-
     // FIXME @alibektas : Server's health uses error sink but in other places it is not used atm.
-    pub fn apply_change(&self, change: ConfigChange, error_sink: &mut ConfigError) -> Config {
+    /// Changes made to client and global configurations will partially not be reflected even after `.apply_change()` was called.
+    /// The return tuple's bool component signals whether the `GlobalState` should call its `update_configuration()` method.
+    pub fn apply_change(
+        &self,
+        change: ConfigChange,
+        error_sink: &mut ConfigError,
+    ) -> (Config, bool) {
         let mut config = self.clone();
         let mut toml_errors = vec![];
         let mut json_errors = vec![];
 
-        config.should_update = false;
+        let mut should_update = false;
 
-        if let Some((file_id, change)) = change.user_config_change {
-            config.user_config = Some(RatomlNode {
-                file_id,
-                node: GlobalLocalConfigInput::from_toml(
-                    toml::from_str(change.to_string().as_str()).unwrap(),
-                    &mut toml_errors,
-                ),
-            });
-            config.should_update = true;
+        if let Some(change) = change.user_config_change {
+            if let Ok(change) = toml::from_str(&change) {
+                config.user_config =
+                    Some(GlobalLocalConfigInput::from_toml(change, &mut toml_errors));
+                should_update = true;
+            }
         }
 
         if let Some(mut json) = change.client_config_change {
@@ -832,38 +740,29 @@ impl Config {
 
                 patch_old_style::patch_json_for_outdated_configs(&mut json);
 
-                config.client_config = ClientConfig {
-                    node: FullConfigInput::from_json(json, &mut json_errors),
-                    detached_files,
-                }
+                config.client_config = FullConfigInput::from_json(json, &mut json_errors);
+                config.detached_files = detached_files;
             }
-            config.should_update = true;
+            should_update = true;
         }
 
-        if let Some((file_id, change)) = change.root_ratoml_change {
-            config.root_ratoml = Some(RatomlNode {
-                file_id,
-                node: GlobalLocalConfigInput::from_toml(
-                    toml::from_str(change.to_string().as_str()).unwrap(),
-                    &mut toml_errors,
-                ),
-            });
-            config.should_update = true;
+        if let Some(change) = change.root_ratoml_change {
+            if let Ok(change) = toml::from_str(&change) {
+                config.root_ratoml =
+                    Some(GlobalLocalConfigInput::from_toml(change, &mut toml_errors));
+                should_update = true;
+            }
         }
 
         if let Some(change) = change.ratoml_file_change {
-            for (source_root_id, (file_id, _, text)) in change {
+            for (source_root_id, (_, text)) in change {
                 if let Some(text) = text {
-                    config.ratoml_files.insert(
-                        source_root_id,
-                        RatomlNode {
-                            file_id,
-                            node: GlobalLocalConfigInput::from_toml(
-                                toml::from_str(&text).unwrap(),
-                                &mut toml_errors,
-                            ),
-                        },
-                    );
+                    if let Ok(change) = toml::from_str(&text) {
+                        config.ratoml_files.insert(
+                            source_root_id,
+                            GlobalLocalConfigInput::from_toml(change, &mut toml_errors),
+                        );
+                    }
                 }
             }
         }
@@ -907,16 +806,22 @@ impl Config {
                 serde_json::Error::custom("expected a non-empty string"),
             ));
         }
-        config
+        (config, should_update)
+    }
+
+    pub fn apply_change_whatever(&self, change: ConfigChange) -> (Config, ConfigError) {
+        let mut e = ConfigError(vec![]);
+        let (config, _) = self.apply_change(change, &mut e);
+        (config, e)
     }
 }
 
 #[derive(Default, Debug)]
 pub struct ConfigChange {
-    user_config_change: Option<(FileId, String)>,
-    root_ratoml_change: Option<(FileId, String)>,
+    user_config_change: Option<String>,
+    root_ratoml_change: Option<String>,
     client_config_change: Option<serde_json::Value>,
-    ratoml_file_change: Option<FxHashMap<SourceRootId, (FileId, VfsPath, Option<String>)>>,
+    ratoml_file_change: Option<FxHashMap<SourceRootId, (VfsPath, Option<String>)>>,
     source_map_change: Option<Arc<FxHashMap<SourceRootId, SourceRootId>>>,
 }
 
@@ -924,26 +829,25 @@ impl ConfigChange {
     pub fn change_ratoml(
         &mut self,
         source_root: SourceRootId,
-        file_id: FileId,
         vfs_path: VfsPath,
         content: Option<String>,
-    ) -> Option<(FileId, VfsPath, Option<String>)> {
+    ) -> Option<(VfsPath, Option<String>)> {
         if let Some(changes) = self.ratoml_file_change.as_mut() {
-            changes.insert(source_root, (file_id, vfs_path, content))
+            changes.insert(source_root, (vfs_path, content))
         } else {
             let mut map = FxHashMap::default();
-            map.insert(source_root, (file_id, vfs_path, content));
+            map.insert(source_root, (vfs_path, content));
             self.ratoml_file_change = Some(map);
             None
         }
     }
 
-    pub fn change_user_config(&mut self, content: Option<(FileId, String)>) {
+    pub fn change_user_config(&mut self, content: Option<String>) {
         assert!(self.user_config_change.is_none()); // Otherwise it is a double write.
         self.user_config_change = content;
     }
 
-    pub fn change_root_ratoml(&mut self, content: Option<(FileId, String)>) {
+    pub fn change_root_ratoml(&mut self, content: Option<String>) {
         assert!(self.user_config_change.is_none()); // Otherwise it is a double write.
         self.root_ratoml_change = content;
     }
@@ -1163,8 +1067,6 @@ impl ConfigError {
     }
 }
 
-impl ConfigError {}
-
 impl fmt::Display for ConfigError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let errors = self.0.iter().format_with("\n", |inner, f| match inner {
@@ -1221,7 +1123,7 @@ impl Config {
             snippets: Default::default(),
             workspace_roots,
             visual_studio_code_version,
-            client_config: ClientConfig::default(),
+            client_config: FullConfigInput::default(),
             user_config: None,
             ratoml_files: FxHashMap::default(),
             default_config: DefaultConfigData::default(),
@@ -1229,7 +1131,7 @@ impl Config {
             user_config_path,
             root_ratoml: None,
             root_ratoml_path,
-            should_update: false,
+            detached_files: Default::default(),
         }
     }
 
@@ -1318,7 +1220,7 @@ impl Config {
     pub fn detached_files(&self) -> &Vec<AbsPathBuf> {
         // FIXME @alibektas : This is the only config that is confusing. If it's a proper configuration
         // why is it not among the others? If it's client only which I doubt it is current state should be alright
-        &self.client_config.detached_files
+        &self.detached_files
     }
 
     pub fn diagnostics(&self, source_root: Option<SourceRootId>) -> DiagnosticsConfig {
@@ -2587,19 +2489,19 @@ macro_rules! _impl_for_config_data {
                         while let Some(source_root_id) = par {
                             par = self.source_root_parent_map.get(&source_root_id).copied();
                             if let Some(config) = self.ratoml_files.get(&source_root_id) {
-                                if let Some(value) = config.node.local.$field.as_ref() {
+                                if let Some(value) = config.local.$field.as_ref() {
                                     return value;
                                 }
                             }
                         }
                     }
 
-                    if let Some(v) = self.client_config.node.local.$field.as_ref() {
+                    if let Some(v) = self.client_config.local.$field.as_ref() {
                         return &v;
                     }
 
                     if let Some(user_config) = self.user_config.as_ref() {
-                        if let Some(v) = user_config.node.local.$field.as_ref() {
+                        if let Some(v) = user_config.local.$field.as_ref() {
                             return &v;
                         }
                     }
@@ -2621,17 +2523,17 @@ macro_rules! _impl_for_config_data {
                 $vis fn $field(&self) -> &$ty {
 
                     if let Some(root_path_ratoml) = self.root_ratoml.as_ref() {
-                        if let Some(v) = root_path_ratoml.node.global.$field.as_ref() {
+                        if let Some(v) = root_path_ratoml.global.$field.as_ref() {
                             return &v;
                         }
                     }
 
-                    if let Some(v) = self.client_config.node.global.$field.as_ref() {
+                    if let Some(v) = self.client_config.global.$field.as_ref() {
                         return &v;
                     }
 
                     if let Some(user_config) = self.user_config.as_ref() {
-                        if let Some(v) = user_config.node.global.$field.as_ref() {
+                        if let Some(v) = user_config.global.$field.as_ref() {
                             return &v;
                         }
                     }
@@ -2673,7 +2575,7 @@ macro_rules! _config_data {
     }) => {
         /// Default config values for this grouping.
         #[allow(non_snake_case)]
-        #[derive(Debug, Clone, Serialize)]
+        #[derive(Debug, Clone )]
         struct $name { $($field: $ty,)* }
 
         impl_for_config_data!{
@@ -3399,7 +3301,7 @@ mod tests {
         }}));
 
         let mut error_sink = ConfigError::default();
-        config = config.apply_change(change, &mut error_sink);
+        (config, _) = config.apply_change(change, &mut error_sink);
         assert_eq!(config.proc_macro_srv(), None);
     }
 
@@ -3419,7 +3321,7 @@ mod tests {
         }}));
 
         let mut error_sink = ConfigError::default();
-        config = config.apply_change(change, &mut error_sink);
+        (config, _) = config.apply_change(change, &mut error_sink);
         assert_eq!(config.proc_macro_srv(), Some(AbsPathBuf::try_from(project_root()).unwrap()));
     }
 
@@ -3441,7 +3343,7 @@ mod tests {
         }}));
 
         let mut error_sink = ConfigError::default();
-        config = config.apply_change(change, &mut error_sink);
+        (config, _) = config.apply_change(change, &mut error_sink);
 
         assert_eq!(
             config.proc_macro_srv(),
@@ -3466,7 +3368,7 @@ mod tests {
         }));
 
         let mut error_sink = ConfigError::default();
-        config = config.apply_change(change, &mut error_sink);
+        (config, _) = config.apply_change(change, &mut error_sink);
         assert_eq!(config.cargo_targetDir(), &None);
         assert!(
             matches!(config.flycheck(), FlycheckConfig::CargoCommand { options, .. } if options.target_dir.is_none())
@@ -3489,7 +3391,7 @@ mod tests {
         }));
 
         let mut error_sink = ConfigError::default();
-        config = config.apply_change(change, &mut error_sink);
+        (config, _) = config.apply_change(change, &mut error_sink);
 
         assert_eq!(config.cargo_targetDir(), &Some(TargetDirectory::UseSubdirectory(true)));
         assert!(
@@ -3513,7 +3415,7 @@ mod tests {
         }));
 
         let mut error_sink = ConfigError::default();
-        config = config.apply_change(change, &mut error_sink);
+        (config, _) = config.apply_change(change, &mut error_sink);
 
         assert_eq!(
             config.cargo_targetDir(),

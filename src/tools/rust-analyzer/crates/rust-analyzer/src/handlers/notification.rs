@@ -201,7 +201,8 @@ pub(crate) fn handle_did_change_configuration(
                         let mut change = ConfigChange::default();
                         change.change_client_config(json.take());
                         let mut error_sink = ConfigError::default();
-                        config = config.apply_change(change, &mut error_sink);
+                        (config, _) = config.apply_change(change, &mut error_sink);
+                        // Client config changes neccesitates .update_config method to be called.
                         this.update_configuration(config);
                     }
                 }

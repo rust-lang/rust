@@ -229,7 +229,7 @@ fn run_server() -> anyhow::Result<()> {
         let mut change = ConfigChange::default();
         change.change_client_config(json);
         let mut error_sink = ConfigError::default();
-        config = config.apply_change(change, &mut error_sink);
+        (config, _) = config.apply_change(change, &mut error_sink);
         if !error_sink.is_empty() {
             use lsp_types::{
                 notification::{Notification, ShowMessage},
