@@ -48,6 +48,21 @@ impl<T: fmt::Debug> fmt::Debug for DrainRaw<T> {
     }
 }
 
+#[unstable(feature = "slice_drain_raw_iter", issue = "none")]
+impl<T> Default for DrainRaw<T> {
+    /// Creates an empty slice iterator.
+    ///
+    /// ```
+    /// # use core::slice::IterMut;
+    /// let iter: IterMut<'_, u8> = Default::default();
+    /// assert_eq!(iter.len(), 0);
+    /// ```
+    fn default() -> Self {
+        // SAFETY: dangling is sufficiently-aligned so zero-length is always fine
+        unsafe { DrainRaw::from_parts(NonNull::dangling(), 0) }
+    }
+}
+
 impl<T> DrainRaw<T> {
     /// Creates a new iterator which moves the `len` items starting at `ptr`
     /// while it's iterated, or drops them when the iterator is dropped.
