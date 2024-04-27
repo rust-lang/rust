@@ -1,0 +1,33 @@
+error[E0412]: cannot find type `A` in this scope
+  --> $DIR/associated-path-shl.rs:4:14
+   |
+LL |     let _: <<A>::B>::C;
+   |              ^ not found in this scope
+
+error[E0412]: cannot find type `A` in this scope
+  --> $DIR/associated-path-shl.rs:5:15
+   |
+LL |     let _ = <<A>::B>::C;
+   |               ^ not found in this scope
+
+error[E0412]: cannot find type `A` in this scope
+  --> $DIR/associated-path-shl.rs:6:11
+   |
+LL |     let <<A>::B>::C;
+   |           ^ not found in this scope
+
+error[E0412]: cannot find type `A` in this scope
+  --> $DIR/associated-path-shl.rs:7:17
+   |
+LL |     let 0 ..= <<A>::B>::C;
+   |                 ^ not found in this scope
+
+error[E0412]: cannot find type `A` in this scope
+  --> $DIR/associated-path-shl.rs:8:7
+   |
+LL |     <<A>::B>::C;
+   |       ^ not found in this scope
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0412`.

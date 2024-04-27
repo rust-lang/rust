@@ -1,0 +1,56 @@
+error: associated type bounds are not allowed in `dyn` types
+  --> $DIR/inside-adt.rs:3:29
+   |
+LL | struct S1 { f: dyn Iterator<Item: Copy> }
+   |                             ^^^^^^^^^^
+
+error: associated type bounds are not allowed in `dyn` types
+  --> $DIR/inside-adt.rs:5:33
+   |
+LL | struct S2 { f: Box<dyn Iterator<Item: Copy>> }
+   |                                 ^^^^^^^^^^
+
+error: associated type bounds are not allowed in `dyn` types
+  --> $DIR/inside-adt.rs:7:29
+   |
+LL | struct S3 { f: dyn Iterator<Item: 'static> }
+   |                             ^^^^^^^^^^^^^
+
+error: associated type bounds are not allowed in `dyn` types
+  --> $DIR/inside-adt.rs:10:26
+   |
+LL | enum E1 { V(dyn Iterator<Item: Copy>) }
+   |                          ^^^^^^^^^^
+
+error: associated type bounds are not allowed in `dyn` types
+  --> $DIR/inside-adt.rs:12:30
+   |
+LL | enum E2 { V(Box<dyn Iterator<Item: Copy>>) }
+   |                              ^^^^^^^^^^
+
+error: associated type bounds are not allowed in `dyn` types
+  --> $DIR/inside-adt.rs:14:26
+   |
+LL | enum E3 { V(dyn Iterator<Item: 'static>) }
+   |                          ^^^^^^^^^^^^^
+
+error: associated type bounds are not allowed in `dyn` types
+  --> $DIR/inside-adt.rs:17:41
+   |
+LL | union U1 { f: ManuallyDrop<dyn Iterator<Item: Copy>> }
+   |                                         ^^^^^^^^^^
+
+error: associated type bounds are not allowed in `dyn` types
+  --> $DIR/inside-adt.rs:19:45
+   |
+LL | union U2 { f: ManuallyDrop<Box<dyn Iterator<Item: Copy>>> }
+   |                                             ^^^^^^^^^^
+
+error: associated type bounds are not allowed in `dyn` types
+  --> $DIR/inside-adt.rs:21:41
+   |
+LL | union U3 { f: ManuallyDrop<dyn Iterator<Item: 'static>> }
+   |                                         ^^^^^^^^^^^^^
+
+error: aborting due to 9 previous errors
+

@@ -1,0 +1,17 @@
+error[E0432]: unresolved import `foo`
+  --> $DIR/local-path-suggestions-2018.rs:10:9
+   |
+LL |     use foo::Bar;
+   |         ^^^ help: a similar path exists: `crate::foo`
+   |
+   = note: `use` statements changed in Rust 2018; read more at <https://doc.rust-lang.org/edition-guide/rust-2018/module-system/path-clarity.html>
+
+error[E0432]: unresolved import `foobar`
+  --> $DIR/local-path-suggestions-2018.rs:19:5
+   |
+LL | use foobar::Baz;
+   |     ^^^^^^ help: a similar path exists: `baz::foobar`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0432`.

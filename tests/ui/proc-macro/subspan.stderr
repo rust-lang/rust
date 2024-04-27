@@ -1,0 +1,106 @@
+error: found 'hi's
+  --> $DIR/subspan.rs:11:1
+   |
+LL | subspan!("hi");
+   | ^^^^^^^^^^^^^^
+   |
+note: here
+  --> $DIR/subspan.rs:11:11
+   |
+LL | subspan!("hi");
+   |           ^^
+   = note: this error originates in the macro `subspan` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: found 'hi's
+  --> $DIR/subspan.rs:14:1
+   |
+LL | subspan!("hihi");
+   | ^^^^^^^^^^^^^^^^
+   |
+note: here
+  --> $DIR/subspan.rs:14:11
+   |
+LL | subspan!("hihi");
+   |           ^^^^
+   = note: this error originates in the macro `subspan` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: found 'hi's
+  --> $DIR/subspan.rs:17:1
+   |
+LL | subspan!("hihihi");
+   | ^^^^^^^^^^^^^^^^^^
+   |
+note: here
+  --> $DIR/subspan.rs:17:11
+   |
+LL | subspan!("hihihi");
+   |           ^^^^^^
+   = note: this error originates in the macro `subspan` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: found 'hi's
+  --> $DIR/subspan.rs:20:1
+   |
+LL | subspan!("why I hide? hi!");
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: here
+  --> $DIR/subspan.rs:20:17
+   |
+LL | subspan!("why I hide? hi!");
+   |                 ^^    ^^
+   = note: this error originates in the macro `subspan` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: found 'hi's
+  --> $DIR/subspan.rs:21:1
+   |
+LL | subspan!("hey, hi, hidy, hidy, hi hi");
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: here
+  --> $DIR/subspan.rs:21:16
+   |
+LL | subspan!("hey, hi, hidy, hidy, hi hi");
+   |                ^^  ^^    ^^    ^^ ^^
+   = note: this error originates in the macro `subspan` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: found 'hi's
+  --> $DIR/subspan.rs:22:1
+   |
+LL | subspan!("this is a hi, and this is another hi");
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: here
+  --> $DIR/subspan.rs:22:12
+   |
+LL | subspan!("this is a hi, and this is another hi");
+   |            ^^       ^^       ^^             ^^
+   = note: this error originates in the macro `subspan` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: found 'hi's
+  --> $DIR/subspan.rs:23:1
+   |
+LL | subspan!("how are you this evening");
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: here
+  --> $DIR/subspan.rs:23:24
+   |
+LL | subspan!("how are you this evening");
+   |                        ^^
+   = note: this error originates in the macro `subspan` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: found 'hi's
+  --> $DIR/subspan.rs:24:1
+   |
+LL | subspan!("this is highly eradic");
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: here
+  --> $DIR/subspan.rs:24:12
+   |
+LL | subspan!("this is highly eradic");
+   |            ^^     ^^
+   = note: this error originates in the macro `subspan` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 8 previous errors
+

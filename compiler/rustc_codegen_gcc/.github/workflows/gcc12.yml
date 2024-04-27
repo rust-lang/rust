@@ -1,0 +1,88 @@
+name: CI libgccjit 12
+
+on:
+  - push
+  - pull_request
+
+permissions:
+  contents: read
+
+env:
+  # Enable backtraces for easier debugging
+  RUST_BACKTRACE: 1
+  TEST_FLAGS: "-Cpanic=abort -Zpanic-abort-tests"
+  # FIXME(antoyo): we need to set GCC_EXEC_PREFIX so that the linker can find the linker plugin.
+  # Not sure why it's not found otherwise.
+  GCC_EXEC_PREFIX: /usr/lib/gcc/
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+
+    strategy:
+      fail-fast: false
+      matrix:
+        commands: [
+          "--mini-tests",
+          "--std-tests",
+          # FIXME: re-enable asm tests when GCC can emit in the right syntax.
+          # "--asm-tests",
+          "--test-libcore",
+          "--test-successful-rustc --nb-parts 2 --current-part 0",
+          "--test-successful-rustc --nb-parts 2 --current-part 1",
+        ]
+
+    steps:
+    - uses: actions/checkout@v3
+
+    # `rustup show` installs from rust-toolchain.toml
+    - name: Setup rust toolchain
+      run: rustup show
+
+    - name: Setup rust cache
+      uses: Swatinem/rust-cache@v2
+
+    - name: Install packages
+      # `llvm-14-tools` is needed to install the `FileCheck` binary which is used for asm tests.
+      run: sudo apt-get install ninja-build ripgrep llvm-14-tools libgccjit-12-dev
+
+    - name: Setup path to libgccjit
+      run: echo 'gcc-path = "/usr/lib/gcc/x86_64-linux-gnu/12"' > config.toml
+
+    - name: Set env
+      run: |
+        echo "workspace="$GITHUB_WORKSPACE >> $GITHUB_ENV
+        echo "LIBRARY_PATH=/usr/lib/gcc/x86_64-linux-gnu/12" >> $GITHUB_ENV
+        echo "LD_LIBRARY_PATH=/usr/lib/gcc/x86_64-linux-gnu/12" >> $GITHUB_ENV
+
+    #- name: Cache rust repository
+      ## We only clone the rust repository for rustc tests
+      #if: ${{ contains(matrix.commands, 'rustc') }}
+      #uses: actions/cache@v3
+      #id: cache-rust-repository
+      #with:
+        #path: rust
+        #key: ${{ runner.os }}-packages-${{ hashFiles('rust/.git/HEAD') }}
+
+    - name: Build
+      run: |
+        ./y.sh prepare --only-libcore --libgccjit12-patches
+        ./y.sh build --no-default-features --sysroot-panic-abort
+        cargo test --no-default-features
+        ./y.sh clean all
+
+    - name: Prepare dependencies
+      run: |
+        git config --global user.email "user@example.com"
+        git config --global user.name "User"
+        ./y.sh prepare --libgccjit12-patches
+
+    - name: Add more failing tests for GCC 12
+      run: cat tests/failing-ui-tests12.txt >> tests/failing-ui-tests.txt
+
+    - name: Add more failing tests because the sysroot is not compiled with LTO
+      run: cat tests/failing-non-lto-tests.txt >> tests/failing-ui-tests.txt
+
+    - name: Run tests
+      run: |
+        ./y.sh test --release --clean --build-sysroot ${{ matrix.commands }} --no-default-features

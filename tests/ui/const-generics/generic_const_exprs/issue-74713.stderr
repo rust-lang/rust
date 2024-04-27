@@ -1,0 +1,21 @@
+error: generic parameters may not be used in const operations
+  --> $DIR/issue-74713.rs:4:17
+   |
+LL |         let _: &'a ();
+   |                 ^^ cannot perform const operation using `'a`
+   |
+   = note: lifetime parameters may not be used in const expressions
+   = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+
+error[E0308]: mismatched types
+  --> $DIR/issue-74713.rs:3:10
+   |
+LL |       [(); {
+   |  __________^
+LL | |         let _: &'a ();
+LL | |     }]:
+   | |_____^ expected `usize`, found `()`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

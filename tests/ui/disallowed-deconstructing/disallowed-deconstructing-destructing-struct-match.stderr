@@ -1,0 +1,20 @@
+error[E0509]: cannot move out of type `X`, which implements the `Drop` trait
+  --> $DIR/disallowed-deconstructing-destructing-struct-match.rs:15:11
+   |
+LL |     match x {
+   |           ^ cannot move out of here
+LL |
+LL |         X { x: y } => println!("contents: {}", y)
+   |                -
+   |                |
+   |                data moved here
+   |                move occurs because `y` has type `String`, which does not implement the `Copy` trait
+   |
+help: consider borrowing the pattern binding
+   |
+LL |         X { x: ref y } => println!("contents: {}", y)
+   |                +++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0509`.

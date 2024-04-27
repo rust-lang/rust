@@ -1,0 +1,40 @@
+error[E0061]: function takes 3 arguments but 4 arguments were supplied
+  --> $DIR/add-tuple-within-arguments.rs:6:5
+   |
+LL |     foo("hi", 1, 2, "hi");
+   |     ^^^
+   |
+note: function defined here
+  --> $DIR/add-tuple-within-arguments.rs:1:4
+   |
+LL | fn foo(s: &str, a: (i32, i32), s2: &str) {}
+   |    ^^^          -------------
+help: wrap these arguments in parentheses to construct a tuple
+   |
+LL |     foo("hi", (1, 2), "hi");
+   |               +    +
+
+error[E0308]: mismatched types
+  --> $DIR/add-tuple-within-arguments.rs:8:15
+   |
+LL |     bar("hi", "hi", "hi");
+   |     ---       ^^^^ expected `(&str,)`, found `&str`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note:  expected tuple `(&str,)`
+           found reference `&'static str`
+note: function defined here
+  --> $DIR/add-tuple-within-arguments.rs:3:4
+   |
+LL | fn bar(s: &str, a: (&str,), s2: &str) {}
+   |    ^^^          ----------
+help: use a trailing comma to create a tuple with one element
+   |
+LL |     bar("hi", ("hi",), "hi");
+   |               +    ++
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0061, E0308.
+For more information about an error, try `rustc --explain E0061`.

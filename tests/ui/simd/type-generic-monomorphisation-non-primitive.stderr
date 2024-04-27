@@ -1,0 +1,4 @@
+error: monomorphising SIMD type `S<E>` with a non-primitive-scalar (integer/float/pointer) element type `E`
+
+error: aborting due to 1 previous error
+

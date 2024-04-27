@@ -1,0 +1,11 @@
+error: this function has too many arguments (11/10)
+  --> tests/ui-toml/too_many_arguments/too_many_arguments.rs:4:1
+   |
+LL | fn too_many(p1: u8, p2: u8, p3: u8, p4: u8, p5: u8, p6: u8, p7: u8, p8: u8, p9: u8, p10: u8, p11: u8) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::too-many-arguments` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::too_many_arguments)]`
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,42 @@
+error: attribute should be applied to a function definition
+  --> $DIR/naked-invalid-attr.rs:14:1
+   |
+LL |   #[naked]
+   |   ^^^^^^^^
+LL |   #[repr(C)]
+LL | / struct S {
+LL | |     a: u32,
+LL | |     b: u32,
+LL | | }
+   | |_- not a function definition
+
+error: attribute should be applied to a function definition
+  --> $DIR/naked-invalid-attr.rs:51:5
+   |
+LL |     #[naked] || {};
+   |     ^^^^^^^^ ----- not a function definition
+
+error: attribute should be applied to a function definition
+  --> $DIR/naked-invalid-attr.rs:22:5
+   |
+LL |     #[naked]
+   |     ^^^^^^^^
+LL |     extern "C" fn invoke(&self);
+   |     ---------------------------- not a function definition
+
+error: attribute should be applied to a function definition
+  --> $DIR/naked-invalid-attr.rs:10:5
+   |
+LL |     #[naked]
+   |     ^^^^^^^^
+LL |     fn f();
+   |     ------- not a function definition
+
+error: attribute should be applied to a function definition
+  --> $DIR/naked-invalid-attr.rs:5:1
+   |
+LL | #![naked]
+   | ^^^^^^^^^ cannot be applied to crates
+
+error: aborting due to 5 previous errors
+

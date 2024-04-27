@@ -1,0 +1,11 @@
+error: generic parameters may not be used in const operations
+  --> $DIR/associated-item-duplicate-bounds.rs:7:18
+   |
+LL |     links: [u32; A::LINKS], // Shouldn't suggest bounds already there.
+   |                  ^^^^^^^^ cannot perform const operation using `A`
+   |
+   = note: type parameters may not be used in const expressions
+   = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+
+error: aborting due to 1 previous error
+

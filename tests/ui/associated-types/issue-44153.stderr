@@ -1,0 +1,22 @@
+error[E0271]: type mismatch resolving `<() as Array>::Element == &()`
+  --> $DIR/issue-44153.rs:18:6
+   |
+LL |     <() as Visit>::visit();
+   |      ^^ type mismatch resolving `<() as Array>::Element == &()`
+   |
+note: expected this to be `&()`
+  --> $DIR/issue-44153.rs:10:20
+   |
+LL |     type Element = ();
+   |                    ^^
+note: required for `()` to implement `Visit`
+  --> $DIR/issue-44153.rs:13:10
+   |
+LL | impl<'a> Visit for () where
+   |          ^^^^^     ^^
+LL |     (): Array<Element=&'a ()>,
+   |               -------------- unsatisfied trait bound introduced here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0271`.

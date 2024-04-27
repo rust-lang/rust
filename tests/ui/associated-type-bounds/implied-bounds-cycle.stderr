@@ -1,0 +1,17 @@
+error[E0391]: cycle detected when computing the implied predicates of `B`
+  --> $DIR/implied-bounds-cycle.rs:5:15
+   |
+LL | trait B: A<T: B> {}
+   |               ^
+   |
+   = note: ...which immediately requires computing the implied predicates of `B` again
+note: cycle used when computing normalized predicates of `B`
+  --> $DIR/implied-bounds-cycle.rs:5:1
+   |
+LL | trait B: A<T: B> {}
+   | ^^^^^^^^^^^^^^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0391`.

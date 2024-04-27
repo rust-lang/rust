@@ -1,0 +1,67 @@
+   LL|       |#![allow(unused_assignments, unused_variables, while_true)]
+   LL|       |
+   LL|       |// This test confirms that (1) unexecuted infinite loops are handled correctly by the
+   LL|       |// InstrumentCoverage MIR pass; and (2) Counter Expressions that subtract from zero can be dropped.
+   LL|       |
+   LL|       |struct DebugTest;
+   LL|       |
+   LL|       |impl std::fmt::Debug for DebugTest {
+   LL|      1|    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+   LL|      1|        if true {
+   LL|      1|            if false {
+   LL|      0|                while true {}
+   LL|      1|            }
+   LL|      1|            write!(f, "cool")?;
+                                           ^0
+   LL|      0|        } else {
+   LL|      0|        }
+   LL|       |
+   LL|     11|        for i in 0..10 {
+                          ^10
+   LL|     10|            if true {
+   LL|     10|                if false {
+   LL|      0|                    while true {}
+   LL|     10|                }
+   LL|     10|                write!(f, "cool")?;
+                                               ^0
+   LL|      0|            } else {
+   LL|      0|            }
+   LL|       |        }
+   LL|      1|        Ok(())
+   LL|      1|    }
+   LL|       |}
+   LL|       |
+   LL|       |struct DisplayTest;
+   LL|       |
+   LL|       |impl std::fmt::Display for DisplayTest {
+   LL|      1|    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+   LL|      1|        if false {
+   LL|      0|        } else {
+   LL|      1|            if false {
+   LL|      0|                while true {}
+   LL|      1|            }
+   LL|      1|            write!(f, "cool")?;
+                                           ^0
+   LL|       |        }
+   LL|     11|        for i in 0..10 {
+                          ^10
+   LL|     10|            if false {
+   LL|      0|            } else {
+   LL|     10|                if false {
+   LL|      0|                    while true {}
+   LL|     10|                }
+   LL|     10|                write!(f, "cool")?;
+                                               ^0
+   LL|       |            }
+   LL|       |        }
+   LL|      1|        Ok(())
+   LL|      1|    }
+   LL|       |}
+   LL|       |
+   LL|      1|fn main() {
+   LL|      1|    let debug_test = DebugTest;
+   LL|      1|    println!("{:?}", debug_test);
+   LL|      1|    let display_test = DisplayTest;
+   LL|      1|    println!("{}", display_test);
+   LL|      1|}
+

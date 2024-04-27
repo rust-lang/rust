@@ -1,0 +1,12 @@
+error[E0599]: no method named `bar` found for struct `Foo` in the current scope
+  --> $DIR/issue-64430.rs:7:9
+   |
+LL | pub struct Foo;
+   | -------------- method `bar` not found for this struct
+...
+LL |     Foo.bar()
+   |         ^^^ method not found in `Foo`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0599`.

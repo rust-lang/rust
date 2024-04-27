@@ -1,0 +1,49 @@
+error[E0282]: type annotations needed
+  --> $DIR/call_method_unknown_pointee.rs:10:41
+   |
+LL |         let _a: i32 = (ptr as *const _).read();
+   |                                         ^^^^
+   |                                         |
+   |                                         cannot infer type
+   |                                         cannot call a method on a raw pointer with an unknown pointee type
+
+error[E0282]: type annotations needed for `*const _`
+  --> $DIR/call_method_unknown_pointee.rs:12:13
+   |
+LL |         let b = ptr as *const _;
+   |             ^
+LL |
+LL |         let _b: u8 = b.read();
+   |                        ---- cannot call a method on a raw pointer with an unknown pointee type
+   |
+help: consider giving `b` an explicit type, where the placeholders `_` are specified
+   |
+LL |         let b: *const _ = ptr as *const _;
+   |              ++++++++++
+
+error[E0282]: type annotations needed
+  --> $DIR/call_method_unknown_pointee.rs:21:39
+   |
+LL |         let _a: i32 = (ptr as *mut _).read();
+   |                                       ^^^^
+   |                                       |
+   |                                       cannot infer type
+   |                                       cannot call a method on a raw pointer with an unknown pointee type
+
+error[E0282]: type annotations needed for `*mut _`
+  --> $DIR/call_method_unknown_pointee.rs:23:13
+   |
+LL |         let b = ptr as *mut _;
+   |             ^
+LL |
+LL |         b.write(10);
+   |           ----- cannot call a method on a raw pointer with an unknown pointee type
+   |
+help: consider giving `b` an explicit type, where the placeholders `_` are specified
+   |
+LL |         let b: *mut _ = ptr as *mut _;
+   |              ++++++++
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0282`.

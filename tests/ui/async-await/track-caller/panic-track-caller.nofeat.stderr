@@ -1,0 +1,33 @@
+warning: `#[track_caller]` on async functions is a no-op
+  --> $DIR/panic-track-caller.rs:53:1
+   |
+LL |   #[track_caller]
+   |   ^^^^^^^^^^^^^^^
+...
+LL | / async fn bar_track_caller() {
+LL | |     panic!()
+LL | | }
+   | |_- this function will not propagate the caller location
+   |
+   = note: see issue #110011 <https://github.com/rust-lang/rust/issues/110011> for more information
+   = help: add `#![feature(async_fn_track_caller)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: `#[warn(ungated_async_fn_track_caller)]` on by default
+
+warning: `#[track_caller]` on async functions is a no-op
+  --> $DIR/panic-track-caller.rs:67:5
+   |
+LL |       #[track_caller]
+   |       ^^^^^^^^^^^^^^^
+...
+LL | /     async fn bar_assoc() {
+LL | |         panic!();
+LL | |     }
+   | |_____- this function will not propagate the caller location
+   |
+   = note: see issue #110011 <https://github.com/rust-lang/rust/issues/110011> for more information
+   = help: add `#![feature(async_fn_track_caller)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+warning: 2 warnings emitted
+

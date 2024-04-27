@@ -1,0 +1,39 @@
+Function name: if_not::if_not
+Raw bytes (86): 0x[01, 01, 10, 01, 05, 05, 02, 3f, 09, 05, 02, 09, 3a, 3f, 09, 05, 02, 37, 0d, 09, 3a, 3f, 09, 05, 02, 0d, 32, 37, 0d, 09, 3a, 3f, 09, 05, 02, 0a, 01, 05, 01, 03, 0d, 02, 04, 05, 02, 06, 05, 02, 06, 00, 07, 3f, 03, 09, 01, 0d, 3a, 02, 05, 02, 06, 09, 02, 06, 00, 07, 37, 03, 09, 01, 0d, 32, 02, 05, 02, 06, 0d, 02, 0c, 02, 06, 2f, 03, 01, 00, 02]
+Number of files: 1
+- file 0 => global file 1
+Number of expressions: 16
+- expression 0 operands: lhs = Counter(0), rhs = Counter(1)
+- expression 1 operands: lhs = Counter(1), rhs = Expression(0, Sub)
+- expression 2 operands: lhs = Expression(15, Add), rhs = Counter(2)
+- expression 3 operands: lhs = Counter(1), rhs = Expression(0, Sub)
+- expression 4 operands: lhs = Counter(2), rhs = Expression(14, Sub)
+- expression 5 operands: lhs = Expression(15, Add), rhs = Counter(2)
+- expression 6 operands: lhs = Counter(1), rhs = Expression(0, Sub)
+- expression 7 operands: lhs = Expression(13, Add), rhs = Counter(3)
+- expression 8 operands: lhs = Counter(2), rhs = Expression(14, Sub)
+- expression 9 operands: lhs = Expression(15, Add), rhs = Counter(2)
+- expression 10 operands: lhs = Counter(1), rhs = Expression(0, Sub)
+- expression 11 operands: lhs = Counter(3), rhs = Expression(12, Sub)
+- expression 12 operands: lhs = Expression(13, Add), rhs = Counter(3)
+- expression 13 operands: lhs = Counter(2), rhs = Expression(14, Sub)
+- expression 14 operands: lhs = Expression(15, Add), rhs = Counter(2)
+- expression 15 operands: lhs = Counter(1), rhs = Expression(0, Sub)
+Number of file 0 mappings: 10
+- Code(Counter(0)) at (prev + 5, 1) to (start + 3, 13)
+- Code(Expression(0, Sub)) at (prev + 4, 5) to (start + 2, 6)
+    = (c0 - c1)
+- Code(Counter(1)) at (prev + 2, 6) to (start + 0, 7)
+- Code(Expression(15, Add)) at (prev + 3, 9) to (start + 1, 13)
+    = (c1 + (c0 - c1))
+- Code(Expression(14, Sub)) at (prev + 2, 5) to (start + 2, 6)
+    = ((c1 + (c0 - c1)) - c2)
+- Code(Counter(2)) at (prev + 2, 6) to (start + 0, 7)
+- Code(Expression(13, Add)) at (prev + 3, 9) to (start + 1, 13)
+    = (c2 + ((c1 + (c0 - c1)) - c2))
+- Code(Expression(12, Sub)) at (prev + 2, 5) to (start + 2, 6)
+    = ((c2 + ((c1 + (c0 - c1)) - c2)) - c3)
+- Code(Counter(3)) at (prev + 2, 12) to (start + 2, 6)
+- Code(Expression(11, Add)) at (prev + 3, 1) to (start + 0, 2)
+    = (c3 + ((c2 + ((c1 + (c0 - c1)) - c2)) - c3))
+

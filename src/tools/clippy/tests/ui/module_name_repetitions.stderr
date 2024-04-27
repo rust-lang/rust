@@ -1,0 +1,35 @@
+error: item name starts with its containing module's name
+  --> tests/ui/module_name_repetitions.rs:8:12
+   |
+LL |     pub fn foo_bar() {}
+   |            ^^^^^^^
+   |
+   = note: `-D clippy::module-name-repetitions` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::module_name_repetitions)]`
+
+error: item name ends with its containing module's name
+  --> tests/ui/module_name_repetitions.rs:11:12
+   |
+LL |     pub fn bar_foo() {}
+   |            ^^^^^^^
+
+error: item name starts with its containing module's name
+  --> tests/ui/module_name_repetitions.rs:13:16
+   |
+LL |     pub struct FooCake;
+   |                ^^^^^^^
+
+error: item name ends with its containing module's name
+  --> tests/ui/module_name_repetitions.rs:15:14
+   |
+LL |     pub enum CakeFoo {}
+   |              ^^^^^^^
+
+error: item name starts with its containing module's name
+  --> tests/ui/module_name_repetitions.rs:17:16
+   |
+LL |     pub struct Foo7Bar;
+   |                ^^^^^^^
+
+error: aborting due to 5 previous errors
+

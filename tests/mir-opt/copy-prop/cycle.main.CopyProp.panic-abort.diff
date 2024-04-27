@@ -1,0 +1,54 @@
+- // MIR for `main` before CopyProp
++ // MIR for `main` after CopyProp
+  
+  fn main() -> () {
+      let mut _0: ();
+      let mut _1: i32;
+      let mut _4: i32;
+      let _5: ();
+      let mut _6: i32;
+      scope 1 {
+          debug x => _1;
+          let _2: i32;
+          scope 2 {
+              debug y => _2;
+              let _3: i32;
+              scope 3 {
+-                 debug z => _3;
++                 debug z => _2;
+              }
+          }
+      }
+  
+      bb0: {
+          StorageLive(_1);
+          _1 = val() -> [return: bb1, unwind unreachable];
+      }
+  
+      bb1: {
+-         StorageLive(_2);
+          _2 = _1;
+-         StorageLive(_3);
+-         _3 = _2;
+-         StorageLive(_4);
+-         _4 = _3;
+-         _1 = move _4;
+-         StorageDead(_4);
++         _1 = _2;
+          StorageLive(_5);
+          StorageLive(_6);
+          _6 = _1;
+          _5 = std::mem::drop::<i32>(move _6) -> [return: bb2, unwind unreachable];
+      }
+  
+      bb2: {
+          StorageDead(_6);
+          StorageDead(_5);
+          _0 = const ();
+-         StorageDead(_3);
+-         StorageDead(_2);
+          StorageDead(_1);
+          return;
+      }
+  }
+  

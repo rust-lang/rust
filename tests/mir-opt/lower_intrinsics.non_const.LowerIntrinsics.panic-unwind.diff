@@ -1,0 +1,28 @@
+- // MIR for `non_const` before LowerIntrinsics
++ // MIR for `non_const` after LowerIntrinsics
+  
+  fn non_const() -> usize {
+      let mut _0: usize;
+      let _1: extern "rust-intrinsic" fn() -> usize {std::intrinsics::size_of::<T>};
+      let mut _2: extern "rust-intrinsic" fn() -> usize {std::intrinsics::size_of::<T>};
+      scope 1 {
+          debug size_of_t => _1;
+      }
+  
+      bb0: {
+          StorageLive(_1);
+          _1 = std::intrinsics::size_of::<T>;
+          StorageLive(_2);
+          _2 = _1;
+-         _0 = move _2() -> [return: bb1, unwind unreachable];
++         _0 = SizeOf(T);
++         goto -> bb1;
+      }
+  
+      bb1: {
+          StorageDead(_2);
+          StorageDead(_1);
+          return;
+      }
+  }
+  

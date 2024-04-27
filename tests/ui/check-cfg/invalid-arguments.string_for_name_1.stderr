@@ -1,0 +1,2 @@
+error: invalid `--check-cfg` argument: `cfg("NOT_IDENT")` (`cfg()` arguments must be simple identifiers, `any()` or `values(...)`)
+

@@ -1,2 +1,0 @@
-unsafe extern "C" {}
-extern {}

@@ -1,0 +1,8 @@
+error: expected identifier, found `!`
+  --> $DIR/issue-77993-2.rs:4:10
+   |
+LL |     macro!();
+   |          ^ expected identifier
+
+error: aborting due to 1 previous error
+

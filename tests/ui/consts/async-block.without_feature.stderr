@@ -1,0 +1,23 @@
+error[E0658]: `async` blocks are not allowed in constants
+  --> $DIR/async-block.rs:12:47
+   |
+LL | const _: i32 = { core::mem::ManuallyDrop::new(async { 0 }); 4 };
+   |                                               ^^^^^^^^^^^
+   |
+   = note: see issue #85368 <https://github.com/rust-lang/rust/issues/85368> for more information
+   = help: add `#![feature(const_async_blocks)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `async` blocks are not allowed in statics
+  --> $DIR/async-block.rs:15:51
+   |
+LL | static _FUT: &(dyn Future<Output = ()> + Sync) = &async {};
+   |                                                   ^^^^^^^^
+   |
+   = note: see issue #85368 <https://github.com/rust-lang/rust/issues/85368> for more information
+   = help: add `#![feature(const_async_blocks)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

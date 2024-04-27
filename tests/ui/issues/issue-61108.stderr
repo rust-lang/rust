@@ -1,0 +1,21 @@
+error[E0382]: borrow of moved value: `bad_letters`
+  --> $DIR/issue-61108.rs:6:5
+   |
+LL |     let mut bad_letters = vec!['e', 't', 'o', 'i'];
+   |         --------------- move occurs because `bad_letters` has type `Vec<char>`, which does not implement the `Copy` trait
+LL |     for l in bad_letters {
+   |              ----------- `bad_letters` moved due to this implicit call to `.into_iter()`
+...
+LL |     bad_letters.push('s');
+   |     ^^^^^^^^^^^ value borrowed here after move
+   |
+note: `into_iter` takes ownership of the receiver `self`, which moves `bad_letters`
+  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
+help: consider iterating over a slice of the `Vec<char>`'s content to avoid moving into the `for` loop
+   |
+LL |     for l in &bad_letters {
+   |              +
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0382`.

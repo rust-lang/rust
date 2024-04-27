@@ -1,0 +1,8 @@
+error: crate root imports need to be explicitly named: `use crate as name;`
+  --> $DIR/use-crate-self.rs:1:13
+   |
+LL | use crate::{self};
+   |             ^^^^
+
+error: aborting due to 1 previous error
+

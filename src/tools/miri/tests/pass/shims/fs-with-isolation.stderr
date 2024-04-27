@@ -1,0 +1,16 @@
+warning: `open` was made to return an error due to isolation
+
+warning: `unlink` was made to return an error due to isolation
+
+warning: `symlink` was made to return an error due to isolation
+
+warning: `$STAT` was made to return an error due to isolation
+
+warning: `rename` was made to return an error due to isolation
+
+warning: `mkdir` was made to return an error due to isolation
+
+warning: `rmdir` was made to return an error due to isolation
+
+warning: `opendir` was made to return an error due to isolation
+

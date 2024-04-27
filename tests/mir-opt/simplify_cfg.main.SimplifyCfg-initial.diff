@@ -1,0 +1,68 @@
+- // MIR for `main` before SimplifyCfg-initial
++ // MIR for `main` after SimplifyCfg-initial
+  
+  fn main() -> () {
+      let mut _0: ();
+      let mut _1: ();
+      let mut _2: bool;
+      let mut _3: !;
+  
+      bb0: {
+          goto -> bb1;
+      }
+  
+      bb1: {
+-         falseUnwind -> [real: bb2, unwind: bb11];
++         falseUnwind -> [real: bb2, unwind: bb6];
+      }
+  
+      bb2: {
+          StorageLive(_2);
+-         _2 = bar() -> [return: bb3, unwind: bb11];
++         _2 = bar() -> [return: bb3, unwind: bb6];
+      }
+  
+      bb3: {
+          switchInt(move _2) -> [0: bb5, otherwise: bb4];
+      }
+  
+      bb4: {
+          _0 = const ();
+-         goto -> bb10;
++         StorageDead(_2);
++         return;
+      }
+  
+      bb5: {
+-         goto -> bb8;
+-     }
+- 
+-     bb6: {
+-         unreachable;
+-     }
+- 
+-     bb7: {
+-         goto -> bb9;
+-     }
+- 
+-     bb8: {
+          _1 = const ();
+-         goto -> bb9;
+-     }
+- 
+-     bb9: {
+          StorageDead(_2);
+          goto -> bb1;
+      }
+  
+-     bb10: {
+-         StorageDead(_2);
+-         return;
+-     }
+- 
+-     bb11 (cleanup): {
++     bb6 (cleanup): {
+          resume;
+      }
+  }
+  

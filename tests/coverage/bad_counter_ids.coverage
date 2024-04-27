@@ -1,0 +1,70 @@
+   LL|       |#![feature(coverage_attribute)]
+   LL|       |//@ edition: 2021
+   LL|       |//@ compile-flags: -Copt-level=0 -Zmir-opt-level=3
+   LL|       |
+   LL|       |// Regression test for <https://github.com/rust-lang/rust/issues/117012>.
+   LL|       |//
+   LL|       |// If some coverage counters were removed by MIR optimizations, we need to take
+   LL|       |// care not to refer to those counter IDs in coverage mappings, and instead
+   LL|       |// replace them with a constant zero value. If we don't, `llvm-cov` might see
+   LL|       |// a too-large counter ID and silently discard the entire function from its
+   LL|       |// coverage reports.
+   LL|       |
+   LL|       |#[derive(Debug, PartialEq, Eq)]
+   LL|       |struct Foo(u32);
+   LL|       |
+   LL|      1|fn eq_good() {
+   LL|      1|    println!("a");
+   LL|      1|    assert_eq!(Foo(1), Foo(1));
+   LL|      1|}
+   LL|       |
+   LL|      1|fn eq_good_message() {
+   LL|      1|    println!("b");
+   LL|      1|    assert_eq!(Foo(1), Foo(1), "message b");
+                                             ^0
+   LL|      1|}
+   LL|       |
+   LL|      1|fn ne_good() {
+   LL|      1|    println!("c");
+   LL|      1|    assert_ne!(Foo(1), Foo(3));
+   LL|      1|}
+   LL|       |
+   LL|      1|fn ne_good_message() {
+   LL|      1|    println!("d");
+   LL|      1|    assert_ne!(Foo(1), Foo(3), "message d");
+                                             ^0
+   LL|      1|}
+   LL|       |
+   LL|      1|fn eq_bad() {
+   LL|      1|    println!("e");
+   LL|      1|    assert_eq!(Foo(1), Foo(3));
+   LL|      0|}
+   LL|       |
+   LL|      1|fn eq_bad_message() {
+   LL|      1|    println!("f");
+   LL|      1|    assert_eq!(Foo(1), Foo(3), "message f");
+   LL|      0|}
+   LL|       |
+   LL|      1|fn ne_bad() {
+   LL|      1|    println!("g");
+   LL|      1|    assert_ne!(Foo(1), Foo(1));
+   LL|      0|}
+   LL|       |
+   LL|      1|fn ne_bad_message() {
+   LL|      1|    println!("h");
+   LL|      1|    assert_ne!(Foo(1), Foo(1), "message h");
+   LL|      0|}
+   LL|       |
+   LL|       |#[coverage(off)]
+   LL|       |fn main() {
+   LL|       |    eq_good();
+   LL|       |    eq_good_message();
+   LL|       |    ne_good();
+   LL|       |    ne_good_message();
+   LL|       |
+   LL|       |    assert!(std::panic::catch_unwind(eq_bad).is_err());
+   LL|       |    assert!(std::panic::catch_unwind(eq_bad_message).is_err());
+   LL|       |    assert!(std::panic::catch_unwind(ne_bad).is_err());
+   LL|       |    assert!(std::panic::catch_unwind(ne_bad_message).is_err());
+   LL|       |}
+

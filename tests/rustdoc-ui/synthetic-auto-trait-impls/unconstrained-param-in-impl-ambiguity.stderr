@@ -1,0 +1,9 @@
+error[E0207]: the type parameter `Q` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/unconstrained-param-in-impl-ambiguity.rs:7:13
+   |
+LL | unsafe impl<Q: Trait> Send for Inner {}
+   |             ^ unconstrained type parameter
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0207`.

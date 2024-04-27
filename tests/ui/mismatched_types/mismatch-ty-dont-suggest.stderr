@@ -1,0 +1,55 @@
+error[E0308]: mismatched types
+  --> $DIR/mismatch-ty-dont-suggest.rs:5:18
+   |
+LL |     let v: i32 = b; // return type is not `Result`, we don't suggest ? here
+   |            ---   ^ expected `i32`, found `Result<i32, ()>`
+   |            |
+   |            expected due to this
+   |
+   = note: expected type `i32`
+              found enum `Result<i32, ()>`
+help: consider using `Result::expect` to unwrap the `Result<i32, ()>` value, panicking if the value is a `Result::Err`
+   |
+LL |     let v: i32 = b.expect("REASON"); // return type is not `Result`, we don't suggest ? here
+   |                   +++++++++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/mismatch-ty-dont-suggest.rs:12:18
+   |
+LL |     let v: i32 = b; // return type is not `Option`, we don't suggest ? here
+   |            ---   ^ expected `i32`, found `Option<{integer}>`
+   |            |
+   |            expected due to this
+   |
+   = note: expected type `i32`
+              found enum `Option<{integer}>`
+help: consider using `Option::expect` to unwrap the `Option<{integer}>` value, panicking if the value is an `Option::None`
+   |
+LL |     let v: i32 = b.expect("REASON"); // return type is not `Option`, we don't suggest ? here
+   |                   +++++++++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/mismatch-ty-dont-suggest.rs:18:18
+   |
+LL |     let v: i32 = Some(0);
+   |            ---   ^^^^^^^ expected `i32`, found `Option<{integer}>`
+   |            |
+   |            expected due to this
+   |
+   = note: expected type `i32`
+              found enum `Option<{integer}>`
+
+error[E0308]: mismatched types
+  --> $DIR/mismatch-ty-dont-suggest.rs:21:18
+   |
+LL |     let v: i32 = c;
+   |            ---   ^ expected `i32`, found `Result<bool, _>`
+   |            |
+   |            expected due to this
+   |
+   = note: expected type `i32`
+              found enum `Result<bool, _>`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

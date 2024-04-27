@@ -1,0 +1,29 @@
+error: function-like proc macro has incorrect signature
+  --> $DIR/proc-macro-abi.rs:11:1
+   |
+LL | pub extern "C" fn abi(a: TokenStream) -> TokenStream {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected "Rust" fn, found "C" fn
+   |
+   = note: expected signature `fn(proc_macro::TokenStream) -> proc_macro::TokenStream`
+              found signature `extern "C" fn(proc_macro::TokenStream) -> proc_macro::TokenStream`
+
+error: function-like proc macro has incorrect signature
+  --> $DIR/proc-macro-abi.rs:17:1
+   |
+LL | pub extern "system" fn abi2(a: TokenStream) -> TokenStream {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected "Rust" fn, found "system" fn
+   |
+   = note: expected signature `fn(proc_macro::TokenStream) -> proc_macro::TokenStream`
+              found signature `extern "system" fn(proc_macro::TokenStream) -> proc_macro::TokenStream`
+
+error: function-like proc macro has incorrect signature
+  --> $DIR/proc-macro-abi.rs:23:1
+   |
+LL | pub extern fn abi3(a: TokenStream) -> TokenStream {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected "Rust" fn, found "C" fn
+   |
+   = note: expected signature `fn(proc_macro::TokenStream) -> proc_macro::TokenStream`
+              found signature `extern "C" fn(proc_macro::TokenStream) -> proc_macro::TokenStream`
+
+error: aborting due to 3 previous errors
+

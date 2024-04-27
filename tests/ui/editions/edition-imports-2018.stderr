@@ -1,0 +1,10 @@
+error: cannot glob-import all possible crates
+  --> $DIR/edition-imports-2018.rs:24:5
+   |
+LL |     gen_glob!();
+   |     ^^^^^^^^^^^
+   |
+   = note: this error originates in the macro `gen_glob` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,86 @@
+error: attributes `#[rustc_const_unstable]` and `#[rustc_const_stable]` require the function or method to be `const`
+  --> $DIR/rustc-const-stability-require-const.rs:7:1
+   |
+LL | #[rustc_const_unstable(feature = "const_foo", issue = "none")]
+   | -------------------------------------------------------------- attribute specified here
+LL | pub fn foo() {}
+   | ^^^^^^^^^^^^
+   |
+help: make the function or method const
+  --> $DIR/rustc-const-stability-require-const.rs:7:1
+   |
+LL | pub fn foo() {}
+   | ^^^^^^^^^^^^
+
+error: attributes `#[rustc_const_unstable]` and `#[rustc_const_stable]` require the function or method to be `const`
+  --> $DIR/rustc-const-stability-require-const.rs:12:1
+   |
+LL | #[rustc_const_stable(feature = "const_bar", since = "1.0.0")]
+   | ------------------------------------------------------------- attribute specified here
+LL | pub fn bar() {}
+   | ^^^^^^^^^^^^
+   |
+help: make the function or method const
+  --> $DIR/rustc-const-stability-require-const.rs:12:1
+   |
+LL | pub fn bar() {}
+   | ^^^^^^^^^^^^
+
+error: attributes `#[rustc_const_unstable]` and `#[rustc_const_stable]` require the function or method to be `const`
+  --> $DIR/rustc-const-stability-require-const.rs:21:5
+   |
+LL |     #[rustc_const_unstable(feature = "const_salad", issue = "none")]
+   |     ---------------------------------------------------------------- attribute specified here
+LL |     pub fn salad(&self) -> &'static str { "mmmmmm" }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: make the function or method const
+  --> $DIR/rustc-const-stability-require-const.rs:21:5
+   |
+LL |     pub fn salad(&self) -> &'static str { "mmmmmm" }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: attributes `#[rustc_const_unstable]` and `#[rustc_const_stable]` require the function or method to be `const`
+  --> $DIR/rustc-const-stability-require-const.rs:26:5
+   |
+LL |     #[rustc_const_unstable(feature = "const_roasted", issue = "none")]
+   |     ------------------------------------------------------------------ attribute specified here
+LL |     pub fn roasted(&self) -> &'static str { "mmmmmmmmmm" }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: make the function or method const
+  --> $DIR/rustc-const-stability-require-const.rs:26:5
+   |
+LL |     pub fn roasted(&self) -> &'static str { "mmmmmmmmmm" }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: attributes `#[rustc_const_unstable]` and `#[rustc_const_stable]` require the function or method to be `const`
+  --> $DIR/rustc-const-stability-require-const.rs:32:1
+   |
+LL | #[rustc_const_stable(feature = "const_bar", since = "1.0.0")]
+   | ------------------------------------------------------------- attribute specified here
+LL | pub extern "C" fn bar_c() {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: make the function or method const
+  --> $DIR/rustc-const-stability-require-const.rs:32:1
+   |
+LL | pub extern "C" fn bar_c() {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: attributes `#[rustc_const_unstable]` and `#[rustc_const_stable]` require the function or method to be `const`
+  --> $DIR/rustc-const-stability-require-const.rs:37:1
+   |
+LL | #[rustc_const_unstable(feature = "const_foo", issue = "none")]
+   | -------------------------------------------------------------- attribute specified here
+LL | pub extern "C" fn foo_c() {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: make the function or method const
+  --> $DIR/rustc-const-stability-require-const.rs:37:1
+   |
+LL | pub extern "C" fn foo_c() {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 6 previous errors
+

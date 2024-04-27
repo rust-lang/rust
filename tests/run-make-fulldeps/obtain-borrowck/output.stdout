@@ -1,0 +1,8 @@
+Bodies retrieved for:
+::X::provided
+::foo
+::main
+::main::{constant#0}
+::{impl#0}::new
+::{impl#1}::provided
+::{impl#1}::required

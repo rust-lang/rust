@@ -1,0 +1,10 @@
+warning: external crate `bar` unused in `warn_cmdline_static`: remove the dependency or add `use bar as _;`
+  --> $DIR/warn-cmdline-static.rs:9:1
+   |
+LL | fn main() {}
+   | ^
+   |
+   = note: requested on the command line with `-W unused-crate-dependencies`
+
+warning: 1 warning emitted
+

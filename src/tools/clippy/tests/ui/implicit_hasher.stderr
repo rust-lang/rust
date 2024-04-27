@@ -1,0 +1,40 @@
+error: `proc-macro` crate types currently cannot export any items other than functions tagged with `#[proc_macro]`, `#[proc_macro_derive]`, or `#[proc_macro_attribute]`
+  --> tests/ui/implicit_hasher.rs:14:1
+   |
+LL | pub trait Foo<T>: Sized {
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `proc-macro` crate types currently cannot export any items other than functions tagged with `#[proc_macro]`, `#[proc_macro_derive]`, or `#[proc_macro_attribute]`
+  --> tests/ui/implicit_hasher.rs:71:1
+   |
+LL | pub fn foo(_map: &mut HashMap<i32, i32>, _set: &mut HashSet<i32>) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `proc-macro` crate types currently cannot export any items other than functions tagged with `#[proc_macro]`, `#[proc_macro_derive]`, or `#[proc_macro_attribute]`
+  --> tests/ui/implicit_hasher.rs:74:1
+   |
+LL | pub mod gen {
+   | ^^^^^^^^^^^
+
+error: `proc-macro` crate types currently cannot export any items other than functions tagged with `#[proc_macro]`, `#[proc_macro_derive]`, or `#[proc_macro_attribute]`
+  --> tests/ui/implicit_hasher.rs:92:1
+   |
+LL | pub mod test_macro;
+   | ^^^^^^^^^^^^^^^^^^^
+
+error: `proc-macro` crate types currently cannot export any items other than functions tagged with `#[proc_macro]`, `#[proc_macro_derive]`, or `#[proc_macro_attribute]`
+  --> tests/ui/implicit_hasher.rs:96:1
+   |
+LL | external! {
+   | ^^^^^^^^^
+   |
+   = note: this error originates in the macro `external` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: `proc-macro` crate types currently cannot export any items other than functions tagged with `#[proc_macro]`, `#[proc_macro_derive]`, or `#[proc_macro_attribute]`
+  --> tests/ui/implicit_hasher.rs:101:1
+   |
+LL | pub async fn election_vote(_data: HashMap<i32, i32>) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 6 previous errors
+

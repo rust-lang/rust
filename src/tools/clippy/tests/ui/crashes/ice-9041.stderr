@@ -1,0 +1,11 @@
+error: called `is_some()` after searching an `Iterator` with `find`
+  --> tests/ui/crashes/ice-9041.rs:5:19
+   |
+LL |     things.iter().find(|p| is_thing_ready(p)).is_some()
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `any(|p| is_thing_ready(&p))`
+   |
+   = note: `-D clippy::search-is-some` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::search_is_some)]`
+
+error: aborting due to 1 previous error
+

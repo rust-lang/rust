@@ -1,0 +1,25 @@
+error[E0425]: cannot find value `fake` in this scope
+  --> $DIR/macro-backtrace-nested.rs:5:12
+   |
+LL |     () => (fake)
+   |            ^^^^ not found in this scope
+...
+LL |     1 + call_nested_expr!();
+   |         ------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `nested_expr` which comes from the expansion of the macro `call_nested_expr` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0425]: cannot find value `fake` in this scope
+  --> $DIR/macro-backtrace-nested.rs:5:12
+   |
+LL |     () => (fake)
+   |            ^^^^ not found in this scope
+...
+LL |     call_nested_expr_sum!();
+   |     ----------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `nested_expr` which comes from the expansion of the macro `call_nested_expr_sum` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0425`.

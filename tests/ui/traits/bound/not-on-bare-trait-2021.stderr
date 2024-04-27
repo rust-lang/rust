@@ -1,0 +1,91 @@
+error[E0277]: the size for values of type `(dyn Foo + Send + 'static)` cannot be known at compilation time
+  --> $DIR/not-on-bare-trait-2021.rs:8:8
+   |
+LL | fn foo(_x: Foo + Send) {
+   |        ^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `(dyn Foo + Send + 'static)`
+   = help: unsized fn params are gated as an unstable feature
+help: you can use `impl Trait` as the argument type
+   |
+LL | fn foo(_x: impl Foo + Send) {
+   |            ++++
+help: function arguments must have a statically known size, borrowed types always have a known size
+   |
+LL | fn foo(_x: &(dyn Foo + Send)) {
+   |            +++++           +
+
+error[E0277]: the size for values of type `(dyn Foo + 'static)` cannot be known at compilation time
+  --> $DIR/not-on-bare-trait-2021.rs:12:8
+   |
+LL | fn bar(x: Foo) -> Foo {
+   |        ^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `(dyn Foo + 'static)`
+   = help: unsized fn params are gated as an unstable feature
+help: you can use `impl Trait` as the argument type
+   |
+LL | fn bar(x: impl Foo) -> Foo {
+   |           ++++
+help: function arguments must have a statically known size, borrowed types always have a known size
+   |
+LL | fn bar(x: &dyn Foo) -> Foo {
+   |           ++++
+
+error[E0782]: trait objects must include the `dyn` keyword
+  --> $DIR/not-on-bare-trait-2021.rs:8:12
+   |
+LL | fn foo(_x: Foo + Send) {
+   |            ^^^^^^^^^^
+   |
+help: use a new generic type parameter, constrained by `Foo + Send`
+   |
+LL | fn foo<T: Foo + Send>(_x: T) {
+   |       +++++++++++++++     ~
+help: you can also use an opaque type, but users won't be able to specify the type parameter when calling the `fn`, having to rely exclusively on type inference
+   |
+LL | fn foo(_x: impl Foo + Send) {
+   |            ++++
+help: alternatively, use a trait object to accept any type that implements `Foo + Send`, accessing its methods at runtime using dynamic dispatch
+   |
+LL | fn foo(_x: &(dyn Foo + Send)) {
+   |            +++++           +
+
+error[E0782]: trait objects must include the `dyn` keyword
+  --> $DIR/not-on-bare-trait-2021.rs:12:11
+   |
+LL | fn bar(x: Foo) -> Foo {
+   |           ^^^
+   |
+help: use a new generic type parameter, constrained by `Foo`
+   |
+LL | fn bar<T: Foo>(x: T) -> Foo {
+   |       ++++++++    ~
+help: you can also use an opaque type, but users won't be able to specify the type parameter when calling the `fn`, having to rely exclusively on type inference
+   |
+LL | fn bar(x: impl Foo) -> Foo {
+   |           ++++
+help: alternatively, use a trait object to accept any type that implements `Foo`, accessing its methods at runtime using dynamic dispatch
+   |
+LL | fn bar(x: &dyn Foo) -> Foo {
+   |           ++++
+
+error[E0782]: trait objects must include the `dyn` keyword
+  --> $DIR/not-on-bare-trait-2021.rs:12:19
+   |
+LL | fn bar(x: Foo) -> Foo {
+   |                   ^^^
+   |
+help: use `impl Foo` to return an opaque type, as long as you return a single underlying type
+   |
+LL | fn bar(x: Foo) -> impl Foo {
+   |                   ++++
+help: alternatively, you can return an owned trait object
+   |
+LL | fn bar(x: Foo) -> Box<dyn Foo> {
+   |                   +++++++    +
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0277, E0782.
+For more information about an error, try `rustc --explain E0277`.

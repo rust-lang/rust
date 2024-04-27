@@ -1,0 +1,93 @@
+error: expected a trait, found type
+  --> $DIR/issue-106694.rs:3:16
+   |
+LL | fn foo(_: impl &Trait) {}
+   |                ^^^^^^
+   |
+help: consider removing the indirection
+   |
+LL - fn foo(_: impl &Trait) {}
+LL + fn foo(_: impl Trait) {}
+   |
+
+error: expected a trait, found type
+  --> $DIR/issue-106694.rs:6:11
+   |
+LL | fn bar<T: &Trait>(_: T) {}
+   |           ^^^^^^
+   |
+help: consider removing the indirection
+   |
+LL - fn bar<T: &Trait>(_: T) {}
+LL + fn bar<T: Trait>(_: T) {}
+   |
+
+error: expected a trait, found type
+  --> $DIR/issue-106694.rs:9:35
+   |
+LL | fn partially_correct_impl(_: impl &*const &Trait + Copy) {}
+   |                                   ^^^^^^^^^^^^^^
+   |
+help: consider removing the indirection
+   |
+LL - fn partially_correct_impl(_: impl &*const &Trait + Copy) {}
+LL + fn partially_correct_impl(_: impl Trait + Copy) {}
+   |
+
+error: expected a trait, found type
+  --> $DIR/issue-106694.rs:12:20
+   |
+LL | fn foo_bad(_: impl &BadTrait) {}
+   |                    ^^^^^^^^^
+   |
+help: consider removing the indirection
+   |
+LL - fn foo_bad(_: impl &BadTrait) {}
+LL + fn foo_bad(_: impl BadTrait) {}
+   |
+
+error: expected a trait, found type
+  --> $DIR/issue-106694.rs:16:15
+   |
+LL | fn bar_bad<T: &BadTrait>(_: T) {}
+   |               ^^^^^^^^^
+   |
+help: consider removing the indirection
+   |
+LL - fn bar_bad<T: &BadTrait>(_: T) {}
+LL + fn bar_bad<T: BadTrait>(_: T) {}
+   |
+
+error: expected a trait, found type
+  --> $DIR/issue-106694.rs:20:39
+   |
+LL | fn partially_correct_impl_bad(_: impl &*const &BadTrait + Copy) {}
+   |                                       ^^^^^^^^^^^^^^^^^
+   |
+help: consider removing the indirection
+   |
+LL - fn partially_correct_impl_bad(_: impl &*const &BadTrait + Copy) {}
+LL + fn partially_correct_impl_bad(_: impl BadTrait + Copy) {}
+   |
+
+error[E0405]: cannot find trait `BadTrait` in this scope
+  --> $DIR/issue-106694.rs:12:21
+   |
+LL | fn foo_bad(_: impl &BadTrait) {}
+   |                     ^^^^^^^^ not found in this scope
+
+error[E0405]: cannot find trait `BadTrait` in this scope
+  --> $DIR/issue-106694.rs:16:16
+   |
+LL | fn bar_bad<T: &BadTrait>(_: T) {}
+   |                ^^^^^^^^ not found in this scope
+
+error[E0405]: cannot find trait `BadTrait` in this scope
+  --> $DIR/issue-106694.rs:20:48
+   |
+LL | fn partially_correct_impl_bad(_: impl &*const &BadTrait + Copy) {}
+   |                                                ^^^^^^^^ not found in this scope
+
+error: aborting due to 9 previous errors
+
+For more information about this error, try `rustc --explain E0405`.

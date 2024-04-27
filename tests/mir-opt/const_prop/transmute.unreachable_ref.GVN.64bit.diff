@@ -1,0 +1,18 @@
+- // MIR for `unreachable_ref` before GVN
++ // MIR for `unreachable_ref` after GVN
+  
+  fn unreachable_ref() -> ! {
+      let mut _0: !;
+      let _1: &Never;
+      scope 1 {
+          debug x => _1;
+      }
+  
+      bb0: {
+          StorageLive(_1);
+-         _1 = const 1_usize as &Never (Transmute);
++         _1 = const {0x1 as &Never};
+          unreachable;
+      }
+  }
+  

@@ -1,0 +1,44 @@
+PRINT-DERIVE INPUT (DISPLAY): enum ProceduralMasqueradeDummyType { Input, }
+PRINT-DERIVE RE-COLLECTED (DISPLAY): enum ProceduralMasqueradeDummyType { Input }
+PRINT-DERIVE INPUT (DEBUG): TokenStream [
+    Ident {
+        ident: "enum",
+        span: $DIR/pretty-print-hack/allsorts-rental-0.5.6/src/lib.rs:4:1: 4:5 (#0),
+    },
+    Ident {
+        ident: "ProceduralMasqueradeDummyType",
+        span: $DIR/pretty-print-hack/allsorts-rental-0.5.6/src/lib.rs:4:6: 4:35 (#0),
+    },
+    Group {
+        delimiter: Brace,
+        stream: TokenStream [
+            Ident {
+                ident: "Input",
+                span: $DIR/pretty-print-hack/allsorts-rental-0.5.6/src/lib.rs:13:5: 13:10 (#0),
+            },
+        ],
+        span: $DIR/pretty-print-hack/allsorts-rental-0.5.6/src/lib.rs:4:36: 14:2 (#0),
+    },
+]
+PRINT-DERIVE INPUT (DISPLAY): enum ProceduralMasqueradeDummyType { Input, }
+PRINT-DERIVE RE-COLLECTED (DISPLAY): enum ProceduralMasqueradeDummyType { Input }
+PRINT-DERIVE INPUT (DEBUG): TokenStream [
+    Ident {
+        ident: "enum",
+        span: $DIR/pretty-print-hack/rental-0.5.5/src/lib.rs:4:1: 4:5 (#0),
+    },
+    Ident {
+        ident: "ProceduralMasqueradeDummyType",
+        span: $DIR/pretty-print-hack/rental-0.5.5/src/lib.rs:4:6: 4:35 (#0),
+    },
+    Group {
+        delimiter: Brace,
+        stream: TokenStream [
+            Ident {
+                ident: "Input",
+                span: $DIR/pretty-print-hack/rental-0.5.5/src/lib.rs:13:5: 13:10 (#0),
+            },
+        ],
+        span: $DIR/pretty-print-hack/rental-0.5.5/src/lib.rs:4:36: 14:2 (#0),
+    },
+]

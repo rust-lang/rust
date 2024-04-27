@@ -1,0 +1,8 @@
+[package]
+name = "stable_mir"
+version = "0.1.0-preview"
+edition = "2021"
+
+[dependencies]
+tracing = "0.1"
+scoped-tls = "1.0"

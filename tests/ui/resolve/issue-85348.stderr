@@ -1,0 +1,30 @@
+error[E0530]: let bindings cannot shadow const parameters
+  --> $DIR/issue-85348.rs:6:17
+   |
+LL | impl<const N: usize> ArrayWindowsExample {
+   |            - the const parameter `N` is defined here
+...
+LL |         let mut N;
+   |                 ^ cannot be named the same as a const parameter
+
+error[E0412]: cannot find type `ArrayWindowsExample` in this scope
+  --> $DIR/issue-85348.rs:3:22
+   |
+LL | impl<const N: usize> ArrayWindowsExample {
+   |                      ^^^^^^^^^^^^^^^^^^^ not found in this scope
+
+error[E0282]: type annotations needed
+  --> $DIR/issue-85348.rs:6:13
+   |
+LL |         let mut N;
+   |             ^^^^^
+   |
+help: consider giving `N` an explicit type
+   |
+LL |         let mut N: /* Type */;
+   |                  ++++++++++++
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0282, E0412, E0530.
+For more information about an error, try `rustc --explain E0282`.

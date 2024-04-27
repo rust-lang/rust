@@ -1,0 +1,116 @@
+warning: unused variable: `i_think_continually`
+  --> $DIR/issue-47390-unused-variable-in-struct-pattern.rs:26:9
+   |
+LL |     let i_think_continually = 2;
+   |         ^^^^^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_i_think_continually`
+   |
+note: the lint level is defined here
+  --> $DIR/issue-47390-unused-variable-in-struct-pattern.rs:5:9
+   |
+LL | #![warn(unused)] // UI tests pass `-A unused` (#43896)
+   |         ^^^^^^
+   = note: `#[warn(unused_variables)]` implied by `#[warn(unused)]`
+
+warning: unused variable: `mut_unused_var`
+  --> $DIR/issue-47390-unused-variable-in-struct-pattern.rs:33:13
+   |
+LL |     let mut mut_unused_var = 1;
+   |             ^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_mut_unused_var`
+
+warning: unused variable: `var`
+  --> $DIR/issue-47390-unused-variable-in-struct-pattern.rs:37:14
+   |
+LL |     let (mut var, unused_var) = (1, 2);
+   |              ^^^ help: if this is intentional, prefix it with an underscore: `_var`
+
+warning: unused variable: `unused_var`
+  --> $DIR/issue-47390-unused-variable-in-struct-pattern.rs:37:19
+   |
+LL |     let (mut var, unused_var) = (1, 2);
+   |                   ^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_unused_var`
+
+warning: unused variable: `corridors_of_light`
+  --> $DIR/issue-47390-unused-variable-in-struct-pattern.rs:45:26
+   |
+LL |     if let SoulHistory { corridors_of_light,
+   |                          ^^^^^^^^^^^^^^^^^^ help: try ignoring the field: `corridors_of_light: _`
+
+warning: variable `hours_are_suns` is assigned to, but never used
+  --> $DIR/issue-47390-unused-variable-in-struct-pattern.rs:46:30
+   |
+LL |                          mut hours_are_suns,
+   |                              ^^^^^^^^^^^^^^
+   |
+   = note: consider using `_hours_are_suns` instead
+
+warning: value assigned to `hours_are_suns` is never read
+  --> $DIR/issue-47390-unused-variable-in-struct-pattern.rs:48:9
+   |
+LL |         hours_are_suns = false;
+   |         ^^^^^^^^^^^^^^
+   |
+   = help: maybe it is overwritten before being read?
+   = note: `#[warn(unused_assignments)]` implied by `#[warn(unused)]`
+
+warning: unused variable: `fire`
+  --> $DIR/issue-47390-unused-variable-in-struct-pattern.rs:52:32
+   |
+LL |     let LovelyAmbition { lips, fire } = the_spirit;
+   |                                ^^^^ help: try ignoring the field: `fire: _`
+
+warning: unused variable: `case`
+  --> $DIR/issue-47390-unused-variable-in-struct-pattern.rs:61:23
+   |
+LL |         Large::Suit { case } => {}
+   |                       ^^^^ help: try ignoring the field: `case: _`
+
+warning: unused variable: `case`
+  --> $DIR/issue-47390-unused-variable-in-struct-pattern.rs:66:24
+   |
+LL |         &Large::Suit { case } => {}
+   |                        ^^^^ help: try ignoring the field: `case: _`
+
+warning: unused variable: `case`
+  --> $DIR/issue-47390-unused-variable-in-struct-pattern.rs:71:27
+   |
+LL |         box Large::Suit { case } => {}
+   |                           ^^^^ help: try ignoring the field: `case: _`
+
+warning: unused variable: `case`
+  --> $DIR/issue-47390-unused-variable-in-struct-pattern.rs:76:24
+   |
+LL |         (Large::Suit { case },) => {}
+   |                        ^^^^ help: try ignoring the field: `case: _`
+
+warning: unused variable: `case`
+  --> $DIR/issue-47390-unused-variable-in-struct-pattern.rs:81:24
+   |
+LL |         [Large::Suit { case }] => {}
+   |                        ^^^^ help: try ignoring the field: `case: _`
+
+warning: unused variable: `case`
+  --> $DIR/issue-47390-unused-variable-in-struct-pattern.rs:86:29
+   |
+LL |         Tuple(Large::Suit { case }, ()) => {}
+   |                             ^^^^ help: try ignoring the field: `case: _`
+
+warning: variable does not need to be mutable
+  --> $DIR/issue-47390-unused-variable-in-struct-pattern.rs:33:9
+   |
+LL |     let mut mut_unused_var = 1;
+   |         ----^^^^^^^^^^^^^^
+   |         |
+   |         help: remove this `mut`
+   |
+   = note: `#[warn(unused_mut)]` implied by `#[warn(unused)]`
+
+warning: variable does not need to be mutable
+  --> $DIR/issue-47390-unused-variable-in-struct-pattern.rs:37:10
+   |
+LL |     let (mut var, unused_var) = (1, 2);
+   |          ----^^^
+   |          |
+   |          help: remove this `mut`
+
+warning: 16 warnings emitted
+

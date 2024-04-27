@@ -1,0 +1,6 @@
+extern_fn_1
+extern_fn_2 in extern_2
+extern_fn_2 in extern_1
+extern_fn_1
+extern_fn_2 in extern_2
+extern_fn_2 in extern_2

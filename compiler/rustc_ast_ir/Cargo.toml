@@ -1,0 +1,22 @@
+[package]
+name = "rustc_ast_ir"
+version = "0.0.0"
+edition = "2021"
+
+[dependencies]
+# tidy-alphabetical-start
+rustc_data_structures = { path = "../rustc_data_structures", optional = true }
+rustc_macros = { path = "../rustc_macros", optional = true }
+rustc_serialize = { path = "../rustc_serialize", optional = true }
+rustc_span = { path = "../rustc_span", optional = true }
+smallvec = { version = "1.8.1" }
+# tidy-alphabetical-end
+
+[features]
+default = ["nightly"]
+nightly = [
+    "rustc_serialize",
+    "rustc_data_structures",
+    "rustc_macros",
+    "rustc_span",
+]

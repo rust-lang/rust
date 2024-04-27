@@ -1,0 +1,15 @@
+error: generic parameters with a default must be trailing
+  --> $DIR/params-in-ct-in-ty-param-lazy-norm.rs:8:12
+   |
+LL | struct Bar<T = [u8; N], const N: usize>(T);
+   |            ^
+
+error[E0128]: generic parameters with a default cannot use forward declared identifiers
+  --> $DIR/params-in-ct-in-ty-param-lazy-norm.rs:8:21
+   |
+LL | struct Bar<T = [u8; N], const N: usize>(T);
+   |                     ^ defaulted generic parameters cannot be forward declared
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0128`.

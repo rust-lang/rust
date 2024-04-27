@@ -1,0 +1,30 @@
+error: free static item without body
+  --> $DIR/issue-83505-repr-simd.rs:9:1
+   |
+LL | static CLs: Es;
+   | ^^^^^^^^^^^^^^-
+   |               |
+   |               help: provide a definition for the static: `= <expr>;`
+
+error[E0517]: attribute should be applied to a struct
+  --> $DIR/issue-83505-repr-simd.rs:5:8
+   |
+LL | #[repr(simd)]
+   |        ^^^^
+...
+LL | enum Es {}
+   | ---------- not a struct
+
+error[E0084]: unsupported representation for zero-variant enum
+  --> $DIR/issue-83505-repr-simd.rs:5:1
+   |
+LL | #[repr(simd)]
+   | ^^^^^^^^^^^^^
+...
+LL | enum Es {}
+   | ------- zero-variant enum
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0084, E0517.
+For more information about an error, try `rustc --explain E0084`.

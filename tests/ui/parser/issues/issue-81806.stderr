@@ -1,0 +1,17 @@
+error: expected identifier, found keyword `impl`
+  --> $DIR/issue-81806.rs:2:1
+   |
+LL | trait T { const
+   |         - while parsing this item list starting here
+LL | impl
+   | ^^^^ expected identifier, found keyword
+LL | }
+   | - the item list ends here
+   |
+help: escape `impl` to use it as an identifier
+   |
+LL | r#impl
+   | ++
+
+error: aborting due to 1 previous error
+

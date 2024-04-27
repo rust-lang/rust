@@ -1,0 +1,50 @@
+error: field `b` is never read
+  --> $DIR/offset-of.rs:8:5
+   |
+LL | struct Alpha {
+   |        ----- field in this struct
+LL |     a: (),
+LL |     b: (),
+   |     ^
+   |
+note: the lint level is defined here
+  --> $DIR/offset-of.rs:2:9
+   |
+LL | #![deny(dead_code)]
+   |         ^^^^^^^^^
+
+error: field `a` is never read
+  --> $DIR/offset-of.rs:13:5
+   |
+LL | struct Beta {
+   |        ---- field in this struct
+LL |     a: (),
+   |     ^
+
+error: field `a` is never read
+  --> $DIR/offset-of.rs:18:5
+   |
+LL | struct Gamma {
+   |        ----- field in this struct
+LL |     a: (),
+   |     ^
+
+error: field `b` is never read
+  --> $DIR/offset-of.rs:24:5
+   |
+LL | struct Delta {
+   |        ----- field in this struct
+LL |     a: (),
+LL |     b: (),
+   |     ^
+
+error: field `a` is never read
+  --> $DIR/offset-of.rs:35:5
+   |
+LL | struct Project<T: Trait> {
+   |        ------- field in this struct
+LL |     a: u8,
+   |     ^
+
+error: aborting due to 5 previous errors
+

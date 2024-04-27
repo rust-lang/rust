@@ -1,0 +1,25 @@
+error[E0425]: cannot find function `collect_primary` in this scope
+  --> $DIR/associated-fn-called-as-fn.rs:6:30
+   |
+LL |                 '0'..='9' => collect_primary(&c),
+   |                              ^^^^^^^^^^^^^^^
+   |
+help: you might have meant to call the associated function
+   |
+LL |                 '0'..='9' => Self::collect_primary(&c),
+   |                              ++++++
+
+error[E0425]: cannot find function `collect_primary` in this scope
+  --> $DIR/associated-fn-called-as-fn.rs:23:30
+   |
+LL |                 '0'..='9' => collect_primary(&c),
+   |                              ^^^^^^^^^^^^^^^
+   |
+help: you might have meant to call the associated function
+   |
+LL |                 '0'..='9' => Self::collect_primary(&c),
+   |                              ++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0425`.

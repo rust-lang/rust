@@ -1,0 +1,8 @@
+error: overlong unicode escape
+  --> $DIR/new-unicode-escapes-2.rs:2:14
+   |
+LL |     let s = "\u{260311111111}";
+   |              ^^^^^^^^^^^^^^^^ must have at most 6 hex digits
+
+error: aborting due to 1 previous error
+

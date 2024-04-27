@@ -1,0 +1,14 @@
+// MIR for `caller` after PreCodegen
+
+fn caller() -> () {
+    let mut _0: ();
+    let _1: ();
+
+    bb0: {
+        _1 = callee() -> [return: bb1, unwind continue];
+    }
+
+    bb1: {
+        return;
+    }
+}

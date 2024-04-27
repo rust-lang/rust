@@ -1,0 +1,28 @@
+//@run-rustfix
+#![allow(unused)]
+
+struct S;
+impl S {
+    fn foo(&mut self) {
+        let x = |this: &Self, v: i32| {
+            this.bar();
+            this.hel();
+        };
+        self.qux(); //~ ERROR cannot borrow `*self` as mutable because it is also borrowed as immutable
+        x(self, 1);
+        x(self, 3);
+    }
+    fn bar(&self) {}
+    fn hel(&self) {}
+    fn qux(&mut self) {}
+
+    fn hello(&mut self) {
+        let y = |this: &Self| {
+            this.bar();
+        };
+        self.qux(); //~ ERROR cannot borrow `*self` as mutable because it is also borrowed as immutable
+        y(self);
+    }
+}
+
+fn main() {}

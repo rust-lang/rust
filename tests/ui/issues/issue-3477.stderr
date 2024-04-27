@@ -1,0 +1,11 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-3477.rs:2:20
+   |
+LL |     let _p: char = 100;
+   |             ----   ^^^ expected `char`, found `u8`
+   |             |
+   |             expected due to this
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.

@@ -1,0 +1,17 @@
+error[E0597]: `x` does not live long enough
+  --> $DIR/assoc-ty-wf-used-to-get-assoc-ty.rs:24:31
+   |
+LL |     let x: u8 = 3;
+   |         - binding `x` declared here
+LL |     let _: &'static u8 = test(&x, &&3);
+   |                          -----^^------
+   |                          |    |
+   |                          |    borrowed value does not live long enough
+   |                          argument requires that `x` is borrowed for `'static`
+...
+LL | }
+   | - `x` dropped here while still borrowed
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0597`.

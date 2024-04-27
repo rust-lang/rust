@@ -1,0 +1,14 @@
+error[E0615]: attempted to take value of method `read` on type `*mut Foo`
+  --> $DIR/issue-91210-ptr-method.rs:10:7
+   |
+LL |     x.read = 4;
+   |       ^^^^ method, not a field
+   |
+help: to access the field, dereference first
+   |
+LL |     (*x).read = 4;
+   |     ++ +
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0615`.

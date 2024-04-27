@@ -1,0 +1,52 @@
+error[E0412]: cannot find type `dyn` in this scope
+  --> $DIR/dyn-trait-compatibility.rs:1:11
+   |
+LL | type A0 = dyn;
+   |           ^^^ not found in this scope
+
+error[E0412]: cannot find type `dyn` in this scope
+  --> $DIR/dyn-trait-compatibility.rs:5:11
+   |
+LL | type A2 = dyn<dyn, dyn>;
+   |           ^^^ not found in this scope
+
+error[E0412]: cannot find type `dyn` in this scope
+  --> $DIR/dyn-trait-compatibility.rs:5:15
+   |
+LL | type A2 = dyn<dyn, dyn>;
+   |               ^^^ not found in this scope
+
+error[E0412]: cannot find type `dyn` in this scope
+  --> $DIR/dyn-trait-compatibility.rs:5:20
+   |
+LL | type A2 = dyn<dyn, dyn>;
+   |                    ^^^ not found in this scope
+
+error[E0412]: cannot find type `dyn` in this scope
+  --> $DIR/dyn-trait-compatibility.rs:9:11
+   |
+LL | type A3 = dyn<<dyn as dyn>::dyn>;
+   |           ^^^ not found in this scope
+
+error[E0405]: cannot find trait `dyn` in this scope
+  --> $DIR/dyn-trait-compatibility.rs:9:23
+   |
+LL | type A3 = dyn<<dyn as dyn>::dyn>;
+   |                       ^^^ not found in this scope
+
+error[E0412]: cannot find type `dyn` in this scope
+  --> $DIR/dyn-trait-compatibility.rs:9:16
+   |
+LL | type A3 = dyn<<dyn as dyn>::dyn>;
+   |                ^^^ not found in this scope
+
+error[E0433]: failed to resolve: use of undeclared crate or module `dyn`
+  --> $DIR/dyn-trait-compatibility.rs:3:11
+   |
+LL | type A1 = dyn::dyn;
+   |           ^^^ use of undeclared crate or module `dyn`
+
+error: aborting due to 8 previous errors
+
+Some errors have detailed explanations: E0405, E0412, E0433.
+For more information about an error, try `rustc --explain E0405`.

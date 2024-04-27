@@ -1,0 +1,13 @@
+error: cannot find attribute `unknown` in this scope
+  --> $DIR/cfg-attr-unknown-attribute-macro-expansion.rs:3:27
+   |
+LL |         #[cfg_attr(all(), unknown)]
+   |                           ^^^^^^^
+...
+LL | foo!();
+   | ------ in this macro invocation
+   |
+   = note: this error originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 1 previous error
+

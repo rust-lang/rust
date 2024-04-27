@@ -1,0 +1,27 @@
+error[E0268]: `break` outside of a loop or labeled block
+  --> $DIR/break-in-unlabeled-block.rs:4:9
+   |
+LL |         break ();
+   |         ^^^^^^^^ cannot `break` outside of a loop or labeled block
+   |
+help: consider labeling this block to be able to break within it
+   |
+LL ~     'block: {
+LL ~         break 'block ();
+   |
+
+error[E0268]: `break` outside of a loop or labeled block
+  --> $DIR/break-in-unlabeled-block.rs:8:13
+   |
+LL |             break ();
+   |             ^^^^^^^^ cannot `break` outside of a loop or labeled block
+   |
+help: consider labeling this block to be able to break within it
+   |
+LL ~         'block: {
+LL ~             break 'block ();
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0268`.

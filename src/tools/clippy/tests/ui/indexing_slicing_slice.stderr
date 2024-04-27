@@ -1,0 +1,127 @@
+error: slicing may panic
+  --> tests/ui/indexing_slicing_slice.rs:12:6
+   |
+LL |     &x[index..];
+   |      ^^^^^^^^^^
+   |
+   = help: consider using `.get(n..)` or .get_mut(n..)` instead
+   = note: `-D clippy::indexing-slicing` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::indexing_slicing)]`
+
+error: slicing may panic
+  --> tests/ui/indexing_slicing_slice.rs:14:6
+   |
+LL |     &x[..index];
+   |      ^^^^^^^^^^
+   |
+   = help: consider using `.get(..n)`or `.get_mut(..n)` instead
+
+error: slicing may panic
+  --> tests/ui/indexing_slicing_slice.rs:16:6
+   |
+LL |     &x[index_from..index_to];
+   |      ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using `.get(n..m)` or `.get_mut(n..m)` instead
+
+error: slicing may panic
+  --> tests/ui/indexing_slicing_slice.rs:18:6
+   |
+LL |     &x[index_from..][..index_to];
+   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using `.get(..n)`or `.get_mut(..n)` instead
+
+error: slicing may panic
+  --> tests/ui/indexing_slicing_slice.rs:18:6
+   |
+LL |     &x[index_from..][..index_to];
+   |      ^^^^^^^^^^^^^^^
+   |
+   = help: consider using `.get(n..)` or .get_mut(n..)` instead
+
+error: slicing may panic
+  --> tests/ui/indexing_slicing_slice.rs:21:6
+   |
+LL |     &x[5..][..10];
+   |      ^^^^^^^^^^^^
+   |
+   = help: consider using `.get(..n)`or `.get_mut(..n)` instead
+
+error: range is out of bounds
+  --> tests/ui/indexing_slicing_slice.rs:21:8
+   |
+LL |     &x[5..][..10];
+   |        ^
+   |
+   = note: `-D clippy::out-of-bounds-indexing` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::out_of_bounds_indexing)]`
+
+error: slicing may panic
+  --> tests/ui/indexing_slicing_slice.rs:25:6
+   |
+LL |     &x[0..][..3];
+   |      ^^^^^^^^^^^
+   |
+   = help: consider using `.get(..n)`or `.get_mut(..n)` instead
+
+error: slicing may panic
+  --> tests/ui/indexing_slicing_slice.rs:27:6
+   |
+LL |     &x[1..][..5];
+   |      ^^^^^^^^^^^
+   |
+   = help: consider using `.get(..n)`or `.get_mut(..n)` instead
+
+error: range is out of bounds
+  --> tests/ui/indexing_slicing_slice.rs:35:12
+   |
+LL |     &y[0..=4];
+   |            ^
+
+error: range is out of bounds
+  --> tests/ui/indexing_slicing_slice.rs:37:11
+   |
+LL |     &y[..=4];
+   |           ^
+
+error: slicing may panic
+  --> tests/ui/indexing_slicing_slice.rs:43:6
+   |
+LL |     &v[10..100];
+   |      ^^^^^^^^^^
+   |
+   = help: consider using `.get(n..m)` or `.get_mut(n..m)` instead
+
+error: slicing may panic
+  --> tests/ui/indexing_slicing_slice.rs:45:6
+   |
+LL |     &x[10..][..100];
+   |      ^^^^^^^^^^^^^^
+   |
+   = help: consider using `.get(..n)`or `.get_mut(..n)` instead
+
+error: range is out of bounds
+  --> tests/ui/indexing_slicing_slice.rs:45:8
+   |
+LL |     &x[10..][..100];
+   |        ^^
+
+error: slicing may panic
+  --> tests/ui/indexing_slicing_slice.rs:48:6
+   |
+LL |     &v[10..];
+   |      ^^^^^^^
+   |
+   = help: consider using `.get(n..)` or .get_mut(n..)` instead
+
+error: slicing may panic
+  --> tests/ui/indexing_slicing_slice.rs:50:6
+   |
+LL |     &v[..100];
+   |      ^^^^^^^^
+   |
+   = help: consider using `.get(..n)`or `.get_mut(..n)` instead
+
+error: aborting due to 16 previous errors
+

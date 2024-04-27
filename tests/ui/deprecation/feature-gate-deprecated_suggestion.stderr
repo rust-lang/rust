@@ -1,0 +1,11 @@
+error: suggestions on deprecated items are unstable
+  --> $DIR/feature-gate-deprecated_suggestion.rs:5:14
+   |
+LL | #[deprecated(suggestion = "foo")]
+   |              ^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(deprecated_suggestion)]` to the crate root
+   = note: see #94785 for more details
+
+error: aborting due to 1 previous error
+

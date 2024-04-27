@@ -1,0 +1,9 @@
+error[E0412]: cannot find type `UnknownStruct` in this scope
+  --> $DIR/unknown_adt.rs:2:12
+   |
+LL |     let _: UnknownStruct<7>;
+   |            ^^^^^^^^^^^^^ not found in this scope
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0412`.

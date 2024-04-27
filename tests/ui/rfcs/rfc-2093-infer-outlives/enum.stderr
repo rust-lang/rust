@@ -1,0 +1,26 @@
+error: rustc_outlives
+  --> $DIR/enum.rs:7:1
+   |
+LL | enum Foo<'a, T> {
+   | ^^^^^^^^^^^^^^^
+   |
+   = note: T: 'a
+
+error: rustc_outlives
+  --> $DIR/enum.rs:13:1
+   |
+LL | struct Bar<'b, U> {
+   | ^^^^^^^^^^^^^^^^^
+   |
+   = note: U: 'b
+
+error: rustc_outlives
+  --> $DIR/enum.rs:19:1
+   |
+LL | enum Ying<'c, K> {
+   | ^^^^^^^^^^^^^^^^
+   |
+   = note: K: 'c
+
+error: aborting due to 3 previous errors
+

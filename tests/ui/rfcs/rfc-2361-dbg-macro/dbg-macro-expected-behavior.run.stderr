@@ -1,0 +1,28 @@
+[$DIR/dbg-macro-expected-behavior.rs:22:19] Unit = Unit
+[$DIR/dbg-macro-expected-behavior.rs:23:19] a = Unit
+[$DIR/dbg-macro-expected-behavior.rs:29:24] Point { x: 42, y: 24 } = Point {
+    x: 42,
+    y: 24,
+}
+[$DIR/dbg-macro-expected-behavior.rs:30:24] b = Point {
+    x: 42,
+    y: 24,
+}
+[$DIR/dbg-macro-expected-behavior.rs:38:17]
+[$DIR/dbg-macro-expected-behavior.rs:42:27] &a = NoCopy(
+    1337,
+)
+[$DIR/dbg-macro-expected-behavior.rs:42:22] dbg!(&a) = NoCopy(
+    1337,
+)
+[$DIR/dbg-macro-expected-behavior.rs:47:18] f(&42) = 42
+before
+[$DIR/dbg-macro-expected-behavior.rs:52:22] { foo += 1; eprintln!("before"); 7331 } = 7331
+[$DIR/dbg-macro-expected-behavior.rs:60:27] ("Yeah",) = (
+    "Yeah",
+)
+[$DIR/dbg-macro-expected-behavior.rs:63:29] 1 = 1
+[$DIR/dbg-macro-expected-behavior.rs:63:29] 2 = 2
+[$DIR/dbg-macro-expected-behavior.rs:67:37] 1u8 = 1
+[$DIR/dbg-macro-expected-behavior.rs:67:37] 2u32 = 2
+[$DIR/dbg-macro-expected-behavior.rs:67:37] "Yeah" = "Yeah"

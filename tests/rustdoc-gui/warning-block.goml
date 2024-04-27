@@ -1,0 +1,55 @@
+// Test to check that the "warning blocks" are displayed as expected.
+include: "utils.goml"
+go-to: "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html"
+show-text: true
+
+store-value: (default_y_pos, 5)
+define-function: (
+    "check-warning",
+    [theme, color, border_color],
+    block {
+        call-function: ("switch-theme", {"theme": |theme|})
+
+        // The IDs are added directly into the DOM to make writing this test easier.
+        assert-css: ("#doc-warning-1", {
+            "margin-bottom": "12px",
+            "color": |color|,
+            "border-left": "2px solid " + |border_color|,
+            "background-color": "transparent",
+        })
+        store-position: ("#doc-warning-1", {"y": warn_div_y})
+        store-position: ("#doc-warning-1::before", {"y": warn_y})
+        assert: |warn_y| == |warn_div_y| + |default_y_pos|
+        assert-css: ("#doc-warning-2", {
+            "margin-bottom": "0px",
+            "color": |color|,
+            "border-left": "2px solid " + |border_color|,
+            "background-color": "transparent",
+        })
+        store-position: ("#doc-warning-2", {"y": warn_div_y})
+        store-position: ("#doc-warning-2::before", {"y": warn_y})
+        assert: |warn_y| == |warn_div_y| + |default_y_pos|
+    },
+)
+
+call-function: ("check-warning", {
+    "theme": "ayu",
+    "color": "#c5c5c5",
+    "border_color": "#ff8e00",
+})
+call-function: ("check-warning", {
+    "theme": "dark",
+    "color": "#ddd",
+    "border_color": "#ff8e00",
+})
+call-function: ("check-warning", {
+    "theme": "light",
+    "color": "black",
+    "border_color": "#ff8e00",
+})
+
+// We ensure that the warning element in the top doc is not overlaying the "[-]" button.
+go-to: "file://" + |DOC_PATH| + "/test_docs/struct.WarningStruct.html"
+store-position: ("#doc-warning-0", {"y": warn_div_y})
+store-position: ("#doc-warning-0::before", {"y": warn_y})
+assert: |warn_y| == |warn_div_y| + |default_y_pos| + 15

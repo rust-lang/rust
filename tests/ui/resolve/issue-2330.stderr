@@ -1,0 +1,9 @@
+error[E0404]: expected trait, found enum `Chan`
+  --> $DIR/issue-2330.rs:8:6
+   |
+LL | impl Chan for isize {
+   |      ^^^^ not a trait
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0404`.

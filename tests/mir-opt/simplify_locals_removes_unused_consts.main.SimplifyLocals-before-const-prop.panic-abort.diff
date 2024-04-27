@@ -1,0 +1,86 @@
+- // MIR for `main` before SimplifyLocals-before-const-prop
++ // MIR for `main` after SimplifyLocals-before-const-prop
+  
+  fn main() -> () {
+      let mut _0: ();
+-     let mut _1: ((), ());
+-     let mut _2: ();
++     let _1: ();
++     let mut _2: ((), ());
+      let mut _3: ();
+-     let _4: ();
+-     let mut _5: ((), ());
+-     let mut _6: ();
+-     let mut _7: ();
+-     let _8: ();
+-     let mut _9: u8;
+-     let mut _10: u8;
+-     let mut _11: Temp;
++     let mut _4: ();
++     let _5: ();
++     let mut _6: u8;
++     let mut _7: u8;
++     let mut _8: Temp;
+      scope 1 {
+      }
+  
+      bb0: {
+          StorageLive(_1);
+          StorageLive(_2);
+-         _2 = ();
+          StorageLive(_3);
+          _3 = ();
+-         _1 = (move _2, move _3);
++         StorageLive(_4);
++         _4 = ();
++         _2 = (move _3, move _4);
++         StorageDead(_4);
+          StorageDead(_3);
++         _1 = use_zst(move _2) -> [return: bb1, unwind unreachable];
++     }
++ 
++     bb1: {
+          StorageDead(_2);
+          StorageDead(_1);
+-         StorageLive(_4);
+          StorageLive(_5);
+          StorageLive(_6);
+-         _6 = ();
+          StorageLive(_7);
+-         _7 = ();
+-         _5 = (move _6, move _7);
++         StorageLive(_8);
++         _8 = Temp { x: const 40_u8 };
++         _7 = (_8.0: u8);
++         _6 = Add(move _7, const 2_u8);
+          StorageDead(_7);
+-         StorageDead(_6);
+-         _4 = use_zst(move _5) -> [return: bb1, unwind unreachable];
++         _5 = use_u8(move _6) -> [return: bb2, unwind unreachable];
+      }
+  
+-     bb1: {
+-         StorageDead(_5);
+-         StorageDead(_4);
+-         StorageLive(_8);
+-         StorageLive(_9);
+-         StorageLive(_10);
+-         StorageLive(_11);
+-         _11 = Temp { x: const 40_u8 };
+-         _10 = (_11.0: u8);
+-         _9 = Add(move _10, const 2_u8);
+-         StorageDead(_10);
+-         _8 = use_u8(move _9) -> [return: bb2, unwind unreachable];
+-     }
+- 
+      bb2: {
+-         StorageDead(_9);
+-         StorageDead(_11);
++         StorageDead(_6);
+          StorageDead(_8);
++         StorageDead(_5);
+          _0 = const ();
+          return;
+      }
+  }
+  

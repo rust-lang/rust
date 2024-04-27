@@ -1,0 +1,77 @@
+- // MIR for `norm2` before InstSimplify
++ // MIR for `norm2` after InstSimplify
+  
+  fn norm2(_1: [f32; 2]) -> f32 {
+      debug x => _1;
+      let mut _0: f32;
+      let _2: f32;
+      let _3: usize;
+      let mut _4: usize;
+      let mut _5: bool;
+      let _7: usize;
+      let mut _8: usize;
+      let mut _9: bool;
+      let mut _10: f32;
+      let mut _11: f32;
+      let mut _12: f32;
+      let mut _13: f32;
+      let mut _14: f32;
+      let mut _15: f32;
+      scope 1 {
+          debug a => _2;
+          let _6: f32;
+          scope 2 {
+              debug b => _6;
+          }
+      }
+  
+      bb0: {
+          StorageLive(_2);
+          StorageLive(_3);
+          _3 = const 0_usize;
+-         _4 = Len(_1);
++         _4 = const 2_usize;
+          _5 = Lt(_3, _4);
+          assert(move _5, "index out of bounds: the length is {} but the index is {}", move _4, _3) -> [success: bb1, unwind unreachable];
+      }
+  
+      bb1: {
+          _2 = _1[_3];
+          StorageDead(_3);
+          StorageLive(_6);
+          StorageLive(_7);
+          _7 = const 1_usize;
+-         _8 = Len(_1);
++         _8 = const 2_usize;
+          _9 = Lt(_7, _8);
+          assert(move _9, "index out of bounds: the length is {} but the index is {}", move _8, _7) -> [success: bb2, unwind unreachable];
+      }
+  
+      bb2: {
+          _6 = _1[_7];
+          StorageDead(_7);
+          StorageLive(_10);
+          StorageLive(_11);
+          _11 = _2;
+          StorageLive(_12);
+          _12 = _2;
+          _10 = Mul(move _11, move _12);
+          StorageDead(_12);
+          StorageDead(_11);
+          StorageLive(_13);
+          StorageLive(_14);
+          _14 = _6;
+          StorageLive(_15);
+          _15 = _6;
+          _13 = Mul(move _14, move _15);
+          StorageDead(_15);
+          StorageDead(_14);
+          _0 = Add(move _10, move _13);
+          StorageDead(_13);
+          StorageDead(_10);
+          StorageDead(_6);
+          StorageDead(_2);
+          return;
+      }
+  }
+  

@@ -1,0 +1,48 @@
+error: Rust has no ternary operator
+  --> $DIR/ternary_operator.rs:2:19
+   |
+LL |     let x = 5 > 2 ? true : false;
+   |                   ^^^^^^^^^^^^^^^
+   |
+   = help: use an `if-else` expression instead
+
+error: Rust has no ternary operator
+  --> $DIR/ternary_operator.rs:8:19
+   |
+LL |     let x = 5 > 2 ? { true } : { false };
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: use an `if-else` expression instead
+
+error: Rust has no ternary operator
+  --> $DIR/ternary_operator.rs:14:19
+   |
+LL |     let x = 5 > 2 ? f32::MAX : f32::MIN;
+   |                   ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: use an `if-else` expression instead
+
+error: expected one of `.`, `;`, `?`, `}`, or an operator, found keyword `return`
+  --> $DIR/ternary_operator.rs:21:9
+   |
+LL |     v ? return;
+   |         ^^^^^^ expected one of `.`, `;`, `?`, `}`, or an operator
+
+error: expected one of `.`, `;`, `?`, `else`, or an operator, found `:`
+  --> $DIR/ternary_operator.rs:26:37
+   |
+LL |     let x = 5 > 2 ? { let x = vec![]: Vec<u16>; x } : { false };
+   |                                     ^ expected one of `.`, `;`, `?`, `else`, or an operator
+   |
+   = note: type ascription syntax has been removed, see issue #101728 <https://github.com/rust-lang/rust/issues/101728>
+
+error: Rust has no ternary operator
+  --> $DIR/ternary_operator.rs:26:19
+   |
+LL |     let x = 5 > 2 ? { let x = vec![]: Vec<u16>; x } : { false };
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: use an `if-else` expression instead
+
+error: aborting due to 6 previous errors
+

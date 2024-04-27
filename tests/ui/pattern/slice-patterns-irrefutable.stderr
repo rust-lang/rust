@@ -1,0 +1,17 @@
+error[E0282]: type annotations needed for `[_; 3]`
+  --> $DIR/slice-patterns-irrefutable.rs:43:9
+   |
+LL |     let b;
+   |         ^
+LL |
+LL |     [a, b] = Default::default();
+   |      - type must be known at this point
+   |
+help: consider giving `b` an explicit type, where the placeholders `_` are specified
+   |
+LL |     let b: [_; 3];
+   |          ++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0282`.

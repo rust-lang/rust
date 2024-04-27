@@ -1,0 +1,26 @@
+error: `#[doc(keyword = "...")]` should be used on empty modules
+  --> $DIR/doc_keyword.rs:6:7
+   |
+LL | #[doc(keyword = "hell")]
+   |       ^^^^^^^^^^^^^^^^
+
+error: `#[doc(keyword = "...")]` should be used on modules
+  --> $DIR/doc_keyword.rs:11:7
+   |
+LL | #[doc(keyword = "hall")]
+   |       ^^^^^^^^^^^^^^^^
+
+error: `#[doc(keyword = "...")]` should be used on modules
+  --> $DIR/doc_keyword.rs:17:11
+   |
+LL |     #[doc(keyword = "match")]
+   |           ^^^^^^^^^^^^^^^^^
+
+error: `#![doc(keyword = "...")]` isn't allowed as a crate-level attribute
+  --> $DIR/doc_keyword.rs:4:8
+   |
+LL | #![doc(keyword = "hello")]
+   |        ^^^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+

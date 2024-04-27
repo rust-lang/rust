@@ -1,0 +1,30 @@
+error[E0726]: implicit elided lifetime not allowed here
+  --> $DIR/return-not-existing-pair.rs:9:20
+   |
+LL | impl<'a, 'b, T, U> MyTrait<T> for U {
+   |                    ^^^^^^^^^^ expected lifetime parameters
+   |
+help: indicate the anonymous lifetimes
+   |
+LL | impl<'a, 'b, T, U> MyTrait<'_, '_, T> for U {
+   |                            +++++++
+
+error[E0412]: cannot find type `ConnImpl` in this scope
+  --> $DIR/return-not-existing-pair.rs:5:48
+   |
+LL |     async fn foo(&'a self, key: &'b T) -> (&'a ConnImpl, &'b T);
+   |                                                ^^^^^^^^ not found in this scope
+
+error[E0308]: mismatched types
+  --> $DIR/return-not-existing-pair.rs:11:42
+   |
+LL |     async fn foo(_: T) -> (&'a U, &'b T) {}
+   |                                          ^^ expected `(&U, &T)`, found `()`
+   |
+   = note:  expected tuple `(&'a U, &'b T)`
+           found unit type `()`
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0308, E0412, E0726.
+For more information about an error, try `rustc --explain E0308`.

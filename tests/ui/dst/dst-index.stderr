@@ -1,0 +1,28 @@
+error[E0161]: cannot move a value of type `str`
+  --> $DIR/dst-index.rs:31:5
+   |
+LL |     S[0];
+   |     ^^^^ the size of `str` cannot be statically determined
+
+error[E0161]: cannot move a value of type `dyn Debug`
+  --> $DIR/dst-index.rs:34:5
+   |
+LL |     T[0];
+   |     ^^^^ the size of `dyn Debug` cannot be statically determined
+
+error[E0507]: cannot move out of index of `S`
+  --> $DIR/dst-index.rs:31:5
+   |
+LL |     S[0];
+   |     ^^^^ move occurs because value has type `str`, which does not implement the `Copy` trait
+
+error[E0507]: cannot move out of index of `T`
+  --> $DIR/dst-index.rs:34:5
+   |
+LL |     T[0];
+   |     ^^^^ move occurs because value has type `dyn Debug`, which does not implement the `Copy` trait
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0161, E0507.
+For more information about an error, try `rustc --explain E0161`.

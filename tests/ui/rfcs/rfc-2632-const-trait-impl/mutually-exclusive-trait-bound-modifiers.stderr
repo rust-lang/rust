@@ -1,0 +1,38 @@
+error: `~const` and `?` are mutually exclusive
+  --> $DIR/mutually-exclusive-trait-bound-modifiers.rs:3:31
+   |
+LL | const fn maybe_const_maybe<T: ~const ?Sized>() {}
+   |                               ^^^^^^^^^^^^^
+
+error: `const` and `?` are mutually exclusive
+  --> $DIR/mutually-exclusive-trait-bound-modifiers.rs:6:19
+   |
+LL | fn const_maybe<T: const ?Sized>() {}
+   |                   ^^^^^^^^^^^^
+
+error: `~const` and `!` are mutually exclusive
+  --> $DIR/mutually-exclusive-trait-bound-modifiers.rs:9:34
+   |
+LL | const fn maybe_const_negative<T: ~const !Trait>() {}
+   |                                  ^^^^^^^^^^^^^
+
+error: `const` and `!` are mutually exclusive
+  --> $DIR/mutually-exclusive-trait-bound-modifiers.rs:13:22
+   |
+LL | fn const_negative<T: const !Trait>() {}
+   |                      ^^^^^^^^^^^^
+
+error: negative bounds are not supported
+  --> $DIR/mutually-exclusive-trait-bound-modifiers.rs:9:41
+   |
+LL | const fn maybe_const_negative<T: ~const !Trait>() {}
+   |                                         ^
+
+error: negative bounds are not supported
+  --> $DIR/mutually-exclusive-trait-bound-modifiers.rs:13:28
+   |
+LL | fn const_negative<T: const !Trait>() {}
+   |                            ^
+
+error: aborting due to 6 previous errors
+

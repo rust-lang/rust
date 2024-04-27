@@ -1,0 +1,17 @@
+// MIR for `slice_index_range` after PreCodegen
+
+fn slice_index_range(_1: &[u32], _2: std::ops::Range<usize>) -> &[u32] {
+    debug slice => _1;
+    debug index => _2;
+    let mut _0: &[u32];
+    scope 1 (inlined #[track_caller] core::slice::index::<impl Index<std::ops::Range<usize>> for [u32]>::index) {
+    }
+
+    bb0: {
+        _0 = <std::ops::Range<usize> as SliceIndex<[u32]>>::index(move _2, move _1) -> [return: bb1, unwind continue];
+    }
+
+    bb1: {
+        return;
+    }
+}

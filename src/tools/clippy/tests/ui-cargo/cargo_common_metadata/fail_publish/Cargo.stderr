@@ -1,0 +1,16 @@
+error: package `cargo_common_metadata_fail_publish` is missing `package.description` metadata
+  |
+  = note: `-D clippy::cargo-common-metadata` implied by `-D warnings`
+  = help: to override `-D warnings` add `#[allow(clippy::cargo_common_metadata)]`
+
+error: package `cargo_common_metadata_fail_publish` is missing `either package.license or package.license_file` metadata
+
+error: package `cargo_common_metadata_fail_publish` is missing `package.repository` metadata
+
+error: package `cargo_common_metadata_fail_publish` is missing `package.readme` metadata
+
+error: package `cargo_common_metadata_fail_publish` is missing `package.keywords` metadata
+
+error: package `cargo_common_metadata_fail_publish` is missing `package.categories` metadata
+
+error: could not compile `cargo_common_metadata_fail_publish` (bin "cargo_common_metadata_fail_publish") due to 6 previous errors

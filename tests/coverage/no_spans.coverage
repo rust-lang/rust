@@ -1,0 +1,30 @@
+   LL|       |#![feature(coverage_attribute)]
+   LL|       |//@ edition: 2021
+   LL|       |
+   LL|       |// If the span extractor can't find any relevant spans for a function, the
+   LL|       |// refinement loop will terminate with nothing in its `prev` slot. If the
+   LL|       |// subsequent code tries to unwrap `prev`, it will panic.
+   LL|       |//
+   LL|       |// This scenario became more likely after #118525 started discarding spans that
+   LL|       |// can't be un-expanded back to within the function body.
+   LL|       |//
+   LL|       |// Regression test for "invalid attempt to unwrap a None some_prev", as seen
+   LL|       |// in issues such as #118643 and #118662.
+   LL|       |
+   LL|       |#[coverage(off)]
+   LL|       |fn main() {
+   LL|       |    affected_function()();
+   LL|       |}
+   LL|       |
+   LL|       |macro_rules! macro_that_defines_a_function {
+   LL|       |    (fn $name:ident () $body:tt) => {
+   LL|       |        fn $name () -> impl Fn() $body
+   LL|       |    }
+   LL|       |}
+   LL|       |
+   LL|       |macro_that_defines_a_function! {
+   LL|      1|    fn affected_function() {
+   LL|      1|        || ()
+   LL|       |    }
+   LL|       |}
+

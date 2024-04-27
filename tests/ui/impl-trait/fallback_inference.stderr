@@ -1,0 +1,14 @@
+error[E0282]: type annotations needed
+  --> $DIR/fallback_inference.rs:4:5
+   |
+LL |     PhantomData
+   |     ^^^^^^^^^^^ cannot infer type of the type parameter `T` declared on the struct `PhantomData`
+   |
+help: consider specifying the generic argument
+   |
+LL |     PhantomData::<T>
+   |                +++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0282`.

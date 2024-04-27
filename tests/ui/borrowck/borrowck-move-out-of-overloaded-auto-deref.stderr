@@ -1,0 +1,22 @@
+error[E0507]: cannot move out of an `Rc`
+  --> $DIR/borrowck-move-out-of-overloaded-auto-deref.rs:5:14
+   |
+LL |     let _x = Rc::new(vec![1, 2]).into_iter();
+   |              ^^^^^^^^^^^^^^^^^^^ ----------- value moved due to this method call
+   |              |
+   |              move occurs because value has type `Vec<i32>`, which does not implement the `Copy` trait
+   |
+note: `into_iter` takes ownership of the receiver `self`, which moves value
+  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
+help: you can `clone` the value and consume it, but this might not be your desired behavior
+   |
+LL |     let _x = <Vec<i32> as Clone>::clone(&Rc::new(vec![1, 2])).into_iter();
+   |              ++++++++++++++++++++++++++++                   +
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     let _x = Rc::new(vec![1, 2]).clone().into_iter();
+   |                                 ++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0507`.

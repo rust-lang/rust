@@ -1,0 +1,11 @@
+error: bit mask could be simplified with a call to `trailing_zeros`
+  --> tests/ui-toml/verbose_bit_mask/verbose_bit_mask.rs:5:13
+   |
+LL |     let _ = v & 0b111111 == 0;
+   |             ^^^^^^^^^^^^^^^^^ help: try: `v.trailing_zeros() >= 6`
+   |
+   = note: `-D clippy::verbose-bit-mask` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::verbose_bit_mask)]`
+
+error: aborting due to 1 previous error
+

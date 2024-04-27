@@ -1,0 +1,9 @@
+error[E0596]: cannot borrow data in a `&` reference as mutable
+  --> $DIR/issue-52240.rs:9:27
+   |
+LL |     if let (Some(Foo::Bar(ref mut val)), _) = (&arr.get(0), 0) {
+   |                           ^^^^^^^^^^^ cannot borrow as mutable
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0596`.

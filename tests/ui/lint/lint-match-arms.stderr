@@ -1,0 +1,14 @@
+error: unused variable: `y`
+  --> $DIR/lint-match-arms.rs:5:9
+   |
+LL |         y => (),
+   |         ^ help: if this is intentional, prefix it with an underscore: `_y`
+   |
+note: the lint level is defined here
+  --> $DIR/lint-match-arms.rs:3:16
+   |
+LL |         #[deny(unused_variables)]
+   |                ^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,237 @@
+// MIR for `variant_a::{closure#0}` after PreCodegen
+
+fn variant_a::{closure#0}(_1: &mut {closure@$DIR/slice_filter.rs:7:25: 7:39}, _2: &&(usize, usize, usize, usize)) -> bool {
+    let mut _0: bool;
+    let mut _3: &(usize, usize, usize, usize);
+    let _4: &usize;
+    let _5: &usize;
+    let _6: &usize;
+    let _7: &usize;
+    let mut _8: &&usize;
+    let _9: &usize;
+    let mut _10: &&usize;
+    let mut _15: bool;
+    let mut _16: &&usize;
+    let _17: &usize;
+    let mut _18: &&usize;
+    let mut _23: bool;
+    let mut _24: &&usize;
+    let _25: &usize;
+    let mut _26: &&usize;
+    let mut _31: bool;
+    let mut _32: &&usize;
+    let _33: &usize;
+    let mut _34: &&usize;
+    scope 1 {
+        debug a => _4;
+        debug b => _5;
+        debug c => _6;
+        debug d => _7;
+        scope 2 (inlined std::cmp::impls::<impl PartialOrd for &usize>::le) {
+            debug self => _8;
+            debug other => _10;
+            let mut _11: &usize;
+            let mut _12: &usize;
+            scope 3 (inlined std::cmp::impls::<impl PartialOrd for usize>::le) {
+                debug self => _11;
+                debug other => _12;
+                let mut _13: usize;
+                let mut _14: usize;
+            }
+        }
+        scope 4 (inlined std::cmp::impls::<impl PartialOrd for &usize>::le) {
+            debug self => _16;
+            debug other => _18;
+            let mut _19: &usize;
+            let mut _20: &usize;
+            scope 5 (inlined std::cmp::impls::<impl PartialOrd for usize>::le) {
+                debug self => _19;
+                debug other => _20;
+                let mut _21: usize;
+                let mut _22: usize;
+            }
+        }
+        scope 6 (inlined std::cmp::impls::<impl PartialOrd for &usize>::le) {
+            debug self => _24;
+            debug other => _26;
+            let mut _27: &usize;
+            let mut _28: &usize;
+            scope 7 (inlined std::cmp::impls::<impl PartialOrd for usize>::le) {
+                debug self => _27;
+                debug other => _28;
+                let mut _29: usize;
+                let mut _30: usize;
+            }
+        }
+        scope 8 (inlined std::cmp::impls::<impl PartialOrd for &usize>::le) {
+            debug self => _32;
+            debug other => _34;
+            let mut _35: &usize;
+            let mut _36: &usize;
+            scope 9 (inlined std::cmp::impls::<impl PartialOrd for usize>::le) {
+                debug self => _35;
+                debug other => _36;
+                let mut _37: usize;
+                let mut _38: usize;
+            }
+        }
+    }
+
+    bb0: {
+        StorageLive(_4);
+        _3 = (*_2);
+        _4 = &((*_3).0: usize);
+        StorageLive(_5);
+        _5 = &((*_3).1: usize);
+        StorageLive(_6);
+        _6 = &((*_3).2: usize);
+        StorageLive(_7);
+        _7 = &((*_3).3: usize);
+        StorageLive(_15);
+        StorageLive(_8);
+        _8 = &_4;
+        StorageLive(_10);
+        StorageLive(_9);
+        _9 = _6;
+        _10 = &_9;
+        StorageLive(_11);
+        StorageLive(_12);
+        _11 = _4;
+        _12 = _9;
+        StorageLive(_13);
+        _13 = (*_11);
+        StorageLive(_14);
+        _14 = (*_12);
+        _15 = Le(move _13, move _14);
+        StorageDead(_14);
+        StorageDead(_13);
+        StorageDead(_12);
+        StorageDead(_11);
+        switchInt(move _15) -> [0: bb1, otherwise: bb2];
+    }
+
+    bb1: {
+        StorageDead(_9);
+        StorageDead(_10);
+        StorageDead(_8);
+        goto -> bb4;
+    }
+
+    bb2: {
+        StorageDead(_9);
+        StorageDead(_10);
+        StorageDead(_8);
+        StorageLive(_23);
+        StorageLive(_16);
+        _16 = &_7;
+        StorageLive(_18);
+        StorageLive(_17);
+        _17 = _5;
+        _18 = &_17;
+        StorageLive(_19);
+        StorageLive(_20);
+        _19 = _7;
+        _20 = _17;
+        StorageLive(_21);
+        _21 = (*_19);
+        StorageLive(_22);
+        _22 = (*_20);
+        _23 = Le(move _21, move _22);
+        StorageDead(_22);
+        StorageDead(_21);
+        StorageDead(_20);
+        StorageDead(_19);
+        switchInt(move _23) -> [0: bb3, otherwise: bb8];
+    }
+
+    bb3: {
+        StorageDead(_17);
+        StorageDead(_18);
+        StorageDead(_16);
+        goto -> bb4;
+    }
+
+    bb4: {
+        StorageLive(_31);
+        StorageLive(_24);
+        _24 = &_6;
+        StorageLive(_26);
+        StorageLive(_25);
+        _25 = _4;
+        _26 = &_25;
+        StorageLive(_27);
+        StorageLive(_28);
+        _27 = _6;
+        _28 = _25;
+        StorageLive(_29);
+        _29 = (*_27);
+        StorageLive(_30);
+        _30 = (*_28);
+        _31 = Le(move _29, move _30);
+        StorageDead(_30);
+        StorageDead(_29);
+        StorageDead(_28);
+        StorageDead(_27);
+        switchInt(move _31) -> [0: bb5, otherwise: bb6];
+    }
+
+    bb5: {
+        StorageDead(_25);
+        StorageDead(_26);
+        StorageDead(_24);
+        _0 = const false;
+        goto -> bb7;
+    }
+
+    bb6: {
+        StorageDead(_25);
+        StorageDead(_26);
+        StorageDead(_24);
+        StorageLive(_32);
+        _32 = &_5;
+        StorageLive(_34);
+        StorageLive(_33);
+        _33 = _7;
+        _34 = &_33;
+        StorageLive(_35);
+        StorageLive(_36);
+        _35 = _5;
+        _36 = _33;
+        StorageLive(_37);
+        _37 = (*_35);
+        StorageLive(_38);
+        _38 = (*_36);
+        _0 = Le(move _37, move _38);
+        StorageDead(_38);
+        StorageDead(_37);
+        StorageDead(_36);
+        StorageDead(_35);
+        StorageDead(_33);
+        StorageDead(_34);
+        StorageDead(_32);
+        goto -> bb7;
+    }
+
+    bb7: {
+        StorageDead(_31);
+        goto -> bb9;
+    }
+
+    bb8: {
+        StorageDead(_17);
+        StorageDead(_18);
+        StorageDead(_16);
+        _0 = const true;
+        goto -> bb9;
+    }
+
+    bb9: {
+        StorageDead(_23);
+        StorageDead(_15);
+        StorageDead(_7);
+        StorageDead(_6);
+        StorageDead(_5);
+        StorageDead(_4);
+        return;
+    }
+}

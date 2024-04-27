@@ -1,0 +1,14 @@
+error: lifetime may not live long enough
+  --> $DIR/regions-infer-invariance-due-to-decl.rs:12:5
+   |
+LL | fn to_longer_lifetime<'r>(b_isize: Invariant<'r>) -> Invariant<'static> {
+   |                       -- lifetime `'r` defined here
+LL |     b_isize
+   |     ^^^^^^^ returning this value requires that `'r` must outlive `'static`
+   |
+   = note: requirement occurs because of the type `Invariant<'_>`, which makes the generic argument `'_` invariant
+   = note: the struct `Invariant<'a>` is invariant over the parameter `'a`
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,30 @@
+error[E0515]: cannot return value referencing local variable `vec`
+  --> $DIR/borrowck-vec-pattern-element-loan.rs:8:5
+   |
+LL |     let vec: &[isize] = &vec;
+   |                         ---- `vec` is borrowed here
+...
+LL |     tail
+   |     ^^^^ returns a value referencing data owned by the current function
+
+error[E0515]: cannot return value referencing local variable `vec`
+  --> $DIR/borrowck-vec-pattern-element-loan.rs:18:5
+   |
+LL |     let vec: &[isize] = &vec;
+   |                         ---- `vec` is borrowed here
+...
+LL |     init
+   |     ^^^^ returns a value referencing data owned by the current function
+
+error[E0515]: cannot return value referencing local variable `vec`
+  --> $DIR/borrowck-vec-pattern-element-loan.rs:28:5
+   |
+LL |     let vec: &[isize] = &vec;
+   |                         ---- `vec` is borrowed here
+...
+LL |     slice
+   |     ^^^^^ returns a value referencing data owned by the current function
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0515`.

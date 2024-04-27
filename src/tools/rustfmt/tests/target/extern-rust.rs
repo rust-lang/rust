@@ -1,0 +1,1 @@
+extern "Rust" fn uwu() {}

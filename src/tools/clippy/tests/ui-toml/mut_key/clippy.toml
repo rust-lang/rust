@@ -1,0 +1,1 @@
+ignore-interior-mutability = ["mut_key::Counted"]

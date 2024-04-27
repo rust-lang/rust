@@ -1,0 +1,69 @@
+error: ambiguous `+` in a type
+  --> $DIR/impl-trait-plus-priority.rs:23:18
+   |
+LL | type A = fn() -> impl A +;
+   |                  ^^^^^^^^ help: use parentheses to disambiguate: `(impl A)`
+
+error: ambiguous `+` in a type
+  --> $DIR/impl-trait-plus-priority.rs:25:18
+   |
+LL | type A = fn() -> impl A + B;
+   |                  ^^^^^^^^^^ help: use parentheses to disambiguate: `(impl A + B)`
+
+error: ambiguous `+` in a type
+  --> $DIR/impl-trait-plus-priority.rs:27:18
+   |
+LL | type A = fn() -> dyn A + B;
+   |                  ^^^^^^^^^ help: use parentheses to disambiguate: `(dyn A + B)`
+
+error[E0178]: expected a path on the left-hand side of `+`, not `fn() -> A`
+  --> $DIR/impl-trait-plus-priority.rs:29:10
+   |
+LL | type A = fn() -> A + B;
+   |          ^^^^^^^^^^^^^ perhaps you forgot parentheses?
+
+error: ambiguous `+` in a type
+  --> $DIR/impl-trait-plus-priority.rs:32:18
+   |
+LL | type A = Fn() -> impl A +;
+   |                  ^^^^^^^^ help: use parentheses to disambiguate: `(impl A)`
+
+error: ambiguous `+` in a type
+  --> $DIR/impl-trait-plus-priority.rs:34:18
+   |
+LL | type A = Fn() -> impl A + B;
+   |                  ^^^^^^^^^^ help: use parentheses to disambiguate: `(impl A + B)`
+
+error: ambiguous `+` in a type
+  --> $DIR/impl-trait-plus-priority.rs:36:18
+   |
+LL | type A = Fn() -> dyn A + B;
+   |                  ^^^^^^^^^ help: use parentheses to disambiguate: `(dyn A + B)`
+
+error: ambiguous `+` in a type
+  --> $DIR/impl-trait-plus-priority.rs:40:11
+   |
+LL | type A = &impl A +;
+   |           ^^^^^^^^ help: use parentheses to disambiguate: `(impl A)`
+
+error: ambiguous `+` in a type
+  --> $DIR/impl-trait-plus-priority.rs:42:11
+   |
+LL | type A = &impl A + B;
+   |           ^^^^^^^^^^ help: use parentheses to disambiguate: `(impl A + B)`
+
+error: ambiguous `+` in a type
+  --> $DIR/impl-trait-plus-priority.rs:44:11
+   |
+LL | type A = &dyn A + B;
+   |           ^^^^^^^^^ help: use parentheses to disambiguate: `(dyn A + B)`
+
+error[E0178]: expected a path on the left-hand side of `+`, not `&A`
+  --> $DIR/impl-trait-plus-priority.rs:46:10
+   |
+LL | type A = &A + B;
+   |          ^^^^^^ help: try adding parentheses: `&(A + B)`
+
+error: aborting due to 11 previous errors
+
+For more information about this error, try `rustc --explain E0178`.

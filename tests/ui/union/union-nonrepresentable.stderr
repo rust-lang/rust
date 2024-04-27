@@ -1,0 +1,17 @@
+error[E0072]: recursive type `U` has infinite size
+  --> $DIR/union-nonrepresentable.rs:1:1
+   |
+LL | union U {
+   | ^^^^^^^
+LL |     a: u8,
+LL |     b: std::mem::ManuallyDrop<U>,
+   |                               - recursive without indirection
+   |
+help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to break the cycle
+   |
+LL |     b: std::mem::ManuallyDrop<Box<U>>,
+   |                               ++++ +
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0072`.

@@ -1,0 +1,30 @@
+error[E0596]: cannot borrow `sm.x` as mutable, as it is behind a `&` reference
+  --> $DIR/accidentally-cloning-ref-borrow-error.rs:32:9
+   |
+LL |     foo(&mut sm.x);
+   |         ^^^^^^^^^ `sm` is a `&` reference, so the data it refers to cannot be borrowed as mutable
+   |
+help: `Str` doesn't implement `Clone`, so this call clones the reference `&Str`
+  --> $DIR/accidentally-cloning-ref-borrow-error.rs:31:21
+   |
+LL |     let mut sm = sr.clone();
+   |                     ^^^^^^^
+help: consider annotating `Str` with `#[derive(Clone)]`
+   |
+LL + #[derive(Clone)]
+LL | struct Str {
+   |
+help: consider specifying this binding's type
+   |
+LL |     let mut sm: &mut Str = sr.clone();
+   |               ++++++++++
+
+error[E0596]: cannot borrow data in a `&` reference as mutable
+  --> $DIR/accidentally-cloning-ref-borrow-error.rs:37:9
+   |
+LL |     bar(&mut xm);
+   |         ^^^^^^^ cannot borrow as mutable
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0596`.

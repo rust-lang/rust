@@ -1,0 +1,17 @@
+error: expected identifier, found keyword `self`
+  --> $DIR/bad-signatures.rs:5:23
+   |
+LL |     async fn bar(&abc self);
+   |                       ^^^^ expected identifier, found keyword
+
+error: expected one of `:`, `@`, or `|`, found keyword `self`
+  --> $DIR/bad-signatures.rs:5:23
+   |
+LL |     async fn bar(&abc self);
+   |                  -----^^^^
+   |                  |    |
+   |                  |    expected one of `:`, `@`, or `|`
+   |                  help: declare the type after the parameter binding: `<identifier>: <type>`
+
+error: aborting due to 2 previous errors
+

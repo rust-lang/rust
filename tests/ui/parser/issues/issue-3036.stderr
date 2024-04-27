@@ -1,0 +1,10 @@
+error: expected `;`, found `}`
+  --> $DIR/issue-3036.rs:6:15
+   |
+LL |     let _x = 3
+   |               ^ help: add `;` here
+LL | }
+   | - unexpected token
+
+error: aborting due to 1 previous error
+

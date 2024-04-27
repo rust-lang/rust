@@ -1,0 +1,21 @@
+error[E0220]: associated constant `Z` not found for `Foo`
+  --> $DIR/assoc-const-eq-missing.rs:14:16
+   |
+LL | fn foo1<F: Foo<Z = 3>>() {}
+   |                ^ help: there is an associated constant with a similar name: `N`
+
+error[E0220]: associated type `Z` not found for `Foo`
+  --> $DIR/assoc-const-eq-missing.rs:16:16
+   |
+LL | fn foo2<F: Foo<Z = usize>>() {}
+   |                ^ associated type `Z` not found
+
+error[E0220]: associated constant `Z` not found for `Foo`
+  --> $DIR/assoc-const-eq-missing.rs:18:16
+   |
+LL | fn foo3<F: Foo<Z = 5>>() {}
+   |                ^ help: there is an associated constant with a similar name: `N`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0220`.

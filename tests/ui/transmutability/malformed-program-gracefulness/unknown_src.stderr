@@ -1,0 +1,14 @@
+error[E0412]: cannot find type `Src` in this scope
+  --> $DIR/unknown_src.rs:18:31
+   |
+LL |     assert::is_transmutable::<Src, Dst>();
+   |                               ^^^ not found in this scope
+   |
+help: you might be missing a type parameter
+   |
+LL | fn should_gracefully_handle_unknown_src<Src>() {
+   |                                        +++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0412`.

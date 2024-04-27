@@ -1,0 +1,14 @@
+error[E0422]: cannot find struct, variant or union type `E` in this scope
+  --> $DIR/issue-17518.rs:6:5
+   |
+LL |     E { name: "foobar" };
+   |     ^ not found in this scope
+   |
+help: consider importing this variant
+   |
+LL + use SomeEnum::E;
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0422`.

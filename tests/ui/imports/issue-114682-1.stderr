@@ -1,0 +1,28 @@
+error[E0659]: `A` is ambiguous
+  --> $DIR/issue-114682-1.rs:23:5
+   |
+LL |     A!();
+   |     ^ ambiguous name
+   |
+   = note: ambiguous because of a conflict between a name from a glob import and a macro-expanded name in the same module during import or macro resolution
+note: `A` could refer to the macro defined here
+  --> $DIR/issue-114682-1.rs:7:9
+   |
+LL | /         pub macro A() {
+LL | |             println!("non import")
+LL | |         }
+   | |_________^
+...
+LL |   mac!();
+   |   ------ in this macro invocation
+note: `A` could also refer to the macro imported here
+  --> $DIR/issue-114682-1.rs:19:9
+   |
+LL | pub use m::*;
+   |         ^^^^
+   = help: consider adding an explicit import of `A` to disambiguate
+   = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0659`.

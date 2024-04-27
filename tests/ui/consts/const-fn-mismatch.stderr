@@ -1,0 +1,12 @@
+error[E0379]: functions in trait impls cannot be declared const
+  --> $DIR/const-fn-mismatch.rs:11:5
+   |
+LL |     const fn f() -> u32 {
+   |     ^^^^^-
+   |     |
+   |     functions in trait impls cannot be const
+   |     help: remove the `const`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0379`.

@@ -1,0 +1,8 @@
+error: usage of unknown attribute
+  --> tests/ui/unknown_attribute.rs:3:11
+   |
+LL | #[clippy::unknown]
+   |           ^^^^^^^
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,13 @@
+error[E0658]: the `#[no_core]` attribute is an experimental feature
+  --> $DIR/cfg-attr-crate-2.rs:6:21
+   |
+LL | #![cfg_attr(broken, no_core)]
+   |                     ^^^^^^^
+   |
+   = note: see issue #29639 <https://github.com/rust-lang/rust/issues/29639> for more information
+   = help: add `#![feature(no_core)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0658`.

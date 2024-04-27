@@ -1,0 +1,11 @@
+error[E0562]: `impl Trait` is not allowed in the type of variable bindings
+  --> $DIR/issue-58504.rs:10:16
+   |
+LL |     let gens: [impl Coroutine<Return=!, Yield=()>;2] = [ mk_gen(), mk_gen() ];
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `impl Trait` is only allowed in arguments and return types of functions and methods
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0562`.

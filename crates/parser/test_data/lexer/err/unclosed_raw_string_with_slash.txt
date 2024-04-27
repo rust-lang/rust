@@ -1,1 +1,0 @@
-STRING "r##\"\\" error: Missing trailing `"` with `#` symbols to terminate the raw string literal

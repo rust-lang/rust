@@ -1,0 +1,7 @@
+error: unwinding panics are not supported without std
+   |
+   = help: using nightly cargo, use -Zbuild-std with panic="abort" to avoid unwinding
+   = note: since the core library is usually precompiled with panic="unwind", rebuilding your crate with panic="abort" may not be enough to fix the problem
+
+error: aborting due to 1 previous error
+

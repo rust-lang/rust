@@ -1,0 +1,32 @@
+error: missing required bound on `TRef`
+  --> $DIR/issue-86787.rs:10:5
+   |
+LL |     type TRef<'a>;
+   |     ^^^^^^^^^^^^^-
+   |                  |
+   |                  help: add the required where clause: `where Self: 'a`
+   |
+   = note: this bound is currently required to ensure that impls have maximum flexibility
+   = note: we are soliciting feedback, see issue #87479 <https://github.com/rust-lang/rust/issues/87479> for more information
+
+error[E0276]: impl has stricter requirements than trait
+  --> $DIR/issue-86787.rs:25:37
+   |
+LL |     type TRef<'a>;
+   |     ------------- definition of `TRef` from trait
+...
+LL |         <Left as HasChildrenOf>::T: 'a,
+   |                                     ^^ impl has extra requirement `<Left as HasChildrenOf>::T: 'a`
+
+error[E0276]: impl has stricter requirements than trait
+  --> $DIR/issue-86787.rs:26:38
+   |
+LL |     type TRef<'a>;
+   |     ------------- definition of `TRef` from trait
+...
+LL |         <Right as HasChildrenOf>::T: 'a;
+   |                                      ^^ impl has extra requirement `<Right as HasChildrenOf>::T: 'a`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0276`.

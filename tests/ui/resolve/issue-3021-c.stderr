@@ -1,0 +1,25 @@
+error[E0401]: can't use generic parameters from outer item
+  --> $DIR/issue-3021-c.rs:4:24
+   |
+LL | fn siphash<T>() {
+   |            - type parameter from outer item
+LL |
+LL |     trait U {
+   |            - help: try introducing a local generic parameter here: `<T>`
+LL |         fn g(&self, x: T) -> T;
+   |                        ^ use of generic parameter from outer item
+
+error[E0401]: can't use generic parameters from outer item
+  --> $DIR/issue-3021-c.rs:4:30
+   |
+LL | fn siphash<T>() {
+   |            - type parameter from outer item
+LL |
+LL |     trait U {
+   |            - help: try introducing a local generic parameter here: `<T>`
+LL |         fn g(&self, x: T) -> T;
+   |                              ^ use of generic parameter from outer item
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0401`.

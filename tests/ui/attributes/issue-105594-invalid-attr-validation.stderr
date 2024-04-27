@@ -1,0 +1,26 @@
+error[E0739]: attribute should be applied to a function definition
+  --> $DIR/issue-105594-invalid-attr-validation.rs:9:1
+   |
+LL | #[track_caller]
+   | ^^^^^^^^^^^^^^^
+LL | static _A: () = ();
+   | ------------------- not a function definition
+
+error: attribute should be applied to a function definition
+  --> $DIR/issue-105594-invalid-attr-validation.rs:12:1
+   |
+LL | #[cmse_nonsecure_entry]
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+LL | static _B: () = ();
+   | ------------------- not a function definition
+
+error[E0775]: `#[cmse_nonsecure_entry]` is only valid for targets with the TrustZone-M extension
+  --> $DIR/issue-105594-invalid-attr-validation.rs:12:1
+   |
+LL | #[cmse_nonsecure_entry]
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0739, E0775.
+For more information about an error, try `rustc --explain E0739`.

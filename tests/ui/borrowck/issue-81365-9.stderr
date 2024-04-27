@@ -1,0 +1,13 @@
+error[E0506]: cannot assign to `self.container_field` because it is borrowed
+  --> $DIR/issue-81365-9.rs:21:9
+   |
+LL |         let first = &Deref::deref(self).target_field;
+   |                                   ---- `self.container_field` is borrowed here
+LL |         self.container_field = true;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ `self.container_field` is assigned to here but it was already borrowed
+LL |         first;
+   |         ----- borrow later used here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0506`.

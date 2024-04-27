@@ -1,0 +1,34 @@
+error[E0573]: expected type, found local variable `num`
+  --> $DIR/let-binding-init-expr-as-ty.rs:2:27
+   |
+LL |     let foo: i32::from_be(num);
+   |            --             ^^^ not a type
+   |            |
+   |            help: use `=` if you meant to assign
+
+error[E0214]: parenthesized type parameters may only be used with a `Fn` trait
+  --> $DIR/let-binding-init-expr-as-ty.rs:2:19
+   |
+LL |     let foo: i32::from_be(num);
+   |                   ^^^^^^^^^^^^ only `Fn` traits may use parentheses
+   |
+help: use angle brackets instead
+   |
+LL |     let foo: i32::from_be<num>;
+   |                          ~   ~
+
+error[E0223]: ambiguous associated type
+  --> $DIR/let-binding-init-expr-as-ty.rs:2:14
+   |
+LL |     let foo: i32::from_be(num);
+   |              ^^^^^^^^^^^^^^^^^
+   |
+help: if there were a trait named `Example` with associated type `from_be` implemented for `i32`, you could use the fully-qualified path
+   |
+LL |     let foo: <i32 as Example>::from_be;
+   |              ~~~~~~~~~~~~~~~~~~~~~~~~~
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0214, E0223, E0573.
+For more information about an error, try `rustc --explain E0214`.

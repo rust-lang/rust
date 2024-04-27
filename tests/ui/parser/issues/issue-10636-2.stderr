@@ -1,0 +1,13 @@
+error: mismatched closing delimiter: `}`
+  --> $DIR/issue-10636-2.rs:6:15
+   |
+LL | pub fn trace_option(option: Option<isize>) {
+   |                                            - closing delimiter possibly meant for this
+LL |     option.map(|some| 42;
+   |               ^ unclosed delimiter
+...
+LL | }
+   | ^ mismatched closing delimiter
+
+error: aborting due to 1 previous error
+

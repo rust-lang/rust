@@ -1,0 +1,9 @@
+error[E0616]: field `0` of struct `Foo` is private
+  --> $DIR/ex-E0611.rs:11:6
+   |
+LL |    y.0;
+   |      ^ private field
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0616`.

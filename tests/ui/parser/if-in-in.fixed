@@ -1,0 +1,7 @@
+//@ run-rustfix
+
+fn main() {
+    for i in 1..2 { //~ ERROR expected iterable, found keyword `in`
+        println!("{}", i);
+    }
+}

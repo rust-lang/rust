@@ -1,0 +1,66 @@
+error: functional record updates are not allowed in destructuring assignments
+  --> $DIR/note-unsupported.rs:20:17
+   |
+LL |     S { x: a, ..s } = S { x: 3, y: 4 };
+   |                 ^ help: consider removing the trailing pattern
+
+error[E0368]: binary assignment operation `+=` cannot be applied to type `({integer}, {integer})`
+  --> $DIR/note-unsupported.rs:7:5
+   |
+LL |     (a, b) += (3, 4);
+   |     ------^^^^^^^^^^
+   |     |
+   |     cannot use `+=` on type `({integer}, {integer})`
+
+error[E0067]: invalid left-hand side of assignment
+  --> $DIR/note-unsupported.rs:7:12
+   |
+LL |     (a, b) += (3, 4);
+   |     ------ ^^
+   |     |
+   |     cannot assign to this expression
+
+error[E0368]: binary assignment operation `+=` cannot be applied to type `[{integer}; 2]`
+  --> $DIR/note-unsupported.rs:11:5
+   |
+LL |     [a, b] += [3, 4];
+   |     ------^^^^^^^^^^
+   |     |
+   |     cannot use `+=` on type `[{integer}; 2]`
+
+error[E0067]: invalid left-hand side of assignment
+  --> $DIR/note-unsupported.rs:11:12
+   |
+LL |     [a, b] += [3, 4];
+   |     ------ ^^
+   |     |
+   |     cannot assign to this expression
+
+error[E0368]: binary assignment operation `+=` cannot be applied to type `S`
+  --> $DIR/note-unsupported.rs:17:5
+   |
+LL |     S { x: a, y: b } += s;
+   |     ----------------^^^^^
+   |     |
+   |     cannot use `+=` on type `S`
+   |
+note: an implementation of `AddAssign` might be missing for `S`
+  --> $DIR/note-unsupported.rs:1:1
+   |
+LL | struct S { x: u8, y: u8 }
+   | ^^^^^^^^ must implement `AddAssign`
+note: the trait `AddAssign` must be implemented
+  --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
+
+error[E0067]: invalid left-hand side of assignment
+  --> $DIR/note-unsupported.rs:17:22
+   |
+LL |     S { x: a, y: b } += s;
+   |     ---------------- ^^
+   |     |
+   |     cannot assign to this expression
+
+error: aborting due to 7 previous errors
+
+Some errors have detailed explanations: E0067, E0368.
+For more information about an error, try `rustc --explain E0067`.

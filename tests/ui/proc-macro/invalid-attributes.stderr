@@ -1,0 +1,38 @@
+error: malformed `proc_macro` attribute input
+  --> $DIR/invalid-attributes.rs:10:1
+   |
+LL | #[proc_macro = "test"]
+   | ^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[proc_macro]`
+
+error: malformed `proc_macro` attribute input
+  --> $DIR/invalid-attributes.rs:13:1
+   |
+LL | #[proc_macro()]
+   | ^^^^^^^^^^^^^^^ help: must be of the form: `#[proc_macro]`
+
+error: malformed `proc_macro` attribute input
+  --> $DIR/invalid-attributes.rs:16:1
+   |
+LL | #[proc_macro(x)]
+   | ^^^^^^^^^^^^^^^^ help: must be of the form: `#[proc_macro]`
+
+error: malformed `proc_macro_attribute` attribute input
+  --> $DIR/invalid-attributes.rs:19:1
+   |
+LL | #[proc_macro_attribute = "test"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[proc_macro_attribute]`
+
+error: malformed `proc_macro_attribute` attribute input
+  --> $DIR/invalid-attributes.rs:22:1
+   |
+LL | #[proc_macro_attribute()]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[proc_macro_attribute]`
+
+error: malformed `proc_macro_attribute` attribute input
+  --> $DIR/invalid-attributes.rs:25:1
+   |
+LL | #[proc_macro_attribute(x)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[proc_macro_attribute]`
+
+error: aborting due to 6 previous errors
+

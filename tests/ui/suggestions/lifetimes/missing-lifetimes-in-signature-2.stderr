@@ -1,0 +1,19 @@
+error[E0311]: the parameter type `T` may not live long enough
+  --> $DIR/missing-lifetimes-in-signature-2.rs:23:5
+   |
+LL |   fn func<T: Test>(_dummy: &Foo, foo: &Foo, t: T) {
+   |                                        --- the parameter type `T` must be valid for the anonymous lifetime defined here...
+LL | /     foo.bar(move |_| {
+LL | |
+LL | |         t.test();
+LL | |     });
+   | |______^ ...so that the type `T` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL | fn func<'a, T: Test + 'a>(_dummy: &Foo, foo: &Foo<'a>, t: T) {
+   |         +++         ++++                         ++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0311`.

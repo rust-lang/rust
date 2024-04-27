@@ -1,0 +1,37 @@
+error[E0283]: type annotations needed
+  --> $DIR/issue-72616.rs:22:37
+   |
+LL |         if String::from("a") == "a".try_into().unwrap() {}
+   |                              --     ^^^^^^^^
+   |                              |
+   |                              type must be known at this point
+   |
+   = note: multiple `impl`s satisfying `String: PartialEq<_>` found in the `alloc` crate:
+           - impl PartialEq for String;
+           - impl<'a, 'b> PartialEq<&'a str> for String;
+           - impl<'a, 'b> PartialEq<Cow<'a, str>> for String;
+           - impl<'a, 'b> PartialEq<str> for String;
+help: try using a fully qualified path to specify the expected types
+   |
+LL |         if String::from("a") == <&str as TryInto<T>>::try_into("a").unwrap() {}
+   |                                 +++++++++++++++++++++++++++++++   ~
+
+error[E0283]: type annotations needed
+  --> $DIR/issue-72616.rs:22:37
+   |
+LL |         if String::from("a") == "a".try_into().unwrap() {}
+   |                                     ^^^^^^^^
+   |
+   = note: multiple `impl`s satisfying `_: TryFrom<&str>` found in the following crates: `core`, `std`:
+           - impl TryFrom<&str> for std::sys_common::net::LookupHost;
+           - impl<T, U> TryFrom<U> for T
+             where U: Into<T>;
+   = note: required for `&str` to implement `TryInto<_>`
+help: try using a fully qualified path to specify the expected types
+   |
+LL |         if String::from("a") == <&str as TryInto<T>>::try_into("a").unwrap() {}
+   |                                 +++++++++++++++++++++++++++++++   ~
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0283`.

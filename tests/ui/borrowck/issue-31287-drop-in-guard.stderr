@@ -1,0 +1,35 @@
+error[E0382]: use of moved value: `a`
+  --> $DIR/issue-31287-drop-in-guard.rs:7:9
+   |
+LL |     let a = Some("...".to_owned());
+   |         - move occurs because `a` has type `Option<String>`, which does not implement the `Copy` trait
+LL |     let b = match a {
+LL |         Some(_) if { drop(a); false } => None,
+   |                           - value moved here
+LL |         x => x,
+   |         ^ value used here after move
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |         Some(_) if { drop(a.clone()); false } => None,
+   |                            ++++++++
+
+error[E0382]: use of moved value: `a`
+  --> $DIR/issue-31287-drop-in-guard.rs:13:9
+   |
+LL |     let a = Some("...".to_owned());
+   |         - move occurs because `a` has type `Option<String>`, which does not implement the `Copy` trait
+LL |     let b = match a {
+LL |         Some(_) if let Some(()) = { drop(a); None } => None,
+   |                                          - value moved here
+LL |         x => x,
+   |         ^ value used here after move
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |         Some(_) if let Some(()) = { drop(a.clone()); None } => None,
+   |                                           ++++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0382`.

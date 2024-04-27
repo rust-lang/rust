@@ -1,0 +1,23 @@
+error[E0658]: the `#[deprecated_safe]` attribute is an experimental feature
+  --> $DIR/feature-gate-deprecated_safe.rs:1:1
+   |
+LL | #[deprecated_safe(since = "TBD", note = "...")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #94978 <https://github.com/rust-lang/rust/issues/94978> for more information
+   = help: add `#![feature(deprecated_safe)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the `#[deprecated_safe]` attribute is an experimental feature
+  --> $DIR/feature-gate-deprecated_safe.rs:4:1
+   |
+LL | #[deprecated_safe(since = "TBD", note = "...")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #94978 <https://github.com/rust-lang/rust/issues/94978> for more information
+   = help: add `#![feature(deprecated_safe)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

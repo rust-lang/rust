@@ -1,0 +1,12 @@
+error[E0658]: the `#[omit_gdb_pretty_printer_section]` attribute is just used for the Rust test suite
+  --> $DIR/feature-gate-omit-gdb-pretty-printer-section.rs:1:1
+   |
+LL | #[omit_gdb_pretty_printer_section]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(omit_gdb_pretty_printer_section)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0658`.

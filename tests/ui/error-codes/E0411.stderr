@@ -1,0 +1,11 @@
+error[E0411]: cannot find type `Self` in this scope
+  --> $DIR/E0411.rs:2:6
+   |
+LL | fn main() {
+   |    ---- `Self` not allowed in a function
+LL |     <Self>::foo;
+   |      ^^^^ `Self` is only available in impls, traits, and type definitions
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0411`.

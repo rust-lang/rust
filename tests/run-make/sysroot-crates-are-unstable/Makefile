@@ -1,0 +1,2 @@
+all:
+	'$(PYTHON)' test.py

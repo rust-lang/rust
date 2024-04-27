@@ -1,0 +1,19 @@
+error[E0412]: cannot find type `MissingType` in this scope
+  --> $DIR/issue-68830-spurious-diagnostics.rs:8:10
+   |
+LL |     err: MissingType
+   |          ^^^^^^^^^^^ not found in this scope
+
+error[E0119]: conflicting implementations of trait `MyTrait<_>` for type `BadStruct`
+  --> $DIR/issue-68830-spurious-diagnostics.rs:19:1
+   |
+LL | impl<T, D> MyTrait<T> for D {
+   | --------------------------- first implementation here
+...
+LL | impl<T> MyTrait<T> for BadStruct {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `BadStruct`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0119, E0412.
+For more information about an error, try `rustc --explain E0119`.

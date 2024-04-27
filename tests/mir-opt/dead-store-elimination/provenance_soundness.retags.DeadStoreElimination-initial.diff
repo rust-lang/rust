@@ -1,0 +1,14 @@
+- // MIR for `retags` before DeadStoreElimination-initial
++ // MIR for `retags` after DeadStoreElimination-initial
+  
+  fn retags(_1: &mut i32) -> () {
+      debug _r => _1;
+      let mut _0: ();
+  
+      bb0: {
+          Retag([fn entry] _1);
+          _0 = const ();
+          return;
+      }
+  }
+  

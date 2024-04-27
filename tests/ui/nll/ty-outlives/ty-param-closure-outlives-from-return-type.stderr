@@ -1,0 +1,55 @@
+note: external requirements
+  --> $DIR/ty-param-closure-outlives-from-return-type.rs:26:23
+   |
+LL |     with_signature(x, |y| y)
+   |                       ^^^
+   |
+   = note: defining type: no_region::<'?1, T>::{closure#0} with closure args [
+               i32,
+               extern "rust-call" fn((std::boxed::Box<T>,)) -> std::boxed::Box<(dyn std::fmt::Debug + '?2)>,
+               (),
+           ]
+   = note: number of external vids: 3
+   = note: where T: '?2
+
+note: no external requirements
+  --> $DIR/ty-param-closure-outlives-from-return-type.rs:15:1
+   |
+LL | / fn no_region<'a, T>(x: Box<T>) -> Box<dyn Debug + 'a>
+LL | | where
+LL | |     T: Debug,
+   | |_____________^
+   |
+   = note: defining type: no_region::<'?1, T>
+
+error[E0309]: the parameter type `T` may not live long enough
+  --> $DIR/ty-param-closure-outlives-from-return-type.rs:26:27
+   |
+LL | fn no_region<'a, T>(x: Box<T>) -> Box<dyn Debug + 'a>
+   |              -- the parameter type `T` must be valid for the lifetime `'a` as defined here...
+...
+LL |     with_signature(x, |y| y)
+   |                           ^ ...so that the type `T` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL |     T: Debug + 'a,
+   |              ++++
+
+error[E0309]: the parameter type `T` may not live long enough
+  --> $DIR/ty-param-closure-outlives-from-return-type.rs:41:5
+   |
+LL | fn wrong_region<'a, 'b, T>(x: Box<T>) -> Box<Debug + 'a>
+   |                 -- the parameter type `T` must be valid for the lifetime `'a` as defined here...
+...
+LL |     x
+   |     ^ ...so that the type `T` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL |     T: 'b + Debug + 'a,
+   |                   ++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0309`.

@@ -1,0 +1,56 @@
+error[E0308]: mismatched types
+  --> $DIR/point-at-inference-2.rs:5:9
+   |
+LL |     bar(v);
+   |     --- ^ expected `Vec<i32>`, found `Vec<&{integer}>`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected struct `Vec<i32>`
+              found struct `Vec<&{integer}>`
+note: function defined here
+  --> $DIR/point-at-inference-2.rs:1:4
+   |
+LL | fn bar(_: Vec<i32>) {}
+   |    ^^^ -----------
+
+error[E0308]: mismatched types
+  --> $DIR/point-at-inference-2.rs:9:9
+   |
+LL |     baz(&v);
+   |          - here the type of `v` is inferred to be `Vec<&i32>`
+LL |     baz(&v);
+LL |     bar(v);
+   |     --- ^ expected `Vec<i32>`, found `Vec<&i32>`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected struct `Vec<_>`
+              found struct `Vec<&_>`
+note: function defined here
+  --> $DIR/point-at-inference-2.rs:1:4
+   |
+LL | fn bar(_: Vec<i32>) {}
+   |    ^^^ -----------
+
+error[E0308]: mismatched types
+  --> $DIR/point-at-inference-2.rs:12:9
+   |
+LL |     baz(&v);
+   |          - here the type of `v` is inferred to be `Vec<&i32>`
+LL |     bar(v);
+   |     --- ^ expected `Vec<i32>`, found `Vec<&i32>`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected struct `Vec<_>`
+              found struct `Vec<&_>`
+note: function defined here
+  --> $DIR/point-at-inference-2.rs:1:4
+   |
+LL | fn bar(_: Vec<i32>) {}
+   |    ^^^ -----------
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

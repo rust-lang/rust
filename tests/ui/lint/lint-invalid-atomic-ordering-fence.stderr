@@ -1,0 +1,19 @@
+error: memory fences cannot have `Relaxed` ordering
+  --> $DIR/lint-invalid-atomic-ordering-fence.rs:17:11
+   |
+LL |     fence(Ordering::Relaxed);
+   |           ^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using ordering modes `Acquire`, `Release`, `AcqRel` or `SeqCst`
+   = note: `#[deny(invalid_atomic_ordering)]` on by default
+
+error: memory fences cannot have `Relaxed` ordering
+  --> $DIR/lint-invalid-atomic-ordering-fence.rs:19:20
+   |
+LL |     compiler_fence(Ordering::Relaxed);
+   |                    ^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using ordering modes `Acquire`, `Release`, `AcqRel` or `SeqCst`
+
+error: aborting due to 2 previous errors
+

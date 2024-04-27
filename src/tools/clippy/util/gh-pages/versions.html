@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+
+    <title>Clippy lints documentation</title>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.6/css/bootstrap.min.css"/>
+    <style>
+        [ng\:cloak], [ng-cloak], [data-ng-cloak], [x-ng-cloak], .ng-cloak, .x-ng-cloak { display: none !important; }
+    </style>
+</head>
+<body>
+    <div class="container" ng-app="clippy" ng-controller="docVersions">
+        <div class="page-header">
+            <h1>Clippy lints documentation</h1>
+        </div>
+
+        <div ng-cloak>
+            <div class="alert alert-info" role="alert" ng-if="loading">
+                Loading&#x2026;
+            </div>
+            <div class="alert alert-danger" role="alert" ng-if="error">
+                Error loading versions!<br/>
+                You can always try to get <a href="master/index.html">the master branch docs</a>.
+            </div>
+
+            <article class="panel panel-default" ng-show="data">
+                <div class="panel-heading">
+                    <h3 class="panel-title">
+                        Available versions
+                    </h3>
+                </div>
+
+                <ul class="list-group">
+                    <a class="list-group-item" ng-repeat="version in data | orderBy:versionOrder:true"
+                       href="./{{version}}/index.html">
+                        {{version}}
+                    </a>
+                </ul>
+            </article>
+        </div>
+    </div>
+
+    <a href="https://github.com/rust-lang/rust-clippy">
+        <img style="position: absolute; top: 0; right: 0; border: 0;" src="https://s3.amazonaws.com/github/ribbons/forkme_right_darkblue_121621.png"/>
+    </a>
+
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/angular.js/1.4.12/angular.min.js"></script>
+    <script>
+        angular.module('clippy', [])
+        .controller('docVersions', function ($scope, $http) {
+            $scope.loading = true;
+
+            $scope.normalizeVersion = function(v) {
+                return v.replace(/^rust-/, '');
+            };
+
+            $scope.versionOrder = function(v) {
+                if (v === 'master') { return Infinity; }
+                if (v === 'stable') { return Number.MAX_VALUE; }
+                if (v === 'beta') { return Number.MAX_VALUE - 1; }
+                if (v === 'pre-1.29.0') { return Number.MIN_VALUE; }
+
+                return $scope.normalizeVersion(v)
+                    .split('.')
+                    .reverse()
+                    .reduce(function(acc, val, index) {
+                        return acc + (val * Math.pow(100, index));
+                    }, 0);
+            }
+
+            $http.get('./versions.json')
+            .success(function (data) {
+                $scope.data = data;
+                $scope.loading = false;
+            })
+            .error(function (data) {
+                $scope.error = data;
+                $scope.loading = false;
+            });
+        })
+        ;
+    </script>
+</body>
+</html>

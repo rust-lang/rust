@@ -1,0 +1,32 @@
+error[E0391]: cycle detected when simplifying constant for the type system `Tr::A`
+  --> $DIR/defaults-cyclic-fail.rs:5:5
+   |
+LL |     const A: u8 = Self::B;
+   |     ^^^^^^^^^^^
+   |
+note: ...which requires const-evaluating + checking `Tr::A`...
+  --> $DIR/defaults-cyclic-fail.rs:5:19
+   |
+LL |     const A: u8 = Self::B;
+   |                   ^^^^^^^
+note: ...which requires simplifying constant for the type system `Tr::B`...
+  --> $DIR/defaults-cyclic-fail.rs:8:5
+   |
+LL |     const B: u8 = Self::A;
+   |     ^^^^^^^^^^^
+note: ...which requires const-evaluating + checking `Tr::B`...
+  --> $DIR/defaults-cyclic-fail.rs:8:19
+   |
+LL |     const B: u8 = Self::A;
+   |                   ^^^^^^^
+   = note: ...which again requires simplifying constant for the type system `Tr::A`, completing the cycle
+note: cycle used when optimizing promoted MIR for `main`
+  --> $DIR/defaults-cyclic-fail.rs:16:16
+   |
+LL |     assert_eq!(<() as Tr>::A, 0);
+   |                ^^^^^^^^^^^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0391`.

@@ -1,0 +1,64 @@
+warning: unused variable: `e`
+  --> $DIR/liveness-consts.rs:24:13
+   |
+LL |         let e = 1;
+   |             ^ help: if this is intentional, prefix it with an underscore: `_e`
+   |
+note: the lint level is defined here
+  --> $DIR/liveness-consts.rs:2:9
+   |
+LL | #![warn(unused)]
+   |         ^^^^^^
+   = note: `#[warn(unused_variables)]` implied by `#[warn(unused)]`
+
+warning: unused variable: `s`
+  --> $DIR/liveness-consts.rs:33:24
+   |
+LL | pub fn f(x: [u8; { let s = 17; 100 }]) -> [u8;  { let z = 18; 100 }] {
+   |                        ^ help: if this is intentional, prefix it with an underscore: `_s`
+
+warning: unused variable: `z`
+  --> $DIR/liveness-consts.rs:33:55
+   |
+LL | pub fn f(x: [u8; { let s = 17; 100 }]) -> [u8;  { let z = 18; 100 }] {
+   |                                                       ^ help: if this is intentional, prefix it with an underscore: `_z`
+
+warning: variable `a` is assigned to, but never used
+  --> $DIR/liveness-consts.rs:7:13
+   |
+LL |     let mut a = 0;
+   |             ^
+   |
+   = note: consider using `_a` instead
+
+warning: value assigned to `b` is never read
+  --> $DIR/liveness-consts.rs:17:5
+   |
+LL |     b += 1;
+   |     ^
+   |
+   = help: maybe it is overwritten before being read?
+   = note: `#[warn(unused_assignments)]` implied by `#[warn(unused)]`
+
+warning: unused variable: `z`
+  --> $DIR/liveness-consts.rs:60:13
+   |
+LL |         let z = 42;
+   |             ^ help: if this is intentional, prefix it with an underscore: `_z`
+
+warning: value assigned to `t` is never read
+  --> $DIR/liveness-consts.rs:42:9
+   |
+LL |         t = t + t;
+   |         ^
+   |
+   = help: maybe it is overwritten before being read?
+
+warning: unused variable: `w`
+  --> $DIR/liveness-consts.rs:49:13
+   |
+LL |         let w = 10;
+   |             ^ help: if this is intentional, prefix it with an underscore: `_w`
+
+warning: 8 warnings emitted
+

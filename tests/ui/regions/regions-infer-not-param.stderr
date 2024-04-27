@@ -1,0 +1,40 @@
+error: lifetime may not live long enough
+  --> $DIR/regions-infer-not-param.rs:15:54
+   |
+LL | fn take_direct<'a,'b>(p: Direct<'a>) -> Direct<'b> { p }
+   |                -- -- lifetime `'b` defined here      ^ function was supposed to return data with lifetime `'b` but it is returning data with lifetime `'a`
+   |                |
+   |                lifetime `'a` defined here
+   |
+   = help: consider adding the following bound: `'a: 'b`
+
+error: lifetime may not live long enough
+  --> $DIR/regions-infer-not-param.rs:20:63
+   |
+LL | fn take_indirect2<'a,'b>(p: Indirect2<'a>) -> Indirect2<'b> { p }
+   |                   -- -- lifetime `'b` defined here            ^ function was supposed to return data with lifetime `'a` but it is returning data with lifetime `'b`
+   |                   |
+   |                   lifetime `'a` defined here
+   |
+   = help: consider adding the following bound: `'b: 'a`
+   = note: requirement occurs because of the type `Indirect2<'_>`, which makes the generic argument `'_` invariant
+   = note: the struct `Indirect2<'a>` is invariant over the parameter `'a`
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+
+error: lifetime may not live long enough
+  --> $DIR/regions-infer-not-param.rs:20:63
+   |
+LL | fn take_indirect2<'a,'b>(p: Indirect2<'a>) -> Indirect2<'b> { p }
+   |                   -- -- lifetime `'b` defined here            ^ function was supposed to return data with lifetime `'b` but it is returning data with lifetime `'a`
+   |                   |
+   |                   lifetime `'a` defined here
+   |
+   = help: consider adding the following bound: `'a: 'b`
+   = note: requirement occurs because of the type `Indirect2<'_>`, which makes the generic argument `'_` invariant
+   = note: the struct `Indirect2<'a>` is invariant over the parameter `'a`
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+
+help: `'b` and `'a` must be the same: replace one with the other
+
+error: aborting due to 3 previous errors
+

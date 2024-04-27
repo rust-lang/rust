@@ -1,0 +1,138 @@
+error[E0381]: used binding `chaenomeles` isn't initialized
+  --> $DIR/suggest-assign-rvalue.rs:14:11
+   |
+LL |     let chaenomeles;
+   |         ----------- binding declared here but left uninitialized
+LL |     apple(chaenomeles);
+   |           ^^^^^^^^^^^ `chaenomeles` used here but it isn't initialized
+   |
+help: consider assigning a value
+   |
+LL |     let chaenomeles = 42;
+   |                     ++++
+
+error[E0381]: used binding `my_float` isn't initialized
+  --> $DIR/suggest-assign-rvalue.rs:23:30
+   |
+LL |     let my_float: f32;
+   |         -------- binding declared here but left uninitialized
+LL |     println!("my_float: {}", my_float);
+   |                              ^^^^^^^^ `my_float` used here but it isn't initialized
+   |
+   = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider assigning a value
+   |
+LL |     let my_float: f32 = 3.14159;
+   |                       +++++++++
+
+error[E0381]: used binding `demo` isn't initialized
+  --> $DIR/suggest-assign-rvalue.rs:26:28
+   |
+LL |     let demo: Demo;
+   |         ---- binding declared here but left uninitialized
+LL |     println!("demo: {:?}", demo);
+   |                            ^^^^ `demo` used here but it isn't initialized
+   |
+   = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider assigning a value
+   |
+LL |     let demo: Demo = Default::default();
+   |                    ++++++++++++++++++++
+
+error[E0381]: used binding `demo_no` isn't initialized
+  --> $DIR/suggest-assign-rvalue.rs:30:31
+   |
+LL |     let demo_no: DemoNoDef;
+   |         ------- binding declared here but left uninitialized
+LL |     println!("demo_no: {:?}", demo_no);
+   |                               ^^^^^^^ `demo_no` used here but it isn't initialized
+   |
+   = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider assigning a value
+   |
+LL |     let demo_no: DemoNoDef = /* value */;
+   |                            +++++++++++++
+
+error[E0381]: used binding `arr` isn't initialized
+  --> $DIR/suggest-assign-rvalue.rs:34:27
+   |
+LL |     let arr: [i32; 5];
+   |         --- binding declared here but left uninitialized
+LL |     println!("arr: {:?}", arr);
+   |                           ^^^ `arr` used here but it isn't initialized
+   |
+   = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider assigning a value
+   |
+LL |     let arr: [i32; 5] = [42; 5];
+   |                       +++++++++
+
+error[E0381]: used binding `foo` isn't initialized
+  --> $DIR/suggest-assign-rvalue.rs:37:27
+   |
+LL |     let foo: Vec<&str>;
+   |         --- binding declared here but left uninitialized
+LL |     println!("foo: {:?}", foo);
+   |                           ^^^ `foo` used here but it isn't initialized
+   |
+   = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider assigning a value
+   |
+LL |     let foo: Vec<&str> = vec![];
+   |                        ++++++++
+
+error[E0381]: used binding `my_string` isn't initialized
+  --> $DIR/suggest-assign-rvalue.rs:41:31
+   |
+LL |     let my_string: String;
+   |         --------- binding declared here but left uninitialized
+LL |     println!("my_string: {}", my_string);
+   |                               ^^^^^^^^^ `my_string` used here but it isn't initialized
+   |
+   = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider assigning a value
+   |
+LL |     let my_string: String = Default::default();
+   |                           ++++++++++++++++++++
+
+error[E0381]: used binding `my_int` isn't initialized
+  --> $DIR/suggest-assign-rvalue.rs:45:28
+   |
+LL |     let my_int: &i32;
+   |         ------ binding declared here but left uninitialized
+LL |     println!("my_int: {}", *my_int);
+   |                            ^^^^^^^ `*my_int` used here but it isn't initialized
+   |
+   = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider assigning a value
+   |
+LL |     let my_int: &i32 = &42;
+   |                      +++++
+
+error[E0381]: used binding `hello` isn't initialized
+  --> $DIR/suggest-assign-rvalue.rs:49:27
+   |
+LL |     let hello: &str;
+   |         ----- binding declared here but left uninitialized
+LL |     println!("hello: {}", hello);
+   |                           ^^^^^ `hello` used here but it isn't initialized
+   |
+   = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider assigning a value
+   |
+LL |     let hello: &str = "";
+   |                     ++++
+
+error[E0381]: used binding `never` isn't initialized
+  --> $DIR/suggest-assign-rvalue.rs:53:27
+   |
+LL |     let never: !;
+   |         ----- binding declared here but left uninitialized
+LL |     println!("never: {}", never);
+   |                           ^^^^^ `never` used here but it isn't initialized
+   |
+   = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 10 previous errors
+
+For more information about this error, try `rustc --explain E0381`.

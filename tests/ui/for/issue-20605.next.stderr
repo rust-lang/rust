@@ -1,0 +1,36 @@
+error[E0277]: `dyn Iterator<Item = &'a mut u8>` is not an iterator
+  --> $DIR/issue-20605.rs:6:17
+   |
+LL |     for item in *things { *item = 0 }
+   |                 ^^^^^^^ `dyn Iterator<Item = &'a mut u8>` is not an iterator
+   |
+   = help: the trait `IntoIterator` is not implemented for `dyn Iterator<Item = &'a mut u8>`
+
+error: the type `<dyn Iterator<Item = &'a mut u8> as IntoIterator>::IntoIter` is not well-formed
+  --> $DIR/issue-20605.rs:6:17
+   |
+LL |     for item in *things { *item = 0 }
+   |                 ^^^^^^^
+
+error: the type `&mut <dyn Iterator<Item = &'a mut u8> as IntoIterator>::IntoIter` is not well-formed
+  --> $DIR/issue-20605.rs:6:17
+   |
+LL |     for item in *things { *item = 0 }
+   |                 ^^^^^^^
+
+error: the type `Option<<<dyn Iterator<Item = &'a mut u8> as IntoIterator>::IntoIter as Iterator>::Item>` is not well-formed
+  --> $DIR/issue-20605.rs:6:17
+   |
+LL |     for item in *things { *item = 0 }
+   |                 ^^^^^^^
+
+error[E0614]: type `<dyn Iterator<Item = &'a mut u8> as IntoIterator>::Item` cannot be dereferenced
+  --> $DIR/issue-20605.rs:6:27
+   |
+LL |     for item in *things { *item = 0 }
+   |                           ^^^^^
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0277, E0614.
+For more information about an error, try `rustc --explain E0277`.

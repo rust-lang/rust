@@ -1,0 +1,17 @@
+error[E0518]: attribute should be applied to function or closure
+  --> $DIR/attr-usage-inline.rs:6:1
+   |
+LL | #[inline]
+   | ^^^^^^^^^
+LL | struct S;
+   | --------- not a function or closure
+
+error[E0518]: attribute should be applied to function or closure
+  --> $DIR/attr-usage-inline.rs:20:1
+   |
+LL | #[inline]
+   | ^^^^^^^^^ not a function or closure
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0518`.

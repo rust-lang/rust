@@ -1,0 +1,25 @@
+error[E0207]: the lifetime parameter `'a` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/issue-74761.rs:7:6
+   |
+LL | impl<'a, 'b> A for () {
+   |      ^^ unconstrained lifetime parameter
+
+error[E0207]: the lifetime parameter `'b` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/issue-74761.rs:7:10
+   |
+LL | impl<'a, 'b> A for () {
+   |          ^^ unconstrained lifetime parameter
+
+error[E0792]: expected generic lifetime parameter, found `'_`
+  --> $DIR/issue-74761.rs:12:28
+   |
+LL | impl<'a, 'b> A for () {
+   |      -- this generic parameter must be used with a generic lifetime parameter
+...
+LL |     fn f(&self) -> Self::B {}
+   |                            ^^
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0207, E0792.
+For more information about an error, try `rustc --explain E0207`.

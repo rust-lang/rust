@@ -1,0 +1,9 @@
+error[E0433]: failed to resolve: use of undeclared crate or module `xyz`
+  --> $DIR/stashed-diag-issue-121504.rs:7:18
+   |
+LL | impl MyTrait for xyz::T {
+   |                  ^^^ use of undeclared crate or module `xyz`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0433`.

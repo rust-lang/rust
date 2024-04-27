@@ -1,0 +1,20 @@
+error: expected one of `=>`, `if`, or `|`, found `=`
+  --> $DIR/issue-89396.rs:9:17
+   |
+LL |         Some(_) = true,
+   |                 ^
+   |                 |
+   |                 expected one of `=>`, `if`, or `|`
+   |                 help: use a fat arrow to start a match arm: `=>`
+
+error: expected one of `=>`, `@`, `if`, or `|`, found `->`
+  --> $DIR/issue-89396.rs:12:14
+   |
+LL |         None -> false,
+   |              ^^
+   |              |
+   |              expected one of `=>`, `@`, `if`, or `|`
+   |              help: use a fat arrow to start a match arm: `=>`
+
+error: aborting due to 2 previous errors
+

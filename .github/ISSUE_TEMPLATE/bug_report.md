@@ -1,35 +1,44 @@
 ---
-name: Bug report
-about: Create a bug report for rust-analyzer.
-title: ''
-labels: 'C-bug'
-assignees: ''
-
+name: Bug Report
+about: Create a bug report for Rust.
+labels: C-bug
 ---
-
 <!--
-Troubleshooting guide: https://rust-analyzer.github.io/manual.html#troubleshooting
-Forum for questions: https://users.rust-lang.org/c/ide/14
-
-Before submitting, please make sure that you're not running into one of these known issues:
-
- 1. on-the-fly diagnostics are mostly unimplemented (`cargo check` diagnostics will be shown when saving a file): #3107
-
-Otherwise please try to provide information which will help us to fix the issue faster. Minimal reproducible examples with few dependencies are especially lovely <3.
+Thank you for filing a bug report! 🐛 Please provide a short summary of the bug,
+along with any information you feel relevant to replicating the bug.
 -->
 
-**rust-analyzer version**: (eg. output of "rust-analyzer: Show RA Version" command, accessible in VSCode via <kbd>Ctrl/⌘</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>)
+I tried this code:
 
-**rustc version**: (eg. output of `rustc -V`)
-
-**editor or extension**: (eg. VSCode, Vim, Emacs, etc. For VSCode users, specify your extension version; for users of other editors, provide the distribution if applicable)
-
-**relevant settings**: (eg. client settings, or environment variables like `CARGO`, `RUSTC`, `RUSTUP_HOME` or `CARGO_HOME`)
-
-**repository link (if public, optional)**: (eg. [rust-analyzer](https://github.com/rust-lang/rust-analyzer))
-
-**code snippet to reproduce**: 
 ```rust
-// add your code here
+<code>
+```
+
+I expected to see this happen: *explanation*
+
+Instead, this happened: *explanation*
+
+### Meta
+<!--
+If you're using the stable version of the compiler, you should also check if the
+bug also exists in the beta or nightly versions.
+-->
+
+`rustc --version --verbose`:
+```
+<version>
+```
+
+<!--
+Include a backtrace in the code block by setting `RUST_BACKTRACE=1` in your
+environment. E.g. `RUST_BACKTRACE=1 cargo build`.
+-->
+<details><summary>Backtrace</summary>
+<p>
 
 ```
+<backtrace>
+```
+
+</p>
+</details>

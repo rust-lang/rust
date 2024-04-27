@@ -1,0 +1,94 @@
+// This test checks the highlight colors in the source code pages.
+include: "utils.goml"
+go-to: "file://" + |DOC_PATH| + "/src/test_docs/lib.rs.html"
+show-text: true
+
+define-function: (
+    "check-colors",
+    [
+        theme,
+        kw,
+        kw2,
+        prelude_ty,
+        prelude_val,
+        lifetime,
+        number,
+        string,
+        bool_val,
+        self,
+        attr,
+        macro,
+        question_mark,
+        comment,
+        doc_comment,
+    ],
+    block {
+        call-function: ("switch-theme", {"theme": |theme|})
+        assert-css: ("pre.rust .kw", {"color": |kw|}, ALL)
+        assert-css: ("pre.rust .kw-2", {"color": |kw2|}, ALL)
+        assert-css: ("pre.rust .prelude-ty", {"color": |prelude_ty|}, ALL)
+        assert-css: ("pre.rust .prelude-val", {"color": |prelude_val|}, ALL)
+        assert-css: ("pre.rust .lifetime", {"color": |lifetime|}, ALL)
+        assert-css: ("pre.rust .number", {"color": |number|}, ALL)
+        assert-css: ("pre.rust .string", {"color": |string|}, ALL)
+        assert-css: ("pre.rust .bool-val", {"color": |bool_val|}, ALL)
+        assert-css: ("pre.rust .self", {"color": |self|}, ALL)
+        assert-css: ("pre.rust .attr", {"color": |attr|}, ALL)
+        assert-css: ("pre.rust .macro", {"color": |macro|}, ALL)
+        assert-css: ("pre.rust .question-mark", {"color": |question_mark|}, ALL)
+        assert-css: ("pre.rust .comment", {"color": |comment|}, ALL)
+        assert-css: ("pre.rust .doccomment", {"color": |doc_comment|}, ALL)
+    },
+)
+
+call-function: ("check-colors", {
+    "theme": "ayu",
+    "kw": "#ff7733",
+    "kw2": "#ff7733",
+    "prelude_ty": "#69f2df",
+    "prelude_val": "#ff7733",
+    "lifetime": "#ff7733",
+    "number": "#b8cc52",
+    "string": "#b8cc52",
+    "bool_val": "#ff7733",
+    "self": "#36a3d9",
+    "attr": "#e6e1cf",
+    "macro": "#a37acc",
+    "question_mark": "#ff9011",
+    "comment": "#788797",
+    "doc_comment": "#a1ac88",
+})
+call-function: ("check-colors", {
+    "theme": "dark",
+    "kw": "#ab8ac1",
+    "kw2": "#769acb",
+    "prelude_ty": "#769acb",
+    "prelude_val": "#ee6868",
+    "lifetime": "#d97f26",
+    "number": "#83a300",
+    "string": "#83a300",
+    "bool_val": "#ee6868",
+    "self": "#ee6868",
+    "attr": "#ee6868",
+    "macro": "#3e999f",
+    "question_mark": "#ff9011",
+    "comment": "#8d8d8b",
+    "doc_comment": "#8ca375",
+})
+call-function: ("check-colors", {
+    "theme": "light",
+    "kw": "#8959a8",
+    "kw2": "#4271ae",
+    "prelude_ty": "#4271ae",
+    "prelude_val": "#c82829",
+    "lifetime": "#b76514",
+    "number": "#718c00",
+    "string": "#718c00",
+    "bool_val": "#c82829",
+    "self": "#c82829",
+    "attr": "#c82829",
+    "macro": "#3e999f",
+    "question_mark": "#ff9011",
+    "comment": "#8e908c",
+    "doc_comment": "#4d4d4c",
+})

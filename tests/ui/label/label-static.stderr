@@ -1,0 +1,14 @@
+error: invalid label name `'static`
+  --> $DIR/label-static.rs:2:5
+   |
+LL |     'static: loop {
+   |     ^^^^^^^
+
+error: invalid label name `'static`
+  --> $DIR/label-static.rs:3:15
+   |
+LL |         break 'static
+   |               ^^^^^^^
+
+error: aborting due to 2 previous errors
+

@@ -1,30 +1,42 @@
-# Contributing to rust-analyzer
+# Contributing to Rust
 
-Thank you for your interest in contributing to rust-analyzer! There are many ways to contribute
+Thank you for your interest in contributing to Rust! There are many ways to contribute
 and we appreciate all of them.
 
-To get a quick overview of the crates and structure of the project take a look at the
-[./docs/dev](./docs/dev) folder.
+The best way to get started is by asking for help in the [#new
+members](https://rust-lang.zulipchat.com/#narrow/stream/122652-new-members)
+Zulip stream. We have lots of docs below of how to get started on your own, but
+the Zulip stream is the best place to *ask* for help.
 
-If you have any questions please ask them in the [rust-analyzer zulip stream](
-https://rust-lang.zulipchat.com/#narrow/stream/185405-t-compiler.2Frust-analyzer) or if unsure where
-to start out when working on a concrete issue drop a comment on the related issue for mentoring
-instructions (general discussions are recommended to happen on zulip though).
+Documentation for contributing to the compiler or tooling is located in the [Guide to Rustc
+Development][rustc-dev-guide], commonly known as the [rustc-dev-guide]. Documentation for the
+standard library in the [Standard library developers Guide][std-dev-guide], commonly known as the [std-dev-guide].
 
-## Fixing a bug or improving a feature
+## About the [rustc-dev-guide]
 
-Generally it's fine to just work on these kinds of things and put a pull-request out for it. If there
-is an issue accompanying it make sure to link it in the pull request description so it can be closed
-afterwards or linked for context.
+The [rustc-dev-guide] is meant to help document how rustc –the Rust compiler– works,
+as well as to help new contributors get involved in rustc development. It is recommended
+to read and understand the [rustc-dev-guide] before making a contribution. This guide
+talks about the different bots in the Rust ecosystem, the Rust development tools,
+bootstrapping, the compiler architecture, source code representation, and more.
 
-If you want to find something to fix or work on keep a look out for the `C-bug` and `C-enhancement`
-labels.
+## [Getting help](https://rustc-dev-guide.rust-lang.org/getting-started.html#asking-questions)
 
-## Implementing a new feature
+There are many ways you can get help when you're stuck. Rust has many platforms for this:
+[internals], [rust-zulip], and [rust-discord]. It is recommended to ask for help on
+the [rust-zulip], but any of these platforms are a great way to seek help and even
+find a mentor! You can learn more about asking questions and getting help in the
+[Asking Questions](https://rustc-dev-guide.rust-lang.org/getting-started.html#asking-questions) chapter of the [rustc-dev-guide].
 
-It's advised to first open an issue for any kind of new feature so the team can tell upfront whether
-the feature is desirable or not before any implementation work happens. We want to minimize the
-possibility of someone putting a lot of work into a feature that is then going to waste as we deem
-it out of scope (be it due to generally not fitting in with rust-analyzer, or just not having the
-maintenance capacity). If there already is a feature issue open but it is not clear whether it is
-considered accepted feel free to just drop a comment and ask!
+## Bug reports
+
+Did a compiler error message tell you to come here? If you want to create an ICE report,
+refer to [this section][contributing-bug-reports] and [open an issue][issue template].
+
+[rustc-dev-guide]: https://rustc-dev-guide.rust-lang.org/
+[std-dev-guide]: https://std-dev-guide.rust-lang.org/
+[contributing-bug-reports]: https://rustc-dev-guide.rust-lang.org/contributing.html#bug-reports
+[issue template]: https://github.com/rust-lang/rust/issues/new/choose
+[internals]: https://internals.rust-lang.org
+[rust-discord]: http://discord.gg/rust-lang
+[rust-zulip]: https://rust-lang.zulipchat.com

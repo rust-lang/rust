@@ -1,0 +1,25 @@
+error[E0277]: cannot add `Vec<B>` to `()`
+  --> $DIR/issue-2149.rs:8:33
+   |
+LL |         for elt in self { r = r + f(*elt); }
+   |                                 ^ no implementation for `() + Vec<B>`
+   |
+   = help: the trait `Add<Vec<B>>` is not implemented for `()`
+
+error[E0599]: no method named `bind` found for array `[&str; 1]` in the current scope
+  --> $DIR/issue-2149.rs:13:12
+   |
+LL |     ["hi"].bind(|x| [x] );
+   |            ^^^^ method not found in `[&str; 1]`
+   |
+   = help: items from traits can only be used if the trait is implemented and in scope
+note: `VecMonad` defines an item `bind`, perhaps you need to implement it
+  --> $DIR/issue-2149.rs:1:1
+   |
+LL | trait VecMonad<A> {
+   | ^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0277, E0599.
+For more information about an error, try `rustc --explain E0277`.

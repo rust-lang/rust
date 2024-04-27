@@ -1,0 +1,19 @@
+error[E0277]: `&mut ()` is not a tuple
+  --> $DIR/issue-57404.rs:6:41
+   |
+LL |     handlers.unwrap().as_mut().call_mut(&mut ());
+   |                                -------- ^^^^^^^ the trait `Tuple` is not implemented for `&mut ()`
+   |                                |
+   |                                required by a bound introduced by this call
+   |
+note: required by a bound in `call_mut`
+  --> $SRC_DIR/core/src/ops/function.rs:LL:COL
+help: consider removing the leading `&`-reference
+   |
+LL -     handlers.unwrap().as_mut().call_mut(&mut ());
+LL +     handlers.unwrap().as_mut().call_mut(());
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

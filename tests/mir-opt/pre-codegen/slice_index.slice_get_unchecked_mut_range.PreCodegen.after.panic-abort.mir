@@ -1,0 +1,23 @@
+// MIR for `slice_get_unchecked_mut_range` after PreCodegen
+
+fn slice_get_unchecked_mut_range(_1: &mut [u32], _2: std::ops::Range<usize>) -> &mut [u32] {
+    debug slice => _1;
+    debug index => _2;
+    let mut _0: &mut [u32];
+    scope 1 (inlined core::slice::<impl [u32]>::get_unchecked_mut::<std::ops::Range<usize>>) {
+        let mut _3: *mut [u32];
+        let mut _4: *mut [u32];
+    }
+
+    bb0: {
+        StorageLive(_3);
+        _3 = &raw mut (*_1);
+        _4 = <std::ops::Range<usize> as SliceIndex<[u32]>>::get_unchecked_mut(move _2, move _3) -> [return: bb1, unwind unreachable];
+    }
+
+    bb1: {
+        StorageDead(_3);
+        _0 = &mut (*_4);
+        return;
+    }
+}

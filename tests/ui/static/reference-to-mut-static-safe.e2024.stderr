@@ -1,0 +1,15 @@
+error[E0796]: creating a shared reference to a mutable static
+  --> $DIR/reference-to-mut-static-safe.rs:9:14
+   |
+LL |     let _x = &X;
+   |              ^^ shared reference to mutable static
+   |
+   = note: this shared reference has lifetime `'static`, but if the static ever gets mutated, or a mutable reference is created, then any further use of this shared reference is Undefined Behavior
+help: use `addr_of!` instead to create a raw pointer
+   |
+LL |     let _x = addr_of!(X);
+   |              ~~~~~~~~~~~
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0796`.

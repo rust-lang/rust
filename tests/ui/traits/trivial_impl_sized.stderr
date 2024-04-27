@@ -1,0 +1,25 @@
+error[E0046]: not all trait items implemented, missing: `foo`
+  --> $DIR/trivial_impl_sized.rs:15:1
+   |
+LL | /     fn foo()
+LL | |     where
+LL | |         Self: Sized;
+   | |____________________- `foo` from trait
+...
+LL |   impl Foo for i32 {}
+   |   ^^^^^^^^^^^^^^^^ missing `foo` in implementation
+
+error[E0046]: not all trait items implemented, missing: `foo`
+  --> $DIR/trivial_impl_sized.rs:19:1
+   |
+LL | /     fn foo()
+LL | |     where
+LL | |         Self: Sized;
+   | |____________________- `foo` from trait
+...
+LL |   impl Foo for dyn std::fmt::Debug {}
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `foo` in implementation
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0046`.

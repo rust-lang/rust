@@ -1,0 +1,52 @@
+error[E0503]: cannot use `e` because it was mutably borrowed
+  --> $DIR/match-on-borrowed.rs:47:11
+   |
+LL |         E::V(ref mut x, _) => x,
+   |              --------- `e.0` is borrowed here
+...
+LL |     match e { // Don't know that E uses a tag for its discriminant
+   |           ^ use of borrowed `e.0`
+...
+LL |     x;
+   |     - borrow later used here
+
+error[E0503]: cannot use `*f` because it was mutably borrowed
+  --> $DIR/match-on-borrowed.rs:61:11
+   |
+LL |         E::V(ref mut x, _) => x,
+   |              --------- `f.0` is borrowed here
+...
+LL |     match f { // Don't know that E uses a tag for its discriminant
+   |           ^ use of borrowed `f.0`
+...
+LL |     x;
+   |     - borrow later used here
+
+error[E0503]: cannot use `t` because it was mutably borrowed
+  --> $DIR/match-on-borrowed.rs:81:5
+   |
+LL |     let x = &mut t;
+   |             ------ `t` is borrowed here
+LL |     match t {
+   |     ^^^^^^^ use of borrowed `t`
+...
+LL |     x;
+   |     - borrow later used here
+
+error[E0381]: used binding `n` isn't initialized
+  --> $DIR/match-on-borrowed.rs:93:11
+   |
+LL |     let n: Never;
+   |         - binding declared here but left uninitialized
+LL |     match n {}
+   |           ^ `n` used here but it isn't initialized
+   |
+help: consider assigning a value
+   |
+LL |     let n: Never = /* value */;
+   |                  +++++++++++++
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0381, E0503.
+For more information about an error, try `rustc --explain E0381`.

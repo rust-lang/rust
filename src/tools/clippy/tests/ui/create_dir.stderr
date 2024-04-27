@@ -1,0 +1,17 @@
+error: calling `std::fs::create_dir` where there may be a better way
+  --> tests/ui/create_dir.rs:10:5
+   |
+LL |     std::fs::create_dir("foo");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider calling `std::fs::create_dir_all` instead: `create_dir_all("foo")`
+   |
+   = note: `-D clippy::create-dir` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::create_dir)]`
+
+error: calling `std::fs::create_dir` where there may be a better way
+  --> tests/ui/create_dir.rs:11:5
+   |
+LL |     std::fs::create_dir("bar").unwrap();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider calling `std::fs::create_dir_all` instead: `create_dir_all("bar")`
+
+error: aborting due to 2 previous errors
+

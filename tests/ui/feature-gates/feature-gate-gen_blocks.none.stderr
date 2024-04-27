@@ -1,0 +1,21 @@
+error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `gen`
+  --> $DIR/feature-gate-gen_blocks.rs:12:11
+   |
+LL |     async gen {};
+   |           ^^^ expected one of 8 possible tokens
+
+error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `gen`
+  --> $DIR/feature-gate-gen_blocks.rs:25:11
+   |
+LL |     async gen {};
+   |           ^^^ expected one of 8 possible tokens
+
+error[E0422]: cannot find struct, variant or union type `gen` in this scope
+  --> $DIR/feature-gate-gen_blocks.rs:5:5
+   |
+LL |     gen {};
+   |     ^^^ not found in this scope
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0422`.

@@ -1,0 +1,7 @@
+warning: unknown and unstable feature specified for `-Ctarget-feature`: `rdrnd`
+   |
+   = note: it is still passed through to the codegen backend, but use of this feature might be unsound and the behavior of this feature can change in the future
+   = help: you might have meant: `rdrand`
+
+warning: 1 warning emitted
+

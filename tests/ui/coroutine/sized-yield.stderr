@@ -1,0 +1,25 @@
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/sized-yield.rs:9:5
+   |
+LL | /     move || {
+LL | |
+LL | |         yield s[..];
+LL | |     };
+   | |_____^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `str`
+   = note: the yield type of a coroutine must have a statically known size
+
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/sized-yield.rs:13:24
+   |
+LL |     Pin::new(&mut gen).resume(());
+   |                        ^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `str`
+note: required by an implicit `Sized` bound in `CoroutineState`
+  --> $SRC_DIR/core/src/ops/coroutine.rs:LL:COL
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

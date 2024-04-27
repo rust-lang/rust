@@ -1,0 +1,83 @@
+error: `cfg` is not followed by parentheses
+  --> $DIR/cfg-attr-syntax-validation.rs:1:1
+   |
+LL | #[cfg]
+   | ^^^^^^ help: expected syntax is: `cfg(/* predicate */)`
+
+error: `cfg` is not followed by parentheses
+  --> $DIR/cfg-attr-syntax-validation.rs:4:1
+   |
+LL | #[cfg = 10]
+   | ^^^^^^^^^^^ help: expected syntax is: `cfg(/* predicate */)`
+
+error: `cfg` predicate is not specified
+  --> $DIR/cfg-attr-syntax-validation.rs:7:1
+   |
+LL | #[cfg()]
+   | ^^^^^^^^ help: expected syntax is: `cfg(/* predicate */)`
+
+error: multiple `cfg` predicates are specified
+  --> $DIR/cfg-attr-syntax-validation.rs:10:10
+   |
+LL | #[cfg(a, b)]
+   |          ^
+
+error: `cfg` predicate key cannot be a literal
+  --> $DIR/cfg-attr-syntax-validation.rs:13:7
+   |
+LL | #[cfg("str")]
+   |       ^^^^^
+
+error: `cfg` predicate key must be an identifier
+  --> $DIR/cfg-attr-syntax-validation.rs:16:7
+   |
+LL | #[cfg(a::b)]
+   |       ^^^^
+
+error[E0537]: invalid predicate `a`
+  --> $DIR/cfg-attr-syntax-validation.rs:19:7
+   |
+LL | #[cfg(a())]
+   |       ^^^
+
+error[E0565]: literal in `cfg` predicate value must be a string
+  --> $DIR/cfg-attr-syntax-validation.rs:22:11
+   |
+LL | #[cfg(a = 10)]
+   |           ^^
+
+error[E0565]: literal in `cfg` predicate value must be a string
+  --> $DIR/cfg-attr-syntax-validation.rs:25:11
+   |
+LL | #[cfg(a = b"hi")]
+   |           -^^^^
+   |           |
+   |           help: consider removing the prefix
+
+error: expected unsuffixed literal or identifier, found `concat!("nonexistent")`
+  --> $DIR/cfg-attr-syntax-validation.rs:30:25
+   |
+LL |         #[cfg(feature = $expr)]
+   |                         ^^^^^
+...
+LL | generate_s10!(concat!("nonexistent"));
+   | ------------------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `generate_s10` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: expected unsuffixed literal or identifier, found `concat!("nonexistent")`
+  --> $DIR/cfg-attr-syntax-validation.rs:30:25
+   |
+LL |         #[cfg(feature = $expr)]
+   |                         ^^^^^
+...
+LL | generate_s10!(concat!("nonexistent"));
+   | ------------------------------------- in this macro invocation
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+   = note: this error originates in the macro `generate_s10` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 11 previous errors
+
+Some errors have detailed explanations: E0537, E0565.
+For more information about an error, try `rustc --explain E0537`.

@@ -1,0 +1,11 @@
+arithmetic-side-effects-allowed = [
+    "OutOfNames"
+]
+arithmetic-side-effects-allowed-binary = [
+    ["Foo", "Foo"],
+    ["Foo", "i32"],
+    ["i32", "Foo"],
+    ["Bar", "*"],
+    ["*", "Bar"],
+]
+arithmetic-side-effects-allowed-unary = ["Foo"]

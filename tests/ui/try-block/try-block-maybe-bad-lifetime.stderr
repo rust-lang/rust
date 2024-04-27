@@ -1,0 +1,46 @@
+error[E0506]: cannot assign to `i` because it is borrowed
+  --> $DIR/try-block-maybe-bad-lifetime.rs:17:9
+   |
+LL |             &i
+   |             -- `i` is borrowed here
+LL |         };
+LL |         i = 0;
+   |         ^^^^^ `i` is assigned to here but it was already borrowed
+LL |         let _ = i;
+LL |         do_something_with(x);
+   |                           - borrow later used here
+
+error[E0382]: borrow of moved value: `x`
+  --> $DIR/try-block-maybe-bad-lifetime.rs:28:24
+   |
+LL |         let x = String::new();
+   |             - move occurs because `x` has type `String`, which does not implement the `Copy` trait
+...
+LL |             ::std::mem::drop(x);
+   |                              - value moved here
+LL |         };
+LL |         println!("{}", x);
+   |                        ^ value borrowed here after move
+   |
+   = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |             ::std::mem::drop(x.clone());
+   |                               ++++++++
+
+error[E0506]: cannot assign to `i` because it is borrowed
+  --> $DIR/try-block-maybe-bad-lifetime.rs:40:9
+   |
+LL |             j = &i;
+   |                 -- `i` is borrowed here
+LL |         };
+LL |         i = 0;
+   |         ^^^^^ `i` is assigned to here but it was already borrowed
+LL |         let _ = i;
+LL |         do_something_with(j);
+   |                           - borrow later used here
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0382, E0506.
+For more information about an error, try `rustc --explain E0382`.

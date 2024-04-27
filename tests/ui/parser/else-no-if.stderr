@@ -1,0 +1,50 @@
+error: expected `{`, found keyword `false`
+  --> $DIR/else-no-if.rs:3:12
+   |
+LL |     } else false {
+   |       ---- ^^^^^
+   |       |
+   |       expected an `if` or a block after this `else`
+   |
+help: add an `if` if this is the condition of a chained `else if` statement
+   |
+LL |     } else if false {
+   |            ++
+
+error: expected `{`, found `falsy`
+  --> $DIR/else-no-if.rs:10:12
+   |
+LL |     } else falsy() {
+   |       ---- ^^^^^
+   |       |
+   |       expected an `if` or a block after this `else`
+   |
+help: add an `if` if this is the condition of a chained `else if` statement
+   |
+LL |     } else if falsy() {
+   |            ++
+
+error: expected `{`, found `falsy`
+  --> $DIR/else-no-if.rs:17:12
+   |
+LL |     } else falsy();
+   |            ^^^^^ expected `{`
+   |
+help: try placing this code inside a block
+   |
+LL |     } else { falsy() };
+   |            +         +
+
+error: expected `{`, found keyword `loop`
+  --> $DIR/else-no-if.rs:23:12
+   |
+LL |     } else loop{}
+   |            ^^^^ expected `{`
+   |
+help: try placing this code inside a block
+   |
+LL |     } else { loop{} }
+   |            +        +
+
+error: aborting due to 4 previous errors
+

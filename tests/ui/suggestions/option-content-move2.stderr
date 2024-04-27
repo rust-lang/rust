@@ -1,0 +1,37 @@
+error[E0507]: cannot move out of `var`, a captured variable in an `FnMut` closure
+  --> $DIR/option-content-move2.rs:11:9
+   |
+LL |     let mut var = None;
+   |         ------- captured outer variable
+LL |     func(|| {
+   |          -- captured by this `FnMut` closure
+LL |         // Shouldn't suggest `move ||.as_ref()` here
+LL |         move || {
+   |         ^^^^^^^ `var` is moved here
+LL |
+LL |             var = Some(NotCopyable);
+   |             ---
+   |             |
+   |             variable moved due to use in closure
+   |             move occurs because `var` has type `Option<NotCopyable>`, which does not implement the `Copy` trait
+
+error[E0507]: cannot move out of `var`, a captured variable in an `FnMut` closure
+  --> $DIR/option-content-move2.rs:21:9
+   |
+LL |     let mut var = None;
+   |         ------- captured outer variable
+LL |     func(|| {
+   |          -- captured by this `FnMut` closure
+LL |         // Shouldn't suggest `move ||.as_ref()` nor to `clone()` here
+LL |         move || {
+   |         ^^^^^^^ `var` is moved here
+LL |
+LL |             var = Some(NotCopyableButCloneable);
+   |             ---
+   |             |
+   |             variable moved due to use in closure
+   |             move occurs because `var` has type `Option<NotCopyableButCloneable>`, which does not implement the `Copy` trait
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0507`.

@@ -1,0 +1,25 @@
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/const-int-sign.rs:2:29
+   |
+LL |     let x: &'static bool = &(5_i32.is_negative());
+   |            -------------    ^^^^^^^^^^^^^^^^^^^^^ creates a temporary value which is freed while still in use
+   |            |
+   |            type annotation requires that borrow lasts for `'static`
+...
+LL | }
+   | - temporary value is freed at the end of this statement
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/const-int-sign.rs:4:29
+   |
+LL |     let y: &'static bool = &(5_i32.is_positive());
+   |            -------------    ^^^^^^^^^^^^^^^^^^^^^ creates a temporary value which is freed while still in use
+   |            |
+   |            type annotation requires that borrow lasts for `'static`
+LL |
+LL | }
+   | - temporary value is freed at the end of this statement
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0716`.

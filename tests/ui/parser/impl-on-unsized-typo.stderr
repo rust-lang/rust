@@ -1,0 +1,8 @@
+error: expected one of `,`, `:`, `=`, or `>`, found `?`
+  --> $DIR/impl-on-unsized-typo.rs:3:8
+   |
+LL | impl<T ?Sized> Tr for T {}
+   |        ^ expected one of `,`, `:`, `=`, or `>`
+
+error: aborting due to 1 previous error
+

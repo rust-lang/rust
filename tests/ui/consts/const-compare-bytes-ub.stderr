@@ -1,0 +1,54 @@
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const-compare-bytes-ub.rs:10:9
+   |
+LL |         compare_bytes(0 as *const u8, 2 as *const u8, 0)
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ memory access failed: null pointer is a dangling pointer (it has no provenance)
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const-compare-bytes-ub.rs:14:9
+   |
+LL |         compare_bytes(1 as *const u8, 0 as *const u8, 0)
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ memory access failed: null pointer is a dangling pointer (it has no provenance)
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const-compare-bytes-ub.rs:18:9
+   |
+LL |         compare_bytes(1 as *const u8, 2 as *const u8, 1)
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ memory access failed: 0x1[noalloc] is a dangling pointer (it has no provenance)
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const-compare-bytes-ub.rs:22:9
+   |
+LL |         compare_bytes([1, 2, 3].as_ptr(), [1, 2, 3, 4].as_ptr(), 4)
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ memory access failed: ALLOC0 has size 3, so pointer to 4 bytes starting at offset 0 is out-of-bounds
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const-compare-bytes-ub.rs:26:9
+   |
+LL |         compare_bytes([1, 2, 3, 4].as_ptr(), [1, 2, 3].as_ptr(), 4)
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ memory access failed: ALLOC1 has size 3, so pointer to 4 bytes starting at offset 0 is out-of-bounds
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const-compare-bytes-ub.rs:30:9
+   |
+LL |         compare_bytes(MaybeUninit::uninit().as_ptr(), [1].as_ptr(), 1)
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ reading memory at ALLOC2[0x0..0x1], but memory is uninitialized at [0x0..0x1], and this operation requires initialized memory
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const-compare-bytes-ub.rs:34:9
+   |
+LL |         compare_bytes([1].as_ptr(), MaybeUninit::uninit().as_ptr(), 1)
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ reading memory at ALLOC3[0x0..0x1], but memory is uninitialized at [0x0..0x1], and this operation requires initialized memory
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const-compare-bytes-ub.rs:38:9
+   |
+LL |         compare_bytes([&1].as_ptr().cast(), [&2].as_ptr().cast(), std::mem::size_of::<usize>())
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into integer
+   |
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
+
+error: aborting due to 8 previous errors
+
+For more information about this error, try `rustc --explain E0080`.

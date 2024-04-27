@@ -1,0 +1,12 @@
+error[E0119]: conflicting implementations of trait `Foo<_>` for type `Option<_>`
+  --> $DIR/coherence-projection-conflict-ty-param.rs:10:1
+   |
+LL | impl <P, T: Foo<P>> Foo<P> for Option<T> {}
+   | ---------------------------------------- first implementation here
+LL |
+LL | impl<T, U> Foo<T> for Option<U> { }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `Option<_>`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0119`.

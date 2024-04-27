@@ -1,0 +1,83 @@
+Function name: sort_groups::generic_fn::<&str>
+Raw bytes (28): 0x[01, 01, 02, 01, 05, 05, 02, 04, 01, 11, 01, 01, 0c, 05, 01, 0d, 02, 06, 02, 02, 06, 00, 07, 07, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => global file 1
+Number of expressions: 2
+- expression 0 operands: lhs = Counter(0), rhs = Counter(1)
+- expression 1 operands: lhs = Counter(1), rhs = Expression(0, Sub)
+Number of file 0 mappings: 4
+- Code(Counter(0)) at (prev + 17, 1) to (start + 1, 12)
+- Code(Counter(1)) at (prev + 1, 13) to (start + 2, 6)
+- Code(Expression(0, Sub)) at (prev + 2, 6) to (start + 0, 7)
+    = (c0 - c1)
+- Code(Expression(1, Add)) at (prev + 1, 1) to (start + 0, 2)
+    = (c1 + (c0 - c1))
+
+Function name: sort_groups::generic_fn::<()>
+Raw bytes (28): 0x[01, 01, 02, 01, 05, 05, 02, 04, 01, 11, 01, 01, 0c, 05, 01, 0d, 02, 06, 02, 02, 06, 00, 07, 07, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => global file 1
+Number of expressions: 2
+- expression 0 operands: lhs = Counter(0), rhs = Counter(1)
+- expression 1 operands: lhs = Counter(1), rhs = Expression(0, Sub)
+Number of file 0 mappings: 4
+- Code(Counter(0)) at (prev + 17, 1) to (start + 1, 12)
+- Code(Counter(1)) at (prev + 1, 13) to (start + 2, 6)
+- Code(Expression(0, Sub)) at (prev + 2, 6) to (start + 0, 7)
+    = (c0 - c1)
+- Code(Expression(1, Add)) at (prev + 1, 1) to (start + 0, 2)
+    = (c1 + (c0 - c1))
+
+Function name: sort_groups::generic_fn::<char>
+Raw bytes (28): 0x[01, 01, 02, 01, 05, 05, 02, 04, 01, 11, 01, 01, 0c, 05, 01, 0d, 02, 06, 02, 02, 06, 00, 07, 07, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => global file 1
+Number of expressions: 2
+- expression 0 operands: lhs = Counter(0), rhs = Counter(1)
+- expression 1 operands: lhs = Counter(1), rhs = Expression(0, Sub)
+Number of file 0 mappings: 4
+- Code(Counter(0)) at (prev + 17, 1) to (start + 1, 12)
+- Code(Counter(1)) at (prev + 1, 13) to (start + 2, 6)
+- Code(Expression(0, Sub)) at (prev + 2, 6) to (start + 0, 7)
+    = (c0 - c1)
+- Code(Expression(1, Add)) at (prev + 1, 1) to (start + 0, 2)
+    = (c1 + (c0 - c1))
+
+Function name: sort_groups::generic_fn::<i32>
+Raw bytes (28): 0x[01, 01, 02, 01, 05, 05, 02, 04, 01, 11, 01, 01, 0c, 05, 01, 0d, 02, 06, 02, 02, 06, 00, 07, 07, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => global file 1
+Number of expressions: 2
+- expression 0 operands: lhs = Counter(0), rhs = Counter(1)
+- expression 1 operands: lhs = Counter(1), rhs = Expression(0, Sub)
+Number of file 0 mappings: 4
+- Code(Counter(0)) at (prev + 17, 1) to (start + 1, 12)
+- Code(Counter(1)) at (prev + 1, 13) to (start + 2, 6)
+- Code(Expression(0, Sub)) at (prev + 2, 6) to (start + 0, 7)
+    = (c0 - c1)
+- Code(Expression(1, Add)) at (prev + 1, 1) to (start + 0, 2)
+    = (c1 + (c0 - c1))
+
+Function name: sort_groups::main
+Raw bytes (28): 0x[01, 01, 02, 01, 05, 05, 02, 04, 01, 06, 01, 04, 23, 05, 04, 24, 02, 06, 02, 02, 06, 00, 07, 07, 01, 05, 02, 02]
+Number of files: 1
+- file 0 => global file 1
+Number of expressions: 2
+- expression 0 operands: lhs = Counter(0), rhs = Counter(1)
+- expression 1 operands: lhs = Counter(1), rhs = Expression(0, Sub)
+Number of file 0 mappings: 4
+- Code(Counter(0)) at (prev + 6, 1) to (start + 4, 35)
+- Code(Counter(1)) at (prev + 4, 36) to (start + 2, 6)
+- Code(Expression(0, Sub)) at (prev + 2, 6) to (start + 0, 7)
+    = (c0 - c1)
+- Code(Expression(1, Add)) at (prev + 1, 5) to (start + 2, 2)
+    = (c1 + (c0 - c1))
+
+Function name: sort_groups::other_fn
+Raw bytes (9): 0x[01, 01, 00, 01, 01, 17, 01, 00, 11]
+Number of files: 1
+- file 0 => global file 1
+Number of expressions: 0
+Number of file 0 mappings: 1
+- Code(Counter(0)) at (prev + 23, 1) to (start + 0, 17)
+

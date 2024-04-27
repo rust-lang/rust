@@ -1,0 +1,15 @@
+error[E0499]: cannot borrow `y.0` as mutable more than once at a time
+  --> $DIR/borrowck-anon-fields-struct.rs:29:11
+   |
+LL |         Y(ref mut a, _) => a
+   |           --------- first mutable borrow occurs here
+...
+LL |         Y(ref mut b, _) => b
+   |           ^^^^^^^^^ second mutable borrow occurs here
+...
+LL |     *a += 1;
+   |     ------- first borrow later used here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0499`.

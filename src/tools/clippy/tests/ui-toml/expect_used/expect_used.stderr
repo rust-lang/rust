@@ -1,0 +1,20 @@
+error: used `expect()` on an `Option` value
+  --> tests/ui-toml/expect_used/expect_used.rs:7:13
+   |
+LL |     let _ = opt.expect("");
+   |             ^^^^^^^^^^^^^^
+   |
+   = note: if this value is `None`, it will panic
+   = note: `-D clippy::expect-used` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::expect_used)]`
+
+error: used `expect()` on a `Result` value
+  --> tests/ui-toml/expect_used/expect_used.rs:12:13
+   |
+LL |     let _ = res.expect("");
+   |             ^^^^^^^^^^^^^^
+   |
+   = note: if this value is an `Err`, it will panic
+
+error: aborting due to 2 previous errors
+

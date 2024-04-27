@@ -1,0 +1,20 @@
+error: macros cannot have const stability attributes
+  --> $DIR/const-stability-on-macro.rs:4:1
+   |
+LL | #[rustc_const_stable(feature = "foo", since = "3.3.3")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ invalid const stability attribute
+LL |
+LL | macro_rules! foo {
+   | ---------------- const stability attribute affects this macro
+
+error: macros cannot have const stability attributes
+  --> $DIR/const-stability-on-macro.rs:10:1
+   |
+LL | #[rustc_const_unstable(feature = "bar", issue="none")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ invalid const stability attribute
+LL |
+LL | macro_rules! bar {
+   | ---------------- const stability attribute affects this macro
+
+error: aborting due to 2 previous errors
+

@@ -1,0 +1,14 @@
+error: {foo<'{erased}>::{closure#0} closure_kind_ty=i8 closure_sig_as_fn_ptr_ty=extern "rust-call" fn(()) upvar_tys=()}
+  --> $DIR/erased-regions-in-hidden-ty.rs:12:36
+   |
+LL | fn foo<'a: 'a>(x: &'a Vec<i32>) -> impl Fn() + 'static {
+   |                                    ^^^^^^^^^^^^^^^^^^^
+
+error: Opaque(DefId(..), ['{erased}])
+  --> $DIR/erased-regions-in-hidden-ty.rs:18:13
+   |
+LL | fn bar() -> impl Fn() + 'static {
+   |             ^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

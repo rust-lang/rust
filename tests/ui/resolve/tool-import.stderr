@@ -1,0 +1,9 @@
+error[E0433]: failed to resolve: `clippy` is a tool module, not a module
+  --> $DIR/tool-import.rs:3:5
+   |
+LL | use clippy::time::Instant;
+   |     ^^^^^^ `clippy` is a tool module, not a module
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0433`.

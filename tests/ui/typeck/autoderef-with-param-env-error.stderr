@@ -1,0 +1,14 @@
+error[E0412]: cannot find type `T` in this scope
+  --> $DIR/autoderef-with-param-env-error.rs:3:5
+   |
+LL |     T: Send,
+   |     ^ not found in this scope
+   |
+help: you might be missing a type parameter
+   |
+LL | fn foo<T>()
+   |       +++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0412`.

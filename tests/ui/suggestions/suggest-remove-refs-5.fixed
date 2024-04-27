@@ -1,0 +1,8 @@
+//@ run-rustfix
+fn main() {
+    let v = &mut Vec::<i32>::new();
+    for _ in v {} //~ ERROR E0277
+
+    let v = &mut [1u8];
+    for _ in v {} //~ ERROR E0277
+}

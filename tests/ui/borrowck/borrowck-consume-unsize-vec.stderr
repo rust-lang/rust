@@ -1,0 +1,25 @@
+error[E0382]: use of moved value: `b`
+  --> $DIR/borrowck-consume-unsize-vec.rs:8:13
+   |
+LL | fn foo(b: Box<[i32;5]>) {
+   |        - move occurs because `b` has type `Box<[i32; 5]>`, which does not implement the `Copy` trait
+LL |     consume(b);
+   |             - value moved here
+LL |     consume(b);
+   |             ^ value used here after move
+   |
+note: consider changing this parameter type in function `consume` to borrow instead if owning the value isn't necessary
+  --> $DIR/borrowck-consume-unsize-vec.rs:3:15
+   |
+LL | fn consume(_: Box<[i32]>) {
+   |    -------    ^^^^^^^^^^ this parameter takes ownership of the value
+   |    |
+   |    in this function
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     consume(b.clone());
+   |              ++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0382`.

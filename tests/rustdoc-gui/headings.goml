@@ -1,0 +1,234 @@
+// This test checks that headers (a) have the correct heading level, (b) are the right size,
+// and (c) have the correct underlining (or absence of underlining).
+// The sizes may change as design changes, but try to make sure a lower header is never bigger than
+// its parent headers. Also make sure lower headers don't have underlines when their parents lack
+// an underline.
+// Most of these sizes are set in CSS in `em` units, so here's a conversion chart based on our
+// default 16px font size:
+// 24px    1.5em
+// 22px  1.375rem
+// 20px  1.25rem
+// 18px  1.125em
+// 16px  1rem
+// 14px  0.875rem
+include: "utils.goml"
+go-to: "file://" + |DOC_PATH| + "/test_docs/struct.HeavilyDocumentedStruct.html"
+
+assert-css: (".main-heading h1", {"font-size": "24px"})
+
+assert-css: ("h2#top-doc-prose-title", {"font-size": "22px"})
+assert-css: ("h2#top-doc-prose-title", {"border-bottom-width": "1px"})
+assert-css: ("h3#top-doc-prose-sub-heading", {"font-size": "20px"})
+assert-css: ("h3#top-doc-prose-sub-heading", {"border-bottom-width": "1px"})
+assert-css: ("h4#top-doc-prose-sub-sub-heading", {"font-size": "18px"})
+assert-css: ("h4#top-doc-prose-sub-sub-heading", {"border-bottom-width": "1px"})
+
+assert-css: ("h2#fields", {"font-size": "22px"})
+assert-css: ("h2#fields", {"border-bottom-width": "1px"})
+assert-css: ("h3#title-for-field", {"font-size": "20px"})
+assert-css: ("h3#title-for-field", {"border-bottom-width": "0px"})
+assert-css: ("h4#sub-heading-for-field", {"font-size": "16px"})
+assert-css: ("h4#sub-heading-for-field", {"border-bottom-width": "0px"})
+
+assert-css: ("h2#implementations", {"font-size": "22px"})
+assert-css: ("h2#implementations", {"border-bottom-width": "1px"})
+
+assert-css: ("#impl-HeavilyDocumentedStruct > h3.code-header", {"font-size": "18px"})
+assert-css: ("#impl-HeavilyDocumentedStruct > h3.code-header", {"border-bottom-width": "0px"})
+assert-css: ("#method\.do_nothing > h4.code-header", {"font-size": "16px"})
+assert-css: ("#method\.do_nothing > h4.code-header", {"border-bottom-width": "0px"})
+
+assert-css: ("h4#title-for-struct-impl-doc", {"font-size": "16px"})
+assert-css: ("h4#title-for-struct-impl-doc", {"border-bottom-width": "0px"})
+assert-css: ("h5#sub-heading-for-struct-impl-doc", {"font-size": "16px"})
+assert-css: ("h5#sub-heading-for-struct-impl-doc", {"border-bottom-width": "0px"})
+assert-css: ("h6#sub-sub-heading-for-struct-impl-doc", {"font-size": "14px"})
+assert-css: ("h6#sub-sub-heading-for-struct-impl-doc", {"border-bottom-width": "0px"})
+
+assert-css: ("h5#title-for-struct-impl-item-doc", {"font-size": "16px"})
+assert-css: ("h5#title-for-struct-impl-item-doc", {"border-bottom-width": "0px"})
+assert-css: ("h6#sub-heading-for-struct-impl-item-doc", {"font-size": "14px"})
+assert-css: ("h6#sub-heading-for-struct-impl-item-doc", {"border-bottom-width": "0px"})
+assert-css: ("h6#sub-sub-heading-for-struct-impl-item-doc", {"font-size": "14px"})
+
+go-to: "file://" + |DOC_PATH| + "/test_docs/enum.HeavilyDocumentedEnum.html"
+
+assert-css: (".main-heading h1", {"font-size": "24px"})
+
+assert-css: ("h2#top-doc-prose-title", {"font-size": "22px"})
+assert-css: ("h2#top-doc-prose-title", {"border-bottom-width": "1px"})
+assert-css: ("h3#top-doc-prose-sub-heading", {"font-size": "20px"})
+assert-css: ("h3#top-doc-prose-sub-heading", {"border-bottom-width": "1px"})
+assert-css: ("h4#top-doc-prose-sub-sub-heading", {"font-size": "18px"})
+assert-css: ("h4#top-doc-prose-sub-sub-heading", {"border-bottom-width": "1px"})
+
+assert-css: ("h2#variants", {"font-size": "22px"})
+assert-css: ("h2#variants", {"border-bottom-width": "1px"})
+
+assert-css: ("h4#none-prose-title", {"font-size": "16px"})
+assert-css: ("h4#none-prose-title", {"border-bottom-width": "0px"})
+assert-css: ("h5#none-prose-sub-heading", {"font-size": "16px"})
+assert-css: ("h5#none-prose-sub-heading", {"border-bottom-width": "0px"})
+
+assert-css: ("h4#wrapped-prose-title", {"font-size": "16px"})
+assert-css: ("h4#wrapped-prose-title", {"border-bottom-width": "0px"})
+assert-css: ("h5#wrapped-prose-sub-heading", {"font-size": "16px"})
+assert-css: ("h5#wrapped-prose-sub-heading", {"border-bottom-width": "0px"})
+
+assert-css: ("h5#wrapped0-prose-title", {"font-size": "16px"})
+assert-css: ("h5#wrapped0-prose-title", {"border-bottom-width": "0px"})
+assert-css: ("h6#wrapped0-prose-sub-heading", {"font-size": "14px"})
+assert-css: ("h6#wrapped0-prose-sub-heading", {"border-bottom-width": "0px"})
+
+assert-css: ("h5#structy-prose-title", {"font-size": "16px"})
+assert-css: ("h5#structy-prose-title", {"border-bottom-width": "0px"})
+assert-css: ("h6#structy-prose-sub-heading", {"font-size": "14px"})
+assert-css: ("h6#structy-prose-sub-heading", {"border-bottom-width": "0px"})
+
+assert-css: ("h2#implementations", {"font-size": "22px"})
+assert-css: ("h2#implementations", {"border-bottom-width": "1px"})
+
+assert-css: ("#impl-HeavilyDocumentedEnum > h3.code-header", {"font-size": "18px"})
+assert-css: ("#impl-HeavilyDocumentedEnum > h3.code-header", {"border-bottom-width": "0px"})
+assert-css: ("#method\.do_nothing > h4.code-header", {"font-size": "16px"})
+assert-css: ("#method\.do_nothing > h4.code-header", {"border-bottom-width": "0px"})
+
+assert-css: ("h4#title-for-enum-impl-doc", {"font-size": "16px"})
+assert-css: ("h4#title-for-enum-impl-doc", {"border-bottom-width": "0px"})
+assert-css: ("h5#sub-heading-for-enum-impl-doc", {"font-size": "16px"})
+assert-css: ("h5#sub-heading-for-enum-impl-doc", {"border-bottom-width": "0px"})
+assert-css: ("h6#sub-sub-heading-for-enum-impl-doc", {"font-size": "14px"})
+assert-css: ("h6#sub-sub-heading-for-enum-impl-doc", {"border-bottom-width": "0px"})
+
+assert-css: ("h5#title-for-enum-impl-item-doc", {"font-size": "16px"})
+assert-css: ("h5#title-for-enum-impl-item-doc", {"border-bottom-width": "0px"})
+assert-css: ("h6#sub-heading-for-enum-impl-item-doc", {"font-size": "14px"})
+assert-css: ("h6#sub-heading-for-enum-impl-item-doc", {"border-bottom-width": "0px"})
+assert-css: ("h6#sub-sub-heading-for-enum-impl-item-doc", {"font-size": "14px"})
+assert-css: ("h6#sub-sub-heading-for-enum-impl-item-doc", {"border-bottom-width": "0px"})
+
+assert-text: ("//ul[@class='block mod']/preceding-sibling::h3", "Modules")
+assert-css: ("//ul[@class='block mod']/preceding-sibling::h3", {"border-bottom-width": "0px"}, ALL)
+
+go-to: "file://" + |DOC_PATH| + "/test_docs/union.HeavilyDocumentedUnion.html"
+
+assert-css: (".main-heading h1", {"font-size": "24px"})
+
+assert-css: ("h2#top-doc-prose-title", {"font-size": "22px"})
+assert-css: ("h2#top-doc-prose-title", {"border-bottom-width": "1px"})
+assert-css: ("h3#top-doc-prose-sub-heading", {"font-size": "20px"})
+assert-css: ("h3#top-doc-prose-sub-heading", {"border-bottom-width": "1px"})
+
+assert-css: ("h2#fields", {"font-size": "22px"})
+assert-css: ("h2#fields", {"border-bottom-width": "1px"})
+
+assert-css: ("h3#title-for-union-variant", {"font-size": "20px"})
+assert-css: ("h3#title-for-union-variant", {"border-bottom-width": "0px"})
+assert-css: ("h4#sub-heading-for-union-variant", {"font-size": "16px"})
+assert-css: ("h4#sub-heading-for-union-variant", {"border-bottom-width": "0px"})
+
+assert-css: ("h2#implementations", {"font-size": "22px"})
+assert-css: ("h2#implementations", {"border-bottom-width": "1px"})
+
+assert-css: ("#impl-HeavilyDocumentedUnion > h3.code-header", {"font-size": "18px"})
+assert-css: ("#impl-HeavilyDocumentedUnion > h3.code-header", {"border-bottom-width": "0px"})
+assert-css: ("h4#title-for-union-impl-doc", {"font-size": "16px"})
+assert-css: ("h4#title-for-union-impl-doc", {"border-bottom-width": "0px"})
+assert-css: ("h5#sub-heading-for-union-impl-doc", {"font-size": "16px"})
+assert-css: ("h5#sub-heading-for-union-impl-doc", {"border-bottom-width": "0px"})
+
+assert-css: ("h5#title-for-union-impl-item-doc", {"font-size": "16px"})
+assert-css: ("h5#title-for-union-impl-item-doc", {"border-bottom-width": "0px"})
+assert-css: ("h6#sub-heading-for-union-impl-item-doc", {"font-size": "14px"})
+assert-css: ("h6#sub-heading-for-union-impl-item-doc", {"border-bottom-width": "0px"})
+
+go-to: "file://" + |DOC_PATH| + "/test_docs/macro.heavily_documented_macro.html"
+
+assert-css: (".main-heading h1", {"font-size": "24px"})
+
+assert-css: ("h2#top-doc-prose-title", {"font-size": "22px"})
+assert-css: ("h2#top-doc-prose-title", {"border-bottom-width": "1px"})
+assert-css: ("h3#top-doc-prose-sub-heading", {"font-size": "20px"})
+assert-css: ("h3#top-doc-prose-sub-heading", {"border-bottom-width": "1px"})
+
+// Needed to check colors
+show-text: true
+go-to: "file://" + |DOC_PATH| + "/test_docs/struct.HeavilyDocumentedStruct.html"
+
+define-function: (
+    "check-colors",
+    [theme, heading_color, small_heading_color, heading_border_color],
+    block {
+        call-function: ("switch-theme", {"theme": |theme|})
+
+        assert-css: (
+            ".top-doc .docblock h2",
+            {"color": |heading_color|, "border-bottom": "1px solid " + |heading_border_color|},
+        )
+        assert-css: (
+            ".top-doc .docblock h3",
+            {"color": |heading_color|, "border-bottom": "1px solid " + |heading_border_color|},
+        )
+        assert-css: (
+            ".top-doc .docblock h4",
+            {"color": |heading_color|, "border-bottom": "1px solid " + |heading_border_color|},
+        )
+        assert-css: (
+            ".top-doc .docblock h5",
+            {"color": |small_heading_color|, "border-bottom-width": "0px"},
+        )
+        assert-css: (
+            "#implementations-list .docblock h4",
+            {"color": |heading_color|, "border-bottom-width": "0px"},
+        )
+        assert-css: (
+            "#implementations-list .docblock h5",
+            {"color": |small_heading_color|, "border-bottom-width": "0px"},
+        )
+        assert-css: (
+            "#implementations-list .docblock h6",
+            {"color": |small_heading_color|, "border-bottom-width": "0px"},
+        )
+    },
+)
+call-function: (
+    "check-colors",
+    {
+        "theme": "ayu",
+        "heading_color": "#fff",
+        "small_heading_color": "#c5c5c5",
+        "heading_border_color": "#5c6773",
+    },
+)
+call-function: (
+    "check-colors",
+    {
+        "theme": "dark",
+        "heading_color": "#ddd",
+        "small_heading_color": "#ddd",
+        "heading_border_color": "#d2d2d2",
+    },
+)
+call-function: (
+    "check-colors",
+    {
+        "theme": "light",
+        "heading_color": "black",
+        "small_heading_color": "black",
+        "heading_border_color": "#ddd",
+    },
+)
+
+define-function: (
+    "check-since-color",
+    [theme],
+    block {
+        call-function: ("switch-theme", {"theme": |theme|})
+        assert-css: (".since", {"color": "#808080"}, ALL)
+    },
+)
+
+go-to: "file://" + |DOC_PATH| + "/staged_api/struct.Foo.html"
+call-function: ("check-since-color", {"theme": "ayu"})
+call-function: ("check-since-color", {"theme": "dark"})
+call-function: ("check-since-color", {"theme": "light"})

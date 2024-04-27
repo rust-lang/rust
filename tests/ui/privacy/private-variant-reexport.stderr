@@ -1,0 +1,60 @@
+error[E0364]: `V` is only public within the crate, and cannot be re-exported outside
+  --> $DIR/private-variant-reexport.rs:2:13
+   |
+LL |     pub use ::E::V;
+   |             ^^^^^^
+   |
+note: consider marking `V` as `pub` in the imported module
+  --> $DIR/private-variant-reexport.rs:2:13
+   |
+LL |     pub use ::E::V;
+   |             ^^^^^^
+
+error[E0364]: `V` is only public within the crate, and cannot be re-exported outside
+  --> $DIR/private-variant-reexport.rs:6:19
+   |
+LL |     pub use ::E::{V};
+   |                   ^
+   |
+note: consider marking `V` as `pub` in the imported module
+  --> $DIR/private-variant-reexport.rs:6:19
+   |
+LL |     pub use ::E::{V};
+   |                   ^
+
+error[E0365]: `V` is only public within the crate, and cannot be re-exported outside
+  --> $DIR/private-variant-reexport.rs:10:22
+   |
+LL |     pub use ::E::V::{self};
+   |                      ^^^^ re-export of crate public `V`
+   |
+   = note: consider declaring type or module `V` with `pub`
+
+error: glob import doesn't reexport anything with visibility `pub` because no imported item is public enough
+  --> $DIR/private-variant-reexport.rs:15:13
+   |
+LL |     pub use ::E::*;
+   |             ^^^^^^
+   |
+note: the most public imported item is `pub(crate)`
+  --> $DIR/private-variant-reexport.rs:15:13
+   |
+LL |     pub use ::E::*;
+   |             ^^^^^^
+   = help: reduce the glob import's visibility or increase visibility of imported items
+note: the lint level is defined here
+  --> $DIR/private-variant-reexport.rs:13:8
+   |
+LL | #[deny(unused_imports)]
+   |        ^^^^^^^^^^^^^^
+
+error: unused import: `::E::*`
+  --> $DIR/private-variant-reexport.rs:15:13
+   |
+LL |     pub use ::E::*;
+   |             ^^^^^^
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0364, E0365.
+For more information about an error, try `rustc --explain E0364`.

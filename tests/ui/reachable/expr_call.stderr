@@ -1,0 +1,24 @@
+error: unreachable expression
+  --> $DIR/expr_call.rs:13:17
+   |
+LL |     foo(return, 22);
+   |         ------  ^^ unreachable expression
+   |         |
+   |         any code following this expression is unreachable
+   |
+note: the lint level is defined here
+  --> $DIR/expr_call.rs:5:9
+   |
+LL | #![deny(unreachable_code)]
+   |         ^^^^^^^^^^^^^^^^
+
+error: unreachable call
+  --> $DIR/expr_call.rs:18:5
+   |
+LL |     bar(return);
+   |     ^^^ ------ any code following this expression is unreachable
+   |     |
+   |     unreachable call
+
+error: aborting due to 2 previous errors
+

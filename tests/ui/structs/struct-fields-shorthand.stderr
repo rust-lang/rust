@@ -1,0 +1,11 @@
+error[E0560]: struct `Foo` has no field named `z`
+  --> $DIR/struct-fields-shorthand.rs:9:15
+   |
+LL |         x, y, z
+   |               ^ `Foo` does not have this field
+   |
+   = note: all struct fields are already assigned
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0560`.

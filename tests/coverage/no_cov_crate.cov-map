@@ -1,0 +1,78 @@
+Function name: no_cov_crate::add_coverage_1
+Raw bytes (9): 0x[01, 01, 00, 01, 01, 14, 01, 02, 02]
+Number of files: 1
+- file 0 => global file 1
+Number of expressions: 0
+Number of file 0 mappings: 1
+- Code(Counter(0)) at (prev + 20, 1) to (start + 2, 2)
+
+Function name: no_cov_crate::add_coverage_2
+Raw bytes (9): 0x[01, 01, 00, 01, 01, 18, 01, 02, 02]
+Number of files: 1
+- file 0 => global file 1
+Number of expressions: 0
+Number of file 0 mappings: 1
+- Code(Counter(0)) at (prev + 24, 1) to (start + 2, 2)
+
+Function name: no_cov_crate::add_coverage_not_called (unused)
+Raw bytes (9): 0x[01, 01, 00, 01, 00, 1d, 01, 02, 02]
+Number of files: 1
+- file 0 => global file 1
+Number of expressions: 0
+Number of file 0 mappings: 1
+- Code(Zero) at (prev + 29, 1) to (start + 2, 2)
+
+Function name: no_cov_crate::main
+Raw bytes (9): 0x[01, 01, 00, 01, 01, 4d, 01, 0b, 02]
+Number of files: 1
+- file 0 => global file 1
+Number of expressions: 0
+Number of file 0 mappings: 1
+- Code(Counter(0)) at (prev + 77, 1) to (start + 11, 2)
+
+Function name: no_cov_crate::nested_fns::outer
+Raw bytes (9): 0x[01, 01, 00, 01, 01, 31, 05, 0c, 06]
+Number of files: 1
+- file 0 => global file 1
+Number of expressions: 0
+Number of file 0 mappings: 1
+- Code(Counter(0)) at (prev + 49, 5) to (start + 12, 6)
+
+Function name: no_cov_crate::nested_fns::outer_both_covered
+Raw bytes (9): 0x[01, 01, 00, 01, 01, 3f, 05, 0b, 06]
+Number of files: 1
+- file 0 => global file 1
+Number of expressions: 0
+Number of file 0 mappings: 1
+- Code(Counter(0)) at (prev + 63, 5) to (start + 11, 6)
+
+Function name: no_cov_crate::nested_fns::outer_both_covered::inner
+Raw bytes (28): 0x[01, 01, 02, 01, 05, 05, 02, 04, 01, 43, 09, 01, 17, 05, 01, 18, 02, 0e, 02, 02, 14, 02, 0e, 07, 03, 09, 00, 0a]
+Number of files: 1
+- file 0 => global file 1
+Number of expressions: 2
+- expression 0 operands: lhs = Counter(0), rhs = Counter(1)
+- expression 1 operands: lhs = Counter(1), rhs = Expression(0, Sub)
+Number of file 0 mappings: 4
+- Code(Counter(0)) at (prev + 67, 9) to (start + 1, 23)
+- Code(Counter(1)) at (prev + 1, 24) to (start + 2, 14)
+- Code(Expression(0, Sub)) at (prev + 2, 20) to (start + 2, 14)
+    = (c0 - c1)
+- Code(Expression(1, Add)) at (prev + 3, 9) to (start + 0, 10)
+    = (c1 + (c0 - c1))
+
+Function name: no_cov_crate::nested_fns::outer_not_covered::inner
+Raw bytes (28): 0x[01, 01, 02, 01, 05, 05, 02, 04, 01, 26, 09, 01, 17, 05, 01, 18, 02, 0e, 02, 02, 14, 02, 0e, 07, 03, 09, 00, 0a]
+Number of files: 1
+- file 0 => global file 1
+Number of expressions: 2
+- expression 0 operands: lhs = Counter(0), rhs = Counter(1)
+- expression 1 operands: lhs = Counter(1), rhs = Expression(0, Sub)
+Number of file 0 mappings: 4
+- Code(Counter(0)) at (prev + 38, 9) to (start + 1, 23)
+- Code(Counter(1)) at (prev + 1, 24) to (start + 2, 14)
+- Code(Expression(0, Sub)) at (prev + 2, 20) to (start + 2, 14)
+    = (c0 - c1)
+- Code(Expression(1, Add)) at (prev + 3, 9) to (start + 0, 10)
+    = (c1 + (c0 - c1))
+

@@ -1,0 +1,14 @@
+error: expected item after attributes
+  --> $DIR/attr-with-a-semicolon.rs:1:1
+   |
+LL | #[derive(Debug, Clone)];
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider removing this semicolon
+   |
+LL - #[derive(Debug, Clone)];
+LL + #[derive(Debug, Clone)]
+   |
+
+error: aborting due to 1 previous error
+

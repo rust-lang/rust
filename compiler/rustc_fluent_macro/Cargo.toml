@@ -1,0 +1,18 @@
+[package]
+name = "rustc_fluent_macro"
+version = "0.0.0"
+edition = "2021"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+# tidy-alphabetical-start
+annotate-snippets = "0.10"
+fluent-bundle = "0.15.2"
+fluent-syntax = "0.11"
+proc-macro2 = "1"
+quote = "1"
+syn = { version = "2", features = ["full"] }
+unic-langid = { version = "0.9.0", features = ["macros"] }
+# tidy-alphabetical-end

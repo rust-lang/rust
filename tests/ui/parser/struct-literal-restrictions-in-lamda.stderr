@@ -1,0 +1,37 @@
+error: struct literals are not allowed here
+  --> $DIR/struct-literal-restrictions-in-lamda.rs:12:14
+   |
+LL |       while || Foo {
+   |  ______________^
+LL | |         x: 3
+LL | |     }.hi() {
+   | |_____^
+   |
+help: surround the struct literal with parentheses
+   |
+LL ~     while || (Foo {
+LL |         x: 3
+LL ~     }).hi() {
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/struct-literal-restrictions-in-lamda.rs:12:11
+   |
+LL |       while || Foo {
+   |  ___________^
+LL | |         x: 3
+LL | |     }.hi() {
+   | |__________^ expected `bool`, found closure
+   |
+   = note: expected type `bool`
+           found closure `{closure@$DIR/struct-literal-restrictions-in-lamda.rs:12:11: 12:13}`
+help: use parentheses to call this closure
+   |
+LL ~     while (|| Foo {
+LL |         x: 3
+LL ~     }.hi())() {
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

@@ -1,0 +1,29 @@
+error[E0792]: non-defining opaque type use in defining scope
+  --> $DIR/implied_bounds_from_types.rs:14:39
+   |
+LL |     fn convert<'b, T: ?Sized>(_proof: &'b WithLifetime<&'a ()>, x: &'a T) -> &'b T {
+   |                                       ^^^^^^^^^^^^^^^^^^^^^^^^ argument `&'a ()` is not a generic parameter
+   |
+note: for this opaque type
+  --> $DIR/implied_bounds_from_types.rs:3:24
+   |
+LL | type WithLifetime<T> = impl Equals<SelfType = ()>;
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: lifetime may not live long enough
+  --> $DIR/implied_bounds_from_types.rs:18:9
+   |
+LL | impl<'a> Convert<'a> for () {
+   |      -- lifetime `'a` defined here
+...
+LL |     fn convert<'b, T: ?Sized>(_proof: &'b WithLifetime<&'a ()>, x: &'a T) -> &'b T {
+   |                -- lifetime `'b` defined here
+...
+LL |         x
+   |         ^ associated function was supposed to return data with lifetime `'b` but it is returning data with lifetime `'a`
+   |
+   = help: consider adding the following bound: `'a: 'b`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0792`.

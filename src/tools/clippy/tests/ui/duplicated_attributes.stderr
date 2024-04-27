@@ -1,0 +1,38 @@
+error: duplicated attribute
+  --> tests/ui/duplicated_attributes.rs:6:10
+   |
+LL | #![allow(dead_code)]
+   |          ^^^^^^^^^
+   |
+note: first defined here
+  --> tests/ui/duplicated_attributes.rs:5:10
+   |
+LL | #![allow(dead_code)]
+   |          ^^^^^^^^^
+help: remove this attribute
+  --> tests/ui/duplicated_attributes.rs:6:10
+   |
+LL | #![allow(dead_code)]
+   |          ^^^^^^^^^
+   = note: `-D clippy::duplicated-attributes` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::duplicated_attributes)]`
+
+error: duplicated attribute
+  --> tests/ui/duplicated_attributes.rs:14:9
+   |
+LL | #[allow(dead_code)]
+   |         ^^^^^^^^^
+   |
+note: first defined here
+  --> tests/ui/duplicated_attributes.rs:13:9
+   |
+LL | #[allow(dead_code)]
+   |         ^^^^^^^^^
+help: remove this attribute
+  --> tests/ui/duplicated_attributes.rs:14:9
+   |
+LL | #[allow(dead_code)]
+   |         ^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

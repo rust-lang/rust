@@ -1,0 +1,31 @@
+error[E0382]: use of moved value
+  --> $DIR/bind-by-copy-or-pat.rs:8:16
+   |
+LL |     let x @ (A(a) | A(a)) = A(10);
+   |         -      ^            ----- move occurs because value has type `A`, which does not implement the `Copy` trait
+   |         |      |
+   |         |      value used here after move
+   |         value moved here
+   |
+help: borrow this binding in the pattern to avoid moving the value
+   |
+LL |     let ref x @ (A(a) | A(a)) = A(10);
+   |         +++
+
+error[E0382]: use of moved value
+  --> $DIR/bind-by-copy-or-pat.rs:8:23
+   |
+LL |     let x @ (A(a) | A(a)) = A(10);
+   |         -             ^     ----- move occurs because value has type `A`, which does not implement the `Copy` trait
+   |         |             |
+   |         |             value used here after move
+   |         value moved here
+   |
+help: borrow this binding in the pattern to avoid moving the value
+   |
+LL |     let ref x @ (A(a) | A(a)) = A(10);
+   |         +++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0382`.

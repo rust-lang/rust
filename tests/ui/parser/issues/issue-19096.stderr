@@ -1,0 +1,14 @@
+error: expected one of `.`, `;`, `?`, `}`, or an operator, found `::`
+  --> $DIR/issue-19096.rs:3:8
+   |
+LL |     t.0::<isize>;
+   |        ^^ expected one of `.`, `;`, `?`, `}`, or an operator
+
+error: expected one of `.`, `;`, `?`, `}`, or an operator, found `::`
+  --> $DIR/issue-19096.rs:8:8
+   |
+LL |     t.0::<isize>;
+   |        ^^ expected one of `.`, `;`, `?`, `}`, or an operator
+
+error: aborting due to 2 previous errors
+

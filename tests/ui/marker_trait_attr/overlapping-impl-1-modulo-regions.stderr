@@ -1,0 +1,17 @@
+error[E0310]: the parameter type `T` may not live long enough
+  --> $DIR/overlapping-impl-1-modulo-regions.rs:14:21
+   |
+LL | impl<T: Copy> F for T {}
+   |                     ^
+   |                     |
+   |                     the parameter type `T` must be valid for the static lifetime...
+   |                     ...so that the type `T` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL | impl<T: Copy + 'static> F for T {}
+   |              +++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0310`.

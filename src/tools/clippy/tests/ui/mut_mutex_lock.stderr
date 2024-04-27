@@ -1,0 +1,11 @@
+error: calling `&mut Mutex::lock` unnecessarily locks an exclusive (mutable) reference
+  --> tests/ui/mut_mutex_lock.rs:10:33
+   |
+LL |     let mut value = value_mutex.lock().unwrap();
+   |                                 ^^^^ help: change this to: `get_mut`
+   |
+   = note: `-D clippy::mut-mutex-lock` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::mut_mutex_lock)]`
+
+error: aborting due to 1 previous error
+

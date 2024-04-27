@@ -1,0 +1,34 @@
+warning: argument must be of the form: `expected = "error message"`
+  --> $DIR/test-should-panic-attr.rs:11:1
+   |
+LL | #[should_panic(expected)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: errors in this attribute were erroneously allowed and will become a hard error in a future release
+
+warning: argument must be of the form: `expected = "error message"`
+  --> $DIR/test-should-panic-attr.rs:18:1
+   |
+LL | #[should_panic(expect)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: errors in this attribute were erroneously allowed and will become a hard error in a future release
+
+warning: argument must be of the form: `expected = "error message"`
+  --> $DIR/test-should-panic-attr.rs:25:1
+   |
+LL | #[should_panic(expected(foo, bar))]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: errors in this attribute were erroneously allowed and will become a hard error in a future release
+
+warning: argument must be of the form: `expected = "error message"`
+  --> $DIR/test-should-panic-attr.rs:32:1
+   |
+LL | #[should_panic(expected = "foo", bar)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: errors in this attribute were erroneously allowed and will become a hard error in a future release
+
+warning: 4 warnings emitted
+

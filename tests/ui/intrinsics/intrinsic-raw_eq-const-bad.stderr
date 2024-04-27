@@ -1,0 +1,15 @@
+error[E0080]: evaluation of constant value failed
+  --> $DIR/intrinsic-raw_eq-const-bad.rs:5:5
+   |
+LL |     std::intrinsics::raw_eq(&(1_u8, 2_u16), &(1_u8, 2_u16))
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ reading memory at ALLOC0[0x0..0x4], but memory is uninitialized at [0x1..0x2], and this operation requires initialized memory
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/intrinsic-raw_eq-const-bad.rs:11:5
+   |
+LL |     std::intrinsics::raw_eq(&(&0), &(&1))
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `raw_eq` on bytes with provenance
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0080`.

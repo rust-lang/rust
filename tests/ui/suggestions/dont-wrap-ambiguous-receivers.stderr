@@ -1,0 +1,20 @@
+error[E0599]: no method named `pick` found for struct `Chaenomeles` in the current scope
+  --> $DIR/dont-wrap-ambiguous-receivers.rs:18:25
+   |
+LL |     pub struct Chaenomeles;
+   |     ---------------------- method `pick` not found for this struct
+...
+LL |     banana::Chaenomeles.pick()
+   |                         ^^^^ method not found in `Chaenomeles`
+   |
+   = help: items from traits can only be used if the trait is in scope
+help: the following traits which provide `pick` are implemented but not in scope; perhaps you want to import one of them
+   |
+LL + use banana::Apple;
+   |
+LL + use banana::Peach;
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0599`.

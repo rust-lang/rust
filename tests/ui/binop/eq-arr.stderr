@@ -1,0 +1,22 @@
+error[E0369]: binary operation `==` cannot be applied to type `[X; 3]`
+  --> $DIR/eq-arr.rs:5:17
+   |
+LL |     let eq = xs == [X, X, X];
+   |              -- ^^ --------- [X; 3]
+   |              |
+   |              [X; 3]
+   |
+note: an implementation of `PartialEq` might be missing for `X`
+  --> $DIR/eq-arr.rs:2:5
+   |
+LL |     struct X;
+   |     ^^^^^^^^ must implement `PartialEq`
+help: consider annotating `X` with `#[derive(PartialEq)]`
+   |
+LL +     #[derive(PartialEq)]
+LL |     struct X;
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0369`.

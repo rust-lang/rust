@@ -1,0 +1,47 @@
+error[E0573]: expected type, found variant `Alpha::One`
+  --> $DIR/offset-of-enum.rs:11:16
+   |
+LL |     offset_of!(Alpha::One, 0);
+   |                ^^^^^^^^^^
+   |                |
+   |                not a type
+   |                help: try using the variant's enum: `Alpha`
+
+error[E0412]: cannot find type `Beta` in this scope
+  --> $DIR/offset-of-enum.rs:17:16
+   |
+LL |     offset_of!(Beta, One);
+   |                ^^^^ not found in this scope
+
+error[E0795]: `One` is an enum variant; expected field at end of `offset_of`
+  --> $DIR/offset-of-enum.rs:12:23
+   |
+LL |     offset_of!(Alpha, One);
+   |                       ^^^ enum variant
+
+error[E0609]: no field named `1` on enum variant `Alpha::Two`
+  --> $DIR/offset-of-enum.rs:14:23
+   |
+LL |     offset_of!(Alpha, Two.1);
+   |                       ^^^ - ...does not have this field
+   |                       |
+   |                       this enum variant...
+
+error[E0609]: no field named `foo` on enum variant `Alpha::Two`
+  --> $DIR/offset-of-enum.rs:15:23
+   |
+LL |     offset_of!(Alpha, Two.foo);
+   |                       ^^^ --- ...does not have this field
+   |                       |
+   |                       this enum variant...
+
+error[E0599]: no variant named `NonExistent` found for enum `Alpha`
+  --> $DIR/offset-of-enum.rs:16:23
+   |
+LL |     offset_of!(Alpha, NonExistent);
+   |                       ^^^^^^^^^^^ variant not found
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0412, E0573, E0599, E0609, E0795.
+For more information about an error, try `rustc --explain E0412`.

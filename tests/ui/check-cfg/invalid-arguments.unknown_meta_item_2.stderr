@@ -1,0 +1,2 @@
+error: invalid `--check-cfg` argument: `cfg(foo,test())` (`cfg()` arguments must be simple identifiers, `any()` or `values(...)`)
+

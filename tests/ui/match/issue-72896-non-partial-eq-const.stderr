@@ -1,0 +1,8 @@
+error: to use a constant of type `EnumSet<Enum8>` in a pattern, the type must implement `PartialEq`
+  --> $DIR/issue-72896-non-partial-eq-const.rs:19:9
+   |
+LL |         CONST_SET => { /* ok */ }
+   |         ^^^^^^^^^
+
+error: aborting due to 1 previous error
+

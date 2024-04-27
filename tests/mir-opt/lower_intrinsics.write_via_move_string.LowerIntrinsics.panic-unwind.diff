@@ -1,0 +1,31 @@
+- // MIR for `write_via_move_string` before LowerIntrinsics
++ // MIR for `write_via_move_string` after LowerIntrinsics
+  
+  fn write_via_move_string(_1: &mut String, _2: String) -> () {
+      debug r => _1;
+      debug v => _2;
+      let mut _0: ();
+      let mut _3: *mut std::string::String;
+      let mut _4: std::string::String;
+  
+      bb0: {
+          StorageLive(_3);
+          _3 = &raw mut (*_1);
+          StorageLive(_4);
+          _4 = move _2;
+-         _0 = write_via_move::<String>(move _3, move _4) -> [return: bb1, unwind unreachable];
++         (*_3) = move _4;
++         goto -> bb1;
+      }
+  
+      bb1: {
+          StorageDead(_4);
+          StorageDead(_3);
+          goto -> bb2;
+      }
+  
+      bb2: {
+          return;
+      }
+  }
+  

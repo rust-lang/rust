@@ -1,0 +1,11 @@
+error[E0403]: the name `M` is already used for a generic parameter in this item's generic parameters
+  --> $DIR/self-referential.rs:1:30
+   |
+LL | trait Foo<const M: u8, const M: u8 = M> {}
+   |                 -            ^ already used
+   |                 |
+   |                 first use of `M`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0403`.

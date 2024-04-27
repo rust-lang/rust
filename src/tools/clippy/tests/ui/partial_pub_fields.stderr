@@ -1,0 +1,36 @@
+error: mixed usage of pub and non-pub fields
+  --> tests/ui/partial_pub_fields.rs:10:9
+   |
+LL |         pub paths: HashMap<u32, String>,
+   |         ^^^
+   |
+   = help: consider using private field here
+   = note: `-D clippy::partial-pub-fields` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::partial_pub_fields)]`
+
+error: mixed usage of pub and non-pub fields
+  --> tests/ui/partial_pub_fields.rs:17:9
+   |
+LL |         b: u8,
+   |         ^
+   |
+   = help: consider using public field here
+
+error: mixed usage of pub and non-pub fields
+  --> tests/ui/partial_pub_fields.rs:21:27
+   |
+LL |     pub struct Point(i32, pub i32);
+   |                           ^^^
+   |
+   = help: consider using private field here
+
+error: mixed usage of pub and non-pub fields
+  --> tests/ui/partial_pub_fields.rs:26:9
+   |
+LL |         pub pos: u32,
+   |         ^^^
+   |
+   = help: consider using private field here
+
+error: aborting due to 4 previous errors
+

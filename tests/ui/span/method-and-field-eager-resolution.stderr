@@ -1,0 +1,31 @@
+error[E0282]: type annotations needed
+  --> $DIR/method-and-field-eager-resolution.rs:4:9
+   |
+LL |     let mut x = Default::default();
+   |         ^^^^^
+LL |
+LL |     x.0;
+   |     - type must be known at this point
+   |
+help: consider giving `x` an explicit type
+   |
+LL |     let mut x: /* Type */ = Default::default();
+   |              ++++++++++++
+
+error[E0282]: type annotations needed
+  --> $DIR/method-and-field-eager-resolution.rs:11:9
+   |
+LL |     let mut x = Default::default();
+   |         ^^^^^
+LL |
+LL |     x[0];
+   |     - type must be known at this point
+   |
+help: consider giving `x` an explicit type
+   |
+LL |     let mut x: /* Type */ = Default::default();
+   |              ++++++++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0282`.

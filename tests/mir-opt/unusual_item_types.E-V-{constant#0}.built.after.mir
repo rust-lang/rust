@@ -1,0 +1,10 @@
+// MIR for `E::V::{constant#0}` after built
+
+E::V::{constant#0}: isize = {
+    let mut _0: isize;
+
+    bb0: {
+        _0 = const 5_isize;
+        return;
+    }
+}

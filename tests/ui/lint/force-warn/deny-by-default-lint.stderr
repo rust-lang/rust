@@ -1,0 +1,10 @@
+warning: transmuting &T to &mut T is undefined behavior, even if the reference is unused, consider instead using an UnsafeCell
+  --> $DIR/deny-by-default-lint.rs:7:17
+   |
+LL |         let y = std::mem::transmute::<&i32, &mut i32>(&5);
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: requested on the command line with `--force-warn mutable-transmutes`
+
+warning: 1 warning emitted
+

@@ -1,0 +1,9 @@
+error[E0425]: cannot find value `a_variable_longer_name` in this scope
+  --> $DIR/issue-66968-suggest-sorted-words.rs:3:20
+   |
+LL |     println!("{}", a_variable_longer_name);
+   |                    ^^^^^^^^^^^^^^^^^^^^^^ help: a local variable with a similar name exists: `a_longer_variable_name`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0425`.

@@ -1,0 +1,9 @@
+error[E0791]: invalid type for variable with `#[linkage]` attribute
+  --> $DIR/linkage2.rs:7:5
+   |
+LL |     static foo: i32;
+   |     ^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0791`.

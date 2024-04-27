@@ -1,0 +1,17 @@
+// MIR for `unsigny` after built
+
+fn unsigny(_1: UnsignedAroundZero) -> u16 {
+    debug x => _1;
+    let mut _0: u16;
+    let _2: UnsignedAroundZero;
+    let mut _3: u16;
+
+    bb0: {
+        StorageLive(_2);
+        _2 = move _1;
+        _3 = discriminant(_2);
+        _0 = move _3 as u16 (IntToInt);
+        StorageDead(_2);
+        return;
+    }
+}

@@ -1,0 +1,46 @@
+error: unknown `doc` attribute `as_ptr`
+  --> $DIR/doc-attr.rs:5:7
+   |
+LL | #[doc(as_ptr)]
+   |       ^^^^^^
+   |
+   = note: `#[deny(invalid_doc_attributes)]` on by default
+
+error: invalid `doc` attribute
+  --> $DIR/doc-attr.rs:9:7
+   |
+LL | #[doc(123)]
+   |       ^^^
+
+error: invalid `doc` attribute
+  --> $DIR/doc-attr.rs:11:7
+   |
+LL | #[doc("hello", "bar")]
+   |       ^^^^^^^
+
+error: invalid `doc` attribute
+  --> $DIR/doc-attr.rs:11:16
+   |
+LL | #[doc("hello", "bar")]
+   |                ^^^^^
+
+error: unknown `doc` attribute `foo::bar`
+  --> $DIR/doc-attr.rs:14:7
+   |
+LL | #[doc(foo::bar, crate::bar::baz = "bye")]
+   |       ^^^^^^^^
+
+error: unknown `doc` attribute `crate::bar::baz`
+  --> $DIR/doc-attr.rs:14:17
+   |
+LL | #[doc(foo::bar, crate::bar::baz = "bye")]
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: unknown `doc` attribute `as_ptr`
+  --> $DIR/doc-attr.rs:2:8
+   |
+LL | #![doc(as_ptr)]
+   |        ^^^^^^
+
+error: aborting due to 7 previous errors
+

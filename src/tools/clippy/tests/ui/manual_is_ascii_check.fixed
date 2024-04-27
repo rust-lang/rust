@@ -1,0 +1,57 @@
+#![allow(unused, dead_code)]
+#![warn(clippy::manual_is_ascii_check)]
+
+fn main() {
+    assert!('x'.is_ascii_lowercase());
+    assert!('X'.is_ascii_uppercase());
+    assert!(b'x'.is_ascii_lowercase());
+    assert!(b'X'.is_ascii_uppercase());
+
+    let num = '2';
+    assert!(num.is_ascii_digit());
+    assert!(b'1'.is_ascii_digit());
+    assert!('x'.is_ascii_alphabetic());
+
+    assert!(matches!('x', 'A'..='Z' | 'a'..='z' | '_'));
+
+    b'0'.is_ascii_digit();
+    b'a'.is_ascii_lowercase();
+    b'A'.is_ascii_uppercase();
+
+    '0'.is_ascii_digit();
+    'a'.is_ascii_lowercase();
+    'A'.is_ascii_uppercase();
+
+    let cool_letter = &'g';
+    cool_letter.is_ascii_digit();
+    cool_letter.is_ascii_lowercase();
+    cool_letter.is_ascii_uppercase();
+}
+
+#[clippy::msrv = "1.23"]
+fn msrv_1_23() {
+    assert!(matches!(b'1', b'0'..=b'9'));
+    assert!(matches!('X', 'A'..='Z'));
+    assert!(matches!('x', 'A'..='Z' | 'a'..='z'));
+    assert!(matches!('x', '0'..='9' | 'a'..='f' | 'A'..='F'));
+}
+
+#[clippy::msrv = "1.24"]
+fn msrv_1_24() {
+    assert!(b'1'.is_ascii_digit());
+    assert!('X'.is_ascii_uppercase());
+    assert!('x'.is_ascii_alphabetic());
+    assert!('x'.is_ascii_hexdigit());
+}
+
+#[clippy::msrv = "1.46"]
+fn msrv_1_46() {
+    const FOO: bool = matches!('x', '0'..='9');
+    const BAR: bool = matches!('x', '0'..='9' | 'a'..='f' | 'A'..='F');
+}
+
+#[clippy::msrv = "1.47"]
+fn msrv_1_47() {
+    const FOO: bool = 'x'.is_ascii_digit();
+    const BAR: bool = 'x'.is_ascii_hexdigit();
+}

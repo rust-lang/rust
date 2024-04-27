@@ -1,0 +1,8 @@
+error: expected expression, found `]`
+  --> $DIR/attr-eq-token-tree.rs:1:14
+   |
+LL | #[my_attr = !]
+   |              ^ expected expression
+
+error: aborting due to 1 previous error
+

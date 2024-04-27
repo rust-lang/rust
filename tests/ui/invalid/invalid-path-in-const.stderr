@@ -1,0 +1,9 @@
+error[E0599]: no associated item named `DOESNOTEXIST` found for type `u32` in the current scope
+  --> $DIR/invalid-path-in-const.rs:2:23
+   |
+LL |     fn f(a: [u8; u32::DOESNOTEXIST]) {}
+   |                       ^^^^^^^^^^^^ associated item not found in `u32`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0599`.

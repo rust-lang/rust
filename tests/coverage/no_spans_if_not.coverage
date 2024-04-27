@@ -1,0 +1,30 @@
+   LL|       |//@ edition: 2021
+   LL|       |
+   LL|       |// If the span extractor can't find any relevant spans for a function,
+   LL|       |// but the function contains coverage span-marker statements (e.g. inserted
+   LL|       |// for `if !`), coverage codegen may think that it is instrumented and
+   LL|       |// consequently complain that it has no spans.
+   LL|       |//
+   LL|       |// Regression test for <https://github.com/rust-lang/rust/issues/118850>,
+   LL|       |// "A used function should have had coverage mapping data but did not".
+   LL|       |
+   LL|      1|fn main() {
+   LL|      1|    affected_function();
+   LL|      1|}
+   LL|       |
+   LL|       |macro_rules! macro_that_defines_a_function {
+   LL|       |    (fn $name:ident () $body:tt) => {
+   LL|       |        fn $name () $body
+   LL|       |    }
+   LL|       |}
+   LL|       |
+   LL|       |macro_that_defines_a_function! {
+   LL|      1|    fn affected_function() {
+   LL|      1|        if !false {
+   LL|      1|            ()
+   LL|       |        } else {
+   LL|      0|            ()
+   LL|       |        }
+   LL|       |    }
+   LL|       |}
+

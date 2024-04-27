@@ -1,0 +1,14 @@
+error: static variable `τεχ` should have an upper case name
+  --> $DIR/lint-nonstandard-style-unicode-3.rs:17:8
+   |
+LL | static τεχ: f32 = 3.14159265;
+   |        ^^^ help: convert the identifier to upper case: `ΤΕΧ`
+   |
+note: the lint level is defined here
+  --> $DIR/lint-nonstandard-style-unicode-3.rs:3:11
+   |
+LL | #![forbid(non_upper_case_globals)]
+   |           ^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

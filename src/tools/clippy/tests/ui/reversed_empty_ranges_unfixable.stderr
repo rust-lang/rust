@@ -1,0 +1,23 @@
+error: this range is reversed and using it to index a slice will panic at run-time
+  --> tests/ui/reversed_empty_ranges_unfixable.rs:8:18
+   |
+LL |     let _ = &arr[3usize..=1usize];
+   |                  ^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::reversed-empty-ranges` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::reversed_empty_ranges)]`
+
+error: this range is reversed and using it to index a slice will panic at run-time
+  --> tests/ui/reversed_empty_ranges_unfixable.rs:11:18
+   |
+LL |     let _ = &arr[SOME_NUM..1];
+   |                  ^^^^^^^^^^^
+
+error: this range is empty so it will yield no values
+  --> tests/ui/reversed_empty_ranges_unfixable.rs:14:14
+   |
+LL |     for _ in ANSWER..ANSWER {}
+   |              ^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+

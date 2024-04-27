@@ -1,0 +1,54 @@
+error: unconstrained generic constant
+  --> $DIR/const-argument-if-length.rs:18:10
+   |
+LL |     pad: [u8; is_zst::<T>()],
+   |          ^^^^^^^^^^^^^^^^^^^
+   |
+help: try adding a `where` bound
+   |
+LL | pub struct AtLeastByte<T: ?Sized> where [(); is_zst::<T>()]: {
+   |                                   ++++++++++++++++++++++++++
+
+error[E0277]: the size for values of type `T` cannot be known at compilation time
+  --> $DIR/const-argument-if-length.rs:16:12
+   |
+LL | pub struct AtLeastByte<T: ?Sized> {
+   |                        - this type parameter needs to be `Sized`
+LL |     value: T,
+   |            ^ doesn't have a size known at compile-time
+   |
+   = note: only the last field of a struct may have a dynamically sized type
+   = help: change the field's type to have a statically known size
+help: consider removing the `?Sized` bound to make the type parameter `Sized`
+   |
+LL - pub struct AtLeastByte<T: ?Sized> {
+LL + pub struct AtLeastByte<T> {
+   |
+help: borrowed types always have a statically known size
+   |
+LL |     value: &T,
+   |            +
+help: the `Box` type always has a statically known size and allocates its contents in the heap
+   |
+LL |     value: Box<T>,
+   |            ++++ +
+
+error[E0277]: the size for values of type `T` cannot be known at compilation time
+  --> $DIR/const-argument-if-length.rs:7:28
+   |
+LL | pub const fn is_zst<T: ?Sized>() -> usize {
+   |                     - this type parameter needs to be `Sized`
+LL |     if std::mem::size_of::<T>() == 0 {
+   |                            ^ doesn't have a size known at compile-time
+   |
+note: required by an implicit `Sized` bound in `std::mem::size_of`
+  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
+help: consider removing the `?Sized` bound to make the type parameter `Sized`
+   |
+LL - pub const fn is_zst<T: ?Sized>() -> usize {
+LL + pub const fn is_zst<T>() -> usize {
+   |
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

@@ -1,0 +1,30 @@
+error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
+  --> $DIR/transmute-different-sizes.rs:11:17
+   |
+LL |     let _: i8 = transmute(16i16);
+   |                 ^^^^^^^^^
+   |
+   = note: source type: `i16` (N bits)
+   = note: target type: `i8` (N bits)
+
+error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
+  --> $DIR/transmute-different-sizes.rs:16:17
+   |
+LL |     let _: i8 = transmute(x);
+   |                 ^^^^^^^^^
+   |
+   = note: source type: `&T` (N bits)
+   = note: target type: `i8` (N bits)
+
+error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
+  --> $DIR/transmute-different-sizes.rs:27:5
+   |
+LL |     transmute(x)
+   |     ^^^^^^^^^
+   |
+   = note: source type: `u16` (N bits)
+   = note: target type: `<T as Specializable>::Output` (this type does not have a fixed size)
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0512`.

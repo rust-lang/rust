@@ -1,0 +1,24 @@
+#![allow(clippy::needless_raw_string_hashes, clippy::no_effect, unused)]
+#![warn(clippy::needless_raw_strings)]
+
+fn main() {
+    "aaa";
+    r#""aaa""#;
+    r#"\s"#;
+    b"aaa";
+    br#""aaa""#;
+    br#"\s"#;
+    c"aaa";
+    cr#""aaa""#;
+    cr#"\s"#;
+
+    "
+        a
+        multiline
+        string
+    ";
+
+    "no hashes";
+    b"no hashes";
+    c"no hashes";
+}

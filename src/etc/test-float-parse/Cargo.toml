@@ -1,0 +1,14 @@
+[package]
+name = "test-float-parse"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[workspace]
+resolver = "1"
+
+[dependencies]
+rand = "0.8"
+
+[lib]
+name = "test_float_parse"

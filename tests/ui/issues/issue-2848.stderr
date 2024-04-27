@@ -1,0 +1,20 @@
+error[E0408]: variable `beta` is not bound in all patterns
+  --> $DIR/issue-2848.rs:14:7
+   |
+LL |       alpha | beta => {}
+   |       ^^^^^   ---- variable not in all patterns
+   |       |
+   |       pattern doesn't bind `beta`
+
+error[E0170]: pattern binding `beta` is named the same as one of the variants of the type `bar::foo`
+  --> $DIR/issue-2848.rs:14:15
+   |
+LL |       alpha | beta => {}
+   |               ^^^^ help: to match on the variant, qualify the path: `bar::foo::beta`
+   |
+   = note: `#[deny(bindings_with_variant_name)]` on by default
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0170, E0408.
+For more information about an error, try `rustc --explain E0170`.

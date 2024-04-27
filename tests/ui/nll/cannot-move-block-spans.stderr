@@ -1,0 +1,160 @@
+error[E0507]: cannot move out of `*r` which is behind a shared reference
+  --> $DIR/cannot-move-block-spans.rs:5:15
+   |
+LL |     let x = { *r };
+   |               ^^ move occurs because `*r` has type `String`, which does not implement the `Copy` trait
+   |
+help: consider removing the dereference here
+   |
+LL -     let x = { *r };
+LL +     let x = { r };
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL -     let x = { *r };
+LL +     let x = { r.clone() };
+   |
+
+error[E0507]: cannot move out of `*r` which is behind a shared reference
+  --> $DIR/cannot-move-block-spans.rs:6:22
+   |
+LL |     let y = unsafe { *r };
+   |                      ^^ move occurs because `*r` has type `String`, which does not implement the `Copy` trait
+   |
+help: consider removing the dereference here
+   |
+LL -     let y = unsafe { *r };
+LL +     let y = unsafe { r };
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL -     let y = unsafe { *r };
+LL +     let y = unsafe { r.clone() };
+   |
+
+error[E0507]: cannot move out of `*r` which is behind a shared reference
+  --> $DIR/cannot-move-block-spans.rs:7:26
+   |
+LL |     let z = loop { break *r; };
+   |                          ^^ move occurs because `*r` has type `String`, which does not implement the `Copy` trait
+   |
+help: consider removing the dereference here
+   |
+LL -     let z = loop { break *r; };
+LL +     let z = loop { break r; };
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL -     let z = loop { break *r; };
+LL +     let z = loop { break r.clone(); };
+   |
+
+error[E0508]: cannot move out of type `[String; 2]`, a non-copy array
+  --> $DIR/cannot-move-block-spans.rs:11:15
+   |
+LL |     let x = { arr[0] };
+   |               ^^^^^^
+   |               |
+   |               cannot move out of here
+   |               move occurs because `arr[_]` has type `String`, which does not implement the `Copy` trait
+   |
+help: consider borrowing here
+   |
+LL |     let x = { &arr[0] };
+   |               +
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     let x = { arr[0].clone() };
+   |                     ++++++++
+
+error[E0508]: cannot move out of type `[String; 2]`, a non-copy array
+  --> $DIR/cannot-move-block-spans.rs:12:22
+   |
+LL |     let y = unsafe { arr[0] };
+   |                      ^^^^^^
+   |                      |
+   |                      cannot move out of here
+   |                      move occurs because `arr[_]` has type `String`, which does not implement the `Copy` trait
+   |
+help: consider borrowing here
+   |
+LL |     let y = unsafe { &arr[0] };
+   |                      +
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     let y = unsafe { arr[0].clone() };
+   |                            ++++++++
+
+error[E0508]: cannot move out of type `[String; 2]`, a non-copy array
+  --> $DIR/cannot-move-block-spans.rs:13:26
+   |
+LL |     let z = loop { break arr[0]; };
+   |                          ^^^^^^
+   |                          |
+   |                          cannot move out of here
+   |                          move occurs because `arr[_]` has type `String`, which does not implement the `Copy` trait
+   |
+help: consider borrowing here
+   |
+LL |     let z = loop { break &arr[0]; };
+   |                          +
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     let z = loop { break arr[0].clone(); };
+   |                                ++++++++
+
+error[E0507]: cannot move out of `*r` which is behind a shared reference
+  --> $DIR/cannot-move-block-spans.rs:17:38
+   |
+LL |     let x = { let mut u = 0; u += 1; *r };
+   |                                      ^^ move occurs because `*r` has type `String`, which does not implement the `Copy` trait
+   |
+help: consider removing the dereference here
+   |
+LL -     let x = { let mut u = 0; u += 1; *r };
+LL +     let x = { let mut u = 0; u += 1; r };
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL -     let x = { let mut u = 0; u += 1; *r };
+LL +     let x = { let mut u = 0; u += 1; r.clone() };
+   |
+
+error[E0507]: cannot move out of `*r` which is behind a shared reference
+  --> $DIR/cannot-move-block-spans.rs:18:45
+   |
+LL |     let y = unsafe { let mut u = 0; u += 1; *r };
+   |                                             ^^ move occurs because `*r` has type `String`, which does not implement the `Copy` trait
+   |
+help: consider removing the dereference here
+   |
+LL -     let y = unsafe { let mut u = 0; u += 1; *r };
+LL +     let y = unsafe { let mut u = 0; u += 1; r };
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL -     let y = unsafe { let mut u = 0; u += 1; *r };
+LL +     let y = unsafe { let mut u = 0; u += 1; r.clone() };
+   |
+
+error[E0507]: cannot move out of `*r` which is behind a shared reference
+  --> $DIR/cannot-move-block-spans.rs:19:49
+   |
+LL |     let z = loop { let mut u = 0; u += 1; break *r; u += 2; };
+   |                                                 ^^ move occurs because `*r` has type `String`, which does not implement the `Copy` trait
+   |
+help: consider removing the dereference here
+   |
+LL -     let z = loop { let mut u = 0; u += 1; break *r; u += 2; };
+LL +     let z = loop { let mut u = 0; u += 1; break r; u += 2; };
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL -     let z = loop { let mut u = 0; u += 1; break *r; u += 2; };
+LL +     let z = loop { let mut u = 0; u += 1; break r.clone(); u += 2; };
+   |
+
+error: aborting due to 9 previous errors
+
+Some errors have detailed explanations: E0507, E0508.
+For more information about an error, try `rustc --explain E0507`.

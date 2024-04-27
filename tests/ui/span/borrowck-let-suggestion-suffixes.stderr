@@ -1,0 +1,66 @@
+error[E0597]: `young[_]` does not live long enough
+  --> $DIR/borrowck-let-suggestion-suffixes.rs:13:17
+   |
+LL |         let young = ['y'];       // statement 3
+   |             ----- binding `young` declared here
+...
+LL |         v2.push(&young[0]);      // statement 4
+   |                 ^^^^^^^^^ borrowed value does not live long enough
+...
+LL |     }
+   |     - `young[_]` dropped here while still borrowed
+...
+LL |     (v1, v2, v3, /* v4 is above. */ v5).use_ref();
+   |          -- borrow later used here
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/borrowck-let-suggestion-suffixes.rs:20:14
+   |
+LL |     v3.push(&id('x'));           // statement 6
+   |              ^^^^^^^ - temporary value is freed at the end of this statement
+   |              |
+   |              creates a temporary value which is freed while still in use
+...
+LL |     (v1, v2, v3, /* v4 is above. */ v5).use_ref();
+   |              -- borrow later used here
+   |
+help: consider using a `let` binding to create a longer lived value
+   |
+LL ~     let binding = id('x');
+LL ~     v3.push(&binding);           // statement 6
+   |
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/borrowck-let-suggestion-suffixes.rs:30:18
+   |
+LL |         v4.push(&id('y'));
+   |                  ^^^^^^^ - temporary value is freed at the end of this statement
+   |                  |
+   |                  creates a temporary value which is freed while still in use
+...
+LL |         v4.use_ref();
+   |         -- borrow later used here
+   |
+   = note: consider using a `let` binding to create a longer lived value
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/borrowck-let-suggestion-suffixes.rs:41:14
+   |
+LL |     v5.push(&id('z'));
+   |              ^^^^^^^ - temporary value is freed at the end of this statement
+   |              |
+   |              creates a temporary value which is freed while still in use
+...
+LL |     (v1, v2, v3, /* v4 is above. */ v5).use_ref();
+   |                                     -- borrow later used here
+   |
+help: consider using a `let` binding to create a longer lived value
+   |
+LL ~     let binding = id('z');
+LL ~     v5.push(&binding);
+   |
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0597, E0716.
+For more information about an error, try `rustc --explain E0597`.

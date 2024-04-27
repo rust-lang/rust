@@ -1,0 +1,27 @@
+Available passes for running rustdoc:
+check-custom-code-classes - check for custom code classes without the feature-gate enabled
+check_doc_test_visibility - run various visibility-related lints on doctests
+        strip-hidden - strips all `#[doc(hidden)]` items from the output
+       strip-private - strips all private items from a crate which cannot be seen externally, implies strip-priv-imports
+  strip-priv-imports - strips all private import statements (`use`, `extern crate`) from a crate
+   propagate-doc-cfg - propagates `#[doc(cfg(...))]` to child items
+collect-intra-doc-links - resolves intra-doc links
+ collect-trait-impls - retrieves trait impls for items in the crate
+calculate-doc-coverage - counts the number of items with and without documentation
+           run-lints - runs some of rustdoc's lints
+
+Default passes for rustdoc:
+check-custom-code-classes
+ collect-trait-impls
+check_doc_test_visibility
+        strip-hidden  (when not --document-hidden-items)
+       strip-private  (when not --document-private-items)
+  strip-priv-imports  (when --document-private-items)
+collect-intra-doc-links
+   propagate-doc-cfg
+           run-lints
+
+Passes run with `--show-coverage`:
+        strip-hidden  (when not --document-hidden-items)
+       strip-private  (when not --document-private-items)
+calculate-doc-coverage

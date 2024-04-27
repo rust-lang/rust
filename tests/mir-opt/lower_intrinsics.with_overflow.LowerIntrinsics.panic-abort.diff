@@ -1,0 +1,74 @@
+- // MIR for `with_overflow` before LowerIntrinsics
++ // MIR for `with_overflow` after LowerIntrinsics
+  
+  fn with_overflow(_1: i32, _2: i32) -> () {
+      debug a => _1;
+      debug b => _2;
+      let mut _0: ();
+      let _3: (i32, bool);
+      let mut _4: i32;
+      let mut _5: i32;
+      let mut _7: i32;
+      let mut _8: i32;
+      let mut _10: i32;
+      let mut _11: i32;
+      scope 1 {
+          debug _x => _3;
+          let _6: (i32, bool);
+          scope 2 {
+              debug _y => _6;
+              let _9: (i32, bool);
+              scope 3 {
+                  debug _z => _9;
+              }
+          }
+      }
+  
+      bb0: {
+          StorageLive(_3);
+          StorageLive(_4);
+          _4 = _1;
+          StorageLive(_5);
+          _5 = _2;
+-         _3 = add_with_overflow::<i32>(move _4, move _5) -> [return: bb1, unwind unreachable];
++         _3 = CheckedAdd(move _4, move _5);
++         goto -> bb1;
+      }
+  
+      bb1: {
+          StorageDead(_5);
+          StorageDead(_4);
+          StorageLive(_6);
+          StorageLive(_7);
+          _7 = _1;
+          StorageLive(_8);
+          _8 = _2;
+-         _6 = sub_with_overflow::<i32>(move _7, move _8) -> [return: bb2, unwind unreachable];
++         _6 = CheckedSub(move _7, move _8);
++         goto -> bb2;
+      }
+  
+      bb2: {
+          StorageDead(_8);
+          StorageDead(_7);
+          StorageLive(_9);
+          StorageLive(_10);
+          _10 = _1;
+          StorageLive(_11);
+          _11 = _2;
+-         _9 = mul_with_overflow::<i32>(move _10, move _11) -> [return: bb3, unwind unreachable];
++         _9 = CheckedMul(move _10, move _11);
++         goto -> bb3;
+      }
+  
+      bb3: {
+          StorageDead(_11);
+          StorageDead(_10);
+          _0 = const ();
+          StorageDead(_9);
+          StorageDead(_6);
+          StorageDead(_3);
+          return;
+      }
+  }
+  

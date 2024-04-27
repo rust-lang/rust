@@ -1,0 +1,37 @@
+Function name: dead_code::main
+Raw bytes (28): 0x[01, 01, 02, 01, 05, 05, 02, 04, 01, 1b, 01, 07, 0f, 05, 07, 10, 02, 06, 02, 02, 06, 00, 07, 07, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => global file 1
+Number of expressions: 2
+- expression 0 operands: lhs = Counter(0), rhs = Counter(1)
+- expression 1 operands: lhs = Counter(1), rhs = Expression(0, Sub)
+Number of file 0 mappings: 4
+- Code(Counter(0)) at (prev + 27, 1) to (start + 7, 15)
+- Code(Counter(1)) at (prev + 7, 16) to (start + 2, 6)
+- Code(Expression(0, Sub)) at (prev + 2, 6) to (start + 0, 7)
+    = (c0 - c1)
+- Code(Expression(1, Add)) at (prev + 1, 1) to (start + 0, 2)
+    = (c1 + (c0 - c1))
+
+Function name: dead_code::unused_fn (unused)
+Raw bytes (24): 0x[01, 01, 00, 04, 00, 0f, 01, 07, 0f, 00, 07, 10, 02, 06, 00, 02, 06, 00, 07, 00, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => global file 1
+Number of expressions: 0
+Number of file 0 mappings: 4
+- Code(Zero) at (prev + 15, 1) to (start + 7, 15)
+- Code(Zero) at (prev + 7, 16) to (start + 2, 6)
+- Code(Zero) at (prev + 2, 6) to (start + 0, 7)
+- Code(Zero) at (prev + 1, 1) to (start + 0, 2)
+
+Function name: dead_code::unused_pub_fn_not_in_library (unused)
+Raw bytes (24): 0x[01, 01, 00, 04, 00, 03, 01, 07, 0f, 00, 07, 10, 02, 06, 00, 02, 06, 00, 07, 00, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => global file 1
+Number of expressions: 0
+Number of file 0 mappings: 4
+- Code(Zero) at (prev + 3, 1) to (start + 7, 15)
+- Code(Zero) at (prev + 7, 16) to (start + 2, 6)
+- Code(Zero) at (prev + 2, 6) to (start + 0, 7)
+- Code(Zero) at (prev + 1, 1) to (start + 0, 2)
+

@@ -1,0 +1,15 @@
+#![allow(unused)]
+
+#[cfg(windows)]
+fn hermit() {}
+
+#[cfg(windows)]
+fn wasi() {}
+
+#[cfg(all(unix, not(windows)))]
+fn the_end() {}
+
+#[cfg(any())]
+fn any() {}
+
+fn main() {}

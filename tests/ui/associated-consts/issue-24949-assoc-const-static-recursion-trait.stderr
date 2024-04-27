@@ -1,0 +1,38 @@
+error[E0391]: cycle detected when simplifying constant for the type system `TRAIT_REF_BAR`
+  --> $DIR/issue-24949-assoc-const-static-recursion-trait.rs:7:1
+   |
+LL | const TRAIT_REF_BAR: u32 = <GlobalTraitRef>::BAR;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: ...which requires const-evaluating + checking `TRAIT_REF_BAR`...
+  --> $DIR/issue-24949-assoc-const-static-recursion-trait.rs:7:28
+   |
+LL | const TRAIT_REF_BAR: u32 = <GlobalTraitRef>::BAR;
+   |                            ^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires simplifying constant for the type system `<impl at $DIR/issue-24949-assoc-const-static-recursion-trait.rs:11:1: 11:28>::BAR`...
+  --> $DIR/issue-24949-assoc-const-static-recursion-trait.rs:12:5
+   |
+LL |     const BAR: u32 = TRAIT_REF_BAR;
+   |     ^^^^^^^^^^^^^^
+note: ...which requires const-evaluating + checking `<impl at $DIR/issue-24949-assoc-const-static-recursion-trait.rs:11:1: 11:28>::BAR`...
+  --> $DIR/issue-24949-assoc-const-static-recursion-trait.rs:12:5
+   |
+LL |     const BAR: u32 = TRAIT_REF_BAR;
+   |     ^^^^^^^^^^^^^^
+note: ...which requires caching mir of `<impl at $DIR/issue-24949-assoc-const-static-recursion-trait.rs:11:1: 11:28>::BAR` for CTFE...
+  --> $DIR/issue-24949-assoc-const-static-recursion-trait.rs:12:5
+   |
+LL |     const BAR: u32 = TRAIT_REF_BAR;
+   |     ^^^^^^^^^^^^^^
+note: ...which requires elaborating drops for `<impl at $DIR/issue-24949-assoc-const-static-recursion-trait.rs:11:1: 11:28>::BAR`...
+  --> $DIR/issue-24949-assoc-const-static-recursion-trait.rs:12:22
+   |
+LL |     const BAR: u32 = TRAIT_REF_BAR;
+   |                      ^^^^^^^^^^^^^
+   = note: ...which again requires simplifying constant for the type system `TRAIT_REF_BAR`, completing the cycle
+   = note: cycle used when running analysis passes on this crate
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0391`.

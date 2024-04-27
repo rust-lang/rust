@@ -1,0 +1,24 @@
+error[E0277]: `()` is not an iterator
+  --> $DIR/issue-72911.rs:16:20
+   |
+LL | fn lint_files() -> impl Iterator<Item = foo::MissingItem> {
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `()` is not an iterator
+   |
+   = help: the trait `Iterator` is not implemented for `()`
+
+error[E0433]: failed to resolve: use of undeclared crate or module `foo`
+  --> $DIR/issue-72911.rs:11:33
+   |
+LL | fn gather_from_file(dir_entry: &foo::MissingItem) -> impl Iterator<Item = Lint> {
+   |                                 ^^^ use of undeclared crate or module `foo`
+
+error[E0433]: failed to resolve: use of undeclared crate or module `foo`
+  --> $DIR/issue-72911.rs:16:41
+   |
+LL | fn lint_files() -> impl Iterator<Item = foo::MissingItem> {
+   |                                         ^^^ use of undeclared crate or module `foo`
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0277, E0433.
+For more information about an error, try `rustc --explain E0277`.

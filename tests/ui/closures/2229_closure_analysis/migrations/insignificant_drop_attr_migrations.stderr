@@ -1,0 +1,45 @@
+error: changes to closure capture in Rust 2021 will affect drop order
+  --> $DIR/insignificant_drop_attr_migrations.rs:39:13
+   |
+LL |     let c = || {
+   |             ^^
+...
+LL |         let _t = t.0;
+   |                  --- in Rust 2018, this closure captures all of `t`, but in Rust 2021, it will only capture `t.0`
+...
+LL | }
+   | - in Rust 2018, `t` is dropped here, but in Rust 2021, only `t.0` will be dropped here as part of the closure
+   |
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/disjoint-capture-in-closures.html>
+note: the lint level is defined here
+  --> $DIR/insignificant_drop_attr_migrations.rs:3:9
+   |
+LL | #![deny(rust_2021_incompatible_closure_captures)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: add a dummy let to cause `t` to be fully captured
+   |
+LL ~     let c = || {
+LL +         let _ = &t;
+   |
+
+error: changes to closure capture in Rust 2021 will affect drop order
+  --> $DIR/insignificant_drop_attr_migrations.rs:59:13
+   |
+LL |     let c = move || {
+   |             ^^^^^^^
+...
+LL |         let _t = t.1;
+   |                  --- in Rust 2018, this closure captures all of `t`, but in Rust 2021, it will only capture `t.1`
+...
+LL | }
+   | - in Rust 2018, `t` is dropped here, but in Rust 2021, only `t.1` will be dropped here as part of the closure
+   |
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/disjoint-capture-in-closures.html>
+help: add a dummy let to cause `t` to be fully captured
+   |
+LL ~     let c = move || {
+LL +         let _ = &t;
+   |
+
+error: aborting due to 2 previous errors
+

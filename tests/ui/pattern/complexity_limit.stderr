@@ -1,0 +1,14 @@
+error: reached pattern complexity limit
+  --> $DIR/complexity_limit.rs:39:5
+   |
+LL | /     match command {
+LL | |         BaseCommand { field01: true, .. } => {}
+LL | |         BaseCommand { field02: true, .. } => {}
+LL | |         BaseCommand { field03: true, .. } => {}
+...  |
+LL | |         BaseCommand { field30: false, .. } => {}
+LL | |     }
+   | |_____^
+
+error: aborting due to 1 previous error
+

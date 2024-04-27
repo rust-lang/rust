@@ -1,0 +1,43 @@
+error[E0507]: cannot move out of `selection.1` which is behind a shared reference
+  --> $DIR/option-content-move.rs:10:20
+   |
+LL |                 if selection.1.unwrap().contains(selection.0) {
+   |                    ^^^^^^^^^^^ -------- `selection.1` moved due to this method call
+   |                    |
+   |                    help: consider calling `.as_ref()` or `.as_mut()` to borrow the type's contents
+   |                    move occurs because `selection.1` has type `Option<String>`, which does not implement the `Copy` trait
+   |
+note: `Option::<T>::unwrap` takes ownership of the receiver `self`, which moves `selection.1`
+  --> $SRC_DIR/core/src/option.rs:LL:COL
+help: you can `clone` the value and consume it, but this might not be your desired behavior
+   |
+LL |                 if <Option<String> as Clone>::clone(&selection.1).unwrap().contains(selection.0) {
+   |                    ++++++++++++++++++++++++++++++++++           +
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |                 if selection.1.clone().unwrap().contains(selection.0) {
+   |                               ++++++++
+
+error[E0507]: cannot move out of `selection.1` which is behind a shared reference
+  --> $DIR/option-content-move.rs:28:20
+   |
+LL |                 if selection.1.unwrap().contains(selection.0) {
+   |                    ^^^^^^^^^^^ -------- `selection.1` moved due to this method call
+   |                    |
+   |                    help: consider calling `.as_ref()` or `.as_mut()` to borrow the type's contents
+   |                    move occurs because `selection.1` has type `Result<String, String>`, which does not implement the `Copy` trait
+   |
+note: `Result::<T, E>::unwrap` takes ownership of the receiver `self`, which moves `selection.1`
+  --> $SRC_DIR/core/src/result.rs:LL:COL
+help: you can `clone` the value and consume it, but this might not be your desired behavior
+   |
+LL |                 if <Result<String, String> as Clone>::clone(&selection.1).unwrap().contains(selection.0) {
+   |                    ++++++++++++++++++++++++++++++++++++++++++           +
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |                 if selection.1.clone().unwrap().contains(selection.0) {
+   |                               ++++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0507`.

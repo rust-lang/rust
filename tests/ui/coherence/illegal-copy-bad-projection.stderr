@@ -1,0 +1,9 @@
+error[E0412]: cannot find type `void` in this scope
+  --> $DIR/illegal-copy-bad-projection.rs:6:23
+   |
+LL |     type Ptr = *const void;
+   |                       ^^^^ not found in this scope
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0412`.

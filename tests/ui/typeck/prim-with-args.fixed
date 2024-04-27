@@ -1,0 +1,28 @@
+//@ run-rustfix
+fn main() {
+
+let _x: isize; //~ ERROR type arguments are not allowed on builtin type
+let _x: i8; //~ ERROR type arguments are not allowed on builtin type
+let _x: i16; //~ ERROR type arguments are not allowed on builtin type
+let _x: i32; //~ ERROR type arguments are not allowed on builtin type
+let _x: i64; //~ ERROR type arguments are not allowed on builtin type
+let _x: usize; //~ ERROR type arguments are not allowed on builtin type
+let _x: u8; //~ ERROR type arguments are not allowed on builtin type
+let _x: u16; //~ ERROR type arguments are not allowed on builtin type
+let _x: u32; //~ ERROR type arguments are not allowed on builtin type
+let _x: u64; //~ ERROR type arguments are not allowed on builtin type
+let _x: char; //~ ERROR type arguments are not allowed on builtin type
+
+let _x: isize; //~ ERROR lifetime arguments are not allowed on builtin type
+let _x: i8; //~ ERROR lifetime arguments are not allowed on builtin type
+let _x: i16; //~ ERROR lifetime arguments are not allowed on builtin type
+let _x: i32; //~ ERROR lifetime arguments are not allowed on builtin type
+let _x: i64; //~ ERROR lifetime arguments are not allowed on builtin type
+let _x: usize; //~ ERROR lifetime arguments are not allowed on builtin type
+let _x: u8; //~ ERROR lifetime arguments are not allowed on builtin type
+let _x: u16; //~ ERROR lifetime arguments are not allowed on builtin type
+let _x: u32; //~ ERROR lifetime arguments are not allowed on builtin type
+let _x: u64; //~ ERROR lifetime arguments are not allowed on builtin type
+let _x: char; //~ ERROR lifetime arguments are not allowed on builtin type
+
+}

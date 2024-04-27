@@ -1,0 +1,40 @@
+Function name: used_crate::used_from_bin_crate_and_lib_crate_generic_function::<alloc::vec::Vec<i32>>
+Raw bytes (9): 0x[01, 01, 00, 01, 01, 1b, 01, 02, 02]
+Number of files: 1
+- file 0 => global file 1
+Number of expressions: 0
+Number of file 0 mappings: 1
+- Code(Counter(0)) at (prev + 27, 1) to (start + 2, 2)
+
+Function name: used_crate::used_only_from_bin_crate_generic_function::<&alloc::vec::Vec<i32>>
+Raw bytes (9): 0x[01, 01, 00, 01, 01, 13, 01, 02, 02]
+Number of files: 1
+- file 0 => global file 1
+Number of expressions: 0
+Number of file 0 mappings: 1
+- Code(Counter(0)) at (prev + 19, 1) to (start + 2, 2)
+
+Function name: used_crate::used_only_from_bin_crate_generic_function::<&str>
+Raw bytes (9): 0x[01, 01, 00, 01, 01, 13, 01, 02, 02]
+Number of files: 1
+- file 0 => global file 1
+Number of expressions: 0
+Number of file 0 mappings: 1
+- Code(Counter(0)) at (prev + 19, 1) to (start + 2, 2)
+
+Function name: used_crate::used_with_same_type_from_bin_crate_and_lib_crate_generic_function::<&str>
+Raw bytes (9): 0x[01, 01, 00, 01, 01, 1f, 01, 02, 02]
+Number of files: 1
+- file 0 => global file 1
+Number of expressions: 0
+Number of file 0 mappings: 1
+- Code(Counter(0)) at (prev + 31, 1) to (start + 2, 2)
+
+Function name: uses_crate::main
+Raw bytes (9): 0x[01, 02, 00, 01, 01, 0c, 01, 07, 02]
+Number of files: 1
+- file 0 => global file 2
+Number of expressions: 0
+Number of file 0 mappings: 1
+- Code(Counter(0)) at (prev + 12, 1) to (start + 7, 2)
+

@@ -1,0 +1,13 @@
+error: generic args in patterns require the turbofish syntax
+  --> $DIR/issue-22647.rs:2:15
+   |
+LL |     let caller<F> = |f: F|
+   |               ^
+   |
+help: use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments
+   |
+LL |     let caller::<F> = |f: F|
+   |               ++
+
+error: aborting due to 1 previous error
+

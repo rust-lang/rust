@@ -1,0 +1,29 @@
+error: generic parameters may not be used in const operations
+  --> $DIR/index-oob-ice-83993.rs:8:17
+   |
+LL |         let x: &'b ();
+   |                 ^^ cannot perform const operation using `'b`
+   |
+   = note: lifetime parameters may not be used in const expressions
+   = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+
+error: generic parameters may not be used in const operations
+  --> $DIR/index-oob-ice-83993.rs:14:36
+   |
+LL | fn bad() where for<'b> [();{let _:&'b (); 0}]: Sized { }
+   |                                    ^^ cannot perform const operation using `'b`
+   |
+   = note: lifetime parameters may not be used in const expressions
+   = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+
+warning: the feature `adt_const_params` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/index-oob-ice-83993.rs:3:12
+   |
+LL | #![feature(adt_const_params)]
+   |            ^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #95174 <https://github.com/rust-lang/rust/issues/95174> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+error: aborting due to 2 previous errors; 1 warning emitted
+

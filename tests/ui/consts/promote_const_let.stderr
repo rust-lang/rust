@@ -1,0 +1,30 @@
+error[E0597]: `y` does not live long enough
+  --> $DIR/promote_const_let.rs:4:9
+   |
+LL |     let x: &'static u32 = {
+   |            ------------ type annotation requires that `y` is borrowed for `'static`
+LL |         let y = 42;
+   |             - binding `y` declared here
+LL |         &y
+   |         ^^ borrowed value does not live long enough
+LL |     };
+   |     - `y` dropped here while still borrowed
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/promote_const_let.rs:6:28
+   |
+LL |       let x: &'static u32 = &{
+   |  ____________------------____^
+   | |            |
+   | |            type annotation requires that borrow lasts for `'static`
+LL | |         let y = 42;
+LL | |         y
+LL | |     };
+   | |_____^ creates a temporary value which is freed while still in use
+LL |   }
+   |   - temporary value is freed at the end of this statement
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0597, E0716.
+For more information about an error, try `rustc --explain E0597`.

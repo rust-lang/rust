@@ -1,0 +1,37 @@
+error[E0277]: `Helper<'a, T>` is not an iterator
+  --> $DIR/inherent-bound-in-probe.rs:40:21
+   |
+LL |     type IntoIter = Helper<'a, T>;
+   |                     ^^^^^^^^^^^^^ `Helper<'a, T>` is not an iterator
+   |
+   = help: the trait `Iterator` is not implemented for `Helper<'a, T>`
+note: required by a bound in `std::iter::IntoIterator::IntoIter`
+  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
+
+error[E0275]: overflow evaluating the requirement `&_: IntoIterator`
+  --> $DIR/inherent-bound-in-probe.rs:44:17
+   |
+LL |         Helper::new(&self.0)
+   |                 ^^^
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`inherent_bound_in_probe`)
+note: required for `&BitReaderWrapper<_>` to implement `IntoIterator`
+  --> $DIR/inherent-bound-in-probe.rs:34:13
+   |
+LL | impl<'a, T> IntoIterator for &'a BitReaderWrapper<T>
+   |             ^^^^^^^^^^^^     ^^^^^^^^^^^^^^^^^^^^^^^
+LL | where
+LL |     &'a T: IntoIterator<Item = &'a u8>,
+   |                         ------------- unsatisfied trait bound introduced here
+   = note: 126 redundant requirements hidden
+   = note: required for `&BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<BitReaderWrapper<_>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>` to implement `IntoIterator`
+note: required by a bound in `Helper<'a, T>`
+  --> $DIR/inherent-bound-in-probe.rs:25:25
+   |
+LL |     &'a T: IntoIterator<Item = &'a u8>,
+   |                         ^^^^^^^^^^^^^ required by this bound in `Helper<'a, T>`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0275, E0277.
+For more information about an error, try `rustc --explain E0275`.

@@ -1,0 +1,9 @@
+error[E0637]: `'_` cannot be used here
+  --> $DIR/where-clause-trait-impl-underscore.rs:11:19
+   |
+LL |     T: WithRegion<'_>
+   |                   ^^ `'_` is a reserved lifetime name
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0637`.

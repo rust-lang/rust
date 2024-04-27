@@ -1,0 +1,13 @@
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/const-eval-intrinsic-promotion.rs:5:10
+   |
+LL |     let x: &'static usize =
+   |            -------------- type annotation requires that borrow lasts for `'static`
+LL |         &std::intrinsics::size_of::<i32>();
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ creates a temporary value which is freed while still in use
+LL | }
+   | - temporary value is freed at the end of this statement
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0716`.

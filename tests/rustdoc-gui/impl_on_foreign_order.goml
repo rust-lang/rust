@@ -1,0 +1,6 @@
+// This test ensures that the "implementations on foreign types" of a trait are correctly sorted.
+go-to: "file://" + |DOC_PATH| + "/test_docs/foreign_impl_order/trait.Foo.html"
+assert-text: ("details:nth-of-type(1) h3", "impl Foo<1> for [u8; 1]")
+assert-text: ("details:nth-of-type(2) h3", "impl Foo<2> for [u8; 2]")
+assert-text: ("details:nth-of-type(3) h3", "impl Foo<3> for [u8; 3]")
+assert-text: ("details:nth-of-type(4) h3", "impl Foo<4> for [u8; 4]")

@@ -1,0 +1,58 @@
+error: invalid `crate_type` value
+  --> $DIR/invalid-crate-type.rs:2:15
+   |
+LL | #![crate_type="foo"]
+   |               ^^^^^
+   |
+   = note: `#[deny(unknown_crate_types)]` on by default
+
+error: invalid `crate_type` value
+  --> $DIR/invalid-crate-type.rs:6:15
+   |
+LL | #![crate_type="statoclib"]
+   |               ^^^^^^^^^^^ help: did you mean: `"staticlib"`
+
+error: invalid `crate_type` value
+  --> $DIR/invalid-crate-type.rs:11:15
+   |
+LL | #![crate_type="procmacro"]
+   |               ^^^^^^^^^^^ help: did you mean: `"proc-macro"`
+
+error: invalid `crate_type` value
+  --> $DIR/invalid-crate-type.rs:16:15
+   |
+LL | #![crate_type="static-lib"]
+   |               ^^^^^^^^^^^^ help: did you mean: `"staticlib"`
+
+error: invalid `crate_type` value
+  --> $DIR/invalid-crate-type.rs:21:15
+   |
+LL | #![crate_type="drylib"]
+   |               ^^^^^^^^ help: did you mean: `"dylib"`
+
+error: invalid `crate_type` value
+  --> $DIR/invalid-crate-type.rs:26:15
+   |
+LL | #![crate_type="dlib"]
+   |               ^^^^^^ help: did you mean: `"rlib"`
+
+error: invalid `crate_type` value
+  --> $DIR/invalid-crate-type.rs:31:15
+   |
+LL | #![crate_type="lob"]
+   |               ^^^^^ help: did you mean: `"lib"`
+
+error: invalid `crate_type` value
+  --> $DIR/invalid-crate-type.rs:36:15
+   |
+LL | #![crate_type="bon"]
+   |               ^^^^^ help: did you mean: `"bin"`
+
+error: invalid `crate_type` value
+  --> $DIR/invalid-crate-type.rs:41:15
+   |
+LL | #![crate_type="cdalib"]
+   |               ^^^^^^^^ help: did you mean: `"cdylib"`
+
+error: aborting due to 9 previous errors
+

@@ -1,0 +1,27 @@
+error[E0603]: struct `Foo` is private
+  --> $DIR/issue-13641.rs:9:8
+   |
+LL |     a::Foo::new();
+   |        ^^^ private struct
+   |
+note: the struct `Foo` is defined here
+  --> $DIR/issue-13641.rs:2:5
+   |
+LL |     struct Foo;
+   |     ^^^^^^^^^^^
+
+error[E0603]: enum `Bar` is private
+  --> $DIR/issue-13641.rs:11:8
+   |
+LL |     a::Bar::new();
+   |        ^^^ private enum
+   |
+note: the enum `Bar` is defined here
+  --> $DIR/issue-13641.rs:4:5
+   |
+LL |     enum Bar {}
+   |     ^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0603`.

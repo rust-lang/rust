@@ -1,0 +1,9 @@
+error[E0433]: failed to resolve: `Self` is only available in impls, traits, and type definitions
+  --> tests/ui/crashes/unreachable-array-or-slice.rs:4:9
+   |
+LL |     let Self::anything_here_kills_it(a, b, ..) = Foo(5, 5, 5, 5);
+   |         ^^^^ `Self` is only available in impls, traits, and type definitions
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0433`.

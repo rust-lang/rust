@@ -1,0 +1,13 @@
+error: expected identifier, found keyword `fn`
+  --> $DIR/keyword-fn-as-identifier.rs:4:9
+   |
+LL |     let fn = "foo";
+   |         ^^ expected identifier, found keyword
+   |
+help: escape `fn` to use it as an identifier
+   |
+LL |     let r#fn = "foo";
+   |         ++
+
+error: aborting due to 1 previous error
+

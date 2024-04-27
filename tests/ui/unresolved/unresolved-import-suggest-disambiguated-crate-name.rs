@@ -1,0 +1,19 @@
+// Regression test for issue #116970.
+//
+// When we suggest importing an item from a crate found in the extern prelude and there
+// happens to exist a module or type in the current scope with the same name as the crate,
+// disambiguate the suggested path by making it global (i.e., by prefixing it with `::`).
+//
+// For context, when it can be avoided we don't prepend `::` to paths referencing crates
+// from the extern prelude. See also `unresolved-import-avoid-suggesting-global-path.rs`.
+
+//@ run-rustfix
+
+//@ compile-flags: --crate-type=lib
+//@ aux-crate:library=library.rs
+//@ edition: 2021
+
+mod library {} // this module shares the same name as the external crate!
+
+mod module {}
+pub use module::SomeUsefulType; //~ ERROR unresolved import `module::SomeUsefulType`

@@ -1,0 +1,19 @@
+error: this `if` expression is missing a block after the condition
+  --> $DIR/accidental-if.rs:3:5
+   |
+LL |     if let Some(y) = x else {
+   |     ^^
+   |
+help: add a block here
+  --> $DIR/accidental-if.rs:3:23
+   |
+LL |     if let Some(y) = x else {
+   |                       ^
+help: remove the `if` if you meant to write a `let...else` statement
+   |
+LL -     if let Some(y) = x else {
+LL +     let Some(y) = x else {
+   |
+
+error: aborting due to 1 previous error
+

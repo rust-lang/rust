@@ -1,0 +1,43 @@
+error: struct literal body without path
+  --> $DIR/bare-struct-body.rs:5:17
+   |
+LL |   fn foo() -> Foo {
+   |  _________________^
+LL | |     val: (),
+LL | | }
+   | |_^
+   |
+help: you might have forgotten to add the struct literal inside the block
+   |
+LL ~ fn foo() -> Foo { SomeStruct {
+LL |     val: (),
+LL ~ } }
+   |
+
+error: struct literal body without path
+  --> $DIR/bare-struct-body.rs:12:13
+   |
+LL |       let x = {
+   |  _____________^
+LL | |         val: (),
+LL | |     };
+   | |_____^
+   |
+help: you might have forgotten to add the struct literal inside the block
+   |
+LL ~     let x = { SomeStruct {
+LL |         val: (),
+LL ~     } };
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/bare-struct-body.rs:11:14
+   |
+LL |     x.val == 42;
+   |     -----    ^^ expected `()`, found integer
+   |     |
+   |     expected because this is `()`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

@@ -1,0 +1,11 @@
+error[E0559]: variant `Homura::Akemi` has no field named `kaname`
+  --> $DIR/issue-19922.rs:6:34
+   |
+LL |     let homura = Homura::Akemi { kaname: () };
+   |                                  ^^^^^^ `Homura::Akemi` does not have this field
+   |
+   = note: available fields are: `madoka`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0559`.

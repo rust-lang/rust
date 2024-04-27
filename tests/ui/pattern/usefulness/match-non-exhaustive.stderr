@@ -1,0 +1,28 @@
+error[E0004]: non-exhaustive patterns: `i32::MIN..=0_i32` and `2_i32..=i32::MAX` not covered
+  --> $DIR/match-non-exhaustive.rs:2:11
+   |
+LL |     match 0 { 1 => () }
+   |           ^ patterns `i32::MIN..=0_i32` and `2_i32..=i32::MAX` not covered
+   |
+   = note: the matched value is of type `i32`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
+   |
+LL |     match 0 { 1 => (), i32::MIN..=0_i32 | 2_i32..=i32::MAX => todo!() }
+   |                      ++++++++++++++++++++++++++++++++++++++++++++++++
+
+error[E0004]: non-exhaustive patterns: `i32::MIN..=-1_i32` and `1_i32..=i32::MAX` not covered
+  --> $DIR/match-non-exhaustive.rs:3:11
+   |
+LL |     match 0 { 0 if false => () }
+   |           ^ patterns `i32::MIN..=-1_i32` and `1_i32..=i32::MAX` not covered
+   |
+   = note: the matched value is of type `i32`
+   = note: match arms with guards don't count towards exhaustivity
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
+   |
+LL |     match 0 { 0 if false => (), i32::MIN..=-1_i32 | 1_i32..=i32::MAX => todo!() }
+   |                               +++++++++++++++++++++++++++++++++++++++++++++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0004`.

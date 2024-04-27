@@ -1,0 +1,10 @@
+error: expected item, found keyword `where`
+  --> $DIR/issue-17904-2.rs:1:24
+   |
+LL | struct Bar<T> { x: T } where T: Copy
+   |                        ^^^^^ expected item
+   |
+   = note: for a full list of items that can appear in modules, see <https://doc.rust-lang.org/reference/items.html>
+
+error: aborting due to 1 previous error
+

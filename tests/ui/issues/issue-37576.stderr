@@ -1,0 +1,51 @@
+error[E0590]: `break` or `continue` with no label in the condition of a `while` loop
+  --> $DIR/issue-37576.rs:3:11
+   |
+LL |     while break {}
+   |           ^^^^^ unlabeled `break` in the condition of a `while` loop
+
+error[E0590]: `break` or `continue` with no label in the condition of a `while` loop
+  --> $DIR/issue-37576.rs:7:22
+   |
+LL |     while let true = break {}
+   |                      ^^^^^ unlabeled `break` in the condition of a `while` loop
+
+error[E0590]: `break` or `continue` with no label in the condition of a `while` loop
+  --> $DIR/issue-37576.rs:11:18
+   |
+LL |     loop { while break {} }
+   |                  ^^^^^ unlabeled `break` in the condition of a `while` loop
+
+error[E0590]: `break` or `continue` with no label in the condition of a `while` loop
+  --> $DIR/issue-37576.rs:19:15
+   |
+LL |         while break {}
+   |               ^^^^^ unlabeled `break` in the condition of a `while` loop
+
+error[E0590]: `break` or `continue` with no label in the condition of a `while` loop
+  --> $DIR/issue-37576.rs:25:11
+   |
+LL |     while continue {}
+   |           ^^^^^^^^ unlabeled `continue` in the condition of a `while` loop
+
+error[E0590]: `break` or `continue` with no label in the condition of a `while` loop
+  --> $DIR/issue-37576.rs:29:22
+   |
+LL |     while let true = continue {}
+   |                      ^^^^^^^^ unlabeled `continue` in the condition of a `while` loop
+
+error[E0590]: `break` or `continue` with no label in the condition of a `while` loop
+  --> $DIR/issue-37576.rs:33:18
+   |
+LL |     loop { while continue {} }
+   |                  ^^^^^^^^ unlabeled `continue` in the condition of a `while` loop
+
+error[E0590]: `break` or `continue` with no label in the condition of a `while` loop
+  --> $DIR/issue-37576.rs:41:15
+   |
+LL |         while continue {}
+   |               ^^^^^^^^ unlabeled `continue` in the condition of a `while` loop
+
+error: aborting due to 8 previous errors
+
+For more information about this error, try `rustc --explain E0590`.

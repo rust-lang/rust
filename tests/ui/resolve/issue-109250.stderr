@@ -1,0 +1,14 @@
+error[E0433]: failed to resolve: use of undeclared type `HashMap`
+  --> $DIR/issue-109250.rs:2:5
+   |
+LL |     HashMap::new;
+   |     ^^^^^^^ use of undeclared type `HashMap`
+   |
+help: consider importing this struct
+   |
+LL + use std::collections::HashMap;
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0433`.

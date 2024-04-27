@@ -1,0 +1,258 @@
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const-pointer-values-in-various-types.rs:26:49
+   |
+LL |     const I32_REF_USIZE_UNION: usize = unsafe { Nonsense { int_32_ref: &3 }.u };
+   |                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into integer
+   |
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const-pointer-values-in-various-types.rs:29:43
+   |
+LL |     const I32_REF_U8_UNION: u8 = unsafe { Nonsense { int_32_ref: &3 }.uint_8 };
+   |                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into integer
+   |
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const-pointer-values-in-various-types.rs:32:45
+   |
+LL |     const I32_REF_U16_UNION: u16 = unsafe { Nonsense { int_32_ref: &3 }.uint_16 };
+   |                                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into integer
+   |
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const-pointer-values-in-various-types.rs:35:45
+   |
+LL |     const I32_REF_U32_UNION: u32 = unsafe { Nonsense { int_32_ref: &3 }.uint_32 };
+   |                                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into integer
+   |
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const-pointer-values-in-various-types.rs:38:45
+   |
+LL |     const I32_REF_U64_UNION: u64 = unsafe { Nonsense { int_32_ref: &3 }.uint_64 };
+   |                                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into integer
+   |
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const-pointer-values-in-various-types.rs:41:47
+   |
+LL |     const I32_REF_U128_UNION: u128 = unsafe { Nonsense { int_32_ref: &3 }.uint_128 };
+   |                                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ using uninitialized data, but this operation requires initialized memory
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const-pointer-values-in-various-types.rs:45:43
+   |
+LL |     const I32_REF_I8_UNION: i8 = unsafe { Nonsense { int_32_ref: &3 }.int_8 };
+   |                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into integer
+   |
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const-pointer-values-in-various-types.rs:48:45
+   |
+LL |     const I32_REF_I16_UNION: i16 = unsafe { Nonsense { int_32_ref: &3 }.int_16 };
+   |                                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into integer
+   |
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const-pointer-values-in-various-types.rs:51:45
+   |
+LL |     const I32_REF_I32_UNION: i32 = unsafe { Nonsense { int_32_ref: &3 }.int_32 };
+   |                                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into integer
+   |
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const-pointer-values-in-various-types.rs:54:45
+   |
+LL |     const I32_REF_I64_UNION: i64 = unsafe { Nonsense { int_32_ref: &3 }.int_64 };
+   |                                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into integer
+   |
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const-pointer-values-in-various-types.rs:57:47
+   |
+LL |     const I32_REF_I128_UNION: i128 = unsafe { Nonsense { int_32_ref: &3 }.int_128 };
+   |                                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ using uninitialized data, but this operation requires initialized memory
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const-pointer-values-in-various-types.rs:61:45
+   |
+LL |     const I32_REF_F32_UNION: f32 = unsafe { Nonsense { int_32_ref: &3 }.float_32 };
+   |                                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into integer
+   |
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const-pointer-values-in-various-types.rs:64:45
+   |
+LL |     const I32_REF_F64_UNION: f64 = unsafe { Nonsense { int_32_ref: &3 }.float_64 };
+   |                                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into integer
+   |
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const-pointer-values-in-various-types.rs:67:47
+   |
+LL |     const I32_REF_BOOL_UNION: bool = unsafe { Nonsense { int_32_ref: &3 }.truthy_falsey };
+   |                                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into integer
+   |
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const-pointer-values-in-various-types.rs:70:47
+   |
+LL |     const I32_REF_CHAR_UNION: char = unsafe { Nonsense { int_32_ref: &3 }.character };
+   |                                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into integer
+   |
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const-pointer-values-in-various-types.rs:73:39
+   |
+LL |     const STR_U8_UNION: u8 = unsafe { Nonsense { stringy: "3" }.uint_8 };
+   |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into integer
+   |
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const-pointer-values-in-various-types.rs:76:41
+   |
+LL |     const STR_U16_UNION: u16 = unsafe { Nonsense { stringy: "3" }.uint_16 };
+   |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into integer
+   |
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const-pointer-values-in-various-types.rs:79:41
+   |
+LL |     const STR_U32_UNION: u32 = unsafe { Nonsense { stringy: "3" }.uint_32 };
+   |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into integer
+   |
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const-pointer-values-in-various-types.rs:82:41
+   |
+LL |     const STR_U64_UNION: u64 = unsafe { Nonsense { stringy: "3" }.uint_64 };
+   |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into integer
+   |
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const-pointer-values-in-various-types.rs:85:43
+   |
+LL |     const STR_U128_UNION: u128 = unsafe { Nonsense { stringy: "3" }.uint_128 };
+   |                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into integer
+   |
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const-pointer-values-in-various-types.rs:88:39
+   |
+LL |     const STR_I8_UNION: i8 = unsafe { Nonsense { stringy: "3" }.int_8 };
+   |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into integer
+   |
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const-pointer-values-in-various-types.rs:91:41
+   |
+LL |     const STR_I16_UNION: i16 = unsafe { Nonsense { stringy: "3" }.int_16 };
+   |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into integer
+   |
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const-pointer-values-in-various-types.rs:94:41
+   |
+LL |     const STR_I32_UNION: i32 = unsafe { Nonsense { stringy: "3" }.int_32 };
+   |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into integer
+   |
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const-pointer-values-in-various-types.rs:97:41
+   |
+LL |     const STR_I64_UNION: i64 = unsafe { Nonsense { stringy: "3" }.int_64 };
+   |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into integer
+   |
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const-pointer-values-in-various-types.rs:100:43
+   |
+LL |     const STR_I128_UNION: i128 = unsafe { Nonsense { stringy: "3" }.int_128 };
+   |                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into integer
+   |
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const-pointer-values-in-various-types.rs:103:41
+   |
+LL |     const STR_F32_UNION: f32 = unsafe { Nonsense { stringy: "3" }.float_32 };
+   |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into integer
+   |
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const-pointer-values-in-various-types.rs:106:41
+   |
+LL |     const STR_F64_UNION: f64 = unsafe { Nonsense { stringy: "3" }.float_64 };
+   |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into integer
+   |
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const-pointer-values-in-various-types.rs:109:43
+   |
+LL |     const STR_BOOL_UNION: bool = unsafe { Nonsense { stringy: "3" }.truthy_falsey };
+   |                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into integer
+   |
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const-pointer-values-in-various-types.rs:112:43
+   |
+LL |     const STR_CHAR_UNION: char = unsafe { Nonsense { stringy: "3" }.character };
+   |                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into integer
+   |
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
+
+error: aborting due to 29 previous errors
+
+For more information about this error, try `rustc --explain E0080`.

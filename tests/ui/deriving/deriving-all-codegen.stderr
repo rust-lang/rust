@@ -1,0 +1,63 @@
+warning: byte slice in a packed struct that derives a built-in trait
+  --> $DIR/deriving-all-codegen.rs:80:24
+   |
+LL | #[derive(Debug, Hash)]
+   |          ----- in this derive macro expansion
+LL | #[repr(packed)]
+LL | struct PackedUnsizedU8([u8]);
+   |                        ^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #107457 <https://github.com/rust-lang/rust/issues/107457>
+   = help: consider implementing the trait by hand, or remove the `packed` attribute
+   = note: `#[warn(byte_slice_in_packed_struct_with_derive)]` on by default
+   = note: this warning originates in the derive macro `Debug` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: byte slice in a packed struct that derives a built-in trait
+  --> $DIR/deriving-all-codegen.rs:80:24
+   |
+LL | #[derive(Debug, Hash)]
+   |                 ---- in this derive macro expansion
+LL | #[repr(packed)]
+LL | struct PackedUnsizedU8([u8]);
+   |                        ^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #107457 <https://github.com/rust-lang/rust/issues/107457>
+   = help: consider implementing the trait by hand, or remove the `packed` attribute
+   = note: this warning originates in the derive macro `Hash` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: 2 warnings emitted
+
+Future incompatibility report: Future breakage diagnostic:
+warning: byte slice in a packed struct that derives a built-in trait
+  --> $DIR/deriving-all-codegen.rs:80:24
+   |
+LL | #[derive(Debug, Hash)]
+   |          ----- in this derive macro expansion
+LL | #[repr(packed)]
+LL | struct PackedUnsizedU8([u8]);
+   |                        ^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #107457 <https://github.com/rust-lang/rust/issues/107457>
+   = help: consider implementing the trait by hand, or remove the `packed` attribute
+   = note: `#[warn(byte_slice_in_packed_struct_with_derive)]` on by default
+   = note: this warning originates in the derive macro `Debug` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+Future breakage diagnostic:
+warning: byte slice in a packed struct that derives a built-in trait
+  --> $DIR/deriving-all-codegen.rs:80:24
+   |
+LL | #[derive(Debug, Hash)]
+   |                 ---- in this derive macro expansion
+LL | #[repr(packed)]
+LL | struct PackedUnsizedU8([u8]);
+   |                        ^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #107457 <https://github.com/rust-lang/rust/issues/107457>
+   = help: consider implementing the trait by hand, or remove the `packed` attribute
+   = note: `#[warn(byte_slice_in_packed_struct_with_derive)]` on by default
+   = note: this warning originates in the derive macro `Hash` (in Nightly builds, run with -Z macro-backtrace for more info)
+

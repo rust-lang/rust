@@ -1,0 +1,14 @@
+error: expected a pattern range bound, found an expression
+  --> $DIR/pat-ranges-3.rs:4:16
+   |
+LL |     let 10 ..= 10 + 3 = 12;
+   |                ^^^^^^ arbitrary expressions are not allowed in patterns
+
+error: expected a pattern range bound, found an expression
+  --> $DIR/pat-ranges-3.rs:7:9
+   |
+LL |     let 10 - 3 ..= 10 = 8;
+   |         ^^^^^^ arbitrary expressions are not allowed in patterns
+
+error: aborting due to 2 previous errors
+

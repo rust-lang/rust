@@ -1,0 +1,11 @@
+# Add a check that the IR contains some expected metadata
+CHECK: !{!"ProfileFormat", !"InstrProf"}
+CHECK: !"ProfileSummary"
+
+# Make sure that the hot function is marked with `inlinehint`
+CHECK: define {{.*}} @hot_function
+CHECK-NEXT: Function Attrs:{{.*}}inlinehint
+
+# Make sure that the cold function is marked with `cold`
+CHECK: define {{.*}} @cold_function
+CHECK-NEXT: Function Attrs:{{.*}}cold

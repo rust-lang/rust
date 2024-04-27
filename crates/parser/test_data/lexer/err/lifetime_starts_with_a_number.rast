@@ -1,4 +1,0 @@
-LIFETIME_IDENT "'1" error: Lifetime name cannot start with a number
-WHITESPACE "\n"
-LIFETIME_IDENT "'1lifetime" error: Lifetime name cannot start with a number
-WHITESPACE "\n"

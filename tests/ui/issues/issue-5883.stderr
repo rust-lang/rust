@@ -1,0 +1,20 @@
+error[E0277]: the size for values of type `(dyn A + 'static)` cannot be known at compilation time
+  --> $DIR/issue-5883.rs:8:5
+   |
+LL |     r: dyn A + 'static
+   |     ^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `(dyn A + 'static)`
+   = help: unsized fn params are gated as an unstable feature
+help: you can use `impl Trait` as the argument type
+   |
+LL |     r: impl A + 'static
+   |        ~~~~
+help: function arguments must have a statically known size, borrowed types always have a known size
+   |
+LL |     r: &dyn A + 'static
+   |        +
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

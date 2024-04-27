@@ -1,0 +1,26 @@
+error: `?` may only modify trait bounds, not lifetime bounds
+  --> $DIR/issue-68890.rs:1:11
+   |
+LL | enum e{A((?'a a+?+l))}
+   |           ^
+
+error: expected one of `)`, `+`, or `,`, found `a`
+  --> $DIR/issue-68890.rs:1:15
+   |
+LL | enum e{A((?'a a+?+l))}
+   |      -        ^ expected one of `)`, `+`, or `,`
+   |      |
+   |      while parsing this enum
+   |
+   = help: enum variants can be `Variant`, `Variant = <integer>`, `Variant(Type, ..., TypeN)` or `Variant { fields: Types }`
+
+error: expected item, found `)`
+  --> $DIR/issue-68890.rs:1:21
+   |
+LL | enum e{A((?'a a+?+l))}
+   |                     ^ expected item
+   |
+   = note: for a full list of items that can appear in modules, see <https://doc.rust-lang.org/reference/items.html>
+
+error: aborting due to 3 previous errors
+

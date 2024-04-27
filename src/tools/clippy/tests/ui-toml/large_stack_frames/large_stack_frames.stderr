@@ -1,0 +1,16 @@
+error: this function may allocate 1001 bytes on the stack
+  --> tests/ui-toml/large_stack_frames/large_stack_frames.rs:12:4
+   |
+LL | fn f2() {
+   |    ^^
+LL |
+LL |     let _x = create_array::<1001>();
+   |         -- `_x` is the largest part, at 1001 bytes for type `[u8; 1001]`
+   |
+   = note: 1001 bytes is larger than Clippy's configured `stack-size-threshold` of 1000
+   = note: allocating large amounts of stack space can overflow the stack and cause the program to abort
+   = note: `-D clippy::large-stack-frames` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::large_stack_frames)]`
+
+error: aborting due to 1 previous error
+

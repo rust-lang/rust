@@ -1,0 +1,8 @@
+error: 1 positional argument in format string, but no arguments were given
+  --> $DIR/issue-70381.rs:4:16
+   |
+LL |   println!("\r¡{}")
+   |                ^^
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,59 @@
+error: matching over `()` is more explicit
+  --> tests/ui/ignored_unit_patterns.rs:16:12
+   |
+LL |         Ok(_) => {},
+   |            ^ help: use `()` instead of `_`: `()`
+   |
+   = note: `-D clippy::ignored-unit-patterns` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::ignored_unit_patterns)]`
+
+error: matching over `()` is more explicit
+  --> tests/ui/ignored_unit_patterns.rs:17:13
+   |
+LL |         Err(_) => {},
+   |             ^ help: use `()` instead of `_`: `()`
+
+error: matching over `()` is more explicit
+  --> tests/ui/ignored_unit_patterns.rs:19:15
+   |
+LL |     if let Ok(_) = foo() {}
+   |               ^ help: use `()` instead of `_`: `()`
+
+error: matching over `()` is more explicit
+  --> tests/ui/ignored_unit_patterns.rs:21:28
+   |
+LL |     let _ = foo().map_err(|_| todo!());
+   |                            ^ help: use `()` instead of `_`: `()`
+
+error: matching over `()` is more explicit
+  --> tests/ui/ignored_unit_patterns.rs:27:16
+   |
+LL |             Ok(_) => {},
+   |                ^ help: use `()` instead of `_`: `()`
+
+error: matching over `()` is more explicit
+  --> tests/ui/ignored_unit_patterns.rs:29:17
+   |
+LL |             Err(_) => {},
+   |                 ^ help: use `()` instead of `_`: `()`
+
+error: matching over `()` is more explicit
+  --> tests/ui/ignored_unit_patterns.rs:41:9
+   |
+LL |     let _ = foo().unwrap();
+   |         ^ help: use `()` instead of `_`: `()`
+
+error: matching over `()` is more explicit
+  --> tests/ui/ignored_unit_patterns.rs:50:13
+   |
+LL |         (1, _) => unimplemented!(),
+   |             ^ help: use `()` instead of `_`: `()`
+
+error: matching over `()` is more explicit
+  --> tests/ui/ignored_unit_patterns.rs:57:13
+   |
+LL |     for (x, _) in v {
+   |             ^ help: use `()` instead of `_`: `()`
+
+error: aborting due to 9 previous errors
+

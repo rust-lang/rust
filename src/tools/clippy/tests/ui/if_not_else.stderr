@@ -1,0 +1,30 @@
+error: unnecessary boolean `not` operation
+  --> tests/ui/if_not_else.rs:12:5
+   |
+LL | /     if !bla() {
+LL | |
+LL | |         println!("Bugs");
+LL | |     } else {
+LL | |         println!("Bunny");
+LL | |     }
+   | |_____^
+   |
+   = help: remove the `!` and swap the blocks of the `if`/`else`
+   = note: `-D clippy::if-not-else` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::if_not_else)]`
+
+error: unnecessary `!=` operation
+  --> tests/ui/if_not_else.rs:18:5
+   |
+LL | /     if 4 != 5 {
+LL | |
+LL | |         println!("Bugs");
+LL | |     } else {
+LL | |         println!("Bunny");
+LL | |     }
+   | |_____^
+   |
+   = help: change to `==` and swap the blocks of the `if`/`else`
+
+error: aborting due to 2 previous errors
+

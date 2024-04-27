@@ -1,0 +1,9 @@
+error[E0425]: cannot find value `y` in this scope
+  --> $DIR/struct-fields-shorthand-unresolved.rs:10:9
+   |
+LL |         y
+   |         ^ help: a local variable with a similar name exists: `x`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0425`.

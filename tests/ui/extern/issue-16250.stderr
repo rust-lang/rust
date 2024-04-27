@@ -1,0 +1,22 @@
+error: `extern` block uses type `Foo`, which is not FFI-safe
+  --> $DIR/issue-16250.rs:6:20
+   |
+LL |     pub fn foo(x: (Foo));
+   |                    ^^^ not FFI-safe
+   |
+   = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct
+   = note: this struct has unspecified layout
+note: the type is defined here
+  --> $DIR/issue-16250.rs:3:1
+   |
+LL | pub struct Foo;
+   | ^^^^^^^^^^^^^^
+note: the lint level is defined here
+  --> $DIR/issue-16250.rs:1:9
+   |
+LL | #![deny(warnings)]
+   |         ^^^^^^^^
+   = note: `#[deny(improper_ctypes)]` implied by `#[deny(warnings)]`
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,59 @@
+error[E0596]: cannot borrow `b` as mutable, as it is not declared as mutable
+  --> $DIR/mut-borrow-of-mut-ref.rs:4:10
+   |
+LL | pub fn f(b: &mut i32) {
+   |          ^ not mutable
+...
+LL |     h(&mut b);
+   |       ------ cannot borrow as mutable
+...
+LL |     g(&mut &mut b);
+   |            ------ cannot borrow as mutable
+   |
+note: the binding is already a mutable borrow
+  --> $DIR/mut-borrow-of-mut-ref.rs:4:13
+   |
+LL | pub fn f(b: &mut i32) {
+   |             ^^^^^^^^
+help: try removing `&mut` here
+   |
+LL -     h(&mut b);
+LL +     h(b);
+   |
+help: try removing `&mut` here
+   |
+LL -     g(&mut &mut b);
+LL +     g(&mut b);
+   |
+
+error[E0596]: cannot borrow `b` as mutable, as it is not declared as mutable
+  --> $DIR/mut-borrow-of-mut-ref.rs:17:12
+   |
+LL |     h(&mut &mut b);
+   |            ^^^^^^ cannot borrow as mutable
+   |
+note: the binding is already a mutable borrow
+  --> $DIR/mut-borrow-of-mut-ref.rs:16:13
+   |
+LL | pub fn g(b: &mut i32) {
+   |             ^^^^^^^^
+help: try removing `&mut` here
+   |
+LL -     h(&mut &mut b);
+LL +     h(&mut b);
+   |
+
+error[E0596]: cannot borrow `f` as mutable, as it is not declared as mutable
+  --> $DIR/mut-borrow-of-mut-ref.rs:34:5
+   |
+LL |     f.bar();
+   |     ^ cannot borrow as mutable
+   |
+help: consider making the binding mutable
+   |
+LL | pub fn baz(mut f: &mut String) {
+   |            +++
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0596`.

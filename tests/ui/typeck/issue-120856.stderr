@@ -1,0 +1,21 @@
+error[E0433]: failed to resolve: use of undeclared crate or module `n`
+  --> $DIR/issue-120856.rs:1:37
+   |
+LL | pub type Archived<T> = <m::Alias as n::Trait>::Archived;
+   |                                     ^
+   |                                     |
+   |                                     use of undeclared crate or module `n`
+   |                                     help: a trait with a similar name exists: `Fn`
+
+error[E0433]: failed to resolve: use of undeclared crate or module `m`
+  --> $DIR/issue-120856.rs:1:25
+   |
+LL | pub type Archived<T> = <m::Alias as n::Trait>::Archived;
+   |                         ^
+   |                         |
+   |                         use of undeclared crate or module `m`
+   |                         help: a type parameter with a similar name exists: `T`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0433`.

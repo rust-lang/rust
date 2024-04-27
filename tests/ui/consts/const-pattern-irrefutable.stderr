@@ -1,0 +1,45 @@
+error[E0005]: refutable pattern in local binding
+  --> $DIR/const-pattern-irrefutable.rs:12:9
+   |
+LL |     let a = 4;
+   |         ^
+   |         |
+   |         patterns `0_u8..=1_u8` and `3_u8..=u8::MAX` not covered
+   |         missing patterns are not covered because `a` is interpreted as a constant pattern, not a new variable
+   |         help: introduce a variable instead: `a_var`
+   |
+   = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
+   = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
+   = note: the matched value is of type `u8`
+
+error[E0005]: refutable pattern in local binding
+  --> $DIR/const-pattern-irrefutable.rs:17:9
+   |
+LL |     let c = 4;
+   |         ^
+   |         |
+   |         patterns `0_u8..=1_u8` and `3_u8..=u8::MAX` not covered
+   |         missing patterns are not covered because `c` is interpreted as a constant pattern, not a new variable
+   |         help: introduce a variable instead: `c_var`
+   |
+   = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
+   = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
+   = note: the matched value is of type `u8`
+
+error[E0005]: refutable pattern in local binding
+  --> $DIR/const-pattern-irrefutable.rs:22:9
+   |
+LL |     let d = 4;
+   |         ^
+   |         |
+   |         patterns `0_u8..=1_u8` and `3_u8..=u8::MAX` not covered
+   |         missing patterns are not covered because `d` is interpreted as a constant pattern, not a new variable
+   |         help: introduce a variable instead: `d_var`
+   |
+   = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
+   = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
+   = note: the matched value is of type `u8`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0005`.

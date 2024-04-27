@@ -1,0 +1,25 @@
+error[E0624]: associated function `static_meth_struct` is private
+  --> $DIR/xc-private-method.rs:6:44
+   |
+LL |     let _ = xc_private_method_lib::Struct::static_meth_struct();
+   |                                            ^^^^^^^^^^^^^^^^^^ private associated function
+   |
+  ::: $DIR/auxiliary/xc-private-method-lib.rs:8:5
+   |
+LL |     fn static_meth_struct() -> Struct {
+   |     --------------------------------- private associated function defined here
+
+error[E0624]: associated function `static_meth_enum` is private
+  --> $DIR/xc-private-method.rs:9:42
+   |
+LL |     let _ = xc_private_method_lib::Enum::static_meth_enum();
+   |                                          ^^^^^^^^^^^^^^^^ private associated function
+   |
+  ::: $DIR/auxiliary/xc-private-method-lib.rs:23:5
+   |
+LL |     fn static_meth_enum() -> Enum {
+   |     ----------------------------- private associated function defined here
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0624`.

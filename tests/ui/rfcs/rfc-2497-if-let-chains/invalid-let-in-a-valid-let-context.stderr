@@ -1,0 +1,74 @@
+error: expected expression, found `let` statement
+  --> $DIR/invalid-let-in-a-valid-let-context.rs:8:19
+   |
+LL |         let _ = &&let Some(x) = Some(42);
+   |                   ^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: expected expression, found `let` statement
+  --> $DIR/invalid-let-in-a-valid-let-context.rs:13:47
+   |
+LL |         if let Some(elem) = _opt && [1, 2, 3][let _ = &&let Some(x) = Some(42)] = 1 {
+   |                                               ^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: expected expression, found `let` statement
+  --> $DIR/invalid-let-in-a-valid-let-context.rs:13:57
+   |
+LL |         if let Some(elem) = _opt && [1, 2, 3][let _ = &&let Some(x) = Some(42)] = 1 {
+   |                                                         ^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: expected expression, found `let` statement
+  --> $DIR/invalid-let-in-a-valid-let-context.rs:13:12
+   |
+LL |         if let Some(elem) = _opt && [1, 2, 3][let _ = &&let Some(x) = Some(42)] = 1 {
+   |            ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+help: you might have meant to compare for equality
+   |
+LL |         if let Some(elem) = _opt && [1, 2, 3][let _ = &&let Some(x) = Some(42)] == 1 {
+   |                                                                                  +
+
+error: expected expression, found `let` statement
+  --> $DIR/invalid-let-in-a-valid-let-context.rs:24:23
+   |
+LL |             [1, 2, 3][let _ = ()];
+   |                       ^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: expected expression, found `let` statement
+  --> $DIR/invalid-let-in-a-valid-let-context.rs:33:47
+   |
+LL |         if let Some(elem) = _opt && [1, 2, 3][let _ = ()] = 1 {
+   |                                               ^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: expected expression, found `let` statement
+  --> $DIR/invalid-let-in-a-valid-let-context.rs:33:12
+   |
+LL |         if let Some(elem) = _opt && [1, 2, 3][let _ = ()] = 1 {
+   |            ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+help: you might have meant to compare for equality
+   |
+LL |         if let Some(elem) = _opt && [1, 2, 3][let _ = ()] == 1 {
+   |                                                            +
+
+error: expected expression, found `let` statement
+  --> $DIR/invalid-let-in-a-valid-let-context.rs:42:21
+   |
+LL |             let x = let y = 1;
+   |                     ^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: aborting due to 8 previous errors
+

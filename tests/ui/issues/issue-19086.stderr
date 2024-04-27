@@ -1,0 +1,12 @@
+error[E0532]: expected tuple struct or tuple variant, found variant `FooB`
+  --> $DIR/issue-19086.rs:10:9
+   |
+LL |     FooB { x: i32, y: i32 }
+   |     ----------------------- `FooB` defined here
+...
+LL |         FooB(a, b) => println!("{} {}", a, b),
+   |         ^^^^^^^^^^ help: use struct pattern syntax instead: `FooB { x: a, y: b }`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0532`.

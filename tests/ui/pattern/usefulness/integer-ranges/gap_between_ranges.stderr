@@ -1,0 +1,193 @@
+error: multiple ranges are one apart
+  --> $DIR/gap_between_ranges.rs:16:9
+   |
+LL |         20..30 => {}
+   |         ^^^^^^
+   |         |
+   |         this range doesn't match `30_u8` because `..` is an exclusive range
+   |         help: use an inclusive range instead: `20_u8..=30_u8`
+LL |         31..=40 => {}
+   |         ------- this could appear to continue range `20_u8..30_u8`, but `30_u8` isn't matched by either of them
+   |
+note: the lint level is defined here
+  --> $DIR/gap_between_ranges.rs:2:9
+   |
+LL | #![deny(non_contiguous_range_endpoints)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: multiple ranges are one apart
+  --> $DIR/gap_between_ranges.rs:21:9
+   |
+LL |         20..30 => {}
+   |         ^^^^^^
+   |         |
+   |         this range doesn't match `30_u8` because `..` is an exclusive range
+   |         help: use an inclusive range instead: `20_u8..=30_u8`
+LL |         31 => {}
+   |         -- this could appear to continue range `20_u8..30_u8`, but `30_u8` isn't matched by either of them
+
+error: multiple ranges are one apart
+  --> $DIR/gap_between_ranges.rs:26:13
+   |
+LL |     m!(0u8, 20..30, 31..=40);
+   |             ^^^^^^  ------- this could appear to continue range `20_u8..30_u8`, but `30_u8` isn't matched by either of them
+   |             |
+   |             this range doesn't match `30_u8` because `..` is an exclusive range
+   |             help: use an inclusive range instead: `20_u8..=30_u8`
+
+error: multiple ranges are one apart
+  --> $DIR/gap_between_ranges.rs:27:22
+   |
+LL |     m!(0u8, 31..=40, 20..30);
+   |             -------  ^^^^^^
+   |             |        |
+   |             |        this range doesn't match `30_u8` because `..` is an exclusive range
+   |             |        help: use an inclusive range instead: `20_u8..=30_u8`
+   |             this could appear to continue range `20_u8..30_u8`, but `30_u8` isn't matched by either of them
+
+warning: multiple patterns overlap on their endpoints
+  --> $DIR/gap_between_ranges.rs:28:21
+   |
+LL |     m!(0u8, 20..30, 29..=40);
+   |             ------  ^^^^^^^ ... with this range
+   |             |
+   |             this range overlaps on `29_u8`...
+   |
+   = note: you likely meant to write mutually exclusive ranges
+   = note: `#[warn(overlapping_range_endpoints)]` on by default
+
+error: multiple ranges are one apart
+  --> $DIR/gap_between_ranges.rs:30:13
+   |
+LL |     m!(0u8, 20..30, 31..=40);
+   |             ^^^^^^  ------- this could appear to continue range `20_u8..30_u8`, but `30_u8` isn't matched by either of them
+   |             |
+   |             this range doesn't match `30_u8` because `..` is an exclusive range
+   |             help: use an inclusive range instead: `20_u8..=30_u8`
+
+error: multiple ranges are one apart
+  --> $DIR/gap_between_ranges.rs:32:13
+   |
+LL |     m!(0u8, 20..30, 31..=32);
+   |             ^^^^^^  ------- this could appear to continue range `20_u8..30_u8`, but `30_u8` isn't matched by either of them
+   |             |
+   |             this range doesn't match `30_u8` because `..` is an exclusive range
+   |             help: use an inclusive range instead: `20_u8..=30_u8`
+
+error: exclusive range missing `u8::MAX`
+  --> $DIR/gap_between_ranges.rs:42:9
+   |
+LL |         0..255 => {}
+   |         ^^^^^^
+   |         |
+   |         this range doesn't match `u8::MAX` because `..` is an exclusive range
+   |         help: use an inclusive range instead: `0_u8..=u8::MAX`
+
+error: multiple ranges are one apart
+  --> $DIR/gap_between_ranges.rs:71:9
+   |
+LL |         0..10 => {}
+   |         ^^^^^
+   |         |
+   |         this range doesn't match `10_u8` because `..` is an exclusive range
+   |         help: use an inclusive range instead: `0_u8..=10_u8`
+LL |         11..20 => {}
+   |         ------ this could appear to continue range `0_u8..10_u8`, but `10_u8` isn't matched by either of them
+LL |         11..30 => {}
+   |         ------ this could appear to continue range `0_u8..10_u8`, but `10_u8` isn't matched by either of them
+
+error: multiple ranges are one apart
+  --> $DIR/gap_between_ranges.rs:77:9
+   |
+LL |         0..10 => {}
+   |         ^^^^^
+   |         |
+   |         this range doesn't match `10_u8` because `..` is an exclusive range
+   |         help: use an inclusive range instead: `0_u8..=10_u8`
+LL |         11..20 => {}
+   |         ------ this could appear to continue range `0_u8..10_u8`, but `10_u8` isn't matched by either of them
+
+error: multiple ranges are one apart
+  --> $DIR/gap_between_ranges.rs:78:9
+   |
+LL |         11..20 => {}
+   |         ^^^^^^
+   |         |
+   |         this range doesn't match `20_u8` because `..` is an exclusive range
+   |         help: use an inclusive range instead: `11_u8..=20_u8`
+LL |         21..30 => {}
+   |         ------ this could appear to continue range `11_u8..20_u8`, but `20_u8` isn't matched by either of them
+
+error: multiple ranges are one apart
+  --> $DIR/gap_between_ranges.rs:83:9
+   |
+LL |         00..20 => {}
+   |         ^^^^^^
+   |         |
+   |         this range doesn't match `20_u8` because `..` is an exclusive range
+   |         help: use an inclusive range instead: `0_u8..=20_u8`
+LL |         10..20 => {}
+LL |         21..30 => {}
+   |         ------ this could appear to continue range `0_u8..20_u8`, but `20_u8` isn't matched by either of them
+LL |         21..40 => {}
+   |         ------ this could appear to continue range `0_u8..20_u8`, but `20_u8` isn't matched by either of them
+
+error: multiple ranges are one apart
+  --> $DIR/gap_between_ranges.rs:84:9
+   |
+LL |         10..20 => {}
+   |         ^^^^^^
+   |         |
+   |         this range doesn't match `20_u8` because `..` is an exclusive range
+   |         help: use an inclusive range instead: `10_u8..=20_u8`
+LL |         21..30 => {}
+   |         ------ this could appear to continue range `10_u8..20_u8`, but `20_u8` isn't matched by either of them
+LL |         21..40 => {}
+   |         ------ this could appear to continue range `10_u8..20_u8`, but `20_u8` isn't matched by either of them
+
+error: multiple ranges are one apart
+  --> $DIR/gap_between_ranges.rs:92:10
+   |
+LL |         (0..10, true) => {}
+   |          ^^^^^
+   |          |
+   |          this range doesn't match `10_u8` because `..` is an exclusive range
+   |          help: use an inclusive range instead: `0_u8..=10_u8`
+LL |         (11..20, true) => {}
+   |          ------ this could appear to continue range `0_u8..10_u8`, but `10_u8` isn't matched by either of them
+
+error: multiple ranges are one apart
+  --> $DIR/gap_between_ranges.rs:97:16
+   |
+LL |         (true, 0..10) => {}
+   |                ^^^^^
+   |                |
+   |                this range doesn't match `10_u8` because `..` is an exclusive range
+   |                help: use an inclusive range instead: `0_u8..=10_u8`
+LL |         (true, 11..20) => {}
+   |                ------ this could appear to continue range `0_u8..10_u8`, but `10_u8` isn't matched by either of them
+
+error: multiple ranges are one apart
+  --> $DIR/gap_between_ranges.rs:103:10
+   |
+LL |         (0..10, true) => {}
+   |          ^^^^^
+   |          |
+   |          this range doesn't match `10_u8` because `..` is an exclusive range
+   |          help: use an inclusive range instead: `0_u8..=10_u8`
+LL |         (11..20, false) => {}
+   |          ------ this could appear to continue range `0_u8..10_u8`, but `10_u8` isn't matched by either of them
+
+error: multiple ranges are one apart
+  --> $DIR/gap_between_ranges.rs:113:14
+   |
+LL |         Some(0..10) => {}
+   |              ^^^^^
+   |              |
+   |              this range doesn't match `10_u8` because `..` is an exclusive range
+   |              help: use an inclusive range instead: `0_u8..=10_u8`
+LL |         Some(11..20) => {}
+   |              ------ this could appear to continue range `0_u8..10_u8`, but `10_u8` isn't matched by either of them
+
+error: aborting due to 16 previous errors; 1 warning emitted
+

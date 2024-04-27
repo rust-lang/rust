@@ -1,0 +1,9 @@
+error[E0646]: `main` function is not allowed to have a `where` clause
+  --> $DIR/issue-50714.rs:3:11
+   |
+LL | fn main() where fn(&()): Eq {}
+   |           ^^^^^^^^^^^^^^^^^ `main` cannot have a `where` clause
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0646`.

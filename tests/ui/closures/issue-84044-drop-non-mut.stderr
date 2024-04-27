@@ -1,0 +1,14 @@
+error[E0596]: cannot borrow `f` as mutable, as it is not declared as mutable
+  --> $DIR/issue-84044-drop-non-mut.rs:5:10
+   |
+LL |     drop(&mut f);
+   |          ^^^^^^ cannot borrow as mutable
+   |
+help: consider changing this to be mutable
+   |
+LL |     let mut f = || {};
+   |         +++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0596`.

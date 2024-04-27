@@ -1,0 +1,10 @@
+error: rustc_outlives
+  --> $DIR/self-structs.rs:4:1
+   |
+LL | struct Foo<'a, 'b, T> {
+   | ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: T: 'a
+
+error: aborting due to 1 previous error
+

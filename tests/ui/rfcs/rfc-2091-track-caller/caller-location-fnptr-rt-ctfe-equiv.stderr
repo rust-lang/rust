@@ -1,0 +1,10 @@
+warning: skipping const checks
+   |
+help: skipping check that does not even have a feature gate
+  --> $DIR/caller-location-fnptr-rt-ctfe-equiv.rs:21:5
+   |
+LL |     ptr()
+   |     ^^^^^
+
+warning: 1 warning emitted
+

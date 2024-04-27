@@ -1,0 +1,9 @@
+error[E0599]: no method named `MAX` found for type `u32` in the current scope
+  --> $DIR/dont-suggest-ufcs-for-const.rs:2:11
+   |
+LL |     1_u32.MAX();
+   |           ^^^ method not found in `u32`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0599`.

@@ -1,0 +1,9 @@
+error[E0594]: cannot assign to immutable static item `NUM`
+  --> $DIR/E0594.rs:4:5
+   |
+LL |     NUM = 20;
+   |     ^^^^^^^^ cannot assign
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0594`.

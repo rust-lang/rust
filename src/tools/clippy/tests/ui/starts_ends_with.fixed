@@ -1,0 +1,53 @@
+#![allow(clippy::needless_if, dead_code, unused_must_use)]
+
+fn main() {}
+
+#[allow(clippy::unnecessary_operation)]
+fn starts_with() {
+    "".starts_with(' ');
+    !"".starts_with(' ');
+
+    // Ensure that suggestion is escaped correctly
+    "".starts_with('\n');
+    !"".starts_with('\n');
+}
+
+fn chars_cmp_with_unwrap() {
+    let s = String::from("foo");
+    if s.starts_with('f') {
+        // s.starts_with('f')
+        // Nothing here
+    }
+    if s.ends_with('o') {
+        // s.ends_with('o')
+        // Nothing here
+    }
+    if s.ends_with('o') {
+        // s.ends_with('o')
+        // Nothing here
+    }
+    if !s.starts_with('f') {
+        // !s.starts_with('f')
+        // Nothing here
+    }
+    if !s.ends_with('o') {
+        // !s.ends_with('o')
+        // Nothing here
+    }
+    if !s.ends_with('\n') {
+        // !s.ends_with('o')
+        // Nothing here
+    }
+}
+
+#[allow(clippy::unnecessary_operation)]
+fn ends_with() {
+    "".ends_with(' ');
+    !"".ends_with(' ');
+    "".ends_with(' ');
+    !"".ends_with(' ');
+
+    // Ensure that suggestion is escaped correctly
+    "".ends_with('\n');
+    !"".ends_with('\n');
+}

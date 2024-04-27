@@ -1,0 +1,33 @@
+error: unnecessary parentheses around index expression
+  --> $DIR/issue-96606.rs:4:17
+   |
+LL |     let _ = arr[(0)];
+   |                 ^ ^
+   |
+note: the lint level is defined here
+  --> $DIR/issue-96606.rs:1:8
+   |
+LL | #[deny(unused)]
+   |        ^^^^^^
+   = note: `#[deny(unused_parens)]` implied by `#[deny(unused)]`
+help: remove these parentheses
+   |
+LL -     let _ = arr[(0)];
+LL +     let _ = arr[0];
+   |
+
+error: unnecessary braces around index expression
+  --> $DIR/issue-96606.rs:5:17
+   |
+LL |     let _ = arr[{0}];
+   |                 ^ ^
+   |
+   = note: `#[deny(unused_braces)]` implied by `#[deny(unused)]`
+help: remove these braces
+   |
+LL -     let _ = arr[{0}];
+LL +     let _ = arr[0];
+   |
+
+error: aborting due to 2 previous errors
+

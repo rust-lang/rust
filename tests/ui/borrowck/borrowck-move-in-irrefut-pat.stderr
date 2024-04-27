@@ -1,0 +1,48 @@
+error[E0507]: cannot move out of a shared reference
+  --> $DIR/borrowck-move-in-irrefut-pat.rs:3:13
+   |
+LL | fn arg_item(&_x: &String) {}
+   |             ^--
+   |              |
+   |              data moved here
+   |              move occurs because `_x` has type `String`, which does not implement the `Copy` trait
+   |
+help: consider removing the borrow
+   |
+LL - fn arg_item(&_x: &String) {}
+LL + fn arg_item(_x: &String) {}
+   |
+
+error[E0507]: cannot move out of a shared reference
+  --> $DIR/borrowck-move-in-irrefut-pat.rs:7:11
+   |
+LL |     with(|&_x| ())
+   |           ^--
+   |            |
+   |            data moved here
+   |            move occurs because `_x` has type `String`, which does not implement the `Copy` trait
+   |
+help: consider removing the borrow
+   |
+LL -     with(|&_x| ())
+LL +     with(|_x| ())
+   |
+
+error[E0507]: cannot move out of a shared reference
+  --> $DIR/borrowck-move-in-irrefut-pat.rs:12:15
+   |
+LL |     let &_x = &"hi".to_string();
+   |          --   ^^^^^^^^^^^^^^^^^
+   |          |
+   |          data moved here
+   |          move occurs because `_x` has type `String`, which does not implement the `Copy` trait
+   |
+help: consider removing the borrow
+   |
+LL -     let &_x = &"hi".to_string();
+LL +     let _x = &"hi".to_string();
+   |
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0507`.

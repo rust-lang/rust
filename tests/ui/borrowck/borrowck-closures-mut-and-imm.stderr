@@ -1,0 +1,116 @@
+error[E0502]: cannot borrow `x` as immutable because it is also borrowed as mutable
+  --> $DIR/borrowck-closures-mut-and-imm.rs:17:14
+   |
+LL |     let c1 = || x = 4;
+   |              -- - first borrow occurs due to use of `x` in closure
+   |              |
+   |              mutable borrow occurs here
+LL |     let c2 = || x * 5;
+   |              ^^ - second borrow occurs due to use of `x` in closure
+   |              |
+   |              immutable borrow occurs here
+LL |
+LL |     drop(c1);
+   |          -- mutable borrow later used here
+
+error[E0502]: cannot borrow `x` as immutable because it is also borrowed as mutable
+  --> $DIR/borrowck-closures-mut-and-imm.rs:25:14
+   |
+LL |     let c1 = || set(&mut x);
+   |              --          - first borrow occurs due to use of `x` in closure
+   |              |
+   |              mutable borrow occurs here
+LL |     let c2 = || get(&x);
+   |              ^^      - second borrow occurs due to use of `x` in closure
+   |              |
+   |              immutable borrow occurs here
+LL |
+LL |     drop(c1);
+   |          -- mutable borrow later used here
+
+error[E0502]: cannot borrow `x` as immutable because it is also borrowed as mutable
+  --> $DIR/borrowck-closures-mut-and-imm.rs:33:14
+   |
+LL |     let c1 = || set(&mut x);
+   |              --          - first borrow occurs due to use of `x` in closure
+   |              |
+   |              mutable borrow occurs here
+LL |     let c2 = || x * 5;
+   |              ^^ - second borrow occurs due to use of `x` in closure
+   |              |
+   |              immutable borrow occurs here
+LL |
+LL |     drop(c1);
+   |          -- mutable borrow later used here
+
+error[E0506]: cannot assign to `x` because it is borrowed
+  --> $DIR/borrowck-closures-mut-and-imm.rs:41:5
+   |
+LL |     let c2 = || x * 5;
+   |              -- - borrow occurs due to use in closure
+   |              |
+   |              `x` is borrowed here
+LL |     x = 5;
+   |     ^^^^^ `x` is assigned to here but it was already borrowed
+LL |
+LL |     drop(c2);
+   |          -- borrow later used here
+
+error[E0506]: cannot assign to `x` because it is borrowed
+  --> $DIR/borrowck-closures-mut-and-imm.rs:49:5
+   |
+LL |     let c1 = || get(&x);
+   |              --      - borrow occurs due to use in closure
+   |              |
+   |              `x` is borrowed here
+LL |     x = 5;
+   |     ^^^^^ `x` is assigned to here but it was already borrowed
+LL |
+LL |     drop(c1);
+   |          -- borrow later used here
+
+error[E0506]: cannot assign to `*x` because it is borrowed
+  --> $DIR/borrowck-closures-mut-and-imm.rs:57:5
+   |
+LL |     let c1 = || get(&*x);
+   |              --      -- borrow occurs due to use in closure
+   |              |
+   |              `*x` is borrowed here
+LL |     *x = 5;
+   |     ^^^^^^ `*x` is assigned to here but it was already borrowed
+LL |
+LL |     drop(c1);
+   |          -- borrow later used here
+
+error[E0506]: cannot assign to `*x.f` because it is borrowed
+  --> $DIR/borrowck-closures-mut-and-imm.rs:69:5
+   |
+LL |     let c1 = || get(&*x.f);
+   |              --      ---- borrow occurs due to use in closure
+   |              |
+   |              `*x.f` is borrowed here
+LL |     *x.f = 5;
+   |     ^^^^^^^^ `*x.f` is assigned to here but it was already borrowed
+LL |
+LL |     drop(c1);
+   |          -- borrow later used here
+
+error[E0502]: cannot borrow `x` as mutable because it is also borrowed as immutable
+  --> $DIR/borrowck-closures-mut-and-imm.rs:81:14
+   |
+LL |     let c1 = || get(&*x.f);
+   |              --      ---- first borrow occurs due to use of `x` in closure
+   |              |
+   |              immutable borrow occurs here
+LL |     let c2 = || *x.f = 5;
+   |              ^^ ---- second borrow occurs due to use of `x` in closure
+   |              |
+   |              mutable borrow occurs here
+LL |
+LL |     drop(c1);
+   |          -- immutable borrow later used here
+
+error: aborting due to 8 previous errors
+
+Some errors have detailed explanations: E0502, E0506.
+For more information about an error, try `rustc --explain E0502`.

@@ -1,0 +1,2 @@
+error: invalid `--check-cfg` argument: `cfg(foo,values(),values())` (`values()` cannot be specified multiple times)
+

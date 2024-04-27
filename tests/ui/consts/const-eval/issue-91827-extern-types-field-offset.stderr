@@ -1,0 +1,9 @@
+error[E0080]: evaluation of constant value failed
+  --> $DIR/issue-91827-extern-types-field-offset.rs:38:17
+   |
+LL |     let field = &x.a;
+   |                 ^^^^ `extern type` does not have a known offset
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.

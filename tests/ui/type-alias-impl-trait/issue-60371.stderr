@@ -1,0 +1,22 @@
+error[E0658]: `impl Trait` in associated types is unstable
+  --> $DIR/issue-60371.rs:8:17
+   |
+LL |     type Item = impl Bug;
+   |                 ^^^^^^^^
+   |
+   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
+   = help: add `#![feature(impl_trait_in_assoc_type)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0277]: the trait bound `(): Bug` is not satisfied
+  --> $DIR/issue-60371.rs:10:40
+   |
+LL |     const FUN: fn() -> Self::Item = || ();
+   |                                        ^^ the trait `Bug` is not implemented for `()`
+   |
+   = help: the trait `Bug` is implemented for `&()`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0277, E0658.
+For more information about an error, try `rustc --explain E0277`.

@@ -1,0 +1,18 @@
+error[E0506]: cannot assign to `vecvec` because it is borrowed
+  --> $DIR/issue-27868.rs:24:9
+   |
+LL |       vecvec[0] += {
+   |       ------
+   |       |
+   |  _____`vecvec` is borrowed here
+   | |
+LL | |         vecvec = vec![];
+   | |         ^^^^^^ `vecvec` is assigned to here but it was already borrowed
+LL | |
+LL | |         0
+LL | |     };
+   | |_____- borrow later used here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0506`.

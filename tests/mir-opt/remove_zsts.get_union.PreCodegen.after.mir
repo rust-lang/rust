@@ -1,0 +1,10 @@
+// MIR for `get_union` after PreCodegen
+
+fn get_union() -> Foo {
+    let mut _0: Foo;
+
+    bb0: {
+        _0 = Foo { x: const () };
+        return;
+    }
+}

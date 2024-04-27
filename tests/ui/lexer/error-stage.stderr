@@ -1,0 +1,56 @@
+error: binary float literal is not supported
+  --> $DIR/error-stage.rs:56:5
+   |
+LL |     0b10.0f32;
+   |     ^^^^^^
+
+error: binary float literal is not supported
+  --> $DIR/error-stage.rs:68:5
+   |
+LL |     0b10.0f32;
+   |     ^^^^^^
+
+error: binary float literal is not supported
+  --> $DIR/error-stage.rs:78:5
+   |
+LL |     0b10.0f32;
+   |     ^^^^^^
+
+error: suffixes on string literals are invalid
+  --> $DIR/error-stage.rs:74:5
+   |
+LL |     "string"any_suffix;
+   |     ^^^^^^^^^^^^^^^^^^ invalid suffix `any_suffix`
+
+error: invalid width `123` for integer literal
+  --> $DIR/error-stage.rs:75:5
+   |
+LL |     10u123;
+   |     ^^^^^^
+   |
+   = help: valid widths are 8, 16, 32, 64 and 128
+
+error: invalid width `123` for float literal
+  --> $DIR/error-stage.rs:76:5
+   |
+LL |     10.0f123;
+   |     ^^^^^^^^
+   |
+   = help: valid widths are 32 and 64
+
+error: binary float literal is not supported
+  --> $DIR/error-stage.rs:77:5
+   |
+LL |     0b10f32;
+   |     ^^^^^^^ not supported
+
+error: integer literal is too large
+  --> $DIR/error-stage.rs:79:5
+   |
+LL |     999340282366920938463463374607431768211455999;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: value exceeds limit of `340282366920938463463374607431768211455`
+
+error: aborting due to 8 previous errors
+

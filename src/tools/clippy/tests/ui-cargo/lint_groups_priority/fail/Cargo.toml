@@ -1,0 +1,20 @@
+[package]
+name = "fail"
+version = "0.1.0"
+publish = false
+
+[lints.rust]
+rust_2018_idioms = "warn"
+bare_trait_objects = "allow"
+
+unused = { level = "deny" }
+unused_braces = { level = "allow", priority = 1 }
+unused_attributes = { level = "allow" }
+
+# `warnings` is not a group so the order it is passed does not matter
+warnings = "deny"
+deprecated  = "allow"
+
+[lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+similar_names = { level = "allow", priority = -1 }

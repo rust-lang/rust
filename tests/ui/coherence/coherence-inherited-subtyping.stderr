@@ -1,0 +1,14 @@
+error[E0592]: duplicate definitions with name `method1`
+  --> $DIR/coherence-inherited-subtyping.rs:12:5
+   |
+LL |     fn method1(&self) {}
+   |     ^^^^^^^^^^^^^^^^^ duplicate definitions for `method1`
+...
+LL |     fn method1(&self) {}
+   |     ----------------- other definition for `method1`
+   |
+   = note: this behavior recently changed as a result of a bug fix; see rust-lang/rust#56105 for details
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0592`.

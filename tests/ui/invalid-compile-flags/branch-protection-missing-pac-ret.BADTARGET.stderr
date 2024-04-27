@@ -1,0 +1,4 @@
+error: `-Zbranch-protection` is only supported on aarch64
+
+error: aborting due to 1 previous error
+

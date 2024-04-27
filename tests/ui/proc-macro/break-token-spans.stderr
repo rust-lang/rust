@@ -1,0 +1,21 @@
+error[E0425]: cannot find function `f` in this scope
+  --> $DIR/break-token-spans.rs:13:5
+   |
+LL |     f :: < Vec < _ > > ( ) ;
+   |     ^ not found in this scope
+
+error[E0308]: mismatched types
+  --> $DIR/break-token-spans.rs:14:32
+   |
+LL |     let a: Option<Option<u8>>= true;
+   |            ------------------  ^^^^ expected `Option<Option<u8>>`, found `bool`
+   |            |
+   |            expected due to this
+   |
+   = note: expected enum `Option<Option<u8>>`
+              found type `bool`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0308, E0425.
+For more information about an error, try `rustc --explain E0308`.

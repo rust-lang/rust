@@ -1,0 +1,37 @@
+error: `macro_two` is already in scope
+  --> $DIR/macro-shadowing.rs:12:5
+   |
+LL |     #[macro_use]
+   |     ^^^^^^^^^^^^
+...
+LL | m1!();
+   | ----- in this macro invocation
+   |
+   = note: macro-expanded `#[macro_use]`s may not shadow existing macros (see RFC 1560)
+   = note: this error originates in the macro `m1` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0659]: `foo` is ambiguous
+  --> $DIR/macro-shadowing.rs:17:1
+   |
+LL | foo!();
+   | ^^^ ambiguous name
+   |
+   = note: ambiguous because of a conflict between a macro-expanded name and a less macro-expanded name from outer scope during import or macro resolution
+note: `foo` could refer to the macro defined here
+  --> $DIR/macro-shadowing.rs:10:5
+   |
+LL |     macro_rules! foo { () => {} }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | m1!();
+   | ----- in this macro invocation
+note: `foo` could also refer to the macro defined here
+  --> $DIR/macro-shadowing.rs:5:1
+   |
+LL | macro_rules! foo { () => {} }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: this error originates in the macro `m1` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0659`.

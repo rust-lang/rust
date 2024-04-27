@@ -1,0 +1,22 @@
+error[E0119]: conflicting implementations of trait `A`
+  --> $DIR/specializing-constness-2.rs:20:1
+   |
+LL | impl<T: Default> A for T {
+   | ------------------------ first implementation here
+...
+LL | impl<T: Default + ~const Sup> const A for T {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation
+
+error[E0308]: mismatched types
+  --> $DIR/specializing-constness-2.rs:27:5
+   |
+LL |     <T as A>::a();
+   |     ^^^^^^^^^^^^^ expected `host`, found `true`
+   |
+   = note: expected constant `host`
+              found constant `true`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0119, E0308.
+For more information about an error, try `rustc --explain E0119`.

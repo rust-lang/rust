@@ -1,0 +1,50 @@
+#![warn(clippy::suboptimal_flops, clippy::imprecise_flops)]
+#![allow(clippy::unnecessary_cast)]
+
+fn main() {
+    let x = 3f32;
+    let _ = x.exp2();
+    let _ = 3.1f32.exp2();
+    let _ = (-3.1f32).exp2();
+    let _ = x.exp();
+    let _ = 3.1f32.exp();
+    let _ = (-3.1f32).exp();
+    let _ = x.sqrt();
+    let _ = x.cbrt();
+    let _ = (x as f32).cbrt();
+    let _ = x.powi(3);
+    let _ = x.powi(-2);
+    let _ = x.powi(16_777_215);
+    let _ = x.powi(-16_777_215);
+    let _ = (x as f32).powi(-16_777_215);
+    let _ = (x as f32).powi(3);
+    let _ = (1.5_f32 + 1.0).cbrt();
+    let _ = 1.5_f64.cbrt();
+    let _ = 1.5_f64.sqrt();
+    let _ = 1.5_f64.powi(3);
+
+    // Cases where the lint shouldn't be applied
+    let _ = x.powf(2.1);
+    let _ = x.powf(-2.1);
+    let _ = x.powf(16_777_216.0);
+    let _ = x.powf(-16_777_216.0);
+
+    let x = 3f64;
+    let _ = x.exp2();
+    let _ = 3.1f64.exp2();
+    let _ = (-3.1f64).exp2();
+    let _ = x.exp();
+    let _ = 3.1f64.exp();
+    let _ = (-3.1f64).exp();
+    let _ = x.sqrt();
+    let _ = x.cbrt();
+    let _ = x.powi(3);
+    let _ = x.powi(-2);
+    let _ = x.powi(-2_147_483_648);
+    let _ = x.powi(2_147_483_647);
+    // Cases where the lint shouldn't be applied
+    let _ = x.powf(2.1);
+    let _ = x.powf(-2.1);
+    let _ = x.powf(-2_147_483_649.0);
+    let _ = x.powf(2_147_483_648.0);
+}

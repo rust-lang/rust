@@ -1,0 +1,110 @@
+error: this `if` has identical blocks
+  --> tests/ui/if_same_then_else.rs:23:13
+   |
+LL |       if true {
+   |  _____________^
+LL | |         Foo { bar: 42 };
+LL | |         0..10;
+LL | |         ..;
+...  |
+LL | |         foo();
+LL | |     } else {
+   | |_____^
+   |
+note: same as this
+  --> tests/ui/if_same_then_else.rs:31:12
+   |
+LL |       } else {
+   |  ____________^
+LL | |         Foo { bar: 42 };
+LL | |         0..10;
+LL | |         ..;
+...  |
+LL | |         foo();
+LL | |     }
+   | |_____^
+   = note: `-D clippy::if-same-then-else` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::if_same_then_else)]`
+
+error: this `if` has identical blocks
+  --> tests/ui/if_same_then_else.rs:67:21
+   |
+LL |     let _ = if true { 0.0 } else { 0.0 };
+   |                     ^^^^^^^
+   |
+note: same as this
+  --> tests/ui/if_same_then_else.rs:67:34
+   |
+LL |     let _ = if true { 0.0 } else { 0.0 };
+   |                                  ^^^^^^^
+
+error: this `if` has identical blocks
+  --> tests/ui/if_same_then_else.rs:70:21
+   |
+LL |     let _ = if true { -0.0 } else { -0.0 };
+   |                     ^^^^^^^^
+   |
+note: same as this
+  --> tests/ui/if_same_then_else.rs:70:35
+   |
+LL |     let _ = if true { -0.0 } else { -0.0 };
+   |                                   ^^^^^^^^
+
+error: this `if` has identical blocks
+  --> tests/ui/if_same_then_else.rs:82:21
+   |
+LL |     let _ = if true { 42 } else { 42 };
+   |                     ^^^^^^
+   |
+note: same as this
+  --> tests/ui/if_same_then_else.rs:82:33
+   |
+LL |     let _ = if true { 42 } else { 42 };
+   |                                 ^^^^^^
+
+error: this `if` has identical blocks
+  --> tests/ui/if_same_then_else.rs:85:13
+   |
+LL |       if true {
+   |  _____________^
+LL | |         let bar = if true { 42 } else { 43 };
+LL | |
+LL | |         while foo() {
+...  |
+LL | |         bar + 1;
+LL | |     } else {
+   | |_____^
+   |
+note: same as this
+  --> tests/ui/if_same_then_else.rs:92:12
+   |
+LL |       } else {
+   |  ____________^
+LL | |         let bar = if true { 42 } else { 43 };
+LL | |
+LL | |         while foo() {
+...  |
+LL | |         bar + 1;
+LL | |     }
+   | |_____^
+
+error: this `if` has identical blocks
+  --> tests/ui/if_same_then_else.rs:238:14
+   |
+LL |           if x {
+   |  ______________^
+LL | |             0_u8.is_power_of_two()
+LL | |         } else {
+   | |_________^
+   |
+note: same as this
+  --> tests/ui/if_same_then_else.rs:240:16
+   |
+LL |           } else {
+   |  ________________^
+LL | |             0_u8.is_power_of_two()
+LL | |         }
+   | |_________^
+
+error: aborting due to 6 previous errors
+

@@ -1,0 +1,8 @@
+error: `#[doc(alias = "...")]` isn't allowed on associated constant in trait implementation block
+  --> $DIR/doc-alias-assoc-const.rs:10:11
+   |
+LL |     #[doc(alias = "CONST_BAZ")]
+   |           ^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

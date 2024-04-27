@@ -1,0 +1,28 @@
+error: call to `std::mem::forget` with a value that does not implement `Drop`. Forgetting such a type is the same as dropping it
+  --> tests/ui/forget_non_drop.rs:13:5
+   |
+LL |     forget(Foo);
+   |     ^^^^^^^^^^^
+   |
+note: argument has type `main::Foo`
+  --> tests/ui/forget_non_drop.rs:13:12
+   |
+LL |     forget(Foo);
+   |            ^^^
+   = note: `-D clippy::forget-non-drop` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::forget_non_drop)]`
+
+error: call to `std::mem::forget` with a value that does not implement `Drop`. Forgetting such a type is the same as dropping it
+  --> tests/ui/forget_non_drop.rs:25:5
+   |
+LL |     forget(Baz(Foo));
+   |     ^^^^^^^^^^^^^^^^
+   |
+note: argument has type `main::Baz<main::Foo>`
+  --> tests/ui/forget_non_drop.rs:25:12
+   |
+LL |     forget(Baz(Foo));
+   |            ^^^^^^^^
+
+error: aborting due to 2 previous errors
+

@@ -1,0 +1,14 @@
+error[E0282]: type annotations needed
+  --> $DIR/expect-two-infer-vars-supply-ty-with-bound-region.rs:8:27
+   |
+LL |     with_closure(|x: u32, y| {});
+   |                           ^
+   |
+help: consider giving this closure parameter an explicit type
+   |
+LL |     with_closure(|x: u32, y: /* Type */| {});
+   |                            ++++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0282`.

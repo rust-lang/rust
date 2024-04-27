@@ -1,0 +1,71 @@
+// This test check for headings text and background colors for the different themes.
+
+include: "utils.goml"
+
+define-function: (
+    "check-colors",
+    [theme, color, code_header_color, focus_background_color, headings_color],
+    block {
+        go-to: "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html"
+        // This is needed so that the text color is computed.
+        show-text: true
+        call-function: ("switch-theme", {"theme": |theme|})
+        assert-css: (
+            ".impl",
+            {"color": |color|, "background-color": "rgba(0, 0, 0, 0)"},
+            ALL,
+        )
+        assert-css: (
+            ".impl .code-header",
+            {"color": |code_header_color|, "background-color": "rgba(0, 0, 0, 0)"},
+            ALL,
+        )
+        go-to: "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html#impl-Foo"
+        assert-css: (
+            "#impl-Foo",
+            {"color": |color|, "background-color": |focus_background_color|},
+        )
+        go-to: "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html#method.must_use"
+        assert-css: (
+            "#method\.must_use",
+            {"color": |color|, "background-color": |focus_background_color|},
+            ALL,
+        )
+        go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+        assert-css: (".section-header a", {"color": |color|}, ALL)
+        go-to: "file://" + |DOC_PATH| + "/test_docs/struct.HeavilyDocumentedStruct.html"
+        // We select headings (h2, h3, h...).
+        assert-css: (".docblock > :not(p) > a", {"color": |headings_color|}, ALL)
+    },
+)
+
+call-function: (
+    "check-colors",
+    {
+        "theme": "ayu",
+        "color": "#c5c5c5",
+        "code_header_color": "#e6e1cf",
+        "focus_background_color": "rgba(255, 236, 164, 0.06)",
+        "headings_color": "#c5c5c5",
+    },
+)
+call-function: (
+    "check-colors",
+    {
+        "theme": "dark",
+        "color": "#ddd",
+        "code_header_color": "#ddd",
+        "focus_background_color": "#494a3d",
+        "headings_color": "#ddd",
+    },
+)
+call-function: (
+    "check-colors",
+    {
+        "theme": "light",
+        "color": "black",
+        "code_header_color": "black",
+        "focus_background_color": "#fdffd3",
+        "headings_color": "black",
+    },
+)

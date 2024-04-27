@@ -1,0 +1,12 @@
+error[E0276]: impl has stricter requirements than trait
+  --> $DIR/issue-47206-where-clause.rs:10:38
+   |
+LL |     type Assoc3<T>;
+   |     -------------- definition of `Assoc3` from trait
+...
+LL |     type Assoc3<T> = Vec<T> where T: Iterator;
+   |                                      ^^^^^^^^ impl has extra requirement `T: Iterator`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0276`.

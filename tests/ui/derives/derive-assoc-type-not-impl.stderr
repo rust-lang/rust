@@ -1,0 +1,26 @@
+error[E0599]: the method `clone` exists for struct `Bar<NotClone>`, but its trait bounds were not satisfied
+  --> $DIR/derive-assoc-type-not-impl.rs:18:30
+   |
+LL | struct Bar<T: Foo> {
+   | ------------------ method `clone` not found for this struct because it doesn't satisfy `Bar<NotClone>: Clone`
+...
+LL | struct NotClone;
+   | --------------- doesn't satisfy `NotClone: Clone`
+...
+LL |     Bar::<NotClone> { x: 1 }.clone();
+   |                              ^^^^^ method cannot be called on `Bar<NotClone>` due to unsatisfied trait bounds
+   |
+note: trait bound `NotClone: Clone` was not satisfied
+  --> $DIR/derive-assoc-type-not-impl.rs:6:10
+   |
+LL | #[derive(Clone)]
+   |          ^^^^^ unsatisfied trait bound introduced in this `derive` macro
+help: consider annotating `NotClone` with `#[derive(Clone)]`
+   |
+LL + #[derive(Clone)]
+LL | struct NotClone;
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0599`.

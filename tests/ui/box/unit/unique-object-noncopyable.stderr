@@ -1,0 +1,21 @@
+error[E0599]: the method `clone` exists for struct `Box<dyn Foo>`, but its trait bounds were not satisfied
+  --> $DIR/unique-object-noncopyable.rs:24:16
+   |
+LL | trait Foo {
+   | --------- doesn't satisfy `dyn Foo: Clone` or `dyn Foo: Sized`
+...
+LL |     let _z = y.clone();
+   |                ^^^^^ method cannot be called on `Box<dyn Foo>` due to unsatisfied trait bounds
+   |
+   = note: the following trait bounds were not satisfied:
+           `dyn Foo: Sized`
+           which is required by `Box<dyn Foo>: Clone`
+           `dyn Foo: Clone`
+           which is required by `Box<dyn Foo>: Clone`
+   = help: items from traits can only be used if the trait is implemented and in scope
+   = note: the following trait defines an item `clone`, perhaps you need to implement it:
+           candidate #1: `Clone`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0599`.

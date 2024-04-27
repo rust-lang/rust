@@ -1,0 +1,54 @@
+error: this arithmetic operation will overflow
+  --> $DIR/issue-117949.rs:16:24
+   |
+LL |     format_args!("{}", 5 * i32::MAX);
+   |                        ^^^^^^^^^^^^ attempt to compute `5_i32 * i32::MAX`, which would overflow
+   |
+   = note: `#[deny(arithmetic_overflow)]` on by default
+
+error: this arithmetic operation will overflow
+  --> $DIR/issue-117949.rs:15:24
+   |
+LL |     format_args!("{}", -5 - i32::MAX);
+   |                        ^^^^^^^^^^^^^ attempt to compute `-5_i32 - i32::MAX`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/issue-117949.rs:14:24
+   |
+LL |     format_args!("{}", 1 + i32::MAX);
+   |                        ^^^^^^^^^^^^ attempt to compute `1_i32 + i32::MAX`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/issue-117949.rs:13:24
+   |
+LL |     format_args!("{}", 1 >> 32);
+   |                        ^^^^^^^ attempt to shift right by `32_i32`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/issue-117949.rs:12:24
+   |
+LL |     format_args!("{}", 1 << 32);
+   |                        ^^^^^^^ attempt to shift left by `32_i32`, which would overflow
+
+error: this operation will panic at runtime
+  --> $DIR/issue-117949.rs:17:24
+   |
+LL |     format_args!("{}", 1 / 0);
+   |                        ^^^^^ attempt to divide `1_i32` by zero
+   |
+   = note: `#[deny(unconditional_panic)]` on by default
+
+error: this operation will panic at runtime
+  --> $DIR/issue-117949.rs:18:24
+   |
+LL |     format_args!("{}", 1 % 0);
+   |                        ^^^^^ attempt to calculate the remainder of `1_i32` with a divisor of zero
+
+error: this operation will panic at runtime
+  --> $DIR/issue-117949.rs:19:24
+   |
+LL |     format_args!("{}", [1, 2, 3][4]);
+   |                        ^^^^^^^^^^^^ index out of bounds: the length is 3 but the index is 4
+
+error: aborting due to 8 previous errors
+

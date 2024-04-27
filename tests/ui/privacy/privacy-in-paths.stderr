@@ -1,0 +1,47 @@
+error[E0603]: module `bar` is private
+  --> $DIR/privacy-in-paths.rs:24:16
+   |
+LL |         ::foo::bar::baz::f();
+   |                ^^^       - function `f` is not publicly re-exported
+   |                |
+   |                private module
+   |
+note: the module `bar` is defined here
+  --> $DIR/privacy-in-paths.rs:3:5
+   |
+LL |     mod bar {
+   |     ^^^^^^^
+
+error[E0603]: module `bar` is private
+  --> $DIR/privacy-in-paths.rs:25:16
+   |
+LL |         ::foo::bar::S::f();
+   |                ^^^ private module
+   |
+note: the module `bar` is defined here
+  --> $DIR/privacy-in-paths.rs:3:5
+   |
+LL |     mod bar {
+   |     ^^^^^^^
+help: consider importing this struct through its public re-export instead
+   |
+LL |         foo::S::f();
+   |         ~~~~~~
+
+error[E0603]: trait `T` is private
+  --> $DIR/privacy-in-paths.rs:26:23
+   |
+LL |         <() as ::foo::T>::Assoc::f();
+   |                       ^   ----- associated type `Assoc` is not publicly re-exported
+   |                       |
+   |                       private trait
+   |
+note: the trait `T` is defined here
+  --> $DIR/privacy-in-paths.rs:8:5
+   |
+LL |     trait T {
+   |     ^^^^^^^
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0603`.

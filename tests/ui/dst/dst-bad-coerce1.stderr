@@ -1,0 +1,52 @@
+error[E0308]: mismatched types
+  --> $DIR/dst-bad-coerce1.rs:16:29
+   |
+LL |     let f3: &Fat<[usize]> = f2;
+   |             -------------   ^^ expected `&Fat<[usize]>`, found `&Fat<[isize; 3]>`
+   |             |
+   |             expected due to this
+   |
+   = note: expected reference `&Fat<[usize]>`
+              found reference `&Fat<[isize; 3]>`
+
+error[E0277]: the trait bound `Foo: Bar` is not satisfied
+  --> $DIR/dst-bad-coerce1.rs:22:29
+   |
+LL |     let f3: &Fat<dyn Bar> = f2;
+   |                             ^^ the trait `Bar` is not implemented for `Foo`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/dst-bad-coerce1.rs:10:1
+   |
+LL | trait Bar { fn bar(&self) {} }
+   | ^^^^^^^^^
+   = note: required for the cast from `&Fat<Foo>` to `&Fat<dyn Bar>`
+
+error[E0308]: mismatched types
+  --> $DIR/dst-bad-coerce1.rs:28:27
+   |
+LL |     let f3: &([usize],) = f2;
+   |             -----------   ^^ expected `&([usize],)`, found `&([isize; 3],)`
+   |             |
+   |             expected due to this
+   |
+   = note: expected reference `&([usize],)`
+              found reference `&([isize; 3],)`
+
+error[E0277]: the trait bound `Foo: Bar` is not satisfied
+  --> $DIR/dst-bad-coerce1.rs:34:27
+   |
+LL |     let f3: &(dyn Bar,) = f2;
+   |                           ^^ the trait `Bar` is not implemented for `Foo`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/dst-bad-coerce1.rs:10:1
+   |
+LL | trait Bar { fn bar(&self) {} }
+   | ^^^^^^^^^
+   = note: required for the cast from `&(Foo,)` to `&(dyn Bar,)`
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0277, E0308.
+For more information about an error, try `rustc --explain E0277`.

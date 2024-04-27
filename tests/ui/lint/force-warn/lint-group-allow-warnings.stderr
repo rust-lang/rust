@@ -1,0 +1,11 @@
+warning: function `FUNCTION` should have a snake case name
+  --> $DIR/lint-group-allow-warnings.rs:9:8
+   |
+LL | pub fn FUNCTION() {}
+   |        ^^^^^^^^ help: convert the identifier to snake case: `function`
+   |
+   = note: `--force-warn non-snake-case` implied by `--force-warn nonstandard-style`
+   = help: to override `--force-warn nonstandard-style` add `#[allow(non_snake_case)]`
+
+warning: 1 warning emitted
+

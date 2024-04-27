@@ -1,0 +1,17 @@
+error[E0391]: cycle detected when computing the super traits of `T` with associated type name `Item`
+  --> $DIR/issue-20772.rs:1:1
+   |
+LL | trait T : Iterator<Item=Self::Item>
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: ...which immediately requires computing the super traits of `T` with associated type name `Item` again
+note: cycle used when computing the super predicates of `T`
+  --> $DIR/issue-20772.rs:1:1
+   |
+LL | trait T : Iterator<Item=Self::Item>
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0391`.

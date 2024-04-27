@@ -1,0 +1,16 @@
+error: overly complex generic constant
+  --> $DIR/issue-67945-3.rs:10:13
+   |
+LL |       A: [(); {
+   |  _____________^
+LL | |         let x: Option<S> = None;
+LL | |
+LL | |         0
+LL | |     }],
+   | |_____^ blocks are not supported in generic constants
+   |
+   = help: consider moving this anonymous constant into a `const` function
+   = note: this operation may be supported in the future
+
+error: aborting due to 1 previous error
+

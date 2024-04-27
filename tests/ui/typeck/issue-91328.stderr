@@ -1,0 +1,39 @@
+error[E0529]: expected an array or slice, found `Vec<i32>`
+  --> $DIR/issue-91328.rs:10:12
+   |
+LL |     match r {
+   |           - help: consider using `as_deref` here: `r.as_deref()`
+LL |
+LL |         Ok([a, b]) => a + b,
+   |            ^^^^^^ pattern cannot match with input type `Vec<i32>`
+
+error[E0529]: expected an array or slice, found `Vec<i32>`
+  --> $DIR/issue-91328.rs:20:14
+   |
+LL |     match o {
+   |           - help: consider using `as_deref` here: `o.as_deref()`
+LL |
+LL |         Some([a, b]) => a + b,
+   |              ^^^^^^ pattern cannot match with input type `Vec<i32>`
+
+error[E0529]: expected an array or slice, found `Vec<i32>`
+  --> $DIR/issue-91328.rs:30:9
+   |
+LL |     match v {
+   |           - help: consider slicing here: `v[..]`
+LL |
+LL |         [a, b] => a + b,
+   |         ^^^^^^ pattern cannot match with input type `Vec<i32>`
+
+error[E0529]: expected an array or slice, found `Box<[i32; 2]>`
+  --> $DIR/issue-91328.rs:40:14
+   |
+LL |     match a {
+   |           - help: consider using `as_deref` here: `a.as_deref()`
+LL |
+LL |         Some([a, b]) => a + b,
+   |              ^^^^^^ pattern cannot match with input type `Box<[i32; 2]>`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0529`.

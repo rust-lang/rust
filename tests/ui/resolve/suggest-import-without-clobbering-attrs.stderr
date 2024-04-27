@@ -1,0 +1,14 @@
+error[E0425]: cannot find function `z` in this scope
+  --> $DIR/suggest-import-without-clobbering-attrs.rs:13:5
+   |
+LL |     z();
+   |     ^ not found in this scope
+   |
+help: consider importing this function
+   |
+LL + use y::z;
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0425`.

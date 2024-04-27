@@ -1,0 +1,33 @@
+warning: unreachable statement
+  --> $DIR/never-assign-dead-code.rs:11:5
+   |
+LL |     let x: ! = panic!("aah");
+   |                ------------- any code following this expression is unreachable
+LL |     drop(x);
+   |     ^^^^^^^^ unreachable statement
+   |
+note: the lint level is defined here
+  --> $DIR/never-assign-dead-code.rs:7:9
+   |
+LL | #![warn(unused)]
+   |         ^^^^^^
+   = note: `#[warn(unreachable_code)]` implied by `#[warn(unused)]`
+
+warning: unreachable call
+  --> $DIR/never-assign-dead-code.rs:11:5
+   |
+LL |     drop(x);
+   |     ^^^^ - any code following this expression is unreachable
+   |     |
+   |     unreachable call
+
+warning: unused variable: `x`
+  --> $DIR/never-assign-dead-code.rs:10:9
+   |
+LL |     let x: ! = panic!("aah");
+   |         ^ help: if this is intentional, prefix it with an underscore: `_x`
+   |
+   = note: `#[warn(unused_variables)]` implied by `#[warn(unused)]`
+
+warning: 3 warnings emitted
+

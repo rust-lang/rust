@@ -1,0 +1,20 @@
+error: lifetime may not live long enough
+  --> $DIR/lub-match.rs:30:13
+   |
+LL | pub fn opt_str2<'a>(maybestr: &'a Option<String>) -> &'static str {
+   |                 -- lifetime `'a` defined here
+...
+LL |             s
+   |             ^ returning this value requires that `'a` must outlive `'static`
+
+error: lifetime may not live long enough
+  --> $DIR/lub-match.rs:40:13
+   |
+LL | pub fn opt_str3<'a>(maybestr: &'a Option<String>) -> &'static str {
+   |                 -- lifetime `'a` defined here
+...
+LL |             s
+   |             ^ returning this value requires that `'a` must outlive `'static`
+
+error: aborting due to 2 previous errors
+

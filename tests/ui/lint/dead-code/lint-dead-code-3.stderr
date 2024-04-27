@@ -1,0 +1,52 @@
+error: struct `Foo` is never constructed
+  --> $DIR/lint-dead-code-3.rs:14:8
+   |
+LL | struct Foo;
+   |        ^^^
+   |
+note: the lint level is defined here
+  --> $DIR/lint-dead-code-3.rs:4:9
+   |
+LL | #![deny(dead_code)]
+   |         ^^^^^^^^^
+
+error: method `foo` is never used
+  --> $DIR/lint-dead-code-3.rs:16:8
+   |
+LL | impl Foo {
+   | -------- method in this implementation
+LL |     fn foo(&self) {
+   |        ^^^
+
+error: function `bar` is never used
+  --> $DIR/lint-dead-code-3.rs:21:4
+   |
+LL | fn bar() {
+   |    ^^^
+
+error: enum `c_void` is never used
+  --> $DIR/lint-dead-code-3.rs:60:6
+   |
+LL | enum c_void {}
+   |      ^^^^^^
+
+error: function `blah` is never used
+  --> $DIR/lint-dead-code-3.rs:77:8
+   |
+LL |     fn blah() {}
+   |        ^^^^
+
+error: function `blah` is never used
+  --> $DIR/lint-dead-code-3.rs:81:12
+   |
+LL |         fn blah() {}
+   |            ^^^^
+
+error: function `free` is never used
+  --> $DIR/lint-dead-code-3.rs:62:8
+   |
+LL |     fn free(p: *const c_void);
+   |        ^^^^
+
+error: aborting due to 7 previous errors
+

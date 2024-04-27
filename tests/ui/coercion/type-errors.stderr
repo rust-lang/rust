@@ -1,0 +1,21 @@
+error[E0412]: cannot find type `TypeError` in this scope
+  --> $DIR/type-errors.rs:5:23
+   |
+LL | pub fn has_error() -> TypeError {}
+   |                       ^^^^^^^^^ not found in this scope
+
+error[E0412]: cannot find type `TypeError` in this scope
+  --> $DIR/type-errors.rs:18:29
+   |
+LL | pub fn autoderef_source(e: &TypeError) {
+   |                             ^^^^^^^^^ not found in this scope
+
+error[E0412]: cannot find type `TypeError` in this scope
+  --> $DIR/type-errors.rs:23:29
+   |
+LL | pub fn autoderef_target(_: &TypeError) {}
+   |                             ^^^^^^^^^ not found in this scope
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0412`.

@@ -1,0 +1,12 @@
+error[E0046]: not all trait items implemented, missing: `Error`
+  --> $DIR/issue-103181-1.rs:12:5
+   |
+LL |         type Error;
+   |         ---------- `Error` from trait
+LL |     }
+LL |     impl HttpBody for () {
+   |     ^^^^^^^^^^^^^^^^^^^^ missing `Error` in implementation
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0046`.

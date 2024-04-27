@@ -1,0 +1,11 @@
+error: generic parameters may not be used in const operations
+  --> $DIR/const-argument-non-static-lifetime.rs:14:17
+   |
+LL |         let _: &'a ();
+   |                 ^^ cannot perform const operation using `'a`
+   |
+   = note: lifetime parameters may not be used in const expressions
+   = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,52 @@
+error: vtable entries for `<S as A>`: [
+           MetadataDropInPlace,
+           MetadataSize,
+           MetadataAlign,
+           Method(<S as T>::method),
+       ]
+  --> $DIR/multiple-markers.rs:21:1
+   |
+LL | trait A: M0 + M1 + M2 + T {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: vtable entries for `<S as B>`: [
+           MetadataDropInPlace,
+           MetadataSize,
+           MetadataAlign,
+           Method(<S as T>::method),
+           TraitVPtr(<S as M2>),
+       ]
+  --> $DIR/multiple-markers.rs:24:1
+   |
+LL | trait B: M0 + M1 + T + M2 {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: vtable entries for `<S as C>`: [
+           MetadataDropInPlace,
+           MetadataSize,
+           MetadataAlign,
+           Method(<S as T>::method),
+           TraitVPtr(<S as M1>),
+           TraitVPtr(<S as M2>),
+       ]
+  --> $DIR/multiple-markers.rs:27:1
+   |
+LL | trait C: M0 + T + M1 + M2 {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: vtable entries for `<S as D>`: [
+           MetadataDropInPlace,
+           MetadataSize,
+           MetadataAlign,
+           Method(<S as T>::method),
+           TraitVPtr(<S as M0>),
+           TraitVPtr(<S as M1>),
+           TraitVPtr(<S as M2>),
+       ]
+  --> $DIR/multiple-markers.rs:30:1
+   |
+LL | trait D: T + M0 + M1 + M2 {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+

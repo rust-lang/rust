@@ -1,0 +1,12 @@
+error: enum with no variants
+  --> tests/ui/empty_enum.rs:5:1
+   |
+LL | enum Empty {}
+   | ^^^^^^^^^^^^^
+   |
+   = help: consider using the uninhabited type `!` (never type) or a wrapper around it to introduce a type which can't be instantiated
+   = note: `-D clippy::empty-enum` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::empty_enum)]`
+
+error: aborting due to 1 previous error
+

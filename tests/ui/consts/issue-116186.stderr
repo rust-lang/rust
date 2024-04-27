@@ -1,0 +1,21 @@
+error[E0425]: cannot find value `N` in this scope
+  --> $DIR/issue-116186.rs:4:28
+   |
+LL | fn something(path: [usize; N]) -> impl Clone {
+   |                            ^ not found in this scope
+   |
+help: you might be missing a const parameter
+   |
+LL | fn something<const N: /* Type */>(path: [usize; N]) -> impl Clone {
+   |             +++++++++++++++++++++
+
+error[E0730]: cannot pattern-match on an array without a fixed length
+  --> $DIR/issue-116186.rs:7:9
+   |
+LL |         [] => 0,
+   |         ^^
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0425, E0730.
+For more information about an error, try `rustc --explain E0425`.

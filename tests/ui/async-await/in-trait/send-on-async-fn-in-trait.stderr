@@ -1,0 +1,43 @@
+error[E0277]: `impl Future<Output = ()>` cannot be sent between threads safely
+  --> $DIR/send-on-async-fn-in-trait.rs:13:16
+   |
+LL |     needs_send(T::test());
+   |     ---------- ^^^^^^^^^ `impl Future<Output = ()>` cannot be sent between threads safely
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = help: the trait `Send` is not implemented for `impl Future<Output = ()>`
+note: required by a bound in `needs_send`
+  --> $DIR/send-on-async-fn-in-trait.rs:12:27
+   |
+LL |     fn needs_send(_: impl Send) {}
+   |                           ^^^^ required by this bound in `needs_send`
+help: `Send` can be made part of the associated future's guarantees for all implementations of `Foo::test`
+   |
+LL -     async fn test() -> () {}
+LL +     fn test() -> impl std::future::Future<Output = ()> + Send { async {} }
+   |
+
+error[E0277]: `impl Future<Output = i32>` cannot be sent between threads safely
+  --> $DIR/send-on-async-fn-in-trait.rs:15:16
+   |
+LL |     needs_send(T::test2());
+   |     ---------- ^^^^^^^^^^ `impl Future<Output = i32>` cannot be sent between threads safely
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = help: the trait `Send` is not implemented for `impl Future<Output = i32>`
+note: required by a bound in `needs_send`
+  --> $DIR/send-on-async-fn-in-trait.rs:12:27
+   |
+LL |     fn needs_send(_: impl Send) {}
+   |                           ^^^^ required by this bound in `needs_send`
+help: `Send` can be made part of the associated future's guarantees for all implementations of `Foo::test2`
+   |
+LL -     async fn test2() -> i32 { 1 + 2 }
+LL +     fn test2() -> impl std::future::Future<Output = i32> + Send {async { 1 + 2 } }
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

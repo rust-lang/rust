@@ -1,0 +1,54 @@
+// Example code blocks sometimes have a "Run" button to run them on the
+// Playground. That button is hidden until the user hovers over the code block.
+// This test checks that it is hidden, and that it shows on hover. It also
+// checks for its color.
+include: "utils.goml"
+go-to: "file://" + |DOC_PATH| + "/test_docs/fn.foo.html"
+show-text: true
+
+define-function: (
+    "check-run-button",
+    [theme, color, background, hover_color, hover_background],
+    block {
+        call-function: ("switch-theme", {"theme": |theme|})
+        assert-css: (".test-arrow", {"visibility": "hidden"})
+        move-cursor-to: ".example-wrap"
+        assert-css: (".test-arrow", {
+            "visibility": "visible",
+            "color": |color|,
+            "background-color": |background|,
+            "font-size": "22px",
+            "border-radius": "5px",
+        })
+        move-cursor-to: ".test-arrow"
+        assert-css: (".test-arrow:hover", {
+            "visibility": "visible",
+            "color": |hover_color|,
+            "background-color": |hover_background|,
+            "font-size": "22px",
+            "border-radius": "5px",
+        })
+    },
+)
+
+call-function: ("check-run-button", {
+    "theme": "ayu",
+    "color": "#788797",
+    "background": "rgba(57, 175, 215, 0.09)",
+    "hover_color": "#c5c5c5",
+    "hover_background": "rgba(57, 175, 215, 0.37)",
+})
+call-function: ("check-run-button", {
+    "theme": "dark",
+    "color": "#dedede",
+    "background": "rgba(78, 139, 202, 0.2)",
+    "hover_color": "#dedede",
+    "hover_background": "rgb(78, 139, 202)",
+})
+call-function: ("check-run-button", {
+    "theme": "light",
+    "color": "#f5f5f5",
+    "background": "rgba(78, 139, 202, 0.2)",
+    "hover_color": "#f5f5f5",
+    "hover_background": "rgb(78, 139, 202)",
+})

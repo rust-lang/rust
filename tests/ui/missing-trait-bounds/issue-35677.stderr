@@ -1,0 +1,17 @@
+error[E0599]: the method `is_subset` exists for reference `&HashSet<T>`, but its trait bounds were not satisfied
+  --> $DIR/issue-35677.rs:7:10
+   |
+LL |     this.is_subset(other)
+   |          ^^^^^^^^^ method cannot be called on `&HashSet<T>` due to unsatisfied trait bounds
+   |
+   = note: the following trait bounds were not satisfied:
+           `T: Eq`
+           `T: Hash`
+help: consider restricting the type parameters to satisfy the trait bounds
+   |
+LL | fn is_subset<T>(this: &HashSet<T>, other: &HashSet<T>) -> bool where T: Eq, T: Hash {
+   |                                                                ++++++++++++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0599`.

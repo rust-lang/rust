@@ -1,0 +1,8 @@
+error: expected expression, found `:`
+  --> $DIR/issue-70552-ascription-in-parens-after-call.rs:2:19
+   |
+LL |     expr as fun()(:);
+   |                   ^ expected expression
+
+error: aborting due to 1 previous error
+

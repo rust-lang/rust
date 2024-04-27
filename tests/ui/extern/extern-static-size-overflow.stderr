@@ -1,0 +1,20 @@
+error: extern static is too large for the current architecture
+  --> $DIR/extern-static-size-overflow.rs:38:5
+   |
+LL |     static BAZ: [u8; max_size()];
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: extern static is too large for the current architecture
+  --> $DIR/extern-static-size-overflow.rs:39:5
+   |
+LL |     static UWU: [usize; usize::MAX];
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: extern static is too large for the current architecture
+  --> $DIR/extern-static-size-overflow.rs:40:5
+   |
+LL |     static A: ReallyBig;
+   |     ^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+

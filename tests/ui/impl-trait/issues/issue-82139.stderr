@@ -1,0 +1,9 @@
+error[E0425]: cannot find value `j` in this scope
+  --> $DIR/issue-82139.rs:15:26
+   |
+LL |         Some(42).map(|_| j)
+   |                          ^ not found in this scope
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0425`.

@@ -1,0 +1,35 @@
+error: comparison operators cannot be chained
+  --> $DIR/issue-82566-2.rs:17:23
+   |
+LL | fn foo1() -> [(); Foo1<10>::SUM] {
+   |                       ^  ^
+   |
+help: use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments
+   |
+LL | fn foo1() -> [(); Foo1::<10>::SUM] {
+   |                       ++
+
+error: expected one of `.`, `?`, `]`, or an operator, found `,`
+  --> $DIR/issue-82566-2.rs:21:26
+   |
+LL | fn foo2() -> [(); Foo2<10, 20>::SUM] {
+   |                          ^ expected one of `.`, `?`, `]`, or an operator
+   |
+help: use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments
+   |
+LL | fn foo2() -> [(); Foo2::<10, 20>::SUM] {
+   |                       ++
+
+error: expected one of `.`, `?`, `]`, or an operator, found `,`
+  --> $DIR/issue-82566-2.rs:26:26
+   |
+LL | fn foo3() -> [(); Foo3<10, 20, 30>::SUM] {
+   |                          ^ expected one of `.`, `?`, `]`, or an operator
+   |
+help: use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments
+   |
+LL | fn foo3() -> [(); Foo3::<10, 20, 30>::SUM] {
+   |                       ++
+
+error: aborting due to 3 previous errors
+

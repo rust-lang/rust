@@ -1,0 +1,18 @@
+// MIR for `f_unit` after PreCodegen
+
+fn f_unit() -> () {
+    let mut _0: ();
+    scope 1 (inlined f_dispatch::<()>) {
+        let _1: ();
+        scope 2 (inlined std::mem::size_of::<()>) {
+        }
+    }
+
+    bb0: {
+        _1 = f_zst::<()>(const ()) -> [return: bb1, unwind unreachable];
+    }
+
+    bb1: {
+        return;
+    }
+}

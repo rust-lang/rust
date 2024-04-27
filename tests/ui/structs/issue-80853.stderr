@@ -1,0 +1,13 @@
+error[E0618]: expected function, found `S`
+  --> $DIR/issue-80853.rs:4:5
+   |
+LL | fn repro_ref(thing: S) {
+   |              ----- `thing` has type `S`
+LL |     thing();
+   |     ^^^^^--
+   |     |
+   |     call expression requires function
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0618`.

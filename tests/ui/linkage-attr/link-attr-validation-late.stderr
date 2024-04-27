@@ -1,0 +1,147 @@
+error: unexpected `#[link]` argument, expected one of: name, kind, modifiers, cfg, wasm_import_module, import_name_type
+  --> $DIR/link-attr-validation-late.rs:4:22
+   |
+LL | #[link(name = "...", "literal")]
+   |                      ^^^^^^^^^
+
+error: unexpected `#[link]` argument, expected one of: name, kind, modifiers, cfg, wasm_import_module, import_name_type
+  --> $DIR/link-attr-validation-late.rs:5:22
+   |
+LL | #[link(name = "...", unknown)]
+   |                      ^^^^^^^
+
+error: multiple `name` arguments in a single `#[link]` attribute
+  --> $DIR/link-attr-validation-late.rs:9:22
+   |
+LL | #[link(name = "foo", name = "bar")]
+   |                      ^^^^^^^^^^^^
+
+error: multiple `kind` arguments in a single `#[link]` attribute
+  --> $DIR/link-attr-validation-late.rs:10:38
+   |
+LL | #[link(name = "...", kind = "dylib", kind = "bar")]
+   |                                      ^^^^^^^^^^^^
+
+error: multiple `modifiers` arguments in a single `#[link]` attribute
+  --> $DIR/link-attr-validation-late.rs:11:47
+   |
+LL | #[link(name = "...", modifiers = "+verbatim", modifiers = "bar")]
+   |                                               ^^^^^^^^^^^^^^^^^
+
+error: multiple `cfg` arguments in a single `#[link]` attribute
+  --> $DIR/link-attr-validation-late.rs:12:34
+   |
+LL | #[link(name = "...", cfg(FALSE), cfg(FALSE))]
+   |                                  ^^^^^^^^^^
+
+error: multiple `wasm_import_module` arguments in a single `#[link]` attribute
+  --> $DIR/link-attr-validation-late.rs:13:36
+   |
+LL | #[link(wasm_import_module = "foo", wasm_import_module = "bar")]
+   |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: link name must be of the form `name = "string"`
+  --> $DIR/link-attr-validation-late.rs:17:8
+   |
+LL | #[link(name)]
+   |        ^^^^
+
+error[E0459]: `#[link]` attribute requires a `name = "string"` argument
+  --> $DIR/link-attr-validation-late.rs:17:1
+   |
+LL | #[link(name)]
+   | ^^^^^^^^^^^^^ missing `name` argument
+
+error: link name must be of the form `name = "string"`
+  --> $DIR/link-attr-validation-late.rs:19:8
+   |
+LL | #[link(name())]
+   |        ^^^^^^
+
+error[E0459]: `#[link]` attribute requires a `name = "string"` argument
+  --> $DIR/link-attr-validation-late.rs:19:1
+   |
+LL | #[link(name())]
+   | ^^^^^^^^^^^^^^^ missing `name` argument
+
+error: link kind must be of the form `kind = "string"`
+  --> $DIR/link-attr-validation-late.rs:21:22
+   |
+LL | #[link(name = "...", kind)]
+   |                      ^^^^
+
+error: link kind must be of the form `kind = "string"`
+  --> $DIR/link-attr-validation-late.rs:22:22
+   |
+LL | #[link(name = "...", kind())]
+   |                      ^^^^^^
+
+error: link modifiers must be of the form `modifiers = "string"`
+  --> $DIR/link-attr-validation-late.rs:23:22
+   |
+LL | #[link(name = "...", modifiers)]
+   |                      ^^^^^^^^^
+
+error: link modifiers must be of the form `modifiers = "string"`
+  --> $DIR/link-attr-validation-late.rs:24:22
+   |
+LL | #[link(name = "...", modifiers())]
+   |                      ^^^^^^^^^^^
+
+error: link cfg must be of the form `cfg(/* predicate */)`
+  --> $DIR/link-attr-validation-late.rs:25:22
+   |
+LL | #[link(name = "...", cfg)]
+   |                      ^^^
+
+error: link cfg must be of the form `cfg(/* predicate */)`
+  --> $DIR/link-attr-validation-late.rs:26:22
+   |
+LL | #[link(name = "...", cfg = "literal")]
+   |                      ^^^^^^^^^^^^^^^
+
+error: link cfg must have a single predicate argument
+  --> $DIR/link-attr-validation-late.rs:27:22
+   |
+LL | #[link(name = "...", cfg("literal"))]
+   |                      ^^^^^^^^^^^^^^
+
+error: wasm import module must be of the form `wasm_import_module = "string"`
+  --> $DIR/link-attr-validation-late.rs:28:22
+   |
+LL | #[link(name = "...", wasm_import_module)]
+   |                      ^^^^^^^^^^^^^^^^^^
+
+error: wasm import module must be of the form `wasm_import_module = "string"`
+  --> $DIR/link-attr-validation-late.rs:29:22
+   |
+LL | #[link(name = "...", wasm_import_module())]
+   |                      ^^^^^^^^^^^^^^^^^^^^
+
+error: invalid linking modifier syntax, expected '+' or '-' prefix before one of: bundle, verbatim, whole-archive, as-needed
+  --> $DIR/link-attr-validation-late.rs:33:34
+   |
+LL | #[link(name = "...", modifiers = "")]
+   |                                  ^^
+
+error: invalid linking modifier syntax, expected '+' or '-' prefix before one of: bundle, verbatim, whole-archive, as-needed
+  --> $DIR/link-attr-validation-late.rs:34:34
+   |
+LL | #[link(name = "...", modifiers = "no-plus-minus")]
+   |                                  ^^^^^^^^^^^^^^^
+
+error: unknown linking modifier `unknown`, expected one of: bundle, verbatim, whole-archive, as-needed
+  --> $DIR/link-attr-validation-late.rs:35:34
+   |
+LL | #[link(name = "...", modifiers = "+unknown")]
+   |                                  ^^^^^^^^^^
+
+error: multiple `verbatim` modifiers in a single `modifiers` argument
+  --> $DIR/link-attr-validation-late.rs:36:34
+   |
+LL | #[link(name = "...", modifiers = "+verbatim,+verbatim")]
+   |                                  ^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 24 previous errors
+
+For more information about this error, try `rustc --explain E0459`.

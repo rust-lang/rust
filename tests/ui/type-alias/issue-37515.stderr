@@ -1,0 +1,15 @@
+warning: type alias `Z` is never used
+  --> $DIR/issue-37515.rs:5:6
+   |
+LL | type Z = dyn for<'x> Send;
+   |      ^
+   |
+note: the lint level is defined here
+  --> $DIR/issue-37515.rs:3:9
+   |
+LL | #![warn(unused)]
+   |         ^^^^^^
+   = note: `#[warn(dead_code)]` implied by `#[warn(unused)]`
+
+warning: 1 warning emitted
+

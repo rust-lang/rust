@@ -1,0 +1,9 @@
+error[E0618]: expected function, found `(&'static str, {integer})`
+  --> $DIR/array-diagnostics.rs:4:9
+   |
+LL |         ("C200B40A83", 4)
+   |         ^^^^^^^^^^^^^^^^^- help: consider separating array elements with a comma: `,`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0618`.

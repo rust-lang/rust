@@ -1,0 +1,57 @@
+error[E0515]: cannot return reference to local variable `x`
+  --> $DIR/issue-52534-1.rs:6:9
+   |
+LL |         &x
+   |         ^^ returns a reference to data owned by the current function
+
+error[E0515]: cannot return reference to local variable `x`
+  --> $DIR/issue-52534-1.rs:13:5
+   |
+LL |     &x
+   |     ^^ returns a reference to data owned by the current function
+
+error[E0515]: cannot return value referencing local variable `x`
+  --> $DIR/issue-52534-1.rs:19:5
+   |
+LL |     &&x
+   |     ^--
+   |     ||
+   |     |`x` is borrowed here
+   |     returns a value referencing data owned by the current function
+
+error[E0515]: cannot return reference to temporary value
+  --> $DIR/issue-52534-1.rs:19:5
+   |
+LL |     &&x
+   |     ^--
+   |     ||
+   |     |temporary value created here
+   |     returns a reference to data owned by the current function
+
+error[E0515]: cannot return reference to local variable `x`
+  --> $DIR/issue-52534-1.rs:26:5
+   |
+LL |     &x
+   |     ^^ returns a reference to data owned by the current function
+
+error[E0515]: cannot return reference to local variable `x`
+  --> $DIR/issue-52534-1.rs:32:5
+   |
+LL |     &x
+   |     ^^ returns a reference to data owned by the current function
+
+error[E0515]: cannot return reference to local variable `x`
+  --> $DIR/issue-52534-1.rs:38:5
+   |
+LL |     &x
+   |     ^^ returns a reference to data owned by the current function
+
+error[E0515]: cannot return reference to local variable `x`
+  --> $DIR/issue-52534-1.rs:44:5
+   |
+LL |     &x
+   |     ^^ returns a reference to data owned by the current function
+
+error: aborting due to 8 previous errors
+
+For more information about this error, try `rustc --explain E0515`.

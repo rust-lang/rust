@@ -1,0 +1,8 @@
+[package]
+name = "expand-yaml-anchors"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+yaml-rust = "0.4.3"
+yaml-merge-keys = "0.4.0"

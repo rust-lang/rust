@@ -1,0 +1,12 @@
+- // MIR for `test` before MultipleReturnTerminators
++ // MIR for `test` after MultipleReturnTerminators
+  
+  fn test(_1: bool) -> () {
+      debug x => _1;
+      let mut _0: ();
+  
+      bb0: {
+          return;
+      }
+  }
+  

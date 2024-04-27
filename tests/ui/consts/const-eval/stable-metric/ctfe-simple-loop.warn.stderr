@@ -1,0 +1,62 @@
+warning: constant evaluation is taking a long time
+  --> $DIR/ctfe-simple-loop.rs:9:5
+   |
+LL | /     while index < n {
+LL | |
+LL | |
+LL | |
+LL | |         index = index + 1;
+LL | |     }
+   | |_____^
+   |
+   = note: this lint makes sure the compiler doesn't get stuck due to infinite loops in const eval.
+           If your compilation actually takes a long time, you can safely allow the lint.
+help: the constant being evaluated
+  --> $DIR/ctfe-simple-loop.rs:18:1
+   |
+LL | const X: u32 = simple_loop(19);
+   | ^^^^^^^^^^^^
+note: the lint level is defined here
+  --> $DIR/ctfe-simple-loop.rs:3:24
+   |
+LL | #![cfg_attr(warn, warn(long_running_const_eval))]
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: constant evaluation is taking a long time
+  --> $DIR/ctfe-simple-loop.rs:9:5
+   |
+LL | /     while index < n {
+LL | |
+LL | |
+LL | |
+LL | |         index = index + 1;
+LL | |     }
+   | |_____^
+   |
+   = note: this lint makes sure the compiler doesn't get stuck due to infinite loops in const eval.
+           If your compilation actually takes a long time, you can safely allow the lint.
+help: the constant being evaluated
+  --> $DIR/ctfe-simple-loop.rs:19:1
+   |
+LL | const Y: u32 = simple_loop(35);
+   | ^^^^^^^^^^^^
+
+warning: constant evaluation is taking a long time
+  --> $DIR/ctfe-simple-loop.rs:9:5
+   |
+LL | /     while index < n {
+LL | |
+LL | |
+LL | |
+LL | |         index = index + 1;
+LL | |     }
+   | |_____^ the const evaluator is currently interpreting this expression
+   |
+help: the constant being evaluated
+  --> $DIR/ctfe-simple-loop.rs:19:1
+   |
+LL | const Y: u32 = simple_loop(35);
+   | ^^^^^^^^^^^^
+
+warning: 3 warnings emitted
+

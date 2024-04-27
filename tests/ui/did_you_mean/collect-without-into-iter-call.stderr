@@ -1,0 +1,36 @@
+error[E0599]: no method named `map` found for opaque type `impl IntoIterator<Item = i32>` in the current scope
+  --> $DIR/collect-without-into-iter-call.rs:6:29
+   |
+LL |     let other_items = items.map(|i| i + 1);
+   |                             ^^^ `impl IntoIterator<Item = i32>` is not an iterator
+   |
+help: call `.into_iter()` first
+   |
+LL |     let other_items = items.into_iter().map(|i| i + 1);
+   |                             ++++++++++++
+
+error[E0599]: no method named `collect` found for opaque type `impl IntoIterator<Item = i32>` in the current scope
+  --> $DIR/collect-without-into-iter-call.rs:8:31
+   |
+LL |     let vec: Vec<i32> = items.collect();
+   |                               ^^^^^^^ `impl IntoIterator<Item = i32>` is not an iterator
+   |
+help: call `.into_iter()` first
+   |
+LL |     let vec: Vec<i32> = items.into_iter().collect();
+   |                               ++++++++++++
+
+error[E0599]: no method named `collect` found for type parameter `impl IntoIterator<Item = String>` in the current scope
+  --> $DIR/collect-without-into-iter-call.rs:17:11
+   |
+LL |     items.collect()
+   |           ^^^^^^^ `impl IntoIterator<Item = String>` is not an iterator
+   |
+help: call `.into_iter()` first
+   |
+LL |     items.into_iter().collect()
+   |           ++++++++++++
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0599`.

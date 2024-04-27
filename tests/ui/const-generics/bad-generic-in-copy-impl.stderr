@@ -1,0 +1,17 @@
+error[E0308]: mismatched types
+  --> $DIR/bad-generic-in-copy-impl.rs:3:13
+   |
+LL |     x: [u8; SIZE],
+   |             ^^^^ expected `usize`, found `u32`
+
+error[E0308]: mismatched types
+  --> $DIR/bad-generic-in-copy-impl.rs:3:13
+   |
+LL |     x: [u8; SIZE],
+   |             ^^^^ expected `usize`, found `u32`
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

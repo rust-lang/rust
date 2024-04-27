@@ -1,0 +1,27 @@
+warning: deprecated `#[macro_use]` attribute used to import macros should be replaced at use sites with a `use` item to import the macro instead
+  --> $DIR/macro-use-warned-against.rs:7:1
+   |
+LL | #[macro_use]
+   | ^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/macro-use-warned-against.rs:5:9
+   |
+LL | #![warn(macro_use_extern_crate, unused)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused `#[macro_use]` import
+  --> $DIR/macro-use-warned-against.rs:9:1
+   |
+LL | #[macro_use]
+   | ^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/macro-use-warned-against.rs:5:33
+   |
+LL | #![warn(macro_use_extern_crate, unused)]
+   |                                 ^^^^^^
+   = note: `#[warn(unused_imports)]` implied by `#[warn(unused)]`
+
+warning: 2 warnings emitted
+

@@ -1,0 +1,39 @@
+error[E0493]: destructor of `String` cannot be evaluated at compile-time
+  --> $DIR/drop-elaboration-after-borrowck-error.rs:7:5
+   |
+LL |     a[0] = String::new();
+   |     ^^^^
+   |     |
+   |     the destructor for this type cannot be evaluated in statics
+   |     value is dropped here
+
+error[E0493]: destructor of `[String; 1]` cannot be evaluated at compile-time
+  --> $DIR/drop-elaboration-after-borrowck-error.rs:5:9
+   |
+LL |     let a: [String; 1];
+   |         ^ the destructor for this type cannot be evaluated in statics
+...
+LL | };
+   | - value is dropped here
+
+error[E0493]: destructor of `T` cannot be evaluated at compile-time
+  --> $DIR/drop-elaboration-after-borrowck-error.rs:17:9
+   |
+LL |         self.0[0] = other;
+   |         ^^^^^^^^^
+   |         |
+   |         the destructor for this type cannot be evaluated in constant functions
+   |         value is dropped here
+
+error[E0493]: destructor of `B<T>` cannot be evaluated at compile-time
+  --> $DIR/drop-elaboration-after-borrowck-error.rs:15:13
+   |
+LL |         let _this = self;
+   |             ^^^^^ the destructor for this type cannot be evaluated in constant functions
+...
+LL |     }
+   |     - value is dropped here
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0493`.

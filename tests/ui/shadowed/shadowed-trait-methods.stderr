@@ -1,0 +1,18 @@
+error[E0599]: no method named `f` found for unit type `()` in the current scope
+  --> $DIR/shadowed-trait-methods.rs:13:8
+   |
+LL |     pub trait T { fn f(&self) {} }
+   |                      - the method is available for `()` here
+...
+LL |     ().f()
+   |        ^ method not found in `()`
+   |
+   = help: items from traits can only be used if the trait is in scope
+help: trait `T` which provides `f` is implemented but not in scope; perhaps you want to import it
+   |
+LL + use foo::T;
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0599`.

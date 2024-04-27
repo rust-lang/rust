@@ -1,0 +1,25 @@
+- // MIR for `one` before Inline
++ // MIR for `one` after Inline
+  
+  fn one() -> () {
+      let mut _0: ();
+      let _1: ();
++     scope 1 (inlined <C as Call>::call) {
++         scope 2 (inlined <A<C> as Call>::call) {
++             scope 3 (inlined <B<C> as Call>::call) {
++             }
++         }
++     }
+  
+      bb0: {
+          StorageLive(_1);
+          _1 = <C as Call>::call() -> [return: bb1, unwind unreachable];
+      }
+  
+      bb1: {
+          StorageDead(_1);
+          _0 = const ();
+          return;
+      }
+  }
+  

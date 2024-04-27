@@ -1,0 +1,152 @@
+error: struct with unnamed fields must have `#[repr(C)]` representation
+  --> $DIR/repr_check.rs:4:1
+   |
+LL | struct A {
+   | ^^^^^^^^ struct `A` defined here
+   |
+note: unnamed field defined here
+  --> $DIR/repr_check.rs:6:5
+   |
+LL | /     _: struct {
+LL | |         a: i32,
+LL | |     },
+   | |_____^
+note: unnamed field defined here
+  --> $DIR/repr_check.rs:9:5
+   |
+LL | /     _: struct {
+LL | |         _: struct {
+LL | |             b: i32,
+LL | |         },
+LL | |     },
+   | |_____^
+help: add `#[repr(C)]` to this struct
+   |
+LL + #[repr(C)]
+LL | struct A {
+   |
+
+error: union with unnamed fields must have `#[repr(C)]` representation
+  --> $DIR/repr_check.rs:16:1
+   |
+LL | union B {
+   | ^^^^^^^ union `B` defined here
+   |
+note: unnamed field defined here
+  --> $DIR/repr_check.rs:18:5
+   |
+LL | /     _: union {
+LL | |         a: i32,
+LL | |     },
+   | |_____^
+note: unnamed field defined here
+  --> $DIR/repr_check.rs:21:5
+   |
+LL | /     _: union {
+LL | |         _: union {
+LL | |             b: i32,
+LL | |         },
+LL | |     },
+   | |_____^
+help: add `#[repr(C)]` to this union
+   |
+LL + #[repr(C)]
+LL | union B {
+   |
+
+error: struct with unnamed fields must have `#[repr(C)]` representation
+  --> $DIR/repr_check.rs:39:1
+   |
+LL | struct C {
+   | ^^^^^^^^ struct `C` defined here
+   |
+note: unnamed field defined here
+  --> $DIR/repr_check.rs:41:5
+   |
+LL |     _: Foo,
+   |     ^^^^^^
+help: add `#[repr(C)]` to this struct
+   |
+LL + #[repr(C)]
+LL | struct C {
+   |
+
+error: union with unnamed fields must have `#[repr(C)]` representation
+  --> $DIR/repr_check.rs:44:1
+   |
+LL | union D {
+   | ^^^^^^^ union `D` defined here
+   |
+note: unnamed field defined here
+  --> $DIR/repr_check.rs:46:5
+   |
+LL |     _: Foo,
+   |     ^^^^^^
+help: add `#[repr(C)]` to this union
+   |
+LL + #[repr(C)]
+LL | union D {
+   |
+
+error: named type of unnamed field must have `#[repr(C)]` representation
+  --> $DIR/repr_check.rs:51:5
+   |
+LL | struct Bar {}
+   | ---------- `Bar` defined here
+...
+LL |     _: Bar,
+   |     ^^^^^^ unnamed field defined here
+   |
+help: add `#[repr(C)]` to this struct
+   |
+LL + #[repr(C)]
+LL | struct Bar {}
+   |
+
+error: named type of unnamed field must have `#[repr(C)]` representation
+  --> $DIR/repr_check.rs:54:9
+   |
+LL | struct Bar {}
+   | ---------- `Bar` defined here
+...
+LL |         _: Bar,
+   |         ^^^^^^ unnamed field defined here
+   |
+help: add `#[repr(C)]` to this struct
+   |
+LL + #[repr(C)]
+LL | struct Bar {}
+   |
+
+error: named type of unnamed field must have `#[repr(C)]` representation
+  --> $DIR/repr_check.rs:61:5
+   |
+LL | struct Bar {}
+   | ---------- `Bar` defined here
+...
+LL |     _: Bar,
+   |     ^^^^^^ unnamed field defined here
+   |
+help: add `#[repr(C)]` to this struct
+   |
+LL + #[repr(C)]
+LL | struct Bar {}
+   |
+
+error: named type of unnamed field must have `#[repr(C)]` representation
+  --> $DIR/repr_check.rs:64:9
+   |
+LL | struct Bar {}
+   | ---------- `Bar` defined here
+...
+LL |         _: Bar,
+   |         ^^^^^^ unnamed field defined here
+   |
+help: add `#[repr(C)]` to this struct
+   |
+LL + #[repr(C)]
+LL | struct Bar {}
+   |
+
+error: aborting due to 8 previous errors
+

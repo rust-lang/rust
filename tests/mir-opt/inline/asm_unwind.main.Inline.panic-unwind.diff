@@ -1,0 +1,40 @@
+- // MIR for `main` before Inline
++ // MIR for `main` after Inline
+  
+  fn main() -> () {
+      let mut _0: ();
+      let _1: ();
++     scope 1 (inlined foo) {
++         let _2: D;
++         scope 2 {
++             debug _d => const D;
++         }
++     }
+  
+      bb0: {
+          StorageLive(_1);
+-         _1 = foo() -> [return: bb1, unwind continue];
++         StorageLive(_2);
++         asm!("", options(MAY_UNWIND)) -> [return: bb2, unwind: bb3];
+      }
+  
+      bb1: {
++         StorageDead(_2);
+          StorageDead(_1);
+          _0 = const ();
+          return;
++     }
++ 
++     bb2: {
++         drop(_2) -> [return: bb1, unwind continue];
++     }
++ 
++     bb3 (cleanup): {
++         drop(_2) -> [return: bb4, unwind terminate(cleanup)];
++     }
++ 
++     bb4 (cleanup): {
++         resume;
+      }
+  }
+  

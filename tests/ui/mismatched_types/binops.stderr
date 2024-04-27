@@ -1,0 +1,106 @@
+error[E0277]: cannot add `Option<{integer}>` to `{integer}`
+  --> $DIR/binops.rs:2:7
+   |
+LL |     1 + Some(1);
+   |       ^ no implementation for `{integer} + Option<{integer}>`
+   |
+   = help: the trait `Add<Option<{integer}>>` is not implemented for `{integer}`
+   = help: the following other types implement trait `Add<Rhs>`:
+             <&'a f128 as Add<f128>>
+             <&'a f16 as Add<f16>>
+             <&'a f32 as Add<f32>>
+             <&'a f64 as Add<f64>>
+             <&'a i128 as Add<i128>>
+             <&'a i16 as Add<i16>>
+             <&'a i32 as Add<i32>>
+             <&'a i64 as Add<i64>>
+           and 56 others
+
+error[E0277]: cannot subtract `Option<{integer}>` from `usize`
+  --> $DIR/binops.rs:3:16
+   |
+LL |     2 as usize - Some(1);
+   |                ^ no implementation for `usize - Option<{integer}>`
+   |
+   = help: the trait `Sub<Option<{integer}>>` is not implemented for `usize`
+   = help: the following other types implement trait `Sub<Rhs>`:
+             <&'a usize as Sub<usize>>
+             <&usize as Sub<&usize>>
+             <usize as Sub<&usize>>
+             <usize as Sub>
+
+error[E0277]: cannot multiply `{integer}` by `()`
+  --> $DIR/binops.rs:4:7
+   |
+LL |     3 * ();
+   |       ^ no implementation for `{integer} * ()`
+   |
+   = help: the trait `Mul<()>` is not implemented for `{integer}`
+   = help: the following other types implement trait `Mul<Rhs>`:
+             <&'a f128 as Mul<f128>>
+             <&'a f16 as Mul<f16>>
+             <&'a f32 as Mul<f32>>
+             <&'a f64 as Mul<f64>>
+             <&'a i128 as Mul<i128>>
+             <&'a i16 as Mul<i16>>
+             <&'a i32 as Mul<i32>>
+             <&'a i64 as Mul<i64>>
+           and 57 others
+
+error[E0277]: cannot divide `{integer}` by `&str`
+  --> $DIR/binops.rs:5:7
+   |
+LL |     4 / "";
+   |       ^ no implementation for `{integer} / &str`
+   |
+   = help: the trait `Div<&str>` is not implemented for `{integer}`
+   = help: the following other types implement trait `Div<Rhs>`:
+             <&'a f128 as Div<f128>>
+             <&'a f16 as Div<f16>>
+             <&'a f32 as Div<f32>>
+             <&'a f64 as Div<f64>>
+             <&'a i128 as Div<i128>>
+             <&'a i16 as Div<i16>>
+             <&'a i32 as Div<i32>>
+             <&'a i64 as Div<i64>>
+           and 62 others
+
+error[E0277]: can't compare `{integer}` with `String`
+  --> $DIR/binops.rs:6:7
+   |
+LL |     5 < String::new();
+   |       ^ no implementation for `{integer} < String` and `{integer} > String`
+   |
+   = help: the trait `PartialOrd<String>` is not implemented for `{integer}`
+   = help: the following other types implement trait `PartialOrd<Rhs>`:
+             f128
+             f16
+             f32
+             f64
+             i128
+             i16
+             i32
+             i64
+           and 8 others
+
+error[E0277]: can't compare `{integer}` with `Result<{integer}, _>`
+  --> $DIR/binops.rs:7:7
+   |
+LL |     6 == Ok(1);
+   |       ^^ no implementation for `{integer} == Result<{integer}, _>`
+   |
+   = help: the trait `PartialEq<Result<{integer}, _>>` is not implemented for `{integer}`
+   = help: the following other types implement trait `PartialEq<Rhs>`:
+             f128
+             f16
+             f32
+             f64
+             i128
+             i16
+             i32
+             i64
+           and 8 others
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

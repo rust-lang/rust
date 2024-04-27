@@ -1,0 +1,17 @@
+error: use of `eprintln!`
+  --> tests/ui/print_stderr.rs:4:5
+   |
+LL |     eprintln!("Hello");
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::print-stderr` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::print_stderr)]`
+
+error: use of `eprint!`
+  --> tests/ui/print_stderr.rs:8:5
+   |
+LL |     eprint!("World");
+   |     ^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

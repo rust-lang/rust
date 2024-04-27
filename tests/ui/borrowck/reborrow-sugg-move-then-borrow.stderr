@@ -1,0 +1,21 @@
+error[E0382]: borrow of moved value: `state`
+  --> $DIR/reborrow-sugg-move-then-borrow.rs:20:18
+   |
+LL | fn fill_memory_blocks_mt(state: &mut State) {
+   |                          ----- move occurs because `state` has type `&mut State`, which does not implement the `Copy` trait
+LL |     for _ in state {}
+   |              ----- `state` moved due to this implicit call to `.into_iter()`
+LL |
+LL |     fill_segment(state);
+   |                  ^^^^^ value borrowed here after move
+   |
+note: `into_iter` takes ownership of the receiver `self`, which moves `state`
+  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
+help: consider creating a fresh reborrow of `state` here
+   |
+LL |     for _ in &mut *state {}
+   |              ++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0382`.

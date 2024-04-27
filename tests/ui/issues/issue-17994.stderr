@@ -1,0 +1,11 @@
+error[E0091]: type parameter `T` is never used
+  --> $DIR/issue-17994.rs:2:10
+   |
+LL | type Huh<T> where T: Tr = isize;
+   |          ^ unused type parameter
+   |
+   = help: consider removing `T` or referring to it in the body of the type alias
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0091`.

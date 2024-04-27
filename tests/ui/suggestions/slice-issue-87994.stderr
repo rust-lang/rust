@@ -1,0 +1,65 @@
+error[E0277]: `[i32]` is not an iterator
+  --> $DIR/slice-issue-87994.rs:3:12
+   |
+LL |   for _ in v[1..] {
+   |            ^^^^^^ the trait `IntoIterator` is not implemented for `[i32]`
+   |
+   = note: the trait bound `[i32]: IntoIterator` is not satisfied
+   = note: required for `[i32]` to implement `IntoIterator`
+help: consider borrowing here
+   |
+LL |   for _ in &v[1..] {
+   |            +
+LL |   for _ in &mut v[1..] {
+   |            ++++
+
+error[E0277]: `[i32]` is not an iterator
+  --> $DIR/slice-issue-87994.rs:3:12
+   |
+LL |   for _ in v[1..] {
+   |            ^^^^^^ the trait `IntoIterator` is not implemented for `[i32]`
+   |
+   = note: the trait bound `[i32]: IntoIterator` is not satisfied
+   = note: required for `[i32]` to implement `IntoIterator`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: consider borrowing here
+   |
+LL |   for _ in &v[1..] {
+   |            +
+LL |   for _ in &mut v[1..] {
+   |            ++++
+
+error[E0277]: `[K]` is not an iterator
+  --> $DIR/slice-issue-87994.rs:11:13
+   |
+LL |   for i2 in v2[1..] {
+   |             ^^^^^^^ the trait `IntoIterator` is not implemented for `[K]`
+   |
+   = note: the trait bound `[K]: IntoIterator` is not satisfied
+   = note: required for `[K]` to implement `IntoIterator`
+help: consider borrowing here
+   |
+LL |   for i2 in &v2[1..] {
+   |             +
+LL |   for i2 in &mut v2[1..] {
+   |             ++++
+
+error[E0277]: `[K]` is not an iterator
+  --> $DIR/slice-issue-87994.rs:11:13
+   |
+LL |   for i2 in v2[1..] {
+   |             ^^^^^^^ the trait `IntoIterator` is not implemented for `[K]`
+   |
+   = note: the trait bound `[K]: IntoIterator` is not satisfied
+   = note: required for `[K]` to implement `IntoIterator`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: consider borrowing here
+   |
+LL |   for i2 in &v2[1..] {
+   |             +
+LL |   for i2 in &mut v2[1..] {
+   |             ++++
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

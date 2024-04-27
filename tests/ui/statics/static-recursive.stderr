@@ -1,0 +1,17 @@
+warning: creating a shared reference to mutable static is discouraged
+  --> $DIR/static-recursive.rs:3:36
+   |
+LL | static mut S: *const u8 = unsafe { &S as *const *const u8 as *const u8 };
+   |                                    ^^ shared reference to mutable static
+   |
+   = note: for more information, see issue #114447 <https://github.com/rust-lang/rust/issues/114447>
+   = note: this will be a hard error in the 2024 edition
+   = note: this shared reference has lifetime `'static`, but if the static ever gets mutated, or a mutable reference is created, then any further use of this shared reference is Undefined Behavior
+   = note: `#[warn(static_mut_refs)]` on by default
+help: use `addr_of!` instead to create a raw pointer
+   |
+LL | static mut S: *const u8 = unsafe { addr_of!(S) as *const *const u8 as *const u8 };
+   |                                    ~~~~~~~~~~~
+
+warning: 1 warning emitted
+

@@ -1,0 +1,26 @@
+error: unmatched angle brackets
+  --> $DIR/issue-54521-2.rs:11:25
+   |
+LL |     let _ = Vec::<usize>>>>>::new();
+   |                         ^^^^ help: remove extra angle brackets
+
+error: unmatched angle brackets
+  --> $DIR/issue-54521-2.rs:14:25
+   |
+LL |     let _ = Vec::<usize>>>>::new();
+   |                         ^^^ help: remove extra angle brackets
+
+error: unmatched angle brackets
+  --> $DIR/issue-54521-2.rs:17:25
+   |
+LL |     let _ = Vec::<usize>>>::new();
+   |                         ^^ help: remove extra angle brackets
+
+error: unmatched angle bracket
+  --> $DIR/issue-54521-2.rs:20:25
+   |
+LL |     let _ = Vec::<usize>>::new();
+   |                         ^ help: remove extra angle bracket
+
+error: aborting due to 4 previous errors
+

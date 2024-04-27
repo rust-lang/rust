@@ -1,0 +1,27 @@
+warning: unused variable: `item`
+  --> $DIR/unboxed-closures-counter-not-moved.rs:15:13
+   |
+LL |         for item in y {
+   |             ^^^^ help: if this is intentional, prefix it with an underscore: `_item`
+   |
+   = note: `#[warn(unused_variables)]` on by default
+
+warning: value assigned to `counter` is never read
+  --> $DIR/unboxed-closures-counter-not-moved.rs:24:9
+   |
+LL |         counter += 1;
+   |         ^^^^^^^
+   |
+   = help: maybe it is overwritten before being read?
+   = note: `#[warn(unused_assignments)]` on by default
+
+warning: unused variable: `counter`
+  --> $DIR/unboxed-closures-counter-not-moved.rs:24:9
+   |
+LL |         counter += 1;
+   |         ^^^^^^^
+   |
+   = help: did you mean to capture by reference instead?
+
+warning: 3 warnings emitted
+

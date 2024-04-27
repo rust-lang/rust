@@ -1,0 +1,14 @@
+error: invalid label name `'_`
+  --> $DIR/label-underscore.rs:2:5
+   |
+LL |     '_: loop {
+   |     ^^
+
+error: invalid label name `'_`
+  --> $DIR/label-underscore.rs:3:15
+   |
+LL |         break '_
+   |               ^^
+
+error: aborting due to 2 previous errors
+

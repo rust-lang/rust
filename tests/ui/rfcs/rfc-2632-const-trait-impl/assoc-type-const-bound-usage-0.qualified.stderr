@@ -1,0 +1,14 @@
+error[E0277]: the trait bound `T: Trait` is not satisfied
+  --> $DIR/assoc-type-const-bound-usage-0.rs:21:6
+   |
+LL |     <T as /* FIXME: ~const */ Trait>::Assoc::func()
+   |      ^ the trait `Trait` is not implemented for `T`
+   |
+help: consider further restricting this bound
+   |
+LL | const fn qualified<T: ~const Trait + Trait>() -> i32 {
+   |                                    +++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

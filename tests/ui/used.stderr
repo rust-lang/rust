@@ -1,0 +1,26 @@
+error: attribute must be applied to a `static` variable
+  --> $DIR/used.rs:4:1
+   |
+LL | #[used]
+   | ^^^^^^^
+
+error: attribute must be applied to a `static` variable
+  --> $DIR/used.rs:7:1
+   |
+LL | #[used]
+   | ^^^^^^^
+
+error: attribute must be applied to a `static` variable
+  --> $DIR/used.rs:10:1
+   |
+LL | #[used]
+   | ^^^^^^^
+
+error: attribute must be applied to a `static` variable
+  --> $DIR/used.rs:13:1
+   |
+LL | #[used]
+   | ^^^^^^^
+
+error: aborting due to 4 previous errors
+

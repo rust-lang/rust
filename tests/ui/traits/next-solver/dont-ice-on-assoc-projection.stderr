@@ -1,0 +1,22 @@
+error[E0658]: associated const equality is incomplete
+  --> $DIR/dont-ice-on-assoc-projection.rs:15:32
+   |
+LL | impl<T> Foo for T where T: Bar<ASSOC = 0> {}
+   |                                ^^^^^^^^^
+   |
+   = note: see issue #92827 <https://github.com/rust-lang/rust/issues/92827> for more information
+   = help: add `#![feature(associated_const_equality)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0119]: conflicting implementations of trait `Foo` for type `()`
+  --> $DIR/dont-ice-on-assoc-projection.rs:15:1
+   |
+LL | impl Foo for () {}
+   | --------------- first implementation here
+LL | impl<T> Foo for T where T: Bar<ASSOC = 0> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `()`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0119, E0658.
+For more information about an error, try `rustc --explain E0119`.

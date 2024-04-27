@@ -1,0 +1,8 @@
+error: error reading Clippy's configuration file: not a valid Rust version
+  --> $DIR/tests/ui-toml/invalid_min_rust_version/clippy.toml:1:8
+   |
+LL | msrv = "invalid.version"
+   |        ^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

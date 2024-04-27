@@ -1,0 +1,54 @@
+error[E0308]: mismatched types
+  --> $DIR/offset-of-output-type.rs:10:17
+   |
+LL |     let _: u8 = offset_of!(S, v);
+   |                 ^^^^^^^^^^^^^^^^ expected `u8`, found `usize`
+   |
+   = note: this error originates in the macro `offset_of` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0308]: mismatched types
+  --> $DIR/offset-of-output-type.rs:11:18
+   |
+LL |     let _: u16 = offset_of!(S, v);
+   |                  ^^^^^^^^^^^^^^^^ expected `u16`, found `usize`
+   |
+   = note: this error originates in the macro `offset_of` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0308]: mismatched types
+  --> $DIR/offset-of-output-type.rs:12:18
+   |
+LL |     let _: u32 = offset_of!(S, v);
+   |                  ^^^^^^^^^^^^^^^^ expected `u32`, found `usize`
+   |
+   = note: this error originates in the macro `offset_of` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0308]: mismatched types
+  --> $DIR/offset-of-output-type.rs:13:18
+   |
+LL |     let _: u64 = offset_of!(S, v);
+   |                  ^^^^^^^^^^^^^^^^ expected `u64`, found `usize`
+   |
+   = note: this error originates in the macro `offset_of` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0308]: mismatched types
+  --> $DIR/offset-of-output-type.rs:14:20
+   |
+LL |     let _: isize = offset_of!(S, v);
+   |                    ^^^^^^^^^^^^^^^^ expected `isize`, found `usize`
+   |
+   = note: this error originates in the macro `offset_of` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0308]: mismatched types
+  --> $DIR/offset-of-output-type.rs:17:5
+   |
+LL | fn main() {
+   |          - expected `()` because of default return type
+...
+LL |     offset_of!(S, v)
+   |     ^^^^^^^^^^^^^^^^ expected `()`, found `usize`
+   |
+   = note: this error originates in the macro `offset_of` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

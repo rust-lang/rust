@@ -1,0 +1,12 @@
+error[E0599]: the method `as_deref` exists for enum `Option<{integer}>`, but its trait bounds were not satisfied
+  --> $DIR/option-as_deref.rs:2:29
+   |
+LL |     let _result = &Some(42).as_deref();
+   |                             ^^^^^^^^
+   |
+   = note: the following trait bounds were not satisfied:
+           `{integer}: Deref`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0599`.

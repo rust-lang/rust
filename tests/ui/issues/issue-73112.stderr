@@ -1,0 +1,15 @@
+error[E0588]: packed type cannot transitively contain a `#[repr(align)]` type
+  --> $DIR/issue-73112.rs:9:5
+   |
+LL |     struct SomeStruct {
+   |     ^^^^^^^^^^^^^^^^^
+   |
+note: `PageTable` has a `#[repr(align)]` attribute
+  --> $DIR/auxiliary/issue-73112.rs:8:1
+   |
+LL | pub struct PageTable {
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0588`.

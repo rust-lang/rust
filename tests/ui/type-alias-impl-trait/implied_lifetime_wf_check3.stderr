@@ -1,0 +1,37 @@
+error: lifetime may not live long enough
+  --> $DIR/implied_lifetime_wf_check3.rs:7:43
+   |
+LL |     fn test<'a>() where Ty<'a>: 'static { assert_static::<'a>() }
+   |             -- lifetime `'a` defined here ^^^^^^^^^^^^^^^^^^^ requires that `'a` must outlive `'static`
+
+error: lifetime may not live long enough
+  --> $DIR/implied_lifetime_wf_check3.rs:15:46
+   |
+LL |     fn test<'a>() where for<'b> Ty<'b>: 'a { assert_static::<'a>() }
+   |             -- lifetime `'a` defined here    ^^^^^^^^^^^^^^^^^^^ requires that `'a` must outlive `'static`
+
+error: lifetime may not live long enough
+  --> $DIR/implied_lifetime_wf_check3.rs:21:21
+   |
+LL |     fn test<'a>() { assert_static::<'a>() }
+   |             --      ^^^^^^^^^^^^^^^^^^^ requires that `'a` must outlive `'static`
+   |             |
+   |             lifetime `'a` defined here
+
+error[E0310]: the parameter type `A` may not live long enough
+  --> $DIR/implied_lifetime_wf_check3.rs:29:41
+   |
+LL |     fn test<A>() where Ty<A>: 'static { assert_static::<A>() }
+   |                                         ^^^^^^^^^^^^^^^^^^
+   |                                         |
+   |                                         the parameter type `A` must be valid for the static lifetime...
+   |                                         ...so that the type `A` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL |     fn test<A: 'static>() where Ty<A>: 'static { assert_static::<A>() }
+   |              +++++++++
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0310`.
