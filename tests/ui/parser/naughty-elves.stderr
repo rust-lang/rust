@@ -1,0 +1,11 @@
+error: expected one of `:`, `@`, or `|`, found `elf`
+  --> $DIR/naughty-elves.rs:4:18
+   |
+LL |     fn bar(&smut elf) {}
+   |            ------^^^
+   |            |     |
+   |            |     expected one of `:`, `@`, or `|`
+   |            help: consider making this elf less naughty: `&mut self`
+
+error: aborting due to 1 previous error
+

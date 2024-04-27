@@ -30,8 +30,8 @@ use rustc_ast::tokenstream::AttrTokenTree;
 use rustc_ast::util::parser::AssocOp;
 use rustc_ast::{
     AngleBracketedArg, AngleBracketedArgs, AnonConst, AttrVec, BinOpKind, BindingMode, Block,
-    BlockCheckMode, Expr, ExprKind, GenericArg, Generics, HasTokens, Item, ItemKind, Param, Pat,
-    PatKind, Path, PathSegment, QSelf, Ty, TyKind,
+    BlockCheckMode, Expr, ExprKind, GenericArg, Generics, HasTokens, Item, ItemKind, Mutability,
+    Param, Pat, PatKind, Path, PathSegment, QSelf, Ty, TyKind,
 };
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
@@ -2204,12 +2204,25 @@ impl<'a> Parser<'a> {
             let ident = self.parse_ident().unwrap();
             let span = pat.span.with_hi(ident.span.hi());
 
-            err.span_suggestion(
-                span,
-                "declare the type after the parameter binding",
-                "<identifier>: <type>",
-                Applicability::HasPlaceholders,
-            );
+            if let PatKind::Ref(pat, Mutability::Not) = &pat.kind
+                && let PatKind::Ident(BindingMode::NONE, smut, None) = pat.kind
+                && smut.as_str() == "smut"
+                && ident.as_str() == "elf"
+            {
+                err.span_suggestion(
+                    span,
+                    "consider making this elf less naughty",
+                    "&mut self",
+                    Applicability::MaybeIncorrect,
+                );
+            } else {
+                err.span_suggestion(
+                    span,
+                    "declare the type after the parameter binding",
+                    "<identifier>: <type>",
+                    Applicability::HasPlaceholders,
+                );
+            }
             return Some(ident);
         } else if require_name
             && (self.token == token::Comma
