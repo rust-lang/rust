@@ -456,6 +456,15 @@ Arguments:
         #[arg(long)]
         run: bool,
     },
+    /// Vendor dependencies
+    Vendor {
+        /// Additional `Cargo.toml` to sync and vendor
+        #[arg(long)]
+        sync: Vec<PathBuf>,
+        /// Always include version in subdir name
+        #[arg(long)]
+        versioned_dirs: bool,
+    },
 }
 
 impl Subcommand {
@@ -476,6 +485,7 @@ impl Subcommand {
             Subcommand::Run { .. } => Kind::Run,
             Subcommand::Setup { .. } => Kind::Setup,
             Subcommand::Suggest { .. } => Kind::Suggest,
+            Subcommand::Vendor { .. } => Kind::Vendor,
         }
     }
 
@@ -579,6 +589,20 @@ impl Subcommand {
         match *self {
             Subcommand::Doc { json, .. } => json,
             _ => false,
+        }
+    }
+
+    pub fn vendor_versioned_dirs(&self) -> bool {
+        match *self {
+            Subcommand::Vendor { versioned_dirs, .. } => versioned_dirs,
+            _ => false,
+        }
+    }
+
+    pub fn vendor_sync_args(&self) -> Vec<PathBuf> {
+        match self {
+            Subcommand::Vendor { sync, .. } => sync.clone(),
+            _ => vec![],
         }
     }
 }
