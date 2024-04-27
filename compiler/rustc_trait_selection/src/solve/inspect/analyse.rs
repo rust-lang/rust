@@ -45,6 +45,7 @@ pub struct InspectCandidate<'a, 'tcx> {
     nested_goals: Vec<inspect::CanonicalState<'tcx, Goal<'tcx, ty::Predicate<'tcx>>>>,
     final_state: inspect::CanonicalState<'tcx, ()>,
     result: QueryResult<'tcx>,
+    candidate_certainty: Option<Certainty>,
 }
 
 impl<'a, 'tcx> InspectCandidate<'a, 'tcx> {
@@ -54,6 +55,19 @@ impl<'a, 'tcx> InspectCandidate<'a, 'tcx> {
 
     pub fn result(&self) -> Result<Certainty, NoSolution> {
         self.result.map(|c| c.value.certainty)
+    }
+
+    /// Certainty passed into `evaluate_added_goals_and_make_canonical_response`.
+    ///
+    /// If this certainty is `Some(Yes)`, then we must be confident that the candidate
+    /// must hold iff it's nested goals hold. This is not true if the certainty is
+    /// `Some(Maybe)`, which suggests we forced ambiguity instead, or if it is `None`,
+    /// which suggests we may have not assembled any candidates at all.
+    ///
+    /// This is *not* the certainty of the candidate's nested evaluation, which can be
+    /// accessed with [`Self::result`] instead.
+    pub fn candidate_certainty(&self) -> Option<Certainty> {
+        self.candidate_certainty
     }
 
     /// Visit all nested goals of this candidate without rolling
@@ -160,7 +174,9 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
         nested_goals: &mut Vec<inspect::CanonicalState<'tcx, Goal<'tcx, ty::Predicate<'tcx>>>>,
         probe: &inspect::Probe<'tcx>,
     ) {
+        let mut candidate_certainty = None;
         let num_candidates = candidates.len();
+
         for step in &probe.steps {
             match step {
                 &inspect::ProbeStep::AddGoal(_source, goal) => nested_goals.push(goal),
@@ -171,6 +187,9 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
                     let num_goals = nested_goals.len();
                     self.candidates_recur(candidates, nested_goals, probe);
                     nested_goals.truncate(num_goals);
+                }
+                inspect::ProbeStep::MakeCanonicalResponse { shallow_certainty } => {
+                    assert_eq!(candidate_certainty.replace(*shallow_certainty), None);
                 }
                 inspect::ProbeStep::EvaluateGoals(_) => (),
             }
@@ -195,6 +214,7 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
                         nested_goals: nested_goals.clone(),
                         final_state: probe.final_state,
                         result,
+                        candidate_certainty,
                     })
                 }
             }
@@ -206,6 +226,7 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
                     nested_goals: nested_goals.clone(),
                     final_state: probe.final_state,
                     result,
+                    candidate_certainty,
                 });
             }
         }
