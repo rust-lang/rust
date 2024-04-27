@@ -198,20 +198,16 @@ cfg_has_statx! {{
                 return Some(Err(err));
             }
 
-            // `ENOSYS` might come from a faulty FUSE driver.
-            //
-            // Other errors are not a good enough indicator either -- it is
-            // known that `EPERM` can be returned as a result of using seccomp to
-            // block the syscall.
+            // We're not yet entirely sure whether `statx` is usable on this kernel
+            // or not. Syscalls can return errors from things other than the kernel
+            // per se, e.g. `EPERM` can be returned if seccomp is used to block the
+            // syscall, or `ENOSYS` might be returned from a faulty FUSE driver.
             //
             // Availability is checked by performing a call which expects `EFAULT`
             // if the syscall is usable.
             //
             // See: https://github.com/rust-lang/rust/issues/65662
             //
-            // FIXME this can probably just do the call if `EPERM` was received, but
-            // previous iteration of the code checked it for all errors and for now
-            // this is retained.
             // FIXME what about transient conditions like `ENOMEM`?
             let err2 = cvt(statx(0, ptr::null(), 0, libc::STATX_ALL, ptr::null_mut()))
                 .err()
