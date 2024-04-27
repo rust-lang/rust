@@ -224,7 +224,7 @@ const JOSH_PORT: &str = "42042";
 fn start_josh() -> anyhow::Result<impl Drop> {
     // Determine cache directory.
     let local_dir = {
-        let user_dirs = ProjectDirs::from("org", "rust-lang", "rust-analyzer-josh").unwrap();
+        let user_dirs = ProjectDirs::from("org", "rust-lang", "rust-analyzer-josh-test").unwrap();
         user_dirs.cache_dir().to_owned()
     };
 
@@ -234,8 +234,6 @@ fn start_josh() -> anyhow::Result<impl Drop> {
     cmd.arg("--remote").arg("https://github.com");
     cmd.arg("--port").arg(JOSH_PORT);
     cmd.arg("--no-background");
-    cmd.stdout(Stdio::null());
-    cmd.stderr(Stdio::null());
     let josh = cmd.spawn().context("failed to start josh-proxy, make sure it is installed")?;
     // Give it some time so hopefully the port is open. (100ms was not enough.)
     thread::sleep(Duration::from_millis(200));
