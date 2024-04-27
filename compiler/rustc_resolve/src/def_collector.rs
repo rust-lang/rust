@@ -219,7 +219,7 @@ impl<'a, 'b, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'b, 'tcx> {
 
         let def = self.create_def(fi.id, fi.ident.name, def_kind, fi.span);
 
-        self.with_parent(def, |this| visit::walk_foreign_item(this, fi));
+        self.with_parent(def, |this| visit::walk_item(this, fi));
     }
 
     fn visit_variant(&mut self, v: &'a Variant) {

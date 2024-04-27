@@ -394,7 +394,7 @@ fn index_crate<'a>(
             let def_id = self.node_id_to_def_id[&item.id];
             *self.index.ensure_contains_elem(def_id, || AstOwner::NonOwner) =
                 AstOwner::ForeignItem(item);
-            visit::walk_foreign_item(self, item);
+            visit::walk_item(self, item);
         }
     }
 }
