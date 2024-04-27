@@ -14,8 +14,9 @@ use std::sync::OnceLock;
 use std::time::{Duration, Instant};
 
 use crate::core::build_steps::tool::{self, SourceType};
-use crate::core::build_steps::{check, clean, compile, dist, doc, install, run, setup, test};
-use crate::core::build_steps::{clippy, llvm};
+use crate::core::build_steps::{
+    check, clean, clippy, compile, dist, doc, install, llvm, run, setup, test, vendor,
+};
 use crate::core::config::flags::{Color, Subcommand};
 use crate::core::config::{DryRun, SplitDebuginfo, TargetSelection};
 use crate::prepare_behaviour_dump_dir;
@@ -638,6 +639,7 @@ pub enum Kind {
     Run,
     Setup,
     Suggest,
+    Vendor,
 }
 
 impl Kind {
@@ -658,6 +660,7 @@ impl Kind {
             Kind::Run => "run",
             Kind::Setup => "setup",
             Kind::Suggest => "suggest",
+            Kind::Vendor => "vendor",
         }
     }
 
@@ -921,6 +924,7 @@ impl<'a> Builder<'a> {
             ),
             Kind::Setup => describe!(setup::Profile, setup::Hook, setup::Link, setup::Vscode),
             Kind::Clean => describe!(clean::CleanAll, clean::Rustc, clean::Std),
+            Kind::Vendor => describe!(vendor::Vendor),
             // special-cased in Build::build()
             Kind::Format | Kind::Suggest => vec![],
         }
@@ -993,6 +997,7 @@ impl<'a> Builder<'a> {
                 Kind::Setup,
                 path.as_ref().map_or([].as_slice(), |path| std::slice::from_ref(path)),
             ),
+            Subcommand::Vendor { .. } => (Kind::Vendor, &paths[..]),
         };
 
         Self::new_internal(build, kind, paths.to_owned())

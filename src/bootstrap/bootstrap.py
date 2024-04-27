@@ -1035,14 +1035,8 @@ class RustBuild(object):
         if self.use_vendored_sources:
             vendor_dir = os.path.join(self.rust_root, 'vendor')
             if not os.path.exists(vendor_dir):
-                sync_dirs = "--sync ./src/tools/cargo/Cargo.toml " \
-                            "--sync ./src/tools/rust-analyzer/Cargo.toml " \
-                            "--sync ./compiler/rustc_codegen_cranelift/Cargo.toml " \
-                            "--sync ./compiler/rustc_codegen_gcc/Cargo.toml " \
-                            "--sync ./src/bootstrap/Cargo.toml "
                 eprint('ERROR: vendoring required, but vendor directory does not exist.')
-                eprint('       Run `cargo vendor {}` to initialize the '
-                      'vendor directory.'.format(sync_dirs))
+                eprint('       Run `x.py vendor` to initialize the vendor directory.')
                 eprint('       Alternatively, use the pre-vendored `rustc-src` dist component.')
                 eprint('       To get a stable/beta/nightly version, download it from: ')
                 eprint('       '
