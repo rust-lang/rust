@@ -169,7 +169,7 @@ pub trait FromIterator<A>: Sized {
 /// assert_eq!(lengths, [1, 1, 3, 1]);
 /// # Ok(()) }
 /// ```
-#[stable(feature = "from_iterator_for_tuple", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "from_iterator_for_tuple", since = "1.79.0")]
 impl<A, B, AE, BE> FromIterator<(AE, BE)> for (A, B)
 where
     A: Default + Extend<AE>,

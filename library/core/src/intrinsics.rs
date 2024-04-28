@@ -1128,7 +1128,7 @@ extern "rust-intrinsic" {
     /// any safety invariants.
     ///
     /// Consider using [`core::panic::Location::caller`] instead.
-    #[rustc_const_stable(feature = "const_caller_location", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_caller_location", since = "1.79.0")]
     #[rustc_safe_intrinsic]
     #[rustc_nounwind]
     pub fn caller_location() -> &'static crate::panic::Location<'static>;
@@ -2289,7 +2289,7 @@ extern "rust-intrinsic" {
     ///
     /// The stable counterpart of this intrinsic is `unchecked_add` on the various
     /// integer types, such as [`u16::unchecked_add`] and [`i64::unchecked_add`].
-    #[rustc_const_stable(feature = "unchecked_math", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "unchecked_math", since = "1.79.0")]
     #[rustc_nounwind]
     pub fn unchecked_add<T: Copy>(x: T, y: T) -> T;
 
@@ -2298,7 +2298,7 @@ extern "rust-intrinsic" {
     ///
     /// The stable counterpart of this intrinsic is `unchecked_sub` on the various
     /// integer types, such as [`u16::unchecked_sub`] and [`i64::unchecked_sub`].
-    #[rustc_const_stable(feature = "unchecked_math", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "unchecked_math", since = "1.79.0")]
     #[rustc_nounwind]
     pub fn unchecked_sub<T: Copy>(x: T, y: T) -> T;
 
@@ -2307,7 +2307,7 @@ extern "rust-intrinsic" {
     ///
     /// The stable counterpart of this intrinsic is `unchecked_mul` on the various
     /// integer types, such as [`u16::unchecked_mul`] and [`i64::unchecked_mul`].
-    #[rustc_const_stable(feature = "unchecked_math", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "unchecked_math", since = "1.79.0")]
     #[rustc_nounwind]
     pub fn unchecked_mul<T: Copy>(x: T, y: T) -> T;
 

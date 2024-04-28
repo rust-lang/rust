@@ -109,7 +109,7 @@ impl_zeroable_primitive!(
 ///
 /// assert_eq!(size_of::<Option<NonZero<u32>>>(), size_of::<u32>());
 /// ```
-#[stable(feature = "generic_nonzero", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "generic_nonzero", since = "1.79.0")]
 #[repr(transparent)]
 #[rustc_nonnull_optimization_guaranteed]
 #[rustc_diagnostic_item = "NonZero"]
@@ -861,7 +861,7 @@ macro_rules! nonzero_integer_signedness_dependent_impls {
             }
         }
 
-        #[stable(feature = "nonzero_div_assign", since = "CURRENT_RUSTC_VERSION")]
+        #[stable(feature = "nonzero_div_assign", since = "1.79.0")]
         impl DivAssign<$Ty> for $Int {
             /// This operation rounds towards zero,
             /// truncating any fractional part of the exact result, and cannot panic.
@@ -884,7 +884,7 @@ macro_rules! nonzero_integer_signedness_dependent_impls {
             }
         }
 
-        #[stable(feature = "nonzero_div_assign", since = "CURRENT_RUSTC_VERSION")]
+        #[stable(feature = "nonzero_div_assign", since = "1.79.0")]
         impl RemAssign<$Ty> for $Int {
             /// This operation satisfies `n % d == n - (n / d) * d`, and cannot panic.
             #[inline]
