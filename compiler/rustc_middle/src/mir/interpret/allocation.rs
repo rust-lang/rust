@@ -371,7 +371,7 @@ impl Allocation {
         }
         // Create allocation.
         Ok(Allocation {
-            bytes: AllocBytes::from_bytes(Cow::from(&*bytes), self.align),
+            bytes: AllocBytes::from_bytes(Cow::Owned(Vec::from(bytes)), self.align),
             provenance: ProvenanceMap::from_presorted_ptrs(new_provenance),
             init_mask: self.init_mask,
             align: self.align,
