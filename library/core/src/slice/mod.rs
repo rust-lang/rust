@@ -1964,7 +1964,7 @@ impl<T> [T] {
     ///     assert_eq!(right, []);
     /// }
     /// ```
-    #[stable(feature = "slice_split_at_unchecked", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "slice_split_at_unchecked", since = "1.79.0")]
     #[rustc_const_stable(feature = "const_slice_split_at_unchecked", since = "1.77.0")]
     #[inline]
     #[must_use]
@@ -2017,7 +2017,7 @@ impl<T> [T] {
     /// }
     /// assert_eq!(v, [1, 2, 3, 4, 5, 6]);
     /// ```
-    #[stable(feature = "slice_split_at_unchecked", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "slice_split_at_unchecked", since = "1.79.0")]
     #[rustc_const_unstable(feature = "const_slice_split_at_mut", issue = "101804")]
     #[inline]
     #[must_use]
