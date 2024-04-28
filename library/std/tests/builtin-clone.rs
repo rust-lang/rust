@@ -6,7 +6,7 @@ fn test_clone<T: Clone>(arg: T) {
     let _ = arg.clone();
 }
 
-fn foo() { }
+fn foo() {}
 
 #[derive(Debug, PartialEq, Eq)]
 struct S(i32);
@@ -27,19 +27,7 @@ fn builtin_clone() {
     let b = [S(1), S(2), S(3)];
     assert_eq!(b, a.clone());
 
-    let a = (
-        (S(1), S(0)),
-        (
-            (S(0), S(0), S(1)),
-            S(0)
-        )
-    );
-    let b = (
-        (S(2), S(1)),
-        (
-            (S(1), S(1), S(2)),
-            S(1)
-        )
-    );
+    let a = ((S(1), S(0)), ((S(0), S(0), S(1)), S(0)));
+    let b = ((S(2), S(1)), ((S(1), S(1), S(2)), S(1)));
     assert_eq!(b, a.clone());
 }

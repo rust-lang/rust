@@ -1,10 +1,10 @@
-use std::fmt::Debug;
 use std::cmp::{self, Ordering};
+use std::fmt::Debug;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 struct Foo {
     n: u8,
-    name: &'static str
+    name: &'static str,
 }
 
 impl PartialOrd for Foo {

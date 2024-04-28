@@ -9,7 +9,9 @@ fn test_stack_assign() {
 }
 
 #[test]
-fn test_heap_lit() { "a big string".to_string(); }
+fn test_heap_lit() {
+    "a big string".to_string();
+}
 
 #[test]
 fn test_heap_assign() {

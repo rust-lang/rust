@@ -3,8 +3,8 @@
 
 #[derive(Clone, Debug)]
 enum foo {
-  a(usize),
-  b(String),
+    a(usize),
+    b(String),
 }
 
 fn check_log<T: std::fmt::Debug>(exp: String, v: T) {

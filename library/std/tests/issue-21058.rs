@@ -3,7 +3,11 @@
 use std::fmt::Debug;
 
 struct NT(str);
-struct DST { a: u32, b: str }
+
+struct DST {
+    a: u32,
+    b: str,
+}
 
 macro_rules! check {
     (val: $ty_of:expr, $expected:expr) => {
@@ -56,7 +60,9 @@ fn type_name_of_val<T>(_: T) -> &'static str {
 struct Foo;
 
 impl Foo {
-    fn new() -> Self { Foo }
+    fn new() -> Self {
+        Foo
+    }
 }
 
 fn foo() -> impl Debug {
