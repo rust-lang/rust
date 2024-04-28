@@ -1040,24 +1040,20 @@ fn signal_string(signal: i32) -> &'static str {
         #[cfg(any(target_os = "linux", target_os = "nto"))]
         libc::SIGPWR => " (SIGPWR)",
         #[cfg(any(
-            target_os = "macos",
-            target_os = "ios",
-            target_os = "tvos",
             target_os = "freebsd",
             target_os = "netbsd",
             target_os = "openbsd",
             target_os = "dragonfly",
             target_os = "nto",
+            target_vendor = "apple",
         ))]
         libc::SIGEMT => " (SIGEMT)",
         #[cfg(any(
-            target_os = "macos",
-            target_os = "ios",
-            target_os = "tvos",
             target_os = "freebsd",
             target_os = "netbsd",
             target_os = "openbsd",
-            target_os = "dragonfly"
+            target_os = "dragonfly",
+            target_vendor = "apple",
         ))]
         libc::SIGINFO => " (SIGINFO)",
         #[cfg(target_os = "hurd")]
