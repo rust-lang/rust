@@ -177,8 +177,6 @@ declare_features! (
 
     /// Allows using the `unadjusted` ABI; perma-unstable.
     (internal, abi_unadjusted, "1.16.0", None),
-    /// Allows using the `vectorcall` ABI.
-    (unstable, abi_vectorcall, "1.7.0", None),
     /// Allows using `#![needs_allocator]`, an implementation detail of `#[global_allocator]`.
     (internal, allocator_internals, "1.20.0", None),
     /// Allows using `#[allow_internal_unsafe]`. This is an
@@ -243,6 +241,8 @@ declare_features! (
     // feature-group-start: internal feature gates
     // -------------------------------------------------------------------------
 
+    /// Allows using the `vectorcall` ABI.
+    (unstable, abi_vectorcall, "1.7.0", Some(124485)),
     /// Allows features specific to auto traits.
     /// Renamed from `optin_builtin_traits`.
     (unstable, auto_traits, "1.50.0", Some(13231)),

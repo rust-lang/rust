@@ -4,6 +4,7 @@ error[E0658]: vectorcall is experimental and subject to change
 LL | extern "vectorcall" fn f() {}
    |        ^^^^^^^^^^^^
    |
+   = note: see issue #124485 <https://github.com/rust-lang/rust/issues/124485> for more information
    = help: add `#![feature(abi_vectorcall)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
@@ -13,6 +14,7 @@ error[E0658]: vectorcall is experimental and subject to change
 LL |     extern "vectorcall" fn m();
    |            ^^^^^^^^^^^^
    |
+   = note: see issue #124485 <https://github.com/rust-lang/rust/issues/124485> for more information
    = help: add `#![feature(abi_vectorcall)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
@@ -22,6 +24,7 @@ error[E0658]: vectorcall is experimental and subject to change
 LL |     extern "vectorcall" fn dm() {}
    |            ^^^^^^^^^^^^
    |
+   = note: see issue #124485 <https://github.com/rust-lang/rust/issues/124485> for more information
    = help: add `#![feature(abi_vectorcall)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
@@ -31,6 +34,7 @@ error[E0658]: vectorcall is experimental and subject to change
 LL |     extern "vectorcall" fn m() {}
    |            ^^^^^^^^^^^^
    |
+   = note: see issue #124485 <https://github.com/rust-lang/rust/issues/124485> for more information
    = help: add `#![feature(abi_vectorcall)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
@@ -40,6 +44,7 @@ error[E0658]: vectorcall is experimental and subject to change
 LL |     extern "vectorcall" fn im() {}
    |            ^^^^^^^^^^^^
    |
+   = note: see issue #124485 <https://github.com/rust-lang/rust/issues/124485> for more information
    = help: add `#![feature(abi_vectorcall)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
@@ -49,6 +54,7 @@ error[E0658]: vectorcall is experimental and subject to change
 LL | type TA = extern "vectorcall" fn();
    |                  ^^^^^^^^^^^^
    |
+   = note: see issue #124485 <https://github.com/rust-lang/rust/issues/124485> for more information
    = help: add `#![feature(abi_vectorcall)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
@@ -58,6 +64,7 @@ error[E0658]: vectorcall is experimental and subject to change
 LL | extern "vectorcall" {}
    |        ^^^^^^^^^^^^
    |
+   = note: see issue #124485 <https://github.com/rust-lang/rust/issues/124485> for more information
    = help: add `#![feature(abi_vectorcall)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
