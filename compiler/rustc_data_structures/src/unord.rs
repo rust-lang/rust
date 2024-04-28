@@ -4,6 +4,7 @@
 
 use rustc_hash::{FxHashMap, FxHashSet};
 use rustc_macros::{Decodable_Generic, Encodable_Generic};
+use std::collections::hash_map::OccupiedError;
 use std::{
     borrow::{Borrow, BorrowMut},
     collections::hash_map::Entry,
@@ -467,6 +468,11 @@ impl<K: Eq + Hash, V> UnordMap<K, V> {
     #[inline]
     pub fn insert(&mut self, k: K, v: V) -> Option<V> {
         self.inner.insert(k, v)
+    }
+
+    #[inline]
+    pub fn try_insert(&mut self, k: K, v: V) -> Result<&mut V, OccupiedError<'_, K, V>> {
+        self.inner.try_insert(k, v)
     }
 
     #[inline]
