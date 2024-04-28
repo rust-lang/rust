@@ -193,6 +193,7 @@
 #![feature(str_split_inclusive_remainder)]
 #![feature(str_split_remainder)]
 #![feature(strict_provenance)]
+#![feature(ub_checks)]
 #![feature(unchecked_shifts)]
 #![feature(utf16_extra)]
 #![feature(utf16_extra_const)]
@@ -370,7 +371,8 @@ pub mod hint;
 pub mod intrinsics;
 pub mod mem;
 pub mod ptr;
-mod ub_checks;
+#[unstable(feature = "ub_checks", issue = "none")]
+pub mod ub_checks;
 
 /* Core language traits */
 
