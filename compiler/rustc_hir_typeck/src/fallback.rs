@@ -1,16 +1,18 @@
 use std::cell::OnceCell;
 
-use crate::{errors, FnCtxt};
+use crate::{errors, FnCtxt, TypeckRootCtxt};
 use rustc_data_structures::{
     graph::{self, iterate::DepthFirstSearch, vec_graph::VecGraph},
     unord::{UnordBag, UnordMap, UnordSet},
 };
+use rustc_hir as hir;
+use rustc_hir::intravisit::Visitor;
 use rustc_hir::HirId;
 use rustc_infer::infer::{DefineOpaqueTypes, InferOk};
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitable};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable};
 use rustc_session::lint;
-use rustc_span::Span;
 use rustc_span::DUMMY_SP;
+use rustc_span::{def_id::LocalDefId, Span};
 
 #[derive(Copy, Clone)]
 pub enum DivergingFallbackBehavior {
@@ -508,23 +510,20 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
 ///
 /// Will return `{ id(?X) -> (hir_id, span) }`
 fn compute_unsafe_infer_vars<'a, 'tcx>(
-    root_ctxt: &'a crate::TypeckRootCtxt<'tcx>,
-    body_id: rustc_span::def_id::LocalDefId,
+    root_ctxt: &'a TypeckRootCtxt<'tcx>,
+    body_id: LocalDefId,
 ) -> UnordMap<ty::TyVid, (HirId, Span)> {
-    use rustc_hir as hir;
-
     let tcx = root_ctxt.infcx.tcx;
-    let body_id = tcx.hir().maybe_body_owned_by(body_id).unwrap();
+    let body_id = tcx.hir().maybe_body_owned_by(body_id).expect("body id must have an owner");
     let body = tcx.hir().body(body_id);
-    let mut res = <_>::default();
+    let mut res = UnordMap::default();
 
     struct UnsafeInferVarsVisitor<'a, 'tcx, 'r> {
-        root_ctxt: &'a crate::TypeckRootCtxt<'tcx>,
+        root_ctxt: &'a TypeckRootCtxt<'tcx>,
         res: &'r mut UnordMap<ty::TyVid, (HirId, Span)>,
     }
 
-    use hir::intravisit::Visitor;
-    impl hir::intravisit::Visitor<'_> for UnsafeInferVarsVisitor<'_, '_, '_> {
+    impl Visitor<'_> for UnsafeInferVarsVisitor<'_, '_, '_> {
         fn visit_expr(&mut self, ex: &'_ hir::Expr<'_>) {
             // FIXME: method calls
             if let hir::ExprKind::Call(func, ..) = ex.kind {
@@ -566,7 +565,6 @@ fn compute_unsafe_infer_vars<'a, 'tcx>(
             if let Some(vid) = t.ty_vid() {
                 self.res.insert(vid, (self.hir_id, self.call_span));
             } else {
-                use ty::TypeSuperVisitable as _;
                 t.super_visit_with(self)
             }
         }
