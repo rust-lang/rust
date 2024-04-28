@@ -39,13 +39,13 @@ impl FileDescriptor for FileHandle {
     }
 
     fn write<'tcx>(
-        &self,
+        &mut self,
         communicate_allowed: bool,
         bytes: &[u8],
         _tcx: TyCtxt<'tcx>,
     ) -> InterpResult<'tcx, io::Result<usize>> {
         assert!(communicate_allowed, "isolation should have prevented even opening a file");
-        Ok((&mut &self.file).write(bytes))
+        Ok(self.file.write(bytes))
     }
 
     fn seek<'tcx>(
