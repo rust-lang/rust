@@ -14,6 +14,8 @@ session_crate_name_empty = crate name must not be empty
 
 session_crate_name_invalid = crate names cannot start with a `-`, but `{$s}` has a leading hyphen
 
+session_embed_source_insufficient_dwarf_version = `-Cembed-source=y` requires at least `-Z dwarf-version=5` while sesssion uses version {$dwarf_version}
+
 session_expr_parentheses_needed = parentheses are required to parse this as an expression
 
 session_failed_to_create_profiler = failed to create profiler: {$err}

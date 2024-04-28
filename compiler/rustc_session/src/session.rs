@@ -1302,6 +1302,12 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
             .emit_err(errors::SplitDebugInfoUnstablePlatform { debuginfo: sess.split_debuginfo() });
     }
 
+    let dwarf_version =
+        sess.opts.unstable_opts.dwarf_version.unwrap_or(sess.target.default_dwarf_version);
+    if sess.opts.cg.embed_source && dwarf_version < 5 {
+        sess.dcx().emit_err(errors::EmbedSourceInsufficientDwarfVersion { dwarf_version });
+    }
+
     if sess.opts.unstable_opts.instrument_xray.is_some() && !sess.target.options.supports_xray {
         sess.dcx().emit_err(errors::InstrumentationNotSupported { us: "XRay".to_string() });
     }

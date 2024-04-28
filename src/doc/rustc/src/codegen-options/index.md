@@ -148,7 +148,14 @@ at start-up, because the combination is invalid.
 
 ## embed-source
 
-TODO
+This flag controls whether the compiler embeds the program source code text into
+object debug info section. It takes one of the following values:
+
+* `y`, `yes`, `on` or `true`: put source code in debug info.
+* `n`, `no`, `off`, `false` or no value: omit source code from debug info (the default).
+
+`-C embed-source` requires DWARFv5. Use `-Zdwarf-version` to control the
+compiler's DWARF target version.
 
 ## extra-filename
 
