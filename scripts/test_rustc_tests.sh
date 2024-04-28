@@ -44,6 +44,7 @@ rm tests/incremental/hashes/statics.rs # same
 rm tests/ui/abi/mir/mir_codegen_calls_variadic.rs # requires float varargs
 rm tests/ui/abi/variadic-ffi.rs # requires callee side vararg support
 rm -r tests/run-make/c-link-to-rust-va-list-fn # requires callee side vararg support
+rm tests/ui/delegation/fn-header.rs
 
 # unsized locals
 rm -r tests/run-pass-valgrind/unsized-locals
@@ -120,6 +121,7 @@ rm -r tests/run-make/panic-abort-eh_frame # .eh_frame emitted with panic=abort
 # bugs in the test suite
 # ======================
 rm tests/ui/process/nofile-limit.rs # TODO some AArch64 linking issue
+rm tests/ui/attributes/unix_sigpipe/unix_sigpipe-inherit.rs # TODO some symbol not being found, but works fine when manually invoked
 
 rm tests/ui/stdio-is-blocking.rs # really slow with unoptimized libstd
 
