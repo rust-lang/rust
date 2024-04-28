@@ -98,6 +98,8 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             previous call to `try_evaluate_added_goals!`"
         );
 
+        self.inspect.make_canonical_response(certainty);
+
         // When normalizing, we've replaced the expected term with an unconstrained
         // inference variable. This means that we dropped information which could
         // have been important. We handle this by instead returning the nested goals

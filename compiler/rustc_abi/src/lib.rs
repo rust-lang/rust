@@ -155,7 +155,7 @@ impl ReprOptions {
     }
 
     /// Returns `true` if this `#[repr()]` should inhibit union ABI optimisations.
-    pub fn inhibit_union_abi_opt(&self) -> bool {
+    pub fn inhibits_union_abi_opt(&self) -> bool {
         self.c()
     }
 }

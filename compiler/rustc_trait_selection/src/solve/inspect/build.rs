@@ -241,6 +241,7 @@ enum WipProbeStep<'tcx> {
     AddGoal(GoalSource, inspect::CanonicalState<'tcx, Goal<'tcx, ty::Predicate<'tcx>>>),
     EvaluateGoals(WipAddedGoalsEvaluation<'tcx>),
     NestedProbe(WipProbe<'tcx>),
+    MakeCanonicalResponse { shallow_certainty: Certainty },
 }
 
 impl<'tcx> WipProbeStep<'tcx> {
@@ -249,6 +250,9 @@ impl<'tcx> WipProbeStep<'tcx> {
             WipProbeStep::AddGoal(source, goal) => inspect::ProbeStep::AddGoal(source, goal),
             WipProbeStep::EvaluateGoals(eval) => inspect::ProbeStep::EvaluateGoals(eval.finalize()),
             WipProbeStep::NestedProbe(probe) => inspect::ProbeStep::NestedProbe(probe.finalize()),
+            WipProbeStep::MakeCanonicalResponse { shallow_certainty } => {
+                inspect::ProbeStep::MakeCanonicalResponse { shallow_certainty }
+            }
         }
     }
 }
@@ -527,6 +531,19 @@ impl<'tcx> ProofTreeBuilder<'tcx> {
                 state.current_evaluation_scope().steps.push(WipProbeStep::AddGoal(source, goal))
             }
             _ => bug!(),
+        }
+    }
+
+    pub fn make_canonical_response(&mut self, shallow_certainty: Certainty) {
+        match self.as_mut() {
+            Some(DebugSolver::GoalEvaluationStep(state)) => {
+                state
+                    .current_evaluation_scope()
+                    .steps
+                    .push(WipProbeStep::MakeCanonicalResponse { shallow_certainty });
+            }
+            None => {}
+            _ => {}
         }
     }
 
