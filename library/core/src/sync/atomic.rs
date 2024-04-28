@@ -579,7 +579,7 @@ impl AtomicBool {
     /// ```
     #[inline]
     #[stable(feature = "atomic_access", since = "1.15.0")]
-    #[rustc_const_stable(feature = "const_atomic_into_inner", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_atomic_into_inner", since = "1.79.0")]
     pub const fn into_inner(self) -> bool {
         self.v.primitive_into_inner() != 0
     }
@@ -1399,7 +1399,7 @@ impl<T> AtomicPtr<T> {
     /// ```
     #[inline]
     #[stable(feature = "atomic_access", since = "1.15.0")]
-    #[rustc_const_stable(feature = "const_atomic_into_inner", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_atomic_into_inner", since = "1.79.0")]
     pub const fn into_inner(self) -> *mut T {
         self.p.primitive_into_inner()
     }
@@ -2381,7 +2381,7 @@ macro_rules! atomic_int {
             /// ```
             #[inline]
             #[$stable_access]
-            #[rustc_const_stable(feature = "const_atomic_into_inner", since = "CURRENT_RUSTC_VERSION")]
+            #[rustc_const_stable(feature = "const_atomic_into_inner", since = "1.79.0")]
             pub const fn into_inner(self) -> $int_type {
                 self.v.primitive_into_inner()
             }

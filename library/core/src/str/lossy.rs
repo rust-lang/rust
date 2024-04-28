@@ -40,7 +40,7 @@ impl [u8] {
     ///     assert_eq!(lit, expected);
     /// }
     /// ```
-    #[stable(feature = "utf8_chunks", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "utf8_chunks", since = "1.79.0")]
     pub fn utf8_chunks(&self) -> Utf8Chunks<'_> {
         Utf8Chunks { source: self }
     }
@@ -66,7 +66,7 @@ impl [u8] {
 /// // The fourth character is broken
 /// assert_eq!(b"\xF1\x80", chunk.invalid());
 /// ```
-#[stable(feature = "utf8_chunks", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "utf8_chunks", since = "1.79.0")]
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Utf8Chunk<'a> {
     valid: &'a str,
@@ -79,7 +79,7 @@ impl<'a> Utf8Chunk<'a> {
     /// This substring can be empty at the start of the string or between
     /// broken UTF-8 characters.
     #[must_use]
-    #[stable(feature = "utf8_chunks", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "utf8_chunks", since = "1.79.0")]
     pub fn valid(&self) -> &'a str {
         self.valid
     }
@@ -99,7 +99,7 @@ impl<'a> Utf8Chunk<'a> {
     /// [`valid`]: Self::valid
     /// [`U+FFFD REPLACEMENT CHARACTER`]: crate::char::REPLACEMENT_CHARACTER
     #[must_use]
-    #[stable(feature = "utf8_chunks", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "utf8_chunks", since = "1.79.0")]
     pub fn invalid(&self) -> &'a [u8] {
         self.invalid
     }
@@ -172,7 +172,7 @@ impl fmt::Debug for Debug<'_> {
 ///
 /// [`String::from_utf8_lossy`]: ../../std/string/struct.String.html#method.from_utf8_lossy
 #[must_use = "iterators are lazy and do nothing unless consumed"]
-#[stable(feature = "utf8_chunks", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "utf8_chunks", since = "1.79.0")]
 #[derive(Clone)]
 pub struct Utf8Chunks<'a> {
     source: &'a [u8],
@@ -186,7 +186,7 @@ impl<'a> Utf8Chunks<'a> {
     }
 }
 
-#[stable(feature = "utf8_chunks", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "utf8_chunks", since = "1.79.0")]
 impl<'a> Iterator for Utf8Chunks<'a> {
     type Item = Utf8Chunk<'a>;
 
@@ -285,10 +285,10 @@ impl<'a> Iterator for Utf8Chunks<'a> {
     }
 }
 
-#[stable(feature = "utf8_chunks", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "utf8_chunks", since = "1.79.0")]
 impl FusedIterator for Utf8Chunks<'_> {}
 
-#[stable(feature = "utf8_chunks", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "utf8_chunks", since = "1.79.0")]
 impl fmt::Debug for Utf8Chunks<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         f.debug_struct("Utf8Chunks").field("source", &self.debug()).finish()

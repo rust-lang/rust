@@ -1390,7 +1390,7 @@ impl<T: ?Sized> NonNull<T> {
     /// ```
     ///
     /// [tracking issue]: https://github.com/rust-lang/rust/issues/104203
-    #[stable(feature = "pointer_is_aligned", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "pointer_is_aligned", since = "1.79.0")]
     #[rustc_const_unstable(feature = "const_pointer_is_aligned", issue = "104203")]
     #[must_use]
     #[inline]
@@ -1578,10 +1578,10 @@ impl<T> NonNull<[T]> {
     /// let slice: NonNull<[i8]> = NonNull::slice_from_raw_parts(NonNull::dangling(), 3);
     /// assert!(!slice.is_empty());
     /// ```
-    #[stable(feature = "slice_ptr_is_empty_nonnull", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "slice_ptr_is_empty_nonnull", since = "1.79.0")]
     #[rustc_const_stable(
         feature = "const_slice_ptr_is_empty_nonnull",
-        since = "CURRENT_RUSTC_VERSION"
+        since = "1.79.0"
     )]
     #[must_use]
     #[inline]
