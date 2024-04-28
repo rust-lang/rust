@@ -1,10 +1,10 @@
-//@ run-pass
-
 #![allow(stable_features)]
 #![feature(volatile)]
+
 use std::ptr::{read_volatile, write_volatile};
 
-fn main() {
+#[test]
+fn volatile_fat_ptr() {
     let mut x: &'static str = "test";
     unsafe {
         let a = read_volatile(&x);

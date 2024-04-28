@@ -1,6 +1,5 @@
-//@ run-pass
-
-pub fn main() {
+#[test]
+fn seq_compare() {
     assert!(("hello".to_string() < "hellr".to_string()));
     assert!(("hello ".to_string() > "hello".to_string()));
     assert!(("hello".to_string() != "there".to_string()));

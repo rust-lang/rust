@@ -1,4 +1,3 @@
-//@ run-pass
 #![allow(dead_code)]
 
 use std::fmt::Debug;
@@ -15,7 +14,8 @@ macro_rules! check {
     };
 }
 
-fn main() {
+#[test]
+fn issue_21058() {
     // type_name should support unsized types
     check!([u8], "[u8]");
     check!(str, "str");
@@ -31,7 +31,7 @@ fn main() {
         <Foo as Debug>::fmt,
         "<issue_21058::Foo as core::fmt::Debug>::fmt"
     );
-    check!(val: || {}, "issue_21058::main::{{closure}}");
+    check!(val: || {}, "issue_21058::issue_21058::{{closure}}");
     bar::<i32>();
 }
 

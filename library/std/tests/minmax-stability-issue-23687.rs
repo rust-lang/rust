@@ -1,5 +1,3 @@
-//@ run-pass
-
 use std::fmt::Debug;
 use std::cmp::{self, Ordering};
 
@@ -21,7 +19,8 @@ impl Ord for Foo {
     }
 }
 
-fn main() {
+#[test]
+fn minmax_stability() {
     let a = Foo { n: 4, name: "a" };
     let b = Foo { n: 4, name: "b" };
     let c = Foo { n: 8, name: "c" };

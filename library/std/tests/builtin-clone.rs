@@ -1,4 +1,3 @@
-//@ run-pass
 // Test that `Clone` is correctly implemented for builtin types.
 // Also test that cloning an array or a tuple is done right, i.e.
 // each component is cloned.
@@ -18,7 +17,8 @@ impl Clone for S {
     }
 }
 
-fn main() {
+#[test]
+fn builtin_clone() {
     test_clone(foo);
     test_clone([1; 56]);
     test_clone((1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1));

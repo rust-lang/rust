@@ -1,5 +1,3 @@
-//@ run-pass
-
 #[derive(PartialEq, Debug)]
 struct Bar;
 #[derive(Debug)]
@@ -17,7 +15,8 @@ impl PartialEq<Foo> for Fu { fn eq(&self, _: &Foo) -> bool { true } }
 impl PartialEq<Bar> for Foo { fn eq(&self, _: &Bar) -> bool { false } }
 impl PartialEq<Foo> for Bar { fn eq(&self, _: &Foo) -> bool { false } }
 
-fn main() {
+#[test]
+fn eq_multidispatch() {
     assert!(Bar != Foo);
     assert!(Foo != Bar);
 
