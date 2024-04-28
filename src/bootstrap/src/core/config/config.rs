@@ -329,6 +329,7 @@ pub struct Config {
     pub nodejs: Option<PathBuf>,
     pub npm: Option<PathBuf>,
     pub gdb: Option<PathBuf>,
+    pub lldb: Option<PathBuf>,
     pub python: Option<PathBuf>,
     pub reuse: Option<PathBuf>,
     pub cargo_native_static: bool,
@@ -832,6 +833,7 @@ define_config! {
         docs_minification: Option<bool> = "docs-minification",
         submodules: Option<bool> = "submodules",
         gdb: Option<String> = "gdb",
+        lldb: Option<String> = "lldb",
         nodejs: Option<String> = "nodejs",
         npm: Option<String> = "npm",
         python: Option<String> = "python",
@@ -1408,6 +1410,7 @@ impl Config {
             docs_minification,
             submodules,
             gdb,
+            lldb,
             nodejs,
             npm,
             python,
@@ -1500,6 +1503,7 @@ impl Config {
         config.nodejs = nodejs.map(PathBuf::from);
         config.npm = npm.map(PathBuf::from);
         config.gdb = gdb.map(PathBuf::from);
+        config.lldb = lldb.map(PathBuf::from);
         config.python = python.map(PathBuf::from);
         config.reuse = reuse.map(PathBuf::from);
         config.submodules = submodules;
