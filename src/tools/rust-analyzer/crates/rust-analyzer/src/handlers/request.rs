@@ -934,16 +934,18 @@ pub(crate) fn handle_related_tests(
 
 pub(crate) fn handle_completion(
     snap: GlobalStateSnapshot,
-    params: lsp_types::CompletionParams,
+    lsp_types::CompletionParams { text_document_position, context,.. }: lsp_types::CompletionParams,
 ) -> anyhow::Result<Option<lsp_types::CompletionResponse>> {
     let _p = tracing::span!(tracing::Level::INFO, "handle_completion").entered();
-    let text_document_position = params.text_document_position.clone();
-    let position = from_proto::file_position(&snap, params.text_document_position)?;
+    let mut position = from_proto::file_position(&snap, text_document_position)?;
+    let line_index = snap.file_line_index(position.file_id)?;
     let completion_trigger_character =
-        params.context.and_then(|ctx| ctx.trigger_character).and_then(|s| s.chars().next());
+        context.and_then(|ctx| ctx.trigger_character).and_then(|s| s.chars().next());
 
     let source_root = snap.analysis.source_root(position.file_id)?;
     let completion_config = &snap.config.completion(Some(source_root));
+    // FIXME: We should fix up the position when retrying the cancelled request instead
+    position.offset = position.offset.min(line_index.index.len());
     let items = match snap.analysis.completions(
         completion_config,
         position,
@@ -952,7 +954,6 @@ pub(crate) fn handle_completion(
         None => return Ok(None),
         Some(items) => items,
     };
-    let line_index = snap.file_line_index(position.file_id)?;
 
     let items = to_proto::completion_items(
         &snap.config,
@@ -979,16 +980,16 @@ pub(crate) fn handle_completion_resolve(
         .into());
     }
 
-    let data = match original_completion.data.take() {
-        Some(it) => it,
-        None => return Ok(original_completion),
-    };
+    let Some(data) = original_completion.data.take() else { return Ok(original_completion) };
 
     let resolve_data: lsp_ext::CompletionResolveData = serde_json::from_value(data)?;
 
     let file_id = from_proto::file_id(&snap, &resolve_data.position.text_document.uri)?;
     let line_index = snap.file_line_index(file_id)?;
-    let offset = from_proto::offset(&line_index, resolve_data.position.position)?;
+    // FIXME: We should fix up the position when retrying the cancelled request instead
+    let Ok(offset) = from_proto::offset(&line_index, resolve_data.position.position) else {
+        return Ok(original_completion);
+    };
     let source_root = snap.analysis.source_root(file_id)?;
 
     let additional_edits = snap
