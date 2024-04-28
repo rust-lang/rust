@@ -3689,11 +3689,13 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
+    #[cfg_attr(miri, ignore)] // Register-level operation not supported by Miri
     unsafe fn test_mm256_zeroall() {
         _mm256_zeroall();
     }
 
     #[simd_test(enable = "avx")]
+    #[cfg_attr(miri, ignore)] // Register-level operation not supported by Miri
     unsafe fn test_mm256_zeroupper() {
         _mm256_zeroupper();
     }
@@ -4129,6 +4131,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
+    #[cfg_attr(miri, ignore)] // Non-temporal store, which is not supported by Miri
     unsafe fn test_mm256_stream_si256() {
         let a = _mm256_setr_epi64x(1, 2, 3, 4);
         let mut r = _mm256_undefined_si256();
@@ -4137,6 +4140,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
+    #[cfg_attr(miri, ignore)] // Non-temporal store, which is not supported by Miri
     unsafe fn test_mm256_stream_pd() {
         #[repr(align(32))]
         struct Memory {
@@ -4152,6 +4156,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
+    #[cfg_attr(miri, ignore)] // Non-temporal store, which is not supported by Miri
     unsafe fn test_mm256_stream_ps() {
         #[repr(align(32))]
         struct Memory {
