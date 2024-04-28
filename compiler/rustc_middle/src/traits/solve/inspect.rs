@@ -122,6 +122,12 @@ pub enum ProbeStep<'tcx> {
     /// used whenever there are multiple candidates to prove the
     /// current goalby .
     NestedProbe(Probe<'tcx>),
+    /// A call to `EvalCtxt::evaluate_added_goals_make_canonical_response` with
+    /// `Certainty` was made. This is the certainty passed in, so it's not unified
+    /// with the certainty of the `try_evaluate_added_goals` that is done within;
+    /// if it's `Certainty::Yes`, then we can trust that the candidate is "finished"
+    /// and we didn't force ambiguity for some reason.
+    MakeCanonicalResponse { shallow_certainty: Certainty },
 }
 
 /// What kind of probe we're in. In case the probe represents a candidate, or
