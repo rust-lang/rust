@@ -954,8 +954,13 @@ pub(crate) fn handle_completion(
     };
     let line_index = snap.file_line_index(position.file_id)?;
 
-    let items =
-        to_proto::completion_items(&snap.config, &line_index, text_document_position, items);
+    let items = to_proto::completion_items(
+        &snap.config,
+        &line_index,
+        snap.file_version(position.file_id),
+        text_document_position,
+        items,
+    );
 
     let completion_list = lsp_types::CompletionList { is_incomplete: true, items };
     Ok(Some(completion_list.into()))
@@ -1240,8 +1245,11 @@ pub(crate) fn handle_code_action(
         frange,
     )?;
     for (index, assist) in assists.into_iter().enumerate() {
-        let resolve_data =
-            if code_action_resolve_cap { Some((index, params.clone())) } else { None };
+        let resolve_data = if code_action_resolve_cap {
+            Some((index, params.clone(), snap.file_version(file_id)))
+        } else {
+            None
+        };
         let code_action = to_proto::code_action(&snap, assist, resolve_data)?;
 
         // Check if the client supports the necessary `ResourceOperation`s.
@@ -1280,12 +1288,14 @@ pub(crate) fn handle_code_action_resolve(
     mut code_action: lsp_ext::CodeAction,
 ) -> anyhow::Result<lsp_ext::CodeAction> {
     let _p = tracing::span!(tracing::Level::INFO, "handle_code_action_resolve").entered();
-    let params = match code_action.data.take() {
-        Some(it) => it,
-        None => return Err(invalid_params_error("code action without data".to_owned()).into()),
+    let Some(params) = code_action.data.take() else {
+        return Err(invalid_params_error("code action without data".to_owned()).into());
     };
 
     let file_id = from_proto::file_id(&snap, &params.code_action_params.text_document.uri)?;
+    if snap.file_version(file_id) != params.version {
+        return Err(invalid_params_error("stale code action".to_owned()).into());
+    }
     let line_index = snap.file_line_index(file_id)?;
     let range = from_proto::text_range(&line_index, params.code_action_params.range)?;
     let frange = FileRange { file_id, range };
@@ -1411,12 +1421,11 @@ pub(crate) fn handle_code_lens(
 
 pub(crate) fn handle_code_lens_resolve(
     snap: GlobalStateSnapshot,
-    code_lens: CodeLens,
+    mut code_lens: CodeLens,
 ) -> anyhow::Result<CodeLens> {
-    if code_lens.data.is_none() {
-        return Ok(code_lens);
-    }
-    let Some(annotation) = from_proto::annotation(&snap, code_lens.clone())? else {
+    let Some(data) = code_lens.data.take() else { return Ok(code_lens) };
+    let resolve = serde_json::from_value::<lsp_ext::CodeLensResolveData>(data)?;
+    let Some(annotation) = from_proto::annotation(&snap, code_lens.range, resolve)? else {
         return Ok(code_lens);
     };
     let annotation = snap.analysis.resolve_annotation(annotation)?;
@@ -1522,8 +1531,12 @@ pub(crate) fn handle_inlay_hints_resolve(
 
     let Some(data) = original_hint.data.take() else { return Ok(original_hint) };
     let resolve_data: lsp_ext::InlayHintResolveData = serde_json::from_value(data)?;
-    let Some(hash) = resolve_data.hash.parse().ok() else { return Ok(original_hint) };
     let file_id = FileId::from_raw(resolve_data.file_id);
+    if resolve_data.version != snap.file_version(file_id) {
+        tracing::warn!("Inlay hint resolve data is outdated");
+        return Ok(original_hint);
+    }
+    let Some(hash) = resolve_data.hash.parse().ok() else { return Ok(original_hint) };
     anyhow::ensure!(snap.file_exists(file_id), "Invalid LSP resolve data");
 
     let line_index = snap.file_line_index(file_id)?;
