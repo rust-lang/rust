@@ -3,8 +3,7 @@
 #![cfg_attr(feature = "nightly", allow(internal_features))]
 
 #[cfg(feature = "nightly")]
-#[macro_use]
-extern crate rustc_macros;
+use rustc_macros::{Decodable, Encodable, HashStable_NoContext};
 
 pub mod visit;
 

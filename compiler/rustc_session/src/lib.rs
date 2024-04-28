@@ -6,8 +6,6 @@
 #![feature(iter_intersperse)]
 #![allow(internal_features)]
 
-#[macro_use]
-extern crate rustc_macros;
 pub mod errors;
 
 #[macro_use]

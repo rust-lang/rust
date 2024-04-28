@@ -15,6 +15,7 @@ use rustc_data_structures::stable_hasher::{StableOrd, ToStableHashKey};
 use rustc_errors::emitter::HumanReadableErrorType;
 use rustc_errors::{ColorConfig, DiagArgValue, DiagCtxtFlags, IntoDiagArg};
 use rustc_feature::UnstableFeatures;
+use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::edition::{Edition, DEFAULT_EDITION, EDITION_NAME_LIST, LATEST_STABLE_EDITION};
 use rustc_span::source_map::FilePathMapping;
 use rustc_span::{FileName, FileNameDisplayPreference, RealFileName, SourceFileHashAlgorithm};

@@ -9,6 +9,7 @@ use rustc_infer::infer::{
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::solve::{MaybeCause, NestedNormalizationGoals};
 use rustc_infer::traits::ObligationCause;
+use rustc_macros::{extension, HashStable};
 use rustc_middle::infer::canonical::CanonicalVarInfos;
 use rustc_middle::infer::unify_key::ConstVariableOrigin;
 use rustc_middle::traits::solve::inspect;

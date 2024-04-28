@@ -32,6 +32,7 @@ use rustc_hir::intravisit::Visitor;
 use rustc_hir::{GenericParam, Item, Node};
 use rustc_infer::infer::error_reporting::TypeErrCtxt;
 use rustc_infer::infer::{InferOk, TypeTrace};
+use rustc_macros::extension;
 use rustc_middle::traits::select::OverflowError;
 use rustc_middle::traits::SignatureMismatchData;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;

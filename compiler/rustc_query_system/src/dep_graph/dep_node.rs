@@ -49,6 +49,7 @@ use rustc_data_structures::fingerprint::{Fingerprint, PackedFingerprint};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, StableOrd, ToStableHashKey};
 use rustc_data_structures::AtomicRef;
 use rustc_hir::definitions::DefPathHash;
+use rustc_macros::{Decodable, Encodable};
 use std::fmt;
 use std::hash::Hash;
 
@@ -285,8 +286,7 @@ pub struct DepKindStruct<Tcx: DepContext> {
 /// some independent path or string that persists between runs without
 /// the need to be mapped or unmapped. (This ensures we can serialize
 /// them even in the absence of a tcx.)
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[derive(Encodable, Decodable)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Encodable, Decodable)]
 pub struct WorkProductId {
     hash: Fingerprint,
 }

@@ -13,7 +13,7 @@ use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_index::IndexVec;
-use rustc_macros::HashStable_Generic;
+use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};

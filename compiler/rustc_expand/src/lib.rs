@@ -17,9 +17,6 @@
 #![allow(internal_features)]
 
 #[macro_use]
-extern crate rustc_macros;
-
-#[macro_use]
 extern crate tracing;
 
 extern crate proc_macro as pm;

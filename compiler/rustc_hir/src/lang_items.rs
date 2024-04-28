@@ -12,7 +12,7 @@ use crate::{MethodKind, Target};
 
 use rustc_ast as ast;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_macros::HashStable_Generic;
+use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
 

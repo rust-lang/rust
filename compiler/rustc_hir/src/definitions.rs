@@ -11,6 +11,7 @@ use crate::def_path_hash_map::DefPathHashMap;
 use rustc_data_structures::stable_hasher::{Hash64, StableHasher};
 use rustc_data_structures::unord::UnordMap;
 use rustc_index::IndexVec;
+use rustc_macros::{Decodable, Encodable};
 use rustc_span::symbol::{kw, sym, Symbol};
 
 use std::fmt::{self, Write};

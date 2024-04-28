@@ -3,6 +3,7 @@ use super::OverlapError;
 use crate::traits;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::DefId;
+use rustc_macros::extension;
 use rustc_middle::ty::fast_reject::{self, SimplifiedType, TreatParams};
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
 

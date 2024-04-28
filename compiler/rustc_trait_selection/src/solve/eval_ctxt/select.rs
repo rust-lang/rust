@@ -4,6 +4,7 @@ use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt};
 use rustc_infer::traits::{
     Obligation, PolyTraitObligation, PredicateObligation, Selection, SelectionResult, TraitEngine,
 };
+use rustc_macros::extension;
 use rustc_middle::traits::solve::{CandidateSource, CanonicalInput, Certainty, Goal};
 use rustc_middle::traits::{
     BuiltinImplSource, ImplSource, ImplSourceUserDefinedData, ObligationCause, SelectionError,

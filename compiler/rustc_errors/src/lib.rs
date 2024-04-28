@@ -26,9 +26,6 @@
 // tidy-alphabetical-end
 
 #[macro_use]
-extern crate rustc_macros;
-
-#[macro_use]
 extern crate tracing;
 
 extern crate self as rustc_errors;
@@ -64,6 +61,7 @@ use rustc_data_structures::stable_hasher::{Hash128, StableHasher};
 use rustc_data_structures::sync::{Lock, Lrc};
 use rustc_data_structures::AtomicRef;
 use rustc_lint_defs::LintExpectationId;
+use rustc_macros::{Decodable, Encodable};
 use rustc_span::source_map::SourceMap;
 use rustc_span::{Loc, Span, DUMMY_SP};
 use std::backtrace::{Backtrace, BacktraceStatus};

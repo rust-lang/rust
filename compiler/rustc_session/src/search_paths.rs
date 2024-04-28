@@ -1,5 +1,6 @@
 use crate::filesearch::make_target_lib_path;
 use crate::EarlyDiagCtxt;
+use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_target::spec::TargetTriple;
 use std::path::{Path, PathBuf};
 
