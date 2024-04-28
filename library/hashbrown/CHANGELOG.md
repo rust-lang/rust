@@ -7,15 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-## [v0.14.4] - 2024-03-19
-
 ### Changed
 
 - Changed `hash_set::{Entry, VacantEntry}::insert` to return `OccupiedEntry`. (#495)
 
+## [v0.14.5] - 2024-04-28
+
 ### Fixed
 
 - Fixed index calculation in panic guard of `clone_from_impl`. (#511)
+
+## ~~[v0.14.4] - 2024-03-19~~
+
+This release was _yanked_ due to a breaking change.
 
 ## [v0.14.3] - 2023-11-26
 
@@ -481,7 +485,8 @@ This release was _yanked_ due to a breaking change for users of `no-default-feat
 
 - Initial release
 
-[Unreleased]: https://github.com/rust-lang/hashbrown/compare/v0.14.4...HEAD
+[Unreleased]: https://github.com/rust-lang/hashbrown/compare/v0.14.5...HEAD
+[v0.14.5]: https://github.com/rust-lang/hashbrown/compare/v0.14.4...v0.14.5
 [v0.14.4]: https://github.com/rust-lang/hashbrown/compare/v0.14.3...v0.14.4
 [v0.14.3]: https://github.com/rust-lang/hashbrown/compare/v0.14.2...v0.14.3
 [v0.14.2]: https://github.com/rust-lang/hashbrown/compare/v0.14.1...v0.14.2
