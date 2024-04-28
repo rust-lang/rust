@@ -71,13 +71,13 @@ impl<'tcx> UnixEnvVars<'tcx> {
         self.environ.ptr()
     }
 
-    /// Implementation detail for [`InterpCx::get_var`]. This basically does `getenv`, complete
+    /// Implementation detail for [`InterpCx::get_env_var`]. This basically does `getenv`, complete
     /// with the reads of the environment, but returns an [`OsString`] instead of a pointer.
     pub(crate) fn get<'mir>(
         &self,
         ecx: &InterpCx<'mir, 'tcx, MiriMachine<'mir, 'tcx>>,
         name: &OsStr,
-    ) -> InterpResult<'tcx, Option<OsString>> {
+    ) -> InterpResult<'tcx, Option<Pointer<Option<Provenance>>>> {
         // We don't care about the value as we have the `map` to keep track of everything,
         // but we do want to do this read so it shows up as a data race.
         let _vars_ptr = ecx.read_pointer(&self.environ)?;
@@ -89,7 +89,7 @@ impl<'tcx> UnixEnvVars<'tcx> {
             Size::from_bytes(u64::try_from(name.len()).unwrap().checked_add(1).unwrap()),
             ecx,
         )?;
-        ecx.read_os_str_from_c_str(var_ptr).map(|s| Some(s.to_owned()))
+        Ok(Some(var_ptr))
     }
 }
 
@@ -137,19 +137,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let name_ptr = this.read_pointer(name_op)?;
         let name = this.read_os_str_from_c_str(name_ptr)?;
 
-        // We don't care about the value as we have the `map` to keep track of everything,
-        // but we do want to do this read so it shows up as a data race.
-        let _vars_ptr = this.read_pointer(&this.machine.env_vars.unix().environ)?;
-        Ok(match this.machine.env_vars.unix().map.get(name) {
-            Some(var_ptr) => {
-                // The offset is used to strip the "{name}=" part of the string.
-                var_ptr.offset(
-                    Size::from_bytes(u64::try_from(name.len()).unwrap().checked_add(1).unwrap()),
-                    this,
-                )?
-            }
-            None => Pointer::null(),
-        })
+        let var_ptr = this.machine.env_vars.unix().get(this, name)?;
+        Ok(var_ptr.unwrap_or_else(Pointer::null))
     }
 
     fn setenv(

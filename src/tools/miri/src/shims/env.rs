@@ -102,11 +102,19 @@ impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     /// Try to get an environment variable from the interpreted program's environment. This is
     /// useful for implementing shims which are documented to read from the environment.
-    fn get_var(&mut self, name: &OsStr) -> InterpResult<'tcx, Option<OsString>> {
+    fn get_env_var(&mut self, name: &OsStr) -> InterpResult<'tcx, Option<OsString>> {
         let this = self.eval_context_ref();
         match &this.machine.env_vars {
             EnvVars::Uninit => return Ok(None),
-            EnvVars::Unix(vars) => vars.get(this, name),
+            EnvVars::Unix(vars) => {
+                let var_ptr = vars.get(this, name)?;
+                if let Some(ptr) = var_ptr {
+                    let var = this.read_os_str_from_c_str(ptr)?;
+                    Ok(Some(var.to_owned()))
+                } else {
+                    Ok(None)
+                }
+            }
             EnvVars::Windows(vars) => vars.get(name),
         }
     }

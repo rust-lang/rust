@@ -27,7 +27,7 @@ impl WindowsEnvVars {
         Ok(Self { map: env_vars })
     }
 
-    /// Implementation detail for [`InterpCx::get_var`].
+    /// Implementation detail for [`InterpCx::get_env_var`].
     pub(crate) fn get<'tcx>(&self, name: &OsStr) -> InterpResult<'tcx, Option<OsString>> {
         Ok(self.map.get(name).cloned())
     }

@@ -140,7 +140,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             DateTime::from_timestamp(sec_since_epoch, 0).expect("Invalid timestamp");
 
         // Figure out what time zone is in use
-        let tz = this.get_var(OsStr::new("TZ"))?.unwrap_or_else(|| OsString::from("UTC"));
+        let tz = this.get_env_var(OsStr::new("TZ"))?.unwrap_or_else(|| OsString::from("UTC"));
         let tz = match tz.into_string() {
             Ok(tz) => Tz::from_str(&tz).unwrap_or(Tz::UTC),
             _ => Tz::UTC,
