@@ -23,8 +23,9 @@ impl S {
     fn offs_in_c() -> usize {
         offset_of!(C<Self>, w)
     }
-    fn offs_in_c_colon() -> usize {
-        offset_of!(C::<Self>, w)
+    // Put offset_of in a slice - test #124478.
+    fn offs_in_c_colon() -> &'static [usize] {
+        &[offset_of!(C::<Self>, w)]
     }
 }
 
