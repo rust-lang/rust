@@ -24,6 +24,19 @@ impl ConfigurationSection {
     fn get_section<I: Iterator<Item = String>>(
         file: &mut Enumerate<I>,
     ) -> Option<ConfigurationSection> {
+        lazy_static! {
+            static ref CONFIG_NAME_REGEX: regex::Regex =
+                regex::Regex::new(r"^## `([^`]+)`").expect("failed creating configuration pattern");
+            // Configuration values, which will be passed to `from_str`:
+            //
+            // - must be prefixed with `####`
+            // - must be wrapped in backticks
+            // - may by wrapped in double quotes (which will be stripped)
+            static ref CONFIG_VALUE_REGEX: regex::Regex =
+                regex::Regex::new(r#"^#### `"?([^`]+?)"?`"#)
+                    .expect("failed creating configuration value pattern");
+        }
+
         loop {
             match file.next() {
                 Some((i, line)) => {
@@ -40,14 +53,9 @@ impl ConfigurationSection {
                         let start_line = (i + 2) as u32;
 
                         return Some(ConfigurationSection::CodeBlock((block, start_line)));
-                    } else if let Some(c) = static_regex!(r"^## `([^`]+)`").captures(&line) {
+                    } else if let Some(c) = CONFIG_NAME_REGEX.captures(&line) {
                         return Some(ConfigurationSection::ConfigName(String::from(&c[1])));
-                    } else if let Some(c) = static_regex!(r#"^#### `"?([^`]+?)"?`"#).captures(&line) {
-                        // Configuration values, which will be passed to `from_str`
-                        //
-                        // - must be prefixed with `####`
-                        // - must be wrapped in backticks
-                        // - may by wrapped in double quotes (which will be stripped)
+                    } else if let Some(c) = CONFIG_VALUE_REGEX.captures(&line) {
                         return Some(ConfigurationSection::ConfigValue(String::from(&c[1])));
                     }
                 }
