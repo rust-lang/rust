@@ -100,12 +100,12 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             move_site_vec.iter().map(|move_site| move_site.moi).collect();
 
         if move_out_indices.is_empty() {
-            let root_place = PlaceRef { projection: &[], ..used_place };
+            let root_local = used_place.local;
 
-            if !self.uninitialized_error_reported.insert(root_place) {
+            if !self.uninitialized_error_reported.insert(root_local) {
                 debug!(
                     "report_use_of_moved_or_uninitialized place: error about {:?} suppressed",
-                    root_place
+                    root_local
                 );
                 return;
             }

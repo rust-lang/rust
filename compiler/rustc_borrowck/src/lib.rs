@@ -566,7 +566,7 @@ struct MirBorrowckCtxt<'cx, 'tcx> {
     fn_self_span_reported: FxIndexSet<Span>,
     /// This field keeps track of errors reported in the checking of uninitialized variables,
     /// so that we don't report seemingly duplicate errors.
-    uninitialized_error_reported: FxIndexSet<PlaceRef<'tcx>>,
+    uninitialized_error_reported: FxIndexSet<Local>,
     /// This field keeps track of all the local variables that are declared mut and are mutated.
     /// Used for the warning issued by an unused mutable local variable.
     used_mut: FxIndexSet<Local>,
