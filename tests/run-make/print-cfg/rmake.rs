@@ -14,36 +14,42 @@ use std::iter::FromIterator;
 
 use run_make_support::{rustc, tmp_dir};
 
-fn main() {
-    check(
-        /*target*/ "x86_64-pc-windows-gnu",
-        /*includes*/ &["windows", "target_arch=\"x86_64\""],
-        /*disallow*/ &["unix"],
-    );
-    check(
-        /*target*/ "i686-pc-windows-msvc",
-        /*includes*/ &["windows", "target_env=\"msvc\""],
-        /*disallow*/ &["unix"],
-    );
-    check(
-        /*target*/ "i686-apple-darwin",
-        /*includes*/ &["unix", "target_os=\"macos\"", "target_vendor=\"apple\""],
-        /*disallow*/ &["windows"],
-    );
-    check(
-        /*target*/ "i686-unknown-linux-gnu",
-        /*includes*/ &["unix", "target_env=\"gnu\""],
-        /*disallow*/ &["windows"],
-    );
-    check(
-        /*target*/ "arm-unknown-linux-gnueabihf",
-        /*includes*/ &["unix", "target_abi=\"eabihf\""],
-        /*disallow*/ &["windows"],
-    );
+struct PrintCfg {
+    target: &'static str,
+    includes: &'static [&'static str],
+    disallow: &'static [&'static str],
 }
 
-fn check(target: &str, includes: &[&str], disallow: &[&str]) {
-    fn _inner(output: &str, includes: &[&str], disallow: &[&str]) {
+fn main() {
+    check(PrintCfg {
+        target: "x86_64-pc-windows-gnu",
+        includes: &["windows", "target_arch=\"x86_64\""],
+        disallow: &["unix"],
+    });
+    check(PrintCfg {
+        target: "i686-pc-windows-msvc",
+        includes: &["windows", "target_env=\"msvc\""],
+        disallow: &["unix"],
+    });
+    check(PrintCfg {
+        target: "i686-apple-darwin",
+        includes: &["unix", "target_os=\"macos\"", "target_vendor=\"apple\""],
+        disallow: &["windows"],
+    });
+    check(PrintCfg {
+        target: "i686-unknown-linux-gnu",
+        includes: &["unix", "target_env=\"gnu\""],
+        disallow: &["windows"],
+    });
+    check(PrintCfg {
+        target: "arm-unknown-linux-gnueabihf",
+        includes: &["unix", "target_abi=\"eabihf\""],
+        disallow: &["windows"],
+    });
+}
+
+fn check(PrintCfg { target, includes, disallow }: PrintCfg) {
+    fn check_(output: &str, includes: &[&str], disallow: &[&str]) {
         let mut found = HashSet::<String>::new();
         let mut recorded = HashSet::<String>::new();
 
@@ -82,7 +88,7 @@ fn check(target: &str, includes: &[&str], disallow: &[&str]) {
 
         let stdout = String::from_utf8(output.stdout).unwrap();
 
-        _inner(&stdout, includes, disallow);
+        check_(&stdout, includes, disallow);
     }
 
     // --print=cfg=PATH
@@ -95,6 +101,6 @@ fn check(target: &str, includes: &[&str], disallow: &[&str]) {
 
         let output = std::fs::read_to_string(&tmp_path).unwrap();
 
-        _inner(&output, includes, disallow);
+        check_(&output, includes, disallow);
     }
 }
