@@ -168,13 +168,7 @@ mod imp {
     }
 }
 
-#[cfg(any(
-    target_os = "macos",
-    target_os = "ios",
-    target_os = "watchos",
-    target_os = "visionos",
-    target_os = "tvos"
-))]
+#[cfg(target_vendor = "apple")]
 mod imp {
     use super::Args;
     use crate::ffi::CStr;
@@ -215,12 +209,7 @@ mod imp {
     // for i in (0..[args count])
     //      res.push([args objectAtIndex:i])
     // res
-    #[cfg(any(
-        target_os = "ios",
-        target_os = "tvos",
-        target_os = "watchos",
-        target_os = "visionos"
-    ))]
+    #[cfg(not(target_os = "macos"))]
     pub fn args() -> Args {
         use crate::ffi::{c_char, c_void, OsString};
         use crate::mem;
