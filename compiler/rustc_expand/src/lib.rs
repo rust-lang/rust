@@ -1,19 +1,19 @@
+// tidy-alphabetical-start
+#![allow(internal_features)]
+#![allow(rustc::diagnostic_outside_of_impl)]
 #![doc(rust_logo)]
-#![feature(rustdoc_internals)]
 #![feature(array_windows)]
 #![feature(associated_type_defaults)]
 #![feature(if_let_guard)]
 #![feature(let_chains)]
-#![feature(lint_reasons)]
 #![feature(macro_metavar_expr)]
 #![feature(map_try_insert)]
 #![feature(proc_macro_diagnostic)]
 #![feature(proc_macro_internals)]
-#![feature(proc_macro_span)]
+#![feature(rustdoc_internals)]
 #![feature(try_blocks)]
 #![feature(yeet_expr)]
-#![allow(rustc::diagnostic_outside_of_impl)]
-#![allow(internal_features)]
+// tidy-alphabetical-end
 
 extern crate proc_macro as pm;
 
