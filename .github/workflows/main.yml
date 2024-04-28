@@ -104,6 +104,10 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y ${{ matrix.apt_deps }}
 
+    - name: Select XCode version
+      if: matrix.os == 'macos-latest'
+      run: sudo xcode-select -s /Applications/Xcode_14.3.1.app
+
     - name: Prepare dependencies
       run: ./y.sh prepare
 
@@ -235,6 +239,10 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y gcc-mingw-w64-x86-64
+
+    - name: Select XCode version
+      if: matrix.os == 'macos-latest'
+      run: sudo xcode-select -s /Applications/Xcode_14.3.1.app
 
     - name: Prepare dependencies
       run: ./y.sh prepare
