@@ -2548,6 +2548,11 @@ pub fn is_in_cfg_test(tcx: TyCtxt<'_>, id: HirId) -> bool {
         .any(|parent_id| is_cfg_test(tcx, parent_id))
 }
 
+/// Checks if the node is in a `#[test]` function or has any parent node marked `#[cfg(test)]`
+pub fn is_in_test(tcx: TyCtxt<'_>, hir_id: HirId) -> bool {
+    is_in_test_function(tcx, hir_id) || is_in_cfg_test(tcx, hir_id)
+}
+
 /// Checks if the item of any of its parents has `#[cfg(...)]` attribute applied.
 pub fn inherits_cfg(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
     let hir = tcx.hir();

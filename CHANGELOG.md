@@ -5891,6 +5891,7 @@ Released 2018-09-13
 [`allow-print-in-tests`]: https://doc.rust-lang.org/clippy/lint_configuration.html#allow-print-in-tests
 [`allow-private-module-inception`]: https://doc.rust-lang.org/clippy/lint_configuration.html#allow-private-module-inception
 [`allow-unwrap-in-tests`]: https://doc.rust-lang.org/clippy/lint_configuration.html#allow-unwrap-in-tests
+[`allow-useless-vec-in-tests`]: https://doc.rust-lang.org/clippy/lint_configuration.html#allow-useless-vec-in-tests
 [`allowed-dotfiles`]: https://doc.rust-lang.org/clippy/lint_configuration.html#allowed-dotfiles
 [`allowed-duplicate-crates`]: https://doc.rust-lang.org/clippy/lint_configuration.html#allowed-duplicate-crates
 [`allowed-idents-below-min-chars`]: https://doc.rust-lang.org/clippy/lint_configuration.html#allowed-idents-below-min-chars

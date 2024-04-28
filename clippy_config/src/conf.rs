@@ -463,6 +463,10 @@ define_Conf! {
     ///
     /// Whether print macros (ex. `println!`) should be allowed in test functions or `#[cfg(test)]`
     (allow_print_in_tests: bool = false),
+    /// Lint: USELESS_VEC.
+    ///
+    /// Whether `useless_vec` should ignore test functions or `#[cfg(test)]`
+    (allow_useless_vec_in_tests: bool = false),
     /// Lint: RESULT_LARGE_ERR.
     ///
     /// The maximum size of the `Err`-variant in a `Result` returned from a function
