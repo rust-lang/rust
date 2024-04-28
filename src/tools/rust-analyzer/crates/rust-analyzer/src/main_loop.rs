@@ -947,7 +947,7 @@ impl GlobalState {
             .on::<NO_RETRY, lsp_request::GotoDeclaration>(handlers::handle_goto_declaration)
             .on::<NO_RETRY, lsp_request::GotoImplementation>(handlers::handle_goto_implementation)
             .on::<NO_RETRY, lsp_request::GotoTypeDefinition>(handlers::handle_goto_type_definition)
-            .on::<NO_RETRY, lsp_request::InlayHintRequest>(handlers::handle_inlay_hints)
+            .on::<RETRY, lsp_request::InlayHintRequest>(handlers::handle_inlay_hints)
             .on::<RETRY, lsp_request::InlayHintResolveRequest>(handlers::handle_inlay_hints_resolve)
             .on::<NO_RETRY, lsp_request::CodeLensRequest>(handlers::handle_code_lens)
             .on::<RETRY, lsp_request::CodeLensResolve>(handlers::handle_code_lens_resolve)

@@ -937,7 +937,7 @@ pub(crate) fn handle_completion(
     lsp_types::CompletionParams { text_document_position, context,.. }: lsp_types::CompletionParams,
 ) -> anyhow::Result<Option<lsp_types::CompletionResponse>> {
     let _p = tracing::span!(tracing::Level::INFO, "handle_completion").entered();
-    let mut position = from_proto::file_position(&snap, text_document_position)?;
+    let mut position = from_proto::file_position(&snap, text_document_position.clone())?;
     let line_index = snap.file_line_index(position.file_id)?;
     let completion_trigger_character =
         context.and_then(|ctx| ctx.trigger_character).and_then(|s| s.chars().next());
@@ -1505,6 +1505,10 @@ pub(crate) fn handle_inlay_hints(
     )?;
     let line_index = snap.file_line_index(file_id)?;
     let source_root = snap.analysis.source_root(file_id)?;
+    let range = TextRange::new(
+        range.start().min(line_index.index.len()),
+        range.end().min(line_index.index.len()),
+    );
 
     let inlay_hints_config = snap.config.inlay_hints(Some(source_root));
     Ok(Some(
