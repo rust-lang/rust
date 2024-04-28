@@ -180,7 +180,6 @@
 #![feature(isqrt)]
 #![feature(link_cfg)]
 #![feature(maybe_uninit_uninit_array)]
-#![feature(non_null_convenience)]
 #![feature(offset_of_enum)]
 #![feature(offset_of_nested)]
 #![feature(panic_internals)]
