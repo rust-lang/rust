@@ -56,7 +56,7 @@ jobs:
 
     - name: Download artifact
       if: matrix.libgccjit_version.gcc != 'libgccjit12.so'
-      run: curl -LO https://github.com/antoyo/gcc/releases/latest/download/gcc-13.deb
+      run: curl -LO https://github.com/rust-lang/gcc/releases/latest/download/gcc-13.deb
 
     - name: Setup path to libgccjit
       if: matrix.libgccjit_version.gcc != 'libgccjit12.so'

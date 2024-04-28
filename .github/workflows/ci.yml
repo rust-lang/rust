@@ -53,7 +53,7 @@ jobs:
       run: rustup component add rustfmt clippy
 
     - name: Download artifact
-      run: curl -LO https://github.com/antoyo/gcc/releases/latest/download/${{ matrix.libgccjit_version.gcc }}
+      run: curl -LO https://github.com/rust-lang/gcc/releases/latest/download/${{ matrix.libgccjit_version.gcc }}
 
     - name: Setup path to libgccjit
       run: |
