@@ -112,8 +112,8 @@ impl<'a, 'b> ProofTreeFormatter<'a, 'b> {
             ProbeKind::UpcastProjectionCompatibility => {
                 write!(self.f, "PROBING FOR PROJECTION COMPATIBILITY FOR UPCASTING:")
             }
-            ProbeKind::OpaqueTypeStorageLookup => {
-                write!(self.f, "PROBING FOR AN EXISTING OPAQUE:")
+            ProbeKind::OpaqueTypeStorageLookup { result } => {
+                write!(self.f, "PROBING FOR AN EXISTING OPAQUE: {result:?}")
             }
             ProbeKind::TraitCandidate { source, result } => {
                 write!(self.f, "CANDIDATE {source:?}: {result:?}")

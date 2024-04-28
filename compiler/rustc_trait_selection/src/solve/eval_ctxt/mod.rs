@@ -998,8 +998,11 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             if candidate_key.def_id != key.def_id {
                 continue;
             }
-            values.extend(self.probe(|_| inspect::ProbeKind::OpaqueTypeStorageLookup).enter(
-                |ecx| {
+            values.extend(
+                self.probe(|result| inspect::ProbeKind::OpaqueTypeStorageLookup {
+                    result: *result,
+                })
+                .enter(|ecx| {
                     for (a, b) in std::iter::zip(candidate_key.args, key.args) {
                         ecx.eq(param_env, a, b)?;
                     }
@@ -1011,8 +1014,8 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                         candidate_ty,
                     );
                     ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-                },
-            ));
+                }),
+            );
         }
         values
     }
