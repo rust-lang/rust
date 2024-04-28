@@ -4884,6 +4884,7 @@ dependencies = [
  "getopts",
  "ignore",
  "itertools 0.11.0",
+ "lazy_static",
  "regex",
  "rustfmt-config_proc_macro",
  "serde",
