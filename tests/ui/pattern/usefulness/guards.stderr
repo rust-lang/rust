@@ -1,5 +1,5 @@
 error[E0004]: non-exhaustive patterns: `128_u8..=u8::MAX` not covered
-  --> $DIR/guards.rs:12:11
+  --> $DIR/guards.rs:11:11
    |
 LL |     match 0u8 {
    |           ^^^ pattern `128_u8..=u8::MAX` not covered

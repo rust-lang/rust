@@ -1,7 +1,7 @@
 # `half_open_range_patterns_in_slices`
 
 The tracking issue for this feature is: [#67264]
-It is part of the `exclusive_range_pattern` feature,
+It is a future part of the `exclusive_range_pattern` feature,
 tracked at [#37854].
 
 [#67264]: https://github.com/rust-lang/rust/issues/67264
@@ -12,7 +12,6 @@ This feature allow using top-level half-open range patterns in slices.
 
 ```rust
 #![feature(half_open_range_patterns_in_slices)]
-#![feature(exclusive_range_pattern)]
 
 fn main() {
     let xs = [13, 1, 5, 2, 3, 1, 21, 8];
