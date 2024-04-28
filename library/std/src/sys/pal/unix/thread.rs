@@ -315,11 +315,9 @@ pub fn available_parallelism() -> io::Result<NonZero<usize>> {
             target_os = "emscripten",
             target_os = "fuchsia",
             target_os = "hurd",
-            target_os = "ios",
-            target_os = "tvos",
             target_os = "linux",
-            target_os = "macos",
             target_os = "aix",
+            target_vendor = "apple",
         ))] {
             #[allow(unused_assignments)]
             #[allow(unused_mut)]
