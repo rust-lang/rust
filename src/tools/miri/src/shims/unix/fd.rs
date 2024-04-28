@@ -25,7 +25,7 @@ pub trait FileDescriptor: std::fmt::Debug + Any {
     }
 
     fn write<'tcx>(
-        &self,
+        &mut self,
         _communicate_allowed: bool,
         _bytes: &[u8],
         _tcx: TyCtxt<'tcx>,
@@ -103,13 +103,13 @@ impl FileDescriptor for io::Stdout {
     }
 
     fn write<'tcx>(
-        &self,
+        &mut self,
         _communicate_allowed: bool,
         bytes: &[u8],
         _tcx: TyCtxt<'tcx>,
     ) -> InterpResult<'tcx, io::Result<usize>> {
         // We allow writing to stderr even with isolation enabled.
-        let result = Write::write(&mut { self }, bytes);
+        let result = Write::write(self, bytes);
         // Stdout is buffered, flush to make sure it appears on the
         // screen.  This is the write() syscall of the interpreted
         // program, we want it to correspond to a write() syscall on
@@ -135,7 +135,7 @@ impl FileDescriptor for io::Stderr {
     }
 
     fn write<'tcx>(
-        &self,
+        &mut self,
         _communicate_allowed: bool,
         bytes: &[u8],
         _tcx: TyCtxt<'tcx>,
@@ -164,7 +164,7 @@ impl FileDescriptor for NullOutput {
     }
 
     fn write<'tcx>(
-        &self,
+        &mut self,
         _communicate_allowed: bool,
         bytes: &[u8],
         _tcx: TyCtxt<'tcx>,
@@ -418,10 +418,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             .min(u64::try_from(isize::MAX).unwrap());
         let communicate = this.machine.communicate();
 
-        if let Some(file_descriptor) = this.machine.fds.get(fd) {
-            let bytes = this.read_bytes_ptr_strip_provenance(buf, Size::from_bytes(count))?;
+        let bytes = this.read_bytes_ptr_strip_provenance(buf, Size::from_bytes(count))?.to_owned();
+        if let Some(file_descriptor) = this.machine.fds.get_mut(fd) {
             let result = file_descriptor
-                .write(communicate, bytes, *this.tcx)?
+                .write(communicate, &bytes, *this.tcx)?
                 .map(|c| i64::try_from(c).unwrap());
             this.try_unwrap_io_result(result)
         } else {
