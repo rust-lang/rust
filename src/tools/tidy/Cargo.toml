@@ -8,7 +8,6 @@ autobins = false
 cargo_metadata = "0.15"
 regex = "1"
 miropt-test-tools = { path = "../miropt-test-tools" }
-lazy_static = "1"
 walkdir = "2"
 ignore = "0.4.18"
 semver = "1.0"
