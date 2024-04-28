@@ -99,8 +99,6 @@ static_files! {
     src_script_js => "static/js/src-script.js",
     storage_js => "static/js/storage.js",
     scrape_examples_js => "static/js/scrape-examples.js",
-    wheel_svg => "static/images/wheel.svg",
-    clipboard_svg => "static/images/clipboard.svg",
     copyright => "static/COPYRIGHT.txt",
     license_apache => "static/LICENSE-APACHE.txt",
     license_mit => "static/LICENSE-MIT.txt",
