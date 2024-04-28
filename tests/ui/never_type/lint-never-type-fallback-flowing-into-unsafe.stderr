@@ -1,5 +1,5 @@
 warning: never type fallback affects this call to an `unsafe` function
-  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:6:18
+  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:8:18
    |
 LL |         unsafe { mem::zeroed() }
    |                  ^^^^^^^^^^^^^
@@ -8,7 +8,71 @@ LL |         unsafe { mem::zeroed() }
    = note: `#[warn(never_type_fallback_flowing_into_unsafe)]` on by default
 
 warning: never type fallback affects this call to an `unsafe` function
-  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:24:19
+  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:22:13
+   |
+LL |             core::mem::transmute(Zst)
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: specify the type explicitly
+
+warning: never type fallback affects this union access
+  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:37:18
+   |
+LL |         unsafe { Union { a: () }.b }
+   |                  ^^^^^^^^^^^^^^^^^
+   |
+   = help: specify the type explicitly
+
+warning: never type fallback affects this raw pointer dereference
+  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:46:18
+   |
+LL |         unsafe { *ptr::from_ref(&()).cast() }
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: specify the type explicitly
+
+warning: never type fallback affects this call to an `unsafe` function
+  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:63:18
+   |
+LL |         unsafe { internally_create(x) }
+   |                  ^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: specify the type explicitly
+
+warning: never type fallback affects this call to an `unsafe` function
+  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:77:18
+   |
+LL |         unsafe { zeroed() }
+   |                  ^^^^^^^^
+   |
+   = help: specify the type explicitly
+
+warning: never type fallback affects this `unsafe` function
+  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:74:22
+   |
+LL |         let zeroed = mem::zeroed;
+   |                      ^^^^^^^^^^^
+   |
+   = help: specify the type explicitly
+
+warning: never type fallback affects this `unsafe` function
+  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:91:17
+   |
+LL |         let f = internally_create;
+   |                 ^^^^^^^^^^^^^^^^^
+   |
+   = help: specify the type explicitly
+
+warning: never type fallback affects this call to an `unsafe` method
+  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:114:13
+   |
+LL |             S(marker::PhantomData).create_out_of_thin_air()
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: specify the type explicitly
+
+warning: never type fallback affects this call to an `unsafe` function
+  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:130:19
    |
 LL |             match send_message::<_ /* ?0 */>() {
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -19,5 +83,5 @@ LL |         msg_send!();
    = help: specify the type explicitly
    = note: this warning originates in the macro `msg_send` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-warning: 2 warnings emitted
+warning: 10 warnings emitted
 

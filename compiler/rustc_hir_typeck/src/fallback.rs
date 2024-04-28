@@ -1,10 +1,11 @@
-use std::cell::OnceCell;
+use std::{borrow::Cow, cell::OnceCell};
 
 use crate::{errors, FnCtxt, TypeckRootCtxt};
 use rustc_data_structures::{
     graph::{self, iterate::DepthFirstSearch, vec_graph::VecGraph},
     unord::{UnordBag, UnordMap, UnordSet},
 };
+use rustc_errors::{DiagArgValue, IntoDiagArg};
 use rustc_hir as hir;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::HirId;
@@ -374,12 +375,12 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
                         .filter_map(|x| unsafe_infer_vars.get(&x).copied())
                         .collect::<Vec<_>>();
 
-                for (hir_id, span) in affected_unsafe_infer_vars {
+                for (hir_id, span, reason) in affected_unsafe_infer_vars {
                     self.tcx.emit_node_span_lint(
                         lint::builtin::NEVER_TYPE_FALLBACK_FLOWING_INTO_UNSAFE,
                         hir_id,
                         span,
-                        errors::NeverTypeFallbackFlowingIntoUnsafe {},
+                        errors::NeverTypeFallbackFlowingIntoUnsafe { reason },
                     );
                 }
 
@@ -493,77 +494,169 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
     }
 }
 
-/// Finds all type variables which are passed to an `unsafe` function.
+#[derive(Debug, Copy, Clone)]
+pub(crate) enum UnsafeUseReason {
+    Call,
+    Method,
+    Path,
+    UnionField,
+    Deref,
+}
+
+impl IntoDiagArg for UnsafeUseReason {
+    fn into_diag_arg(self) -> DiagArgValue {
+        let s = match self {
+            UnsafeUseReason::Call => "call",
+            UnsafeUseReason::Method => "method",
+            UnsafeUseReason::Path => "path",
+            UnsafeUseReason::UnionField => "union_field",
+            UnsafeUseReason::Deref => "deref",
+        };
+        DiagArgValue::Str(Cow::Borrowed(s))
+    }
+}
+
+/// Finds all type variables which are passed to an `unsafe` operation.
 ///
 /// For example, for this function `f`:
 /// ```ignore (demonstrative)
 /// fn f() {
 ///     unsafe {
 ///         let x /* ?X */ = core::mem::zeroed();
-///         //               ^^^^^^^^^^^^^^^^^^^ -- hir_id, span
+///         //               ^^^^^^^^^^^^^^^^^^^ -- hir_id, span, reason
 ///
 ///         let y = core::mem::zeroed::<Option<_ /* ?Y */>>();
-///         //               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ -- hir_id, span
+///         //      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ -- hir_id, span, reason
 ///     }
 /// }
 /// ```
 ///
-/// Will return `{ id(?X) -> (hir_id, span) }`
+/// `compute_unsafe_infer_vars` will return `{ id(?X) -> (hir_id, span, Call) }`
 fn compute_unsafe_infer_vars<'a, 'tcx>(
     root_ctxt: &'a TypeckRootCtxt<'tcx>,
     body_id: LocalDefId,
-) -> UnordMap<ty::TyVid, (HirId, Span)> {
-    let tcx = root_ctxt.infcx.tcx;
-    let body_id = tcx.hir().maybe_body_owned_by(body_id).expect("body id must have an owner");
-    let body = tcx.hir().body(body_id);
+) -> UnordMap<ty::TyVid, (HirId, Span, UnsafeUseReason)> {
+    let body_id =
+        root_ctxt.tcx.hir().maybe_body_owned_by(body_id).expect("body id must have an owner");
+    let body = root_ctxt.tcx.hir().body(body_id);
     let mut res = UnordMap::default();
 
     struct UnsafeInferVarsVisitor<'a, 'tcx, 'r> {
         root_ctxt: &'a TypeckRootCtxt<'tcx>,
-        res: &'r mut UnordMap<ty::TyVid, (HirId, Span)>,
+        res: &'r mut UnordMap<ty::TyVid, (HirId, Span, UnsafeUseReason)>,
     }
 
     impl Visitor<'_> for UnsafeInferVarsVisitor<'_, '_, '_> {
         fn visit_expr(&mut self, ex: &'_ hir::Expr<'_>) {
-            // FIXME: method calls
-            if let hir::ExprKind::Call(func, ..) = ex.kind {
-                let typeck_results = self.root_ctxt.typeck_results.borrow();
+            let typeck_results = self.root_ctxt.typeck_results.borrow();
 
-                let func_ty = typeck_results.expr_ty(func);
+            match ex.kind {
+                hir::ExprKind::MethodCall(..) => {
+                    if let Some(def_id) = typeck_results.type_dependent_def_id(ex.hir_id)
+                        && let method_ty = self.root_ctxt.tcx.type_of(def_id).instantiate_identity()
+                        && let sig = method_ty.fn_sig(self.root_ctxt.tcx)
+                        && let hir::Unsafety::Unsafe = sig.unsafety()
+                    {
+                        let mut collector = InferVarCollector {
+                            value: (ex.hir_id, ex.span, UnsafeUseReason::Method),
+                            res: self.res,
+                        };
 
-                // `is_fn` is required to ignore closures (which can't be unsafe)
-                if func_ty.is_fn()
-                    && let sig = func_ty.fn_sig(self.root_ctxt.infcx.tcx)
-                    && let hir::Unsafety::Unsafe = sig.unsafety()
-                {
-                    let mut collector =
-                        InferVarCollector { hir_id: ex.hir_id, call_span: ex.span, res: self.res };
-
-                    // Collect generic arguments of the function which are inference variables
-                    typeck_results
-                        .node_args(ex.hir_id)
-                        .types()
-                        .for_each(|t| t.visit_with(&mut collector));
-
-                    // Also check the return type, for cases like `(unsafe_fn::<_> as unsafe fn() -> _)()`
-                    sig.output().visit_with(&mut collector);
+                        // Collect generic arguments (incl. `Self`) of the method
+                        typeck_results
+                            .node_args(ex.hir_id)
+                            .types()
+                            .for_each(|t| t.visit_with(&mut collector));
+                    }
                 }
-            }
+
+                hir::ExprKind::Call(func, ..) => {
+                    let func_ty = typeck_results.expr_ty(func);
+
+                    if func_ty.is_fn()
+                        && let sig = func_ty.fn_sig(self.root_ctxt.tcx)
+                        && let hir::Unsafety::Unsafe = sig.unsafety()
+                    {
+                        let mut collector = InferVarCollector {
+                            value: (ex.hir_id, ex.span, UnsafeUseReason::Call),
+                            res: self.res,
+                        };
+
+                        // Try collecting generic arguments of the function.
+                        // Note that we do this below for any paths (that don't have to be called),
+                        // but there we do it with a different span/reason.
+                        // This takes priority.
+                        typeck_results
+                            .node_args(func.hir_id)
+                            .types()
+                            .for_each(|t| t.visit_with(&mut collector));
+
+                        // Also check the return type, for cases like `returns_unsafe_fn_ptr()()`
+                        sig.output().visit_with(&mut collector);
+                    }
+                }
+
+                // Check paths which refer to functions.
+                // We do this, instead of only checking `Call` to make sure the lint can't be
+                // avoided by storing unsafe function in a variable.
+                hir::ExprKind::Path(_) => {
+                    let ty = typeck_results.expr_ty(ex);
+
+                    // If this path refers to an unsafe function, collect inference variables which may affect it.
+                    // `is_fn` excludes closures, but those can't be unsafe.
+                    if ty.is_fn()
+                        && let sig = ty.fn_sig(self.root_ctxt.tcx)
+                        && let hir::Unsafety::Unsafe = sig.unsafety()
+                    {
+                        let mut collector = InferVarCollector {
+                            value: (ex.hir_id, ex.span, UnsafeUseReason::Path),
+                            res: self.res,
+                        };
+
+                        // Collect generic arguments of the function
+                        typeck_results
+                            .node_args(ex.hir_id)
+                            .types()
+                            .for_each(|t| t.visit_with(&mut collector));
+                    }
+                }
+
+                hir::ExprKind::Unary(hir::UnOp::Deref, pointer) => {
+                    if let ty::RawPtr(pointee, _) = typeck_results.expr_ty(pointer).kind() {
+                        pointee.visit_with(&mut InferVarCollector {
+                            value: (ex.hir_id, ex.span, UnsafeUseReason::Deref),
+                            res: self.res,
+                        });
+                    }
+                }
+
+                hir::ExprKind::Field(base, _) => {
+                    let base_ty = typeck_results.expr_ty(base);
+
+                    if base_ty.is_union() {
+                        typeck_results.expr_ty(ex).visit_with(&mut InferVarCollector {
+                            value: (ex.hir_id, ex.span, UnsafeUseReason::UnionField),
+                            res: self.res,
+                        });
+                    }
+                }
+
+                _ => (),
+            };
 
             hir::intravisit::walk_expr(self, ex);
         }
     }
 
-    struct InferVarCollector<'r> {
-        hir_id: HirId,
-        call_span: Span,
-        res: &'r mut UnordMap<ty::TyVid, (HirId, Span)>,
+    struct InferVarCollector<'r, V> {
+        value: V,
+        res: &'r mut UnordMap<ty::TyVid, V>,
     }
 
-    impl<'tcx> ty::TypeVisitor<TyCtxt<'tcx>> for InferVarCollector<'_> {
+    impl<'tcx, V: Copy> ty::TypeVisitor<TyCtxt<'tcx>> for InferVarCollector<'_, V> {
         fn visit_ty(&mut self, t: Ty<'tcx>) {
             if let Some(vid) = t.ty_vid() {
-                self.res.insert(vid, (self.hir_id, self.call_span));
+                _ = self.res.try_insert(vid, self.value);
             } else {
                 t.super_visit_with(self)
             }

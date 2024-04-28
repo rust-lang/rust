@@ -1,7 +1,7 @@
 //! Errors emitted by `rustc_hir_typeck`.
 use std::borrow::Cow;
 
-use crate::fluent_generated as fluent;
+use crate::{fallback::UnsafeUseReason, fluent_generated as fluent};
 use rustc_errors::{
     codes::*, Applicability, Diag, DiagArgValue, EmissionGuarantee, IntoDiagArg, MultiSpan,
     SubdiagMessageOp, Subdiagnostic,
@@ -167,7 +167,9 @@ pub struct MissingParenthesesInRange {
 #[derive(LintDiagnostic)]
 #[diag(hir_typeck_never_type_fallback_flowing_into_unsafe)]
 #[help]
-pub struct NeverTypeFallbackFlowingIntoUnsafe {}
+pub struct NeverTypeFallbackFlowingIntoUnsafe {
+    pub reason: UnsafeUseReason,
+}
 
 #[derive(Subdiagnostic)]
 #[multipart_suggestion(
