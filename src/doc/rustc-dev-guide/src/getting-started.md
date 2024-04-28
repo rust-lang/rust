@@ -49,7 +49,7 @@ guide :)
 
 Not all `t-compiler` members are experts on all parts of `rustc`; it's a
 pretty large project. To find out who could have some expertise on
-different parts of the compiler, [consult traigebot assign groups][map].
+different parts of the compiler, [consult triagebot assign groups][map].
 The sections that start with `[assign*` in `triagebot.toml` file. 
 But also, feel free to ask questions even if you can't figure out who to ping.
 
