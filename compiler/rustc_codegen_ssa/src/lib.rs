@@ -18,8 +18,6 @@
 
 #[macro_use]
 extern crate tracing;
-#[macro_use]
-extern crate rustc_middle;
 
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashSet;

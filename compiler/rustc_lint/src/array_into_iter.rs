@@ -3,6 +3,7 @@ use crate::{
     LateContext, LateLintPass, LintContext,
 };
 use rustc_hir as hir;
+use rustc_middle::bug;
 use rustc_middle::ty;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment};
 use rustc_session::lint::FutureIncompatibilityReason;

@@ -4,6 +4,7 @@ use rustc_ast as ast;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_infer::infer::TyCtxtInferExt;
+use rustc_middle::bug;
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty;
 use rustc_parse_format::{ParseMode, Parser, Piece};

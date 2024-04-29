@@ -94,9 +94,6 @@
 #![allow(internal_features)]
 
 #[macro_use]
-extern crate rustc_middle;
-
-#[macro_use]
 extern crate tracing;
 
 use rustc_hir::def::DefKind;

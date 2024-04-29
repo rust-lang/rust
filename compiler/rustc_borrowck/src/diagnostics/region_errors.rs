@@ -18,6 +18,7 @@ use rustc_infer::infer::{
     error_reporting::unexpected_hidden_region_diagnostic,
     NllRegionVariableOrigin, RelateParamBound,
 };
+use rustc_middle::bug;
 use rustc_middle::hir::place::PlaceBase;
 use rustc_middle::mir::{ConstraintCategory, ReturnConstraint};
 use rustc_middle::ty::GenericArgs;

@@ -1,6 +1,7 @@
 use rustc_ast::Attribute;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
+use rustc_middle::span_bug;
 use rustc_middle::ty::layout::{FnAbiError, LayoutError};
 use rustc_middle::ty::{self, GenericArgs, Instance, Ty, TyCtxt};
 use rustc_span::source_map::Spanned;

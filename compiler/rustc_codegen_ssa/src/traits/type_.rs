@@ -3,6 +3,7 @@ use super::Backend;
 use super::HasCodegen;
 use crate::common::TypeKind;
 use crate::mir::place::PlaceRef;
+use rustc_middle::bug;
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{self, Ty};
 use rustc_target::abi::call::{ArgAbi, CastTarget, FnAbi, Reg};

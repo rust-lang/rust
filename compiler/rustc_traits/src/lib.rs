@@ -4,8 +4,6 @@
 
 #[macro_use]
 extern crate tracing;
-#[macro_use]
-extern crate rustc_middle;
 
 mod codegen;
 mod dropck_outlives;

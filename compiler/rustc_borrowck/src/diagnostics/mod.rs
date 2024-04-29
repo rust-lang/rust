@@ -12,6 +12,7 @@ use rustc_hir::CoroutineKind;
 use rustc_index::IndexSlice;
 use rustc_infer::infer::BoundRegionConversionTime;
 use rustc_infer::traits::{FulfillmentErrorCode, SelectionError};
+use rustc_middle::bug;
 use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::mir::{
     AggregateKind, CallSource, ConstOperand, FakeReadCause, Local, LocalInfo, LocalKind, Location,

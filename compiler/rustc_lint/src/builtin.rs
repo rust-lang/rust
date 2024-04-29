@@ -51,6 +51,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID};
 use rustc_hir::intravisit::FnKind as HirFnKind;
 use rustc_hir::{Body, FnDecl, GenericParamKind, Node, PatKind, PredicateOrigin};
+use rustc_middle::bug;
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::print::with_no_trimmed_paths;

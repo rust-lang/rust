@@ -15,8 +15,6 @@
 #![feature(try_blocks)]
 
 #[macro_use]
-extern crate rustc_middle;
-#[macro_use]
 extern crate tracing;
 
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
@@ -33,6 +31,7 @@ use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::mir::*;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, ParamEnv, RegionVid, TyCtxt};
+use rustc_middle::{bug, span_bug};
 use rustc_session::lint::builtin::UNUSED_MUT;
 use rustc_span::{Span, Symbol};
 use rustc_target::abi::FieldIdx;

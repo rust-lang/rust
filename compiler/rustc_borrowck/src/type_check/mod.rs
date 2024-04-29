@@ -33,6 +33,7 @@ use rustc_middle::ty::{
     OpaqueHiddenType, OpaqueTypeKey, RegionVid, Ty, TyCtxt, UserType, UserTypeAnnotationIndex,
 };
 use rustc_middle::ty::{GenericArgsRef, UserArgs};
+use rustc_middle::{bug, span_bug};
 use rustc_mir_dataflow::points::DenseLocationMap;
 use rustc_span::def_id::CRATE_DEF_ID;
 use rustc_span::source_map::Spanned;

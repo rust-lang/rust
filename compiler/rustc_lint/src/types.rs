@@ -17,6 +17,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::DiagMessage;
 use rustc_hir as hir;
 use rustc_hir::{is_range_literal, Expr, ExprKind, Node};
+use rustc_middle::bug;
 use rustc_middle::ty::layout::{IntegerExt, LayoutOf, SizeSkeleton};
 use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::{

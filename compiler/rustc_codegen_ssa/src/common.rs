@@ -4,6 +4,7 @@ use rustc_hir::LangItem;
 use rustc_middle::mir;
 use rustc_middle::ty::Instance;
 use rustc_middle::ty::{self, layout::TyAndLayout, TyCtxt};
+use rustc_middle::{bug, span_bug};
 use rustc_span::Span;
 
 use crate::traits::*;
