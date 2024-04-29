@@ -8,11 +8,10 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::LangItem;
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::solve::inspect::ProbeKind;
+use rustc_infer::traits::solve::MaybeCause;
 use rustc_infer::traits::specialization_graph::LeafDef;
 use rustc_infer::traits::Reveal;
-use rustc_middle::traits::solve::{
-    CandidateSource, CanonicalResponse, Certainty, Goal, QueryResult,
-};
+use rustc_middle::traits::solve::{CandidateSource, Certainty, Goal, QueryResult};
 use rustc_middle::traits::BuiltinImplSource;
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
 use rustc_middle::ty::NormalizesTo;
@@ -119,14 +118,15 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
 
     fn probe_and_match_goal_against_assumption(
         ecx: &mut EvalCtxt<'_, 'tcx>,
+        source: CandidateSource,
         goal: Goal<'tcx, Self>,
         assumption: ty::Clause<'tcx>,
         then: impl FnOnce(&mut EvalCtxt<'_, 'tcx>) -> QueryResult<'tcx>,
-    ) -> QueryResult<'tcx> {
+    ) -> Result<Candidate<'tcx>, NoSolution> {
         if let Some(projection_pred) = assumption.as_projection_clause() {
             if projection_pred.projection_def_id() == goal.predicate.def_id() {
                 let tcx = ecx.tcx();
-                ecx.probe_misc_candidate("assumption").enter(|ecx| {
+                ecx.probe_trait_candidate(source).enter(|ecx| {
                     let assumption_projection_pred =
                         ecx.instantiate_binder_with_infer(projection_pred);
                     ecx.eq(
@@ -300,14 +300,14 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
     fn consider_error_guaranteed_candidate(
         _ecx: &mut EvalCtxt<'_, 'tcx>,
         _guar: ErrorGuaranteed,
-    ) -> QueryResult<'tcx> {
+    ) -> Result<Candidate<'tcx>, NoSolution> {
         Err(NoSolution)
     }
 
     fn consider_auto_trait_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
-    ) -> QueryResult<'tcx> {
+    ) -> Result<Candidate<'tcx>, NoSolution> {
         ecx.tcx().dcx().span_delayed_bug(
             ecx.tcx().def_span(goal.predicate.def_id()),
             "associated types not allowed on auto traits",
@@ -318,35 +318,35 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
     fn consider_trait_alias_candidate(
         _ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
-    ) -> QueryResult<'tcx> {
+    ) -> Result<Candidate<'tcx>, NoSolution> {
         bug!("trait aliases do not have associated types: {:?}", goal);
     }
 
     fn consider_builtin_sized_candidate(
         _ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
-    ) -> QueryResult<'tcx> {
+    ) -> Result<Candidate<'tcx>, NoSolution> {
         bug!("`Sized` does not have an associated type: {:?}", goal);
     }
 
     fn consider_builtin_copy_clone_candidate(
         _ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
-    ) -> QueryResult<'tcx> {
+    ) -> Result<Candidate<'tcx>, NoSolution> {
         bug!("`Copy`/`Clone` does not have an associated type: {:?}", goal);
     }
 
     fn consider_builtin_pointer_like_candidate(
         _ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
-    ) -> QueryResult<'tcx> {
+    ) -> Result<Candidate<'tcx>, NoSolution> {
         bug!("`PointerLike` does not have an associated type: {:?}", goal);
     }
 
     fn consider_builtin_fn_ptr_trait_candidate(
         _ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
-    ) -> QueryResult<'tcx> {
+    ) -> Result<Candidate<'tcx>, NoSolution> {
         bug!("`FnPtr` does not have an associated type: {:?}", goal);
     }
 
@@ -354,7 +354,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
         goal_kind: ty::ClosureKind,
-    ) -> QueryResult<'tcx> {
+    ) -> Result<Candidate<'tcx>, NoSolution> {
         let tcx = ecx.tcx();
         let tupled_inputs_and_output =
             match structural_traits::extract_tupled_inputs_and_output_from_callable(
@@ -364,8 +364,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
             )? {
                 Some(tupled_inputs_and_output) => tupled_inputs_and_output,
                 None => {
-                    return ecx
-                        .evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS);
+                    return ecx.forced_ambiguity(MaybeCause::Ambiguity);
                 }
             };
         let output_is_sized_pred = tupled_inputs_and_output.map_bound(|(_, output)| {
@@ -385,14 +384,20 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
 
         // A built-in `Fn` impl only holds if the output is sized.
         // (FIXME: technically we only need to check this if the type is a fn ptr...)
-        Self::consider_implied_clause(ecx, goal, pred, [goal.with(tcx, output_is_sized_pred)])
+        Self::probe_and_consider_implied_clause(
+            ecx,
+            CandidateSource::BuiltinImpl(BuiltinImplSource::Misc),
+            goal,
+            pred,
+            [goal.with(tcx, output_is_sized_pred)],
+        )
     }
 
     fn consider_builtin_async_fn_trait_candidates(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
         goal_kind: ty::ClosureKind,
-    ) -> QueryResult<'tcx> {
+    ) -> Result<Candidate<'tcx>, NoSolution> {
         let tcx = ecx.tcx();
 
         let env_region = match goal_kind {
@@ -461,8 +466,9 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
 
         // A built-in `AsyncFn` impl only holds if the output is sized.
         // (FIXME: technically we only need to check this if the type is a fn ptr...)
-        Self::consider_implied_clause(
+        Self::probe_and_consider_implied_clause(
             ecx,
+            CandidateSource::BuiltinImpl(BuiltinImplSource::Misc),
             goal,
             pred,
             [goal.with(tcx, output_is_sized_pred)]
@@ -474,7 +480,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
     fn consider_builtin_async_fn_kind_helper_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
-    ) -> QueryResult<'tcx> {
+    ) -> Result<Candidate<'tcx>, NoSolution> {
         let [
             closure_fn_kind_ty,
             goal_kind_ty,
@@ -489,7 +495,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
 
         // Bail if the upvars haven't been constrained.
         if tupled_upvars_ty.expect_ty().is_ty_var() {
-            return ecx.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS);
+            return ecx.forced_ambiguity(MaybeCause::Ambiguity);
         }
 
         let Some(closure_kind) = closure_fn_kind_ty.expect_ty().to_opt_closure_kind() else {
@@ -512,25 +518,27 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
             borrow_region.expect_region(),
         );
 
-        ecx.instantiate_normalizes_to_term(goal, upvars_ty.into());
-        ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+        ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
+            ecx.instantiate_normalizes_to_term(goal, upvars_ty.into());
+            ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+        })
     }
 
     fn consider_builtin_tuple_candidate(
         _ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
-    ) -> QueryResult<'tcx> {
+    ) -> Result<Candidate<'tcx>, NoSolution> {
         bug!("`Tuple` does not have an associated type: {:?}", goal);
     }
 
     fn consider_builtin_pointee_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
-    ) -> QueryResult<'tcx> {
+    ) -> Result<Candidate<'tcx>, NoSolution> {
         let tcx = ecx.tcx();
         let metadata_def_id = tcx.require_lang_item(LangItem::Metadata, None);
         assert_eq!(metadata_def_id, goal.predicate.def_id());
-        ecx.probe_misc_candidate("builtin pointee").enter(|ecx| {
+        ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
             let metadata_ty = match goal.predicate.self_ty().kind() {
                 ty::Bool
                 | ty::Char
@@ -609,7 +617,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
     fn consider_builtin_future_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
-    ) -> QueryResult<'tcx> {
+    ) -> Result<Candidate<'tcx>, NoSolution> {
         let self_ty = goal.predicate.self_ty();
         let ty::Coroutine(def_id, args) = *self_ty.kind() else {
             return Err(NoSolution);
@@ -623,8 +631,9 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
 
         let term = args.as_coroutine().return_ty().into();
 
-        Self::consider_implied_clause(
+        Self::probe_and_consider_implied_clause(
             ecx,
+            CandidateSource::BuiltinImpl(BuiltinImplSource::Misc),
             goal,
             ty::ProjectionPredicate {
                 projection_ty: ty::AliasTy::new(ecx.tcx(), goal.predicate.def_id(), [self_ty]),
@@ -640,7 +649,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
     fn consider_builtin_iterator_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
-    ) -> QueryResult<'tcx> {
+    ) -> Result<Candidate<'tcx>, NoSolution> {
         let self_ty = goal.predicate.self_ty();
         let ty::Coroutine(def_id, args) = *self_ty.kind() else {
             return Err(NoSolution);
@@ -654,8 +663,9 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
 
         let term = args.as_coroutine().yield_ty().into();
 
-        Self::consider_implied_clause(
+        Self::probe_and_consider_implied_clause(
             ecx,
+            CandidateSource::BuiltinImpl(BuiltinImplSource::Misc),
             goal,
             ty::ProjectionPredicate {
                 projection_ty: ty::AliasTy::new(ecx.tcx(), goal.predicate.def_id(), [self_ty]),
@@ -671,14 +681,14 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
     fn consider_builtin_fused_iterator_candidate(
         _ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
-    ) -> QueryResult<'tcx> {
+    ) -> Result<Candidate<'tcx>, NoSolution> {
         bug!("`FusedIterator` does not have an associated type: {:?}", goal);
     }
 
     fn consider_builtin_async_iterator_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
-    ) -> QueryResult<'tcx> {
+    ) -> Result<Candidate<'tcx>, NoSolution> {
         let self_ty = goal.predicate.self_ty();
         let ty::Coroutine(def_id, args) = *self_ty.kind() else {
             return Err(NoSolution);
@@ -690,7 +700,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
             return Err(NoSolution);
         }
 
-        ecx.probe_misc_candidate("builtin AsyncIterator kind").enter(|ecx| {
+        ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
             let expected_ty = ecx.next_ty_infer();
             // Take `AsyncIterator<Item = I>` and turn it into the corresponding
             // coroutine yield ty `Poll<Option<I>>`.
@@ -714,7 +724,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
     fn consider_builtin_coroutine_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
-    ) -> QueryResult<'tcx> {
+    ) -> Result<Candidate<'tcx>, NoSolution> {
         let self_ty = goal.predicate.self_ty();
         let ty::Coroutine(def_id, args) = *self_ty.kind() else {
             return Err(NoSolution);
@@ -737,8 +747,9 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
             bug!("unexpected associated item `<{self_ty} as Coroutine>::{name}`")
         };
 
-        Self::consider_implied_clause(
+        Self::probe_and_consider_implied_clause(
             ecx,
+            CandidateSource::BuiltinImpl(BuiltinImplSource::Misc),
             goal,
             ty::ProjectionPredicate {
                 projection_ty: ty::AliasTy::new(
@@ -758,14 +769,14 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
     fn consider_structural_builtin_unsize_candidates(
         _ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
-    ) -> Vec<(CanonicalResponse<'tcx>, BuiltinImplSource)> {
+    ) -> Vec<Candidate<'tcx>> {
         bug!("`Unsize` does not have an associated type: {:?}", goal);
     }
 
     fn consider_builtin_discriminant_kind_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
-    ) -> QueryResult<'tcx> {
+    ) -> Result<Candidate<'tcx>, NoSolution> {
         let self_ty = goal.predicate.self_ty();
         let discriminant_ty = match *self_ty.kind() {
             ty::Bool
@@ -808,7 +819,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
             ),
         };
 
-        ecx.probe_misc_candidate("builtin discriminant kind").enter(|ecx| {
+        ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
             ecx.instantiate_normalizes_to_term(goal, discriminant_ty.into());
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         })
@@ -817,7 +828,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
     fn consider_builtin_async_destruct_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
-    ) -> QueryResult<'tcx> {
+    ) -> Result<Candidate<'tcx>, NoSolution> {
         let self_ty = goal.predicate.self_ty();
         let async_destructor_ty = match *self_ty.kind() {
             ty::Bool
@@ -860,7 +871,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
             ),
         };
 
-        ecx.probe_misc_candidate("builtin async destruct").enter(|ecx| {
+        ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
             ecx.eq(goal.param_env, goal.predicate.term, async_destructor_ty.into())
                 .expect("expected goal term to be fully unconstrained");
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
@@ -870,14 +881,14 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
     fn consider_builtin_destruct_candidate(
         _ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
-    ) -> QueryResult<'tcx> {
+    ) -> Result<Candidate<'tcx>, NoSolution> {
         bug!("`Destruct` does not have an associated type: {:?}", goal);
     }
 
     fn consider_builtin_transmute_candidate(
         _ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
-    ) -> QueryResult<'tcx> {
+    ) -> Result<Candidate<'tcx>, NoSolution> {
         bug!("`BikeshedIntrinsicFrom` does not have an associated type: {:?}", goal)
     }
 }

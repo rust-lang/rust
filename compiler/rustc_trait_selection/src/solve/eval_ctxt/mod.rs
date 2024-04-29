@@ -998,19 +998,24 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             if candidate_key.def_id != key.def_id {
                 continue;
             }
-            values.extend(self.probe_misc_candidate("opaque type storage").enter(|ecx| {
-                for (a, b) in std::iter::zip(candidate_key.args, key.args) {
-                    ecx.eq(param_env, a, b)?;
-                }
-                ecx.eq(param_env, candidate_ty, ty)?;
-                ecx.add_item_bounds_for_hidden_type(
-                    candidate_key.def_id.to_def_id(),
-                    candidate_key.args,
-                    param_env,
-                    candidate_ty,
-                );
-                ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-            }));
+            values.extend(
+                self.probe(|result| inspect::ProbeKind::OpaqueTypeStorageLookup {
+                    result: *result,
+                })
+                .enter(|ecx| {
+                    for (a, b) in std::iter::zip(candidate_key.args, key.args) {
+                        ecx.eq(param_env, a, b)?;
+                    }
+                    ecx.eq(param_env, candidate_ty, ty)?;
+                    ecx.add_item_bounds_for_hidden_type(
+                        candidate_key.def_id.to_def_id(),
+                        candidate_key.args,
+                        param_env,
+                        candidate_ty,
+                    );
+                    ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                }),
+            );
         }
         values
     }

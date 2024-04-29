@@ -45,7 +45,7 @@ pub struct InspectCandidate<'a, 'tcx> {
     nested_goals: Vec<inspect::CanonicalState<'tcx, Goal<'tcx, ty::Predicate<'tcx>>>>,
     final_state: inspect::CanonicalState<'tcx, ()>,
     result: QueryResult<'tcx>,
-    candidate_certainty: Option<Certainty>,
+    shallow_certainty: Certainty,
 }
 
 impl<'a, 'tcx> InspectCandidate<'a, 'tcx> {
@@ -59,15 +59,14 @@ impl<'a, 'tcx> InspectCandidate<'a, 'tcx> {
 
     /// Certainty passed into `evaluate_added_goals_and_make_canonical_response`.
     ///
-    /// If this certainty is `Some(Yes)`, then we must be confident that the candidate
+    /// If this certainty is `Yes`, then we must be confident that the candidate
     /// must hold iff it's nested goals hold. This is not true if the certainty is
-    /// `Some(Maybe)`, which suggests we forced ambiguity instead, or if it is `None`,
-    /// which suggests we may have not assembled any candidates at all.
+    /// `Maybe(..)`, which suggests we forced ambiguity instead.
     ///
-    /// This is *not* the certainty of the candidate's nested evaluation, which can be
-    /// accessed with [`Self::result`] instead.
-    pub fn candidate_certainty(&self) -> Option<Certainty> {
-        self.candidate_certainty
+    /// This is *not* the certainty of the candidate's full nested evaluation, which
+    /// can be accessed with [`Self::result`] instead.
+    pub fn shallow_certainty(&self) -> Certainty {
+        self.shallow_certainty
     }
 
     /// Visit all nested goals of this candidate without rolling
@@ -174,9 +173,7 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
         nested_goals: &mut Vec<inspect::CanonicalState<'tcx, Goal<'tcx, ty::Predicate<'tcx>>>>,
         probe: &inspect::Probe<'tcx>,
     ) {
-        let mut candidate_certainty = None;
-        let num_candidates = candidates.len();
-
+        let mut shallow_certainty = None;
         for step in &probe.steps {
             match step {
                 &inspect::ProbeStep::AddGoal(_source, goal) => nested_goals.push(goal),
@@ -188,8 +185,8 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
                     self.candidates_recur(candidates, nested_goals, probe);
                     nested_goals.truncate(num_goals);
                 }
-                inspect::ProbeStep::MakeCanonicalResponse { shallow_certainty } => {
-                    assert_eq!(candidate_certainty.replace(*shallow_certainty), None);
+                inspect::ProbeStep::MakeCanonicalResponse { shallow_certainty: c } => {
+                    assert_eq!(shallow_certainty.replace(*c), None);
                 }
                 inspect::ProbeStep::EvaluateGoals(_) => (),
             }
@@ -199,35 +196,25 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
             inspect::ProbeKind::NormalizedSelfTyAssembly
             | inspect::ProbeKind::UnsizeAssembly
             | inspect::ProbeKind::UpcastProjectionCompatibility => (),
-            // We add a candidate for the root evaluation if there
+
+            // We add a candidate even for the root evaluation if there
             // is only one way to prove a given goal, e.g. for `WellFormed`.
-            //
-            // FIXME: This is currently wrong if we don't even try any
-            // candidates, e.g. for a trait goal, as in this case `candidates` is
-            // actually supposed to be empty.
             inspect::ProbeKind::Root { result }
-            | inspect::ProbeKind::TryNormalizeNonRigid { result } => {
-                if candidates.len() == num_candidates {
+            | inspect::ProbeKind::TryNormalizeNonRigid { result }
+            | inspect::ProbeKind::TraitCandidate { source: _, result }
+            | inspect::ProbeKind::OpaqueTypeStorageLookup { result } => {
+                // We only add a candidate if `shallow_certainty` was set, which means
+                // that we ended up calling `evaluate_added_goals_and_make_canonical_response`.
+                if let Some(shallow_certainty) = shallow_certainty {
                     candidates.push(InspectCandidate {
                         goal: self,
                         kind: probe.kind,
                         nested_goals: nested_goals.clone(),
                         final_state: probe.final_state,
                         result,
-                        candidate_certainty,
-                    })
+                        shallow_certainty,
+                    });
                 }
-            }
-            inspect::ProbeKind::MiscCandidate { name: _, result }
-            | inspect::ProbeKind::TraitCandidate { source: _, result } => {
-                candidates.push(InspectCandidate {
-                    goal: self,
-                    kind: probe.kind,
-                    nested_goals: nested_goals.clone(),
-                    final_state: probe.final_state,
-                    result,
-                    candidate_certainty,
-                });
             }
         }
     }
