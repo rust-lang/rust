@@ -67,8 +67,6 @@
 
 #[macro_use]
 extern crate tracing;
-#[macro_use]
-extern crate smallvec;
 
 #[cfg(test)]
 mod tests;

@@ -1,6 +1,6 @@
 /// Functionality for terminators and helper types that appear in terminators.
 use rustc_hir::LangItem;
-use smallvec::SmallVec;
+use smallvec::{smallvec, SmallVec};
 
 use super::TerminatorKind;
 use rustc_data_structures::packed::Pu128;

@@ -33,8 +33,6 @@
 extern crate tracing;
 #[macro_use]
 extern crate rustc_middle;
-#[macro_use]
-extern crate smallvec;
 
 pub mod errors;
 pub mod infer;

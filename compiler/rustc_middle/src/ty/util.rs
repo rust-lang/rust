@@ -22,7 +22,7 @@ use rustc_session::Limit;
 use rustc_span::sym;
 use rustc_target::abi::{Integer, IntegerType, Primitive, Size};
 use rustc_target::spec::abi::Abi;
-use smallvec::SmallVec;
+use smallvec::{smallvec, SmallVec};
 use std::{fmt, iter};
 
 #[derive(Copy, Clone, Debug)]

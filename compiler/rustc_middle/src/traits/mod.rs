@@ -26,7 +26,7 @@ use rustc_macros::{
 use rustc_span::def_id::{LocalDefId, CRATE_DEF_ID};
 use rustc_span::symbol::Symbol;
 use rustc_span::{Span, DUMMY_SP};
-use smallvec::SmallVec;
+use smallvec::{smallvec, SmallVec};
 
 use std::borrow::Cow;
 use std::hash::{Hash, Hasher};
