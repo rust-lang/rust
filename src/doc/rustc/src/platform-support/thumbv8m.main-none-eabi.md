@@ -16,7 +16,7 @@ See [`arm-none-eabi`](arm-none-eabi.md) for information applicable to all
 `arm-none-eabi` targets.
 
 This target uses the soft-float ABI: functions which take `f32` or `f64` as
-arguments will have those values packed into an integer registers. This target
+arguments will have those values packed into integer registers. This target
 therefore does not require the use of an FPU (which is optional on Cortex-M33,
 Cortex-M55 and Cortex-M85), but an FPU can be optionally enabled if desired. See
 also the hard-float ABI version of this target

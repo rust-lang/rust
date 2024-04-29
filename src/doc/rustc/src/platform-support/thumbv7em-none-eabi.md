@@ -14,7 +14,7 @@ See [`arm-none-eabi`](arm-none-eabi.md) for information applicable to all
 `arm-none-eabi` targets.
 
 This target uses the soft-float ABI: functions which take `f32` or `f64` as
-arguments will have those values packed into an integer registers. This target
+arguments will have those values packed into integer registers. This target
 therefore does not require the use of an FPU (which is optional on Cortex-M4 and
 Cortex-M7), but an FPU can be optionally enabled if desired. See also the
 hard-float ABI version of this target
@@ -52,7 +52,7 @@ The target CPU is `cortex-m4`.
 
 * All Cortex-M4 have DSP extensions
   * support is controlled by the `dsp` *target-feature*
-  * enabled by default with this *target-cpu*
+  * enabled by default with this *target*
 * Cortex-M4F has a single precision FPU
   * support is enabled by default with this *target-cpu*
   * disable support using the `+soft-float` feature
@@ -63,7 +63,7 @@ The target CPU is `cortex-m7`.
 
 * All Cortex-M7 have DSP extensions
   * support is controlled by the `dsp` *target-feature*
-  * enabled by default with this *target-cpu*
+  * enabled by default with this *target*
 * Cortex-M7F have either a single-precision or double-precision FPU
   * double-precision support is enabled by default with this *target-cpu*
     * opt-out by using the `-f64` *target-feature*

@@ -30,24 +30,34 @@
 
 ## Common Target Details
 
-This documentation covers details that apply to a range of bare-metal target for
-32-bit ARM CPUs. In addition, target specific details may be covered in their
-own document.
+This documentation covers details that apply to a range of bare-metal targets
+for 32-bit ARM CPUs. In addition, target specific details may be covered in
+their own document.
 
 If a target ends in `eabi`, that target uses the so-called *soft-float ABI*:
 functions which take `f32` or `f64` as arguments will have those values packed
 into integer registers. This means that an FPU is not required from an ABI
-perspective, but within a function FPU instructions may still be used if the
-code is compiled with a `target-cpu` or `target-feature` option that enables
-FPU support.
+perspective, but within a function floating-point instructions may still be used
+if the code is compiled with a `target-cpu` or `target-feature` option that
+enables FPU support.
 
-If a target ends if `eabihf`, that target uses the so-called *hard-float ABI*:
+If a target ends in `eabihf`, that target uses the so-called *hard-float ABI*:
 functions which take `f32` or `f64` as arguments will have them passed via FPU
-registers. These targets therefore require the use of an FPU and will assume the
-minimum support FPU for that architecture is available. More advanced FPU
-instructions (e.g. ones that work on double-precision `f64` values) may be
+registers. These targets therefore require the availability of an FPU and will
+assume some baseline level of floating-point support is available (which can
+vary depending on the target). More advanced floating-point instructions may be
 generated if the code is compiled with a `target-cpu` or `target-feature` option
-that enables such additional FPU support.
+that enables such additional FPU support. For example, if a given hard-float
+target has baseline *single-precision* (`f32`) support in hardware, there may be
+`target-cpu` or `target-feature` options that tell LLVM to assume your processor
+in fact also has *double-precision* (`f64`) support.
+
+You may of course use the `f32` and `f64` types in your code, regardless of the
+ABI being used, or the level of support your processor has for performing such
+operations in hardware. Any floating-point operations that LLVM assumes your
+processor cannot support will be lowered to library calls (like `__aeabi_dadd`)
+which perform the floating-point operation in software using integer
+instructions.
 
 ## Target CPU and Target Feature options
 
@@ -61,7 +71,7 @@ It is important to note that selecting a *target-cpu* will typically enable
 *all* the optional features available from Arm on that model of CPU and your
 particular implementation of that CPU may not have those features available. In
 that case, you can use `-C target-feature=-option` to turn off the specific CPU
-features you do not have available, leaving you with the optimised instruction
+features you do not have available, leaving you with the optimized instruction
 scheduling and support for the features you do have. More details are available
 in the detailed target-specific documentation.
 
@@ -76,13 +86,13 @@ uses (likely linker related ones):
 ```toml
 rustflags = [
   # Usual Arm bare-metal linker setup
-  "-C", "link-arg=-Tlink.x",
-  "-C", "link-arg=--nmagic",
+  "-Clink-arg=-Tlink.x",
+  "-Clink-arg=--nmagic",
   # tell Rust we have a Cortex-M55
-  "-C", "target-cpu=cortex-m55",
+  "-Ctarget-cpu=cortex-m55",
   # tell Rust our Cortex-M55 doesn't have Floating-Point M-Profile Vector
   # Extensions (but it does have everything else a Cortex-M55 could have).
-  "-C", "target-feature=-mve.fp"
+  "-Ctarget-feature=-mve.fp"
 ]
 
 [build]
@@ -157,10 +167,10 @@ Most of `core` should work as expected, with the following notes:
 
 Rust programs are output as ELF files.
 
-[atomic-load]: https://doc.rust-lang.org/stable/std/sync/atomic/struct.AtomicU32.html#method.load
-[atomic-store]: https://doc.rust-lang.org/stable/std/sync/atomic/struct.AtomicU32.html#method.store
-[fetch-add]: https://doc.rust-lang.org/stable/std/sync/atomic/struct.AtomicU32.html#method.fetch_add
-[compare-exchange]: https://doc.rust-lang.org/stable/std/sync/atomic/struct.AtomicU32.html#method.compare_exchange
+[atomic-load]: https://doc.rust-lang.org/stable/core/sync/atomic/struct.AtomicU32.html#method.load
+[atomic-store]: https://doc.rust-lang.org/stable/core/sync/atomic/struct.AtomicU32.html#method.store
+[fetch-add]: https://doc.rust-lang.org/stable/core/sync/atomic/struct.AtomicU32.html#method.fetch_add
+[compare-exchange]: https://doc.rust-lang.org/stable/core/sync/atomic/struct.AtomicU32.html#method.compare_exchange
 
 ## Testing
 

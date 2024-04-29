@@ -15,7 +15,7 @@ See [`arm-none-eabi`](arm-none-eabi.md) for information applicable to all
 `arm-none-eabi` targets.
 
 This target uses the soft-float ABI: functions which take `f32` or `f64` as
-arguments will have those values packed into an integer registers. This is the
+arguments will have those values packed into integer registers. This is the
 only option because there is no FPU support in [ARMv6-M].
 
 [t32-isa]: https://developer.arm.com/Architectures/T32%20Instruction%20Set%20Architecture
