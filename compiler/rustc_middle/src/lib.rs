@@ -66,8 +66,6 @@
 #![allow(rustc::untranslatable_diagnostic)]
 
 #[macro_use]
-extern crate bitflags;
-#[macro_use]
 extern crate tracing;
 #[macro_use]
 extern crate smallvec;

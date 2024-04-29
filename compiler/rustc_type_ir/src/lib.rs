@@ -8,9 +8,6 @@
 #[cfg(feature = "nightly")]
 extern crate self as rustc_type_ir;
 
-#[macro_use]
-extern crate bitflags;
-
 #[cfg(feature = "nightly")]
 use rustc_data_structures::sync::Lrc;
 #[cfg(feature = "nightly")]

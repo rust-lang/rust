@@ -1224,7 +1224,7 @@ pub struct Destructor {
 
 #[derive(Clone, Copy, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
 pub struct VariantFlags(u8);
-bitflags! {
+bitflags::bitflags! {
     impl VariantFlags: u8 {
         const NO_VARIANT_FLAGS        = 0;
         /// Indicates whether the field list of this variant is `#[non_exhaustive]`.

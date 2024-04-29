@@ -27,7 +27,7 @@ use super::{Destructor, FieldDef, GenericPredicates, Ty, TyCtxt, VariantDef, Var
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, HashStable, TyEncodable, TyDecodable)]
 pub struct AdtFlags(u16);
-bitflags! {
+bitflags::bitflags! {
     impl AdtFlags: u16 {
         const NO_ADT_FLAGS        = 0;
         /// Indicates whether the ADT is an enum.

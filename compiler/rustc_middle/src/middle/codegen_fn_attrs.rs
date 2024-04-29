@@ -49,7 +49,7 @@ pub struct CodegenFnAttrs {
 
 #[derive(Clone, Copy, PartialEq, Eq, TyEncodable, TyDecodable, HashStable)]
 pub struct CodegenFnAttrFlags(u32);
-bitflags! {
+bitflags::bitflags! {
     impl CodegenFnAttrFlags: u32 {
         /// `#[cold]`: a hint to LLVM that this function, when called, is never on
         /// the hot path.
