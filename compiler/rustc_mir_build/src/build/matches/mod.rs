@@ -73,14 +73,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let expr_span = expr.span;
 
         match expr.kind {
-            ExprKind::LogicalOp { op: LogicalOp::And, lhs, rhs } => {
-                this.visit_coverage_branch_operation(LogicalOp::And, expr_span);
+            ExprKind::LogicalOp { op: op @ LogicalOp::And, lhs, rhs } => {
+                this.visit_coverage_branch_operation(op, expr_span);
                 let lhs_then_block = unpack!(this.then_else_break_inner(block, lhs, args));
                 let rhs_then_block = unpack!(this.then_else_break_inner(lhs_then_block, rhs, args));
                 rhs_then_block.unit()
             }
-            ExprKind::LogicalOp { op: LogicalOp::Or, lhs, rhs } => {
-                this.visit_coverage_branch_operation(LogicalOp::Or, expr_span);
+            ExprKind::LogicalOp { op: op @ LogicalOp::Or, lhs, rhs } => {
+                this.visit_coverage_branch_operation(op, expr_span);
                 let local_scope = this.local_scope();
                 let (lhs_success_block, failure_block) =
                     this.in_if_then_scope(local_scope, expr_span, |this| {
