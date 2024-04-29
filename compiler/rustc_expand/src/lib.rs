@@ -23,7 +23,6 @@ mod proc_macro_server;
 pub use mbe::macro_rules::compile_declarative_macro;
 pub mod base;
 pub mod build;
-#[macro_use]
 pub mod config;
 pub mod errors;
 pub mod expand;
