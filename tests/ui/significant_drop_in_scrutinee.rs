@@ -801,4 +801,30 @@ fn should_not_trigger_lint_with_explicit_drop() {
     }
 }
 
+fn should_trigger_lint_in_if_let() {
+    let mutex = Mutex::new(vec![1]);
+
+    if let Some(val) = mutex.lock().unwrap().first().copied() {
+        //~^ ERROR: temporary with significant `Drop` in `if let` scrutinee will live until the
+        //~| NOTE: this might lead to deadlocks or other unexpected behavior
+        println!("{}", val);
+    }
+
+    // Should not trigger lint without the final `copied()`, because we actually hold a reference
+    // (i.e., the `val`) to the locked data.
+    if let Some(val) = mutex.lock().unwrap().first() {
+        println!("{}", val);
+    };
+}
+
+fn should_trigger_lint_in_while_let() {
+    let mutex = Mutex::new(vec![1]);
+
+    while let Some(val) = mutex.lock().unwrap().pop() {
+        //~^ ERROR: temporary with significant `Drop` in `while let` scrutinee will live until the
+        //~| NOTE: this might lead to deadlocks or other unexpected behavior
+        println!("{}", val);
+    }
+}
+
 fn main() {}
