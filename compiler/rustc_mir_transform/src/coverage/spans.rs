@@ -1,12 +1,13 @@
+use std::collections::BTreeSet;
+
 use rustc_data_structures::graph::DirectedGraph;
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir;
 use rustc_middle::mir::coverage::ConditionInfo;
 use rustc_span::{BytePos, Span};
-use std::collections::BTreeSet;
 
 use crate::coverage::graph::{BasicCoverageBlock, CoverageGraph, START_BCB};
-use crate::coverage::spans::from_mir::SpanFromMir;
+use crate::coverage::spans::from_mir::{extract_branch_pairs, extract_mcdc_mappings, SpanFromMir};
 use crate::coverage::ExtractedHirInfo;
 
 mod from_mir;
@@ -91,28 +92,11 @@ pub(super) fn generate_coverage_spans(
             mappings.push(BcbMapping { kind: BcbMappingKind::Code(START_BCB), span });
         }
     } else {
-        let sorted_spans = from_mir::mir_to_initial_sorted_coverage_spans(
-            mir_body,
-            hir_info,
-            basic_coverage_blocks,
-        );
-        let coverage_spans = SpansRefiner::refine_sorted_spans(sorted_spans);
-        mappings.extend(coverage_spans.into_iter().map(|RefinedCovspan { bcb, span, .. }| {
-            // Each span produced by the generator represents an ordinary code region.
-            BcbMapping { kind: BcbMappingKind::Code(bcb), span }
-        }));
+        extract_refined_covspans(mir_body, hir_info, basic_coverage_blocks, &mut mappings);
 
-        branch_pairs.extend(from_mir::extract_branch_pairs(
-            mir_body,
-            hir_info,
-            basic_coverage_blocks,
-        ));
+        branch_pairs.extend(extract_branch_pairs(mir_body, hir_info, basic_coverage_blocks));
 
-        mappings.extend(from_mir::extract_mcdc_mappings(
-            mir_body,
-            hir_info.body_span,
-            basic_coverage_blocks,
-        ));
+        mappings.extend(extract_mcdc_mappings(mir_body, hir_info.body_span, basic_coverage_blocks));
     }
 
     if mappings.is_empty() && branch_pairs.is_empty() {
@@ -147,6 +131,27 @@ pub(super) fn generate_coverage_spans(
     }
 
     Some(CoverageSpans { bcb_has_mappings, mappings, branch_pairs, test_vector_bitmap_bytes })
+}
+
+#[allow(unused_imports)] // Remove this line during the actual split.
+// FIXME(#124545) It's awkward that we have to re-export this, because it's an
+// internal detail of `from_mir` that is also needed when handling branch and
+// MC/DC spans. Ideally we would find a more natural home for it.
+pub(super) use from_mir::unexpand_into_body_span_with_visible_macro;
+
+pub(super) fn extract_refined_covspans(
+    mir_body: &mir::Body<'_>,
+    hir_info: &ExtractedHirInfo,
+    basic_coverage_blocks: &CoverageGraph,
+    mappings: &mut impl Extend<BcbMapping>,
+) {
+    let sorted_spans =
+        from_mir::mir_to_initial_sorted_coverage_spans(mir_body, hir_info, basic_coverage_blocks);
+    let coverage_spans = SpansRefiner::refine_sorted_spans(sorted_spans);
+    mappings.extend(coverage_spans.into_iter().map(|RefinedCovspan { bcb, span, .. }| {
+        // Each span produced by the generator represents an ordinary code region.
+        BcbMapping { kind: BcbMappingKind::Code(bcb), span }
+    }));
 }
 
 #[derive(Debug)]

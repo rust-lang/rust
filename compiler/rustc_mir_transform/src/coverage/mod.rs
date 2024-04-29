@@ -3,7 +3,6 @@ pub mod query;
 mod counters;
 mod graph;
 mod spans;
-
 #[cfg(test)]
 mod tests;
 

@@ -287,7 +287,7 @@ fn filtered_terminator_span(terminator: &Terminator<'_>) -> Option<Span> {
 ///
 /// [^1]Expansions result from Rust syntax including macros, syntactic sugar,
 /// etc.).
-fn unexpand_into_body_span_with_visible_macro(
+pub(crate) fn unexpand_into_body_span_with_visible_macro(
     original_span: Span,
     body_span: Span,
 ) -> Option<(Span, Option<Symbol>)> {
