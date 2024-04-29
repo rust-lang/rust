@@ -926,7 +926,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             return self.context.new_cast(None, value, dest_typ);
         }
 
-        debug_assert!(value_type.dyncast_array().is_some());
+        debug_assert!(dest_typ.dyncast_array().is_some());
         let name_suffix = match self.type_kind(value_type) {
             TypeKind::Float => "sfti",
             TypeKind::Double => "dfti",
