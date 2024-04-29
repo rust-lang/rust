@@ -3126,6 +3126,35 @@ pub struct StaticItem {
     pub expr: Option<P<Expr>>,
 }
 
+/// A static item in `extern` block.
+// This struct is identical to StaticItem for now but it's going to have a safety attribute.
+#[derive(Clone, Encodable, Decodable, Debug)]
+pub struct StaticForeignItem {
+    pub ty: P<Ty>,
+    pub mutability: Mutability,
+    pub expr: Option<P<Expr>>,
+}
+
+impl From<StaticItem> for StaticForeignItem {
+    fn from(static_item: StaticItem) -> StaticForeignItem {
+        StaticForeignItem {
+            ty: static_item.ty,
+            mutability: static_item.mutability,
+            expr: static_item.expr,
+        }
+    }
+}
+
+impl From<StaticForeignItem> for StaticItem {
+    fn from(static_item: StaticForeignItem) -> StaticItem {
+        StaticItem {
+            ty: static_item.ty,
+            mutability: static_item.mutability,
+            expr: static_item.expr,
+        }
+    }
+}
+
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct ConstItem {
     pub defaultness: Defaultness,
@@ -3329,7 +3358,7 @@ impl TryFrom<ItemKind> for AssocItemKind {
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub enum ForeignItemKind {
     /// A foreign static item (`static FOO: u8`).
-    Static(P<Ty>, Mutability, Option<P<Expr>>),
+    Static(Box<StaticForeignItem>),
     /// An foreign function.
     Fn(Box<Fn>),
     /// An foreign type.
@@ -3341,8 +3370,8 @@ pub enum ForeignItemKind {
 impl From<ForeignItemKind> for ItemKind {
     fn from(foreign_item_kind: ForeignItemKind) -> ItemKind {
         match foreign_item_kind {
-            ForeignItemKind::Static(a, b, c) => {
-                ItemKind::Static(StaticItem { ty: a, mutability: b, expr: c }.into())
+            ForeignItemKind::Static(box static_foreign_item) => {
+                ItemKind::Static(Box::new(static_foreign_item.into()))
             }
             ForeignItemKind::Fn(fn_kind) => ItemKind::Fn(fn_kind),
             ForeignItemKind::TyAlias(ty_alias_kind) => ItemKind::TyAlias(ty_alias_kind),
@@ -3356,8 +3385,8 @@ impl TryFrom<ItemKind> for ForeignItemKind {
 
     fn try_from(item_kind: ItemKind) -> Result<ForeignItemKind, ItemKind> {
         Ok(match item_kind {
-            ItemKind::Static(box StaticItem { ty: a, mutability: b, expr: c }) => {
-                ForeignItemKind::Static(a, b, c)
+            ItemKind::Static(box static_item) => {
+                ForeignItemKind::Static(Box::new(static_item.into()))
             }
             ItemKind::Fn(fn_kind) => ForeignItemKind::Fn(fn_kind),
             ItemKind::TyAlias(ty_alias_kind) => ForeignItemKind::TyAlias(ty_alias_kind),
@@ -3382,8 +3411,8 @@ mod size_asserts {
     static_assert_size!(Expr, 72);
     static_assert_size!(ExprKind, 40);
     static_assert_size!(Fn, 160);
-    static_assert_size!(ForeignItem, 96);
-    static_assert_size!(ForeignItemKind, 24);
+    static_assert_size!(ForeignItem, 88);
+    static_assert_size!(ForeignItemKind, 16);
     static_assert_size!(GenericArg, 24);
     static_assert_size!(GenericBound, 88);
     static_assert_size!(Generics, 40);
