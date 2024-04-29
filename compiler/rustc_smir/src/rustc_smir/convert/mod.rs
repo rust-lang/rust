@@ -10,11 +10,11 @@ mod mir;
 mod ty;
 
 impl<'tcx> Stable<'tcx> for rustc_hir::Unsafety {
-    type T = stable_mir::mir::Safety;
+    type T = stable_mir::mir::Unsafe;
     fn stable(&self, _: &mut Tables<'_>) -> Self::T {
         match self {
-            rustc_hir::Unsafety::Unsafe => stable_mir::mir::Safety::Unsafe,
-            rustc_hir::Unsafety::Normal => stable_mir::mir::Safety::Normal,
+            rustc_hir::Unsafety::Unsafe => stable_mir::mir::Unsafe::Yes,
+            rustc_hir::Unsafety::Normal => stable_mir::mir::Unsafe::No,
         }
     }
 }

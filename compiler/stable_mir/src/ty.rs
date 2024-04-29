@@ -1,5 +1,5 @@
 use super::{
-    mir::Safety,
+    mir::Unsafe,
     mir::{Body, Mutability},
     with, DefId, Error, Symbol,
 };
@@ -909,7 +909,7 @@ pub type PolyFnSig = Binder<FnSig>;
 pub struct FnSig {
     pub inputs_and_output: Vec<Ty>,
     pub c_variadic: bool,
-    pub unsafety: Safety,
+    pub unsafety: Unsafe,
     pub abi: Abi,
 }
 
@@ -1200,7 +1200,7 @@ pub enum TraitSpecializationKind {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TraitDecl {
     pub def_id: TraitDef,
-    pub unsafety: Safety,
+    pub unsafety: Unsafe,
     pub paren_sugar: bool,
     pub has_auto_impl: bool,
     pub is_marker: bool,
