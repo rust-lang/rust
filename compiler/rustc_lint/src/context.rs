@@ -110,7 +110,7 @@ struct LintAlias {
 
 struct LintGroup {
     lint_ids: Vec<LintId>,
-    is_loaded: bool,
+    is_externally_loaded: bool,
     depr: Option<LintAlias>,
 }
 
@@ -159,7 +159,9 @@ impl LintStore {
                 // Don't display deprecated lint groups.
                 depr.is_none()
             })
-            .map(|(k, LintGroup { lint_ids, is_loaded, .. })| (*k, lint_ids.clone(), *is_loaded))
+            .map(|(k, LintGroup { lint_ids, is_externally_loaded, .. })| {
+                (*k, lint_ids.clone(), *is_externally_loaded)
+            })
     }
 
     pub fn register_early_pass(
@@ -218,7 +220,7 @@ impl LintStore {
                         .entry(edition.lint_name())
                         .or_insert(LintGroup {
                             lint_ids: vec![],
-                            is_loaded: lint.is_loaded,
+                            is_externally_loaded: lint.is_externally_loaded,
                             depr: None,
                         })
                         .lint_ids
@@ -231,7 +233,7 @@ impl LintStore {
                         .entry("future_incompatible")
                         .or_insert(LintGroup {
                             lint_ids: vec![],
-                            is_loaded: lint.is_loaded,
+                            is_externally_loaded: lint.is_externally_loaded,
                             depr: None,
                         })
                         .lint_ids
@@ -246,7 +248,7 @@ impl LintStore {
             alias,
             LintGroup {
                 lint_ids: vec![],
-                is_loaded: false,
+                is_externally_loaded: false,
                 depr: Some(LintAlias { name: lint_name, silent: true }),
             },
         );
@@ -254,21 +256,21 @@ impl LintStore {
 
     pub fn register_group(
         &mut self,
-        is_loaded: bool,
+        is_externally_loaded: bool,
         name: &'static str,
         deprecated_name: Option<&'static str>,
         to: Vec<LintId>,
     ) {
         let new = self
             .lint_groups
-            .insert(name, LintGroup { lint_ids: to, is_loaded, depr: None })
+            .insert(name, LintGroup { lint_ids: to, is_externally_loaded, depr: None })
             .is_none();
         if let Some(deprecated) = deprecated_name {
             self.lint_groups.insert(
                 deprecated,
                 LintGroup {
                     lint_ids: vec![],
-                    is_loaded,
+                    is_externally_loaded,
                     depr: Some(LintAlias { name, silent: false }),
                 },
             );
