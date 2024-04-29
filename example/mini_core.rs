@@ -420,7 +420,6 @@ pub fn panic(_msg: &'static str) -> ! {
 
 macro_rules! panic_const {
     ($($lang:ident = $message:expr,)+) => {
-        #[cfg(not(bootstrap))]
         pub mod panic_const {
             use super::*;
 
