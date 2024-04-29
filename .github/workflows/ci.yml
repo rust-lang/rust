@@ -22,7 +22,6 @@ name: CI
       - try
       - try-perf
       - automation/bors/try
-      - master
   pull_request:
     branches:
       - "**"
@@ -35,6 +34,8 @@ defaults:
 concurrency:
   group: "${{ github.workflow }}-${{ ((github.ref == 'refs/heads/try' || github.ref == 'refs/heads/try-perf') && github.sha) || github.ref }}"
   cancel-in-progress: true
+env:
+  TOOLSTATE_REPO: "https://github.com/rust-lang-nursery/rust-toolstate"
 jobs:
   calculate_matrix:
     name: Calculate job matrix
@@ -51,24 +52,23 @@ jobs:
     name: "${{ matrix.name }}"
     needs:
       - calculate_matrix
+    runs-on: "${{ matrix.os }}"
+    defaults:
+      run:
+        shell: "${{ contains(matrix.os, 'windows') && 'msys2 {0}' || 'bash' }}"
+    timeout-minutes: 600
     env:
       CI_JOB_NAME: "${{ matrix.image }}"
       CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
       HEAD_SHA: "${{ github.event.pull_request.head.sha || github.sha }}"
       DOCKER_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
       SCCACHE_BUCKET: rust-lang-ci-sccache2
-      TOOLSTATE_REPO: "https://github.com/rust-lang-nursery/rust-toolstate"
       CACHE_DOMAIN: ci-caches.rust-lang.org
     continue-on-error: "${{ matrix.continue_on_error || false }}"
     strategy:
       matrix:
         include: "${{ fromJSON(needs.calculate_matrix.outputs.jobs) }}"
     if: "fromJSON(needs.calculate_matrix.outputs.jobs)[0] != null"
-    defaults:
-      run:
-        shell: "${{ contains(matrix.os, 'windows') && 'msys2 {0}' || 'bash' }}"
-    timeout-minutes: 600
-    runs-on: "${{ matrix.os }}"
     steps:
       - if: "contains(matrix.os, 'windows')"
         uses: msys2/setup-msys2@v2.22.0
@@ -152,30 +152,6 @@ jobs:
           AWS_ACCESS_KEY_ID: "${{ env.ARTIFACTS_AWS_ACCESS_KEY_ID }}"
           AWS_SECRET_ACCESS_KEY: "${{ secrets[format('AWS_SECRET_ACCESS_KEY_{0}', env.ARTIFACTS_AWS_ACCESS_KEY_ID)] }}"
         if: "success() && (github.event_name == 'push' || env.DEPLOY == '1' || env.DEPLOY_ALT == '1')"
-  master:
-    name: master
-    runs-on: ubuntu-latest
-    env:
-      SCCACHE_BUCKET: rust-lang-ci-sccache2
-      DEPLOY_BUCKET: rust-lang-ci2
-      TOOLSTATE_REPO: "https://github.com/rust-lang-nursery/rust-toolstate"
-      TOOLSTATE_ISSUES_API_URL: "https://api.github.com/repos/rust-lang/rust/issues"
-      TOOLSTATE_PUBLISH: 1
-      CACHES_AWS_ACCESS_KEY_ID: AKIA46X5W6CZI5DHEBFL
-      ARTIFACTS_AWS_ACCESS_KEY_ID: AKIA46X5W6CZN24CBO55
-      AWS_REGION: us-west-1
-      CACHE_DOMAIN: ci-caches.rust-lang.org
-    if: "github.event_name == 'push' && github.ref == 'refs/heads/master' && github.repository == 'rust-lang-ci/rust'"
-    steps:
-      - name: checkout the source code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
-      - name: publish toolstate
-        run: src/ci/publish_toolstate.sh
-        shell: bash
-        env:
-          TOOLSTATE_REPO_ACCESS_TOKEN: "${{ secrets.TOOLSTATE_REPO_ACCESS_TOKEN }}"
   try-success:
     needs:
       - job
@@ -201,9 +177,15 @@ jobs:
       - job
     if: "success() && github.event_name == 'push' && github.ref == 'refs/heads/auto' && github.repository == 'rust-lang-ci/rust'"
     steps:
-      - name: mark the job as a success
-        run: exit 0
+      - name: checkout the source code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: publish toolstate
+        run: src/ci/publish_toolstate.sh
         shell: bash
+        env:
+          TOOLSTATE_REPO_ACCESS_TOKEN: "${{ secrets.TOOLSTATE_REPO_ACCESS_TOKEN }}"
     name: bors build finished
     runs-on: ubuntu-latest
   auto-failure:

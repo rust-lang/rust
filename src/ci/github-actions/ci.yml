@@ -29,91 +29,108 @@
 # The expand-yaml-anchors tool will automatically remove this block from the
 # output YAML file.
 x--expand-yaml-anchors--remove:
-  - &shared-ci-variables
-    CI_JOB_NAME: ${{ matrix.name }}
-    CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
-    # commit of PR sha or commit sha. `GITHUB_SHA` is not accurate for PRs.
-    HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-    DOCKER_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  # These snippets are used by the try-success, try-failure, auto-success and auto-failure jobs.
+  # Check out their documentation for more information on why they're needed.
 
-  - &public-variables
-    SCCACHE_BUCKET: rust-lang-ci-sccache2
-    TOOLSTATE_REPO: https://github.com/rust-lang-nursery/rust-toolstate
-    CACHE_DOMAIN: ci-caches.rust-lang.org
+  - &base-outcome-job
+    name: bors build finished
+    runs-on: ubuntu-latest
 
-  - &prod-variables
-    SCCACHE_BUCKET: rust-lang-ci-sccache2
-    DEPLOY_BUCKET: rust-lang-ci2
-    TOOLSTATE_REPO: https://github.com/rust-lang-nursery/rust-toolstate
-    TOOLSTATE_ISSUES_API_URL: https://api.github.com/repos/rust-lang/rust/issues
-    TOOLSTATE_PUBLISH: 1
-    # AWS_SECRET_ACCESS_KEYs are stored in GitHub's secrets storage, named
-    # AWS_SECRET_ACCESS_KEY_<keyid>. Including the key id in the name allows to
-    # rotate them in a single branch while keeping the old key in another
-    # branch, which wouldn't be possible if the key was named with the kind
-    # (caches, artifacts...).
-    CACHES_AWS_ACCESS_KEY_ID: AKIA46X5W6CZI5DHEBFL
-    ARTIFACTS_AWS_ACCESS_KEY_ID: AKIA46X5W6CZN24CBO55
-    AWS_REGION: us-west-1
-    CACHE_DOMAIN: ci-caches.rust-lang.org
+  - &base-success-job
+    steps:
+      - name: mark the job as a success
+        run: exit 0
+        shell: bash
+    <<: *base-outcome-job
 
-  - &dummy-variables
-    SCCACHE_BUCKET: rust-lang-gha-caches
-    DEPLOY_BUCKET: rust-lang-gha
-    TOOLSTATE_REPO: https://github.com/pietroalbini/rust-toolstate
-    TOOLSTATE_ISSUES_API_URL: https://api.github.com/repos/pietroalbini/rust-toolstate/issues
-    TOOLSTATE_PUBLISH: 1
-    # AWS_SECRET_ACCESS_KEYs are stored in GitHub's secrets storage, named
-    # AWS_SECRET_ACCESS_KEY_<keyid>. Including the key id in the name allows to
-    # rotate them in a single branch while keeping the old key in another
-    # branch, which wouldn't be possible if the key was named with the kind
-    # (caches, artifacts...).
-    CACHES_AWS_ACCESS_KEY_ID: AKIA46X5W6CZOMUQATD5
-    ARTIFACTS_AWS_ACCESS_KEY_ID: AKIA46X5W6CZH5AYXDVF
-    AWS_REGION: us-west-1
-    CACHE_DOMAIN: ci-caches-gha.rust-lang.org
+  - &base-failure-job
+    steps:
+      - name: mark the job as a failure
+        run: exit 1
+        shell: bash
+    <<: *base-outcome-job
 
-  - &base-job
-    env: {}
+###########################
+#   Builders definition   #
+###########################
 
-  - &job-linux-4c
-    os: ubuntu-20.04-4core-16gb
-    <<: *base-job
+name: CI
+on:
+  push:
+    branches:
+      - auto
+      - try
+      - try-perf
+      - automation/bors/try
+  pull_request:
+    branches:
+      - "**"
 
-  - &job-linux-8c
-    os: ubuntu-20.04-8core-32gb
-    <<: *base-job
+permissions:
+  contents: read
+  packages: write
 
-  - &job-linux-16c
-    os: ubuntu-20.04-16core-64gb
-    <<: *base-job
+defaults:
+  run:
+    # On Linux, macOS, and Windows, use the system-provided bash as the default
+    # shell. (This should only make a difference on Windows, where the default
+    # shell is PowerShell.)
+    shell: bash
 
-  - &job-macos-xl
-    os: macos-13 # We use the standard runner for now
-    <<: *base-job
+concurrency:
+  # For a given workflow, if we push to the same branch, cancel all previous builds on that branch.
+  # We add an exception for try builds (try branch) and unrolled rollup builds (try-perf), which
+  # are all triggered on the same branch, but which should be able to run concurrently.
+  group: ${{ github.workflow }}-${{ ((github.ref == 'refs/heads/try' || github.ref == 'refs/heads/try-perf') && github.sha) || github.ref }}
+  cancel-in-progress: true
 
-  - &job-macos-m1
-    os: macos-14
-    <<: *base-job
+env:
+  TOOLSTATE_REPO: https://github.com/rust-lang-nursery/rust-toolstate
 
-  - &job-windows-8c
-    os: windows-2019-8core-32gb
-    <<: *base-job
-
-  - &job-windows-16c
-    os: windows-2019-16core-64gb
-    <<: *base-job
-
-  - &job-aarch64-linux
-    os: [self-hosted, ARM64, linux]
-
-  - &base-ci-job
+jobs:
+  # The job matrix for `calculate_matrix` is defined in src/ci/github-actions/jobs.yml.
+  # It calculates which jobs should be executed, based on the data of the ${{ github }} context.
+  # If you want to modify CI jobs, take a look at src/ci/github-actions/jobs.yml.
+  calculate_matrix:
+    name: Calculate job matrix
+    runs-on: ubuntu-latest
+    outputs:
+      jobs: ${{ steps.jobs.outputs.jobs }}
+    steps:
+      - name: Checkout the source code
+        uses: actions/checkout@v4
+      - name: Calculate the CI job matrix
+        run: python3 src/ci/github-actions/calculate-job-matrix.py >> $GITHUB_OUTPUT
+        id: jobs
+  job:
+    name: ${{ matrix.name }}
+    needs: [ calculate_matrix ]
+    runs-on: "${{ matrix.os }}"
     defaults:
       run:
         shell: ${{ contains(matrix.os, 'windows') && 'msys2 {0}' || 'bash' }}
     timeout-minutes: 600
-    runs-on: "${{ matrix.os }}"
-    env: *shared-ci-variables
+    env:
+      CI_JOB_NAME: ${{ matrix.image }}
+      CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
+      # commit of PR sha or commit sha. `GITHUB_SHA` is not accurate for PRs.
+      HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      DOCKER_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      SCCACHE_BUCKET: rust-lang-ci-sccache2
+      CACHE_DOMAIN: ci-caches.rust-lang.org
+    continue-on-error: ${{ matrix.continue_on_error || false }}
+    strategy:
+      matrix:
+        # Check the `calculate_matrix` job to see how is the matrix defined.
+        include: ${{ fromJSON(needs.calculate_matrix.outputs.jobs) }}
+    # GitHub Actions fails the workflow if an empty list of jobs is provided to
+    # the workflow, so we need to skip this job if nothing was produced by
+    # the Python script.
+    #
+    # Unfortunately checking whether a list is empty is not possible in a nice
+    # way due to GitHub Actions expressions limits.
+    # This hack is taken from https://github.com/ferrocene/ferrocene/blob/d43edc6b7697cf1719ec1c17c54904ab94825763/.github/workflows/release.yml#L75-L82
+    if: fromJSON(needs.calculate_matrix.outputs.jobs)[0] != null
     steps:
       - if: contains(matrix.os, 'windows')
         uses: msys2/setup-msys2@v2.22.0
@@ -253,122 +270,6 @@ x--expand-yaml-anchors--remove:
         # erroring about invalid credentials instead.
         if: success() && (github.event_name == 'push' || env.DEPLOY == '1' || env.DEPLOY_ALT == '1')
 
-  # These snippets are used by the try-success, try-failure, auto-success and auto-failure jobs.
-  # Check out their documentation for more information on why they're needed.
-
-  - &base-outcome-job
-    name: bors build finished
-    runs-on: ubuntu-latest
-
-  - &base-success-job
-    steps:
-      - name: mark the job as a success
-        run: exit 0
-        shell: bash
-    <<: *base-outcome-job
-
-  - &base-failure-job
-    steps:
-      - name: mark the job as a failure
-        run: exit 1
-        shell: bash
-    <<: *base-outcome-job
-
-###########################
-#   Builders definition   #
-###########################
-
-name: CI
-on:
-  push:
-    branches:
-      - auto
-      - try
-      - try-perf
-      - automation/bors/try
-      - master
-  pull_request:
-    branches:
-      - "**"
-
-permissions:
-  contents: read
-  packages: write
-
-defaults:
-  run:
-    # On Linux, macOS, and Windows, use the system-provided bash as the default
-    # shell. (This should only make a difference on Windows, where the default
-    # shell is PowerShell.)
-    shell: bash
-
-concurrency:
-  # For a given workflow, if we push to the same branch, cancel all previous builds on that branch.
-  # We add an exception for try builds (try branch) and unrolled rollup builds (try-perf), which
-  # are all triggered on the same branch, but which should be able to run concurrently.
-  group: ${{ github.workflow }}-${{ ((github.ref == 'refs/heads/try' || github.ref == 'refs/heads/try-perf') && github.sha) || github.ref }}
-  cancel-in-progress: true
-
-jobs:
-  # The job matrix for `calculate_matrix` is defined in src/ci/github-actions/jobs.yml.
-  # It calculates which jobs should be executed, based on the data of the ${{ github }} context.
-  # If you want to modify CI jobs, take a look at src/ci/github-actions/jobs.yml.
-  calculate_matrix:
-    name: Calculate job matrix
-    runs-on: ubuntu-latest
-    outputs:
-      jobs: ${{ steps.jobs.outputs.jobs }}
-    steps:
-      - name: Checkout the source code
-        uses: actions/checkout@v4
-      - name: Calculate the CI job matrix
-        run: python3 src/ci/github-actions/calculate-job-matrix.py >> $GITHUB_OUTPUT
-        id: jobs
-  job:
-    <<: *base-ci-job
-    name: ${{ matrix.name }}
-    needs: [ calculate_matrix ]
-    env:
-      CI_JOB_NAME: ${{ matrix.image }}
-      CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
-      # commit of PR sha or commit sha. `GITHUB_SHA` is not accurate for PRs.
-      HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-      DOCKER_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      SCCACHE_BUCKET: rust-lang-ci-sccache2
-      TOOLSTATE_REPO: https://github.com/rust-lang-nursery/rust-toolstate
-      CACHE_DOMAIN: ci-caches.rust-lang.org
-    continue-on-error: ${{ matrix.continue_on_error || false }}
-    strategy:
-      matrix:
-        # Check the `calculate_matrix` job to see how is the matrix defined.
-        include: ${{ fromJSON(needs.calculate_matrix.outputs.jobs) }}
-    # GitHub Actions fails the workflow if an empty list of jobs is provided to
-    # the workflow, so we need to skip this job if nothing was produced by
-    # the Python script.
-    #
-    # Unfortunately checking whether a list is empty is not possible in a nice
-    # way due to GitHub Actions expressions limits.
-    # This hack is taken from https://github.com/ferrocene/ferrocene/blob/d43edc6b7697cf1719ec1c17c54904ab94825763/.github/workflows/release.yml#L75-L82
-    if: fromJSON(needs.calculate_matrix.outputs.jobs)[0] != null
-
-  master:
-    name: master
-    runs-on: ubuntu-latest
-    env:
-      <<: [*prod-variables]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/master' && github.repository == 'rust-lang-ci/rust'
-    steps:
-      - name: checkout the source code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
-
-      - name: publish toolstate
-        run: src/ci/publish_toolstate.sh
-        shell: bash
-        env:
-          TOOLSTATE_REPO_ACCESS_TOKEN: ${{ secrets.TOOLSTATE_REPO_ACCESS_TOKEN }}
-
   # These jobs don't actually test anything, but they're used to tell bors the
   # build completed, as there is no practical way to detect when a workflow is
   # successful listening to webhooks only.
@@ -383,7 +284,18 @@ jobs:
   auto-success:
     needs: [ job ]
     if: "success() && github.event_name == 'push' && github.ref == 'refs/heads/auto' && github.repository == 'rust-lang-ci/rust'"
-    <<: *base-success-job
+    <<: *base-outcome-job
+    steps:
+      - name: checkout the source code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: publish toolstate
+        run: src/ci/publish_toolstate.sh
+        shell: bash
+        env:
+          TOOLSTATE_REPO_ACCESS_TOKEN: ${{ secrets.TOOLSTATE_REPO_ACCESS_TOKEN }}
+
   auto-failure:
     needs: [ job ]
     if: "!success() && github.event_name == 'push' && github.ref == 'refs/heads/auto' && github.repository == 'rust-lang-ci/rust'"
