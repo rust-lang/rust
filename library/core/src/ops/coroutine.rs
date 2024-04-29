@@ -46,7 +46,7 @@ pub enum CoroutineState<Y, R> {
 /// use std::pin::Pin;
 ///
 /// fn main() {
-///     let mut coroutine = #[cfg_attr(not(bootstrap), coroutine)] || {
+///     let mut coroutine = #[coroutine] || {
 ///         yield 1;
 ///         "foo"
 ///     };

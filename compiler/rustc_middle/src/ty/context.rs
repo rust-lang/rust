@@ -1285,7 +1285,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
         let definitions = &self.untracked.definitions;
         std::iter::from_coroutine(
-            #[cfg_attr(not(bootstrap), coroutine)]
+            #[coroutine]
             || {
                 let mut i = 0;
 

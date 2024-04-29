@@ -424,7 +424,7 @@ pub fn analyze_coroutine_closure_captures<'a, 'tcx: 'a, T>(
     mut for_each: impl FnMut((usize, &'a CapturedPlace<'tcx>), (usize, &'a CapturedPlace<'tcx>)) -> T,
 ) -> impl Iterator<Item = T> + Captures<'a> + Captures<'tcx> {
     std::iter::from_coroutine(
-        #[cfg_attr(not(bootstrap), coroutine)]
+        #[coroutine]
         move || {
             let mut child_captures = child_captures.into_iter().enumerate().peekable();
 

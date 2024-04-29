@@ -1715,7 +1715,6 @@ pub(crate) mod builtin {
         builtin # type_ascribe($expr, $ty)
     }
 
-    #[cfg(not(bootstrap))]
     /// Unstable placeholder for deref patterns.
     #[allow_internal_unstable(builtin_syntax)]
     #[unstable(

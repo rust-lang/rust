@@ -528,10 +528,7 @@ macro_rules! nonzero_integer {
             pub const fn leading_zeros(self) -> u32 {
                 // SAFETY: since `self` cannot be zero, it is safe to call `ctlz_nonzero`.
                 unsafe {
-                    #[cfg(not(bootstrap))]
-                    return intrinsics::ctlz_nonzero(self.get() as $UnsignedPrimitive);
-                    #[cfg(bootstrap)]
-                    return intrinsics::ctlz_nonzero(self.get() as $UnsignedPrimitive) as u32;
+                    intrinsics::ctlz_nonzero(self.get() as $UnsignedPrimitive)
                 }
             }
 
@@ -557,10 +554,7 @@ macro_rules! nonzero_integer {
             pub const fn trailing_zeros(self) -> u32 {
                 // SAFETY: since `self` cannot be zero, it is safe to call `cttz_nonzero`.
                 unsafe {
-                    #[cfg(not(bootstrap))]
-                    return intrinsics::cttz_nonzero(self.get() as $UnsignedPrimitive);
-                    #[cfg(bootstrap)]
-                    return intrinsics::cttz_nonzero(self.get() as $UnsignedPrimitive) as u32;
+                    intrinsics::cttz_nonzero(self.get() as $UnsignedPrimitive)
                 }
             }
 

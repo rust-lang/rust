@@ -1784,15 +1784,6 @@ pub(crate) const unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usiz
         assume, cttz_nonzero, exact_div, mul_with_overflow, unchecked_rem, unchecked_sub,
         wrapping_add, wrapping_mul, wrapping_sub,
     };
-    #[cfg(bootstrap)]
-    const unsafe fn unchecked_shl(value: usize, shift: usize) -> usize {
-        value << shift
-    }
-    #[cfg(bootstrap)]
-    const unsafe fn unchecked_shr(value: usize, shift: usize) -> usize {
-        value >> shift
-    }
-    #[cfg(not(bootstrap))]
     use intrinsics::{unchecked_shl, unchecked_shr};
 
     /// Calculate multiplicative modular inverse of `x` modulo `m`.

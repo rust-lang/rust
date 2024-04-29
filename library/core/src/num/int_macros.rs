@@ -1234,18 +1234,9 @@ macro_rules! int_impl {
         #[inline(always)]
         #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
         pub const unsafe fn unchecked_shl(self, rhs: u32) -> Self {
-            #[cfg(bootstrap)]
-            {
-                // For bootstrapping, just use built-in primitive shift.
-                // panicking is a legal manifestation of UB
-                self << rhs
-            }
-            #[cfg(not(bootstrap))]
-            {
                 // SAFETY: the caller must uphold the safety contract for
                 // `unchecked_shl`.
                 unsafe { intrinsics::unchecked_shl(self, rhs) }
-            }
         }
 
         /// Checked shift right. Computes `self >> rhs`, returning `None` if `rhs` is
@@ -1332,18 +1323,9 @@ macro_rules! int_impl {
         #[inline(always)]
         #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
         pub const unsafe fn unchecked_shr(self, rhs: u32) -> Self {
-            #[cfg(bootstrap)]
-            {
-                // For bootstrapping, just use built-in primitive shift.
-                // panicking is a legal manifestation of UB
-                self >> rhs
-            }
-            #[cfg(not(bootstrap))]
-            {
-                // SAFETY: the caller must uphold the safety contract for
-                // `unchecked_shr`.
-                unsafe { intrinsics::unchecked_shr(self, rhs) }
-            }
+            // SAFETY: the caller must uphold the safety contract for
+            // `unchecked_shr`.
+            unsafe { intrinsics::unchecked_shr(self, rhs) }
         }
 
         /// Checked absolute value. Computes `self.abs()`, returning `None` if
