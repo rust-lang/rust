@@ -1,5 +1,5 @@
 //! Name resolution façade.
-use std::{fmt, hash::BuildHasherDefault, mem};
+use std::{fmt, hash::BuildHasherDefault, iter, mem};
 
 use base_db::CrateId;
 use hir_expand::{
@@ -591,13 +591,13 @@ impl Resolver {
 
     pub fn where_predicates_in_scope(
         &self,
-    ) -> impl Iterator<Item = &crate::generics::WherePredicate> {
+    ) -> impl Iterator<Item = (&crate::generics::WherePredicate, &GenericDefId)> {
         self.scopes()
             .filter_map(|scope| match scope {
-                Scope::GenericParams { params, .. } => Some(params),
+                Scope::GenericParams { params, def } => Some((params, def)),
                 _ => None,
             })
-            .flat_map(|params| params.where_predicates.iter())
+            .flat_map(|(params, def)| params.where_predicates.iter().zip(iter::repeat(def)))
     }
 
     pub fn generic_def(&self) -> Option<GenericDefId> {

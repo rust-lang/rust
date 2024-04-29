@@ -208,6 +208,13 @@ pub(super) fn lower_generic_args(
                         .and_then(|args| lower_generic_args(lower_ctx, args))
                         .map(Interned::new);
                     let type_ref = assoc_type_arg.ty().map(|it| TypeRef::from_ast(lower_ctx, it));
+                    let type_ref = type_ref.inspect(|tr| {
+                        tr.walk(&mut |tr| {
+                            if let TypeRef::ImplTrait(bounds) = tr {
+                                lower_ctx.update_impl_traits_bounds(bounds.clone());
+                            }
+                        });
+                    });
                     let bounds = if let Some(l) = assoc_type_arg.type_bound_list() {
                         l.bounds()
                             .map(|it| Interned::new(TypeBound::from_ast(lower_ctx, it)))

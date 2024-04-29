@@ -339,6 +339,7 @@ impl GenericParamsCollector {
         target: Either<TypeRef, LifetimeRef>,
     ) {
         let bound = TypeBound::from_ast(lower_ctx, bound);
+        self.fill_impl_trait_bounds(lower_ctx.take_impl_traits_bounds());
         let predicate = match (target, bound) {
             (Either::Left(type_ref), bound) => match hrtb_lifetimes {
                 Some(hrtb_lifetimes) => WherePredicate::ForLifetime {
@@ -357,6 +358,23 @@ impl GenericParamsCollector {
             _ => return,
         };
         self.where_predicates.push(predicate);
+    }
+
+    fn fill_impl_trait_bounds(&mut self, impl_bounds: Vec<Vec<Interned<TypeBound>>>) {
+        for bounds in impl_bounds {
+            let param = TypeParamData {
+                name: None,
+                default: None,
+                provenance: TypeParamProvenance::ArgumentImplTrait,
+            };
+            let param_id = self.type_or_consts.alloc(param.into());
+            for bound in bounds {
+                self.where_predicates.push(WherePredicate::TypeBound {
+                    target: WherePredicateTypeTarget::TypeOrConstParam(param_id),
+                    bound,
+                });
+            }
+        }
     }
 
     pub(crate) fn fill_implicit_impl_trait_args(
