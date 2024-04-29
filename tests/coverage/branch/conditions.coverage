@@ -15,6 +15,7 @@
                                ^2
   ------------------
   |  Branch (LL:13): [True: 2, False: 1]
+  |  Branch (LL:18): [True: 1, False: 1]
   ------------------
    LL|      3|    black_box(x);
    LL|      3|}
@@ -24,6 +25,7 @@
                                ^1
   ------------------
   |  Branch (LL:13): [True: 2, False: 1]
+  |  Branch (LL:18): [True: 0, False: 1]
   ------------------
    LL|      3|    black_box(x);
    LL|      3|}
@@ -34,6 +36,7 @@
   ------------------
   |  Branch (LL:13): [True: 2, False: 2]
   |  Branch (LL:18): [True: 1, False: 1]
+  |  Branch (LL:23): [True: 1, False: 0]
   ------------------
    LL|      4|    black_box(x);
    LL|      4|}
@@ -44,6 +47,7 @@
   ------------------
   |  Branch (LL:13): [True: 2, False: 2]
   |  Branch (LL:18): [True: 1, False: 1]
+  |  Branch (LL:23): [True: 2, False: 1]
   ------------------
    LL|      4|    black_box(x);
    LL|      4|}
@@ -57,6 +61,7 @@
                            ^2
   ------------------
   |  Branch (LL:9): [True: 2, False: 1]
+  |  Branch (LL:14): [True: 1, False: 1]
   ------------------
    LL|      3|}
    LL|       |
