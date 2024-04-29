@@ -16,6 +16,7 @@ use rustc_hir::def_id::DefId;
 use rustc_infer::traits::util::elaborate;
 use rustc_middle::ty::adjustment;
 use rustc_middle::ty::{self, Ty};
+use rustc_session::{declare_lint, declare_lint_pass, impl_lint_pass};
 use rustc_span::symbol::Symbol;
 use rustc_span::symbol::{kw, sym};
 use rustc_span::{BytePos, Span};

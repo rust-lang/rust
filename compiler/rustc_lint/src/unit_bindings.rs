@@ -2,6 +2,7 @@ use crate::lints::UnitBindingsDiag;
 use crate::{LateLintPass, LintContext};
 use rustc_hir as hir;
 use rustc_middle::ty::Ty;
+use rustc_session::{declare_lint, declare_lint_pass};
 
 declare_lint! {
     /// The `unit_bindings` lint detects cases where bindings are useless because they have

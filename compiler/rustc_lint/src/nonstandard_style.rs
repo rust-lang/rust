@@ -11,6 +11,7 @@ use rustc_hir::intravisit::FnKind;
 use rustc_hir::{GenericParamKind, PatKind};
 use rustc_middle::ty;
 use rustc_session::config::CrateType;
+use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::{BytePos, Span};

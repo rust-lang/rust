@@ -5,6 +5,7 @@ use rustc_infer::infer::InferCtxt;
 use rustc_infer::traits::{Obligation, ObligationCause};
 use rustc_middle::ty::{self, Binder, Ty, TyCtxt, TypeFoldable, TypeFolder};
 use rustc_middle::ty::{EarlyBinder, TraitRef, TypeSuperFoldable};
+use rustc_session::{declare_lint, impl_lint_pass};
 use rustc_span::def_id::{DefId, LOCAL_CRATE};
 use rustc_span::Span;
 use rustc_span::{sym, symbol::kw, ExpnKind, MacroKind};

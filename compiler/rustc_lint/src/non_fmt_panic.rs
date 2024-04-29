@@ -8,6 +8,7 @@ use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty;
 use rustc_parse_format::{ParseMode, Parser, Piece};
 use rustc_session::lint::FutureIncompatibilityReason;
+use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::edition::Edition;
 use rustc_span::{hygiene, sym, symbol::kw, InnerSpan, Span, Symbol};
 use rustc_trait_selection::infer::InferCtxtExt;
