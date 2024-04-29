@@ -754,6 +754,7 @@ symbols! {
         enable,
         encode,
         end,
+        enumerate_method,
         env,
         env_CFG_RELEASE: env!("CFG_RELEASE"),
         eprint_macro,
