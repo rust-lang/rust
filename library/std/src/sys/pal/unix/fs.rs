@@ -894,6 +894,7 @@ impl Drop for Dir {
             target_os = "vita",
             target_os = "hurd",
             target_os = "espidf",
+            target_os = "fuchsia",
         )))]
         {
             let fd = unsafe { libc::dirfd(self.0) };
