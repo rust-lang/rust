@@ -468,6 +468,7 @@ pub fn target_features(
     allow_unstable: bool,
     target_info: &LockedTargetInfo,
 ) -> Vec<Symbol> {
+    // TODO(antoyo): use global_gcc_features.
     sess.target
         .supported_target_features()
         .iter()
@@ -478,8 +479,12 @@ pub fn target_features(
                 None
             }
         })
-        .filter(|_feature| {
-            target_info.cpu_supports(_feature)
+        .filter(|feature| {
+            // TODO: we disable Neon for now since we don't support the LLVM intrinsics for it.
+            if *feature == "neon" {
+                return false;
+            }
+            target_info.cpu_supports(feature)
             /*
               adx, aes, avx, avx2, avx512bf16, avx512bitalg, avx512bw, avx512cd, avx512dq, avx512er, avx512f, avx512fp16, avx512ifma,
               avx512pf, avx512vbmi, avx512vbmi2, avx512vl, avx512vnni, avx512vp2intersect, avx512vpopcntdq,
