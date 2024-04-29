@@ -14,7 +14,7 @@ See [`arm-none-eabi`](arm-none-eabi.md) for information applicable to all
 
 This target uses the soft-float ABI: functions which take `f32` or `f64` as
 arguments will have those values packed into integer registers. This is the
-only option because there is no FPU support in [ARMv6-M].
+only option because there is no FPU support in [ARMv8-M] Baseline.
 
 [t32-isa]: https://developer.arm.com/Architectures/T32%20Instruction%20Set%20Architecture
 [ARMv8-M]: https://developer.arm.com/documentation/ddi0553/latest/

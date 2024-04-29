@@ -64,7 +64,7 @@ instructions.
 It is possible to tell Rust (or LLVM) that you have a specific model of Arm
 processor, using the [`-C target-cpu`][target-cpu] option. You can also control
 whether Rust (or LLVM) will include instructions that target optional hardware
-features, e.g. hardware floating point, or vector maths operations, using [`-C
+features, e.g. hardware floating-point, or Advanced SIMD operations, using [`-C
 target-feature`][target-feature].
 
 It is important to note that selecting a *target-cpu* will typically enable
