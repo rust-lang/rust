@@ -1,5 +1,6 @@
 use rustc_ast_ir::try_visit;
 use rustc_data_structures::intern::Interned;
+use rustc_macros::{HashStable, TypeFoldable, TypeVisitable};
 use rustc_span::def_id::DefId;
 
 use crate::infer::canonical::{CanonicalVarValues, QueryRegionConstraints};

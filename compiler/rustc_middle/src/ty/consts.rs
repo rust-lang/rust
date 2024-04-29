@@ -6,7 +6,7 @@ use rustc_error_messages::MultiSpan;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::LocalDefId;
-use rustc_macros::HashStable;
+use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_type_ir::ConstKind as IrConstKind;
 use rustc_type_ir::{ConstTy, IntoKind, TypeFlags, WithCachedTypeInfo};
 

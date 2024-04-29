@@ -4,7 +4,7 @@ use crate::ty::abstract_const::CastKind;
 use crate::ty::GenericArgsRef;
 use crate::ty::{self, visit::TypeVisitableExt as _, List, Ty, TyCtxt};
 use rustc_hir::def_id::DefId;
-use rustc_macros::HashStable;
+use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 
 /// An unevaluated (potentially generic) constant used in the type-system.
 #[derive(Copy, Clone, Eq, PartialEq, TyEncodable, TyDecodable)]

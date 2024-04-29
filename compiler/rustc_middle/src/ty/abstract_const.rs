@@ -4,6 +4,7 @@ use crate::ty::{
     TypeVisitableExt,
 };
 use rustc_errors::ErrorGuaranteed;
+use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeVisitable};
 
 #[derive(Hash, Debug, Clone, Copy, Ord, PartialOrd, PartialEq, Eq)]
 #[derive(TyDecodable, TyEncodable, HashStable, TypeVisitable, TypeFoldable)]

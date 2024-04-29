@@ -6,7 +6,7 @@ use rustc_apfloat::{
     ieee::{Double, Half, Quad, Single},
     Float,
 };
-use rustc_macros::HashStable;
+use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_target::abi::{HasDataLayout, Size};
 
 use crate::ty::ScalarInt;

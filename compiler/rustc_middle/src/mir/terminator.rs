@@ -4,7 +4,7 @@ use smallvec::SmallVec;
 
 use super::TerminatorKind;
 use rustc_data_structures::packed::Pu128;
-use rustc_macros::HashStable;
+use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use std::slice;
 
 use super::*;
