@@ -166,13 +166,12 @@ pub(crate) fn write_bitmap_to_bytes(
         containers.push(container);
     }
     // https://github.com/RoaringBitmap/RoaringFormatSpec
-    use byteorder::{WriteBytesExt, LE};
     const SERIAL_COOKIE_NO_RUNCONTAINER: u32 = 12346;
     const SERIAL_COOKIE: u32 = 12347;
     const NO_OFFSET_THRESHOLD: u32 = 4;
     let size: u32 = containers.len().try_into().unwrap();
     let start_offset = if has_run {
-        out.write_u32::<LE>(SERIAL_COOKIE | ((size - 1) << 16))?;
+        out.write_all(&u32::to_le_bytes(SERIAL_COOKIE | ((size - 1) << 16)))?;
         for set in containers.chunks(8) {
             let mut b = 0;
             for (i, container) in set.iter().enumerate() {
@@ -180,7 +179,7 @@ pub(crate) fn write_bitmap_to_bytes(
                     b |= 1 << i;
                 }
             }
-            out.write_u8(b)?;
+            out.write_all(&[b])?;
         }
         if size < NO_OFFSET_THRESHOLD {
             4 + 4 * size + ((size + 7) / 8)
@@ -188,21 +187,21 @@ pub(crate) fn write_bitmap_to_bytes(
             4 + 8 * size + ((size + 7) / 8)
         }
     } else {
-        out.write_u32::<LE>(SERIAL_COOKIE_NO_RUNCONTAINER)?;
-        out.write_u32::<LE>(containers.len().try_into().unwrap())?;
+        out.write_all(&u32::to_le_bytes(SERIAL_COOKIE_NO_RUNCONTAINER))?;
+        out.write_all(&u32::to_le_bytes(containers.len().try_into().unwrap()))?;
         4 + 4 + 4 * size + 4 * size
     };
     for (&key, container) in keys.iter().zip(&containers) {
         // descriptive header
         let key: u32 = key.into();
         let count: u32 = container.popcount() - 1;
-        out.write_u32::<LE>((count << 16) | key)?;
+        out.write_all(&u32::to_le_bytes((count << 16) | key))?;
     }
     if !has_run || size >= NO_OFFSET_THRESHOLD {
         // offset header
         let mut starting_offset = start_offset;
         for container in &containers {
-            out.write_u32::<LE>(starting_offset)?;
+            out.write_all(&u32::to_le_bytes(starting_offset))?;
             starting_offset += match container {
                 Container::Bits(_) => 8192u32,
                 Container::Array(array) => u32::try_from(array.len()).unwrap() * 2,
@@ -214,19 +213,19 @@ pub(crate) fn write_bitmap_to_bytes(
         match container {
             Container::Bits(bits) => {
                 for chunk in bits.iter() {
-                    out.write_u64::<LE>(*chunk)?;
+                    out.write_all(&u64::to_le_bytes(*chunk))?;
                 }
             }
             Container::Array(array) => {
                 for value in array.iter() {
-                    out.write_u16::<LE>(*value)?;
+                    out.write_all(&u16::to_le_bytes(*value))?;
                 }
             }
             Container::Run(runs) => {
-                out.write_u16::<LE>((runs.len()).try_into().unwrap())?;
+                out.write_all(&u16::to_le_bytes(runs.len().try_into().unwrap()))?;
                 for (start, lenm1) in runs.iter().copied() {
-                    out.write_u16::<LE>(start)?;
-                    out.write_u16::<LE>(lenm1)?;
+                    out.write_all(&u16::to_le_bytes(start))?;
+                    out.write_all(&u16::to_le_bytes(lenm1))?;
                 }
             }
         }

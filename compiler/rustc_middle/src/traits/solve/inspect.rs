@@ -141,10 +141,6 @@ pub enum ProbeKind<'tcx> {
     TryNormalizeNonRigid { result: QueryResult<'tcx> },
     /// Probe entered when normalizing the self ty during candidate assembly
     NormalizedSelfTyAssembly,
-    /// Some candidate to prove the current goal.
-    ///
-    /// FIXME: Remove this in favor of always using more strongly typed variants.
-    MiscCandidate { name: &'static str, result: QueryResult<'tcx> },
     /// A candidate for proving a trait or alias-relate goal.
     TraitCandidate { source: CandidateSource, result: QueryResult<'tcx> },
     /// Used in the probe that wraps normalizing the non-self type for the unsize
@@ -154,4 +150,6 @@ pub enum ProbeKind<'tcx> {
     /// do a probe to find out what projection type(s) may be used to prove that
     /// the source type upholds all of the target type's object bounds.
     UpcastProjectionCompatibility,
+    /// Try to unify an opaque type with an existing key in the storage.
+    OpaqueTypeStorageLookup { result: QueryResult<'tcx> },
 }

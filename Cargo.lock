@@ -2113,7 +2113,6 @@ dependencies = [
  "fs-err",
  "getopts",
  "jsonpath_lib",
- "once_cell",
  "regex",
  "serde_json",
  "shlex",
@@ -2232,7 +2231,6 @@ name = "linkchecker"
 version = "0.1.0"
 dependencies = [
  "html5ever",
- "once_cell",
  "regex",
 ]
 
@@ -2491,7 +2489,6 @@ dependencies = [
  "directories",
  "getrandom",
  "jemalloc-sys",
- "lazy_static",
  "libc",
  "libffi",
  "libloading",
@@ -4791,12 +4788,10 @@ dependencies = [
  "arrayvec",
  "askama",
  "base64",
- "byteorder",
  "expect-test",
  "indexmap",
  "itertools 0.12.1",
  "minifier",
- "once_cell",
  "regex",
  "rustdoc-json-types",
  "serde",
@@ -5351,7 +5346,6 @@ version = "0.1.0"
 dependencies = [
  "build_helper",
  "glob",
- "once_cell",
 ]
 
 [[package]]
@@ -5596,7 +5590,6 @@ version = "0.1.0"
 dependencies = [
  "cargo_metadata 0.15.4",
  "ignore",
- "lazy_static",
  "miropt-test-tools",
  "regex",
  "rustc-hash",

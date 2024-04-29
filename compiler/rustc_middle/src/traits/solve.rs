@@ -332,4 +332,9 @@ pub enum CandidateSource {
     /// }
     /// ```
     AliasBound,
+    /// A candidate that is registered only during coherence to represent some
+    /// yet-unknown impl that could be produced downstream without violating orphan
+    /// rules.
+    // FIXME: Merge this with the forced ambiguity candidates, so those don't use `Misc`.
+    CoherenceUnknowable,
 }

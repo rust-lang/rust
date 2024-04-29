@@ -896,13 +896,19 @@ impl CanConstProp {
         };
         for (local, val) in cpv.can_const_prop.iter_enumerated_mut() {
             let ty = body.local_decls[local].ty;
-            match tcx.layout_of(param_env.and(ty)) {
-                Ok(layout) if layout.size < Size::from_bytes(MAX_ALLOC_LIMIT) => {}
-                // Either the layout fails to compute, then we can't use this local anyway
-                // or the local is too large, then we don't want to.
-                _ => {
-                    *val = ConstPropMode::NoPropagation;
-                    continue;
+            if ty.is_union() {
+                // Do not const prop unions as they can
+                // ICE during layout calc
+                *val = ConstPropMode::NoPropagation;
+            } else {
+                match tcx.layout_of(param_env.and(ty)) {
+                    Ok(layout) if layout.size < Size::from_bytes(MAX_ALLOC_LIMIT) => {}
+                    // Either the layout fails to compute, then we can't use this local anyway
+                    // or the local is too large, then we don't want to.
+                    _ => {
+                        *val = ConstPropMode::NoPropagation;
+                        continue;
+                    }
                 }
             }
         }

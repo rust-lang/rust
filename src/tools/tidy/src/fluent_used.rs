@@ -1,13 +1,8 @@
 //! Checks that all Fluent messages appear at least twice
 
 use crate::walk::{filter_dirs, walk};
-use regex::Regex;
 use std::collections::HashMap;
 use std::path::Path;
-
-lazy_static::lazy_static! {
-    static ref WORD: Regex = Regex::new(r"\w+").unwrap();
-}
 
 fn filter_used_messages(
     contents: &str,
@@ -17,7 +12,7 @@ fn filter_used_messages(
     // we don't just check messages never appear in Rust files,
     // because messages can be used as parts of other fluent messages in Fluent files,
     // so we do checking messages appear only once in all Rust and Fluent files.
-    let mut matches = WORD.find_iter(contents);
+    let mut matches = static_regex!(r"\w+").find_iter(contents);
     while let Some(name) = matches.next() {
         if let Some((name, filename)) = msgs_not_appeared_yet.remove_entry(name.as_str()) {
             // if one msg appears for the first time,
