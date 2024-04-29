@@ -1,5 +1,5 @@
 error[E0412]: cannot find type `Sum` in this scope
-  --> $DIR/erroneous_type_in_promoted.rs:6:22
+  --> $DIR/erroneous_type_in_const_return_value.rs:6:22
    |
 LL |     UnusedByTheConst(Sum),
    |                      ^^^ not found in this scope

@@ -66,6 +66,9 @@ impl ReportedErrorInfo {
     pub fn tainted_by_errors(error: ErrorGuaranteed) -> ReportedErrorInfo {
         ReportedErrorInfo { is_tainted_by_errors: true, error }
     }
+    pub fn is_tainted_by_errors(&self) -> bool {
+        self.is_tainted_by_errors
+    }
 }
 
 impl From<ErrorGuaranteed> for ReportedErrorInfo {
