@@ -57,6 +57,10 @@ impl<'a, 'tcx> InspectCandidate<'a, 'tcx> {
         self.result.map(|c| c.value.certainty)
     }
 
+    pub fn goal(&self) -> &'a InspectGoal<'a, 'tcx> {
+        self.goal
+    }
+
     /// Certainty passed into `evaluate_added_goals_and_make_canonical_response`.
     ///
     /// If this certainty is `Yes`, then we must be confident that the candidate
@@ -74,46 +78,55 @@ impl<'a, 'tcx> InspectCandidate<'a, 'tcx> {
     /// the state of the `infcx`.
     pub fn visit_nested_no_probe<V: ProofTreeVisitor<'tcx>>(&self, visitor: &mut V) -> V::Result {
         if self.goal.depth < visitor.config().max_depth {
-            let infcx = self.goal.infcx;
-            let param_env = self.goal.goal.param_env;
-            let mut orig_values = self.goal.orig_values.to_vec();
-            let mut instantiated_goals = vec![];
-            for goal in &self.nested_goals {
-                let goal = canonical::instantiate_canonical_state(
+            for goal in self.instantiate_nested_goals(visitor.span()) {
+                try_visit!(visitor.visit_goal(&goal));
+            }
+        }
+
+        V::Result::output()
+    }
+
+    /// Instantiate the nested goals for the candidate without rolling back their
+    /// inference constraints. This function modifies the state of the `infcx`.
+    pub fn instantiate_nested_goals(&self, span: Span) -> Vec<InspectGoal<'a, 'tcx>> {
+        let infcx = self.goal.infcx;
+        let param_env = self.goal.goal.param_env;
+        let mut orig_values = self.goal.orig_values.to_vec();
+        let instantiated_goals: Vec<_> = self
+            .nested_goals
+            .iter()
+            .map(|goal| {
+                canonical::instantiate_canonical_state(
                     infcx,
-                    visitor.span(),
+                    span,
                     param_env,
                     &mut orig_values,
                     *goal,
-                );
-                instantiated_goals.push(goal);
-            }
+                )
+            })
+            .collect();
 
-            let () = canonical::instantiate_canonical_state(
-                infcx,
-                visitor.span(),
-                param_env,
-                &mut orig_values,
-                self.final_state,
-            );
+        let () = canonical::instantiate_canonical_state(
+            infcx,
+            span,
+            param_env,
+            &mut orig_values,
+            self.final_state,
+        );
 
-            for &goal in &instantiated_goals {
+        instantiated_goals
+            .into_iter()
+            .map(|goal| {
                 let proof_tree = match goal.predicate.kind().no_bound_vars() {
                     Some(ty::PredicateKind::NormalizesTo(ty::NormalizesTo { alias, term })) => {
                         let unconstrained_term = match term.unpack() {
                             ty::TermKind::Ty(_) => infcx
-                                .next_ty_var(TypeVariableOrigin {
-                                    param_def_id: None,
-                                    span: visitor.span(),
-                                })
+                                .next_ty_var(TypeVariableOrigin { param_def_id: None, span })
                                 .into(),
                             ty::TermKind::Const(ct) => infcx
                                 .next_const_var(
                                     ct.ty(),
-                                    ConstVariableOrigin {
-                                        param_def_id: None,
-                                        span: visitor.span(),
-                                    },
+                                    ConstVariableOrigin { param_def_id: None, span },
                                 )
                                 .into(),
                         };
@@ -129,22 +142,16 @@ impl<'a, 'tcx> InspectCandidate<'a, 'tcx> {
                             })
                             .1;
                         let InferOk { value: (), obligations: _ } = infcx
-                            .at(&ObligationCause::dummy(), param_env)
+                            .at(&ObligationCause::dummy_with_span(span), param_env)
                             .eq(DefineOpaqueTypes::Yes, term, unconstrained_term)
                             .unwrap();
                         proof_tree
                     }
                     _ => infcx.evaluate_root_goal(goal, GenerateProofTree::Yes).1,
                 };
-                try_visit!(visitor.visit_goal(&InspectGoal::new(
-                    infcx,
-                    self.goal.depth + 1,
-                    proof_tree.unwrap(),
-                )));
-            }
-        }
-
-        V::Result::output()
+                InspectGoal::new(infcx, self.goal.depth + 1, proof_tree.unwrap())
+            })
+            .collect()
     }
 
     /// Visit all nested goals of this candidate, rolling back
