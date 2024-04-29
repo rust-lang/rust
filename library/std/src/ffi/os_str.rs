@@ -532,6 +532,12 @@ impl OsString {
         let rw = Box::into_raw(self.inner.into_box()) as *mut OsStr;
         unsafe { Box::from_raw(rw) }
     }
+
+    /// Part of a hack to make PathBuf::push/pop more efficient.
+    #[inline]
+    pub(crate) fn as_mut_vec_for_path_buf(&mut self) -> &mut Vec<u8> {
+        self.inner.as_mut_vec_for_path_buf()
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]

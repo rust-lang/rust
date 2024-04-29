@@ -1,4 +1,3 @@
-#![feature(inline_const)]
 #![feature(yeet_expr)]
 #![allow(incomplete_features)] // Necessary for now, while explicit_tail_calls is incomplete
 #![feature(explicit_tail_calls)]

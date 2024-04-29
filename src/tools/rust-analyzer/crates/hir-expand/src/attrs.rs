@@ -1,5 +1,5 @@
 //! A higher level attributes based on TokenTree, with also some shortcuts.
-use std::{fmt, ops};
+use std::{borrow::Cow, fmt, ops};
 
 use base_db::CrateId;
 use cfg::CfgExpr;
@@ -8,6 +8,7 @@ use intern::Interned;
 use mbe::{syntax_node_to_token_tree, DelimiterKind, Punct};
 use smallvec::{smallvec, SmallVec};
 use span::{Span, SyntaxContextId};
+use syntax::unescape;
 use syntax::{ast, format_smolstr, match_ast, AstNode, AstToken, SmolStr, SyntaxNode};
 use triomphe::ThinArc;
 
@@ -54,8 +55,7 @@ impl RawAttrs {
                     Attr {
                         id,
                         input: Some(Interned::new(AttrInput::Literal(tt::Literal {
-                            // FIXME: Escape quotes from comment content
-                            text: SmolStr::new(format_smolstr!("\"{doc}\"",)),
+                            text: SmolStr::new(format_smolstr!("\"{}\"", Self::escape_chars(doc))),
                             span,
                         }))),
                         path: Interned::new(ModPath::from(crate::name!(doc))),
@@ -72,6 +72,10 @@ impl RawAttrs {
         };
 
         RawAttrs { entries }
+    }
+
+    fn escape_chars(s: &str) -> String {
+        s.replace('\\', r#"\\"#).replace('"', r#"\""#)
     }
 
     pub fn from_attrs_owner(
@@ -297,6 +301,18 @@ impl Attr {
         }
     }
 
+    pub fn string_value_unescape(&self) -> Option<Cow<'_, str>> {
+        match self.input.as_deref()? {
+            AttrInput::Literal(it) => match it.text.strip_prefix('r') {
+                Some(it) => {
+                    it.trim_matches('#').strip_prefix('"')?.strip_suffix('"').map(Cow::Borrowed)
+                }
+                None => it.text.strip_prefix('"')?.strip_suffix('"').and_then(unescape),
+            },
+            _ => None,
+        }
+    }
+
     /// #[path(ident)]
     pub fn single_ident_value(&self) -> Option<&tt::Ident> {
         match self.input.as_deref()? {
@@ -343,6 +359,33 @@ impl Attr {
         } else {
             None
         }
+    }
+}
+
+fn unescape(s: &str) -> Option<Cow<'_, str>> {
+    let mut buf = String::new();
+    let mut prev_end = 0;
+    let mut has_error = false;
+    unescape::unescape_unicode(s, unescape::Mode::Str, &mut |char_range, unescaped_char| match (
+        unescaped_char,
+        buf.capacity() == 0,
+    ) {
+        (Ok(c), false) => buf.push(c),
+        (Ok(_), true) if char_range.len() == 1 && char_range.start == prev_end => {
+            prev_end = char_range.end
+        }
+        (Ok(c), true) => {
+            buf.reserve_exact(s.len());
+            buf.push_str(&s[..prev_end]);
+            buf.push(c);
+        }
+        (Err(_), _) => has_error = true,
+    });
+
+    match (has_error, buf.capacity() == 0) {
+        (true, _) => None,
+        (false, false) => Some(Cow::Owned(buf)),
+        (false, true) => Some(Cow::Borrowed(s)),
     }
 }
 

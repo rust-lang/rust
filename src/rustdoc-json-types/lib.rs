@@ -314,7 +314,7 @@ pub enum StructKind {
     /// All [`Id`]'s will point to [`ItemEnum::StructField`]. Private and
     /// `#[doc(hidden)]` fields will be given as `None`
     Tuple(Vec<Option<Id>>),
-    /// A struct with nammed fields.
+    /// A struct with named fields.
     ///
     /// ```rust
     /// pub struct PlainStruct { x: i32 }

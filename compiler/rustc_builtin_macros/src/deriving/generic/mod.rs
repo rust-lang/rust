@@ -174,8 +174,8 @@
 //! )
 //! ```
 
-pub use StaticFields::*;
-pub use SubstructureFields::*;
+pub(crate) use StaticFields::*;
+pub(crate) use SubstructureFields::*;
 
 use crate::{deriving, errors};
 use rustc_ast::ptr::P;
@@ -195,9 +195,9 @@ use std::vec;
 use thin_vec::{thin_vec, ThinVec};
 use ty::{Bounds, Path, Ref, Self_, Ty};
 
-pub mod ty;
+pub(crate) mod ty;
 
-pub struct TraitDef<'a> {
+pub(crate) struct TraitDef<'a> {
     /// The span for the current #[derive(Foo)] header.
     pub span: Span,
 
@@ -224,7 +224,7 @@ pub struct TraitDef<'a> {
     pub is_const: bool,
 }
 
-pub struct MethodDef<'a> {
+pub(crate) struct MethodDef<'a> {
     /// name of the method
     pub name: Symbol,
     /// List of generics, e.g., `R: rand::Rng`
@@ -248,7 +248,7 @@ pub struct MethodDef<'a> {
 
 /// How to handle fieldless enum variants.
 #[derive(PartialEq)]
-pub enum FieldlessVariantsStrategy {
+pub(crate) enum FieldlessVariantsStrategy {
     /// Combine fieldless variants into a single match arm.
     /// This assumes that relevant information has been handled
     /// by looking at the enum's discriminant.
@@ -263,7 +263,7 @@ pub enum FieldlessVariantsStrategy {
 }
 
 /// All the data about the data structure/method being derived upon.
-pub struct Substructure<'a> {
+pub(crate) struct Substructure<'a> {
     /// ident of self
     pub type_ident: Ident,
     /// Verbatim access to any non-selflike arguments, i.e. arguments that
@@ -273,7 +273,7 @@ pub struct Substructure<'a> {
 }
 
 /// Summary of the relevant parts of a struct/enum field.
-pub struct FieldInfo {
+pub(crate) struct FieldInfo {
     pub span: Span,
     /// None for tuple structs/normal enum variants, Some for normal
     /// structs/struct enum variants.
@@ -287,13 +287,13 @@ pub struct FieldInfo {
 }
 
 #[derive(Copy, Clone)]
-pub enum IsTuple {
+pub(crate) enum IsTuple {
     No,
     Yes,
 }
 
 /// Fields for a static method
-pub enum StaticFields {
+pub(crate) enum StaticFields {
     /// Tuple and unit structs/enum variants like this.
     Unnamed(Vec<Span>, IsTuple),
     /// Normal structs/struct variants.
@@ -301,7 +301,7 @@ pub enum StaticFields {
 }
 
 /// A summary of the possible sets of fields.
-pub enum SubstructureFields<'a> {
+pub(crate) enum SubstructureFields<'a> {
     /// A non-static method where `Self` is a struct.
     Struct(&'a ast::VariantData, Vec<FieldInfo>),
 
@@ -329,10 +329,10 @@ pub enum SubstructureFields<'a> {
 
 /// Combine the values of all the fields together. The last argument is
 /// all the fields of all the structures.
-pub type CombineSubstructureFunc<'a> =
+pub(crate) type CombineSubstructureFunc<'a> =
     Box<dyn FnMut(&ExtCtxt<'_>, Span, &Substructure<'_>) -> BlockOrExpr + 'a>;
 
-pub fn combine_substructure(
+pub(crate) fn combine_substructure(
     f: CombineSubstructureFunc<'_>,
 ) -> RefCell<CombineSubstructureFunc<'_>> {
     RefCell::new(f)
@@ -349,7 +349,7 @@ struct TypeParameter {
 /// avoiding the insertion of any unnecessary blocks.
 ///
 /// The statements come before the expression.
-pub struct BlockOrExpr(ThinVec<ast::Stmt>, Option<P<Expr>>);
+pub(crate) struct BlockOrExpr(ThinVec<ast::Stmt>, Option<P<Expr>>);
 
 impl BlockOrExpr {
     pub fn new_stmts(stmts: ThinVec<ast::Stmt>) -> BlockOrExpr {
@@ -1647,7 +1647,7 @@ impl<'a> TraitDef<'a> {
 /// The function passed to `cs_fold` is called repeatedly with a value of this
 /// type. It describes one part of the code generation. The result is always an
 /// expression.
-pub enum CsFold<'a> {
+pub(crate) enum CsFold<'a> {
     /// The basic case: a field expression for one or more selflike args. E.g.
     /// for `PartialEq::eq` this is something like `self.x == other.x`.
     Single(&'a FieldInfo),
@@ -1662,7 +1662,7 @@ pub enum CsFold<'a> {
 
 /// Folds over fields, combining the expressions for each field in a sequence.
 /// Statics may not be folded over.
-pub fn cs_fold<F>(
+pub(crate) fn cs_fold<F>(
     use_foldl: bool,
     cx: &ExtCtxt<'_>,
     trait_span: Span,

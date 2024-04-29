@@ -63,7 +63,7 @@
 // cdb-check: b                : Returned [Type: enum2$<coroutine_objects::main::coroutine_env$0>]
 // cdb-check:    [+0x[...]] _ref__a          : 0x[...] : 6 [Type: int *]
 
-#![feature(omit_gdb_pretty_printer_section, coroutines, coroutine_trait)]
+#![feature(omit_gdb_pretty_printer_section, coroutines, coroutine_trait, stmt_expr_attributes)]
 #![omit_gdb_pretty_printer_section]
 
 use std::ops::Coroutine;
@@ -71,7 +71,8 @@ use std::pin::Pin;
 
 fn main() {
     let mut a = 5;
-    let mut b = || {
+    let mut b = #[coroutine]
+    || {
         let mut c = 6;
         let mut d = 7;
 

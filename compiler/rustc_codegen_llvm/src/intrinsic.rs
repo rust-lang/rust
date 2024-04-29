@@ -18,7 +18,7 @@ use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, LayoutOf};
 use rustc_middle::ty::{self, GenericArgsRef, Ty};
 use rustc_middle::{bug, span_bug};
 use rustc_span::{sym, Span, Symbol};
-use rustc_target::abi::{self, Align, HasDataLayout, Primitive};
+use rustc_target::abi::{self, Align, HasDataLayout, Primitive, Size};
 use rustc_target::spec::{HasTargetSpec, PanicStrategy};
 
 use std::cmp::Ordering;
@@ -315,25 +315,32 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     Some((width, signed)) => match name {
                         sym::ctlz | sym::cttz => {
                             let y = self.const_bool(false);
-                            self.call_intrinsic(
+                            let ret = self.call_intrinsic(
                                 &format!("llvm.{name}.i{width}"),
                                 &[args[0].immediate(), y],
-                            )
+                            );
+
+                            self.intcast(ret, llret_ty, false)
                         }
                         sym::ctlz_nonzero => {
                             let y = self.const_bool(true);
                             let llvm_name = &format!("llvm.ctlz.i{width}");
-                            self.call_intrinsic(llvm_name, &[args[0].immediate(), y])
+                            let ret = self.call_intrinsic(llvm_name, &[args[0].immediate(), y]);
+                            self.intcast(ret, llret_ty, false)
                         }
                         sym::cttz_nonzero => {
                             let y = self.const_bool(true);
                             let llvm_name = &format!("llvm.cttz.i{width}");
-                            self.call_intrinsic(llvm_name, &[args[0].immediate(), y])
+                            let ret = self.call_intrinsic(llvm_name, &[args[0].immediate(), y]);
+                            self.intcast(ret, llret_ty, false)
                         }
-                        sym::ctpop => self.call_intrinsic(
-                            &format!("llvm.ctpop.i{width}"),
-                            &[args[0].immediate()],
-                        ),
+                        sym::ctpop => {
+                            let ret = self.call_intrinsic(
+                                &format!("llvm.ctpop.i{width}"),
+                                &[args[0].immediate()],
+                            );
+                            self.intcast(ret, llret_ty, false)
+                        }
                         sym::bswap => {
                             if width == 8 {
                                 args[0].immediate() // byte swap a u8/i8 is just a no-op
@@ -355,6 +362,10 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                             // rotate = funnel shift with first two args the same
                             let llvm_name =
                                 &format!("llvm.fsh{}.i{}", if is_left { 'l' } else { 'r' }, width);
+
+                            // llvm expects shift to be the same type as the values, but rust always uses `u32`
+                            let raw_shift = self.intcast(raw_shift, self.val_ty(val), false);
+
                             self.call_intrinsic(llvm_name, &[val, val, raw_shift])
                         }
                         sym::saturating_add | sym::saturating_sub => {
@@ -638,8 +649,9 @@ fn codegen_msvc_try<'ll>(
         //      }
         //
         // More information can be found in libstd's seh.rs implementation.
+        let ptr_size = bx.tcx().data_layout.pointer_size;
         let ptr_align = bx.tcx().data_layout.pointer_align.abi;
-        let slot = bx.alloca(bx.type_ptr(), ptr_align);
+        let slot = bx.alloca(ptr_size, ptr_align);
         let try_func_ty = bx.type_func(&[bx.type_ptr()], bx.type_void());
         bx.invoke(try_func_ty, None, None, try_func, &[data], normal, catchswitch, None, None);
 
@@ -909,15 +921,14 @@ fn codegen_emcc_try<'ll>(
 
         // We need to pass two values to catch_func (ptr and is_rust_panic), so
         // create an alloca and pass a pointer to that.
+        let ptr_size = bx.tcx().data_layout.pointer_size;
         let ptr_align = bx.tcx().data_layout.pointer_align.abi;
         let i8_align = bx.tcx().data_layout.i8_align.abi;
-        let catch_data_type = bx.type_struct(&[bx.type_ptr(), bx.type_bool()], false);
-        let catch_data = bx.alloca(catch_data_type, ptr_align);
-        let catch_data_0 =
-            bx.inbounds_gep(catch_data_type, catch_data, &[bx.const_usize(0), bx.const_usize(0)]);
-        bx.store(ptr, catch_data_0, ptr_align);
-        let catch_data_1 =
-            bx.inbounds_gep(catch_data_type, catch_data, &[bx.const_usize(0), bx.const_usize(1)]);
+        // Required in order for there to be no padding between the fields.
+        assert!(i8_align <= ptr_align);
+        let catch_data = bx.alloca(2 * ptr_size, ptr_align);
+        bx.store(ptr, catch_data, ptr_align);
+        let catch_data_1 = bx.inbounds_ptradd(catch_data, bx.const_usize(ptr_size.bytes()));
         bx.store(is_rust_panic, catch_data_1, i8_align);
 
         let catch_ty = bx.type_func(&[bx.type_ptr(), bx.type_ptr()], bx.type_void());
@@ -1363,7 +1374,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
                 let ze = bx.zext(i_, bx.type_ix(expected_bytes * 8));
 
                 // Convert the integer to a byte array
-                let ptr = bx.alloca(bx.type_ix(expected_bytes * 8), Align::ONE);
+                let ptr = bx.alloca(Size::from_bytes(expected_bytes), Align::ONE);
                 bx.store(ze, ptr, Align::ONE);
                 let array_ty = bx.type_array(bx.type_i8(), expected_bytes);
                 return Ok(bx.load(array_ty, ptr, Align::ONE));

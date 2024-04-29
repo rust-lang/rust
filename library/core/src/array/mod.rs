@@ -512,7 +512,8 @@ impl<T, const N: usize> [T; N] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(array_try_map, generic_nonzero)]
+    /// #![feature(array_try_map)]
+    ///
     /// let a = ["1", "2", "3"];
     /// let b = a.try_map(|v| v.parse::<u32>()).unwrap().map(|v| v + 1);
     /// assert_eq!(b, [2, 3, 4]);
@@ -522,8 +523,10 @@ impl<T, const N: usize> [T; N] {
     /// assert!(b.is_err());
     ///
     /// use std::num::NonZero;
+    ///
     /// let z = [1, 2, 0, 3, 4];
     /// assert_eq!(z.try_map(NonZero::new), None);
+    ///
     /// let a = [1, 2, 3];
     /// let b = a.try_map(NonZero::new);
     /// let c = b.map(|x| x.map(NonZero::get));

@@ -323,7 +323,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             ty::BoundConstness::NotConst,
         );
         if let Some(b) = item_segment.args().bindings.first() {
-            prohibit_assoc_item_binding(self.tcx(), b.span, Some((item_segment, span)));
+            prohibit_assoc_item_binding(self.tcx(), b, Some((def_id, item_segment, span)));
         }
         args
     }
@@ -620,7 +620,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             ty::BoundConstness::NotConst,
         );
         if let Some(b) = item_segment.args().bindings.first() {
-            prohibit_assoc_item_binding(self.tcx(), b.span, Some((item_segment, span)));
+            prohibit_assoc_item_binding(self.tcx(), b, Some((item_def_id, item_segment, span)));
         }
         args
     }
@@ -765,7 +765,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             constness,
         );
         if let Some(b) = trait_segment.args().bindings.first() {
-            prohibit_assoc_item_binding(self.tcx(), b.span, Some((trait_segment, span)));
+            prohibit_assoc_item_binding(self.tcx(), b, Some((trait_def_id, trait_segment, span)));
         }
         ty::TraitRef::new(self.tcx(), trait_def_id, generic_args)
     }
@@ -1544,7 +1544,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         for segment in segments {
             // Only emit the first error to avoid overloading the user with error messages.
             if let Some(b) = segment.args().bindings.first() {
-                return Err(prohibit_assoc_item_binding(self.tcx(), b.span, None));
+                return Err(prohibit_assoc_item_binding(self.tcx(), b, None));
             }
         }
 
@@ -1964,11 +1964,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             try_emit("recursive delegation");
         }
 
-        let sig = self.tcx().fn_sig(sig_id).instantiate_identity();
-        if sig.output().has_opaque_types() {
-            try_emit("delegation to a function with opaque type");
-        }
-
         let sig_generics = self.tcx().generics_of(sig_id);
         let parent = self.tcx().parent(self.item_def_id());
         let parent_generics = self.tcx().generics_of(parent);
@@ -1989,29 +1984,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 == ty::AssocItemContainer::TraitContainer
         {
             try_emit("delegation to a trait method from a free function");
-        }
-
-        if self.tcx().asyncness(sig_id) == ty::Asyncness::Yes {
-            try_emit("delegation to async functions");
-        }
-
-        if self.tcx().constness(sig_id) == hir::Constness::Const {
-            try_emit("delegation to const functions");
-        }
-
-        if sig.c_variadic() {
-            try_emit("delegation to variadic functions");
-            // variadic functions are also `unsafe` and `extern "C"`.
-            // Do not emit same error multiple times.
-            return error_occured;
-        }
-
-        if let hir::Unsafety::Unsafe = sig.unsafety() {
-            try_emit("delegation to unsafe functions");
-        }
-
-        if abi::Abi::Rust != sig.abi() {
-            try_emit("delegation to non Rust ABI functions");
         }
 
         error_occured

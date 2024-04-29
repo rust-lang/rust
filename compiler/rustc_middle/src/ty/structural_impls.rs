@@ -427,6 +427,7 @@ TrivialTypeTraversalImpls! {
     crate::mir::coverage::BlockMarkerId,
     crate::mir::coverage::CounterId,
     crate::mir::coverage::ExpressionId,
+    crate::mir::coverage::ConditionId,
     crate::mir::Local,
     crate::mir::Promoted,
     crate::traits::Reveal,

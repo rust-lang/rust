@@ -229,7 +229,7 @@ impl<'tcx> Stable<'tcx> for mir::BorrowKind {
         use rustc_middle::mir::BorrowKind::*;
         match *self {
             Shared => stable_mir::mir::BorrowKind::Shared,
-            Fake => stable_mir::mir::BorrowKind::Fake,
+            Fake(kind) => stable_mir::mir::BorrowKind::Fake(kind.stable(tables)),
             Mut { kind } => stable_mir::mir::BorrowKind::Mut { kind: kind.stable(tables) },
         }
     }
@@ -243,6 +243,17 @@ impl<'tcx> Stable<'tcx> for mir::MutBorrowKind {
             Default => stable_mir::mir::MutBorrowKind::Default,
             TwoPhaseBorrow => stable_mir::mir::MutBorrowKind::TwoPhaseBorrow,
             ClosureCapture => stable_mir::mir::MutBorrowKind::ClosureCapture,
+        }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for mir::FakeBorrowKind {
+    type T = stable_mir::mir::FakeBorrowKind;
+    fn stable(&self, _: &mut Tables<'_>) -> Self::T {
+        use rustc_middle::mir::FakeBorrowKind::*;
+        match *self {
+            Deep => stable_mir::mir::FakeBorrowKind::Deep,
+            Shallow => stable_mir::mir::FakeBorrowKind::Shallow,
         }
     }
 }
@@ -542,6 +553,9 @@ impl<'tcx> Stable<'tcx> for mir::AggregateKind<'tcx> {
             }
             mir::AggregateKind::CoroutineClosure(..) => {
                 todo!("FIXME(async_closures): Lower these to SMIR")
+            }
+            mir::AggregateKind::RawPtr(ty, mutability) => {
+                stable_mir::mir::AggregateKind::RawPtr(ty.stable(tables), mutability.stable(tables))
             }
         }
     }

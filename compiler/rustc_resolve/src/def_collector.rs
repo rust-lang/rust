@@ -136,14 +136,9 @@ impl<'a, 'b, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'b, 'tcx> {
                 opt_macro_data = Some(macro_data);
                 DefKind::Macro(macro_kind)
             }
-            ItemKind::MacCall(..) => {
-                visit::walk_item(self, i);
-                return self.visit_macro_invoc(i.id);
-            }
             ItemKind::GlobalAsm(..) => DefKind::GlobalAsm,
-            ItemKind::Use(..) => {
-                return visit::walk_item(self, i);
-            }
+            ItemKind::Use(..) => return visit::walk_item(self, i),
+            ItemKind::MacCall(..) => return self.visit_macro_invoc(i.id),
         };
         let def_id = self.create_def(i.id, i.ident.name, def_kind, i.span);
 
@@ -224,7 +219,7 @@ impl<'a, 'b, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'b, 'tcx> {
 
         let def = self.create_def(fi.id, fi.ident.name, def_kind, fi.span);
 
-        self.with_parent(def, |this| visit::walk_foreign_item(this, fi));
+        self.with_parent(def, |this| visit::walk_item(this, fi));
     }
 
     fn visit_variant(&mut self, v: &'a Variant) {

@@ -1,12 +1,14 @@
 #![feature(
     core_intrinsics,
     coroutines,
+    stmt_expr_attributes,
     coroutine_trait,
     is_sorted,
     repr_simd,
     tuple_trait,
     unboxed_closures
 )]
+#![allow(internal_features)]
 
 #[cfg(target_arch = "x86_64")]
 use std::arch::x86_64::*;
@@ -122,9 +124,12 @@ fn main() {
         test_simd();
     }
 
-    Box::pin(move |mut _task_context| {
-        yield ();
-    })
+    Box::pin(
+        #[coroutine]
+        move |mut _task_context| {
+            yield ();
+        },
+    )
     .as_mut()
     .resume(0);
 

@@ -654,7 +654,7 @@ impl UseSpans<'_> {
                     match kind {
                         Some(kd) => match kd {
                             rustc_middle::mir::BorrowKind::Shared
-                            | rustc_middle::mir::BorrowKind::Fake => {
+                            | rustc_middle::mir::BorrowKind::Fake(_) => {
                                 CaptureVarKind::Immut { kind_span: capture_kind_span }
                             }
 
@@ -1070,7 +1070,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     // LL | blk();
                     //    | ----- this value implements `FnOnce`, which causes it to be moved when called
                     // ```
-                    if let ty::Param(param_ty) = self_ty.kind()
+                    if let ty::Param(param_ty) = *self_ty.kind()
                         && let generics = self.infcx.tcx.generics_of(self.mir_def_id())
                         && let param = generics.type_param(param_ty, self.infcx.tcx)
                         && let Some(hir_generics) = self

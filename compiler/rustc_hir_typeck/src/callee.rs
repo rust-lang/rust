@@ -38,8 +38,11 @@ pub fn check_legal_trait_for_method_call(
     receiver: Option<Span>,
     expr_span: Span,
     trait_id: DefId,
+    body_id: DefId,
 ) -> Result<(), ErrorGuaranteed> {
-    if tcx.lang_items().drop_trait() == Some(trait_id) {
+    if tcx.lang_items().drop_trait() == Some(trait_id)
+        && tcx.lang_items().fallback_surface_drop_fn() != Some(body_id)
+    {
         let sugg = if let Some(receiver) = receiver.filter(|s| !s.is_empty()) {
             errors::ExplicitDestructorCallSugg::Snippet {
                 lo: expr_span.shrink_to_lo(),

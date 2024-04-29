@@ -42,6 +42,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 TestKind::Len { len: len as u64, op }
             }
 
+            TestCase::Deref { temp, mutability } => TestKind::Deref { temp, mutability },
+
             TestCase::Or { .. } => bug!("or-patterns should have already been handled"),
 
             TestCase::Irrefutable { .. } => span_bug!(
@@ -143,34 +145,18 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         );
                     }
                     let re_erased = tcx.lifetimes.re_erased;
-                    let ref_string = self.temp(Ty::new_imm_ref(tcx, re_erased, ty), test.span);
                     let ref_str_ty = Ty::new_imm_ref(tcx, re_erased, tcx.types.str_);
                     let ref_str = self.temp(ref_str_ty, test.span);
-                    let deref = tcx.require_lang_item(LangItem::Deref, None);
-                    let method = trait_method(tcx, deref, sym::deref, [ty]);
                     let eq_block = self.cfg.start_new_block();
-                    self.cfg.push_assign(
+                    // `let ref_str: &str = <String as Deref>::deref(&place);`
+                    self.call_deref(
                         block,
-                        source_info,
-                        ref_string,
-                        Rvalue::Ref(re_erased, BorrowKind::Shared, place),
-                    );
-                    self.cfg.terminate(
-                        block,
-                        source_info,
-                        TerminatorKind::Call {
-                            func: Operand::Constant(Box::new(ConstOperand {
-                                span: test.span,
-                                user_ty: None,
-                                const_: method,
-                            })),
-                            args: vec![Spanned { node: Operand::Move(ref_string), span: DUMMY_SP }],
-                            destination: ref_str,
-                            target: Some(eq_block),
-                            unwind: UnwindAction::Continue,
-                            call_source: CallSource::Misc,
-                            fn_span: source_info.span,
-                        },
+                        eq_block,
+                        place,
+                        Mutability::Not,
+                        ty,
+                        ref_str,
+                        test.span,
                     );
                     self.non_scalar_compare(
                         eq_block,
@@ -270,7 +256,64 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     Operand::Move(expected),
                 );
             }
+
+            TestKind::Deref { temp, mutability } => {
+                let ty = place_ty.ty;
+                let target = target_block(TestBranch::Success);
+                self.call_deref(block, target, place, mutability, ty, temp, test.span);
+            }
         }
+    }
+
+    /// Perform `let temp = <ty as Deref>::deref(&place)`.
+    /// or `let temp = <ty as DerefMut>::deref_mut(&mut place)`.
+    pub(super) fn call_deref(
+        &mut self,
+        block: BasicBlock,
+        target_block: BasicBlock,
+        place: Place<'tcx>,
+        mutability: Mutability,
+        ty: Ty<'tcx>,
+        temp: Place<'tcx>,
+        span: Span,
+    ) {
+        let (trait_item, method) = match mutability {
+            Mutability::Not => (LangItem::Deref, sym::deref),
+            Mutability::Mut => (LangItem::DerefMut, sym::deref_mut),
+        };
+        let borrow_kind = super::util::ref_pat_borrow_kind(mutability);
+        let source_info = self.source_info(span);
+        let re_erased = self.tcx.lifetimes.re_erased;
+        let trait_item = self.tcx.require_lang_item(trait_item, None);
+        let method = trait_method(self.tcx, trait_item, method, [ty]);
+        let ref_src = self.temp(Ty::new_ref(self.tcx, re_erased, ty, mutability), span);
+        // `let ref_src = &src_place;`
+        // or `let ref_src = &mut src_place;`
+        self.cfg.push_assign(
+            block,
+            source_info,
+            ref_src,
+            Rvalue::Ref(re_erased, borrow_kind, place),
+        );
+        // `let temp = <Ty as Deref>::deref(ref_src);`
+        // or `let temp = <Ty as DerefMut>::deref_mut(ref_src);`
+        self.cfg.terminate(
+            block,
+            source_info,
+            TerminatorKind::Call {
+                func: Operand::Constant(Box::new(ConstOperand {
+                    span,
+                    user_ty: None,
+                    const_: method,
+                })),
+                args: vec![Spanned { node: Operand::Move(ref_src), span }],
+                destination: temp,
+                target: Some(target_block),
+                unwind: UnwindAction::Continue,
+                call_source: CallSource::Misc,
+                fn_span: source_info.span,
+            },
+        );
     }
 
     /// Compare using the provided built-in comparison operator
@@ -660,13 +703,21 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 }
             }
 
+            (TestKind::Deref { temp: test_temp, .. }, TestCase::Deref { temp, .. })
+                if test_temp == temp =>
+            {
+                fully_matched = true;
+                Some(TestBranch::Success)
+            }
+
             (
                 TestKind::Switch { .. }
                 | TestKind::SwitchInt { .. }
                 | TestKind::If
                 | TestKind::Len { .. }
                 | TestKind::Range { .. }
-                | TestKind::Eq { .. },
+                | TestKind::Eq { .. }
+                | TestKind::Deref { .. },
                 _,
             ) => {
                 fully_matched = false;

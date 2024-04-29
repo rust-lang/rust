@@ -565,13 +565,6 @@ impl<'tcx> TyCtxt<'tcx> {
         TyCtxtFeed { tcx: self, key: () }
     }
 
-    /// Can only be fed before queries are run, and is thus exempt from any
-    /// incremental issues. Do not use except for the initial query feeding.
-    pub fn feed_local_crate(self) -> TyCtxtFeed<'tcx, CrateNum> {
-        self.dep_graph.assert_ignored();
-        TyCtxtFeed { tcx: self, key: LOCAL_CRATE }
-    }
-
     /// Only used in the resolver to register the `CRATE_DEF_ID` `DefId` and feed
     /// some queries for it. It will panic if used twice.
     pub fn create_local_crate_def_id(self, span: Span) -> TyCtxtFeed<'tcx, LocalDefId> {
@@ -817,6 +810,17 @@ impl CurrentGcx {
 }
 
 impl<'tcx> TyCtxt<'tcx> {
+    pub fn has_typeck_results(self, def_id: LocalDefId) -> bool {
+        // Closures' typeck results come from their outermost function,
+        // as they are part of the same "inference environment".
+        let typeck_root_def_id = self.typeck_root_def_id(def_id.to_def_id());
+        if typeck_root_def_id != def_id.to_def_id() {
+            return self.has_typeck_results(typeck_root_def_id.expect_local());
+        }
+
+        self.hir_node_by_def_id(def_id).body_id().is_some()
+    }
+
     /// Expects a body and returns its codegen attributes.
     ///
     /// Unlike `codegen_fn_attrs`, this returns `CodegenFnAttrs::EMPTY` for
@@ -1140,7 +1144,12 @@ impl<'tcx> TyCtxt<'tcx> {
         if stable_crate_id == self.stable_crate_id(LOCAL_CRATE) {
             LOCAL_CRATE
         } else {
-            self.cstore_untracked().stable_crate_id_to_crate_num(stable_crate_id)
+            *self
+                .untracked()
+                .stable_crate_ids
+                .read()
+                .get(&stable_crate_id)
+                .unwrap_or_else(|| bug!("uninterned StableCrateId: {stable_crate_id:?}"))
         }
     }
 
@@ -1256,26 +1265,42 @@ impl<'tcx> TyCtxt<'tcx> {
         feed
     }
 
+    pub fn create_crate_num(
+        self,
+        stable_crate_id: StableCrateId,
+    ) -> Result<TyCtxtFeed<'tcx, CrateNum>, CrateNum> {
+        if let Some(&existing) = self.untracked().stable_crate_ids.read().get(&stable_crate_id) {
+            return Err(existing);
+        }
+
+        let num = CrateNum::new(self.untracked().stable_crate_ids.read().len());
+        self.untracked().stable_crate_ids.write().insert(stable_crate_id, num);
+        Ok(TyCtxtFeed { key: num, tcx: self })
+    }
+
     pub fn iter_local_def_id(self) -> impl Iterator<Item = LocalDefId> + 'tcx {
         // Create a dependency to the red node to be sure we re-execute this when the amount of
         // definitions change.
         self.dep_graph.read_index(DepNodeIndex::FOREVER_RED_NODE);
 
         let definitions = &self.untracked.definitions;
-        std::iter::from_coroutine(|| {
-            let mut i = 0;
+        std::iter::from_coroutine(
+            #[cfg_attr(not(bootstrap), coroutine)]
+            || {
+                let mut i = 0;
 
-            // Recompute the number of definitions each time, because our caller may be creating
-            // new ones.
-            while i < { definitions.read().num_definitions() } {
-                let local_def_index = rustc_span::def_id::DefIndex::from_usize(i);
-                yield LocalDefId { local_def_index };
-                i += 1;
-            }
+                // Recompute the number of definitions each time, because our caller may be creating
+                // new ones.
+                while i < { definitions.read().num_definitions() } {
+                    let local_def_index = rustc_span::def_id::DefIndex::from_usize(i);
+                    yield LocalDefId { local_def_index };
+                    i += 1;
+                }
 
-            // Freeze definitions once we finish iterating on them, to prevent adding new ones.
-            definitions.freeze();
-        })
+                // Freeze definitions once we finish iterating on them, to prevent adding new ones.
+                definitions.freeze();
+            },
+        )
     }
 
     pub fn def_path_table(self) -> &'tcx rustc_hir::definitions::DefPathTable {

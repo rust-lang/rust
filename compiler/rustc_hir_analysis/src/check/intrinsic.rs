@@ -128,6 +128,7 @@ pub fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -
         | sym::variant_count
         | sym::is_val_statically_known
         | sym::ptr_mask
+        | sym::aggregate_raw_ptr
         | sym::ub_checks
         | sym::fadd_algebraic
         | sym::fsub_algebraic
@@ -411,13 +412,11 @@ pub fn check_intrinsic_type(
                 (1, 0, vec![Ty::new_mut_ptr(tcx, param(0)), param(0)], Ty::new_unit(tcx))
             }
 
-            sym::ctpop
-            | sym::ctlz
-            | sym::ctlz_nonzero
-            | sym::cttz
-            | sym::cttz_nonzero
-            | sym::bswap
-            | sym::bitreverse => (1, 0, vec![param(0)], param(0)),
+            sym::ctpop | sym::ctlz | sym::ctlz_nonzero | sym::cttz | sym::cttz_nonzero => {
+                (1, 0, vec![param(0)], tcx.types.u32)
+            }
+
+            sym::bswap | sym::bitreverse => (1, 0, vec![param(0)], param(0)),
 
             sym::three_way_compare => {
                 (1, 0, vec![param(0), param(0)], tcx.ty_ordering_enum(Some(span)))
@@ -460,7 +459,7 @@ pub fn check_intrinsic_type(
                 (1, 0, vec![param(0), param(0)], param(0))
             }
             sym::unchecked_shl | sym::unchecked_shr => (2, 0, vec![param(0), param(1)], param(0)),
-            sym::rotate_left | sym::rotate_right => (1, 0, vec![param(0), param(0)], param(0)),
+            sym::rotate_left | sym::rotate_right => (1, 0, vec![param(0), tcx.types.u32], param(0)),
             sym::unchecked_add | sym::unchecked_sub | sym::unchecked_mul => {
                 (1, 0, vec![param(0), param(0)], param(0))
             }
@@ -534,7 +533,7 @@ pub fn check_intrinsic_type(
 
             sym::va_start | sym::va_end => match mk_va_list_ty(hir::Mutability::Mut) {
                 Some((va_list_ref_ty, _)) => (0, 0, vec![va_list_ref_ty], Ty::new_unit(tcx)),
-                None => bug!("`va_list` language item needed for C-variadic intrinsics"),
+                None => bug!("`va_list` lang item needed for C-variadic intrinsics"),
             },
 
             sym::va_copy => match mk_va_list_ty(hir::Mutability::Not) {
@@ -542,12 +541,12 @@ pub fn check_intrinsic_type(
                     let va_list_ptr_ty = Ty::new_mut_ptr(tcx, va_list_ty);
                     (0, 0, vec![va_list_ptr_ty, va_list_ref_ty], Ty::new_unit(tcx))
                 }
-                None => bug!("`va_list` language item needed for C-variadic intrinsics"),
+                None => bug!("`va_list` lang item needed for C-variadic intrinsics"),
             },
 
             sym::va_arg => match mk_va_list_ty(hir::Mutability::Mut) {
                 Some((va_list_ref_ty, _)) => (1, 0, vec![va_list_ref_ty], param(0)),
-                None => bug!("`va_list` language item needed for C-variadic intrinsics"),
+                None => bug!("`va_list` lang item needed for C-variadic intrinsics"),
             },
 
             sym::nontemporal_store => {
@@ -573,6 +572,10 @@ pub fn check_intrinsic_type(
             sym::vtable_size | sym::vtable_align => {
                 (0, 0, vec![Ty::new_imm_ptr(tcx, Ty::new_unit(tcx))], tcx.types.usize)
             }
+
+            // This type check is not particularly useful, but the `where` bounds
+            // on the definition in `core` do the heavy lifting for checking it.
+            sym::aggregate_raw_ptr => (3, 1, vec![param(1), param(2)], param(0)),
 
             sym::ub_checks => (0, 1, Vec::new(), tcx.types.bool),
 

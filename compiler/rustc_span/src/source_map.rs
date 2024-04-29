@@ -14,7 +14,7 @@ use rustc_data_structures::sync::{IntoDynSyncSend, MappedReadGuard, ReadGuard, R
 use rustc_data_structures::unhash::UnhashMap;
 use std::fs;
 use std::io::{self, BorrowedBuf, Read};
-use std::path::{self};
+use std::path;
 
 #[cfg(test)]
 mod tests;

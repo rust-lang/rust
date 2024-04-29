@@ -1,10 +1,9 @@
 //@ ignore-lldb
-#![feature(collapse_debuginfo)]
 
 // Test that line numbers are replaced with those of the outermost expansion site when the
-// `collapse_debuginfo` feature is active and the command line flag is provided.
+// the command line flag is passed.
 
-//@ compile-flags:-g -Z collapse_macro_debuginfo=yes
+//@ compile-flags:-g -C collapse_macro_debuginfo=yes
 
 // === GDB TESTS ===================================================================================
 

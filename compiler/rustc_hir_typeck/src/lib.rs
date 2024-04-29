@@ -66,7 +66,7 @@ use rustc_middle::query::Providers;
 use rustc_middle::traits;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::config;
-use rustc_span::def_id::{DefId, LocalDefId};
+use rustc_span::def_id::LocalDefId;
 use rustc_span::Span;
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
@@ -82,21 +82,6 @@ macro_rules! type_error_struct {
 
         err
     })
-}
-
-fn has_typeck_results(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
-    // Closures' typeck results come from their outermost function,
-    // as they are part of the same "inference environment".
-    let typeck_root_def_id = tcx.typeck_root_def_id(def_id);
-    if typeck_root_def_id != def_id {
-        return tcx.has_typeck_results(typeck_root_def_id);
-    }
-
-    if let Some(def_id) = def_id.as_local() {
-        tcx.hir_node_by_def_id(def_id).body_id().is_some()
-    } else {
-        false
-    }
 }
 
 fn used_trait_imports(tcx: TyCtxt<'_>, def_id: LocalDefId) -> &UnordSet<LocalDefId> {
@@ -429,11 +414,5 @@ fn fatally_break_rust(tcx: TyCtxt<'_>, span: Span) -> ! {
 
 pub fn provide(providers: &mut Providers) {
     method::provide(providers);
-    *providers = Providers {
-        typeck,
-        diagnostic_only_typeck,
-        has_typeck_results,
-        used_trait_imports,
-        ..*providers
-    };
+    *providers = Providers { typeck, diagnostic_only_typeck, used_trait_imports, ..*providers };
 }

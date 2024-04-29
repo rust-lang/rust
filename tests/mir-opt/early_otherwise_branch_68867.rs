@@ -1,4 +1,4 @@
-//@ unit-test: EarlyOtherwiseBranch
+//@ test-mir-pass: EarlyOtherwiseBranch
 //@ compile-flags: -Zmir-enable-passes=+UnreachableEnumBranching
 
 // FIXME: This test was broken by the derefer change.

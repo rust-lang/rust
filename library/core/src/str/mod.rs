@@ -24,7 +24,7 @@ use crate::slice::{self, SliceIndex};
 pub mod pattern;
 
 mod lossy;
-#[unstable(feature = "utf8_chunks", issue = "99543")]
+#[stable(feature = "utf8_chunks", since = "CURRENT_RUSTC_VERSION")]
 pub use lossy::{Utf8Chunk, Utf8Chunks};
 
 #[stable(feature = "rust1", since = "1.0.0")]

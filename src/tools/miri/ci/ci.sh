@@ -78,8 +78,8 @@ function run_tests {
     done
   fi
   if [ -n "${TEST_BENCH-}" ]; then
-    # Check that the benchmarks build and run, but without actually benchmarking.
-    time HYPERFINE="'$BASH' -c" ./miri bench
+    # Check that the benchmarks build and run, but only once.
+    time HYPERFINE="hyperfine -w0 -r1" ./miri bench
   fi
 
   ## test-cargo-miri
@@ -128,16 +128,18 @@ function run_tests_minimal {
 ## Main Testing Logic ##
 
 # In particular, fully cover all tier 1 targets.
+# We also want to run the many-seeds tests on all tier 1 targets.
 case $HOST_TARGET in
   x86_64-unknown-linux-gnu)
     # Host
     GC_STRESS=1 MIR_OPT=1 MANY_SEEDS=64 TEST_BENCH=1 CARGO_MIRI_ENV=1 run_tests
     # Extra tier 1
-    MIRI_TEST_TARGET=i686-unknown-linux-gnu run_tests
-    MIRI_TEST_TARGET=aarch64-unknown-linux-gnu run_tests
-    MIRI_TEST_TARGET=x86_64-apple-darwin run_tests
-    MIRI_TEST_TARGET=i686-pc-windows-gnu run_tests
-    MIRI_TEST_TARGET=x86_64-pc-windows-gnu run_tests
+    # With reduced many-seed count to avoid spending too much time on that.
+    # (All OSes are run with 64 seeds at least once though via the macOS runner.)
+    MANY_SEEDS=16 MIRI_TEST_TARGET=i686-unknown-linux-gnu run_tests
+    MANY_SEEDS=16 MIRI_TEST_TARGET=aarch64-unknown-linux-gnu run_tests
+    MANY_SEEDS=16 MIRI_TEST_TARGET=x86_64-apple-darwin run_tests
+    MANY_SEEDS=16 MIRI_TEST_TARGET=x86_64-pc-windows-gnu run_tests
     # Extra tier 2
     MIRI_TEST_TARGET=aarch64-apple-darwin run_tests
     MIRI_TEST_TARGET=arm-unknown-linux-gnueabi run_tests
@@ -155,13 +157,15 @@ case $HOST_TARGET in
     # Host (tier 2)
     GC_STRESS=1 MIR_OPT=1 MANY_SEEDS=64 TEST_BENCH=1 CARGO_MIRI_ENV=1 run_tests
     # Extra tier 1
-    MIRI_TEST_TARGET=x86_64-pc-windows-msvc CARGO_MIRI_ENV=1 run_tests
+    MANY_SEEDS=64 MIRI_TEST_TARGET=i686-pc-windows-gnu run_tests
+    MANY_SEEDS=64 MIRI_TEST_TARGET=x86_64-pc-windows-msvc CARGO_MIRI_ENV=1 run_tests
     # Extra tier 2
     MIRI_TEST_TARGET=s390x-unknown-linux-gnu run_tests # big-endian architecture
     ;;
   i686-pc-windows-msvc)
     # Host
-    # Only smoke-test `many-seeds`; 64 runs take 15min here!
+    # Only smoke-test `many-seeds`; 64 runs of just the scoped-thread-leak test take 15min here!
+    # See <https://github.com/rust-lang/miri/issues/3509>.
     GC_STRESS=1 MIR_OPT=1 MANY_SEEDS=1 TEST_BENCH=1 run_tests
     # Extra tier 1
     # We really want to ensure a Linux target works on a Windows host,

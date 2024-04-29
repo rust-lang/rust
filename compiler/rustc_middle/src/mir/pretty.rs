@@ -187,6 +187,17 @@ fn dump_path<'tcx>(
             }));
             s
         }
+        ty::InstanceDef::AsyncDropGlueCtorShim(_, Some(ty)) => {
+            // Unfortunately, pretty-printed typed are not very filename-friendly.
+            // We dome some filtering.
+            let mut s = ".".to_owned();
+            s.extend(ty.to_string().chars().filter_map(|c| match c {
+                ' ' => None,
+                ':' | '<' | '>' => Some('_'),
+                c => Some(c),
+            }));
+            s
+        }
         _ => String::new(),
     };
 
@@ -475,7 +486,8 @@ fn write_coverage_branch_info(
     branch_info: &coverage::BranchInfo,
     w: &mut dyn io::Write,
 ) -> io::Result<()> {
-    let coverage::BranchInfo { branch_spans, .. } = branch_info;
+    let coverage::BranchInfo { branch_spans, mcdc_branch_spans, mcdc_decision_spans, .. } =
+        branch_info;
 
     for coverage::BranchSpan { span, true_marker, false_marker } in branch_spans {
         writeln!(
@@ -483,7 +495,26 @@ fn write_coverage_branch_info(
             "{INDENT}coverage branch {{ true: {true_marker:?}, false: {false_marker:?} }} => {span:?}",
         )?;
     }
-    if !branch_spans.is_empty() {
+
+    for coverage::MCDCBranchSpan { span, condition_info, true_marker, false_marker } in
+        mcdc_branch_spans
+    {
+        writeln!(
+            w,
+            "{INDENT}coverage mcdc branch {{ condition_id: {:?}, true: {true_marker:?}, false: {false_marker:?} }} => {span:?}",
+            condition_info.map(|info| info.condition_id)
+        )?;
+    }
+
+    for coverage::MCDCDecisionSpan { span, conditions_num, end_markers } in mcdc_decision_spans {
+        writeln!(
+            w,
+            "{INDENT}coverage mcdc decision {{ conditions_num: {conditions_num:?}, end: {end_markers:?} }} => {span:?}"
+        )?;
+    }
+
+    if !branch_spans.is_empty() || !mcdc_branch_spans.is_empty() || !mcdc_decision_spans.is_empty()
+    {
         writeln!(w)?;
     }
 
@@ -954,7 +985,8 @@ impl<'tcx> Debug for Rvalue<'tcx> {
             Ref(region, borrow_kind, ref place) => {
                 let kind_str = match borrow_kind {
                     BorrowKind::Shared => "",
-                    BorrowKind::Fake => "fake ",
+                    BorrowKind::Fake(FakeBorrowKind::Deep) => "fake ",
+                    BorrowKind::Fake(FakeBorrowKind::Shallow) => "fake shallow ",
                     BorrowKind::Mut { .. } => "mut ",
                 };
 
@@ -1074,6 +1106,15 @@ impl<'tcx> Debug for Rvalue<'tcx> {
 
                         struct_fmt.finish()
                     }),
+
+                    AggregateKind::RawPtr(pointee_ty, mutability) => {
+                        let kind_str = match mutability {
+                            Mutability::Mut => "mut",
+                            Mutability::Not => "const",
+                        };
+                        with_no_trimmed_paths!(write!(fmt, "*{kind_str} {pointee_ty} from "))?;
+                        fmt_tuple(fmt, "")
+                    }
                 }
             }
 

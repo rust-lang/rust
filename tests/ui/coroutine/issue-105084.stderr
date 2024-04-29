@@ -1,8 +1,8 @@
 error[E0382]: borrow of moved value: `g`
-  --> $DIR/issue-105084.rs:37:14
+  --> $DIR/issue-105084.rs:38:14
    |
-LL |     let mut g = || {
-   |         ----- move occurs because `g` has type `{coroutine@$DIR/issue-105084.rs:14:17: 14:19}`, which does not implement the `Copy` trait
+LL |     let mut g = #[coroutine]
+   |         ----- move occurs because `g` has type `{coroutine@$DIR/issue-105084.rs:15:5: 15:7}`, which does not implement the `Copy` trait
 ...
 LL |     let mut h = copy(g);
    |                      - value moved here
@@ -22,17 +22,17 @@ help: consider cloning the value if the performance cost is acceptable
 LL |     let mut h = copy(g.clone());
    |                       ++++++++
 
-error[E0277]: the trait bound `Box<(i32, ())>: Copy` is not satisfied in `{coroutine@$DIR/issue-105084.rs:14:17: 14:19}`
-  --> $DIR/issue-105084.rs:31:17
+error[E0277]: the trait bound `Box<(i32, ())>: Copy` is not satisfied in `{coroutine@$DIR/issue-105084.rs:15:5: 15:7}`
+  --> $DIR/issue-105084.rs:32:17
    |
-LL |     let mut g = || {
-   |                 -- within this `{coroutine@$DIR/issue-105084.rs:14:17: 14:19}`
+LL |     || {
+   |     -- within this `{coroutine@$DIR/issue-105084.rs:15:5: 15:7}`
 ...
 LL |     let mut h = copy(g);
-   |                 ^^^^^^^ within `{coroutine@$DIR/issue-105084.rs:14:17: 14:19}`, the trait `Copy` is not implemented for `Box<(i32, ())>`, which is required by `{coroutine@$DIR/issue-105084.rs:14:17: 14:19}: Copy`
+   |                 ^^^^^^^ within `{coroutine@$DIR/issue-105084.rs:15:5: 15:7}`, the trait `Copy` is not implemented for `Box<(i32, ())>`, which is required by `{coroutine@$DIR/issue-105084.rs:15:5: 15:7}: Copy`
    |
 note: coroutine does not implement `Copy` as this value is used across a yield
-  --> $DIR/issue-105084.rs:21:22
+  --> $DIR/issue-105084.rs:22:22
    |
 LL |         Box::new((5, yield));
    |         -------------^^^^^--

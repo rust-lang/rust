@@ -345,6 +345,8 @@ pub struct Config {
     #[cfg(test)]
     pub initial_rustfmt: RefCell<RustfmtState>,
 
+    /// The paths to work with. For example: with `./x check foo bar` we get
+    /// `paths=["foo", "bar"]`.
     pub paths: Vec<PathBuf>,
 }
 
@@ -1217,10 +1219,7 @@ impl Config {
                 .and_then(|table: toml::Value| TomlConfig::deserialize(table))
                 .unwrap_or_else(|err| {
                     if let Ok(Some(changes)) = toml::from_str(&contents)
-                        .and_then(|table: toml::Value| ChangeIdWrapper::deserialize(table))
-                        .and_then(|change_id| {
-                            Ok(change_id.inner.map(|id| crate::find_recent_config_change_ids(id)))
-                        })
+                        .and_then(|table: toml::Value| ChangeIdWrapper::deserialize(table)).map(|change_id| change_id.inner.map(crate::find_recent_config_change_ids))
                     {
                         if !changes.is_empty() {
                             println!(
@@ -1799,17 +1798,17 @@ impl Config {
             if let Some(v) = link_shared {
                 config.llvm_link_shared.set(Some(v));
             }
-            config.llvm_targets = targets.clone();
-            config.llvm_experimental_targets = experimental_targets.clone();
+            config.llvm_targets.clone_from(&targets);
+            config.llvm_experimental_targets.clone_from(&experimental_targets);
             config.llvm_link_jobs = link_jobs;
-            config.llvm_version_suffix = version_suffix.clone();
-            config.llvm_clang_cl = clang_cl.clone();
+            config.llvm_version_suffix.clone_from(&version_suffix);
+            config.llvm_clang_cl.clone_from(&clang_cl);
 
-            config.llvm_cflags = cflags.clone();
-            config.llvm_cxxflags = cxxflags.clone();
-            config.llvm_ldflags = ldflags.clone();
+            config.llvm_cflags.clone_from(&cflags);
+            config.llvm_cxxflags.clone_from(&cxxflags);
+            config.llvm_ldflags.clone_from(&ldflags);
             set(&mut config.llvm_use_libcxx, use_libcxx);
-            config.llvm_use_linker = use_linker.clone();
+            config.llvm_use_linker.clone_from(&use_linker);
             config.llvm_allow_old_toolchain = allow_old_toolchain.unwrap_or(false);
             config.llvm_polly = polly.unwrap_or(false);
             config.llvm_clang = clang.unwrap_or(false);
@@ -2030,7 +2029,8 @@ impl Config {
             | Subcommand::Run { .. }
             | Subcommand::Setup { .. }
             | Subcommand::Format { .. }
-            | Subcommand::Suggest { .. } => flags.stage.unwrap_or(0),
+            | Subcommand::Suggest { .. }
+            | Subcommand::Vendor { .. } => flags.stage.unwrap_or(0),
         };
 
         // CI should always run stage 2 builds, unless it specifically states otherwise
@@ -2057,7 +2057,8 @@ impl Config {
                 | Subcommand::Run { .. }
                 | Subcommand::Setup { .. }
                 | Subcommand::Format { .. }
-                | Subcommand::Suggest { .. } => {}
+                | Subcommand::Suggest { .. }
+                | Subcommand::Vendor { .. } => {}
             }
         }
 
@@ -2490,11 +2491,6 @@ impl Config {
                 }
 
                 b
-            }
-            // FIXME: "if-available" is deprecated. Remove this block later (around mid 2024)
-            // to not break builds between the recent-to-old checkouts.
-            Some(StringOrBool::String(s)) if s == "if-available" => {
-                llvm::is_ci_llvm_available(self, asserts)
             }
             Some(StringOrBool::String(s)) if s == "if-unchanged" => if_unchanged(),
             Some(StringOrBool::String(other)) => {

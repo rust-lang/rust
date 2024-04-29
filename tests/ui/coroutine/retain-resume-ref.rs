@@ -1,6 +1,6 @@
 //! This test ensures that a mutable reference cannot be passed as a resume argument twice.
 
-#![feature(coroutines, coroutine_trait)]
+#![feature(coroutines, coroutine_trait, stmt_expr_attributes)]
 
 use std::marker::Unpin;
 use std::ops::{
@@ -12,7 +12,8 @@ use std::pin::Pin;
 fn main() {
     let mut thing = String::from("hello");
 
-    let mut gen = |r| {
+    let mut gen = #[coroutine]
+    |r| {
         if false {
             yield r;
         }

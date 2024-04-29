@@ -975,10 +975,6 @@ rustc_queries! {
         cache_on_disk_if { true }
     }
 
-    query has_typeck_results(def_id: DefId) -> bool {
-        desc { |tcx| "checking whether `{}` has a body", tcx.def_path_str(def_id) }
-    }
-
     query coherent_trait(def_id: DefId) -> Result<(), ErrorGuaranteed> {
         desc { |tcx| "coherence checking all impls of trait `{}`", tcx.def_path_str(def_id) }
         ensure_forwards_result_if_red
@@ -1343,6 +1339,14 @@ rustc_queries! {
     /// Query backing `Ty::is_unpin`.
     query is_unpin_raw(env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
         desc { "computing whether `{}` is `Unpin`", env.value }
+    }
+    /// Query backing `Ty::has_surface_async_drop`.
+    query has_surface_async_drop_raw(env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
+        desc { "computing whether `{}` has `AsyncDrop` implementation", env.value }
+    }
+    /// Query backing `Ty::has_surface_drop`.
+    query has_surface_drop_raw(env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
+        desc { "computing whether `{}` has `Drop` implementation", env.value }
     }
     /// Query backing `Ty::needs_drop`.
     query needs_drop_raw(env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {

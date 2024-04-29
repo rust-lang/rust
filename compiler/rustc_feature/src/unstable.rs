@@ -395,8 +395,6 @@ declare_features! (
     (unstable, closure_track_caller, "1.57.0", Some(87417)),
     /// Allows to use the `#[cmse_nonsecure_entry]` attribute.
     (unstable, cmse_nonsecure_entry, "1.48.0", Some(75835)),
-    /// Allows use of the `#[collapse_debuginfo]` attribute.
-    (unstable, collapse_debuginfo, "1.65.0", Some(100758)),
     /// Allows `async {}` expressions in const contexts.
     (unstable, const_async_blocks, "1.53.0", Some(85368)),
     /// Allows `const || {}` closures in const contexts.
@@ -501,8 +499,6 @@ declare_features! (
     (unstable, impl_trait_in_fn_trait_return, "1.64.0", Some(99697)),
     /// Allows associated types in inherent impls.
     (incomplete, inherent_associated_types, "1.52.0", Some(8995)),
-    /// Allow anonymous constants from an inline `const` block
-    (unstable, inline_const, "1.49.0", Some(76001)),
     /// Allow anonymous constants from an inline `const` block in pattern position
     (unstable, inline_const_pat, "1.58.0", Some(76001)),
     /// Allows using `pointer` and `reference` in intra-doc links

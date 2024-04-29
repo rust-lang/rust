@@ -125,11 +125,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let Some(arg_ty) = args[0].as_type() else {
                     return false;
                 };
-                let ty::Param(param) = arg_ty.kind() else {
+                let ty::Param(param) = *arg_ty.kind() else {
                     return false;
                 };
                 // Is `generic_param` the same as the arg for this trait predicate?
-                generic_param.index == generics.type_param(&param, tcx).index
+                generic_param.index == generics.type_param(param, tcx).index
             } else {
                 false
             }
@@ -156,10 +156,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return false;
         }
 
-        match ty.peel_refs().kind() {
+        match *ty.peel_refs().kind() {
             ty::Param(param) => {
                 let generics = self.tcx.generics_of(self.body_id);
-                let generic_param = generics.type_param(&param, self.tcx);
+                let generic_param = generics.type_param(param, self.tcx);
                 for unsatisfied in unsatisfied_predicates.iter() {
                     // The parameter implements `IntoIterator`
                     // but it has called a method that requires it to implement `Iterator`
@@ -3232,9 +3232,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .sort_by_key(|&info| (!info.def_id.is_local(), self.tcx.def_path_str(info.def_id)));
             candidates.dedup();
 
-            let param_type = match rcvr_ty.kind() {
+            let param_type = match *rcvr_ty.kind() {
                 ty::Param(param) => Some(param),
-                ty::Ref(_, ty, _) => match ty.kind() {
+                ty::Ref(_, ty, _) => match *ty.kind() {
                     ty::Param(param) => Some(param),
                     _ => None,
                 },
@@ -3291,14 +3291,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 param.name.ident(),
                             ));
                             let bounds_span = hir_generics.bounds_span_for_suggestions(def_id);
-                            if rcvr_ty.is_ref() && param.is_impl_trait() && bounds_span.is_some() {
+                            if rcvr_ty.is_ref()
+                                && param.is_impl_trait()
+                                && let Some((bounds_span, _)) = bounds_span
+                            {
                                 err.multipart_suggestions(
                                     msg,
                                     candidates.iter().map(|t| {
                                         vec![
                                             (param.span.shrink_to_lo(), "(".to_string()),
                                             (
-                                                bounds_span.unwrap(),
+                                                bounds_span,
                                                 format!(" + {})", self.tcx.def_path_str(t.def_id)),
                                             ),
                                         ]
@@ -3308,32 +3311,46 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 return;
                             }
 
-                            let (sp, introducer) = if let Some(span) = bounds_span {
-                                (span, Introducer::Plus)
-                            } else if let Some(colon_span) = param.colon_span {
-                                (colon_span.shrink_to_hi(), Introducer::Nothing)
-                            } else if param.is_impl_trait() {
-                                (param.span.shrink_to_hi(), Introducer::Plus)
-                            } else {
-                                (param.span.shrink_to_hi(), Introducer::Colon)
-                            };
+                            let (sp, introducer, open_paren_sp) =
+                                if let Some((span, open_paren_sp)) = bounds_span {
+                                    (span, Introducer::Plus, open_paren_sp)
+                                } else if let Some(colon_span) = param.colon_span {
+                                    (colon_span.shrink_to_hi(), Introducer::Nothing, None)
+                                } else if param.is_impl_trait() {
+                                    (param.span.shrink_to_hi(), Introducer::Plus, None)
+                                } else {
+                                    (param.span.shrink_to_hi(), Introducer::Colon, None)
+                                };
 
-                            err.span_suggestions(
-                                sp,
+                            let all_suggs = candidates.iter().map(|cand| {
+                                let suggestion = format!(
+                                    "{} {}",
+                                    match introducer {
+                                        Introducer::Plus => " +",
+                                        Introducer::Colon => ":",
+                                        Introducer::Nothing => "",
+                                    },
+                                    self.tcx.def_path_str(cand.def_id)
+                                );
+
+                                let mut suggs = vec![];
+
+                                if let Some(open_paren_sp) = open_paren_sp {
+                                    suggs.push((open_paren_sp, "(".to_string()));
+                                    suggs.push((sp, format!("){suggestion}")));
+                                } else {
+                                    suggs.push((sp, suggestion));
+                                }
+
+                                suggs
+                            });
+
+                            err.multipart_suggestions(
                                 msg,
-                                candidates.iter().map(|t| {
-                                    format!(
-                                        "{} {}",
-                                        match introducer {
-                                            Introducer::Plus => " +",
-                                            Introducer::Colon => ":",
-                                            Introducer::Nothing => "",
-                                        },
-                                        self.tcx.def_path_str(t.def_id)
-                                    )
-                                }),
+                                all_suggs,
                                 Applicability::MaybeIncorrect,
                             );
+
                             return;
                         }
                         Node::Item(hir::Item {
@@ -3429,7 +3446,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 } else {
                                     param_type.map_or_else(
                                         || "implement".to_string(), // FIXME: it might only need to be imported into scope, not implemented.
-                                        ToString::to_string,
+                                        |p| p.to_string(),
                                     )
                                 },
                             },

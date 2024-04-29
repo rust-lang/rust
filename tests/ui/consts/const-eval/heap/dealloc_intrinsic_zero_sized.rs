@@ -1,7 +1,6 @@
 //@ run-pass
 #![feature(core_intrinsics)]
 #![feature(const_heap)]
-#![feature(inline_const)]
 
 use std::intrinsics;
 

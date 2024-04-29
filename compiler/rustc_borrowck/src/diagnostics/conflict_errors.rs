@@ -17,9 +17,9 @@ use rustc_middle::hir::nested_filter::OnlyBodies;
 use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::mir::{
     self, AggregateKind, BindingForm, BorrowKind, CallSource, ClearCrossCrate, ConstraintCategory,
-    FakeReadCause, LocalDecl, LocalInfo, LocalKind, Location, MutBorrowKind, Operand, Place,
-    PlaceRef, ProjectionElem, Rvalue, Statement, StatementKind, Terminator, TerminatorKind,
-    VarBindingForm,
+    FakeBorrowKind, FakeReadCause, LocalDecl, LocalInfo, LocalKind, Location, MutBorrowKind,
+    Operand, Place, PlaceRef, ProjectionElem, Rvalue, Statement, StatementKind, Terminator,
+    TerminatorKind, VarBindingForm,
 };
 use rustc_middle::ty::{
     self, suggest_constraining_type_params, PredicateKind, ToPredicate, Ty, TyCtxt,
@@ -347,7 +347,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         mpi: MovePathIndex,
         err: &mut Diag<'tcx>,
         in_pattern: &mut bool,
-        move_spans: UseSpans<'_>,
+        move_spans: UseSpans<'tcx>,
     ) {
         let move_span = match move_spans {
             UseSpans::ClosureUse { capture_kind_span, .. } => capture_kind_span,
@@ -491,11 +491,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     ..
                 } = move_spans
                 {
-                    self.suggest_cloning(err, ty, expr, None);
+                    self.suggest_cloning(err, ty, expr, None, Some(move_spans));
                 } else if self.suggest_hoisting_call_outside_loop(err, expr) {
                     // The place where the the type moves would be misleading to suggest clone.
                     // #121466
-                    self.suggest_cloning(err, ty, expr, None);
+                    self.suggest_cloning(err, ty, expr, None, Some(move_spans));
                 }
             }
             if let Some(pat) = finder.pat {
@@ -1085,6 +1085,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         ty: Ty<'tcx>,
         mut expr: &'cx hir::Expr<'cx>,
         mut other_expr: Option<&'cx hir::Expr<'cx>>,
+        use_spans: Option<UseSpans<'tcx>>,
     ) {
         if let hir::ExprKind::Struct(_, _, Some(_)) = expr.kind {
             // We have `S { foo: val, ..base }`. In `check_aggregate_rvalue` we have a single
@@ -1197,14 +1198,50 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     .all(|field| self.implements_clone(field.ty(self.infcx.tcx, args)))
             })
         {
+            let ty_span = self.infcx.tcx.def_span(def.did());
+            let mut span: MultiSpan = ty_span.into();
+            span.push_span_label(ty_span, "consider implementing `Clone` for this type");
+            span.push_span_label(expr.span, "you could clone this value");
             err.span_note(
-                self.infcx.tcx.def_span(def.did()),
+                span,
+                format!("if `{ty}` implemented `Clone`, you could clone the value"),
+            );
+        } else if let ty::Param(param) = ty.kind()
+            && let Some(_clone_trait_def) = self.infcx.tcx.lang_items().clone_trait()
+            && let generics = self.infcx.tcx.generics_of(self.mir_def_id())
+            && let generic_param = generics.type_param(*param, self.infcx.tcx)
+            && let param_span = self.infcx.tcx.def_span(generic_param.def_id)
+            && if let Some(UseSpans::FnSelfUse { kind, .. }) = use_spans
+                && let CallKind::FnCall { fn_trait_id, self_ty } = kind
+                && let ty::Param(_) = self_ty.kind()
+                && ty == self_ty
+                && [
+                    self.infcx.tcx.lang_items().fn_once_trait(),
+                    self.infcx.tcx.lang_items().fn_mut_trait(),
+                    self.infcx.tcx.lang_items().fn_trait(),
+                ]
+                .contains(&Some(fn_trait_id))
+            {
+                // Do not suggest `F: FnOnce() + Clone`.
+                false
+            } else {
+                true
+            }
+        {
+            let mut span: MultiSpan = param_span.into();
+            span.push_span_label(
+                param_span,
+                "consider constraining this type parameter with `Clone`",
+            );
+            span.push_span_label(expr.span, "you could clone this value");
+            err.span_help(
+                span,
                 format!("if `{ty}` implemented `Clone`, you could clone the value"),
             );
         }
     }
 
-    fn implements_clone(&self, ty: Ty<'tcx>) -> bool {
+    pub(crate) fn implements_clone(&self, ty: Ty<'tcx>) -> bool {
         let Some(clone_trait_def) = self.infcx.tcx.lang_items().clone_trait() else { return false };
         self.infcx
             .type_implements_trait(clone_trait_def, [ty], self.param_env)
@@ -1320,7 +1357,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             .into_iter()
             .map(|err| match err.obligation.predicate.kind().skip_binder() {
                 PredicateKind::Clause(ty::ClauseKind::Trait(predicate)) => {
-                    match predicate.self_ty().kind() {
+                    match *predicate.self_ty().kind() {
                         ty::Param(param_ty) => Ok((
                             generics.type_param(param_ty, tcx),
                             predicate.trait_ref.print_only_trait_path().to_string(),
@@ -1403,7 +1440,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         if let Some(expr) = self.find_expr(borrow_span)
             && let Some(ty) = typeck_results.node_type_opt(expr.hir_id)
         {
-            self.suggest_cloning(&mut err, ty, expr, self.find_expr(span));
+            self.suggest_cloning(&mut err, ty, expr, self.find_expr(span), Some(move_spans));
         }
         self.buffer_error(err);
     }
@@ -1486,11 +1523,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let first_borrow_desc;
         let mut err = match (gen_borrow_kind, issued_borrow.kind) {
             (
-                BorrowKind::Shared,
+                BorrowKind::Shared | BorrowKind::Fake(FakeBorrowKind::Deep),
                 BorrowKind::Mut { kind: MutBorrowKind::Default | MutBorrowKind::TwoPhaseBorrow },
             ) => {
                 first_borrow_desc = "mutable ";
-                self.cannot_reborrow_already_borrowed(
+                let mut err = self.cannot_reborrow_already_borrowed(
                     span,
                     &desc_place,
                     &msg_place,
@@ -1500,11 +1537,19 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     "mutable",
                     &msg_borrow,
                     None,
-                )
+                );
+                self.suggest_slice_method_if_applicable(
+                    &mut err,
+                    place,
+                    issued_borrow.borrowed_place,
+                    span,
+                    issued_span,
+                );
+                err
             }
             (
                 BorrowKind::Mut { kind: MutBorrowKind::Default | MutBorrowKind::TwoPhaseBorrow },
-                BorrowKind::Shared,
+                BorrowKind::Shared | BorrowKind::Fake(FakeBorrowKind::Deep),
             ) => {
                 first_borrow_desc = "immutable ";
                 let mut err = self.cannot_reborrow_already_borrowed(
@@ -1517,6 +1562,13 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     "immutable",
                     &msg_borrow,
                     None,
+                );
+                self.suggest_slice_method_if_applicable(
+                    &mut err,
+                    place,
+                    issued_borrow.borrowed_place,
+                    span,
+                    issued_span,
                 );
                 self.suggest_binding_for_closure_capture_self(&mut err, &issued_spans);
                 self.suggest_using_closure_argument_instead_of_capture(
@@ -1544,6 +1596,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     &mut err,
                     place,
                     issued_borrow.borrowed_place,
+                    span,
+                    issued_span,
                 );
                 self.suggest_using_closure_argument_instead_of_capture(
                     &mut err,
@@ -1566,7 +1620,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 self.cannot_uniquely_borrow_by_two_closures(span, &desc_place, issued_span, None)
             }
 
-            (BorrowKind::Mut { .. }, BorrowKind::Fake) => {
+            (BorrowKind::Mut { .. }, BorrowKind::Fake(FakeBorrowKind::Shallow)) => {
                 if let Some(immutable_section_description) =
                     self.classify_immutable_section(issued_borrow.assigned_place)
                 {
@@ -1629,7 +1683,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 )
             }
 
-            (BorrowKind::Shared, BorrowKind::Mut { kind: MutBorrowKind::ClosureCapture }) => {
+            (
+                BorrowKind::Shared | BorrowKind::Fake(FakeBorrowKind::Deep),
+                BorrowKind::Mut { kind: MutBorrowKind::ClosureCapture },
+            ) => {
                 first_borrow_desc = "first ";
                 self.cannot_reborrow_already_uniquely_borrowed(
                     span,
@@ -1659,8 +1716,14 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 )
             }
 
-            (BorrowKind::Shared, BorrowKind::Shared | BorrowKind::Fake)
-            | (BorrowKind::Fake, BorrowKind::Mut { .. } | BorrowKind::Shared | BorrowKind::Fake) => {
+            (
+                BorrowKind::Shared | BorrowKind::Fake(FakeBorrowKind::Deep),
+                BorrowKind::Shared | BorrowKind::Fake(_),
+            )
+            | (
+                BorrowKind::Fake(FakeBorrowKind::Shallow),
+                BorrowKind::Mut { .. } | BorrowKind::Shared | BorrowKind::Fake(_),
+            ) => {
                 unreachable!()
             }
         };
@@ -1955,7 +2018,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     pub(crate) fn find_expr(&self, span: Span) -> Option<&hir::Expr<'_>> {
         let tcx = self.infcx.tcx;
         let body_id = tcx.hir_node(self.mir_hir_id()).body_id()?;
-        let mut expr_finder = FindExprBySpan::new(span);
+        let mut expr_finder = FindExprBySpan::new(span, tcx);
         expr_finder.visit_expr(tcx.hir().body(body_id).value);
         expr_finder.result
     }
@@ -1965,40 +2028,47 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         err: &mut Diag<'_>,
         place: Place<'tcx>,
         borrowed_place: Place<'tcx>,
+        span: Span,
+        issued_span: Span,
     ) {
         let tcx = self.infcx.tcx;
         let hir = tcx.hir();
 
+        let has_split_at_mut = |ty: Ty<'tcx>| {
+            let ty = ty.peel_refs();
+            match ty.kind() {
+                ty::Array(..) | ty::Slice(..) => true,
+                ty::Adt(def, _) if tcx.get_diagnostic_item(sym::Vec) == Some(def.did()) => true,
+                _ if ty == tcx.types.str_ => true,
+                _ => false,
+            }
+        };
         if let ([ProjectionElem::Index(index1)], [ProjectionElem::Index(index2)])
         | (
             [ProjectionElem::Deref, ProjectionElem::Index(index1)],
             [ProjectionElem::Deref, ProjectionElem::Index(index2)],
         ) = (&place.projection[..], &borrowed_place.projection[..])
         {
+            let decl1 = &self.body.local_decls[*index1];
+            let decl2 = &self.body.local_decls[*index2];
+
             let mut note_default_suggestion = || {
                 err.help(
-                    "consider using `.split_at_mut(position)` or similar method to obtain \
-                         two mutable non-overlapping sub-slices",
+                    "consider using `.split_at_mut(position)` or similar method to obtain two \
+                     mutable non-overlapping sub-slices",
                 )
-                .help("consider using `.swap(index_1, index_2)` to swap elements at the specified indices");
+                .help(
+                    "consider using `.swap(index_1, index_2)` to swap elements at the specified \
+                     indices",
+                );
             };
 
-            let Some(body_id) = tcx.hir_node(self.mir_hir_id()).body_id() else {
+            let Some(index1) = self.find_expr(decl1.source_info.span) else {
                 note_default_suggestion();
                 return;
             };
 
-            let mut expr_finder =
-                FindExprBySpan::new(self.body.local_decls[*index1].source_info.span);
-            expr_finder.visit_expr(hir.body(body_id).value);
-            let Some(index1) = expr_finder.result else {
-                note_default_suggestion();
-                return;
-            };
-
-            expr_finder = FindExprBySpan::new(self.body.local_decls[*index2].source_info.span);
-            expr_finder.visit_expr(hir.body(body_id).value);
-            let Some(index2) = expr_finder.result else {
+            let Some(index2) = self.find_expr(decl2.source_info.span) else {
                 note_default_suggestion();
                 return;
             };
@@ -2046,7 +2116,13 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     None
                 }
             }) else {
-                note_default_suggestion();
+                let hir::Node::Expr(parent) = tcx.parent_hir_node(index1.hir_id) else { return };
+                let hir::ExprKind::Index(_, idx1, _) = parent.kind else { return };
+                let hir::Node::Expr(parent) = tcx.parent_hir_node(index2.hir_id) else { return };
+                let hir::ExprKind::Index(_, idx2, _) = parent.kind else { return };
+                if !idx1.equivalent_for_indexing(idx2) {
+                    err.help("use `.split_at_mut(position)` to obtain two mutable non-overlapping sub-slices");
+                }
                 return;
             };
 
@@ -2056,7 +2132,25 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 format!("{obj_str}.swap({index1_str}, {index2_str})"),
                 Applicability::MachineApplicable,
             );
+            return;
         }
+        let place_ty = PlaceRef::ty(&place.as_ref(), self.body, tcx).ty;
+        let borrowed_place_ty = PlaceRef::ty(&borrowed_place.as_ref(), self.body, tcx).ty;
+        if !has_split_at_mut(place_ty) && !has_split_at_mut(borrowed_place_ty) {
+            // Only mention `split_at_mut` on `Vec`, array and slices.
+            return;
+        }
+        let Some(index1) = self.find_expr(span) else { return };
+        let hir::Node::Expr(parent) = tcx.parent_hir_node(index1.hir_id) else { return };
+        let hir::ExprKind::Index(_, idx1, _) = parent.kind else { return };
+        let Some(index2) = self.find_expr(issued_span) else { return };
+        let hir::Node::Expr(parent) = tcx.parent_hir_node(index2.hir_id) else { return };
+        let hir::ExprKind::Index(_, idx2, _) = parent.kind else { return };
+        if idx1.equivalent_for_indexing(idx2) {
+            // `let a = &mut foo[0]` and `let b = &mut foo[0]`? Don't mention `split_at_mut`
+            return;
+        }
+        err.help("use `.split_at_mut(position)` to obtain two mutable non-overlapping sub-slices");
     }
 
     /// Suggest using `while let` for call `next` on an iterator in a for loop.
@@ -3572,7 +3666,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let loan_span = loan_spans.args_or_use();
 
         let descr_place = self.describe_any_place(place.as_ref());
-        if loan.kind == BorrowKind::Fake {
+        if let BorrowKind::Fake(_) = loan.kind {
             if let Some(section) = self.classify_immutable_section(loan.assigned_place) {
                 let mut err = self.cannot_mutate_in_immutable_section(
                     span,
@@ -3697,7 +3791,6 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             | None => (self.describe_any_place(place.as_ref()), assigned_span),
             Some(decl) => (self.describe_any_place(err_place.as_ref()), decl.source_info.span),
         };
-
         let mut err = self.cannot_reassign_immutable(span, &place_description, from_arg);
         let msg = if from_arg {
             "cannot assign to immutable argument"
@@ -3717,6 +3810,22 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 format!("mut {name}"),
                 Applicability::MachineApplicable,
             );
+            if !from_arg
+                && matches!(
+                    decl.local_info(),
+                    LocalInfo::User(BindingForm::Var(VarBindingForm {
+                        opt_match_place: Some((Some(_), _)),
+                        ..
+                    }))
+                )
+            {
+                err.span_suggestion(
+                    decl.source_info.span,
+                    "to modify the original value, take a borrow instead",
+                    format!("ref mut {name}"),
+                    Applicability::MaybeIncorrect,
+                );
+            }
         }
         err.span_label(span, msg);
         self.buffer_error(err);

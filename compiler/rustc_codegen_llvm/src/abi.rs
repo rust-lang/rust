@@ -2,6 +2,7 @@ use crate::attributes;
 use crate::builder::Builder;
 use crate::context::CodegenCx;
 use crate::llvm::{self, Attribute, AttributePlace};
+use crate::llvm_util;
 use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
 use crate::value::Value;
@@ -227,7 +228,7 @@ impl<'ll, 'tcx> ArgAbiExt<'ll, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
                 //   when passed by value, making it larger.
                 let copy_bytes = cmp::min(scratch_size.bytes(), self.layout.size.bytes());
                 // Allocate some scratch space...
-                let llscratch = bx.alloca(cast.llvm_type(bx), scratch_align);
+                let llscratch = bx.alloca(scratch_size, scratch_align);
                 bx.lifetime_start(llscratch, scratch_size);
                 // ...store the value...
                 bx.store(val, llscratch, scratch_align);
@@ -425,6 +426,18 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                     cx.type_array(cx.type_i8(), self.ret.layout.size.bytes()),
                 );
                 attributes::apply_to_llfn(llfn, llvm::AttributePlace::Argument(i), &[sret]);
+                if cx.sess().opts.optimize != config::OptLevel::No
+                    && llvm_util::get_version() >= (18, 0, 0)
+                {
+                    attributes::apply_to_llfn(
+                        llfn,
+                        llvm::AttributePlace::Argument(i),
+                        &[
+                            llvm::AttributeKind::Writable.create_attr(cx.llcx),
+                            llvm::AttributeKind::DeadOnUnwind.create_attr(cx.llcx),
+                        ],
+                    );
+                }
             }
             PassMode::Cast { cast, pad_i32: _ } => {
                 cast.attrs.apply_attrs_to_llfn(llvm::AttributePlace::ReturnValue, cx, llfn);

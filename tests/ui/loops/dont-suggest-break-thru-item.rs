@@ -1,7 +1,5 @@
 //@ edition:2021
 
-#![feature(inline_const)]
-
 fn closure() {
     loop {
         let closure = || {

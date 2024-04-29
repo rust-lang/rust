@@ -1158,12 +1158,6 @@ impl FusedIterator for Ancestors<'_> {}
 /// Which method works best depends on what kind of situation you're in.
 #[cfg_attr(not(test), rustc_diagnostic_item = "PathBuf")]
 #[stable(feature = "rust1", since = "1.0.0")]
-// `PathBuf::as_mut_vec` current implementation relies
-// on `PathBuf` being layout-compatible with `Vec<u8>`.
-// However, `PathBuf` layout is considered an implementation detail and must not be relied upon. We
-// want `repr(transparent)` but we don't want it to show up in rustdoc, so we hide it under
-// `cfg(doc)`. This is an ad-hoc implementation of attribute privacy.
-#[cfg_attr(not(doc), repr(transparent))]
 pub struct PathBuf {
     inner: OsString,
 }
@@ -1171,7 +1165,7 @@ pub struct PathBuf {
 impl PathBuf {
     #[inline]
     fn as_mut_vec(&mut self) -> &mut Vec<u8> {
-        unsafe { &mut *(self as *mut PathBuf as *mut Vec<u8>) }
+        self.inner.as_mut_vec_for_path_buf()
     }
 
     /// Allocates an empty `PathBuf`.
@@ -3332,7 +3326,6 @@ impl Error for StripPrefixError {
 /// ## Posix paths
 ///
 /// ```
-/// #![feature(absolute_path)]
 /// # #[cfg(unix)]
 /// fn main() -> std::io::Result<()> {
 ///   use std::path::{self, Path};
@@ -3357,7 +3350,6 @@ impl Error for StripPrefixError {
 /// ## Windows paths
 ///
 /// ```
-/// #![feature(absolute_path)]
 /// # #[cfg(windows)]
 /// fn main() -> std::io::Result<()> {
 ///   use std::path::{self, Path};
@@ -3382,7 +3374,7 @@ impl Error for StripPrefixError {
 ///
 /// [posix-semantics]: https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap04.html#tag_04_13
 /// [windows-path]: https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-getfullpathnamew
-#[unstable(feature = "absolute_path", issue = "92750")]
+#[stable(feature = "absolute_path", since = "CURRENT_RUSTC_VERSION")]
 pub fn absolute<P: AsRef<Path>>(path: P) -> io::Result<PathBuf> {
     let path = path.as_ref();
     if path.as_os_str().is_empty() {

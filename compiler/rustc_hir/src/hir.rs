@@ -644,13 +644,49 @@ impl<'hir> Generics<'hir> {
         })
     }
 
-    pub fn bounds_span_for_suggestions(&self, param_def_id: LocalDefId) -> Option<Span> {
+    /// Returns a suggestable empty span right after the "final" bound of the generic parameter.
+    ///
+    /// If that bound needs to be wrapped in parentheses to avoid ambiguity with
+    /// subsequent bounds, it also returns an empty span for an open parenthesis
+    /// as the second component.
+    ///
+    /// E.g., adding `+ 'static` after `Fn() -> dyn Future<Output = ()>` or
+    /// `Fn() -> &'static dyn Debug` requires parentheses:
+    /// `Fn() -> (dyn Future<Output = ()>) + 'static` and
+    /// `Fn() -> &'static (dyn Debug) + 'static`, respectively.
+    pub fn bounds_span_for_suggestions(
+        &self,
+        param_def_id: LocalDefId,
+    ) -> Option<(Span, Option<Span>)> {
         self.bounds_for_param(param_def_id).flat_map(|bp| bp.bounds.iter().rev()).find_map(
             |bound| {
-                // We include bounds that come from a `#[derive(_)]` but point at the user's code,
-                // as we use this method to get a span appropriate for suggestions.
-                let bs = bound.span();
-                bs.can_be_used_for_suggestions().then(|| bs.shrink_to_hi())
+                let span_for_parentheses = if let Some(trait_ref) = bound.trait_ref()
+                    && let [.., segment] = trait_ref.path.segments
+                    && segment.args().parenthesized == GenericArgsParentheses::ParenSugar
+                    && let [binding] = segment.args().bindings
+                    && let TypeBindingKind::Equality { term: Term::Ty(ret_ty) } = binding.kind
+                    && let ret_ty = ret_ty.peel_refs()
+                    && let TyKind::TraitObject(
+                        _,
+                        _,
+                        TraitObjectSyntax::Dyn | TraitObjectSyntax::DynStar,
+                    ) = ret_ty.kind
+                    && ret_ty.span.can_be_used_for_suggestions()
+                {
+                    Some(ret_ty.span)
+                } else {
+                    None
+                };
+
+                span_for_parentheses.map_or_else(
+                    || {
+                        // We include bounds that come from a `#[derive(_)]` but point at the user's code,
+                        // as we use this method to get a span appropriate for suggestions.
+                        let bs = bound.span();
+                        bs.can_be_used_for_suggestions().then(|| (bs.shrink_to_hi(), None))
+                    },
+                    |span| Some((span.shrink_to_hi(), Some(span.shrink_to_lo()))),
+                )
             },
         )
     }
@@ -1771,6 +1807,44 @@ impl Expr<'_> {
             | ExprKind::Lit(_)
             | ExprKind::Path(_)
             | ExprKind::Struct(..) => true,
+            _ => false,
+        }
+    }
+
+    /// Whether this and the `other` expression are the same for purposes of an indexing operation.
+    ///
+    /// This is only used for diagnostics to see if we have things like `foo[i]` where `foo` is
+    /// borrowed multiple times with `i`.
+    pub fn equivalent_for_indexing(&self, other: &Expr<'_>) -> bool {
+        match (self.kind, other.kind) {
+            (ExprKind::Lit(lit1), ExprKind::Lit(lit2)) => lit1.node == lit2.node,
+            (
+                ExprKind::Path(QPath::LangItem(item1, _)),
+                ExprKind::Path(QPath::LangItem(item2, _)),
+            ) => item1 == item2,
+            (
+                ExprKind::Path(QPath::Resolved(None, path1)),
+                ExprKind::Path(QPath::Resolved(None, path2)),
+            ) => path1.res == path2.res,
+            (
+                ExprKind::Struct(QPath::LangItem(LangItem::RangeTo, _), [val1], None),
+                ExprKind::Struct(QPath::LangItem(LangItem::RangeTo, _), [val2], None),
+            )
+            | (
+                ExprKind::Struct(QPath::LangItem(LangItem::RangeToInclusive, _), [val1], None),
+                ExprKind::Struct(QPath::LangItem(LangItem::RangeToInclusive, _), [val2], None),
+            )
+            | (
+                ExprKind::Struct(QPath::LangItem(LangItem::RangeFrom, _), [val1], None),
+                ExprKind::Struct(QPath::LangItem(LangItem::RangeFrom, _), [val2], None),
+            ) => val1.expr.equivalent_for_indexing(val2.expr),
+            (
+                ExprKind::Struct(QPath::LangItem(LangItem::Range, _), [val1, val3], None),
+                ExprKind::Struct(QPath::LangItem(LangItem::Range, _), [val2, val4], None),
+            ) => {
+                val1.expr.equivalent_for_indexing(val2.expr)
+                    && val3.expr.equivalent_for_indexing(val4.expr)
+            }
             _ => false,
         }
     }

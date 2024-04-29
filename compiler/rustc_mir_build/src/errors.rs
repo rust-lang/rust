@@ -423,7 +423,7 @@ impl Subdiagnostic for UnsafeNotInheritedLintNote {
     fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
-        _f: F,
+        _f: &F,
     ) {
         diag.span_note(self.signature_span, fluent::mir_build_unsafe_fn_safe_body);
         let body_start = self.body_span.shrink_to_lo();
@@ -819,6 +819,15 @@ pub struct NontrivialStructuralMatch<'tcx> {
 }
 
 #[derive(Diagnostic)]
+#[diag(mir_build_exceeds_mcdc_condition_num_limit)]
+pub(crate) struct MCDCExceedsConditionNumLimit {
+    #[primary_span]
+    pub span: Span,
+    pub conditions_num: usize,
+    pub max_conditions_num: usize,
+}
+
+#[derive(Diagnostic)]
 #[diag(mir_build_pattern_not_covered, code = E0005)]
 pub(crate) struct PatternNotCovered<'s, 'tcx> {
     #[primary_span]
@@ -862,7 +871,7 @@ impl<'tcx> Subdiagnostic for AdtDefinedHere<'tcx> {
     fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
-        _f: F,
+        _f: &F,
     ) {
         diag.arg("ty", self.ty);
         let mut spans = MultiSpan::from(self.adt_def_span);

@@ -629,13 +629,6 @@ impl CrateStore for CStore {
         self.get_crate_data(cnum).root.stable_crate_id
     }
 
-    fn stable_crate_id_to_crate_num(&self, stable_crate_id: StableCrateId) -> CrateNum {
-        *self
-            .stable_crate_ids
-            .get(&stable_crate_id)
-            .unwrap_or_else(|| bug!("uninterned StableCrateId: {stable_crate_id:?}"))
-    }
-
     /// Returns the `DefKey` for a given `DefId`. This indicates the
     /// parent `DefId` as well as some idea of what kind of data the
     /// `DefId` refers to.
@@ -657,7 +650,13 @@ fn provide_cstore_hooks(providers: &mut Providers) {
         // If this is a DefPathHash from an upstream crate, let the CrateStore map
         // it to a DefId.
         let cstore = CStore::from_tcx(tcx.tcx);
-        let cnum = cstore.stable_crate_id_to_crate_num(stable_crate_id);
+        let cnum = *tcx
+            .untracked()
+            .stable_crate_ids
+            .read()
+            .get(&stable_crate_id)
+            .unwrap_or_else(|| bug!("uninterned StableCrateId: {stable_crate_id:?}"));
+        assert_ne!(cnum, LOCAL_CRATE);
         let def_index = cstore.get_crate_data(cnum).def_path_hash_to_def_index(hash);
         DefId { krate: cnum, index: def_index }
     };

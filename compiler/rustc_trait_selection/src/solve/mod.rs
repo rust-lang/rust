@@ -200,18 +200,6 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
 }
 
 impl<'tcx> EvalCtxt<'_, 'tcx> {
-    #[instrument(level = "debug", skip(self))]
-    fn add_normalizes_to_goal(&mut self, goal: Goal<'tcx, ty::NormalizesTo<'tcx>>) {
-        inspect::ProofTreeBuilder::add_normalizes_to_goal(self, goal);
-        self.nested_goals.normalizes_to_goals.push(goal);
-    }
-
-    #[instrument(level = "debug", skip(self))]
-    fn add_goal(&mut self, source: GoalSource, goal: Goal<'tcx, ty::Predicate<'tcx>>) {
-        inspect::ProofTreeBuilder::add_goal(self, source, goal);
-        self.nested_goals.goals.push((source, goal));
-    }
-
     #[instrument(level = "debug", skip(self, goals))]
     fn add_goals(
         &mut self,

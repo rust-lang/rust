@@ -148,6 +148,8 @@ pub enum InstrumentCoverage {
 pub struct CoverageOptions {
     /// Add branch coverage instrumentation.
     pub branch: bool,
+    /// Add mcdc coverage instrumentation.
+    pub mcdc: bool,
 }
 
 /// Settings for `-Z instrument-xray` flag.
@@ -1886,9 +1888,12 @@ fn collect_print_requests(
                 let prints =
                     PRINT_KINDS.iter().map(|(name, _)| format!("`{name}`")).collect::<Vec<_>>();
                 let prints = prints.join(", ");
-                early_dcx.early_fatal(format!(
-                    "unknown print request `{req}`. Valid print requests are: {prints}"
-                ));
+
+                let mut diag =
+                    early_dcx.early_struct_fatal(format!("unknown print request: `{req}`"));
+                #[allow(rustc::diagnostic_outside_of_impl)]
+                diag.help(format!("valid print requests are: {prints}"));
+                diag.emit()
             }
         };
 
@@ -2546,7 +2551,13 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
 
     let mut search_paths = vec![];
     for s in &matches.opt_strs("L") {
-        search_paths.push(SearchPath::from_cli_opt(&sysroot, &target_triple, early_dcx, s));
+        search_paths.push(SearchPath::from_cli_opt(
+            &sysroot,
+            &target_triple,
+            early_dcx,
+            s,
+            unstable_opts.unstable_options,
+        ));
     }
 
     let working_dir = std::env::current_dir().unwrap_or_else(|e| {

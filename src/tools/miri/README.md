@@ -295,6 +295,16 @@ up the sysroot.  If you are using `miri` (the Miri driver) directly, see the
 Miri adds its own set of `-Z` flags, which are usually set via the `MIRIFLAGS`
 environment variable. We first document the most relevant and most commonly used flags:
 
+* `-Zmiri-address-reuse-rate=<rate>` changes the probability that a freed *non-stack* allocation
+  will be added to the pool for address reuse, and the probability that a new *non-stack* allocation
+  will be taken from the pool. Stack allocations never get added to or taken from the pool. The
+  default is `0.5`.
+* `-Zmiri-address-reuse-cross-thread-rate=<rate>` changes the probability that an allocation which
+  attempts to reuse a previously freed block of memory will also consider blocks freed by *other
+  threads*. The default is `0.1`, which means by default, in 90% of the cases where an address reuse
+  attempt is made, only addresses from the same thread will be considered. Reusing an address from
+  another thread induces synchronization between those threads, which can mask data races and weak
+  memory bugs.
 * `-Zmiri-compare-exchange-weak-failure-rate=<rate>` changes the failure rate of
   `compare_exchange_weak` operations. The default is `0.8` (so 4 out of 5 weak ops will fail).
   You can change it to any value between `0.0` and `1.0`, where `1.0` means it
@@ -311,6 +321,10 @@ environment variable. We first document the most relevant and most commonly used
 * `-Zmiri-env-forward=<var>` forwards the `var` environment variable to the interpreted program. Can
   be used multiple times to forward several variables. Execution will still be deterministic if the
   value of forwarded variables stays the same. Has no effect if `-Zmiri-disable-isolation` is set.
+* `-Zmiri-env-set=<var>=<value>` sets the `var` environment variable to `value` in the interpreted program.
+  It can be used to pass environment variables without needing to alter the host environment. It can
+  be used multiple times to set several variables. If `-Zmiri-disable-isolation` or `-Zmiri-env-forward`
+  is set, values set with this option will have priority over values from the host environment.
 * `-Zmiri-ignore-leaks` disables the memory leak checker, and also allows some
   remaining threads to exist when the main thread exits.
 * `-Zmiri-isolation-error=<action>` configures Miri's response to operations
@@ -550,7 +564,8 @@ used according to their aliasing restrictions.
 
 ## Bugs found by Miri
 
-Miri has already found a number of bugs in the Rust standard library and beyond, which we collect here.
+Miri has already found a number of bugs in the Rust standard library and beyond, some of which we collect here.
+If Miri helped you find a subtle UB bug in your code, we'd appreciate a PR adding it to the list!
 
 Definite bugs found:
 
@@ -585,6 +600,7 @@ Definite bugs found:
 * [Deallocating with the wrong layout in new specializations for in-place `Iterator::collect`](https://github.com/rust-lang/rust/pull/118460)
 * [Incorrect offset computation for highly-aligned types in `portable-atomic-util`](https://github.com/taiki-e/portable-atomic/pull/138)
 * [Occasional memory leak in `std::mpsc` channels](https://github.com/rust-lang/rust/issues/121582) (original code in [crossbeam](https://github.com/crossbeam-rs/crossbeam/pull/1084))
+* [Weak-memory-induced memory leak in Windows thread-local storage](https://github.com/rust-lang/rust/pull/124281)
 
 Violations of [Stacked Borrows] found that are likely bugs (but Stacked Borrows is currently just an experiment):
 

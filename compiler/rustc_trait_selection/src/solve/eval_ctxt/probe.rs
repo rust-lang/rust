@@ -20,23 +20,29 @@ where
     pub(in crate::solve) fn enter(self, f: impl FnOnce(&mut EvalCtxt<'_, 'tcx>) -> T) -> T {
         let ProbeCtxt { ecx: outer_ecx, probe_kind, _result } = self;
 
+        let infcx = outer_ecx.infcx;
+        let max_input_universe = outer_ecx.max_input_universe;
         let mut nested_ecx = EvalCtxt {
-            infcx: outer_ecx.infcx,
+            infcx,
             variables: outer_ecx.variables,
             var_values: outer_ecx.var_values,
             is_normalizes_to_goal: outer_ecx.is_normalizes_to_goal,
             predefined_opaques_in_body: outer_ecx.predefined_opaques_in_body,
-            max_input_universe: outer_ecx.max_input_universe,
+            max_input_universe,
             search_graph: outer_ecx.search_graph,
             nested_goals: outer_ecx.nested_goals.clone(),
             tainted: outer_ecx.tainted,
-            inspect: outer_ecx.inspect.new_probe(),
+            inspect: outer_ecx.inspect.take_and_enter_probe(),
         };
-        let r = nested_ecx.infcx.probe(|_| f(&mut nested_ecx));
-        if !outer_ecx.inspect.is_noop() {
+        let r = nested_ecx.infcx.probe(|_| {
+            let r = f(&mut nested_ecx);
+            nested_ecx.inspect.probe_final_state(infcx, max_input_universe);
+            r
+        });
+        if !nested_ecx.inspect.is_noop() {
             let probe_kind = probe_kind(&r);
             nested_ecx.inspect.probe_kind(probe_kind);
-            outer_ecx.inspect.finish_probe(nested_ecx.inspect);
+            outer_ecx.inspect = nested_ecx.inspect.finish_probe();
         }
         r
     }

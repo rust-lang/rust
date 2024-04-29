@@ -44,7 +44,7 @@ impl Subdiagnostic for InvalidAbiReason {
     fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
-        _: F,
+        _: &F,
     ) {
         #[allow(rustc::untranslatable_diagnostic)]
         diag.note(self.0);
@@ -420,4 +420,13 @@ pub(crate) struct AsyncBoundOnlyForFnTraits {
 pub(crate) struct NoPreciseCapturesOnApit {
     #[primary_span]
     pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(ast_lowering_yield_in_closure)]
+pub(crate) struct YieldInClosure {
+    #[primary_span]
+    pub span: Span,
+    #[suggestion(code = "#[coroutine] ", applicability = "maybe-incorrect", style = "verbose")]
+    pub suggestion: Option<Span>,
 }

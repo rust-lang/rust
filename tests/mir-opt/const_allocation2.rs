@@ -1,5 +1,5 @@
 // skip-filecheck
-//@ unit-test: GVN
+//@ test-mir-pass: GVN
 //@ ignore-endian-big
 // EMIT_MIR_FOR_EACH_BIT_WIDTH
 // EMIT_MIR const_allocation2.main.GVN.after.mir

@@ -38,12 +38,12 @@ use rustc_data_structures::intern::Interned;
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{FreezeReadGuard, Lrc};
 use rustc_errors::{Applicability, Diag, ErrCode};
-use rustc_expand::base::{DeriveResolutions, SyntaxExtension, SyntaxExtensionKind};
+use rustc_expand::base::{DeriveResolution, SyntaxExtension, SyntaxExtensionKind};
 use rustc_feature::BUILTIN_ATTRIBUTES;
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::NonMacroAttrKind;
 use rustc_hir::def::{self, CtorOf, DefKind, DocLinkResMap, LifetimeRes, PartialRes, PerNS};
-use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LocalDefIdMap, LocalDefIdSet};
+use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LocalDefIdMap};
 use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::{PrimTy, TraitCandidate};
 use rustc_index::IndexVec;
@@ -52,8 +52,8 @@ use rustc_middle::metadata::ModChild;
 use rustc_middle::middle::privacy::EffectiveVisibilities;
 use rustc_middle::query::Providers;
 use rustc_middle::span_bug;
-use rustc_middle::ty::{self, MainDefinition, RegisteredTools, TyCtxt, TyCtxtFeed};
-use rustc_middle::ty::{Feed, ResolverGlobalCtxt, ResolverOutputs};
+use rustc_middle::ty::{self, DelegationFnSig, Feed, MainDefinition, RegisteredTools};
+use rustc_middle::ty::{ResolverGlobalCtxt, ResolverOutputs, TyCtxt, TyCtxtFeed};
 use rustc_query_system::ich::StableHashingContext;
 use rustc_session::lint::builtin::PRIVATE_MACRO_USE;
 use rustc_session::lint::LintBuffer;
@@ -959,7 +959,7 @@ enum BuiltinMacroState {
 }
 
 struct DeriveData {
-    resolutions: DeriveResolutions,
+    resolutions: Vec<DeriveResolution>,
     helper_attrs: Vec<(usize, Ident)>,
     has_derive_copy: bool,
 }
@@ -992,7 +992,6 @@ pub struct Resolver<'a, 'tcx> {
     extern_prelude: FxHashMap<Ident, ExternPreludeEntry<'a>>,
 
     /// N.B., this is used only for better diagnostics, not name resolution itself.
-    has_self: LocalDefIdSet,
     field_def_ids: LocalDefIdMap<&'tcx [DefId]>,
 
     /// Span of the privacy modifier in fields of an item `DefId` accessible with dot syntax.
@@ -1042,7 +1041,7 @@ pub struct Resolver<'a, 'tcx> {
     block_map: NodeMap<Module<'a>>,
     /// A fake module that contains no definition and no prelude. Used so that
     /// some AST passes can generate identifiers that only resolve to local or
-    /// language items.
+    /// lang items.
     empty_module: Module<'a>,
     module_map: FxHashMap<DefId, Module<'a>>,
     binding_parent_modules: FxHashMap<NameBinding<'a>, Module<'a>>,
@@ -1149,8 +1148,7 @@ pub struct Resolver<'a, 'tcx> {
     legacy_const_generic_args: FxHashMap<DefId, Option<Vec<usize>>>,
     /// Amount of lifetime parameters for each item in the crate.
     item_generics_num_lifetimes: FxHashMap<LocalDefId, usize>,
-    /// Amount of parameters for each function in the crate.
-    fn_parameter_counts: LocalDefIdMap<usize>,
+    delegation_fn_sigs: LocalDefIdMap<DelegationFnSig>,
 
     main_def: Option<MainDefinition>,
     trait_impls: FxIndexMap<DefId, Vec<LocalDefId>>,
@@ -1399,7 +1397,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             prelude: None,
             extern_prelude,
 
-            has_self: Default::default(),
             field_def_ids: Default::default(),
             field_visibility_spans: FxHashMap::default(),
 
@@ -1508,7 +1505,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             doc_link_resolutions: Default::default(),
             doc_link_traits_in_scope: Default::default(),
             all_macro_rules: Default::default(),
-            fn_parameter_counts: Default::default(),
+            delegation_fn_sigs: Default::default(),
         };
 
         let root_parent_scope = ParentScope::module(graph_root, &resolver);
@@ -1621,8 +1618,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             trait_map: self.trait_map,
             lifetime_elision_allowed: self.lifetime_elision_allowed,
             lint_buffer: Steal::new(self.lint_buffer),
-            has_self: self.has_self,
-            fn_parameter_counts: self.fn_parameter_counts,
+            delegation_fn_sigs: self.delegation_fn_sigs,
         };
         ResolverOutputs { global_ctxt, ast_lowering }
     }

@@ -3,8 +3,8 @@ use rustc_span::Symbol;
 use rustc_target::spec::abi::Abi;
 
 use super::{
-    bin_op_simd_float_all, bin_op_simd_float_first, convert_float_to_int, shift_simd_by_scalar,
-    FloatBinOp, ShiftOp,
+    bin_op_simd_float_all, bin_op_simd_float_first, convert_float_to_int, packssdw, packsswb,
+    packuswb, shift_simd_by_scalar, FloatBinOp, ShiftOp,
 };
 use crate::*;
 use shims::foreign_items::EmulateForeignItemResult;
@@ -176,29 +176,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
                 let [left, right] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
 
-                let (left, left_len) = this.operand_to_simd(left)?;
-                let (right, right_len) = this.operand_to_simd(right)?;
-                let (dest, dest_len) = this.mplace_to_simd(dest)?;
-
-                // left and right are i16x8, dest is i8x16
-                assert_eq!(left_len, 8);
-                assert_eq!(right_len, 8);
-                assert_eq!(dest_len, 16);
-
-                for i in 0..left_len {
-                    let left = this.read_scalar(&this.project_index(&left, i)?)?.to_i16()?;
-                    let right = this.read_scalar(&this.project_index(&right, i)?)?.to_i16()?;
-                    let left_dest = this.project_index(&dest, i)?;
-                    let right_dest = this.project_index(&dest, i.checked_add(left_len).unwrap())?;
-
-                    let left_res =
-                        i8::try_from(left).unwrap_or(if left < 0 { i8::MIN } else { i8::MAX });
-                    let right_res =
-                        i8::try_from(right).unwrap_or(if right < 0 { i8::MIN } else { i8::MAX });
-
-                    this.write_scalar(Scalar::from_i8(left_res), &left_dest)?;
-                    this.write_scalar(Scalar::from_i8(right_res), &right_dest)?;
-                }
+                packsswb(this, left, right, dest)?;
             }
             // Used to implement the _mm_packus_epi16 function.
             // Converts two 16-bit signed integer vectors to a single 8-bit
@@ -207,28 +185,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
                 let [left, right] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
 
-                let (left, left_len) = this.operand_to_simd(left)?;
-                let (right, right_len) = this.operand_to_simd(right)?;
-                let (dest, dest_len) = this.mplace_to_simd(dest)?;
-
-                // left and right are i16x8, dest is u8x16
-                assert_eq!(left_len, 8);
-                assert_eq!(right_len, 8);
-                assert_eq!(dest_len, 16);
-
-                for i in 0..left_len {
-                    let left = this.read_scalar(&this.project_index(&left, i)?)?.to_i16()?;
-                    let right = this.read_scalar(&this.project_index(&right, i)?)?.to_i16()?;
-                    let left_dest = this.project_index(&dest, i)?;
-                    let right_dest = this.project_index(&dest, i.checked_add(left_len).unwrap())?;
-
-                    let left_res = u8::try_from(left).unwrap_or(if left < 0 { 0 } else { u8::MAX });
-                    let right_res =
-                        u8::try_from(right).unwrap_or(if right < 0 { 0 } else { u8::MAX });
-
-                    this.write_scalar(Scalar::from_u8(left_res), &left_dest)?;
-                    this.write_scalar(Scalar::from_u8(right_res), &right_dest)?;
-                }
+                packuswb(this, left, right, dest)?;
             }
             // Used to implement the _mm_packs_epi32 function.
             // Converts two 32-bit integer vectors to a single 16-bit integer
@@ -237,29 +194,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
                 let [left, right] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
 
-                let (left, left_len) = this.operand_to_simd(left)?;
-                let (right, right_len) = this.operand_to_simd(right)?;
-                let (dest, dest_len) = this.mplace_to_simd(dest)?;
-
-                // left and right are i32x4, dest is i16x8
-                assert_eq!(left_len, 4);
-                assert_eq!(right_len, 4);
-                assert_eq!(dest_len, 8);
-
-                for i in 0..left_len {
-                    let left = this.read_scalar(&this.project_index(&left, i)?)?.to_i32()?;
-                    let right = this.read_scalar(&this.project_index(&right, i)?)?.to_i32()?;
-                    let left_dest = this.project_index(&dest, i)?;
-                    let right_dest = this.project_index(&dest, i.checked_add(left_len).unwrap())?;
-
-                    let left_res =
-                        i16::try_from(left).unwrap_or(if left < 0 { i16::MIN } else { i16::MAX });
-                    let right_res =
-                        i16::try_from(right).unwrap_or(if right < 0 { i16::MIN } else { i16::MAX });
-
-                    this.write_scalar(Scalar::from_i16(left_res), &left_dest)?;
-                    this.write_scalar(Scalar::from_i16(right_res), &right_dest)?;
-                }
+                packssdw(this, left, right, dest)?;
             }
             // Used to implement _mm_min_sd and _mm_max_sd functions.
             // Note that the semantics are a bit different from Rust simd_min
@@ -420,7 +355,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
                 };
 
                 let res = this.float_to_int_checked(&op, dest.layout, rnd)?.unwrap_or_else(|| {
-                    // Fallback to minimum acording to SSE semantics.
+                    // Fallback to minimum according to SSE semantics.
                     ImmTy::from_int(dest.layout.size.signed_int_min(), dest.layout)
                 });
 
@@ -447,7 +382,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
                 let res0 = this.float_to_float_or_int(&right0, dest0.layout)?;
                 this.write_immediate(*res0, &dest0)?;
 
-                // Copy remianing from `left`
+                // Copy remaining from `left`
                 for i in 1..dest_len {
                     this.copy_op(&this.project_index(&left, i)?, &this.project_index(&dest, i)?)?;
                 }

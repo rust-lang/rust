@@ -1,5 +1,5 @@
 error[E0628]: too many parameters for a coroutine (expected 0 or 1 parameters)
-  --> $DIR/too-many-parameters.rs:4:5
+  --> $DIR/too-many-parameters.rs:5:5
    |
 LL |     |(), ()| {
    |     ^^^^^^^^

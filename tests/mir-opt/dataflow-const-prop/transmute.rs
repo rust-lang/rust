@@ -1,4 +1,4 @@
-//@ unit-test: DataflowConstProp
+//@ test-mir-pass: DataflowConstProp
 //@ compile-flags: -O --crate-type=lib
 //@ ignore-endian-big
 // EMIT_MIR_FOR_EACH_BIT_WIDTH

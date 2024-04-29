@@ -1,5 +1,5 @@
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
-//@ unit-test: DataflowConstProp
+//@ test-mir-pass: DataflowConstProp
 //@ compile-flags: -Zmir-enable-passes=+InstSimplify
 // EMIT_MIR_FOR_EACH_BIT_WIDTH
 

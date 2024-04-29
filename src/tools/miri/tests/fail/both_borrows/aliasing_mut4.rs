@@ -8,7 +8,7 @@ use std::mem;
 pub fn safe(x: &i32, y: &mut Cell<i32>) {
     //~[stack]^ ERROR: protect
     y.set(1);
-    let _ = *x;
+    let _load = *x;
 }
 
 fn main() {

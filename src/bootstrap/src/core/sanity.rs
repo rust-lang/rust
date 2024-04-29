@@ -14,6 +14,7 @@ use std::ffi::{OsStr, OsString};
 use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
+use walkdir::WalkDir;
 
 use crate::builder::Kind;
 use crate::core::config::Target;
@@ -175,6 +176,34 @@ than building it.
         // skip check for cross-targets
         if skip_target_sanity && target != &build.build {
             continue;
+        }
+
+        // Check if there exists a built-in target in the list of supported targets.
+        let mut has_target = false;
+        let target_str = target.to_string();
+
+        let supported_target_list =
+            output(Command::new(&build.config.initial_rustc).args(["--print", "target-list"]));
+
+        has_target |= supported_target_list.contains(&target_str);
+
+        // If not, check for a valid file location that may have been specified
+        // by the user for the custom target.
+        if let Some(custom_target_path) = env::var_os("RUST_TARGET_PATH") {
+            let mut target_os_str = OsString::from(&target_str);
+            target_os_str.push(".json");
+            // Recursively traverse through nested directories.
+            let walker = WalkDir::new(custom_target_path).into_iter();
+            for entry in walker.filter_map(|e| e.ok()) {
+                has_target |= entry.file_name() == target_os_str;
+            }
+        }
+
+        if !has_target && !["A", "B", "C"].contains(&target_str.as_str()) {
+            panic!(
+                "No such target exists in the target list,
+                specify a correct location of the JSON specification file for custom targets!"
+            );
         }
 
         if !build.config.dry_run() {

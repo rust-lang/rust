@@ -6,6 +6,7 @@ use std::ffi::CString;
 use std::os::raw::{c_char, c_int};
 use std::sync::{mpsc, Mutex, OnceLock};
 
+use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext};
 use cranelift_jit::{JITBuilder, JITModule};
 use rustc_codegen_ssa::CrateInfo;
 use rustc_middle::mir::mono::MonoItem;

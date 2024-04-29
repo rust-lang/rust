@@ -31,7 +31,7 @@ use rustc_target::spec::abi::Abi;
 
 use crate::{
     concurrency::{data_race, weak_memory},
-    shims::unix::FdTable,
+    shims::unix,
     *,
 };
 
@@ -439,8 +439,7 @@ pub struct MiriMachine<'mir, 'tcx> {
     /// Ptr-int-cast module global data.
     pub alloc_addresses: alloc_addresses::GlobalState,
 
-    /// Environment variables set by `setenv`.
-    /// Miri does not expose env vars from the host to the emulated program.
+    /// Environment variables.
     pub(crate) env_vars: EnvVars<'tcx>,
 
     /// Return place of the main function.
@@ -465,9 +464,9 @@ pub struct MiriMachine<'mir, 'tcx> {
     pub(crate) validate: bool,
 
     /// The table of file descriptors.
-    pub(crate) fds: shims::unix::FdTable,
+    pub(crate) fds: unix::FdTable,
     /// The table of directory descriptors.
-    pub(crate) dirs: shims::unix::DirTable,
+    pub(crate) dirs: unix::DirTable,
 
     /// This machine's monotone clock.
     pub(crate) clock: Clock,
@@ -642,7 +641,7 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
             tls: TlsData::default(),
             isolated_op: config.isolated_op,
             validate: config.validate,
-            fds: FdTable::new(config.mute_stdout_stderr),
+            fds: unix::FdTable::new(config.mute_stdout_stderr),
             dirs: Default::default(),
             layouts,
             threads: ThreadManager::default(),
@@ -1282,7 +1281,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
         (alloc_id, prove_extra): (AllocId, Self::ProvenanceExtra),
         size: Size,
         align: Align,
-        _kind: MemoryKind,
+        kind: MemoryKind,
     ) -> InterpResult<'tcx> {
         if machine.tracked_alloc_ids.contains(&alloc_id) {
             machine.emit_diagnostic(NonHaltingDiagnostic::FreedAlloc(alloc_id));
@@ -1303,12 +1302,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
         {
             *deallocated_at = Some(machine.current_span());
         }
-        machine.alloc_addresses.get_mut().free_alloc_id(
-            machine.rng.get_mut(),
-            alloc_id,
-            size,
-            align,
-        );
+        machine.free_alloc_id(alloc_id, size, align, kind);
         Ok(())
     }
 

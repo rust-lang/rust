@@ -1,7 +1,5 @@
 //@ check-pass
 
-#![feature(inline_const)]
-
 // This used to be unsupported since the parser first tries to check if we have
 // any nested items, and then checks for statements (and expressions). The heuristic
 // that we were using to detect the beginning of a const item was incorrect, so

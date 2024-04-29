@@ -74,6 +74,10 @@ impl<D> TyBuilder<D> {
         (self.data, subst)
     }
 
+    pub fn build_into_subst(self) -> Substitution {
+        self.build_internal().1
+    }
+
     pub fn push(mut self, arg: impl CastTo<GenericArg>) -> Self {
         assert!(self.remaining() > 0);
         let arg = arg.cast(Interner);
@@ -291,7 +295,6 @@ impl TyBuilder<hir_def::AdtId> {
     ) -> Self {
         // Note that we're building ADT, so we never have parent generic parameters.
         let defaults = db.generic_defaults(self.data.into());
-        let dummy_ty = TyKind::Error.intern(Interner).cast(Interner);
         for default_ty in defaults.iter().skip(self.vec.len()) {
             // NOTE(skip_binders): we only check if the arg type is error type.
             if let Some(x) = default_ty.skip_binders().ty(Interner) {
@@ -301,13 +304,16 @@ impl TyBuilder<hir_def::AdtId> {
                 }
             }
             // Each default can only depend on the previous parameters.
-            // FIXME: we don't handle const generics here.
             let subst_so_far = Substitution::from_iter(
                 Interner,
                 self.vec
                     .iter()
                     .cloned()
-                    .chain(iter::repeat(dummy_ty.clone()))
+                    .chain(self.param_kinds[self.vec.len()..].iter().map(|it| match it {
+                        ParamKind::Type => TyKind::Error.intern(Interner).cast(Interner),
+                        ParamKind::Lifetime => error_lifetime().cast(Interner),
+                        ParamKind::Const(ty) => unknown_const_as_generic(ty.clone()),
+                    }))
                     .take(self.param_kinds.len()),
             );
             self.vec.push(default_ty.clone().substitute(Interner, &subst_so_far).cast(Interner));

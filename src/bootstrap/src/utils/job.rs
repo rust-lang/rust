@@ -11,37 +11,35 @@ pub unsafe fn setup(build: &mut crate::Build) {
     }
 }
 
+/// Job management on Windows for bootstrapping
+///
+/// Most of the time when you're running a build system (e.g., make) you expect
+/// Ctrl-C or abnormal termination to actually terminate the entire tree of
+/// process in play, not just the one at the top. This currently works "by
+/// default" on Unix platforms because Ctrl-C actually sends a signal to the
+/// *process group* rather than the parent process, so everything will get torn
+/// down. On Windows, however, this does not happen and Ctrl-C just kills the
+/// parent process.
+///
+/// To achieve the same semantics on Windows we use Job Objects to ensure that
+/// all processes die at the same time. Job objects have a mode of operation
+/// where when all handles to the object are closed it causes all child
+/// processes associated with the object to be terminated immediately.
+/// Conveniently whenever a process in the job object spawns a new process the
+/// child will be associated with the job object as well. This means if we add
+/// ourselves to the job object we create then everything will get torn down!
+///
+/// Unfortunately most of the time the build system is actually called from a
+/// python wrapper (which manages things like building the build system) so this
+/// all doesn't quite cut it so far. To go the last mile we duplicate the job
+/// object handle into our parent process (a python process probably) and then
+/// close our own handle. This means that the only handle to the job object
+/// resides in the parent python process, so when python dies the whole build
+/// system dies (as one would probably expect!).
+///
+/// Note that this is a Windows specific module as none of this logic is required on Unix.
 #[cfg(windows)]
 mod for_windows {
-    //! Job management on Windows for bootstrapping
-    //!
-    //! Most of the time when you're running a build system (e.g., make) you expect
-    //! Ctrl-C or abnormal termination to actually terminate the entire tree of
-    //! process in play, not just the one at the top. This currently works "by
-    //! default" on Unix platforms because Ctrl-C actually sends a signal to the
-    //! *process group* rather than the parent process, so everything will get torn
-    //! down. On Windows, however, this does not happen and Ctrl-C just kills the
-    //! parent process.
-    //!
-    //! To achieve the same semantics on Windows we use Job Objects to ensure that
-    //! all processes die at the same time. Job objects have a mode of operation
-    //! where when all handles to the object are closed it causes all child
-    //! processes associated with the object to be terminated immediately.
-    //! Conveniently whenever a process in the job object spawns a new process the
-    //! child will be associated with the job object as well. This means if we add
-    //! ourselves to the job object we create then everything will get torn down!
-    //!
-    //! Unfortunately most of the time the build system is actually called from a
-    //! python wrapper (which manages things like building the build system) so this
-    //! all doesn't quite cut it so far. To go the last mile we duplicate the job
-    //! object handle into our parent process (a python process probably) and then
-    //! close our own handle. This means that the only handle to the job object
-    //! resides in the parent python process, so when python dies the whole build
-    //! system dies (as one would probably expect!).
-    //!
-    //! Note that this module has a #[cfg(windows)] above it as none of this logic
-    //! is required on Unix.
-
     use crate::Build;
     use std::env;
     use std::ffi::c_void;

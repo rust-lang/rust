@@ -148,6 +148,13 @@ impl Rustc {
         self
     }
 
+    /// Specify the print request.
+    pub fn print(&mut self, request: &str) -> &mut Self {
+        self.cmd.arg("--print");
+        self.cmd.arg(request);
+        self
+    }
+
     /// Add an extra argument to the linker invocation, via `-Clink-arg`.
     pub fn link_arg(&mut self, link_arg: &str) -> &mut Self {
         self.cmd.arg(format!("-Clink-arg={link_arg}"));

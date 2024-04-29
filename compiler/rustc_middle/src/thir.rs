@@ -642,7 +642,7 @@ impl<'tcx> Pat<'tcx> {
             AscribeUserType { subpattern, .. }
             | Binding { subpattern: Some(subpattern), .. }
             | Deref { subpattern }
-            | DerefPattern { subpattern }
+            | DerefPattern { subpattern, .. }
             | InlineConstant { subpattern, .. } => subpattern.walk_(it),
             Leaf { subpatterns } | Variant { subpatterns, .. } => {
                 subpatterns.iter().for_each(|field| field.pattern.walk_(it))
@@ -760,6 +760,7 @@ pub enum PatKind<'tcx> {
     /// Deref pattern, written `box P` for now.
     DerefPattern {
         subpattern: Box<Pat<'tcx>>,
+        mutability: hir::Mutability,
     },
 
     /// One of the following:
@@ -1006,15 +1007,18 @@ impl<'tcx> PatRangeBoundary<'tcx> {
 
             // This code is hot when compiling matches with many ranges. So we
             // special-case extraction of evaluated scalars for speed, for types where
-            // unsigned int comparisons are appropriate. E.g. `unicode-normalization` has
+            // we can do scalar comparisons. E.g. `unicode-normalization` has
             // many ranges such as '\u{037A}'..='\u{037F}', and chars can be compared
             // in this way.
-            (Finite(a), Finite(b)) if matches!(ty.kind(), ty::Uint(_) | ty::Char) => {
+            (Finite(a), Finite(b)) if matches!(ty.kind(), ty::Int(_) | ty::Uint(_) | ty::Char) => {
                 if let (Some(a), Some(b)) = (a.try_to_scalar_int(), b.try_to_scalar_int()) {
                     let sz = ty.primitive_size(tcx);
-                    let a = a.assert_uint(sz);
-                    let b = b.assert_uint(sz);
-                    return Some(a.cmp(&b));
+                    let cmp = match ty.kind() {
+                        ty::Uint(_) | ty::Char => a.assert_uint(sz).cmp(&b.assert_uint(sz)),
+                        ty::Int(_) => a.assert_int(sz).cmp(&b.assert_int(sz)),
+                        _ => unreachable!(),
+                    };
+                    return Some(cmp);
                 }
             }
             _ => {}
@@ -1163,7 +1167,7 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
                 }
                 write!(f, "{subpattern}")
             }
-            PatKind::DerefPattern { ref subpattern } => {
+            PatKind::DerefPattern { ref subpattern, .. } => {
                 write!(f, "deref!({subpattern})")
             }
             PatKind::Constant { value } => write!(f, "{value}"),

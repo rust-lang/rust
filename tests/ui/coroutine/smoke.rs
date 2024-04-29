@@ -6,7 +6,7 @@
 //@ needs-threads
 //@ compile-flags: --test
 
-#![feature(coroutines, coroutine_trait)]
+#![feature(coroutines, coroutine_trait, stmt_expr_attributes)]
 
 use std::ops::{CoroutineState, Coroutine};
 use std::pin::Pin;
@@ -14,7 +14,7 @@ use std::thread;
 
 #[test]
 fn simple() {
-    let mut foo = || {
+    let mut foo = #[coroutine] || {
         if false {
             yield;
         }
@@ -29,7 +29,7 @@ fn simple() {
 #[test]
 fn return_capture() {
     let a = String::from("foo");
-    let mut foo = || {
+    let mut foo = #[coroutine] || {
         if false {
             yield;
         }
@@ -44,7 +44,7 @@ fn return_capture() {
 
 #[test]
 fn simple_yield() {
-    let mut foo = || {
+    let mut foo = #[coroutine] || {
         yield;
     };
 
@@ -61,7 +61,7 @@ fn simple_yield() {
 #[test]
 fn yield_capture() {
     let b = String::from("foo");
-    let mut foo = || {
+    let mut foo = #[coroutine] || {
         yield b;
     };
 
@@ -77,7 +77,7 @@ fn yield_capture() {
 
 #[test]
 fn simple_yield_value() {
-    let mut foo = || {
+    let mut foo = #[coroutine] || {
         yield String::from("bar");
         return String::from("foo")
     };
@@ -95,7 +95,7 @@ fn simple_yield_value() {
 #[test]
 fn return_after_yield() {
     let a = String::from("foo");
-    let mut foo = || {
+    let mut foo = #[coroutine] || {
         yield;
         return a
     };
@@ -112,34 +112,34 @@ fn return_after_yield() {
 
 #[test]
 fn send_and_sync() {
-    assert_send_sync(|| {
+    assert_send_sync(#[coroutine] || {
         yield
     });
-    assert_send_sync(|| {
+    assert_send_sync(#[coroutine] || {
         yield String::from("foo");
     });
-    assert_send_sync(|| {
+    assert_send_sync(#[coroutine] || {
         yield;
         return String::from("foo");
     });
     let a = 3;
-    assert_send_sync(|| {
+    assert_send_sync(#[coroutine] || {
         yield a;
         return
     });
     let a = 3;
-    assert_send_sync(move || {
+    assert_send_sync(#[coroutine] move || {
         yield a;
         return
     });
     let a = String::from("a");
-    assert_send_sync(|| {
+    assert_send_sync(#[coroutine] || {
         yield ;
         drop(a);
         return
     });
     let a = String::from("a");
-    assert_send_sync(move || {
+    assert_send_sync(#[coroutine] move || {
         yield ;
         drop(a);
         return
@@ -150,7 +150,7 @@ fn send_and_sync() {
 
 #[test]
 fn send_over_threads() {
-    let mut foo = || { yield };
+    let mut foo = #[coroutine] || { yield };
     thread::spawn(move || {
         match Pin::new(&mut foo).resume(()) {
             CoroutineState::Yielded(()) => {}
@@ -163,7 +163,7 @@ fn send_over_threads() {
     }).join().unwrap();
 
     let a = String::from("a");
-    let mut foo = || { yield a };
+    let mut foo = #[coroutine] || { yield a };
     thread::spawn(move || {
         match Pin::new(&mut foo).resume(()) {
             CoroutineState::Yielded(ref s) if *s == "a" => {}

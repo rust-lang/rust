@@ -124,7 +124,7 @@ pub fn suggest_restriction<'tcx, G: EmissionGuarantee>(
     msg: &str,
     err: &mut Diag<'_, G>,
     fn_sig: Option<&hir::FnSig<'_>>,
-    projection: Option<&ty::AliasTy<'_>>,
+    projection: Option<ty::AliasTy<'_>>,
     trait_pred: ty::PolyTraitPredicate<'tcx>,
     // When we are dealing with a trait, `super_traits` will be `Some`:
     // Given `trait T: A + B + C {}`
@@ -142,7 +142,7 @@ pub fn suggest_restriction<'tcx, G: EmissionGuarantee>(
     let generics = tcx.generics_of(item_id);
     // Given `fn foo(t: impl Trait)` where `Trait` requires assoc type `A`...
     if let Some((param, bound_str, fn_sig)) =
-        fn_sig.zip(projection).and_then(|(sig, p)| match p.self_ty().kind() {
+        fn_sig.zip(projection).and_then(|(sig, p)| match *p.self_ty().kind() {
             // Shenanigans to get the `Trait` from the `impl Trait`.
             ty::Param(param) => {
                 let param_def = generics.type_param(param, tcx);
@@ -252,7 +252,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         let trait_pred = self.resolve_numeric_literals_with_default(trait_pred);
 
         let self_ty = trait_pred.skip_binder().self_ty();
-        let (param_ty, projection) = match self_ty.kind() {
+        let (param_ty, projection) = match *self_ty.kind() {
             ty::Param(_) => (true, None),
             ty::Alias(ty::Projection, projection) => (false, Some(projection)),
             _ => (false, None),
@@ -901,7 +901,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             // Remove all the desugaring and macro contexts.
             span.remove_mark();
         }
-        let mut expr_finder = FindExprBySpan::new(span);
+        let mut expr_finder = FindExprBySpan::new(span, self.tcx);
         let Some(body_id) = self.tcx.hir().maybe_body_owned_by(obligation.cause.body_id) else {
             return;
         };
@@ -1367,7 +1367,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                             return false;
                         };
                         let body = self.tcx.hir().body(body_id);
-                        let mut expr_finder = FindExprBySpan::new(span);
+                        let mut expr_finder = FindExprBySpan::new(span, self.tcx);
                         expr_finder.visit_expr(body.value);
                         let Some(expr) = expr_finder.result else {
                             return false;
@@ -1469,7 +1469,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             // Remove all the hir desugaring contexts while maintaining the macro contexts.
             span.remove_mark();
         }
-        let mut expr_finder = super::FindExprBySpan::new(span);
+        let mut expr_finder = super::FindExprBySpan::new(span, self.tcx);
         let Some(body_id) = self.tcx.hir().maybe_body_owned_by(obligation.cause.body_id) else {
             return false;
         };
@@ -2294,7 +2294,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
                     next_code = Some(&cause.derived.parent_code);
                 }
-                ObligationCauseCode::DerivedObligation(derived_obligation)
+                ObligationCauseCode::WellFormedDerivedObligation(derived_obligation)
                 | ObligationCauseCode::BuiltinDerivedObligation(derived_obligation) => {
                     let ty = derived_obligation.parent_trait_pred.skip_binder().self_ty();
                     debug!(
@@ -3423,7 +3423,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     )
                 });
             }
-            ObligationCauseCode::DerivedObligation(ref data) => {
+            ObligationCauseCode::WellFormedDerivedObligation(ref data) => {
                 let parent_trait_ref = self.resolve_vars_if_possible(data.parent_trait_pred);
                 let parent_predicate = parent_trait_ref;
                 // #74711: avoid a stack overflow

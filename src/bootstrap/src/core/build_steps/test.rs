@@ -1,7 +1,7 @@
-//! Implementation of the test-related targets of the build system.
+//! Build-and-run steps for `./x.py test` test fixtures
 //!
-//! This file implements the various regression test suites that we execute on
-//! our CI.
+//! `./x.py test` (aka [`Kind::Test`]) is currently allowed to reach build steps in other modules.
+//! However, this contains ~all test parts we expect people to be able to build and run locally.
 
 use std::env;
 use std::ffi::OsStr;
@@ -923,7 +923,7 @@ impl Step for RustdocJSStd {
             builder.top_stage,
             self.target,
             builder,
-            DocumentationFormat::HTML,
+            DocumentationFormat::Html,
         ));
         let _guard = builder.msg(
             Kind::Test,
@@ -1371,6 +1371,7 @@ impl Step for RunMakeSupport {
         run.builder.ensure(RunMakeSupport { compiler, target: run.build_triple() });
     }
 
+    /// Builds run-make-support and returns the path to the resulting rlib.
     fn run(self, builder: &Builder<'_>) -> PathBuf {
         builder.ensure(compile::Std::new(self.compiler, self.target));
 
@@ -1389,12 +1390,58 @@ impl Step for RunMakeSupport {
         builder.run(&mut cargo);
 
         let lib_name = "librun_make_support.rlib";
-        let lib = builder.tools_dir(self.compiler).join(&lib_name);
+        let lib = builder.tools_dir(self.compiler).join(lib_name);
 
-        let cargo_out =
-            builder.cargo_out(self.compiler, Mode::ToolStd, self.target).join(&lib_name);
+        let cargo_out = builder.cargo_out(self.compiler, Mode::ToolStd, self.target).join(lib_name);
         builder.copy_link(&cargo_out, &lib);
         lib
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct CrateRunMakeSupport {
+    host: TargetSelection,
+}
+
+impl Step for CrateRunMakeSupport {
+    type Output = ();
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/tools/run-make-support")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(CrateRunMakeSupport { host: run.target });
+    }
+
+    /// Runs `cargo test` for run-make-support.
+    fn run(self, builder: &Builder<'_>) {
+        let host = self.host;
+        let compiler = builder.compiler(builder.top_stage, host);
+
+        builder.ensure(compile::Std::new(compiler, host));
+        let mut cargo = tool::prepare_tool_cargo(
+            builder,
+            compiler,
+            Mode::ToolStd,
+            host,
+            "test",
+            "src/tools/run-make-support",
+            SourceType::InTree,
+            &[],
+        );
+        cargo.allow_features("test");
+        run_cargo_test(
+            cargo,
+            &[],
+            &[],
+            "run-make-support",
+            "run-make-support self test",
+            compiler,
+            host,
+            builder,
+        );
     }
 }
 
@@ -1434,8 +1481,8 @@ host_test!(RustdocJson { path: "tests/rustdoc-json", mode: "rustdoc-json", suite
 
 host_test!(Pretty { path: "tests/pretty", mode: "pretty", suite: "pretty" });
 
-// Special-handling is needed for `run-make`, so don't use `default_test` for defining `RunMake`
-// tests.
+/// Special-handling is needed for `run-make`, so don't use `default_test` for defining `RunMake`
+/// tests.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct RunMake {
     pub compiler: Compiler,
@@ -1528,10 +1575,10 @@ impl Coverage {
 
 impl Step for Coverage {
     type Output = ();
-    // We rely on the individual CoverageMap/CoverageRun steps to run themselves.
+    /// We rely on the individual CoverageMap/CoverageRun steps to run themselves.
     const DEFAULT: bool = false;
-    // When manually invoked, try to run as much as possible.
-    // Compiletest will automatically skip the "coverage-run" tests if necessary.
+    /// When manually invoked, try to run as much as possible.
+    /// Compiletest will automatically skip the "coverage-run" tests if necessary.
     const ONLY_HOSTS: bool = false;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -2483,6 +2530,7 @@ impl Step for CrateLibrustc {
 /// Given a `cargo test` subcommand, add the appropriate flags and run it.
 ///
 /// Returns whether the test succeeded.
+#[allow(clippy::too_many_arguments)] // FIXME: reduce the number of args and remove this.
 fn run_cargo_test<'a>(
     cargo: impl Into<Command>,
     libtest_args: &[&str],

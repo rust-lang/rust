@@ -163,7 +163,7 @@ impl Subdiagnostic for RegionExplanation<'_> {
     fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
-        f: F,
+        f: &F,
     ) {
         diag.arg("pref_kind", self.prefix);
         diag.arg("suff_kind", self.suffix);

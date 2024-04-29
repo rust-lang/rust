@@ -189,7 +189,6 @@ run-make/no-builtins-attribute/Makefile
 run-make/no-builtins-lto/Makefile
 run-make/no-cdylib-as-rdylib/Makefile
 run-make/no-duplicate-libs/Makefile
-run-make/no-input-file/Makefile
 run-make/no-intermediate-extras/Makefile
 run-make/obey-crate-type-flag/Makefile
 run-make/optimization-remarks-dir-pgo/Makefile
@@ -220,8 +219,6 @@ run-make/prefer-rlib/Makefile
 run-make/pretty-print-to-file/Makefile
 run-make/pretty-print-with-dep-file/Makefile
 run-make/print-calling-conventions/Makefile
-run-make/print-cfg/Makefile
-run-make/print-native-static-libs/Makefile
 run-make/print-target-list/Makefile
 run-make/profile/Makefile
 run-make/prune-link-args/Makefile
@@ -317,7 +314,6 @@ run-make/unstable-flag-required/Makefile
 run-make/use-suggestions-rust-2018/Makefile
 run-make/used-cdylib-macos/Makefile
 run-make/used/Makefile
-run-make/valid-print-requests/Makefile
 run-make/volatile-intrinsics/Makefile
 run-make/wasm-exceptions-nostd/Makefile
 run-make/wasm-override-linker/Makefile

@@ -14,7 +14,7 @@ use rustc_middle::traits::solve::{
     CandidateSource, CanonicalResponse, Certainty, Goal, QueryResult,
 };
 use rustc_middle::traits::{BuiltinImplSource, Reveal};
-use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams, TreatProjections};
+use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
 use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt};
 use rustc_middle::ty::{TraitPredicate, TypeVisitableExt};
 use rustc_span::{ErrorGuaranteed, DUMMY_SP};
@@ -544,6 +544,18 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
     }
 
+    fn consider_builtin_async_destruct_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx> {
+        if goal.predicate.polarity != ty::PredicatePolarity::Positive {
+            return Err(NoSolution);
+        }
+
+        // `AsyncDestruct` is automatically implemented for every type.
+        ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+    }
+
     fn consider_builtin_destruct_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
@@ -1033,6 +1045,12 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                 }
             }
 
+            // If we still have an alias here, it must be rigid. For opaques, it's always
+            // okay to consider auto traits because that'll reveal its hidden type. For
+            // non-opaque aliases, we will not assemble any candidates since there's no way
+            // to further look into its type.
+            ty::Alias(..) => None,
+
             // For rigid types, any possible implementation that could apply to
             // the type (even if after unification and processing nested goals
             // it does not hold) will disqualify the built-in auto impl.
@@ -1060,15 +1078,11 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             | ty::CoroutineWitness(..)
             | ty::Never
             | ty::Tuple(_)
-            | ty::Adt(_, _)
-            // FIXME: Handling opaques here is kinda sus. Especially because we
-            // simplify them to SimplifiedType::Placeholder.
-            | ty::Alias(ty::Opaque, _) => {
+            | ty::Adt(_, _) => {
                 let mut disqualifying_impl = None;
-                self.tcx().for_each_relevant_impl_treating_projections(
+                self.tcx().for_each_relevant_impl(
                     goal.predicate.def_id(),
                     goal.predicate.self_ty(),
-                    TreatProjections::NextSolverLookup,
                     |impl_def_id| {
                         disqualifying_impl = Some(impl_def_id);
                     },

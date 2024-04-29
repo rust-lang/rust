@@ -200,6 +200,8 @@ pub enum AttributeKind {
     AllocAlign = 39,
     SanitizeSafeStack = 40,
     FnRetThunkExtern = 41,
+    Writable = 42,
+    DeadOnUnwind = 43,
 }
 
 /// LLVMIntPredicate
@@ -1631,6 +1633,10 @@ extern "C" {
 
     // Miscellaneous instructions
     pub fn LLVMRustGetInstrProfIncrementIntrinsic(M: &Module) -> &Value;
+    pub fn LLVMRustGetInstrProfMCDCParametersIntrinsic(M: &Module) -> &Value;
+    pub fn LLVMRustGetInstrProfMCDCTVBitmapUpdateIntrinsic(M: &Module) -> &Value;
+    pub fn LLVMRustGetInstrProfMCDCCondBitmapIntrinsic(M: &Module) -> &Value;
+
     pub fn LLVMRustBuildCall<'a>(
         B: &Builder<'a>,
         Ty: &'a Type,

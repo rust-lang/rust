@@ -177,7 +177,7 @@ where
 {
     /// Add a subdiagnostic to an existing diagnostic.
     fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
-        self.add_to_diag_with(diag, |_, m| m);
+        self.add_to_diag_with(diag, &|_, m| m);
     }
 
     /// Add a subdiagnostic to an existing diagnostic where `f` is invoked on every message used
@@ -185,7 +185,7 @@ where
     fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
-        f: F,
+        f: &F,
     );
 }
 
@@ -730,7 +730,7 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
     } }
 
     #[rustc_lint_diagnostics]
-    fn highlighted_note(&mut self, msg: Vec<StringPart>) -> &mut Self {
+    pub fn highlighted_note(&mut self, msg: Vec<StringPart>) -> &mut Self {
         self.sub_with_highlights(Level::Note, msg, MultiSpan::new());
         self
     }
@@ -1197,7 +1197,7 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
         dcx: &crate::DiagCtxt,
         subdiagnostic: impl Subdiagnostic,
     ) -> &mut Self {
-        subdiagnostic.add_to_diag_with(self, |diag, msg| {
+        subdiagnostic.add_to_diag_with(self, &|diag, msg| {
             let args = diag.args.iter();
             let msg = diag.subdiagnostic_message_to_diagnostic_message(msg);
             dcx.eagerly_translate(msg, args)

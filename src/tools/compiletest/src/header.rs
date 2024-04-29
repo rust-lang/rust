@@ -5,8 +5,8 @@ use std::io::prelude::*;
 use std::io::BufReader;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::sync::OnceLock;
 
-use once_cell::sync::Lazy;
 use regex::Regex;
 use tracing::*;
 
@@ -244,7 +244,7 @@ mod directives {
     pub const STDERR_PER_BITWIDTH: &'static str = "stderr-per-bitwidth";
     pub const INCREMENTAL: &'static str = "incremental";
     pub const KNOWN_BUG: &'static str = "known-bug";
-    pub const MIR_UNIT_TEST: &'static str = "unit-test";
+    pub const TEST_MIR_PASS: &'static str = "test-mir-pass";
     pub const REMAP_SRC_BASE: &'static str = "remap-src-base";
     pub const COMPARE_OUTPUT_LINES_BY_SUBSET: &'static str = "compare-output-lines-by-subset";
     pub const LLVM_COV_FLAGS: &'static str = "llvm-cov-flags";
@@ -549,7 +549,7 @@ impl TestProps {
 
                     config.set_name_value_directive(
                         ln,
-                        MIR_UNIT_TEST,
+                        TEST_MIR_PASS,
                         &mut self.mir_unit_test,
                         |s| s.trim().to_string(),
                     );
@@ -922,7 +922,7 @@ const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "should-fail",
     "should-ice",
     "stderr-per-bitwidth",
-    "unit-test",
+    "test-mir-pass",
     "unset-exec-env",
     "unset-rustc-env",
     // tidy-alphabetical-end
@@ -1021,8 +1021,9 @@ fn iter_header(
     let mut line_number = 0;
 
     // Match on error annotations like `//~ERROR`.
-    static REVISION_MAGIC_COMMENT_RE: Lazy<Regex> =
-        Lazy::new(|| Regex::new("//(\\[.*\\])?~.*").unwrap());
+    static REVISION_MAGIC_COMMENT_RE: OnceLock<Regex> = OnceLock::new();
+    let revision_magic_comment_re =
+        REVISION_MAGIC_COMMENT_RE.get_or_init(|| Regex::new("//(\\[.*\\])?~.*").unwrap());
 
     loop {
         line_number += 1;
@@ -1087,7 +1088,7 @@ fn iter_header(
             });
         // Then we try to check for legacy-style candidates, which are not the magic ~ERROR family
         // error annotations.
-        } else if !REVISION_MAGIC_COMMENT_RE.is_match(ln) {
+        } else if !revision_magic_comment_re.is_match(ln) {
             let Some((_, rest)) = line_directive("//", ln) else {
                 continue;
             };

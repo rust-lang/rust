@@ -14,8 +14,9 @@ use std::sync::OnceLock;
 use std::time::{Duration, Instant};
 
 use crate::core::build_steps::tool::{self, SourceType};
-use crate::core::build_steps::{check, clean, compile, dist, doc, install, run, setup, test};
-use crate::core::build_steps::{clippy, llvm};
+use crate::core::build_steps::{
+    check, clean, clippy, compile, dist, doc, install, llvm, run, setup, test, vendor,
+};
 use crate::core::config::flags::{Color, Subcommand};
 use crate::core::config::{DryRun, SplitDebuginfo, TargetSelection};
 use crate::prepare_behaviour_dump_dir;
@@ -34,13 +35,34 @@ use once_cell::sync::Lazy;
 #[cfg(test)]
 mod tests;
 
+/// Builds and performs different [`Self::kind`]s of stuff and actions, taking
+/// into account build configuration from e.g. config.toml.
 pub struct Builder<'a> {
+    /// Build configuration from e.g. config.toml.
     pub build: &'a Build,
+
+    /// The stage to use. Either implicitly determined based on subcommand, or
+    /// explicitly specified with `--stage N`. Normally this is the stage we
+    /// use, but sometimes we want to run steps with a lower stage than this.
     pub top_stage: u32,
+
+    /// What to build or what action to perform.
     pub kind: Kind,
+
+    /// A cache of outputs of [`Step`]s so we can avoid running steps we already
+    /// ran.
     cache: Cache,
+
+    /// A stack of [`Step`]s to run before we can run this builder. The output
+    /// of steps is cached in [`Self::cache`].
     stack: RefCell<Vec<Box<dyn Any>>>,
+
+    /// The total amount of time we spent running [`Step`]s in [`Self::stack`].
     time_spent_on_dependencies: Cell<Duration>,
+
+    /// The paths passed on the command line. Used by steps to figure out what
+    /// to do. For example: with `./x check foo bar` we get `paths=["foo",
+    /// "bar"]`.
     pub paths: Vec<PathBuf>,
 }
 
@@ -132,8 +154,7 @@ impl RunConfig<'_> {
             Alias::Compiler => self.builder.in_tree_crates("rustc-main", Some(self.target)),
         };
 
-        let crate_names = crates.into_iter().map(|krate| krate.name.to_string()).collect();
-        crate_names
+        crates.into_iter().map(|krate| krate.name.to_string()).collect()
     }
 }
 
@@ -323,16 +344,13 @@ const PATH_REMAP: &[(&str, &[&str])] = &[
 fn remap_paths(paths: &mut Vec<&Path>) {
     let mut remove = vec![];
     let mut add = vec![];
-    for (i, path) in paths
-        .iter()
-        .enumerate()
-        .filter_map(|(i, path)| if let Some(s) = path.to_str() { Some((i, s)) } else { None })
+    for (i, path) in paths.iter().enumerate().filter_map(|(i, path)| path.to_str().map(|s| (i, s)))
     {
         for &(search, replace) in PATH_REMAP {
             // Remove leading and trailing slashes so `tests/` and `tests` are equivalent
             if path.trim_matches(std::path::is_separator) == search {
                 remove.push(i);
-                add.extend(replace.into_iter().map(Path::new));
+                add.extend(replace.iter().map(Path::new));
                 break;
             }
         }
@@ -642,6 +660,7 @@ pub enum Kind {
     Run,
     Setup,
     Suggest,
+    Vendor,
 }
 
 impl Kind {
@@ -662,6 +681,7 @@ impl Kind {
             Kind::Run => "run",
             Kind::Setup => "setup",
             Kind::Suggest => "suggest",
+            Kind::Vendor => "vendor",
         }
     }
 
@@ -821,6 +841,7 @@ impl<'a> Builder<'a> {
                 test::Clippy,
                 test::RustDemangler,
                 test::CompiletestTest,
+                test::CrateRunMakeSupport,
                 test::RustdocJSStd,
                 test::RustdocJSNotStd,
                 test::RustdocGUI,
@@ -924,6 +945,7 @@ impl<'a> Builder<'a> {
             ),
             Kind::Setup => describe!(setup::Profile, setup::Hook, setup::Link, setup::Vscode),
             Kind::Clean => describe!(clean::CleanAll, clean::Rustc, clean::Std),
+            Kind::Vendor => describe!(vendor::Vendor),
             // special-cased in Build::build()
             Kind::Format | Kind::Suggest => vec![],
         }
@@ -996,6 +1018,7 @@ impl<'a> Builder<'a> {
                 Kind::Setup,
                 path.as_ref().map_or([].as_slice(), |path| std::slice::from_ref(path)),
             ),
+            Subcommand::Vendor { .. } => (Kind::Vendor, &paths[..]),
         };
 
         Self::new_internal(build, kind, paths.to_owned())
@@ -1318,7 +1341,7 @@ impl<'a> Builder<'a> {
         } else if let Some(subcmd) = cmd.strip_prefix("miri") {
             // Command must be "miri-X".
             let subcmd = subcmd
-                .strip_prefix("-")
+                .strip_prefix('-')
                 .unwrap_or_else(|| panic!("expected `miri-$subcommand`, but got {}", cmd));
             cargo = self.cargo_miri_cmd(compiler);
             cargo.arg("miri").arg(subcmd);
@@ -1438,7 +1461,7 @@ impl<'a> Builder<'a> {
             // rustc_llvm. But if LLVM is stale, that'll be a tiny amount
             // of work comparatively, and we'd likely need to rebuild it anyway,
             // so that's okay.
-            if crate::core::build_steps::llvm::prebuilt_llvm_config(self, target).is_err() {
+            if crate::core::build_steps::llvm::prebuilt_llvm_config(self, target).should_build() {
                 cargo.env("RUST_CHECK", "1");
             }
         }
@@ -1540,7 +1563,7 @@ impl<'a> Builder<'a> {
         // `rustflags` without `cargo` making it required.
         rustflags.arg("-Zunstable-options");
         for (restricted_mode, name, values) in EXTRA_CHECK_CFGS {
-            if *restricted_mode == None || *restricted_mode == Some(mode) {
+            if restricted_mode.is_none() || *restricted_mode == Some(mode) {
                 rustflags.arg(&check_cfg_arg(name, *values));
             }
         }
@@ -2216,22 +2239,18 @@ impl<'a> Builder<'a> {
             let file = File::open(src.join(".gitmodules")).unwrap();
 
             let mut submodules_paths = vec![];
-            for line in BufReader::new(file).lines() {
-                if let Ok(line) = line {
-                    let line = line.trim();
-
-                    if line.starts_with("path") {
-                        let actual_path =
-                            line.split(' ').last().expect("Couldn't get value of path");
-                        submodules_paths.push(actual_path.to_owned());
-                    }
+            for line in BufReader::new(file).lines().map_while(Result::ok) {
+                let line = line.trim();
+                if line.starts_with("path") {
+                    let actual_path = line.split(' ').last().expect("Couldn't get value of path");
+                    submodules_paths.push(actual_path.to_owned());
                 }
             }
 
             submodules_paths
         };
 
-        &SUBMODULES_PATHS.get_or_init(|| init_submodules_paths(&self.src))
+        SUBMODULES_PATHS.get_or_init(|| init_submodules_paths(&self.src))
     }
 
     /// Ensure that a given step is built *only if it's supposed to be built by default*, returning

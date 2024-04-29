@@ -1,5 +1,5 @@
 //@ check-pass
-#![feature(negative_impls, coroutines)]
+#![feature(negative_impls, coroutines, stmt_expr_attributes)]
 
 struct Foo;
 impl !Send for Foo {}
@@ -10,25 +10,34 @@ struct Bar {
 }
 
 fn main() {
-    assert_send(|| {
-        let guard = Bar { foo: Foo, x: 42 };
-        drop(guard.foo);
-        yield;
-    });
+    assert_send(
+        #[coroutine]
+        || {
+            let guard = Bar { foo: Foo, x: 42 };
+            drop(guard.foo);
+            yield;
+        },
+    );
 
-    assert_send(|| {
-        let mut guard = Bar { foo: Foo, x: 42 };
-        drop(guard);
-        guard = Bar { foo: Foo, x: 23 };
-        yield;
-    });
+    assert_send(
+        #[coroutine]
+        || {
+            let mut guard = Bar { foo: Foo, x: 42 };
+            drop(guard);
+            guard = Bar { foo: Foo, x: 23 };
+            yield;
+        },
+    );
 
-    assert_send(|| {
-        let guard = Bar { foo: Foo, x: 42 };
-        let Bar { foo, x } = guard;
-        drop(foo);
-        yield;
-    });
+    assert_send(
+        #[coroutine]
+        || {
+            let guard = Bar { foo: Foo, x: 42 };
+            let Bar { foo, x } = guard;
+            drop(foo);
+            yield;
+        },
+    );
 }
 
 fn assert_send<T: Send>(_: T) {}

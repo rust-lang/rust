@@ -758,9 +758,9 @@ impl<'a, 'tcx> FulfillProcessor<'a, 'tcx> {
             // no type variables present, can use evaluation for better caching.
             // FIXME: consider caching errors too.
             if self.selcx.infcx.predicate_must_hold_considering_regions(obligation) {
-                if let Some(key) = ProjectionCacheKey::from_poly_projection_predicate(
+                if let Some(key) = ProjectionCacheKey::from_poly_projection_obligation(
                     &mut self.selcx,
-                    project_obligation.predicate,
+                    &project_obligation,
                 ) {
                     // If `predicate_must_hold_considering_regions` succeeds, then we've
                     // evaluated all sub-obligations. We can therefore mark the 'root'

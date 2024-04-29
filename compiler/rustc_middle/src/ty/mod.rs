@@ -45,7 +45,7 @@ use rustc_data_structures::unord::UnordMap;
 use rustc_errors::{Diag, ErrorGuaranteed, StashKey};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, DocLinkResMap, LifetimeRes, Res};
-use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdMap, LocalDefIdSet};
+use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdMap};
 use rustc_index::IndexVec;
 use rustc_macros::HashStable;
 use rustc_query_system::ich::StableHashingContext;
@@ -54,7 +54,7 @@ use rustc_session::lint::LintBuffer;
 pub use rustc_session::lint::RegisteredTools;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{hygiene, ExpnId, ExpnKind, Span};
+use rustc_span::{ExpnId, ExpnKind, Span};
 use rustc_target::abi::{Align, FieldIdx, Integer, IntegerType, VariantIdx};
 pub use rustc_target::abi::{ReprFlags, ReprOptions};
 pub use rustc_type_ir::{DebugWithInfcx, InferCtxtLike, WithInfcx};
@@ -224,8 +224,15 @@ pub struct ResolverAstLowering {
     pub lint_buffer: Steal<LintBuffer>,
 
     /// Information about functions signatures for delegation items expansion
-    pub has_self: LocalDefIdSet,
-    pub fn_parameter_counts: LocalDefIdMap<usize>,
+    pub delegation_fn_sigs: LocalDefIdMap<DelegationFnSig>,
+}
+
+#[derive(Debug)]
+pub struct DelegationFnSig {
+    pub header: ast::FnHeader,
+    pub param_count: usize,
+    pub has_self: bool,
+    pub c_variadic: bool,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -1797,7 +1804,8 @@ impl<'tcx> TyCtxt<'tcx> {
             | ty::InstanceDef::DropGlue(..)
             | ty::InstanceDef::CloneShim(..)
             | ty::InstanceDef::ThreadLocalShim(..)
-            | ty::InstanceDef::FnPtrAddrShim(..) => self.mir_shims(instance),
+            | ty::InstanceDef::FnPtrAddrShim(..)
+            | ty::InstanceDef::AsyncDropGlueCtorShim(..) => self.mir_shims(instance),
         }
     }
 
@@ -2003,22 +2011,6 @@ impl<'tcx> TyCtxt<'tcx> {
             .and_then(|actual_expansion| actual_expansion.expn_data().parent_module)
             .unwrap_or_else(|| self.parent_module(block).to_def_id());
         (ident, scope)
-    }
-
-    /// Returns corrected span if the debuginfo for `span` should be collapsed to the outermost
-    /// expansion site (with collapse_debuginfo attribute if the corresponding feature enabled).
-    /// Only applies when `Span` is the result of macro expansion.
-    ///
-    /// - If the `collapse_debuginfo` feature is enabled then debuginfo is not collapsed by default
-    ///   and only when a (some enclosing) macro definition is annotated with `#[collapse_debuginfo]`.
-    /// - If `collapse_debuginfo` is not enabled, then debuginfo is collapsed by default.
-    ///
-    /// When `-Zdebug-macros` is provided then debuginfo will never be collapsed.
-    pub fn collapsed_debuginfo(self, span: Span, upto: Span) -> Span {
-        if self.sess.opts.unstable_opts.debug_macros || !span.from_expansion() {
-            return span;
-        }
-        hygiene::walk_chain_collapsed(span, upto, self.features().collapse_debuginfo)
     }
 
     #[inline]

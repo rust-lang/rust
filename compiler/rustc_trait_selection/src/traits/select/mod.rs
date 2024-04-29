@@ -815,7 +815,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                 // `EvaluatedToOkModuloRegions`), and skip re-evaluating the
                                 // sub-obligations.
                                 if let Some(key) =
-                                    ProjectionCacheKey::from_poly_projection_predicate(self, data)
+                                    ProjectionCacheKey::from_poly_projection_obligation(
+                                        self,
+                                        &project_obligation,
+                                    )
                                 {
                                     if let Some(cached_res) = self
                                         .infcx
@@ -844,8 +847,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                     && (eval_rslt == EvaluatedToOk
                                         || eval_rslt == EvaluatedToOkModuloRegions)
                                     && let Some(key) =
-                                        ProjectionCacheKey::from_poly_projection_predicate(
-                                            self, data,
+                                        ProjectionCacheKey::from_poly_projection_obligation(
+                                            self,
+                                            &project_obligation,
                                         )
                                 {
                                     // If the result is something that we can cache, then mark this

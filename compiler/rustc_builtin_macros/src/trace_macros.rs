@@ -4,7 +4,7 @@ use rustc_expand::base::{DummyResult, ExpandResult, ExtCtxt, MacroExpanderResult
 use rustc_span::symbol::kw;
 use rustc_span::Span;
 
-pub fn expand_trace_macros(
+pub(crate) fn expand_trace_macros(
     cx: &mut ExtCtxt<'_>,
     sp: Span,
     tt: TokenStream,

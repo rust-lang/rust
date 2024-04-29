@@ -299,7 +299,6 @@ impl<'a> Parser<'a> {
                 // parsing a new path.
                 if style == PathStyle::Expr {
                     self.unmatched_angle_bracket_count = 0;
-                    self.max_angle_bracket_count = 0;
                 }
 
                 // Generic arguments are found - `<`, `(`, `::<` or `::(`.

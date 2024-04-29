@@ -1987,6 +1987,13 @@ extern "rust-intrinsic" {
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `count_ones` method. For example,
     /// [`u32::count_ones`]
+    #[cfg(not(bootstrap))]
+    #[rustc_const_stable(feature = "const_ctpop", since = "1.40.0")]
+    #[rustc_safe_intrinsic]
+    #[rustc_nounwind]
+    pub fn ctpop<T: Copy>(x: T) -> u32;
+
+    #[cfg(bootstrap)]
     #[rustc_const_stable(feature = "const_ctpop", since = "1.40.0")]
     #[rustc_safe_intrinsic]
     #[rustc_nounwind]
@@ -2028,6 +2035,13 @@ extern "rust-intrinsic" {
     /// let num_leading = ctlz(x);
     /// assert_eq!(num_leading, 16);
     /// ```
+    #[cfg(not(bootstrap))]
+    #[rustc_const_stable(feature = "const_ctlz", since = "1.40.0")]
+    #[rustc_safe_intrinsic]
+    #[rustc_nounwind]
+    pub fn ctlz<T: Copy>(x: T) -> u32;
+
+    #[cfg(bootstrap)]
     #[rustc_const_stable(feature = "const_ctlz", since = "1.40.0")]
     #[rustc_safe_intrinsic]
     #[rustc_nounwind]
@@ -2050,6 +2064,12 @@ extern "rust-intrinsic" {
     /// let num_leading = unsafe { ctlz_nonzero(x) };
     /// assert_eq!(num_leading, 3);
     /// ```
+    #[cfg(not(bootstrap))]
+    #[rustc_const_stable(feature = "constctlz", since = "1.50.0")]
+    #[rustc_nounwind]
+    pub fn ctlz_nonzero<T: Copy>(x: T) -> u32;
+
+    #[cfg(bootstrap)]
     #[rustc_const_stable(feature = "constctlz", since = "1.50.0")]
     #[rustc_nounwind]
     pub fn ctlz_nonzero<T: Copy>(x: T) -> T;
@@ -2090,6 +2110,13 @@ extern "rust-intrinsic" {
     /// let num_trailing = cttz(x);
     /// assert_eq!(num_trailing, 16);
     /// ```
+    #[cfg(not(bootstrap))]
+    #[rustc_const_stable(feature = "const_cttz", since = "1.40.0")]
+    #[rustc_safe_intrinsic]
+    #[rustc_nounwind]
+    pub fn cttz<T: Copy>(x: T) -> u32;
+
+    #[cfg(bootstrap)]
     #[rustc_const_stable(feature = "const_cttz", since = "1.40.0")]
     #[rustc_safe_intrinsic]
     #[rustc_nounwind]
@@ -2112,6 +2139,12 @@ extern "rust-intrinsic" {
     /// let num_trailing = unsafe { cttz_nonzero(x) };
     /// assert_eq!(num_trailing, 3);
     /// ```
+    #[cfg(not(bootstrap))]
+    #[rustc_const_stable(feature = "const_cttz_nonzero", since = "1.53.0")]
+    #[rustc_nounwind]
+    pub fn cttz_nonzero<T: Copy>(x: T) -> u32;
+
+    #[cfg(bootstrap)]
     #[rustc_const_stable(feature = "const_cttz_nonzero", since = "1.53.0")]
     #[rustc_nounwind]
     pub fn cttz_nonzero<T: Copy>(x: T) -> T;
@@ -2288,6 +2321,13 @@ extern "rust-intrinsic" {
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `rotate_left` method. For example,
     /// [`u32::rotate_left`]
+    #[cfg(not(bootstrap))]
+    #[rustc_const_stable(feature = "const_int_rotate", since = "1.40.0")]
+    #[rustc_safe_intrinsic]
+    #[rustc_nounwind]
+    pub fn rotate_left<T: Copy>(x: T, shift: u32) -> T;
+
+    #[cfg(bootstrap)]
     #[rustc_const_stable(feature = "const_int_rotate", since = "1.40.0")]
     #[rustc_safe_intrinsic]
     #[rustc_nounwind]
@@ -2303,6 +2343,13 @@ extern "rust-intrinsic" {
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `rotate_right` method. For example,
     /// [`u32::rotate_right`]
+    #[cfg(not(bootstrap))]
+    #[rustc_const_stable(feature = "const_int_rotate", since = "1.40.0")]
+    #[rustc_safe_intrinsic]
+    #[rustc_nounwind]
+    pub fn rotate_right<T: Copy>(x: T, shift: u32) -> T;
+
+    #[cfg(bootstrap)]
     #[rustc_const_stable(feature = "const_int_rotate", since = "1.40.0")]
     #[rustc_safe_intrinsic]
     #[rustc_nounwind]
@@ -2720,7 +2767,7 @@ pub const unsafe fn typed_swap<T>(x: *mut T, y: *mut T) {
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[inline(always)]
 #[cfg_attr(not(bootstrap), rustc_intrinsic)] // just make it a regular fn in bootstrap
-pub(crate) const fn ub_checks() -> bool {
+pub const fn ub_checks() -> bool {
     cfg!(debug_assertions)
 }
 
@@ -2777,6 +2824,34 @@ pub unsafe fn vtable_size(_ptr: *const ()) -> usize {
 #[cfg(not(bootstrap))]
 pub unsafe fn vtable_align(_ptr: *const ()) -> usize {
     unreachable!()
+}
+
+/// Lowers in MIR to `Rvalue::Aggregate` with `AggregateKind::RawPtr`.
+///
+/// This is used to implement functions like `slice::from_raw_parts_mut` and
+/// `ptr::from_raw_parts` in a way compatible with the compiler being able to
+/// change the possible layouts of pointers.
+#[rustc_nounwind]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_const_unstable(feature = "ptr_metadata", issue = "81513")]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[cfg(not(bootstrap))]
+pub const fn aggregate_raw_ptr<P: AggregateRawPtr<D, Metadata = M>, D, M>(_data: D, _meta: M) -> P {
+    // To implement a fallback we'd have to assume the layout of the pointer,
+    // but the whole point of this intrinsic is that we shouldn't do that.
+    unreachable!()
+}
+
+#[unstable(feature = "core_intrinsics", issue = "none")]
+pub trait AggregateRawPtr<D> {
+    type Metadata: Copy;
+}
+impl<P: ?Sized, T: ptr::Thin> AggregateRawPtr<*const T> for *const P {
+    type Metadata = <P as ptr::Pointee>::Metadata;
+}
+impl<P: ?Sized, T: ptr::Thin> AggregateRawPtr<*mut T> for *mut P {
+    type Metadata = <P as ptr::Pointee>::Metadata;
 }
 
 // Some functions are defined here because they accidentally got made

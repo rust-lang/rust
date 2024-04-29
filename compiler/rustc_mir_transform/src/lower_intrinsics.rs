@@ -287,6 +287,34 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                             terminator.kind = TerminatorKind::Unreachable;
                         }
                     }
+                    sym::aggregate_raw_ptr => {
+                        let Ok([data, meta]) = <[_; 2]>::try_from(std::mem::take(args)) else {
+                            span_bug!(
+                                terminator.source_info.span,
+                                "Wrong number of arguments for aggregate_raw_ptr intrinsic",
+                            );
+                        };
+                        let target = target.unwrap();
+                        let pointer_ty = generic_args.type_at(0);
+                        let kind = if let ty::RawPtr(pointee_ty, mutability) = pointer_ty.kind() {
+                            AggregateKind::RawPtr(*pointee_ty, *mutability)
+                        } else {
+                            span_bug!(
+                                terminator.source_info.span,
+                                "Return type of aggregate_raw_ptr intrinsic must be a raw pointer",
+                            );
+                        };
+                        let fields = [data.node, meta.node];
+                        block.statements.push(Statement {
+                            source_info: terminator.source_info,
+                            kind: StatementKind::Assign(Box::new((
+                                *destination,
+                                Rvalue::Aggregate(Box::new(kind), fields.into()),
+                            ))),
+                        });
+
+                        terminator.kind = TerminatorKind::Goto { target };
+                    }
                     _ => {}
                 }
             }

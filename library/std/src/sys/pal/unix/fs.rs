@@ -198,20 +198,16 @@ cfg_has_statx! {{
                 return Some(Err(err));
             }
 
-            // `ENOSYS` might come from a faulty FUSE driver.
-            //
-            // Other errors are not a good enough indicator either -- it is
-            // known that `EPERM` can be returned as a result of using seccomp to
-            // block the syscall.
+            // We're not yet entirely sure whether `statx` is usable on this kernel
+            // or not. Syscalls can return errors from things other than the kernel
+            // per se, e.g. `EPERM` can be returned if seccomp is used to block the
+            // syscall, or `ENOSYS` might be returned from a faulty FUSE driver.
             //
             // Availability is checked by performing a call which expects `EFAULT`
             // if the syscall is usable.
             //
             // See: https://github.com/rust-lang/rust/issues/65662
             //
-            // FIXME this can probably just do the call if `EPERM` was received, but
-            // previous iteration of the code checked it for all errors and for now
-            // this is retained.
             // FIXME what about transient conditions like `ENOMEM`?
             let err2 = cvt(statx(0, ptr::null(), 0, libc::STATX_ALL, ptr::null_mut()))
                 .err()
@@ -868,8 +864,40 @@ impl Iterator for ReadDir {
     }
 }
 
+/// Aborts the process if a file desceriptor is not open, if debug asserts are enabled
+///
+/// Many IO syscalls can't be fully trusted about EBADF error codes because those
+/// might get bubbled up from a remote FUSE server rather than the file descriptor
+/// in the current process being invalid.
+///
+/// So we check file flags instead which live on the file descriptor and not the underlying file.
+/// The downside is that it costs an extra syscall, so we only do it for debug.
+#[inline]
+pub(crate) fn debug_assert_fd_is_open(fd: RawFd) {
+    use crate::sys::os::errno;
+
+    // this is similar to assert_unsafe_precondition!() but it doesn't require const
+    if core::ub_checks::check_library_ub() {
+        if unsafe { libc::fcntl(fd, libc::F_GETFD) } == -1 && errno() == libc::EBADF {
+            rtabort!("IO Safety violation: owned file descriptor already closed");
+        }
+    }
+}
+
 impl Drop for Dir {
     fn drop(&mut self) {
+        // dirfd isn't supported everywhere
+        #[cfg(not(any(
+            miri,
+            target_os = "redox",
+            target_os = "nto",
+            target_os = "vita",
+            target_os = "hurd",
+        )))]
+        {
+            let fd = unsafe { libc::dirfd(self.0) };
+            debug_assert_fd_is_open(fd);
+        }
         let r = unsafe { libc::closedir(self.0) };
         assert!(
             r == 0 || crate::io::Error::last_os_error().is_interrupted(),

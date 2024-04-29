@@ -10,11 +10,10 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::Node;
 use rustc_infer::infer::{RegionVariableOrigin, TyCtxtInferExt};
-use rustc_infer::traits::{Obligation, TraitEngineExt as _};
+use rustc_infer::traits::Obligation;
 use rustc_lint_defs::builtin::REPR_TRANSPARENT_EXTERNAL_PRIVATE_FIELDS;
 use rustc_middle::middle::resolve_bound_vars::ResolvedArg;
 use rustc_middle::middle::stability::EvalResult;
-use rustc_middle::traits::ObligationCauseCode;
 use rustc_middle::ty::fold::BottomUpFolder;
 use rustc_middle::ty::layout::{LayoutError, MAX_SIMD_LANES};
 use rustc_middle::ty::util::{Discr, InspectCoroutineFields, IntTypeExt};
@@ -24,10 +23,10 @@ use rustc_middle::ty::{
 };
 use rustc_session::lint::builtin::{UNINHABITED_STATIC, UNSUPPORTED_CALLING_CONVENTIONS};
 use rustc_target::abi::FieldIdx;
+use rustc_trait_selection::traits;
 use rustc_trait_selection::traits::error_reporting::on_unimplemented::OnUnimplementedDirective;
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
 use rustc_trait_selection::traits::outlives_bounds::InferCtxtExt as _;
-use rustc_trait_selection::traits::{self, TraitEngine, TraitEngineExt as _};
 use rustc_type_ir::fold::TypeFoldable;
 
 use std::cell::LazyCell;
@@ -492,6 +491,7 @@ fn check_opaque_precise_captures<'tcx>(tcx: TyCtxt<'tcx>, opaque_def_id: LocalDe
     };
 
     let mut expected_captures = UnordSet::default();
+    let mut shadowed_captures = UnordSet::default();
     let mut seen_params = UnordMap::default();
     let mut prev_non_lifetime_param = None;
     for arg in precise_capturing_args {
@@ -530,6 +530,21 @@ fn check_opaque_precise_captures<'tcx>(tcx: TyCtxt<'tcx>, opaque_def_id: LocalDe
         match tcx.named_bound_var(hir_id) {
             Some(ResolvedArg::EarlyBound(def_id)) => {
                 expected_captures.insert(def_id);
+
+                // Make sure we allow capturing these lifetimes through `Self` and
+                // `T::Assoc` projection syntax, too. These will occur when we only
+                // see lifetimes are captured after hir-lowering -- this aligns with
+                // the cases that were stabilized with the `impl_trait_projection`
+                // feature -- see <https://github.com/rust-lang/rust/pull/115659>.
+                if let DefKind::LifetimeParam = tcx.def_kind(def_id)
+                    && let ty::ReEarlyParam(ty::EarlyParamRegion { def_id, .. })
+                    | ty::ReLateParam(ty::LateParamRegion {
+                        bound_region: ty::BoundRegionKind::BrNamed(def_id, _),
+                        ..
+                    }) = *tcx.map_opaque_lifetime_to_parent_lifetime(def_id.expect_local())
+                {
+                    shadowed_captures.insert(def_id);
+                }
             }
             _ => {
                 tcx.dcx().span_delayed_bug(
@@ -555,39 +570,61 @@ fn check_opaque_precise_captures<'tcx>(tcx: TyCtxt<'tcx>, opaque_def_id: LocalDe
                 );
                 continue;
             }
+            // If a param is shadowed by a early-bound (duplicated) lifetime, then
+            // it may or may not be captured as invariant, depending on if it shows
+            // up through `Self` or `T::Assoc` syntax.
+            if shadowed_captures.contains(&param.def_id) {
+                continue;
+            }
 
             match param.kind {
                 ty::GenericParamDefKind::Lifetime => {
+                    let use_span = tcx.def_span(param.def_id);
+                    let opaque_span = tcx.def_span(opaque_def_id);
                     // Check if the lifetime param was captured but isn't named in the precise captures list.
                     if variances[param.index as usize] == ty::Invariant {
-                        let param_span =
-                            if let ty::ReEarlyParam(ty::EarlyParamRegion { def_id, .. })
+                        if let DefKind::OpaqueTy = tcx.def_kind(tcx.parent(param.def_id))
+                            && let ty::ReEarlyParam(ty::EarlyParamRegion { def_id, .. })
                             | ty::ReLateParam(ty::LateParamRegion {
                                 bound_region: ty::BoundRegionKind::BrNamed(def_id, _),
                                 ..
                             }) = *tcx
                                 .map_opaque_lifetime_to_parent_lifetime(param.def_id.expect_local())
-                            {
-                                Some(tcx.def_span(def_id))
-                            } else {
-                                None
-                            };
-                        // FIXME(precise_capturing): Structured suggestion for this would be useful
-                        tcx.dcx().emit_err(errors::LifetimeNotCaptured {
-                            use_span: tcx.def_span(param.def_id),
-                            param_span,
-                            opaque_span: tcx.def_span(opaque_def_id),
-                        });
+                        {
+                            tcx.dcx().emit_err(errors::LifetimeNotCaptured {
+                                opaque_span,
+                                use_span,
+                                param_span: tcx.def_span(def_id),
+                            });
+                        } else {
+                            // If the `use_span` is actually just the param itself, then we must
+                            // have not duplicated the lifetime but captured the original.
+                            // The "effective" `use_span` will be the span of the opaque itself,
+                            // and the param span will be the def span of the param.
+                            tcx.dcx().emit_err(errors::LifetimeNotCaptured {
+                                opaque_span,
+                                use_span: opaque_span,
+                                param_span: use_span,
+                            });
+                        }
                         continue;
                     }
                 }
                 ty::GenericParamDefKind::Type { .. } => {
-                    // FIXME(precise_capturing): Structured suggestion for this would be useful
-                    tcx.dcx().emit_err(errors::ParamNotCaptured {
-                        param_span: tcx.def_span(param.def_id),
-                        opaque_span: tcx.def_span(opaque_def_id),
-                        kind: "type",
-                    });
+                    if matches!(tcx.def_kind(param.def_id), DefKind::Trait | DefKind::TraitAlias) {
+                        // FIXME(precise_capturing): Structured suggestion for this would be useful
+                        tcx.dcx().emit_err(errors::SelfTyNotCaptured {
+                            trait_span: tcx.def_span(param.def_id),
+                            opaque_span: tcx.def_span(opaque_def_id),
+                        });
+                    } else {
+                        // FIXME(precise_capturing): Structured suggestion for this would be useful
+                        tcx.dcx().emit_err(errors::ParamNotCaptured {
+                            param_span: tcx.def_span(param.def_id),
+                            opaque_span: tcx.def_span(opaque_def_id),
+                            kind: "type",
+                        });
+                    }
                 }
                 ty::GenericParamDefKind::Const { .. } => {
                     // FIXME(precise_capturing): Structured suggestion for this would be useful
@@ -1677,55 +1714,31 @@ fn opaque_type_cycle_error(
     err.emit()
 }
 
-// FIXME(@lcnr): This should not be computed per coroutine, but instead once for
-// each typeck root.
 pub(super) fn check_coroutine_obligations(
     tcx: TyCtxt<'_>,
     def_id: LocalDefId,
 ) -> Result<(), ErrorGuaranteed> {
-    debug_assert!(tcx.is_coroutine(def_id.to_def_id()));
+    debug_assert!(!tcx.is_typeck_child(def_id.to_def_id()));
 
-    let typeck = tcx.typeck(def_id);
-    let param_env = tcx.param_env(typeck.hir_owner.def_id);
+    let typeck_results = tcx.typeck(def_id);
+    let param_env = tcx.param_env(def_id);
 
-    let coroutine_interior_predicates = &typeck.coroutine_interior_predicates[&def_id];
-    debug!(?coroutine_interior_predicates);
+    debug!(?typeck_results.coroutine_stalled_predicates);
 
     let infcx = tcx
         .infer_ctxt()
         // typeck writeback gives us predicates with their regions erased.
         // As borrowck already has checked lifetimes, we do not need to do it again.
         .ignoring_regions()
-        // Bind opaque types to type checking root, as they should have been checked by borrowck,
-        // but may show up in some cases, like when (root) obligations are stalled in the new solver.
-        .with_opaque_type_inference(typeck.hir_owner.def_id)
+        .with_opaque_type_inference(def_id)
         .build();
 
-    let mut fulfillment_cx = <dyn TraitEngine<'_>>::new(&infcx);
-    for (predicate, cause) in coroutine_interior_predicates {
-        let obligation = Obligation::new(tcx, cause.clone(), param_env, *predicate);
-        fulfillment_cx.register_predicate_obligation(&infcx, obligation);
+    let ocx = ObligationCtxt::new(&infcx);
+    for (predicate, cause) in &typeck_results.coroutine_stalled_predicates {
+        ocx.register_obligation(Obligation::new(tcx, cause.clone(), param_env, *predicate));
     }
 
-    if (tcx.features().unsized_locals || tcx.features().unsized_fn_params)
-        && let Some(coroutine) = tcx.mir_coroutine_witnesses(def_id)
-    {
-        for field_ty in coroutine.field_tys.iter() {
-            fulfillment_cx.register_bound(
-                &infcx,
-                param_env,
-                field_ty.ty,
-                tcx.require_lang_item(hir::LangItem::Sized, Some(field_ty.source_info.span)),
-                ObligationCause::new(
-                    field_ty.source_info.span,
-                    def_id,
-                    ObligationCauseCode::SizedCoroutineInterior(def_id),
-                ),
-            );
-        }
-    }
-
-    let errors = fulfillment_cx.select_all_or_error(&infcx);
+    let errors = ocx.select_all_or_error();
     debug!(?errors);
     if !errors.is_empty() {
         return Err(infcx.err_ctxt().report_fulfillment_errors(errors));

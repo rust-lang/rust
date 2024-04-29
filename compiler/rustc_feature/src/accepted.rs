@@ -98,6 +98,8 @@ declare_features! (
     (accepted, closure_to_fn_coercion, "1.19.0", Some(39817)),
     /// Allows using the CMPXCHG16B target feature.
     (accepted, cmpxchg16b_target_feature, "1.69.0", Some(44839)),
+    /// Allows use of the `#[collapse_debuginfo]` attribute.
+    (accepted, collapse_debuginfo, "CURRENT_RUSTC_VERSION", Some(100758)),
     /// Allows usage of the `compile_error!` macro.
     (accepted, compile_error, "1.20.0", Some(40872)),
     /// Allows `impl Trait` in function return types.
@@ -211,6 +213,8 @@ declare_features! (
     (accepted, inclusive_range_syntax, "1.26.0", Some(28237)),
     /// Allows inferring outlives requirements (RFC 2093).
     (accepted, infer_outlives_requirements, "1.30.0", Some(44493)),
+    /// Allow anonymous constants from an inline `const` block
+    (accepted, inline_const, "CURRENT_RUSTC_VERSION", Some(76001)),
     /// Allows irrefutable patterns in `if let` and `while let` statements (RFC 2086).
     (accepted, irrefutable_let_patterns, "1.33.0", Some(44495)),
     /// Allows `#[instruction_set(_)]` attribute.

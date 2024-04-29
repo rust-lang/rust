@@ -20,8 +20,8 @@ const SHELL: &str = "bash";
 #[cfg(not(target_os = "illumos"))]
 const SHELL: &str = "sh";
 
-// We have to run a few shell scripts, which choke quite a bit on both `\`
-// characters and on `C:\` paths, so normalize both of them away.
+/// We have to run a few shell scripts, which choke quite a bit on both `\`
+/// characters and on `C:\` paths, so normalize both of them away.
 fn sanitize_sh(path: &Path) -> String {
     let path = path.to_str().unwrap().replace('\\', "/");
     return change_drive(unc_to_lfs(&path)).unwrap_or(path);
@@ -130,7 +130,7 @@ fn prepare_dir(destdir_env: &Option<PathBuf>, mut path: PathBuf) -> String {
     // https://www.gnu.org/prep/standards/html_node/DESTDIR.html
     if let Some(destdir) = destdir_env {
         let without_destdir = path.clone();
-        path = destdir.clone();
+        path.clone_from(destdir);
         // Custom .join() which ignores disk roots.
         for part in without_destdir.components() {
             if let Component::Normal(s) = part {

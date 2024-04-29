@@ -32,8 +32,13 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
     /// Sets up the "extern statics" for this machine.
     pub fn init_extern_statics(this: &mut MiriInterpCx<'mir, 'tcx>) -> InterpResult<'tcx> {
         // "__rust_no_alloc_shim_is_unstable"
-        let val = ImmTy::from_int(0, this.machine.layouts.u8);
+        let val = ImmTy::from_int(0, this.machine.layouts.u8); // always 0, value does not matter
         Self::alloc_extern_static(this, "__rust_no_alloc_shim_is_unstable", val)?;
+
+        // "__rust_alloc_error_handler_should_panic"
+        let val = this.tcx.sess.opts.unstable_opts.oom.should_panic();
+        let val = ImmTy::from_int(val, this.machine.layouts.u8);
+        Self::alloc_extern_static(this, "__rust_alloc_error_handler_should_panic", val)?;
 
         match this.tcx.sess.target.os.as_ref() {
             "linux" => {
@@ -42,20 +47,14 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
                     &["__cxa_thread_atexit_impl", "getrandom", "statx", "__clock_gettime64"],
                 )?;
                 // "environ"
-                Self::add_extern_static(
-                    this,
-                    "environ",
-                    this.machine.env_vars.environ.as_ref().unwrap().ptr(),
-                );
+                let environ = this.machine.env_vars.unix().environ();
+                Self::add_extern_static(this, "environ", environ);
             }
             "freebsd" => {
                 Self::null_ptr_extern_statics(this, &["__cxa_thread_atexit_impl"])?;
                 // "environ"
-                Self::add_extern_static(
-                    this,
-                    "environ",
-                    this.machine.env_vars.environ.as_ref().unwrap().ptr(),
-                );
+                let environ = this.machine.env_vars.unix().environ();
+                Self::add_extern_static(this, "environ", environ);
             }
             "android" => {
                 Self::null_ptr_extern_statics(this, &["bsd_signal"])?;

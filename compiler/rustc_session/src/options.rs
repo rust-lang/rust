@@ -1,5 +1,4 @@
 use crate::config::*;
-
 use crate::search_paths::SearchPath;
 use crate::utils::NativeLib;
 use crate::{lint, EarlyDiagCtxt};
@@ -8,20 +7,17 @@ use rustc_data_structures::profiling::TimePassesFormat;
 use rustc_data_structures::stable_hasher::Hash64;
 use rustc_errors::ColorConfig;
 use rustc_errors::{LanguageIdentifier, TerminalUrl};
+use rustc_feature::UnstableFeatures;
+use rustc_span::edition::Edition;
+use rustc_span::RealFileName;
+use rustc_span::SourceFileHashAlgorithm;
 use rustc_target::spec::{
     CodeModel, LinkerFlavorCli, MergeFunctions, PanicStrategy, SanitizerSet, WasmCAbi,
 };
 use rustc_target::spec::{
     RelocModel, RelroLevel, SplitDebuginfo, StackProtector, TargetTriple, TlsModel,
 };
-
-use rustc_feature::UnstableFeatures;
-use rustc_span::edition::Edition;
-use rustc_span::RealFileName;
-use rustc_span::SourceFileHashAlgorithm;
-
 use std::collections::BTreeMap;
-
 use std::hash::{DefaultHasher, Hasher};
 use std::num::{IntErrorKind, NonZero};
 use std::path::PathBuf;
@@ -118,8 +114,8 @@ top_level_options!(
     /// incremental compilation cache before proceeding.
     ///
     /// - `[TRACKED_NO_CRATE_HASH]`
-    /// Same as `[TRACKED]`, but will not affect the crate hash. This is useful for options that only
-    /// affect the incremental cache.
+    /// Same as `[TRACKED]`, but will not affect the crate hash. This is useful for options that
+    /// only affect the incremental cache.
     ///
     /// - `[UNTRACKED]`
     /// Incremental compilation is not influenced by this option.
@@ -398,7 +394,7 @@ mod desc {
     pub const parse_optimization_fuel: &str = "crate=integer";
     pub const parse_dump_mono_stats: &str = "`markdown` (default) or `json`";
     pub const parse_instrument_coverage: &str = parse_bool;
-    pub const parse_coverage_options: &str = "`branch` or `no-branch`";
+    pub const parse_coverage_options: &str = "either  `no-branch`, `branch` or `mcdc`";
     pub const parse_instrument_xray: &str = "either a boolean (`yes`, `no`, `on`, `off`, etc), or a comma separated list of settings: `always` or `never` (mutually exclusive), `ignore-loops`, `instruction-threshold=N`, `skip-entry`, `skip-exit`";
     pub const parse_unpretty: &str = "`string` or `string=string`";
     pub const parse_treat_err_as_bug: &str = "either no value or a non-negative number";
@@ -949,17 +945,19 @@ mod parse {
         let Some(v) = v else { return true };
 
         for option in v.split(',') {
-            let (option, enabled) = match option.strip_prefix("no-") {
-                Some(without_no) => (without_no, false),
-                None => (option, true),
-            };
-            let slot = match option {
-                "branch" => &mut slot.branch,
+            match option {
+                "no-branch" => {
+                    slot.branch = false;
+                    slot.mcdc = false;
+                }
+                "branch" => slot.branch = true,
+                "mcdc" => {
+                    slot.branch = true;
+                    slot.mcdc = true;
+                }
                 _ => return false,
-            };
-            *slot = enabled;
+            }
         }
-
         true
     }
 
@@ -1360,10 +1358,20 @@ mod parse {
         slot: &mut CollapseMacroDebuginfo,
         v: Option<&str>,
     ) -> bool {
+        if v.is_some() {
+            let mut bool_arg = None;
+            if parse_opt_bool(&mut bool_arg, v) {
+                *slot = if bool_arg.unwrap() {
+                    CollapseMacroDebuginfo::Yes
+                } else {
+                    CollapseMacroDebuginfo::No
+                };
+                return true;
+            }
+        }
+
         *slot = match v {
-            Some("no") => CollapseMacroDebuginfo::No,
             Some("external") => CollapseMacroDebuginfo::External,
-            Some("yes") => CollapseMacroDebuginfo::Yes,
             _ => return false,
         };
         true
@@ -1462,6 +1470,9 @@ options! {
         "choose the code model to use (`rustc --print code-models` for details)"),
     codegen_units: Option<usize> = (None, parse_opt_number, [UNTRACKED],
         "divide crate into N units to optimize in parallel"),
+    collapse_macro_debuginfo: CollapseMacroDebuginfo = (CollapseMacroDebuginfo::Unspecified,
+        parse_collapse_macro_debuginfo, [TRACKED],
+        "set option to collapse debuginfo for macros"),
     control_flow_guard: CFGuard = (CFGuard::Disabled, parse_cfguard, [TRACKED],
         "use Windows Control Flow Guard (default: no)"),
     debug_assertions: Option<bool> = (None, parse_opt_bool, [TRACKED],
@@ -1609,9 +1620,6 @@ options! {
         "show all expected values in check-cfg diagnostics (default: no)"),
     codegen_backend: Option<String> = (None, parse_opt_string, [TRACKED],
         "the backend to use"),
-    collapse_macro_debuginfo: CollapseMacroDebuginfo = (CollapseMacroDebuginfo::Unspecified,
-        parse_collapse_macro_debuginfo, [TRACKED],
-        "set option to collapse debuginfo for macros"),
     combine_cgu: bool = (false, parse_bool, [TRACKED],
         "combine CGUs into a single one"),
     coverage_options: CoverageOptions = (CoverageOptions::default(), parse_coverage_options, [TRACKED],
@@ -1622,8 +1630,6 @@ options! {
         "threshold to allow cross crate inlining of functions"),
     debug_info_for_profiling: bool = (false, parse_bool, [TRACKED],
         "emit discriminators and other data necessary for AutoFDO"),
-    debug_macros: bool = (false, parse_bool, [TRACKED],
-        "emit line numbers debug info inside macros (default: no)"),
     debuginfo_compression: DebugInfoCompression = (DebugInfoCompression::None, parse_debuginfo_compression, [TRACKED],
         "compress debug info sections (none, zlib, zstd, default: none)"),
     deduplicate_diagnostics: bool = (true, parse_bool, [UNTRACKED],
