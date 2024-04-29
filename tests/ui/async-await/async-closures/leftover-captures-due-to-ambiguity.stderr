@@ -1,0 +1,13 @@
+error[E0282]: type annotations needed
+  --> $DIR/leftover-captures-due-to-ambiguity.rs:6:27
+   |
+LL |       async |unconstrained| {
+   |  ___________________________^
+LL | |
+LL | |         (test,)
+LL | |     };
+   | |_____^ cannot infer type
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0282`.

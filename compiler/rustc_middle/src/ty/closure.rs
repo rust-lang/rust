@@ -13,7 +13,7 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_hir::HirId;
 use rustc_span::def_id::LocalDefIdMap;
 use rustc_span::symbol::Ident;
-use rustc_span::{Span, Symbol};
+use rustc_span::{Span, Symbol, DUMMY_SP};
 
 use super::TyCtxt;
 
@@ -418,6 +418,7 @@ impl BorrowKind {
 }
 
 pub fn analyze_coroutine_closure_captures<'a, 'tcx: 'a, T>(
+    tcx: TyCtxt<'tcx>,
     parent_captures: impl IntoIterator<Item = &'a CapturedPlace<'tcx>>,
     child_captures: impl IntoIterator<Item = &'a CapturedPlace<'tcx>>,
     mut for_each: impl FnMut((usize, &'a CapturedPlace<'tcx>), (usize, &'a CapturedPlace<'tcx>)) -> T,
@@ -466,7 +467,13 @@ pub fn analyze_coroutine_closure_captures<'a, 'tcx: 'a, T>(
                     "we captured {parent_capture:#?} but it was not used in the child coroutine?"
                 );
             }
-            assert_eq!(child_captures.next(), None, "leftover child captures?");
+
+            if let Some((_, capture)) = child_captures.next() {
+                tcx.dcx().span_delayed_bug(
+                    capture.info.path_expr_id.map_or(DUMMY_SP, |hir_id| tcx.hir().span(hir_id)),
+                    "leftover child captures: expecting an error",
+                );
+            }
         },
     )
 }

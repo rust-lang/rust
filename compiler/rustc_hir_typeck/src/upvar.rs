@@ -384,6 +384,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let tupled_upvars_ty_for_borrow = Ty::new_tup_from_iter(
                 self.tcx,
                 ty::analyze_coroutine_closure_captures(
+                    self.tcx,
                     typeck_results.closure_min_captures_flattened(closure_def_id),
                     typeck_results
                         .closure_min_captures_flattened(

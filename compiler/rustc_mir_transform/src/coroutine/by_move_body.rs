@@ -125,6 +125,7 @@ impl<'tcx> MirPass<'tcx> for ByMoveBody {
             .len();
 
         let field_remapping: UnordMap<_, _> = ty::analyze_coroutine_closure_captures(
+            tcx,
             tcx.closure_captures(parent_def_id).iter().copied(),
             tcx.closure_captures(coroutine_def_id).iter().skip(num_args).copied(),
             |(parent_field_idx, parent_capture), (child_field_idx, child_capture)| {
