@@ -1,4 +1,4 @@
-# `thumbv8m.main-none-eabi`
+# `thumbv8m.main-none-eabi` and `thumbv8m.main-none-eabihf`
 
 **Tier: 2**
 
@@ -13,14 +13,8 @@ Processors in this family include the:
 * [Arm Cortex-M85][cortex-m85]
 
 See [`arm-none-eabi`](arm-none-eabi.md) for information applicable to all
-`arm-none-eabi` targets.
-
-This target uses the soft-float ABI: functions which take `f32` or `f64` as
-arguments will have those values packed into integer registers. This target
-therefore does not require the use of an FPU (which is optional on Cortex-M33,
-Cortex-M55 and Cortex-M85), but an FPU can be optionally enabled if desired. See
-also the hard-float ABI version of this target
-[`thumbv8m.main-none-eabihf`](thumbv7em-none-eabihf.md).
+`arm-none-eabi` targets, in particular the difference between the `eabi` and
+`eabihf` ABI.
 
 [t32-isa]: https://developer.arm.com/Architectures/T32%20Instruction%20Set%20Architecture
 [ARMv8-M]: https://developer.arm.com/documentation/ddi0553/latest/
@@ -40,18 +34,19 @@ See [the bare-metal Arm
 docs](arm-none-eabi.md#target-cpu-and-target-feature-options) for details on how
 to use these flags.
 
-### Table of supported CPUs
+### Table of supported CPUs for `thumbv8m.main-none-eabi`
 
 | CPU         | FPU | DSP | MVE       | Target CPU    | Target Features       |
 | ----------- | --- | --- | --------- | ------------- | --------------------- |
-| Cortex-M33  | No  | No  | N/A       | `cortex-m33`  | `+soft-float,-dsp`    |
-| Cortex-M33  | No  | Yes | N/A       | `cortex-m33`  | `+soft-float`         |
-| Cortex-M33  | SP  | No  | N/A       | `cortex-m33`  | `-dsp`                |
-| Cortex-M33  | SP  | Yes | N/A       | `cortex-m33`  | None                  |
-| Cortex-M35P | No  | No  | N/A       | `cortex-m35p` | `+soft-float,-dsp`    |
-| Cortex-M35P | No  | Yes | N/A       | `cortex-m35p` | `+soft-float`         |
-| Cortex-M35P | SP  | No  | N/A       | `cortex-m35p` | `-dsp`                |
-| Cortex-M35P | SP  | Yes | N/A       | `cortex-m35p` | None                  |
+| Unspecified | No  | No  | No        | None          | None                  |
+| Cortex-M33  | No  | No  | No        | `cortex-m33`  | `+soft-float,-dsp`    |
+| Cortex-M33  | No  | Yes | No        | `cortex-m33`  | `+soft-float`         |
+| Cortex-M33  | SP  | No  | No        | `cortex-m33`  | `-dsp`                |
+| Cortex-M33  | SP  | Yes | No        | `cortex-m33`  | None                  |
+| Cortex-M35P | No  | No  | No        | `cortex-m35p` | `+soft-float,-dsp`    |
+| Cortex-M35P | No  | Yes | No        | `cortex-m35p` | `+soft-float`         |
+| Cortex-M35P | SP  | No  | No        | `cortex-m35p` | `-dsp`                |
+| Cortex-M35P | SP  | Yes | No        | `cortex-m35p` | None                  |
 | Cortex-M55  | No  | Yes | No        | `cortex-m55`  | `+soft-float,-mve`    |
 | Cortex-M55  | DP  | Yes | No        | `cortex-m55`  | `-mve`                |
 | Cortex-M55  | No  | Yes | Int       | `cortex-m55`  | `+soft-float,-mve.fp` |
@@ -60,6 +55,22 @@ to use these flags.
 | Cortex-M85  | No  | Yes | No        | `cortex-m85`  | `+soft-float,-mve`    |
 | Cortex-M85  | DP  | Yes | No        | `cortex-m85`  | `-mve`                |
 | Cortex-M85  | No  | Yes | Int       | `cortex-m85`  | `+soft-float,-mve.fp` |
+| Cortex-M85  | DP  | Yes | Int       | `cortex-m85`  | `-mve.fp`             |
+| Cortex-M85  | DP  | Yes | Int+Float | `cortex-m85`  | None                  |
+
+### Table of supported CPUs for `thumbv8m.main-none-eabihf`
+
+| CPU         | FPU | DSP | MVE       | Target CPU    | Target Features       |
+| ----------- | --- | --- | --------- | ------------- | --------------------- |
+| Unspecified | SP  | No  | No        | None          | None                  |
+| Cortex-M33  | SP  | No  | No        | `cortex-m33`  | `-dsp`                |
+| Cortex-M33  | SP  | Yes | No        | `cortex-m33`  | None                  |
+| Cortex-M33P | SP  | No  | No        | `cortex-m35p` | `-dsp`                |
+| Cortex-M33P | SP  | Yes | No        | `cortex-m35p` | None                  |
+| Cortex-M55  | DP  | Yes | No        | `cortex-m55`  | `-mve`                |
+| Cortex-M55  | DP  | Yes | Int       | `cortex-m55`  | `-mve.fp`             |
+| Cortex-M55  | DP  | Yes | Int+Float | `cortex-m55`  | None                  |
+| Cortex-M85  | DP  | Yes | No        | `cortex-m85`  | `-mve`                |
 | Cortex-M85  | DP  | Yes | Int       | `cortex-m85`  | `-mve.fp`             |
 | Cortex-M85  | DP  | Yes | Int+Float | `cortex-m85`  | None                  |
 
@@ -72,7 +83,7 @@ The target CPU is `cortex-m33`.
   * enabled by default with this *target-cpu*
 * Has an optional single precision FPU
   * support is enabled by default with this *target-cpu*
-  * disable support using the `+soft-float` feature
+  * disable support using the `+soft-float` feature (`eabi` only)
 
 ### Arm Cortex-M35P
 
@@ -81,9 +92,9 @@ The target CPU is `cortex-m35p`.
 * Has optional DSP extensions
   * support is controlled by the `dsp` *target-feature*
   * enabled by default with this *target-cpu*
-* Has a single precision FPU
+* Has an optional single precision FPU
   * support is enabled by default with this *target-cpu*
-  * disable support using the `+soft-float` feature
+  * disable support using the `+soft-float` feature (`eabi` only)
 
 ### Arm Cortex-M55
 
@@ -95,7 +106,7 @@ The target CPU is `cortex-m55`.
 * Has an optional double-precision FPU that also supports half-precision FP16
   values
   * support is enabled by default with this *target-cpu*
-  * disable support using the `+soft-float` feature
+  * disable support using the `+soft-float` feature (`eabi` only)
 * Has optional support for M-Profile Vector Extensions
   * Also known as *Helium Technology*
   * Available with only integer support, or both integer/float support
@@ -114,7 +125,7 @@ The target CPU is `cortex-m85`.
 * Has an optional double-precision FPU that also supports half-precision FP16
   values
   * support is enabled by default with this *target-cpu*
-  * disable support using the `+soft-float` feature
+  * disable support using the `+soft-float` feature (`eabi` only)
 * Has optional support for M-Profile Vector Extensions
   * Also known as *Helium Technology*
   * Available with only integer support, or both integer/float support

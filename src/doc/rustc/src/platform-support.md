@@ -180,13 +180,13 @@ target | std | notes
 `sparcv9-sun-solaris` | ✓ | SPARC Solaris 11, illumos
 [`thumbv6m-none-eabi`](platform-support/thumbv6m-none-eabi.md) | * | Bare ARMv6-M
 [`thumbv7em-none-eabi`](platform-support/thumbv7em-none-eabi.md) | * | Bare ARMv7E-M
-[`thumbv7em-none-eabihf`](platform-support/thumbv7em-none-eabihf.md) | * | Bare ARMV7E-M, hardfloat
+[`thumbv7em-none-eabihf`](platform-support/thumbv7em-none-eabi.md) | * | Bare ARMV7E-M, hardfloat
 [`thumbv7m-none-eabi`](platform-support/thumbv7m-none-eabi.md) | * | Bare ARMv7-M
 [`thumbv7neon-linux-androideabi`](platform-support/android.md) | ✓ | Thumb2-mode ARMv7-A Android with NEON
 `thumbv7neon-unknown-linux-gnueabihf` | ✓ | Thumb2-mode ARMv7-A Linux with NEON (kernel 4.4, glibc 2.23)
 [`thumbv8m.base-none-eabi`](platform-support/thumbv8m.base-none-eabi.md) | * | Bare ARMv8-M Baseline
 [`thumbv8m.main-none-eabi`](platform-support/thumbv8m.main-none-eabi.md) | * | Bare ARMv8-M Mainline
-[`thumbv8m.main-none-eabihf`](platform-support/thumbv8m.main-none-eabihf.md) | * | Bare ARMv8-M Mainline, hardfloat
+[`thumbv8m.main-none-eabihf`](platform-support/thumbv8m.main-none-eabi.md) | * | Bare ARMv8-M Mainline, hardfloat
 `wasm32-unknown-emscripten` | ✓ | WebAssembly via Emscripten
 `wasm32-unknown-unknown` | ✓ | WebAssembly
 `wasm32-wasi` | ✓ | WebAssembly with WASI (undergoing a [rename to `wasm32-wasip1`][wasi-rename])

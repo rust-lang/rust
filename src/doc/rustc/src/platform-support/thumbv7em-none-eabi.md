@@ -1,4 +1,4 @@
-# `thumbv7em-none-eabi`
+# `thumbv7em-none-eabi` and `thumbv7em-none-eabihf`
 
 **Tier: 2**
 
@@ -11,14 +11,8 @@ Processors in this family include the:
 * [Arm Cortex-M7][cortex-m7] and Arm Cortex-M7F
 
 See [`arm-none-eabi`](arm-none-eabi.md) for information applicable to all
-`arm-none-eabi` targets.
-
-This target uses the soft-float ABI: functions which take `f32` or `f64` as
-arguments will have those values packed into integer registers. This target
-therefore does not require the use of an FPU (which is optional on Cortex-M4 and
-Cortex-M7), but an FPU can be optionally enabled if desired. See also the
-hard-float ABI version of this target
-[`thumbv7em-none-eabihf`](thumbv7em-none-eabihf.md).
+`arm-none-eabi` targets, in particular the difference between the `eabi` and
+`eabihf` ABI.
 
 [t32-isa]: https://developer.arm.com/Architectures/T32%20Instruction%20Set%20Architecture
 [ARMv7E-M]: https://developer.arm.com/documentation/ddi0403/latest/
@@ -36,13 +30,23 @@ See [the bare-metal Arm
 docs](arm-none-eabi.md#target-cpu-and-target-feature-options) for details on how
 to use these flags.
 
-### Table of supported CPUs
+### Table of supported CPUs for `thumbv7em-none-eabi`
 
 | CPU        | FPU | DSP | Target CPU  | Target Features |
 | ---------- | --- | --- | ----------- | --------------- |
+| Any        | No  | Yes | None        | None            |
 | Cortex-M4  | No  | Yes | `cortex-m4` | `+soft-float`   |
 | Cortex-M4F | SP  | Yes | `cortex-m4` | None            |
 | Cortex-M7  | No  | Yes | `cortex-m7` | `+soft-float`   |
+| Cortex-M7F | SP  | Yes | `cortex-m7` | `-fp64`         |
+| Cortex-M7F | DP  | Yes | `cortex-m7` | None            |
+
+### Table of supported CPUs for `thumbv7em-none-eabihf`
+
+| CPU        | FPU | DSP | Target CPU  | Target Features |
+| ---------- | --- | --- | ----------- | --------------- |
+| Any        | SP  | Yes | None        | None            |
+| Cortex-M4F | SP  | Yes | `cortex-m4` | None            |
 | Cortex-M7F | SP  | Yes | `cortex-m7` | `-fp64`         |
 | Cortex-M7F | DP  | Yes | `cortex-m7` | None            |
 
@@ -55,7 +59,7 @@ The target CPU is `cortex-m4`.
   * enabled by default with this *target*
 * Cortex-M4F has a single precision FPU
   * support is enabled by default with this *target-cpu*
-  * disable support using the `+soft-float` feature
+  * disable support using the `+soft-float` feature (`eabi` only)
 
 ### Arm Cortex-M7 and Arm Cortex-M7F
 
@@ -67,4 +71,4 @@ The target CPU is `cortex-m7`.
 * Cortex-M7F have either a single-precision or double-precision FPU
   * double-precision support is enabled by default with this *target-cpu*
     * opt-out by using the `-f64` *target-feature*
-  * disable support entirely using the `+soft-float` feature
+  * disable support entirely using the `+soft-float` feature (`eabi` only)

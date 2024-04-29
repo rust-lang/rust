@@ -10,9 +10,9 @@
 - Arm M-Profile Architectures
   - [`thumbv6m-none-eabi`](thumbv6m-none-eabi.md)
   - [`thumbv7m-none-eabi`](thumbv7m-none-eabi.md)
-  - [`thumbv7em-none-eabi`](thumbv7em-none-eabi.md) and [`thumbv7em-none-eabihf`](thumbv7em-none-eabihf.md)
+  - [`thumbv7em-none-eabi` and `thumbv7em-none-eabihf`](thumbv7em-none-eabi.md)
   - [`thumbv8m.base-none-eabi`](thumbv8m.base-none-eabi.md)
-  - [`thumbv8m.main-none-eabi`](thumbv8m.main-none-eabi.md) and [`thumbv8m.main-none-eabihf`](thumbv8m.main-none-eabihf.md)
+  - [`thumbv8m.main-none-eabi` and `thumbv8m.main-none-eabihf`](thumbv8m.main-none-eabi.md)
 - *Legacy* Arm Architectures
   - None
 
