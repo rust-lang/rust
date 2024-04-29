@@ -1210,6 +1210,7 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
 #[cfg(target_pointer_width = "64")]
 mod size_asserts {
     use super::*;
+    use rustc_data_structures::static_assert_size;
     // tidy-alphabetical-start
     static_assert_size!(Block, 48);
     static_assert_size!(Expr<'_>, 64);

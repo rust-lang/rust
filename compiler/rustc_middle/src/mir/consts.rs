@@ -72,7 +72,7 @@ pub enum ConstValue<'tcx> {
 }
 
 #[cfg(target_pointer_width = "64")]
-static_assert_size!(ConstValue<'_>, 24);
+rustc_data_structures::static_assert_size!(ConstValue<'_>, 24);
 
 impl<'tcx> ConstValue<'tcx> {
     #[inline]

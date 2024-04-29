@@ -153,7 +153,7 @@ rustc_index::newtype_index! {
 }
 
 // compilation error if size of `ScopeData` is not the same as a `u32`
-static_assert_size!(ScopeData, 4);
+rustc_data_structures::static_assert_size!(ScopeData, 4);
 
 impl Scope {
     /// Returns an item-local ID associated with this scope.

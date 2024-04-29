@@ -29,9 +29,6 @@
 #![feature(type_alias_impl_trait)]
 #![recursion_limit = "512"] // For rustdoc
 
-#[cfg(target_pointer_width = "64")]
-#[macro_use]
-extern crate rustc_data_structures;
 #[macro_use]
 extern crate tracing;
 #[macro_use]

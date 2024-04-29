@@ -23,7 +23,7 @@ pub use valtree::*;
 pub type ConstKind<'tcx> = IrConstKind<TyCtxt<'tcx>>;
 
 #[cfg(target_pointer_width = "64")]
-static_assert_size!(ConstKind<'_>, 32);
+rustc_data_structures::static_assert_size!(ConstKind<'_>, 32);
 
 /// Use this rather than `ConstData`, whenever possible.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, HashStable)]
@@ -63,7 +63,7 @@ pub struct ConstData<'tcx> {
 }
 
 #[cfg(target_pointer_width = "64")]
-static_assert_size!(ConstData<'_>, 40);
+rustc_data_structures::static_assert_size!(ConstData<'_>, 40);
 
 impl<'tcx> Const<'tcx> {
     #[inline]

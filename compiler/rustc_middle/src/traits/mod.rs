@@ -560,7 +560,7 @@ impl<'tcx> ObligationCauseCode<'tcx> {
 
 // `ObligationCauseCode` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(target_pointer_width = "64")]
-static_assert_size!(ObligationCauseCode<'_>, 48);
+rustc_data_structures::static_assert_size!(ObligationCauseCode<'_>, 48);
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum StatementAsExpression {
