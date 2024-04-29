@@ -35,13 +35,13 @@ use rustc_resolve::rustdoc::may_be_doc_link;
 use rustc_span::edition::Edition;
 use rustc_span::{Span, Symbol};
 
-use once_cell::sync::Lazy;
 use std::borrow::Cow;
 use std::collections::VecDeque;
 use std::fmt::Write;
 use std::iter::Peekable;
 use std::ops::{ControlFlow, Range};
 use std::str::{self, CharIndices};
+use std::sync::OnceLock;
 
 use crate::clean::RenderedLink;
 use crate::doctest;
@@ -1994,7 +1994,7 @@ pub struct IdMap {
 }
 
 // The map is pre-initialized and cloned each time to avoid reinitializing it repeatedly.
-static DEFAULT_ID_MAP: Lazy<FxHashMap<Cow<'static, str>, usize>> = Lazy::new(|| init_id_map());
+static DEFAULT_ID_MAP: OnceLock<FxHashMap<Cow<'static, str>, usize>> = OnceLock::new();
 
 fn init_id_map() -> FxHashMap<Cow<'static, str>, usize> {
     let mut map = FxHashMap::default();
@@ -2051,7 +2051,7 @@ fn init_id_map() -> FxHashMap<Cow<'static, str>, usize> {
 
 impl IdMap {
     pub fn new() -> Self {
-        IdMap { map: DEFAULT_ID_MAP.clone() }
+        IdMap { map: DEFAULT_ID_MAP.get_or_init(init_id_map).clone() }
     }
 
     pub(crate) fn derive<S: AsRef<str> + ToString>(&mut self, candidate: S) -> String {
