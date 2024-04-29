@@ -2717,10 +2717,45 @@ where
 /// particular value, ever. However, the compiler will generally make it
 /// return `true` only if the value of the argument is actually known.
 ///
-/// When calling this in a `const fn`, both paths must be semantically
-/// equivalent, that is, the result of the `true` branch and the `false`
-/// branch must return the same value and have the same side-effects *no
-/// matter what*.
+/// # Stability concerns
+///
+/// While it is safe to call, this intrinsic may behave differently in
+/// a `const` context than otherwise. See the [`const_eval_select`]
+/// documentation for an explanation of the issues this can cause. Unlike
+/// `const_eval_select`, this intrinsic isn't guaranteed to behave
+/// deterministically even in a `const` context.
+///
+/// # Type Requirements
+///
+/// `T` must be either a `bool`, a `char`, a primitive numeric type (e.g. `f32`,
+/// but not `NonZeroISize`), or any thin pointer (e.g. `*mut String`).
+/// Any other argument types *may* cause a compiler error.
+///
+/// ## Pointers
+///
+/// When the input is a pointer, only the pointer itself is
+/// ever considered. The pointee has no effect. Currently, these functions
+/// behave identically:
+///
+/// ```
+/// #![feature(is_val_statically_known)]
+/// #![feature(core_intrinsics)]
+/// # #![allow(internal_features)]
+/// #![feature(strict_provenance)]
+/// use std::intrinsics::is_val_statically_known;
+///
+/// fn foo(x: &i32) -> bool {
+///     is_val_statically_known(x)
+/// }
+///
+/// fn bar(x: &i32) -> bool {
+///     is_val_statically_known(
+///         (x as *const i32).addr()
+///     )
+/// }
+/// # _ = foo(&5_i32);
+/// # _ = bar(&5_i32);
+/// ```
 #[rustc_const_unstable(feature = "is_val_statically_known", issue = "none")]
 #[rustc_nounwind]
 #[unstable(feature = "core_intrinsics", issue = "none")]
