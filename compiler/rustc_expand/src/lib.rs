@@ -21,7 +21,6 @@ mod placeholders;
 mod proc_macro_server;
 
 pub use mbe::macro_rules::compile_declarative_macro;
-pub(crate) use rustc_span::hygiene;
 pub mod base;
 pub mod build;
 #[macro_use]

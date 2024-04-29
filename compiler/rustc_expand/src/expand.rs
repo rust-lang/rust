@@ -4,7 +4,6 @@ use crate::errors::{
     IncompleteParse, RecursionLimitReached, RemoveExprNotSupported, RemoveNodeNotSupported,
     UnsupportedKeyValue, WrongFragmentKind,
 };
-use crate::hygiene::SyntaxContext;
 use crate::mbe::diagnostics::annotate_err_with_kind;
 use crate::module::{mod_dir_path, parse_external_mod, DirOwnership, ParsedExternalMod};
 use crate::placeholders::{placeholder, PlaceholderExpander};
@@ -32,6 +31,7 @@ use rustc_session::lint::builtin::{UNUSED_ATTRIBUTES, UNUSED_DOC_COMMENTS};
 use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::parse::feature_err;
 use rustc_session::{Limit, Session};
+use rustc_span::hygiene::SyntaxContext;
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::{ErrorGuaranteed, FileName, LocalExpnId, Span};
 
