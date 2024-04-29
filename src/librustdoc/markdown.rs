@@ -185,6 +185,6 @@ pub(crate) fn test(options: Options) -> Result<(), String> {
     );
 
     let unused_externs = Arc::new(Mutex::new(Vec::new()));
-    collector.tests.run_tests(options.test_args, options.nocapture, opts, &unused_externs);
+    collector.tests.run_tests(options.test_args, options.nocapture, opts, false, &unused_externs);
     Ok(())
 }

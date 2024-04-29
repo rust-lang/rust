@@ -161,6 +161,7 @@ pub(crate) fn run(
 
     let test_args = options.test_args.clone();
     let nocapture = options.nocapture;
+    let edition = options.edition;
     let externs = options.externs.clone();
     let json_unused_externs = options.json_unused_externs;
 
@@ -220,7 +221,13 @@ pub(crate) fn run(
             })
         })?;
 
-    tests.run_tests(test_args, nocapture, opts, &unused_extern_reports);
+    tests.run_tests(
+        test_args,
+        nocapture,
+        opts,
+        edition >= Edition::Edition2024,
+        &unused_extern_reports,
+    );
 
     // Collect and warn about unused externs, but only if we've gotten
     // reports for each doctest
@@ -473,7 +480,7 @@ fn run_test(
         if std::fs::write(&out_source, &test).is_err() {
             // If we cannot write this file for any reason, we leave. All combined tests will be
             // tested as standalone tests.
-            return Err(TestFailure::CompileError)
+            return Err(TestFailure::CompileError);
         }
         compiler.arg(out_source);
         compiler.stderr(Stdio::null());
@@ -1398,11 +1405,23 @@ test::test_main(&[{test_args}], vec![{ids}], None);
             Some(&format!("_{}", edition)),
             out_dir,
         );
-        if let Err(TestFailure::CompileError) = ret {
-            Err(())
-        } else {
-            Ok(ret.is_ok())
-        }
+        if let Err(TestFailure::CompileError) = ret { Err(()) } else { Ok(ret.is_ok()) }
+    }
+}
+
+fn add_standalone_tests(
+    standalone: &mut Vec<TestDescAndFn>,
+    doctests: Vec<DocTest>,
+    opts: &GlobalTestOptions,
+    edition: Edition,
+    unused_externs: &Arc<Mutex<Vec<UnusedExterns>>>,
+) {
+    for doctest in doctests {
+        standalone.push(doctest.generate_test_desc_and_fn(
+            opts,
+            edition,
+            Arc::clone(unused_externs),
+        ));
     }
 }
 
@@ -1444,6 +1463,7 @@ impl DocTestKinds {
         mut test_args: Vec<String>,
         nocapture: bool,
         opts: GlobalTestOptions,
+        can_merge_doctests: bool,
         unused_externs: &Arc<Mutex<Vec<UnusedExterns>>>,
     ) {
         test_args.insert(0, "rustdoctest".to_string());
@@ -1458,45 +1478,47 @@ impl DocTestKinds {
             if doctests.is_empty() {
                 continue;
             }
-            doctests.sort_by(|a, b| a.name.cmp(&b.name));
-            let outdir = Arc::clone(&doctests[0].outdir);
+            if can_merge_doctests {
+                doctests.sort_by(|a, b| a.name.cmp(&b.name));
+                let outdir = Arc::clone(&doctests[0].outdir);
 
-            // When `DocTestRunner` is dropped, it'll run all pending doctests it didn't already
-            // run, so no need to worry about it.
-            let mut tests_runner = DocTestRunner::new();
-            let rustdoc_test_options = Arc::clone(&doctests[0].rustdoc_test_options);
+                // When `DocTestRunner` is dropped, it'll run all pending doctests it didn't already
+                // run, so no need to worry about it.
+                let mut tests_runner = DocTestRunner::new();
+                let rustdoc_test_options = Arc::clone(&doctests[0].rustdoc_test_options);
 
-            for doctest in doctests {
-                tests_runner.add_test(doctest);
-            }
-            match tests_runner.run_tests(
-                rustdoc_test_options,
-                edition,
-                &opts,
-                &test_args,
-                &outdir,
-            ) {
-                Ok(success) => {
+                for doctest in doctests {
+                    tests_runner.add_test(doctest);
+                }
+                if let Ok(success) = tests_runner.run_tests(
+                    rustdoc_test_options,
+                    edition,
+                    &opts,
+                    &test_args,
+                    &outdir,
+                ) {
                     ran_edition_tests += 1;
                     if !success {
                         nb_errors += 1;
                     }
-                }
-                Err(()) => {
+                    continue;
+                } else {
                     // We failed to compile all compatible tests as one so we push them into the
                     // "standalone" doctests.
                     debug!(
                         "Failed to compile compatible doctests for edition {} all at once",
                         edition
                     );
-                    for doctest in tests_runner.doctests.drain(..) {
-                        standalone.push(doctest.generate_test_desc_and_fn(
-                            &opts,
-                            edition,
-                            Arc::clone(unused_externs),
-                        ));
-                    }
+                    add_standalone_tests(
+                        &mut standalone,
+                        tests_runner.doctests,
+                        &opts,
+                        edition,
+                        unused_externs,
+                    );
                 }
+            } else {
+                add_standalone_tests(&mut standalone, doctests, &opts, edition, unused_externs);
             }
         }
 

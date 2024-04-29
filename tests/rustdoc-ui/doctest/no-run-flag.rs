@@ -1,7 +1,7 @@
 // test the behavior of the --no-run flag
 
 //@ check-pass
-//@ compile-flags:-Z unstable-options --test --no-run --test-args=--test-threads=1
+//@ compile-flags:-Z unstable-options --test --no-run --test-args=--test-threads=1 --edition 2024
 //@ normalize-stdout-test: "tests/rustdoc-ui/doctest" -> "$$DIR"
 //@ normalize-stdout-test "finished in \d+\.\d+s" -> "finished in $$TIME"
 
