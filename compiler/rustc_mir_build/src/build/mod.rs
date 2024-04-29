@@ -566,7 +566,8 @@ fn construct_const<'a, 'tcx>(
             span,
             ..
         }) => (*span, ty.span),
-        Node::AnonConst(_) | Node::ConstBlock(_) => {
+        Node::AnonConst(ct) => (ct.span, ct.span),
+        Node::ConstBlock(_) => {
             let span = tcx.def_span(def);
             (span, span)
         }
