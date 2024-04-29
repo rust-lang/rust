@@ -14,14 +14,6 @@ Current stable, released 2024-05-02
 
 [View all 112 merged pull requests](https://github.com/rust-lang/rust-clippy/pulls?q=merged%3A2024-01-26T05%3A46%3A23Z..2024-03-07T16%3A25%3A52Z+base%3Amaster)
 
-### Important Changes
-
-* In a few versions, `cargo-clippy` will now no longer ignore the first argument.
-  Passing in `clippy` as the first argument like cargo does will continue to work.
-  However, arguments like `--fix` will soon issue a warning and will no longer be.
-  `cargo clippy` (without `-`!) is unaffected by this change.
-  [#9461](https://github.com/rust-lang/rust-clippy/pull/9461)
-
 ### New Lints
 
 * [`assigning_clones`]
@@ -51,11 +43,6 @@ Current stable, released 2024-05-02
 * [`incompatible_msrv`]
   [#12160](https://github.com/rust-lang/rust-clippy/pull/12160)
 
-### Moves and Deprecations
-
-* Moved [`mixed_attributes_style`] to `style` (Remains warn-by-default)
-  [#12572](https://github.com/rust-lang/rust-clippy/pull/12572)
-
 ### Enhancements
 
 * [`thread_local_initializer_can_be_made_const`]: Now checks the [`msrv`] configuration
@@ -67,9 +54,9 @@ Current stable, released 2024-05-02
 
 ### ICE Fixes
 
-* [`ptr_as_ptr`]: No longer ICEs on types from other crates
+* [`ptr_as_ptr`]: No longer ICEs when the cast source is a function call to a local variable
   [#12617](https://github.com/rust-lang/rust-clippy/pull/12617)
-* [`cast_sign_loss`]: Avoids an infinit loop when casting two changed `.unwrap()` calls
+* [`cast_sign_loss`]: Avoids an infinite loop when casting two chained `.unwrap()` calls
   [#12508](https://github.com/rust-lang/rust-clippy/pull/12508)
 
 ## Rust 1.77
