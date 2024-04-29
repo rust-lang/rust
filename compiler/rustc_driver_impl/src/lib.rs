@@ -971,7 +971,7 @@ Available lint options:
 
     let lint_store = unerased_lint_store(sess);
     let (loaded, builtin): (Vec<_>, _) =
-        lint_store.get_lints().iter().cloned().partition(|&lint| lint.is_loaded);
+        lint_store.get_lints().iter().cloned().partition(|&lint| lint.is_externally_loaded);
     let loaded = sort_lints(sess, loaded);
     let builtin = sort_lints(sess, builtin);
 

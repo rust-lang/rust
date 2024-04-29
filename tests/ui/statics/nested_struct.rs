@@ -9,7 +9,7 @@ pub struct Lint {
     pub name: &'static str,
     pub desc: &'static str,
     pub report_in_external_macro: bool,
-    pub is_loaded: bool,
+    pub is_externally_loaded: bool,
     pub crate_level_only: bool,
 }
 
@@ -17,7 +17,7 @@ static FOO: &Lint = &Lint {
     name: &"foo",
     desc: "desc",
     report_in_external_macro: false,
-    is_loaded: true,
+    is_externally_loaded: true,
     crate_level_only: false,
 };
 
