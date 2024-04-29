@@ -8,7 +8,7 @@
 
 extern crate libc;
 
-// By default the Rust runtime resets SIGPIPE to SIG_DFL before exec:ing child
+// By default the Rust runtime resets SIGPIPE to SIG_DFL before exec'ing child
 // processes so opt-out of that with `#[unix_sigpipe = "sig_dfl"]`. See
 // https://github.com/rust-lang/rust/blob/bf4de3a874753bbee3323081c8b0c133444fed2d/library/std/src/sys/pal/unix/process/process_unix.rs#L359-L384
 #[unix_sigpipe = "sig_dfl"]
