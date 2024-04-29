@@ -170,17 +170,24 @@ impl Drop for OwnedFd {
     #[inline]
     fn drop(&mut self) {
         unsafe {
-            // Note that errors are ignored when closing a file descriptor. The
-            // reason for this is that if an error occurs we don't actually know if
-            // the file descriptor was closed or not, and if we retried (for
-            // something like EINTR), we might close another valid file descriptor
-            // opened after we closed ours.
             #[cfg(not(target_os = "hermit"))]
             {
                 #[cfg(unix)]
                 crate::sys::fs::debug_assert_fd_is_open(self.fd);
 
-                let _ = libc::close(self.fd);
+                match cvt(libc::close(self.fd)) {
+                    Ok(_) => {},
+                    Err(err) if err.raw_os_error() == Some(libc::EBADF) {
+                        panic!("`OwnedFd` held an invalid file descriptor");
+                    }
+                    // Note that errors are ignored when closing a file
+                    // descriptor. The reason for this is that if an error
+                    // occurs we don't actually know if the file descriptor was
+                    // closed or not, and if we retried (for something like
+                    // EINTR), we might close another valid file descriptor
+                    // opened after we closed ours.
+                    Err(_) => {}
+                }
             }
             #[cfg(target_os = "hermit")]
             let _ = hermit_abi::close(self.fd);
