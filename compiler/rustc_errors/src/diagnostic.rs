@@ -18,6 +18,7 @@ use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 use std::panic;
 use std::thread::panicking;
+use tracing::debug;
 
 /// Error type for `DiagInner`'s `suggestions` field, indicating that
 /// `.disable_suggestions()` was called on the `DiagInner`.

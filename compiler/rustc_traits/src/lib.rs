@@ -2,9 +2,6 @@
 
 #![recursion_limit = "256"]
 
-#[macro_use]
-extern crate tracing;
-
 mod codegen;
 mod dropck_outlives;
 mod evaluate_obligation;

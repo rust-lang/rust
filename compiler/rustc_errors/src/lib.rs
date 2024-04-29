@@ -25,9 +25,6 @@
 #![feature(yeet_expr)]
 // tidy-alphabetical-end
 
-#[macro_use]
-extern crate tracing;
-
 extern crate self as rustc_errors;
 
 pub use codes::*;
@@ -74,6 +71,7 @@ use std::num::NonZero;
 use std::ops::DerefMut;
 use std::panic;
 use std::path::{Path, PathBuf};
+use tracing::debug;
 
 use Level::*;
 

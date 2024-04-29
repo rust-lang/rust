@@ -14,9 +14,6 @@ pub mod pat_column;
 pub mod rustc;
 pub mod usefulness;
 
-#[macro_use]
-extern crate tracing;
-
 #[cfg(feature = "rustc")]
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 

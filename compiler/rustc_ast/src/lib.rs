@@ -20,9 +20,6 @@
 #![feature(negative_impls)]
 #![feature(stmt_expr_attributes)]
 
-#[macro_use]
-extern crate tracing;
-
 pub mod util {
     pub mod case;
     pub mod classify;

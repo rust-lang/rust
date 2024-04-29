@@ -33,6 +33,7 @@ use std::iter;
 use std::path::{Path, PathBuf};
 use std::str::{self, FromStr};
 use std::sync::LazyLock;
+use tracing::debug;
 
 mod cfg;
 pub mod sigpipe;

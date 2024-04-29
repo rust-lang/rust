@@ -15,6 +15,7 @@ use std::hash::Hash;
 use std::marker::PhantomData;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
+use tracing::{debug, instrument};
 
 use super::query::DepGraphQuery;
 use super::serialized::{GraphEncoder, SerializedDepGraph, SerializedDepNodeIndex};

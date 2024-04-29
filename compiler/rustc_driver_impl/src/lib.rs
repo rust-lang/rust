@@ -14,9 +14,6 @@
 #![feature(panic_update_hook)]
 #![feature(result_flattening)]
 
-#[macro_use]
-extern crate tracing;
-
 use rustc_ast as ast;
 use rustc_codegen_ssa::{traits::CodegenBackend, CodegenErrors, CodegenResults};
 use rustc_const_eval::CTRL_C_RECEIVED;
@@ -46,7 +43,6 @@ use rustc_span::symbol::sym;
 use rustc_span::FileName;
 use rustc_target::json::ToJson;
 use rustc_target::spec::{Target, TargetTriple};
-
 use std::cmp::max;
 use std::collections::BTreeMap;
 use std::env;
@@ -62,6 +58,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, OnceLock};
 use std::time::{Instant, SystemTime};
 use time::OffsetDateTime;
+use tracing::trace;
 
 #[allow(unused_macros)]
 macro do_not_use_print($($t:tt)*) {

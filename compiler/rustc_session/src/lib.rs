@@ -8,9 +8,6 @@
 
 pub mod errors;
 
-#[macro_use]
-extern crate tracing;
-
 pub mod utils;
 pub use lint::{declare_lint, declare_lint_pass, declare_tool_lint, impl_lint_pass};
 pub use rustc_lint_defs as lint;

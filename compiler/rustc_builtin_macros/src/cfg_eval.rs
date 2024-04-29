@@ -18,6 +18,7 @@ use rustc_session::Session;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 use smallvec::SmallVec;
+use tracing::instrument;
 
 pub(crate) fn expand(
     ecx: &mut ExtCtxt<'_>,

@@ -12,6 +12,7 @@ use rustc_trait_selection::traits::query::dropck_outlives::{
     compute_dropck_outlives_inner, dtorck_constraint_for_ty_inner,
 };
 use rustc_trait_selection::traits::query::{CanonicalTyGoal, NoSolution};
+use tracing::debug;
 
 pub(crate) fn provide(p: &mut Providers) {
     *p = Providers { dropck_outlives, adt_dtorck_constraint, ..*p };

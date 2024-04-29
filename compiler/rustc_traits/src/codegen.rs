@@ -13,6 +13,7 @@ use rustc_trait_selection::traits::{
     ImplSource, Obligation, ObligationCause, SelectionContext, TraitEngine, TraitEngineExt,
     Unimplemented,
 };
+use tracing::debug;
 
 /// Attempts to resolve an obligation to an `ImplSource`. The result is
 /// a shallow `ImplSource` resolution, meaning that we do not

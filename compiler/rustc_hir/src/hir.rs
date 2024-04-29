@@ -3,7 +3,6 @@ use crate::def_id::{DefId, LocalDefIdMap};
 pub(crate) use crate::hir_id::{HirId, ItemLocalId, ItemLocalMap, OwnerId};
 use crate::intravisit::FnKind;
 use crate::LangItem;
-
 use rustc_ast as ast;
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_ast::{Attribute, FloatTy, IntTy, Label, LitKind, TraitObjectSyntax, UintTy};
@@ -21,9 +20,9 @@ use rustc_span::ErrorGuaranteed;
 use rustc_span::{def_id::LocalDefId, BytePos, Span, DUMMY_SP};
 use rustc_target::asm::InlineAsmRegOrRegClass;
 use rustc_target::spec::abi::Abi;
-
 use smallvec::SmallVec;
 use std::fmt;
+use tracing::debug;
 
 #[derive(Debug, Copy, Clone, HashStable_Generic)]
 pub struct Lifetime {

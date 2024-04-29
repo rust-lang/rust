@@ -14,6 +14,7 @@ use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::Ident;
 use rustc_span::{ErrorGuaranteed, Span};
 use std::borrow::Cow;
+use tracing::debug;
 
 use super::macro_rules::{parser_from_cx, NoopTracker};
 

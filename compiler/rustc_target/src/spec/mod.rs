@@ -51,6 +51,7 @@ use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::{fmt, io};
+use tracing::debug;
 
 pub mod abi;
 pub mod crt_objects;

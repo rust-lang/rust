@@ -29,6 +29,7 @@ use rustc_span::edition::Edition;
 use rustc_span::hygiene::Transparency;
 use rustc_span::symbol::{kw, sym, Ident, MacroRulesNormalizedIdent};
 use rustc_span::Span;
+use tracing::{debug, instrument, trace, trace_span};
 
 use std::borrow::Cow;
 use std::collections::hash_map::Entry;
