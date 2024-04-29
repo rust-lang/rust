@@ -2,7 +2,7 @@
 
 **Tier: 2**
 
-Bare-metal target for CPUs in the [ARMv7E-M] architecture family, supporting a
+Bare-metal target for CPUs in the [Armv7E-M] architecture family, supporting a
 subset of the [T32 ISA][t32-isa].
 
 Processors in this family include the:
@@ -15,7 +15,7 @@ See [`arm-none-eabi`](arm-none-eabi.md) for information applicable to all
 `eabihf` ABI.
 
 [t32-isa]: https://developer.arm.com/Architectures/T32%20Instruction%20Set%20Architecture
-[ARMv7E-M]: https://developer.arm.com/documentation/ddi0403/latest/
+[Armv7E-M]: https://developer.arm.com/documentation/ddi0403/latest/
 [cortex-m4]: https://developer.arm.com/Processors/Cortex-M4
 [cortex-m7]: https://developer.arm.com/Processors/Cortex-M7
 

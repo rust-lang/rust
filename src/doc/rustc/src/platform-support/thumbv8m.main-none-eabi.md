@@ -2,7 +2,7 @@
 
 **Tier: 2**
 
-Bare-metal target for CPUs in the Mainline [ARMv8-M] architecture family,
+Bare-metal target for CPUs in the Mainline [Armv8-M] architecture family,
 supporting a subset of the [T32 ISA][t32-isa].
 
 Processors in this family include the:
@@ -17,7 +17,7 @@ See [`arm-none-eabi`](arm-none-eabi.md) for information applicable to all
 `eabihf` ABI.
 
 [t32-isa]: https://developer.arm.com/Architectures/T32%20Instruction%20Set%20Architecture
-[ARMv8-M]: https://developer.arm.com/documentation/ddi0553/latest/
+[Armv8-M]: https://developer.arm.com/documentation/ddi0553/latest/
 [cortex-m33]: https://developer.arm.com/Processors/Cortex-M33
 [cortex-m35p]: https://developer.arm.com/Processors/Cortex-M35P
 [cortex-m55]: https://developer.arm.com/Processors/Cortex-M55

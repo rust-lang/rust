@@ -31,7 +31,7 @@
 ## Common Target Details
 
 This documentation covers details that apply to a range of bare-metal targets
-for 32-bit ARM CPUs. In addition, target specific details may be covered in
+for 32-bit Arm CPUs. In addition, target specific details may be covered in
 their own document.
 
 If a target ends in `eabi`, that target uses the so-called *soft-float ABI*:
