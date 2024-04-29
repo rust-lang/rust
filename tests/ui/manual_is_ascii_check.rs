@@ -55,3 +55,30 @@ fn msrv_1_47() {
     const FOO: bool = matches!('x', '0'..='9');
     const BAR: bool = matches!('x', '0'..='9' | 'a'..='f' | 'A'..='F');
 }
+
+#[allow(clippy::deref_addrof, clippy::needless_borrow)]
+fn with_refs() {
+    let cool_letter = &&'g';
+    ('0'..='9').contains(&&cool_letter);
+    ('a'..='z').contains(*cool_letter);
+}
+
+fn generics() {
+    fn a<U>(u: &U) -> bool
+    where
+        char: PartialOrd<U>,
+        U: PartialOrd<char> + ?Sized,
+    {
+        ('A'..='Z').contains(u)
+    }
+
+    fn take_while<Item, F>(cond: F)
+    where
+        Item: Sized,
+        F: Fn(Item) -> bool,
+    {
+    }
+    take_while(|c| ('A'..='Z').contains(&c));
+    take_while(|c| (b'A'..=b'Z').contains(&c));
+    take_while(|c: char| ('A'..='Z').contains(&c));
+}
