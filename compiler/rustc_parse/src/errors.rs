@@ -2422,8 +2422,6 @@ pub(crate) struct UnexpectedExpressionInPattern {
     pub span: Span,
     /// Was a `RangePatternBound` expected?
     pub is_bound: bool,
-    /// Was the unexpected expression a `MethodCallExpression`?
-    pub is_method_call: bool,
 }
 
 #[derive(Diagnostic)]

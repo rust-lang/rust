@@ -1,14 +1,14 @@
-error: expected a pattern, found a method call
+error: expected a pattern, found an expression
   --> $DIR/pat-recover-exprs.rs:3:9
    |
 LL |         u8::MAX.abs() => (),
-   |         ^^^^^^^^^^^^^ method calls are not allowed in patterns
+   |         ^^^^^^^^^^^^^ arbitrary expressions are not allowed in patterns
 
-error: expected a pattern, found a method call
+error: expected a pattern, found an expression
   --> $DIR/pat-recover-exprs.rs:5:9
    |
 LL |         x.sqrt() @ .. => (),
-   |         ^^^^^^^^ method calls are not allowed in patterns
+   |         ^^^^^^^^ arbitrary expressions are not allowed in patterns
 
 error: left-hand side of `@` must be a binding
   --> $DIR/pat-recover-exprs.rs:5:9
@@ -21,17 +21,17 @@ LL |         x.sqrt() @ .. => (),
    |
    = note: bindings are `x`, `mut x`, `ref x`, and `ref mut x`
 
-error: expected a pattern, found a method call
+error: expected a pattern, found an expression
   --> $DIR/pat-recover-exprs.rs:8:17
    |
 LL |         z @ w @ v.u() => (),
-   |                 ^^^^^ method calls are not allowed in patterns
+   |                 ^^^^^ arbitrary expressions are not allowed in patterns
 
-error: expected a pattern, found a method call
+error: expected a pattern, found an expression
   --> $DIR/pat-recover-exprs.rs:10:9
    |
 LL |         y.ilog(3) => (),
-   |         ^^^^^^^^^ method calls are not allowed in patterns
+   |         ^^^^^^^^^ arbitrary expressions are not allowed in patterns
 
 error: expected a pattern, found an expression
   --> $DIR/pat-recover-exprs.rs:12:9

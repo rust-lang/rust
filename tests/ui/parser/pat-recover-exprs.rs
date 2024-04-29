@@ -1,14 +1,14 @@
 fn main() {
     match u8::MAX {
         u8::MAX.abs() => (),
-        //~^ error: expected a pattern, found a method call
+        //~^ error: expected a pattern, found an expression
         x.sqrt() @ .. => (),
-        //~^ error: expected a pattern, found a method call
+        //~^ error: expected a pattern, found an expression
         //~| error: left-hand side of `@` must be a binding
         z @ w @ v.u() => (),
-        //~^ error: expected a pattern, found a method call
+        //~^ error: expected a pattern, found an expression
         y.ilog(3) => (),
-        //~^ error: expected a pattern, found a method call
+        //~^ error: expected a pattern, found an expression
         n + 1 => (),
         //~^ error: expected a pattern, found an expression
         ("".f() + 14 * 8) => (),

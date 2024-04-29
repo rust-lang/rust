@@ -48,7 +48,7 @@ pub(super) enum LhsExpr {
 }
 
 #[derive(Debug)]
-enum DestructuredFloat {
+pub(crate) enum DestructuredFloat {
     /// 1e2
     Single(Symbol, Span),
     /// 1.
@@ -1044,7 +1044,7 @@ impl<'a> Parser<'a> {
     // we should break everything including floats into more basic proc-macro style
     // tokens in the lexer (probably preferable).
     // See also `TokenKind::break_two_token_op` which does similar splitting of `>>` into `>`.
-    fn break_up_float(&self, float: Symbol, span: Span) -> DestructuredFloat {
+    pub(crate) fn break_up_float(&self, float: Symbol, span: Span) -> DestructuredFloat {
         #[derive(Debug)]
         enum FloatComponent {
             IdentLike(String),

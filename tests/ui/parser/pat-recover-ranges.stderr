@@ -106,17 +106,17 @@ error: expected a pattern range bound, found an expression
 LL |         (1 + 4)...1 * 2 => (),
    |                   ^^^^^ arbitrary expressions are not allowed in patterns
 
-error: expected a pattern range bound, found a method call
+error: expected a pattern range bound, found an expression
   --> $DIR/pat-recover-ranges.rs:24:9
    |
 LL |         0.x()..="y".z() => (),
-   |         ^^^^^ method calls are not allowed in patterns
+   |         ^^^^^ arbitrary expressions are not allowed in patterns
 
-error: expected a pattern range bound, found a method call
+error: expected a pattern range bound, found an expression
   --> $DIR/pat-recover-ranges.rs:24:17
    |
 LL |         0.x()..="y".z() => (),
-   |                 ^^^^^^^ method calls are not allowed in patterns
+   |                 ^^^^^^^ arbitrary expressions are not allowed in patterns
 
 warning: `...` range patterns are deprecated
   --> $DIR/pat-recover-ranges.rs:18:16
