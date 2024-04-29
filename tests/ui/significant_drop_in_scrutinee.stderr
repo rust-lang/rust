@@ -505,5 +505,21 @@ LL ~     let value = mutex.lock().unwrap().foo();
 LL ~     match value {
    |
 
-error: aborting due to 26 previous errors
+error: temporary with significant `Drop` in `match` scrutinee will live until the end of the `match` expression
+  --> tests/ui/significant_drop_in_scrutinee.rs:726:11
+   |
+LL |     match guard.take().len() {
+   |           ^^^^^^^^^^^^^^^^^^
+...
+LL |     };
+   |      - temporary lives until here
+   |
+   = note: this might lead to deadlocks or other unexpected behavior
+help: try moving the temporary above the match
+   |
+LL ~     let value = guard.take().len();
+LL ~     match value {
+   |
+
+error: aborting due to 27 previous errors
 

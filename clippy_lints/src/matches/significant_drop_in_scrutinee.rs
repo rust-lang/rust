@@ -116,7 +116,7 @@ impl<'a, 'tcx> SigDropChecker<'a, 'tcx> {
     }
 
     fn is_sig_drop_expr(&mut self, ex: &'tcx Expr<'_>) -> bool {
-        self.has_sig_drop_attr(self.cx.typeck_results().expr_ty(ex))
+        !ex.is_syntactic_place_expr() && self.has_sig_drop_attr(self.cx.typeck_results().expr_ty(ex))
     }
 
     fn has_sig_drop_attr(&mut self, ty: Ty<'tcx>) -> bool {
