@@ -76,8 +76,6 @@ impl DepKind {
     }
 }
 
-static_assert_size!(DepKind, 2);
-
 pub fn default_dep_kind_debug(kind: DepKind, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     f.debug_struct("DepKind").field("variant", &kind.variant).finish()
 }
@@ -96,15 +94,6 @@ pub struct DepNode {
     pub kind: DepKind,
     pub hash: PackedFingerprint,
 }
-
-// We keep a lot of `DepNode`s in memory during compilation. It's not
-// required that their size stay the same, but we don't want to change
-// it inadvertently. This assert just ensures we're aware of any change.
-#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-static_assert_size!(DepNode, 18);
-
-#[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
-static_assert_size!(DepNode, 24);
 
 impl DepNode {
     /// Creates a new, parameterless DepNode. This method will assert
@@ -315,4 +304,18 @@ impl<HCX> ToStableHashKey<HCX> for WorkProductId {
 unsafe impl StableOrd for WorkProductId {
     // Fingerprint can use unstable (just a tuple of `u64`s), so WorkProductId can as well
     const CAN_USE_UNSTABLE_SORT: bool = true;
+}
+
+// Some types are used a lot. Make sure they don't unintentionally get bigger.
+#[cfg(target_pointer_width = "64")]
+mod size_asserts {
+    use super::*;
+    use rustc_data_structures::static_assert_size;
+    // tidy-alphabetical-start
+    static_assert_size!(DepKind, 2);
+    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+    static_assert_size!(DepNode, 18);
+    #[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
+    static_assert_size!(DepNode, 24);
+    // tidy-alphabetical-end
 }

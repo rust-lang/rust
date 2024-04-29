@@ -41,6 +41,11 @@ rustc_index::newtype_index! {
     pub struct DepNodeIndex {}
 }
 
+// We store a large collection of these in `prev_index_to_index` during
+// non-full incremental builds, and want to ensure that the element size
+// doesn't inadvertently increase.
+rustc_data_structures::static_assert_size!(Option<DepNodeIndex>, 4);
+
 impl DepNodeIndex {
     const SINGLETON_DEPENDENCYLESS_ANON_NODE: DepNodeIndex = DepNodeIndex::ZERO;
     pub const FOREVER_RED_NODE: DepNodeIndex = DepNodeIndex::from_u32(1);
@@ -1106,11 +1111,6 @@ impl<D: Deps> CurrentDepGraph<D> {
             },
             Err(_) => None,
         };
-
-        // We store a large collection of these in `prev_index_to_index` during
-        // non-full incremental builds, and want to ensure that the element size
-        // doesn't inadvertently increase.
-        static_assert_size!(Option<DepNodeIndex>, 4);
 
         let new_node_count_estimate = 102 * prev_graph_node_count / 100 + 200;
 

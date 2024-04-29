@@ -7,8 +7,6 @@
 
 #[macro_use]
 extern crate tracing;
-#[macro_use]
-extern crate rustc_data_structures;
 
 pub mod cache;
 pub mod dep_graph;
