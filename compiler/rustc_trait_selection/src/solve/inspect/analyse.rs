@@ -34,9 +34,9 @@ pub struct InspectConfig {
 pub struct InspectGoal<'a, 'tcx> {
     infcx: &'a InferCtxt<'tcx>,
     depth: usize,
-    orig_values: &'a [ty::GenericArg<'tcx>],
+    orig_values: Vec<ty::GenericArg<'tcx>>,
     goal: Goal<'tcx, ty::Predicate<'tcx>>,
-    evaluation: &'a inspect::GoalEvaluation<'tcx>,
+    evaluation: inspect::CanonicalGoalEvaluation<'tcx>,
 }
 
 pub struct InspectCandidate<'a, 'tcx> {
@@ -139,7 +139,7 @@ impl<'a, 'tcx> InspectCandidate<'a, 'tcx> {
                 try_visit!(visitor.visit_goal(&InspectGoal::new(
                     infcx,
                     self.goal.depth + 1,
-                    &proof_tree.unwrap(),
+                    proof_tree.unwrap(),
                 )));
             }
         }
@@ -164,7 +164,7 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
     }
 
     pub fn result(&self) -> Result<Certainty, NoSolution> {
-        self.evaluation.evaluation.result.map(|c| c.value.certainty)
+        self.evaluation.result.map(|c| c.value.certainty)
     }
 
     fn candidates_recur(
@@ -221,7 +221,7 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
 
     pub fn candidates(&'a self) -> Vec<InspectCandidate<'a, 'tcx>> {
         let mut candidates = vec![];
-        let last_eval_step = match self.evaluation.evaluation.kind {
+        let last_eval_step = match self.evaluation.kind {
             inspect::CanonicalGoalEvaluationKind::Overflow
             | inspect::CanonicalGoalEvaluationKind::CycleInStack
             | inspect::CanonicalGoalEvaluationKind::ProvisionalCacheHit => {
@@ -254,18 +254,15 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
         candidates.pop().filter(|_| candidates.is_empty())
     }
 
-    fn new(
-        infcx: &'a InferCtxt<'tcx>,
-        depth: usize,
-        root: &'a inspect::GoalEvaluation<'tcx>,
-    ) -> Self {
-        match root.kind {
-            inspect::GoalEvaluationKind::Root { ref orig_values } => InspectGoal {
+    fn new(infcx: &'a InferCtxt<'tcx>, depth: usize, root: inspect::GoalEvaluation<'tcx>) -> Self {
+        let inspect::GoalEvaluation { uncanonicalized_goal, kind, evaluation } = root;
+        match kind {
+            inspect::GoalEvaluationKind::Root { orig_values } => InspectGoal {
                 infcx,
                 depth,
                 orig_values,
-                goal: root.uncanonicalized_goal.fold_with(&mut EagerResolver::new(infcx)),
-                evaluation: root,
+                goal: uncanonicalized_goal.fold_with(&mut EagerResolver::new(infcx)),
+                evaluation,
             },
             inspect::GoalEvaluationKind::Nested { .. } => unreachable!(),
         }
@@ -294,6 +291,6 @@ impl<'tcx> InferCtxt<'tcx> {
     ) -> V::Result {
         let (_, proof_tree) = self.evaluate_root_goal(goal, GenerateProofTree::Yes);
         let proof_tree = proof_tree.unwrap();
-        visitor.visit_goal(&InspectGoal::new(self, 0, &proof_tree))
+        visitor.visit_goal(&InspectGoal::new(self, 0, proof_tree))
     }
 }
