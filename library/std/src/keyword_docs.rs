@@ -236,7 +236,7 @@ mod continue_keyword {}
 /// fundamental compilation unit of Rust code, and can be seen as libraries or projects. More can
 /// be read about crates in the [Reference].
 ///
-/// ```rust ignore
+/// ```rust,ignore (code sample)
 /// extern crate rand;
 /// extern crate my_crate as thing;
 /// extern crate std; // implicitly added to the root of every Rust project
