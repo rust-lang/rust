@@ -106,15 +106,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let this = self.eval_context_ref();
         match &this.machine.env_vars {
             EnvVars::Uninit => return Ok(None),
-            EnvVars::Unix(vars) => {
-                let var_ptr = vars.get(this, name)?;
-                if let Some(ptr) = var_ptr {
-                    let var = this.read_os_str_from_c_str(ptr)?;
-                    Ok(Some(var.to_owned()))
-                } else {
-                    Ok(None)
-                }
-            }
+            EnvVars::Unix(vars) => vars.get(this, name),
             EnvVars::Windows(vars) => vars.get(name),
         }
     }

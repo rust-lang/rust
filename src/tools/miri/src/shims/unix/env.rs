@@ -71,9 +71,7 @@ impl<'tcx> UnixEnvVars<'tcx> {
         self.environ.ptr()
     }
 
-    /// Implementation detail for [`InterpCx::get_env_var`]. This basically does `getenv`, complete
-    /// with the reads of the environment, but returns an [`OsString`] instead of a pointer.
-    pub(crate) fn get<'mir>(
+    fn get_ptr<'mir>(
         &self,
         ecx: &InterpCx<'mir, 'tcx, MiriMachine<'mir, 'tcx>>,
         name: &OsStr,
@@ -90,6 +88,22 @@ impl<'tcx> UnixEnvVars<'tcx> {
             ecx,
         )?;
         Ok(Some(var_ptr))
+    }
+
+    /// Implementation detail for [`InterpCx::get_env_var`]. This basically does `getenv`, complete
+    /// with the reads of the environment, but returns an [`OsString`] instead of a pointer.
+    pub(crate) fn get<'mir>(
+        &self,
+        ecx: &InterpCx<'mir, 'tcx, MiriMachine<'mir, 'tcx>>,
+        name: &OsStr,
+    ) -> InterpResult<'tcx, Option<OsString>> {
+        let var_ptr = self.get_ptr(ecx, name)?;
+        if let Some(ptr) = var_ptr {
+            let var = ecx.read_os_str_from_c_str(ptr)?;
+            Ok(Some(var.to_owned()))
+        } else {
+            Ok(None)
+        }
     }
 }
 
@@ -137,7 +151,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let name_ptr = this.read_pointer(name_op)?;
         let name = this.read_os_str_from_c_str(name_ptr)?;
 
-        let var_ptr = this.machine.env_vars.unix().get(this, name)?;
+        let var_ptr = this.machine.env_vars.unix().get_ptr(this, name)?;
         Ok(var_ptr.unwrap_or_else(Pointer::null))
     }
 
