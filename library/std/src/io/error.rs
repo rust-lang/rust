@@ -1043,7 +1043,7 @@ impl error::Error for Error {
             ErrorData::Os(..) => None,
             ErrorData::Simple(..) => None,
             ErrorData::SimpleMessage(..) => None,
-            ErrorData::Custom(c) => c.error.cause(),
+            ErrorData::Custom(c) => Some(c.error.as_ref()),
         }
     }
 
@@ -1052,7 +1052,7 @@ impl error::Error for Error {
             ErrorData::Os(..) => None,
             ErrorData::Simple(..) => None,
             ErrorData::SimpleMessage(..) => None,
-            ErrorData::Custom(c) => c.error.source(),
+            ErrorData::Custom(c) => Some(c.error.as_ref()),
         }
     }
 }
