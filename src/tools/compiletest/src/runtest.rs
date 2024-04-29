@@ -2140,6 +2140,7 @@ impl<'test> TestCx<'test> {
 
         if !self.props.aux_bins.is_empty() {
             let aux_bin_dir = self.aux_bin_output_dir_name();
+            remove_and_create_dir_all(&aux_dir);
             remove_and_create_dir_all(&aux_bin_dir);
         }
 
