@@ -12,11 +12,8 @@ use crate::solve::{deeply_normalize_for_diagnostics, inspect, FulfillmentCtxt};
 use crate::traits::engine::TraitEngineExt as _;
 use crate::traits::select::IntercrateAmbiguityCause;
 use crate::traits::structural_normalize::StructurallyNormalizeExt;
-use crate::traits::NormalizeExt;
-use crate::traits::SkipLeakCheck;
-use crate::traits::{
-    Obligation, ObligationCause, PredicateObligation, PredicateObligations, SelectionContext,
-};
+use crate::traits::{NormalizeExt, SelectionContext, SkipLeakCheck};
+use crate::traits::{Obligation, ObligationCause, PredicateObligation, PredicateObligations};
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{Diag, EmissionGuarantee};
 use rustc_hir::def::DefKind;
@@ -360,9 +357,12 @@ fn impl_intersection_has_impossible_obligation<'a, 'cx, 'tcx>(
 ) -> IntersectionHasImpossibleObligations<'tcx> {
     let infcx = selcx.infcx;
 
+    // Elaborate obligations in case the current obligation is unknowable,
+    // but its super trait bound is not. See #124532 for more details.
+    let obligations = util::elaborate(infcx.tcx, obligations.iter().cloned());
     if infcx.next_trait_solver() {
         let mut fulfill_cx = FulfillmentCtxt::new(infcx);
-        fulfill_cx.register_predicate_obligations(infcx, obligations.iter().cloned());
+        fulfill_cx.register_predicate_obligations(infcx, obligations);
 
         // We only care about the obligations that are *definitely* true errors.
         // Ambiguities do not prove the disjointness of two impls.
@@ -385,7 +385,7 @@ fn impl_intersection_has_impossible_obligation<'a, 'cx, 'tcx>(
         for obligation in obligations {
             // We use `evaluate_root_obligation` to correctly track intercrate
             // ambiguity clauses.
-            let evaluation_result = selcx.evaluate_root_obligation(obligation);
+            let evaluation_result = selcx.evaluate_root_obligation(&obligation);
 
             match evaluation_result {
                 Ok(result) => {

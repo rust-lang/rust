@@ -9,6 +9,11 @@
 // which caused the old solver to emit a `Tensor: TensorValue` goal in
 // `fn normalize_to_error` which then failed, causing this test to pass.
 
+//@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@[next] compile-flags: -Znext-solver
+//@ check-pass
+
 pub trait TensorValue {
     type Unmasked;
 }
@@ -19,7 +24,6 @@ pub trait TensorOp<T>: TensorValue {}
 pub struct Tensor;
 impl<T2> TensorCompare<T2> for Tensor {}
 impl<T1, T2> TensorCompare<T2> for T1
-//~^ ERROR conflicting implementations
 where
     T1: TensorOp<T2>,
     T1::Unmasked: Sized,
