@@ -132,7 +132,7 @@ pub enum CoverageKind {
     ///
     /// If this statement does not survive MIR optimizations, the condition would never be
     /// taken as evaluated.
-    CondBitmapUpdate { id: ConditionId, value: bool },
+    CondBitmapUpdate { id: ConditionId, value: bool, decision_depth: u16 },
 
     /// Marks the point in MIR control flow represented by a evaluated decision.
     ///
@@ -140,7 +140,7 @@ pub enum CoverageKind {
     ///
     /// If this statement does not survive MIR optimizations, the decision would never be
     /// taken as evaluated.
-    TestVectorBitmapUpdate { bitmap_idx: u32 },
+    TestVectorBitmapUpdate { bitmap_idx: u32, decision_depth: u16 },
 }
 
 impl Debug for CoverageKind {
@@ -151,11 +151,17 @@ impl Debug for CoverageKind {
             BlockMarker { id } => write!(fmt, "BlockMarker({:?})", id.index()),
             CounterIncrement { id } => write!(fmt, "CounterIncrement({:?})", id.index()),
             ExpressionUsed { id } => write!(fmt, "ExpressionUsed({:?})", id.index()),
-            CondBitmapUpdate { id, value } => {
-                write!(fmt, "CondBitmapUpdate({:?}, {:?})", id.index(), value)
+            CondBitmapUpdate { id, value, decision_depth } => {
+                write!(
+                    fmt,
+                    "CondBitmapUpdate({:?}, {:?}, depth={:?})",
+                    id.index(),
+                    value,
+                    decision_depth
+                )
             }
-            TestVectorBitmapUpdate { bitmap_idx } => {
-                write!(fmt, "TestVectorUpdate({:?})", bitmap_idx)
+            TestVectorBitmapUpdate { bitmap_idx, decision_depth } => {
+                write!(fmt, "TestVectorUpdate({:?}, depth={:?})", bitmap_idx, decision_depth)
             }
         }
     }
@@ -269,6 +275,9 @@ pub struct FunctionCoverageInfo {
     pub mcdc_bitmap_bytes: u32,
     pub expressions: IndexVec<ExpressionId, Expression>,
     pub mappings: Vec<Mapping>,
+    /// The depth of the deepest decision is used to know how many
+    /// temp condbitmaps should be allocated for the function.
+    pub mcdc_max_decision_depth: u16,
 }
 
 /// Branch information recorded during THIR-to-MIR lowering, and stored in MIR.
@@ -319,6 +328,7 @@ pub struct MCDCBranchSpan {
     pub condition_info: Option<ConditionInfo>,
     pub true_marker: BlockMarkerId,
     pub false_marker: BlockMarkerId,
+    pub decision_depth: u16,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -334,4 +344,5 @@ pub struct MCDCDecisionSpan {
     pub span: Span,
     pub conditions_num: usize,
     pub end_markers: Vec<BlockMarkerId>,
+    pub decision_depth: u16,
 }

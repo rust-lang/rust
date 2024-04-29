@@ -26,9 +26,15 @@ pub(super) enum BcbMappingKind {
         /// If `None`, this actually represents a normal branch mapping inserted
         /// for code that was too complex for MC/DC.
         condition_info: Option<ConditionInfo>,
+        decision_depth: u16,
     },
     /// Associates a mcdc decision with its join BCB.
-    MCDCDecision { end_bcbs: BTreeSet<BasicCoverageBlock>, bitmap_idx: u32, conditions_num: u16 },
+    MCDCDecision {
+        end_bcbs: BTreeSet<BasicCoverageBlock>,
+        bitmap_idx: u32,
+        conditions_num: u16,
+        decision_depth: u16,
+    },
 }
 
 #[derive(Debug)]

@@ -148,8 +148,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let mut block = block;
                 let temp_scope = args.temp_scope_override.unwrap_or_else(|| this.local_scope());
                 let mutability = Mutability::Mut;
+
+                // Increment the decision depth, in case we encounter boolean expressions
+                // further down.
+                this.mcdc_increment_depth_if_enabled();
                 let place =
                     unpack!(block = this.as_temp(block, Some(temp_scope), expr_id, mutability));
+                this.mcdc_decrement_depth_if_enabled();
+
                 let operand = Operand::Move(Place::from(place));
 
                 let then_block = this.cfg.start_new_block();
