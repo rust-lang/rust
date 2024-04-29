@@ -1,0 +1,25 @@
+error: expected unsuffixed literal, found `val`
+  --> $DIR/suggest_quoting_values_only_for_idents.rs:4:15
+   |
+LL | #[doc(alias = val)]
+   |               ^^^
+   |
+help: surround the identifier with quotation marks to parse it as a string
+   |
+LL | #[doc(alias = "val")]
+   |               +   +
+
+error: expected unsuffixed literal or identifier, found `[`
+  --> $DIR/suggest_quoting_values_only_for_idents.rs:5:15
+   |
+LL | #[doc(alias = ["va", "al"])]
+   |               ^
+
+error: expected unsuffixed literal or identifier, found `&`
+  --> $DIR/suggest_quoting_values_only_for_idents.rs:6:15
+   |
+LL | #[doc(alias = &["va", "al"])]
+   |               ^
+
+error: aborting due to 3 previous errors
+

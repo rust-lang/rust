@@ -412,7 +412,10 @@ impl<'a> Parser<'a> {
         // Check for unquoted idents in meta items, e.g.: #[cfg(key = foo)]
         // `from_expansion()` ensures we don't suggest for cases such as
         // `#[cfg(feature = $expr)]` in macros
-        if self.prev_token == token::Eq && !self.token.span.from_expansion() {
+        if self.token.is_ident()
+            && self.prev_token == token::Eq
+            && !self.token.span.from_expansion()
+        {
             let before = self.token.span.shrink_to_lo();
             while matches!(self.token.kind, token::Ident(..)) {
                 self.bump();
