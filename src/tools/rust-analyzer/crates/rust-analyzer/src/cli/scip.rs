@@ -14,7 +14,7 @@ use tracing::error;
 
 use crate::{
     cli::flags,
-    config::{ConfigChange, ConfigError},
+    config::ConfigChange,
     line_index::{LineEndings, LineIndex, PositionEncoding},
 };
 
@@ -45,8 +45,10 @@ impl flags::Scip {
             let json = serde_json::from_reader(&mut file)?;
             let mut change = ConfigChange::default();
             change.change_client_config(json);
-            let mut error_sink = ConfigError::default();
-            (config, _) = config.apply_change(change, &mut error_sink);
+
+            let error_sink;
+            (config, error_sink, _) = config.apply_change(change);
+
             // FIXME @alibektas : What happens to errors without logging?
             error!(?error_sink, "Config Error(s)");
         }

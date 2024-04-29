@@ -13,7 +13,7 @@ use triomphe::Arc;
 use vfs::{AbsPathBuf, ChangeKind, VfsPath};
 
 use crate::{
-    config::{Config, ConfigChange, ConfigError},
+    config::{Config, ConfigChange},
     global_state::GlobalState,
     lsp::{from_proto, utils::apply_document_changes},
     lsp_ext::{self, RunFlycheckParams},
@@ -200,8 +200,9 @@ pub(crate) fn handle_did_change_configuration(
                         let mut config = Config::clone(&*this.config);
                         let mut change = ConfigChange::default();
                         change.change_client_config(json.take());
-                        let mut error_sink = ConfigError::default();
-                        (config, _) = config.apply_change(change, &mut error_sink);
+
+                        (config, _, _) = config.apply_change(change);
+
                         // Client config changes neccesitates .update_config method to be called.
                         this.update_configuration(config);
                     }

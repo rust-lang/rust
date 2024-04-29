@@ -33,7 +33,7 @@ use triomphe::Arc;
 use vfs::{AbsPath, AbsPathBuf, ChangeKind};
 
 use crate::{
-    config::{Config, ConfigChange, ConfigError, FilesWatcher, LinkedProject},
+    config::{Config, ConfigChange, FilesWatcher, LinkedProject},
     global_state::GlobalState,
     lsp_ext,
     main_loop::Task,
@@ -604,8 +604,9 @@ impl GlobalState {
 
         let mut config_change = ConfigChange::default();
         config_change.change_source_root_parent_map(self.local_roots_parent_map.clone());
-        let mut error_sink = ConfigError::default();
-        let (config, _) = self.config.apply_change(config_change, &mut error_sink);
+
+        let (config, _, _) = self.config.apply_change(config_change);
+
         self.config = Arc::new(config);
 
         self.recreate_crate_graph(cause);

@@ -404,8 +404,8 @@ impl GlobalState {
 
                 change
             };
-            let mut error_sink = ConfigError::default();
-            let (config, should_update) = self.config.apply_change(config_change, &mut error_sink);
+
+            let (config, _, should_update) = self.config.apply_change(config_change);
 
             if should_update {
                 self.update_configuration(config);
