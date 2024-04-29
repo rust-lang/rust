@@ -212,7 +212,7 @@ rely on CI.
 - [x] umodsi3.c
 - [x] x86_64/chkstk.S
 
-These builtins are needed to support 128-bit integers, which are in the process of being added to Rust.
+These builtins are needed to support 128-bit integers.
 
 - [x] ashlti3.c
 - [x] ashrti3.c
