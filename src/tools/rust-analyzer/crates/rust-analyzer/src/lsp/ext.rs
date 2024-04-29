@@ -561,6 +561,7 @@ pub struct CodeAction {
 pub struct CodeActionData {
     pub code_action_params: lsp_types::CodeActionParams,
     pub id: String,
+    pub version: Option<i32>,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone, Default, Deserialize, Serialize)]
@@ -802,6 +803,7 @@ impl Request for OnTypeFormatting {
 pub struct CompletionResolveData {
     pub position: lsp_types::TextDocumentPositionParams,
     pub imports: Vec<CompletionImport>,
+    pub version: Option<i32>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -809,6 +811,7 @@ pub struct InlayHintResolveData {
     pub file_id: u32,
     // This is a string instead of a u64 as javascript can't represent u64 fully
     pub hash: String,
+    pub version: Option<i32>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
