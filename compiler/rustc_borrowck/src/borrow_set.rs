@@ -109,9 +109,7 @@ impl LocalsStateAtExit {
             has_storage_dead.visit_body(body);
             let mut has_storage_dead_or_moved = has_storage_dead.0;
             for move_out in &move_data.moves {
-                if let Some(index) = move_data.base_local(move_out.path) {
-                    has_storage_dead_or_moved.insert(index);
-                }
+                has_storage_dead_or_moved.insert(move_data.base_local(move_out.path));
             }
             LocalsStateAtExit::SomeAreInvalidated { has_storage_dead_or_moved }
         }
