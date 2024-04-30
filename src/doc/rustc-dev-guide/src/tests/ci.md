@@ -2,26 +2,26 @@
 
 ## Testing infrastructure
 
-<!-- date-check: oct 2022 -->
+<!-- date-check: may 2024 -->
 When a Pull Request is opened on GitHub, [GitHub Actions] will automatically
 launch a build that will run all tests on some configurations
-(x86_64-gnu-llvm-13 linux, x86_64-gnu-tools linux, and mingw-check linux).
+(x86_64-gnu-llvm-X linux, x86_64-gnu-tools linux, mingw-check linux and mingw-check-tidy linux).
 In essence, each runs `./x test` with various different options.
 
 The integration bot [bors] is used for coordinating merges to the master branch.
 When a PR is approved, it goes into a [queue] where merges are tested one at a
 time on a wide set of platforms using GitHub Actions. Due to the limit on the
-number of parallel jobs, we run CI under the [rust-lang-ci] organization except
-for PRs.
+number of parallel jobs, we run the main CI jobs under the [rust-lang-ci] organization
+(in contrast to PR CI jobs, which run under `rust-lang` directly).
 Most platforms only run the build steps, some run a restricted set of tests,
 only a subset run the full suite of tests (see Rust's [platform tiers]).
 
-If everything passes, then all of the distribution artifacts that were
+If everything passes, then all the distribution artifacts that were
 generated during the CI run are published.
 
 [GitHub Actions]: https://github.com/rust-lang/rust/actions
 [rust-lang-ci]: https://github.com/rust-lang-ci/rust/actions
-[bors]: https://github.com/servo/homu
+[bors]: https://github.com/rust-lang/homu
 [queue]: https://bors.rust-lang.org/queue/rust
 [platform tiers]: https://forge.rust-lang.org/release/platform-support.html#rust-platform-support
 
@@ -40,35 +40,31 @@ For example, if a Windows build fails, but you don't have access to a Windows
 machine, you can try running the Windows job that failed on CI within your PR
 after pushing a possible fix.
 
-To do this, you'll need to edit [`src/ci/github-actions/ci.yml`].
-The `jobs` section defines the jobs that will run.
-The `jobs.pr` section defines everything that will run in a push to a PR.
-The `jobs.auto` section defines the full set of tests that are run after a PR is approved.
-You can copy one of the definitions from the `auto` section up to the `pr` section.
+To do this, you'll need to edit [`src/ci/github-actions/jobs.yml`]. It contains three
+sections that affect which CI jobs will be executed:
+- The `pr` section defines everything that will run after a push to a PR.
+- The `try` section defines job(s) that are run when you ask for a try build using `@bors try`. 
+- The `auto` section defines the full set of tests that are run after a PR is approved and before
+it is merged into the main branch.
 
-For example, the `x86_64-msvc-1` and `x86_64-msvc-2` jobs are responsible for
-running the 64-bit MSVC tests.
-You can copy those up to the `jobs.pr.strategy.matrix.include` section with
-the other jobs.
+You can copy one of the definitions from the `auto` section to the `pr` or `try` sections.
+For example, the `x86_64-msvc` job is responsible for running the 64-bit MSVC tests.
+You can copy it to the `pr` section to cause it to be executed after a commit is pushed to your
+PR.
 
-The comment at the top of `ci.yml` will tell you to run this command:
+Then, you can commit the file and push to GitHub. GitHub Actions should launch the tests.
 
-```sh
-./x run src/tools/expand-yaml-anchors
-```
+After you have finished your tests, don't forget to remove any changes you have made to `jobs.yml`.
 
-This will generate the true [`.github/workflows/ci.yml`] which is what GitHub
-Actions uses.
+If you need to make more complex modifications to CI, you will need to modify
+[`.github/workflows/ci.yml`] and possibly also
+[`src/ci/github-actions/calculate-job-matrix.py`].
 
-Then, you can commit those two files and push to GitHub.
-GitHub Actions should launch the tests.
-
-After you have finished, don't forget to remove any changes you have made to `ci.yml`.
-
-Although you are welcome to use CI, just be conscientious that this is a shared
+Although you are welcome to use CI, just be conscious that this is a shared
 resource with limited concurrency.
 Try not to enable too many jobs at once (one or two should be sufficient in
 most cases).
 
-[`src/ci/github-actions/ci.yml`]: https://github.com/rust-lang/rust/blob/master/src/ci/github-actions/ci.yml
-[`.github/workflows/ci.yml`]: https://github.com/rust-lang/rust/blob/master/.github/workflows/ci.yml#L1
+[`src/ci/github-actions/jobs.yml`]: https://github.com/rust-lang/rust/blob/master/src/ci/github-actions/jobs.yml
+[`.github/workflows/ci.yml`]: https://github.com/rust-lang/rust/blob/master/.github/workflows/ci.yml
+[`src/ci/github-actions/calculate-job-matrix.py`]: https://github.com/rust-lang/rust/blob/master/src/ci/github-actions/calculate-job-matrix.py
