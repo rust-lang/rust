@@ -45,9 +45,6 @@ mod macros;
 pub mod float;
 pub mod int;
 
-// For some reason, we still get clippy error `clippy::deprecated_cfg_attr` even though, we have
-// used `allow(clippy::all)` in the file. So, we are disabling the clippy check for this file.
-#[cfg(not(clippy))]
 pub mod math;
 pub mod mem;
 
