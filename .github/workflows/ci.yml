@@ -56,26 +56,19 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target: [x86_64-pc-windows-msvc, i686-pc-windows-msvc, i586-pc-windows-msvc, x86_64-unknown-linux-gnu, x86_64-apple-darwin]
+        target: [x86_64-pc-windows-msvc, i686-pc-windows-msvc, i586-pc-windows-msvc, x86_64-unknown-linux-gnu]
         # `default` means we use the default target config for the target,
         # `native` means we run with `-Ctarget-cpu=native`, and anything else is
         # an arg to `-Ctarget-feature`
         target_feature: [default, native, +sse3, +ssse3, +sse4.1, +sse4.2, +avx, +avx2]
 
         exclude:
-          # The macos runners seem to only reliably support up to `avx`.
-          - { target: x86_64-apple-darwin, target_feature: +avx2 }
-          # These features are statically known to be present for all 64 bit
-          # macs, and thus are covered by the `default` test
-          - { target: x86_64-apple-darwin, target_feature: +sse3 }
-          - { target: x86_64-apple-darwin, target_feature: +ssse3 }
           # -Ctarget-cpu=native sounds like bad-news if target != host
           - { target: i686-pc-windows-msvc, target_feature: native }
           - { target: i586-pc-windows-msvc, target_feature: native }
 
         include:
           # Populate the `matrix.os` field
-          - { target: x86_64-apple-darwin,      os: macos-latest }
           - { target: x86_64-unknown-linux-gnu, os: ubuntu-latest }
           - { target: x86_64-pc-windows-msvc,   os: windows-latest }
           - { target: i686-pc-windows-msvc,     os: windows-latest }
@@ -122,6 +115,35 @@ jobs:
 
           echo "## Natively supported target configuration"
           rustc --print=cfg -Ctarget-cpu=native
+
+      - name: Test (debug)
+        run: cargo test --verbose --target=${{ matrix.target }}
+
+      - name: Test (release)
+        run: cargo test --verbose --target=${{ matrix.target }} --release
+
+      - name: Generate docs
+        run: cargo doc --verbose --target=${{ matrix.target }}
+        env:
+          RUSTDOCFLAGS: -Dwarnings
+    
+  macos-tests:
+    name: ${{ matrix.target }}
+    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - aarch64-apple-darwin
+          - x86_64-apple-darwin
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup Rust
+        run: rustup target add ${{ matrix.target }}
+
+      - name: Configure RUSTFLAGS
+        shell: bash
+        run: echo "RUSTFLAGS=-Dwarnings" >> $GITHUB_ENV
 
       - name: Test (debug)
         run: cargo test --verbose --target=${{ matrix.target }}
