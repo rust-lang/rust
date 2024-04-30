@@ -376,6 +376,55 @@ that the code sample should be compiled using the respective edition of Rust.
 # fn foo() {}
 ```
 
+Starting the 2024 edition, compatible doctests will be merged as one before being run.
+It means that they will share the process, so any change global/static variables will
+now impact the other doctests.
+
+For example, if you have:
+
+```rust
+//! ```
+//! foo::init();
+//! ```
+
+/// ```
+/// foo::init();
+/// ```
+pub fn init() {
+    static mut IS_INIT: bool = false;
+
+    unsafe {
+        assert!(!IS_INIT);
+        IS_INIT = true;
+    }
+}
+```
+
+If you run `rustdoc --test` on this code, it'll panic on the second doctest being
+run because `IS_INIT` value is not `false` anymore.
+
+This is where the `standalone` attribute comes in: ittells `rustdoc` that a doctest
+should not be merged with the others and should be run in its own process. So the
+previous code should use it:
+
+```rust
+//! ```standalone
+//! foo::init();
+//! ```
+
+/// ```standalone
+/// foo::init();
+/// ```
+pub fn init() {
+    static mut IS_INIT: bool = false;
+
+    unsafe {
+        assert!(!IS_INIT);
+        IS_INIT = true;
+    }
+}
+```
+
 ## Syntax reference
 
 The *exact* syntax for code blocks, including the edge cases, can be found
