@@ -110,7 +110,7 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
 
         // Create pointers named `mcdc.addr.{i}` to stack-allocated condition bitmaps.
         let mut cond_bitmaps = vec![];
-        for i in 0..=function_coverage_info.mcdc_max_decision_depth {
+        for i in 0..function_coverage_info.mcdc_num_condition_bitmaps {
             // MC/DC intrinsics will perform loads/stores that use the ABI default
             // alignment for i32, so our variable declaration should match.
             let align = self.tcx.data_layout.i32_align.abi;
