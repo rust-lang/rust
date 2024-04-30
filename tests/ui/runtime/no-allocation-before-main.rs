@@ -5,7 +5,7 @@
 //! -Cprefer-dynamic=no is required as otherwise #[global_allocator] does nothing.
 //! We only test linux-gnu as other targets currently need allocation for thread dtors.
 //@ run-pass
-//@ compile-flags: -Cprefer-dynamic=no
+//@ compile-flags: -Cprefer-dynamic=no -Cdebuginfo=full
 //@ only-linux
 //@ only-gnu
 
