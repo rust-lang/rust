@@ -1,6 +1,7 @@
 use rustc_infer::infer::at::At;
 use rustc_infer::infer::type_variable::TypeVariableOrigin;
 use rustc_infer::traits::{FulfillmentError, TraitEngine};
+use rustc_macros::extension;
 use rustc_middle::ty::{self, Ty};
 
 use crate::traits::{NormalizeExt, Obligation};

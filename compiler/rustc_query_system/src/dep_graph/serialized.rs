@@ -51,6 +51,7 @@ use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use std::iter;
 use std::marker::PhantomData;
 use std::sync::Arc;
+use tracing::{debug, instrument};
 
 // The maximum value of `SerializedDepNodeIndex` leaves the upper two bits
 // unused so that we can store multiple index types in `CompressedHybridIndex`,

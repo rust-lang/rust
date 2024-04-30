@@ -13,9 +13,9 @@ use rustc_session::Session;
 use rustc_smir::rustc_internal::pretty::write_smir_pretty;
 use rustc_span::symbol::Ident;
 use rustc_span::FileName;
-
 use std::cell::Cell;
 use std::fmt::Write;
+use tracing::debug;
 
 pub use self::PpMode::*;
 pub use self::PpSourceMode::*;

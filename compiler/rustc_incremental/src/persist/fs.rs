@@ -110,6 +110,7 @@ use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_data_structures::{base_n, flock};
 use rustc_errors::ErrorGuaranteed;
 use rustc_fs_util::{link_or_copy, try_canonicalize, LinkOrCopy};
+use rustc_middle::bug;
 use rustc_session::config::CrateType;
 use rustc_session::output::{collect_crate_types, find_crate_name};
 use rustc_session::{Session, StableCrateId};

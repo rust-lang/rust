@@ -131,7 +131,7 @@ use rustc_data_structures::sync::{HashMapExt, Lock};
 use rustc_data_structures::tiny_list::TinyList;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_macros::HashStable;
+use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_serialize::{Decodable, Encodable};
 use rustc_target::abi::{AddressSpace, Endian, HasDataLayout};

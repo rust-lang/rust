@@ -2,6 +2,7 @@ use crate::mir::Mutability;
 use crate::ty::GenericArgKind;
 use crate::ty::{self, GenericArgsRef, Ty, TyCtxt, TypeVisitableExt};
 use rustc_hir::def_id::DefId;
+use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::iter;

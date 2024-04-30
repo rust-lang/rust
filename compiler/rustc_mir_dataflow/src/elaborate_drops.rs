@@ -2,6 +2,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_index::Idx;
 use rustc_middle::mir::patch::MirPatch;
 use rustc_middle::mir::*;
+use rustc_middle::span_bug;
 use rustc_middle::traits::Reveal;
 use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::GenericArgsRef;

@@ -17,6 +17,7 @@ use rustc_data_structures::packed::Pu128;
 use rustc_hir::def_id::DefId;
 use rustc_hir::CoroutineKind;
 use rustc_index::IndexVec;
+use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_span::source_map::Spanned;
 use rustc_target::abi::{FieldIdx, VariantIdx};
 
@@ -1522,6 +1523,7 @@ pub enum BinOp {
 #[cfg(target_pointer_width = "64")]
 mod size_asserts {
     use super::*;
+    use rustc_data_structures::static_assert_size;
     // tidy-alphabetical-start
     static_assert_size!(AggregateKind<'_>, 32);
     static_assert_size!(Operand<'_>, 24);

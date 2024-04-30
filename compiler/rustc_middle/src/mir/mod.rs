@@ -20,6 +20,7 @@ use rustc_hir::def_id::{DefId, CRATE_DEF_ID};
 use rustc_hir::{
     self as hir, BindingMode, ByRef, CoroutineDesugaring, CoroutineKind, HirId, ImplicitSelfKind,
 };
+use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_session::Session;
 use rustc_span::source_map::Spanned;
 use rustc_target::abi::{FieldIdx, VariantIdx};

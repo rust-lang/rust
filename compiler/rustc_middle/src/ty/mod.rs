@@ -47,7 +47,9 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, DocLinkResMap, LifetimeRes, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdMap};
 use rustc_index::IndexVec;
-use rustc_macros::HashStable;
+use rustc_macros::{
+    Decodable, Encodable, HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable,
+};
 use rustc_query_system::ich::StableHashingContext;
 use rustc_serialize::{Decodable, Encodable};
 use rustc_session::lint::LintBuffer;
@@ -1083,7 +1085,7 @@ struct ParamTag {
     reveal: traits::Reveal,
 }
 
-impl_tag! {
+rustc_data_structures::impl_tag! {
     impl Tag for ParamTag;
     ParamTag { reveal: traits::Reveal::UserFacing },
     ParamTag { reveal: traits::Reveal::All },
@@ -1222,7 +1224,7 @@ pub struct Destructor {
 
 #[derive(Clone, Copy, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
 pub struct VariantFlags(u8);
-bitflags! {
+bitflags::bitflags! {
     impl VariantFlags: u8 {
         const NO_VARIANT_FLAGS        = 0;
         /// Indicates whether the field list of this variant is `#[non_exhaustive]`.

@@ -18,7 +18,7 @@ use rustc_hir::{
     BindingMode, ByRef, HirId, ItemLocalId, ItemLocalMap, ItemLocalSet, Mutability,
 };
 use rustc_index::IndexVec;
-use rustc_macros::HashStable;
+use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_middle::mir::FakeReadCause;
 use rustc_session::Session;
 use rustc_span::Span;

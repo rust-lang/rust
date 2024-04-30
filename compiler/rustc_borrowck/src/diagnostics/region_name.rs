@@ -11,6 +11,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_middle::ty::print::RegionHighlightMode;
 use rustc_middle::ty::{self, RegionVid, Ty};
 use rustc_middle::ty::{GenericArgKind, GenericArgsRef};
+use rustc_middle::{bug, span_bug};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 

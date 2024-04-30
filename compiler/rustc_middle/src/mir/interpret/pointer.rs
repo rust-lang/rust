@@ -1,6 +1,7 @@
 use super::{AllocId, InterpResult};
 
-use rustc_macros::HashStable;
+use rustc_data_structures::static_assert_size;
+use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_target::abi::{HasDataLayout, Size};
 
 use std::{fmt, num::NonZero};

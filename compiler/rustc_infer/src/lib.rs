@@ -31,11 +31,6 @@
 #![recursion_limit = "512"] // For rustdoc
 
 #[macro_use]
-extern crate rustc_macros;
-#[cfg(target_pointer_width = "64")]
-#[macro_use]
-extern crate rustc_data_structures;
-#[macro_use]
 extern crate tracing;
 #[macro_use]
 extern crate rustc_middle;

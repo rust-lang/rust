@@ -1,6 +1,7 @@
 use crate::abi::{self, Abi, Align, FieldsShape, Size};
 use crate::abi::{HasDataLayout, TyAbiInterface, TyAndLayout};
 use crate::spec::{self, HasTargetSpec, HasWasmCAbiOpt};
+use rustc_macros::HashStable_Generic;
 use rustc_span::Symbol;
 use std::fmt;
 use std::str::FromStr;
@@ -100,6 +101,8 @@ pub use attr_impl::ArgAttribute;
 #[allow(non_upper_case_globals)]
 #[allow(unused)]
 mod attr_impl {
+    use rustc_macros::HashStable_Generic;
+
     // The subset of llvm::Attribute needed for arguments, packed into a bitfield.
     #[derive(Clone, Copy, Default, Hash, PartialEq, Eq, HashStable_Generic)]
     pub struct ArgAttribute(u8);

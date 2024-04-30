@@ -10,6 +10,7 @@ use rustc_errors::{
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_index::IndexVec;
+use rustc_macros::{extension, HashStable, TyDecodable, TyEncodable};
 use rustc_session::config::OptLevel;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{ErrorGuaranteed, Span, DUMMY_SP};

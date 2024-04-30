@@ -1,4 +1,5 @@
 use rustc_infer::traits::{TraitEngine, TraitEngineExt};
+use rustc_macros::extension;
 
 use crate::infer::canonical::OriginalQueryValues;
 use crate::infer::InferCtxt;

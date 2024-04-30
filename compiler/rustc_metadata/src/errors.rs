@@ -4,7 +4,7 @@ use std::{
 };
 
 use rustc_errors::{codes::*, Diag, DiagCtxt, Diagnostic, EmissionGuarantee, Level};
-use rustc_macros::Diagnostic;
+use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_session::config;
 use rustc_span::{sym, Span, Symbol};
 use rustc_target::spec::{PanicStrategy, TargetTriple};

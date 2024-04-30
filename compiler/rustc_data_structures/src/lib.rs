@@ -41,8 +41,6 @@
 
 #[macro_use]
 extern crate tracing;
-#[macro_use]
-extern crate rustc_macros;
 
 use std::fmt;
 

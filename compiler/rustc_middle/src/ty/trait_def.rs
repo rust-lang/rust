@@ -8,7 +8,7 @@ use std::iter;
 
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::ErrorGuaranteed;
-use rustc_macros::HashStable;
+use rustc_macros::{Decodable, Encodable, HashStable};
 
 /// A trait's definition with type information.
 #[derive(HashStable, Encodable, Decodable)]

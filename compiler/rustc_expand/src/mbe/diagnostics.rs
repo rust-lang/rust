@@ -8,11 +8,13 @@ use rustc_ast::token::{self, Token, TokenKind};
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast_pretty::pprust;
 use rustc_errors::{Applicability, Diag, DiagCtxt, DiagMessage};
+use rustc_macros::Subdiagnostic;
 use rustc_parse::parser::{Parser, Recovery};
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::Ident;
 use rustc_span::{ErrorGuaranteed, Span};
 use std::borrow::Cow;
+use tracing::debug;
 
 use super::macro_rules::{parser_from_cx, NoopTracker};
 

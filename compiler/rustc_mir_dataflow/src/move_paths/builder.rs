@@ -2,6 +2,7 @@ use rustc_index::IndexVec;
 use rustc_middle::mir::tcx::{PlaceTy, RvalueInitializationState};
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::{bug, span_bug};
 use smallvec::{smallvec, SmallVec};
 
 use std::mem;

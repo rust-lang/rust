@@ -1,10 +1,9 @@
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
-use crate::traits::{self, ObligationCtxt, SelectionContext};
-
-use crate::traits::TraitEngineExt as _;
+use crate::traits::{self, ObligationCtxt, SelectionContext, TraitEngineExt as _};
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
 use rustc_infer::traits::{Obligation, TraitEngine, TraitEngineExt as _};
+use rustc_macros::extension;
 use rustc_middle::arena::ArenaAllocatable;
 use rustc_middle::infer::canonical::{Canonical, CanonicalQueryResponse, QueryResponse};
 use rustc_middle::traits::query::NoSolution;

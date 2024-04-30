@@ -4,7 +4,7 @@
 use crate::ty::{self, Ty};
 use rustc_middle::mir;
 
-use rustc_macros::HashStable;
+use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 
 /// Types that are represented as ints.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]

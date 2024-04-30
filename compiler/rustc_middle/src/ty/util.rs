@@ -17,12 +17,12 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
 use rustc_index::bit_set::GrowableBitSet;
-use rustc_macros::HashStable;
+use rustc_macros::{extension, HashStable, TyDecodable, TyEncodable};
 use rustc_session::Limit;
 use rustc_span::sym;
 use rustc_target::abi::{Integer, IntegerType, Primitive, Size};
 use rustc_target::spec::abi::Abi;
-use smallvec::SmallVec;
+use smallvec::{smallvec, SmallVec};
 use std::{fmt, iter};
 
 #[derive(Copy, Clone, Debug)]

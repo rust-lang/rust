@@ -12,6 +12,7 @@ use rustc_span::{ErrorGuaranteed, FileNameDisplayPreference, Span};
 use std::assert_matches::assert_matches;
 use std::iter;
 use thin_vec::{thin_vec, ThinVec};
+use tracing::debug;
 
 /// #[test_case] is used by custom test authors to mark tests
 /// When building for test, it needs to make the item public and gensym the name

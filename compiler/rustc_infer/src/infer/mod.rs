@@ -4,6 +4,7 @@ pub use lexical_region_resolve::RegionResolutionError;
 pub use relate::combine::CombineFields;
 pub use relate::combine::ObligationEmittingRelation;
 pub use relate::StructurallyRelateAliases;
+pub use rustc_macros::{TypeFoldable, TypeVisitable};
 pub use rustc_middle::ty::IntVarValue;
 pub use BoundRegionConversionTime::*;
 pub use RegionVariableOrigin::*;
@@ -20,13 +21,13 @@ use opaque_types::OpaqueTypeStorage;
 use region_constraints::{GenericKind, VarInfos, VerifyBound};
 use region_constraints::{RegionConstraintCollector, RegionConstraintStorage};
 use rustc_data_structures::captures::Captures;
-use rustc_data_structures::fx::FxIndexMap;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::undo_log::Rollback;
 use rustc_data_structures::unify as ut;
 use rustc_errors::{Diag, DiagCtxt, ErrorGuaranteed};
 use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_macros::extension;
 use rustc_middle::infer::canonical::{Canonical, CanonicalVarValues};
 use rustc_middle::infer::unify_key::ConstVariableValue;
 use rustc_middle::infer::unify_key::EffectVarValue;
@@ -478,7 +479,7 @@ pub enum SubregionOrigin<'tcx> {
 
 // `SubregionOrigin` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(target_pointer_width = "64")]
-static_assert_size!(SubregionOrigin<'_>, 32);
+rustc_data_structures::static_assert_size!(SubregionOrigin<'_>, 32);
 
 impl<'tcx> SubregionOrigin<'tcx> {
     pub fn to_constraint_category(&self) -> ConstraintCategory<'tcx> {
