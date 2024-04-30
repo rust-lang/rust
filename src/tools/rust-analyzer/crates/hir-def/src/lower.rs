@@ -65,6 +65,6 @@ impl<'a> LowerCtx<'a> {
     }
 
     pub fn take_impl_traits_bounds(&self) -> Vec<Vec<Interned<TypeBound>>> {
-        self.impl_trait_bounds.borrow_mut().drain(..).collect()
+        self.impl_trait_bounds.take()
     }
 }
