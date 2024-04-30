@@ -20,6 +20,7 @@ mod libc {
 
     extern "C" {
         pub fn getcwd(buf: *mut c_char, size: size_t) -> *mut c_char;
+        pub fn getpid() -> u32;
         pub fn chdir(dir: *const c_char) -> c_int;
         pub fn __wasilibc_get_environ() -> *mut *mut c_char;
     }
@@ -278,7 +279,8 @@ pub fn exit(code: i32) -> ! {
 }
 
 pub fn getpid() -> u32 {
-    panic!("unsupported");
+    // wasi-libc getpid returns a constant value
+    libc::getpid()
 }
 
 #[doc(hidden)]
