@@ -1,11 +1,8 @@
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_index::IndexVec;
-use rustc_middle::mir::coverage::{
-    BlockMarkerId, BranchSpan, CoverageKind, MCDCBranchSpan, MCDCDecisionSpan,
-};
+use rustc_middle::mir::coverage::CoverageKind;
 use rustc_middle::mir::{
-    self, AggregateKind, BasicBlock, FakeReadCause, Rvalue, Statement, StatementKind, Terminator,
+    self, AggregateKind, FakeReadCause, Rvalue, Statement, StatementKind, Terminator,
     TerminatorKind,
 };
 use rustc_span::{ExpnKind, MacroKind, Span, Symbol};
@@ -13,7 +10,6 @@ use rustc_span::{ExpnKind, MacroKind, Span, Symbol};
 use crate::coverage::graph::{
     BasicCoverageBlock, BasicCoverageBlockData, CoverageGraph, START_BCB,
 };
-use crate::coverage::spans::{BcbBranchPair, BcbMapping, BcbMappingKind};
 use crate::coverage::ExtractedHirInfo;
 
 /// Traverses the MIR body to produce an initial collection of coverage-relevant
@@ -287,7 +283,7 @@ fn filtered_terminator_span(terminator: &Terminator<'_>) -> Option<Span> {
 ///
 /// [^1]Expansions result from Rust syntax including macros, syntactic sugar,
 /// etc.).
-fn unexpand_into_body_span_with_visible_macro(
+pub(crate) fn unexpand_into_body_span_with_visible_macro(
     original_span: Span,
     body_span: Span,
 ) -> Option<(Span, Option<Symbol>)> {
@@ -364,142 +360,4 @@ impl SpanFromMir {
     ) -> Self {
         Self { span, visible_macro, bcb, is_hole }
     }
-}
-
-fn resolve_block_markers(
-    branch_info: &mir::coverage::BranchInfo,
-    mir_body: &mir::Body<'_>,
-) -> IndexVec<BlockMarkerId, Option<BasicBlock>> {
-    let mut block_markers = IndexVec::<BlockMarkerId, Option<BasicBlock>>::from_elem_n(
-        None,
-        branch_info.num_block_markers,
-    );
-
-    // Fill out the mapping from block marker IDs to their enclosing blocks.
-    for (bb, data) in mir_body.basic_blocks.iter_enumerated() {
-        for statement in &data.statements {
-            if let StatementKind::Coverage(CoverageKind::BlockMarker { id }) = statement.kind {
-                block_markers[id] = Some(bb);
-            }
-        }
-    }
-
-    block_markers
-}
-
-// FIXME: There is currently a lot of redundancy between
-// `extract_branch_pairs` and `extract_mcdc_mappings`. This is needed so
-// that they can each be modified without interfering with the other, but in
-// the long term we should try to bring them together again when branch coverage
-// and MC/DC coverage support are more mature.
-
-pub(super) fn extract_branch_pairs(
-    mir_body: &mir::Body<'_>,
-    hir_info: &ExtractedHirInfo,
-    basic_coverage_blocks: &CoverageGraph,
-) -> Vec<BcbBranchPair> {
-    let Some(branch_info) = mir_body.coverage_branch_info.as_deref() else { return vec![] };
-
-    let block_markers = resolve_block_markers(branch_info, mir_body);
-
-    branch_info
-        .branch_spans
-        .iter()
-        .filter_map(|&BranchSpan { span: raw_span, true_marker, false_marker }| {
-            // For now, ignore any branch span that was introduced by
-            // expansion. This makes things like assert macros less noisy.
-            if !raw_span.ctxt().outer_expn_data().is_root() {
-                return None;
-            }
-            let (span, _) =
-                unexpand_into_body_span_with_visible_macro(raw_span, hir_info.body_span)?;
-
-            let bcb_from_marker =
-                |marker: BlockMarkerId| basic_coverage_blocks.bcb_from_bb(block_markers[marker]?);
-
-            let true_bcb = bcb_from_marker(true_marker)?;
-            let false_bcb = bcb_from_marker(false_marker)?;
-
-            Some(BcbBranchPair { span, true_bcb, false_bcb })
-        })
-        .collect::<Vec<_>>()
-}
-
-pub(super) fn extract_mcdc_mappings(
-    mir_body: &mir::Body<'_>,
-    body_span: Span,
-    basic_coverage_blocks: &CoverageGraph,
-) -> Vec<BcbMapping> {
-    let Some(branch_info) = mir_body.coverage_branch_info.as_deref() else {
-        return vec![];
-    };
-
-    let block_markers = resolve_block_markers(branch_info, mir_body);
-
-    let bcb_from_marker =
-        |marker: BlockMarkerId| basic_coverage_blocks.bcb_from_bb(block_markers[marker]?);
-
-    let check_branch_bcb =
-        |raw_span: Span, true_marker: BlockMarkerId, false_marker: BlockMarkerId| {
-            // For now, ignore any branch span that was introduced by
-            // expansion. This makes things like assert macros less noisy.
-            if !raw_span.ctxt().outer_expn_data().is_root() {
-                return None;
-            }
-            let (span, _) = unexpand_into_body_span_with_visible_macro(raw_span, body_span)?;
-
-            let true_bcb = bcb_from_marker(true_marker)?;
-            let false_bcb = bcb_from_marker(false_marker)?;
-            Some((span, true_bcb, false_bcb))
-        };
-
-    let mcdc_branch_filter_map = |&MCDCBranchSpan {
-                                      span: raw_span,
-                                      true_marker,
-                                      false_marker,
-                                      condition_info,
-                                      decision_depth,
-                                  }| {
-        check_branch_bcb(raw_span, true_marker, false_marker).map(|(span, true_bcb, false_bcb)| {
-            BcbMapping {
-                kind: BcbMappingKind::MCDCBranch {
-                    true_bcb,
-                    false_bcb,
-                    condition_info,
-                    decision_depth,
-                },
-                span,
-            }
-        })
-    };
-
-    let mut next_bitmap_idx = 0;
-
-    let decision_filter_map = |decision: &MCDCDecisionSpan| {
-        let (span, _) = unexpand_into_body_span_with_visible_macro(decision.span, body_span)?;
-
-        let end_bcbs = decision
-            .end_markers
-            .iter()
-            .map(|&marker| bcb_from_marker(marker))
-            .collect::<Option<_>>()?;
-
-        let bitmap_idx = next_bitmap_idx;
-        next_bitmap_idx += (1_u32 << decision.conditions_num).div_ceil(8);
-
-        Some(BcbMapping {
-            kind: BcbMappingKind::MCDCDecision {
-                end_bcbs,
-                bitmap_idx,
-                conditions_num: decision.conditions_num as u16,
-                decision_depth: decision.decision_depth,
-            },
-            span,
-        })
-    };
-
-    std::iter::empty()
-        .chain(branch_info.mcdc_branch_spans.iter().filter_map(mcdc_branch_filter_map))
-        .chain(branch_info.mcdc_decision_spans.iter().filter_map(decision_filter_map))
-        .collect::<Vec<_>>()
 }
