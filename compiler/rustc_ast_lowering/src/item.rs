@@ -662,10 +662,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
                     hir::ForeignItemKind::Fn(fn_dec, fn_args, generics)
                 }
-                ForeignItemKind::Static(t, m, _) => {
-                    let ty =
-                        self.lower_ty(t, ImplTraitContext::Disallowed(ImplTraitPosition::StaticTy));
-                    hir::ForeignItemKind::Static(ty, *m)
+                ForeignItemKind::Static(box StaticForeignItem { ty, mutability, expr: _ }) => {
+                    let ty = self
+                        .lower_ty(ty, ImplTraitContext::Disallowed(ImplTraitPosition::StaticTy));
+                    hir::ForeignItemKind::Static(ty, *mutability)
                 }
                 ForeignItemKind::TyAlias(..) => hir::ForeignItemKind::Type,
                 ForeignItemKind::MacCall(_) => panic!("macro shouldn't exist here"),

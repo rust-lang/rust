@@ -1261,7 +1261,7 @@ pub fn noop_flat_map_item<K: NoopVisitItemKind>(
 impl NoopVisitItemKind for ForeignItemKind {
     fn noop_visit(&mut self, visitor: &mut impl MutVisitor) {
         match self {
-            ForeignItemKind::Static(ty, _, expr) => {
+            ForeignItemKind::Static(box StaticForeignItem { ty, mutability: _, expr }) => {
                 visitor.visit_ty(ty);
                 visit_opt(expr, |expr| visitor.visit_expr(expr));
             }
