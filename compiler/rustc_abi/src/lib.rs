@@ -21,6 +21,8 @@ use rustc_macros::{Decodable_Generic, Encodable_Generic};
 use std::iter::Step;
 
 mod layout;
+#[cfg(test)]
+mod tests;
 
 pub use layout::LayoutCalculator;
 

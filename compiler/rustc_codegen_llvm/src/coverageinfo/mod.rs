@@ -16,7 +16,7 @@ use rustc_middle::bug;
 use rustc_middle::mir::coverage::CoverageKind;
 use rustc_middle::ty::layout::HasTyCtxt;
 use rustc_middle::ty::Instance;
-use rustc_target::abi::Align;
+use rustc_target::abi::{Align, Size};
 
 use std::cell::RefCell;
 
@@ -106,15 +106,25 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
         let fn_name = self.get_pgo_func_name_var(instance);
         let hash = self.const_u64(function_coverage_info.function_source_hash);
         let bitmap_bytes = self.const_u32(function_coverage_info.mcdc_bitmap_bytes);
-        let max_decision_depth = function_coverage_info.mcdc_max_decision_depth;
-        let cond_bitmap =
-            self.mcdc_parameters(fn_name, hash, bitmap_bytes, max_decision_depth as u32);
+        self.mcdc_parameters(fn_name, hash, bitmap_bytes);
+
+        // Create pointers named `mcdc.addr.{i}` to stack-allocated condition bitmaps.
+        let mut cond_bitmaps = vec![];
+        for i in 0..=function_coverage_info.mcdc_max_decision_depth {
+            // MC/DC intrinsics will perform loads/stores that use the ABI default
+            // alignment for i32, so our variable declaration should match.
+            let align = self.tcx.data_layout.i32_align.abi;
+            let cond_bitmap = self.alloca(Size::from_bytes(4), align);
+            llvm::set_value_name(cond_bitmap, format!("mcdc.addr.{i}").as_bytes());
+            self.store(self.const_i32(0), cond_bitmap, align);
+            cond_bitmaps.push(cond_bitmap);
+        }
 
         self.coverage_context()
             .expect("always present when coverage is enabled")
             .mcdc_condition_bitmap_map
             .borrow_mut()
-            .insert(instance, cond_bitmap);
+            .insert(instance, cond_bitmaps);
     }
 
     #[instrument(level = "debug", skip(self))]
