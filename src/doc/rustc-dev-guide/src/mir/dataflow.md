@@ -178,6 +178,21 @@ See the example below:
 
 ![A graphviz diagram for a dataflow analysis](../img/dataflow-graphviz-example.png)
 
+### Region Constraint Graphs and Their Strongly Connected Components
+
+With `-Z dump-mir-graphviz=yes`, you will also get Graphviz files for the outlives constraints
+of the MIR bodies you asked for, as well as the strongly connected components (SCCs) on them.
+They are available as 
+`mir_dump/rs-file-name.function-name.-------.nll.0.regioncx.all.dot` and
+`mir_dump/rs-file-name.function-name.-------.nll.0.regioncx.scc.dot` respectively. For both
+graphs, named region variables will be shown with their external name (such as `'static`)
+shown in parenthesis. For region inference variables in universes other than the root universe,
+they will be shown as `/U13` (for universe 13). In the region graph, edges are labelled with 
+the MIR locations where the relationship holds.
+
+**Note:** there are implicit edges from `'static` to every region, but those are not rendered
+in the region graph to avoid clutter. They *do* however show up in the SCC graph.
+
 ["gen-kill" problems]: https://en.wikipedia.org/wiki/Data-flow_analysis#Bit_vector_problems
 [*Static Program Analysis*]: https://cs.au.dk/~amoeller/spa/
 [Debugging MIR]: ./debugging.md
