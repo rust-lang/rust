@@ -235,7 +235,6 @@ run-make/relocation-model/Makefile
 run-make/relro-levels/Makefile
 run-make/remap-path-prefix-dwarf/Makefile
 run-make/remap-path-prefix/Makefile
-run-make/repr128-dwarf/Makefile
 run-make/reproducible-build-2/Makefile
 run-make/reproducible-build/Makefile
 run-make/resolve-rename/Makefile

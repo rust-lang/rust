@@ -3825,6 +3825,7 @@ impl<'test> TestCx<'test> {
             .arg(format!("-Ldependency={}", &support_lib_deps_deps.to_string_lossy()))
             .arg("--extern")
             .arg(format!("run_make_support={}", &support_lib_path.to_string_lossy()))
+            .arg("--edition=2021")
             .arg(&self.testpaths.file.join("rmake.rs"))
             .env("TARGET", &self.config.target)
             .env("PYTHON", &self.config.python)
