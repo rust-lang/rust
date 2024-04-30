@@ -87,7 +87,7 @@ macro_rules! ast_fragments {
         }
 
         impl AstFragment {
-            pub fn add_placeholders(&mut self, placeholders: &[NodeId]) {
+            fn add_placeholders(&mut self, placeholders: &[NodeId]) {
                 if placeholders.is_empty() {
                     return;
                 }
@@ -100,14 +100,14 @@ macro_rules! ast_fragments {
                 }
             }
 
-            pub fn make_opt_expr(self) -> Option<P<ast::Expr>> {
+            pub(crate) fn make_opt_expr(self) -> Option<P<ast::Expr>> {
                 match self {
                     AstFragment::OptExpr(expr) => expr,
                     _ => panic!("AstFragment::make_* called on the wrong kind of fragment"),
                 }
             }
 
-            pub fn make_method_receiver_expr(self) -> P<ast::Expr> {
+            pub(crate) fn make_method_receiver_expr(self) -> P<ast::Expr> {
                 match self {
                     AstFragment::MethodReceiverExpr(expr) => expr,
                     _ => panic!("AstFragment::make_* called on the wrong kind of fragment"),
@@ -125,7 +125,7 @@ macro_rules! ast_fragments {
                 T::fragment_to_output(self)
             }
 
-            pub fn mut_visit_with<F: MutVisitor>(&mut self, vis: &mut F) {
+            pub(crate) fn mut_visit_with<F: MutVisitor>(&mut self, vis: &mut F) {
                 match self {
                     AstFragment::OptExpr(opt_expr) => {
                         visit_clobber(opt_expr, |opt_expr| {
@@ -958,7 +958,7 @@ pub fn parse_ast_fragment<'a>(
     })
 }
 
-pub fn ensure_complete_parse<'a>(
+pub(crate) fn ensure_complete_parse<'a>(
     parser: &Parser<'a>,
     macro_path: &ast::Path,
     kind_name: &str,
