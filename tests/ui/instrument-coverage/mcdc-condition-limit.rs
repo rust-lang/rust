@@ -15,7 +15,7 @@ fn main() {
 #[cfg(bad)]
 fn main() {
     let [a, b, c, d, e, f, g] = <[bool; 7]>::default();
-    if a && b && c && d && e && f && g { //[bad]~ WARNING Conditions number of the decision
+    if a && b && c && d && e && f && g { //[bad]~ WARNING number of conditions in decision
         core::hint::black_box("hello");
     }
 }
