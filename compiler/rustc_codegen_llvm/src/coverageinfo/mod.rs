@@ -207,13 +207,8 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
                 let cond_bitmap = coverage_context
                                     .try_get_mcdc_condition_bitmap(&instance, decision_depth)
                                     .expect("mcdc cond bitmap should have been allocated for merging into the global bitmap");
-                let bitmap_bytes = bx.tcx().coverage_ids_info(instance.def).mcdc_bitmap_bytes;
+                let bitmap_bytes = function_coverage_info.mcdc_bitmap_bytes;
                 assert!(bitmap_idx < bitmap_bytes, "bitmap index of the decision out of range");
-                assert!(
-                    bitmap_bytes <= function_coverage_info.mcdc_bitmap_bytes,
-                    "bitmap length disagreement: query says {bitmap_bytes} but function info only has {}",
-                    function_coverage_info.mcdc_bitmap_bytes
-                );
 
                 let fn_name = bx.get_pgo_func_name_var(instance);
                 let hash = bx.const_u64(function_coverage_info.function_source_hash);
