@@ -15,6 +15,7 @@ use std::env;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 
+pub use gimli;
 pub use object;
 pub use regex;
 pub use wasmparser;

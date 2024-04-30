@@ -25,7 +25,7 @@ use crate::core::build_steps::llvm;
 use crate::core::build_steps::tool::{self, Tool};
 use crate::core::builder::{Builder, Kind, RunConfig, ShouldRun, Step};
 use crate::core::config::TargetSelection;
-use crate::utils::channel;
+use crate::utils::channel::{self, Info};
 use crate::utils::helpers::{exe, is_dylib, output, t, target_supports_cranelift_backend, timeit};
 use crate::utils::tarball::{GeneratedTarball, OverlayKind, Tarball};
 use crate::{Compiler, DependencyType, Mode, LLVM_TOOLS};
@@ -991,10 +991,17 @@ impl Step for PlainSourceTarball {
 
         // Create the version file
         builder.create(&plain_dst_src.join("version"), &builder.rust_version());
-        if let Some(info) = builder.rust_info().info() {
-            channel::write_commit_hash_file(plain_dst_src, &info.sha);
-            channel::write_commit_info_file(plain_dst_src, info);
-        }
+
+        // Create the files containing git info, to ensure --version outputs the same.
+        let write_git_info = |info: Option<&Info>, path: &Path| {
+            if let Some(info) = info {
+                t!(std::fs::create_dir_all(path));
+                channel::write_commit_hash_file(path, &info.sha);
+                channel::write_commit_info_file(path, info);
+            }
+        };
+        write_git_info(builder.rust_info().info(), plain_dst_src);
+        write_git_info(builder.cargo_info.info(), &plain_dst_src.join("./src/tools/cargo"));
 
         // If we're building from git or tarball sources, we need to vendor
         // a complete distribution.
