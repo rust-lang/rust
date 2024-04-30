@@ -3,6 +3,7 @@
 //! as required by the query system.
 
 use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_macros::{Decodable_Generic, Encodable_Generic};
 use std::{
     borrow::{Borrow, BorrowMut},
     collections::hash_map::Entry,

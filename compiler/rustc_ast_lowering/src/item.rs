@@ -20,6 +20,7 @@ use rustc_span::{DesugaringKind, Span, Symbol};
 use rustc_target::spec::abi;
 use smallvec::{smallvec, SmallVec};
 use thin_vec::ThinVec;
+use tracing::instrument;
 
 pub(super) struct ItemLowerer<'a, 'hir> {
     pub(super) tcx: TyCtxt<'hir>,

@@ -14,6 +14,7 @@ pub(crate) mod transcribe;
 use metavar_expr::MetaVarExpr;
 use rustc_ast::token::{Delimiter, NonterminalKind, Token, TokenKind};
 use rustc_ast::tokenstream::{DelimSpacing, DelimSpan};
+use rustc_macros::{Decodable, Encodable};
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
 

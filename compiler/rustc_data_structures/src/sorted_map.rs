@@ -1,4 +1,5 @@
 use crate::stable_hasher::{HashStable, StableHasher, StableOrd};
+use rustc_macros::{Decodable_Generic, Encodable_Generic};
 use std::borrow::Borrow;
 use std::fmt::Debug;
 use std::mem;

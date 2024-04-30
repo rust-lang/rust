@@ -14,6 +14,7 @@ use rustc_ast_ir::visit::VisitorResult;
 use rustc_infer::infer::resolve::EagerResolver;
 use rustc_infer::infer::type_variable::TypeVariableOrigin;
 use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, InferOk};
+use rustc_macros::extension;
 use rustc_middle::infer::unify_key::ConstVariableOrigin;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::solve::{inspect, QueryResult};

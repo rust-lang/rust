@@ -8,7 +8,7 @@ use rustc_data_structures::stable_hasher::{
     HashStable, StableCompare, StableHasher, ToStableHashKey,
 };
 use rustc_data_structures::sync::Lock;
-use rustc_macros::HashStable_Generic;
+use rustc_macros::{symbols, Decodable, Encodable, HashStable_Generic};
 
 use std::fmt;
 use std::hash::{Hash, Hasher};

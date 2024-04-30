@@ -1,7 +1,7 @@
 //! Metadata from source code coverage analysis and instrumentation.
 
 use rustc_index::IndexVec;
-use rustc_macros::HashStable;
+use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_span::{Span, Symbol};
 
 use std::fmt::{self, Debug, Formatter};

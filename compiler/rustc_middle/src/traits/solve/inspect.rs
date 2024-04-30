@@ -24,6 +24,7 @@ use super::{
 };
 use crate::{infer::canonical::CanonicalVarValues, ty};
 use format::ProofTreeFormatter;
+use rustc_macros::{TypeFoldable, TypeVisitable};
 use std::fmt::{Debug, Write};
 
 mod format;

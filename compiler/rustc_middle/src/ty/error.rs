@@ -4,6 +4,7 @@ use rustc_errors::pluralize;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind};
 use rustc_hir::def_id::DefId;
+use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_span::symbol::Symbol;
 use rustc_target::spec::abi;
 use std::borrow::Cow;

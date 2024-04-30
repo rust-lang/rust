@@ -14,6 +14,7 @@ use either::{Left, Right};
 
 use rustc_ast::Mutability;
 use rustc_data_structures::intern::Interned;
+use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_target::abi::{Align, HasDataLayout, Size};
 
 use super::{

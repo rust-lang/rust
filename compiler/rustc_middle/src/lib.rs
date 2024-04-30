@@ -66,15 +66,7 @@
 #![allow(rustc::untranslatable_diagnostic)]
 
 #[macro_use]
-extern crate bitflags;
-#[macro_use]
-extern crate rustc_macros;
-#[macro_use]
-extern crate rustc_data_structures;
-#[macro_use]
 extern crate tracing;
-#[macro_use]
-extern crate smallvec;
 
 #[cfg(test)]
 mod tests;

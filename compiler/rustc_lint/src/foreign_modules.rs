@@ -5,6 +5,7 @@ use rustc_hir::def::DefKind;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::layout::LayoutError;
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
+use rustc_session::declare_lint;
 use rustc_span::{sym, Span, Symbol};
 use rustc_target::abi::FIRST_VARIANT;
 

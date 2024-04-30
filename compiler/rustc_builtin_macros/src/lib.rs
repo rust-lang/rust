@@ -19,11 +19,7 @@
 
 extern crate proc_macro;
 
-#[macro_use]
-extern crate tracing;
-
 use crate::deriving::*;
-
 use rustc_expand::base::{MacroExpanderFn, ResolverExpand, SyntaxExtensionKind};
 use rustc_expand::proc_macro::BangProcMacro;
 use rustc_span::symbol::sym;

@@ -15,6 +15,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::{BindingMode, ByRef, HirId, MatchSource, RangeEnd};
 use rustc_index::newtype_index;
 use rustc_index::IndexVec;
+use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeVisitable};
 use rustc_middle::middle::region;
 use rustc_middle::mir::interpret::AllocId;
 use rustc_middle::mir::{self, BinOp, BorrowKind, FakeReadCause, UnOp};
@@ -1209,6 +1210,7 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
 #[cfg(target_pointer_width = "64")]
 mod size_asserts {
     use super::*;
+    use rustc_data_structures::static_assert_size;
     // tidy-alphabetical-start
     static_assert_size!(Block, 48);
     static_assert_size!(Expr<'_>, 64);

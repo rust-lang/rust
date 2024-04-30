@@ -10,6 +10,7 @@ use hir::{Expr, Pat};
 use rustc_hir as hir;
 use rustc_infer::{infer::TyCtxtInferExt, traits::ObligationCause};
 use rustc_middle::ty::{self, List};
+use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::{sym, Span};
 use rustc_trait_selection::traits::ObligationCtxt;
 

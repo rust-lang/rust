@@ -2,9 +2,6 @@
 #![feature(never_type)]
 #![allow(unused_variables)]
 
-#[macro_use]
-extern crate tracing;
-
 pub(crate) use rustc_data_structures::fx::{FxIndexMap as Map, FxIndexSet as Set};
 
 pub mod layout;

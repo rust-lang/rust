@@ -3,6 +3,7 @@ use crate::traits::query::dropck_outlives::{
     compute_dropck_outlives_inner, trivial_dropck_outlives,
 };
 use crate::traits::ObligationCtxt;
+use rustc_macros::{HashStable, TypeFoldable, TypeVisitable};
 use rustc_middle::traits::query::{DropckOutlivesResult, NoSolution};
 use rustc_middle::ty::{ParamEnvAnd, Ty, TyCtxt};
 

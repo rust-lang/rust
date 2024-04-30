@@ -4,6 +4,7 @@ use crate::traits::{Obligation, ObligationCause, ObligationCtxt};
 use rustc_errors::{codes::*, pluralize, struct_span_code_err, Applicability, Diag};
 use rustc_hir as hir;
 use rustc_hir::Node;
+use rustc_macros::extension;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::{Span, DUMMY_SP};
 
