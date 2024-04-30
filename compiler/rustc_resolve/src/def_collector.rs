@@ -209,7 +209,7 @@ impl<'a, 'b, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'b, 'tcx> {
 
     fn visit_foreign_item(&mut self, fi: &'a ForeignItem) {
         let def_kind = match fi.kind {
-            ForeignItemKind::Static(_, mutability, _) => {
+            ForeignItemKind::Static(box StaticForeignItem { ty: _, mutability, expr: _ }) => {
                 DefKind::Static { mutability, nested: false }
             }
             ForeignItemKind::Fn(_) => DefKind::Fn,
