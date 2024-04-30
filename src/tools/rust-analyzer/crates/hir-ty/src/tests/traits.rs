@@ -4765,3 +4765,41 @@ fn test() {
         "#,
     );
 }
+
+#[test]
+fn associated_type_with_impl_trait_in_tuple() {
+    check_no_mismatches(
+        r#"
+pub trait Iterator {
+    type Item;
+}
+
+pub trait Value {}
+
+fn bar<I: Iterator<Item = (usize, impl Value)>>() {}
+
+fn foo() {
+    bar();
+}
+"#,
+    );
+}
+
+#[test]
+fn associated_type_with_impl_trait_in_nested_tuple() {
+    check_no_mismatches(
+        r#"
+pub trait Iterator {
+    type Item;
+}
+
+pub trait Value {}
+
+fn bar<I: Iterator<Item = ((impl Value, usize), u32)>>() {}
+
+fn foo() {
+    bar();
+}
+"#,
+    );
+}

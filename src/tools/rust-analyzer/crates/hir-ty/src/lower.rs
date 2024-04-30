@@ -1010,6 +1010,7 @@ impl<'a> TyLoweringContext<'a> {
     pub(crate) fn lower_where_predicate<'b>(
         &'b self,
         where_predicate: &'b WherePredicate,
+        &def: &GenericDefId,
         ignore_bindings: bool,
     ) -> impl Iterator<Item = QuantifiedWhereClause> + 'b {
         match where_predicate {
@@ -1018,7 +1019,6 @@ impl<'a> TyLoweringContext<'a> {
                 let self_ty = match target {
                     WherePredicateTypeTarget::TypeRef(type_ref) => self.lower_ty(type_ref),
                     &WherePredicateTypeTarget::TypeOrConstParam(local_id) => {
-                        let def = self.resolver.generic_def().expect("generics in scope");
                         let param_id = hir_def::TypeOrConstParamId { parent: def, local_id };
                         match self.type_param_mode {
                             ParamLoweringMode::Placeholder => {
@@ -1178,7 +1178,7 @@ impl<'a> TyLoweringContext<'a> {
                                 let target_param_idx = self
                                     .resolver
                                     .where_predicates_in_scope()
-                                    .find_map(|p| match p {
+                                    .find_map(|(p, _)| match p {
                                         WherePredicate::TypeBound {
                                             target: WherePredicateTypeTarget::TypeOrConstParam(idx),
                                             bound: b,
@@ -1559,7 +1559,7 @@ pub(crate) fn generic_predicates_for_param_query(
     let generics = generics(db.upcast(), def);
 
     // we have to filter out all other predicates *first*, before attempting to lower them
-    let predicate = |pred: &&_| match pred {
+    let predicate = |(pred, &def): &(&_, _)| match pred {
         WherePredicate::ForLifetime { target, bound, .. }
         | WherePredicate::TypeBound { target, bound, .. } => {
             let invalid_target = match target {
@@ -1601,8 +1601,8 @@ pub(crate) fn generic_predicates_for_param_query(
     let mut predicates: Vec<_> = resolver
         .where_predicates_in_scope()
         .filter(predicate)
-        .flat_map(|pred| {
-            ctx.lower_where_predicate(pred, true).map(|p| make_binders(db, &generics, p))
+        .flat_map(|(pred, def)| {
+            ctx.lower_where_predicate(pred, def, true).map(|p| make_binders(db, &generics, p))
         })
         .collect();
 
@@ -1655,8 +1655,8 @@ pub(crate) fn trait_environment_query(
     };
     let mut traits_in_scope = Vec::new();
     let mut clauses = Vec::new();
-    for pred in resolver.where_predicates_in_scope() {
-        for pred in ctx.lower_where_predicate(pred, false) {
+    for (pred, def) in resolver.where_predicates_in_scope() {
+        for pred in ctx.lower_where_predicate(pred, def, false) {
             if let WhereClause::Implemented(tr) = &pred.skip_binders() {
                 traits_in_scope.push((tr.self_type_parameter(Interner).clone(), tr.hir_trait_id()));
             }
@@ -1710,8 +1710,8 @@ pub(crate) fn generic_predicates_query(
 
     let mut predicates = resolver
         .where_predicates_in_scope()
-        .flat_map(|pred| {
-            ctx.lower_where_predicate(pred, false).map(|p| make_binders(db, &generics, p))
+        .flat_map(|(pred, def)| {
+            ctx.lower_where_predicate(pred, def, false).map(|p| make_binders(db, &generics, p))
         })
         .collect::<Vec<_>>();
 
