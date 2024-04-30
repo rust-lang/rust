@@ -791,7 +791,6 @@ impl<'a> Builder<'a> {
             ),
             Kind::Test => describe!(
                 crate::core::build_steps::toolstate::ToolStateCheck,
-                test::ExpandYamlAnchors,
                 test::Tidy,
                 test::Ui,
                 test::Crashes,
@@ -933,7 +932,6 @@ impl<'a> Builder<'a> {
                 install::Src,
             ),
             Kind::Run => describe!(
-                run::ExpandYamlAnchors,
                 run::BuildManifest,
                 run::BumpStage0,
                 run::ReplaceVersionPlaceholder,

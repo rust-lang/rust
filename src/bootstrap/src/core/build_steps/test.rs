@@ -1146,8 +1146,6 @@ HELP: to skip test's attempt to check tidiness, pass `--skip src/tools/tidy` to 
         builder.info("tidy check");
         builder.run_delaying_failure(&mut cmd);
 
-        builder.ensure(ExpandYamlAnchors);
-
         builder.info("x.py completions check");
         let [bash, zsh, fish, powershell] = ["x.py.sh", "x.py.zsh", "x.py.fish", "x.py.ps1"]
             .map(|filename| builder.src.join("src/etc/completions").join(filename));
@@ -1172,39 +1170,6 @@ HELP: to skip test's attempt to check tidiness, pass `--skip src/tools/tidy` to 
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Tidy);
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ExpandYamlAnchors;
-
-impl Step for ExpandYamlAnchors {
-    type Output = ();
-    const ONLY_HOSTS: bool = true;
-
-    /// Ensure the `generate-ci-config` tool was run locally.
-    ///
-    /// The tool in `src/tools` reads the CI definition in `src/ci/builders.yml` and generates the
-    /// appropriate configuration for all our CI providers. This step ensures the tool was called
-    /// by the user before committing CI changes.
-    fn run(self, builder: &Builder<'_>) {
-        // NOTE: `.github/` is not included in dist-src tarballs
-        if !builder.src.join(".github/workflows/ci.yml").exists() {
-            builder.info("Skipping YAML anchors check: GitHub Actions config not found");
-            return;
-        }
-        builder.info("Ensuring the YAML anchors in the GitHub Actions config were expanded");
-        builder.run_delaying_failure(
-            builder.tool_cmd(Tool::ExpandYamlAnchors).arg("check").arg(&builder.src),
-        );
-    }
-
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("src/tools/expand-yaml-anchors")
-    }
-
-    fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(ExpandYamlAnchors);
     }
 }
 

@@ -1,7 +1,5 @@
 # This file contains definitions of CI job parameters that are loaded
 # dynamically in CI from ci.yml.
-# You *do not* need to re-run `src/tools/expand-yaml-anchors` when you
-# modify this file.
 runners:
   - &base-job
     env: { }
