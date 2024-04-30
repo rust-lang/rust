@@ -42,12 +42,9 @@ use std::collections::hash_map::Entry;
 
 #[derive(LintDiagnostic)]
 #[diag(passes_diagnostic_diagnostic_on_unimplemented_only_for_traits)]
-pub struct DiagnosticOnUnimplementedOnlyForTraits;
+struct DiagnosticOnUnimplementedOnlyForTraits;
 
-pub(crate) fn target_from_impl_item<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    impl_item: &hir::ImplItem<'_>,
-) -> Target {
+fn target_from_impl_item<'tcx>(tcx: TyCtxt<'tcx>, impl_item: &hir::ImplItem<'_>) -> Target {
     match impl_item.kind {
         hir::ImplItemKind::Const(..) => Target::AssocConst,
         hir::ImplItemKind::Fn(..) => {
@@ -99,7 +96,7 @@ struct CheckAttrVisitor<'tcx> {
 }
 
 impl<'tcx> CheckAttrVisitor<'tcx> {
-    pub fn dcx(&self) -> &'tcx DiagCtxt {
+    fn dcx(&self) -> &'tcx DiagCtxt {
         self.tcx.dcx()
     }
 
