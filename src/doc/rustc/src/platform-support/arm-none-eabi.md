@@ -34,21 +34,43 @@ This documentation covers details that apply to a range of bare-metal targets
 for 32-bit Arm CPUs. In addition, target specific details may be covered in
 their own document.
 
-If a target ends in `eabi`, that target uses the so-called *soft-float ABI*:
-functions which take `f32` or `f64` as arguments will have those values packed
-into integer registers. This means that an FPU is not required from an ABI
+There are two 32-bit instruction set architectures (ISAs) defined by Arm:
+
+- The [*A32 ISA*][a32-isa], with fixed-width 32-bit instructions. Previously
+  known as the *Arm* ISA, this originated with the original ARM1 of 1985 and has
+  been updated by various revisions to the architecture specifications ever
+  since.
+- The [*T32 ISA*][t32-isa], with a mix of 16-bit and 32-bit width instructions.
+  Note that this term includes both the original 16-bit width *Thumb* ISA
+  introduced with the Armv4T architecture in 1994, and the later 16/32-bit sized
+  *Thumb-2* ISA introduced with the Armv6T2 architecture in 2003. Again, these
+  ISAs have been revised by subsequent revisions to the relevant Arm
+  architecture specifications.
+
+There is also a 64-bit ISA with fixed-width 32-bit instructions called the *A64
+ISA*, but targets which implement that instruction set generally start with
+`aarch64*` and are discussed elsewhere.
+
+Rust targets starting with `arm*` generate Arm (A32) code by default, whilst
+targets named `thumb*` generate Thumb (T32) code by default. Most Arm chips
+support both Thumb mode and Arm mode, with the notable exception that M-profile
+processors (`thumbv*m*-none-eabi*` targets) *only* support Thumb-mode.
+
+Rust targets ending with `eabi` use the so-called *soft-float ABI*: functions
+which take `f32` or `f64` as arguments will have those values packed into
+integer registers. This means that an FPU is not required from an ABI
 perspective, but within a function floating-point instructions may still be used
 if the code is compiled with a `target-cpu` or `target-feature` option that
 enables FPU support.
 
-If a target ends in `eabihf`, that target uses the so-called *hard-float ABI*:
-functions which take `f32` or `f64` as arguments will have them passed via FPU
-registers. These targets therefore require the availability of an FPU and will
-assume some baseline level of floating-point support is available (which can
-vary depending on the target). More advanced floating-point instructions may be
-generated if the code is compiled with a `target-cpu` or `target-feature` option
-that enables such additional FPU support. For example, if a given hard-float
-target has baseline *single-precision* (`f32`) support in hardware, there may be
+Rust targets ending in `eabihf` use the so-called *hard-float ABI*: functions
+which take `f32` or `f64` as arguments will have them passed via FPU registers.
+These targets therefore require the availability of an FPU and will assume some
+baseline level of floating-point support is available (which can vary depending
+on the target). More advanced floating-point instructions may be generated if
+the code is compiled with a `target-cpu` or `target-feature` option that enables
+such additional FPU support. For example, if a given hard-float target has
+baseline *single-precision* (`f32`) support in hardware, there may be
 `target-cpu` or `target-feature` options that tell LLVM to assume your processor
 in fact also has *double-precision* (`f64`) support.
 
@@ -58,6 +80,9 @@ operations in hardware. Any floating-point operations that LLVM assumes your
 processor cannot support will be lowered to library calls (like `__aeabi_dadd`)
 which perform the floating-point operation in software using integer
 instructions.
+
+[t32-isa]: https://developer.arm.com/Architectures/T32%20Instruction%20Set%20Architecture
+[a32-isa]: https://developer.arm.com/Architectures/A32%20Instruction%20Set%20Architecture
 
 ## Target CPU and Target Feature options
 
@@ -125,10 +150,6 @@ These targets don't provide a linker script, so you'll need to bring your own
 according to the specific device you are using. Pass
 `-Clink-arg=-Tyour_script.ld` as a rustc argument to make the linker use
 `your_script.ld` during linking.
-
-Targets named `thumb*` instead of `arm*` generate Thumb (T32) code by default
-instead of Arm (A32) code. Most Arm chips support both Thumb mode and Arm mode,
-except that M-profile processors (`thumbv*m*-*` targets) only support Thumb-mode.
 
 For the `arm*` targets, Thumb-mode code generation can be enabled by using `-C
 target-feature=+thumb-mode`. Using the unstable
