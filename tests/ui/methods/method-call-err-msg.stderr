@@ -55,7 +55,7 @@ LL | /     y.zero()
 LL | |      .take()
    | |      -^^^^ `Foo` is not an iterator
    | |______|
-   | 
+   |
    |
    = note: the following trait bounds were not satisfied:
            `Foo: Iterator`
