@@ -1444,6 +1444,7 @@ impl DocTestKinds {
         if doctest.failed_ast
             || doctest.lang_string.compile_fail
             || doctest.lang_string.test_harness
+            || doctest.lang_string.standalone
             || rustdoc_options.nocapture
             || rustdoc_options.test_args.iter().any(|arg| arg == "--show-output")
             || doctest.crate_attrs.contains("#![no_std]")

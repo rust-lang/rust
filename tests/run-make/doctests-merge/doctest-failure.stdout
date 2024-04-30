@@ -1,0 +1,26 @@
+
+running 2 tests
+test doctest.rs - (line 4) ... ok
+test doctest.rs - init (line 8) ... FAILED
+
+failures:
+
+---- doctest.rs - init (line 8) stdout ----
+thread 'doctest.rs - init (line 8)' panicked at doctest.rs:15:9:
+assertion failed: !IS_INIT
+stack backtrace:
+   0: rust_begin_unwind
+   1: core::panicking::panic_fmt
+   2: core::panicking::panic
+   3: foo::init
+   4: doctest_2024::__doctest_1::main
+   5: doctest_2024::__doctest_1::TEST::{{closure}}
+   6: core::ops::function::FnOnce::call_once
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+
+failures:
+    doctest.rs - init (line 8)
+
+test result: FAILED. 1 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
+
