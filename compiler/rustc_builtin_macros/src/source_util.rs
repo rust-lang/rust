@@ -15,6 +15,7 @@ use rustc_parse::new_parser_from_file;
 use rustc_parse::parser::{ForceCollect, Parser};
 use rustc_session::lint::builtin::INCOMPLETE_INCLUDE;
 use rustc_span::source_map::SourceMap;
+use rustc_span::sym;
 use rustc_span::symbol::Symbol;
 use rustc_span::{Pos, Span};
 use smallvec::SmallVec;
@@ -26,43 +27,41 @@ use std::rc::Rc;
 // a given file into the current one.
 
 /// line!(): expands to the current line number
-pub(crate) fn expand_line(
-    cx: &mut ExtCtxt<'_>,
-    sp: Span,
-    tts: TokenStream,
-) -> MacroExpanderResult<'static> {
+pub(crate) fn expand_line(cx: &mut ExtCtxt<'_>, sp: Span, tts: TokenStream) -> TokenStream {
     let sp = cx.with_def_site_ctxt(sp);
     check_zero_tts(cx, sp, tts, "line!");
 
     let topmost = cx.expansion_cause().unwrap_or(sp);
     let loc = cx.source_map().lookup_char_pos(topmost.lo());
 
-    ExpandResult::Ready(MacEager::expr(cx.expr_u32(topmost, loc.line as u32)))
+    let kind = token::TokenKind::lit(
+        token::LitKind::Integer,
+        sym::integer(loc.line as u32),
+        Some(sym::u32),
+    );
+    TokenStream::token_alone(kind, topmost)
 }
 
 /* column!(): expands to the current column number */
-pub(crate) fn expand_column(
-    cx: &mut ExtCtxt<'_>,
-    sp: Span,
-    tts: TokenStream,
-) -> MacroExpanderResult<'static> {
+pub(crate) fn expand_column(cx: &mut ExtCtxt<'_>, sp: Span, tts: TokenStream) -> TokenStream {
     let sp = cx.with_def_site_ctxt(sp);
     check_zero_tts(cx, sp, tts, "column!");
 
     let topmost = cx.expansion_cause().unwrap_or(sp);
     let loc = cx.source_map().lookup_char_pos(topmost.lo());
 
-    ExpandResult::Ready(MacEager::expr(cx.expr_u32(topmost, loc.col.to_usize() as u32 + 1)))
+    let kind = token::TokenKind::lit(
+        token::LitKind::Integer,
+        sym::integer(loc.col.to_usize() as u32 + 1),
+        Some(sym::u32),
+    );
+    TokenStream::token_alone(kind, topmost)
 }
 
 /// file!(): expands to the current filename */
 /// The source_file (`loc.file`) contains a bunch more information we could spit
 /// out if we wanted.
-pub(crate) fn expand_file(
-    cx: &mut ExtCtxt<'_>,
-    sp: Span,
-    tts: TokenStream,
-) -> MacroExpanderResult<'static> {
+pub(crate) fn expand_file(cx: &mut ExtCtxt<'_>, sp: Span, tts: TokenStream) -> TokenStream {
     let sp = cx.with_def_site_ctxt(sp);
     check_zero_tts(cx, sp, tts, "file!");
 
@@ -70,12 +69,12 @@ pub(crate) fn expand_file(
     let loc = cx.source_map().lookup_char_pos(topmost.lo());
 
     use rustc_session::{config::RemapPathScopeComponents, RemapFileNameExt};
-    ExpandResult::Ready(MacEager::expr(cx.expr_str(
-        topmost,
-        Symbol::intern(
-            &loc.file.name.for_scope(cx.sess, RemapPathScopeComponents::MACRO).to_string_lossy(),
-        ),
-    )))
+
+    let symbol = Symbol::intern(
+        &loc.file.name.for_scope(cx.sess, RemapPathScopeComponents::MACRO).to_string_lossy(),
+    );
+    let kind = token::TokenKind::lit(token::LitKind::Str, symbol, None);
+    TokenStream::token_alone(kind, topmost)
 }
 
 pub(crate) fn expand_stringify(
@@ -88,17 +87,15 @@ pub(crate) fn expand_stringify(
     ExpandResult::Ready(MacEager::expr(cx.expr_str(sp, Symbol::intern(&s))))
 }
 
-pub(crate) fn expand_mod(
-    cx: &mut ExtCtxt<'_>,
-    sp: Span,
-    tts: TokenStream,
-) -> MacroExpanderResult<'static> {
+pub(crate) fn expand_module_path(cx: &mut ExtCtxt<'_>, sp: Span, tts: TokenStream) -> TokenStream {
     let sp = cx.with_def_site_ctxt(sp);
     check_zero_tts(cx, sp, tts, "module_path!");
     let mod_path = &cx.current_expansion.module.mod_path;
     let string = mod_path.iter().map(|x| x.to_string()).collect::<Vec<String>>().join("::");
 
-    ExpandResult::Ready(MacEager::expr(cx.expr_str(sp, Symbol::intern(&string))))
+    let symbol = Symbol::intern(&string);
+    let kind = token::TokenKind::lit(token::LitKind::Str, symbol, None);
+    TokenStream::token_alone(kind, sp)
 }
 
 /// include! : parse the given file as an expr

@@ -4,11 +4,16 @@ error: macro rhs must be delimited
 LL |     ($a:expr) => a;
    |                  ^
 
-error: non-type macro in type position: cfg
+error: expected type, found keyword `false`
   --> $DIR/macro-error.rs:8:12
    |
 LL |     let _: cfg!(FALSE) = ();
    |            ^^^^^^^^^^^
+   |            |
+   |            expected type
+   |            this macro call doesn't expand to a type
+   |
+   = note: this error originates in the macro `cfg` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 2 previous errors
 

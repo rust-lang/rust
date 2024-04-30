@@ -59,21 +59,32 @@ rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
     let mut register = |name, kind| resolver.register_builtin_macro(name, kind);
     macro register_bang($($name:ident: $f:expr,)*) {
+        $(register(sym::$name, SyntaxExtensionKind::Bang(Box::new($f)));)*
+    }
+    macro register_legacy_bang($($name:ident: $f:expr,)*) {
         $(register(sym::$name, SyntaxExtensionKind::LegacyBang(Box::new($f as MacroExpanderFn)));)*
     }
-    macro register_attr($($name:ident: $f:expr,)*) {
+    macro register_legacy_attr($($name:ident: $f:expr,)*) {
         $(register(sym::$name, SyntaxExtensionKind::LegacyAttr(Box::new($f)));)*
     }
-    macro register_derive($($name:ident: $f:expr,)*) {
+    macro register_legacy_derive($($name:ident: $f:expr,)*) {
         $(register(sym::$name, SyntaxExtensionKind::LegacyDerive(Box::new(BuiltinDerive($f))));)*
     }
 
     register_bang! {
         // tidy-alphabetical-start
-        asm: asm::expand_asm,
-        assert: assert::expand_assert,
         cfg: cfg::expand_cfg,
         column: source_util::expand_column,
+        file: source_util::expand_file,
+        line: source_util::expand_line,
+        module_path: source_util::expand_module_path,
+        // tidy-alphabetical-end
+    }
+
+    register_legacy_bang! {
+        // tidy-alphabetical-start
+        asm: asm::expand_asm,
+        assert: assert::expand_assert,
         compile_error: compile_error::expand_compile_error,
         concat: concat::expand_concat,
         concat_bytes: concat_bytes::expand_concat_bytes,
@@ -81,16 +92,13 @@ pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
         const_format_args: format::expand_format_args,
         core_panic: edition_panic::expand_panic,
         env: env::expand_env,
-        file: source_util::expand_file,
         format_args: format::expand_format_args,
         format_args_nl: format::expand_format_args_nl,
         global_asm: asm::expand_global_asm,
         include: source_util::expand_include,
         include_bytes: source_util::expand_include_bytes,
         include_str: source_util::expand_include_str,
-        line: source_util::expand_line,
         log_syntax: log_syntax::expand_log_syntax,
-        module_path: source_util::expand_mod,
         option_env: env::expand_option_env,
         pattern_type: pattern_type::expand,
         std_panic: edition_panic::expand_panic,
@@ -100,7 +108,7 @@ pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
         // tidy-alphabetical-end
     }
 
-    register_attr! {
+    register_legacy_attr! {
         alloc_error_handler: alloc_error_handler::expand,
         bench: test::expand_bench,
         cfg_accessible: cfg_accessible::Expander,
@@ -112,7 +120,7 @@ pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
         test_case: test::expand_test_case,
     }
 
-    register_derive! {
+    register_legacy_derive! {
         Clone: clone::expand_deriving_clone,
         Copy: bounds::expand_deriving_copy,
         ConstParamTy: bounds::expand_deriving_const_param_ty,

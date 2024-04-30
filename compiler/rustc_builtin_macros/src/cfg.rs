@@ -8,17 +8,14 @@ use rustc_ast::token;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_attr as attr;
 use rustc_errors::PResult;
-use rustc_expand::base::{DummyResult, ExpandResult, ExtCtxt, MacEager, MacroExpanderResult};
+use rustc_expand::base::ExtCtxt;
+use rustc_span::symbol::kw;
 use rustc_span::Span;
 
-pub(crate) fn expand_cfg(
-    cx: &mut ExtCtxt<'_>,
-    sp: Span,
-    tts: TokenStream,
-) -> MacroExpanderResult<'static> {
+pub(crate) fn expand_cfg(cx: &mut ExtCtxt<'_>, sp: Span, tts: TokenStream) -> TokenStream {
     let sp = cx.with_def_site_ctxt(sp);
 
-    ExpandResult::Ready(match parse_cfg(cx, sp, tts) {
+    let kind = match parse_cfg(cx, sp, tts) {
         Ok(cfg) => {
             let matches_cfg = attr::cfg_matches(
                 &cfg,
@@ -26,13 +23,19 @@ pub(crate) fn expand_cfg(
                 cx.current_expansion.lint_node_id,
                 Some(cx.ecfg.features),
             );
-            MacEager::expr(cx.expr_bool(sp, matches_cfg))
+            let sym = if matches_cfg { kw::True } else { kw::False };
+            token::TokenKind::Ident(sym, token::IdentIsRaw::No)
         }
         Err(err) => {
             let guar = err.emit();
-            DummyResult::any(sp, guar)
+            token::TokenKind::lit(
+                token::LitKind::Err(guar), // njn: ?
+                kw::Empty,
+                None,
+            )
         }
-    })
+    };
+    TokenStream::token_alone(kind, sp)
 }
 
 fn parse_cfg<'a>(cx: &ExtCtxt<'a>, span: Span, tts: TokenStream) -> PResult<'a, ast::MetaItem> {
