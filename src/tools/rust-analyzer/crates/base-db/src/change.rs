@@ -51,7 +51,7 @@ impl FileChange {
     }
 
     pub fn apply(self, db: &mut dyn SourceDatabaseExt) {
-        let _p = tracing::span!(tracing::Level::INFO, "RootDatabase::apply_change").entered();
+        let _p = tracing::span!(tracing::Level::INFO, "FileChange::apply").entered();
         if let Some(roots) = self.roots {
             for (idx, root) in roots.into_iter().enumerate() {
                 let root_id = SourceRootId(idx as u32);

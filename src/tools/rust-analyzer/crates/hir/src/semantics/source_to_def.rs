@@ -118,7 +118,7 @@ pub(super) struct SourceToDefCtx<'a, 'b> {
 
 impl SourceToDefCtx<'_, '_> {
     pub(super) fn file_to_def(&self, file: FileId) -> SmallVec<[ModuleId; 1]> {
-        let _p = tracing::span!(tracing::Level::INFO, "SourceBinder::file_to_module_def").entered();
+        let _p = tracing::span!(tracing::Level::INFO, "SourceToDefCtx::file_to_def").entered();
         let mut mods = SmallVec::new();
         for &crate_id in self.db.relevant_crates(file).iter() {
             // Note: `mod` declarations in block modules cannot be supported here

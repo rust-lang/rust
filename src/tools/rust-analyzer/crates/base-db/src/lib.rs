@@ -82,7 +82,7 @@ fn toolchain_channel(db: &dyn SourceDatabase, krate: CrateId) -> Option<ReleaseC
 }
 
 fn parse(db: &dyn SourceDatabase, file_id: FileId) -> Parse<ast::SourceFile> {
-    let _p = tracing::span!(tracing::Level::INFO, "parse_query", ?file_id).entered();
+    let _p = tracing::span!(tracing::Level::INFO, "parse", ?file_id).entered();
     let text = db.file_text(file_id);
     // FIXME: Edition based parsing
     SourceFile::parse(&text, span::Edition::CURRENT)
