@@ -1489,6 +1489,14 @@ impl Adt {
             .map(|arena| arena.1.clone())
     }
 
+    pub fn as_struct(&self) -> Option<Struct> {
+        if let Self::Struct(v) = self {
+            Some(*v)
+        } else {
+            None
+        }
+    }
+
     pub fn as_enum(&self) -> Option<Enum> {
         if let Self::Enum(v) = self {
             Some(*v)
