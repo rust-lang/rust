@@ -16,6 +16,10 @@ use rustc_span::Span;
 const VALID_FRAGMENT_NAMES_MSG: &str = "valid fragment specifiers are \
                                         `ident`, `block`, `stmt`, `expr`, `pat`, `ty`, `lifetime`, \
                                         `literal`, `path`, `meta`, `tt`, `item` and `vis`";
+const VALID_FRAGMENT_NAMES_MSG_2021: &str = "valid fragment specifiers are \
+                                             `ident`, `block`, `stmt`, `expr`, `expr_2021`, `pat`, \
+                                             `ty`, `lifetime`, `literal`, `path`, `meta`, `tt`, \
+                                             `item` and `vis`";
 
 /// Takes a `tokenstream::TokenStream` and returns a `Vec<self::TokenTree>`. Specifically, this
 /// takes a generic `TokenStream`, such as is used in the rest of the compiler, and returns a
@@ -63,40 +67,59 @@ pub(super) fn parse(
                             Some(tokenstream::TokenTree::Token(token, _)) => match token.ident() {
                                 Some((fragment, _)) => {
                                     let span = token.span.with_lo(start_sp.lo());
-
+                                    let edition = || {
+                                        // FIXME(#85708) - once we properly decode a foreign
+                                        // crate's `SyntaxContext::root`, then we can replace
+                                        // this with just `span.edition()`. A
+                                        // `SyntaxContext::root()` from the current crate will
+                                        // have the edition of the current crate, and a
+                                        // `SyntaxContext::root()` from a foreign crate will
+                                        // have the edition of that crate (which we manually
+                                        // retrieve via the `edition` parameter).
+                                        if !span.from_expansion() {
+                                            edition
+                                        } else {
+                                            span.edition()
+                                        }
+                                    };
                                     let kind =
-                                        token::NonterminalKind::from_symbol(fragment.name, || {
-                                            // FIXME(#85708) - once we properly decode a foreign
-                                            // crate's `SyntaxContext::root`, then we can replace
-                                            // this with just `span.edition()`. A
-                                            // `SyntaxContext::root()` from the current crate will
-                                            // have the edition of the current crate, and a
-                                            // `SyntaxContext::root()` from a foreign crate will
-                                            // have the edition of that crate (which we manually
-                                            // retrieve via the `edition` parameter).
-                                            if !span.from_expansion() {
-                                                edition
-                                            } else {
-                                                span.edition()
-                                            }
-                                        })
-                                        .unwrap_or_else(
-                                            || {
+                                        token::NonterminalKind::from_symbol(fragment.name, edition)
+                                            .unwrap_or_else(|| {
+                                                let help = match fragment.name {
+                                                    sym::expr_2021 => {
+                                                        format!(
+                                                            "fragment specifier `expr_2021` \
+                                                             requires Rust 2021 or later\n\
+                                                             {VALID_FRAGMENT_NAMES_MSG}"
+                                                        )
+                                                    }
+                                                    _ if edition().at_least_rust_2021()
+                                                        && features
+                                                            .expr_fragment_specifier_2024 =>
+                                                    {
+                                                        VALID_FRAGMENT_NAMES_MSG_2021.into()
+                                                    }
+                                                    _ => VALID_FRAGMENT_NAMES_MSG.into(),
+                                                };
                                                 sess.dcx().emit_err(
                                                     errors::InvalidFragmentSpecifier {
                                                         span,
                                                         fragment,
-                                                        help: VALID_FRAGMENT_NAMES_MSG.into(),
+                                                        help,
                                                     },
                                                 );
                                                 token::NonterminalKind::Ident
-                                            },
-                                        );
+                                            });
                                     if kind == token::NonterminalKind::Expr2021
                                         && !features.expr_fragment_specifier_2024
                                     {
-                                        sess.dcx()
-                                            .emit_err(errors::Expr2021IsExperimental { span });
+                                        rustc_session::parse::feature_err(
+                                            sess,
+                                            sym::expr_fragment_specifier_2024,
+                                            span,
+                                            "fragment specifier `expr_2021` is unstable",
+                                        )
+                                        .emit();
                                     }
                                     result.push(TokenTree::MetaVarDecl(span, ident, Some(kind)));
                                     continue;

@@ -4,7 +4,8 @@ error: invalid fragment specifier `expr_2021`
 LL |     ($e:expr_2021) => {
    |      ^^^^^^^^^^^^
    |
-   = help: valid fragment specifiers are `ident`, `block`, `stmt`, `expr`, `pat`, `ty`, `lifetime`, `literal`, `path`, `meta`, `tt`, `item` and `vis`
+   = help: fragment specifier `expr_2021` requires Rust 2021 or later
+           valid fragment specifiers are `ident`, `block`, `stmt`, `expr`, `pat`, `ty`, `lifetime`, `literal`, `path`, `meta`, `tt`, `item` and `vis`
 
 error: no rules expected the token `(`
   --> $DIR/expr_2021_old_edition.rs:12:8
