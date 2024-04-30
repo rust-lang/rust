@@ -222,7 +222,7 @@ impl NotifyActor {
                         let depth = entry.depth();
                         let is_dir = entry.file_type().is_dir();
                         let is_file = entry.file_type().is_file();
-                        let abs_path = AbsPathBuf::try_from(entry.into_path()).unwrap();
+                        let abs_path = AbsPathBuf::try_from(entry.into_path()).ok()?;
                         if depth < 2 && is_dir {
                             self.send(make_message(abs_path.clone()));
                         }
