@@ -1,5 +1,6 @@
 #![no_std]
 #![feature(
+    const_eval_select,
     const_intrinsic_copy,
     const_refs_to_cell,
     const_maybe_uninit_as_mut_ptr,

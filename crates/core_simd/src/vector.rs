@@ -144,14 +144,31 @@ where
     /// assert_eq!(v.as_array(), &[8, 8, 8, 8]);
     /// ```
     #[inline]
-    pub fn splat(value: T) -> Self {
-        // This is preferred over `[value; N]`, since it's explicitly a splat:
-        // https://github.com/rust-lang/rust/issues/97804
-        struct Splat;
-        impl<const N: usize> Swizzle<N> for Splat {
-            const INDEX: [usize; N] = [0; N];
+    pub const fn splat(value: T) -> Self {
+        const fn splat_const<T, const N: usize>(value: T) -> Simd<T, N>
+        where
+            T: SimdElement,
+            LaneCount<N>: SupportedLaneCount,
+        {
+            Simd::from_array([value; N])
         }
-        Splat::swizzle::<T, 1>(Simd::<T, 1>::from([value]))
+
+        fn splat_rt<T, const N: usize>(value: T) -> Simd<T, N>
+        where
+            T: SimdElement,
+            LaneCount<N>: SupportedLaneCount,
+        {
+            // This is preferred over `[value; N]`, since it's explicitly a splat:
+            // https://github.com/rust-lang/rust/issues/97804
+            struct Splat;
+            impl<const N: usize> Swizzle<N> for Splat {
+                const INDEX: [usize; N] = [0; N];
+            }
+
+            Splat::swizzle::<T, 1>(Simd::<T, 1>::from([value]))
+        }
+
+        core::intrinsics::const_eval_select((value,), splat_const, splat_rt)
     }
 
     /// Returns an array reference containing the entire SIMD vector.
