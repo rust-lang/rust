@@ -798,6 +798,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(mir_keep_place_mention, true);
     tracked!(mir_opt_level, Some(4));
     tracked!(move_size_limit, Some(4096));
+    tracked!(ms_hotpatch, true);
     tracked!(mutable_noalias, false);
     tracked!(
         next_solver,

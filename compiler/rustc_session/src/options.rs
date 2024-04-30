@@ -1813,6 +1813,10 @@ options! {
         "MIR optimization level (0-4; default: 1 in non optimized builds and 2 in optimized builds)"),
     move_size_limit: Option<usize> = (None, parse_opt_number, [TRACKED],
         "the size at which the `large_assignments` lint starts to be emitted"),
+    ms_hotpatch: bool = (false, parse_bool, [TRACKED],
+        "ensures hotpatching is always possible by ensuring that the first instruction of \
+        each function is at least two bytes, and no jump within the function goes to the first instruction. \
+        Should be combined with link-arg passing -functionpadmin to the linker. Currently only supported for x86 (default: false)"),
     mutable_noalias: bool = (true, parse_bool, [TRACKED],
         "emit noalias metadata for mutable references (default: yes)"),
     next_solver: Option<NextSolverConfig> = (None, parse_next_solver_config, [TRACKED],
