@@ -8,7 +8,6 @@
     convert_float_to_int,
     core_intrinsics,
     decl_macro,
-    inline_const,
     intra_doc_pointers,
     repr_simd,
     simd_ffi,
