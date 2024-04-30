@@ -597,7 +597,7 @@ revision. To do this, add `[revision-name]` after the `//` comment, like so:
 
 ```rust,ignore
 // A flag to pass in only for cfg `foo`:
-//@[foo]compile-flags: -Z verbose
+//@[foo]compile-flags: -Z verbose-internals
 
 #[cfg(foo)]
 fn test_foo() {

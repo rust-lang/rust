@@ -52,8 +52,8 @@ The compiler has a bunch of `-Z` flags. These are unstable flags that are only
 enabled on nightly. Many of them are useful for debugging. To get a full listing
 of `-Z` flags, use `-Z help`.
 
-One useful flag is `-Z verbose`, which generally enables printing more info that
-could be useful for debugging.
+One useful flag is `-Z verbose-internals`, which generally enables printing more
+info that could be useful for debugging.
 
 ## Getting a backtrace
 [getting-a-backtrace]: #getting-a-backtrace
