@@ -20,7 +20,7 @@ pub(crate) struct BranchInfoBuilder {
     /// Maps condition expressions to their enclosing `!`, for better instrumentation.
     nots: FxHashMap<ExprId, NotInfo>,
 
-    num_block_markers: usize,
+    markers: BlockMarkerGen,
     branch_spans: Vec<BranchSpan>,
 
     mcdc_branch_spans: Vec<MCDCBranchSpan>,
@@ -38,6 +38,35 @@ struct NotInfo {
     is_flipped: bool,
 }
 
+#[derive(Default)]
+struct BlockMarkerGen {
+    num_block_markers: usize,
+}
+
+impl BlockMarkerGen {
+    fn next_block_marker_id(&mut self) -> BlockMarkerId {
+        let id = BlockMarkerId::from_usize(self.num_block_markers);
+        self.num_block_markers += 1;
+        id
+    }
+
+    fn inject_block_marker(
+        &mut self,
+        cfg: &mut CFG<'_>,
+        source_info: SourceInfo,
+        block: BasicBlock,
+    ) -> BlockMarkerId {
+        let id = self.next_block_marker_id();
+        let marker_statement = mir::Statement {
+            source_info,
+            kind: mir::StatementKind::Coverage(CoverageKind::BlockMarker { id }),
+        };
+        cfg.push(block, marker_statement);
+
+        id
+    }
+}
+
 impl BranchInfoBuilder {
     /// Creates a new branch info builder, but only if branch coverage instrumentation
     /// is enabled and `def_id` represents a function that is eligible for coverage.
@@ -45,7 +74,7 @@ impl BranchInfoBuilder {
         if tcx.sess.instrument_coverage_branch() && tcx.is_eligible_for_coverage(def_id) {
             Some(Self {
                 nots: FxHashMap::default(),
-                num_block_markers: 0,
+                markers: BlockMarkerGen::default(),
                 branch_spans: vec![],
                 mcdc_branch_spans: vec![],
                 mcdc_decision_spans: vec![],
@@ -145,39 +174,16 @@ impl BranchInfoBuilder {
         true_block: BasicBlock,
         false_block: BasicBlock,
     ) {
-        let true_marker = self.inject_block_marker(cfg, source_info, true_block);
-        let false_marker = self.inject_block_marker(cfg, source_info, false_block);
+        let true_marker = self.markers.inject_block_marker(cfg, source_info, true_block);
+        let false_marker = self.markers.inject_block_marker(cfg, source_info, false_block);
 
         self.branch_spans.push(BranchSpan { span: source_info.span, true_marker, false_marker });
-    }
-
-    fn next_block_marker_id(&mut self) -> BlockMarkerId {
-        let id = BlockMarkerId::from_usize(self.num_block_markers);
-        self.num_block_markers += 1;
-        id
-    }
-
-    fn inject_block_marker(
-        &mut self,
-        cfg: &mut CFG<'_>,
-        source_info: SourceInfo,
-        block: BasicBlock,
-    ) -> BlockMarkerId {
-        let id = self.next_block_marker_id();
-
-        let marker_statement = mir::Statement {
-            source_info,
-            kind: mir::StatementKind::Coverage(CoverageKind::BlockMarker { id }),
-        };
-        cfg.push(block, marker_statement);
-
-        id
     }
 
     pub(crate) fn into_done(self) -> Option<Box<mir::coverage::BranchInfo>> {
         let Self {
             nots: _,
-            num_block_markers,
+            markers: BlockMarkerGen { num_block_markers },
             branch_spans,
             mcdc_branch_spans,
             mcdc_decision_spans,
@@ -386,7 +392,7 @@ impl Builder<'_, '_> {
         // Separate path for handling branches when MC/DC is enabled.
         if branch_info.mcdc_state.is_some() {
             let mut inject_block_marker =
-                |block| branch_info.inject_block_marker(&mut self.cfg, source_info, block);
+                |block| branch_info.markers.inject_block_marker(&mut self.cfg, source_info, block);
             let true_marker = inject_block_marker(then_block);
             let false_marker = inject_block_marker(else_block);
             let (decision_depth, condition_info) = branch_info
