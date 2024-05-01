@@ -11,7 +11,6 @@ use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::{env, fs, mem};
 
-use crate::Mode;
 use crate::core::build_steps::compile;
 use crate::core::build_steps::tool::{self, SourceType, Tool, prepare_tool_cargo};
 use crate::core::builder::{
@@ -19,6 +18,7 @@ use crate::core::builder::{
 };
 use crate::core::config::{Config, TargetSelection};
 use crate::helpers::{submodule_path_of, symlink_dir, t, up_to_date};
+use crate::{FileType, Mode};
 
 macro_rules! book {
     ($($name:ident, $path:expr, $book_name:expr, $lang:expr ;)+) => {
@@ -546,6 +546,7 @@ impl Step for SharedAssets {
         builder.copy_link(
             &builder.src.join("src").join("doc").join("rust.css"),
             &out.join("rust.css"),
+            FileType::Regular,
         );
 
         SharedAssetsPaths { version_info }

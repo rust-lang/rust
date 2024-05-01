@@ -52,6 +52,23 @@ pub fn exe(name: &str, target: TargetSelection) -> String {
     crate::utils::shared_helpers::exe(name, &target.triple)
 }
 
+/// Returns the path to the split debug info for the specified file if it exists.
+pub fn split_debuginfo(name: impl Into<PathBuf>) -> Option<PathBuf> {
+    // FIXME: only msvc is currently supported
+
+    let path = name.into();
+    let pdb = path.with_extension("pdb");
+    if pdb.exists() {
+        return Some(pdb);
+    }
+
+    // pdbs get named with '-' replaced by '_'
+    let file_name = pdb.file_name()?.to_str()?.replace("-", "_");
+
+    let pdb: PathBuf = [path.parent()?, Path::new(&file_name)].into_iter().collect();
+    pdb.exists().then_some(pdb)
+}
+
 /// Returns `true` if the file name given looks like a dynamic library.
 pub fn is_dylib(path: &Path) -> bool {
     path.extension().and_then(|ext| ext.to_str()).is_some_and(|ext| {
