@@ -2409,9 +2409,7 @@ impl Debug for str {
             // If char needs escaping, flush backlog so far and write, else skip
             if esc.len() != 1 {
                 f.write_str(&self[from..i])?;
-                for c in esc {
-                    f.write_char(c)?;
-                }
+                Display::fmt(&esc, f)?;
                 from = i + c.len_utf8();
             }
         }
@@ -2431,13 +2429,12 @@ impl Display for str {
 impl Debug for char {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         f.write_char('\'')?;
-        for c in self.escape_debug_ext(EscapeDebugExtArgs {
+        let esc = self.escape_debug_ext(EscapeDebugExtArgs {
             escape_grapheme_extended: true,
             escape_single_quote: true,
             escape_double_quote: false,
-        }) {
-            f.write_char(c)?
-        }
+        });
+        Display::fmt(&esc, f)?;
         f.write_char('\'')
     }
 }
