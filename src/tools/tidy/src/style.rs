@@ -220,6 +220,7 @@ fn contains_ignore_directive(can_contain: bool, contents: &str, check: &str) -> 
     if contents.contains(&format!("// ignore-tidy-{check}"))
         || contents.contains(&format!("# ignore-tidy-{check}"))
         || contents.contains(&format!("/* ignore-tidy-{check} */"))
+        || contents.contains(&format!("<!-- ignore-tidy-{check} -->"))
     {
         Directive::Ignore(false)
     } else {
@@ -346,7 +347,8 @@ pub fn check(path: &Path, bad: &mut bool) {
 
         let can_contain = contents.contains("// ignore-tidy-")
             || contents.contains("# ignore-tidy-")
-            || contents.contains("/* ignore-tidy-");
+            || contents.contains("/* ignore-tidy-")
+            || contents.contains("<!-- ignore-tidy-");
         // Enable testing ICE's that require specific (untidy)
         // file formats easily eg. `issue-1234-ignore-tidy.rs`
         if filename.contains("ignore-tidy") {

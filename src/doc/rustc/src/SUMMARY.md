@@ -3,6 +3,7 @@
 - [What is rustc?](what-is-rustc.md)
 - [Command-line Arguments](command-line-arguments.md)
     - [Codegen Options](codegen-options/index.md)
+- [Jobserver](jobserver.md)
 - [Lints](lints/index.md)
     - [Lint Levels](lints/levels.md)
     - [Lint Groups](lints/groups.md)
