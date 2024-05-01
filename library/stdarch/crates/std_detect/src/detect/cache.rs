@@ -119,16 +119,41 @@ impl Cache {
 cfg_if::cfg_if! {
     if #[cfg(feature = "std_detect_env_override")] {
         #[inline]
+        fn disable_features(disable: &[u8], value: &mut Initializer) {
+            if let Ok(disable) = core::str::from_utf8(disable) {
+                for v in disable.split(" ") {
+                    let _ = super::Feature::from_str(v).map(|v| value.unset(v as u32));
+                }
+            }
+        }
+
+        #[inline]
         fn initialize(mut value: Initializer) -> Initializer {
-            let env = unsafe {
-                libc::getenv(b"RUST_STD_DETECT_UNSTABLE\0".as_ptr() as *const libc::c_char)
-            };
-            if !env.is_null() {
-                let len = unsafe { libc::strlen(env) };
-                let env = unsafe { core::slice::from_raw_parts(env as *const u8, len) };
-                if let Ok(disable) = core::str::from_utf8(env) {
-                    for v in disable.split(" ") {
-                        let _ = super::Feature::from_str(v).map(|v| value.unset(v as u32));
+            const RUST_STD_DETECT_UNSTABLE: &[u8] = b"RUST_STD_DETECT_UNSTABLE\0";
+            cfg_if::cfg_if! {
+                if #[cfg(windows)] {
+                    use alloc::vec;
+                    #[link(name = "kernel32")]
+                    extern "system" {
+                        fn GetEnvironmentVariableA(name: *const u8, buffer: *mut u8, size: u32) -> u32;
+                    }
+                    let len = unsafe { GetEnvironmentVariableA(RUST_STD_DETECT_UNSTABLE.as_ptr(), core::ptr::null_mut(), 0) };
+                    if len > 0 {
+                        // +1 to include the null terminator.
+                        let mut env = vec![0; len as usize + 1];
+                        let len = unsafe { GetEnvironmentVariableA(RUST_STD_DETECT_UNSTABLE.as_ptr(), env.as_mut_ptr(), len + 1) };
+                        if len > 0 {
+                            disable_features(&env[..len as usize], &mut value);
+                        }
+                    }
+                } else {
+                    let env = unsafe {
+                        libc::getenv(RUST_STD_DETECT_UNSTABLE.as_ptr() as *const libc::c_char)
+                    };
+                    if !env.is_null() {
+                        let len = unsafe { libc::strlen(env) };
+                        let env = unsafe { core::slice::from_raw_parts(env as *const u8, len) };
+                        disable_features(env, &mut value);
                     }
                 }
             }
