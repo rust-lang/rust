@@ -2,7 +2,7 @@
 // so check to make sure that's what it's actually emitting.
 
 //@ assembly-output: emit-asm
-//@ compile-flags: --crate-type=lib -O -C llvm-args=-x86-asm-syntax=intel
+//@ compile-flags: --crate-type=lib -O -C llvm-args=-x86-asm-syntax=intel -C target-cpu=x86-64
 //@ only-x86_64
 //@ ignore-sgx
 

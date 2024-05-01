@@ -1,6 +1,7 @@
 // verify that simd mask reductions do not introduce additional bit shift operations
 //@ revisions: x86 aarch64
 //@ [x86] compile-flags: --target=x86_64-unknown-linux-gnu -C llvm-args=-x86-asm-syntax=intel
+//@ [x86] compile-flags: -C target-cpu=x86-64
 //@ [x86] needs-llvm-components: x86
 //@ [aarch64] compile-flags: --target=aarch64-unknown-linux-gnu
 //@ [aarch64] needs-llvm-components: aarch64

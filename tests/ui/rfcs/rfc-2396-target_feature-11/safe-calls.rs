@@ -1,4 +1,5 @@
 //@ only-x86_64
+//@ compile-flags: -C target-cpu=x86-64
 
 #![feature(target_feature_11)]
 
