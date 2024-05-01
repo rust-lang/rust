@@ -432,7 +432,8 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     break;
                 }
                 invocations = mem::take(&mut undetermined_invocations);
-                force = !mem::replace(&mut progress, false);
+                force = !progress;
+                progress = false;
                 if force && self.monotonic {
                     self.cx.dcx().span_delayed_bug(
                         invocations.last().unwrap().0.span(),
