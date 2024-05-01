@@ -2,9 +2,9 @@ use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::macros::HirNode;
 use clippy_utils::sugg::Sugg;
-use clippy_utils::{is_trait_method, path_to_local};
+use clippy_utils::{is_trait_method, local_is_initialized, path_to_local};
 use rustc_errors::Applicability;
-use rustc_hir::{self as hir, Expr, ExprKind, Node};
+use rustc_hir::{self as hir, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, Instance, Mutability};
 use rustc_session::impl_lint_pass;
@@ -163,9 +163,7 @@ fn is_ok_to_suggest<'tcx>(cx: &LateContext<'tcx>, lhs: &Expr<'tcx>, call: &CallC
         // TODO: This check currently bails if the local variable has no initializer.
         // That is overly conservative - the lint should fire even if there was no initializer,
         // but the variable has been initialized before `lhs` was evaluated.
-        if let Some(Node::LetStmt(local)) = cx.tcx.hir().parent_id_iter(local).next().map(|p| cx.tcx.hir_node(p))
-            && local.init.is_none()
-        {
+        if !local_is_initialized(cx, local) {
             return false;
         }
     }
