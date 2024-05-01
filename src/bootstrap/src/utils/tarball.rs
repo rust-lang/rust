@@ -7,6 +7,7 @@
 
 use std::path::{Path, PathBuf};
 
+use crate::FileType;
 use crate::core::build_steps::dist::distdir;
 use crate::core::builder::{Builder, Kind};
 use crate::core::config::BUILDER_CONFIG_FILENAME;
@@ -182,7 +183,12 @@ impl<'a> Tarball<'a> {
         &self.image_dir
     }
 
-    pub(crate) fn add_file(&self, src: impl AsRef<Path>, destdir: impl AsRef<Path>, perms: u32) {
+    pub(crate) fn add_file(
+        &self,
+        src: impl AsRef<Path>,
+        destdir: impl AsRef<Path>,
+        file_type: FileType,
+    ) {
         // create_dir_all fails to create `foo/bar/.`, so when the destination is "." this simply
         // uses the base directory as the destination directory.
         let destdir = if destdir.as_ref() == Path::new(".") {
@@ -192,7 +198,7 @@ impl<'a> Tarball<'a> {
         };
 
         t!(std::fs::create_dir_all(&destdir));
-        self.builder.install(src.as_ref(), &destdir, perms);
+        self.builder.install(src.as_ref(), &destdir, file_type);
     }
 
     pub(crate) fn add_renamed_file(
@@ -200,15 +206,16 @@ impl<'a> Tarball<'a> {
         src: impl AsRef<Path>,
         destdir: impl AsRef<Path>,
         new_name: &str,
+        file_type: FileType,
     ) {
         let destdir = self.image_dir.join(destdir.as_ref());
         t!(std::fs::create_dir_all(&destdir));
-        self.builder.copy_link(src.as_ref(), &destdir.join(new_name));
+        self.builder.copy_link(src.as_ref(), &destdir.join(new_name), file_type);
     }
 
     pub(crate) fn add_legal_and_readme_to(&self, destdir: impl AsRef<Path>) {
         for file in self.overlay.legal_and_readme() {
-            self.add_file(self.builder.src.join(file), destdir.as_ref(), 0o644);
+            self.add_file(self.builder.src.join(file), destdir.as_ref(), FileType::Regular);
         }
     }
 
@@ -318,11 +325,20 @@ impl<'a> Tarball<'a> {
 
         // Add config file if present.
         if let Some(config) = &self.builder.config.config {
-            self.add_renamed_file(config, &self.overlay_dir, BUILDER_CONFIG_FILENAME);
+            self.add_renamed_file(
+                config,
+                &self.overlay_dir,
+                BUILDER_CONFIG_FILENAME,
+                FileType::Regular,
+            );
         }
 
         for file in self.overlay.legal_and_readme() {
-            self.builder.install(&self.builder.src.join(file), &self.overlay_dir, 0o644);
+            self.builder.install(
+                &self.builder.src.join(file),
+                &self.overlay_dir,
+                FileType::Regular,
+            );
         }
 
         let mut cmd = self.builder.tool_cmd(crate::core::build_steps::tool::Tool::RustInstaller);
