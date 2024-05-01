@@ -161,8 +161,9 @@ pub fn extra_cxx_flags() -> Vec<&'static str> {
     if is_windows() {
         if is_msvc() { vec![] } else { vec!["-lstdc++"] }
     } else {
-        match uname() {
-            n if n.contains("Darwin") => vec!["-lc++"],
+        match &uname()[..] {
+            "Darwin" => vec!["-lc++"],
+            "FreeBSD" | "SunOS" | "OpenBSD" => vec![],
             _ => vec!["-lstdc++"],
         }
     }
