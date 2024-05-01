@@ -733,9 +733,14 @@ fn main_args(
         (true, true) => return wrap_return(&diag, markdown::test(options)),
         (true, false) => return doctest::run(&diag, options),
         (false, true) => {
-            let input = options.input.clone();
             let edition = options.edition;
             let config = core::create_config(options, &render_options, using_internal_features);
+
+            use rustc_session::config::Input;
+            let input = match &config.input {
+                Input::File(path) => path.clone(),
+                Input::Str { .. } => unreachable!("only path to markdown are supported"),
+            };
 
             // `markdown::render` can invoke `doctest::make_test`, which
             // requires session globals and a thread pool, so we use
