@@ -34,10 +34,6 @@ def normalize_stdout(str):
     str = re.sub("finished in \\d+\\.\\d\\ds", "finished in $TIME", str) # the time keeps changing, obviously
     return str
 
-def normalize_stderr(str):
-    str = re.sub("Preparing a sysroot for Miri \\(target: [a-z0-9_-]+\\)\\.\\.\\. done\n", "", str) # remove leading cargo-miri setup output
-    return str
-
 def check_output(actual, path, name):
     if os.environ.get("RUSTC_BLESS", "0") != "0":
         # Write the output only if bless is set
@@ -69,7 +65,7 @@ def test(name, cmd, stdout_ref, stderr_ref, stdin=b'', env=None):
     )
     (stdout, stderr) = p.communicate(input=stdin)
     stdout = normalize_stdout(stdout.decode("UTF-8"))
-    stderr = normalize_stderr(stderr.decode("UTF-8"))
+    stderr = stderr.decode("UTF-8")
 
     stdout_matches = check_output(stdout, stdout_ref, "stdout")
     stderr_matches = check_output(stderr, stderr_ref, "stderr")
