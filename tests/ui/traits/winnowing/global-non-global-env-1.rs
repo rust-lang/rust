@@ -4,7 +4,7 @@
 //@ revisions: current next
 //@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
-//@ check-pass
+//@[next] check-pass
 
 trait Trait<T> {}
 impl<T> Trait<T> for () {}
@@ -16,6 +16,7 @@ where
     (): Trait<T>,
 {
     impls_trait(())
+    //[current]~^ ERROR mismatched types
 }
 
 fn main() {}

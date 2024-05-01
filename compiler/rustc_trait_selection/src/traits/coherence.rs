@@ -792,11 +792,8 @@ pub fn orphan_check_trait_ref<'tcx, E: Debug>(
     in_crate: InCrate,
     lazily_normalize_ty: impl FnMut(Ty<'tcx>) -> Result<Ty<'tcx>, E>,
 ) -> Result<Result<(), OrphanCheckErr<'tcx, Ty<'tcx>>>, E> {
-    if trait_ref.has_infer() && trait_ref.has_param() {
-        bug!(
-            "can't orphan check a trait ref with both params and inference variables {:?}",
-            trait_ref
-        );
+    if trait_ref.has_param() {
+        bug!("orphan check only expects inference variables: {trait_ref:?}");
     }
 
     let mut checker = OrphanChecker::new(in_crate, lazily_normalize_ty);
