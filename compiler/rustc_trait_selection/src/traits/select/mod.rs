@@ -1868,11 +1868,6 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 }
             }
 
-            // Drop otherwise equivalent non-const fn pointer candidates
-            (FnPointerCandidate { .. }, FnPointerCandidate { fn_host_effect }) => {
-                DropVictim::drop_if(*fn_host_effect == self.tcx().consts.true_)
-            }
-
             (
                 ParamCandidate(ref other_cand),
                 ImplCandidate(..)
