@@ -1,15 +1,19 @@
 use std::mem;
+use std::ops::ControlFlow;
 
 use rustc_infer::infer::InferCtxt;
-use rustc_infer::traits::solve::MaybeCause;
+use rustc_infer::traits::query::NoSolution;
+use rustc_infer::traits::solve::inspect::ProbeKind;
+use rustc_infer::traits::solve::{CandidateSource, GoalSource, MaybeCause};
 use rustc_infer::traits::{
-    query::NoSolution, FulfillmentError, FulfillmentErrorCode, MismatchedProjectionTypes,
+    self, FulfillmentError, FulfillmentErrorCode, MismatchedProjectionTypes, Obligation,
     PredicateObligation, SelectionError, TraitEngine,
 };
 use rustc_middle::ty;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 
 use super::eval_ctxt::GenerateProofTree;
+use super::inspect::{ProofTreeInferCtxtExt, ProofTreeVisitor};
 use super::{Certainty, InferCtxtEvalExt};
 
 /// A trait engine using the new trait solver.
@@ -133,9 +137,9 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentCtxt<'tcx> {
             .collect();
 
         errors.extend(self.obligations.overflowed.drain(..).map(|obligation| FulfillmentError {
-            root_obligation: obligation.clone(),
+            obligation: find_best_leaf_obligation(infcx, &obligation),
             code: FulfillmentErrorCode::Ambiguity { overflow: Some(true) },
-            obligation,
+            root_obligation: obligation,
         }));
 
         errors
@@ -192,8 +196,10 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentCtxt<'tcx> {
 
 fn fulfillment_error_for_no_solution<'tcx>(
     infcx: &InferCtxt<'tcx>,
-    obligation: PredicateObligation<'tcx>,
+    root_obligation: PredicateObligation<'tcx>,
 ) -> FulfillmentError<'tcx> {
+    let obligation = find_best_leaf_obligation(infcx, &root_obligation);
+
     let code = match obligation.predicate.kind().skip_binder() {
         ty::PredicateKind::Clause(ty::ClauseKind::Projection(_)) => {
             FulfillmentErrorCode::ProjectionError(
@@ -213,14 +219,14 @@ fn fulfillment_error_for_no_solution<'tcx>(
         }
         ty::PredicateKind::Subtype(pred) => {
             let (a, b) = infcx.enter_forall_and_leak_universe(
-                obligation.predicate.kind().rebind((pred.a, pred.b)),
+                root_obligation.predicate.kind().rebind((pred.a, pred.b)),
             );
             let expected_found = ExpectedFound::new(true, a, b);
             FulfillmentErrorCode::SubtypeError(expected_found, TypeError::Sorts(expected_found))
         }
         ty::PredicateKind::Coerce(pred) => {
             let (a, b) = infcx.enter_forall_and_leak_universe(
-                obligation.predicate.kind().rebind((pred.a, pred.b)),
+                root_obligation.predicate.kind().rebind((pred.a, pred.b)),
             );
             let expected_found = ExpectedFound::new(false, a, b);
             FulfillmentErrorCode::SubtypeError(expected_found, TypeError::Sorts(expected_found))
@@ -234,7 +240,8 @@ fn fulfillment_error_for_no_solution<'tcx>(
             bug!("unexpected goal: {obligation:?}")
         }
     };
-    FulfillmentError { root_obligation: obligation.clone(), code, obligation }
+
+    FulfillmentError { obligation, code, root_obligation }
 }
 
 fn fulfillment_error_for_stalled<'tcx>(
@@ -258,5 +265,135 @@ fn fulfillment_error_for_stalled<'tcx>(
         }
     });
 
-    FulfillmentError { obligation: obligation.clone(), code, root_obligation: obligation }
+    FulfillmentError {
+        obligation: find_best_leaf_obligation(infcx, &obligation),
+        code,
+        root_obligation: obligation,
+    }
+}
+
+struct BestObligation<'tcx> {
+    obligation: PredicateObligation<'tcx>,
+}
+
+impl<'tcx> BestObligation<'tcx> {
+    fn with_derived_obligation(
+        &mut self,
+        derive_obligation: impl FnOnce(&mut Self) -> PredicateObligation<'tcx>,
+        and_then: impl FnOnce(&mut Self) -> <Self as ProofTreeVisitor<'tcx>>::Result,
+    ) -> <Self as ProofTreeVisitor<'tcx>>::Result {
+        let derived_obligation = derive_obligation(self);
+        let old_obligation = std::mem::replace(&mut self.obligation, derived_obligation);
+        let res = and_then(self);
+        self.obligation = old_obligation;
+        res
+    }
+}
+
+impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
+    type Result = ControlFlow<PredicateObligation<'tcx>>;
+
+    fn span(&self) -> rustc_span::Span {
+        self.obligation.cause.span
+    }
+
+    fn visit_goal(&mut self, goal: &super::inspect::InspectGoal<'_, 'tcx>) -> Self::Result {
+        let candidates = goal.candidates();
+        // FIXME: Throw out candidates that have no failing WC and >1 failing misc goal.
+
+        // HACK:
+        if self.obligation.recursion_depth > 3 {
+            return ControlFlow::Break(self.obligation.clone());
+        }
+
+        let [candidate] = candidates.as_slice() else {
+            return ControlFlow::Break(self.obligation.clone());
+        };
+
+        // FIXME: Could we extract a trait ref from a projection here too?
+        // FIXME: Also, what about considering >1 layer up the stack? May be necessary
+        // for normalizes-to.
+        let Some(parent_trait_pred) = goal.goal().predicate.to_opt_poly_trait_pred() else {
+            return ControlFlow::Break(self.obligation.clone());
+        };
+
+        let tcx = goal.infcx().tcx;
+        let mut impl_where_bound_count = 0;
+        for nested_goal in candidate.instantiate_nested_goals(self.span()) {
+            if matches!(nested_goal.source(), GoalSource::ImplWhereBound) {
+                impl_where_bound_count += 1;
+            } else {
+                continue;
+            }
+
+            // Skip nested goals that hold.
+            if matches!(nested_goal.result(), Ok(Certainty::Yes)) {
+                continue;
+            }
+
+            self.with_derived_obligation(
+                |self_| {
+                    let mut cause = self_.obligation.cause.clone();
+                    cause = match candidate.kind() {
+                        ProbeKind::TraitCandidate {
+                            source: CandidateSource::Impl(impl_def_id),
+                            result: _,
+                        } => {
+                            let idx = impl_where_bound_count - 1;
+                            if let Some((_, span)) = tcx
+                                .predicates_of(impl_def_id)
+                                .instantiate_identity(tcx)
+                                .iter()
+                                .nth(idx)
+                            {
+                                cause.derived_cause(parent_trait_pred, |derived| {
+                                    traits::ImplDerivedObligation(Box::new(
+                                        traits::ImplDerivedObligationCause {
+                                            derived,
+                                            impl_or_alias_def_id: impl_def_id,
+                                            impl_def_predicate_index: Some(idx),
+                                            span,
+                                        },
+                                    ))
+                                })
+                            } else {
+                                cause
+                            }
+                        }
+                        ProbeKind::TraitCandidate {
+                            source: CandidateSource::BuiltinImpl(..),
+                            result: _,
+                        } => {
+                            cause.derived_cause(parent_trait_pred, traits::BuiltinDerivedObligation)
+                        }
+                        _ => cause,
+                    };
+
+                    Obligation {
+                        cause,
+                        param_env: nested_goal.goal().param_env,
+                        predicate: nested_goal.goal().predicate,
+                        recursion_depth: self_.obligation.recursion_depth + 1,
+                    }
+                },
+                |self_| self_.visit_goal(&nested_goal),
+            )?;
+        }
+
+        ControlFlow::Break(self.obligation.clone())
+    }
+}
+
+fn find_best_leaf_obligation<'tcx>(
+    infcx: &InferCtxt<'tcx>,
+    obligation: &PredicateObligation<'tcx>,
+) -> PredicateObligation<'tcx> {
+    let obligation = infcx.resolve_vars_if_possible(obligation.clone());
+    infcx
+        .visit_proof_tree(
+            obligation.clone().into(),
+            &mut BestObligation { obligation: obligation.clone() },
+        )
+        .break_value()
+        .unwrap_or(obligation)
 }

@@ -42,5 +42,5 @@ fn main() {
     //~^ ERROR overflow evaluating the requirement `(): A`
 
     impls_ar::<()>();
-    //~^ ERROR overflow evaluating the requirement `(): AR`
+    //~^ ERROR overflow evaluating the requirement `(): CR`
 }
