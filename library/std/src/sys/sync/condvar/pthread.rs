@@ -30,14 +30,10 @@ impl LazyInit for AllocatedCondvar {
 
         cfg_if::cfg_if! {
             if #[cfg(any(
-                target_os = "macos",
-                target_os = "ios",
-                target_os = "tvos",
-                target_os = "watchos",
-                target_os = "visionos",
                 target_os = "l4re",
                 target_os = "android",
-                target_os = "redox"
+                target_os = "redox",
+                target_vendor = "apple",
             ))] {
                 // `pthread_condattr_setclock` is unfortunately not supported on these platforms.
             } else if #[cfg(any(target_os = "espidf", target_os = "horizon"))] {
@@ -124,14 +120,10 @@ impl Condvar {
     // default system clock). This approach avoids all problems that result
     // from changes made to the system time.
     #[cfg(not(any(
-        target_os = "macos",
-        target_os = "ios",
-        target_os = "tvos",
-        target_os = "watchos",
-        target_os = "visionos",
         target_os = "android",
         target_os = "espidf",
-        target_os = "horizon"
+        target_os = "horizon",
+        target_vendor = "apple",
     )))]
     pub unsafe fn wait_timeout(&self, mutex: &Mutex, dur: Duration) -> bool {
         use crate::sys::time::Timespec;
@@ -160,14 +152,10 @@ impl Condvar {
     // https://github.com/llvm-mirror/libcxx/blob/release_35/src/condition_variable.cpp#L46
     // https://github.com/llvm-mirror/libcxx/blob/release_35/include/__mutex_base#L367
     #[cfg(any(
-        target_os = "macos",
-        target_os = "ios",
-        target_os = "tvos",
-        target_os = "watchos",
-        target_os = "visionos",
         target_os = "android",
         target_os = "espidf",
-        target_os = "horizon"
+        target_os = "horizon",
+        target_vendor = "apple",
     ))]
     pub unsafe fn wait_timeout(&self, mutex: &Mutex, dur: Duration) -> bool {
         use crate::sys::time::SystemTime;
