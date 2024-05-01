@@ -372,6 +372,14 @@ impl Invocation {
             InvocationKind::Derive { path, .. } => path.span,
         }
     }
+
+    fn span_mut(&mut self) -> &mut Span {
+        match &mut self.kind {
+            InvocationKind::Bang { span, .. } => span,
+            InvocationKind::Attr { attr, .. } => &mut attr.span,
+            InvocationKind::Derive { path, .. } => &mut path.span,
+        }
+    }
 }
 
 pub struct MacroExpander<'a, 'b> {
@@ -590,11 +598,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 for (invoc, _) in invocations.iter_mut() {
                     let expn_id = invoc.expansion_data.id;
                     let parent_def = self.cx.resolver.invocation_parent(expn_id);
-                    let span = match &mut invoc.kind {
-                        InvocationKind::Bang { span, .. } => span,
-                        InvocationKind::Attr { attr, .. } => &mut attr.span,
-                        InvocationKind::Derive { path, .. } => &mut path.span,
-                    };
+                    let span = invoc.span_mut();
                     *span = span.with_parent(Some(parent_def));
                 }
             }
