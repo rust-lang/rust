@@ -357,7 +357,7 @@ fn path_has_local_parent(
 }
 
 /// Given a def id and a parent impl def id, this checks if the parent
-/// def id correspond to the def id of the parent impl definition.
+/// def id (modulo modules) correspond to the def id of the parent impl definition.
 #[inline]
 fn did_has_local_parent(
     did: DefId,
@@ -365,8 +365,14 @@ fn did_has_local_parent(
     impl_parent: DefId,
     impl_parent_parent: Option<DefId>,
 ) -> bool {
-    did.is_local() && {
-        let res_parent = tcx.parent(did);
-        res_parent == impl_parent || Some(res_parent) == impl_parent_parent
-    }
+    did.is_local()
+        && if let Some(did_parent) = tcx.opt_parent(did) {
+            did_parent == impl_parent
+                || Some(did_parent) == impl_parent_parent
+                || !did_parent.is_crate_root()
+                    && tcx.def_kind(did_parent) == DefKind::Mod
+                    && did_has_local_parent(did_parent, tcx, impl_parent, impl_parent_parent)
+        } else {
+            false
+        }
 }
