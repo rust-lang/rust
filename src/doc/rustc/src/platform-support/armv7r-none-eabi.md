@@ -2,7 +2,7 @@
 
 **Tier: 2**
 
-Bare-metal target for CPUs in the ARMv7-R architecture family, supporting
+Bare-metal target for CPUs in the Armv7-R architecture family, supporting
 dual ARM/Thumb mode, with ARM mode as the default.
 
 Processors in this family include the [Arm Cortex-R4, 5, 7, and 8][cortex-r].

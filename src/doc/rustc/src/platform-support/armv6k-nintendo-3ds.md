@@ -2,7 +2,7 @@
 
 **Tier: 3**
 
-The Nintendo 3DS platform, which has an ARMv6K processor, and its associated
+The Nintendo 3DS platform, which has an Armv6k processor, and its associated
 operating system (`horizon`).
 
 Rust support for this target is not affiliated with Nintendo, and is not derived
