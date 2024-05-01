@@ -108,7 +108,6 @@ pub const VEC_DEQUE_ITER: [&str; 5] = ["alloc", "collections", "vec_deque", "Vec
 pub const VEC_FROM_ELEM: [&str; 3] = ["alloc", "vec", "from_elem"];
 pub const VEC_NEW: [&str; 4] = ["alloc", "vec", "Vec", "new"];
 pub const VEC_WITH_CAPACITY: [&str; 4] = ["alloc", "vec", "Vec", "with_capacity"];
-pub const VEC_RESIZE: [&str; 4] = ["alloc", "vec", "Vec", "resize"];
 pub const INSTANT_NOW: [&str; 4] = ["std", "time", "Instant", "now"];
 pub const VEC_IS_EMPTY: [&str; 4] = ["alloc", "vec", "Vec", "is_empty"];
 pub const VEC_POP: [&str; 4] = ["alloc", "vec", "Vec", "pop"];
