@@ -11,4 +11,4 @@ leb128 = "0.2.5"
 md5 = { package = "md-5" , version = "0.10.5" }
 miniz_oxide = "0.7.1"
 regex = "1.8.4"
-rustc-demangle = "0.1.23"
+rustc-demangle = { git = "https://github.com/michaelwoerister/rustc-demangle.git", branch = "skip_unknown" }

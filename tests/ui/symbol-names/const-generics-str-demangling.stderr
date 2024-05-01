@@ -1,4 +1,4 @@
-error: symbol-name(_RMCsCRATE_HASH_1cINtB<REF>_3StrKRe616263_E)
+error: symbol-name(_RMCsCRATE_HASH_1cINtB<REF>_3StrC10_KRe616263_E)
   --> $DIR/const-generics-str-demangling.rs:9:1
    |
 LL | #[rustc_symbol_name]
@@ -16,7 +16,7 @@ error: demangling-alt(<c::Str<"abc">>)
 LL | #[rustc_symbol_name]
    | ^^^^^^^^^^^^^^^^^^^^
 
-error: symbol-name(_RMs_CsCRATE_HASH_1cINtB<REF>_3StrKRe27_E)
+error: symbol-name(_RMs_CsCRATE_HASH_1cINtB<REF>_3StrC6_KRe27_E)
   --> $DIR/const-generics-str-demangling.rs:15:1
    |
 LL | #[rustc_symbol_name]
@@ -34,7 +34,7 @@ error: demangling-alt(<c::Str<"'">>)
 LL | #[rustc_symbol_name]
    | ^^^^^^^^^^^^^^^^^^^^
 
-error: symbol-name(_RMs0_CsCRATE_HASH_1cINtB<REF>_3StrKRe090a_E)
+error: symbol-name(_RMs0_CsCRATE_HASH_1cINtB<REF>_3StrC8_KRe090a_E)
   --> $DIR/const-generics-str-demangling.rs:21:1
    |
 LL | #[rustc_symbol_name]
@@ -52,7 +52,7 @@ error: demangling-alt(<c::Str<"\t\n">>)
 LL | #[rustc_symbol_name]
    | ^^^^^^^^^^^^^^^^^^^^
 
-error: symbol-name(_RMs1_CsCRATE_HASH_1cINtB<REF>_3StrKRee28882c3bc_E)
+error: symbol-name(_RMs1_CsCRATE_HASH_1cINtB<REF>_3StrC14_KRee28882c3bc_E)
   --> $DIR/const-generics-str-demangling.rs:27:1
    |
 LL | #[rustc_symbol_name]
@@ -70,7 +70,7 @@ error: demangling-alt(<c::Str<"∂ü">>)
 LL | #[rustc_symbol_name]
    | ^^^^^^^^^^^^^^^^^^^^
 
-error: symbol-name(_RMs2_CsCRATE_HASH_1cINtB<REF>_3StrKRee183a1e18390e183ade1839be18394e1839ae18390e183935fe18392e18394e1839be183a0e18398e18394e1839ae183985fe183a1e18390e18393e18398e1839ae18398_E)
+error: symbol-name(_RMs2_CsCRATE_HASH_1cINtB<REF>_3StrC140_KRee183a1e18390e183ade1839be18394e1839ae18390e183935fe18392e18394e1839be183a0e18398e18394e1839ae183985fe183a1e18390e18393e18398e1839ae18398_E)
   --> $DIR/const-generics-str-demangling.rs:33:1
    |
 LL | #[rustc_symbol_name]
@@ -88,7 +88,7 @@ error: demangling-alt(<c::Str<"საჭმელად_გემრიელი
 LL | #[rustc_symbol_name]
    | ^^^^^^^^^^^^^^^^^^^^
 
-error: symbol-name(_RMs3_CsCRATE_HASH_1cINtB<REF>_3StrKRef09f908af09fa688f09fa686f09f90ae20c2a720f09f90b6f09f9192e29895f09f94a520c2a720f09fa7a1f09f929bf09f929af09f9299f09f929c_E)
+error: symbol-name(_RMs3_CsCRATE_HASH_1cINtB<REF>_3StrC122_KRef09f908af09fa688f09fa686f09f90ae20c2a720f09f90b6f09f9192e29895f09f94a520c2a720f09fa7a1f09f929bf09f929af09f9299f09f929c_E)
   --> $DIR/const-generics-str-demangling.rs:39:1
    |
 LL | #[rustc_symbol_name]

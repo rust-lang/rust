@@ -39,6 +39,7 @@ pub(super) fn mangle<'tcx>(
         consts: FxHashMap::default(),
         binders: vec![],
         out: String::from(prefix),
+        wrapper_level: GrammarFeatureLevel::BASE_LINE,
     };
 
     // Append `::{shim:...#0}` to shims that can coexist with a non-shim instance.
@@ -79,11 +80,13 @@ pub(super) fn mangle_typeid_for_trait_ref<'tcx>(
         consts: FxHashMap::default(),
         binders: vec![],
         out: String::new(),
+        wrapper_level: GrammarFeatureLevel::BASE_LINE,
     };
     cx.print_def_path(trait_ref.def_id(), &[]).unwrap();
     std::mem::take(&mut cx.out)
 }
 
+#[derive(Clone)]
 struct BinderLevel {
     /// The range of distances from the root of what's
     /// being printed, to the lifetimes in a binder.
@@ -98,6 +101,15 @@ struct BinderLevel {
     lifetime_depths: Range<u32>,
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+struct GrammarFeatureLevel(usize);
+
+impl GrammarFeatureLevel {
+    const BASE_LINE: GrammarFeatureLevel = GrammarFeatureLevel(0);
+    const COMPLEX_CONST_GENERICS: GrammarFeatureLevel = GrammarFeatureLevel(1);
+}
+
+#[derive(Clone)]
 struct SymbolMangler<'tcx> {
     tcx: TyCtxt<'tcx>,
     binders: Vec<BinderLevel>,
@@ -109,6 +121,8 @@ struct SymbolMangler<'tcx> {
     paths: FxHashMap<(DefId, &'tcx [GenericArg<'tcx>]), usize>,
     types: FxHashMap<Ty<'tcx>, usize>,
     consts: FxHashMap<ty::Const<'tcx>, usize>,
+
+    wrapper_level: GrammarFeatureLevel,
 }
 
 impl<'tcx> SymbolMangler<'tcx> {
@@ -191,6 +205,75 @@ impl<'tcx> SymbolMangler<'tcx> {
         self.binders.pop();
 
         Ok(())
+    }
+
+    fn required_feature_level_for_const(&self, ct: ty::Const<'tcx>) -> GrammarFeatureLevel {
+        let ct = ct.normalize(self.tcx, ty::ParamEnv::reveal_all());
+        match ct.kind() {
+            ty::ConstKind::Value(_) => {}
+
+            ty::ConstKind::Unevaluated(_)
+            | ty::ConstKind::Expr(_)
+            | ty::ConstKind::Param(_)
+            | ty::ConstKind::Infer(_)
+            | ty::ConstKind::Bound(..)
+            | ty::ConstKind::Placeholder(_)
+            | ty::ConstKind::Error(_) => {
+                return GrammarFeatureLevel::BASE_LINE;
+            }
+        }
+
+        let ty = ct.ty();
+
+        match ty.kind() {
+            ty::Uint(_) | ty::Int(_) | ty::Bool | ty::Char => GrammarFeatureLevel::BASE_LINE,
+            _ => GrammarFeatureLevel::COMPLEX_CONST_GENERICS,
+        }
+    }
+
+    fn wrapped(
+        &mut self,
+        level: GrammarFeatureLevel,
+        f: &mut dyn FnMut(&mut Self) -> Result<(), PrintError>,
+    ) -> Result<(), PrintError> {
+        if self.wrapper_level >= level {
+            return f(self);
+        }
+
+        self.out.push('C');
+        let backup = self.clone();
+
+        let mut digit_count = 2;
+
+        for _iteration in 0..10 {
+            self.wrapper_level = level;
+            let digit_range = self.out.len()..self.out.len() + digit_count;
+            for _ in 0..digit_count {
+                self.out.push('#');
+            }
+
+            self.out.push('_');
+
+            let start = self.out.len();
+
+            f(self)?;
+
+            let end = self.out.len();
+            let fragment_length = format!("{}", end - start);
+
+            // FIXME: Add check if any back references to interior were made. If
+            //        not, we can just shift everything without remangling.
+            if fragment_length.len() == digit_count {
+                self.out.replace_range(digit_range, &fragment_length);
+                self.wrapper_level = backup.wrapper_level;
+                return Ok(());
+            }
+
+            *self = backup.clone();
+            digit_count = fragment_length.len();
+        }
+
+        Err(PrintError::default())
     }
 }
 
@@ -813,8 +896,12 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
                     ty.print(self)?;
                 }
                 GenericArgKind::Const(c) => {
-                    self.push("K");
-                    c.print(self)?;
+                    let required_feature_level = self.required_feature_level_for_const(c);
+
+                    self.wrapped(required_feature_level, &mut |this| {
+                        this.push("K");
+                        c.print(this)
+                    })?;
                 }
             }
         }

@@ -13,7 +13,7 @@ itertools = "0.12"
 libc = "0.2"
 measureme = "11"
 object = { version = "0.32.0", default-features = false, features = ["std", "read"] }
-rustc-demangle = "0.1.21"
+rustc-demangle = { git = "https://github.com/michaelwoerister/rustc-demangle.git", branch = "skip_unknown" }
 rustc_ast = { path = "../rustc_ast" }
 rustc_attr = { path = "../rustc_attr" }
 rustc_codegen_ssa = { path = "../rustc_codegen_ssa" }

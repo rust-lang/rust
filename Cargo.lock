@@ -293,7 +293,7 @@ dependencies = [
  "libc",
  "miniz_oxide",
  "object 0.32.2",
- "rustc-demangle",
+ "rustc-demangle 0.1.24",
 ]
 
 [[package]]
@@ -840,7 +840,7 @@ dependencies = [
  "md-5",
  "miniz_oxide",
  "regex",
- "rustc-demangle",
+ "rustc-demangle 0.1.25",
 ]
 
 [[package]]
@@ -3246,7 +3246,7 @@ name = "rust-demangler"
 version = "0.0.1"
 dependencies = [
  "regex",
- "rustc-demangle",
+ "rustc-demangle 0.1.24",
 ]
 
 [[package]]
@@ -3279,6 +3279,11 @@ dependencies = [
  "compiler_builtins",
  "rustc-std-workspace-core",
 ]
+
+[[package]]
+name = "rustc-demangle"
+version = "0.1.25"
+source = "git+https://github.com/michaelwoerister/rustc-demangle.git?branch=skip_unknown#7e674e483a7c61803edc8d59f2641a4ad52a1a30"
 
 [[package]]
 name = "rustc-hash"
@@ -3551,7 +3556,7 @@ dependencies = [
  "libc",
  "measureme",
  "object 0.32.2",
- "rustc-demangle",
+ "rustc-demangle 0.1.25",
  "rustc_ast",
  "rustc_attr",
  "rustc_codegen_ssa",
@@ -4553,7 +4558,7 @@ name = "rustc_symbol_mangling"
 version = "0.0.0"
 dependencies = [
  "punycode",
- "rustc-demangle",
+ "rustc-demangle 0.1.25",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_hir",
@@ -5147,7 +5152,7 @@ dependencies = [
  "r-efi-alloc",
  "rand",
  "rand_xorshift",
- "rustc-demangle",
+ "rustc-demangle 0.1.24",
  "std_detect",
  "unwind",
  "wasi",
