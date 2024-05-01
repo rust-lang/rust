@@ -2,6 +2,7 @@ use crate::autoderef::Autoderef;
 use crate::collect::CollectItemTypesVisitor;
 use crate::constrained_generic_params::{identify_constrained_generic_params, Parameter};
 use crate::errors;
+use crate::fluent_generated as fluent;
 
 use hir::intravisit::Visitor;
 use rustc_ast as ast;
@@ -1636,10 +1637,6 @@ fn check_fn_or_method<'tcx>(
     }
 }
 
-const HELP_FOR_SELF_TYPE: &str = "consider changing to `self`, `&self`, `&mut self`, `self: Box<Self>`, \
-     `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one \
-     of the previous types except `Self`)";
-
 #[instrument(level = "debug", skip(wfcx))]
 fn check_method_receiver<'tcx>(
     wfcx: &WfCheckingCtxt<'_, 'tcx>,
@@ -1675,7 +1672,7 @@ fn check_method_receiver<'tcx>(
     if tcx.features().arbitrary_self_types {
         if !receiver_is_valid(wfcx, span, receiver_ty, self_ty, true) {
             // Report error; `arbitrary_self_types` was enabled.
-            return Err(e0307(tcx, span, receiver_ty));
+            return Err(tcx.dcx().emit_err(errors::InvalidReceiverTy { span, receiver_ty }));
         }
     } else {
         if !receiver_is_valid(wfcx, span, receiver_ty, self_ty, false) {
@@ -1690,22 +1687,15 @@ fn check_method_receiver<'tcx>(
                          the `arbitrary_self_types` feature",
                     ),
                 )
-                .with_help(HELP_FOR_SELF_TYPE)
+                .with_help(fluent::hir_analysis_invalid_receiver_ty_help)
                 .emit()
             } else {
                 // Report error; would not have worked with `arbitrary_self_types`.
-                e0307(tcx, span, receiver_ty)
+                tcx.dcx().emit_err(errors::InvalidReceiverTy { span, receiver_ty })
             });
         }
     }
     Ok(())
-}
-
-fn e0307(tcx: TyCtxt<'_>, span: Span, receiver_ty: Ty<'_>) -> ErrorGuaranteed {
-    struct_span_code_err!(tcx.dcx(), span, E0307, "invalid `self` parameter type: {receiver_ty}")
-        .with_note("type of `self` must be `Self` or a type that dereferences to it")
-        .with_help(HELP_FOR_SELF_TYPE)
-        .emit()
 }
 
 /// Returns whether `receiver_ty` would be considered a valid receiver type for `self_ty`. If

@@ -11,7 +11,7 @@ pub use rustc_middle::traits::specialization_graph::*;
 
 #[derive(Copy, Clone, Debug)]
 pub enum FutureCompatOverlapErrorKind {
-    Issue33140,
+    OrderDepTraitObjects,
     LeakCheck,
 }
 
@@ -150,10 +150,10 @@ impl<'tcx> Children {
                 {
                     match overlap_kind {
                         ty::ImplOverlapKind::Permitted { marker: _ } => {}
-                        ty::ImplOverlapKind::Issue33140 => {
+                        ty::ImplOverlapKind::FutureCompatOrderDepTraitObjects => {
                             *last_lint_mut = Some(FutureCompatOverlapError {
                                 error: create_overlap_error(overlap),
-                                kind: FutureCompatOverlapErrorKind::Issue33140,
+                                kind: FutureCompatOverlapErrorKind::OrderDepTraitObjects,
                             });
                         }
                     }

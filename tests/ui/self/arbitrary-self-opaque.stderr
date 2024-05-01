@@ -6,7 +6,7 @@ LL | type Bar = impl Sized;
    |
    = note: `Bar` must be used in combination with a concrete type within the same module
 
-error[E0307]: invalid `self` parameter type: Bar
+error[E0307]: invalid `self` parameter type: `Bar`
   --> $DIR/arbitrary-self-opaque.rs:8:18
    |
 LL |     fn foo(self: Bar) {}
