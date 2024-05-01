@@ -220,17 +220,12 @@ pub struct EscapeDefault(escape::EscapeIterInner<10>);
 impl EscapeDefault {
     #[inline]
     const fn printable(c: ascii::Char) -> Self {
-        Self::ascii(c.to_u8())
+        Self(escape::EscapeIterInner::ascii(c.to_u8()))
     }
 
     #[inline]
     const fn backslash(c: ascii::Char) -> Self {
         Self(escape::EscapeIterInner::backslash(c))
-    }
-
-    #[inline]
-    const fn ascii(c: u8) -> Self {
-        Self(escape::EscapeIterInner::ascii(c))
     }
 
     #[inline]

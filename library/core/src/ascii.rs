@@ -102,7 +102,7 @@ impl EscapeDefault {
 
     #[inline]
     pub(crate) fn empty() -> Self {
-        EscapeDefault(escape::EscapeIterInner::empty())
+        Self(escape::EscapeIterInner::empty())
     }
 
     #[inline]

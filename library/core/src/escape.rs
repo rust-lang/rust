@@ -7,7 +7,7 @@ use crate::ops::Range;
 const HEX_DIGITS: [ascii::Char; 16] = *b"0123456789abcdef".as_ascii().unwrap();
 
 #[inline]
-const fn backslash<const N: usize>(a: ascii::Char) -> ([ascii::Char; N], u8) {
+const fn backslash<const N: usize>(a: ascii::Char) -> ([ascii::Char; N], Range<u8>) {
     const { assert!(N >= 2) };
 
     let mut output = [ascii::Char::Null; N];
@@ -15,13 +15,13 @@ const fn backslash<const N: usize>(a: ascii::Char) -> ([ascii::Char; N], u8) {
     output[0] = ascii::Char::ReverseSolidus;
     output[1] = a;
 
-    (output, 2)
+    (output, 0..2)
 }
 
 /// Escapes an ASCII character.
 ///
 /// Returns a buffer and the length of the escaped representation.
-const fn escape_ascii<const N: usize>(byte: u8) -> ([ascii::Char; N], u8) {
+const fn escape_ascii<const N: usize>(byte: u8) -> ([ascii::Char; N], Range<u8>) {
     const { assert!(N >= 4) };
 
     match byte {
@@ -38,7 +38,7 @@ const fn escape_ascii<const N: usize>(byte: u8) -> ([ascii::Char; N], u8) {
                 && !byte.is_ascii_control()
             {
                 output[0] = c;
-                (output, 1)
+                (output, 0..1)
             } else {
                 let hi = HEX_DIGITS[(byte >> 4) as usize];
                 let lo = HEX_DIGITS[(byte & 0xf) as usize];
@@ -48,7 +48,7 @@ const fn escape_ascii<const N: usize>(byte: u8) -> ([ascii::Char; N], u8) {
                 output[2] = hi;
                 output[3] = lo;
 
-                (output, 4)
+                (output, 0..4)
             }
         }
     }
@@ -57,34 +57,28 @@ const fn escape_ascii<const N: usize>(byte: u8) -> ([ascii::Char; N], u8) {
 /// Escapes a character `\u{NNNN}` representation.
 ///
 /// Returns a buffer and the length of the escaped representation.
-const fn escape_unicode<const N: usize>(c: char) -> ([ascii::Char; N], u8) {
-    const { assert!(N >= 10) };
+const fn escape_unicode<const N: usize>(c: char) -> ([ascii::Char; N], Range<u8>) {
+    const { assert!(N >= 10 && N < u8::MAX as usize) };
 
-    let c = c as u32;
+    let c = u32::from(c);
 
     // OR-ing `1` ensures that for `c == 0` the code computes that
     // one digit should be printed.
-    let u_len = (8 - (c | 1).leading_zeros() / 4) as usize;
-
-    let closing_paren_offset = 3 + u_len;
+    let start = (c | 1).leading_zeros() as usize / 4 - 2;
 
     let mut output = [ascii::Char::Null; N];
+    output[3] = HEX_DIGITS[((c >> 20) & 15) as usize];
+    output[4] = HEX_DIGITS[((c >> 16) & 15) as usize];
+    output[5] = HEX_DIGITS[((c >> 12) & 15) as usize];
+    output[6] = HEX_DIGITS[((c >> 8) & 15) as usize];
+    output[7] = HEX_DIGITS[((c >> 4) & 15) as usize];
+    output[8] = HEX_DIGITS[((c >> 0) & 15) as usize];
+    output[9] = ascii::Char::RightCurlyBracket;
+    output[start + 0] = ascii::Char::ReverseSolidus;
+    output[start + 1] = ascii::Char::SmallU;
+    output[start + 2] = ascii::Char::LeftCurlyBracket;
 
-    output[0] = ascii::Char::ReverseSolidus;
-    output[1] = ascii::Char::SmallU;
-    output[2] = ascii::Char::LeftCurlyBracket;
-
-    output[3 + u_len.saturating_sub(6)] = HEX_DIGITS[((c >> 20) & 0x0f) as usize];
-    output[3 + u_len.saturating_sub(5)] = HEX_DIGITS[((c >> 16) & 0x0f) as usize];
-    output[3 + u_len.saturating_sub(4)] = HEX_DIGITS[((c >> 12) & 0x0f) as usize];
-    output[3 + u_len.saturating_sub(3)] = HEX_DIGITS[((c >> 8) & 0x0f) as usize];
-    output[3 + u_len.saturating_sub(2)] = HEX_DIGITS[((c >> 4) & 0x0f) as usize];
-    output[3 + u_len.saturating_sub(1)] = HEX_DIGITS[((c >> 0) & 0x0f) as usize];
-
-    output[closing_paren_offset] = ascii::Char::RightCurlyBracket;
-
-    let len = (closing_paren_offset + 1) as u8;
-    (output, len)
+    (output, (start as u8)..(N as u8))
 }
 
 /// An iterator over an fixed-size array.
@@ -102,18 +96,18 @@ pub(crate) struct EscapeIterInner<const N: usize> {
 
 impl<const N: usize> EscapeIterInner<N> {
     pub const fn backslash(c: ascii::Char) -> Self {
-        let (data, len) = backslash(c);
-        Self { data, alive: 0..len }
+        let (data, range) = backslash(c);
+        Self { data, alive: range }
     }
 
     pub const fn ascii(c: u8) -> Self {
-        let (data, len) = escape_ascii(c);
-        Self { data, alive: 0..len }
+        let (data, range) = escape_ascii(c);
+        Self { data, alive: range }
     }
 
     pub const fn unicode(c: char) -> Self {
-        let (data, len) = escape_unicode(c);
-        Self { data, alive: 0..len }
+        let (data, range) = escape_unicode(c);
+        Self { data, alive: range }
     }
 
     #[inline]
@@ -121,6 +115,7 @@ impl<const N: usize> EscapeIterInner<N> {
         Self { data: [ascii::Char::Null; N], alive: 0..0 }
     }
 
+    #[inline]
     pub fn as_ascii(&self) -> &[ascii::Char] {
         // SAFETY: `self.alive` is guaranteed to be a valid range for indexing `self.data`.
         unsafe {
