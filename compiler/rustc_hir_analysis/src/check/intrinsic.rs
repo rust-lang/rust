@@ -460,7 +460,7 @@ pub fn check_intrinsic_type(
             }
             sym::unchecked_shl | sym::unchecked_shr => (2, 0, vec![param(0), param(1)], param(0)),
             sym::rotate_left | sym::rotate_right => (1, 0, vec![param(0), tcx.types.u32], param(0)),
-            sym::unchecked_add | sym::unchecked_sub | sym::unchecked_mul => {
+            sym::unchecked_add | sym::unchecked_sub | sym::unchecked_mul | sym::disjoint_bitor => {
                 (1, 0, vec![param(0), param(0)], param(0))
             }
             sym::wrapping_add | sym::wrapping_sub | sym::wrapping_mul => {

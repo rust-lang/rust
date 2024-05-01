@@ -2311,6 +2311,16 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     pub fn unchecked_mul<T: Copy>(x: T, y: T) -> T;
 
+    /// Performs an unchecked disjoint bitor operation. Equivalent to normal
+    /// bitor and bitxor operations, triggering undefined behavior if their
+    /// results differ.
+    ///
+    /// The stable counterpart of this intrinsic is `unchecked_disjoint_bitor`
+    /// on the various integer types, such as [`u16::unchecked_disjoint_bitor`]
+    /// and [`i64::disjoint_bitor`].
+    #[rustc_nounwind]
+    pub fn disjoint_bitor<T: Copy>(x: T, y: T) -> T;
+
     /// Performs rotate left.
     ///
     /// Note that, unlike most intrinsics, this is safe to call;
