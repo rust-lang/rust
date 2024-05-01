@@ -1306,6 +1306,15 @@ If you want to ignore every file under the directory where you put your rustfmt.
 ignore = ["/"]
 ```
 
+If you want to allow specific paths that would otherwise be ignored, prefix those paths with a `!`:
+
+```toml
+ignore = ["bar_dir/*", "!bar_dir/*/what.rs"]
+```
+
+In this case, all files under `bar_dir` will be ignored, except files like `bar_dir/sub/what.rs`
+or `bar_dir/another/what.rs`.
+
 ## `imports_indent`
 
 Indent style of imports
