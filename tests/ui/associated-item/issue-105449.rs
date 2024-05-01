@@ -1,13 +1,14 @@
-//@ check-pass
 //@ compile-flags: -C debug_assertions=yes -Zunstable-options
 
-#[allow(dead_code)]
+// This is a mutated variant of #66768 which has been removed
+// as it no longer tests the original issue.
 fn problematic_function<Space>()
 where
     DefaultAlloc: FinAllok<R1, Space>,
 {
     let e = Edge2dElement;
     let _ = Into::<Point>::into(e.map_reference_coords());
+    //~^ ERROR the trait bound `Point: From<(Ure, R1, MStorage)>` is not satisfied
 }
 impl<N> Allocator<N, R0> for DefaultAlloc {
     type Buffer = MStorage;

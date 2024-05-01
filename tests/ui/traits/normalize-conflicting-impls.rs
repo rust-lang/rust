@@ -1,8 +1,11 @@
+// This is a mutated variant of #66768 which has been removed
+// as it no longer tests the original issue.
 fn problematic_function<Space>(material_surface_element: ())
 where
     DefaultAllocator: FiniteElementAllocator<(), Space>,
 {
     let _: Point2<f64> = material_surface_element.map_reference_coords().into();
+    //~^ ERROR the trait bound `Point<f64, u32>: From<Matrix<()>>` is not satisfied
 }
 
 impl<N, R> Allocator<N, R> for DefaultAllocator
