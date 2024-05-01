@@ -35,6 +35,16 @@ declare_clippy_lint! {
     ///     println!("{}", elem);
     /// }
     /// ```
+    ///
+    /// ### Known Problems
+    /// When doing things such as:
+    /// ```ignore
+    /// let v = vec![0, 1, 2];
+    /// v.iter().for_each(|elem| unsafe {
+    ///     libc::printf(c"%d\n".as_ptr(), elem);
+    /// });
+    /// ```
+    /// This lint will not trigger.
     #[clippy::version = "1.53.0"]
     pub NEEDLESS_FOR_EACH,
     pedantic,
