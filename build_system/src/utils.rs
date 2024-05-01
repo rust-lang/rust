@@ -1,9 +1,41 @@
 use std::collections::HashMap;
+#[cfg(unix)]
+use std::ffi::c_int;
 use std::ffi::OsStr;
 use std::fmt::Debug;
 use std::fs;
+#[cfg(unix)]
+use std::os::unix::process::ExitStatusExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitStatus, Output};
+
+#[cfg(unix)]
+extern "C" {
+    fn raise(signal: c_int) -> c_int;
+}
+
+fn exec_command(
+    input: &[&dyn AsRef<OsStr>],
+    cwd: Option<&Path>,
+    env: Option<&HashMap<String, String>>,
+) -> Result<ExitStatus, String> {
+    let status = get_command_inner(input, cwd, env)
+        .spawn()
+        .map_err(|e| command_error(input, &cwd, e))?
+        .wait()
+        .map_err(|e| command_error(input, &cwd, e))?;
+    #[cfg(unix)]
+    {
+        if let Some(signal) = status.signal() {
+            unsafe {
+                raise(signal as _);
+            }
+            // In case the signal didn't kill the current process.
+            return Err(command_error(input, &cwd, format!("Process received signal {}", signal)));
+        }
+    }
+    Ok(status)
+}
 
 fn get_command_inner(
     input: &[&dyn AsRef<OsStr>],
@@ -89,11 +121,7 @@ pub fn run_command_with_output(
     input: &[&dyn AsRef<OsStr>],
     cwd: Option<&Path>,
 ) -> Result<(), String> {
-    let exit_status = get_command_inner(input, cwd, None)
-        .spawn()
-        .map_err(|e| command_error(input, &cwd, e))?
-        .wait()
-        .map_err(|e| command_error(input, &cwd, e))?;
+    let exit_status = exec_command(input, cwd, None)?;
     check_exit_status(input, cwd, exit_status, None, true)?;
     Ok(())
 }
@@ -103,11 +131,7 @@ pub fn run_command_with_output_and_env(
     cwd: Option<&Path>,
     env: Option<&HashMap<String, String>>,
 ) -> Result<(), String> {
-    let exit_status = get_command_inner(input, cwd, env)
-        .spawn()
-        .map_err(|e| command_error(input, &cwd, e))?
-        .wait()
-        .map_err(|e| command_error(input, &cwd, e))?;
+    let exit_status = exec_command(input, cwd, env)?;
     check_exit_status(input, cwd, exit_status, None, true)?;
     Ok(())
 }
@@ -117,11 +141,7 @@ pub fn run_command_with_output_and_env_no_err(
     cwd: Option<&Path>,
     env: Option<&HashMap<String, String>>,
 ) -> Result<(), String> {
-    let exit_status = get_command_inner(input, cwd, env)
-        .spawn()
-        .map_err(|e| command_error(input, &cwd, e))?
-        .wait()
-        .map_err(|e| command_error(input, &cwd, e))?;
+    let exit_status = exec_command(input, cwd, env)?;
     check_exit_status(input, cwd, exit_status, None, false)?;
     Ok(())
 }
