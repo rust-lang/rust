@@ -79,7 +79,7 @@ LL |             let x = var;
    |                     variable moved due to use in closure
    |                     move occurs because `var` has type `NotCopyableButCloneable`, which does not implement the `Copy` trait
    |
-help: clone the value before moving it into the closure
+help: consider cloning the value before moving it into the closure
    |
 LL ~         {
 LL +         let value = var.clone();
