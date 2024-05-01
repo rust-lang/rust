@@ -28,7 +28,7 @@ Examples:
     cargo miri run
     cargo miri test -- test-suite-filter
 
-    cargo miri setup --print sysroot
+    cargo miri setup --print-sysroot
         This will print the path to the generated sysroot (and nothing else) on stdout.
         stderr will still contain progress information about how the build is doing.
 
