@@ -112,14 +112,7 @@ pub(crate) fn look_for_tests<'tcx>(cx: &DocContext<'tcx>, dox: &str, item: &Item
 
     let mut tests = Tests { found_tests: 0 };
 
-    find_testable_code(
-        dox,
-        &mut tests,
-        ErrorCodes::No,
-        false,
-        None,
-        cx.tcx.features().custom_code_classes_in_docs,
-    );
+    find_testable_code(dox, &mut tests, ErrorCodes::No, false, None);
 
     if tests.found_tests == 0 && cx.tcx.features().rustdoc_missing_doc_code_examples {
         if should_have_doc_example(cx, item) {

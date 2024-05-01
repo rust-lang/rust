@@ -138,6 +138,8 @@ declare_features! (
     (accepted, copy_closures, "1.26.0", Some(44490)),
     /// Allows `crate` in paths.
     (accepted, crate_in_paths, "1.30.0", Some(45477)),
+    /// Allows users to provide classes for fenced code block using `class:classname`.
+    (accepted, custom_code_classes_in_docs, "CURRENT_RUSTC_VERSION", Some(79483)),
     /// Allows using `#[debugger_visualizer]` attribute.
     (accepted, debugger_visualizer, "1.71.0", Some(95939)),
     /// Allows rustc to inject a default alloc_error_handler
