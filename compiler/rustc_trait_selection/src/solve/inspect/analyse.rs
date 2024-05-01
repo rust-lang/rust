@@ -41,19 +41,18 @@ pub struct InspectGoal<'a, 'tcx> {
     goal: Goal<'tcx, ty::Predicate<'tcx>>,
     result: Result<Certainty, NoSolution>,
     evaluation_kind: inspect::CanonicalGoalEvaluationKind<'tcx>,
-    /// The expected term of a `NormalizesTo` goal. It gets
-    /// replaced with an unconstrained inference variable when
-    /// computing `NormalizesTo` goals and we return the nested
-    /// goals to the caller, who also equates the actual term
-    /// with the expected.
-    ///
-    /// This is an implementation detail of the trait solver and
-    /// not something we want to leak to users. We therefore
-    /// treat `NormalizesTo` goals as if they apply the expected
-    /// type at the end of each candidate.
     normalizes_to_term_hack: Option<NormalizesToTermHack<'tcx>>,
 }
 
+/// The expected term of a `NormalizesTo` goal gets replaced
+/// with an unconstrained inference variable when computing
+/// `NormalizesTo` goals and we return the nested goals to the
+/// caller, who also equates the actual term with the expected.
+///
+/// This is an implementation detail of the trait solver and
+/// not something we want to leak to users. We therefore
+/// treat `NormalizesTo` goals as if they apply the expected
+/// type at the end of each candidate.
 #[derive(Copy, Clone)]
 struct NormalizesToTermHack<'tcx> {
     term: ty::Term<'tcx>,
@@ -61,7 +60,10 @@ struct NormalizesToTermHack<'tcx> {
 }
 
 impl<'tcx> NormalizesToTermHack<'tcx> {
-    fn relate(
+    /// Relate the `term` with the new `unconstrained_term` created
+    /// when computing the proof tree for this `NormalizesTo` goals.
+    /// This handles nested obligations.
+    fn constrain(
         self,
         infcx: &InferCtxt<'tcx>,
         span: Span,
@@ -166,7 +168,7 @@ impl<'a, 'tcx> InspectCandidate<'a, 'tcx> {
             // FIXME: We ignore the expected term of `NormalizesTo` goals
             // when computing the result of its candidates. This is
             // scuffed.
-            let _ = term_hack.relate(infcx, span, param_env);
+            let _ = term_hack.constrain(infcx, span, param_env);
         }
 
         instantiated_goals
@@ -326,7 +328,7 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
         let result = evaluation.result.and_then(|ok| {
             if let Some(term_hack) = normalizes_to_term_hack {
                 infcx
-                    .probe(|_| term_hack.relate(infcx, DUMMY_SP, uncanonicalized_goal.param_env))
+                    .probe(|_| term_hack.constrain(infcx, DUMMY_SP, uncanonicalized_goal.param_env))
                     .map(|certainty| ok.value.certainty.unify_with(certainty))
             } else {
                 Ok(ok.value.certainty)
