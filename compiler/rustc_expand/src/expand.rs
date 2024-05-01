@@ -471,7 +471,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             self.cx.force_mode = force;
 
             let fragment_kind = invoc.fragment_kind;
-            let (expanded_fragment, new_invocations) = match self.expand_invoc(invoc, &ext.kind) {
+            match self.expand_invoc(invoc, &ext.kind) {
                 ExpandResult::Ready(fragment) => {
                     let mut derive_invocations = Vec::new();
                     let derive_placeholders = self
@@ -503,13 +503,19 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         })
                         .unwrap_or_default();
 
-                    let (fragment, collected_invocations) =
+                    let (expanded_fragment, collected_invocations) =
                         self.collect_invocations(fragment, &derive_placeholders);
                     // We choose to expand any derive invocations associated with this macro
                     // invocation *before* any macro invocations collected from the output
                     // fragment.
                     derive_invocations.extend(collected_invocations);
-                    (fragment, derive_invocations)
+
+                    progress = true;
+                    if expanded_fragments.len() < depth {
+                        expanded_fragments.push(Vec::new());
+                    }
+                    expanded_fragments[depth - 1].push((expn_id, expanded_fragment));
+                    invocations.extend(derive_invocations.into_iter().rev());
                 }
                 ExpandResult::Retry(invoc) => {
                     if force {
@@ -520,17 +526,9 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     } else {
                         // Cannot expand, will retry this invocation later.
                         undetermined_invocations.push((invoc, Some(ext)));
-                        continue;
                     }
                 }
-            };
-
-            progress = true;
-            if expanded_fragments.len() < depth {
-                expanded_fragments.push(Vec::new());
             }
-            expanded_fragments[depth - 1].push((expn_id, expanded_fragment));
-            invocations.extend(new_invocations.into_iter().rev());
         }
 
         self.cx.current_expansion = orig_expansion_data;
