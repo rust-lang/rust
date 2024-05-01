@@ -1,5 +1,5 @@
 //@aux-build:proc_macro_attr.rs
-
+#![feature(rustc_attrs)]
 #![warn(clippy::duplicated_attributes)]
 #![cfg(any(unix, windows))]
 #![allow(dead_code)]
@@ -19,6 +19,10 @@ fn foo() {}
 #[cfg(windows)]
 #[cfg(unix)] // cfgs are not handled
 fn bar() {}
+
+// No warning:
+#[rustc_on_unimplemented(on(_Self = "&str", label = "`a"), on(_Self = "alloc::string::String", label = "a"))]
+trait Abc {}
 
 #[proc_macro_attr::duplicated_attr()] // Should not warn!
 fn babar() {}
