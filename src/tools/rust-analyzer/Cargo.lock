@@ -1365,7 +1365,7 @@ dependencies = [
  "perf-event",
  "tikv-jemalloc-ctl",
  "tracing",
- "winapi",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -1634,7 +1634,7 @@ dependencies = [
  "vfs",
  "vfs-notify",
  "walkdir",
- "winapi",
+ "windows-sys 0.52.0",
  "xflags",
  "xshell",
 ]
@@ -1856,7 +1856,7 @@ dependencies = [
  "jod-thread",
  "libc",
  "miow",
- "winapi",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
