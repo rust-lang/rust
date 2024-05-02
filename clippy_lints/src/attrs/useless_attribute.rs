@@ -25,6 +25,7 @@ pub(super) fn check(cx: &LateContext<'_>, item: &Item<'_>, attrs: &[Attribute]) 
                                 || is_word(lint, sym!(unreachable_pub))
                                 || is_word(lint, sym!(unused))
                                 || is_word(lint, sym!(unused_import_braces))
+                                || is_word(lint, sym!(unused_braces))
                                 || extract_clippy_lint(lint).map_or(false, |s| {
                                     matches!(
                                         s.as_str(),

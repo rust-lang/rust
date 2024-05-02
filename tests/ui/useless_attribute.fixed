@@ -86,6 +86,7 @@ mod module {
 
 #[rustfmt::skip]
 #[allow(unused_import_braces)]
+#[allow(unused_braces)]
 use module::{Struct};
 
 fn main() {
