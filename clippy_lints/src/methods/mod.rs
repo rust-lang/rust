@@ -3993,7 +3993,7 @@ declare_clippy_lint! {
     /// let x: Result<u32, ()> = Ok(0);
     /// let y = x.unwrap_or_else(|err| handle_error(err));
     /// ```
-    #[clippy::version = "1.77.0"]
+    #[clippy::version = "1.78.0"]
     pub UNNECESSARY_RESULT_MAP_OR_ELSE,
     suspicious,
     "making no use of the \"map closure\" when calling `.map_or_else(|err| handle_error(err), |n| n)`"
@@ -4027,7 +4027,7 @@ declare_clippy_lint! {
     /// needs_cstr(c"Hello");
     /// unsafe { libc::puts(c"World".as_ptr()) }
     /// ```
-    #[clippy::version = "1.76.0"]
+    #[clippy::version = "1.78.0"]
     pub MANUAL_C_STR_LITERALS,
     pedantic,
     r#"creating a `CStr` through functions when `c""` literals can be used"#

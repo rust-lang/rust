@@ -45,7 +45,7 @@ declare_clippy_lint! {
     ///     a.clone_from(&b);
     /// }
     /// ```
-    #[clippy::version = "1.77.0"]
+    #[clippy::version = "1.78.0"]
     pub ASSIGNING_CLONES,
     perf,
     "assigning the result of cloning may be inefficient"
