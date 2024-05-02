@@ -9,7 +9,7 @@ mod tests;
 
 use self::counters::{CounterIncrementSite, CoverageCounters};
 use self::graph::{BasicCoverageBlock, CoverageGraph};
-use self::mappings::{BcbBranchPair, BcbMapping, BcbMappingKind, CoverageSpans};
+use self::mappings::{BcbBranchPair, CoverageSpans};
 
 use crate::MirPass;
 
@@ -150,12 +150,10 @@ fn create_mappings<'tcx>(
 
     let mut mappings = Vec::new();
 
-    mappings.extend(coverage_spans.mappings.iter().filter_map(
-        |&BcbMapping { kind: bcb_mapping_kind, span }| {
-            let kind = match bcb_mapping_kind {
-                BcbMappingKind::Code(bcb) => MappingKind::Code(term_for_bcb(bcb)),
-            };
+    mappings.extend(coverage_spans.code_mappings.iter().filter_map(
+        |&mappings::CodeMapping { span, bcb }| {
             let code_region = region_for_span(span)?;
+            let kind = MappingKind::Code(term_for_bcb(bcb));
             Some(Mapping { kind, code_region })
         },
     ));

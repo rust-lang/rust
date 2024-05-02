@@ -13,22 +13,14 @@ use crate::coverage::spans::{
 };
 use crate::coverage::ExtractedHirInfo;
 
-#[derive(Clone, Copy, Debug)]
-pub(super) enum BcbMappingKind {
-    /// Associates an ordinary executable code span with its corresponding BCB.
-    Code(BasicCoverageBlock),
-    //
-    // Branch and MC/DC mappings are more complex, so they are represented
-    // separately.
-}
-
+/// Associates an ordinary executable code span with its corresponding BCB.
 #[derive(Debug)]
-pub(super) struct BcbMapping {
-    pub(super) kind: BcbMappingKind,
+pub(super) struct CodeMapping {
     pub(super) span: Span,
+    pub(super) bcb: BasicCoverageBlock,
 }
 
-/// This is separate from [`BcbMappingKind`] to help prepare for larger changes
+/// This is separate from [`MCDCBranch`] to help prepare for larger changes
 /// that will be needed for improved branch coverage in the future.
 /// (See <https://github.com/rust-lang/rust/pull/124217>.)
 #[derive(Debug)]
@@ -62,7 +54,7 @@ pub(super) struct MCDCDecision {
 
 pub(super) struct CoverageSpans {
     bcb_has_mappings: BitSet<BasicCoverageBlock>,
-    pub(super) mappings: Vec<BcbMapping>,
+    pub(super) code_mappings: Vec<CodeMapping>,
     pub(super) branch_pairs: Vec<BcbBranchPair>,
     test_vector_bitmap_bytes: u32,
     pub(super) mcdc_branches: Vec<MCDCBranch>,
@@ -88,7 +80,7 @@ pub(super) fn generate_coverage_spans(
     hir_info: &ExtractedHirInfo,
     basic_coverage_blocks: &CoverageGraph,
 ) -> Option<CoverageSpans> {
-    let mut mappings = vec![];
+    let mut code_mappings = vec![];
     let mut branch_pairs = vec![];
     let mut mcdc_branches = vec![];
     let mut mcdc_decisions = vec![];
@@ -99,10 +91,10 @@ pub(super) fn generate_coverage_spans(
         // outer function will be unhelpful, so just keep the signature span
         // and ignore all of the spans in the MIR body.
         if let Some(span) = hir_info.fn_sig_span_extended {
-            mappings.push(BcbMapping { kind: BcbMappingKind::Code(START_BCB), span });
+            code_mappings.push(CodeMapping { span, bcb: START_BCB });
         }
     } else {
-        extract_refined_covspans(mir_body, hir_info, basic_coverage_blocks, &mut mappings);
+        extract_refined_covspans(mir_body, hir_info, basic_coverage_blocks, &mut code_mappings);
 
         branch_pairs.extend(extract_branch_pairs(mir_body, hir_info, basic_coverage_blocks));
 
@@ -115,7 +107,7 @@ pub(super) fn generate_coverage_spans(
         );
     }
 
-    if mappings.is_empty()
+    if code_mappings.is_empty()
         && branch_pairs.is_empty()
         && mcdc_branches.is_empty()
         && mcdc_decisions.is_empty()
@@ -129,10 +121,8 @@ pub(super) fn generate_coverage_spans(
         bcb_has_mappings.insert(bcb);
     };
 
-    for &BcbMapping { kind, span: _ } in &mappings {
-        match kind {
-            BcbMappingKind::Code(bcb) => insert(bcb),
-        }
+    for &CodeMapping { span: _, bcb } in &code_mappings {
+        insert(bcb);
     }
     for &BcbBranchPair { true_bcb, false_bcb, .. } in &branch_pairs {
         insert(true_bcb);
@@ -154,7 +144,7 @@ pub(super) fn generate_coverage_spans(
 
     Some(CoverageSpans {
         bcb_has_mappings,
-        mappings,
+        code_mappings,
         branch_pairs,
         test_vector_bitmap_bytes,
         mcdc_branches,
