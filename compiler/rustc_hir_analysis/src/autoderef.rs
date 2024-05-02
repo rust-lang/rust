@@ -188,7 +188,7 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
             return None;
         }
 
-        Some((normalized_ty, ocx.pending_obligations()))
+        Some((normalized_ty, ocx.into_pending_obligations()))
     }
 
     /// Returns the final type we ended up with, which may be an inference

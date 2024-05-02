@@ -195,8 +195,15 @@ impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
         self.engine.borrow_mut().select_all_or_error(self.infcx)
     }
 
+    /// Returns the not-yet-processed and stalled obligations from the
+    /// `ObligationCtxt`.
+    ///
+    /// Takes ownership of the context as doing operations such as
+    /// [`ObligationCtxt::eq`] afterwards will result in other obligations
+    /// getting ignored. You can make a new `ObligationCtxt` if this
+    /// needs to be done in a loop, for example.
     #[must_use]
-    pub fn pending_obligations(&self) -> Vec<PredicateObligation<'tcx>> {
+    pub fn into_pending_obligations(self) -> Vec<PredicateObligation<'tcx>> {
         self.engine.borrow().pending_obligations()
     }
 

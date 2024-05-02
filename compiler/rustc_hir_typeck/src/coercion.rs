@@ -165,7 +165,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                     let ocx = ObligationCtxt::new(self);
                     ocx.register_obligations(obligations);
                     if ocx.select_where_possible().is_empty() {
-                        Ok(InferOk { value, obligations: ocx.pending_obligations() })
+                        Ok(InferOk { value, obligations: ocx.into_pending_obligations() })
                     } else {
                         Err(TypeError::Mismatch)
                     }
@@ -633,7 +633,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                     if !ocx.select_where_possible().is_empty() {
                         return Err(TypeError::Mismatch);
                     }
-                    coercion.obligations.extend(ocx.pending_obligations());
+                    coercion.obligations.extend(ocx.into_pending_obligations());
                     continue;
                 }
                 _ => {
