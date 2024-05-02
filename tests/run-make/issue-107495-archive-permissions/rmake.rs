@@ -2,7 +2,6 @@
 
 #[cfg(unix)]
 extern crate libc;
-extern crate run_make_support;
 
 use run_make_support::{aux_build, tmp_dir};
 use std::fs;

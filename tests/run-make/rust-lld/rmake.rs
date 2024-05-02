@@ -5,8 +5,6 @@
 //@ ignore-msvc
 //@ ignore-s390x lld does not yet support s390x as target
 
-extern crate run_make_support;
-
 use run_make_support::regex::Regex;
 use run_make_support::rustc;
 use std::process::Output;

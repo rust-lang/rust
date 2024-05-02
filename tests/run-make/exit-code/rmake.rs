@@ -1,7 +1,5 @@
 // Test that we exit with the correct exit code for successful / unsuccessful / ICE compilations
 
-extern crate run_make_support;
-
 use run_make_support::{rustc, rustdoc, tmp_dir};
 
 fn main() {
