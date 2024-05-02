@@ -121,6 +121,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "annotate-snippets"
+version = "0.11.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5a5a59f105fb9635e9eebdc1e29d53e764fa5795b9cf899a638a53e61567ef61"
+dependencies = [
+ "anstyle",
+ "unicode-width",
+]
+
+[[package]]
 name = "ansi_term"
 version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -574,7 +584,7 @@ checksum = "98cc8fbded0c607b7ba9dd60cd98df59af97e84d24e49c8557331cfc26d301ce"
 
 [[package]]
 name = "clippy"
-version = "0.1.79"
+version = "0.1.80"
 dependencies = [
  "anstream",
  "clippy_config",
@@ -595,13 +605,13 @@ dependencies = [
  "termize",
  "tokio",
  "toml 0.7.8",
- "ui_test 0.22.3",
+ "ui_test 0.23.0",
  "walkdir",
 ]
 
 [[package]]
 name = "clippy_config"
-version = "0.1.79"
+version = "0.1.80"
 dependencies = [
  "rustc-semver",
  "serde",
@@ -624,7 +634,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_lints"
-version = "0.1.79"
+version = "0.1.80"
 dependencies = [
  "arrayvec",
  "cargo_metadata 0.18.1",
@@ -649,7 +659,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_utils"
-version = "0.1.79"
+version = "0.1.80"
 dependencies = [
  "arrayvec",
  "clippy_config",
@@ -968,7 +978,7 @@ checksum = "a0afaad2b26fa326569eb264b1363e8ae3357618c43982b3f285f0774ce76b69"
 
 [[package]]
 name = "declare_clippy_lint"
-version = "0.1.79"
+version = "0.1.80"
 dependencies = [
  "itertools 0.12.1",
  "quote",
@@ -5160,9 +5170,9 @@ dependencies = [
 
 [[package]]
 name = "spanned"
-version = "0.1.6"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ad48ded9f0734eca7058107cc170767b8758e41e4088fb0020e7ff7ec6b0d92d"
+checksum = "ccdf4f5590b7e6fbd4f2e80d442789079a6fff7c12ef921a9de358b7b353098e"
 dependencies = [
  "bstr",
  "color-eyre",
@@ -5900,11 +5910,11 @@ dependencies = [
 
 [[package]]
 name = "ui_test"
-version = "0.22.3"
+version = "0.23.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aa577a42db0e211a73c069d7dbcae54bc7473a7c5535a564842cbd8a13c0441e"
+checksum = "29e5f4ffcbab82453958fbf59990e981b8e8a177dcd60c2bd8f9b52c3036a6e1"
 dependencies = [
- "annotate-snippets 0.10.2",
+ "annotate-snippets 0.11.2",
  "anyhow",
  "bstr",
  "cargo-platform",
@@ -5919,7 +5929,7 @@ dependencies = [
  "prettydiff",
  "regex",
  "rustc_version",
- "rustfix 0.6.1",
+ "rustfix 0.8.1",
  "serde",
  "serde_json",
  "spanned",
