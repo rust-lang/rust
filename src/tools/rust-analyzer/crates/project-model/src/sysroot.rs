@@ -4,7 +4,7 @@
 //! but we can't process `.rlib` and need source code instead. The source code
 //! is typically installed with `rustup component add rust-src` command.
 
-use std::{env, fs, iter, ops, process::Command, sync::Arc};
+use std::{env, fs, ops, process::Command, sync::Arc};
 
 use anyhow::{format_err, Result};
 use base_db::CrateName;
@@ -58,13 +58,11 @@ impl Stitched {
     pub(crate) fn public_deps(&self) -> impl Iterator<Item = (CrateName, SysrootCrate, bool)> + '_ {
         // core is added as a dependency before std in order to
         // mimic rustcs dependency order
-        ["core", "alloc", "std"]
-            .into_iter()
-            .zip(iter::repeat(true))
-            .chain(iter::once(("test", false)))
-            .filter_map(move |(name, prelude)| {
+        [("core", true), ("alloc", false), ("std", true), ("test", false)].into_iter().filter_map(
+            move |(name, prelude)| {
                 Some((CrateName::new(name).unwrap(), self.by_name(name)?, prelude))
-            })
+            },
+        )
     }
 
     pub(crate) fn proc_macro(&self) -> Option<SysrootCrate> {

@@ -1413,7 +1413,7 @@ impl SysrootPublicDeps {
     /// Makes `from` depend on the public sysroot crates.
     fn add_to_crate_graph(&self, crate_graph: &mut CrateGraph, from: CrateId) {
         for (name, krate, prelude) in &self.deps {
-            add_dep_with_prelude(crate_graph, from, name.clone(), *krate, *prelude);
+            add_dep_with_prelude(crate_graph, from, name.clone(), *krate, *prelude, true);
         }
     }
 }
@@ -1466,7 +1466,7 @@ fn sysroot_to_crate_graph(
                         | LangCrateOrigin::Std => pub_deps.push((
                             CrateName::normalize_dashes(&lang_crate.to_string()),
                             cid,
-                            !matches!(lang_crate, LangCrateOrigin::Test),
+                            !matches!(lang_crate, LangCrateOrigin::Test | LangCrateOrigin::Alloc),
                         )),
                         LangCrateOrigin::ProcMacro => libproc_macro = Some(cid),
                         LangCrateOrigin::Other => (),
@@ -1567,12 +1567,20 @@ fn add_dep_with_prelude(
     name: CrateName,
     to: CrateId,
     prelude: bool,
+    sysroot: bool,
 ) {
-    add_dep_inner(graph, from, Dependency::with_prelude(name, to, prelude))
+    add_dep_inner(graph, from, Dependency::with_prelude(name, to, prelude, sysroot))
 }
 
 fn add_proc_macro_dep(crate_graph: &mut CrateGraph, from: CrateId, to: CrateId, prelude: bool) {
-    add_dep_with_prelude(crate_graph, from, CrateName::new("proc_macro").unwrap(), to, prelude);
+    add_dep_with_prelude(
+        crate_graph,
+        from,
+        CrateName::new("proc_macro").unwrap(),
+        to,
+        prelude,
+        true,
+    );
 }
 
 fn add_dep_inner(graph: &mut CrateGraph, from: CrateId, dep: Dependency) {

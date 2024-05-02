@@ -50,6 +50,7 @@
                     "libc",
                 ),
                 prelude: true,
+                sysroot: false,
             },
         ],
         origin: Local {
@@ -111,6 +112,7 @@
                     "hello_world",
                 ),
                 prelude: true,
+                sysroot: false,
             },
             Dependency {
                 crate_id: Idx::<CrateData>(4),
@@ -118,6 +120,7 @@
                     "libc",
                 ),
                 prelude: true,
+                sysroot: false,
             },
         ],
         origin: Local {
@@ -179,6 +182,7 @@
                     "hello_world",
                 ),
                 prelude: true,
+                sysroot: false,
             },
             Dependency {
                 crate_id: Idx::<CrateData>(4),
@@ -186,6 +190,7 @@
                     "libc",
                 ),
                 prelude: true,
+                sysroot: false,
             },
         ],
         origin: Local {
@@ -247,6 +252,7 @@
                     "hello_world",
                 ),
                 prelude: true,
+                sysroot: false,
             },
             Dependency {
                 crate_id: Idx::<CrateData>(4),
@@ -254,6 +260,7 @@
                     "libc",
                 ),
                 prelude: true,
+                sysroot: false,
             },
         ],
         origin: Local {
