@@ -270,8 +270,8 @@ mod prim_bool {}
 ///
 /// # Never type fallback
 ///
-/// When the compiler sees a value of type `!` in a [coercion site](https://doc.rust-lang.org/reference/type-coercions.html#coercion-sites), it implicitly inserts a coercion
-/// to allow the type checker to infer any type:
+/// When the compiler sees a value of type `!` in a [coercion site], it implicitly inserts a
+/// coercion to allow the type checker to infer any type:
 ///
 /// ```rust,ignore (illustrative-and-has-placeholders)
 /// // this
@@ -305,13 +305,15 @@ mod prim_bool {}
 ///
 /// This is what is known as "never type fallback".
 ///
-/// Historically, the fallback type was [`()`], causing confusing behavior where `!` spontaneously coerced
-/// to `()`, even when it would not infer `()` without the fallback. There are plans to
-/// change it in the [2024 edition](https://doc.rust-lang.org/nightly/edition-guide/rust-2024/index.html) (and possibly in all editions on a later date); see
+/// Historically, the fallback type was [`()`], causing confusing behavior where `!` spontaneously
+/// coerced to `()`, even when it would not infer `()` without the fallback. There are plans to
+/// change it in the [2024 edition] (and possibly in all editions on a later date); see
 /// [Tracking Issue for making `!` fall back to `!`][fallback-ti].
 ///
+/// [coercion site](https://doc.rust-lang.org/reference/type-coercions.html#coercion-sites)
 /// [`()`]: prim@unit
 /// [fallback-ti]: https://github.com/rust-lang/rust/issues/123748
+/// [2024 edition]: https://doc.rust-lang.org/nightly/edition-guide/rust-2024/index.html
 ///
 #[unstable(feature = "never_type", issue = "35121")]
 mod prim_never {}
