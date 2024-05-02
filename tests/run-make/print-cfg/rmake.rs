@@ -5,8 +5,6 @@
 //!
 //! It also checks that some targets have the correct set cfgs.
 
-extern crate run_make_support;
-
 use std::collections::HashSet;
 use std::ffi::OsString;
 use std::io::BufRead;
