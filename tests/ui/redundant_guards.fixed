@@ -136,6 +136,18 @@ fn f(s: Option<std::ffi::OsString>) {
     }
 }
 
+fn not_matches() {
+    match Some(42) {
+        // The pattern + guard is not equivalent to `Some(42)` because of the `panic!`
+        Some(v)
+            if match v {
+                42 => true,
+                _ => panic!(),
+            } => {},
+        _ => {},
+    }
+}
+
 struct S {
     a: usize,
 }
