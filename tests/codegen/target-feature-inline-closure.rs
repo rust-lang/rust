@@ -1,5 +1,6 @@
 //@ only-x86_64
-//@ compile-flags: -Copt-level=3
+// Set the base cpu explicitly, in case the default has been changed.
+//@ compile-flags: -Copt-level=3 -Ctarget-cpu=x86-64
 
 #![crate_type = "lib"]
 #![feature(target_feature_11)]
