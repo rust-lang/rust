@@ -1991,7 +1991,7 @@ impl<'tcx> Ty<'tcx> {
             ty::Adt(adt_def, _) => {
                 assert!(adt_def.is_union());
 
-                let surface_drop = self.surface_async_dropper_ty(tcx, param_env).unwrap();
+                let surface_drop = self.surface_async_dropper_ty(tcx).unwrap();
 
                 Ty::async_destructor_combinator(tcx, LangItem::AsyncDropFuse)
                     .instantiate(tcx, &[surface_drop.into()])
@@ -2041,7 +2041,7 @@ impl<'tcx> Ty<'tcx> {
             })
             .unwrap();
 
-        let dtor = if let Some(dropper_ty) = self.surface_async_dropper_ty(tcx, param_env) {
+        let dtor = if let Some(dropper_ty) = self.surface_async_dropper_ty(tcx) {
             Ty::async_destructor_combinator(tcx, LangItem::AsyncDropChain)
                 .instantiate(tcx, &[dropper_ty.into(), variants_dtor.into()])
         } else {
@@ -2052,21 +2052,13 @@ impl<'tcx> Ty<'tcx> {
             .instantiate(tcx, &[dtor.into()])
     }
 
-    fn surface_async_dropper_ty(
-        self,
-        tcx: TyCtxt<'tcx>,
-        param_env: ParamEnv<'tcx>,
-    ) -> Option<Ty<'tcx>> {
-        if self.has_surface_async_drop(tcx, param_env) {
-            Some(LangItem::SurfaceAsyncDropInPlace)
-        } else if self.has_surface_drop(tcx, param_env) {
-            Some(LangItem::AsyncDropSurfaceDropInPlace)
-        } else {
-            None
-        }
-        .map(|dropper| {
-            Ty::async_destructor_combinator(tcx, dropper).instantiate(tcx, &[self.into()])
-        })
+    fn surface_async_dropper_ty(self, tcx: TyCtxt<'tcx>) -> Option<Ty<'tcx>> {
+        let adt_def = self.ty_adt_def()?;
+        let dropper = adt_def
+            .async_destructor(tcx)
+            .map(|_| LangItem::SurfaceAsyncDropInPlace)
+            .or_else(|| adt_def.destructor(tcx).map(|_| LangItem::AsyncDropSurfaceDropInPlace))?;
+        Some(Ty::async_destructor_combinator(tcx, dropper).instantiate(tcx, &[self.into()]))
     }
 
     fn async_destructor_combinator(

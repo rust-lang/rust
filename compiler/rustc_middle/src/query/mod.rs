@@ -703,6 +703,11 @@ rustc_queries! {
         cache_on_disk_if { key.is_local() }
         separate_provide_extern
     }
+    query adt_async_destructor(key: DefId) -> Option<ty::AsyncDestructor> {
+        desc { |tcx| "computing `AsyncDrop` impl for `{}`", tcx.def_path_str(key) }
+        cache_on_disk_if { key.is_local() }
+        separate_provide_extern
+    }
 
     query adt_sized_constraint(key: DefId) -> Option<ty::EarlyBinder<'tcx, Ty<'tcx>>> {
         desc { |tcx| "computing the `Sized` constraint for `{}`", tcx.def_path_str(key) }
@@ -1343,17 +1348,13 @@ rustc_queries! {
     query is_unpin_raw(env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
         desc { "computing whether `{}` is `Unpin`", env.value }
     }
-    /// Query backing `Ty::has_surface_async_drop`.
-    query has_surface_async_drop_raw(env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
-        desc { "computing whether `{}` has `AsyncDrop` implementation", env.value }
-    }
-    /// Query backing `Ty::has_surface_drop`.
-    query has_surface_drop_raw(env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
-        desc { "computing whether `{}` has `Drop` implementation", env.value }
-    }
     /// Query backing `Ty::needs_drop`.
     query needs_drop_raw(env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
         desc { "computing whether `{}` needs drop", env.value }
+    }
+    /// Query backing `Ty::needs_async_drop`.
+    query needs_async_drop_raw(env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
+        desc { "computing whether `{}` needs async drop", env.value }
     }
     /// Query backing `Ty::has_significant_drop_raw`.
     query has_significant_drop_raw(env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
