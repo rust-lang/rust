@@ -262,7 +262,8 @@ impl<'tcx> BinOp {
             | &BinOp::Rem
             | &BinOp::BitXor
             | &BinOp::BitAnd
-            | &BinOp::BitOr => {
+            | &BinOp::BitOr
+            | &BinOp::BitOrDisjoint => {
                 // these should be integers or floats of the same size.
                 assert_eq!(lhs_ty, rhs_ty);
                 lhs_ty
@@ -322,6 +323,7 @@ impl BinOp {
             | BinOp::AddUnchecked
             | BinOp::SubUnchecked
             | BinOp::MulUnchecked
+            | BinOp::BitOrDisjoint
             | BinOp::ShlUnchecked
             | BinOp::ShrUnchecked
             | BinOp::Offset => {

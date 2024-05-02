@@ -1478,6 +1478,8 @@ pub enum BinOp {
     BitAnd,
     /// The `|` operator (bitwise or)
     BitOr,
+    /// Like `BitOr` and `BitXor`, but UB if results don't match.
+    BitOrDisjoint,
     /// The `<<` operator (shift left)
     ///
     /// The offset is truncated to the size of the first operand and made unsigned before shifting.

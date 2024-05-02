@@ -545,6 +545,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                     | BinOp::BitXor
                     | BinOp::BitAnd
                     | BinOp::BitOr
+                    | BinOp::BitOrDisjoint
                     | BinOp::Shl
                     | BinOp::ShlUnchecked
                     | BinOp::Shr

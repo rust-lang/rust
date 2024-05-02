@@ -18,7 +18,7 @@ pub fn binop_left_homogeneous(op: mir::BinOp) -> bool {
     use rustc_middle::mir::BinOp::*;
     match op {
         Add | AddUnchecked | Sub | SubUnchecked | Mul | MulUnchecked | Div | Rem | BitXor
-        | BitAnd | BitOr | Offset | Shl | ShlUnchecked | Shr | ShrUnchecked => true,
+        | BitAnd | BitOr | BitOrDisjoint | Offset | Shl | ShlUnchecked | Shr | ShrUnchecked => true,
         Eq | Ne | Lt | Le | Gt | Ge | Cmp => false,
     }
 }
@@ -30,7 +30,7 @@ pub fn binop_right_homogeneous(op: mir::BinOp) -> bool {
     use rustc_middle::mir::BinOp::*;
     match op {
         Add | AddUnchecked | Sub | SubUnchecked | Mul | MulUnchecked | Div | Rem | BitXor
-        | BitAnd | BitOr | Eq | Ne | Lt | Le | Gt | Ge | Cmp => true,
+        | BitAnd | BitOr | BitOrDisjoint | Eq | Ne | Lt | Le | Gt | Ge | Cmp => true,
         Offset | Shl | ShlUnchecked | Shr | ShrUnchecked => false,
     }
 }

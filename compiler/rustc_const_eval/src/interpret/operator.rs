@@ -308,6 +308,13 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             BitAnd => ImmTy::from_uint(l & r, left.layout),
             BitXor => ImmTy::from_uint(l ^ r, left.layout),
 
+            BitOrDisjoint => {
+                if l & r != 0 {
+                    todo!(); // Can't figure out what to do here based on the surrounding code
+                }
+                ImmTy::from_uint(l | r, left.layout)
+            }
+
             Add | AddUnchecked | Sub | SubUnchecked | Mul | MulUnchecked | Rem | Div => {
                 assert!(!left.layout.abi.is_signed());
                 let op: fn(u128, u128) -> (u128, bool) = match bin_op {

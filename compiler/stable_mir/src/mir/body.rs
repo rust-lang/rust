@@ -320,6 +320,7 @@ pub enum BinOp {
     BitXor,
     BitAnd,
     BitOr,
+    BitOrDisjoint,
     Shl,
     ShlUnchecked,
     Shr,

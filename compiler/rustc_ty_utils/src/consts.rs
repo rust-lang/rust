@@ -81,8 +81,8 @@ fn check_binop(op: mir::BinOp) -> bool {
     use mir::BinOp::*;
     match op {
         Add | AddUnchecked | Sub | SubUnchecked | Mul | MulUnchecked | Div | Rem | BitXor
-        | BitAnd | BitOr | Shl | ShlUnchecked | Shr | ShrUnchecked | Eq | Lt | Le | Ne | Ge
-        | Gt | Cmp => true,
+        | BitAnd | BitOr | BitOrDisjoint | Shl | ShlUnchecked | Shr | ShrUnchecked | Eq | Lt
+        | Le | Ne | Ge | Gt | Cmp => true,
         Offset => false,
     }
 }

@@ -867,6 +867,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::BinOp::BitOr => bx.or(lhs, rhs),
             mir::BinOp::BitAnd => bx.and(lhs, rhs),
             mir::BinOp::BitXor => bx.xor(lhs, rhs),
+            mir::BinOp::BitOrDisjoint => bx.disjoint_or(lhs, rhs),
             mir::BinOp::Offset => {
                 let pointee_type = input_ty
                     .builtin_deref(true)

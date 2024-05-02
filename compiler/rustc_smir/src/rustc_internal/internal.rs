@@ -567,6 +567,7 @@ impl RustcInternal for BinOp {
             BinOp::BitXor => rustc_middle::mir::BinOp::BitXor,
             BinOp::BitAnd => rustc_middle::mir::BinOp::BitAnd,
             BinOp::BitOr => rustc_middle::mir::BinOp::BitOr,
+            BinOp::BitOrDisjoint => rustc_middle::mir::BinOp::BitOrDisjoint,
             BinOp::Shl => rustc_middle::mir::BinOp::Shl,
             BinOp::ShlUnchecked => rustc_middle::mir::BinOp::ShlUnchecked,
             BinOp::Shr => rustc_middle::mir::BinOp::Shr,
