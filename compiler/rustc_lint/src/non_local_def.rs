@@ -233,6 +233,12 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
             ItemKind::Macro(_macro, MacroKind::Bang)
                 if cx.tcx.has_attr(item.owner_id.def_id, sym::macro_export) =>
             {
+                // determining we if are in a doctest context can't currently be determined
+                // by the code it-self (no specific attrs), but fortunatly rustdoc sets a
+                // perma-unstable env for libtest so we just re-use that env for now
+                let is_at_toplevel_doctest =
+                    self.body_depth == 2 && std::env::var("UNSTABLE_RUSTDOC_TEST_PATH").is_ok();
+
                 cx.emit_span_lint(
                     NON_LOCAL_DEFINITIONS,
                     item.span,
@@ -243,6 +249,9 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
                             .map(|s| s.to_ident_string())
                             .unwrap_or_else(|| "<unnameable>".to_string()),
                         cargo_update: cargo_update(),
+                        help: (!is_at_toplevel_doctest).then_some(()),
+                        doctest_help: is_at_toplevel_doctest.then_some(()),
+                        notes: (),
                     },
                 )
             }

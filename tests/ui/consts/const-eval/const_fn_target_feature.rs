@@ -1,5 +1,6 @@
 //@ only-x86_64
-//@ compile-flags:-C target-feature=+ssse3
+// Set the base cpu explicitly, in case the default has been changed.
+//@ compile-flags: -C target-cpu=x86-64 -C target-feature=+ssse3
 
 #![crate_type = "lib"]
 
