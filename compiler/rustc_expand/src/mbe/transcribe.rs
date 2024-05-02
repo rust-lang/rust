@@ -117,7 +117,7 @@ pub(super) fn transcribe<'a>(
     // As we descend in the RHS, we will need to be able to match nested sequences of matchers.
     // `repeats` keeps track of where we are in matching at each level, with the last element being
     // the most deeply nested sequence. This is used as a stack.
-    let mut repeats = Vec::new();
+    let mut repeats: Vec<(usize, usize)> = Vec::new();
 
     // `result` contains resulting token stream from the TokenTree we just finished processing. At
     // the end, this will contain the full result of transcription, but at arbitrary points during
