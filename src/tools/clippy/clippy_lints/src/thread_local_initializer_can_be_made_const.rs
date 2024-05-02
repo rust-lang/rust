@@ -1,13 +1,14 @@
 use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::macros::macro_backtrace;
 use clippy_utils::qualify_min_const_fn::is_min_const_fn;
 use clippy_utils::source::snippet;
 use clippy_utils::{fn_has_unsatisfiable_preds, peel_blocks};
 use rustc_errors::Applicability;
-use rustc_hir::{intravisit, ExprKind};
+use rustc_hir::{intravisit, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
-use rustc_span::sym::thread_local_macro;
+use rustc_span::sym::{self, thread_local_macro};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -69,6 +70,26 @@ fn is_thread_local_initializer(
     )
 }
 
+fn is_unreachable(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
+    if let Some(macro_call) = macro_backtrace(expr.span).next()
+        && let Some(diag_name) = cx.tcx.get_diagnostic_name(macro_call.def_id)
+    {
+        return (matches!(
+            diag_name,
+            sym::core_panic_macro
+                | sym::std_panic_macro
+                | sym::core_panic_2015_macro
+                | sym::std_panic_2015_macro
+                | sym::core_panic_2021_macro
+        ) && !cx.tcx.hir().is_inside_const_context(expr.hir_id))
+            || matches!(
+                diag_name,
+                sym::unimplemented_macro | sym::todo_macro | sym::unreachable_macro | sym::unreachable_2015_macro
+            );
+    }
+    false
+}
+
 #[inline]
 fn initializer_can_be_made_const(cx: &LateContext<'_>, defid: rustc_span::def_id::DefId, msrv: &Msrv) -> bool {
     // Building MIR for `fn`s with unsatisfiable preds results in ICE.
@@ -102,12 +123,17 @@ impl<'tcx> LateLintPass<'tcx> for ThreadLocalInitializerCanBeMadeConst {
             // for details on this issue, see:
             // https://github.com/rust-lang/rust-clippy/pull/12276
             && !cx.tcx.is_const_fn(defid)
-            && initializer_can_be_made_const(cx, defid, &self.msrv)
-            // we know that the function is const-qualifiable, so now
-            // we need only to get the initializer expression to span-lint it.
             && let ExprKind::Block(block, _) = body.value.kind
             && let Some(unpeeled) = block.expr
             && let ret_expr = peel_blocks(unpeeled)
+            // A common pattern around threadlocal! is to make the value unreachable
+            // to force an initialization before usage
+            // https://github.com/rust-lang/rust-clippy/issues/12637
+            // we ensure that this is reachable before we check in mir
+            && !is_unreachable(cx, ret_expr)
+            && initializer_can_be_made_const(cx, defid, &self.msrv)
+            // we know that the function is const-qualifiable, so now
+            // we need only to get the initializer expression to span-lint it.
             && let initializer_snippet = snippet(cx, ret_expr.span, "thread_local! { ... }")
             && initializer_snippet != "thread_local! { ... }"
         {
