@@ -6,7 +6,7 @@ edition = "2021"
 
 [dependencies]
 aho-corasick = "1.0"
-clap = { version = "4.1.4", features = ["derive"] }
+clap = { version = "4.4", features = ["derive"] }
 indoc = "1.0"
 itertools = "0.12"
 opener = "0.6"
