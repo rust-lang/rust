@@ -4,7 +4,7 @@ use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::{is_expn_of, path_def_id};
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
-use rustc_hir::{BindingAnnotation, Block, BlockCheckMode, Expr, ExprKind, Node, PatKind, QPath, Stmt, StmtKind};
+use rustc_hir::{BindingMode, Block, BlockCheckMode, Expr, ExprKind, Node, PatKind, QPath, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
 use rustc_span::{sym, ExpnId};
@@ -114,7 +114,7 @@ fn look_in_block<'tcx, 'hir>(cx: &LateContext<'tcx>, kind: &'tcx ExprKind<'hir>)
         && let Node::Pat(res_pat) = cx.tcx.hir_node(expr_res)
 
         // Find id of the local we found in the block
-        && let PatKind::Binding(BindingAnnotation::NONE, local_hir_id, _ident, None) = local.pat.kind
+        && let PatKind::Binding(BindingMode::NONE, local_hir_id, _ident, None) = local.pat.kind
 
         // If those two are the same hir id
         && res_pat.hir_id == local_hir_id

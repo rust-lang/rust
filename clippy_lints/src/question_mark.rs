@@ -14,8 +14,8 @@ use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::LangItem::{self, OptionNone, OptionSome, ResultErr, ResultOk};
 use rustc_hir::{
-    BindingAnnotation, Block, Body, ByRef, Expr, ExprKind, LetStmt, Mutability, Node, PatKind, PathSegment, QPath,
-    Stmt, StmtKind,
+    BindingMode, Block, Body, ByRef, Expr, ExprKind, LetStmt, Mutability, Node, PatKind, PathSegment, QPath, Stmt,
+    StmtKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::Ty;
@@ -283,7 +283,7 @@ fn check_if_let_some_or_err_and_early_return<'tcx>(cx: &LateContext<'tcx>, expr:
         && !is_else_clause(cx.tcx, expr)
         && let PatKind::TupleStruct(ref path1, [field], ddpos) = let_pat.kind
         && ddpos.as_opt_usize().is_none()
-        && let PatKind::Binding(BindingAnnotation(by_ref, _), bind_id, ident, None) = field.kind
+        && let PatKind::Binding(BindingMode(by_ref, _), bind_id, ident, None) = field.kind
         && let caller_ty = cx.typeck_results().expr_ty(let_expr)
         && let if_block = IfBlockType::IfLet(
             cx.qpath_res(path1, let_pat.hir_id),

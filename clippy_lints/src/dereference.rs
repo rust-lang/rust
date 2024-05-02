@@ -9,8 +9,8 @@ use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_ty, Visitor};
 use rustc_hir::{
-    self as hir, BindingAnnotation, Body, BodyId, BorrowKind, Expr, ExprKind, HirId, MatchSource, Mutability, Node,
-    Pat, PatKind, Path, QPath, TyKind, UnOp,
+    self as hir, BindingMode, Body, BodyId, BorrowKind, Expr, ExprKind, HirId, MatchSource, Mutability, Node, Pat,
+    PatKind, Path, QPath, TyKind, UnOp,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
@@ -599,7 +599,7 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
     }
 
     fn check_pat(&mut self, cx: &LateContext<'tcx>, pat: &'tcx Pat<'_>) {
-        if let PatKind::Binding(BindingAnnotation::REF, id, name, _) = pat.kind {
+        if let PatKind::Binding(BindingMode::REF, id, name, _) = pat.kind {
             if let Some(opt_prev_pat) = self.ref_locals.get_mut(&id) {
                 // This binding id has been seen before. Add this pattern to the list of changes.
                 if let Some(prev_pat) = opt_prev_pat {
