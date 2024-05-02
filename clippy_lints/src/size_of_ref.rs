@@ -28,7 +28,7 @@ declare_clippy_lint! {
     ///     fn size(&self) -> usize {
     ///         // Note that `&self` as an argument is a `&&Foo`: Because `self`
     ///         // is already a reference, `&self` is a double-reference.
-    ///         // The return value of `size_of_val()` therefor is the
+    ///         // The return value of `size_of_val()` therefore is the
     ///         // size of the reference-type, not the size of `self`.
     ///         std::mem::size_of_val(&self)
     ///     }

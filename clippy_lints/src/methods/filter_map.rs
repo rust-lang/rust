@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
-use clippy_utils::macros::{is_panic, root_macro_call};
+use clippy_utils::macros::{is_panic, matching_root_macro_call, root_macro_call};
 use clippy_utils::source::{indent_of, reindent_multiline, snippet};
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::{higher, is_trait_method, path_to_local_id, peel_blocks, SpanlessEq};
@@ -247,8 +247,7 @@ impl<'tcx> OffendingFilterExpr<'tcx> {
             } else {
                 None
             }
-        } else if let Some(macro_call) = root_macro_call(expr.span)
-            && cx.tcx.get_diagnostic_name(macro_call.def_id) == Some(sym::matches_macro)
+        } else if matching_root_macro_call(cx, expr.span, sym::matches_macro).is_some()
             // we know for a fact that the wildcard pattern is the second arm
             && let ExprKind::Match(scrutinee, [arm, _], _) = expr.kind
             && path_to_local_id(scrutinee, filter_param_id)

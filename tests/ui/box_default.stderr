@@ -55,5 +55,11 @@ error: `Box::new(_)` of default value
 LL |     call_ty_fn(Box::new(u8::default()));
    |                ^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Box::default()`
 
-error: aborting due to 9 previous errors
+error: `Box::new(_)` of default value
+  --> tests/ui/box_default.rs:86:17
+   |
+LL |         Self::x(Box::new(T::default()));
+   |                 ^^^^^^^^^^^^^^^^^^^^^^ help: try: `Box::default()`
+
+error: aborting due to 10 previous errors
 
