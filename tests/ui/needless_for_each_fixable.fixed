@@ -113,6 +113,10 @@ fn should_not_lint() {
     let _ = v.iter().for_each(|elem| {
         acc += elem;
     });
+    // `for_each` has a closure with an unsafe block.
+    v.iter().for_each(|elem| unsafe {
+        acc += elem;
+    });
 }
 
 fn main() {}
