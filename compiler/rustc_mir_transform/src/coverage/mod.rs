@@ -115,7 +115,7 @@ fn instrument_function_for_coverage<'tcx>(tcx: TyCtxt<'tcx>, mir_body: &mut mir:
     mir_body.function_coverage_info = Some(Box::new(FunctionCoverageInfo {
         function_source_hash: hir_info.function_source_hash,
         num_counters: coverage_counters.num_counters(),
-        mcdc_bitmap_bytes: coverage_spans.test_vector_bitmap_bytes(),
+        mcdc_bitmap_bytes: coverage_spans.mcdc_bitmap_bytes,
         expressions: coverage_counters.into_expressions(),
         mappings,
         mcdc_num_condition_bitmaps,
@@ -254,10 +254,6 @@ fn inject_mcdc_statements<'tcx>(
     basic_coverage_blocks: &CoverageGraph,
     coverage_spans: &CoverageSpans,
 ) {
-    if coverage_spans.test_vector_bitmap_bytes() == 0 {
-        return;
-    }
-
     // Inject test vector update first because `inject_statement` always insert new statement at head.
     for &mappings::MCDCDecision {
         span: _,

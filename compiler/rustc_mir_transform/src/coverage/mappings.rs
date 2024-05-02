@@ -56,15 +56,9 @@ pub(super) struct MCDCDecision {
 pub(super) struct CoverageSpans {
     pub(super) code_mappings: Vec<CodeMapping>,
     pub(super) branch_pairs: Vec<BranchPair>,
-    test_vector_bitmap_bytes: u32,
+    pub(super) mcdc_bitmap_bytes: u32,
     pub(super) mcdc_branches: Vec<MCDCBranch>,
     pub(super) mcdc_decisions: Vec<MCDCDecision>,
-}
-
-impl CoverageSpans {
-    pub(super) fn test_vector_bitmap_bytes(&self) -> u32 {
-        self.test_vector_bitmap_bytes
-    }
 }
 
 /// Extracts coverage-relevant spans from MIR, and associates them with
@@ -88,6 +82,7 @@ pub(super) fn generate_coverage_spans(
 
     let mut code_mappings = vec![];
     let mut branch_pairs = vec![];
+    let mut mcdc_bitmap_bytes = 0;
     let mut mcdc_branches = vec![];
     let mut mcdc_decisions = vec![];
 
@@ -99,26 +94,12 @@ pub(super) fn generate_coverage_spans(
         mir_body,
         hir_info.body_span,
         basic_coverage_blocks,
+        &mut mcdc_bitmap_bytes,
         &mut mcdc_branches,
         &mut mcdc_decisions,
     );
 
-    // Determine the length of the test vector bitmap.
-    let test_vector_bitmap_bytes = mcdc_decisions
-        .iter()
-        .map(|&MCDCDecision { bitmap_idx, conditions_num, .. }| {
-            bitmap_idx + (1_u32 << u32::from(conditions_num)).div_ceil(8)
-        })
-        .max()
-        .unwrap_or(0);
-
-    CoverageSpans {
-        code_mappings,
-        branch_pairs,
-        test_vector_bitmap_bytes,
-        mcdc_branches,
-        mcdc_decisions,
-    }
+    CoverageSpans { code_mappings, branch_pairs, mcdc_bitmap_bytes, mcdc_branches, mcdc_decisions }
 }
 
 impl CoverageSpans {
@@ -130,7 +111,7 @@ impl CoverageSpans {
         let Self {
             code_mappings,
             branch_pairs,
-            test_vector_bitmap_bytes: _,
+            mcdc_bitmap_bytes: _,
             mcdc_branches,
             mcdc_decisions,
         } = self;
@@ -228,6 +209,7 @@ pub(super) fn extract_mcdc_mappings(
     mir_body: &mir::Body<'_>,
     body_span: Span,
     basic_coverage_blocks: &CoverageGraph,
+    mcdc_bitmap_bytes: &mut u32,
     mcdc_branches: &mut impl Extend<MCDCBranch>,
     mcdc_decisions: &mut impl Extend<MCDCDecision>,
 ) {
@@ -266,8 +248,6 @@ pub(super) fn extract_mcdc_mappings(
         },
     ));
 
-    let mut next_bitmap_idx = 0;
-
     mcdc_decisions.extend(branch_info.mcdc_decision_spans.iter().filter_map(
         |decision: &mir::coverage::MCDCDecisionSpan| {
             let (span, _) = unexpand_into_body_span_with_visible_macro(decision.span, body_span)?;
@@ -278,8 +258,11 @@ pub(super) fn extract_mcdc_mappings(
                 .map(|&marker| bcb_from_marker(marker))
                 .collect::<Option<_>>()?;
 
-            let bitmap_idx = next_bitmap_idx;
-            next_bitmap_idx += (1_u32 << decision.conditions_num).div_ceil(8);
+            // Each decision containing N conditions needs 2^N bits of space in
+            // the bitmap, rounded up to a whole number of bytes.
+            // The decision's "bitmap index" points to its first byte in the bitmap.
+            let bitmap_idx = *mcdc_bitmap_bytes;
+            *mcdc_bitmap_bytes += (1_u32 << decision.conditions_num).div_ceil(8);
 
             Some(MCDCDecision {
                 span,
