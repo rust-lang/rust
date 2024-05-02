@@ -26,8 +26,30 @@ pub struct Canonical<I: Interner, V> {
     pub value: V,
     pub max_universe: UniverseIndex,
     // FIXME(lcnr, oli-obk): try moving this into the query inputs instead
-    pub defining_opaque_types: I::DefiningOpaqueTypes,
+    pub opaque_type_mode: OpaqueTypeMode<I>,
     pub variables: I::CanonicalVars,
+}
+
+#[derive(derivative::Derivative)]
+#[derivative(
+    Copy(bound = ""),
+    Clone(bound = ""),
+    Hash(bound = ""),
+    PartialEq(bound = ""),
+    Eq(bound = ""),
+    Debug(bound = "")
+)]
+#[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
+#[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable, HashStable_NoContext))]
+pub enum OpaqueTypeMode<I: Interner> {
+    Define(I::DefiningOpaqueTypes),
+    Reveal(I::DefiningOpaqueTypes),
+}
+
+impl<I: Interner> Default for OpaqueTypeMode<I> {
+    fn default() -> Self {
+        OpaqueTypeMode::Define(Default::default())
+    }
 }
 
 impl<I: Interner, V> Canonical<I, V> {
@@ -55,8 +77,8 @@ impl<I: Interner, V> Canonical<I, V> {
     /// let b: Canonical<I, (T, Ty<I>)> = a.unchecked_map(|v| (v, ty));
     /// ```
     pub fn unchecked_map<W>(self, map_op: impl FnOnce(V) -> W) -> Canonical<I, W> {
-        let Canonical { defining_opaque_types, max_universe, variables, value } = self;
-        Canonical { defining_opaque_types, max_universe, variables, value: map_op(value) }
+        let Canonical { opaque_type_mode, max_universe, variables, value } = self;
+        Canonical { opaque_type_mode, max_universe, variables, value: map_op(value) }
     }
 
     /// Allows you to map the `value` of a canonical while keeping the same set of
@@ -65,17 +87,17 @@ impl<I: Interner, V> Canonical<I, V> {
     /// **WARNING:** This function is very easy to mis-use, hence the name! See
     /// the comment of [Canonical::unchecked_map] for more details.
     pub fn unchecked_rebind<W>(self, value: W) -> Canonical<I, W> {
-        let Canonical { defining_opaque_types, max_universe, variables, value: _ } = self;
-        Canonical { defining_opaque_types, max_universe, variables, value }
+        let Canonical { opaque_type_mode, max_universe, variables, value: _ } = self;
+        Canonical { opaque_type_mode, max_universe, variables, value }
     }
 }
 
 impl<I: Interner, V: fmt::Display> fmt::Display for Canonical<I, V> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let Self { value, max_universe, variables, defining_opaque_types } = self;
+        let Self { value, max_universe, variables, opaque_type_mode } = self;
         write!(
             f,
-            "Canonical {{ value: {value}, max_universe: {max_universe:?}, variables: {variables:?}, defining_opaque_types: {defining_opaque_types:?} }}",
+            "Canonical {{ value: {value}, max_universe: {max_universe:?}, variables: {variables:?}, opaque_type_mode: {opaque_type_mode:?} }}",
         )
     }
 }

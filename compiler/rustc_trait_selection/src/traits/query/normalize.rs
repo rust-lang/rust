@@ -9,10 +9,11 @@ use crate::traits::error_reporting::OverflowCause;
 use crate::traits::error_reporting::TypeErrCtxtExt;
 use crate::traits::normalize::needs_normalization;
 use crate::traits::{BoundVarReplacer, PlaceholderReplacer};
-use crate::traits::{ObligationCause, PredicateObligation, Reveal};
+use crate::traits::{ObligationCause, PredicateObligation};
 use rustc_data_structures::sso::SsoHashMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_infer::traits::Normalized;
+use rustc_infer::infer::RegionVariableOrigin;
+use rustc_infer::traits::{Normalized, TreatOpaque};
 use rustc_macros::extension;
 use rustc_middle::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeSuperFoldable};
 use rustc_middle::ty::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt};
@@ -208,44 +209,49 @@ impl<'cx, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'cx, 'tcx> 
 
         // Wrap this in a closure so we don't accidentally return from the outer function
         let res = match kind {
-            ty::Opaque => {
-                // Only normalize `impl Trait` outside of type inference, usually in codegen.
-                match self.param_env.reveal() {
-                    Reveal::UserFacing => ty.try_super_fold_with(self)?,
+            ty::Opaque => match self.infcx.treat_opaque_ty(self.param_env.reveal(), data.def_id) {
+                TreatOpaque::Reveal => {
+                    let args = data.args.try_fold_with(self)?;
+                    let recursion_limit = self.interner().recursion_limit();
 
-                    Reveal::All => {
-                        let args = data.args.try_fold_with(self)?;
-                        let recursion_limit = self.interner().recursion_limit();
-
-                        if !recursion_limit.value_within_limit(self.anon_depth) {
-                            let guar = self
-                                .infcx
-                                .err_ctxt()
-                                .build_overflow_error(
-                                    OverflowCause::DeeplyNormalize(data.into()),
-                                    self.cause.span,
-                                    true,
-                                )
-                                .delay_as_bug();
-                            return Ok(Ty::new_error(self.interner(), guar));
-                        }
-
-                        let generic_ty = self.interner().type_of(data.def_id);
-                        let mut concrete_ty = generic_ty.instantiate(self.interner(), args);
-                        self.anon_depth += 1;
-                        if concrete_ty == ty {
-                            concrete_ty = Ty::new_error_with_message(
-                                self.interner(),
-                                DUMMY_SP,
-                                "recursive opaque type",
-                            );
-                        }
-                        let folded_ty = ensure_sufficient_stack(|| self.try_fold_ty(concrete_ty));
-                        self.anon_depth -= 1;
-                        folded_ty?
+                    if !recursion_limit.value_within_limit(self.anon_depth) {
+                        let guar = self
+                            .infcx
+                            .err_ctxt()
+                            .build_overflow_error(
+                                OverflowCause::DeeplyNormalize(data.into()),
+                                self.cause.span,
+                                true,
+                            )
+                            .delay_as_bug();
+                        return Ok(Ty::new_error(self.interner(), guar));
                     }
+
+                    let generic_ty = self.interner().type_of(data.def_id);
+                    let concrete_ty = generic_ty.instantiate(self.interner(), args);
+                    let mut concrete_ty =
+                        self.interner().fold_regions(concrete_ty, |re, _| match *re {
+                            ty::ReErased => self.infcx.next_region_var(
+                                RegionVariableOrigin::MiscVariable(self.cause.span),
+                            ),
+                            _ => re,
+                        });
+                    self.anon_depth += 1;
+                    if concrete_ty == ty {
+                        concrete_ty = Ty::new_error_with_message(
+                            self.interner(),
+                            DUMMY_SP,
+                            "recursive opaque type",
+                        );
+                    }
+                    let folded_ty = ensure_sufficient_stack(|| self.try_fold_ty(concrete_ty));
+                    self.anon_depth -= 1;
+                    folded_ty?
                 }
-            }
+                TreatOpaque::Define | TreatOpaque::Rigid | TreatOpaque::Ambiguous => {
+                    ty.try_super_fold_with(self)?
+                }
+            },
 
             ty::Projection | ty::Inherent | ty::Weak => {
                 // See note in `rustc_trait_selection::traits::project`

@@ -5,11 +5,12 @@ use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::at::ToTrace;
 use rustc_infer::infer::{
-    BoundRegionConversionTime, DefineOpaqueTypes, InferCtxt, InferOk, TyCtxtInferExt,
+    BoundRegionConversionTime, DefineOpaqueTypes, InferCtxt, InferOk, RegionVariableOrigin,
+    TyCtxtInferExt,
 };
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::solve::{MaybeCause, NestedNormalizationGoals};
-use rustc_infer::traits::ObligationCause;
+use rustc_infer::traits::{ObligationCause, Reveal, TreatOpaque};
 use rustc_macros::{extension, HashStable, HashStable_NoContext, TyDecodable, TyEncodable};
 use rustc_middle::bug;
 use rustc_middle::traits::solve::{
@@ -612,6 +613,12 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
         ty
     }
 
+    pub(super) fn next_region_infer(&mut self) -> ty::Region<'tcx> {
+        let ty = self.infcx.next_region_var(RegionVariableOrigin::MiscVariable(DUMMY_SP));
+        self.inspect.add_var_value(ty);
+        ty
+    }
+
     pub(super) fn next_const_infer(&mut self, ty: Ty<'tcx>) -> ty::Const<'tcx> {
         let ct = self.infcx.next_const_var(ty, DUMMY_SP);
         self.inspect.add_var_value(ct);
@@ -968,8 +975,8 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
             .map(|is_knowable| is_knowable.is_ok())
     }
 
-    pub(super) fn can_define_opaque_ty(&self, def_id: impl Into<DefId>) -> bool {
-        self.infcx.can_define_opaque_ty(def_id)
+    pub(super) fn treat_opaque_ty(&self, reveal: Reveal, def_id: DefId) -> TreatOpaque {
+        self.infcx.treat_opaque_ty(reveal, def_id)
     }
 
     pub(super) fn insert_hidden_type(

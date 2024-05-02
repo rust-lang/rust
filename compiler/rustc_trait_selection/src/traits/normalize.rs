@@ -6,7 +6,9 @@ use super::{project, with_replaced_escaping_bound_vars, BoundVarReplacer, Placeh
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_infer::infer::at::At;
 use rustc_infer::infer::InferOk;
+use rustc_infer::infer::RegionVariableOrigin;
 use rustc_infer::traits::PredicateObligation;
+use rustc_infer::traits::TreatOpaque;
 use rustc_infer::traits::{FulfillmentError, Normalized, Obligation, TraitEngine};
 use rustc_macros::extension;
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode, Reveal};
@@ -100,21 +102,17 @@ where
 
 pub(super) fn needs_normalization<'tcx, T: TypeVisitable<TyCtxt<'tcx>>>(
     value: &T,
-    reveal: Reveal,
+    _reveal: Reveal,
 ) -> bool {
+    //TODO:
     // This mirrors `ty::TypeFlags::HAS_ALIASES` except that we take `Reveal` into account.
-
-    let mut flags = ty::TypeFlags::HAS_TY_PROJECTION
-        | ty::TypeFlags::HAS_TY_WEAK
-        | ty::TypeFlags::HAS_TY_INHERENT
-        | ty::TypeFlags::HAS_CT_PROJECTION;
-
-    match reveal {
-        Reveal::UserFacing => {}
-        Reveal::All => flags |= ty::TypeFlags::HAS_TY_OPAQUE,
-    }
-
-    value.has_type_flags(flags)
+    value.has_type_flags(
+        ty::TypeFlags::HAS_TY_PROJECTION
+            | ty::TypeFlags::HAS_TY_WEAK
+            | ty::TypeFlags::HAS_TY_INHERENT
+            | ty::TypeFlags::HAS_CT_PROJECTION
+            | ty::TypeFlags::HAS_TY_OPAQUE,
+    )
 }
 
 struct AssocTypeNormalizer<'a, 'b, 'tcx> {
@@ -205,11 +203,8 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
 
         match kind {
             ty::Opaque => {
-                // Only normalize `impl Trait` outside of type inference, usually in codegen.
-                match self.param_env.reveal() {
-                    Reveal::UserFacing => ty.super_fold_with(self),
-
-                    Reveal::All => {
+                match self.selcx.infcx.treat_opaque_ty(self.param_env.reveal(), data.def_id) {
+                    TreatOpaque::Reveal => {
                         let recursion_limit = self.interner().recursion_limit();
                         if !recursion_limit.value_within_limit(self.depth) {
                             self.selcx.infcx.err_ctxt().report_overflow_error(
@@ -223,10 +218,20 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
                         let args = data.args.fold_with(self);
                         let generic_ty = self.interner().type_of(data.def_id);
                         let concrete_ty = generic_ty.instantiate(self.interner(), args);
+                        let concrete_ty =
+                            self.interner().fold_regions(concrete_ty, |re, _| match *re {
+                                ty::ReErased => self.selcx.infcx.next_region_var(
+                                    RegionVariableOrigin::MiscVariable(self.cause.span),
+                                ),
+                                _ => re,
+                            });
                         self.depth += 1;
                         let folded_ty = self.fold_ty(concrete_ty);
                         self.depth -= 1;
                         folded_ty
+                    }
+                    TreatOpaque::Define | TreatOpaque::Rigid | TreatOpaque::Ambiguous => {
+                        ty.super_fold_with(self)
                     }
                 }
             }

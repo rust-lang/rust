@@ -194,7 +194,7 @@ impl<'tcx> CapturedPlace<'tcx> {
 
 #[derive(Copy, Clone, Debug, HashStable)]
 pub struct ClosureTypeInfo<'tcx> {
-    user_provided_sig: ty::CanonicalPolyFnSig<'tcx>,
+    user_provided_sig: &'tcx ty::CanonicalPolyFnSig<'tcx>,
     captures: &'tcx ty::List<&'tcx ty::CapturedPlace<'tcx>>,
     kind_origin: Option<&'tcx (Span, HirPlace<'tcx>)>,
 }
@@ -202,7 +202,7 @@ pub struct ClosureTypeInfo<'tcx> {
 fn closure_typeinfo<'tcx>(tcx: TyCtxt<'tcx>, def: LocalDefId) -> ClosureTypeInfo<'tcx> {
     debug_assert!(tcx.is_closure_like(def.to_def_id()));
     let typeck_results = tcx.typeck(def);
-    let user_provided_sig = typeck_results.user_provided_sigs[&def];
+    let user_provided_sig = &typeck_results.user_provided_sigs[&def];
     let captures = typeck_results.closure_min_captures_flattened(def);
     let captures = tcx.mk_captures_from_iter(captures);
     let hir_id = tcx.local_def_id_to_hir_id(def);
@@ -216,7 +216,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn closure_user_provided_sig(self, def_id: LocalDefId) -> ty::CanonicalPolyFnSig<'tcx> {
-        self.closure_typeinfo(def_id).user_provided_sig
+        *self.closure_typeinfo(def_id).user_provided_sig
     }
 
     pub fn closure_captures(self, def_id: LocalDefId) -> &'tcx [&'tcx ty::CapturedPlace<'tcx>] {

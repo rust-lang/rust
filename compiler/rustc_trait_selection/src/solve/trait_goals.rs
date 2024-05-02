@@ -14,7 +14,7 @@ use rustc_infer::traits::solve::MaybeCause;
 use rustc_middle::bug;
 use rustc_middle::traits::solve::inspect::ProbeKind;
 use rustc_middle::traits::solve::{CandidateSource, Certainty, Goal, QueryResult};
-use rustc_middle::traits::{BuiltinImplSource, Reveal};
+use rustc_middle::traits::{BuiltinImplSource, TreatOpaque};
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
 use rustc_middle::ty::{self, Ty, TyCtxt, Upcast};
 use rustc_middle::ty::{TraitPredicate, TypeVisitableExt};
@@ -148,7 +148,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         // ideally we want to avoid, since we can make progress on this goal
         // via an alias bound or a locally-inferred hidden type instead.
         //
-        // Also, don't call `type_of` on a TAIT in `Reveal::All` mode, since
+        // Also, don't call `type_of` on a TAIT when it can be revealed, since
         // we already normalize the self type in
         // `assemble_candidates_after_normalizing_self_ty`, and we'd
         // just be registering an identical candidate here.
@@ -158,10 +158,10 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         // `assemble_candidates_after_normalizing_self_ty` due to normalizing
         // the TAIT.
         if let ty::Alias(ty::Opaque, opaque_ty) = goal.predicate.self_ty().kind() {
-            if matches!(goal.param_env.reveal(), Reveal::All)
-                || matches!(ecx.solver_mode(), SolverMode::Coherence)
-                || ecx.can_define_opaque_ty(opaque_ty.def_id)
-            {
+            if matches!(
+                ecx.treat_opaque_ty(goal.param_env.reveal(), opaque_ty.def_id),
+                TreatOpaque::Reveal | TreatOpaque::Define | TreatOpaque::Ambiguous
+            ) {
                 return Err(NoSolution);
             }
         }

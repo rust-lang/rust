@@ -5,6 +5,8 @@ pub use relate::combine::CombineFields;
 pub use relate::combine::ObligationEmittingRelation;
 pub use relate::StructurallyRelateAliases;
 pub use rustc_macros::{TypeFoldable, TypeVisitable};
+use rustc_middle::traits::Reveal;
+use rustc_middle::traits::TreatOpaque;
 pub use rustc_middle::ty::IntVarValue;
 pub use BoundRegionConversionTime::*;
 pub use RegionVariableOrigin::*;
@@ -246,7 +248,7 @@ pub struct InferCtxt<'tcx> {
     pub tcx: TyCtxt<'tcx>,
 
     /// The `DefIds` of the opaque types that may have their hidden types constrained.
-    defining_opaque_types: &'tcx ty::List<LocalDefId>,
+    opaque_type_mode: ty::OpaqueTypeMode<TyCtxt<'tcx>>,
 
     /// Whether this inference context should care about region obligations in
     /// the root universe. Most notably, this is used during hir typeck as region
@@ -373,8 +375,8 @@ impl<'tcx> ty::InferCtxtLike for InferCtxt<'tcx> {
         self.inner.borrow_mut().unwrap_region_constraints().opportunistic_resolve_var(self.tcx, vid)
     }
 
-    fn defining_opaque_types(&self) -> &'tcx ty::List<LocalDefId> {
-        self.defining_opaque_types
+    fn opaque_type_mode(&self) -> ty::OpaqueTypeMode<TyCtxt<'tcx>> {
+        self.opaque_type_mode
     }
 
     fn opportunistic_resolve_ty_var(&self, vid: TyVid) -> Ty<'tcx> {
@@ -621,7 +623,7 @@ impl fmt::Display for FixupError {
 /// Used to configure inference contexts before their creation.
 pub struct InferCtxtBuilder<'tcx> {
     tcx: TyCtxt<'tcx>,
-    defining_opaque_types: &'tcx ty::List<LocalDefId>,
+    opaque_type_mode: ty::OpaqueTypeMode<TyCtxt<'tcx>>,
     considering_regions: bool,
     skip_leak_check: bool,
     /// Whether we are in coherence mode.
@@ -636,7 +638,7 @@ impl<'tcx> TyCtxt<'tcx> {
     fn infer_ctxt(self) -> InferCtxtBuilder<'tcx> {
         InferCtxtBuilder {
             tcx: self,
-            defining_opaque_types: ty::List::empty(),
+            opaque_type_mode: Default::default(),
             considering_regions: true,
             skip_leak_check: false,
             intercrate: false,
@@ -646,6 +648,14 @@ impl<'tcx> TyCtxt<'tcx> {
 }
 
 impl<'tcx> InferCtxtBuilder<'tcx> {
+    pub fn with_opaque_type_mode(
+        mut self,
+        opaque_type_mode: ty::OpaqueTypeMode<TyCtxt<'tcx>>,
+    ) -> Self {
+        self.opaque_type_mode = opaque_type_mode;
+        self
+    }
+
     /// Whenever the `InferCtxt` should be able to handle defining uses of opaque types,
     /// you need to call this function. Otherwise the opaque type will be treated opaquely.
     ///
@@ -653,15 +663,8 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
     /// (via `Inherited::build`) and for the inference context used
     /// in mir borrowck.
     pub fn with_opaque_type_inference(mut self, defining_anchor: LocalDefId) -> Self {
-        self.defining_opaque_types = self.tcx.opaque_types_defined_by(defining_anchor);
-        self
-    }
-
-    pub fn with_defining_opaque_types(
-        mut self,
-        defining_opaque_types: &'tcx ty::List<LocalDefId>,
-    ) -> Self {
-        self.defining_opaque_types = defining_opaque_types;
+        let types = self.tcx.opaque_types_defined_by(defining_anchor);
+        self.opaque_type_mode = ty::OpaqueTypeMode::Define(types);
         self
     }
 
@@ -700,7 +703,7 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
-        let infcx = self.with_defining_opaque_types(canonical.defining_opaque_types).build();
+        let infcx = self.with_opaque_type_mode(canonical.opaque_type_mode).build();
         let (value, args) = infcx.instantiate_canonical(span, canonical);
         (infcx, value, args)
     }
@@ -708,7 +711,7 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
     pub fn build(&mut self) -> InferCtxt<'tcx> {
         let InferCtxtBuilder {
             tcx,
-            defining_opaque_types,
+            opaque_type_mode: defining_opaque_types,
             considering_regions,
             skip_leak_check,
             intercrate,
@@ -716,7 +719,7 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
         } = *self;
         InferCtxt {
             tcx,
-            defining_opaque_types,
+            opaque_type_mode: defining_opaque_types,
             considering_regions,
             skip_leak_check,
             inner: RefCell::new(InferCtxtInner::new()),
@@ -1240,10 +1243,30 @@ impl<'tcx> InferCtxt<'tcx> {
         self.inner.borrow().opaque_type_storage.opaque_types.clone()
     }
 
-    #[inline(always)]
-    pub fn can_define_opaque_ty(&self, id: impl Into<DefId>) -> bool {
-        let Some(id) = id.into().as_local() else { return false };
-        self.defining_opaque_types.contains(&id)
+    pub fn treat_opaque_ty(&self, reveal: Reveal, def_id: DefId) -> TreatOpaque {
+        if self.intercrate {
+            return TreatOpaque::Ambiguous;
+        }
+
+        match reveal {
+            Reveal::All => return TreatOpaque::Reveal,
+            Reveal::UserFacing => {}
+        }
+
+        match self.opaque_type_mode {
+            ty::OpaqueTypeMode::Define(list) => {
+                if def_id.as_local().is_some_and(|def_id| list.contains(&def_id)) {
+                    return TreatOpaque::Define;
+                }
+            }
+            ty::OpaqueTypeMode::Reveal(list) => {
+                if def_id.as_local().is_some_and(|def_id| list.contains(&def_id)) {
+                    return TreatOpaque::Reveal;
+                }
+            }
+        }
+
+        TreatOpaque::Rigid
     }
 
     pub fn ty_to_string(&self, t: Ty<'tcx>) -> String {

@@ -1,9 +1,10 @@
-use crate::{
-    ConstVid, EffectVid, FloatVid, InferCtxtLike, IntVid, Interner, RegionVid, TyVid, UniverseIndex,
-};
-
-use core::fmt;
+use std::fmt;
 use std::marker::PhantomData;
+
+use crate::{
+    ConstVid, EffectVid, FloatVid, InferCtxtLike, IntVid, Interner, OpaqueTypeMode, RegionVid,
+    TyVid, UniverseIndex,
+};
 
 pub struct NoInfcx<I>(PhantomData<I>);
 
@@ -50,7 +51,7 @@ impl<I: Interner> InferCtxtLike for NoInfcx<I> {
         panic!("cannot resolve {vid:?}")
     }
 
-    fn defining_opaque_types(&self) -> I::DefiningOpaqueTypes {
+    fn opaque_type_mode(&self) -> OpaqueTypeMode<I> {
         Default::default()
     }
 }
