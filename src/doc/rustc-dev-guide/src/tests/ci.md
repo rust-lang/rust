@@ -50,7 +50,21 @@ it is merged into the main branch.
 You can copy one of the definitions from the `auto` section to the `pr` or `try` sections.
 For example, the `x86_64-msvc` job is responsible for running the 64-bit MSVC tests.
 You can copy it to the `pr` section to cause it to be executed after a commit is pushed to your
-PR.
+PR, like this:
+
+```yaml
+pr:
+  ...
+  - image: x86_64-gnu-tools
+    <<: *job-linux-16c
+  # this item was copied from the `auto` section
+  # vvvvvvvvvvvvvvvvvv
+  - image: x86_64-msvc
+    env:
+      RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-profiler
+      SCRIPT: make ci-msvc
+    <<: *job-windows-8c
+```
 
 Then, you can commit the file and push to GitHub. GitHub Actions should launch the tests.
 
