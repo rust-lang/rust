@@ -114,6 +114,7 @@ pub fn create_build_sysroot_content(start_dir: &Path) -> Result<(), String> {
         create_dir(start_dir)?;
     }
     copy_file("build_system/build_sysroot/Cargo.toml", &start_dir.join("Cargo.toml"))?;
+    copy_file("build_system/build_sysroot/Cargo.lock", &start_dir.join("Cargo.lock"))?;
 
     let src_dir = start_dir.join("src");
     if !src_dir.is_dir() {
