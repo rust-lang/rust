@@ -289,19 +289,14 @@ impl DefCollector<'_> {
             crate_data.proc_macro_loading_error = Some(e.clone());
         }
 
-        for (name, dep) in &self.deps {
-            if dep.is_prelude() {
-                crate_data
-                    .extern_prelude
-                    .insert(name.clone(), (CrateRootModuleId { krate: dep.crate_id }, None));
-            }
-        }
+        let mut process = true;
 
         // Process other crate-level attributes.
         for attr in &*attrs {
             if let Some(cfg) = attr.cfg() {
                 if self.cfg_options.check(&cfg) == Some(false) {
-                    return;
+                    process = false;
+                    break;
                 }
             }
             let Some(attr_name) = attr.path.as_ident() else { continue };
@@ -319,43 +314,8 @@ impl DefCollector<'_> {
                         self.is_proc_macro = true;
                     }
                 }
-                () if *attr_name == hir_expand::name![no_core] => {
-                    if let Some((core, _)) =
-                        crate_data.extern_prelude.iter().find(|(_, (root, _))| {
-                            matches!(
-                                crate_graph[root.krate].origin,
-                                CrateOrigin::Lang(LangCrateOrigin::Core)
-                            )
-                        })
-                    {
-                        crate_data.extern_prelude.remove(&core.clone());
-                    }
-
-                    crate_data.no_core = true
-                }
-                () if *attr_name == hir_expand::name![no_std] => {
-                    if let Some((alloc, _)) =
-                        crate_data.extern_prelude.iter().find(|(_, (root, _))| {
-                            matches!(
-                                crate_graph[root.krate].origin,
-                                CrateOrigin::Lang(LangCrateOrigin::Alloc)
-                            )
-                        })
-                    {
-                        crate_data.extern_prelude.remove(&alloc.clone());
-                    }
-                    if let Some((std, _)) =
-                        crate_data.extern_prelude.iter().find(|(_, (root, _))| {
-                            matches!(
-                                crate_graph[root.krate].origin,
-                                CrateOrigin::Lang(LangCrateOrigin::Std)
-                            )
-                        })
-                    {
-                        crate_data.extern_prelude.remove(&std.clone());
-                    }
-                    crate_data.no_std = true
-                }
+                () if *attr_name == hir_expand::name![no_core] => crate_data.no_core = true,
+                () if *attr_name == hir_expand::name![no_std] => crate_data.no_std = true,
                 () if attr_name.as_text().as_deref() == Some("rustc_coherence_is_core") => {
                     crate_data.rustc_coherence_is_core = true;
                 }
@@ -386,8 +346,37 @@ impl DefCollector<'_> {
             }
         }
 
-        crate_data.shrink_to_fit();
+        for (name, dep) in &self.deps {
+            if dep.is_prelude() {
+                // This is a bit confusing but the gist is that `no_core` and `no_std` remove the
+                // sysroot dependence on `core` and `std` respectively. Our `CrateGraph` is eagerly
+                // constructed with them in place no matter what though, since at that point we
+                // don't do pre-configured attribute resolution yet.
+                // So here check if we are no_core / no_std and we are trying to add the
+                // corresponding dep from the sysroot
+                let skip = match crate_graph[dep.crate_id].origin {
+                    CrateOrigin::Lang(LangCrateOrigin::Core) => {
+                        crate_data.no_core && dep.is_sysroot()
+                    }
+                    CrateOrigin::Lang(LangCrateOrigin::Std) => {
+                        crate_data.no_std && dep.is_sysroot()
+                    }
+                    _ => false,
+                };
+                if skip {
+                    continue;
+                }
+                crate_data
+                    .extern_prelude
+                    .insert(name.clone(), (CrateRootModuleId { krate: dep.crate_id }, None));
+            }
+        }
+
         self.inject_prelude();
+
+        if !process {
+            return;
+        }
 
         ModCollector {
             def_collector: self,
@@ -398,6 +387,7 @@ impl DefCollector<'_> {
             mod_dir: ModDir::root(),
         }
         .collect_in_top_module(item_tree.top_level_items());
+        Arc::get_mut(&mut self.def_map.data).unwrap().shrink_to_fit();
     }
 
     fn seed_with_inner(&mut self, tree_id: TreeId) {
@@ -555,15 +545,12 @@ impl DefCollector<'_> {
 
         let krate = if self.def_map.data.no_std {
             name![core]
+        } else if self.def_map.extern_prelude().any(|(name, _)| *name == name![std]) {
+            name![std]
         } else {
-            let std = name![std];
-            if self.def_map.extern_prelude().any(|(name, _)| *name == std) {
-                std
-            } else {
-                // If `std` does not exist for some reason, fall back to core. This mostly helps
-                // keep r-a's own tests minimal.
-                name![core]
-            }
+            // If `std` does not exist for some reason, fall back to core. This mostly helps
+            // keep r-a's own tests minimal.
+            name![core]
         };
 
         let edition = match self.def_map.data.edition {
