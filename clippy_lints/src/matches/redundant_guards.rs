@@ -1,3 +1,4 @@
+use clippy_config::msrvs::Msrv;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet;
 use clippy_utils::visitors::{for_each_expr, is_local_used};
@@ -12,9 +13,9 @@ use rustc_span::{Span, Symbol};
 use std::borrow::Cow;
 use std::ops::ControlFlow;
 
-use super::REDUNDANT_GUARDS;
+use super::{pat_contains_disallowed_or, REDUNDANT_GUARDS};
 
-pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'tcx>]) {
+pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'tcx>], msrv: &Msrv) {
     for outer_arm in arms {
         let Some(guard) = outer_arm.guard else {
             continue;
@@ -35,6 +36,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'tcx>]) {
             MatchSource::Normal,
         ) = guard.kind
             && let Some(binding) = get_pat_binding(cx, scrutinee, outer_arm)
+            && !pat_contains_disallowed_or(&arm.pat, msrv)
         {
             let pat_span = match (arm.pat.kind, binding.byref_ident) {
                 (PatKind::Ref(pat, _), Some(_)) => pat.span,
@@ -53,6 +55,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'tcx>]) {
         // `Some(x) if let Some(2) = x`
         else if let ExprKind::Let(let_expr) = guard.kind
             && let Some(binding) = get_pat_binding(cx, let_expr.init, outer_arm)
+            && !pat_contains_disallowed_or(&let_expr.pat, msrv)
         {
             let pat_span = match (let_expr.pat.kind, binding.byref_ident) {
                 (PatKind::Ref(pat, _), Some(_)) => pat.span,
