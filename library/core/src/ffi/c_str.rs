@@ -46,9 +46,9 @@ use crate::str;
 /// use std::ffi::CStr;
 /// use std::os::raw::c_char;
 ///
-/// # #[cfg(any())] // Extern functions are awkward in doc comments - fake it instead
+/// # /* Extern functions are awkward in doc comments - fake it instead
 /// extern "C" { fn my_string() -> *const c_char; }
-/// # unsafe extern "C" fn my_string() -> *const c_char { c"hello".as_ptr() }
+/// # */ unsafe extern "C" fn my_string() -> *const c_char { c"hello".as_ptr() }
 ///
 /// unsafe {
 ///     let slice = CStr::from_ptr(my_string());
@@ -63,9 +63,9 @@ use crate::str;
 /// use std::os::raw::c_char;
 ///
 /// fn work(data: &CStr) {
-/// #   #[cfg(any())] // Extern functions are awkward in doc comments - fake it instead
+/// #   /* Extern functions are awkward in doc comments - fake it instead
 ///     extern "C" { fn work_with(data: *const c_char); }
-/// #   unsafe extern "C" fn work_with(s: *const c_char) {}
+/// #   */ unsafe extern "C" fn work_with(s: *const c_char) {}
 ///
 ///     unsafe { work_with(data.as_ptr()) }
 /// }
@@ -80,9 +80,9 @@ use crate::str;
 /// use std::ffi::CStr;
 /// use std::os::raw::c_char;
 ///
-/// # #[cfg(any())] // Extern functions are awkward in doc comments - fake it instead
+/// # /* Extern functions are awkward in doc comments - fake it instead
 /// extern "C" { fn my_string() -> *const c_char; }
-/// # unsafe extern "C" fn my_string() -> *const c_char { c"hello".as_ptr() }
+/// # */ unsafe extern "C" fn my_string() -> *const c_char { c"hello".as_ptr() }
 ///
 /// fn my_string_safe() -> String {
 ///     let cstr = unsafe { CStr::from_ptr(my_string()) };
@@ -258,7 +258,7 @@ impl CStr {
     ///
     /// unsafe {
     ///     let slice = CStr::from_ptr(my_string());
-    ///     println!("string returned: {}", slice.to_str().unwrap());
+    ///     assert_eq!(slice.to_str().unwrap(), "hello");
     /// }
     /// ```
     ///
