@@ -266,7 +266,7 @@ pub(crate) mod rustc {
 
                 ty::Ref(lifetime, ty, mutability) => {
                     let ty_and_layout = cx.layout_of(*ty)?;
-                    let align = ty_and_layout.align.abi.bytes() as usize;
+                    let align = ty_and_layout.align.abi.bytes_usize();
                     let size = ty_and_layout.size.bytes_usize();
                     Ok(Tree::Ref(Ref {
                         lifetime: *lifetime,
