@@ -150,27 +150,11 @@ fn create_mappings<'tcx>(
     let mut mappings = Vec::new();
 
     mappings.extend(coverage_spans.mappings.iter().filter_map(
-        |BcbMapping { kind: bcb_mapping_kind, span }| {
-            let kind = match *bcb_mapping_kind {
+        |&BcbMapping { kind: bcb_mapping_kind, span }| {
+            let kind = match bcb_mapping_kind {
                 BcbMappingKind::Code(bcb) => MappingKind::Code(term_for_bcb(bcb)),
-                BcbMappingKind::MCDCBranch {
-                    true_bcb, false_bcb, condition_info: None, ..
-                } => MappingKind::Branch {
-                    true_term: term_for_bcb(true_bcb),
-                    false_term: term_for_bcb(false_bcb),
-                },
-                BcbMappingKind::MCDCBranch {
-                    true_bcb,
-                    false_bcb,
-                    condition_info: Some(mcdc_params),
-                    ..
-                } => MappingKind::MCDCBranch {
-                    true_term: term_for_bcb(true_bcb),
-                    false_term: term_for_bcb(false_bcb),
-                    mcdc_params,
-                },
             };
-            let code_region = make_code_region(source_map, file_name, *span, body_span)?;
+            let code_region = make_code_region(source_map, file_name, span, body_span)?;
             Some(Mapping { kind, code_region })
         },
     ));
@@ -181,6 +165,19 @@ fn create_mappings<'tcx>(
             let false_term = term_for_bcb(false_bcb);
             let kind = MappingKind::Branch { true_term, false_term };
             let code_region = make_code_region(source_map, file_name, span, body_span)?;
+            Some(Mapping { kind, code_region })
+        },
+    ));
+
+    mappings.extend(coverage_spans.mcdc_branches.iter().filter_map(
+        |&mappings::MCDCBranch { span, true_bcb, false_bcb, condition_info, decision_depth: _ }| {
+            let code_region = make_code_region(source_map, file_name, span, body_span)?;
+            let true_term = term_for_bcb(true_bcb);
+            let false_term = term_for_bcb(false_bcb);
+            let kind = match condition_info {
+                Some(mcdc_params) => MappingKind::MCDCBranch { true_term, false_term, mcdc_params },
+                None => MappingKind::Branch { true_term, false_term },
+            };
             Some(Mapping { kind, code_region })
         },
     ));
@@ -278,24 +275,22 @@ fn inject_mcdc_statements<'tcx>(
         }
     }
 
-    for (true_bcb, false_bcb, condition_id, decision_depth) in
-        coverage_spans.mappings.iter().filter_map(|mapping| match mapping.kind {
-            BcbMappingKind::MCDCBranch { true_bcb, false_bcb, condition_info, decision_depth } => {
-                Some((true_bcb, false_bcb, condition_info?.condition_id, decision_depth))
-            }
-            _ => None,
-        })
+    for &mappings::MCDCBranch { span: _, true_bcb, false_bcb, condition_info, decision_depth } in
+        &coverage_spans.mcdc_branches
     {
+        let Some(condition_info) = condition_info else { continue };
+        let id = condition_info.condition_id;
+
         let true_bb = basic_coverage_blocks[true_bcb].leader_bb();
         inject_statement(
             mir_body,
-            CoverageKind::CondBitmapUpdate { id: condition_id, value: true, decision_depth },
+            CoverageKind::CondBitmapUpdate { id, value: true, decision_depth },
             true_bb,
         );
         let false_bb = basic_coverage_blocks[false_bcb].leader_bb();
         inject_statement(
             mir_body,
-            CoverageKind::CondBitmapUpdate { id: condition_id, value: false, decision_depth },
+            CoverageKind::CondBitmapUpdate { id, value: false, decision_depth },
             false_bb,
         );
     }

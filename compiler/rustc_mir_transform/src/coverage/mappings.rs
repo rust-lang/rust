@@ -3,9 +3,7 @@ use std::collections::BTreeSet;
 use rustc_data_structures::graph::DirectedGraph;
 use rustc_index::bit_set::BitSet;
 use rustc_index::IndexVec;
-use rustc_middle::mir::coverage::{
-    BlockMarkerId, BranchSpan, ConditionInfo, CoverageKind, MCDCBranchSpan,
-};
+use rustc_middle::mir::coverage::{BlockMarkerId, BranchSpan, ConditionInfo, CoverageKind};
 use rustc_middle::mir::{self, BasicBlock, StatementKind};
 use rustc_span::Span;
 
@@ -15,23 +13,13 @@ use crate::coverage::spans::{
 };
 use crate::coverage::ExtractedHirInfo;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub(super) enum BcbMappingKind {
     /// Associates an ordinary executable code span with its corresponding BCB.
     Code(BasicCoverageBlock),
-
-    // Ordinary branch mappings are stored separately, so they don't have a
-    // variant in this enum.
     //
-    /// Associates a mcdc branch span with condition info besides fields for normal branch.
-    MCDCBranch {
-        true_bcb: BasicCoverageBlock,
-        false_bcb: BasicCoverageBlock,
-        /// If `None`, this actually represents a normal branch mapping inserted
-        /// for code that was too complex for MC/DC.
-        condition_info: Option<ConditionInfo>,
-        decision_depth: u16,
-    },
+    // Branch and MC/DC mappings are more complex, so they are represented
+    // separately.
 }
 
 #[derive(Debug)]
@@ -50,6 +38,18 @@ pub(super) struct BcbBranchPair {
     pub(super) false_bcb: BasicCoverageBlock,
 }
 
+/// Associates an MC/DC branch span with condition info besides fields for normal branch.
+#[derive(Debug)]
+pub(super) struct MCDCBranch {
+    pub(super) span: Span,
+    pub(super) true_bcb: BasicCoverageBlock,
+    pub(super) false_bcb: BasicCoverageBlock,
+    /// If `None`, this actually represents a normal branch mapping inserted
+    /// for code that was too complex for MC/DC.
+    pub(super) condition_info: Option<ConditionInfo>,
+    pub(super) decision_depth: u16,
+}
+
 /// Associates an MC/DC decision with its join BCBs.
 #[derive(Debug)]
 pub(super) struct MCDCDecision {
@@ -65,6 +65,7 @@ pub(super) struct CoverageSpans {
     pub(super) mappings: Vec<BcbMapping>,
     pub(super) branch_pairs: Vec<BcbBranchPair>,
     test_vector_bitmap_bytes: u32,
+    pub(super) mcdc_branches: Vec<MCDCBranch>,
     pub(super) mcdc_decisions: Vec<MCDCDecision>,
 }
 
@@ -89,6 +90,7 @@ pub(super) fn generate_coverage_spans(
 ) -> Option<CoverageSpans> {
     let mut mappings = vec![];
     let mut branch_pairs = vec![];
+    let mut mcdc_branches = vec![];
     let mut mcdc_decisions = vec![];
 
     if hir_info.is_async_fn {
@@ -104,15 +106,20 @@ pub(super) fn generate_coverage_spans(
 
         branch_pairs.extend(extract_branch_pairs(mir_body, hir_info, basic_coverage_blocks));
 
-        mappings.extend(extract_mcdc_mappings(
+        extract_mcdc_mappings(
             mir_body,
             hir_info.body_span,
             basic_coverage_blocks,
+            &mut mcdc_branches,
             &mut mcdc_decisions,
-        ));
+        );
     }
 
-    if mappings.is_empty() && branch_pairs.is_empty() && mcdc_decisions.is_empty() {
+    if mappings.is_empty()
+        && branch_pairs.is_empty()
+        && mcdc_branches.is_empty()
+        && mcdc_decisions.is_empty()
+    {
         return None;
     }
 
@@ -122,16 +129,16 @@ pub(super) fn generate_coverage_spans(
         bcb_has_mappings.insert(bcb);
     };
 
-    for BcbMapping { kind, span: _ } in &mappings {
-        match *kind {
+    for &BcbMapping { kind, span: _ } in &mappings {
+        match kind {
             BcbMappingKind::Code(bcb) => insert(bcb),
-            BcbMappingKind::MCDCBranch { true_bcb, false_bcb, .. } => {
-                insert(true_bcb);
-                insert(false_bcb);
-            }
         }
     }
     for &BcbBranchPair { true_bcb, false_bcb, .. } in &branch_pairs {
+        insert(true_bcb);
+        insert(false_bcb);
+    }
+    for &MCDCBranch { true_bcb, false_bcb, .. } in &mcdc_branches {
         insert(true_bcb);
         insert(false_bcb);
     }
@@ -150,6 +157,7 @@ pub(super) fn generate_coverage_spans(
         mappings,
         branch_pairs,
         test_vector_bitmap_bytes,
+        mcdc_branches,
         mcdc_decisions,
     })
 }
@@ -217,11 +225,10 @@ pub(super) fn extract_mcdc_mappings(
     mir_body: &mir::Body<'_>,
     body_span: Span,
     basic_coverage_blocks: &CoverageGraph,
+    mcdc_branches: &mut impl Extend<MCDCBranch>,
     mcdc_decisions: &mut impl Extend<MCDCDecision>,
-) -> Vec<BcbMapping> {
-    let Some(branch_info) = mir_body.coverage_branch_info.as_deref() else {
-        return vec![];
-    };
+) {
+    let Some(branch_info) = mir_body.coverage_branch_info.as_deref() else { return };
 
     let block_markers = resolve_block_markers(branch_info, mir_body);
 
@@ -242,25 +249,19 @@ pub(super) fn extract_mcdc_mappings(
             Some((span, true_bcb, false_bcb))
         };
 
-    let mcdc_branch_filter_map = |&MCDCBranchSpan {
-                                      span: raw_span,
-                                      true_marker,
-                                      false_marker,
-                                      condition_info,
-                                      decision_depth,
-                                  }| {
-        check_branch_bcb(raw_span, true_marker, false_marker).map(|(span, true_bcb, false_bcb)| {
-            BcbMapping {
-                kind: BcbMappingKind::MCDCBranch {
-                    true_bcb,
-                    false_bcb,
-                    condition_info,
-                    decision_depth,
-                },
-                span,
-            }
-        })
-    };
+    mcdc_branches.extend(branch_info.mcdc_branch_spans.iter().filter_map(
+        |&mir::coverage::MCDCBranchSpan {
+             span: raw_span,
+             condition_info,
+             true_marker,
+             false_marker,
+             decision_depth,
+         }| {
+            let (span, true_bcb, false_bcb) =
+                check_branch_bcb(raw_span, true_marker, false_marker)?;
+            Some(MCDCBranch { span, true_bcb, false_bcb, condition_info, decision_depth })
+        },
+    ));
 
     let mut next_bitmap_idx = 0;
 
@@ -286,8 +287,4 @@ pub(super) fn extract_mcdc_mappings(
             })
         },
     ));
-
-    std::iter::empty()
-        .chain(branch_info.mcdc_branch_spans.iter().filter_map(mcdc_branch_filter_map))
-        .collect::<Vec<_>>()
 }
