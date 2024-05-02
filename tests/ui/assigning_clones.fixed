@@ -272,3 +272,32 @@ impl<'a> Add for &'a mut HasCloneFrom {
         self
     }
 }
+
+mod borrowck_conflicts {
+    //! Cases where clone_into and friends cannot be used because the src/dest have conflicting
+    //! borrows.
+    use std::path::PathBuf;
+
+    fn issue12444(mut name: String) {
+        let parts = name.split(", ").collect::<Vec<_>>();
+        let first = *parts.first().unwrap();
+        name = first.to_owned();
+    }
+
+    fn issue12444_simple() {
+        let mut s = String::new();
+        let s2 = &s;
+        s = s2.to_owned();
+    }
+
+    fn issue12460(mut name: String) {
+        if let Some(stripped_name) = name.strip_prefix("baz-") {
+            name = stripped_name.to_owned();
+        }
+    }
+
+    fn issue12749() {
+        let mut path = PathBuf::from("/a/b/c");
+        path = path.components().as_path().to_owned();
+    }
+}
