@@ -11,6 +11,7 @@ import dataclasses
 import json
 import logging
 import os
+import re
 import typing
 from pathlib import Path
 from typing import List, Dict, Any, Optional
@@ -67,6 +68,23 @@ class GitHubCtx:
     event_name: str
     ref: str
     repository: str
+    commit_message: Optional[str]
+
+
+def get_custom_jobs(ctx: GitHubCtx) -> List[str]:
+    """
+    Tries to parse names of specific CI jobs that should be executed in the form of
+    ci-job: <job-name>
+    from the commit message of the passed GitHub context.
+    """
+    if ctx.commit_message is None:
+        return []
+
+    regex = re.compile(r"ci-job: (.*)")
+    jobs = []
+    for match in regex.finditer(ctx.commit_message):
+        jobs.append(match.group(1))
+    return jobs
 
 
 def find_run_type(ctx: GitHubCtx) -> Optional[WorkflowRunType]:
@@ -84,7 +102,8 @@ def find_run_type(ctx: GitHubCtx) -> Optional[WorkflowRunType]:
         try_build = old_bors_try_build or new_bors_try_build
 
         if try_build:
-            return TryRunType()
+            jobs = get_custom_jobs(ctx)
+            return TryRunType(custom_jobs=jobs)
 
         if ctx.ref == "refs/heads/auto" and ctx.repository == "rust-lang-ci/rust":
             return AutoRunType()
@@ -96,8 +115,24 @@ def calculate_jobs(run_type: WorkflowRunType, job_data: Dict[str, Any]) -> List[
     if isinstance(run_type, PRRunType):
         return add_base_env(name_jobs(job_data["pr"], "PR"), job_data["envs"]["pr"])
     elif isinstance(run_type, TryRunType):
-        return add_base_env(name_jobs(job_data["try"], "try"), job_data["envs"]["try"])
-    elif isinstance(run_type, AutoRunType):
+        jobs = job_data["try"]
+        custom_jobs = run_type.custom_jobs
+        if custom_jobs:
+            if len(custom_jobs) > 10:
+                raise Exception(
+                    f"It is only possible to schedule up to 10 custom jobs,"
+                    f"received {len(custom_jobs)} jobs"
+                )
+
+            jobs = []
+            for custom_job in custom_jobs:
+                job = [j for j in job_data["auto"] if j["image"] == custom_job]
+                if not job:
+                    raise Exception(f"Custom job `{custom_job}` not found in auto jobs")
+                jobs.append(job[0])
+
+        return add_base_env(name_jobs(jobs, "try"), job_data["envs"]["try"])
+    elif run_type is AutoRunType:
         return add_base_env(name_jobs(job_data["auto"], "auto"), job_data["envs"]["auto"])
 
     return []
@@ -111,10 +146,16 @@ def skip_jobs(jobs: List[Dict[str, Any]], channel: str) -> List[Job]:
 
 
 def get_github_ctx() -> GitHubCtx:
+    event_name = os.environ["GITHUB_EVENT_NAME"]
+
+    commit_message = None
+    if event_name == "push":
+        commit_message = os.environ["COMMIT_MESSAGE"]
     return GitHubCtx(
-        event_name=os.environ["GITHUB_EVENT_NAME"],
+        event_name=event_name,
         ref=os.environ["GITHUB_REF"],
-        repository=os.environ["GITHUB_REPOSITORY"]
+        repository=os.environ["GITHUB_REPOSITORY"],
+        commit_message=commit_message
     )
 
 
