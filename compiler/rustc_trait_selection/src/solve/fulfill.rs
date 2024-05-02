@@ -7,10 +7,10 @@ use rustc_infer::traits::solve::inspect::ProbeKind;
 use rustc_infer::traits::solve::{CandidateSource, GoalSource, MaybeCause};
 use rustc_infer::traits::{
     self, FulfillmentError, FulfillmentErrorCode, MismatchedProjectionTypes, Obligation,
-    PredicateObligation, SelectionError, TraitEngine,
+    ObligationCause, PredicateObligation, SelectionError, TraitEngine,
 };
-use rustc_middle::ty;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
+use rustc_middle::ty::{self, TyCtxt};
 
 use super::eval_ctxt::GenerateProofTree;
 use super::inspect::{ProofTreeInferCtxtExt, ProofTreeVisitor};
@@ -219,14 +219,14 @@ fn fulfillment_error_for_no_solution<'tcx>(
         }
         ty::PredicateKind::Subtype(pred) => {
             let (a, b) = infcx.enter_forall_and_leak_universe(
-                root_obligation.predicate.kind().rebind((pred.a, pred.b)),
+                obligation.predicate.kind().rebind((pred.a, pred.b)),
             );
             let expected_found = ExpectedFound::new(true, a, b);
             FulfillmentErrorCode::SubtypeError(expected_found, TypeError::Sorts(expected_found))
         }
         ty::PredicateKind::Coerce(pred) => {
             let (a, b) = infcx.enter_forall_and_leak_universe(
-                root_obligation.predicate.kind().rebind((pred.a, pred.b)),
+                obligation.predicate.kind().rebind((pred.a, pred.b)),
             );
             let expected_found = ExpectedFound::new(false, a, b);
             FulfillmentErrorCode::SubtypeError(expected_found, TypeError::Sorts(expected_found))
@@ -272,6 +272,20 @@ fn fulfillment_error_for_stalled<'tcx>(
     }
 }
 
+fn find_best_leaf_obligation<'tcx>(
+    infcx: &InferCtxt<'tcx>,
+    obligation: &PredicateObligation<'tcx>,
+) -> PredicateObligation<'tcx> {
+    let obligation = infcx.resolve_vars_if_possible(obligation.clone());
+    infcx
+        .visit_proof_tree(
+            obligation.clone().into(),
+            &mut BestObligation { obligation: obligation.clone() },
+        )
+        .break_value()
+        .unwrap_or(obligation)
+}
+
 struct BestObligation<'tcx> {
     obligation: PredicateObligation<'tcx>,
 }
@@ -279,10 +293,9 @@ struct BestObligation<'tcx> {
 impl<'tcx> BestObligation<'tcx> {
     fn with_derived_obligation(
         &mut self,
-        derive_obligation: impl FnOnce(&mut Self) -> PredicateObligation<'tcx>,
+        derived_obligation: PredicateObligation<'tcx>,
         and_then: impl FnOnce(&mut Self) -> <Self as ProofTreeVisitor<'tcx>>::Result,
     ) -> <Self as ProofTreeVisitor<'tcx>>::Result {
-        let derived_obligation = derive_obligation(self);
         let old_obligation = std::mem::replace(&mut self.obligation, derived_obligation);
         let res = and_then(self);
         self.obligation = old_obligation;
@@ -298,13 +311,10 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
     }
 
     fn visit_goal(&mut self, goal: &super::inspect::InspectGoal<'_, 'tcx>) -> Self::Result {
+        // FIXME: Throw out candidates that have no failing WC and >0 failing misc goal.
+        // This most likely means that the goal just didn't unify at all, e.g. a param
+        // candidate with an alias in it.
         let candidates = goal.candidates();
-        // FIXME: Throw out candidates that have no failing WC and >1 failing misc goal.
-
-        // HACK:
-        if self.obligation.recursion_depth > 3 {
-            return ControlFlow::Break(self.obligation.clone());
-        }
 
         let [candidate] = candidates.as_slice() else {
             return ControlFlow::Break(self.obligation.clone());
@@ -320,80 +330,71 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
         let tcx = goal.infcx().tcx;
         let mut impl_where_bound_count = 0;
         for nested_goal in candidate.instantiate_nested_goals(self.span()) {
-            if matches!(nested_goal.source(), GoalSource::ImplWhereBound) {
-                impl_where_bound_count += 1;
-            } else {
-                continue;
+            let obligation;
+            match nested_goal.source() {
+                GoalSource::Misc => {
+                    continue;
+                }
+                GoalSource::ImplWhereBound => {
+                    obligation = Obligation {
+                        cause: derive_cause(
+                            tcx,
+                            candidate.kind(),
+                            self.obligation.cause.clone(),
+                            impl_where_bound_count,
+                            parent_trait_pred,
+                        ),
+                        param_env: nested_goal.goal().param_env,
+                        predicate: nested_goal.goal().predicate,
+                        recursion_depth: self.obligation.recursion_depth + 1,
+                    };
+                    impl_where_bound_count += 1;
+                }
+                GoalSource::InstantiateHigherRanked => {
+                    obligation = self.obligation.clone();
+                }
             }
 
             // Skip nested goals that hold.
+            //FIXME: We should change the max allowed certainty based on if we're
+            // visiting an ambiguity or error obligation.
             if matches!(nested_goal.result(), Ok(Certainty::Yes)) {
                 continue;
             }
 
-            self.with_derived_obligation(
-                |self_| {
-                    let mut cause = self_.obligation.cause.clone();
-                    cause = match candidate.kind() {
-                        ProbeKind::TraitCandidate {
-                            source: CandidateSource::Impl(impl_def_id),
-                            result: _,
-                        } => {
-                            let idx = impl_where_bound_count - 1;
-                            if let Some((_, span)) = tcx
-                                .predicates_of(impl_def_id)
-                                .instantiate_identity(tcx)
-                                .iter()
-                                .nth(idx)
-                            {
-                                cause.derived_cause(parent_trait_pred, |derived| {
-                                    traits::ImplDerivedObligation(Box::new(
-                                        traits::ImplDerivedObligationCause {
-                                            derived,
-                                            impl_or_alias_def_id: impl_def_id,
-                                            impl_def_predicate_index: Some(idx),
-                                            span,
-                                        },
-                                    ))
-                                })
-                            } else {
-                                cause
-                            }
-                        }
-                        ProbeKind::TraitCandidate {
-                            source: CandidateSource::BuiltinImpl(..),
-                            result: _,
-                        } => {
-                            cause.derived_cause(parent_trait_pred, traits::BuiltinDerivedObligation)
-                        }
-                        _ => cause,
-                    };
-
-                    Obligation {
-                        cause,
-                        param_env: nested_goal.goal().param_env,
-                        predicate: nested_goal.goal().predicate,
-                        recursion_depth: self_.obligation.recursion_depth + 1,
-                    }
-                },
-                |self_| self_.visit_goal(&nested_goal),
-            )?;
+            self.with_derived_obligation(obligation, |this| nested_goal.visit_with(this))?;
         }
 
         ControlFlow::Break(self.obligation.clone())
     }
 }
 
-fn find_best_leaf_obligation<'tcx>(
-    infcx: &InferCtxt<'tcx>,
-    obligation: &PredicateObligation<'tcx>,
-) -> PredicateObligation<'tcx> {
-    let obligation = infcx.resolve_vars_if_possible(obligation.clone());
-    infcx
-        .visit_proof_tree(
-            obligation.clone().into(),
-            &mut BestObligation { obligation: obligation.clone() },
-        )
-        .break_value()
-        .unwrap_or(obligation)
+fn derive_cause<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    candidate_kind: ProbeKind<'tcx>,
+    mut cause: ObligationCause<'tcx>,
+    idx: usize,
+    parent_trait_pred: ty::PolyTraitPredicate<'tcx>,
+) -> ObligationCause<'tcx> {
+    match candidate_kind {
+        ProbeKind::TraitCandidate { source: CandidateSource::Impl(impl_def_id), result: _ } => {
+            if let Some((_, span)) =
+                tcx.predicates_of(impl_def_id).instantiate_identity(tcx).iter().nth(idx)
+            {
+                cause = cause.derived_cause(parent_trait_pred, |derived| {
+                    traits::ImplDerivedObligation(Box::new(traits::ImplDerivedObligationCause {
+                        derived,
+                        impl_or_alias_def_id: impl_def_id,
+                        impl_def_predicate_index: Some(idx),
+                        span,
+                    }))
+                })
+            }
+        }
+        ProbeKind::TraitCandidate { source: CandidateSource::BuiltinImpl(..), result: _ } => {
+            cause = cause.derived_cause(parent_trait_pred, traits::BuiltinDerivedObligation);
+        }
+        _ => {}
+    };
+    cause
 }

@@ -1,16 +1,9 @@
-error[E0275]: overflow evaluating the requirement `(): B`
+error[E0275]: overflow evaluating the requirement `(): BInd`
   --> $DIR/mixed-cycles-2.rs:30:15
    |
 LL |     impls_a::<()>();
    |               ^^
    |
-note: required for `()` to implement `BInd`
-  --> $DIR/mixed-cycles-2.rs:22:21
-   |
-LL | impl<T: ?Sized + B> BInd for T {}
-   |                  -  ^^^^     ^
-   |                  |
-   |                  unsatisfied trait bound introduced here
 note: required for `()` to implement `B`
   --> $DIR/mixed-cycles-2.rs:25:24
    |
@@ -18,7 +11,14 @@ LL | impl<T: ?Sized + BInd> B for T {}
    |                  ----  ^     ^
    |                  |
    |                  unsatisfied trait bound introduced here
-   = note: 1 redundant requirement hidden
+note: required for `()` to implement `BInd`
+  --> $DIR/mixed-cycles-2.rs:22:21
+   |
+LL | impl<T: ?Sized + B> BInd for T {}
+   |                  -  ^^^^     ^
+   |                  |
+   |                  unsatisfied trait bound introduced here
+   = note: 6 redundant requirements hidden
    = note: required for `()` to implement `BInd`
 note: required for `()` to implement `A`
   --> $DIR/mixed-cycles-2.rs:24:28

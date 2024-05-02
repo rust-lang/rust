@@ -273,6 +273,8 @@ pub enum GoalSource {
     /// they are from an impl where-clause. This is necessary due to
     /// backwards compatability, cc trait-system-refactor-initiatitive#70.
     ImplWhereBound,
+    /// Instantiating a higher-ranked goal and re-proving it.
+    InstantiateHigherRanked,
 }
 
 /// Possible ways the given goal can be proven.

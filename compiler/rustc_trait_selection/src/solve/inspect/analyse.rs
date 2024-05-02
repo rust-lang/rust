@@ -128,10 +128,8 @@ impl<'a, 'tcx> InspectCandidate<'a, 'tcx> {
     /// back their inference constraints. This function modifies
     /// the state of the `infcx`.
     pub fn visit_nested_no_probe<V: ProofTreeVisitor<'tcx>>(&self, visitor: &mut V) -> V::Result {
-        if self.goal.depth < visitor.config().max_depth {
-            for goal in self.instantiate_nested_goals(visitor.span()) {
-                try_visit!(visitor.visit_goal(&goal));
-            }
+        for goal in self.instantiate_nested_goals(visitor.span()) {
+            try_visit!(goal.visit_with(visitor));
         }
 
         V::Result::output()
@@ -359,6 +357,14 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
             normalizes_to_term_hack,
             source,
         }
+    }
+
+    pub(crate) fn visit_with<V: ProofTreeVisitor<'tcx>>(&self, visitor: &mut V) -> V::Result {
+        if self.depth < visitor.config().max_depth {
+            try_visit!(visitor.visit_goal(self));
+        }
+
+        V::Result::output()
     }
 }
 
