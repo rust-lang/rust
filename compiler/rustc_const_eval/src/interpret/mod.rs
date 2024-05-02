@@ -18,6 +18,7 @@ mod util;
 mod validity;
 mod visitor;
 
+#[doc(no_inline)]
 pub use rustc_middle::mir::interpret::*; // have all the `interpret` symbols in one place: here
 
 pub use self::eval_context::{format_interp_error, Frame, FrameInfo, InterpCx, StackPopCleanup};
