@@ -9,7 +9,7 @@ mod tests;
 
 use self::counters::{CounterIncrementSite, CoverageCounters};
 use self::graph::{BasicCoverageBlock, CoverageGraph};
-use self::mappings::CoverageSpans;
+use self::mappings::ExtractedMappings;
 
 use crate::MirPass;
 
@@ -69,9 +69,9 @@ fn instrument_function_for_coverage<'tcx>(tcx: TyCtxt<'tcx>, mir_body: &mut mir:
     let basic_coverage_blocks = CoverageGraph::from_mir(mir_body);
 
     ////////////////////////////////////////////////////
-    // Compute coverage spans from the `CoverageGraph`.
-    let coverage_spans =
-        mappings::generate_coverage_spans(mir_body, &hir_info, &basic_coverage_blocks);
+    // Extract coverage spans and other mapping info from MIR.
+    let extracted_mappings =
+        mappings::extract_all_mapping_info_from_mir(mir_body, &hir_info, &basic_coverage_blocks);
 
     ////////////////////////////////////////////////////
     // Create an optimized mix of `Counter`s and `Expression`s for the `CoverageGraph`. Ensure
@@ -79,7 +79,7 @@ fn instrument_function_for_coverage<'tcx>(tcx: TyCtxt<'tcx>, mir_body: &mut mir:
     // and all `Expression` dependencies (operands) are also generated, for any other
     // `BasicCoverageBlock`s not already associated with a coverage span.
     let bcbs_with_counter_mappings =
-        coverage_spans.all_bcbs_with_counter_mappings(&basic_coverage_blocks);
+        extracted_mappings.all_bcbs_with_counter_mappings(&basic_coverage_blocks);
     if bcbs_with_counter_mappings.is_empty() {
         // No relevant spans were found in MIR, so skip instrumenting this function.
         return;
@@ -89,7 +89,7 @@ fn instrument_function_for_coverage<'tcx>(tcx: TyCtxt<'tcx>, mir_body: &mut mir:
     let coverage_counters =
         CoverageCounters::make_bcb_counters(&basic_coverage_blocks, bcb_has_counter_mappings);
 
-    let mappings = create_mappings(tcx, &hir_info, &coverage_spans, &coverage_counters);
+    let mappings = create_mappings(tcx, &hir_info, &extracted_mappings, &coverage_counters);
     if mappings.is_empty() {
         // No spans could be converted into valid mappings, so skip this function.
         debug!("no spans could be converted into valid mappings; skipping");
@@ -103,9 +103,9 @@ fn instrument_function_for_coverage<'tcx>(tcx: TyCtxt<'tcx>, mir_body: &mut mir:
         &coverage_counters,
     );
 
-    inject_mcdc_statements(mir_body, &basic_coverage_blocks, &coverage_spans);
+    inject_mcdc_statements(mir_body, &basic_coverage_blocks, &extracted_mappings);
 
-    let mcdc_num_condition_bitmaps = coverage_spans
+    let mcdc_num_condition_bitmaps = extracted_mappings
         .mcdc_decisions
         .iter()
         .map(|&mappings::MCDCDecision { decision_depth, .. }| decision_depth)
@@ -115,7 +115,7 @@ fn instrument_function_for_coverage<'tcx>(tcx: TyCtxt<'tcx>, mir_body: &mut mir:
     mir_body.function_coverage_info = Some(Box::new(FunctionCoverageInfo {
         function_source_hash: hir_info.function_source_hash,
         num_counters: coverage_counters.num_counters(),
-        mcdc_bitmap_bytes: coverage_spans.mcdc_bitmap_bytes,
+        mcdc_bitmap_bytes: extracted_mappings.mcdc_bitmap_bytes,
         expressions: coverage_counters.into_expressions(),
         mappings,
         mcdc_num_condition_bitmaps,
@@ -130,7 +130,7 @@ fn instrument_function_for_coverage<'tcx>(tcx: TyCtxt<'tcx>, mir_body: &mut mir:
 fn create_mappings<'tcx>(
     tcx: TyCtxt<'tcx>,
     hir_info: &ExtractedHirInfo,
-    coverage_spans: &CoverageSpans,
+    extracted_mappings: &ExtractedMappings,
     coverage_counters: &CoverageCounters,
 ) -> Vec<Mapping> {
     let source_map = tcx.sess.source_map();
@@ -152,13 +152,13 @@ fn create_mappings<'tcx>(
     let region_for_span = |span: Span| make_code_region(source_map, file_name, span, body_span);
 
     // Fully destructure the mappings struct to make sure we don't miss any kinds.
-    let CoverageSpans {
+    let ExtractedMappings {
         code_mappings,
         branch_pairs,
         mcdc_bitmap_bytes: _,
         mcdc_branches,
         mcdc_decisions,
-    } = coverage_spans;
+    } = extracted_mappings;
     let mut mappings = Vec::new();
 
     mappings.extend(code_mappings.iter().filter_map(
@@ -261,7 +261,7 @@ fn inject_coverage_statements<'tcx>(
 fn inject_mcdc_statements<'tcx>(
     mir_body: &mut mir::Body<'tcx>,
     basic_coverage_blocks: &CoverageGraph,
-    coverage_spans: &CoverageSpans,
+    extracted_mappings: &ExtractedMappings,
 ) {
     // Inject test vector update first because `inject_statement` always insert new statement at head.
     for &mappings::MCDCDecision {
@@ -270,7 +270,7 @@ fn inject_mcdc_statements<'tcx>(
         bitmap_idx,
         conditions_num: _,
         decision_depth,
-    } in &coverage_spans.mcdc_decisions
+    } in &extracted_mappings.mcdc_decisions
     {
         for end in end_bcbs {
             let end_bb = basic_coverage_blocks[*end].leader_bb();
@@ -283,7 +283,7 @@ fn inject_mcdc_statements<'tcx>(
     }
 
     for &mappings::MCDCBranch { span: _, true_bcb, false_bcb, condition_info, decision_depth } in
-        &coverage_spans.mcdc_branches
+        &extracted_mappings.mcdc_branches
     {
         let Some(condition_info) = condition_info else { continue };
         let id = condition_info.condition_id;

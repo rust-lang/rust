@@ -53,7 +53,7 @@ pub(super) struct MCDCDecision {
 }
 
 #[derive(Default)]
-pub(super) struct CoverageSpans {
+pub(super) struct ExtractedMappings {
     pub(super) code_mappings: Vec<CodeMapping>,
     pub(super) branch_pairs: Vec<BranchPair>,
     pub(super) mcdc_bitmap_bytes: u32,
@@ -63,17 +63,17 @@ pub(super) struct CoverageSpans {
 
 /// Extracts coverage-relevant spans from MIR, and associates them with
 /// their corresponding BCBs.
-pub(super) fn generate_coverage_spans(
+pub(super) fn extract_all_mapping_info_from_mir(
     mir_body: &mir::Body<'_>,
     hir_info: &ExtractedHirInfo,
     basic_coverage_blocks: &CoverageGraph,
-) -> CoverageSpans {
+) -> ExtractedMappings {
     if hir_info.is_async_fn {
         // An async function desugars into a function that returns a future,
         // with the user code wrapped in a closure. Any spans in the desugared
         // outer function will be unhelpful, so just keep the signature span
         // and ignore all of the spans in the MIR body.
-        let mut mappings = CoverageSpans::default();
+        let mut mappings = ExtractedMappings::default();
         if let Some(span) = hir_info.fn_sig_span_extended {
             mappings.code_mappings.push(CodeMapping { span, bcb: START_BCB });
         }
@@ -99,10 +99,16 @@ pub(super) fn generate_coverage_spans(
         &mut mcdc_decisions,
     );
 
-    CoverageSpans { code_mappings, branch_pairs, mcdc_bitmap_bytes, mcdc_branches, mcdc_decisions }
+    ExtractedMappings {
+        code_mappings,
+        branch_pairs,
+        mcdc_bitmap_bytes,
+        mcdc_branches,
+        mcdc_decisions,
+    }
 }
 
-impl CoverageSpans {
+impl ExtractedMappings {
     pub(super) fn all_bcbs_with_counter_mappings(
         &self,
         basic_coverage_blocks: &CoverageGraph, // Only used for allocating a correctly-sized set
