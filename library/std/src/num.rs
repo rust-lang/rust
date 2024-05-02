@@ -23,7 +23,7 @@ pub use core::num::{FpCategory, ParseFloatError, ParseIntError, TryFromIntError}
 )]
 pub use core::num::ZeroablePrimitive;
 
-#[stable(feature = "generic_nonzero", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "generic_nonzero", since = "1.79.0")]
 pub use core::num::NonZero;
 
 #[stable(feature = "signed_nonzero", since = "1.34.0")]

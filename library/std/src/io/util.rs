@@ -51,7 +51,7 @@ pub struct Empty;
 /// ```
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_stable(feature = "const_io_structs", since = "CURRENT_RUSTC_VERSION")]
+#[rustc_const_stable(feature = "const_io_structs", since = "1.79.0")]
 pub const fn empty() -> Empty {
     Empty
 }
@@ -173,7 +173,7 @@ pub struct Repeat {
 /// ```
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_stable(feature = "const_io_structs", since = "CURRENT_RUSTC_VERSION")]
+#[rustc_const_stable(feature = "const_io_structs", since = "1.79.0")]
 pub const fn repeat(byte: u8) -> Repeat {
     Repeat { byte }
 }
@@ -276,7 +276,7 @@ pub struct Sink;
 /// ```
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_stable(feature = "const_io_structs", since = "CURRENT_RUSTC_VERSION")]
+#[rustc_const_stable(feature = "const_io_structs", since = "1.79.0")]
 pub const fn sink() -> Sink {
     Sink
 }

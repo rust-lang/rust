@@ -481,8 +481,8 @@ macro_rules! int_impl {
         /// [`unwrap_unchecked`]: option/enum.Option.html#method.unwrap_unchecked
         #[doc = concat!("[`checked_add`]: ", stringify!($SelfT), "::checked_add")]
         #[doc = concat!("[`wrapping_add`]: ", stringify!($SelfT), "::wrapping_add")]
-        #[stable(feature = "unchecked_math", since = "CURRENT_RUSTC_VERSION")]
-        #[rustc_const_stable(feature = "unchecked_math", since = "CURRENT_RUSTC_VERSION")]
+        #[stable(feature = "unchecked_math", since = "1.79.0")]
+        #[rustc_const_stable(feature = "unchecked_math", since = "1.79.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
@@ -623,8 +623,8 @@ macro_rules! int_impl {
         /// [`unwrap_unchecked`]: option/enum.Option.html#method.unwrap_unchecked
         #[doc = concat!("[`checked_sub`]: ", stringify!($SelfT), "::checked_sub")]
         #[doc = concat!("[`wrapping_sub`]: ", stringify!($SelfT), "::wrapping_sub")]
-        #[stable(feature = "unchecked_math", since = "CURRENT_RUSTC_VERSION")]
-        #[rustc_const_stable(feature = "unchecked_math", since = "CURRENT_RUSTC_VERSION")]
+        #[stable(feature = "unchecked_math", since = "1.79.0")]
+        #[rustc_const_stable(feature = "unchecked_math", since = "1.79.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
@@ -765,8 +765,8 @@ macro_rules! int_impl {
         /// [`unwrap_unchecked`]: option/enum.Option.html#method.unwrap_unchecked
         #[doc = concat!("[`checked_mul`]: ", stringify!($SelfT), "::checked_mul")]
         #[doc = concat!("[`wrapping_mul`]: ", stringify!($SelfT), "::wrapping_mul")]
-        #[stable(feature = "unchecked_math", since = "CURRENT_RUSTC_VERSION")]
-        #[rustc_const_stable(feature = "unchecked_math", since = "CURRENT_RUSTC_VERSION")]
+        #[stable(feature = "unchecked_math", since = "1.79.0")]
+        #[rustc_const_stable(feature = "unchecked_math", since = "1.79.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
@@ -1234,18 +1234,9 @@ macro_rules! int_impl {
         #[inline(always)]
         #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
         pub const unsafe fn unchecked_shl(self, rhs: u32) -> Self {
-            #[cfg(bootstrap)]
-            {
-                // For bootstrapping, just use built-in primitive shift.
-                // panicking is a legal manifestation of UB
-                self << rhs
-            }
-            #[cfg(not(bootstrap))]
-            {
                 // SAFETY: the caller must uphold the safety contract for
                 // `unchecked_shl`.
                 unsafe { intrinsics::unchecked_shl(self, rhs) }
-            }
         }
 
         /// Checked shift right. Computes `self >> rhs`, returning `None` if `rhs` is
@@ -1332,18 +1323,9 @@ macro_rules! int_impl {
         #[inline(always)]
         #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
         pub const unsafe fn unchecked_shr(self, rhs: u32) -> Self {
-            #[cfg(bootstrap)]
-            {
-                // For bootstrapping, just use built-in primitive shift.
-                // panicking is a legal manifestation of UB
-                self >> rhs
-            }
-            #[cfg(not(bootstrap))]
-            {
-                // SAFETY: the caller must uphold the safety contract for
-                // `unchecked_shr`.
-                unsafe { intrinsics::unchecked_shr(self, rhs) }
-            }
+            // SAFETY: the caller must uphold the safety contract for
+            // `unchecked_shr`.
+            unsafe { intrinsics::unchecked_shr(self, rhs) }
         }
 
         /// Checked absolute value. Computes `self.abs()`, returning `None` if

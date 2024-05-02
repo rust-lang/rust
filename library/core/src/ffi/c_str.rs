@@ -528,7 +528,7 @@ impl CStr {
     #[inline]
     #[must_use]
     #[doc(alias("len", "strlen"))]
-    #[stable(feature = "cstr_count_bytes", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "cstr_count_bytes", since = "1.79.0")]
     #[rustc_const_unstable(feature = "const_cstr_from_ptr", issue = "113219")]
     pub const fn count_bytes(&self) -> usize {
         self.inner.len() - 1

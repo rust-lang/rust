@@ -240,7 +240,6 @@ pub trait Drop {
 }
 
 /// Fallback function to call surface level `Drop::drop` function
-#[cfg(not(bootstrap))]
 #[allow(drop_bounds)]
 #[lang = "fallback_surface_drop"]
 pub(crate) fn fallback_surface_drop<T: Drop + ?Sized>(x: &mut T) {

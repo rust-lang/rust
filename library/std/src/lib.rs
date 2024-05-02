@@ -224,7 +224,7 @@
             `#![no_std]` or overriding this warning by enabling this feature."
     )
 )]
-#![cfg_attr(not(bootstrap), rustc_preserve_ub_checks)]
+#![rustc_preserve_ub_checks]
 #![doc(
     html_playground_url = "https://play.rust-lang.org/",
     issue_tracker_base_url = "https://github.com/rust-lang/rust/issues/",
@@ -592,7 +592,6 @@ pub mod net;
 pub mod num;
 pub mod os;
 pub mod panic;
-#[cfg(not(bootstrap))]
 #[unstable(feature = "core_pattern_types", issue = "none")]
 pub mod pat;
 pub mod path;

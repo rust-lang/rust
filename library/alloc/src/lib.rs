@@ -165,9 +165,6 @@
 //
 // Language features:
 // tidy-alphabetical-start
-#![cfg_attr(bootstrap, feature(associated_type_bounds))]
-#![cfg_attr(bootstrap, feature(inline_const))]
-#![cfg_attr(not(bootstrap), rustc_preserve_ub_checks)]
 #![cfg_attr(not(test), feature(coroutine_trait))]
 #![cfg_attr(test, feature(panic_update_hook))]
 #![cfg_attr(test, feature(test))]
@@ -198,6 +195,7 @@
 #![feature(unboxed_closures)]
 #![feature(unsized_fn_params)]
 #![feature(with_negative_coherence)]
+#![rustc_preserve_ub_checks]
 // tidy-alphabetical-end
 //
 // Rustdoc features:

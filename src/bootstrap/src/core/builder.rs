@@ -2124,13 +2124,10 @@ impl<'a> Builder<'a> {
             // during incremental builds" heuristic for the standard library.
             rustflags.arg("-Zinline-mir");
 
-            // FIXME: always pass this after the next `#[cfg(bootstrap)]` update.
-            if compiler.stage != 0 {
-                // Similarly, we need to keep debug info for functions inlined into other std functions,
-                // even if we're not going to output debuginfo for the crate we're currently building,
-                // so that it'll be available when downstream consumers of std try to use it.
-                rustflags.arg("-Zinline-mir-preserve-debug");
-            }
+            // Similarly, we need to keep debug info for functions inlined into other std functions,
+            // even if we're not going to output debuginfo for the crate we're currently building,
+            // so that it'll be available when downstream consumers of std try to use it.
+            rustflags.arg("-Zinline-mir-preserve-debug");
         }
 
         if self.config.rustc_parallel
