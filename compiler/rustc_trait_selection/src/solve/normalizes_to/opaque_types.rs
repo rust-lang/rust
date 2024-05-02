@@ -4,11 +4,11 @@
 use rustc_infer::infer::InferCtxt;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::solve::{Certainty, Goal, QueryResult};
-use rustc_middle::traits::Reveal;
+use rustc_middle::traits::TreatOpaque;
 use rustc_middle::ty;
 use rustc_middle::ty::util::NotUniqueParam;
 
-use crate::solve::{EvalCtxt, SolverMode};
+use crate::solve::EvalCtxt;
 
 impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
     pub(super) fn normalize_opaque_type(
@@ -19,17 +19,36 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
         let opaque_ty = goal.predicate.alias;
         let expected = goal.predicate.term.ty().expect("no such thing as an opaque const");
 
-        match (goal.param_env.reveal(), self.solver_mode()) {
-            (Reveal::UserFacing, SolverMode::Normal) => {
-                let Some(opaque_ty_def_id) = opaque_ty.def_id.as_local() else {
-                    return Err(NoSolution);
-                };
+        match self.treat_opaque_ty(goal.param_env.reveal(), opaque_ty.def_id) {
+            TreatOpaque::Rigid => Err(NoSolution),
+            TreatOpaque::Ambiguous => {
+                // An impossible opaque type bound is the only way this goal will fail
+                // e.g. assigning `impl Copy := NotCopy`
+                self.add_item_bounds_for_hidden_type(
+                    opaque_ty.def_id,
+                    opaque_ty.args,
+                    goal.param_env,
+                    expected,
+                );
+                self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
+            }
+            TreatOpaque::Reveal => {
+                // FIXME: Add an assertion that opaque type storage is empty.
+                let actual = tcx.type_of(opaque_ty.def_id).instantiate(tcx, opaque_ty.args);
+                let actual = tcx.fold_regions(actual, |re, _| match *re {
+                    ty::ReErased => self.next_region_infer(),
+                    _ => re,
+                });
+                self.eq(goal.param_env, expected, actual)?;
+                self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+            }
+            TreatOpaque::Define => {
                 // FIXME: at some point we should call queries without defining
                 // new opaque types but having the existing opaque type definitions.
                 // This will require moving this below "Prefer opaques registered already".
-                if !self.can_define_opaque_ty(opaque_ty_def_id) {
+                let Some(opaque_ty_def_id) = opaque_ty.def_id.as_local() else {
                     return Err(NoSolution);
-                }
+                };
                 // FIXME: This may have issues when the args contain aliases...
                 match self.tcx().uses_unique_placeholders_ignoring_regions(opaque_ty.args) {
                     Err(NotUniqueParam::NotParam(param)) if param.is_non_region_infer() => {
@@ -67,23 +86,6 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
                     goal.param_env,
                     expected,
                 );
-                self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-            }
-            (Reveal::UserFacing, SolverMode::Coherence) => {
-                // An impossible opaque type bound is the only way this goal will fail
-                // e.g. assigning `impl Copy := NotCopy`
-                self.add_item_bounds_for_hidden_type(
-                    opaque_ty.def_id,
-                    opaque_ty.args,
-                    goal.param_env,
-                    expected,
-                );
-                self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
-            }
-            (Reveal::All, _) => {
-                // FIXME: Add an assertion that opaque type storage is empty.
-                let actual = tcx.type_of(opaque_ty.def_id).instantiate(tcx, opaque_ty.args);
-                self.eq(goal.param_env, expected, actual)?;
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
             }
         }

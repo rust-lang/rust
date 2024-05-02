@@ -69,8 +69,8 @@ impl<'a, Infcx: InferCtxtLike<Interner = I>, I: Interner> Canonicalizer<'a, Infc
 
         let (max_universe, variables) = canonicalizer.finalize();
 
-        let defining_opaque_types = infcx.defining_opaque_types();
-        Canonical { defining_opaque_types, max_universe, variables, value }
+        let opaque_type_mode = infcx.opaque_type_mode();
+        Canonical { opaque_type_mode, max_universe, variables, value }
     }
 
     fn finalize(self) -> (ty::UniverseIndex, I::CanonicalVars) {

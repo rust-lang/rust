@@ -6,7 +6,7 @@ use hir::def_id::{DefId, LocalDefId};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync::Lrc;
 use rustc_hir as hir;
-use rustc_middle::traits::ObligationCause;
+use rustc_middle::traits::{ObligationCause, TreatOpaque};
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::fold::BottomUpFolder;
 use rustc_middle::ty::GenericArgKind;
@@ -58,7 +58,10 @@ impl<'tcx> InferCtxt<'tcx> {
             ct_op: |ct| ct,
             ty_op: |ty| match *ty.kind() {
                 ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. })
-                    if self.can_define_opaque_ty(def_id) && !ty.has_escaping_bound_vars() =>
+                    if matches!(
+                        self.treat_opaque_ty(param_env.reveal(), def_id),
+                        TreatOpaque::Define
+                    ) && !ty.has_escaping_bound_vars() =>
                 {
                     let def_span = self.tcx.def_span(def_id);
                     let span = if span.contains(def_span) { def_span } else { span };
@@ -85,16 +88,6 @@ impl<'tcx> InferCtxt<'tcx> {
     ) -> InferResult<'tcx, ()> {
         let process = |a: Ty<'tcx>, b: Ty<'tcx>| match *a.kind() {
             ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) if def_id.is_local() => {
-                let def_id = def_id.expect_local();
-                if self.intercrate {
-                    // See comment on `insert_hidden_type` for why this is sufficient in coherence
-                    return Some(self.register_hidden_type(
-                        OpaqueTypeKey { def_id, args },
-                        cause.clone(),
-                        param_env,
-                        b,
-                    ));
-                }
                 // Check that this is `impl Trait` type is
                 // declared by `parent_def_id` -- i.e., one whose
                 // value we are inferring. At present, this is
@@ -129,8 +122,18 @@ impl<'tcx> InferCtxt<'tcx> {
                 //     let x = || foo(); // returns the Opaque assoc with `foo`
                 // }
                 // ```
-                if !self.can_define_opaque_ty(def_id) {
-                    return None;
+                match self.treat_opaque_ty(param_env.reveal(), def_id) {
+                    TreatOpaque::Define => {}
+                    TreatOpaque::Reveal | TreatOpaque::Rigid => return None,
+                    TreatOpaque::Ambiguous => {
+                        // See comment on `insert_hidden_type` for why this is sufficient in coherence
+                        return Some(self.register_hidden_type(
+                            OpaqueTypeKey { def_id: def_id.expect_local(), args },
+                            cause.clone(),
+                            param_env,
+                            b,
+                        ));
+                    }
                 }
 
                 if let ty::Alias(ty::Opaque, ty::AliasTy { def_id: b_def_id, .. }) = *b.kind() {
@@ -139,8 +142,10 @@ impl<'tcx> InferCtxt<'tcx> {
                     // no one encounters it in practice.
                     // It does occur however in `fn fut() -> impl Future<Output = i32> { async { 42 } }`,
                     // where it is of no concern, so we only check for TAITs.
-                    if self.can_define_opaque_ty(b_def_id)
-                        && self.tcx.is_type_alias_impl_trait(b_def_id)
+                    if matches!(
+                        self.treat_opaque_ty(param_env.reveal(), b_def_id),
+                        TreatOpaque::Define
+                    ) && self.tcx.is_type_alias_impl_trait(b_def_id)
                     {
                         self.tcx.dcx().emit_err(OpaqueHiddenTypeDiag {
                             span: cause.span,
@@ -150,7 +155,7 @@ impl<'tcx> InferCtxt<'tcx> {
                     }
                 }
                 Some(self.register_hidden_type(
-                    OpaqueTypeKey { def_id, args },
+                    OpaqueTypeKey { def_id: def_id.expect_local(), args },
                     cause.clone(),
                     param_env,
                     b,

@@ -1,4 +1,7 @@
-use crate::{ConstVid, EffectVid, FloatVid, IntVid, Interner, RegionVid, TyVid, UniverseIndex};
+use crate::{
+    ConstVid, EffectVid, FloatVid, IntVid, Interner, OpaqueTypeMode, RegionVid, TyVid,
+    UniverseIndex,
+};
 
 pub trait InferCtxtLike {
     type Interner: Interner;
@@ -24,5 +27,5 @@ pub trait InferCtxtLike {
     ) -> <Self::Interner as Interner>::Const;
     fn opportunistic_resolve_lt_var(&self, vid: RegionVid) -> <Self::Interner as Interner>::Region;
 
-    fn defining_opaque_types(&self) -> <Self::Interner as Interner>::DefiningOpaqueTypes;
+    fn opaque_type_mode(&self) -> OpaqueTypeMode<Self::Interner>;
 }

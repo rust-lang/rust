@@ -182,7 +182,7 @@ impl<'tcx> CanonicalParamEnvCache<'tcx> {
                 max_universe: ty::UniverseIndex::ROOT,
                 variables: List::empty(),
                 value: key,
-                defining_opaque_types: ty::List::empty(),
+                opaque_type_mode: Default::default(),
             };
         }
 

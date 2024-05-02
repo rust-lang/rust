@@ -345,7 +345,12 @@ fn check_opaque_meets_bounds<'tcx>(
     };
     let param_env = tcx.param_env(defining_use_anchor);
 
-    let infcx = tcx.infer_ctxt().with_opaque_type_inference(defining_use_anchor).build();
+    let infcx = tcx
+        .infer_ctxt()
+        .with_opaque_type_mode(ty::OpaqueTypeMode::Reveal(
+            tcx.opaque_types_defined_by(defining_use_anchor),
+        ))
+        .build();
     let ocx = ObligationCtxt::new(&infcx);
 
     let args = match *origin {
@@ -359,42 +364,23 @@ fn check_opaque_meets_bounds<'tcx>(
         }),
     };
 
-    let opaque_ty = Ty::new_opaque(tcx, def_id.to_def_id(), args);
-
-    // `ReErased` regions appear in the "parent_args" of closures/coroutines.
-    // We're ignoring them here and replacing them with fresh region variables.
-    // See tests in ui/type-alias-impl-trait/closure_{parent_args,wf_outlives}.rs.
-    //
-    // FIXME: Consider wrapping the hidden type in an existential `Binder` and instantiating it
-    // here rather than using ReErased.
-    let hidden_ty = tcx.type_of(def_id.to_def_id()).instantiate(tcx, args);
-    let hidden_ty = tcx.fold_regions(hidden_ty, |re, _dbi| match re.kind() {
-        ty::ReErased => infcx.next_region_var(RegionVariableOrigin::MiscVariable(span)),
-        _ => re,
-    });
-
     let misc_cause = traits::ObligationCause::misc(span, def_id);
-
-    match ocx.eq(&misc_cause, param_env, opaque_ty, hidden_ty) {
-        Ok(()) => {}
-        Err(ty_err) => {
-            // Some types may be left "stranded" if they can't be reached
-            // from a lowered rustc_middle bound but they're mentioned in the HIR.
-            // This will happen, e.g., when a nested opaque is inside of a non-
-            // existent associated type, like `impl Trait<Missing = impl Trait>`.
-            // See <tests/ui/impl-trait/stranded-opaque.rs>.
-            let ty_err = ty_err.to_string(tcx);
-            let guar = tcx.dcx().span_delayed_bug(
-                span,
-                format!("could not unify `{hidden_ty}` with revealed type:\n{ty_err}"),
-            );
-            return Err(guar);
-        }
-    }
+    let predicates: Vec<_> = tcx.item_bounds(def_id).iter_instantiated(tcx, args).collect();
+    let predicates = ocx.normalize(&misc_cause, param_env, predicates);
+    ocx.register_obligations(
+        predicates
+            .into_iter()
+            .map(|clause| Obligation::new(tcx, misc_cause.clone(), param_env, clause)),
+    );
 
     // Additionally require the hidden type to be well-formed with only the generics of the opaque type.
     // Defining use functions may have more bounds than the opaque type, which is ok, as long as the
     // hidden type is well formed even without those bounds.
+    let hidden_ty =
+        tcx.fold_regions(tcx.type_of(def_id).instantiate(tcx, args), |re, _| match *re {
+            ty::ReErased => infcx.next_region_var(RegionVariableOrigin::MiscVariable(span)),
+            _ => re,
+        });
     let predicate =
         ty::Binder::dummy(ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(hidden_ty.into())));
     ocx.register_obligation(Obligation::new(tcx, misc_cause.clone(), param_env, predicate));
@@ -412,23 +398,7 @@ fn check_opaque_meets_bounds<'tcx>(
     let outlives_env = OutlivesEnvironment::with_bounds(param_env, implied_bounds);
     ocx.resolve_regions_and_report_errors(defining_use_anchor, &outlives_env)?;
 
-    if let hir::OpaqueTyOrigin::FnReturn(..) | hir::OpaqueTyOrigin::AsyncFn(..) = origin {
-        // HACK: this should also fall through to the hidden type check below, but the original
-        // implementation had a bug where equivalent lifetimes are not identical. This caused us
-        // to reject existing stable code that is otherwise completely fine. The real fix is to
-        // compare the hidden types via our type equivalence/relation infra instead of doing an
-        // identity check.
-        let _ = infcx.take_opaque_types();
-        Ok(())
-    } else {
-        // Check that any hidden types found during wf checking match the hidden types that `type_of` sees.
-        for (mut key, mut ty) in infcx.take_opaque_types() {
-            ty.hidden_type.ty = infcx.resolve_vars_if_possible(ty.hidden_type.ty);
-            key = infcx.resolve_vars_if_possible(key);
-            sanity_check_found_hidden_type(tcx, key, ty.hidden_type)?;
-        }
-        Ok(())
-    }
+    Ok(())
 }
 
 fn sanity_check_found_hidden_type<'tcx>(

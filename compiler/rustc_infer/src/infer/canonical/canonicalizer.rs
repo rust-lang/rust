@@ -60,7 +60,7 @@ impl<'tcx> InferCtxt<'tcx> {
             },
         );
 
-        param_env.defining_opaque_types = self.defining_opaque_types;
+        param_env.opaque_type_mode = self.opaque_type_mode;
 
         Canonicalizer::canonicalize_with_base(
             param_env,
@@ -544,7 +544,7 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
             max_universe: ty::UniverseIndex::ROOT,
             variables: List::empty(),
             value: (),
-            defining_opaque_types: infcx.map(|i| i.defining_opaque_types).unwrap_or_default(),
+            opaque_type_mode: infcx.map(|i| i.opaque_type_mode).unwrap_or_default(),
         };
         Canonicalizer::canonicalize_with_base(
             base,
@@ -614,14 +614,12 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
             .max()
             .unwrap_or(ty::UniverseIndex::ROOT);
 
-        assert!(
-            !infcx.is_some_and(|infcx| infcx.defining_opaque_types != base.defining_opaque_types)
-        );
+        assert!(!infcx.is_some_and(|infcx| infcx.opaque_type_mode != base.opaque_type_mode));
         Canonical {
             max_universe,
             variables: canonical_variables,
             value: (base.value, out_value),
-            defining_opaque_types: base.defining_opaque_types,
+            opaque_type_mode: base.opaque_type_mode,
         }
     }
 
