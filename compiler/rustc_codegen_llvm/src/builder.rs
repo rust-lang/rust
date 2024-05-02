@@ -303,6 +303,14 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         unchecked_umul(x, y) => LLVMBuildNUWMul,
     }
 
+    fn disjoint_or(&mut self, a: &'ll Value, b: &'ll Value) -> &'ll Value {
+        unsafe {
+            let or = llvm::LLVMBuildOr(self.llbuilder, a, b, UNNAMED);
+            llvm::LLVMSetIsDisjoint(or, True);
+            or
+        }
+    }
+
     fn fadd_fast(&mut self, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
         unsafe {
             let instr = llvm::LLVMBuildFAdd(self.llbuilder, lhs, rhs, UNNAMED);

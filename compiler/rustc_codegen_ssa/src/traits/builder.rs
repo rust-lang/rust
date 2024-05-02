@@ -122,6 +122,7 @@ pub trait BuilderMethods<'a, 'tcx>:
     fn and(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
     fn or(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
     fn xor(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
+    fn disjoint_or(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
     fn neg(&mut self, v: Self::Value) -> Self::Value;
     fn fneg(&mut self, v: Self::Value) -> Self::Value;
     fn not(&mut self, v: Self::Value) -> Self::Value;
