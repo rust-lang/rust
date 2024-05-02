@@ -162,7 +162,6 @@ rely on CI.
 - [x] divmodsi4.c
 - [x] divsf3.c
 - [x] divsi3.c
-- [ ] extendhfsf2.c
 - [x] extendsfdf2.c
 - [x] fixdfdi.c
 - [x] fixdfsi.c
@@ -201,9 +200,7 @@ rely on CI.
 - [x] powisf2.c
 - [x] subdf3.c
 - [x] subsf3.c
-- [ ] truncdfhf2.c
 - [x] truncdfsf2.c
-- [ ] truncsfhf2.c
 - [x] udivdi3.c
 - [x] udivmoddi4.c
 - [x] udivmodsi4.c
@@ -233,60 +230,68 @@ These builtins are needed to support 128-bit integers.
 - [x] udivti3.c
 - [x] umodti3.c
 
+These builtins are needed to support `f16` and `f128`, which are in the process of being added to Rust.
+
+- [ ] addtf3.c
+- [ ] comparetf2.c
+- [ ] divtf3.c
+- [x] extenddftf2.c
+- [x] extendhfsf2.c
+- [x] extendhftf2.c
+- [x] extendsftf2.c
+- [ ] fixtfdi.c
+- [ ] fixtfsi.c
+- [ ] fixtfti.c
+- [ ] fixunstfdi.c
+- [ ] fixunstfsi.c
+- [ ] fixunstfti.c
+- [ ] floatditf.c
+- [ ] floatsitf.c
+- [ ] floatunditf.c
+- [ ] floatunsitf.c
+- [ ] multf3.c
+- [ ] powitf2.c
+- [ ] ppc/fixtfdi.c
+- [ ] ppc/fixunstfdi.c
+- [ ] ppc/floatditf.c
+- [ ] ppc/floatunditf.c
+- [ ] subtf3.c
+- [x] truncdfhf2.c
+- [x] truncsfhf2.c
+- [x] trunctfdf2.c
+- [x] trunctfhf2.c
+- [x] trunctfsf2.c
+
 ## Unimplemented functions
 
-These builtins involve floating-point types ("`f128`", "`f80`" and complex numbers) that are not supported by Rust.
+These builtins involve floating-point types ("`f80`" and complex numbers) that are not supported by Rust.
 
-- ~~addtf3.c~~
-- ~~comparetf2.c~~
 - ~~divdc3.c~~
 - ~~divsc3.c~~
 - ~~divtc3.c~~
-- ~~divtf3.c~~
 - ~~divxc3.c~~
-- ~~extenddftf2.c~~
-- ~~extendsftf2.c~~
-- ~~fixtfdi.c~~
-- ~~fixtfsi.c~~
-- ~~fixtfti.c~~
-- ~~fixunstfdi.c~~
-- ~~fixunstfsi.c~~
-- ~~fixunstfti.c~~
 - ~~fixunsxfdi.c~~
 - ~~fixunsxfsi.c~~
 - ~~fixunsxfti.c~~
 - ~~fixxfdi.c~~
 - ~~fixxfti.c~~
-- ~~floatditf.c~~
 - ~~floatdixf.c~~
-- ~~floatsitf.c~~
 - ~~floattixf.c~~
-- ~~floatunditf.c~~
 - ~~floatundixf.c~~
-- ~~floatunsitf.c~~
 - ~~floatuntixf.c~~
 - ~~i386/floatdixf.S~~
 - ~~i386/floatundixf.S~~
 - ~~muldc3.c~~
 - ~~mulsc3.c~~
 - ~~multc3.c~~
-- ~~multf3.c~~
 - ~~mulxc3.c~~
-- ~~powitf2.c~~
 - ~~powixf2.c~~
 - ~~ppc/divtc3.c~~
-- ~~ppc/fixtfdi.c~~
-- ~~ppc/fixunstfdi.c~~
-- ~~ppc/floatditf.c~~
-- ~~ppc/floatunditf.c~~
 - ~~ppc/gcc_qadd.c~~
 - ~~ppc/gcc_qdiv.c~~
 - ~~ppc/gcc_qmul.c~~
 - ~~ppc/gcc_qsub.c~~
 - ~~ppc/multc3.c~~
-- ~~subtf3.c~~
-- ~~trunctfdf2.c~~
-- ~~trunctfsf2.c~~
 - ~~x86_64/floatdixf.c~~
 - ~~x86_64/floatundixf.S~~
 

@@ -82,3 +82,37 @@ intrinsics! {
         a as f64 // LLVM generate 'fcvtds'
     }
 }
+
+#[cfg(not(feature = "no-f16-f128"))]
+intrinsics! {
+    #[avr_skip]
+    #[aapcs_on_arm]
+    #[arm_aeabi_alias = __aeabi_h2f]
+    pub extern "C" fn __extendhfsf2(a: f16) -> f32 {
+        extend(a)
+    }
+
+    #[avr_skip]
+    #[aapcs_on_arm]
+    pub extern "C" fn __gnu_h2f_ieee(a: f16) -> f32 {
+        extend(a)
+    }
+
+    #[avr_skip]
+    #[aapcs_on_arm]
+    pub extern "C" fn __extendhftf2(a: f16) -> f128 {
+        extend(a)
+    }
+
+    #[avr_skip]
+    #[aapcs_on_arm]
+    pub extern "C" fn __extendsftf2(a: f32) -> f128 {
+        extend(a)
+    }
+
+    #[avr_skip]
+    #[aapcs_on_arm]
+    pub extern "C" fn __extenddftf2(a: f64) -> f128 {
+        extend(a)
+    }
+}

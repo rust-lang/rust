@@ -217,6 +217,14 @@ mod c {
             }
         }
 
+        // `compiler-rt` requires `COMPILER_RT_HAS_FLOAT16` to be defined to make it use the
+        // `_Float16` type for `f16` intrinsics. This shouldn't matter as all existing `f16`
+        // intrinsics have been ported to Rust in `compiler-builtins` as C compilers don't
+        // support `_Float16` on all targets (whereas Rust does). However, define the macro
+        // anyway to prevent issues like rust#118813 and rust#123885 silently reoccuring if more
+        // `f16` intrinsics get accidentally added here in the future.
+        cfg.define("COMPILER_RT_HAS_FLOAT16", None);
+
         cfg.warnings(false);
 
         if target_env == "msvc" {
@@ -288,13 +296,10 @@ mod c {
             sources.extend(&[
                 ("__divdc3", "divdc3.c"),
                 ("__divsc3", "divsc3.c"),
-                ("__extendhfsf2", "extendhfsf2.c"),
                 ("__muldc3", "muldc3.c"),
                 ("__mulsc3", "mulsc3.c"),
                 ("__negdf2", "negdf2.c"),
                 ("__negsf2", "negsf2.c"),
-                ("__truncdfhf2", "truncdfhf2.c"),
-                ("__truncsfhf2", "truncsfhf2.c"),
             ]);
         }
 
@@ -464,8 +469,6 @@ mod c {
         if (target_arch == "aarch64" || target_arch == "arm64ec") && consider_float_intrinsics {
             sources.extend(&[
                 ("__comparetf2", "comparetf2.c"),
-                ("__extenddftf2", "extenddftf2.c"),
-                ("__extendsftf2", "extendsftf2.c"),
                 ("__fixtfdi", "fixtfdi.c"),
                 ("__fixtfsi", "fixtfsi.c"),
                 ("__fixtfti", "fixtfti.c"),
@@ -476,8 +479,6 @@ mod c {
                 ("__floatsitf", "floatsitf.c"),
                 ("__floatunditf", "floatunditf.c"),
                 ("__floatunsitf", "floatunsitf.c"),
-                ("__trunctfdf2", "trunctfdf2.c"),
-                ("__trunctfsf2", "trunctfsf2.c"),
                 ("__addtf3", "addtf3.c"),
                 ("__multf3", "multf3.c"),
                 ("__subtf3", "subtf3.c"),
@@ -498,7 +499,6 @@ mod c {
 
         if target_arch == "mips64" {
             sources.extend(&[
-                ("__extenddftf2", "extenddftf2.c"),
                 ("__netf2", "comparetf2.c"),
                 ("__addtf3", "addtf3.c"),
                 ("__multf3", "multf3.c"),
@@ -509,14 +509,11 @@ mod c {
                 ("__floatunsitf", "floatunsitf.c"),
                 ("__fe_getround", "fp_mode.c"),
                 ("__divtf3", "divtf3.c"),
-                ("__trunctfdf2", "trunctfdf2.c"),
-                ("__trunctfsf2", "trunctfsf2.c"),
             ]);
         }
 
         if target_arch == "loongarch64" {
             sources.extend(&[
-                ("__extenddftf2", "extenddftf2.c"),
                 ("__netf2", "comparetf2.c"),
                 ("__addtf3", "addtf3.c"),
                 ("__multf3", "multf3.c"),
@@ -527,8 +524,6 @@ mod c {
                 ("__floatunsitf", "floatunsitf.c"),
                 ("__fe_getround", "fp_mode.c"),
                 ("__divtf3", "divtf3.c"),
-                ("__trunctfdf2", "trunctfdf2.c"),
-                ("__trunctfsf2", "trunctfsf2.c"),
             ]);
         }
 
