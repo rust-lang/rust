@@ -9,6 +9,7 @@ use proc_macro::token_stream::IntoIter;
 use proc_macro::Delimiter::{self, Brace, Parenthesis};
 use proc_macro::Spacing::{self, Alone, Joint};
 use proc_macro::{Group, Ident, Literal, Punct, Span, TokenStream, TokenTree as TT};
+use syn::spanned::Spanned;
 
 type Result<T> = core::result::Result<T, TokenStream>;
 
@@ -122,6 +123,22 @@ fn write_with_span(s: Span, mut input: IntoIter, out: &mut TokenStream) -> Resul
         }
     }
     Ok(())
+}
+
+/// Takes an array repeat expression such as `[0_u32; 2]`, and return the tokens with 10 times the
+/// original size, which turns to `[0_u32; 20]`.
+#[proc_macro]
+pub fn make_it_big(input: TokenStream) -> TokenStream {
+    let mut expr_repeat = syn::parse_macro_input!(input as syn::ExprRepeat);
+    let len_span = expr_repeat.len.span();
+    if let syn::Expr::Lit(expr_lit) = &mut *expr_repeat.len {
+        if let syn::Lit::Int(lit_int) = &expr_lit.lit {
+            let orig_val = lit_int.base10_parse::<usize>().expect("not a valid length parameter");
+            let new_val = orig_val.saturating_mul(10);
+            expr_lit.lit = syn::parse_quote_spanned!( len_span => #new_val);
+        }
+    }
+    quote::quote!(#expr_repeat).into()
 }
 
 /// Within the item this attribute is attached to, an `inline!` macro is available which expands the

@@ -7,7 +7,7 @@ use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::is_copy;
 use clippy_utils::visitors::for_each_local_use_after_expr;
-use clippy_utils::{get_parent_expr, higher, is_trait_method};
+use clippy_utils::{get_parent_expr, higher, is_in_test, is_trait_method};
 use rustc_errors::Applicability;
 use rustc_hir::{BorrowKind, Expr, ExprKind, HirId, LetStmt, Mutability, Node, Pat, PatKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -22,6 +22,7 @@ pub struct UselessVec {
     pub too_large_for_stack: u64,
     pub msrv: Msrv,
     pub span_to_lint_map: BTreeMap<Span, Option<(HirId, SuggestedType, String, Applicability)>>,
+    pub allow_in_test: bool,
 }
 
 declare_clippy_lint! {
@@ -55,6 +56,9 @@ impl_lint_pass!(UselessVec => [USELESS_VEC]);
 impl<'tcx> LateLintPass<'tcx> for UselessVec {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         let Some(vec_args) = higher::VecArgs::hir(cx, expr.peel_borrows()) else {
+            return;
+        };
+        if self.allow_in_test && is_in_test(cx.tcx, expr.hir_id) {
             return;
         };
         // the parent callsite of this `vec!` expression, or span to the borrowed one such as `&vec!`

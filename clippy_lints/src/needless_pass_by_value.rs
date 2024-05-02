@@ -9,8 +9,8 @@ use rustc_ast::ast::Attribute;
 use rustc_errors::{Applicability, Diag};
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
-    BindingMode, Body, FnDecl, GenericArg, HirId, HirIdSet, Impl, ItemKind, LangItem, Mutability, Node, PatKind,
-    QPath, TyKind,
+    BindingMode, Body, FnDecl, GenericArg, HirId, HirIdSet, Impl, ItemKind, LangItem, Mutability, Node, PatKind, QPath,
+    TyKind,
 };
 use rustc_hir_typeck::expr_use_visitor as euv;
 use rustc_infer::infer::TyCtxtInferExt;

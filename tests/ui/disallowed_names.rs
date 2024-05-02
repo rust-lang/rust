@@ -71,3 +71,8 @@ mod tests {
         }
     }
 }
+
+#[test]
+fn test_with_disallowed_name() {
+    let foo = 0;
+}

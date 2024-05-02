@@ -182,17 +182,17 @@ impl LateLintPass<'_> for NonCanonicalImpls {
 
             if block.stmts.is_empty()
                 && let Some(expr) = block.expr
-                && let ExprKind::Call(
-                        Expr {
-                            kind: ExprKind::Path(some_path),
-                            hir_id: some_hir_id,
-                            ..
-                        },
-                        [cmp_expr],
-                    ) = expr.kind
-                && is_res_lang_ctor(cx, cx.qpath_res(some_path, *some_hir_id), LangItem::OptionSome)
-                // Fix #11178, allow `Self::cmp(self, ..)` too
-                && self_cmp_call(cx, cmp_expr, impl_item.owner_id.def_id, &mut needs_fully_qualified)
+                && expr_is_cmp(cx, &expr.kind, impl_item, &mut needs_fully_qualified)
+            {
+            }
+            // Fix #12683, allow [`needless_return`] here
+            else if block.expr.is_none()
+                && let Some(stmt) = block.stmts.first()
+                && let rustc_hir::StmtKind::Semi(Expr {
+                    kind: ExprKind::Ret(Some(Expr { kind: ret_kind, .. })),
+                    ..
+                }) = stmt.kind
+                && expr_is_cmp(cx, ret_kind, impl_item, &mut needs_fully_qualified)
             {
             } else {
                 // If `Self` and `Rhs` are not the same type, bail. This makes creating a valid
@@ -242,6 +242,30 @@ impl LateLintPass<'_> for NonCanonicalImpls {
                 );
             }
         }
+    }
+}
+
+/// Return true if `expr_kind` is a `cmp` call.
+fn expr_is_cmp<'tcx>(
+    cx: &LateContext<'tcx>,
+    expr_kind: &'tcx ExprKind<'tcx>,
+    impl_item: &ImplItem<'_>,
+    needs_fully_qualified: &mut bool,
+) -> bool {
+    if let ExprKind::Call(
+        Expr {
+            kind: ExprKind::Path(some_path),
+            hir_id: some_hir_id,
+            ..
+        },
+        [cmp_expr],
+    ) = expr_kind
+    {
+        is_res_lang_ctor(cx, cx.qpath_res(some_path, *some_hir_id), LangItem::OptionSome)
+            // Fix #11178, allow `Self::cmp(self, ..)` too
+            && self_cmp_call(cx, cmp_expr, impl_item.owner_id.def_id, needs_fully_qualified)
+    } else {
+        false
     }
 }
 
