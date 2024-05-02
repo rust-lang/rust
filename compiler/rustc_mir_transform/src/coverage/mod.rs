@@ -146,6 +146,7 @@ fn create_mappings<'tcx>(
             .expect("all BCBs with spans were given counters")
             .as_term()
     };
+    let region_for_span = |span: Span| make_code_region(source_map, file_name, span, body_span);
 
     let mut mappings = Vec::new();
 
@@ -154,7 +155,7 @@ fn create_mappings<'tcx>(
             let kind = match bcb_mapping_kind {
                 BcbMappingKind::Code(bcb) => MappingKind::Code(term_for_bcb(bcb)),
             };
-            let code_region = make_code_region(source_map, file_name, span, body_span)?;
+            let code_region = region_for_span(span)?;
             Some(Mapping { kind, code_region })
         },
     ));
@@ -164,14 +165,14 @@ fn create_mappings<'tcx>(
             let true_term = term_for_bcb(true_bcb);
             let false_term = term_for_bcb(false_bcb);
             let kind = MappingKind::Branch { true_term, false_term };
-            let code_region = make_code_region(source_map, file_name, span, body_span)?;
+            let code_region = region_for_span(span)?;
             Some(Mapping { kind, code_region })
         },
     ));
 
     mappings.extend(coverage_spans.mcdc_branches.iter().filter_map(
         |&mappings::MCDCBranch { span, true_bcb, false_bcb, condition_info, decision_depth: _ }| {
-            let code_region = make_code_region(source_map, file_name, span, body_span)?;
+            let code_region = region_for_span(span)?;
             let true_term = term_for_bcb(true_bcb);
             let false_term = term_for_bcb(false_bcb);
             let kind = match condition_info {
@@ -184,7 +185,7 @@ fn create_mappings<'tcx>(
 
     mappings.extend(coverage_spans.mcdc_decisions.iter().filter_map(
         |&mappings::MCDCDecision { span, bitmap_idx, conditions_num, .. }| {
-            let code_region = make_code_region(source_map, file_name, span, body_span)?;
+            let code_region = region_for_span(span)?;
             let kind = MappingKind::MCDCDecision(DecisionInfo { bitmap_idx, conditions_num });
             Some(Mapping { kind, code_region })
         },
