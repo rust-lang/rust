@@ -270,8 +270,8 @@ mod prim_bool {}
 ///
 /// # Never type fallback
 ///
-/// When the compiler sees a value of type `!` it implicitly inserts a coercion (if possible)
-/// to allow type checker to infer any type:
+/// When the compiler sees a value of type `!` in a [coercion site](https://doc.rust-lang.org/reference/type-coercions.html#coercion-sites), it implicitly inserts a coercion
+/// to allow the type checker to infer any type:
 ///
 /// ```rust,ignore (illustrative-and-has-placeholders)
 /// // this
@@ -286,8 +286,7 @@ mod prim_bool {}
 // FIXME: use `core::convert::absurd` here instead, once it's merged
 /// ```
 ///
-/// While it's convenient to be able to use non-diverging code in one of the branches (like
-/// `if a { b } else { return }`) this could lead to compilation errors:
+/// This can lead to compilation errors if the type cannot be inferred:
 ///
 /// ```compile_fail
 /// // this
@@ -298,7 +297,7 @@ mod prim_bool {}
 /// ```
 ///
 /// To prevent such errors, the compiler remembers where it inserted `absurd` calls, and
-/// if it can't infer their type, it sets the type to the fallback type:
+/// if it can't infer the type, it uses the fallback type instead:
 /// ```rust, ignore
 /// type Fallback = /* An arbitrarily selected type! */;
 /// { absurd::<Fallback>(panic!()) }
@@ -306,9 +305,9 @@ mod prim_bool {}
 ///
 /// This is what is known as "never type fallback".
 ///
-/// Historically fallback was [`()`], causing confusing behavior where `!` spontaneously coerced
-/// to `()`, even though `()` was never mentioned (because of the fallback). There are plans to
-/// change it in 2024 edition (and possibly in all editions on a later date), see
+/// Historically, the fallback type was [`()`], causing confusing behavior where `!` spontaneously coerced
+/// to `()`, even when it would not infer `()` without the fallback. There are plans to
+/// change it in the [2024 edition](https://doc.rust-lang.org/nightly/edition-guide/rust-2024/index.html) (and possibly in all editions on a later date); see
 /// [Tracking Issue for making `!` fall back to `!`][fallback-ti].
 ///
 /// [`()`]: prim@unit
