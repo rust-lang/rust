@@ -147,7 +147,6 @@ macro_rules! intrinsics {
         $($rest:tt)*
     ) => (
         #[cfg($name = "optimized-c")]
-        #[cfg_attr(all(not(windows), not(target_vendor = "apple")), linkage = "weak")]
         pub $(unsafe $($empty)? )? extern $abi fn $name( $($argname: $ty),* ) $(-> $ret)? {
             extern $abi {
                 fn $name($($argname: $ty),*) $(-> $ret)?;
