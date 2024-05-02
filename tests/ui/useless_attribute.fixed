@@ -92,3 +92,7 @@ use module::{Struct};
 fn main() {
     test_indented_attr();
 }
+
+// Regression test for https://github.com/rust-lang/rust-clippy/issues/4467
+#[allow(dead_code)]
+use std::collections as puppy_doggy;
