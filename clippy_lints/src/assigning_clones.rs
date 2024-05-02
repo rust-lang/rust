@@ -36,6 +36,7 @@ declare_clippy_lint! {
     /// Use instead:
     /// ```rust
     /// struct Thing;
+    ///
     /// impl Clone for Thing {
     ///     fn clone(&self) -> Self { todo!() }
     ///     fn clone_from(&mut self, other: &Self) { todo!() }
