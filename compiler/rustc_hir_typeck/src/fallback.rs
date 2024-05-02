@@ -1,11 +1,10 @@
-use std::{borrow::Cow, cell::OnceCell};
+use std::cell::OnceCell;
 
 use crate::{errors, FnCtxt, TypeckRootCtxt};
 use rustc_data_structures::{
     graph::{self, iterate::DepthFirstSearch, vec_graph::VecGraph},
     unord::{UnordBag, UnordMap, UnordSet},
 };
-use rustc_errors::{DiagArgValue, IntoDiagArg};
 use rustc_hir as hir;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::HirId;
@@ -380,7 +379,23 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
                         lint::builtin::NEVER_TYPE_FALLBACK_FLOWING_INTO_UNSAFE,
                         hir_id,
                         span,
-                        errors::NeverTypeFallbackFlowingIntoUnsafe { reason },
+                        match reason {
+                            UnsafeUseReason::Call => {
+                                errors::NeverTypeFallbackFlowingIntoUnsafe::Call
+                            }
+                            UnsafeUseReason::Method => {
+                                errors::NeverTypeFallbackFlowingIntoUnsafe::Method
+                            }
+                            UnsafeUseReason::Path => {
+                                errors::NeverTypeFallbackFlowingIntoUnsafe::Path
+                            }
+                            UnsafeUseReason::UnionField => {
+                                errors::NeverTypeFallbackFlowingIntoUnsafe::UnionField
+                            }
+                            UnsafeUseReason::Deref => {
+                                errors::NeverTypeFallbackFlowingIntoUnsafe::Deref
+                            }
+                        },
                     );
                 }
 
@@ -501,19 +516,6 @@ pub(crate) enum UnsafeUseReason {
     Path,
     UnionField,
     Deref,
-}
-
-impl IntoDiagArg for UnsafeUseReason {
-    fn into_diag_arg(self) -> DiagArgValue {
-        let s = match self {
-            UnsafeUseReason::Call => "call",
-            UnsafeUseReason::Method => "method",
-            UnsafeUseReason::Path => "path",
-            UnsafeUseReason::UnionField => "union_field",
-            UnsafeUseReason::Deref => "deref",
-        };
-        DiagArgValue::Str(Cow::Borrowed(s))
-    }
 }
 
 /// Finds all type variables which are passed to an `unsafe` operation.
