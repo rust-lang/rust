@@ -2317,7 +2317,7 @@ extern "rust-intrinsic" {
     ///
     /// The stable counterpart of this intrinsic is `unchecked_disjoint_bitor`
     /// on the various integer types, such as [`u16::unchecked_disjoint_bitor`]
-    /// and [`i64::disjoint_bitor`].
+    /// and [`i64::unchecked_disjoint_bitor`].
     #[rustc_nounwind]
     pub fn disjoint_bitor<T: Copy>(x: T, y: T) -> T;
 
