@@ -239,12 +239,23 @@ fn is_ok_to_suggest<'tcx>(cx: &LateContext<'tcx>, lhs: &Expr<'tcx>, call: &CallC
 ///
 /// This cannot be written `s2.clone_into(&mut s)` because it has conflicting borrows.
 fn clone_source_borrows_from_dest(cx: &LateContext<'_>, lhs: &Expr<'_>, call_span: Span) -> bool {
+    /// If this basic block only exists to drop a local as part of an assignment, returns its
+    /// successor. Otherwise returns the basic block that was passed in.
+    fn skip_drop_block(mir: &mir::Body<'_>, bb: mir::BasicBlock) -> mir::BasicBlock {
+        if let mir::TerminatorKind::Drop { target, .. } = mir.basic_blocks[bb].terminator().kind {
+            target
+        } else {
+            bb
+        }
+    }
+
     let Some(mir) = enclosing_mir(cx.tcx, lhs.hir_id) else {
         return false;
     };
     let PossibleBorrowerMap { map: borrow_map, .. } = PossibleBorrowerMap::new(cx, mir);
 
-    // The operation `dest = src.to_owned()` in MIR is split up across 3 blocks.
+    // The operation `dest = src.to_owned()` in MIR is split up across 3 blocks *if* the type has `Drop`
+    // code. For types that don't, the second basic block is simply skipped.
     // For the doc example above that would be roughly:
     //
     // bb0:
@@ -260,26 +271,28 @@ fn clone_source_borrows_from_dest(cx: &LateContext<'_>, lhs: &Expr<'_>, call_spa
         let terminator = bb.terminator();
 
         // Look for the to_owned/clone call.
-        if terminator.source_info.span == call_span
-            && let mir::TerminatorKind::Call {
-                args,
-                target: Some(drop_bb),
-                ..
-            } = &terminator.kind
+        if terminator.source_info.span != call_span {
+            continue;
+        }
+
+        if let mir::TerminatorKind::Call { ref args, target: Some(assign_bb), .. } = terminator.kind
             && let [source] = &**args
             && let mir::Operand::Move(source) = &source.node
-            // Block 2 only has the `drop()` terminator from to the assignment
-            && let drop_bb = &mir.basic_blocks[*drop_bb]
-            && let mir::TerminatorKind::Drop { target: assign_bb, .. } = drop_bb.terminator().kind
-            // Block 3 has the final assignment to the original local
-            && let assign_bb = &mir.basic_blocks[assign_bb]
-            && let [assignment, ..] = &*assign_bb.statements
+            && let assign_bb = skip_drop_block(mir, assign_bb)
+            // Skip any storage statements as they are just noise
+            && let Some(assignment) = mir.basic_blocks[assign_bb].statements
+                .iter()
+                .find(|stmt| {
+                    !matches!(stmt.kind, mir::StatementKind::StorageDead(_) | mir::StatementKind::StorageLive(_))
+                })
             && let mir::StatementKind::Assign(box (borrowed, _)) = &assignment.kind
             && let Some(borrowers) = borrow_map.get(&borrowed.local)
             && borrowers.contains(source.local)
         {
             return true;
         }
+
+        return false;
     }
     false
 }

@@ -290,6 +290,33 @@ mod borrowck_conflicts {
         s = s2.to_owned();
     }
 
+    fn issue12444_nodrop_projections() {
+        struct NoDrop;
+
+        impl Clone for NoDrop {
+            fn clone(&self) -> Self {
+                todo!()
+            }
+            fn clone_from(&mut self, other: &Self) {
+                todo!()
+            }
+        }
+
+        let mut s = NoDrop;
+        let s2 = &s;
+        s = s2.clone();
+
+        let mut s = (NoDrop, NoDrop);
+        let s2 = &s.0;
+        s.0 = s2.clone();
+
+        // This *could* emit a warning, but PossibleBorrowerMap only works with locals so it
+        // considers `s` fully borrowed
+        let mut s = (NoDrop, NoDrop);
+        let s2 = &s.1;
+        s.0 = s2.clone();
+    }
+
     fn issue12460(mut name: String) {
         if let Some(stripped_name) = name.strip_prefix("baz-") {
             name = stripped_name.to_owned();
