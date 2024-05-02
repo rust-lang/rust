@@ -3,8 +3,6 @@
 use std::{borrow::Cow, iter};
 
 use itertools::{multipeek, MultiPeek};
-use lazy_static::lazy_static;
-use regex::Regex;
 use rustc_span::Span;
 
 use crate::config::Config;
@@ -16,17 +14,6 @@ use crate::utils::{
     trimmed_last_line_width, unicode_str_width,
 };
 use crate::{ErrorKind, FormattingError};
-
-lazy_static! {
-    /// A regex matching reference doc links.
-    ///
-    /// ```markdown
-    /// /// An [example].
-    /// ///
-    /// /// [example]: this::is::a::link
-    /// ```
-    static ref REFERENCE_LINK_URL: Regex = Regex::new(r"^\[.+\]\s?:").unwrap();
-}
 
 fn is_custom_comment(comment: &str) -> bool {
     if !comment.starts_with("//") {
@@ -976,12 +963,21 @@ fn trim_custom_comment_prefix(s: &str) -> String {
 
 /// Returns `true` if the given string MAY include URLs or alike.
 fn has_url(s: &str) -> bool {
+    // A regex matching reference doc links.
+    //
+    // ```markdown
+    // /// An [example].
+    // ///
+    // /// [example]: this::is::a::link
+    // ```
+    let reference_link_url = static_regex!(r"^\[.+\]\s?:");
+
     // This function may return false positive, but should get its job done in most cases.
     s.contains("https://")
         || s.contains("http://")
         || s.contains("ftp://")
         || s.contains("file://")
-        || REFERENCE_LINK_URL.is_match(s)
+        || reference_link_url.is_match(s)
 }
 
 /// Returns true if the given string may be part of a Markdown table.

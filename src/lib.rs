@@ -4,9 +4,6 @@
 #![recursion_limit = "256"]
 #![allow(clippy::match_like_matches_macro)]
 
-#[cfg(test)]
-#[macro_use]
-extern crate lazy_static;
 #[macro_use]
 extern crate tracing;
 
@@ -60,6 +57,13 @@ pub use crate::rustfmt_diff::{ModifiedChunk, ModifiedLines};
 
 #[macro_use]
 mod utils;
+
+macro_rules! static_regex {
+    ($re:literal) => {{
+        static RE: ::std::sync::OnceLock<::regex::Regex> = ::std::sync::OnceLock::new();
+        RE.get_or_init(|| ::regex::Regex::new($re).unwrap())
+    }};
+}
 
 mod attr;
 mod chains;
