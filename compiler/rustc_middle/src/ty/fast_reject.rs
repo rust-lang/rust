@@ -330,20 +330,19 @@ impl DeepRejectCtxt {
     }
 
     pub fn consts_may_unify(self, obligation_ct: ty::Const<'_>, impl_ct: ty::Const<'_>) -> bool {
-        match impl_ct.kind() {
+        let impl_val = match impl_ct.kind() {
             ty::ConstKind::Expr(_)
             | ty::ConstKind::Param(_)
             | ty::ConstKind::Unevaluated(_)
             | ty::ConstKind::Error(_) => {
                 return true;
             }
-            ty::ConstKind::Value(_) => {}
+            ty::ConstKind::Value(impl_val) => impl_val,
             ty::ConstKind::Infer(_) | ty::ConstKind::Bound(..) | ty::ConstKind::Placeholder(_) => {
                 bug!("unexpected impl arg: {:?}", impl_ct)
             }
-        }
+        };
 
-        let k = impl_ct.kind();
         match obligation_ct.kind() {
             ty::ConstKind::Param(_) => match self.treat_obligation_params {
                 TreatParams::ForLookup => false,
@@ -358,10 +357,7 @@ impl DeepRejectCtxt {
             ty::ConstKind::Expr(_) | ty::ConstKind::Unevaluated(_) | ty::ConstKind::Error(_) => {
                 true
             }
-            ty::ConstKind::Value(obl) => match k {
-                ty::ConstKind::Value(imp) => obl == imp,
-                _ => true,
-            },
+            ty::ConstKind::Value(obl_val) => obl_val == impl_val,
 
             ty::ConstKind::Infer(_) => true,
 
