@@ -12,8 +12,6 @@
 //@ ignore-cross-compile
 //@ ignore-wasm
 
-extern crate run_make_support;
-
 use std::io::BufRead;
 
 use run_make_support::{rustc, is_msvc};

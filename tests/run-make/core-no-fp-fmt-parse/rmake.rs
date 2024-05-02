@@ -1,8 +1,6 @@
 // This test checks that the core library of Rust can be compiled without enabling
 // support for formatting and parsing floating-point numbers.
 
-extern crate run_make_support;
-
 use run_make_support::rustc;
 use std::path::PathBuf;
 

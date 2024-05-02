@@ -2,7 +2,6 @@
 //! which requires extra `target-abi` metadata to be emitted.
 //@ needs-matching-clang
 //@ needs-llvm-components riscv
-extern crate run_make_support;
 
 use run_make_support::{bin_name, clang, llvm_readobj, rustc, tmp_dir};
 use std::{
