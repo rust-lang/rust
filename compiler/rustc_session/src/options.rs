@@ -379,8 +379,7 @@ mod desc {
     pub const parse_passes: &str = "a space-separated list of passes, or `all`";
     pub const parse_panic_strategy: &str = "either `unwind` or `abort`";
     pub const parse_on_broken_pipe: &str = "either `kill`, `error`, or `inherit`";
-    pub const parse_patchable_function_entry: &str =
-        "nop_count,entry_offset or nop_count (defaulting entry_offset=0)";
+    pub const parse_patchable_function_entry: &str = "either two comma separated integers (total_nops,prefix_nops), with prefix_nops <= total_nops, or one integer (total_nops)";
     pub const parse_opt_panic_strategy: &str = parse_panic_strategy;
     pub const parse_oom_strategy: &str = "either `panic` or `abort`";
     pub const parse_relro_level: &str = "one of: `full`, `partial`, or `off`";
@@ -725,7 +724,6 @@ mod parse {
         true
     }
 
-
     pub(crate) fn parse_on_broken_pipe(slot: &mut OnBrokenPipe, v: Option<&str>) -> bool {
         match v {
             // OnBrokenPipe::Default can't be explicitly specified
@@ -741,20 +739,22 @@ mod parse {
         slot: &mut PatchableFunctionEntry,
         v: Option<&str>,
     ) -> bool {
-        let mut nop_count = 0;
-        let mut offset = 0;
+        let mut total_nops = 0;
+        let mut prefix_nops = 0;
 
-        if !parse_number(&mut nop_count, v) {
+        if !parse_number(&mut total_nops, v) {
             let parts = v.and_then(|v| v.split_once(',')).unzip();
-            if !parse_number(&mut nop_count, parts.0) {
+            if !parse_number(&mut total_nops, parts.0) {
                 return false;
             }
-            if !parse_number(&mut offset, parts.1) {
+            if !parse_number(&mut prefix_nops, parts.1) {
                 return false;
             }
         }
 
-        if let Some(pfe) = PatchableFunctionEntry::from_nop_count_and_offset(nop_count, offset) {
+        if let Some(pfe) =
+            PatchableFunctionEntry::from_total_and_prefix_nops(total_nops, prefix_nops)
+        {
             *slot = pfe;
             return true;
         }

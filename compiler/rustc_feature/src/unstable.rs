@@ -566,8 +566,7 @@ declare_features! (
     /// Allows using `#[optimize(X)]`.
     (unstable, optimize_attribute, "1.34.0", Some(54882)),
     /// Allows specifying nop padding on functions for dynamic patching.
-    // FIXME this needs an RFC #
-    (unstable, patchable_function_entry, "CURRENT_RUSTC_VERSION", Some(9999)),
+    (unstable, patchable_function_entry, "CURRENT_RUSTC_VERSION", Some(123115)),
     /// Allows postfix match `expr.match { ... }`
     (unstable, postfix_match, "1.79.0", Some(121618)),
     /// Allows `use<'a, 'b, A, B>` in `impl Trait + use<...>` for precise capture of generic args.

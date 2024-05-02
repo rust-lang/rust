@@ -584,12 +584,12 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         pointee, Normal, template!(Word), ErrorFollowing,
         EncodeCrossCrate::No, derive_smart_pointer, experimental!(pointee)
     ),
-    
-    // FIXME RFC
-    // `#[patchable_function_entry(prefix(n), entry(n))]`
+
+    // RFC 3543
+    // `#[patchable_function_entry(prefix_nops = m, entry_nops = n)]`
     gated!(
-        patchable_function_entry, Normal, template!(List: "prefix(n), entry(n)"), ErrorPreceding,
-        experimental!(patchable_function_entry)
+        patchable_function_entry, Normal, template!(List: "prefix_nops = m, entry_nops = n"), ErrorPreceding,
+        EncodeCrossCrate::Yes, experimental!(patchable_function_entry)
     ),
 
     // ==========================================================================

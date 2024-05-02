@@ -1,5 +1,6 @@
 use rustc_ast::{ast, attr, MetaItemKind, NestedMetaItem};
 use rustc_attr::{list_contains_name, InlineAttr, InstructionSetAttr, OptimizeAttr};
+use rustc_data_structures::packed::Pu128;
 use rustc_errors::{codes::*, struct_span_code_err};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
@@ -467,24 +468,55 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
             }
             sym::patchable_function_entry => {
                 codegen_fn_attrs.patchable_function_entry = attr.meta_item_list().and_then(|l| {
-                    let mut prefix = 0;
-                    let mut entry = 0;
+                    let mut prefix = None;
+                    let mut entry = None;
                     for item in l {
-                        if let Some((sym, lit)) = item.name_value_literal() {
-                            let val = match lit.kind {
-                                // FIXME emit error if too many nops requested
-                                rustc_ast::LitKind::Int(i, _) => i as u8,
-                                _ => continue,
-                            };
-                            match sym {
-                                sym::prefix => prefix = val,
-                                sym::entry => entry = val,
-                                // FIXME possibly emit error here?
-                                _ => continue,
+                        let Some(meta_item) = item.meta_item() else {
+                            tcx.dcx().span_err(item.span(), "Expected name value pair.");
+                            continue;
+                        };
+
+                        let Some(name_value_lit) = meta_item.name_value_literal() else {
+                            tcx.dcx().span_err(item.span(), "Expected name value pair.");
+                            continue;
+                        };
+
+                        let attrib_to_write = match meta_item.name_or_empty() {
+                            sym::prefix_nops => &mut prefix,
+                            sym::entry_nops => &mut entry,
+                            _ => {
+                                tcx.dcx().span_err(
+                                    item.span(),
+                                    format!(
+                                        "Unexpected parameter name. Allowed names: {}, {}",
+                                        sym::prefix_nops,
+                                        sym::entry_nops
+                                    ),
+                                );
+                                continue;
                             }
-                        }
+                        };
+
+                        let rustc_ast::LitKind::Int(Pu128(val @ 0..=255), _) = name_value_lit.kind
+                        else {
+                            tcx.dcx().span_err(
+                                name_value_lit.span,
+                                "Expected integer value between 0 and 255.",
+                            );
+                            continue;
+                        };
+
+                        *attrib_to_write = Some(val.try_into().unwrap());
                     }
-                    Some(PatchableFunctionEntry::from_prefix_and_entry(prefix, entry))
+
+                    if let (None, None) = (prefix, entry) {
+                        tcx.dcx().span_err(attr.span, "Must specify at least one parameter.");
+                    }
+
+                    Some(PatchableFunctionEntry::from_prefix_and_entry(
+                        prefix.unwrap_or(0),
+                        entry.unwrap_or(0),
+                    ))
                 })
             }
             _ => {}

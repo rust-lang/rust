@@ -2963,8 +2963,9 @@ pub(crate) mod dep_tracking {
         CrateType, DebugInfo, DebugInfoCompression, ErrorOutputType, FunctionReturn,
         InliningThreshold, InstrumentCoverage, InstrumentXRay, LinkerPluginLto, LocationDetail,
         LtoCli, NextSolverConfig, OomStrategy, OptLevel, OutFileName, OutputType, OutputTypes,
-        PatchableFunctionEntry, Polonius, RemapPathScopeComponents, ResolveDocLinks, SourceFileHashAlgorithm,
-        SplitDwarfKind, SwitchWithOptPath, SymbolManglingVersion, WasiExecModel,
+        PatchableFunctionEntry, Polonius, RemapPathScopeComponents, ResolveDocLinks,
+        SourceFileHashAlgorithm, SplitDwarfKind, SwitchWithOptPath, SymbolManglingVersion,
+        WasiExecModel,
     };
     use crate::lint;
     use crate::utils::NativeLib;
@@ -3260,11 +3261,14 @@ pub struct PatchableFunctionEntry {
 }
 
 impl PatchableFunctionEntry {
-    pub fn from_nop_count_and_offset(nop_count: u8, offset: u8) -> Option<PatchableFunctionEntry> {
-        if nop_count < offset {
+    pub fn from_total_and_prefix_nops(
+        total_nops: u8,
+        prefix_nops: u8,
+    ) -> Option<PatchableFunctionEntry> {
+        if total_nops < prefix_nops {
             None
         } else {
-            Some(Self { prefix: offset, entry: nop_count - offset })
+            Some(Self { prefix: prefix_nops, entry: total_nops - prefix_nops })
         }
     }
     pub fn prefix(&self) -> u8 {
