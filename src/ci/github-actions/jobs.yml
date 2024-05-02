@@ -36,6 +36,17 @@ runners:
     os: [ self-hosted, ARM64, linux ]
 
 envs:
+  env-x86_64-apple-tests: &env-x86_64-apple-tests
+    SCRIPT: ./x.py --stage 2 test --skip tests/ui --skip tests/rustdoc --skip tests/run-make-fulldeps
+    RUST_CONFIGURE_ARGS: --build=x86_64-apple-darwin --enable-sanitizers --enable-profiler --set rust.jemalloc
+    RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
+    MACOSX_DEPLOYMENT_TARGET: 10.12
+    MACOSX_STD_DEPLOYMENT_TARGET: 10.12
+    SELECT_XCODE: /Applications/Xcode_14.3.1.app
+    NO_LLVM_ASSERTIONS: 1
+    NO_DEBUG_ASSERTIONS: 1
+    NO_OVERFLOW_CHECKS: 1
+
   production:
     &production
     DEPLOY_BUCKET: rust-lang-ci2
@@ -272,16 +283,8 @@ auto:
     <<: *job-macos-xl
 
   - image: x86_64-apple-1
-    env: &env-x86_64-apple-tests
-      SCRIPT: ./x.py --stage 2 test --skip tests/ui --skip tests/rustdoc --skip tests/run-make-fulldeps
-      RUST_CONFIGURE_ARGS: --build=x86_64-apple-darwin --enable-sanitizers --enable-profiler --set rust.jemalloc
-      RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
-      MACOSX_DEPLOYMENT_TARGET: 10.12
-      MACOSX_STD_DEPLOYMENT_TARGET: 10.12
-      SELECT_XCODE: /Applications/Xcode_14.3.1.app
-      NO_LLVM_ASSERTIONS: 1
-      NO_DEBUG_ASSERTIONS: 1
-      NO_OVERFLOW_CHECKS: 1
+    env:
+      <<: *env-x86_64-apple-tests
     <<: *job-macos-xl
 
   - image: x86_64-apple-2
