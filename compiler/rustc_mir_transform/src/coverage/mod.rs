@@ -151,9 +151,18 @@ fn create_mappings<'tcx>(
     };
     let region_for_span = |span: Span| make_code_region(source_map, file_name, span, body_span);
 
+    // Fully destructure the mappings struct to make sure we don't miss any kinds.
+    let CoverageSpans {
+        code_mappings,
+        branch_pairs,
+        mcdc_bitmap_bytes: _,
+        mcdc_branches,
+        mcdc_decisions,
+    } = coverage_spans;
     let mut mappings = Vec::new();
 
-    mappings.extend(coverage_spans.code_mappings.iter().filter_map(
+    mappings.extend(code_mappings.iter().filter_map(
+        // Ordinary code mappings are the simplest kind.
         |&mappings::CodeMapping { span, bcb }| {
             let code_region = region_for_span(span)?;
             let kind = MappingKind::Code(term_for_bcb(bcb));
@@ -161,7 +170,7 @@ fn create_mappings<'tcx>(
         },
     ));
 
-    mappings.extend(coverage_spans.branch_pairs.iter().filter_map(
+    mappings.extend(branch_pairs.iter().filter_map(
         |&mappings::BranchPair { span, true_bcb, false_bcb }| {
             let true_term = term_for_bcb(true_bcb);
             let false_term = term_for_bcb(false_bcb);
@@ -171,7 +180,7 @@ fn create_mappings<'tcx>(
         },
     ));
 
-    mappings.extend(coverage_spans.mcdc_branches.iter().filter_map(
+    mappings.extend(mcdc_branches.iter().filter_map(
         |&mappings::MCDCBranch { span, true_bcb, false_bcb, condition_info, decision_depth: _ }| {
             let code_region = region_for_span(span)?;
             let true_term = term_for_bcb(true_bcb);
@@ -184,7 +193,7 @@ fn create_mappings<'tcx>(
         },
     ));
 
-    mappings.extend(coverage_spans.mcdc_decisions.iter().filter_map(
+    mappings.extend(mcdc_decisions.iter().filter_map(
         |&mappings::MCDCDecision { span, bitmap_idx, conditions_num, .. }| {
             let code_region = region_for_span(span)?;
             let kind = MappingKind::MCDCDecision(DecisionInfo { bitmap_idx, conditions_num });
