@@ -53,7 +53,6 @@ pub(super) struct MCDCDecision {
 }
 
 pub(super) struct CoverageSpans {
-    bcb_has_mappings: BitSet<BasicCoverageBlock>,
     pub(super) code_mappings: Vec<CodeMapping>,
     pub(super) branch_pairs: Vec<BranchPair>,
     test_vector_bitmap_bytes: u32,
@@ -62,10 +61,6 @@ pub(super) struct CoverageSpans {
 }
 
 impl CoverageSpans {
-    pub(super) fn bcb_has_coverage_spans(&self, bcb: BasicCoverageBlock) -> bool {
-        self.bcb_has_mappings.contains(bcb)
-    }
-
     pub(super) fn test_vector_bitmap_bytes(&self) -> u32 {
         self.test_vector_bitmap_bytes
     }
@@ -73,13 +68,11 @@ impl CoverageSpans {
 
 /// Extracts coverage-relevant spans from MIR, and associates them with
 /// their corresponding BCBs.
-///
-/// Returns `None` if no coverage-relevant spans could be extracted.
 pub(super) fn generate_coverage_spans(
     mir_body: &mir::Body<'_>,
     hir_info: &ExtractedHirInfo,
     basic_coverage_blocks: &CoverageGraph,
-) -> Option<CoverageSpans> {
+) -> CoverageSpans {
     let mut code_mappings = vec![];
     let mut branch_pairs = vec![];
     let mut mcdc_branches = vec![];
@@ -107,32 +100,6 @@ pub(super) fn generate_coverage_spans(
         );
     }
 
-    if code_mappings.is_empty()
-        && branch_pairs.is_empty()
-        && mcdc_branches.is_empty()
-        && mcdc_decisions.is_empty()
-    {
-        return None;
-    }
-
-    // Identify which BCBs have one or more mappings.
-    let mut bcb_has_mappings = BitSet::new_empty(basic_coverage_blocks.num_nodes());
-    let mut insert = |bcb| {
-        bcb_has_mappings.insert(bcb);
-    };
-
-    for &CodeMapping { span: _, bcb } in &code_mappings {
-        insert(bcb);
-    }
-    for &BranchPair { true_bcb, false_bcb, .. } in &branch_pairs {
-        insert(true_bcb);
-        insert(false_bcb);
-    }
-    for &MCDCBranch { true_bcb, false_bcb, .. } in &mcdc_branches {
-        insert(true_bcb);
-        insert(false_bcb);
-    }
-
     // Determine the length of the test vector bitmap.
     let test_vector_bitmap_bytes = mcdc_decisions
         .iter()
@@ -142,14 +109,57 @@ pub(super) fn generate_coverage_spans(
         .max()
         .unwrap_or(0);
 
-    Some(CoverageSpans {
-        bcb_has_mappings,
+    CoverageSpans {
         code_mappings,
         branch_pairs,
         test_vector_bitmap_bytes,
         mcdc_branches,
         mcdc_decisions,
-    })
+    }
+}
+
+impl CoverageSpans {
+    pub(super) fn all_bcbs_with_counter_mappings(
+        &self,
+        basic_coverage_blocks: &CoverageGraph, // Only used for allocating a correctly-sized set
+    ) -> BitSet<BasicCoverageBlock> {
+        // Fully destructure self to make sure we don't miss any fields that have mappings.
+        let Self {
+            code_mappings,
+            branch_pairs,
+            test_vector_bitmap_bytes: _,
+            mcdc_branches,
+            mcdc_decisions,
+        } = self;
+
+        // Identify which BCBs have one or more mappings.
+        let mut bcbs_with_counter_mappings = BitSet::new_empty(basic_coverage_blocks.num_nodes());
+        let mut insert = |bcb| {
+            bcbs_with_counter_mappings.insert(bcb);
+        };
+
+        for &CodeMapping { span: _, bcb } in code_mappings {
+            insert(bcb);
+        }
+        for &BranchPair { true_bcb, false_bcb, .. } in branch_pairs {
+            insert(true_bcb);
+            insert(false_bcb);
+        }
+        for &MCDCBranch { true_bcb, false_bcb, .. } in mcdc_branches {
+            insert(true_bcb);
+            insert(false_bcb);
+        }
+
+        // MC/DC decisions refer to BCBs, but don't require those BCBs to have counters.
+        if bcbs_with_counter_mappings.is_empty() {
+            debug_assert!(
+                mcdc_decisions.is_empty(),
+                "A function with no counter mappings shouldn't have any decisions: {mcdc_decisions:?}",
+            );
+        }
+
+        bcbs_with_counter_mappings
+    }
 }
 
 fn resolve_block_markers(

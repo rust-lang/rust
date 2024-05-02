@@ -70,21 +70,24 @@ fn instrument_function_for_coverage<'tcx>(tcx: TyCtxt<'tcx>, mir_body: &mut mir:
 
     ////////////////////////////////////////////////////
     // Compute coverage spans from the `CoverageGraph`.
-    let Some(coverage_spans) =
-        mappings::generate_coverage_spans(mir_body, &hir_info, &basic_coverage_blocks)
-    else {
-        // No relevant spans were found in MIR, so skip instrumenting this function.
-        return;
-    };
+    let coverage_spans =
+        mappings::generate_coverage_spans(mir_body, &hir_info, &basic_coverage_blocks);
 
     ////////////////////////////////////////////////////
     // Create an optimized mix of `Counter`s and `Expression`s for the `CoverageGraph`. Ensure
     // every coverage span has a `Counter` or `Expression` assigned to its `BasicCoverageBlock`
     // and all `Expression` dependencies (operands) are also generated, for any other
     // `BasicCoverageBlock`s not already associated with a coverage span.
-    let bcb_has_coverage_spans = |bcb| coverage_spans.bcb_has_coverage_spans(bcb);
+    let bcbs_with_counter_mappings =
+        coverage_spans.all_bcbs_with_counter_mappings(&basic_coverage_blocks);
+    if bcbs_with_counter_mappings.is_empty() {
+        // No relevant spans were found in MIR, so skip instrumenting this function.
+        return;
+    }
+
+    let bcb_has_counter_mappings = |bcb| bcbs_with_counter_mappings.contains(bcb);
     let coverage_counters =
-        CoverageCounters::make_bcb_counters(&basic_coverage_blocks, bcb_has_coverage_spans);
+        CoverageCounters::make_bcb_counters(&basic_coverage_blocks, bcb_has_counter_mappings);
 
     let mappings = create_mappings(tcx, &hir_info, &coverage_spans, &coverage_counters);
     if mappings.is_empty() {
@@ -96,7 +99,7 @@ fn instrument_function_for_coverage<'tcx>(tcx: TyCtxt<'tcx>, mir_body: &mut mir:
     inject_coverage_statements(
         mir_body,
         &basic_coverage_blocks,
-        bcb_has_coverage_spans,
+        bcb_has_counter_mappings,
         &coverage_counters,
     );
 
