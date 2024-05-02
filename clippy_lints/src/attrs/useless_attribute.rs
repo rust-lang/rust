@@ -28,6 +28,7 @@ pub(super) fn check(cx: &LateContext<'_>, item: &Item<'_>, attrs: &[Attribute]) 
                                 || is_word(lint, sym!(unused_braces))
                                 || is_word(lint, sym::dead_code)
                                 || is_word(lint, sym!(hidden_glob_reexports))
+                                || is_word(lint, sym!(ambiguous_glob_reexports))
                                 || extract_clippy_lint(lint).map_or(false, |s| {
                                     matches!(
                                         s.as_str(),

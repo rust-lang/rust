@@ -117,3 +117,20 @@ pub mod hidden_glob_reexports {
     #[allow(hidden_glob_reexports)]
     use my_uncool_type::MyUncoolType as MyCoolType;
 }
+
+// Regression test for https://github.com/rust-lang/rust-clippy/issues/10878
+pub mod ambiguous_glob_exports {
+    #![allow(unreachable_pub)]
+
+    mod my_prelude {
+        pub struct MyType;
+    }
+
+    mod my_type {
+        pub struct MyType;
+    }
+
+    #[allow(ambiguous_glob_reexports)]
+    pub use my_prelude::*;
+    pub use my_type::*;
+}
