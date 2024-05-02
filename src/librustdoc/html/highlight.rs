@@ -850,7 +850,8 @@ impl<'src> Classifier<'src> {
                 | LiteralKind::RawStr { .. }
                 | LiteralKind::RawByteStr { .. }
                 | LiteralKind::CStr { .. }
-                | LiteralKind::RawCStr { .. } => Class::String,
+                | LiteralKind::RawCStr { .. }
+                | LiteralKind::GuardedStr { .. } => Class::String,
                 // Number literals.
                 LiteralKind::Float { .. } | LiteralKind::Int { .. } => Class::Number,
             },

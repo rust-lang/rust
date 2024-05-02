@@ -113,6 +113,7 @@ impl server::FreeFunctions for TokenIdServer {
                 3 + n_hashes.unwrap_or_default() as usize,
                 1 + n_hashes.unwrap_or_default() as usize,
             ),
+            LiteralKind::GuardedStr { .. } => return Err(()),
         };
 
         let (lit, suffix) = s.split_at(suffix_start as usize);

@@ -490,6 +490,30 @@ impl<'psess, 'src> StringReader<'psess, 'src> {
                     self.report_raw_str_error(start, 1);
                 }
             }
+            // RFC 3598 reserved this syntax for future use.
+            rustc_lexer::LiteralKind::GuardedStr { n_start_hashes, n_end_hashes } => {
+                let span = self.mk_sp(start, self.pos);
+
+                if let Some(n_start_hashes) = n_start_hashes {
+                    let n = u32::from(n_start_hashes.get());
+                    let e = u32::from(n_end_hashes);
+                    let expn_data = span.ctxt().outer_expn_data();
+
+                    let space_pos = start + BytePos(n);
+                    let space_span = self.mk_sp(space_pos, space_pos);
+
+                    let sugg = if expn_data.is_root() {
+                        Some(errors::GuardedStringSugg(space_span))
+                    } else {
+                        None
+                    };
+
+                    self.dcx().emit_err(errors::ReservedGuardedString { span, sugg });
+                    self.cook_unicode(token::Str, Mode::Str, start, end, 1 + n, 1 + e) // ##" "##
+                } else {
+                    self.dcx().emit_fatal(errors::ReservedGuardedString { span, sugg: None });
+                }
+            }
             rustc_lexer::LiteralKind::RawByteStr { n_hashes } => {
                 if let Some(n_hashes) = n_hashes {
                     let n = u32::from(n_hashes);

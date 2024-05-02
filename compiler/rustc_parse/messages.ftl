@@ -672,6 +672,10 @@ parse_require_colon_after_labeled_expression = labeled expression must be follow
     .label = the label
     .suggestion = add `:` after the label
 
+parse_reserved_guarded_string = invalid string literal
+    .note = unprefixed guarded string literals are reserved for future use
+    .suggestion_whitespace = consider inserting whitespace here
+
 parse_return_types_use_thin_arrow = return types are denoted using `->`
     .suggestion = use `->` instead
 

@@ -1,0 +1,146 @@
+error: prefix `blah` is unknown
+  --> $DIR/reserved-guarded-strings.rs:46:12
+   |
+LL |     demo2!(blah"xx");
+   |            ^^^^ unknown prefix
+   |
+   = note: prefixed identifiers and literals are reserved since Rust 2021
+help: consider inserting whitespace here
+   |
+LL |     demo2!(blah "xx");
+   |                +
+
+error: prefix `blah` is unknown
+  --> $DIR/reserved-guarded-strings.rs:47:12
+   |
+LL |     demo2!(blah#"xx"#);
+   |            ^^^^ unknown prefix
+   |
+   = note: prefixed identifiers and literals are reserved since Rust 2021
+help: consider inserting whitespace here
+   |
+LL |     demo2!(blah #"xx"#);
+   |                +
+
+error: invalid string literal
+  --> $DIR/reserved-guarded-strings.rs:47:16
+   |
+LL |     demo2!(blah#"xx"#);
+   |                ^^^^^^
+   |
+   = note: unprefixed guarded string literals are reserved for future use
+help: consider inserting whitespace here
+   |
+LL |     demo2!(blah# "xx"#);
+   |                 +
+
+error: invalid string literal
+  --> $DIR/reserved-guarded-strings.rs:51:12
+   |
+LL |     demo1!(#"");
+   |            ^^^
+   |
+   = note: unprefixed guarded string literals are reserved for future use
+help: consider inserting whitespace here
+   |
+LL |     demo1!(# "");
+   |             +
+
+error: invalid string literal
+  --> $DIR/reserved-guarded-strings.rs:52:12
+   |
+LL |     demo1!(#""#);
+   |            ^^^^
+   |
+   = note: unprefixed guarded string literals are reserved for future use
+help: consider inserting whitespace here
+   |
+LL |     demo1!(# ""#);
+   |             +
+
+error: invalid string literal
+  --> $DIR/reserved-guarded-strings.rs:53:12
+   |
+LL |     demo1!(####"");
+   |            ^^^^^^
+   |
+   = note: unprefixed guarded string literals are reserved for future use
+help: consider inserting whitespace here
+   |
+LL |     demo1!(#### "");
+   |                +
+
+error: invalid string literal
+  --> $DIR/reserved-guarded-strings.rs:54:12
+   |
+LL |     demo1!(#"foo");
+   |            ^^^^^^
+   |
+   = note: unprefixed guarded string literals are reserved for future use
+help: consider inserting whitespace here
+   |
+LL |     demo1!(# "foo");
+   |             +
+
+error: invalid string literal
+  --> $DIR/reserved-guarded-strings.rs:55:12
+   |
+LL |     demo1!(###"foo");
+   |            ^^^^^^^^
+   |
+   = note: unprefixed guarded string literals are reserved for future use
+help: consider inserting whitespace here
+   |
+LL |     demo1!(### "foo");
+   |               +
+
+error: invalid string literal
+  --> $DIR/reserved-guarded-strings.rs:56:12
+   |
+LL |     demo1!(#"foo"#);
+   |            ^^^^^^^
+   |
+   = note: unprefixed guarded string literals are reserved for future use
+help: consider inserting whitespace here
+   |
+LL |     demo1!(# "foo"#);
+   |             +
+
+error: invalid string literal
+  --> $DIR/reserved-guarded-strings.rs:57:12
+   |
+LL |     demo1!(###"foo"#);
+   |            ^^^^^^^^^
+   |
+   = note: unprefixed guarded string literals are reserved for future use
+help: consider inserting whitespace here
+   |
+LL |     demo1!(### "foo"#);
+   |               +
+
+error: invalid string literal
+  --> $DIR/reserved-guarded-strings.rs:58:12
+   |
+LL |     demo1!(###"foo"##);
+   |            ^^^^^^^^^^
+   |
+   = note: unprefixed guarded string literals are reserved for future use
+help: consider inserting whitespace here
+   |
+LL |     demo1!(### "foo"##);
+   |               +
+
+error: invalid string literal
+  --> $DIR/reserved-guarded-strings.rs:59:12
+   |
+LL |     demo1!(###"foo"###);
+   |            ^^^^^^^^^^^
+   |
+   = note: unprefixed guarded string literals are reserved for future use
+help: consider inserting whitespace here
+   |
+LL |     demo1!(### "foo"###);
+   |               +
+
+error: aborting due to 12 previous errors
+

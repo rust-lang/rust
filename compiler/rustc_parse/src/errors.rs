@@ -2010,6 +2010,24 @@ pub enum UnknownPrefixSugg {
 }
 
 #[derive(Diagnostic)]
+#[diag(parse_reserved_guarded_string)]
+#[note]
+pub struct ReservedGuardedString {
+    #[primary_span]
+    pub span: Span,
+    #[subdiagnostic]
+    pub sugg: Option<GuardedStringSugg>,
+}
+#[derive(Subdiagnostic)]
+#[suggestion(
+    parse_suggestion_whitespace,
+    code = " ",
+    applicability = "maybe-incorrect",
+    style = "verbose"
+)]
+pub struct GuardedStringSugg(#[primary_span] pub Span);
+
+#[derive(Diagnostic)]
 #[diag(parse_too_many_hashes)]
 pub struct TooManyHashes {
     #[primary_span]

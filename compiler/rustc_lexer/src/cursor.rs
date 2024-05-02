@@ -4,6 +4,7 @@ use std::str::Chars;
 ///
 /// Next characters can be peeked via `first` method,
 /// and position can be shifted forward via `bump` method.
+#[derive(Clone)]
 pub struct Cursor<'a> {
     len_remaining: usize,
     /// Iterator over chars. Slightly faster than a &str.
