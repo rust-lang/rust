@@ -662,7 +662,7 @@ impl<'a> Ctx<'a> {
             let attrs = RawAttrs::new(self.db.upcast(), &param, self.body_ctx.span_map());
             debug_assert!(self.generic_param_attr_buffer.insert(item, attrs).is_none());
         };
-
+        self.body_ctx.take_impl_traits_bounds();
         let mut generics = GenericParamsCollector::default();
 
         if let HasImplicitSelf::Yes(bounds) = has_implicit_self {

@@ -377,7 +377,7 @@ impl GenericParamsCollector {
         }
     }
 
-    pub(crate) fn fill_implicit_impl_trait_args(
+    fn fill_implicit_impl_trait_args(
         &mut self,
         db: &dyn DefDatabase,
         exp: &mut Lazy<(Arc<DefMap>, Expander), impl FnOnce() -> (Arc<DefMap>, Expander)>,
