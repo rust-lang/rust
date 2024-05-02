@@ -1,5 +1,5 @@
 warning: unexpected `cfg` condition name: `unknown_key`
-  --> $DIR/exhaustive-names-values.rs:9:7
+  --> $DIR/exhaustive-names-values.rs:10:7
    |
 LL | #[cfg(unknown_key = "value")]
    |       ^^^^^^^^^^^^^^^^^^^^^
@@ -10,7 +10,7 @@ LL | #[cfg(unknown_key = "value")]
    = note: `#[warn(unexpected_cfgs)]` on by default
 
 warning: unexpected `cfg` condition value: `value`
-  --> $DIR/exhaustive-names-values.rs:13:7
+  --> $DIR/exhaustive-names-values.rs:14:7
    |
 LL | #[cfg(test = "value")]
    |       ^^^^----------
@@ -21,7 +21,7 @@ LL | #[cfg(test = "value")]
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition name: `feature`
-  --> $DIR/exhaustive-names-values.rs:17:7
+  --> $DIR/exhaustive-names-values.rs:18:7
    |
 LL | #[cfg(feature = "unk")]
    |       ^^^^^^^^^^^^^^^
@@ -30,7 +30,7 @@ LL | #[cfg(feature = "unk")]
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition name: `feature`
-  --> $DIR/exhaustive-names-values.rs:24:7
+  --> $DIR/exhaustive-names-values.rs:25:7
    |
 LL | #[cfg(feature = "std")]
    |       ^^^^^^^^^^^^^^^

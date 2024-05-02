@@ -2,6 +2,7 @@
 
 #![allow(stable_features)]
 #![feature(cfg_target_feature)]
+#![feature(lint_reasons)]
 
 use std::env;
 
@@ -20,6 +21,7 @@ fn main() {
                 "SSE2 was not detected as available on an x86 platform");
     }
     // check a negative case too -- certainly not enabled by default
-    assert!(cfg!(not(target_feature = "ferris_wheel")),
-            "🎡 shouldn't be detected as available by default on any platform");
+    #[expect(unexpected_cfgs)]
+    { assert!(cfg!(not(target_feature = "ferris_wheel")),
+            "🎡 shouldn't be detected as available by default on any platform") };
 }
