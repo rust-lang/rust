@@ -3,8 +3,6 @@
 // Test that if we build `b` against a version of `a` that has one set of types, it will not run
 // with a dylib that has a different set of types.
 
-extern crate run_make_support;
-
 use run_make_support::{run, run_fail, rustc};
 
 fn main() {

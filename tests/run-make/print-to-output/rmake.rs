@@ -1,8 +1,6 @@
 //! This checks the output of some `--print` options when
 //! output to a file (instead of stdout)
 
-extern crate run_make_support;
-
 use std::ffi::OsString;
 
 use run_make_support::{rustc, target, tmp_dir};

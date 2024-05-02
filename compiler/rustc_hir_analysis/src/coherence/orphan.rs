@@ -330,6 +330,7 @@ fn orphan_check<'tcx>(
     };
 
     let Ok(result) = traits::orphan_check_trait_ref::<!>(
+        &infcx,
         trait_ref,
         traits::InCrate::Local { mode },
         lazily_normalize_ty,

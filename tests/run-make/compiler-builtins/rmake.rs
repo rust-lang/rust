@@ -14,8 +14,6 @@
 
 #![deny(warnings)]
 
-extern crate run_make_support;
-
 use run_make_support::object;
 use run_make_support::object::read::archive::ArchiveFile;
 use run_make_support::object::read::Object;

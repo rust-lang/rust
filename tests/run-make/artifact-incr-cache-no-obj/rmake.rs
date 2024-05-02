@@ -5,8 +5,6 @@
 //
 // Fixes: rust-lang/rust#123234
 
-extern crate run_make_support;
-
 use run_make_support::{rustc, tmp_dir};
 
 fn main() {

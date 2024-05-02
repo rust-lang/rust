@@ -631,7 +631,7 @@ where
 
         let ref_ty = Ty::new_mut_ref(tcx, tcx.lifetimes.re_erased, ty);
         let ref_place = self.new_temp(ref_ty);
-        let unit_temp = Place::from(self.new_temp(Ty::new_unit(tcx)));
+        let unit_temp = Place::from(self.new_temp(tcx.types.unit));
 
         let result = BasicBlockData {
             statements: vec![self.assign(

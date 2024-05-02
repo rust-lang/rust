@@ -2,7 +2,6 @@
 
 use crate::solve::GoalSource;
 use crate::solve::{inspect, EvalCtxt, SolverMode};
-use crate::traits::coherence;
 use rustc_hir::def_id::DefId;
 use rustc_infer::traits::query::NoSolution;
 use rustc_middle::traits::solve::inspect::ProbeKind;
@@ -769,13 +768,10 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         candidates.extend(self.probe_trait_candidate(CandidateSource::CoherenceUnknowable).enter(
             |ecx| {
                 let trait_ref = goal.predicate.trait_ref(tcx);
-                let lazily_normalize_ty = |ty| ecx.structurally_normalize_ty(goal.param_env, ty);
-
-                match coherence::trait_ref_is_knowable(tcx, trait_ref, lazily_normalize_ty)? {
-                    Ok(()) => Err(NoSolution),
-                    Err(_) => {
-                        ecx.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
-                    }
+                if ecx.trait_ref_is_knowable(goal.param_env, trait_ref)? {
+                    Err(NoSolution)
+                } else {
+                    ecx.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
                 }
             },
         ))
