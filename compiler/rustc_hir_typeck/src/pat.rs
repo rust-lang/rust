@@ -73,21 +73,23 @@ struct TopInfo<'tcx> {
     ///              found type `std::result::Result<_, _>`
     /// ```
     span: Option<Span>,
+    /// The [`HirId`] of the top-level pattern.
+    hir_id: HirId,
 }
 
 #[derive(Copy, Clone)]
 struct PatInfo<'tcx, 'a> {
     binding_mode: ByRef,
     max_ref_mutbl: MutblCap,
-    top_info: TopInfo<'tcx>,
-    decl_origin: Option<DeclOrigin<'a>>,
+    top_info: &'a TopInfo<'tcx>,
+    decl_origin: Option<DeclOrigin<'tcx>>,
 
     /// The depth of current pattern
     current_depth: u32,
 }
 
 impl<'tcx> FnCtxt<'_, 'tcx> {
-    fn pattern_cause(&self, ti: TopInfo<'tcx>, cause_span: Span) -> ObligationCause<'tcx> {
+    fn pattern_cause(&self, ti: &TopInfo<'tcx>, cause_span: Span) -> ObligationCause<'tcx> {
         let code = ObligationCauseCode::Pattern {
             span: ti.span,
             root_ty: ti.expected,
@@ -101,7 +103,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         cause_span: Span,
         expected: Ty<'tcx>,
         actual: Ty<'tcx>,
-        ti: TopInfo<'tcx>,
+        ti: &TopInfo<'tcx>,
     ) -> Option<Diag<'tcx>> {
         let mut diag =
             self.demand_eqtype_with_origin(&self.pattern_cause(ti, cause_span), expected, actual)?;
@@ -118,7 +120,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         cause_span: Span,
         expected: Ty<'tcx>,
         actual: Ty<'tcx>,
-        ti: TopInfo<'tcx>,
+        ti: &TopInfo<'tcx>,
     ) {
         if let Some(err) = self.demand_eqtype_pat_diag(cause_span, expected, actual, ti) {
             err.emit();
@@ -199,11 +201,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         origin_expr: Option<&'tcx hir::Expr<'tcx>>,
         decl_origin: Option<DeclOrigin<'tcx>>,
     ) {
-        let info = TopInfo { expected, origin_expr, span };
+        let info = TopInfo { expected, origin_expr, span, hir_id: pat.hir_id };
         let pat_info = PatInfo {
             binding_mode: ByRef::No,
             max_ref_mutbl: MutblCap::Mut,
-            top_info: info,
+            top_info: &info,
             decl_origin,
             current_depth: 0,
         };
@@ -463,7 +465,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         span: Span,
         lt: &hir::Expr<'tcx>,
         expected: Ty<'tcx>,
-        ti: TopInfo<'tcx>,
+        ti: &TopInfo<'tcx>,
     ) -> Ty<'tcx> {
         // We've already computed the type above (when checking for a non-ref pat),
         // so avoid computing it again.
@@ -533,7 +535,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         lhs: Option<&'tcx hir::Expr<'tcx>>,
         rhs: Option<&'tcx hir::Expr<'tcx>>,
         expected: Ty<'tcx>,
-        ti: TopInfo<'tcx>,
+        ti: &TopInfo<'tcx>,
     ) -> Ty<'tcx> {
         let calc_side = |opt_expr: Option<&'tcx hir::Expr<'tcx>>| match opt_expr {
             None => None,
@@ -671,18 +673,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Determine the binding mode...
         let bm = match user_bind_annot {
+            // `mut` resets binding mode on edition <= 2021
             BindingMode(ByRef::No, Mutability::Mut)
                 if !(pat.span.at_least_rust_2024()
                     && self.tcx.features().mut_preserve_binding_mode_2024)
                     && matches!(def_br, ByRef::Yes(_)) =>
             {
-                // `mut x` resets the binding mode in edition <= 2021.
-                self.tcx.emit_node_span_lint(
-                    rustc_lint::builtin::DEREFERENCING_MUT_BINDING,
-                    pat.hir_id,
-                    pat.span,
-                    errors::DereferencingMutBinding { span: pat.span },
-                );
+                self.typeck_results
+                    .borrow_mut()
+                    .rust_2024_migration_desugared_pats_mut()
+                    .insert(pat_info.top_info.hir_id);
                 BindingMode(ByRef::No, Mutability::Mut)
             }
             BindingMode(ByRef::No, mutbl) => BindingMode(def_br, mutbl),
@@ -754,7 +754,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         span: Span,
         var_id: HirId,
         ty: Ty<'tcx>,
-        ti: TopInfo<'tcx>,
+        ti: &TopInfo<'tcx>,
     ) {
         let var_ty = self.local_ty(span, var_id);
         if let Some(mut err) = self.demand_eqtype_pat_diag(span, var_ty, ty, ti) {
@@ -996,7 +996,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         qpath: &hir::QPath<'_>,
         path_resolution: (Res, Option<LoweredTy<'tcx>>, &'tcx [hir::PathSegment<'tcx>]),
         expected: Ty<'tcx>,
-        ti: TopInfo<'tcx>,
+        ti: &TopInfo<'tcx>,
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
 
@@ -2178,8 +2178,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         } else {
             // Reset binding mode on old editions
-            pat_info.binding_mode = ByRef::No;
-            pat_info.max_ref_mutbl = MutblCap::Mut
+
+            if pat_info.binding_mode != ByRef::No {
+                pat_info.binding_mode = ByRef::No;
+
+                self.typeck_results
+                    .borrow_mut()
+                    .rust_2024_migration_desugared_pats_mut()
+                    .insert(pat_info.top_info.hir_id);
+            }
+
+            pat_info.max_ref_mutbl = MutblCap::Mut;
         }
 
         let tcx = self.tcx;
