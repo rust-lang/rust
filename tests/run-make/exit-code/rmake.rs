@@ -3,17 +3,11 @@
 use run_make_support::{rustc, rustdoc, tmp_dir};
 
 fn main() {
-    rustc()
-        .arg("success.rs")
-        .run();
+    rustc().arg("success.rs").run();
 
-    rustc()
-        .arg("--invalid-arg-foo")
-        .run_fail_assert_exit_code(1);
+    rustc().arg("--invalid-arg-foo").run_fail_assert_exit_code(1);
 
-    rustc()
-        .arg("compile-error.rs")
-        .run_fail_assert_exit_code(1);
+    rustc().arg("compile-error.rs").run_fail_assert_exit_code(1);
 
     rustc()
         .env("RUSTC_ICE", "0")
@@ -21,21 +15,11 @@ fn main() {
         .arg("compile-error.rs")
         .run_fail_assert_exit_code(101);
 
-    rustdoc()
-        .arg("success.rs")
-        .arg("-o")
-        .arg(tmp_dir().join("exit-code"))
-        .run();
+    rustdoc().arg("success.rs").arg("-o").arg(tmp_dir().join("exit-code")).run();
 
-    rustdoc()
-        .arg("--invalid-arg-foo")
-        .run_fail_assert_exit_code(1);
+    rustdoc().arg("--invalid-arg-foo").run_fail_assert_exit_code(1);
 
-    rustdoc()
-        .arg("compile-error.rs")
-        .run_fail_assert_exit_code(1);
+    rustdoc().arg("compile-error.rs").run_fail_assert_exit_code(1);
 
-    rustdoc()
-        .arg("lint-failure.rs")
-        .run_fail_assert_exit_code(1);
+    rustdoc().arg("lint-failure.rs").run_fail_assert_exit_code(1);
 }

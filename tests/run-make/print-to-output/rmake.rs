@@ -13,11 +13,7 @@ struct Option<'a> {
 
 fn main() {
     // Printed from CodegenBackend trait impl in rustc_codegen_llvm/src/lib.rs
-    check(Option {
-        target: &target(),
-        option: "relocation-models",
-        includes: &["dynamic-no-pic"],
-    });
+    check(Option { target: &target(), option: "relocation-models", includes: &["dynamic-no-pic"] });
 
     // Printed by compiler/rustc_codegen_llvm/src/llvm_util.rs
     check(Option {
