@@ -730,7 +730,7 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             => {
                 let [f] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let f = this.read_scalar(f)?.to_f32()?;
-                // FIXME: Using host floats.
+                // Using host floats (but it's fine, these operations do not have guaranteed precision).
                 let f_host = f.to_host();
                 let res = match link_name.as_str() {
                     "cbrtf" => f_host.cbrt(),
@@ -761,7 +761,7 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let f2 = this.read_scalar(f2)?.to_f32()?;
                 // underscore case for windows, here and below
                 // (see https://docs.microsoft.com/en-us/cpp/c-runtime-library/reference/floating-point-primitives?view=vs-2019)
-                // FIXME: Using host floats.
+                // Using host floats (but it's fine, these operations do not have guaranteed precision).
                 let res = match link_name.as_str() {
                     "_hypotf" | "hypotf" => f1.to_host().hypot(f2.to_host()).to_soft(),
                     "atan2f" => f1.to_host().atan2(f2.to_host()).to_soft(),
@@ -787,7 +787,7 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             => {
                 let [f] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let f = this.read_scalar(f)?.to_f64()?;
-                // FIXME: Using host floats.
+                // Using host floats (but it's fine, these operations do not have guaranteed precision).
                 let f_host = f.to_host();
                 let res = match link_name.as_str() {
                     "cbrt" => f_host.cbrt(),
@@ -818,7 +818,7 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let f2 = this.read_scalar(f2)?.to_f64()?;
                 // underscore case for windows, here and below
                 // (see https://docs.microsoft.com/en-us/cpp/c-runtime-library/reference/floating-point-primitives?view=vs-2019)
-                // FIXME: Using host floats.
+                // Using host floats (but it's fine, these operations do not have guaranteed precision).
                 let res = match link_name.as_str() {
                     "_hypot" | "hypot" => f1.to_host().hypot(f2.to_host()).to_soft(),
                     "atan2" => f1.to_host().atan2(f2.to_host()).to_soft(),
@@ -848,7 +848,7 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let x = this.read_scalar(x)?.to_f32()?;
                 let signp = this.deref_pointer(signp)?;
 
-                // FIXME: Using host floats.
+                // Using host floats (but it's fine, these operations do not have guaranteed precision).
                 let (res, sign) = x.to_host().ln_gamma();
                 this.write_int(sign, &signp)?;
                 let res = this.adjust_nan(res.to_soft(), &[x]);
@@ -859,7 +859,7 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let x = this.read_scalar(x)?.to_f64()?;
                 let signp = this.deref_pointer(signp)?;
 
-                // FIXME: Using host floats.
+                // Using host floats (but it's fine, these operations do not have guaranteed precision).
                 let (res, sign) = x.to_host().ln_gamma();
                 this.write_int(sign, &signp)?;
                 let res = this.adjust_nan(res.to_soft(), &[x]);
