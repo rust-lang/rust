@@ -1660,7 +1660,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             hir::StmtKind::Item(_) => {}
             hir::StmtKind::Expr(ref expr) => {
                 // Check with expected type of `()`.
-                self.check_expr_has_type_or_error(expr, Ty::new_unit(self.tcx), |err| {
+                self.check_expr_has_type_or_error(expr, self.tcx.types.unit, |err| {
                     if expr.can_have_side_effects() {
                         self.suggest_semicolon_at_end(expr.span, err);
                     }
@@ -1676,7 +1676,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     pub fn check_block_no_value(&self, blk: &'tcx hir::Block<'tcx>) {
-        let unit = Ty::new_unit(self.tcx);
+        let unit = self.tcx.types.unit;
         let ty = self.check_block_with_expected(blk, ExpectHasType(unit));
 
         // if the block produces a `!` value, that can always be
@@ -1794,7 +1794,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                         blk.span,
                                         blk.hir_id,
                                         expected_ty,
-                                        Ty::new_unit(self.tcx),
+                                        self.tcx.types.unit,
                                     );
                                 }
                                 if !self.err_ctxt().consider_removing_semicolon(

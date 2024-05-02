@@ -1260,7 +1260,7 @@ fn create_coroutine_drop_shim<'tcx>(
     }
 
     // Replace the return variable
-    body.local_decls[RETURN_PLACE] = LocalDecl::with_source_info(Ty::new_unit(tcx), source_info);
+    body.local_decls[RETURN_PLACE] = LocalDecl::with_source_info(tcx.types.unit, source_info);
 
     make_coroutine_state_argument_indirect(tcx, &mut body);
 

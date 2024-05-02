@@ -1751,11 +1751,6 @@ impl<'tcx> Ty<'tcx> {
     // misc
 
     #[inline]
-    pub fn new_unit(tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
-        tcx.types.unit
-    }
-
-    #[inline]
     pub fn new_static_str(tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         Ty::new_imm_ref(tcx, tcx.lifetimes.re_static, tcx.types.str_)
     }
