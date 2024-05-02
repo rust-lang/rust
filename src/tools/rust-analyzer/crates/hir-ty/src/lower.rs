@@ -345,7 +345,9 @@ impl<'a> TyLoweringContext<'a> {
                     }
                     ImplTraitLoweringState::Param(counter) => {
                         let idx = counter.get();
-                        counter.set(idx + 1);
+                        // Count the number of `impl Trait` things that appear within our bounds.
+                        // Since t hose have been emitted as implicit type args already.
+                        counter.set(idx + count_impl_traits(type_ref) as u16);
                         let kind = self
                             .generics()
                             .expect("param impl trait lowering must be in a generic def")
@@ -367,7 +369,9 @@ impl<'a> TyLoweringContext<'a> {
                     }
                     ImplTraitLoweringState::Variable(counter) => {
                         let idx = counter.get();
-                        counter.set(idx + 1);
+                        // Count the number of `impl Trait` things that appear within our bounds.
+                        // Since t hose have been emitted as implicit type args already.
+                        counter.set(idx + count_impl_traits(type_ref) as u16);
                         let (
                             _parent_params,
                             self_params,
@@ -1395,6 +1399,17 @@ pub fn associated_type_shorthand_candidates<R>(
     mut cb: impl FnMut(&Name, TypeAliasId) -> Option<R>,
 ) -> Option<R> {
     named_associated_type_shorthand_candidates(db, def, res, None, |name, _, id| cb(name, id))
+}
+
+// FIXME: This does not handle macros!
+fn count_impl_traits(type_ref: &TypeRef) -> usize {
+    let mut count = 0;
+    type_ref.walk(&mut |type_ref| {
+        if matches!(type_ref, TypeRef::ImplTrait(_)) {
+            count += 1;
+        }
+    });
+    count
 }
 
 fn named_associated_type_shorthand_candidates<R>(

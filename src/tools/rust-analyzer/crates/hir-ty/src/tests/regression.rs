@@ -1980,7 +1980,7 @@ impl<#[cfg(feature = "a-feature")] A> Bar for (){}
 fn nested_anon_generics_and_where_bounds_17173() {
     check_types(
         r#"
-//- minicore: sized
+//- minicore: sized, fn
 pub trait Lookup {
     type Data;
     fn lookup(&self) -> Self::Data;
@@ -1988,8 +1988,11 @@ pub trait Lookup {
 pub trait ItemTreeLoc {
     type Id;
 }
-fn id_to_generics(id: impl Lookup<Data = impl ItemTreeLoc<Id = ()>>)
+fn id_to_generics(id: impl Lookup<Data = impl ItemTreeLoc<Id = ()>>,
                 //^^ impl Lookup<Data = impl ItemTreeLoc<Id = ()>>
+                enabled_params: impl Fn(),
+              //^^^^^^^^^^^^^^  impl Fn()
+                )
 where
     (): Sized,
 {}
