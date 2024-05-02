@@ -3976,7 +3976,6 @@ dependencies = [
  "rustc_session",
  "rustc_span",
  "smallvec",
- "termcolor",
  "thin-vec",
  "tracing",
 ]
@@ -4464,6 +4463,7 @@ dependencies = [
  "rustc_macros",
  "rustc_session",
  "rustc_span",
+ "termcolor",
  "thin-vec",
  "tracing",
  "unicode-normalization",

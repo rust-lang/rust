@@ -45,6 +45,20 @@ use crate::errors::{
     self, IncorrectVisibilityRestriction, MismatchedClosingDelimiter, NonStringAbiLiteral,
 };
 
+#[cfg(test)]
+mod tests;
+
+// Ideally, these tests would be in `rustc_ast`. But they depend on having a
+// parser, so they are here.
+#[cfg(test)]
+mod tokenstream {
+    mod tests;
+}
+#[cfg(test)]
+mod mut_visit {
+    mod tests;
+}
+
 bitflags::bitflags! {
     #[derive(Clone, Copy)]
     struct Restrictions: u8 {

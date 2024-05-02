@@ -34,24 +34,4 @@ pub mod module;
 #[allow(rustc::untranslatable_diagnostic)]
 pub mod proc_macro;
 
-// HACK(Centril, #64197): These shouldn't really be here.
-// Rather, they should be with their respective modules which are defined in other crates.
-// However, since for now constructing a `ParseSess` sorta requires `config` from this crate,
-// these tests will need to live here in the interim.
-
-#[cfg(test)]
-mod tests;
-#[cfg(test)]
-mod parse {
-    mod tests;
-}
-#[cfg(test)]
-mod tokenstream {
-    mod tests;
-}
-#[cfg(test)]
-mod mut_visit {
-    mod tests;
-}
-
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }

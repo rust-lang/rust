@@ -1,5 +1,4 @@
-use crate::tests::{matches_codepattern, string_to_crate};
-
+use crate::parser::tests::{matches_codepattern, string_to_crate};
 use rustc_ast as ast;
 use rustc_ast::mut_visit::MutVisitor;
 use rustc_ast_pretty::pprust;
