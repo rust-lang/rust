@@ -97,7 +97,8 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                     | sym::unchecked_div
                     | sym::unchecked_rem
                     | sym::unchecked_shl
-                    | sym::unchecked_shr => {
+                    | sym::unchecked_shr
+                    | sym::disjoint_bitor => {
                         let target = target.unwrap();
                         let lhs;
                         let rhs;
