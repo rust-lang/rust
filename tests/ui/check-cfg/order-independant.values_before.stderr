@@ -1,5 +1,5 @@
 warning: unexpected `cfg` condition value: `unk`
-  --> $DIR/order-independant.rs:11:7
+  --> $DIR/order-independant.rs:12:7
    |
 LL | #[cfg(a = "unk")]
    |       ^^^^^^^^^

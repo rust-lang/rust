@@ -1,5 +1,5 @@
 warning: unexpected `cfg` condition name: `FALSE`
-  --> $DIR/allow-same-level.rs:7:7
+  --> $DIR/allow-same-level.rs:8:7
    |
 LL | #[cfg(FALSE)]
    |       ^^^^^

@@ -1,5 +1,5 @@
 //@ check-pass
-//@ compile-flags: --cfg something
+//@ compile-flags: --cfg something --check-cfg=cfg(nothing,something)
 
 #![deny(unused_mut)]
 

@@ -1,6 +1,7 @@
 // Check that we detect unexpected value when none are allowed
 //
 //@ check-pass
+//@ no-auto-check-cfg
 //@ compile-flags: --check-cfg=cfg(foo,values())
 
 #[cfg(foo = "foo")]

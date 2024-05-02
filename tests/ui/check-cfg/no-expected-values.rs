@@ -1,6 +1,7 @@
 // Check that we detect unexpected value when none are allowed
 //
 //@ check-pass
+//@ no-auto-check-cfg
 //@ revisions: simple mixed empty
 //@ compile-flags: --check-cfg=cfg(values,simple,mixed,empty)
 //@ [simple]compile-flags: --check-cfg=cfg(test) --check-cfg=cfg(feature)
