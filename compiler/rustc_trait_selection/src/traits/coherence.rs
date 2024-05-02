@@ -618,19 +618,20 @@ fn try_prove_negated_where_clause<'tcx>(
 /// This both checks whether any downstream or sibling crates could
 /// implement it and whether an upstream crate can add this impl
 /// without breaking backwards compatibility.
-#[instrument(level = "debug", skip(tcx, lazily_normalize_ty), ret)]
+#[instrument(level = "debug", skip(infcx, lazily_normalize_ty), ret)]
 pub fn trait_ref_is_knowable<'tcx, E: Debug>(
-    tcx: TyCtxt<'tcx>,
+    infcx: &InferCtxt<'tcx>,
     trait_ref: ty::TraitRef<'tcx>,
     mut lazily_normalize_ty: impl FnMut(Ty<'tcx>) -> Result<Ty<'tcx>, E>,
 ) -> Result<Result<(), Conflict>, E> {
-    if orphan_check_trait_ref(trait_ref, InCrate::Remote, &mut lazily_normalize_ty)?.is_ok() {
+    if orphan_check_trait_ref(infcx, trait_ref, InCrate::Remote, &mut lazily_normalize_ty)?.is_ok()
+    {
         // A downstream or cousin crate is allowed to implement some
         // generic parameters of this trait-ref.
         return Ok(Err(Conflict::Downstream));
     }
 
-    if trait_ref_is_local_or_fundamental(tcx, trait_ref) {
+    if trait_ref_is_local_or_fundamental(infcx.tcx, trait_ref) {
         // This is a local or fundamental trait, so future-compatibility
         // is no concern. We know that downstream/cousin crates are not
         // allowed to implement a generic parameter of this trait ref,
@@ -648,6 +649,7 @@ pub fn trait_ref_is_knowable<'tcx, E: Debug>(
     // about future-compatibility, which means that we're OK if
     // we are an owner.
     if orphan_check_trait_ref(
+        infcx,
         trait_ref,
         InCrate::Local { mode: OrphanCheckMode::Proper },
         &mut lazily_normalize_ty,
@@ -786,38 +788,32 @@ pub struct UncoveredTyParams<'tcx, T> {
 ///
 /// Note that this function is never called for types that have both type
 /// parameters and inference variables.
-#[instrument(level = "trace", skip(lazily_normalize_ty), ret)]
+#[instrument(level = "trace", skip(infcx, lazily_normalize_ty), ret)]
 pub fn orphan_check_trait_ref<'tcx, E: Debug>(
+    infcx: &InferCtxt<'tcx>,
     trait_ref: ty::TraitRef<'tcx>,
     in_crate: InCrate,
     lazily_normalize_ty: impl FnMut(Ty<'tcx>) -> Result<Ty<'tcx>, E>,
 ) -> Result<Result<(), OrphanCheckErr<'tcx, Ty<'tcx>>>, E> {
-    if trait_ref.has_infer() && trait_ref.has_param() {
-        bug!(
-            "can't orphan check a trait ref with both params and inference variables {:?}",
-            trait_ref
-        );
+    if trait_ref.has_param() {
+        bug!("orphan check only expects inference variables: {trait_ref:?}");
     }
 
-    let mut checker = OrphanChecker::new(in_crate, lazily_normalize_ty);
-
-    // Does there exist some local type after the `ParamTy`.
-    let search_first_local_ty = |checker: &mut OrphanChecker<'tcx, _>| {
-        checker.search_first_local_ty = true;
-        match trait_ref.visit_with(checker).break_value() {
-            Some(OrphanCheckEarlyExit::LocalTy(local_ty)) => Some(local_ty),
-            _ => None,
-        }
-    };
-
+    let mut checker = OrphanChecker::new(infcx, in_crate, lazily_normalize_ty);
     Ok(match trait_ref.visit_with(&mut checker) {
         ControlFlow::Continue(()) => Err(OrphanCheckErr::NonLocalInputType(checker.non_local_tys)),
         ControlFlow::Break(residual) => match residual {
             OrphanCheckEarlyExit::NormalizationFailure(err) => return Err(err),
             OrphanCheckEarlyExit::UncoveredTyParam(ty) => {
+                // Does there exist some local type after the `ParamTy`.
+                checker.search_first_local_ty = true;
+                let local_ty = match trait_ref.visit_with(&mut checker).break_value() {
+                    Some(OrphanCheckEarlyExit::LocalTy(local_ty)) => Some(local_ty),
+                    _ => None,
+                };
                 Err(OrphanCheckErr::UncoveredTyParams(UncoveredTyParams {
                     uncovered: ty,
-                    local_ty: search_first_local_ty(&mut checker),
+                    local_ty,
                 }))
             }
             OrphanCheckEarlyExit::LocalTy(_) => Ok(()),
@@ -825,7 +821,8 @@ pub fn orphan_check_trait_ref<'tcx, E: Debug>(
     })
 }
 
-struct OrphanChecker<'tcx, F> {
+struct OrphanChecker<'a, 'tcx, F> {
+    infcx: &'a InferCtxt<'tcx>,
     in_crate: InCrate,
     in_self_ty: bool,
     lazily_normalize_ty: F,
@@ -834,12 +831,13 @@ struct OrphanChecker<'tcx, F> {
     non_local_tys: Vec<(Ty<'tcx>, IsFirstInputType)>,
 }
 
-impl<'tcx, F, E> OrphanChecker<'tcx, F>
+impl<'a, 'tcx, F, E> OrphanChecker<'a, 'tcx, F>
 where
     F: FnOnce(Ty<'tcx>) -> Result<Ty<'tcx>, E>,
 {
-    fn new(in_crate: InCrate, lazily_normalize_ty: F) -> Self {
+    fn new(infcx: &'a InferCtxt<'tcx>, in_crate: InCrate, lazily_normalize_ty: F) -> Self {
         OrphanChecker {
+            infcx,
             in_crate,
             in_self_ty: true,
             lazily_normalize_ty,
@@ -878,7 +876,7 @@ enum OrphanCheckEarlyExit<'tcx, E> {
     LocalTy(Ty<'tcx>),
 }
 
-impl<'tcx, F, E> TypeVisitor<TyCtxt<'tcx>> for OrphanChecker<'tcx, F>
+impl<'a, 'tcx, F, E> TypeVisitor<TyCtxt<'tcx>> for OrphanChecker<'a, 'tcx, F>
 where
     F: FnMut(Ty<'tcx>) -> Result<Ty<'tcx>, E>,
 {
@@ -889,6 +887,7 @@ where
     }
 
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> Self::Result {
+        let ty = self.infcx.shallow_resolve(ty);
         let ty = match (self.lazily_normalize_ty)(ty) {
             Ok(norm_ty) if norm_ty.is_ty_var() => ty,
             Ok(norm_ty) => norm_ty,
@@ -1149,7 +1148,7 @@ impl<'a, 'tcx> ProofTreeVisitor<'tcx> for AmbiguityCausesVisitor<'a, 'tcx> {
                 };
 
                 infcx.probe(|_| {
-                    match trait_ref_is_knowable(infcx.tcx, trait_ref, lazily_normalize_ty) {
+                    match trait_ref_is_knowable(infcx, trait_ref, lazily_normalize_ty) {
                         Err(()) => {}
                         Ok(Ok(())) => warn!("expected an unknowable trait ref: {trait_ref:?}"),
                         Ok(Err(conflict)) => {

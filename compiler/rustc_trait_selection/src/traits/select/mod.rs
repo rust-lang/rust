@@ -1497,7 +1497,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // bound regions.
         let trait_ref = predicate.skip_binder().trait_ref;
 
-        coherence::trait_ref_is_knowable::<!>(self.tcx(), trait_ref, |ty| Ok(ty)).unwrap()
+        coherence::trait_ref_is_knowable::<!>(self.infcx, trait_ref, |ty| Ok(ty)).unwrap()
     }
 
     /// Returns `true` if the global caches can be used.
