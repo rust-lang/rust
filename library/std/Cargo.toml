@@ -64,12 +64,10 @@ r-efi-alloc = { version = "1.0.0", features = ['rustc-dep-of-std'] }
 
 [features]
 backtrace = [
-  "gimli-symbolize",
   'addr2line/rustc-dep-of-std',
   'object/rustc-dep-of-std',
   'miniz_oxide/rustc-dep-of-std',
 ]
-gimli-symbolize = []
 
 panic-unwind = ["panic_unwind"]
 profiler = ["profiler_builtins"]
