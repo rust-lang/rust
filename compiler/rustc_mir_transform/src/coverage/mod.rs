@@ -7,13 +7,9 @@ mod spans;
 #[cfg(test)]
 mod tests;
 
-use self::counters::{CounterIncrementSite, CoverageCounters};
-use self::graph::{BasicCoverageBlock, CoverageGraph};
-use self::mappings::ExtractedMappings;
-
-use crate::MirPass;
-
-use rustc_middle::mir::coverage::*;
+use rustc_middle::mir::coverage::{
+    CodeRegion, CoverageKind, DecisionInfo, FunctionCoverageInfo, Mapping, MappingKind,
+};
 use rustc_middle::mir::{
     self, BasicBlock, BasicBlockData, SourceInfo, Statement, StatementKind, Terminator,
     TerminatorKind,
@@ -22,6 +18,11 @@ use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::source_map::SourceMap;
 use rustc_span::{BytePos, Pos, RelativeBytePos, Span, Symbol};
+
+use crate::coverage::counters::{CounterIncrementSite, CoverageCounters};
+use crate::coverage::graph::{BasicCoverageBlock, CoverageGraph};
+use crate::coverage::mappings::ExtractedMappings;
+use crate::MirPass;
 
 /// Inserts `StatementKind::Coverage` statements that either instrument the binary with injected
 /// counters, via intrinsic `llvm.instrprof.increment`, and/or inject metadata used during codegen
