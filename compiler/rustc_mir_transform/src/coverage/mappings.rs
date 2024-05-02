@@ -24,7 +24,7 @@ pub(super) struct CodeMapping {
 /// that will be needed for improved branch coverage in the future.
 /// (See <https://github.com/rust-lang/rust/pull/124217>.)
 #[derive(Debug)]
-pub(super) struct BcbBranchPair {
+pub(super) struct BranchPair {
     pub(super) span: Span,
     pub(super) true_bcb: BasicCoverageBlock,
     pub(super) false_bcb: BasicCoverageBlock,
@@ -55,7 +55,7 @@ pub(super) struct MCDCDecision {
 pub(super) struct CoverageSpans {
     bcb_has_mappings: BitSet<BasicCoverageBlock>,
     pub(super) code_mappings: Vec<CodeMapping>,
-    pub(super) branch_pairs: Vec<BcbBranchPair>,
+    pub(super) branch_pairs: Vec<BranchPair>,
     test_vector_bitmap_bytes: u32,
     pub(super) mcdc_branches: Vec<MCDCBranch>,
     pub(super) mcdc_decisions: Vec<MCDCDecision>,
@@ -124,7 +124,7 @@ pub(super) fn generate_coverage_spans(
     for &CodeMapping { span: _, bcb } in &code_mappings {
         insert(bcb);
     }
-    for &BcbBranchPair { true_bcb, false_bcb, .. } in &branch_pairs {
+    for &BranchPair { true_bcb, false_bcb, .. } in &branch_pairs {
         insert(true_bcb);
         insert(false_bcb);
     }
@@ -183,7 +183,7 @@ pub(super) fn extract_branch_pairs(
     mir_body: &mir::Body<'_>,
     hir_info: &ExtractedHirInfo,
     basic_coverage_blocks: &CoverageGraph,
-) -> Vec<BcbBranchPair> {
+) -> Vec<BranchPair> {
     let Some(branch_info) = mir_body.coverage_branch_info.as_deref() else { return vec![] };
 
     let block_markers = resolve_block_markers(branch_info, mir_body);
@@ -206,7 +206,7 @@ pub(super) fn extract_branch_pairs(
             let true_bcb = bcb_from_marker(true_marker)?;
             let false_bcb = bcb_from_marker(false_marker)?;
 
-            Some(BcbBranchPair { span, true_bcb, false_bcb })
+            Some(BranchPair { span, true_bcb, false_bcb })
         })
         .collect::<Vec<_>>()
 }

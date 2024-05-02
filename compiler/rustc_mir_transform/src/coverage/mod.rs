@@ -9,7 +9,7 @@ mod tests;
 
 use self::counters::{CounterIncrementSite, CoverageCounters};
 use self::graph::{BasicCoverageBlock, CoverageGraph};
-use self::mappings::{BcbBranchPair, CoverageSpans};
+use self::mappings::CoverageSpans;
 
 use crate::MirPass;
 
@@ -159,7 +159,7 @@ fn create_mappings<'tcx>(
     ));
 
     mappings.extend(coverage_spans.branch_pairs.iter().filter_map(
-        |&BcbBranchPair { span, true_bcb, false_bcb }| {
+        |&mappings::BranchPair { span, true_bcb, false_bcb }| {
             let true_term = term_for_bcb(true_bcb);
             let false_term = term_for_bcb(false_bcb);
             let kind = MappingKind::Branch { true_term, false_term };
