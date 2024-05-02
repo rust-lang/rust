@@ -52,6 +52,7 @@ pub(super) struct MCDCDecision {
     pub(super) decision_depth: u16,
 }
 
+#[derive(Default)]
 pub(super) struct CoverageSpans {
     pub(super) code_mappings: Vec<CodeMapping>,
     pub(super) branch_pairs: Vec<BranchPair>,
@@ -73,32 +74,34 @@ pub(super) fn generate_coverage_spans(
     hir_info: &ExtractedHirInfo,
     basic_coverage_blocks: &CoverageGraph,
 ) -> CoverageSpans {
-    let mut code_mappings = vec![];
-    let mut branch_pairs = vec![];
-    let mut mcdc_branches = vec![];
-    let mut mcdc_decisions = vec![];
-
     if hir_info.is_async_fn {
         // An async function desugars into a function that returns a future,
         // with the user code wrapped in a closure. Any spans in the desugared
         // outer function will be unhelpful, so just keep the signature span
         // and ignore all of the spans in the MIR body.
+        let mut mappings = CoverageSpans::default();
         if let Some(span) = hir_info.fn_sig_span_extended {
-            code_mappings.push(CodeMapping { span, bcb: START_BCB });
+            mappings.code_mappings.push(CodeMapping { span, bcb: START_BCB });
         }
-    } else {
-        extract_refined_covspans(mir_body, hir_info, basic_coverage_blocks, &mut code_mappings);
-
-        branch_pairs.extend(extract_branch_pairs(mir_body, hir_info, basic_coverage_blocks));
-
-        extract_mcdc_mappings(
-            mir_body,
-            hir_info.body_span,
-            basic_coverage_blocks,
-            &mut mcdc_branches,
-            &mut mcdc_decisions,
-        );
+        return mappings;
     }
+
+    let mut code_mappings = vec![];
+    let mut branch_pairs = vec![];
+    let mut mcdc_branches = vec![];
+    let mut mcdc_decisions = vec![];
+
+    extract_refined_covspans(mir_body, hir_info, basic_coverage_blocks, &mut code_mappings);
+
+    branch_pairs.extend(extract_branch_pairs(mir_body, hir_info, basic_coverage_blocks));
+
+    extract_mcdc_mappings(
+        mir_body,
+        hir_info.body_span,
+        basic_coverage_blocks,
+        &mut mcdc_branches,
+        &mut mcdc_decisions,
+    );
 
     // Determine the length of the test vector bitmap.
     let test_vector_bitmap_bytes = mcdc_decisions
