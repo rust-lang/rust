@@ -1350,14 +1350,18 @@ pub enum NonLocalDefinitionsDiag {
         const_anon: Option<Span>,
     },
     #[diag(lint_non_local_definitions_macro_rules)]
-    #[help]
-    #[note(lint_non_local)]
-    #[note(lint_exception)]
-    #[note(lint_non_local_definitions_deprecation)]
     MacroRules {
         depth: u32,
         body_kind_descr: &'static str,
         body_name: String,
+        #[help]
+        help: Option<()>,
+        #[help(lint_help_doctest)]
+        doctest_help: Option<()>,
+        #[note(lint_non_local)]
+        #[note(lint_exception)]
+        #[note(lint_non_local_definitions_deprecation)]
+        notes: (),
         #[subdiagnostic]
         cargo_update: Option<NonLocalDefinitionsCargoUpdateNote>,
     },
