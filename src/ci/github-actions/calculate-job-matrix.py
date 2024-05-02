@@ -80,7 +80,7 @@ def get_custom_jobs(ctx: GitHubCtx) -> List[str]:
     if ctx.commit_message is None:
         return []
 
-    regex = re.compile(r"ci-job: (.*)")
+    regex = re.compile(r"^ci-job: (.*)", re.MULTILINE)
     jobs = []
     for match in regex.finditer(ctx.commit_message):
         jobs.append(match.group(1))
