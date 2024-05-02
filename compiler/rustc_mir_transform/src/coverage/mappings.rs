@@ -2,8 +2,9 @@ use std::collections::BTreeSet;
 
 use rustc_data_structures::graph::DirectedGraph;
 use rustc_index::bit_set::BitSet;
+use rustc_index::IndexVec;
 use rustc_middle::mir::coverage::{
-    BlockMarkerId, BranchSpan, ConditionInfo, CoverageKind, MCDCBranchSpan, MCDCDecisionSpan,
+    BlockMarkerId, BranchSpan, ConditionInfo, CoverageKind, MCDCBranchSpan,
 };
 use rustc_middle::mir::{self, BasicBlock, StatementKind};
 use rustc_span::Span;
@@ -13,7 +14,6 @@ use crate::coverage::spans::{
     extract_refined_covspans, unexpand_into_body_span_with_visible_macro,
 };
 use crate::coverage::ExtractedHirInfo;
-use rustc_index::IndexVec;
 
 #[derive(Clone, Debug)]
 pub(super) enum BcbMappingKind {
@@ -30,13 +30,6 @@ pub(super) enum BcbMappingKind {
         /// If `None`, this actually represents a normal branch mapping inserted
         /// for code that was too complex for MC/DC.
         condition_info: Option<ConditionInfo>,
-        decision_depth: u16,
-    },
-    /// Associates a mcdc decision with its join BCB.
-    MCDCDecision {
-        end_bcbs: BTreeSet<BasicCoverageBlock>,
-        bitmap_idx: u32,
-        conditions_num: u16,
         decision_depth: u16,
     },
 }
@@ -57,11 +50,22 @@ pub(super) struct BcbBranchPair {
     pub(super) false_bcb: BasicCoverageBlock,
 }
 
+/// Associates an MC/DC decision with its join BCBs.
+#[derive(Debug)]
+pub(super) struct MCDCDecision {
+    pub(super) span: Span,
+    pub(super) end_bcbs: BTreeSet<BasicCoverageBlock>,
+    pub(super) bitmap_idx: u32,
+    pub(super) conditions_num: u16,
+    pub(super) decision_depth: u16,
+}
+
 pub(super) struct CoverageSpans {
     bcb_has_mappings: BitSet<BasicCoverageBlock>,
     pub(super) mappings: Vec<BcbMapping>,
     pub(super) branch_pairs: Vec<BcbBranchPair>,
     test_vector_bitmap_bytes: u32,
+    pub(super) mcdc_decisions: Vec<MCDCDecision>,
 }
 
 impl CoverageSpans {
@@ -85,6 +89,7 @@ pub(super) fn generate_coverage_spans(
 ) -> Option<CoverageSpans> {
     let mut mappings = vec![];
     let mut branch_pairs = vec![];
+    let mut mcdc_decisions = vec![];
 
     if hir_info.is_async_fn {
         // An async function desugars into a function that returns a future,
@@ -99,10 +104,15 @@ pub(super) fn generate_coverage_spans(
 
         branch_pairs.extend(extract_branch_pairs(mir_body, hir_info, basic_coverage_blocks));
 
-        mappings.extend(extract_mcdc_mappings(mir_body, hir_info.body_span, basic_coverage_blocks));
+        mappings.extend(extract_mcdc_mappings(
+            mir_body,
+            hir_info.body_span,
+            basic_coverage_blocks,
+            &mut mcdc_decisions,
+        ));
     }
 
-    if mappings.is_empty() && branch_pairs.is_empty() {
+    if mappings.is_empty() && branch_pairs.is_empty() && mcdc_decisions.is_empty() {
         return None;
     }
 
@@ -111,20 +121,13 @@ pub(super) fn generate_coverage_spans(
     let mut insert = |bcb| {
         bcb_has_mappings.insert(bcb);
     };
-    let mut test_vector_bitmap_bytes = 0;
+
     for BcbMapping { kind, span: _ } in &mappings {
         match *kind {
             BcbMappingKind::Code(bcb) => insert(bcb),
             BcbMappingKind::MCDCBranch { true_bcb, false_bcb, .. } => {
                 insert(true_bcb);
                 insert(false_bcb);
-            }
-            BcbMappingKind::MCDCDecision { bitmap_idx, conditions_num, .. } => {
-                // `bcb_has_mappings` is used for inject coverage counters
-                // but they are not needed for decision BCBs.
-                // While the length of test vector bitmap should be calculated here.
-                test_vector_bitmap_bytes = test_vector_bitmap_bytes
-                    .max(bitmap_idx + (1_u32 << conditions_num as u32).div_ceil(8));
             }
         }
     }
@@ -133,7 +136,22 @@ pub(super) fn generate_coverage_spans(
         insert(false_bcb);
     }
 
-    Some(CoverageSpans { bcb_has_mappings, mappings, branch_pairs, test_vector_bitmap_bytes })
+    // Determine the length of the test vector bitmap.
+    let test_vector_bitmap_bytes = mcdc_decisions
+        .iter()
+        .map(|&MCDCDecision { bitmap_idx, conditions_num, .. }| {
+            bitmap_idx + (1_u32 << u32::from(conditions_num)).div_ceil(8)
+        })
+        .max()
+        .unwrap_or(0);
+
+    Some(CoverageSpans {
+        bcb_has_mappings,
+        mappings,
+        branch_pairs,
+        test_vector_bitmap_bytes,
+        mcdc_decisions,
+    })
 }
 
 fn resolve_block_markers(
@@ -199,6 +217,7 @@ pub(super) fn extract_mcdc_mappings(
     mir_body: &mir::Body<'_>,
     body_span: Span,
     basic_coverage_blocks: &CoverageGraph,
+    mcdc_decisions: &mut impl Extend<MCDCDecision>,
 ) -> Vec<BcbMapping> {
     let Some(branch_info) = mir_body.coverage_branch_info.as_deref() else {
         return vec![];
@@ -245,31 +264,30 @@ pub(super) fn extract_mcdc_mappings(
 
     let mut next_bitmap_idx = 0;
 
-    let decision_filter_map = |decision: &MCDCDecisionSpan| {
-        let (span, _) = unexpand_into_body_span_with_visible_macro(decision.span, body_span)?;
+    mcdc_decisions.extend(branch_info.mcdc_decision_spans.iter().filter_map(
+        |decision: &mir::coverage::MCDCDecisionSpan| {
+            let (span, _) = unexpand_into_body_span_with_visible_macro(decision.span, body_span)?;
 
-        let end_bcbs = decision
-            .end_markers
-            .iter()
-            .map(|&marker| bcb_from_marker(marker))
-            .collect::<Option<_>>()?;
+            let end_bcbs = decision
+                .end_markers
+                .iter()
+                .map(|&marker| bcb_from_marker(marker))
+                .collect::<Option<_>>()?;
 
-        let bitmap_idx = next_bitmap_idx;
-        next_bitmap_idx += (1_u32 << decision.conditions_num).div_ceil(8);
+            let bitmap_idx = next_bitmap_idx;
+            next_bitmap_idx += (1_u32 << decision.conditions_num).div_ceil(8);
 
-        Some(BcbMapping {
-            kind: BcbMappingKind::MCDCDecision {
+            Some(MCDCDecision {
+                span,
                 end_bcbs,
                 bitmap_idx,
                 conditions_num: decision.conditions_num as u16,
                 decision_depth: decision.decision_depth,
-            },
-            span,
-        })
-    };
+            })
+        },
+    ));
 
     std::iter::empty()
         .chain(branch_info.mcdc_branch_spans.iter().filter_map(mcdc_branch_filter_map))
-        .chain(branch_info.mcdc_decision_spans.iter().filter_map(decision_filter_map))
         .collect::<Vec<_>>()
 }

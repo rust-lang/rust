@@ -103,12 +103,9 @@ fn instrument_function_for_coverage<'tcx>(tcx: TyCtxt<'tcx>, mir_body: &mut mir:
     inject_mcdc_statements(mir_body, &basic_coverage_blocks, &coverage_spans);
 
     let mcdc_num_condition_bitmaps = coverage_spans
-        .mappings
+        .mcdc_decisions
         .iter()
-        .filter_map(|bcb_mapping| match bcb_mapping.kind {
-            BcbMappingKind::MCDCDecision { decision_depth, .. } => Some(decision_depth),
-            _ => None,
-        })
+        .map(|&mappings::MCDCDecision { decision_depth, .. }| decision_depth)
         .max()
         .map_or(0, |max| usize::from(max) + 1);
 
@@ -172,9 +169,6 @@ fn create_mappings<'tcx>(
                     false_term: term_for_bcb(false_bcb),
                     mcdc_params,
                 },
-                BcbMappingKind::MCDCDecision { bitmap_idx, conditions_num, .. } => {
-                    MappingKind::MCDCDecision(DecisionInfo { bitmap_idx, conditions_num })
-                }
             };
             let code_region = make_code_region(source_map, file_name, *span, body_span)?;
             Some(Mapping { kind, code_region })
@@ -187,6 +181,14 @@ fn create_mappings<'tcx>(
             let false_term = term_for_bcb(false_bcb);
             let kind = MappingKind::Branch { true_term, false_term };
             let code_region = make_code_region(source_map, file_name, span, body_span)?;
+            Some(Mapping { kind, code_region })
+        },
+    ));
+
+    mappings.extend(coverage_spans.mcdc_decisions.iter().filter_map(
+        |&mappings::MCDCDecision { span, bitmap_idx, conditions_num, .. }| {
+            let code_region = make_code_region(source_map, file_name, span, body_span)?;
+            let kind = MappingKind::MCDCDecision(DecisionInfo { bitmap_idx, conditions_num });
             Some(Mapping { kind, code_region })
         },
     ));
@@ -258,13 +260,13 @@ fn inject_mcdc_statements<'tcx>(
     }
 
     // Inject test vector update first because `inject_statement` always insert new statement at head.
-    for (end_bcbs, bitmap_idx, decision_depth) in
-        coverage_spans.mappings.iter().filter_map(|mapping| match &mapping.kind {
-            BcbMappingKind::MCDCDecision { end_bcbs, bitmap_idx, decision_depth, .. } => {
-                Some((end_bcbs, *bitmap_idx, *decision_depth))
-            }
-            _ => None,
-        })
+    for &mappings::MCDCDecision {
+        span: _,
+        ref end_bcbs,
+        bitmap_idx,
+        conditions_num: _,
+        decision_depth,
+    } in &coverage_spans.mcdc_decisions
     {
         for end in end_bcbs {
             let end_bb = basic_coverage_blocks[*end].leader_bb();
