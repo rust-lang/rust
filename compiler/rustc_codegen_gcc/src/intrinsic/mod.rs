@@ -1223,7 +1223,7 @@ fn get_rust_try_fn<'a, 'gcc, 'tcx>(
         tcx,
         ty::Binder::dummy(tcx.mk_fn_sig(
             iter::once(i8p),
-            Ty::new_unit(tcx),
+            tcx.types.unit,
             false,
             rustc_hir::Unsafety::Unsafe,
             Abi::Rust,
@@ -1234,7 +1234,7 @@ fn get_rust_try_fn<'a, 'gcc, 'tcx>(
         tcx,
         ty::Binder::dummy(tcx.mk_fn_sig(
             [i8p, i8p].iter().cloned(),
-            Ty::new_unit(tcx),
+            tcx.types.unit,
             false,
             rustc_hir::Unsafety::Unsafe,
             Abi::Rust,

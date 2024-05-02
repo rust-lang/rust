@@ -1462,7 +1462,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
             fcx,
             cause,
             None,
-            Ty::new_unit(fcx.tcx),
+            fcx.tcx.types.unit,
             augment_error,
             label_unit_as_expected,
         )

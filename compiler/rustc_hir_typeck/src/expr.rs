@@ -654,7 +654,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             } else {
                 // Otherwise, this is a break *without* a value. That's
                 // always legal, and is equivalent to `break ()`.
-                e_ty = Ty::new_unit(tcx);
+                e_ty = tcx.types.unit;
                 cause = self.misc(expr.span);
             }
 
@@ -1133,7 +1133,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // The expected type is `bool` but this will result in `()` so we can reasonably
             // say that the user intended to write `lhs == rhs` instead of `lhs = rhs`.
             // The likely cause of this is `if foo = bar { .. }`.
-            let actual_ty = Ty::new_unit(self.tcx);
+            let actual_ty = self.tcx.types.unit;
             let mut err = self.demand_suptype_diag(expr.span, expected_ty, actual_ty).unwrap();
             let lhs_ty = self.check_expr(lhs);
             let rhs_ty = self.check_expr(rhs);
@@ -1256,7 +1256,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if let Err(guar) = (lhs_ty, rhs_ty).error_reported() {
             Ty::new_error(self.tcx, guar)
         } else {
-            Ty::new_unit(self.tcx)
+            self.tcx.types.unit
         }
     }
 
@@ -1319,7 +1319,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if ctxt.coerce.is_none() && !ctxt.may_break {
             self.dcx().span_bug(body.span, "no coercion, but loop may not break");
         }
-        ctxt.coerce.map(|c| c.complete(self)).unwrap_or_else(|| Ty::new_unit(self.tcx))
+        ctxt.coerce.map(|c| c.complete(self)).unwrap_or_else(|| self.tcx.types.unit)
     }
 
     /// Checks a method call.
@@ -3174,7 +3174,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.dcx().emit_err(YieldExprOutsideOfCoroutine { span: expr.span });
                 // Avoid expressions without types during writeback (#78653).
                 self.check_expr(value);
-                Ty::new_unit(self.tcx)
+                self.tcx.types.unit
             }
         }
     }

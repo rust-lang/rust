@@ -125,7 +125,7 @@ impl Primitive {
             F64 => tcx.types.f64,
             F128 => tcx.types.f128,
             // FIXME(erikdesjardins): handle non-default addrspace ptr sizes
-            Pointer(_) => Ty::new_mut_ptr(tcx, Ty::new_unit(tcx)),
+            Pointer(_) => Ty::new_mut_ptr(tcx, tcx.types.unit),
         }
     }
 
@@ -775,7 +775,7 @@ where
                     // (which may have no non-DST form), and will work as long
                     // as the `Abi` or `FieldsShape` is checked by users.
                     if i == 0 {
-                        let nil = Ty::new_unit(tcx);
+                        let nil = tcx.types.unit;
                         let unit_ptr_ty = if this.ty.is_unsafe_ptr() {
                             Ty::new_mut_ptr(tcx, nil)
                         } else {

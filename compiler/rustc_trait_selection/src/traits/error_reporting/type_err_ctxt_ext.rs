@@ -781,7 +781,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                             && self.fallback_has_occurred
                         {
                             let predicate = trait_predicate.map_bound(|trait_pred| {
-                                trait_pred.with_self_ty(self.tcx, Ty::new_unit(self.tcx))
+                                trait_pred.with_self_ty(self.tcx, tcx.types.unit)
                             });
                             let unit_obligation = obligation.with(tcx, predicate);
                             if self.predicate_may_hold(&unit_obligation) {
