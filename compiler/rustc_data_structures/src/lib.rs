@@ -25,6 +25,7 @@
 #![feature(lazy_cell)]
 #![feature(lint_reasons)]
 #![feature(macro_metavar_expr)]
+#![feature(map_try_insert)]
 #![feature(maybe_uninit_uninit_array)]
 #![feature(min_specialization)]
 #![feature(negative_impls)]

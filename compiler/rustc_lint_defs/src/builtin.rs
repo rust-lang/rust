@@ -69,6 +69,7 @@ declare_lint_pass! {
         MISSING_FRAGMENT_SPECIFIER,
         MUST_NOT_SUSPEND,
         NAMED_ARGUMENTS_USED_POSITIONALLY,
+        NEVER_TYPE_FALLBACK_FLOWING_INTO_UNSAFE,
         NON_CONTIGUOUS_RANGE_ENDPOINTS,
         NON_EXHAUSTIVE_OMITTED_PATTERNS,
         ORDER_DEPENDENT_TRAIT_OBJECTS,
@@ -4243,6 +4244,85 @@ declare_lint! {
     pub NAMED_ARGUMENTS_USED_POSITIONALLY,
     Warn,
     "named arguments in format used positionally"
+}
+
+declare_lint! {
+    /// The `never_type_fallback_flowing_into_unsafe` lint detects cases where never type fallback
+    /// affects unsafe function calls.
+    ///
+    /// ### Never type fallback
+    ///
+    /// When the compiler sees a value of type [`!`] it implicitly inserts a coercion (if possible),
+    /// to allow type check to infer any type:
+    ///
+    /// ```ignore (illustrative-and-has-placeholders)
+    /// // this
+    /// let x: u8 = panic!();
+    ///
+    /// // is (essentially) turned by the compiler into
+    /// let x: u8 = absurd(panic!());
+    ///
+    /// // where absurd is a function with the following signature
+    /// // (it's sound, because `!` always marks unreachable code):
+    /// fn absurd<T>(_: !) -> T { ... }
+    // FIXME: use `core::convert::absurd` here instead, once it's merged
+    /// ```
+    ///
+    /// While it's convenient to be able to use non-diverging code in one of the branches (like
+    /// `if a { b } else { return }`) this could lead to compilation errors:
+    ///
+    /// ```compile_fail
+    /// // this
+    /// { panic!() };
+    ///
+    /// // gets turned into this
+    /// { absurd(panic!()) }; // error: can't infer the type of `absurd`
+    /// ```
+    ///
+    /// To prevent such errors, compiler remembers where it inserted `absurd` calls, and if it
+    /// can't infer their type, it sets the type to fallback. `{ absurd::<Fallback>(panic!()) };`.
+    /// This is what is known as "never type fallback".
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![deny(never_type_fallback_flowing_into_unsafe)]
+    /// fn main() {
+    ///     if true {
+    ///         // return has type `!` which, is some cases, causes never type fallback
+    ///         return
+    ///     } else {
+    ///         // `zeroed` is an unsafe function, which returns an unbounded type
+    ///         unsafe { std::mem::zeroed() }
+    ///     };
+    ///     // depending on the fallback, `zeroed` may create `()` (which is completely sound),
+    ///     // or `!` (which is instant undefined behavior)
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Due to historic reasons never type fallback was `()`, meaning that `!` got spontaneously
+    /// coerced to `()`. There are plans to change that, but they may make the code such as above
+    /// unsound. Instead of depending on the fallback, you should specify the type explicitly:
+    /// ```
+    /// if true {
+    ///     return
+    /// } else {
+    ///     // type is explicitly specified, fallback can't hurt us no more
+    ///     unsafe { std::mem::zeroed::<()>() }
+    /// };
+    /// ```
+    ///
+    /// See [Tracking Issue for making `!` fall back to `!`](https://github.com/rust-lang/rust/issues/123748).
+    ///
+    /// [`!`]: https://doc.rust-lang.org/core/primitive.never.html
+    /// [`()`]: https://doc.rust-lang.org/core/primitive.unit.html
+    pub NEVER_TYPE_FALLBACK_FLOWING_INTO_UNSAFE,
+    Warn,
+    "never type fallback affecting unsafe function calls"
 }
 
 declare_lint! {
