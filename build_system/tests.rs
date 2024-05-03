@@ -77,7 +77,7 @@ const BASE_SYSROOT_SUITE: &[TestCase] = &[
     ),
     TestCase::build_lib("build.alloc_system", "example/alloc_system.rs", "lib"),
     TestCase::build_bin_and_run("aot.alloc_example", "example/alloc_example.rs", &[]),
-    TestCase::jit_bin("jit.std_example", "example/std_example.rs", ""),
+    TestCase::jit_bin("jit.std_example", "example/std_example.rs", "arg"),
     TestCase::build_bin_and_run("aot.std_example", "example/std_example.rs", &["arg"]),
     TestCase::build_bin_and_run("aot.dst_field_align", "example/dst-field-align.rs", &[]),
     TestCase::build_bin_and_run(
