@@ -1617,7 +1617,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             let post = format!(", consider renaming `{}` into `{snippet}`", suggestion.candidate);
             (span, snippet, post)
         } else {
-            (span, suggestion.candidate.to_string(), String::new())
+            (span, suggestion.candidate.to_ident_string(), String::new())
         };
         let msg = match suggestion.target {
             SuggestionTarget::SimilarlyNamed => format!(
