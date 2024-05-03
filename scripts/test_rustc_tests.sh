@@ -88,6 +88,7 @@ rm -r tests/run-make/no-builtins-attribute # same
 rm tests/ui/abi/stack-protector.rs # requires stack protector support
 rm -r tests/run-make/emit-stack-sizes # requires support for -Z emit-stack-sizes
 rm -r tests/run-make/optimization-remarks-dir # remarks are LLVM specific
+rm -r tests/run-make/print-to-output # requires --print relocation-models
 
 # requires asm, llvm-ir and/or llvm-bc emit support
 # =============================================
