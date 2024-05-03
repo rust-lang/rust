@@ -8,7 +8,7 @@
 //! In theory if we get past this phase it's a bug if a build fails, but in
 //! practice that's likely not true!
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::env;
 use std::ffi::{OsStr, OsString};
 use std::fs;
@@ -33,8 +33,6 @@ pub struct Finder {
 // Targets can be removed from this list once they are present in the stage0 compiler (usually by updating the beta compiler of the bootstrap).
 const STAGE0_MISSING_TARGETS: &[&str] = &[
     // just a dummy comment so the list doesn't get onelined
-    "aarch64-apple-visionos",
-    "aarch64-apple-visionos-sim",
 ];
 
 impl Finder {
@@ -169,6 +167,12 @@ than building it.
         .map(|p| cmd_finder.must_have(p))
         .or_else(|| cmd_finder.maybe_have("reuse"));
 
+    let stage0_supported_target_list: HashSet<String> =
+        output(Command::new(&build.config.initial_rustc).args(["--print", "target-list"]))
+            .lines()
+            .map(|s| s.to_string())
+            .collect();
+
     // We're gonna build some custom C code here and there, host triples
     // also build some C++ shims for LLVM so we need a C++ compiler.
     for target in &build.targets {
@@ -195,11 +199,19 @@ than building it.
         if !["A", "B", "C"].contains(&target_str.as_str()) {
             let mut has_target = false;
 
-            let supported_target_list =
-                output(Command::new(&build.config.initial_rustc).args(["--print", "target-list"]));
+            let missing_targets_hashset: HashSet<_> = STAGE0_MISSING_TARGETS.iter().map(|t| t.to_string()).collect();
+            let duplicated_targets: Vec<_> = stage0_supported_target_list.intersection(&missing_targets_hashset).collect();
+
+            if !duplicated_targets.is_empty() {
+                println!("Following targets supported from the stage0 compiler, please remove them from STAGE0_MISSING_TARGETS list.");
+                for duplicated_target in duplicated_targets {
+                    println!("  {duplicated_target}");
+                }
+                std::process::exit(1);
+            }
 
             // Check if it's a built-in target.
-            has_target |= supported_target_list.contains(&target_str);
+            has_target |= stage0_supported_target_list.contains(&target_str);
             has_target |= STAGE0_MISSING_TARGETS.contains(&target_str.as_str());
 
             if !has_target {
