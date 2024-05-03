@@ -421,6 +421,25 @@ impl<'tcx> TyCtxt<'tcx> {
         Some(ty::AsyncDestructor { future, ctor })
     }
 
+    /// Returns async drop glue morphology for a definition. To get async drop
+    /// glue morphology for a type see [`Ty::async_drop_glue_morphology`].
+    //
+    // FIXME: consider making this a query
+    pub fn async_drop_glue_morphology(self, did: DefId) -> AsyncDropGlueMorphology {
+        let ty: Ty<'tcx> = self.type_of(did).instantiate_identity();
+
+        // Async drop glue morphology is an internal detail, so reveal_all probably
+        // should be fine
+        let param_env = ty::ParamEnv::reveal_all();
+        if ty.needs_async_drop(self, param_env) {
+            AsyncDropGlueMorphology::Custom
+        } else if ty.needs_drop(self, param_env) {
+            AsyncDropGlueMorphology::DeferredDropInPlace
+        } else {
+            AsyncDropGlueMorphology::Noop
+        }
+    }
+
     /// Returns the set of types that are required to be alive in
     /// order to run the destructor of `def` (see RFCs 769 and
     /// 1238).
@@ -1177,6 +1196,18 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for WeakAliasTypeExpander<'tcx> {
     }
 }
 
+/// Indicates the form of `AsyncDestruct::Destructor`. Used to simplify async
+/// drop glue for types not using async drop.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum AsyncDropGlueMorphology {
+    /// Async destructor simply does nothing
+    Noop,
+    /// Async destructor simply runs `drop_in_place`
+    DeferredDropInPlace,
+    /// Async destructor has custom logic
+    Custom,
+}
+
 impl<'tcx> Ty<'tcx> {
     /// Returns the `Size` for primitive types (bool, uint, int, char, float).
     pub fn primitive_size(self, tcx: TyCtxt<'tcx>) -> Size {
@@ -1342,27 +1373,16 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
-    /// Checks whether values of this type `T` implement has noop async destructor.
+    /// Get morphology of the async drop glue, needed for types which do not
+    /// use async drop. To get async drop glue morphology for a definition see
+    /// [`TyCtxt::async_drop_glue_morphology`]. Used for `AsyncDestruct::Destructor`
+    /// type construction.
     //
-    // FIXME: implement optimization to make ADTs, which do not need drop,
-    // to skip fields or to have noop async destructor, use `needs_(async_)drop`
-    pub fn is_async_destructor_noop(
-        self,
-        tcx: TyCtxt<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
-    ) -> bool {
-        // TODO: check on the most generic version of your type
-        self.is_async_destructor_trivially_noop()
-            || self.needs_async_drop(tcx, param_env)
-            || self.needs_drop(tcx, param_env)
-    }
-
-    /// Fast path helper for testing if a type has noop async destructor.
-    ///
-    /// Returning `true` means the type is known to have noop async destructor
-    /// implementation. Returning `true` means nothing -- could be
-    /// `Drop`, might not be.
-    fn is_async_destructor_trivially_noop(self) -> bool {
+    // FIXME: implement optimization to not instantiate a certain morphology of
+    // async drop glue too soon to allow per type optimizations, see array case
+    // for more info. Perhaps then remove this method and use `needs_(async_)drop`
+    // instead.
+    pub fn async_drop_glue_morphology(self, tcx: TyCtxt<'tcx>) -> AsyncDropGlueMorphology {
         match self.kind() {
             ty::Int(_)
             | ty::Uint(_)
@@ -1374,37 +1394,43 @@ impl<'tcx> Ty<'tcx> {
             | ty::Ref(..)
             | ty::RawPtr(..)
             | ty::FnDef(..)
-            | ty::FnPtr(_) => true,
-            ty::Tuple(tys) => tys.is_empty(),
-            ty::Adt(adt_def, _) => adt_def.is_manually_drop(),
-            ty::Bool => todo!(),
-            ty::Char => todo!(),
-            ty::Int(_) => todo!(),
-            ty::Uint(_) => todo!(),
-            ty::Float(_) => todo!(),
-            ty::Adt(_, _) => todo!(),
-            ty::Foreign(_) => todo!(),
-            ty::Str => todo!(),
-            ty::Array(_, _) => todo!(),
-            ty::Pat(_, _) => todo!(),
-            ty::Slice(_) => todo!(),
-            ty::RawPtr(_, _) => todo!(),
-            ty::Ref(_, _, _) => todo!(),
-            ty::FnDef(_, _) => todo!(),
-            ty::FnPtr(_) => todo!(),
-            ty::Dynamic(_, _, _) => todo!(),
-            ty::Closure(_, _) => todo!(),
-            ty::CoroutineClosure(_, _) => todo!(),
-            ty::Coroutine(_, _) => todo!(),
-            ty::CoroutineWitness(_, _) => todo!(),
-            ty::Never => todo!(),
-            ty::Tuple(_) => todo!(),
-            ty::Alias(_, _) => todo!(),
-            ty::Param(_) => todo!(),
-            ty::Bound(_, _) => todo!(),
-            ty::Placeholder(_) => todo!(),
-            ty::Infer(_) => todo!(),
-            ty::Error(_) => todo!(),
+            | ty::FnPtr(_)
+            | ty::Infer(ty::FreshIntTy(_))
+            | ty::Infer(ty::FreshFloatTy(_)) => AsyncDropGlueMorphology::Noop,
+
+            ty::Tuple(tys) if tys.is_empty() => AsyncDropGlueMorphology::Noop,
+            ty::Adt(adt_def, _) if adt_def.is_manually_drop() => AsyncDropGlueMorphology::Noop,
+
+            // Foreign types can never have destructors.
+            ty::Foreign(_) => AsyncDropGlueMorphology::Noop,
+
+            // FIXME: implement dynamic types async drops
+            ty::Error(_) | ty::Dynamic(..) => AsyncDropGlueMorphology::DeferredDropInPlace,
+
+            ty::Tuple(_) | ty::Array(_, _) | ty::Slice(_) => {
+                // Assume worst-case scenario, because we can instantiate async
+                // destructors in different orders:
+                //
+                // 1. Instantiate [T; N] with T = String and N = 0
+                // 2. Instantiate <[String; 0] as AsyncDestruct>::Destructor
+                //
+                // And viceversa, thus we cannot rely on String not using async
+                // drop or array having zero (0) elements
+                AsyncDropGlueMorphology::Custom
+            }
+            ty::Pat(ty, _) => ty.async_drop_glue_morphology(tcx),
+
+            ty::Adt(adt_def, _) => tcx.async_drop_glue_morphology(adt_def.did()),
+
+            ty::Closure(did, _)
+            | ty::CoroutineClosure(did, _)
+            | ty::Coroutine(did, _)
+            | ty::CoroutineWitness(did, _) => tcx.async_drop_glue_morphology(*did),
+
+            ty::Alias(..) | ty::Param(_) | ty::Bound(..) | ty::Placeholder(..) | ty::Infer(_) => {
+                // No specifics, but would usually mean forwarding async drop glue
+                AsyncDropGlueMorphology::Custom
+            }
         }
     }
 
@@ -1451,7 +1477,11 @@ impl<'tcx> Ty<'tcx> {
     /// (Note that this implies that if `ty` has an async destructor attached,
     /// then `needs_async_drop` will definitely return `true` for `ty`.)
     ///
-    /// Note that this method is used to check eligible types in unions.
+    /// When constructing `AsyncDestruct::Destructor` type, use
+    /// [`Ty::async_drop_glue_morphology`] instead.
+    //
+    // FIXME(zetanumbers): Note that this method is used to check eligible types
+    // in unions.
     #[inline]
     pub fn needs_async_drop(self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> bool {
         // Avoid querying in simple cases.
@@ -1647,10 +1677,13 @@ impl<'tcx> ExplicitSelf<'tcx> {
     }
 }
 
-// FIXME(zetanumbers): make specifying asyncness explicit
 /// Returns a list of types such that the given type needs drop if and only if
 /// *any* of the returned types need drop. Returns `Err(AlwaysRequiresDrop)` if
 /// this type always needs drop.
+//
+// FIXME(zetanumbers): consider replacing this with only
+// `needs_drop_components_with_async`
+#[inline]
 pub fn needs_drop_components<'tcx>(
     tcx: TyCtxt<'tcx>,
     ty: Ty<'tcx>,

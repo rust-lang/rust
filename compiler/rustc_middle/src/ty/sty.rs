@@ -25,7 +25,7 @@ use std::assert_matches::debug_assert_matches;
 use std::borrow::Cow;
 use std::iter;
 use std::ops::{ControlFlow, Range};
-use ty::util::IntTypeExt;
+use ty::util::{AsyncDropGlueMorphology, IntTypeExt};
 
 use rustc_type_ir::TyKind::*;
 use rustc_type_ir::{self as ir, BoundVar, CollectAndApply, DynKind};
@@ -1951,11 +1951,22 @@ impl<'tcx> Ty<'tcx> {
     }
 
     /// Returns the type of the async destructor of this type.
-    pub fn async_destructor_ty(self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> Ty<'tcx> {
-        if self.is_async_destructor_noop(tcx, param_env) || matches!(self.kind(), ty::Error(_)) {
-            return Ty::async_destructor_combinator(tcx, LangItem::AsyncDropNoop)
-                .instantiate_identity();
+    pub fn async_destructor_ty(self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
+        match self.async_drop_glue_morphology(tcx) {
+            AsyncDropGlueMorphology::Noop => {
+                return Ty::async_destructor_combinator(tcx, LangItem::AsyncDropNoop)
+                    .instantiate_identity();
+            }
+            AsyncDropGlueMorphology::DeferredDropInPlace => {
+                let drop_in_place =
+                    Ty::async_destructor_combinator(tcx, LangItem::AsyncDropDeferredDropInPlace)
+                        .instantiate(tcx, &[self.into()]);
+                return Ty::async_destructor_combinator(tcx, LangItem::AsyncDropFuse)
+                    .instantiate(tcx, &[drop_in_place.into()]);
+            }
+            AsyncDropGlueMorphology::Custom => (),
         }
+
         match *self.kind() {
             ty::Param(_) | ty::Alias(..) | ty::Infer(ty::TyVar(_)) => {
                 let assoc_items = tcx
@@ -1974,19 +1985,13 @@ impl<'tcx> Ty<'tcx> {
                 .adt_async_destructor_ty(
                     tcx,
                     adt_def.variants().iter().map(|v| v.fields.iter().map(|f| f.ty(tcx, args))),
-                    param_env,
                 ),
-            ty::Tuple(tys) => self.adt_async_destructor_ty(tcx, iter::once(tys), param_env),
-            ty::Closure(_, args) => self.adt_async_destructor_ty(
-                tcx,
-                iter::once(args.as_closure().upvar_tys()),
-                param_env,
-            ),
-            ty::CoroutineClosure(_, args) => self.adt_async_destructor_ty(
-                tcx,
-                iter::once(args.as_coroutine_closure().upvar_tys()),
-                param_env,
-            ),
+            ty::Tuple(tys) => self.adt_async_destructor_ty(tcx, iter::once(tys)),
+            ty::Closure(_, args) => {
+                self.adt_async_destructor_ty(tcx, iter::once(args.as_closure().upvar_tys()))
+            }
+            ty::CoroutineClosure(_, args) => self
+                .adt_async_destructor_ty(tcx, iter::once(args.as_coroutine_closure().upvar_tys())),
 
             ty::Adt(adt_def, _) => {
                 assert!(adt_def.is_union());
@@ -2008,17 +2013,12 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
-    fn adt_async_destructor_ty<I>(
-        self,
-        tcx: TyCtxt<'tcx>,
-        variants: I,
-        param_env: ParamEnv<'tcx>,
-    ) -> Ty<'tcx>
+    fn adt_async_destructor_ty<I>(self, tcx: TyCtxt<'tcx>, variants: I) -> Ty<'tcx>
     where
         I: Iterator + ExactSizeIterator,
         I::Item: IntoIterator<Item = Ty<'tcx>>,
     {
-        debug_assert!(!self.is_async_destructor_noop(tcx, param_env));
+        debug_assert_eq!(self.async_drop_glue_morphology(tcx), AsyncDropGlueMorphology::Custom);
 
         let defer = Ty::async_destructor_combinator(tcx, LangItem::AsyncDropDefer);
         let chain = Ty::async_destructor_combinator(tcx, LangItem::AsyncDropChain);

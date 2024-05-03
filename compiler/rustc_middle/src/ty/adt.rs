@@ -579,8 +579,8 @@ impl<'tcx> AdtDef<'tcx> {
         tcx.adt_destructor(self.did())
     }
 
-    // FIXME(zetanumbers): consider supporting this method in same places where
-    // `destructor` is referenced
+    // FIXME: consider combining this method with `AdtDef::destructor` and removing
+    // this version
     pub fn async_destructor(self, tcx: TyCtxt<'tcx>) -> Option<AsyncDestructor> {
         tcx.adt_async_destructor(self.did())
     }

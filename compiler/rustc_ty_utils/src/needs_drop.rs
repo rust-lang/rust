@@ -36,7 +36,7 @@ fn needs_async_drop_raw<'tcx>(tcx: TyCtxt<'tcx>, query: ty::ParamEnvAnd<'tcx, Ty
     // it needs async drop.
     let adt_has_async_dtor =
         |adt_def: ty::AdtDef<'tcx>| adt_def.async_destructor(tcx).map(|_| DtorType::Significant);
-    let res = drop_tys_helper(tcx, query.value, query.param_env, adt_has_dtor, false)
+    let res = drop_tys_helper(tcx, query.value, query.param_env, adt_has_async_dtor, false)
         .filter(filter_array_elements(tcx, query.param_env))
         .next()
         .is_some();
