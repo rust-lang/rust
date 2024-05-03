@@ -367,8 +367,7 @@ pub(crate) fn handle_join_lines(
     let _p = tracing::span!(tracing::Level::INFO, "handle_join_lines").entered();
 
     let file_id = from_proto::file_id(&snap, &params.text_document.uri)?;
-    let source_root = snap.analysis.source_root_id(file_id)?;
-    let config = snap.config.join_lines(Some(source_root));
+    let config = snap.config.join_lines();
     let line_index = snap.file_line_index(file_id)?;
 
     let mut res = TextEdit::default();
@@ -1511,13 +1510,12 @@ pub(crate) fn handle_inlay_hints(
         params.range,
     )?;
     let line_index = snap.file_line_index(file_id)?;
-    let source_root = snap.analysis.source_root_id(file_id)?;
     let range = TextRange::new(
         range.start().min(line_index.index.len()),
         range.end().min(line_index.index.len()),
     );
 
-    let inlay_hints_config = snap.config.inlay_hints(Some(source_root));
+    let inlay_hints_config = snap.config.inlay_hints();
     Ok(Some(
         snap.analysis
             .inlay_hints(&inlay_hints_config, file_id, Some(range))?
@@ -1553,9 +1551,8 @@ pub(crate) fn handle_inlay_hints_resolve(
 
     let line_index = snap.file_line_index(file_id)?;
     let hint_position = from_proto::offset(&line_index, original_hint.position)?;
-    let source_root = snap.analysis.source_root_id(file_id)?;
 
-    let mut forced_resolve_inlay_hints_config = snap.config.inlay_hints(Some(source_root));
+    let mut forced_resolve_inlay_hints_config = snap.config.inlay_hints();
     forced_resolve_inlay_hints_config.fields_to_resolve = InlayFieldsToResolve::empty();
     let resolve_hints = snap.analysis.inlay_hints_resolve(
         &forced_resolve_inlay_hints_config,
@@ -1687,9 +1684,8 @@ pub(crate) fn handle_semantic_tokens_full(
     let file_id = from_proto::file_id(&snap, &params.text_document.uri)?;
     let text = snap.analysis.file_text(file_id)?;
     let line_index = snap.file_line_index(file_id)?;
-    let source_root = snap.analysis.source_root_id(file_id)?;
 
-    let mut highlight_config = snap.config.highlighting_config(Some(source_root));
+    let mut highlight_config = snap.config.highlighting_config();
     // Avoid flashing a bunch of unresolved references when the proc-macro servers haven't been spawned yet.
     highlight_config.syntactic_name_ref_highlighting =
         snap.workspaces.is_empty() || !snap.proc_macros_loaded;
@@ -1700,7 +1696,7 @@ pub(crate) fn handle_semantic_tokens_full(
         &line_index,
         highlights,
         snap.config.semantics_tokens_augments_syntax_tokens(),
-        snap.config.highlighting_non_standard_tokens(Some(source_root)),
+        snap.config.highlighting_non_standard_tokens(),
     );
 
     // Unconditionally cache the tokens
@@ -1718,9 +1714,8 @@ pub(crate) fn handle_semantic_tokens_full_delta(
     let file_id = from_proto::file_id(&snap, &params.text_document.uri)?;
     let text = snap.analysis.file_text(file_id)?;
     let line_index = snap.file_line_index(file_id)?;
-    let source_root = snap.analysis.source_root_id(file_id)?;
 
-    let mut highlight_config = snap.config.highlighting_config(Some(source_root));
+    let mut highlight_config = snap.config.highlighting_config();
     // Avoid flashing a bunch of unresolved references when the proc-macro servers haven't been spawned yet.
     highlight_config.syntactic_name_ref_highlighting =
         snap.workspaces.is_empty() || !snap.proc_macros_loaded;
@@ -1731,7 +1726,7 @@ pub(crate) fn handle_semantic_tokens_full_delta(
         &line_index,
         highlights,
         snap.config.semantics_tokens_augments_syntax_tokens(),
-        snap.config.highlighting_non_standard_tokens(Some(source_root)),
+        snap.config.highlighting_non_standard_tokens(),
     );
 
     let cached_tokens = snap.semantic_tokens_cache.lock().remove(&params.text_document.uri);
@@ -1762,9 +1757,8 @@ pub(crate) fn handle_semantic_tokens_range(
     let frange = from_proto::file_range(&snap, &params.text_document, params.range)?;
     let text = snap.analysis.file_text(frange.file_id)?;
     let line_index = snap.file_line_index(frange.file_id)?;
-    let source_root = snap.analysis.source_root_id(frange.file_id)?;
 
-    let mut highlight_config = snap.config.highlighting_config(Some(source_root));
+    let mut highlight_config = snap.config.highlighting_config();
     // Avoid flashing a bunch of unresolved references when the proc-macro servers haven't been spawned yet.
     highlight_config.syntactic_name_ref_highlighting =
         snap.workspaces.is_empty() || !snap.proc_macros_loaded;
@@ -1775,7 +1769,7 @@ pub(crate) fn handle_semantic_tokens_range(
         &line_index,
         highlights,
         snap.config.semantics_tokens_augments_syntax_tokens(),
-        snap.config.highlighting_non_standard_tokens(Some(source_root)),
+        snap.config.highlighting_non_standard_tokens(),
     );
     Ok(Some(semantic_tokens.into()))
 }

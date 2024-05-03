@@ -62,6 +62,7 @@ mod patch_old_style;
 // parsing the old name.
 config_data! {
     /// Configs that apply on a workspace-wide scope. There are 3 levels on which a global configuration can be configured
+    // FIXME: 1. and 3. should be split, some configs do not make sense per project
     ///
     /// 1. `rust-analyzer.toml` file under user's config directory (e.g ~/.config/rust-analyzer.toml)
     /// 2. Client's own configurations (e.g `settings.json` on VS Code)
@@ -246,7 +247,124 @@ config_data! {
         /// If false, `-p <package>` will be passed instead.
         check_workspace: bool = true,
 
+        /// List of rust-analyzer diagnostics to disable.
+        diagnostics_disabled: FxHashSet<String> = FxHashSet::default(),
+        /// Whether to show native rust-analyzer diagnostics.
+        diagnostics_enable: bool                = true,
+        /// Whether to show experimental rust-analyzer diagnostics that might
+        /// have more false positives than usual.
+        diagnostics_experimental_enable: bool    = false,
+        /// Map of prefixes to be substituted when parsing diagnostic file paths.
+        /// This should be the reverse mapping of what is passed to `rustc` as `--remap-path-prefix`.
+        diagnostics_remapPrefix: FxHashMap<String, String> = FxHashMap::default(),
+        /// Whether to run additional style lints.
+        diagnostics_styleLints_enable: bool =    false,
+        /// List of warnings that should be displayed with hint severity.
+        ///
+        /// The warnings will be indicated by faded text or three dots in code
+        /// and will not show up in the `Problems Panel`.
+        diagnostics_warningsAsHint: Vec<String> = vec![],
+        /// List of warnings that should be displayed with info severity.
+        ///
+        /// The warnings will be indicated by a blue squiggly underline in code
+        /// and a blue icon in the `Problems Panel`.
+        diagnostics_warningsAsInfo: Vec<String> = vec![],
 
+        /// These directories will be ignored by rust-analyzer. They are
+        /// relative to the workspace root, and globs are not supported. You may
+        /// also need to add the folders to Code's `files.watcherExclude`.
+        files_excludeDirs: Vec<Utf8PathBuf> = vec![],
+
+
+        /// Disable project auto-discovery in favor of explicitly specified set
+        /// of projects.
+        ///
+        /// Elements must be paths pointing to `Cargo.toml`,
+        /// `rust-project.json`, `.rs` files (which will be treated as standalone files) or JSON
+        /// objects in `rust-project.json` format.
+        linkedProjects: Vec<ManifestOrProjectJson> = vec![],
+
+        /// Number of syntax trees rust-analyzer keeps in memory. Defaults to 128.
+        lru_capacity: Option<usize>                 = None,
+        /// Sets the LRU capacity of the specified queries.
+        lru_query_capacities: FxHashMap<Box<str>, usize> = FxHashMap::default(),
+
+        /// These proc-macros will be ignored when trying to expand them.
+        ///
+        /// This config takes a map of crate names with the exported proc-macro names to ignore as values.
+        procMacro_ignored: FxHashMap<Box<str>, Box<[Box<str>]>>          = FxHashMap::default(),
+
+        /// Command to be executed instead of 'cargo' for runnables.
+        runnables_command: Option<String> = None,
+        /// Additional arguments to be passed to cargo for runnables such as
+        /// tests or binaries. For example, it may be `--release`.
+        runnables_extraArgs: Vec<String>   = vec![],
+        /// Additional arguments to be passed through Cargo to launched tests, benchmarks, or
+        /// doc-tests.
+        ///
+        /// Unless the launched target uses a
+        /// [custom test harness](https://doc.rust-lang.org/cargo/reference/cargo-targets.html#the-harness-field),
+        /// they will end up being interpreted as options to
+        /// [`rustc`’s built-in test harness (“libtest”)](https://doc.rust-lang.org/rustc/tests/index.html#cli-arguments).
+        runnables_extraTestBinaryArgs: Vec<String> = vec!["--show-output".to_owned()],
+
+        /// Path to the Cargo.toml of the rust compiler workspace, for usage in rustc_private
+        /// projects, or "discover" to try to automatically find it if the `rustc-dev` component
+        /// is installed.
+        ///
+        /// Any project which uses rust-analyzer with the rustcPrivate
+        /// crates must set `[package.metadata.rust-analyzer] rustc_private=true` to use it.
+        ///
+        /// This option does not take effect until rust-analyzer is restarted.
+        rustc_source: Option<String> = None,
+
+        /// Additional arguments to `rustfmt`.
+        rustfmt_extraArgs: Vec<String>               = vec![],
+        /// Advanced option, fully override the command rust-analyzer uses for
+        /// formatting. This should be the equivalent of `rustfmt` here, and
+        /// not that of `cargo fmt`. The file contents will be passed on the
+        /// standard input and the formatted result will be read from the
+        /// standard output.
+        rustfmt_overrideCommand: Option<Vec<String>> = None,
+        /// Enables the use of rustfmt's unstable range formatting command for the
+        /// `textDocument/rangeFormatting` request. The rustfmt option is unstable and only
+        /// available on a nightly build.
+        rustfmt_rangeFormatting_enable: bool = false,
+    }
+}
+
+config_data! {
+    /// Local configurations can be defined per `SourceRoot`. This almost always corresponds to a `Crate`.
+    local: struct LocalDefaultConfigData <- LocalConfigInput ->  {
+        /// Whether to insert #[must_use] when generating `as_` methods
+        /// for enum variants.
+        assist_emitMustUse: bool               = false,
+        /// Placeholder expression to use for missing expressions in assists.
+        assist_expressionFillDefault: ExprFillDefaultDef              = ExprFillDefaultDef::Todo,
+        /// Term search fuel in "units of work" for assists (Defaults to 400).
+        assist_termSearch_fuel: usize = 400,
+
+        /// Whether to enforce the import granularity setting for all files. If set to false rust-analyzer will try to keep import styles consistent per file.
+        imports_granularity_enforce: bool              = false,
+        /// How imports should be grouped into use statements.
+        imports_granularity_group: ImportGranularityDef  = ImportGranularityDef::Crate,
+        /// Group inserted imports by the https://rust-analyzer.github.io/manual.html#auto-import[following order]. Groups are separated by newlines.
+        imports_group_enable: bool                           = true,
+        /// Whether to allow import insertion to merge new imports into single path glob imports like `use std::fmt::*;`.
+        imports_merge_glob: bool           = true,
+        /// Prefer to unconditionally use imports of the core and alloc crate, over the std crate.
+        imports_preferNoStd | imports_prefer_no_std: bool = false,
+         /// Whether to prefer import paths containing a `prelude` module.
+        imports_preferPrelude: bool                       = false,
+        /// The path structure for newly inserted paths to use.
+        imports_prefix: ImportPrefixDef               = ImportPrefixDef::Plain,
+    }
+}
+
+config_data! {
+    /// Configs that only make sense when they are set by a client. As such they can only be defined
+    /// by setting them using client's settings (e.g `settings.json` on VS Code).
+    client: struct ClientDefaultConfigData <- ClientConfigInput -> {
         /// Toggles the additional completions that automatically add imports when completed.
         /// Note that your client must specify the `additionalTextEdits` LSP client capability to truly have this feature enabled.
         completion_autoimport_enable: bool       = true,
@@ -311,34 +429,19 @@ config_data! {
         /// Term search fuel in "units of work" for autocompletion (Defaults to 200).
         completion_termSearch_fuel: usize = 200,
 
-        /// List of rust-analyzer diagnostics to disable.
-        diagnostics_disabled: FxHashSet<String> = FxHashSet::default(),
-        /// Whether to show native rust-analyzer diagnostics.
-        diagnostics_enable: bool                = true,
-        /// Whether to show experimental rust-analyzer diagnostics that might
-        /// have more false positives than usual.
-        diagnostics_experimental_enable: bool    = false,
-        /// Map of prefixes to be substituted when parsing diagnostic file paths.
-        /// This should be the reverse mapping of what is passed to `rustc` as `--remap-path-prefix`.
-        diagnostics_remapPrefix: FxHashMap<String, String> = FxHashMap::default(),
-        /// Whether to run additional style lints.
-        diagnostics_styleLints_enable: bool =    false,
-        /// List of warnings that should be displayed with hint severity.
-        ///
-        /// The warnings will be indicated by faded text or three dots in code
-        /// and will not show up in the `Problems Panel`.
-        diagnostics_warningsAsHint: Vec<String> = vec![],
-        /// List of warnings that should be displayed with info severity.
-        ///
-        /// The warnings will be indicated by a blue squiggly underline in code
-        /// and a blue icon in the `Problems Panel`.
-        diagnostics_warningsAsInfo: Vec<String> = vec![],
-        /// These directories will be ignored by rust-analyzer. They are
-        /// relative to the workspace root, and globs are not supported. You may
-        /// also need to add the folders to Code's `files.watcherExclude`.
-        files_excludeDirs: Vec<Utf8PathBuf> = vec![],
         /// Controls file watching implementation.
         files_watcher: FilesWatcherDef = FilesWatcherDef::Client,
+
+        /// Enables highlighting of related references while the cursor is on `break`, `loop`, `while`, or `for` keywords.
+        highlightRelated_breakPoints_enable: bool = true,
+        /// Enables highlighting of all captures of a closure while the cursor is on the `|` or move keyword of a closure.
+        highlightRelated_closureCaptures_enable: bool = true,
+        /// Enables highlighting of all exit points while the cursor is on any `return`, `?`, `fn`, or return type arrow (`->`).
+        highlightRelated_exitPoints_enable: bool = true,
+        /// Enables highlighting of related references while the cursor is on any identifier.
+        highlightRelated_references_enable: bool = true,
+        /// Enables highlighting of all break points for a loop or block context while the cursor is on any `async` or `await` keywords.
+        highlightRelated_yieldPoints_enable: bool = true,
 
         /// Whether to show `Debug` action. Only applies when
         /// `#rust-analyzer.hover.actions.enable#` is set.
@@ -382,172 +485,6 @@ config_data! {
         hover_show_fields: Option<usize> = Some(5),
         /// How many associated items of a trait to display when hovering a trait.
         hover_show_traitAssocItems: Option<usize> = None,
-
-        /// Enables the experimental support for interpreting tests.
-        interpret_tests: bool                                      = false,
-
-        /// Whether to show `Debug` lens. Only applies when
-        /// `#rust-analyzer.lens.enable#` is set.
-        lens_debug_enable: bool            = true,
-        /// Whether to show CodeLens in Rust files.
-        lens_enable: bool           = true,
-        /// Internal config: use custom client-side commands even when the
-        /// client doesn't set the corresponding capability.
-        lens_forceCustomCommands: bool = true,
-        /// Whether to show `Implementations` lens. Only applies when
-        /// `#rust-analyzer.lens.enable#` is set.
-        lens_implementations_enable: bool  = true,
-        /// Where to render annotations.
-        lens_location: AnnotationLocation = AnnotationLocation::AboveName,
-        /// Whether to show `References` lens for Struct, Enum, and Union.
-        /// Only applies when `#rust-analyzer.lens.enable#` is set.
-        lens_references_adt_enable: bool = false,
-        /// Whether to show `References` lens for Enum Variants.
-        /// Only applies when `#rust-analyzer.lens.enable#` is set.
-        lens_references_enumVariant_enable: bool = false,
-        /// Whether to show `Method References` lens. Only applies when
-        /// `#rust-analyzer.lens.enable#` is set.
-        lens_references_method_enable: bool = false,
-        /// Whether to show `References` lens for Trait.
-        /// Only applies when `#rust-analyzer.lens.enable#` is set.
-        lens_references_trait_enable: bool = false,
-        /// Whether to show `Run` lens. Only applies when
-        /// `#rust-analyzer.lens.enable#` is set.
-        lens_run_enable: bool              = true,
-
-        /// Disable project auto-discovery in favor of explicitly specified set
-        /// of projects.
-        ///
-        /// Elements must be paths pointing to `Cargo.toml`,
-        /// `rust-project.json`, `.rs` files (which will be treated as standalone files) or JSON
-        /// objects in `rust-project.json` format.
-        linkedProjects: Vec<ManifestOrProjectJson> = vec![],
-
-        /// Number of syntax trees rust-analyzer keeps in memory. Defaults to 128.
-        lru_capacity: Option<usize>                 = None,
-        /// Sets the LRU capacity of the specified queries.
-        lru_query_capacities: FxHashMap<Box<str>, usize> = FxHashMap::default(),
-
-        /// Whether to show `can't find Cargo.toml` error message.
-        notifications_cargoTomlNotFound: bool      = true,
-
-        /// Whether to send an UnindexedProject notification to the client.
-        notifications_unindexedProject: bool      = false,
-
-        /// How many worker threads in the main loop. The default `null` means to pick automatically.
-        numThreads: Option<usize> = None,
-
-        /// Expand attribute macros. Requires `#rust-analyzer.procMacro.enable#` to be set.
-        procMacro_attributes_enable: bool = true,
-        /// Enable support for procedural macros, implies `#rust-analyzer.cargo.buildScripts.enable#`.
-        procMacro_enable: bool                     = true,
-        /// These proc-macros will be ignored when trying to expand them.
-        ///
-        /// This config takes a map of crate names with the exported proc-macro names to ignore as values.
-        procMacro_ignored: FxHashMap<Box<str>, Box<[Box<str>]>>          = FxHashMap::default(),
-        /// Internal config, path to proc-macro server executable.
-        procMacro_server: Option<Utf8PathBuf>          = None,
-
-        /// Exclude imports from find-all-references.
-        references_excludeImports: bool = false,
-
-        /// Exclude tests from find-all-references.
-        references_excludeTests: bool = false,
-
-        /// Command to be executed instead of 'cargo' for runnables.
-        runnables_command: Option<String> = None,
-        /// Additional arguments to be passed to cargo for runnables such as
-        /// tests or binaries. For example, it may be `--release`.
-        runnables_extraArgs: Vec<String>   = vec![],
-        /// Additional arguments to be passed through Cargo to launched tests, benchmarks, or
-        /// doc-tests.
-        ///
-        /// Unless the launched target uses a
-        /// [custom test harness](https://doc.rust-lang.org/cargo/reference/cargo-targets.html#the-harness-field),
-        /// they will end up being interpreted as options to
-        /// [`rustc`’s built-in test harness (“libtest”)](https://doc.rust-lang.org/rustc/tests/index.html#cli-arguments).
-        runnables_extraTestBinaryArgs: Vec<String> = vec!["--show-output".to_owned()],
-
-        /// Path to the Cargo.toml of the rust compiler workspace, for usage in rustc_private
-        /// projects, or "discover" to try to automatically find it if the `rustc-dev` component
-        /// is installed.
-        ///
-        /// Any project which uses rust-analyzer with the rustcPrivate
-        /// crates must set `[package.metadata.rust-analyzer] rustc_private=true` to use it.
-        ///
-        /// This option does not take effect until rust-analyzer is restarted.
-        rustc_source: Option<String> = None,
-
-        /// Additional arguments to `rustfmt`.
-        rustfmt_extraArgs: Vec<String>               = vec![],
-        /// Advanced option, fully override the command rust-analyzer uses for
-        /// formatting. This should be the equivalent of `rustfmt` here, and
-        /// not that of `cargo fmt`. The file contents will be passed on the
-        /// standard input and the formatted result will be read from the
-        /// standard output.
-        rustfmt_overrideCommand: Option<Vec<String>> = None,
-        /// Enables the use of rustfmt's unstable range formatting command for the
-        /// `textDocument/rangeFormatting` request. The rustfmt option is unstable and only
-        /// available on a nightly build.
-        rustfmt_rangeFormatting_enable: bool = false,
-
-
-        /// Show full signature of the callable. Only shows parameters if disabled.
-        signatureInfo_detail: SignatureDetail                           = SignatureDetail::Full,
-        /// Show documentation.
-        signatureInfo_documentation_enable: bool                       = true,
-
-        /// Whether to insert closing angle brackets when typing an opening angle bracket of a generic argument list.
-        typing_autoClosingAngleBrackets_enable: bool = false,
-
-        /// Workspace symbol search kind.
-        workspace_symbol_search_kind: WorkspaceSymbolSearchKindDef = WorkspaceSymbolSearchKindDef::OnlyTypes,
-        /// Limits the number of items returned from a workspace symbol search (Defaults to 128).
-        /// Some clients like vs-code issue new searches on result filtering and don't require all results to be returned in the initial search.
-        /// Other clients requires all results upfront and might require a higher limit.
-        workspace_symbol_search_limit: usize = 128,
-        /// Workspace symbol search scope.
-        workspace_symbol_search_scope: WorkspaceSymbolSearchScopeDef = WorkspaceSymbolSearchScopeDef::Workspace,
-    }
-}
-
-config_data! {
-    /// Local configurations can be defined per `SourceRoot`. This almost always corresponds to a `Crate`.
-    local: struct LocalDefaultConfigData <- LocalConfigInput ->  {
-        /// Whether to insert #[must_use] when generating `as_` methods
-        /// for enum variants.
-        assist_emitMustUse: bool               = false,
-        /// Placeholder expression to use for missing expressions in assists.
-        assist_expressionFillDefault: ExprFillDefaultDef              = ExprFillDefaultDef::Todo,
-        /// Term search fuel in "units of work" for assists (Defaults to 400).
-        assist_termSearch_fuel: usize = 400,
-
-        /// Enables highlighting of related references while the cursor is on `break`, `loop`, `while`, or `for` keywords.
-        highlightRelated_breakPoints_enable: bool = true,
-        /// Enables highlighting of all captures of a closure while the cursor is on the `|` or move keyword of a closure.
-        highlightRelated_closureCaptures_enable: bool = true,
-        /// Enables highlighting of all exit points while the cursor is on any `return`, `?`, `fn`, or return type arrow (`->`).
-        highlightRelated_exitPoints_enable: bool = true,
-        /// Enables highlighting of related references while the cursor is on any identifier.
-        highlightRelated_references_enable: bool = true,
-        /// Enables highlighting of all break points for a loop or block context while the cursor is on any `async` or `await` keywords.
-        highlightRelated_yieldPoints_enable: bool = true,
-
-        /// Whether to enforce the import granularity setting for all files. If set to false rust-analyzer will try to keep import styles consistent per file.
-        imports_granularity_enforce: bool              = false,
-        /// How imports should be grouped into use statements.
-        imports_granularity_group: ImportGranularityDef  = ImportGranularityDef::Crate,
-        /// Group inserted imports by the https://rust-analyzer.github.io/manual.html#auto-import[following order]. Groups are separated by newlines.
-        imports_group_enable: bool                           = true,
-        /// Whether to allow import insertion to merge new imports into single path glob imports like `use std::fmt::*;`.
-        imports_merge_glob: bool           = true,
-        /// Prefer to unconditionally use imports of the core and alloc crate, over the std crate.
-        imports_preferNoStd | imports_prefer_no_std: bool = false,
-         /// Whether to prefer import paths containing a `prelude` module.
-        imports_preferPrelude: bool                       = false,
-        /// The path structure for newly inserted paths to use.
-        imports_prefix: ImportPrefixDef               = ImportPrefixDef::Plain,
-
 
         /// Whether to show inlay type hints for binding modes.
         inlayHints_bindingModeHints_enable: bool                   = false,
@@ -598,6 +535,8 @@ config_data! {
         /// Whether to hide inlay type hints for constructors.
         inlayHints_typeHints_hideNamedConstructor: bool            = false,
 
+        /// Enables the experimental support for interpreting tests.
+        interpret_tests: bool = false,
 
         /// Join lines merges consecutive declaration and initialization of an assignment.
         joinLines_joinAssignments: bool = true,
@@ -607,6 +546,57 @@ config_data! {
         joinLines_removeTrailingComma: bool = true,
         /// Join lines unwraps trivial blocks.
         joinLines_unwrapTrivialBlock: bool = true,
+
+        /// Whether to show `Debug` lens. Only applies when
+        /// `#rust-analyzer.lens.enable#` is set.
+        lens_debug_enable: bool            = true,
+        /// Whether to show CodeLens in Rust files.
+        lens_enable: bool           = true,
+        /// Internal config: use custom client-side commands even when the
+        /// client doesn't set the corresponding capability.
+        lens_forceCustomCommands: bool = true,
+        /// Whether to show `Implementations` lens. Only applies when
+        /// `#rust-analyzer.lens.enable#` is set.
+        lens_implementations_enable: bool  = true,
+        /// Where to render annotations.
+        lens_location: AnnotationLocation = AnnotationLocation::AboveName,
+        /// Whether to show `References` lens for Struct, Enum, and Union.
+        /// Only applies when `#rust-analyzer.lens.enable#` is set.
+        lens_references_adt_enable: bool = false,
+        /// Whether to show `References` lens for Enum Variants.
+        /// Only applies when `#rust-analyzer.lens.enable#` is set.
+        lens_references_enumVariant_enable: bool = false,
+        /// Whether to show `Method References` lens. Only applies when
+        /// `#rust-analyzer.lens.enable#` is set.
+        lens_references_method_enable: bool = false,
+        /// Whether to show `References` lens for Trait.
+        /// Only applies when `#rust-analyzer.lens.enable#` is set.
+        lens_references_trait_enable: bool = false,
+        /// Whether to show `Run` lens. Only applies when
+        /// `#rust-analyzer.lens.enable#` is set.
+        lens_run_enable: bool              = true,
+
+        /// Whether to show `can't find Cargo.toml` error message.
+        notifications_cargoTomlNotFound: bool      = true,
+
+        /// Whether to send an UnindexedProject notification to the client.
+        notifications_unindexedProject: bool      = false,
+
+        /// How many worker threads in the main loop. The default `null` means to pick automatically.
+        numThreads: Option<usize> = None,
+
+        /// Expand attribute macros. Requires `#rust-analyzer.procMacro.enable#` to be set.
+        procMacro_attributes_enable: bool = true,
+        /// Enable support for procedural macros, implies `#rust-analyzer.cargo.buildScripts.enable#`.
+        procMacro_enable: bool                     = true,
+        /// Internal config, path to proc-macro server executable.
+        procMacro_server: Option<Utf8PathBuf>          = None,
+
+        /// Exclude imports from find-all-references.
+        references_excludeImports: bool = false,
+
+        /// Exclude tests from find-all-references.
+        references_excludeTests: bool = false,
 
         /// Inject additional highlighting into doc comments.
         ///
@@ -644,13 +634,24 @@ config_data! {
         /// By disabling semantic tokens for strings, other grammars can be used to highlight
         /// their contents.
         semanticHighlighting_strings_enable: bool = true,
-    }
-}
 
-config_data! {
-    /// Configs that only make sense when they are set by a client. As such they can only be defined
-    /// by setting them using client's settings (e.g `settings.json` on VS Code).
-    client: struct ClientDefaultConfigData <- ClientConfigInput -> {}
+        /// Show full signature of the callable. Only shows parameters if disabled.
+        signatureInfo_detail: SignatureDetail                           = SignatureDetail::Full,
+        /// Show documentation.
+        signatureInfo_documentation_enable: bool                       = true,
+
+        /// Whether to insert closing angle brackets when typing an opening angle bracket of a generic argument list.
+        typing_autoClosingAngleBrackets_enable: bool = false,
+
+        /// Workspace symbol search kind.
+        workspace_symbol_search_kind: WorkspaceSymbolSearchKindDef = WorkspaceSymbolSearchKindDef::OnlyTypes,
+        /// Limits the number of items returned from a workspace symbol search (Defaults to 128).
+        /// Some clients like vs-code issue new searches on result filtering and don't require all results to be returned in the initial search.
+        /// Other clients requires all results upfront and might require a higher limit.
+        workspace_symbol_search_limit: usize = 128,
+        /// Workspace symbol search scope.
+        workspace_symbol_search_scope: WorkspaceSymbolSearchScopeDef = WorkspaceSymbolSearchScopeDef::Workspace,
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -1248,13 +1249,13 @@ impl Config {
         self.procMacro_enable().to_owned() && self.procMacro_attributes_enable().to_owned()
     }
 
-    pub fn highlight_related(&self, source_root: Option<SourceRootId>) -> HighlightRelatedConfig {
+    pub fn highlight_related(&self, _source_root: Option<SourceRootId>) -> HighlightRelatedConfig {
         HighlightRelatedConfig {
-            references: self.highlightRelated_references_enable(source_root).to_owned(),
-            break_points: self.highlightRelated_breakPoints_enable(source_root).to_owned(),
-            exit_points: self.highlightRelated_exitPoints_enable(source_root).to_owned(),
-            yield_points: self.highlightRelated_yieldPoints_enable(source_root).to_owned(),
-            closure_captures: self.highlightRelated_closureCaptures_enable(source_root).to_owned(),
+            references: self.highlightRelated_references_enable().to_owned(),
+            break_points: self.highlightRelated_breakPoints_enable().to_owned(),
+            exit_points: self.highlightRelated_exitPoints_enable().to_owned(),
+            yield_points: self.highlightRelated_yieldPoints_enable().to_owned(),
+            closure_captures: self.highlightRelated_closureCaptures_enable().to_owned(),
         }
     }
 
@@ -1308,7 +1309,7 @@ impl Config {
         }
     }
 
-    pub fn inlay_hints(&self, source_root: Option<SourceRootId>) -> InlayHintsConfig {
+    pub fn inlay_hints(&self) -> InlayHintsConfig {
         let client_capability_fields = self
             .caps
             .text_document
@@ -1322,74 +1323,65 @@ impl Config {
             .collect::<FxHashSet<_>>();
 
         InlayHintsConfig {
-            render_colons: self.inlayHints_renderColons(source_root).to_owned(),
-            type_hints: self.inlayHints_typeHints_enable(source_root).to_owned(),
-            parameter_hints: self.inlayHints_parameterHints_enable(source_root).to_owned(),
-            chaining_hints: self.inlayHints_chainingHints_enable(source_root).to_owned(),
-            discriminant_hints: match self.inlayHints_discriminantHints_enable(source_root) {
+            render_colons: self.inlayHints_renderColons().to_owned(),
+            type_hints: self.inlayHints_typeHints_enable().to_owned(),
+            parameter_hints: self.inlayHints_parameterHints_enable().to_owned(),
+            chaining_hints: self.inlayHints_chainingHints_enable().to_owned(),
+            discriminant_hints: match self.inlayHints_discriminantHints_enable() {
                 DiscriminantHintsDef::Always => ide::DiscriminantHints::Always,
                 DiscriminantHintsDef::Never => ide::DiscriminantHints::Never,
                 DiscriminantHintsDef::Fieldless => ide::DiscriminantHints::Fieldless,
             },
-            closure_return_type_hints: match self
-                .inlayHints_closureReturnTypeHints_enable(source_root)
-            {
+            closure_return_type_hints: match self.inlayHints_closureReturnTypeHints_enable() {
                 ClosureReturnTypeHintsDef::Always => ide::ClosureReturnTypeHints::Always,
                 ClosureReturnTypeHintsDef::Never => ide::ClosureReturnTypeHints::Never,
                 ClosureReturnTypeHintsDef::WithBlock => ide::ClosureReturnTypeHints::WithBlock,
             },
-            lifetime_elision_hints: match self.inlayHints_lifetimeElisionHints_enable(source_root) {
+            lifetime_elision_hints: match self.inlayHints_lifetimeElisionHints_enable() {
                 LifetimeElisionDef::Always => ide::LifetimeElisionHints::Always,
                 LifetimeElisionDef::Never => ide::LifetimeElisionHints::Never,
                 LifetimeElisionDef::SkipTrivial => ide::LifetimeElisionHints::SkipTrivial,
             },
             hide_named_constructor_hints: self
-                .inlayHints_typeHints_hideNamedConstructor(source_root)
+                .inlayHints_typeHints_hideNamedConstructor()
                 .to_owned(),
             hide_closure_initialization_hints: self
-                .inlayHints_typeHints_hideClosureInitialization(source_root)
+                .inlayHints_typeHints_hideClosureInitialization()
                 .to_owned(),
-            closure_style: match self.inlayHints_closureStyle(source_root) {
+            closure_style: match self.inlayHints_closureStyle() {
                 ClosureStyle::ImplFn => hir::ClosureStyle::ImplFn,
                 ClosureStyle::RustAnalyzer => hir::ClosureStyle::RANotation,
                 ClosureStyle::WithId => hir::ClosureStyle::ClosureWithId,
                 ClosureStyle::Hide => hir::ClosureStyle::Hide,
             },
-            closure_capture_hints: self
-                .inlayHints_closureCaptureHints_enable(source_root)
-                .to_owned(),
-            adjustment_hints: match self.inlayHints_expressionAdjustmentHints_enable(source_root) {
+            closure_capture_hints: self.inlayHints_closureCaptureHints_enable().to_owned(),
+            adjustment_hints: match self.inlayHints_expressionAdjustmentHints_enable() {
                 AdjustmentHintsDef::Always => ide::AdjustmentHints::Always,
-                AdjustmentHintsDef::Never => {
-                    match self.inlayHints_reborrowHints_enable(source_root) {
-                        ReborrowHintsDef::Always | ReborrowHintsDef::Mutable => {
-                            ide::AdjustmentHints::ReborrowOnly
-                        }
-                        ReborrowHintsDef::Never => ide::AdjustmentHints::Never,
+                AdjustmentHintsDef::Never => match self.inlayHints_reborrowHints_enable() {
+                    ReborrowHintsDef::Always | ReborrowHintsDef::Mutable => {
+                        ide::AdjustmentHints::ReborrowOnly
                     }
-                }
+                    ReborrowHintsDef::Never => ide::AdjustmentHints::Never,
+                },
                 AdjustmentHintsDef::Reborrow => ide::AdjustmentHints::ReborrowOnly,
             },
-            adjustment_hints_mode: match self.inlayHints_expressionAdjustmentHints_mode(source_root)
-            {
+            adjustment_hints_mode: match self.inlayHints_expressionAdjustmentHints_mode() {
                 AdjustmentHintsModeDef::Prefix => ide::AdjustmentHintsMode::Prefix,
                 AdjustmentHintsModeDef::Postfix => ide::AdjustmentHintsMode::Postfix,
                 AdjustmentHintsModeDef::PreferPrefix => ide::AdjustmentHintsMode::PreferPrefix,
                 AdjustmentHintsModeDef::PreferPostfix => ide::AdjustmentHintsMode::PreferPostfix,
             },
             adjustment_hints_hide_outside_unsafe: self
-                .inlayHints_expressionAdjustmentHints_hideOutsideUnsafe(source_root)
+                .inlayHints_expressionAdjustmentHints_hideOutsideUnsafe()
                 .to_owned(),
-            binding_mode_hints: self.inlayHints_bindingModeHints_enable(source_root).to_owned(),
+            binding_mode_hints: self.inlayHints_bindingModeHints_enable().to_owned(),
             param_names_for_lifetime_elision_hints: self
-                .inlayHints_lifetimeElisionHints_useParameterNames(source_root)
+                .inlayHints_lifetimeElisionHints_useParameterNames()
                 .to_owned(),
-            max_length: self.inlayHints_maxLength(source_root).to_owned(),
-            closing_brace_hints_min_lines: if self
-                .inlayHints_closingBraceHints_enable(source_root)
-                .to_owned()
+            max_length: self.inlayHints_maxLength().to_owned(),
+            closing_brace_hints_min_lines: if self.inlayHints_closingBraceHints_enable().to_owned()
             {
-                Some(self.inlayHints_closingBraceHints_minLines(source_root).to_owned())
+                Some(self.inlayHints_closingBraceHints_minLines().to_owned())
             } else {
                 None
             },
@@ -1400,10 +1392,8 @@ impl Config {
                 resolve_label_location: client_capability_fields.contains("label.location"),
                 resolve_label_command: client_capability_fields.contains("label.command"),
             },
-            implicit_drop_hints: self.inlayHints_implicitDrops_enable(source_root).to_owned(),
-            range_exclusive_hints: self
-                .inlayHints_rangeExclusiveHints_enable(source_root)
-                .to_owned(),
+            implicit_drop_hints: self.inlayHints_implicitDrops_enable().to_owned(),
+            range_exclusive_hints: self.inlayHints_rangeExclusiveHints_enable().to_owned(),
         }
     }
 
@@ -1427,36 +1417,32 @@ impl Config {
         }
     }
 
-    pub fn join_lines(&self, source_root: Option<SourceRootId>) -> JoinLinesConfig {
+    pub fn join_lines(&self) -> JoinLinesConfig {
         JoinLinesConfig {
-            join_else_if: self.joinLines_joinElseIf(source_root).to_owned(),
-            remove_trailing_comma: self.joinLines_removeTrailingComma(source_root).to_owned(),
-            unwrap_trivial_blocks: self.joinLines_unwrapTrivialBlock(source_root).to_owned(),
-            join_assignments: self.joinLines_joinAssignments(source_root).to_owned(),
+            join_else_if: self.joinLines_joinElseIf().to_owned(),
+            remove_trailing_comma: self.joinLines_removeTrailingComma().to_owned(),
+            unwrap_trivial_blocks: self.joinLines_unwrapTrivialBlock().to_owned(),
+            join_assignments: self.joinLines_joinAssignments().to_owned(),
         }
     }
 
-    pub fn highlighting_non_standard_tokens(&self, source_root: Option<SourceRootId>) -> bool {
-        self.semanticHighlighting_nonStandardTokens(source_root).to_owned()
+    pub fn highlighting_non_standard_tokens(&self) -> bool {
+        self.semanticHighlighting_nonStandardTokens().to_owned()
     }
 
-    pub fn highlighting_config(&self, source_root: Option<SourceRootId>) -> HighlightConfig {
+    pub fn highlighting_config(&self) -> HighlightConfig {
         HighlightConfig {
-            strings: self.semanticHighlighting_strings_enable(source_root).to_owned(),
-            punctuation: self.semanticHighlighting_punctuation_enable(source_root).to_owned(),
+            strings: self.semanticHighlighting_strings_enable().to_owned(),
+            punctuation: self.semanticHighlighting_punctuation_enable().to_owned(),
             specialize_punctuation: self
-                .semanticHighlighting_punctuation_specialization_enable(source_root)
+                .semanticHighlighting_punctuation_specialization_enable()
                 .to_owned(),
-            macro_bang: self
-                .semanticHighlighting_punctuation_separate_macro_bang(source_root)
-                .to_owned(),
-            operator: self.semanticHighlighting_operator_enable(source_root).to_owned(),
+            macro_bang: self.semanticHighlighting_punctuation_separate_macro_bang().to_owned(),
+            operator: self.semanticHighlighting_operator_enable().to_owned(),
             specialize_operator: self
-                .semanticHighlighting_operator_specialization_enable(source_root)
+                .semanticHighlighting_operator_specialization_enable()
                 .to_owned(),
-            inject_doc_comment: self
-                .semanticHighlighting_doc_comment_inject_enable(source_root)
-                .to_owned(),
+            inject_doc_comment: self.semanticHighlighting_doc_comment_inject_enable().to_owned(),
             syntactic_name_ref_highlighting: false,
         }
     }
@@ -2486,15 +2472,12 @@ macro_rules! _impl_for_config_data {
                 $($doc)*
                 #[allow(non_snake_case)]
                 $vis fn $field(&self, source_root: Option<SourceRootId>) -> &$ty {
-
-                    if source_root.is_some() {
-                        let mut par: Option<SourceRootId> = source_root;
-                        while let Some(source_root_id) = par {
-                            par = self.source_root_parent_map.get(&source_root_id).copied();
-                            if let Some(config) = self.ratoml_files.get(&source_root_id) {
-                                if let Some(value) = config.local.$field.as_ref() {
-                                    return value;
-                                }
+                    let mut par: Option<SourceRootId> = source_root;
+                    while let Some(source_root_id) = par {
+                        par = self.source_root_parent_map.get(&source_root_id).copied();
+                        if let Some(config) = self.ratoml_files.get(&source_root_id) {
+                            if let Some(value) = config.local.$field.as_ref() {
+                                return value;
                             }
                         }
                     }
@@ -2515,10 +2498,10 @@ macro_rules! _impl_for_config_data {
         }
     };
     (global, $(
-                $(#[doc=$doc:literal])*
-                $vis:vis $field:ident : $ty:ty = $default:expr,
-            )*
-        ) => {
+            $(#[doc=$doc:literal])*
+            $vis:vis $field:ident : $ty:ty = $default:expr,
+        )*
+    ) => {
         impl Config {
             $(
                 $($doc)*
@@ -2547,16 +2530,16 @@ macro_rules! _impl_for_config_data {
         }
     };
     (client, $(
-        $(#[doc=$doc:literal])*
-        $vis:vis $field:ident : $ty:ty = $default:expr,
-    )*
+            $(#[doc=$doc:literal])*
+            $vis:vis $field:ident : $ty:ty = $default:expr,
+       )*
     ) => {
         impl Config {
             $(
                 $($doc)*
                 #[allow(non_snake_case)]
                 $vis fn $field(&self) -> &$ty {
-                    if let Some(v) = self.client_config.global.$field.as_ref() {
+                    if let Some(v) = self.client_config.client.$field.as_ref() {
                         return &v;
                     }
 
@@ -2616,24 +2599,6 @@ macro_rules! _config_data {
             }
         }
 
-        #[allow(unused)]
-        impl $name {
-            /// Applies overrides from some more local config blob, to self.
-            fn apply_input(&mut self, input: $input) {
-                $(
-                    if let Some(value) = input.$field {
-                        self.$field = value;
-                    }
-                )*
-            }
-
-            fn clone_with_overrides(&self, input: $input) -> Self {
-                Self {$(
-                    $field: input.$field.unwrap_or_else(|| self.$field.clone()),
-                )*}
-            }
-        }
-
         #[allow(unused, clippy::ptr_arg)]
         impl $input {
             fn from_json(json: &mut serde_json::Value, error_sink: &mut Vec<(String, serde_json::Error)>) -> Self {
@@ -2686,7 +2651,6 @@ use _config_data as config_data;
 struct DefaultConfigData {
     global: GlobalDefaultConfigData,
     local: LocalDefaultConfigData,
-    #[allow(dead_code)]
     client: ClientDefaultConfigData,
 }
 
@@ -2742,7 +2706,6 @@ struct GlobalLocalConfigInput {
 }
 
 impl GlobalLocalConfigInput {
-    #[allow(dead_code)]
     fn from_toml(
         mut toml: toml::Table,
         error_sink: &mut Vec<(String, toml::de::Error)>,

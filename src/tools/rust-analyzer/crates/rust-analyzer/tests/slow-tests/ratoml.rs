@@ -912,7 +912,9 @@ enum Value {
 
 /// Having a ratoml file at the root of a project enables
 /// configuring global level configurations as well.
-#[test]
+#[allow(unused)]
+// #[test]
+// FIXME: Re-enable this test when we have a global config we can check again
 fn ratoml_in_root_is_global() {
     let server = RatomlTest::new(
         vec![
@@ -946,7 +948,9 @@ fn main() {
     server.query(QueryType::GlobalHover, 2);
 }
 
-#[test]
+#[allow(unused)]
+// #[test]
+// FIXME: Re-enable this test when we have a global config we can check again
 fn ratoml_root_is_updateable() {
     let mut server = RatomlTest::new(
         vec![
@@ -982,7 +986,9 @@ fn main() {
     assert!(!server.query(QueryType::GlobalHover, 2));
 }
 
-#[test]
+#[allow(unused)]
+// #[test]
+// FIXME: Re-enable this test when we have a global config we can check again
 fn ratoml_root_is_deletable() {
     let mut server = RatomlTest::new(
         vec![
