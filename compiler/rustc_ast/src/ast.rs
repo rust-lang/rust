@@ -1390,7 +1390,7 @@ pub struct StructExpr {
 // Adding a new variant? Please update `test_expr` in `tests/ui/macros/stringify.rs`.
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub enum ExprKind {
-    /// An array (`[a, b, c, d]`)
+    /// An array (e.g, `[a, b, c, d]`).
     Array(ThinVec<P<Expr>>),
     /// Allow anonymous constants from an inline `const` block
     ConstBlock(AnonConst),
@@ -1401,7 +1401,7 @@ pub enum ExprKind {
     /// This also represents calling the constructor of
     /// tuple-like ADTs such as tuple structs and enum variants.
     Call(P<Expr>, ThinVec<P<Expr>>),
-    /// A method call (e.g. `x.foo::<Bar, Baz>(a, b, c)`).
+    /// A method call (e.g., `x.foo::<Bar, Baz>(a, b, c)`).
     MethodCall(Box<MethodCall>),
     /// A tuple (e.g., `(a, b, c, d)`).
     Tup(ThinVec<P<Expr>>),
@@ -1413,7 +1413,10 @@ pub enum ExprKind {
     Lit(token::Lit),
     /// A cast (e.g., `foo as f64`).
     Cast(P<Expr>, P<Ty>),
-    /// A type ascription (e.g., `42: usize`).
+    /// A type ascription (e.g., `builtin # type_ascribe(42, usize)`).
+    ///
+    /// Usually not written directly in user code but
+    /// indirectly via the macro `type_ascribe!(...)`.
     Type(P<Expr>, P<Ty>),
     /// A `let pat = expr` expression that is only semantically allowed in the condition
     /// of `if` / `while` expressions. (e.g., `if let 0 = x { .. }`).
@@ -1488,7 +1491,10 @@ pub enum ExprKind {
     /// Output of the `asm!()` macro.
     InlineAsm(P<InlineAsm>),
 
-    /// Output of the `offset_of!()` macro.
+    /// An `offset_of` expression (e.g., `builtin # offset_of(Struct, field)`).
+    ///
+    /// Usually not written directly in user code but
+    /// indirectly via the macro `core::mem::offset_of!(...)`.
     OffsetOf(P<Ty>, P<[Ident]>),
 
     /// A macro invocation; pre-expansion.

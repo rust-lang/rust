@@ -1382,7 +1382,7 @@ impl String {
 
     /// Shortens this `String` to the specified length.
     ///
-    /// If `new_len` is greater than the string's current length, this has no
+    /// If `new_len` is greater than or equal to the string's current length, this has no
     /// effect.
     ///
     /// Note that this method has no effect on the allocated capacity

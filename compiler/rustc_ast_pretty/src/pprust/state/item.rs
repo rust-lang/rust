@@ -238,6 +238,7 @@ impl<'a> State<'a> {
                 self.bclose(item.span, empty);
             }
             ast::ItemKind::GlobalAsm(asm) => {
+                // FIXME: Print `builtin # global_asm` once macro `global_asm` uses `builtin_syntax`.
                 self.head(visibility_qualified(&item.vis, "global_asm!"));
                 self.print_inline_asm(asm);
                 self.word(";");
