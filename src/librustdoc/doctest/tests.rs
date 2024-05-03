@@ -5,20 +5,20 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 fn make_test(input: String, krate: Option<&str>) -> DocTest {
-    super::make_test(
-        input,
-        krate.map(|k| k.into()),
-        DEFAULT_EDITION,
-        String::new(), // test name
-        LangString::empty_for_test(),
-        0,             // line
-        String::new(), // file name
-        Arc::new(IndividualTestOptions::empty()),
-        String::new(),  // test id
-        "",             // target_str
-        PathBuf::new(), // path
-        true,           // no_run
-    )
+    super::make_test(crate::doctest::MakeTestArgs {
+        source_code: input,
+        crate_name: krate.map(|k| k.into()),
+        edition: DEFAULT_EDITION,
+        name: String::new(),
+        lang_string: LangString::empty_for_test(),
+        line: 0,
+        file: String::new(),
+        rustdoc_test_options: Arc::new(IndividualTestOptions::empty()),
+        test_id: String::new(),
+        target_str: "",
+        path: PathBuf::new(),
+        no_run: true,
+    })
 }
 
 #[test]

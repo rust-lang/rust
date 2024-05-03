@@ -305,20 +305,20 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
 
             let mut opts: GlobalTestOptions = Default::default();
             opts.insert_indent_space = true;
-            let (test, _) = doctest::make_test(
-                test,
-                krate,
+            let (test, _) = doctest::make_test(crate::doctest::MakeTestArgs {
+                source_code: test,
+                crate_name: krate,
                 edition,
-                String::new(),
-                LangString::empty_for_test(),
-                0,
-                String::new(),
-                Arc::new(IndividualTestOptions::empty()),
-                String::new(),
-                "",
-                "doctest.rs".into(),
-                true,
-            )
+                name: String::new(),
+                lang_string: LangString::empty_for_test(),
+                line: 0,
+                file: String::new(),
+                rustdoc_test_options: Arc::new(IndividualTestOptions::empty()),
+                test_id: String::new(),
+                target_str: "",
+                path: "doctest.rs".into(),
+                no_run: true,
+            })
             .generate_unique_doctest(false, &opts, None);
             let channel = if test.contains("#![feature(") { "&amp;version=nightly" } else { "" };
 

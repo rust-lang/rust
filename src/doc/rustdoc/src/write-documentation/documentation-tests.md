@@ -403,7 +403,7 @@ pub fn init() {
 If you run `rustdoc --test` on this code, it'll panic on the second doctest being
 run because `IS_INIT` value is not `false` anymore.
 
-This is where the `standalone` attribute comes in: ittells `rustdoc` that a doctest
+This is where the `standalone` attribute comes in: it tells `rustdoc` that a doctest
 should not be merged with the others and should be run in its own process. So the
 previous code should use it:
 

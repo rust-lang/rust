@@ -922,22 +922,38 @@ pub const TEST: test::TestDescAndFn = test::TestDescAndFn {{
     }
 }
 
+pub(crate) struct MakeTestArgs<'a, 'b> {
+    pub source_code: String,
+    pub crate_name: Option<Cow<'a, str>>,
+    pub edition: Edition,
+    pub name: String,
+    pub lang_string: LangString,
+    pub line: usize,
+    pub file: String,
+    pub rustdoc_test_options: Arc<IndividualTestOptions>,
+    pub test_id: String,
+    pub target_str: &'b str,
+    pub path: PathBuf,
+    pub no_run: bool,
+}
+
 /// Transforms a test into code that can be compiled into a Rust binary, and returns the number of
 /// lines before the test code begins as well as if the output stream supports colors or not.
-pub(crate) fn make_test(
-    s: String,
-    crate_name: Option<Cow<'_, str>>,
-    edition: Edition,
-    name: String,
-    lang_string: LangString,
-    line: usize,
-    file: String,
-    rustdoc_test_options: Arc<IndividualTestOptions>,
-    test_id: String,
-    target_str: &str,
-    path: PathBuf,
-    no_run: bool,
-) -> DocTest {
+pub(crate) fn make_test(test_args: MakeTestArgs<'_, '_>) -> DocTest {
+    let MakeTestArgs {
+        source_code,
+        crate_name,
+        edition,
+        name,
+        lang_string,
+        line,
+        file,
+        rustdoc_test_options,
+        test_id,
+        target_str,
+        path,
+        no_run,
+    } = test_args;
     let outdir = Arc::new(if let Some(ref path) = rustdoc_test_options.persist_doctests {
         let mut path = path.clone();
         path.push(&test_id);
@@ -950,7 +966,7 @@ pub(crate) fn make_test(
     // FIXME: This partition source is pretty bad. Something like
     // <https://github.com/rust-lang/rust/commit/7eb5a994673092ebbcb07afc28be3a251c6c94c2> would be
     // a much better approach.
-    let (crate_attrs, everything_else, crates) = partition_source(&s, edition);
+    let (crate_attrs, everything_else, crates) = partition_source(&source_code, edition);
     let mut supports_color = false;
     let crate_name = crate_name.map(|c| c.into_owned());
 
@@ -963,7 +979,7 @@ pub(crate) fn make_test(
             use rustc_parse::parser::ForceCollect;
             use rustc_span::source_map::FilePathMapping;
 
-            let filename = FileName::anon_source_code(&s);
+            let filename = FileName::anon_source_code(&source_code);
             let source = format!("{crates}{everything_else}");
 
             // Any errors in parsing should also appear when the doctest is compiled for real, so just
@@ -1053,7 +1069,7 @@ pub(crate) fn make_test(
         // If the parser panicked due to a fatal error, pass the test code through unchanged.
         // The error will be reported during compilation.
         return DocTest {
-            test_code: s,
+            test_code: source_code,
             supports_color: false,
             main_fn_span: None,
             crate_attrs,
@@ -1081,7 +1097,8 @@ pub(crate) fn make_test(
     // https://github.com/rust-lang/rust/issues/56898
     if found_macro
         && main_fn_span.is_none()
-        && s.lines()
+        && source_code
+            .lines()
             .map(|line| {
                 let comment = line.find("//");
                 if let Some(comment_begins) = comment { &line[0..comment_begins] } else { line }
@@ -1092,7 +1109,7 @@ pub(crate) fn make_test(
     }
 
     DocTest {
-        test_code: s,
+        test_code: source_code,
         supports_color,
         main_fn_span,
         crate_attrs,
@@ -1677,20 +1694,20 @@ impl Tester for Collector {
         );
 
         debug!("creating test {name}: {test}");
-        let doctest = make_test(
-            test,
-            Some(crate_name),
+        let doctest = make_test(MakeTestArgs {
+            source_code: test,
+            crate_name: Some(crate_name),
             edition,
             name,
-            config,
+            lang_string: config,
             line,
             file,
-            Arc::clone(&self.rustdoc_test_options),
+            rustdoc_test_options: Arc::clone(&self.rustdoc_test_options),
             test_id,
-            &target_str,
+            target_str: &target_str,
             path,
             no_run,
-        );
+        });
         self.tests.add_doctest(
             doctest,
             &opts,
