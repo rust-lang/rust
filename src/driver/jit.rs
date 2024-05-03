@@ -83,13 +83,6 @@ fn create_jit_module(
     );
 
     crate::allocator::codegen(tcx, &mut jit_module, &mut cx.unwind_context);
-    crate::main_shim::maybe_create_entry_wrapper(
-        tcx,
-        &mut jit_module,
-        &mut cx.unwind_context,
-        true,
-        true,
-    );
 
     (jit_module, cx)
 }
@@ -152,6 +145,14 @@ pub(crate) fn run_jit(tcx: TyCtxt<'_>, backend_config: BackendConfig) -> ! {
     if !cx.global_asm.is_empty() {
         tcx.dcx().fatal("Inline asm is not supported in JIT mode");
     }
+
+    crate::main_shim::maybe_create_entry_wrapper(
+        tcx,
+        &mut jit_module,
+        &mut cx.unwind_context,
+        true,
+        true,
+    );
 
     tcx.dcx().abort_if_errors();
 
