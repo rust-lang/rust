@@ -1385,6 +1385,34 @@ impl<'a> IoSlice<'a> {
         IoSlice(sys::io::IoSlice::new(buf))
     }
 
+    /// Returns a copy of the wrapped slice.
+    ///
+    /// The lifetime of the slice is not bound to the `IoSlice` itself, instead it references the
+    /// wrapped slice itself. This is unlike the slice which can be obtained from the [`Deref`]
+    /// implementation, its lifetime is tied to the specific `IoSlice`. This makes `as_slice`
+    /// suitable for changing the length of the slice in-place.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(io_slice_as_slice)]
+    ///
+    /// use std::io::IoSlice;
+    ///
+    /// let data = [0, 1, 2, 3, 4];
+    /// let mut buf = IoSlice::new(&data);
+    ///
+    /// // Discard the first and last bytes
+    /// buf = IoSlice::new(buf.as_slice()[1..4]);
+    /// assert_eq!(buf.as_slice(), [1, 2, 3].as_ref());
+    /// ```
+    #[unstable(feature = "io_slice_as_slice", issue = "124659")]
+    #[must_use]
+    #[inline]
+    pub fn as_slice(&self) -> &'a [u8] {
+        self.0.as_slice()
+    }
+
     /// Advance the internal cursor of the slice.
     ///
     /// Also see [`IoSlice::advance_slices`] to advance the cursors of multiple
