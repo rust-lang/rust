@@ -28,7 +28,8 @@ pub(super) fn failed_to_match_macro<'cx>(
 ) -> Box<dyn MacResult + 'cx> {
     let psess = &cx.sess.psess;
 
-    // An error occurred, try the expansion again, tracking the expansion closely for better diagnostics.
+    // An error occurred, try the expansion again, tracking the expansion closely for better
+    // diagnostics.
     let mut tracker = CollectTrackerAndEmitter::new(cx, sp);
 
     let try_success_result = try_match_macro(psess, name, &arg, lhses, &mut tracker);
