@@ -553,7 +553,6 @@ dependencies = [
  "directories",
  "getrandom",
  "jemalloc-sys",
- "lazy_static",
  "libc",
  "libffi",
  "libloading",
