@@ -381,7 +381,7 @@ impl<'test> TestCx<'test> {
         // if a test does not crash, consider it an error
         if proc_res.status.success() || matches!(proc_res.status.code(), Some(1 | 0)) {
             self.fatal(&format!(
-                "test no longer crashes/triggers ICE! Please give it a mearningful name, \
+                "test no longer crashes/triggers ICE! Please give it a meaningful name, \
             add a doc-comment to the start of the test explaining why it exists and \
             move it to tests/ui or wherever you see fit."
             ));

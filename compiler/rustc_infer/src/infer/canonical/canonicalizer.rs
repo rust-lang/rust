@@ -456,17 +456,32 @@ impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'cx, 'tcx> {
     fn fold_const(&mut self, mut ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
         match ct.kind() {
             ty::ConstKind::Infer(InferConst::Var(mut vid)) => {
+                let Some(infcx) = self.infcx else {
+                    // FIXME(with_negative_coherence): the infcx has constraints from equating
+                    // the impl headers in `impl_intersection_has_negative_obligation`.
+                    // We should use these constraints as assumptions.
+                    assert!(self.tcx.features().with_negative_coherence);
+                    debug!("canonicalizing `ConstKind::Infer` without an `infcx`?");
+                    assert!(!self.canonicalize_mode.preserve_universes());
+                    return self.canonicalize_const_var(
+                        CanonicalVarInfo {
+                            kind: CanonicalVarKind::Const(ty::UniverseIndex::ROOT, ct.ty()),
+                        },
+                        ct,
+                    );
+                };
+
                 // We need to canonicalize the *root* of our const var.
                 // This is so that our canonical response correctly reflects
                 // any equated inference vars correctly!
-                let root_vid = self.infcx.unwrap().root_const_var(vid);
+                let root_vid = infcx.root_const_var(vid);
                 if root_vid != vid {
                     ct = ty::Const::new_var(self.tcx, root_vid, ct.ty());
                     vid = root_vid;
                 }
 
                 debug!("canonical: const var found with vid {:?}", vid);
-                match self.infcx.unwrap().probe_const_var(vid) {
+                match infcx.probe_const_var(vid) {
                     Ok(c) => {
                         debug!("(resolved to {:?})", c);
                         return self.fold_const(c);
@@ -487,7 +502,19 @@ impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'cx, 'tcx> {
                 }
             }
             ty::ConstKind::Infer(InferConst::EffectVar(vid)) => {
-                match self.infcx.unwrap().probe_effect_var(vid) {
+                let Some(infcx) = self.infcx else {
+                    // FIXME(with_negative_coherence): the infcx has constraints from equating
+                    // the impl headers in `impl_intersection_has_negative_obligation`.
+                    // We should use these constraints as assumptions.
+                    assert!(self.tcx.features().with_negative_coherence);
+                    debug!("canonicalizing `ConstKind::Infer` without an `infcx`?");
+                    return self.canonicalize_const_var(
+                        CanonicalVarInfo { kind: CanonicalVarKind::Effect },
+                        ct,
+                    );
+                };
+
+                match infcx.probe_effect_var(vid) {
                     Some(value) => return self.fold_const(value),
                     None => {
                         return self.canonicalize_const_var(
