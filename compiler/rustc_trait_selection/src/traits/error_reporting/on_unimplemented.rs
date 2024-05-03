@@ -498,12 +498,14 @@ impl<'tcx> OnUnimplementedDirective {
             }
 
             if is_diagnostic_namespace_variant {
-                tcx.emit_node_span_lint(
-                    UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                    tcx.local_def_id_to_hir_id(item_def_id.expect_local()),
-                    vec![item.span()],
-                    MalformedOnUnimplementedAttrLint::new(item.span()),
-                );
+                if let Some(def_id) = item_def_id.as_local() {
+                    tcx.emit_node_span_lint(
+                        UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+                        tcx.local_def_id_to_hir_id(def_id),
+                        vec![item.span()],
+                        MalformedOnUnimplementedAttrLint::new(item.span()),
+                    );
+                }
             } else {
                 // nothing found
                 tcx.dcx().emit_err(NoValueInOnUnimplemented { span: item.span() });
