@@ -261,6 +261,12 @@ macro_rules! impl_common_helpers {
                 }
                 output
             }
+
+            /// Set the path where the command will be run.
+            pub fn current_dir<P: AsRef<Path>>(&mut self, path: P) -> &mut Self {
+                self.cmd.current_dir(path);
+                self
+            }
         }
     };
 }
