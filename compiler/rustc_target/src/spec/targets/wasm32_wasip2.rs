@@ -55,7 +55,7 @@ pub fn target() -> Target {
     options.entry_name = "__main_void".into();
 
     Target {
-        llvm_target: "wasm32-unknown-unknown".into(),
+        llvm_target: "wasm32-wasip2".into(),
         metadata: crate::spec::TargetMetadata {
             description: None,
             tier: None,
