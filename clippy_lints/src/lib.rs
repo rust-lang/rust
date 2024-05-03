@@ -60,11 +60,6 @@ extern crate clippy_utils;
 #[macro_use]
 extern crate declare_clippy_lint;
 
-use std::collections::BTreeMap;
-
-use rustc_data_structures::fx::FxHashSet;
-use rustc_lint::{Lint, LintId};
-
 #[cfg(feature = "internal")]
 pub mod deprecated_lints;
 #[cfg_attr(feature = "internal", allow(clippy::missing_clippy_version_attribute))]
@@ -384,6 +379,10 @@ mod zero_sized_map_values;
 // end lints modules, do not remove this comment, it’s used in `update_lints`
 
 use clippy_config::{get_configuration_metadata, Conf};
+use clippy_utils::macros::FormatArgsStorage;
+use rustc_data_structures::fx::FxHashSet;
+use rustc_lint::{Lint, LintId};
+use std::collections::BTreeMap;
 
 /// Register all pre expansion lints
 ///
@@ -615,6 +614,14 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
         }
     }
 
+    let format_args_storage = FormatArgsStorage::default();
+    let format_args = format_args_storage.clone();
+    store.register_early_pass(move || {
+        Box::new(utils::format_args_collector::FormatArgsCollector::new(
+            format_args.clone(),
+        ))
+    });
+
     // all the internal lints
     #[cfg(feature = "internal")]
     {
@@ -655,7 +662,6 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
                 .collect(),
         ))
     });
-    store.register_early_pass(|| Box::<utils::format_args_collector::FormatArgsCollector>::default());
     store.register_late_pass(|_| Box::new(utils::dump_hir::DumpHir));
     store.register_late_pass(|_| Box::new(utils::author::Author));
     store.register_late_pass(move |_| {
@@ -697,6 +703,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(|_| Box::new(non_octal_unix_permissions::NonOctalUnixPermissions));
     store.register_early_pass(|| Box::new(unnecessary_self_imports::UnnecessarySelfImports));
     store.register_late_pass(move |_| Box::new(approx_const::ApproxConstant::new(msrv())));
+    let format_args = format_args_storage.clone();
     store.register_late_pass(move |_| {
         Box::new(methods::Methods::new(
             avoid_breaking_exported_api,
@@ -704,6 +711,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
             allow_expect_in_tests,
             allow_unwrap_in_tests,
             allowed_dotfiles.clone(),
+            format_args.clone(),
         ))
     });
     store.register_late_pass(move |_| Box::new(matches::Matches::new(msrv())));
@@ -768,7 +776,8 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(|_| Box::<regex::Regex>::default());
     store.register_late_pass(move |_| Box::new(copies::CopyAndPaste::new(ignore_interior_mutability.clone())));
     store.register_late_pass(|_| Box::new(copy_iterator::CopyIterator));
-    store.register_late_pass(|_| Box::new(format::UselessFormat));
+    let format_args = format_args_storage.clone();
+    store.register_late_pass(move |_| Box::new(format::UselessFormat::new(format_args.clone())));
     store.register_late_pass(|_| Box::new(swap::Swap));
     store.register_late_pass(|_| Box::new(overflow_check_conditional::OverflowCheckConditional));
     store.register_late_pass(|_| Box::<new_without_default::NewWithoutDefault>::default());
@@ -792,7 +801,8 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(|_| Box::new(partialeq_ne_impl::PartialEqNeImpl));
     store.register_late_pass(|_| Box::new(unused_io_amount::UnusedIoAmount));
     store.register_late_pass(move |_| Box::new(large_enum_variant::LargeEnumVariant::new(enum_variant_size_threshold)));
-    store.register_late_pass(|_| Box::new(explicit_write::ExplicitWrite));
+    let format_args = format_args_storage.clone();
+    store.register_late_pass(move |_| Box::new(explicit_write::ExplicitWrite::new(format_args.clone())));
     store.register_late_pass(|_| Box::new(needless_pass_by_value::NeedlessPassByValue));
     store.register_late_pass(move |tcx| {
         Box::new(pass_by_ref_or_value::PassByRefOrValue::new(
@@ -834,7 +844,8 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(move |_| Box::new(mut_key::MutableKeyType::new(ignore_interior_mutability.clone())));
     store.register_early_pass(|| Box::new(reference::DerefAddrOf));
     store.register_early_pass(|| Box::new(double_parens::DoubleParens));
-    store.register_late_pass(|_| Box::new(format_impl::FormatImpl::new()));
+    let format_args = format_args_storage.clone();
+    store.register_late_pass(move |_| Box::new(format_impl::FormatImpl::new(format_args.clone())));
     store.register_early_pass(|| Box::new(unsafe_removed_from_name::UnsafeNameRemoval));
     store.register_early_pass(|| Box::new(else_if_without_else::ElseIfWithoutElse));
     store.register_early_pass(|| Box::new(int_plus_one::IntPlusOne));
@@ -960,8 +971,14 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
             accept_comment_above_attributes,
         ))
     });
-    store
-        .register_late_pass(move |_| Box::new(format_args::FormatArgs::new(msrv(), allow_mixed_uninlined_format_args)));
+    let format_args = format_args_storage.clone();
+    store.register_late_pass(move |_| {
+        Box::new(format_args::FormatArgs::new(
+            format_args.clone(),
+            msrv(),
+            allow_mixed_uninlined_format_args,
+        ))
+    });
     store.register_late_pass(|_| Box::new(trailing_empty_array::TrailingEmptyArray));
     store.register_early_pass(|| Box::new(octal_escapes::OctalEscapes));
     store.register_late_pass(|_| Box::new(needless_late_init::NeedlessLateInit));
@@ -972,7 +989,8 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(|_| Box::new(default_union_representation::DefaultUnionRepresentation));
     store.register_late_pass(|_| Box::<only_used_in_recursion::OnlyUsedInRecursion>::default());
     store.register_late_pass(move |_| Box::new(dbg_macro::DbgMacro::new(allow_dbg_in_tests)));
-    store.register_late_pass(move |_| Box::new(write::Write::new(allow_print_in_tests)));
+    let format_args = format_args_storage.clone();
+    store.register_late_pass(move |_| Box::new(write::Write::new(format_args.clone(), allow_print_in_tests)));
     store.register_late_pass(move |_| {
         Box::new(cargo::Cargo {
             ignore_publish: cargo_ignore_publish,

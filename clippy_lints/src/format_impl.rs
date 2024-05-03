@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg};
-use clippy_utils::macros::{find_format_arg_expr, find_format_args, is_format_macro, root_macro_call_first_node};
+use clippy_utils::macros::{find_format_arg_expr, is_format_macro, root_macro_call_first_node, FormatArgsStorage};
 use clippy_utils::{get_parent_as_impl, is_diag_trait_item, path_to_local, peel_ref_operators};
 use rustc_ast::{FormatArgsPiece, FormatTrait};
 use rustc_errors::Applicability;
@@ -99,13 +99,15 @@ struct FormatTraitNames {
 
 #[derive(Default)]
 pub struct FormatImpl {
+    format_args: FormatArgsStorage,
     // Whether we are inside Display or Debug trait impl - None for neither
     format_trait_impl: Option<FormatTraitNames>,
 }
 
 impl FormatImpl {
-    pub fn new() -> Self {
+    pub fn new(format_args: FormatArgsStorage) -> Self {
         Self {
+            format_args,
             format_trait_impl: None,
         }
     }
@@ -129,6 +131,7 @@ impl<'tcx> LateLintPass<'tcx> for FormatImpl {
         if let Some(format_trait_impl) = self.format_trait_impl {
             let linter = FormatImplExpr {
                 cx,
+                format_args: &self.format_args,
                 expr,
                 format_trait_impl,
             };
@@ -141,6 +144,7 @@ impl<'tcx> LateLintPass<'tcx> for FormatImpl {
 
 struct FormatImplExpr<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
+    format_args: &'a FormatArgsStorage,
     expr: &'tcx Expr<'tcx>,
     format_trait_impl: FormatTraitNames,
 }
@@ -175,7 +179,7 @@ impl<'a, 'tcx> FormatImplExpr<'a, 'tcx> {
         if let Some(outer_macro) = root_macro_call_first_node(self.cx, self.expr)
             && let macro_def_id = outer_macro.def_id
             && is_format_macro(self.cx, macro_def_id)
-            && let Some(format_args) = find_format_args(self.cx, self.expr, outer_macro.expn)
+            && let Some(format_args) = self.format_args.get(self.cx, self.expr, outer_macro.expn)
         {
             for piece in &format_args.template {
                 if let FormatArgsPiece::Placeholder(placeholder) = piece

@@ -1,4 +1,4 @@
-use clippy_utils::macros::AST_FORMAT_ARGS;
+use clippy_utils::macros::FormatArgsStorage;
 use clippy_utils::source::snippet_opt;
 use itertools::Itertools;
 use rustc_ast::{Crate, Expr, ExprKind, FormatArgs};
@@ -9,13 +9,20 @@ use rustc_session::impl_lint_pass;
 use rustc_span::{hygiene, Span};
 use std::iter::once;
 use std::mem;
-use std::rc::Rc;
 
-/// Collects [`rustc_ast::FormatArgs`] so that future late passes can call
-/// [`clippy_utils::macros::find_format_args`]
-#[derive(Default)]
+/// Populates [`FormatArgsStorage`] with AST [`FormatArgs`] nodes
 pub struct FormatArgsCollector {
-    format_args: FxHashMap<Span, Rc<FormatArgs>>,
+    format_args: FxHashMap<Span, FormatArgs>,
+    storage: FormatArgsStorage,
+}
+
+impl FormatArgsCollector {
+    pub fn new(storage: FormatArgsStorage) -> Self {
+        Self {
+            format_args: FxHashMap::default(),
+            storage,
+        }
+    }
 }
 
 impl_lint_pass!(FormatArgsCollector => []);
@@ -27,16 +34,12 @@ impl EarlyLintPass for FormatArgsCollector {
                 return;
             }
 
-            self.format_args
-                .insert(expr.span.with_parent(None), Rc::new((**args).clone()));
+            self.format_args.insert(expr.span.with_parent(None), (**args).clone());
         }
     }
 
     fn check_crate_post(&mut self, _: &EarlyContext<'_>, _: &Crate) {
-        AST_FORMAT_ARGS.with(|ast_format_args| {
-            let result = ast_format_args.set(mem::take(&mut self.format_args));
-            debug_assert!(result.is_ok());
-        });
+        self.storage.set(mem::take(&mut self.format_args));
     }
 }
 
