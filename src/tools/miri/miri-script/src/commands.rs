@@ -162,7 +162,7 @@ impl Command {
             Command::Build { flags } => Self::build(flags),
             Command::Check { flags } => Self::check(flags),
             Command::Test { bless, flags } => Self::test(bless, flags),
-            Command::Run { dep, flags } => Self::run(dep, flags),
+            Command::Run { dep, verbose, flags } => Self::run(dep, verbose, flags),
             Command::Fmt { flags } => Self::fmt(flags),
             Command::Clippy { flags } => Self::clippy(flags),
             Command::Cargo { flags } => Self::cargo(flags),
@@ -495,7 +495,7 @@ impl Command {
         Ok(())
     }
 
-    fn run(dep: bool, mut flags: Vec<OsString>) -> Result<()> {
+    fn run(dep: bool, verbose: bool, mut flags: Vec<OsString>) -> Result<()> {
         let mut e = MiriEnv::new()?;
         // Scan for "--target" to overwrite the "MIRI_TEST_TARGET" env var so
         // that we set the MIRI_SYSROOT up the right way. We must make sure that
@@ -522,7 +522,7 @@ impl Command {
         }
 
         // Prepare a sysroot, and add it to the flags.
-        let miri_sysroot = e.build_miri_sysroot(/* quiet */ true)?;
+        let miri_sysroot = e.build_miri_sysroot(/* quiet */ !verbose)?;
         flags.push("--sysroot".into());
         flags.push(miri_sysroot.into());
 
@@ -532,17 +532,20 @@ impl Command {
         let miri_flags = flagsplit(&miri_flags);
         let toolchain = &e.toolchain;
         let extra_flags = &e.cargo_extra_flags;
-        if dep {
+        let quiet_flag = if verbose { None } else { Some("--quiet") };
+        let mut cmd = if dep {
             cmd!(
                 e.sh,
-                "cargo +{toolchain} --quiet test {extra_flags...} --manifest-path {miri_manifest} --test ui -- --miri-run-dep-mode {miri_flags...} {flags...}"
-            ).quiet().run()?;
+                "cargo +{toolchain} {quiet_flag...} test {extra_flags...} --manifest-path {miri_manifest} --test ui -- --miri-run-dep-mode {miri_flags...} {flags...}"
+            )
         } else {
             cmd!(
                 e.sh,
-                "cargo +{toolchain} --quiet run {extra_flags...} --manifest-path {miri_manifest} -- {miri_flags...} {flags...}"
-            ).quiet().run()?;
-        }
+                "cargo +{toolchain} {quiet_flag...} run {extra_flags...} --manifest-path {miri_manifest} -- {miri_flags...} {flags...}"
+            )
+        };
+        cmd.set_quiet(!verbose);
+        cmd.run()?;
         Ok(())
     }
 

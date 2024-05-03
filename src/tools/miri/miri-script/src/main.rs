@@ -38,6 +38,7 @@ pub enum Command {
     /// (Also respects MIRIFLAGS environment variable.)
     Run {
         dep: bool,
+        verbose: bool,
         /// Flags that are passed through to `miri`.
         flags: Vec<OsString>,
     },
@@ -90,7 +91,7 @@ Just check miri. <flags> are passed to `cargo check`.
 Build miri, set up a sysroot and then run the test suite. <flags> are passed
 to the final `cargo test` invocation.
 
-./miri run [--dep] <flags>:
+./miri run [--dep] [-v|--verbose] <flags>:
 Build miri, set up a sysroot and then run the driver with the given <flags>.
 (Also respects MIRIFLAGS environment variable.)
 
@@ -132,10 +133,10 @@ Pull and merge Miri changes from the rustc repo. Defaults to fetching the latest
 rustc commit. The fetched commit is stored in the `rust-version` file, so the
 next `./miri toolchain` will install the rustc that just got pulled.
 
-./miri rustc-push <github user> <branch>:
+./miri rustc-push <github user> [<branch>]:
 Push Miri changes back to the rustc repo. This will pull a copy of the rustc
 history into the Miri repo, unless you set the RUSTC_GIT env var to an existing
-clone of the rustc repo.
+clone of the rustc repo. The branch defaults to `miri-sync`.
 
   ENVIRONMENT VARIABLES
 
@@ -162,12 +163,18 @@ fn main() -> Result<()> {
             Command::Test { bless, flags: args.collect() }
         }
         Some("run") => {
-            let dep = args.peek().is_some_and(|a| a.to_str() == Some("--dep"));
-            if dep {
-                // Consume the flag.
+            let mut dep = false;
+            let mut verbose = false;
+            while let Some(arg) = args.peek().and_then(|a| a.to_str()) {
+                match arg {
+                    "--dep" => dep = true,
+                    "-v" | "--verbose" => verbose = true,
+                    _ => break, // not for us
+                }
+                // Consume the flag, look at the next one.
                 args.next().unwrap();
             }
-            Command::Run { dep, flags: args.collect() }
+            Command::Run { dep, verbose, flags: args.collect() }
         }
         Some("fmt") => Command::Fmt { flags: args.collect() },
         Some("clippy") => Command::Clippy { flags: args.collect() },
@@ -187,17 +194,12 @@ fn main() -> Result<()> {
             let github_user = args
                 .next()
                 .ok_or_else(|| {
-                    anyhow!("Missing first argument for `./miri rustc-push GITHUB_USER BRANCH`")
+                    anyhow!("Missing first argument for `./miri rustc-push GITHUB_USER [BRANCH]`")
                 })?
                 .to_string_lossy()
                 .into_owned();
-            let branch = args
-                .next()
-                .ok_or_else(|| {
-                    anyhow!("Missing second argument for `./miri rustc-push GITHUB_USER BRANCH`")
-                })?
-                .to_string_lossy()
-                .into_owned();
+            let branch =
+                args.next().unwrap_or_else(|| "miri-sync".into()).to_string_lossy().into_owned();
             if args.next().is_some() {
                 bail!("Too many arguments for `./miri rustc-push GITHUB_USER BRANCH`");
             }
