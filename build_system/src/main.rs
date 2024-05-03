@@ -5,6 +5,7 @@ mod build;
 mod clean;
 mod clone_gcc;
 mod config;
+mod fmt;
 mod info;
 mod prepare;
 mod rust_tools;
@@ -41,7 +42,8 @@ Commands:
         build     : Compiles the project. 
         test      : Runs tests for the project.
         info      : Displays information about the build environment and project configuration.
-        clone-gcc : Clones the GCC compiler from a specified source."
+        clone-gcc : Clones the GCC compiler from a specified source.
+        fmt       : Runs rustfmt"
     );
 }
 
@@ -54,6 +56,7 @@ pub enum Command {
     Rustc,
     Test,
     Info,
+    Fmt,
 }
 
 fn main() {
@@ -70,6 +73,7 @@ fn main() {
         Some("test") => Command::Test,
         Some("info") => Command::Info,
         Some("clone-gcc") => Command::CloneGcc,
+        Some("fmt") => Command::Fmt,
         Some("--help") => {
             usage();
             process::exit(0);
@@ -91,6 +95,7 @@ fn main() {
         Command::Test => test::run(),
         Command::Info => info::run(),
         Command::CloneGcc => clone_gcc::run(),
+        Command::Fmt => fmt::run(),
     } {
         eprintln!("Command failed to run: {e}");
         process::exit(1);
