@@ -101,10 +101,18 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
     # It seems that it cannot be the same as $IMAGE_TAG, otherwise it overwrites the cache
     CACHE_IMAGE_TAG=${REGISTRY}/${REGISTRY_USERNAME}/rust-ci-cache:${cksum}
 
-    # On non-CI jobs, we don't do any caching.
+    # On non-CI jobs, we try to download a pre-built image from the rust-lang-ci
+    # ghcr.io registry. If it is not possible, we fall back to building the image
+    # locally.
     if ! isCI;
     then
-        retry docker build --rm -t rust-ci -f "$dockerfile" "$context"
+        if docker pull "${IMAGE_TAG}"; then
+            echo "Downloaded Docker image from CI"
+            docker tag "${IMAGE_TAG}" rust-ci
+        else
+            echo "Building local Docker image"
+            retry docker build --rm -t rust-ci -f "$dockerfile" "$context"
+        fi
     # On PR CI jobs, we don't have permissions to write to the registry cache,
     # but we can still read from it.
     elif [[ "$PR_CI_JOB" == "1" ]];
