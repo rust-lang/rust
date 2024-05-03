@@ -568,11 +568,8 @@ fn construct_const<'a, 'tcx>(
             ..
         }) => (*span, ty.span),
         Node::AnonConst(ct) => (ct.span, ct.span),
-        Node::ConstBlock(_) => {
-            let span = tcx.def_span(def);
-            (span, span)
-        }
-        _ => span_bug!(tcx.def_span(def), "can't build MIR for {:?}", def),
+        Node::Expr(&hir::Expr { span, kind: hir::ExprKind::ConstBlock(_), .. }) => (span, span),
+        node => span_bug!(tcx.def_span(def), "can't build MIR for {def:?}: {node:#?}"),
     };
 
     let infcx = tcx.infer_ctxt().build();

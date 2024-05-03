@@ -74,14 +74,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
             let kind = match &e.kind {
                 ExprKind::Array(exprs) => hir::ExprKind::Array(self.lower_exprs(exprs)),
-                ExprKind::ConstBlock(c) => {
-                    let c = self.with_new_scopes(c.value.span, |this| hir::ConstBlock {
-                        def_id: this.local_def_id(c.id),
-                        hir_id: this.lower_node_id(c.id),
-                        body: this.lower_const_body(c.value.span, Some(&c.value)),
-                    });
-                    hir::ExprKind::ConstBlock(c)
-                }
+                ExprKind::ConstBlock(c) => hir::ExprKind::ConstBlock(self.lower_expr(c)),
                 ExprKind::Repeat(expr, count) => {
                     let expr = self.lower_expr(expr);
                     let count = self.lower_array_length(count);

@@ -206,12 +206,7 @@ fn _11() {
             let _ = ();
             ()
         };
-    let const {
-                    #![rustc_dummy]
-                } =
-        #[rustc_dummy] const {
-                #![rustc_dummy]
-            };
+    let const {} = #[rustc_dummy] const {};
     let mut x = 0;
     let _ = (#[rustc_dummy] x) = 15;
     let _ = (#[rustc_dummy] x) += 15;
