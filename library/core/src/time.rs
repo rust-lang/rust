@@ -1062,14 +1062,13 @@ impl Duration {
     ///
     /// # Examples
     /// ```
-    /// #![feature(div_duration)]
     /// use std::time::Duration;
     ///
     /// let dur1 = Duration::new(2, 700_000_000);
     /// let dur2 = Duration::new(5, 400_000_000);
     /// assert_eq!(dur1.div_duration_f64(dur2), 0.5);
     /// ```
-    #[unstable(feature = "div_duration", issue = "63139")]
+    #[stable(feature = "div_duration", since = "1.80.0")]
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[inline]
@@ -1082,14 +1081,13 @@ impl Duration {
     ///
     /// # Examples
     /// ```
-    /// #![feature(div_duration)]
     /// use std::time::Duration;
     ///
     /// let dur1 = Duration::new(2, 700_000_000);
     /// let dur2 = Duration::new(5, 400_000_000);
     /// assert_eq!(dur1.div_duration_f32(dur2), 0.5);
     /// ```
-    #[unstable(feature = "div_duration", issue = "63139")]
+    #[stable(feature = "div_duration", since = "1.80.0")]
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[inline]

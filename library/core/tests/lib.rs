@@ -29,7 +29,6 @@
 #![feature(core_private_bignum)]
 #![feature(core_private_diy_float)]
 #![feature(dec2flt)]
-#![feature(div_duration)]
 #![feature(duration_abs_diff)]
 #![feature(duration_consts_float)]
 #![feature(duration_constants)]
