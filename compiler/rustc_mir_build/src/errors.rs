@@ -802,22 +802,6 @@ pub struct NonEmptyNeverPattern<'tcx> {
     pub ty: Ty<'tcx>,
 }
 
-#[derive(LintDiagnostic)]
-#[diag(mir_build_indirect_structural_match)]
-#[note(mir_build_type_not_structural_tip)]
-#[note(mir_build_type_not_structural_more_info)]
-pub struct IndirectStructuralMatch<'tcx> {
-    pub non_sm_ty: Ty<'tcx>,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(mir_build_nontrivial_structural_match)]
-#[note(mir_build_type_not_structural_tip)]
-#[note(mir_build_type_not_structural_more_info)]
-pub struct NontrivialStructuralMatch<'tcx> {
-    pub non_sm_ty: Ty<'tcx>,
-}
-
 #[derive(Diagnostic)]
 #[diag(mir_build_exceeds_mcdc_condition_num_limit)]
 pub(crate) struct MCDCExceedsConditionNumLimit {

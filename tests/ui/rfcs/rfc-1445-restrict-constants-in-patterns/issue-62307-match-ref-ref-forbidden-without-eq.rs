@@ -10,8 +10,6 @@
 
 // Issue 62307 pointed out a case where the structural-match checking
 // was too shallow.
-#![warn(indirect_structural_match)]
-//@ run-pass
 
 #[derive(Debug)]
 struct B(i32);
@@ -29,15 +27,13 @@ fn main() {
 
     match RR_B0 {
         RR_B1 => { println!("CLAIM RR0: {:?} matches {:?}", RR_B1, RR_B0); }
-        //~^ WARN must be annotated with `#[derive(PartialEq)]`
-        //~| WARN this was previously accepted
+        //~^ ERROR must be annotated with `#[derive(PartialEq)]`
         _ => { }
     }
 
     match RR_B1 {
         RR_B1 => { println!("CLAIM RR1: {:?} matches {:?}", RR_B1, RR_B1); }
-        //~^ WARN must be annotated with `#[derive(PartialEq)]`
-        //~| WARN this was previously accepted
+        //~^ ERROR must be annotated with `#[derive(PartialEq)]`
         _ => { }
     }
 }

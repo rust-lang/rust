@@ -1,5 +1,3 @@
-#![warn(indirect_structural_match)]
-
 struct NoEq;
 
 enum Foo {

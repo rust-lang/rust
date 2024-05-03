@@ -1,7 +1,5 @@
 //@ run-pass
 
-#![warn(indirect_structural_match)]
-
 struct CustomEq;
 
 impl Eq for CustomEq {}

@@ -1,5 +1,5 @@
 error: to use a constant of type `CustomEq` in a pattern, `CustomEq` must be annotated with `#[derive(PartialEq)]`
-  --> $DIR/cross-crate-fail.rs:13:9
+  --> $DIR/cross-crate-fail.rs:11:9
    |
 LL |         consts::SOME => panic!(),
    |         ^^^^^^^^^^^^
@@ -8,7 +8,7 @@ LL |         consts::SOME => panic!(),
    = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralPartialEq.html for details
 
 error: to use a constant of type `CustomEq` in a pattern, `CustomEq` must be annotated with `#[derive(PartialEq)]`
-  --> $DIR/cross-crate-fail.rs:20:9
+  --> $DIR/cross-crate-fail.rs:18:9
    |
 LL |         <Defaulted as consts::AssocConst>::SOME  => panic!(),
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
