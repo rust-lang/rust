@@ -2578,8 +2578,7 @@ extern "rust-intrinsic" {
 ///
 /// Currently such an assertion would always succeed; until Rust decides
 /// otherwise, that principle should not be violated.
-#[rustc_const_unstable(feature = "const_eval_select", issue = "none")]
-#[unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_const_unstable(feature = "const_eval_select", issue = "124625")]
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
 pub const fn const_eval_select<ARG: Tuple, F, G, RET>(
