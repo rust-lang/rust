@@ -10,14 +10,10 @@ allow-unauthenticated = [
 # Gives us the commands 'ready', 'author', 'blocked'
 [shortcut]
 
-# Gives us 'claim', 'release-assignment', 'assign @user'
+# Enables assigning users to issues and PRs.
 [assign]
-# If set, posts a warning message if the PR is opened against a non-default
-# branch (usually main or master).
 warn_non_default_branch = true
-# If set, the welcome message to new contributors will include this link to
-# a contributing guide.
-contributing_url = "https://rustc-dev-guide.rust-lang.org/contributing.html"
+contributing_url = "https://github.com/rust-lang/miri/blob/master/CONTRIBUTING.md"
 
 [no-merges]
 exclude_titles = ["Rustup"]
