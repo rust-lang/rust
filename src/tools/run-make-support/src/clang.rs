@@ -70,4 +70,9 @@ impl Clang {
         self.cmd.arg(format!("-fuse-ld={ld}"));
         self
     }
+
+    /// Get the [`Output`][::std::process::Output] of the finished process.
+    pub fn output(&mut self) -> ::std::process::Output {
+        self.cmd.output().expect("failed to get output of finished process")
+    }
 }

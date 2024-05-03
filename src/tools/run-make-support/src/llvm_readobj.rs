@@ -41,4 +41,10 @@ impl LlvmReadobj {
         self.cmd.arg("--file-header");
         self
     }
+
+    /// Get the [`Output`][::std::process::Output] of the finished process.
+    #[track_caller]
+    pub fn output(&mut self) -> ::std::process::Output {
+        self.cmd.output().expect("failed to get output of finished process")
+    }
 }
