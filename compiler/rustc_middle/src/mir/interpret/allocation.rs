@@ -29,9 +29,7 @@ use provenance_map::*;
 pub use init_mask::{InitChunk, InitChunkIter};
 
 /// Functionality required for the bytes of an `Allocation`.
-pub trait AllocBytes:
-    Clone + fmt::Debug + Eq + PartialEq + Hash + Deref<Target = [u8]> + DerefMut<Target = [u8]>
-{
+pub trait AllocBytes: Clone + fmt::Debug + Deref<Target = [u8]> + DerefMut<Target = [u8]> {
     /// Create an `AllocBytes` from a slice of `u8`.
     fn from_bytes<'a>(slice: impl Into<Cow<'a, [u8]>>, _align: Align) -> Self;
 
