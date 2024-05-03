@@ -2399,26 +2399,51 @@ impl Display for bool {
 impl Debug for str {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         f.write_char('"')?;
-        let mut from = 0;
-        for (i, c) in self.char_indices() {
-            // a fast path for ASCII chars that do not need escapes:
-            if matches!(c, ' '..='~') && !matches!(c, '\\' | '\"') {
-                continue;
-            }
 
-            let esc = c.escape_debug_ext(EscapeDebugExtArgs {
-                escape_grapheme_extended: true,
-                escape_single_quote: false,
-                escape_double_quote: true,
-            });
-            // If char needs escaping, flush backlog so far and write, else skip
-            if esc.len() != 1 {
-                f.write_str(&self[from..i])?;
-                Display::fmt(&esc, f)?;
-                from = i + c.len_utf8();
+        // substring we know is printable
+        let mut printable_range = 0..0;
+
+        fn needs_escape(b: u8) -> bool {
+            b > 0x7E || b < 0x20 || b == b'\\' || b == b'"'
+        }
+
+        // the outer loop here splits the string into chunks of printable ASCII, which is just skipped over,
+        // and chunks of other chars (unicode, or ASCII that needs escaping), which is handler per-`char`.
+        let mut rest = self.as_bytes();
+        while rest.len() > 0 {
+            let Some(non_printable_start) = rest.iter().position(|&b| needs_escape(b)) else {
+                printable_range.end += rest.len();
+                break;
+            };
+
+            printable_range.end += non_printable_start;
+            // SAFETY: the position was derived from an iterator, so is known to be within bounds, and at a char boundary
+            rest = unsafe { rest.get_unchecked(non_printable_start..) };
+
+            let printable_start = rest.iter().position(|&b| !needs_escape(b)).unwrap_or(rest.len());
+            let prefix;
+            // SAFETY: the position was derived from an iterator, so is known to be within bounds, and at a char boundary
+            (prefix, rest) = unsafe { rest.split_at_unchecked(printable_start) };
+            // SAFETY: prefix is a valid utf8 sequence, and at a char boundary
+            let prefix = unsafe { crate::str::from_utf8_unchecked(prefix) };
+
+            for c in prefix.chars() {
+                let esc = c.escape_debug_ext(EscapeDebugExtArgs {
+                    escape_grapheme_extended: true,
+                    escape_single_quote: false,
+                    escape_double_quote: true,
+                });
+                if esc.len() != 1 {
+                    f.write_str(&self[printable_range.clone()])?;
+                    Display::fmt(&esc, f)?;
+                    printable_range.start = printable_range.end + c.len_utf8();
+                }
+                printable_range.end += c.len_utf8();
             }
         }
-        f.write_str(&self[from..])?;
+
+        f.write_str(&self[printable_range])?;
+
         f.write_char('"')
     }
 }
