@@ -1776,7 +1776,7 @@ impl Config {
 
     pub fn lens(&self) -> LensConfig {
         LensConfig {
-            run: *self.lens_run_enable(),
+            run: *self.lens_enable() && *self.lens_run_enable(),
             debug: *self.lens_enable() && *self.lens_debug_enable(),
             interpret: *self.lens_enable() && *self.lens_run_enable() && *self.interpret_tests(),
             implementations: *self.lens_enable() && *self.lens_implementations_enable(),
