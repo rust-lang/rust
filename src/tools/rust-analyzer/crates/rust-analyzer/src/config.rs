@@ -690,7 +690,7 @@ pub struct Config {
     root_ratoml: Option<GlobalLocalConfigInput>,
 
     /// For every `SourceRoot` there can be at most one RATOML file.
-    ratoml_files: FxHashMap<SourceRootId, GlobalLocalConfigInput>,
+    ratoml_files: FxHashMap<SourceRootId, LocalConfigInput>,
 
     /// Clone of the value that is stored inside a `GlobalState`.
     source_root_parent_map: Arc<FxHashMap<SourceRootId, SourceRootId>>,
@@ -761,7 +761,7 @@ impl Config {
                     if let Ok(change) = toml::from_str(&text) {
                         config.ratoml_files.insert(
                             source_root_id,
-                            GlobalLocalConfigInput::from_toml(change, &mut toml_errors),
+                            LocalConfigInput::from_toml(&change, &mut toml_errors),
                         );
                     }
                 }
@@ -2476,9 +2476,15 @@ macro_rules! _impl_for_config_data {
                     while let Some(source_root_id) = par {
                         par = self.source_root_parent_map.get(&source_root_id).copied();
                         if let Some(config) = self.ratoml_files.get(&source_root_id) {
-                            if let Some(value) = config.local.$field.as_ref() {
+                            if let Some(value) = config.$field.as_ref() {
                                 return value;
                             }
+                        }
+                    }
+
+                    if let Some(root_path_ratoml) = self.root_ratoml.as_ref() {
+                        if let Some(v) = root_path_ratoml.local.$field.as_ref() {
+                            return &v;
                         }
                     }
 
@@ -2612,7 +2618,7 @@ macro_rules! _config_data {
                 )*}
             }
 
-            fn from_toml(toml: &mut toml::Table, error_sink: &mut Vec<(String, toml::de::Error)>) -> Self {
+            fn from_toml(toml: &toml::Table, error_sink: &mut Vec<(String, toml::de::Error)>) -> Self {
                 Self {$(
                     $field: get_field_toml::<$ty>(
                         toml,
@@ -2681,7 +2687,6 @@ impl FullConfigInput {
         GlobalConfigInput::schema_fields(&mut fields);
         LocalConfigInput::schema_fields(&mut fields);
         ClientConfigInput::schema_fields(&mut fields);
-        // HACK: sort the fields, so the diffs on the generated docs/schema are smaller
         fields.sort_by_key(|&(x, ..)| x);
         fields
     }
@@ -2707,12 +2712,12 @@ struct GlobalLocalConfigInput {
 
 impl GlobalLocalConfigInput {
     fn from_toml(
-        mut toml: toml::Table,
+        toml: toml::Table,
         error_sink: &mut Vec<(String, toml::de::Error)>,
     ) -> GlobalLocalConfigInput {
         GlobalLocalConfigInput {
-            global: GlobalConfigInput::from_toml(&mut toml, error_sink),
-            local: LocalConfigInput::from_toml(&mut toml, error_sink),
+            global: GlobalConfigInput::from_toml(&toml, error_sink),
+            local: LocalConfigInput::from_toml(&toml, error_sink),
         }
     }
 }
@@ -2730,14 +2735,11 @@ fn get_field_toml<T: DeserializeOwned>(
             let subkeys = field.split('_');
             let mut v = val;
             for subkey in subkeys {
-                if let Some(val) = v.get(subkey) {
-                    if let Some(map) = val.as_table() {
-                        v = map;
-                    } else {
-                        return Some(toml::Value::try_into(val.clone()).map_err(|e| (e, v)));
-                    }
+                let val = v.get(subkey)?;
+                if let Some(map) = val.as_table() {
+                    v = map;
                 } else {
-                    return None;
+                    return Some(toml::Value::try_into(val.clone()).map_err(|e| (e, v)));
                 }
             }
             None
