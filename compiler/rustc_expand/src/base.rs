@@ -21,7 +21,7 @@ use rustc_session::config::CollapseMacroDebuginfo;
 use rustc_session::{parse::ParseSess, Limit, Session};
 use rustc_span::def_id::{CrateNum, DefId, LocalDefId};
 use rustc_span::edition::Edition;
-use rustc_span::hygiene::{AstPass, ExpnData, ExpnKind, LocalExpnId};
+use rustc_span::hygiene::{AstPass, ExpnData, ExpnKind, LocalExpnId, MacroKind};
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{FileName, Span, DUMMY_SP};
@@ -31,8 +31,6 @@ use std::iter;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use thin_vec::ThinVec;
-
-pub(crate) use rustc_span::hygiene::MacroKind;
 
 // When adding new variants, make sure to
 // adjust the `visit_*` / `flat_map_*` calls in `InvocationCollector`
@@ -573,35 +571,6 @@ impl DummyResult {
             tokens: None,
         })
     }
-
-    /// A plain dummy pattern.
-    pub fn raw_pat(sp: Span) -> ast::Pat {
-        ast::Pat { id: ast::DUMMY_NODE_ID, kind: PatKind::Wild, span: sp, tokens: None }
-    }
-
-    /// A plain dummy type.
-    pub fn raw_ty(sp: Span) -> P<ast::Ty> {
-        // FIXME(nnethercote): you might expect `ast::TyKind::Dummy` to be used here, but some
-        // values produced here end up being lowered to HIR, which `ast::TyKind::Dummy` does not
-        // support, so we use an empty tuple instead.
-        P(ast::Ty {
-            id: ast::DUMMY_NODE_ID,
-            kind: ast::TyKind::Tup(ThinVec::new()),
-            span: sp,
-            tokens: None,
-        })
-    }
-
-    /// A plain dummy crate.
-    pub fn raw_crate() -> ast::Crate {
-        ast::Crate {
-            attrs: Default::default(),
-            items: Default::default(),
-            spans: Default::default(),
-            id: ast::DUMMY_NODE_ID,
-            is_placeholder: Default::default(),
-        }
-    }
 }
 
 impl MacResult for DummyResult {
@@ -610,7 +579,12 @@ impl MacResult for DummyResult {
     }
 
     fn make_pat(self: Box<DummyResult>) -> Option<P<ast::Pat>> {
-        Some(P(DummyResult::raw_pat(self.span)))
+        Some(P(ast::Pat {
+            id: ast::DUMMY_NODE_ID,
+            kind: PatKind::Wild,
+            span: self.span,
+            tokens: None,
+        }))
     }
 
     fn make_items(self: Box<DummyResult>) -> Option<SmallVec<[P<ast::Item>; 1]>> {
@@ -638,7 +612,15 @@ impl MacResult for DummyResult {
     }
 
     fn make_ty(self: Box<DummyResult>) -> Option<P<ast::Ty>> {
-        Some(DummyResult::raw_ty(self.span))
+        // FIXME(nnethercote): you might expect `ast::TyKind::Dummy` to be used here, but some
+        // values produced here end up being lowered to HIR, which `ast::TyKind::Dummy` does not
+        // support, so we use an empty tuple instead.
+        Some(P(ast::Ty {
+            id: ast::DUMMY_NODE_ID,
+            kind: ast::TyKind::Tup(ThinVec::new()),
+            span: self.span,
+            tokens: None,
+        }))
     }
 
     fn make_arms(self: Box<DummyResult>) -> Option<SmallVec<[ast::Arm; 1]>> {
@@ -670,7 +652,13 @@ impl MacResult for DummyResult {
     }
 
     fn make_crate(self: Box<DummyResult>) -> Option<ast::Crate> {
-        Some(DummyResult::raw_crate())
+        Some(ast::Crate {
+            attrs: Default::default(),
+            items: Default::default(),
+            spans: Default::default(),
+            id: ast::DUMMY_NODE_ID,
+            is_placeholder: Default::default(),
+        })
     }
 }
 

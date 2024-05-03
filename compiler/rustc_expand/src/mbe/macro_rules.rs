@@ -157,8 +157,8 @@ pub(super) trait Tracker<'matcher> {
     /// This is called before trying to match next MatcherLoc on the current token.
     fn before_match_loc(&mut self, _parser: &TtParser, _matcher: &'matcher MatcherLoc) {}
 
-    /// This is called after an arm has been parsed, either successfully or unsuccessfully. When this is called,
-    /// `before_match_loc` was called at least once (with a `MatcherLoc::Eof`).
+    /// This is called after an arm has been parsed, either successfully or unsuccessfully. When
+    /// this is called, `before_match_loc` was called at least once (with a `MatcherLoc::Eof`).
     fn after_arm(&mut self, _result: &NamedParseResult<Self::Failure>) {}
 
     /// For tracing.
@@ -169,7 +169,8 @@ pub(super) trait Tracker<'matcher> {
     }
 }
 
-/// A noop tracker that is used in the hot path of the expansion, has zero overhead thanks to monomorphization.
+/// A noop tracker that is used in the hot path of the expansion, has zero overhead thanks to
+/// monomorphization.
 pub(super) struct NoopTracker;
 
 impl<'matcher> Tracker<'matcher> for NoopTracker {
@@ -492,7 +493,7 @@ pub fn compile_declarative_macro(
                     .pop()
                     .unwrap();
                     // We don't handle errors here, the driver will abort
-                    // after parsing/expansion. we can report every error in every macro this way.
+                    // after parsing/expansion. We can report every error in every macro this way.
                     check_emission(check_lhs_nt_follows(sess, def, &tt));
                     return tt;
                 }
@@ -528,7 +529,7 @@ pub fn compile_declarative_macro(
         check_emission(check_rhs(sess, rhs));
     }
 
-    // don't abort iteration early, so that errors for multiple lhses can be reported
+    // Don't abort iteration early, so that errors for multiple lhses can be reported.
     for lhs in &lhses {
         check_emission(check_lhs_no_empty_seq(sess, slice::from_ref(lhs)));
     }
