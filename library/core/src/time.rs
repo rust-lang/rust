@@ -1437,10 +1437,10 @@ impl TryFromFloatSecsError {
     const fn description(&self) -> &'static str {
         match self.kind {
             TryFromFloatSecsErrorKind::Negative => {
-                "can not convert float seconds to Duration: value is negative"
+                "cannot convert float seconds to Duration: value is negative"
             }
             TryFromFloatSecsErrorKind::OverflowOrNan => {
-                "can not convert float seconds to Duration: value is either too big or NaN"
+                "cannot convert float seconds to Duration: value is either too big or NaN"
             }
         }
     }
