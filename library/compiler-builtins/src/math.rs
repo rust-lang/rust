@@ -9,7 +9,6 @@ macro_rules! no_mangle {
     ($(fn $fun:ident($($iid:ident : $ity:ty),+) -> $oty:ty;)+) => {
         intrinsics! {
             $(
-                #[cfg_attr(all(not(windows), not(target_vendor = "apple")), weak)]
                 pub extern "C" fn $fun($($iid: $ity),+) -> $oty {
                     self::libm::$fun($($iid),+)
                 }
@@ -94,14 +93,12 @@ no_mangle! {
 }
 
 intrinsics! {
-    #[cfg_attr(all(not(windows), not(target_vendor = "apple")), weak)]
     pub extern "C" fn lgamma_r(x: f64, s: &mut i32) -> f64 {
         let r = self::libm::lgamma_r(x);
         *s = r.1;
         r.0
     }
 
-    #[cfg_attr(all(not(windows), not(target_vendor = "apple")), weak)]
     pub extern "C" fn lgammaf_r(x: f32, s: &mut i32) -> f32 {
         let r = self::libm::lgammaf_r(x);
         *s = r.1;
