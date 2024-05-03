@@ -74,13 +74,13 @@ class GitHubCtx:
 def get_custom_jobs(ctx: GitHubCtx) -> List[str]:
     """
     Tries to parse names of specific CI jobs that should be executed in the form of
-    ci-job: <job-name>
+    try-job: <job-name>
     from the commit message of the passed GitHub context.
     """
     if ctx.commit_message is None:
         return []
 
-    regex = re.compile(r"^ci-job: (.*)", re.MULTILINE)
+    regex = re.compile(r"^try-job: (.*)", re.MULTILINE)
     jobs = []
     for match in regex.finditer(ctx.commit_message):
         jobs.append(match.group(1))
@@ -120,16 +120,20 @@ def calculate_jobs(run_type: WorkflowRunType, job_data: Dict[str, Any]) -> List[
         if custom_jobs:
             if len(custom_jobs) > 10:
                 raise Exception(
-                    f"It is only possible to schedule up to 10 custom jobs,"
+                    f"It is only possible to schedule up to 10 custom jobs, "
                     f"received {len(custom_jobs)} jobs"
                 )
 
             jobs = []
+            unknown_jobs = []
             for custom_job in custom_jobs:
                 job = [j for j in job_data["auto"] if j["image"] == custom_job]
                 if not job:
-                    raise Exception(f"Custom job `{custom_job}` not found in auto jobs")
+                    unknown_jobs.append(custom_job)
+                    continue
                 jobs.append(job[0])
+            if unknown_jobs:
+                raise Exception(f"Custom job(s) `{unknown_jobs}` not found in auto jobs")
 
         return add_base_env(name_jobs(jobs, "try"), job_data["envs"]["try"])
     elif run_type is AutoRunType:
