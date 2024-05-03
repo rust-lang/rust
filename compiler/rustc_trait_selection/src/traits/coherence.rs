@@ -6,12 +6,9 @@
 
 use crate::infer::outlives::env::OutlivesEnvironment;
 use crate::infer::InferOk;
-use crate::regions::InferCtxtRegionExt;
 use crate::solve::inspect::{InspectGoal, ProofTreeInferCtxtExt, ProofTreeVisitor};
-use crate::solve::{deeply_normalize_for_diagnostics, inspect, FulfillmentCtxt};
-use crate::traits::engine::TraitEngineExt as _;
+use crate::solve::{deeply_normalize_for_diagnostics, inspect};
 use crate::traits::select::IntercrateAmbiguityCause;
-use crate::traits::structural_normalize::StructurallyNormalizeExt;
 use crate::traits::NormalizeExt;
 use crate::traits::SkipLeakCheck;
 use crate::traits::{
@@ -22,7 +19,7 @@ use rustc_errors::{Diag, EmissionGuarantee};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, TyCtxtInferExt};
-use rustc_infer::traits::{util, FulfillmentErrorCode, TraitEngine, TraitEngineExt};
+use rustc_infer::traits::{util, FulfillmentErrorCode};
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::solve::{CandidateSource, Certainty, Goal};
 use rustc_middle::traits::specialization_graph::OverlapMode;
@@ -35,6 +32,7 @@ use std::fmt::Debug;
 use std::ops::ControlFlow;
 
 use super::error_reporting::suggest_new_overflow_limit;
+use super::ObligationCtxt;
 
 /// Whether we do the orphan check relative to this crate or to some remote crate.
 #[derive(Copy, Clone, Debug)]
@@ -361,23 +359,27 @@ fn impl_intersection_has_impossible_obligation<'a, 'cx, 'tcx>(
     let infcx = selcx.infcx;
 
     if infcx.next_trait_solver() {
-        let mut fulfill_cx = FulfillmentCtxt::new(infcx);
-        fulfill_cx.register_predicate_obligations(infcx, obligations.iter().cloned());
-
+        let ocx = ObligationCtxt::new(infcx);
+        ocx.register_obligations(obligations.iter().cloned());
+        let errors_and_ambiguities = ocx.select_all_or_error();
         // We only care about the obligations that are *definitely* true errors.
         // Ambiguities do not prove the disjointness of two impls.
-        let errors = fulfill_cx.select_where_possible(infcx);
+        let (errors, ambiguities): (Vec<_>, Vec<_>) =
+            errors_and_ambiguities.into_iter().partition(|error| error.is_true_error());
+
         if errors.is_empty() {
-            let overflow_errors = fulfill_cx.collect_remaining_errors(infcx);
-            let overflowing_predicates = overflow_errors
-                .into_iter()
-                .filter(|e| match e.code {
-                    FulfillmentErrorCode::Ambiguity { overflow: Some(true) } => true,
-                    _ => false,
-                })
-                .map(|e| infcx.resolve_vars_if_possible(e.obligation.predicate))
-                .collect();
-            IntersectionHasImpossibleObligations::No { overflowing_predicates }
+            IntersectionHasImpossibleObligations::No {
+                overflowing_predicates: ambiguities
+                    .into_iter()
+                    .filter(|error| {
+                        matches!(
+                            error.code,
+                            FulfillmentErrorCode::Ambiguity { overflow: Some(true) }
+                        )
+                    })
+                    .map(|e| infcx.resolve_vars_if_possible(e.obligation.predicate))
+                    .collect(),
+            }
         } else {
             IntersectionHasImpossibleObligations::Yes
         }
@@ -589,13 +591,14 @@ fn try_prove_negated_where_clause<'tcx>(
     // Without this, we over-eagerly register coherence ambiguity candidates when
     // impl candidates do exist.
     let ref infcx = root_infcx.fork_with_intercrate(false);
-    let mut fulfill_cx = FulfillmentCtxt::new(infcx);
-
-    fulfill_cx.register_predicate_obligation(
-        infcx,
-        Obligation::new(infcx.tcx, ObligationCause::dummy(), param_env, negative_predicate),
-    );
-    if !fulfill_cx.select_all_or_error(infcx).is_empty() {
+    let ocx = ObligationCtxt::new(infcx);
+    ocx.register_obligation(Obligation::new(
+        infcx.tcx,
+        ObligationCause::dummy(),
+        param_env,
+        negative_predicate,
+    ));
+    if !ocx.select_all_or_error().is_empty() {
         return false;
     }
 
@@ -603,8 +606,7 @@ fn try_prove_negated_where_clause<'tcx>(
     // if that wasn't implemented just for LocalDefId, and we'd need to do
     // the normalization ourselves since this is totally fallible...
     let outlives_env = OutlivesEnvironment::new(param_env);
-
-    let errors = infcx.resolve_regions(&outlives_env);
+    let errors = ocx.resolve_regions(&outlives_env);
     if !errors.is_empty() {
         return false;
     }
@@ -1129,22 +1131,17 @@ impl<'a, 'tcx> ProofTreeVisitor<'tcx> for AmbiguityCausesVisitor<'a, 'tcx> {
                 result: Ok(_),
             } = cand.kind()
             {
-                let lazily_normalize_ty = |ty: Ty<'tcx>| {
-                    let mut fulfill_cx = <dyn TraitEngine<'tcx>>::new(infcx);
+                let lazily_normalize_ty = |mut ty: Ty<'tcx>| {
                     if matches!(ty.kind(), ty::Alias(..)) {
-                        // FIXME(-Znext-solver=coherence): we currently don't
-                        // normalize opaque types here, resulting in diverging behavior
-                        // for TAITs.
-                        match infcx
-                            .at(&ObligationCause::dummy(), param_env)
-                            .structurally_normalize(ty, &mut *fulfill_cx)
-                        {
-                            Ok(ty) => Ok(ty),
-                            Err(_errs) => Err(()),
+                        let ocx = ObligationCtxt::new(infcx);
+                        ty = ocx
+                            .structurally_normalize(&ObligationCause::dummy(), param_env, ty)
+                            .map_err(|_| ())?;
+                        if !ocx.select_where_possible().is_empty() {
+                            return Err(());
                         }
-                    } else {
-                        Ok(ty)
                     }
+                    Ok(ty)
                 };
 
                 infcx.probe(|_| {

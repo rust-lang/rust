@@ -14,7 +14,6 @@ use rustc_ast_ir::visit::VisitorResult;
 use rustc_infer::infer::resolve::EagerResolver;
 use rustc_infer::infer::type_variable::TypeVariableOrigin;
 use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, InferOk};
-use rustc_infer::traits::{TraitEngine, TraitEngineExt};
 use rustc_macros::extension;
 use rustc_middle::infer::unify_key::ConstVariableOrigin;
 use rustc_middle::traits::query::NoSolution;
@@ -26,9 +25,9 @@ use rustc_middle::ty::TypeFoldable;
 use rustc_span::{Span, DUMMY_SP};
 
 use crate::solve::eval_ctxt::canonical;
-use crate::solve::FulfillmentCtxt;
 use crate::solve::{EvalCtxt, GoalEvaluationKind, GoalSource};
 use crate::solve::{GenerateProofTree, InferCtxtEvalExt};
+use crate::traits::ObligationCtxt;
 
 pub struct InspectConfig {
     pub max_depth: usize,
@@ -74,14 +73,13 @@ impl<'tcx> NormalizesToTermHack<'tcx> {
             .eq(DefineOpaqueTypes::Yes, self.term, self.unconstrained_term)
             .map_err(|_| NoSolution)
             .and_then(|InferOk { value: (), obligations }| {
-                let mut fulfill_cx = FulfillmentCtxt::new(infcx);
-                fulfill_cx.register_predicate_obligations(infcx, obligations);
-                if fulfill_cx.select_where_possible(infcx).is_empty() {
-                    if fulfill_cx.pending_obligations().is_empty() {
-                        Ok(Certainty::Yes)
-                    } else {
-                        Ok(Certainty::AMBIGUOUS)
-                    }
+                let ocx = ObligationCtxt::new(infcx);
+                ocx.register_obligations(obligations);
+                let errors = ocx.select_all_or_error();
+                if errors.is_empty() {
+                    Ok(Certainty::Yes)
+                } else if errors.iter().all(|e| !e.is_true_error()) {
+                    Ok(Certainty::AMBIGUOUS)
                 } else {
                     Err(NoSolution)
                 }
