@@ -121,6 +121,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "annotate-snippets"
+version = "0.11.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5a5a59f105fb9635e9eebdc1e29d53e764fa5795b9cf899a638a53e61567ef61"
+dependencies = [
+ "anstyle",
+ "unicode-width",
+]
+
+[[package]]
 name = "ansi_term"
 version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -574,7 +584,7 @@ checksum = "98cc8fbded0c607b7ba9dd60cd98df59af97e84d24e49c8557331cfc26d301ce"
 
 [[package]]
 name = "clippy"
-version = "0.1.79"
+version = "0.1.80"
 dependencies = [
  "anstream",
  "clippy_config",
@@ -595,13 +605,13 @@ dependencies = [
  "termize",
  "tokio",
  "toml 0.7.8",
- "ui_test 0.22.3",
+ "ui_test 0.23.0",
  "walkdir",
 ]
 
 [[package]]
 name = "clippy_config"
-version = "0.1.79"
+version = "0.1.80"
 dependencies = [
  "rustc-semver",
  "serde",
@@ -624,7 +634,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_lints"
-version = "0.1.79"
+version = "0.1.80"
 dependencies = [
  "arrayvec",
  "cargo_metadata 0.18.1",
@@ -649,7 +659,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_utils"
-version = "0.1.79"
+version = "0.1.80"
 dependencies = [
  "arrayvec",
  "clippy_config",
@@ -760,11 +770,9 @@ dependencies = [
  "glob",
  "home",
  "indexmap",
- "lazycell",
  "libc",
  "miow",
  "miropt-test-tools",
- "once_cell",
  "regex",
  "rustfix 0.8.1",
  "serde",
@@ -970,7 +978,7 @@ checksum = "a0afaad2b26fa326569eb264b1363e8ae3357618c43982b3f285f0774ce76b69"
 
 [[package]]
 name = "declare_clippy_lint"
-version = "0.1.79"
+version = "0.1.80"
 dependencies = [
  "itertools 0.12.1",
  "quote",
@@ -1254,14 +1262,6 @@ name = "error_index_generator"
 version = "0.0.0"
 dependencies = [
  "mdbook",
-]
-
-[[package]]
-name = "expand-yaml-anchors"
-version = "0.1.0"
-dependencies = [
- "yaml-merge-keys",
- "yaml-rust",
 ]
 
 [[package]]
@@ -2115,7 +2115,6 @@ dependencies = [
  "fs-err",
  "getopts",
  "jsonpath_lib",
- "once_cell",
  "regex",
  "serde_json",
  "shlex",
@@ -2150,12 +2149,6 @@ name = "lazy_static"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
-
-[[package]]
-name = "lazycell"
-version = "1.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "830d08ce1d1d941e6b30645f1a0eb5643013d835ce3779a5fc208261dbe10f55"
 
 [[package]]
 name = "leb128"
@@ -2240,15 +2233,8 @@ name = "linkchecker"
 version = "0.1.0"
 dependencies = [
  "html5ever",
- "once_cell",
  "regex",
 ]
-
-[[package]]
-name = "linked-hash-map"
-version = "0.5.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0717cef1bc8b636c6e1c1bbdefc09e6322da8a9321966e8928ef80d20f7f770f"
 
 [[package]]
 name = "lint-docs"
@@ -2499,7 +2485,6 @@ dependencies = [
  "directories",
  "getrandom",
  "jemalloc-sys",
- "lazy_static",
  "libc",
  "libffi",
  "libloading",
@@ -3343,6 +3328,7 @@ dependencies = [
 name = "run_make_support"
 version = "0.0.0"
 dependencies = [
+ "gimli",
  "object 0.34.0",
  "regex",
  "similar",
@@ -4799,12 +4785,10 @@ dependencies = [
  "arrayvec",
  "askama",
  "base64",
- "byteorder",
  "expect-test",
  "indexmap",
  "itertools 0.12.1",
  "minifier",
- "once_cell",
  "regex",
  "rustdoc-json-types",
  "serde",
@@ -5186,9 +5170,9 @@ dependencies = [
 
 [[package]]
 name = "spanned"
-version = "0.1.6"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ad48ded9f0734eca7058107cc170767b8758e41e4088fb0020e7ff7ec6b0d92d"
+checksum = "ccdf4f5590b7e6fbd4f2e80d442789079a6fff7c12ef921a9de358b7b353098e"
 dependencies = [
  "bstr",
  "color-eyre",
@@ -5359,7 +5343,6 @@ version = "0.1.0"
 dependencies = [
  "build_helper",
  "glob",
- "once_cell",
 ]
 
 [[package]]
@@ -5604,7 +5587,6 @@ version = "0.1.0"
 dependencies = [
  "cargo_metadata 0.15.4",
  "ignore",
- "lazy_static",
  "miropt-test-tools",
  "regex",
  "rustc-hash",
@@ -5928,11 +5910,11 @@ dependencies = [
 
 [[package]]
 name = "ui_test"
-version = "0.22.3"
+version = "0.23.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aa577a42db0e211a73c069d7dbcae54bc7473a7c5535a564842cbd8a13c0441e"
+checksum = "29e5f4ffcbab82453958fbf59990e981b8e8a177dcd60c2bd8f9b52c3036a6e1"
 dependencies = [
- "annotate-snippets 0.10.2",
+ "annotate-snippets 0.11.2",
  "anyhow",
  "bstr",
  "cargo-platform",
@@ -5947,7 +5929,7 @@ dependencies = [
  "prettydiff",
  "regex",
  "rustc_version",
- "rustfix 0.6.1",
+ "rustfix 0.8.1",
  "serde",
  "serde_json",
  "spanned",
@@ -6553,26 +6535,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "388c44dc09d76f1536602ead6d325eb532f5c122f17782bd57fb47baeeb767e2"
 dependencies = [
  "lzma-sys",
-]
-
-[[package]]
-name = "yaml-merge-keys"
-version = "0.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fd236a7dc9bb598f349fe4a8754f49181fee50284daa15cd1ba652d722280004"
-dependencies = [
- "lazy_static",
- "thiserror",
- "yaml-rust",
-]
-
-[[package]]
-name = "yaml-rust"
-version = "0.4.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "56c1936c4cc7a1c9ab21a1ebb602eb942ba868cbd44a99cb7cdc5892335e1c85"
-dependencies = [
- "linked-hash-map",
 ]
 
 [[package]]

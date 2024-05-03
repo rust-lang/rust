@@ -11,6 +11,7 @@ use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::HirId;
+use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_span::def_id::LocalDefIdMap;
 use rustc_span::symbol::Ident;
 use rustc_span::{Span, Symbol};
@@ -423,7 +424,7 @@ pub fn analyze_coroutine_closure_captures<'a, 'tcx: 'a, T>(
     mut for_each: impl FnMut((usize, &'a CapturedPlace<'tcx>), (usize, &'a CapturedPlace<'tcx>)) -> T,
 ) -> impl Iterator<Item = T> + Captures<'a> + Captures<'tcx> {
     std::iter::from_coroutine(
-        #[cfg_attr(not(bootstrap), coroutine)]
+        #[coroutine]
         move || {
             let mut child_captures = child_captures.into_iter().enumerate().peekable();
 

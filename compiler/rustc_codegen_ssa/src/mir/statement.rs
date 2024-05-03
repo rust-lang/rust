@@ -1,5 +1,5 @@
-use rustc_middle::mir;
-use rustc_middle::mir::NonDivergingIntrinsic;
+use rustc_middle::mir::{self, NonDivergingIntrinsic};
+use rustc_middle::span_bug;
 use rustc_session::config::OptLevel;
 
 use super::FunctionCx;

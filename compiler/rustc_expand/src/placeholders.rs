@@ -9,7 +9,7 @@ use rustc_span::DUMMY_SP;
 use smallvec::{smallvec, SmallVec};
 use thin_vec::ThinVec;
 
-pub fn placeholder(
+pub(crate) fn placeholder(
     kind: AstFragmentKind,
     id: ast::NodeId,
     vis: Option<ast::Visibility>,
@@ -271,14 +271,14 @@ impl MutVisitor for PlaceholderExpander {
     fn flat_map_trait_item(&mut self, item: P<ast::AssocItem>) -> SmallVec<[P<ast::AssocItem>; 1]> {
         match item.kind {
             ast::AssocItemKind::MacCall(_) => self.remove(item.id).make_trait_items(),
-            _ => noop_flat_map_assoc_item(item, self),
+            _ => noop_flat_map_item(item, self),
         }
     }
 
     fn flat_map_impl_item(&mut self, item: P<ast::AssocItem>) -> SmallVec<[P<ast::AssocItem>; 1]> {
         match item.kind {
             ast::AssocItemKind::MacCall(_) => self.remove(item.id).make_impl_items(),
-            _ => noop_flat_map_assoc_item(item, self),
+            _ => noop_flat_map_item(item, self),
         }
     }
 
@@ -288,7 +288,7 @@ impl MutVisitor for PlaceholderExpander {
     ) -> SmallVec<[P<ast::ForeignItem>; 1]> {
         match item.kind {
             ast::ForeignItemKind::MacCall(_) => self.remove(item.id).make_foreign_items(),
-            _ => noop_flat_map_foreign_item(item, self),
+            _ => noop_flat_map_item(item, self),
         }
     }
 

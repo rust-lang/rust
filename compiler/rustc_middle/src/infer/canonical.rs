@@ -23,7 +23,7 @@
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lock;
-use rustc_macros::HashStable;
+use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_type_ir::Canonical as IrCanonical;
 use rustc_type_ir::CanonicalVarInfo as IrCanonicalVarInfo;
 pub use rustc_type_ir::{CanonicalTyVarKind, CanonicalVarKind};

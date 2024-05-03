@@ -1,5 +1,5 @@
 error[E0080]: evaluation of constant value failed
-  --> $DIR/const_fn_target_feature.rs:10:24
+  --> $DIR/const_fn_target_feature.rs:11:24
    |
 LL | const B: () = unsafe { avx2_fn() };
    |                        ^^^^^^^^^ calling a function that requires unavailable target features: avx2

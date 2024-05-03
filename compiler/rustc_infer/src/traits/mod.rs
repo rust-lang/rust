@@ -113,7 +113,7 @@ impl<'tcx> PolyTraitObligation<'tcx> {
 
 // `PredicateObligation` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(target_pointer_width = "64")]
-static_assert_size!(PredicateObligation<'_>, 48);
+rustc_data_structures::static_assert_size!(PredicateObligation<'_>, 48);
 
 pub type PredicateObligations<'tcx> = Vec<PredicateObligation<'tcx>>;
 
@@ -205,6 +205,18 @@ impl<'tcx> FulfillmentError<'tcx> {
         root_obligation: PredicateObligation<'tcx>,
     ) -> FulfillmentError<'tcx> {
         FulfillmentError { obligation, code, root_obligation }
+    }
+
+    pub fn is_true_error(&self) -> bool {
+        match self.code {
+            FulfillmentErrorCode::SelectionError(_)
+            | FulfillmentErrorCode::ProjectionError(_)
+            | FulfillmentErrorCode::SubtypeError(_, _)
+            | FulfillmentErrorCode::ConstEquateError(_, _) => true,
+            FulfillmentErrorCode::Cycle(_) | FulfillmentErrorCode::Ambiguity { overflow: _ } => {
+                false
+            }
+        }
     }
 }
 

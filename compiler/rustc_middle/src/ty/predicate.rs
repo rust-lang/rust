@@ -3,6 +3,7 @@ use rustc_data_structures::intern::Interned;
 use rustc_errors::{DiagArgValue, IntoDiagArg};
 use rustc_hir::def_id::DefId;
 use rustc_hir::LangItem;
+use rustc_macros::{HashStable, Lift, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_span::Span;
 use rustc_type_ir::ClauseKind as IrClauseKind;
 use rustc_type_ir::PredicateKind as IrPredicateKind;

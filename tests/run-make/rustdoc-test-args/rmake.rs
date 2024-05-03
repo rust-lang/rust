@@ -1,5 +1,3 @@
-extern crate run_make_support;
-
 use run_make_support::{rustdoc, tmp_dir};
 use std::path::Path;
 use std::{fs, iter};

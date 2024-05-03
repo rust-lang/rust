@@ -8,11 +8,13 @@ use rustc_ast::token::{self, Token, TokenKind};
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast_pretty::pprust;
 use rustc_errors::{Applicability, Diag, DiagCtxt, DiagMessage};
+use rustc_macros::Subdiagnostic;
 use rustc_parse::parser::{Parser, Recovery};
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::Ident;
 use rustc_span::{ErrorGuaranteed, Span};
 use std::borrow::Cow;
+use tracing::debug;
 
 use super::macro_rules::{parser_from_cx, NoopTracker};
 
@@ -26,7 +28,8 @@ pub(super) fn failed_to_match_macro<'cx>(
 ) -> Box<dyn MacResult + 'cx> {
     let psess = &cx.sess.psess;
 
-    // An error occurred, try the expansion again, tracking the expansion closely for better diagnostics.
+    // An error occurred, try the expansion again, tracking the expansion closely for better
+    // diagnostics.
     let mut tracker = CollectTrackerAndEmitter::new(cx, sp);
 
     let try_success_result = try_match_macro(psess, name, &arg, lhses, &mut tracker);

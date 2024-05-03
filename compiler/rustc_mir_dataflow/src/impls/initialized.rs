@@ -1,5 +1,6 @@
 use rustc_index::bit_set::{BitSet, ChunkedBitSet};
 use rustc_index::Idx;
+use rustc_middle::bug;
 use rustc_middle::mir::{self, Body, CallReturnPlaces, Location, TerminatorEdges};
 use rustc_middle::ty::{self, TyCtxt};
 

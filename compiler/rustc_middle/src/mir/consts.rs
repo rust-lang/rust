@@ -1,6 +1,7 @@
 use std::fmt::{self, Debug, Display, Formatter};
 
 use rustc_hir::def_id::DefId;
+use rustc_macros::{HashStable, Lift, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_session::{config::RemapPathScopeComponents, RemapFileNameExt};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{HasDataLayout, Size};
@@ -71,7 +72,7 @@ pub enum ConstValue<'tcx> {
 }
 
 #[cfg(target_pointer_width = "64")]
-static_assert_size!(ConstValue<'_>, 24);
+rustc_data_structures::static_assert_size!(ConstValue<'_>, 24);
 
 impl<'tcx> ConstValue<'tcx> {
     #[inline]

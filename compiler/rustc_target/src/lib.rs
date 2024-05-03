@@ -20,12 +20,6 @@
 
 use std::path::{Path, PathBuf};
 
-#[macro_use]
-extern crate rustc_macros;
-
-#[macro_use]
-extern crate tracing;
-
 pub mod abi;
 pub mod asm;
 pub mod json;

@@ -8,14 +8,10 @@
 #[cfg(feature = "nightly")]
 extern crate self as rustc_type_ir;
 
-#[macro_use]
-extern crate bitflags;
-#[cfg(feature = "nightly")]
-#[macro_use]
-extern crate rustc_macros;
-
 #[cfg(feature = "nightly")]
 use rustc_data_structures::sync::Lrc;
+#[cfg(feature = "nightly")]
+use rustc_macros::{Decodable, Encodable, HashStable_NoContext};
 use std::fmt;
 use std::hash::Hash;
 #[cfg(not(feature = "nightly"))]

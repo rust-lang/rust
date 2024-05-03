@@ -6,7 +6,7 @@ use rustc_apfloat::{
     ieee::{Double, Half, Quad, Single},
     Float,
 };
-use rustc_macros::HashStable;
+use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_target::abi::{HasDataLayout, Size};
 
 use crate::ty::ScalarInt;
@@ -38,7 +38,7 @@ pub enum Scalar<Prov = CtfeProvenance> {
 }
 
 #[cfg(target_pointer_width = "64")]
-static_assert_size!(Scalar, 24);
+rustc_data_structures::static_assert_size!(Scalar, 24);
 
 // We want the `Debug` output to be readable as it is used by `derive(Debug)` for
 // all the Miri types.

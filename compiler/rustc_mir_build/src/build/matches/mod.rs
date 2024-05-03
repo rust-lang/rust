@@ -73,14 +73,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let expr_span = expr.span;
 
         match expr.kind {
-            ExprKind::LogicalOp { op: LogicalOp::And, lhs, rhs } => {
-                this.visit_coverage_branch_operation(LogicalOp::And, expr_span);
+            ExprKind::LogicalOp { op: op @ LogicalOp::And, lhs, rhs } => {
+                this.visit_coverage_branch_operation(op, expr_span);
                 let lhs_then_block = unpack!(this.then_else_break_inner(block, lhs, args));
                 let rhs_then_block = unpack!(this.then_else_break_inner(lhs_then_block, rhs, args));
                 rhs_then_block.unit()
             }
-            ExprKind::LogicalOp { op: LogicalOp::Or, lhs, rhs } => {
-                this.visit_coverage_branch_operation(LogicalOp::Or, expr_span);
+            ExprKind::LogicalOp { op: op @ LogicalOp::Or, lhs, rhs } => {
+                this.visit_coverage_branch_operation(op, expr_span);
                 let local_scope = this.local_scope();
                 let (lhs_success_block, failure_block) =
                     this.in_if_then_scope(local_scope, expr_span, |this| {
@@ -148,8 +148,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let mut block = block;
                 let temp_scope = args.temp_scope_override.unwrap_or_else(|| this.local_scope());
                 let mutability = Mutability::Mut;
+
+                // Increment the decision depth, in case we encounter boolean expressions
+                // further down.
+                this.mcdc_increment_depth_if_enabled();
                 let place =
                     unpack!(block = this.as_temp(block, Some(temp_scope), expr_id, mutability));
+                this.mcdc_decrement_depth_if_enabled();
+
                 let operand = Operand::Move(Place::from(place));
 
                 let then_block = this.cfg.start_new_block();

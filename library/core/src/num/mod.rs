@@ -67,7 +67,7 @@ pub use error::ParseIntError;
 )]
 pub use nonzero::ZeroablePrimitive;
 
-#[stable(feature = "generic_nonzero", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "generic_nonzero", since = "1.79.0")]
 pub use nonzero::NonZero;
 
 #[stable(feature = "signed_nonzero", since = "1.34.0")]

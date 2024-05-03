@@ -1,40 +1,32 @@
+use clippy_config::msrvs::Msrv;
 use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::macros::matching_root_macro_call;
 use clippy_utils::source::snippet;
 use clippy_utils::visitors::{for_each_expr, is_local_used};
 use clippy_utils::{in_constant, path_to_local};
 use rustc_ast::{BorrowKind, LitKind};
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::{Arm, BinOpKind, Expr, ExprKind, MatchSource, Node, Pat, PatKind, UnOp};
+use rustc_hir::{Arm, BinOpKind, Expr, ExprKind, MatchSource, Node, PatKind, UnOp};
 use rustc_lint::LateContext;
 use rustc_span::symbol::Ident;
-use rustc_span::{Span, Symbol};
+use rustc_span::{sym, Span, Symbol};
 use std::borrow::Cow;
 use std::ops::ControlFlow;
 
-use super::REDUNDANT_GUARDS;
+use super::{pat_contains_disallowed_or, REDUNDANT_GUARDS};
 
-pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'tcx>]) {
+pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'tcx>], msrv: &Msrv) {
     for outer_arm in arms {
         let Some(guard) = outer_arm.guard else {
             continue;
         };
 
         // `Some(x) if matches!(x, y)`
-        if let ExprKind::Match(
-            scrutinee,
-            [
-                arm,
-                Arm {
-                    pat: Pat {
-                        kind: PatKind::Wild, ..
-                    },
-                    ..
-                },
-            ],
-            MatchSource::Normal,
-        ) = guard.kind
+        if let ExprKind::Match(scrutinee, [arm, _], MatchSource::Normal) = guard.kind
+            && matching_root_macro_call(cx, guard.span, sym::matches_macro).is_some()
             && let Some(binding) = get_pat_binding(cx, scrutinee, outer_arm)
+            && !pat_contains_disallowed_or(arm.pat, msrv)
         {
             let pat_span = match (arm.pat.kind, binding.byref_ident) {
                 (PatKind::Ref(pat, _), Some(_)) => pat.span,
@@ -53,6 +45,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'tcx>]) {
         // `Some(x) if let Some(2) = x`
         else if let ExprKind::Let(let_expr) = guard.kind
             && let Some(binding) = get_pat_binding(cx, let_expr.init, outer_arm)
+            && !pat_contains_disallowed_or(let_expr.pat, msrv)
         {
             let pat_span = match (let_expr.pat.kind, binding.byref_ident) {
                 (PatKind::Ref(pat, _), Some(_)) => pat.span,

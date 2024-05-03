@@ -1,15 +1,14 @@
 use clippy_utils::diagnostics::{span_lint_and_note, span_lint_and_then};
 use clippy_utils::source::{first_line_of_span, indent_of, reindent_multiline, snippet, snippet_opt};
-use clippy_utils::ty::{is_interior_mut_ty, needs_ordered_drop};
+use clippy_utils::ty::{needs_ordered_drop, InteriorMut};
 use clippy_utils::visitors::for_each_expr;
 use clippy_utils::{
-    capture_local_usage, def_path_def_ids, eq_expr_value, find_binding_init, get_enclosing_block, hash_expr, hash_stmt,
-    if_sequence, is_else_clause, is_lint_allowed, path_to_local, search_same, ContainsName, HirEqInterExpr, SpanlessEq,
+    capture_local_usage, eq_expr_value, find_binding_init, get_enclosing_block, hash_expr, hash_stmt, if_sequence,
+    is_else_clause, is_lint_allowed, path_to_local, search_same, ContainsName, HirEqInterExpr, SpanlessEq,
 };
 use core::iter;
 use core::ops::ControlFlow;
 use rustc_errors::Applicability;
-use rustc_hir::def_id::DefIdSet;
 use rustc_hir::{intravisit, BinOpKind, Block, Expr, ExprKind, HirId, HirIdSet, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
@@ -159,40 +158,36 @@ declare_clippy_lint! {
     "`if` statement with shared code in all blocks"
 }
 
-pub struct CopyAndPaste {
+pub struct CopyAndPaste<'tcx> {
     ignore_interior_mutability: Vec<String>,
-    ignored_ty_ids: DefIdSet,
+    interior_mut: InteriorMut<'tcx>,
 }
 
-impl CopyAndPaste {
+impl CopyAndPaste<'_> {
     pub fn new(ignore_interior_mutability: Vec<String>) -> Self {
         Self {
             ignore_interior_mutability,
-            ignored_ty_ids: DefIdSet::new(),
+            interior_mut: InteriorMut::default(),
         }
     }
 }
 
-impl_lint_pass!(CopyAndPaste => [
+impl_lint_pass!(CopyAndPaste<'_> => [
     IFS_SAME_COND,
     SAME_FUNCTIONS_IN_IF_CONDITION,
     IF_SAME_THEN_ELSE,
     BRANCHES_SHARING_CODE
 ]);
 
-impl<'tcx> LateLintPass<'tcx> for CopyAndPaste {
+impl<'tcx> LateLintPass<'tcx> for CopyAndPaste<'tcx> {
     fn check_crate(&mut self, cx: &LateContext<'tcx>) {
-        for ignored_ty in &self.ignore_interior_mutability {
-            let path: Vec<&str> = ignored_ty.split("::").collect();
-            for id in def_path_def_ids(cx, path.as_slice()) {
-                self.ignored_ty_ids.insert(id);
-            }
-        }
+        self.interior_mut = InteriorMut::new(cx, &self.ignore_interior_mutability);
     }
+
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if !expr.span.from_expansion() && matches!(expr.kind, ExprKind::If(..)) && !is_else_clause(cx.tcx, expr) {
             let (conds, blocks) = if_sequence(expr);
-            lint_same_cond(cx, &conds, &self.ignored_ty_ids);
+            lint_same_cond(cx, &conds, &mut self.interior_mut);
             lint_same_fns_in_if_cond(cx, &conds);
             let all_same =
                 !is_lint_allowed(cx, IF_SAME_THEN_ELSE, expr.hir_id) && lint_if_same_then_else(cx, &conds, &blocks);
@@ -570,13 +565,14 @@ fn check_for_warn_of_moved_symbol(cx: &LateContext<'_>, symbols: &[(HirId, Symbo
     })
 }
 
-fn method_caller_is_mutable(cx: &LateContext<'_>, caller_expr: &Expr<'_>, ignored_ty_ids: &DefIdSet) -> bool {
+fn method_caller_is_mutable<'tcx>(
+    cx: &LateContext<'tcx>,
+    caller_expr: &Expr<'_>,
+    interior_mut: &mut InteriorMut<'tcx>,
+) -> bool {
     let caller_ty = cx.typeck_results().expr_ty(caller_expr);
-    // Check if given type has inner mutability and was not set to ignored by the configuration
-    let is_inner_mut_ty = is_interior_mut_ty(cx, caller_ty)
-        && !matches!(caller_ty.ty_adt_def(), Some(adt) if ignored_ty_ids.contains(&adt.did()));
 
-    is_inner_mut_ty
+    interior_mut.is_interior_mut_ty(cx, caller_ty)
         || caller_ty.is_mutable_ptr()
         // `find_binding_init` will return the binding iff its not mutable
         || path_to_local(caller_expr)
@@ -585,7 +581,7 @@ fn method_caller_is_mutable(cx: &LateContext<'_>, caller_expr: &Expr<'_>, ignore
 }
 
 /// Implementation of `IFS_SAME_COND`.
-fn lint_same_cond(cx: &LateContext<'_>, conds: &[&Expr<'_>], ignored_ty_ids: &DefIdSet) {
+fn lint_same_cond<'tcx>(cx: &LateContext<'tcx>, conds: &[&Expr<'_>], interior_mut: &mut InteriorMut<'tcx>) {
     for (i, j) in search_same(
         conds,
         |e| hash_expr(cx, e),
@@ -593,7 +589,7 @@ fn lint_same_cond(cx: &LateContext<'_>, conds: &[&Expr<'_>], ignored_ty_ids: &De
             // Ignore eq_expr side effects iff one of the expression kind is a method call
             // and the caller is not a mutable, including inner mutable type.
             if let ExprKind::MethodCall(_, caller, _, _) = lhs.kind {
-                if method_caller_is_mutable(cx, caller, ignored_ty_ids) {
+                if method_caller_is_mutable(cx, caller, interior_mut) {
                     false
                 } else {
                     SpanlessEq::new(cx).eq_expr(lhs, rhs)

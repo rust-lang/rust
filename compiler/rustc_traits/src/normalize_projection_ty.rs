@@ -10,6 +10,7 @@ use rustc_trait_selection::traits::query::{
 use rustc_trait_selection::traits::{
     self, FulfillmentErrorCode, ObligationCause, SelectionContext,
 };
+use tracing::debug;
 
 pub(crate) fn provide(p: &mut Providers) {
     *p = Providers {

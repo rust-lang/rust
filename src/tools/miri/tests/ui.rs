@@ -1,6 +1,7 @@
 use std::ffi::OsString;
 use std::num::NonZeroUsize;
 use std::path::{Path, PathBuf};
+use std::sync::OnceLock;
 use std::{env, process::Command};
 
 use colored::*;
@@ -67,8 +68,8 @@ fn miri_config(target: &str, path: &str, mode: Mode, with_dependencies: bool) ->
 
     let mut config = Config {
         target: Some(target.to_owned()),
-        stderr_filters: STDERR.clone(),
-        stdout_filters: STDOUT.clone(),
+        stderr_filters: stderr_filters().into(),
+        stdout_filters: stdout_filters().into(),
         mode,
         program,
         out_dir: PathBuf::from(std::env::var_os("CARGO_TARGET_DIR").unwrap()).join("ui"),
@@ -174,15 +175,18 @@ fn run_tests(
 }
 
 macro_rules! regexes {
-    ($name:ident: $($regex:expr => $replacement:expr,)*) => {lazy_static::lazy_static! {
-        static ref $name: Vec<(Match, &'static [u8])> = vec![
-            $((Regex::new($regex).unwrap().into(), $replacement.as_bytes()),)*
-        ];
-    }};
+    ($name:ident: $($regex:expr => $replacement:expr,)*) => {
+        fn $name() -> &'static [(Match, &'static [u8])] {
+            static S: OnceLock<Vec<(Match, &'static [u8])>> = OnceLock::new();
+            S.get_or_init(|| vec![
+                $((Regex::new($regex).unwrap().into(), $replacement.as_bytes()),)*
+            ])
+        }
+    };
 }
 
 regexes! {
-    STDOUT:
+    stdout_filters:
     // Windows file paths
     r"\\"                           => "/",
     // erase borrow tags
@@ -191,7 +195,7 @@ regexes! {
 }
 
 regexes! {
-    STDERR:
+    stderr_filters:
     // erase line and column info
     r"\.rs:[0-9]+:[0-9]+(: [0-9]+:[0-9]+)?" => ".rs:LL:CC",
     // erase alloc ids

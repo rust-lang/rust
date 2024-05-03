@@ -921,7 +921,7 @@ impl Error {
     /// assert!(io_error.raw_os_error().is_none());
     /// # }
     /// ```
-    #[stable(feature = "io_error_downcast", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "io_error_downcast", since = "1.79.0")]
     pub fn downcast<E>(self) -> result::Result<E, Self>
     where
         E: error::Error + Send + Sync + 'static,

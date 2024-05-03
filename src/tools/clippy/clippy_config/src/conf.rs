@@ -463,14 +463,17 @@ define_Conf! {
     ///
     /// Whether print macros (ex. `println!`) should be allowed in test functions or `#[cfg(test)]`
     (allow_print_in_tests: bool = false),
+    /// Lint: USELESS_VEC.
+    ///
+    /// Whether `useless_vec` should ignore test functions or `#[cfg(test)]`
+    (allow_useless_vec_in_tests: bool = false),
     /// Lint: RESULT_LARGE_ERR.
     ///
     /// The maximum size of the `Err`-variant in a `Result` returned from a function
     (large_error_threshold: u64 = 128),
-    /// Lint: MUTABLE_KEY_TYPE, IFS_SAME_COND.
+    /// Lint: MUTABLE_KEY_TYPE, IFS_SAME_COND, BORROW_INTERIOR_MUTABLE_CONST, DECLARE_INTERIOR_MUTABLE_CONST.
     ///
-    /// A list of paths to types that should be treated like `Arc`, i.e. ignored but
-    /// for the generic parameters for determining interior mutability
+    /// A list of paths to types that should be treated as if they do not contain interior mutability
     (ignore_interior_mutability: Vec<String> = Vec::from(["bytes::Bytes".into()])),
     /// Lint: UNINLINED_FORMAT_ARGS.
     ///

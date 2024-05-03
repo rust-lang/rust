@@ -7,6 +7,7 @@ use rustc_infer::infer::canonical::Canonical;
 use rustc_infer::infer::outlives::components::{push_outlives_components, Component};
 use rustc_infer::infer::resolve::OpportunisticRegionResolver;
 use rustc_infer::traits::query::OutlivesBound;
+use rustc_macros::{HashStable, TypeFoldable, TypeVisitable};
 use rustc_middle::infer::canonical::CanonicalQueryResponse;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::{self, ParamEnvAnd, Ty, TyCtxt, TypeFolder, TypeVisitableExt};

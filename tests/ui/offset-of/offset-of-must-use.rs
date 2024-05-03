@@ -4,5 +4,5 @@
 
 fn main() {
     core::mem::offset_of!((String,), 0);
-    //~^ WARN unused return value of `must_use` that must be used
+    //~^ WARN unused `offset_of` call that must be used
 }

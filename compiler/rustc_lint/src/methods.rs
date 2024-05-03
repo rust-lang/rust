@@ -4,6 +4,7 @@ use crate::LateLintPass;
 use crate::LintContext;
 use rustc_hir::{Expr, ExprKind};
 use rustc_middle::ty;
+use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::{symbol::sym, Span};
 
 declare_lint! {

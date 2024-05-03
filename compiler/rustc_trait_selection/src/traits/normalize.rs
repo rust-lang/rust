@@ -8,6 +8,7 @@ use rustc_infer::infer::at::At;
 use rustc_infer::infer::InferOk;
 use rustc_infer::traits::PredicateObligation;
 use rustc_infer::traits::{FulfillmentError, Normalized, Obligation, TraitEngine};
+use rustc_macros::extension;
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode, Reveal};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFolder};
 use rustc_middle::ty::{TypeFoldable, TypeSuperFoldable, TypeVisitable, TypeVisitableExt};

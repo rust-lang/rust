@@ -348,11 +348,7 @@ $ llvm-cov report \
 
 ## `-Z coverage-options=<options>`
 
-This unstable option provides finer control over some aspects of coverage
-instrumentation. Pass one or more of the following values, separated by commas.
-
-- Either `no-branch`, `branch` or `mcdc`
-  - `branch` enables branch coverage instrumentation and `mcdc` further enables modified condition/decision coverage instrumentation. `no-branch` disables branch coverage instrumentation, which is same as do not pass `branch` or `mcdc`.
+[This unstable option is described in the Unstable Book.](../unstable-book/compiler-flags/coverage-options.html)
 
 ## Other references
 

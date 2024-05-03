@@ -10,6 +10,7 @@ use rustc_errors::{
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_index::IndexVec;
+use rustc_macros::{extension, HashStable, TyDecodable, TyEncodable};
 use rustc_session::config::OptLevel;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{ErrorGuaranteed, Span, DUMMY_SP};
@@ -124,7 +125,7 @@ impl Primitive {
             F64 => tcx.types.f64,
             F128 => tcx.types.f128,
             // FIXME(erikdesjardins): handle non-default addrspace ptr sizes
-            Pointer(_) => Ty::new_mut_ptr(tcx, Ty::new_unit(tcx)),
+            Pointer(_) => Ty::new_mut_ptr(tcx, tcx.types.unit),
         }
     }
 
@@ -774,7 +775,7 @@ where
                     // (which may have no non-DST form), and will work as long
                     // as the `Abi` or `FieldsShape` is checked by users.
                     if i == 0 {
-                        let nil = Ty::new_unit(tcx);
+                        let nil = tcx.types.unit;
                         let unit_ptr_ty = if this.ty.is_unsafe_ptr() {
                             Ty::new_mut_ptr(tcx, nil)
                         } else {

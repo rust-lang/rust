@@ -358,20 +358,15 @@ impl<'tcx> MoveData<'tcx> {
         builder::gather_moves(body, tcx, param_env, filter)
     }
 
-    /// For the move path `mpi`, returns the root local variable (if any) that starts the path.
-    /// (e.g., for a path like `a.b.c` returns `Some(a)`)
-    pub fn base_local(&self, mut mpi: MovePathIndex) -> Option<Local> {
+    /// For the move path `mpi`, returns the root local variable that starts the path.
+    /// (e.g., for a path like `a.b.c` returns `a`)
+    pub fn base_local(&self, mut mpi: MovePathIndex) -> Local {
         loop {
             let path = &self.move_paths[mpi];
             if let Some(l) = path.place.as_local() {
-                return Some(l);
+                return l;
             }
-            if let Some(parent) = path.parent {
-                mpi = parent;
-                continue;
-            } else {
-                return None;
-            }
+            mpi = path.parent.expect("root move paths should be locals");
         }
     }
 

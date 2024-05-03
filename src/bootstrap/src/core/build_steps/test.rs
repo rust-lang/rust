@@ -1,7 +1,7 @@
-//! Implementation of the test-related targets of the build system.
+//! Build-and-run steps for `./x.py test` test fixtures
 //!
-//! This file implements the various regression test suites that we execute on
-//! our CI.
+//! `./x.py test` (aka [`Kind::Test`]) is currently allowed to reach build steps in other modules.
+//! However, this contains ~all test parts we expect people to be able to build and run locally.
 
 use std::env;
 use std::ffi::OsStr;
@@ -1146,8 +1146,6 @@ HELP: to skip test's attempt to check tidiness, pass `--skip src/tools/tidy` to 
         builder.info("tidy check");
         builder.run_delaying_failure(&mut cmd);
 
-        builder.ensure(ExpandYamlAnchors);
-
         builder.info("x.py completions check");
         let [bash, zsh, fish, powershell] = ["x.py.sh", "x.py.zsh", "x.py.fish", "x.py.ps1"]
             .map(|filename| builder.src.join("src/etc/completions").join(filename));
@@ -1172,39 +1170,6 @@ HELP: to skip test's attempt to check tidiness, pass `--skip src/tools/tidy` to 
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Tidy);
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ExpandYamlAnchors;
-
-impl Step for ExpandYamlAnchors {
-    type Output = ();
-    const ONLY_HOSTS: bool = true;
-
-    /// Ensure the `generate-ci-config` tool was run locally.
-    ///
-    /// The tool in `src/tools` reads the CI definition in `src/ci/builders.yml` and generates the
-    /// appropriate configuration for all our CI providers. This step ensures the tool was called
-    /// by the user before committing CI changes.
-    fn run(self, builder: &Builder<'_>) {
-        // NOTE: `.github/` is not included in dist-src tarballs
-        if !builder.src.join(".github/workflows/ci.yml").exists() {
-            builder.info("Skipping YAML anchors check: GitHub Actions config not found");
-            return;
-        }
-        builder.info("Ensuring the YAML anchors in the GitHub Actions config were expanded");
-        builder.run_delaying_failure(
-            builder.tool_cmd(Tool::ExpandYamlAnchors).arg("check").arg(&builder.src),
-        );
-    }
-
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("src/tools/expand-yaml-anchors")
-    }
-
-    fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(ExpandYamlAnchors);
     }
 }
 
@@ -1371,6 +1336,7 @@ impl Step for RunMakeSupport {
         run.builder.ensure(RunMakeSupport { compiler, target: run.build_triple() });
     }
 
+    /// Builds run-make-support and returns the path to the resulting rlib.
     fn run(self, builder: &Builder<'_>) -> PathBuf {
         builder.ensure(compile::Std::new(self.compiler, self.target));
 
@@ -1394,6 +1360,53 @@ impl Step for RunMakeSupport {
         let cargo_out = builder.cargo_out(self.compiler, Mode::ToolStd, self.target).join(lib_name);
         builder.copy_link(&cargo_out, &lib);
         lib
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct CrateRunMakeSupport {
+    host: TargetSelection,
+}
+
+impl Step for CrateRunMakeSupport {
+    type Output = ();
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/tools/run-make-support")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(CrateRunMakeSupport { host: run.target });
+    }
+
+    /// Runs `cargo test` for run-make-support.
+    fn run(self, builder: &Builder<'_>) {
+        let host = self.host;
+        let compiler = builder.compiler(builder.top_stage, host);
+
+        builder.ensure(compile::Std::new(compiler, host));
+        let mut cargo = tool::prepare_tool_cargo(
+            builder,
+            compiler,
+            Mode::ToolStd,
+            host,
+            "test",
+            "src/tools/run-make-support",
+            SourceType::InTree,
+            &[],
+        );
+        cargo.allow_features("test");
+        run_cargo_test(
+            cargo,
+            &[],
+            &[],
+            "run-make-support",
+            "run-make-support self test",
+            compiler,
+            host,
+            builder,
+        );
     }
 }
 

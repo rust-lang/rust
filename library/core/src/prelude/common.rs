@@ -97,7 +97,6 @@ pub use crate::macros::builtin::cfg_eval;
 )]
 pub use crate::macros::builtin::type_ascribe;
 
-#[cfg(not(bootstrap))]
 #[unstable(
     feature = "deref_patterns",
     issue = "87121",

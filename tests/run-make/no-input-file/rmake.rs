@@ -1,5 +1,3 @@
-extern crate run_make_support;
-
 use run_make_support::{diff, rustc};
 
 fn main() {

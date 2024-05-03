@@ -1,8 +1,6 @@
 //! Check that non-trivial `repr(C)` enum in Rust has valid C layout.
 //@ ignore-cross-compile
 
-extern crate run_make_support;
-
 use run_make_support::{cc, extra_c_flags, extra_cxx_flags, run, rustc, static_lib};
 
 pub fn main() {

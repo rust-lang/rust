@@ -1,4 +1,5 @@
 use rustc_data_structures::sync::Lrc;
+use rustc_macros::{Decodable, Encodable, HashStable};
 use std::path::PathBuf;
 
 #[derive(HashStable)]

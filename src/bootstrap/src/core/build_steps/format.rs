@@ -115,7 +115,11 @@ pub fn format(build: &Builder<'_>, check: bool, paths: &[PathBuf]) {
     let rustfmt_config: RustfmtConfig = t!(toml::from_str(&rustfmt_config));
     let mut fmt_override = ignore::overrides::OverrideBuilder::new(&build.src);
     for ignore in rustfmt_config.ignore {
-        fmt_override.add(&format!("!{ignore}")).expect(&ignore);
+        if let Some(ignore) = ignore.strip_prefix('!') {
+            fmt_override.add(ignore).expect(ignore);
+        } else {
+            fmt_override.add(&format!("!{ignore}")).expect(&ignore);
+        }
     }
     let git_available = match Command::new("git")
         .arg("--version")
