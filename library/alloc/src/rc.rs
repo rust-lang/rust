@@ -2224,6 +2224,27 @@ impl<T: Default> Default for Rc<T> {
     }
 }
 
+#[cfg(not(no_global_oom_handling))]
+#[stable(feature = "more_rc_default_impls", since = "CURRENT_RUSTC_VERSION")]
+impl Default for Rc<str> {
+    /// Creates an empty str inside an Rc
+    #[inline]
+    fn default() -> Self {
+        Rc::from("")
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+#[stable(feature = "more_rc_default_impls", since = "CURRENT_RUSTC_VERSION")]
+impl<T> Default for Rc<[T]> {
+    /// Creates an empty `[T]` inside an Rc
+    #[inline]
+    fn default() -> Self {
+        let arr: [T; 0] = [];
+        Rc::from(arr)
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 trait RcEqIdent<T: ?Sized + PartialEq, A: Allocator> {
     fn eq(&self, other: &Rc<T, A>) -> bool;
