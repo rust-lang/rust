@@ -4,6 +4,7 @@ use rustc_errors::{
     MultiSpan, SubdiagMessageOp, Subdiagnostic,
 };
 use rustc_hir as hir;
+use rustc_hir::intravisit::{walk_ty, Visitor};
 use rustc_hir::FnRetTy;
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_middle::ty::print::TraitRefPrintOnlyTraitPath;
@@ -355,18 +356,6 @@ impl Subdiagnostic for AddLifetimeParamsSuggestion<'_> {
         _f: &F,
     ) {
         let mut mk_suggestion = || {
-            let (
-                hir::Ty { kind: hir::TyKind::Ref(lifetime_sub, _), .. },
-                hir::Ty { kind: hir::TyKind::Ref(lifetime_sup, _), .. },
-            ) = (self.ty_sub, self.ty_sup)
-            else {
-                return false;
-            };
-
-            if !lifetime_sub.is_anonymous() || !lifetime_sup.is_anonymous() {
-                return false;
-            };
-
             let Some(anon_reg) = self.tcx.is_suitable_region(self.sub) else {
                 return false;
             };
@@ -393,21 +382,77 @@ impl Subdiagnostic for AddLifetimeParamsSuggestion<'_> {
             let suggestion_param_name =
                 suggestion_param_name.map(|n| n.to_string()).unwrap_or_else(|| "'a".to_owned());
 
-            debug!(?lifetime_sup.ident.span);
-            debug!(?lifetime_sub.ident.span);
-            let make_suggestion = |ident: Ident| {
-                let sugg = if ident.name == kw::Empty {
-                    format!("{suggestion_param_name}, ")
-                } else if ident.name == kw::UnderscoreLifetime && ident.span.is_empty() {
-                    format!("{suggestion_param_name} ")
-                } else {
-                    suggestion_param_name.clone()
-                };
-                (ident.span, sugg)
-            };
-            let mut suggestions =
-                vec![make_suggestion(lifetime_sub.ident), make_suggestion(lifetime_sup.ident)];
+            struct ImplicitLifetimeFinder {
+                suggestions: Vec<(Span, String)>,
+                suggestion_param_name: String,
+            }
 
+            impl<'v> Visitor<'v> for ImplicitLifetimeFinder {
+                fn visit_ty(&mut self, ty: &'v hir::Ty<'v>) {
+                    let make_suggestion = |ident: Ident| {
+                        if ident.name == kw::Empty && ident.span.is_empty() {
+                            format!("{}, ", self.suggestion_param_name)
+                        } else if ident.name == kw::UnderscoreLifetime && ident.span.is_empty() {
+                            format!("{} ", self.suggestion_param_name)
+                        } else {
+                            self.suggestion_param_name.clone()
+                        }
+                    };
+                    match ty.kind {
+                        hir::TyKind::Path(hir::QPath::Resolved(_, path)) => {
+                            for segment in path.segments {
+                                if let Some(args) = segment.args {
+                                    if args.args.iter().all(|arg| {
+                                        matches!(
+                                            arg,
+                                            hir::GenericArg::Lifetime(lifetime)
+                                            if lifetime.ident.name == kw::Empty
+                                        )
+                                    }) {
+                                        self.suggestions.push((
+                                            segment.ident.span.shrink_to_hi(),
+                                            format!(
+                                                "<{}>",
+                                                args.args
+                                                    .iter()
+                                                    .map(|_| self.suggestion_param_name.clone())
+                                                    .collect::<Vec<_>>()
+                                                    .join(", ")
+                                            ),
+                                        ));
+                                    } else {
+                                        for arg in args.args {
+                                            if let hir::GenericArg::Lifetime(lifetime) = arg
+                                                && lifetime.is_anonymous()
+                                            {
+                                                self.suggestions.push((
+                                                    lifetime.ident.span,
+                                                    make_suggestion(lifetime.ident),
+                                                ));
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        hir::TyKind::Ref(lifetime, ..) if lifetime.is_anonymous() => {
+                            self.suggestions
+                                .push((lifetime.ident.span, make_suggestion(lifetime.ident)));
+                        }
+                        _ => {}
+                    }
+                    walk_ty(self, ty);
+                }
+            }
+            let mut visitor = ImplicitLifetimeFinder {
+                suggestions: vec![],
+                suggestion_param_name: suggestion_param_name.clone(),
+            };
+            visitor.visit_ty(self.ty_sub);
+            visitor.visit_ty(self.ty_sup);
+            if visitor.suggestions.is_empty() {
+                return false;
+            }
             if introduce_new {
                 let new_param_suggestion = if let Some(first) =
                     generics.params.iter().find(|p| !p.name.ident().span.is_empty())
@@ -417,15 +462,15 @@ impl Subdiagnostic for AddLifetimeParamsSuggestion<'_> {
                     (generics.span, format!("<{suggestion_param_name}>"))
                 };
 
-                suggestions.push(new_param_suggestion);
+                visitor.suggestions.push(new_param_suggestion);
             }
-
-            diag.multipart_suggestion(
+            diag.multipart_suggestion_verbose(
                 fluent::infer_lifetime_param_suggestion,
-                suggestions,
+                visitor.suggestions,
                 Applicability::MaybeIncorrect,
             );
             diag.arg("is_impl", is_impl);
+
             true
         };
         if mk_suggestion() && self.add_note {

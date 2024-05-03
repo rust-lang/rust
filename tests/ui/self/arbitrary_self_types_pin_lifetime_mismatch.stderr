@@ -33,6 +33,11 @@ LL |     fn bar<'a>(self: Alias<&Self>, arg: &'a ()) -> &() { arg }
    |            --  ---- has type `Pin<&'1 Foo>`              ^^^ method was supposed to return data with lifetime `'1` but it is returning data with lifetime `'a`
    |            |
    |            lifetime `'a` defined here
+   |
+help: consider introducing a named lifetime parameter and update trait if needed
+   |
+LL |     fn bar<'a>(self: Alias<&'a Self>, arg: &'a ()) -> &() { arg }
+   |                             ++
 
 error: aborting due to 3 previous errors
 
