@@ -50,37 +50,35 @@ fi
 CACHE_DOMAIN="${CACHE_DOMAIN:-ci-caches.rust-lang.org}"
 
 if [ -f "$docker_dir/$image/Dockerfile" ]; then
-    if isCI; then
-      hash_key=/tmp/.docker-hash-key.txt
-      rm -f "${hash_key}"
-      echo $image >> $hash_key
+    hash_key=/tmp/.docker-hash-key.txt
+    rm -f "${hash_key}"
+    echo $image >> $hash_key
 
-      cat "$docker_dir/$image/Dockerfile" >> $hash_key
-      # Look for all source files involves in the COPY command
-      copied_files=/tmp/.docker-copied-files.txt
-      rm -f "$copied_files"
-      for i in $(sed -n -e '/^COPY --from=/! s/^COPY \(.*\) .*$/\1/p' \
-          "$docker_dir/$image/Dockerfile"); do
-        # List the file names
-        find "$script_dir/$i" -type f >> $copied_files
-      done
-      # Sort the file names and cat the content into the hash key
-      sort $copied_files | xargs cat >> $hash_key
+    cat "$docker_dir/$image/Dockerfile" >> $hash_key
+    # Look for all source files involves in the COPY command
+    copied_files=/tmp/.docker-copied-files.txt
+    rm -f "$copied_files"
+    for i in $(sed -n -e '/^COPY --from=/! s/^COPY \(.*\) .*$/\1/p' \
+      "$docker_dir/$image/Dockerfile"); do
+    # List the file names
+    find "$script_dir/$i" -type f >> $copied_files
+    done
+    # Sort the file names and cat the content into the hash key
+    sort $copied_files | xargs cat >> $hash_key
 
-      # Include the architecture in the hash key, since our Linux CI does not
-      # only run in x86_64 machines.
-      uname -m >> $hash_key
+    # Include the architecture in the hash key, since our Linux CI does not
+    # only run in x86_64 machines.
+    uname -m >> $hash_key
 
-      # Include cache version. Can be used to manually bust the Docker cache.
-      echo "2" >> $hash_key
+    # Include cache version. Can be used to manually bust the Docker cache.
+    echo "2" >> $hash_key
 
-      echo "Image input"
-      cat $hash_key
+    echo "Image input"
+    cat $hash_key
 
-      cksum=$(sha512sum $hash_key | \
-        awk '{print $1}')
-      echo "Image input checksum ${cksum}"
-    fi
+    cksum=$(sha512sum $hash_key | \
+    awk '{print $1}')
+    echo "Image input checksum ${cksum}"
 
     dockerfile="$docker_dir/$image/Dockerfile"
     if [ -x /usr/bin/cygpath ]; then
