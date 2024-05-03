@@ -259,6 +259,8 @@ async unsafe fn either<O: IntoFuture<Output = ()>, M: IntoFuture<Output = ()>, T
 #[cfg(not(bootstrap))]
 #[lang = "async_drop_deferred_drop_in_place"]
 async unsafe fn deferred_drop_in_place<T>(to_drop: *mut T) {
+    // SAFETY: same safety requirements as with drop_in_place (implied by
+    // function's name)
     unsafe { crate::ptr::drop_in_place(to_drop) }
 }
 
