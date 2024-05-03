@@ -788,9 +788,12 @@ pub struct NaNPattern {
     pub span: Span,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(mir_build_pointer_pattern)]
-pub struct PointerPattern;
+pub struct PointerPattern {
+    #[primary_span]
+    pub span: Span,
+}
 
 #[derive(Diagnostic)]
 #[diag(mir_build_non_empty_never_pattern)]

@@ -74,7 +74,6 @@ declare_lint_pass! {
         ORDER_DEPENDENT_TRAIT_OBJECTS,
         OVERLAPPING_RANGE_ENDPOINTS,
         PATTERNS_IN_FNS_WITHOUT_BODY,
-        POINTER_STRUCTURAL_MATCH,
         PRIVATE_BOUNDS,
         PRIVATE_INTERFACES,
         PROC_MACRO_BACK_COMPAT,
@@ -2369,45 +2368,6 @@ declare_lint! {
     Allow,
     "detects use of items that will be deprecated in a future version",
     report_in_external_macro
-}
-
-declare_lint! {
-    /// The `pointer_structural_match` lint detects pointers used in patterns whose behaviour
-    /// cannot be relied upon across compiler versions and optimization levels.
-    ///
-    /// ### Example
-    ///
-    /// ```rust,compile_fail
-    /// #![deny(pointer_structural_match)]
-    /// fn foo(a: usize, b: usize) -> usize { a + b }
-    /// const FOO: fn(usize, usize) -> usize = foo;
-    /// fn main() {
-    ///     match FOO {
-    ///         FOO => {},
-    ///         _ => {},
-    ///     }
-    /// }
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// Previous versions of Rust allowed function pointers and all raw pointers in patterns.
-    /// While these work in many cases as expected by users, it is possible that due to
-    /// optimizations pointers are "not equal to themselves" or pointers to different functions
-    /// compare as equal during runtime. This is because LLVM optimizations can deduplicate
-    /// functions if their bodies are the same, thus also making pointers to these functions point
-    /// to the same location. Additionally functions may get duplicated if they are instantiated
-    /// in different crates and not deduplicated again via LTO. Pointer identity for memory
-    /// created by `const` is similarly unreliable.
-    pub POINTER_STRUCTURAL_MATCH,
-    Warn,
-    "pointers are not structural-match",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
-        reference: "issue #120362 <https://github.com/rust-lang/rust/issues/120362>",
-    };
 }
 
 declare_lint! {

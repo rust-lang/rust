@@ -6,7 +6,6 @@ use rustc_infer::traits::Obligation;
 use rustc_middle::mir;
 use rustc_middle::thir::{FieldPat, Pat, PatKind};
 use rustc_middle::ty::{self, Ty, TyCtxt, ValTree};
-use rustc_session::lint;
 use rustc_span::{ErrorGuaranteed, Span};
 use rustc_target::abi::{FieldIdx, VariantIdx};
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
@@ -189,12 +188,9 @@ impl<'tcx> ConstToPat<'tcx> {
             } else if !have_valtree {
                 // The only way valtree construction can fail without the structural match
                 // checker finding a violation is if there is a pointer somewhere.
-                self.tcx().emit_node_span_lint(
-                    lint::builtin::POINTER_STRUCTURAL_MATCH,
-                    self.id,
-                    self.span,
-                    PointerPattern,
-                );
+                let e = self.tcx().dcx().emit_err(PointerPattern { span: self.span });
+                let kind = PatKind::Error(e);
+                return Box::new(Pat { span: self.span, ty: cv.ty(), kind });
             }
 
             // Always check for `PartialEq` if we had no other errors yet.
