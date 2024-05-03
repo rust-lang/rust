@@ -78,6 +78,12 @@ jobs:
           rustc -Vv
           cargo -V
 
+      # The `style` job only runs on Linux; this makes sure the Windows-host-specific
+      # code is also covered by clippy.
+      - name: Check clippy
+        if: ${{ matrix.os == 'windows-latest' }}
+        run: ./miri clippy -- -D warnings
+
       - name: Test Miri
         run: ./ci/ci.sh
 
