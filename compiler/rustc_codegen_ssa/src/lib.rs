@@ -4,7 +4,6 @@
 #![allow(internal_features)]
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::untranslatable_diagnostic)]
-#![cfg_attr(bootstrap, feature(associated_type_bounds))]
 #![feature(box_patterns)]
 #![feature(if_let_guard)]
 #![feature(let_chains)]
@@ -17,11 +16,7 @@
 //! have to be implemented by each backend.
 
 #[macro_use]
-extern crate rustc_macros;
-#[macro_use]
 extern crate tracing;
-#[macro_use]
-extern crate rustc_middle;
 
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashSet;
@@ -29,6 +24,7 @@ use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::unord::UnordMap;
 use rustc_hir::def_id::CrateNum;
+use rustc_macros::{Decodable, Encodable, HashStable};
 use rustc_middle::dep_graph::WorkProduct;
 use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
 use rustc_middle::middle::dependency_format::Dependencies;

@@ -44,7 +44,7 @@ def add_base_env(jobs: List[Job], environment: Dict[str, str]) -> List[Job]:
     return jobs
 
 
-class JobType(enum.Enum):
+class WorkflowRunType(enum.Enum):
     PR = enum.auto()
     Try = enum.auto()
     Auto = enum.auto()
@@ -57,9 +57,9 @@ class GitHubCtx:
     repository: str
 
 
-def find_job_type(ctx: GitHubCtx) -> Optional[JobType]:
+def find_run_type(ctx: GitHubCtx) -> Optional[WorkflowRunType]:
     if ctx.event_name == "pull_request":
-        return JobType.PR
+        return WorkflowRunType.PR
     elif ctx.event_name == "push":
         old_bors_try_build = (
             ctx.ref in ("refs/heads/try", "refs/heads/try-perf") and
@@ -72,20 +72,20 @@ def find_job_type(ctx: GitHubCtx) -> Optional[JobType]:
         try_build = old_bors_try_build or new_bors_try_build
 
         if try_build:
-            return JobType.Try
+            return WorkflowRunType.Try
 
         if ctx.ref == "refs/heads/auto" and ctx.repository == "rust-lang-ci/rust":
-            return JobType.Auto
+            return WorkflowRunType.Auto
 
     return None
 
 
-def calculate_jobs(job_type: JobType, job_data: Dict[str, Any]) -> List[Job]:
-    if job_type == JobType.PR:
+def calculate_jobs(run_type: WorkflowRunType, job_data: Dict[str, Any]) -> List[Job]:
+    if run_type == WorkflowRunType.PR:
         return add_base_env(name_jobs(job_data["pr"], "PR"), job_data["envs"]["pr"])
-    elif job_type == JobType.Try:
+    elif run_type == WorkflowRunType.Try:
         return add_base_env(name_jobs(job_data["try"], "try"), job_data["envs"]["try"])
-    elif job_type == JobType.Auto:
+    elif run_type == WorkflowRunType.Auto:
         return add_base_env(name_jobs(job_data["auto"], "auto"), job_data["envs"]["auto"])
 
     return []
@@ -106,6 +106,17 @@ def get_github_ctx() -> GitHubCtx:
     )
 
 
+def format_run_type(run_type: WorkflowRunType) -> str:
+    if run_type == WorkflowRunType.PR:
+        return "pr"
+    elif run_type == WorkflowRunType.Auto:
+        return "auto"
+    elif run_type == WorkflowRunType.Try:
+        return "try"
+    else:
+        raise AssertionError()
+
+
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
 
@@ -114,16 +125,18 @@ if __name__ == "__main__":
 
     github_ctx = get_github_ctx()
 
-    job_type = find_job_type(github_ctx)
-    logging.info(f"Job type: {job_type}")
+    run_type = find_run_type(github_ctx)
+    logging.info(f"Job type: {run_type}")
 
     with open(CI_DIR / "channel") as f:
         channel = f.read().strip()
 
     jobs = []
-    if job_type is not None:
-        jobs = calculate_jobs(job_type, data)
+    if run_type is not None:
+        jobs = calculate_jobs(run_type, data)
     jobs = skip_jobs(jobs, channel)
+    run_type = format_run_type(run_type)
 
-    logging.info(f"Output:\n{yaml.dump(jobs, indent=4)}")
+    logging.info(f"Output:\n{yaml.dump(dict(jobs=jobs, run_type=run_type), indent=4)}")
     print(f"jobs={json.dumps(jobs)}")
+    print(f"run_type={run_type}")

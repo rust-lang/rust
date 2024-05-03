@@ -11,16 +11,7 @@
 )))]
 
 cfg_if::cfg_if! {
-    if #[cfg(all(
-        any(
-            target_os = "macos",
-            target_os = "ios",
-            target_os = "watchos",
-            target_os = "visionos",
-            target_os = "tvos",
-        ),
-        not(miri),
-    ))] {
+    if #[cfg(all(target_vendor = "apple", not(miri)))] {
         mod darwin;
         pub use darwin::Parker;
     } else if #[cfg(target_os = "netbsd")] {

@@ -3,7 +3,8 @@
 #![feature(coroutines, coroutine_trait, stmt_expr_attributes)]
 
 fn main() {
-    let _ = #[coroutine] || {
+    let _ = #[coroutine]
+    || {
         yield;
     };
 }

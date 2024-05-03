@@ -221,7 +221,7 @@ pub trait Context {
 
 // A thread local variable that stores a pointer to the tables mapping between TyCtxt
 // datastructures and stable MIR datastructures
-scoped_thread_local!(static TLV: Cell<*const ()>);
+scoped_tls::scoped_thread_local!(static TLV: Cell<*const ()>);
 
 pub fn run<F, T>(context: &dyn Context, f: F) -> Result<T, Error>
 where

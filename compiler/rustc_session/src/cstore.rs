@@ -10,6 +10,7 @@ use rustc_hir::def_id::{
     CrateNum, DefId, LocalDefId, StableCrateId, StableCrateIdMap, LOCAL_CRATE,
 };
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash, Definitions};
+use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
 use rustc_target::spec::abi::Abi;

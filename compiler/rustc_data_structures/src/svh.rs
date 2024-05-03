@@ -6,9 +6,9 @@
 //! compiled from distinct sources.
 
 use crate::fingerprint::Fingerprint;
-use std::fmt;
-
 use crate::stable_hasher;
+use rustc_macros::{Decodable_Generic, Encodable_Generic};
+use std::fmt;
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Encodable_Generic, Decodable_Generic, Hash)]
 pub struct Svh {

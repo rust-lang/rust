@@ -98,12 +98,10 @@ mod imp {
     }
 
     #[inline(always)]
-    pub unsafe fn init(_argc: isize, _argv: *const *const u8) {
-        // On Linux-GNU, we rely on `ARGV_INIT_ARRAY` below to initialize
-        // `ARGC` and `ARGV`. But in Miri that does not actually happen so we
-        // still initialize here.
-        #[cfg(any(miri, not(all(target_os = "linux", target_env = "gnu"))))]
-        really_init(_argc, _argv);
+    pub unsafe fn init(argc: isize, argv: *const *const u8) {
+        // on GNU/Linux if we are main then we will init argv and argc twice, it "duplicates work"
+        // BUT edge-cases are real: only using .init_array can break most emulators, dlopen, etc.
+        really_init(argc, argv);
     }
 
     /// glibc passes argc, argv, and envp to functions in .init_array, as a non-standard extension.
@@ -170,13 +168,7 @@ mod imp {
     }
 }
 
-#[cfg(any(
-    target_os = "macos",
-    target_os = "ios",
-    target_os = "watchos",
-    target_os = "visionos",
-    target_os = "tvos"
-))]
+#[cfg(target_vendor = "apple")]
 mod imp {
     use super::Args;
     use crate::ffi::CStr;
@@ -217,12 +209,7 @@ mod imp {
     // for i in (0..[args count])
     //      res.push([args objectAtIndex:i])
     // res
-    #[cfg(any(
-        target_os = "ios",
-        target_os = "tvos",
-        target_os = "watchos",
-        target_os = "visionos"
-    ))]
+    #[cfg(not(target_os = "macos"))]
     pub fn args() -> Args {
         use crate::ffi::{c_char, c_void, OsString};
         use crate::mem;

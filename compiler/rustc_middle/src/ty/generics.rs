@@ -3,6 +3,7 @@ use crate::ty::{EarlyBinder, GenericArgsRef};
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;
+use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_span::symbol::{kw, Symbol};
 use rustc_span::Span;
 

@@ -12,6 +12,7 @@ use rustc_data_structures::sync::AtomicU64;
 use rustc_data_structures::sync::WorkerLocal;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::hir_id::OwnerId;
+use rustc_macros::HashStable;
 use rustc_query_system::dep_graph::DepNodeIndex;
 use rustc_query_system::dep_graph::SerializedDepNodeIndex;
 pub(crate) use rustc_query_system::query::QueryJobId;

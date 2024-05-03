@@ -1,3 +1,5 @@
+use tracing::{debug, instrument, trace};
+
 pub(crate) mod query_context;
 #[cfg(test)]
 mod tests;

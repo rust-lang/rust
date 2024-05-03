@@ -5,6 +5,7 @@ use crate::size_of_val;
 use crate::traits::*;
 use crate::MemFlags;
 
+use rustc_middle::bug;
 use rustc_middle::mir::interpret::{alloc_range, Pointer, Scalar};
 use rustc_middle::mir::{self, ConstValue};
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};

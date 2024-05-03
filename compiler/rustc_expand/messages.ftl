@@ -30,9 +30,6 @@ expand_duplicate_matcher_binding = duplicate matcher binding
     .label = duplicate binding
     .label2 = previous binding
 
-expand_expected_comma_in_list =
-    expected token: `,`
-
 expand_expected_paren_or_brace =
     expected `(` or `{"{"}`, found `{$token}`
 
@@ -116,9 +113,6 @@ expand_must_repeat_once =
 expand_not_a_meta_item =
     not a meta item
 
-expand_only_one_argument =
-    {$name} takes 1 argument
-
 expand_only_one_word =
     must only be one word
 
@@ -145,9 +139,6 @@ expand_remove_node_not_supported =
 
 expand_resolve_relative_path =
     cannot resolve relative path in non-file source `{$path}`
-
-expand_takes_no_arguments =
-    {$name} takes no arguments
 
 expand_trace_macro = trace_macro
 

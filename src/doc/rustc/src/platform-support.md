@@ -89,9 +89,9 @@ target | notes
 `aarch64-apple-darwin` | ARM64 macOS (11.0+, Big Sur+)
 `aarch64-pc-windows-msvc` | ARM64 Windows MSVC
 `aarch64-unknown-linux-musl` | ARM64 Linux with musl 1.2.3
-`arm-unknown-linux-gnueabi` | ARMv6 Linux (kernel 3.2, glibc 2.17)
-`arm-unknown-linux-gnueabihf` | ARMv6 Linux, hardfloat (kernel 3.2, glibc 2.17)
-`armv7-unknown-linux-gnueabihf` | ARMv7-A Linux, hardfloat (kernel 3.2, glibc 2.17)
+`arm-unknown-linux-gnueabi` | Armv6 Linux (kernel 3.2, glibc 2.17)
+`arm-unknown-linux-gnueabihf` | Armv6 Linux, hardfloat (kernel 3.2, glibc 2.17)
+`armv7-unknown-linux-gnueabihf` | Armv7-A Linux, hardfloat (kernel 3.2, glibc 2.17)
 [`loongarch64-unknown-linux-gnu`](platform-support/loongarch-linux.md) | LoongArch64 Linux, LP64D ABI (kernel 5.19, glibc 2.36)
 `powerpc-unknown-linux-gnu` | PowerPC Linux (kernel 3.2, glibc 2.17)
 `powerpc64-unknown-linux-gnu` | PPC64 Linux (kernel 3.2, glibc 2.17)
@@ -143,21 +143,21 @@ target | std | notes
 `aarch64-unknown-none-softfloat` | * | Bare ARM64, softfloat
 `aarch64-unknown-none` | * | Bare ARM64, hardfloat
 [`aarch64-unknown-uefi`](platform-support/unknown-uefi.md) | ? | ARM64 UEFI
-[`arm-linux-androideabi`](platform-support/android.md) | ✓ | ARMv6 Android
-`arm-unknown-linux-musleabi` | ✓ | ARMv6 Linux with musl 1.2.3
-`arm-unknown-linux-musleabihf` | ✓ | ARMv6 Linux with musl 1.2.3, hardfloat
-[`armebv7r-none-eabi`](platform-support/armv7r-none-eabi.md) | * | Bare ARMv7-R, Big Endian
-[`armebv7r-none-eabihf`](platform-support/armv7r-none-eabi.md) | * | Bare ARMv7-R, Big Endian, hardfloat
-`armv5te-unknown-linux-gnueabi` | ✓ | ARMv5TE Linux (kernel 4.4, glibc 2.23)
-`armv5te-unknown-linux-musleabi` | ✓ | ARMv5TE Linux with musl 1.2.3
-[`armv7-linux-androideabi`](platform-support/android.md) | ✓ | ARMv7-A Android
-`armv7-unknown-linux-gnueabi` | ✓ | ARMv7-A Linux (kernel 4.15, glibc 2.27)
-`armv7-unknown-linux-musleabi` | ✓ | ARMv7-A Linux with musl 1.2.3
-`armv7-unknown-linux-musleabihf` | ✓ | ARMv7-A Linux with musl 1.2.3, hardfloat
-[`armv7-unknown-linux-ohos`](platform-support/openharmony.md) | ✓ | ARMv7-A OpenHarmony
-[`armv7a-none-eabi`](platform-support/arm-none-eabi.md) | * | Bare ARMv7-A
-[`armv7r-none-eabi`](platform-support/armv7r-none-eabi.md) | * | Bare ARMv7-R
-[`armv7r-none-eabihf`](platform-support/armv7r-none-eabi.md) | * | Bare ARMv7-R, hardfloat
+[`arm-linux-androideabi`](platform-support/android.md) | ✓ | Armv6 Android
+`arm-unknown-linux-musleabi` | ✓ | Armv6 Linux with musl 1.2.3
+`arm-unknown-linux-musleabihf` | ✓ | Armv6 Linux with musl 1.2.3, hardfloat
+[`armebv7r-none-eabi`](platform-support/armv7r-none-eabi.md) | * | Bare Armv7-R, Big Endian
+[`armebv7r-none-eabihf`](platform-support/armv7r-none-eabi.md) | * | Bare Armv7-R, Big Endian, hardfloat
+`armv5te-unknown-linux-gnueabi` | ✓ | Armv5TE Linux (kernel 4.4, glibc 2.23)
+`armv5te-unknown-linux-musleabi` | ✓ | Armv5TE Linux with musl 1.2.3
+[`armv7-linux-androideabi`](platform-support/android.md) | ✓ | Armv7-A Android
+`armv7-unknown-linux-gnueabi` | ✓ | Armv7-A Linux (kernel 4.15, glibc 2.27)
+`armv7-unknown-linux-musleabi` | ✓ | Armv7-A Linux with musl 1.2.3
+`armv7-unknown-linux-musleabihf` | ✓ | Armv7-A Linux with musl 1.2.3, hardfloat
+[`armv7-unknown-linux-ohos`](platform-support/openharmony.md) | ✓ | Armv7-A OpenHarmony
+[`armv7a-none-eabi`](platform-support/arm-none-eabi.md) | * | Bare Armv7-A
+[`armv7r-none-eabi`](platform-support/armv7r-none-eabi.md) | * | Bare Armv7-R
+[`armv7r-none-eabihf`](platform-support/armv7r-none-eabi.md) | * | Bare Armv7-R, hardfloat
 `i586-pc-windows-msvc` | * | 32-bit Windows w/o SSE [^x86_32-floats-x87]
 `i586-unknown-linux-gnu` | ✓ | 32-bit Linux w/o SSE (kernel 3.2, glibc 2.17) [^x86_32-floats-x87]
 `i586-unknown-linux-musl` | ✓ | 32-bit Linux w/o SSE, musl 1.2.3 [^x86_32-floats-x87]
@@ -178,15 +178,15 @@ target | std | notes
 `riscv64imac-unknown-none-elf` | * | Bare RISC-V (RV64IMAC ISA)
 `sparc64-unknown-linux-gnu` | ✓ | SPARC Linux (kernel 4.4, glibc 2.23)
 `sparcv9-sun-solaris` | ✓ | SPARC Solaris 11, illumos
-[`thumbv6m-none-eabi`](platform-support/arm-none-eabi.md) | * | Bare ARMv6-M
-[`thumbv7em-none-eabi`](platform-support/arm-none-eabi.md) | * | Bare ARMv7E-M
-[`thumbv7em-none-eabihf`](platform-support/arm-none-eabi.md) | * | Bare ARMV7E-M, hardfloat
-[`thumbv7m-none-eabi`](platform-support/arm-none-eabi.md) | * | Bare ARMv7-M
-[`thumbv7neon-linux-androideabi`](platform-support/android.md) | ✓ | Thumb2-mode ARMv7-A Android with NEON
-`thumbv7neon-unknown-linux-gnueabihf` | ✓ | Thumb2-mode ARMv7-A Linux with NEON (kernel 4.4, glibc 2.23)
-[`thumbv8m.base-none-eabi`](platform-support/arm-none-eabi.md) | * | Bare ARMv8-M Baseline
-[`thumbv8m.main-none-eabi`](platform-support/arm-none-eabi.md) | * | Bare ARMv8-M Mainline
-[`thumbv8m.main-none-eabihf`](platform-support/arm-none-eabi.md) | * | Bare ARMv8-M Mainline, hardfloat
+[`thumbv6m-none-eabi`](platform-support/thumbv6m-none-eabi.md) | * | Bare Armv6-M
+[`thumbv7em-none-eabi`](platform-support/thumbv7em-none-eabi.md) | * | Bare Armv7E-M
+[`thumbv7em-none-eabihf`](platform-support/thumbv7em-none-eabi.md) | * | Bare Armv7E-M, hardfloat
+[`thumbv7m-none-eabi`](platform-support/thumbv7m-none-eabi.md) | * | Bare Armv7-M
+[`thumbv7neon-linux-androideabi`](platform-support/android.md) | ✓ | Thumb2-mode Armv7-A Android with NEON
+`thumbv7neon-unknown-linux-gnueabihf` | ✓ | Thumb2-mode Armv7-A Linux with NEON (kernel 4.4, glibc 2.23)
+[`thumbv8m.base-none-eabi`](platform-support/thumbv8m.base-none-eabi.md) | * | Bare Armv8-M Baseline
+[`thumbv8m.main-none-eabi`](platform-support/thumbv8m.main-none-eabi.md) | * | Bare Armv8-M Mainline
+[`thumbv8m.main-none-eabihf`](platform-support/thumbv8m.main-none-eabi.md) | * | Bare Armv8-M Mainline, hardfloat
 `wasm32-unknown-emscripten` | ✓ | WebAssembly via Emscripten
 `wasm32-unknown-unknown` | ✓ | WebAssembly
 `wasm32-wasi` | ✓ | WebAssembly with WASI (undergoing a [rename to `wasm32-wasip1`][wasi-rename])
@@ -264,27 +264,27 @@ target | std | host | notes
 `aarch64_be-unknown-linux-gnu_ilp32` | ✓ | ✓ | ARM64 Linux (big-endian, ILP32 ABI)
 `aarch64_be-unknown-linux-gnu` | ✓ | ✓ | ARM64 Linux (big-endian)
 [`aarch64_be-unknown-netbsd`](platform-support/netbsd.md) | ✓ | ✓ | ARM64 NetBSD (big-endian)
-[`arm64_32-apple-watchos`](platform-support/apple-watchos.md) | ✓ |  | ARM Apple WatchOS 64-bit with 32-bit pointers
-[`armeb-unknown-linux-gnueabi`](platform-support/armeb-unknown-linux-gnueabi.md) | ✓ | ? | ARM BE8 the default ARM big-endian architecture since [ARMv6](https://developer.arm.com/documentation/101754/0616/armlink-Reference/armlink-Command-line-Options/--be8?lang=en).
-[`armv4t-none-eabi`](platform-support/armv4t-none-eabi.md) | * |  | Bare ARMv4T
-`armv4t-unknown-linux-gnueabi` | ? |  | ARMv4T Linux
-[`armv5te-none-eabi`](platform-support/armv5te-none-eabi.md) | * |  | Bare ARMv5TE
-`armv5te-unknown-linux-uclibceabi` | ? |  | ARMv5TE Linux with uClibc
-`armv6-unknown-freebsd` | ✓ | ✓ | ARMv6 FreeBSD
-[`armv6-unknown-netbsd-eabihf`](platform-support/netbsd.md) | ✓ | ✓ | ARMv6 NetBSD w/hard-float
-[`armv6k-nintendo-3ds`](platform-support/armv6k-nintendo-3ds.md) | ? |  | ARMv6K Nintendo 3DS, Horizon (Requires devkitARM toolchain)
-[`armv7-sony-vita-newlibeabihf`](platform-support/armv7-sony-vita-newlibeabihf.md) | ✓ |  | ARMv7-A Cortex-A9 Sony PlayStation Vita (requires VITASDK toolchain)
-[`armv7-unknown-linux-uclibceabi`](platform-support/armv7-unknown-linux-uclibceabi.md) | ✓ | ✓ | ARMv7-A Linux with uClibc, softfloat
-[`armv7-unknown-linux-uclibceabihf`](platform-support/armv7-unknown-linux-uclibceabihf.md) | ✓ | ? | ARMv7-A Linux with uClibc, hardfloat
-`armv7-unknown-freebsd` | ✓ | ✓ | ARMv7-A FreeBSD
-[`armv7-unknown-netbsd-eabihf`](platform-support/netbsd.md) | ✓ | ✓ | ARMv7-A NetBSD w/hard-float
-`armv7-wrs-vxworks-eabihf` | ? |  | ARMv7-A for VxWorks
+[`arm64_32-apple-watchos`](platform-support/apple-watchos.md) | ✓ |  | Arm Apple WatchOS 64-bit with 32-bit pointers
+[`armeb-unknown-linux-gnueabi`](platform-support/armeb-unknown-linux-gnueabi.md) | ✓ | ? | Arm BE8 the default Arm big-endian architecture since [Armv6](https://developer.arm.com/documentation/101754/0616/armlink-Reference/armlink-Command-line-Options/--be8?lang=en).
+[`armv4t-none-eabi`](platform-support/armv4t-none-eabi.md) | * |  | Bare Armv4T
+`armv4t-unknown-linux-gnueabi` | ? |  | Armv4T Linux
+[`armv5te-none-eabi`](platform-support/armv5te-none-eabi.md) | * |  | Bare Armv5TE
+`armv5te-unknown-linux-uclibceabi` | ? |  | Armv5TE Linux with uClibc
+`armv6-unknown-freebsd` | ✓ | ✓ | Armv6 FreeBSD
+[`armv6-unknown-netbsd-eabihf`](platform-support/netbsd.md) | ✓ | ✓ | Armv6 NetBSD w/hard-float
+[`armv6k-nintendo-3ds`](platform-support/armv6k-nintendo-3ds.md) | ? |  | Armv6k Nintendo 3DS, Horizon (Requires devkitARM toolchain)
+[`armv7-sony-vita-newlibeabihf`](platform-support/armv7-sony-vita-newlibeabihf.md) | ✓ |  | Armv7-A Cortex-A9 Sony PlayStation Vita (requires VITASDK toolchain)
+[`armv7-unknown-linux-uclibceabi`](platform-support/armv7-unknown-linux-uclibceabi.md) | ✓ | ✓ | Armv7-A Linux with uClibc, softfloat
+[`armv7-unknown-linux-uclibceabihf`](platform-support/armv7-unknown-linux-uclibceabihf.md) | ✓ | ? | Armv7-A Linux with uClibc, hardfloat
+`armv7-unknown-freebsd` | ✓ | ✓ | Armv7-A FreeBSD
+[`armv7-unknown-netbsd-eabihf`](platform-support/netbsd.md) | ✓ | ✓ | Armv7-A NetBSD w/hard-float
+`armv7-wrs-vxworks-eabihf` | ? |  | Armv7-A for VxWorks
 [`armv7a-kmc-solid_asp3-eabi`](platform-support/kmc-solid.md) | ✓ |  | ARM SOLID with TOPPERS/ASP3
 [`armv7a-kmc-solid_asp3-eabihf`](platform-support/kmc-solid.md) | ✓ |  | ARM SOLID with TOPPERS/ASP3, hardfloat
-[`armv7a-none-eabihf`](platform-support/arm-none-eabi.md) | * |  | Bare ARMv7-A, hardfloat
-[`armv7k-apple-watchos`](platform-support/apple-watchos.md) | ✓ |  | ARMv7-A Apple WatchOS
-`armv7s-apple-ios` | ✓ |  | ARMv7-A Apple-A6 Apple iOS
-[`armv8r-none-eabihf`](platform-support/armv8r-none-eabihf.md) | * |  | Bare ARMv8-R, hardfloat
+[`armv7a-none-eabihf`](platform-support/arm-none-eabi.md) | * |  | Bare Armv7-A, hardfloat
+[`armv7k-apple-watchos`](platform-support/apple-watchos.md) | ✓ |  | Armv7-A Apple WatchOS
+`armv7s-apple-ios` | ✓ |  | Armv7-A Apple-A6 Apple iOS
+[`armv8r-none-eabihf`](platform-support/armv8r-none-eabihf.md) | * |  | Bare Armv8-R, hardfloat
 `avr-unknown-gnu-atmega328` | * |  | AVR. Requires `-Z build-std=core`
 `bpfeb-unknown-none` | * |  | BPF (big endian)
 `bpfel-unknown-none` | * |  | BPF (little endian)
@@ -360,11 +360,11 @@ target | std | host | notes
 [`sparc-unknown-none-elf`](./platform-support/sparc-unknown-none-elf.md) | * |  | Bare 32-bit SPARC V7+
 [`sparc64-unknown-netbsd`](platform-support/netbsd.md) | ✓ | ✓ | NetBSD/sparc64
 [`sparc64-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | OpenBSD/sparc64
-[`thumbv4t-none-eabi`](platform-support/armv4t-none-eabi.md) | * |  | Thumb-mode Bare ARMv4T
-[`thumbv5te-none-eabi`](platform-support/armv5te-none-eabi.md) | * |  | Thumb-mode Bare ARMv5TE
+[`thumbv4t-none-eabi`](platform-support/armv4t-none-eabi.md) | * |  | Thumb-mode Bare Armv4T
+[`thumbv5te-none-eabi`](platform-support/armv5te-none-eabi.md) | * |  | Thumb-mode Bare Armv5TE
 `thumbv7a-pc-windows-msvc` | ? |  |
 `thumbv7a-uwp-windows-msvc` | ✓ |  |
-`thumbv7neon-unknown-linux-musleabihf` | ? |  | Thumb2-mode ARMv7-A Linux with NEON, musl 1.2.3
+`thumbv7neon-unknown-linux-musleabihf` | ? |  | Thumb2-mode Armv7-A Linux with NEON, musl 1.2.3
 [`wasm32-wasip2`](platform-support/wasm32-wasip2.md) | ✓ |  | WebAssembly
 [`wasm64-unknown-unknown`](platform-support/wasm64-unknown-unknown.md) | ? |  | WebAssembly
 `x86_64-apple-ios-macabi` | ✓ |  | Apple Catalyst on x86_64

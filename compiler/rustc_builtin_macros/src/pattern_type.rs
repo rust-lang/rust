@@ -3,7 +3,7 @@ use rustc_errors::PResult;
 use rustc_expand::base::{self, DummyResult, ExpandResult, ExtCtxt, MacroExpanderResult};
 use rustc_span::{sym, Span};
 
-pub fn expand<'cx>(
+pub(crate) fn expand<'cx>(
     cx: &'cx mut ExtCtxt<'_>,
     sp: Span,
     tts: TokenStream,

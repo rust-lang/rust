@@ -43,15 +43,7 @@ unsafe fn wait_timeout(
 ) {
     // Use the system clock on systems that do not support pthread_condattr_setclock.
     // This unfortunately results in problems when the system time changes.
-    #[cfg(any(
-        target_os = "macos",
-        target_os = "ios",
-        target_os = "tvos",
-        target_os = "watchos",
-        target_os = "visionos",
-        target_os = "espidf",
-        target_os = "horizon",
-    ))]
+    #[cfg(any(target_os = "espidf", target_os = "horizon", target_vendor = "apple"))]
     let (now, dur) = {
         use crate::cmp::min;
         use crate::sys::time::SystemTime;
@@ -72,15 +64,7 @@ unsafe fn wait_timeout(
         (now, dur)
     };
     // Use the monotonic clock on other systems.
-    #[cfg(not(any(
-        target_os = "macos",
-        target_os = "ios",
-        target_os = "tvos",
-        target_os = "watchos",
-        target_os = "visionos",
-        target_os = "espidf",
-        target_os = "horizon",
-    )))]
+    #[cfg(not(any(target_os = "espidf", target_os = "horizon", target_vendor = "apple")))]
     let (now, dur) = {
         use crate::sys::time::Timespec;
 
@@ -122,15 +106,11 @@ impl Parker {
 
         cfg_if::cfg_if! {
             if #[cfg(any(
-                target_os = "macos",
-                target_os = "ios",
-                target_os = "tvos",
-                target_os = "watchos",
-                target_os = "visionos",
                 target_os = "l4re",
                 target_os = "android",
                 target_os = "redox",
                 target_os = "vita",
+                target_vendor = "apple",
             ))] {
                 addr_of_mut!((*parker).cvar).write(UnsafeCell::new(libc::PTHREAD_COND_INITIALIZER));
             } else if #[cfg(any(target_os = "espidf", target_os = "horizon"))] {

@@ -15,7 +15,7 @@ use rustc_attr::StabilityLevel;
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, StashKey};
-use rustc_expand::base::{Annotatable, DeriveResolutions, Indeterminate, ResolverExpand};
+use rustc_expand::base::{Annotatable, DeriveResolution, Indeterminate, ResolverExpand};
 use rustc_expand::base::{SyntaxExtension, SyntaxExtensionKind};
 use rustc_expand::compile_declarative_macro;
 use rustc_expand::expand::{AstFragment, Invocation, InvocationKind, SupportsMacroExpansion};
@@ -344,7 +344,7 @@ impl<'a, 'tcx> ResolverExpand for Resolver<'a, 'tcx> {
         &mut self,
         expn_id: LocalExpnId,
         force: bool,
-        derive_paths: &dyn Fn() -> DeriveResolutions,
+        derive_paths: &dyn Fn() -> Vec<DeriveResolution>,
     ) -> Result<(), Indeterminate> {
         // Block expansion of the container until we resolve all derives in it.
         // This is required for two reasons:
@@ -360,11 +360,11 @@ impl<'a, 'tcx> ResolverExpand for Resolver<'a, 'tcx> {
             has_derive_copy: false,
         });
         let parent_scope = self.invocation_parent_scopes[&expn_id];
-        for (i, (path, _, opt_ext, _)) in entry.resolutions.iter_mut().enumerate() {
-            if opt_ext.is_none() {
-                *opt_ext = Some(
+        for (i, resolution) in entry.resolutions.iter_mut().enumerate() {
+            if resolution.exts.is_none() {
+                resolution.exts = Some(
                     match self.resolve_macro_path(
-                        path,
+                        &resolution.path,
                         Some(MacroKind::Derive),
                         &parent_scope,
                         true,
@@ -372,7 +372,7 @@ impl<'a, 'tcx> ResolverExpand for Resolver<'a, 'tcx> {
                     ) {
                         Ok((Some(ext), _)) => {
                             if !ext.helper_attrs.is_empty() {
-                                let last_seg = path.segments.last().unwrap();
+                                let last_seg = resolution.path.segments.last().unwrap();
                                 let span = last_seg.ident.span.normalize_to_macros_2_0();
                                 entry.helper_attrs.extend(
                                     ext.helper_attrs
@@ -416,7 +416,7 @@ impl<'a, 'tcx> ResolverExpand for Resolver<'a, 'tcx> {
         Ok(())
     }
 
-    fn take_derive_resolutions(&mut self, expn_id: LocalExpnId) -> Option<DeriveResolutions> {
+    fn take_derive_resolutions(&mut self, expn_id: LocalExpnId) -> Option<Vec<DeriveResolution>> {
         self.derive_data.remove(&expn_id).map(|data| data.resolutions)
     }
 

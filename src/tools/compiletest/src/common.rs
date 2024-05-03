@@ -6,10 +6,10 @@ use std::iter;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::str::FromStr;
+use std::sync::OnceLock;
 
 use crate::util::{add_dylib_path, PathBufExt};
 use build_helper::git::GitConfig;
-use lazycell::AtomicLazyCell;
 use serde::de::{Deserialize, Deserializer, Error as _};
 use std::collections::{HashMap, HashSet};
 use test::{ColorConfig, OutputFormat};
@@ -384,7 +384,7 @@ pub struct Config {
     /// Only rerun the tests that result has been modified accoring to Git status
     pub only_modified: bool,
 
-    pub target_cfgs: AtomicLazyCell<TargetCfgs>,
+    pub target_cfgs: OnceLock<TargetCfgs>,
 
     pub nocapture: bool,
 
@@ -406,13 +406,7 @@ impl Config {
     }
 
     pub fn target_cfgs(&self) -> &TargetCfgs {
-        match self.target_cfgs.borrow() {
-            Some(cfgs) => cfgs,
-            None => {
-                let _ = self.target_cfgs.fill(TargetCfgs::new(self));
-                self.target_cfgs.borrow().unwrap()
-            }
-        }
+        self.target_cfgs.get_or_init(|| TargetCfgs::new(self))
     }
 
     pub fn target_cfg(&self) -> &TargetCfg {

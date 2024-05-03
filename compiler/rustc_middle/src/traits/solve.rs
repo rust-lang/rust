@@ -1,5 +1,6 @@
 use rustc_ast_ir::try_visit;
 use rustc_data_structures::intern::Interned;
+use rustc_macros::{HashStable, TypeFoldable, TypeVisitable};
 use rustc_span::def_id::DefId;
 
 use crate::infer::canonical::{CanonicalVarValues, QueryRegionConstraints};
@@ -332,4 +333,9 @@ pub enum CandidateSource {
     /// }
     /// ```
     AliasBound,
+    /// A candidate that is registered only during coherence to represent some
+    /// yet-unknown impl that could be produced downstream without violating orphan
+    /// rules.
+    // FIXME: Merge this with the forced ambiguity candidates, so those don't use `Misc`.
+    CoherenceUnknowable,
 }

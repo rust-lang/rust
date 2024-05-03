@@ -529,6 +529,10 @@ cc = ["@compiler-errors", "@lcnr"]
 message = "changes to the core type system"
 cc = ["@compiler-errors", "@lcnr"]
 
+[mentions."compiler/rustc_hir_analysis/src/fn_ctxt/inspect_obligations.rs"]
+message = "changes to `inspect_obligations.rs`"
+cc = ["@compiler-errors", "@lcnr"]
+
 [mentions."compiler/rustc_middle/src/mir/interpret"]
 message = "Some changes occurred to the CTFE / Miri engine"
 cc = ["@rust-lang/miri"]

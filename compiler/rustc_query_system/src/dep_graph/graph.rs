@@ -6,6 +6,7 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::{AtomicU32, AtomicU64, Lock, Lrc};
 use rustc_data_structures::unord::UnordMap;
 use rustc_index::IndexVec;
+use rustc_macros::{Decodable, Encodable};
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
 use std::assert_matches::assert_matches;
 use std::collections::hash_map::Entry;
@@ -14,6 +15,7 @@ use std::hash::Hash;
 use std::marker::PhantomData;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
+use tracing::{debug, instrument};
 
 use super::query::DepGraphQuery;
 use super::serialized::{GraphEncoder, SerializedDepGraph, SerializedDepNodeIndex};
@@ -39,6 +41,11 @@ pub struct DepGraph<D: Deps> {
 rustc_index::newtype_index! {
     pub struct DepNodeIndex {}
 }
+
+// We store a large collection of these in `prev_index_to_index` during
+// non-full incremental builds, and want to ensure that the element size
+// doesn't inadvertently increase.
+rustc_data_structures::static_assert_size!(Option<DepNodeIndex>, 4);
 
 impl DepNodeIndex {
     const SINGLETON_DEPENDENCYLESS_ANON_NODE: DepNodeIndex = DepNodeIndex::ZERO;
@@ -1105,11 +1112,6 @@ impl<D: Deps> CurrentDepGraph<D> {
             },
             Err(_) => None,
         };
-
-        // We store a large collection of these in `prev_index_to_index` during
-        // non-full incremental builds, and want to ensure that the element size
-        // doesn't inadvertently increase.
-        static_assert_size!(Option<DepNodeIndex>, 4);
 
         let new_node_count_estimate = 102 * prev_graph_node_count / 100 + 200;
 

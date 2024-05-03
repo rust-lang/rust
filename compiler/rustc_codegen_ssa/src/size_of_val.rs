@@ -5,6 +5,7 @@ use crate::common::IntPredicate;
 use crate::meth;
 use crate::traits::*;
 use rustc_hir::LangItem;
+use rustc_middle::bug;
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
 use rustc_middle::ty::{self, Ty};
 use rustc_target::abi::WrappingRange;

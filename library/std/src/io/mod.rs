@@ -266,7 +266,7 @@
 //! its file descriptors with no operations being performed by any other part of the program.
 //!
 //! Note that exclusive ownership of a file descriptor does *not* imply exclusive ownership of the
-//! underlying kernel object that the file descriptor references (also called "file description" on
+//! underlying kernel object that the file descriptor references (also called "open file description" on
 //! some operating systems). File descriptors basically work like [`Arc`]: when you receive an owned
 //! file descriptor, you cannot know whether there are any other file descriptors that reference the
 //! same kernel object. However, when you create a new kernel object, you know that you are holding

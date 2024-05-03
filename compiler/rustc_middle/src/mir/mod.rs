@@ -20,6 +20,7 @@ use rustc_hir::def_id::{DefId, CRATE_DEF_ID};
 use rustc_hir::{
     self as hir, BindingMode, ByRef, CoroutineDesugaring, CoroutineKind, HirId, ImplicitSelfKind,
 };
+use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_session::Session;
 use rustc_span::source_map::Spanned;
 use rustc_target::abi::{FieldIdx, VariantIdx};
@@ -701,10 +702,7 @@ impl<'tcx> Body<'tcx> {
                 env,
                 crate::ty::EarlyBinder::bind(constant.const_),
             );
-            let Some(bits) = mono_literal.try_eval_bits(tcx, env) else {
-                bug!("Couldn't evaluate constant {:?} in mono {:?}", constant, instance);
-            };
-            bits
+            mono_literal.try_eval_bits(tcx, env)
         };
 
         let TerminatorKind::SwitchInt { discr, targets } = &block.terminator().kind else {
@@ -714,7 +712,7 @@ impl<'tcx> Body<'tcx> {
         // If this is a SwitchInt(const _), then we can just evaluate the constant and return.
         let discr = match discr {
             Operand::Constant(constant) => {
-                let bits = eval_mono_const(constant);
+                let bits = eval_mono_const(constant)?;
                 return Some((bits, targets));
             }
             Operand::Move(place) | Operand::Copy(place) => place,
@@ -748,7 +746,7 @@ impl<'tcx> Body<'tcx> {
         match rvalue {
             Rvalue::NullaryOp(NullOp::UbChecks, _) => Some((tcx.sess.ub_checks() as u128, targets)),
             Rvalue::Use(Operand::Constant(constant)) => {
-                let bits = eval_mono_const(constant);
+                let bits = eval_mono_const(constant)?;
                 Some((bits, targets))
             }
             _ => None,

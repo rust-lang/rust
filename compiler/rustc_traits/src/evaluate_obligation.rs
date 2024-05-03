@@ -6,6 +6,7 @@ use rustc_trait_selection::traits::query::CanonicalPredicateGoal;
 use rustc_trait_selection::traits::{
     EvaluationResult, Obligation, ObligationCause, OverflowError, SelectionContext, TraitQueryMode,
 };
+use tracing::debug;
 
 pub(crate) fn provide(p: &mut Providers) {
     *p = Providers { evaluate_obligation, ..*p };

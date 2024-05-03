@@ -2,11 +2,11 @@
 
 **Tier: 3**
 
-Bare-metal target for any cpu in the ARMv5TE architecture family, supporting
-ARM/Thumb code interworking (aka `a32`/`t32`), with `a32` code as the default code
+Bare-metal target for any cpu in the Armv5TE architecture family, supporting
+ARM/Thumb code interworking (aka `A32`/`T32`), with `A32` code as the default code
 generation.
 
-The `thumbv5te-none-eabi` target is the same as this one, but the instruction set defaults to `t32`.
+The `thumbv5te-none-eabi` target is the same as this one, but the instruction set defaults to `T32`.
 
 See [`arm-none-eabi`](arm-none-eabi.md) for information applicable to all
 `arm-none-eabi` targets.

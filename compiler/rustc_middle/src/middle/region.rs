@@ -11,7 +11,7 @@ use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::unord::UnordMap;
 use rustc_hir as hir;
 use rustc_hir::{HirId, HirIdMap, Node};
-use rustc_macros::HashStable;
+use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_span::{Span, DUMMY_SP};
 
 use std::fmt;
@@ -153,7 +153,7 @@ rustc_index::newtype_index! {
 }
 
 // compilation error if size of `ScopeData` is not the same as a `u32`
-static_assert_size!(ScopeData, 4);
+rustc_data_structures::static_assert_size!(ScopeData, 4);
 
 impl Scope {
     /// Returns an item-local ID associated with this scope.

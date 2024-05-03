@@ -342,7 +342,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty::Infer(ty::TyVar(vid)) => self.deduce_closure_signature_from_predicates(
                 Ty::new_var(self.tcx, self.root_var(vid)),
                 closure_kind,
-                self.obligations_for_self_ty(vid).map(|obl| (obl.predicate, obl.cause.span)),
+                self.obligations_for_self_ty(vid)
+                    .into_iter()
+                    .map(|obl| (obl.predicate, obl.cause.span)),
             ),
             ty::FnPtr(sig) => match closure_kind {
                 hir::ClosureKind::Closure => {
@@ -889,7 +891,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let output_ty = match *ret_ty.kind() {
             ty::Infer(ty::TyVar(ret_vid)) => {
-                self.obligations_for_self_ty(ret_vid).find_map(|obligation| {
+                self.obligations_for_self_ty(ret_vid).into_iter().find_map(|obligation| {
                     get_future_output(obligation.predicate, obligation.cause.span)
                 })?
             }

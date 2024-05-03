@@ -14,8 +14,8 @@ use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::LangItem::{self, OptionNone, OptionSome, ResultErr, ResultOk};
 use rustc_hir::{
-    BindingMode, Block, Body, ByRef, Expr, ExprKind, LetStmt, Mutability, Node, PatKind, PathSegment, QPath,
-    Stmt, StmtKind,
+    BindingMode, Block, Body, ByRef, Expr, ExprKind, LetStmt, Mutability, Node, PatKind, PathSegment, QPath, Stmt,
+    StmtKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::Ty;

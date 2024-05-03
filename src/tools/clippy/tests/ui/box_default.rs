@@ -65,6 +65,8 @@ fn main() {
     // Would have a suggestion after https://github.com/rust-lang/rust/blob/fdd030127cc68afec44a8d3f6341525dd34e50ae/compiler/rustc_middle/src/ty/diagnostics.rs#L554-L563
     let mut unnameable = Box::new(Option::default());
     let _ = unnameable.insert(|| {});
+
+    let _ = Box::into_raw(Box::new(String::default()));
 }
 
 fn ret_ty_fn() -> Box<bool> {
@@ -73,6 +75,16 @@ fn ret_ty_fn() -> Box<bool> {
 
 fn call_ty_fn(_b: Box<u8>) {
     issue_9621_dyn_trait();
+}
+
+struct X<T>(T);
+
+impl<T: Default> X<T> {
+    fn x(_: Box<T>) {}
+
+    fn same_generic_param() {
+        Self::x(Box::new(T::default()));
+    }
 }
 
 use std::io::{Read, Result};

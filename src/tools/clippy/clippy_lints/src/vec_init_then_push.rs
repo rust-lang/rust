@@ -6,9 +6,7 @@ use clippy_utils::{get_parent_expr, path_to_local_id};
 use core::ops::ControlFlow;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
-use rustc_hir::{
-    BindingMode, Block, Expr, ExprKind, HirId, LetStmt, Mutability, PatKind, QPath, Stmt, StmtKind, UnOp,
-};
+use rustc_hir::{BindingMode, Block, Expr, ExprKind, HirId, LetStmt, Mutability, PatKind, QPath, Stmt, StmtKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::impl_lint_pass;

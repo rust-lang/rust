@@ -89,8 +89,10 @@ mod shims;
 // Establish a "crate-wide prelude": we often import `crate::*`.
 
 // Make all those symbols available in the same place as our own.
+#[doc(no_inline)]
 pub use rustc_const_eval::interpret::*;
 // Resolve ambiguity.
+#[doc(no_inline)]
 pub use rustc_const_eval::interpret::{self, AllocMap, PlaceTy, Provenance as _};
 
 pub use crate::shims::env::{EnvVars, EvalContextExt as _};

@@ -237,6 +237,7 @@ impl TraitBounds {
         }
     }
 
+    #[allow(clippy::mutable_key_type)]
     fn check_type_repetition<'tcx>(&self, cx: &LateContext<'tcx>, gen: &'tcx Generics<'_>) {
         struct SpanlessTy<'cx, 'tcx> {
             ty: &'tcx Ty<'tcx>,

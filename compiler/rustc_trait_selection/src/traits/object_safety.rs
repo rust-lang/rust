@@ -519,7 +519,7 @@ fn virtual_call_violations_for_method<'tcx>(
 
             // e.g., `Rc<()>`
             let unit_receiver_ty =
-                receiver_for_self_ty(tcx, receiver_ty, Ty::new_unit(tcx), method.def_id);
+                receiver_for_self_ty(tcx, receiver_ty, tcx.types.unit, method.def_id);
 
             match abi_of_ty(unit_receiver_ty) {
                 Some(Abi::Scalar(..)) => (),

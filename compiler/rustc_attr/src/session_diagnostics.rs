@@ -2,7 +2,7 @@ use std::num::IntErrorKind;
 
 use rustc_ast as ast;
 use rustc_errors::{codes::*, Applicability, Diag, DiagCtxt, Diagnostic, EmissionGuarantee, Level};
-use rustc_macros::Diagnostic;
+use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{Span, Symbol};
 
 use crate::fluent_generated as fluent;

@@ -12,6 +12,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_index::{IndexSlice, IndexVec};
+use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_query_system::ich::StableHashingContext;
 use rustc_session::DataTypeKind;
 use rustc_span::symbol::sym;
@@ -26,7 +27,7 @@ use super::{Destructor, FieldDef, GenericPredicates, Ty, TyCtxt, VariantDef, Var
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, HashStable, TyEncodable, TyDecodable)]
 pub struct AdtFlags(u16);
-bitflags! {
+bitflags::bitflags! {
     impl AdtFlags: u16 {
         const NO_ADT_FLAGS        = 0;
         /// Indicates whether the ADT is an enum.
@@ -582,8 +583,7 @@ impl<'tcx> AdtDef<'tcx> {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
-#[derive(HashStable)]
+#[derive(Clone, Copy, Debug, HashStable)]
 pub enum Representability {
     Representable,
     Infinite(ErrorGuaranteed),

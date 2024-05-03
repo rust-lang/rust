@@ -498,7 +498,7 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
             (self, i, i.kind, Id::None, ast, ForeignItem, ForeignItemKind),
             [Static, Fn, TyAlias, MacCall]
         );
-        ast_visit::walk_foreign_item(self, i)
+        ast_visit::walk_item(self, i)
     }
 
     fn visit_item(&mut self, i: &'v ast::Item) {

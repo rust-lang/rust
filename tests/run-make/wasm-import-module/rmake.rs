@@ -1,19 +1,12 @@
 //@ only-wasm32-wasip1
 
-extern crate run_make_support;
-
-use run_make_support::{tmp_dir, wasmparser, rustc};
+use run_make_support::{rustc, tmp_dir, wasmparser};
 use std::collections::HashMap;
 use wasmparser::TypeRef::Func;
 
 fn main() {
     rustc().input("foo.rs").target("wasm32-wasip1").run();
-    rustc()
-        .input("bar.rs")
-        .target("wasm32-wasip1")
-        .arg("-Clto")
-        .opt()
-        .run();
+    rustc().input("bar.rs").target("wasm32-wasip1").arg("-Clto").opt().run();
 
     let file = std::fs::read(&tmp_dir().join("bar.wasm")).unwrap();
 

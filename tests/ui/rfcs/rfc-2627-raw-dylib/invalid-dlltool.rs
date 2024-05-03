@@ -1,7 +1,6 @@
 // Tests that failing to run dlltool will raise an error.
 
-//@ only-gnu
-//@ only-windows
+//@ needs-dlltool
 //@ compile-flags: --crate-type lib --emit link -Cdlltool=does_not_exit.exe
 #[link(name = "foo", kind = "raw-dylib")]
 extern "C" {

@@ -150,13 +150,7 @@ impl Thread {
         }
     }
 
-    #[cfg(any(
-        target_os = "macos",
-        target_os = "ios",
-        target_os = "watchos",
-        target_os = "visionos",
-        target_os = "tvos"
-    ))]
+    #[cfg(target_vendor = "apple")]
     pub fn set_name(name: &CStr) {
         unsafe {
             let name = truncate_cstr::<{ libc::MAXTHREADNAMESIZE }>(name);
@@ -301,14 +295,10 @@ impl Drop for Thread {
 
 #[cfg(any(
     target_os = "linux",
-    target_os = "macos",
-    target_os = "ios",
-    target_os = "tvos",
-    target_os = "watchos",
-    target_os = "visionos",
     target_os = "nto",
     target_os = "solaris",
     target_os = "illumos",
+    target_vendor = "apple",
 ))]
 fn truncate_cstr<const MAX_WITH_NUL: usize>(cstr: &CStr) -> [libc::c_char; MAX_WITH_NUL] {
     let mut result = [0; MAX_WITH_NUL];
@@ -325,11 +315,9 @@ pub fn available_parallelism() -> io::Result<NonZero<usize>> {
             target_os = "emscripten",
             target_os = "fuchsia",
             target_os = "hurd",
-            target_os = "ios",
-            target_os = "tvos",
             target_os = "linux",
-            target_os = "macos",
             target_os = "aix",
+            target_vendor = "apple",
         ))] {
             #[allow(unused_assignments)]
             #[allow(unused_mut)]

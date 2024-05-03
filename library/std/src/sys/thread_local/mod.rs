@@ -91,13 +91,15 @@ mod lazy {
             }
         }
 
-        /// The other methods hand out references while taking &self.
-        /// As such, callers of this method must ensure no `&` and `&mut` are
-        /// available and used at the same time.
+        /// Watch out: unsynchronized internal mutability!
+        ///
+        /// # Safety
+        /// Causes UB if any reference to the value is used after this.
         #[allow(unused)]
-        pub unsafe fn take(&mut self) -> Option<T> {
-            // SAFETY: See doc comment for this method.
-            unsafe { (*self.inner.get()).take() }
+        pub(crate) unsafe fn take(&self) -> Option<T> {
+            let mutable: *mut _ = UnsafeCell::get(&self.inner);
+            // SAFETY: That's the caller's problem.
+            unsafe { mutable.replace(None) }
         }
     }
 }

@@ -40,10 +40,6 @@
 #![allow(internal_features)]
 
 #[macro_use]
-extern crate rustc_middle;
-#[macro_use]
-extern crate rustc_session;
-#[macro_use]
 extern crate tracing;
 
 mod array_into_iter;

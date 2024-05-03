@@ -201,6 +201,12 @@ hir_analysis_inherent_ty_outside_relevant = cannot define inherent `impl` for a 
     .help = consider moving this inherent impl into the crate defining the type if possible
     .span_help = alternatively add `#[rustc_allow_incoherent_impl]` to the relevant impl items
 
+hir_analysis_invalid_receiver_ty = invalid `self` parameter type: `{$receiver_ty}`
+    .note = type of `self` must be `Self` or a type that dereferences to it
+
+hir_analysis_invalid_receiver_ty_help =
+    consider changing to `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
+
 hir_analysis_invalid_union_field =
     field must implement `Copy` or be wrapped in `ManuallyDrop<...>` to be used in a union
     .note = union fields must not have drop side-effects, which is currently enforced via either `Copy` or `ManuallyDrop<...>`
@@ -486,13 +492,13 @@ hir_analysis_transparent_non_zero_sized_enum = the variant of a transparent {$de
 
 hir_analysis_ty_of_assoc_const_binding_note = `{$assoc_const}` has type `{$ty}`
 
-hir_analysis_ty_param_first_local = type parameter `{$param_ty}` must be covered by another type when it appears before the first local type (`{$local_type}`)
-    .label = type parameter `{$param_ty}` must be covered by another type when it appears before the first local type (`{$local_type}`)
+hir_analysis_ty_param_first_local = type parameter `{$param}` must be covered by another type when it appears before the first local type (`{$local_type}`)
+    .label = type parameter `{$param}` must be covered by another type when it appears before the first local type (`{$local_type}`)
     .note = implementing a foreign trait is only possible if at least one of the types for which it is implemented is local, and no uncovered type parameters appear before that first local type
     .case_note = in this case, 'before' refers to the following order: `impl<..> ForeignTrait<T1, ..., Tn> for T0`, where `T0` is the first and `Tn` is the last
 
-hir_analysis_ty_param_some = type parameter `{$param_ty}` must be used as the type parameter for some local type (e.g., `MyStruct<{$param_ty}>`)
-    .label = type parameter `{$param_ty}` must be used as the type parameter for some local type
+hir_analysis_ty_param_some = type parameter `{$param}` must be used as the type parameter for some local type (e.g., `MyStruct<{$param}>`)
+    .label = type parameter `{$param}` must be used as the type parameter for some local type
     .note = implementing a foreign trait is only possible if at least one of the types for which it is implemented is local
     .only_note = only traits defined in the current crate can be implemented for a type parameter
 

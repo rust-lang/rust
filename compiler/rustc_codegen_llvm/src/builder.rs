@@ -27,6 +27,7 @@ use rustc_target::abi::{self, call::FnAbi, Align, Size, WrappingRange};
 use rustc_target::spec::{HasTargetSpec, SanitizerSet, Target};
 use smallvec::SmallVec;
 use std::borrow::Cow;
+use std::ffi::CString;
 use std::iter;
 use std::ops::Deref;
 use std::ptr;
@@ -1709,7 +1710,8 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
         fn_name: &'ll Value,
         hash: &'ll Value,
         bitmap_bytes: &'ll Value,
-    ) -> &'ll Value {
+        max_decision_depth: u32,
+    ) -> Vec<&'ll Value> {
         debug!("mcdc_parameters() with args ({:?}, {:?}, {:?})", fn_name, hash, bitmap_bytes);
 
         assert!(llvm_util::get_version() >= (18, 0, 0), "MCDC intrinsics require LLVM 18 or later");
@@ -1722,6 +1724,8 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
         let args = &[fn_name, hash, bitmap_bytes];
         let args = self.check_call("call", llty, llfn, args);
 
+        let mut cond_bitmaps = vec![];
+
         unsafe {
             let _ = llvm::LLVMRustBuildCall(
                 self.llbuilder,
@@ -1733,17 +1737,22 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
                 0 as c_uint,
             );
             // Create condition bitmap named `mcdc.addr`.
-            let mut bx = Builder::with_cx(self.cx);
-            bx.position_at_start(llvm::LLVMGetFirstBasicBlock(self.llfn()));
-            let cond_bitmap = {
-                let alloca =
-                    llvm::LLVMBuildAlloca(bx.llbuilder, bx.cx.type_i32(), c"mcdc.addr".as_ptr());
-                llvm::LLVMSetAlignment(alloca, 4);
-                alloca
-            };
-            bx.store(self.const_i32(0), cond_bitmap, self.tcx().data_layout.i32_align.abi);
-            cond_bitmap
+            for i in 0..=max_decision_depth {
+                let mut bx = Builder::with_cx(self.cx);
+                bx.position_at_start(llvm::LLVMGetFirstBasicBlock(self.llfn()));
+
+                let name = CString::new(format!("mcdc.addr.{i}")).unwrap();
+                let cond_bitmap = {
+                    let alloca =
+                        llvm::LLVMBuildAlloca(bx.llbuilder, bx.cx.type_i32(), name.as_ptr());
+                    llvm::LLVMSetAlignment(alloca, 4);
+                    alloca
+                };
+                bx.store(self.const_i32(0), cond_bitmap, self.tcx().data_layout.i32_align.abi);
+                cond_bitmaps.push(cond_bitmap);
+            }
         }
+        cond_bitmaps
     }
 
     pub(crate) fn mcdc_tvbitmap_update(

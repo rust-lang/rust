@@ -4,14 +4,15 @@
 // general routines.
 
 use rustc_infer::infer::TyCtxtInferExt;
-use rustc_infer::traits::{FulfillmentErrorCode, TraitEngineExt as _};
+use rustc_infer::traits::FulfillmentErrorCode;
+use rustc_middle::bug;
 use rustc_middle::traits::CodegenObligationError;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt;
 use rustc_trait_selection::traits::{
-    ImplSource, Obligation, ObligationCause, SelectionContext, TraitEngine, TraitEngineExt,
-    Unimplemented,
+    ImplSource, Obligation, ObligationCause, ObligationCtxt, SelectionContext, Unimplemented,
 };
+use tracing::debug;
 
 /// Attempts to resolve an obligation to an `ImplSource`. The result is
 /// a shallow `ImplSource` resolution, meaning that we do not
@@ -49,15 +50,15 @@ pub fn codegen_select_candidate<'tcx>(
     // Currently, we use a fulfillment context to completely resolve
     // all nested obligations. This is because they can inform the
     // inference of the impl's type parameters.
-    let mut fulfill_cx = <dyn TraitEngine<'tcx>>::new(&infcx);
-    let impl_source = selection.map(|predicate| {
-        fulfill_cx.register_predicate_obligation(&infcx, predicate);
+    let ocx = ObligationCtxt::new(&infcx);
+    let impl_source = selection.map(|obligation| {
+        ocx.register_obligation(obligation);
     });
 
     // In principle, we only need to do this so long as `impl_source`
     // contains unbound type parameters. It could be a slight
     // optimization to stop iterating early.
-    let errors = fulfill_cx.select_all_or_error(&infcx);
+    let errors = ocx.select_all_or_error();
     if !errors.is_empty() {
         // `rustc_monomorphize::collector` assumes there are no type errors.
         // Cycle errors are the only post-monomorphization errors possible; emit them now so

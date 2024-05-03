@@ -439,7 +439,6 @@ ui/closures/issue-11873.rs
 ui/closures/issue-1460.rs
 ui/closures/issue-22864-1.rs
 ui/closures/issue-22864-2.rs
-ui/closures/issue-23012-supertrait-signature-inference.rs
 ui/closures/issue-25439.rs
 ui/closures/issue-41366.rs
 ui/closures/issue-42463.rs
