@@ -71,10 +71,9 @@ function run_tests {
     time MIRIFLAGS="${MIRIFLAGS-} -O -Zmir-opt-level=4 -Cdebug-assertions=yes" MIRI_SKIP_UI_CHECKS=1 ./miri test -- tests/{pass,panic}
   fi
   if [ -n "${MANY_SEEDS-}" ]; then
-    # Also run some many-seeds tests. 64 seeds means this takes around a minute per test.
-    # (Need to invoke via explicit `bash -c` for Windows.)
+    # Also run some many-seeds tests.
     time for FILE in tests/many-seeds/*.rs; do
-      MIRI_SEEDS=$MANY_SEEDS ./miri many-seeds "$BASH" -c "./miri run '$FILE'"
+      ./miri run "--many-seeds=0..$MANY_SEEDS" "$FILE"
     done
   fi
   if [ -n "${TEST_BENCH-}" ]; then
@@ -135,7 +134,7 @@ case $HOST_TARGET in
     GC_STRESS=1 MIR_OPT=1 MANY_SEEDS=64 TEST_BENCH=1 CARGO_MIRI_ENV=1 run_tests
     # Extra tier 1
     # With reduced many-seed count to avoid spending too much time on that.
-    # (All OSes are run with 64 seeds at least once though via the macOS runner.)
+    # (All OSes and ABIs are run with 64 seeds at least once though via the macOS runner.)
     MANY_SEEDS=16 MIRI_TEST_TARGET=i686-unknown-linux-gnu run_tests
     MANY_SEEDS=16 MIRI_TEST_TARGET=aarch64-unknown-linux-gnu run_tests
     MANY_SEEDS=16 MIRI_TEST_TARGET=x86_64-apple-darwin run_tests
@@ -164,9 +163,9 @@ case $HOST_TARGET in
     ;;
   i686-pc-windows-msvc)
     # Host
-    # Only smoke-test `many-seeds`; 64 runs of just the scoped-thread-leak test take 15min here!
-    # See <https://github.com/rust-lang/miri/issues/3509>.
-    GC_STRESS=1 MIR_OPT=1 MANY_SEEDS=1 TEST_BENCH=1 run_tests
+    # With reduced many-seeds count as this is the slowest runner already.
+    # (The macOS runner checks windows-msvc with full many-seeds count.)
+    GC_STRESS=1 MIR_OPT=1 MANY_SEEDS=16 TEST_BENCH=1 run_tests
     # Extra tier 1
     # We really want to ensure a Linux target works on a Windows host,
     # and a 64bit target works on a 32bit host.
