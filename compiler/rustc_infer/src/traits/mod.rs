@@ -206,6 +206,18 @@ impl<'tcx> FulfillmentError<'tcx> {
     ) -> FulfillmentError<'tcx> {
         FulfillmentError { obligation, code, root_obligation }
     }
+
+    pub fn is_true_error(&self) -> bool {
+        match self.code {
+            FulfillmentErrorCode::SelectionError(_)
+            | FulfillmentErrorCode::ProjectionError(_)
+            | FulfillmentErrorCode::SubtypeError(_, _)
+            | FulfillmentErrorCode::ConstEquateError(_, _) => true,
+            FulfillmentErrorCode::Cycle(_) | FulfillmentErrorCode::Ambiguity { overflow: _ } => {
+                false
+            }
+        }
+    }
 }
 
 impl<'tcx> PolyTraitObligation<'tcx> {

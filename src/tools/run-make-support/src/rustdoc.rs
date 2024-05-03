@@ -1,6 +1,7 @@
 use std::env;
+use std::io::Write;
 use std::path::Path;
-use std::process::{Command, Output};
+use std::process::{Command, Output, Stdio};
 
 use crate::{handle_failed_output, set_host_rpath};
 
@@ -17,6 +18,7 @@ pub fn rustdoc() -> Rustdoc {
 #[derive(Debug)]
 pub struct Rustdoc {
     cmd: Command,
+    stdin: Option<Box<[u8]>>,
 }
 
 crate::impl_common_helpers!(Rustdoc);
@@ -32,7 +34,7 @@ impl Rustdoc {
     /// Construct a bare `rustdoc` invocation.
     pub fn bare() -> Self {
         let cmd = setup_common();
-        Self { cmd }
+        Self { cmd, stdin: None }
     }
 
     /// Construct a `rustdoc` invocation with `-L $(TARGET_RPATH_DIR)` set.
@@ -40,7 +42,7 @@ impl Rustdoc {
         let mut cmd = setup_common();
         let target_rpath_dir = env::var_os("TARGET_RPATH_DIR").unwrap();
         cmd.arg(format!("-L{}", target_rpath_dir.to_string_lossy()));
-        Self { cmd }
+        Self { cmd, stdin: None }
     }
 
     /// Specify path to the input file.
@@ -62,12 +64,41 @@ impl Rustdoc {
         self
     }
 
+    /// Specify a stdin input
+    pub fn stdin<I: AsRef<[u8]>>(&mut self, input: I) -> &mut Self {
+        self.cmd.stdin(Stdio::piped());
+        self.stdin = Some(input.as_ref().to_vec().into_boxed_slice());
+        self
+    }
+
+    /// Get the [`Output`][::std::process::Output] of the finished process.
+    #[track_caller]
+    pub fn output(&mut self) -> ::std::process::Output {
+        // let's make sure we piped all the input and outputs
+        self.cmd.stdin(Stdio::piped());
+        self.cmd.stdout(Stdio::piped());
+        self.cmd.stderr(Stdio::piped());
+
+        if let Some(input) = &self.stdin {
+            let mut child = self.cmd.spawn().unwrap();
+
+            {
+                let mut stdin = child.stdin.take().unwrap();
+                stdin.write_all(input.as_ref()).unwrap();
+            }
+
+            child.wait_with_output().expect("failed to get output of finished process")
+        } else {
+            self.cmd.output().expect("failed to get output of finished process")
+        }
+    }
+
     #[track_caller]
     pub fn run_fail_assert_exit_code(&mut self, code: i32) -> Output {
         let caller_location = std::panic::Location::caller();
         let caller_line_number = caller_location.line();
 
-        let output = self.cmd.output().unwrap();
+        let output = self.output();
         if output.status.code().unwrap() != code {
             handle_failed_output(&self.cmd, output, caller_line_number);
         }

@@ -29,9 +29,7 @@ use provenance_map::*;
 pub use init_mask::{InitChunk, InitChunkIter};
 
 /// Functionality required for the bytes of an `Allocation`.
-pub trait AllocBytes:
-    Clone + fmt::Debug + Eq + PartialEq + Hash + Deref<Target = [u8]> + DerefMut<Target = [u8]>
-{
+pub trait AllocBytes: Clone + fmt::Debug + Deref<Target = [u8]> + DerefMut<Target = [u8]> {
     /// Create an `AllocBytes` from a slice of `u8`.
     fn from_bytes<'a>(slice: impl Into<Cow<'a, [u8]>>, _align: Align) -> Self;
 
@@ -346,10 +344,10 @@ impl<Prov: Provenance, Bytes: AllocBytes> Allocation<Prov, (), Bytes> {
     }
 }
 
-impl<Bytes: AllocBytes> Allocation<CtfeProvenance, (), Bytes> {
+impl Allocation {
     /// Adjust allocation from the ones in `tcx` to a custom Machine instance
-    /// with a different `Provenance` and `Extra` type.
-    pub fn adjust_from_tcx<Prov: Provenance, Extra, Err>(
+    /// with a different `Provenance`, `Extra` and `Byte` type.
+    pub fn adjust_from_tcx<Prov: Provenance, Extra, Bytes: AllocBytes, Err>(
         self,
         cx: &impl HasDataLayout,
         extra: Extra,
@@ -371,7 +369,7 @@ impl<Bytes: AllocBytes> Allocation<CtfeProvenance, (), Bytes> {
         }
         // Create allocation.
         Ok(Allocation {
-            bytes,
+            bytes: AllocBytes::from_bytes(Cow::Owned(Vec::from(bytes)), self.align),
             provenance: ProvenanceMap::from_presorted_ptrs(new_provenance),
             init_mask: self.init_mask,
             align: self.align,

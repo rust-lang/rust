@@ -26,6 +26,17 @@ pub struct Finder {
     path: OsString,
 }
 
+// During sanity checks, we search for target names to determine if they exist in the compiler's built-in
+// target list (`rustc --print target-list`). While a target name may be present in the stage2 compiler,
+// it might not yet be included in stage0. In such cases, we handle the targets missing from stage0 in this list.
+//
+// Targets can be removed from this list once they are present in the stage0 compiler (usually by updating the beta compiler of the bootstrap).
+const STAGE0_MISSING_TARGETS: &[&str] = &[
+    // just a dummy comment so the list doesn't get onelined
+    "aarch64-apple-visionos",
+    "aarch64-apple-visionos-sim",
+];
+
 impl Finder {
     pub fn new() -> Self {
         Self { cache: HashMap::new(), path: env::var_os("PATH").unwrap_or_default() }
@@ -178,32 +189,40 @@ than building it.
             continue;
         }
 
-        // Check if there exists a built-in target in the list of supported targets.
-        let mut has_target = false;
         let target_str = target.to_string();
 
-        let supported_target_list =
-            output(Command::new(&build.config.initial_rustc).args(["--print", "target-list"]));
+        // Ignore fake targets that are only used for unit tests in bootstrap.
+        if !["A", "B", "C"].contains(&target_str.as_str()) {
+            let mut has_target = false;
 
-        has_target |= supported_target_list.contains(&target_str);
+            let supported_target_list =
+                output(Command::new(&build.config.initial_rustc).args(["--print", "target-list"]));
 
-        // If not, check for a valid file location that may have been specified
-        // by the user for the custom target.
-        if let Some(custom_target_path) = env::var_os("RUST_TARGET_PATH") {
-            let mut target_os_str = OsString::from(&target_str);
-            target_os_str.push(".json");
-            // Recursively traverse through nested directories.
-            let walker = WalkDir::new(custom_target_path).into_iter();
-            for entry in walker.filter_map(|e| e.ok()) {
-                has_target |= entry.file_name() == target_os_str;
+            // Check if it's a built-in target.
+            has_target |= supported_target_list.contains(&target_str);
+            has_target |= STAGE0_MISSING_TARGETS.contains(&target_str.as_str());
+
+            if !has_target {
+                // This might also be a custom target, so check the target file that could have been specified by the user.
+                if let Some(custom_target_path) = env::var_os("RUST_TARGET_PATH") {
+                    let mut target_filename = OsString::from(&target_str);
+                    // Target filename ends with `.json`.
+                    target_filename.push(".json");
+
+                    // Recursively traverse through nested directories.
+                    let walker = WalkDir::new(custom_target_path).into_iter();
+                    for entry in walker.filter_map(|e| e.ok()) {
+                        has_target |= entry.file_name() == target_filename;
+                    }
+                }
             }
-        }
 
-        if !has_target && !["A", "B", "C"].contains(&target_str.as_str()) {
-            panic!(
-                "No such target exists in the target list,
+            if !has_target {
+                panic!(
+                    "No such target exists in the target list,
                 specify a correct location of the JSON specification file for custom targets!"
-            );
+                );
+            }
         }
 
         if !build.config.dry_run() {

@@ -45,8 +45,7 @@ use rustc_hir::Expr;
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
 use rustc_infer::infer::type_variable::TypeVariableOrigin;
 use rustc_infer::infer::{Coercion, DefineOpaqueTypes, InferOk, InferResult};
-use rustc_infer::traits::TraitEngineExt as _;
-use rustc_infer::traits::{IfExpressionCause, MatchExpressionArmCause, TraitEngine};
+use rustc_infer::traits::{IfExpressionCause, MatchExpressionArmCause};
 use rustc_infer::traits::{Obligation, PredicateObligation};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::traits::BuiltinImplSource;
@@ -65,7 +64,6 @@ use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::error_reporting::suggestions::TypeErrCtxtExt;
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
-use rustc_trait_selection::traits::TraitEngineExt as _;
 use rustc_trait_selection::traits::{
     self, NormalizeExt, ObligationCause, ObligationCauseCode, ObligationCtxt,
 };
@@ -164,11 +162,10 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             // Filter these cases out to make sure our coercion is more accurate.
             match res {
                 Ok(InferOk { value, obligations }) if self.next_trait_solver() => {
-                    let mut fulfill_cx = <dyn TraitEngine<'tcx>>::new(self);
-                    fulfill_cx.register_predicate_obligations(self, obligations);
-                    let errs = fulfill_cx.select_where_possible(self);
-                    if errs.is_empty() {
-                        Ok(InferOk { value, obligations: fulfill_cx.pending_obligations() })
+                    let ocx = ObligationCtxt::new(self);
+                    ocx.register_obligations(obligations);
+                    if ocx.select_where_possible().is_empty() {
+                        Ok(InferOk { value, obligations: ocx.into_pending_obligations() })
                     } else {
                         Err(TypeError::Mismatch)
                     }
@@ -631,13 +628,12 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 // but we need to constrain vars before processing goals mentioning
                 // them.
                 Some(ty::PredicateKind::AliasRelate(..)) => {
-                    let mut fulfill_cx = <dyn TraitEngine<'tcx>>::new(self);
-                    fulfill_cx.register_predicate_obligation(self, obligation);
-                    let errs = fulfill_cx.select_where_possible(self);
-                    if !errs.is_empty() {
+                    let ocx = ObligationCtxt::new(self);
+                    ocx.register_obligation(obligation);
+                    if !ocx.select_where_possible().is_empty() {
                         return Err(TypeError::Mismatch);
                     }
-                    coercion.obligations.extend(fulfill_cx.pending_obligations());
+                    coercion.obligations.extend(ocx.into_pending_obligations());
                     continue;
                 }
                 _ => {
