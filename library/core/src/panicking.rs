@@ -156,7 +156,6 @@ pub const fn panic(expr: &'static str) -> ! {
 // reducing binary size impact.
 macro_rules! panic_const {
     ($($lang:ident = $message:expr,)+) => {
-        #[cfg(not(bootstrap))]
         pub mod panic_const {
             use super::*;
 

@@ -15,6 +15,7 @@ use rustc_data_structures::stable_hasher::{StableOrd, ToStableHashKey};
 use rustc_errors::emitter::HumanReadableErrorType;
 use rustc_errors::{ColorConfig, DiagArgValue, DiagCtxtFlags, IntoDiagArg};
 use rustc_feature::UnstableFeatures;
+use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::edition::{Edition, DEFAULT_EDITION, EDITION_NAME_LIST, LATEST_STABLE_EDITION};
 use rustc_span::source_map::FilePathMapping;
 use rustc_span::{FileName, FileNameDisplayPreference, RealFileName, SourceFileHashAlgorithm};
@@ -32,6 +33,7 @@ use std::iter;
 use std::path::{Path, PathBuf};
 use std::str::{self, FromStr};
 use std::sync::LazyLock;
+use tracing::debug;
 
 mod cfg;
 pub mod sigpipe;
@@ -146,10 +148,26 @@ pub enum InstrumentCoverage {
 /// Individual flag values controlled by `-Z coverage-options`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default)]
 pub struct CoverageOptions {
-    /// Add branch coverage instrumentation.
-    pub branch: bool,
-    /// Add mcdc coverage instrumentation.
-    pub mcdc: bool,
+    pub level: CoverageLevel,
+    // Other boolean or enum-valued options might be added here.
+}
+
+/// Controls whether branch coverage or MC/DC coverage is enabled.
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+pub enum CoverageLevel {
+    /// Instrument for coverage at the MIR block level.
+    Block,
+    /// Also instrument branch points (includes block coverage).
+    Branch,
+    /// Instrument for MC/DC. Mostly a superset of branch coverage, but might
+    /// differ in some corner cases.
+    Mcdc,
+}
+
+impl Default for CoverageLevel {
+    fn default() -> Self {
+        Self::Block
+    }
 }
 
 /// Settings for `-Z instrument-xray` flag.

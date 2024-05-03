@@ -7,8 +7,6 @@
 // Also see discussion at
 // <https://internals.rust-lang.org/t/interaction-between-incremental-compilation-and-emit/20551>
 
-extern crate run_make_support;
-
 use run_make_support::{rustc, tmp_dir};
 
 fn main() {

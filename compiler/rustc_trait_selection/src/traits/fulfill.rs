@@ -73,7 +73,7 @@ pub struct PendingPredicateObligation<'tcx> {
 
 // `PendingPredicateObligation` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(target_pointer_width = "64")]
-static_assert_size!(PendingPredicateObligation<'_>, 72);
+rustc_data_structures::static_assert_size!(PendingPredicateObligation<'_>, 72);
 
 impl<'tcx> FulfillmentContext<'tcx> {
     /// Creates a new fulfillment context.

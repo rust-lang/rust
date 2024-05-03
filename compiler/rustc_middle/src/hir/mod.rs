@@ -15,6 +15,7 @@ use rustc_data_structures::sync::{try_par_for_each_in, DynSend, DynSync};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};
 use rustc_hir::*;
+use rustc_macros::{Decodable, Encodable, HashStable};
 use rustc_span::{ErrorGuaranteed, ExpnId};
 
 /// Gather the LocalDefId for each item-like within a module, including items contained within

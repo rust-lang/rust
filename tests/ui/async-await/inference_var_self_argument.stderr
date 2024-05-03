@@ -13,7 +13,7 @@ LL |     async fn foo(self: &dyn Foo) {
    |              ^^^ ...because method `foo` is `async`
    = help: consider moving `foo` to another trait
 
-error[E0307]: invalid `self` parameter type: &dyn Foo
+error[E0307]: invalid `self` parameter type: `&dyn Foo`
   --> $DIR/inference_var_self_argument.rs:5:24
    |
 LL |     async fn foo(self: &dyn Foo) {

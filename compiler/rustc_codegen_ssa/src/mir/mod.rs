@@ -8,6 +8,7 @@ use rustc_middle::mir::traversal;
 use rustc_middle::mir::UnwindTerminateReason;
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, TyAndLayout};
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt, TypeFoldable, TypeVisitableExt};
+use rustc_middle::{bug, span_bug};
 use rustc_target::abi::call::{FnAbi, PassMode};
 
 use std::iter;

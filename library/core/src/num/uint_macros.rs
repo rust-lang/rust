@@ -77,10 +77,7 @@ macro_rules! uint_impl {
                       without modifying the original"]
         #[inline(always)]
         pub const fn count_ones(self) -> u32 {
-            #[cfg(not(bootstrap))]
             return intrinsics::ctpop(self as $ActualT);
-            #[cfg(bootstrap)]
-            return intrinsics::ctpop(self as $ActualT) as u32;
         }
 
         /// Returns the number of zeros in the binary representation of `self`.
@@ -122,10 +119,7 @@ macro_rules! uint_impl {
                       without modifying the original"]
         #[inline(always)]
         pub const fn leading_zeros(self) -> u32 {
-            #[cfg(not(bootstrap))]
             return intrinsics::ctlz(self as $ActualT);
-            #[cfg(bootstrap)]
-            return intrinsics::ctlz(self as $ActualT) as u32;
         }
 
         /// Returns the number of trailing zeros in the binary representation
@@ -146,10 +140,7 @@ macro_rules! uint_impl {
                       without modifying the original"]
         #[inline(always)]
         pub const fn trailing_zeros(self) -> u32 {
-            #[cfg(not(bootstrap))]
             return intrinsics::cttz(self);
-            #[cfg(bootstrap)]
-            return intrinsics::cttz(self) as u32;
         }
 
         /// Returns the number of leading ones in the binary representation of `self`.
@@ -214,10 +205,7 @@ macro_rules! uint_impl {
                       without modifying the original"]
         #[inline(always)]
         pub const fn rotate_left(self, n: u32) -> Self {
-            #[cfg(not(bootstrap))]
             return intrinsics::rotate_left(self, n);
-            #[cfg(bootstrap)]
-            return intrinsics::rotate_left(self, n as $SelfT);
         }
 
         /// Shifts the bits to the right by a specified amount, `n`,
@@ -242,10 +230,7 @@ macro_rules! uint_impl {
                       without modifying the original"]
         #[inline(always)]
         pub const fn rotate_right(self, n: u32) -> Self {
-            #[cfg(not(bootstrap))]
             return intrinsics::rotate_right(self, n);
-            #[cfg(bootstrap)]
-            return intrinsics::rotate_right(self, n as $SelfT);
         }
 
         /// Reverses the byte order of the integer.
@@ -503,8 +488,8 @@ macro_rules! uint_impl {
         /// [`unwrap_unchecked`]: option/enum.Option.html#method.unwrap_unchecked
         #[doc = concat!("[`checked_add`]: ", stringify!($SelfT), "::checked_add")]
         #[doc = concat!("[`wrapping_add`]: ", stringify!($SelfT), "::wrapping_add")]
-        #[stable(feature = "unchecked_math", since = "CURRENT_RUSTC_VERSION")]
-        #[rustc_const_stable(feature = "unchecked_math", since = "CURRENT_RUSTC_VERSION")]
+        #[stable(feature = "unchecked_math", since = "1.79.0")]
+        #[rustc_const_stable(feature = "unchecked_math", since = "1.79.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
@@ -660,8 +645,8 @@ macro_rules! uint_impl {
         /// [`unwrap_unchecked`]: option/enum.Option.html#method.unwrap_unchecked
         #[doc = concat!("[`checked_sub`]: ", stringify!($SelfT), "::checked_sub")]
         #[doc = concat!("[`wrapping_sub`]: ", stringify!($SelfT), "::wrapping_sub")]
-        #[stable(feature = "unchecked_math", since = "CURRENT_RUSTC_VERSION")]
-        #[rustc_const_stable(feature = "unchecked_math", since = "CURRENT_RUSTC_VERSION")]
+        #[stable(feature = "unchecked_math", since = "1.79.0")]
+        #[rustc_const_stable(feature = "unchecked_math", since = "1.79.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
@@ -746,8 +731,8 @@ macro_rules! uint_impl {
         /// [`unwrap_unchecked`]: option/enum.Option.html#method.unwrap_unchecked
         #[doc = concat!("[`checked_mul`]: ", stringify!($SelfT), "::checked_mul")]
         #[doc = concat!("[`wrapping_mul`]: ", stringify!($SelfT), "::wrapping_mul")]
-        #[stable(feature = "unchecked_math", since = "CURRENT_RUSTC_VERSION")]
-        #[rustc_const_stable(feature = "unchecked_math", since = "CURRENT_RUSTC_VERSION")]
+        #[stable(feature = "unchecked_math", since = "1.79.0")]
+        #[rustc_const_stable(feature = "unchecked_math", since = "1.79.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
@@ -1324,18 +1309,9 @@ macro_rules! uint_impl {
         #[inline(always)]
         #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
         pub const unsafe fn unchecked_shl(self, rhs: u32) -> Self {
-            #[cfg(bootstrap)]
-            {
-                // For bootstrapping, just use built-in primitive shift.
-                // panicking is a legal manifestation of UB
-                self << rhs
-            }
-            #[cfg(not(bootstrap))]
-            {
-                // SAFETY: the caller must uphold the safety contract for
-                // `unchecked_shl`.
-                unsafe { intrinsics::unchecked_shl(self, rhs) }
-            }
+            // SAFETY: the caller must uphold the safety contract for
+            // `unchecked_shl`.
+            unsafe { intrinsics::unchecked_shl(self, rhs) }
         }
 
         /// Checked shift right. Computes `self >> rhs`, returning `None`
@@ -1422,18 +1398,9 @@ macro_rules! uint_impl {
         #[inline(always)]
         #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
         pub const unsafe fn unchecked_shr(self, rhs: u32) -> Self {
-            #[cfg(bootstrap)]
-            {
-                // For bootstrapping, just use built-in primitive shift.
-                // panicking is a legal manifestation of UB
-                self >> rhs
-            }
-            #[cfg(not(bootstrap))]
-            {
                 // SAFETY: the caller must uphold the safety contract for
                 // `unchecked_shr`.
                 unsafe { intrinsics::unchecked_shr(self, rhs) }
-            }
         }
 
         /// Checked exponentiation. Computes `self.pow(exp)`, returning `None` if

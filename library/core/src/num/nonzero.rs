@@ -109,7 +109,7 @@ impl_zeroable_primitive!(
 ///
 /// assert_eq!(size_of::<Option<NonZero<u32>>>(), size_of::<u32>());
 /// ```
-#[stable(feature = "generic_nonzero", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "generic_nonzero", since = "1.79.0")]
 #[repr(transparent)]
 #[rustc_nonnull_optimization_guaranteed]
 #[rustc_diagnostic_item = "NonZero"]
@@ -528,10 +528,7 @@ macro_rules! nonzero_integer {
             pub const fn leading_zeros(self) -> u32 {
                 // SAFETY: since `self` cannot be zero, it is safe to call `ctlz_nonzero`.
                 unsafe {
-                    #[cfg(not(bootstrap))]
-                    return intrinsics::ctlz_nonzero(self.get() as $UnsignedPrimitive);
-                    #[cfg(bootstrap)]
-                    return intrinsics::ctlz_nonzero(self.get() as $UnsignedPrimitive) as u32;
+                    intrinsics::ctlz_nonzero(self.get() as $UnsignedPrimitive)
                 }
             }
 
@@ -557,10 +554,7 @@ macro_rules! nonzero_integer {
             pub const fn trailing_zeros(self) -> u32 {
                 // SAFETY: since `self` cannot be zero, it is safe to call `cttz_nonzero`.
                 unsafe {
-                    #[cfg(not(bootstrap))]
-                    return intrinsics::cttz_nonzero(self.get() as $UnsignedPrimitive);
-                    #[cfg(bootstrap)]
-                    return intrinsics::cttz_nonzero(self.get() as $UnsignedPrimitive) as u32;
+                    intrinsics::cttz_nonzero(self.get() as $UnsignedPrimitive)
                 }
             }
 
@@ -861,7 +855,7 @@ macro_rules! nonzero_integer_signedness_dependent_impls {
             }
         }
 
-        #[stable(feature = "nonzero_div_assign", since = "CURRENT_RUSTC_VERSION")]
+        #[stable(feature = "nonzero_div_assign", since = "1.79.0")]
         impl DivAssign<$Ty> for $Int {
             /// This operation rounds towards zero,
             /// truncating any fractional part of the exact result, and cannot panic.
@@ -884,7 +878,7 @@ macro_rules! nonzero_integer_signedness_dependent_impls {
             }
         }
 
-        #[stable(feature = "nonzero_div_assign", since = "CURRENT_RUSTC_VERSION")]
+        #[stable(feature = "nonzero_div_assign", since = "1.79.0")]
         impl RemAssign<$Ty> for $Int {
             /// This operation satisfies `n % d == n - (n / d) * d`, and cannot panic.
             #[inline]

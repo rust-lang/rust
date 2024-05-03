@@ -5,6 +5,7 @@ ast_lowering_abi_specified_multiple_times =
 
 ast_lowering_arbitrary_expression_in_pattern =
     arbitrary expressions aren't allowed in patterns
+    .pattern_from_macro_note = the `expr` fragment specifier forces the metavariable's content to be an expression
 
 ast_lowering_argument = argument
 

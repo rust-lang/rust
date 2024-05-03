@@ -45,7 +45,7 @@ declare_clippy_lint! {
     ///     a.clone_from(&b);
     /// }
     /// ```
-    #[clippy::version = "1.77.0"]
+    #[clippy::version = "1.78.0"]
     pub ASSIGNING_CLONES,
     perf,
     "assigning the result of cloning may be inefficient"
@@ -153,7 +153,7 @@ fn extract_call<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> Option<
 fn is_ok_to_suggest<'tcx>(cx: &LateContext<'tcx>, lhs: &Expr<'tcx>, call: &CallCandidate<'tcx>, msrv: &Msrv) -> bool {
     // For calls to .to_owned we suggest using .clone_into(), which was only stablilized in 1.63.
     // If the current MSRV is below that, don't suggest the lint.
-    if !msrv.meets(msrvs::ASSIGNING_CLONES) && matches!(call.target, TargetTrait::ToOwned) {
+    if !msrv.meets(msrvs::CLONE_INTO) && matches!(call.target, TargetTrait::ToOwned) {
         return false;
     }
 

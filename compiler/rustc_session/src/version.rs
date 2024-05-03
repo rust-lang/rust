@@ -1,3 +1,4 @@
+use rustc_macros::{current_rustc_version, Decodable, Encodable, HashStable_Generic};
 use std::fmt::{self, Display};
 
 #[derive(Encodable, Decodable, Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]

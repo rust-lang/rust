@@ -886,7 +886,7 @@ impl<'a: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast,
                         kind: LifetimeBinderKind::Item,
                         span: generics.span,
                     },
-                    |this| visit::walk_foreign_item(this, foreign_item),
+                    |this| visit::walk_item(this, foreign_item),
                 );
             }
             ForeignItemKind::Fn(box Fn { ref generics, .. }) => {
@@ -898,13 +898,11 @@ impl<'a: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast,
                         kind: LifetimeBinderKind::Function,
                         span: generics.span,
                     },
-                    |this| visit::walk_foreign_item(this, foreign_item),
+                    |this| visit::walk_item(this, foreign_item),
                 );
             }
             ForeignItemKind::Static(..) => {
-                self.with_static_rib(def_kind, |this| {
-                    visit::walk_foreign_item(this, foreign_item);
-                });
+                self.with_static_rib(def_kind, |this| visit::walk_item(this, foreign_item))
             }
             ForeignItemKind::MacCall(..) => {
                 panic!("unexpanded macro in resolve!")

@@ -1355,29 +1355,54 @@ pub struct CrossCrateTraitsDefined {
     pub traits: String,
 }
 
+// FIXME(fmease): Deduplicate:
+
 #[derive(Diagnostic)]
 #[diag(hir_analysis_ty_param_first_local, code = E0210)]
 #[note]
-pub struct TyParamFirstLocal<'a> {
+pub struct TyParamFirstLocal<'tcx> {
     #[primary_span]
     #[label]
     pub span: Span,
     #[note(hir_analysis_case_note)]
     pub note: (),
-    pub param_ty: Ty<'a>,
-    pub local_type: Ty<'a>,
+    pub param: Symbol,
+    pub local_type: Ty<'tcx>,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(hir_analysis_ty_param_first_local, code = E0210)]
+#[note]
+pub struct TyParamFirstLocalLint<'tcx> {
+    #[label]
+    pub span: Span,
+    #[note(hir_analysis_case_note)]
+    pub note: (),
+    pub param: Symbol,
+    pub local_type: Ty<'tcx>,
 }
 
 #[derive(Diagnostic)]
 #[diag(hir_analysis_ty_param_some, code = E0210)]
 #[note]
-pub struct TyParamSome<'a> {
+pub struct TyParamSome {
     #[primary_span]
     #[label]
     pub span: Span,
     #[note(hir_analysis_only_note)]
     pub note: (),
-    pub param_ty: Ty<'a>,
+    pub param: Symbol,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(hir_analysis_ty_param_some, code = E0210)]
+#[note]
+pub struct TyParamSomeLint {
+    #[label]
+    pub span: Span,
+    #[note(hir_analysis_only_note)]
+    pub note: (),
+    pub param: Symbol,
 }
 
 #[derive(Diagnostic)]
@@ -1640,4 +1665,14 @@ pub struct OpaqueCapturesHigherRankedLifetime {
 pub struct NonConstRange {
     #[primary_span]
     pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_invalid_receiver_ty, code = E0307)]
+#[note]
+#[help(hir_analysis_invalid_receiver_ty_help)]
+pub struct InvalidReceiverTy<'tcx> {
+    #[primary_span]
+    pub span: Span,
+    pub receiver_ty: Ty<'tcx>,
 }

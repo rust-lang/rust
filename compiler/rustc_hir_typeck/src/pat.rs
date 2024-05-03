@@ -1228,16 +1228,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 );
             }
         } else {
-            // Pattern has wrong number of fields.
-            let e =
-                self.e0023(pat.span, res, qpath, subpats, &variant.fields.raw, expected, had_err);
+            let e = self.emit_err_pat_wrong_number_of_fields(
+                pat.span,
+                res,
+                qpath,
+                subpats,
+                &variant.fields.raw,
+                expected,
+                had_err,
+            );
             on_error(e);
             return Ty::new_error(tcx, e);
         }
         pat_ty
     }
 
-    fn e0023(
+    fn emit_err_pat_wrong_number_of_fields(
         &self,
         pat_span: Span,
         res: Res,

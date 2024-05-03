@@ -13,6 +13,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::{walk_block, walk_expr, Map, Visitor};
 use rustc_hir::{CoroutineDesugaring, PatField};
 use rustc_hir::{CoroutineKind, CoroutineSource, LangItem};
+use rustc_middle::bug;
 use rustc_middle::hir::nested_filter::OnlyBodies;
 use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::mir::{

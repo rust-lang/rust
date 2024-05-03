@@ -6,8 +6,8 @@ use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::DefId;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::{InnerSpan, Span, DUMMY_SP};
+use std::mem;
 use std::ops::Range;
-use std::{cmp, mem};
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum DocFragmentKind {
@@ -129,17 +129,20 @@ pub fn unindent_doc_fragments(docs: &mut [DocFragment]) {
     let Some(min_indent) = docs
         .iter()
         .map(|fragment| {
-            fragment.doc.as_str().lines().fold(usize::MAX, |min_indent, line| {
-                if line.chars().all(|c| c.is_whitespace()) {
-                    min_indent
-                } else {
+            fragment
+                .doc
+                .as_str()
+                .lines()
+                .filter(|line| line.chars().any(|c| !c.is_whitespace()))
+                .map(|line| {
                     // Compare against either space or tab, ignoring whether they are
                     // mixed or not.
                     let whitespace = line.chars().take_while(|c| *c == ' ' || *c == '\t').count();
-                    cmp::min(min_indent, whitespace)
-                        + if fragment.kind == DocFragmentKind::SugaredDoc { 0 } else { add }
-                }
-            })
+                    whitespace
+                        + (if fragment.kind == DocFragmentKind::SugaredDoc { 0 } else { add })
+                })
+                .min()
+                .unwrap_or(usize::MAX)
         })
         .min()
     else {
@@ -151,13 +154,13 @@ pub fn unindent_doc_fragments(docs: &mut [DocFragment]) {
             continue;
         }
 
-        let min_indent = if fragment.kind != DocFragmentKind::SugaredDoc && min_indent > 0 {
+        let indent = if fragment.kind != DocFragmentKind::SugaredDoc && min_indent > 0 {
             min_indent - add
         } else {
             min_indent
         };
 
-        fragment.indent = min_indent;
+        fragment.indent = indent;
     }
 }
 

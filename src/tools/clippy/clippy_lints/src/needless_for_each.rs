@@ -1,6 +1,6 @@
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_expr, Visitor};
-use rustc_hir::{Closure, Expr, ExprKind, Stmt, StmtKind};
+use rustc_hir::{Block, BlockCheckMode, Closure, Expr, ExprKind, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
 use rustc_span::{sym, Span, Symbol};
@@ -35,6 +35,16 @@ declare_clippy_lint! {
     ///     println!("{}", elem);
     /// }
     /// ```
+    ///
+    /// ### Known Problems
+    /// When doing things such as:
+    /// ```ignore
+    /// let v = vec![0, 1, 2];
+    /// v.iter().for_each(|elem| unsafe {
+    ///     libc::printf(c"%d\n".as_ptr(), elem);
+    /// });
+    /// ```
+    /// This lint will not trigger.
     #[clippy::version = "1.53.0"]
     pub NEEDLESS_FOR_EACH,
     pedantic,
@@ -68,7 +78,9 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessForEach {
             // e.g. `v.iter().for_each(f)` is simpler and clearer than using `for` loop.
             && let ExprKind::Closure(&Closure { body, .. }) = for_each_arg.kind
             && let body = cx.tcx.hir().body(body)
-            && let ExprKind::Block(..) = body.value.kind
+            // Skip the lint if the body is not safe, so as not to suggest `for … in … unsafe {}`
+            // and suggesting `for … in … { unsafe { } }` is a little ugly.
+            && let ExprKind::Block(Block { rules: BlockCheckMode::DefaultBlock, .. }, ..) = body.value.kind
         {
             let mut ret_collector = RetCollector::default();
             ret_collector.visit_expr(body.value);

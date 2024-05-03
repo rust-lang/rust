@@ -11,6 +11,7 @@ use rustc_index::{IndexSlice, IndexVec};
 use rustc_infer::infer::outlives::test_type_match;
 use rustc_infer::infer::region_constraints::{GenericKind, VarInfos, VerifyBound, VerifyIfEq};
 use rustc_infer::infer::{InferCtxt, NllRegionVariableOrigin, RegionVariableOrigin};
+use rustc_middle::bug;
 use rustc_middle::mir::{
     BasicBlock, Body, ClosureOutlivesRequirement, ClosureOutlivesSubject, ClosureOutlivesSubjectTy,
     ClosureRegionRequirements, ConstraintCategory, Local, Location, ReturnConstraint,

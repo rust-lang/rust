@@ -2,6 +2,7 @@ use rustc_ast::Mutability;
 use rustc_hir::{Expr, ExprKind, UnOp};
 use rustc_middle::ty::layout::LayoutOf as _;
 use rustc_middle::ty::{self, layout::TyAndLayout};
+use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::sym;
 
 use crate::{lints::InvalidReferenceCastingDiag, LateContext, LateLintPass, LintContext};

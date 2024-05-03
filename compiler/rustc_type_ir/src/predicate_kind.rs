@@ -1,5 +1,7 @@
 use rustc_ast_ir::try_visit;
 use rustc_ast_ir::visit::VisitorResult;
+#[cfg(feature = "nightly")]
+use rustc_macros::{Decodable, Encodable, HashStable_NoContext, TyDecodable, TyEncodable};
 use std::fmt;
 
 use crate::fold::{FallibleTypeFolder, TypeFoldable};

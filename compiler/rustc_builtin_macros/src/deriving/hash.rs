@@ -7,7 +7,7 @@ use rustc_span::symbol::sym;
 use rustc_span::Span;
 use thin_vec::thin_vec;
 
-pub fn expand_deriving_hash(
+pub(crate) fn expand_deriving_hash(
     cx: &ExtCtxt<'_>,
     span: Span,
     mitem: &MetaItem,

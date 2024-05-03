@@ -36,13 +36,10 @@
 extern crate self as rustc_span;
 
 #[macro_use]
-extern crate rustc_macros;
-
-#[macro_use]
 extern crate tracing;
 
 use rustc_data_structures::{outline, AtomicRef};
-use rustc_macros::HashStable_Generic;
+use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_serialize::opaque::{FileEncoder, MemDecoder};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 

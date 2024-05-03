@@ -8,6 +8,7 @@ use rustc_lexer::unescape::{
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
 use std::{ascii, fmt, str};
+use tracing::debug;
 
 // Escapes a string, represented as a symbol. Reuses the original symbol,
 // avoiding interning, if no changes are required.

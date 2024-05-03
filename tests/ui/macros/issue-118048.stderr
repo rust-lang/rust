@@ -12,7 +12,7 @@ help: use type parameters instead
 LL ~         fn foo<T>(_: $ty, _: $ty) {}
 LL |     }
 LL | }
-LL | 
+LL |
 LL ~ foo!(T);
    |
 

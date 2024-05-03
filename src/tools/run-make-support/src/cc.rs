@@ -71,6 +71,11 @@ impl Cc {
 
         self
     }
+
+    /// Get the [`Output`][::std::process::Output] of the finished process.
+    pub fn output(&mut self) -> ::std::process::Output {
+        self.cmd.output().expect("failed to get output of finished process")
+    }
 }
 
 /// `EXTRACFLAGS`
@@ -161,8 +166,9 @@ pub fn extra_cxx_flags() -> Vec<&'static str> {
     if is_windows() {
         if is_msvc() { vec![] } else { vec!["-lstdc++"] }
     } else {
-        match uname() {
-            n if n.contains("Darwin") => vec!["-lc++"],
+        match &uname()[..] {
+            "Darwin" => vec!["-lc++"],
+            "FreeBSD" | "SunOS" | "OpenBSD" => vec![],
             _ => vec!["-lstdc++"],
         }
     }

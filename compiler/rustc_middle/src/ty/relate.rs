@@ -10,6 +10,7 @@ use crate::ty::{GenericArg, GenericArgKind, GenericArgsRef};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
+use rustc_macros::TypeVisitable;
 use rustc_target::spec::abi;
 use std::iter;
 

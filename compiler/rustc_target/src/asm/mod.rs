@@ -1,7 +1,7 @@
 use crate::spec::Target;
 use crate::{abi::Size, spec::RelocModel};
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
-use rustc_macros::HashStable_Generic;
+use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::Symbol;
 use std::fmt;
 use std::str::FromStr;
@@ -24,7 +24,7 @@ macro_rules! def_reg_class {
             $class:ident,
         )*
     }) => {
-        #[derive(Copy, Clone, Encodable, Decodable, Debug, Eq, PartialEq, PartialOrd, Hash, HashStable_Generic)]
+        #[derive(Copy, Clone, rustc_macros::Encodable, rustc_macros::Decodable, Debug, Eq, PartialEq, PartialOrd, Hash, rustc_macros::HashStable_Generic)]
         #[allow(non_camel_case_types)]
         pub enum $arch_regclass {
             $($class,)*
@@ -73,7 +73,7 @@ macro_rules! def_regs {
         )*
     }) => {
         #[allow(unreachable_code)]
-        #[derive(Copy, Clone, Encodable, Decodable, Debug, Eq, PartialEq, PartialOrd, Hash, HashStable_Generic)]
+        #[derive(Copy, Clone, rustc_macros::Encodable, rustc_macros::Decodable, Debug, Eq, PartialEq, PartialOrd, Hash, rustc_macros::HashStable_Generic)]
         #[allow(non_camel_case_types)]
         pub enum $arch_reg {
             $($reg,)*

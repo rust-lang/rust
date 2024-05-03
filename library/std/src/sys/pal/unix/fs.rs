@@ -20,14 +20,7 @@ use crate::sys::time::SystemTime;
 use crate::sys::{cvt, cvt_r};
 use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
 
-#[cfg(any(
-    all(target_os = "linux", target_env = "gnu"),
-    target_os = "macos",
-    target_os = "ios",
-    target_os = "tvos",
-    target_os = "watchos",
-    target_os = "visionos",
-))]
+#[cfg(any(all(target_os = "linux", target_env = "gnu"), target_vendor = "apple"))]
 use crate::sys::weak::syscall;
 #[cfg(any(target_os = "android", target_os = "macos", target_os = "solaris"))]
 use crate::sys::weak::weak;
@@ -35,13 +28,9 @@ use crate::sys::weak::weak;
 use libc::{c_int, mode_t};
 
 #[cfg(any(
-    target_os = "macos",
-    target_os = "ios",
-    target_os = "tvos",
-    target_os = "watchos",
-    target_os = "visionos",
     target_os = "solaris",
-    all(target_os = "linux", target_env = "gnu")
+    all(target_os = "linux", target_env = "gnu"),
+    target_vendor = "apple",
 ))]
 use libc::c_char;
 #[cfg(any(
@@ -198,20 +187,16 @@ cfg_has_statx! {{
                 return Some(Err(err));
             }
 
-            // `ENOSYS` might come from a faulty FUSE driver.
-            //
-            // Other errors are not a good enough indicator either -- it is
-            // known that `EPERM` can be returned as a result of using seccomp to
-            // block the syscall.
+            // We're not yet entirely sure whether `statx` is usable on this kernel
+            // or not. Syscalls can return errors from things other than the kernel
+            // per se, e.g. `EPERM` can be returned if seccomp is used to block the
+            // syscall, or `ENOSYS` might be returned from a faulty FUSE driver.
             //
             // Availability is checked by performing a call which expects `EFAULT`
             // if the syscall is usable.
             //
             // See: https://github.com/rust-lang/rust/issues/65662
             //
-            // FIXME this can probably just do the call if `EPERM` was received, but
-            // previous iteration of the code checked it for all errors and for now
-            // this is retained.
             // FIXME what about transient conditions like `ENOMEM`?
             let err2 = cvt(statx(0, ptr::null(), 0, libc::STATX_ALL, ptr::null_mut()))
                 .err()
@@ -379,13 +364,7 @@ pub struct FilePermissions {
 pub struct FileTimes {
     accessed: Option<SystemTime>,
     modified: Option<SystemTime>,
-    #[cfg(any(
-        target_os = "macos",
-        target_os = "ios",
-        target_os = "watchos",
-        target_os = "visionos",
-        target_os = "tvos"
-    ))]
+    #[cfg(target_vendor = "apple")]
     created: Option<SystemTime>,
 }
 
@@ -558,15 +537,7 @@ impl FileAttr {
         SystemTime::new(self.stat.st_atim.tv_sec as i64, self.stat.st_atim.tv_nsec as i64)
     }
 
-    #[cfg(any(
-        target_os = "freebsd",
-        target_os = "openbsd",
-        target_os = "macos",
-        target_os = "ios",
-        target_os = "tvos",
-        target_os = "watchos",
-        target_os = "visionos",
-    ))]
+    #[cfg(any(target_os = "freebsd", target_os = "openbsd", target_vendor = "apple"))]
     pub fn created(&self) -> io::Result<SystemTime> {
         SystemTime::new(self.stat.st_birthtime as i64, self.stat.st_birthtime_nsec as i64)
     }
@@ -574,12 +545,8 @@ impl FileAttr {
     #[cfg(not(any(
         target_os = "freebsd",
         target_os = "openbsd",
-        target_os = "macos",
-        target_os = "ios",
-        target_os = "tvos",
-        target_os = "watchos",
-        target_os = "visionos",
         target_os = "vita",
+        target_vendor = "apple",
     )))]
     pub fn created(&self) -> io::Result<SystemTime> {
         cfg_has_statx! {
@@ -659,13 +626,7 @@ impl FileTimes {
         self.modified = Some(t);
     }
 
-    #[cfg(any(
-        target_os = "macos",
-        target_os = "ios",
-        target_os = "watchos",
-        target_os = "visionos",
-        target_os = "tvos"
-    ))]
+    #[cfg(target_vendor = "apple")]
     pub fn set_created(&mut self, t: SystemTime) {
         self.created = Some(t);
     }
@@ -868,8 +829,43 @@ impl Iterator for ReadDir {
     }
 }
 
+/// Aborts the process if a file desceriptor is not open, if debug asserts are enabled
+///
+/// Many IO syscalls can't be fully trusted about EBADF error codes because those
+/// might get bubbled up from a remote FUSE server rather than the file descriptor
+/// in the current process being invalid.
+///
+/// So we check file flags instead which live on the file descriptor and not the underlying file.
+/// The downside is that it costs an extra syscall, so we only do it for debug.
+#[inline]
+pub(crate) fn debug_assert_fd_is_open(fd: RawFd) {
+    use crate::sys::os::errno;
+
+    // this is similar to assert_unsafe_precondition!() but it doesn't require const
+    if core::ub_checks::check_library_ub() {
+        if unsafe { libc::fcntl(fd, libc::F_GETFD) } == -1 && errno() == libc::EBADF {
+            rtabort!("IO Safety violation: owned file descriptor already closed");
+        }
+    }
+}
+
 impl Drop for Dir {
     fn drop(&mut self) {
+        // dirfd isn't supported everywhere
+        #[cfg(not(any(
+            miri,
+            target_os = "redox",
+            target_os = "nto",
+            target_os = "vita",
+            target_os = "hurd",
+            target_os = "espidf",
+            target_os = "fuchsia",
+            target_os = "horizon",
+        )))]
+        {
+            let fd = unsafe { libc::dirfd(self.0) };
+            debug_assert_fd_is_open(fd);
+        }
         let r = unsafe { libc::closedir(self.0) };
         assert!(
             r == 0 || crate::io::Error::last_os_error().is_interrupted(),
@@ -966,11 +962,6 @@ impl DirEntry {
     }
 
     #[cfg(any(
-        target_os = "macos",
-        target_os = "ios",
-        target_os = "tvos",
-        target_os = "watchos",
-        target_os = "visionos",
         target_os = "linux",
         target_os = "emscripten",
         target_os = "android",
@@ -987,6 +978,7 @@ impl DirEntry {
         target_os = "aix",
         target_os = "nto",
         target_os = "hurd",
+        target_vendor = "apple",
     ))]
     pub fn ino(&self) -> u64 {
         self.entry.d_ino as u64
@@ -1003,15 +995,11 @@ impl DirEntry {
     }
 
     #[cfg(any(
-        target_os = "macos",
-        target_os = "ios",
-        target_os = "tvos",
-        target_os = "watchos",
-        target_os = "visionos",
         target_os = "netbsd",
         target_os = "openbsd",
         target_os = "freebsd",
-        target_os = "dragonfly"
+        target_os = "dragonfly",
+        target_vendor = "apple",
     ))]
     fn name_bytes(&self) -> &[u8] {
         use crate::slice;
@@ -1023,15 +1011,11 @@ impl DirEntry {
         }
     }
     #[cfg(not(any(
-        target_os = "macos",
-        target_os = "ios",
-        target_os = "tvos",
-        target_os = "watchos",
-        target_os = "visionos",
         target_os = "netbsd",
         target_os = "openbsd",
         target_os = "freebsd",
-        target_os = "dragonfly"
+        target_os = "dragonfly",
+        target_vendor = "apple",
     )))]
     fn name_bytes(&self) -> &[u8] {
         self.name_cstr().to_bytes()
@@ -1209,23 +1193,11 @@ impl File {
         cvt_r(|| unsafe { os_fsync(self.as_raw_fd()) })?;
         return Ok(());
 
-        #[cfg(any(
-            target_os = "macos",
-            target_os = "ios",
-            target_os = "tvos",
-            target_os = "watchos",
-            target_os = "visionos",
-        ))]
+        #[cfg(target_vendor = "apple")]
         unsafe fn os_fsync(fd: c_int) -> c_int {
             libc::fcntl(fd, libc::F_FULLFSYNC)
         }
-        #[cfg(not(any(
-            target_os = "macos",
-            target_os = "ios",
-            target_os = "tvos",
-            target_os = "watchos",
-            target_os = "visionos",
-        )))]
+        #[cfg(not(target_vendor = "apple"))]
         unsafe fn os_fsync(fd: c_int) -> c_int {
             libc::fsync(fd)
         }
@@ -1235,13 +1207,7 @@ impl File {
         cvt_r(|| unsafe { os_datasync(self.as_raw_fd()) })?;
         return Ok(());
 
-        #[cfg(any(
-            target_os = "macos",
-            target_os = "ios",
-            target_os = "tvos",
-            target_os = "watchos",
-            target_os = "visionos",
-        ))]
+        #[cfg(target_vendor = "apple")]
         unsafe fn os_datasync(fd: c_int) -> c_int {
             libc::fcntl(fd, libc::F_FULLFSYNC)
         }
@@ -1260,16 +1226,12 @@ impl File {
         #[cfg(not(any(
             target_os = "android",
             target_os = "freebsd",
-            target_os = "ios",
-            target_os = "tvos",
             target_os = "linux",
-            target_os = "macos",
             target_os = "netbsd",
             target_os = "openbsd",
-            target_os = "watchos",
-            target_os = "visionos",
             target_os = "nto",
             target_os = "hurd",
+            target_vendor = "apple",
         )))]
         unsafe fn os_datasync(fd: c_int) -> c_int {
             libc::fsync(fd)
@@ -1378,7 +1340,7 @@ impl File {
                     io::ErrorKind::Unsupported,
                     "setting file times not supported",
                 ))
-            } else if #[cfg(any(target_os = "macos", target_os = "ios", target_os = "tvos", target_os = "watchos", target_os = "visionos"))] {
+            } else if #[cfg(target_vendor = "apple")] {
                 let mut buf = [mem::MaybeUninit::<libc::timespec>::uninit(); 3];
                 let mut num_times = 0;
                 let mut attrlist: libc::attrlist = unsafe { mem::zeroed() };
@@ -1910,15 +1872,7 @@ fn open_to_and_set_permissions(
     Ok((writer, writer_metadata))
 }
 
-#[cfg(not(any(
-    target_os = "linux",
-    target_os = "android",
-    target_os = "macos",
-    target_os = "ios",
-    target_os = "tvos",
-    target_os = "watchos",
-    target_os = "visionos",
-)))]
+#[cfg(not(any(target_os = "linux", target_os = "android", target_vendor = "apple")))]
 pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
     let (mut reader, reader_metadata) = open_from(from)?;
     let (mut writer, _) = open_to_and_set_permissions(to, reader_metadata)?;
@@ -1944,13 +1898,7 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
     }
 }
 
-#[cfg(any(
-    target_os = "macos",
-    target_os = "ios",
-    target_os = "watchos",
-    target_os = "visionos",
-    target_os = "tvos"
-))]
+#[cfg(target_vendor = "apple")]
 pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
     use crate::sync::atomic::{AtomicBool, Ordering};
 

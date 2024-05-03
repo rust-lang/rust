@@ -2,8 +2,6 @@
 //! - the number of entries in each directory must be less than `ENTRY_LIMIT`
 //! - there are no stray `.stderr` files
 use ignore::Walk;
-use lazy_static::lazy_static;
-use regex::Regex;
 use std::collections::{BTreeSet, HashMap};
 use std::ffi::OsStr;
 use std::fs;
@@ -182,12 +180,8 @@ pub fn check(root_path: &Path, bless: bool, bad: &mut bool) {
             }
 
             if ext == "rs" {
-                lazy_static! {
-                    static ref ISSUE_NAME_REGEX: Regex =
-                        Regex::new(r"^issues?[-_]?(\d{3,})").unwrap();
-                }
-
-                if let Some(test_name) = ISSUE_NAME_REGEX.captures(testname) {
+                if let Some(test_name) = static_regex!(r"^issues?[-_]?(\d{3,})").captures(testname)
+                {
                     // these paths are always relative to the passed `path` and always UTF8
                     let stripped_path = file_path
                         .strip_prefix(path)

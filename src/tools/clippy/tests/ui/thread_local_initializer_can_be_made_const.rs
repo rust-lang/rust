@@ -1,6 +1,6 @@
 #![warn(clippy::thread_local_initializer_can_be_made_const)]
 
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 
 fn main() {
     // lint and suggest const
@@ -34,6 +34,37 @@ fn main() {
         static PEEL_ME_MANY: i32 = { let x = 1; x * x };
         //~^ ERROR: initializer for `thread_local` value can be made `const`
     }
+}
+
+fn issue_12637() {
+    /// The set methods on LocalKey<Cell<T>> and LocalKey<RefCell<T>> are
+    /// guaranteed to bypass the thread_local's initialization expression.
+    /// See rust-lang/rust#92122. Thus, = panic!() is a useful idiom for
+    /// forcing the use of set on each thread before it accesses the thread local in any other
+    /// manner.
+    thread_local! {
+        static STATE_12637_PANIC: Cell<usize> = panic!();
+    }
+    STATE_12637_PANIC.set(9);
+    println!("{}", STATE_12637_PANIC.get());
+
+    thread_local! {
+        static STATE_12637_TODO: Cell<usize> = todo!();
+    }
+    STATE_12637_TODO.set(9);
+    println!("{}", STATE_12637_TODO.get());
+
+    thread_local! {
+        static STATE_12637_UNIMPLEMENTED: Cell<usize> = unimplemented!();
+    }
+    STATE_12637_UNIMPLEMENTED.set(9);
+    println!("{}", STATE_12637_UNIMPLEMENTED.get());
+
+    thread_local! {
+        static STATE_12637_UNREACHABLE: Cell<usize> = unreachable!();
+    }
+    STATE_12637_UNREACHABLE.set(9);
+    println!("{}", STATE_12637_UNREACHABLE.get());
 }
 
 #[clippy::msrv = "1.58"]

@@ -5,6 +5,7 @@ use rustc_infer::infer::InferCtxt;
 use rustc_infer::traits::{Obligation, ObligationCause};
 use rustc_middle::ty::{self, Binder, Ty, TyCtxt, TypeFoldable, TypeFolder};
 use rustc_middle::ty::{EarlyBinder, TraitRef, TypeSuperFoldable};
+use rustc_session::{declare_lint, impl_lint_pass};
 use rustc_span::def_id::{DefId, LOCAL_CRATE};
 use rustc_span::Span;
 use rustc_span::{sym, symbol::kw, ExpnKind, MacroKind};
@@ -232,6 +233,12 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
             ItemKind::Macro(_macro, MacroKind::Bang)
                 if cx.tcx.has_attr(item.owner_id.def_id, sym::macro_export) =>
             {
+                // determining we if are in a doctest context can't currently be determined
+                // by the code it-self (no specific attrs), but fortunatly rustdoc sets a
+                // perma-unstable env for libtest so we just re-use that env for now
+                let is_at_toplevel_doctest =
+                    self.body_depth == 2 && std::env::var("UNSTABLE_RUSTDOC_TEST_PATH").is_ok();
+
                 cx.emit_span_lint(
                     NON_LOCAL_DEFINITIONS,
                     item.span,
@@ -242,6 +249,9 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
                             .map(|s| s.to_ident_string())
                             .unwrap_or_else(|| "<unnameable>".to_string()),
                         cargo_update: cargo_update(),
+                        help: (!is_at_toplevel_doctest).then_some(()),
+                        doctest_help: is_at_toplevel_doctest.then_some(()),
+                        notes: (),
                     },
                 )
             }
@@ -356,7 +366,7 @@ fn path_has_local_parent(
 }
 
 /// Given a def id and a parent impl def id, this checks if the parent
-/// def id correspond to the def id of the parent impl definition.
+/// def id (modulo modules) correspond to the def id of the parent impl definition.
 #[inline]
 fn did_has_local_parent(
     did: DefId,
@@ -364,8 +374,14 @@ fn did_has_local_parent(
     impl_parent: DefId,
     impl_parent_parent: Option<DefId>,
 ) -> bool {
-    did.is_local() && {
-        let res_parent = tcx.parent(did);
-        res_parent == impl_parent || Some(res_parent) == impl_parent_parent
-    }
+    did.is_local()
+        && if let Some(did_parent) = tcx.opt_parent(did) {
+            did_parent == impl_parent
+                || Some(did_parent) == impl_parent_parent
+                || !did_parent.is_crate_root()
+                    && tcx.def_kind(did_parent) == DefKind::Mod
+                    && did_has_local_parent(did_parent, tcx, impl_parent, impl_parent_parent)
+        } else {
+            false
+        }
 }

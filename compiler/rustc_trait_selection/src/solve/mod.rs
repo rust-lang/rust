@@ -16,6 +16,7 @@
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::canonical::{Canonical, CanonicalVarValues};
 use rustc_infer::traits::query::NoSolution;
+use rustc_macros::extension;
 use rustc_middle::infer::canonical::CanonicalVarInfos;
 use rustc_middle::traits::solve::{
     CanonicalResponse, Certainty, ExternalConstraintsData, Goal, GoalSource, QueryResult, Response,
@@ -200,18 +201,6 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
 }
 
 impl<'tcx> EvalCtxt<'_, 'tcx> {
-    #[instrument(level = "debug", skip(self))]
-    fn add_normalizes_to_goal(&mut self, goal: Goal<'tcx, ty::NormalizesTo<'tcx>>) {
-        inspect::ProofTreeBuilder::add_normalizes_to_goal(self, goal);
-        self.nested_goals.normalizes_to_goals.push(goal);
-    }
-
-    #[instrument(level = "debug", skip(self))]
-    fn add_goal(&mut self, source: GoalSource, goal: Goal<'tcx, ty::Predicate<'tcx>>) {
-        inspect::ProofTreeBuilder::add_goal(self, source, goal);
-        self.nested_goals.goals.push((source, goal));
-    }
-
     #[instrument(level = "debug", skip(self, goals))]
     fn add_goals(
         &mut self,

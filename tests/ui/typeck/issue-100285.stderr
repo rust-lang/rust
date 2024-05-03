@@ -49,7 +49,7 @@ LL ~           return Some(4);
 LL |         } else {
 LL ~           return Some(5);
 LL |         }
-LL | 
+LL |
 LL ~     }
 LL ~     None
    |

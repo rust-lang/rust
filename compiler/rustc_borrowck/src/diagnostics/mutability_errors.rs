@@ -7,6 +7,7 @@ use rustc_errors::{Applicability, Diag};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{self as hir, BindingMode, ByRef, Node};
 use rustc_infer::traits;
+use rustc_middle::bug;
 use rustc_middle::mir::{Mutability, Place, PlaceRef, ProjectionElem};
 use rustc_middle::ty::{self, InstanceDef, ToPredicate, Ty, TyCtxt};
 use rustc_middle::{

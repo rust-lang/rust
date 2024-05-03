@@ -632,20 +632,19 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    fn emit_e0568(&self, span: Span, ident: Span) {
-        self.dcx().emit_err(errors::AutoTraitBounds { span, ident });
-    }
-
     fn deny_super_traits(&self, bounds: &GenericBounds, ident_span: Span) {
         if let [.., last] = &bounds[..] {
             let span = ident_span.shrink_to_hi().to(last.span());
-            self.emit_e0568(span, ident_span);
+            self.dcx().emit_err(errors::AutoTraitBounds { span, ident: ident_span });
         }
     }
 
     fn deny_where_clause(&self, where_clause: &WhereClause, ident_span: Span) {
         if !where_clause.predicates.is_empty() {
-            self.emit_e0568(where_clause.span, ident_span);
+            // FIXME: The current diagnostic is misleading since it only talks about
+            // super trait and lifetime bounds while we should just say “bounds”.
+            self.dcx()
+                .emit_err(errors::AutoTraitBounds { span: where_clause.span, ident: ident_span });
         }
     }
 
@@ -1185,14 +1184,14 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 self.check_foreign_ty_genericless(generics, where_clauses);
                 self.check_foreign_item_ascii_only(fi.ident);
             }
-            ForeignItemKind::Static(_, _, body) => {
-                self.check_foreign_kind_bodyless(fi.ident, "static", body.as_ref().map(|b| b.span));
+            ForeignItemKind::Static(box StaticForeignItem { ty: _, mutability: _, expr }) => {
+                self.check_foreign_kind_bodyless(fi.ident, "static", expr.as_ref().map(|b| b.span));
                 self.check_foreign_item_ascii_only(fi.ident);
             }
             ForeignItemKind::MacCall(..) => {}
         }
 
-        visit::walk_foreign_item(self, fi)
+        visit::walk_item(self, fi)
     }
 
     // Mirrors `visit::walk_generic_args`, but tracks relevant state.

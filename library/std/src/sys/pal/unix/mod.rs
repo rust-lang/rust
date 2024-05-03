@@ -78,16 +78,12 @@ pub unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
             target_os = "emscripten",
             target_os = "fuchsia",
             target_os = "vxworks",
-            // The poll on Darwin doesn't set POLLNVAL for closed fds.
-            target_os = "macos",
-            target_os = "ios",
-            target_os = "tvos",
-            target_os = "watchos",
-            target_os = "visionos",
             target_os = "redox",
             target_os = "l4re",
             target_os = "horizon",
             target_os = "vita",
+            // The poll on Darwin doesn't set POLLNVAL for closed fds.
+            target_vendor = "apple",
         )))]
         'poll: {
             use crate::sys::os::errno;
@@ -406,7 +402,7 @@ cfg_if::cfg_if! {
     } else if #[cfg(target_os = "macos")] {
         #[link(name = "System")]
         extern "C" {}
-    } else if #[cfg(any(target_os = "ios", target_os = "tvos", target_os = "watchos", target_os = "visionos"))] {
+    } else if #[cfg(all(target_vendor = "apple", not(target_os = "macos")))] {
         #[link(name = "System")]
         #[link(name = "objc")]
         #[link(name = "Foundation", kind = "framework")]

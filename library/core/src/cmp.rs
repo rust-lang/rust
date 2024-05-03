@@ -379,7 +379,7 @@ pub struct AssertParamIsEq<T: Eq + ?Sized> {
 // This is a lang item only so that `BinOp::Cmp` in MIR can return it.
 // It has no special behaviour, but does require that the three variants
 // `Less`/`Equal`/`Greater` remain `-1_i8`/`0_i8`/`+1_i8` respectively.
-#[cfg_attr(not(bootstrap), lang = "Ordering")]
+#[lang = "Ordering"]
 #[repr(i8)]
 pub enum Ordering {
     /// An ordering where a compared value is less than another.
@@ -852,7 +852,7 @@ pub trait Ord: Eq + PartialOrd<Self> {
     #[stable(feature = "ord_max_min", since = "1.21.0")]
     #[inline]
     #[must_use]
-    #[cfg_attr(not(bootstrap), rustc_diagnostic_item = "cmp_ord_max")]
+    #[rustc_diagnostic_item = "cmp_ord_max"]
     fn max(self, other: Self) -> Self
     where
         Self: Sized,
@@ -873,7 +873,7 @@ pub trait Ord: Eq + PartialOrd<Self> {
     #[stable(feature = "ord_max_min", since = "1.21.0")]
     #[inline]
     #[must_use]
-    #[cfg_attr(not(bootstrap), rustc_diagnostic_item = "cmp_ord_min")]
+    #[rustc_diagnostic_item = "cmp_ord_min"]
     fn min(self, other: Self) -> Self
     where
         Self: Sized,
@@ -1160,7 +1160,7 @@ pub trait PartialOrd<Rhs: ?Sized = Self>: PartialEq<Rhs> {
     /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[cfg_attr(not(bootstrap), rustc_diagnostic_item = "cmp_partialord_cmp")]
+    #[rustc_diagnostic_item = "cmp_partialord_cmp"]
     fn partial_cmp(&self, other: &Rhs) -> Option<Ordering>;
 
     /// This method tests less than (for `self` and `other`) and is used by the `<` operator.
@@ -1175,7 +1175,7 @@ pub trait PartialOrd<Rhs: ?Sized = Self>: PartialEq<Rhs> {
     #[inline]
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[cfg_attr(not(bootstrap), rustc_diagnostic_item = "cmp_partialord_lt")]
+    #[rustc_diagnostic_item = "cmp_partialord_lt"]
     fn lt(&self, other: &Rhs) -> bool {
         matches!(self.partial_cmp(other), Some(Less))
     }
@@ -1193,7 +1193,7 @@ pub trait PartialOrd<Rhs: ?Sized = Self>: PartialEq<Rhs> {
     #[inline]
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[cfg_attr(not(bootstrap), rustc_diagnostic_item = "cmp_partialord_le")]
+    #[rustc_diagnostic_item = "cmp_partialord_le"]
     fn le(&self, other: &Rhs) -> bool {
         matches!(self.partial_cmp(other), Some(Less | Equal))
     }
@@ -1210,7 +1210,7 @@ pub trait PartialOrd<Rhs: ?Sized = Self>: PartialEq<Rhs> {
     #[inline]
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[cfg_attr(not(bootstrap), rustc_diagnostic_item = "cmp_partialord_gt")]
+    #[rustc_diagnostic_item = "cmp_partialord_gt"]
     fn gt(&self, other: &Rhs) -> bool {
         matches!(self.partial_cmp(other), Some(Greater))
     }
@@ -1228,7 +1228,7 @@ pub trait PartialOrd<Rhs: ?Sized = Self>: PartialEq<Rhs> {
     #[inline]
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[cfg_attr(not(bootstrap), rustc_diagnostic_item = "cmp_partialord_ge")]
+    #[rustc_diagnostic_item = "cmp_partialord_ge"]
     fn ge(&self, other: &Rhs) -> bool {
         matches!(self.partial_cmp(other), Some(Greater | Equal))
     }
@@ -1558,14 +1558,7 @@ mod impls {
             impl PartialOrd for $t {
                 #[inline]
                 fn partial_cmp(&self, other: &$t) -> Option<Ordering> {
-                    #[cfg(bootstrap)]
-                    {
-                        Some(self.cmp(other))
-                    }
-                    #[cfg(not(bootstrap))]
-                    {
-                        Some(crate::intrinsics::three_way_compare(*self, *other))
-                    }
+                    Some(crate::intrinsics::three_way_compare(*self, *other))
                 }
                 #[inline(always)]
                 fn lt(&self, other: &$t) -> bool { (*self) < (*other) }
@@ -1581,18 +1574,7 @@ mod impls {
             impl Ord for $t {
                 #[inline]
                 fn cmp(&self, other: &$t) -> Ordering {
-                    #[cfg(bootstrap)]
-                    {
-                        // The order here is important to generate more optimal assembly.
-                        // See <https://github.com/rust-lang/rust/issues/63758> for more info.
-                        if *self < *other { Less }
-                        else if *self == *other { Equal }
-                        else { Greater }
-                    }
-                    #[cfg(not(bootstrap))]
-                    {
-                        crate::intrinsics::three_way_compare(*self, *other)
-                    }
+                    crate::intrinsics::three_way_compare(*self, *other)
                 }
             }
         )*)

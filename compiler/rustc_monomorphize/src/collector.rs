@@ -228,6 +228,7 @@ use rustc_middle::ty::{
     TypeVisitableExt, VtblEntry,
 };
 use rustc_middle::ty::{GenericArgKind, GenericArgs};
+use rustc_middle::{bug, span_bug};
 use rustc_session::config::EntryFnType;
 use rustc_session::Limit;
 use rustc_span::source_map::{dummy_spanned, respan, Spanned};

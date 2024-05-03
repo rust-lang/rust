@@ -20,10 +20,13 @@ use rustc_errors::{Applicability, Diag, EmissionGuarantee};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::HirId;
+use rustc_macros::{
+    Decodable, Encodable, HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable,
+};
 use rustc_span::def_id::{LocalDefId, CRATE_DEF_ID};
 use rustc_span::symbol::Symbol;
 use rustc_span::{Span, DUMMY_SP};
-use smallvec::SmallVec;
+use smallvec::{smallvec, SmallVec};
 
 use std::borrow::Cow;
 use std::hash::{Hash, Hasher};
@@ -557,7 +560,7 @@ impl<'tcx> ObligationCauseCode<'tcx> {
 
 // `ObligationCauseCode` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(target_pointer_width = "64")]
-static_assert_size!(ObligationCauseCode<'_>, 48);
+rustc_data_structures::static_assert_size!(ObligationCauseCode<'_>, 48);
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum StatementAsExpression {

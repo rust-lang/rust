@@ -9,6 +9,8 @@ error: arbitrary expressions aren't allowed in patterns
    |
 LL |     funny!(a, a);
    |            ^
+   |
+   = note: the `expr` fragment specifier forces the metavariable's content to be an expression
 
 error: aborting due to 2 previous errors
 

@@ -268,6 +268,53 @@ mod prim_bool {}
 /// [`Debug`]: fmt::Debug
 /// [`default()`]: Default::default
 ///
+/// # Never type fallback
+///
+/// When the compiler sees a value of type `!` in a [coercion site], it implicitly inserts a
+/// coercion to allow the type checker to infer any type:
+///
+/// ```rust,ignore (illustrative-and-has-placeholders)
+/// // this
+/// let x: u8 = panic!();
+///
+/// // is (essentially) turned by the compiler into
+/// let x: u8 = absurd(panic!());
+///
+/// // where absurd is a function with the following signature
+/// // (it's sound, because `!` always marks unreachable code):
+/// fn absurd<T>(_: !) -> T { ... }
+// FIXME: use `core::convert::absurd` here instead, once it's merged
+/// ```
+///
+/// This can lead to compilation errors if the type cannot be inferred:
+///
+/// ```compile_fail
+/// // this
+/// { panic!() };
+///
+/// // gets turned into this
+/// { absurd(panic!()) }; // error: can't infer the type of `absurd`
+/// ```
+///
+/// To prevent such errors, the compiler remembers where it inserted `absurd` calls, and
+/// if it can't infer the type, it uses the fallback type instead:
+/// ```rust, ignore
+/// type Fallback = /* An arbitrarily selected type! */;
+/// { absurd::<Fallback>(panic!()) }
+/// ```
+///
+/// This is what is known as "never type fallback".
+///
+/// Historically, the fallback type was [`()`], causing confusing behavior where `!` spontaneously
+/// coerced to `()`, even when it would not infer `()` without the fallback. There are plans to
+/// change it in the [2024 edition] (and possibly in all editions on a later date); see
+/// [Tracking Issue for making `!` fall back to `!`][fallback-ti].
+///
+/// [coercion site]: <https://doc.rust-lang.org/reference/type-coercions.html#coercion-sites>
+/// [`()`]: prim@unit
+/// [fallback-ti]: <https://github.com/rust-lang/rust/issues/123748>
+/// [2024 edition]: <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/index.html>
+///
 #[unstable(feature = "never_type", issue = "35121")]
 mod prim_never {}
 

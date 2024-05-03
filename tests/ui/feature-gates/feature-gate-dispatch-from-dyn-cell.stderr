@@ -1,4 +1,4 @@
-error[E0307]: invalid `self` parameter type: Cell<&Self>
+error[E0307]: invalid `self` parameter type: `Cell<&Self>`
   --> $DIR/feature-gate-dispatch-from-dyn-cell.rs:6:19
    |
 LL |     fn cell(self: Cell<&Self>);

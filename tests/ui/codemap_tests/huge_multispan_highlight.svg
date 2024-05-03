@@ -27,11 +27,11 @@
 </tspan>
     <tspan x="10px" y="82px"><tspan class="fg-ansi256-012 bold">LL</tspan><tspan> </tspan><tspan class="fg-ansi256-012 bold">|</tspan><tspan>       let _ = match true {</tspan>
 </tspan>
-    <tspan x="10px" y="100px"><tspan>   </tspan><tspan class="fg-ansi256-012 bold">| </tspan><tspan>              </tspan><tspan class="fg-ansi256-012 bold">----------</tspan><tspan> </tspan><tspan class="fg-ansi256-012 bold">`match` arms have incompatible types</tspan>
+    <tspan x="10px" y="100px"><tspan>   </tspan><tspan class="fg-ansi256-012 bold">|</tspan><tspan>               </tspan><tspan class="fg-ansi256-012 bold">----------</tspan><tspan> </tspan><tspan class="fg-ansi256-012 bold">`match` arms have incompatible types</tspan>
 </tspan>
     <tspan x="10px" y="118px"><tspan class="fg-ansi256-012 bold">LL</tspan><tspan> </tspan><tspan class="fg-ansi256-012 bold">|</tspan><tspan>           true =&gt; (</tspan>
 </tspan>
-    <tspan x="10px" y="136px"><tspan>   </tspan><tspan class="fg-ansi256-012 bold">| </tspan><tspan> </tspan><tspan class="fg-ansi256-012 bold">_________________-</tspan>
+    <tspan x="10px" y="136px"><tspan>   </tspan><tspan class="fg-ansi256-012 bold">|</tspan><tspan>  </tspan><tspan class="fg-ansi256-012 bold">_________________-</tspan>
 </tspan>
     <tspan x="10px" y="154px"><tspan class="fg-ansi256-012 bold">LL</tspan><tspan> </tspan><tspan class="fg-ansi256-012 bold">|</tspan><tspan> </tspan><tspan class="fg-ansi256-012 bold">|</tspan><tspan>             // last line shown in multispan header</tspan>
 </tspan>
@@ -41,11 +41,11 @@
 </tspan>
     <tspan x="10px" y="208px"><tspan class="fg-ansi256-012 bold">LL</tspan><tspan> </tspan><tspan class="fg-ansi256-012 bold">|</tspan><tspan> </tspan><tspan class="fg-ansi256-012 bold">|</tspan><tspan>         ),</tspan>
 </tspan>
-    <tspan x="10px" y="226px"><tspan>   </tspan><tspan class="fg-ansi256-012 bold">| </tspan><tspan class="fg-ansi256-012 bold">|_________-</tspan><tspan> </tspan><tspan class="fg-ansi256-012 bold">this is found to be of type `()`</tspan>
+    <tspan x="10px" y="226px"><tspan>   </tspan><tspan class="fg-ansi256-012 bold">|</tspan><tspan> </tspan><tspan class="fg-ansi256-012 bold">|_________-</tspan><tspan> </tspan><tspan class="fg-ansi256-012 bold">this is found to be of type `()`</tspan>
 </tspan>
     <tspan x="10px" y="244px"><tspan class="fg-ansi256-012 bold">LL</tspan><tspan> </tspan><tspan class="fg-ansi256-012 bold">|</tspan><tspan>           false =&gt; "</tspan>
 </tspan>
-    <tspan x="10px" y="262px"><tspan>   </tspan><tspan class="fg-ansi256-012 bold">| </tspan><tspan> </tspan><tspan class="fg-ansi256-009 bold">__________________^</tspan>
+    <tspan x="10px" y="262px"><tspan>   </tspan><tspan class="fg-ansi256-012 bold">|</tspan><tspan>  </tspan><tspan class="fg-ansi256-009 bold">__________________^</tspan>
 </tspan>
     <tspan x="10px" y="280px"><tspan class="fg-ansi256-012 bold">...</tspan><tspan>  </tspan><tspan class="fg-ansi256-009 bold">|</tspan>
 </tspan>
@@ -53,7 +53,7 @@
 </tspan>
     <tspan x="10px" y="316px"><tspan class="fg-ansi256-012 bold">LL</tspan><tspan> </tspan><tspan class="fg-ansi256-012 bold">|</tspan><tspan> </tspan><tspan class="fg-ansi256-009 bold">|</tspan><tspan>         ",</tspan>
 </tspan>
-    <tspan x="10px" y="334px"><tspan>   </tspan><tspan class="fg-ansi256-012 bold">| </tspan><tspan class="fg-ansi256-009 bold">|_________^</tspan><tspan> </tspan><tspan class="fg-ansi256-009 bold">expected `()`, found `&amp;str`</tspan>
+    <tspan x="10px" y="334px"><tspan>   </tspan><tspan class="fg-ansi256-012 bold">|</tspan><tspan> </tspan><tspan class="fg-ansi256-009 bold">|_________^</tspan><tspan> </tspan><tspan class="fg-ansi256-009 bold">expected `()`, found `&amp;str`</tspan>
 </tspan>
     <tspan x="10px" y="352px">
 </tspan>
@@ -65,11 +65,11 @@
 </tspan>
     <tspan x="10px" y="424px"><tspan class="fg-ansi256-012 bold">LL</tspan><tspan> </tspan><tspan class="fg-ansi256-012 bold">|</tspan><tspan>       let _ = match true {</tspan>
 </tspan>
-    <tspan x="10px" y="442px"><tspan>   </tspan><tspan class="fg-ansi256-012 bold">| </tspan><tspan>              </tspan><tspan class="fg-ansi256-012 bold">----------</tspan><tspan> </tspan><tspan class="fg-ansi256-012 bold">`match` arms have incompatible types</tspan>
+    <tspan x="10px" y="442px"><tspan>   </tspan><tspan class="fg-ansi256-012 bold">|</tspan><tspan>               </tspan><tspan class="fg-ansi256-012 bold">----------</tspan><tspan> </tspan><tspan class="fg-ansi256-012 bold">`match` arms have incompatible types</tspan>
 </tspan>
     <tspan x="10px" y="460px"><tspan class="fg-ansi256-012 bold">LL</tspan><tspan> </tspan><tspan class="fg-ansi256-012 bold">|</tspan><tspan>           true =&gt; (</tspan>
 </tspan>
-    <tspan x="10px" y="478px"><tspan>   </tspan><tspan class="fg-ansi256-012 bold">| </tspan><tspan> </tspan><tspan class="fg-ansi256-012 bold">_________________-</tspan>
+    <tspan x="10px" y="478px"><tspan>   </tspan><tspan class="fg-ansi256-012 bold">|</tspan><tspan>  </tspan><tspan class="fg-ansi256-012 bold">_________________-</tspan>
 </tspan>
     <tspan x="10px" y="496px"><tspan class="fg-ansi256-012 bold">LL</tspan><tspan> </tspan><tspan class="fg-ansi256-012 bold">|</tspan><tspan> </tspan><tspan class="fg-ansi256-012 bold">|</tspan>
 </tspan>
@@ -81,11 +81,11 @@
 </tspan>
     <tspan x="10px" y="568px"><tspan class="fg-ansi256-012 bold">LL</tspan><tspan> </tspan><tspan class="fg-ansi256-012 bold">|</tspan><tspan> </tspan><tspan class="fg-ansi256-012 bold">|</tspan><tspan>         ),</tspan>
 </tspan>
-    <tspan x="10px" y="586px"><tspan>   </tspan><tspan class="fg-ansi256-012 bold">| </tspan><tspan class="fg-ansi256-012 bold">|_________-</tspan><tspan> </tspan><tspan class="fg-ansi256-012 bold">this is found to be of type `{integer}`</tspan>
+    <tspan x="10px" y="586px"><tspan>   </tspan><tspan class="fg-ansi256-012 bold">|</tspan><tspan> </tspan><tspan class="fg-ansi256-012 bold">|_________-</tspan><tspan> </tspan><tspan class="fg-ansi256-012 bold">this is found to be of type `{integer}`</tspan>
 </tspan>
     <tspan x="10px" y="604px"><tspan class="fg-ansi256-012 bold">LL</tspan><tspan> </tspan><tspan class="fg-ansi256-012 bold">|</tspan><tspan>           false =&gt; "</tspan>
 </tspan>
-    <tspan x="10px" y="622px"><tspan>   </tspan><tspan class="fg-ansi256-012 bold">| </tspan><tspan> </tspan><tspan class="fg-ansi256-009 bold">__________________^</tspan>
+    <tspan x="10px" y="622px"><tspan>   </tspan><tspan class="fg-ansi256-012 bold">|</tspan><tspan>  </tspan><tspan class="fg-ansi256-009 bold">__________________^</tspan>
 </tspan>
     <tspan x="10px" y="640px"><tspan class="fg-ansi256-012 bold">LL</tspan><tspan> </tspan><tspan class="fg-ansi256-012 bold">|</tspan><tspan> </tspan><tspan class="fg-ansi256-009 bold">|</tspan>
 </tspan>
@@ -99,7 +99,7 @@
 </tspan>
     <tspan x="10px" y="730px"><tspan class="fg-ansi256-012 bold">LL</tspan><tspan> </tspan><tspan class="fg-ansi256-012 bold">|</tspan><tspan> </tspan><tspan class="fg-ansi256-009 bold">|</tspan><tspan>         ",</tspan>
 </tspan>
-    <tspan x="10px" y="748px"><tspan>   </tspan><tspan class="fg-ansi256-012 bold">| </tspan><tspan class="fg-ansi256-009 bold">|_________^</tspan><tspan> </tspan><tspan class="fg-ansi256-009 bold">expected integer, found `&amp;str`</tspan>
+    <tspan x="10px" y="748px"><tspan>   </tspan><tspan class="fg-ansi256-012 bold">|</tspan><tspan> </tspan><tspan class="fg-ansi256-009 bold">|_________^</tspan><tspan> </tspan><tspan class="fg-ansi256-009 bold">expected integer, found `&amp;str`</tspan>
 </tspan>
     <tspan x="10px" y="766px">
 </tspan>

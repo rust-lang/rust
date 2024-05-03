@@ -10,11 +10,13 @@ use crate::infer::canonical::{Canonical, QueryResponse};
 use crate::ty::error::TypeError;
 use crate::ty::GenericArg;
 use crate::ty::{self, Ty, TyCtxt};
+use rustc_macros::{HashStable, TypeFoldable, TypeVisitable};
 use rustc_span::Span;
 
 pub mod type_op {
     use crate::ty::fold::TypeFoldable;
     use crate::ty::{Predicate, Ty, TyCtxt, UserType};
+    use rustc_macros::{HashStable, TypeFoldable, TypeVisitable};
     use std::fmt;
 
     #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, HashStable, TypeFoldable, TypeVisitable)]

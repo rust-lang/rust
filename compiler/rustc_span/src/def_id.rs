@@ -6,7 +6,7 @@ use rustc_data_structures::stable_hasher::{
 use rustc_data_structures::unhash::Unhasher;
 use rustc_data_structures::AtomicRef;
 use rustc_index::Idx;
-use rustc_macros::HashStable_Generic;
+use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_serialize::{Decodable, Encodable};
 use std::fmt;
 use std::hash::{BuildHasherDefault, Hash, Hasher};

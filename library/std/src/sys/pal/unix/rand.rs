@@ -12,11 +12,6 @@ pub fn hashmap_random_keys() -> (u64, u64) {
 
 #[cfg(all(
     unix,
-    not(target_os = "macos"),
-    not(target_os = "ios"),
-    not(target_os = "tvos"),
-    not(target_os = "watchos"),
-    not(target_os = "visionos"),
     not(target_os = "openbsd"),
     not(target_os = "netbsd"),
     not(target_os = "fuchsia"),
@@ -24,6 +19,7 @@ pub fn hashmap_random_keys() -> (u64, u64) {
     not(target_os = "vxworks"),
     not(target_os = "emscripten"),
     not(target_os = "vita"),
+    not(target_vendor = "apple"),
 ))]
 mod imp {
     use crate::fs::File;

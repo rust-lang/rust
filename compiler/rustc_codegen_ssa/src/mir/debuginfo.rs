@@ -1,6 +1,7 @@
 use crate::traits::*;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::IndexVec;
+use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir;
 use rustc_middle::ty;

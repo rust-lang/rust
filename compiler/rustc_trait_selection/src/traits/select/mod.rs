@@ -1497,7 +1497,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // bound regions.
         let trait_ref = predicate.skip_binder().trait_ref;
 
-        coherence::trait_ref_is_knowable::<!>(self.tcx(), trait_ref, |ty| Ok(ty)).unwrap()
+        coherence::trait_ref_is_knowable::<!>(self.infcx, trait_ref, |ty| Ok(ty)).unwrap()
     }
 
     /// Returns `true` if the global caches can be used.
@@ -2001,7 +2001,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                     // any associated items and there are no where-clauses.
                     //
                     // We can just arbitrarily drop one of the impls.
-                    Some(ty::ImplOverlapKind::Issue33140) => {
+                    Some(ty::ImplOverlapKind::FutureCompatOrderDepTraitObjects) => {
                         assert_eq!(other.evaluation, victim.evaluation);
                         DropVictim::Yes
                     }

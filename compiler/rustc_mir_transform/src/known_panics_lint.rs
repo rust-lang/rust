@@ -583,33 +583,21 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 val.into()
             }
 
-            Aggregate(ref kind, ref fields) => {
-                // Do not const prop union fields as they can be
-                // made to produce values that don't match their
-                // underlying layout's type (see ICE #121534).
-                // If the last element of the `Adt` tuple
-                // is `Some` it indicates the ADT is a union
-                if let AggregateKind::Adt(_, _, _, _, Some(_)) = **kind {
-                    return None;
-                };
-                Value::Aggregate {
-                    fields: fields
-                        .iter()
-                        .map(|field| {
-                            self.eval_operand(field).map_or(Value::Uninit, Value::Immediate)
-                        })
-                        .collect(),
-                    variant: match **kind {
-                        AggregateKind::Adt(_, variant, _, _, _) => variant,
-                        AggregateKind::Array(_)
-                        | AggregateKind::Tuple
-                        | AggregateKind::RawPtr(_, _)
-                        | AggregateKind::Closure(_, _)
-                        | AggregateKind::Coroutine(_, _)
-                        | AggregateKind::CoroutineClosure(_, _) => VariantIdx::ZERO,
-                    },
-                }
-            }
+            Aggregate(ref kind, ref fields) => Value::Aggregate {
+                fields: fields
+                    .iter()
+                    .map(|field| self.eval_operand(field).map_or(Value::Uninit, Value::Immediate))
+                    .collect(),
+                variant: match **kind {
+                    AggregateKind::Adt(_, variant, _, _, _) => variant,
+                    AggregateKind::Array(_)
+                    | AggregateKind::Tuple
+                    | AggregateKind::RawPtr(_, _)
+                    | AggregateKind::Closure(_, _)
+                    | AggregateKind::Coroutine(_, _)
+                    | AggregateKind::CoroutineClosure(_, _) => VariantIdx::ZERO,
+                },
+            },
 
             Repeat(ref op, n) => {
                 trace!(?op, ?n);
@@ -896,13 +884,20 @@ impl CanConstProp {
         };
         for (local, val) in cpv.can_const_prop.iter_enumerated_mut() {
             let ty = body.local_decls[local].ty;
-            match tcx.layout_of(param_env.and(ty)) {
-                Ok(layout) if layout.size < Size::from_bytes(MAX_ALLOC_LIMIT) => {}
-                // Either the layout fails to compute, then we can't use this local anyway
-                // or the local is too large, then we don't want to.
-                _ => {
-                    *val = ConstPropMode::NoPropagation;
-                    continue;
+            if ty.is_union() {
+                // Unions are incompatible with the current implementation of
+                // const prop because Rust has no concept of an active
+                // variant of a union
+                *val = ConstPropMode::NoPropagation;
+            } else {
+                match tcx.layout_of(param_env.and(ty)) {
+                    Ok(layout) if layout.size < Size::from_bytes(MAX_ALLOC_LIMIT) => {}
+                    // Either the layout fails to compute, then we can't use this local anyway
+                    // or the local is too large, then we don't want to.
+                    _ => {
+                        *val = ConstPropMode::NoPropagation;
+                        continue;
+                    }
                 }
             }
         }

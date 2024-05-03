@@ -251,7 +251,7 @@ pub trait LayoutCalculator {
         // If all the non-ZST fields have the same ABI and union ABI optimizations aren't
         // disabled, we can use that common ABI for the union as a whole.
         struct AbiMismatch;
-        let mut common_non_zst_abi_and_align = if repr.inhibit_union_abi_opt() {
+        let mut common_non_zst_abi_and_align = if repr.inhibits_union_abi_opt() {
             // Can't optimize
             Err(AbiMismatch)
         } else {

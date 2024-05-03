@@ -10,7 +10,7 @@ use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::{self, ImplSubject, ToPredicate, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::ty::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_span::Span;
-use smallvec::SmallVec;
+use smallvec::{smallvec, SmallVec};
 
 pub use rustc_infer::traits::util::*;
 

@@ -10,7 +10,7 @@ use super::SINGLE_CHAR_ADD_STR;
 /// lint for length-1 `str`s as argument for `push_str`
 pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, receiver: &hir::Expr<'_>, args: &[hir::Expr<'_>]) {
     let mut applicability = Applicability::MachineApplicable;
-    if let Some(extension_string) = get_hint_if_single_char_arg(cx, &args[0], &mut applicability) {
+    if let Some(extension_string) = get_hint_if_single_char_arg(cx, &args[0], &mut applicability, false) {
         let base_string_snippet =
             snippet_with_applicability(cx, receiver.span.source_callsite(), "..", &mut applicability);
         let sugg = format!("{base_string_snippet}.push({extension_string})");

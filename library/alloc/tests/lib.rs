@@ -1,4 +1,3 @@
-#![cfg_attr(bootstrap, feature(associated_type_bounds))]
 #![feature(allocator_api)]
 #![feature(alloc_layout_extra)]
 #![feature(iter_array_chunks)]
