@@ -215,8 +215,12 @@ pub fn check_tys_might_be_eq<'tcx>(
     let (infcx, key, _) = tcx.infer_ctxt().build_with_canonical(DUMMY_SP, &canonical);
     let (param_env, (ty_a, ty_b)) = key.into_parts();
     let ocx = ObligationCtxt::new(&infcx);
+    let cause = ObligationCause::dummy();
 
-    let result = ocx.eq(&ObligationCause::dummy(), param_env, ty_a, ty_b);
+    let ty_a = ocx.deeply_normalize(&cause, param_env, ty_a).unwrap_or(ty_a);
+    let ty_b = ocx.deeply_normalize(&cause, param_env, ty_b).unwrap_or(ty_b);
+    let result = ocx.eq(&cause, param_env, ty_a, ty_b);
+
     // use `select_where_possible` instead of `select_all_or_error` so that
     // we don't get errors from obligations being ambiguous.
     let errors = ocx.select_where_possible();
