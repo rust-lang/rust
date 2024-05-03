@@ -422,7 +422,8 @@ impl<'a> State<'a> {
                 self.print_type(ty);
             }
             ast::ExprKind::Type(expr, ty) => {
-                self.word("type_ascribe!(");
+                self.word("builtin # type_ascribe");
+                self.popen();
                 self.ibox(0);
                 self.print_expr(expr, FixupContext::default());
 
@@ -431,7 +432,7 @@ impl<'a> State<'a> {
                 self.print_type(ty);
 
                 self.end();
-                self.word(")");
+                self.pclose();
             }
             ast::ExprKind::Let(pat, scrutinee, _, _) => {
                 self.print_let(pat, scrutinee, fixup);
@@ -657,15 +658,15 @@ impl<'a> State<'a> {
                 );
             }
             ast::ExprKind::InlineAsm(a) => {
-                // FIXME: This should have its own syntax, distinct from a macro invocation.
+                // FIXME: Print `builtin # asm` once macro `asm` uses `builtin_syntax`.
                 self.word("asm!");
                 self.print_inline_asm(a);
             }
             ast::ExprKind::FormatArgs(fmt) => {
-                // FIXME: This should have its own syntax, distinct from a macro invocation.
+                // FIXME: Print `builtin # format_args` once macro `format_args` uses `builtin_syntax`.
                 self.word("format_args!");
                 self.popen();
-                self.rbox(0, Inconsistent);
+                self.ibox(0);
                 self.word(reconstruct_format_args_template_string(&fmt.template));
                 for arg in fmt.arguments.all_args() {
                     self.word_space(",");
@@ -677,7 +678,7 @@ impl<'a> State<'a> {
             ast::ExprKind::OffsetOf(container, fields) => {
                 self.word("builtin # offset_of");
                 self.popen();
-                self.rbox(0, Inconsistent);
+                self.ibox(0);
                 self.print_type(container);
                 self.word(",");
                 self.space();
@@ -690,8 +691,8 @@ impl<'a> State<'a> {
                         self.print_ident(field);
                     }
                 }
-                self.pclose();
                 self.end();
+                self.pclose();
             }
             ast::ExprKind::MacCall(m) => self.print_mac(m),
             ast::ExprKind::Paren(e) => {
