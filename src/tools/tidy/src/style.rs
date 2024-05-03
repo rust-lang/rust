@@ -18,7 +18,7 @@
 // ignore-tidy-dbg
 
 use crate::walk::{filter_dirs, walk};
-use regex::{Regex, RegexSet};
+use regex::RegexSet;
 use rustc_hash::FxHashMap;
 use std::{ffi::OsStr, path::Path};
 
@@ -178,20 +178,14 @@ fn should_ignore(line: &str) -> bool {
     // Matches test annotations like `//~ ERROR text`.
     // This mirrors the regex in src/tools/compiletest/src/runtest.rs, please
     // update both if either are changed.
-    lazy_static::lazy_static! {
-        static ref ANNOTATION_RE: Regex = Regex::new("\\s*//(\\[.*\\])?~.*").unwrap();
-    }
+    static_regex!("\\s*//(\\[.*\\])?~.*").is_match(line)
+        || ANNOTATIONS_TO_IGNORE.iter().any(|a| line.contains(a))
+
     // For `ui_test`-style UI test directives, also ignore
     // - `//@[rev] compile-flags`
     // - `//@[rev] normalize-stderr-test`
-    lazy_static::lazy_static! {
-        static ref UI_TEST_LONG_DIRECTIVES_RE: Regex =
-        Regex::new("\\s*//@(\\[.*\\]) (compile-flags|normalize-stderr-test|error-pattern).*")
-            .unwrap();
-    }
-    ANNOTATION_RE.is_match(line)
-        || ANNOTATIONS_TO_IGNORE.iter().any(|a| line.contains(a))
-        || UI_TEST_LONG_DIRECTIVES_RE.is_match(line)
+        || static_regex!("\\s*//@(\\[.*\\]) (compile-flags|normalize-stderr-test|error-pattern).*")
+            .is_match(line)
 }
 
 /// Returns `true` if `line` is allowed to be longer than the normal limit.
@@ -226,6 +220,7 @@ fn contains_ignore_directive(can_contain: bool, contents: &str, check: &str) -> 
     if contents.contains(&format!("// ignore-tidy-{check}"))
         || contents.contains(&format!("# ignore-tidy-{check}"))
         || contents.contains(&format!("/* ignore-tidy-{check} */"))
+        || contents.contains(&format!("<!-- ignore-tidy-{check} -->"))
     {
         Directive::Ignore(false)
     } else {
@@ -352,7 +347,8 @@ pub fn check(path: &Path, bad: &mut bool) {
 
         let can_contain = contents.contains("// ignore-tidy-")
             || contents.contains("# ignore-tidy-")
-            || contents.contains("/* ignore-tidy-");
+            || contents.contains("/* ignore-tidy-")
+            || contents.contains("<!-- ignore-tidy-");
         // Enable testing ICE's that require specific (untidy)
         // file formats easily eg. `issue-1234-ignore-tidy.rs`
         if filename.contains("ignore-tidy") {

@@ -7,7 +7,7 @@ use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
 use thin_vec::thin_vec;
 
-pub fn expand_deriving_partial_ord(
+pub(crate) fn expand_deriving_partial_ord(
     cx: &ExtCtxt<'_>,
     span: Span,
     mitem: &MetaItem,

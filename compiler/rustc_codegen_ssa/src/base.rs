@@ -24,6 +24,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::lang_items::LangItem;
 use rustc_metadata::EncodedMetadata;
+use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::middle::debugger_visualizer::{DebuggerVisualizerFile, DebuggerVisualizerType};
 use rustc_middle::middle::exported_symbols;

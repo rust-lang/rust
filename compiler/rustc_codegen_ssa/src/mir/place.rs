@@ -5,6 +5,7 @@ use crate::common::IntPredicate;
 use crate::size_of_val;
 use crate::traits::*;
 
+use rustc_middle::bug;
 use rustc_middle::mir;
 use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, TyAndLayout};

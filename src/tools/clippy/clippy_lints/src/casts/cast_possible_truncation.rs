@@ -40,8 +40,13 @@ fn apply_reductions(cx: &LateContext<'_>, nbits: u64, expr: &Expr<'_>, signed: b
                     get_constant_bits(cx, right).map_or(0, |b| b.saturating_sub(1))
                 })
             },
-            BinOpKind::Rem | BinOpKind::BitAnd => get_constant_bits(cx, right)
+            BinOpKind::Rem => get_constant_bits(cx, right)
                 .unwrap_or(u64::MAX)
+                .min(apply_reductions(cx, nbits, left, signed)),
+            BinOpKind::BitAnd => get_constant_bits(cx, right)
+                .unwrap_or(u64::MAX)
+                .min(get_constant_bits(cx, left).unwrap_or(u64::MAX))
+                .min(apply_reductions(cx, nbits, right, signed))
                 .min(apply_reductions(cx, nbits, left, signed)),
             BinOpKind::Shr => apply_reductions(cx, nbits, left, signed)
                 .saturating_sub(constant_int(cx, right).map_or(0, |s| u64::try_from(s).unwrap_or_default())),

@@ -1,10 +1,10 @@
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
 use crate::traits::{self, ObligationCtxt, SelectionContext};
 
-use crate::traits::TraitEngineExt as _;
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
-use rustc_infer::traits::{Obligation, TraitEngine, TraitEngineExt as _};
+use rustc_infer::traits::Obligation;
+use rustc_macros::extension;
 use rustc_middle::arena::ArenaAllocatable;
 use rustc_middle::infer::canonical::{Canonical, CanonicalQueryResponse, QueryResponse};
 use rustc_middle::traits::query::NoSolution;
@@ -94,9 +94,9 @@ impl<'tcx> InferCtxt<'tcx> {
                 ty::TraitRef::new(self.tcx, trait_def_id, [ty]),
             )) {
                 Ok(Some(selection)) => {
-                    let mut fulfill_cx = <dyn TraitEngine<'tcx>>::new(self);
-                    fulfill_cx.register_predicate_obligations(self, selection.nested_obligations());
-                    Some(fulfill_cx.select_all_or_error(self))
+                    let ocx = ObligationCtxt::new(self);
+                    ocx.register_obligations(selection.nested_obligations());
+                    Some(ocx.select_all_or_error())
                 }
                 Ok(None) | Err(_) => None,
             }

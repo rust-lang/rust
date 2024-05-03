@@ -380,7 +380,7 @@ impl<'mir, 'tcx: 'mir> PrimitiveLayouts<'tcx> {
         let mut_raw_ptr = Ty::new_mut_ptr(tcx, tcx.types.unit);
         let const_raw_ptr = Ty::new_imm_ptr(tcx, tcx.types.unit);
         Ok(Self {
-            unit: layout_cx.layout_of(Ty::new_unit(tcx))?,
+            unit: layout_cx.layout_of(tcx.types.unit)?,
             i8: layout_cx.layout_of(tcx.types.i8)?,
             i16: layout_cx.layout_of(tcx.types.i16)?,
             i32: layout_cx.layout_of(tcx.types.i32)?,

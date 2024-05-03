@@ -420,13 +420,11 @@ impl Command {
     }
 
     #[cfg(not(any(
-        target_os = "macos",
-        target_os = "tvos",
-        target_os = "watchos",
         target_os = "freebsd",
         all(target_os = "linux", target_env = "gnu"),
         all(target_os = "linux", target_env = "musl"),
         target_os = "nto",
+        target_vendor = "apple",
     )))]
     fn posix_spawn(
         &mut self,
@@ -439,14 +437,11 @@ impl Command {
     // Only support platforms for which posix_spawn() can return ENOENT
     // directly.
     #[cfg(any(
-        target_os = "macos",
-        // FIXME: `target_os = "ios"`?
-        target_os = "tvos",
-        target_os = "watchos",
         target_os = "freebsd",
         all(target_os = "linux", target_env = "gnu"),
         all(target_os = "linux", target_env = "musl"),
         target_os = "nto",
+        target_vendor = "apple",
     ))]
     fn posix_spawn(
         &mut self,
@@ -530,7 +525,7 @@ impl Command {
         }
         let addchdir = match self.get_cwd() {
             Some(cwd) => {
-                if cfg!(any(target_os = "macos", target_os = "tvos", target_os = "watchos")) {
+                if cfg!(target_vendor = "apple") {
                     // There is a bug in macOS where a relative executable
                     // path like "../myprogram" will cause `posix_spawn` to
                     // successfully launch the program, but erroneously return
@@ -1040,24 +1035,20 @@ fn signal_string(signal: i32) -> &'static str {
         #[cfg(any(target_os = "linux", target_os = "nto"))]
         libc::SIGPWR => " (SIGPWR)",
         #[cfg(any(
-            target_os = "macos",
-            target_os = "ios",
-            target_os = "tvos",
             target_os = "freebsd",
             target_os = "netbsd",
             target_os = "openbsd",
             target_os = "dragonfly",
             target_os = "nto",
+            target_vendor = "apple",
         ))]
         libc::SIGEMT => " (SIGEMT)",
         #[cfg(any(
-            target_os = "macos",
-            target_os = "ios",
-            target_os = "tvos",
             target_os = "freebsd",
             target_os = "netbsd",
             target_os = "openbsd",
-            target_os = "dragonfly"
+            target_os = "dragonfly",
+            target_vendor = "apple",
         ))]
         libc::SIGINFO => " (SIGINFO)",
         #[cfg(target_os = "hurd")]

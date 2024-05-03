@@ -4,6 +4,7 @@
 //! For all the gory details, see the provider of the `dependency_formats`
 //! query.
 
+use rustc_macros::{Decodable, Encodable, HashStable};
 use rustc_session::config::CrateType;
 
 /// A list of dependencies for a certain crate type.

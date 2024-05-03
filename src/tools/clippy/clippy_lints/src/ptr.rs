@@ -11,9 +11,8 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::hir_id::{HirId, HirIdMap};
 use rustc_hir::intravisit::{walk_expr, Visitor};
 use rustc_hir::{
-    self as hir, AnonConst, BinOpKind, BindingMode, Body, Expr, ExprKind, FnRetTy, FnSig, GenericArg,
-    ImplItemKind, ItemKind, Lifetime, Mutability, Node, Param, PatKind, QPath, TraitFn, TraitItem, TraitItemKind,
-    TyKind, Unsafety,
+    self as hir, AnonConst, BinOpKind, BindingMode, Body, Expr, ExprKind, FnRetTy, FnSig, GenericArg, ImplItemKind,
+    ItemKind, Lifetime, Mutability, Node, Param, PatKind, QPath, TraitFn, TraitItem, TraitItemKind, TyKind, Unsafety,
 };
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::{Obligation, ObligationCause};
@@ -687,9 +686,7 @@ fn check_ptr_arg_usage<'tcx>(cx: &LateContext<'tcx>, body: &'tcx Body<'_>, args:
             .filter_map(|(i, arg)| {
                 let param = &body.params[arg.idx];
                 match param.pat.kind {
-                    PatKind::Binding(BindingMode::NONE, id, _, None)
-                        if !is_lint_allowed(cx, PTR_ARG, param.hir_id) =>
-                    {
+                    PatKind::Binding(BindingMode::NONE, id, _, None) if !is_lint_allowed(cx, PTR_ARG, param.hir_id) => {
                         Some((id, i))
                     },
                     _ => {

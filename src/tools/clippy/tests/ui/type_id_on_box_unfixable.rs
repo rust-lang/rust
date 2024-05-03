@@ -19,7 +19,7 @@ where
 impl<T> NormalTrait for T {}
 
 fn main() {
-    // (currently we don't look deeper than one level into the supertrait hierachy, but we probably
+    // (currently we don't look deeper than one level into the supertrait hierarchy, but we probably
     // could)
     let b: Box<dyn AnySubSubTrait> = Box::new(1);
     let _ = b.type_id();

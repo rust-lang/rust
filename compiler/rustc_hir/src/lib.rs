@@ -10,15 +10,6 @@
 #![feature(variant_count)]
 #![allow(internal_features)]
 
-#[macro_use]
-extern crate rustc_macros;
-
-#[macro_use]
-extern crate tracing;
-
-#[macro_use]
-extern crate rustc_data_structures;
-
 extern crate self as rustc_hir;
 
 mod arena;

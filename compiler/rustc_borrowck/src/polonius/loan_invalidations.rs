@@ -1,4 +1,5 @@
 use rustc_data_structures::graph::dominators::Dominators;
+use rustc_middle::bug;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::{
     self, BasicBlock, Body, FakeBorrowKind, Location, NonDivergingIntrinsic, Place, Rvalue,

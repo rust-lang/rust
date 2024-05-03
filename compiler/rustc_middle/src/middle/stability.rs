@@ -14,6 +14,7 @@ use rustc_feature::GateIssue;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId, LocalDefIdMap};
 use rustc_hir::{self as hir, HirId};
+use rustc_macros::{Decodable, Encodable, HashStable};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_session::lint::builtin::{DEPRECATED, DEPRECATED_IN_FUTURE, SOFT_UNSTABLE};
 use rustc_session::lint::{BuiltinLintDiag, Level, Lint, LintBuffer};

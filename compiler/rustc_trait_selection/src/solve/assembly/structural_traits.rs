@@ -4,6 +4,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::LangItem;
 use rustc_hir::{def_id::DefId, Movability, Mutability};
 use rustc_infer::traits::query::NoSolution;
+use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_middle::traits::solve::Goal;
 use rustc_middle::ty::{
     self, ToPredicate, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,

@@ -9,6 +9,7 @@ use crate::traits::*;
 use crate::MemFlags;
 
 use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::{bug, span_bug};
 use rustc_session::config::OptLevel;
 use rustc_span::{sym, Span};
 use rustc_target::abi::{

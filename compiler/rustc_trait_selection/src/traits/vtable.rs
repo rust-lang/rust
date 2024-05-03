@@ -10,7 +10,7 @@ use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::GenericArgs;
 use rustc_middle::ty::{self, GenericParamDefKind, ToPredicate, Ty, TyCtxt, VtblEntry};
 use rustc_span::{sym, Span};
-use smallvec::SmallVec;
+use smallvec::{smallvec, SmallVec};
 
 use std::fmt::Debug;
 use std::ops::ControlFlow;

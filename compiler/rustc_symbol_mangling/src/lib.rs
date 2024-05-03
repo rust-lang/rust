@@ -93,12 +93,6 @@
 #![feature(let_chains)]
 #![allow(internal_features)]
 
-#[macro_use]
-extern crate rustc_middle;
-
-#[macro_use]
-extern crate tracing;
-
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
@@ -107,6 +101,7 @@ use rustc_middle::mir::mono::{InstantiationMode, MonoItem};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, Instance, TyCtxt};
 use rustc_session::config::SymbolManglingVersion;
+use tracing::debug;
 
 mod hashed;
 mod legacy;

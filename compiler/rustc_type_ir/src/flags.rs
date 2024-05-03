@@ -1,4 +1,4 @@
-bitflags! {
+bitflags::bitflags! {
     /// Flags that we track on types. These flags are propagated upwards
     /// through the type during type construction, so that we can quickly check
     /// whether the type has various kinds of types in it without recursing

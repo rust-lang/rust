@@ -1,5 +1,4 @@
 use super::{InlineAsmArch, InlineAsmType, ModifierInfo};
-use rustc_macros::HashStable_Generic;
 use rustc_span::Symbol;
 
 def_reg_class! {

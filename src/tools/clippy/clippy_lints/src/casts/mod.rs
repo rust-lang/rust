@@ -708,7 +708,7 @@ declare_clippy_lint! {
     /// let a_ref = &1;
     /// let a_ptr = std::ptr::from_ref(a_ref);
     /// ```
-    #[clippy::version = "1.77.0"]
+    #[clippy::version = "1.78.0"]
     pub REF_AS_PTR,
     pedantic,
     "using `as` to cast a reference to pointer"

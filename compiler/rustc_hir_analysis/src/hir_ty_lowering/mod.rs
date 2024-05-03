@@ -2370,7 +2370,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     self.lower_ty(output)
                 }
             }
-            hir::FnRetTy::DefaultReturn(..) => Ty::new_unit(tcx),
+            hir::FnRetTy::DefaultReturn(..) => tcx.types.unit,
         };
 
         debug!(?output_ty);

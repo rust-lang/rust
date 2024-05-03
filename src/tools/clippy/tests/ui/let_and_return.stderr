@@ -71,7 +71,7 @@ LL |               result
 help: return the expression directly
    |
 LL ~             
-LL | 
+LL |
 LL ~             (match self {
 LL +                 E::A(x) => x,
 LL +                 E::B(x) => x,

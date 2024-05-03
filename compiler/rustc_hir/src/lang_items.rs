@@ -12,7 +12,7 @@ use crate::{MethodKind, Target};
 
 use rustc_ast as ast;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_macros::HashStable_Generic;
+use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
 
@@ -56,7 +56,7 @@ macro_rules! language_item_table {
         $( $(#[$attr:meta])* $variant:ident, $module:ident :: $name:ident, $method:ident, $target:expr, $generics:expr; )*
     ) => {
 
-        enum_from_u32! {
+        rustc_data_structures::enum_from_u32! {
             /// A representation of all the valid lang items in Rust.
             #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Encodable, Decodable)]
             pub enum LangItem {

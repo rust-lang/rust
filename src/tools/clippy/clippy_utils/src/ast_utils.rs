@@ -446,7 +446,18 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
 pub fn eq_foreign_item_kind(l: &ForeignItemKind, r: &ForeignItemKind) -> bool {
     use ForeignItemKind::*;
     match (l, r) {
-        (Static(lt, lm, le), Static(rt, rm, re)) => lm == rm && eq_ty(lt, rt) && eq_expr_opt(le, re),
+        (
+            Static(box StaticForeignItem {
+                ty: lt,
+                mutability: lm,
+                expr: le,
+            }),
+            Static(box StaticForeignItem {
+                ty: rt,
+                mutability: rm,
+                expr: re,
+            }),
+        ) => lm == rm && eq_ty(lt, rt) && eq_expr_opt(le, re),
         (
             Fn(box ast::Fn {
                 defaultness: ld,

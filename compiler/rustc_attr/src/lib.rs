@@ -9,9 +9,6 @@
 #![doc(rust_logo)]
 #![feature(let_chains)]
 
-#[macro_use]
-extern crate rustc_macros;
-
 mod builtin;
 mod session_diagnostics;
 

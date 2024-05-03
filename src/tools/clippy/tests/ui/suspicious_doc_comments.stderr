@@ -85,7 +85,7 @@ LL | |     ///! b
 help: use an inner doc comment to document the parent module or crate
    |
 LL ~     //! a
-LL | 
+LL |
 LL ~     //! b
    |
 

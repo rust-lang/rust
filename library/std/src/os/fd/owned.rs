@@ -176,7 +176,12 @@ impl Drop for OwnedFd {
             // something like EINTR), we might close another valid file descriptor
             // opened after we closed ours.
             #[cfg(not(target_os = "hermit"))]
-            let _ = libc::close(self.fd);
+            {
+                #[cfg(unix)]
+                crate::sys::fs::debug_assert_fd_is_open(self.fd);
+
+                let _ = libc::close(self.fd);
+            }
             #[cfg(target_os = "hermit")]
             let _ = hermit_abi::close(self.fd);
         }

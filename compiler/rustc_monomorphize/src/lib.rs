@@ -4,10 +4,9 @@
 
 #[macro_use]
 extern crate tracing;
-#[macro_use]
-extern crate rustc_middle;
 
 use rustc_hir::lang_items::LangItem;
+use rustc_middle::bug;
 use rustc_middle::query::{Providers, TyCtxtAt};
 use rustc_middle::traits;
 use rustc_middle::ty::adjustment::CustomCoerceUnsized;

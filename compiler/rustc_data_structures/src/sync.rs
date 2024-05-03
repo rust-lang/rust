@@ -46,6 +46,7 @@ use std::collections::HashMap;
 use std::hash::{BuildHasher, Hash};
 
 mod lock;
+#[doc(no_inline)]
 pub use lock::{Lock, LockGuard, Mode};
 
 mod worker_local;
@@ -199,10 +200,15 @@ cfg_match! {
 
         pub use std::rc::Rc as Lrc;
         pub use std::rc::Weak as Weak;
+        #[doc(no_inline)]
         pub use std::cell::Ref as ReadGuard;
+        #[doc(no_inline)]
         pub use std::cell::Ref as MappedReadGuard;
+        #[doc(no_inline)]
         pub use std::cell::RefMut as WriteGuard;
+        #[doc(no_inline)]
         pub use std::cell::RefMut as MappedWriteGuard;
+        #[doc(no_inline)]
         pub use std::cell::RefMut as MappedLockGuard;
 
         pub use std::cell::OnceCell as OnceLock;

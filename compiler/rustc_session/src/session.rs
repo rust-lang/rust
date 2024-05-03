@@ -1,8 +1,8 @@
 use crate::code_stats::CodeStats;
 pub use crate::code_stats::{DataTypeKind, FieldInfo, FieldKind, SizeKind, VariantInfo};
 use crate::config::{
-    self, CrateType, FunctionReturn, InstrumentCoverage, OptLevel, OutFileName, OutputType,
-    RemapPathScopeComponents, SwitchWithOptPath,
+    self, CoverageLevel, CrateType, FunctionReturn, InstrumentCoverage, OptLevel, OutFileName,
+    OutputType, RemapPathScopeComponents, SwitchWithOptPath,
 };
 use crate::config::{ErrorOutputType, Input};
 use crate::errors;
@@ -349,11 +349,13 @@ impl Session {
     }
 
     pub fn instrument_coverage_branch(&self) -> bool {
-        self.instrument_coverage() && self.opts.unstable_opts.coverage_options.branch
+        self.instrument_coverage()
+            && self.opts.unstable_opts.coverage_options.level >= CoverageLevel::Branch
     }
 
     pub fn instrument_coverage_mcdc(&self) -> bool {
-        self.instrument_coverage() && self.opts.unstable_opts.coverage_options.mcdc
+        self.instrument_coverage()
+            && self.opts.unstable_opts.coverage_options.level >= CoverageLevel::Mcdc
     }
 
     pub fn is_sanitizer_cfi_enabled(&self) -> bool {

@@ -1496,7 +1496,7 @@ impl<T: ?Sized> *const T {
     /// [tracking issue]: https://github.com/rust-lang/rust/issues/104203
     #[must_use]
     #[inline]
-    #[stable(feature = "pointer_is_aligned", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "pointer_is_aligned", since = "1.79.0")]
     #[rustc_const_unstable(feature = "const_pointer_is_aligned", issue = "104203")]
     pub const fn is_aligned(self) -> bool
     where
@@ -1653,8 +1653,8 @@ impl<T> *const [T] {
     /// assert_eq!(slice.len(), 3);
     /// ```
     #[inline]
-    #[stable(feature = "slice_ptr_len", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "const_slice_ptr_len", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "slice_ptr_len", since = "1.79.0")]
+    #[rustc_const_stable(feature = "const_slice_ptr_len", since = "1.79.0")]
     #[rustc_allow_const_fn_unstable(ptr_metadata)]
     pub const fn len(self) -> usize {
         metadata(self)
@@ -1671,8 +1671,8 @@ impl<T> *const [T] {
     /// assert!(!slice.is_empty());
     /// ```
     #[inline(always)]
-    #[stable(feature = "slice_ptr_len", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "const_slice_ptr_len", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "slice_ptr_len", since = "1.79.0")]
+    #[rustc_const_stable(feature = "const_slice_ptr_len", since = "1.79.0")]
     pub const fn is_empty(self) -> bool {
         self.len() == 0
     }

@@ -1,3 +1,6 @@
+use crate::util::{
+    check_zero_tts, get_single_str_from_tts, get_single_str_spanned_from_tts, parse_expr,
+};
 use rustc_ast as ast;
 use rustc_ast::ptr::P;
 use rustc_ast::token;
@@ -5,11 +8,8 @@ use rustc_ast::tokenstream::TokenStream;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::sync::Lrc;
 use rustc_expand::base::{
-    check_zero_tts, get_single_str_from_tts, get_single_str_spanned_from_tts, parse_expr,
-    resolve_path,
+    resolve_path, DummyResult, ExpandResult, ExtCtxt, MacEager, MacResult, MacroExpanderResult,
 };
-use rustc_expand::base::{DummyResult, ExpandResult, ExtCtxt};
-use rustc_expand::base::{MacEager, MacResult, MacroExpanderResult};
 use rustc_expand::module::DirOwnership;
 use rustc_parse::new_parser_from_file;
 use rustc_parse::parser::{ForceCollect, Parser};
@@ -26,7 +26,7 @@ use std::rc::Rc;
 // a given file into the current one.
 
 /// line!(): expands to the current line number
-pub fn expand_line(
+pub(crate) fn expand_line(
     cx: &mut ExtCtxt<'_>,
     sp: Span,
     tts: TokenStream,
@@ -41,7 +41,7 @@ pub fn expand_line(
 }
 
 /* column!(): expands to the current column number */
-pub fn expand_column(
+pub(crate) fn expand_column(
     cx: &mut ExtCtxt<'_>,
     sp: Span,
     tts: TokenStream,
@@ -58,7 +58,7 @@ pub fn expand_column(
 /// file!(): expands to the current filename */
 /// The source_file (`loc.file`) contains a bunch more information we could spit
 /// out if we wanted.
-pub fn expand_file(
+pub(crate) fn expand_file(
     cx: &mut ExtCtxt<'_>,
     sp: Span,
     tts: TokenStream,
@@ -78,7 +78,7 @@ pub fn expand_file(
     )))
 }
 
-pub fn expand_stringify(
+pub(crate) fn expand_stringify(
     cx: &mut ExtCtxt<'_>,
     sp: Span,
     tts: TokenStream,
@@ -88,7 +88,7 @@ pub fn expand_stringify(
     ExpandResult::Ready(MacEager::expr(cx.expr_str(sp, Symbol::intern(&s))))
 }
 
-pub fn expand_mod(
+pub(crate) fn expand_mod(
     cx: &mut ExtCtxt<'_>,
     sp: Span,
     tts: TokenStream,
@@ -104,7 +104,7 @@ pub fn expand_mod(
 /// include! : parse the given file as an expr
 /// This is generally a bad idea because it's going to behave
 /// unhygienically.
-pub fn expand_include<'cx>(
+pub(crate) fn expand_include<'cx>(
     cx: &'cx mut ExtCtxt<'_>,
     sp: Span,
     tts: TokenStream,
@@ -181,7 +181,7 @@ pub fn expand_include<'cx>(
 }
 
 /// `include_str!`: read the given file, insert it as a literal string expr
-pub fn expand_include_str(
+pub(crate) fn expand_include_str(
     cx: &mut ExtCtxt<'_>,
     sp: Span,
     tts: TokenStream,
@@ -210,7 +210,7 @@ pub fn expand_include_str(
     })
 }
 
-pub fn expand_include_bytes(
+pub(crate) fn expand_include_bytes(
     cx: &mut ExtCtxt<'_>,
     sp: Span,
     tts: TokenStream,

@@ -8,11 +8,11 @@ use crate::traits::*;
 use crate::MemFlags;
 
 use rustc_hir as hir;
-use rustc_middle::mir;
-use rustc_middle::mir::{AggregateKind, Operand};
+use rustc_middle::mir::{self, AggregateKind, Operand};
 use rustc_middle::ty::cast::{CastTy, IntTy};
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, adjustment::PointerCoercion, Instance, Ty, TyCtxt};
+use rustc_middle::{bug, span_bug};
 use rustc_session::config::OptLevel;
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{self, FIRST_VARIANT};

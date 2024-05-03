@@ -47,7 +47,7 @@ pub unsafe fn read_byte_assume_init(p: &MaybeUninit<u8>) -> u8 {
     p.assume_init_read()
 }
 
-// CHECK-LABEL: define {{(dso_local )?}}noundef i32 @copy_char(
+// CHECK-LABEL: define {{(dso_local )?}}noundef {{(range\(.*\) )?}}i32 @copy_char(
 #[no_mangle]
 pub unsafe fn copy_char(p: *const char) -> char {
     // CHECK-NOT: load
@@ -58,7 +58,7 @@ pub unsafe fn copy_char(p: *const char) -> char {
     *p
 }
 
-// CHECK-LABEL: define {{(dso_local )?}}noundef i32 @read_char(
+// CHECK-LABEL: define {{(dso_local )?}}noundef {{(range\(.*\) )?}}i32 @read_char(
 #[no_mangle]
 pub unsafe fn read_char(p: *const char) -> char {
     // CHECK-NOT: load
@@ -80,7 +80,7 @@ pub unsafe fn read_char_maybe_uninit(p: *const MaybeUninit<char>) -> MaybeUninit
     p.read()
 }
 
-// CHECK-LABEL: define {{(dso_local )?}}noundef i32 @read_char_assume_init(
+// CHECK-LABEL: define {{(dso_local )?}}noundef {{(range\(.*\) )?}}i32 @read_char_assume_init(
 #[no_mangle]
 pub unsafe fn read_char_assume_init(p: &MaybeUninit<char>) -> char {
     // CHECK-NOT: load

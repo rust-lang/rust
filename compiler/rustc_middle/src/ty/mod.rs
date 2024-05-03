@@ -47,7 +47,9 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, DocLinkResMap, LifetimeRes, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdMap};
 use rustc_index::IndexVec;
-use rustc_macros::HashStable;
+use rustc_macros::{
+    Decodable, Encodable, HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable,
+};
 use rustc_query_system::ich::StableHashingContext;
 use rustc_serialize::{Decodable, Encodable};
 use rustc_session::lint::LintBuffer;
@@ -1083,7 +1085,7 @@ struct ParamTag {
     reveal: traits::Reveal,
 }
 
-impl_tag! {
+rustc_data_structures::impl_tag! {
     impl Tag for ParamTag;
     ParamTag { reveal: traits::Reveal::UserFacing },
     ParamTag { reveal: traits::Reveal::All },
@@ -1222,7 +1224,7 @@ pub struct Destructor {
 
 #[derive(Clone, Copy, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
 pub struct VariantFlags(u8);
-bitflags! {
+bitflags::bitflags! {
     impl VariantFlags: u8 {
         const NO_VARIANT_FLAGS        = 0;
         /// Indicates whether the field list of this variant is `#[non_exhaustive]`.
@@ -1501,14 +1503,14 @@ pub enum ImplOverlapKind {
         /// Whether or not the impl is permitted due to the trait being a `#[marker]` trait
         marker: bool,
     },
-    /// These impls are allowed to overlap, but that raises
-    /// an issue #33140 future-compatibility warning.
+    /// These impls are allowed to overlap, but that raises an
+    /// issue #33140 future-compatibility warning (tracked in #56484).
     ///
     /// Some background: in Rust 1.0, the trait-object types `Send + Sync` (today's
     /// `dyn Send + Sync`) and `Sync + Send` (now `dyn Sync + Send`) were different.
     ///
-    /// The widely-used version 0.1.0 of the crate `traitobject` had accidentally relied
-    /// that difference, making what reduces to the following set of impls:
+    /// The widely-used version 0.1.0 of the crate `traitobject` had accidentally relied on
+    /// that difference, doing what reduces to the following set of impls:
     ///
     /// ```compile_fail,(E0119)
     /// trait Trait {}
@@ -1533,7 +1535,7 @@ pub enum ImplOverlapKind {
     /// 4. Neither of the impls can have any where-clauses.
     ///
     /// Once `traitobject` 0.1.0 is no longer an active concern, this hack can be removed.
-    Issue33140,
+    FutureCompatOrderDepTraitObjects,
 }
 
 /// Useful source information about where a desugared associated type for an
@@ -1728,27 +1730,26 @@ impl<'tcx> TyCtxt<'tcx> {
             | (ImplPolarity::Negative, ImplPolarity::Negative) => {}
         };
 
-        let is_marker_overlap = {
-            let is_marker_impl =
-                |trait_ref: TraitRef<'_>| -> bool { self.trait_def(trait_ref.def_id).is_marker };
-            is_marker_impl(trait_ref1) && is_marker_impl(trait_ref2)
-        };
+        let is_marker_impl = |trait_ref: TraitRef<'_>| self.trait_def(trait_ref.def_id).is_marker;
+        let is_marker_overlap = is_marker_impl(trait_ref1) && is_marker_impl(trait_ref2);
 
         if is_marker_overlap {
-            Some(ImplOverlapKind::Permitted { marker: true })
-        } else {
-            if let Some(self_ty1) = self.issue33140_self_ty(def_id1) {
-                if let Some(self_ty2) = self.issue33140_self_ty(def_id2) {
-                    if self_ty1 == self_ty2 {
-                        return Some(ImplOverlapKind::Issue33140);
-                    } else {
-                        debug!("found {self_ty1:?} != {self_ty2:?}");
-                    }
-                }
-            }
-
-            None
+            return Some(ImplOverlapKind::Permitted { marker: true });
         }
+
+        if let Some(self_ty1) =
+            self.self_ty_of_trait_impl_enabling_order_dep_trait_object_hack(def_id1)
+            && let Some(self_ty2) =
+                self.self_ty_of_trait_impl_enabling_order_dep_trait_object_hack(def_id2)
+        {
+            if self_ty1 == self_ty2 {
+                return Some(ImplOverlapKind::FutureCompatOrderDepTraitObjects);
+            } else {
+                debug!("found {self_ty1:?} != {self_ty2:?}");
+            }
+        }
+
+        None
     }
 
     /// Returns `ty::VariantDef` if `res` refers to a struct,

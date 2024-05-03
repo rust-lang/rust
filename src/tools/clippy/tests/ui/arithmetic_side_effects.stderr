@@ -715,5 +715,17 @@ error: arithmetic operation that can potentially result in unexpected side-effec
 LL |         x % maybe_zero
    |         ^^^^^^^^^^^^^^
 
-error: aborting due to 119 previous errors
+error: arithmetic operation that can potentially result in unexpected side-effects
+  --> tests/ui/arithmetic_side_effects.rs:527:5
+   |
+LL |     one.add_assign(1);
+   |     ^^^^^^^^^^^^^^^^^
+
+error: arithmetic operation that can potentially result in unexpected side-effects
+  --> tests/ui/arithmetic_side_effects.rs:531:5
+   |
+LL |     one.sub_assign(1);
+   |     ^^^^^^^^^^^^^^^^^
+
+error: aborting due to 121 previous errors
 

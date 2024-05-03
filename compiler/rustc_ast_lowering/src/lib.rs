@@ -37,11 +37,7 @@
 #![feature(box_patterns)]
 #![feature(let_chains)]
 
-#[macro_use]
-extern crate tracing;
-
 use crate::errors::{AssocTyParentheses, AssocTyParenthesesSub, MisplacedImplTrait};
-
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::ptr::P;
 use rustc_ast::{self as ast, *};
@@ -69,6 +65,7 @@ use rustc_span::{DesugaringKind, Span, DUMMY_SP};
 use smallvec::{smallvec, SmallVec};
 use std::collections::hash_map::Entry;
 use thin_vec::ThinVec;
+use tracing::{debug, instrument, trace};
 
 macro_rules! arena_vec {
     ($this:expr; $($x:expr),*) => (
@@ -394,7 +391,7 @@ fn index_crate<'a>(
             let def_id = self.node_id_to_def_id[&item.id];
             *self.index.ensure_contains_elem(def_id, || AstOwner::NonOwner) =
                 AstOwner::ForeignItem(item);
-            visit::walk_foreign_item(self, item);
+            visit::walk_item(self, item);
         }
     }
 }

@@ -1191,7 +1191,11 @@ impl<'a> Parser<'a> {
                                 ident_span: ident.span,
                                 const_span,
                             });
-                            ForeignItemKind::Static(ty, Mutability::Not, expr)
+                            ForeignItemKind::Static(Box::new(StaticForeignItem {
+                                ty,
+                                mutability: Mutability::Not,
+                                expr,
+                            }))
                         }
                         _ => return self.error_bad_item_kind(span, &kind, "`extern` blocks"),
                     },

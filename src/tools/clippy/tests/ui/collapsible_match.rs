@@ -4,7 +4,8 @@
     clippy::needless_return,
     clippy::no_effect,
     clippy::single_match,
-    clippy::uninlined_format_args
+    clippy::uninlined_format_args,
+    clippy::let_unit_value
 )]
 
 fn lint_cases(opt_opt: Option<Option<u32>>, res_opt: Result<Option<u32>, String>) {
@@ -238,13 +239,22 @@ fn negative_cases(res_opt: Result<Option<u32>, String>, res_res: Result<Result<u
         },
         _ => return,
     }
-    match make::<Option<E<u32>>>() {
+    #[clippy::msrv = "1.52.0"]
+    let _ = match make::<Option<E<u32>>>() {
         Some(val) => match val {
             E::A(val) | E::B(val) => foo(val),
             _ => return,
         },
         _ => return,
-    }
+    };
+    #[clippy::msrv = "1.53.0"]
+    let _ = match make::<Option<E<u32>>>() {
+        Some(val) => match val {
+            E::A(val) | E::B(val) => foo(val),
+            _ => return,
+        },
+        _ => return,
+    };
     if let Ok(val) = res_opt {
         if let Some(n) = val {
             let _ = || {

@@ -79,7 +79,7 @@ LL | trait X<T> {
 LL |     fn foo(self: Smaht<Self, T>);
    |                  ^^^^^^^^^^^^^^ ...because method `foo`'s `self` parameter cannot be dispatched on
 
-error[E0307]: invalid `self` parameter type: Smaht<Self, T>
+error[E0307]: invalid `self` parameter type: `Smaht<Self, T>`
   --> $DIR/issue-78372.rs:9:18
    |
 LL |     fn foo(self: Smaht<Self, T>);

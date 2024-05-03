@@ -5,8 +5,8 @@ use std::io::prelude::*;
 use std::io::BufReader;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::sync::OnceLock;
 
-use once_cell::sync::Lazy;
 use regex::Regex;
 use tracing::*;
 
@@ -1021,8 +1021,9 @@ fn iter_header(
     let mut line_number = 0;
 
     // Match on error annotations like `//~ERROR`.
-    static REVISION_MAGIC_COMMENT_RE: Lazy<Regex> =
-        Lazy::new(|| Regex::new("//(\\[.*\\])?~.*").unwrap());
+    static REVISION_MAGIC_COMMENT_RE: OnceLock<Regex> = OnceLock::new();
+    let revision_magic_comment_re =
+        REVISION_MAGIC_COMMENT_RE.get_or_init(|| Regex::new("//(\\[.*\\])?~.*").unwrap());
 
     loop {
         line_number += 1;
@@ -1087,7 +1088,7 @@ fn iter_header(
             });
         // Then we try to check for legacy-style candidates, which are not the magic ~ERROR family
         // error annotations.
-        } else if !REVISION_MAGIC_COMMENT_RE.is_match(ln) {
+        } else if !revision_magic_comment_re.is_match(ln) {
             let Some((_, rest)) = line_directive("//", ln) else {
                 continue;
             };

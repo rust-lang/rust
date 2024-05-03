@@ -8,7 +8,7 @@ use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Span;
 use thin_vec::{thin_vec, ThinVec};
 
-pub fn expand_deriving_clone(
+pub(crate) fn expand_deriving_clone(
     cx: &ExtCtxt<'_>,
     span: Span,
     mitem: &MetaItem,

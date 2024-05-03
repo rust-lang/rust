@@ -854,7 +854,7 @@ fn make_thin_self_ptr<'tcx>(
     // we now have a type like `*mut RcBox<dyn Trait>`
     // change its layout to that of `*mut ()`, a thin pointer, but keep the same type
     // this is understood as a special case elsewhere in the compiler
-    let unit_ptr_ty = Ty::new_mut_ptr(tcx, Ty::new_unit(tcx));
+    let unit_ptr_ty = Ty::new_mut_ptr(tcx, tcx.types.unit);
 
     TyAndLayout {
         ty: fat_pointer_ty,

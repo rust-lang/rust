@@ -339,7 +339,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             ExprKind::Path(..) if allow_paths => {}
             ExprKind::Unary(UnOp::Neg, inner) if matches!(inner.kind, ExprKind::Lit(_)) => {}
             _ => {
-                let guar = self.dcx().emit_err(ArbitraryExpressionInPattern { span: expr.span });
+                let pattern_from_macro = expr.is_approximately_pattern();
+                let guar = self.dcx().emit_err(ArbitraryExpressionInPattern {
+                    span: expr.span,
+                    pattern_from_macro_note: pattern_from_macro,
+                });
                 return self.arena.alloc(self.expr_err(expr.span, guar));
             }
         }

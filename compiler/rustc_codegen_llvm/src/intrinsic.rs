@@ -984,7 +984,7 @@ fn get_rust_try_fn<'ll, 'tcx>(
         tcx,
         ty::Binder::dummy(tcx.mk_fn_sig(
             [i8p],
-            Ty::new_unit(tcx),
+            tcx.types.unit,
             false,
             hir::Unsafety::Unsafe,
             Abi::Rust,
@@ -995,7 +995,7 @@ fn get_rust_try_fn<'ll, 'tcx>(
         tcx,
         ty::Binder::dummy(tcx.mk_fn_sig(
             [i8p, i8p],
-            Ty::new_unit(tcx),
+            tcx.types.unit,
             false,
             hir::Unsafety::Unsafe,
             Abi::Rust,

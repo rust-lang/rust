@@ -38,7 +38,7 @@ use rustc_data_structures::intern::Interned;
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{FreezeReadGuard, Lrc};
 use rustc_errors::{Applicability, Diag, ErrCode};
-use rustc_expand::base::{DeriveResolutions, SyntaxExtension, SyntaxExtensionKind};
+use rustc_expand::base::{DeriveResolution, SyntaxExtension, SyntaxExtensionKind};
 use rustc_feature::BUILTIN_ATTRIBUTES;
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::NonMacroAttrKind;
@@ -959,7 +959,7 @@ enum BuiltinMacroState {
 }
 
 struct DeriveData {
-    resolutions: DeriveResolutions,
+    resolutions: Vec<DeriveResolution>,
     helper_attrs: Vec<(usize, Ident)>,
     has_derive_copy: bool,
 }

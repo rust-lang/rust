@@ -5,6 +5,7 @@ use rustc_data_structures::{
     fx::FxHashMap,
     stable_hasher::{HashStable, StableHasher},
 };
+use rustc_macros::HashStable;
 use rustc_middle::{
     bug,
     ty::{ParamEnv, PolyExistentialTraitRef, Ty, TyCtxt},
@@ -23,6 +24,8 @@ use crate::{
 use super::{unknown_file_metadata, SmallVec, UNKNOWN_LINE_NUMBER};
 
 mod private {
+    use rustc_macros::HashStable;
+
     // This type cannot be constructed outside of this module because
     // it has a private field. We make use of this in order to prevent
     // `UniqueTypeId` from being constructed directly, without asserting

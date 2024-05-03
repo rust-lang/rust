@@ -1,35 +1,11 @@
 error: using tabs in doc comments is not recommended
-  --> tests/ui/tabs_in_doc_comments.rs:10:9
-   |
-LL |     ///     - First String:
-   |         ^^^^ help: consider using four spaces per tab
-   |
-   = note: `-D clippy::tabs-in-doc-comments` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::tabs_in_doc_comments)]`
-
-error: using tabs in doc comments is not recommended
-  --> tests/ui/tabs_in_doc_comments.rs:11:9
-   |
-LL |     ///         - needs to be inside here
-   |         ^^^^^^^^ help: consider using four spaces per tab
-
-error: using tabs in doc comments is not recommended
-  --> tests/ui/tabs_in_doc_comments.rs:14:9
-   |
-LL |     ///     - Second String:
-   |         ^^^^ help: consider using four spaces per tab
-
-error: using tabs in doc comments is not recommended
-  --> tests/ui/tabs_in_doc_comments.rs:15:9
-   |
-LL |     ///         - needs to be inside here
-   |         ^^^^^^^^ help: consider using four spaces per tab
-
-error: using tabs in doc comments is not recommended
   --> tests/ui/tabs_in_doc_comments.rs:6:5
    |
 LL | ///     - first        one
    |     ^^^^ help: consider using four spaces per tab
+   |
+   = note: `-D clippy::tabs-in-doc-comments` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::tabs_in_doc_comments)]`
 
 error: using tabs in doc comments is not recommended
   --> tests/ui/tabs_in_doc_comments.rs:6:13
@@ -48,6 +24,30 @@ error: using tabs in doc comments is not recommended
    |
 LL | ///     - second    one
    |                 ^^^^ help: consider using four spaces per tab
+
+error: using tabs in doc comments is not recommended
+  --> tests/ui/tabs_in_doc_comments.rs:10:9
+   |
+LL |     ///     - First String:
+   |         ^^^^ help: consider using four spaces per tab
+
+error: using tabs in doc comments is not recommended
+  --> tests/ui/tabs_in_doc_comments.rs:11:9
+   |
+LL |     ///         - needs to be inside here
+   |         ^^^^^^^^ help: consider using four spaces per tab
+
+error: using tabs in doc comments is not recommended
+  --> tests/ui/tabs_in_doc_comments.rs:14:9
+   |
+LL |     ///     - Second String:
+   |         ^^^^ help: consider using four spaces per tab
+
+error: using tabs in doc comments is not recommended
+  --> tests/ui/tabs_in_doc_comments.rs:15:9
+   |
+LL |     ///         - needs to be inside here
+   |         ^^^^^^^^ help: consider using four spaces per tab
 
 error: aborting due to 8 previous errors
 

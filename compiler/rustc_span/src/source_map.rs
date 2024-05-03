@@ -12,6 +12,7 @@
 use crate::*;
 use rustc_data_structures::sync::{IntoDynSyncSend, MappedReadGuard, ReadGuard, RwLock};
 use rustc_data_structures::unhash::UnhashMap;
+use rustc_macros::{Decodable, Encodable};
 use std::fs;
 use std::io::{self, BorrowedBuf, Read};
 use std::path;

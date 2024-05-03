@@ -99,6 +99,17 @@ hir_typeck_lossy_provenance_ptr2int =
 
 hir_typeck_missing_parentheses_in_range = can't call method `{$method_name}` on type `{$ty_str}`
 
+hir_typeck_never_type_fallback_flowing_into_unsafe_call = never type fallback affects this call to an `unsafe` function
+    .help = specify the type explicitly
+hir_typeck_never_type_fallback_flowing_into_unsafe_deref = never type fallback affects this raw pointer dereference
+    .help = specify the type explicitly
+hir_typeck_never_type_fallback_flowing_into_unsafe_method = never type fallback affects this call to an `unsafe` method
+    .help = specify the type explicitly
+hir_typeck_never_type_fallback_flowing_into_unsafe_path = never type fallback affects this `unsafe` function
+    .help = specify the type explicitly
+hir_typeck_never_type_fallback_flowing_into_unsafe_union_field = never type fallback affects this union access
+    .help = specify the type explicitly
+
 hir_typeck_no_associated_item = no {$item_kind} named `{$item_name}` found for {$ty_prefix} `{$ty_str}`{$trait_missing_method ->
     [true] {""}
     *[other] {" "}in the current scope

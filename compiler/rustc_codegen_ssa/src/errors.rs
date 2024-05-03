@@ -431,7 +431,6 @@ pub struct ProcessingDymutilFailed {
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_unable_to_run_dsymutil)]
-#[note]
 pub struct UnableToRunDsymutil {
     pub error: Error,
 }

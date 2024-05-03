@@ -6,8 +6,7 @@ use clippy_utils::visitors::{for_each_expr, for_each_expr_with_closures, is_loca
 use core::ops::ControlFlow;
 use rustc_errors::{Applicability, MultiSpan};
 use rustc_hir::{
-    BindingMode, Block, Expr, ExprKind, HirId, LetStmt, LocalSource, MatchSource, Node, Pat, PatKind, Stmt,
-    StmtKind,
+    BindingMode, Block, Expr, ExprKind, HirId, LetStmt, LocalSource, MatchSource, Node, Pat, PatKind, Stmt, StmtKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;

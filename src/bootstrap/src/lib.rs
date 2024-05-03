@@ -376,11 +376,16 @@ impl Build {
             .expect("failed to read src/version");
         let version = version.trim();
 
-        let bootstrap_out = std::env::current_exe()
+        let mut bootstrap_out = std::env::current_exe()
             .expect("could not determine path to running process")
             .parent()
             .unwrap()
             .to_path_buf();
+        // Since bootstrap is hardlink to deps/bootstrap-*, Solaris can sometimes give
+        // path with deps/ which is bad and needs to be avoided.
+        if bootstrap_out.ends_with("deps") {
+            bootstrap_out.pop();
+        }
         if !bootstrap_out.join(exe("rustc", config.build)).exists() && !cfg!(test) {
             // this restriction can be lifted whenever https://github.com/rust-lang/rfcs/pull/3028 is implemented
             panic!(
