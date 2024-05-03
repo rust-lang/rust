@@ -249,6 +249,9 @@ const_eval_overflow =
 const_eval_overflow_shift =
     overflowing shift by {$val} in `{$name}`
 
+const_eval_overlapping_disjoint_bit_or =
+    disjoint bitor executed on overlapping operands (`lhs & rhs != 0`)
+
 const_eval_panic =
     the evaluated program panicked at '{$msg}', {$file}:{$line}:{$col}
 

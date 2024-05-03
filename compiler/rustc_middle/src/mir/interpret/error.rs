@@ -307,6 +307,8 @@ pub enum UndefinedBehaviorInfo<'tcx> {
     DivisionOverflow,
     /// Signed remainder overflowed (INT_MIN % -1).
     RemainderOverflow,
+    /// Disjoint bitor operation executed on overlapping bitvectors (lhs & rhs != 0).
+    OverlappingDisjointBitOr,
     /// Overflowing inbounds pointer arithmetic.
     PointerArithOverflow,
     /// Invalid metadata in a wide pointer

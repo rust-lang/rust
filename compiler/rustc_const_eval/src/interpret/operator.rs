@@ -310,7 +310,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
             BitOrDisjoint => {
                 if l & r != 0 {
-                    todo!(); // Can't figure out what to do here based on the surrounding code
+                    throw_ub!(OverlappingDisjointBitOr)
                 }
                 ImmTy::from_uint(l | r, left.layout)
             }
