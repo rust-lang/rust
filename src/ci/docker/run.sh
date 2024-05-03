@@ -71,8 +71,6 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
       # only run in x86_64 machines.
       uname -m >> $hash_key
 
-      docker --version >> $hash_key
-
       # Include cache version. Can be used to manually bust the Docker cache.
       echo "2" >> $hash_key
 
