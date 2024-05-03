@@ -615,6 +615,11 @@ pub(crate) fn global_llvm_features(sess: &Session, diagnostics: bool) -> Vec<Str
         .flatten();
     features.extend(feats);
 
+    // -Zfixed-x18
+    if sess.opts.unstable_opts.fixed_x18 {
+        features.push("+reserve-x18".into());
+    }
+
     if diagnostics && let Some(f) = check_tied_features(sess, &featsmap) {
         sess.dcx().emit_err(TargetFeatureDisableOrEnable {
             features: f,
