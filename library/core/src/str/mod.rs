@@ -721,8 +721,6 @@ impl str {
     /// # Examples
     ///
     /// ```
-    /// #![feature(split_at_checked)]
-    ///
     /// let s = "Per Martin-Löf";
     ///
     /// let (first, last) = s.split_at_checked(3).unwrap();
@@ -734,7 +732,7 @@ impl str {
     /// ```
     #[inline]
     #[must_use]
-    #[unstable(feature = "split_at_checked", reason = "new API", issue = "119128")]
+    #[stable(feature = "split_at_checked", since = "CURRENT_RUSTC_VERSION")]
     pub fn split_at_checked(&self, mid: usize) -> Option<(&str, &str)> {
         // is_char_boundary checks that the index is in [0, .len()]
         if self.is_char_boundary(mid) {
@@ -761,8 +759,6 @@ impl str {
     /// # Examples
     ///
     /// ```
-    /// #![feature(split_at_checked)]
-    ///
     /// let mut s = "Per Martin-Löf".to_string();
     /// if let Some((first, last)) = s.split_at_mut_checked(3) {
     ///     first.make_ascii_uppercase();
@@ -776,7 +772,7 @@ impl str {
     /// ```
     #[inline]
     #[must_use]
-    #[unstable(feature = "split_at_checked", reason = "new API", issue = "119128")]
+    #[stable(feature = "split_at_checked", since = "CURRENT_RUSTC_VERSION")]
     pub fn split_at_mut_checked(&mut self, mid: usize) -> Option<(&mut str, &mut str)> {
         // is_char_boundary checks that the index is in [0, .len()]
         if self.is_char_boundary(mid) {
