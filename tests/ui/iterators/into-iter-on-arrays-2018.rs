@@ -5,6 +5,7 @@ use std::array::IntoIter;
 use std::ops::Deref;
 use std::rc::Rc;
 use std::slice::Iter;
+use std::vec;
 
 fn main() {
     let array = [0; 10];
@@ -12,10 +13,6 @@ fn main() {
     // Before 2021, the method dispatched to `IntoIterator for &[T; N]`,
     // which we continue to support for compatibility.
     let _: Iter<'_, i32> = array.into_iter();
-    //~^ WARNING this method call resolves to `<&[T; N] as IntoIterator>::into_iter`
-    //~| WARNING this changes meaning
-
-    let _: Iter<'_, i32> = Box::new(array).into_iter();
     //~^ WARNING this method call resolves to `<&[T; N] as IntoIterator>::into_iter`
     //~| WARNING this changes meaning
 

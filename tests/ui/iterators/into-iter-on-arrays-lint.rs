@@ -21,32 +21,6 @@ fn main() {
     //~^ WARNING this method call resolves to `<&[T; N] as IntoIterator>::into_iter`
     //~| WARNING this changes meaning
 
-    Box::new(small).into_iter();
-    //~^ WARNING this method call resolves to `<&[T; N] as IntoIterator>::into_iter`
-    //~| WARNING this changes meaning
-    Box::new([1, 2]).into_iter();
-    //~^ WARNING this method call resolves to `<&[T; N] as IntoIterator>::into_iter`
-    //~| WARNING this changes meaning
-    Box::new(big).into_iter();
-    //~^ WARNING this method call resolves to `<&[T; N] as IntoIterator>::into_iter`
-    //~| WARNING this changes meaning
-    Box::new([0u8; 33]).into_iter();
-    //~^ WARNING this method call resolves to `<&[T; N] as IntoIterator>::into_iter`
-    //~| WARNING this changes meaning
-
-    Box::new(Box::new(small)).into_iter();
-    //~^ WARNING this method call resolves to `<&[T; N] as IntoIterator>::into_iter`
-    //~| WARNING this changes meaning
-    Box::new(Box::new([1, 2])).into_iter();
-    //~^ WARNING this method call resolves to `<&[T; N] as IntoIterator>::into_iter`
-    //~| WARNING this changes meaning
-    Box::new(Box::new(big)).into_iter();
-    //~^ WARNING this method call resolves to `<&[T; N] as IntoIterator>::into_iter`
-    //~| WARNING this changes meaning
-    Box::new(Box::new([0u8; 33])).into_iter();
-    //~^ WARNING this method call resolves to `<&[T; N] as IntoIterator>::into_iter`
-    //~| WARNING this changes meaning
-
     // Expressions that should not
     (&[1, 2]).into_iter();
     (&small).into_iter();
