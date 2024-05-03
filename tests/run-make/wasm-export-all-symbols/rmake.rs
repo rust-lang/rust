@@ -1,6 +1,6 @@
 //@ only-wasm32-wasip1
 
-use run_make_support::{tmp_dir, wasmparser, rustc};
+use run_make_support::{rustc, tmp_dir, wasmparser};
 use std::collections::HashMap;
 use std::path::Path;
 use wasmparser::ExternalKind::*;

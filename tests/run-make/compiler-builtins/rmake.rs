@@ -49,22 +49,22 @@ fn main() {
     let bootstrap_cargo = std::env::var("BOOTSTRAP_CARGO").unwrap();
     let mut cmd = std::process::Command::new(bootstrap_cargo);
     cmd.args([
-            "build",
-            "--manifest-path",
-            manifest_path.to_str().unwrap(),
-            "-Zbuild-std=core",
-            "--target",
-            &target,
-        ])
-        .env_clear()
-        .env("PATH", path)
-        .env("RUSTC", rustc)
-        .env("RUSTFLAGS", "-Copt-level=0 -Cdebug-assertions=yes")
-        .env("CARGO_TARGET_DIR", &target_dir)
-        .env("RUSTC_BOOTSTRAP", "1")
-        // Visual Studio 2022 requires that the LIB env var be set so it can
-        // find the Windows SDK.
-        .env("LIB", std::env::var("LIB").unwrap_or_default());
+        "build",
+        "--manifest-path",
+        manifest_path.to_str().unwrap(),
+        "-Zbuild-std=core",
+        "--target",
+        &target,
+    ])
+    .env_clear()
+    .env("PATH", path)
+    .env("RUSTC", rustc)
+    .env("RUSTFLAGS", "-Copt-level=0 -Cdebug-assertions=yes")
+    .env("CARGO_TARGET_DIR", &target_dir)
+    .env("RUSTC_BOOTSTRAP", "1")
+    // Visual Studio 2022 requires that the LIB env var be set so it can
+    // find the Windows SDK.
+    .env("LIB", std::env::var("LIB").unwrap_or_default());
     set_host_rpath(&mut cmd);
 
     let status = cmd.status().unwrap();
