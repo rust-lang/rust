@@ -150,6 +150,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             ExprKind::LogicalOp { op, lhs, rhs } => {
                 let condition_scope = this.local_scope();
                 let source_info = this.source_info(expr.span);
+
+                this.visit_coverage_branch_operation(op, expr.span);
+
                 // We first evaluate the left-hand side of the predicate ...
                 let (then_block, else_block) =
                     this.in_if_then_scope(condition_scope, expr.span, |this| {
