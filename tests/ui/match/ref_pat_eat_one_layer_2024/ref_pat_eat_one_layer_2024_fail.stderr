@@ -116,11 +116,10 @@ LL |     let &mut _ = &&&&&&&&&&&&&&&&&&&&&&&&&&&&0;
 error[E0596]: cannot borrow as mutable inside an `&` pattern
   --> $DIR/ref_pat_eat_one_layer_2024_fail.rs:45:15
    |
-LL |         ($var:ident) => { ref mut $var };
-   |                           ------------ help: replace this `&` with `&mut`: `&mut`
-LL |     }
 LL |     let &pat!(x) = &mut 0;
-   |               ^
+   |         -     ^
+   |         |
+   |         help: replace this `&` with `&mut`: `&mut`
 
 error: aborting due to 12 previous errors
 

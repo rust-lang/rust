@@ -137,7 +137,7 @@ enum AdjustMode {
     /// with mutability matching the pattern,
     /// mark the pattern as having consumed this reference.
     ///
-    /// `Span` is that of the inside of the reference pattern
+    /// `Span` is that of the `&` or `&mut` itself
     ResetAndConsumeRef(Mutability, Span),
     /// Pass on the input binding mode and expected type.
     Pass,
@@ -342,14 +342,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         match adjust_mode {
             AdjustMode::Pass => (expected, def_br, max_ref_mutbl, false),
             AdjustMode::Reset => (expected, ByRef::No, MutblCap::Mut, false),
-            AdjustMode::ResetAndConsumeRef(ref_pat_mutbl, inner_span) => {
+            AdjustMode::ResetAndConsumeRef(ref_pat_mutbl, ref_span) => {
                 // `&` pattern eats `&mut`
                 let mutbls_match =
                     if let ByRef::Yes(def_mut) = def_br { ref_pat_mutbl <= def_mut } else { false };
 
                 if pat.span.at_least_rust_2024() && self.tcx.features().ref_pat_eat_one_layer_2024 {
                     let max_ref_mutbl = if ref_pat_mutbl == Mutability::Not {
-                        max_ref_mutbl.cap_mutbl_to_not(Some(pat.span.until(inner_span)))
+                        max_ref_mutbl.cap_mutbl_to_not(Some(ref_span))
                     } else {
                         max_ref_mutbl
                     };
@@ -434,7 +434,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // ```
             //
             // See issue #46688.
-            PatKind::Ref(inner, mutbl) => AdjustMode::ResetAndConsumeRef(*mutbl, inner.span),
+            PatKind::Ref(inner, mutbl) => AdjustMode::ResetAndConsumeRef(*mutbl, pat.span.until(inner.span.find_ancestor_inside(pat.span).unwrap())),
             // A `_` pattern works with any expected type, so there's no need to do anything.
             PatKind::Wild
             // A malformed pattern doesn't have an expected type, so let's just accept any type.
