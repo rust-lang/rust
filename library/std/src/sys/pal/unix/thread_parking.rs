@@ -1,3 +1,7 @@
+// Only used on NetBSD. If other platforms start using id-based parking, use
+// separate modules for each platform.
+#![cfg(target_os = "netbsd")]
+
 use crate::ffi::{c_int, c_void};
 use crate::ptr;
 use crate::time::Duration;

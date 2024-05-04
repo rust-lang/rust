@@ -30,8 +30,6 @@ pub mod thread;
 pub mod thread_local_dtor;
 #[path = "../unix/thread_local_key.rs"]
 pub mod thread_local_key;
-#[path = "../unsupported/thread_parking.rs"]
-pub mod thread_parking;
 #[allow(non_upper_case_globals)]
 #[path = "../unix/time.rs"]
 pub mod time;
