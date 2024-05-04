@@ -307,7 +307,7 @@ fn make_format_args(
         return ExpandResult::Ready(Err(guar));
     }
 
-    let to_span = |inner_span: rustc_parse_format::InnerSpan| {
+    let to_span = |inner_span: parse::InnerSpan| {
         is_source_literal.then(|| {
             fmt_span.from_inner(InnerSpan { start: inner_span.start, end: inner_span.end })
         })
@@ -577,7 +577,7 @@ fn make_format_args(
 fn invalid_placeholder_type_error(
     ecx: &ExtCtxt<'_>,
     ty: &str,
-    ty_span: Option<rustc_parse_format::InnerSpan>,
+    ty_span: Option<parse::InnerSpan>,
     fmt_span: Span,
 ) {
     let sp = ty_span.map(|sp| fmt_span.from_inner(InnerSpan::new(sp.start, sp.end)));
