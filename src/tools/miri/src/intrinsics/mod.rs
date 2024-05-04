@@ -91,6 +91,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         }
 
         match intrinsic_name {
+            // Basic control flow
             "abort" => {
                 throw_machine_stop!(TerminationInfo::Abort(
                     "the program aborted execution".to_owned()
@@ -98,7 +99,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             }
             "catch_unwind" => {
                 this.handle_catch_unwind(args, dest, ret)?;
-                // THis pushed a stack frame, don't jump to `ret`.
+                // This pushed a stack frame, don't jump to `ret`.
                 return Ok(EmulateItemResult::AlreadyJumped);
             }
 
