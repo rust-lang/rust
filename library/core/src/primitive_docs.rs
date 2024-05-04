@@ -1187,15 +1187,15 @@ mod prim_f64 {}
 /// as many bits as `f64`. Please see [the documentation for [`prim@f32`] or [Wikipedia on
 /// quad-precision values][wikipedia] for more information.
 ///
-/// Note that no platforms have hardware support for `f128` without enabling target specific features
-/// (and [only some consumer level hardware has support][wikipedia-support], for example RISC-V has support, but
-/// neither amd64 nor aarch64 has support), in which case a software implementation will be used. This can be
-/// significantly slower than using `f64`.
+/// Note that no platforms have hardware support for `f128` without enabling target specific features,
+/// as for all instruction set architectures `f128` is considered an optional feature.
+/// Only Power ISA ("PowerPC") and RISCV specify it, and only certain microarchitectures
+/// actually implement it. For x86-64 and AArch64, ISA support is not even specified,
+/// so it will always be a software implementation significantly slower than `f64`.
 ///
 /// *[See also the `std::f128::consts` module](crate::f128::consts).*
 ///
 /// [wikipedia]: https://en.wikipedia.org/wiki/Quadruple-precision_floating-point_format
-/// [wikipedia-support]: https://en.wikipedia.org/wiki/Quadruple-precision_floating-point_format#Hardware_support
 #[unstable(feature = "f128", issue = "116909")]
 mod prim_f128 {}
 
