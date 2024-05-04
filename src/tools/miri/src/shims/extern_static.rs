@@ -29,6 +29,21 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
         Ok(())
     }
 
+    /// Extern statics that are initialized with function pointers to the symbols of the same name.
+    fn weak_symbol_extern_statics(
+        this: &mut MiriInterpCx<'mir, 'tcx>,
+        names: &[&str],
+    ) -> InterpResult<'tcx> {
+        for name in names {
+            assert!(this.is_dyn_sym(name), "{name} is not a dynamic symbol");
+            let layout = this.machine.layouts.const_raw_ptr;
+            let ptr = this.fn_ptr(FnVal::Other(DynSym::from_str(name)));
+            let val = ImmTy::from_scalar(Scalar::from_pointer(ptr, this), layout);
+            Self::alloc_extern_static(this, name, val)?;
+        }
+        Ok(())
+    }
+
     /// Sets up the "extern statics" for this machine.
     pub fn init_extern_statics(this: &mut MiriInterpCx<'mir, 'tcx>) -> InterpResult<'tcx> {
         // "__rust_no_alloc_shim_is_unstable"
@@ -58,12 +73,7 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
             }
             "android" => {
                 Self::null_ptr_extern_statics(this, &["bsd_signal"])?;
-                // "signal" -- just needs a non-zero pointer value (function does not even get called),
-                // but we arrange for this to call the `signal` function anyway.
-                let layout = this.machine.layouts.const_raw_ptr;
-                let ptr = this.fn_ptr(FnVal::Other(DynSym::from_str("signal")));
-                let val = ImmTy::from_scalar(Scalar::from_pointer(ptr, this), layout);
-                Self::alloc_extern_static(this, "signal", val)?;
+                Self::weak_symbol_extern_statics(this, &["signal"])?;
             }
             "windows" => {
                 // "_tls_used"
