@@ -727,6 +727,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     ) -> InterpResult<'tcx, Scalar<Provenance>> {
         let this = self.eval_context_mut();
 
+        // Does not exist on macOS!
+        if !matches!(&*this.tcx.sess.target.os, "linux") {
+            throw_unsup_format!(
+                "`pthread_condattr_init` is not supported on {}",
+                this.tcx.sess.target.os
+            );
+        }
+
         let clock_id = this.read_scalar(clock_id_op)?.to_i32()?;
         if clock_id == this.eval_libc_i32("CLOCK_REALTIME")
             || clock_id == this.eval_libc_i32("CLOCK_MONOTONIC")
@@ -746,6 +754,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         clk_id_op: &OpTy<'tcx, Provenance>,
     ) -> InterpResult<'tcx, Scalar<Provenance>> {
         let this = self.eval_context_mut();
+
+        // Does not exist on macOS!
+        if !matches!(&*this.tcx.sess.target.os, "linux") {
+            throw_unsup_format!(
+                "`pthread_condattr_init` is not supported on {}",
+                this.tcx.sess.target.os
+            );
+        }
 
         let clock_id = condattr_get_clock_id(this, attr_op)?;
         this.write_scalar(Scalar::from_i32(clock_id), &this.deref_pointer(clk_id_op)?)?;
