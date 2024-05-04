@@ -242,21 +242,21 @@ impl<'tcx> TlsDtorsState<'tcx> {
             match &mut self.0 {
                 Init => {
                     match this.tcx.sess.target.os.as_ref() {
-                        "linux" | "freebsd" | "android" => {
-                            // Run the pthread dtors.
-                            break 'new_state PthreadDtors(Default::default());
-                        }
                         "macos" => {
                             // The macOS thread wide destructor runs "before any TLS slots get
                             // freed", so do that first.
                             this.schedule_macos_tls_dtor()?;
-                            // When the stack is empty again, go on with the pthread dtors.
+                            // When that destructor is done, go on with the pthread dtors.
+                            break 'new_state PthreadDtors(Default::default());
+                        }
+                        _ if this.target_os_is_unix() => {
+                            // All other Unixes directly jump to running the pthread dtors.
                             break 'new_state PthreadDtors(Default::default());
                         }
                         "windows" => {
                             // Determine which destructors to run.
                             let dtors = this.lookup_windows_tls_dtors()?;
-                            // And move to the final state.
+                            // And move to the next state, that runs them.
                             break 'new_state WindowsDtors(dtors);
                         }
                         _ => {
