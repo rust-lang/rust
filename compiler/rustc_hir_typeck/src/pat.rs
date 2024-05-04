@@ -722,7 +722,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn check_pat_ident(
         &self,
         pat: &'tcx Pat<'tcx>,
-        explicit_ba: BindingMode,
+        user_bind_annot: BindingMode,
         var_id: HirId,
         ident: Ident,
         sub: Option<&'tcx Pat<'tcx>>,
@@ -732,7 +732,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let PatInfo { binding_mode: def_br, top_info: ti, .. } = pat_info;
 
         // Determine the binding mode...
-        let bm = match explicit_ba {
+        let bm = match user_bind_annot {
             BindingMode(ByRef::No, Mutability::Mut)
                 if !(pat.span.at_least_rust_2024()
                     && self.tcx.features().mut_preserve_binding_mode_2024)
@@ -748,7 +748,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 BindingMode(ByRef::No, Mutability::Mut)
             }
             BindingMode(ByRef::No, mutbl) => BindingMode(def_br, mutbl),
-            BindingMode(ByRef::Yes(_), _) => explicit_ba,
+            BindingMode(ByRef::Yes(_), _) => user_bind_annot,
         };
 
         if bm.0 == ByRef::Yes(Mutability::Mut)
@@ -797,7 +797,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // If there are multiple arms, make sure they all agree on
         // what the type of the binding `x` ought to be.
         if var_id != pat.hir_id {
-            self.check_binding_alt_eq_ty(explicit_ba, pat.span, var_id, local_ty, ti);
+            self.check_binding_alt_eq_ty(user_bind_annot, pat.span, var_id, local_ty, ti);
         }
 
         if let Some(p) = sub {
