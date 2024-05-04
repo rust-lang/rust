@@ -11,6 +11,7 @@ use rustc_infer::traits::{
 };
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{self, TyCtxt};
+use rustc_span::symbol::sym;
 
 use super::eval_ctxt::GenerateProofTree;
 use super::inspect::{ProofTreeInferCtxtExt, ProofTreeVisitor};
@@ -319,6 +320,14 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
         let [candidate] = candidates.as_slice() else {
             return ControlFlow::Break(self.obligation.clone());
         };
+
+        // Don't walk into impls that have `do_not_recommend`.
+        if let ProbeKind::TraitCandidate { source: CandidateSource::Impl(impl_def_id), result: _ } =
+            candidate.kind()
+            && goal.infcx().tcx.has_attr(impl_def_id, sym::do_not_recommend)
+        {
+            return ControlFlow::Break(self.obligation.clone());
+        }
 
         // FIXME: Could we extract a trait ref from a projection here too?
         // FIXME: Also, what about considering >1 layer up the stack? May be necessary
