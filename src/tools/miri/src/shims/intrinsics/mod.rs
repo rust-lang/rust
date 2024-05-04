@@ -10,8 +10,8 @@ use rustc_middle::{
     mir,
     ty::{self, FloatTy},
 };
-use rustc_target::abi::Size;
 use rustc_span::{sym, Symbol};
+use rustc_target::abi::Size;
 
 use crate::*;
 use atomic::EvalContextExt as _;
@@ -37,51 +37,38 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let intrinsic_name = this.tcx.item_name(instance.def_id());
         let intrinsic_name = intrinsic_name.as_str();
 
-        // Handle intrinsics without return place.
-        match intrinsic_name {
-            "abort" => {
-                throw_machine_stop!(TerminationInfo::Abort(
-                    "the program aborted execution".to_owned()
-                ))
+        match this.emulate_intrinsic_by_name(intrinsic_name, instance.args, args, dest, ret)? {
+            EmulateItemResult::NotSupported => {
+                // We haven't handled the intrinsic, let's see if we can use a fallback body.
+                if this.tcx.intrinsic(instance.def_id()).unwrap().must_be_overridden {
+                    throw_unsup_format!("unimplemented intrinsic: `{intrinsic_name}`")
+                }
+                let intrinsic_fallback_checks_ub = Symbol::intern("intrinsic_fallback_checks_ub");
+                if this
+                    .tcx
+                    .get_attrs_by_path(
+                        instance.def_id(),
+                        &[sym::miri, intrinsic_fallback_checks_ub],
+                    )
+                    .next()
+                    .is_none()
+                {
+                    throw_unsup_format!(
+                        "miri can only use intrinsic fallback bodies that check UB. After verifying that `{intrinsic_name}` does so, add the `#[miri::intrinsic_fallback_checks_ub]` attribute to it; also ping @rust-lang/miri when you do that"
+                    );
+                }
+                Ok(Some(ty::Instance {
+                    def: ty::InstanceDef::Item(instance.def_id()),
+                    args: instance.args,
+                }))
             }
-            _ => {}
+            EmulateItemResult::NeedsJumping => {
+                trace!("{:?}", this.dump_place(&dest.clone().into()));
+                this.return_to_block(ret)?;
+                Ok(None)
+            }
+            EmulateItemResult::AlreadyJumped => Ok(None),
         }
-
-        // All remaining supported intrinsics have a return place.
-        let ret = match ret {
-            // FIXME: add fallback body support once we actually have a diverging intrinsic with a fallback body
-            None => throw_unsup_format!("unimplemented (diverging) intrinsic: `{intrinsic_name}`"),
-            Some(p) => p,
-        };
-
-        // Some intrinsics are special and need the "ret".
-        match intrinsic_name {
-            "catch_unwind" => {
-                this.handle_catch_unwind(args, dest, ret)?;
-                return Ok(None);
-            }
-            _ => {}
-        }
-
-        // The rest jumps to `ret` immediately.
-        if !this.emulate_intrinsic_by_name(intrinsic_name, instance.args, args, dest)? {
-            // We haven't handled the intrinsic, let's see if we can use a fallback body.
-            if this.tcx.intrinsic(instance.def_id()).unwrap().must_be_overridden {
-                throw_unsup_format!("unimplemented intrinsic: `{intrinsic_name}`")
-            }
-            let intrinsic_fallback_checks_ub = Symbol::intern("intrinsic_fallback_checks_ub");
-            if this.tcx.get_attrs_by_path(instance.def_id(), &[sym::miri, intrinsic_fallback_checks_ub]).next().is_none() {
-                throw_unsup_format!("miri can only use intrinsic fallback bodies that check UB. After verifying that `{intrinsic_name}` does so, add the `#[miri::intrinsic_fallback_checks_ub]` attribute to it; also ping @rust-lang/miri when you do that");
-            }
-            return Ok(Some(ty::Instance {
-                def: ty::InstanceDef::Item(instance.def_id()),
-                args: instance.args,
-            }))
-        }
-
-        trace!("{:?}", this.dump_place(&dest.clone().into()));
-        this.go_to_block(ret);
-        Ok(None)
     }
 
     /// Emulates a Miri-supported intrinsic (not supported by the core engine).
@@ -92,7 +79,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         generic_args: ty::GenericArgsRef<'tcx>,
         args: &[OpTy<'tcx, Provenance>],
         dest: &MPlaceTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, bool> {
+        ret: Option<mir::BasicBlock>,
+    ) -> InterpResult<'tcx, EmulateItemResult> {
         let this = self.eval_context_mut();
 
         if let Some(name) = intrinsic_name.strip_prefix("atomic_") {
@@ -103,6 +91,17 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         }
 
         match intrinsic_name {
+            "abort" => {
+                throw_machine_stop!(TerminationInfo::Abort(
+                    "the program aborted execution".to_owned()
+                ));
+            }
+            "catch_unwind" => {
+                this.handle_catch_unwind(args, dest, ret)?;
+                // THis pushed a stack frame, don't jump to `ret`.
+                return Ok(EmulateItemResult::AlreadyJumped);
+            }
+
             // Raw memory accesses
             "volatile_load" => {
                 let [place] = check_arg_count(args)?;
@@ -426,9 +425,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 throw_machine_stop!(TerminationInfo::Abort(format!("trace/breakpoint trap")))
             }
 
-            _ => return Ok(false),
+            _ => return Ok(EmulateItemResult::NotSupported),
         }
 
-        Ok(true)
+        Ok(EmulateItemResult::NeedsJumping)
     }
 }
