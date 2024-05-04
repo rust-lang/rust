@@ -12,7 +12,7 @@ use rustc_span::edition::Edition;
 use rustc_span::RealFileName;
 use rustc_span::SourceFileHashAlgorithm;
 use rustc_target::spec::{
-    CodeModel, LinkerFlavorCli, MergeFunctions, PanicStrategy, SanitizerSet, WasmCAbi,
+    CodeModel, LinkerFlavorCli, MergeFunctions, OnBrokenPipe, PanicStrategy, SanitizerSet, WasmCAbi,
 };
 use rustc_target::spec::{
     RelocModel, RelroLevel, SplitDebuginfo, StackProtector, TargetTriple, TlsModel,
@@ -378,6 +378,7 @@ mod desc {
     pub const parse_time_passes_format: &str = "`text` (default) or `json`";
     pub const parse_passes: &str = "a space-separated list of passes, or `all`";
     pub const parse_panic_strategy: &str = "either `unwind` or `abort`";
+    pub const parse_on_broken_pipe: &str = "either `kill`, `error`, or `inherit`";
     pub const parse_opt_panic_strategy: &str = parse_panic_strategy;
     pub const parse_oom_strategy: &str = "either `panic` or `abort`";
     pub const parse_relro_level: &str = "one of: `full`, `partial`, or `off`";
@@ -703,6 +704,17 @@ mod parse {
         match v {
             Some("unwind") => *slot = PanicStrategy::Unwind,
             Some("abort") => *slot = PanicStrategy::Abort,
+            _ => return false,
+        }
+        true
+    }
+
+    pub(crate) fn parse_on_broken_pipe(slot: &mut OnBrokenPipe, v: Option<&str>) -> bool {
+        match v {
+            // OnBrokenPipe::Default can't be explicitly specified
+            Some("kill") => *slot = OnBrokenPipe::Kill,
+            Some("error") => *slot = OnBrokenPipe::Error,
+            Some("inherit") => *slot = OnBrokenPipe::Inherit,
             _ => return false,
         }
         true
@@ -1833,6 +1845,8 @@ options! {
         "do not use unique names for text and data sections when -Z function-sections is used"),
     normalize_docs: bool = (false, parse_bool, [TRACKED],
         "normalize associated items in rustdoc when generating documentation"),
+    on_broken_pipe: OnBrokenPipe = (OnBrokenPipe::Default, parse_on_broken_pipe, [TRACKED],
+        "behavior of std::io::ErrorKind::BrokenPipe (SIGPIPE)"),
     oom: OomStrategy = (OomStrategy::Abort, parse_oom_strategy, [TRACKED],
         "panic strategy for out-of-memory handling"),
     osx_rpath_install_name: bool = (false, parse_bool, [TRACKED],

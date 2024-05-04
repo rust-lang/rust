@@ -353,11 +353,11 @@ impl Command {
             // Inherit the signal mask from the parent rather than resetting it (i.e. do not call
             // pthread_sigmask).
 
-            // If #[unix_sigpipe] is specified, don't reset SIGPIPE to SIG_DFL.
-            // If #[unix_sigpipe] is not specified, reset SIGPIPE to SIG_DFL for backward compatibility.
+            // If -Zon-broken-pipe is used, don't reset SIGPIPE to SIG_DFL.
+            // If -Zon-broken-pipe is not used, reset SIGPIPE to SIG_DFL for backward compatibility.
             //
-            // #[unix_sigpipe] is an opportunity to change the default here.
-            if !crate::sys::pal::unix_sigpipe_attr_specified() {
+            // -Zon-broken-pipe is an opportunity to change the default here.
+            if !crate::sys::pal::on_broken_pipe_flag_used() {
                 #[cfg(target_os = "android")] // see issue #88585
                 {
                     let mut action: libc::sigaction = mem::zeroed();
@@ -450,7 +450,7 @@ impl Command {
     ) -> io::Result<Option<Process>> {
         use crate::mem::MaybeUninit;
         use crate::sys::weak::weak;
-        use crate::sys::{self, cvt_nz, unix_sigpipe_attr_specified};
+        use crate::sys::{self, cvt_nz, on_broken_pipe_flag_used};
 
         if self.get_gid().is_some()
             || self.get_uid().is_some()
@@ -612,11 +612,11 @@ impl Command {
             // Inherit the signal mask from this process rather than resetting it (i.e. do not call
             // posix_spawnattr_setsigmask).
 
-            // If #[unix_sigpipe] is specified, don't reset SIGPIPE to SIG_DFL.
-            // If #[unix_sigpipe] is not specified, reset SIGPIPE to SIG_DFL for backward compatibility.
+            // If -Zon-broken-pipe is used, don't reset SIGPIPE to SIG_DFL.
+            // If -Zon-broken-pipe is not used, reset SIGPIPE to SIG_DFL for backward compatibility.
             //
-            // #[unix_sigpipe] is an opportunity to change the default here.
-            if !unix_sigpipe_attr_specified() {
+            // -Zon-broken-pipe is an opportunity to change the default here.
+            if !on_broken_pipe_flag_used() {
                 let mut default_set = MaybeUninit::<libc::sigset_t>::uninit();
                 cvt(sigemptyset(default_set.as_mut_ptr()))?;
                 cvt(sigaddset(default_set.as_mut_ptr(), libc::SIGPIPE))?;
