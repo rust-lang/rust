@@ -320,7 +320,10 @@ pub fn report_error<'tcx, 'mir>(
         #[rustfmt::skip]
         let helps = match e.kind() {
             Unsupported(_) =>
-                vec![(None, format!("this is likely not a bug in the program; it indicates that the program performed an operation that the interpreter does not support"))],
+                vec![
+                    (None, format!("this is likely not a bug in the program; it indicates that the program performed an operation that Miri does not support")),
+                    (None, format!("if this is a basic API commonly used on this target, please report an issue; but note that Miri does not aim to support every FFI function out there")),
+                ],
             UndefinedBehavior(AlignmentCheckFailed { .. })
                 if ecx.machine.check_alignment == AlignmentCheck::Symbolic
             =>

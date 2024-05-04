@@ -141,7 +141,7 @@ interpreter will explicitly tell you when it finds something unsupported:
 error: unsupported operation: can't call foreign function: bind
     ...
     = help: this is likely not a bug in the program; it indicates that the program \
-            performed an operation that the interpreter does not support
+            performed an operation that Miri does not support
 ```
 
 ### Cross-interpretation: running for different targets
