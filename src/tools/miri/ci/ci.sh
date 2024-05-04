@@ -154,9 +154,9 @@ case $HOST_TARGET in
     ;;
   i686-pc-windows-msvc)
     # Host
-    # With reduced many-seeds count as this is the slowest runner already.
+    # Without GC_STRESS and with reduced many-seeds count as this is the slowest runner.
     # (The macOS runner checks windows-msvc with full many-seeds count.)
-    GC_STRESS=1 MIR_OPT=1 MANY_SEEDS=16 TEST_BENCH=1 run_tests
+    MIR_OPT=1 MANY_SEEDS=16 TEST_BENCH=1 run_tests
     # Extra tier 1
     # We really want to ensure a Linux target works on a Windows host,
     # and a 64bit target works on a 32bit host.
