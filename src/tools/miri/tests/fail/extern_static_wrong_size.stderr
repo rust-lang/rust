@@ -5,7 +5,6 @@ LL |     let _val = unsafe { environ };
    |                         ^^^^^^^ extern static `environ` has been declared as `extern_static_wrong_size::environ` with a size of 1 bytes and alignment of 1 bytes, but Miri emulates it via an extern static shim with a size of N bytes and alignment of N bytes
    |
    = help: this is likely not a bug in the program; it indicates that the program performed an operation that Miri does not support
-   = help: if this is a basic API commonly used on this target, please report an issue; but note that Miri does not aim to support every FFI function out there
    = note: BACKTRACE:
    = note: inside `main` at $DIR/extern_static_wrong_size.rs:LL:CC
 

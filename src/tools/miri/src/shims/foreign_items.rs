@@ -119,7 +119,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                         if let Some(body) = this.lookup_exported_symbol(link_name)? {
                             return Ok(Some(body));
                         }
-                        this.handle_unsupported(format!(
+                        this.handle_unsupported_foreign_item(format!(
                             "can't call (diverging) foreign function: {link_name}"
                         ))?;
                         return Ok(None);
@@ -140,7 +140,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     return Ok(Some(body));
                 }
 
-                this.handle_unsupported(format!(
+                this.handle_unsupported_foreign_item(format!(
                     "can't call foreign function `{link_name}` on OS `{os}`",
                     os = this.tcx.sess.target.os,
                 ))?;
