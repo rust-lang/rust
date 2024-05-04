@@ -932,6 +932,8 @@ const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "test-mir-pass",
     "unset-exec-env",
     "unset-rustc-env",
+    // Used by the tidy check `unknown_revision`.
+    "unused-revision-names",
     // tidy-alphabetical-end
 ];
 
