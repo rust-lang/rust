@@ -3,6 +3,7 @@ const COMMENT: &str = "//@";
 /// A header line, like `//@name: value` consists of the prefix `//@` and the directive
 /// `name: value`. It is also possibly revisioned, e.g. `//@[revision] name: value`.
 pub(crate) struct HeaderLine<'ln> {
+    pub(crate) line_number: usize,
     pub(crate) revision: Option<&'ln str>,
     pub(crate) directive: &'ln str,
 }
@@ -11,7 +12,7 @@ pub(crate) struct HeaderLine<'ln> {
 ///
 /// Adjusted from compiletest/src/header.rs.
 pub(crate) fn iter_header<'ln>(contents: &'ln str, it: &mut dyn FnMut(HeaderLine<'ln>)) {
-    for ln in contents.lines() {
+    for (line_number, ln) in (1..).zip(contents.lines()) {
         let ln = ln.trim();
 
         // We're left with potentially `[rev]name: value`.
@@ -24,9 +25,9 @@ pub(crate) fn iter_header<'ln>(contents: &'ln str, it: &mut dyn FnMut(HeaderLine
                 panic!("malformed revision directive: expected `//@[rev]`, found `{ln}`");
             };
             // We trimmed off the `[rev]` portion, left with `name: value`.
-            it(HeaderLine { revision: Some(revision), directive: remainder.trim() });
+            it(HeaderLine { line_number, revision: Some(revision), directive: remainder.trim() });
         } else {
-            it(HeaderLine { revision: None, directive: remainder.trim() });
+            it(HeaderLine { line_number, revision: None, directive: remainder.trim() });
         }
     }
 }

@@ -20,7 +20,7 @@ pub fn check(path: &Path, bad: &mut bool) {
     crate::walk::walk(path, |path, _is_dir| filter_not_rust(path), &mut |entry, content| {
         let file = entry.path().display();
         let mut header_map = BTreeMap::new();
-        iter_header(content, &mut |HeaderLine { revision, directive }| {
+        iter_header(content, &mut |HeaderLine { revision, directive, .. }| {
             if let Some(value) = directive.strip_prefix(LLVM_COMPONENTS_HEADER) {
                 let info = header_map.entry(revision).or_insert(RevisionInfo::default());
                 let comp_vec = info.llvm_components.get_or_insert(Vec::new());
