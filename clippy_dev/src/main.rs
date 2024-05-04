@@ -3,7 +3,7 @@
 #![warn(rust_2018_idioms, unused_lifetimes)]
 
 use clap::{Args, Parser, Subcommand};
-use clippy_dev::{dogfood, fmt, lint, new_lint, serve, setup, update_lints};
+use clippy_dev::{dogfood, fmt, lint, new_lint, serve, setup, update_lints, utils};
 use std::convert::Infallible;
 
 fn main() {
@@ -23,9 +23,9 @@ fn main() {
             if print_only {
                 update_lints::print_lints();
             } else if check {
-                update_lints::update(update_lints::UpdateMode::Check);
+                update_lints::update(utils::UpdateMode::Check);
             } else {
-                update_lints::update(update_lints::UpdateMode::Change);
+                update_lints::update(utils::UpdateMode::Change);
             }
         },
         DevCommand::NewLint {
@@ -35,7 +35,7 @@ fn main() {
             r#type,
             msrv,
         } => match new_lint::create(&pass, &name, &category, r#type.as_deref(), msrv) {
-            Ok(()) => update_lints::update(update_lints::UpdateMode::Change),
+            Ok(()) => update_lints::update(utils::UpdateMode::Change),
             Err(e) => eprintln!("Unable to create lint: {e}"),
         },
         DevCommand::Setup(SetupCommand { subcommand }) => match subcommand {
