@@ -3,6 +3,7 @@ use std::ffi::OsStr;
 use std::fmt;
 use std::io;
 use std::io::Read;
+use std::path::Path;
 use std::path::PathBuf;
 use std::str::FromStr;
 
@@ -816,12 +817,10 @@ impl Options {
     }
 
     /// Returns `true` if the file given as `self.input` is a Markdown file.
-    pub(crate) fn markdown_input(&self) -> bool {
+    pub(crate) fn markdown_input(&self) -> Option<&Path> {
         self.input
             .opt_path()
-            .map(std::path::Path::extension)
-            .flatten()
-            .is_some_and(|e| e == "md" || e == "markdown")
+            .filter(|p| matches!(p.extension(), Some(e) if e == "md" || e == "markdown"))
     }
 }
 
