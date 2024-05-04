@@ -724,25 +724,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 }
             }
 
-            "sched_getaffinity" => {
-                // FreeBSD supports it as well since 13.1 (as a wrapper of cpuset_getaffinity)
-                if !matches!(&*this.tcx.sess.target.os, "linux" | "freebsd") {
-                    throw_unsup_format!(
-                        "`sched_getaffinity` is not supported on {}",
-                        this.tcx.sess.target.os
-                    );
-                }
-                let [pid, cpusetsize, mask] =
-                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                this.read_scalar(pid)?.to_i32()?;
-                this.read_target_usize(cpusetsize)?;
-                this.deref_pointer_as(mask, this.libc_ty_layout("cpu_set_t"))?;
-                // FIXME: we just return an error; `num_cpus` then falls back to `sysconf`.
-                let einval = this.eval_libc("EINVAL");
-                this.set_last_error(einval)?;
-                this.write_scalar(Scalar::from_i32(-1), dest)?;
-            }
-
             // Platform-specific shims
             _ => {
                 let target_os = &*this.tcx.sess.target.os;
