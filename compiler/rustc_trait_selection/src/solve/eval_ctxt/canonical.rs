@@ -90,7 +90,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         &mut self,
         certainty: Certainty,
     ) -> QueryResult<'tcx> {
-        self.inspect.make_canonical_response(certainty);
+        self.inspect.make_canonical_response(self.infcx, self.max_input_universe, certainty);
 
         let goals_certainty = self.try_evaluate_added_goals()?;
         assert_eq!(
@@ -444,5 +444,5 @@ pub(in crate::solve) fn instantiate_canonical_state<'tcx, T: TypeFoldable<TyCtxt
     let inspect::State { var_values, data } = state.instantiate(infcx.tcx, &instantiation);
 
     EvalCtxt::unify_query_var_values(infcx, param_env, orig_values, var_values);
-    data
+    infcx.resolve_vars_if_possible(data)
 }

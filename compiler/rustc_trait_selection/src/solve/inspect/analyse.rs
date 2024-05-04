@@ -91,7 +91,10 @@ impl<'tcx> NormalizesToTermHack<'tcx> {
 pub struct InspectCandidate<'a, 'tcx> {
     goal: &'a InspectGoal<'a, 'tcx>,
     kind: inspect::ProbeKind<'tcx>,
-    nested_goals: Vec<(GoalSource, inspect::CanonicalState<'tcx, Goal<'tcx, ty::Predicate<'tcx>>>)>,
+    nested_goals: inspect::CanonicalState<
+        'tcx,
+        &'tcx ty::List<(GoalSource, Goal<'tcx, ty::Predicate<'tcx>>)>,
+    >,
     final_state: inspect::CanonicalState<'tcx, ()>,
     result: QueryResult<'tcx>,
     shallow_certainty: Certainty,
@@ -139,23 +142,15 @@ impl<'a, 'tcx> InspectCandidate<'a, 'tcx> {
         let infcx = self.goal.infcx;
         let param_env = self.goal.goal.param_env;
         let mut orig_values = self.goal.orig_values.to_vec();
-        let instantiated_goals: Vec<_> = self
-            .nested_goals
-            .iter()
-            .map(|(source, goal)| {
-                (
-                    *source,
-                    canonical::instantiate_canonical_state(
-                        infcx,
-                        span,
-                        param_env,
-                        &mut orig_values,
-                        *goal,
-                    ),
-                )
-            })
-            .collect();
-
+        let instantiated_goals = canonical::instantiate_canonical_state(
+            infcx,
+            span,
+            param_env,
+            &mut orig_values,
+            self.nested_goals,
+        );
+        // FIXME: Should we truncate orig_values back down? Any new infer vars
+        // between `nested_goals` and `final_state` are definitely unrelated...
         let () = canonical::instantiate_canonical_state(
             infcx,
             span,
@@ -172,7 +167,7 @@ impl<'a, 'tcx> InspectCandidate<'a, 'tcx> {
         }
 
         instantiated_goals
-            .into_iter()
+            .iter()
             .map(|(source, goal)| match goal.predicate.kind().no_bound_vars() {
                 Some(ty::PredicateKind::NormalizesTo(ty::NormalizesTo { alias, term })) => {
                     let unconstrained_term = match term.unpack() {
@@ -238,27 +233,24 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
     fn candidates_recur(
         &'a self,
         candidates: &mut Vec<InspectCandidate<'a, 'tcx>>,
-        nested_goals: &mut Vec<(
-            GoalSource,
-            inspect::CanonicalState<'tcx, Goal<'tcx, ty::Predicate<'tcx>>>,
-        )>,
         probe: &inspect::Probe<'tcx>,
     ) {
-        let mut shallow_certainty = None;
+        let mut shallow_certainty_and_goals = None;
         for step in &probe.steps {
-            match step {
-                &inspect::ProbeStep::AddGoal(source, goal) => nested_goals.push((source, goal)),
+            match *step {
                 inspect::ProbeStep::NestedProbe(ref probe) => {
                     // Nested probes have to prove goals added in their parent
                     // but do not leak them, so we truncate the added goals
                     // afterwards.
-                    let num_goals = nested_goals.len();
-                    self.candidates_recur(candidates, nested_goals, probe);
-                    nested_goals.truncate(num_goals);
+                    self.candidates_recur(candidates, probe);
                 }
-                inspect::ProbeStep::MakeCanonicalResponse { shallow_certainty: c } => {
-                    assert_eq!(shallow_certainty.replace(*c), None);
+                inspect::ProbeStep::MakeCanonicalResponse { shallow_certainty, added_goals } => {
+                    assert_eq!(
+                        shallow_certainty_and_goals.replace((shallow_certainty, added_goals)),
+                        None
+                    );
                 }
+                inspect::ProbeStep::AddGoal(..) => {}
                 inspect::ProbeStep::EvaluateGoals(_) => (),
             }
         }
@@ -276,11 +268,11 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
             | inspect::ProbeKind::OpaqueTypeStorageLookup { result } => {
                 // We only add a candidate if `shallow_certainty` was set, which means
                 // that we ended up calling `evaluate_added_goals_and_make_canonical_response`.
-                if let Some(shallow_certainty) = shallow_certainty {
+                if let Some((shallow_certainty, nested_goals)) = shallow_certainty_and_goals {
                     candidates.push(InspectCandidate {
                         goal: self,
                         kind: probe.kind,
-                        nested_goals: nested_goals.clone(),
+                        nested_goals,
                         final_state: probe.final_state,
                         result,
                         shallow_certainty,
@@ -308,8 +300,7 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
             }
         };
 
-        let mut nested_goals = vec![];
-        self.candidates_recur(&mut candidates, &mut nested_goals, &last_eval_step.evaluation);
+        self.candidates_recur(&mut candidates, &last_eval_step.evaluation);
 
         candidates
     }

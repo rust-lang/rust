@@ -133,7 +133,7 @@ impl<'a, 'b> ProofTreeFormatter<'a, 'b> {
                     }
                     ProbeStep::EvaluateGoals(eval) => this.format_added_goals_evaluation(eval)?,
                     ProbeStep::NestedProbe(probe) => this.format_probe(probe)?,
-                    ProbeStep::MakeCanonicalResponse { shallow_certainty } => {
+                    ProbeStep::MakeCanonicalResponse { shallow_certainty, added_goals: _ } => {
                         writeln!(this.f, "EVALUATE GOALS AND MAKE RESPONSE: {shallow_certainty:?}")?
                     }
                 }

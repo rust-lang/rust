@@ -4,6 +4,7 @@
 //! to help with the tedium.
 
 use crate::mir::interpret;
+use crate::traits::solve;
 use crate::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeSuperFoldable};
 use crate::ty::print::{with_no_trimmed_paths, FmtPrinter, Printer};
 use crate::ty::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor};
@@ -557,6 +558,17 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for &'tcx ty::List<ty::Const<'tcx>> {
         folder: &mut F,
     ) -> Result<Self, F::Error> {
         ty::util::fold_list(self, folder, |tcx, v| tcx.mk_const_list(v))
+    }
+}
+
+impl<'tcx> TypeFoldable<TyCtxt<'tcx>>
+    for &'tcx ty::List<(solve::GoalSource, solve::Goal<'tcx, ty::Predicate<'tcx>>)>
+{
+    fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
+        self,
+        folder: &mut F,
+    ) -> Result<Self, F::Error> {
+        ty::util::fold_list(self, folder, |tcx, v| tcx.mk_nested_goals(v))
     }
 }
 

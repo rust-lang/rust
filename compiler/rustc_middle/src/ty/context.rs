@@ -157,6 +157,8 @@ pub struct CtxtInterners<'tcx> {
     poly_existential_predicates: InternedSet<'tcx, List<PolyExistentialPredicate<'tcx>>>,
     predicate: InternedSet<'tcx, WithCachedTypeInfo<ty::Binder<'tcx, PredicateKind<'tcx>>>>,
     clauses: InternedSet<'tcx, ListWithCachedTypeInfo<Clause<'tcx>>>,
+    nested_goals:
+        InternedSet<'tcx, List<(solve::GoalSource, solve::Goal<'tcx, ty::Predicate<'tcx>>)>>,
     projs: InternedSet<'tcx, List<ProjectionKind>>,
     place_elems: InternedSet<'tcx, List<PlaceElem<'tcx>>>,
     const_: InternedSet<'tcx, WithCachedTypeInfo<ConstData<'tcx>>>,
@@ -186,6 +188,7 @@ impl<'tcx> CtxtInterners<'tcx> {
             canonical_var_infos: Default::default(),
             predicate: Default::default(),
             clauses: Default::default(),
+            nested_goals: Default::default(),
             projs: Default::default(),
             place_elems: Default::default(),
             const_: Default::default(),
@@ -1933,6 +1936,7 @@ slice_interners!(
     poly_existential_predicates: intern_poly_existential_predicates(PolyExistentialPredicate<'tcx>),
     projs: pub mk_projs(ProjectionKind),
     place_elems: pub mk_place_elems(PlaceElem<'tcx>),
+    nested_goals: pub mk_nested_goals((solve::GoalSource, solve::Goal<'tcx, ty::Predicate<'tcx>>)),
     bound_variable_kinds: pub mk_bound_variable_kinds(ty::BoundVariableKind),
     fields: pub mk_fields(FieldIdx),
     local_def_ids: intern_local_def_ids(LocalDefId),
@@ -2318,6 +2322,17 @@ impl<'tcx> TyCtxt<'tcx> {
         T: CollectAndApply<Clause<'tcx>, Clauses<'tcx>>,
     {
         T::collect_and_apply(iter, |xs| self.mk_clauses(xs))
+    }
+
+    pub fn mk_nested_goals_from_iter<I, T>(self, iter: I) -> T::Output
+    where
+        I: Iterator<Item = T>,
+        T: CollectAndApply<
+                (solve::GoalSource, solve::Goal<'tcx, ty::Predicate<'tcx>>),
+                &'tcx List<(solve::GoalSource, solve::Goal<'tcx, ty::Predicate<'tcx>>)>,
+            >,
+    {
+        T::collect_and_apply(iter, |xs| self.mk_nested_goals(xs))
     }
 
     pub fn mk_type_list_from_iter<I, T>(self, iter: I) -> T::Output

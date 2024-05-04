@@ -116,7 +116,7 @@ impl Debug for Probe<'_> {
 pub enum ProbeStep<'tcx> {
     /// We added a goal to the `EvalCtxt` which will get proven
     /// the next time `EvalCtxt::try_evaluate_added_goals` is called.
-    AddGoal(GoalSource, CanonicalState<'tcx, Goal<'tcx, ty::Predicate<'tcx>>>),
+    AddGoal(GoalSource, Goal<'tcx, ty::Predicate<'tcx>>),
     /// The inside of a `EvalCtxt::try_evaluate_added_goals` call.
     EvaluateGoals(AddedGoalsEvaluation<'tcx>),
     /// A call to `probe` while proving the current goal. This is
@@ -128,7 +128,11 @@ pub enum ProbeStep<'tcx> {
     /// with the certainty of the `try_evaluate_added_goals` that is done within;
     /// if it's `Certainty::Yes`, then we can trust that the candidate is "finished"
     /// and we didn't force ambiguity for some reason.
-    MakeCanonicalResponse { shallow_certainty: Certainty },
+    MakeCanonicalResponse {
+        shallow_certainty: Certainty,
+        added_goals:
+            CanonicalState<'tcx, &'tcx ty::List<(GoalSource, Goal<'tcx, ty::Predicate<'tcx>>)>>,
+    },
 }
 
 /// What kind of probe we're in. In case the probe represents a candidate, or

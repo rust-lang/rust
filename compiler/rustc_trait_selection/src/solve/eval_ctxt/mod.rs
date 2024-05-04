@@ -462,13 +462,13 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
 
     #[instrument(level = "debug", skip(self))]
     pub(super) fn add_normalizes_to_goal(&mut self, goal: Goal<'tcx, ty::NormalizesTo<'tcx>>) {
-        self.inspect.add_normalizes_to_goal(self.infcx, self.max_input_universe, goal);
+        self.inspect.add_normalizes_to_goal(self.tcx(), goal);
         self.nested_goals.normalizes_to_goals.push(goal);
     }
 
     #[instrument(level = "debug", skip(self))]
     pub(super) fn add_goal(&mut self, source: GoalSource, goal: Goal<'tcx, ty::Predicate<'tcx>>) {
-        self.inspect.add_goal(self.infcx, self.max_input_universe, source, goal);
+        self.inspect.add_goal(source, goal);
         self.nested_goals.goals.push((source, goal));
     }
 

@@ -238,10 +238,16 @@ impl<'tcx> WipProbe<'tcx> {
 
 #[derive(Eq, PartialEq, Debug)]
 enum WipProbeStep<'tcx> {
-    AddGoal(GoalSource, inspect::CanonicalState<'tcx, Goal<'tcx, ty::Predicate<'tcx>>>),
+    AddGoal(GoalSource, Goal<'tcx, ty::Predicate<'tcx>>),
     EvaluateGoals(WipAddedGoalsEvaluation<'tcx>),
     NestedProbe(WipProbe<'tcx>),
-    MakeCanonicalResponse { shallow_certainty: Certainty },
+    MakeCanonicalResponse {
+        shallow_certainty: Certainty,
+        added_goals: inspect::CanonicalState<
+            'tcx,
+            &'tcx ty::List<(GoalSource, Goal<'tcx, ty::Predicate<'tcx>>)>,
+        >,
+    },
 }
 
 impl<'tcx> WipProbeStep<'tcx> {
@@ -250,8 +256,8 @@ impl<'tcx> WipProbeStep<'tcx> {
             WipProbeStep::AddGoal(source, goal) => inspect::ProbeStep::AddGoal(source, goal),
             WipProbeStep::EvaluateGoals(eval) => inspect::ProbeStep::EvaluateGoals(eval.finalize()),
             WipProbeStep::NestedProbe(probe) => inspect::ProbeStep::NestedProbe(probe.finalize()),
-            WipProbeStep::MakeCanonicalResponse { shallow_certainty } => {
-                inspect::ProbeStep::MakeCanonicalResponse { shallow_certainty }
+            WipProbeStep::MakeCanonicalResponse { shallow_certainty, added_goals } => {
+                inspect::ProbeStep::MakeCanonicalResponse { shallow_certainty, added_goals }
             }
         }
     }
@@ -500,47 +506,46 @@ impl<'tcx> ProofTreeBuilder<'tcx> {
 
     pub fn add_normalizes_to_goal(
         &mut self,
-        infcx: &InferCtxt<'tcx>,
-        max_input_universe: ty::UniverseIndex,
+        tcx: TyCtxt<'tcx>,
         goal: Goal<'tcx, ty::NormalizesTo<'tcx>>,
     ) {
-        self.add_goal(
-            infcx,
-            max_input_universe,
-            GoalSource::Misc,
-            goal.with(infcx.tcx, goal.predicate),
-        );
+        self.add_goal(GoalSource::Misc, goal.with(tcx, goal.predicate));
     }
 
-    pub fn add_goal(
-        &mut self,
-        infcx: &InferCtxt<'tcx>,
-        max_input_universe: ty::UniverseIndex,
-        source: GoalSource,
-        goal: Goal<'tcx, ty::Predicate<'tcx>>,
-    ) {
+    pub fn add_goal(&mut self, source: GoalSource, goal: Goal<'tcx, ty::Predicate<'tcx>>) {
         match self.as_mut() {
             None => {}
             Some(DebugSolver::GoalEvaluationStep(state)) => {
-                let goal = canonical::make_canonical_state(
-                    infcx,
-                    &state.var_values,
-                    max_input_universe,
-                    goal,
-                );
                 state.current_evaluation_scope().steps.push(WipProbeStep::AddGoal(source, goal))
             }
             _ => bug!(),
         }
     }
 
-    pub fn make_canonical_response(&mut self, shallow_certainty: Certainty) {
+    pub fn make_canonical_response(
+        &mut self,
+        infcx: &InferCtxt<'tcx>,
+        max_input_universe: ty::UniverseIndex,
+        shallow_certainty: Certainty,
+    ) {
         match self.as_mut() {
             Some(DebugSolver::GoalEvaluationStep(state)) => {
+                let added_goals = infcx.tcx.mk_nested_goals_from_iter(
+                    state.current_evaluation_scope().steps.iter().filter_map(|step| match *step {
+                        WipProbeStep::AddGoal(source, goal) => Some((source, goal)),
+                        _ => None,
+                    }),
+                );
+                let added_goals = canonical::make_canonical_state(
+                    infcx,
+                    &state.var_values,
+                    max_input_universe,
+                    added_goals,
+                );
                 state
                     .current_evaluation_scope()
                     .steps
-                    .push(WipProbeStep::MakeCanonicalResponse { shallow_certainty });
+                    .push(WipProbeStep::MakeCanonicalResponse { shallow_certainty, added_goals });
             }
             None => {}
             _ => {}
