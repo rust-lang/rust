@@ -4,7 +4,7 @@
 
 The [Hermit] unikernel target allows compiling your applications into self-contained, specialized unikernel images that can be run in small virtual machines.
 
-[Hermit]: https://github.com/hermitcore
+[Hermit]: https://github.com/hermit-os
 
 Target triplets available so far:
 
@@ -56,9 +56,9 @@ Rust does not yet ship pre-compiled artifacts for these targets.
 To compile for these targets, you will either need to build Rust with the targets enabled
 (see “Building the targets” above), or build your own copy of `core` by using `build-std` or similar.
 
-Building Rust programs can be done by following the tutorial in our starter application [rusty-demo].
+As all Hermit programs are unikernels, building a Rust program also requires including the operating system code. A guide for doing so is provided in our starter [hermit-rs-template].
 
-[rusty-demo]: https://github.com/hermitcore/rusty-demo
+[hermit-rs-template]: https://github.com/hermit-os/hermit-rs-template
 
 ## Testing
 
@@ -67,8 +67,8 @@ These images can be chainloaded by Hermit's [loader] or hypervisor ([Uhyve]).
 QEMU can be used to boot Hermit binaries using the loader on any architecture.
 The targets do not support running the Rust test suite.
 
-[loader]: https://github.com/hermitcore/rusty-loader
-[Uhyve]: https://github.com/hermitcore/uhyve
+[loader]: https://github.com/hermit-os/loader
+[Uhyve]: https://github.com/hermit-os/uhyve
 
 ## Cross-compilation toolchains and C code
 
