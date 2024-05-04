@@ -216,6 +216,9 @@ pub trait Machine<'mir, 'tcx: 'mir>: Sized {
 
     /// Directly process an intrinsic without pushing a stack frame. It is the hook's
     /// responsibility to advance the instruction pointer as appropriate.
+    ///
+    /// Returns `None` if the intrinsic was fully handled.
+    /// Otherwise, returns an `Instance` of the function that implements the intrinsic.
     fn call_intrinsic(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
@@ -223,7 +226,7 @@ pub trait Machine<'mir, 'tcx: 'mir>: Sized {
         destination: &MPlaceTy<'tcx, Self::Provenance>,
         target: Option<mir::BasicBlock>,
         unwind: mir::UnwindAction,
-    ) -> InterpResult<'tcx>;
+    ) -> InterpResult<'tcx, Option<ty::Instance<'tcx>>>;
 
     /// Called to evaluate `Assert` MIR terminators that trigger a panic.
     fn assert_panic(
