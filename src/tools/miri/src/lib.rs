@@ -103,6 +103,7 @@ pub use crate::shims::os_str::EvalContextExt as _;
 pub use crate::shims::panic::{CatchUnwindData, EvalContextExt as _};
 pub use crate::shims::time::EvalContextExt as _;
 pub use crate::shims::tls::TlsData;
+pub use crate::shims::EmulateItemResult;
 
 pub use crate::alloc_addresses::{EvalContextExt as _, ProvenanceMode};
 pub use crate::borrow_tracker::stacked_borrows::{

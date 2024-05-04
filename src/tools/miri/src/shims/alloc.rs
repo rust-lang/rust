@@ -4,7 +4,6 @@ use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_target::abi::{Align, Size};
 
 use crate::*;
-use shims::foreign_items::EmulateForeignItemResult;
 
 /// Check some basic requirements for this allocation request:
 /// non-zero size, power-of-two alignment.
@@ -55,12 +54,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     fn emulate_allocator(
         &mut self,
         default: impl FnOnce(&mut MiriInterpCx<'mir, 'tcx>) -> InterpResult<'tcx>,
-    ) -> InterpResult<'tcx, EmulateForeignItemResult> {
+    ) -> InterpResult<'tcx, EmulateItemResult> {
         let this = self.eval_context_mut();
 
         let Some(allocator_kind) = this.tcx.allocator_kind(()) else {
             // in real code, this symbol does not exist without an allocator
-            return Ok(EmulateForeignItemResult::NotSupported);
+            return Ok(EmulateItemResult::NotSupported);
         };
 
         match allocator_kind {
@@ -70,11 +69,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 // and not execute any Miri shim. Somewhat unintuitively doing so is done
                 // by returning `NotSupported`, which triggers the `lookup_exported_symbol`
                 // fallback case in `emulate_foreign_item`.
-                return Ok(EmulateForeignItemResult::NotSupported);
+                return Ok(EmulateItemResult::NotSupported);
             }
             AllocatorKind::Default => {
                 default(this)?;
-                Ok(EmulateForeignItemResult::NeedsJumping)
+                Ok(EmulateItemResult::NeedsJumping)
             }
         }
     }

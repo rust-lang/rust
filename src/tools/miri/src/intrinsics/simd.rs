@@ -23,7 +23,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         generic_args: ty::GenericArgsRef<'tcx>,
         args: &[OpTy<'tcx, Provenance>],
         dest: &MPlaceTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, bool> {
+    ) -> InterpResult<'tcx, EmulateItemResult> {
         let this = self.eval_context_mut();
         match intrinsic_name {
             #[rustfmt::skip]
@@ -744,9 +744,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 }
             }
 
-            _ => return Ok(false),
+            _ => return Ok(EmulateItemResult::NotSupported),
         }
-        Ok(true)
+        Ok(EmulateItemResult::NeedsJumping)
     }
 
     fn fminmax_op(

@@ -20,7 +20,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         intrinsic_name: &str,
         args: &[OpTy<'tcx, Provenance>],
         dest: &MPlaceTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, bool> {
+    ) -> InterpResult<'tcx, EmulateItemResult> {
         let this = self.eval_context_mut();
 
         let intrinsic_structure: Vec<_> = intrinsic_name.split('_').collect();
@@ -114,9 +114,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 this.atomic_rmw_op(args, dest, AtomicOp::Max, rw_ord(ord)?)?;
             }
 
-            _ => return Ok(false),
+            _ => return Ok(EmulateItemResult::NotSupported),
         }
-        Ok(true)
+        Ok(EmulateItemResult::NeedsJumping)
     }
 }
 
