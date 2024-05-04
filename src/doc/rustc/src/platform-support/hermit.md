@@ -56,9 +56,9 @@ Rust does not yet ship pre-compiled artifacts for these targets.
 To compile for these targets, you will either need to build Rust with the targets enabled
 (see “Building the targets” above), or build your own copy of `core` by using `build-std` or similar.
 
-Building Rust programs can be done by following the tutorial in our starter application [rusty-demo].
+Building Rust programs can be done by following the tutorial in our starter application [hermit-rs-template].
 
-[rusty-demo]: https://github.com/hermit-os/rusty-demo
+[hermit-rs-template]: https://github.com/hermit-os/hermit-rs-template
 
 ## Testing
 
@@ -67,7 +67,7 @@ These images can be chainloaded by Hermit's [loader] or hypervisor ([Uhyve]).
 QEMU can be used to boot Hermit binaries using the loader on any architecture.
 The targets do not support running the Rust test suite.
 
-[loader]: https://github.com/hermit-os/hermit-rs-template
+[loader]: https://github.com/hermit-os/loader
 [Uhyve]: https://github.com/hermit-os/uhyve
 
 ## Cross-compilation toolchains and C code
