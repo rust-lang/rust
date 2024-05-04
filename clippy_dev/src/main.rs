@@ -96,6 +96,7 @@ fn main() {
         },
         DevCommand::Release(ReleaseCommand { subcommand }) => match subcommand {
             ReleaseSubcommand::BumpVersion => release::bump_version(clippy.version),
+            ReleaseSubcommand::Commit { repo_path, branch } => release::rustc_clippy_commit(repo_path, branch),
         },
     }
 }
@@ -374,4 +375,11 @@ enum ReleaseSubcommand {
     #[command(name = "bump_version")]
     /// Bump the version in the Cargo.toml files
     BumpVersion,
+    /// Print the Clippy commit in the rustc repo for the specified branch
+    Commit {
+        /// The path to a rustc repo to look for the commit
+        repo_path: String,
+        /// For which branch to print the commit
+        branch: release::Branch,
+    },
 }
