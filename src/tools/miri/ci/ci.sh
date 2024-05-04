@@ -13,15 +13,6 @@ function endgroup {
 
 begingroup "Building Miri"
 
-# Special Windows hacks
-if [ "$HOST_TARGET" = i686-pc-windows-msvc ]; then
-  # The $BASH variable is `/bin/bash` here, but that path does not actually work. There are some
-  # hacks in place somewhere to try to paper over this, but the hacks dont work either (see
-  # <https://github.com/rust-lang/miri/pull/3402>). So we hard-code the correct location for Github
-  # CI instead.
-  BASH="C:/Program Files/Git/usr/bin/bash"
-fi
-
 # Global configuration
 export RUSTFLAGS="-D warnings"
 export CARGO_INCREMENTAL=0
