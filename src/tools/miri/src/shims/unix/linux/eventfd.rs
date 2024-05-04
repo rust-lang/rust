@@ -8,6 +8,8 @@ use rustc_target::abi::Endian;
 use crate::shims::unix::*;
 use crate::*;
 
+use self::shims::unix::fd::FileDescriptor;
+
 /// A kind of file descriptor created by `eventfd`.
 /// The `Event` type isn't currently written to by `eventfd`.
 /// The interface is meant to keep track of objects associated
@@ -22,21 +24,16 @@ struct Event {
     val: u64,
 }
 
-impl FileDescriptor for Event {
+impl FileDescription for Event {
     fn name(&self) -> &'static str {
         "event"
-    }
-
-    fn dup(&mut self) -> io::Result<Box<dyn FileDescriptor>> {
-        // FIXME: this is wrong, the new and old FD should refer to the same event object!
-        Ok(Box::new(Event { val: self.val }))
     }
 
     fn close<'tcx>(
         self: Box<Self>,
         _communicate_allowed: bool,
-    ) -> InterpResult<'tcx, io::Result<i32>> {
-        Ok(Ok(0))
+    ) -> InterpResult<'tcx, io::Result<()>> {
+        Ok(Ok(()))
     }
 
     /// A write call adds the 8-byte integer value supplied in
@@ -115,7 +112,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             throw_unsup_format!("eventfd: EFD_SEMAPHORE is unsupported");
         }
 
-        let fd = this.machine.fds.insert_fd(Box::new(Event { val: val.into() }));
+        let fd = this.machine.fds.insert_fd(FileDescriptor::new(Event { val: val.into() }));
         Ok(Scalar::from_i32(fd))
     }
 }
