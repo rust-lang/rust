@@ -384,7 +384,10 @@ where
 {
     let mut g = Guard { len: buf.len(), buf: buf.as_mut_vec() };
     let ret = f(g.buf);
-    if str::from_utf8(&g.buf[g.len..]).is_err() {
+
+    // SAFETY: the caller promises to only append data to `buf`
+    let appended = g.buf.get_unchecked(g.len..);
+    if str::from_utf8(appended).is_err() {
         ret.and_then(|_| Err(Error::INVALID_UTF8))
     } else {
         g.len = g.buf.len();
