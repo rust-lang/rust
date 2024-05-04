@@ -17,6 +17,7 @@ use crate::*;
 pub trait FileDescription: std::fmt::Debug + Any {
     fn name(&self) -> &'static str;
 
+    /// Reads as much as possible into the given buffer, and returns the number of bytes read.
     fn read<'tcx>(
         &mut self,
         _communicate_allowed: bool,
@@ -26,6 +27,7 @@ pub trait FileDescription: std::fmt::Debug + Any {
         throw_unsup_format!("cannot read from {}", self.name());
     }
 
+    /// Writes as much as possible from the given buffer, and returns the number of bytes written.
     fn write<'tcx>(
         &mut self,
         _communicate_allowed: bool,
@@ -35,6 +37,8 @@ pub trait FileDescription: std::fmt::Debug + Any {
         throw_unsup_format!("cannot write to {}", self.name());
     }
 
+    /// Seeks to the given offset (which can be relative to the beginning, end, or current position).
+    /// Returns the new position from the start of the stream.
     fn seek<'tcx>(
         &mut self,
         _communicate_allowed: bool,
