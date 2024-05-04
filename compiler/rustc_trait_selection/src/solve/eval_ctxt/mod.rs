@@ -888,8 +888,12 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         self.infcx.resolve_vars_if_possible(value)
     }
 
-    pub(super) fn fresh_args_for_item(&self, def_id: DefId) -> ty::GenericArgsRef<'tcx> {
-        self.infcx.fresh_args_for_item(DUMMY_SP, def_id)
+    pub(super) fn fresh_args_for_item(&mut self, def_id: DefId) -> ty::GenericArgsRef<'tcx> {
+        let args = self.infcx.fresh_args_for_item(DUMMY_SP, def_id);
+        for arg in args {
+            self.inspect.add_var_value(arg);
+        }
+        args
     }
 
     pub(super) fn translate_args(
