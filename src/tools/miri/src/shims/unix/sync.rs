@@ -65,7 +65,8 @@ fn mutexattr_set_kind<'mir, 'tcx: 'mir>(
 // (need to avoid this because it is set by static initializer macros)
 // bytes 4-7: mutex id as u32 or 0 if id is not assigned yet.
 // bytes 12-15 or 16-19 (depending on platform): mutex kind, as an i32
-// (the kind has to be at its offset for compatibility with static initializer macros)
+// (the kind has to be at this particular offset for compatibility with Linux's static initializer
+// macros, e.g. PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP.)
 
 fn mutex_get_id<'mir, 'tcx: 'mir>(
     ecx: &mut MiriInterpCx<'mir, 'tcx>,
@@ -123,11 +124,13 @@ fn mutex_set_kind<'mir, 'tcx: 'mir>(
 // (need to avoid this because it is set by static initializer macros)
 // bytes 4-7: rwlock id as u32 or 0 if id is not assigned yet.
 
+const RWLOCK_ID_OFFSET: u64 = 4;
+
 fn rwlock_get_id<'mir, 'tcx: 'mir>(
     ecx: &mut MiriInterpCx<'mir, 'tcx>,
     rwlock_op: &OpTy<'tcx, Provenance>,
 ) -> InterpResult<'tcx, RwLockId> {
-    ecx.rwlock_get_or_create_id(rwlock_op, ecx.libc_ty_layout("pthread_rwlock_t"), 4)
+    ecx.rwlock_get_or_create_id(rwlock_op, ecx.libc_ty_layout("pthread_rwlock_t"), RWLOCK_ID_OFFSET)
 }
 
 // pthread_condattr_t
@@ -136,13 +139,15 @@ fn rwlock_get_id<'mir, 'tcx: 'mir>(
 // store an i32 in the first four bytes equal to the corresponding libc clock id constant
 // (e.g. CLOCK_REALTIME).
 
+const CONDATTR_CLOCK_OFFSET: u64 = 0;
+
 fn condattr_get_clock_id<'mir, 'tcx: 'mir>(
     ecx: &MiriInterpCx<'mir, 'tcx>,
     attr_op: &OpTy<'tcx, Provenance>,
 ) -> InterpResult<'tcx, i32> {
     ecx.deref_pointer_and_read(
         attr_op,
-        0,
+        CONDATTR_CLOCK_OFFSET,
         ecx.libc_ty_layout("pthread_condattr_t"),
         ecx.machine.layouts.i32,
     )?
@@ -156,7 +161,7 @@ fn condattr_set_clock_id<'mir, 'tcx: 'mir>(
 ) -> InterpResult<'tcx, ()> {
     ecx.deref_pointer_and_write(
         attr_op,
-        0,
+        CONDATTR_CLOCK_OFFSET,
         Scalar::from_i32(clock_id),
         ecx.libc_ty_layout("pthread_condattr_t"),
         ecx.machine.layouts.i32,
@@ -172,11 +177,14 @@ fn condattr_set_clock_id<'mir, 'tcx: 'mir>(
 // bytes 4-7: the conditional variable id as u32 or 0 if id is not assigned yet.
 // bytes 8-11: the clock id constant as i32
 
+const CONDVAR_ID_OFFSET: u64 = 4;
+const CONDVAR_CLOCK_OFFSET: u64 = 8;
+
 fn cond_get_id<'mir, 'tcx: 'mir>(
     ecx: &mut MiriInterpCx<'mir, 'tcx>,
     cond_op: &OpTy<'tcx, Provenance>,
 ) -> InterpResult<'tcx, CondvarId> {
-    ecx.condvar_get_or_create_id(cond_op, ecx.libc_ty_layout("pthread_cond_t"), 4)
+    ecx.condvar_get_or_create_id(cond_op, ecx.libc_ty_layout("pthread_cond_t"), CONDVAR_ID_OFFSET)
 }
 
 fn cond_reset_id<'mir, 'tcx: 'mir>(
@@ -185,7 +193,7 @@ fn cond_reset_id<'mir, 'tcx: 'mir>(
 ) -> InterpResult<'tcx, ()> {
     ecx.deref_pointer_and_write(
         cond_op,
-        4,
+        CONDVAR_ID_OFFSET,
         Scalar::from_i32(0),
         ecx.libc_ty_layout("pthread_cond_t"),
         ecx.machine.layouts.u32,
@@ -198,7 +206,7 @@ fn cond_get_clock_id<'mir, 'tcx: 'mir>(
 ) -> InterpResult<'tcx, i32> {
     ecx.deref_pointer_and_read(
         cond_op,
-        8,
+        CONDVAR_CLOCK_OFFSET,
         ecx.libc_ty_layout("pthread_cond_t"),
         ecx.machine.layouts.i32,
     )?
@@ -212,7 +220,7 @@ fn cond_set_clock_id<'mir, 'tcx: 'mir>(
 ) -> InterpResult<'tcx, ()> {
     ecx.deref_pointer_and_write(
         cond_op,
-        8,
+        CONDVAR_CLOCK_OFFSET,
         Scalar::from_i32(clock_id),
         ecx.libc_ty_layout("pthread_cond_t"),
         ecx.machine.layouts.i32,
