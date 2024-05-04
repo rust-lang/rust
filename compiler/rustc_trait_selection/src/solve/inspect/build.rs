@@ -216,6 +216,34 @@ impl<'tcx> WipGoalEvaluationStep<'tcx> {
         }
         inspect::GoalEvaluationStep { instantiated_goal: self.instantiated_goal, evaluation }
     }
+
+    // Returns all added goals from this scope and all containing scopes.
+    fn all_added_goals(
+        &self,
+    ) -> impl Iterator<Item = (GoalSource, Goal<'tcx, ty::Predicate<'tcx>>)> + '_ {
+        std::iter::from_coroutine(
+            #[coroutine]
+            || {
+                let mut current = &self.evaluation;
+                for i in 0.. {
+                    for step in &current.steps {
+                        if let WipProbeStep::AddGoal(source, goal) = *step {
+                            yield (source, goal);
+                        }
+                    }
+
+                    if i < self.probe_depth {
+                        let Some(WipProbeStep::NestedProbe(p)) = current.steps.last() else {
+                            bug!();
+                        };
+                        current = p;
+                    } else {
+                        break;
+                    }
+                }
+            },
+        )
+    }
 }
 
 #[derive(Eq, PartialEq, Debug)]
@@ -530,12 +558,7 @@ impl<'tcx> ProofTreeBuilder<'tcx> {
     ) {
         match self.as_mut() {
             Some(DebugSolver::GoalEvaluationStep(state)) => {
-                let added_goals = infcx.tcx.mk_nested_goals_from_iter(
-                    state.current_evaluation_scope().steps.iter().filter_map(|step| match *step {
-                        WipProbeStep::AddGoal(source, goal) => Some((source, goal)),
-                        _ => None,
-                    }),
-                );
+                let added_goals = infcx.tcx.mk_nested_goals_from_iter(state.all_added_goals());
                 let added_goals = canonical::make_canonical_state(
                     infcx,
                     &state.var_values,

@@ -12,7 +12,6 @@
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
-#![feature(rustdoc_internals)]
 #![allow(internal_features)]
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::untranslatable_diagnostic)]
@@ -20,11 +19,14 @@
 #![feature(associated_type_defaults)]
 #![feature(box_patterns)]
 #![feature(control_flow_enum)]
+#![feature(coroutines)]
 #![feature(extract_if)]
 #![feature(if_let_guard)]
+#![feature(iter_from_coroutine)]
 #![feature(let_chains)]
-#![feature(option_take_if)]
 #![feature(never_type)]
+#![feature(option_take_if)]
+#![feature(rustdoc_internals)]
 #![feature(type_alias_impl_trait)]
 #![recursion_limit = "512"] // For rustdoc
 
