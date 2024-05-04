@@ -305,6 +305,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let this = self.eval_context_mut();
         let next_index = this.machine.threads.sync.mutexes.next_index();
         if let Some(old) = existing(this, next_index)? {
+            if this.machine.threads.sync.mutexes.get(old).is_none() {
+                throw_ub_format!("mutex has invalid ID");
+            }
             Ok(old)
         } else {
             let new_index = this.machine.threads.sync.mutexes.push(Default::default());
@@ -399,6 +402,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let this = self.eval_context_mut();
         let next_index = this.machine.threads.sync.rwlocks.next_index();
         if let Some(old) = existing(this, next_index)? {
+            if this.machine.threads.sync.rwlocks.get(old).is_none() {
+                throw_ub_format!("rwlock has invalid ID");
+            }
             Ok(old)
         } else {
             let new_index = this.machine.threads.sync.rwlocks.push(Default::default());
@@ -563,6 +569,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let this = self.eval_context_mut();
         let next_index = this.machine.threads.sync.condvars.next_index();
         if let Some(old) = existing(this, next_index)? {
+            if this.machine.threads.sync.condvars.get(old).is_none() {
+                throw_ub_format!("condvar has invalid ID");
+            }
             Ok(old)
         } else {
             let new_index = this.machine.threads.sync.condvars.push(Default::default());
