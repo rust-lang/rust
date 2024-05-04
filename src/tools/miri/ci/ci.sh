@@ -141,11 +141,13 @@ case $HOST_TARGET in
     MIRI_TEST_TARGET=arm-unknown-linux-gnueabi run_tests
     MIRI_TEST_TARGET=s390x-unknown-linux-gnu run_tests # big-endian architecture of choice
     # Partially supported targets (tier 2)
-    MIRI_TEST_TARGET=x86_64-unknown-freebsd run_tests_minimal hello integer vec panic/panic concurrency/simple pthread-threadname libc-getentropy libc-getrandom libc-misc libc-fs atomic env align num_cpus
-    MIRI_TEST_TARGET=i686-unknown-freebsd run_tests_minimal hello integer vec panic/panic concurrency/simple pthread-threadname libc-getentropy libc-getrandom libc-misc libc-fs atomic env align num_cpus
-    MIRI_TEST_TARGET=aarch64-linux-android run_tests_minimal hello integer vec panic/panic
-    MIRI_TEST_TARGET=wasm32-wasi run_tests_minimal no_std integer strings wasm
-    MIRI_TEST_TARGET=wasm32-unknown-unknown run_tests_minimal no_std integer strings wasm
+    VERY_BASIC="integer vec string btreemap" # common things we test on all of them (if they have std), requires no target-specific shims
+    BASIC="$VERY_BASIC hello hashmap alloc align" # ensures we have the shims for stdout and basic data structures
+    MIRI_TEST_TARGET=x86_64-unknown-freebsd run_tests_minimal $BASIC panic/panic concurrency/simple atomic threadname libc-getentropy libc-getrandom libc-misc fs env num_cpus
+    MIRI_TEST_TARGET=i686-unknown-freebsd   run_tests_minimal $BASIC panic/panic concurrency/simple atomic threadname libc-getentropy libc-getrandom libc-misc fs env num_cpus
+    MIRI_TEST_TARGET=aarch64-linux-android  run_tests_minimal $VERY_BASIC hello panic/panic
+    MIRI_TEST_TARGET=wasm32-wasi run_tests_minimal $VERY_BASIC wasm
+    MIRI_TEST_TARGET=wasm32-unknown-unknown run_tests_minimal $VERY_BASIC wasm
     MIRI_TEST_TARGET=thumbv7em-none-eabihf run_tests_minimal no_std
     # Custom target JSON file
     MIRI_TEST_TARGET=tests/avr.json MIRI_NO_STD=1 run_tests_minimal no_std
