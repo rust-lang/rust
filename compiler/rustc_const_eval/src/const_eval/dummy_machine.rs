@@ -105,7 +105,7 @@ impl<'mir, 'tcx: 'mir> interpret::Machine<'mir, 'tcx> for DummyMachine {
         _destination: &interpret::MPlaceTy<'tcx, Self::Provenance>,
         _target: Option<BasicBlock>,
         _unwind: UnwindAction,
-    ) -> interpret::InterpResult<'tcx> {
+    ) -> interpret::InterpResult<'tcx, Option<ty::Instance<'tcx>>> {
         unimplemented!()
     }
 

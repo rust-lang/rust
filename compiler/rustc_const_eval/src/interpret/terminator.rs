@@ -539,14 +539,28 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             ty::InstanceDef::Intrinsic(def_id) => {
                 assert!(self.tcx.intrinsic(def_id).is_some());
                 // FIXME: Should `InPlace` arguments be reset to uninit?
-                M::call_intrinsic(
+                if let Some(fallback) = M::call_intrinsic(
                     self,
                     instance,
                     &self.copy_fn_args(args),
                     destination,
                     target,
                     unwind,
-                )
+                )? {
+                    assert!(!self.tcx.intrinsic(fallback.def_id()).unwrap().must_be_overridden);
+                    assert!(matches!(fallback.def, ty::InstanceDef::Item(_)));
+                    return self.eval_fn_call(
+                        FnVal::Instance(fallback),
+                        (caller_abi, caller_fn_abi),
+                        args,
+                        with_caller_location,
+                        destination,
+                        target,
+                        unwind,
+                    );
+                } else {
+                    Ok(())
+                }
             }
             ty::InstanceDef::VTableShim(..)
             | ty::InstanceDef::ReifyShim(..)
