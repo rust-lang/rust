@@ -102,6 +102,10 @@ Compatibility Notes
 - [Change equality of higher ranked types to not rely on subtyping](https://github.com/rust-lang/rust/pull/118247)
 - [When called, additionally check bounds on normalized function return type](https://github.com/rust-lang/rust/pull/118882)
 - [Expand coverage for `arithmetic_overflow` lint](https://github.com/rust-lang/rust/pull/119432/)
+- [Fix detection of potential interior mutability in `const` initializers](https://github.com/rust-lang/rust/issues/121250)
+  This code was accidentally accepted. The fix can break generic code that borrows a value of unknown type,
+  as there is currently no way to declare "this type has no interior mutability". In the future, stabilizing
+  the [`Freeze` trait](https://github.com/rust-lang/rust/issues/121675) will allow proper support for such code.
 
 <a id="1.78.0-Internal-Changes"></a>
 
