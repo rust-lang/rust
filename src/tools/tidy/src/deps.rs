@@ -395,6 +395,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "windows_aarch64_gnullvm",
     "windows_aarch64_msvc",
     "windows_i686_gnu",
+    "windows_i686_gnullvm",
     "windows_i686_msvc",
     "windows_x86_64_gnu",
     "windows_x86_64_gnullvm",
