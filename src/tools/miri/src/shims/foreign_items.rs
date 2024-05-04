@@ -893,6 +893,38 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     throw_unsup_format!("unsupported `llvm.prefetch` type argument: {}", ty);
                 }
             }
+            // Used to implement the x86 `_mm{,256,512}_popcnt_epi{8,16,32,64}` and wasm
+            // `{i,u}8x16_popcnt` functions.
+            name if name.starts_with("llvm.ctpop.v") => {
+                let [op] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+
+                let (op, op_len) = this.operand_to_simd(op)?;
+                let (dest, dest_len) = this.mplace_to_simd(dest)?;
+
+                assert_eq!(dest_len, op_len);
+
+                for i in 0..dest_len {
+                    let op = this.read_immediate(&this.project_index(&op, i)?)?;
+                    // Use `to_uint` to get a zero-extended `u128`. Those
+                    // extra zeros will not affect `count_ones`.
+                    let res = op.to_scalar().to_uint(op.layout.size)?.count_ones();
+
+                    this.write_scalar(
+                        Scalar::from_uint(res, op.layout.size),
+                        &this.project_index(&dest, i)?,
+                    )?;
+                }
+            }
+
+            // Target-specific shims
+            name if name.starts_with("llvm.x86.")
+                && (this.tcx.sess.target.arch == "x86"
+                    || this.tcx.sess.target.arch == "x86_64") =>
+            {
+                return shims::x86::EvalContextExt::emulate_x86_intrinsic(
+                    this, link_name, abi, args, dest,
+                );
+            }
             // FIXME: Move these to an `arm` submodule.
             "llvm.aarch64.isb" if this.tcx.sess.target.arch == "aarch64" => {
                 let [arg] = this.check_shim(abi, Abi::Unadjusted, link_name, args)?;
@@ -921,38 +953,6 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                         throw_unsup_format!("unsupported llvm.arm.hint argument {}", arg);
                     }
                 }
-            }
-
-            // Used to implement the x86 `_mm{,256,512}_popcnt_epi{8,16,32,64}` and wasm
-            // `{i,u}8x16_popcnt` functions.
-            name if name.starts_with("llvm.ctpop.v") => {
-                let [op] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-
-                let (op, op_len) = this.operand_to_simd(op)?;
-                let (dest, dest_len) = this.mplace_to_simd(dest)?;
-
-                assert_eq!(dest_len, op_len);
-
-                for i in 0..dest_len {
-                    let op = this.read_immediate(&this.project_index(&op, i)?)?;
-                    // Use `to_uint` to get a zero-extended `u128`. Those
-                    // extra zeros will not affect `count_ones`.
-                    let res = op.to_scalar().to_uint(op.layout.size)?.count_ones();
-
-                    this.write_scalar(
-                        Scalar::from_uint(res, op.layout.size),
-                        &this.project_index(&dest, i)?,
-                    )?;
-                }
-            }
-
-            name if name.starts_with("llvm.x86.")
-                && (this.tcx.sess.target.arch == "x86"
-                    || this.tcx.sess.target.arch == "x86_64") =>
-            {
-                return shims::x86::EvalContextExt::emulate_x86_intrinsic(
-                    this, link_name, abi, args, dest,
-                );
             }
 
             // Platform-specific shims
