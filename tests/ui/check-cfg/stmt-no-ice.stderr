@@ -1,5 +1,5 @@
 warning: unexpected `cfg` condition name: `crossbeam_loom`
-  --> $DIR/stmt-no-ice.rs:7:11
+  --> $DIR/stmt-no-ice.rs:8:11
    |
 LL |     #[cfg(crossbeam_loom)]
    |           ^^^^^^^^^^^^^^

@@ -16,6 +16,8 @@
 #![doc(rust_logo)]
 #![feature(allocator_api)]
 #![feature(array_windows)]
+#![feature(ascii_char)]
+#![feature(ascii_char_variants)]
 #![feature(auto_traits)]
 #![feature(cfg_match)]
 #![feature(core_intrinsics)]

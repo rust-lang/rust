@@ -13,10 +13,10 @@ use rustc_codegen_ssa::traits::{
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_llvm::RustString;
 use rustc_middle::bug;
-use rustc_middle::mir::coverage::{CoverageKind, FunctionCoverageInfo};
+use rustc_middle::mir::coverage::CoverageKind;
 use rustc_middle::ty::layout::HasTyCtxt;
 use rustc_middle::ty::Instance;
-use rustc_target::abi::Align;
+use rustc_target::abi::{Align, Size};
 
 use std::cell::RefCell;
 
@@ -91,6 +91,42 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
 }
 
 impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
+    fn init_coverage(&mut self, instance: Instance<'tcx>) {
+        let Some(function_coverage_info) =
+            self.tcx.instance_mir(instance.def).function_coverage_info.as_deref()
+        else {
+            return;
+        };
+
+        // If there are no MC/DC bitmaps to set up, return immediately.
+        if function_coverage_info.mcdc_bitmap_bytes == 0 {
+            return;
+        }
+
+        let fn_name = self.get_pgo_func_name_var(instance);
+        let hash = self.const_u64(function_coverage_info.function_source_hash);
+        let bitmap_bytes = self.const_u32(function_coverage_info.mcdc_bitmap_bytes);
+        self.mcdc_parameters(fn_name, hash, bitmap_bytes);
+
+        // Create pointers named `mcdc.addr.{i}` to stack-allocated condition bitmaps.
+        let mut cond_bitmaps = vec![];
+        for i in 0..function_coverage_info.mcdc_num_condition_bitmaps {
+            // MC/DC intrinsics will perform loads/stores that use the ABI default
+            // alignment for i32, so our variable declaration should match.
+            let align = self.tcx.data_layout.i32_align.abi;
+            let cond_bitmap = self.alloca(Size::from_bytes(4), align);
+            llvm::set_value_name(cond_bitmap, format!("mcdc.addr.{i}").as_bytes());
+            self.store(self.const_i32(0), cond_bitmap, align);
+            cond_bitmaps.push(cond_bitmap);
+        }
+
+        self.coverage_context()
+            .expect("always present when coverage is enabled")
+            .mcdc_condition_bitmap_map
+            .borrow_mut()
+            .insert(instance, cond_bitmaps);
+    }
+
     #[instrument(level = "debug", skip(self))]
     fn add_coverage(&mut self, instance: Instance<'tcx>, kind: &CoverageKind) {
         // Our caller should have already taken care of inlining subtleties,
@@ -108,10 +144,6 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
             debug!("function has a coverage statement but no coverage info");
             return;
         };
-
-        if function_coverage_info.mcdc_bitmap_bytes > 0 {
-            ensure_mcdc_parameters(bx, instance, function_coverage_info);
-        }
 
         let Some(coverage_context) = bx.coverage_context() else { return };
         let mut coverage_map = coverage_context.function_coverage_map.borrow_mut();
@@ -191,28 +223,6 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
             }
         }
     }
-}
-
-fn ensure_mcdc_parameters<'ll, 'tcx>(
-    bx: &mut Builder<'_, 'll, 'tcx>,
-    instance: Instance<'tcx>,
-    function_coverage_info: &FunctionCoverageInfo,
-) {
-    let Some(cx) = bx.coverage_context() else { return };
-    if cx.mcdc_condition_bitmap_map.borrow().contains_key(&instance) {
-        return;
-    }
-
-    let fn_name = bx.get_pgo_func_name_var(instance);
-    let hash = bx.const_u64(function_coverage_info.function_source_hash);
-    let bitmap_bytes = bx.const_u32(function_coverage_info.mcdc_bitmap_bytes);
-    let max_decision_depth = function_coverage_info.mcdc_max_decision_depth;
-    let cond_bitmap = bx.mcdc_parameters(fn_name, hash, bitmap_bytes, max_decision_depth as u32);
-    bx.coverage_context()
-        .expect("already checked above")
-        .mcdc_condition_bitmap_map
-        .borrow_mut()
-        .insert(instance, cond_bitmap);
 }
 
 /// Calls llvm::createPGOFuncNameVar() with the given function instance's

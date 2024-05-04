@@ -1,7 +1,7 @@
 //@ run-rustfix
-//@ compile-flags: --cfg=whatever -Aunused
+//@ compile-flags: -Aunused
 
-#[cfg(whatever)]
+#[cfg(all())]
 use y::Whatever;
 
 mod y {

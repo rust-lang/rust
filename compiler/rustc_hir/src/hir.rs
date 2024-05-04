@@ -229,9 +229,8 @@ impl<'hir> PathSegment<'hir> {
 }
 
 #[derive(Clone, Copy, Debug, HashStable_Generic)]
-pub struct ConstArg {
-    pub value: AnonConst,
-    pub span: Span,
+pub struct ConstArg<'hir> {
+    pub value: &'hir AnonConst,
     /// Indicates whether this comes from a `~const` desugaring.
     pub is_desugared_from_effects: bool,
 }
@@ -252,7 +251,7 @@ impl InferArg {
 pub enum GenericArg<'hir> {
     Lifetime(&'hir Lifetime),
     Type(&'hir Ty<'hir>),
-    Const(ConstArg),
+    Const(ConstArg<'hir>),
     Infer(InferArg),
 }
 
@@ -261,7 +260,7 @@ impl GenericArg<'_> {
         match self {
             GenericArg::Lifetime(l) => l.ident.span,
             GenericArg::Type(t) => t.span,
-            GenericArg::Const(c) => c.span,
+            GenericArg::Const(c) => c.value.span,
             GenericArg::Infer(i) => i.span,
         }
     }
@@ -490,7 +489,7 @@ pub enum GenericParamKind<'hir> {
     Const {
         ty: &'hir Ty<'hir>,
         /// Optional default value for the const generic param
-        default: Option<AnonConst>,
+        default: Option<&'hir AnonConst>,
         is_host_effect: bool,
     },
 }
@@ -1562,12 +1561,12 @@ impl fmt::Display for ConstContext {
 pub type Lit = Spanned<LitKind>;
 
 #[derive(Copy, Clone, Debug, HashStable_Generic)]
-pub enum ArrayLen {
+pub enum ArrayLen<'hir> {
     Infer(InferArg),
-    Body(AnonConst),
+    Body(&'hir AnonConst),
 }
 
-impl ArrayLen {
+impl ArrayLen<'_> {
     pub fn hir_id(&self) -> HirId {
         match self {
             ArrayLen::Infer(InferArg { hir_id, .. }) | ArrayLen::Body(AnonConst { hir_id, .. }) => {
@@ -1590,6 +1589,7 @@ pub struct AnonConst {
     pub hir_id: HirId,
     pub def_id: LocalDefId,
     pub body: BodyId,
+    pub span: Span,
 }
 
 /// An inline constant expression `const { something }`.
@@ -2002,7 +2002,7 @@ pub enum ExprKind<'hir> {
     ///
     /// E.g., `[1; 5]`. The first expression is the element
     /// to be repeated; the second is the number of times to repeat it.
-    Repeat(&'hir Expr<'hir>, ArrayLen),
+    Repeat(&'hir Expr<'hir>, ArrayLen<'hir>),
 
     /// A suspension point for coroutines (i.e., `yield <expr>`).
     Yield(&'hir Expr<'hir>, YieldSource),
@@ -2382,7 +2382,7 @@ pub struct TypeBinding<'hir> {
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub enum Term<'hir> {
     Ty(&'hir Ty<'hir>),
-    Const(AnonConst),
+    Const(&'hir AnonConst),
 }
 
 impl<'hir> From<&'hir Ty<'hir>> for Term<'hir> {
@@ -2391,8 +2391,8 @@ impl<'hir> From<&'hir Ty<'hir>> for Term<'hir> {
     }
 }
 
-impl<'hir> From<AnonConst> for Term<'hir> {
-    fn from(c: AnonConst) -> Self {
+impl<'hir> From<&'hir AnonConst> for Term<'hir> {
+    fn from(c: &'hir AnonConst) -> Self {
         Term::Const(c)
     }
 }
@@ -2683,7 +2683,7 @@ pub enum TyKind<'hir> {
     /// A variable length slice (i.e., `[T]`).
     Slice(&'hir Ty<'hir>),
     /// A fixed length array (i.e., `[T; n]`).
-    Array(&'hir Ty<'hir>, ArrayLen),
+    Array(&'hir Ty<'hir>, ArrayLen<'hir>),
     /// A raw pointer (i.e., `*const T` or `*mut T`).
     Ptr(MutTy<'hir>),
     /// A reference (i.e., `&'a T` or `&'a mut T`).
@@ -2712,7 +2712,7 @@ pub enum TyKind<'hir> {
     /// where `Bound` is a trait or a lifetime.
     TraitObject(&'hir [PolyTraitRef<'hir>], &'hir Lifetime, TraitObjectSyntax),
     /// Unused for now.
-    Typeof(AnonConst),
+    Typeof(&'hir AnonConst),
     /// `TyKind::Infer` means the type should be inferred instead of it having been
     /// specified. This can appear anywhere in a type.
     Infer,
@@ -2745,10 +2745,10 @@ pub enum InlineAsmOperand<'hir> {
         out_expr: Option<&'hir Expr<'hir>>,
     },
     Const {
-        anon_const: AnonConst,
+        anon_const: &'hir AnonConst,
     },
     SymFn {
-        anon_const: AnonConst,
+        anon_const: &'hir AnonConst,
     },
     SymStatic {
         path: QPath<'hir>,
@@ -2950,7 +2950,7 @@ pub struct Variant<'hir> {
     /// Fields and constructor id of the variant.
     pub data: VariantData<'hir>,
     /// Explicit discriminant (e.g., `Foo = 1`).
-    pub disr_expr: Option<AnonConst>,
+    pub disr_expr: Option<&'hir AnonConst>,
     /// Span
     pub span: Span,
 }
@@ -3479,15 +3479,13 @@ impl<'hir> OwnerNode<'hir> {
         }
     }
 
-    // Span by reference to pass to `Node::Err`.
-    #[allow(rustc::pass_by_value)]
-    pub fn span(&self) -> &'hir Span {
+    pub fn span(&self) -> Span {
         match self {
             OwnerNode::Item(Item { span, .. })
             | OwnerNode::ForeignItem(ForeignItem { span, .. })
             | OwnerNode::ImplItem(ImplItem { span, .. })
-            | OwnerNode::TraitItem(TraitItem { span, .. }) => span,
-            OwnerNode::Crate(Mod { spans: ModSpans { inner_span, .. }, .. }) => inner_span,
+            | OwnerNode::TraitItem(TraitItem { span, .. }) => *span,
+            OwnerNode::Crate(Mod { spans: ModSpans { inner_span, .. }, .. }) => *inner_span,
             OwnerNode::Synthetic => unreachable!(),
         }
     }
@@ -3632,9 +3630,7 @@ pub enum Node<'hir> {
     PreciseCapturingNonLifetimeArg(&'hir PreciseCapturingNonLifetimeArg),
     // Created by query feeding
     Synthetic,
-    // Span by reference to minimize `Node`'s size
-    #[allow(rustc::pass_by_value)]
-    Err(&'hir Span),
+    Err(Span),
 }
 
 impl<'hir> Node<'hir> {
@@ -3871,7 +3867,7 @@ mod size_asserts {
     static_assert_size!(FnDecl<'_>, 40);
     static_assert_size!(ForeignItem<'_>, 72);
     static_assert_size!(ForeignItemKind<'_>, 40);
-    static_assert_size!(GenericArg<'_>, 32);
+    static_assert_size!(GenericArg<'_>, 24);
     static_assert_size!(GenericBound<'_>, 48);
     static_assert_size!(Generics<'_>, 56);
     static_assert_size!(Impl<'_>, 80);

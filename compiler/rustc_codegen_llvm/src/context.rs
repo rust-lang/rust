@@ -11,7 +11,8 @@ use crate::value::Value;
 use rustc_codegen_ssa::base::{wants_msvc_seh, wants_wasm_eh};
 use rustc_codegen_ssa::errors as ssa_errors;
 use rustc_codegen_ssa::traits::*;
-use rustc_data_structures::base_n;
+use rustc_data_structures::base_n::ToBaseN;
+use rustc_data_structures::base_n::ALPHANUMERIC_ONLY;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_hir::def_id::DefId;
@@ -1015,7 +1016,7 @@ impl CodegenCx<'_, '_> {
         let mut name = String::with_capacity(prefix.len() + 6);
         name.push_str(prefix);
         name.push('.');
-        base_n::push_str(idx as u128, base_n::ALPHANUMERIC_ONLY, &mut name);
+        name.push_str(&(idx as u64).to_base(ALPHANUMERIC_ONLY));
         name
     }
 }

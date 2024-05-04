@@ -104,10 +104,14 @@
 //! implemented.
 
 use crate::errors;
+use rustc_data_structures::base_n;
+use rustc_data_structures::base_n::BaseNString;
+use rustc_data_structures::base_n::ToBaseN;
+use rustc_data_structures::base_n::CASE_INSENSITIVE;
+use rustc_data_structures::flock;
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
-use rustc_data_structures::{base_n, flock};
 use rustc_errors::ErrorGuaranteed;
 use rustc_fs_util::{link_or_copy, try_canonicalize, LinkOrCopy};
 use rustc_middle::bug;
@@ -333,31 +337,24 @@ pub fn finalize_session_directory(sess: &Session, svh: Option<Svh>) {
 
     debug!("finalize_session_directory() - session directory: {}", incr_comp_session_dir.display());
 
-    let old_sub_dir_name = incr_comp_session_dir
+    let mut sub_dir_name = incr_comp_session_dir
         .file_name()
         .unwrap()
         .to_str()
-        .expect("malformed session dir name: contains non-Unicode characters");
+        .expect("malformed session dir name: contains non-Unicode characters")
+        .to_string();
 
-    // Keep the 's-{timestamp}-{random-number}' prefix, but replace the
-    // '-working' part with the SVH of the crate
-    let dash_indices: Vec<_> = old_sub_dir_name.match_indices('-').map(|(idx, _)| idx).collect();
-    if dash_indices.len() != 3 {
-        bug!(
-            "Encountered incremental compilation session directory with \
-              malformed name: {}",
-            incr_comp_session_dir.display()
-        )
-    }
+    // Keep the 's-{timestamp}-{random-number}' prefix, but replace "working" with the SVH of the crate
+    sub_dir_name.truncate(sub_dir_name.len() - "working".len());
+    // Double-check that we kept this: "s-{timestamp}-{random-number}-"
+    assert!(sub_dir_name.ends_with('-'), "{:?}", sub_dir_name);
+    assert!(sub_dir_name.as_bytes().iter().filter(|b| **b == b'-').count() == 3);
 
-    // State: "s-{timestamp}-{random-number}-"
-    let mut new_sub_dir_name = String::from(&old_sub_dir_name[..=dash_indices[2]]);
-
-    // Append the svh
-    base_n::push_str(svh.as_u128(), INT_ENCODE_BASE, &mut new_sub_dir_name);
+    // Append the SVH
+    sub_dir_name.push_str(&svh.as_u128().to_base_fixed_len(CASE_INSENSITIVE));
 
     // Create the full path
-    let new_path = incr_comp_session_dir.parent().unwrap().join(new_sub_dir_name);
+    let new_path = incr_comp_session_dir.parent().unwrap().join(&*sub_dir_name);
     debug!("finalize_session_directory() - new path: {}", new_path.display());
 
     match rename_path_with_retry(&*incr_comp_session_dir, &new_path, 3) {
@@ -453,11 +450,11 @@ fn generate_session_dir_path(crate_dir: &Path) -> PathBuf {
     let random_number = thread_rng().next_u32();
     debug!("generate_session_dir_path: random_number = {}", random_number);
 
-    let directory_name = format!(
-        "s-{}-{}-working",
-        timestamp,
-        base_n::encode(random_number as u128, INT_ENCODE_BASE)
-    );
+    // Chop the first 3 characters off the timestamp. Those 3 bytes will be zero for a while.
+    let (zeroes, timestamp) = timestamp.split_at(3);
+    assert_eq!(zeroes, "000");
+    let directory_name =
+        format!("s-{}-{}-working", timestamp, random_number.to_base_fixed_len(CASE_INSENSITIVE));
     debug!("generate_session_dir_path: directory_name = {}", directory_name);
     let directory_path = crate_dir.join(directory_name);
     debug!("generate_session_dir_path: directory_path = {}", directory_path.display());
@@ -588,10 +585,10 @@ fn extract_timestamp_from_session_dir(directory_name: &str) -> Result<SystemTime
     string_to_timestamp(&directory_name[dash_indices[0] + 1..dash_indices[1]])
 }
 
-fn timestamp_to_string(timestamp: SystemTime) -> String {
+fn timestamp_to_string(timestamp: SystemTime) -> BaseNString {
     let duration = timestamp.duration_since(UNIX_EPOCH).unwrap();
     let micros = duration.as_secs() * 1_000_000 + (duration.subsec_nanos() as u64) / 1000;
-    base_n::encode(micros as u128, INT_ENCODE_BASE)
+    micros.to_base_fixed_len(CASE_INSENSITIVE)
 }
 
 fn string_to_timestamp(s: &str) -> Result<SystemTime, &'static str> {
@@ -622,9 +619,8 @@ fn crate_path(sess: &Session) -> PathBuf {
         sess.cfg_version,
     );
 
-    let stable_crate_id = base_n::encode(stable_crate_id.as_u64() as u128, INT_ENCODE_BASE);
-
-    let crate_name = format!("{crate_name}-{stable_crate_id}");
+    let crate_name =
+        format!("{crate_name}-{}", stable_crate_id.as_u64().to_base_fixed_len(CASE_INSENSITIVE));
     incr_dir.join(crate_name)
 }
 

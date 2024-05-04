@@ -102,7 +102,7 @@ fn instrument_function_for_coverage<'tcx>(tcx: TyCtxt<'tcx>, mir_body: &mut mir:
 
     inject_mcdc_statements(mir_body, &basic_coverage_blocks, &coverage_spans);
 
-    let mcdc_max_decision_depth = coverage_spans
+    let mcdc_num_condition_bitmaps = coverage_spans
         .mappings
         .iter()
         .filter_map(|bcb_mapping| match bcb_mapping.kind {
@@ -110,7 +110,7 @@ fn instrument_function_for_coverage<'tcx>(tcx: TyCtxt<'tcx>, mir_body: &mut mir:
             _ => None,
         })
         .max()
-        .unwrap_or(0);
+        .map_or(0, |max| usize::from(max) + 1);
 
     mir_body.function_coverage_info = Some(Box::new(FunctionCoverageInfo {
         function_source_hash: hir_info.function_source_hash,
@@ -118,7 +118,7 @@ fn instrument_function_for_coverage<'tcx>(tcx: TyCtxt<'tcx>, mir_body: &mut mir:
         mcdc_bitmap_bytes: coverage_spans.test_vector_bitmap_bytes(),
         expressions: coverage_counters.into_expressions(),
         mappings,
-        mcdc_max_decision_depth,
+        mcdc_num_condition_bitmaps,
     }));
 }
 

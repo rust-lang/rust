@@ -281,7 +281,10 @@ fn clean_lifetime<'tcx>(lifetime: &hir::Lifetime, cx: &mut DocContext<'tcx>) -> 
     Lifetime(lifetime.ident.name)
 }
 
-pub(crate) fn clean_const<'tcx>(constant: &hir::ConstArg, cx: &mut DocContext<'tcx>) -> Constant {
+pub(crate) fn clean_const<'tcx>(
+    constant: &hir::ConstArg<'_>,
+    cx: &mut DocContext<'tcx>,
+) -> Constant {
     let def_id = cx.tcx.hir().body_owner_def_id(constant.value.body).to_def_id();
     Constant {
         type_: Box::new(clean_middle_ty(
@@ -2450,7 +2453,7 @@ pub(crate) fn clean_variant_def_with_args<'tcx>(
 
 fn clean_variant_data<'tcx>(
     variant: &hir::VariantData<'tcx>,
-    disr_expr: &Option<hir::AnonConst>,
+    disr_expr: &Option<&hir::AnonConst>,
     cx: &mut DocContext<'tcx>,
 ) -> Variant {
     let discriminant = disr_expr

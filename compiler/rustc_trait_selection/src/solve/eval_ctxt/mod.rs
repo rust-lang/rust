@@ -454,7 +454,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         } else {
             self.infcx.enter_forall(kind, |kind| {
                 let goal = goal.with(self.tcx(), ty::Binder::dummy(kind));
-                self.add_goal(GoalSource::Misc, goal);
+                self.add_goal(GoalSource::InstantiateHigherRanked, goal);
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
             })
         }

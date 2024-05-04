@@ -1936,7 +1936,6 @@ symbols! {
         unit,
         universal_impl_trait,
         unix,
-        unix_sigpipe,
         unlikely,
         unmarked_api,
         unnamed_fields,

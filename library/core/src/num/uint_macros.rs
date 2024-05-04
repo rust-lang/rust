@@ -77,7 +77,7 @@ macro_rules! uint_impl {
                       without modifying the original"]
         #[inline(always)]
         pub const fn count_ones(self) -> u32 {
-            return intrinsics::ctpop(self as $ActualT);
+            return intrinsics::ctpop(self);
         }
 
         /// Returns the number of zeros in the binary representation of `self`.
@@ -635,6 +635,31 @@ macro_rules! uint_impl {
         ///
         /// If you're just trying to avoid the panic in debug mode, then **do not**
         /// use this.  Instead, you're looking for [`wrapping_sub`].
+        ///
+        /// If you find yourself writing code like this:
+        ///
+        /// ```
+        /// # let foo = 30_u32;
+        /// # let bar = 20;
+        /// if foo >= bar {
+        ///     // SAFETY: just checked it will not overflow
+        ///     let diff = unsafe { foo.unchecked_sub(bar) };
+        ///     // ... use diff ...
+        /// }
+        /// ```
+        ///
+        /// Consider changing it to
+        ///
+        /// ```
+        /// # let foo = 30_u32;
+        /// # let bar = 20;
+        /// if let Some(diff) = foo.checked_sub(bar) {
+        ///     // ... use diff ...
+        /// }
+        /// ```
+        ///
+        /// As that does exactly the same thing -- including telling the optimizer
+        /// that the subtraction cannot overflow -- but avoids needing `unsafe`.
         ///
         /// # Safety
         ///
