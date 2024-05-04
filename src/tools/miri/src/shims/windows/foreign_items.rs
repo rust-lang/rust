@@ -506,6 +506,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             }
 
             // Miscellaneous
+            "ExitProcess" => {
+                let [code] =
+                    this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
+                let code = this.read_scalar(code)?.to_u32()?;
+                throw_machine_stop!(TerminationInfo::Exit { code: code.into(), leak_check: false });
+            }
             "SystemFunction036" => {
                 // This is really 'RtlGenRandom'.
                 let [ptr, len] =

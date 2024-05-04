@@ -405,14 +405,8 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             }
 
             // Aborting the process.
-            "exit" | "ExitProcess" => {
-                let exp_abi = if link_name.as_str() == "exit" {
-                    Abi::C { unwind: false }
-                } else {
-                    Abi::System { unwind: false }
-                };
-                let [code] = this.check_shim(abi, exp_abi, link_name, args)?;
-                // it's really u32 for ExitProcess, but we have to put it into the `Exit` variant anyway
+            "exit" => {
+                let [code] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let code = this.read_scalar(code)?.to_i32()?;
                 throw_machine_stop!(TerminationInfo::Exit { code: code.into(), leak_check: false });
             }
