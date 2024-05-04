@@ -151,6 +151,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         Ok(None)
     }
 
+    fn is_dyn_sym(&self, name: &str) -> bool {
+        let this = self.eval_context_ref();
+        match this.tcx.sess.target.os.as_ref() {
+            os if this.target_os_is_unix() => shims::unix::foreign_items::is_dyn_sym(name, os),
+            "windows" => shims::windows::foreign_items::is_dyn_sym(name),
+            _ => false,
+        }
+    }
+
     /// Emulates a call to a `DynSym`.
     fn emulate_dyn_sym(
         &mut self,

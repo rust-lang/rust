@@ -113,9 +113,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 // have the right type.
 
                 let sys_getrandom = this.eval_libc("SYS_getrandom").to_target_usize(this)?;
-
                 let sys_statx = this.eval_libc("SYS_statx").to_target_usize(this)?;
-
                 let sys_futex = this.eval_libc("SYS_futex").to_target_usize(this)?;
 
                 if args.is_empty() {
