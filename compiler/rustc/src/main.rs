@@ -1,5 +1,3 @@
-#![feature(unix_sigpipe)]
-
 // A note about jemalloc: rustc uses jemalloc when built for CI and
 // distribution. The obvious way to do this is with the `#[global_allocator]`
 // mechanism. However, for complicated reasons (see
@@ -34,7 +32,6 @@
 // https://github.com/rust-lang/rust/commit/b90cfc887c31c3e7a9e6d462e2464db1fe506175#diff-43914724af6e464c1da2171e4a9b6c7e607d5bc1203fa95c0ab85be4122605ef
 // for an example of how to do so.
 
-#[unix_sigpipe = "sig_dfl"]
 fn main() {
     // See the comment at the top of this file for an explanation of this.
     #[cfg(feature = "jemalloc-sys")]

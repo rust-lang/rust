@@ -55,8 +55,8 @@ pub unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
     // want!
     //
     // Hence, we set SIGPIPE to ignore when the program starts up in order
-    // to prevent this problem. Add `#[unix_sigpipe = "..."]` above `fn main()` to
-    // alter this behavior.
+    // to prevent this problem. Use `-Zon-broken-pipe=...` to alter this
+    // behavior.
     reset_sigpipe(sigpipe);
 
     stack_overflow::init();
@@ -190,7 +190,7 @@ pub unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
                 _ => unreachable!(),
             };
             if sigpipe_attr_specified {
-                UNIX_SIGPIPE_ATTR_SPECIFIED.store(true, crate::sync::atomic::Ordering::Relaxed);
+                ON_BROKEN_PIPE_FLAG_USED.store(true, crate::sync::atomic::Ordering::Relaxed);
             }
             if let Some(handler) = handler {
                 rtassert!(signal(libc::SIGPIPE, handler) != libc::SIG_ERR);
@@ -210,7 +210,7 @@ pub unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
     target_os = "fuchsia",
     target_os = "horizon",
 )))]
-static UNIX_SIGPIPE_ATTR_SPECIFIED: crate::sync::atomic::AtomicBool =
+static ON_BROKEN_PIPE_FLAG_USED: crate::sync::atomic::AtomicBool =
     crate::sync::atomic::AtomicBool::new(false);
 
 #[cfg(not(any(
@@ -219,8 +219,8 @@ static UNIX_SIGPIPE_ATTR_SPECIFIED: crate::sync::atomic::AtomicBool =
     target_os = "fuchsia",
     target_os = "horizon",
 )))]
-pub(crate) fn unix_sigpipe_attr_specified() -> bool {
-    UNIX_SIGPIPE_ATTR_SPECIFIED.load(crate::sync::atomic::Ordering::Relaxed)
+pub(crate) fn on_broken_pipe_flag_used() -> bool {
+    ON_BROKEN_PIPE_FLAG_USED.load(crate::sync::atomic::Ordering::Relaxed)
 }
 
 // SAFETY: must be called only once during runtime cleanup.

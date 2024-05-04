@@ -7,18 +7,16 @@ use rustc_data_structures::sync;
 use rustc_metadata::{load_symbol_from_dylib, DylibError};
 use rustc_middle::ty::CurrentGcx;
 use rustc_parse::validate_attr;
-use rustc_session as session;
-use rustc_session::config::{Cfg, OutFileName, OutputFilenames, OutputTypes};
+use rustc_session::config::{host_triple, Cfg, OutFileName, OutputFilenames, OutputTypes};
 use rustc_session::filesearch::sysroot_candidates;
 use rustc_session::lint::{self, BuiltinLintDiag, LintBuffer};
-use rustc_session::{filesearch, Session};
+use rustc_session::output::{categorize_crate_type, CRATE_TYPES};
+use rustc_session::{filesearch, EarlyDiagCtxt, Session};
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::edition::Edition;
 use rustc_span::source_map::SourceMapInputs;
 use rustc_span::symbol::sym;
 use rustc_target::spec::Target;
-use session::output::{categorize_crate_type, CRATE_TYPES};
-use session::EarlyDiagCtxt;
 use std::env::consts::{DLL_PREFIX, DLL_SUFFIX};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -286,7 +284,7 @@ fn get_codegen_sysroot(
         "cannot load the default codegen backend twice"
     );
 
-    let target = session::config::host_triple();
+    let target = host_triple();
     let sysroot_candidates = sysroot_candidates();
 
     let sysroot = iter::once(sysroot)

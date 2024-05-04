@@ -1259,13 +1259,6 @@ pub struct ExternMain {
     pub span: Span,
 }
 
-#[derive(Diagnostic)]
-#[diag(passes_unix_sigpipe_values)]
-pub struct UnixSigpipeValues {
-    #[primary_span]
-    pub span: Span,
-}
-
 pub struct NoMainErr {
     pub sp: Span,
     pub crate_name: Symbol,

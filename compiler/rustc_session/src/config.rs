@@ -2909,7 +2909,9 @@ pub(crate) mod dep_tracking {
     use rustc_feature::UnstableFeatures;
     use rustc_span::edition::Edition;
     use rustc_span::RealFileName;
-    use rustc_target::spec::{CodeModel, MergeFunctions, PanicStrategy, RelocModel, WasmCAbi};
+    use rustc_target::spec::{
+        CodeModel, MergeFunctions, OnBrokenPipe, PanicStrategy, RelocModel, WasmCAbi,
+    };
     use rustc_target::spec::{
         RelroLevel, SanitizerSet, SplitDebuginfo, StackProtector, TargetTriple, TlsModel,
     };
@@ -2973,6 +2975,7 @@ pub(crate) mod dep_tracking {
         InstrumentXRay,
         CrateType,
         MergeFunctions,
+        OnBrokenPipe,
         PanicStrategy,
         RelroLevel,
         OptLevel,
