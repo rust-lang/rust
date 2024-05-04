@@ -1,16 +1,11 @@
 error[E0277]: the trait bound `*mut (): Foo` is not satisfied
-  --> $DIR/simple.rs:19:17
+  --> $DIR/simple.rs:17:17
    |
 LL |     needs_foo::<*mut ()>();
-   |                 ^^^^^^^ the trait `Send` is not implemented for `*mut ()`, which is required by `*mut (): Foo`
+   |                 ^^^^^^^ the trait `Foo` is not implemented for `*mut ()`
    |
-note: required for `*mut ()` to implement `Foo`
-  --> $DIR/simple.rs:10:9
-   |
-LL | impl<T> Foo for T where T: Send {}
-   |         ^^^     ^          ---- unsatisfied trait bound introduced here
 note: required by a bound in `needs_foo`
-  --> $DIR/simple.rs:14:17
+  --> $DIR/simple.rs:12:17
    |
 LL | fn needs_foo<T: Foo>() {}
    |                 ^^^ required by this bound in `needs_foo`
