@@ -67,7 +67,7 @@ mod task_queue {
 pub mod wait_notify {
     use crate::pin::Pin;
     use crate::sync::Arc;
-    use crate::sys_common::thread_parking::Parker;
+    use crate::sys::sync::Parker;
 
     pub struct Notifier(Arc<Parker>);
 

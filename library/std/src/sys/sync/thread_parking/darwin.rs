@@ -10,6 +10,8 @@
 //! provided by libdispatch, as the underlying Mach semaphore is only dubiously
 //! public.
 
+#![allow(non_camel_case_types)]
+
 use crate::pin::Pin;
 use crate::sync::atomic::{
     AtomicI8,

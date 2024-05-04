@@ -11,6 +11,7 @@ use rustc_middle::{
     ty::{self, FloatTy},
 };
 use rustc_target::abi::Size;
+use rustc_span::{sym, Symbol};
 
 use crate::*;
 use atomic::EvalContextExt as _;
@@ -26,12 +27,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         dest: &MPlaceTy<'tcx, Provenance>,
         ret: Option<mir::BasicBlock>,
         _unwind: mir::UnwindAction,
-    ) -> InterpResult<'tcx> {
+    ) -> InterpResult<'tcx, Option<ty::Instance<'tcx>>> {
         let this = self.eval_context_mut();
 
         // See if the core engine can handle this intrinsic.
         if this.emulate_intrinsic(instance, args, dest, ret)? {
-            return Ok(());
+            return Ok(None);
         }
         let intrinsic_name = this.tcx.item_name(instance.def_id());
         let intrinsic_name = intrinsic_name.as_str();
@@ -48,32 +49,50 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
         // All remaining supported intrinsics have a return place.
         let ret = match ret {
+            // FIXME: add fallback body support once we actually have a diverging intrinsic with a fallback body
             None => throw_unsup_format!("unimplemented (diverging) intrinsic: `{intrinsic_name}`"),
             Some(p) => p,
         };
 
         // Some intrinsics are special and need the "ret".
         match intrinsic_name {
-            "catch_unwind" => return this.handle_catch_unwind(args, dest, ret),
+            "catch_unwind" => {
+                this.handle_catch_unwind(args, dest, ret)?;
+                return Ok(None);
+            }
             _ => {}
         }
 
         // The rest jumps to `ret` immediately.
-        this.emulate_intrinsic_by_name(intrinsic_name, instance.args, args, dest)?;
+        if !this.emulate_intrinsic_by_name(intrinsic_name, instance.args, args, dest)? {
+            // We haven't handled the intrinsic, let's see if we can use a fallback body.
+            if this.tcx.intrinsic(instance.def_id()).unwrap().must_be_overridden {
+                throw_unsup_format!("unimplemented intrinsic: `{intrinsic_name}`")
+            }
+            let intrinsic_fallback_checks_ub = Symbol::intern("intrinsic_fallback_checks_ub");
+            if this.tcx.get_attrs_by_path(instance.def_id(), &[sym::miri, intrinsic_fallback_checks_ub]).next().is_none() {
+                throw_unsup_format!("miri can only use intrinsic fallback bodies that check UB. After verifying that `{intrinsic_name}` does so, add the `#[miri::intrinsic_fallback_checks_ub]` attribute to it; also ping @rust-lang/miri when you do that");
+            }
+            return Ok(Some(ty::Instance {
+                def: ty::InstanceDef::Item(instance.def_id()),
+                args: instance.args,
+            }))
+        }
 
         trace!("{:?}", this.dump_place(&dest.clone().into()));
         this.go_to_block(ret);
-        Ok(())
+        Ok(None)
     }
 
     /// Emulates a Miri-supported intrinsic (not supported by the core engine).
+    /// Returns `Ok(true)` if the intrinsic was handled.
     fn emulate_intrinsic_by_name(
         &mut self,
         intrinsic_name: &str,
         generic_args: ty::GenericArgsRef<'tcx>,
         args: &[OpTy<'tcx, Provenance>],
         dest: &MPlaceTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx> {
+    ) -> InterpResult<'tcx, bool> {
         let this = self.eval_context_mut();
 
         if let Some(name) = intrinsic_name.strip_prefix("atomic_") {
@@ -84,24 +103,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         }
 
         match intrinsic_name {
-            // Miri overwriting CTFE intrinsics.
-            "ptr_guaranteed_cmp" => {
-                let [left, right] = check_arg_count(args)?;
-                let left = this.read_immediate(left)?;
-                let right = this.read_immediate(right)?;
-                let val = this.wrapping_binary_op(mir::BinOp::Eq, &left, &right)?;
-                // We're type punning a bool as an u8 here.
-                this.write_scalar(val.to_scalar(), dest)?;
-            }
-            "const_allocate" => {
-                // For now, for compatibility with the run-time implementation of this, we just return null.
-                // See <https://github.com/rust-lang/rust/issues/93935>.
-                this.write_null(dest)?;
-            }
-            "const_deallocate" => {
-                // complete NOP
-            }
-
             // Raw memory accesses
             "volatile_load" => {
                 let [place] = check_arg_count(args)?;
@@ -425,9 +426,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 throw_machine_stop!(TerminationInfo::Abort(format!("trace/breakpoint trap")))
             }
 
-            name => throw_unsup_format!("unimplemented intrinsic: `{name}`"),
+            _ => return Ok(false),
         }
 
-        Ok(())
+        Ok(true)
     }
 }
