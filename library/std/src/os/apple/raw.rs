@@ -13,6 +13,7 @@
 )]
 #![allow(deprecated)]
 
+#[cfg(any(target_os = "macos", target_os = "ios"))]
 use crate::os::raw::c_long;
 
 #[stable(feature = "raw_ext", since = "1.1.0")]
@@ -38,6 +39,8 @@ pub type pthread_t = usize;
 #[repr(C)]
 #[derive(Clone)]
 #[stable(feature = "raw_ext", since = "1.1.0")]
+// To maintain backwards compat, is omitted on other Apple targets.
+#[cfg(any(target_os = "macos", target_os = "ios"))]
 pub struct stat {
     #[stable(feature = "raw_ext", since = "1.1.0")]
     pub st_dev: i32,

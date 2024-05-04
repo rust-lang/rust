@@ -6,6 +6,7 @@ use crate::sys_common::{AsInner, AsInnerMut, IntoInner};
 use crate::time::SystemTime;
 
 #[allow(deprecated)]
+#[cfg(any(target_os = "macos", target_os = "ios"))]
 use super::raw;
 
 /// OS-specific extensions to [`fs::Metadata`].
@@ -26,6 +27,8 @@ pub trait MetadataExt {
                 methods of this trait"
     )]
     #[allow(deprecated)]
+    // To maintain backwards compat, is omitted on other Apple targets.
+    #[cfg(any(target_os = "macos", target_os = "ios"))]
     fn as_raw_stat(&self) -> &raw::stat;
 
     #[stable(feature = "metadata_ext2", since = "1.8.0")]
@@ -78,6 +81,8 @@ pub trait MetadataExt {
 #[stable(feature = "metadata_ext", since = "1.1.0")]
 impl MetadataExt for Metadata {
     #[allow(deprecated)]
+    // To maintain backwards compat, is omitted on other Apple targets.
+    #[cfg(any(target_os = "macos", target_os = "ios"))]
     fn as_raw_stat(&self) -> &raw::stat {
         unsafe { &*(self.as_inner().as_inner() as *const libc::stat as *const raw::stat) }
     }
