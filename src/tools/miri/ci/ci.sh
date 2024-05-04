@@ -107,10 +107,10 @@ function run_tests_minimal {
     exit 1
   fi
 
-  ./miri test -- "$@"
+  time ./miri test -- "$@"
 
   # Ensure that a small smoke test of cargo-miri works.
-  cargo miri run --manifest-path test-cargo-miri/no-std-smoke/Cargo.toml --target ${MIRI_TEST_TARGET-$HOST_TARGET}
+  time cargo miri run --manifest-path test-cargo-miri/no-std-smoke/Cargo.toml --target ${MIRI_TEST_TARGET-$HOST_TARGET}
 
   endgroup
 }
