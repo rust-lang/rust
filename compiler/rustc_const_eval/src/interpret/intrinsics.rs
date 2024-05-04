@@ -113,10 +113,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx, bool> {
         let instance_args = instance.args;
         let intrinsic_name = self.tcx.item_name(instance.def_id());
-        let Some(ret) = ret else {
-            // We don't support any intrinsic without return place.
-            return Ok(false);
-        };
 
         match intrinsic_name {
             sym::caller_location => {
@@ -376,7 +372,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     };
 
                     M::panic_nounwind(self, &msg)?;
-                    // Skip the `go_to_block` at the end.
+                    // Skip the `return_to_block` at the end (we panicked, we do not return).
                     return Ok(true);
                 }
             }
@@ -437,11 +433,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.write_scalar(Scalar::from_target_usize(align.bytes(), self), dest)?;
             }
 
+            // Unsupported intrinsic: skip the return_to_block below.
             _ => return Ok(false),
         }
 
         trace!("{:?}", self.dump_place(&dest.clone().into()));
-        self.go_to_block(ret);
+        self.return_to_block(ret)?;
         Ok(true)
     }
 

@@ -3,7 +3,6 @@ use rustc_target::spec::abi::Abi;
 
 use super::{conditional_dot_product, mpsadbw, packusdw, round_all, round_first, test_bits_masked};
 use crate::*;
-use shims::foreign_items::EmulateForeignItemResult;
 
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
 pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
@@ -15,7 +14,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
         abi: Abi,
         args: &[OpTy<'tcx, Provenance>],
         dest: &MPlaceTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, EmulateForeignItemResult> {
+    ) -> InterpResult<'tcx, EmulateItemResult> {
         let this = self.eval_context_mut();
         this.expect_target_feature_for_intrinsic(link_name, "sse4.1")?;
         // Prefix should have already been checked.
@@ -175,8 +174,8 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
 
                 this.write_scalar(Scalar::from_i32(res.into()), dest)?;
             }
-            _ => return Ok(EmulateForeignItemResult::NotSupported),
+            _ => return Ok(EmulateItemResult::NotSupported),
         }
-        Ok(EmulateForeignItemResult::NeedsJumping)
+        Ok(EmulateItemResult::NeedsJumping)
     }
 }

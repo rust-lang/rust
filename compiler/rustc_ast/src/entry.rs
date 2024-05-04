@@ -4,11 +4,35 @@ use rustc_span::Symbol;
 
 #[derive(Debug)]
 pub enum EntryPointType {
+    /// This function is not an entrypoint.
     None,
+    /// This is a function called `main` at the root level.
+    /// ```
+    /// fn main() {}
+    /// ```
     MainNamed,
+    /// This is a function with the `#[rustc_main]` attribute.
+    /// Used by the testing harness to create the test entrypoint.
+    /// ```ignore (clashes with test entrypoint)
+    /// #[rustc_main]
+    /// fn main() {}
+    /// ```
     RustcMainAttr,
+    /// This is a function with the `#[start]` attribute.
+    /// ```ignore (clashes with test entrypoint)
+    /// #[start]
+    /// fn main() {}
+    /// ```
     Start,
-    OtherMain, // Not an entry point, but some other function named main
+    /// This function is **not** an entrypoint but simply named `main` (not at the root).
+    /// This is only used for diagnostics.
+    /// ```
+    /// #[allow(dead_code)]
+    /// mod meow {
+    ///     fn main() {}
+    /// }
+    /// ```
+    OtherMain,
 }
 
 pub fn entry_point_type(

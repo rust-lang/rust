@@ -3,7 +3,6 @@ use rustc_target::spec::abi::Abi;
 
 use crate::shims::unix::*;
 use crate::*;
-use shims::foreign_items::EmulateForeignItemResult;
 
 pub fn is_dyn_sym(_name: &str) -> bool {
     false
@@ -17,7 +16,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         abi: Abi,
         args: &[OpTy<'tcx, Provenance>],
         dest: &MPlaceTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, EmulateForeignItemResult> {
+    ) -> InterpResult<'tcx, EmulateItemResult> {
         let this = self.eval_context_mut();
 
         // See `fn emulate_foreign_item_inner` in `shims/foreign_items.rs` for the general pattern.
@@ -175,9 +174,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 this.write_scalar(res, dest)?;
             }
 
-            _ => return Ok(EmulateForeignItemResult::NotSupported),
+            _ => return Ok(EmulateItemResult::NotSupported),
         };
 
-        Ok(EmulateForeignItemResult::NeedsJumping)
+        Ok(EmulateItemResult::NeedsJumping)
     }
 }
