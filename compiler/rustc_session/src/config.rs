@@ -2966,10 +2966,8 @@ pub(crate) mod dep_tracking {
     use rustc_span::edition::Edition;
     use rustc_span::RealFileName;
     use rustc_target::spec::{
-        CodeModel, MergeFunctions, OnBrokenPipe, PanicStrategy, RelocModel, WasmCAbi,
-    };
-    use rustc_target::spec::{
-        RelroLevel, SanitizerSet, SplitDebuginfo, StackProtector, TargetTriple, TlsModel,
+        CodeModel, FramePointer, MergeFunctions, OnBrokenPipe, PanicStrategy, RelocModel,
+        RelroLevel, SanitizerSet, SplitDebuginfo, StackProtector, TargetTriple, TlsModel, WasmCAbi,
     };
     use std::collections::BTreeMap;
     use std::hash::{DefaultHasher, Hash};
@@ -3023,6 +3021,7 @@ pub(crate) mod dep_tracking {
         lint::Level,
         WasiExecModel,
         u32,
+        FramePointer,
         RelocModel,
         CodeModel,
         TlsModel,
