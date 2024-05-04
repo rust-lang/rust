@@ -107,10 +107,10 @@ function run_tests_minimal {
     exit 1
   fi
 
-  ./miri test -- "$@"
+  time ./miri test -- "$@"
 
   # Ensure that a small smoke test of cargo-miri works.
-  cargo miri run --manifest-path test-cargo-miri/no-std-smoke/Cargo.toml --target ${MIRI_TEST_TARGET-$HOST_TARGET}
+  time cargo miri run --manifest-path test-cargo-miri/no-std-smoke/Cargo.toml --target ${MIRI_TEST_TARGET-$HOST_TARGET}
 
   endgroup
 }
@@ -130,9 +130,16 @@ case $HOST_TARGET in
     MANY_SEEDS=16 MIRI_TEST_TARGET=aarch64-unknown-linux-gnu run_tests
     MANY_SEEDS=16 MIRI_TEST_TARGET=x86_64-apple-darwin run_tests
     MANY_SEEDS=16 MIRI_TEST_TARGET=x86_64-pc-windows-gnu run_tests
+    ;;
+  aarch64-apple-darwin)
+    # Host (tier 2)
+    GC_STRESS=1 MIR_OPT=1 MANY_SEEDS=64 TEST_BENCH=1 CARGO_MIRI_ENV=1 run_tests
+    # Extra tier 1
+    MANY_SEEDS=64 MIRI_TEST_TARGET=i686-pc-windows-gnu run_tests
+    MANY_SEEDS=64 MIRI_TEST_TARGET=x86_64-pc-windows-msvc CARGO_MIRI_ENV=1 run_tests
     # Extra tier 2
-    MIRI_TEST_TARGET=aarch64-apple-darwin run_tests
     MIRI_TEST_TARGET=arm-unknown-linux-gnueabi run_tests
+    MIRI_TEST_TARGET=s390x-unknown-linux-gnu run_tests # big-endian architecture of choice
     # Partially supported targets (tier 2)
     MIRI_TEST_TARGET=x86_64-unknown-freebsd run_tests_minimal hello integer vec panic/panic concurrency/simple pthread-threadname libc-getentropy libc-getrandom libc-misc libc-fs atomic env align num_cpus
     MIRI_TEST_TARGET=i686-unknown-freebsd run_tests_minimal hello integer vec panic/panic concurrency/simple pthread-threadname libc-getentropy libc-getrandom libc-misc libc-fs atomic env align num_cpus
@@ -143,20 +150,11 @@ case $HOST_TARGET in
     # Custom target JSON file
     MIRI_TEST_TARGET=tests/avr.json MIRI_NO_STD=1 run_tests_minimal no_std
     ;;
-  aarch64-apple-darwin)
-    # Host (tier 2)
-    GC_STRESS=1 MIR_OPT=1 MANY_SEEDS=64 TEST_BENCH=1 CARGO_MIRI_ENV=1 run_tests
-    # Extra tier 1
-    MANY_SEEDS=64 MIRI_TEST_TARGET=i686-pc-windows-gnu run_tests
-    MANY_SEEDS=64 MIRI_TEST_TARGET=x86_64-pc-windows-msvc CARGO_MIRI_ENV=1 run_tests
-    # Extra tier 2
-    MIRI_TEST_TARGET=s390x-unknown-linux-gnu run_tests # big-endian architecture
-    ;;
   i686-pc-windows-msvc)
     # Host
-    # With reduced many-seeds count as this is the slowest runner already.
+    # Without GC_STRESS and with reduced many-seeds count as this is the slowest runner.
     # (The macOS runner checks windows-msvc with full many-seeds count.)
-    GC_STRESS=1 MIR_OPT=1 MANY_SEEDS=16 TEST_BENCH=1 run_tests
+    MIR_OPT=1 MANY_SEEDS=16 TEST_BENCH=1 run_tests
     # Extra tier 1
     # We really want to ensure a Linux target works on a Windows host,
     # and a 64bit target works on a 32bit host.
