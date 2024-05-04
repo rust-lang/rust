@@ -1,8 +1,10 @@
-use std::ffi::OsString;
+use std::ffi::{OsStr, OsString};
 use std::fmt::Write;
+use std::str::FromStr;
 use std::time::{Duration, SystemTime};
 
-use chrono::{DateTime, Datelike, Local, Timelike, Utc};
+use chrono::{DateTime, Datelike, Offset, Timelike, Utc};
+use chrono_tz::Tz;
 
 use crate::concurrency::thread::MachineCallback;
 use crate::*;
@@ -136,8 +138,16 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             .unwrap();
         let dt_utc: DateTime<Utc> =
             DateTime::from_timestamp(sec_since_epoch, 0).expect("Invalid timestamp");
+
+        // Figure out what time zone is in use
+        let tz = this.get_env_var(OsStr::new("TZ"))?.unwrap_or_else(|| OsString::from("UTC"));
+        let tz = match tz.into_string() {
+            Ok(tz) => Tz::from_str(&tz).unwrap_or(Tz::UTC),
+            _ => Tz::UTC,
+        };
+
         // Convert that to local time, then return the broken-down time value.
-        let dt: DateTime<Local> = DateTime::from(dt_utc);
+        let dt: DateTime<Tz> = dt_utc.with_timezone(&tz);
 
         // This value is always set to -1, because there is no way to know if dst is in effect with
         // chrono crate yet.
@@ -146,17 +156,17 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
         // tm_zone represents the timezone value in the form of: +0730, +08, -0730 or -08.
         // This may not be consistent with libc::localtime_r's result.
-        let offset_in_second = Local::now().offset().local_minus_utc();
-        let tm_gmtoff = offset_in_second;
+        let offset_in_seconds = dt.offset().fix().local_minus_utc();
+        let tm_gmtoff = offset_in_seconds;
         let mut tm_zone = String::new();
-        if offset_in_second < 0 {
+        if offset_in_seconds < 0 {
             tm_zone.push('-');
         } else {
             tm_zone.push('+');
         }
-        let offset_hour = offset_in_second.abs() / 3600;
+        let offset_hour = offset_in_seconds.abs() / 3600;
         write!(tm_zone, "{:02}", offset_hour).unwrap();
-        let offset_min = (offset_in_second.abs() % 3600) / 60;
+        let offset_min = (offset_in_seconds.abs() % 3600) / 60;
         if offset_min != 0 {
             write!(tm_zone, "{:02}", offset_min).unwrap();
         }

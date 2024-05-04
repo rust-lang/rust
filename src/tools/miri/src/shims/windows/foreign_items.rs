@@ -15,7 +15,7 @@ use crate::*;
 use shims::foreign_items::EmulateForeignItemResult;
 use shims::windows::handle::{Handle, PseudoHandle};
 
-fn is_dyn_sym(name: &str) -> bool {
+pub fn is_dyn_sym(name: &str) -> bool {
     // std does dynamic detection for these symbols
     matches!(
         name,

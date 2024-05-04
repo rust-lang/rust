@@ -151,6 +151,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         Ok(None)
     }
 
+    fn is_dyn_sym(&self, name: &str) -> bool {
+        let this = self.eval_context_ref();
+        match this.tcx.sess.target.os.as_ref() {
+            os if this.target_os_is_unix() => shims::unix::foreign_items::is_dyn_sym(name, os),
+            "windows" => shims::windows::foreign_items::is_dyn_sym(name),
+            _ => false,
+        }
+    }
+
     /// Emulates a call to a `DynSym`.
     fn emulate_dyn_sym(
         &mut self,
@@ -730,7 +739,7 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             => {
                 let [f] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let f = this.read_scalar(f)?.to_f32()?;
-                // FIXME: Using host floats.
+                // Using host floats (but it's fine, these operations do not have guaranteed precision).
                 let f_host = f.to_host();
                 let res = match link_name.as_str() {
                     "cbrtf" => f_host.cbrt(),
@@ -761,7 +770,7 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let f2 = this.read_scalar(f2)?.to_f32()?;
                 // underscore case for windows, here and below
                 // (see https://docs.microsoft.com/en-us/cpp/c-runtime-library/reference/floating-point-primitives?view=vs-2019)
-                // FIXME: Using host floats.
+                // Using host floats (but it's fine, these operations do not have guaranteed precision).
                 let res = match link_name.as_str() {
                     "_hypotf" | "hypotf" => f1.to_host().hypot(f2.to_host()).to_soft(),
                     "atan2f" => f1.to_host().atan2(f2.to_host()).to_soft(),
@@ -787,7 +796,7 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             => {
                 let [f] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let f = this.read_scalar(f)?.to_f64()?;
-                // FIXME: Using host floats.
+                // Using host floats (but it's fine, these operations do not have guaranteed precision).
                 let f_host = f.to_host();
                 let res = match link_name.as_str() {
                     "cbrt" => f_host.cbrt(),
@@ -818,7 +827,7 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let f2 = this.read_scalar(f2)?.to_f64()?;
                 // underscore case for windows, here and below
                 // (see https://docs.microsoft.com/en-us/cpp/c-runtime-library/reference/floating-point-primitives?view=vs-2019)
-                // FIXME: Using host floats.
+                // Using host floats (but it's fine, these operations do not have guaranteed precision).
                 let res = match link_name.as_str() {
                     "_hypot" | "hypot" => f1.to_host().hypot(f2.to_host()).to_soft(),
                     "atan2" => f1.to_host().atan2(f2.to_host()).to_soft(),
@@ -848,7 +857,7 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let x = this.read_scalar(x)?.to_f32()?;
                 let signp = this.deref_pointer(signp)?;
 
-                // FIXME: Using host floats.
+                // Using host floats (but it's fine, these operations do not have guaranteed precision).
                 let (res, sign) = x.to_host().ln_gamma();
                 this.write_int(sign, &signp)?;
                 let res = this.adjust_nan(res.to_soft(), &[x]);
@@ -859,7 +868,7 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let x = this.read_scalar(x)?.to_f64()?;
                 let signp = this.deref_pointer(signp)?;
 
-                // FIXME: Using host floats.
+                // Using host floats (but it's fine, these operations do not have guaranteed precision).
                 let (res, sign) = x.to_host().ln_gamma();
                 this.write_int(sign, &signp)?;
                 let res = this.adjust_nan(res.to_soft(), &[x]);
@@ -893,6 +902,38 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     throw_unsup_format!("unsupported `llvm.prefetch` type argument: {}", ty);
                 }
             }
+            // Used to implement the x86 `_mm{,256,512}_popcnt_epi{8,16,32,64}` and wasm
+            // `{i,u}8x16_popcnt` functions.
+            name if name.starts_with("llvm.ctpop.v") => {
+                let [op] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+
+                let (op, op_len) = this.operand_to_simd(op)?;
+                let (dest, dest_len) = this.mplace_to_simd(dest)?;
+
+                assert_eq!(dest_len, op_len);
+
+                for i in 0..dest_len {
+                    let op = this.read_immediate(&this.project_index(&op, i)?)?;
+                    // Use `to_uint` to get a zero-extended `u128`. Those
+                    // extra zeros will not affect `count_ones`.
+                    let res = op.to_scalar().to_uint(op.layout.size)?.count_ones();
+
+                    this.write_scalar(
+                        Scalar::from_uint(res, op.layout.size),
+                        &this.project_index(&dest, i)?,
+                    )?;
+                }
+            }
+
+            // Target-specific shims
+            name if name.starts_with("llvm.x86.")
+                && (this.tcx.sess.target.arch == "x86"
+                    || this.tcx.sess.target.arch == "x86_64") =>
+            {
+                return shims::x86::EvalContextExt::emulate_x86_intrinsic(
+                    this, link_name, abi, args, dest,
+                );
+            }
             // FIXME: Move these to an `arm` submodule.
             "llvm.aarch64.isb" if this.tcx.sess.target.arch == "aarch64" => {
                 let [arg] = this.check_shim(abi, Abi::Unadjusted, link_name, args)?;
@@ -921,38 +962,6 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                         throw_unsup_format!("unsupported llvm.arm.hint argument {}", arg);
                     }
                 }
-            }
-
-            // Used to implement the x86 `_mm{,256,512}_popcnt_epi{8,16,32,64}` and wasm
-            // `{i,u}8x16_popcnt` functions.
-            name if name.starts_with("llvm.ctpop.v") => {
-                let [op] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-
-                let (op, op_len) = this.operand_to_simd(op)?;
-                let (dest, dest_len) = this.mplace_to_simd(dest)?;
-
-                assert_eq!(dest_len, op_len);
-
-                for i in 0..dest_len {
-                    let op = this.read_immediate(&this.project_index(&op, i)?)?;
-                    // Use `to_uint` to get a zero-extended `u128`. Those
-                    // extra zeros will not affect `count_ones`.
-                    let res = op.to_scalar().to_uint(op.layout.size)?.count_ones();
-
-                    this.write_scalar(
-                        Scalar::from_uint(res, op.layout.size),
-                        &this.project_index(&dest, i)?,
-                    )?;
-                }
-            }
-
-            name if name.starts_with("llvm.x86.")
-                && (this.tcx.sess.target.arch == "x86"
-                    || this.tcx.sess.target.arch == "x86_64") =>
-            {
-                return shims::x86::EvalContextExt::emulate_x86_intrinsic(
-                    this, link_name, abi, args, dest,
-                );
             }
 
             // Platform-specific shims

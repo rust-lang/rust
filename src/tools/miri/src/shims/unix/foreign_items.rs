@@ -15,7 +15,7 @@ use shims::unix::freebsd::foreign_items as freebsd;
 use shims::unix::linux::foreign_items as linux;
 use shims::unix::macos::foreign_items as macos;
 
-fn is_dyn_sym(name: &str, target_os: &str) -> bool {
+pub fn is_dyn_sym(name: &str, target_os: &str) -> bool {
     match name {
         // Used for tests.
         "isatty" => true,
