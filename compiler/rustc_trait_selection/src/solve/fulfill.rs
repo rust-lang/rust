@@ -11,6 +11,7 @@ use rustc_infer::traits::{
 };
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{self, TyCtxt};
+use rustc_span::symbol::sym;
 
 use super::eval_ctxt::GenerateProofTree;
 use super::inspect::{ProofTreeInferCtxtExt, ProofTreeVisitor};
@@ -137,7 +138,7 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentCtxt<'tcx> {
             .collect();
 
         errors.extend(self.obligations.overflowed.drain(..).map(|obligation| FulfillmentError {
-            obligation: find_best_leaf_obligation(infcx, &obligation),
+            obligation: find_best_leaf_obligation(infcx, &obligation, true),
             code: FulfillmentErrorCode::Ambiguity { overflow: Some(true) },
             root_obligation: obligation,
         }));
@@ -198,7 +199,7 @@ fn fulfillment_error_for_no_solution<'tcx>(
     infcx: &InferCtxt<'tcx>,
     root_obligation: PredicateObligation<'tcx>,
 ) -> FulfillmentError<'tcx> {
-    let obligation = find_best_leaf_obligation(infcx, &root_obligation);
+    let obligation = find_best_leaf_obligation(infcx, &root_obligation, false);
 
     let code = match obligation.predicate.kind().skip_binder() {
         ty::PredicateKind::Clause(ty::ClauseKind::Projection(_)) => {
@@ -266,7 +267,7 @@ fn fulfillment_error_for_stalled<'tcx>(
     });
 
     FulfillmentError {
-        obligation: find_best_leaf_obligation(infcx, &obligation),
+        obligation: find_best_leaf_obligation(infcx, &obligation, true),
         code,
         root_obligation: obligation,
     }
@@ -275,12 +276,13 @@ fn fulfillment_error_for_stalled<'tcx>(
 fn find_best_leaf_obligation<'tcx>(
     infcx: &InferCtxt<'tcx>,
     obligation: &PredicateObligation<'tcx>,
+    consider_ambiguities: bool,
 ) -> PredicateObligation<'tcx> {
     let obligation = infcx.resolve_vars_if_possible(obligation.clone());
     infcx
         .visit_proof_tree(
             obligation.clone().into(),
-            &mut BestObligation { obligation: obligation.clone() },
+            &mut BestObligation { obligation: obligation.clone(), consider_ambiguities },
         )
         .break_value()
         .unwrap_or(obligation)
@@ -288,6 +290,7 @@ fn find_best_leaf_obligation<'tcx>(
 
 struct BestObligation<'tcx> {
     obligation: PredicateObligation<'tcx>,
+    consider_ambiguities: bool,
 }
 
 impl<'tcx> BestObligation<'tcx> {
@@ -319,6 +322,14 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
         let [candidate] = candidates.as_slice() else {
             return ControlFlow::Break(self.obligation.clone());
         };
+
+        // Don't walk into impls that have `do_not_recommend`.
+        if let ProbeKind::TraitCandidate { source: CandidateSource::Impl(impl_def_id), result: _ } =
+            candidate.kind()
+            && goal.infcx().tcx.has_attr(impl_def_id, sym::do_not_recommend)
+        {
+            return ControlFlow::Break(self.obligation.clone());
+        }
 
         // FIXME: Could we extract a trait ref from a projection here too?
         // FIXME: Also, what about considering >1 layer up the stack? May be necessary
@@ -355,11 +366,11 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
                 }
             }
 
-            // Skip nested goals that hold.
-            //FIXME: We should change the max allowed certainty based on if we're
-            // visiting an ambiguity or error obligation.
-            if matches!(nested_goal.result(), Ok(Certainty::Yes)) {
-                continue;
+            // Skip nested goals that aren't the *reason* for our goal's failure.
+            match self.consider_ambiguities {
+                true if matches!(nested_goal.result(), Ok(Certainty::Maybe(_))) => {}
+                false if matches!(nested_goal.result(), Err(_)) => {}
+                _ => continue,
             }
 
             self.with_derived_obligation(obligation, |this| nested_goal.visit_with(this))?;

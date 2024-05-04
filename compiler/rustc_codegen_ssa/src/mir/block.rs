@@ -540,7 +540,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     //                \-------/
                     //
                     let virtual_drop = Instance {
-                        def: ty::InstanceDef::Virtual(drop_fn.def_id(), 0),
+                        def: ty::InstanceDef::Virtual(drop_fn.def_id(), 0), // idx 0: the drop function
                         args: drop_fn.args,
                     };
                     debug!("ty = {:?}", ty);
@@ -581,7 +581,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     //
                     // SO THEN WE CAN USE THE ABOVE CODE.
                     let virtual_drop = Instance {
-                        def: ty::InstanceDef::Virtual(drop_fn.def_id(), 0),
+                        def: ty::InstanceDef::Virtual(drop_fn.def_id(), 0), // idx 0: the drop function
                         args: drop_fn.args,
                     };
                     debug!("ty = {:?}", ty);
