@@ -1,4 +1,6 @@
-use crate::spec::{crt_objects, cvs, Cc, LinkOutputKind, LinkerFlavor, Lld, TargetOptions};
+use crate::spec::{
+    crt_objects, cvs, Cc, FramePointer, LinkOutputKind, LinkerFlavor, Lld, TargetOptions,
+};
 
 pub fn opts() -> TargetOptions {
     // This mirrors the linker options provided by clang. We presume lld for
@@ -38,6 +40,7 @@ pub fn opts() -> TargetOptions {
         ]),
         position_independent_executables: true,
         has_thread_local: true,
+        frame_pointer: FramePointer::NonLeaf,
         ..Default::default()
     }
 }
