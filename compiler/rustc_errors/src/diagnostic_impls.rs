@@ -13,7 +13,7 @@ use rustc_span::symbol::{Ident, MacroRulesNormalizedIdent, Symbol};
 use rustc_span::Span;
 use rustc_target::abi::TargetDataLayoutErrors;
 use rustc_target::spec::{PanicStrategy, SplitDebuginfo, StackProtector, TargetTriple};
-use rustc_type_ir as type_ir;
+use rustc_type_ir::{ClosureKind, FloatTy};
 use std::backtrace::Backtrace;
 use std::borrow::Cow;
 use std::fmt;
@@ -196,7 +196,7 @@ impl IntoDiagArg for ast::token::TokenKind {
     }
 }
 
-impl IntoDiagArg for type_ir::FloatTy {
+impl IntoDiagArg for FloatTy {
     fn into_diag_arg(self) -> DiagArgValue {
         DiagArgValue::Str(Cow::Borrowed(self.name_str()))
     }
@@ -252,7 +252,7 @@ impl IntoDiagArg for Level {
     }
 }
 
-impl IntoDiagArg for type_ir::ClosureKind {
+impl IntoDiagArg for ClosureKind {
     fn into_diag_arg(self) -> DiagArgValue {
         DiagArgValue::Str(self.as_str().into())
     }
