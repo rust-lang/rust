@@ -56,7 +56,7 @@ Rust does not yet ship pre-compiled artifacts for these targets.
 To compile for these targets, you will either need to build Rust with the targets enabled
 (see “Building the targets” above), or build your own copy of `core` by using `build-std` or similar.
 
-Building Rust programs can be done by following the tutorial in our starter application [hermit-rs-template].
+As all Hermit programs are unikernels, building a Rust program also requires including the operating system code. A guide for doing so is provided in our starter [hermit-rs-template].
 
 [hermit-rs-template]: https://github.com/hermit-os/hermit-rs-template
 
