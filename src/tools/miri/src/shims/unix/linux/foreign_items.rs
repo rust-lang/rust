@@ -12,7 +12,7 @@ use shims::unix::linux::mem::EvalContextExt as _;
 use shims::unix::linux::sync::futex;
 
 pub fn is_dyn_sym(name: &str) -> bool {
-    matches!(name, "getrandom")
+    matches!(name, "getrandom" | "statx")
 }
 
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
@@ -29,7 +29,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         // See `fn emulate_foreign_item_inner` in `shims/foreign_items.rs` for the general pattern.
 
         match link_name.as_str() {
-            // File related shims (but also see "syscall" below for statx)
+            // File related shims
             "readdir64" => {
                 let [dirp] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let result = this.linux_readdir64(dirp)?;
@@ -40,6 +40,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let result = this.sync_file_range(fd, offset, nbytes, flags)?;
                 this.write_scalar(result, dest)?;
+            }
+            "statx" => {
+                let [dirfd, pathname, flags, mask, statxbuf] =
+                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let result = this.linux_statx(dirfd, pathname, flags, mask, statxbuf)?;
+                this.write_scalar(Scalar::from_i32(result), dest)?;
             }
 
             // epoll, eventfd
@@ -113,7 +119,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 // have the right type.
 
                 let sys_getrandom = this.eval_libc("SYS_getrandom").to_target_usize(this)?;
-                let sys_statx = this.eval_libc("SYS_statx").to_target_usize(this)?;
                 let sys_futex = this.eval_libc("SYS_futex").to_target_usize(this)?;
 
                 if args.is_empty() {
@@ -133,20 +138,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                             );
                         }
                         getrandom(this, &args[1], &args[2], &args[3], dest)?;
-                    }
-                    // `statx` is used by `libstd` to retrieve metadata information on `linux`
-                    // instead of using `stat`,`lstat` or `fstat` as on `macos`.
-                    id if id == sys_statx => {
-                        // The first argument is the syscall id, so skip over it.
-                        if args.len() < 6 {
-                            throw_ub_format!(
-                                "incorrect number of arguments for `statx` syscall: got {}, expected at least 6",
-                                args.len()
-                            );
-                        }
-                        let result =
-                            this.linux_statx(&args[1], &args[2], &args[3], &args[4], &args[5])?;
-                        this.write_scalar(Scalar::from_target_isize(result.into(), this), dest)?;
                     }
                     // `futex` is used by some synchronization primitives.
                     id if id == sys_futex => {
