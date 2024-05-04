@@ -3,6 +3,7 @@
 // list of all the expected names
 //
 //@ check-pass
+//@ no-auto-check-cfg
 //@ revisions: some none
 //@ rustc-env:CARGO_CRATE_NAME=foo
 //@ [none]compile-flags: --check-cfg=cfg(feature,values())

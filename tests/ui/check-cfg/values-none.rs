@@ -1,5 +1,6 @@
 //@ check-pass
 //
+//@ no-auto-check-cfg
 //@ revisions: explicit implicit
 //@ [explicit]compile-flags: --check-cfg=cfg(foo,values(none()))
 //@ [implicit]compile-flags: --check-cfg=cfg(foo)
