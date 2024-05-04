@@ -778,6 +778,14 @@ pub enum PanicStrategy {
     Abort,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Hash, Encodable, Decodable, HashStable_Generic)]
+pub enum OnBrokenPipe {
+    Default,
+    Kill,
+    Error,
+    Inherit,
+}
+
 impl PanicStrategy {
     pub fn desc(&self) -> &str {
         match *self {

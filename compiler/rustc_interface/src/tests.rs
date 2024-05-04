@@ -20,7 +20,7 @@ use rustc_span::source_map::{RealFileLoader, SourceMapInputs};
 use rustc_span::symbol::sym;
 use rustc_span::{FileName, SourceFileHashAlgorithm};
 use rustc_target::spec::{
-    CodeModel, LinkerFlavorCli, MergeFunctions, PanicStrategy, RelocModel, WasmCAbi,
+    CodeModel, LinkerFlavorCli, MergeFunctions, OnBrokenPipe, PanicStrategy, RelocModel, WasmCAbi,
 };
 use rustc_target::spec::{RelroLevel, SanitizerSet, SplitDebuginfo, StackProtector, TlsModel};
 use std::collections::{BTreeMap, BTreeSet};
@@ -809,6 +809,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(no_profiler_runtime, true);
     tracked!(no_trait_vptr, true);
     tracked!(no_unique_section_names, true);
+    tracked!(on_broken_pipe, OnBrokenPipe::Kill);
     tracked!(oom, OomStrategy::Panic);
     tracked!(osx_rpath_install_name, true);
     tracked!(packed_bundled_libs, true);

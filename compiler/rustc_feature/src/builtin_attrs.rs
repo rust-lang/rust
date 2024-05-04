@@ -396,10 +396,6 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
 
     // Entry point:
-    gated!(
-        unix_sigpipe, Normal, template!(NameValueStr: "inherit|sig_ign|sig_dfl"), ErrorFollowing,
-        EncodeCrossCrate::Yes, experimental!(unix_sigpipe)
-    ),
     ungated!(start, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::No),
     ungated!(no_start, CrateLevel, template!(Word), WarnFollowing, EncodeCrossCrate::No),
     ungated!(no_main, CrateLevel, template!(Word), WarnFollowing, EncodeCrossCrate::No),

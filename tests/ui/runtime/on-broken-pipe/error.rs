@@ -1,12 +1,10 @@
-//@ revisions: with_feature without_feature
 //@ run-pass
 //@ aux-build:sigpipe-utils.rs
-
-#![cfg_attr(with_feature, feature(unix_sigpipe))]
+//@ compile-flags: -Zon-broken-pipe=error
 
 fn main() {
     extern crate sigpipe_utils;
 
-    // SIGPIPE shall be ignored since #[unix_sigpipe = "..."] is not used
+    // `-Zon-broken-pipe=error` is active, so we expect SIGPIPE to be ignored.
     sigpipe_utils::assert_sigpipe_handler(sigpipe_utils::SignalHandler::Ignore);
 }
