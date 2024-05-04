@@ -1,6 +1,7 @@
 //@ revisions: nll_target
 
 // The following revisions are disabled due to missing support from two-phase beyond autorefs
+//@ unused-revision-names: nll_beyond
 //@[nll_beyond] compile-flags: -Z two-phase-beyond-autoref
 
 // This is an important corner case pointed out by Niko: one is
@@ -36,8 +37,7 @@ fn not_ok() {
     let z = &x;
     //[nll_target]~^ ERROR cannot borrow `x` as immutable because it is also borrowed as mutable
     *y += 1;
-    //[lxl_beyond]~^   ERROR cannot borrow `x` as mutable because it is also borrowed as immutable
-    //[nll_beyond]~^^  ERROR cannot borrow `x` as mutable because it is also borrowed as immutable
+    //[nll_beyond]~^   ERROR cannot borrow `x` as mutable because it is also borrowed as immutable
     read(z);
 }
 
@@ -48,8 +48,6 @@ fn should_be_ok_with_nll() {
     //[nll_target]~^ ERROR cannot borrow `x` as immutable because it is also borrowed as mutable
     read(z);
     *y += 1;
-    //[lxl_beyond]~^ ERROR cannot borrow `x` as mutable because it is also borrowed as immutable
-    // (okay with (generalized) nll today)
 }
 
 fn should_also_eventually_be_ok_with_nll() {
@@ -58,8 +56,6 @@ fn should_also_eventually_be_ok_with_nll() {
     let _z = &x;
     //[nll_target]~^ ERROR cannot borrow `x` as immutable because it is also borrowed as mutable
     *y += 1;
-    //[lxl_beyond]~^ ERROR cannot borrow `x` as mutable because it is also borrowed as immutable
-    // (okay with (generalized) nll today)
 }
 
 fn main() { }

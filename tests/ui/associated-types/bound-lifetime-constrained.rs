@@ -1,4 +1,4 @@
-//@ revisions: func object clause
+//@ revisions: func object clause ok
 
 #![allow(dead_code)]
 #![feature(rustc_attrs)]
