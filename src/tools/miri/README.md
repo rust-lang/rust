@@ -224,8 +224,11 @@ degree documented below):
 - `s390x-unknown-linux-gnu` is supported as our "big-endian target of choice".
 - For every other target with OS `linux`, `macos`, or `windows`, Miri should generally work, but we
   make no promises and we don't run tests for such targets.
-- For targets on other operating systems, even basic operations such as printing to the standard
-  output might not work, and Miri might fail before even reaching the `main` function.
+- We have unofficial support (not maintained by the Miri team itself) for some further operating systems.
+  - `freebsd`: **maintainer wanted**. Supports `std::env` and parts of `std::{thread, fs}`, but not `std::sync`.
+  - `android`: **maintainer wanted**. Support very incomplete, but a basic "hello world" works.
+  - `wasm`: **maintainer wanted**. Support very incomplete, not even standard output works, but an empty `main` function works.
+- For targets on other operating systems, Miri might fail before even reaching the `main` function.
 
 However, even for targets that we do support, the degree of support for accessing platform APIs
 (such as the file system) differs between targets: generally, Linux targets have the best support,
