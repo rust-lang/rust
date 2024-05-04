@@ -271,9 +271,9 @@ fn build_isa(sess: &Session, backend_config: &BackendConfig) -> Arc<dyn TargetIs
     flags_builder.set("enable_verifier", enable_verifier).unwrap();
     flags_builder.set("regalloc_checker", enable_verifier).unwrap();
 
-    let preserve_frame_pointer = sess.target.options.frame_pointer
-        != rustc_target::spec::FramePointer::MayOmit
-        || matches!(sess.opts.cg.force_frame_pointers, Some(true));
+    let mut frame_ptr = sess.target.options.frame_pointer.clone();
+    frame_ptr.ratchet(sess.opts.cg.force_frame_pointers);
+    let preserve_frame_pointer = frame_ptr != rustc_target::spec::FramePointer::MayOmit;
     flags_builder
         .set("preserve_frame_pointers", if preserve_frame_pointer { "true" } else { "false" })
         .unwrap();
