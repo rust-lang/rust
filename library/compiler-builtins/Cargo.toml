@@ -28,8 +28,8 @@ links = 'compiler-rt'
 test = false
 
 [dependencies]
-# For more information on this dependency see rust-lang/rust's
-# `src/tools/rustc-std-workspace` folder
+# For more information on this dependency see
+# https://github.com/rust-lang/rust/tree/master/library/rustc-std-workspace-core
 core = { version = "1.0.0", optional = true, package = 'rustc-std-workspace-core' }
 
 [build-dependencies]
