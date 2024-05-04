@@ -134,7 +134,7 @@ impl Parker {
     // This implementation doesn't require `unsafe`, but other implementations
     // may assume this is only called by the thread that owns the Parker.
     //
-    // For memory ordering, see std/src/sys_common/thread_parking/futex.rs
+    // For memory ordering, see futex.rs
     pub unsafe fn park(self: Pin<&Self>) {
         // If we were previously notified then we consume this notification and
         // return quickly.

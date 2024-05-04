@@ -32,9 +32,6 @@ pub mod time;
 #[path = "../unsupported/thread.rs"]
 pub mod thread;
 
-#[path = "../unsupported/thread_parking.rs"]
-pub mod thread_parking;
-
 mod abi;
 
 use crate::io as std_io;

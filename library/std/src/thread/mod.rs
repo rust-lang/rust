@@ -174,8 +174,8 @@ use crate::ptr::addr_of_mut;
 use crate::str;
 use crate::sync::atomic::{AtomicUsize, Ordering};
 use crate::sync::Arc;
+use crate::sys::sync::Parker;
 use crate::sys::thread as imp;
-use crate::sys_common::thread_parking::Parker;
 use crate::sys_common::{AsInner, IntoInner};
 use crate::time::{Duration, Instant};
 
