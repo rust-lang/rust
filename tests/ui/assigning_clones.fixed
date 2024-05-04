@@ -86,6 +86,12 @@ fn assign_to_uninit_mut_var(b: HasCloneFrom) {
     a = b.clone();
 }
 
+fn late_init_let_tuple() {
+    let (p, q): (String, String);
+    p = "ghi".to_string();
+    q = p.clone();
+}
+
 #[derive(Clone)]
 pub struct HasDeriveClone;
 
