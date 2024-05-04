@@ -12,7 +12,6 @@ use crate::shims::alloc::EvalContextExt as _;
 use crate::shims::os_str::bytes_to_os_str;
 use crate::shims::windows::*;
 use crate::*;
-use shims::foreign_items::EmulateForeignItemResult;
 use shims::windows::handle::{Handle, PseudoHandle};
 
 fn is_dyn_sym(name: &str) -> bool {
@@ -86,7 +85,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         abi: Abi,
         args: &[OpTy<'tcx, Provenance>],
         dest: &MPlaceTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, EmulateForeignItemResult> {
+    ) -> InterpResult<'tcx, EmulateItemResult> {
         let this = self.eval_context_mut();
 
         // See `fn emulate_foreign_item_inner` in `shims/foreign_items.rs` for the general pattern.
@@ -721,9 +720,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 this.write_null(dest)?;
             }
 
-            _ => return Ok(EmulateForeignItemResult::NotSupported),
+            _ => return Ok(EmulateItemResult::NotSupported),
         }
 
-        Ok(EmulateForeignItemResult::NeedsJumping)
+        Ok(EmulateItemResult::NeedsJumping)
     }
 }

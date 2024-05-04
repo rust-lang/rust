@@ -49,12 +49,6 @@ passes_attr_crate_level =
 passes_attr_only_in_functions =
     `{$attr}` attribute can only be used on functions
 
-passes_attr_only_on_main =
-    `{$attr}` attribute can only be used on `fn main()`
-
-passes_attr_only_on_root_main =
-    `{$attr}` attribute can only be used on root `fn main()`
-
 passes_both_ffi_const_and_pure =
     `#[ffi_const]` function cannot be `#[ffi_pure]`
 

@@ -467,19 +467,6 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         let intrinsic_name = ecx.tcx.item_name(instance.def_id());
 
         // CTFE-specific intrinsics.
-        let Some(ret) = target else {
-            // Handle diverging intrinsics. We can't handle any of them (that are not already
-            // handled above), but check if there is a fallback body.
-            if ecx.tcx.intrinsic(instance.def_id()).unwrap().must_be_overridden {
-                throw_unsup_format!(
-                    "intrinsic `{intrinsic_name}` is not supported at compile-time"
-                );
-            }
-            return Ok(Some(ty::Instance {
-                def: ty::InstanceDef::Item(instance.def_id()),
-                args: instance.args,
-            }));
-        };
         match intrinsic_name {
             sym::ptr_guaranteed_cmp => {
                 let a = ecx.read_scalar(&args[0])?;
@@ -559,7 +546,8 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
             }
         }
 
-        ecx.go_to_block(ret);
+        // Intrinsic is done, jump to next block.
+        ecx.return_to_block(target)?;
         Ok(None)
     }
 

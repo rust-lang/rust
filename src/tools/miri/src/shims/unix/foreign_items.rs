@@ -9,7 +9,6 @@ use rustc_target::spec::abi::Abi;
 use crate::shims::alloc::EvalContextExt as _;
 use crate::shims::unix::*;
 use crate::*;
-use shims::foreign_items::EmulateForeignItemResult;
 
 use shims::unix::freebsd::foreign_items as freebsd;
 use shims::unix::linux::foreign_items as linux;
@@ -43,7 +42,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         abi: Abi,
         args: &[OpTy<'tcx, Provenance>],
         dest: &MPlaceTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, EmulateForeignItemResult> {
+    ) -> InterpResult<'tcx, EmulateItemResult> {
         let this = self.eval_context_mut();
 
         // See `fn emulate_foreign_item_inner` in `shims/foreign_items.rs` for the general pattern.
@@ -750,11 +749,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     "freebsd" => freebsd::EvalContextExt::emulate_foreign_item_inner(this, link_name, abi, args, dest),
                     "linux" => linux::EvalContextExt::emulate_foreign_item_inner(this, link_name, abi, args, dest),
                     "macos" => macos::EvalContextExt::emulate_foreign_item_inner(this, link_name, abi, args, dest),
-                    _ => Ok(EmulateForeignItemResult::NotSupported),
+                    _ => Ok(EmulateItemResult::NotSupported),
                 };
             }
         };
 
-        Ok(EmulateForeignItemResult::NeedsJumping)
+        Ok(EmulateItemResult::NeedsJumping)
     }
 }

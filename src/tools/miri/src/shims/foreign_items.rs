@@ -28,16 +28,6 @@ impl DynSym {
     }
 }
 
-/// Returned by `emulate_foreign_item_inner`.
-pub enum EmulateForeignItemResult {
-    /// The caller is expected to jump to the return block.
-    NeedsJumping,
-    /// Jumping has already been taken care of.
-    AlreadyJumped,
-    /// The item is not supported.
-    NotSupported,
-}
-
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     /// Emulates calling a foreign item, failing if the item is not supported.
@@ -58,84 +48,47 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let this = self.eval_context_mut();
         let tcx = this.tcx.tcx;
 
-        // First: functions that diverge.
-        let ret = match ret {
-            None =>
-                match link_name.as_str() {
-                    "miri_start_unwind" => {
-                        // `check_shim` happens inside `handle_miri_start_unwind`.
-                        this.handle_miri_start_unwind(abi, link_name, args, unwind)?;
-                        return Ok(None);
-                    }
-                    // This matches calls to the foreign item `panic_impl`.
-                    // The implementation is provided by the function with the `#[panic_handler]` attribute.
-                    "panic_impl" => {
-                        // We don't use `check_shim` here because we are just forwarding to the lang
-                        // item. Argument count checking will be performed when the returned `Body` is
-                        // called.
-                        this.check_abi_and_shim_symbol_clash(abi, Abi::Rust, link_name)?;
-                        let panic_impl_id = tcx.lang_items().panic_impl().unwrap();
-                        let panic_impl_instance = ty::Instance::mono(tcx, panic_impl_id);
-                        return Ok(Some((
-                            this.load_mir(panic_impl_instance.def, None)?,
-                            panic_impl_instance,
-                        )));
-                    }
-                    "__rust_alloc_error_handler" => {
-                        // Forward to the right symbol that implements this function.
-                        let Some(handler_kind) = this.tcx.alloc_error_handler_kind(()) else {
-                            // in real code, this symbol does not exist without an allocator
-                            throw_unsup_format!(
-                                "`__rust_alloc_error_handler` cannot be called when no alloc error handler is set"
-                            );
-                        };
-                        let name = alloc_error_handler_name(handler_kind);
-                        let handler = this
-                            .lookup_exported_symbol(Symbol::intern(name))?
-                            .expect("missing alloc error handler symbol");
-                        return Ok(Some(handler));
-                    }
-                    #[rustfmt::skip]
-                    | "exit"
-                    | "ExitProcess"
-                    => {
-                        let exp_abi = if link_name.as_str() == "exit" {
-                            Abi::C { unwind: false }
-                        } else {
-                            Abi::System { unwind: false }
-                        };
-                        let [code] = this.check_shim(abi, exp_abi, link_name, args)?;
-                        // it's really u32 for ExitProcess, but we have to put it into the `Exit` variant anyway
-                        let code = this.read_scalar(code)?.to_i32()?;
-                        throw_machine_stop!(TerminationInfo::Exit { code: code.into(), leak_check: false });
-                    }
-                    "abort" => {
-                        let [] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                        throw_machine_stop!(TerminationInfo::Abort(
-                            "the program aborted execution".to_owned()
-                        ))
-                    }
-                    _ => {
-                        if let Some(body) = this.lookup_exported_symbol(link_name)? {
-                            return Ok(Some(body));
-                        }
-                        this.handle_unsupported(format!(
-                            "can't call (diverging) foreign function: {link_name}"
-                        ))?;
-                        return Ok(None);
-                    }
-                },
-            Some(p) => p,
-        };
-
-        // Second: functions that return immediately.
-        match this.emulate_foreign_item_inner(link_name, abi, args, dest)? {
-            EmulateForeignItemResult::NeedsJumping => {
-                trace!("{:?}", this.dump_place(&dest.clone().into()));
-                this.go_to_block(ret);
+        // Some shims forward to other MIR bodies.
+        match link_name.as_str() {
+            // This matches calls to the foreign item `panic_impl`.
+            // The implementation is provided by the function with the `#[panic_handler]` attribute.
+            "panic_impl" => {
+                // We don't use `check_shim` here because we are just forwarding to the lang
+                // item. Argument count checking will be performed when the returned `Body` is
+                // called.
+                this.check_abi_and_shim_symbol_clash(abi, Abi::Rust, link_name)?;
+                let panic_impl_id = tcx.lang_items().panic_impl().unwrap();
+                let panic_impl_instance = ty::Instance::mono(tcx, panic_impl_id);
+                return Ok(Some((
+                    this.load_mir(panic_impl_instance.def, None)?,
+                    panic_impl_instance,
+                )));
             }
-            EmulateForeignItemResult::AlreadyJumped => (),
-            EmulateForeignItemResult::NotSupported => {
+            "__rust_alloc_error_handler" => {
+                // Forward to the right symbol that implements this function.
+                let Some(handler_kind) = this.tcx.alloc_error_handler_kind(()) else {
+                    // in real code, this symbol does not exist without an allocator
+                    throw_unsup_format!(
+                        "`__rust_alloc_error_handler` cannot be called when no alloc error handler is set"
+                    );
+                };
+                let name = alloc_error_handler_name(handler_kind);
+                let handler = this
+                    .lookup_exported_symbol(Symbol::intern(name))?
+                    .expect("missing alloc error handler symbol");
+                return Ok(Some(handler));
+            }
+            _ => {}
+        }
+
+        // The rest either implements the logic, or falls back to `lookup_exported_symbol`.
+        match this.emulate_foreign_item_inner(link_name, abi, args, dest, unwind)? {
+            EmulateItemResult::NeedsJumping => {
+                trace!("{:?}", this.dump_place(&dest.clone().into()));
+                this.return_to_block(ret)?;
+            }
+            EmulateItemResult::AlreadyJumped => (),
+            EmulateItemResult::NotSupported => {
                 if let Some(body) = this.lookup_exported_symbol(link_name)? {
                     return Ok(Some(body));
                 }
@@ -243,7 +196,8 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         abi: Abi,
         args: &[OpTy<'tcx, Provenance>],
         dest: &MPlaceTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, EmulateForeignItemResult> {
+        unwind: mir::UnwindAction,
+    ) -> InterpResult<'tcx, EmulateItemResult> {
         let this = self.eval_context_mut();
 
         // First deal with any external C functions in linked .so file.
@@ -254,7 +208,7 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             // by the specified `.so` file; we should continue and check if it corresponds to
             // a provided shim.
             if this.call_external_c_fct(link_name, dest, args)? {
-                return Ok(EmulateForeignItemResult::NeedsJumping);
+                return Ok(EmulateItemResult::NeedsJumping);
             }
         }
 
@@ -298,6 +252,11 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         // shim, add it to the corresponding submodule.
         match link_name.as_str() {
             // Miri-specific extern functions
+            "miri_start_unwind" => {
+                // `check_shim` happens inside `handle_miri_start_unwind`.
+                this.handle_miri_start_unwind(abi, link_name, args, unwind)?;
+                return Ok(EmulateItemResult::AlreadyJumped);
+            }
             "miri_run_provenance_gc" => {
                 let [] = this.check_shim(abi, Abi::Rust, link_name, args)?;
                 this.run_provenance_gc();
@@ -362,29 +321,24 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 // Return value: 0 on success, otherwise the size it would have needed.
                 this.write_int(if success { 0 } else { needed_size }, dest)?;
             }
-
             // Obtains the size of a Miri backtrace. See the README for details.
             "miri_backtrace_size" => {
                 this.handle_miri_backtrace_size(abi, link_name, args, dest)?;
             }
-
             // Obtains a Miri backtrace. See the README for details.
             "miri_get_backtrace" => {
                 // `check_shim` happens inside `handle_miri_get_backtrace`.
                 this.handle_miri_get_backtrace(abi, link_name, args, dest)?;
             }
-
             // Resolves a Miri backtrace frame. See the README for details.
             "miri_resolve_frame" => {
                 // `check_shim` happens inside `handle_miri_resolve_frame`.
                 this.handle_miri_resolve_frame(abi, link_name, args, dest)?;
             }
-
             // Writes the function and file names of a Miri backtrace frame into a user provided buffer. See the README for details.
             "miri_resolve_frame_names" => {
                 this.handle_miri_resolve_frame_names(abi, link_name, args)?;
             }
-
             // Writes some bytes to the interpreter's stdout/stderr. See the
             // README for details.
             "miri_write_to_stdout" | "miri_write_to_stderr" => {
@@ -398,7 +352,6 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     _ => unreachable!(),
                 };
             }
-
             // Promises that a pointer has a given symbolic alignment.
             "miri_promise_symbolic_alignment" => {
                 use rustc_target::abi::AlignFromBytesError;
@@ -440,6 +393,25 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                         this.machine.symbolic_alignment.get_mut().insert(alloc_id, (offset, align));
                     }
                 }
+            }
+
+            // Aborting the process.
+            "exit" | "ExitProcess" => {
+                let exp_abi = if link_name.as_str() == "exit" {
+                    Abi::C { unwind: false }
+                } else {
+                    Abi::System { unwind: false }
+                };
+                let [code] = this.check_shim(abi, exp_abi, link_name, args)?;
+                // it's really u32 for ExitProcess, but we have to put it into the `Exit` variant anyway
+                let code = this.read_scalar(code)?.to_i32()?;
+                throw_machine_stop!(TerminationInfo::Exit { code: code.into(), leak_check: false });
+            }
+            "abort" => {
+                let [] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                throw_machine_stop!(TerminationInfo::Abort(
+                    "the program aborted execution".to_owned()
+                ))
             }
 
             // Standard C allocation
@@ -504,7 +476,7 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     "__rust_alloc" => return this.emulate_allocator(default),
                     "miri_alloc" => {
                         default(this)?;
-                        return Ok(EmulateForeignItemResult::NeedsJumping);
+                        return Ok(EmulateItemResult::NeedsJumping);
                     }
                     _ => unreachable!(),
                 }
@@ -564,7 +536,7 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     }
                     "miri_dealloc" => {
                         default(this)?;
-                        return Ok(EmulateForeignItemResult::NeedsJumping);
+                        return Ok(EmulateItemResult::NeedsJumping);
                     }
                     _ => unreachable!(),
                 }
@@ -966,11 +938,11 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                         shims::windows::foreign_items::EvalContextExt::emulate_foreign_item_inner(
                             this, link_name, abi, args, dest,
                         ),
-                    _ => Ok(EmulateForeignItemResult::NotSupported),
+                    _ => Ok(EmulateItemResult::NotSupported),
                 },
         };
         // We only fall through to here if we did *not* hit the `_` arm above,
         // i.e., if we actually emulated the function with one of the shims.
-        Ok(EmulateForeignItemResult::NeedsJumping)
+        Ok(EmulateItemResult::NeedsJumping)
     }
 }
