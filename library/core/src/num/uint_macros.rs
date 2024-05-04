@@ -77,7 +77,7 @@ macro_rules! uint_impl {
                       without modifying the original"]
         #[inline(always)]
         pub const fn count_ones(self) -> u32 {
-            return intrinsics::ctpop(self as $ActualT);
+            return intrinsics::ctpop(self);
         }
 
         /// Returns the number of zeros in the binary representation of `self`.
