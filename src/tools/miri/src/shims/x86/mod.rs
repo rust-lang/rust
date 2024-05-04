@@ -10,7 +10,6 @@ use rustc_target::spec::abi::Abi;
 
 use crate::*;
 use helpers::bool_to_simd_element;
-use shims::foreign_items::EmulateForeignItemResult;
 
 mod aesni;
 mod avx;
@@ -31,7 +30,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
         abi: Abi,
         args: &[OpTy<'tcx, Provenance>],
         dest: &MPlaceTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, EmulateForeignItemResult> {
+    ) -> InterpResult<'tcx, EmulateItemResult> {
         let this = self.eval_context_mut();
         // Prefix should have already been checked.
         let unprefixed_name = link_name.as_str().strip_prefix("llvm.x86.").unwrap();
@@ -43,7 +42,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
             // https://www.intel.com/content/www/us/en/docs/cpp-compiler/developer-guide-reference/2021-8/addcarry-u32-addcarry-u64.html
             "addcarry.32" | "addcarry.64" => {
                 if unprefixed_name == "addcarry.64" && this.tcx.sess.target.arch != "x86_64" {
-                    return Ok(EmulateForeignItemResult::NotSupported);
+                    return Ok(EmulateItemResult::NotSupported);
                 }
 
                 let [c_in, a, b] = this.check_shim(abi, Abi::Unadjusted, link_name, args)?;
@@ -69,7 +68,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
             // https://www.intel.com/content/www/us/en/docs/cpp-compiler/developer-guide-reference/2021-8/subborrow-u32-subborrow-u64.html
             "subborrow.32" | "subborrow.64" => {
                 if unprefixed_name == "subborrow.64" && this.tcx.sess.target.arch != "x86_64" {
-                    return Ok(EmulateForeignItemResult::NotSupported);
+                    return Ok(EmulateItemResult::NotSupported);
                 }
 
                 let [b_in, a, b] = this.check_shim(abi, Abi::Unadjusted, link_name, args)?;
@@ -143,9 +142,9 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
                 );
             }
 
-            _ => return Ok(EmulateForeignItemResult::NotSupported),
+            _ => return Ok(EmulateItemResult::NotSupported),
         }
-        Ok(EmulateForeignItemResult::NeedsJumping)
+        Ok(EmulateItemResult::NeedsJumping)
     }
 }
 

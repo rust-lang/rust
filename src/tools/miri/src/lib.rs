@@ -95,6 +95,7 @@ pub use rustc_const_eval::interpret::*;
 #[doc(no_inline)]
 pub use rustc_const_eval::interpret::{self, AllocMap, PlaceTy, Provenance as _};
 
+pub use crate::shims::EmulateItemResult;
 pub use crate::shims::env::{EnvVars, EvalContextExt as _};
 pub use crate::shims::foreign_items::{DynSym, EvalContextExt as _};
 pub use crate::shims::intrinsics::EvalContextExt as _;

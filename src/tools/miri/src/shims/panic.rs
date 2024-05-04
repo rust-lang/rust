@@ -30,7 +30,7 @@ pub struct CatchUnwindData<'tcx> {
     /// The return place from the original call to `try`.
     dest: MPlaceTy<'tcx, Provenance>,
     /// The return block from the original call to `try`.
-    ret: mir::BasicBlock,
+    ret: Option<mir::BasicBlock>,
 }
 
 impl VisitProvenance for CatchUnwindData<'_> {
@@ -73,7 +73,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         &mut self,
         args: &[OpTy<'tcx, Provenance>],
         dest: &MPlaceTy<'tcx, Provenance>,
-        ret: mir::BasicBlock,
+        ret: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
@@ -103,7 +103,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             &[data.into()],
             None,
             // Directly return to caller.
-            StackPopCleanup::Goto { ret: Some(ret), unwind: mir::UnwindAction::Continue },
+            StackPopCleanup::Goto { ret, unwind: mir::UnwindAction::Continue },
         )?;
 
         // We ourselves will return `0`, eventually (will be overwritten if we catch a panic).
@@ -155,7 +155,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 None,
                 // Directly return to caller of `try`.
                 StackPopCleanup::Goto {
-                    ret: Some(catch_unwind.ret),
+                    ret: catch_unwind.ret,
                     unwind: mir::UnwindAction::Continue,
                 },
             )?;
