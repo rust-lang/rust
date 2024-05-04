@@ -12,8 +12,7 @@ use rustc_span::symbol::sym;
 use rustc_span::{Span, Symbol};
 
 use crate::errors::{
-    AttrOnlyInFunctions, AttrOnlyOnMain, AttrOnlyOnRootMain, ExternMain, MultipleRustcMain,
-    MultipleStartFunctions, NoMainErr, UnixSigpipeValues,
+    AttrOnlyInFunctions, ExternMain, MultipleRustcMain, MultipleStartFunctions, NoMainErr,
 };
 
 struct EntryContext<'tcx> {
@@ -67,11 +66,7 @@ fn find_item(id: ItemId, ctxt: &mut EntryContext<'_>) {
         ctxt.tcx.opt_item_name(id.owner_id.to_def_id()),
     );
     match entry_point_type {
-        EntryPointType::None => {
-            if let Some(span) = attr_span_by_symbol(ctxt, id, sym::unix_sigpipe) {
-                ctxt.tcx.dcx().emit_err(AttrOnlyOnMain { span, attr: sym::unix_sigpipe });
-            }
-        }
+        EntryPointType::None => (),
         _ if !matches!(ctxt.tcx.def_kind(id.owner_id), DefKind::Fn) => {
             for attr in [sym::start, sym::rustc_main] {
                 if let Some(span) = attr_span_by_symbol(ctxt, id, attr) {
@@ -81,9 +76,6 @@ fn find_item(id: ItemId, ctxt: &mut EntryContext<'_>) {
         }
         EntryPointType::MainNamed => (),
         EntryPointType::OtherMain => {
-            if let Some(span) = attr_span_by_symbol(ctxt, id, sym::unix_sigpipe) {
-                ctxt.tcx.dcx().emit_err(AttrOnlyOnRootMain { span, attr: sym::unix_sigpipe });
-            }
             ctxt.non_main_fns.push(ctxt.tcx.def_span(id.owner_id));
         }
         EntryPointType::RustcMainAttr => {
@@ -98,9 +90,6 @@ fn find_item(id: ItemId, ctxt: &mut EntryContext<'_>) {
             }
         }
         EntryPointType::Start => {
-            if let Some(span) = attr_span_by_symbol(ctxt, id, sym::unix_sigpipe) {
-                ctxt.tcx.dcx().emit_err(AttrOnlyOnMain { span, attr: sym::unix_sigpipe });
-            }
             if ctxt.start_fn.is_none() {
                 ctxt.start_fn = Some((id.owner_id.def_id, ctxt.tcx.def_span(id.owner_id)));
             } else {
@@ -120,7 +109,7 @@ fn configure_main(tcx: TyCtxt<'_>, visitor: &EntryContext<'_>) -> Option<(DefId,
         Some((def_id.to_def_id(), EntryFnType::Start))
     } else if let Some((local_def_id, _)) = visitor.attr_main_fn {
         let def_id = local_def_id.to_def_id();
-        Some((def_id, EntryFnType::Main { sigpipe: sigpipe(tcx, def_id) }))
+        Some((def_id, EntryFnType::Main { sigpipe: sigpipe(tcx) }))
     } else {
         if let Some(main_def) = tcx.resolutions(()).main_def
             && let Some(def_id) = main_def.opt_fn_def_id()
@@ -133,31 +122,19 @@ fn configure_main(tcx: TyCtxt<'_>, visitor: &EntryContext<'_>) -> Option<(DefId,
                 return None;
             }
 
-            return Some((def_id, EntryFnType::Main { sigpipe: sigpipe(tcx, def_id) }));
+            return Some((def_id, EntryFnType::Main { sigpipe: sigpipe(tcx) }));
         }
         no_main_err(tcx, visitor);
         None
     }
 }
 
-fn sigpipe(tcx: TyCtxt<'_>, def_id: DefId) -> u8 {
-    if let Some(attr) = tcx.get_attr(def_id, sym::unix_sigpipe) {
-        match (attr.value_str(), attr.meta_item_list()) {
-            (Some(sym::inherit), None) => sigpipe::INHERIT,
-            (Some(sym::sig_ign), None) => sigpipe::SIG_IGN,
-            (Some(sym::sig_dfl), None) => sigpipe::SIG_DFL,
-            (Some(_), None) => {
-                tcx.dcx().emit_err(UnixSigpipeValues { span: attr.span });
-                sigpipe::DEFAULT
-            }
-            _ => {
-                // Keep going so that `fn emit_malformed_attribute()` can print
-                // an excellent error message
-                sigpipe::DEFAULT
-            }
-        }
-    } else {
-        sigpipe::DEFAULT
+fn sigpipe(tcx: TyCtxt<'_>) -> u8 {
+    match tcx.sess.opts.unstable_opts.on_broken_pipe {
+        rustc_target::spec::OnBrokenPipe::Default => sigpipe::DEFAULT,
+        rustc_target::spec::OnBrokenPipe::Kill => sigpipe::SIG_DFL,
+        rustc_target::spec::OnBrokenPipe::Error => sigpipe::SIG_IGN,
+        rustc_target::spec::OnBrokenPipe::Inherit => sigpipe::INHERIT,
     }
 }
 

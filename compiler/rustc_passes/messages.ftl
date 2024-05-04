@@ -695,9 +695,6 @@ passes_transparent_incompatible =
 passes_undefined_naked_function_abi =
     Rust ABI is unsupported in naked functions
 
-passes_unix_sigpipe_values =
-    valid values for `#[unix_sigpipe = "..."]` are `inherit`, `sig_ign`, or `sig_dfl`
-
 passes_unknown_external_lang_item =
     unknown external lang item: `{$lang_item}`
 
