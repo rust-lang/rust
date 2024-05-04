@@ -163,7 +163,13 @@ enum MutblCap {
 
 impl MutblCap {
     fn cap_mutbl_to_not(self, span: Option<Span>) -> Self {
-        if self == MutblCap::Mut { MutblCap::Not(span) } else { self }
+        if let Some(s) = span
+            && self != MutblCap::Not(None)
+        {
+            MutblCap::Not(Some(s))
+        } else {
+            MutblCap::Not(None)
+        }
     }
 
     fn as_mutbl(self) -> Mutability {
@@ -744,9 +750,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.tcx.dcx(),
                 ident.span,
                 E0596,
-                "cannot bind with `ref mut` behind an `&` pattern"
+                "cannot borrow as mutable inside an `&` pattern"
             );
-            err.span_help(and_pat_span, "change this `&` pattern to an `&mut`");
+            err.span_suggestion(
+                and_pat_span,
+                "replace this `&` with `&mut`",
+                "&mut ",
+                Applicability::MachineApplicable,
+            );
             err.emit();
         }
 
@@ -2187,7 +2198,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // the bad interactions of the given hack detailed in (note_1).
                     debug!("check_pat_ref: expected={:?}", expected);
                     match *expected.kind() {
-                        ty::Ref(_, r_ty, r_mutbl) if r_mutbl == mutbl => (expected, r_ty, pat_info),
+                        ty::Ref(_, r_ty, r_mutbl) if r_mutbl == mutbl => {
+                            let pat_info = if r_mutbl == Mutability::Not
+                                && ((pat.span.at_least_rust_2024()
+                                    && self.tcx.features().ref_pat_eat_one_layer_2024)
+                                    || self.tcx.features().ref_pat_everywhere)
+                            {
+                                PatInfo {
+                                    max_ref_mutbl: pat_info.max_ref_mutbl.cap_mutbl_to_not(None),
+                                    ..pat_info
+                                }
+                            } else {
+                                pat_info
+                            };
+                            (expected, r_ty, pat_info)
+                        }
 
                         // `&` pattern eats `&mut` reference
                         ty::Ref(_, r_ty, Mutability::Mut)
@@ -2196,16 +2221,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     && self.tcx.features().ref_pat_eat_one_layer_2024)
                                     || self.tcx.features().ref_pat_everywhere) =>
                         {
-                            (
-                                expected,
-                                r_ty,
-                                PatInfo {
-                                    max_ref_mutbl: pat_info
-                                        .max_ref_mutbl
-                                        .cap_mutbl_to_not(Some(pat.span.until(inner.span))),
-                                    ..pat_info
-                                },
-                            )
+                            (expected, r_ty, pat_info)
                         }
 
                         _ if consumed_inherited_ref && self.tcx.features().ref_pat_everywhere => {

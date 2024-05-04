@@ -24,18 +24,24 @@ pub fn main() {
         //~^ ERROR: mismatched types
     }
     if let Some(&Some(ref mut x)) = &mut Some(Some(0)) {
-        //~^ ERROR: cannot bind with `ref mut` behind an `&` pattern
+        //~^ ERROR: cannot borrow as mutable inside an `&` pattern
     }
     if let &Some(Some(ref mut x)) = &mut Some(Some(0)) {
-        //~^ ERROR: cannot bind with `ref mut` behind an `&` pattern
+        //~^ ERROR: cannot borrow as mutable inside an `&` pattern
     }
     if let Some(&mut Some(x)) = &Some(Some(0)) {
         //~^ ERROR: mismatched types
     }
 
-    let &mut _= &&0;
+    let &mut _ = &&0;
     //~^ ERROR: mismatched types
 
     let &mut _ = &&&&&&&&&&&&&&&&&&&&&&&&&&&&0;
     //~^ ERROR: mismatched types
+
+    macro_rules! pat {
+        ($var:ident) => { ref mut $var };
+    }
+    let &pat!(x) = &mut 0;
+    //~^ ERROR: cannot borrow as mutable inside an `&` pattern
 }
