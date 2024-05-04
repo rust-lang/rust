@@ -33,6 +33,12 @@ pub(crate) struct RLinkRustcVersionMismatch<'a> {
 pub(crate) struct RlinkNotAFile;
 
 #[derive(Diagnostic)]
+#[diag(driver_impl_rlink_corrupt_file)]
+pub(crate) struct RlinkCorruptFile {
+    pub file: String,
+}
+
+#[derive(Diagnostic)]
 #[diag(driver_impl_ice)]
 pub(crate) struct Ice;
 

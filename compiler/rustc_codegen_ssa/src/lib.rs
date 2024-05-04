@@ -195,6 +195,7 @@ pub enum CodegenErrors {
     EmptyVersionNumber,
     EncodingVersionMismatch { version_array: String, rlink_version: u32 },
     RustcVersionMismatch { rustc_version: String },
+    CorruptFile,
 }
 
 pub fn provide(providers: &mut Providers) {
@@ -265,7 +266,9 @@ impl CodegenResults {
             });
         }
 
-        let mut decoder = MemDecoder::new(&data[4..], 0);
+        let Some(mut decoder) = MemDecoder::new(&data[4..], 0) else {
+            return Err(CodegenErrors::CorruptFile);
+        };
         let rustc_version = decoder.read_str();
         if rustc_version != sess.cfg_version {
             return Err(CodegenErrors::RustcVersionMismatch {

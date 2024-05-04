@@ -344,7 +344,9 @@ pub(crate) fn load_call_locations(
             Ok(bytes) => bytes,
             Err(e) => dcx.fatal(format!("failed to load examples: {e}")),
         };
-        let mut decoder = MemDecoder::new(&bytes, 0);
+        let Some(mut decoder) = MemDecoder::new(&bytes, 0) else {
+            dcx.fatal(format!("Corrupt metadata encountered in {path}"))
+        };
         let calls = AllCallLocations::decode(&mut decoder);
 
         for (function, fn_calls) in calls.into_iter() {
