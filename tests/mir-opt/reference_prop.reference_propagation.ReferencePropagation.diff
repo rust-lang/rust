@@ -247,7 +247,8 @@
           StorageLive(_21);
           _21 = &_20;
           StorageLive(_22);
-          _22 = (*_20);
+-         _22 = (*_20);
++         _22 = _19;
           StorageLive(_23);
           StorageLive(_24);
           _24 = _21;
@@ -394,7 +395,8 @@
           StorageLive(_62);
           _62 = &_61;
           StorageLive(_63);
-          _63 = (*_61);
+-         _63 = (*_61);
++         _63 = _60;
           StorageLive(_64);
           StorageLive(_65);
           _65 = ();

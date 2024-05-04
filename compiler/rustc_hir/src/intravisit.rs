@@ -338,7 +338,7 @@ pub trait Visitor<'v>: Sized {
     fn visit_pat_field(&mut self, f: &'v PatField<'v>) -> Self::Result {
         walk_pat_field(self, f)
     }
-    fn visit_array_length(&mut self, len: &'v ArrayLen) -> Self::Result {
+    fn visit_array_length(&mut self, len: &'v ArrayLen<'v>) -> Self::Result {
         walk_array_len(self, len)
     }
     fn visit_anon_const(&mut self, c: &'v AnonConst) -> Self::Result {
@@ -703,7 +703,7 @@ pub fn walk_pat_field<'v, V: Visitor<'v>>(visitor: &mut V, field: &'v PatField<'
     visitor.visit_pat(field.pat)
 }
 
-pub fn walk_array_len<'v, V: Visitor<'v>>(visitor: &mut V, len: &'v ArrayLen) -> V::Result {
+pub fn walk_array_len<'v, V: Visitor<'v>>(visitor: &mut V, len: &'v ArrayLen<'v>) -> V::Result {
     match len {
         // FIXME: Use `visit_infer` here.
         ArrayLen::Infer(InferArg { hir_id, span: _ }) => visitor.visit_id(*hir_id),

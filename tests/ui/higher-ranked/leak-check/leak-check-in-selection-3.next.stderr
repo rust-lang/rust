@@ -23,7 +23,20 @@ error[E0283]: type annotations needed
 LL |     impls_indirect_leak::<Box<_>>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type of the type parameter `T` declared on the function `impls_indirect_leak`
    |
-   = note: cannot satisfy `for<'a> Box<_>: IndirectLeak<'a>`
+note: multiple `impl`s satisfying `for<'a> Box<_>: Leak<'a>` found
+  --> $DIR/leak-check-in-selection-3.rs:9:1
+   |
+LL | impl Leak<'_> for Box<u32> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | impl Leak<'static> for Box<u16> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: required for `Box<_>` to implement `for<'a> IndirectLeak<'a>`
+  --> $DIR/leak-check-in-selection-3.rs:23:23
+   |
+LL | impl<'a, T: Leak<'a>> IndirectLeak<'a> for T {}
+   |             --------  ^^^^^^^^^^^^^^^^     ^
+   |             |
+   |             unsatisfied trait bound introduced here
 note: required by a bound in `impls_indirect_leak`
   --> $DIR/leak-check-in-selection-3.rs:25:27
    |

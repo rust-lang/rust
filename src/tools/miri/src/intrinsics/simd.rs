@@ -16,13 +16,14 @@ pub(crate) enum MinMax {
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     /// Calls the simd intrinsic `intrinsic`; the `simd_` prefix has already been removed.
+    /// Returns `Ok(true)` if the intrinsic was handled.
     fn emulate_simd_intrinsic(
         &mut self,
         intrinsic_name: &str,
         generic_args: ty::GenericArgsRef<'tcx>,
         args: &[OpTy<'tcx, Provenance>],
         dest: &MPlaceTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx> {
+    ) -> InterpResult<'tcx, bool> {
         let this = self.eval_context_mut();
         match intrinsic_name {
             #[rustfmt::skip]
@@ -743,9 +744,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 }
             }
 
-            name => throw_unsup_format!("unimplemented intrinsic: `simd_{name}`"),
+            _ => return Ok(false),
         }
-        Ok(())
+        Ok(true)
     }
 
     fn fminmax_op(

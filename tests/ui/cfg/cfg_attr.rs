@@ -1,6 +1,8 @@
 //@ run-pass
 //@ compile-flags:--cfg set1 --cfg set2
-#![allow(dead_code)]
+
+#![allow(dead_code, unexpected_cfgs)]
+
 use std::fmt::Debug;
 
 struct NotDebugable;

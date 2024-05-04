@@ -22,7 +22,8 @@ impl<'tcx> MirPass<'tcx> for NormalizeArrayLen {
 }
 
 fn normalize_array_len_calls<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-    let ssa = SsaLocals::new(body);
+    let param_env = tcx.param_env_reveal_all_normalized(body.source.def_id());
+    let ssa = SsaLocals::new(tcx, body, param_env);
 
     let slice_lengths = compute_slice_length(tcx, &ssa, body);
     debug!(?slice_lengths);

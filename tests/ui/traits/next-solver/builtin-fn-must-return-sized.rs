@@ -13,5 +13,5 @@ fn foo<F: Fn<T>, T: Tuple>(f: Option<F>, t: T) {
 
 fn main() {
     foo::<fn() -> str, _>(None, ());
-    //~^ expected a `Fn<_>` closure, found `fn() -> str`
+    //~^ the size for values of type `str` cannot be known at compilation time
 }

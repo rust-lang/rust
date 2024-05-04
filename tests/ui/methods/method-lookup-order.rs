@@ -18,6 +18,9 @@
 
 //@ revisions: b00001 b00010 b00011 b00100 b00101 b00110 b00111 b01000 b01001 b01100 b01101 b10000 b10001 b10010 b10011 b10101 b10111 b11000 b11001 b11101
 
+//@ compile-flags: --check-cfg=cfg(inherent_mut,bar_for_foo,mutbar_for_foo)
+//@ compile-flags: --check-cfg=cfg(valbar_for_et_foo,valbar_for_etmut_foo)
+
 //@[b00001]compile-flags:  --cfg inherent_mut
 //@[b00010]compile-flags:                     --cfg bar_for_foo
 //@[b00011]compile-flags:  --cfg inherent_mut --cfg bar_for_foo

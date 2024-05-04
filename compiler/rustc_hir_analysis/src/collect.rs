@@ -143,7 +143,7 @@ impl<'v> Visitor<'v> for HirPlaceholderCollector {
             _ => {}
         }
     }
-    fn visit_array_length(&mut self, length: &'v hir::ArrayLen) {
+    fn visit_array_length(&mut self, length: &'v hir::ArrayLen<'v>) {
         if let hir::ArrayLen::Infer(inf) = length {
             self.0.push(inf.span);
         }

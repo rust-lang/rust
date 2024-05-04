@@ -277,7 +277,7 @@ pub struct FunctionCoverageInfo {
     pub mappings: Vec<Mapping>,
     /// The depth of the deepest decision is used to know how many
     /// temp condbitmaps should be allocated for the function.
-    pub mcdc_max_decision_depth: u16,
+    pub mcdc_num_condition_bitmaps: usize,
 }
 
 /// Branch information recorded during THIR-to-MIR lowering, and stored in MIR.

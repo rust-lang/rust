@@ -39,7 +39,7 @@ fn impls_ar<T: AR>() {}
 
 fn main() {
     impls_a::<()>();
-    //~^ ERROR overflow evaluating the requirement `(): A`
+    //~^ ERROR overflow evaluating the requirement `(): B`
 
     impls_ar::<()>();
     //~^ ERROR overflow evaluating the requirement `(): AR`

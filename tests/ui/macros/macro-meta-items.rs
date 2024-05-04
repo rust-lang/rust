@@ -1,6 +1,7 @@
 //@ run-pass
+//@ compile-flags: --cfg foo --check-cfg=cfg(foo)
+
 #![allow(dead_code)]
-//@ compile-flags: --cfg foo
 
 macro_rules! compiles_fine {
     ($at:meta) => {
@@ -16,7 +17,7 @@ macro_rules! emit {
 }
 
 // item
-compiles_fine!(bar);
+compiles_fine!(FALSE);
 emit!(foo);
 
 fn foo() {
@@ -25,7 +26,7 @@ fn foo() {
 
 pub fn main() {
     // statement
-    compiles_fine!(baz);
-    emit!(baz);
+    compiles_fine!(FALSE);
+    emit!(FALSE);
     println!("{}", MISTYPED);
 }

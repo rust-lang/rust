@@ -1,5 +1,5 @@
 //@ run-pass
-//@ compile-flags: --cfg foo
+//@ compile-flags: --cfg foo --check-cfg=cfg(foo)
 
 
 #[cfg(foo)]

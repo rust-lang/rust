@@ -387,7 +387,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
             let main_ptr = ecx.fn_ptr(FnVal::Instance(entry_instance));
 
             // Always using DEFAULT is okay since we don't support signals in Miri anyway.
-            // (This means we are effectively ignoring `#[unix_sigpipe]`.)
+            // (This means we are effectively ignoring `-Zon-broken-pipe`.)
             let sigpipe = rustc_session::config::sigpipe::DEFAULT;
 
             ecx.call_function(

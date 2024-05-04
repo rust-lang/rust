@@ -5,6 +5,7 @@
 // values since the suggestion shows them.
 //
 //@ check-pass
+//@ no-auto-check-cfg
 //@ compile-flags: --check-cfg=cfg()
 //@ compile-flags: -Zcheck-cfg-all-expected
 

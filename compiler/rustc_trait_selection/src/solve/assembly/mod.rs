@@ -58,15 +58,15 @@ pub(super) trait GoalKind<'tcx>:
     /// goal by equating it with the assumption.
     fn probe_and_consider_implied_clause(
         ecx: &mut EvalCtxt<'_, 'tcx>,
-        source: CandidateSource,
+        parent_source: CandidateSource,
         goal: Goal<'tcx, Self>,
         assumption: ty::Clause<'tcx>,
-        requirements: impl IntoIterator<Item = Goal<'tcx, ty::Predicate<'tcx>>>,
+        requirements: impl IntoIterator<Item = (GoalSource, Goal<'tcx, ty::Predicate<'tcx>>)>,
     ) -> Result<Candidate<'tcx>, NoSolution> {
-        Self::probe_and_match_goal_against_assumption(ecx, source, goal, assumption, |ecx| {
-            // FIXME(-Znext-solver=coinductive): check whether this should be
-            // `GoalSource::ImplWhereBound` for any caller.
-            ecx.add_goals(GoalSource::Misc, requirements);
+        Self::probe_and_match_goal_against_assumption(ecx, parent_source, goal, assumption, |ecx| {
+            for (nested_source, goal) in requirements {
+                ecx.add_goal(nested_source, goal);
+            }
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         })
     }
@@ -85,9 +85,8 @@ pub(super) trait GoalKind<'tcx>:
             let ty::Dynamic(bounds, _, _) = *goal.predicate.self_ty().kind() else {
                 bug!("expected object type in `probe_and_consider_object_bound_candidate`");
             };
-            // FIXME(-Znext-solver=coinductive): Should this be `GoalSource::ImplWhereBound`?
             ecx.add_goals(
-                GoalSource::Misc,
+                GoalSource::ImplWhereBound,
                 structural_traits::predicates_for_object_candidate(
                     ecx,
                     goal.param_env,
