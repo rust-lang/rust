@@ -589,7 +589,9 @@ pub fn run_test(
             // If the platform is single-threaded we're just going to run
             // the test synchronously, regardless of the concurrency
             // level.
-            let supports_threads = !cfg!(target_os = "emscripten") && !cfg!(target_family = "wasm");
+            let supports_threads = !cfg!(target_os = "emscripten")
+                && !cfg!(target_family = "wasm")
+                && !cfg!(target_os = "zkvm");
             if supports_threads {
                 let cfg = thread::Builder::new().name(name.as_slice().to_owned());
                 let mut runtest = Arc::new(Mutex::new(Some(runtest)));
