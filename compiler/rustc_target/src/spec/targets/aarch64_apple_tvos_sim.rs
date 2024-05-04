@@ -1,8 +1,8 @@
-use crate::spec::base::apple::{opts, tvos_sim_llvm_target, Arch};
+use crate::spec::base::apple::{opts, tvos_sim_llvm_target, Arch, TargetAbi};
 use crate::spec::{FramePointer, Target, TargetOptions};
 
 pub fn target() -> Target {
-    let arch = Arch::Arm64_sim;
+    let arch = Arch::Arm64;
     Target {
         llvm_target: tvos_sim_llvm_target(arch).into(),
         metadata: crate::spec::TargetMetadata {
@@ -18,7 +18,7 @@ pub fn target() -> Target {
             features: "+neon,+fp-armv8,+apple-a7".into(),
             max_atomic_width: Some(128),
             frame_pointer: FramePointer::NonLeaf,
-            ..opts("tvos", arch)
+            ..opts("tvos", arch, TargetAbi::Simulator)
         },
     }
 }

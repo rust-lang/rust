@@ -1,9 +1,9 @@
-use crate::spec::base::apple::{mac_catalyst_llvm_target, opts, Arch};
+use crate::spec::base::apple::{mac_catalyst_llvm_target, opts, Arch, TargetAbi};
 use crate::spec::{FramePointer, SanitizerSet, Target, TargetOptions};
 
 pub fn target() -> Target {
-    let arch = Arch::Arm64_macabi;
-    let mut base = opts("ios", arch);
+    let arch = Arch::Arm64;
+    let mut base = opts("ios", arch, TargetAbi::MacCatalyst);
     base.supported_sanitizers = SanitizerSet::ADDRESS | SanitizerSet::LEAK | SanitizerSet::THREAD;
 
     Target {

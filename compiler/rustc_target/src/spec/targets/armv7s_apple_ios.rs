@@ -1,4 +1,4 @@
-use crate::spec::base::apple::{ios_llvm_target, opts, Arch};
+use crate::spec::base::apple::{ios_llvm_target, opts, Arch, TargetAbi};
 use crate::spec::{Target, TargetOptions};
 
 pub fn target() -> Target {
@@ -17,7 +17,7 @@ pub fn target() -> Target {
         options: TargetOptions {
             features: "+v7,+vfp4,+neon".into(),
             max_atomic_width: Some(64),
-            ..opts("ios", arch)
+            ..opts("ios", arch, TargetAbi::Normal)
         },
     }
 }

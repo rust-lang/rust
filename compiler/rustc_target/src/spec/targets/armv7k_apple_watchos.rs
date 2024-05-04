@@ -1,4 +1,4 @@
-use crate::spec::base::apple::{opts, Arch};
+use crate::spec::base::apple::{opts, Arch, TargetAbi};
 use crate::spec::{Target, TargetOptions};
 
 pub fn target() -> Target {
@@ -19,7 +19,7 @@ pub fn target() -> Target {
             max_atomic_width: Some(64),
             dynamic_linking: false,
             position_independent_executables: true,
-            ..opts("watchos", arch)
+            ..opts("watchos", arch, TargetAbi::Normal)
         },
     }
 }

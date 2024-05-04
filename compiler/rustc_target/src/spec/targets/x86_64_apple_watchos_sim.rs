@@ -1,8 +1,8 @@
-use crate::spec::base::apple::{opts, watchos_sim_llvm_target, Arch};
+use crate::spec::base::apple::{opts, watchos_sim_llvm_target, Arch, TargetAbi};
 use crate::spec::{Target, TargetOptions};
 
 pub fn target() -> Target {
-    let arch = Arch::X86_64_sim;
+    let arch = Arch::X86_64;
     Target {
         llvm_target: watchos_sim_llvm_target(arch).into(),
         metadata: crate::spec::TargetMetadata {
@@ -15,6 +15,9 @@ pub fn target() -> Target {
         data_layout:
             "e-m:o-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128".into(),
         arch: arch.target_arch(),
-        options: TargetOptions { max_atomic_width: Some(128), ..opts("watchos", arch) },
+        options: TargetOptions {
+            max_atomic_width: Some(128),
+            ..opts("watchos", arch, TargetAbi::Simulator)
+        },
     }
 }

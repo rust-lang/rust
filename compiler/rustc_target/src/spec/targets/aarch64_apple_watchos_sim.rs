@@ -1,8 +1,8 @@
-use crate::spec::base::apple::{opts, watchos_sim_llvm_target, Arch};
+use crate::spec::base::apple::{opts, watchos_sim_llvm_target, Arch, TargetAbi};
 use crate::spec::{FramePointer, Target, TargetOptions};
 
 pub fn target() -> Target {
-    let arch = Arch::Arm64_sim;
+    let arch = Arch::Arm64;
     Target {
         // Clang automatically chooses a more specific target based on
         // WATCHOS_DEPLOYMENT_TARGET.
@@ -22,7 +22,7 @@ pub fn target() -> Target {
             features: "+neon,+fp-armv8,+apple-a7".into(),
             max_atomic_width: Some(128),
             frame_pointer: FramePointer::NonLeaf,
-            ..opts("watchos", arch)
+            ..opts("watchos", arch, TargetAbi::Simulator)
         },
     }
 }

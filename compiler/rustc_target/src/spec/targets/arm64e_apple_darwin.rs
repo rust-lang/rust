@@ -1,9 +1,9 @@
-use crate::spec::base::apple::{macos_llvm_target, opts, Arch};
+use crate::spec::base::apple::{macos_llvm_target, opts, Arch, TargetAbi};
 use crate::spec::{FramePointer, SanitizerSet, Target, TargetOptions};
 
 pub fn target() -> Target {
     let arch = Arch::Arm64e;
-    let mut base = opts("macos", arch);
+    let mut base = opts("macos", arch, TargetAbi::Normal);
     base.cpu = "apple-m1".into();
     base.max_atomic_width = Some(128);
 

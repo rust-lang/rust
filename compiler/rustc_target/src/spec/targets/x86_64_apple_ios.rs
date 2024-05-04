@@ -1,11 +1,11 @@
-use crate::spec::base::apple::{ios_sim_llvm_target, opts, Arch};
+use crate::spec::base::apple::{ios_sim_llvm_target, opts, Arch, TargetAbi};
 use crate::spec::{SanitizerSet, Target, TargetOptions};
 
 pub fn target() -> Target {
+    let arch = Arch::X86_64;
     // x86_64-apple-ios is a simulator target, even though it isn't declared
     // that way in the target name like the other ones...
-    let arch = Arch::X86_64_sim;
-    let mut base = opts("ios", arch);
+    let mut base = opts("ios", arch, TargetAbi::Simulator);
     base.supported_sanitizers = SanitizerSet::ADDRESS | SanitizerSet::THREAD;
 
     Target {
