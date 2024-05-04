@@ -564,9 +564,6 @@ pub(crate) unsafe fn llvm_optimize(
 
     let llvm_plugins = config.llvm_plugins.join(",");
 
-    // FIXME: NewPM doesn't provide a facility to pass custom InlineParams.
-    // We would have to add upstream support for this first, before we can support
-    // config.inline_threshold and our more aggressive default thresholds.
     let result = llvm::LLVMRustOptimize(
         module.module_llvm.llmod(),
         &*module.module_llvm.tm,
