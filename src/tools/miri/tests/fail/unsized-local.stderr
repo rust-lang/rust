@@ -4,7 +4,8 @@ error: unsupported operation: unsized locals are not supported
 LL |     let x = *(Box::new(A) as Box<dyn Foo>);
    |         ^ unsized locals are not supported
    |
-   = help: this is likely not a bug in the program; it indicates that the program performed an operation that the interpreter does not support
+   = help: this is likely not a bug in the program; it indicates that the program performed an operation that Miri does not support
+   = help: if this is a basic API commonly used on this target, please report an issue; but note that Miri does not aim to support every FFI function out there
    = note: BACKTRACE:
    = note: inside `main` at $DIR/unsized-local.rs:LL:CC
 
