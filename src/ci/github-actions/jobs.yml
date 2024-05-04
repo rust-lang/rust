@@ -93,7 +93,7 @@ pr:
 try:
   - image: dist-x86_64-linux
     env:
-      CODEGEN_BACKENDS: llvm,cranelift
+      CODEGEN_BACKENDS: llvm
     <<: *job-linux-16c
 
 # Main CI jobs that have to be green to merge a commit into master

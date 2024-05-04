@@ -166,6 +166,19 @@ pub fn prepare_tool_cargo(
         }
     }
 
+    if compiler.stage != 0 {
+        if path.ends_with("rls")
+            || path.ends_with("clippy")
+            || path.ends_with("miri")
+            || path.ends_with("rustfmt")
+            || path.ends_with("rustdoc")
+            || path.ends_with("rustdoc-tool")
+        {
+            cargo.rustflag("-Cpanic=abort");
+            cargo.rustflag("-Cforce-unwind-tables=yes");
+        }
+    }
+
     // clippy tests need to know about the stage sysroot. Set them consistently while building to
     // avoid rebuilding when running tests.
     cargo.env("SYSROOT", builder.sysroot(compiler));
