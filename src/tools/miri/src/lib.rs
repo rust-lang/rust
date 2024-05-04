@@ -79,6 +79,7 @@ mod concurrency;
 mod diagnostics;
 mod eval;
 mod helpers;
+mod intrinsics;
 mod machine;
 mod mono_hash_map;
 mod operator;
@@ -95,9 +96,9 @@ pub use rustc_const_eval::interpret::*;
 #[doc(no_inline)]
 pub use rustc_const_eval::interpret::{self, AllocMap, PlaceTy, Provenance as _};
 
+pub use crate::intrinsics::EvalContextExt as _;
 pub use crate::shims::env::{EnvVars, EvalContextExt as _};
 pub use crate::shims::foreign_items::{DynSym, EvalContextExt as _};
-pub use crate::shims::intrinsics::EvalContextExt as _;
 pub use crate::shims::os_str::EvalContextExt as _;
 pub use crate::shims::panic::{CatchUnwindData, EvalContextExt as _};
 pub use crate::shims::time::EvalContextExt as _;
