@@ -10,8 +10,8 @@ use rustc_middle::{
     mir,
     ty::{self, FloatTy},
 };
-use rustc_target::abi::Size;
 use rustc_span::{sym, Symbol};
+use rustc_target::abi::Size;
 
 use crate::*;
 use atomic::EvalContextExt as _;
@@ -70,13 +70,20 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 throw_unsup_format!("unimplemented intrinsic: `{intrinsic_name}`")
             }
             let intrinsic_fallback_checks_ub = Symbol::intern("intrinsic_fallback_checks_ub");
-            if this.tcx.get_attrs_by_path(instance.def_id(), &[sym::miri, intrinsic_fallback_checks_ub]).next().is_none() {
-                throw_unsup_format!("miri can only use intrinsic fallback bodies that check UB. After verifying that `{intrinsic_name}` does so, add the `#[miri::intrinsic_fallback_checks_ub]` attribute to it; also ping @rust-lang/miri when you do that");
+            if this
+                .tcx
+                .get_attrs_by_path(instance.def_id(), &[sym::miri, intrinsic_fallback_checks_ub])
+                .next()
+                .is_none()
+            {
+                throw_unsup_format!(
+                    "miri can only use intrinsic fallback bodies that check UB. After verifying that `{intrinsic_name}` does so, add the `#[miri::intrinsic_fallback_checks_ub]` attribute to it; also ping @rust-lang/miri when you do that"
+                );
             }
             return Ok(Some(ty::Instance {
                 def: ty::InstanceDef::Item(instance.def_id()),
                 args: instance.args,
-            }))
+            }));
         }
 
         trace!("{:?}", this.dump_place(&dest.clone().into()));
