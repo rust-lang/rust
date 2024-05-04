@@ -438,7 +438,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn lower_array_length(&self, length: &hir::ArrayLen) -> ty::Const<'tcx> {
+    pub fn lower_array_length(&self, length: &hir::ArrayLen<'tcx>) -> ty::Const<'tcx> {
         match length {
             hir::ArrayLen::Infer(inf) => self.ct_infer(self.tcx.types.usize, None, inf.span),
             hir::ArrayLen::Body(anon_const) => {

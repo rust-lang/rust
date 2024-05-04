@@ -968,7 +968,7 @@ impl<'a> State<'a> {
         self.print_else(elseopt)
     }
 
-    fn print_array_length(&mut self, len: &hir::ArrayLen) {
+    fn print_array_length(&mut self, len: &hir::ArrayLen<'_>) {
         match len {
             hir::ArrayLen::Infer(..) => self.word("_"),
             hir::ArrayLen::Body(ct) => self.print_anon_const(ct),
@@ -1052,7 +1052,7 @@ impl<'a> State<'a> {
         self.end()
     }
 
-    fn print_expr_repeat(&mut self, element: &hir::Expr<'_>, count: &hir::ArrayLen) {
+    fn print_expr_repeat(&mut self, element: &hir::Expr<'_>, count: &hir::ArrayLen<'_>) {
         self.ibox(INDENT_UNIT);
         self.word("[");
         self.print_expr(element);

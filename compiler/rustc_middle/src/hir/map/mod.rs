@@ -885,7 +885,7 @@ impl<'hir> Map<'hir> {
             Node::ImplItem(impl_item) => impl_item.span,
             Node::Variant(variant) => variant.span,
             Node::Field(field) => field.span,
-            Node::AnonConst(constant) => self.body(constant.body).value.span,
+            Node::AnonConst(constant) => constant.span,
             Node::ConstBlock(constant) => self.body(constant.body).value.span,
             Node::Expr(expr) => expr.span,
             Node::ExprField(field) => field.span,
@@ -912,7 +912,7 @@ impl<'hir> Map<'hir> {
             Node::ArrayLenInfer(inf) => inf.span,
             Node::PreciseCapturingNonLifetimeArg(param) => param.ident.span,
             Node::Synthetic => unreachable!(),
-            Node::Err(span) => *span,
+            Node::Err(span) => span,
         }
     }
 
