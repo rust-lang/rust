@@ -159,6 +159,9 @@ def StdStrSummaryProvider(valobj, dict):
     # logger = Logger.Logger()
     # logger >> "[StdStrSummaryProvider] for " + str(valobj.GetName())
 
+    # the code below assumes non-synthetic value, this makes sure the assumption holds
+    valobj = valobj.GetNonSyntheticValue()
+
     length = valobj.GetChildMemberWithName("length").GetValueAsUnsigned()
     if length == 0:
         return '""'

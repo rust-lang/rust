@@ -27,10 +27,10 @@
 // lldb-check:(&mut [i32]) mut_slice = size=4 { [0] = 2 [1] = 3 [2] = 5 [3] = 7 }
 
 // lldb-command:v str_slice
-// lldb-check:(&str) str_slice = "string slice" { data_ptr = [...] length = 12 }
+// lldb-check:(&str) str_slice = "string slice" { [0] = 's' [1] = 't' [2] = 'r' [3] = 'i' [4] = 'n' [5] = 'g' [6] = ' ' [7] = 's' [8] = 'l' [9] = 'i' [10] = 'c' [11] = 'e' }
 
 // lldb-command:v mut_str_slice
-// lldb-check:(&mut str) mut_str_slice = "mutable string slice" { data_ptr = [...] length = 20 }
+// lldb-check:(&mut str) mut_str_slice = "mutable string slice" { [0] = 'm' [1] = 'u' [2] = 't' [3] = 'a' [4] = 'b' [5] = 'l' [6] = 'e' [7] = ' ' [8] = 's' [9] = 't' [10] = 'r' [11] = 'i' [12] = 'n' [13] = 'g' [14] = ' ' [15] = 's' [16] = 'l' [17] = 'i' [18] = 'c' [19] = 'e' }
 
 fn b() {}
 
