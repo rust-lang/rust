@@ -1,0 +1,43 @@
+error[E0596]: cannot borrow as mutable inside an `&` pattern
+  --> $DIR/ref_pat_eat_one_layer_2024_ref_mut_inside_and.rs:8:31
+   |
+LL |     if let Some(&Some(ref mut x)) = &mut Some(Some(0)) {
+   |                 -             ^
+   |                 |
+   |                 help: replace this `&` with `&mut`: `&mut`
+
+error[E0596]: cannot borrow as mutable inside an `&` pattern
+  --> $DIR/ref_pat_eat_one_layer_2024_ref_mut_inside_and.rs:13:31
+   |
+LL |     if let &Some(Some(ref mut x)) = &mut Some(Some(0)) {
+   |            -                  ^
+   |            |
+   |            help: replace this `&` with `&mut`: `&mut`
+
+error[E0596]: cannot borrow as mutable inside an `&` pattern
+  --> $DIR/ref_pat_eat_one_layer_2024_ref_mut_inside_and.rs:21:15
+   |
+LL |     let &pat!(x) = &mut 0;
+   |         -     ^
+   |         |
+   |         help: replace this `&` with `&mut`: `&mut`
+
+error[E0596]: cannot borrow as mutable inside an `&` pattern
+  --> $DIR/ref_pat_eat_one_layer_2024_ref_mut_inside_and.rs:25:19
+   |
+LL |     let &(ref mut a, ref mut b) = &mut (true, false);
+   |         -         ^
+   |         |
+   |         help: replace this `&` with `&mut`: `&mut`
+
+error[E0596]: cannot borrow as mutable inside an `&` pattern
+  --> $DIR/ref_pat_eat_one_layer_2024_ref_mut_inside_and.rs:25:30
+   |
+LL |     let &(ref mut a, ref mut b) = &mut (true, false);
+   |         -                    ^
+   |         |
+   |         help: replace this `&` with `&mut`: `&mut`
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0596`.

@@ -137,8 +137,8 @@ enum AdjustMode {
     /// with mutability matching the pattern,
     /// mark the pattern as having consumed this reference.
     ///
-    /// `Span` is that of the `&` or `&mut` itself
-    ResetAndConsumeRef(Mutability, Span),
+    /// `Span` is that of the `&` or `&mut` itself.
+    ResetAndConsumeRef(Mutability, Option<Span>),
     /// Pass on the input binding mode and expected type.
     Pass,
 }
@@ -154,15 +154,23 @@ enum AdjustMode {
 /// this last case, so we need to throw an error ourselves.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum MutblCap {
-    /// Mutability restricted to immutable;
-    /// contained span, if present, should be shown in diagnostics as the reason.
-    Not(Option<Span>),
+    /// Mutability restricted to immutable.
+    ///
+    /// The contained span, if present, points to an `&` pattern
+    /// that is the reason for the restriction,
+    /// and which will be reported in a diagnostic.
+    /// (Said diagnostic is shown only if
+    /// replacing the `&` pattern with `&mut` would allow the code to compile.)
+    ///
+    /// (Outer [`Option`] is for whether to show the diagnostic,
+    /// inner [`Option`] is for whether we have a span we can report)
+    Not(Option<Option<Span>>),
     /// No restriction on mutability
     Mut,
 }
 
 impl MutblCap {
-    fn cap_mutbl_to_not(self, span: Option<Span>) -> Self {
+    fn cap_mutbl_to_not(self, span: Option<Option<Span>>) -> Self {
         if let Some(s) = span
             && self != MutblCap::Not(None)
         {
@@ -434,7 +442,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // ```
             //
             // See issue #46688.
-            PatKind::Ref(inner, mutbl) => AdjustMode::ResetAndConsumeRef(*mutbl, pat.span.until(inner.span.find_ancestor_inside(pat.span).unwrap())),
+            PatKind::Ref(inner, mutbl) => AdjustMode::ResetAndConsumeRef(*mutbl, inner.span.find_ancestor_inside(pat.span).map(|end| pat.span.until(end))),
             // A `_` pattern works with any expected type, so there's no need to do anything.
             PatKind::Wild
             // A malformed pattern doesn't have an expected type, so let's just accept any type.
@@ -752,12 +760,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 E0596,
                 "cannot borrow as mutable inside an `&` pattern"
             );
-            err.span_suggestion(
-                and_pat_span,
-                "replace this `&` with `&mut`",
-                "&mut ",
-                Applicability::MachineApplicable,
-            );
+
+            if let Some(span) = and_pat_span {
+                err.span_suggestion(
+                    span,
+                    "replace this `&` with `&mut`",
+                    "&mut ",
+                    Applicability::MachineApplicable,
+                );
+            }
             err.emit();
         }
 
