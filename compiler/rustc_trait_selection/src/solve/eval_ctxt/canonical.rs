@@ -90,6 +90,8 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         &mut self,
         certainty: Certainty,
     ) -> QueryResult<'tcx> {
+        self.inspect.make_canonical_response(certainty);
+
         let goals_certainty = self.try_evaluate_added_goals()?;
         assert_eq!(
             self.tainted,
@@ -97,8 +99,6 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             "EvalCtxt is tainted -- nested goals may have been dropped in a \
             previous call to `try_evaluate_added_goals!`"
         );
-
-        self.inspect.make_canonical_response(certainty);
 
         // When normalizing, we've replaced the expected term with an unconstrained
         // inference variable. This means that we dropped information which could

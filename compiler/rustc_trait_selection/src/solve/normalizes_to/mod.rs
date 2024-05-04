@@ -389,7 +389,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
             CandidateSource::BuiltinImpl(BuiltinImplSource::Misc),
             goal,
             pred,
-            [goal.with(tcx, output_is_sized_pred)],
+            [(GoalSource::ImplWhereBound, goal.with(tcx, output_is_sized_pred))],
         )
     }
 
@@ -473,7 +473,8 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
             pred,
             [goal.with(tcx, output_is_sized_pred)]
                 .into_iter()
-                .chain(nested_preds.into_iter().map(|pred| goal.with(tcx, pred))),
+                .chain(nested_preds.into_iter().map(|pred| goal.with(tcx, pred)))
+                .map(|goal| (GoalSource::ImplWhereBound, goal)),
         )
     }
 
