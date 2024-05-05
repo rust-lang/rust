@@ -1,4 +1,3 @@
-#![feature(exclusive_range_pattern)]
 #![deny(unreachable_patterns)]
 
 fn main() {
