@@ -1,4 +1,7 @@
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::SystemTime;
+
+use rustc_target::abi::Size;
 
 use crate::concurrency::thread::MachineCallback;
 use crate::*;
@@ -71,23 +74,54 @@ fn is_mutex_kind_normal<'mir, 'tcx: 'mir>(
 // - id: u32
 // - kind: i32
 
-#[inline]
 fn mutex_id_offset<'mir, 'tcx: 'mir>(ecx: &MiriInterpCx<'mir, 'tcx>) -> InterpResult<'tcx, u64> {
-    // When adding a new OS, make sure its PTHREAD_MUTEX_INITIALIZER is 0 for this offset
-    // (and the `mutex_kind_offset` below).
-    Ok(match &*ecx.tcx.sess.target.os {
+    let offset = match &*ecx.tcx.sess.target.os {
         "linux" | "illumos" | "solaris" => 0,
         // macOS stores a signature in the first bytes, so we have to move to offset 4.
         "macos" => 4,
         os => throw_unsup_format!("`pthread_mutex` is not supported on {os}"),
-    })
+    };
+
+    // Sanity-check this against PTHREAD_MUTEX_INITIALIZER (but only once):
+    // the id must start out as 0.
+    static SANITY: AtomicBool = AtomicBool::new(false);
+    if !SANITY.swap(true, Ordering::Relaxed) {
+        let static_initializer = ecx.eval_path(&["libc", "PTHREAD_MUTEX_INITIALIZER"]);
+        let id_field = static_initializer
+            .offset(Size::from_bytes(offset), ecx.machine.layouts.u32, ecx)
+            .unwrap();
+        let id = ecx.read_scalar(&id_field).unwrap().to_u32().unwrap();
+        assert_eq!(
+            id, 0,
+            "PTHREAD_MUTEX_INITIALIZER is incompatible with our pthread_mutex layout: id is not 0"
+        );
+    }
+
+    Ok(offset)
 }
 
-#[inline]
 fn mutex_kind_offset<'mir, 'tcx: 'mir>(ecx: &MiriInterpCx<'mir, 'tcx>) -> u64 {
     // These offsets are picked for compatibility with Linux's static initializer
     // macros, e.g. PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP.)
-    if ecx.pointer_size().bytes() == 8 { 16 } else { 12 }
+    let offset = if ecx.pointer_size().bytes() == 8 { 16 } else { 12 };
+
+    // Sanity-check this against PTHREAD_MUTEX_INITIALIZER (but only once):
+    // the kind must start out as PTHREAD_MUTEX_DEFAULT.
+    static SANITY: AtomicBool = AtomicBool::new(false);
+    if !SANITY.swap(true, Ordering::Relaxed) {
+        let static_initializer = ecx.eval_path(&["libc", "PTHREAD_MUTEX_INITIALIZER"]);
+        let kind_field = static_initializer
+            .offset(Size::from_bytes(mutex_kind_offset(ecx)), ecx.machine.layouts.i32, ecx)
+            .unwrap();
+        let kind = ecx.read_scalar(&kind_field).unwrap().to_i32().unwrap();
+        assert_eq!(
+            kind,
+            ecx.eval_libc_i32("PTHREAD_MUTEX_DEFAULT"),
+            "PTHREAD_MUTEX_INITIALIZER is incompatible with our pthread_mutex layout: kind is not PTHREAD_MUTEX_DEFAULT"
+        );
+    }
+
+    offset
 }
 
 fn mutex_get_id<'mir, 'tcx: 'mir>(
@@ -108,7 +142,7 @@ fn mutex_reset_id<'mir, 'tcx: 'mir>(
     ecx.deref_pointer_and_write(
         mutex_op,
         mutex_id_offset(ecx)?,
-        Scalar::from_i32(0),
+        Scalar::from_u32(0),
         ecx.libc_ty_layout("pthread_mutex_t"),
         ecx.machine.layouts.u32,
     )
@@ -145,15 +179,30 @@ fn mutex_set_kind<'mir, 'tcx: 'mir>(
 // We ignore the platform layout and store our own fields:
 // - id: u32
 
-#[inline]
 fn rwlock_id_offset<'mir, 'tcx: 'mir>(ecx: &MiriInterpCx<'mir, 'tcx>) -> InterpResult<'tcx, u64> {
-    // When adding a new OS, make sure its PTHREAD_RWLOCK_INITIALIZER is 0 for this offset.
-    Ok(match &*ecx.tcx.sess.target.os {
+    let offset = match &*ecx.tcx.sess.target.os {
         "linux" | "illumos" | "solaris" => 0,
         // macOS stores a signature in the first bytes, so we have to move to offset 4.
         "macos" => 4,
         os => throw_unsup_format!("`pthread_rwlock` is not supported on {os}"),
-    })
+    };
+
+    // Sanity-check this against PTHREAD_RWLOCK_INITIALIZER (but only once):
+    // the id must start out as 0.
+    static SANITY: AtomicBool = AtomicBool::new(false);
+    if !SANITY.swap(true, Ordering::Relaxed) {
+        let static_initializer = ecx.eval_path(&["libc", "PTHREAD_RWLOCK_INITIALIZER"]);
+        let id_field = static_initializer
+            .offset(Size::from_bytes(offset), ecx.machine.layouts.u32, ecx)
+            .unwrap();
+        let id = ecx.read_scalar(&id_field).unwrap().to_u32().unwrap();
+        assert_eq!(
+            id, 0,
+            "PTHREAD_RWLOCK_INITIALIZER is incompatible with our pthread_rwlock layout: id is not 0"
+        );
+    }
+
+    Ok(offset)
 }
 
 fn rwlock_get_id<'mir, 'tcx: 'mir>(
@@ -214,21 +263,64 @@ fn condattr_set_clock_id<'mir, 'tcx: 'mir>(
 // - id: u32
 // - clock: i32
 
-#[inline]
 fn cond_id_offset<'mir, 'tcx: 'mir>(ecx: &MiriInterpCx<'mir, 'tcx>) -> InterpResult<'tcx, u64> {
-    // When adding a new OS, make sure its PTHREAD_COND_INITIALIZER is 0 for this offset
-    // (and the `COND_CLOCK_OFFSET` below is initialized to `CLOCK_REALTIME`).
-    Ok(match &*ecx.tcx.sess.target.os {
+    let offset = match &*ecx.tcx.sess.target.os {
         "linux" | "illumos" | "solaris" => 0,
         // macOS stores a signature in the first bytes, so we have to move to offset 4.
         "macos" => 4,
         os => throw_unsup_format!("`pthread_cond` is not supported on {os}"),
-    })
+    };
+
+    // Sanity-check this against PTHREAD_COND_INITIALIZER (but only once):
+    // the id must start out as 0.
+    static SANITY: AtomicBool = AtomicBool::new(false);
+    if !SANITY.swap(true, Ordering::Relaxed) {
+        let static_initializer = ecx.eval_path(&["libc", "PTHREAD_COND_INITIALIZER"]);
+        let id_field = static_initializer
+            .offset(Size::from_bytes(offset), ecx.machine.layouts.u32, ecx)
+            .unwrap();
+        let id = ecx.read_scalar(&id_field).unwrap().to_u32().unwrap();
+        assert_eq!(
+            id, 0,
+            "PTHREAD_COND_INITIALIZER is incompatible with our pthread_cond layout: id is not 0"
+        );
+    }
+
+    Ok(offset)
 }
 
-// macOS doesn't have a clock attribute, but to keep the code uniform we store
-// a clock ID in the pthread_cond_t anyway. There's enough space.
-const COND_CLOCK_OFFSET: u64 = 8;
+/// Determines whether this clock represents the real-time clock, CLOCK_REALTIME.
+fn is_cond_clock_realtime<'mir, 'tcx: 'mir>(ecx: &MiriInterpCx<'mir, 'tcx>, clock_id: i32) -> bool {
+    // To ensure compatibility with PTHREAD_COND_INITIALIZER on all platforms,
+    // we can't just compare with CLOCK_REALTIME: on Solarish, PTHREAD_COND_INITIALIZER
+    // makes the clock 0 but CLOCK_REALTIME is 3.
+    // However, we need to always be able to distinguish this from CLOCK_MONOTONIC.
+    clock_id == ecx.eval_libc_i32("CLOCK_REALTIME")
+        || (clock_id == 0 && clock_id != ecx.eval_libc_i32("CLOCK_MONOTONIC"))
+}
+
+fn cond_clock_offset<'mir, 'tcx: 'mir>(ecx: &MiriInterpCx<'mir, 'tcx>) -> u64 {
+    // macOS doesn't have a clock attribute, but to keep the code uniform we store
+    // a clock ID in the pthread_cond_t anyway. There's enough space.
+    let offset = 8;
+
+    // Sanity-check this against PTHREAD_COND_INITIALIZER (but only once):
+    // the clock must start out as CLOCK_REALTIME.
+    static SANITY: AtomicBool = AtomicBool::new(false);
+    if !SANITY.swap(true, Ordering::Relaxed) {
+        let static_initializer = ecx.eval_path(&["libc", "PTHREAD_COND_INITIALIZER"]);
+        let id_field = static_initializer
+            .offset(Size::from_bytes(offset), ecx.machine.layouts.i32, ecx)
+            .unwrap();
+        let id = ecx.read_scalar(&id_field).unwrap().to_i32().unwrap();
+        assert!(
+            is_cond_clock_realtime(ecx, id),
+            "PTHREAD_COND_INITIALIZER is incompatible with our pthread_cond layout: clock is not CLOCK_REALTIME"
+        );
+    }
+
+    offset
+}
 
 fn cond_get_id<'mir, 'tcx: 'mir>(
     ecx: &mut MiriInterpCx<'mir, 'tcx>,
@@ -260,7 +352,7 @@ fn cond_get_clock_id<'mir, 'tcx: 'mir>(
 ) -> InterpResult<'tcx, i32> {
     ecx.deref_pointer_and_read(
         cond_op,
-        COND_CLOCK_OFFSET,
+        cond_clock_offset(ecx),
         ecx.libc_ty_layout("pthread_cond_t"),
         ecx.machine.layouts.i32,
     )?
@@ -274,7 +366,7 @@ fn cond_set_clock_id<'mir, 'tcx: 'mir>(
 ) -> InterpResult<'tcx, ()> {
     ecx.deref_pointer_and_write(
         cond_op,
-        COND_CLOCK_OFFSET,
+        cond_clock_offset(ecx),
         Scalar::from_i32(clock_id),
         ecx.libc_ty_layout("pthread_cond_t"),
         ecx.machine.layouts.i32,
@@ -776,7 +868,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let this = self.eval_context_mut();
 
         let attr = this.read_pointer(attr_op)?;
-        // Default clock if att is null, and on macOS where there is no clock attribute.
+        // Default clock if `attr` is null, and on macOS where there is no clock attribute.
         let clock_id = if this.ptr_is_null(attr)? || this.tcx.sess.target.os == "macos" {
             this.eval_libc_i32("CLOCK_REALTIME")
         } else {
@@ -858,7 +950,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             }
         };
 
-        let timeout_time = if clock_id == this.eval_libc_i32("CLOCK_REALTIME") {
+        let timeout_time = if is_cond_clock_realtime(this, clock_id) {
             this.check_no_isolation("`pthread_cond_timedwait` with `CLOCK_REALTIME`")?;
             CallbackTime::RealTime(SystemTime::UNIX_EPOCH.checked_add(duration).unwrap())
         } else if clock_id == this.eval_libc_i32("CLOCK_MONOTONIC") {

@@ -255,14 +255,19 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     }
 
     /// Evaluates the scalar at the specified path.
-    fn eval_path_scalar(&self, path: &[&str]) -> Scalar<Provenance> {
+    fn eval_path(&self, path: &[&str]) -> OpTy<'tcx, Provenance> {
         let this = self.eval_context_ref();
         let instance = this.resolve_path(path, Namespace::ValueNS);
         // We don't give a span -- this isn't actually used directly by the program anyway.
         let const_val = this.eval_global(instance).unwrap_or_else(|err| {
             panic!("failed to evaluate required Rust item: {path:?}\n{err:?}")
         });
-        this.read_scalar(&const_val)
+        const_val.into()
+    }
+    fn eval_path_scalar(&self, path: &[&str]) -> Scalar<Provenance> {
+        let this = self.eval_context_ref();
+        let val = this.eval_path(path);
+        this.read_scalar(&val)
             .unwrap_or_else(|err| panic!("failed to read required Rust item: {path:?}\n{err:?}"))
     }
 
