@@ -93,6 +93,13 @@ impl Rustdoc {
         }
     }
 
+    /// Specify the edition year.
+    pub fn edition(&mut self, edition: &str) -> &mut Self {
+        self.cmd.arg("--edition");
+        self.cmd.arg(edition);
+        self
+    }
+
     #[track_caller]
     pub fn run_fail_assert_exit_code(&mut self, code: i32) -> Output {
         let caller_location = std::panic::Location::caller();
