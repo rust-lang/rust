@@ -714,8 +714,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 this.write_int(super::UID, dest)?;
             }
 
-            "getpwuid_r"
+            "getpwuid_r" | "__posix_getpwuid_r"
             if this.frame_in_std() => {
+                // getpwuid_r is the standard name, __posix_getpwuid_r is used on solarish
                 let [uid, pwd, buf, buflen, result] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 this.check_no_isolation("`getpwuid_r`")?;
