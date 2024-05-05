@@ -2,6 +2,7 @@
 
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId, LocalModDefId, ModDefId};
 use rustc_hir::hir_id::{HirId, OwnerId};
+use rustc_query_system::dep_graph::DepNodeIndex;
 use rustc_query_system::query::{DefIdCache, DefaultCache, SingleCache, VecCache};
 use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::{DUMMY_SP, Span};
@@ -110,7 +111,7 @@ impl<'tcx> Key for mir::interpret::LitToConstInput<'tcx> {
 }
 
 impl Key for CrateNum {
-    type Cache<V> = VecCache<Self, V>;
+    type Cache<V> = VecCache<Self, V, DepNodeIndex>;
 
     fn default_span(&self, _: TyCtxt<'_>) -> Span {
         DUMMY_SP
@@ -127,7 +128,7 @@ impl AsLocalKey for CrateNum {
 }
 
 impl Key for OwnerId {
-    type Cache<V> = VecCache<Self, V>;
+    type Cache<V> = VecCache<Self, V, DepNodeIndex>;
 
     fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
         self.to_def_id().default_span(tcx)
@@ -139,7 +140,7 @@ impl Key for OwnerId {
 }
 
 impl Key for LocalDefId {
-    type Cache<V> = VecCache<Self, V>;
+    type Cache<V> = VecCache<Self, V, DepNodeIndex>;
 
     fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
         self.to_def_id().default_span(tcx)
