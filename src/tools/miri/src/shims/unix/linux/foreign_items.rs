@@ -117,6 +117,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     // `libc::syscall(NR_GETRANDOM, buf.as_mut_ptr(), buf.len(), GRND_NONBLOCK)`
                     // is called if a `HashMap` is created the regular way (e.g. HashMap<K, V>).
                     id if id == sys_getrandom => {
+                        // Used by getrandom 0.1
                         // The first argument is the syscall id, so skip over it.
                         if args.len() < 4 {
                             throw_ub_format!(
@@ -124,7 +125,16 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                                 args.len()
                             );
                         }
-                        getrandom(this, &args[1], &args[2], &args[3], dest)?;
+
+                        let ptr = this.read_pointer(&args[1])?;
+                        let len = this.read_target_usize(&args[2])?;
+                        // The only supported flags are GRND_RANDOM and GRND_NONBLOCK,
+                        // neither of which have any effect on our current PRNG.
+                        // See <https://github.com/rust-lang/rust/pull/79196> for a discussion of argument sizes.
+                        let _flags = this.read_scalar(&args[3])?.to_i32();
+
+                        this.gen_random(ptr, len)?;
+                        this.write_scalar(Scalar::from_target_usize(len, this), dest)?;
                     }
                     // `futex` is used by some synchronization primitives.
                     id if id == sys_futex => {
@@ -195,25 +205,4 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
         Ok(EmulateItemResult::NeedsJumping)
     }
-}
-
-// Shims the linux `getrandom` syscall.
-fn getrandom<'tcx>(
-    this: &mut MiriInterpCx<'_, 'tcx>,
-    ptr: &OpTy<'tcx, Provenance>,
-    len: &OpTy<'tcx, Provenance>,
-    flags: &OpTy<'tcx, Provenance>,
-    dest: &MPlaceTy<'tcx, Provenance>,
-) -> InterpResult<'tcx> {
-    let ptr = this.read_pointer(ptr)?;
-    let len = this.read_target_usize(len)?;
-
-    // The only supported flags are GRND_RANDOM and GRND_NONBLOCK,
-    // neither of which have any effect on our current PRNG.
-    // See <https://github.com/rust-lang/rust/pull/79196> for a discussion of argument sizes.
-    let _flags = this.read_scalar(flags)?.to_i32();
-
-    this.gen_random(ptr, len)?;
-    this.write_scalar(Scalar::from_target_usize(len, this), dest)?;
-    Ok(())
 }
