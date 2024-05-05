@@ -15,7 +15,6 @@ tempfile = "3"
 
 getrandom_01 = { package = "getrandom", version = "0.1" }
 getrandom_02 = { package = "getrandom", version = "0.2", features = ["js"] }
-rand = { version = "0.8", features = ["small_rng"] }
 
 [target.'cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))'.dependencies]
 page_size = "0.6"
