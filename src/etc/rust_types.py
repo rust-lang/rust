@@ -60,6 +60,7 @@ TUPLE_ITEM_REGEX = re.compile(r"__\d+$")
 
 ENCODED_ENUM_PREFIX = "RUST$ENCODED$ENUM$"
 ENUM_DISR_FIELD_NAME = "<<variant>>"
+ENUM_LLDB_ENCODED_VARIANTS = "$variants$"
 
 STD_TYPE_TO_REGEX = {
     RustType.STD_STRING: STD_STRING_REGEX,
@@ -96,7 +97,11 @@ def classify_struct(name, fields):
         if regex.match(name):
             return ty
 
-    if fields[0].name == ENUM_DISR_FIELD_NAME:
+    # <<variant>> is emitted by GDB while LLDB(18.1+) emits "$variants$"
+    if (
+        fields[0].name == ENUM_DISR_FIELD_NAME
+        or fields[0].name == ENUM_LLDB_ENCODED_VARIANTS
+    ):
         return RustType.ENUM
 
     if is_tuple_fields(fields):
