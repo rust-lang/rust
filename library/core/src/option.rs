@@ -557,7 +557,7 @@ use crate::iter::{self, FusedIterator, TrustedLen};
 use crate::panicking::{panic, panic_display};
 use crate::pin::Pin;
 use crate::{
-    cmp, convert, hint, mem,
+    cmp, convert, mem,
     ops::{self, ControlFlow, Deref, DerefMut},
     slice,
 };
@@ -1037,7 +1037,7 @@ impl<T> Option<T> {
         match self {
             Some(val) => val,
             // SAFETY: the safety contract must be upheld by the caller.
-            None => unsafe { MaybeUninit::uninit().assume_init() },
+            None => unsafe { mem::MaybeUninit::uninit().assume_init() },
         }
     }
 
