@@ -373,7 +373,8 @@ mod desc {
     pub const parse_opt_comma_list: &str = parse_comma_list;
     pub const parse_number: &str = "a number";
     pub const parse_opt_number: &str = parse_number;
-    pub const parse_frame_pointer: &str = parse_bool;
+    pub const parse_frame_pointer: &str =
+        "one of `true`/`yes`/`on`, `false`/`no`/`off`, or (with -Zunstable-options) `non-leaf`";
     pub const parse_threads: &str = parse_number;
     pub const parse_time_passes_format: &str = "`text` (default) or `json`";
     pub const parse_passes: &str = "a space-separated list of passes, or `all`";
@@ -677,9 +678,9 @@ mod parse {
         let mut is_parsed = parse_bool(&mut boolish, v);
         if boolish & is_parsed {
             *slot = FramePointer::Always;
-        } else if false {
-            /* TODO: add NonLeaf as an unstable opt */
+        } else if v == Some("non-leaf") {
             is_parsed = true;
+            *slot = FramePointer::NonLeaf;
         };
         is_parsed
     }

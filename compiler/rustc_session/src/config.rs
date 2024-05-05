@@ -19,7 +19,7 @@ use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::edition::{Edition, DEFAULT_EDITION, EDITION_NAME_LIST, LATEST_STABLE_EDITION};
 use rustc_span::source_map::FilePathMapping;
 use rustc_span::{FileName, FileNameDisplayPreference, RealFileName, SourceFileHashAlgorithm};
-use rustc_target::spec::{LinkSelfContainedComponents, LinkerFeatures};
+use rustc_target::spec::{FramePointer, LinkSelfContainedComponents, LinkerFeatures};
 use rustc_target::spec::{SplitDebuginfo, Target, TargetTriple};
 use std::collections::btree_map::{
     Iter as BTreeMapIter, Keys as BTreeMapKeysIter, Values as BTreeMapValuesIter,
@@ -2522,6 +2522,15 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
                 early_dcx.early_fatal("options `-C embed-bitcode=no` and `-C lto` are incompatible")
             }
         }
+    }
+
+    if !nightly_options::is_unstable_enabled(matches)
+        && cg.force_frame_pointers == FramePointer::NonLeaf
+    {
+        early_dcx.early_fatal(
+            "`-Cforce-frame-pointers=non-leaf` also requires `-Zunstable-options` \
+                and a nightly compiler",
+        )
     }
 
     // For testing purposes, until we have more feedback about these options: ensure `-Z
