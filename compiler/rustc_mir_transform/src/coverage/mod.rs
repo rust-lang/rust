@@ -9,7 +9,7 @@ mod tests;
 
 use self::counters::{CounterIncrementSite, CoverageCounters};
 use self::graph::{BasicCoverageBlock, CoverageGraph};
-use self::mappings::{BcbBranchPair, BcbMapping, BcbMappingKind, CoverageSpans};
+use self::mappings::CoverageSpans;
 
 use crate::MirPass;
 
@@ -103,12 +103,9 @@ fn instrument_function_for_coverage<'tcx>(tcx: TyCtxt<'tcx>, mir_body: &mut mir:
     inject_mcdc_statements(mir_body, &basic_coverage_blocks, &coverage_spans);
 
     let mcdc_num_condition_bitmaps = coverage_spans
-        .mappings
+        .mcdc_decisions
         .iter()
-        .filter_map(|bcb_mapping| match bcb_mapping.kind {
-            BcbMappingKind::MCDCDecision { decision_depth, .. } => Some(decision_depth),
-            _ => None,
-        })
+        .map(|&mappings::MCDCDecision { decision_depth, .. }| decision_depth)
         .max()
         .map_or(0, |max| usize::from(max) + 1);
 
@@ -149,44 +146,45 @@ fn create_mappings<'tcx>(
             .expect("all BCBs with spans were given counters")
             .as_term()
     };
+    let region_for_span = |span: Span| make_code_region(source_map, file_name, span, body_span);
 
     let mut mappings = Vec::new();
 
-    mappings.extend(coverage_spans.mappings.iter().filter_map(
-        |BcbMapping { kind: bcb_mapping_kind, span }| {
-            let kind = match *bcb_mapping_kind {
-                BcbMappingKind::Code(bcb) => MappingKind::Code(term_for_bcb(bcb)),
-                BcbMappingKind::MCDCBranch {
-                    true_bcb, false_bcb, condition_info: None, ..
-                } => MappingKind::Branch {
-                    true_term: term_for_bcb(true_bcb),
-                    false_term: term_for_bcb(false_bcb),
-                },
-                BcbMappingKind::MCDCBranch {
-                    true_bcb,
-                    false_bcb,
-                    condition_info: Some(mcdc_params),
-                    ..
-                } => MappingKind::MCDCBranch {
-                    true_term: term_for_bcb(true_bcb),
-                    false_term: term_for_bcb(false_bcb),
-                    mcdc_params,
-                },
-                BcbMappingKind::MCDCDecision { bitmap_idx, conditions_num, .. } => {
-                    MappingKind::MCDCDecision(DecisionInfo { bitmap_idx, conditions_num })
-                }
-            };
-            let code_region = make_code_region(source_map, file_name, *span, body_span)?;
+    mappings.extend(coverage_spans.code_mappings.iter().filter_map(
+        |&mappings::CodeMapping { span, bcb }| {
+            let code_region = region_for_span(span)?;
+            let kind = MappingKind::Code(term_for_bcb(bcb));
             Some(Mapping { kind, code_region })
         },
     ));
 
     mappings.extend(coverage_spans.branch_pairs.iter().filter_map(
-        |&BcbBranchPair { span, true_bcb, false_bcb }| {
+        |&mappings::BranchPair { span, true_bcb, false_bcb }| {
             let true_term = term_for_bcb(true_bcb);
             let false_term = term_for_bcb(false_bcb);
             let kind = MappingKind::Branch { true_term, false_term };
-            let code_region = make_code_region(source_map, file_name, span, body_span)?;
+            let code_region = region_for_span(span)?;
+            Some(Mapping { kind, code_region })
+        },
+    ));
+
+    mappings.extend(coverage_spans.mcdc_branches.iter().filter_map(
+        |&mappings::MCDCBranch { span, true_bcb, false_bcb, condition_info, decision_depth: _ }| {
+            let code_region = region_for_span(span)?;
+            let true_term = term_for_bcb(true_bcb);
+            let false_term = term_for_bcb(false_bcb);
+            let kind = match condition_info {
+                Some(mcdc_params) => MappingKind::MCDCBranch { true_term, false_term, mcdc_params },
+                None => MappingKind::Branch { true_term, false_term },
+            };
+            Some(Mapping { kind, code_region })
+        },
+    ));
+
+    mappings.extend(coverage_spans.mcdc_decisions.iter().filter_map(
+        |&mappings::MCDCDecision { span, bitmap_idx, conditions_num, .. }| {
+            let code_region = region_for_span(span)?;
+            let kind = MappingKind::MCDCDecision(DecisionInfo { bitmap_idx, conditions_num });
             Some(Mapping { kind, code_region })
         },
     ));
@@ -258,13 +256,13 @@ fn inject_mcdc_statements<'tcx>(
     }
 
     // Inject test vector update first because `inject_statement` always insert new statement at head.
-    for (end_bcbs, bitmap_idx, decision_depth) in
-        coverage_spans.mappings.iter().filter_map(|mapping| match &mapping.kind {
-            BcbMappingKind::MCDCDecision { end_bcbs, bitmap_idx, decision_depth, .. } => {
-                Some((end_bcbs, *bitmap_idx, *decision_depth))
-            }
-            _ => None,
-        })
+    for &mappings::MCDCDecision {
+        span: _,
+        ref end_bcbs,
+        bitmap_idx,
+        conditions_num: _,
+        decision_depth,
+    } in &coverage_spans.mcdc_decisions
     {
         for end in end_bcbs {
             let end_bb = basic_coverage_blocks[*end].leader_bb();
@@ -276,24 +274,22 @@ fn inject_mcdc_statements<'tcx>(
         }
     }
 
-    for (true_bcb, false_bcb, condition_id, decision_depth) in
-        coverage_spans.mappings.iter().filter_map(|mapping| match mapping.kind {
-            BcbMappingKind::MCDCBranch { true_bcb, false_bcb, condition_info, decision_depth } => {
-                Some((true_bcb, false_bcb, condition_info?.condition_id, decision_depth))
-            }
-            _ => None,
-        })
+    for &mappings::MCDCBranch { span: _, true_bcb, false_bcb, condition_info, decision_depth } in
+        &coverage_spans.mcdc_branches
     {
+        let Some(condition_info) = condition_info else { continue };
+        let id = condition_info.condition_id;
+
         let true_bb = basic_coverage_blocks[true_bcb].leader_bb();
         inject_statement(
             mir_body,
-            CoverageKind::CondBitmapUpdate { id: condition_id, value: true, decision_depth },
+            CoverageKind::CondBitmapUpdate { id, value: true, decision_depth },
             true_bb,
         );
         let false_bb = basic_coverage_blocks[false_bcb].leader_bb();
         inject_statement(
             mir_body,
-            CoverageKind::CondBitmapUpdate { id: condition_id, value: false, decision_depth },
+            CoverageKind::CondBitmapUpdate { id, value: false, decision_depth },
             false_bb,
         );
     }
