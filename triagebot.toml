@@ -117,7 +117,7 @@ issues).
 
 [instructions]: https://rustc-dev-guide.rust-lang.org/notification-groups/apple.html
 """
-label = "O-macos"
+label = "O-apple"
 
 [prioritize]
 label = "I-prioritize"
