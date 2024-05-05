@@ -100,14 +100,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                             let ty::Float(float_ty) = op.layout.ty.kind() else {
                                 span_bug!(this.cur_span(), "{} operand is not a float", intrinsic_name)
                             };
-                            // FIXME using host floats
+                            // Using host floats (but it's fine, these operations do not have guaranteed precision).
                             match float_ty {
                                 FloatTy::F16 => unimplemented!("f16_f128"),
                                 FloatTy::F32 => {
                                     let f = op.to_scalar().to_f32()?;
                                     let f_host = f.to_host();
                                     let res = match host_op {
-                                        "fsqrt" => f_host.sqrt(),
+                                        "fsqrt" => f_host.sqrt(), // FIXME Using host floats, this should use full-precision soft-floats
                                         "fsin" => f_host.sin(),
                                         "fcos" => f_host.cos(),
                                         "fexp" => f_host.exp(),

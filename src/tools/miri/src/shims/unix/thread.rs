@@ -42,7 +42,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             throw_unsup_format!("Miri supports pthread_join only with retval==NULL");
         }
 
-        let thread_id = this.read_target_usize(thread)?;
+        let thread_id = this.read_scalar(thread)?.to_int(this.libc_ty_layout("pthread_t").size)?;
         this.join_thread_exclusive(thread_id.try_into().expect("thread ID should fit in u32"))?;
 
         Ok(0)
@@ -51,7 +51,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     fn pthread_detach(&mut self, thread: &OpTy<'tcx, Provenance>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        let thread_id = this.read_target_usize(thread)?;
+        let thread_id = this.read_scalar(thread)?.to_int(this.libc_ty_layout("pthread_t").size)?;
         this.detach_thread(
             thread_id.try_into().expect("thread ID should fit in u32"),
             /*allow_terminated_joined*/ false,
@@ -64,7 +64,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let this = self.eval_context_mut();
 
         let thread_id = this.get_active_thread();
-        Ok(Scalar::from_target_usize(thread_id.into(), this))
+        Ok(Scalar::from_uint(thread_id.to_u32(), this.libc_ty_layout("pthread_t").size))
     }
 
     /// Set the name of the current thread. `max_name_len` is the maximal length of the name
@@ -77,7 +77,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     ) -> InterpResult<'tcx, Scalar<Provenance>> {
         let this = self.eval_context_mut();
 
-        let thread = ThreadId::try_from(thread.to_target_usize(this)?).unwrap();
+        let thread = thread.to_int(this.libc_ty_layout("pthread_t").size)?;
+        let thread = ThreadId::try_from(thread).unwrap();
         let name = name.to_pointer(this)?;
 
         let name = this.read_c_str(name)?.to_owned();
@@ -100,7 +101,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     ) -> InterpResult<'tcx, Scalar<Provenance>> {
         let this = self.eval_context_mut();
 
-        let thread = ThreadId::try_from(thread.to_target_usize(this)?).unwrap();
+        let thread = thread.to_int(this.libc_ty_layout("pthread_t").size)?;
+        let thread = ThreadId::try_from(thread).unwrap();
         let name_out = name_out.to_pointer(this)?;
         let len = len.to_target_usize(this)?;
 

@@ -13,15 +13,6 @@ function endgroup {
 
 begingroup "Building Miri"
 
-# Special Windows hacks
-if [ "$HOST_TARGET" = i686-pc-windows-msvc ]; then
-  # The $BASH variable is `/bin/bash` here, but that path does not actually work. There are some
-  # hacks in place somewhere to try to paper over this, but the hacks dont work either (see
-  # <https://github.com/rust-lang/miri/pull/3402>). So we hard-code the correct location for Github
-  # CI instead.
-  BASH="C:/Program Files/Git/usr/bin/bash"
-fi
-
 # Global configuration
 export RUSTFLAGS="-D warnings"
 export CARGO_INCREMENTAL=0
@@ -71,10 +62,9 @@ function run_tests {
     time MIRIFLAGS="${MIRIFLAGS-} -O -Zmir-opt-level=4 -Cdebug-assertions=yes" MIRI_SKIP_UI_CHECKS=1 ./miri test -- tests/{pass,panic}
   fi
   if [ -n "${MANY_SEEDS-}" ]; then
-    # Also run some many-seeds tests. 64 seeds means this takes around a minute per test.
-    # (Need to invoke via explicit `bash -c` for Windows.)
+    # Also run some many-seeds tests.
     time for FILE in tests/many-seeds/*.rs; do
-      MIRI_SEEDS=$MANY_SEEDS ./miri many-seeds "$BASH" -c "./miri run '$FILE'"
+      ./miri run "--many-seeds=0..$MANY_SEEDS" "$FILE"
     done
   fi
   if [ -n "${TEST_BENCH-}" ]; then
@@ -117,10 +107,10 @@ function run_tests_minimal {
     exit 1
   fi
 
-  ./miri test -- "$@"
+  time ./miri test -- "$@"
 
   # Ensure that a small smoke test of cargo-miri works.
-  cargo miri run --manifest-path test-cargo-miri/no-std-smoke/Cargo.toml --target ${MIRI_TEST_TARGET-$HOST_TARGET}
+  time cargo miri run --manifest-path test-cargo-miri/no-std-smoke/Cargo.toml --target ${MIRI_TEST_TARGET-$HOST_TARGET}
 
   endgroup
 }
@@ -135,23 +125,11 @@ case $HOST_TARGET in
     GC_STRESS=1 MIR_OPT=1 MANY_SEEDS=64 TEST_BENCH=1 CARGO_MIRI_ENV=1 run_tests
     # Extra tier 1
     # With reduced many-seed count to avoid spending too much time on that.
-    # (All OSes are run with 64 seeds at least once though via the macOS runner.)
+    # (All OSes and ABIs are run with 64 seeds at least once though via the macOS runner.)
     MANY_SEEDS=16 MIRI_TEST_TARGET=i686-unknown-linux-gnu run_tests
     MANY_SEEDS=16 MIRI_TEST_TARGET=aarch64-unknown-linux-gnu run_tests
     MANY_SEEDS=16 MIRI_TEST_TARGET=x86_64-apple-darwin run_tests
     MANY_SEEDS=16 MIRI_TEST_TARGET=x86_64-pc-windows-gnu run_tests
-    # Extra tier 2
-    MIRI_TEST_TARGET=aarch64-apple-darwin run_tests
-    MIRI_TEST_TARGET=arm-unknown-linux-gnueabi run_tests
-    # Partially supported targets (tier 2)
-    MIRI_TEST_TARGET=x86_64-unknown-freebsd run_tests_minimal hello integer vec panic/panic concurrency/simple pthread-threadname libc-getentropy libc-getrandom libc-misc libc-fs atomic env align num_cpus
-    MIRI_TEST_TARGET=i686-unknown-freebsd run_tests_minimal hello integer vec panic/panic concurrency/simple pthread-threadname libc-getentropy libc-getrandom libc-misc libc-fs atomic env align num_cpus
-    MIRI_TEST_TARGET=aarch64-linux-android run_tests_minimal hello integer vec panic/panic
-    MIRI_TEST_TARGET=wasm32-wasi run_tests_minimal no_std integer strings wasm
-    MIRI_TEST_TARGET=wasm32-unknown-unknown run_tests_minimal no_std integer strings wasm
-    MIRI_TEST_TARGET=thumbv7em-none-eabihf run_tests_minimal no_std
-    # Custom target JSON file
-    MIRI_TEST_TARGET=tests/avr.json MIRI_NO_STD=1 run_tests_minimal no_std
     ;;
   aarch64-apple-darwin)
     # Host (tier 2)
@@ -160,13 +138,28 @@ case $HOST_TARGET in
     MANY_SEEDS=64 MIRI_TEST_TARGET=i686-pc-windows-gnu run_tests
     MANY_SEEDS=64 MIRI_TEST_TARGET=x86_64-pc-windows-msvc CARGO_MIRI_ENV=1 run_tests
     # Extra tier 2
-    MIRI_TEST_TARGET=s390x-unknown-linux-gnu run_tests # big-endian architecture
+    MIRI_TEST_TARGET=arm-unknown-linux-gnueabi run_tests
+    MIRI_TEST_TARGET=s390x-unknown-linux-gnu run_tests # big-endian architecture of choice
+    # Partially supported targets (tier 2)
+    VERY_BASIC="integer vec string btreemap" # common things we test on all of them (if they have std), requires no target-specific shims
+    BASIC="$VERY_BASIC hello hashmap alloc align" # ensures we have the shims for stdout and basic data structures
+    MIRI_TEST_TARGET=x86_64-unknown-freebsd run_tests_minimal $BASIC panic/panic concurrency/simple atomic threadname libc-misc libc-random libc-time fs env num_cpus
+    MIRI_TEST_TARGET=i686-unknown-freebsd   run_tests_minimal $BASIC panic/panic concurrency/simple atomic threadname libc-misc libc-random libc-time fs env num_cpus
+    MIRI_TEST_TARGET=x86_64-unknown-illumos run_tests_minimal $VERY_BASIC hello panic/panic concurrency/simple pthread-sync libc-misc libc-random
+    # TODO fix solaris stack guard
+    # MIRI_TEST_TARGET=x86_64-pc-solaris run_tests_minimal $VERY_BASIC hello panic/panic pthread-sync
+    MIRI_TEST_TARGET=aarch64-linux-android  run_tests_minimal $VERY_BASIC hello panic/panic
+    MIRI_TEST_TARGET=wasm32-wasi run_tests_minimal $VERY_BASIC wasm
+    MIRI_TEST_TARGET=wasm32-unknown-unknown run_tests_minimal $VERY_BASIC wasm
+    MIRI_TEST_TARGET=thumbv7em-none-eabihf run_tests_minimal no_std
+    # Custom target JSON file
+    MIRI_TEST_TARGET=tests/avr.json MIRI_NO_STD=1 run_tests_minimal no_std
     ;;
   i686-pc-windows-msvc)
     # Host
-    # Only smoke-test `many-seeds`; 64 runs of just the scoped-thread-leak test take 15min here!
-    # See <https://github.com/rust-lang/miri/issues/3509>.
-    GC_STRESS=1 MIR_OPT=1 MANY_SEEDS=1 TEST_BENCH=1 run_tests
+    # Without GC_STRESS and with reduced many-seeds count as this is the slowest runner.
+    # (The macOS runner checks windows-msvc with full many-seeds count.)
+    MIR_OPT=1 MANY_SEEDS=16 TEST_BENCH=1 run_tests
     # Extra tier 1
     # We really want to ensure a Linux target works on a Windows host,
     # and a 64bit target works on a 32bit host.

@@ -4,7 +4,7 @@ error: unsupported operation: miri can only use intrinsic fallback bodies that c
 LL |     ptr_guaranteed_cmp::<()>(std::ptr::null(), std::ptr::null());
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ miri can only use intrinsic fallback bodies that check UB. After verifying that `ptr_guaranteed_cmp` does so, add the `#[miri::intrinsic_fallback_checks_ub]` attribute to it; also ping @rust-lang/miri when you do that
    |
-   = help: this is likely not a bug in the program; it indicates that the program performed an operation that the interpreter does not support
+   = help: this is likely not a bug in the program; it indicates that the program performed an operation that Miri does not support
    = note: BACKTRACE:
    = note: inside `main` at $DIR/intrinsic_fallback_checks_ub.rs:LL:CC
 

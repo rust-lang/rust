@@ -70,6 +70,8 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
                 let (dest, dest_len) = this.mplace_to_simd(dest)?;
 
                 // There are cases like dest: i32x4, offsets: i64x2
+                // If dest has more elements than offset, extra dest elements are filled with zero.
+                // If offsets has more elements than dest, extra offsets are ignored.
                 let actual_len = dest_len.min(offsets_len);
 
                 assert_eq!(dest_len, mask_len);
