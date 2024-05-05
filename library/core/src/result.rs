@@ -490,7 +490,7 @@
 
 use crate::iter::{self, FusedIterator, TrustedLen};
 use crate::ops::{self, ControlFlow, Deref, DerefMut};
-use crate::{convert, fmt, hint};
+use crate::{convert, fmt, hint, mem};
 
 /// `Result` is a type that represents either success ([`Ok`]) or failure ([`Err`]).
 ///
