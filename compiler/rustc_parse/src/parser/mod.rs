@@ -1537,6 +1537,47 @@ impl<'a> Parser<'a> {
             })
     }
 
+    // debug view of the parser's token stream, up to `{lookahead}` tokens
+    pub fn debug_lookahead(&self, lookahead: usize) -> impl fmt::Debug + '_ {
+        struct DebugParser<'dbg> {
+            parser: &'dbg Parser<'dbg>,
+            lookahead: usize,
+        }
+
+        impl fmt::Debug for DebugParser<'_> {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                let Self { parser, lookahead } = self;
+                let mut dbg_fmt = f.debug_struct("Parser"); // or at least, one view of
+
+                // we don't need N spans, but we want at least one, so print all of prev_token
+                dbg_fmt.field("prev_token", &parser.prev_token);
+                // make it easier to peek farther ahead by taking TokenKinds only until EOF
+                let tokens = (0..*lookahead)
+                    .map(|i| parser.look_ahead(i, |tok| tok.kind.clone()))
+                    .scan(parser.prev_token == TokenKind::Eof, |eof, tok| {
+                        let current = eof.then_some(tok.clone()); // include a trailing EOF token
+                        *eof |= &tok == &TokenKind::Eof;
+                        current
+                    });
+                dbg_fmt.field_with("tokens", |field| field.debug_list().entries(tokens).finish());
+                dbg_fmt.field("approx_token_stream_pos", &parser.num_bump_calls);
+
+                // some fields are interesting for certain values, as they relate to macro parsing
+                if let Some(subparser) = parser.subparser_name {
+                    dbg_fmt.field("subparser_name", &subparser);
+                }
+                if let Recovery::Forbidden = parser.recovery {
+                    dbg_fmt.field("recovery", &parser.recovery);
+                }
+
+                // imply there's "more to know" than this view
+                dbg_fmt.finish_non_exhaustive()
+            }
+        }
+
+        DebugParser { parser: self, lookahead }
+    }
+
     pub fn clear_expected_tokens(&mut self) {
         self.expected_tokens.clear();
     }
