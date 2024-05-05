@@ -91,6 +91,13 @@ impl Rustc {
         self
     }
 
+    /// Specify path to the output file.
+    pub fn output<P: AsRef<Path>>(&mut self, path: P) -> &mut Self {
+        self.cmd.arg("-o");
+        self.cmd.arg(path.as_ref());
+        self
+    }
+
     /// This flag defers LTO optimizations to the linker.
     pub fn linker_plugin_lto(&mut self, option: &str) -> &mut Self {
         self.cmd.arg(format!("-Clinker-plugin-lto={option}"));
@@ -171,7 +178,7 @@ impl Rustc {
 
     /// Get the [`Output`][::std::process::Output] of the finished process.
     #[track_caller]
-    pub fn output(&mut self) -> ::std::process::Output {
+    pub fn command_output(&mut self) -> ::std::process::Output {
         // let's make sure we piped all the input and outputs
         self.cmd.stdin(Stdio::piped());
         self.cmd.stdout(Stdio::piped());
@@ -196,7 +203,7 @@ impl Rustc {
         let caller_location = std::panic::Location::caller();
         let caller_line_number = caller_location.line();
 
-        let output = self.output();
+        let output = self.command_output();
         if output.status.code().unwrap() != code {
             handle_failed_output(&self.cmd, output, caller_line_number);
         }

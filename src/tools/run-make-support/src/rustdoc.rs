@@ -51,6 +51,13 @@ impl Rustdoc {
         self
     }
 
+    /// Specify path to the output folder.
+    pub fn output<P: AsRef<Path>>(&mut self, path: P) -> &mut Self {
+        self.cmd.arg("-o");
+        self.cmd.arg(path.as_ref());
+        self
+    }
+
     /// Specify output directory.
     pub fn out_dir<P: AsRef<Path>>(&mut self, path: P) -> &mut Self {
         self.cmd.arg("--out-dir").arg(path.as_ref());
@@ -73,7 +80,7 @@ impl Rustdoc {
 
     /// Get the [`Output`][::std::process::Output] of the finished process.
     #[track_caller]
-    pub fn output(&mut self) -> ::std::process::Output {
+    pub fn command_output(&mut self) -> ::std::process::Output {
         // let's make sure we piped all the input and outputs
         self.cmd.stdin(Stdio::piped());
         self.cmd.stdout(Stdio::piped());
@@ -93,12 +100,19 @@ impl Rustdoc {
         }
     }
 
+    /// Specify the edition year.
+    pub fn edition(&mut self, edition: &str) -> &mut Self {
+        self.cmd.arg("--edition");
+        self.cmd.arg(edition);
+        self
+    }
+
     #[track_caller]
     pub fn run_fail_assert_exit_code(&mut self, code: i32) -> Output {
         let caller_location = std::panic::Location::caller();
         let caller_line_number = caller_location.line();
 
-        let output = self.output();
+        let output = self.command_output();
         if output.status.code().unwrap() != code {
             handle_failed_output(&self.cmd, output, caller_line_number);
         }

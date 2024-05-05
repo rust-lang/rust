@@ -25,7 +25,7 @@ fn run(file: &Path, method: &str, expected_output: &str) {
         .arg("--invoke")
         .arg(method)
         .arg(file)
-        .output()
+        .command_output()
         .unwrap();
     assert!(output.status.success());
     assert_eq!(expected_output, String::from_utf8_lossy(&output.stdout));
