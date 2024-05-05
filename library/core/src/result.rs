@@ -1460,7 +1460,7 @@ impl<T, E> Result<T, E> {
         match self {
             Ok(t) => t,
             // SAFETY: the safety contract must be upheld by the caller.
-            Err(_) => unsafe { hint::unreachable_unchecked() },
+            Err(_) => unsafe { mem::MaybeUninit::uninit().assume_init() },
         }
     }
 
@@ -1491,7 +1491,7 @@ impl<T, E> Result<T, E> {
         debug_assert!(self.is_err());
         match self {
             // SAFETY: the safety contract must be upheld by the caller.
-            Ok(_) => unsafe { hint::unreachable_unchecked() },
+            Ok(_) => unsafe { mem::MaybeUninit::uninit().assume_init() },
             Err(e) => e,
         }
     }
