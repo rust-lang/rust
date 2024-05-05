@@ -210,11 +210,6 @@ trigger_files = [
     "library/std/src/os/hermit"
 ]
 
-[autolabel."O-ios"]
-trigger_files = [
-    "library/std/src/os/ios"
-]
-
 [autolabel."O-itron"]
 trigger_files = [
     "library/std/src/sys/pal/itron"
@@ -227,7 +222,7 @@ trigger_files = [
 
 [autolabel."O-macos"]
 trigger_files = [
-    "library/std/src/os/macos"
+    "library/std/src/os/apple"
 ]
 
 [autolabel."O-netbsd"]
@@ -275,20 +270,10 @@ trigger_files = [
     "library/std/src/os/wasm"
 ]
 
-[autolabel."O-watchos"]
-trigger_files = [
-    "library/std/src/os/watchos"
-]
-
 [autolabel."O-windows"]
 trigger_files = [
     "library/std/src/sys/pal/windows",
     "library/std/src/os/windows"
-]
-
-[autolabel."O-visionos"]
-trigger_files = [
-    "library/std/src/os/visionos"
 ]
 
 [autolabel."T-bootstrap"]

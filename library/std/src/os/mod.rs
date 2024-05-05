@@ -127,10 +127,12 @@ pub mod hurd;
 #[cfg(target_os = "illumos")]
 pub mod illumos;
 #[cfg(target_os = "ios")]
+#[path = "apple/mod.rs"]
 pub mod ios;
 #[cfg(target_os = "l4re")]
 pub mod l4re;
 #[cfg(target_os = "macos")]
+#[path = "apple/mod.rs"]
 pub mod macos;
 #[cfg(target_os = "netbsd")]
 pub mod netbsd;
@@ -145,18 +147,20 @@ pub mod solaris;
 #[cfg(target_os = "solid_asp3")]
 pub mod solid;
 #[cfg(target_os = "tvos")]
-#[path = "ios/mod.rs"]
-pub(crate) mod tvos;
+#[path = "apple/mod.rs"]
+pub mod tvos;
 #[cfg(target_os = "uefi")]
 pub mod uefi;
 #[cfg(target_os = "visionos")]
-pub(crate) mod visionos;
+#[path = "apple/mod.rs"]
+pub mod visionos;
 #[cfg(target_os = "vita")]
 pub mod vita;
 #[cfg(target_os = "vxworks")]
 pub mod vxworks;
 #[cfg(target_os = "watchos")]
-pub(crate) mod watchos;
+#[path = "apple/mod.rs"]
+pub mod watchos;
 #[cfg(target_os = "xous")]
 pub mod xous;
 

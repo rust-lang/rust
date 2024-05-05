@@ -6,7 +6,8 @@ use crate::sys_common::{AsInner, AsInnerMut, IntoInner};
 use crate::time::SystemTime;
 
 #[allow(deprecated)]
-use crate::os::macos::raw;
+#[cfg(any(target_os = "macos", target_os = "ios"))]
+use super::raw;
 
 /// OS-specific extensions to [`fs::Metadata`].
 ///
@@ -26,6 +27,8 @@ pub trait MetadataExt {
                 methods of this trait"
     )]
     #[allow(deprecated)]
+    // To maintain backwards compat, is omitted on other Apple targets.
+    #[cfg(any(target_os = "macos", target_os = "ios"))]
     fn as_raw_stat(&self) -> &raw::stat;
 
     #[stable(feature = "metadata_ext2", since = "1.8.0")]
@@ -70,6 +73,7 @@ pub trait MetadataExt {
     fn st_gen(&self) -> u32;
     #[stable(feature = "metadata_ext2", since = "1.8.0")]
     fn st_lspare(&self) -> u32;
+    #[cfg(target_os = "macos")]
     #[stable(feature = "metadata_ext2", since = "1.8.0")]
     fn st_qspare(&self) -> [u64; 2];
 }
@@ -77,6 +81,8 @@ pub trait MetadataExt {
 #[stable(feature = "metadata_ext", since = "1.1.0")]
 impl MetadataExt for Metadata {
     #[allow(deprecated)]
+    // To maintain backwards compat, is omitted on other Apple targets.
+    #[cfg(any(target_os = "macos", target_os = "ios"))]
     fn as_raw_stat(&self) -> &raw::stat {
         unsafe { &*(self.as_inner().as_inner() as *const libc::stat as *const raw::stat) }
     }
@@ -143,6 +149,7 @@ impl MetadataExt for Metadata {
     fn st_lspare(&self) -> u32 {
         self.as_inner().as_inner().st_lspare as u32
     }
+    #[cfg(target_os = "macos")]
     fn st_qspare(&self) -> [u64; 2] {
         let qspare = self.as_inner().as_inner().st_qspare;
         [qspare[0] as u64, qspare[1] as u64]
