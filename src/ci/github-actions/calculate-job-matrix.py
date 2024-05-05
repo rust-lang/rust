@@ -136,7 +136,7 @@ def calculate_jobs(run_type: WorkflowRunType, job_data: Dict[str, Any]) -> List[
                 raise Exception(f"Custom job(s) `{unknown_jobs}` not found in auto jobs")
 
         return add_base_env(name_jobs(jobs, "try"), job_data["envs"]["try"])
-    elif run_type is AutoRunType:
+    elif isinstance(run_type, AutoRunType):
         return add_base_env(name_jobs(job_data["auto"], "auto"), job_data["envs"]["auto"])
 
     return []
@@ -192,6 +192,10 @@ if __name__ == "__main__":
     if run_type is not None:
         jobs = calculate_jobs(run_type, data)
     jobs = skip_jobs(jobs, channel)
+
+    if not jobs:
+        raise Exception("Scheduled job list is empty, this is an error")
+
     run_type = format_run_type(run_type)
 
     logging.info(f"Output:\n{yaml.dump(dict(jobs=jobs, run_type=run_type), indent=4)}")
