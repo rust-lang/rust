@@ -170,7 +170,7 @@ pub struct Parser<'a> {
     capture_state: CaptureState,
     /// This allows us to recover when the user forget to add braces around
     /// multiple statements in the closure body.
-    pub current_closure: Option<ClosureSpans>,
+    current_closure: Option<ClosureSpans>,
     /// Whether the parser is allowed to do recovery.
     /// This is disabled when parsing macro arguments, see #103534
     pub recovery: Recovery,
