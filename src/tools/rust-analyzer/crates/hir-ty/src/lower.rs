@@ -1311,11 +1311,10 @@ impl<'a> TyLoweringContext<'a> {
                 bounds,
                 lifetime: match lifetime {
                     Some(it) => match it.bound_var(Interner) {
-                        Some(bound_var) => LifetimeData::BoundVar(BoundVar::new(
-                            DebruijnIndex::INNERMOST,
-                            bound_var.index,
-                        ))
-                        .intern(Interner),
+                        Some(bound_var) => bound_var
+                            .shifted_out_to(DebruijnIndex::new(2))
+                            .map(|bound_var| LifetimeData::BoundVar(bound_var).intern(Interner))
+                            .unwrap_or(it),
                         None => it,
                     },
                     None => static_lifetime(),

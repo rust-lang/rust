@@ -4803,3 +4803,24 @@ fn foo() {
 "#,
     );
 }
+
+#[test]
+fn dyn_trait_with_lifetime_in_rpit() {
+    check_types(
+        r#"
+//- minicore: future
+pub struct Box<T> {}
+
+trait Trait {}
+
+pub async fn foo_async<'a>() -> Box<dyn Trait + 'a>  {
+    Box {}
+}
+
+fn foo() {
+    foo_async();
+  //^^^^^^^^^^^impl Future<Output = Box<dyn Trait>> + ?Sized
+}
+"#,
+    )
+}
