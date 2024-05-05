@@ -247,6 +247,14 @@ unsafe fn bigger_layout() {
     unsafe fn from_ref(this: &i32) -> &i64 {
         &*(this as *const i32 as *const i64)
     }
+
+    // https://github.com/rust-lang/rust/issues/124685
+    unsafe fn slice_index(array: &mut [u8], offset: usize) {
+        let a1 = &mut array[offset];
+        let a2 = a1 as *mut u8;
+        let a3 = a2 as *mut u64;
+        unsafe { *a3 = 3 };
+    }
 }
 
 const RAW_PTR: *mut u8 = 1 as *mut u8;
