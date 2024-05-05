@@ -2221,13 +2221,8 @@ impl<'a> Builder<'a> {
         out
     }
 
-    /// Return paths of all submodules managed by git.
-    /// If the current checkout is not managed by git, returns an empty slice.
+    /// Return paths of all submodules.
     pub fn get_all_submodules(&self) -> &[String] {
-        if !self.rust_info().is_managed_git_subrepository() {
-            return &[];
-        }
-
         static SUBMODULES_PATHS: OnceLock<Vec<String>> = OnceLock::new();
 
         let init_submodules_paths = |src: &PathBuf| {
