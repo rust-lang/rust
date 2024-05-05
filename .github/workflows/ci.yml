@@ -52,6 +52,8 @@ jobs:
       - name: Checkout the source code
         uses: actions/checkout@v4
       - name: Calculate the CI job matrix
+        env:
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
         run: python3 src/ci/github-actions/calculate-job-matrix.py >> $GITHUB_OUTPUT
         id: jobs
   job:
