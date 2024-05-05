@@ -1,4 +1,3 @@
-#![feature(exclusive_range_pattern)]
 #![deny(unreachable_patterns)]
 
 enum Q { R(Option<usize>) }

@@ -182,6 +182,7 @@ pub(crate) enum RenderTypeId {
     Primitive(clean::PrimitiveType),
     AssociatedType(Symbol),
     Index(isize),
+    Mut,
 }
 
 impl RenderTypeId {

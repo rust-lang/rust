@@ -1,5 +1,4 @@
 // Check specific cases of sorting candidates in match lowering.
-#![feature(exclusive_range_pattern)]
 
 // EMIT_MIR sort_candidates.constant_eq.SimplifyCfg-initial.after.mir
 fn constant_eq(s: &str, b: bool) -> u32 {

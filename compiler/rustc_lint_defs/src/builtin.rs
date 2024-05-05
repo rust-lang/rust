@@ -844,7 +844,6 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust
-    /// # #![feature(exclusive_range_pattern)]
     /// let x = 123u32;
     /// match x {
     ///     0..100 => { println!("small"); }

@@ -42,7 +42,6 @@
 //! This is enough to compute usefulness: a pattern in a `match` expression is redundant iff it is
 //! not useful w.r.t. the patterns above it:
 //! ```compile_fail,E0004
-//! # #![feature(exclusive_range_pattern)]
 //! # fn foo() {
 //! match Some(0u32) {
 //!     Some(0..100) => {},
