@@ -71,7 +71,7 @@ Those well known names and values follows the same stability as what they refer 
 Well known names and values checking is always enabled as long as at least one
 `--check-cfg` argument is present.
 
-As of `2024-04-06T`, the list of known names is as follows:
+As of `2024-05-06T`, the list of known names is as follows:
 
 <!--- See CheckCfg::fill_well_known in compiler/rustc_session/src/config.rs -->
 
@@ -84,6 +84,7 @@ As of `2024-04-06T`, the list of known names is as follows:
  - `panic`
  - `proc_macro`
  - `relocation_model`
+ - `rustfmt`
  - `sanitize`
  - `sanitizer_cfi_generalize_pointers`
  - `sanitizer_cfi_normalize_integers`
