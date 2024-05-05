@@ -1,6 +1,5 @@
 // This test ensures that the settings menu display is working as expected and that
 // the settings page is also rendered as expected.
-include: "utils.goml"
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
 show-text: true // needed when we check for colors below.
 // First, we check that the settings page doesn't exist.
