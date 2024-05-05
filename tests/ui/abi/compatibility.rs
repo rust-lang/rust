@@ -278,6 +278,7 @@ test_abi_compatible!(zst_array, Zst, [u8; 0]);
 test_abi_compatible!(nonzero_int, NonZero<i32>, i32);
 
 // `#[repr(C)]` enums should not change ABI based on individual variant inhabitedness.
+// (However, this is *not* a guarantee. We only guarantee same layout, not same ABI.)
 enum Void {}
 test_abi_compatible!(repr_c_enum_void, ReprCEnum<Void>, ReprCEnum<ReprCUnion<Void>>);
 
