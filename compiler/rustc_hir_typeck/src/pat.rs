@@ -163,8 +163,6 @@ enum MutblCap {
     /// The contained span, if present, points to an `&` pattern
     /// that is the reason for the restriction,
     /// and which will be reported in a diagnostic.
-    /// (Said diagnostic is shown only if
-    /// replacing the `&` pattern with `&mut` would allow the code to compile.)
     WeaklyNot(Option<Span>),
 
     /// No restriction on mutability
