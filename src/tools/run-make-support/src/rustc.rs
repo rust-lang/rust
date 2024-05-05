@@ -91,6 +91,13 @@ impl Rustc {
         self
     }
 
+    /// Specify path to the output file.
+    pub fn output<P: AsRef<Path>>(&mut self, path: P) -> &mut Self {
+        self.cmd.arg("-o");
+        self.cmd.arg(path.as_ref());
+        self
+    }
+
     /// This flag defers LTO optimizations to the linker.
     pub fn linker_plugin_lto(&mut self, option: &str) -> &mut Self {
         self.cmd.arg(format!("-Clinker-plugin-lto={option}"));

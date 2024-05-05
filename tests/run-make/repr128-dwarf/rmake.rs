@@ -10,7 +10,7 @@ use std::rc::Rc;
 
 fn main() {
     let output = tmp_dir().join("repr128");
-    rustc().input("main.rs").arg("-o").arg(&output).arg("-Cdebuginfo=2").run();
+    rustc().input("main.rs").output(&output).arg("-Cdebuginfo=2").run();
     // Mach-O uses packed debug info
     let dsym_location = output
         .with_extension("dSYM")
