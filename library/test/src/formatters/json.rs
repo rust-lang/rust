@@ -167,8 +167,8 @@ impl<T: Write> OutputFormatter for JsonFormatter<T> {
             ),
 
             TestResult::TrBench(ref bs) => {
-                let median = bs.ns_iter_summ.median as usize;
-                let deviation = (bs.ns_iter_summ.max - bs.ns_iter_summ.min) as usize;
+                let median = bs.ns_iter_summ.median;
+                let deviation = bs.ns_iter_summ.max - bs.ns_iter_summ.min;
 
                 let mbps = if bs.mb_s == 0 {
                     String::new()
