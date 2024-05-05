@@ -513,6 +513,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 throw_machine_stop!(TerminationInfo::Exit { code: code.into(), leak_check: false });
             }
             "SystemFunction036" => {
+                // used by getrandom 0.1
                 // This is really 'RtlGenRandom'.
                 let [ptr, len] =
                     this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
@@ -522,6 +523,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 this.write_scalar(Scalar::from_bool(true), dest)?;
             }
             "ProcessPrng" => {
+                // used by `std`
                 let [ptr, len] =
                     this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 let ptr = this.read_pointer(ptr)?;
@@ -530,6 +532,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 this.write_scalar(Scalar::from_i32(1), dest)?;
             }
             "BCryptGenRandom" => {
+                // used by getrandom 0.2
                 let [algorithm, ptr, len, flags] =
                     this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 let algorithm = this.read_scalar(algorithm)?;
