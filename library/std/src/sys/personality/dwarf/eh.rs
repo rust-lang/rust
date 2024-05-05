@@ -54,7 +54,14 @@ pub enum EHAction {
     Terminate,
 }
 
-pub const USING_SJLJ_EXCEPTIONS: bool = cfg!(all(target_os = "ios", target_arch = "arm"));
+/// 32-bit Apple ARM uses SjLj exceptions, except for watchOS.
+///
+/// I.e. iOS and tvOS, as those are the only Apple OSes that used 32-bit ARM
+/// devices.
+///
+/// <https://github.com/llvm/llvm-project/blob/llvmorg-18.1.4/clang/lib/Driver/ToolChains/Darwin.cpp#L3107-L3119>
+pub const USING_SJLJ_EXCEPTIONS: bool =
+    cfg!(all(target_vendor = "apple", not(target_os = "watchos"), target_arch = "arm"));
 
 pub unsafe fn find_eh_action(lsda: *const u8, context: &EHContext<'_>) -> Result<EHAction, ()> {
     if lsda.is_null() {
