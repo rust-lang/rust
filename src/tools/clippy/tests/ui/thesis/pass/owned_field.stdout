@@ -1,0 +1,44 @@
+# "replace_self"
+- drop           : (Mutable  , Owned    , Local   , NonCopy, PartDrop, UserDef  ) {Overwrite, DropForReplacement}
+- copy           : (Mutable  , Owned    , Local   , Copy   , NonDrop , Primitive) {Overwrite}
+- Body: Output(Unit)     , NotConst , Safe  , Sync , Free       {NoArguments}
+
+# "conditional_replace_self"
+- drop           : (Mutable  , Owned    , Local   , NonCopy, PartDrop, UserDef  ) {Overwrite, ConditionalOverwride, ConditionalDrop, DropForReplacement}
+- copy           : (Mutable  , Owned    , Local   , Copy   , NonDrop , Primitive) {Overwrite, ConditionalOverwride}
+- Body: Output(Unit)     , NotConst , Safe  , Sync , Free       {NoArguments}
+
+# "assign_copy_field"
+- ex             : (Mutable  , Owned    , Local   , NonCopy, PartDrop, UserDef  ) {OverwritePart}
+- Body: Output(Unit)     , NotConst , Safe  , Sync , Free       {NoArguments}
+
+# "assign_drop_field"
+- ex             : (Mutable  , Owned    , Local   , NonCopy, PartDrop, UserDef  ) {OverwritePart}
+- Body: Output(Unit)     , NotConst , Safe  , Sync , Free       {NoArguments}
+
+# "move_drop_field_to_var"
+- ex             : (Immutable, Owned    , Local   , NonCopy, PartDrop, UserDef  ) {PartMoved, PartMovedToVar}
+- _hey           : (Immutable, Owned    , Local   , NonCopy, PartDrop, UserDef  ) {}
+- Body: Output(Unit)     , NotConst , Safe  , Sync , Free       {NoArguments}
+
+# "copy_field"
+- ex             : (Immutable, Owned    , Local   , NonCopy, PartDrop, UserDef  ) {CopiedToVar}
+- _hey           : (Immutable, Owned    , Local   , Copy   , NonDrop , Primitive) {}
+- Body: Output(Unit)     , NotConst , Safe  , Sync , Free       {NoArguments}
+
+# "move_drop_field_as_arg"
+- ex             : (Immutable, Owned    , Local   , NonCopy, PartDrop, UserDef  ) {PartMoved, PartMovedToFn}
+- Body: Output(Unit)     , NotConst , Safe  , Sync , Free       {NoArguments}
+
+# "return_drop_field"
+- ex             : (Immutable, Owned    , Local   , NonCopy, PartDrop, UserDef  ) {PartMoved, PartMovedToReturn}
+- Body: Output(UserDef)  , NotConst , Safe  , Sync , Free       {NoArguments}
+
+# "borrow_field_as_arg"
+- ex             : (Immutable, Owned    , Local   , NonCopy, PartDrop, UserDef  ) {PartBorrow, PartArgBorrow}
+- Body: Output(Unit)     , NotConst , Safe  , Sync , Free       {NoArguments, HasTempBorrow}
+
+# "borrow_field_into_var"
+- ex             : (Immutable, Owned    , Local   , NonCopy, PartDrop, UserDef  ) {PartBorrow, PartNamedBorrow}
+- Body: Output(Unit)     , NotConst , Safe  , Sync , Free       {NoArguments, HasNamedBorrow}
+

@@ -31,6 +31,7 @@ use rustc_trait_selection::traits::{Obligation, ObligationCause};
 use std::assert_matches::debug_assert_matches;
 use std::collections::hash_map::Entry;
 use std::iter;
+use ty::ParamTy;
 
 use crate::{def_path_def_ids, match_def_path, path_res};
 
@@ -655,7 +656,7 @@ pub fn all_predicates_of(tcx: TyCtxt<'_>, id: DefId) -> impl Iterator<Item = &(t
 }
 
 /// A signature for a function like type.
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub enum ExprFnSig<'tcx> {
     Sig(Binder<'tcx, FnSig<'tcx>>, Option<DefId>),
     Closure(Option<&'tcx FnDecl<'tcx>>, Binder<'tcx, FnSig<'tcx>>),
@@ -949,6 +950,118 @@ pub fn for_each_top_level_late_bound_region<B>(
         }
     }
     ty.visit_with(&mut V { index: 0, f })
+}
+
+/// This function calls the given function `f` for every region in a type.
+/// For example `&'a Type<'b>` would call the function twice for  `'a` and `b`.
+pub fn for_each_region<'tcx>(ty: Ty<'tcx>, f: impl FnMut(Region<'tcx>)) {
+    struct V<F> {
+        f: F,
+    }
+    impl<'tcx, F: FnMut(Region<'tcx>)> TypeVisitor<TyCtxt<'tcx>> for V<F> {
+        fn visit_region(&mut self, region: Region<'tcx>) -> Self::Result {
+            (self.f)(region);
+        }
+    }
+    ty.visit_with(&mut V { f });
+}
+
+// pub fn for_each_generic_region<'tcx>(ty: Ty<'tcx>, f: impl FnMut(DefId)) {
+//     struct V<F> {
+//         f: F,
+//     }
+//     impl<'tcx, F: FnMut(DefId)> TypeVisitor<TyCtxt<'tcx>> for V<F> {
+//         fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+//             if let ty::Param(param) = ty.kind()
+//             {
+//                 (self.f)(def_id);
+//             }
+//             ControlFlow::Continue(())
+//         }
+//     }
+//     ty.visit_with(&mut V { f });
+// }
+
+/// This function calls the given function `f` for every region on a reference.
+/// For example `&'a Type<'b>` would call the function once for `'a`.
+pub fn for_each_ref_region<'tcx>(ty: Ty<'tcx>, f: &mut impl FnMut(Region<'tcx>, Ty<'tcx>, Mutability)) {
+    match ty.kind() {
+        ty::Tuple(next_tys) => next_tys.iter().for_each(|next_ty| for_each_ref_region(next_ty, f)),
+        ty::Pat(next_ty, _) | ty::RawPtr(next_ty, _) | ty::Slice(next_ty) | ty::Array(next_ty, _) => {
+            for_each_ref_region(*next_ty, f);
+        },
+        ty::Ref(region, ty, mutability) => {
+            f(*region, *ty, *mutability);
+            for_each_ref_region(*ty, f);
+        },
+
+        // All of these are either uninteresting or we don't want to visit their generics
+        ty::Bool
+        | ty::Char
+        | ty::Int(_)
+        | ty::Uint(_)
+        | ty::Float(_)
+        | ty::Adt(_, _)
+        | ty::Foreign(_)
+        | ty::Str
+        | ty::FnDef(_, _)
+        | ty::FnPtr(_)
+        | ty::Dynamic(_, _, _)
+        | ty::Closure(_, _)
+        | ty::CoroutineClosure(_, _)
+        | ty::Coroutine(_, _)
+        | ty::CoroutineWitness(_, _)
+        | ty::Never
+        | ty::Alias(_, _)
+        | ty::Param(_)
+        | ty::Bound(_, _)
+        | ty::Placeholder(_)
+        | ty::Infer(_)
+        | ty::Error(_) => {},
+    }
+}
+
+/// This function calls the given function `f` for every region on a reference.
+/// For example `&'a Type<'b>` would call the function once for `'a`.
+pub fn for_each_param_ty(ty: Ty<'_>, f: &mut impl FnMut(ParamTy)) {
+    match ty.kind() {
+        ty::Tuple(next_tys) => next_tys.iter().for_each(|next_ty| for_each_param_ty(next_ty, f)),
+        ty::Pat(next_ty, _) | ty::RawPtr(next_ty, _) | ty::Slice(next_ty) | ty::Array(next_ty, _) => {
+            for_each_param_ty(*next_ty, f);
+        },
+        ty::Ref(_region, ty, _mutability) => {
+            for_each_param_ty(*ty, f);
+        },
+        ty::Param(param) => f(*param),
+        ty::Adt(_, generics) => {
+            generics
+                .iter()
+                .filter_map(rustc_middle::ty::GenericArg::as_type)
+                .for_each(|gen_ty| for_each_param_ty(gen_ty, f));
+        },
+
+        // All of these are either uninteresting or we don't want to visit their generics
+        ty::Bool
+        | ty::Char
+        | ty::Int(_)
+        | ty::Uint(_)
+        | ty::Float(_)
+        | ty::Foreign(_)
+        | ty::Str
+        | ty::FnDef(_, _)
+        | ty::FnPtr(_)
+        | ty::Dynamic(_, _, _)
+        | ty::Closure(_, _)
+        | ty::CoroutineClosure(_, _)
+        | ty::Coroutine(_, _)
+        | ty::CoroutineWitness(_, _)
+        | ty::Never
+        | ty::Alias(_, _)
+        | ty::Bound(_, _)
+        | ty::Placeholder(_)
+        | ty::Infer(_)
+        | ty::Error(_) => {},
+    }
 }
 
 pub struct AdtVariantInfo {

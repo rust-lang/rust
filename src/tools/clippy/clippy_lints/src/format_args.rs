@@ -3,8 +3,8 @@ use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::is_diag_trait_item;
 use clippy_utils::macros::{
-    find_format_arg_expr, find_format_args, format_arg_removal_span, format_placeholder_format_span, is_assert_macro,
-    is_format_macro, is_panic, matching_root_macro_call, root_macro_call_first_node, FormatParamUsage, MacroCall,
+    find_format_arg_expr, format_arg_removal_span, format_placeholder_format_span, is_assert_macro, is_format_macro,
+    is_panic, matching_root_macro_call, root_macro_call_first_node, FormatArgsStorage, FormatParamUsage, MacroCall,
 };
 use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::{implements_trait, is_type_lang_item};
@@ -167,15 +167,18 @@ impl_lint_pass!(FormatArgs => [
     UNUSED_FORMAT_SPECS,
 ]);
 
+#[allow(clippy::struct_field_names)]
 pub struct FormatArgs {
+    format_args: FormatArgsStorage,
     msrv: Msrv,
     ignore_mixed: bool,
 }
 
 impl FormatArgs {
     #[must_use]
-    pub fn new(msrv: Msrv, allow_mixed_uninlined_format_args: bool) -> Self {
+    pub fn new(format_args: FormatArgsStorage, msrv: Msrv, allow_mixed_uninlined_format_args: bool) -> Self {
         Self {
+            format_args,
             msrv,
             ignore_mixed: allow_mixed_uninlined_format_args,
         }
@@ -186,13 +189,13 @@ impl<'tcx> LateLintPass<'tcx> for FormatArgs {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
         if let Some(macro_call) = root_macro_call_first_node(cx, expr)
             && is_format_macro(cx, macro_call.def_id)
-            && let Some(format_args) = find_format_args(cx, expr, macro_call.expn)
+            && let Some(format_args) = self.format_args.get(cx, expr, macro_call.expn)
         {
             let linter = FormatArgsExpr {
                 cx,
                 expr,
                 macro_call: &macro_call,
-                format_args: &format_args,
+                format_args,
                 ignore_mixed: self.ignore_mixed,
             };
 

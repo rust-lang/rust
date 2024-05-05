@@ -1,0 +1,54 @@
+# "take_one"
+- _animal        : (Immutable, Owned    , Argument, NonCopy, NonDrop , UserDef  ) {}
+- Body: Output(Unit)     , NotConst , Safe  , Sync , Free       {}
+
+# "take_two"
+- _animal_1      : (Immutable, Owned    , Argument, NonCopy, NonDrop , UserDef  ) {}
+- _animal_2      : (Immutable, Owned    , Argument, NonCopy, NonDrop , UserDef  ) {}
+- Body: Output(Unit)     , NotConst , Safe  , Sync , Free       {}
+
+# "pat_return_owned_arg"
+- animal         : (Immutable, Owned    , Argument, NonCopy, NonDrop , UserDef  ) {Moved, MovedToReturn}
+- Body: Output(UserDef)  , NotConst , Safe  , Sync , Free       {}
+
+# "pat_maybe_return_owned_arg_1"
+- a              : (Immutable, Owned    , Argument, NonCopy, PartDrop, UserDef  ) {Moved, MovedToReturn, Borrow, ArgBorrow}
+- Body: Output(UserDef)  , NotConst , Safe  , Sync , Free       {HasTempBorrow}
+
+# "pat_maybe_return_owned_arg_1_test"
+- a              : (Immutable, Owned    , Argument, Copy   , NonDrop , Primitive) {}
+- Body: Output(Primitive), NotConst , Safe  , Sync , Free       {}
+
+# "pat_maybe_return_owned_arg_2"
+- a              : (Immutable, Owned    , Argument, NonCopy, PartDrop, UserDef  ) {DynamicDrop, Moved, MovedToVar, Borrow, ArgBorrow, ArgBorrowExtended, ConditionalMove}
+- ret            : (Immutable, Owned    , Local   , NonCopy, PartDrop, UserDef  ) {Moved, MovedToReturn, ConditionalInit}
+- Body: Output(UserDef)  , NotConst , Safe  , Sync , Free       {HasTempBorrow}
+
+# "pat_maybe_return_owned_arg_3"
+- a              : (Immutable, Owned    , Argument, NonCopy, PartDrop, UserDef  ) {DynamicDrop, Moved, MovedToVar, Borrow, ArgBorrow, ConditionalMove}
+- ret            : (Immutable, Owned    , Local   , NonCopy, PartDrop, UserDef  ) {Moved, MovedToReturn, ConditionalInit}
+- Body: Output(UserDef)  , NotConst , Safe  , Sync , Free       {HasTempBorrow}
+
+# "pub_dynamic_drop_1"
+- animal         : (Immutable, Owned    , Argument, NonCopy, PartDrop, UserDef  ) {DynamicDrop, Moved, MovedToFn, ManualDrop, ConditionalMove}
+- cond           : (Immutable, Owned    , Argument, Copy   , NonDrop , Primitive) {}
+- Body: Output(Unit)     , NotConst , Safe  , Sync , Free       {}
+
+# "conditional_overwrite"
+- animal         : (Mutable  , Owned    , Argument, NonCopy, PartDrop, UserDef  ) {Overwrite, ConditionalOverwride, ConditionalDrop, DropForReplacement}
+- cond           : (Immutable, Owned    , Argument, Copy   , NonDrop , Primitive) {}
+- Body: Output(Unit)     , NotConst , Safe  , Sync , Free       {}
+
+# "test_ctors"
+- s1             : (Immutable, Owned    , Local   , NonCopy, PartDrop, UserDef  ) {Moved, MovedToCtor}
+- _slice         : (Immutable, Owned    , Local   , NonCopy, PartDrop, Tuple    ) {}
+- s1             : (Immutable, Owned    , Local   , NonCopy, PartDrop, UserDef  ) {Moved, MovedToCtor}
+- _array         : (Immutable, Owned    , Local   , NonCopy, PartDrop, Sequence ) {}
+- s1             : (Immutable, Owned    , Local   , NonCopy, PartDrop, UserDef  ) {Moved, MovedToCtor}
+- _thing         : (Immutable, Owned    , Local   , NonCopy, PartDrop, UserDef  ) {}
+- Body: Output(Unit)     , NotConst , Safe  , Sync , Free       {NoArguments}
+
+# "main"
+- dropper        : (Immutable, Owned    , Local   , NonCopy, SelfDrop, UserDef  ) {}
+- Body: Output(Unit)     , NotConst , Safe  , Sync , Free       {NoArguments}
+

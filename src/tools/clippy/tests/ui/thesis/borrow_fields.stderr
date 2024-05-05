@@ -1,0 +1,188 @@
+Body {
+    params: [
+        Param {
+            hir_id: HirId(DefId(0:9 ~ borrow_fields[bdca]::magic).1),
+            pat: Pat {
+                hir_id: HirId(DefId(0:9 ~ borrow_fields[bdca]::magic).2),
+                kind: Binding(
+                    BindingAnnotation(
+                        No,
+                        Not,
+                    ),
+                    HirId(DefId(0:9 ~ borrow_fields[bdca]::magic).2),
+                    input#0,
+                    None,
+                ),
+                span: tests/ui/thesis/borrow_fields.rs:12:10: 12:15 (#0),
+                default_binding_modes: true,
+            },
+            ty_span: tests/ui/thesis/borrow_fields.rs:12:17: 12:19 (#0),
+            span: tests/ui/thesis/borrow_fields.rs:12:10: 12:19 (#0),
+        },
+        Param {
+            hir_id: HirId(DefId(0:9 ~ borrow_fields[bdca]::magic).3),
+            pat: Pat {
+                hir_id: HirId(DefId(0:9 ~ borrow_fields[bdca]::magic).4),
+                kind: Binding(
+                    BindingAnnotation(
+                        No,
+                        Not,
+                    ),
+                    HirId(DefId(0:9 ~ borrow_fields[bdca]::magic).4),
+                    cond#0,
+                    None,
+                ),
+                span: tests/ui/thesis/borrow_fields.rs:12:21: 12:25 (#0),
+                default_binding_modes: true,
+            },
+            ty_span: tests/ui/thesis/borrow_fields.rs:12:27: 12:31 (#0),
+            span: tests/ui/thesis/borrow_fields.rs:12:21: 12:31 (#0),
+        },
+    ],
+    value: Expr {
+        hir_id: HirId(DefId(0:9 ~ borrow_fields[bdca]::magic).19),
+        kind: Block(
+            Block {
+                stmts: [],
+                expr: Some(
+                    Expr {
+                        hir_id: HirId(DefId(0:9 ~ borrow_fields[bdca]::magic).5),
+                        kind: If(
+                            Expr {
+                                hir_id: HirId(DefId(0:9 ~ borrow_fields[bdca]::magic).8),
+                                kind: DropTemps(
+                                    Expr {
+                                        hir_id: HirId(DefId(0:9 ~ borrow_fields[bdca]::magic).6),
+                                        kind: Path(
+                                            Resolved(
+                                                None,
+                                                Path {
+                                                    span: tests/ui/thesis/borrow_fields.rs:13:8: 13:12 (#0),
+                                                    res: Local(
+                                                        HirId(DefId(0:9 ~ borrow_fields[bdca]::magic).4),
+                                                    ),
+                                                    segments: [
+                                                        PathSegment {
+                                                            ident: cond#0,
+                                                            hir_id: HirId(DefId(0:9 ~ borrow_fields[bdca]::magic).7),
+                                                            res: Local(
+                                                                HirId(DefId(0:9 ~ borrow_fields[bdca]::magic).4),
+                                                            ),
+                                                            args: None,
+                                                            infer_args: true,
+                                                        },
+                                                    ],
+                                                },
+                                            ),
+                                        ),
+                                        span: tests/ui/thesis/borrow_fields.rs:13:8: 13:12 (#0),
+                                    },
+                                ),
+                                span: tests/ui/thesis/borrow_fields.rs:13:8: 13:12 (#4),
+                            },
+                            Expr {
+                                hir_id: HirId(DefId(0:9 ~ borrow_fields[bdca]::magic).11),
+                                kind: Block(
+                                    Block {
+                                        stmts: [],
+                                        expr: Some(
+                                            Expr {
+                                                hir_id: HirId(DefId(0:9 ~ borrow_fields[bdca]::magic).9),
+                                                kind: Lit(
+                                                    Spanned {
+                                                        node: Str(
+                                                            "default",
+                                                            Cooked,
+                                                        ),
+                                                        span: tests/ui/thesis/borrow_fields.rs:13:15: 13:24 (#0),
+                                                    },
+                                                ),
+                                                span: tests/ui/thesis/borrow_fields.rs:13:15: 13:24 (#0),
+                                            },
+                                        ),
+                                        hir_id: HirId(DefId(0:9 ~ borrow_fields[bdca]::magic).10),
+                                        rules: DefaultBlock,
+                                        span: tests/ui/thesis/borrow_fields.rs:13:13: 13:26 (#0),
+                                        targeted_by_break: false,
+                                    },
+                                    None,
+                                ),
+                                span: tests/ui/thesis/borrow_fields.rs:13:13: 13:26 (#0),
+                            },
+                            Some(
+                                Expr {
+                                    hir_id: HirId(DefId(0:9 ~ borrow_fields[bdca]::magic).12),
+                                    kind: Block(
+                                        Block {
+                                            stmts: [],
+                                            expr: Some(
+                                                Expr {
+                                                    hir_id: HirId(DefId(0:9 ~ borrow_fields[bdca]::magic).13),
+                                                    kind: AddrOf(
+                                                        Ref,
+                                                        Not,
+                                                        Expr {
+                                                            hir_id: HirId(DefId(0:9 ~ borrow_fields[bdca]::magic).14),
+                                                            kind: Field(
+                                                                Expr {
+                                                                    hir_id: HirId(DefId(0:9 ~ borrow_fields[bdca]::magic).15),
+                                                                    kind: Path(
+                                                                        Resolved(
+                                                                            None,
+                                                                            Path {
+                                                                                span: tests/ui/thesis/borrow_fields.rs:13:35: 13:40 (#0),
+                                                                                res: Local(
+                                                                                    HirId(DefId(0:9 ~ borrow_fields[bdca]::magic).2),
+                                                                                ),
+                                                                                segments: [
+                                                                                    PathSegment {
+                                                                                        ident: input#0,
+                                                                                        hir_id: HirId(DefId(0:9 ~ borrow_fields[bdca]::magic).16),
+                                                                                        res: Local(
+                                                                                            HirId(DefId(0:9 ~ borrow_fields[bdca]::magic).2),
+                                                                                        ),
+                                                                                        args: None,
+                                                                                        infer_args: true,
+                                                                                    },
+                                                                                ],
+                                                                            },
+                                                                        ),
+                                                                    ),
+                                                                    span: tests/ui/thesis/borrow_fields.rs:13:35: 13:40 (#0),
+                                                                },
+                                                                field#0,
+                                                            ),
+                                                            span: tests/ui/thesis/borrow_fields.rs:13:35: 13:46 (#0),
+                                                        },
+                                                    ),
+                                                    span: tests/ui/thesis/borrow_fields.rs:13:34: 13:46 (#0),
+                                                },
+                                            ),
+                                            hir_id: HirId(DefId(0:9 ~ borrow_fields[bdca]::magic).17),
+                                            rules: DefaultBlock,
+                                            span: tests/ui/thesis/borrow_fields.rs:13:32: 13:48 (#0),
+                                            targeted_by_break: false,
+                                        },
+                                        None,
+                                    ),
+                                    span: tests/ui/thesis/borrow_fields.rs:13:32: 13:48 (#0),
+                                },
+                            ),
+                        ),
+                        span: tests/ui/thesis/borrow_fields.rs:13:5: 13:48 (#0),
+                    },
+                ),
+                hir_id: HirId(DefId(0:9 ~ borrow_fields[bdca]::magic).18),
+                rules: DefaultBlock,
+                span: tests/ui/thesis/borrow_fields.rs:12:41: 14:2 (#0),
+                targeted_by_break: false,
+            },
+            None,
+        ),
+        span: tests/ui/thesis/borrow_fields.rs:12:41: 14:2 (#0),
+    },
+}
+location_map: {}
+activation_map: {}
+local_map: {}
+locals_state_at_exit: AllAreInvalidated

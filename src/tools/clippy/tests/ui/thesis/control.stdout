@@ -1,0 +1,2890 @@
+AnalysisInfo {
+    body: Body {
+        basic_blocks: BasicBlocks {
+            basic_blocks: [
+                BasicBlockData {
+                    statements: [
+                        StorageLive(_1),
+                        _1 = const true,
+                    ],
+                    terminator: Some(
+                        Terminator {
+                            source_info: SourceInfo {
+                                span: tests/ui/thesis/control.rs:4:8: 4:12 (#0),
+                                scope: scope[0],
+                            },
+                            kind: switchInt(move _1) -> [0: bb2, otherwise: bb1],
+                        },
+                    ),
+                    is_cleanup: false,
+                },
+                BasicBlockData {
+                    statements: [
+                        StorageLive(_2),
+                        _2 = const 1_i32,
+                        FakeRead(ForLet(None), _2),
+                        _0 = const (),
+                        StorageDead(_2),
+                    ],
+                    terminator: Some(
+                        Terminator {
+                            source_info: SourceInfo {
+                                span: tests/ui/thesis/control.rs:4:5: 6:6 (#0),
+                                scope: scope[0],
+                            },
+                            kind: goto -> bb3,
+                        },
+                    ),
+                    is_cleanup: false,
+                },
+                BasicBlockData {
+                    statements: [
+                        _0 = const (),
+                    ],
+                    terminator: Some(
+                        Terminator {
+                            source_info: SourceInfo {
+                                span: tests/ui/thesis/control.rs:4:5: 6:6 (#0),
+                                scope: scope[0],
+                            },
+                            kind: goto -> bb3,
+                        },
+                    ),
+                    is_cleanup: false,
+                },
+                BasicBlockData {
+                    statements: [
+                        StorageDead(_1),
+                    ],
+                    terminator: Some(
+                        Terminator {
+                            source_info: SourceInfo {
+                                span: tests/ui/thesis/control.rs:7:2: 7:2 (#0),
+                                scope: scope[0],
+                            },
+                            kind: return,
+                        },
+                    ),
+                    is_cleanup: false,
+                },
+            ],
+            cache: Cache {
+                predecessors: OnceLock(
+                    [
+                        [],
+                        [
+                            bb0,
+                        ],
+                        [
+                            bb0,
+                        ],
+                        [
+                            bb1,
+                            bb2,
+                        ],
+                    ],
+                ),
+                switch_sources: OnceLock(
+                    <uninit>,
+                ),
+                is_cyclic: OnceLock(
+                    false,
+                ),
+                reverse_postorder: OnceLock(
+                    [
+                        bb0,
+                        bb2,
+                        bb1,
+                        bb3,
+                    ],
+                ),
+                dominators: OnceLock(
+                    <uninit>,
+                ),
+            },
+        },
+        phase: Analysis(
+            Initial,
+        ),
+        pass_count: 1,
+        source: MirSource {
+            instance: Item(
+                DefId(0:3 ~ control[8063]::if_1),
+            ),
+            promoted: None,
+        },
+        source_scopes: [
+            SourceScopeData {
+                span: tests/ui/thesis/control.rs:3:1: 7:2 (#0),
+                parent_scope: None,
+                inlined: None,
+                inlined_parent_scope: None,
+                local_data: Set(
+                    SourceScopeLocalData {
+                        lint_root: HirId(DefId(0:3 ~ control[8063]::if_1).0),
+                        safety: Safe,
+                    },
+                ),
+            },
+            SourceScopeData {
+                span: tests/ui/thesis/control.rs:5:9: 6:6 (#0),
+                parent_scope: Some(
+                    scope[0],
+                ),
+                inlined: None,
+                inlined_parent_scope: None,
+                local_data: Set(
+                    SourceScopeLocalData {
+                        lint_root: HirId(DefId(0:3 ~ control[8063]::if_1).0),
+                        safety: Safe,
+                    },
+                ),
+            },
+        ],
+        coroutine: None,
+        local_decls: [
+            LocalDecl {
+                mutability: Mut,
+                local_info: Set(
+                    Boring,
+                ),
+                ty: (),
+                user_ty: None,
+                source_info: SourceInfo {
+                    span: tests/ui/thesis/control.rs:3:10: 3:10 (#0),
+                    scope: scope[0],
+                },
+            },
+            LocalDecl {
+                mutability: Mut,
+                local_info: Set(
+                    BlockTailTemp(
+                        BlockTailInfo {
+                            tail_result_is_ignored: true,
+                            span: tests/ui/thesis/control.rs:4:5: 6:6 (#0),
+                        },
+                    ),
+                ),
+                ty: bool,
+                user_ty: None,
+                source_info: SourceInfo {
+                    span: tests/ui/thesis/control.rs:4:8: 4:12 (#0),
+                    scope: scope[0],
+                },
+            },
+            LocalDecl {
+                mutability: Not,
+                local_info: Set(
+                    User(
+                        Var(
+                            VarBindingForm {
+                                binding_mode: BindByValue(
+                                    Not,
+                                ),
+                                opt_ty_info: None,
+                                opt_match_place: Some(
+                                    (
+                                        None,
+                                        tests/ui/thesis/control.rs:5:18: 5:19 (#0),
+                                    ),
+                                ),
+                                pat_span: tests/ui/thesis/control.rs:5:13: 5:15 (#0),
+                            },
+                        ),
+                    ),
+                ),
+                ty: i32,
+                user_ty: None,
+                source_info: SourceInfo {
+                    span: tests/ui/thesis/control.rs:5:13: 5:15 (#0),
+                    scope: scope[0],
+                },
+            },
+        ],
+        user_type_annotations: [],
+        arg_count: 0,
+        spread_arg: None,
+        var_debug_info: [
+            _x => _2,
+        ],
+        span: tests/ui/thesis/control.rs:3:1: 7:2 (#0),
+        required_consts: [],
+        is_polymorphic: false,
+        injection_phase: None,
+        tainted_by_errors: None,
+        function_coverage_info: None,
+    },
+    def_id: DefId(0:3 ~ control[8063]::if_1),
+    cfg: {
+        bb0: Condition {
+            branches: [
+                bb2,
+                bb1,
+            ],
+        },
+        bb1: Linear(
+            bb3,
+        ),
+        bb2: Linear(
+            bb3,
+        ),
+        bb3: Return,
+    },
+    loops: [],
+    terms: {},
+    locals: {
+        _0: LocalInfo {
+            kind: Return,
+            assign_count: 2,
+            data: Const,
+        },
+        _1: LocalInfo {
+            kind: AnonVar,
+            assign_count: 1,
+            data: Const,
+        },
+        _2: LocalInfo {
+            kind: UserVar(
+                "_x",
+            ),
+            assign_count: 1,
+            data: Const,
+        },
+    },
+}
+AnalysisInfo {
+    body: Body {
+        basic_blocks: BasicBlocks {
+            basic_blocks: [
+                BasicBlockData {
+                    statements: [
+                        StorageLive(_1),
+                        _1 = const true,
+                    ],
+                    terminator: Some(
+                        Terminator {
+                            source_info: SourceInfo {
+                                span: tests/ui/thesis/control.rs:10:8: 10:12 (#0),
+                                scope: scope[0],
+                            },
+                            kind: switchInt(move _1) -> [0: bb2, otherwise: bb1],
+                        },
+                    ),
+                    is_cleanup: false,
+                },
+                BasicBlockData {
+                    statements: [
+                        StorageLive(_2),
+                        _2 = const 1_i32,
+                        FakeRead(ForLet(None), _2),
+                        _0 = const (),
+                        StorageDead(_2),
+                    ],
+                    terminator: Some(
+                        Terminator {
+                            source_info: SourceInfo {
+                                span: tests/ui/thesis/control.rs:10:5: 14:6 (#0),
+                                scope: scope[0],
+                            },
+                            kind: goto -> bb6,
+                        },
+                    ),
+                    is_cleanup: false,
+                },
+                BasicBlockData {
+                    statements: [
+                        StorageLive(_3),
+                        _3 = const false,
+                    ],
+                    terminator: Some(
+                        Terminator {
+                            source_info: SourceInfo {
+                                span: tests/ui/thesis/control.rs:12:15: 12:20 (#0),
+                                scope: scope[0],
+                            },
+                            kind: switchInt(move _3) -> [0: bb4, otherwise: bb3],
+                        },
+                    ),
+                    is_cleanup: false,
+                },
+                BasicBlockData {
+                    statements: [
+                        StorageLive(_4),
+                        _4 = const 1_i32,
+                        FakeRead(ForLet(None), _4),
+                        _0 = const (),
+                        StorageDead(_4),
+                    ],
+                    terminator: Some(
+                        Terminator {
+                            source_info: SourceInfo {
+                                span: tests/ui/thesis/control.rs:12:12: 14:6 (#0),
+                                scope: scope[0],
+                            },
+                            kind: goto -> bb5,
+                        },
+                    ),
+                    is_cleanup: false,
+                },
+                BasicBlockData {
+                    statements: [
+                        _0 = const (),
+                    ],
+                    terminator: Some(
+                        Terminator {
+                            source_info: SourceInfo {
+                                span: tests/ui/thesis/control.rs:12:12: 14:6 (#0),
+                                scope: scope[0],
+                            },
+                            kind: goto -> bb5,
+                        },
+                    ),
+                    is_cleanup: false,
+                },
+                BasicBlockData {
+                    statements: [
+                        StorageDead(_3),
+                    ],
+                    terminator: Some(
+                        Terminator {
+                            source_info: SourceInfo {
+                                span: tests/ui/thesis/control.rs:10:5: 14:6 (#0),
+                                scope: scope[0],
+                            },
+                            kind: goto -> bb6,
+                        },
+                    ),
+                    is_cleanup: false,
+                },
+                BasicBlockData {
+                    statements: [
+                        StorageDead(_1),
+                    ],
+                    terminator: Some(
+                        Terminator {
+                            source_info: SourceInfo {
+                                span: tests/ui/thesis/control.rs:15:2: 15:2 (#0),
+                                scope: scope[0],
+                            },
+                            kind: return,
+                        },
+                    ),
+                    is_cleanup: false,
+                },
+            ],
+            cache: Cache {
+                predecessors: OnceLock(
+                    [
+                        [],
+                        [
+                            bb0,
+                        ],
+                        [
+                            bb0,
+                        ],
+                        [
+                            bb2,
+                        ],
+                        [
+                            bb2,
+                        ],
+                        [
+                            bb3,
+                            bb4,
+                        ],
+                        [
+                            bb1,
+                            bb5,
+                        ],
+                    ],
+                ),
+                switch_sources: OnceLock(
+                    <uninit>,
+                ),
+                is_cyclic: OnceLock(
+                    false,
+                ),
+                reverse_postorder: OnceLock(
+                    [
+                        bb0,
+                        bb2,
+                        bb4,
+                        bb3,
+                        bb5,
+                        bb1,
+                        bb6,
+                    ],
+                ),
+                dominators: OnceLock(
+                    <uninit>,
+                ),
+            },
+        },
+        phase: Analysis(
+            Initial,
+        ),
+        pass_count: 1,
+        source: MirSource {
+            instance: Item(
+                DefId(0:4 ~ control[8063]::if_2),
+            ),
+            promoted: None,
+        },
+        source_scopes: [
+            SourceScopeData {
+                span: tests/ui/thesis/control.rs:9:1: 15:2 (#0),
+                parent_scope: None,
+                inlined: None,
+                inlined_parent_scope: None,
+                local_data: Set(
+                    SourceScopeLocalData {
+                        lint_root: HirId(DefId(0:4 ~ control[8063]::if_2).0),
+                        safety: Safe,
+                    },
+                ),
+            },
+            SourceScopeData {
+                span: tests/ui/thesis/control.rs:11:9: 12:6 (#0),
+                parent_scope: Some(
+                    scope[0],
+                ),
+                inlined: None,
+                inlined_parent_scope: None,
+                local_data: Set(
+                    SourceScopeLocalData {
+                        lint_root: HirId(DefId(0:4 ~ control[8063]::if_2).0),
+                        safety: Safe,
+                    },
+                ),
+            },
+            SourceScopeData {
+                span: tests/ui/thesis/control.rs:13:9: 14:6 (#0),
+                parent_scope: Some(
+                    scope[0],
+                ),
+                inlined: None,
+                inlined_parent_scope: None,
+                local_data: Set(
+                    SourceScopeLocalData {
+                        lint_root: HirId(DefId(0:4 ~ control[8063]::if_2).0),
+                        safety: Safe,
+                    },
+                ),
+            },
+        ],
+        coroutine: None,
+        local_decls: [
+            LocalDecl {
+                mutability: Mut,
+                local_info: Set(
+                    Boring,
+                ),
+                ty: (),
+                user_ty: None,
+                source_info: SourceInfo {
+                    span: tests/ui/thesis/control.rs:9:10: 9:10 (#0),
+                    scope: scope[0],
+                },
+            },
+            LocalDecl {
+                mutability: Mut,
+                local_info: Set(
+                    BlockTailTemp(
+                        BlockTailInfo {
+                            tail_result_is_ignored: true,
+                            span: tests/ui/thesis/control.rs:10:5: 14:6 (#0),
+                        },
+                    ),
+                ),
+                ty: bool,
+                user_ty: None,
+                source_info: SourceInfo {
+                    span: tests/ui/thesis/control.rs:10:8: 10:12 (#0),
+                    scope: scope[0],
+                },
+            },
+            LocalDecl {
+                mutability: Not,
+                local_info: Set(
+                    User(
+                        Var(
+                            VarBindingForm {
+                                binding_mode: BindByValue(
+                                    Not,
+                                ),
+                                opt_ty_info: None,
+                                opt_match_place: Some(
+                                    (
+                                        None,
+                                        tests/ui/thesis/control.rs:11:18: 11:19 (#0),
+                                    ),
+                                ),
+                                pat_span: tests/ui/thesis/control.rs:11:13: 11:15 (#0),
+                            },
+                        ),
+                    ),
+                ),
+                ty: i32,
+                user_ty: None,
+                source_info: SourceInfo {
+                    span: tests/ui/thesis/control.rs:11:13: 11:15 (#0),
+                    scope: scope[0],
+                },
+            },
+            LocalDecl {
+                mutability: Mut,
+                local_info: Set(
+                    BlockTailTemp(
+                        BlockTailInfo {
+                            tail_result_is_ignored: true,
+                            span: tests/ui/thesis/control.rs:10:5: 14:6 (#0),
+                        },
+                    ),
+                ),
+                ty: bool,
+                user_ty: None,
+                source_info: SourceInfo {
+                    span: tests/ui/thesis/control.rs:12:15: 12:20 (#0),
+                    scope: scope[0],
+                },
+            },
+            LocalDecl {
+                mutability: Not,
+                local_info: Set(
+                    User(
+                        Var(
+                            VarBindingForm {
+                                binding_mode: BindByValue(
+                                    Not,
+                                ),
+                                opt_ty_info: None,
+                                opt_match_place: Some(
+                                    (
+                                        None,
+                                        tests/ui/thesis/control.rs:13:18: 13:19 (#0),
+                                    ),
+                                ),
+                                pat_span: tests/ui/thesis/control.rs:13:13: 13:15 (#0),
+                            },
+                        ),
+                    ),
+                ),
+                ty: i32,
+                user_ty: None,
+                source_info: SourceInfo {
+                    span: tests/ui/thesis/control.rs:13:13: 13:15 (#0),
+                    scope: scope[0],
+                },
+            },
+        ],
+        user_type_annotations: [],
+        arg_count: 0,
+        spread_arg: None,
+        var_debug_info: [
+            _x => _2,
+            _y => _4,
+        ],
+        span: tests/ui/thesis/control.rs:9:1: 15:2 (#0),
+        required_consts: [],
+        is_polymorphic: false,
+        injection_phase: None,
+        tainted_by_errors: None,
+        function_coverage_info: None,
+    },
+    def_id: DefId(0:4 ~ control[8063]::if_2),
+    cfg: {
+        bb0: Condition {
+            branches: [
+                bb2,
+                bb1,
+            ],
+        },
+        bb1: Linear(
+            bb6,
+        ),
+        bb2: Condition {
+            branches: [
+                bb4,
+                bb3,
+            ],
+        },
+        bb3: Linear(
+            bb5,
+        ),
+        bb4: Linear(
+            bb5,
+        ),
+        bb5: Linear(
+            bb6,
+        ),
+        bb6: Return,
+    },
+    loops: [],
+    terms: {},
+    locals: {
+        _0: LocalInfo {
+            kind: Return,
+            assign_count: 3,
+            data: Const,
+        },
+        _1: LocalInfo {
+            kind: AnonVar,
+            assign_count: 1,
+            data: Const,
+        },
+        _2: LocalInfo {
+            kind: UserVar(
+                "_x",
+            ),
+            assign_count: 1,
+            data: Const,
+        },
+        _3: LocalInfo {
+            kind: AnonVar,
+            assign_count: 1,
+            data: Const,
+        },
+        _4: LocalInfo {
+            kind: UserVar(
+                "_y",
+            ),
+            assign_count: 1,
+            data: Const,
+        },
+    },
+}
+AnalysisInfo {
+    body: Body {
+        basic_blocks: BasicBlocks {
+            basic_blocks: [
+                BasicBlockData {
+                    statements: [],
+                    terminator: Some(
+                        Terminator {
+                            source_info: SourceInfo {
+                                span: tests/ui/thesis/control.rs:18:5: 20:6 (#0),
+                                scope: scope[0],
+                            },
+                            kind: goto -> bb1,
+                        },
+                    ),
+                    is_cleanup: false,
+                },
+                BasicBlockData {
+                    statements: [],
+                    terminator: Some(
+                        Terminator {
+                            source_info: SourceInfo {
+                                span: tests/ui/thesis/control.rs:18:5: 20:6 (#0),
+                                scope: scope[0],
+                            },
+                            kind: falseUnwind -> [real: bb2, unwind: bb10],
+                        },
+                    ),
+                    is_cleanup: false,
+                },
+                BasicBlockData {
+                    statements: [
+                        StorageLive(_2),
+                    ],
+                    terminator: Some(
+                        Terminator {
+                            source_info: SourceInfo {
+                                span: tests/ui/thesis/control.rs:18:12: 18:20 (#0),
+                                scope: scope[0],
+                            },
+                            kind: _2 = cond_1() -> [return: bb3, unwind: bb10],
+                        },
+                    ),
+                    is_cleanup: false,
+                },
+                BasicBlockData {
+                    statements: [],
+                    terminator: Some(
+                        Terminator {
+                            source_info: SourceInfo {
+                                span: tests/ui/thesis/control.rs:18:12: 18:20 (#0),
+                                scope: scope[0],
+                            },
+                            kind: switchInt(move _2) -> [0: bb4, otherwise: bb9],
+                        },
+                    ),
+                    is_cleanup: false,
+                },
+                BasicBlockData {
+                    statements: [],
+                    terminator: Some(
+                        Terminator {
+                            source_info: SourceInfo {
+                                span: tests/ui/thesis/control.rs:19:9: 19:26 (#0),
+                                scope: scope[0],
+                            },
+                            kind: falseUnwind -> [real: bb5, unwind: bb10],
+                        },
+                    ),
+                    is_cleanup: false,
+                },
+                BasicBlockData {
+                    statements: [
+                        StorageLive(_3),
+                    ],
+                    terminator: Some(
+                        Terminator {
+                            source_info: SourceInfo {
+                                span: tests/ui/thesis/control.rs:19:15: 19:23 (#0),
+                                scope: scope[0],
+                            },
+                            kind: _3 = cond_2() -> [return: bb6, unwind: bb10],
+                        },
+                    ),
+                    is_cleanup: false,
+                },
+                BasicBlockData {
+                    statements: [],
+                    terminator: Some(
+                        Terminator {
+                            source_info: SourceInfo {
+                                span: tests/ui/thesis/control.rs:19:15: 19:23 (#0),
+                                scope: scope[0],
+                            },
+                            kind: switchInt(move _3) -> [0: bb8, otherwise: bb7],
+                        },
+                    ),
+                    is_cleanup: false,
+                },
+                BasicBlockData {
+                    statements: [
+                        _1 = const (),
+                        StorageDead(_3),
+                    ],
+                    terminator: Some(
+                        Terminator {
+                            source_info: SourceInfo {
+                                span: tests/ui/thesis/control.rs:19:9: 19:26 (#0),
+                                scope: scope[0],
+                            },
+                            kind: goto -> bb4,
+                        },
+                    ),
+                    is_cleanup: false,
+                },
+                BasicBlockData {
+                    statements: [
+                        StorageLive(_5),
+                        _1 = const (),
+                        StorageDead(_5),
+                        StorageDead(_3),
+                        StorageDead(_2),
+                    ],
+                    terminator: Some(
+                        Terminator {
+                            source_info: SourceInfo {
+                                span: tests/ui/thesis/control.rs:18:5: 20:6 (#0),
+                                scope: scope[0],
+                            },
+                            kind: goto -> bb1,
+                        },
+                    ),
+                    is_cleanup: false,
+                },
+                BasicBlockData {
+                    statements: [
+                        StorageLive(_8),
+                        _0 = const (),
+                        StorageDead(_8),
+                        StorageDead(_2),
+                    ],
+                    terminator: Some(
+                        Terminator {
+                            source_info: SourceInfo {
+                                span: tests/ui/thesis/control.rs:21:2: 21:2 (#0),
+                                scope: scope[0],
+                            },
+                            kind: return,
+                        },
+                    ),
+                    is_cleanup: false,
+                },
+                BasicBlockData {
+                    statements: [],
+                    terminator: Some(
+                        Terminator {
+                            source_info: SourceInfo {
+                                span: tests/ui/thesis/control.rs:17:1: 21:2 (#0),
+                                scope: scope[0],
+                            },
+                            kind: resume,
+                        },
+                    ),
+                    is_cleanup: true,
+                },
+            ],
+            cache: Cache {
+                predecessors: OnceLock(
+                    [
+                        [],
+                        [
+                            bb0,
+                            bb8,
+                        ],
+                        [
+                            bb1,
+                        ],
+                        [
+                            bb2,
+                        ],
+                        [
+                            bb3,
+                            bb7,
+                        ],
+                        [
+                            bb4,
+                        ],
+                        [
+                            bb5,
+                        ],
+                        [
+                            bb6,
+                        ],
+                        [
+                            bb6,
+                        ],
+                        [
+                            bb3,
+                        ],
+                        [
+                            bb1,
+                            bb2,
+                            bb4,
+                            bb5,
+                        ],
+                    ],
+                ),
+                switch_sources: OnceLock(
+                    <uninit>,
+                ),
+                is_cyclic: OnceLock(
+                    true,
+                ),
+                reverse_postorder: OnceLock(
+                    [
+                        bb0,
+                        bb1,
+                        bb2,
+                        bb3,
+                        bb4,
+                        bb5,
+                        bb6,
+                        bb8,
+                        bb7,
+                        bb9,
+                        bb10,
+                    ],
+                ),
+                dominators: OnceLock(
+                    <uninit>,
+                ),
+            },
+        },
+        phase: Analysis(
+            Initial,
+        ),
+        pass_count: 1,
+        source: MirSource {
+            instance: Item(
+                DefId(0:5 ~ control[8063]::loop_1),
+            ),
+            promoted: None,
+        },
+        source_scopes: [
+            SourceScopeData {
+                span: tests/ui/thesis/control.rs:17:1: 21:2 (#0),
+                parent_scope: None,
+                inlined: None,
+                inlined_parent_scope: None,
+                local_data: Set(
+                    SourceScopeLocalData {
+                        lint_root: HirId(DefId(0:5 ~ control[8063]::loop_1).0),
+                        safety: Safe,
+                    },
+                ),
+            },
+        ],
+        coroutine: None,
+        local_decls: [
+            LocalDecl {
+                mutability: Mut,
+                local_info: Set(
+                    Boring,
+                ),
+                ty: (),
+                user_ty: None,
+                source_info: SourceInfo {
+                    span: tests/ui/thesis/control.rs:17:12: 17:12 (#0),
+                    scope: scope[0],
+                },
+            },
+            LocalDecl {
+                mutability: Mut,
+                local_info: Set(
+                    Boring,
+                ),
+                ty: (),
+                user_ty: None,
+                source_info: SourceInfo {
+                    span: tests/ui/thesis/control.rs:17:1: 21:2 (#0),
+                    scope: scope[0],
+                },
+            },
+            LocalDecl {
+                mutability: Mut,
+                local_info: Set(
+                    BlockTailTemp(
+                        BlockTailInfo {
+                            tail_result_is_ignored: true,
+                            span: tests/ui/thesis/control.rs:18:5: 20:6 (#7),
+                        },
+                    ),
+                ),
+                ty: bool,
+                user_ty: None,
+                source_info: SourceInfo {
+                    span: tests/ui/thesis/control.rs:18:12: 18:20 (#0),
+                    scope: scope[0],
+                },
+            },
+            LocalDecl {
+                mutability: Mut,
+                local_info: Set(
+                    BlockTailTemp(
+                        BlockTailInfo {
+                            tail_result_is_ignored: true,
+                            span: tests/ui/thesis/control.rs:19:9: 19:26 (#9),
+                        },
+                    ),
+                ),
+                ty: bool,
+                user_ty: None,
+                source_info: SourceInfo {
+                    span: tests/ui/thesis/control.rs:19:15: 19:23 (#0),
+                    scope: scope[0],
+                },
+            },
+            LocalDecl {
+                mutability: Mut,
+                local_info: Set(
+                    BlockTailTemp(
+                        BlockTailInfo {
+                            tail_result_is_ignored: true,
+                            span: tests/ui/thesis/control.rs:19:9: 19:26 (#9),
+                        },
+                    ),
+                ),
+                ty: !,
+                user_ty: None,
+                source_info: SourceInfo {
+                    span: tests/ui/thesis/control.rs:19:9: 19:26 (#9),
+                    scope: scope[0],
+                },
+            },
+            LocalDecl {
+                mutability: Not,
+                local_info: Set(
+                    Boring,
+                ),
+                ty: (),
+                user_ty: None,
+                source_info: SourceInfo {
+                    span: tests/ui/thesis/control.rs:19:9: 19:26 (#9),
+                    scope: scope[0],
+                },
+            },
+            LocalDecl {
+                mutability: Mut,
+                local_info: Set(
+                    Boring,
+                ),
+                ty: !,
+                user_ty: None,
+                source_info: SourceInfo {
+                    span: tests/ui/thesis/control.rs:19:9: 19:26 (#9),
+                    scope: scope[0],
+                },
+            },
+            LocalDecl {
+                mutability: Mut,
+                local_info: Set(
+                    BlockTailTemp(
+                        BlockTailInfo {
+                            tail_result_is_ignored: true,
+                            span: tests/ui/thesis/control.rs:18:5: 20:6 (#7),
+                        },
+                    ),
+                ),
+                ty: !,
+                user_ty: None,
+                source_info: SourceInfo {
+                    span: tests/ui/thesis/control.rs:18:5: 20:6 (#7),
+                    scope: scope[0],
+                },
+            },
+            LocalDecl {
+                mutability: Not,
+                local_info: Set(
+                    Boring,
+                ),
+                ty: (),
+                user_ty: None,
+                source_info: SourceInfo {
+                    span: tests/ui/thesis/control.rs:18:5: 20:6 (#7),
+                    scope: scope[0],
+                },
+            },
+            LocalDecl {
+                mutability: Mut,
+                local_info: Set(
+                    Boring,
+                ),
+                ty: !,
+                user_ty: None,
+                source_info: SourceInfo {
+                    span: tests/ui/thesis/control.rs:18:5: 20:6 (#7),
+                    scope: scope[0],
+                },
+            },
+        ],
+        user_type_annotations: [],
+        arg_count: 0,
+        spread_arg: None,
+        var_debug_info: [],
+        span: tests/ui/thesis/control.rs:17:1: 21:2 (#0),
+        required_consts: [],
+        is_polymorphic: false,
+        injection_phase: None,
+        tainted_by_errors: None,
+        function_coverage_info: None,
+    },
+    def_id: DefId(0:5 ~ control[8063]::loop_1),
+    cfg: {
+        bb0: Linear(
+            bb1,
+        ),
+        bb1: Linear(
+            bb2,
+        ),
+        bb2: Linear(
+            bb3,
+        ),
+        bb3: Break {
+            next: bb4,
+            brea: bb9,
+        },
+        bb4: Linear(
+            bb5,
+        ),
+        bb5: Linear(
+            bb6,
+        ),
+        bb6: Break {
+            next: bb7,
+            brea: bb8,
+        },
+        bb7: Linear(
+            bb4,
+        ),
+        bb8: Linear(
+            bb1,
+        ),
+        bb9: Return,
+        bb10: None,
+    },
+    loops: [
+        (
+            [
+                bb4,
+                bb5,
+                bb6,
+                bb7,
+            ],
+            bb7,
+        ),
+        (
+            [
+                bb1,
+                bb2,
+                bb3,
+                bb4,
+                bb5,
+                bb6,
+                bb7,
+                bb8,
+            ],
+            bb8,
+        ),
+    ],
+    terms: {
+        bb2: {
+            _2: [],
+        },
+        bb5: {
+            _3: [],
+        },
+    },
+    locals: {
+        _0: LocalInfo {
+            kind: Return,
+            assign_count: 1,
+            data: Const,
+        },
+        _1: LocalInfo {
+            kind: AnonVar,
+            assign_count: 2,
+            data: Const,
+        },
+        _2: LocalInfo {
+            kind: AnonVar,
+            assign_count: 1,
+            data: Computed,
+        },
+        _3: LocalInfo {
+            kind: AnonVar,
+            assign_count: 1,
+            data: Computed,
+        },
+        _4: LocalInfo {
+            kind: Unused,
+            assign_count: 0,
+            data: Unresolved,
+        },
+        _5: LocalInfo {
+            kind: Unused,
+            assign_count: 0,
+            data: Unresolved,
+        },
+        _6: LocalInfo {
+            kind: Unused,
+            assign_count: 0,
+            data: Unresolved,
+        },
+        _7: LocalInfo {
+            kind: Unused,
+            assign_count: 0,
+            data: Unresolved,
+        },
+        _8: LocalInfo {
+            kind: Unused,
+            assign_count: 0,
+            data: Unresolved,
+        },
+        _9: LocalInfo {
+            kind: Unused,
+            assign_count: 0,
+            data: Unresolved,
+        },
+    },
+}
+AnalysisInfo {
+    body: Body {
+        basic_blocks: BasicBlocks {
+            basic_blocks: [
+                BasicBlockData {
+                    statements: [
+                        StorageLive(_1),
+                        _1 = const 0_i32,
+                        FakeRead(ForLet(None), _1),
+                    ],
+                    terminator: Some(
+                        Terminator {
+                            source_info: SourceInfo {
+                                span: tests/ui/thesis/control.rs:25:5: 27:6 (#0),
+                                scope: scope[1],
+                            },
+                            kind: goto -> bb1,
+                        },
+                    ),
+                    is_cleanup: false,
+                },
+                BasicBlockData {
+                    statements: [],
+                    terminator: Some(
+                        Terminator {
+                            source_info: SourceInfo {
+                                span: tests/ui/thesis/control.rs:25:5: 27:6 (#0),
+                                scope: scope[1],
+                            },
+                            kind: falseUnwind -> [real: bb2, unwind: bb6],
+                        },
+                    ),
+                    is_cleanup: false,
+                },
+                BasicBlockData {
+                    statements: [
+                        StorageLive(_3),
+                        StorageLive(_4),
+                        _4 = _1,
+                        _3 = Lt(move _4, const 10_i32),
+                    ],
+                    terminator: Some(
+                        Terminator {
+                            source_info: SourceInfo {
+                                span: tests/ui/thesis/control.rs:25:11: 25:19 (#0),
+                                scope: scope[1],
+                            },
+                            kind: switchInt(move _3) -> [0: bb5, otherwise: bb3],
+                        },
+                    ),
+                    is_cleanup: false,
+                },
+                BasicBlockData {
+                    statements: [
+                        StorageDead(_4),
+                        _5 = CheckedAdd(_1, const 1_i32),
+                    ],
+                    terminator: Some(
+                        Terminator {
+                            source_info: SourceInfo {
+                                span: tests/ui/thesis/control.rs:26:9: 26:17 (#0),
+                                scope: scope[1],
+                            },
+                            kind: assert(!move (_5.1: bool), "attempt to compute `{} + {}`, which would overflow", _1, const 1_i32) -> [success: bb4, unwind: bb6],
+                        },
+                    ),
+                    is_cleanup: false,
+                },
+                BasicBlockData {
+                    statements: [
+                        _1 = move (_5.0: i32),
+                        _2 = const (),
+                        StorageDead(_3),
+                    ],
+                    terminator: Some(
+                        Terminator {
+                            source_info: SourceInfo {
+                                span: tests/ui/thesis/control.rs:25:5: 27:6 (#0),
+                                scope: scope[1],
+                            },
+                            kind: goto -> bb1,
+                        },
+                    ),
+                    is_cleanup: false,
+                },
+                BasicBlockData {
+                    statements: [
+                        StorageDead(_4),
+                        StorageLive(_7),
+                        _0 = const (),
+                        StorageDead(_7),
+                        StorageDead(_3),
+                        StorageDead(_1),
+                    ],
+                    terminator: Some(
+                        Terminator {
+                            source_info: SourceInfo {
+                                span: tests/ui/thesis/control.rs:28:2: 28:2 (#0),
+                                scope: scope[0],
+                            },
+                            kind: return,
+                        },
+                    ),
+                    is_cleanup: false,
+                },
+                BasicBlockData {
+                    statements: [],
+                    terminator: Some(
+                        Terminator {
+                            source_info: SourceInfo {
+                                span: tests/ui/thesis/control.rs:23:1: 28:2 (#0),
+                                scope: scope[0],
+                            },
+                            kind: resume,
+                        },
+                    ),
+                    is_cleanup: true,
+                },
+            ],
+            cache: Cache {
+                predecessors: OnceLock(
+                    [
+                        [],
+                        [
+                            bb0,
+                            bb4,
+                        ],
+                        [
+                            bb1,
+                        ],
+                        [
+                            bb2,
+                        ],
+                        [
+                            bb3,
+                        ],
+                        [
+                            bb2,
+                        ],
+                        [
+                            bb1,
+                            bb3,
+                        ],
+                    ],
+                ),
+                switch_sources: OnceLock(
+                    <uninit>,
+                ),
+                is_cyclic: OnceLock(
+                    true,
+                ),
+                reverse_postorder: OnceLock(
+                    [
+                        bb0,
+                        bb1,
+                        bb2,
+                        bb5,
+                        bb3,
+                        bb4,
+                        bb6,
+                    ],
+                ),
+                dominators: OnceLock(
+                    <uninit>,
+                ),
+            },
+        },
+        phase: Analysis(
+            Initial,
+        ),
+        pass_count: 1,
+        source: MirSource {
+            instance: Item(
+                DefId(0:6 ~ control[8063]::loop_2),
+            ),
+            promoted: None,
+        },
+        source_scopes: [
+            SourceScopeData {
+                span: tests/ui/thesis/control.rs:23:1: 28:2 (#0),
+                parent_scope: None,
+                inlined: None,
+                inlined_parent_scope: None,
+                local_data: Set(
+                    SourceScopeLocalData {
+                        lint_root: HirId(DefId(0:6 ~ control[8063]::loop_2).0),
+                        safety: Safe,
+                    },
+                ),
+            },
+            SourceScopeData {
+                span: tests/ui/thesis/control.rs:24:5: 28:2 (#0),
+                parent_scope: Some(
+                    scope[0],
+                ),
+                inlined: None,
+                inlined_parent_scope: None,
+                local_data: Set(
+                    SourceScopeLocalData {
+                        lint_root: HirId(DefId(0:6 ~ control[8063]::loop_2).0),
+                        safety: Safe,
+                    },
+                ),
+            },
+        ],
+        coroutine: None,
+        local_decls: [
+            LocalDecl {
+                mutability: Mut,
+                local_info: Set(
+                    Boring,
+                ),
+                ty: (),
+                user_ty: None,
+                source_info: SourceInfo {
+                    span: tests/ui/thesis/control.rs:23:12: 23:12 (#0),
+                    scope: scope[0],
+                },
+            },
+            LocalDecl {
+                mutability: Mut,
+                local_info: Set(
+                    User(
+                        Var(
+                            VarBindingForm {
+                                binding_mode: BindByValue(
+                                    Mut,
+                                ),
+                                opt_ty_info: None,
+                                opt_match_place: Some(
+                                    (
+                                        None,
+                                        tests/ui/thesis/control.rs:24:19: 24:20 (#0),
+                                    ),
+                                ),
+                                pat_span: tests/ui/thesis/control.rs:24:9: 24:16 (#0),
+                            },
+                        ),
+                    ),
+                ),
+                ty: i32,
+                user_ty: None,
+                source_info: SourceInfo {
+                    span: tests/ui/thesis/control.rs:24:9: 24:16 (#0),
+                    scope: scope[0],
+                },
+            },
+            LocalDecl {
+                mutability: Mut,
+                local_info: Set(
+                    Boring,
+                ),
+                ty: (),
+                user_ty: None,
+                source_info: SourceInfo {
+                    span: tests/ui/thesis/control.rs:23:1: 28:2 (#0),
+                    scope: scope[0],
+                },
+            },
+            LocalDecl {
+                mutability: Mut,
+                local_info: Set(
+                    BlockTailTemp(
+                        BlockTailInfo {
+                            tail_result_is_ignored: true,
+                            span: tests/ui/thesis/control.rs:25:5: 27:6 (#11),
+                        },
+                    ),
+                ),
+                ty: bool,
+                user_ty: None,
+                source_info: SourceInfo {
+                    span: tests/ui/thesis/control.rs:25:11: 25:19 (#0),
+                    scope: scope[0],
+                },
+            },
+            LocalDecl {
+                mutability: Mut,
+                local_info: Set(
+                    BlockTailTemp(
+                        BlockTailInfo {
+                            tail_result_is_ignored: true,
+                            span: tests/ui/thesis/control.rs:25:5: 27:6 (#11),
+                        },
+                    ),
+                ),
+                ty: i32,
+                user_ty: None,
+                source_info: SourceInfo {
+                    span: tests/ui/thesis/control.rs:25:11: 25:14 (#0),
+                    scope: scope[0],
+                },
+            },
+            LocalDecl {
+                mutability: Mut,
+                local_info: Set(
+                    Boring,
+                ),
+                ty: (i32, bool),
+                user_ty: None,
+                source_info: SourceInfo {
+                    span: tests/ui/thesis/control.rs:26:9: 26:17 (#0),
+                    scope: scope[0],
+                },
+            },
+            LocalDecl {
+                mutability: Mut,
+                local_info: Set(
+                    BlockTailTemp(
+                        BlockTailInfo {
+                            tail_result_is_ignored: true,
+                            span: tests/ui/thesis/control.rs:25:5: 27:6 (#11),
+                        },
+                    ),
+                ),
+                ty: !,
+                user_ty: None,
+                source_info: SourceInfo {
+                    span: tests/ui/thesis/control.rs:25:5: 27:6 (#11),
+                    scope: scope[0],
+                },
+            },
+            LocalDecl {
+                mutability: Not,
+                local_info: Set(
+                    Boring,
+                ),
+                ty: (),
+                user_ty: None,
+                source_info: SourceInfo {
+                    span: tests/ui/thesis/control.rs:25:5: 27:6 (#11),
+                    scope: scope[0],
+                },
+            },
+            LocalDecl {
+                mutability: Mut,
+                local_info: Set(
+                    Boring,
+                ),
+                ty: !,
+                user_ty: None,
+                source_info: SourceInfo {
+                    span: tests/ui/thesis/control.rs:25:5: 27:6 (#11),
+                    scope: scope[0],
+                },
+            },
+        ],
+        user_type_annotations: [],
+        arg_count: 0,
+        spread_arg: None,
+        var_debug_info: [
+            idx => _1,
+        ],
+        span: tests/ui/thesis/control.rs:23:1: 28:2 (#0),
+        required_consts: [],
+        is_polymorphic: false,
+        injection_phase: None,
+        tainted_by_errors: None,
+        function_coverage_info: None,
+    },
+    def_id: DefId(0:6 ~ control[8063]::loop_2),
+    cfg: {
+        bb0: Linear(
+            bb1,
+        ),
+        bb1: Linear(
+            bb2,
+        ),
+        bb2: Break {
+            next: bb3,
+            brea: bb5,
+        },
+        bb3: Linear(
+            bb4,
+        ),
+        bb4: Linear(
+            bb1,
+        ),
+        bb5: Return,
+        bb6: None,
+    },
+    loops: [
+        (
+            [
+                bb1,
+                bb2,
+                bb3,
+                bb4,
+            ],
+            bb4,
+        ),
+    ],
+    terms: {},
+    locals: {
+        _0: LocalInfo {
+            kind: Return,
+            assign_count: 1,
+            data: Const,
+        },
+        _1: LocalInfo {
+            kind: UserVar(
+                "idx",
+            ),
+            assign_count: 2,
+            data: Mixed,
+        },
+        _2: LocalInfo {
+            kind: AnonVar,
+            assign_count: 1,
+            data: Const,
+        },
+        _3: LocalInfo {
+            kind: AnonVar,
+            assign_count: 1,
+            data: Computed,
+        },
+        _4: LocalInfo {
+            kind: AnonVar,
+            assign_count: 1,
+            data: Local(
+                _1,
+            ),
+        },
+        _5: LocalInfo {
+            kind: AnonVar,
+            assign_count: 1,
+            data: Computed,
+        },
+        _6: LocalInfo {
+            kind: Unused,
+            assign_count: 0,
+            data: Unresolved,
+        },
+        _7: LocalInfo {
+            kind: Unused,
+            assign_count: 0,
+            data: Unresolved,
+        },
+        _8: LocalInfo {
+            kind: Unused,
+            assign_count: 0,
+            data: Unresolved,
+        },
+    },
+}
+AnalysisInfo {
+    body: Body {
+        basic_blocks: BasicBlocks {
+            basic_blocks: [
+                BasicBlockData {
+                    statements: [
+                        StorageLive(_1),
+                        _1 = const 0_i32,
+                        FakeRead(ForLet(None), _1),
+                        StorageLive(_2),
+                    ],
+                    terminator: Some(
+                        Terminator {
+                            source_info: SourceInfo {
+                                span: tests/ui/thesis/control.rs:32:5: 38:6 (#0),
+                                scope: scope[1],
+                            },
+                            kind: goto -> bb1,
+                        },
+                    ),
+                    is_cleanup: false,
+                },
+                BasicBlockData {
+                    statements: [],
+                    terminator: Some(
+                        Terminator {
+                            source_info: SourceInfo {
+                                span: tests/ui/thesis/control.rs:32:5: 38:6 (#0),
+                                scope: scope[1],
+                            },
+                            kind: falseUnwind -> [real: bb2, unwind: bb6],
+                        },
+                    ),
+                    is_cleanup: false,
+                },
+                BasicBlockData {
+                    statements: [
+                        _4 = CheckedAdd(_1, const 1_i32),
+                    ],
+                    terminator: Some(
+                        Terminator {
+                            source_info: SourceInfo {
+                                span: tests/ui/thesis/control.rs:33:9: 33:17 (#0),
+                                scope: scope[1],
+                            },
+                            kind: assert(!move (_4.1: bool), "attempt to compute `{} + {}`, which would overflow", _1, const 1_i32) -> [success: bb3, unwind: bb6],
+                        },
+                    ),
+                    is_cleanup: false,
+                },
+                BasicBlockData {
+                    statements: [
+                        _1 = move (_4.0: i32),
+                        StorageLive(_5),
+                        StorageLive(_6),
+                        StorageLive(_7),
+                        _7 = _1,
+                        _6 = Lt(move _7, const 10_i32),
+                    ],
+                    terminator: Some(
+                        Terminator {
+                            source_info: SourceInfo {
+                                span: tests/ui/thesis/control.rs:34:12: 34:20 (#0),
+                                scope: scope[1],
+                            },
+                            kind: switchInt(move _6) -> [0: bb5, otherwise: bb4],
+                        },
+                    ),
+                    is_cleanup: false,
+                },
+                BasicBlockData {
+                    statements: [
+                        StorageDead(_7),
+                        _2 = const (),
+                        StorageDead(_6),
+                        StorageDead(_5),
+                        StorageDead(_2),
+                        StorageLive(_10),
+                        _10 = const 0_i32,
+                        FakeRead(ForLet(None), _10),
+                        _0 = const (),
+                        StorageDead(_10),
+                        StorageDead(_1),
+                    ],
+                    terminator: Some(
+                        Terminator {
+                            source_info: SourceInfo {
+                                span: tests/ui/thesis/control.rs:40:2: 40:2 (#0),
+                                scope: scope[0],
+                            },
+                            kind: return,
+                        },
+                    ),
+                    is_cleanup: false,
+                },
+                BasicBlockData {
+                    statements: [
+                        StorageDead(_7),
+                        _5 = const (),
+                        StorageDead(_6),
+                        StorageDead(_5),
+                        StorageLive(_9),
+                        _9 = const 1_i32,
+                        FakeRead(ForLet(None), _9),
+                        _3 = const (),
+                        StorageDead(_9),
+                    ],
+                    terminator: Some(
+                        Terminator {
+                            source_info: SourceInfo {
+                                span: tests/ui/thesis/control.rs:32:5: 38:6 (#0),
+                                scope: scope[1],
+                            },
+                            kind: goto -> bb1,
+                        },
+                    ),
+                    is_cleanup: false,
+                },
+                BasicBlockData {
+                    statements: [],
+                    terminator: Some(
+                        Terminator {
+                            source_info: SourceInfo {
+                                span: tests/ui/thesis/control.rs:30:1: 40:2 (#0),
+                                scope: scope[0],
+                            },
+                            kind: resume,
+                        },
+                    ),
+                    is_cleanup: true,
+                },
+            ],
+            cache: Cache {
+                predecessors: OnceLock(
+                    [
+                        [],
+                        [
+                            bb0,
+                            bb5,
+                        ],
+                        [
+                            bb1,
+                        ],
+                        [
+                            bb2,
+                        ],
+                        [
+                            bb3,
+                        ],
+                        [
+                            bb3,
+                        ],
+                        [
+                            bb1,
+                            bb2,
+                        ],
+                    ],
+                ),
+                switch_sources: OnceLock(
+                    <uninit>,
+                ),
+                is_cyclic: OnceLock(
+                    true,
+                ),
+                reverse_postorder: OnceLock(
+                    [
+                        bb0,
+                        bb1,
+                        bb2,
+                        bb3,
+                        bb5,
+                        bb4,
+                        bb6,
+                    ],
+                ),
+                dominators: OnceLock(
+                    <uninit>,
+                ),
+            },
+        },
+        phase: Analysis(
+            Initial,
+        ),
+        pass_count: 1,
+        source: MirSource {
+            instance: Item(
+                DefId(0:7 ~ control[8063]::loop_3),
+            ),
+            promoted: None,
+        },
+        source_scopes: [
+            SourceScopeData {
+                span: tests/ui/thesis/control.rs:30:1: 40:2 (#0),
+                parent_scope: None,
+                inlined: None,
+                inlined_parent_scope: None,
+                local_data: Set(
+                    SourceScopeLocalData {
+                        lint_root: HirId(DefId(0:7 ~ control[8063]::loop_3).0),
+                        safety: Safe,
+                    },
+                ),
+            },
+            SourceScopeData {
+                span: tests/ui/thesis/control.rs:31:5: 40:2 (#0),
+                parent_scope: Some(
+                    scope[0],
+                ),
+                inlined: None,
+                inlined_parent_scope: None,
+                local_data: Set(
+                    SourceScopeLocalData {
+                        lint_root: HirId(DefId(0:7 ~ control[8063]::loop_3).0),
+                        safety: Safe,
+                    },
+                ),
+            },
+            SourceScopeData {
+                span: tests/ui/thesis/control.rs:37:9: 38:6 (#0),
+                parent_scope: Some(
+                    scope[1],
+                ),
+                inlined: None,
+                inlined_parent_scope: None,
+                local_data: Set(
+                    SourceScopeLocalData {
+                        lint_root: HirId(DefId(0:7 ~ control[8063]::loop_3).0),
+                        safety: Safe,
+                    },
+                ),
+            },
+            SourceScopeData {
+                span: tests/ui/thesis/control.rs:39:5: 40:2 (#0),
+                parent_scope: Some(
+                    scope[1],
+                ),
+                inlined: None,
+                inlined_parent_scope: None,
+                local_data: Set(
+                    SourceScopeLocalData {
+                        lint_root: HirId(DefId(0:7 ~ control[8063]::loop_3).0),
+                        safety: Safe,
+                    },
+                ),
+            },
+        ],
+        coroutine: None,
+        local_decls: [
+            LocalDecl {
+                mutability: Mut,
+                local_info: Set(
+                    Boring,
+                ),
+                ty: (),
+                user_ty: None,
+                source_info: SourceInfo {
+                    span: tests/ui/thesis/control.rs:30:12: 30:12 (#0),
+                    scope: scope[0],
+                },
+            },
+            LocalDecl {
+                mutability: Mut,
+                local_info: Set(
+                    User(
+                        Var(
+                            VarBindingForm {
+                                binding_mode: BindByValue(
+                                    Mut,
+                                ),
+                                opt_ty_info: None,
+                                opt_match_place: Some(
+                                    (
+                                        None,
+                                        tests/ui/thesis/control.rs:31:19: 31:20 (#0),
+                                    ),
+                                ),
+                                pat_span: tests/ui/thesis/control.rs:31:9: 31:16 (#0),
+                            },
+                        ),
+                    ),
+                ),
+                ty: i32,
+                user_ty: None,
+                source_info: SourceInfo {
+                    span: tests/ui/thesis/control.rs:31:9: 31:16 (#0),
+                    scope: scope[0],
+                },
+            },
+            LocalDecl {
+                mutability: Not,
+                local_info: Set(
+                    Boring,
+                ),
+                ty: (),
+                user_ty: None,
+                source_info: SourceInfo {
+                    span: tests/ui/thesis/control.rs:32:5: 38:6 (#0),
+                    scope: scope[0],
+                },
+            },
+            LocalDecl {
+                mutability: Mut,
+                local_info: Set(
+                    Boring,
+                ),
+                ty: (),
+                user_ty: None,
+                source_info: SourceInfo {
+                    span: tests/ui/thesis/control.rs:30:1: 40:2 (#0),
+                    scope: scope[0],
+                },
+            },
+            LocalDecl {
+                mutability: Mut,
+                local_info: Set(
+                    Boring,
+                ),
+                ty: (i32, bool),
+                user_ty: None,
+                source_info: SourceInfo {
+                    span: tests/ui/thesis/control.rs:33:9: 33:17 (#0),
+                    scope: scope[0],
+                },
+            },
+            LocalDecl {
+                mutability: Not,
+                local_info: Set(
+                    Boring,
+                ),
+                ty: (),
+                user_ty: None,
+                source_info: SourceInfo {
+                    span: tests/ui/thesis/control.rs:34:9: 36:10 (#0),
+                    scope: scope[0],
+                },
+            },
+            LocalDecl {
+                mutability: Mut,
+                local_info: Set(
+                    Boring,
+                ),
+                ty: bool,
+                user_ty: None,
+                source_info: SourceInfo {
+                    span: tests/ui/thesis/control.rs:34:12: 34:20 (#0),
+                    scope: scope[0],
+                },
+            },
+            LocalDecl {
+                mutability: Mut,
+                local_info: Set(
+                    Boring,
+                ),
+                ty: i32,
+                user_ty: None,
+                source_info: SourceInfo {
+                    span: tests/ui/thesis/control.rs:34:12: 34:15 (#0),
+                    scope: scope[0],
+                },
+            },
+            LocalDecl {
+                mutability: Mut,
+                local_info: Set(
+                    Boring,
+                ),
+                ty: !,
+                user_ty: None,
+                source_info: SourceInfo {
+                    span: tests/ui/thesis/control.rs:34:21: 36:10 (#0),
+                    scope: scope[0],
+                },
+            },
+            LocalDecl {
+                mutability: Not,
+                local_info: Set(
+                    User(
+                        Var(
+                            VarBindingForm {
+                                binding_mode: BindByValue(
+                                    Not,
+                                ),
+                                opt_ty_info: None,
+                                opt_match_place: Some(
+                                    (
+                                        None,
+                                        tests/ui/thesis/control.rs:37:18: 37:19 (#0),
+                                    ),
+                                ),
+                                pat_span: tests/ui/thesis/control.rs:37:13: 37:15 (#0),
+                            },
+                        ),
+                    ),
+                ),
+                ty: i32,
+                user_ty: None,
+                source_info: SourceInfo {
+                    span: tests/ui/thesis/control.rs:37:13: 37:15 (#0),
+                    scope: scope[1],
+                },
+            },
+            LocalDecl {
+                mutability: Not,
+                local_info: Set(
+                    User(
+                        Var(
+                            VarBindingForm {
+                                binding_mode: BindByValue(
+                                    Not,
+                                ),
+                                opt_ty_info: None,
+                                opt_match_place: Some(
+                                    (
+                                        None,
+                                        tests/ui/thesis/control.rs:39:14: 39:15 (#0),
+                                    ),
+                                ),
+                                pat_span: tests/ui/thesis/control.rs:39:9: 39:11 (#0),
+                            },
+                        ),
+                    ),
+                ),
+                ty: i32,
+                user_ty: None,
+                source_info: SourceInfo {
+                    span: tests/ui/thesis/control.rs:39:9: 39:11 (#0),
+                    scope: scope[1],
+                },
+            },
+        ],
+        user_type_annotations: [],
+        arg_count: 0,
+        spread_arg: None,
+        var_debug_info: [
+            idx => _1,
+            _x => _9,
+            _y => _10,
+        ],
+        span: tests/ui/thesis/control.rs:30:1: 40:2 (#0),
+        required_consts: [],
+        is_polymorphic: false,
+        injection_phase: None,
+        tainted_by_errors: None,
+        function_coverage_info: None,
+    },
+    def_id: DefId(0:7 ~ control[8063]::loop_3),
+    cfg: {
+        bb0: Linear(
+            bb1,
+        ),
+        bb1: Linear(
+            bb2,
+        ),
+        bb2: Linear(
+            bb3,
+        ),
+        bb3: Break {
+            next: bb5,
+            brea: bb4,
+        },
+        bb4: Return,
+        bb5: Linear(
+            bb1,
+        ),
+        bb6: None,
+    },
+    loops: [
+        (
+            [
+                bb1,
+                bb2,
+                bb3,
+                bb5,
+            ],
+            bb5,
+        ),
+    ],
+    terms: {},
+    locals: {
+        _0: LocalInfo {
+            kind: Return,
+            assign_count: 1,
+            data: Const,
+        },
+        _1: LocalInfo {
+            kind: UserVar(
+                "idx",
+            ),
+            assign_count: 2,
+            data: Mixed,
+        },
+        _2: LocalInfo {
+            kind: AnonVar,
+            assign_count: 1,
+            data: Const,
+        },
+        _3: LocalInfo {
+            kind: AnonVar,
+            assign_count: 1,
+            data: Const,
+        },
+        _4: LocalInfo {
+            kind: AnonVar,
+            assign_count: 1,
+            data: Computed,
+        },
+        _5: LocalInfo {
+            kind: AnonVar,
+            assign_count: 1,
+            data: Const,
+        },
+        _6: LocalInfo {
+            kind: AnonVar,
+            assign_count: 1,
+            data: Computed,
+        },
+        _7: LocalInfo {
+            kind: AnonVar,
+            assign_count: 1,
+            data: Local(
+                _1,
+            ),
+        },
+        _8: LocalInfo {
+            kind: Unused,
+            assign_count: 0,
+            data: Unresolved,
+        },
+        _9: LocalInfo {
+            kind: UserVar(
+                "_x",
+            ),
+            assign_count: 1,
+            data: Const,
+        },
+        _10: LocalInfo {
+            kind: UserVar(
+                "_y",
+            ),
+            assign_count: 1,
+            data: Const,
+        },
+    },
+}
+AnalysisInfo {
+    body: Body {
+        basic_blocks: BasicBlocks {
+            basic_blocks: [
+                BasicBlockData {
+                    statements: [
+                        StorageLive(_1),
+                        StorageLive(_2),
+                        _2 = const 0_i32,
+                        FakeRead(ForLet(None), _2),
+                        StorageLive(_3),
+                        StorageLive(_4),
+                        _4 = const true,
+                    ],
+                    terminator: Some(
+                        Terminator {
+                            source_info: SourceInfo {
+                                span: tests/ui/thesis/control.rs:45:13: 45:17 (#0),
+                                scope: scope[1],
+                            },
+                            kind: switchInt(move _4) -> [0: bb1, otherwise: bb2],
+                        },
+                    ),
+                    is_cleanup: false,
+                },
+                BasicBlockData {
+                    statements: [
+                        _1 = const (),
+                        StorageDead(_4),
+                        StorageDead(_3),
+                        StorageDead(_2),
+                    ],
+                    terminator: Some(
+                        Terminator {
+                            source_info: SourceInfo {
+                                span: tests/ui/thesis/control.rs:43:5: 49:6 (#0),
+                                scope: scope[0],
+                            },
+                            kind: goto -> bb3,
+                        },
+                    ),
+                    is_cleanup: false,
+                },
+                BasicBlockData {
+                    statements: [
+                        _3 = const (),
+                        StorageDead(_4),
+                        StorageDead(_3),
+                        StorageLive(_6),
+                        _6 = const 0_i32,
+                        FakeRead(ForLet(None), _6),
+                        _1 = const (),
+                        StorageDead(_6),
+                        StorageDead(_2),
+                    ],
+                    terminator: Some(
+                        Terminator {
+                            source_info: SourceInfo {
+                                span: tests/ui/thesis/control.rs:43:5: 49:6 (#0),
+                                scope: scope[0],
+                            },
+                            kind: goto -> bb3,
+                        },
+                    ),
+                    is_cleanup: false,
+                },
+                BasicBlockData {
+                    statements: [
+                        StorageDead(_1),
+                        _0 = const 12_u32,
+                    ],
+                    terminator: Some(
+                        Terminator {
+                            source_info: SourceInfo {
+                                span: tests/ui/thesis/control.rs:52:2: 52:2 (#0),
+                                scope: scope[0],
+                            },
+                            kind: return,
+                        },
+                    ),
+                    is_cleanup: false,
+                },
+            ],
+            cache: Cache {
+                predecessors: OnceLock(
+                    [
+                        [],
+                        [
+                            bb0,
+                        ],
+                        [
+                            bb0,
+                        ],
+                        [
+                            bb1,
+                            bb2,
+                        ],
+                    ],
+                ),
+                switch_sources: OnceLock(
+                    <uninit>,
+                ),
+                is_cyclic: OnceLock(
+                    false,
+                ),
+                reverse_postorder: OnceLock(
+                    [
+                        bb0,
+                        bb1,
+                        bb2,
+                        bb3,
+                    ],
+                ),
+                dominators: OnceLock(
+                    <uninit>,
+                ),
+            },
+        },
+        phase: Analysis(
+            Initial,
+        ),
+        pass_count: 1,
+        source: MirSource {
+            instance: Item(
+                DefId(0:8 ~ control[8063]::block_with_label),
+            ),
+            promoted: None,
+        },
+        source_scopes: [
+            SourceScopeData {
+                span: tests/ui/thesis/control.rs:42:1: 52:2 (#0),
+                parent_scope: None,
+                inlined: None,
+                inlined_parent_scope: None,
+                local_data: Set(
+                    SourceScopeLocalData {
+                        lint_root: HirId(DefId(0:8 ~ control[8063]::block_with_label).0),
+                        safety: Safe,
+                    },
+                ),
+            },
+            SourceScopeData {
+                span: tests/ui/thesis/control.rs:44:9: 49:6 (#0),
+                parent_scope: Some(
+                    scope[0],
+                ),
+                inlined: None,
+                inlined_parent_scope: None,
+                local_data: Set(
+                    SourceScopeLocalData {
+                        lint_root: HirId(DefId(0:8 ~ control[8063]::block_with_label).0),
+                        safety: Safe,
+                    },
+                ),
+            },
+            SourceScopeData {
+                span: tests/ui/thesis/control.rs:48:9: 49:6 (#0),
+                parent_scope: Some(
+                    scope[1],
+                ),
+                inlined: None,
+                inlined_parent_scope: None,
+                local_data: Set(
+                    SourceScopeLocalData {
+                        lint_root: HirId(DefId(0:8 ~ control[8063]::block_with_label).0),
+                        safety: Safe,
+                    },
+                ),
+            },
+        ],
+        coroutine: None,
+        local_decls: [
+            LocalDecl {
+                mutability: Mut,
+                local_info: Set(
+                    Boring,
+                ),
+                ty: u32,
+                user_ty: None,
+                source_info: SourceInfo {
+                    span: tests/ui/thesis/control.rs:42:26: 42:29 (#0),
+                    scope: scope[0],
+                },
+            },
+            LocalDecl {
+                mutability: Not,
+                local_info: Set(
+                    Boring,
+                ),
+                ty: (),
+                user_ty: None,
+                source_info: SourceInfo {
+                    span: tests/ui/thesis/control.rs:43:5: 49:6 (#0),
+                    scope: scope[0],
+                },
+            },
+            LocalDecl {
+                mutability: Not,
+                local_info: Set(
+                    User(
+                        Var(
+                            VarBindingForm {
+                                binding_mode: BindByValue(
+                                    Not,
+                                ),
+                                opt_ty_info: None,
+                                opt_match_place: Some(
+                                    (
+                                        None,
+                                        tests/ui/thesis/control.rs:44:18: 44:19 (#0),
+                                    ),
+                                ),
+                                pat_span: tests/ui/thesis/control.rs:44:13: 44:15 (#0),
+                            },
+                        ),
+                    ),
+                ),
+                ty: i32,
+                user_ty: None,
+                source_info: SourceInfo {
+                    span: tests/ui/thesis/control.rs:44:13: 44:15 (#0),
+                    scope: scope[0],
+                },
+            },
+            LocalDecl {
+                mutability: Not,
+                local_info: Set(
+                    Boring,
+                ),
+                ty: (),
+                user_ty: None,
+                source_info: SourceInfo {
+                    span: tests/ui/thesis/control.rs:45:9: 47:10 (#0),
+                    scope: scope[0],
+                },
+            },
+            LocalDecl {
+                mutability: Mut,
+                local_info: Set(
+                    Boring,
+                ),
+                ty: bool,
+                user_ty: None,
+                source_info: SourceInfo {
+                    span: tests/ui/thesis/control.rs:45:13: 45:17 (#0),
+                    scope: scope[0],
+                },
+            },
+            LocalDecl {
+                mutability: Mut,
+                local_info: Set(
+                    Boring,
+                ),
+                ty: !,
+                user_ty: None,
+                source_info: SourceInfo {
+                    span: tests/ui/thesis/control.rs:45:18: 47:10 (#0),
+                    scope: scope[0],
+                },
+            },
+            LocalDecl {
+                mutability: Not,
+                local_info: Set(
+                    User(
+                        Var(
+                            VarBindingForm {
+                                binding_mode: BindByValue(
+                                    Not,
+                                ),
+                                opt_ty_info: None,
+                                opt_match_place: Some(
+                                    (
+                                        None,
+                                        tests/ui/thesis/control.rs:48:18: 48:19 (#0),
+                                    ),
+                                ),
+                                pat_span: tests/ui/thesis/control.rs:48:13: 48:15 (#0),
+                            },
+                        ),
+                    ),
+                ),
+                ty: i32,
+                user_ty: None,
+                source_info: SourceInfo {
+                    span: tests/ui/thesis/control.rs:48:13: 48:15 (#0),
+                    scope: scope[1],
+                },
+            },
+        ],
+        user_type_annotations: [],
+        arg_count: 0,
+        spread_arg: None,
+        var_debug_info: [
+            _x => _2,
+            _y => _6,
+        ],
+        span: tests/ui/thesis/control.rs:42:1: 52:2 (#0),
+        required_consts: [],
+        is_polymorphic: false,
+        injection_phase: None,
+        tainted_by_errors: None,
+        function_coverage_info: None,
+    },
+    def_id: DefId(0:8 ~ control[8063]::block_with_label),
+    cfg: {
+        bb0: Condition {
+            branches: [
+                bb1,
+                bb2,
+            ],
+        },
+        bb1: Linear(
+            bb3,
+        ),
+        bb2: Linear(
+            bb3,
+        ),
+        bb3: Return,
+    },
+    loops: [],
+    terms: {},
+    locals: {
+        _0: LocalInfo {
+            kind: Return,
+            assign_count: 1,
+            data: Const,
+        },
+        _1: LocalInfo {
+            kind: AnonVar,
+            assign_count: 2,
+            data: Const,
+        },
+        _2: LocalInfo {
+            kind: UserVar(
+                "_x",
+            ),
+            assign_count: 1,
+            data: Const,
+        },
+        _3: LocalInfo {
+            kind: AnonVar,
+            assign_count: 1,
+            data: Const,
+        },
+        _4: LocalInfo {
+            kind: AnonVar,
+            assign_count: 1,
+            data: Const,
+        },
+        _5: LocalInfo {
+            kind: Unused,
+            assign_count: 0,
+            data: Unresolved,
+        },
+        _6: LocalInfo {
+            kind: UserVar(
+                "_y",
+            ),
+            assign_count: 1,
+            data: Const,
+        },
+    },
+}
+Type: LocalDecl {
+    mutability: Mut,
+    local_info: Set(
+        Boring,
+    ),
+    ty: u32,
+    user_ty: None,
+    source_info: SourceInfo {
+        span: tests/ui/thesis/control.rs:42:26: 42:29 (#0),
+        scope: scope[0],
+    },
+}
+AnalysisInfo {
+    body: Body {
+        basic_blocks: BasicBlocks {
+            basic_blocks: [
+                BasicBlockData {
+                    statements: [
+                        _0 = const true,
+                    ],
+                    terminator: Some(
+                        Terminator {
+                            source_info: SourceInfo {
+                                span: tests/ui/thesis/control.rs:75:2: 75:2 (#0),
+                                scope: scope[0],
+                            },
+                            kind: return,
+                        },
+                    ),
+                    is_cleanup: false,
+                },
+            ],
+            cache: Cache {
+                predecessors: OnceLock(
+                    [
+                        [],
+                    ],
+                ),
+                switch_sources: OnceLock(
+                    <uninit>,
+                ),
+                is_cyclic: OnceLock(
+                    false,
+                ),
+                reverse_postorder: OnceLock(
+                    [
+                        bb0,
+                    ],
+                ),
+                dominators: OnceLock(
+                    <uninit>,
+                ),
+            },
+        },
+        phase: Analysis(
+            Initial,
+        ),
+        pass_count: 1,
+        source: MirSource {
+            instance: Item(
+                DefId(0:10 ~ control[8063]::cond_1),
+            ),
+            promoted: None,
+        },
+        source_scopes: [
+            SourceScopeData {
+                span: tests/ui/thesis/control.rs:73:1: 75:2 (#0),
+                parent_scope: None,
+                inlined: None,
+                inlined_parent_scope: None,
+                local_data: Set(
+                    SourceScopeLocalData {
+                        lint_root: HirId(DefId(0:10 ~ control[8063]::cond_1).0),
+                        safety: Safe,
+                    },
+                ),
+            },
+        ],
+        coroutine: None,
+        local_decls: [
+            LocalDecl {
+                mutability: Mut,
+                local_info: Set(
+                    Boring,
+                ),
+                ty: bool,
+                user_ty: None,
+                source_info: SourceInfo {
+                    span: tests/ui/thesis/control.rs:73:16: 73:20 (#0),
+                    scope: scope[0],
+                },
+            },
+        ],
+        user_type_annotations: [],
+        arg_count: 0,
+        spread_arg: None,
+        var_debug_info: [],
+        span: tests/ui/thesis/control.rs:73:1: 75:2 (#0),
+        required_consts: [],
+        is_polymorphic: false,
+        injection_phase: None,
+        tainted_by_errors: None,
+        function_coverage_info: None,
+    },
+    def_id: DefId(0:10 ~ control[8063]::cond_1),
+    cfg: {
+        bb0: Return,
+    },
+    loops: [],
+    terms: {},
+    locals: {
+        _0: LocalInfo {
+            kind: Return,
+            assign_count: 1,
+            data: Const,
+        },
+    },
+}
+Type: LocalDecl {
+    mutability: Mut,
+    local_info: Set(
+        Boring,
+    ),
+    ty: bool,
+    user_ty: None,
+    source_info: SourceInfo {
+        span: tests/ui/thesis/control.rs:73:16: 73:20 (#0),
+        scope: scope[0],
+    },
+}
+AnalysisInfo {
+    body: Body {
+        basic_blocks: BasicBlocks {
+            basic_blocks: [
+                BasicBlockData {
+                    statements: [
+                        _0 = const false,
+                    ],
+                    terminator: Some(
+                        Terminator {
+                            source_info: SourceInfo {
+                                span: tests/ui/thesis/control.rs:78:2: 78:2 (#0),
+                                scope: scope[0],
+                            },
+                            kind: return,
+                        },
+                    ),
+                    is_cleanup: false,
+                },
+            ],
+            cache: Cache {
+                predecessors: OnceLock(
+                    [
+                        [],
+                    ],
+                ),
+                switch_sources: OnceLock(
+                    <uninit>,
+                ),
+                is_cyclic: OnceLock(
+                    false,
+                ),
+                reverse_postorder: OnceLock(
+                    [
+                        bb0,
+                    ],
+                ),
+                dominators: OnceLock(
+                    <uninit>,
+                ),
+            },
+        },
+        phase: Analysis(
+            Initial,
+        ),
+        pass_count: 1,
+        source: MirSource {
+            instance: Item(
+                DefId(0:11 ~ control[8063]::cond_2),
+            ),
+            promoted: None,
+        },
+        source_scopes: [
+            SourceScopeData {
+                span: tests/ui/thesis/control.rs:76:1: 78:2 (#0),
+                parent_scope: None,
+                inlined: None,
+                inlined_parent_scope: None,
+                local_data: Set(
+                    SourceScopeLocalData {
+                        lint_root: HirId(DefId(0:11 ~ control[8063]::cond_2).0),
+                        safety: Safe,
+                    },
+                ),
+            },
+        ],
+        coroutine: None,
+        local_decls: [
+            LocalDecl {
+                mutability: Mut,
+                local_info: Set(
+                    Boring,
+                ),
+                ty: bool,
+                user_ty: None,
+                source_info: SourceInfo {
+                    span: tests/ui/thesis/control.rs:76:16: 76:20 (#0),
+                    scope: scope[0],
+                },
+            },
+        ],
+        user_type_annotations: [],
+        arg_count: 0,
+        spread_arg: None,
+        var_debug_info: [],
+        span: tests/ui/thesis/control.rs:76:1: 78:2 (#0),
+        required_consts: [],
+        is_polymorphic: false,
+        injection_phase: None,
+        tainted_by_errors: None,
+        function_coverage_info: None,
+    },
+    def_id: DefId(0:11 ~ control[8063]::cond_2),
+    cfg: {
+        bb0: Return,
+    },
+    loops: [],
+    terms: {},
+    locals: {
+        _0: LocalInfo {
+            kind: Return,
+            assign_count: 1,
+            data: Const,
+        },
+    },
+}
+Type: LocalDecl {
+    mutability: Mut,
+    local_info: Set(
+        Boring,
+    ),
+    ty: bool,
+    user_ty: None,
+    source_info: SourceInfo {
+        span: tests/ui/thesis/control.rs:76:16: 76:20 (#0),
+        scope: scope[0],
+    },
+}
+AnalysisInfo {
+    body: Body {
+        basic_blocks: BasicBlocks {
+            basic_blocks: [
+                BasicBlockData {
+                    statements: [
+                        _0 = const (),
+                    ],
+                    terminator: Some(
+                        Terminator {
+                            source_info: SourceInfo {
+                                span: tests/ui/thesis/control.rs:80:13: 80:13 (#0),
+                                scope: scope[0],
+                            },
+                            kind: return,
+                        },
+                    ),
+                    is_cleanup: false,
+                },
+            ],
+            cache: Cache {
+                predecessors: OnceLock(
+                    [
+                        [],
+                    ],
+                ),
+                switch_sources: OnceLock(
+                    <uninit>,
+                ),
+                is_cyclic: OnceLock(
+                    false,
+                ),
+                reverse_postorder: OnceLock(
+                    [
+                        bb0,
+                    ],
+                ),
+                dominators: OnceLock(
+                    <uninit>,
+                ),
+            },
+        },
+        phase: Analysis(
+            Initial,
+        ),
+        pass_count: 1,
+        source: MirSource {
+            instance: Item(
+                DefId(0:12 ~ control[8063]::main),
+            ),
+            promoted: None,
+        },
+        source_scopes: [
+            SourceScopeData {
+                span: tests/ui/thesis/control.rs:80:1: 80:13 (#0),
+                parent_scope: None,
+                inlined: None,
+                inlined_parent_scope: None,
+                local_data: Set(
+                    SourceScopeLocalData {
+                        lint_root: HirId(DefId(0:12 ~ control[8063]::main).0),
+                        safety: Safe,
+                    },
+                ),
+            },
+        ],
+        coroutine: None,
+        local_decls: [
+            LocalDecl {
+                mutability: Mut,
+                local_info: Set(
+                    Boring,
+                ),
+                ty: (),
+                user_ty: None,
+                source_info: SourceInfo {
+                    span: tests/ui/thesis/control.rs:80:10: 80:10 (#0),
+                    scope: scope[0],
+                },
+            },
+        ],
+        user_type_annotations: [],
+        arg_count: 0,
+        spread_arg: None,
+        var_debug_info: [],
+        span: tests/ui/thesis/control.rs:80:1: 80:13 (#0),
+        required_consts: [],
+        is_polymorphic: false,
+        injection_phase: None,
+        tainted_by_errors: None,
+        function_coverage_info: None,
+    },
+    def_id: DefId(0:12 ~ control[8063]::main),
+    cfg: {
+        bb0: Return,
+    },
+    loops: [],
+    terms: {},
+    locals: {
+        _0: LocalInfo {
+            kind: Return,
+            assign_count: 1,
+            data: Const,
+        },
+    },
+}

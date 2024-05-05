@@ -14,14 +14,14 @@
     clippy::missing_panics_doc,
     clippy::must_use_candidate,
     rustc::diagnostic_outside_of_impl,
-    rustc::untranslatable_diagnostic
+    rustc::untranslatable_diagnostic,
+    rustc::usage_of_qualified_ty
 )]
 #![warn(
     trivial_casts,
     trivial_numeric_casts,
     rust_2018_idioms,
     unused_lifetimes,
-    unused_qualifications,
     rustc::internal
 )]
 
@@ -190,6 +190,21 @@ pub fn find_binding_init<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Option<
         return local.init;
     }
     None
+}
+
+/// Checks if the given local has an initializer or is from something other than a `let` statement
+///
+/// e.g. returns true for `x` in `fn f(x: usize) { .. }` and `let x = 1;` but false for `let x;`
+pub fn local_is_initialized(cx: &LateContext<'_>, local: HirId) -> bool {
+    for (_, node) in cx.tcx.hir().parent_iter(local) {
+        match node {
+            Node::Pat(..) | Node::PatField(..) => {},
+            Node::LetStmt(let_stmt) => return let_stmt.init.is_some(),
+            _ => return true,
+        }
+    }
+
+    false
 }
 
 /// Returns `true` if the given `NodeId` is inside a constant context

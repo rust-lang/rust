@@ -5171,6 +5171,7 @@ Released 2018-09-13
 [`borrow_as_ptr`]: https://rust-lang.github.io/rust-clippy/master/index.html#borrow_as_ptr
 [`borrow_deref_ref`]: https://rust-lang.github.io/rust-clippy/master/index.html#borrow_deref_ref
 [`borrow_interior_mutable_const`]: https://rust-lang.github.io/rust-clippy/master/index.html#borrow_interior_mutable_const
+[`borrow_pats`]: https://rust-lang.github.io/rust-clippy/master/index.html#borrow_pats
 [`borrowed_box`]: https://rust-lang.github.io/rust-clippy/master/index.html#borrowed_box
 [`box_collection`]: https://rust-lang.github.io/rust-clippy/master/index.html#box_collection
 [`box_default`]: https://rust-lang.github.io/rust-clippy/master/index.html#box_default

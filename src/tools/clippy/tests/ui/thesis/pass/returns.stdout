@@ -1,0 +1,21 @@
+# "main"
+- Body: Output(Unit)     , NotConst , Safe  , Sync , Free       {NoArguments}
+
+# "simple_const"
+- Body: Output(Primitive), NotConst , Safe  , Sync , Free       {NoArguments}
+
+# "fn_call"
+- Body: Output(Primitive), NotConst , Safe  , Sync , Free       {NoArguments}
+
+# "simple_cond"
+- Body: Output(Primitive), NotConst , Safe  , Sync , Free       {NoArguments}
+
+# "static_slice"
+- Body: Output(Reference), NotConst , Safe  , Sync , Free       {NoArguments}
+
+# "static_string"
+- Body: Output(Reference), NotConst , Safe  , Sync , Free       {NoArguments}
+
+# "arg_or_default"
+- Body: Output(Reference), NotConst , Safe  , Sync , Free       {ReturnedStaticLoanForNonStatic}
+

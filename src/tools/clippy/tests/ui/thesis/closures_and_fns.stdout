@@ -1,0 +1,28 @@
+# "use_local_func"
+- func           : (Immutable, Owned    , Local   , Copy   , NonDrop , Fn       ) {}
+- Body: Output(Unit)     , NotConst , Safe  , Sync , Free       {NoArguments}
+
+# "use_arg_func"
+- func           : (Immutable, Owned    , Argument, Copy   , NonDrop , Fn       ) {}
+- Body: Output(Unit)     , NotConst , Safe  , Sync , Free       {}
+
+# "call_closure_with_arg"
+- s              : (Immutable, Owned    , Argument, NonCopy, PartDrop, UserDef  ) {Borrow, CtorBorrow}
+- close          : (Immutable, Owned    , Local   , Copy   , NonDrop , Closure  ) {Borrow, ArgBorrow}
+- Body: Output(Unit)     , NotConst , Safe  , Sync , Free       {HasTempBorrow}
+
+# "call_closure_borrow_env"
+- s              : (Immutable, Owned    , Argument, NonCopy, PartDrop, UserDef  ) {Borrow, ClosureBorrow}
+- close          : (Immutable, Owned    , Local   , Copy   , NonDrop , Closure  ) {Borrow, ArgBorrow}
+- Body: Output(Unit)     , NotConst , Safe  , Sync , Free       {HasTempBorrow}
+
+# "call_closure_move_s"
+- s              : (Immutable, Owned    , Argument, NonCopy, PartDrop, UserDef  ) {Moved, MovedToClosure}
+- close          : (Immutable, Owned    , Local   , NonCopy, PartDrop, Closure  ) {Borrow, ArgBorrow}
+- Body: Output(Unit)     , NotConst , Safe  , Sync , Free       {HasTempBorrow}
+
+# "call_closure_move_field"
+- ex             : (Immutable, Owned    , Argument, NonCopy, PartDrop, UserDef  ) {PartMoved, PartMovedToClosure}
+- close          : (Immutable, Owned    , Local   , NonCopy, PartDrop, Closure  ) {Borrow, ArgBorrow}
+- Body: Output(Unit)     , NotConst , Safe  , Sync , Free       {HasTempBorrow}
+
