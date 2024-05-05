@@ -1037,7 +1037,7 @@ impl<T> Option<T> {
         match self {
             Some(val) => val,
             // SAFETY: the safety contract must be upheld by the caller.
-            None => unsafe { mem::MaybeUninit::uninit().assume_init() },
+            None => unsafe { MaybeUninit::uninit().assume_init() },
         }
     }
 
