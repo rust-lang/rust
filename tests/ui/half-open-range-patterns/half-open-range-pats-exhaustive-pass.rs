@@ -2,8 +2,6 @@
 
 // Test various exhaustive matches for `X..`, `..=X` and `..X` ranges.
 
-#![feature(exclusive_range_pattern)]
-
 fn main() {}
 
 macro_rules! m {
