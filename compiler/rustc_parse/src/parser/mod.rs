@@ -19,6 +19,7 @@ pub(crate) use item::FnParseMode;
 pub use pat::{CommaRecoveryMode, RecoverColon, RecoverComma};
 pub use path::PathStyle;
 
+use core::fmt;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, Token, TokenKind};
 use rustc_ast::tokenstream::{AttributesData, DelimSpacing, DelimSpan, Spacing};
@@ -46,7 +47,7 @@ use crate::errors::{
 };
 
 bitflags::bitflags! {
-    #[derive(Clone, Copy)]
+    #[derive(Clone, Copy, Debug)]
     struct Restrictions: u8 {
         const STMT_EXPR         = 1 << 0;
         const NO_STRUCT_LITERAL = 1 << 1;
@@ -72,7 +73,7 @@ enum BlockMode {
 
 /// Whether or not we should force collection of tokens for an AST node,
 /// regardless of whether or not it has attributes
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum ForceCollect {
     Yes,
     No,
@@ -120,7 +121,7 @@ macro_rules! maybe_recover_from_interpolated_ty_qpath {
     };
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum Recovery {
     Allowed,
     Forbidden,
@@ -182,7 +183,7 @@ pub struct Parser<'a> {
 rustc_data_structures::static_assert_size!(Parser<'_>, 264);
 
 /// Stores span information about a closure.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct ClosureSpans {
     pub whole_closure: Span,
     pub closing_pipe: Span,
@@ -211,7 +212,7 @@ pub type ReplaceRange = (Range<u32>, Vec<(FlatToken, Spacing)>);
 /// Controls how we capture tokens. Capturing can be expensive,
 /// so we try to avoid performing capturing in cases where
 /// we will never need an `AttrTokenStream`.
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub enum Capturing {
     /// We aren't performing any capturing - this is the default mode.
     No,
@@ -219,7 +220,7 @@ pub enum Capturing {
     Yes,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct CaptureState {
     capturing: Capturing,
     replace_ranges: Vec<ReplaceRange>,
@@ -230,7 +231,7 @@ struct CaptureState {
 /// we (a) lex tokens into a nice tree structure (`TokenStream`), and then (b)
 /// use this type to emit them as a linear sequence. But a linear sequence is
 /// what the parser expects, for the most part.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct TokenCursor {
     // Cursor for the current (innermost) token stream. The delimiters for this
     // token stream are found in `self.stack.last()`; when that is `None` then
@@ -335,6 +336,7 @@ enum TokenExpectType {
 }
 
 /// A sequence separator.
+#[derive(Debug)]
 struct SeqSep {
     /// The separator token.
     sep: Option<TokenKind>,
@@ -352,6 +354,7 @@ impl SeqSep {
     }
 }
 
+#[derive(Debug)]
 pub enum FollowedByType {
     Yes,
     No,
@@ -376,7 +379,7 @@ pub enum Trailing {
     Yes,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum TokenDescription {
     ReservedIdentifier,
     Keyword,
