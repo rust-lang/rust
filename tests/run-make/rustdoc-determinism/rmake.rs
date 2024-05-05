@@ -1,18 +1,19 @@
-use run_make_support::{diff, rustc, rustdoc, tmp_dir};
+// Assert that the search index is generated deterministically, regardless of the
+// order that crates are documented in.
 
-/// Assert that the search index is generated deterministically, regardless of the
-/// order that crates are documented in.
+use run_make_support::{diff, rustdoc, tmp_dir};
+
 fn main() {
-    let dir_first = tmp_dir().join("first");
-    rustdoc().out_dir(&dir_first).input("foo.rs").run();
-    rustdoc().out_dir(&dir_first).input("bar.rs").run();
+    let foo_first = tmp_dir().join("foo_first");
+    rustdoc().input("foo.rs").output(&foo_first).run();
+    rustdoc().input("bar.rs").output(&foo_first).run();
 
-    let dir_second = tmp_dir().join("second");
-    rustdoc().out_dir(&dir_second).input("bar.rs").run();
-    rustdoc().out_dir(&dir_second).input("foo.rs").run();
+    let bar_first = tmp_dir().join("bar_first");
+    rustdoc().input("bar.rs").output(&bar_first).run();
+    rustdoc().input("foo.rs").output(&bar_first).run();
 
     diff()
-        .expected_file(dir_first.join("search-index.js"))
-        .actual_file(dir_second.join("search-index.js"))
+        .expected_file(foo_first.join("search-index.js"))
+        .actual_file(bar_first.join("search-index.js"))
         .run();
 }

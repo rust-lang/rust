@@ -19,7 +19,7 @@ fn main() {
     let run_tool_binary = run_tool.join("runtool");
 
     rustc().input("t.rs").crate_type("rlib").run();
-    rustc().input("runtool.rs").arg("-o").arg(&run_tool_binary).run();
+    rustc().input("runtool.rs").output(&run_tool_binary).run();
 
     rustdoc()
         .input(current_dir().unwrap().join("t.rs"))
