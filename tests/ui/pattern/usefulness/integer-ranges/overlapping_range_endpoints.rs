@@ -1,4 +1,3 @@
-#![feature(exclusive_range_pattern)]
 #![deny(overlapping_range_endpoints)]
 
 macro_rules! m {

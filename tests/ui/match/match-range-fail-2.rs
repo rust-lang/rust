@@ -1,5 +1,3 @@
-#![feature(exclusive_range_pattern)]
-
 fn main() {
     match 5 {
         6 ..= 1 => { }

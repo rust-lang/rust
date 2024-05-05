@@ -1,5 +1,5 @@
 error: range-to patterns with `...` are not allowed
-  --> $DIR/range-pattern-meant-to-be-slice-rest-pattern.rs:18:13
+  --> $DIR/range-pattern-meant-to-be-slice-rest-pattern.rs:17:13
    |
 LL |         [_, ...tail] => println!("{tail}"),
    |             ^^^ help: use `..=` instead
@@ -39,7 +39,7 @@ LL |         [_, ..tail] => println!("{tail}"),
    |                                   ^^^^ not found in this scope
 
 error[E0425]: cannot find value `tail` in this scope
-  --> $DIR/range-pattern-meant-to-be-slice-rest-pattern.rs:18:16
+  --> $DIR/range-pattern-meant-to-be-slice-rest-pattern.rs:17:16
    |
 LL |         [_, ...tail] => println!("{tail}"),
    |                ^^^^ not found in this scope
@@ -50,7 +50,7 @@ LL |         [_, tail @ ..] => println!("{tail}"),
    |             ~~~~~~~~~
 
 error[E0425]: cannot find value `tail` in this scope
-  --> $DIR/range-pattern-meant-to-be-slice-rest-pattern.rs:18:36
+  --> $DIR/range-pattern-meant-to-be-slice-rest-pattern.rs:17:36
    |
 LL |         [_, ...tail] => println!("{tail}"),
    |                                    ^^^^ not found in this scope
@@ -65,18 +65,7 @@ LL |         [1, rest..] => println!("{rest}"),
    = help: add `#![feature(half_open_range_patterns_in_slices)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: exclusive range pattern syntax is experimental
-  --> $DIR/range-pattern-meant-to-be-slice-rest-pattern.rs:11:13
-   |
-LL |         [_, ..tail] => println!("{tail}"),
-   |             ^^^^^^
-   |
-   = note: see issue #37854 <https://github.com/rust-lang/rust/issues/37854> for more information
-   = help: add `#![feature(exclusive_range_pattern)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-   = help: use an inclusive range pattern, like N..=M
-
-error: aborting due to 9 previous errors
+error: aborting due to 8 previous errors
 
 Some errors have detailed explanations: E0425, E0658.
 For more information about an error, try `rustc --explain E0425`.
