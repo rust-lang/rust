@@ -4,10 +4,45 @@ use crate::concurrency::thread::MachineCallback;
 use crate::*;
 
 // pthread_mutexattr_t is either 4 or 8 bytes, depending on the platform.
+// We ignore the platform layout and store our own fields:
+// - kind: i32
 
-// Our chosen memory layout for emulation (does not have to match the platform layout!):
-// store an i32 in the first four bytes equal to the corresponding libc mutex kind constant
-// (e.g. PTHREAD_MUTEX_NORMAL).
+#[inline]
+fn mutexattr_kind_offset<'mir, 'tcx: 'mir>(
+    ecx: &MiriInterpCx<'mir, 'tcx>,
+) -> InterpResult<'tcx, u64> {
+    Ok(match &*ecx.tcx.sess.target.os {
+        "linux" | "illumos" | "solaris" | "macos" => 0,
+        os => throw_unsup_format!("`pthread_mutexattr` is not supported on {os}"),
+    })
+}
+
+fn mutexattr_get_kind<'mir, 'tcx: 'mir>(
+    ecx: &MiriInterpCx<'mir, 'tcx>,
+    attr_op: &OpTy<'tcx, Provenance>,
+) -> InterpResult<'tcx, i32> {
+    ecx.deref_pointer_and_read(
+        attr_op,
+        mutexattr_kind_offset(ecx)?,
+        ecx.libc_ty_layout("pthread_mutexattr_t"),
+        ecx.machine.layouts.i32,
+    )?
+    .to_i32()
+}
+
+fn mutexattr_set_kind<'mir, 'tcx: 'mir>(
+    ecx: &mut MiriInterpCx<'mir, 'tcx>,
+    attr_op: &OpTy<'tcx, Provenance>,
+    kind: i32,
+) -> InterpResult<'tcx, ()> {
+    ecx.deref_pointer_and_write(
+        attr_op,
+        mutexattr_kind_offset(ecx)?,
+        Scalar::from_i32(kind),
+        ecx.libc_ty_layout("pthread_mutexattr_t"),
+        ecx.machine.layouts.i32,
+    )
+}
 
 /// A flag that allows to distinguish `PTHREAD_MUTEX_NORMAL` from
 /// `PTHREAD_MUTEX_DEFAULT`. Since in `glibc` they have the same numeric values,
@@ -31,46 +66,28 @@ fn is_mutex_kind_normal<'mir, 'tcx: 'mir>(
     Ok(kind == (mutex_normal_kind | PTHREAD_MUTEX_NORMAL_FLAG))
 }
 
-fn mutexattr_get_kind<'mir, 'tcx: 'mir>(
-    ecx: &MiriInterpCx<'mir, 'tcx>,
-    attr_op: &OpTy<'tcx, Provenance>,
-) -> InterpResult<'tcx, i32> {
-    ecx.deref_pointer_and_read(
-        attr_op,
-        0,
-        ecx.libc_ty_layout("pthread_mutexattr_t"),
-        ecx.machine.layouts.i32,
-    )?
-    .to_i32()
-}
-
-fn mutexattr_set_kind<'mir, 'tcx: 'mir>(
-    ecx: &mut MiriInterpCx<'mir, 'tcx>,
-    attr_op: &OpTy<'tcx, Provenance>,
-    kind: i32,
-) -> InterpResult<'tcx, ()> {
-    ecx.deref_pointer_and_write(
-        attr_op,
-        0,
-        Scalar::from_i32(kind),
-        ecx.libc_ty_layout("pthread_mutexattr_t"),
-        ecx.machine.layouts.i32,
-    )
-}
-
 // pthread_mutex_t is between 24 and 48 bytes, depending on the platform.
-
-// Our chosen memory layout for the emulated mutex (does not have to match the platform layout!):
-// bytes 0-3: reserved for signature on macOS
-// (need to avoid this because it is set by static initializer macros)
-// bytes 4-7: mutex id as u32 or 0 if id is not assigned yet.
-// bytes 12-15 or 16-19 (depending on platform): mutex kind, as an i32
-// (the kind has to be at this particular offset for compatibility with Linux's static initializer
-// macros, e.g. PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP.)
+// We ignore the platform layout and store our own fields:
+// - id: u32
+// - kind: i32
 
 #[inline]
-fn mutex_id_offset<'mir, 'tcx: 'mir>(ecx: &MiriInterpCx<'mir, 'tcx>) -> u64 {
-    if matches!(&*ecx.tcx.sess.target.os, "macos") { 4 } else { 0 }
+fn mutex_id_offset<'mir, 'tcx: 'mir>(ecx: &MiriInterpCx<'mir, 'tcx>) -> InterpResult<'tcx, u64> {
+    // When adding a new OS, make sure its PTHREAD_MUTEX_INITIALIZER is 0 for this offset
+    // (and the `mutex_kind_offset` below).
+    Ok(match &*ecx.tcx.sess.target.os {
+        "linux" | "illumos" | "solaris" => 0,
+        // macOS stores a signature in the first bytes, so we have to move to offset 4.
+        "macos" => 4,
+        os => throw_unsup_format!("`pthread_mutex` is not supported on {os}"),
+    })
+}
+
+#[inline]
+fn mutex_kind_offset<'mir, 'tcx: 'mir>(ecx: &MiriInterpCx<'mir, 'tcx>) -> u64 {
+    // These offsets are picked for compatibility with Linux's static initializer
+    // macros, e.g. PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP.)
+    if ecx.pointer_size().bytes() == 8 { 16 } else { 12 }
 }
 
 fn mutex_get_id<'mir, 'tcx: 'mir>(
@@ -80,7 +97,7 @@ fn mutex_get_id<'mir, 'tcx: 'mir>(
     ecx.mutex_get_or_create_id(
         mutex_op,
         ecx.libc_ty_layout("pthread_mutex_t"),
-        mutex_id_offset(ecx),
+        mutex_id_offset(ecx)?,
     )
 }
 
@@ -90,7 +107,7 @@ fn mutex_reset_id<'mir, 'tcx: 'mir>(
 ) -> InterpResult<'tcx, ()> {
     ecx.deref_pointer_and_write(
         mutex_op,
-        mutex_id_offset(ecx),
+        mutex_id_offset(ecx)?,
         Scalar::from_i32(0),
         ecx.libc_ty_layout("pthread_mutex_t"),
         ecx.machine.layouts.u32,
@@ -101,10 +118,9 @@ fn mutex_get_kind<'mir, 'tcx: 'mir>(
     ecx: &MiriInterpCx<'mir, 'tcx>,
     mutex_op: &OpTy<'tcx, Provenance>,
 ) -> InterpResult<'tcx, i32> {
-    let offset = if ecx.pointer_size().bytes() == 8 { 16 } else { 12 };
     ecx.deref_pointer_and_read(
         mutex_op,
-        offset,
+        mutex_kind_offset(ecx),
         ecx.libc_ty_layout("pthread_mutex_t"),
         ecx.machine.layouts.i32,
     )?
@@ -116,10 +132,9 @@ fn mutex_set_kind<'mir, 'tcx: 'mir>(
     mutex_op: &OpTy<'tcx, Provenance>,
     kind: i32,
 ) -> InterpResult<'tcx, ()> {
-    let offset = if ecx.pointer_size().bytes() == 8 { 16 } else { 12 };
     ecx.deref_pointer_and_write(
         mutex_op,
-        offset,
+        mutex_kind_offset(ecx),
         Scalar::from_i32(kind),
         ecx.libc_ty_layout("pthread_mutex_t"),
         ecx.machine.layouts.i32,
@@ -127,15 +142,18 @@ fn mutex_set_kind<'mir, 'tcx: 'mir>(
 }
 
 // pthread_rwlock_t is between 32 and 56 bytes, depending on the platform.
-
-// Our chosen memory layout for the emulated rwlock (does not have to match the platform layout!):
-// bytes 0-3: reserved for signature on macOS
-// (need to avoid this because it is set by static initializer macros)
-// bytes 4-7: rwlock id as u32 or 0 if id is not assigned yet.
+// We ignore the platform layout and store our own fields:
+// - id: u32
 
 #[inline]
-fn rwlock_id_offset<'mir, 'tcx: 'mir>(ecx: &MiriInterpCx<'mir, 'tcx>) -> u64 {
-    if matches!(&*ecx.tcx.sess.target.os, "macos") { 4 } else { 0 }
+fn rwlock_id_offset<'mir, 'tcx: 'mir>(ecx: &MiriInterpCx<'mir, 'tcx>) -> InterpResult<'tcx, u64> {
+    // When adding a new OS, make sure its PTHREAD_RWLOCK_INITIALIZER is 0 for this offset.
+    Ok(match &*ecx.tcx.sess.target.os {
+        "linux" | "illumos" | "solaris" => 0,
+        // macOS stores a signature in the first bytes, so we have to move to offset 4.
+        "macos" => 4,
+        os => throw_unsup_format!("`pthread_rwlock` is not supported on {os}"),
+    })
 }
 
 fn rwlock_get_id<'mir, 'tcx: 'mir>(
@@ -145,17 +163,24 @@ fn rwlock_get_id<'mir, 'tcx: 'mir>(
     ecx.rwlock_get_or_create_id(
         rwlock_op,
         ecx.libc_ty_layout("pthread_rwlock_t"),
-        rwlock_id_offset(ecx),
+        rwlock_id_offset(ecx)?,
     )
 }
 
-// pthread_condattr_t
+// pthread_condattr_t.
+// We ignore the platform layout and store our own fields:
+// - clock: i32
 
-// Our chosen memory layout for emulation (does not have to match the platform layout!):
-// store an i32 in the first four bytes equal to the corresponding libc clock id constant
-// (e.g. CLOCK_REALTIME).
-
-const CONDATTR_CLOCK_OFFSET: u64 = 0;
+#[inline]
+fn condattr_clock_offset<'mir, 'tcx: 'mir>(
+    ecx: &MiriInterpCx<'mir, 'tcx>,
+) -> InterpResult<'tcx, u64> {
+    Ok(match &*ecx.tcx.sess.target.os {
+        "linux" | "illumos" | "solaris" => 0,
+        // macOS does not have a clock attribute.
+        os => throw_unsup_format!("`pthread_condattr` clock field is not supported on {os}"),
+    })
+}
 
 fn condattr_get_clock_id<'mir, 'tcx: 'mir>(
     ecx: &MiriInterpCx<'mir, 'tcx>,
@@ -163,7 +188,7 @@ fn condattr_get_clock_id<'mir, 'tcx: 'mir>(
 ) -> InterpResult<'tcx, i32> {
     ecx.deref_pointer_and_read(
         attr_op,
-        CONDATTR_CLOCK_OFFSET,
+        condattr_clock_offset(ecx)?,
         ecx.libc_ty_layout("pthread_condattr_t"),
         ecx.machine.layouts.i32,
     )?
@@ -177,34 +202,43 @@ fn condattr_set_clock_id<'mir, 'tcx: 'mir>(
 ) -> InterpResult<'tcx, ()> {
     ecx.deref_pointer_and_write(
         attr_op,
-        CONDATTR_CLOCK_OFFSET,
+        condattr_clock_offset(ecx)?,
         Scalar::from_i32(clock_id),
         ecx.libc_ty_layout("pthread_condattr_t"),
         ecx.machine.layouts.i32,
     )
 }
 
-// pthread_cond_t
-
-// Our chosen memory layout for the emulated conditional variable (does not have
-// to match the platform layout!):
-
-// bytes 0-3: reserved for signature on macOS
-// bytes 4-7: the conditional variable id as u32 or 0 if id is not assigned yet.
-// bytes 8-11: the clock id constant as i32
-
-const CONDVAR_CLOCK_OFFSET: u64 = 8;
+// pthread_cond_t.
+// We ignore the platform layout and store our own fields:
+// - id: u32
+// - clock: i32
 
 #[inline]
-fn cond_id_offset<'mir, 'tcx: 'mir>(ecx: &MiriInterpCx<'mir, 'tcx>) -> u64 {
-    if matches!(&*ecx.tcx.sess.target.os, "macos") { 4 } else { 0 }
+fn cond_id_offset<'mir, 'tcx: 'mir>(ecx: &MiriInterpCx<'mir, 'tcx>) -> InterpResult<'tcx, u64> {
+    // When adding a new OS, make sure its PTHREAD_COND_INITIALIZER is 0 for this offset
+    // (and the `COND_CLOCK_OFFSET` below is initialized to `CLOCK_REALTIME`).
+    Ok(match &*ecx.tcx.sess.target.os {
+        "linux" | "illumos" | "solaris" => 0,
+        // macOS stores a signature in the first bytes, so we have to move to offset 4.
+        "macos" => 4,
+        os => throw_unsup_format!("`pthread_cond` is not supported on {os}"),
+    })
 }
+
+// macOS doesn't have a clock attribute, but to keep the code uniform we store
+// a clock ID in the pthread_cond_t anyway. There's enough space.
+const COND_CLOCK_OFFSET: u64 = 8;
 
 fn cond_get_id<'mir, 'tcx: 'mir>(
     ecx: &mut MiriInterpCx<'mir, 'tcx>,
     cond_op: &OpTy<'tcx, Provenance>,
 ) -> InterpResult<'tcx, CondvarId> {
-    ecx.condvar_get_or_create_id(cond_op, ecx.libc_ty_layout("pthread_cond_t"), cond_id_offset(ecx))
+    ecx.condvar_get_or_create_id(
+        cond_op,
+        ecx.libc_ty_layout("pthread_cond_t"),
+        cond_id_offset(ecx)?,
+    )
 }
 
 fn cond_reset_id<'mir, 'tcx: 'mir>(
@@ -213,7 +247,7 @@ fn cond_reset_id<'mir, 'tcx: 'mir>(
 ) -> InterpResult<'tcx, ()> {
     ecx.deref_pointer_and_write(
         cond_op,
-        cond_id_offset(ecx),
+        cond_id_offset(ecx)?,
         Scalar::from_i32(0),
         ecx.libc_ty_layout("pthread_cond_t"),
         ecx.machine.layouts.u32,
@@ -226,7 +260,7 @@ fn cond_get_clock_id<'mir, 'tcx: 'mir>(
 ) -> InterpResult<'tcx, i32> {
     ecx.deref_pointer_and_read(
         cond_op,
-        CONDVAR_CLOCK_OFFSET,
+        COND_CLOCK_OFFSET,
         ecx.libc_ty_layout("pthread_cond_t"),
         ecx.machine.layouts.i32,
     )?
@@ -240,7 +274,7 @@ fn cond_set_clock_id<'mir, 'tcx: 'mir>(
 ) -> InterpResult<'tcx, ()> {
     ecx.deref_pointer_and_write(
         cond_op,
-        CONDVAR_CLOCK_OFFSET,
+        COND_CLOCK_OFFSET,
         Scalar::from_i32(clock_id),
         ecx.libc_ty_layout("pthread_cond_t"),
         ecx.machine.layouts.i32,
@@ -306,13 +340,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         attr_op: &OpTy<'tcx, Provenance>,
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
-
-        if !matches!(&*this.tcx.sess.target.os, "linux" | "macos" | "solaris" | "illumos") {
-            throw_unsup_format!(
-                "`pthread_mutexattr_init` is not supported on {}",
-                this.tcx.sess.target.os
-            );
-        }
 
         let default_kind = this.eval_libc_i32("PTHREAD_MUTEX_DEFAULT");
         mutexattr_set_kind(this, attr_op, default_kind)?;
@@ -395,13 +422,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         attr_op: &OpTy<'tcx, Provenance>,
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
-
-        if !matches!(&*this.tcx.sess.target.os, "linux" | "macos" | "solaris" | "illumos") {
-            throw_unsup_format!(
-                "`pthread_mutex_init` is not supported on {}",
-                this.tcx.sess.target.os
-            );
-        }
 
         let attr = this.read_pointer(attr_op)?;
         let kind = if this.ptr_is_null(attr)? {
@@ -557,13 +577,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        if !matches!(&*this.tcx.sess.target.os, "linux" | "macos" | "solaris" | "illumos") {
-            throw_unsup_format!(
-                "`pthread_rwlock_rdlock` is not supported on {}",
-                this.tcx.sess.target.os
-            );
-        }
-
         let id = rwlock_get_id(this, rwlock_op)?;
         let active_thread = this.get_active_thread();
 
@@ -582,13 +595,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        if !matches!(&*this.tcx.sess.target.os, "linux" | "macos" | "solaris" | "illumos") {
-            throw_unsup_format!(
-                "`pthread_rwlock_tryrdlock` is not supported on {}",
-                this.tcx.sess.target.os
-            );
-        }
-
         let id = rwlock_get_id(this, rwlock_op)?;
         let active_thread = this.get_active_thread();
 
@@ -605,13 +611,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         rwlock_op: &OpTy<'tcx, Provenance>,
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
-
-        if !matches!(&*this.tcx.sess.target.os, "linux" | "macos" | "solaris" | "illumos") {
-            throw_unsup_format!(
-                "`pthread_rwlock_wrlock` is not supported on {}",
-                this.tcx.sess.target.os
-            );
-        }
 
         let id = rwlock_get_id(this, rwlock_op)?;
         let active_thread = this.get_active_thread();
@@ -643,13 +642,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        if !matches!(&*this.tcx.sess.target.os, "linux" | "macos" | "solaris" | "illumos") {
-            throw_unsup_format!(
-                "`pthread_rwlock_trywrlock` is not supported on {}",
-                this.tcx.sess.target.os
-            );
-        }
-
         let id = rwlock_get_id(this, rwlock_op)?;
         let active_thread = this.get_active_thread();
 
@@ -666,13 +658,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         rwlock_op: &OpTy<'tcx, Provenance>,
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
-
-        if !matches!(&*this.tcx.sess.target.os, "linux" | "macos" | "solaris" | "illumos") {
-            throw_unsup_format!(
-                "`pthread_rwlock_unlock` is not supported on {}",
-                this.tcx.sess.target.os
-            );
-        }
 
         let id = rwlock_get_id(this, rwlock_op)?;
         let active_thread = this.get_active_thread();
@@ -692,13 +677,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         rwlock_op: &OpTy<'tcx, Provenance>,
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
-
-        if !matches!(&*this.tcx.sess.target.os, "linux" | "macos" | "solaris" | "illumos") {
-            throw_unsup_format!(
-                "`pthread_rwlock_destroy` is not supported on {}",
-                this.tcx.sess.target.os
-            );
-        }
 
         let id = rwlock_get_id(this, rwlock_op)?;
 
@@ -724,18 +702,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        if !matches!(&*this.tcx.sess.target.os, "linux" | "macos" | "solaris" | "illumos") {
-            throw_unsup_format!(
-                "`pthread_condattr_init` is not supported on {}",
-                this.tcx.sess.target.os
-            );
+        // no clock attribute on macOS
+        if this.tcx.sess.target.os != "macos" {
+            // The default value of the clock attribute shall refer to the system
+            // clock.
+            // https://pubs.opengroup.org/onlinepubs/9699919799/functions/pthread_condattr_setclock.html
+            let default_clock_id = this.eval_libc_i32("CLOCK_REALTIME");
+            condattr_set_clock_id(this, attr_op, default_clock_id)?;
         }
-
-        // The default value of the clock attribute shall refer to the system
-        // clock.
-        // https://pubs.opengroup.org/onlinepubs/9699919799/functions/pthread_condattr_setclock.html
-        let default_clock_id = this.eval_libc_i32("CLOCK_REALTIME");
-        condattr_set_clock_id(this, attr_op, default_clock_id)?;
 
         Ok(0)
     }
@@ -746,14 +720,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         clock_id_op: &OpTy<'tcx, Provenance>,
     ) -> InterpResult<'tcx, Scalar<Provenance>> {
         let this = self.eval_context_mut();
-
-        // Does not exist on macOS!
-        if !matches!(&*this.tcx.sess.target.os, "linux" | "solaris" | "illumos") {
-            throw_unsup_format!(
-                "`pthread_condattr_setclock` is not supported on {}",
-                this.tcx.sess.target.os
-            );
-        }
 
         let clock_id = this.read_scalar(clock_id_op)?.to_i32()?;
         if clock_id == this.eval_libc_i32("CLOCK_REALTIME")
@@ -775,14 +741,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     ) -> InterpResult<'tcx, Scalar<Provenance>> {
         let this = self.eval_context_mut();
 
-        // Does not exist on macOS!
-        if !matches!(&*this.tcx.sess.target.os, "linux" | "solaris" | "illumos") {
-            throw_unsup_format!(
-                "`pthread_condattr_getclock` is not supported on {}",
-                this.tcx.sess.target.os
-            );
-        }
-
         let clock_id = condattr_get_clock_id(this, attr_op)?;
         this.write_scalar(Scalar::from_i32(clock_id), &this.deref_pointer(clk_id_op)?)?;
 
@@ -796,8 +754,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let this = self.eval_context_mut();
 
         // Destroying an uninit pthread_condattr is UB, so check to make sure it's not uninit.
-        condattr_get_clock_id(this, attr_op)?;
+        // There's no clock attribute on macOS.
+        if this.tcx.sess.target.os != "macos" {
+            condattr_get_clock_id(this, attr_op)?;
+        }
 
+        // De-init the entire thing.
         // This might lead to false positives, see comment in pthread_mutexattr_destroy
         this.write_uninit(
             &this.deref_pointer_as(attr_op, this.libc_ty_layout("pthread_condattr_t"))?,
@@ -813,15 +775,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        if !matches!(&*this.tcx.sess.target.os, "linux" | "macos" | "solaris" | "illumos") {
-            throw_unsup_format!(
-                "`pthread_cond_init` is not supported on {}",
-                this.tcx.sess.target.os
-            );
-        }
-
         let attr = this.read_pointer(attr_op)?;
-        let clock_id = if this.ptr_is_null(attr)? {
+        // Default clock if att is null, and on macOS where there is no clock attribute.
+        let clock_id = if this.ptr_is_null(attr)? || this.tcx.sess.target.os == "macos" {
             this.eval_libc_i32("CLOCK_REALTIME")
         } else {
             condattr_get_clock_id(this, attr_op)?
