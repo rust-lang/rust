@@ -1057,3 +1057,7 @@ project-exploit-mitigations = [
 # Enable tracking of PR review assignment
 # Documentation at: https://forge.rust-lang.org/triagebot/pr-assignment-tracking.html
 [pr-tracking]
+
+# Enable issue transfers within the org
+# Documentation at: https://forge.rust-lang.org/triagebot/transfer.html
+[transfer]
