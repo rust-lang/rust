@@ -143,12 +143,12 @@ case $HOST_TARGET in
     # Partially supported targets (tier 2)
     VERY_BASIC="integer vec string btreemap" # common things we test on all of them (if they have std), requires no target-specific shims
     BASIC="$VERY_BASIC hello hashmap alloc align" # ensures we have the shims for stdout and basic data structures
-    MIRI_TEST_TARGET=x86_64-unknown-freebsd run_tests_minimal $BASIC panic/panic concurrency/simple atomic threadname libc-getentropy libc-getrandom libc-misc fs env num_cpus
-    MIRI_TEST_TARGET=i686-unknown-freebsd   run_tests_minimal $BASIC panic/panic concurrency/simple atomic threadname libc-getentropy libc-getrandom libc-misc fs env num_cpus
-    MIRI_TEST_TARGET=aarch64-linux-android  run_tests_minimal $VERY_BASIC hello panic/panic
-    MIRI_TEST_TARGET=x86_64-unknown-illumos run_tests_minimal $VERY_BASIC hello panic/panic concurrency/simple pthread-sync
-	# TODO fix solaris stack guard
+    MIRI_TEST_TARGET=x86_64-unknown-freebsd run_tests_minimal $BASIC panic/panic concurrency/simple atomic threadname libc-misc libc-random libc-time fs env num_cpus
+    MIRI_TEST_TARGET=i686-unknown-freebsd   run_tests_minimal $BASIC panic/panic concurrency/simple atomic threadname libc-misc libc-random libc-time fs env num_cpus
+    MIRI_TEST_TARGET=x86_64-unknown-illumos run_tests_minimal $VERY_BASIC hello panic/panic concurrency/simple pthread-sync libc-misc libc-random
+    # TODO fix solaris stack guard
     # MIRI_TEST_TARGET=x86_64-pc-solaris run_tests_minimal $VERY_BASIC hello panic/panic pthread-sync
+    MIRI_TEST_TARGET=aarch64-linux-android  run_tests_minimal $VERY_BASIC hello panic/panic
     MIRI_TEST_TARGET=wasm32-wasi run_tests_minimal $VERY_BASIC wasm
     MIRI_TEST_TARGET=wasm32-unknown-unknown run_tests_minimal $VERY_BASIC wasm
     MIRI_TEST_TARGET=thumbv7em-none-eabihf run_tests_minimal no_std

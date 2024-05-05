@@ -23,7 +23,7 @@ pub fn is_dyn_sym(name: &str, target_os: &str) -> bool {
         // well allow it in `dlsym`.
         "signal" => true,
         // needed at least on macOS to avoid file-based fallback in getrandom
-        "getentropy" => true,
+        "getentropy" | "getrandom" => true,
         // Give specific OSes a chance to allow their symbols.
         _ =>
             match target_os {
@@ -631,6 +631,24 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     this.gen_random(buf, bufsize)?;
                     this.write_scalar(Scalar::from_i32(0), dest)?;
                 }
+            }
+            "getrandom" => {
+                // This function is non-standard but exists with the same signature and behavior on
+                // Linux, FreeBSD and Solaris/Illumos.
+                if !matches!(&*this.tcx.sess.target.os, "linux" | "freebsd" | "illumos" | "solaris") {
+                    throw_unsup_format!(
+                        "`getentropy` is not supported on {}",
+                        this.tcx.sess.target.os
+                    );
+                }
+                let [ptr, len, flags] =
+                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let ptr = this.read_pointer(ptr)?;
+                let len = this.read_target_usize(len)?;
+                let _flags = this.read_scalar(flags)?.to_i32()?;
+                // We ignore the flags, just always use the same PRNG / host RNG.
+                this.gen_random(ptr, len)?;
+                this.write_scalar(Scalar::from_target_usize(len, this), dest)?;
             }
 
             // Incomplete shims that we "stub out" just to get pre-main initialization code to work.

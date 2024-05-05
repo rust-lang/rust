@@ -1,158 +1,16 @@
 //@ignore-target-windows: No libc on Windows
 //@compile-flags: -Zmiri-disable-isolation
 #![feature(io_error_more)]
+#![feature(pointer_is_aligned_to)]
+#![feature(strict_provenance)]
 
-use std::fs::{remove_file, File};
-use std::mem::transmute;
-use std::os::unix::io::AsRawFd;
-use std::path::PathBuf;
-
-#[path = "../../utils/mod.rs"]
-mod utils;
-
-/// Test allocating variant of `realpath`.
-fn test_posix_realpath_alloc() {
-    use std::ffi::OsString;
-    use std::ffi::{CStr, CString};
-    use std::os::unix::ffi::OsStrExt;
-    use std::os::unix::ffi::OsStringExt;
-
-    let buf;
-    let path = utils::tmp().join("miri_test_libc_posix_realpath_alloc");
-    let c_path = CString::new(path.as_os_str().as_bytes()).expect("CString::new failed");
-
-    // Cleanup before test.
-    remove_file(&path).ok();
-    // Create file.
-    drop(File::create(&path).unwrap());
-    unsafe {
-        let r = libc::realpath(c_path.as_ptr(), std::ptr::null_mut());
-        assert!(!r.is_null());
-        buf = CStr::from_ptr(r).to_bytes().to_vec();
-        libc::free(r as *mut _);
-    }
-    let canonical = PathBuf::from(OsString::from_vec(buf));
-    assert_eq!(path.file_name(), canonical.file_name());
-
-    // Cleanup after test.
-    remove_file(&path).unwrap();
-}
-
-/// Test non-allocating variant of `realpath`.
-fn test_posix_realpath_noalloc() {
-    use std::ffi::{CStr, CString};
-    use std::os::unix::ffi::OsStrExt;
-
-    let path = utils::tmp().join("miri_test_libc_posix_realpath_noalloc");
-    let c_path = CString::new(path.as_os_str().as_bytes()).expect("CString::new failed");
-
-    let mut v = vec![0; libc::PATH_MAX as usize];
-
-    // Cleanup before test.
-    remove_file(&path).ok();
-    // Create file.
-    drop(File::create(&path).unwrap());
-    unsafe {
-        let r = libc::realpath(c_path.as_ptr(), v.as_mut_ptr());
-        assert!(!r.is_null());
-    }
-    let c = unsafe { CStr::from_ptr(v.as_ptr()) };
-    let canonical = PathBuf::from(c.to_str().expect("CStr to str"));
-
-    assert_eq!(path.file_name(), canonical.file_name());
-
-    // Cleanup after test.
-    remove_file(&path).unwrap();
-}
-
-/// Test failure cases for `realpath`.
-fn test_posix_realpath_errors() {
-    use std::ffi::CString;
-    use std::io::ErrorKind;
-
-    // Test nonexistent path returns an error.
-    let c_path = CString::new("./nothing_to_see_here").expect("CString::new failed");
-    let r = unsafe { libc::realpath(c_path.as_ptr(), std::ptr::null_mut()) };
-    assert!(r.is_null());
-    let e = std::io::Error::last_os_error();
-    assert_eq!(e.raw_os_error(), Some(libc::ENOENT));
-    assert_eq!(e.kind(), ErrorKind::NotFound);
-}
-
-#[cfg(target_os = "linux")]
-fn test_posix_fadvise() {
-    use std::io::Write;
-
-    let path = utils::tmp().join("miri_test_libc_posix_fadvise.txt");
-    // Cleanup before test
-    remove_file(&path).ok();
-
-    // Set up an open file
-    let mut file = File::create(&path).unwrap();
-    let bytes = b"Hello, World!\n";
-    file.write(bytes).unwrap();
-
-    // Test calling posix_fadvise on a file.
-    let result = unsafe {
-        libc::posix_fadvise(
-            file.as_raw_fd(),
-            0,
-            bytes.len().try_into().unwrap(),
-            libc::POSIX_FADV_DONTNEED,
-        )
-    };
-    drop(file);
-    remove_file(&path).unwrap();
-    assert_eq!(result, 0);
-}
-
-#[cfg(target_os = "linux")]
-fn test_sync_file_range() {
-    use std::io::Write;
-
-    let path = utils::tmp().join("miri_test_libc_sync_file_range.txt");
-    // Cleanup before test.
-    remove_file(&path).ok();
-
-    // Write to a file.
-    let mut file = File::create(&path).unwrap();
-    let bytes = b"Hello, World!\n";
-    file.write(bytes).unwrap();
-
-    // Test calling sync_file_range on the file.
-    let result_1 = unsafe {
-        libc::sync_file_range(
-            file.as_raw_fd(),
-            0,
-            0,
-            libc::SYNC_FILE_RANGE_WAIT_BEFORE
-                | libc::SYNC_FILE_RANGE_WRITE
-                | libc::SYNC_FILE_RANGE_WAIT_AFTER,
-        )
-    };
-    drop(file);
-
-    // Test calling sync_file_range on a file opened for reading.
-    let file = File::open(&path).unwrap();
-    let result_2 = unsafe {
-        libc::sync_file_range(
-            file.as_raw_fd(),
-            0,
-            0,
-            libc::SYNC_FILE_RANGE_WAIT_BEFORE
-                | libc::SYNC_FILE_RANGE_WRITE
-                | libc::SYNC_FILE_RANGE_WAIT_AFTER,
-        )
-    };
-    drop(file);
-
-    remove_file(&path).unwrap();
-    assert_eq!(result_1, 0);
-    assert_eq!(result_2, 0);
-}
+use std::mem::{self, transmute};
+use std::ptr;
 
 /// Tests whether each thread has its own `__errno_location`.
 fn test_thread_local_errno() {
+    #[cfg(any(target_os = "illumos", target_os = "solaris"))]
+    use libc::___errno as __errno_location;
     #[cfg(target_os = "linux")]
     use libc::__errno_location;
     #[cfg(any(target_os = "macos", target_os = "freebsd"))]
@@ -168,116 +26,6 @@ fn test_thread_local_errno() {
         .join()
         .unwrap();
         assert_eq!(*__errno_location(), 0xBEEF);
-    }
-}
-
-/// Tests whether clock support exists at all
-fn test_clocks() {
-    let mut tp = std::mem::MaybeUninit::<libc::timespec>::uninit();
-    let is_error = unsafe { libc::clock_gettime(libc::CLOCK_REALTIME, tp.as_mut_ptr()) };
-    assert_eq!(is_error, 0);
-    let is_error = unsafe { libc::clock_gettime(libc::CLOCK_MONOTONIC, tp.as_mut_ptr()) };
-    assert_eq!(is_error, 0);
-    #[cfg(any(target_os = "linux", target_os = "freebsd"))]
-    {
-        let is_error = unsafe { libc::clock_gettime(libc::CLOCK_REALTIME_COARSE, tp.as_mut_ptr()) };
-        assert_eq!(is_error, 0);
-        let is_error =
-            unsafe { libc::clock_gettime(libc::CLOCK_MONOTONIC_COARSE, tp.as_mut_ptr()) };
-        assert_eq!(is_error, 0);
-    }
-    #[cfg(target_os = "macos")]
-    {
-        let is_error = unsafe { libc::clock_gettime(libc::CLOCK_UPTIME_RAW, tp.as_mut_ptr()) };
-        assert_eq!(is_error, 0);
-    }
-}
-
-fn test_posix_gettimeofday() {
-    let mut tp = std::mem::MaybeUninit::<libc::timeval>::uninit();
-    let tz = std::ptr::null_mut::<libc::timezone>();
-    #[cfg(target_os = "macos")] // `tz` has a different type on macOS
-    let tz = tz as *mut libc::c_void;
-    let is_error = unsafe { libc::gettimeofday(tp.as_mut_ptr(), tz) };
-    assert_eq!(is_error, 0);
-    let tv = unsafe { tp.assume_init() };
-    assert!(tv.tv_sec > 0);
-    assert!(tv.tv_usec >= 0); // Theoretically this could be 0.
-
-    // Test that non-null tz returns an error.
-    let mut tz = std::mem::MaybeUninit::<libc::timezone>::uninit();
-    let tz_ptr = tz.as_mut_ptr();
-    #[cfg(target_os = "macos")] // `tz` has a different type on macOS
-    let tz_ptr = tz_ptr as *mut libc::c_void;
-    let is_error = unsafe { libc::gettimeofday(tp.as_mut_ptr(), tz_ptr) };
-    assert_eq!(is_error, -1);
-}
-
-fn test_localtime_r() {
-    use std::ffi::CStr;
-    use std::{env, ptr};
-
-    // Set timezone to GMT.
-    let key = "TZ";
-    env::set_var(key, "GMT");
-
-    const TIME_SINCE_EPOCH: libc::time_t = 1712475836;
-    let custom_time_ptr = &TIME_SINCE_EPOCH;
-    let mut tm = libc::tm {
-        tm_sec: 0,
-        tm_min: 0,
-        tm_hour: 0,
-        tm_mday: 0,
-        tm_mon: 0,
-        tm_year: 0,
-        tm_wday: 0,
-        tm_yday: 0,
-        tm_isdst: 0,
-        tm_gmtoff: 0,
-        tm_zone: std::ptr::null_mut::<libc::c_char>(),
-    };
-    let res = unsafe { libc::localtime_r(custom_time_ptr, &mut tm) };
-
-    assert_eq!(tm.tm_sec, 56);
-    assert_eq!(tm.tm_min, 43);
-    assert_eq!(tm.tm_hour, 7);
-    assert_eq!(tm.tm_mday, 7);
-    assert_eq!(tm.tm_mon, 3);
-    assert_eq!(tm.tm_year, 124);
-    assert_eq!(tm.tm_wday, 0);
-    assert_eq!(tm.tm_yday, 97);
-    assert_eq!(tm.tm_isdst, -1);
-    assert_eq!(tm.tm_gmtoff, 0);
-    unsafe { assert_eq!(CStr::from_ptr(tm.tm_zone).to_str().unwrap(), "+00") };
-
-    // The returned value is the pointer passed in.
-    assert!(ptr::eq(res, &mut tm));
-
-    //Remove timezone setting.
-    env::remove_var(key);
-}
-
-fn test_isatty() {
-    // Testing whether our isatty shim returns the right value would require controlling whether
-    // these streams are actually TTYs, which is hard.
-    // For now, we just check that these calls are supported at all.
-    unsafe {
-        libc::isatty(libc::STDIN_FILENO);
-        libc::isatty(libc::STDOUT_FILENO);
-        libc::isatty(libc::STDERR_FILENO);
-
-        // But when we open a file, it is definitely not a TTY.
-        let path = utils::tmp().join("notatty.txt");
-        // Cleanup before test.
-        remove_file(&path).ok();
-        let file = File::create(&path).unwrap();
-
-        assert_eq!(libc::isatty(file.as_raw_fd()), 0);
-        assert_eq!(std::io::Error::last_os_error().raw_os_error().unwrap(), libc::ENOTTY);
-
-        // Cleanup after test.
-        drop(file);
-        remove_file(&path).unwrap();
     }
 }
 
@@ -306,7 +54,7 @@ fn test_memcpy() {
         libc::memcpy(
             &mut dest as *mut i32 as *mut libc::c_void,
             &src as *const i32 as *const libc::c_void,
-            std::mem::size_of::<i32>(),
+            mem::size_of::<i32>(),
         );
         assert_eq!(dest, src);
     }
@@ -317,7 +65,7 @@ fn test_memcpy() {
         libc::memcpy(
             &mut dest as *mut Option<i32> as *mut libc::c_void,
             &src as *const Option<i32> as *const libc::c_void,
-            std::mem::size_of::<Option<i32>>(),
+            mem::size_of::<Option<i32>>(),
         );
         assert_eq!(dest, src);
     }
@@ -328,7 +76,7 @@ fn test_memcpy() {
         libc::memcpy(
             &mut dest as *mut &'static i32 as *mut libc::c_void,
             &src as *const &'static i32 as *const libc::c_void,
-            std::mem::size_of::<&'static i32>(),
+            mem::size_of::<&'static i32>(),
         );
         assert_eq!(*dest, 123);
     }
@@ -388,7 +136,7 @@ fn test_dlsym() {
     assert_eq!(errno, libc::EBADF);
 }
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(not(any(target_os = "macos", target_os = "illumos")))]
 fn test_reallocarray() {
     unsafe {
         let mut p = libc::reallocarray(std::ptr::null_mut(), 4096, 2);
@@ -401,33 +149,94 @@ fn test_reallocarray() {
     }
 }
 
+fn test_memalign() {
+    // A normal allocation.
+    unsafe {
+        let mut ptr: *mut libc::c_void = ptr::null_mut();
+        let align = 8;
+        let size = 64;
+        assert_eq!(libc::posix_memalign(&mut ptr, align, size), 0);
+        assert!(!ptr.is_null());
+        assert!(ptr.is_aligned_to(align));
+        ptr.cast::<u8>().write_bytes(1, size);
+        libc::free(ptr);
+    }
+
+    // Align > size.
+    unsafe {
+        let mut ptr: *mut libc::c_void = ptr::null_mut();
+        let align = 64;
+        let size = 8;
+        assert_eq!(libc::posix_memalign(&mut ptr, align, size), 0);
+        assert!(!ptr.is_null());
+        assert!(ptr.is_aligned_to(align));
+        ptr.cast::<u8>().write_bytes(1, size);
+        libc::free(ptr);
+    }
+
+    // Size not multiple of align
+    unsafe {
+        let mut ptr: *mut libc::c_void = ptr::null_mut();
+        let align = 16;
+        let size = 31;
+        assert_eq!(libc::posix_memalign(&mut ptr, align, size), 0);
+        assert!(!ptr.is_null());
+        assert!(ptr.is_aligned_to(align));
+        ptr.cast::<u8>().write_bytes(1, size);
+        libc::free(ptr);
+    }
+
+    // Size == 0
+    unsafe {
+        let mut ptr: *mut libc::c_void = ptr::null_mut();
+        let align = 64;
+        let size = 0;
+        assert_eq!(libc::posix_memalign(&mut ptr, align, size), 0);
+        // We are not required to return null if size == 0, but we currently do.
+        // It's fine to remove this assert if we start returning non-null pointers.
+        assert!(ptr.is_null());
+        assert!(ptr.is_aligned_to(align));
+        // Regardless of what we return, it must be `free`able.
+        libc::free(ptr);
+    }
+
+    // Non-power of 2 align
+    unsafe {
+        let mut ptr: *mut libc::c_void = ptr::without_provenance_mut(0x1234567);
+        let align = 15;
+        let size = 8;
+        assert_eq!(libc::posix_memalign(&mut ptr, align, size), libc::EINVAL);
+        // The pointer is not modified on failure, posix_memalign(3) says:
+        // > On Linux (and other systems), posix_memalign() does  not  modify  memptr  on failure.
+        // > A requirement standardizing this behavior was added in POSIX.1-2008 TC2.
+        assert_eq!(ptr.addr(), 0x1234567);
+    }
+
+    // Too small align (smaller than ptr)
+    unsafe {
+        let mut ptr: *mut libc::c_void = ptr::without_provenance_mut(0x1234567);
+        let align = std::mem::size_of::<usize>() / 2;
+        let size = 8;
+        assert_eq!(libc::posix_memalign(&mut ptr, align, size), libc::EINVAL);
+        // The pointer is not modified on failure, posix_memalign(3) says:
+        // > On Linux (and other systems), posix_memalign() does  not  modify  memptr  on failure.
+        // > A requirement standardizing this behavior was added in POSIX.1-2008 TC2.
+        assert_eq!(ptr.addr(), 0x1234567);
+    }
+}
+
 fn main() {
-    test_posix_gettimeofday();
-
-    test_posix_realpath_alloc();
-    test_posix_realpath_noalloc();
-    test_posix_realpath_errors();
-
     test_thread_local_errno();
-    test_localtime_r();
-
-    test_isatty();
-
-    test_clocks();
 
     test_dlsym();
 
     test_memcpy();
     test_strcpy();
 
-    #[cfg(not(target_os = "macos"))] // reallocarray does not exist on macOS
+    test_memalign();
+    #[cfg(not(any(target_os = "macos", target_os = "illumos")))]
     test_reallocarray();
 
-    // These are Linux-specific
     #[cfg(target_os = "linux")]
-    {
-        test_posix_fadvise();
-        test_sync_file_range();
-        test_sigrt();
-    }
+    test_sigrt();
 }
