@@ -649,6 +649,7 @@ dependencies = [
  "semver",
  "serde",
  "serde_json",
+ "smallvec",
  "tempfile",
  "toml 0.7.8",
  "unicode-normalization",
