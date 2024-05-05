@@ -738,14 +738,20 @@ fn int_abs<'tcx>(
 
     assert_eq!(op_len, dest_len);
 
+    let zero = ImmTy::from_int(0, op.layout.field(this, 0));
+
     for i in 0..dest_len {
-        let op = this.read_scalar(&this.project_index(&op, i)?)?;
+        let op = this.read_immediate(&this.project_index(&op, i)?)?;
         let dest = this.project_index(&dest, i)?;
 
-        // Converting to a host "i128" works since the input is always signed.
-        let res = op.to_int(dest.layout.size)?.unsigned_abs();
+        let lt_zero = this.wrapping_binary_op(mir::BinOp::Lt, &op, &zero)?;
+        let res = if lt_zero.to_scalar().to_bool()? {
+            this.wrapping_unary_op(mir::UnOp::Neg, &op)?
+        } else {
+            op
+        };
 
-        this.write_scalar(Scalar::from_uint(res, dest.layout.size), &dest)?;
+        this.write_immediate(*res, &dest)?;
     }
 
     Ok(())
@@ -1126,6 +1132,13 @@ fn pmulhrsw<'tcx>(
     Ok(())
 }
 
+/// Packs two N-bit integer vectors to a single N/2-bit integers.
+///
+/// The conversion from N-bit to N/2-bit should be provided by `f`.
+///
+/// Each 128-bit chunk is treated independently (i.e., the value for
+/// the is i-th 128-bit chunk of `dest` is calculated with the i-th
+/// 128-bit chunks of `left` and `right`).
 fn pack_generic<'tcx>(
     this: &mut crate::MiriInterpCx<'_, 'tcx>,
     left: &OpTy<'tcx, Provenance>,

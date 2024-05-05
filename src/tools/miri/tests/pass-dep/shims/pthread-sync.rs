@@ -19,6 +19,7 @@ fn main() {
     check_rwlock_write();
     check_rwlock_read_no_deadlock();
     check_cond();
+    check_condattr();
 }
 
 fn test_mutex_libc_init_recursive() {
@@ -258,6 +259,31 @@ fn check_cond() {
         assert_eq!(libc::pthread_mutex_unlock(mutex.ptr), 0);
 
         t.join().unwrap();
+    }
+}
+
+fn check_condattr() {
+    unsafe {
+        // Just smoke-testing that these functions can be called.
+        let mut attr: MaybeUninit<libc::pthread_condattr_t> = MaybeUninit::uninit();
+        assert_eq!(libc::pthread_condattr_init(attr.as_mut_ptr()), 0);
+
+        #[cfg(not(target_os = "macos"))] // setclock-getclock do not exist on macOS
+        {
+            let clock_id = libc::CLOCK_MONOTONIC;
+            assert_eq!(libc::pthread_condattr_setclock(attr.as_mut_ptr(), clock_id), 0);
+            let mut check_clock_id = MaybeUninit::<libc::clockid_t>::uninit();
+            assert_eq!(
+                libc::pthread_condattr_getclock(attr.as_mut_ptr(), check_clock_id.as_mut_ptr()),
+                0
+            );
+            assert_eq!(check_clock_id.assume_init(), clock_id);
+        }
+
+        let mut cond: MaybeUninit<libc::pthread_cond_t> = MaybeUninit::uninit();
+        assert_eq!(libc::pthread_cond_init(cond.as_mut_ptr(), attr.as_ptr()), 0);
+        assert_eq!(libc::pthread_condattr_destroy(attr.as_mut_ptr()), 0);
+        assert_eq!(libc::pthread_cond_destroy(cond.as_mut_ptr()), 0);
     }
 }
 

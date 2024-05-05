@@ -1,5 +1,5 @@
 use std::env;
-use std::ffi::OsString;
+use std::ffi::{OsStr, OsString};
 use std::io::ErrorKind;
 
 use rustc_data_structures::fx::FxHashMap;
@@ -9,7 +9,7 @@ use helpers::windows_check_buffer_size;
 
 #[derive(Default)]
 pub struct WindowsEnvVars {
-    /// Stores the environment varialbles.
+    /// Stores the environment variables.
     map: FxHashMap<OsString, OsString>,
 }
 
@@ -25,6 +25,11 @@ impl WindowsEnvVars {
         env_vars: FxHashMap<OsString, OsString>,
     ) -> InterpResult<'tcx, Self> {
         Ok(Self { map: env_vars })
+    }
+
+    /// Implementation detail for [`InterpCx::get_env_var`].
+    pub(crate) fn get<'tcx>(&self, name: &OsStr) -> InterpResult<'tcx, Option<OsString>> {
+        Ok(self.map.get(name).cloned())
     }
 }
 

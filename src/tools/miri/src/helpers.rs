@@ -1067,20 +1067,18 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         crate_name == "std" || crate_name == "std_miri_test"
     }
 
-    /// Handler that should be called when unsupported functionality is encountered.
+    /// Handler that should be called when an unsupported foreign item is encountered.
     /// This function will either panic within the context of the emulated application
     /// or return an error in the Miri process context
-    ///
-    /// Return value of `Ok(bool)` indicates whether execution should continue.
-    fn handle_unsupported<S: AsRef<str>>(&mut self, error_msg: S) -> InterpResult<'tcx, ()> {
+    fn handle_unsupported_foreign_item(&mut self, error_msg: String) -> InterpResult<'tcx, ()> {
         let this = self.eval_context_mut();
         if this.machine.panic_on_unsupported {
             // message is slightly different here to make automated analysis easier
-            let error_msg = format!("unsupported Miri functionality: {}", error_msg.as_ref());
+            let error_msg = format!("unsupported Miri functionality: {error_msg}");
             this.start_panic(error_msg.as_ref(), mir::UnwindAction::Continue)?;
             Ok(())
         } else {
-            throw_unsup_format!("{}", error_msg.as_ref());
+            throw_machine_stop!(TerminationInfo::UnsupportedForeignItem(error_msg));
         }
     }
 

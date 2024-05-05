@@ -48,6 +48,7 @@ pub enum TerminationInfo {
         extra: Option<&'static str>,
         retag_explain: bool,
     },
+    UnsupportedForeignItem(String),
 }
 
 pub struct RacingOp {
@@ -85,6 +86,7 @@ impl fmt::Display for TerminationInfo {
                     op2.action,
                     op2.thread_info
                 ),
+            UnsupportedForeignItem(msg) => write!(f, "{msg}"),
         }
     }
 }
@@ -214,7 +216,7 @@ pub fn report_error<'tcx, 'mir>(
         let title = match info {
             Exit { code, leak_check } => return Some((*code, *leak_check)),
             Abort(_) => Some("abnormal termination"),
-            UnsupportedInIsolation(_) | Int2PtrWithStrictProvenance =>
+            UnsupportedInIsolation(_) | Int2PtrWithStrictProvenance | UnsupportedForeignItem(_) =>
                 Some("unsupported operation"),
             StackedBorrowsUb { .. } | TreeBorrowsUb { .. } | DataRace { .. } =>
                 Some("Undefined Behavior"),
@@ -228,6 +230,12 @@ pub fn report_error<'tcx, 'mir>(
                     (None, format!("pass the flag `-Zmiri-disable-isolation` to disable isolation;")),
                     (None, format!("or pass `-Zmiri-isolation-error=warn` to configure Miri to return an error code from isolated operations (if supported for that operation) and continue with a warning")),
                 ],
+            UnsupportedForeignItem(_) => {
+                vec![
+                    (None, format!("if this is a basic API commonly used on this target, please report an issue with Miri")),
+                    (None, format!("however, note that Miri does not aim to support every FFI function out there; for instance, we will not support APIs for things such as GUIs, scripting languages, or databases")),
+                ]
+            }
             StackedBorrowsUb { help, history, .. } => {
                 msg.extend(help.clone());
                 let mut helps = vec![
@@ -320,7 +328,9 @@ pub fn report_error<'tcx, 'mir>(
         #[rustfmt::skip]
         let helps = match e.kind() {
             Unsupported(_) =>
-                vec![(None, format!("this is likely not a bug in the program; it indicates that the program performed an operation that the interpreter does not support"))],
+                vec![
+                    (None, format!("this is likely not a bug in the program; it indicates that the program performed an operation that Miri does not support")),
+                ],
             UndefinedBehavior(AlignmentCheckFailed { .. })
                 if ecx.machine.check_alignment == AlignmentCheck::Symbolic
             =>
@@ -344,7 +354,7 @@ pub fn report_error<'tcx, 'mir>(
                     }
                     AbiMismatchArgument { .. } | AbiMismatchReturn { .. } => {
                         helps.push((None, format!("this means these two types are not *guaranteed* to be ABI-compatible across all targets")));
-                        helps.push((None, format!("if you think this code should be accepted anyway, please report an issue")));
+                        helps.push((None, format!("if you think this code should be accepted anyway, please report an issue with Miri")));
                     }
                     _ => {},
                 }

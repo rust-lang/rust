@@ -28,7 +28,7 @@ Examples:
     cargo miri run
     cargo miri test -- test-suite-filter
 
-    cargo miri setup --print sysroot
+    cargo miri setup --print-sysroot
         This will print the path to the generated sysroot (and nothing else) on stdout.
         stderr will still contain progress information about how the build is doing.
 
@@ -87,6 +87,7 @@ pub fn phase_cargo_miri(mut args: impl Iterator<Item = String>) {
             ),
     };
     let verbose = num_arg_flag("-v");
+    let quiet = has_arg_flag("-q") || has_arg_flag("--quiet");
 
     // Determine the involved architectures.
     let rustc_version = VersionMeta::for_command(miri_for_host()).unwrap_or_else(|err| {
@@ -110,7 +111,7 @@ pub fn phase_cargo_miri(mut args: impl Iterator<Item = String>) {
     }
 
     // We always setup.
-    let miri_sysroot = setup(&subcommand, target, &rustc_version, verbose);
+    let miri_sysroot = setup(&subcommand, target, &rustc_version, verbose, quiet);
 
     // Invoke actual cargo for the job, but with different flags.
     // We re-use `cargo test` and `cargo run`, which makes target and binary handling very easy but

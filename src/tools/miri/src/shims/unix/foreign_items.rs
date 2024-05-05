@@ -14,7 +14,7 @@ use shims::unix::freebsd::foreign_items as freebsd;
 use shims::unix::linux::foreign_items as linux;
 use shims::unix::macos::foreign_items as macos;
 
-fn is_dyn_sym(name: &str, target_os: &str) -> bool {
+pub fn is_dyn_sym(name: &str, target_os: &str) -> bool {
     match name {
         // Used for tests.
         "isatty" => true,
@@ -721,25 +721,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     this.write_null(&result)?;
                     this.write_scalar(this.eval_libc("ERANGE"), dest)?;
                 }
-            }
-
-            "sched_getaffinity" => {
-                // FreeBSD supports it as well since 13.1 (as a wrapper of cpuset_getaffinity)
-                if !matches!(&*this.tcx.sess.target.os, "linux" | "freebsd") {
-                    throw_unsup_format!(
-                        "`sched_getaffinity` is not supported on {}",
-                        this.tcx.sess.target.os
-                    );
-                }
-                let [pid, cpusetsize, mask] =
-                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                this.read_scalar(pid)?.to_i32()?;
-                this.read_target_usize(cpusetsize)?;
-                this.deref_pointer_as(mask, this.libc_ty_layout("cpu_set_t"))?;
-                // FIXME: we just return an error; `num_cpus` then falls back to `sysconf`.
-                let einval = this.eval_libc("EINVAL");
-                this.set_last_error(einval)?;
-                this.write_scalar(Scalar::from_i32(-1), dest)?;
             }
 
             // Platform-specific shims
