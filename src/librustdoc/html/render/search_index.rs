@@ -7,7 +7,7 @@ use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::DefId;
 use rustc_span::sym;
-use rustc_span::symbol::Symbol;
+use rustc_span::symbol::{kw, Symbol};
 use serde::ser::{Serialize, SerializeSeq, SerializeStruct, Serializer};
 use thin_vec::ThinVec;
 
@@ -163,6 +163,15 @@ pub(crate) fn build_index<'tcx>(
         ) -> Option<RenderTypeId> {
             let Cache { ref paths, ref external_paths, ref exact_paths, .. } = *cache;
             match id {
+                RenderTypeId::Mut => Some(insert_into_map(
+                    primitives,
+                    kw::Mut,
+                    lastpathid,
+                    crate_paths,
+                    ItemType::Keyword,
+                    &[kw::Mut],
+                    None,
+                )),
                 RenderTypeId::DefId(defid) => {
                     if let Some(&(ref fqp, item_type)) =
                         paths.get(&defid).or_else(|| external_paths.get(&defid))
@@ -765,9 +774,8 @@ fn get_index_type_id(
             bounds.get(0).map(|b| RenderTypeId::DefId(b.trait_.def_id()))
         }
         clean::Primitive(p) => Some(RenderTypeId::Primitive(p)),
-        clean::BorrowedRef { ref type_, .. } | clean::RawPointer(_, ref type_) => {
-            get_index_type_id(type_, rgen)
-        }
+        clean::BorrowedRef { .. } => Some(RenderTypeId::Primitive(clean::PrimitiveType::Reference)),
+        clean::RawPointer(_, ref type_) => get_index_type_id(type_, rgen),
         // The type parameters are converted to generics in `simplify_fn_type`
         clean::Slice(_) => Some(RenderTypeId::Primitive(clean::PrimitiveType::Slice)),
         clean::Array(_, _) => Some(RenderTypeId::Primitive(clean::PrimitiveType::Array)),
@@ -833,27 +841,13 @@ fn simplify_fn_type<'tcx, 'a>(
     }
 
     // First, check if it's "Self".
-    let mut is_self = false;
-    let mut arg = if let Some(self_) = self_ {
-        match &*arg {
-            Type::BorrowedRef { type_, .. } if type_.is_self_type() => {
-                is_self = true;
-                self_
-            }
-            type_ if type_.is_self_type() => {
-                is_self = true;
-                self_
-            }
-            arg => arg,
-        }
+    let (is_self, arg) = if let Some(self_) = self_
+        && arg.is_self_type()
+    {
+        (true, self_)
     } else {
-        arg
+        (false, arg)
     };
-
-    // strip references from the argument type
-    while let Type::BorrowedRef { type_, .. } = &*arg {
-        arg = &*type_;
-    }
 
     // If this argument is a type parameter and not a trait bound or a type, we need to look
     // for its bounds.
@@ -1027,6 +1021,27 @@ fn simplify_fn_type<'tcx, 'a>(
             bindings: Some(ty_bindings),
             generics: Some(ty_generics),
         });
+    } else if let Type::BorrowedRef { lifetime: _, mutability, ref type_ } = *arg {
+        let mut ty_generics = Vec::new();
+        if mutability.is_mut() {
+            ty_generics.push(RenderType {
+                id: Some(RenderTypeId::Mut),
+                generics: None,
+                bindings: None,
+            });
+        }
+        simplify_fn_type(
+            self_,
+            generics,
+            &type_,
+            tcx,
+            recurse + 1,
+            &mut ty_generics,
+            rgen,
+            is_return,
+            cache,
+        );
+        res.push(get_index_type(arg, ty_generics, rgen));
     } else {
         // This is not a type parameter. So for example if we have `T, U: Option<T>`, and we're
         // looking at `Option`, we enter this "else" condition, otherwise if it's `T`, we don't.
