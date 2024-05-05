@@ -1,5 +1,10 @@
 #![expect(unused)]
-#![allow(clippy::module_name_repetitions, clippy::default_trait_access, clippy::wildcard_imports ,clippy::enum_variant_names)]
+#![allow(
+    clippy::module_name_repetitions,
+    clippy::default_trait_access,
+    clippy::wildcard_imports,
+    clippy::enum_variant_names
+)]
 //! # TODOs
 //! - [ ] Update meta analysis
 //!     - [ ] Handle loops by partially retraverse them
@@ -88,11 +93,11 @@ declare_clippy_lint! {
     /// ### Why is this bad?
     ///
     /// ### Example
-    /// ```no_run
+    /// ```ignore
     /// // example code where clippy issues a warning
     /// ```
     /// Use instead:
-    /// ```no_run
+    /// ```ignore
     /// // example code which does not raise clippy warning
     /// ```
     #[clippy::version = "1.78.0"]

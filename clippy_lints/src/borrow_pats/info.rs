@@ -9,7 +9,7 @@ use rustc_index::IndexVec;
 use rustc_lint::LateContext;
 use rustc_middle::mir;
 use rustc_middle::mir::{BasicBlock, Local, Place};
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::Symbol;
 use smallvec::SmallVec;
 
@@ -24,14 +24,9 @@ pub struct AnalysisInfo<'tcx> {
     pub tcx: TyCtxt<'tcx>,
     pub body: &'tcx mir::Body<'tcx>,
     pub def_id: LocalDefId,
-    // borrow_set: Rc<borrowck::BorrowSet<'tcx>>,
-    // locs:  FxIndexMap<Location, Vec<BorrowIndex>>
     pub cfg: IndexVec<BasicBlock, CfgInfo>,
     /// The set defines the loop bbs, and the basic block determines the end of the loop
     pub terms: FxHashMap<BasicBlock, FxHashMap<Local, Vec<Local>>>,
-    /// The final block that contains the return.
-    pub return_block: BasicBlock,
-    // FIXME: This should be a IndexVec
     pub locals: IndexVec<Local, LocalInfo<'tcx>>,
     pub preds: IndexVec<BasicBlock, SmallVec<[BasicBlock; 1]>>,
     pub preds_unlooped: IndexVec<BasicBlock, SmallVec<[BasicBlock; 1]>>,
@@ -69,7 +64,6 @@ impl<'tcx> AnalysisInfo<'tcx> {
         let MetaAnalysis {
             cfg,
             terms,
-            return_block,
             locals,
             preds,
             preds_unlooped,
@@ -88,7 +82,6 @@ impl<'tcx> AnalysisInfo<'tcx> {
             def_id,
             cfg,
             terms,
-            return_block,
             locals,
             preds,
             preds_unlooped,
@@ -246,44 +239,39 @@ pub enum SimpleTyKind {
 }
 
 impl SimpleTyKind {
-    pub fn from_ty(ty: rustc_middle::ty::Ty<'_>) -> Self {
+    pub fn from_ty(ty: Ty<'_>) -> Self {
         match ty.kind() {
-            rustc_middle::ty::TyKind::Tuple(tys) if tys.is_empty() => SimpleTyKind::Unit,
-            rustc_middle::ty::TyKind::Tuple(_) => SimpleTyKind::Tuple,
+            ty::Tuple(tys) if tys.is_empty() => SimpleTyKind::Unit,
+            ty::Tuple(_) => SimpleTyKind::Tuple,
 
-            rustc_middle::ty::TyKind::Never => SimpleTyKind::Never,
+            ty::Never => SimpleTyKind::Never,
 
-            rustc_middle::ty::TyKind::Bool
-            | rustc_middle::ty::TyKind::Char
-            | rustc_middle::ty::TyKind::Int(_)
-            | rustc_middle::ty::TyKind::Uint(_)
-            | rustc_middle::ty::TyKind::Float(_)
-            | rustc_middle::ty::TyKind::Str => SimpleTyKind::Primitive,
+            ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Str => SimpleTyKind::Primitive,
 
-            rustc_middle::ty::TyKind::Adt(_, _) => SimpleTyKind::UserDef,
+            ty::Adt(_, _) => SimpleTyKind::UserDef,
 
-            rustc_middle::ty::TyKind::Array(_, _) | rustc_middle::ty::TyKind::Slice(_) => SimpleTyKind::Sequence,
+            ty::Array(_, _) | ty::Slice(_) => SimpleTyKind::Sequence,
 
-            rustc_middle::ty::TyKind::Ref(_, _, _) => SimpleTyKind::Reference,
+            ty::Ref(_, _, _) => SimpleTyKind::Reference,
 
-            rustc_middle::ty::TyKind::Foreign(_) => SimpleTyKind::Foreign,
-            rustc_middle::ty::TyKind::RawPtr(_) => SimpleTyKind::RawPtr,
+            ty::Foreign(_) => SimpleTyKind::Foreign,
+            ty::RawPtr(_, _) => SimpleTyKind::RawPtr,
 
-            rustc_middle::ty::TyKind::FnDef(_, _) | rustc_middle::ty::TyKind::FnPtr(_) => SimpleTyKind::Fn,
-            rustc_middle::ty::TyKind::Closure(_, _) => SimpleTyKind::Closure,
+            ty::FnDef(_, _) | ty::FnPtr(_) => SimpleTyKind::Fn,
+            ty::Closure(_, _) => SimpleTyKind::Closure,
 
-            rustc_middle::ty::TyKind::Alias(rustc_middle::ty::AliasKind::Opaque, _)
-            | rustc_middle::ty::TyKind::Dynamic(_, _, _) => SimpleTyKind::TraitObj,
+            ty::Alias(ty::AliasKind::Opaque, _) | ty::Dynamic(_, _, _) => SimpleTyKind::TraitObj,
 
-            rustc_middle::ty::TyKind::Param(_) => SimpleTyKind::Generic,
-            rustc_middle::ty::TyKind::Bound(_, _) | rustc_middle::ty::TyKind::Alias(_, _) => SimpleTyKind::Idk,
+            ty::Param(_) => SimpleTyKind::Generic,
+            ty::Bound(_, _) | ty::Alias(_, _) => SimpleTyKind::Idk,
 
-            rustc_middle::ty::TyKind::CoroutineClosure(_, _)
-            | rustc_middle::ty::TyKind::Coroutine(_, _)
-            | rustc_middle::ty::TyKind::CoroutineWitness(_, _)
-            | rustc_middle::ty::TyKind::Placeholder(_)
-            | rustc_middle::ty::TyKind::Infer(_)
-            | rustc_middle::ty::TyKind::Error(_) => unreachable!("{ty:#?}"),
+            ty::CoroutineClosure(_, _)
+            | ty::Coroutine(_, _)
+            | ty::CoroutineWitness(_, _)
+            | ty::Placeholder(_)
+            | ty::Infer(_)
+            | ty::Error(_)
+            | ty::Pat(_, _) => unreachable!("{ty:#?}"),
         }
     }
 }

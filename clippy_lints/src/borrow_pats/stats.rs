@@ -113,7 +113,7 @@ impl CrateStats {
 /// owned value and `_2` is the named references, they could have the following
 /// shapes:
 ///
-/// ```
+/// ```ignore
 /// // Direct
 /// _2 = &_1
 ///
@@ -178,7 +178,7 @@ pub struct OwnedStats {
     /// Temp borrows are used for function calls.
     ///
     /// The MIR commonly looks like this:
-    /// ```
+    /// ```ignore
     /// _3 = &_1
     /// _4 = &(*_3)
     /// _2 = function(move _4)

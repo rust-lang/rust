@@ -14,14 +14,14 @@
     clippy::missing_panics_doc,
     clippy::must_use_candidate,
     rustc::diagnostic_outside_of_impl,
-    rustc::untranslatable_diagnostic
+    rustc::untranslatable_diagnostic,
+    rustc::usage_of_qualified_ty
 )]
 #![warn(
     trivial_casts,
     trivial_numeric_casts,
     rust_2018_idioms,
     unused_lifetimes,
-    unused_qualifications,
     rustc::internal
 )]
 

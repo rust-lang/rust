@@ -12,19 +12,19 @@
 #![feature(stmt_expr_attributes)]
 #![recursion_limit = "512"]
 #![cfg_attr(feature = "deny-warnings", deny(warnings))]
-#![allow(
-    clippy::missing_docs_in_private_items,
-    clippy::must_use_candidate,
-    rustc::diagnostic_outside_of_impl,
-    rustc::untranslatable_diagnostic
-)]
 #![warn(
     trivial_casts,
     trivial_numeric_casts,
     rust_2018_idioms,
     unused_lifetimes,
-    unused_qualifications,
     rustc::internal
+)]
+#![allow(
+    clippy::missing_docs_in_private_items,
+    clippy::must_use_candidate,
+    rustc::diagnostic_outside_of_impl,
+    rustc::untranslatable_diagnostic,
+    rustc::usage_of_qualified_ty
 )]
 // Disable this rustc lint for now, as it was also done in rustc
 #![allow(rustc::potential_query_instability)]

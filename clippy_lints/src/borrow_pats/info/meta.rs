@@ -94,10 +94,19 @@ impl<'a, 'tcx> MetaAnalysis<'a, 'tcx> {
             | mir::TerminatorKind::Assert { target, .. }
             | mir::TerminatorKind::Call { target: Some(target), .. }
             | mir::TerminatorKind::Drop { target, .. }
-            | mir::TerminatorKind::InlineAsm { destination: Some(target), .. }
             | mir::TerminatorKind::Goto { target } => {
                 self.preds[*target].push(bb);
                 CfgInfo::Linear(*target)
+            },
+            mir::TerminatorKind::InlineAsm { targets, .. } => {
+                let mut branches = SmallVec::new();
+                branches.extend(targets.iter().copied());
+
+                for target in &branches {
+                    self.preds[*target].push(bb);
+                }
+
+                CfgInfo::Condition { branches }
             },
             mir::TerminatorKind::SwitchInt { targets, .. } => {
                 let mut branches = SmallVec::new();
@@ -114,8 +123,7 @@ impl<'a, 'tcx> MetaAnalysis<'a, 'tcx> {
             | mir::TerminatorKind::UnwindTerminate(_)
             | mir::TerminatorKind::Unreachable
             | mir::TerminatorKind::CoroutineDrop
-            | mir::TerminatorKind::Call { .. }
-            | mir::TerminatorKind::InlineAsm { .. } => {
+            | mir::TerminatorKind::Call { .. } => {
                 CfgInfo::None
             },
             mir::TerminatorKind::Return => {
@@ -129,31 +137,31 @@ impl<'a, 'tcx> MetaAnalysis<'a, 'tcx> {
     }
 
     fn visit_terminator_for_terms(&mut self, term: &Terminator<'tcx>, bb: BasicBlock) {
-        if let 
-            mir::TerminatorKind::Call {
-                func,
-                args,
-                destination,
-                ..
-            } = &term.kind {
-                assert!(destination.projection.is_empty());
-                let dest = destination.local;
-                self.terms.insert(
-                    bb,
-                    calc_call_local_relations(self.tcx.0, self.body, func, dest, args, &mut self.stats),
-                );
-            }
+        if let mir::TerminatorKind::Call {
+            func,
+            args,
+            destination,
+            ..
+        } = &term.kind
+        {
+            assert!(destination.projection.is_empty());
+            let dest = destination.local;
+            self.terms.insert(
+                bb,
+                calc_call_local_relations(self.tcx.0, self.body, func, dest, args, &mut self.stats),
+            );
+        }
     }
 
     fn visit_terminator_for_locals(&mut self, term: &Terminator<'tcx>, _bb: BasicBlock) {
         if let mir::TerminatorKind::Call { destination, .. } = &term.kind {
-                // TODO: Should mut arguments be handled?
-                assert!(destination.projection.is_empty());
-                let local = destination.local;
-                self.locals
-                    .get_mut(local)
-                    .unwrap()
-                    .add_assign(*destination, DataInfo::Computed);
+            // TODO: Should mut arguments be handled?
+            assert!(destination.projection.is_empty());
+            let local = destination.local;
+            self.locals
+                .get_mut(local)
+                .unwrap()
+                .add_assign(*destination, DataInfo::Computed);
         }
     }
 }

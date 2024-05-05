@@ -170,7 +170,7 @@ impl<'a, 'tcx> BodyAnalysis<'a, 'tcx> {
 impl<'a, 'tcx> Visitor<'tcx> for BodyAnalysis<'a, 'tcx> {
     fn visit_assign(&mut self, target: &Place<'tcx>, rval: &Rvalue<'tcx>, _loc: mir::Location) {
         match rval {
-            Rvalue::Ref(_reg, BorrowKind::Fake, _src) => {
+            Rvalue::Ref(_reg, BorrowKind::Fake(_), _src) => {
                 #[allow(clippy::needless_return)]
                 return;
             },

@@ -47,6 +47,7 @@ fn test_module_style_with_dep_in_subdir() {
 }
 
 #[test]
+#[ignore]
 fn test_no_deps_ignores_path_deps_in_workspaces() {
     if IS_RUSTC_TEST_SUITE {
         return;

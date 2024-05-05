@@ -128,22 +128,22 @@ pub enum OwnedPat {
     PartArgBorrowMut,
     PartArgBorrowMutExtended,
     /// Two temp borrows might alias each other, for example like this:
-    /// ```
+    /// ```ignore
     /// take_2(&self.field, &self.field);
     /// ```
     /// This also includes fields and sub fields
-    /// ```
+    /// ```ignore
     /// take_2(&self.field, &self.field.sub_field);
     /// ```
     AliasedBorrow,
     /// A function takes mutliple `&mut` references to different parts of the object
-    /// ```
+    /// ```ignore
     /// take_2(&mut self.field_a, &mut self.field_b);
     /// ```
     /// Mutable borrows can't be aliased.
     MultipleMutBorrowsInArgs,
     /// A function takes both a mutable and an immutable loan as the function input.
-    /// ```
+    /// ```ignore
     /// take_2(&self.field_a, &mut self.field_b);
     /// ```
     /// The places can not be aliased.
@@ -160,7 +160,7 @@ pub enum OwnedPat {
     /// This value is involved in a two phased borrow. Meaning that an argument is calculated
     /// using the value itself. Example:
     ///
-    /// ```
+    /// ```ignore
     /// fn two_phase_borrow_1(mut vec: Vec<usize>) {
     ///     vec.push(vec.len());
     /// }
@@ -192,7 +192,7 @@ pub enum OwnedPat {
     TwoPhasedBorrow,
     /// A value is first mutably initilized and then moved into an unmut value.
     ///
-    /// ```
+    /// ```ignore
     /// fn mut_and_shadow_immut() {
     ///     let mut x = "Hello World".to_string();
     ///     x.push('x');
@@ -220,7 +220,7 @@ pub enum OwnedPat {
     PartOwningAnonDrop,
     /// This value is being dropped (by rustc) early to be replaced.
     ///
-    /// ```
+    /// ```ignore
     /// let data = String::new();
     ///
     /// // Rustc will first drop the old value of `data`
@@ -270,7 +270,7 @@ impl<'a, 'tcx> Visitor<'tcx> for OwnedAnalysis<'a, 'tcx> {
     }
 
     fn visit_assign(&mut self, target: &Place<'tcx>, rvalue: &Rvalue<'tcx>, loc: Location) {
-        if let Rvalue::Ref(_region, BorrowKind::Fake, _place) = &rvalue {
+        if let Rvalue::Ref(_region, BorrowKind::Fake(_), _place) = &rvalue {
             return;
         }
 
@@ -438,6 +438,7 @@ impl<'a, 'tcx> OwnedAnalysis<'a, 'tcx> {
                         }
                     },
                     mir::AggregateKind::Coroutine(_, _) | mir::AggregateKind::CoroutineClosure(_, _) => unreachable!(),
+                    mir::AggregateKind::RawPtr(_, _) => {},
                 }
             }
         }
@@ -608,6 +609,7 @@ impl<'a, 'tcx> OwnedAnalysis<'a, 'tcx> {
                             self.pats.insert(OwnedPat::PartMovedToClosure);
                         }
                     },
+                    mir::AggregateKind::RawPtr(_, _) => {},
                     mir::AggregateKind::Coroutine(_, _) | mir::AggregateKind::CoroutineClosure(_, _) => unreachable!(),
                 }
             }

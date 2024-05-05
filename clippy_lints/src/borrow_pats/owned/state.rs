@@ -22,7 +22,7 @@ pub struct StateInfo<'tcx> {
     ///
     /// **Note 1**: Named borrows can be created in two ways (Because of course
     /// they can...)
-    /// ```
+    /// ```ignore
     /// // From: `mut_named_ref_non_kill`
     /// //    let mut x = 1;
     /// //    let mut p: &u32 = &x;
@@ -38,7 +38,7 @@ pub struct StateInfo<'tcx> {
     /// **Note 2**: Correction there are three ways to created named borrows...
     /// Not sure why but let's take `mut_named_ref_non_kill` as and example for `y`
     ///
-    /// ```
+    /// ```ignore
     /// // y     => _2
     /// // named => _3
     /// _8 = &_2
@@ -95,7 +95,7 @@ pub struct BorrowInfo<'tcx> {
     /// The place that is being borrowed
     pub broker: Place<'tcx>,
     /// This is the mutability of the original borrow. If we have a double borrow, like this:
-    /// ```
+    /// ```ignore
     /// let mut data = String::new();
     ///
     /// //                Loan 1

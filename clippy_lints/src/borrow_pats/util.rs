@@ -1,12 +1,11 @@
 #![warn(unused)]
-use std::collections::{BTreeMap, BTreeSet};
 
 use clippy_utils::ty::{for_each_param_ty, for_each_ref_region, for_each_region};
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::mir::{Body, Local, Operand, Place};
-use rustc_middle::ty::{FnSig, GenericArgsRef, GenericPredicates, Region, Ty, TyCtxt, TyKind};
+use rustc_middle::ty::{self, FnSig, GenericArgsRef, GenericPredicates, Region, Ty, TyCtxt};
 use rustc_span::source_map::Spanned;
 
 use crate::borrow_pats::{LocalMagic, PlaceMagic};
@@ -36,7 +35,7 @@ struct FuncReals<'tcx> {
     /// A list of several universes
     ///
     /// Mapping from `'short` (key) is outlives by `'long` (value)
-    multiverse: BTreeMap<Region<'tcx>, BTreeSet<Region<'tcx>>>,
+    multiverse: FxHashMap<Region<'tcx>, FxHashSet<Region<'tcx>>>,
     sig: FnSig<'tcx>,
     args: GenericArgsRef<'tcx>,
     /// Indicates that a possibly returned value has generics with `'ReErased`
@@ -150,7 +149,7 @@ impl<'tcx> FuncReals<'tcx> {
     /// This function takes an operand, that identifies a function and returns the
     /// indices of the arguments that might be parents of the return type.
     ///
-    /// ```
+    /// ```ignore
     /// fn example<'c, 'a: 'c, 'b: 'c>(cond: bool, a: &'a u32, b: &'b u32) -> &'c u32 {
     /// #    todo!()
     /// }
@@ -217,7 +216,7 @@ pub fn calc_call_local_relations<'tcx>(
         builder = FuncReals::from_fn_def(tcx, def_id, generic_args);
     } else if let Some(place) = func.place() {
         let local_ty = body.local_decls[place.local].ty;
-        if let TyKind::FnDef(def_id, generic_args) = local_ty.kind() {
+        if let ty::FnDef(def_id, generic_args) = local_ty.kind() {
             builder = FuncReals::from_fn_def(tcx, *def_id, generic_args);
         } else {
             stats.arg_relation_possibly_missed_due_to_late_bounds += 1;

@@ -74,6 +74,7 @@ impl PlaceMagic for mir::Place<'_> {
 }
 
 pub trait LocalMagic {
+    #[expect(clippy::wrong_self_convention)]
     fn as_place(self) -> Place<'static>;
 }
 
