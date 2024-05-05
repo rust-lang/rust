@@ -155,34 +155,33 @@ enum AdjustMode {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum MutblCap {
     /// Mutability restricted to immutable.
+    Not,
+
+    /// Mutability restricted to immutable, but only because of the pattern
+    /// (not the scrutinee type).
     ///
     /// The contained span, if present, points to an `&` pattern
     /// that is the reason for the restriction,
     /// and which will be reported in a diagnostic.
     /// (Said diagnostic is shown only if
     /// replacing the `&` pattern with `&mut` would allow the code to compile.)
-    ///
-    /// (Outer [`Option`] is for whether to show the diagnostic,
-    /// inner [`Option`] is for whether we have a span we can report)
-    Not(Option<Option<Span>>),
+    WeaklyNot(Option<Span>),
+
     /// No restriction on mutability
     Mut,
 }
 
 impl MutblCap {
-    fn cap_mutbl_to_not(self, span: Option<Option<Span>>) -> Self {
-        if let Some(s) = span
-            && self != MutblCap::Not(None)
-        {
-            MutblCap::Not(Some(s))
-        } else {
-            MutblCap::Not(None)
+    fn cap_to_weakly_not(self, span: Option<Span>) -> Self {
+        match self {
+            MutblCap::Not => MutblCap::Not,
+            _ => MutblCap::WeaklyNot(span),
         }
     }
 
     fn as_mutbl(self) -> Mutability {
         match self {
-            MutblCap::Not(_) => Mutability::Not,
+            MutblCap::Not | MutblCap::WeaklyNot(_) => Mutability::Not,
             MutblCap::Mut => Mutability::Mut,
         }
     }
@@ -357,7 +356,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 if pat.span.at_least_rust_2024() && self.tcx.features().ref_pat_eat_one_layer_2024 {
                     let max_ref_mutbl = if ref_pat_mutbl == Mutability::Not {
-                        max_ref_mutbl.cap_mutbl_to_not(Some(ref_span))
+                        max_ref_mutbl.cap_to_weakly_not(ref_span)
                     } else {
                         max_ref_mutbl
                     };
@@ -505,7 +504,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if pat.span.at_least_rust_2024() && self.tcx.features().ref_pat_eat_one_layer_2024 {
             def_br = def_br.cap_ref_mutability(max_ref_mutability.as_mutbl());
             if def_br == ByRef::Yes(Mutability::Not) {
-                max_ref_mutability = max_ref_mutability.cap_mutbl_to_not(None);
+                max_ref_mutability = MutblCap::Not;
             }
         }
 
@@ -752,7 +751,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         if bm.0 == ByRef::Yes(Mutability::Mut)
-            && let MutblCap::Not(Some(and_pat_span)) = pat_info.max_ref_mutbl
+            && let MutblCap::WeaklyNot(and_pat_span) = pat_info.max_ref_mutbl
         {
             let mut err = struct_span_code_err!(
                 self.tcx.dcx(),
@@ -2215,10 +2214,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     && self.tcx.features().ref_pat_eat_one_layer_2024)
                                     || self.tcx.features().ref_pat_everywhere)
                             {
-                                PatInfo {
-                                    max_ref_mutbl: pat_info.max_ref_mutbl.cap_mutbl_to_not(None),
-                                    ..pat_info
-                                }
+                                PatInfo { max_ref_mutbl: MutblCap::Not, ..pat_info }
                             } else {
                                 pat_info
                             };
