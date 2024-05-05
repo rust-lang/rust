@@ -450,6 +450,11 @@ impl Subdiagnostic for AddLifetimeParamsSuggestion<'_> {
             };
             visitor.visit_ty(self.ty_sub);
             visitor.visit_ty(self.ty_sup);
+            if let Some(fn_decl) = node.fn_decl()
+                && let hir::FnRetTy::Return(ty) = fn_decl.output
+            {
+                visitor.visit_ty(ty);
+            }
             if visitor.suggestions.is_empty() {
                 return false;
             }
