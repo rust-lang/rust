@@ -4,10 +4,11 @@
 #![feature(io_error_more)]
 #![feature(io_error_uncategorized)]
 
-use std::ffi::CString;
+use std::ffi::{CStr, CString, OsString};
 use std::fs::{canonicalize, remove_dir_all, remove_file, File};
 use std::io::{Error, ErrorKind, Write};
 use std::os::unix::ffi::OsStrExt;
+use std::os::unix::io::AsRawFd;
 use std::path::PathBuf;
 
 #[path = "../../utils/mod.rs"]
@@ -27,6 +28,14 @@ fn main() {
     #[cfg(target_os = "linux")]
     test_o_tmpfile_flag();
     test_posix_mkstemp();
+    test_posix_realpath_alloc();
+    test_posix_realpath_noalloc();
+    test_posix_realpath_errors();
+    #[cfg(target_os = "linux")]
+    test_posix_fadvise();
+    #[cfg(target_os = "linux")]
+    test_sync_file_range();
+    test_isatty();
 }
 
 /// Prepare: compute filename and make sure the file does not exist.
@@ -254,5 +263,168 @@ fn test_posix_mkstemp() {
         let e = std::io::Error::last_os_error();
         assert_eq!(e.raw_os_error(), Some(libc::EINVAL));
         assert_eq!(e.kind(), std::io::ErrorKind::InvalidInput);
+    }
+}
+
+/// Test allocating variant of `realpath`.
+fn test_posix_realpath_alloc() {
+    use std::os::unix::ffi::OsStrExt;
+    use std::os::unix::ffi::OsStringExt;
+
+    let buf;
+    let path = utils::tmp().join("miri_test_libc_posix_realpath_alloc");
+    let c_path = CString::new(path.as_os_str().as_bytes()).expect("CString::new failed");
+
+    // Cleanup before test.
+    remove_file(&path).ok();
+    // Create file.
+    drop(File::create(&path).unwrap());
+    unsafe {
+        let r = libc::realpath(c_path.as_ptr(), std::ptr::null_mut());
+        assert!(!r.is_null());
+        buf = CStr::from_ptr(r).to_bytes().to_vec();
+        libc::free(r as *mut _);
+    }
+    let canonical = PathBuf::from(OsString::from_vec(buf));
+    assert_eq!(path.file_name(), canonical.file_name());
+
+    // Cleanup after test.
+    remove_file(&path).unwrap();
+}
+
+/// Test non-allocating variant of `realpath`.
+fn test_posix_realpath_noalloc() {
+    use std::ffi::{CStr, CString};
+    use std::os::unix::ffi::OsStrExt;
+
+    let path = utils::tmp().join("miri_test_libc_posix_realpath_noalloc");
+    let c_path = CString::new(path.as_os_str().as_bytes()).expect("CString::new failed");
+
+    let mut v = vec![0; libc::PATH_MAX as usize];
+
+    // Cleanup before test.
+    remove_file(&path).ok();
+    // Create file.
+    drop(File::create(&path).unwrap());
+    unsafe {
+        let r = libc::realpath(c_path.as_ptr(), v.as_mut_ptr());
+        assert!(!r.is_null());
+    }
+    let c = unsafe { CStr::from_ptr(v.as_ptr()) };
+    let canonical = PathBuf::from(c.to_str().expect("CStr to str"));
+
+    assert_eq!(path.file_name(), canonical.file_name());
+
+    // Cleanup after test.
+    remove_file(&path).unwrap();
+}
+
+/// Test failure cases for `realpath`.
+fn test_posix_realpath_errors() {
+    use std::ffi::CString;
+    use std::io::ErrorKind;
+
+    // Test nonexistent path returns an error.
+    let c_path = CString::new("./nothing_to_see_here").expect("CString::new failed");
+    let r = unsafe { libc::realpath(c_path.as_ptr(), std::ptr::null_mut()) };
+    assert!(r.is_null());
+    let e = std::io::Error::last_os_error();
+    assert_eq!(e.raw_os_error(), Some(libc::ENOENT));
+    assert_eq!(e.kind(), ErrorKind::NotFound);
+}
+
+#[cfg(target_os = "linux")]
+fn test_posix_fadvise() {
+    use std::io::Write;
+
+    let path = utils::tmp().join("miri_test_libc_posix_fadvise.txt");
+    // Cleanup before test
+    remove_file(&path).ok();
+
+    // Set up an open file
+    let mut file = File::create(&path).unwrap();
+    let bytes = b"Hello, World!\n";
+    file.write(bytes).unwrap();
+
+    // Test calling posix_fadvise on a file.
+    let result = unsafe {
+        libc::posix_fadvise(
+            file.as_raw_fd(),
+            0,
+            bytes.len().try_into().unwrap(),
+            libc::POSIX_FADV_DONTNEED,
+        )
+    };
+    drop(file);
+    remove_file(&path).unwrap();
+    assert_eq!(result, 0);
+}
+
+#[cfg(target_os = "linux")]
+fn test_sync_file_range() {
+    use std::io::Write;
+
+    let path = utils::tmp().join("miri_test_libc_sync_file_range.txt");
+    // Cleanup before test.
+    remove_file(&path).ok();
+
+    // Write to a file.
+    let mut file = File::create(&path).unwrap();
+    let bytes = b"Hello, World!\n";
+    file.write(bytes).unwrap();
+
+    // Test calling sync_file_range on the file.
+    let result_1 = unsafe {
+        libc::sync_file_range(
+            file.as_raw_fd(),
+            0,
+            0,
+            libc::SYNC_FILE_RANGE_WAIT_BEFORE
+                | libc::SYNC_FILE_RANGE_WRITE
+                | libc::SYNC_FILE_RANGE_WAIT_AFTER,
+        )
+    };
+    drop(file);
+
+    // Test calling sync_file_range on a file opened for reading.
+    let file = File::open(&path).unwrap();
+    let result_2 = unsafe {
+        libc::sync_file_range(
+            file.as_raw_fd(),
+            0,
+            0,
+            libc::SYNC_FILE_RANGE_WAIT_BEFORE
+                | libc::SYNC_FILE_RANGE_WRITE
+                | libc::SYNC_FILE_RANGE_WAIT_AFTER,
+        )
+    };
+    drop(file);
+
+    remove_file(&path).unwrap();
+    assert_eq!(result_1, 0);
+    assert_eq!(result_2, 0);
+}
+
+fn test_isatty() {
+    // Testing whether our isatty shim returns the right value would require controlling whether
+    // these streams are actually TTYs, which is hard.
+    // For now, we just check that these calls are supported at all.
+    unsafe {
+        libc::isatty(libc::STDIN_FILENO);
+        libc::isatty(libc::STDOUT_FILENO);
+        libc::isatty(libc::STDERR_FILENO);
+
+        // But when we open a file, it is definitely not a TTY.
+        let path = utils::tmp().join("notatty.txt");
+        // Cleanup before test.
+        remove_file(&path).ok();
+        let file = File::create(&path).unwrap();
+
+        assert_eq!(libc::isatty(file.as_raw_fd()), 0);
+        assert_eq!(std::io::Error::last_os_error().raw_os_error().unwrap(), libc::ENOTTY);
+
+        // Cleanup after test.
+        drop(file);
+        remove_file(&path).unwrap();
     }
 }
