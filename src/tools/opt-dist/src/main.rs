@@ -373,7 +373,6 @@ fn main() -> anyhow::Result<()> {
             "rust-docs-json",
             "rust-analyzer",
             "rustc-src",
-            "clippy",
             "miri",
             "rustfmt",
         ] {
