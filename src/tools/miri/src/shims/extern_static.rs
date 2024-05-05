@@ -16,14 +16,29 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
 
     /// Zero-initialized pointer-sized extern statics are pretty common.
     /// Most of them are for weak symbols, which we all set to null (indicating that the
-    /// symbol is not supported, and triggering fallback code which ends up calling a
-    /// syscall that we do support).
+    /// symbol is not supported, and triggering fallback code which ends up calling
+    /// some other shim that we do support).
     fn null_ptr_extern_statics(
         this: &mut MiriInterpCx<'mir, 'tcx>,
         names: &[&str],
     ) -> InterpResult<'tcx> {
         for name in names {
             let val = ImmTy::from_int(0, this.machine.layouts.usize);
+            Self::alloc_extern_static(this, name, val)?;
+        }
+        Ok(())
+    }
+
+    /// Extern statics that are initialized with function pointers to the symbols of the same name.
+    fn weak_symbol_extern_statics(
+        this: &mut MiriInterpCx<'mir, 'tcx>,
+        names: &[&str],
+    ) -> InterpResult<'tcx> {
+        for name in names {
+            assert!(this.is_dyn_sym(name), "{name} is not a dynamic symbol");
+            let layout = this.machine.layouts.const_raw_ptr;
+            let ptr = this.fn_ptr(FnVal::Other(DynSym::from_str(name)));
+            let val = ImmTy::from_scalar(Scalar::from_pointer(ptr, this), layout);
             Self::alloc_extern_static(this, name, val)?;
         }
         Ok(())
@@ -44,8 +59,9 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
             "linux" => {
                 Self::null_ptr_extern_statics(
                     this,
-                    &["__cxa_thread_atexit_impl", "getrandom", "statx", "__clock_gettime64"],
+                    &["__cxa_thread_atexit_impl", "__clock_gettime64"],
                 )?;
+                Self::weak_symbol_extern_statics(this, &["getrandom", "statx"])?;
                 // "environ"
                 let environ = this.machine.env_vars.unix().environ();
                 Self::add_extern_static(this, "environ", environ);
@@ -58,12 +74,7 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
             }
             "android" => {
                 Self::null_ptr_extern_statics(this, &["bsd_signal"])?;
-                // "signal" -- just needs a non-zero pointer value (function does not even get called),
-                // but we arrange for this to call the `signal` function anyway.
-                let layout = this.machine.layouts.const_raw_ptr;
-                let ptr = this.fn_ptr(FnVal::Other(DynSym::from_str("signal")));
-                let val = ImmTy::from_scalar(Scalar::from_pointer(ptr, this), layout);
-                Self::alloc_extern_static(this, "signal", val)?;
+                Self::weak_symbol_extern_statics(this, &["signal"])?;
             }
             "windows" => {
                 // "_tls_used"

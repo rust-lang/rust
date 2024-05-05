@@ -1,12 +1,5 @@
 //@ignore-target-windows: no libc
 
-// on macOS this is not in the `libc` crate.
-#[cfg(target_os = "macos")]
-extern "C" {
-    fn getentropy(bytes: *mut libc::c_void, count: libc::size_t) -> libc::c_int;
-}
-
-#[cfg(not(target_os = "macos"))]
 use libc::getentropy;
 
 fn main() {

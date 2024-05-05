@@ -45,7 +45,7 @@ jobs:
       # over time).
       - name: Add cache for cargo
         id: cache
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             # Taken from <https://doc.rust-lang.org/nightly/cargo/guide/cargo-home.html#caching-the-cargo-home-in-ci>.
@@ -61,7 +61,7 @@ jobs:
           restore-keys: cargo-${{ runner.os }}-reset20240425
 
       - name: Install tools
-        if: ${{ steps.cache.outputs.cache-hit != 'true' }}
+        if: steps.cache.outputs.cache-hit != 'true'
         run: cargo install -f rustup-toolchain-install-master hyperfine
 
       - name: Install miri toolchain
@@ -77,6 +77,12 @@ jobs:
           rustup show
           rustc -Vv
           cargo -V
+
+      # The `style` job only runs on Linux; this makes sure the Windows-host-specific
+      # code is also covered by clippy.
+      - name: Check clippy
+        if: matrix.os == 'windows-latest'
+        run: ./miri clippy -- -D warnings
 
       - name: Test Miri
         run: ./ci/ci.sh
@@ -95,7 +101,7 @@ jobs:
       # over time).
       - name: Add cache for cargo
         id: cache
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             # Taken from <https://doc.rust-lang.org/nightly/cargo/guide/cargo-home.html#caching-the-cargo-home-in-ci>.
@@ -111,7 +117,7 @@ jobs:
           restore-keys: cargo-${{ runner.os }}-reset20240331
 
       - name: Install rustup-toolchain-install-master
-        if: ${{ steps.cache.outputs.cache-hit != 'true' }}
+        if: steps.cache.outputs.cache-hit != 'true'
         run: cargo install -f rustup-toolchain-install-master
 
       - name: Install "master" toolchain

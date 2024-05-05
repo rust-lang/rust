@@ -5,6 +5,8 @@ use rustc_data_structures::fx::FxHashMap;
 use crate::shims::unix::*;
 use crate::*;
 
+use self::shims::unix::fd::FileDescriptor;
+
 /// An `Epoll` file descriptor connects file handles and epoll events
 #[derive(Clone, Debug, Default)]
 struct Epoll {
@@ -29,22 +31,16 @@ struct EpollEvent {
     data: Scalar<Provenance>,
 }
 
-impl FileDescriptor for Epoll {
+impl FileDescription for Epoll {
     fn name(&self) -> &'static str {
         "epoll"
-    }
-
-    fn dup(&mut self) -> io::Result<Box<dyn FileDescriptor>> {
-        // FIXME: this is probably wrong -- check if the `dup`ed descriptor truly uses an
-        // independent event set.
-        Ok(Box::new(self.clone()))
     }
 
     fn close<'tcx>(
         self: Box<Self>,
         _communicate_allowed: bool,
-    ) -> InterpResult<'tcx, io::Result<i32>> {
-        Ok(Ok(0))
+    ) -> InterpResult<'tcx, io::Result<()>> {
+        Ok(Ok(()))
     }
 }
 
@@ -70,7 +66,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             throw_unsup_format!("epoll_create1 flags {flags} are not implemented");
         }
 
-        let fd = this.machine.fds.insert_fd(Box::new(Epoll::default()));
+        let fd = this.machine.fds.insert_fd(FileDescriptor::new(Epoll::default()));
         Ok(Scalar::from_i32(fd))
     }
 
@@ -114,27 +110,25 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             let data = this.read_scalar(&data)?;
             let event = EpollEvent { events, data };
 
-            if let Some(epfd) = this.machine.fds.get_mut(epfd) {
-                let epfd = epfd
-                    .downcast_mut::<Epoll>()
-                    .ok_or_else(|| err_unsup_format!("non-epoll FD passed to `epoll_ctl`"))?;
+            let Some(mut epfd) = this.machine.fds.get_mut(epfd) else {
+                return Ok(Scalar::from_i32(this.fd_not_found()?));
+            };
+            let epfd = epfd
+                .downcast_mut::<Epoll>()
+                .ok_or_else(|| err_unsup_format!("non-epoll FD passed to `epoll_ctl`"))?;
 
-                epfd.file_descriptors.insert(fd, event);
-                Ok(Scalar::from_i32(0))
-            } else {
-                Ok(Scalar::from_i32(this.fd_not_found()?))
-            }
+            epfd.file_descriptors.insert(fd, event);
+            Ok(Scalar::from_i32(0))
         } else if op == epoll_ctl_del {
-            if let Some(epfd) = this.machine.fds.get_mut(epfd) {
-                let epfd = epfd
-                    .downcast_mut::<Epoll>()
-                    .ok_or_else(|| err_unsup_format!("non-epoll FD passed to `epoll_ctl`"))?;
+            let Some(mut epfd) = this.machine.fds.get_mut(epfd) else {
+                return Ok(Scalar::from_i32(this.fd_not_found()?));
+            };
+            let epfd = epfd
+                .downcast_mut::<Epoll>()
+                .ok_or_else(|| err_unsup_format!("non-epoll FD passed to `epoll_ctl`"))?;
 
-                epfd.file_descriptors.remove(&fd);
-                Ok(Scalar::from_i32(0))
-            } else {
-                Ok(Scalar::from_i32(this.fd_not_found()?))
-            }
+            epfd.file_descriptors.remove(&fd);
+            Ok(Scalar::from_i32(0))
         } else {
             let einval = this.eval_libc("EINVAL");
             this.set_last_error(einval)?;
@@ -185,15 +179,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let _maxevents = this.read_scalar(maxevents)?.to_i32()?;
         let _timeout = this.read_scalar(timeout)?.to_i32()?;
 
-        if let Some(epfd) = this.machine.fds.get_mut(epfd) {
-            let _epfd = epfd
-                .downcast_mut::<Epoll>()
-                .ok_or_else(|| err_unsup_format!("non-epoll FD passed to `epoll_wait`"))?;
+        let Some(mut epfd) = this.machine.fds.get_mut(epfd) else {
+            return Ok(Scalar::from_i32(this.fd_not_found()?));
+        };
+        let _epfd = epfd
+            .downcast_mut::<Epoll>()
+            .ok_or_else(|| err_unsup_format!("non-epoll FD passed to `epoll_wait`"))?;
 
-            // FIXME return number of events ready when scheme for marking events ready exists
-            throw_unsup_format!("returning ready events from epoll_wait is not yet implemented");
-        } else {
-            Ok(Scalar::from_i32(this.fd_not_found()?))
-        }
+        // FIXME return number of events ready when scheme for marking events ready exists
+        throw_unsup_format!("returning ready events from epoll_wait is not yet implemented");
     }
 }

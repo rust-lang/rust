@@ -91,6 +91,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         }
 
         match intrinsic_name {
+            // Basic control flow
             "abort" => {
                 throw_machine_stop!(TerminationInfo::Abort(
                     "the program aborted execution".to_owned()
@@ -98,7 +99,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             }
             "catch_unwind" => {
                 this.handle_catch_unwind(args, dest, ret)?;
-                // THis pushed a stack frame, don't jump to `ret`.
+                // This pushed a stack frame, don't jump to `ret`.
                 return Ok(EmulateItemResult::AlreadyJumped);
             }
 
@@ -193,12 +194,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             => {
                 let [f] = check_arg_count(args)?;
                 let f = this.read_scalar(f)?.to_f32()?;
-                // FIXME: Using host floats.
+                // Using host floats (but it's fine, these operations do not have guaranteed precision).
                 let f_host = f.to_host();
                 let res = match intrinsic_name {
                     "sinf32" => f_host.sin(),
                     "cosf32" => f_host.cos(),
-                    "sqrtf32" => f_host.sqrt(),
+                    "sqrtf32" => f_host.sqrt(), // FIXME Using host floats, this should use full-precision soft-floats
                     "expf32" => f_host.exp(),
                     "exp2f32" => f_host.exp2(),
                     "logf32" => f_host.ln(),
@@ -238,12 +239,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             => {
                 let [f] = check_arg_count(args)?;
                 let f = this.read_scalar(f)?.to_f64()?;
-                // FIXME: Using host floats.
+                // Using host floats (but it's fine, these operations do not have guaranteed precision).
                 let f_host = f.to_host();
                 let res = match intrinsic_name {
                     "sinf64" => f_host.sin(),
                     "cosf64" => f_host.cos(),
-                    "sqrtf64" => f_host.sqrt(),
+                    "sqrtf64" => f_host.sqrt(), // FIXME Using host floats, this should use full-precision soft-floats
                     "expf64" => f_host.exp(),
                     "exp2f64" => f_host.exp2(),
                     "logf64" => f_host.ln(),
@@ -366,7 +367,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let [f1, f2] = check_arg_count(args)?;
                 let f1 = this.read_scalar(f1)?.to_f32()?;
                 let f2 = this.read_scalar(f2)?.to_f32()?;
-                // FIXME: Using host floats.
+                // Using host floats (but it's fine, this operation does not have guaranteed precision).
                 let res = f1.to_host().powf(f2.to_host()).to_soft();
                 let res = this.adjust_nan(res, &[f1, f2]);
                 this.write_scalar(res, dest)?;
@@ -376,7 +377,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let [f1, f2] = check_arg_count(args)?;
                 let f1 = this.read_scalar(f1)?.to_f64()?;
                 let f2 = this.read_scalar(f2)?.to_f64()?;
-                // FIXME: Using host floats.
+                // Using host floats (but it's fine, this operation does not have guaranteed precision).
                 let res = f1.to_host().powf(f2.to_host()).to_soft();
                 let res = this.adjust_nan(res, &[f1, f2]);
                 this.write_scalar(res, dest)?;
@@ -386,7 +387,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let [f, i] = check_arg_count(args)?;
                 let f = this.read_scalar(f)?.to_f32()?;
                 let i = this.read_scalar(i)?.to_i32()?;
-                // FIXME: Using host floats.
+                // Using host floats (but it's fine, this operation does not have guaranteed precision).
                 let res = f.to_host().powi(i).to_soft();
                 let res = this.adjust_nan(res, &[f]);
                 this.write_scalar(res, dest)?;
@@ -396,7 +397,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let [f, i] = check_arg_count(args)?;
                 let f = this.read_scalar(f)?.to_f64()?;
                 let i = this.read_scalar(i)?.to_i32()?;
-                // FIXME: Using host floats.
+                // Using host floats (but it's fine, this operation does not have guaranteed precision).
                 let res = f.to_host().powi(i).to_soft();
                 let res = this.adjust_nan(res, &[f]);
                 this.write_scalar(res, dest)?;

@@ -2,8 +2,10 @@
 //! standard file descriptors (stdin/stdout/stderr).
 
 use std::any::Any;
+use std::cell::{Ref, RefCell, RefMut};
 use std::collections::BTreeMap;
 use std::io::{self, ErrorKind, IsTerminal, Read, SeekFrom, Write};
+use std::rc::Rc;
 
 use rustc_middle::ty::TyCtxt;
 use rustc_target::abi::Size;
@@ -12,9 +14,10 @@ use crate::shims::unix::*;
 use crate::*;
 
 /// Represents an open file descriptor.
-pub trait FileDescriptor: std::fmt::Debug + Any {
+pub trait FileDescription: std::fmt::Debug + Any {
     fn name(&self) -> &'static str;
 
+    /// Reads as much as possible into the given buffer, and returns the number of bytes read.
     fn read<'tcx>(
         &mut self,
         _communicate_allowed: bool,
@@ -24,8 +27,9 @@ pub trait FileDescriptor: std::fmt::Debug + Any {
         throw_unsup_format!("cannot read from {}", self.name());
     }
 
+    /// Writes as much as possible from the given buffer, and returns the number of bytes written.
     fn write<'tcx>(
-        &self,
+        &mut self,
         _communicate_allowed: bool,
         _bytes: &[u8],
         _tcx: TyCtxt<'tcx>,
@@ -33,6 +37,8 @@ pub trait FileDescriptor: std::fmt::Debug + Any {
         throw_unsup_format!("cannot write to {}", self.name());
     }
 
+    /// Seeks to the given offset (which can be relative to the beginning, end, or current position).
+    /// Returns the new position from the start of the stream.
     fn seek<'tcx>(
         &mut self,
         _communicate_allowed: bool,
@@ -44,12 +50,9 @@ pub trait FileDescriptor: std::fmt::Debug + Any {
     fn close<'tcx>(
         self: Box<Self>,
         _communicate_allowed: bool,
-    ) -> InterpResult<'tcx, io::Result<i32>> {
+    ) -> InterpResult<'tcx, io::Result<()>> {
         throw_unsup_format!("cannot close {}", self.name());
     }
-
-    /// Return a new file descriptor *that refers to the same underlying object*.
-    fn dup(&mut self) -> io::Result<Box<dyn FileDescriptor>>;
 
     fn is_tty(&self, _communicate_allowed: bool) -> bool {
         // Most FDs are not tty's and the consequence of a wrong `false` are minor,
@@ -58,7 +61,7 @@ pub trait FileDescriptor: std::fmt::Debug + Any {
     }
 }
 
-impl dyn FileDescriptor {
+impl dyn FileDescription {
     #[inline(always)]
     pub fn downcast_ref<T: Any>(&self) -> Option<&T> {
         (self as &dyn Any).downcast_ref()
@@ -70,7 +73,7 @@ impl dyn FileDescriptor {
     }
 }
 
-impl FileDescriptor for io::Stdin {
+impl FileDescription for io::Stdin {
     fn name(&self) -> &'static str {
         "stdin"
     }
@@ -88,28 +91,24 @@ impl FileDescriptor for io::Stdin {
         Ok(Read::read(self, bytes))
     }
 
-    fn dup(&mut self) -> io::Result<Box<dyn FileDescriptor>> {
-        Ok(Box::new(io::stdin()))
-    }
-
     fn is_tty(&self, communicate_allowed: bool) -> bool {
         communicate_allowed && self.is_terminal()
     }
 }
 
-impl FileDescriptor for io::Stdout {
+impl FileDescription for io::Stdout {
     fn name(&self) -> &'static str {
         "stdout"
     }
 
     fn write<'tcx>(
-        &self,
+        &mut self,
         _communicate_allowed: bool,
         bytes: &[u8],
         _tcx: TyCtxt<'tcx>,
     ) -> InterpResult<'tcx, io::Result<usize>> {
         // We allow writing to stderr even with isolation enabled.
-        let result = Write::write(&mut { self }, bytes);
+        let result = Write::write(self, bytes);
         // Stdout is buffered, flush to make sure it appears on the
         // screen.  This is the write() syscall of the interpreted
         // program, we want it to correspond to a write() syscall on
@@ -120,22 +119,18 @@ impl FileDescriptor for io::Stdout {
         Ok(result)
     }
 
-    fn dup(&mut self) -> io::Result<Box<dyn FileDescriptor>> {
-        Ok(Box::new(io::stdout()))
-    }
-
     fn is_tty(&self, communicate_allowed: bool) -> bool {
         communicate_allowed && self.is_terminal()
     }
 }
 
-impl FileDescriptor for io::Stderr {
+impl FileDescription for io::Stderr {
     fn name(&self) -> &'static str {
         "stderr"
     }
 
     fn write<'tcx>(
-        &self,
+        &mut self,
         _communicate_allowed: bool,
         bytes: &[u8],
         _tcx: TyCtxt<'tcx>,
@@ -143,10 +138,6 @@ impl FileDescriptor for io::Stderr {
         // We allow writing to stderr even with isolation enabled.
         // No need to flush, stderr is not buffered.
         Ok(Write::write(&mut { self }, bytes))
-    }
-
-    fn dup(&mut self) -> io::Result<Box<dyn FileDescriptor>> {
-        Ok(Box::new(io::stderr()))
     }
 
     fn is_tty(&self, communicate_allowed: bool) -> bool {
@@ -158,13 +149,13 @@ impl FileDescriptor for io::Stderr {
 #[derive(Debug)]
 pub struct NullOutput;
 
-impl FileDescriptor for NullOutput {
+impl FileDescription for NullOutput {
     fn name(&self) -> &'static str {
         "stderr and stdout"
     }
 
     fn write<'tcx>(
-        &self,
+        &mut self,
         _communicate_allowed: bool,
         bytes: &[u8],
         _tcx: TyCtxt<'tcx>,
@@ -172,16 +163,30 @@ impl FileDescriptor for NullOutput {
         // We just don't write anything, but report to the user that we did.
         Ok(Ok(bytes.len()))
     }
+}
 
-    fn dup(&mut self) -> io::Result<Box<dyn FileDescriptor>> {
-        Ok(Box::new(NullOutput))
+#[derive(Clone, Debug)]
+pub struct FileDescriptor(Rc<RefCell<Box<dyn FileDescription>>>);
+
+impl FileDescriptor {
+    pub fn new<T: FileDescription>(fd: T) -> Self {
+        FileDescriptor(Rc::new(RefCell::new(Box::new(fd))))
+    }
+
+    pub fn close<'ctx>(self, communicate_allowed: bool) -> InterpResult<'ctx, io::Result<()>> {
+        // Destroy this `Rc` using `into_inner` so we can call `close` instead of
+        // implicitly running the destructor of the file description.
+        match Rc::into_inner(self.0) {
+            Some(fd) => RefCell::into_inner(fd).close(communicate_allowed),
+            None => Ok(Ok(())),
+        }
     }
 }
 
 /// The file descriptor table
 #[derive(Debug)]
 pub struct FdTable {
-    pub fds: BTreeMap<i32, Box<dyn FileDescriptor>>,
+    pub fds: BTreeMap<i32, FileDescriptor>,
 }
 
 impl VisitProvenance for FdTable {
@@ -192,28 +197,24 @@ impl VisitProvenance for FdTable {
 
 impl FdTable {
     pub(crate) fn new(mute_stdout_stderr: bool) -> FdTable {
-        let mut fds: BTreeMap<_, Box<dyn FileDescriptor>> = BTreeMap::new();
-        fds.insert(0i32, Box::new(io::stdin()));
+        let mut fds: BTreeMap<_, FileDescriptor> = BTreeMap::new();
+        fds.insert(0i32, FileDescriptor::new(io::stdin()));
         if mute_stdout_stderr {
-            fds.insert(1i32, Box::new(NullOutput));
-            fds.insert(2i32, Box::new(NullOutput));
+            fds.insert(1i32, FileDescriptor::new(NullOutput));
+            fds.insert(2i32, FileDescriptor::new(NullOutput));
         } else {
-            fds.insert(1i32, Box::new(io::stdout()));
-            fds.insert(2i32, Box::new(io::stderr()));
+            fds.insert(1i32, FileDescriptor::new(io::stdout()));
+            fds.insert(2i32, FileDescriptor::new(io::stderr()));
         }
         FdTable { fds }
     }
 
-    pub fn insert_fd(&mut self, file_handle: Box<dyn FileDescriptor>) -> i32 {
+    pub fn insert_fd(&mut self, file_handle: FileDescriptor) -> i32 {
         self.insert_fd_with_min_fd(file_handle, 0)
     }
 
     /// Insert a new FD that is at least `min_fd`.
-    pub fn insert_fd_with_min_fd(
-        &mut self,
-        file_handle: Box<dyn FileDescriptor>,
-        min_fd: i32,
-    ) -> i32 {
+    pub fn insert_fd_with_min_fd(&mut self, file_handle: FileDescriptor, min_fd: i32) -> i32 {
         // Find the lowest unused FD, starting from min_fd. If the first such unused FD is in
         // between used FDs, the find_map combinator will return it. If the first such unused FD
         // is after all other used FDs, the find_map combinator will return None, and we will use
@@ -239,15 +240,22 @@ impl FdTable {
         new_fd
     }
 
-    pub fn get(&self, fd: i32) -> Option<&dyn FileDescriptor> {
-        Some(&**self.fds.get(&fd)?)
+    pub fn get(&self, fd: i32) -> Option<Ref<'_, dyn FileDescription>> {
+        let fd = self.fds.get(&fd)?;
+        Some(Ref::map(fd.0.borrow(), |fd| fd.as_ref()))
     }
 
-    pub fn get_mut(&mut self, fd: i32) -> Option<&mut dyn FileDescriptor> {
-        Some(&mut **self.fds.get_mut(&fd)?)
+    pub fn get_mut(&self, fd: i32) -> Option<RefMut<'_, dyn FileDescription>> {
+        let fd = self.fds.get(&fd)?;
+        Some(RefMut::map(fd.0.borrow_mut(), |fd| fd.as_mut()))
     }
 
-    pub fn remove(&mut self, fd: i32) -> Option<Box<dyn FileDescriptor>> {
+    pub fn dup(&self, fd: i32) -> Option<FileDescriptor> {
+        let fd = self.fds.get(&fd)?;
+        Some(fd.clone())
+    }
+
+    pub fn remove(&mut self, fd: i32) -> Option<FileDescriptor> {
         self.fds.remove(&fd)
     }
 
@@ -296,17 +304,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             }
             let start = this.read_scalar(&args[2])?.to_i32()?;
 
-            match this.machine.fds.get_mut(fd) {
-                Some(file_descriptor) => {
-                    let dup_result = file_descriptor.dup();
-                    match dup_result {
-                        Ok(dup_fd) => Ok(this.machine.fds.insert_fd_with_min_fd(dup_fd, start)),
-                        Err(e) => {
-                            this.set_last_error_from_io_error(e.kind())?;
-                            Ok(-1)
-                        }
-                    }
-                }
+            match this.machine.fds.dup(fd) {
+                Some(dup_fd) => Ok(this.machine.fds.insert_fd_with_min_fd(dup_fd, start)),
                 None => this.fd_not_found(),
             }
         } else if this.tcx.sess.target.os == "macos" && cmd == this.eval_libc_i32("F_FULLFSYNC") {
@@ -330,6 +329,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
         Ok(Scalar::from_i32(if let Some(file_descriptor) = this.machine.fds.remove(fd) {
             let result = file_descriptor.close(this.machine.communicate())?;
+            // return `0` if close is successful
+            let result = result.map(|()| 0i32);
             this.try_unwrap_io_result(result)?
         } else {
             this.fd_not_found()?
@@ -369,32 +370,33 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             .min(u64::try_from(isize::MAX).unwrap());
         let communicate = this.machine.communicate();
 
-        if let Some(file_descriptor) = this.machine.fds.get_mut(fd) {
-            trace!("read: FD mapped to {:?}", file_descriptor);
-            // We want to read at most `count` bytes. We are sure that `count` is not negative
-            // because it was a target's `usize`. Also we are sure that its smaller than
-            // `usize::MAX` because it is bounded by the host's `isize`.
-            let mut bytes = vec![0; usize::try_from(count).unwrap()];
-            // `File::read` never returns a value larger than `count`,
-            // so this cannot fail.
-            let result = file_descriptor
-                .read(communicate, &mut bytes, *this.tcx)?
-                .map(|c| i64::try_from(c).unwrap());
-
-            match result {
-                Ok(read_bytes) => {
-                    // If reading to `bytes` did not fail, we write those bytes to the buffer.
-                    this.write_bytes_ptr(buf, bytes)?;
-                    Ok(read_bytes)
-                }
-                Err(e) => {
-                    this.set_last_error_from_io_error(e.kind())?;
-                    Ok(-1)
-                }
-            }
-        } else {
+        let Some(mut file_descriptor) = this.machine.fds.get_mut(fd) else {
             trace!("read: FD not found");
-            this.fd_not_found()
+            return this.fd_not_found();
+        };
+
+        trace!("read: FD mapped to {:?}", file_descriptor);
+        // We want to read at most `count` bytes. We are sure that `count` is not negative
+        // because it was a target's `usize`. Also we are sure that its smaller than
+        // `usize::MAX` because it is bounded by the host's `isize`.
+        let mut bytes = vec![0; usize::try_from(count).unwrap()];
+        // `File::read` never returns a value larger than `count`,
+        // so this cannot fail.
+        let result = file_descriptor
+            .read(communicate, &mut bytes, *this.tcx)?
+            .map(|c| i64::try_from(c).unwrap());
+        drop(file_descriptor);
+
+        match result {
+            Ok(read_bytes) => {
+                // If reading to `bytes` did not fail, we write those bytes to the buffer.
+                this.write_bytes_ptr(buf, bytes)?;
+                Ok(read_bytes)
+            }
+            Err(e) => {
+                this.set_last_error_from_io_error(e.kind())?;
+                Ok(-1)
+            }
         }
     }
 
@@ -418,14 +420,16 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             .min(u64::try_from(isize::MAX).unwrap());
         let communicate = this.machine.communicate();
 
-        if let Some(file_descriptor) = this.machine.fds.get(fd) {
-            let bytes = this.read_bytes_ptr_strip_provenance(buf, Size::from_bytes(count))?;
-            let result = file_descriptor
-                .write(communicate, bytes, *this.tcx)?
-                .map(|c| i64::try_from(c).unwrap());
-            this.try_unwrap_io_result(result)
-        } else {
-            this.fd_not_found()
-        }
+        let bytes = this.read_bytes_ptr_strip_provenance(buf, Size::from_bytes(count))?.to_owned();
+        let Some(mut file_descriptor) = this.machine.fds.get_mut(fd) else {
+            return this.fd_not_found();
+        };
+
+        let result = file_descriptor
+            .write(communicate, &bytes, *this.tcx)?
+            .map(|c| i64::try_from(c).unwrap());
+        drop(file_descriptor);
+
+        this.try_unwrap_io_result(result)
     }
 }

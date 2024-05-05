@@ -19,6 +19,7 @@ pub fn setup(
     target: &str,
     rustc_version: &VersionMeta,
     verbose: usize,
+    quiet: bool,
 ) -> PathBuf {
     let only_setup = matches!(subcommand, MiriCommand::Setup);
     let ask_user = !only_setup;
@@ -119,6 +120,9 @@ pub fn setup(
             for _ in 0..verbose {
                 command.arg("-v");
             }
+            if quiet {
+                command.arg("--quiet");
+            }
         } else {
             // Suppress output.
             command.stdout(process::Stdio::null());
@@ -134,7 +138,7 @@ pub fn setup(
     let rustflags = &["-Cdebug-assertions=off", "-Coverflow-checks=on"];
 
     // Do the build.
-    if print_sysroot {
+    if print_sysroot || quiet {
         // Be silent.
     } else {
         let mut msg = String::new();
@@ -169,7 +173,7 @@ pub fn setup(
                 )
             }
         });
-    if print_sysroot {
+    if print_sysroot || quiet {
         // Be silent.
     } else if only_setup {
         eprintln!("A sysroot for Miri is now available in `{}`.", sysroot_dir.display());
