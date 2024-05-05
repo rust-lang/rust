@@ -1,53 +1,67 @@
-# aarch64-apple-visionos\*
+# `*-apple-visionos`
 
--   aarch64-apple-visionos
--   aarch64-apple-visionos-sim
+Apple visionOS / xrOS targets.
 
 **Tier: 3**
 
-Apple visionOS targets:
-
--   Apple visionOS on arm64
--   Apple visionOS Simulator on arm64
+- `aarch64-apple-visionos`: Apple visionOS on arm64.
+- `aarch64-apple-visionos-sim`: Apple visionOS Simulator on arm64.
 
 ## Target maintainers
 
--   [@agg23](https://github.com/agg23)
--   [@madsmtm](https://github.com/madsmtm)
+- [@agg23](https://github.com/agg23)
+- [@madsmtm](https://github.com/madsmtm)
 
 ## Requirements
 
-These targets are cross-compiled.
-To build these targets Xcode 15 or higher on macOS is required, along with LLVM 18.
+These targets are cross-compiled, and require the corresponding visionOS SDK
+(`XROS.sdk` or `XRSimulator.sdk`), as provided by Xcode 15 or newer.
+
+The path to the SDK can be passed to `rustc` using the common `SDKROOT`
+environment variable.
+
+### OS version
+
+The minimum supported version is visionOS 1.0.
+
+This can be raised per-binary by changing the deployment target. `rustc`
+respects the common environment variables used by Xcode to do so, in this
+case `XROS_DEPLOYMENT_TARGET`.
 
 ## Building the target
 
-The targets can be built by enabling them for a `rustc` build, for example:
+The targets can be built by enabling them for a `rustc` build in
+`config.toml`, by adding, for example:
 
 ```toml
 [build]
-build-stage = 1
-target = ["aarch64-apple-visionos-sim"]
+target = ["aarch64-apple-visionos", "aarch64-apple-visionos-sim"]
 ```
+
+Using the unstable `-Zbuild-std` with a nightly Cargo may also work.
+
+Note: Currently, a newer version of `libc` and `cc` may be required, this will
+be fixed in [#124560](https://github.com/rust-lang/rust/pull/124560).
 
 ## Building Rust programs
 
-_Note: Building for this target requires the corresponding visionOS SDK, as provided by Xcode 15+._
+Rust programs can be built for these targets by specifying `--target`, if
+`rustc` has been built with support for them. For example:
 
-Rust programs can be built for these targets, if `rustc` has been built with support for them, for example:
-
-```text
-rustc --target aarch64-apple-visionos-sim your-code.rs
+```console
+$ rustc --target aarch64-apple-visionos-sim your-code.rs
 ```
 
 ## Testing
 
-There is no support for running the Rust testsuite on visionOS or the simulators.
+There is no support for running the Rust or standard library testsuite at the
+moment. Testing has mostly been done manually with builds of static libraries
+embedded into applications called from Xcode or a simulator.
 
-There is no easy way to run simple programs on visionOS or the visionOS simulators. Static library builds can be embedded into visionOS applications.
+It hopefully will be possible to improve this in the future.
 
 ## Cross-compilation toolchains and C code
 
-This target can be cross-compiled from x86_64 or aarch64 macOS hosts.
+The Clang target is suffixed with `-xros` for historical reasons.
 
-Other hosts are not supported for cross-compilation, but might work when also providing the required Xcode SDK.
+LLVM 18 or newer is required to build this target.

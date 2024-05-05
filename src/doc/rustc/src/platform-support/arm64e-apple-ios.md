@@ -10,8 +10,7 @@ ARM64e iOS (12.0+)
 
 ## Requirements
 
-These targets only support cross-compilation.
-The targets do support `std`.
+See the docs on [`*-apple-ios`](apple-ios.md) for general iOS requirements.
 
 ## Building the target
 

@@ -1,40 +1,44 @@
 # `*-apple-tvos`
-- aarch64-apple-tvos
-- x86_64-apple-tvos
+
+Apple tvOS targets.
 
 **Tier: 3**
 
-Apple tvOS targets:
-- Apple tvOS on aarch64
-- Apple tvOS Simulator on x86_64
+- `aarch64-apple-tvos`: Apple tvOS on ARM64.
+- `aarch64-apple-tvos-sim`: Apple tvOS Simulator on ARM64.
+- `x86_64-apple-tvos`: Apple tvOS Simulator on x86_64.
 
 ## Target maintainers
 
-* [@thomcc](https://github.com/thomcc)
+- [@thomcc](https://github.com/thomcc)
+- [@madsmtm](https://github.com/madsmtm)
 
 ## Requirements
 
-These targets are cross-compiled. You will need appropriate versions of Xcode
-and the SDKs for tvOS (`AppleTVOS.sdk`) and/or the tvOS Simulator
-(`AppleTVSimulator.sdk`) to build a toolchain and target these platforms.
+These targets are cross-compiled, and require the corresponding tvOS SDK
+(`AppleTVOS.sdk` or `AppleTVSimulator.sdk`), as provided by Xcode. To build the
+ARM64 targets, Xcode 12 or higher is required.
 
-The targets support most (see below) of the standard library including the
-allocator to the best of my knowledge, however they are very new, not yet
-well-tested, and it is possible that there are various bugs.
+The path to the SDK can be passed to `rustc` using the common `SDKROOT`
+environment variable.
 
-In theory we support back to tvOS version 7.0, although the actual minimum
-version you can target may be newer than this, for example due to the versions
-of Xcode and your SDKs.
+### OS version
 
-As with the other Apple targets, `rustc` respects the common environment
-variables used by Xcode to configure this, in this case
-`TVOS_DEPLOYMENT_TARGET`.
+The minimum supported version is tvOS 10.0, although the actual minimum version
+you can target may be newer than this, for example due to the versions of Xcode
+and your SDKs.
 
-#### Incompletely supported library functionality
+The version can be raised per-binary by changing the deployment target. `rustc`
+respects the common environment variables used by Xcode to do so, in this
+case `TVOS_DEPLOYMENT_TARGET`.
 
-As mentioned, "most" of the standard library is supported, which means that some portions
-are known to be unsupported. The following APIs are currently known to have
-missing or incomplete support:
+### Incompletely supported library functionality
+
+The targets support most of the standard library including the allocator to the
+best of my knowledge, however they are very new, not yet well-tested, and it is
+possible that there are various bugs.
+
+The following APIs are currently known to have missing or incomplete support:
 
 - `std::process::Command`'s API will return an error if it is configured in a
   manner which cannot be performed using `posix_spawn` -- this is because the
@@ -47,41 +51,30 @@ missing or incomplete support:
 
 ## Building the target
 
-The targets can be built by enabling them for a `rustc` build in `config.toml`, by adding, for example:
+The targets can be built by enabling them for a `rustc` build in
+`config.toml`, by adding, for example:
 
 ```toml
 [build]
 build-stage = 1
-target = ["aarch64-apple-tvos", "x86_64-apple-tvos", "aarch64-apple-tvos-sim"]
+target = ["aarch64-apple-tvos", "aarch64-apple-tvos-sim"]
 ```
 
-It's possible that cargo under `-Zbuild-std` may also be used to target them.
+Using the unstable `-Zbuild-std` with a nightly Cargo may also work.
 
 ## Building Rust programs
 
-*Note: Building for this target requires the corresponding TVOS SDK, as provided by Xcode.*
+Rust programs can be built for these targets by specifying `--target`, if
+`rustc` has been built with support for them. For example:
 
-Rust programs can be built for these targets
-
-```text
+```console
 $ rustc --target aarch64-apple-tvos your-code.rs
-...
-$ rustc --target x86_64-apple-tvos your-code.rs
-...
-$ rustc --target aarch64-apple-tvos-sim your-code.rs
 ```
 
 ## Testing
 
-There is no support for running the Rust or standard library testsuite on tvOS
-or the simulators at the moment. Testing has mostly been done manually with
-builds of static libraries called from Xcode or a simulator.
+There is no support for running the Rust or standard library testsuite at the
+moment. Testing has mostly been done manually with builds of static libraries
+embedded into applications called from Xcode or a simulator.
 
 It hopefully will be possible to improve this in the future.
-
-## Cross-compilation toolchains and C code
-
-This target can be cross-compiled from x86_64 or aarch64 macOS hosts.
-
-Other hosts are not supported for cross-compilation, but might work when also
-providing the required Xcode SDK.
