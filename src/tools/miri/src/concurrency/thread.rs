@@ -78,6 +78,13 @@ impl TryFrom<u64> for ThreadId {
     }
 }
 
+impl TryFrom<i128> for ThreadId {
+    type Error = TryFromIntError;
+    fn try_from(id: i128) -> Result<Self, Self::Error> {
+        u32::try_from(id).map(Self)
+    }
+}
+
 impl From<u32> for ThreadId {
     fn from(id: u32) -> Self {
         Self(id)
