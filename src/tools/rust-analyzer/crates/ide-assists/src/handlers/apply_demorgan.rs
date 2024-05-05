@@ -333,16 +333,14 @@ fn f() { !(S <= S || S < S) }
         check_assist(apply_demorgan, "fn f() { (x ||$0 x) }", "fn f() { !(!x && !x) }")
     }
 
-    // FIXME : This needs to go.
-    // // https://github.com/rust-lang/rust-analyzer/issues/10963
-    // #[test]
-    // fn demorgan_doesnt_hang() {
-    //     check_assist(
-    //         apply_demorgan,
-    //         "fn f() { 1 || 3 &&$0 4 || 5 }",
-    //         "fn f() { !(!1 || !3 || !4) || 5 }",
-    //     )
-    // }
+    #[test]
+    fn demorgan_doesnt_hang() {
+        check_assist(
+            apply_demorgan,
+            "fn f() { 1 || 3 &&$0 4 || 5 }",
+            "fn f() { 1 || !(!3 || !4) || 5 }",
+        )
+    }
 
     #[test]
     fn demorgan_keep_pars_for_op_precedence() {
