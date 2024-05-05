@@ -50,6 +50,7 @@
 - [Using external repositories](./external-repos.md)
 - [Fuzzing](./fuzzing.md)
 - [Notification groups](notification-groups/about.md)
+    - [Apple](notification-groups/apple.md)
     - [ARM](notification-groups/arm.md)
     - [Cleanup Crew](notification-groups/cleanup-crew.md)
     - [LLVM](notification-groups/llvm.md)

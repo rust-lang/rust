@@ -19,6 +19,7 @@ search for existing issues that haven't been claimed yet.
 ## List of notification groups
 
 Here's the list of the notification groups:
+- [Apple](./apple.md)
 - [ARM](./arm.md)
 - [Cleanup Crew](./cleanup-crew.md)
 - [LLVM](./llvm.md)
@@ -57,6 +58,7 @@ cargo run add-person $your_user_name
 
 Example PRs:
 
+* [Example of adding yourself to the Apple group.](https://github.com/rust-lang/team/pull/1434)
 * [Example of adding yourself to the ARM group.](https://github.com/rust-lang/team/pull/358)
 * [Example of adding yourself to the Cleanup Crew.](https://github.com/rust-lang/team/pull/221)
 * [Example of adding yourself to the LLVM group.](https://github.com/rust-lang/team/pull/140)
@@ -70,6 +72,7 @@ To tag an issue as appropriate for a notification group, you give
 group. For example:
 
 ```text
+@rustbot ping apple
 @rustbot ping llvm
 @rustbot ping cleanup-crew
 @rustbot ping windows
