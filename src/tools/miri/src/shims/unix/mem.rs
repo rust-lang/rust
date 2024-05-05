@@ -42,9 +42,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let map_shared = this.eval_libc_i32("MAP_SHARED");
         let map_fixed = this.eval_libc_i32("MAP_FIXED");
 
-        // This is a horrible hack, but on MacOS the guard page mechanism uses mmap
+        // This is a horrible hack, but on MacOS and Solaris the guard page mechanism uses mmap
         // in a way we do not support. We just give it the return value it expects.
-        if this.frame_in_std() && this.tcx.sess.target.os == "macos" && (flags & map_fixed) != 0 {
+        if this.frame_in_std()
+            && matches!(&*this.tcx.sess.target.os, "macos" | "solaris")
+            && (flags & map_fixed) != 0
+        {
             return Ok(Scalar::from_maybe_pointer(Pointer::from_addr_invalid(addr), this));
         }
 

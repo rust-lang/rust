@@ -136,7 +136,7 @@ fn test_dlsym() {
     assert_eq!(errno, libc::EBADF);
 }
 
-#[cfg(not(any(target_os = "macos", target_os = "illumos")))]
+#[cfg(not(any(target_os = "macos", target_os = "illumos", target_os = "solaris")))]
 fn test_reallocarray() {
     unsafe {
         let mut p = libc::reallocarray(std::ptr::null_mut(), 4096, 2);
@@ -234,7 +234,7 @@ fn main() {
     test_strcpy();
 
     test_memalign();
-    #[cfg(not(any(target_os = "macos", target_os = "illumos")))]
+    #[cfg(not(any(target_os = "macos", target_os = "illumos", target_os = "solaris")))]
     test_reallocarray();
 
     #[cfg(target_os = "linux")]
