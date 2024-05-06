@@ -587,6 +587,11 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
 
         Ok(unchanged_certainty)
     }
+
+    /// Record impl args in the proof tree for later access by `InspectCandidate`.
+    pub(crate) fn record_impl_args(&mut self, impl_args: ty::GenericArgsRef<'tcx>) {
+        self.inspect.record_impl_args(self.infcx, self.max_input_universe, impl_args)
+    }
 }
 
 impl<'tcx> EvalCtxt<'_, 'tcx> {
