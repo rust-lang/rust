@@ -1101,6 +1101,32 @@ fn get_nullable_type<'tcx>(
     })
 }
 
+/// A type is niche-optimization candidate iff:
+/// - Is a zero-sized type with alignment 1 (a “1-ZST”).
+/// - Has no fields.
+/// - Does not have the `#[non_exhaustive]` attribute.
+fn is_niche_optimization_candidate<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    ty: Ty<'tcx>,
+) -> bool {
+    if tcx.layout_of(param_env.and(ty)).is_ok_and(|layout| !layout.is_1zst()) {
+        return false;
+    }
+
+    match ty.kind() {
+        ty::Adt(ty_def, _) => {
+            let non_exhaustive = ty_def.is_variant_list_non_exhaustive();
+            let empty = (ty_def.is_struct() && ty_def.all_fields().next().is_none())
+                || (ty_def.is_enum() && ty_def.variants().is_empty());
+
+            !non_exhaustive && empty
+        }
+        ty::Tuple(tys) => tys.is_empty(),
+        _ => false,
+    }
+}
+
 /// Check if this enum can be safely exported based on the "nullable pointer optimization". If it
 /// can, return the type that `ty` can be safely converted to, otherwise return `None`.
 /// Currently restricted to function pointers, boxes, references, `core::num::NonZero`,
@@ -1117,6 +1143,22 @@ pub(crate) fn repr_nullable_ptr<'tcx>(
         let field_ty = match &ty_def.variants().raw[..] {
             [var_one, var_two] => match (&var_one.fields.raw[..], &var_two.fields.raw[..]) {
                 ([], [field]) | ([field], []) => field.ty(tcx, args),
+                ([field1], [field2]) => {
+                    if !tcx.features().result_ffi_guarantees {
+                        return None;
+                    }
+
+                    let ty1 = field1.ty(tcx, args);
+                    let ty2 = field2.ty(tcx, args);
+
+                    if is_niche_optimization_candidate(tcx, param_env, ty1) {
+                        ty2
+                    } else if is_niche_optimization_candidate(tcx, param_env, ty2) {
+                        ty1
+                    } else {
+                        return None;
+                    }
+                }
                 _ => return None,
             },
             _ => return None,
@@ -1202,7 +1244,6 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         args: GenericArgsRef<'tcx>,
     ) -> FfiResult<'tcx> {
         use FfiResult::*;
-
         let transparent_with_all_zst_fields = if def.repr().transparent() {
             if let Some(field) = transparent_newtype_field(self.cx.tcx, variant) {
                 // Transparent newtypes have at most one non-ZST field which needs to be checked..
@@ -1329,27 +1370,29 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                             return FfiSafe;
                         }
 
-                        // Check for a repr() attribute to specify the size of the
-                        // discriminant.
-                        if !def.repr().c() && !def.repr().transparent() && def.repr().int.is_none()
-                        {
-                            // Special-case types like `Option<extern fn()>`.
-                            if repr_nullable_ptr(self.cx.tcx, self.cx.param_env, ty, self.mode)
-                                .is_none()
-                            {
-                                return FfiUnsafe {
-                                    ty,
-                                    reason: fluent::lint_improper_ctypes_enum_repr_reason,
-                                    help: Some(fluent::lint_improper_ctypes_enum_repr_help),
-                                };
-                            }
-                        }
-
                         if def.is_variant_list_non_exhaustive() && !def.did().is_local() {
                             return FfiUnsafe {
                                 ty,
                                 reason: fluent::lint_improper_ctypes_non_exhaustive,
                                 help: None,
+                            };
+                        }
+
+                        // Check for a repr() attribute to specify the size of the
+                        // discriminant.
+                        if !def.repr().c() && !def.repr().transparent() && def.repr().int.is_none()
+                        {
+                            // Special-case types like `Option<extern fn()>` and `Result<extern fn(), ()>`
+                            if let Some(ty) =
+                                repr_nullable_ptr(self.cx.tcx, self.cx.param_env, ty, self.mode)
+                            {
+                                return self.check_type_for_ffi(cache, ty);
+                            }
+
+                            return FfiUnsafe {
+                                ty,
+                                reason: fluent::lint_improper_ctypes_enum_repr_reason,
+                                help: Some(fluent::lint_improper_ctypes_enum_repr_help),
                             };
                         }
 
