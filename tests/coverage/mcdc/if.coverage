@@ -4,7 +4,7 @@
    LL|       |//@ compile-flags: -Zcoverage-options=mcdc
    LL|       |//@ llvm-cov-flags: --show-mcdc
    LL|       |
-   LL|      2|fn mcdc_check_neither(a: bool, b: bool) {
+   LL|      2|fn check_neither(a: bool, b: bool) {
    LL|      2|    if a && b {
                           ^0
   ------------------
@@ -30,7 +30,7 @@
    LL|      2|    }
    LL|      2|}
    LL|       |
-   LL|      2|fn mcdc_check_a(a: bool, b: bool) {
+   LL|      2|fn check_a(a: bool, b: bool) {
    LL|      2|    if a && b {
                           ^1
   ------------------
@@ -57,7 +57,7 @@
    LL|      1|    }
    LL|      2|}
    LL|       |
-   LL|      2|fn mcdc_check_b(a: bool, b: bool) {
+   LL|      2|fn check_b(a: bool, b: bool) {
    LL|      2|    if a && b {
   ------------------
   |---> MC/DC Decision Region (LL:8) to (LL:14)
@@ -83,7 +83,7 @@
    LL|      1|    }
    LL|      2|}
    LL|       |
-   LL|      3|fn mcdc_check_both(a: bool, b: bool) {
+   LL|      3|fn check_both(a: bool, b: bool) {
    LL|      3|    if a && b {
                           ^2
   ------------------
@@ -111,7 +111,7 @@
    LL|      2|    }
    LL|      3|}
    LL|       |
-   LL|      4|fn mcdc_check_tree_decision(a: bool, b: bool, c: bool) {
+   LL|      4|fn check_tree_decision(a: bool, b: bool, c: bool) {
    LL|      4|    // This expression is intentionally written in a way
    LL|      4|    // where 100% branch coverage indicates 100% mcdc coverage.
    LL|      4|    if a && (b || c) {
@@ -144,8 +144,8 @@
    LL|      2|    }
    LL|      4|}
    LL|       |
-   LL|      4|fn mcdc_check_not_tree_decision(a: bool, b: bool, c: bool) {
-   LL|      4|    // Contradict to `mcdc_check_tree_decision`,
+   LL|      4|fn check_not_tree_decision(a: bool, b: bool, c: bool) {
+   LL|      4|    // Contradict to `check_tree_decision`,
    LL|      4|    // 100% branch coverage of this expression does not mean indicates 100% mcdc coverage.
    LL|      4|    if (a || b) && c {
                            ^1
@@ -176,7 +176,7 @@
    LL|      2|    }
    LL|      4|}
    LL|       |
-   LL|      3|fn mcdc_nested_if(a: bool, b: bool, c: bool) {
+   LL|      3|fn nested_if(a: bool, b: bool, c: bool) {
    LL|      3|    if a || b {
                           ^0
   ------------------
@@ -227,32 +227,32 @@
    LL|       |
    LL|       |#[coverage(off)]
    LL|       |fn main() {
-   LL|       |    mcdc_check_neither(false, false);
-   LL|       |    mcdc_check_neither(false, true);
+   LL|       |    check_neither(false, false);
+   LL|       |    check_neither(false, true);
    LL|       |
-   LL|       |    mcdc_check_a(true, true);
-   LL|       |    mcdc_check_a(false, true);
+   LL|       |    check_a(true, true);
+   LL|       |    check_a(false, true);
    LL|       |
-   LL|       |    mcdc_check_b(true, true);
-   LL|       |    mcdc_check_b(true, false);
+   LL|       |    check_b(true, true);
+   LL|       |    check_b(true, false);
    LL|       |
-   LL|       |    mcdc_check_both(false, true);
-   LL|       |    mcdc_check_both(true, true);
-   LL|       |    mcdc_check_both(true, false);
+   LL|       |    check_both(false, true);
+   LL|       |    check_both(true, true);
+   LL|       |    check_both(true, false);
    LL|       |
-   LL|       |    mcdc_check_tree_decision(false, true, true);
-   LL|       |    mcdc_check_tree_decision(true, true, false);
-   LL|       |    mcdc_check_tree_decision(true, false, false);
-   LL|       |    mcdc_check_tree_decision(true, false, true);
+   LL|       |    check_tree_decision(false, true, true);
+   LL|       |    check_tree_decision(true, true, false);
+   LL|       |    check_tree_decision(true, false, false);
+   LL|       |    check_tree_decision(true, false, true);
    LL|       |
-   LL|       |    mcdc_check_not_tree_decision(false, true, true);
-   LL|       |    mcdc_check_not_tree_decision(true, true, false);
-   LL|       |    mcdc_check_not_tree_decision(true, false, false);
-   LL|       |    mcdc_check_not_tree_decision(true, false, true);
+   LL|       |    check_not_tree_decision(false, true, true);
+   LL|       |    check_not_tree_decision(true, true, false);
+   LL|       |    check_not_tree_decision(true, false, false);
+   LL|       |    check_not_tree_decision(true, false, true);
    LL|       |
-   LL|       |    mcdc_nested_if(true, false, true);
-   LL|       |    mcdc_nested_if(true, true, true);
-   LL|       |    mcdc_nested_if(true, true, false);
+   LL|       |    nested_if(true, false, true);
+   LL|       |    nested_if(true, true, true);
+   LL|       |    nested_if(true, true, false);
    LL|       |}
    LL|       |
    LL|       |#[coverage(off)]
