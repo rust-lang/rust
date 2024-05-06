@@ -61,11 +61,21 @@ declare_clippy_lint! {
     ///
     /// This lint permits lint attributes for lints emitted on the items themself.
     /// For `use` items these lints are:
+    /// * ambiguous_glob_reexports
+    /// * dead_code
     /// * deprecated
+    /// * hidden_glob_reexports
     /// * unreachable_pub
-    /// * unused_imports
+    /// * unused
+    /// * unused_braces
+    /// * unused_import_braces
+    /// * clippy::disallowed_types
     /// * clippy::enum_glob_use
     /// * clippy::macro_use_imports
+    /// * clippy::module_name_repetitions
+    /// * clippy::redundant_pub_crate
+    /// * clippy::single_component_path_imports
+    /// * clippy::unsafe_removed_from_name
     /// * clippy::wildcard_imports
     ///
     /// For `extern crate` items these lints are:
