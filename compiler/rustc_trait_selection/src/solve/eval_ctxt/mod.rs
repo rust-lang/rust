@@ -248,8 +248,8 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         };
 
         for &(key, ty) in &input.predefined_opaques_in_body.opaque_types {
-            ecx.insert_hidden_type(key, input.goal.param_env, ty)
-                .expect("failed to prepopulate opaque types");
+            let hidden_ty = ty::OpaqueHiddenType { ty, span: DUMMY_SP };
+            ecx.infcx.inject_new_hidden_type_unchecked(key, hidden_ty);
         }
 
         if !ecx.nested_goals.is_empty() {
@@ -586,6 +586,11 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         }
 
         Ok(unchanged_certainty)
+    }
+
+    /// Record impl args in the proof tree for later access by `InspectCandidate`.
+    pub(crate) fn record_impl_args(&mut self, impl_args: ty::GenericArgsRef<'tcx>) {
+        self.inspect.record_impl_args(self.infcx, self.max_input_universe, impl_args)
     }
 }
 

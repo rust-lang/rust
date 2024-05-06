@@ -1,12 +1,11 @@
 use std::ops::ControlFlow;
 
-use rustc_hir::def_id::DefId;
-use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, InferOk};
+use rustc_infer::infer::InferCtxt;
 use rustc_infer::traits::solve::inspect::ProbeKind;
 use rustc_infer::traits::solve::{CandidateSource, Certainty, Goal};
 use rustc_infer::traits::{
     BuiltinImplSource, ImplSource, ImplSourceUserDefinedData, Obligation, ObligationCause,
-    PolyTraitObligation, PredicateObligation, Selection, SelectionError, SelectionResult,
+    PolyTraitObligation, Selection, SelectionError, SelectionResult,
 };
 use rustc_macros::extension;
 use rustc_span::Span;
@@ -141,32 +140,32 @@ fn to_selection<'tcx>(
         return None;
     }
 
-    let make_nested = || {
-        cand.instantiate_nested_goals(span)
-            .into_iter()
-            .map(|nested| {
-                Obligation::new(
-                    nested.infcx().tcx,
-                    ObligationCause::dummy_with_span(span),
-                    nested.goal().param_env,
-                    nested.goal().predicate,
-                )
-            })
-            .collect()
-    };
+    let (nested, impl_args) = cand.instantiate_nested_goals_and_opt_impl_args(span);
+    let nested = nested
+        .into_iter()
+        .map(|nested| {
+            Obligation::new(
+                nested.infcx().tcx,
+                ObligationCause::dummy_with_span(span),
+                nested.goal().param_env,
+                nested.goal().predicate,
+            )
+        })
+        .collect();
 
     Some(match cand.kind() {
         ProbeKind::TraitCandidate { source, result: _ } => match source {
             CandidateSource::Impl(impl_def_id) => {
                 // FIXME: Remove this in favor of storing this in the tree
                 // For impl candidates, we do the rematch manually to compute the args.
-                ImplSource::UserDefined(rematch_impl(cand.goal(), impl_def_id, span))
+                ImplSource::UserDefined(ImplSourceUserDefinedData {
+                    impl_def_id,
+                    args: impl_args.expect("expected recorded impl args for impl candidate"),
+                    nested,
+                })
             }
-            CandidateSource::BuiltinImpl(builtin) => ImplSource::Builtin(builtin, make_nested()),
-            CandidateSource::ParamEnv(_) => ImplSource::Param(make_nested()),
-            CandidateSource::AliasBound => {
-                ImplSource::Builtin(BuiltinImplSource::Misc, make_nested())
-            }
+            CandidateSource::BuiltinImpl(builtin) => ImplSource::Builtin(builtin, nested),
+            CandidateSource::ParamEnv(_) | CandidateSource::AliasBound => ImplSource::Param(nested),
             CandidateSource::CoherenceUnknowable => {
                 span_bug!(span, "didn't expect to select an unknowable candidate")
             }
@@ -180,41 +179,4 @@ fn to_selection<'tcx>(
             span_bug!(span, "didn't expect to assemble trait candidate from {:#?}", cand.kind())
         }
     })
-}
-
-fn rematch_impl<'tcx>(
-    goal: &inspect::InspectGoal<'_, 'tcx>,
-    impl_def_id: DefId,
-    span: Span,
-) -> ImplSourceUserDefinedData<'tcx, PredicateObligation<'tcx>> {
-    let infcx = goal.infcx();
-    let goal_trait_ref = infcx
-        .enter_forall_and_leak_universe(goal.goal().predicate.to_opt_poly_trait_pred().unwrap())
-        .trait_ref;
-
-    let args = infcx.fresh_args_for_item(span, impl_def_id);
-    let impl_trait_ref =
-        infcx.tcx.impl_trait_ref(impl_def_id).unwrap().instantiate(infcx.tcx, args);
-
-    let InferOk { value: (), obligations: mut nested } = infcx
-        .at(&ObligationCause::dummy_with_span(span), goal.goal().param_env)
-        .eq(DefineOpaqueTypes::Yes, goal_trait_ref, impl_trait_ref)
-        .expect("rematching impl failed");
-
-    // FIXME(-Znext-solver=coinductive): We need to add supertraits here eventually.
-
-    nested.extend(
-        infcx.tcx.predicates_of(impl_def_id).instantiate(infcx.tcx, args).into_iter().map(
-            |(clause, _)| {
-                Obligation::new(
-                    infcx.tcx,
-                    ObligationCause::dummy_with_span(span),
-                    goal.goal().param_env,
-                    clause,
-                )
-            },
-        ),
-    );
-
-    ImplSourceUserDefinedData { impl_def_id, nested, args }
 }
