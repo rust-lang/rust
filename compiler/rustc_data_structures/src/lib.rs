@@ -82,7 +82,6 @@ pub mod svh;
 pub mod sync;
 pub mod tagged_ptr;
 pub mod temp_dir;
-pub mod tiny_list;
 pub mod transitive_relation;
 pub mod unhash;
 pub mod unord;
