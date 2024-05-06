@@ -1808,8 +1808,7 @@ fn f() { A { bar: b$0 }; }
                 fn baz() [type]
                 ex baz() [type]
                 ex bar() [type]
-                ex A { bar: baz() }.bar [type]
-                ex A { bar: bar() }.bar [type]
+                ex A { bar: ... }.bar [type]
                 st A []
                 fn f() []
             "#]],
@@ -1947,8 +1946,8 @@ fn main() {
 }
             "#,
             expect![[r#"
-                ex core::ops::Deref::deref(&T(S)) (use core::ops::Deref) [type_could_unify]
                 ex core::ops::Deref::deref(&t) (use core::ops::Deref) [type_could_unify]
+                ex core::ops::Deref::deref(&T(S)) (use core::ops::Deref) [type_could_unify]
                 lc m [local]
                 lc t [local]
                 lc &t [type+local]
@@ -1997,8 +1996,8 @@ fn main() {
 }
             "#,
             expect![[r#"
-                ex core::ops::DerefMut::deref_mut(&mut T(S)) (use core::ops::DerefMut) [type_could_unify]
                 ex core::ops::DerefMut::deref_mut(&mut t) (use core::ops::DerefMut) [type_could_unify]
+                ex core::ops::DerefMut::deref_mut(&mut T(S)) (use core::ops::DerefMut) [type_could_unify]
                 lc m [local]
                 lc t [local]
                 lc &mut t [type+local]

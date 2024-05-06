@@ -127,6 +127,13 @@ impl LookupTable {
             self.types_wishlist.insert(ty.clone());
         }
 
+        // Collapse suggestions if there are many
+        if let Some(res) = &res {
+            if res.len() > self.many_threshold {
+                return Some(vec![Expr::Many(ty.clone())]);
+            }
+        }
+
         res
     }
 
@@ -158,6 +165,13 @@ impl LookupTable {
             self.types_wishlist.insert(ty.clone());
         }
 
+        // Collapse suggestions if there are many
+        if let Some(res) = &res {
+            if res.len() > self.many_threshold {
+                return Some(vec![Expr::Many(ty.clone())]);
+            }
+        }
+
         res
     }
 
@@ -176,10 +190,10 @@ impl LookupTable {
             }
             None => {
                 self.data.insert(ty.clone(), AlternativeExprs::new(self.many_threshold, exprs));
-                for it in self.new_types.values_mut() {
-                    it.push(ty.clone());
-                }
             }
+        }
+        for it in self.new_types.values_mut() {
+            it.push(ty.clone());
         }
     }
 
