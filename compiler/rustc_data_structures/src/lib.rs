@@ -85,7 +85,6 @@ pub mod temp_dir;
 pub mod transitive_relation;
 pub mod unhash;
 pub mod unord;
-pub mod vec_linked_list;
 pub mod work_queue;
 
 mod atomic_ref;
