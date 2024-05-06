@@ -6,4 +6,4 @@
 #![no_std]
 
 #[path = "../../../src/math/mod.rs"]
-mod libm;
+pub mod libm;

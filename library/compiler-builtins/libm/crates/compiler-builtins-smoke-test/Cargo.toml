@@ -7,3 +7,6 @@ authors = ["Jorge Aparicio <jorge@japaric.io>"]
 test = false
 bench = false
 
+[features]
+unstable = []
+checked = []
