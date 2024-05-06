@@ -48,6 +48,7 @@ run() {
     docker run \
            --rm \
            -e RUST_COMPILER_RT_ROOT \
+           -e RUSTFLAGS \
            -e "CARGO_TARGET_DIR=/builtins-target" \
            -v "$(pwd):/checkout:ro" \
            -w /checkout \
