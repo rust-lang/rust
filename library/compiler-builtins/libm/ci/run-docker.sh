@@ -16,6 +16,7 @@ run() {
     docker run \
            --rm \
            --user $(id -u):$(id -g) \
+           -e RUSTFLAGS \
            -e CARGO_HOME=/cargo \
            -e CARGO_TARGET_DIR=/target \
            -v "${HOME}/.cargo":/cargo \

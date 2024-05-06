@@ -1,6 +1,10 @@
 name: CI
 on: [push, pull_request]
 
+env:
+  RUSTDOCFLAGS: -Dwarnings
+  RUSTFLAGS: -Dwarnings
+
 jobs:
   docker:
     name: Docker
