@@ -24,7 +24,6 @@ use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::traits::query::NoSolution;
-use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::cast::CastTy;
 use rustc_middle::ty::visit::TypeVisitableExt;
@@ -122,7 +121,7 @@ mod relate_tys;
 /// - `move_data` -- move-data constructed when performing the maybe-init dataflow analysis
 /// - `elements` -- MIR region map
 pub(crate) fn type_check<'mir, 'tcx>(
-    infcx: &BorrowckInferCtxt<'_, 'tcx>,
+    infcx: &BorrowckInferCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     body: &Body<'tcx>,
     promoted: &IndexSlice<Promoted, Body<'tcx>>,
@@ -865,7 +864,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
 /// way, it accrues region constraints -- these can later be used by
 /// NLL region checking.
 struct TypeChecker<'a, 'tcx> {
-    infcx: &'a BorrowckInferCtxt<'a, 'tcx>,
+    infcx: &'a BorrowckInferCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     last_span: Span,
     body: &'a Body<'tcx>,
@@ -1020,7 +1019,7 @@ impl Locations {
 
 impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     fn new(
-        infcx: &'a BorrowckInferCtxt<'a, 'tcx>,
+        infcx: &'a BorrowckInferCtxt<'tcx>,
         body: &'a Body<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         region_bound_pairs: &'a RegionBoundPairs<'tcx>,
@@ -1028,7 +1027,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         implicit_region_bound: ty::Region<'tcx>,
         borrowck_context: &'a mut BorrowCheckContext<'a, 'tcx>,
     ) -> Self {
-        let mut checker = Self {
+        Self {
             infcx,
             last_span: body.span,
             body,
@@ -1039,74 +1038,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             implicit_region_bound,
             borrowck_context,
             reported_errors: Default::default(),
-        };
-
-        // FIXME(-Znext-solver): A bit dubious that we're only registering
-        // predefined opaques in the typeck root.
-        if infcx.next_trait_solver() && !infcx.tcx.is_typeck_child(body.source.def_id()) {
-            checker.register_predefined_opaques_for_next_solver();
-        }
-
-        checker
-    }
-
-    pub(super) fn register_predefined_opaques_for_next_solver(&mut self) {
-        // OK to use the identity arguments for each opaque type key, since
-        // we remap opaques from HIR typeck back to their definition params.
-        let opaques: Vec<_> = self
-            .infcx
-            .tcx
-            .typeck(self.body.source.def_id().expect_local())
-            .concrete_opaque_types
-            .iter()
-            .map(|(k, v)| (*k, *v))
-            .collect();
-
-        let renumbered_opaques = self.infcx.tcx.fold_regions(opaques, |_, _| {
-            self.infcx.next_nll_region_var_in_universe(
-                NllRegionVariableOrigin::Existential { from_forall: false },
-                ty::UniverseIndex::ROOT,
-            )
-        });
-
-        let param_env = self.param_env;
-        let result = self.fully_perform_op(
-            Locations::All(self.body.span),
-            ConstraintCategory::OpaqueType,
-            CustomTypeOp::new(
-                |ocx| {
-                    let mut obligations = Vec::new();
-                    for (opaque_type_key, hidden_ty) in renumbered_opaques {
-                        let cause = ObligationCause::dummy();
-                        ocx.infcx.insert_hidden_type(
-                            opaque_type_key,
-                            &cause,
-                            param_env,
-                            hidden_ty.ty,
-                            &mut obligations,
-                        )?;
-
-                        ocx.infcx.add_item_bounds_for_hidden_type(
-                            opaque_type_key.def_id.to_def_id(),
-                            opaque_type_key.args,
-                            cause,
-                            param_env,
-                            hidden_ty.ty,
-                            &mut obligations,
-                        );
-                    }
-
-                    ocx.register_obligations(obligations);
-                    Ok(())
-                },
-                "register pre-defined opaques",
-            ),
-        );
-
-        if result.is_err() {
-            self.infcx
-                .dcx()
-                .span_bug(self.body.span, "failed re-defining predefined opaques in mir typeck");
         }
     }
 
