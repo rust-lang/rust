@@ -120,14 +120,45 @@ pub(crate) fn parse_check_cfg(dcx: &DiagCtxt, specs: Vec<String>) -> CheckCfg {
         );
         let filename = FileName::cfg_spec_source_code(&s);
 
+        const VISIT: &str =
+            "visit <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more details";
+
         macro_rules! error {
             ($reason:expr) => {
                 #[allow(rustc::untranslatable_diagnostic)]
                 #[allow(rustc::diagnostic_outside_of_impl)]
-                dcx.fatal(format!(
-                    concat!("invalid `--check-cfg` argument: `{}` (", $reason, ")"),
-                    s
-                ))
+                {
+                    let mut diag =
+                        dcx.struct_fatal(format!("invalid `--check-cfg` argument: `{s}`"));
+                    diag.note($reason);
+                    diag.note(VISIT);
+                    diag.emit()
+                }
+            };
+            (in $arg:expr, $reason:expr) => {
+                #[allow(rustc::untranslatable_diagnostic)]
+                #[allow(rustc::diagnostic_outside_of_impl)]
+                {
+                    let mut diag =
+                        dcx.struct_fatal(format!("invalid `--check-cfg` argument: `{s}`"));
+
+                    let pparg = rustc_ast_pretty::pprust::meta_list_item_to_string($arg);
+                    if let Some(lit) = $arg.lit() {
+                        let (lit_kind_article, lit_kind_descr) = {
+                            let lit_kind = lit.as_token_lit().kind;
+                            (lit_kind.article(), lit_kind.descr())
+                        };
+                        diag.note(format!(
+                            "`{pparg}` is {lit_kind_article} {lit_kind_descr} literal"
+                        ));
+                    } else {
+                        diag.note(format!("`{pparg}` is invalid"));
+                    }
+
+                    diag.note($reason);
+                    diag.note(VISIT);
+                    diag.emit()
+                }
             };
         }
 
@@ -183,7 +214,7 @@ pub(crate) fn parse_check_cfg(dcx: &DiagCtxt, specs: Vec<String>) -> CheckCfg {
                 }
                 any_specified = true;
                 if !args.is_empty() {
-                    error!("`any()` must be empty");
+                    error!(in arg, "`any()` takes no argument");
                 }
             } else if arg.has_name(sym::values)
                 && let Some(args) = arg.meta_item_list()
@@ -202,25 +233,25 @@ pub(crate) fn parse_check_cfg(dcx: &DiagCtxt, specs: Vec<String>) -> CheckCfg {
                         && let Some(args) = arg.meta_item_list()
                     {
                         if values_any_specified {
-                            error!("`any()` in `values()` cannot be specified multiple times");
+                            error!(in arg, "`any()` in `values()` cannot be specified multiple times");
                         }
                         values_any_specified = true;
                         if !args.is_empty() {
-                            error!("`any()` must be empty");
+                            error!(in arg, "`any()` in `values()` takes no argument");
                         }
                     } else if arg.has_name(sym::none)
                         && let Some(args) = arg.meta_item_list()
                     {
                         values.insert(None);
                         if !args.is_empty() {
-                            error!("`none()` must be empty");
+                            error!(in arg, "`none()` in `values()` takes no argument");
                         }
                     } else {
-                        error!("`values()` arguments must be string literals, `none()` or `any()`");
+                        error!(in arg, "`values()` arguments must be string literals, `none()` or `any()`");
                     }
                 }
             } else {
-                error!("`cfg()` arguments must be simple identifiers, `any()` or `values(...)`");
+                error!(in arg, "`cfg()` arguments must be simple identifiers, `any()` or `values(...)`");
             }
         }
 
