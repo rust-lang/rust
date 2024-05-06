@@ -164,7 +164,7 @@ pub fn set_host_rpath(cmd: &mut Command) {
 ///
 /// impl CommandWrapper {
 ///     /// Get the [`Output`][::std::process::Output] of the finished process.
-///     pub fn output(&mut self) -> Output { /* ... */ } // <- required `output()` method
+///     pub fn command_output(&mut self) -> Output { /* ... */ } // <- required `command_output()` method
 /// }
 ///
 /// crate::impl_common_helpers!(CommandWrapper);
@@ -242,7 +242,7 @@ macro_rules! impl_common_helpers {
                 let caller_location = ::std::panic::Location::caller();
                 let caller_line_number = caller_location.line();
 
-                let output = self.output();
+                let output = self.command_output();
                 if !output.status.success() {
                     handle_failed_output(&self.cmd, output, caller_line_number);
                 }
@@ -255,7 +255,7 @@ macro_rules! impl_common_helpers {
                 let caller_location = ::std::panic::Location::caller();
                 let caller_line_number = caller_location.line();
 
-                let output = self.output();
+                let output = self.command_output();
                 if output.status.success() {
                     handle_failed_output(&self.cmd, output, caller_line_number);
                 }
