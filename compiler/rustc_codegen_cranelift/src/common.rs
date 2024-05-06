@@ -7,7 +7,7 @@ use rustc_middle::ty::layout::{
 use rustc_middle::ty::TypeFoldable;
 use rustc_span::source_map::Spanned;
 use rustc_target::abi::call::FnAbi;
-use rustc_target::abi::{Integer, Primitive};
+use rustc_target::abi::{Float, Integer, Primitive};
 use rustc_target::spec::{HasTargetSpec, Target};
 
 use crate::constant::ConstantCx;
@@ -32,10 +32,12 @@ pub(crate) fn scalar_to_clif_type(tcx: TyCtxt<'_>, scalar: Scalar) -> Type {
             Integer::I64 => types::I64,
             Integer::I128 => types::I128,
         },
-        Primitive::F16 => unimplemented!("f16_f128"),
-        Primitive::F32 => types::F32,
-        Primitive::F64 => types::F64,
-        Primitive::F128 => unimplemented!("f16_f128"),
+        Primitive::Float(float) => match float {
+            Float::F16 => unimplemented!("f16_f128"),
+            Float::F32 => types::F32,
+            Float::F64 => types::F64,
+            Float::F128 => unimplemented!("f16_f128"),
+        },
         // FIXME(erikdesjardins): handle non-default addrspace ptr sizes
         Primitive::Pointer(_) => pointer_ty(tcx),
     }
