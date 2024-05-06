@@ -1,5 +1,6 @@
 #![allow(unused_macros)]
 
+#[cfg(not(target_arch = "powerpc64"))]
 use testcrate::*;
 
 macro_rules! cmp {

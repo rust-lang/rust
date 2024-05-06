@@ -14,6 +14,7 @@ pub mod trunc;
 
 public_test_dep! {
 /// Trait for some basic operations on floats
+#[allow(dead_code)]
 pub(crate) trait Float:
     Copy
     + core::fmt::Debug
