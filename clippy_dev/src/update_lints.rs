@@ -314,7 +314,7 @@ const DEFAULT_DEPRECATION_REASON: &str = "default deprecation note";
 /// # Panics
 ///
 /// If a file path could not read from or written to
-pub fn deprecate(name: &str, reason: Option<&String>) {
+pub fn deprecate(name: &str, reason: Option<&str>) {
     fn finish(
         (lints, mut deprecated_lints, renamed_lints): (Vec<Lint>, Vec<DeprecatedLint>, Vec<RenamedLint>),
         name: &str,
@@ -335,7 +335,7 @@ pub fn deprecate(name: &str, reason: Option<&String>) {
         println!("note: you must run `cargo uitest` to update the test results");
     }
 
-    let reason = reason.map_or(DEFAULT_DEPRECATION_REASON, String::as_str);
+    let reason = reason.unwrap_or(DEFAULT_DEPRECATION_REASON);
     let name_lower = name.to_lowercase();
     let name_upper = name.to_uppercase();
 
