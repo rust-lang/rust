@@ -51,7 +51,7 @@ pub(crate) struct NllOutput<'tcx> {
 /// `compute_regions`.
 #[instrument(skip(infcx, param_env, body, promoted), level = "debug")]
 pub(crate) fn replace_regions_in_mir<'tcx>(
-    infcx: &BorrowckInferCtxt<'_, 'tcx>,
+    infcx: &BorrowckInferCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     body: &mut Body<'tcx>,
     promoted: &mut IndexSlice<Promoted, Body<'tcx>>,
@@ -75,7 +75,7 @@ pub(crate) fn replace_regions_in_mir<'tcx>(
 ///
 /// This may result in errors being reported.
 pub(crate) fn compute_regions<'cx, 'tcx>(
-    infcx: &BorrowckInferCtxt<'_, 'tcx>,
+    infcx: &BorrowckInferCtxt<'tcx>,
     universal_regions: UniversalRegions<'tcx>,
     body: &Body<'tcx>,
     promoted: &IndexSlice<Promoted, Body<'tcx>>,
@@ -202,7 +202,7 @@ pub(crate) fn compute_regions<'cx, 'tcx>(
 }
 
 pub(super) fn dump_mir_results<'tcx>(
-    infcx: &BorrowckInferCtxt<'_, 'tcx>,
+    infcx: &BorrowckInferCtxt<'tcx>,
     body: &Body<'tcx>,
     regioncx: &RegionInferenceContext<'tcx>,
     closure_region_requirements: &Option<ClosureRegionRequirements<'tcx>>,
@@ -254,7 +254,7 @@ pub(super) fn dump_mir_results<'tcx>(
 #[allow(rustc::diagnostic_outside_of_impl)]
 #[allow(rustc::untranslatable_diagnostic)]
 pub(super) fn dump_annotation<'tcx>(
-    infcx: &BorrowckInferCtxt<'_, 'tcx>,
+    infcx: &BorrowckInferCtxt<'tcx>,
     body: &Body<'tcx>,
     regioncx: &RegionInferenceContext<'tcx>,
     closure_region_requirements: &Option<ClosureRegionRequirements<'tcx>>,
