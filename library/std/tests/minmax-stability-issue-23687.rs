@@ -1,12 +1,10 @@
-//@ run-pass
-
-use std::fmt::Debug;
 use std::cmp::{self, Ordering};
+use std::fmt::Debug;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 struct Foo {
     n: u8,
-    name: &'static str
+    name: &'static str,
 }
 
 impl PartialOrd for Foo {
@@ -21,7 +19,8 @@ impl Ord for Foo {
     }
 }
 
-fn main() {
+#[test]
+fn minmax_stability() {
     let a = Foo { n: 4, name: "a" };
     let b = Foo { n: 4, name: "b" };
     let c = Foo { n: 8, name: "c" };

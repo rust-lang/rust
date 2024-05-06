@@ -1,5 +1,4 @@
-//@ run-pass
-
+#[test]
 fn test_stack_assign() {
     let s: String = "a".to_string();
     println!("{}", s.clone());
@@ -9,8 +8,12 @@ fn test_stack_assign() {
     assert!((s != u));
 }
 
-fn test_heap_lit() { "a big string".to_string(); }
+#[test]
+fn test_heap_lit() {
+    "a big string".to_string();
+}
 
+#[test]
 fn test_heap_assign() {
     let s: String = "a big ol' string".to_string();
     let t: String = "a big ol' string".to_string();
@@ -19,11 +22,13 @@ fn test_heap_assign() {
     assert!((s != u));
 }
 
+#[test]
 fn test_heap_log() {
     let s = "a big ol' string".to_string();
     println!("{}", s);
 }
 
+#[test]
 fn test_append() {
     let mut s = String::new();
     s.push_str("a");
@@ -40,12 +45,4 @@ fn test_append() {
 
     s.push_str("&tea");
     assert_eq!(s, "coffee&tea");
-}
-
-pub fn main() {
-    test_stack_assign();
-    test_heap_lit();
-    test_heap_assign();
-    test_heap_log();
-    test_append();
 }
