@@ -455,7 +455,7 @@ impl<I: Interner> TypeFolder<I> for RegionsToStatic<I> {
         I::Binder<T>: TypeSuperFoldable<I>,
     {
         self.binder.shift_in(1);
-        let t = t.fold_with(self);
+        let t = t.super_fold_with(self);
         self.binder.shift_out(1);
         t
     }
