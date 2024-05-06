@@ -2,7 +2,7 @@
 
 use super::PredicateObligation;
 
-use crate::infer::InferCtxtUndoLogs;
+use crate::infer::snapshot::undo_log::InferCtxtUndoLogs;
 
 use rustc_data_structures::{
     snapshot_map::{self, SnapshotMapRef, SnapshotMapStorage},
@@ -78,11 +78,12 @@ pub struct ProjectionCacheStorage<'tcx> {
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
 pub struct ProjectionCacheKey<'tcx> {
     ty: ty::AliasTy<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
 }
 
 impl<'tcx> ProjectionCacheKey<'tcx> {
-    pub fn new(ty: ty::AliasTy<'tcx>) -> Self {
-        Self { ty }
+    pub fn new(ty: ty::AliasTy<'tcx>, param_env: ty::ParamEnv<'tcx>) -> Self {
+        Self { ty, param_env }
     }
 }
 

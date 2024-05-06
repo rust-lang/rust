@@ -34,32 +34,32 @@
 
 // lldb-command:run
 
-// lldb-command:print *stack_val_ref
-// lldbg-check:[...]$0 = { x = 10 y = 23.5 }
+// lldb-command:v *stack_val_ref
+// lldbg-check:[...] { x = 10 y = 23.5 }
 // lldbr-check:(borrowed_struct::SomeStruct) *stack_val_ref = (x = 10, y = 23.5)
 
-// lldb-command:print *stack_val_interior_ref_1
-// lldbg-check:[...]$1 = 10
+// lldb-command:v *stack_val_interior_ref_1
+// lldbg-check:[...] 10
 // lldbr-check:(isize) *stack_val_interior_ref_1 = 10
 
-// lldb-command:print *stack_val_interior_ref_2
-// lldbg-check:[...]$2 = 23.5
+// lldb-command:v *stack_val_interior_ref_2
+// lldbg-check:[...] 23.5
 // lldbr-check:(f64) *stack_val_interior_ref_2 = 23.5
 
-// lldb-command:print *ref_to_unnamed
-// lldbg-check:[...]$3 = { x = 11 y = 24.5 }
+// lldb-command:v *ref_to_unnamed
+// lldbg-check:[...] { x = 11 y = 24.5 }
 // lldbr-check:(borrowed_struct::SomeStruct) *ref_to_unnamed = (x = 11, y = 24.5)
 
-// lldb-command:print *unique_val_ref
-// lldbg-check:[...]$4 = { x = 13 y = 26.5 }
+// lldb-command:v *unique_val_ref
+// lldbg-check:[...] { x = 13 y = 26.5 }
 // lldbr-check:(borrowed_struct::SomeStruct) *unique_val_ref = (x = 13, y = 26.5)
 
-// lldb-command:print *unique_val_interior_ref_1
-// lldbg-check:[...]$5 = 13
+// lldb-command:v *unique_val_interior_ref_1
+// lldbg-check:[...] 13
 // lldbr-check:(isize) *unique_val_interior_ref_1 = 13
 
-// lldb-command:print *unique_val_interior_ref_2
-// lldbg-check:[...]$6 = 26.5
+// lldb-command:v *unique_val_interior_ref_2
+// lldbg-check:[...] 26.5
 // lldbr-check:(f64) *unique_val_interior_ref_2 = 26.5
 
 #![allow(unused_variables)]

@@ -10,6 +10,7 @@ impl<'a, 'b> A for () {
     type B = impl core::fmt::Debug;
 
     fn f(&self) -> Self::B {}
+    //~^ ERROR expected generic lifetime parameter
 }
 
 fn main() {}

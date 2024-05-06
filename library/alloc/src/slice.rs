@@ -33,8 +33,6 @@ use crate::vec::Vec;
 #[cfg(test)]
 mod tests;
 
-#[unstable(feature = "slice_range", issue = "76393")]
-pub use core::slice::range;
 #[unstable(feature = "array_chunks", issue = "74985")]
 pub use core::slice::ArrayChunks;
 #[unstable(feature = "array_chunks", issue = "74985")]
@@ -51,6 +49,8 @@ pub use core::slice::{from_mut, from_ref};
 pub use core::slice::{from_mut_ptr_range, from_ptr_range};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::slice::{from_raw_parts, from_raw_parts_mut};
+#[unstable(feature = "slice_range", issue = "76393")]
+pub use core::slice::{range, try_range};
 #[stable(feature = "slice_group_by", since = "1.77.0")]
 pub use core::slice::{ChunkBy, ChunkByMut};
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -511,9 +511,9 @@ impl<T> [T] {
             while m > 0 {
                 // `buf.extend(buf)`:
                 unsafe {
-                    ptr::copy_nonoverlapping(
+                    ptr::copy_nonoverlapping::<T>(
                         buf.as_ptr(),
-                        (buf.as_mut_ptr() as *mut T).add(buf.len()),
+                        (buf.as_mut_ptr()).add(buf.len()),
                         buf.len(),
                     );
                     // `buf` has capacity of `self.len() * n`.
@@ -532,9 +532,9 @@ impl<T> [T] {
             // `buf.extend(buf[0 .. rem_len])`:
             unsafe {
                 // This is non-overlapping since `2^expn > rem`.
-                ptr::copy_nonoverlapping(
+                ptr::copy_nonoverlapping::<T>(
                     buf.as_ptr(),
-                    (buf.as_mut_ptr() as *mut T).add(buf.len()),
+                    (buf.as_mut_ptr()).add(buf.len()),
                     rem_len,
                 );
                 // `buf.len() + rem_len` equals to `buf.capacity()` (`= self.len() * n`).

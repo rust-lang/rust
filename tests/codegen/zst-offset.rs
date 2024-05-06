@@ -13,7 +13,7 @@ pub fn helper(_: usize) {
 // CHECK-LABEL: @scalar_layout
 #[no_mangle]
 pub fn scalar_layout(s: &(u64, ())) {
-// CHECK: getelementptr i8, {{.+}}, [[USIZE]] 8
+// CHECK: getelementptr inbounds i8, {{.+}}, [[USIZE]] 8
     let x = &s.1;
     witness(&x); // keep variable in an alloca
 }
@@ -22,7 +22,7 @@ pub fn scalar_layout(s: &(u64, ())) {
 // CHECK-LABEL: @scalarpair_layout
 #[no_mangle]
 pub fn scalarpair_layout(s: &(u64, u32, ())) {
-// CHECK: getelementptr i8, {{.+}}, [[USIZE]] 12
+// CHECK: getelementptr inbounds i8, {{.+}}, [[USIZE]] 12
     let x = &s.2;
     witness(&x); // keep variable in an alloca
 }
@@ -34,7 +34,7 @@ pub struct U64x4(u64, u64, u64, u64);
 // CHECK-LABEL: @vector_layout
 #[no_mangle]
 pub fn vector_layout(s: &(U64x4, ())) {
-// CHECK: getelementptr i8, {{.+}}, [[USIZE]] 32
+// CHECK: getelementptr inbounds i8, {{.+}}, [[USIZE]] 32
     let x = &s.1;
     witness(&x); // keep variable in an alloca
 }

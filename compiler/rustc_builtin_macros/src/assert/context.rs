@@ -245,7 +245,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
             ExprKind::Let(_, local_expr, _, _) => {
                 self.manage_cond_expr(local_expr);
             }
-            ExprKind::Match(local_expr, _) => {
+            ExprKind::Match(local_expr, ..) => {
                 self.manage_cond_expr(local_expr);
             }
             ExprKind::MethodCall(call) => {

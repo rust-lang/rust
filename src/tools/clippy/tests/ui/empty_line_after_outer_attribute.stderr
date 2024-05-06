@@ -22,8 +22,7 @@ error: found an empty line after an outer attribute. Perhaps you forgot to add a
   --> tests/ui/empty_line_after_outer_attribute.rs:28:1
    |
 LL | / #[crate_type = "lib"]
-LL | |
-LL | |
+...  |
 LL | | fn with_two_newlines() { assert!(true) }
    | |_
 

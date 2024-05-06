@@ -1,7 +1,10 @@
 use std::ffi::{OsStr, OsString};
-use std::path::PathBuf;
+use std::ops::Range;
+use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
+use std::thread;
 
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 use dunce::canonicalize;
 use path_macro::path;
 use xshell::{cmd, Shell};
@@ -144,5 +147,99 @@ impl MiriEnv {
         )
         .run()?;
         Ok(())
+    }
+
+    /// Receives an iterator of files.
+    /// Will format each file with the miri rustfmt config.
+    /// Does not recursively format modules.
+    pub fn format_files(
+        &self,
+        files: impl Iterator<Item = Result<PathBuf, walkdir::Error>>,
+        toolchain: &str,
+        config_path: &Path,
+        flags: &[OsString],
+    ) -> anyhow::Result<()> {
+        use itertools::Itertools;
+
+        let mut first = true;
+
+        // Format in batches as not all our files fit into Windows' command argument limit.
+        for batch in &files.chunks(256) {
+            // Build base command.
+            let mut cmd = cmd!(
+                self.sh,
+                "rustfmt +{toolchain} --edition=2021 --config-path {config_path} --unstable-features --skip-children {flags...}"
+            );
+            if first {
+                // Log an abbreviating command, and only once.
+                eprintln!("$ {cmd} ...");
+                first = false;
+            }
+            // Add files.
+            for file in batch {
+                // Make it a relative path so that on platforms with extremely tight argument
+                // limits (like Windows), we become immune to someone cloning the repo
+                // 50 directories deep.
+                let file = file?;
+                let file = file.strip_prefix(&self.miri_dir)?;
+                cmd = cmd.arg(file);
+            }
+
+            // Run rustfmt.
+            // We want our own error message, repeating the command is too much.
+            cmd.quiet().run().map_err(|_| anyhow!("`rustfmt` failed"))?;
+        }
+
+        Ok(())
+    }
+
+    /// Run the given closure many times in parallel with access to the shell, once for each value in the `range`.
+    pub fn run_many_times(
+        &self,
+        range: Range<u32>,
+        run: impl Fn(&Shell, u32) -> Result<()> + Sync,
+    ) -> Result<()> {
+        // `next` is atomic so threads can concurrently fetch their next value to run.
+        let next = AtomicU32::new(range.start);
+        let end = range.end; // exclusive!
+        let failed = AtomicBool::new(false);
+        thread::scope(|s| {
+            let mut handles = Vec::new();
+            // Spawn one worker per core.
+            for _ in 0..thread::available_parallelism()?.get() {
+                // Create a copy of the shell for this thread.
+                let local_shell = self.sh.clone();
+                let handle = s.spawn(|| -> Result<()> {
+                    let local_shell = local_shell; // move the copy into this thread.
+                    // Each worker thread keeps asking for numbers until we're all done.
+                    loop {
+                        let cur = next.fetch_add(1, Ordering::Relaxed);
+                        if cur >= end {
+                            // We hit the upper limit and are done.
+                            break;
+                        }
+                        // Run the command with this seed.
+                        run(&local_shell, cur).map_err(|err| {
+                            // If we failed, tell everyone about this.
+                            failed.store(true, Ordering::Relaxed);
+                            err
+                        })?;
+                        // Check if some other command failed (in which case we'll stop as well).
+                        if failed.load(Ordering::Relaxed) {
+                            return Ok(());
+                        }
+                    }
+                    Ok(())
+                });
+                handles.push(handle);
+            }
+            // Wait for all workers to be done.
+            for handle in handles {
+                handle.join().unwrap()?;
+            }
+            // If all workers succeeded, we can't have failed.
+            assert!(!failed.load(Ordering::Relaxed));
+            Ok(())
+        })
     }
 }

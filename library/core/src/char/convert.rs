@@ -1,12 +1,11 @@
 //! Character conversions.
 
 use crate::char::TryFromCharError;
-use crate::convert::TryFrom;
 use crate::error::Error;
 use crate::fmt;
-use crate::intrinsics::assert_unsafe_precondition;
 use crate::mem::transmute;
 use crate::str::FromStr;
+use crate::ub_checks::assert_unsafe_precondition;
 
 /// Converts a `u32` to a `char`. See [`char::from_u32`].
 #[must_use]
@@ -26,6 +25,7 @@ pub(super) const unsafe fn from_u32_unchecked(i: u32) -> char {
     // SAFETY: the caller must guarantee that `i` is a valid char value.
     unsafe {
         assert_unsafe_precondition!(
+            check_language_ub,
             "invalid value for `char`",
             (i: u32 = i) => char_try_from_u32(i).is_ok()
         );

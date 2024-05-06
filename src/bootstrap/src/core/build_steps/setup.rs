@@ -1,3 +1,10 @@
+//! First time setup of a dev environment
+//!
+//! These are build-and-run steps for `./x.py setup`, which allows quickly setting up the directory
+//! for modifying, building, and running the compiler and library. Running arbitrary configuration
+//! allows setting up things that cannot be simply captured inside the config.toml, in addition to
+//! leading people away from manually editing most of the config.toml values.
+
 use crate::core::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::t;
 use crate::utils::change_tracker::CONFIG_CHANGE_HISTORY;
@@ -25,6 +32,8 @@ pub enum Profile {
     None,
 }
 
+static PROFILE_DIR: &str = "src/bootstrap/defaults";
+
 /// A list of historical hashes of `src/etc/rust_analyzer_settings.json`.
 /// New entries should be appended whenever this is updated so we can detect
 /// outdated vs. user-modified settings files.
@@ -41,7 +50,7 @@ static RUST_ANALYZER_SETTINGS: &str = include_str!("../../../../etc/rust_analyze
 
 impl Profile {
     fn include_path(&self, src_path: &Path) -> PathBuf {
-        PathBuf::from(format!("{}/src/bootstrap/defaults/config.{}.toml", src_path.display(), self))
+        PathBuf::from(format!("{}/{PROFILE_DIR}/config.{}.toml", src_path.display(), self))
     }
 
     pub fn all() -> impl Iterator<Item = Self> {
@@ -93,10 +102,9 @@ impl FromStr for Profile {
                 Ok(Profile::Tools)
             }
             "none" => Ok(Profile::None),
-            "llvm" | "codegen" => Err(format!(
-                "the \"llvm\" and \"codegen\" profiles have been removed,\
+            "llvm" | "codegen" => Err("the \"llvm\" and \"codegen\" profiles have been removed,\
                 use \"compiler\" instead which has the same functionality"
-            )),
+                .to_string()),
             _ => Err(format!("unknown profile: '{s}'")),
         }
     }
@@ -221,7 +229,7 @@ fn setup_config_toml(path: &PathBuf, profile: Profile, config: &Config) {
 
     let latest_change_id = CONFIG_CHANGE_HISTORY.last().unwrap().change_id;
     let settings = format!(
-        "# Includes one of the default files in src/bootstrap/defaults\n\
+        "# Includes one of the default files in {PROFILE_DIR}\n\
     profile = \"{profile}\"\n\
     change-id = {latest_change_id}\n"
     );
@@ -474,10 +482,10 @@ impl Step for Hook {
 
 // install a git hook to automatically run tidy, if they want
 fn install_git_hook_maybe(config: &Config) -> io::Result<()> {
-    let git = t!(config.git().args(["rev-parse", "--git-common-dir"]).output().map(|output| {
+    let git = config.git().args(["rev-parse", "--git-common-dir"]).output().map(|output| {
         assert!(output.status.success(), "failed to run `git`");
         PathBuf::from(t!(String::from_utf8(output.stdout)).trim())
-    }));
+    })?;
     let hooks_dir = git.join("hooks");
     let dst = hooks_dir.join("pre-push");
     if dst.exists() {

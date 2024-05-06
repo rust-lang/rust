@@ -74,6 +74,10 @@ pub(super) fn hints(
                     Ok(s) => s.value.text_range(),
                     Err(_) => continue,
                 },
+                MirSpan::SelfParam => match source_map.self_param_syntax() {
+                    Some(s) => s.value.text_range(),
+                    None => continue,
+                },
                 MirSpan::Unknown => continue,
             };
             let binding = &hir.bindings[*binding];
@@ -101,7 +105,6 @@ pub(super) fn hints(
                 pad_left: true,
                 pad_right: true,
                 kind: InlayKind::Drop,
-                needs_resolve: label.needs_resolve(),
                 label,
                 text_edit: None,
             })

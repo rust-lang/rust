@@ -9,7 +9,6 @@ use crate::{
     db::ExpandDatabase,
     hygiene::{marks_rev, SyntaxContextExt, Transparency},
     name::{known, AsName, Name},
-    span_map::SpanMapRef,
     tt,
 };
 use base_db::CrateId;
@@ -49,9 +48,9 @@ impl ModPath {
     pub fn from_src(
         db: &dyn ExpandDatabase,
         path: ast::Path,
-        span_map: SpanMapRef<'_>,
+        span_for_range: &mut dyn FnMut(::tt::TextRange) -> SyntaxContextId,
     ) -> Option<ModPath> {
-        convert_path(db, path, span_map)
+        convert_path(db, path, span_for_range)
     }
 
     pub fn from_tt(db: &dyn ExpandDatabase, tt: &[tt::TokenTree]) -> Option<ModPath> {
@@ -144,6 +143,12 @@ impl ModPath {
     }
 }
 
+impl Extend<Name> for ModPath {
+    fn extend<T: IntoIterator<Item = Name>>(&mut self, iter: T) {
+        self.segments.extend(iter);
+    }
+}
+
 struct Display<'a> {
     db: &'a dyn ExpandDatabase,
     path: &'a ModPath,
@@ -215,21 +220,38 @@ fn display_fmt_path(
 fn convert_path(
     db: &dyn ExpandDatabase,
     path: ast::Path,
-    span_map: SpanMapRef<'_>,
+    span_for_range: &mut dyn FnMut(::tt::TextRange) -> SyntaxContextId,
 ) -> Option<ModPath> {
     let mut segments = path.segments();
 
     let segment = &segments.next()?;
+    let handle_super_kw = &mut |init_deg| {
+        let mut deg = init_deg;
+        let mut next_segment = None;
+        for segment in segments.by_ref() {
+            match segment.kind()? {
+                ast::PathSegmentKind::SuperKw => deg += 1,
+                ast::PathSegmentKind::Name(name) => {
+                    next_segment = Some(name.as_name());
+                    break;
+                }
+                ast::PathSegmentKind::Type { .. }
+                | ast::PathSegmentKind::SelfTypeKw
+                | ast::PathSegmentKind::SelfKw
+                | ast::PathSegmentKind::CrateKw => return None,
+            }
+        }
+
+        Some(ModPath::from_segments(PathKind::Super(deg), next_segment))
+    };
+
     let mut mod_path = match segment.kind()? {
         ast::PathSegmentKind::Name(name_ref) => {
             if name_ref.text() == "$crate" {
                 ModPath::from_kind(
-                    resolve_crate_root(
-                        db,
-                        span_map.span_for_range(name_ref.syntax().text_range()).ctx,
-                    )
-                    .map(PathKind::DollarCrate)
-                    .unwrap_or(PathKind::Crate),
+                    resolve_crate_root(db, span_for_range(name_ref.syntax().text_range()))
+                        .map(PathKind::DollarCrate)
+                        .unwrap_or(PathKind::Crate),
                 )
             } else {
                 let mut res = ModPath::from_kind(
@@ -243,26 +265,8 @@ fn convert_path(
             ModPath::from_segments(PathKind::Plain, Some(known::SELF_TYPE))
         }
         ast::PathSegmentKind::CrateKw => ModPath::from_segments(PathKind::Crate, iter::empty()),
-        ast::PathSegmentKind::SelfKw => ModPath::from_segments(PathKind::Super(0), iter::empty()),
-        ast::PathSegmentKind::SuperKw => {
-            let mut deg = 1;
-            let mut next_segment = None;
-            for segment in segments.by_ref() {
-                match segment.kind()? {
-                    ast::PathSegmentKind::SuperKw => deg += 1,
-                    ast::PathSegmentKind::Name(name) => {
-                        next_segment = Some(name.as_name());
-                        break;
-                    }
-                    ast::PathSegmentKind::Type { .. }
-                    | ast::PathSegmentKind::SelfTypeKw
-                    | ast::PathSegmentKind::SelfKw
-                    | ast::PathSegmentKind::CrateKw => return None,
-                }
-            }
-
-            ModPath::from_segments(PathKind::Super(deg), next_segment)
-        }
+        ast::PathSegmentKind::SelfKw => handle_super_kw(0)?,
+        ast::PathSegmentKind::SuperKw => handle_super_kw(1)?,
         ast::PathSegmentKind::Type { .. } => {
             // not allowed in imports
             return None;
@@ -283,7 +287,7 @@ fn convert_path(
     // We follow what it did anyway :)
     if mod_path.segments.len() == 1 && mod_path.kind == PathKind::Plain {
         if let Some(_macro_call) = path.syntax().parent().and_then(ast::MacroCall::cast) {
-            let syn_ctx = span_map.span_for_range(segment.syntax().text_range()).ctx;
+            let syn_ctx = span_for_range(segment.syntax().text_range());
             if let Some(macro_call_id) = db.lookup_intern_syntax_context(syn_ctx).outer_expn {
                 if db.lookup_intern_macro_call(macro_call_id).def.local_inner {
                     mod_path.kind = match resolve_crate_root(db, syn_ctx) {

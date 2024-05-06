@@ -12,6 +12,9 @@
 //@ revisions: aarch64_uwp_windows_msvc
 //@ [aarch64_uwp_windows_msvc] compile-flags: --target aarch64-uwp-windows-msvc
 //@ [aarch64_uwp_windows_msvc] needs-llvm-components: aarch64
+//@ revisions: arm64ec_pc_windows_msvc
+//@ [arm64ec_pc_windows_msvc] compile-flags: --target arm64ec-pc-windows-msvc
+//@ [arm64ec_pc_windows_msvc] needs-llvm-components: aarch64
 //@ revisions: avr_unknown_gnu_atmega328
 //@ [avr_unknown_gnu_atmega328] compile-flags: --target avr-unknown-gnu-atmega328
 //@ [avr_unknown_gnu_atmega328] needs-llvm-components: avr

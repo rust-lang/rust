@@ -250,7 +250,7 @@ declare_clippy_lint! {
     ///
     /// ### Why is this bad?
     /// A `Result` is at least as large as the `Err`-variant. While we
-    /// expect that variant to be seldomly used, the compiler needs to reserve
+    /// expect that variant to be seldom used, the compiler needs to reserve
     /// and move that much memory every single time.
     /// Furthermore, errors are often simply passed up the call-stack, making
     /// use of the `?`-operator and its type-conversion mechanics. If the

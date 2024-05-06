@@ -65,7 +65,7 @@ pub(super) fn apply_mark(
         return apply_mark_internal(db, ctxt, call_id, transparency);
     }
 
-    let call_site_ctxt = db.lookup_intern_macro_call(call_id).call_site.ctx;
+    let call_site_ctxt = db.lookup_intern_macro_call(call_id).ctxt;
     let mut call_site_ctxt = if transparency == Transparency::SemiTransparent {
         call_site_ctxt.normalize_to_macros_2_0(db)
     } else {
@@ -205,11 +205,10 @@ pub(crate) fn dump_syntax_contexts(db: &dyn ExpandDatabase) -> String {
         let id = e.key;
         let expn_data = e.value.as_ref().unwrap();
         s.push_str(&format!(
-            "\n{:?}: parent: {:?}, call_site_ctxt: {:?}, def_site_ctxt: {:?}, kind: {:?}",
+            "\n{:?}: parent: {:?}, call_site_ctxt: {:?}, kind: {:?}",
             id,
             expn_data.kind.file_id(),
-            expn_data.call_site,
-            SyntaxContextId::ROOT, // FIXME expn_data.def_site,
+            expn_data.ctxt,
             expn_data.kind.descr(),
         ));
     }

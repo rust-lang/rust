@@ -86,7 +86,6 @@ use crate::errors;
 use self::LiveNodeKind::*;
 use self::VarKind::*;
 
-use rustc_ast::InlineAsmOptions;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir as hir;
 use rustc_hir::def::*;
@@ -95,6 +94,7 @@ use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{Expr, HirId, HirIdMap, HirIdSet};
 use rustc_index::IndexVec;
 use rustc_middle::query::Providers;
+use rustc_middle::span_bug;
 use rustc_middle::ty::{self, RootVariableMinCaptureList, Ty, TyCtxt};
 use rustc_session::lint;
 use rustc_span::symbol::{kw, sym, Symbol};
@@ -343,7 +343,7 @@ impl<'tcx> IrMaps<'tcx> {
 }
 
 impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
-    fn visit_local(&mut self, local: &'tcx hir::Local<'tcx>) {
+    fn visit_local(&mut self, local: &'tcx hir::LetStmt<'tcx>) {
         self.add_from_pat(local.pat);
         if local.els.is_some() {
             self.add_live_node_for_node(local.hir_id, ExprNode(local.span, local.hir_id));
@@ -414,6 +414,12 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
             }
             hir::ExprKind::Binary(op, ..) if op.node.is_lazy() => {
                 self.add_live_node_for_node(expr.hir_id, ExprNode(expr.span, expr.hir_id));
+            }
+
+            // Inline assembly may contain labels.
+            hir::ExprKind::InlineAsm(asm) if asm.contains_label() => {
+                self.add_live_node_for_node(expr.hir_id, ExprNode(expr.span, expr.hir_id));
+                intravisit::walk_expr(self, expr);
             }
 
             // otherwise, live nodes are not required:
@@ -597,7 +603,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         String::from_utf8(wr).unwrap()
     }
 
-    fn log_liveness(&self, entry_ln: LiveNode, hir_id: hir::HirId) {
+    fn log_liveness(&self, entry_ln: LiveNode, hir_id: HirId) {
         // hack to skip the loop unless debug! is enabled:
         debug!(
             "^^ liveness computation results for body {} (entry={:?})",
@@ -766,7 +772,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
     fn propagate_through_stmt(&mut self, stmt: &hir::Stmt<'_>, succ: LiveNode) -> LiveNode {
         match stmt.kind {
-            hir::StmtKind::Local(local) => {
+            hir::StmtKind::Let(local) => {
                 // Note: we mark the variable as defined regardless of whether
                 // there is an initializer. Initially I had thought to only mark
                 // the live variable as defined if it was initialized, and then we
@@ -1045,20 +1051,53 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             | hir::ExprKind::Repeat(ref e, _) => self.propagate_through_expr(e, succ),
 
             hir::ExprKind::InlineAsm(asm) => {
-                // Handle non-returning asm
-                let mut succ = if asm.options.contains(InlineAsmOptions::NORETURN) {
-                    self.exit_ln
-                } else {
-                    succ
-                };
+                //
+                //     (inputs)
+                //        |
+                //        v
+                //     (outputs)
+                //    /         \
+                //    |         |
+                //    v         v
+                // (labels)(fallthrough)
+                //    |         |
+                //    v         v
+                // ( succ / exit_ln )
 
-                // Do a first pass for writing outputs only
+                // Handle non-returning asm
+                let mut succ =
+                    if self.typeck_results.expr_ty(expr).is_never() { self.exit_ln } else { succ };
+
+                // Do a first pass for labels only
+                if asm.contains_label() {
+                    let ln = self.live_node(expr.hir_id, expr.span);
+                    self.init_from_succ(ln, succ);
+                    for (op, _op_sp) in asm.operands.iter().rev() {
+                        match op {
+                            hir::InlineAsmOperand::Label { block } => {
+                                let label_ln = self.propagate_through_block(block, succ);
+                                self.merge_from_succ(ln, label_ln);
+                            }
+                            hir::InlineAsmOperand::In { .. }
+                            | hir::InlineAsmOperand::Out { .. }
+                            | hir::InlineAsmOperand::InOut { .. }
+                            | hir::InlineAsmOperand::SplitInOut { .. }
+                            | hir::InlineAsmOperand::Const { .. }
+                            | hir::InlineAsmOperand::SymFn { .. }
+                            | hir::InlineAsmOperand::SymStatic { .. } => {}
+                        }
+                    }
+                    succ = ln;
+                }
+
+                // Do a second pass for writing outputs only
                 for (op, _op_sp) in asm.operands.iter().rev() {
                     match op {
                         hir::InlineAsmOperand::In { .. }
                         | hir::InlineAsmOperand::Const { .. }
                         | hir::InlineAsmOperand::SymFn { .. }
-                        | hir::InlineAsmOperand::SymStatic { .. } => {}
+                        | hir::InlineAsmOperand::SymStatic { .. }
+                        | hir::InlineAsmOperand::Label { .. } => {}
                         hir::InlineAsmOperand::Out { expr, .. } => {
                             if let Some(expr) = expr {
                                 succ = self.write_place(expr, succ, ACC_WRITE);
@@ -1075,7 +1114,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                     }
                 }
 
-                // Then do a second pass for inputs
+                // Then do a third pass for inputs
                 for (op, _op_sp) in asm.operands.iter().rev() {
                     match op {
                         hir::InlineAsmOperand::In { expr, .. } => {
@@ -1097,7 +1136,8 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                         }
                         hir::InlineAsmOperand::Const { .. }
                         | hir::InlineAsmOperand::SymFn { .. }
-                        | hir::InlineAsmOperand::SymStatic { .. } => {}
+                        | hir::InlineAsmOperand::SymStatic { .. }
+                        | hir::InlineAsmOperand::Label { .. } => {}
                     }
                 }
                 succ
@@ -1311,7 +1351,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 // Checking for error conditions
 
 impl<'a, 'tcx> Visitor<'tcx> for Liveness<'a, 'tcx> {
-    fn visit_local(&mut self, local: &'tcx hir::Local<'tcx>) {
+    fn visit_local(&mut self, local: &'tcx hir::LetStmt<'tcx>) {
         self.check_unused_vars_in_pat(local.pat, None, None, |spans, hir_id, ln, var| {
             if local.init.is_some() {
                 self.warn_about_dead_assign(spans, hir_id, ln, var);

@@ -10,7 +10,7 @@ LL |     trader.set_closure(closure);
    |            required by a bound introduced by this call
    |
    = note: expected closure signature `for<'a, 'b> fn(&'a mut Trader<'b>) -> _`
-              found closure signature `for<'a> fn(Trader<'a>) -> _`
+              found closure signature `fn(Trader<'_>) -> _`
 note: required by a bound in `Trader::<'a>::set_closure`
   --> $DIR/late-bound-in-borrow-closure-sugg.rs:15:50
    |

@@ -9,13 +9,13 @@ pub unsafe fn create(_dtor: Option<unsafe extern "C" fn(*mut u8)>) -> Key {
 
 #[inline]
 pub unsafe fn set(key: Key, value: *mut u8) {
-    let key: *mut *mut u8 = core::ptr::from_exposed_addr_mut(key);
+    let key: *mut *mut u8 = core::ptr::with_exposed_provenance_mut(key);
     *key = value;
 }
 
 #[inline]
 pub unsafe fn get(key: Key) -> *mut u8 {
-    let key: *mut *mut u8 = core::ptr::from_exposed_addr_mut(key);
+    let key: *mut *mut u8 = core::ptr::with_exposed_provenance_mut(key);
     *key
 }
 

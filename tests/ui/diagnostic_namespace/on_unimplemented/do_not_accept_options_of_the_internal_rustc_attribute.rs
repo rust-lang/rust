@@ -1,5 +1,3 @@
-#![feature(diagnostic_namespace)]
-
 #[diagnostic::on_unimplemented(
     on(_Self = "&str"),
     //~^WARN malformed `on_unimplemented` attribute

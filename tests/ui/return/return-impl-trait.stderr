@@ -12,6 +12,7 @@ LL |     ()
    |
    = note: expected type parameter `T`
                    found unit type `()`
+   = note: the caller chooses a type for `T` which can be different from `()`
 
 error[E0308]: mismatched types
   --> $DIR/return-impl-trait.rs:23:5
@@ -28,6 +29,7 @@ LL |     ()
    |
    = note: expected type parameter `T`
                    found unit type `()`
+   = note: the caller chooses a type for `T` which can be different from `()`
 
 error: aborting due to 2 previous errors
 

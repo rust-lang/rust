@@ -13,7 +13,6 @@ use rustc_hir::{
 use rustc_hir_typeck::expr_use_visitor as euv;
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::hir::map::associated_body;
 use rustc_middle::mir::FakeReadCause;
 use rustc_middle::ty::{self, Ty, TyCtxt, UpvarId, UpvarPath};
 use rustc_session::impl_lint_pass;
@@ -84,7 +83,9 @@ fn should_skip<'tcx>(
     }
 
     if is_self(arg) {
-        return true;
+        // Interestingly enough, `self` arguments make `is_from_proc_macro` return `true`, hence why
+        // we return early here.
+        return false;
     }
 
     if let PatKind::Binding(.., name, _) = arg.pat.kind {
@@ -114,8 +115,8 @@ fn check_closures<'tcx>(
         ctx.prev_move_to_closure.clear();
         if let Some(body) = cx
             .tcx
-            .opt_hir_node_by_def_id(closure)
-            .and_then(associated_body)
+            .hir_node_by_def_id(closure)
+            .associated_body()
             .map(|(_, body_id)| hir.body(body_id))
         {
             euv::ExprUseVisitor::new(ctx, infcx, closure, cx.param_env, cx.typeck_results()).consume_body(body);
@@ -186,7 +187,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByRefMut<'tcx> {
         }
         // Collect variables mutably used and spans which will need dereferencings from the
         // function body.
-        let MutablyUsedVariablesCtxt { mutably_used_vars, .. } = {
+        let mutably_used_vars = {
             let mut ctx = MutablyUsedVariablesCtxt {
                 mutably_used_vars: HirIdSet::default(),
                 prev_bind: None,
@@ -218,7 +219,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByRefMut<'tcx> {
                     check_closures(&mut ctx, cx, &infcx, &mut checked_closures, async_closures);
                 }
             }
-            ctx
+            ctx.generate_mutably_used_ids_from_aliases()
         };
         for ((&input, &_), arg) in it {
             // Only take `&mut` arguments.
@@ -310,12 +311,22 @@ struct MutablyUsedVariablesCtxt<'tcx> {
 }
 
 impl<'tcx> MutablyUsedVariablesCtxt<'tcx> {
-    fn add_mutably_used_var(&mut self, mut used_id: HirId) {
-        while let Some(id) = self.aliases.get(&used_id) {
-            self.mutably_used_vars.insert(used_id);
-            used_id = *id;
-        }
+    fn add_mutably_used_var(&mut self, used_id: HirId) {
         self.mutably_used_vars.insert(used_id);
+    }
+
+    // Because the alias may come after the mutable use of a variable, we need to fill the map at
+    // the end.
+    fn generate_mutably_used_ids_from_aliases(mut self) -> HirIdSet {
+        let all_ids = self.mutably_used_vars.iter().copied().collect::<Vec<_>>();
+        for mut used_id in all_ids {
+            while let Some(id) = self.aliases.get(&used_id) {
+                self.mutably_used_vars.insert(used_id);
+                used_id = *id;
+            }
+            self.mutably_used_vars.insert(used_id);
+        }
+        self.mutably_used_vars
     }
 
     fn would_be_alias_cycle(&self, alias: HirId, mut target: HirId) -> bool {

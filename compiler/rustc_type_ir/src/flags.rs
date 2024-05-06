@@ -1,4 +1,4 @@
-bitflags! {
+bitflags::bitflags! {
     /// Flags that we track on types. These flags are propagated upwards
     /// through the type during type construction, so that we can quickly check
     /// whether the type has various kinds of types in it without recursing
@@ -78,14 +78,16 @@ bitflags! {
         /// Does this have `ConstKind::Unevaluated`?
         const HAS_CT_PROJECTION           = 1 << 14;
 
-        /// Could this type be normalized further?
-        const HAS_PROJECTION              = TypeFlags::HAS_TY_PROJECTION.bits()
+        /// Does this have `Alias` or `ConstKind::Unevaluated`?
+        ///
+        /// Rephrased, could this term be normalized further?
+        const HAS_ALIASES              = TypeFlags::HAS_TY_PROJECTION.bits()
                                           | TypeFlags::HAS_TY_WEAK.bits()
                                           | TypeFlags::HAS_TY_OPAQUE.bits()
                                           | TypeFlags::HAS_TY_INHERENT.bits()
                                           | TypeFlags::HAS_CT_PROJECTION.bits();
 
-        /// Is an error type/const reachable?
+        /// Is an error type/lifetime/const reachable?
         const HAS_ERROR                   = 1 << 15;
 
         /// Does this have any region that "appears free" in the type?

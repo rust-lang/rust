@@ -69,7 +69,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         // FIXME: Does this need extra logic to handle let-chains?
                         let source_info = if this.is_let(cond) {
                             let variable_scope =
-                                this.new_source_scope(then_span, LintLevel::Inherited, None);
+                                this.new_source_scope(then_span, LintLevel::Inherited);
                             this.source_scope = variable_scope;
                             SourceInfo { span: then_span, scope: variable_scope }
                         } else {
@@ -83,7 +83,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                     block,
                                     cond,
                                     Some(condition_scope), // Temp scope
-                                    condition_scope,
                                     source_info,
                                     true, // Declare `let` bindings normally
                                 ));
@@ -156,7 +155,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             block,
                             lhs,
                             Some(condition_scope), // Temp scope
-                            condition_scope,
                             source_info,
                             // This flag controls how inner `let` expressions are lowered,
                             // but either way there shouldn't be any of those in here.
@@ -385,6 +383,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 line_spans,
             }) => {
                 use rustc_middle::{mir, thir};
+
+                let destination_block = this.cfg.start_new_block();
+                let mut targets = if options.contains(InlineAsmOptions::NORETURN) {
+                    vec![]
+                } else {
+                    vec![destination_block]
+                };
+
                 let operands = operands
                     .into_iter()
                     .map(|op| match *op {
@@ -440,14 +446,28 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         thir::InlineAsmOperand::SymStatic { def_id } => {
                             mir::InlineAsmOperand::SymStatic { def_id }
                         }
+                        thir::InlineAsmOperand::Label { block } => {
+                            let target = this.cfg.start_new_block();
+                            let target_index = targets.len();
+                            targets.push(target);
+
+                            let tmp = this.get_unit_temp();
+                            let target = unpack!(this.ast_block(tmp, target, block, source_info));
+                            this.cfg.terminate(
+                                target,
+                                source_info,
+                                TerminatorKind::Goto { target: destination_block },
+                            );
+
+                            mir::InlineAsmOperand::Label { target_index }
+                        }
                     })
                     .collect();
 
-                if !options.contains(InlineAsmOptions::NORETURN) {
+                if !expr.ty.is_never() {
                     this.cfg.push_assign_unit(block, source_info, destination, this.tcx);
                 }
 
-                let destination_block = this.cfg.start_new_block();
                 this.cfg.terminate(
                     block,
                     source_info,
@@ -456,11 +476,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         operands,
                         options,
                         line_spans,
-                        destination: if options.contains(InlineAsmOptions::NORETURN) {
-                            None
-                        } else {
-                            Some(destination_block)
-                        },
+                        targets,
                         unwind: if options.contains(InlineAsmOptions::MAY_UNWIND) {
                             UnwindAction::Continue
                         } else {

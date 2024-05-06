@@ -3,7 +3,6 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
 #![feature(rustdoc_internals)]
-#![feature(generic_nonzero)]
 #![feature(min_specialization)]
 #![feature(rustc_attrs)]
 #![allow(rustc::potential_query_instability, unused_parens)]
@@ -13,6 +12,7 @@
 extern crate rustc_middle;
 
 use crate::plumbing::{__rust_begin_short_backtrace, encode_all_query_results, try_mark_green};
+use crate::profiling_support::QueryKeyStringCache;
 use field_offset::offset_of;
 use rustc_data_structures::stable_hasher::HashStable;
 use rustc_data_structures::sync::AtomicU64;
@@ -21,9 +21,7 @@ use rustc_middle::dep_graph::DepNodeIndex;
 use rustc_middle::dep_graph::{self, DepKind, DepKindStruct};
 use rustc_middle::query::erase::{erase, restore, Erase};
 use rustc_middle::query::on_disk_cache::{CacheEncoder, EncodedDepNodeIndex, OnDiskCache};
-use rustc_middle::query::plumbing::{
-    DynamicQuery, QueryKeyStringCache, QuerySystem, QuerySystemFns,
-};
+use rustc_middle::query::plumbing::{DynamicQuery, QuerySystem, QuerySystemFns};
 use rustc_middle::query::AsLocalKey;
 use rustc_middle::query::{
     queries, DynamicQueries, ExternProviders, Providers, QueryCaches, QueryEngine, QueryStates,
@@ -41,7 +39,7 @@ use rustc_span::{ErrorGuaranteed, Span};
 
 #[macro_use]
 mod plumbing;
-pub use crate::plumbing::QueryCtxt;
+pub use crate::plumbing::{query_key_hash_verify_all, QueryCtxt};
 
 mod profiling_support;
 pub use self::profiling_support::alloc_self_profile_query_strings;

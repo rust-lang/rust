@@ -1,7 +1,7 @@
 //! Helper routines for higher-ranked things. See the `doc` module at
 //! the end of the file for details.
 
-use crate::infer::CombinedSnapshot;
+use crate::infer::snapshot::CombinedSnapshot;
 use crate::infer::InferCtxt;
 use rustc_middle::ty::fold::FnMutDelegate;
 use rustc_middle::ty::relate::RelateResult;
@@ -77,7 +77,7 @@ impl<'tcx> InferCtxt<'tcx> {
         // that name placeholders created in this function. Nested goals from type relations can
         // also contain placeholders created by this function.
         let value = self.enter_forall_and_leak_universe(forall);
-        debug!("?value");
+        debug!(?value);
         f(value)
     }
 

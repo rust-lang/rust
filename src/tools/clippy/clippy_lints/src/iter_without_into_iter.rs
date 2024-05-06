@@ -182,7 +182,7 @@ impl LateLintPass<'_> for IterWithoutIntoIter {
                 cx,
                 INTO_ITER_WITHOUT_ITER,
                 item.span,
-                &format!("`IntoIterator` implemented for a reference type without an `{expected_method_name}` method"),
+                format!("`IntoIterator` implemented for a reference type without an `{expected_method_name}` method"),
                 |diag| {
                     // The suggestion forwards to the `IntoIterator` impl and uses a form of UFCS
                     // to avoid name ambiguities, as there might be an inherent into_iter method
@@ -216,8 +216,8 @@ impl {self_ty_without_ref} {{
     fn check_impl_item(&mut self, cx: &LateContext<'_>, item: &rustc_hir::ImplItem<'_>) {
         let item_did = item.owner_id.to_def_id();
         let (borrow_prefix, expected_implicit_self) = match item.ident.name {
-            sym::iter => ("&", ImplicitSelfKind::ImmRef),
-            sym::iter_mut => ("&mut ", ImplicitSelfKind::MutRef),
+            sym::iter => ("&", ImplicitSelfKind::RefImm),
+            sym::iter_mut => ("&mut ", ImplicitSelfKind::RefMut),
             _ => return,
         };
 
@@ -258,7 +258,7 @@ impl {self_ty_without_ref} {{
                 cx,
                 ITER_WITHOUT_INTO_ITER,
                 item.span,
-                &format!(
+                format!(
                     "`{}` method without an `IntoIterator` impl for `{self_ty_snippet}`",
                     item.ident
                 ),

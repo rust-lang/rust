@@ -1,7 +1,10 @@
 //! Completes environment variables defined by Cargo (https://doc.rust-lang.org/cargo/reference/environment-variables.html)
-use hir::Semantics;
-use ide_db::{syntax_helpers::node_ext::macro_call_for_string_token, RootDatabase};
-use syntax::ast::{self, IsString};
+use hir::MacroFileIdExt;
+use ide_db::syntax_helpers::node_ext::macro_call_for_string_token;
+use syntax::{
+    ast::{self, IsString},
+    AstToken,
+};
 
 use crate::{
     completions::Completions, context::CompletionContext, CompletionItem, CompletionItemKind,
@@ -32,10 +35,24 @@ const CARGO_DEFINED_VARS: &[(&str, &str)] = &[
 pub(crate) fn complete_cargo_env_vars(
     acc: &mut Completions,
     ctx: &CompletionContext<'_>,
+    original: &ast::String,
     expanded: &ast::String,
 ) -> Option<()> {
-    guard_env_macro(expanded, &ctx.sema)?;
-    let range = expanded.text_range_between_quotes()?;
+    let is_in_env_expansion = ctx
+        .sema
+        .hir_file_for(&expanded.syntax().parent()?)
+        .macro_file()
+        .map_or(false, |it| it.is_env_or_option_env(ctx.sema.db));
+    if !is_in_env_expansion {
+        let call = macro_call_for_string_token(expanded)?;
+        let makro = ctx.sema.resolve_macro_call(&call)?;
+        // We won't map into `option_env` as that generates `None` for non-existent env vars
+        // so fall back to this lookup
+        if !makro.is_env_or_option_env(ctx.sema.db) {
+            return None;
+        }
+    }
+    let range = original.text_range_between_quotes()?;
 
     CARGO_DEFINED_VARS.iter().for_each(|&(var, detail)| {
         let mut item = CompletionItem::new(CompletionItemKind::Keyword, range, var);
@@ -44,18 +61,6 @@ pub(crate) fn complete_cargo_env_vars(
     });
 
     Some(())
-}
-
-fn guard_env_macro(string: &ast::String, semantics: &Semantics<'_, RootDatabase>) -> Option<()> {
-    let call = macro_call_for_string_token(string)?;
-    let name = call.path()?.segment()?.name_ref()?;
-    let makro = semantics.resolve_macro_call(&call)?;
-    let db = semantics.db;
-
-    match name.text().as_str() {
-        "env" | "option_env" if makro.kind(db) == hir::MacroKind::BuiltIn => Some(()),
-        _ => None,
-    }
 }
 
 #[cfg(test)]
@@ -68,7 +73,7 @@ mod tests {
             &format!(
                 r#"
             #[rustc_builtin_macro]
-            macro_rules! {macro_name} {{
+            macro {macro_name} {{
                 ($var:literal) => {{ 0 }}
             }}
 
@@ -80,7 +85,7 @@ mod tests {
             &format!(
                 r#"
             #[rustc_builtin_macro]
-            macro_rules! {macro_name} {{
+            macro {macro_name} {{
                 ($var:literal) => {{ 0 }}
             }}
 

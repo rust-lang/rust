@@ -1,5 +1,8 @@
-//@ check-pass
-//@ known-bug: #57893
+//@ revisions: current next
+//@[next] compile-flags: -Znext-solver
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@[current] check-pass
+//@[current] known-bug: #57893
 
 // Should fail. Because we see an impl that uses a certain associated type, we
 // type-check assuming that impl is used. However, this conflicts with the
@@ -20,6 +23,7 @@ fn foo<T: ?Sized, U>(x: <T as Object<U>>::Output) -> U {
 #[allow(dead_code)]
 fn transmute<T, U>(x: T) -> U {
     foo::<dyn Object<U, Output = T>, U>(x)
+    //[next]~^ ERROR type annotations needed: cannot satisfy `<dyn Object<U, Output = T> as Object<U>>::Output == T`
 }
 
 fn main() {}

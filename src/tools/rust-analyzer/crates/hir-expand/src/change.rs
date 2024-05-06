@@ -11,14 +11,14 @@ use triomphe::Arc;
 use crate::{db::ExpandDatabase, proc_macro::ProcMacros};
 
 #[derive(Debug, Default)]
-pub struct Change {
+pub struct ChangeWithProcMacros {
     pub source_change: FileChange,
     pub proc_macros: Option<ProcMacros>,
     pub toolchains: Option<Vec<Option<Version>>>,
     pub target_data_layouts: Option<Vec<TargetLayoutLoadResult>>,
 }
 
-impl Change {
+impl ChangeWithProcMacros {
     pub fn new() -> Self {
         Self::default()
     }
@@ -48,7 +48,7 @@ impl Change {
         }
     }
 
-    pub fn change_file(&mut self, file_id: FileId, new_text: Option<Arc<str>>) {
+    pub fn change_file(&mut self, file_id: FileId, new_text: Option<String>) {
         self.source_change.change_file(file_id, new_text)
     }
 

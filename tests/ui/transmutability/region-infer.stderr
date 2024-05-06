@@ -2,7 +2,7 @@ error[E0277]: `()` cannot be safely transmuted into `W<'_>`
   --> $DIR/region-infer.rs:18:5
    |
 LL |     test();
-   |     ^^^^^^ The size of `()` is smaller than the size of `W<'_>`
+   |     ^^^^^^ the size of `()` is smaller than the size of `W<'_>`
    |
 note: required by a bound in `test`
   --> $DIR/region-infer.rs:10:12

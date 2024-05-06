@@ -5,8 +5,8 @@ use std::io::prelude::*;
 use std::io::BufReader;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::sync::OnceLock;
 
-use once_cell::sync::Lazy;
 use regex::Regex;
 use tracing::*;
 
@@ -36,6 +36,7 @@ impl HeadersCache {
 #[derive(Default)]
 pub struct EarlyProps {
     pub aux: Vec<String>,
+    pub aux_bin: Vec<String>,
     pub aux_crate: Vec<(String, String)>,
     pub revisions: Vec<String>,
 }
@@ -59,6 +60,12 @@ impl EarlyProps {
                 config.push_name_value_directive(ln, directives::AUX_BUILD, &mut props.aux, |r| {
                     r.trim().to_string()
                 });
+                config.push_name_value_directive(
+                    ln,
+                    directives::AUX_BIN,
+                    &mut props.aux_bin,
+                    |r| r.trim().to_string(),
+                );
                 config.push_name_value_directive(
                     ln,
                     directives::AUX_CRATE,
@@ -95,6 +102,8 @@ pub struct TestProps {
     // directory as the test, but for backwards compatibility reasons
     // we also check the auxiliary directory)
     pub aux_builds: Vec<String>,
+    // Auxiliary crates that should be compiled as `#![crate_type = "bin"]`.
+    pub aux_bins: Vec<String>,
     // Similar to `aux_builds`, but a list of NAME=somelib.rs of dependencies
     // to build and pass with the `--extern` flag.
     pub aux_crates: Vec<(String, String)>,
@@ -199,6 +208,8 @@ pub struct TestProps {
     pub llvm_cov_flags: Vec<String>,
     /// Extra flags to pass to LLVM's `filecheck` tool, in tests that use it.
     pub filecheck_flags: Vec<String>,
+    /// Don't automatically insert any `--check-cfg` args
+    pub no_auto_check_cfg: bool,
 }
 
 mod directives {
@@ -217,6 +228,7 @@ mod directives {
     pub const PRETTY_EXPANDED: &'static str = "pretty-expanded";
     pub const PRETTY_MODE: &'static str = "pretty-mode";
     pub const PRETTY_COMPARE_ONLY: &'static str = "pretty-compare-only";
+    pub const AUX_BIN: &'static str = "aux-bin";
     pub const AUX_BUILD: &'static str = "aux-build";
     pub const AUX_CRATE: &'static str = "aux-crate";
     pub const EXEC_ENV: &'static str = "exec-env";
@@ -234,11 +246,12 @@ mod directives {
     pub const STDERR_PER_BITWIDTH: &'static str = "stderr-per-bitwidth";
     pub const INCREMENTAL: &'static str = "incremental";
     pub const KNOWN_BUG: &'static str = "known-bug";
-    pub const MIR_UNIT_TEST: &'static str = "unit-test";
+    pub const TEST_MIR_PASS: &'static str = "test-mir-pass";
     pub const REMAP_SRC_BASE: &'static str = "remap-src-base";
     pub const COMPARE_OUTPUT_LINES_BY_SUBSET: &'static str = "compare-output-lines-by-subset";
     pub const LLVM_COV_FLAGS: &'static str = "llvm-cov-flags";
     pub const FILECHECK_FLAGS: &'static str = "filecheck-flags";
+    pub const NO_AUTO_CHECK_CFG: &'static str = "no-auto-check-cfg";
     // This isn't a real directive, just one that is probably mistyped often
     pub const INCORRECT_COMPILER_FLAGS: &'static str = "compiler-flags";
 }
@@ -252,10 +265,14 @@ impl TestProps {
             run_flags: None,
             pp_exact: None,
             aux_builds: vec![],
+            aux_bins: vec![],
             aux_crates: vec![],
             revisions: vec![],
-            rustc_env: vec![("RUSTC_ICE".to_string(), "0".to_string())],
-            unset_rustc_env: vec![],
+            rustc_env: vec![
+                ("RUSTC_ICE".to_string(), "0".to_string()),
+                ("RUST_BACKTRACE".to_string(), "short".to_string()),
+            ],
+            unset_rustc_env: vec![("RUSTC_LOG_COLOR".to_string())],
             exec_env: vec![],
             unset_exec_env: vec![],
             build_aux_docs: false,
@@ -290,6 +307,7 @@ impl TestProps {
             remap_src_base: false,
             llvm_cov_flags: vec![],
             filecheck_flags: vec![],
+            no_auto_check_cfg: false,
         }
     }
 
@@ -417,6 +435,9 @@ impl TestProps {
                     config.push_name_value_directive(ln, AUX_BUILD, &mut self.aux_builds, |r| {
                         r.trim().to_string()
                     });
+                    config.push_name_value_directive(ln, AUX_BIN, &mut self.aux_bins, |r| {
+                        r.trim().to_string()
+                    });
                     config.push_name_value_directive(
                         ln,
                         AUX_CRATE,
@@ -532,7 +553,7 @@ impl TestProps {
 
                     config.set_name_value_directive(
                         ln,
-                        MIR_UNIT_TEST,
+                        TEST_MIR_PASS,
                         &mut self.mir_unit_test,
                         |s| s.trim().to_string(),
                     );
@@ -550,6 +571,8 @@ impl TestProps {
                     if let Some(flags) = config.parse_name_value_directive(ln, FILECHECK_FLAGS) {
                         self.filecheck_flags.extend(split_flags(&flags));
                     }
+
+                    config.set_name_directive(ln, NO_AUTO_CHECK_CFG, &mut self.no_auto_check_cfg);
                 },
             );
 
@@ -567,6 +590,16 @@ impl TestProps {
             self.incremental = true;
         }
 
+        if config.mode == Mode::Crashes {
+            // we don't want to pollute anything with backtrace-files
+            // also turn off backtraces in order to save some execution
+            // time on the tests; we only need to know IF it crashes
+            self.rustc_env = vec![
+                ("RUST_BACKTRACE".to_string(), "0".to_string()),
+                ("RUSTC_ICE".to_string(), "0".to_string()),
+            ];
+        }
+
         for key in &["RUST_TEST_NOCAPTURE", "RUST_TEST_THREADS"] {
             if let Ok(val) = env::var(key) {
                 if self.exec_env.iter().find(|&&(ref x, _)| x == key).is_none() {
@@ -582,7 +615,8 @@ impl TestProps {
 
     fn update_fail_mode(&mut self, ln: &str, config: &Config) {
         let check_ui = |mode: &str| {
-            if config.mode != Mode::Ui {
+            // Mode::Crashes may need build-fail in order to trigger llvm errors or stack overflows
+            if config.mode != Mode::Ui && config.mode != Mode::Crashes {
                 panic!("`{}-fail` header is only supported in UI tests", mode);
             }
         };
@@ -611,6 +645,7 @@ impl TestProps {
     fn update_pass_mode(&mut self, ln: &str, revision: Option<&str>, config: &Config) {
         let check_no_run = |s| match (config.mode, s) {
             (Mode::Ui, _) => (),
+            (Mode::Crashes, _) => (),
             (Mode::Codegen, "build-pass") => (),
             (Mode::Incremental, _) => {
                 if revision.is_some() && !self.revisions.iter().all(|r| r.starts_with("cfail")) {
@@ -677,11 +712,13 @@ pub fn line_directive<'line>(
     }
 }
 
-/// This is generated by collecting directives from ui tests and then extracting their directive
-/// names. This is **not** an exhaustive list of all possible directives. Instead, this is a
-/// best-effort approximation for diagnostics.
-const DIAGNOSTICS_DIRECTIVE_NAMES: &[&str] = &[
+/// This was originally generated by collecting directives from ui tests and then extracting their
+/// directive names. This is **not** an exhaustive list of all possible directives. Instead, this is
+/// a best-effort approximation for diagnostics. Add new headers to this list when needed.
+const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
+    // tidy-alphabetical-start
     "assembly-output",
+    "aux-bin",
     "aux-build",
     "aux-crate",
     "build-aux-docs",
@@ -692,6 +729,7 @@ const DIAGNOSTICS_DIRECTIVE_NAMES: &[&str] = &[
     "check-run-results",
     "check-stdout",
     "check-test-line-numbers-match",
+    "compare-output-lines-by-subset",
     "compile-flags",
     "dont-check-compiler-stderr",
     "dont-check-compiler-stdout",
@@ -700,6 +738,7 @@ const DIAGNOSTICS_DIRECTIVE_NAMES: &[&str] = &[
     "error-pattern",
     "exec-env",
     "failure-status",
+    "filecheck-flags",
     "forbid-output",
     "force-host",
     "ignore-16bit",
@@ -716,6 +755,7 @@ const DIAGNOSTICS_DIRECTIVE_NAMES: &[&str] = &[
     "ignore-compare-mode-polonius",
     "ignore-cross-compile",
     "ignore-debug",
+    "ignore-eabi",
     "ignore-emscripten",
     "ignore-endian-big",
     "ignore-freebsd",
@@ -731,14 +771,31 @@ const DIAGNOSTICS_DIRECTIVE_NAMES: &[&str] = &[
     "ignore-lldb",
     "ignore-llvm-version",
     "ignore-loongarch64",
+    "ignore-macabi",
     "ignore-macos",
+    "ignore-mode-assembly",
+    "ignore-mode-codegen",
+    "ignore-mode-codegen-units",
     "ignore-mode-coverage-map",
     "ignore-mode-coverage-run",
+    "ignore-mode-crashes",
+    "ignore-mode-debuginfo",
+    "ignore-mode-incremental",
+    "ignore-mode-js-doc-test",
+    "ignore-mode-mir-opt",
+    "ignore-mode-pretty",
+    "ignore-mode-run-make",
+    "ignore-mode-run-pass-valgrind",
+    "ignore-mode-rustdoc",
+    "ignore-mode-rustdoc-json",
+    "ignore-mode-ui",
+    "ignore-mode-ui-fulldeps",
     "ignore-msp430",
     "ignore-msvc",
     "ignore-musl",
     "ignore-netbsd",
     "ignore-nightly",
+    "ignore-none",
     "ignore-nto",
     "ignore-nvptx64",
     "ignore-openbsd",
@@ -750,18 +807,30 @@ const DIAGNOSTICS_DIRECTIVE_NAMES: &[&str] = &[
     "ignore-spirv",
     "ignore-stable",
     "ignore-stage1",
+    "ignore-stage2",
     "ignore-test",
+    "ignore-thumb",
     "ignore-thumbv8m.base-none-eabi",
     "ignore-thumbv8m.main-none-eabi",
+    "ignore-tvos",
+    "ignore-unix",
+    "ignore-unknown",
     "ignore-uwp",
+    "ignore-visionos",
     "ignore-vxworks",
+    "ignore-wasi",
     "ignore-wasm",
     "ignore-wasm32",
     "ignore-wasm32-bare",
+    "ignore-wasm64",
+    "ignore-watchos",
     "ignore-windows",
     "ignore-windows-gnu",
+    "ignore-x32",
     "ignore-x86",
+    "ignore-x86_64",
     "ignore-x86_64-apple-darwin",
+    "ignore-x86_64-unknown-linux-gnu",
     "incremental",
     "known-bug",
     "llvm-cov-flags",
@@ -769,17 +838,23 @@ const DIAGNOSTICS_DIRECTIVE_NAMES: &[&str] = &[
     "min-gdb-version",
     "min-lldb-version",
     "min-llvm-version",
+    "min-system-llvm-version",
     "needs-asm-support",
     "needs-dlltool",
     "needs-dynamic-linking",
+    "needs-git-hash",
     "needs-llvm-components",
+    "needs-matching-clang",
     "needs-profiler-support",
     "needs-relocation-model-pic",
     "needs-run-enabled",
+    "needs-rust-lld",
     "needs-rust-lldb",
     "needs-sanitizer-address",
     "needs-sanitizer-cfi",
+    "needs-sanitizer-dataflow",
     "needs-sanitizer-hwaddress",
+    "needs-sanitizer-kcfi",
     "needs-sanitizer-leak",
     "needs-sanitizer-memory",
     "needs-sanitizer-memtag",
@@ -789,7 +864,9 @@ const DIAGNOSTICS_DIRECTIVE_NAMES: &[&str] = &[
     "needs-sanitizer-thread",
     "needs-threads",
     "needs-unwind",
+    "needs-wasmtime",
     "needs-xray",
+    "no-auto-check-cfg",
     "no-prefer-dynamic",
     "normalize-stderr-32bit",
     "normalize-stderr-64bit",
@@ -801,10 +878,12 @@ const DIAGNOSTICS_DIRECTIVE_NAMES: &[&str] = &[
     "only-aarch64",
     "only-arm",
     "only-avr",
+    "only-beta",
     "only-bpf",
     "only-cdb",
     "only-gnu",
     "only-i686-pc-windows-msvc",
+    "only-ios",
     "only-linux",
     "only-loongarch64",
     "only-loongarch64-unknown-linux-gnu",
@@ -818,13 +897,20 @@ const DIAGNOSTICS_DIRECTIVE_NAMES: &[&str] = &[
     "only-riscv64",
     "only-sparc",
     "only-sparc64",
+    "only-stable",
     "only-thumb",
+    "only-tvos",
+    "only-unix",
+    "only-visionos",
     "only-wasm32",
     "only-wasm32-bare",
+    "only-wasm32-wasip1",
+    "only-watchos",
     "only-windows",
     "only-x86",
     "only-x86_64",
     "only-x86_64-fortanix-unknown-sgx",
+    "only-x86_64-pc-windows-gnu",
     "only-x86_64-pc-windows-msvc",
     "only-x86_64-unknown-linux-gnu",
     "pp-exact",
@@ -843,9 +929,10 @@ const DIAGNOSTICS_DIRECTIVE_NAMES: &[&str] = &[
     "should-fail",
     "should-ice",
     "stderr-per-bitwidth",
-    "unit-test",
+    "test-mir-pass",
     "unset-exec-env",
     "unset-rustc-env",
+    // tidy-alphabetical-end
 ];
 
 /// The broken-down contents of a line containing a test header directive,
@@ -874,6 +961,31 @@ struct HeaderLine<'ln> {
     /// The main part of the header directive, after removing the comment prefix
     /// and the optional revision specifier.
     directive: &'ln str,
+}
+
+pub(crate) struct CheckDirectiveResult<'ln> {
+    is_known_directive: bool,
+    directive_name: &'ln str,
+    trailing_directive: Option<&'ln str>,
+}
+
+pub(crate) fn check_directive(directive_ln: &str) -> CheckDirectiveResult<'_> {
+    let (directive_name, post) = directive_ln.split_once([':', ' ']).unwrap_or((directive_ln, ""));
+
+    let trailing = post.trim().split_once(' ').map(|(pre, _)| pre).unwrap_or(post);
+    let trailing_directive = {
+        // 1. is the directive name followed by a space? (to exclude `:`)
+        matches!(directive_ln.get(directive_name.len()..), Some(s) if s.starts_with(" "))
+            // 2. is what is after that directive also a directive (ex: "only-x86 only-arm")
+            && KNOWN_DIRECTIVE_NAMES.contains(&trailing)
+    }
+    .then_some(trailing);
+
+    CheckDirectiveResult {
+        is_known_directive: KNOWN_DIRECTIVE_NAMES.contains(&directive_name),
+        directive_name: directive_ln,
+        trailing_directive,
+    }
 }
 
 fn iter_header(
@@ -915,8 +1027,10 @@ fn iter_header(
     let mut ln = String::new();
     let mut line_number = 0;
 
-    static REVISION_MAGIC_COMMENT_RE: Lazy<Regex> =
-        Lazy::new(|| Regex::new("//(\\[.*\\])?~.*").unwrap());
+    // Match on error annotations like `//~ERROR`.
+    static REVISION_MAGIC_COMMENT_RE: OnceLock<Regex> = OnceLock::new();
+    let revision_magic_comment_re =
+        REVISION_MAGIC_COMMENT_RE.get_or_init(|| Regex::new("//(\\[.*\\])?~.*").unwrap());
 
     loop {
         line_number += 1;
@@ -933,10 +1047,55 @@ fn iter_header(
         if ln.starts_with("fn") || ln.starts_with("mod") {
             return;
 
-        // First try to accept `ui_test` style comments
-        } else if let Some((header_revision, directive)) = line_directive(comment, ln) {
-            it(HeaderLine { line_number, original_line, header_revision, directive });
-        } else if !REVISION_MAGIC_COMMENT_RE.is_match(ln) {
+        // First try to accept `ui_test` style comments (`//@`)
+        } else if let Some((header_revision, non_revisioned_directive_line)) =
+            line_directive(comment, ln)
+        {
+            // Perform unknown directive check on Rust files.
+            if testfile.extension().map(|e| e == "rs").unwrap_or(false) {
+                let directive_ln = non_revisioned_directive_line.trim();
+
+                let CheckDirectiveResult { is_known_directive, trailing_directive, .. } =
+                    check_directive(directive_ln);
+
+                if !is_known_directive {
+                    *poisoned = true;
+
+                    eprintln!(
+                        "error: detected unknown compiletest test directive `{}` in {}:{}",
+                        directive_ln,
+                        testfile.display(),
+                        line_number,
+                    );
+
+                    return;
+                }
+
+                if let Some(trailing_directive) = &trailing_directive {
+                    *poisoned = true;
+
+                    eprintln!(
+                        "error: detected trailing compiletest test directive `{}` in {}:{}\n \
+                          help: put the trailing directive in it's own line: `//@ {}`",
+                        trailing_directive,
+                        testfile.display(),
+                        line_number,
+                        trailing_directive,
+                    );
+
+                    return;
+                }
+            }
+
+            it(HeaderLine {
+                line_number,
+                original_line,
+                header_revision,
+                directive: non_revisioned_directive_line,
+            });
+        // Then we try to check for legacy-style candidates, which are not the magic ~ERROR family
+        // error annotations.
+        } else if !revision_magic_comment_re.is_match(ln) {
             let Some((_, rest)) = line_directive("//", ln) else {
                 continue;
             };
@@ -949,34 +1108,19 @@ fn iter_header(
 
             let rest = rest.trim_start();
 
-            for candidate in DIAGNOSTICS_DIRECTIVE_NAMES.iter() {
-                if rest.starts_with(candidate) {
-                    let Some(prefix_removed) = rest.strip_prefix(candidate) else {
-                        // We have a comment that's *successfully* parsed as an legacy-style
-                        // directive. We emit an error here to warn the user.
-                        *poisoned = true;
-                        eprintln!(
-                            "error: detected legacy-style directives in compiletest test: {}:{}, please use `ui_test`-style directives `//@` instead:{:#?}",
-                            testfile.display(),
-                            line_number,
-                            line_directive("//", ln),
-                        );
-                        return;
-                    };
+            let CheckDirectiveResult { is_known_directive, directive_name, .. } =
+                check_directive(rest);
 
-                    if prefix_removed.starts_with([' ', ':']) {
-                        // We have a comment that's *successfully* parsed as an legacy-style
-                        // directive. We emit an error here to warn the user.
-                        *poisoned = true;
-                        eprintln!(
-                            "error: detected legacy-style directives in compiletest test: {}:{}, please use `ui_test`-style directives `//@` instead:{:#?}",
-                            testfile.display(),
-                            line_number,
-                            line_directive("//", ln),
-                        );
-                        return;
-                    }
-                }
+            if is_known_directive {
+                *poisoned = true;
+                eprintln!(
+                    "error: detected legacy-style directive {} in compiletest test: {}:{}, please use `ui_test`-style directives `//@` instead: {:#?}",
+                    directive_name,
+                    testfile.display(),
+                    line_number,
+                    line_directive("//", ln),
+                );
+                return;
             }
         }
     }

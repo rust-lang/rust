@@ -12,8 +12,8 @@ mod vec_box;
 use rustc_hir as hir;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
-    Body, FnDecl, FnRetTy, GenericArg, ImplItem, ImplItemKind, Item, ItemKind, Local, MutTy, QPath, TraitItem,
-    TraitItemKind, TyKind,
+    Body, FnDecl, FnRetTy, GenericArg, ImplItem, ImplItemKind, Item, ItemKind, LetStmt, MutTy, QPath, TraitFn,
+    TraitItem, TraitItemKind, TyKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
@@ -321,7 +321,7 @@ impl<'tcx> LateLintPass<'tcx> for Types {
         _: Span,
         def_id: LocalDefId,
     ) {
-        let is_in_trait_impl = if let Some(hir::Node::Item(item)) = cx.tcx.opt_hir_node_by_def_id(
+        let is_in_trait_impl = if let hir::Node::Item(item) = cx.tcx.hir_node_by_def_id(
             cx.tcx
                 .hir()
                 .get_parent_item(cx.tcx.local_def_id_to_hir_id(def_id))
@@ -366,9 +366,9 @@ impl<'tcx> LateLintPass<'tcx> for Types {
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx ImplItem<'tcx>) {
         match item.kind {
             ImplItemKind::Const(ty, _) => {
-                let is_in_trait_impl = if let Some(hir::Node::Item(item)) = cx
+                let is_in_trait_impl = if let hir::Node::Item(item) = cx
                     .tcx
-                    .opt_hir_node_by_def_id(cx.tcx.hir().get_parent_item(item.hir_id()).def_id)
+                    .hir_node_by_def_id(cx.tcx.hir().get_parent_item(item.hir_id()).def_id)
                 {
                     matches!(item.kind, ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }))
                 } else {
@@ -392,6 +392,10 @@ impl<'tcx> LateLintPass<'tcx> for Types {
     }
 
     fn check_field_def(&mut self, cx: &LateContext<'tcx>, field: &hir::FieldDef<'tcx>) {
+        if field.span.from_expansion() {
+            return;
+        }
+
         let is_exported = cx.effective_visibilities.is_exported(field.def_id);
 
         self.check_ty(
@@ -416,12 +420,18 @@ impl<'tcx> LateLintPass<'tcx> for Types {
             TraitItemKind::Const(ty, _) | TraitItemKind::Type(_, Some(ty)) => {
                 self.check_ty(cx, ty, context);
             },
-            TraitItemKind::Fn(ref sig, _) => self.check_fn_decl(cx, sig.decl, context),
+            TraitItemKind::Fn(ref sig, trait_method) => {
+                // Check only methods without body
+                // Methods with body are covered by check_fn.
+                if let TraitFn::Required(_) = trait_method {
+                    self.check_fn_decl(cx, sig.decl, context);
+                }
+            },
             TraitItemKind::Type(..) => (),
         }
     }
 
-    fn check_local(&mut self, cx: &LateContext<'tcx>, local: &Local<'tcx>) {
+    fn check_local(&mut self, cx: &LateContext<'tcx>, local: &LetStmt<'tcx>) {
         if let Some(ty) = local.ty {
             self.check_ty(
                 cx,

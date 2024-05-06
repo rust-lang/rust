@@ -258,9 +258,7 @@ fn associated_type_for_impl_trait_in_trait(
     let local_def_id = trait_assoc_ty.def_id();
     let def_id = local_def_id.to_def_id();
 
-    // There's no HIR associated with this new synthesized `def_id`, so feed
-    // `opt_local_def_id_to_hir_id` with `None`.
-    trait_assoc_ty.opt_local_def_id_to_hir_id(None);
+    trait_assoc_ty.feed_hir();
 
     // Copy span of the opaque.
     trait_assoc_ty.def_ident_span(Some(span));
@@ -304,11 +302,7 @@ fn associated_type_for_impl_trait_in_impl(
 ) -> LocalDefId {
     let impl_local_def_id = tcx.local_parent(impl_fn_def_id);
 
-    let decl = tcx
-        .opt_hir_node_by_def_id(impl_fn_def_id)
-        .expect("expected item")
-        .fn_decl()
-        .expect("expected decl");
+    let decl = tcx.hir_node_by_def_id(impl_fn_def_id).fn_decl().expect("expected decl");
     let span = match decl.output {
         hir::FnRetTy::DefaultReturn(_) => tcx.def_span(impl_fn_def_id),
         hir::FnRetTy::Return(ty) => ty.span,
@@ -318,9 +312,7 @@ fn associated_type_for_impl_trait_in_impl(
     let local_def_id = impl_assoc_ty.def_id();
     let def_id = local_def_id.to_def_id();
 
-    // There's no HIR associated with this new synthesized `def_id`, so feed
-    // `opt_local_def_id_to_hir_id` with `None`.
-    impl_assoc_ty.opt_local_def_id_to_hir_id(None);
+    impl_assoc_ty.feed_hir();
 
     // Copy span of the opaque.
     impl_assoc_ty.def_ident_span(Some(span));

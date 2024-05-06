@@ -8,7 +8,6 @@ use super::{
     FloatUnaryOp,
 };
 use crate::*;
-use shims::foreign_items::EmulateForeignItemResult;
 
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
 pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
@@ -19,8 +18,8 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
         link_name: Symbol,
         abi: Abi,
         args: &[OpTy<'tcx, Provenance>],
-        dest: &PlaceTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, EmulateForeignItemResult> {
+        dest: &MPlaceTy<'tcx, Provenance>,
+    ) -> InterpResult<'tcx, EmulateItemResult> {
         let this = self.eval_context_mut();
         this.expect_target_feature_for_intrinsic(link_name, "sse")?;
         // Prefix should have already been checked.
@@ -182,7 +181,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
                 };
 
                 let res = this.float_to_int_checked(&op, dest.layout, rnd)?.unwrap_or_else(|| {
-                    // Fallback to minimum acording to SSE semantics.
+                    // Fallback to minimum according to SSE semantics.
                     ImmTy::from_int(dest.layout.size.signed_int_min(), dest.layout)
                 });
 
@@ -198,7 +197,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
 
                 let (left, left_len) = this.operand_to_simd(left)?;
-                let (dest, dest_len) = this.place_to_simd(dest)?;
+                let (dest, dest_len) = this.mplace_to_simd(dest)?;
 
                 assert_eq!(dest_len, left_len);
 
@@ -211,8 +210,8 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
                     this.copy_op(&this.project_index(&left, i)?, &this.project_index(&dest, i)?)?;
                 }
             }
-            _ => return Ok(EmulateForeignItemResult::NotSupported),
+            _ => return Ok(EmulateItemResult::NotSupported),
         }
-        Ok(EmulateForeignItemResult::NeedsJumping)
+        Ok(EmulateItemResult::NeedsJumping)
     }
 }

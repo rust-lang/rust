@@ -20,14 +20,11 @@ impl<'tcx> super::QueryTypeOp<'tcx> for ProvePredicate<'tcx> {
         // such cases.
         if let ty::PredicateKind::Clause(ty::ClauseKind::Trait(trait_ref)) =
             key.value.predicate.kind().skip_binder()
+            && let Some(sized_def_id) = tcx.lang_items().sized_trait()
+            && trait_ref.def_id() == sized_def_id
+            && trait_ref.self_ty().is_trivially_sized(tcx)
         {
-            if let Some(sized_def_id) = tcx.lang_items().sized_trait() {
-                if trait_ref.def_id() == sized_def_id {
-                    if trait_ref.self_ty().is_trivially_sized(tcx) {
-                        return Some(());
-                    }
-                }
-            }
+            return Some(());
         }
 
         if let ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(arg)) =

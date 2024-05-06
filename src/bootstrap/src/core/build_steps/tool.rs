@@ -36,8 +36,9 @@ struct ToolBuild {
 
 impl Builder<'_> {
     #[track_caller]
-    fn msg_tool(
+    pub(crate) fn msg_tool(
         &self,
+        kind: Kind,
         mode: Mode,
         tool: &str,
         build_stage: u32,
@@ -47,7 +48,7 @@ impl Builder<'_> {
         match mode {
             // depends on compiler stage, different to host compiler
             Mode::ToolRustc => self.msg_sysroot_tool(
-                Kind::Build,
+                kind,
                 build_stage,
                 format_args!("tool {tool}"),
                 *host,
@@ -100,6 +101,7 @@ impl Step for ToolBuild {
             cargo.allow_features(self.allow_features);
         }
         let _guard = builder.msg_tool(
+            Kind::Build,
             self.mode,
             self.tool,
             self.compiler.stage,
@@ -127,12 +129,13 @@ impl Step for ToolBuild {
             }
             let cargo_out = builder.cargo_out(compiler, self.mode, target).join(exe(tool, target));
             let bin = builder.tools_dir(compiler).join(exe(tool, target));
-            builder.copy(&cargo_out, &bin);
+            builder.copy_link(&cargo_out, &bin);
             bin
         }
     }
 }
 
+#[allow(clippy::too_many_arguments)] // FIXME: reduce the number of args and remove this.
 pub fn prepare_tool_cargo(
     builder: &Builder<'_>,
     compiler: Compiler,
@@ -299,7 +302,6 @@ bootstrap_tool!(
     RemoteTestClient, "src/tools/remote-test-client", "remote-test-client";
     RustInstaller, "src/tools/rust-installer", "rust-installer";
     RustdocTheme, "src/tools/rustdoc-themes", "rustdoc-themes";
-    ExpandYamlAnchors, "src/tools/expand-yaml-anchors", "expand-yaml-anchors";
     LintDocs, "src/tools/lint-docs", "lint-docs";
     JsonDocCk, "src/tools/jsondocck", "jsondocck";
     JsonDocLint, "src/tools/jsondoclint", "jsondoclint";
@@ -480,11 +482,16 @@ impl Step for Rustdoc {
             features.as_slice(),
         );
 
-        if builder.config.rustc_parallel {
-            cargo.rustflag("--cfg=parallel_compiler");
+        // If the rustdoc output is piped to e.g. `head -n1` we want the process
+        // to be killed, rather than having an error bubble up and cause a
+        // panic.
+        // FIXME: Synthetic #[cfg(bootstrap)]. Remove when the bootstrap compiler supports it.
+        if build_compiler.stage > 0 {
+            cargo.rustflag("-Zon-broken-pipe=kill");
         }
 
         let _guard = builder.msg_tool(
+            Kind::Build,
             Mode::ToolRustc,
             "rustdoc",
             build_compiler.stage,
@@ -507,7 +514,7 @@ impl Step for Rustdoc {
             t!(fs::create_dir_all(&bindir));
             let bin_rustdoc = bindir.join(exe("rustdoc", target_compiler.host));
             let _ = fs::remove_file(&bin_rustdoc);
-            builder.copy(&tool_rustdoc, &bin_rustdoc);
+            builder.copy_link(&tool_rustdoc, &bin_rustdoc);
             bin_rustdoc
         } else {
             tool_rustdoc
@@ -546,7 +553,7 @@ impl Step for Cargo {
     }
 
     fn run(self, builder: &Builder<'_>) -> PathBuf {
-        let cargo_bin_path = builder.ensure(ToolBuild {
+        builder.ensure(ToolBuild {
             compiler: self.compiler,
             target: self.target,
             tool: "cargo",
@@ -555,8 +562,7 @@ impl Step for Cargo {
             source_type: SourceType::Submodule,
             extra_features: Vec::new(),
             allow_features: "",
-        });
-        cargo_bin_path
+        })
     }
 }
 
@@ -574,7 +580,7 @@ impl Step for LldWrapper {
     }
 
     fn run(self, builder: &Builder<'_>) -> PathBuf {
-        let src_exe = builder.ensure(ToolBuild {
+        builder.ensure(ToolBuild {
             compiler: self.compiler,
             target: self.target,
             tool: "lld-wrapper",
@@ -583,9 +589,7 @@ impl Step for LldWrapper {
             source_type: SourceType::InTree,
             extra_features: Vec::new(),
             allow_features: "",
-        });
-
-        src_exe
+        })
     }
 }
 
@@ -686,9 +690,80 @@ impl Step for RustAnalyzerProcMacroSrv {
         // so that r-a can use it.
         let libexec_path = builder.sysroot(self.compiler).join("libexec");
         t!(fs::create_dir_all(&libexec_path));
-        builder.copy(&path, &libexec_path.join("rust-analyzer-proc-macro-srv"));
+        builder.copy_link(&path, &libexec_path.join("rust-analyzer-proc-macro-srv"));
 
         Some(path)
+    }
+}
+
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub struct LlvmBitcodeLinker {
+    pub compiler: Compiler,
+    pub target: TargetSelection,
+    pub extra_features: Vec<String>,
+}
+
+impl Step for LlvmBitcodeLinker {
+    type Output = PathBuf;
+    const DEFAULT: bool = true;
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        let builder = run.builder;
+        run.path("src/tools/llvm-bitcode-linker").default_condition(
+            builder.config.extended
+                && builder
+                    .config
+                    .tools
+                    .as_ref()
+                    .map_or(builder.build.unstable_features(), |tools| {
+                        tools.iter().any(|tool| tool == "llvm-bitcode-linker")
+                    }),
+        )
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(LlvmBitcodeLinker {
+            compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build),
+            extra_features: Vec::new(),
+            target: run.target,
+        });
+    }
+
+    fn run(self, builder: &Builder<'_>) -> PathBuf {
+        let bin_name = "llvm-bitcode-linker";
+
+        builder.ensure(compile::Std::new(self.compiler, self.compiler.host));
+        builder.ensure(compile::Rustc::new(self.compiler, self.target));
+
+        let cargo = prepare_tool_cargo(
+            builder,
+            self.compiler,
+            Mode::ToolRustc,
+            self.target,
+            "build",
+            "src/tools/llvm-bitcode-linker",
+            SourceType::InTree,
+            &self.extra_features,
+        );
+
+        builder.run(&mut cargo.into());
+
+        let tool_out = builder
+            .cargo_out(self.compiler, Mode::ToolRustc, self.target)
+            .join(exe(bin_name, self.compiler.host));
+
+        if self.compiler.stage > 0 {
+            let bindir_self_contained = builder
+                .sysroot(self.compiler)
+                .join(format!("lib/rustlib/{}/bin/self-contained", self.target.triple));
+            t!(fs::create_dir_all(&bindir_self_contained));
+            let bin_destination = bindir_self_contained.join(exe(bin_name, self.compiler.host));
+            builder.copy_link(&tool_out, &bin_destination);
+            bin_destination
+        } else {
+            tool_out
+        }
     }
 }
 
@@ -765,7 +840,7 @@ macro_rules! tool_extended {
                     $(for add_bin in $add_bins_to_sysroot {
                         let bin_source = tools_out.join(exe(add_bin, $sel.target));
                         let bin_destination = bindir.join(exe(add_bin, $sel.compiler.host));
-                        $builder.copy(&bin_source, &bin_destination);
+                        $builder.copy_link(&bin_source, &bin_destination);
                     })?
 
                     let tool = bindir.join(exe($tool_name, $sel.compiler.host));

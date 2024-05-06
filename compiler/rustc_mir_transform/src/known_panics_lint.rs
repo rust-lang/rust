@@ -6,13 +6,14 @@
 
 use std::fmt::Debug;
 
+use rustc_const_eval::const_eval::DummyMachine;
 use rustc_const_eval::interpret::{
     format_interp_error, ImmTy, InterpCx, InterpResult, Projectable, Scalar,
 };
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def::DefKind;
 use rustc_hir::HirId;
-use rustc_index::{bit_set::BitSet, Idx, IndexVec};
+use rustc_index::{bit_set::BitSet, IndexVec};
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout::{LayoutError, LayoutOf, LayoutOfHelpers, TyAndLayout};
@@ -20,7 +21,6 @@ use rustc_middle::ty::{self, ConstInt, ParamEnv, ScalarInt, Ty, TyCtxt, TypeVisi
 use rustc_span::Span;
 use rustc_target::abi::{Abi, FieldIdx, HasDataLayout, Size, TargetDataLayout, VariantIdx};
 
-use crate::dataflow_const_prop::DummyMachine;
 use crate::errors::{AssertLint, AssertLintKind};
 use crate::MirLint;
 
@@ -124,10 +124,8 @@ impl<'tcx> Value<'tcx> {
                     fields.ensure_contains_elem(*idx, || Value::Uninit)
                 }
                 (PlaceElem::Field(..), val @ Value::Uninit) => {
-                    *val = Value::Aggregate {
-                        variant: VariantIdx::new(0),
-                        fields: Default::default(),
-                    };
+                    *val =
+                        Value::Aggregate { variant: VariantIdx::ZERO, fields: Default::default() };
                     val.project_mut(&[*proj])?
                 }
                 _ => return None,
@@ -261,7 +259,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         // manually normalized.
         let val = self.tcx.try_normalize_erasing_regions(self.param_env, c.const_).ok()?;
 
-        self.use_ecx(|this| this.ecx.eval_mir_constant(&val, Some(c.span), None))?
+        self.use_ecx(|this| this.ecx.eval_mir_constant(&val, c.span, None))?
             .as_mplace_or_imm()
             .right()
     }
@@ -572,7 +570,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     self.use_ecx(|this| this.ecx.overflowing_binary_op(bin_op, &left, &right))?;
                 let overflowed = ImmTy::from_bool(overflowed, self.tcx);
                 Value::Aggregate {
-                    variant: VariantIdx::new(0),
+                    variant: VariantIdx::ZERO,
                     fields: [Value::from(val), overflowed.into()].into_iter().collect(),
                 }
             }
@@ -585,32 +583,21 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 val.into()
             }
 
-            Aggregate(ref kind, ref fields) => {
-                // Do not const prop union fields as they can be
-                // made to produce values that don't match their
-                // underlying layout's type (see ICE #121534).
-                // If the last element of the `Adt` tuple
-                // is `Some` it indicates the ADT is a union
-                if let AggregateKind::Adt(_, _, _, _, Some(_)) = **kind {
-                    return None;
-                };
-                Value::Aggregate {
-                    fields: fields
-                        .iter()
-                        .map(|field| {
-                            self.eval_operand(field).map_or(Value::Uninit, Value::Immediate)
-                        })
-                        .collect(),
-                    variant: match **kind {
-                        AggregateKind::Adt(_, variant, _, _, _) => variant,
-                        AggregateKind::Array(_)
-                        | AggregateKind::Tuple
-                        | AggregateKind::Closure(_, _)
-                        | AggregateKind::Coroutine(_, _)
-                        | AggregateKind::CoroutineClosure(_, _) => VariantIdx::new(0),
-                    },
-                }
-            }
+            Aggregate(ref kind, ref fields) => Value::Aggregate {
+                fields: fields
+                    .iter()
+                    .map(|field| self.eval_operand(field).map_or(Value::Uninit, Value::Immediate))
+                    .collect(),
+                variant: match **kind {
+                    AggregateKind::Adt(_, variant, _, _, _) => variant,
+                    AggregateKind::Array(_)
+                    | AggregateKind::Tuple
+                    | AggregateKind::RawPtr(_, _)
+                    | AggregateKind::Closure(_, _)
+                    | AggregateKind::Coroutine(_, _)
+                    | AggregateKind::CoroutineClosure(_, _) => VariantIdx::ZERO,
+                },
+            },
 
             Repeat(ref op, n) => {
                 trace!(?op, ?n);
@@ -639,7 +626,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     NullOp::OffsetOf(fields) => {
                         op_layout.offset_of_subfield(self, fields.iter()).bytes()
                     }
-                    NullOp::DebugAssertions => return None,
+                    NullOp::UbChecks => return None,
                 };
                 ImmTy::from_scalar(Scalar::from_target_usize(val, self), layout).into()
             }
@@ -798,7 +785,7 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
                 if let Some(ref value) = self.eval_operand(discr)
                     && let Some(value_const) = self.use_ecx(|this| this.ecx.read_scalar(value))
                     && let Ok(constant) = value_const.try_to_int()
-                    && let Ok(constant) = constant.to_bits(constant.size())
+                    && let Ok(constant) = constant.try_to_bits(constant.size())
                 {
                     // We managed to evaluate the discriminant, so we know we only need to visit
                     // one target.
@@ -897,13 +884,20 @@ impl CanConstProp {
         };
         for (local, val) in cpv.can_const_prop.iter_enumerated_mut() {
             let ty = body.local_decls[local].ty;
-            match tcx.layout_of(param_env.and(ty)) {
-                Ok(layout) if layout.size < Size::from_bytes(MAX_ALLOC_LIMIT) => {}
-                // Either the layout fails to compute, then we can't use this local anyway
-                // or the local is too large, then we don't want to.
-                _ => {
-                    *val = ConstPropMode::NoPropagation;
-                    continue;
+            if ty.is_union() {
+                // Unions are incompatible with the current implementation of
+                // const prop because Rust has no concept of an active
+                // variant of a union
+                *val = ConstPropMode::NoPropagation;
+            } else {
+                match tcx.layout_of(param_env.and(ty)) {
+                    Ok(layout) if layout.size < Size::from_bytes(MAX_ALLOC_LIMIT) => {}
+                    // Either the layout fails to compute, then we can't use this local anyway
+                    // or the local is too large, then we don't want to.
+                    _ => {
+                        *val = ConstPropMode::NoPropagation;
+                        continue;
+                    }
                 }
             }
         }

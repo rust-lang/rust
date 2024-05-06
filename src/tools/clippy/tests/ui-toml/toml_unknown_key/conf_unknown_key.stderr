@@ -11,9 +11,11 @@ error: error reading Clippy's configuration file: unknown field `foobar`, expect
            allow-print-in-tests
            allow-private-module-inception
            allow-unwrap-in-tests
+           allow-useless-vec-in-tests
            allowed-dotfiles
            allowed-duplicate-crates
            allowed-idents-below-min-chars
+           allowed-prefixes
            allowed-scripts
            allowed-wildcard-imports
            arithmetic-side-effects-allowed
@@ -90,9 +92,11 @@ error: error reading Clippy's configuration file: unknown field `barfoo`, expect
            allow-print-in-tests
            allow-private-module-inception
            allow-unwrap-in-tests
+           allow-useless-vec-in-tests
            allowed-dotfiles
            allowed-duplicate-crates
            allowed-idents-below-min-chars
+           allowed-prefixes
            allowed-scripts
            allowed-wildcard-imports
            arithmetic-side-effects-allowed
@@ -169,9 +173,11 @@ error: error reading Clippy's configuration file: unknown field `allow_mixed_uni
            allow-print-in-tests
            allow-private-module-inception
            allow-unwrap-in-tests
+           allow-useless-vec-in-tests
            allowed-dotfiles
            allowed-duplicate-crates
            allowed-idents-below-min-chars
+           allowed-prefixes
            allowed-scripts
            allowed-wildcard-imports
            arithmetic-side-effects-allowed

@@ -554,35 +554,38 @@ impl<W: ?Sized + Write> Write for BufWriter<W> {
             // same underlying buffer, as otherwise the buffers wouldn't fit in memory). If the
             // computation overflows, then surely the input cannot fit in our buffer, so we forward
             // to the inner writer's `write_vectored` method to let it handle it appropriately.
-            let saturated_total_len =
-                bufs.iter().fold(0usize, |acc, b| acc.saturating_add(b.len()));
+            let mut saturated_total_len: usize = 0;
 
-            if saturated_total_len > self.spare_capacity() {
-                // Flush if the total length of the input exceeds our buffer's spare capacity.
-                // If we would have overflowed, this condition also holds, and we need to flush.
-                self.flush_buf()?;
+            for buf in bufs {
+                saturated_total_len = saturated_total_len.saturating_add(buf.len());
+
+                if saturated_total_len > self.spare_capacity() && !self.buf.is_empty() {
+                    // Flush if the total length of the input exceeds our buffer's spare capacity.
+                    // If we would have overflowed, this condition also holds, and we need to flush.
+                    self.flush_buf()?;
+                }
+
+                if saturated_total_len >= self.buf.capacity() {
+                    // Forward to our inner writer if the total length of the input is greater than or
+                    // equal to our buffer capacity. If we would have overflowed, this condition also
+                    // holds, and we punt to the inner writer.
+                    self.panicked = true;
+                    let r = self.get_mut().write_vectored(bufs);
+                    self.panicked = false;
+                    return r;
+                }
             }
 
-            if saturated_total_len >= self.buf.capacity() {
-                // Forward to our inner writer if the total length of the input is greater than or
-                // equal to our buffer capacity. If we would have overflowed, this condition also
-                // holds, and we punt to the inner writer.
-                self.panicked = true;
-                let r = self.get_mut().write_vectored(bufs);
-                self.panicked = false;
-                r
-            } else {
-                // `saturated_total_len < self.buf.capacity()` implies that we did not saturate.
+            // `saturated_total_len < self.buf.capacity()` implies that we did not saturate.
 
-                // SAFETY: We checked whether or not the spare capacity was large enough above. If
-                // it was, then we're safe already. If it wasn't, we flushed, making sufficient
-                // room for any input <= the buffer size, which includes this input.
-                unsafe {
-                    bufs.iter().for_each(|b| self.write_to_buffer_unchecked(b));
-                };
+            // SAFETY: We checked whether or not the spare capacity was large enough above. If
+            // it was, then we're safe already. If it wasn't, we flushed, making sufficient
+            // room for any input <= the buffer size, which includes this input.
+            unsafe {
+                bufs.iter().for_each(|b| self.write_to_buffer_unchecked(b));
+            };
 
-                Ok(saturated_total_len)
-            }
+            Ok(saturated_total_len)
         } else {
             let mut iter = bufs.iter();
             let mut total_written = if let Some(buf) = iter.by_ref().find(|&buf| !buf.is_empty()) {

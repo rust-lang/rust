@@ -21,3 +21,7 @@ tracing = "0.1"
 unicode-normalization = "0.1.11"
 unicode-width = "0.1.4"
 # tidy-alphabetical-end
+
+[dev-dependencies]
+termcolor = "1.2"
+

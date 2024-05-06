@@ -115,7 +115,11 @@ pub fn format(build: &Builder<'_>, check: bool, paths: &[PathBuf]) {
     let rustfmt_config: RustfmtConfig = t!(toml::from_str(&rustfmt_config));
     let mut fmt_override = ignore::overrides::OverrideBuilder::new(&build.src);
     for ignore in rustfmt_config.ignore {
-        fmt_override.add(&format!("!{ignore}")).expect(&ignore);
+        if let Some(ignore) = ignore.strip_prefix('!') {
+            fmt_override.add(ignore).expect(ignore);
+        } else {
+            fmt_override.add(&format!("!{ignore}")).expect(&ignore);
+        }
     }
     let git_available = match Command::new("git")
         .arg("--version")
@@ -225,12 +229,12 @@ pub fn format(build: &Builder<'_>, check: bool, paths: &[PathBuf]) {
         Some(first) => {
             let find_shortcut_candidates = |p: &PathBuf| {
                 let mut candidates = Vec::new();
-                for candidate in WalkBuilder::new(src.clone()).max_depth(Some(3)).build() {
-                    if let Ok(entry) = candidate {
-                        if let Some(dir_name) = p.file_name() {
-                            if entry.path().is_dir() && entry.file_name() == dir_name {
-                                candidates.push(entry.into_path());
-                            }
+                for entry in
+                    WalkBuilder::new(src.clone()).max_depth(Some(3)).build().map_while(Result::ok)
+                {
+                    if let Some(dir_name) = p.file_name() {
+                        if entry.path().is_dir() && entry.file_name() == dir_name {
+                            candidates.push(entry.into_path());
                         }
                     }
                 }

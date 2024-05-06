@@ -84,7 +84,7 @@ impl<T: Write> TerseFormatter<T> {
         if self.test_column % QUIET_MODE_MAX_COLUMN == QUIET_MODE_MAX_COLUMN - 1 {
             // We insert a new line regularly in order to flush the
             // screen when dealing with line-buffered output (e.g., piping to
-            // `stamp` in the rust CI).
+            // `stamp` in the Rust CI).
             self.write_progress()?;
         }
 

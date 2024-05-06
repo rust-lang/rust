@@ -7,17 +7,24 @@ import { unwrapUndefinable } from "./undefinable";
 // This ends up as the `type` key in tasks.json. RLS also uses `cargo` and
 // our configuration should be compatible with it so use the same key.
 export const TASK_TYPE = "cargo";
+
 export const TASK_SOURCE = "rust";
 
 export interface CargoTaskDefinition extends vscode.TaskDefinition {
-    command?: string;
+    // The cargo command, such as "run" or "check".
+    command: string;
+    // Additional arguments passed to the cargo command.
     args?: string[];
+    // The working directory to run the cargo command in.
     cwd?: string;
+    // The shell environment.
     env?: { [key: string]: string };
+    // Override the cargo executable name, such as
+    // "my_custom_cargo_bin".
     overrideCargo?: string;
 }
 
-class CargoTaskProvider implements vscode.TaskProvider {
+class RustTaskProvider implements vscode.TaskProvider {
     private readonly config: Config;
 
     constructor(config: Config) {
@@ -42,11 +49,10 @@ class CargoTaskProvider implements vscode.TaskProvider {
         const tasks: vscode.Task[] = [];
         for (const workspaceTarget of vscode.workspace.workspaceFolders || []) {
             for (const def of defs) {
-                const vscodeTask = await buildCargoTask(
+                const vscodeTask = await buildRustTask(
                     workspaceTarget,
                     { type: TASK_TYPE, command: def.command },
                     `cargo ${def.command}`,
-                    [def.command],
                     this.config.problemMatcher,
                     this.config.cargoRunner,
                 );
@@ -65,13 +71,11 @@ class CargoTaskProvider implements vscode.TaskProvider {
 
         const definition = task.definition as CargoTaskDefinition;
 
-        if (definition.type === TASK_TYPE && definition.command) {
-            const args = [definition.command].concat(definition.args ?? []);
-            return await buildCargoTask(
+        if (definition.type === TASK_TYPE) {
+            return await buildRustTask(
                 task.scope,
                 definition,
                 task.name,
-                args,
                 this.config.problemMatcher,
                 this.config.cargoRunner,
             );
@@ -81,49 +85,15 @@ class CargoTaskProvider implements vscode.TaskProvider {
     }
 }
 
-export async function buildCargoTask(
+export async function buildRustTask(
     scope: vscode.WorkspaceFolder | vscode.TaskScope | undefined,
     definition: CargoTaskDefinition,
     name: string,
-    args: string[],
     problemMatcher: string[],
     customRunner?: string,
     throwOnError: boolean = false,
 ): Promise<vscode.Task> {
-    let exec: vscode.ProcessExecution | vscode.ShellExecution | undefined = undefined;
-
-    if (customRunner) {
-        const runnerCommand = `${customRunner}.buildShellExecution`;
-        try {
-            const runnerArgs = { kind: TASK_TYPE, args, cwd: definition.cwd, env: definition.env };
-            const customExec = await vscode.commands.executeCommand(runnerCommand, runnerArgs);
-            if (customExec) {
-                if (customExec instanceof vscode.ShellExecution) {
-                    exec = customExec;
-                } else {
-                    log.debug("Invalid cargo ShellExecution", customExec);
-                    throw "Invalid cargo ShellExecution.";
-                }
-            }
-            // fallback to default processing
-        } catch (e) {
-            if (throwOnError) throw `Cargo runner '${customRunner}' failed! ${e}`;
-            // fallback to default processing
-        }
-    }
-
-    if (!exec) {
-        // Check whether we must use a user-defined substitute for cargo.
-        // Split on spaces to allow overrides like "wrapper cargo".
-        const overrideCargo = definition.overrideCargo ?? definition.overrideCargo;
-        const cargoPath = await toolchain.cargoPath();
-        const cargoCommand = overrideCargo?.split(" ") ?? [cargoPath];
-
-        const fullCommand = [...cargoCommand, ...args];
-
-        const processName = unwrapUndefinable(fullCommand[0]);
-        exec = new vscode.ProcessExecution(processName, fullCommand.slice(1), definition);
-    }
+    const exec = await cargoToExecution(definition, customRunner, throwOnError);
 
     return new vscode.Task(
         definition,
@@ -137,7 +107,54 @@ export async function buildCargoTask(
     );
 }
 
+async function cargoToExecution(
+    definition: CargoTaskDefinition,
+    customRunner: string | undefined,
+    throwOnError: boolean,
+): Promise<vscode.ProcessExecution | vscode.ShellExecution> {
+    if (customRunner) {
+        const runnerCommand = `${customRunner}.buildShellExecution`;
+
+        try {
+            const runnerArgs = {
+                kind: TASK_TYPE,
+                args: definition.args,
+                cwd: definition.cwd,
+                env: definition.env,
+            };
+            const customExec = await vscode.commands.executeCommand(runnerCommand, runnerArgs);
+            if (customExec) {
+                if (customExec instanceof vscode.ShellExecution) {
+                    return customExec;
+                } else {
+                    log.debug("Invalid cargo ShellExecution", customExec);
+                    throw "Invalid cargo ShellExecution.";
+                }
+            }
+            // fallback to default processing
+        } catch (e) {
+            if (throwOnError) throw `Cargo runner '${customRunner}' failed! ${e}`;
+            // fallback to default processing
+        }
+    }
+
+    // Check whether we must use a user-defined substitute for cargo.
+    // Split on spaces to allow overrides like "wrapper cargo".
+    const cargoPath = await toolchain.cargoPath();
+    const cargoCommand = definition.overrideCargo?.split(" ") ?? [cargoPath];
+
+    const args = [definition.command].concat(definition.args ?? []);
+    const fullCommand = [...cargoCommand, ...args];
+
+    const processName = unwrapUndefinable(fullCommand[0]);
+
+    return new vscode.ProcessExecution(processName, fullCommand.slice(1), {
+        cwd: definition.cwd,
+        env: definition.env,
+    });
+}
+
 export function activateTaskProvider(config: Config): vscode.Disposable {
-    const provider = new CargoTaskProvider(config);
+    const provider = new RustTaskProvider(config);
     return vscode.tasks.registerTaskProvider(TASK_TYPE, provider);
 }

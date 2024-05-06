@@ -4,12 +4,13 @@ use crate::simd::*;
 #[cfg(target_arch = "arm")]
 use core::arch::arm::*;
 
-#[cfg(target_arch = "aarch64")]
+#[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
 use core::arch::aarch64::*;
 
 #[cfg(all(
     any(
         target_arch = "aarch64",
+        target_arch = "arm64ec",
         all(target_arch = "arm", target_feature = "v7"),
     ),
     target_endian = "little"
@@ -69,7 +70,10 @@ mod simd32 {
     from_transmute! { unsafe Simd<i8, 4> => int8x4_t }
 }
 
-#[cfg(target_arch = "aarch64")]
+#[cfg(all(
+    any(target_arch = "aarch64", target_arch = "arm64ec"),
+    target_endian = "little"
+))]
 mod aarch64 {
     use super::neon::*;
     use super::*;

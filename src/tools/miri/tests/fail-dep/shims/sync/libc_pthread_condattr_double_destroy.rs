@@ -1,4 +1,5 @@
 //@ignore-target-windows: No libc on Windows
+//@ignore-target-apple: Our macOS condattr don't have any fields so we do not notice this.
 
 /// Test that destroying a pthread_condattr twice fails, even without a check for number validity
 

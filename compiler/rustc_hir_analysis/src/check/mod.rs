@@ -91,17 +91,18 @@ use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::ty::{GenericArgs, GenericArgsRef};
 use rustc_session::parse::feature_err;
-use rustc_span::symbol::{kw, Ident};
-use rustc_span::{self, def_id::CRATE_DEF_ID, BytePos, Span, Symbol, DUMMY_SP};
+use rustc_span::symbol::{kw, sym, Ident};
+use rustc_span::{def_id::CRATE_DEF_ID, BytePos, Span, Symbol, DUMMY_SP};
 use rustc_target::abi::VariantIdx;
 use rustc_target::spec::abi::Abi;
-use rustc_trait_selection::traits::error_reporting::suggestions::ReturnsVisitor;
+use rustc_trait_selection::traits::error_reporting::suggestions::{
+    ReturnsVisitor, TypeErrCtxtExt as _,
+};
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
 use rustc_trait_selection::traits::ObligationCtxt;
 
 use crate::errors;
 use crate::require_c_abi_if_c_variadic;
-use crate::util::common::indenter;
 
 use self::compare_impl_item::collect_return_position_impl_trait_in_trait_tys;
 use self::region::region_scope_tree;
@@ -130,7 +131,7 @@ fn get_owner_return_paths(
 ) -> Option<(LocalDefId, ReturnsVisitor<'_>)> {
     let hir_id = tcx.local_def_id_to_hir_id(def_id);
     let parent_id = tcx.hir().get_parent_item(hir_id).def_id;
-    tcx.opt_hir_node_by_def_id(parent_id).and_then(|node| node.body_id()).map(|body_id| {
+    tcx.hir_node_by_def_id(parent_id).body_id().map(|body_id| {
         let body = tcx.hir().body(body_id);
         let mut visitor = ReturnsVisitor::default();
         visitor.visit_body(body);
@@ -291,12 +292,16 @@ fn default_body_is_unstable(
         reason: reason_str,
     });
 
+    let inject_span = item_did
+        .as_local()
+        .and_then(|id| tcx.crate_level_attribute_injection_span(tcx.local_def_id_to_hir_id(id)));
     rustc_session::parse::add_feature_diagnostics_for_issue(
         &mut err,
         &tcx.sess,
         feature,
         rustc_feature::GateIssue::Library(issue),
         false,
+        inject_span,
     );
 
     err.emit();
@@ -427,7 +432,7 @@ fn fn_sig_suggestion<'tcx>(
 
     let asyncness = if tcx.asyncness(assoc.def_id).is_async() {
         output = if let ty::Alias(_, alias_ty) = *output.kind() {
-            tcx.explicit_item_bounds(alias_ty.def_id)
+            tcx.explicit_item_super_predicates(alias_ty.def_id)
                 .iter_instantiated_copied(tcx, alias_ty.args)
                 .find_map(|(bound, _)| bound.as_projection_clause()?.no_bound_vars()?.term.ty())
                 .unwrap_or_else(|| {
@@ -460,17 +465,6 @@ fn fn_sig_suggestion<'tcx>(
     format!(
         "{unsafety}{asyncness}fn {ident}{generics}({args}){output}{where_clauses} {{ todo!() }}"
     )
-}
-
-pub fn ty_kind_suggestion(ty: Ty<'_>) -> Option<&'static str> {
-    Some(match ty.kind() {
-        ty::Bool => "true",
-        ty::Char => "'a'",
-        ty::Int(_) | ty::Uint(_) => "42",
-        ty::Float(_) => "3.14159",
-        ty::Error(_) | ty::Never => return None,
-        _ => "value",
-    })
 }
 
 /// Return placeholder code for the given associated item.
@@ -507,7 +501,12 @@ fn suggestion_signature<'tcx>(
         }
         ty::AssocKind::Const => {
             let ty = tcx.type_of(assoc.def_id).instantiate_identity();
-            let val = ty_kind_suggestion(ty).unwrap_or("todo!()");
+            let val = tcx
+                .infer_ctxt()
+                .build()
+                .err_ctxt()
+                .ty_kind_suggestion(tcx.param_env(assoc.def_id), ty)
+                .unwrap_or_else(|| "value".to_string());
             format!("const {}: {} = {};", assoc.name, ty, val)
         }
     }

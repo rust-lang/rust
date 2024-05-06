@@ -1,4 +1,4 @@
-//! Detecting language items.
+//! Detecting lang items.
 //!
 //! Language items are items that represent concepts intrinsic to the language
 //! itself. Examples are:
@@ -243,7 +243,7 @@ impl<'ast, 'tcx> LanguageItemCollector<'ast, 'tcx> {
 
 /// Traverses and collects all the lang items in all crates.
 fn get_lang_items(tcx: TyCtxt<'_>, (): ()) -> LanguageItems {
-    let resolver = tcx.resolver_for_lowering(()).borrow();
+    let resolver = tcx.resolver_for_lowering().borrow();
     let (resolver, krate) = &*resolver;
 
     // Initialize the collector.

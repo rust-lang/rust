@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use rustc_errors::Applicability;
-use rustc_hir::{BindingAnnotation, Mutability, Node, Pat, PatKind};
+use rustc_hir::{BindingMode, Mutability, Node, Pat, PatKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
 
@@ -58,7 +58,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessBorrowedRef {
 
         match pat.kind {
             // Check sub_pat got a `ref` keyword (excluding `ref mut`).
-            PatKind::Binding(BindingAnnotation::REF, _, ident, None) => {
+            PatKind::Binding(BindingMode::REF, _, ident, None) => {
                 span_lint_and_then(
                     cx,
                     NEEDLESS_BORROWED_REFERENCE,
@@ -119,7 +119,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessBorrowedRef {
 
 fn check_subpatterns<'tcx>(
     cx: &LateContext<'tcx>,
-    message: &str,
+    message: &'static str,
     ref_pat: &Pat<'_>,
     pat: &Pat<'_>,
     subpatterns: impl IntoIterator<Item = &'tcx Pat<'tcx>>,
@@ -128,7 +128,7 @@ fn check_subpatterns<'tcx>(
 
     for subpattern in subpatterns {
         match subpattern.kind {
-            PatKind::Binding(BindingAnnotation::REF, _, ident, None) => {
+            PatKind::Binding(BindingMode::REF, _, ident, None) => {
                 // `ref ident`
                 //  ^^^^
                 let span = subpattern.span.until(ident.span);

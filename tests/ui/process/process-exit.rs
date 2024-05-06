@@ -1,6 +1,6 @@
 //@ run-pass
 #![allow(unused_imports)]
-//@ ignore-emscripten no processes
+//@ ignore-wasm32 no processes
 //@ ignore-sgx no processes
 
 use std::env;

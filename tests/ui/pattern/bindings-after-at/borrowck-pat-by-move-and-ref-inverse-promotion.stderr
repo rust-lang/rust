@@ -5,7 +5,7 @@ LL |     let a @ ref b = U;
    |         ^   ----- value borrowed here after move
    |         |
    |         value moved into `a` here
-   |         move occurs because `a` has type `U` which does not implement the `Copy` trait
+   |         move occurs because `a` has type `U`, which does not implement the `Copy` trait
    |
 help: borrow this binding in the pattern to avoid moving the value
    |

@@ -1,5 +1,5 @@
 error[E0404]: expected trait, found struct `Struct`
-  --> $DIR/suggest-swapping-self-ty-and-trait-edition-2021.rs:12:13
+  --> $DIR/suggest-swapping-self-ty-and-trait-edition-2021.rs:15:13
    |
 LL | impl<'a, T> Struct<T> for Trait<'a, T> {}
    |             ^^^^^^^^^ not a trait
@@ -10,7 +10,7 @@ LL | impl<'a, T> Trait<'a, T> for Struct<T> {}
    |             ~~~~~~~~~~~~     ~~~~~~~~~
 
 error[E0404]: expected trait, found enum `Enum`
-  --> $DIR/suggest-swapping-self-ty-and-trait-edition-2021.rs:16:13
+  --> $DIR/suggest-swapping-self-ty-and-trait-edition-2021.rs:19:13
    |
 LL | impl<'a, T> Enum<T> for Trait<'a, T> {}
    |             ^^^^^^^ not a trait
@@ -21,7 +21,7 @@ LL | impl<'a, T> Trait<'a, T> for Enum<T> {}
    |             ~~~~~~~~~~~~     ~~~~~~~
 
 error[E0404]: expected trait, found union `Union`
-  --> $DIR/suggest-swapping-self-ty-and-trait-edition-2021.rs:19:13
+  --> $DIR/suggest-swapping-self-ty-and-trait-edition-2021.rs:23:13
    |
 LL | impl<'a, T> Union<T> for Trait<'a, T> {}
    |             ^^^^^^^^ not a trait
@@ -31,8 +31,35 @@ help: `impl` items mention the trait being implemented first and the type it is 
 LL | impl<'a, T> Trait<'a, T> for Union<T> {}
    |             ~~~~~~~~~~~~     ~~~~~~~~
 
+error[E0392]: type parameter `T` is never used
+  --> $DIR/suggest-swapping-self-ty-and-trait-edition-2021.rs:5:19
+   |
+LL | pub struct Struct<T>;
+   |                   ^ unused type parameter
+   |
+   = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
+   = help: if you intended `T` to be a const parameter, use `const T: /* Type */` instead
+
+error[E0392]: type parameter `T` is never used
+  --> $DIR/suggest-swapping-self-ty-and-trait-edition-2021.rs:7:15
+   |
+LL | pub enum Enum<T> {}
+   |               ^ unused type parameter
+   |
+   = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
+   = help: if you intended `T` to be a const parameter, use `const T: /* Type */` instead
+
+error[E0392]: type parameter `T` is never used
+  --> $DIR/suggest-swapping-self-ty-and-trait-edition-2021.rs:10:17
+   |
+LL | pub union Union<T> {
+   |                 ^ unused type parameter
+   |
+   = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
+   = help: if you intended `T` to be a const parameter, use `const T: /* Type */` instead
+
 error[E0782]: trait objects must include the `dyn` keyword
-  --> $DIR/suggest-swapping-self-ty-and-trait-edition-2021.rs:12:27
+  --> $DIR/suggest-swapping-self-ty-and-trait-edition-2021.rs:15:27
    |
 LL | impl<'a, T> Struct<T> for Trait<'a, T> {}
    |                           ^^^^^^^^^^^^
@@ -42,7 +69,29 @@ help: add `dyn` keyword before this trait
 LL | impl<'a, T> Struct<T> for dyn Trait<'a, T> {}
    |                           +++
 
-error: aborting due to 4 previous errors
+error[E0782]: trait objects must include the `dyn` keyword
+  --> $DIR/suggest-swapping-self-ty-and-trait-edition-2021.rs:19:25
+   |
+LL | impl<'a, T> Enum<T> for Trait<'a, T> {}
+   |                         ^^^^^^^^^^^^
+   |
+help: add `dyn` keyword before this trait
+   |
+LL | impl<'a, T> Enum<T> for dyn Trait<'a, T> {}
+   |                         +++
 
-Some errors have detailed explanations: E0404, E0782.
-For more information about an error, try `rustc --explain E0404`.
+error[E0782]: trait objects must include the `dyn` keyword
+  --> $DIR/suggest-swapping-self-ty-and-trait-edition-2021.rs:23:26
+   |
+LL | impl<'a, T> Union<T> for Trait<'a, T> {}
+   |                          ^^^^^^^^^^^^
+   |
+help: add `dyn` keyword before this trait
+   |
+LL | impl<'a, T> Union<T> for dyn Trait<'a, T> {}
+   |                          +++
+
+error: aborting due to 9 previous errors
+
+Some errors have detailed explanations: E0392, E0404, E0782.
+For more information about an error, try `rustc --explain E0392`.

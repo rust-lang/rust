@@ -186,7 +186,7 @@ lint_deprecated_lint_name =
     .help = change it to {$replace}
 
 lint_diag_out_of_impl =
-    diagnostics should only be created in `IntoDiagnostic`/`AddToDiagnostic` impls
+    diagnostics should only be created in `Diagnostic`/`Subdiagnostic`/`LintDiagnostic` impls
 
 lint_drop_glue =
     types that do not implement `Drop` can still have drop glue, consider instead using `{$needs_drop}` to detect whether a type is trivially dropped
@@ -299,6 +299,9 @@ lint_improper_ctypes_only_phantomdata = composed only of `PhantomData`
 
 lint_improper_ctypes_opaque = opaque types have no C equivalent
 
+lint_improper_ctypes_pat_help = consider using the base type instead
+
+lint_improper_ctypes_pat_reason = pattern types have no C equivalent
 lint_improper_ctypes_slice_help = consider using a raw pointer instead
 
 lint_improper_ctypes_slice_reason = slices have no C equivalent
@@ -443,7 +446,7 @@ lint_non_local_definitions_impl = non-local `impl` definition, they should be av
             [one] `{$body_name}`
            *[other] `{$body_name}` and up {$depth} bodies
         }
-    .non_local = an `impl` definition is non-local if it is nested inside an item and neither the type nor the trait are at the same nesting level as the `impl` block
+    .non_local = an `impl` definition is non-local if it is nested inside an item and may impact type checking outside of that item. This can be the case if neither the trait or the self type are at the same nesting level as the `impl`
     .exception = one exception to the rule are anon-const (`const _: () = {"{"} ... {"}"}`) at top-level module and anon-const at the same nesting as the trait or type
     .const_anon = use a const-anon item to suppress this lint
 
@@ -453,6 +456,8 @@ lint_non_local_definitions_macro_rules = non-local `macro_rules!` definition, th
             [one] `{$body_name}`
            *[other] `{$body_name}` and up {$depth} bodies
         }
+    .help_doctest =
+        remove the `#[macro_export]` or make this doc-test a standalone test with its own `fn main() {"{"} ... {"}"}`
     .non_local = a `macro_rules!` definition is non-local if it is nested inside an item and has a `#[macro_export]` attribute
     .exception = one exception to the rule are anon-const (`const _: () = {"{"} ... {"}"}`) at top-level module
 
@@ -561,8 +566,6 @@ lint_suspicious_double_ref_clone =
 
 lint_suspicious_double_ref_deref =
     using `.deref()` on a double reference, which returns `{$ty}` instead of dereferencing the inner type
-
-lint_trivial_untranslatable_diag = diagnostic with static strings only
 
 lint_ty_qualified = usage of qualified `ty::{$ty}`
     .suggestion = try importing it and using it unqualified

@@ -1,7 +1,7 @@
 //! Runs `rustc --print target-spec-json` to get the target_data_layout.
-use std::process::Command;
 
 use rustc_hash::FxHashMap;
+use toolchain::Tool;
 
 use crate::{utf8_stdout, ManifestPath, Sysroot};
 
@@ -28,8 +28,7 @@ pub fn get(
     };
     let sysroot = match config {
         RustcDataLayoutConfig::Cargo(sysroot, cargo_toml) => {
-            let mut cmd = Command::new(toolchain::Tool::Cargo.path());
-            Sysroot::set_rustup_toolchain_env(&mut cmd, sysroot);
+            let mut cmd = Sysroot::tool(sysroot, Tool::Cargo);
             cmd.envs(extra_env);
             cmd.current_dir(cargo_toml.parent())
                 .args([
@@ -57,7 +56,7 @@ pub fn get(
         RustcDataLayoutConfig::Rustc(sysroot) => sysroot,
     };
 
-    let mut cmd = Sysroot::rustc(sysroot);
+    let mut cmd = Sysroot::tool(sysroot, Tool::Rustc);
     cmd.envs(extra_env)
         .args(["-Z", "unstable-options", "--print", "target-spec-json"])
         .env("RUSTC_BOOTSTRAP", "1");

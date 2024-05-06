@@ -21,6 +21,7 @@ extern crate rustc_hir;
 extern crate rustc_incremental;
 extern crate rustc_index;
 extern crate rustc_metadata;
+extern crate rustc_monomorphize;
 extern crate rustc_session;
 extern crate rustc_span;
 extern crate rustc_target;
@@ -86,21 +87,17 @@ mod prelude {
         AbiParam, Block, FuncRef, Inst, InstBuilder, MemFlags, Signature, SourceLoc, StackSlot,
         StackSlotData, StackSlotKind, TrapCode, Type, Value,
     };
-    pub(crate) use cranelift_codegen::isa::{self, CallConv};
     pub(crate) use cranelift_codegen::Context;
-    pub(crate) use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext, Variable};
     pub(crate) use cranelift_module::{self, DataDescription, FuncId, Linkage, Module};
     pub(crate) use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
     pub(crate) use rustc_hir::def_id::{DefId, LOCAL_CRATE};
     pub(crate) use rustc_index::Idx;
-    pub(crate) use rustc_middle::bug;
     pub(crate) use rustc_middle::mir::{self, *};
-    pub(crate) use rustc_middle::ty::layout::{self, LayoutOf, TyAndLayout};
+    pub(crate) use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
     pub(crate) use rustc_middle::ty::{
-        self, FloatTy, Instance, InstanceDef, IntTy, ParamEnv, Ty, TyCtxt, TypeAndMut,
-        TypeFoldable, TypeVisitableExt, UintTy,
+        self, FloatTy, Instance, InstanceDef, IntTy, ParamEnv, Ty, TyCtxt, TypeAndMut, UintTy,
     };
-    pub(crate) use rustc_span::{FileNameDisplayPreference, Span};
+    pub(crate) use rustc_span::Span;
     pub(crate) use rustc_target::abi::{Abi, FieldIdx, Scalar, Size, VariantIdx, FIRST_VARIANT};
 
     pub(crate) use crate::abi::*;
@@ -147,7 +144,7 @@ impl CodegenCx {
         let unwind_context =
             UnwindContext::new(isa, matches!(backend_config.codegen_mode, CodegenMode::Aot));
         let debug_context = if debug_info && !tcx.sess.target.options.is_like_windows {
-            Some(DebugContext::new(tcx, isa))
+            Some(DebugContext::new(tcx, isa, cgu_name.as_str()))
         } else {
             None
         };
@@ -232,12 +229,13 @@ impl CodegenBackend for CraneliftCodegenBackend {
         &self,
         ongoing_codegen: Box<dyn Any>,
         sess: &Session,
-        _outputs: &OutputFilenames,
+        outputs: &OutputFilenames,
     ) -> (CodegenResults, FxIndexMap<WorkProductId, WorkProduct>) {
-        ongoing_codegen
-            .downcast::<driver::aot::OngoingCodegen>()
-            .unwrap()
-            .join(sess, self.config.borrow().as_ref().unwrap())
+        ongoing_codegen.downcast::<driver::aot::OngoingCodegen>().unwrap().join(
+            sess,
+            outputs,
+            self.config.borrow().as_ref().unwrap(),
+        )
     }
 
     fn link(
@@ -259,7 +257,7 @@ fn target_triple(sess: &Session) -> target_lexicon::Triple {
     }
 }
 
-fn build_isa(sess: &Session, backend_config: &BackendConfig) -> Arc<dyn isa::TargetIsa + 'static> {
+fn build_isa(sess: &Session, backend_config: &BackendConfig) -> Arc<dyn TargetIsa + 'static> {
     use target_lexicon::BinaryFormat;
 
     let target_triple = crate::target_triple(sess);

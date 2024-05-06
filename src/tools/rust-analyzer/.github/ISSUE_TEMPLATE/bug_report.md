@@ -22,6 +22,8 @@ Otherwise please try to provide information which will help us to fix the issue 
 
 **rustc version**: (eg. output of `rustc -V`)
 
+**editor or extension**: (eg. VSCode, Vim, Emacs, etc. For VSCode users, specify your extension version; for users of other editors, provide the distribution if applicable)
+
 **relevant settings**: (eg. client settings, or environment variables like `CARGO`, `RUSTC`, `RUSTUP_HOME` or `CARGO_HOME`)
 
 **repository link (if public, optional)**: (eg. [rust-analyzer](https://github.com/rust-lang/rust-analyzer))

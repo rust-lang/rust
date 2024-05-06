@@ -1,0 +1,14 @@
+[package]
+name = "llvm-bitcode-linker"
+version = "0.0.1"
+description = "A self-contained linker for llvm bitcode"
+license = "MIT OR Apache-2.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+anyhow = "1.0"
+tracing = "0.1"
+tracing-subscriber = {version = "0.3.0", features = ["std"] }
+clap = { version = "4.3", features = ["derive"] }
+thiserror = "1.0.24"

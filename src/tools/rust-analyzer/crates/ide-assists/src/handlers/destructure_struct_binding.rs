@@ -107,6 +107,10 @@ fn collect_data(ident_pat: ast::IdentPat, ctx: &AssistContext<'_>) -> Option<Str
     let visible_fields =
         fields.into_iter().filter(|field| field.is_visible_from(ctx.db(), module)).collect_vec();
 
+    if visible_fields.is_empty() {
+        return None;
+    }
+
     let has_private_members =
         (is_non_exhaustive && is_foreign_crate) || visible_fields.len() < n_fields;
 
@@ -413,20 +417,13 @@ mod tests {
 
     #[test]
     fn unit_struct() {
-        check_assist(
+        check_assist_not_applicable(
             destructure_struct_binding,
             r#"
             struct Foo;
 
             fn main() {
                 let $0foo = Foo;
-            }
-            "#,
-            r#"
-            struct Foo;
-
-            fn main() {
-                let Foo = Foo;
             }
             "#,
         )
@@ -736,6 +733,20 @@ mod tests {
                     bar_2
                 };
             }
+            "#,
+        )
+    }
+
+    #[test]
+    fn record_struct_no_public_members() {
+        check_assist_not_applicable(
+            destructure_struct_binding,
+            r#"
+            //- /lib.rs crate:dep
+            pub struct Foo { bar: i32, baz: i32 };
+
+            //- /main.rs crate:main deps:dep
+            fn main($0foo: dep::Foo) {}
             "#,
         )
     }

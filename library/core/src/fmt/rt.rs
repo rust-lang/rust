@@ -4,6 +4,7 @@
 //! These are the lang items used by format_args!().
 
 use super::*;
+use crate::hint::unreachable_unchecked;
 
 #[lang = "format_placeholder"]
 #[derive(Copy, Clone)]
@@ -63,18 +64,26 @@ pub(super) enum Flag {
     DebugUpperHex,
 }
 
-/// This struct represents the generic "argument" which is taken by format_args!().
-/// It contains a function to format the given value. At compile time it is ensured that the
-/// function and the value have the correct types, and then this struct is used to canonicalize
-/// arguments to one type.
+#[derive(Copy, Clone)]
+enum ArgumentType<'a> {
+    Placeholder { value: &'a Opaque, formatter: fn(&Opaque, &mut Formatter<'_>) -> Result },
+    Count(usize),
+}
+
+/// This struct represents a generic "argument" which is taken by format_args!().
 ///
-/// Argument is essentially an optimized partially applied formatting function,
-/// equivalent to `exists T.(&T, fn(&T, &mut Formatter<'_>) -> Result`.
+/// This can be either a placeholder argument or a count argument.
+/// * A placeholder argument contains a function to format the given value. At
+///   compile time it is ensured that the function and the value have the correct
+///   types, and then this struct is used to canonicalize arguments to one type.
+///   Placeholder arguments are essentially an optimized partially applied formatting
+///   function, equivalent to `exists T.(&T, fn(&T, &mut Formatter<'_>) -> Result`.
+/// * A count argument contains a count for dynamic formatting parameters like
+///   precision and width.
 #[lang = "format_argument"]
 #[derive(Copy, Clone)]
 pub struct Argument<'a> {
-    value: &'a Opaque,
-    formatter: fn(&Opaque, &mut Formatter<'_>) -> Result,
+    ty: ArgumentType<'a>,
 }
 
 #[rustc_diagnostic_item = "ArgumentMethods"]
@@ -89,7 +98,14 @@ impl<'a> Argument<'a> {
         // `mem::transmute(f)` is safe since `fn(&T, &mut Formatter<'_>) -> Result`
         // and `fn(&Opaque, &mut Formatter<'_>) -> Result` have the same ABI
         // (as long as `T` is `Sized`)
-        unsafe { Argument { formatter: mem::transmute(f), value: mem::transmute(x) } }
+        unsafe {
+            Argument {
+                ty: ArgumentType::Placeholder {
+                    formatter: mem::transmute(f),
+                    value: mem::transmute(x),
+                },
+            }
+        }
     }
 
     #[inline(always)]
@@ -130,30 +146,33 @@ impl<'a> Argument<'a> {
     }
     #[inline(always)]
     pub fn from_usize(x: &usize) -> Argument<'_> {
-        Self::new(x, USIZE_MARKER)
+        Argument { ty: ArgumentType::Count(*x) }
     }
 
+    /// Format this placeholder argument.
+    ///
+    /// # Safety
+    ///
+    /// This argument must actually be a placeholder argument.
+    ///
     // FIXME: Transmuting formatter in new and indirectly branching to/calling
     // it here is an explicit CFI violation.
     #[allow(inline_no_sanitize)]
     #[no_sanitize(cfi, kcfi)]
     #[inline(always)]
-    pub(super) fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        (self.formatter)(self.value, f)
+    pub(super) unsafe fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+        match self.ty {
+            ArgumentType::Placeholder { formatter, value } => formatter(value, f),
+            // SAFETY: the caller promised this.
+            ArgumentType::Count(_) => unsafe { unreachable_unchecked() },
+        }
     }
 
     #[inline(always)]
     pub(super) fn as_usize(&self) -> Option<usize> {
-        // We are type punning a bit here: USIZE_MARKER only takes an &usize but
-        // formatter takes an &Opaque. Rust understandably doesn't think we should compare
-        // the function pointers if they don't have the same signature, so we cast to
-        // usizes to tell it that we just want to compare addresses.
-        if self.formatter as usize == USIZE_MARKER as usize {
-            // SAFETY: The `formatter` field is only set to USIZE_MARKER if
-            // the value is a usize, so this is safe
-            Some(unsafe { *(self.value as *const _ as *const usize) })
-        } else {
-            None
+        match self.ty {
+            ArgumentType::Count(count) => Some(count),
+            ArgumentType::Placeholder { .. } => None,
         }
     }
 
@@ -193,24 +212,3 @@ impl UnsafeArg {
 extern "C" {
     type Opaque;
 }
-
-// This guarantees a single stable value for the function pointer associated with
-// indices/counts in the formatting infrastructure.
-//
-// Note that a function defined as such would not be correct as functions are
-// always tagged unnamed_addr with the current lowering to LLVM IR, so their
-// address is not considered important to LLVM and as such the as_usize cast
-// could have been miscompiled. In practice, we never call as_usize on non-usize
-// containing data (as a matter of static generation of the formatting
-// arguments), so this is merely an additional check.
-//
-// We primarily want to ensure that the function pointer at `USIZE_MARKER` has
-// an address corresponding *only* to functions that also take `&usize` as their
-// first argument. The read_volatile here ensures that we can safely ready out a
-// usize from the passed reference and that this address does not point at a
-// non-usize taking function.
-static USIZE_MARKER: fn(&usize, &mut Formatter<'_>) -> Result = |ptr, _| {
-    // SAFETY: ptr is a reference
-    let _v: usize = unsafe { crate::ptr::read_volatile(ptr) };
-    loop {}
-};

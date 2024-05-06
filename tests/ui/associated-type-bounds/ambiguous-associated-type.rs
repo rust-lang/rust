@@ -1,7 +1,5 @@
 //@ check-pass
 
-#![feature(associated_type_bounds)]
-
 pub struct Flatten<I>
 where
     I: Iterator<Item: IntoIterator>,

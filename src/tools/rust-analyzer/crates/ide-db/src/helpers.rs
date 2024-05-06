@@ -64,14 +64,14 @@ pub fn visit_file_defs(
     cb: &mut dyn FnMut(Definition),
 ) {
     let db = sema.db;
-    let module = match sema.to_module_def(file_id) {
+    let module = match sema.file_to_module_def(file_id) {
         Some(it) => it,
         None => return,
     };
     let mut defs: VecDeque<_> = module.declarations(db).into();
     while let Some(def) = defs.pop_front() {
         if let ModuleDef::Module(submodule) = def {
-            if let hir::ModuleSource::Module(_) = submodule.definition_source(db).value {
+            if submodule.is_inline(db) {
                 defs.extend(submodule.declarations(db));
                 submodule.impl_defs(db).into_iter().for_each(|impl_| cb(impl_.into()));
             }

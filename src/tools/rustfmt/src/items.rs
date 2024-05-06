@@ -3325,11 +3325,11 @@ impl Rewrite for ast::ForeignItem {
                     .map(|(s, _, _)| format!("{};", s))
                 }
             }
-            ast::ForeignItemKind::Static(ref ty, mutability, _) => {
+            ast::ForeignItemKind::Static(ref static_foreign_item) => {
                 // FIXME(#21): we're dropping potential comments in between the
                 // function kw here.
                 let vis = format_visibility(context, &self.vis);
-                let mut_str = format_mutability(mutability);
+                let mut_str = format_mutability(static_foreign_item.mutability);
                 let prefix = format!(
                     "{}static {}{}:",
                     vis,
@@ -3340,7 +3340,7 @@ impl Rewrite for ast::ForeignItem {
                 rewrite_assign_rhs(
                     context,
                     prefix,
-                    &**ty,
+                    &static_foreign_item.ty,
                     &RhsAssignKind::Ty,
                     shape.sub_width(1)?,
                 )

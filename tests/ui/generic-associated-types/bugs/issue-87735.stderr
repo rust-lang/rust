@@ -4,6 +4,91 @@ error[E0207]: the type parameter `U` is not constrained by the impl trait, self 
 LL | impl<'b, T, U> AsRef2 for Foo<T>
    |             ^ unconstrained type parameter
 
-error: aborting due to 1 previous error
+error[E0309]: the parameter type `U` may not live long enough
+  --> $DIR/issue-87735.rs:34:21
+   |
+LL |   type Output<'a> = FooRef<'a, U> where Self: 'a;
+   |               --    ^^^^^^^^^^^^^ ...so that the type `U` will meet its required lifetime bounds...
+   |               |
+   |               the parameter type `U` must be valid for the lifetime `'a` as defined here...
+   |
+note: ...that is required by this bound
+  --> $DIR/issue-87735.rs:23:22
+   |
+LL | struct FooRef<'a, U>(&'a [U]);
+   |                      ^^^^^^^
+help: consider adding an explicit lifetime bound
+   |
+LL |   type Output<'a> = FooRef<'a, U> where Self: 'a, U: 'a;
+   |                                                 +++++++
 
-For more information about this error, try `rustc --explain E0207`.
+error[E0309]: the parameter type `T` may not live long enough
+  --> $DIR/issue-87735.rs:31:15
+   |
+LL | impl<'b, T, U> AsRef2 for Foo<T>
+   |      -- the parameter type `T` must be valid for the lifetime `'b` as defined here...
+...
+LL |     T: AsRef2<Output<'b> = &'b [U]>,
+   |               ^^^^^^^^^^^^^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds...
+   |
+note: ...that is required by this bound
+  --> $DIR/issue-87735.rs:7:31
+   |
+LL |   type Output<'a> where Self: 'a;
+   |                               ^^
+help: consider adding an explicit lifetime bound
+   |
+LL |     T: AsRef2<Output<'b> = &'b [U]> + 'b,
+   |                                     ++++
+
+error[E0309]: the parameter type `T` may not live long enough
+  --> $DIR/issue-87735.rs:36:31
+   |
+LL | impl<'b, T, U> AsRef2 for Foo<T>
+   |      -- the parameter type `T` must be valid for the lifetime `'b` as defined here...
+...
+LL |   fn as_ref2<'a>(&'a self) -> Self::Output<'a> {
+   |                               ^^^^^^^^^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds...
+   |
+note: ...that is required by this bound
+  --> $DIR/issue-87735.rs:7:31
+   |
+LL |   type Output<'a> where Self: 'a;
+   |                               ^^
+help: consider adding an explicit lifetime bound
+   |
+LL |     T: AsRef2<Output<'b> = &'b [U]> + 'b,
+   |                                     ++++
+
+error: lifetime may not live long enough
+  --> $DIR/issue-87735.rs:37:5
+   |
+LL | impl<'b, T, U> AsRef2 for Foo<T>
+   |      -- lifetime `'b` defined here
+...
+LL |   fn as_ref2<'a>(&'a self) -> Self::Output<'a> {
+   |              -- lifetime `'a` defined here
+LL |     FooRef(self.0.as_ref2())
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ method was supposed to return data with lifetime `'a` but it is returning data with lifetime `'b`
+   |
+   = help: consider adding the following bound: `'b: 'a`
+
+error: lifetime may not live long enough
+  --> $DIR/issue-87735.rs:37:12
+   |
+LL | impl<'b, T, U> AsRef2 for Foo<T>
+   |      -- lifetime `'b` defined here
+...
+LL |   fn as_ref2<'a>(&'a self) -> Self::Output<'a> {
+   |              -- lifetime `'a` defined here
+LL |     FooRef(self.0.as_ref2())
+   |            ^^^^^^^^^^^^^^^^ argument requires that `'a` must outlive `'b`
+   |
+   = help: consider adding the following bound: `'a: 'b`
+
+help: `'b` and `'a` must be the same: replace one with the other
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0207, E0309.
+For more information about an error, try `rustc --explain E0207`.

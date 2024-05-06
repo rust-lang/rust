@@ -8,8 +8,9 @@ use rustc_hir::def::DefKind;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir_analysis::check::{check_function_signature, forbid_intrinsic_abi};
-use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use rustc_infer::infer::type_variable::TypeVariableOrigin;
 use rustc_infer::infer::RegionVariableOrigin;
+use rustc_infer::traits::WellFormedLoc;
 use rustc_middle::ty::{self, Binder, Ty, TyCtxt};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::sym;
@@ -71,6 +72,18 @@ pub(super) fn check_fn<'a, 'tcx>(
     let inputs_hir = hir.fn_decl_by_hir_id(fn_id).map(|decl| &decl.inputs);
     let inputs_fn = fn_sig.inputs().iter().copied();
     for (idx, (param_ty, param)) in inputs_fn.chain(maybe_va_list).zip(body.params).enumerate() {
+        // We checked the root's signature during wfcheck, but not the child.
+        if fcx.tcx.is_typeck_child(fn_def_id.to_def_id()) {
+            fcx.register_wf_obligation(
+                param_ty.into(),
+                param.span,
+                traits::WellFormed(Some(WellFormedLoc::Param {
+                    function: fn_def_id,
+                    param_idx: idx,
+                })),
+            );
+        }
+
         // Check the pattern.
         let ty: Option<&hir::Ty<'_>> = inputs_hir.and_then(|h| h.get(idx));
         let ty_span = ty.map(|ty| ty.span);
@@ -108,7 +121,13 @@ pub(super) fn check_fn<'a, 'tcx>(
         hir::FnRetTy::DefaultReturn(_) => body.value.span,
         hir::FnRetTy::Return(ty) => ty.span,
     };
+
     fcx.require_type_is_sized(declared_ret_ty, return_or_body_span, traits::SizedReturnType);
+    // We checked the root's signature during wfcheck, but not the child.
+    if fcx.tcx.is_typeck_child(fn_def_id.to_def_id()) {
+        fcx.require_type_is_sized(declared_ret_ty, return_or_body_span, traits::WellFormed(None));
+    }
+
     fcx.is_whole_body.set(true);
     fcx.check_return_expr(body.value, false);
 
@@ -123,8 +142,7 @@ pub(super) fn check_fn<'a, 'tcx>(
         // We have special-cased the case where the function is declared
         // `-> dyn Foo` and we don't actually relate it to the
         // `fcx.ret_coercion`, so just instantiate a type variable.
-        actual_return_ty =
-            fcx.next_ty_var(TypeVariableOrigin { kind: TypeVariableOriginKind::DynReturnFn, span });
+        actual_return_ty = fcx.next_ty_var(TypeVariableOrigin { param_def_id: None, span });
         debug!("actual_return_ty replaced with {:?}", actual_return_ty);
     }
 
@@ -182,7 +200,7 @@ fn check_panic_info_fn(tcx: TyCtxt<'_>, fn_id: LocalDefId, fn_sig: ty::FnSig<'_>
         ty::Region::new_bound(
             tcx,
             ty::INNERMOST,
-            ty::BoundRegion { var: ty::BoundVar::from_u32(0), kind: ty::BrAnon },
+            ty::BoundRegion { var: ty::BoundVar::ZERO, kind: ty::BrAnon },
         ),
         panic_info_ty,
     );

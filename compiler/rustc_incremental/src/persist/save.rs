@@ -10,6 +10,7 @@ use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
 use rustc_serialize::Encodable as RustcEncodable;
 use rustc_session::Session;
 use std::fs;
+use std::sync::Arc;
 
 use super::data::*;
 use super::dirty_clean;
@@ -147,7 +148,7 @@ fn encode_query_cache(tcx: TyCtxt<'_>, encoder: FileEncoder) -> FileEncodeResult
 /// and moves it to the permanent dep-graph path
 pub(crate) fn build_dep_graph(
     sess: &Session,
-    prev_graph: SerializedDepGraph,
+    prev_graph: Arc<SerializedDepGraph>,
     prev_work_products: WorkProductMap,
 ) -> Option<DepGraph> {
     if sess.opts.incremental.is_none() {

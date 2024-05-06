@@ -40,7 +40,7 @@
 //! - That have no non-trivial intersection with any of the constructors in the column (i.e. they're
 //!     each either disjoint with or covered by any given column constructor).
 //!
-//! We compute this in two steps: first [`TypeCx::ctors_for_ty`] determines the
+//! We compute this in two steps: first [`PatCx::ctors_for_ty`] determines the
 //! set of all possible constructors for the type. Then [`ConstructorSet::split`] looks at the
 //! column of constructors and splits the set into groups accordingly. The precise invariants of
 //! [`ConstructorSet::split`] is described in [`SplitConstructorSet`].
@@ -136,9 +136,37 @@
 //! the algorithm can't distinguish them from a nonempty constructor. The only known case where this
 //! could happen is the `[..]` pattern on `[!; N]` with `N > 0` so we must take care to not emit it.
 //!
-//! This is all handled by [`TypeCx::ctors_for_ty`] and
+//! This is all handled by [`PatCx::ctors_for_ty`] and
 //! [`ConstructorSet::split`]. The invariants of [`SplitConstructorSet`] are also of interest.
 //!
+//!
+//! ## Unions
+//!
+//! Unions allow us to match a value via several overlapping representations at the same time. For
+//! example, the following is exhaustive because when seeing the value as a boolean we handled all
+//! possible cases (other cases such as `n == 3` would trigger UB).
+//!
+//! ```rust
+//! # fn main() {
+//! union U8AsBool {
+//!     n: u8,
+//!     b: bool,
+//! }
+//! let x = U8AsBool { n: 1 };
+//! unsafe {
+//!     match x {
+//!         U8AsBool { n: 2 } => {}
+//!         U8AsBool { b: true } => {}
+//!         U8AsBool { b: false } => {}
+//!     }
+//! }
+//! # }
+//! ```
+//!
+//! Pattern-matching has no knowledge that e.g. `false as u8 == 0`, so the values we consider in the
+//! algorithm look like `U8AsBool { b: true, n: 2 }`. In other words, for the most part a union is
+//! treated like a struct with the same fields. The difference lies in how we construct witnesses of
+//! non-exhaustiveness.
 //!
 //!
 //! ## Opaque patterns
@@ -155,14 +183,14 @@ use std::iter::once;
 use smallvec::SmallVec;
 
 use rustc_apfloat::ieee::{DoubleS, IeeeFloat, SingleS};
-use rustc_index::bit_set::GrowableBitSet;
+use rustc_index::bit_set::{BitSet, GrowableBitSet};
+use rustc_index::IndexVec;
 
 use self::Constructor::*;
 use self::MaybeInfiniteInt::*;
 use self::SliceKind::*;
 
-use crate::index;
-use crate::TypeCx;
+use crate::PatCx;
 
 /// Whether we have seen a constructor in the column or not.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -192,11 +220,9 @@ impl fmt::Display for RangeEnd {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum MaybeInfiniteInt {
     NegInfinity,
-    /// Encoded value. DO NOT CONSTRUCT BY HAND; use `new_finite`.
+    /// Encoded value. DO NOT CONSTRUCT BY HAND; use `new_finite_{int,uint}`.
     #[non_exhaustive]
     Finite(u128),
-    /// The integer after `u128::MAX`. We need it to represent `x..=u128::MAX` as an exclusive range.
-    JustAfterMax,
     PosInfinity,
 }
 
@@ -229,25 +255,22 @@ impl MaybeInfiniteInt {
     }
 
     /// Note: this will not turn a finite value into an infinite one or vice-versa.
-    pub fn minus_one(self) -> Self {
+    pub fn minus_one(self) -> Option<Self> {
         match self {
-            Finite(n) => match n.checked_sub(1) {
-                Some(m) => Finite(m),
-                None => panic!("Called `MaybeInfiniteInt::minus_one` on 0"),
-            },
-            JustAfterMax => Finite(u128::MAX),
-            x => x,
+            Finite(n) => n.checked_sub(1).map(Finite),
+            x => Some(x),
         }
     }
-    /// Note: this will not turn a finite value into an infinite one or vice-versa.
-    pub fn plus_one(self) -> Self {
+    /// Note: this will turn `u128::MAX` into `PosInfinity`. This means `plus_one` and `minus_one`
+    /// are not strictly inverses, but that poses no problem in our use of them.
+    /// this will not turn a finite value into an infinite one or vice-versa.
+    pub fn plus_one(self) -> Option<Self> {
         match self {
             Finite(n) => match n.checked_add(1) {
-                Some(m) => Finite(m),
-                None => JustAfterMax,
+                Some(m) => Some(Finite(m)),
+                None => Some(PosInfinity),
             },
-            JustAfterMax => panic!("Called `MaybeInfiniteInt::plus_one` on u128::MAX+1"),
-            x => x,
+            x => Some(x),
         }
     }
 }
@@ -268,18 +291,23 @@ impl IntRange {
     pub fn is_singleton(&self) -> bool {
         // Since `lo` and `hi` can't be the same `Infinity` and `plus_one` never changes from finite
         // to infinite, this correctly only detects ranges that contain exacly one `Finite(x)`.
-        self.lo.plus_one() == self.hi
+        self.lo.plus_one() == Some(self.hi)
     }
 
+    /// Construct a singleton range.
+    /// `x` must be a `Finite(_)` value.
     #[inline]
     pub fn from_singleton(x: MaybeInfiniteInt) -> IntRange {
-        IntRange { lo: x, hi: x.plus_one() }
+        // `unwrap()` is ok on a finite value
+        IntRange { lo: x, hi: x.plus_one().unwrap() }
     }
 
+    /// Construct a range with these boundaries.
+    /// `lo` must not be `PosInfinity`. `hi` must not be `NegInfinity`.
     #[inline]
     pub fn from_range(lo: MaybeInfiniteInt, mut hi: MaybeInfiniteInt, end: RangeEnd) -> IntRange {
         if end == RangeEnd::Included {
-            hi = hi.plus_one();
+            hi = hi.plus_one().unwrap();
         }
         if lo >= hi {
             // This should have been caught earlier by E0030.
@@ -420,7 +448,7 @@ pub enum SliceKind {
 }
 
 impl SliceKind {
-    fn arity(self) -> usize {
+    pub fn arity(self) -> usize {
         match self {
             FixedLen(length) => length,
             VarLen(prefix, suffix) => prefix + suffix,
@@ -459,7 +487,7 @@ impl Slice {
         Slice { array_len, kind }
     }
 
-    pub(crate) fn arity(self) -> usize {
+    pub fn arity(self) -> usize {
         self.kind.arity()
     }
 
@@ -648,7 +676,7 @@ impl OpaqueId {
 /// constructor. `Constructor::apply` reconstructs the pattern from a pair of `Constructor` and
 /// `Fields`.
 #[derive(Debug)]
-pub enum Constructor<Cx: TypeCx> {
+pub enum Constructor<Cx: PatCx> {
     /// Tuples and structs.
     Struct,
     /// Enum variants.
@@ -678,22 +706,26 @@ pub enum Constructor<Cx: TypeCx> {
     Or,
     /// Wildcard pattern.
     Wildcard,
+    /// Never pattern. Only used in `WitnessPat`. An actual never pattern should be lowered as
+    /// `Wildcard`.
+    Never,
     /// Fake extra constructor for enums that aren't allowed to be matched exhaustively. Also used
-    /// for those types for which we cannot list constructors explicitly, like `f64` and `str`.
+    /// for those types for which we cannot list constructors explicitly, like `f64` and `str`. Only
+    /// used in `WitnessPat`.
     NonExhaustive,
-    /// Fake extra constructor for variants that should not be mentioned in diagnostics.
-    /// We use this for variants behind an unstable gate as well as
-    /// `#[doc(hidden)]` ones.
+    /// Fake extra constructor for variants that should not be mentioned in diagnostics. We use this
+    /// for variants behind an unstable gate as well as `#[doc(hidden)]` ones. Only used in
+    /// `WitnessPat`.
     Hidden,
     /// Fake extra constructor for constructors that are not seen in the matrix, as explained at the
-    /// top of the file.
+    /// top of the file. Only used for specialization.
     Missing,
     /// Fake extra constructor that indicates and empty field that is private. When we encounter one
     /// we skip the column entirely so we don't observe its emptiness. Only used for specialization.
     PrivateUninhabited,
 }
 
-impl<Cx: TypeCx> Clone for Constructor<Cx> {
+impl<Cx: PatCx> Clone for Constructor<Cx> {
     fn clone(&self) -> Self {
         match self {
             Constructor::Struct => Constructor::Struct,
@@ -708,6 +740,7 @@ impl<Cx: TypeCx> Clone for Constructor<Cx> {
             Constructor::Str(value) => Constructor::Str(value.clone()),
             Constructor::Opaque(inner) => Constructor::Opaque(inner.clone()),
             Constructor::Or => Constructor::Or,
+            Constructor::Never => Constructor::Never,
             Constructor::Wildcard => Constructor::Wildcard,
             Constructor::NonExhaustive => Constructor::NonExhaustive,
             Constructor::Hidden => Constructor::Hidden,
@@ -717,7 +750,7 @@ impl<Cx: TypeCx> Clone for Constructor<Cx> {
     }
 }
 
-impl<Cx: TypeCx> Constructor<Cx> {
+impl<Cx: PatCx> Constructor<Cx> {
     pub(crate) fn is_non_exhaustive(&self) -> bool {
         matches!(self, NonExhaustive)
     }
@@ -814,6 +847,81 @@ impl<Cx: TypeCx> Constructor<Cx> {
             }
         })
     }
+
+    pub(crate) fn fmt_fields(
+        &self,
+        f: &mut fmt::Formatter<'_>,
+        ty: &Cx::Ty,
+        mut fields: impl Iterator<Item = impl fmt::Debug>,
+    ) -> fmt::Result {
+        let mut first = true;
+        let mut start_or_continue = |s| {
+            if first {
+                first = false;
+                ""
+            } else {
+                s
+            }
+        };
+        let mut start_or_comma = || start_or_continue(", ");
+
+        match self {
+            Struct | Variant(_) | UnionField => {
+                Cx::write_variant_name(f, self, ty)?;
+                // Without `cx`, we can't know which field corresponds to which, so we can't
+                // get the names of the fields. Instead we just display everything as a tuple
+                // struct, which should be good enough.
+                write!(f, "(")?;
+                for p in fields {
+                    write!(f, "{}{:?}", start_or_comma(), p)?;
+                }
+                write!(f, ")")?;
+            }
+            // Note: given the expansion of `&str` patterns done in `expand_pattern`, we should
+            // be careful to detect strings here. However a string literal pattern will never
+            // be reported as a non-exhaustiveness witness, so we can ignore this issue.
+            Ref => {
+                write!(f, "&{:?}", &fields.next().unwrap())?;
+            }
+            Slice(slice) => {
+                write!(f, "[")?;
+                match slice.kind {
+                    SliceKind::FixedLen(_) => {
+                        for p in fields {
+                            write!(f, "{}{:?}", start_or_comma(), p)?;
+                        }
+                    }
+                    SliceKind::VarLen(prefix_len, _) => {
+                        for p in fields.by_ref().take(prefix_len) {
+                            write!(f, "{}{:?}", start_or_comma(), p)?;
+                        }
+                        write!(f, "{}..", start_or_comma())?;
+                        for p in fields {
+                            write!(f, "{}{:?}", start_or_comma(), p)?;
+                        }
+                    }
+                }
+                write!(f, "]")?;
+            }
+            Bool(b) => write!(f, "{b}")?,
+            // Best-effort, will render signed ranges incorrectly
+            IntRange(range) => write!(f, "{range:?}")?,
+            F32Range(lo, hi, end) => write!(f, "{lo}{end}{hi}")?,
+            F64Range(lo, hi, end) => write!(f, "{lo}{end}{hi}")?,
+            Str(value) => write!(f, "{value:?}")?,
+            Opaque(..) => write!(f, "<constant pattern>")?,
+            Or => {
+                for pat in fields {
+                    write!(f, "{}{:?}", start_or_continue(" | "), pat)?;
+                }
+            }
+            Never => write!(f, "!")?,
+            Wildcard | Missing | NonExhaustive | Hidden | PrivateUninhabited => {
+                write!(f, "_ : {:?}", ty)?
+            }
+        }
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -835,15 +943,12 @@ pub enum VariantVisibility {
 /// In terms of division of responsibility, [`ConstructorSet::split`] handles all of the
 /// `exhaustive_patterns` feature.
 #[derive(Debug)]
-pub enum ConstructorSet<Cx: TypeCx> {
+pub enum ConstructorSet<Cx: PatCx> {
     /// The type is a tuple or struct. `empty` tracks whether the type is empty.
     Struct { empty: bool },
     /// This type has the following list of constructors. If `variants` is empty and
     /// `non_exhaustive` is false, don't use this; use `NoConstructors` instead.
-    Variants {
-        variants: index::IdxContainer<Cx::VariantIdx, VariantVisibility>,
-        non_exhaustive: bool,
-    },
+    Variants { variants: IndexVec<Cx::VariantIdx, VariantVisibility>, non_exhaustive: bool },
     /// The type is `&T`.
     Ref,
     /// The type is a union.
@@ -886,18 +991,17 @@ pub enum ConstructorSet<Cx: TypeCx> {
 /// of the `ConstructorSet` for the type, yet if we forgot to include them in `present` we would be
 /// ignoring any row with `Opaque`s in the algorithm. Hence the importance of point 4.
 #[derive(Debug)]
-pub struct SplitConstructorSet<Cx: TypeCx> {
+pub struct SplitConstructorSet<Cx: PatCx> {
     pub present: SmallVec<[Constructor<Cx>; 1]>,
     pub missing: Vec<Constructor<Cx>>,
     pub missing_empty: Vec<Constructor<Cx>>,
 }
 
-impl<Cx: TypeCx> ConstructorSet<Cx> {
+impl<Cx: PatCx> ConstructorSet<Cx> {
     /// This analyzes a column of constructors to 1/ determine which constructors of the type (if
     /// any) are missing; 2/ split constructors to handle non-trivial intersections e.g. on ranges
     /// or slices. This can get subtle; see [`SplitConstructorSet`] for details of this operation
     /// and its invariants.
-    #[instrument(level = "debug", skip(self, ctors), ret)]
     pub fn split<'a>(
         &self,
         ctors: impl Iterator<Item = &'a Constructor<Cx>> + Clone,
@@ -945,7 +1049,7 @@ impl<Cx: TypeCx> ConstructorSet<Cx> {
                 }
             }
             ConstructorSet::Variants { variants, non_exhaustive } => {
-                let mut seen_set = index::IdxSet::new_empty(variants.len());
+                let mut seen_set = BitSet::new_empty(variants.len());
                 for idx in seen.iter().filter_map(|c| c.as_variant()) {
                     seen_set.insert(idx);
                 }
@@ -1040,10 +1144,32 @@ impl<Cx: TypeCx> ConstructorSet<Cx> {
                 // In a `MaybeInvalid` place even an empty pattern may be reachable. We therefore
                 // add a dummy empty constructor here, which will be ignored if the place is
                 // `ValidOnly`.
-                missing_empty.push(NonExhaustive);
+                missing_empty.push(Never);
             }
         }
 
         SplitConstructorSet { present, missing, missing_empty }
+    }
+
+    /// Whether this set only contains empty constructors.
+    pub(crate) fn all_empty(&self) -> bool {
+        match self {
+            ConstructorSet::Bool
+            | ConstructorSet::Integers { .. }
+            | ConstructorSet::Ref
+            | ConstructorSet::Union
+            | ConstructorSet::Unlistable => false,
+            ConstructorSet::NoConstructors => true,
+            ConstructorSet::Struct { empty } => *empty,
+            ConstructorSet::Variants { variants, non_exhaustive } => {
+                !*non_exhaustive
+                    && variants
+                        .iter()
+                        .all(|visibility| matches!(visibility, VariantVisibility::Empty))
+            }
+            ConstructorSet::Slice { array_len, subtype_is_empty } => {
+                *subtype_is_empty && matches!(array_len, Some(1..))
+            }
+        }
     }
 }

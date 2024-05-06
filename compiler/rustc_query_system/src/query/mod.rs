@@ -3,16 +3,13 @@ pub use self::plumbing::*;
 
 mod job;
 #[cfg(parallel_compiler)]
-pub use self::job::deadlock;
+pub use self::job::break_query_cycles;
 pub use self::job::{
     print_query_stack, report_cycle, QueryInfo, QueryJob, QueryJobId, QueryJobInfo, QueryMap,
 };
 
 mod caches;
-pub use self::caches::{
-    CacheSelector, DefIdCacheSelector, DefaultCacheSelector, QueryCache, SingleCacheSelector,
-    VecCacheSelector,
-};
+pub use self::caches::{DefIdCache, DefaultCache, QueryCache, SingleCache, VecCache};
 
 mod config;
 pub use self::config::{HashResult, QueryConfig};
@@ -23,6 +20,7 @@ use rustc_data_structures::stable_hasher::Hash64;
 use rustc_data_structures::sync::Lock;
 use rustc_errors::DiagInner;
 use rustc_hir::def::DefKind;
+use rustc_macros::{Decodable, Encodable};
 use rustc_span::def_id::DefId;
 use rustc_span::Span;
 use thin_vec::ThinVec;

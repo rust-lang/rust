@@ -1,5 +1,5 @@
 warning: unexpected `cfg` condition value: `value`
-  --> $DIR/exhaustive-values.rs:8:7
+  --> $DIR/exhaustive-values.rs:9:7
    |
 LL | #[cfg(test = "value")]
    |       ^^^^----------
@@ -7,7 +7,7 @@ LL | #[cfg(test = "value")]
    |           help: remove the value
    |
    = note: no expected value for `test`
-   = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
    = note: `#[warn(unexpected_cfgs)]` on by default
 
 warning: 1 warning emitted

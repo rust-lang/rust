@@ -1,5 +1,4 @@
 use crate::config::*;
-
 use crate::search_paths::SearchPath;
 use crate::utils::NativeLib;
 use crate::{lint, EarlyDiagCtxt};
@@ -8,18 +7,17 @@ use rustc_data_structures::profiling::TimePassesFormat;
 use rustc_data_structures::stable_hasher::Hash64;
 use rustc_errors::ColorConfig;
 use rustc_errors::{LanguageIdentifier, TerminalUrl};
-use rustc_target::spec::{CodeModel, LinkerFlavorCli, MergeFunctions, PanicStrategy, SanitizerSet};
-use rustc_target::spec::{
-    RelocModel, RelroLevel, SplitDebuginfo, StackProtector, TargetTriple, TlsModel,
-};
-
 use rustc_feature::UnstableFeatures;
 use rustc_span::edition::Edition;
 use rustc_span::RealFileName;
 use rustc_span::SourceFileHashAlgorithm;
-
+use rustc_target::spec::{
+    CodeModel, LinkerFlavorCli, MergeFunctions, OnBrokenPipe, PanicStrategy, SanitizerSet, WasmCAbi,
+};
+use rustc_target::spec::{
+    RelocModel, RelroLevel, SplitDebuginfo, StackProtector, TargetTriple, TlsModel,
+};
 use std::collections::BTreeMap;
-
 use std::hash::{DefaultHasher, Hasher};
 use std::num::{IntErrorKind, NonZero};
 use std::path::PathBuf;
@@ -116,8 +114,8 @@ top_level_options!(
     /// incremental compilation cache before proceeding.
     ///
     /// - `[TRACKED_NO_CRATE_HASH]`
-    /// Same as `[TRACKED]`, but will not affect the crate hash. This is useful for options that only
-    /// affect the incremental cache.
+    /// Same as `[TRACKED]`, but will not affect the crate hash. This is useful for options that
+    /// only affect the incremental cache.
     ///
     /// - `[UNTRACKED]`
     /// Incremental compilation is not influenced by this option.
@@ -380,6 +378,7 @@ mod desc {
     pub const parse_time_passes_format: &str = "`text` (default) or `json`";
     pub const parse_passes: &str = "a space-separated list of passes, or `all`";
     pub const parse_panic_strategy: &str = "either `unwind` or `abort`";
+    pub const parse_on_broken_pipe: &str = "either `kill`, `error`, or `inherit`";
     pub const parse_opt_panic_strategy: &str = parse_panic_strategy;
     pub const parse_oom_strategy: &str = "either `panic` or `abort`";
     pub const parse_relro_level: &str = "one of: `full`, `partial`, or `off`";
@@ -395,7 +394,8 @@ mod desc {
     pub const parse_linker_flavor: &str = ::rustc_target::spec::LinkerFlavorCli::one_of();
     pub const parse_optimization_fuel: &str = "crate=integer";
     pub const parse_dump_mono_stats: &str = "`markdown` (default) or `json`";
-    pub const parse_instrument_coverage: &str = "either a boolean (`yes`, `no`, `on`, `off`, etc) or (unstable) one of `branch`, `except-unused-generics`, `except-unused-functions`";
+    pub const parse_instrument_coverage: &str = parse_bool;
+    pub const parse_coverage_options: &str = "`block` | `branch` | `mcdc`";
     pub const parse_instrument_xray: &str = "either a boolean (`yes`, `no`, `on`, `off`, etc), or a comma separated list of settings: `always` or `never` (mutually exclusive), `ignore-loops`, `instruction-threshold=N`, `skip-entry`, `skip-exit`";
     pub const parse_unpretty: &str = "`string` or `string=string`";
     pub const parse_treat_err_as_bug: &str = "either no value or a non-negative number";
@@ -425,6 +425,8 @@ mod desc {
         "one of supported split dwarf modes (`split` or `single`)";
     pub const parse_link_self_contained: &str = "one of: `y`, `yes`, `on`, `n`, `no`, `off`, or a list of enabled (`+` prefix) and disabled (`-` prefix) \
         components: `crto`, `libc`, `unwind`, `linker`, `sanitizers`, `mingw`";
+    pub const parse_linker_features: &str =
+        "a list of enabled (`+` prefix) and disabled (`-` prefix) features: `lld`";
     pub const parse_polonius: &str = "either no value or `legacy` (the default), or `next`";
     pub const parse_stack_protector: &str =
         "one of (`none` (default), `basic`, `strong`, or `all`)";
@@ -432,11 +434,13 @@ mod desc {
         "a `,` separated combination of `bti`, `b-key`, `pac-ret`, or `leaf`";
     pub const parse_proc_macro_execution_strategy: &str =
         "one of supported execution strategies (`same-thread`, or `cross-thread`)";
-    pub const parse_remap_path_scope: &str = "comma separated list of scopes: `macro`, `diagnostics`, `unsplit-debuginfo`, `split-debuginfo`, `split-debuginfo-path`, `object`, `all`";
+    pub const parse_remap_path_scope: &str =
+        "comma separated list of scopes: `macro`, `diagnostics`, `debuginfo`, `object`, `all`";
     pub const parse_inlining_threshold: &str =
         "either a boolean (`yes`, `no`, `on`, `off`, etc), or a non-negative number";
     pub const parse_llvm_module_flag: &str = "<key>:<type>:<value>:<behavior>. Type must currently be `u32`. Behavior should be one of (`error`, `warning`, `require`, `override`, `append`, `appendunique`, `max`, `min`)";
     pub const parse_function_return: &str = "`keep` or `thunk-extern`";
+    pub const parse_wasm_c_abi: &str = "`legacy` or `spec`";
 }
 
 mod parse {
@@ -705,6 +709,17 @@ mod parse {
         true
     }
 
+    pub(crate) fn parse_on_broken_pipe(slot: &mut OnBrokenPipe, v: Option<&str>) -> bool {
+        match v {
+            // OnBrokenPipe::Default can't be explicitly specified
+            Some("kill") => *slot = OnBrokenPipe::Kill,
+            Some("error") => *slot = OnBrokenPipe::Error,
+            Some("inherit") => *slot = OnBrokenPipe::Inherit,
+            _ => return false,
+        }
+        true
+    }
+
     pub(crate) fn parse_oom_strategy(slot: &mut OomStrategy, v: Option<&str>) -> bool {
         match v {
             Some("panic") => *slot = OomStrategy::Panic,
@@ -928,18 +943,27 @@ mod parse {
             return true;
         };
 
+        // Parse values that have historically been accepted by stable compilers,
+        // even though they're currently just aliases for boolean values.
         *slot = match v {
             "all" => InstrumentCoverage::Yes,
-            "branch" => InstrumentCoverage::Branch,
-            "except-unused-generics" | "except_unused_generics" => {
-                InstrumentCoverage::ExceptUnusedGenerics
-            }
-            "except-unused-functions" | "except_unused_functions" => {
-                InstrumentCoverage::ExceptUnusedFunctions
-            }
             "0" => InstrumentCoverage::No,
             _ => return false,
         };
+        true
+    }
+
+    pub(crate) fn parse_coverage_options(slot: &mut CoverageOptions, v: Option<&str>) -> bool {
+        let Some(v) = v else { return true };
+
+        for option in v.split(',') {
+            match option {
+                "block" => slot.level = CoverageLevel::Block,
+                "branch" => slot.level = CoverageLevel::Branch,
+                "mcdc" => slot.level = CoverageLevel::Mcdc,
+                _ => return false,
+            }
+        }
         true
     }
 
@@ -1142,9 +1166,7 @@ mod parse {
                 *slot |= match s {
                     "macro" => RemapPathScopeComponents::MACRO,
                     "diagnostics" => RemapPathScopeComponents::DIAGNOSTICS,
-                    "unsplit-debuginfo" => RemapPathScopeComponents::UNSPLIT_DEBUGINFO,
-                    "split-debuginfo" => RemapPathScopeComponents::SPLIT_DEBUGINFO,
-                    "split-debuginfo-path" => RemapPathScopeComponents::SPLIT_DEBUGINFO_PATH,
+                    "debuginfo" => RemapPathScopeComponents::DEBUGINFO,
                     "object" => RemapPathScopeComponents::OBJECT,
                     "all" => RemapPathScopeComponents::all(),
                     _ => return false,
@@ -1256,6 +1278,22 @@ mod parse {
         true
     }
 
+    /// Parse a comma-separated list of enabled and disabled linker features.
+    pub(crate) fn parse_linker_features(slot: &mut LinkerFeaturesCli, v: Option<&str>) -> bool {
+        match v {
+            Some(s) => {
+                for feature in s.split(',') {
+                    if slot.handle_cli_feature(feature).is_none() {
+                        return false;
+                    }
+                }
+
+                true
+            }
+            None => false,
+        }
+    }
+
     pub(crate) fn parse_wasi_exec_model(slot: &mut Option<WasiExecModel>, v: Option<&str>) -> bool {
         match v {
             Some("command") => *slot = Some(WasiExecModel::Command),
@@ -1326,10 +1364,20 @@ mod parse {
         slot: &mut CollapseMacroDebuginfo,
         v: Option<&str>,
     ) -> bool {
+        if v.is_some() {
+            let mut bool_arg = None;
+            if parse_opt_bool(&mut bool_arg, v) {
+                *slot = if bool_arg.unwrap() {
+                    CollapseMacroDebuginfo::Yes
+                } else {
+                    CollapseMacroDebuginfo::No
+                };
+                return true;
+            }
+        }
+
         *slot = match v {
-            Some("no") => CollapseMacroDebuginfo::No,
             Some("external") => CollapseMacroDebuginfo::External,
-            Some("yes") => CollapseMacroDebuginfo::Yes,
             _ => return false,
         };
         true
@@ -1402,6 +1450,15 @@ mod parse {
         }
         true
     }
+
+    pub(crate) fn parse_wasm_c_abi(slot: &mut WasmCAbi, v: Option<&str>) -> bool {
+        match v {
+            Some("spec") => *slot = WasmCAbi::Spec,
+            Some("legacy") => *slot = WasmCAbi::Legacy,
+            _ => return false,
+        }
+        true
+    }
 }
 
 options! {
@@ -1419,6 +1476,9 @@ options! {
         "choose the code model to use (`rustc --print code-models` for details)"),
     codegen_units: Option<usize> = (None, parse_opt_number, [UNTRACKED],
         "divide crate into N units to optimize in parallel"),
+    collapse_macro_debuginfo: CollapseMacroDebuginfo = (CollapseMacroDebuginfo::Unspecified,
+        parse_collapse_macro_debuginfo, [TRACKED],
+        "set option to collapse debuginfo for macros"),
     control_flow_guard: CFGuard = (CFGuard::Disabled, parse_cfguard, [TRACKED],
         "use Windows Control Flow Guard (default: no)"),
     debug_assertions: Option<bool> = (None, parse_opt_bool, [TRACKED],
@@ -1445,14 +1505,9 @@ options! {
         "set the threshold for inlining a function"),
     #[rustc_lint_opt_deny_field_access("use `Session::instrument_coverage` instead of this field")]
     instrument_coverage: InstrumentCoverage = (InstrumentCoverage::No, parse_instrument_coverage, [TRACKED],
-        "instrument the generated code to support LLVM source-based code coverage \
-        reports (note, the compiler build config must include `profiler = true`); \
-        implies `-C symbol-mangling-version=v0`. Optional values are:
-        `=no` `=n` `=off` `=false` (default)
-        `=yes` `=y` `=on` `=true` (implicit value)
-        `=branch` (unstable)
-        `=except-unused-generics` (unstable)
-        `=except-unused-functions` (unstable)"),
+        "instrument the generated code to support LLVM source-based code coverage reports \
+        (note, the compiler build config must include `profiler = true`); \
+        implies `-C symbol-mangling-version=v0`"),
     link_arg: (/* redirected to link_args */) = ((), parse_string_push, [UNTRACKED],
         "a single extra argument to append to the linker invocation (can be used several times)"),
     link_args: Vec<String> = (Vec::new(), parse_list, [UNTRACKED],
@@ -1508,6 +1563,8 @@ options! {
     relocation_model: Option<RelocModel> = (None, parse_relocation_model, [TRACKED],
         "control generation of position-independent code (PIC) \
         (`rustc --print relocation-models` for details)"),
+    relro_level: Option<RelroLevel> = (None, parse_relro_level, [TRACKED],
+        "choose which RELRO level to use"),
     remark: Passes = (Passes::Some(Vec::new()), parse_passes, [UNTRACKED],
         "output remarks for these optimization passes (space separated, or \"all\")"),
     rpath: bool = (false, parse_bool, [UNTRACKED],
@@ -1569,19 +1626,16 @@ options! {
         "show all expected values in check-cfg diagnostics (default: no)"),
     codegen_backend: Option<String> = (None, parse_opt_string, [TRACKED],
         "the backend to use"),
-    collapse_macro_debuginfo: CollapseMacroDebuginfo = (CollapseMacroDebuginfo::Unspecified,
-        parse_collapse_macro_debuginfo, [TRACKED],
-        "set option to collapse debuginfo for macros"),
     combine_cgu: bool = (false, parse_bool, [TRACKED],
         "combine CGUs into a single one"),
+    coverage_options: CoverageOptions = (CoverageOptions::default(), parse_coverage_options, [TRACKED],
+        "control details of coverage instrumentation"),
     crate_attr: Vec<String> = (Vec::new(), parse_string_push, [TRACKED],
         "inject the given attribute in the crate"),
     cross_crate_inline_threshold: InliningThreshold = (InliningThreshold::Sometimes(100), parse_inlining_threshold, [TRACKED],
         "threshold to allow cross crate inlining of functions"),
     debug_info_for_profiling: bool = (false, parse_bool, [TRACKED],
         "emit discriminators and other data necessary for AutoFDO"),
-    debug_macros: bool = (false, parse_bool, [TRACKED],
-        "emit line numbers debug info inside macros (default: no)"),
     debuginfo_compression: DebugInfoCompression = (DebugInfoCompression::None, parse_debuginfo_compression, [TRACKED],
         "compress debug info sections (none, zlib, zstd, default: none)"),
     deduplicate_diagnostics: bool = (true, parse_bool, [UNTRACKED],
@@ -1634,6 +1688,8 @@ options! {
         "emit the bc module with thin LTO info (default: yes)"),
     export_executable_symbols: bool = (false, parse_bool, [TRACKED],
         "export symbols from executables, as if they were dynamic libraries"),
+    external_clangrt: bool = (false, parse_bool, [UNTRACKED],
+        "rely on user specified linker commands to find clangrt"),
     extra_const_ub_checks: bool = (false, parse_bool, [TRACKED],
         "turns on more checks to detect const UB, which can be slow (default: no)"),
     #[rustc_lint_opt_deny_field_access("use `Session::fewer_names` instead of this field")]
@@ -1674,7 +1730,9 @@ options! {
         "print high-level information about incremental reuse (or the lack thereof) \
         (default: no)"),
     incremental_verify_ich: bool = (false, parse_bool, [UNTRACKED],
-        "verify incr. comp. hashes of green query instances (default: no)"),
+        "verify extended properties for incr. comp. (default: no):
+        - hashes of green query instances
+        - hash collisions of query keys"),
     inline_in_all_cgus: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "control whether `#[inline]` functions are in all CGUs"),
     inline_llvm: bool = (true, parse_bool, [TRACKED],
@@ -1683,6 +1741,9 @@ options! {
         "enable MIR inlining (default: no)"),
     inline_mir_hint_threshold: Option<usize> = (None, parse_opt_number, [TRACKED],
         "inlining threshold for functions with inline hint (default: 100)"),
+    inline_mir_preserve_debug: Option<bool> = (None, parse_opt_bool, [TRACKED],
+        "when MIR inlining, whether to preserve debug info for callee variables \
+        (default: preserve for debuginfo != None, otherwise remove)"),
     inline_mir_threshold: Option<usize> = (None, parse_opt_number, [TRACKED],
         "a default MIR inlining threshold (default: 50)"),
     input_stats: bool = (false, parse_bool, [UNTRACKED],
@@ -1707,6 +1768,8 @@ options! {
         "link native libraries in the linker invocation (default: yes)"),
     link_only: bool = (false, parse_bool, [TRACKED],
         "link the `.rlink` file generated by `-Z no-link` (default: no)"),
+    linker_features: LinkerFeaturesCli = (LinkerFeaturesCli::default(), parse_linker_features, [UNTRACKED],
+        "a comma-separated list of linker features to enable (+) or disable (-): `lld`"),
     lint_mir: bool = (false, parse_bool, [UNTRACKED],
         "lint MIR before and after each transformation"),
     llvm_module_flag: Vec<(String, u32, String)> = (Vec::new(), parse_llvm_module_flag, [TRACKED],
@@ -1772,7 +1835,7 @@ options! {
         "disable the 'leak check' for subtyping; unsound, but useful for tests"),
     no_link: bool = (false, parse_no_flag, [TRACKED],
         "compile without linking"),
-    no_parallel_llvm: bool = (false, parse_no_flag, [UNTRACKED],
+    no_parallel_backend: bool = (false, parse_no_flag, [UNTRACKED],
         "run LLVM in non-parallel mode (while keeping codegen-units and ThinLTO)"),
     no_profiler_runtime: bool = (false, parse_no_flag, [TRACKED],
         "prevent automatic injection of the profiler_builtins crate"),
@@ -1782,6 +1845,8 @@ options! {
         "do not use unique names for text and data sections when -Z function-sections is used"),
     normalize_docs: bool = (false, parse_bool, [TRACKED],
         "normalize associated items in rustdoc when generating documentation"),
+    on_broken_pipe: OnBrokenPipe = (OnBrokenPipe::Default, parse_on_broken_pipe, [TRACKED],
+        "behavior of std::io::ErrorKind::BrokenPipe (SIGPIPE)"),
     oom: OomStrategy = (OomStrategy::Abort, parse_oom_strategy, [TRACKED],
         "panic strategy for out-of-memory handling"),
     osx_rpath_install_name: bool = (false, parse_bool, [TRACKED],
@@ -1818,7 +1883,9 @@ options! {
     print_llvm_passes: bool = (false, parse_bool, [UNTRACKED],
         "print the LLVM optimization passes being run (default: no)"),
     print_mono_items: Option<String> = (None, parse_opt_string, [UNTRACKED],
-        "print the result of the monomorphization collection pass"),
+        "print the result of the monomorphization collection pass. \
+         Value `lazy` means to use normal collection; `eager` means to collect all items.
+         Note that this overwrites the effect `-Clink-dead-code` has on collection!"),
     print_type_sizes: bool = (false, parse_bool, [UNTRACKED],
         "print layout information for each type encountered (default: no)"),
     print_vtable_sizes: bool = (false, parse_bool, [UNTRACKED],
@@ -1845,8 +1912,6 @@ options! {
         "randomize the layout of types (default: no)"),
     relax_elf_relocations: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "whether ELF relocations can be relaxed"),
-    relro_level: Option<RelroLevel> = (None, parse_relro_level, [TRACKED],
-        "choose which RELRO level to use"),
     remap_cwd_prefix: Option<PathBuf> = (None, parse_opt_pathbuf, [TRACKED],
         "remap paths under the current working directory to this path prefix"),
     remap_path_scope: RemapPathScopeComponents = (RemapPathScopeComponents::all(), parse_remap_path_scope, [TRACKED],
@@ -1934,8 +1999,6 @@ written to standard error output)"),
     #[rustc_lint_opt_deny_field_access("use `Session::lto` instead of this field")]
     thinlto: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "enable ThinLTO when possible"),
-    thir_unsafeck: bool = (true, parse_bool, [TRACKED],
-        "use the THIR unsafety checker (default: yes)"),
     /// We default to 1 here since we want to behave like
     /// a sequential compiler for now. This'll likely be adjusted
     /// in the future. Note that -Zthreads=0 is the way to get
@@ -1978,6 +2041,9 @@ written to standard error output)"),
         "in diagnostics, use heuristics to shorten paths referring to items"),
     tune_cpu: Option<String> = (None, parse_opt_string, [TRACKED],
         "select processor to schedule for (`rustc --print target-cpus` for details)"),
+    #[rustc_lint_opt_deny_field_access("use `Session::ub_checks` instead of this field")]
+    ub_checks: Option<bool> = (None, parse_opt_bool, [TRACKED],
+        "emit runtime checks for Undefined Behavior (default: -Cdebug-assertions)"),
     ui_testing: bool = (false, parse_bool, [UNTRACKED],
         "emit compiler diagnostics in a form suitable for UI testing (default: no)"),
     uninit_const_chunk_threshold: usize = (16, parse_number, [TRACKED],
@@ -2021,6 +2087,8 @@ written to standard error output)"),
         Requires `-Clto[=[fat,yes]]`"),
     wasi_exec_model: Option<WasiExecModel> = (None, parse_wasi_exec_model, [TRACKED],
         "whether to build a wasi command or reactor"),
+    wasm_c_abi: WasmCAbi = (WasmCAbi::Legacy, parse_wasm_c_abi, [TRACKED],
+        "use spec-compliant C ABI for `wasm32-unknown-unknown` (default: legacy)"),
     write_long_types_to_disk: bool = (true, parse_bool, [UNTRACKED],
         "whether long type names should be written to files instead of being printed in errors"),
     // tidy-alphabetical-end

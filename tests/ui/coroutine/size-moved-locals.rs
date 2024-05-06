@@ -10,7 +10,6 @@
 // See issue #59123 for a full explanation.
 
 //@ edition:2018
-//@ ignore-wasm32 issue #62807
 //@ needs-unwind Size of Closures change on panic=abort
 
 #![feature(coroutines, coroutine_trait)]
@@ -25,6 +24,7 @@ impl Drop for Foo {
 }
 
 fn move_before_yield() -> impl Coroutine<Yield = (), Return = ()> {
+    #[coroutine]
     static || {
         let first = Foo([0; FOO_SIZE]);
         let _second = first;
@@ -36,6 +36,7 @@ fn move_before_yield() -> impl Coroutine<Yield = (), Return = ()> {
 fn noop() {}
 
 fn move_before_yield_with_noop() -> impl Coroutine<Yield = (), Return = ()> {
+    #[coroutine]
     static || {
         let first = Foo([0; FOO_SIZE]);
         noop();
@@ -48,6 +49,7 @@ fn move_before_yield_with_noop() -> impl Coroutine<Yield = (), Return = ()> {
 // Today we don't have NRVO (we allocate space for both `first` and `second`,)
 // but we can overlap `first` with `_third`.
 fn overlap_move_points() -> impl Coroutine<Yield = (), Return = ()> {
+    #[coroutine]
     static || {
         let first = Foo([0; FOO_SIZE]);
         yield;
@@ -59,6 +61,7 @@ fn overlap_move_points() -> impl Coroutine<Yield = (), Return = ()> {
 }
 
 fn overlap_x_and_y() -> impl Coroutine<Yield = (), Return = ()> {
+    #[coroutine]
     static || {
         let x = Foo([0; FOO_SIZE]);
         yield;

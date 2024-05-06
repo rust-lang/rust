@@ -12,13 +12,6 @@ note: trait bound `(): Iterator` was not satisfied
    |
 LL | trait IteratorAlias = Iterator;
    |       -------------   ^^^^^^^^ unsatisfied trait bound introduced here
-note: trait bound `(): IteratorAlias` was not satisfied
-  --> $DIR/issue-108132-unmet-trait-alias-bound-on-generic-impl.rs:9:9
-   |
-LL | impl<I: IteratorAlias> Foo<I> {
-   |         ^^^^^^^^^^^^^  ------
-   |         |
-   |         unsatisfied trait bound introduced here
 
 error: aborting due to 1 previous error
 

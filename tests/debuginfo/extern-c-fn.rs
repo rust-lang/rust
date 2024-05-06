@@ -21,17 +21,17 @@
 // === LLDB TESTS ==================================================================================
 // lldb-command:run
 
-// lldb-command:print len
-// lldbg-check:[...]$0 = 20
+// lldb-command:v len
+// lldbg-check:[...] 20
 // lldbr-check:(i32) len = 20
-// lldb-command:print local0
-// lldbg-check:[...]$1 = 19
+// lldb-command:v local0
+// lldbg-check:[...] 19
 // lldbr-check:(i32) local0 = 19
-// lldb-command:print local1
-// lldbg-check:[...]$2 = true
+// lldb-command:v local1
+// lldbg-check:[...] true
 // lldbr-check:(bool) local1 = true
-// lldb-command:print local2
-// lldbg-check:[...]$3 = 20.5
+// lldb-command:v local2
+// lldbg-check:[...] 20.5
 // lldbr-check:(f64) local2 = 20.5
 
 // lldb-command:continue

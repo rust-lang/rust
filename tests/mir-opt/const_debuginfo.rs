@@ -1,4 +1,4 @@
-//@ unit-test: ConstDebugInfo
+//@ test-mir-pass: ConstDebugInfo
 //@ compile-flags: -C overflow-checks=no -Zmir-enable-passes=+GVN
 
 struct Point {

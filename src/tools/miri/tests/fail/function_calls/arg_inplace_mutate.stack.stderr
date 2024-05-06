@@ -14,7 +14,7 @@ LL | |         let _unit: ();
 LL | |         {
 LL | |             let non_copy = S(42);
 ...  |
-LL | |
+LL | |         }
 LL | |     }
    | |_____^
 help: <TAG> is this argument

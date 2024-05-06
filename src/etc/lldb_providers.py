@@ -173,6 +173,35 @@ def StdStrSummaryProvider(valobj, dict):
     return '"%s"' % data
 
 
+def StdPathBufSummaryProvider(valobj, dict):
+    # type: (SBValue, dict) -> str
+    # logger = Logger.Logger()
+    # logger >> "[StdPathBufSummaryProvider] for " + str(valobj.GetName())
+    return StdOsStringSummaryProvider(valobj.GetChildMemberWithName("inner"), dict)
+
+
+def StdPathSummaryProvider(valobj, dict):
+    # type: (SBValue, dict) -> str
+    # logger = Logger.Logger()
+    # logger >> "[StdPathSummaryProvider] for " + str(valobj.GetName())
+    length = valobj.GetChildMemberWithName("length").GetValueAsUnsigned()
+    if length == 0:
+        return '""'
+
+    data_ptr = valobj.GetChildMemberWithName("data_ptr")
+
+    start = data_ptr.GetValueAsUnsigned()
+    error = SBError()
+    process = data_ptr.GetProcess()
+    data = process.ReadMemory(start, length, error)
+    if PY3:
+        try:
+            data = data.decode(encoding='UTF-8')
+        except UnicodeDecodeError:
+            return '%r' % data
+    return '"%s"' % data
+
+
 class StructSyntheticProvider:
     """Pretty-printer for structs and struct enum variants"""
 
@@ -743,7 +772,12 @@ class StdRefSyntheticProvider:
 
 def StdNonZeroNumberSummaryProvider(valobj, _dict):
     # type: (SBValue, dict) -> str
-    objtype = valobj.GetType()
-    field = objtype.GetFieldAtIndex(0)
-    element = valobj.GetChildMemberWithName(field.name)
-    return element.GetValue()
+    inner = valobj.GetChildAtIndex(0)
+    inner_inner = inner.GetChildAtIndex(0)
+
+    # FIXME: Avoid printing as character literal,
+    #        see https://github.com/llvm/llvm-project/issues/65076.
+    if inner_inner.GetTypeName() in ['char', 'unsigned char']:
+      return str(inner_inner.GetValueAsSigned())
+    else:
+      return inner_inner.GetValue()

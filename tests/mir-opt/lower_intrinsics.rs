@@ -1,4 +1,4 @@
-//@ unit-test: LowerIntrinsics
+//@ test-mir-pass: LowerIntrinsics
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 
 #![feature(core_intrinsics, intrinsics, rustc_attrs)]
@@ -16,13 +16,15 @@ pub fn wrapping(a: i32, b: i32) {
 }
 
 // EMIT_MIR lower_intrinsics.unchecked.LowerIntrinsics.diff
-pub unsafe fn unchecked(a: i32, b: i32) {
+pub unsafe fn unchecked(a: i32, b: i32, c: u32) {
     // CHECK-LABEL: fn unchecked(
     // CHECK: {{_.*}} = AddUnchecked(
     // CHECK: {{_.*}} = SubUnchecked(
     // CHECK: {{_.*}} = MulUnchecked(
     // CHECK: {{_.*}} = Div(
     // CHECK: {{_.*}} = Rem(
+    // CHECK: {{_.*}} = ShlUnchecked(
+    // CHECK: {{_.*}} = ShrUnchecked(
     // CHECK: {{_.*}} = ShlUnchecked(
     // CHECK: {{_.*}} = ShrUnchecked(
     let _a = core::intrinsics::unchecked_add(a, b);
@@ -32,6 +34,8 @@ pub unsafe fn unchecked(a: i32, b: i32) {
     let _y = core::intrinsics::unchecked_rem(a, b);
     let _i = core::intrinsics::unchecked_shl(a, b);
     let _j = core::intrinsics::unchecked_shr(a, b);
+    let _k = core::intrinsics::unchecked_shl(a, c);
+    let _l = core::intrinsics::unchecked_shr(a, c);
 }
 
 // EMIT_MIR lower_intrinsics.size_of.LowerIntrinsics.diff
@@ -228,4 +232,29 @@ pub unsafe fn ptr_offset(p: *const i32, d: isize) -> *const i32 {
     // CHECK: _0 = Offset(
 
     core::intrinsics::offset(p, d)
+}
+
+// EMIT_MIR lower_intrinsics.three_way_compare_char.LowerIntrinsics.diff
+pub fn three_way_compare_char(a: char, b: char) {
+    let _x = core::intrinsics::three_way_compare(a, b);
+}
+
+// EMIT_MIR lower_intrinsics.three_way_compare_signed.LowerIntrinsics.diff
+pub fn three_way_compare_signed(a: i16, b: i16) {
+    core::intrinsics::three_way_compare(a, b);
+}
+
+// EMIT_MIR lower_intrinsics.three_way_compare_unsigned.LowerIntrinsics.diff
+pub fn three_way_compare_unsigned(a: u32, b: u32) {
+    let _x = core::intrinsics::three_way_compare(a, b);
+}
+
+// EMIT_MIR lower_intrinsics.make_pointers.LowerIntrinsics.diff
+pub fn make_pointers(a: *const u8, b: *mut (), n: usize) {
+    use std::intrinsics::aggregate_raw_ptr;
+
+    let _thin_const: *const i32 = aggregate_raw_ptr(a, ());
+    let _thin_mut: *mut u8 = aggregate_raw_ptr(b, ());
+    let _slice_const: *const [u16] = aggregate_raw_ptr(a, n);
+    let _slice_mut: *mut [u64] = aggregate_raw_ptr(b, n);
 }

@@ -44,10 +44,21 @@ LL |     let _ = RangeToInclusive { end: end };
    |                                ^^^^^^^^ help: replace it with: `end`
 
 error: redundant field names in struct initialization
-  --> tests/ui/redundant_field_names.rs:88:25
+  --> tests/ui/redundant_field_names.rs:71:25
+   |
+LL |             let _ = S { v: v };
+   |                         ^^^^ help: replace it with: `v`
+...
+LL |     internal!(v);
+   |     ------------ in this macro invocation
+   |
+   = note: this error originates in the macro `internal` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: redundant field names in struct initialization
+  --> tests/ui/redundant_field_names.rs:99:25
    |
 LL |     let _ = RangeFrom { start: start };
    |                         ^^^^^^^^^^^^ help: replace it with: `start`
 
-error: aborting due to 8 previous errors
+error: aborting due to 9 previous errors
 

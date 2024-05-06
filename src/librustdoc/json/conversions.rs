@@ -573,6 +573,10 @@ impl FromWithTcx<clean::Type> for Type {
             Tuple(t) => Type::Tuple(t.into_tcx(tcx)),
             Slice(t) => Type::Slice(Box::new((*t).into_tcx(tcx))),
             Array(t, s) => Type::Array { type_: Box::new((*t).into_tcx(tcx)), len: s.to_string() },
+            clean::Type::Pat(t, p) => Type::Pat {
+                type_: Box::new((*t).into_tcx(tcx)),
+                __pat_unstable_do_not_use: p.to_string(),
+            },
             ImplTrait(g) => Type::ImplTrait(g.into_tcx(tcx)),
             Infer => Type::Infer,
             RawPointer(mutability, type_) => Type::RawPointer {

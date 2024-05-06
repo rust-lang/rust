@@ -1,5 +1,5 @@
 //@ run-pass
-//@ ignore-emscripten spawning processes is not supported
+//@ ignore-wasm32 spawning processes is not supported
 //@ ignore-sgx no processes
 
 #![feature(start)]

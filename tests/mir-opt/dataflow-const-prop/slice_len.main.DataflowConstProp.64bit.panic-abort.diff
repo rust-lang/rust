@@ -29,7 +29,7 @@
           StorageLive(_2);
           StorageLive(_3);
           StorageLive(_4);
-          _14 = const _;
+          _14 = const main::promoted[0];
           _4 = _14;
           _3 = _4;
           _2 = move _3 as &[u32] (PointerCoercion(Unsize));
@@ -52,7 +52,7 @@
           StorageDead(_2);
           StorageLive(_9);
           StorageLive(_10);
-          _10 = const _;
+          _10 = const main::SLICE;
           StorageLive(_11);
           _11 = const 1_usize;
 -         _12 = Len((*_10));

@@ -1,8 +1,8 @@
 use crate::FnCtxt;
 use rustc_hir as hir;
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::PatKind;
-use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use rustc_hir::{HirId, PatKind};
+use rustc_infer::infer::type_variable::TypeVariableOrigin;
 use rustc_middle::ty::Ty;
 use rustc_middle::ty::UserType;
 use rustc_span::def_id::LocalDefId;
@@ -29,11 +29,11 @@ impl<'a> DeclOrigin<'a> {
     }
 }
 
-/// A declaration is an abstraction of [hir::Local] and [hir::Let].
+/// A declaration is an abstraction of [hir::LetStmt] and [hir::LetExpr].
 ///
 /// It must have a hir_id, as this is how we connect gather_locals to the check functions.
 pub(super) struct Declaration<'a> {
-    pub hir_id: hir::HirId,
+    pub hir_id: HirId,
     pub pat: &'a hir::Pat<'a>,
     pub ty: Option<&'a hir::Ty<'a>>,
     pub span: Span,
@@ -41,16 +41,16 @@ pub(super) struct Declaration<'a> {
     pub origin: DeclOrigin<'a>,
 }
 
-impl<'a> From<&'a hir::Local<'a>> for Declaration<'a> {
-    fn from(local: &'a hir::Local<'a>) -> Self {
-        let hir::Local { hir_id, pat, ty, span, init, els, source: _ } = *local;
+impl<'a> From<&'a hir::LetStmt<'a>> for Declaration<'a> {
+    fn from(local: &'a hir::LetStmt<'a>) -> Self {
+        let hir::LetStmt { hir_id, pat, ty, span, init, els, source: _ } = *local;
         Declaration { hir_id, pat, ty, span, init, origin: DeclOrigin::LocalDecl { els } }
     }
 }
 
-impl<'a> From<(&'a hir::Let<'a>, hir::HirId)> for Declaration<'a> {
-    fn from((let_expr, hir_id): (&'a hir::Let<'a>, hir::HirId)) -> Self {
-        let hir::Let { pat, ty, span, init, is_recovered: _ } = *let_expr;
+impl<'a> From<(&'a hir::LetExpr<'a>, HirId)> for Declaration<'a> {
+    fn from((let_expr, hir_id): (&'a hir::LetExpr<'a>, HirId)) -> Self {
+        let hir::LetExpr { pat, ty, span, init, is_recovered: _ } = *let_expr;
         Declaration { hir_id, pat, ty, span, init: Some(init), origin: DeclOrigin::LetExpr }
     }
 }
@@ -60,7 +60,7 @@ pub(super) struct GatherLocalsVisitor<'a, 'tcx> {
     // parameters are special cases of patterns, but we want to handle them as
     // *distinct* cases. so track when we are hitting a pattern *within* an fn
     // parameter.
-    outermost_fn_param_pat: Option<(Span, hir::HirId)>,
+    outermost_fn_param_pat: Option<(Span, HirId)>,
 }
 
 impl<'a, 'tcx> GatherLocalsVisitor<'a, 'tcx> {
@@ -68,14 +68,11 @@ impl<'a, 'tcx> GatherLocalsVisitor<'a, 'tcx> {
         Self { fcx, outermost_fn_param_pat: None }
     }
 
-    fn assign(&mut self, span: Span, nid: hir::HirId, ty_opt: Option<Ty<'tcx>>) -> Ty<'tcx> {
+    fn assign(&mut self, span: Span, nid: HirId, ty_opt: Option<Ty<'tcx>>) -> Ty<'tcx> {
         match ty_opt {
             None => {
                 // Infer the variable's type.
-                let var_ty = self.fcx.next_ty_var(TypeVariableOrigin {
-                    kind: TypeVariableOriginKind::TypeInference,
-                    span,
-                });
+                let var_ty = self.fcx.next_ty_var(TypeVariableOrigin { param_def_id: None, span });
                 self.fcx.locals.borrow_mut().insert(nid, var_ty);
                 var_ty
             }
@@ -93,10 +90,9 @@ impl<'a, 'tcx> GatherLocalsVisitor<'a, 'tcx> {
     fn declare(&mut self, decl: Declaration<'tcx>) {
         let local_ty = match decl.ty {
             Some(ref ty) => {
-                let o_ty = self.fcx.to_ty(ty);
+                let o_ty = self.fcx.lower_ty(ty);
 
-                let c_ty =
-                    self.fcx.inh.infcx.canonicalize_user_type_annotation(UserType::Ty(o_ty.raw));
+                let c_ty = self.fcx.infcx.canonicalize_user_type_annotation(UserType::Ty(o_ty.raw));
                 debug!("visit_local: ty.hir_id={:?} o_ty={:?} c_ty={:?}", ty.hir_id, o_ty, c_ty);
                 self.fcx
                     .typeck_results
@@ -120,7 +116,7 @@ impl<'a, 'tcx> GatherLocalsVisitor<'a, 'tcx> {
 
 impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
     // Add explicitly-declared locals.
-    fn visit_local(&mut self, local: &'tcx hir::Local<'tcx>) {
+    fn visit_local(&mut self, local: &'tcx hir::LetStmt<'tcx>) {
         self.declare(local.into());
         intravisit::walk_local(self, local)
     }

@@ -29,8 +29,6 @@ error: struct `UnusedStruct` is never constructed
    |
 LL |     struct UnusedStruct;
    |            ^^^^^^^^^^^^
-   |
-   = note: `UnusedStruct` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
 
 error: aborting due to 4 previous errors
 

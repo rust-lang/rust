@@ -1,5 +1,5 @@
 //@ run-pass
-#![feature(exclusive_range_pattern)]
+#![allow(non_contiguous_range_endpoints)]
 #![feature(inline_const_pat)]
 
 fn main() {

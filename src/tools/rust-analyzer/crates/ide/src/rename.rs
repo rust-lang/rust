@@ -156,7 +156,7 @@ pub(crate) fn will_rename_file(
     new_name_stem: &str,
 ) -> Option<SourceChange> {
     let sema = Semantics::new(db);
-    let module = sema.to_module_def(file_id)?;
+    let module = sema.file_to_module_def(file_id)?;
     let def = Definition::Module(module);
     let mut change = if is_raw_identifier(new_name_stem) {
         def.rename(&sema, &SmolStr::from_iter(["r#", new_name_stem])).ok()?

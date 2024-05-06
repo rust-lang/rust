@@ -95,11 +95,13 @@ impl<'ll> BackendTypes for CodegenCx<'ll, '_> {
 
 impl<'ll> CodegenCx<'ll, '_> {
     pub fn const_array(&self, ty: &'ll Type, elts: &[&'ll Value]) -> &'ll Value {
-        unsafe { llvm::LLVMConstArray(ty, elts.as_ptr(), elts.len() as c_uint) }
+        let len = u64::try_from(elts.len()).expect("LLVMConstArray2 elements len overflow");
+        unsafe { llvm::LLVMConstArray2(ty, elts.as_ptr(), len) }
     }
 
     pub fn const_vector(&self, elts: &[&'ll Value]) -> &'ll Value {
-        unsafe { llvm::LLVMConstVector(elts.as_ptr(), elts.len() as c_uint) }
+        let len = c_uint::try_from(elts.len()).expect("LLVMConstVector elements len overflow");
+        unsafe { llvm::LLVMConstVector(elts.as_ptr(), len) }
     }
 
     pub fn const_bytes(&self, bytes: &[u8]) -> &'ll Value {
@@ -108,8 +110,8 @@ impl<'ll> CodegenCx<'ll, '_> {
 
     pub fn const_get_elt(&self, v: &'ll Value, idx: u64) -> &'ll Value {
         unsafe {
-            assert_eq!(idx as c_uint as u64, idx);
-            let r = llvm::LLVMGetAggregateElement(v, idx as c_uint).unwrap();
+            let idx = c_uint::try_from(idx).expect("LLVMGetAggregateElement index overflow");
+            let r = llvm::LLVMGetAggregateElement(v, idx).unwrap();
 
             debug!("const_get_elt(v={:?}, idx={}, r={:?})", v, idx, r);
 
@@ -156,6 +158,10 @@ impl<'ll, 'tcx> ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
     fn const_i32(&self, i: i32) -> &'ll Value {
         self.const_int(self.type_i32(), i as i64)
+    }
+
+    fn const_i8(&self, i: i8) -> &'ll Value {
+        self.const_int(self.type_i8(), i as i64)
     }
 
     fn const_u32(&self, i: u32) -> &'ll Value {
@@ -249,21 +255,38 @@ impl<'ll, 'tcx> ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 let (prov, offset) = ptr.into_parts();
                 let (base_addr, base_addr_space) = match self.tcx.global_alloc(prov.alloc_id()) {
                     GlobalAlloc::Memory(alloc) => {
-                        let init = const_alloc_to_llvm(self, alloc);
-                        let alloc = alloc.inner();
-                        let value = match alloc.mutability {
-                            Mutability::Mut => self.static_addr_of_mut(init, alloc.align, None),
-                            _ => self.static_addr_of(init, alloc.align, None),
-                        };
-                        if !self.sess().fewer_names() && llvm::get_value_name(value).is_empty() {
-                            let hash = self.tcx.with_stable_hashing_context(|mut hcx| {
-                                let mut hasher = StableHasher::new();
-                                alloc.hash_stable(&mut hcx, &mut hasher);
-                                hasher.finish::<Hash128>()
-                            });
-                            llvm::set_value_name(value, format!("alloc_{hash:032x}").as_bytes());
+                        // For ZSTs directly codegen an aligned pointer.
+                        // This avoids generating a zero-sized constant value and actually needing a
+                        // real address at runtime.
+                        if alloc.inner().len() == 0 {
+                            assert_eq!(offset.bytes(), 0);
+                            let llval = self.const_usize(alloc.inner().align.bytes());
+                            return if matches!(layout.primitive(), Pointer(_)) {
+                                unsafe { llvm::LLVMConstIntToPtr(llval, llty) }
+                            } else {
+                                self.const_bitcast(llval, llty)
+                            };
+                        } else {
+                            let init = const_alloc_to_llvm(self, alloc, /*static*/ false);
+                            let alloc = alloc.inner();
+                            let value = match alloc.mutability {
+                                Mutability::Mut => self.static_addr_of_mut(init, alloc.align, None),
+                                _ => self.static_addr_of(init, alloc.align, None),
+                            };
+                            if !self.sess().fewer_names() && llvm::get_value_name(value).is_empty()
+                            {
+                                let hash = self.tcx.with_stable_hashing_context(|mut hcx| {
+                                    let mut hasher = StableHasher::new();
+                                    alloc.hash_stable(&mut hcx, &mut hasher);
+                                    hasher.finish::<Hash128>()
+                                });
+                                llvm::set_value_name(
+                                    value,
+                                    format!("alloc_{hash:032x}").as_bytes(),
+                                );
+                            }
+                            (value, AddressSpace::DATA)
                         }
-                        (value, AddressSpace::DATA)
                     }
                     GlobalAlloc::Function(fn_instance) => (
                         self.get_fn_addr(fn_instance.polymorphize(self.tcx)),
@@ -274,7 +297,7 @@ impl<'ll, 'tcx> ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                             .tcx
                             .global_alloc(self.tcx.vtable_allocation((ty, trait_ref)))
                             .unwrap_memory();
-                        let init = const_alloc_to_llvm(self, alloc);
+                        let init = const_alloc_to_llvm(self, alloc, /*static*/ false);
                         let value = self.static_addr_of(init, alloc.inner().align, None);
                         (value, AddressSpace::DATA)
                     }
@@ -302,7 +325,7 @@ impl<'ll, 'tcx> ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     }
 
     fn const_data_from_alloc(&self, alloc: ConstAllocation<'tcx>) -> Self::Value {
-        const_alloc_to_llvm(self, alloc)
+        const_alloc_to_llvm(self, alloc, /*static*/ false)
     }
 
     fn const_bitcast(&self, val: &'ll Value, ty: &'ll Type) -> &'ll Value {
@@ -329,7 +352,7 @@ pub fn val_ty(v: &Value) -> &Type {
 pub fn bytes_in_context<'ll>(llcx: &'ll llvm::Context, bytes: &[u8]) -> &'ll Value {
     unsafe {
         let ptr = bytes.as_ptr() as *const c_char;
-        llvm::LLVMConstStringInContext(llcx, ptr, bytes.len() as c_uint, True)
+        llvm::LLVMConstStringInContext2(llcx, ptr, bytes.len(), True)
     }
 }
 
@@ -338,9 +361,8 @@ pub fn struct_in_context<'ll>(
     elts: &[&'ll Value],
     packed: bool,
 ) -> &'ll Value {
-    unsafe {
-        llvm::LLVMConstStructInContext(llcx, elts.as_ptr(), elts.len() as c_uint, packed as Bool)
-    }
+    let len = c_uint::try_from(elts.len()).expect("LLVMConstStructInContext elements len overflow");
+    unsafe { llvm::LLVMConstStructInContext(llcx, elts.as_ptr(), len, packed as Bool) }
 }
 
 #[inline]

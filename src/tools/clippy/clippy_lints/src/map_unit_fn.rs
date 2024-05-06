@@ -138,7 +138,7 @@ fn reduce_unit_expression(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> Option<
                     // If block only contains statements,
                     // reduce `{ X; }` to `X` or `X;`
                     match inner_stmt.kind {
-                        hir::StmtKind::Local(local) => Some(local.span),
+                        hir::StmtKind::Let(local) => Some(local.span),
                         hir::StmtKind::Expr(e) => Some(e.span),
                         hir::StmtKind::Semi(..) => Some(inner_stmt.span),
                         hir::StmtKind::Item(..) => None,
@@ -221,13 +221,13 @@ fn lint_map_unit_fn(
             binding = let_binding_name(cx, var_arg)
         );
 
-        span_lint_and_then(cx, lint, expr.span, &msg, |diag| {
+        span_lint_and_then(cx, lint, expr.span, msg, |diag| {
             diag.span_suggestion(stmt.span, "try", suggestion, applicability);
         });
     } else if let Some((binding, closure_expr)) = unit_closure(cx, fn_arg) {
         let msg = suggestion_msg("closure", map_type);
 
-        span_lint_and_then(cx, lint, expr.span, &msg, |diag| {
+        span_lint_and_then(cx, lint, expr.span, msg, |diag| {
             if let Some(reduced_expr_span) = reduce_unit_expression(cx, closure_expr) {
                 let mut applicability = Applicability::MachineApplicable;
                 let suggestion = format!(

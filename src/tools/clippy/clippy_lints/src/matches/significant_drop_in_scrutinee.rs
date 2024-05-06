@@ -37,12 +37,7 @@ pub(super) fn check<'tcx>(
     }
 }
 
-fn set_diagnostic<'tcx>(
-    diag: &mut Diag<'_, ()>,
-    cx: &LateContext<'tcx>,
-    expr: &'tcx Expr<'tcx>,
-    found: FoundSigDrop,
-) {
+fn set_diagnostic<'tcx>(diag: &mut Diag<'_, ()>, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, found: FoundSigDrop) {
     if found.lint_suggestion == LintSuggestion::MoveAndClone {
         // If our suggestion is to move and clone, then we want to leave it to the user to
         // decide how to address this lint, since it may be that cloning is inappropriate.
@@ -154,7 +149,7 @@ impl<'a, 'tcx> SigDropChecker<'a, 'tcx> {
                 false
             },
             rustc_middle::ty::Array(ty, _)
-            | rustc_middle::ty::RawPtr(TypeAndMut { ty, .. })
+            | rustc_middle::ty::RawPtr(ty, _)
             | rustc_middle::ty::Ref(_, ty, _)
             | rustc_middle::ty::Slice(ty) => self.has_sig_drop_attr(cx, *ty),
             _ => false,

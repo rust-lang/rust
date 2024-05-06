@@ -16,7 +16,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                 .no_bound_vars()
                 .expect("const ty should not rely on other generics"),
         ) {
-            self.eq(goal.param_env, normalized_const, goal.predicate.term.ct().unwrap())?;
+            self.instantiate_normalizes_to_term(goal, normalized_const.into());
             self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         } else {
             self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)

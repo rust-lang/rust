@@ -25,7 +25,6 @@ LL |   async fn baz<T>(_c: impl FnMut() -> T) where T: Future<Output=()> {
    |  ___________________________________________________________________^
 LL | | }
    | |_^
-   = note: required because it captures the following types: `impl Future<Output = ()>`
 note: required because it's used within this `async` block
   --> $DIR/issue-70935-complex-spans.rs:18:5
    |
@@ -63,7 +62,6 @@ LL |   async fn baz<T>(_c: impl FnMut() -> T) where T: Future<Output=()> {
    |  ___________________________________________________________________^
 LL | | }
    | |_^
-   = note: required because it captures the following types: `impl Future<Output = ()>`
 note: required because it's used within this `async` block
   --> $DIR/issue-70935-complex-spans.rs:18:5
    |

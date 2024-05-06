@@ -1,5 +1,5 @@
 use rustc_hash::FxHashMap;
-use rustdoc_json_types::{Crate, Item, ItemKind, ItemSummary, Visibility, FORMAT_VERSION};
+use rustdoc_json_types::{Item, ItemKind, Visibility, FORMAT_VERSION};
 
 use crate::json_find::SelectorPart;
 

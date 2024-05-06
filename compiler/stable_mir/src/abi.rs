@@ -383,7 +383,7 @@ impl WrappingRange {
             return Err(error!("Expected size <= 128 bits, but found {} instead", size.bits()));
         };
         if self.start <= max_value && self.end <= max_value {
-            Ok(self.start == 0 && max_value == self.end)
+            Ok(self.start == (self.end.wrapping_add(1) & max_value))
         } else {
             Err(error!("Range `{self:?}` out of bounds for size `{}` bits.", size.bits()))
         }

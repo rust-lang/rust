@@ -194,203 +194,203 @@
 // lldb-command:run
 
 // STRUCT EXPRESSION
-// lldb-command:print val
-// lldbg-check:[...]$0 = -1
+// lldb-command:v val
+// lldbg-check:[...] -1
 // lldbr-check:(i32) val = -1
-// lldb-command:print ten
-// lldbg-check:[...]$1 = 10
+// lldb-command:v ten
+// lldbg-check:[...] 10
 // lldbr-check:(isize) ten = 10
 // lldb-command:continue
 
-// lldb-command:print val
-// lldbg-check:[...]$2 = 11
+// lldb-command:v val
+// lldbg-check:[...] 11
 // lldbr-check:(isize) val = 11
-// lldb-command:print ten
-// lldbg-check:[...]$3 = 10
+// lldb-command:v ten
+// lldbg-check:[...] 10
 // lldbr-check:(isize) ten = 10
 // lldb-command:continue
 
-// lldb-command:print val
-// lldbg-check:[...]$4 = -1
+// lldb-command:v val
+// lldbg-check:[...] -1
 // lldbr-check:(i32) val = -1
-// lldb-command:print ten
-// lldbg-check:[...]$5 = 10
+// lldb-command:v ten
+// lldbg-check:[...] 10
 // lldbr-check:(isize) ten = 10
 // lldb-command:continue
 
 // FUNCTION CALL
-// lldb-command:print val
-// lldbg-check:[...]$6 = -1
+// lldb-command:v val
+// lldbg-check:[...] -1
 // lldbr-check:(i32) val = -1
-// lldb-command:print ten
-// lldbg-check:[...]$7 = 10
+// lldb-command:v ten
+// lldbg-check:[...] 10
 // lldbr-check:(isize) ten = 10
 // lldb-command:continue
 
-// lldb-command:print val
-// lldbg-check:[...]$8 = 12
+// lldb-command:v val
+// lldbg-check:[...] 12
 // lldbr-check:(isize) val = 12
-// lldb-command:print ten
-// lldbg-check:[...]$9 = 10
+// lldb-command:v ten
+// lldbg-check:[...] 10
 // lldbr-check:(isize) ten = 10
 // lldb-command:continue
 
-// lldb-command:print val
-// lldbg-check:[...]$10 = -1
+// lldb-command:v val
+// lldbg-check:[...] -1
 // lldbr-check:(i32) val = -1
-// lldb-command:print ten
-// lldbg-check:[...]$11 = 10
+// lldb-command:v ten
+// lldbg-check:[...] 10
 // lldbr-check:(isize) ten = 10
 // lldb-command:continue
 
 // TUPLE EXPRESSION
-// lldb-command:print val
-// lldbg-check:[...]$12 = -1
+// lldb-command:v val
+// lldbg-check:[...] -1
 // lldbr-check:(i32) val = -1
-// lldb-command:print ten
-// lldbg-check:[...]$13 = 10
+// lldb-command:v ten
+// lldbg-check:[...] 10
 // lldbr-check:(isize) ten = 10
 // lldb-command:continue
 
-// lldb-command:print val
-// lldbg-check:[...]$14 = 13
+// lldb-command:v val
+// lldbg-check:[...] 13
 // lldbr-check:(isize) val = 13
-// lldb-command:print ten
-// lldbg-check:[...]$15 = 10
+// lldb-command:v ten
+// lldbg-check:[...] 10
 // lldbr-check:(isize) ten = 10
 // lldb-command:continue
 
-// lldb-command:print val
-// lldbg-check:[...]$16 = -1
+// lldb-command:v val
+// lldbg-check:[...] -1
 // lldbr-check:(i32) val = -1
-// lldb-command:print ten
-// lldbg-check:[...]$17 = 10
+// lldb-command:v ten
+// lldbg-check:[...] 10
 // lldbr-check:(isize) ten = 10
 // lldb-command:continue
 
 // VEC EXPRESSION
-// lldb-command:print val
-// lldbg-check:[...]$18 = -1
+// lldb-command:v val
+// lldbg-check:[...] -1
 // lldbr-check:(i32) val = -1
-// lldb-command:print ten
-// lldbg-check:[...]$19 = 10
+// lldb-command:v ten
+// lldbg-check:[...] 10
 // lldbr-check:(isize) ten = 10
 // lldb-command:continue
 
-// lldb-command:print val
-// lldbg-check:[...]$20 = 14
+// lldb-command:v val
+// lldbg-check:[...] 14
 // lldbr-check:(isize) val = 14
-// lldb-command:print ten
-// lldbg-check:[...]$21 = 10
+// lldb-command:v ten
+// lldbg-check:[...] 10
 // lldbr-check:(isize) ten = 10
 // lldb-command:continue
 
-// lldb-command:print val
-// lldbg-check:[...]$22 = -1
+// lldb-command:v val
+// lldbg-check:[...] -1
 // lldbr-check:(i32) val = -1
-// lldb-command:print ten
-// lldbg-check:[...]$23 = 10
+// lldb-command:v ten
+// lldbg-check:[...] 10
 // lldbr-check:(isize) ten = 10
 // lldb-command:continue
 
 // REPEAT VEC EXPRESSION
-// lldb-command:print val
-// lldbg-check:[...]$24 = -1
+// lldb-command:v val
+// lldbg-check:[...] -1
 // lldbr-check:(i32) val = -1
-// lldb-command:print ten
-// lldbg-check:[...]$25 = 10
+// lldb-command:v ten
+// lldbg-check:[...] 10
 // lldbr-check:(isize) ten = 10
 // lldb-command:continue
 
-// lldb-command:print val
-// lldbg-check:[...]$26 = 15
+// lldb-command:v val
+// lldbg-check:[...] 15
 // lldbr-check:(isize) val = 15
-// lldb-command:print ten
-// lldbg-check:[...]$27 = 10
+// lldb-command:v ten
+// lldbg-check:[...] 10
 // lldbr-check:(isize) ten = 10
 // lldb-command:continue
 
-// lldb-command:print val
-// lldbg-check:[...]$28 = -1
+// lldb-command:v val
+// lldbg-check:[...] -1
 // lldbr-check:(i32) val = -1
-// lldb-command:print ten
-// lldbg-check:[...]$29 = 10
+// lldb-command:v ten
+// lldbg-check:[...] 10
 // lldbr-check:(isize) ten = 10
 // lldb-command:continue
 
 // ASSIGNMENT EXPRESSION
-// lldb-command:print val
-// lldbg-check:[...]$30 = -1
+// lldb-command:v val
+// lldbg-check:[...] -1
 // lldbr-check:(i32) val = -1
-// lldb-command:print ten
-// lldbg-check:[...]$31 = 10
+// lldb-command:v ten
+// lldbg-check:[...] 10
 // lldbr-check:(isize) ten = 10
 // lldb-command:continue
 
-// lldb-command:print val
-// lldbg-check:[...]$32 = 16
+// lldb-command:v val
+// lldbg-check:[...] 16
 // lldbr-check:(isize) val = 16
-// lldb-command:print ten
-// lldbg-check:[...]$33 = 10
+// lldb-command:v ten
+// lldbg-check:[...] 10
 // lldbr-check:(isize) ten = 10
 // lldb-command:continue
 
-// lldb-command:print val
-// lldbg-check:[...]$34 = -1
+// lldb-command:v val
+// lldbg-check:[...] -1
 // lldbr-check:(i32) val = -1
-// lldb-command:print ten
-// lldbg-check:[...]$35 = 10
+// lldb-command:v ten
+// lldbg-check:[...] 10
 // lldbr-check:(isize) ten = 10
 // lldb-command:continue
 
 
 // ARITHMETIC EXPRESSION
-// lldb-command:print val
-// lldbg-check:[...]$36 = -1
+// lldb-command:v val
+// lldbg-check:[...] -1
 // lldbr-check:(i32) val = -1
-// lldb-command:print ten
-// lldbg-check:[...]$37 = 10
+// lldb-command:v ten
+// lldbg-check:[...] 10
 // lldbr-check:(isize) ten = 10
 // lldb-command:continue
 
-// lldb-command:print val
-// lldbg-check:[...]$38 = 17
+// lldb-command:v val
+// lldbg-check:[...] 17
 // lldbr-check:(isize) val = 17
-// lldb-command:print ten
-// lldbg-check:[...]$39 = 10
+// lldb-command:v ten
+// lldbg-check:[...] 10
 // lldbr-check:(isize) ten = 10
 // lldb-command:continue
 
-// lldb-command:print val
-// lldbg-check:[...]$40 = -1
+// lldb-command:v val
+// lldbg-check:[...] -1
 // lldbr-check:(i32) val = -1
-// lldb-command:print ten
-// lldbg-check:[...]$41 = 10
+// lldb-command:v ten
+// lldbg-check:[...] 10
 // lldbr-check:(isize) ten = 10
 // lldb-command:continue
 
 // INDEX EXPRESSION
-// lldb-command:print val
-// lldbg-check:[...]$42 = -1
+// lldb-command:v val
+// lldbg-check:[...] -1
 // lldbr-check:(i32) val = -1
-// lldb-command:print ten
-// lldbg-check:[...]$43 = 10
+// lldb-command:v ten
+// lldbg-check:[...] 10
 // lldbr-check:(isize) ten = 10
 // lldb-command:continue
 
-// lldb-command:print val
-// lldbg-check:[...]$44 = 18
+// lldb-command:v val
+// lldbg-check:[...] 18
 // lldbr-check:(isize) val = 18
-// lldb-command:print ten
-// lldbg-check:[...]$45 = 10
+// lldb-command:v ten
+// lldbg-check:[...] 10
 // lldbr-check:(isize) ten = 10
 // lldb-command:continue
 
-// lldb-command:print val
-// lldbg-check:[...]$46 = -1
+// lldb-command:v val
+// lldbg-check:[...] -1
 // lldbr-check:(i32) val = -1
-// lldb-command:print ten
-// lldbg-check:[...]$47 = 10
+// lldb-command:v ten
+// lldbg-check:[...] 10
 // lldbr-check:(isize) ten = 10
 // lldb-command:continue
 

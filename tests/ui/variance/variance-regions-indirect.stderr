@@ -1,3 +1,35 @@
+error[E0392]: lifetime parameter `'d` is never used
+  --> $DIR/variance-regions-indirect.rs:8:26
+   |
+LL | enum Base<'a, 'b, 'c:'b, 'd> {
+   |                          ^^ unused lifetime parameter
+   |
+   = help: consider removing `'d`, referring to it in a field, or using a marker such as `PhantomData`
+
+error[E0392]: lifetime parameter `'w` is never used
+  --> $DIR/variance-regions-indirect.rs:16:17
+   |
+LL | struct Derived1<'w, 'x:'y, 'y, 'z> {
+   |                 ^^ unused lifetime parameter
+   |
+   = help: consider removing `'w`, referring to it in a field, or using a marker such as `PhantomData`
+
+error[E0392]: lifetime parameter `'c` is never used
+  --> $DIR/variance-regions-indirect.rs:22:28
+   |
+LL | struct Derived2<'a, 'b:'a, 'c> {
+   |                            ^^ unused lifetime parameter
+   |
+   = help: consider removing `'c`, referring to it in a field, or using a marker such as `PhantomData`
+
+error[E0392]: lifetime parameter `'c` is never used
+  --> $DIR/variance-regions-indirect.rs:28:28
+   |
+LL | struct Derived3<'a:'b, 'b, 'c> {
+   |                            ^^ unused lifetime parameter
+   |
+   = help: consider removing `'c`, referring to it in a field, or using a marker such as `PhantomData`
+
 error: [-, +, o, *]
   --> $DIR/variance-regions-indirect.rs:8:1
    |
@@ -5,28 +37,29 @@ LL | enum Base<'a, 'b, 'c:'b, 'd> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: [*, o, +, -]
-  --> $DIR/variance-regions-indirect.rs:15:1
+  --> $DIR/variance-regions-indirect.rs:16:1
    |
 LL | struct Derived1<'w, 'x:'y, 'y, 'z> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: [o, o, *]
-  --> $DIR/variance-regions-indirect.rs:20:1
+  --> $DIR/variance-regions-indirect.rs:22:1
    |
 LL | struct Derived2<'a, 'b:'a, 'c> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: [o, +, *]
-  --> $DIR/variance-regions-indirect.rs:25:1
+  --> $DIR/variance-regions-indirect.rs:28:1
    |
 LL | struct Derived3<'a:'b, 'b, 'c> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: [-, +, o]
-  --> $DIR/variance-regions-indirect.rs:30:1
+  --> $DIR/variance-regions-indirect.rs:34:1
    |
 LL | struct Derived4<'a, 'b, 'c:'b> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 5 previous errors
+error: aborting due to 9 previous errors
 
+For more information about this error, try `rustc --explain E0392`.

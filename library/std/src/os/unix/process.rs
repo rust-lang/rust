@@ -39,6 +39,13 @@ pub trait CommandExt: Sealed {
     /// Sets the child process's user ID. This translates to a
     /// `setuid` call in the child process. Failure in the `setuid`
     /// call will cause the spawn to fail.
+    ///
+    /// # Notes
+    ///
+    /// This will also trigger a call to `setgroups(0, NULL)` in the child
+    /// process if no groups have been specified.
+    /// This removes supplementary groups that might have given the child
+    /// unwanted permissions.
     #[stable(feature = "rust1", since = "1.0.0")]
     fn uid(&mut self, id: UserId) -> &mut process::Command;
 

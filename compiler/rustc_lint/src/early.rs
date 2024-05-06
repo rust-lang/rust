@@ -73,10 +73,10 @@ impl<'a, T: EarlyLintPass> EarlyContextAndPass<'a, T> {
 
         self.inlined_check_id(id);
         debug!("early context: enter_attrs({:?})", attrs);
-        lint_callback!(self, enter_lint_attrs, attrs);
+        lint_callback!(self, check_attributes, attrs);
         ensure_sufficient_stack(|| f(self));
         debug!("early context: exit_attrs({:?})", attrs);
-        lint_callback!(self, exit_lint_attrs, attrs);
+        lint_callback!(self, check_attributes_post, attrs);
         self.context.builder.pop(push);
     }
 }
@@ -99,7 +99,7 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
 
     fn visit_foreign_item(&mut self, it: &'a ast::ForeignItem) {
         self.with_lint_attrs(it.id, &it.attrs, |cx| {
-            ast_visit::walk_foreign_item(cx, it);
+            ast_visit::walk_item(cx, it);
         })
     }
 

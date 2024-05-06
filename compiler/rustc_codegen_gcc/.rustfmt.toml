@@ -1,1 +1,1 @@
-disable_all_formatting = true
+use_small_heuristics = "Max"

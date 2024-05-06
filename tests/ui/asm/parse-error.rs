@@ -142,3 +142,5 @@ global_asm!(format!("{{{}}}", 0), const FOO);
 //~^ ERROR asm template must be a string literal
 global_asm!("{1}", format!("{{{}}}", 0), const FOO, const BAR);
 //~^ ERROR asm template must be a string literal
+global_asm!("{}", label {});
+//~^ ERROR expected operand, options, or additional template string

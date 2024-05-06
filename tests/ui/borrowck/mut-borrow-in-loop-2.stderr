@@ -1,5 +1,5 @@
 error[E0382]: use of moved value: `value`
-  --> $DIR/mut-borrow-in-loop-2.rs:31:23
+  --> $DIR/mut-borrow-in-loop-2.rs:30:23
    |
 LL | fn this_does_not<'a, R>(value: &'a mut Events<R>) {
    |                         ----- move occurs because `value` has type `&mut Events<R>`, which does not implement the `Copy` trait
@@ -9,12 +9,18 @@ LL |         Other::handle(value);
    |                       ^^^^^ value moved here, in previous iteration of loop
    |
 note: consider changing this parameter type in function `handle` to borrow instead if owning the value isn't necessary
-  --> $DIR/mut-borrow-in-loop-2.rs:9:22
+  --> $DIR/mut-borrow-in-loop-2.rs:8:22
    |
 LL |     fn handle(value: T) -> Self;
    |        ------        ^ this parameter takes ownership of the value
    |        |
    |        in this function
+help: consider moving the expression out of the loop so it is only moved once
+   |
+LL ~     let mut value = Other::handle(value);
+LL ~     for _ in 0..3 {
+LL ~         value;
+   |
 help: consider creating a fresh reborrow of `value` here
    |
 LL |         Other::handle(&mut *value);

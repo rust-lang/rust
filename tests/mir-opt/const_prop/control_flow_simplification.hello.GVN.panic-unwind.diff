@@ -8,7 +8,7 @@
   
       bb0: {
           StorageLive(_1);
-          _1 = const _;
+          _1 = const <bool as NeedsDrop>::NEEDS;
 -         switchInt(move _1) -> [0: bb2, otherwise: bb1];
 +         switchInt(const false) -> [0: bb2, otherwise: bb1];
       }

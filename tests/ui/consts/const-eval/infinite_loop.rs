@@ -1,8 +1,11 @@
 //! This test tests two things at once:
 //! 1. we error if a const evaluation hits the deny-by-default lint limit
 //! 2. we do not ICE on invalid follow-up code
+//! 3. no ICE when run with `-Z unstable-options` (issue 122177)
 
-//@ compile-flags: -Z tiny-const-eval-limit
+//@revisions: eval_limit no_ice
+//@[no_ice] compile-flags: -Z tiny-const-eval-limit -Z unstable-options
+//@[eval_limit] compile-flags: -Z tiny-const-eval-limit
 
 fn main() {
     // Tests the Collatz conjecture with an incorrect base case (0 instead of 1).

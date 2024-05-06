@@ -119,11 +119,11 @@ fn not_a_qualified_path(p: &Parser<'_>) -> bool {
     // we disambiguate it in favor of generics (`impl<T> ::absolute::Path<T> { ... }`)
     // because this is what almost always expected in practice, qualified paths in impls
     // (`impl <Type>::AssocTy { ... }`) aren't even allowed by type checker at the moment.
-    if p.nth(1) == T![#] || p.nth(1) == T![>] || p.nth(1) == T![const] {
+    if [T![#], T![>], T![const]].contains(&p.nth(1)) {
         return true;
     }
-    (p.nth(1) == LIFETIME_IDENT || p.nth(1) == IDENT)
-        && (p.nth(2) == T![>] || p.nth(2) == T![,] || p.nth(2) == T![:] || p.nth(2) == T![=])
+    ([LIFETIME_IDENT, IDENT].contains(&p.nth(1)))
+        && ([T![>], T![,], T![:], T![=]].contains(&p.nth(2)))
 }
 
 // test_err impl_type

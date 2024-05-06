@@ -9,24 +9,16 @@
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
-#![cfg_attr(bootstrap, feature(exhaustive_patterns))]
-#![cfg_attr(not(bootstrap), feature(min_exhaustive_patterns))]
+#![feature(min_exhaustive_patterns)]
 #![feature(rustdoc_internals)]
 #![feature(assert_matches)]
 #![feature(iter_intersperse)]
 #![feature(let_chains)]
-#![cfg_attr(bootstrap, feature(min_specialization))]
 #![feature(rustc_attrs)]
 #![feature(step_trait)]
 #![allow(internal_features)]
 
 use std::path::{Path, PathBuf};
-
-#[macro_use]
-extern crate rustc_macros;
-
-#[macro_use]
-extern crate tracing;
 
 pub mod abi;
 pub mod asm;

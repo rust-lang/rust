@@ -415,7 +415,7 @@
                 let terms = searchStr.split(" ");
                 let docsLowerCase = lint.docs.toLowerCase();
                 for (index = 0; index < terms.length; index++) {
-                    // This is more likely and will therefor be checked first
+                    // This is more likely and will therefore be checked first
                     if (docsLowerCase.indexOf(terms[index]) !== -1) {
                         continue;
                     }

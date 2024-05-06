@@ -112,4 +112,10 @@ async fn test_tokio<R: TokioAsyncRead + Unpin>(r: &mut R) {
     //~^ ERROR: reading zero byte data to `Vec`
 }
 
+fn allow_works<F: std::io::Read>(mut f: F) {
+    let mut data = Vec::with_capacity(100);
+    #[allow(clippy::read_zero_byte_vec)]
+    f.read(&mut data).unwrap();
+}
+
 fn main() {}

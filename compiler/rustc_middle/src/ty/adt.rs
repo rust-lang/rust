@@ -12,13 +12,13 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_index::{IndexSlice, IndexVec};
+use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_query_system::ich::StableHashingContext;
 use rustc_session::DataTypeKind;
 use rustc_span::symbol::sym;
 use rustc_target::abi::{ReprOptions, VariantIdx, FIRST_VARIANT};
 
 use std::cell::RefCell;
-use std::cmp::Ordering;
 use std::hash::{Hash, Hasher};
 use std::ops::Range;
 use std::str;
@@ -27,7 +27,7 @@ use super::{Destructor, FieldDef, GenericPredicates, Ty, TyCtxt, VariantDef, Var
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, HashStable, TyEncodable, TyDecodable)]
 pub struct AdtFlags(u16);
-bitflags! {
+bitflags::bitflags! {
     impl AdtFlags: u16 {
         const NO_ADT_FLAGS        = 0;
         /// Indicates whether the ADT is an enum.
@@ -102,20 +102,6 @@ pub struct AdtDefData {
     repr: ReprOptions,
 }
 
-impl PartialOrd for AdtDefData {
-    fn partial_cmp(&self, other: &AdtDefData) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-/// There should be only one AdtDef for each `did`, therefore
-/// it is fine to implement `Ord` only based on `did`.
-impl Ord for AdtDefData {
-    fn cmp(&self, other: &AdtDefData) -> Ordering {
-        self.did.cmp(&other.did)
-    }
-}
-
 impl PartialEq for AdtDefData {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
@@ -180,7 +166,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for AdtDefData {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Ord, PartialOrd, HashStable)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, HashStable)]
 #[rustc_pass_by_value]
 pub struct AdtDef<'tcx>(pub Interned<'tcx, AdtDefData>);
 
@@ -590,16 +576,15 @@ impl<'tcx> AdtDef<'tcx> {
         tcx.adt_destructor(self.did())
     }
 
-    /// Returns a list of types such that `Self: Sized` if and only if that
-    /// type is `Sized`, or `ty::Error` if this type has a recursive layout.
-    pub fn sized_constraint(self, tcx: TyCtxt<'tcx>) -> ty::EarlyBinder<&'tcx ty::List<Ty<'tcx>>> {
-        tcx.adt_sized_constraint(self.did())
+    /// Returns a type such that `Self: Sized` if and only if that type is `Sized`,
+    /// or `None` if the type is always sized.
+    pub fn sized_constraint(self, tcx: TyCtxt<'tcx>) -> Option<ty::EarlyBinder<Ty<'tcx>>> {
+        if self.is_struct() { tcx.adt_sized_constraint(self.did()) } else { None }
     }
 }
 
-#[derive(Clone, Copy, Debug)]
-#[derive(HashStable)]
+#[derive(Clone, Copy, Debug, HashStable)]
 pub enum Representability {
     Representable,
-    Infinite,
+    Infinite(ErrorGuaranteed),
 }

@@ -115,16 +115,14 @@ pub(crate) fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> 
                     // form that is valid for use in type inference.
                     let ty = tcx.type_of(def_id).instantiate_identity();
                     match ty.kind() {
-                        ty::Slice(ty)
-                        | ty::Ref(_, ty, _)
-                        | ty::RawPtr(ty::TypeAndMut { ty, .. }) => {
+                        ty::Slice(ty) | ty::Ref(_, ty, _) | ty::RawPtr(ty, _) => {
                             matches!(ty.kind(), ty::Param(..))
                         }
                         ty::Tuple(tys) => tys.iter().all(|ty| matches!(ty.kind(), ty::Param(..))),
                         _ => true,
                     }
                 }) {
-                    let impls = get_auto_trait_and_blanket_impls(cx, def_id);
+                    let impls = synthesize_auto_trait_and_blanket_impls(cx, def_id);
                     new_items_external.extend(impls.filter(|i| cx.inlined.insert(i.item_id)));
                 }
             }
@@ -232,8 +230,10 @@ impl<'a, 'tcx> DocVisitor for SyntheticImplCollector<'a, 'tcx> {
         if i.is_struct() || i.is_enum() || i.is_union() {
             // FIXME(eddyb) is this `doc(hidden)` check needed?
             if !self.cx.tcx.is_doc_hidden(i.item_id.expect_def_id()) {
-                self.impls
-                    .extend(get_auto_trait_and_blanket_impls(self.cx, i.item_id.expect_def_id()));
+                self.impls.extend(synthesize_auto_trait_and_blanket_impls(
+                    self.cx,
+                    i.item_id.expect_def_id(),
+                ));
             }
         }
 

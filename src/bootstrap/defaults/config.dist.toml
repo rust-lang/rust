@@ -16,6 +16,8 @@ download-ci-llvm = false
 # Make sure they don't get set when installing from source.
 channel = "nightly"
 download-rustc = false
+# Build the llvm-bitcode-linker as it is required for running nvptx tests
+llvm-bitcode-linker = true
 
 [dist]
 # Use better compression when preparing tarballs.

@@ -1,5 +1,7 @@
 //! Macro expansion utilities.
 
+use std::cell::OnceCell;
+
 use base_db::CrateId;
 use cfg::CfgOptions;
 use drop_bomb::DropBomb;
@@ -9,6 +11,7 @@ use hir_expand::{
 };
 use limit::Limit;
 use syntax::{ast, Parse};
+use triomphe::Arc;
 
 use crate::{
     attr::Attrs, db::DefDatabase, lower::LowerCtx, path::Path, AsMacroCall, MacroId, ModuleId,
@@ -17,9 +20,8 @@ use crate::{
 
 #[derive(Debug)]
 pub struct Expander {
-    cfg_options: CfgOptions,
-    span_map: SpanMap,
-    krate: CrateId,
+    cfg_options: Arc<CfgOptions>,
+    span_map: OnceCell<SpanMap>,
     current_file_id: HirFileId,
     pub(crate) module: ModuleId,
     /// `recursion_depth == usize::MAX` indicates that the recursion limit has been reached.
@@ -42,9 +44,12 @@ impl Expander {
             recursion_depth: 0,
             recursion_limit,
             cfg_options: db.crate_graph()[module.krate].cfg_options.clone(),
-            span_map: db.span_map(current_file_id),
-            krate: module.krate,
+            span_map: OnceCell::new(),
         }
+    }
+
+    pub fn krate(&self) -> CrateId {
+        self.module.krate
     }
 
     pub fn enter_expand<T: ast::AstNode>(
@@ -100,7 +105,7 @@ impl Expander {
     }
 
     pub fn ctx<'a>(&self, db: &'a dyn DefDatabase) -> LowerCtx<'a> {
-        LowerCtx::new(db, self.span_map.clone(), self.current_file_id)
+        LowerCtx::with_span_map_cell(db, self.current_file_id, self.span_map.clone())
     }
 
     pub(crate) fn in_file<T>(&self, value: T) -> InFile<T> {
@@ -108,7 +113,15 @@ impl Expander {
     }
 
     pub(crate) fn parse_attrs(&self, db: &dyn DefDatabase, owner: &dyn ast::HasAttrs) -> Attrs {
-        Attrs::filter(db, self.krate, RawAttrs::new(db.upcast(), owner, self.span_map.as_ref()))
+        Attrs::filter(
+            db,
+            self.krate(),
+            RawAttrs::new(
+                db.upcast(),
+                owner,
+                self.span_map.get_or_init(|| db.span_map(self.current_file_id)).as_ref(),
+            ),
+        )
     }
 
     pub(crate) fn cfg_options(&self) -> &CfgOptions {
@@ -120,7 +133,7 @@ impl Expander {
     }
 
     pub(crate) fn parse_path(&mut self, db: &dyn DefDatabase, path: ast::Path) -> Option<Path> {
-        let ctx = LowerCtx::new(db, self.span_map.clone(), self.current_file_id);
+        let ctx = LowerCtx::with_span_map_cell(db, self.current_file_id, self.span_map.clone());
         Path::from_src(&ctx, path)
     }
 
@@ -165,10 +178,11 @@ impl Expander {
                     let parse = res.value.0.cast::<T>()?;
 
                     self.recursion_depth += 1;
-                    let old_span_map = std::mem::replace(
-                        &mut self.span_map,
-                        SpanMap::ExpansionSpanMap(res.value.1),
-                    );
+                    let old_span_map = OnceCell::new();
+                    if let Some(prev) = self.span_map.take() {
+                        _ = old_span_map.set(prev);
+                    };
+                    _ = self.span_map.set(SpanMap::ExpansionSpanMap(res.value.1));
                     let old_file_id =
                         std::mem::replace(&mut self.current_file_id, macro_file.into());
                     let mark = Mark {
@@ -187,6 +201,6 @@ impl Expander {
 #[derive(Debug)]
 pub struct Mark {
     file_id: HirFileId,
-    span_map: SpanMap,
+    span_map: OnceCell<SpanMap>,
     bomb: DropBomb,
 }

@@ -1,3 +1,5 @@
+use crate::errors;
+use crate::util::expr_to_spanned_string;
 use ast::token::IdentIsRaw;
 use rustc_ast as ast;
 use rustc_ast::ptr::P;
@@ -5,7 +7,7 @@ use rustc_ast::token::{self, Delimiter};
 use rustc_ast::tokenstream::TokenStream;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_errors::PResult;
-use rustc_expand::base::{self, *};
+use rustc_expand::base::*;
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_parse::parser::Parser;
 use rustc_parse_format as parse;
@@ -15,8 +17,6 @@ use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::{ErrorGuaranteed, InnerSpan, Span};
 use rustc_target::asm::InlineAsmArch;
 use smallvec::smallvec;
-
-use crate::errors;
 
 pub struct AsmArgs {
     pub templates: Vec<P<ast::Expr>>,
@@ -29,7 +29,7 @@ pub struct AsmArgs {
 }
 
 fn parse_args<'a>(
-    ecx: &mut ExtCtxt<'a>,
+    ecx: &ExtCtxt<'a>,
     sp: Span,
     tts: TokenStream,
     is_global_asm: bool,
@@ -164,6 +164,9 @@ pub fn parse_asm_args<'a>(
                 path: path.clone(),
             };
             ast::InlineAsmOperand::Sym { sym }
+        } else if !is_global_asm && p.eat_keyword(sym::label) {
+            let block = p.parse_block()?;
+            ast::InlineAsmOperand::Label { block }
         } else if allow_templates {
             let template = p.parse_expr()?;
             // If it can't possibly expand to a string, provide diagnostics here to include other
@@ -186,7 +189,7 @@ pub fn parse_asm_args<'a>(
             args.templates.push(template);
             continue;
         } else {
-            return p.unexpected();
+            p.unexpected_any()?
         };
 
         allow_templates = false;
@@ -240,6 +243,7 @@ pub fn parse_asm_args<'a>(
     let mut have_real_output = false;
     let mut outputs_sp = vec![];
     let mut regclass_outputs = vec![];
+    let mut labels_sp = vec![];
     for (op, op_sp) in &args.operands {
         match op {
             ast::InlineAsmOperand::Out { reg, expr, .. }
@@ -257,6 +261,9 @@ pub fn parse_asm_args<'a>(
                     regclass_outputs.push(*op_sp);
                 }
             }
+            ast::InlineAsmOperand::Label { .. } => {
+                labels_sp.push(*op_sp);
+            }
             _ => {}
         }
     }
@@ -267,6 +274,9 @@ pub fn parse_asm_args<'a>(
         let err = dcx.create_err(errors::AsmNoReturn { outputs_sp });
         // Bail out now since this is likely to confuse MIR
         return Err(err);
+    }
+    if args.options.contains(ast::InlineAsmOptions::MAY_UNWIND) && !labels_sp.is_empty() {
+        dcx.emit_err(errors::AsmMayUnwind { labels_sp });
     }
 
     if args.clobber_abis.len() > 0 {
@@ -293,7 +303,7 @@ pub fn parse_asm_args<'a>(
 ///
 /// This function must be called immediately after the option token is parsed.
 /// Otherwise, the suggestion will be incorrect.
-fn err_duplicate_option(p: &mut Parser<'_>, symbol: Symbol, span: Span) {
+fn err_duplicate_option(p: &Parser<'_>, symbol: Symbol, span: Span) {
     // Tool-only output
     let full_span = if p.token.kind == token::Comma { span.to(p.token.span) } else { span };
     p.psess.dcx.emit_err(errors::AsmOptAlreadyprovided { span, symbol, full_span });
@@ -305,7 +315,7 @@ fn err_duplicate_option(p: &mut Parser<'_>, symbol: Symbol, span: Span) {
 /// This function must be called immediately after the option token is parsed.
 /// Otherwise, the error will not point to the correct spot.
 fn try_set_option<'a>(
-    p: &mut Parser<'a>,
+    p: &Parser<'a>,
     args: &mut AsmArgs,
     symbol: Symbol,
     option: ast::InlineAsmOptions,
@@ -433,7 +443,7 @@ fn parse_reg<'a>(
 fn expand_preparsed_asm(
     ecx: &mut ExtCtxt<'_>,
     args: AsmArgs,
-) -> Result<ast::InlineAsm, ErrorGuaranteed> {
+) -> ExpandResult<Result<ast::InlineAsm, ErrorGuaranteed>, ()> {
     let mut template = vec![];
     // Register operands are implicitly used since they are not allowed to be
     // referenced in the template string.
@@ -455,16 +465,20 @@ fn expand_preparsed_asm(
 
         let msg = "asm template must be a string literal";
         let template_sp = template_expr.span;
-        let (template_str, template_style, template_span) =
-            match expr_to_spanned_string(ecx, template_expr, msg) {
+        let (template_str, template_style, template_span) = {
+            let ExpandResult::Ready(mac) = expr_to_spanned_string(ecx, template_expr, msg) else {
+                return ExpandResult::Retry(());
+            };
+            match mac {
                 Ok(template_part) => template_part,
                 Err(err) => {
-                    return Err(match err {
+                    return ExpandResult::Ready(Err(match err {
                         Ok((err, _)) => err.emit(),
                         Err(guar) => guar,
-                    });
+                    }));
                 }
-            };
+            }
+        };
 
         let str_style = match template_style {
             ast::StrStyle::Cooked => None,
@@ -552,7 +566,7 @@ fn expand_preparsed_asm(
                 e.span_label(err_sp, label);
             }
             let guar = e.emit();
-            return Err(guar);
+            return ExpandResult::Ready(Err(guar));
         }
 
         curarg = parser.curarg;
@@ -719,24 +733,27 @@ fn expand_preparsed_asm(
         }
     }
 
-    Ok(ast::InlineAsm {
+    ExpandResult::Ready(Ok(ast::InlineAsm {
         template,
         template_strs: template_strs.into_boxed_slice(),
         operands: args.operands,
         clobber_abis: args.clobber_abis,
         options: args.options,
         line_spans,
-    })
+    }))
 }
 
 pub(super) fn expand_asm<'cx>(
     ecx: &'cx mut ExtCtxt<'_>,
     sp: Span,
     tts: TokenStream,
-) -> Box<dyn base::MacResult + 'cx> {
-    match parse_args(ecx, sp, tts, false) {
+) -> MacroExpanderResult<'cx> {
+    ExpandResult::Ready(match parse_args(ecx, sp, tts, false) {
         Ok(args) => {
-            let expr = match expand_preparsed_asm(ecx, args) {
+            let ExpandResult::Ready(mac) = expand_preparsed_asm(ecx, args) else {
+                return ExpandResult::Retry(());
+            };
+            let expr = match mac {
                 Ok(inline_asm) => P(ast::Expr {
                     id: ast::DUMMY_NODE_ID,
                     kind: ast::ExprKind::InlineAsm(P(inline_asm)),
@@ -752,34 +769,39 @@ pub(super) fn expand_asm<'cx>(
             let guar = err.emit();
             DummyResult::any(sp, guar)
         }
-    }
+    })
 }
 
 pub(super) fn expand_global_asm<'cx>(
     ecx: &'cx mut ExtCtxt<'_>,
     sp: Span,
     tts: TokenStream,
-) -> Box<dyn base::MacResult + 'cx> {
-    match parse_args(ecx, sp, tts, true) {
-        Ok(args) => match expand_preparsed_asm(ecx, args) {
-            Ok(inline_asm) => MacEager::items(smallvec![P(ast::Item {
-                ident: Ident::empty(),
-                attrs: ast::AttrVec::new(),
-                id: ast::DUMMY_NODE_ID,
-                kind: ast::ItemKind::GlobalAsm(Box::new(inline_asm)),
-                vis: ast::Visibility {
-                    span: sp.shrink_to_lo(),
-                    kind: ast::VisibilityKind::Inherited,
+) -> MacroExpanderResult<'cx> {
+    ExpandResult::Ready(match parse_args(ecx, sp, tts, true) {
+        Ok(args) => {
+            let ExpandResult::Ready(mac) = expand_preparsed_asm(ecx, args) else {
+                return ExpandResult::Retry(());
+            };
+            match mac {
+                Ok(inline_asm) => MacEager::items(smallvec![P(ast::Item {
+                    ident: Ident::empty(),
+                    attrs: ast::AttrVec::new(),
+                    id: ast::DUMMY_NODE_ID,
+                    kind: ast::ItemKind::GlobalAsm(Box::new(inline_asm)),
+                    vis: ast::Visibility {
+                        span: sp.shrink_to_lo(),
+                        kind: ast::VisibilityKind::Inherited,
+                        tokens: None,
+                    },
+                    span: sp,
                     tokens: None,
-                },
-                span: sp,
-                tokens: None,
-            })]),
-            Err(guar) => DummyResult::any(sp, guar),
-        },
+                })]),
+                Err(guar) => DummyResult::any(sp, guar),
+            }
+        }
         Err(err) => {
             let guar = err.emit();
             DummyResult::any(sp, guar)
         }
-    }
+    })
 }

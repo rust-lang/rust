@@ -9,6 +9,7 @@ LL |         self.iter()
    |
    = note: expected type parameter `I`
                       found struct `std::slice::Iter<'_, N>`
+   = note: the caller chooses a type for `I` which can be different from `std::slice::Iter<'_, N>`
 
 error[E0599]: no method named `iter` found for reference `&G` in the current scope
   --> $DIR/issue-13853.rs:27:23

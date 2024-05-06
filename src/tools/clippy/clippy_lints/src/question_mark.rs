@@ -4,7 +4,7 @@ use clippy_config::msrvs::Msrv;
 use clippy_config::types::MatchLintBehaviour;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::ty::is_type_diagnostic_item;
+use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
 use clippy_utils::{
     eq_expr_value, higher, in_constant, is_else_clause, is_lint_allowed, is_path_lang_item, is_res_lang_ctor,
     pat_and_expr_can_be_question_mark, path_to_local, path_to_local_id, peel_blocks, peel_blocks_with_stmt,
@@ -14,7 +14,8 @@ use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::LangItem::{self, OptionNone, OptionSome, ResultErr, ResultOk};
 use rustc_hir::{
-    BindingAnnotation, Block, ByRef, Expr, ExprKind, Local, Node, PatKind, PathSegment, QPath, Stmt, StmtKind,
+    BindingMode, Block, Body, ByRef, Expr, ExprKind, LetStmt, Mutability, Node, PatKind, PathSegment, QPath, Stmt,
+    StmtKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::Ty;
@@ -109,12 +110,31 @@ fn find_let_else_ret_expression<'hir>(block: &'hir Block<'hir>) -> Option<&'hir 
 }
 
 fn check_let_some_else_return_none(cx: &LateContext<'_>, stmt: &Stmt<'_>) {
-    if let StmtKind::Local(Local {
+    /// Make sure the init expr implements try trait so a valid suggestion could be given.
+    ///
+    /// Because the init expr could have the type of `&Option<T>` which does not implements `Try`.
+    ///
+    /// NB: This conveniently prevents the cause of
+    /// issue [#12412](https://github.com/rust-lang/rust-clippy/issues/12412),
+    /// since accessing an `Option` field from a borrowed struct requires borrow, such as
+    /// `&some_struct.opt`, which is type of `&Option`. And we can't suggest `&some_struct.opt?`
+    /// or `(&some_struct.opt)?` since the first one has different semantics and the later does
+    /// not implements `Try`.
+    fn init_expr_can_use_question_mark(cx: &LateContext<'_>, init_expr: &Expr<'_>) -> bool {
+        let init_ty = cx.typeck_results().expr_ty_adjusted(init_expr);
+        cx.tcx
+            .lang_items()
+            .try_trait()
+            .map_or(false, |did| implements_trait(cx, init_ty, did, &[]))
+    }
+
+    if let StmtKind::Let(LetStmt {
         pat,
         init: Some(init_expr),
         els: Some(els),
         ..
     }) = stmt.kind
+        && init_expr_can_use_question_mark(cx, init_expr)
         && let Some(ret) = find_let_else_ret_expression(els)
         && let Some(inner_pat) = pat_and_expr_can_be_question_mark(cx, pat, ret)
         && !span_contains_comment(cx.tcx.sess.source_map(), els.span)
@@ -203,114 +223,116 @@ fn expr_return_none_or_err(
     }
 }
 
+/// Checks if the given expression on the given context matches the following structure:
+///
+/// ```ignore
+/// if option.is_none() {
+///    return None;
+/// }
+/// ```
+///
+/// ```ignore
+/// if result.is_err() {
+///     return result;
+/// }
+/// ```
+///
+/// If it matches, it will suggest to use the question mark operator instead
+fn check_is_none_or_err_and_early_return<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) {
+    if let Some(higher::If { cond, then, r#else }) = higher::If::hir(expr)
+        && !is_else_clause(cx.tcx, expr)
+        && let ExprKind::MethodCall(segment, caller, ..) = &cond.kind
+        && let caller_ty = cx.typeck_results().expr_ty(caller)
+        && let if_block = IfBlockType::IfIs(caller, caller_ty, segment.ident.name, then)
+        && (is_early_return(sym::Option, cx, &if_block) || is_early_return(sym::Result, cx, &if_block))
+    {
+        let mut applicability = Applicability::MachineApplicable;
+        let receiver_str = snippet_with_applicability(cx, caller.span, "..", &mut applicability);
+        let by_ref = !caller_ty.is_copy_modulo_regions(cx.tcx, cx.param_env)
+            && !matches!(caller.kind, ExprKind::Call(..) | ExprKind::MethodCall(..));
+        let sugg = if let Some(else_inner) = r#else {
+            if eq_expr_value(cx, caller, peel_blocks(else_inner)) {
+                format!("Some({receiver_str}?)")
+            } else {
+                return;
+            }
+        } else {
+            format!("{receiver_str}{}?;", if by_ref { ".as_ref()" } else { "" })
+        };
+
+        span_lint_and_sugg(
+            cx,
+            QUESTION_MARK,
+            expr.span,
+            "this block may be rewritten with the `?` operator",
+            "replace it with",
+            sugg,
+            applicability,
+        );
+    }
+}
+
+fn check_if_let_some_or_err_and_early_return<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) {
+    if let Some(higher::IfLet {
+        let_pat,
+        let_expr,
+        if_then,
+        if_else,
+        ..
+    }) = higher::IfLet::hir(cx, expr)
+        && !is_else_clause(cx.tcx, expr)
+        && let PatKind::TupleStruct(ref path1, [field], ddpos) = let_pat.kind
+        && ddpos.as_opt_usize().is_none()
+        && let PatKind::Binding(BindingMode(by_ref, _), bind_id, ident, None) = field.kind
+        && let caller_ty = cx.typeck_results().expr_ty(let_expr)
+        && let if_block = IfBlockType::IfLet(
+            cx.qpath_res(path1, let_pat.hir_id),
+            caller_ty,
+            ident.name,
+            let_expr,
+            if_then,
+            if_else,
+        )
+        && ((is_early_return(sym::Option, cx, &if_block) && path_to_local_id(peel_blocks(if_then), bind_id))
+            || is_early_return(sym::Result, cx, &if_block))
+        && if_else
+            .map(|e| eq_expr_value(cx, let_expr, peel_blocks(e)))
+            .filter(|e| *e)
+            .is_none()
+    {
+        let mut applicability = Applicability::MachineApplicable;
+        let receiver_str = snippet_with_applicability(cx, let_expr.span, "..", &mut applicability);
+        let requires_semi = matches!(cx.tcx.parent_hir_node(expr.hir_id), Node::Stmt(_));
+        let method_call_str = match by_ref {
+            ByRef::Yes(Mutability::Mut) => ".as_mut()",
+            ByRef::Yes(Mutability::Not) => ".as_ref()",
+            ByRef::No => "",
+        };
+        let sugg = format!(
+            "{receiver_str}{method_call_str}?{}",
+            if requires_semi { ";" } else { "" }
+        );
+        span_lint_and_sugg(
+            cx,
+            QUESTION_MARK,
+            expr.span,
+            "this block may be rewritten with the `?` operator",
+            "replace it with",
+            sugg,
+            applicability,
+        );
+    }
+}
+
 impl QuestionMark {
     fn inside_try_block(&self) -> bool {
         self.try_block_depth_stack.last() > Some(&0)
     }
-
-    /// Checks if the given expression on the given context matches the following structure:
-    ///
-    /// ```ignore
-    /// if option.is_none() {
-    ///    return None;
-    /// }
-    /// ```
-    ///
-    /// ```ignore
-    /// if result.is_err() {
-    ///     return result;
-    /// }
-    /// ```
-    ///
-    /// If it matches, it will suggest to use the question mark operator instead
-    fn check_is_none_or_err_and_early_return<'tcx>(&self, cx: &LateContext<'tcx>, expr: &Expr<'tcx>) {
-        if !self.inside_try_block()
-            && let Some(higher::If { cond, then, r#else }) = higher::If::hir(expr)
-            && !is_else_clause(cx.tcx, expr)
-            && let ExprKind::MethodCall(segment, caller, ..) = &cond.kind
-            && let caller_ty = cx.typeck_results().expr_ty(caller)
-            && let if_block = IfBlockType::IfIs(caller, caller_ty, segment.ident.name, then)
-            && (is_early_return(sym::Option, cx, &if_block) || is_early_return(sym::Result, cx, &if_block))
-        {
-            let mut applicability = Applicability::MachineApplicable;
-            let receiver_str = snippet_with_applicability(cx, caller.span, "..", &mut applicability);
-            let by_ref = !caller_ty.is_copy_modulo_regions(cx.tcx, cx.param_env)
-                && !matches!(caller.kind, ExprKind::Call(..) | ExprKind::MethodCall(..));
-            let sugg = if let Some(else_inner) = r#else {
-                if eq_expr_value(cx, caller, peel_blocks(else_inner)) {
-                    format!("Some({receiver_str}?)")
-                } else {
-                    return;
-                }
-            } else {
-                format!("{receiver_str}{}?;", if by_ref { ".as_ref()" } else { "" })
-            };
-
-            span_lint_and_sugg(
-                cx,
-                QUESTION_MARK,
-                expr.span,
-                "this block may be rewritten with the `?` operator",
-                "replace it with",
-                sugg,
-                applicability,
-            );
-        }
-    }
-
-    fn check_if_let_some_or_err_and_early_return<'tcx>(&self, cx: &LateContext<'tcx>, expr: &Expr<'tcx>) {
-        if !self.inside_try_block()
-            && let Some(higher::IfLet {
-                let_pat,
-                let_expr,
-                if_then,
-                if_else,
-                ..
-            }) = higher::IfLet::hir(cx, expr)
-            && !is_else_clause(cx.tcx, expr)
-            && let PatKind::TupleStruct(ref path1, [field], ddpos) = let_pat.kind
-            && ddpos.as_opt_usize().is_none()
-            && let PatKind::Binding(BindingAnnotation(by_ref, _), bind_id, ident, None) = field.kind
-            && let caller_ty = cx.typeck_results().expr_ty(let_expr)
-            && let if_block = IfBlockType::IfLet(
-                cx.qpath_res(path1, let_pat.hir_id),
-                caller_ty,
-                ident.name,
-                let_expr,
-                if_then,
-                if_else,
-            )
-            && ((is_early_return(sym::Option, cx, &if_block) && path_to_local_id(peel_blocks(if_then), bind_id))
-                || is_early_return(sym::Result, cx, &if_block))
-            && if_else
-                .map(|e| eq_expr_value(cx, let_expr, peel_blocks(e)))
-                .filter(|e| *e)
-                .is_none()
-        {
-            let mut applicability = Applicability::MachineApplicable;
-            let receiver_str = snippet_with_applicability(cx, let_expr.span, "..", &mut applicability);
-            let requires_semi = matches!(cx.tcx.parent_hir_node(expr.hir_id), Node::Stmt(_));
-            let sugg = format!(
-                "{receiver_str}{}?{}",
-                if by_ref == ByRef::Yes { ".as_ref()" } else { "" },
-                if requires_semi { ";" } else { "" }
-            );
-            span_lint_and_sugg(
-                cx,
-                QUESTION_MARK,
-                expr.span,
-                "this block may be rewritten with the `?` operator",
-                "replace it with",
-                sugg,
-                applicability,
-            );
-        }
-    }
 }
 
-fn is_try_block(cx: &LateContext<'_>, bl: &rustc_hir::Block<'_>) -> bool {
+fn is_try_block(cx: &LateContext<'_>, bl: &Block<'_>) -> bool {
     if let Some(expr) = bl.expr
-        && let rustc_hir::ExprKind::Call(callee, _) = expr.kind
+        && let ExprKind::Call(callee, _) = expr.kind
     {
         is_path_lang_item(cx, callee, LangItem::TryTraitFromOutput)
     } else {
@@ -324,19 +346,22 @@ impl<'tcx> LateLintPass<'tcx> for QuestionMark {
             return;
         }
 
-        if !in_constant(cx, stmt.hir_id) {
+        if !self.inside_try_block() && !in_constant(cx, stmt.hir_id) {
             check_let_some_else_return_none(cx, stmt);
         }
         self.check_manual_let_else(cx, stmt);
     }
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if !in_constant(cx, expr.hir_id) && is_lint_allowed(cx, QUESTION_MARK_USED, expr.hir_id) {
-            self.check_is_none_or_err_and_early_return(cx, expr);
-            self.check_if_let_some_or_err_and_early_return(cx, expr);
+        if !self.inside_try_block()
+            && !in_constant(cx, expr.hir_id)
+            && is_lint_allowed(cx, QUESTION_MARK_USED, expr.hir_id)
+        {
+            check_is_none_or_err_and_early_return(cx, expr);
+            check_if_let_some_or_err_and_early_return(cx, expr);
         }
     }
 
-    fn check_block(&mut self, cx: &LateContext<'tcx>, block: &'tcx rustc_hir::Block<'tcx>) {
+    fn check_block(&mut self, cx: &LateContext<'tcx>, block: &'tcx Block<'tcx>) {
         if is_try_block(cx, block) {
             *self
                 .try_block_depth_stack
@@ -345,15 +370,15 @@ impl<'tcx> LateLintPass<'tcx> for QuestionMark {
         }
     }
 
-    fn check_body(&mut self, _: &LateContext<'tcx>, _: &'tcx rustc_hir::Body<'tcx>) {
+    fn check_body(&mut self, _: &LateContext<'tcx>, _: &'tcx Body<'tcx>) {
         self.try_block_depth_stack.push(0);
     }
 
-    fn check_body_post(&mut self, _: &LateContext<'tcx>, _: &'tcx rustc_hir::Body<'tcx>) {
+    fn check_body_post(&mut self, _: &LateContext<'tcx>, _: &'tcx Body<'tcx>) {
         self.try_block_depth_stack.pop();
     }
 
-    fn check_block_post(&mut self, cx: &LateContext<'tcx>, block: &'tcx rustc_hir::Block<'tcx>) {
+    fn check_block_post(&mut self, cx: &LateContext<'tcx>, block: &'tcx Block<'tcx>) {
         if is_try_block(cx, block) {
             *self
                 .try_block_depth_stack

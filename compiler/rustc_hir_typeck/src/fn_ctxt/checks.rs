@@ -17,20 +17,21 @@ use itertools::Itertools;
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{
-    codes::*, pluralize, Applicability, Diag, ErrorGuaranteed, MultiSpan, StashKey,
+    a_or_an, codes::*, display_list_with_comma_and, pluralize, Applicability, Diag,
+    ErrorGuaranteed, MultiSpan, StashKey,
 };
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
-use rustc_hir::{ExprKind, Node, QPath};
-use rustc_hir_analysis::astconv::AstConv;
+use rustc_hir::{ExprKind, HirId, Node, QPath};
 use rustc_hir_analysis::check::intrinsicck::InlineAsmCtxt;
 use rustc_hir_analysis::check::potentially_plural_count;
+use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
 use rustc_hir_analysis::structured_errors::StructuredDiag;
 use rustc_index::IndexVec;
 use rustc_infer::infer::error_reporting::{FailureCode, ObligationCauseExt};
-use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use rustc_infer::infer::type_variable::TypeVariableOrigin;
 use rustc_infer::infer::TypeTrace;
 use rustc_infer::infer::{DefineOpaqueTypes, InferOk};
 use rustc_middle::traits::ObligationCauseCode::ExprBindingObligation;
@@ -44,6 +45,29 @@ use rustc_trait_selection::traits::{self, ObligationCauseCode, SelectionContext}
 
 use std::iter;
 use std::mem;
+
+#[derive(Clone, Copy, Default)]
+pub enum DivergingBlockBehavior {
+    /// This is the current stable behavior:
+    ///
+    /// ```rust
+    /// {
+    ///     return;
+    /// } // block has type = !, even though we are supposedly dropping it with `;`
+    /// ```
+    #[default]
+    Never,
+
+    /// Alternative behavior:
+    ///
+    /// ```ignore (very-unstable-new-attribute)
+    /// #![rustc_never_type_options(diverging_block_default = "unit")]
+    /// {
+    ///     return;
+    /// } // block has type = (), since we are dropping `!` from `return` with `;`
+    /// ```
+    Unit,
+}
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(in super::super) fn check_casts(&mut self) {
@@ -273,22 +297,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // 3. Check if the formal type is a supertype of the checked one
             //    and register any such obligations for future type checks
             let supertype_error = self.at(&self.misc(provided_arg.span), self.param_env).sup(
-                DefineOpaqueTypes::No,
+                DefineOpaqueTypes::Yes,
                 formal_input_ty,
                 coerced_ty,
             );
-            let subtyping_error = match supertype_error {
-                Ok(InferOk { obligations, value: () }) => {
-                    self.register_predicates(obligations);
-                    None
-                }
-                Err(err) => Some(err),
-            };
 
             // If neither check failed, the types are compatible
-            match subtyping_error {
-                None => Compatibility::Compatible,
-                Some(_) => Compatibility::Incompatible(subtyping_error),
+            match supertype_error {
+                Ok(InferOk { obligations, value: () }) => {
+                    self.register_predicates(obligations);
+                    Compatibility::Compatible
+                }
+                Err(err) => Compatibility::Incompatible(Some(err)),
             }
         };
 
@@ -663,7 +683,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Using probe here, since we don't want this subtyping to affect inference.
             let subtyping_error = self.probe(|_| {
                 self.at(&self.misc(arg_span), self.param_env)
-                    .sup(DefineOpaqueTypes::No, formal_input_ty, coerced_ty)
+                    .sup(DefineOpaqueTypes::Yes, formal_input_ty, coerced_ty)
                     .err()
             });
 
@@ -795,6 +815,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         call_expr,
                         None,
                         Some(mismatch_idx),
+                        &matched_inputs,
+                        &formal_and_expected_inputs,
                         is_method,
                     );
                     suggest_confusable(&mut err);
@@ -881,6 +903,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             );
             err.span_label(full_call_span, format!("arguments to this {call_name} are incorrect"));
 
+            self.label_generic_mismatches(
+                &mut err,
+                fn_def_id,
+                &matched_inputs,
+                &provided_arg_tys,
+                &formal_and_expected_inputs,
+                is_method,
+            );
+
             if let hir::ExprKind::MethodCall(_, rcvr, _, _) = call_expr.kind
                 && provided_idx.as_usize() == expected_idx.as_usize()
             {
@@ -909,6 +940,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 call_expr,
                 Some(expected_ty),
                 Some(expected_idx.as_usize()),
+                &matched_inputs,
+                &formal_and_expected_inputs,
                 is_method,
             );
             suggest_confusable(&mut err);
@@ -1247,6 +1280,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
 
+        self.label_generic_mismatches(
+            &mut err,
+            fn_def_id,
+            &matched_inputs,
+            &provided_arg_tys,
+            &formal_and_expected_inputs,
+            is_method,
+        );
+
         // Incorporate the argument changes in the removal suggestion.
         // When a type is *missing*, and the rest are additional, we want to suggest these with a
         // multipart suggestion, but in order to do so we need to figure out *where* the arg that
@@ -1294,7 +1336,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         // Call out where the function is defined
-        self.label_fn_like(&mut err, fn_def_id, callee_ty, call_expr, None, None, is_method);
+        self.label_fn_like(
+            &mut err,
+            fn_def_id,
+            callee_ty,
+            call_expr,
+            None,
+            None,
+            &matched_inputs,
+            &formal_and_expected_inputs,
+            is_method,
+        );
 
         // And add a suggestion block for all of the parameters
         let suggestion_text = match suggestion_text {
@@ -1371,9 +1423,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         arg: &hir::Expr<'tcx>,
         err: &mut Diag<'tcx>,
     ) {
-        if let ty::RawPtr(ty::TypeAndMut { mutbl: hir::Mutability::Mut, .. }) = expected_ty.kind()
-            && let ty::RawPtr(ty::TypeAndMut { mutbl: hir::Mutability::Not, .. }) =
-                provided_ty.kind()
+        if let ty::RawPtr(_, hir::Mutability::Mut) = expected_ty.kind()
+            && let ty::RawPtr(_, hir::Mutability::Not) = provided_ty.kind()
             && let hir::ExprKind::Call(callee, _) = arg.kind
             && let hir::ExprKind::Path(hir::QPath::Resolved(_, path)) = callee.kind
             && let Res::Def(_, def_id) = path.res
@@ -1438,7 +1489,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn check_struct_path(
         &self,
         qpath: &QPath<'tcx>,
-        hir_id: hir::HirId,
+        hir_id: HirId,
     ) -> Result<(&'tcx ty::VariantDef, Ty<'tcx>), ErrorGuaranteed> {
         let path_span = qpath.span();
         let (def, ty) = self.finish_resolving_struct_path(qpath, path_span, hir_id);
@@ -1503,7 +1554,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub fn check_decl_initializer(
         &self,
-        hir_id: hir::HirId,
+        hir_id: HirId,
         pat: &'tcx hir::Pat<'tcx>,
         init: &'tcx hir::Expr<'tcx>,
     ) -> Ty<'tcx> {
@@ -1579,7 +1630,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /// Type check a `let` statement.
-    pub fn check_decl_local(&self, local: &'tcx hir::Local<'tcx>) {
+    pub fn check_decl_local(&self, local: &'tcx hir::LetStmt<'tcx>) {
         self.check_decl(local.into());
         if local.pat.is_never_pattern() {
             self.diverges.set(Diverges::Always {
@@ -1593,7 +1644,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Don't do all the complex logic below for `DeclItem`.
         match stmt.kind {
             hir::StmtKind::Item(..) => return,
-            hir::StmtKind::Local(..) | hir::StmtKind::Expr(..) | hir::StmtKind::Semi(..) => {}
+            hir::StmtKind::Let(..) | hir::StmtKind::Expr(..) | hir::StmtKind::Semi(..) => {}
         }
 
         self.warn_if_unreachable(stmt.hir_id, stmt.span, "statement");
@@ -1602,14 +1653,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let old_diverges = self.diverges.replace(Diverges::Maybe);
 
         match stmt.kind {
-            hir::StmtKind::Local(l) => {
+            hir::StmtKind::Let(l) => {
                 self.check_decl_local(l);
             }
             // Ignore for now.
             hir::StmtKind::Item(_) => {}
             hir::StmtKind::Expr(ref expr) => {
                 // Check with expected type of `()`.
-                self.check_expr_has_type_or_error(expr, Ty::new_unit(self.tcx), |err| {
+                self.check_expr_has_type_or_error(expr, self.tcx.types.unit, |err| {
                     if expr.can_have_side_effects() {
                         self.suggest_semicolon_at_end(expr.span, err);
                     }
@@ -1625,7 +1676,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     pub fn check_block_no_value(&self, blk: &'tcx hir::Block<'tcx>) {
-        let unit = Ty::new_unit(self.tcx);
+        let unit = self.tcx.types.unit;
         let ty = self.check_block_with_expected(blk, ExpectHasType(unit));
 
         // if the block produces a `!` value, that can always be
@@ -1710,7 +1761,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 //
                 // #41425 -- label the implicit `()` as being the
                 // "found type" here, rather than the "expected type".
-                if !self.diverges.get().is_always() {
+                if !self.diverges.get().is_always()
+                    || matches!(self.diverging_block_behavior, DivergingBlockBehavior::Unit)
+                {
                     // #50009 -- Do not point at the entire fn block span, point at the return type
                     // span, as it is the cause of the requirement, and
                     // `consider_hint_about_removing_semicolon` will point at the last expression
@@ -1741,7 +1794,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                         blk.span,
                                         blk.hir_id,
                                         expected_ty,
-                                        Ty::new_unit(self.tcx),
+                                        self.tcx.types.unit,
                                     );
                                 }
                                 if !self.err_ctxt().consider_removing_semicolon(
@@ -1765,7 +1818,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                             [
                                                 hir::Stmt {
                                                     kind:
-                                                        hir::StmtKind::Local(hir::Local {
+                                                        hir::StmtKind::Let(hir::LetStmt {
                                                             source:
                                                                 hir::LocalSource::AssignDesugar(_),
                                                             ..
@@ -1826,7 +1879,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ty
     }
 
-    fn parent_item_span(&self, id: hir::HirId) -> Option<Span> {
+    fn parent_item_span(&self, id: HirId) -> Option<Span> {
         let node = self.tcx.hir_node_by_def_id(self.tcx.hir().get_parent_item(id).def_id);
         match node {
             Node::Item(&hir::Item { kind: hir::ItemKind::Fn(_, _, body_id), .. })
@@ -1844,7 +1897,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Given a function block's `HirId`, returns its `FnDecl` if it exists, or `None` otherwise.
     pub(crate) fn get_parent_fn_decl(
         &self,
-        blk_id: hir::HirId,
+        blk_id: HirId,
     ) -> Option<(&'tcx hir::FnDecl<'tcx>, Ident)> {
         let parent = self.tcx.hir_node_by_def_id(self.tcx.hir().get_parent_item(blk_id).def_id);
         self.get_node_fn_decl(parent).map(|(_, fn_decl, ident, _)| (fn_decl, ident))
@@ -1886,17 +1939,28 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr.span
     }
 
-    fn overwrite_local_ty_if_err(
-        &self,
-        hir_id: hir::HirId,
-        pat: &'tcx hir::Pat<'tcx>,
-        ty: Ty<'tcx>,
-    ) {
+    fn overwrite_local_ty_if_err(&self, hir_id: HirId, pat: &'tcx hir::Pat<'tcx>, ty: Ty<'tcx>) {
         if let Err(guar) = ty.error_reported() {
+            struct OverwritePatternsWithError {
+                pat_hir_ids: Vec<hir::HirId>,
+            }
+            impl<'tcx> Visitor<'tcx> for OverwritePatternsWithError {
+                fn visit_pat(&mut self, p: &'tcx hir::Pat<'tcx>) {
+                    self.pat_hir_ids.push(p.hir_id);
+                    hir::intravisit::walk_pat(self, p);
+                }
+            }
             // Override the types everywhere with `err()` to avoid knock on errors.
             let err = Ty::new_error(self.tcx, guar);
             self.write_ty(hir_id, err);
             self.write_ty(pat.hir_id, err);
+            let mut visitor = OverwritePatternsWithError { pat_hir_ids: vec![] };
+            hir::intravisit::walk_pat(&mut visitor, pat);
+            // Mark all the subpatterns as `{type error}` as well. This allows errors for specific
+            // subpatterns to be silenced.
+            for hir_id in visitor.pat_hir_ids {
+                self.write_ty(hir_id, err);
+            }
             self.locals.borrow_mut().insert(hir_id, err);
             self.locals.borrow_mut().insert(pat.hir_id, err);
         }
@@ -1908,20 +1972,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         qpath: &QPath<'tcx>,
         path_span: Span,
-        hir_id: hir::HirId,
+        hir_id: HirId,
     ) -> (Res, LoweredTy<'tcx>) {
         match *qpath {
             QPath::Resolved(ref maybe_qself, path) => {
-                let self_ty = maybe_qself.as_ref().map(|qself| self.to_ty(qself).raw);
-                let ty = self.astconv().res_to_ty(self_ty, path, hir_id, true);
+                let self_ty = maybe_qself.as_ref().map(|qself| self.lower_ty(qself).raw);
+                let ty = self.lowerer().lower_path(self_ty, path, hir_id, true);
                 (path.res, LoweredTy::from_raw(self, path_span, ty))
             }
             QPath::TypeRelative(qself, segment) => {
-                let ty = self.to_ty(qself);
+                let ty = self.lower_ty(qself);
 
                 let result = self
-                    .astconv()
-                    .associated_path_to_ty(hir_id, path_span, ty.raw, qself, segment, true);
+                    .lowerer()
+                    .lower_assoc_path(hir_id, path_span, ty.raw, qself, segment, true);
                 let ty = result
                     .map(|(ty, _, _)| ty)
                     .unwrap_or_else(|guar| Ty::new_error(self.tcx(), guar));
@@ -1947,12 +2011,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         for (span, code) in errors_causecode {
             self.dcx().try_steal_modify_and_emit_err(span, StashKey::MaybeForgetReturn, |err| {
                 if let Some(fn_sig) = self.body_fn_sig()
-                    && let ExprBindingObligation(_, _, hir_id, ..) = code
+                    && let ExprBindingObligation(_, _, binding_hir_id, ..) = code
                     && !fn_sig.output().is_unit()
                 {
                     let mut block_num = 0;
                     let mut found_semi = false;
-                    for (_, node) in self.tcx.hir().parent_iter(hir_id) {
+                    for (hir_id, node) in self.tcx.hir().parent_iter(binding_hir_id) {
+                        // Don't proceed into parent bodies
+                        if hir_id.owner != binding_hir_id.owner {
+                            break;
+                        }
                         match node {
                             hir::Node::Stmt(stmt) => {
                                 if let hir::StmtKind::Semi(expr) = stmt.kind {
@@ -2054,6 +2122,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected_ty: Option<Ty<'tcx>>,
         // A specific argument should be labeled, instead of all of them
         expected_idx: Option<usize>,
+        matched_inputs: &IndexVec<ExpectedIdx, Option<ProvidedIdx>>,
+        formal_and_expected_inputs: &IndexVec<ExpectedIdx, (Ty<'tcx>, Ty<'tcx>)>,
         is_method: bool,
     ) {
         let Some(mut def_id) = callable_def_id else {
@@ -2074,7 +2144,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let callee_ty = callee_ty.peel_refs();
             match *callee_ty.kind() {
                 ty::Param(param) => {
-                    let param = self.tcx.generics_of(self.body_id).type_param(&param, self.tcx);
+                    let param = self.tcx.generics_of(self.body_id).type_param(param, self.tcx);
                     if param.kind.is_synthetic() {
                         // if it's `impl Fn() -> ..` then just fall down to the def-id based logic
                         def_id = param.def_id;
@@ -2113,7 +2183,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             [
                                 callee_ty,
                                 self.next_ty_var(TypeVariableOrigin {
-                                    kind: TypeVariableOriginKind::MiscVariable,
+                                    param_def_id: None,
                                     span: rustc_span::DUMMY_SP,
                                 }),
                             ],
@@ -2145,21 +2215,164 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         {
             let mut spans: MultiSpan = def_span.into();
 
-            let params = self
+            let params_with_generics = self.get_hir_params_with_generics(def_id, is_method);
+            let mut generics_with_unmatched_params = Vec::new();
+
+            let check_for_matched_generics = || {
+                if matched_inputs.iter().any(|x| x.is_some())
+                    && params_with_generics.iter().any(|x| x.0.is_some())
+                {
+                    for (idx, (generic, _)) in params_with_generics.iter().enumerate() {
+                        // Param has to have a generic and be matched to be relevant
+                        if matched_inputs[idx.into()].is_none() {
+                            continue;
+                        }
+
+                        let Some(generic) = generic else {
+                            continue;
+                        };
+
+                        for unmatching_idx in idx + 1..params_with_generics.len() {
+                            if matched_inputs[unmatching_idx.into()].is_none()
+                                && let Some(unmatched_idx_param_generic) =
+                                    params_with_generics[unmatching_idx].0
+                                && unmatched_idx_param_generic.name.ident() == generic.name.ident()
+                            {
+                                // We found a parameter that didn't match that needed to
+                                return true;
+                            }
+                        }
+                    }
+                }
+                false
+            };
+
+            let check_for_matched_generics = check_for_matched_generics();
+
+            for (idx, (generic_param, param)) in
+                params_with_generics.iter().enumerate().filter(|(idx, _)| {
+                    check_for_matched_generics
+                        || expected_idx.map_or(true, |expected_idx| expected_idx == *idx)
+                })
+            {
+                let Some(generic_param) = generic_param else {
+                    spans.push_span_label(param.span, "");
+                    continue;
+                };
+
+                let other_params_matched: Vec<(usize, &hir::Param<'_>)> = params_with_generics
+                    .iter()
+                    .enumerate()
+                    .filter(|(other_idx, (other_generic_param, _))| {
+                        if *other_idx == idx {
+                            return false;
+                        }
+                        let Some(other_generic_param) = other_generic_param else {
+                            return false;
+                        };
+                        if matched_inputs[idx.into()].is_none()
+                            && matched_inputs[(*other_idx).into()].is_none()
+                        {
+                            return false;
+                        }
+                        if matched_inputs[idx.into()].is_some()
+                            && matched_inputs[(*other_idx).into()].is_some()
+                        {
+                            return false;
+                        }
+                        other_generic_param.name.ident() == generic_param.name.ident()
+                    })
+                    .map(|(other_idx, (_, other_param))| (other_idx, *other_param))
+                    .collect();
+
+                if !other_params_matched.is_empty() {
+                    let other_param_matched_names: Vec<String> = other_params_matched
+                        .iter()
+                        .map(|(_, other_param)| {
+                            if let hir::PatKind::Binding(_, _, ident, _) = other_param.pat.kind {
+                                format!("`{ident}`")
+                            } else {
+                                "{unknown}".to_string()
+                            }
+                        })
+                        .collect();
+
+                    let matched_ty = self
+                        .resolve_vars_if_possible(formal_and_expected_inputs[idx.into()].1)
+                        .sort_string(self.tcx);
+
+                    if matched_inputs[idx.into()].is_some() {
+                        spans.push_span_label(
+                            param.span,
+                            format!(
+                                "{} {} to match the {} type of this parameter",
+                                display_list_with_comma_and(&other_param_matched_names),
+                                format!(
+                                    "need{}",
+                                    pluralize!(if other_param_matched_names.len() == 1 {
+                                        0
+                                    } else {
+                                        1
+                                    })
+                                ),
+                                matched_ty,
+                            ),
+                        );
+                    } else {
+                        spans.push_span_label(
+                            param.span,
+                            format!(
+                                "this parameter needs to match the {} type of {}",
+                                matched_ty,
+                                display_list_with_comma_and(&other_param_matched_names),
+                            ),
+                        );
+                    }
+                    generics_with_unmatched_params.push(generic_param);
+                } else {
+                    spans.push_span_label(param.span, "");
+                }
+            }
+
+            for generic_param in self
                 .tcx
                 .hir()
                 .get_if_local(def_id)
-                .and_then(|node| node.body_id())
+                .and_then(|node| node.generics())
                 .into_iter()
-                .flat_map(|id| self.tcx.hir().body(id).params)
-                .skip(if is_method { 1 } else { 0 });
-
-            for (_, param) in params
-                .into_iter()
-                .enumerate()
-                .filter(|(idx, _)| expected_idx.map_or(true, |expected_idx| expected_idx == *idx))
+                .flat_map(|x| x.params)
+                .filter(|x| {
+                    generics_with_unmatched_params.iter().any(|y| x.name.ident() == y.name.ident())
+                })
             {
-                spans.push_span_label(param.span, "");
+                let param_idents_matching: Vec<String> = params_with_generics
+                    .iter()
+                    .filter(|(generic, _)| {
+                        if let Some(generic) = generic {
+                            generic.name.ident() == generic_param.name.ident()
+                        } else {
+                            false
+                        }
+                    })
+                    .map(|(_, param)| {
+                        if let hir::PatKind::Binding(_, _, ident, _) = param.pat.kind {
+                            format!("`{ident}`")
+                        } else {
+                            "{unknown}".to_string()
+                        }
+                    })
+                    .collect();
+
+                if !param_idents_matching.is_empty() {
+                    spans.push_span_label(
+                        generic_param.span,
+                        format!(
+                            "{} all reference this parameter {}",
+                            display_list_with_comma_and(&param_idents_matching),
+                            generic_param.name.ident().name,
+                        ),
+                    );
+                }
             }
 
             err.span_note(spans, format!("{} defined here", self.tcx.def_descr(def_id)));
@@ -2172,14 +2385,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // Try to find earlier invocations of this closure to find if the type mismatch
                 // is because of inference. If we find one, point at them.
                 let mut call_finder = FindClosureArg { tcx: self.tcx, calls: vec![] };
-                let node = self
-                    .tcx
-                    .opt_local_def_id_to_hir_id(self.tcx.hir().get_parent_item(call_expr.hir_id))
-                    .map(|hir_id| self.tcx.hir_node(hir_id));
-                match node {
-                    Some(hir::Node::Item(item)) => call_finder.visit_item(item),
-                    Some(hir::Node::TraitItem(item)) => call_finder.visit_trait_item(item),
-                    Some(hir::Node::ImplItem(item)) => call_finder.visit_impl_item(item),
+                let parent_def_id = self.tcx.hir().get_parent_item(call_expr.hir_id).def_id;
+                match self.tcx.hir_node_by_def_id(parent_def_id) {
+                    hir::Node::Item(item) => call_finder.visit_item(item),
+                    hir::Node::TraitItem(item) => call_finder.visit_trait_item(item),
+                    hir::Node::ImplItem(item) => call_finder.visit_impl_item(item),
                     _ => {}
                 }
                 let typeck = self.typeck_results.borrow();
@@ -2222,6 +2432,115 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 format!("{} defined here", self.tcx.def_descr(def_id)),
             );
         }
+    }
+
+    fn label_generic_mismatches(
+        &self,
+        err: &mut Diag<'_>,
+        callable_def_id: Option<DefId>,
+        matched_inputs: &IndexVec<ExpectedIdx, Option<ProvidedIdx>>,
+        provided_arg_tys: &IndexVec<ProvidedIdx, (Ty<'tcx>, Span)>,
+        formal_and_expected_inputs: &IndexVec<ExpectedIdx, (Ty<'tcx>, Ty<'tcx>)>,
+        is_method: bool,
+    ) {
+        let Some(def_id) = callable_def_id else {
+            return;
+        };
+
+        let params_with_generics = self.get_hir_params_with_generics(def_id, is_method);
+
+        for (idx, (generic_param, _)) in params_with_generics.iter().enumerate() {
+            if matched_inputs[idx.into()].is_none() {
+                continue;
+            }
+
+            let Some((_, matched_arg_span)) = provided_arg_tys.get(idx.into()) else {
+                continue;
+            };
+
+            let Some(generic_param) = generic_param else {
+                continue;
+            };
+
+            let mut idxs_matched: Vec<usize> = vec![];
+            for (other_idx, (_, _)) in params_with_generics.iter().enumerate().filter(
+                |(other_idx, (other_generic_param, _))| {
+                    if *other_idx == idx {
+                        return false;
+                    }
+                    let Some(other_generic_param) = other_generic_param else {
+                        return false;
+                    };
+                    if matched_inputs[(*other_idx).into()].is_some() {
+                        return false;
+                    }
+                    other_generic_param.name.ident() == generic_param.name.ident()
+                },
+            ) {
+                idxs_matched.push(other_idx.into());
+            }
+
+            if idxs_matched.is_empty() {
+                continue;
+            }
+
+            let expected_display_type = self
+                .resolve_vars_if_possible(formal_and_expected_inputs[idx.into()].1)
+                .sort_string(self.tcx);
+            let label = if idxs_matched.len() == params_with_generics.len() - 1 {
+                format!(
+                    "expected all arguments to be this {} type because they need to match the type of this parameter",
+                    expected_display_type
+                )
+            } else {
+                format!(
+                    "expected some other arguments to be {} {} type to match the type of this parameter",
+                    a_or_an(&expected_display_type),
+                    expected_display_type,
+                )
+            };
+
+            err.span_label(*matched_arg_span, label);
+        }
+    }
+
+    fn get_hir_params_with_generics(
+        &self,
+        def_id: DefId,
+        is_method: bool,
+    ) -> Vec<(Option<&hir::GenericParam<'_>>, &hir::Param<'_>)> {
+        let fn_node = self.tcx.hir().get_if_local(def_id);
+
+        let generic_params: Vec<Option<&hir::GenericParam<'_>>> = fn_node
+            .and_then(|node| node.fn_decl())
+            .into_iter()
+            .flat_map(|decl| decl.inputs)
+            .skip(if is_method { 1 } else { 0 })
+            .map(|param| {
+                if let hir::TyKind::Path(QPath::Resolved(
+                    _,
+                    hir::Path { res: Res::Def(_, res_def_id), .. },
+                )) = param.kind
+                {
+                    fn_node
+                        .and_then(|node| node.generics())
+                        .into_iter()
+                        .flat_map(|generics| generics.params)
+                        .find(|gen| &gen.def_id.to_def_id() == res_def_id)
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        let params: Vec<&hir::Param<'_>> = fn_node
+            .and_then(|node| node.body_id())
+            .into_iter()
+            .flat_map(|id| self.tcx.hir().body(id).params)
+            .skip(if is_method { 1 } else { 0 })
+            .collect();
+
+        generic_params.into_iter().zip(params).collect()
     }
 }
 

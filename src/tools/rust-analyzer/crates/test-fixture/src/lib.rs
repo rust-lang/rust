@@ -2,19 +2,19 @@
 use std::{iter, mem, ops::Not, str::FromStr, sync};
 
 use base_db::{
-    CrateDisplayName, CrateGraph, CrateId, CrateName, CrateOrigin, Dependency, Edition, Env,
-    FileChange, FileSet, LangCrateOrigin, SourceDatabaseExt, SourceRoot, Version, VfsPath,
+    CrateDisplayName, CrateGraph, CrateId, CrateName, CrateOrigin, Dependency, Env, FileChange,
+    FileSet, LangCrateOrigin, SourceDatabaseExt, SourceRoot, Version, VfsPath,
 };
 use cfg::CfgOptions;
 use hir_expand::{
-    change::Change,
+    change::ChangeWithProcMacros,
     db::ExpandDatabase,
     proc_macro::{
         ProcMacro, ProcMacroExpander, ProcMacroExpansionError, ProcMacroKind, ProcMacros,
     },
 };
 use rustc_hash::FxHashMap;
-use span::{FileId, FilePosition, FileRange, Span};
+use span::{Edition, FileId, FilePosition, FileRange, Span};
 use test_utils::{
     extract_range_or_offset, Fixture, FixtureWithProjectMeta, RangeOrOffset, CURSOR_MARKER,
     ESCAPED_CURSOR_MARKER,
@@ -103,7 +103,7 @@ impl<DB: ExpandDatabase + SourceDatabaseExt + Default + 'static> WithFixture for
 pub struct ChangeFixture {
     pub file_position: Option<(FileId, RangeOrOffset)>,
     pub files: Vec<FileId>,
-    pub change: Change,
+    pub change: ChangeWithProcMacros,
 }
 
 const SOURCE_ROOT_PREFIX: &str = "/";
@@ -137,7 +137,10 @@ impl ChangeFixture {
         let mut crate_deps = Vec::new();
         let mut default_crate_root: Option<FileId> = None;
         let mut default_cfg = CfgOptions::default();
-        let mut default_env = Env::new_for_test_fixture();
+        let mut default_env = Env::from_iter([(
+            String::from("__ra_is_test_fixture"),
+            String::from("__ra_is_test_fixture"),
+        )]);
 
         let mut file_set = FileSet::default();
         let mut current_source_root_kind = SourceRootKind::Local;
@@ -157,7 +160,7 @@ impl ChangeFixture {
                     text
                 }
             } else {
-                entry.text.clone()
+                entry.text.as_str().into()
             };
 
             let meta = FileMeta::from_fixture(entry, current_source_root_kind);
@@ -186,8 +189,8 @@ impl ChangeFixture {
                     meta.edition,
                     Some(crate_name.clone().into()),
                     version,
-                    meta.cfg.clone(),
-                    Some(meta.cfg),
+                    From::from(meta.cfg.clone()),
+                    Some(From::from(meta.cfg)),
                     meta.env,
                     false,
                     origin,
@@ -195,7 +198,10 @@ impl ChangeFixture {
                 let prev = crates.insert(crate_name.clone(), crate_id);
                 assert!(prev.is_none(), "multiple crates with same name: {}", crate_name);
                 for dep in meta.deps {
-                    let prelude = meta.extern_prelude.contains(&dep);
+                    let prelude = match &meta.extern_prelude {
+                        Some(v) => v.contains(&dep),
+                        None => true,
+                    };
                     let dep = CrateName::normalize_dashes(&dep);
                     crate_deps.push((crate_name.clone(), dep, prelude))
                 }
@@ -203,10 +209,10 @@ impl ChangeFixture {
                 assert!(default_crate_root.is_none());
                 default_crate_root = Some(file_id);
                 default_cfg.extend(meta.cfg.into_iter());
-                default_env.extend(meta.env.iter().map(|(x, y)| (x.to_owned(), y.to_owned())));
+                default_env.extend_from_other(&meta.env);
             }
 
-            source_change.change_file(file_id, Some(text.into()));
+            source_change.change_file(file_id, Some(text));
             let path = VfsPath::new_virtual_path(meta.path);
             file_set.insert(file_id, path);
             files.push(file_id);
@@ -221,8 +227,8 @@ impl ChangeFixture {
                 Edition::CURRENT,
                 Some(CrateName::new("test").unwrap().into()),
                 None,
-                default_cfg.clone(),
-                Some(default_cfg),
+                From::from(default_cfg.clone()),
+                Some(From::from(default_cfg)),
                 default_env,
                 false,
                 CrateOrigin::Local { repo: None, name: None },
@@ -248,18 +254,21 @@ impl ChangeFixture {
             fs.insert(core_file, VfsPath::new_virtual_path("/sysroot/core/lib.rs".to_owned()));
             roots.push(SourceRoot::new_library(fs));
 
-            source_change.change_file(core_file, Some(mini_core.source_code().into()));
+            source_change.change_file(core_file, Some(mini_core.source_code()));
 
             let all_crates = crate_graph.crates_in_topological_order();
 
             let core_crate = crate_graph.add_crate_root(
                 core_file,
-                Edition::Edition2021,
+                Edition::CURRENT,
                 Some(CrateDisplayName::from_canonical_name("core".to_owned())),
                 None,
                 Default::default(),
                 Default::default(),
-                Env::new_for_test_fixture(),
+                Env::from_iter([(
+                    String::from("__ra_is_test_fixture"),
+                    String::from("__ra_is_test_fixture"),
+                )]),
                 false,
                 CrateOrigin::Lang(LangCrateOrigin::Core),
             );
@@ -284,18 +293,21 @@ impl ChangeFixture {
             );
             roots.push(SourceRoot::new_library(fs));
 
-            source_change.change_file(proc_lib_file, Some(source.into()));
+            source_change.change_file(proc_lib_file, Some(source));
 
             let all_crates = crate_graph.crates_in_topological_order();
 
             let proc_macros_crate = crate_graph.add_crate_root(
                 proc_lib_file,
-                Edition::Edition2021,
+                Edition::CURRENT,
                 Some(CrateDisplayName::from_canonical_name("proc_macros".to_owned())),
                 None,
                 Default::default(),
                 Default::default(),
-                Env::new_for_test_fixture(),
+                Env::from_iter([(
+                    String::from("__ra_is_test_fixture"),
+                    String::from("__ra_is_test_fixture"),
+                )]),
                 true,
                 CrateOrigin::Local { repo: None, name: None },
             );
@@ -317,7 +329,7 @@ impl ChangeFixture {
         };
         roots.push(root);
 
-        let mut change = Change {
+        let mut change = ChangeWithProcMacros {
             source_change,
             proc_macros: proc_macros.is_empty().not().then_some(proc_macros),
             toolchains: Some(iter::repeat(toolchain).take(crate_graph.len()).collect()),
@@ -390,7 +402,7 @@ pub fn mirror(input: TokenStream) -> TokenStream {
             .into(),
             ProcMacro {
                 name: "mirror".into(),
-                kind: ProcMacroKind::FuncLike,
+                kind: ProcMacroKind::Bang,
                 expander: sync::Arc::new(MirrorProcMacroExpander),
                 disabled: false,
             },
@@ -405,7 +417,7 @@ pub fn shorten(input: TokenStream) -> TokenStream {
             .into(),
             ProcMacro {
                 name: "shorten".into(),
-                kind: ProcMacroKind::FuncLike,
+                kind: ProcMacroKind::Bang,
                 expander: sync::Arc::new(ShortenProcMacroExpander),
                 disabled: false,
             },
@@ -443,7 +455,7 @@ struct FileMeta {
     path: String,
     krate: Option<(String, CrateOrigin, Option<String>)>,
     deps: Vec<String>,
-    extern_prelude: Vec<String>,
+    extern_prelude: Option<Vec<String>>,
     cfg: CfgOptions,
     edition: Edition,
     env: Env,
@@ -473,7 +485,7 @@ impl FileMeta {
         Self {
             path: f.path,
             krate: f.krate.map(|it| parse_crate(it, current_source_root_kind, f.library)),
-            extern_prelude: f.extern_prelude.unwrap_or_else(|| deps.clone()),
+            extern_prelude: f.extern_prelude,
             deps,
             cfg,
             edition: f.edition.map_or(Edition::CURRENT, |v| Edition::from_str(&v).unwrap()),

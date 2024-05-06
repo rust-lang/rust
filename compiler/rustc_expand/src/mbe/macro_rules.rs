@@ -1,11 +1,11 @@
-use crate::base::{DummyResult, ExtCtxt, MacResult, TTMacroExpander};
-use crate::base::{SyntaxExtension, SyntaxExtensionKind};
+use crate::base::{DummyResult, SyntaxExtension, SyntaxExtensionKind};
+use crate::base::{ExpandResult, ExtCtxt, MacResult, MacroExpanderResult, TTMacroExpander};
 use crate::expand::{ensure_complete_parse, parse_ast_fragment, AstFragment, AstFragmentKind};
 use crate::mbe;
 use crate::mbe::diagnostics::{annotate_doc_comment, parse_failure_msg};
 use crate::mbe::macro_check;
 use crate::mbe::macro_parser::{Error, ErrorReported, Failure, Success, TtParser};
-use crate::mbe::macro_parser::{MatchedSeq, MatchedTokenTree, MatcherLoc};
+use crate::mbe::macro_parser::{MatcherLoc, NamedMatch::*};
 use crate::mbe::transcribe::transcribe;
 
 use ast::token::IdentIsRaw;
@@ -22,13 +22,14 @@ use rustc_lint_defs::builtin::{
     RUST_2021_INCOMPATIBLE_OR_PATTERNS, SEMICOLON_IN_EXPRESSIONS_FROM_MACROS,
 };
 use rustc_lint_defs::BuiltinLintDiag;
-use rustc_parse::parser::{Parser, Recovery};
+use rustc_parse::parser::{ParseNtResult, Parser, Recovery};
 use rustc_session::parse::ParseSess;
 use rustc_session::Session;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::Transparency;
 use rustc_span::symbol::{kw, sym, Ident, MacroRulesNormalizedIdent};
 use rustc_span::Span;
+use tracing::{debug, instrument, trace, trace_span};
 
 use std::borrow::Cow;
 use std::collections::hash_map::Entry;
@@ -111,8 +112,8 @@ impl TTMacroExpander for MacroRulesMacroExpander {
         cx: &'cx mut ExtCtxt<'_>,
         sp: Span,
         input: TokenStream,
-    ) -> Box<dyn MacResult + 'cx> {
-        expand_macro(
+    ) -> MacroExpanderResult<'cx> {
+        ExpandResult::Ready(expand_macro(
             cx,
             sp,
             self.span,
@@ -122,7 +123,7 @@ impl TTMacroExpander for MacroRulesMacroExpander {
             input,
             &self.lhses,
             &self.rhses,
-        )
+        ))
     }
 }
 
@@ -134,8 +135,8 @@ impl TTMacroExpander for DummyExpander {
         _: &'cx mut ExtCtxt<'_>,
         span: Span,
         _: TokenStream,
-    ) -> Box<dyn MacResult + 'cx> {
-        DummyResult::any(span, self.0)
+    ) -> ExpandResult<Box<dyn MacResult + 'cx>, ()> {
+        ExpandResult::Ready(DummyResult::any(span, self.0))
     }
 }
 
@@ -156,8 +157,8 @@ pub(super) trait Tracker<'matcher> {
     /// This is called before trying to match next MatcherLoc on the current token.
     fn before_match_loc(&mut self, _parser: &TtParser, _matcher: &'matcher MatcherLoc) {}
 
-    /// This is called after an arm has been parsed, either successfully or unsuccessfully. When this is called,
-    /// `before_match_loc` was called at least once (with a `MatcherLoc::Eof`).
+    /// This is called after an arm has been parsed, either successfully or unsuccessfully. When
+    /// this is called, `before_match_loc` was called at least once (with a `MatcherLoc::Eof`).
     fn after_arm(&mut self, _result: &NamedParseResult<Self::Failure>) {}
 
     /// For tracing.
@@ -168,7 +169,8 @@ pub(super) trait Tracker<'matcher> {
     }
 }
 
-/// A noop tracker that is used in the hot path of the expansion, has zero overhead thanks to monomorphization.
+/// A noop tracker that is used in the hot path of the expansion, has zero overhead thanks to
+/// monomorphization.
 pub(super) struct NoopTracker;
 
 impl<'matcher> Tracker<'matcher> for NoopTracker {
@@ -479,7 +481,7 @@ pub fn compile_declarative_macro(
         MatchedSeq(s) => s
             .iter()
             .map(|m| {
-                if let MatchedTokenTree(tt) = m {
+                if let MatchedSingle(ParseNtResult::Tt(tt)) = m {
                     let tt = mbe::quoted::parse(
                         &TokenStream::new(vec![tt.clone()]),
                         true,
@@ -491,7 +493,7 @@ pub fn compile_declarative_macro(
                     .pop()
                     .unwrap();
                     // We don't handle errors here, the driver will abort
-                    // after parsing/expansion. we can report every error in every macro this way.
+                    // after parsing/expansion. We can report every error in every macro this way.
                     check_emission(check_lhs_nt_follows(sess, def, &tt));
                     return tt;
                 }
@@ -505,7 +507,7 @@ pub fn compile_declarative_macro(
         MatchedSeq(s) => s
             .iter()
             .map(|m| {
-                if let MatchedTokenTree(tt) = m {
+                if let MatchedSingle(ParseNtResult::Tt(tt)) = m {
                     return mbe::quoted::parse(
                         &TokenStream::new(vec![tt.clone()]),
                         false,
@@ -527,7 +529,7 @@ pub fn compile_declarative_macro(
         check_emission(check_rhs(sess, rhs));
     }
 
-    // don't abort iteration early, so that errors for multiple lhses can be reported
+    // Don't abort iteration early, so that errors for multiple lhses can be reported.
     for lhs in &lhses {
         check_emission(check_lhs_no_empty_seq(sess, slice::from_ref(lhs)));
     }

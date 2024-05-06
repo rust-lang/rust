@@ -457,7 +457,7 @@ impl<'tcx> ConstToPat<'tcx> {
                     PatKind::Constant { value: mir::Const::Ty(ty::Const::new_value(tcx, cv, ty)) }
                 }
             }
-            ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::RawPtr(..) => {
+            ty::Pat(..) | ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::RawPtr(..) => {
                 // The raw pointers we see here have been "vetted" by valtree construction to be
                 // just integers, so we simply allow them.
                 PatKind::Constant { value: mir::Const::Ty(ty::Const::new_value(tcx, cv, ty)) }

@@ -14,7 +14,7 @@ impl MachineInfo {
         with(|cx| cx.target_info())
     }
 
-    pub fn target_endianess() -> Endian {
+    pub fn target_endianness() -> Endian {
         with(|cx| cx.target_info().endian)
     }
 

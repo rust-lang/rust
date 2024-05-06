@@ -1,3 +1,30 @@
+error[E0392]: type parameter `U` is never used
+  --> $DIR/variance-trait-bounds.rs:21:15
+   |
+LL | enum TestEnum<U,T:Setter<U>> {
+   |               ^ unused type parameter
+   |
+   = help: consider removing `U`, referring to it in a field, or using a marker such as `PhantomData`
+   = help: if you intended `U` to be a const parameter, use `const U: /* Type */` instead
+
+error[E0392]: type parameter `U` is never used
+  --> $DIR/variance-trait-bounds.rs:27:25
+   |
+LL | struct TestContraStruct<U,T:Setter<U>> {
+   |                         ^ unused type parameter
+   |
+   = help: consider removing `U`, referring to it in a field, or using a marker such as `PhantomData`
+   = help: if you intended `U` to be a const parameter, use `const U: /* Type */` instead
+
+error[E0392]: type parameter `U` is never used
+  --> $DIR/variance-trait-bounds.rs:33:16
+   |
+LL | struct TestBox<U,T:Getter<U>+Setter<U>> {
+   |                ^ unused type parameter
+   |
+   = help: consider removing `U`, referring to it in a field, or using a marker such as `PhantomData`
+   = help: if you intended `U` to be a const parameter, use `const U: /* Type */` instead
+
 error: [+, +]
   --> $DIR/variance-trait-bounds.rs:16:1
    |
@@ -11,16 +38,17 @@ LL | enum TestEnum<U,T:Setter<U>> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: [*, +]
-  --> $DIR/variance-trait-bounds.rs:26:1
+  --> $DIR/variance-trait-bounds.rs:27:1
    |
 LL | struct TestContraStruct<U,T:Setter<U>> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: [*, +]
-  --> $DIR/variance-trait-bounds.rs:31:1
+  --> $DIR/variance-trait-bounds.rs:33:1
    |
 LL | struct TestBox<U,T:Getter<U>+Setter<U>> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 4 previous errors
+error: aborting due to 7 previous errors
 
+For more information about this error, try `rustc --explain E0392`.

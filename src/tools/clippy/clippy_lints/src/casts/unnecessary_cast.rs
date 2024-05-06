@@ -51,7 +51,7 @@ pub(super) fn check<'tcx>(
             cx,
             UNNECESSARY_CAST,
             expr.span,
-            &format!(
+            format!(
                 "casting raw pointers to the same type and constness is unnecessary (`{cast_from}` -> `{cast_to}`)"
             ),
             "try",
@@ -66,7 +66,7 @@ pub(super) fn check<'tcx>(
         && let QPath::Resolved(None, Path { res, .. }) = qpath
         && let Res::Local(hir_id) = res
         && let parent = cx.tcx.parent_hir_node(*hir_id)
-        && let Node::Local(local) = parent
+        && let Node::LetStmt(local) = parent
     {
         if let Some(ty) = local.ty
             && let TyKind::Path(qpath) = ty.kind
@@ -151,13 +151,24 @@ pub(super) fn check<'tcx>(
             return false;
         }
 
+        // If the whole cast expression is a unary expression (`(*x as T)`) or an addressof
+        // expression (`(&x as T)`), then not surrounding the suggestion into a block risks us
+        // changing the precedence of operators if the cast expression is followed by an operation
+        // with higher precedence than the unary operator (`(*x as T).foo()` would become
+        // `*x.foo()`, which changes what the `*` applies on).
+        // The same is true if the expression encompassing the cast expression is a unary
+        // expression or an addressof expression.
+        let needs_block = matches!(cast_expr.kind, ExprKind::Unary(..) | ExprKind::AddrOf(..))
+            || get_parent_expr(cx, expr)
+                .map_or(false, |e| matches!(e.kind, ExprKind::Unary(..) | ExprKind::AddrOf(..)));
+
         span_lint_and_sugg(
             cx,
             UNNECESSARY_CAST,
             expr.span,
-            &format!("casting to the same type is unnecessary (`{cast_from}` -> `{cast_to}`)"),
+            format!("casting to the same type is unnecessary (`{cast_from}` -> `{cast_to}`)"),
             "try",
-            if get_parent_expr(cx, expr).map_or(false, |e| matches!(e.kind, ExprKind::AddrOf(..))) {
+            if needs_block {
                 format!("{{ {cast_str} }}")
             } else {
                 cast_str
@@ -198,7 +209,7 @@ fn lint_unnecessary_cast(
         cx,
         UNNECESSARY_CAST,
         expr.span,
-        &format!("casting {literal_kind_name} literal to `{cast_to}` is unnecessary"),
+        format!("casting {literal_kind_name} literal to `{cast_to}` is unnecessary"),
         "try",
         sugg,
         Applicability::MachineApplicable,
@@ -264,7 +275,7 @@ fn is_cast_from_ty_alias<'tcx>(cx: &LateContext<'tcx>, expr: impl Visitable<'tcx
                 }
             // Local usage
             } else if let Res::Local(hir_id) = res
-                && let Node::Local(l) = cx.tcx.parent_hir_node(hir_id)
+                && let Node::LetStmt(l) = cx.tcx.parent_hir_node(hir_id)
             {
                 if let Some(e) = l.init
                     && is_cast_from_ty_alias(cx, e, cast_from)

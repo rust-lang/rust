@@ -1,7 +1,7 @@
 //@ run-fail
 //@ compile-flags: --test
 //@ check-stdout
-//@ ignore-emscripten no processes
+//@ needs-unwind
 
 #[test]
 #[should_panic(expected = "foo")]

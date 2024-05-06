@@ -2,8 +2,6 @@
 //! - the number of entries in each directory must be less than `ENTRY_LIMIT`
 //! - there are no stray `.stderr` files
 use ignore::Walk;
-use lazy_static::lazy_static;
-use regex::Regex;
 use std::collections::{BTreeSet, HashMap};
 use std::ffi::OsStr;
 use std::fs;
@@ -17,8 +15,8 @@ use std::path::{Path, PathBuf};
 const ENTRY_LIMIT: usize = 900;
 // FIXME: The following limits should be reduced eventually.
 
-const ISSUES_ENTRY_LIMIT: usize = 1750;
-const ROOT_ENTRY_LIMIT: usize = 872;
+const ISSUES_ENTRY_LIMIT: usize = 1676;
+const ROOT_ENTRY_LIMIT: usize = 859;
 
 const EXPECTED_TEST_FILE_EXTENSIONS: &[&str] = &[
     "rs",     // test source files
@@ -34,8 +32,8 @@ const EXTENSION_EXCEPTION_PATHS: &[&str] = &[
     "tests/ui/asm/named-asm-labels.s", // loading an external asm file to test named labels lint
     "tests/ui/codegen/mismatched-data-layout.json", // testing mismatched data layout w/ custom targets
     "tests/ui/check-cfg/my-awesome-platform.json",  // testing custom targets with cfgs
-    "tests/ui/commandline-argfile-badutf8.args",    // passing args via a file
-    "tests/ui/commandline-argfile.args",            // passing args via a file
+    "tests/ui/argfile/commandline-argfile-badutf8.args", // passing args via a file
+    "tests/ui/argfile/commandline-argfile.args",    // passing args via a file
     "tests/ui/crate-loading/auxiliary/libfoo.rlib", // testing loading a manually created rlib
     "tests/ui/include-macros/data.bin", // testing including data with the include macros
     "tests/ui/include-macros/file.txt", // testing including data with the include macros
@@ -49,6 +47,9 @@ const EXTENSION_EXCEPTION_PATHS: &[&str] = &[
     "tests/ui/shell-argfiles/shell-argfiles-badquotes.args", // passing args via a file
     "tests/ui/shell-argfiles/shell-argfiles-via-argfile-shell.args", // passing args via a file
     "tests/ui/shell-argfiles/shell-argfiles-via-argfile.args", // passing args via a file
+    "tests/ui/std/windows-bat-args1.bat", // tests escaping arguments through batch files
+    "tests/ui/std/windows-bat-args2.bat", // tests escaping arguments through batch files
+    "tests/ui/std/windows-bat-args3.bat", // tests escaping arguments through batch files
 ];
 
 fn check_entries(tests_path: &Path, bad: &mut bool) {
@@ -99,16 +100,42 @@ fn check_entries(tests_path: &Path, bad: &mut bool) {
     }
 }
 
-pub fn check(path: &Path, bless: bool, bad: &mut bool) {
+pub fn check(root_path: &Path, bless: bool, bad: &mut bool) {
+    let issues_txt_header = r#"============================================================
+    ⚠️⚠️⚠️NOTHING SHOULD EVER BE ADDED TO THIS LIST⚠️⚠️⚠️
+============================================================
+"#;
+
+    let path = &root_path.join("tests");
     check_entries(&path, bad);
 
     // the list of files in ui tests that are allowed to start with `issue-XXXX`
     // BTreeSet because we would like a stable ordering so --bless works
-    let allowed_issue_names = BTreeSet::from(
-        include!("issues.txt").map(|path| path.replace("/", std::path::MAIN_SEPARATOR_STR)),
-    );
+    let mut prev_line = "";
+    let mut is_sorted = true;
+    let allowed_issue_names: BTreeSet<_> = include_str!("issues.txt")
+        .strip_prefix(issues_txt_header)
+        .unwrap()
+        .lines()
+        .map(|line| {
+            if prev_line > line {
+                is_sorted = false;
+            }
 
-    let mut remaining_issue_names: BTreeSet<String> = allowed_issue_names.clone();
+            prev_line = line;
+            line
+        })
+        .collect();
+
+    if !is_sorted && !bless {
+        tidy_error!(
+            bad,
+            "`src/tools/tidy/src/issues.txt` is not in order, mostly because you modified it manually,
+            please only update it with command `x test tidy --bless`"
+        );
+    }
+
+    let mut remaining_issue_names: BTreeSet<&str> = allowed_issue_names.clone();
 
     let (ui, ui_fulldeps) = (path.join("ui"), path.join("ui-fulldeps"));
     let paths = [ui.as_path(), ui_fulldeps.as_path()];
@@ -153,15 +180,17 @@ pub fn check(path: &Path, bless: bool, bad: &mut bool) {
             }
 
             if ext == "rs" {
-                lazy_static! {
-                    static ref ISSUE_NAME_REGEX: Regex =
-                        Regex::new(r"^issues?[-_]?(\d{3,})").unwrap();
-                }
-
-                if let Some(test_name) = ISSUE_NAME_REGEX.captures(testname) {
+                if let Some(test_name) = static_regex!(r"^issues?[-_]?(\d{3,})").captures(testname)
+                {
                     // these paths are always relative to the passed `path` and always UTF8
-                    let stripped_path = file_path.strip_prefix(path).unwrap().to_str().unwrap();
-                    if !remaining_issue_names.remove(stripped_path) {
+                    let stripped_path = file_path
+                        .strip_prefix(path)
+                        .unwrap()
+                        .to_str()
+                        .unwrap()
+                        .replace(std::path::MAIN_SEPARATOR_STR, "/");
+
+                    if !remaining_issue_names.remove(stripped_path.as_str()) {
                         tidy_error!(
                             bad,
                             "file `tests/{stripped_path}` must begin with a descriptive name, consider `{{reason}}-issue-{issue_n}.rs`",
@@ -173,27 +202,20 @@ pub fn check(path: &Path, bless: bool, bad: &mut bool) {
         }
     });
 
-    // if an excluded file is renamed, it must be removed from this list
+    // if there are any file names remaining, they were moved on the fs.
+    // our data must remain up to date, so it must be removed from issues.txt
     // do this automatically on bless, otherwise issue a tidy error
-    if bless {
-        let issues_txt_header = r#"
-/*
-============================================================
-    ⚠️⚠️⚠️NOTHING SHOULD EVER BE ADDED TO THIS LIST⚠️⚠️⚠️
-============================================================
-*/
-[
-"#;
-        let tidy_src = std::env::current_dir().unwrap().join("src/tools/tidy/src");
+    if bless && (!remaining_issue_names.is_empty() || !is_sorted) {
+        let tidy_src = root_path.join("src/tools/tidy/src");
         // instead of overwriting the file, recreate it and use an "atomic rename"
         // so we don't bork things on panic or a contributor using Ctrl+C
         let blessed_issues_path = tidy_src.join("issues_blessed.txt");
         let mut blessed_issues_txt = fs::File::create(&blessed_issues_path).unwrap();
         blessed_issues_txt.write(issues_txt_header.as_bytes()).unwrap();
+        // If we changed paths to use the OS separator, reassert Unix chauvinism for blessing.
         for filename in allowed_issue_names.difference(&remaining_issue_names) {
-            write!(blessed_issues_txt, "\"{filename}\",\n").unwrap();
+            writeln!(blessed_issues_txt, "{filename}").unwrap();
         }
-        write!(blessed_issues_txt, "]\n").unwrap();
         let old_issues_path = tidy_src.join("issues.txt");
         fs::rename(blessed_issues_path, old_issues_path).unwrap();
     } else {

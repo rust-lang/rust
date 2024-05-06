@@ -55,6 +55,7 @@ fn llvm_machine_type(cpu: &str) -> LLVMMachineType {
         "x86_64" => LLVMMachineType::AMD64,
         "x86" => LLVMMachineType::I386,
         "aarch64" => LLVMMachineType::ARM64,
+        "arm64ec" => LLVMMachineType::ARM64EC,
         "arm" => LLVMMachineType::ARM,
         _ => panic!("unsupported cpu type {cpu}"),
     }
@@ -414,6 +415,7 @@ impl<'a> LlvmArchiveBuilder<'a> {
                 members.as_ptr() as *const &_,
                 true,
                 kind,
+                self.sess.target.arch == "arm64ec",
             );
             let ret = if r.into_result().is_err() {
                 let err = llvm::LLVMRustGetLastError();

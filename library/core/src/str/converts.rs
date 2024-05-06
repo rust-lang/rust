@@ -239,7 +239,7 @@ pub const unsafe fn from_raw_parts<'a>(ptr: *const u8, len: usize) -> &'a str {
 #[must_use]
 #[unstable(feature = "str_from_raw_parts", issue = "119206")]
 #[rustc_const_unstable(feature = "const_str_from_raw_parts_mut", issue = "119206")]
-pub const unsafe fn from_raw_parts_mut<'a>(ptr: *mut u8, len: usize) -> &'a str {
+pub const unsafe fn from_raw_parts_mut<'a>(ptr: *mut u8, len: usize) -> &'a mut str {
     // SAFETY: the caller must uphold the safety contract for `from_raw_parts_mut`.
     unsafe { &mut *ptr::from_raw_parts_mut(ptr.cast(), len) }
 }

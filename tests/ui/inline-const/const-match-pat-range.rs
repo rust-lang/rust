@@ -1,6 +1,6 @@
 //@ build-pass
 
-#![feature(inline_const_pat, exclusive_range_pattern)]
+#![feature(inline_const_pat)]
 
 fn main() {
     const N: u32 = 10;

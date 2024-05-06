@@ -3,7 +3,12 @@ use crate::spec::{base, Cc, LinkerFlavor, Lld, Target, TargetOptions};
 pub fn target() -> Target {
     Target {
         llvm_target: "aarch64-unknown-unknown".into(),
-        description: None,
+        metadata: crate::spec::TargetMetadata {
+            description: None,
+            tier: None,
+            host_tools: None,
+            std: None,
+        },
         pointer_width: 64,
         // from: https://llvm.org/docs/LangRef.html#data-layout
         // e         = little endian

@@ -1,6 +1,4 @@
 mod generated;
-#[cfg(not(feature = "in-rust-tree"))]
-mod sourcegen;
 
 use expect_test::expect;
 use hir::Semantics;

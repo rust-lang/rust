@@ -5,35 +5,32 @@ use crate::module::DirOwnership;
 
 use rustc_ast::attr::MarkedAttrs;
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, Nonterminal};
+use rustc_ast::token::Nonterminal;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::visit::{AssocCtxt, Visitor};
 use rustc_ast::{self as ast, AttrVec, Attribute, HasAttrs, Item, NodeId, PatKind};
 use rustc_attr::{self as attr, Deprecation, Stability};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync::{self, Lrc};
-use rustc_errors::{Applicability, Diag, DiagCtxt, ErrorGuaranteed, PResult};
+use rustc_errors::{DiagCtxt, ErrorGuaranteed, PResult};
 use rustc_feature::Features;
 use rustc_lint_defs::builtin::PROC_MACRO_BACK_COMPAT;
 use rustc_lint_defs::{BufferedEarlyLint, BuiltinLintDiag, RegisteredTools};
 use rustc_parse::{parser, MACRO_ARGUMENTS};
 use rustc_session::config::CollapseMacroDebuginfo;
-use rustc_session::errors::report_lit_error;
 use rustc_session::{parse::ParseSess, Limit, Session};
 use rustc_span::def_id::{CrateNum, DefId, LocalDefId};
 use rustc_span::edition::Edition;
-use rustc_span::hygiene::{AstPass, ExpnData, ExpnKind, LocalExpnId};
+use rustc_span::hygiene::{AstPass, ExpnData, ExpnKind, LocalExpnId, MacroKind};
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{BytePos, FileName, Span, DUMMY_SP};
+use rustc_span::{FileName, Span, DUMMY_SP};
 use smallvec::{smallvec, SmallVec};
 use std::default::Default;
 use std::iter;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use thin_vec::ThinVec;
-
-pub(crate) use rustc_span::hygiene::MacroKind;
 
 // When adding new variants, make sure to
 // adjust the `visit_*` / `flat_map_*` calls in `InvocationCollector`
@@ -245,6 +242,15 @@ pub enum ExpandResult<T, U> {
     Retry(U),
 }
 
+impl<T, U> ExpandResult<T, U> {
+    pub fn map<E, F: FnOnce(T) -> E>(self, f: F) -> ExpandResult<E, U> {
+        match self {
+            ExpandResult::Ready(t) => ExpandResult::Ready(f(t)),
+            ExpandResult::Retry(u) => ExpandResult::Retry(u),
+        }
+    }
+}
+
 pub trait MultiItemModifier {
     /// `meta_item` is the attribute, and `item` is the item being modified.
     fn expand(
@@ -330,22 +336,24 @@ pub trait TTMacroExpander {
         ecx: &'cx mut ExtCtxt<'_>,
         span: Span,
         input: TokenStream,
-    ) -> Box<dyn MacResult + 'cx>;
+    ) -> MacroExpanderResult<'cx>;
 }
 
+pub type MacroExpanderResult<'cx> = ExpandResult<Box<dyn MacResult + 'cx>, ()>;
+
 pub type MacroExpanderFn =
-    for<'cx> fn(&'cx mut ExtCtxt<'_>, Span, TokenStream) -> Box<dyn MacResult + 'cx>;
+    for<'cx> fn(&'cx mut ExtCtxt<'_>, Span, TokenStream) -> MacroExpanderResult<'cx>;
 
 impl<F> TTMacroExpander for F
 where
-    F: for<'cx> Fn(&'cx mut ExtCtxt<'_>, Span, TokenStream) -> Box<dyn MacResult + 'cx>,
+    F: for<'cx> Fn(&'cx mut ExtCtxt<'_>, Span, TokenStream) -> MacroExpanderResult<'cx>,
 {
     fn expand<'cx>(
         &self,
         ecx: &'cx mut ExtCtxt<'_>,
         span: Span,
         input: TokenStream,
-    ) -> Box<dyn MacResult + 'cx> {
+    ) -> MacroExpanderResult<'cx> {
         self(ecx, span, input)
     }
 }
@@ -563,35 +571,6 @@ impl DummyResult {
             tokens: None,
         })
     }
-
-    /// A plain dummy pattern.
-    pub fn raw_pat(sp: Span) -> ast::Pat {
-        ast::Pat { id: ast::DUMMY_NODE_ID, kind: PatKind::Wild, span: sp, tokens: None }
-    }
-
-    /// A plain dummy type.
-    pub fn raw_ty(sp: Span) -> P<ast::Ty> {
-        // FIXME(nnethercote): you might expect `ast::TyKind::Dummy` to be used here, but some
-        // values produced here end up being lowered to HIR, which `ast::TyKind::Dummy` does not
-        // support, so we use an empty tuple instead.
-        P(ast::Ty {
-            id: ast::DUMMY_NODE_ID,
-            kind: ast::TyKind::Tup(ThinVec::new()),
-            span: sp,
-            tokens: None,
-        })
-    }
-
-    /// A plain dummy crate.
-    pub fn raw_crate() -> ast::Crate {
-        ast::Crate {
-            attrs: Default::default(),
-            items: Default::default(),
-            spans: Default::default(),
-            id: ast::DUMMY_NODE_ID,
-            is_placeholder: Default::default(),
-        }
-    }
 }
 
 impl MacResult for DummyResult {
@@ -600,7 +579,12 @@ impl MacResult for DummyResult {
     }
 
     fn make_pat(self: Box<DummyResult>) -> Option<P<ast::Pat>> {
-        Some(P(DummyResult::raw_pat(self.span)))
+        Some(P(ast::Pat {
+            id: ast::DUMMY_NODE_ID,
+            kind: PatKind::Wild,
+            span: self.span,
+            tokens: None,
+        }))
     }
 
     fn make_items(self: Box<DummyResult>) -> Option<SmallVec<[P<ast::Item>; 1]>> {
@@ -628,7 +612,15 @@ impl MacResult for DummyResult {
     }
 
     fn make_ty(self: Box<DummyResult>) -> Option<P<ast::Ty>> {
-        Some(DummyResult::raw_ty(self.span))
+        // FIXME(nnethercote): you might expect `ast::TyKind::Dummy` to be used here, but some
+        // values produced here end up being lowered to HIR, which `ast::TyKind::Dummy` does not
+        // support, so we use an empty tuple instead.
+        Some(P(ast::Ty {
+            id: ast::DUMMY_NODE_ID,
+            kind: ast::TyKind::Tup(ThinVec::new()),
+            span: self.span,
+            tokens: None,
+        }))
     }
 
     fn make_arms(self: Box<DummyResult>) -> Option<SmallVec<[ast::Arm; 1]>> {
@@ -660,7 +652,13 @@ impl MacResult for DummyResult {
     }
 
     fn make_crate(self: Box<DummyResult>) -> Option<ast::Crate> {
-        Some(DummyResult::raw_crate())
+        Some(ast::Crate {
+            attrs: Default::default(),
+            items: Default::default(),
+            spans: Default::default(),
+            id: ast::DUMMY_NODE_ID,
+            is_placeholder: Default::default(),
+        })
     }
 }
 
@@ -778,55 +776,50 @@ impl SyntaxExtension {
         }
     }
 
-    fn collapse_debuginfo_by_name(sess: &Session, attr: &Attribute) -> CollapseMacroDebuginfo {
-        use crate::errors::CollapseMacroDebuginfoIllegal;
-        // #[collapse_debuginfo] without enum value (#[collapse_debuginfo(no/external/yes)])
-        // considered as `yes`
-        attr.meta_item_list().map_or(CollapseMacroDebuginfo::Yes, |l| {
-            let [NestedMetaItem::MetaItem(item)] = &l[..] else {
-                sess.dcx().emit_err(CollapseMacroDebuginfoIllegal { span: attr.span });
-                return CollapseMacroDebuginfo::Unspecified;
-            };
-            if !item.is_word() {
-                sess.dcx().emit_err(CollapseMacroDebuginfoIllegal { span: item.span });
-                CollapseMacroDebuginfo::Unspecified
-            } else {
-                match item.name_or_empty() {
-                    sym::no => CollapseMacroDebuginfo::No,
-                    sym::external => CollapseMacroDebuginfo::External,
-                    sym::yes => CollapseMacroDebuginfo::Yes,
-                    _ => {
-                        sess.dcx().emit_err(CollapseMacroDebuginfoIllegal { span: item.span });
-                        CollapseMacroDebuginfo::Unspecified
-                    }
-                }
-            }
-        })
+    fn collapse_debuginfo_by_name(attr: &Attribute) -> Result<CollapseMacroDebuginfo, Span> {
+        let list = attr.meta_item_list();
+        let Some([NestedMetaItem::MetaItem(item)]) = list.as_deref() else {
+            return Err(attr.span);
+        };
+        if !item.is_word() {
+            return Err(item.span);
+        }
+
+        match item.name_or_empty() {
+            sym::no => Ok(CollapseMacroDebuginfo::No),
+            sym::external => Ok(CollapseMacroDebuginfo::External),
+            sym::yes => Ok(CollapseMacroDebuginfo::Yes),
+            _ => Err(item.path.span),
+        }
     }
 
     /// if-ext - if macro from different crate (related to callsite code)
     /// | cmd \ attr    | no  | (unspecified) | external | yes |
     /// | no            | no  | no            | no       | no  |
-    /// | (unspecified) | no  | no            | if-ext   | yes |
+    /// | (unspecified) | no  | if-ext        | if-ext   | yes |
     /// | external      | no  | if-ext        | if-ext   | yes |
     /// | yes           | yes | yes           | yes      | yes |
-    fn get_collapse_debuginfo(sess: &Session, attrs: &[ast::Attribute], is_local: bool) -> bool {
-        let mut collapse_debuginfo_attr = attr::find_by_name(attrs, sym::collapse_debuginfo)
-            .map(|v| Self::collapse_debuginfo_by_name(sess, v))
-            .unwrap_or(CollapseMacroDebuginfo::Unspecified);
-        if collapse_debuginfo_attr == CollapseMacroDebuginfo::Unspecified
-            && attr::contains_name(attrs, sym::rustc_builtin_macro)
-        {
-            collapse_debuginfo_attr = CollapseMacroDebuginfo::Yes;
-        }
-
-        let flag = sess.opts.unstable_opts.collapse_macro_debuginfo;
-        let attr = collapse_debuginfo_attr;
-        let ext = !is_local;
+    fn get_collapse_debuginfo(sess: &Session, attrs: &[ast::Attribute], ext: bool) -> bool {
+        let flag = sess.opts.cg.collapse_macro_debuginfo;
+        let attr = attr::find_by_name(attrs, sym::collapse_debuginfo)
+            .and_then(|attr| {
+                Self::collapse_debuginfo_by_name(attr)
+                    .map_err(|span| {
+                        sess.dcx().emit_err(errors::CollapseMacroDebuginfoIllegal { span })
+                    })
+                    .ok()
+            })
+            .unwrap_or_else(|| {
+                if attr::contains_name(attrs, sym::rustc_builtin_macro) {
+                    CollapseMacroDebuginfo::Yes
+                } else {
+                    CollapseMacroDebuginfo::Unspecified
+                }
+            });
         #[rustfmt::skip]
         let collapse_table = [
             [false, false, false, false],
-            [false, false, ext,   true],
+            [false, ext,   ext,   true],
             [false, ext,   ext,   true],
             [true,  true,  true,  true],
         ];
@@ -853,7 +846,7 @@ impl SyntaxExtension {
         let local_inner_macros = attr::find_by_name(attrs, sym::macro_export)
             .and_then(|macro_export| macro_export.meta_item_list())
             .is_some_and(|l| attr::list_contains_name(&l, sym::local_inner_macros));
-        let collapse_debuginfo = Self::get_collapse_debuginfo(sess, attrs, is_local);
+        let collapse_debuginfo = Self::get_collapse_debuginfo(sess, attrs, !is_local);
         tracing::debug!(?name, ?local_inner_macros, ?collapse_debuginfo, ?allow_internal_unsafe);
 
         let (builtin_name, helper_attrs) = attr::find_by_name(attrs, sym::rustc_builtin_macro)
@@ -904,8 +897,11 @@ impl SyntaxExtension {
             cx: &'cx mut ExtCtxt<'_>,
             span: Span,
             _: TokenStream,
-        ) -> Box<dyn MacResult + 'cx> {
-            DummyResult::any(span, cx.dcx().span_delayed_bug(span, "expanded a dummy bang macro"))
+        ) -> MacroExpanderResult<'cx> {
+            ExpandResult::Ready(DummyResult::any(
+                span,
+                cx.dcx().span_delayed_bug(span, "expanded a dummy bang macro"),
+            ))
         }
         SyntaxExtension::default(SyntaxExtensionKind::LegacyBang(Box::new(expander)), edition)
     }
@@ -954,7 +950,12 @@ impl SyntaxExtension {
 /// Error type that denotes indeterminacy.
 pub struct Indeterminate;
 
-pub type DeriveResolutions = Vec<(ast::Path, Annotatable, Option<Lrc<SyntaxExtension>>, bool)>;
+pub struct DeriveResolution {
+    pub path: ast::Path,
+    pub item: Annotatable,
+    pub exts: Option<Lrc<SyntaxExtension>>,
+    pub is_const: bool,
+}
 
 pub trait ResolverExpand {
     fn next_node_id(&mut self) -> NodeId;
@@ -997,13 +998,18 @@ pub trait ResolverExpand {
         &mut self,
         expn_id: LocalExpnId,
         force: bool,
-        derive_paths: &dyn Fn() -> DeriveResolutions,
+        derive_paths: &dyn Fn() -> Vec<DeriveResolution>,
     ) -> Result<(), Indeterminate>;
     /// Take resolutions for paths inside the `#[derive(...)]` attribute with the given `ExpnId`
     /// back from resolver.
-    fn take_derive_resolutions(&mut self, expn_id: LocalExpnId) -> Option<DeriveResolutions>;
+    fn take_derive_resolutions(&mut self, expn_id: LocalExpnId) -> Option<Vec<DeriveResolution>>;
     /// Path resolution logic for `#[cfg_accessible(path)]`.
     fn cfg_accessible(
+        &mut self,
+        expn_id: LocalExpnId,
+        path: &ast::Path,
+    ) -> Result<bool, Indeterminate>;
+    fn macro_accessible(
         &mut self,
         expn_id: LocalExpnId,
         path: &ast::Path,
@@ -1233,156 +1239,21 @@ pub fn resolve_path(sess: &Session, path: impl Into<PathBuf>, span: Span) -> PRe
     // after macro expansion (that is, they are unhygienic).
     if !path.is_absolute() {
         let callsite = span.source_callsite();
-        let mut result = match sess.source_map().span_to_filename(callsite) {
-            FileName::Real(name) => name
-                .into_local_path()
-                .expect("attempting to resolve a file path in an external file"),
-            FileName::DocTest(path, _) => path,
-            other => {
-                return Err(sess.dcx().create_err(errors::ResolveRelativePath {
-                    span,
-                    path: sess.source_map().filename_for_diagnostics(&other).to_string(),
-                }));
-            }
+        let source_map = sess.source_map();
+        let Some(mut base_path) = source_map.span_to_filename(callsite).into_local_path() else {
+            return Err(sess.dcx().create_err(errors::ResolveRelativePath {
+                span,
+                path: source_map
+                    .filename_for_diagnostics(&source_map.span_to_filename(callsite))
+                    .to_string(),
+            }));
         };
-        result.pop();
-        result.push(path);
-        Ok(result)
+        base_path.pop();
+        base_path.push(path);
+        Ok(base_path)
     } else {
         Ok(path)
     }
-}
-
-/// Extracts a string literal from the macro expanded version of `expr`,
-/// returning a diagnostic error of `err_msg` if `expr` is not a string literal.
-/// The returned bool indicates whether an applicable suggestion has already been
-/// added to the diagnostic to avoid emitting multiple suggestions. `Err(Err(ErrorGuaranteed))`
-/// indicates that an ast error was encountered.
-// FIXME(Nilstrieb) Make this function setup translatable
-#[allow(rustc::untranslatable_diagnostic)]
-pub fn expr_to_spanned_string<'a>(
-    cx: &'a mut ExtCtxt<'_>,
-    expr: P<ast::Expr>,
-    err_msg: &'static str,
-) -> Result<
-    (Symbol, ast::StrStyle, Span),
-    Result<(Diag<'a>, bool /* has_suggestions */), ErrorGuaranteed>,
-> {
-    // Perform eager expansion on the expression.
-    // We want to be able to handle e.g., `concat!("foo", "bar")`.
-    let expr = cx.expander().fully_expand_fragment(AstFragment::Expr(expr)).make_expr();
-
-    Err(match expr.kind {
-        ast::ExprKind::Lit(token_lit) => match ast::LitKind::from_token_lit(token_lit) {
-            Ok(ast::LitKind::Str(s, style)) => return Ok((s, style, expr.span)),
-            Ok(ast::LitKind::ByteStr(..)) => {
-                let mut err = cx.dcx().struct_span_err(expr.span, err_msg);
-                let span = expr.span.shrink_to_lo();
-                err.span_suggestion(
-                    span.with_hi(span.lo() + BytePos(1)),
-                    "consider removing the leading `b`",
-                    "",
-                    Applicability::MaybeIncorrect,
-                );
-                Ok((err, true))
-            }
-            Ok(ast::LitKind::Err(guar)) => Err(guar),
-            Err(err) => Err(report_lit_error(&cx.sess.psess, err, token_lit, expr.span)),
-            _ => Ok((cx.dcx().struct_span_err(expr.span, err_msg), false)),
-        },
-        ast::ExprKind::Err(guar) => Err(guar),
-        ast::ExprKind::Dummy => {
-            cx.dcx().span_bug(expr.span, "tried to get a string literal from `ExprKind::Dummy`")
-        }
-        _ => Ok((cx.dcx().struct_span_err(expr.span, err_msg), false)),
-    })
-}
-
-/// Extracts a string literal from the macro expanded version of `expr`,
-/// emitting `err_msg` if `expr` is not a string literal. This does not stop
-/// compilation on error, merely emits a non-fatal error and returns `Err`.
-pub fn expr_to_string(
-    cx: &mut ExtCtxt<'_>,
-    expr: P<ast::Expr>,
-    err_msg: &'static str,
-) -> Result<(Symbol, ast::StrStyle), ErrorGuaranteed> {
-    expr_to_spanned_string(cx, expr, err_msg)
-        .map_err(|err| match err {
-            Ok((err, _)) => err.emit(),
-            Err(guar) => guar,
-        })
-        .map(|(symbol, style, _)| (symbol, style))
-}
-
-/// Non-fatally assert that `tts` is empty. Note that this function
-/// returns even when `tts` is non-empty, macros that *need* to stop
-/// compilation should call `cx.diagnostic().abort_if_errors()`
-/// (this should be done as rarely as possible).
-pub fn check_zero_tts(cx: &ExtCtxt<'_>, span: Span, tts: TokenStream, name: &str) {
-    if !tts.is_empty() {
-        cx.dcx().emit_err(errors::TakesNoArguments { span, name });
-    }
-}
-
-/// Parse an expression. On error, emit it, advancing to `Eof`, and return `Err`.
-pub fn parse_expr(p: &mut parser::Parser<'_>) -> Result<P<ast::Expr>, ErrorGuaranteed> {
-    let guar = match p.parse_expr() {
-        Ok(expr) => return Ok(expr),
-        Err(err) => err.emit(),
-    };
-    while p.token != token::Eof {
-        p.bump();
-    }
-    Err(guar)
-}
-
-/// Interpreting `tts` as a comma-separated sequence of expressions,
-/// expect exactly one string literal, or emit an error and return `Err`.
-pub fn get_single_str_from_tts(
-    cx: &mut ExtCtxt<'_>,
-    span: Span,
-    tts: TokenStream,
-    name: &str,
-) -> Result<Symbol, ErrorGuaranteed> {
-    let mut p = cx.new_parser_from_tts(tts);
-    if p.token == token::Eof {
-        let guar = cx.dcx().emit_err(errors::OnlyOneArgument { span, name });
-        return Err(guar);
-    }
-    let ret = parse_expr(&mut p)?;
-    let _ = p.eat(&token::Comma);
-
-    if p.token != token::Eof {
-        cx.dcx().emit_err(errors::OnlyOneArgument { span, name });
-    }
-    expr_to_string(cx, ret, "argument must be a string literal").map(|(s, _)| s)
-}
-
-/// Extracts comma-separated expressions from `tts`.
-/// On error, emit it, and return `Err`.
-pub fn get_exprs_from_tts(
-    cx: &mut ExtCtxt<'_>,
-    tts: TokenStream,
-) -> Result<Vec<P<ast::Expr>>, ErrorGuaranteed> {
-    let mut p = cx.new_parser_from_tts(tts);
-    let mut es = Vec::new();
-    while p.token != token::Eof {
-        let expr = parse_expr(&mut p)?;
-
-        // Perform eager expansion on the expression.
-        // We want to be able to handle e.g., `concat!("foo", "bar")`.
-        let expr = cx.expander().fully_expand_fragment(AstFragment::Expr(expr)).make_expr();
-
-        es.push(expr);
-        if p.eat(&token::Comma) {
-            continue;
-        }
-        if p.token != token::Eof {
-            let guar = cx.dcx().emit_err(errors::ExpectedCommaInList { span: p.token.span });
-            return Err(guar);
-        }
-    }
-    Ok(es)
 }
 
 pub fn parse_macro_name_and_helper_attrs(

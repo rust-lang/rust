@@ -50,6 +50,7 @@ mod static_index;
 mod status;
 mod syntax_highlighting;
 mod syntax_tree;
+mod test_explorer;
 mod typing;
 mod view_crate_graph;
 mod view_hir;
@@ -57,15 +58,15 @@ mod view_item_tree;
 mod view_memory_layout;
 mod view_mir;
 
-use std::ffi::OsStr;
+use std::panic::UnwindSafe;
 
 use cfg::CfgOptions;
 use fetch_crates::CrateInfo;
-use hir::Change;
+use hir::ChangeWithProcMacros;
 use ide_db::{
     base_db::{
         salsa::{self, ParallelDatabase},
-        CrateOrigin, Env, FileLoader, FileSet, SourceDatabase, VfsPath,
+        CrateOrigin, Env, FileLoader, FileSet, SourceDatabase, SourceDatabaseExt, VfsPath,
     },
     prime_caches, symbol_index, FxHashMap, FxIndexSet, LineIndexDatabase,
 };
@@ -89,7 +90,7 @@ pub use crate::{
     inlay_hints::{
         AdjustmentHints, AdjustmentHintsMode, ClosureReturnTypeHints, DiscriminantHints,
         InlayFieldsToResolve, InlayHint, InlayHintLabel, InlayHintLabelPart, InlayHintPosition,
-        InlayHintsConfig, InlayKind, InlayTooltip, LifetimeElisionHints, RangeLimit,
+        InlayHintsConfig, InlayKind, InlayTooltip, LifetimeElisionHints,
     },
     join_lines::JoinLinesConfig,
     markup::Markup,
@@ -108,6 +109,7 @@ pub use crate::{
         tags::{Highlight, HlMod, HlMods, HlOperator, HlPunct, HlTag},
         HighlightConfig, HlRange,
     },
+    test_explorer::{TestItem, TestItemKind},
 };
 pub use hir::Semantics;
 pub use ide_assists::{
@@ -119,8 +121,8 @@ pub use ide_completion::{
 };
 pub use ide_db::{
     base_db::{
-        Cancelled, CrateGraph, CrateId, Edition, FileChange, FileId, FilePosition, FileRange,
-        SourceRoot, SourceRootId,
+        Cancelled, CrateGraph, CrateId, FileChange, FileId, FilePosition, FileRange, SourceRoot,
+        SourceRootId,
     },
     documentation::Documentation,
     label::Label,
@@ -135,6 +137,7 @@ pub use ide_diagnostics::{
     Diagnostic, DiagnosticCode, DiagnosticsConfig, ExprFillDefaultMode, Severity,
 };
 pub use ide_ssr::SsrError;
+pub use span::Edition;
 pub use syntax::{TextRange, TextSize};
 pub use text_edit::{Indel, TextEdit};
 
@@ -184,7 +187,7 @@ impl AnalysisHost {
 
     /// Applies changes to the current state of the world. If there are
     /// outstanding snapshots, they will be canceled.
-    pub fn apply_change(&mut self, change: Change) {
+    pub fn apply_change(&mut self, change: ChangeWithProcMacros) {
         self.db.apply_change(change);
     }
 
@@ -239,7 +242,7 @@ impl Analysis {
         file_set.insert(file_id, VfsPath::new_virtual_path("/main.rs".to_owned()));
         let source_root = SourceRoot::new_local(file_set);
 
-        let mut change = Change::new();
+        let mut change = ChangeWithProcMacros::new();
         change.set_roots(vec![source_root]);
         let mut crate_graph = CrateGraph::default();
         // FIXME: cfg options
@@ -251,13 +254,13 @@ impl Analysis {
             Edition::CURRENT,
             None,
             None,
-            cfg_options.clone(),
+            Arc::new(cfg_options),
             None,
             Env::default(),
             false,
             CrateOrigin::Local { repo: None, name: None },
         );
-        change.change_file(file_id, Some(Arc::from(text)));
+        change.change_file(file_id, Some(text));
         change.set_crate_graph(crate_graph);
         change.set_target_data_layouts(vec![Err("fixture has no layout".into())]);
         change.set_toolchains(vec![None]);
@@ -270,6 +273,10 @@ impl Analysis {
         self.with_db(|db| status::status(db, file_id))
     }
 
+    pub fn source_root(&self, file_id: FileId) -> Cancellable<SourceRootId> {
+        self.with_db(|db| db.file_source_root(file_id))
+    }
+
     pub fn parallel_prime_caches<F>(&self, num_worker_threads: u8, cb: F) -> Cancellable<()>
     where
         F: Fn(ParallelPrimeCachesProgress) + Sync + std::panic::UnwindSafe,
@@ -279,7 +286,7 @@ impl Analysis {
 
     /// Gets the text of the source file.
     pub fn file_text(&self, file_id: FileId) -> Cancellable<Arc<str>> {
-        self.with_db(|db| db.file_text(file_id))
+        self.with_db(|db| SourceDatabaseExt::file_text(db, file_id))
     }
 
     /// Gets the syntax tree of the file.
@@ -289,7 +296,6 @@ impl Analysis {
 
     /// Returns true if this file belongs to an immutable library.
     pub fn is_library_file(&self, file_id: FileId) -> Cancellable<bool> {
-        use ide_db::base_db::SourceDatabaseExt;
         self.with_db(|db| db.source_root(db.file_source_root(file_id)).is_library)
     }
 
@@ -338,6 +344,22 @@ impl Analysis {
 
     pub fn view_item_tree(&self, file_id: FileId) -> Cancellable<String> {
         self.with_db(|db| view_item_tree::view_item_tree(db, file_id))
+    }
+
+    pub fn discover_test_roots(&self) -> Cancellable<Vec<TestItem>> {
+        self.with_db(test_explorer::discover_test_roots)
+    }
+
+    pub fn discover_tests_in_crate_by_test_id(&self, crate_id: &str) -> Cancellable<Vec<TestItem>> {
+        self.with_db(|db| test_explorer::discover_tests_in_crate_by_test_id(db, crate_id))
+    }
+
+    pub fn discover_tests_in_crate(&self, crate_id: CrateId) -> Cancellable<Vec<TestItem>> {
+        self.with_db(|db| test_explorer::discover_tests_in_crate(db, crate_id))
+    }
+
+    pub fn discover_tests_in_file(&self, file_id: FileId) -> Cancellable<Vec<TestItem>> {
+        self.with_db(|db| test_explorer::discover_tests_in_file(db, file_id))
     }
 
     /// Renders the crate graph to GraphViz "dot" syntax.
@@ -401,9 +423,21 @@ impl Analysis {
         &self,
         config: &InlayHintsConfig,
         file_id: FileId,
-        range: Option<RangeLimit>,
+        range: Option<TextRange>,
     ) -> Cancellable<Vec<InlayHint>> {
         self.with_db(|db| inlay_hints::inlay_hints(db, file_id, range, config))
+    }
+    pub fn inlay_hints_resolve(
+        &self,
+        config: &InlayHintsConfig,
+        file_id: FileId,
+        position: TextSize,
+        hash: u64,
+        hasher: impl Fn(&InlayHint) -> u64 + Send + UnwindSafe,
+    ) -> Cancellable<Option<InlayHint>> {
+        self.with_db(|db| {
+            inlay_hints::inlay_hints_resolve(db, file_id, position, hash, config, hasher)
+        })
     }
 
     /// Returns the set of folding ranges.
@@ -488,8 +522,8 @@ impl Analysis {
     pub fn external_docs(
         &self,
         position: FilePosition,
-        target_dir: Option<&OsStr>,
-        sysroot: Option<&OsStr>,
+        target_dir: Option<&str>,
+        sysroot: Option<&str>,
     ) -> Cancellable<doc_links::DocumentationLinks> {
         self.with_db(|db| {
             doc_links::external_docs(db, position, target_dir, sysroot).unwrap_or_default()

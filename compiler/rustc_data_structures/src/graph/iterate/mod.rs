@@ -1,4 +1,4 @@
-use super::{DirectedGraph, WithNumNodes, WithStartNode, WithSuccessors};
+use super::{DirectedGraph, StartNode, Successors};
 use rustc_index::bit_set::BitSet;
 use rustc_index::{IndexSlice, IndexVec};
 use std::ops::ControlFlow;
@@ -6,14 +6,14 @@ use std::ops::ControlFlow;
 #[cfg(test)]
 mod tests;
 
-pub fn post_order_from<G: DirectedGraph + WithSuccessors + WithNumNodes>(
+pub fn post_order_from<G: DirectedGraph + Successors>(
     graph: &G,
     start_node: G::Node,
 ) -> Vec<G::Node> {
     post_order_from_to(graph, start_node, None)
 }
 
-pub fn post_order_from_to<G: DirectedGraph + WithSuccessors + WithNumNodes>(
+pub fn post_order_from_to<G: DirectedGraph + Successors>(
     graph: &G,
     start_node: G::Node,
     end_node: Option<G::Node>,
@@ -27,7 +27,7 @@ pub fn post_order_from_to<G: DirectedGraph + WithSuccessors + WithNumNodes>(
     result
 }
 
-fn post_order_walk<G: DirectedGraph + WithSuccessors + WithNumNodes>(
+fn post_order_walk<G: DirectedGraph + Successors>(
     graph: &G,
     node: G::Node,
     result: &mut Vec<G::Node>,
@@ -60,7 +60,7 @@ fn post_order_walk<G: DirectedGraph + WithSuccessors + WithNumNodes>(
     }
 }
 
-pub fn reverse_post_order<G: DirectedGraph + WithSuccessors + WithNumNodes>(
+pub fn reverse_post_order<G: DirectedGraph + Successors>(
     graph: &G,
     start_node: G::Node,
 ) -> Vec<G::Node> {
@@ -70,21 +70,21 @@ pub fn reverse_post_order<G: DirectedGraph + WithSuccessors + WithNumNodes>(
 }
 
 /// A "depth-first search" iterator for a directed graph.
-pub struct DepthFirstSearch<'graph, G>
+pub struct DepthFirstSearch<G>
 where
-    G: ?Sized + DirectedGraph + WithNumNodes + WithSuccessors,
+    G: DirectedGraph + Successors,
 {
-    graph: &'graph G,
+    graph: G,
     stack: Vec<G::Node>,
     visited: BitSet<G::Node>,
 }
 
-impl<'graph, G> DepthFirstSearch<'graph, G>
+impl<G> DepthFirstSearch<G>
 where
-    G: ?Sized + DirectedGraph + WithNumNodes + WithSuccessors,
+    G: DirectedGraph + Successors,
 {
-    pub fn new(graph: &'graph G) -> Self {
-        Self { graph, stack: vec![], visited: BitSet::new_empty(graph.num_nodes()) }
+    pub fn new(graph: G) -> Self {
+        Self { stack: vec![], visited: BitSet::new_empty(graph.num_nodes()), graph }
     }
 
     /// Version of `push_start_node` that is convenient for chained
@@ -125,9 +125,9 @@ where
     }
 }
 
-impl<G> std::fmt::Debug for DepthFirstSearch<'_, G>
+impl<G> std::fmt::Debug for DepthFirstSearch<G>
 where
-    G: ?Sized + DirectedGraph + WithNumNodes + WithSuccessors,
+    G: DirectedGraph + Successors,
 {
     fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut f = fmt.debug_set();
@@ -138,9 +138,9 @@ where
     }
 }
 
-impl<G> Iterator for DepthFirstSearch<'_, G>
+impl<G> Iterator for DepthFirstSearch<G>
 where
-    G: ?Sized + DirectedGraph + WithNumNodes + WithSuccessors,
+    G: DirectedGraph + Successors,
 {
     type Item = G::Node;
 
@@ -201,7 +201,7 @@ struct Event<N> {
 /// [CLR]: https://en.wikipedia.org/wiki/Introduction_to_Algorithms
 pub struct TriColorDepthFirstSearch<'graph, G>
 where
-    G: ?Sized + DirectedGraph + WithNumNodes + WithSuccessors,
+    G: ?Sized + DirectedGraph + Successors,
 {
     graph: &'graph G,
     stack: Vec<Event<G::Node>>,
@@ -211,7 +211,7 @@ where
 
 impl<'graph, G> TriColorDepthFirstSearch<'graph, G>
 where
-    G: ?Sized + DirectedGraph + WithNumNodes + WithSuccessors,
+    G: ?Sized + DirectedGraph + Successors,
 {
     pub fn new(graph: &'graph G) -> Self {
         TriColorDepthFirstSearch {
@@ -278,7 +278,7 @@ where
 
 impl<G> TriColorDepthFirstSearch<'_, G>
 where
-    G: ?Sized + DirectedGraph + WithNumNodes + WithSuccessors + WithStartNode,
+    G: ?Sized + DirectedGraph + Successors + StartNode,
 {
     /// Performs a depth-first search, starting from `G::start_node()`.
     ///

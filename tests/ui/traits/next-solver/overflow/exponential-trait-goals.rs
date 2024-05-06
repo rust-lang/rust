@@ -15,5 +15,5 @@ fn impls<T: Trait>() {}
 
 fn main() {
     impls::<W<_>>();
-    //~^ ERROR overflow evaluating the requirement `W<_>: Trait`
+    //~^ ERROR overflow evaluating the requirement `_: Sized`
 }

@@ -1,7 +1,6 @@
 //@ needs-asm-support
 //@ ignore-nvptx64
 //@ ignore-spirv
-//@ ignore-wasm32
 
 // Tests that the use of named labels in the `asm!` macro are linted against
 // except for in `#[naked]` fns.

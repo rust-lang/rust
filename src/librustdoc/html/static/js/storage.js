@@ -211,14 +211,14 @@ function updateSidebarWidth() {
     if (desktopSidebarWidth && desktopSidebarWidth !== "null") {
         document.documentElement.style.setProperty(
             "--desktop-sidebar-width",
-            desktopSidebarWidth + "px"
+            desktopSidebarWidth + "px",
         );
     }
     const srcSidebarWidth = getSettingValue("src-sidebar-width");
     if (srcSidebarWidth && srcSidebarWidth !== "null") {
         document.documentElement.style.setProperty(
             "--src-sidebar-width",
-            srcSidebarWidth + "px"
+            srcSidebarWidth + "px",
         );
     }
 }

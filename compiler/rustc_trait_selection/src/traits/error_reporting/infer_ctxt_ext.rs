@@ -1,9 +1,10 @@
-use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use crate::infer::type_variable::TypeVariableOrigin;
 use crate::infer::InferCtxt;
 use crate::traits::{Obligation, ObligationCause, ObligationCtxt};
 use rustc_errors::{codes::*, pluralize, struct_span_code_err, Applicability, Diag};
 use rustc_hir as hir;
 use rustc_hir::Node;
+use rustc_macros::extension;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::{Span, DUMMY_SP};
 
@@ -206,7 +207,7 @@ impl<'tcx> InferCtxt<'tcx> {
         &self,
         param_env: ty::ParamEnv<'tcx>,
         ty: ty::Binder<'tcx, Ty<'tcx>>,
-        polarity: ty::ImplPolarity,
+        polarity: ty::PredicatePolarity,
     ) -> Result<(ty::ClosureKind, ty::Binder<'tcx, Ty<'tcx>>), ()> {
         self.commit_if_ok(|_| {
             for trait_def_id in [
@@ -217,10 +218,8 @@ impl<'tcx> InferCtxt<'tcx> {
                 let Some(trait_def_id) = trait_def_id else { continue };
                 // Make a fresh inference variable so we can determine what the generic parameters
                 // of the trait are.
-                let var = self.next_ty_var(TypeVariableOrigin {
-                    span: DUMMY_SP,
-                    kind: TypeVariableOriginKind::MiscVariable,
-                });
+                let var =
+                    self.next_ty_var(TypeVariableOrigin { span: DUMMY_SP, param_def_id: None });
                 // FIXME(effects)
                 let trait_ref = ty::TraitRef::new(self.tcx, trait_def_id, [ty.skip_binder(), var]);
                 let obligation = Obligation::new(

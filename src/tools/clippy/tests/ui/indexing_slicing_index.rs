@@ -1,4 +1,5 @@
-#![feature(inline_const)]
+//@compile-flags: -Zdeduplicate-diagnostics=yes
+
 #![warn(clippy::indexing_slicing)]
 // We also check the out_of_bounds_indexing lint here, because it lints similar things and
 // we want to avoid false positives.

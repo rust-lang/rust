@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 # tidy-alphabetical-start
 either = "1"
-itertools = "0.11"
+itertools = "0.12"
 rustc_arena = { path = "../rustc_arena" }
 rustc_ast = { path = "../rustc_ast" }
 rustc_attr = { path = "../rustc_attr" }

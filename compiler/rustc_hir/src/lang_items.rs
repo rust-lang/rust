@@ -1,4 +1,4 @@
-//! Defines language items.
+//! Defines lang items.
 //!
 //! Language items are items that represent concepts intrinsic to the language
 //! itself. Examples are:
@@ -12,11 +12,11 @@ use crate::{MethodKind, Target};
 
 use rustc_ast as ast;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_macros::HashStable_Generic;
+use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
 
-/// All of the language items, defined or not.
+/// All of the lang items, defined or not.
 /// Defined lang items can come from the current crate or its dependencies.
 #[derive(HashStable_Generic, Debug)]
 pub struct LanguageItems {
@@ -56,8 +56,8 @@ macro_rules! language_item_table {
         $( $(#[$attr:meta])* $variant:ident, $module:ident :: $name:ident, $method:ident, $target:expr, $generics:expr; )*
     ) => {
 
-        enum_from_u32! {
-            /// A representation of all the valid language items in Rust.
+        rustc_data_structures::enum_from_u32! {
+            /// A representation of all the valid lang items in Rust.
             #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Encodable, Decodable)]
             pub enum LangItem {
                 $(
@@ -162,10 +162,22 @@ language_item_table! {
     Drop,                    sym::drop,                drop_trait,                 Target::Trait,          GenericRequirement::None;
     Destruct,                sym::destruct,            destruct_trait,             Target::Trait,          GenericRequirement::None;
 
+    AsyncDrop,               sym::async_drop,          async_drop_trait,           Target::Trait,          GenericRequirement::Exact(0);
+    AsyncDestruct,           sym::async_destruct,      async_destruct_trait,       Target::Trait,          GenericRequirement::Exact(0);
+    AsyncDropInPlace,        sym::async_drop_in_place, async_drop_in_place_fn,     Target::Fn,             GenericRequirement::Exact(1);
+    SurfaceAsyncDropInPlace, sym::surface_async_drop_in_place, surface_async_drop_in_place_fn, Target::Fn, GenericRequirement::Exact(1);
+    AsyncDropSurfaceDropInPlace, sym::async_drop_surface_drop_in_place, async_drop_surface_drop_in_place_fn, Target::Fn, GenericRequirement::Exact(1);
+    AsyncDropSlice,          sym::async_drop_slice,    async_drop_slice_fn,        Target::Fn,             GenericRequirement::Exact(1);
+    AsyncDropChain,          sym::async_drop_chain,    async_drop_chain_fn,        Target::Fn,             GenericRequirement::Exact(2);
+    AsyncDropNoop,           sym::async_drop_noop,     async_drop_noop_fn,         Target::Fn,             GenericRequirement::Exact(0);
+    AsyncDropFuse,           sym::async_drop_fuse,     async_drop_fuse_fn,         Target::Fn,             GenericRequirement::Exact(1);
+    AsyncDropDefer,          sym::async_drop_defer,    async_drop_defer_fn,        Target::Fn,             GenericRequirement::Exact(1);
+    AsyncDropEither,         sym::async_drop_either,   async_drop_either_fn,       Target::Fn,             GenericRequirement::Exact(3);
+
     CoerceUnsized,           sym::coerce_unsized,      coerce_unsized_trait,       Target::Trait,          GenericRequirement::Minimum(1);
     DispatchFromDyn,         sym::dispatch_from_dyn,   dispatch_from_dyn_trait,    Target::Trait,          GenericRequirement::Minimum(1);
 
-    // language items relating to transmutability
+    // lang items relating to transmutability
     TransmuteOpts,           sym::transmute_opts,      transmute_opts,             Target::Struct,         GenericRequirement::Exact(0);
     TransmuteTrait,          sym::transmute_trait,     transmute_trait,            Target::Trait,          GenericRequirement::Exact(2);
 
@@ -199,6 +211,7 @@ language_item_table! {
 
     Deref,                   sym::deref,               deref_trait,                Target::Trait,          GenericRequirement::Exact(0);
     DerefMut,                sym::deref_mut,           deref_mut_trait,            Target::Trait,          GenericRequirement::Exact(0);
+    DerefPure,               sym::deref_pure,          deref_pure_trait,           Target::Trait,          GenericRequirement::Exact(0);
     DerefTarget,             sym::deref_target,        deref_target,               Target::AssocTy,        GenericRequirement::None;
     Receiver,                sym::receiver,            receiver_trait,             Target::Trait,          GenericRequirement::None;
 
@@ -214,6 +227,7 @@ language_item_table! {
     FnOnceOutput,            sym::fn_once_output,      fn_once_output,             Target::AssocTy,        GenericRequirement::None;
 
     Iterator,                sym::iterator,            iterator_trait,             Target::Trait,          GenericRequirement::Exact(0);
+    FusedIterator,           sym::fused_iterator,      fused_iterator_trait,       Target::Trait,          GenericRequirement::Exact(0);
     Future,                  sym::future_trait,        future_trait,               Target::Trait,          GenericRequirement::Exact(0);
     AsyncIterator,           sym::async_iterator,      async_iterator_trait,       Target::Trait,          GenericRequirement::Exact(0);
 
@@ -224,6 +238,7 @@ language_item_table! {
     Unpin,                   sym::unpin,               unpin_trait,                Target::Trait,          GenericRequirement::None;
     Pin,                     sym::pin,                 pin_type,                   Target::Struct,         GenericRequirement::None;
 
+    OrderingEnum,            sym::Ordering,            ordering_enum,              Target::Enum,           GenericRequirement::Exact(0);
     PartialEq,               sym::eq,                  eq_trait,                   Target::Trait,          GenericRequirement::Exact(1);
     PartialOrd,              sym::partial_ord,         partial_ord_trait,          Target::Trait,          GenericRequirement::Exact(1);
     CVoid,                   sym::c_void,              c_void,                     Target::Enum,           GenericRequirement::None;
@@ -246,6 +261,25 @@ language_item_table! {
     PanicImpl,               sym::panic_impl,          panic_impl,                 Target::Fn,             GenericRequirement::None;
     PanicCannotUnwind,       sym::panic_cannot_unwind, panic_cannot_unwind,        Target::Fn,             GenericRequirement::Exact(0);
     PanicInCleanup,          sym::panic_in_cleanup,    panic_in_cleanup,           Target::Fn,             GenericRequirement::Exact(0);
+    /// Constant panic messages, used for codegen of MIR asserts.
+    PanicAddOverflow,        sym::panic_const_add_overflow, panic_const_add_overflow, Target::Fn, GenericRequirement::None;
+    PanicSubOverflow,        sym::panic_const_sub_overflow, panic_const_sub_overflow, Target::Fn, GenericRequirement::None;
+    PanicMulOverflow,        sym::panic_const_mul_overflow, panic_const_mul_overflow, Target::Fn, GenericRequirement::None;
+    PanicDivOverflow,        sym::panic_const_div_overflow, panic_const_div_overflow, Target::Fn, GenericRequirement::None;
+    PanicRemOverflow,        sym::panic_const_rem_overflow, panic_const_rem_overflow, Target::Fn, GenericRequirement::None;
+    PanicNegOverflow,        sym::panic_const_neg_overflow, panic_const_neg_overflow, Target::Fn, GenericRequirement::None;
+    PanicShrOverflow,        sym::panic_const_shr_overflow, panic_const_shr_overflow, Target::Fn, GenericRequirement::None;
+    PanicShlOverflow,        sym::panic_const_shl_overflow, panic_const_shl_overflow, Target::Fn, GenericRequirement::None;
+    PanicDivZero,            sym::panic_const_div_by_zero, panic_const_div_by_zero, Target::Fn, GenericRequirement::None;
+    PanicRemZero,            sym::panic_const_rem_by_zero, panic_const_rem_by_zero, Target::Fn, GenericRequirement::None;
+    PanicCoroutineResumed, sym::panic_const_coroutine_resumed, panic_const_coroutine_resumed, Target::Fn, GenericRequirement::None;
+    PanicAsyncFnResumed, sym::panic_const_async_fn_resumed, panic_const_async_fn_resumed, Target::Fn, GenericRequirement::None;
+    PanicAsyncGenFnResumed, sym::panic_const_async_gen_fn_resumed, panic_const_async_gen_fn_resumed, Target::Fn, GenericRequirement::None;
+    PanicGenFnNone, sym::panic_const_gen_fn_none, panic_const_gen_fn_none, Target::Fn, GenericRequirement::None;
+    PanicCoroutineResumedPanic, sym::panic_const_coroutine_resumed_panic, panic_const_coroutine_resumed_panic, Target::Fn, GenericRequirement::None;
+    PanicAsyncFnResumedPanic, sym::panic_const_async_fn_resumed_panic, panic_const_async_fn_resumed_panic, Target::Fn, GenericRequirement::None;
+    PanicAsyncGenFnResumedPanic, sym::panic_const_async_gen_fn_resumed_panic, panic_const_async_gen_fn_resumed_panic, Target::Fn, GenericRequirement::None;
+    PanicGenFnNonePanic, sym::panic_const_gen_fn_none_panic, panic_const_gen_fn_none_panic, Target::Fn, GenericRequirement::None;
     /// libstd panic entry point. Necessary for const eval to be able to catch it
     BeginPanic,              sym::begin_panic,         begin_panic_fn,             Target::Fn,             GenericRequirement::None;
 
@@ -259,6 +293,7 @@ language_item_table! {
 
     ExchangeMalloc,          sym::exchange_malloc,     exchange_malloc_fn,         Target::Fn,             GenericRequirement::None;
     DropInPlace,             sym::drop_in_place,       drop_in_place_fn,           Target::Fn,             GenericRequirement::Minimum(1);
+    FallbackSurfaceDrop,     sym::fallback_surface_drop, fallback_surface_drop_fn, Target::Fn,             GenericRequirement::None;
     AllocLayout,             sym::alloc_layout,        alloc_layout,               Target::Struct,         GenericRequirement::None;
 
     Start,                   sym::start,               start_fn,                   Target::Fn,             GenericRequirement::Exact(1);
@@ -269,7 +304,7 @@ language_item_table! {
     OwnedBox,                sym::owned_box,           owned_box,                  Target::Struct,         GenericRequirement::Minimum(1);
     GlobalAlloc,             sym::global_alloc_ty,     global_alloc_ty,            Target::Struct,         GenericRequirement::None;
 
-    // Experimental language item for Miri
+    // Experimental lang item for Miri
     PtrUnique,               sym::ptr_unique,          ptr_unique,                 Target::Struct,         GenericRequirement::Exact(1);
 
     PhantomData,             sym::phantom_data,        phantom_data,               Target::Struct,         GenericRequirement::Exact(1);

@@ -1,4 +1,5 @@
 //@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
 
 fn changer<'a>(mut things: Box<dyn Iterator<Item=&'a mut u8>>) {

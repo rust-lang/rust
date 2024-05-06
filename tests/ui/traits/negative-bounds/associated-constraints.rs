@@ -1,4 +1,4 @@
-#![feature(negative_bounds, associated_type_bounds)]
+#![feature(negative_bounds)]
 
 trait Trait {
     type Assoc;

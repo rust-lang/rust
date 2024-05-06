@@ -1,24 +1,34 @@
-// Finds items that are externally reachable, to determine which items
-// need to have their metadata (and possibly their AST) serialized.
-// All items that can be referred to through an exported name are
-// reachable, and when a reachable thing is inline or generic, it
-// makes all other generics or inline functions that it references
-// reachable as well.
+//! Finds local items that are externally reachable, which means that other crates need access to
+//! their compiled machine code or their MIR.
+//!
+//! An item is "externally reachable" if it is relevant for other crates. This obviously includes
+//! all public items. However, some of these items cannot be compiled to machine code (because they
+//! are generic), and for some the machine code is not sufficient (because we want to cross-crate
+//! inline them). These items "need cross-crate MIR". When a reachable function `f` needs
+//! cross-crate MIR, then all the functions it calls also become reachable, as they will be
+//! necessary to use the MIR of `f` from another crate. Furthermore, an item can become "externally
+//! reachable" by having a `const`/`const fn` return a pointer to that item, so we also need to
+//! recurse into reachable `const`/`const fn`.
 
 use hir::def_id::LocalDefIdSet;
+use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::Node;
+use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_middle::middle::privacy::{self, Level};
+use rustc_middle::mir::interpret::{ConstAllocation, GlobalAlloc};
 use rustc_middle::query::Providers;
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::ty::{self, ExistentialTraitRef, TyCtxt};
+use rustc_privacy::DefIdVisitor;
 use rustc_session::config::CrateType;
-use rustc_target::spec::abi::Abi;
 
-fn item_might_be_inlined(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
+/// Determines whether this item is recursive for reachability. See `is_recursively_reachable_local`
+/// below for details.
+fn recursively_reachable(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     tcx.generics_of(def_id).requires_monomorphization(tcx)
         || tcx.cross_crate_inlinable(def_id)
         || tcx.is_const_fn(def_id)
@@ -51,12 +61,20 @@ impl<'tcx> Visitor<'tcx> for ReachableContext<'tcx> {
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
         let res = match expr.kind {
             hir::ExprKind::Path(ref qpath) => {
+                // This covers fn ptr casts but also "non-method" calls.
                 Some(self.typeck_results().qpath_res(qpath, expr.hir_id))
             }
-            hir::ExprKind::MethodCall(..) => self
-                .typeck_results()
-                .type_dependent_def(expr.hir_id)
-                .map(|(kind, def_id)| Res::Def(kind, def_id)),
+            hir::ExprKind::MethodCall(..) => {
+                // Method calls don't involve a full "path", so we need to determine the callee
+                // based on the receiver type.
+                // If this is a method call on a generic type, we might not be able to find the
+                // callee. That's why `reachable_set` also adds all potential callees for such
+                // calls, i.e. all trait impl items, to the reachable set. So here we only worry
+                // about the calls we can identify.
+                self.typeck_results()
+                    .type_dependent_def(expr.hir_id)
+                    .map(|(kind, def_id)| Res::Def(kind, def_id))
+            }
             hir::ExprKind::Closure(&hir::Closure { def_id, .. }) => {
                 self.reachable_symbols.insert(def_id);
                 None
@@ -64,23 +82,8 @@ impl<'tcx> Visitor<'tcx> for ReachableContext<'tcx> {
             _ => None,
         };
 
-        if let Some(res) = res
-            && let Some(def_id) = res.opt_def_id().and_then(|el| el.as_local())
-        {
-            if self.def_id_represents_local_inlined_item(def_id.to_def_id()) {
-                self.worklist.push(def_id);
-            } else {
-                match res {
-                    // Reachable constants and reachable statics can have their contents inlined
-                    // into other crates. Mark them as reachable and recurse into their body.
-                    Res::Def(DefKind::Const | DefKind::AssocConst | DefKind::Static(_), _) => {
-                        self.worklist.push(def_id);
-                    }
-                    _ => {
-                        self.reachable_symbols.insert(def_id);
-                    }
-                }
-            }
+        if let Some(res) = res {
+            self.propagate_item(res);
         }
 
         intravisit::walk_expr(self, expr)
@@ -108,33 +111,40 @@ impl<'tcx> ReachableContext<'tcx> {
             .expect("`ReachableContext::typeck_results` called outside of body")
     }
 
-    // Returns true if the given def ID represents a local item that is
-    // eligible for inlining and false otherwise.
-    fn def_id_represents_local_inlined_item(&self, def_id: DefId) -> bool {
+    /// Returns true if the given def ID represents a local item that is recursive for reachability,
+    /// i.e. whether everything mentioned in here also needs to be considered reachable.
+    ///
+    /// There are two reasons why an item may be recursively reachable:
+    /// - It needs cross-crate MIR (see the module-level doc comment above).
+    /// - It is a `const` or `const fn`. This is *not* because we need the MIR to interpret them
+    ///   (MIR for const-eval and MIR for codegen is separate, and MIR for const-eval is always
+    ///   encoded). Instead, it is because `const fn` can create `fn()` pointers to other items
+    ///   which end up in the evaluated result of the constant and can then be called from other
+    ///   crates. Those items must be considered reachable.
+    fn is_recursively_reachable_local(&self, def_id: DefId) -> bool {
         let Some(def_id) = def_id.as_local() else {
             return false;
         };
 
-        match self.tcx.opt_hir_node_by_def_id(def_id) {
-            Some(Node::Item(item)) => match item.kind {
-                hir::ItemKind::Fn(..) => item_might_be_inlined(self.tcx, def_id.into()),
+        match self.tcx.hir_node_by_def_id(def_id) {
+            Node::Item(item) => match item.kind {
+                hir::ItemKind::Fn(..) => recursively_reachable(self.tcx, def_id.into()),
                 _ => false,
             },
-            Some(Node::TraitItem(trait_method)) => match trait_method.kind {
+            Node::TraitItem(trait_method) => match trait_method.kind {
                 hir::TraitItemKind::Const(_, ref default) => default.is_some(),
                 hir::TraitItemKind::Fn(_, hir::TraitFn::Provided(_)) => true,
                 hir::TraitItemKind::Fn(_, hir::TraitFn::Required(_))
                 | hir::TraitItemKind::Type(..) => false,
             },
-            Some(Node::ImplItem(impl_item)) => match impl_item.kind {
+            Node::ImplItem(impl_item) => match impl_item.kind {
                 hir::ImplItemKind::Const(..) => true,
                 hir::ImplItemKind::Fn(..) => {
-                    item_might_be_inlined(self.tcx, impl_item.hir_id().owner.to_def_id())
+                    recursively_reachable(self.tcx, impl_item.hir_id().owner.to_def_id())
                 }
                 hir::ImplItemKind::Type(_) => false,
             },
-            Some(_) => false,
-            None => false, // This will happen for default methods.
+            _ => false,
         }
     }
 
@@ -146,9 +156,7 @@ impl<'tcx> ReachableContext<'tcx> {
                 continue;
             }
 
-            if let Some(ref item) = self.tcx.opt_hir_node_by_def_id(search_item) {
-                self.propagate_node(item, search_item);
-            }
+            self.propagate_node(&self.tcx.hir_node_by_def_id(search_item), search_item);
         }
     }
 
@@ -156,16 +164,6 @@ impl<'tcx> ReachableContext<'tcx> {
         if !self.any_library {
             // If we are building an executable, only explicitly extern
             // types need to be exported.
-            let reachable =
-                if let Node::Item(hir::Item { kind: hir::ItemKind::Fn(sig, ..), .. })
-                | Node::ImplItem(hir::ImplItem {
-                    kind: hir::ImplItemKind::Fn(sig, ..), ..
-                }) = *node
-                {
-                    sig.header.abi != Abi::Rust
-                } else {
-                    false
-                };
             let codegen_attrs = if self.tcx.def_kind(search_item).has_codegen_attrs() {
                 self.tcx.codegen_fn_attrs(search_item)
             } else {
@@ -174,7 +172,7 @@ impl<'tcx> ReachableContext<'tcx> {
             let is_extern = codegen_attrs.contains_extern_indicator();
             let std_internal =
                 codegen_attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL);
-            if reachable || is_extern || std_internal {
+            if is_extern || std_internal {
                 self.reachable_symbols.insert(search_item);
             }
         } else {
@@ -189,7 +187,7 @@ impl<'tcx> ReachableContext<'tcx> {
             Node::Item(item) => {
                 match item.kind {
                     hir::ItemKind::Fn(.., body) => {
-                        if item_might_be_inlined(self.tcx, item.owner_id.into()) {
+                        if recursively_reachable(self.tcx, item.owner_id.into()) {
                             self.visit_nested_body(body);
                         }
                     }
@@ -197,8 +195,13 @@ impl<'tcx> ReachableContext<'tcx> {
                     // Reachable constants will be inlined into other crates
                     // unconditionally, so we need to make sure that their
                     // contents are also reachable.
-                    hir::ItemKind::Const(_, _, init) | hir::ItemKind::Static(_, _, init) => {
+                    hir::ItemKind::Const(_, _, init) => {
                         self.visit_nested_body(init);
+                    }
+                    hir::ItemKind::Static(..) => {
+                        if let Ok(alloc) = self.tcx.eval_static_initializer(item.owner_id.def_id) {
+                            self.propagate_from_alloc(alloc);
+                        }
                     }
 
                     // These are normal, nothing reachable about these
@@ -238,7 +241,7 @@ impl<'tcx> ReachableContext<'tcx> {
                     self.visit_nested_body(body);
                 }
                 hir::ImplItemKind::Fn(_, body) => {
-                    if item_might_be_inlined(self.tcx, impl_item.hir_id().owner.to_def_id()) {
+                    if recursively_reachable(self.tcx, impl_item.hir_id().owner.to_def_id()) {
                         self.visit_nested_body(body)
                     }
                 }
@@ -256,7 +259,8 @@ impl<'tcx> ReachableContext<'tcx> {
             | Node::Ctor(..)
             | Node::Field(_)
             | Node::Ty(_)
-            | Node::Crate(_) => {}
+            | Node::Crate(_)
+            | Node::Synthetic => {}
             _ => {
                 bug!(
                     "found unexpected node kind in worklist: {} ({:?})",
@@ -265,6 +269,90 @@ impl<'tcx> ReachableContext<'tcx> {
                 );
             }
         }
+    }
+
+    /// Finds things to add to `reachable_symbols` within allocations.
+    /// In contrast to visit_nested_body this ignores things that were only needed to evaluate
+    /// the allocation.
+    fn propagate_from_alloc(&mut self, alloc: ConstAllocation<'tcx>) {
+        if !self.any_library {
+            return;
+        }
+        for (_, prov) in alloc.0.provenance().ptrs().iter() {
+            match self.tcx.global_alloc(prov.alloc_id()) {
+                GlobalAlloc::Static(def_id) => {
+                    self.propagate_item(Res::Def(self.tcx.def_kind(def_id), def_id))
+                }
+                GlobalAlloc::Function(instance) => {
+                    // Manually visit to actually see the instance's `DefId`. Type visitors won't see it
+                    self.propagate_item(Res::Def(
+                        self.tcx.def_kind(instance.def_id()),
+                        instance.def_id(),
+                    ));
+                    self.visit(instance.args);
+                }
+                GlobalAlloc::VTable(ty, trait_ref) => {
+                    self.visit(ty);
+                    // Manually visit to actually see the trait's `DefId`. Type visitors won't see it
+                    if let Some(trait_ref) = trait_ref {
+                        let ExistentialTraitRef { def_id, args } = trait_ref.skip_binder();
+                        self.visit_def_id(def_id, "", &"");
+                        self.visit(args);
+                    }
+                }
+                GlobalAlloc::Memory(alloc) => self.propagate_from_alloc(alloc),
+            }
+        }
+    }
+
+    fn propagate_item(&mut self, res: Res) {
+        let Res::Def(kind, def_id) = res else { return };
+        let Some(def_id) = def_id.as_local() else { return };
+        match kind {
+            DefKind::Static { nested: true, .. } => {
+                // This is the main purpose of this function: add the def_id we find
+                // to `reachable_symbols`.
+                if self.reachable_symbols.insert(def_id) {
+                    if let Ok(alloc) = self.tcx.eval_static_initializer(def_id) {
+                        // This cannot cause infinite recursion, because we abort by inserting into the
+                        // work list once we hit a normal static. Nested statics, even if they somehow
+                        // become recursive, are also not infinitely recursing, because of the
+                        // `reachable_symbols` check above.
+                        // We still need to protect against stack overflow due to deeply nested statics.
+                        ensure_sufficient_stack(|| self.propagate_from_alloc(alloc));
+                    }
+                }
+            }
+            // Reachable constants and reachable statics can have their contents inlined
+            // into other crates. Mark them as reachable and recurse into their body.
+            DefKind::Const | DefKind::AssocConst | DefKind::Static { .. } => {
+                self.worklist.push(def_id);
+            }
+            _ => {
+                if self.is_recursively_reachable_local(def_id.to_def_id()) {
+                    self.worklist.push(def_id);
+                } else {
+                    self.reachable_symbols.insert(def_id);
+                }
+            }
+        }
+    }
+}
+
+impl<'tcx> DefIdVisitor<'tcx> for ReachableContext<'tcx> {
+    type Result = ();
+
+    fn tcx(&self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+
+    fn visit_def_id(
+        &mut self,
+        def_id: DefId,
+        _kind: &str,
+        _descr: &dyn std::fmt::Display,
+    ) -> Self::Result {
+        self.propagate_item(Res::Def(self.tcx.def_kind(def_id), def_id))
     }
 }
 
@@ -319,6 +407,7 @@ fn has_custom_linkage(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
         || codegen_attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER)
 }
 
+/// See module-level doc comment above.
 fn reachable_set(tcx: TyCtxt<'_>, (): ()) -> LocalDefIdSet {
     let effective_visibilities = &tcx.effective_visibilities(());
 
@@ -352,17 +441,19 @@ fn reachable_set(tcx: TyCtxt<'_>, (): ()) -> LocalDefIdSet {
         }
     }
     {
-        // Some methods from non-exported (completely private) trait impls still have to be
-        // reachable if they are called from inlinable code. Generally, it's not known until
-        // monomorphization if a specific trait impl item can be reachable or not. So, we
-        // conservatively mark all of them as reachable.
+        // As explained above, we have to mark all functions called from reachable
+        // `item_might_be_inlined` items as reachable. The issue is, when those functions are
+        // generic and call a trait method, we have no idea where that call goes! So, we
+        // conservatively mark all trait impl items as reachable.
         // FIXME: One possible strategy for pruning the reachable set is to avoid marking impl
         // items of non-exported traits (or maybe all local traits?) unless their respective
         // trait items are used from inlinable code through method call syntax or UFCS, or their
         // trait is a lang item.
+        // (But if you implement this, don't forget to take into account that vtables can also
+        // make trait methods reachable!)
         let crate_items = tcx.hir_crate_items(());
 
-        for id in crate_items.items() {
+        for id in crate_items.free_items() {
             check_item(tcx, id, &mut reachable_context.worklist, effective_visibilities);
         }
 

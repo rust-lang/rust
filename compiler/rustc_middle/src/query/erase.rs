@@ -67,6 +67,10 @@ impl<T> EraseType for &'_ ty::List<T> {
     type Result = [u8; size_of::<&'static ty::List<()>>()];
 }
 
+impl<T> EraseType for &'_ ty::ListWithCachedTypeInfo<T> {
+    type Result = [u8; size_of::<&'static ty::ListWithCachedTypeInfo<()>>()];
+}
+
 impl<I: rustc_index::Idx, T> EraseType for &'_ rustc_index::IndexSlice<I, T> {
     type Result = [u8; size_of::<&'static rustc_index::IndexSlice<u32, ()>>()];
 }
@@ -177,8 +181,8 @@ impl EraseType for Option<mir::DestructuredConstant<'_>> {
     type Result = [u8; size_of::<Option<mir::DestructuredConstant<'static>>>()];
 }
 
-impl EraseType for Option<ty::EarlyBinder<ty::ImplTraitHeader<'_>>> {
-    type Result = [u8; size_of::<Option<ty::EarlyBinder<ty::ImplTraitHeader<'static>>>>()];
+impl EraseType for Option<ty::ImplTraitHeader<'_>> {
+    type Result = [u8; size_of::<Option<ty::ImplTraitHeader<'static>>>()];
 }
 
 impl EraseType for Option<ty::EarlyBinder<Ty<'_>>> {
@@ -234,6 +238,7 @@ trivial! {
     Option<rustc_middle::middle::stability::DeprecationEntry>,
     Option<rustc_middle::ty::Destructor>,
     Option<rustc_middle::ty::ImplTraitInTraitData>,
+    Option<rustc_middle::ty::ScalarInt>,
     Option<rustc_span::def_id::CrateNum>,
     Option<rustc_span::def_id::DefId>,
     Option<rustc_span::def_id::LocalDefId>,

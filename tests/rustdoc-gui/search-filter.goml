@@ -1,7 +1,8 @@
 // Checks that the crate search filtering is handled correctly and changes the results.
+include: "utils.goml"
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
 show-text: true
-write: (".search-input", "test")
+write-into: (".search-input", "test")
 // To be SURE that the search will be run.
 press-key: 'Enter'
 // Waiting for the search results to appear...
@@ -59,8 +60,7 @@ assert-text: (".search-results-title", "Results in all crates", STARTS_WITH)
 
 // Checking the display of the crate filter.
 // We start with the light theme.
-set-local-storage: {"rustdoc-theme": "light", "rustdoc-use-system-theme": "false"}
-reload:
+call-function: ("switch-theme", {"theme": "light"})
 
 set-timeout: 2000
 wait-for: "#crate-search"

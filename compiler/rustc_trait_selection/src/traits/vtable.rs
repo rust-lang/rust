@@ -10,7 +10,7 @@ use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::GenericArgs;
 use rustc_middle::ty::{self, GenericParamDefKind, ToPredicate, Ty, TyCtxt, VtblEntry};
 use rustc_span::{sym, Span};
-use smallvec::SmallVec;
+use smallvec::{smallvec, SmallVec};
 
 use std::fmt::Debug;
 use std::ops::ControlFlow;
@@ -320,6 +320,7 @@ fn vtable_entries<'tcx>(
 }
 
 /// Find slot base for trait methods within vtable entries of another trait
+// FIXME(@lcnr): This isn't a query, so why does it take a tuple as its argument.
 pub(super) fn vtable_trait_first_method_offset<'tcx>(
     tcx: TyCtxt<'tcx>,
     key: (

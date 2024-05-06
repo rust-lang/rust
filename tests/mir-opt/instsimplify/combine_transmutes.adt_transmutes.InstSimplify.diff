@@ -37,7 +37,7 @@
       bb0: {
           StorageLive(_1);
           StorageLive(_2);
-          _2 = Option::<NonZero<u8>>::Some(const _);
+          _2 = Option::<NonZero<u8>>::Some(const std::num::NonZero::<u8>::MAX);
           _1 = move _2 as u8 (Transmute);
           StorageDead(_2);
           StorageLive(_3);

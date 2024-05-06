@@ -76,7 +76,7 @@ impl ChildBySource for ItemScope {
         self.extern_crate_decls()
             .for_each(|ext| insert_item_loc(db, res, file_id, ext, keys::EXTERN_CRATE));
         self.use_decls().for_each(|ext| insert_item_loc(db, res, file_id, ext, keys::USE));
-        self.unnamed_consts(db)
+        self.unnamed_consts()
             .for_each(|konst| insert_item_loc(db, res, file_id, konst, keys::CONST));
         self.attr_macro_invocs().filter(|(id, _)| id.file_id == file_id).for_each(
             |(ast_id, call_id)| {

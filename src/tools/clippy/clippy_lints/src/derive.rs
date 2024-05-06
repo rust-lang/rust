@@ -11,8 +11,7 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::traits::Reveal;
 use rustc_middle::ty::{
-    self, ClauseKind, GenericArgKind, GenericParamDefKind, ImplPolarity, ParamEnv, ToPredicate, TraitPredicate, Ty,
-    TyCtxt,
+    self, ClauseKind, GenericArgKind, GenericParamDefKind, ParamEnv, ToPredicate, TraitPredicate, Ty, TyCtxt,
 };
 use rustc_session::declare_lint_pass;
 use rustc_span::def_id::LocalDefId;
@@ -133,7 +132,7 @@ declare_clippy_lint! {
     ///
     /// ### Why is this bad?
     /// Deriving `serde::Deserialize` will create a constructor
-    /// that may violate invariants hold by another constructor.
+    /// that may violate invariants held by another constructor.
     ///
     /// ### Example
     /// ```rust,ignore
@@ -451,8 +450,8 @@ fn check_partial_eq_without_eq<'tcx>(cx: &LateContext<'tcx>, span: Span, trait_r
         && let Some(def_id) = trait_ref.trait_def_id()
         && cx.tcx.is_diagnostic_item(sym::PartialEq, def_id)
         && !has_non_exhaustive_attr(cx.tcx, *adt)
+        && !ty_implements_eq_trait(cx.tcx, ty, eq_trait_def_id)
         && let param_env = param_env_for_derived_eq(cx.tcx, adt.did(), eq_trait_def_id)
-        && !implements_trait_with_env(cx.tcx, param_env, ty, eq_trait_def_id, None, &[])
         // If all of our fields implement `Eq`, we can implement `Eq` too
         && adt
             .all_fields()
@@ -469,6 +468,10 @@ fn check_partial_eq_without_eq<'tcx>(cx: &LateContext<'tcx>, span: Span, trait_r
             Applicability::MachineApplicable,
         );
     }
+}
+
+fn ty_implements_eq_trait<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, eq_trait_id: DefId) -> bool {
+    tcx.non_blanket_impls_for_ty(eq_trait_id, ty).next().is_some()
 }
 
 /// Creates the `ParamEnv` used for the give type's derived `Eq` impl.
@@ -498,7 +501,7 @@ fn param_env_for_derived_eq(tcx: TyCtxt<'_>, did: DefId, eq_trait_id: DefId) -> 
             params.iter().filter(|&&(_, needs_eq)| needs_eq).map(|&(param, _)| {
                 ClauseKind::Trait(TraitPredicate {
                     trait_ref: ty::TraitRef::new(tcx, eq_trait_id, [tcx.mk_param_from_def(param)]),
-                    polarity: ImplPolarity::Positive,
+                    polarity: ty::PredicatePolarity::Positive,
                 })
                 .to_predicate(tcx)
             }),

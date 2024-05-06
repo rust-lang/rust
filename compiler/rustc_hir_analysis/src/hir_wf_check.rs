@@ -68,7 +68,7 @@ fn diagnostic_hir_wf_check<'tcx>(
             let infcx = self.tcx.infer_ctxt().build();
             let ocx = ObligationCtxt::new(&infcx);
 
-            let tcx_ty = self.icx.to_ty(ty);
+            let tcx_ty = self.icx.lower_ty(ty);
             // This visitor can walk into binders, resulting in the `tcx_ty` to
             // potentially reference escaping bound variables. We simply erase
             // those here.
@@ -163,6 +163,16 @@ fn diagnostic_hir_wf_check<'tcx>(
                 kind: hir::GenericParamKind::Type { default: Some(ty), .. },
                 ..
             }) => vec![*ty],
+            hir::Node::AnonConst(_)
+                if let Some(const_param_id) =
+                    tcx.hir().opt_const_param_default_param_def_id(hir_id)
+                    && let hir::Node::GenericParam(hir::GenericParam {
+                        kind: hir::GenericParamKind::Const { ty, .. },
+                        ..
+                    }) = tcx.hir_node_by_def_id(const_param_id) =>
+            {
+                vec![*ty]
+            }
             ref node => bug!("Unexpected node {:?}", node),
         },
         WellFormedLoc::Param { function: _, param_idx } => {

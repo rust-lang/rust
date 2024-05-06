@@ -1,5 +1,5 @@
 error[E0119]: conflicting implementations of trait `MyTrait<_>` for type `(Box<(MyType,)>, _)`
-  --> $DIR/normalize-for-errors.rs:16:1
+  --> $DIR/normalize-for-errors.rs:17:1
    |
 LL | impl<T: Copy, S: Iterator> MyTrait<S> for (T, S::Item) {}
    | ------------------------------------------------------ first implementation here

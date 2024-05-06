@@ -27,7 +27,7 @@ pub fn short_integer_map(x: [u32; 8]) -> [u32; 8] {
 #[no_mangle]
 pub fn long_integer_map(x: [u32; 512]) -> [u32; 512] {
     // CHECK: start:
-    // CHECK-NEXT: alloca [512 x i32]
+    // CHECK-NEXT: alloca [2048 x i8]
     // CHECK-NOT: alloca
     // CHECK: mul <{{[0-9]+}} x i32>
     // CHECK: add <{{[0-9]+}} x i32>

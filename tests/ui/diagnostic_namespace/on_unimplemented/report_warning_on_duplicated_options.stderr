@@ -1,5 +1,5 @@
 warning: `message` is ignored due to previous definition of `message`
-  --> $DIR/report_warning_on_duplicated_options.rs:9:5
+  --> $DIR/report_warning_on_duplicated_options.rs:7:5
    |
 LL |     message = "first message",
    |     ------------------------- `message` is first declared here
@@ -10,7 +10,7 @@ LL |     message = "second message",
    = note: `#[warn(unknown_or_malformed_diagnostic_attributes)]` on by default
 
 warning: `label` is ignored due to previous definition of `label`
-  --> $DIR/report_warning_on_duplicated_options.rs:12:5
+  --> $DIR/report_warning_on_duplicated_options.rs:10:5
    |
 LL |     label = "first label",
    |     --------------------- `label` is first declared here
@@ -19,7 +19,7 @@ LL |     label = "second label",
    |     ^^^^^^^^^^^^^^^^^^^^^^ `label` is already declared here
 
 warning: `message` is ignored due to previous definition of `message`
-  --> $DIR/report_warning_on_duplicated_options.rs:9:5
+  --> $DIR/report_warning_on_duplicated_options.rs:7:5
    |
 LL |     message = "first message",
    |     ------------------------- `message` is first declared here
@@ -30,7 +30,7 @@ LL |     message = "second message",
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 warning: `label` is ignored due to previous definition of `label`
-  --> $DIR/report_warning_on_duplicated_options.rs:12:5
+  --> $DIR/report_warning_on_duplicated_options.rs:10:5
    |
 LL |     label = "first label",
    |     --------------------- `label` is first declared here
@@ -41,7 +41,7 @@ LL |     label = "second label",
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0277]: first message
-  --> $DIR/report_warning_on_duplicated_options.rs:23:15
+  --> $DIR/report_warning_on_duplicated_options.rs:21:15
    |
 LL |     takes_foo(());
    |     --------- ^^ first label
@@ -52,12 +52,12 @@ LL |     takes_foo(());
    = note: custom note
    = note: second note
 help: this trait has no implementations, consider adding one
-  --> $DIR/report_warning_on_duplicated_options.rs:17:1
+  --> $DIR/report_warning_on_duplicated_options.rs:15:1
    |
 LL | trait Foo {}
    | ^^^^^^^^^
 note: required by a bound in `takes_foo`
-  --> $DIR/report_warning_on_duplicated_options.rs:20:22
+  --> $DIR/report_warning_on_duplicated_options.rs:18:22
    |
 LL | fn takes_foo(_: impl Foo) {}
    |                      ^^^ required by this bound in `takes_foo`

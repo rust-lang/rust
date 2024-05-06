@@ -1,10 +1,10 @@
 //@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
 
 #![crate_type = "lib"]
 #![feature(transmutability)]
 #![allow(dead_code)]
-#![allow(incomplete_features)]
 
 mod assert {
     use std::mem::BikeshedIntrinsicFrom;

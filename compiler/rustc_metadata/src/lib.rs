@@ -6,7 +6,6 @@
 #![feature(error_iter)]
 #![feature(extract_if)]
 #![feature(coroutines)]
-#![feature(generic_nonzero)]
 #![feature(iter_from_coroutine)]
 #![feature(let_chains)]
 #![feature(if_let_guard)]
@@ -20,8 +19,6 @@
 
 extern crate proc_macro;
 
-#[macro_use]
-extern crate rustc_macros;
 #[macro_use]
 extern crate rustc_middle;
 

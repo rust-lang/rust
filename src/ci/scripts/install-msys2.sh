@@ -28,15 +28,20 @@ if isWindows; then
     # Install pacboy for easily installing packages
     pacman -S --noconfirm pactoys
 
-    # Delete these pre-installed tools so we can't accidentally use them, because we are using the
-    # MSYS2 setup action versions instead.
-    # Delete pre-installed version of MSYS2
-    rm -r "/c/msys64/"
-    # Delete Strawberry Perl, which contains a version of mingw
-    rm -r "/c/Strawberry/"
-    # Delete these other copies of mingw, I don't even know where they come from.
-    rm -r "/c/mingw64/"
-    rm -r "/c/mingw32/"
+    # Remove these pre-installed tools so we can't accidentally use them, because we are using the
+    # MSYS2 setup action versions instead. Because `rm -r`-ing them is slow, we mv them off path
+    # instead.
+    # Remove pre-installed version of MSYS2
+    echo "Cleaning up existing tools in PATH"
+    notpath="/c/NOT/ON/PATH/"
+    mkdir --parents "$notpath"
+    mv -t "$notpath" "/c/msys64/"
+    # Remove Strawberry Perl, which contains a version of mingw
+    mv -t "$notpath" "/c/Strawberry/"
+    # Remove these other copies of mingw, I don't even know where they come from.
+    mv -t "$notpath" "/c/mingw64/"
+    mv -t "$notpath" "/c/mingw32/"
+    echo "Finished cleaning up tools in PATH"
 
     if isKnownToBeMingwBuild; then
         # Use the mingw version of CMake for mingw builds.
@@ -46,11 +51,11 @@ if isWindows; then
         # Install mingw-w64-$arch-cmake
         pacboy -S --noconfirm cmake:p
 
-        # We use Git-for-Windows for MSVC builds, and MSYS2 Git for mingw builds,
-        # so that both are tested.
-        # Delete Windows-Git
-        rm -r "/c/Program Files/Git/"
-        # Install MSYS2 git
-        pacman -S --noconfirm git
+        # It would be nice to use MSYS's git in MinGW builds so that it's tested and known to
+        # work. But it makes everything extremely slow, so it's commented out for now.
+        # # Delete Windows-Git
+        # rm -r "/c/Program Files/Git/"
+        # # Install MSYS2 git
+        # pacman -S --noconfirm git
     fi
 fi

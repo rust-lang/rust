@@ -16,7 +16,7 @@ help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to break the cycle
    |
 LL ~     Foo1(Box<Bar<'a>>)
 LL | }
-LL | 
+LL |
 LL | enum Bar<'a> {
 LL ~     Bar1(Box<Foo<'a>>)
    |

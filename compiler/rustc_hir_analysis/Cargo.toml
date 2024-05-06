@@ -9,7 +9,7 @@ doctest = false
 
 [dependencies]
 # tidy-alphabetical-start
-itertools = "0.11"
+itertools = "0.12"
 rustc_arena = { path = "../rustc_arena" }
 rustc_ast = { path = "../rustc_ast" }
 rustc_attr = { path = "../rustc_attr" }

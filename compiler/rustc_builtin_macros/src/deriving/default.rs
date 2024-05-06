@@ -1,6 +1,7 @@
 use crate::deriving::generic::ty::*;
 use crate::deriving::generic::*;
 use crate::errors;
+use core::ops::ControlFlow;
 use rustc_ast as ast;
 use rustc_ast::visit::walk_list;
 use rustc_ast::{attr, EnumDef, VariantData};
@@ -11,8 +12,8 @@ use rustc_span::{ErrorGuaranteed, Span};
 use smallvec::SmallVec;
 use thin_vec::{thin_vec, ThinVec};
 
-pub fn expand_deriving_default(
-    cx: &mut ExtCtxt<'_>,
+pub(crate) fn expand_deriving_default(
+    cx: &ExtCtxt<'_>,
     span: Span,
     mitem: &ast::MetaItem,
     item: &Annotatable,
@@ -53,7 +54,7 @@ pub fn expand_deriving_default(
 }
 
 fn default_struct_substructure(
-    cx: &mut ExtCtxt<'_>,
+    cx: &ExtCtxt<'_>,
     trait_span: Span,
     substr: &Substructure<'_>,
     summary: &StaticFields,
@@ -80,7 +81,7 @@ fn default_struct_substructure(
 }
 
 fn default_enum_substructure(
-    cx: &mut ExtCtxt<'_>,
+    cx: &ExtCtxt<'_>,
     trait_span: Span,
     enum_def: &EnumDef,
 ) -> BlockOrExpr {
@@ -102,7 +103,7 @@ fn default_enum_substructure(
 }
 
 fn extract_default_variant<'a>(
-    cx: &mut ExtCtxt<'_>,
+    cx: &ExtCtxt<'_>,
     enum_def: &'a EnumDef,
     trait_span: Span,
 ) -> Result<&'a rustc_ast::Variant, ErrorGuaranteed> {
@@ -172,7 +173,7 @@ fn extract_default_variant<'a>(
 }
 
 fn validate_default_attribute(
-    cx: &mut ExtCtxt<'_>,
+    cx: &ExtCtxt<'_>,
     default_variant: &rustc_ast::Variant,
 ) -> Result<(), ErrorGuaranteed> {
     let attrs: SmallVec<[_; 1]> =
@@ -231,20 +232,19 @@ impl<'a, 'b> rustc_ast::visit::Visitor<'a> for DetectNonVariantDefaultAttr<'a, '
 }
 
 fn has_a_default_variant(item: &Annotatable) -> bool {
-    struct HasDefaultAttrOnVariant {
-        found: bool,
-    }
+    struct HasDefaultAttrOnVariant;
 
     impl<'ast> rustc_ast::visit::Visitor<'ast> for HasDefaultAttrOnVariant {
-        fn visit_variant(&mut self, v: &'ast rustc_ast::Variant) {
+        type Result = ControlFlow<()>;
+        fn visit_variant(&mut self, v: &'ast rustc_ast::Variant) -> ControlFlow<()> {
             if v.attrs.iter().any(|attr| attr.has_name(kw::Default)) {
-                self.found = true;
+                ControlFlow::Break(())
+            } else {
+                // no need to subrecurse.
+                ControlFlow::Continue(())
             }
-            // no need to subrecurse.
         }
     }
 
-    let mut visitor = HasDefaultAttrOnVariant { found: false };
-    item.visit_with(&mut visitor);
-    visitor.found
+    item.visit_with(&mut HasDefaultAttrOnVariant).is_break()
 }

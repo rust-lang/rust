@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use super::NormalizeExt;
 use super::{ObligationCause, PredicateObligation, SelectionContext};
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_errors::Diag;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::{InferCtxt, InferOk};
@@ -10,7 +10,7 @@ use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::{self, ImplSubject, ToPredicate, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::ty::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_span::Span;
-use smallvec::SmallVec;
+use smallvec::{smallvec, SmallVec};
 
 pub use rustc_infer::traits::util::*;
 
@@ -127,7 +127,7 @@ impl<'tcx> TraitAliasExpander<'tcx> {
         }
 
         // Get components of trait alias.
-        let predicates = tcx.implied_predicates_of(trait_ref.def_id());
+        let predicates = tcx.super_predicates_of(trait_ref.def_id());
         debug!(?predicates);
 
         let items = predicates.predicates.iter().rev().filter_map(|(pred, span)| {
@@ -205,7 +205,7 @@ impl Iterator for SupertraitDefIds<'_> {
 /// returning the resulting subject and all obligations that arise.
 /// The obligations are closed under normalization.
 pub fn impl_subject_and_oblig<'a, 'tcx>(
-    selcx: &mut SelectionContext<'a, 'tcx>,
+    selcx: &SelectionContext<'a, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     impl_def_id: DefId,
     impl_args: GenericArgsRef<'tcx>,
@@ -344,48 +344,6 @@ pub enum TupleArgumentsFlag {
     No,
 }
 
-// Verify that the trait item and its implementation have compatible args lists
-pub fn check_args_compatible<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    assoc_item: ty::AssocItem,
-    args: ty::GenericArgsRef<'tcx>,
-) -> bool {
-    fn check_args_compatible_inner<'tcx>(
-        tcx: TyCtxt<'tcx>,
-        generics: &'tcx ty::Generics,
-        args: &'tcx [ty::GenericArg<'tcx>],
-    ) -> bool {
-        if generics.count() != args.len() {
-            return false;
-        }
-
-        let (parent_args, own_args) = args.split_at(generics.parent_count);
-
-        if let Some(parent) = generics.parent
-            && let parent_generics = tcx.generics_of(parent)
-            && !check_args_compatible_inner(tcx, parent_generics, parent_args)
-        {
-            return false;
-        }
-
-        for (param, arg) in std::iter::zip(&generics.params, own_args) {
-            match (&param.kind, arg.unpack()) {
-                (ty::GenericParamDefKind::Type { .. }, ty::GenericArgKind::Type(_))
-                | (ty::GenericParamDefKind::Lifetime, ty::GenericArgKind::Lifetime(_))
-                | (ty::GenericParamDefKind::Const { .. }, ty::GenericArgKind::Const(_)) => {}
-                _ => return false,
-            }
-        }
-
-        true
-    }
-
-    let generics = tcx.generics_of(assoc_item.def_id);
-    // Chop off any additional args (RPITIT) args
-    let args = &args[0..generics.count().min(args.len())];
-    check_args_compatible_inner(tcx, generics, args)
-}
-
 /// Executes `f` on `value` after replacing all escaping bound variables with placeholders
 /// and then replaces these placeholders with the original bound variables in the result.
 ///
@@ -431,8 +389,8 @@ pub struct BoundVarReplacer<'me, 'tcx> {
     // These three maps track the bound variable that were replaced by placeholders. It might be
     // nice to remove these since we already have the `kind` in the placeholder; we really just need
     // the `var` (but we *could* bring that into scope if we were to track them as we pass them).
-    mapped_regions: BTreeMap<ty::PlaceholderRegion, ty::BoundRegion>,
-    mapped_types: BTreeMap<ty::PlaceholderType, ty::BoundTy>,
+    mapped_regions: FxIndexMap<ty::PlaceholderRegion, ty::BoundRegion>,
+    mapped_types: FxIndexMap<ty::PlaceholderType, ty::BoundTy>,
     mapped_consts: BTreeMap<ty::PlaceholderConst, ty::BoundVar>,
     // The current depth relative to *this* folding, *not* the entire normalization. In other words,
     // the depth of binders we've passed here.
@@ -451,12 +409,13 @@ impl<'me, 'tcx> BoundVarReplacer<'me, 'tcx> {
         value: T,
     ) -> (
         T,
-        BTreeMap<ty::PlaceholderRegion, ty::BoundRegion>,
-        BTreeMap<ty::PlaceholderType, ty::BoundTy>,
+        FxIndexMap<ty::PlaceholderRegion, ty::BoundRegion>,
+        FxIndexMap<ty::PlaceholderType, ty::BoundTy>,
         BTreeMap<ty::PlaceholderConst, ty::BoundVar>,
     ) {
-        let mapped_regions: BTreeMap<ty::PlaceholderRegion, ty::BoundRegion> = BTreeMap::new();
-        let mapped_types: BTreeMap<ty::PlaceholderType, ty::BoundTy> = BTreeMap::new();
+        let mapped_regions: FxIndexMap<ty::PlaceholderRegion, ty::BoundRegion> =
+            FxIndexMap::default();
+        let mapped_types: FxIndexMap<ty::PlaceholderType, ty::BoundTy> = FxIndexMap::default();
         let mapped_consts: BTreeMap<ty::PlaceholderConst, ty::BoundVar> = BTreeMap::new();
 
         let mut replacer = BoundVarReplacer {
@@ -574,8 +533,8 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for BoundVarReplacer<'_, 'tcx> {
 /// The inverse of [`BoundVarReplacer`]: replaces placeholders with the bound vars from which they came.
 pub struct PlaceholderReplacer<'me, 'tcx> {
     infcx: &'me InferCtxt<'tcx>,
-    mapped_regions: BTreeMap<ty::PlaceholderRegion, ty::BoundRegion>,
-    mapped_types: BTreeMap<ty::PlaceholderType, ty::BoundTy>,
+    mapped_regions: FxIndexMap<ty::PlaceholderRegion, ty::BoundRegion>,
+    mapped_types: FxIndexMap<ty::PlaceholderType, ty::BoundTy>,
     mapped_consts: BTreeMap<ty::PlaceholderConst, ty::BoundVar>,
     universe_indices: &'me [Option<ty::UniverseIndex>],
     current_index: ty::DebruijnIndex,
@@ -584,8 +543,8 @@ pub struct PlaceholderReplacer<'me, 'tcx> {
 impl<'me, 'tcx> PlaceholderReplacer<'me, 'tcx> {
     pub fn replace_placeholders<T: TypeFoldable<TyCtxt<'tcx>>>(
         infcx: &'me InferCtxt<'tcx>,
-        mapped_regions: BTreeMap<ty::PlaceholderRegion, ty::BoundRegion>,
-        mapped_types: BTreeMap<ty::PlaceholderType, ty::BoundTy>,
+        mapped_regions: FxIndexMap<ty::PlaceholderRegion, ty::BoundRegion>,
+        mapped_types: FxIndexMap<ty::PlaceholderType, ty::BoundTy>,
         mapped_consts: BTreeMap<ty::PlaceholderConst, ty::BoundVar>,
         universe_indices: &'me [Option<ty::UniverseIndex>],
         value: T,
@@ -690,7 +649,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for PlaceholderReplacer<'_, 'tcx> {
     }
 
     fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
-        let ct = self.infcx.shallow_resolve(ct);
+        let ct = self.infcx.shallow_resolve_const(ct);
         if let ty::ConstKind::Placeholder(p) = ct.kind() {
             let replace_var = self.mapped_consts.get(&p);
             match replace_var {

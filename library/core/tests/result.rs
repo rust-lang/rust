@@ -195,7 +195,7 @@ pub fn test_unwrap_or_default() {
 }
 
 #[test]
-#[cfg_attr(not(bootstrap), allow(non_local_definitions))]
+#[allow(non_local_definitions)]
 pub fn test_into_ok() {
     fn infallible_op() -> Result<isize, !> {
         Ok(666)
@@ -218,7 +218,7 @@ pub fn test_into_ok() {
 }
 
 #[test]
-#[cfg_attr(not(bootstrap), allow(non_local_definitions))]
+#[allow(non_local_definitions)]
 pub fn test_into_err() {
     fn until_error_op() -> Result<!, isize> {
         Err(666)

@@ -35,7 +35,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>, msrv: &Msrv
                     cx,
                     CAST_SLICE_DIFFERENT_SIZES,
                     expr.span,
-                    &format!(
+                    format!(
                         "casting between raw pointers to `[{}]` (element size {from_size}) and `[{}]` (element size {to_size}) does not adjust the count",
                         start_ty.ty, end_ty.ty,
                     ),
@@ -87,7 +87,7 @@ fn is_child_of_cast(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
 /// the type is one of those slices
 fn get_raw_slice_ty_mut(ty: Ty<'_>) -> Option<TypeAndMut<'_>> {
     match ty.kind() {
-        ty::RawPtr(TypeAndMut { ty: slice_ty, mutbl }) => match slice_ty.kind() {
+        ty::RawPtr(slice_ty, mutbl) => match slice_ty.kind() {
             ty::Slice(ty) => Some(TypeAndMut { ty: *ty, mutbl: *mutbl }),
             _ => None,
         },

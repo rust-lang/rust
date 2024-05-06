@@ -1,0 +1,9 @@
+error[E0425]: cannot find value `foo` in this scope
+  --> $DIR/dont-match-error-ty-with-calller-supplied-obligation-issue-121941.rs:2:5
+   |
+LL |     foo == 2;
+   |     ^^^ not found in this scope
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0425`.

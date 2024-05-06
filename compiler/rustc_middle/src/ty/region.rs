@@ -3,6 +3,7 @@ use rustc_data_structures::intern::Interned;
 use rustc_errors::MultiSpan;
 use rustc_hir::def_id::DefId;
 use rustc_index::Idx;
+use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_span::symbol::sym;
 use rustc_span::symbol::{kw, Symbol};
 use rustc_span::{ErrorGuaranteed, DUMMY_SP};
@@ -14,7 +15,7 @@ use crate::ty::{self, BoundVar, TyCtxt, TypeFlags};
 pub type RegionKind<'tcx> = IrRegionKind<TyCtxt<'tcx>>;
 
 /// Use this rather than `RegionKind`, whenever possible.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, HashStable)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, HashStable)]
 #[rustc_pass_by_value]
 pub struct Region<'tcx>(pub Interned<'tcx, RegionKind<'tcx>>);
 
@@ -140,6 +141,10 @@ impl<'tcx> rustc_type_ir::new::Region<TyCtxt<'tcx>> for Region<'tcx> {
     fn new_anon_bound(tcx: TyCtxt<'tcx>, debruijn: ty::DebruijnIndex, var: ty::BoundVar) -> Self {
         Region::new_bound(tcx, debruijn, ty::BoundRegion { var, kind: ty::BoundRegionKind::BrAnon })
     }
+
+    fn new_static(tcx: TyCtxt<'tcx>) -> Self {
+        tcx.lifetimes.re_static
+    }
 }
 
 /// Region utilities
@@ -251,6 +256,7 @@ impl<'tcx> Region<'tcx> {
             }
             ty::ReError(_) => {
                 flags = flags | TypeFlags::HAS_FREE_REGIONS;
+                flags = flags | TypeFlags::HAS_ERROR;
             }
         }
 
@@ -326,7 +332,7 @@ impl<'tcx> Deref for Region<'tcx> {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable, PartialOrd, Ord)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
 #[derive(HashStable)]
 pub struct EarlyParamRegion {
     pub def_id: DefId,
@@ -336,7 +342,9 @@ pub struct EarlyParamRegion {
 
 impl std::fmt::Debug for EarlyParamRegion {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}, {}, {}", self.def_id, self.index, self.name)
+        // FIXME(BoxyUwU): self.def_id goes first because of `erased-regions-in-hidden-ty.rs` being impossible to write
+        // error annotations for otherwise. :). Ideally this would be `self.name, self.index, self.def_id`.
+        write!(f, "{:?}_{}/#{}", self.def_id, self.name, self.index)
     }
 }
 
@@ -355,7 +363,7 @@ impl Atom for RegionVid {
     }
 }
 
-#[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash, TyEncodable, TyDecodable, Copy)]
+#[derive(Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable, Copy)]
 #[derive(HashStable)]
 /// The parameter representation of late-bound function parameters, "some region
 /// at least as big as the scope `fr.scope`".
@@ -364,7 +372,7 @@ pub struct LateParamRegion {
     pub bound_region: BoundRegionKind,
 }
 
-#[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash, TyEncodable, TyDecodable, Copy)]
+#[derive(Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable, Copy)]
 #[derive(HashStable)]
 pub enum BoundRegionKind {
     /// An anonymous region parameter for a given fn (&T)
@@ -381,11 +389,23 @@ pub enum BoundRegionKind {
     BrEnv,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable, Debug, PartialOrd, Ord)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
 #[derive(HashStable)]
 pub struct BoundRegion {
     pub var: BoundVar,
     pub kind: BoundRegionKind,
+}
+
+impl core::fmt::Debug for BoundRegion {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self.kind {
+            BoundRegionKind::BrAnon => write!(f, "{:?}", self.var),
+            BoundRegionKind::BrEnv => write!(f, "{:?}.Env", self.var),
+            BoundRegionKind::BrNamed(def, symbol) => {
+                write!(f, "{:?}.Named({:?}, {:?})", self.var, def, symbol)
+            }
+        }
+    }
 }
 
 impl BoundRegionKind {

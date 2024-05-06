@@ -83,7 +83,7 @@ impl<'tcx> LateLintPass<'tcx> for SuspiciousImpl {
                 cx,
                 lint,
                 binop.span,
-                &format!(
+                format!(
                     "suspicious use of `{}` in `{}` impl",
                     binop.node.as_str(),
                     cx.tcx.item_name(trait_id)

@@ -1,7 +1,6 @@
 //@ run-pass
 //@ aux-build:fn-aux.rs
 
-#![feature(associated_type_bounds)]
 #![allow(dead_code)]
 
 extern crate fn_aux;

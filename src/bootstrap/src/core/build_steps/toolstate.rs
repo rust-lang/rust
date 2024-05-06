@@ -1,3 +1,9 @@
+//! [Toolstate] checks to keep tools building
+//!
+//! Reachable via `./x.py test` but mostly relevant for CI, since it isn't run locally by default.
+//!
+//! [Toolstate]: https://forge.rust-lang.org/infra/toolstate.html
+
 use crate::core::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::utils::helpers::t;
 use serde_derive::{Deserialize, Serialize};
@@ -245,8 +251,12 @@ impl Builder<'_> {
                 // Ensure the parent directory always exists
                 t!(std::fs::create_dir_all(parent));
             }
-            let mut file =
-                t!(fs::OpenOptions::new().create(true).write(true).read(true).open(path));
+            let mut file = t!(fs::OpenOptions::new()
+                .create(true)
+                .truncate(false)
+                .write(true)
+                .read(true)
+                .open(path));
 
             serde_json::from_reader(&mut file).unwrap_or_default()
         } else {
@@ -278,8 +288,12 @@ impl Builder<'_> {
                 // Ensure the parent directory always exists
                 t!(std::fs::create_dir_all(parent));
             }
-            let mut file =
-                t!(fs::OpenOptions::new().create(true).read(true).write(true).open(path));
+            let mut file = t!(fs::OpenOptions::new()
+                .create(true)
+                .truncate(false)
+                .read(true)
+                .write(true)
+                .open(path));
 
             let mut current_toolstates: HashMap<Box<str>, ToolState> =
                 serde_json::from_reader(&mut file).unwrap_or_default();

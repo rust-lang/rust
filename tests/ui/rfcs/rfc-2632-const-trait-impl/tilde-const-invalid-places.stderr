@@ -262,16 +262,6 @@ LL |     const CONSTANT<T: ~const Trait>: () = ();
    = help: add `#![feature(generic_const_items)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: inherent associated types are unstable
-  --> $DIR/tilde-const-invalid-places.rs:44:5
-   |
-LL |     type Type<T: ~const Trait> = ();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: see issue #8995 <https://github.com/rust-lang/rust/issues/8995> for more information
-   = help: add `#![feature(inherent_associated_types)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
 error[E0392]: type parameter `T` is never used
   --> $DIR/tilde-const-invalid-places.rs:11:19
    |
@@ -303,6 +293,16 @@ note: required by a bound in `NonConstTrait::Type`
    |
 LL |     type Type<T: ~const Trait>: ~const Trait;
    |                                 ^^^^^^^^^^^^ required by this bound in `NonConstTrait::Type`
+
+error[E0658]: inherent associated types are unstable
+  --> $DIR/tilde-const-invalid-places.rs:44:5
+   |
+LL |     type Type<T: ~const Trait> = ();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #8995 <https://github.com/rust-lang/rust/issues/8995> for more information
+   = help: add `#![feature(inherent_associated_types)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: aborting due to 30 previous errors
 

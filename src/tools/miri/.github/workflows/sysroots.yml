@@ -21,6 +21,13 @@ jobs:
           ./miri install
           python3 -m pip install beautifulsoup4
           ./ci/build-all-targets.sh
+      - name: Upload build errors
+        # We don't want to skip this step on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: failures
+          path: failures.tar.gz
 
   sysroots-cron-fail-notify:
     name: sysroots cronjob failure notification
@@ -28,6 +35,11 @@ jobs:
     needs: [sysroots]
     if: failure() || cancelled()
     steps:
+      # Download our build error logs
+      - name: Download build errors
+        uses: actions/download-artifact@v4
+        with:
+          name: failures
       # Send a Zulip notification
       - name: Install zulip-send
         run: pip3 install zulip
@@ -36,11 +48,12 @@ jobs:
           ZULIP_BOT_EMAIL: ${{ secrets.ZULIP_BOT_EMAIL }}
           ZULIP_API_TOKEN: ${{ secrets.ZULIP_API_TOKEN }}
         run: |
+          tar xf failures.tar.gz
+          ls failures
           ~/.local/bin/zulip-send --user $ZULIP_BOT_EMAIL --api-key $ZULIP_API_TOKEN --site https://rust-lang.zulipchat.com \
-            --stream miri --subject "Cron Job Failure (miri, $(date -u +%Y-%m))" \
-            --message 'Dear @*T-miri*,
-
-          It would appear that the [Miri sysroots cron job build]('"https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"') failed.
+            --stream miri --subject "Sysroot Build Errors ($(date -u +%Y-%m))" \
+            --message 'It would appear that the [Miri sysroots cron job build]('"https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"') failed to build these targets:
+          '"$(ls failures)"'
 
           Would you mind investigating this issue?
 

@@ -67,70 +67,70 @@
 // lldb-command:run
 
 // FIRST ITERATION
-// lldb-command:print x
-// lldbg-check:[...]$0 = 0
+// lldb-command:v x
+// lldbg-check:[...] 0
 // lldbr-check:(i32) x = 0
 // lldb-command:continue
 
-// lldb-command:print x
-// lldbg-check:[...]$1 = 1
+// lldb-command:v x
+// lldbg-check:[...] 1
 // lldbr-check:(i32) x = 1
 // lldb-command:continue
 
-// lldb-command:print x
-// lldbg-check:[...]$2 = 101
+// lldb-command:v x
+// lldbg-check:[...] 101
 // lldbr-check:(i32) x = 101
 // lldb-command:continue
 
-// lldb-command:print x
-// lldbg-check:[...]$3 = 101
+// lldb-command:v x
+// lldbg-check:[...] 101
 // lldbr-check:(i32) x = 101
 // lldb-command:continue
 
-// lldb-command:print x
-// lldbg-check:[...]$4 = -987
+// lldb-command:v x
+// lldbg-check:[...] -987
 // lldbr-check:(i32) x = -987
 // lldb-command:continue
 
-// lldb-command:print x
-// lldbg-check:[...]$5 = 101
+// lldb-command:v x
+// lldbg-check:[...] 101
 // lldbr-check:(i32) x = 101
 // lldb-command:continue
 
 
 // SECOND ITERATION
-// lldb-command:print x
-// lldbg-check:[...]$6 = 1
+// lldb-command:v x
+// lldbg-check:[...] 1
 // lldbr-check:(i32) x = 1
 // lldb-command:continue
 
-// lldb-command:print x
-// lldbg-check:[...]$7 = 2
+// lldb-command:v x
+// lldbg-check:[...] 2
 // lldbr-check:(i32) x = 2
 // lldb-command:continue
 
-// lldb-command:print x
-// lldbg-check:[...]$8 = 102
+// lldb-command:v x
+// lldbg-check:[...] 102
 // lldbr-check:(i32) x = 102
 // lldb-command:continue
 
-// lldb-command:print x
-// lldbg-check:[...]$9 = 102
+// lldb-command:v x
+// lldbg-check:[...] 102
 // lldbr-check:(i32) x = 102
 // lldb-command:continue
 
-// lldb-command:print x
-// lldbg-check:[...]$10 = -987
+// lldb-command:v x
+// lldbg-check:[...] -987
 // lldbr-check:(i32) x = -987
 // lldb-command:continue
 
-// lldb-command:print x
-// lldbg-check:[...]$11 = 102
+// lldb-command:v x
+// lldbg-check:[...] 102
 // lldbr-check:(i32) x = 102
 // lldb-command:continue
 
-// lldb-command:print x
-// lldbg-check:[...]$12 = 2
+// lldb-command:v x
+// lldbg-check:[...] 2
 // lldbr-check:(i32) x = 2
 // lldb-command:continue
 

@@ -54,7 +54,7 @@
 use crate::creader::CStore;
 use crate::errors::{
     BadPanicStrategy, CrateDepMultiple, IncompatiblePanicInDropStrategy, LibRequired,
-    RequiredPanicStrategy, RlibRequired, RustcLibRequired, TwoPanicRuntimes,
+    NonStaticCrateDep, RequiredPanicStrategy, RlibRequired, RustcLibRequired, TwoPanicRuntimes,
 };
 
 use rustc_data_structures::fx::FxHashMap;
@@ -123,13 +123,15 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: CrateType) -> DependencyList {
         CrateType::Rlib => Linkage::NotLinked,
     };
 
+    let mut unavailable_as_static = Vec::new();
+
     match preferred_linkage {
         // If the crate is not linked, there are no link-time dependencies.
         Linkage::NotLinked => return Vec::new(),
         Linkage::Static => {
             // Attempt static linkage first. For dylibs and executables, we may be
             // able to retry below with dynamic linkage.
-            if let Some(v) = attempt_static(tcx) {
+            if let Some(v) = attempt_static(tcx, &mut unavailable_as_static) {
                 return v;
             }
 
@@ -169,11 +171,11 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: CrateType) -> DependencyList {
         let src = tcx.used_crate_source(cnum);
         if src.dylib.is_some() {
             info!("adding dylib: {}", name);
-            add_library(tcx, cnum, RequireDynamic, &mut formats);
+            add_library(tcx, cnum, RequireDynamic, &mut formats, &mut unavailable_as_static);
             let deps = tcx.dylib_dependency_formats(cnum);
             for &(depnum, style) in deps.iter() {
                 info!("adding {:?}: {}", style, tcx.crate_name(depnum));
-                add_library(tcx, depnum, style, &mut formats);
+                add_library(tcx, depnum, style, &mut formats, &mut unavailable_as_static);
             }
         }
     }
@@ -201,7 +203,7 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: CrateType) -> DependencyList {
         {
             assert!(src.rlib.is_some() || src.rmeta.is_some());
             info!("adding staticlib: {}", tcx.crate_name(cnum));
-            add_library(tcx, cnum, RequireStatic, &mut formats);
+            add_library(tcx, cnum, RequireStatic, &mut formats, &mut unavailable_as_static);
             ret[cnum.as_usize() - 1] = Linkage::Static;
         }
     }
@@ -252,6 +254,7 @@ fn add_library(
     cnum: CrateNum,
     link: LinkagePreference,
     m: &mut FxHashMap<CrateNum, LinkagePreference>,
+    unavailable_as_static: &mut Vec<CrateNum>,
 ) {
     match m.get(&cnum) {
         Some(&link2) => {
@@ -263,7 +266,13 @@ fn add_library(
             // This error is probably a little obscure, but I imagine that it
             // can be refined over time.
             if link2 != link || link == RequireStatic {
-                tcx.dcx().emit_err(CrateDepMultiple { crate_name: tcx.crate_name(cnum) });
+                tcx.dcx().emit_err(CrateDepMultiple {
+                    crate_name: tcx.crate_name(cnum),
+                    non_static_deps: unavailable_as_static
+                        .drain(..)
+                        .map(|cnum| NonStaticCrateDep { crate_name: tcx.crate_name(cnum) })
+                        .collect(),
+                });
             }
         }
         None => {
@@ -272,7 +281,7 @@ fn add_library(
     }
 }
 
-fn attempt_static(tcx: TyCtxt<'_>) -> Option<DependencyList> {
+fn attempt_static(tcx: TyCtxt<'_>, unavailable: &mut Vec<CrateNum>) -> Option<DependencyList> {
     let all_crates_available_as_rlib = tcx
         .crates(())
         .iter()
@@ -281,7 +290,11 @@ fn attempt_static(tcx: TyCtxt<'_>) -> Option<DependencyList> {
             if tcx.dep_kind(cnum).macros_only() {
                 return None;
             }
-            Some(tcx.used_crate_source(cnum).rlib.is_some())
+            let is_rlib = tcx.used_crate_source(cnum).rlib.is_some();
+            if !is_rlib {
+                unavailable.push(cnum);
+            }
+            Some(is_rlib)
         })
         .all(|is_rlib| is_rlib);
     if !all_crates_available_as_rlib {

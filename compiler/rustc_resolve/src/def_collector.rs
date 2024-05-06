@@ -38,14 +38,16 @@ impl<'a, 'b, 'tcx> DefCollector<'a, 'b, 'tcx> {
             "create_def(node_id={:?}, def_kind={:?}, parent_def={:?})",
             node_id, def_kind, parent_def
         );
-        self.resolver.create_def(
-            parent_def,
-            node_id,
-            name,
-            def_kind,
-            self.expansion.to_expn_id(),
-            span.with_parent(None),
-        )
+        self.resolver
+            .create_def(
+                parent_def,
+                node_id,
+                name,
+                def_kind,
+                self.expansion.to_expn_id(),
+                span.with_parent(None),
+            )
+            .def_id()
     }
 
     fn with_parent<F: FnOnce(&mut Self)>(&mut self, parent_def: LocalDefId, f: F) {
@@ -125,7 +127,7 @@ impl<'a, 'b, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'b, 'tcx> {
             ItemKind::Union(..) => DefKind::Union,
             ItemKind::ExternCrate(..) => DefKind::ExternCrate,
             ItemKind::TyAlias(..) => DefKind::TyAlias,
-            ItemKind::Static(s) => DefKind::Static(s.mutability),
+            ItemKind::Static(s) => DefKind::Static { mutability: s.mutability, nested: false },
             ItemKind::Const(..) => DefKind::Const,
             ItemKind::Fn(..) | ItemKind::Delegation(..) => DefKind::Fn,
             ItemKind::MacroDef(..) => {
@@ -134,14 +136,9 @@ impl<'a, 'b, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'b, 'tcx> {
                 opt_macro_data = Some(macro_data);
                 DefKind::Macro(macro_kind)
             }
-            ItemKind::MacCall(..) => {
-                visit::walk_item(self, i);
-                return self.visit_macro_invoc(i.id);
-            }
             ItemKind::GlobalAsm(..) => DefKind::GlobalAsm,
-            ItemKind::Use(..) => {
-                return visit::walk_item(self, i);
-            }
+            ItemKind::Use(..) => return visit::walk_item(self, i),
+            ItemKind::MacCall(..) => return self.visit_macro_invoc(i.id),
         };
         let def_id = self.create_def(i.id, i.ident.name, def_kind, i.span);
 
@@ -212,7 +209,9 @@ impl<'a, 'b, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'b, 'tcx> {
 
     fn visit_foreign_item(&mut self, fi: &'a ForeignItem) {
         let def_kind = match fi.kind {
-            ForeignItemKind::Static(_, mt, _) => DefKind::Static(mt),
+            ForeignItemKind::Static(box StaticForeignItem { ty: _, mutability, expr: _ }) => {
+                DefKind::Static { mutability, nested: false }
+            }
             ForeignItemKind::Fn(_) => DefKind::Fn,
             ForeignItemKind::TyAlias(_) => DefKind::ForeignTy,
             ForeignItemKind::MacCall(_) => return self.visit_macro_invoc(fi.id),
@@ -220,7 +219,7 @@ impl<'a, 'b, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'b, 'tcx> {
 
         let def = self.create_def(fi.id, fi.ident.name, def_kind, fi.span);
 
-        self.with_parent(def, |this| visit::walk_foreign_item(this, fi));
+        self.with_parent(def, |this| visit::walk_item(this, fi));
     }
 
     fn visit_variant(&mut self, v: &'a Variant) {

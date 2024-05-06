@@ -16,8 +16,8 @@
 
 // lldb-command:run
 
-// lldb-command:print x
-// lldb-check:[...]$0 = 5
+// lldb-command:v x
+// lldb-check:[...] 5
 
 // === CDB TESTS ==================================================================================
 

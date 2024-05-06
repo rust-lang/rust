@@ -7,17 +7,17 @@
     convert_float_to_int,
     core_intrinsics,
     decl_macro,
-    inline_const,
     intra_doc_pointers,
     repr_simd,
     simd_ffi,
     staged_api,
     strict_provenance,
+    prelude_import,
     ptr_metadata
 )]
 #![cfg_attr(
     all(
-        any(target_arch = "aarch64", target_arch = "arm",),
+        any(target_arch = "aarch64", target_arch = "arm64ec", target_arch = "arm",),
         any(
             all(target_feature = "v6", not(target_feature = "mclass")),
             all(target_feature = "mclass", target_feature = "dsp"),
@@ -33,8 +33,13 @@
     any(target_arch = "powerpc", target_arch = "powerpc64"),
     feature(stdarch_powerpc)
 )]
+#![cfg_attr(
+    all(target_arch = "x86_64", target_feature = "avx512f"),
+    feature(stdarch_x86_avx512)
+)]
 #![warn(missing_docs, clippy::missing_inline_in_public_items)] // basically all items, really
 #![deny(unsafe_op_in_unsafe_fn, clippy::undocumented_unsafe_blocks)]
+#![doc(test(attr(deny(warnings))))]
 #![allow(internal_features)]
 #![unstable(feature = "portable_simd", issue = "86656")]
 //! Portable SIMD module.

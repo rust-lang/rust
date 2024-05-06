@@ -5,7 +5,7 @@ LL |     let a @ ref b = U;
    |         ^   ----- value borrowed here after move
    |         |
    |         value moved into `a` here
-   |         move occurs because `a` has type `U` which does not implement the `Copy` trait
+   |         move occurs because `a` has type `U`, which does not implement the `Copy` trait
    |
 help: borrow this binding in the pattern to avoid moving the value
    |
@@ -20,7 +20,7 @@ LL |     let a @ (mut b @ ref mut c, d @ ref e) = (U, U);
    |         |            |
    |         |            value borrowed here after move
    |         value moved into `a` here
-   |         move occurs because `a` has type `(U, U)` which does not implement the `Copy` trait
+   |         move occurs because `a` has type `(U, U)`, which does not implement the `Copy` trait
    |
 help: borrow this binding in the pattern to avoid moving the value
    |
@@ -34,7 +34,7 @@ LL |     let a @ (mut b @ ref mut c, d @ ref e) = (U, U);
    |              ^^^^^   --------- value borrowed here after move
    |              |
    |              value moved into `b` here
-   |              move occurs because `b` has type `U` which does not implement the `Copy` trait
+   |              move occurs because `b` has type `U`, which does not implement the `Copy` trait
    |
 help: borrow this binding in the pattern to avoid moving the value
    |
@@ -48,7 +48,7 @@ LL |     let a @ (mut b @ ref mut c, d @ ref e) = (U, U);
    |                                 ^   ----- value borrowed here after move
    |                                 |
    |                                 value moved into `d` here
-   |                                 move occurs because `d` has type `U` which does not implement the `Copy` trait
+   |                                 move occurs because `d` has type `U`, which does not implement the `Copy` trait
    |
 help: borrow this binding in the pattern to avoid moving the value
    |
@@ -63,7 +63,7 @@ LL |     let a @ [ref mut b, ref c] = [U, U];
    |         |    |
    |         |    value borrowed here after move
    |         value moved into `a` here
-   |         move occurs because `a` has type `[U; 2]` which does not implement the `Copy` trait
+   |         move occurs because `a` has type `[U; 2]`, which does not implement the `Copy` trait
    |
 help: borrow this binding in the pattern to avoid moving the value
    |
@@ -77,7 +77,7 @@ LL |     let a @ ref b = u();
    |         ^   ----- value borrowed here after move
    |         |
    |         value moved into `a` here
-   |         move occurs because `a` has type `U` which does not implement the `Copy` trait
+   |         move occurs because `a` has type `U`, which does not implement the `Copy` trait
    |
 help: borrow this binding in the pattern to avoid moving the value
    |
@@ -92,7 +92,7 @@ LL |     let a @ (mut b @ ref mut c, d @ ref e) = (u(), u());
    |         |            |
    |         |            value borrowed here after move
    |         value moved into `a` here
-   |         move occurs because `a` has type `(U, U)` which does not implement the `Copy` trait
+   |         move occurs because `a` has type `(U, U)`, which does not implement the `Copy` trait
    |
 help: borrow this binding in the pattern to avoid moving the value
    |
@@ -106,7 +106,7 @@ LL |     let a @ (mut b @ ref mut c, d @ ref e) = (u(), u());
    |              ^^^^^   --------- value borrowed here after move
    |              |
    |              value moved into `b` here
-   |              move occurs because `b` has type `U` which does not implement the `Copy` trait
+   |              move occurs because `b` has type `U`, which does not implement the `Copy` trait
    |
 help: borrow this binding in the pattern to avoid moving the value
    |
@@ -120,7 +120,7 @@ LL |     let a @ (mut b @ ref mut c, d @ ref e) = (u(), u());
    |                                 ^   ----- value borrowed here after move
    |                                 |
    |                                 value moved into `d` here
-   |                                 move occurs because `d` has type `U` which does not implement the `Copy` trait
+   |                                 move occurs because `d` has type `U`, which does not implement the `Copy` trait
    |
 help: borrow this binding in the pattern to avoid moving the value
    |
@@ -135,7 +135,7 @@ LL |     let a @ [ref mut b, ref c] = [u(), u()];
    |         |    |
    |         |    value borrowed here after move
    |         value moved into `a` here
-   |         move occurs because `a` has type `[U; 2]` which does not implement the `Copy` trait
+   |         move occurs because `a` has type `[U; 2]`, which does not implement the `Copy` trait
    |
 help: borrow this binding in the pattern to avoid moving the value
    |
@@ -149,7 +149,7 @@ LL |         a @ Some(ref b) => {}
    |         ^        ----- value borrowed here after move
    |         |
    |         value moved into `a` here
-   |         move occurs because `a` has type `Option<U>` which does not implement the `Copy` trait
+   |         move occurs because `a` has type `Option<U>`, which does not implement the `Copy` trait
    |
 help: borrow this binding in the pattern to avoid moving the value
    |
@@ -164,7 +164,7 @@ LL |         a @ Some((mut b @ ref mut c, d @ ref e)) => {}
    |         |                 |
    |         |                 value borrowed here after move
    |         value moved into `a` here
-   |         move occurs because `a` has type `Option<(U, U)>` which does not implement the `Copy` trait
+   |         move occurs because `a` has type `Option<(U, U)>`, which does not implement the `Copy` trait
    |
 help: borrow this binding in the pattern to avoid moving the value
    |
@@ -178,7 +178,7 @@ LL |         a @ Some((mut b @ ref mut c, d @ ref e)) => {}
    |                   ^^^^^   --------- value borrowed here after move
    |                   |
    |                   value moved into `b` here
-   |                   move occurs because `b` has type `U` which does not implement the `Copy` trait
+   |                   move occurs because `b` has type `U`, which does not implement the `Copy` trait
    |
 help: borrow this binding in the pattern to avoid moving the value
    |
@@ -192,7 +192,7 @@ LL |         a @ Some((mut b @ ref mut c, d @ ref e)) => {}
    |                                      ^   ----- value borrowed here after move
    |                                      |
    |                                      value moved into `d` here
-   |                                      move occurs because `d` has type `U` which does not implement the `Copy` trait
+   |                                      move occurs because `d` has type `U`, which does not implement the `Copy` trait
    |
 help: borrow this binding in the pattern to avoid moving the value
    |
@@ -207,7 +207,7 @@ LL |         mut a @ Some([ref b, ref mut c]) => {}
    |         |             |
    |         |             value borrowed here after move
    |         value moved into `a` here
-   |         move occurs because `a` has type `Option<[U; 2]>` which does not implement the `Copy` trait
+   |         move occurs because `a` has type `Option<[U; 2]>`, which does not implement the `Copy` trait
    |
 help: borrow this binding in the pattern to avoid moving the value
    |
@@ -221,7 +221,7 @@ LL |         a @ Some(ref b) => {}
    |         ^        ----- value borrowed here after move
    |         |
    |         value moved into `a` here
-   |         move occurs because `a` has type `Option<U>` which does not implement the `Copy` trait
+   |         move occurs because `a` has type `Option<U>`, which does not implement the `Copy` trait
    |
 help: borrow this binding in the pattern to avoid moving the value
    |
@@ -236,7 +236,7 @@ LL |         a @ Some((mut b @ ref mut c, d @ ref e)) => {}
    |         |                 |
    |         |                 value borrowed here after move
    |         value moved into `a` here
-   |         move occurs because `a` has type `Option<(U, U)>` which does not implement the `Copy` trait
+   |         move occurs because `a` has type `Option<(U, U)>`, which does not implement the `Copy` trait
    |
 help: borrow this binding in the pattern to avoid moving the value
    |
@@ -250,7 +250,7 @@ LL |         a @ Some((mut b @ ref mut c, d @ ref e)) => {}
    |                   ^^^^^   --------- value borrowed here after move
    |                   |
    |                   value moved into `b` here
-   |                   move occurs because `b` has type `U` which does not implement the `Copy` trait
+   |                   move occurs because `b` has type `U`, which does not implement the `Copy` trait
    |
 help: borrow this binding in the pattern to avoid moving the value
    |
@@ -264,7 +264,7 @@ LL |         a @ Some((mut b @ ref mut c, d @ ref e)) => {}
    |                                      ^   ----- value borrowed here after move
    |                                      |
    |                                      value moved into `d` here
-   |                                      move occurs because `d` has type `U` which does not implement the `Copy` trait
+   |                                      move occurs because `d` has type `U`, which does not implement the `Copy` trait
    |
 help: borrow this binding in the pattern to avoid moving the value
    |
@@ -279,7 +279,7 @@ LL |         mut a @ Some([ref b, ref mut c]) => {}
    |         |             |
    |         |             value borrowed here after move
    |         value moved into `a` here
-   |         move occurs because `a` has type `Option<[U; 2]>` which does not implement the `Copy` trait
+   |         move occurs because `a` has type `Option<[U; 2]>`, which does not implement the `Copy` trait
    |
 help: borrow this binding in the pattern to avoid moving the value
    |
@@ -349,7 +349,7 @@ LL |     fn f1(a @ ref b: U) {}
    |           ^   ----- value borrowed here after move
    |           |
    |           value moved into `a` here
-   |           move occurs because `a` has type `U` which does not implement the `Copy` trait
+   |           move occurs because `a` has type `U`, which does not implement the `Copy` trait
    |
 help: borrow this binding in the pattern to avoid moving the value
    |
@@ -364,7 +364,7 @@ LL |     fn f2(mut a @ (b @ ref c, mut d @ ref e): (U, U)) {}
    |           |            |
    |           |            value borrowed here after move
    |           value moved into `a` here
-   |           move occurs because `a` has type `(U, U)` which does not implement the `Copy` trait
+   |           move occurs because `a` has type `(U, U)`, which does not implement the `Copy` trait
    |
 help: borrow this binding in the pattern to avoid moving the value
    |
@@ -378,7 +378,7 @@ LL |     fn f2(mut a @ (b @ ref c, mut d @ ref e): (U, U)) {}
    |                    ^   ----- value borrowed here after move
    |                    |
    |                    value moved into `b` here
-   |                    move occurs because `b` has type `U` which does not implement the `Copy` trait
+   |                    move occurs because `b` has type `U`, which does not implement the `Copy` trait
    |
 help: borrow this binding in the pattern to avoid moving the value
    |
@@ -392,7 +392,7 @@ LL |     fn f2(mut a @ (b @ ref c, mut d @ ref e): (U, U)) {}
    |                               ^^^^^   ----- value borrowed here after move
    |                               |
    |                               value moved into `d` here
-   |                               move occurs because `d` has type `U` which does not implement the `Copy` trait
+   |                               move occurs because `d` has type `U`, which does not implement the `Copy` trait
    |
 help: borrow this binding in the pattern to avoid moving the value
    |
@@ -417,7 +417,7 @@ LL |     fn f3(a @ [ref mut b, ref c]: [U; 2]) {}
    |           |    |
    |           |    value borrowed here after move
    |           value moved into `a` here
-   |           move occurs because `a` has type `[U; 2]` which does not implement the `Copy` trait
+   |           move occurs because `a` has type `[U; 2]`, which does not implement the `Copy` trait
    |
 help: borrow this binding in the pattern to avoid moving the value
    |

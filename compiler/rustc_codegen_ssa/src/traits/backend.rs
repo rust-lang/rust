@@ -21,7 +21,6 @@ use rustc_session::{
 };
 use rustc_span::symbol::Symbol;
 use rustc_target::abi::call::FnAbi;
-use rustc_target::spec::Target;
 
 use std::fmt;
 
@@ -70,12 +69,6 @@ pub trait CodegenBackend {
     fn print_passes(&self) {}
     fn print_version(&self) {}
 
-    /// If this plugin provides additional builtin targets, provide the one enabled by the options here.
-    /// Be careful: this is called *before* init() is called.
-    fn target_override(&self, _opts: &config::Options) -> Option<Target> {
-        None
-    }
-
     /// The metadata loader used to load rlib and dylib metadata.
     ///
     /// Alternative codegen backends may want to use different rlib or dylib formats than the
@@ -111,6 +104,13 @@ pub trait CodegenBackend {
         codegen_results: CodegenResults,
         outputs: &OutputFilenames,
     ) -> Result<(), ErrorGuaranteed>;
+
+    /// Returns `true` if this backend can be safely called from multiple threads.
+    ///
+    /// Defaults to `true`.
+    fn supports_parallel(&self) -> bool {
+        true
+    }
 }
 
 pub trait ExtraBackendMethods:

@@ -1,6 +1,6 @@
 //@ check-fail
 // Tests error conditions for specifying diagnostics using #[derive(Diagnostic)]
-//@ normalize-stderr-test "the following other types implement trait `IntoDiagnosticArg`:(?:.*\n){0,9}\s+and \d+ others" -> "normalized in stderr"
+//@ normalize-stderr-test "the following other types implement trait `IntoDiagArg`:(?:.*\n){0,9}\s+and \d+ others" -> "normalized in stderr"
 //@ normalize-stderr-test "(COMPILER_DIR/.*\.rs):[0-9]+:[0-9]+" -> "$1:LL:CC"
 
 // The proc_macro2 crate handles spans differently when on beta/stable release rather than nightly,
@@ -347,7 +347,7 @@ struct ArgFieldWithoutSkip {
     #[primary_span]
     span: Span,
     other: Hello,
-    //~^ ERROR the trait bound `Hello: IntoDiagnosticArg` is not satisfied
+    //~^ ERROR the trait bound `Hello: IntoDiagArg` is not satisfied
 }
 
 #[derive(Diagnostic)]
@@ -355,7 +355,7 @@ struct ArgFieldWithoutSkip {
 struct ArgFieldWithSkip {
     #[primary_span]
     span: Span,
-    // `Hello` does not implement `IntoDiagnosticArg` so this would result in an error if
+    // `Hello` does not implement `IntoDiagArg` so this would result in an error if
     // not for `#[skip_arg]`.
     #[skip_arg]
     other: Hello,

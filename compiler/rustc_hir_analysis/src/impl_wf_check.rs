@@ -14,8 +14,7 @@ use min_specialization::check_min_specialization;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{codes::*, struct_span_code_err};
 use rustc_hir::def::DefKind;
-use rustc_hir::def_id::{LocalDefId, LocalModDefId};
-use rustc_middle::query::Providers;
+use rustc_hir::def_id::LocalDefId;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
 use rustc_span::{ErrorGuaranteed, Span, Symbol};
 
@@ -51,23 +50,16 @@ mod min_specialization;
 /// impl<'a> Trait<Foo> for Bar { type X = &'a i32; }
 /// //   ^ 'a is unused and appears in assoc type, error
 /// ```
-fn check_mod_impl_wf(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) -> Result<(), ErrorGuaranteed> {
+pub fn check_impl_wf(tcx: TyCtxt<'_>, impl_def_id: LocalDefId) -> Result<(), ErrorGuaranteed> {
     let min_specialization = tcx.features().min_specialization;
-    let module = tcx.hir_module_items(module_def_id);
     let mut res = Ok(());
-    for id in module.items() {
-        if matches!(tcx.def_kind(id.owner_id), DefKind::Impl { .. }) {
-            res = res.and(enforce_impl_params_are_constrained(tcx, id.owner_id.def_id));
-            if min_specialization {
-                res = res.and(check_min_specialization(tcx, id.owner_id.def_id));
-            }
-        }
+    debug_assert!(matches!(tcx.def_kind(impl_def_id), DefKind::Impl { .. }));
+    res = res.and(enforce_impl_params_are_constrained(tcx, impl_def_id));
+    if min_specialization {
+        res = res.and(check_min_specialization(tcx, impl_def_id));
     }
-    res
-}
 
-pub fn provide(providers: &mut Providers) {
-    *providers = Providers { check_mod_impl_wf, ..*providers };
+    res
 }
 
 fn enforce_impl_params_are_constrained(

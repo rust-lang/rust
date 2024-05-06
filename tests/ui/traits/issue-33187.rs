@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 
 struct Foo<A: Repr>(<A as Repr>::Data);
 

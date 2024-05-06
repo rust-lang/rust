@@ -17,7 +17,7 @@ fn example(variant: bool) {
     unsafe {
         fn not_so_innocent(x: &mut u32) -> usize {
             let x_raw4 = x as *mut u32;
-            x_raw4.expose_addr()
+            x_raw4.expose_provenance()
         }
 
         let mut c = 42u32;
@@ -26,7 +26,7 @@ fn example(variant: bool) {
         // stack: [..., Unique(1)]
 
         let x_raw2 = x_unique1 as *mut u32;
-        let x_raw2_addr = x_raw2.expose_addr();
+        let x_raw2_addr = x_raw2.expose_provenance();
         // stack: [..., Unique(1), SharedRW(2)]
 
         let x_unique3 = &mut *x_raw2;
@@ -39,7 +39,7 @@ fn example(variant: bool) {
         // 4 is the "obvious" choice (topmost tag, what we used to do with untagged pointers).
         // And indeed if `variant == true` it is the only possible choice.
         // But if `variant == false` then 2 is the only possible choice!
-        let x_wildcard = ptr::from_exposed_addr_mut::<i32>(x_raw2_addr);
+        let x_wildcard = ptr::with_exposed_provenance_mut::<i32>(x_raw2_addr);
 
         if variant {
             // If we picked 2, this will invalidate 3.

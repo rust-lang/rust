@@ -28,7 +28,7 @@
       bb0: {
           StorageLive(_1);
           StorageLive(_2);
-          _14 = const _;
+          _14 = const main::promoted[0];
           _2 = &(*_14);
           _1 = <&[i32; 2] as IntoIterator>::into_iter(move _2) -> [return: bb1, unwind continue];
       }

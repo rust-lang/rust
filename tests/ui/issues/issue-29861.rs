@@ -14,6 +14,7 @@ impl<'a, T: 'a> MakeRef2 for T {
 }
 
 fn foo() -> <String as MakeRef2>::Ref2 { &String::from("foo") }
+//~^ ERROR temporary value dropped while borrowed
 
 fn main() {
     println!("{}", foo());

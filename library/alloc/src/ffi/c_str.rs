@@ -1,3 +1,5 @@
+//! [`CString`] and its related types.
+
 #[cfg(test)]
 mod tests;
 
@@ -39,6 +41,7 @@ use crate::sync::Arc;
 /// or anything that implements <code>[Into]<[Vec]<[u8]>></code> (for
 /// example, you can build a `CString` straight out of a [`String`] or
 /// a <code>&[str]</code>, since both implement that trait).
+/// You can create a `CString` from a literal with `CString::from(c"Text")`.
 ///
 /// The [`CString::new`] method will actually check that the provided <code>&[[u8]]</code>
 /// does not have 0 bytes in the middle, and return an error if it
@@ -406,7 +409,7 @@ impl CString {
                 fn strlen(s: *const c_char) -> usize;
             }
             let len = strlen(ptr) + 1; // Including the NUL byte
-            let slice = slice::from_raw_parts_mut(ptr, len as usize);
+            let slice = slice::from_raw_parts_mut(ptr, len);
             CString { inner: Box::from_raw(slice as *mut [c_char] as *mut [u8]) }
         }
     }
@@ -1067,27 +1070,22 @@ impl CStr {
     ///
     /// # Examples
     ///
-    /// Calling `to_string_lossy` on a `CStr` containing valid UTF-8:
+    /// Calling `to_string_lossy` on a `CStr` containing valid UTF-8. The leading
+    /// `c` on the string literal denotes a `CStr`.
     ///
     /// ```
     /// use std::borrow::Cow;
-    /// use std::ffi::CStr;
     ///
-    /// let cstr = CStr::from_bytes_with_nul(b"Hello World\0")
-    ///                  .expect("CStr::from_bytes_with_nul failed");
-    /// assert_eq!(cstr.to_string_lossy(), Cow::Borrowed("Hello World"));
+    /// assert_eq!(c"Hello World".to_string_lossy(), Cow::Borrowed("Hello World"));
     /// ```
     ///
     /// Calling `to_string_lossy` on a `CStr` containing invalid UTF-8:
     ///
     /// ```
     /// use std::borrow::Cow;
-    /// use std::ffi::CStr;
     ///
-    /// let cstr = CStr::from_bytes_with_nul(b"Hello \xF0\x90\x80World\0")
-    ///                  .expect("CStr::from_bytes_with_nul failed");
     /// assert_eq!(
-    ///     cstr.to_string_lossy(),
+    ///     c"Hello \xF0\x90\x80World".to_string_lossy(),
     ///     Cow::Owned(String::from("Hello �World")) as Cow<'_, str>
     /// );
     /// ```

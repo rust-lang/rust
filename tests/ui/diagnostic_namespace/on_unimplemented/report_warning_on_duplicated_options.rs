@@ -1,5 +1,3 @@
-#![feature(diagnostic_namespace)]
-
 #[diagnostic::on_unimplemented(
     message = "first message",
     label = "first label",

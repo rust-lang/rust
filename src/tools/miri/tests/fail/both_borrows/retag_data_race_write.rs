@@ -1,6 +1,8 @@
 //! Make sure that a retag acts like a write for the data race model.
 //@revisions: stack tree
 //@compile-flags: -Zmiri-preemption-rate=0
+// Avoid accidental synchronization via address reuse inside `thread::spawn`.
+//@compile-flags: -Zmiri-address-reuse-cross-thread-rate=0
 //@[tree]compile-flags: -Zmiri-tree-borrows
 #[derive(Copy, Clone)]
 struct SendPtr(*mut u8);
@@ -17,7 +19,7 @@ fn thread_1(p: SendPtr) {
 fn thread_2(p: SendPtr) {
     let p = p.0;
     unsafe {
-        *p = 5; //~ ERROR: /Data race detected between \(1\) non-atomic (read|write) on thread `unnamed-[0-9]+` and \(2\) non-atomic write on thread `unnamed-[0-9]+`/
+        *p = 5; //~ ERROR: /Data race detected between \(1\) retag (read|write) on thread `unnamed-[0-9]+` and \(2\) non-atomic write on thread `unnamed-[0-9]+`/
     }
 }
 

@@ -49,13 +49,13 @@ use crate::{
 //
 // fn bar() {
 //     {
-//         let word = "안녕하세요";
+//         let word: &str = "안녕하세요";
 //         if !word.is_empty() {
 //             print(word);
 //         }
 //     };
 //     {
-//         let word = "여러분";
+//         let word: &str = "여러분";
 //         if !word.is_empty() {
 //             print(word);
 //         }
@@ -206,7 +206,7 @@ pub(crate) fn inline_call(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<
     let fn_body = fn_source.value.body()?;
     let param_list = fn_source.value.param_list()?;
 
-    let FileRange { file_id, range } = fn_source.syntax().original_file_range(ctx.sema.db);
+    let FileRange { file_id, range } = fn_source.syntax().original_file_range_rooted(ctx.sema.db);
     if file_id == ctx.file_id() && range.contains(ctx.offset()) {
         cov_mark::hit!(inline_call_recursive);
         return None;
@@ -418,24 +418,15 @@ fn inline(
         let expr: &ast::Expr = expr;
 
         let mut insert_let_stmt = || {
-            let param_ty = match param_ty {
-                None => None,
-                Some(param_ty) => {
-                    if sema.hir_file_for(param_ty.syntax()).is_macro() {
-                        if let Some(param_ty) =
-                            ast::Type::cast(insert_ws_into(param_ty.syntax().clone()))
-                        {
-                            Some(param_ty)
-                        } else {
-                            Some(param_ty.clone_for_update())
-                        }
-                    } else {
-                        Some(param_ty.clone_for_update())
-                    }
+            let param_ty = param_ty.clone().map(|param_ty| {
+                if sema.hir_file_for(param_ty.syntax()).is_macro() {
+                    ast::Type::cast(insert_ws_into(param_ty.syntax().clone())).unwrap_or(param_ty)
+                } else {
+                    param_ty
                 }
-            };
-            let ty: Option<syntax::ast::Type> =
-                sema.type_of_expr(expr).filter(TypeInfo::has_adjustment).and(param_ty);
+            });
+
+            let ty = sema.type_of_expr(expr).filter(TypeInfo::has_adjustment).and(param_ty);
 
             let is_self = param
                 .name(sema.db)
@@ -1359,8 +1350,8 @@ macro_rules! define_foo {
 define_foo!();
 fn bar() -> u32 {
     {
-      let x = 0;
-      x
+        let x = 0;
+        x
     }
 }
 "#,
@@ -1673,7 +1664,7 @@ fn main() {
     let a: A = A{};
     let b = {
         let a = a;
-      a as A
+        a as A
     };
 }
 "#,
@@ -1792,7 +1783,7 @@ fn _hash2(self_: &u64, state: &mut u64) {
     {
         let inner_self_: &u64 = &self_;
         let state: &mut u64 = state;
-      _write_u64(state, *inner_self_)
+        _write_u64(state, *inner_self_)
     };
 }
 "#,

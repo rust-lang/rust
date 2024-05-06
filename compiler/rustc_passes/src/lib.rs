@@ -8,13 +8,10 @@
 #![doc(rust_logo)]
 #![feature(rustdoc_internals)]
 #![allow(internal_features)]
-#![feature(generic_nonzero)]
 #![feature(let_chains)]
 #![feature(map_try_insert)]
 #![feature(try_blocks)]
 
-#[macro_use]
-extern crate rustc_middle;
 #[macro_use]
 extern crate tracing;
 
@@ -28,6 +25,7 @@ mod debugger_visualizer;
 mod diagnostic_items;
 pub mod entry;
 mod errors;
+#[cfg(debug_assertions)]
 pub mod hir_id_validator;
 pub mod hir_stats;
 mod lang_items;

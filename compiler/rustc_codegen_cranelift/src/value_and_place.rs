@@ -2,6 +2,7 @@
 
 use cranelift_codegen::entity::EntityRef;
 use cranelift_codegen::ir::immediates::Offset32;
+use cranelift_frontend::Variable;
 use rustc_middle::ty::FnSig;
 
 use crate::prelude::*;
@@ -326,7 +327,7 @@ impl<'tcx> CValue<'tcx> {
 
         let val = match layout.ty.kind() {
             ty::Uint(UintTy::U128) | ty::Int(IntTy::I128) => {
-                let const_val = const_val.to_bits(layout.size).unwrap();
+                let const_val = const_val.assert_bits(layout.size);
                 let lsb = fx.bcx.ins().iconst(types::I64, const_val as u64 as i64);
                 let msb = fx.bcx.ins().iconst(types::I64, (const_val >> 64) as u64 as i64);
                 fx.bcx.ins().iconcat(lsb, msb)
@@ -338,7 +339,7 @@ impl<'tcx> CValue<'tcx> {
             | ty::Ref(..)
             | ty::RawPtr(..)
             | ty::FnPtr(..) => {
-                let raw_val = const_val.size().truncate(const_val.to_bits(layout.size).unwrap());
+                let raw_val = const_val.size().truncate(const_val.assert_bits(layout.size));
                 fx.bcx.ins().iconst(clif_ty, raw_val as i64)
             }
             ty::Float(FloatTy::F32) => {
@@ -865,15 +866,10 @@ pub(crate) fn assert_assignable<'tcx>(
         return;
     }
     match (from_ty.kind(), to_ty.kind()) {
-        (ty::Ref(_, a, _), ty::Ref(_, b, _))
-        | (
-            ty::RawPtr(TypeAndMut { ty: a, mutbl: _ }),
-            ty::RawPtr(TypeAndMut { ty: b, mutbl: _ }),
-        ) => {
+        (ty::Ref(_, a, _), ty::Ref(_, b, _)) | (ty::RawPtr(a, _), ty::RawPtr(b, _)) => {
             assert_assignable(fx, *a, *b, limit - 1);
         }
-        (ty::Ref(_, a, _), ty::RawPtr(TypeAndMut { ty: b, mutbl: _ }))
-        | (ty::RawPtr(TypeAndMut { ty: a, mutbl: _ }), ty::Ref(_, b, _)) => {
+        (ty::Ref(_, a, _), ty::RawPtr(b, _)) | (ty::RawPtr(a, _), ty::Ref(_, b, _)) => {
             assert_assignable(fx, *a, *b, limit - 1);
         }
         (ty::FnPtr(_), ty::FnPtr(_)) => {

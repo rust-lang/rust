@@ -1697,6 +1697,18 @@ fn test_reserve_exact() {
 #[test]
 #[cfg_attr(miri, ignore)] // Miri does not support signalling OOM
 #[cfg_attr(target_os = "android", ignore)] // Android used in CI has a broken dlmalloc
+fn test_try_with_capacity() {
+    let mut vec: Vec<u32> = Vec::try_with_capacity(5).unwrap();
+    assert_eq!(0, vec.len());
+    assert!(vec.capacity() >= 5 && vec.capacity() <= isize::MAX as usize / 4);
+    assert!(vec.spare_capacity_mut().len() >= 5);
+
+    assert!(Vec::<u16>::try_with_capacity(isize::MAX as usize + 1).is_err());
+}
+
+#[test]
+#[cfg_attr(miri, ignore)] // Miri does not support signalling OOM
+#[cfg_attr(target_os = "android", ignore)] // Android used in CI has a broken dlmalloc
 fn test_try_reserve() {
     // These are the interesting cases:
     // * exactly isize::MAX should never trigger a CapacityOverflow (can be OOM)
@@ -2630,4 +2642,75 @@ fn test_vec_from_array_ref() {
 #[test]
 fn test_vec_from_array_mut_ref() {
     assert_eq!(Vec::from(&mut [1, 2, 3]), vec![1, 2, 3]);
+}
+
+#[test]
+fn test_pop_if() {
+    let mut v = vec![1, 2, 3, 4];
+    let pred = |x: &mut i32| *x % 2 == 0;
+
+    assert_eq!(v.pop_if(pred), Some(4));
+    assert_eq!(v, [1, 2, 3]);
+
+    assert_eq!(v.pop_if(pred), None);
+    assert_eq!(v, [1, 2, 3]);
+}
+
+#[test]
+fn test_pop_if_empty() {
+    let mut v = Vec::<i32>::new();
+    assert_eq!(v.pop_if(|_| true), None);
+    assert!(v.is_empty());
+}
+
+#[test]
+fn test_pop_if_mutates() {
+    let mut v = vec![1];
+    let pred = |x: &mut i32| {
+        *x += 1;
+        false
+    };
+    assert_eq!(v.pop_if(pred), None);
+    assert_eq!(v, [2]);
+}
+
+/// This assortment of tests, in combination with miri, verifies we handle UB on fishy arguments
+/// in the stdlib. Draining and extending the allocation are fairly well-tested earlier, but
+/// `vec.insert(usize::MAX, val)` once slipped by!
+///
+/// All code that manipulates the collection types should be tested with "trivially wrong" args.
+#[test]
+fn max_dont_panic() {
+    let mut v = vec![0];
+    let _ = v.get(usize::MAX);
+    v.shrink_to(usize::MAX);
+    v.truncate(usize::MAX);
+}
+
+#[test]
+#[should_panic]
+fn max_insert() {
+    let mut v = vec![0];
+    v.insert(usize::MAX, 1);
+}
+
+#[test]
+#[should_panic]
+fn max_remove() {
+    let mut v = vec![0];
+    v.remove(usize::MAX);
+}
+
+#[test]
+#[should_panic]
+fn max_splice() {
+    let mut v = vec![0];
+    v.splice(usize::MAX.., core::iter::once(1));
+}
+
+#[test]
+#[should_panic]
+fn max_swap_remove() {
+    let mut v = vec![0];
+    v.swap_remove(usize::MAX);
 }

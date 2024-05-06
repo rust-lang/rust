@@ -1,7 +1,5 @@
 //@ run-pass
 
-#![feature(associated_type_bounds)]
-
 #![allow(unused_assignments)]
 
 trait Tr1: Copy { type As1: Copy; }

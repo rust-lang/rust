@@ -11,6 +11,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_middle::ty::print::RegionHighlightMode;
 use rustc_middle::ty::{self, RegionVid, Ty};
 use rustc_middle::ty::{GenericArgKind, GenericArgsRef};
+use rustc_middle::{bug, span_bug};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 
@@ -191,9 +192,9 @@ impl Display for RegionName {
     }
 }
 
-impl rustc_errors::IntoDiagnosticArg for RegionName {
-    fn into_diagnostic_arg(self) -> rustc_errors::DiagArgValue {
-        self.to_string().into_diagnostic_arg()
+impl rustc_errors::IntoDiagArg for RegionName {
+    fn into_diag_arg(self) -> rustc_errors::DiagArgValue {
+        self.to_string().into_diag_arg()
     }
 }
 
@@ -555,8 +556,8 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                     search_stack.push((*elem_ty, elem_hir_ty));
                 }
 
-                (ty::RawPtr(mut_ty), hir::TyKind::Ptr(mut_hir_ty)) => {
-                    search_stack.push((mut_ty.ty, &mut_hir_ty.ty));
+                (ty::RawPtr(mut_ty, _), hir::TyKind::Ptr(mut_hir_ty)) => {
+                    search_stack.push((*mut_ty, &mut_hir_ty.ty));
                 }
 
                 _ => {

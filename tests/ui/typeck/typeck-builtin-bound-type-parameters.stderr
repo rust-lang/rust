@@ -25,6 +25,16 @@ LL | trait Trait: Copy<dyn Send> {}
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0107]: trait takes 0 generic arguments but 1 generic argument was supplied
+  --> $DIR/typeck-builtin-bound-type-parameters.rs:4:14
+   |
+LL | trait Trait: Copy<dyn Send> {}
+   |              ^^^^---------- help: remove these generics
+   |              |
+   |              expected 0 generic arguments
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0107]: trait takes 0 generic arguments but 1 generic argument was supplied
   --> $DIR/typeck-builtin-bound-type-parameters.rs:9:21
    |
 LL | struct MyStruct1<T: Copy<T>>(T);
@@ -55,16 +65,6 @@ LL | fn foo2<'a, T:Copy<'a, U>, U>(x: T) {}
    |               ^^^^     - help: remove this generic argument
    |               |
    |               expected 0 generic arguments
-
-error[E0107]: trait takes 0 generic arguments but 1 generic argument was supplied
-  --> $DIR/typeck-builtin-bound-type-parameters.rs:4:14
-   |
-LL | trait Trait: Copy<dyn Send> {}
-   |              ^^^^---------- help: remove these generics
-   |              |
-   |              expected 0 generic arguments
-   |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 8 previous errors
 

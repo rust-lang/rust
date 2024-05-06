@@ -88,7 +88,6 @@ impl<'tcx> LateLintPass<'tcx> for NonminimalBool {
 
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
         match expr.kind {
-            ExprKind::Unary(UnOp::Not, sub) => check_inverted_condition(cx, expr.span, sub),
             // This check the case where an element in a boolean comparison is inverted, like:
             //
             // ```
@@ -119,27 +118,6 @@ fn bin_op_eq_str(op: BinOpKind) -> Option<&'static str> {
     }
 }
 
-fn check_inverted_condition(cx: &LateContext<'_>, expr_span: Span, sub_expr: &Expr<'_>) {
-    if !expr_span.from_expansion()
-        && let ExprKind::Binary(op, left, right) = sub_expr.kind
-        && let Some(left) = snippet_opt(cx, left.span)
-        && let Some(right) = snippet_opt(cx, right.span)
-    {
-        let Some(op) = inverted_bin_op_eq_str(op.node) else {
-            return;
-        };
-        span_lint_and_sugg(
-            cx,
-            NONMINIMAL_BOOL,
-            expr_span,
-            "this boolean expression can be simplified",
-            "try",
-            format!("{left} {op} {right}",),
-            Applicability::MachineApplicable,
-        );
-    }
-}
-
 fn check_inverted_bool_in_condition(
     cx: &LateContext<'_>,
     expr_span: Span,
@@ -148,8 +126,8 @@ fn check_inverted_bool_in_condition(
     right: &Expr<'_>,
 ) {
     if expr_span.from_expansion()
-        && (!cx.typeck_results().node_types()[left.hir_id].is_bool()
-            || !cx.typeck_results().node_types()[right.hir_id].is_bool())
+        || !cx.typeck_results().node_types()[left.hir_id].is_bool()
+        || !cx.typeck_results().node_types()[right.hir_id].is_bool()
     {
         return;
     }
@@ -368,11 +346,18 @@ fn simplify_not(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<String> {
                 _ => None,
             }
             .and_then(|op| {
-                Some(format!(
-                    "{}{op}{}",
-                    snippet_opt(cx, lhs.span)?,
-                    snippet_opt(cx, rhs.span)?
-                ))
+                let lhs_snippet = snippet_opt(cx, lhs.span)?;
+                let rhs_snippet = snippet_opt(cx, rhs.span)?;
+
+                if !(lhs_snippet.starts_with('(') && lhs_snippet.ends_with(')')) {
+                    if let (ExprKind::Cast(..), BinOpKind::Ge) = (&lhs.kind, binop.node) {
+                        // e.g. `(a as u64) < b`. Without the parens the `<` is
+                        // interpreted as a start of generic arguments for `u64`
+                        return Some(format!("({lhs_snippet}){op}{rhs_snippet}"));
+                    }
+                }
+
+                Some(format!("{lhs_snippet}{op}{rhs_snippet}"))
             })
         },
         ExprKind::MethodCall(path, receiver, [], _) => {
@@ -414,13 +399,13 @@ fn simple_negate(b: Bool) -> Bool {
         t @ Term(_) => Not(Box::new(t)),
         And(mut v) => {
             for el in &mut v {
-                *el = simple_negate(::std::mem::replace(el, True));
+                *el = simple_negate(std::mem::replace(el, True));
             }
             Or(v)
         },
         Or(mut v) => {
             for el in &mut v {
-                *el = simple_negate(::std::mem::replace(el, True));
+                *el = simple_negate(std::mem::replace(el, True));
             }
             And(v)
         },

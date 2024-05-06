@@ -1,25 +1,25 @@
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
-  --> $DIR/type-placeholder-fn-in-const.rs:4:25
+  --> $DIR/type-placeholder-fn-in-const.rs:10:25
    |
-LL |     const TEST: fn() -> _;
-   |                         ^ not allowed in type signatures
-
-error[E0121]: the placeholder `_` is not allowed within types on item signatures for associated constants
-  --> $DIR/type-placeholder-fn-in-const.rs:4:25
-   |
-LL |     const TEST: fn() -> _;
+LL |     const TEST: fn() -> _ = 42;
    |                         ^ not allowed in type signatures
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
-  --> $DIR/type-placeholder-fn-in-const.rs:10:25
+  --> $DIR/type-placeholder-fn-in-const.rs:4:25
    |
-LL |     const TEST: fn() -> _ = 42;
+LL |     const TEST: fn() -> _;
    |                         ^ not allowed in type signatures
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for associated constants
   --> $DIR/type-placeholder-fn-in-const.rs:10:25
    |
 LL |     const TEST: fn() -> _ = 42;
+   |                         ^ not allowed in type signatures
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for associated constants
+  --> $DIR/type-placeholder-fn-in-const.rs:4:25
+   |
+LL |     const TEST: fn() -> _;
    |                         ^ not allowed in type signatures
 
 error: aborting due to 4 previous errors

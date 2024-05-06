@@ -1,4 +1,5 @@
 //@aux-build:proc_macro_derive.rs
+
 #![warn(clippy::std_instead_of_core)]
 #![allow(unused_imports)]
 
@@ -21,6 +22,14 @@ fn std_instead_of_core() {
     // Multiple imports
     use std::fmt::{Debug, Result};
     //~^ ERROR: used import from `std` instead of `core`
+
+    // Multiple imports multiline
+    #[rustfmt::skip]
+    use std::{
+        //~^ ERROR: used import from `std` instead of `core`
+        fmt::Write as _,
+        ptr::read_unaligned,
+    };
 
     // Function calls
     let ptr = std::ptr::null::<u32>();

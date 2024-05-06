@@ -23,13 +23,13 @@
   <text xml:space="preserve" class="container fg">
     <tspan x="10px" y="28px"><tspan class="fg-ansi256-009 bold">error[E0106]</tspan><tspan class="fg-ansi256-015 bold">: missing lifetime specifier</tspan>
 </tspan>
-    <tspan x="10px" y="46px"><tspan>  </tspan><tspan class="fg-ansi256-014 bold">--&gt; </tspan><tspan>$DIR/multiline-multipart-suggestion.rs:6:34</tspan>
+    <tspan x="10px" y="46px"><tspan>  </tspan><tspan class="fg-ansi256-014 bold">--&gt; </tspan><tspan>$DIR/multiline-multipart-suggestion.rs:4:34</tspan>
 </tspan>
     <tspan x="10px" y="64px"><tspan>   </tspan><tspan class="fg-ansi256-014 bold">|</tspan>
 </tspan>
     <tspan x="10px" y="82px"><tspan class="fg-ansi256-014 bold">LL</tspan><tspan> </tspan><tspan class="fg-ansi256-014 bold">|</tspan><tspan> fn short(foo_bar: &amp;Vec&lt;&amp;i32&gt;) -&gt; &amp;i32 {</tspan>
 </tspan>
-    <tspan x="10px" y="100px"><tspan>   </tspan><tspan class="fg-ansi256-014 bold">| </tspan><tspan>                  </tspan><tspan class="fg-ansi256-014 bold">----------</tspan><tspan>     </tspan><tspan class="fg-ansi256-009 bold">^</tspan><tspan> </tspan><tspan class="fg-ansi256-009 bold">expected named lifetime parameter</tspan>
+    <tspan x="10px" y="100px"><tspan>   </tspan><tspan class="fg-ansi256-014 bold">|</tspan><tspan>                   </tspan><tspan class="fg-ansi256-014 bold">----------</tspan><tspan>     </tspan><tspan class="fg-ansi256-009 bold">^</tspan><tspan> </tspan><tspan class="fg-ansi256-009 bold">expected named lifetime parameter</tspan>
 </tspan>
     <tspan x="10px" y="118px"><tspan>   </tspan><tspan class="fg-ansi256-014 bold">|</tspan>
 </tspan>
@@ -47,19 +47,19 @@
 </tspan>
     <tspan x="10px" y="244px"><tspan class="fg-ansi256-009 bold">error[E0106]</tspan><tspan class="fg-ansi256-015 bold">: missing lifetime specifier</tspan>
 </tspan>
-    <tspan x="10px" y="262px"><tspan>  </tspan><tspan class="fg-ansi256-014 bold">--&gt; </tspan><tspan>$DIR/multiline-multipart-suggestion.rs:13:6</tspan>
+    <tspan x="10px" y="262px"><tspan>  </tspan><tspan class="fg-ansi256-014 bold">--&gt; </tspan><tspan>$DIR/multiline-multipart-suggestion.rs:11:6</tspan>
 </tspan>
     <tspan x="10px" y="280px"><tspan>   </tspan><tspan class="fg-ansi256-014 bold">|</tspan>
 </tspan>
     <tspan x="10px" y="298px"><tspan class="fg-ansi256-014 bold">LL</tspan><tspan> </tspan><tspan class="fg-ansi256-014 bold">|</tspan><tspan>     foo_bar: &amp;Vec&lt;&amp;i32&gt;,</tspan>
 </tspan>
-    <tspan x="10px" y="316px"><tspan>   </tspan><tspan class="fg-ansi256-014 bold">| </tspan><tspan>             </tspan><tspan class="fg-ansi256-014 bold">----------</tspan>
+    <tspan x="10px" y="316px"><tspan>   </tspan><tspan class="fg-ansi256-014 bold">|</tspan><tspan>              </tspan><tspan class="fg-ansi256-014 bold">----------</tspan>
 </tspan>
     <tspan x="10px" y="334px"><tspan class="fg-ansi256-014 bold">LL</tspan><tspan> </tspan><tspan class="fg-ansi256-014 bold">|</tspan><tspan>     something_very_long_so_that_the_line_will_wrap_around__________: i32,</tspan>
 </tspan>
     <tspan x="10px" y="352px"><tspan class="fg-ansi256-014 bold">LL</tspan><tspan> </tspan><tspan class="fg-ansi256-014 bold">|</tspan><tspan> ) -&gt; &amp;i32 {</tspan>
 </tspan>
-    <tspan x="10px" y="370px"><tspan>   </tspan><tspan class="fg-ansi256-014 bold">| </tspan><tspan>     </tspan><tspan class="fg-ansi256-009 bold">^</tspan><tspan> </tspan><tspan class="fg-ansi256-009 bold">expected named lifetime parameter</tspan>
+    <tspan x="10px" y="370px"><tspan>   </tspan><tspan class="fg-ansi256-014 bold">|</tspan><tspan>      </tspan><tspan class="fg-ansi256-009 bold">^</tspan><tspan> </tspan><tspan class="fg-ansi256-009 bold">expected named lifetime parameter</tspan>
 </tspan>
     <tspan x="10px" y="388px"><tspan>   </tspan><tspan class="fg-ansi256-014 bold">|</tspan>
 </tspan>
@@ -73,7 +73,7 @@
 </tspan>
     <tspan x="10px" y="478px"><tspan class="fg-ansi256-014 bold">LL</tspan><tspan> </tspan><tspan class="fg-ansi256-010">~ </tspan><tspan>    foo_bar: &amp;</tspan><tspan class="fg-ansi256-010">'a </tspan><tspan>Vec&lt;&amp;</tspan><tspan class="fg-ansi256-010">'a </tspan><tspan>i32&gt;,</tspan>
 </tspan>
-    <tspan x="10px" y="496px"><tspan class="fg-ansi256-014 bold">LL</tspan><tspan> </tspan><tspan class="fg-ansi256-014 bold">| </tspan><tspan>    something_very_long_so_that_the_line_will_wrap_around__________: i32,</tspan>
+    <tspan x="10px" y="496px"><tspan class="fg-ansi256-014 bold">LL</tspan><tspan> </tspan><tspan class="fg-ansi256-014 bold">|</tspan><tspan>     something_very_long_so_that_the_line_will_wrap_around__________: i32,</tspan>
 </tspan>
     <tspan x="10px" y="514px"><tspan class="fg-ansi256-014 bold">LL</tspan><tspan> </tspan><tspan class="fg-ansi256-010">~ </tspan><tspan>) -&gt; &amp;</tspan><tspan class="fg-ansi256-010">'a </tspan><tspan>i32 {</tspan>
 </tspan>
@@ -83,13 +83,13 @@
 </tspan>
     <tspan x="10px" y="568px"><tspan class="fg-ansi256-009 bold">error[E0106]</tspan><tspan class="fg-ansi256-015 bold">: missing lifetime specifier</tspan>
 </tspan>
-    <tspan x="10px" y="586px"><tspan>  </tspan><tspan class="fg-ansi256-014 bold">--&gt; </tspan><tspan>$DIR/multiline-multipart-suggestion.rs:18:29</tspan>
+    <tspan x="10px" y="586px"><tspan>  </tspan><tspan class="fg-ansi256-014 bold">--&gt; </tspan><tspan>$DIR/multiline-multipart-suggestion.rs:16:29</tspan>
 </tspan>
     <tspan x="10px" y="604px"><tspan>   </tspan><tspan class="fg-ansi256-014 bold">|</tspan>
 </tspan>
     <tspan x="10px" y="622px"><tspan class="fg-ansi256-014 bold">LL</tspan><tspan> </tspan><tspan class="fg-ansi256-014 bold">|</tspan><tspan>     foo_bar: &amp;Vec&lt;&amp;i32&gt;) -&gt; &amp;i32 {</tspan>
 </tspan>
-    <tspan x="10px" y="640px"><tspan>   </tspan><tspan class="fg-ansi256-014 bold">| </tspan><tspan>             </tspan><tspan class="fg-ansi256-014 bold">----------</tspan><tspan>     </tspan><tspan class="fg-ansi256-009 bold">^</tspan><tspan> </tspan><tspan class="fg-ansi256-009 bold">expected named lifetime parameter</tspan>
+    <tspan x="10px" y="640px"><tspan>   </tspan><tspan class="fg-ansi256-014 bold">|</tspan><tspan>              </tspan><tspan class="fg-ansi256-014 bold">----------</tspan><tspan>     </tspan><tspan class="fg-ansi256-009 bold">^</tspan><tspan> </tspan><tspan class="fg-ansi256-009 bold">expected named lifetime parameter</tspan>
 </tspan>
     <tspan x="10px" y="658px"><tspan>   </tspan><tspan class="fg-ansi256-014 bold">|</tspan>
 </tspan>

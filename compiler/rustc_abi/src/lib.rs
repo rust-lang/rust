@@ -21,6 +21,8 @@ use rustc_macros::{Decodable_Generic, Encodable_Generic};
 use std::iter::Step;
 
 mod layout;
+#[cfg(test)]
+mod tests;
 
 pub use layout::LayoutCalculator;
 
@@ -155,7 +157,7 @@ impl ReprOptions {
     }
 
     /// Returns `true` if this `#[repr()]` should inhibit union ABI optimisations.
-    pub fn inhibit_union_abi_opt(&self) -> bool {
+    pub fn inhibits_union_abi_opt(&self) -> bool {
         self.c()
     }
 }
@@ -698,6 +700,7 @@ impl fmt::Display for AlignFromBytesError {
 
 impl Align {
     pub const ONE: Align = Align { pow2: 0 };
+    pub const EIGHT: Align = Align { pow2: 3 };
     // LLVM has a maximal supported alignment of 2^29, we inherit that.
     pub const MAX: Align = Align { pow2: 29 };
 
@@ -707,19 +710,19 @@ impl Align {
     }
 
     #[inline]
-    pub fn from_bytes(align: u64) -> Result<Align, AlignFromBytesError> {
+    pub const fn from_bytes(align: u64) -> Result<Align, AlignFromBytesError> {
         // Treat an alignment of 0 bytes like 1-byte alignment.
         if align == 0 {
             return Ok(Align::ONE);
         }
 
         #[cold]
-        fn not_power_of_2(align: u64) -> AlignFromBytesError {
+        const fn not_power_of_2(align: u64) -> AlignFromBytesError {
             AlignFromBytesError::NotPowerOfTwo(align)
         }
 
         #[cold]
-        fn too_large(align: u64) -> AlignFromBytesError {
+        const fn too_large(align: u64) -> AlignFromBytesError {
             AlignFromBytesError::TooLarge(align)
         }
 
@@ -742,8 +745,18 @@ impl Align {
     }
 
     #[inline]
+    pub fn bytes_usize(self) -> usize {
+        self.bytes().try_into().unwrap()
+    }
+
+    #[inline]
     pub fn bits(self) -> u64 {
         self.bytes() * 8
+    }
+
+    #[inline]
+    pub fn bits_usize(self) -> usize {
+        self.bits().try_into().unwrap()
     }
 
     /// Computes the best alignment possible for the given offset

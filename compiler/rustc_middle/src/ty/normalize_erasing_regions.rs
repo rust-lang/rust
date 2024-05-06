@@ -10,6 +10,7 @@
 use crate::traits::query::NoSolution;
 use crate::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder};
 use crate::ty::{self, EarlyBinder, GenericArgsRef, Ty, TyCtxt, TypeVisitableExt};
+use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 
 #[derive(Debug, Copy, Clone, HashStable, TyEncodable, TyDecodable)]
 pub enum NormalizationError<'tcx> {
@@ -49,7 +50,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let value = self.erase_regions(value);
         debug!(?value);
 
-        if !value.has_projections() {
+        if !value.has_aliases() {
             value
         } else {
             value.fold_with(&mut NormalizeAfterErasingRegionsFolder { tcx: self, param_env })
@@ -81,7 +82,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let value = self.erase_regions(value);
         debug!(?value);
 
-        if !value.has_projections() {
+        if !value.has_aliases() {
             Ok(value)
         } else {
             let mut folder = TryNormalizeAfterErasingRegionsFolder::new(self, param_env);

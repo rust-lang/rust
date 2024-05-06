@@ -6,7 +6,7 @@ use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, Mutability, QPath, TyKind};
 use rustc_hir_pretty::qpath_to_string;
 use rustc_lint::LateContext;
-use rustc_middle::ty::{self, TypeAndMut};
+use rustc_middle::ty;
 use rustc_span::sym;
 
 use super::PTR_AS_PTR;
@@ -33,8 +33,8 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, msrv: &Msrv) {
 
     if let ExprKind::Cast(cast_expr, cast_to_hir_ty) = expr.kind
         && let (cast_from, cast_to) = (cx.typeck_results().expr_ty(cast_expr), cx.typeck_results().expr_ty(expr))
-        && let ty::RawPtr(TypeAndMut { mutbl: from_mutbl, .. }) = cast_from.kind()
-        && let ty::RawPtr(TypeAndMut { ty: to_pointee_ty, mutbl: to_mutbl }) = cast_to.kind()
+        && let ty::RawPtr(_, from_mutbl) = cast_from.kind()
+        && let ty::RawPtr(to_pointee_ty, to_mutbl) = cast_to.kind()
         && matches!((from_mutbl, to_mutbl),
             (Mutability::Not, Mutability::Not) | (Mutability::Mut, Mutability::Mut))
         // The `U` in `pointer::cast` have to be `Sized`
@@ -62,8 +62,8 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, msrv: &Msrv) {
         // we omit following `cast`:
         let omit_cast = if let ExprKind::Call(func, []) = cast_expr.kind
             && let ExprKind::Path(ref qpath @ QPath::Resolved(None, path)) = func.kind
+            && let Some(method_defid) = path.res.opt_def_id()
         {
-            let method_defid = path.res.def_id();
             if cx.tcx.is_diagnostic_item(sym::ptr_null, method_defid) {
                 OmitFollowedCastReason::Null(qpath)
             } else if cx.tcx.is_diagnostic_item(sym::ptr_null_mut, method_defid) {
@@ -77,7 +77,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, msrv: &Msrv) {
 
         let (help, final_suggestion) = if let Some(method) = omit_cast.corresponding_item() {
             // don't force absolute path
-            let method = qpath_to_string(method);
+            let method = qpath_to_string(&cx.tcx, method);
             ("try call directly", format!("{method}{turbofish}()"))
         } else {
             let cast_expr_sugg = Sugg::hir_with_applicability(cx, cast_expr, "_", &mut app);

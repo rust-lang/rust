@@ -16,12 +16,13 @@ use crate::{
 use rustc_ast as ast;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_errors::{DecorateLint, Diag, DiagMessage, MultiSpan};
+use rustc_errors::{Diag, DiagMessage, LintDiagnostic, MultiSpan};
 use rustc_feature::{Features, GateIssue};
 use rustc_hir as hir;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::HirId;
 use rustc_index::IndexVec;
+use rustc_middle::bug;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::lint::{
     lint_level, reveal_actual_level, LevelAndSource, LintExpectation, LintLevelSource,
@@ -103,11 +104,12 @@ impl LintLevelSets {
         mut idx: LintStackIndex,
         aux: Option<&FxIndexMap<LintId, LevelAndSource>>,
     ) -> (Option<Level>, LintLevelSource) {
-        if let Some(specs) = aux {
-            if let Some(&(level, src)) = specs.get(&id) {
-                return (Some(level), src);
-            }
+        if let Some(specs) = aux
+            && let Some(&(level, src)) = specs.get(&id)
+        {
+            return (Some(level), src);
         }
+
         loop {
             let LintSet { ref specs, parent } = self.list[idx];
             if let Some(&(level, src)) = specs.get(&id) {
@@ -177,7 +179,7 @@ fn shallow_lint_levels_on(tcx: TyCtxt<'_>, owner: hir::OwnerId) -> ShallowLintLe
         // There is only something to do if there are attributes at all.
         [] => {}
         // Most of the time, there is only one attribute. Avoid fetching HIR in that case.
-        [(local_id, _)] => levels.add_id(HirId { owner, local_id: *local_id }),
+        &[(local_id, _)] => levels.add_id(HirId { owner, local_id }),
         // Otherwise, we need to visit the attributes in source code order, so we fetch HIR and do
         // a standard visit.
         // FIXME(#102522) Just iterate on attrs once that iteration order matches HIR's.
@@ -190,6 +192,7 @@ fn shallow_lint_levels_on(tcx: TyCtxt<'_>, owner: hir::OwnerId) -> ShallowLintLe
                 levels.add_id(hir::CRATE_HIR_ID);
                 levels.visit_mod(mod_, mod_.spans.inner_span, hir::CRATE_HIR_ID)
             }
+            hir::OwnerNode::Synthetic => unreachable!(),
         },
     }
 
@@ -352,7 +355,7 @@ impl<'tcx> Visitor<'tcx> for LintLevelsBuilder<'_, LintLevelQueryMap<'tcx>> {
         intravisit::walk_variant(self, v);
     }
 
-    fn visit_local(&mut self, l: &'tcx hir::Local<'tcx>) {
+    fn visit_local(&mut self, l: &'tcx hir::LetStmt<'tcx>) {
         self.add_id(l.hir_id);
         intravisit::walk_local(self, l);
     }
@@ -426,7 +429,7 @@ impl<'tcx> Visitor<'tcx> for LintLevelsBuilder<'_, QueryMapExpectationsWrapper<'
         intravisit::walk_variant(self, v);
     }
 
-    fn visit_local(&mut self, l: &'tcx hir::Local<'tcx>) {
+    fn visit_local(&mut self, l: &'tcx hir::LetStmt<'tcx>) {
         self.add_id(l.hir_id);
         intravisit::walk_local(self, l);
     }
@@ -643,63 +646,61 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
         //
         // This means that this only errors if we're truly lowering the lint
         // level from forbid.
-        if self.lint_added_lints && level != Level::Forbid {
-            if let Level::Forbid = old_level {
-                // Backwards compatibility check:
-                //
-                // We used to not consider `forbid(lint_group)`
-                // as preventing `allow(lint)` for some lint `lint` in
-                // `lint_group`. For now, issue a future-compatibility
-                // warning for this case.
-                let id_name = id.lint.name_lower();
-                let fcw_warning = match old_src {
-                    LintLevelSource::Default => false,
-                    LintLevelSource::Node { name, .. } => self.store.is_lint_group(name),
-                    LintLevelSource::CommandLine(symbol, _) => self.store.is_lint_group(symbol),
-                };
-                debug!(
-                    "fcw_warning={:?}, specs.get(&id) = {:?}, old_src={:?}, id_name={:?}",
-                    fcw_warning,
-                    self.current_specs(),
-                    old_src,
-                    id_name
-                );
-                let sub = match old_src {
-                    LintLevelSource::Default => {
-                        OverruledAttributeSub::DefaultSource { id: id.to_string() }
-                    }
-                    LintLevelSource::Node { span, reason, .. } => {
-                        OverruledAttributeSub::NodeSource { span, reason }
-                    }
-                    LintLevelSource::CommandLine(_, _) => OverruledAttributeSub::CommandLineSource,
-                };
-                if !fcw_warning {
-                    self.sess.dcx().emit_err(OverruledAttribute {
-                        span: src.span(),
+        if self.lint_added_lints && level != Level::Forbid && old_level == Level::Forbid {
+            // Backwards compatibility check:
+            //
+            // We used to not consider `forbid(lint_group)`
+            // as preventing `allow(lint)` for some lint `lint` in
+            // `lint_group`. For now, issue a future-compatibility
+            // warning for this case.
+            let id_name = id.lint.name_lower();
+            let fcw_warning = match old_src {
+                LintLevelSource::Default => false,
+                LintLevelSource::Node { name, .. } => self.store.is_lint_group(name),
+                LintLevelSource::CommandLine(symbol, _) => self.store.is_lint_group(symbol),
+            };
+            debug!(
+                "fcw_warning={:?}, specs.get(&id) = {:?}, old_src={:?}, id_name={:?}",
+                fcw_warning,
+                self.current_specs(),
+                old_src,
+                id_name
+            );
+            let sub = match old_src {
+                LintLevelSource::Default => {
+                    OverruledAttributeSub::DefaultSource { id: id.to_string() }
+                }
+                LintLevelSource::Node { span, reason, .. } => {
+                    OverruledAttributeSub::NodeSource { span, reason }
+                }
+                LintLevelSource::CommandLine(_, _) => OverruledAttributeSub::CommandLineSource,
+            };
+            if !fcw_warning {
+                self.sess.dcx().emit_err(OverruledAttribute {
+                    span: src.span(),
+                    overruled: src.span(),
+                    lint_level: level.as_str(),
+                    lint_source: src.name(),
+                    sub,
+                });
+            } else {
+                self.emit_span_lint(
+                    FORBIDDEN_LINT_GROUPS,
+                    src.span().into(),
+                    OverruledAttributeLint {
                         overruled: src.span(),
                         lint_level: level.as_str(),
                         lint_source: src.name(),
                         sub,
-                    });
-                } else {
-                    self.emit_span_lint(
-                        FORBIDDEN_LINT_GROUPS,
-                        src.span().into(),
-                        OverruledAttributeLint {
-                            overruled: src.span(),
-                            lint_level: level.as_str(),
-                            lint_source: src.name(),
-                            sub,
-                        },
-                    );
-                }
+                    },
+                );
+            }
 
-                // Retain the forbid lint level, unless we are
-                // issuing a FCW. In the FCW case, we want to
-                // respect the new setting.
-                if !fcw_warning {
-                    return;
-                }
+            // Retain the forbid lint level, unless we are
+            // issuing a FCW. In the FCW case, we want to
+            // respect the new setting.
+            if !fcw_warning {
+                return;
             }
         }
 
@@ -770,15 +771,15 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
 
             let Some(mut metas) = attr.meta_item_list() else { continue };
 
-            if metas.is_empty() {
+            // Check whether `metas` is empty, and get its last element.
+            let Some(tail_li) = metas.last() else {
                 // This emits the unused_attributes lint for `#[level()]`
                 continue;
-            }
+            };
 
             // Before processing the lint names, look for a reason (RFC 2383)
             // at the end.
             let mut reason = None;
-            let tail_li = &metas[metas.len() - 1];
             if let Some(item) = tail_li.meta_item() {
                 match item.kind {
                     ast::MetaItemKind::Word => {} // actual lint names handled later
@@ -834,21 +835,16 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                 let meta_item = match li {
                     ast::NestedMetaItem::MetaItem(meta_item) if meta_item.is_word() => meta_item,
                     _ => {
-                        if let Some(item) = li.meta_item() {
-                            if let ast::MetaItemKind::NameValue(_) = item.kind {
-                                if item.path == sym::reason {
-                                    sess.dcx().emit_err(MalformedAttribute {
-                                        span: sp,
-                                        sub: MalformedAttributeSub::ReasonMustComeLast(sp),
-                                    });
-                                    continue;
-                                }
-                            }
-                        }
-                        sess.dcx().emit_err(MalformedAttribute {
-                            span: sp,
-                            sub: MalformedAttributeSub::BadAttributeArgument(sp),
-                        });
+                        let sub = if let Some(item) = li.meta_item()
+                            && let ast::MetaItemKind::NameValue(_) = item.kind
+                            && item.path == sym::reason
+                        {
+                            MalformedAttributeSub::ReasonMustComeLast(sp)
+                        } else {
+                            MalformedAttributeSub::BadAttributeArgument(sp)
+                        };
+
+                        sess.dcx().emit_err(MalformedAttribute { span: sp, sub });
                         continue;
                     }
                 };
@@ -987,11 +983,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                     }
 
                     CheckLintNameResult::NoLint(suggestion) => {
-                        let name = if let Some(tool_ident) = tool_ident {
-                            format!("{}::{}", tool_ident.name, name)
-                        } else {
-                            name.to_string()
-                        };
+                        let name = tool_ident.map(|tool| format!("{tool}::{name}")).unwrap_or(name);
                         let suggestion = suggestion.map(|(replace, from_rustc)| {
                             UnknownLintSuggestion::WithSpan { suggestion: sp, replace, from_rustc }
                         });
@@ -1005,27 +997,24 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                 if let CheckLintNameResult::Renamed(new_name) = lint_result {
                     // Ignore any errors or warnings that happen because the new name is inaccurate
                     // NOTE: `new_name` already includes the tool name, so we don't have to add it again.
-                    if let CheckLintNameResult::Ok(ids) =
+                    let CheckLintNameResult::Ok(ids) =
                         self.store.check_lint_name(&new_name, None, self.registered_tools)
-                    {
-                        let src = LintLevelSource::Node {
-                            name: Symbol::intern(&new_name),
-                            span: sp,
-                            reason,
-                        };
-                        for &id in ids {
-                            if self.check_gated_lint(id, attr.span, false) {
-                                self.insert_spec(id, (level, src));
-                            }
-                        }
-                        if let Level::Expect(expect_id) = level {
-                            self.provider.push_expectation(
-                                expect_id,
-                                LintExpectation::new(reason, sp, false, tool_name),
-                            );
-                        }
-                    } else {
+                    else {
                         panic!("renamed lint does not exist: {new_name}");
+                    };
+
+                    let src =
+                        LintLevelSource::Node { name: Symbol::intern(&new_name), span: sp, reason };
+                    for &id in ids {
+                        if self.check_gated_lint(id, attr.span, false) {
+                            self.insert_spec(id, (level, src));
+                        }
+                    }
+                    if let Level::Expect(expect_id) = level {
+                        self.provider.push_expectation(
+                            expect_id,
+                            LintExpectation::new(reason, sp, false, tool_name),
+                        );
                     }
                 }
             }
@@ -1058,38 +1047,45 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
     /// Returns `true` if the lint's feature is enabled.
     #[track_caller]
     fn check_gated_lint(&self, lint_id: LintId, span: Span, lint_from_cli: bool) -> bool {
-        if let Some(feature) = lint_id.lint.feature_gate {
-            if !self.features.active(feature) {
-                if self.lint_added_lints {
-                    let lint = builtin::UNKNOWN_LINTS;
-                    let (level, src) = self.lint_level(builtin::UNKNOWN_LINTS);
-                    // FIXME: make this translatable
-                    #[allow(rustc::diagnostic_outside_of_impl)]
-                    #[allow(rustc::untranslatable_diagnostic)]
-                    lint_level(
-                        self.sess,
+        let feature = if let Some(feature) = lint_id.lint.feature_gate
+            && !self.features.active(feature)
+        {
+            // Lint is behind a feature that is not enabled; eventually return false.
+            feature
+        } else {
+            // Lint is ungated or its feature is enabled; exit early.
+            return true;
+        };
+
+        if self.lint_added_lints {
+            let lint = builtin::UNKNOWN_LINTS;
+            let (level, src) = self.lint_level(builtin::UNKNOWN_LINTS);
+            // FIXME: make this translatable
+            #[allow(rustc::diagnostic_outside_of_impl)]
+            #[allow(rustc::untranslatable_diagnostic)]
+            lint_level(
+                self.sess,
+                lint,
+                level,
+                src,
+                Some(span.into()),
+                fluent::lint_unknown_gated_lint,
+                |lint| {
+                    lint.arg("name", lint_id.lint.name_lower());
+                    lint.note(fluent::lint_note);
+                    rustc_session::parse::add_feature_diagnostics_for_issue(
                         lint,
-                        level,
-                        src,
-                        Some(span.into()),
-                        fluent::lint_unknown_gated_lint,
-                        |lint| {
-                            lint.arg("name", lint_id.lint.name_lower());
-                            lint.note(fluent::lint_note);
-                            rustc_session::parse::add_feature_diagnostics_for_issue(
-                                lint,
-                                &self.sess,
-                                feature,
-                                GateIssue::Language,
-                                lint_from_cli,
-                            );
-                        },
+                        &self.sess,
+                        feature,
+                        GateIssue::Language,
+                        lint_from_cli,
+                        None,
                     );
-                }
-                return false;
-            }
+                },
+            );
         }
-        true
+
+        false
     }
 
     /// Find the lint level for a lint.
@@ -1119,7 +1115,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
         &self,
         lint: &'static Lint,
         span: MultiSpan,
-        decorate: impl for<'a> DecorateLint<'a, ()>,
+        decorate: impl for<'a> LintDiagnostic<'a, ()>,
     ) {
         let (level, src) = self.lint_level(lint);
         lint_level(self.sess, lint, level, src, Some(span), decorate.msg(), |lint| {
@@ -1128,7 +1124,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
     }
 
     #[track_caller]
-    pub fn emit_lint(&self, lint: &'static Lint, decorate: impl for<'a> DecorateLint<'a, ()>) {
+    pub fn emit_lint(&self, lint: &'static Lint, decorate: impl for<'a> LintDiagnostic<'a, ()>) {
         let (level, src) = self.lint_level(lint);
         lint_level(self.sess, lint, level, src, None, decorate.msg(), |lint| {
             decorate.decorate_lint(lint);

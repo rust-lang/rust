@@ -8,7 +8,7 @@ use crate::mem::ManuallyDrop;
 use crate::ops::{Deref, DerefMut};
 use crate::ptr::NonNull;
 use crate::sync::{poison, LockResult, TryLockError, TryLockResult};
-use crate::sys::locks as sys;
+use crate::sys::sync as sys;
 
 /// A mutual exclusion primitive useful for protecting shared data
 ///
@@ -396,7 +396,7 @@ impl<T: ?Sized> Mutex<T> {
         self.poison.get()
     }
 
-    /// Clear the poisoned state from a mutex
+    /// Clear the poisoned state from a mutex.
     ///
     /// If the mutex is poisoned, it will remain poisoned until this function is called. This
     /// allows recovering from a poisoned state and marking that it has recovered. For example, if

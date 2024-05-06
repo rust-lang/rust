@@ -2,28 +2,30 @@
 //! another compatible command (f.x. clippy) in a background thread and provide
 //! LSP diagnostics based on the output of the command.
 
+// FIXME: This crate now handles running `cargo test` needed in the test explorer in
+// addition to `cargo check`. Either split it into 3 crates (one for test, one for check
+// and one common utilities) or change its name and docs to reflect the current state.
+
 #![warn(rust_2018_idioms, unused_lifetimes)]
 
-use std::{
-    ffi::OsString,
-    fmt, io,
-    path::PathBuf,
-    process::{ChildStderr, ChildStdout, Command, Stdio},
-    time::Duration,
-};
+use std::{fmt, io, process::Command, time::Duration};
 
-use command_group::{CommandGroup, GroupChild};
 use crossbeam_channel::{never, select, unbounded, Receiver, Sender};
-use paths::{AbsPath, AbsPathBuf};
+use paths::{AbsPath, AbsPathBuf, Utf8PathBuf};
 use rustc_hash::FxHashMap;
 use serde::Deserialize;
-use stdx::process::streaming_output;
 
 pub use cargo_metadata::diagnostic::{
     Applicability, Diagnostic, DiagnosticCode, DiagnosticLevel, DiagnosticSpan,
     DiagnosticSpanMacroExpansion,
 };
 use toolchain::Tool;
+
+mod command;
+mod test_runner;
+
+use command::{CommandHandle, ParseFromLine};
+pub use test_runner::{CargoTestHandle, CargoTestMessage, TestState};
 
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
 pub enum InvocationStrategy {
@@ -40,18 +42,49 @@ pub enum InvocationLocation {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
+pub struct CargoOptions {
+    pub target_triples: Vec<String>,
+    pub all_targets: bool,
+    pub no_default_features: bool,
+    pub all_features: bool,
+    pub features: Vec<String>,
+    pub extra_args: Vec<String>,
+    pub extra_env: FxHashMap<String, String>,
+    pub target_dir: Option<Utf8PathBuf>,
+}
+
+impl CargoOptions {
+    fn apply_on_command(&self, cmd: &mut Command) {
+        for target in &self.target_triples {
+            cmd.args(["--target", target.as_str()]);
+        }
+        if self.all_targets {
+            cmd.arg("--all-targets");
+        }
+        if self.all_features {
+            cmd.arg("--all-features");
+        } else {
+            if self.no_default_features {
+                cmd.arg("--no-default-features");
+            }
+            if !self.features.is_empty() {
+                cmd.arg("--features");
+                cmd.arg(self.features.join(" "));
+            }
+        }
+        if let Some(target_dir) = &self.target_dir {
+            cmd.arg("--target-dir").arg(target_dir);
+        }
+        cmd.envs(&self.extra_env);
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum FlycheckConfig {
     CargoCommand {
         command: String,
-        target_triples: Vec<String>,
-        all_targets: bool,
-        no_default_features: bool,
-        all_features: bool,
-        features: Vec<String>,
-        extra_args: Vec<String>,
-        extra_env: FxHashMap<String, String>,
+        options: CargoOptions,
         ansi_color_output: bool,
-        target_dir: Option<PathBuf>,
     },
     CustomCommand {
         command: String,
@@ -181,12 +214,14 @@ struct FlycheckActor {
     /// doesn't provide a way to read sub-process output without blocking, so we
     /// have to wrap sub-processes output handling in a thread and pass messages
     /// back over a channel.
-    command_handle: Option<CommandHandle>,
+    command_handle: Option<CommandHandle<CargoCheckMessage>>,
+    /// The receiver side of the channel mentioned above.
+    command_receiver: Option<Receiver<CargoCheckMessage>>,
 }
 
 enum Event {
     RequestStateChange(StateChange),
-    CheckEvent(Option<CargoMessage>),
+    CheckEvent(Option<CargoCheckMessage>),
 }
 
 const SAVED_FILE_PLACEHOLDER: &str = "$saved_file";
@@ -207,6 +242,7 @@ impl FlycheckActor {
             sysroot_root,
             root: workspace_root,
             command_handle: None,
+            command_receiver: None,
         }
     }
 
@@ -215,14 +251,13 @@ impl FlycheckActor {
     }
 
     fn next_event(&self, inbox: &Receiver<StateChange>) -> Option<Event> {
-        let check_chan = self.command_handle.as_ref().map(|cargo| &cargo.receiver);
         if let Ok(msg) = inbox.try_recv() {
             // give restarts a preference so check outputs don't block a restart or stop
             return Some(Event::RequestStateChange(msg));
         }
         select! {
             recv(inbox) -> msg => msg.ok().map(Event::RequestStateChange),
-            recv(check_chan.unwrap_or(&never())) -> msg => Some(Event::CheckEvent(msg.ok())),
+            recv(self.command_receiver.as_ref().unwrap_or(&never())) -> msg => Some(Event::CheckEvent(msg.ok())),
         }
     }
 
@@ -251,10 +286,12 @@ impl FlycheckActor {
                     let formatted_command = format!("{:?}", command);
 
                     tracing::debug!(?command, "will restart flycheck");
-                    match CommandHandle::spawn(command) {
+                    let (sender, receiver) = unbounded();
+                    match CommandHandle::spawn(command, sender) {
                         Ok(command_handle) => {
-                            tracing::debug!(command = formatted_command, "did  restart flycheck");
+                            tracing::debug!(command = formatted_command, "did restart flycheck");
                             self.command_handle = Some(command_handle);
+                            self.command_receiver = Some(receiver);
                             self.report_progress(Progress::DidStart);
                         }
                         Err(error) => {
@@ -270,19 +307,21 @@ impl FlycheckActor {
 
                     // Watcher finished
                     let command_handle = self.command_handle.take().unwrap();
+                    self.command_receiver.take();
                     let formatted_handle = format!("{:?}", command_handle);
 
                     let res = command_handle.join();
-                    if res.is_err() {
+                    if let Err(error) = &res {
                         tracing::error!(
-                            "Flycheck failed to run the following command: {}",
-                            formatted_handle
+                            "Flycheck failed to run the following command: {}, error={}",
+                            formatted_handle,
+                            error
                         );
                     }
                     self.report_progress(Progress::DidFinish(res));
                 }
                 Event::CheckEvent(Some(message)) => match message {
-                    CargoMessage::CompilerArtifact(msg) => {
+                    CargoCheckMessage::CompilerArtifact(msg) => {
                         tracing::trace!(
                             flycheck_id = self.id,
                             artifact = msg.target.name,
@@ -291,7 +330,7 @@ impl FlycheckActor {
                         self.report_progress(Progress::DidCheckCrate(msg.target.name));
                     }
 
-                    CargoMessage::Diagnostic(msg) => {
+                    CargoCheckMessage::Diagnostic(msg) => {
                         tracing::trace!(
                             flycheck_id = self.id,
                             message = msg.message,
@@ -330,18 +369,7 @@ impl FlycheckActor {
         saved_file: Option<&AbsPath>,
     ) -> Option<Command> {
         let (mut cmd, args) = match &self.config {
-            FlycheckConfig::CargoCommand {
-                command,
-                target_triples,
-                no_default_features,
-                all_targets,
-                all_features,
-                extra_args,
-                features,
-                extra_env,
-                ansi_color_output,
-                target_dir,
-            } => {
+            FlycheckConfig::CargoCommand { command, options, ansi_color_output } => {
                 let mut cmd = Command::new(Tool::Cargo.path());
                 if let Some(sysroot_root) = &self.sysroot_root {
                     cmd.env("RUSTUP_TOOLCHAIN", AsRef::<std::path::Path>::as_ref(sysroot_root));
@@ -361,30 +389,10 @@ impl FlycheckActor {
                 });
 
                 cmd.arg("--manifest-path");
-                cmd.arg(self.root.join("Cargo.toml").as_os_str());
+                cmd.arg(self.root.join("Cargo.toml"));
 
-                for target in target_triples {
-                    cmd.args(["--target", target.as_str()]);
-                }
-                if *all_targets {
-                    cmd.arg("--all-targets");
-                }
-                if *all_features {
-                    cmd.arg("--all-features");
-                } else {
-                    if *no_default_features {
-                        cmd.arg("--no-default-features");
-                    }
-                    if !features.is_empty() {
-                        cmd.arg("--features");
-                        cmd.arg(features.join(" "));
-                    }
-                }
-                if let Some(target_dir) = target_dir {
-                    cmd.arg("--target-dir").arg(target_dir);
-                }
-                cmd.envs(extra_env);
-                (cmd, extra_args.clone())
+                options.apply_on_command(&mut cmd);
+                (cmd, options.extra_args.clone())
             }
             FlycheckConfig::CustomCommand {
                 command,
@@ -448,159 +456,40 @@ impl FlycheckActor {
     }
 }
 
-struct JodGroupChild(GroupChild);
-
-impl Drop for JodGroupChild {
-    fn drop(&mut self) {
-        _ = self.0.kill();
-        _ = self.0.wait();
-    }
-}
-
-/// A handle to a cargo process used for fly-checking.
-struct CommandHandle {
-    /// The handle to the actual cargo process. As we cannot cancel directly from with
-    /// a read syscall dropping and therefore terminating the process is our best option.
-    child: JodGroupChild,
-    thread: stdx::thread::JoinHandle<io::Result<(bool, String)>>,
-    receiver: Receiver<CargoMessage>,
-    program: OsString,
-    arguments: Vec<OsString>,
-    current_dir: Option<PathBuf>,
-}
-
-impl fmt::Debug for CommandHandle {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("CommandHandle")
-            .field("program", &self.program)
-            .field("arguments", &self.arguments)
-            .field("current_dir", &self.current_dir)
-            .finish()
-    }
-}
-
-impl CommandHandle {
-    fn spawn(mut command: Command) -> std::io::Result<CommandHandle> {
-        command.stdout(Stdio::piped()).stderr(Stdio::piped()).stdin(Stdio::null());
-        let mut child = command.group_spawn().map(JodGroupChild)?;
-
-        let program = command.get_program().into();
-        let arguments = command.get_args().map(|arg| arg.into()).collect::<Vec<OsString>>();
-        let current_dir = command.get_current_dir().map(|arg| arg.to_path_buf());
-
-        let stdout = child.0.inner().stdout.take().unwrap();
-        let stderr = child.0.inner().stderr.take().unwrap();
-
-        let (sender, receiver) = unbounded();
-        let actor = CargoActor::new(sender, stdout, stderr);
-        let thread = stdx::thread::Builder::new(stdx::thread::ThreadIntent::Worker)
-            .name("CommandHandle".to_owned())
-            .spawn(move || actor.run())
-            .expect("failed to spawn thread");
-        Ok(CommandHandle { program, arguments, current_dir, child, thread, receiver })
-    }
-
-    fn cancel(mut self) {
-        let _ = self.child.0.kill();
-        let _ = self.child.0.wait();
-    }
-
-    fn join(mut self) -> io::Result<()> {
-        let _ = self.child.0.kill();
-        let exit_status = self.child.0.wait()?;
-        let (read_at_least_one_message, error) = self.thread.join()?;
-        if read_at_least_one_message || exit_status.success() {
-            Ok(())
-        } else {
-            Err(io::Error::new(io::ErrorKind::Other, format!(
-                "Cargo watcher failed, the command produced no valid metadata (exit code: {exit_status:?}):\n{error}"
-            )))
-        }
-    }
-}
-
-struct CargoActor {
-    sender: Sender<CargoMessage>,
-    stdout: ChildStdout,
-    stderr: ChildStderr,
-}
-
-impl CargoActor {
-    fn new(sender: Sender<CargoMessage>, stdout: ChildStdout, stderr: ChildStderr) -> CargoActor {
-        CargoActor { sender, stdout, stderr }
-    }
-
-    fn run(self) -> io::Result<(bool, String)> {
-        // We manually read a line at a time, instead of using serde's
-        // stream deserializers, because the deserializer cannot recover
-        // from an error, resulting in it getting stuck, because we try to
-        // be resilient against failures.
-        //
-        // Because cargo only outputs one JSON object per line, we can
-        // simply skip a line if it doesn't parse, which just ignores any
-        // erroneous output.
-
-        let mut stdout_errors = String::new();
-        let mut stderr_errors = String::new();
-        let mut read_at_least_one_stdout_message = false;
-        let mut read_at_least_one_stderr_message = false;
-        let process_line = |line: &str, error: &mut String| {
-            // Try to deserialize a message from Cargo or Rustc.
-            let mut deserializer = serde_json::Deserializer::from_str(line);
-            deserializer.disable_recursion_limit();
-            if let Ok(message) = JsonMessage::deserialize(&mut deserializer) {
-                match message {
-                    // Skip certain kinds of messages to only spend time on what's useful
-                    JsonMessage::Cargo(message) => match message {
-                        cargo_metadata::Message::CompilerArtifact(artifact) if !artifact.fresh => {
-                            self.sender.send(CargoMessage::CompilerArtifact(artifact)).unwrap();
-                        }
-                        cargo_metadata::Message::CompilerMessage(msg) => {
-                            self.sender.send(CargoMessage::Diagnostic(msg.message)).unwrap();
-                        }
-                        _ => (),
-                    },
-                    JsonMessage::Rustc(message) => {
-                        self.sender.send(CargoMessage::Diagnostic(message)).unwrap();
-                    }
-                }
-                return true;
-            }
-
-            error.push_str(line);
-            error.push('\n');
-            false
-        };
-        let output = streaming_output(
-            self.stdout,
-            self.stderr,
-            &mut |line| {
-                if process_line(line, &mut stdout_errors) {
-                    read_at_least_one_stdout_message = true;
-                }
-            },
-            &mut |line| {
-                if process_line(line, &mut stderr_errors) {
-                    read_at_least_one_stderr_message = true;
-                }
-            },
-        );
-
-        let read_at_least_one_message =
-            read_at_least_one_stdout_message || read_at_least_one_stderr_message;
-        let mut error = stdout_errors;
-        error.push_str(&stderr_errors);
-        match output {
-            Ok(_) => Ok((read_at_least_one_message, error)),
-            Err(e) => Err(io::Error::new(e.kind(), format!("{e:?}: {error}"))),
-        }
-    }
-}
-
 #[allow(clippy::large_enum_variant)]
-enum CargoMessage {
+enum CargoCheckMessage {
     CompilerArtifact(cargo_metadata::Artifact),
     Diagnostic(Diagnostic),
+}
+
+impl ParseFromLine for CargoCheckMessage {
+    fn from_line(line: &str, error: &mut String) -> Option<Self> {
+        let mut deserializer = serde_json::Deserializer::from_str(line);
+        deserializer.disable_recursion_limit();
+        if let Ok(message) = JsonMessage::deserialize(&mut deserializer) {
+            return match message {
+                // Skip certain kinds of messages to only spend time on what's useful
+                JsonMessage::Cargo(message) => match message {
+                    cargo_metadata::Message::CompilerArtifact(artifact) if !artifact.fresh => {
+                        Some(CargoCheckMessage::CompilerArtifact(artifact))
+                    }
+                    cargo_metadata::Message::CompilerMessage(msg) => {
+                        Some(CargoCheckMessage::Diagnostic(msg.message))
+                    }
+                    _ => None,
+                },
+                JsonMessage::Rustc(message) => Some(CargoCheckMessage::Diagnostic(message)),
+            };
+        }
+
+        error.push_str(line);
+        error.push('\n');
+        None
+    }
+
+    fn from_eof() -> Option<Self> {
+        None
+    }
 }
 
 #[derive(Deserialize)]

@@ -1,5 +1,5 @@
 error[E0053]: method `owo` has an incompatible type for trait
-  --> $DIR/method-signature-matches.rs:24:21
+  --> $DIR/method-signature-matches.rs:22:21
    |
 LL |     async fn owo(_: u8) {}
    |                     ^^
@@ -8,7 +8,7 @@ LL |     async fn owo(_: u8) {}
    |                     help: change the parameter type to match the trait: `()`
    |
 note: type in trait
-  --> $DIR/method-signature-matches.rs:19:21
+  --> $DIR/method-signature-matches.rs:17:21
    |
 LL |     async fn owo(x: ()) {}
    |                     ^^

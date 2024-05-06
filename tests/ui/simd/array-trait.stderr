@@ -4,7 +4,10 @@ error: unconstrained generic constant
 LL | pub struct T<S: Simd>([S::Lane; S::SIZE]);
    |                       ^^^^^^^^^^^^^^^^^^
    |
-   = help: try adding a `where` bound using this expression: `where [(); S::SIZE]:`
+help: try adding a `where` bound
+   |
+LL | pub struct T<S: Simd>([S::Lane; S::SIZE]) where [(); S::SIZE]:;
+   |                                           ++++++++++++++++++++
 
 error[E0077]: SIMD vector element type should be a primitive scalar (integer/float/pointer) type
   --> $DIR/array-trait.rs:23:1
@@ -20,7 +23,6 @@ LL | #[derive(Copy, Clone)]
 LL | pub struct T<S: Simd>([S::Lane; S::SIZE]);
    |                       ^^^^^^^^^^^^^^^^^^
    |
-   = help: try adding a `where` bound using this expression: `where [(); S::SIZE]:`
    = note: this error originates in the derive macro `Clone` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 3 previous errors

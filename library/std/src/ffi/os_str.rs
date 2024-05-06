@@ -157,7 +157,7 @@ impl OsString {
     /// # Safety
     ///
     /// As the encoding is unspecified, callers must pass in bytes that originated as a mixture of
-    /// validated UTF-8 and bytes from [`OsStr::as_encoded_bytes`] from within the same rust version
+    /// validated UTF-8 and bytes from [`OsStr::as_encoded_bytes`] from within the same Rust version
     /// built for the same target platform.  For example, reconstructing an `OsString` from bytes sent
     /// over the network or stored in a file will likely violate these safety rules.
     ///
@@ -213,7 +213,7 @@ impl OsString {
     /// ASCII.
     ///
     /// Note: As the encoding is unspecified, any sub-slice of bytes that is not valid UTF-8 should
-    /// be treated as opaque and only comparable within the same rust version built for the same
+    /// be treated as opaque and only comparable within the same Rust version built for the same
     /// target platform.  For example, sending the bytes over the network or storing it in a file
     /// will likely result in incompatible data.  See [`OsString`] for more encoding details
     /// and [`std::ffi`] for platform-specific, specified conversions.
@@ -532,6 +532,12 @@ impl OsString {
         let rw = Box::into_raw(self.inner.into_box()) as *mut OsStr;
         unsafe { Box::from_raw(rw) }
     }
+
+    /// Part of a hack to make PathBuf::push/pop more efficient.
+    #[inline]
+    pub(crate) fn as_mut_vec_for_path_buf(&mut self) -> &mut Vec<u8> {
+        self.inner.as_mut_vec_for_path_buf()
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -606,6 +612,10 @@ impl Clone for OsString {
         OsString { inner: self.inner.clone() }
     }
 
+    /// Clones the contents of `source` into `self`.
+    ///
+    /// This method is preferred over simply assigning `source.clone()` to `self`,
+    /// as it avoids reallocation if possible.
     #[inline]
     fn clone_from(&mut self, source: &Self) {
         self.inner.clone_from(&source.inner)
@@ -747,7 +757,7 @@ impl OsStr {
     /// # Safety
     ///
     /// As the encoding is unspecified, callers must pass in bytes that originated as a mixture of
-    /// validated UTF-8 and bytes from [`OsStr::as_encoded_bytes`] from within the same rust version
+    /// validated UTF-8 and bytes from [`OsStr::as_encoded_bytes`] from within the same Rust version
     /// built for the same target platform.  For example, reconstructing an `OsStr` from bytes sent
     /// over the network or stored in a file will likely violate these safety rules.
     ///
@@ -955,7 +965,7 @@ impl OsStr {
     /// ASCII.
     ///
     /// Note: As the encoding is unspecified, any sub-slice of bytes that is not valid UTF-8 should
-    /// be treated as opaque and only comparable within the same rust version built for the same
+    /// be treated as opaque and only comparable within the same Rust version built for the same
     /// target platform.  For example, sending the slice over the network or storing it in a file
     /// will likely result in incompatible byte slices.  See [`OsString`] for more encoding details
     /// and [`std::ffi`] for platform-specific, specified conversions.

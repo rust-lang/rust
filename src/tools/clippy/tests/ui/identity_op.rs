@@ -134,7 +134,7 @@ fn main() {
     //~^ ERROR: this operation has no effect
     f(0 + if b { 1 } else { 2 } + 3);
     //~^ ERROR: this operation has no effect
-    
+
     const _: i32 = { 2 * 4 } + 0 + 3;
     //~^ ERROR: this operation has no effect
     const _: i32 = 0 + { 1 + 2 * 3 } + 3;

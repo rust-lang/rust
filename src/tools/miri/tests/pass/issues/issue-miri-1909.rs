@@ -9,7 +9,7 @@ use std::alloc::System;
 /// `ptr` must be valid for writes of `len` bytes
 unsafe fn volatile_write_zeroize_mem(ptr: *mut u8, len: usize) {
     for i in 0..len {
-        // ptr as usize + i can't overlow because `ptr` is valid for writes of `len`
+        // ptr as usize + i can't overflow because `ptr` is valid for writes of `len`
         let ptr_new: *mut u8 = ((ptr as usize) + i) as *mut u8;
         // SAFETY: `ptr` is valid for writes of `len` bytes, so `ptr_new` is valid for a
         // byte write

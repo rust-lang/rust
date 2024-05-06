@@ -5,7 +5,7 @@ use std::thread::Builder;
 use std::time::{Duration, Instant};
 use std::{cell::RefCell, fs::read_to_string, panic::AssertUnwindSafe, path::PathBuf};
 
-use hir::{Change, Crate};
+use hir::{ChangeWithProcMacros, Crate};
 use ide::{AnalysisHost, DiagnosticCode, DiagnosticsConfig};
 use itertools::Either;
 use profile::StopWatch;
@@ -75,12 +75,14 @@ impl Tester {
             &cargo_config.extra_env,
         );
 
-        let workspace = ProjectWorkspace::DetachedFiles {
-            files: vec![tmp_file.clone()],
+        let workspace = ProjectWorkspace::DetachedFile {
+            file: tmp_file,
             sysroot,
             rustc_cfg: vec![],
             toolchain: None,
             target_layout: data_layout.map(Arc::from).map_err(|it| Arc::from(it.to_string())),
+            cfg_overrides: Default::default(),
+            cargo_script: None,
         };
         let load_cargo_config = LoadCargoConfig {
             load_out_dirs_from_check: false,
@@ -122,7 +124,7 @@ impl Tester {
             FxHashMap::default()
         };
         let text = read_to_string(&p).unwrap();
-        let mut change = Change::new();
+        let mut change = ChangeWithProcMacros::new();
         // Ignore unstable tests, since they move too fast and we do not intend to support all of them.
         let mut ignore_test = text.contains("#![feature");
         // Ignore test with extern crates, as this infra don't support them yet.
@@ -134,7 +136,7 @@ impl Tester {
         let should_have_no_error = text.contains("// check-pass")
             || text.contains("// build-pass")
             || text.contains("// run-pass");
-        change.change_file(self.root_file, Some(Arc::from(text)));
+        change.change_file(self.root_file, Some(text));
         self.host.apply_change(change);
         let diagnostic_config = DiagnosticsConfig::test_sample();
 

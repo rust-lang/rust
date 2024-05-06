@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{Body, Expr, ExprKind, FnDecl, FnRetTy, TyKind, UnOp};
-use rustc_hir_analysis::hir_ty_to_ty;
+use rustc_hir_analysis::lower_ty;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::declare_lint_pass;
@@ -71,7 +71,7 @@ impl LateLintPass<'_> for UninhabitedReferences {
         }
         if let FnRetTy::Return(hir_ty) = fndecl.output
             && let TyKind::Ref(_, mut_ty) = hir_ty.kind
-            && hir_ty_to_ty(cx.tcx, mut_ty.ty).is_privately_uninhabited(cx.tcx, cx.param_env)
+            && lower_ty(cx.tcx, mut_ty.ty).is_privately_uninhabited(cx.tcx, cx.param_env)
         {
             span_lint(
                 cx,

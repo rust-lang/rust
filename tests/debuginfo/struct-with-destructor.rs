@@ -25,20 +25,20 @@
 // === LLDB TESTS ==================================================================================
 
 // lldb-command:run
-// lldb-command:print simple
-// lldbg-check:[...]$0 = { x = 10 y = 20 }
+// lldb-command:v simple
+// lldbg-check:[...] { x = 10 y = 20 }
 // lldbr-check:(struct_with_destructor::WithDestructor) simple = { x = 10 y = 20 }
 
-// lldb-command:print noDestructor
-// lldbg-check:[...]$1 = { a = { x = 10 y = 20 } guard = -1 }
+// lldb-command:v noDestructor
+// lldbg-check:[...] { a = { x = 10 y = 20 } guard = -1 }
 // lldbr-check:(struct_with_destructor::NoDestructorGuarded) noDestructor = { a = { x = 10 y = 20 } guard = -1 }
 
-// lldb-command:print withDestructor
-// lldbg-check:[...]$2 = { a = { x = 10 y = 20 } guard = -1 }
+// lldb-command:v withDestructor
+// lldbg-check:[...] { a = { x = 10 y = 20 } guard = -1 }
 // lldbr-check:(struct_with_destructor::WithDestructorGuarded) withDestructor = { a = { x = 10 y = 20 } guard = -1 }
 
-// lldb-command:print nested
-// lldbg-check:[...]$3 = { a = { a = { x = 7890 y = 9870 } } }
+// lldb-command:v nested
+// lldbg-check:[...] { a = { a = { x = 7890 y = 9870 } } }
 // lldbr-check:(struct_with_destructor::NestedOuter) nested = { a = { a = { x = 7890 y = 9870 } } }
 
 #![allow(unused_variables)]

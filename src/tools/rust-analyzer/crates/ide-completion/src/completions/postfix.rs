@@ -9,6 +9,7 @@ use ide_db::{
     ty_filter::TryEnum,
     SnippetCap,
 };
+use stdx::never;
 use syntax::{
     ast::{self, make, AstNode, AstToken},
     SyntaxKind::{BLOCK_EXPR, EXPR_STMT, FOR_EXPR, IF_EXPR, LOOP_EXPR, STMT_LIST, WHILE_EXPR},
@@ -258,7 +259,7 @@ pub(crate) fn complete_postfix(
 }
 
 fn get_receiver_text(receiver: &ast::Expr, receiver_is_ambiguous_float_literal: bool) -> String {
-    let text = if receiver_is_ambiguous_float_literal {
+    let mut text = if receiver_is_ambiguous_float_literal {
         let text = receiver.syntax().text();
         let without_dot = ..text.len() - TextSize::of('.');
         text.slice(without_dot).to_string()
@@ -267,12 +268,18 @@ fn get_receiver_text(receiver: &ast::Expr, receiver_is_ambiguous_float_literal: 
     };
 
     // The receiver texts should be interpreted as-is, as they are expected to be
-    // normal Rust expressions. We escape '\' and '$' so they don't get treated as
-    // snippet-specific constructs.
-    //
-    // Note that we don't need to escape the other characters that can be escaped,
-    // because they wouldn't be treated as snippet-specific constructs without '$'.
-    text.replace('\\', "\\\\").replace('$', "\\$")
+    // normal Rust expressions.
+    escape_snippet_bits(&mut text);
+    text
+}
+
+/// Escapes `\` and `$` so that they don't get interpreted as snippet-specific constructs.
+///
+/// Note that we don't need to escape the other characters that can be escaped,
+/// because they wouldn't be treated as snippet-specific constructs without '$'.
+fn escape_snippet_bits(text: &mut String) {
+    stdx::replace(text, '\\', "\\\\");
+    stdx::replace(text, '$', "\\$");
 }
 
 fn include_references(initial_element: &ast::Expr) -> (ast::Expr, ast::Expr) {
@@ -313,7 +320,9 @@ fn build_postfix_snippet_builder<'ctx>(
 ) -> Option<impl Fn(&str, &str, &str) -> Builder + 'ctx> {
     let receiver_range = ctx.sema.original_range_opt(receiver.syntax())?.range;
     if ctx.source_range().end() < receiver_range.start() {
-        // This shouldn't happen, yet it does. I assume this might be due to an incorrect token mapping.
+        // This shouldn't happen, yet it does. I assume this might be due to an incorrect token
+        // mapping.
+        never!();
         return None;
     }
     let delete_range = TextRange::new(receiver_range.start(), ctx.source_range().end());

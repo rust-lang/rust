@@ -1,0 +1,18 @@
+// This file contains code to be re-used by other tests.
+define-function: (
+    "switch-theme",
+    [theme],
+    block {
+        // Set the theme.
+        // Open the settings menu.
+        click: "#settings-menu"
+        // Wait for the popover to appear...
+        wait-for: "#settings"
+        // Change the setting.
+        click: "#theme-"+ |theme|
+        // Close the popover.
+        click: "#settings-menu"
+        // Ensure that the local storage was correctly updated.
+        assert-local-storage: {"rustdoc-theme": |theme|}
+    },
+)

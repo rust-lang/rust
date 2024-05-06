@@ -70,7 +70,7 @@ impl flags::AnalysisStats {
 
         let mut db_load_sw = self.stop_watch();
 
-        let path = AbsPathBuf::assert(env::current_dir()?.join(&self.path));
+        let path = AbsPathBuf::assert_utf8(env::current_dir()?.join(&self.path));
         let manifest = ProjectManifest::discover_single(&path)?;
 
         let mut workspace = ProjectWorkspace::load(manifest, &cargo_config, no_progress)?;
@@ -279,7 +279,10 @@ impl flags::AnalysisStats {
         let mut all = 0;
         let mut fail = 0;
         for &a in adts {
-            if db.generic_params(a.into()).iter().next().is_some() {
+            let generic_params = db.generic_params(a.into());
+            if generic_params.iter_type_or_consts().next().is_some()
+                || generic_params.iter_lt().next().is_some()
+            {
                 // Data types with generics don't have layout.
                 continue;
             }
@@ -371,7 +374,7 @@ impl flags::AnalysisStats {
 
             let parse = sema.parse(file_id);
             let file_txt = db.file_text(file_id);
-            let path = vfs.file_path(file_id).as_path().unwrap().to_owned();
+            let path = vfs.file_path(file_id).as_path().unwrap();
 
             for node in parse.syntax().descendants() {
                 let expr = match syntax::ast::Expr::cast(node.clone()) {
@@ -446,7 +449,7 @@ impl flags::AnalysisStats {
                     edit.apply(&mut txt);
 
                     if self.validate_term_search {
-                        std::fs::write(&path, txt).unwrap();
+                        std::fs::write(path, txt).unwrap();
 
                         let res = ws.run_build_scripts(&cargo_config, &|_| ()).unwrap();
                         if let Some(err) = res.error() {
@@ -495,7 +498,7 @@ impl flags::AnalysisStats {
             }
             // Revert file back to original state
             if self.validate_term_search {
-                std::fs::write(&path, file_txt.to_string()).unwrap();
+                std::fs::write(path, file_txt.to_string()).unwrap();
             }
 
             bar.inc(1);
@@ -982,6 +985,7 @@ impl flags::AnalysisStats {
                     },
                     prefer_no_std: false,
                     prefer_prelude: true,
+                    style_lints: false,
                 },
                 ide::AssistResolveStrategy::All,
                 file_id,
@@ -1052,7 +1056,7 @@ fn location_csv_expr(db: &RootDatabase, vfs: &Vfs, sm: &BodySourceMap, expr_id: 
     };
     let root = db.parse_or_expand(src.file_id);
     let node = src.map(|e| e.to_node(&root).syntax().clone());
-    let original_range = node.as_ref().original_file_range(db);
+    let original_range = node.as_ref().original_file_range_rooted(db);
     let path = vfs.file_path(original_range.file_id);
     let line_index = db.line_index(original_range.file_id);
     let text_range = original_range.range;
@@ -1068,7 +1072,7 @@ fn location_csv_pat(db: &RootDatabase, vfs: &Vfs, sm: &BodySourceMap, pat_id: Pa
     };
     let root = db.parse_or_expand(src.file_id);
     let node = src.map(|e| e.to_node(&root).syntax().clone());
-    let original_range = node.as_ref().original_file_range(db);
+    let original_range = node.as_ref().original_file_range_rooted(db);
     let path = vfs.file_path(original_range.file_id);
     let line_index = db.line_index(original_range.file_id);
     let text_range = original_range.range;
@@ -1077,17 +1081,17 @@ fn location_csv_pat(db: &RootDatabase, vfs: &Vfs, sm: &BodySourceMap, pat_id: Pa
     format!("{path},{}:{},{}:{}", start.line + 1, start.col, end.line + 1, end.col)
 }
 
-fn expr_syntax_range(
+fn expr_syntax_range<'a>(
     db: &RootDatabase,
-    vfs: &Vfs,
+    vfs: &'a Vfs,
     sm: &BodySourceMap,
     expr_id: ExprId,
-) -> Option<(VfsPath, LineCol, LineCol)> {
+) -> Option<(&'a VfsPath, LineCol, LineCol)> {
     let src = sm.expr_syntax(expr_id);
     if let Ok(src) = src {
         let root = db.parse_or_expand(src.file_id);
         let node = src.map(|e| e.to_node(&root).syntax().clone());
-        let original_range = node.as_ref().original_file_range(db);
+        let original_range = node.as_ref().original_file_range_rooted(db);
         let path = vfs.file_path(original_range.file_id);
         let line_index = db.line_index(original_range.file_id);
         let text_range = original_range.range;
@@ -1098,17 +1102,17 @@ fn expr_syntax_range(
         None
     }
 }
-fn pat_syntax_range(
+fn pat_syntax_range<'a>(
     db: &RootDatabase,
-    vfs: &Vfs,
+    vfs: &'a Vfs,
     sm: &BodySourceMap,
     pat_id: PatId,
-) -> Option<(VfsPath, LineCol, LineCol)> {
+) -> Option<(&'a VfsPath, LineCol, LineCol)> {
     let src = sm.pat_syntax(pat_id);
     if let Ok(src) = src {
         let root = db.parse_or_expand(src.file_id);
         let node = src.map(|e| e.to_node(&root).syntax().clone());
-        let original_range = node.as_ref().original_file_range(db);
+        let original_range = node.as_ref().original_file_range_rooted(db);
         let path = vfs.file_path(original_range.file_id);
         let line_index = db.line_index(original_range.file_id);
         let text_range = original_range.range;

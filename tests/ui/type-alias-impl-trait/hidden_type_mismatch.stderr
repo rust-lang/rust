@@ -1,14 +1,27 @@
-error: concrete type differs from previous defining opaque type use
-  --> $DIR/hidden_type_mismatch.rs:11:20
+error[E0271]: type mismatch resolving `<() as Proj>::Assoc == i32`
+  --> $DIR/hidden_type_mismatch.rs:43:9
    |
 LL |     pub type Sep = impl Sized + std::fmt::Display;
-   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `i32`, got `String`
+   |                    ------------------------------ the expected opaque type
+...
+LL |         Bar { inner: 1i32, _marker: () }
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type mismatch resolving `<() as Proj>::Assoc == i32`
    |
-note: previous use here
-  --> $DIR/hidden_type_mismatch.rs:37:21
+note: expected this to be `Sep`
+  --> $DIR/hidden_type_mismatch.rs:20:22
    |
-LL |     pub type Tait = impl Copy + From<Bar<()>> + Into<Bar<()>>;
-   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         type Assoc = sus::Sep;
+   |                      ^^^^^^^^
+   = note: expected opaque type `Sep`
+                     found type `i32`
+note: required for `Bar<()>` to implement `Copy`
+  --> $DIR/hidden_type_mismatch.rs:32:39
+   |
+LL |     impl<T: Proj<Assoc = i32> + Copy> Copy for Bar<T> {}
+   |                  -----------          ^^^^     ^^^^^^
+   |                  |
+   |                  unsatisfied trait bound introduced here
 
 error: aborting due to 1 previous error
 
+For more information about this error, try `rustc --explain E0271`.

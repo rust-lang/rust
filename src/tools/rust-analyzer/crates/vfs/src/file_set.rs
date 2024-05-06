@@ -123,10 +123,19 @@ impl FileSetConfig {
         self.n_file_sets
     }
 
+    /// Get the lexicographically ordered vector of the underlying map.
+    pub fn roots(&self) -> Vec<(Vec<u8>, u64)> {
+        self.map.stream().into_byte_vec()
+    }
+
     /// Returns the set index for the given `path`.
     ///
     /// `scratch_space` is used as a buffer and will be entirely replaced.
     fn classify(&self, path: &VfsPath, scratch_space: &mut Vec<u8>) -> usize {
+        // `path` is a file, but r-a only cares about the containing directory. We don't
+        // want `/foo/bar_baz.rs` to be attributed to source root directory `/foo/bar`.
+        let path = path.parent().unwrap_or_else(|| path.clone());
+
         scratch_space.clear();
         path.encode(scratch_space);
         let automaton = PrefixOf::new(scratch_space.as_slice());

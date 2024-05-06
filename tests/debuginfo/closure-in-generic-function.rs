@@ -23,19 +23,19 @@
 
 // lldb-command:run
 
-// lldb-command:print x
-// lldbg-check:[...]$0 = 0.5
+// lldb-command:v x
+// lldbg-check:[...] 0.5
 // lldbr-check:(f64) x = 0.5
-// lldb-command:print y
-// lldbg-check:[...]$1 = 10
+// lldb-command:v y
+// lldbg-check:[...] 10
 // lldbr-check:(i32) y = 10
 // lldb-command:continue
 
-// lldb-command:print *x
-// lldbg-check:[...]$2 = 29
+// lldb-command:v *x
+// lldbg-check:[...] 29
 // lldbr-check:(i32) *x = 29
-// lldb-command:print *y
-// lldbg-check:[...]$3 = 110
+// lldb-command:v *y
+// lldbg-check:[...] 110
 // lldbr-check:(i32) *y = 110
 // lldb-command:continue
 

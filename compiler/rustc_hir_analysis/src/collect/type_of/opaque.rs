@@ -371,11 +371,10 @@ pub(super) fn find_opaque_ty_constraints_for_rpit<'tcx>(
             return mir_opaque_ty.ty;
         }
 
-        let scope = tcx.local_def_id_to_hir_id(owner_def_id);
-        debug!(?scope);
+        debug!(?owner_def_id);
         let mut locator = RpitConstraintChecker { def_id, tcx, found: mir_opaque_ty };
 
-        match tcx.hir_node(scope) {
+        match tcx.hir_node_by_def_id(owner_def_id) {
             Node::Item(it) => intravisit::walk_item(&mut locator, it),
             Node::ImplItem(it) => intravisit::walk_impl_item(&mut locator, it),
             Node::TraitItem(it) => intravisit::walk_trait_item(&mut locator, it),

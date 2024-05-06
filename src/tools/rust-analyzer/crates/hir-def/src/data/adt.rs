@@ -26,7 +26,7 @@ use crate::{
     tt::{Delimiter, DelimiterKind, Leaf, Subtree, TokenTree},
     type_ref::TypeRef,
     visibility::RawVisibility,
-    EnumId, EnumVariantId, LocalFieldId, LocalModuleId, Lookup, StructId, UnionId,
+    EnumId, EnumVariantId, LocalFieldId, LocalModuleId, Lookup, StructId, UnionId, VariantId,
 };
 
 /// Note that we use `StructData` for unions as well!
@@ -191,9 +191,7 @@ impl StructData {
         let krate = loc.container.krate;
         let item_tree = loc.id.item_tree(db);
         let repr = repr_from_value(db, krate, &item_tree, ModItem::from(loc.id.value).into());
-        let cfg_options = db.crate_graph()[loc.container.krate].cfg_options.clone();
-
-        let attrs = item_tree.attrs(db, loc.container.krate, ModItem::from(loc.id.value).into());
+        let attrs = item_tree.attrs(db, krate, ModItem::from(loc.id.value).into());
 
         let mut flags = StructFlags::NO_FLAGS;
         if attrs.by_key("rustc_has_incoherent_inherent_impls").exists() {
@@ -219,7 +217,7 @@ impl StructData {
             loc.id.file_id(),
             loc.container.local_id,
             &item_tree,
-            &cfg_options,
+            &db.crate_graph()[krate].cfg_options,
             &strukt.fields,
             None,
         );
@@ -248,9 +246,7 @@ impl StructData {
         let krate = loc.container.krate;
         let item_tree = loc.id.item_tree(db);
         let repr = repr_from_value(db, krate, &item_tree, ModItem::from(loc.id.value).into());
-        let cfg_options = db.crate_graph()[loc.container.krate].cfg_options.clone();
-
-        let attrs = item_tree.attrs(db, loc.container.krate, ModItem::from(loc.id.value).into());
+        let attrs = item_tree.attrs(db, krate, ModItem::from(loc.id.value).into());
         let mut flags = StructFlags::NO_FLAGS;
         if attrs.by_key("rustc_has_incoherent_inherent_impls").exists() {
             flags |= StructFlags::IS_RUSTC_HAS_INCOHERENT_INHERENT_IMPL;
@@ -266,7 +262,7 @@ impl StructData {
             loc.id.file_id(),
             loc.container.local_id,
             &item_tree,
-            &cfg_options,
+            &db.crate_graph()[krate].cfg_options,
             &union.fields,
             None,
         );
@@ -338,7 +334,6 @@ impl EnumVariantData {
         let container = loc.parent.lookup(db).container;
         let krate = container.krate;
         let item_tree = loc.id.item_tree(db);
-        let cfg_options = db.crate_graph()[krate].cfg_options.clone();
         let variant = &item_tree[loc.id.value];
 
         let (var_data, diagnostics) = lower_fields(
@@ -347,7 +342,7 @@ impl EnumVariantData {
             loc.id.file_id(),
             container.local_id,
             &item_tree,
-            &cfg_options,
+            &db.crate_graph()[krate].cfg_options,
             &variant.fields,
             Some(item_tree[loc.parent.lookup(db).id.value].visibility),
         );
@@ -383,6 +378,15 @@ impl VariantData {
             VariantData::Unit => StructKind::Unit,
         }
     }
+
+    #[allow(clippy::self_named_constructors)]
+    pub(crate) fn variant_data(db: &dyn DefDatabase, id: VariantId) -> Arc<VariantData> {
+        match id {
+            VariantId::StructId(it) => db.struct_data(it).variant_data.clone(),
+            VariantId::EnumVariantId(it) => db.enum_variant_data(it).variant_data.clone(),
+            VariantId::UnionId(it) => db.union_data(it).variant_data.clone(),
+        }
+    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -400,7 +404,7 @@ pub(crate) fn lower_struct(
     item_tree: &ItemTree,
     fields: &Fields,
 ) -> StructKind {
-    let ctx = LowerCtx::with_file_id(db, ast.file_id);
+    let ctx = LowerCtx::new(db, ast.file_id);
 
     match (&ast.value, fields) {
         (ast::StructKind::Tuple(fl), Fields::Tuple(fields)) => {
@@ -415,7 +419,9 @@ pub(crate) fn lower_struct(
                     || FieldData {
                         name: Name::new_tuple_field(i),
                         type_ref: Interned::new(TypeRef::from_ast_opt(&ctx, fd.ty())),
-                        visibility: RawVisibility::from_ast(db, ast.with_value(fd.visibility())),
+                        visibility: RawVisibility::from_ast(db, fd.visibility(), &mut |range| {
+                            ctx.span_map().span_for_range(range).ctx
+                        }),
                     },
                 );
             }
@@ -433,7 +439,9 @@ pub(crate) fn lower_struct(
                     || FieldData {
                         name: fd.name().map(|n| n.as_name()).unwrap_or_else(Name::missing),
                         type_ref: Interned::new(TypeRef::from_ast_opt(&ctx, fd.ty())),
-                        visibility: RawVisibility::from_ast(db, ast.with_value(fd.visibility())),
+                        visibility: RawVisibility::from_ast(db, fd.visibility(), &mut |range| {
+                            ctx.span_map().span_for_range(range).ctx
+                        }),
                     },
                 );
             }

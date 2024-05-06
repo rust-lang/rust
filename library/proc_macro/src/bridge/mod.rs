@@ -154,7 +154,7 @@ macro_rules! reverse_decode {
 mod arena;
 #[allow(unsafe_code)]
 mod buffer;
-#[forbid(unsafe_code)]
+#[deny(unsafe_code)]
 pub mod client;
 #[allow(unsafe_code)]
 mod closure;
@@ -165,8 +165,6 @@ mod handle;
 #[macro_use]
 #[forbid(unsafe_code)]
 mod rpc;
-#[allow(unsafe_code)]
-mod scoped_cell;
 #[allow(unsafe_code)]
 mod selfless_reify;
 #[forbid(unsafe_code)]

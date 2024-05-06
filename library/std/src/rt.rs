@@ -16,16 +16,13 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 #![allow(unused_macros)]
 
-use crate::ffi::CString;
-
 // Re-export some of our utilities which are expected by other crates.
 pub use crate::panicking::{begin_panic, panic_count};
 pub use core::panicking::{panic_display, panic_fmt};
 
 use crate::sync::Once;
 use crate::sys;
-use crate::sys_common::thread_info;
-use crate::thread::Thread;
+use crate::thread::{self, Thread};
 
 // Prints to the "panic output", depending on the platform this may be:
 // - the standard error output
@@ -77,7 +74,7 @@ macro_rules! rtunwrap {
 //
 // Since 2014, the Rust runtime on Unix has set the `SIGPIPE` handler to
 // `SIG_IGN`. Applications have good reasons to want a different behavior
-// though, so there is a `#[unix_sigpipe = "..."]` attribute on `fn main()` that
+// though, so there is a `-Zon-broken-pipe` compiler flag that
 // can be used to select how `SIGPIPE` shall be setup (if changed at all) before
 // `fn main()` is called. See <https://github.com/rust-lang/rust/issues/97889>
 // for more info.
@@ -96,13 +93,9 @@ unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
     unsafe {
         sys::init(argc, argv, sigpipe);
 
-        let main_guard = sys::thread::guard::init();
-        // Next, set up the current Thread with the guard information we just
-        // created. Note that this isn't necessary in general for new threads,
-        // but we just do this to name the main thread and to give it correct
-        // info about the stack bounds.
-        let thread = Thread::new(Some(rtunwrap!(Ok, CString::new("main"))));
-        thread_info::set(main_guard, thread);
+        // Set up the current thread to give it the right name.
+        let thread = Thread::new_main();
+        thread::set_current(thread);
     }
 }
 

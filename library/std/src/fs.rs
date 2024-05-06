@@ -37,7 +37,7 @@ use crate::time::SystemTime;
 ///
 /// # Examples
 ///
-/// Creates a new file and write bytes to it (you can also use [`write()`]):
+/// Creates a new file and write bytes to it (you can also use [`write`]):
 ///
 /// ```no_run
 /// use std::fs::File;
@@ -97,7 +97,7 @@ use crate::time::SystemTime;
 /// have been opened for asynchronous I/O (e.g. by using `FILE_FLAG_OVERLAPPED`).
 ///
 /// [`BufReader`]: io::BufReader
-/// [`BufWriter`]: io::BufReader
+/// [`BufWriter`]: io::BufWriter
 /// [`sync_all`]: File::sync_all
 /// [`write`]: File::write
 /// [`read`]: File::read
@@ -214,7 +214,7 @@ pub struct Permissions(fs_imp::FilePermissions);
 /// A structure representing a type of file with accessors for each file type.
 /// It is returned by [`Metadata::file_type`] method.
 #[stable(feature = "file_type", since = "1.1.0")]
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(not(test), rustc_diagnostic_item = "FileType")]
 pub struct FileType(fs_imp::FileType);
 
@@ -248,10 +248,10 @@ pub struct DirBuilder {
 ///
 /// ```no_run
 /// use std::fs;
-/// use std::net::SocketAddr;
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
-///     let foo: SocketAddr = String::from_utf8_lossy(&fs::read("address.txt")?).parse()?;
+///     let data: Vec<u8> = fs::read("image.jpg")?;
+///     assert_eq!(data[0..3], [0xFF, 0xD8, 0xFF]);
 ///     Ok(())
 /// }
 /// ```
@@ -261,7 +261,7 @@ pub fn read<P: AsRef<Path>>(path: P) -> io::Result<Vec<u8>> {
         let mut file = File::open(path)?;
         let size = file.metadata().map(|m| m.len() as usize).ok();
         let mut bytes = Vec::new();
-        bytes.try_reserve_exact(size.unwrap_or(0)).map_err(|_| io::ErrorKind::OutOfMemory)?;
+        bytes.try_reserve_exact(size.unwrap_or(0))?;
         io::default_read_to_end(&mut file, &mut bytes, size)?;
         Ok(bytes)
     }
@@ -290,11 +290,11 @@ pub fn read<P: AsRef<Path>>(path: P) -> io::Result<Vec<u8>> {
 ///
 /// ```no_run
 /// use std::fs;
-/// use std::net::SocketAddr;
 /// use std::error::Error;
 ///
 /// fn main() -> Result<(), Box<dyn Error>> {
-///     let foo: SocketAddr = fs::read_to_string("address.txt")?.parse()?;
+///     let message: String = fs::read_to_string("message.txt")?;
+///     println!("{}", message);
 ///     Ok(())
 /// }
 /// ```
@@ -304,7 +304,7 @@ pub fn read_to_string<P: AsRef<Path>>(path: P) -> io::Result<String> {
         let mut file = File::open(path)?;
         let size = file.metadata().map(|m| m.len() as usize).ok();
         let mut string = String::new();
-        string.try_reserve_exact(size.unwrap_or(0)).map_err(|_| io::ErrorKind::OutOfMemory)?;
+        string.try_reserve_exact(size.unwrap_or(0))?;
         io::default_read_to_string(&mut file, &mut string, size)?;
         Ok(string)
     }
@@ -385,7 +385,7 @@ impl File {
     /// See the [`OpenOptions::open`] function for more details.
     ///
     /// See also [`std::fs::write()`][self::write] for a simple function to
-    /// create a file with a given data.
+    /// create a file with some given data.
     ///
     /// # Examples
     ///
@@ -465,14 +465,20 @@ impl File {
         OpenOptions::new()
     }
 
-    /// Attempts to sync all OS-internal metadata to disk.
+    /// Attempts to sync all OS-internal file content and metadata to disk.
     ///
     /// This function will attempt to ensure that all in-memory data reaches the
     /// filesystem before returning.
     ///
     /// This can be used to handle errors that would otherwise only be caught
-    /// when the `File` is closed.  Dropping a file will ignore errors in
-    /// synchronizing this in-memory data.
+    /// when the `File` is closed, as dropping a `File` will ignore all errors.
+    /// Note, however, that `sync_all` is generally more expensive than closing
+    /// a file by dropping it, because the latter is not required to block until
+    /// the data has been written to the filesystem.
+    ///
+    /// If synchronizing the metadata is not required, use [`sync_data`] instead.
+    ///
+    /// [`sync_data`]: File::sync_data
     ///
     /// # Examples
     ///
@@ -489,6 +495,7 @@ impl File {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[doc(alias = "fsync")]
     pub fn sync_all(&self) -> io::Result<()> {
         self.inner.fsync()
     }
@@ -520,6 +527,7 @@ impl File {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[doc(alias = "fdatasync")]
     pub fn sync_data(&self) -> io::Result<()> {
         self.inner.datasync()
     }
@@ -777,14 +785,14 @@ impl Read for &File {
     // Reserves space in the buffer based on the file size when available.
     fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
         let size = buffer_capacity_required(self);
-        buf.try_reserve(size.unwrap_or(0)).map_err(|_| io::ErrorKind::OutOfMemory)?;
+        buf.try_reserve(size.unwrap_or(0))?;
         io::default_read_to_end(self, buf, size)
     }
 
     // Reserves space in the buffer based on the file size when available.
     fn read_to_string(&mut self, buf: &mut String) -> io::Result<usize> {
         let size = buffer_capacity_required(self);
-        buf.try_reserve(size.unwrap_or(0)).map_err(|_| io::ErrorKind::OutOfMemory)?;
+        buf.try_reserve(size.unwrap_or(0))?;
         io::default_read_to_string(self, buf, size)
     }
 }
@@ -972,20 +980,26 @@ impl OpenOptions {
     /// Note that setting `.write(true).append(true)` has the same effect as
     /// setting only `.append(true)`.
     ///
-    /// For most filesystems, the operating system guarantees that all writes are
-    /// atomic: no writes get mangled because another process writes at the same
-    /// time.
+    /// Append mode guarantees that writes will be positioned at the current end of file,
+    /// even when there are other processes or threads appending to the same file. This is
+    /// unlike <code>[seek]\([SeekFrom]::[End]\(0))</code> followed by `write()`, which
+    /// has a race between seeking and writing during which another writer can write, with
+    /// our `write()` overwriting their data.
     ///
-    /// One maybe obvious note when using append-mode: make sure that all data
-    /// that belongs together is written to the file in one operation. This
-    /// can be done by concatenating strings before passing them to [`write()`],
-    /// or using a buffered writer (with a buffer of adequate size),
-    /// and calling [`flush()`] when the message is complete.
+    /// Keep in mind that this does not necessarily guarantee that data appended by
+    /// different processes or threads does not interleave. The amount of data accepted a
+    /// single `write()` call depends on the operating system and file system. A
+    /// successful `write()` is allowed to write only part of the given data, so even if
+    /// you're careful to provide the whole message in a single call to `write()`, there
+    /// is no guarantee that it will be written out in full. If you rely on the filesystem
+    /// accepting the message in a single write, make sure that all data that belongs
+    /// together is written in one operation. This can be done by concatenating strings
+    /// before passing them to [`write()`].
     ///
     /// If a file is opened with both read and append access, beware that after
     /// opening, and after every write, the position for reading may be set at the
     /// end of the file. So, before writing, save the current position (using
-    /// <code>[seek]\([SeekFrom]::[Current]\(0))</code>), and restore it before the next read.
+    /// <code>[Seek]::[stream_position]</code>), and restore it before the next read.
     ///
     /// ## Note
     ///
@@ -994,8 +1008,10 @@ impl OpenOptions {
     ///
     /// [`write()`]: Write::write "io::Write::write"
     /// [`flush()`]: Write::flush "io::Write::flush"
+    /// [stream_position]: Seek::stream_position "io::Seek::stream_position"
     /// [seek]: Seek::seek "io::Seek::seek"
     /// [Current]: SeekFrom::Current "io::SeekFrom::Current"
+    /// [End]: SeekFrom::End "io::SeekFrom::End"
     ///
     /// # Examples
     ///
@@ -1036,7 +1052,7 @@ impl OpenOptions {
     /// [`OpenOptions::append`] access must be used.
     ///
     /// See also [`std::fs::write()`][self::write] for a simple function to
-    /// create a file with a given data.
+    /// create a file with some given data.
     ///
     /// # Examples
     ///
@@ -1394,15 +1410,20 @@ impl Metadata {
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for Metadata {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Metadata")
-            .field("file_type", &self.file_type())
-            .field("is_dir", &self.is_dir())
-            .field("is_file", &self.is_file())
-            .field("permissions", &self.permissions())
-            .field("modified", &self.modified())
-            .field("accessed", &self.accessed())
-            .field("created", &self.created())
-            .finish_non_exhaustive()
+        let mut debug = f.debug_struct("Metadata");
+        debug.field("file_type", &self.file_type());
+        debug.field("permissions", &self.permissions());
+        debug.field("len", &self.len());
+        if let Ok(modified) = self.modified() {
+            debug.field("modified", &modified);
+        }
+        if let Ok(accessed) = self.accessed() {
+            debug.field("accessed", &accessed);
+        }
+        if let Ok(created) = self.created() {
+            debug.field("created", &created);
+        }
+        debug.finish_non_exhaustive()
     }
 }
 
@@ -1665,6 +1686,17 @@ impl FileType {
     #[stable(feature = "file_type", since = "1.1.0")]
     pub fn is_symlink(&self) -> bool {
         self.0.is_symlink()
+    }
+}
+
+#[stable(feature = "std_debug", since = "1.16.0")]
+impl fmt::Debug for FileType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("FileType")
+            .field("is_file", &self.is_file())
+            .field("is_dir", &self.is_dir())
+            .field("is_symlink", &self.is_symlink())
+            .finish_non_exhaustive()
     }
 }
 
@@ -2018,7 +2050,7 @@ pub fn rename<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<()> 
 /// the length of the `to` file as reported by `metadata`.
 ///
 /// If you want to copy the contents of one file to another and you’re
-/// working with [`File`]s, see the [`io::copy()`] function.
+/// working with [`File`]s, see the [`io::copy`](io::copy()) function.
 ///
 /// # Platform-specific behavior
 ///

@@ -288,11 +288,11 @@ macro_rules! foo {
 }
 fn main() {
     cfg_if!{
-  if #[cfg(test)]{
-    1;
-  }else {
-    1;
-  }
+    if #[cfg(test)]{
+        1;
+    }else {
+        1;
+    }
 };
 }
 "#,

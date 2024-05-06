@@ -8,13 +8,13 @@ use std::cell::Cell;
 use crate::abi::{FnAbi, Layout, LayoutShape};
 use crate::mir::alloc::{AllocId, GlobalAlloc};
 use crate::mir::mono::{Instance, InstanceDef, StaticDef};
-use crate::mir::Body;
+use crate::mir::{BinOp, Body, Place};
 use crate::target::MachineInfo;
 use crate::ty::{
     AdtDef, AdtKind, Allocation, ClosureDef, ClosureKind, Const, FieldDef, FnDef, ForeignDef,
     ForeignItemKind, ForeignModule, ForeignModuleDef, GenericArgs, GenericPredicates, Generics,
     ImplDef, ImplTrait, LineInfo, PolyFnSig, RigidTy, Span, TraitDecl, TraitDef, Ty, TyKind,
-    VariantDef,
+    UintTy, VariantDef,
 };
 use crate::{
     mir, Crate, CrateItem, CrateItems, CrateNum, DefId, Error, Filename, ImplTraitDecls, ItemKind,
@@ -101,8 +101,17 @@ pub trait Context {
     /// Evaluate constant as a target usize.
     fn eval_target_usize(&self, cnst: &Const) -> Result<u64, Error>;
 
-    /// Create a target usize constant for the given value.
-    fn usize_to_const(&self, val: u64) -> Result<Const, Error>;
+    /// Create a new zero-sized constant.
+    fn try_new_const_zst(&self, ty: Ty) -> Result<Const, Error>;
+
+    /// Create a new constant that represents the given string value.
+    fn new_const_str(&self, value: &str) -> Const;
+
+    /// Create a new constant that represents the given boolean value.
+    fn new_const_bool(&self, value: bool) -> Const;
+
+    /// Create a new constant that represents the given value.
+    fn try_new_const_uint(&self, value: u128, uint_ty: UintTy) -> Result<Const, Error>;
 
     /// Create a new type from the given kind.
     fn new_rigid_ty(&self, kind: RigidTy) -> Ty;
@@ -117,10 +126,13 @@ pub trait Context {
     fn def_ty_with_args(&self, item: DefId, args: &GenericArgs) -> Ty;
 
     /// Returns literal value of a const as a string.
-    fn const_literal(&self, cnst: &Const) -> String;
+    fn const_pretty(&self, cnst: &Const) -> String;
 
     /// `Span` of an item
     fn span_of_an_item(&self, def_id: DefId) -> Span;
+
+    /// Obtain the representation of a type.
+    fn ty_pretty(&self, ty: Ty) -> String;
 
     /// Obtain the representation of a type.
     fn ty_kind(&self, ty: Ty) -> TyKind;
@@ -145,6 +157,9 @@ pub trait Context {
 
     /// Check if this is an empty DropGlue shim.
     fn is_empty_drop_shim(&self, def: InstanceDef) -> bool;
+
+    /// Check if this is an empty AsyncDropGlueCtor shim.
+    fn is_empty_async_drop_ctor_shim(&self, def: InstanceDef) -> bool;
 
     /// Convert a non-generic crate item into an instance.
     /// This function will panic if the item is generic.
@@ -183,6 +198,7 @@ pub trait Context {
     fn vtable_allocation(&self, global_alloc: &GlobalAlloc) -> Option<AllocId>;
     fn krate(&self, def_id: DefId) -> Crate;
     fn instance_name(&self, def: InstanceDef, trimmed: bool) -> Symbol;
+    fn intrinsic_name(&self, def: InstanceDef) -> Symbol;
 
     /// Return information about the target machine.
     fn target_info(&self) -> MachineInfo;
@@ -195,11 +211,17 @@ pub trait Context {
 
     /// Get the layout shape.
     fn layout_shape(&self, id: Layout) -> LayoutShape;
+
+    /// Get a debug string representation of a place.
+    fn place_pretty(&self, place: &Place) -> String;
+
+    /// Get the resulting type of binary operation.
+    fn binop_ty(&self, bin_op: BinOp, rhs: Ty, lhs: Ty) -> Ty;
 }
 
 // A thread local variable that stores a pointer to the tables mapping between TyCtxt
 // datastructures and stable MIR datastructures
-scoped_thread_local! (static TLV: Cell<*const ()>);
+scoped_tls::scoped_thread_local!(static TLV: Cell<*const ()>);
 
 pub fn run<F, T>(context: &dyn Context, f: F) -> Result<T, Error>
 where

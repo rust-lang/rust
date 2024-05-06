@@ -6,10 +6,10 @@ pub use crate::core_arch::arch::*;
 
 /// Inline assembly.
 ///
-/// Refer to [rust by example] for a usage guide and the [reference] for
+/// Refer to [Rust By Example] for a usage guide and the [reference] for
 /// detailed information about the syntax and available options.
 ///
-/// [rust by example]: https://doc.rust-lang.org/nightly/rust-by-example/unsafe/asm.html
+/// [Rust By Example]: https://doc.rust-lang.org/nightly/rust-by-example/unsafe/asm.html
 /// [reference]: https://doc.rust-lang.org/nightly/reference/inline-assembly.html
 #[stable(feature = "asm", since = "1.59.0")]
 #[rustc_builtin_macro]
@@ -19,10 +19,10 @@ pub macro asm("assembly template", $(operands,)* $(options($(option),*))?) {
 
 /// Module-level inline assembly.
 ///
-/// Refer to [rust by example] for a usage guide and the [reference] for
+/// Refer to [Rust By Example] for a usage guide and the [reference] for
 /// detailed information about the syntax and available options.
 ///
-/// [rust by example]: https://doc.rust-lang.org/nightly/rust-by-example/unsafe/asm.html
+/// [Rust By Example]: https://doc.rust-lang.org/nightly/rust-by-example/unsafe/asm.html
 /// [reference]: https://doc.rust-lang.org/nightly/reference/inline-assembly.html
 #[stable(feature = "global_asm", since = "1.59.0")]
 #[rustc_builtin_macro]

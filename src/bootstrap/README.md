@@ -1,7 +1,7 @@
 # rustbuild - Bootstrapping Rust
 
-This README is aimed at helping to explain how Rust is bootstrapped and in general,
-some of the technical details of the build system.
+This README is aimed at helping to explain how Rust is bootstrapped,
+and some of the technical details of the build system.
 
 Note that this README only covers internal information, not how to use the tool.
 Please check [bootstrapping dev guide][bootstrapping-dev-guide] for further information.
@@ -10,12 +10,12 @@ Please check [bootstrapping dev guide][bootstrapping-dev-guide] for further info
 
 ## Introduction
 
-The build system defers most of the complicated logic managing invocations
+The build system defers most of the complicated logic of managing invocations
 of rustc and rustdoc to Cargo itself. However, moving through various stages
 and copying artifacts is still necessary for it to do. Each time rustbuild
 is invoked, it will iterate through the list of predefined steps and execute
 each serially in turn if it matches the paths passed or is a default rule.
-For each step rustbuild relies on the step internally being incremental and
+For each step, rustbuild relies on the step internally being incremental and
 parallel. Note, though, that the `-j` parameter to rustbuild gets forwarded
 to appropriate test harnesses and such.
 
@@ -24,7 +24,7 @@ to appropriate test harnesses and such.
 The rustbuild build system goes through a few phases to actually build the
 compiler. What actually happens when you invoke rustbuild is:
 
-1. The entry point script(`x` for unix like systems, `x.ps1` for windows systems,
+1. The entry point script (`x` for unix like systems, `x.ps1` for windows systems,
    `x.py` cross-platform) is run. This script is responsible for downloading the stage0
    compiler/Cargo binaries, and it then compiles the build system itself (this folder).
    Finally, it then invokes the actual `bootstrap` binary build system.
@@ -107,12 +107,13 @@ build/
 
     # Location where the stage0 Cargo and Rust compiler are unpacked. This
     # directory is purely an extracted and overlaid tarball of these two (done
-    # by the bootstrap python script). In theory, the build system does not
+    # by the bootstrap Python script). In theory, the build system does not
     # modify anything under this directory afterwards.
     stage0/
 
     # These to-build directories are the cargo output directories for builds of
-    # the standard library and compiler, respectively. Internally, these may also
+    # the standard library, the test system, the compiler, and various tools,
+    # respectively. Internally, these may also
     # have other target directories, which represent artifacts being compiled
     # from the host to the specified target.
     #
@@ -169,17 +170,17 @@ read by the other.
 
 Some general areas that you may be interested in modifying are:
 
-* Adding a new build tool? Take a look at `bootstrap/tool.rs` for examples of
-  other tools.
+* Adding a new build tool? Take a look at `bootstrap/src/core/build_steps/tool.rs`
+  for examples of other tools.
 * Adding a new compiler crate? Look no further! Adding crates can be done by
-  adding a new directory with `Cargo.toml` followed by configuring all
+  adding a new directory with `Cargo.toml`, followed by configuring all
   `Cargo.toml` files accordingly.
 * Adding a new dependency from crates.io? This should just work inside the
   compiler artifacts stage (everything other than libtest and libstd).
-* Adding a new configuration option? You'll want to modify `bootstrap/flags.rs`
-  for command line flags and then `bootstrap/config.rs` to copy the flags to the
+* Adding a new configuration option? You'll want to modify `bootstrap/src/core/config/flags.rs`
+  for command line flags and then `bootstrap/src/core/config/config.rs` to copy the flags to the
   `Config` struct.
-* Adding a sanity check? Take a look at `bootstrap/sanity.rs`.
+* Adding a sanity check? Take a look at `bootstrap/src/core/sanity.rs`.
 
 If you make a major change on bootstrap configuration, please remember to:
 

@@ -11,6 +11,15 @@ LL |     drop(alloc);
 LL |
 LL |     use_value(*theref)
    |               ------- borrow later used here
+   |
+note: if `Alloc` implemented `Clone`, you could clone the value
+  --> $DIR/leak-alloc.rs:8:1
+   |
+LL | struct Alloc {}
+   | ^^^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     let boxed = Box::new_in(10, alloc.by_ref());
+   |                                 ----- you could clone this value
 
 error: aborting due to 1 previous error
 

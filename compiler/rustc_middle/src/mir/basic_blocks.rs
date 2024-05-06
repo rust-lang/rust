@@ -1,5 +1,5 @@
 use crate::mir::traversal::Postorder;
-use crate::mir::{BasicBlock, BasicBlockData, Successors, Terminator, TerminatorKind, START_BLOCK};
+use crate::mir::{BasicBlock, BasicBlockData, Terminator, TerminatorKind, START_BLOCK};
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::graph;
@@ -7,6 +7,7 @@ use rustc_data_structures::graph::dominators::{dominators, Dominators};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::OnceLock;
 use rustc_index::{IndexSlice, IndexVec};
+use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use smallvec::SmallVec;
 
@@ -141,42 +142,30 @@ impl<'tcx> std::ops::Deref for BasicBlocks<'tcx> {
 
 impl<'tcx> graph::DirectedGraph for BasicBlocks<'tcx> {
     type Node = BasicBlock;
-}
 
-impl<'tcx> graph::WithNumNodes for BasicBlocks<'tcx> {
     #[inline]
     fn num_nodes(&self) -> usize {
         self.basic_blocks.len()
     }
 }
 
-impl<'tcx> graph::WithStartNode for BasicBlocks<'tcx> {
+impl<'tcx> graph::StartNode for BasicBlocks<'tcx> {
     #[inline]
     fn start_node(&self) -> Self::Node {
         START_BLOCK
     }
 }
 
-impl<'tcx> graph::WithSuccessors for BasicBlocks<'tcx> {
+impl<'tcx> graph::Successors for BasicBlocks<'tcx> {
     #[inline]
-    fn successors(&self, node: Self::Node) -> <Self as graph::GraphSuccessors<'_>>::Iter {
+    fn successors(&self, node: Self::Node) -> impl Iterator<Item = Self::Node> {
         self.basic_blocks[node].terminator().successors()
     }
 }
 
-impl<'a, 'b> graph::GraphSuccessors<'b> for BasicBlocks<'a> {
-    type Item = BasicBlock;
-    type Iter = Successors<'b>;
-}
-
-impl<'tcx, 'graph> graph::GraphPredecessors<'graph> for BasicBlocks<'tcx> {
-    type Item = BasicBlock;
-    type Iter = std::iter::Copied<std::slice::Iter<'graph, BasicBlock>>;
-}
-
-impl<'tcx> graph::WithPredecessors for BasicBlocks<'tcx> {
+impl<'tcx> graph::Predecessors for BasicBlocks<'tcx> {
     #[inline]
-    fn predecessors(&self, node: Self::Node) -> <Self as graph::GraphPredecessors<'_>>::Iter {
+    fn predecessors(&self, node: Self::Node) -> impl Iterator<Item = Self::Node> {
         self.predecessors()[node].iter().copied()
     }
 }

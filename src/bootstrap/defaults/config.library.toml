@@ -10,6 +10,8 @@ bench-stage = 0
 incremental = true
 # Make the compiler and standard library faster to build, at the expense of a ~20% runtime slowdown.
 lto = "off"
+# Build the llvm-bitcode-linker as it is required for running nvptx tests
+llvm-bitcode-linker = true
 
 [llvm]
 # Will download LLVM from CI if available on your platform.

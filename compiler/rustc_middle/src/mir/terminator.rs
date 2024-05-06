@@ -1,10 +1,10 @@
 /// Functionality for terminators and helper types that appear in terminators.
 use rustc_hir::LangItem;
-use smallvec::SmallVec;
+use smallvec::{smallvec, SmallVec};
 
 use super::TerminatorKind;
 use rustc_data_structures::packed::Pu128;
-use rustc_macros::HashStable;
+use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use std::slice;
 
 use super::*;
@@ -74,6 +74,23 @@ impl SwitchTargets {
     pub fn target_for_value(&self, value: u128) -> BasicBlock {
         self.iter().find_map(|(v, t)| (v == value).then_some(t)).unwrap_or_else(|| self.otherwise())
     }
+
+    /// Adds a new target to the switch. But You cannot add an already present value.
+    #[inline]
+    pub fn add_target(&mut self, value: u128, bb: BasicBlock) {
+        let value = Pu128(value);
+        if self.values.contains(&value) {
+            bug!("target value {:?} already present", value);
+        }
+        self.values.push(value);
+        self.targets.insert(self.targets.len() - 1, bb);
+    }
+
+    /// Returns true if all targets (including the fallback target) are distinct.
+    #[inline]
+    pub fn is_distinct(&self) -> bool {
+        self.targets.iter().collect::<FxHashSet<_>>().len() == self.targets.len()
+    }
 }
 
 pub struct SwitchTargetsIter<'a> {
@@ -138,44 +155,45 @@ impl<O> AssertKind<O> {
         matches!(self, OverflowNeg(..) | Overflow(Add | Sub | Mul | Shl | Shr, ..))
     }
 
-    /// Get the message that is printed at runtime when this assertion fails.
+    /// Get the lang item that is invoked to print a static message when this assert fires.
     ///
     /// The caller is expected to handle `BoundsCheck` and `MisalignedPointerDereference` by
     /// invoking the appropriate lang item (panic_bounds_check/panic_misaligned_pointer_dereference)
-    /// instead of printing a static message.
-    pub fn description(&self) -> &'static str {
+    /// instead of printing a static message. Those have dynamic arguments that aren't present for
+    /// the rest of the messages here.
+    pub fn panic_function(&self) -> LangItem {
         use AssertKind::*;
         match self {
-            Overflow(BinOp::Add, _, _) => "attempt to add with overflow",
-            Overflow(BinOp::Sub, _, _) => "attempt to subtract with overflow",
-            Overflow(BinOp::Mul, _, _) => "attempt to multiply with overflow",
-            Overflow(BinOp::Div, _, _) => "attempt to divide with overflow",
-            Overflow(BinOp::Rem, _, _) => "attempt to calculate the remainder with overflow",
-            OverflowNeg(_) => "attempt to negate with overflow",
-            Overflow(BinOp::Shr, _, _) => "attempt to shift right with overflow",
-            Overflow(BinOp::Shl, _, _) => "attempt to shift left with overflow",
+            Overflow(BinOp::Add, _, _) => LangItem::PanicAddOverflow,
+            Overflow(BinOp::Sub, _, _) => LangItem::PanicSubOverflow,
+            Overflow(BinOp::Mul, _, _) => LangItem::PanicMulOverflow,
+            Overflow(BinOp::Div, _, _) => LangItem::PanicDivOverflow,
+            Overflow(BinOp::Rem, _, _) => LangItem::PanicRemOverflow,
+            OverflowNeg(_) => LangItem::PanicNegOverflow,
+            Overflow(BinOp::Shr, _, _) => LangItem::PanicShrOverflow,
+            Overflow(BinOp::Shl, _, _) => LangItem::PanicShlOverflow,
             Overflow(op, _, _) => bug!("{:?} cannot overflow", op),
-            DivisionByZero(_) => "attempt to divide by zero",
-            RemainderByZero(_) => "attempt to calculate the remainder with a divisor of zero",
-            ResumedAfterReturn(CoroutineKind::Coroutine(_)) => "coroutine resumed after completion",
+            DivisionByZero(_) => LangItem::PanicDivZero,
+            RemainderByZero(_) => LangItem::PanicRemZero,
+            ResumedAfterReturn(CoroutineKind::Coroutine(_)) => LangItem::PanicCoroutineResumed,
             ResumedAfterReturn(CoroutineKind::Desugared(CoroutineDesugaring::Async, _)) => {
-                "`async fn` resumed after completion"
+                LangItem::PanicAsyncFnResumed
             }
             ResumedAfterReturn(CoroutineKind::Desugared(CoroutineDesugaring::AsyncGen, _)) => {
-                "`async gen fn` resumed after completion"
+                LangItem::PanicAsyncGenFnResumed
             }
             ResumedAfterReturn(CoroutineKind::Desugared(CoroutineDesugaring::Gen, _)) => {
-                "`gen fn` should just keep returning `None` after completion"
+                LangItem::PanicGenFnNone
             }
-            ResumedAfterPanic(CoroutineKind::Coroutine(_)) => "coroutine resumed after panicking",
+            ResumedAfterPanic(CoroutineKind::Coroutine(_)) => LangItem::PanicCoroutineResumedPanic,
             ResumedAfterPanic(CoroutineKind::Desugared(CoroutineDesugaring::Async, _)) => {
-                "`async fn` resumed after panicking"
+                LangItem::PanicAsyncFnResumedPanic
             }
             ResumedAfterPanic(CoroutineKind::Desugared(CoroutineDesugaring::AsyncGen, _)) => {
-                "`async gen fn` resumed after panicking"
+                LangItem::PanicAsyncGenFnResumedPanic
             }
             ResumedAfterPanic(CoroutineKind::Desugared(CoroutineDesugaring::Gen, _)) => {
-                "`gen fn` should just keep returning `None` after panicking"
+                LangItem::PanicGenFnNonePanic
             }
 
             BoundsCheck { .. } | MisalignedPointerDereference { .. } => {
@@ -187,7 +205,7 @@ impl<O> AssertKind<O> {
     /// Format the message arguments for the `assert(cond, msg..)` terminator in MIR printing.
     ///
     /// Needs to be kept in sync with the run-time behavior (which is defined by
-    /// `AssertKind::description` and the lang items mentioned in its docs).
+    /// `AssertKind::panic_function` and the lang items mentioned in its docs).
     /// Note that we deliberately show more details here than we do at runtime, such as the actual
     /// numbers that overflowed -- it is much easier to do so here than at runtime.
     pub fn fmt_assert_args<W: fmt::Write>(&self, f: &mut W) -> fmt::Result
@@ -235,20 +253,44 @@ impl<O> AssertKind<O> {
             Overflow(BinOp::Shl, _, r) => {
                 write!(f, "\"attempt to shift left by `{{}}`, which would overflow\", {r:?}")
             }
+            Overflow(op, _, _) => bug!("{:?} cannot overflow", op),
             MisalignedPointerDereference { required, found } => {
                 write!(
                     f,
                     "\"misaligned pointer dereference: address must be a multiple of {{}} but is {{}}\", {required:?}, {found:?}"
                 )
             }
-            _ => write!(f, "\"{}\"", self.description()),
+            ResumedAfterReturn(CoroutineKind::Coroutine(_)) => {
+                write!(f, "\"coroutine resumed after completion\"")
+            }
+            ResumedAfterReturn(CoroutineKind::Desugared(CoroutineDesugaring::Async, _)) => {
+                write!(f, "\"`async fn` resumed after completion\"")
+            }
+            ResumedAfterReturn(CoroutineKind::Desugared(CoroutineDesugaring::AsyncGen, _)) => {
+                write!(f, "\"`async gen fn` resumed after completion\"")
+            }
+            ResumedAfterReturn(CoroutineKind::Desugared(CoroutineDesugaring::Gen, _)) => {
+                write!(f, "\"`gen fn` should just keep returning `None` after completion\"")
+            }
+            ResumedAfterPanic(CoroutineKind::Coroutine(_)) => {
+                write!(f, "\"coroutine resumed after panicking\"")
+            }
+            ResumedAfterPanic(CoroutineKind::Desugared(CoroutineDesugaring::Async, _)) => {
+                write!(f, "\"`async fn` resumed after panicking\"")
+            }
+            ResumedAfterPanic(CoroutineKind::Desugared(CoroutineDesugaring::AsyncGen, _)) => {
+                write!(f, "\"`async gen fn` resumed after panicking\"")
+            }
+            ResumedAfterPanic(CoroutineKind::Desugared(CoroutineDesugaring::Gen, _)) => {
+                write!(f, "\"`gen fn` should just keep returning `None` after panicking\"")
+            }
         }
     }
 
     /// Format the diagnostic message for use in a lint (e.g. when the assertion fails during const-eval).
     ///
     /// Needs to be kept in sync with the run-time behavior (which is defined by
-    /// `AssertKind::description` and the lang items mentioned in its docs).
+    /// `AssertKind::panic_function` and the lang items mentioned in its docs).
     /// Note that we deliberately show more details here than we do at runtime, such as the actual
     /// numbers that overflowed -- it is much easier to do so here than at runtime.
     pub fn diagnostic_message(&self) -> DiagMessage {
@@ -300,7 +342,7 @@ impl<O> AssertKind<O> {
 
         macro_rules! add {
             ($name: expr, $value: expr) => {
-                adder($name.into(), $value.into_diagnostic_arg());
+                adder($name.into(), $value.into_diag_arg());
             };
         }
 
@@ -336,8 +378,7 @@ pub struct Terminator<'tcx> {
 }
 
 pub type Successors<'a> = impl DoubleEndedIterator<Item = BasicBlock> + 'a;
-pub type SuccessorsMut<'a> =
-    iter::Chain<std::option::IntoIter<&'a mut BasicBlock>, slice::IterMut<'a, BasicBlock>>;
+pub type SuccessorsMut<'a> = impl DoubleEndedIterator<Item = &'a mut BasicBlock> + 'a;
 
 impl<'tcx> Terminator<'tcx> {
     #[inline]
@@ -371,40 +412,36 @@ impl<'tcx> TerminatorKind<'tcx> {
     pub fn successors(&self) -> Successors<'_> {
         use self::TerminatorKind::*;
         match *self {
-            Call { target: Some(t), unwind: UnwindAction::Cleanup(ref u), .. }
-            | Yield { resume: t, drop: Some(ref u), .. }
-            | Drop { target: t, unwind: UnwindAction::Cleanup(ref u), .. }
-            | Assert { target: t, unwind: UnwindAction::Cleanup(ref u), .. }
-            | FalseUnwind { real_target: t, unwind: UnwindAction::Cleanup(ref u) }
-            | InlineAsm { destination: Some(t), unwind: UnwindAction::Cleanup(ref u), .. } => {
-                Some(t).into_iter().chain(slice::from_ref(u).into_iter().copied())
+            Call { target: Some(ref t), unwind: UnwindAction::Cleanup(u), .. }
+            | Yield { resume: ref t, drop: Some(u), .. }
+            | Drop { target: ref t, unwind: UnwindAction::Cleanup(u), .. }
+            | Assert { target: ref t, unwind: UnwindAction::Cleanup(u), .. }
+            | FalseUnwind { real_target: ref t, unwind: UnwindAction::Cleanup(u) } => {
+                slice::from_ref(t).into_iter().copied().chain(Some(u))
             }
-            Goto { target: t }
-            | Call { target: None, unwind: UnwindAction::Cleanup(t), .. }
-            | Call { target: Some(t), unwind: _, .. }
-            | Yield { resume: t, drop: None, .. }
-            | Drop { target: t, unwind: _, .. }
-            | Assert { target: t, unwind: _, .. }
-            | FalseUnwind { real_target: t, unwind: _ }
-            | InlineAsm { destination: None, unwind: UnwindAction::Cleanup(t), .. }
-            | InlineAsm { destination: Some(t), unwind: _, .. } => {
-                Some(t).into_iter().chain((&[]).into_iter().copied())
+            Goto { target: ref t }
+            | Call { target: None, unwind: UnwindAction::Cleanup(ref t), .. }
+            | Call { target: Some(ref t), unwind: _, .. }
+            | Yield { resume: ref t, drop: None, .. }
+            | Drop { target: ref t, unwind: _, .. }
+            | Assert { target: ref t, unwind: _, .. }
+            | FalseUnwind { real_target: ref t, unwind: _ } => {
+                slice::from_ref(t).into_iter().copied().chain(None)
             }
             UnwindResume
             | UnwindTerminate(_)
             | CoroutineDrop
             | Return
             | Unreachable
-            | Call { target: None, unwind: _, .. }
-            | InlineAsm { destination: None, unwind: _, .. } => {
-                None.into_iter().chain((&[]).into_iter().copied())
+            | Call { target: None, unwind: _, .. } => (&[]).into_iter().copied().chain(None),
+            InlineAsm { ref targets, unwind: UnwindAction::Cleanup(u), .. } => {
+                targets.iter().copied().chain(Some(u))
             }
-            SwitchInt { ref targets, .. } => {
-                None.into_iter().chain(targets.targets.iter().copied())
+            InlineAsm { ref targets, unwind: _, .. } => targets.iter().copied().chain(None),
+            SwitchInt { ref targets, .. } => targets.targets.iter().copied().chain(None),
+            FalseEdge { ref real_target, imaginary_target } => {
+                slice::from_ref(real_target).into_iter().copied().chain(Some(imaginary_target))
             }
-            FalseEdge { real_target, ref imaginary_target } => Some(real_target)
-                .into_iter()
-                .chain(slice::from_ref(imaginary_target).into_iter().copied()),
         }
     }
 
@@ -416,33 +453,31 @@ impl<'tcx> TerminatorKind<'tcx> {
             | Yield { resume: ref mut t, drop: Some(ref mut u), .. }
             | Drop { target: ref mut t, unwind: UnwindAction::Cleanup(ref mut u), .. }
             | Assert { target: ref mut t, unwind: UnwindAction::Cleanup(ref mut u), .. }
-            | FalseUnwind { real_target: ref mut t, unwind: UnwindAction::Cleanup(ref mut u) }
-            | InlineAsm {
-                destination: Some(ref mut t),
-                unwind: UnwindAction::Cleanup(ref mut u),
-                ..
-            } => Some(t).into_iter().chain(slice::from_mut(u)),
+            | FalseUnwind { real_target: ref mut t, unwind: UnwindAction::Cleanup(ref mut u) } => {
+                slice::from_mut(t).into_iter().chain(Some(u))
+            }
             Goto { target: ref mut t }
             | Call { target: None, unwind: UnwindAction::Cleanup(ref mut t), .. }
             | Call { target: Some(ref mut t), unwind: _, .. }
             | Yield { resume: ref mut t, drop: None, .. }
             | Drop { target: ref mut t, unwind: _, .. }
             | Assert { target: ref mut t, unwind: _, .. }
-            | FalseUnwind { real_target: ref mut t, unwind: _ }
-            | InlineAsm { destination: None, unwind: UnwindAction::Cleanup(ref mut t), .. }
-            | InlineAsm { destination: Some(ref mut t), unwind: _, .. } => {
-                Some(t).into_iter().chain(&mut [])
+            | FalseUnwind { real_target: ref mut t, unwind: _ } => {
+                slice::from_mut(t).into_iter().chain(None)
             }
             UnwindResume
             | UnwindTerminate(_)
             | CoroutineDrop
             | Return
             | Unreachable
-            | Call { target: None, unwind: _, .. }
-            | InlineAsm { destination: None, unwind: _, .. } => None.into_iter().chain(&mut []),
-            SwitchInt { ref mut targets, .. } => None.into_iter().chain(&mut targets.targets),
+            | Call { target: None, unwind: _, .. } => (&mut []).into_iter().chain(None),
+            InlineAsm { ref mut targets, unwind: UnwindAction::Cleanup(ref mut u), .. } => {
+                targets.iter_mut().chain(Some(u))
+            }
+            InlineAsm { ref mut targets, unwind: _, .. } => targets.iter_mut().chain(None),
+            SwitchInt { ref mut targets, .. } => targets.targets.iter_mut().chain(None),
             FalseEdge { ref mut real_target, ref mut imaginary_target } => {
-                Some(real_target).into_iter().chain(slice::from_mut(imaginary_target))
+                slice::from_mut(real_target).into_iter().chain(Some(imaginary_target))
             }
         }
     }
@@ -514,7 +549,7 @@ pub enum TerminatorEdges<'mir, 'tcx> {
     Double(BasicBlock, BasicBlock),
     /// Special action for `Yield`, `Call` and `InlineAsm` terminators.
     AssignOnReturn {
-        return_: Option<BasicBlock>,
+        return_: &'mir [BasicBlock],
         /// The cleanup block, if it exists.
         cleanup: Option<BasicBlock>,
         place: CallReturnPlaces<'mir, 'tcx>,
@@ -578,31 +613,37 @@ impl<'tcx> TerminatorKind<'tcx> {
                 TerminatorEdges::Double(real_target, imaginary_target)
             }
 
-            Yield { resume: target, drop, resume_arg, value: _ } => {
+            Yield { resume: ref target, drop, resume_arg, value: _ } => {
                 TerminatorEdges::AssignOnReturn {
-                    return_: Some(target),
+                    return_: slice::from_ref(target),
                     cleanup: drop,
                     place: CallReturnPlaces::Yield(resume_arg),
                 }
             }
 
-            Call { unwind, destination, target, func: _, args: _, fn_span: _, call_source: _ } => {
-                TerminatorEdges::AssignOnReturn {
-                    return_: target,
-                    cleanup: unwind.cleanup_block(),
-                    place: CallReturnPlaces::Call(destination),
-                }
-            }
+            Call {
+                unwind,
+                destination,
+                ref target,
+                func: _,
+                args: _,
+                fn_span: _,
+                call_source: _,
+            } => TerminatorEdges::AssignOnReturn {
+                return_: target.as_ref().map(slice::from_ref).unwrap_or_default(),
+                cleanup: unwind.cleanup_block(),
+                place: CallReturnPlaces::Call(destination),
+            },
 
             InlineAsm {
                 template: _,
                 ref operands,
                 options: _,
                 line_spans: _,
-                destination,
+                ref targets,
                 unwind,
             } => TerminatorEdges::AssignOnReturn {
-                return_: destination,
+                return_: targets,
                 cleanup: unwind.cleanup_block(),
                 place: CallReturnPlaces::InlineAsm(operands),
             },

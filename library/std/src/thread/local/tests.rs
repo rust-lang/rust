@@ -255,6 +255,9 @@ fn join_orders_after_tls_destructors() {
     // observe the channel in the `THREAD1_WAITING` state. If this does occur,
     // we switch to the “poison” state `THREAD2_JOINED` and panic all around.
     // (This is equivalent to “sending” from an alternate producer thread.)
+    //
+    // Relaxed memory ordering is fine because and spawn()/join() already provide all the
+    // synchronization we need here.
     const FRESH: u8 = 0;
     const THREAD2_LAUNCHED: u8 = 1;
     const THREAD1_WAITING: u8 = 2;
@@ -263,7 +266,7 @@ fn join_orders_after_tls_destructors() {
     static SYNC_STATE: AtomicU8 = AtomicU8::new(FRESH);
 
     for _ in 0..10 {
-        SYNC_STATE.store(FRESH, Ordering::SeqCst);
+        SYNC_STATE.store(FRESH, Ordering::Relaxed);
 
         let jh = thread::Builder::new()
             .name("thread1".into())
@@ -272,7 +275,7 @@ fn join_orders_after_tls_destructors() {
 
                 impl Drop for TlDrop {
                     fn drop(&mut self) {
-                        let mut sync_state = SYNC_STATE.swap(THREAD1_WAITING, Ordering::SeqCst);
+                        let mut sync_state = SYNC_STATE.swap(THREAD1_WAITING, Ordering::Relaxed);
                         loop {
                             match sync_state {
                                 THREAD2_LAUNCHED | THREAD1_WAITING => thread::yield_now(),
@@ -282,7 +285,7 @@ fn join_orders_after_tls_destructors() {
                                 ),
                                 v => unreachable!("sync state: {}", v),
                             }
-                            sync_state = SYNC_STATE.load(Ordering::SeqCst);
+                            sync_state = SYNC_STATE.load(Ordering::Relaxed);
                         }
                     }
                 }
@@ -294,7 +297,7 @@ fn join_orders_after_tls_destructors() {
                 TL_DROP.with(|_| {});
 
                 loop {
-                    match SYNC_STATE.load(Ordering::SeqCst) {
+                    match SYNC_STATE.load(Ordering::Relaxed) {
                         FRESH => thread::yield_now(),
                         THREAD2_LAUNCHED => break,
                         v => unreachable!("sync state: {}", v),
@@ -306,9 +309,9 @@ fn join_orders_after_tls_destructors() {
         let jh2 = thread::Builder::new()
             .name("thread2".into())
             .spawn(move || {
-                assert_eq!(SYNC_STATE.swap(THREAD2_LAUNCHED, Ordering::SeqCst), FRESH);
+                assert_eq!(SYNC_STATE.swap(THREAD2_LAUNCHED, Ordering::Relaxed), FRESH);
                 jh.join().unwrap();
-                match SYNC_STATE.swap(THREAD2_JOINED, Ordering::SeqCst) {
+                match SYNC_STATE.swap(THREAD2_JOINED, Ordering::Relaxed) {
                     MAIN_THREAD_RENDEZVOUS => return,
                     THREAD2_LAUNCHED | THREAD1_WAITING => {
                         panic!("Thread 2 running after thread 1 join before main thread rendezvous")
@@ -322,8 +325,8 @@ fn join_orders_after_tls_destructors() {
             match SYNC_STATE.compare_exchange(
                 THREAD1_WAITING,
                 MAIN_THREAD_RENDEZVOUS,
-                Ordering::SeqCst,
-                Ordering::SeqCst,
+                Ordering::Relaxed,
+                Ordering::Relaxed,
             ) {
                 Ok(_) => break,
                 Err(FRESH) => thread::yield_now(),

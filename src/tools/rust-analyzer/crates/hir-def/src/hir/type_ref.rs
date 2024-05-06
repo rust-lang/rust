@@ -251,7 +251,7 @@ impl TypeRef {
                 TypeRef::DynTrait(type_bounds_from_ast(ctx, inner.type_bound_list()))
             }
             ast::Type::MacroType(mt) => match mt.macro_call() {
-                Some(mc) => ctx.ast_id(&mc).map(TypeRef::Macro).unwrap_or(TypeRef::Error),
+                Some(mc) => TypeRef::Macro(ctx.ast_id(&mc)),
                 None => TypeRef::Error,
             },
         }
@@ -398,9 +398,8 @@ pub enum ConstRef {
 impl ConstRef {
     pub(crate) fn from_const_arg(lower_ctx: &LowerCtx<'_>, arg: Option<ast::ConstArg>) -> Self {
         if let Some(arg) = arg {
-            let ast_id = lower_ctx.ast_id(&arg);
             if let Some(expr) = arg.expr() {
-                return Self::from_expr(expr, ast_id);
+                return Self::from_expr(expr, Some(lower_ctx.ast_id(&arg)));
             }
         }
         Self::Scalar(LiteralConstRef::Unknown)

@@ -1,6 +1,7 @@
 //@ build-pass
 //@ force-host
 //@ no-prefer-dynamic
+//@ needs-unwind compiling proc macros with panic=abort causes a warning
 //@ aux-build:exports_no_mangle.rs
 #![crate_type = "proc-macro"]
 

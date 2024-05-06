@@ -4,6 +4,22 @@ error[E0207]: the type parameter `T` is not constrained by the impl trait, self 
 LL | impl<'a, T: Deserializable> Deserializable for &'a str {
    |          ^ unconstrained type parameter
 
-error: aborting due to 1 previous error
+error[E0308]: mismatched types
+  --> $DIR/issue-13853-5.rs:9:70
+   |
+LL |     fn deserialize_token<D: Deserializer<'a>>(_x: D, _y: &'a str) -> &'a str {
+   |        -----------------                                             ^^^^^^^ expected `&str`, found `()`
+   |        |
+   |        implicitly returns `()` as its body has no tail or `return` expression
+   |
+help: consider returning the local binding `_y`
+   |
+LL ~     fn deserialize_token<D: Deserializer<'a>>(_x: D, _y: &'a str) -> &'a str {
+LL +         _y
+LL ~
+   |
 
-For more information about this error, try `rustc --explain E0207`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0207, E0308.
+For more information about an error, try `rustc --explain E0207`.

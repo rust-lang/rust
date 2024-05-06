@@ -42,7 +42,7 @@ pub(super) fn check<'tcx>(
             }
         );
 
-        span_lint_and_help(cx, ABSURD_EXTREME_COMPARISONS, expr.span, msg, None, &help);
+        span_lint_and_help(cx, ABSURD_EXTREME_COMPARISONS, expr.span, msg, None, help);
     }
 }
 

@@ -1,8 +1,6 @@
 //@ run-fail
 //@ compile-flags: -C opt-level=3
 //@ error-pattern: index out of bounds: the len is 0 but the index is 16777216
-//@ ignore-wasm no panic or subprocess support
-//@ ignore-emscripten no panic or subprocess support
 
 fn do_test(x: usize) {
     let mut arr = vec![vec![0u8; 3]];

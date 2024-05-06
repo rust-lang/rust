@@ -14,7 +14,7 @@ impl VisitorResult for () {
     type Residual = !;
 
     #[cfg(not(feature = "nightly"))]
-    type Residual = core::ops::Infallible;
+    type Residual = core::convert::Infallible;
 
     fn output() -> Self {}
     fn from_residual(_: Self::Residual) -> Self {}

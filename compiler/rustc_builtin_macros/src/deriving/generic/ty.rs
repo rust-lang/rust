@@ -1,28 +1,27 @@
 //! A mini version of ast::Ty, which is easier to use, and features an explicit `Self` type to use
 //! when specifying impls to be derived.
 
-pub use Ty::*;
+pub(crate) use Ty::*;
 
 use rustc_ast::ptr::P;
 use rustc_ast::{self as ast, Expr, GenericArg, GenericParamKind, Generics, SelfKind};
 use rustc_expand::base::ExtCtxt;
 use rustc_span::source_map::respan;
 use rustc_span::symbol::{kw, Ident, Symbol};
-use rustc_span::Span;
-use rustc_span::DUMMY_SP;
+use rustc_span::{Span, DUMMY_SP};
 use thin_vec::ThinVec;
 
 /// A path, e.g., `::std::option::Option::<i32>` (global). Has support
 /// for type parameters.
 #[derive(Clone)]
-pub struct Path {
+pub(crate) struct Path {
     path: Vec<Symbol>,
     params: Vec<Box<Ty>>,
     kind: PathKind,
 }
 
 #[derive(Clone)]
-pub enum PathKind {
+pub(crate) enum PathKind {
     Local,
     Global,
     Std,
@@ -73,7 +72,7 @@ impl Path {
 
 /// A type. Supports pointers, Self, and literals.
 #[derive(Clone)]
-pub enum Ty {
+pub(crate) enum Ty {
     Self_,
     /// A reference.
     Ref(Box<Ty>, ast::Mutability),
@@ -84,7 +83,7 @@ pub enum Ty {
     Unit,
 }
 
-pub fn self_ref() -> Ty {
+pub(crate) fn self_ref() -> Ty {
     Ref(Box::new(Self_), ast::Mutability::Not)
 }
 
@@ -164,7 +163,7 @@ fn mk_ty_param(
 
 /// Bounds on type parameters.
 #[derive(Clone)]
-pub struct Bounds {
+pub(crate) struct Bounds {
     pub bounds: Vec<(Symbol, Vec<Path>)>,
 }
 
@@ -197,7 +196,7 @@ impl Bounds {
     }
 }
 
-pub fn get_explicit_self(cx: &ExtCtxt<'_>, span: Span) -> (P<Expr>, ast::ExplicitSelf) {
+pub(crate) fn get_explicit_self(cx: &ExtCtxt<'_>, span: Span) -> (P<Expr>, ast::ExplicitSelf) {
     // This constructs a fresh `self` path.
     let self_path = cx.expr_self(span);
     let self_ty = respan(span, SelfKind::Region(None, ast::Mutability::Not));

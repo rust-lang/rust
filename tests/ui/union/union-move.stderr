@@ -16,6 +16,14 @@ LL | fn move_out<T>(x: T) {}
    |    --------       ^ this parameter takes ownership of the value
    |    |
    |    in this function
+note: if `U1` implemented `Clone`, you could clone the value
+  --> $DIR/union-move.rs:9:1
+   |
+LL | union U1 {
+   | ^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |         move_out(x.f1_nocopy);
+   |                  ----------- you could clone this value
 
 error[E0382]: use of moved value: `x`
   --> $DIR/union-move.rs:42:18
@@ -35,6 +43,14 @@ LL | fn move_out<T>(x: T) {}
    |    --------       ^ this parameter takes ownership of the value
    |    |
    |    in this function
+note: if `U1` implemented `Clone`, you could clone the value
+  --> $DIR/union-move.rs:9:1
+   |
+LL | union U1 {
+   | ^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |         move_out(x.f2_nocopy);
+   |                  ----------- you could clone this value
 
 error[E0509]: cannot move out of type `U2`, which implements the `Drop` trait
   --> $DIR/union-move.rs:49:18
@@ -44,6 +60,11 @@ LL |         move_out(x.f1_nocopy);
    |                  |
    |                  cannot move out of here
    |                  move occurs because `x.f1_nocopy` has type `ManuallyDrop<RefCell<i32>>`, which does not implement the `Copy` trait
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |         move_out(x.f1_nocopy.clone());
+   |                             ++++++++
 
 error: aborting due to 3 previous errors
 

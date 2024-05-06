@@ -1,5 +1,5 @@
 error[E0119]: conflicting implementations of trait `MyTrait` for type `MyFoo`
-  --> $DIR/never-from-impl-is-reserved.rs:13:1
+  --> $DIR/never-from-impl-is-reserved.rs:14:1
    |
 LL | impl MyTrait for MyFoo {}
    | ---------------------- first implementation here

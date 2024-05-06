@@ -6,7 +6,7 @@ fail-on-request-error: false
 
 define-function: (
     "check-setting",
-    (storage_value, setting_attribute_value, toggle_attribute_value),
+    [storage_value, setting_attribute_value, toggle_attribute_value],
     block {
         assert-local-storage: {"rustdoc-auto-hide-large-items": |storage_value|}
         click: "#settings-menu"

@@ -241,5 +241,11 @@ error: casting to the same type is unnecessary (`f32` -> `f32`)
 LL |         let _num = foo() as f32;
    |                    ^^^^^^^^^^^^ help: try: `foo()`
 
-error: aborting due to 40 previous errors
+error: casting to the same type is unnecessary (`usize` -> `usize`)
+  --> tests/ui/unnecessary_cast.rs:228:9
+   |
+LL |         (*x as usize).pow(2)
+   |         ^^^^^^^^^^^^^ help: try: `{ *x }`
+
+error: aborting due to 41 previous errors
 

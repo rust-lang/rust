@@ -10,5 +10,5 @@ fn id(x: &String) -> &String {
 
 fn main() {
     assert_all::<_, &String>(id);
-    //~^ mismatched types
+    //~^ ERROR implementation of `FnMut` is not general enough
 }

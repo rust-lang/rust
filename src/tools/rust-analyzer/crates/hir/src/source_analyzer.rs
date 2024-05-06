@@ -219,11 +219,10 @@ impl SourceAnalyzer {
     pub(crate) fn type_of_self(
         &self,
         db: &dyn HirDatabase,
-        param: &ast::SelfParam,
+        _param: &ast::SelfParam,
     ) -> Option<Type> {
-        let src = InFile { file_id: self.file_id, value: param };
-        let pat_id = self.body_source_map()?.node_self_param(src)?;
-        let ty = self.infer.as_ref()?[pat_id].clone();
+        let binding = self.body()?.self_param?;
+        let ty = self.infer.as_ref()?[binding].clone();
         Some(Type::new_with_resolver(db, &self.resolver, ty))
     }
 
@@ -549,7 +548,7 @@ impl SourceAnalyzer {
         db: &dyn HirDatabase,
         macro_call: InFile<&ast::MacroCall>,
     ) -> Option<Macro> {
-        let ctx = LowerCtx::with_file_id(db.upcast(), macro_call.file_id);
+        let ctx = LowerCtx::new(db.upcast(), macro_call.file_id);
         let path = macro_call.value.path().and_then(|ast| Path::from_src(&ctx, ast))?;
         self.resolver
             .resolve_path_as_macro(db.upcast(), path.mod_path()?, Some(MacroSubNs::Bang))
@@ -662,7 +661,7 @@ impl SourceAnalyzer {
         }
 
         // This must be a normal source file rather than macro file.
-        let ctx = LowerCtx::with_span_map(db.upcast(), db.span_map(self.file_id));
+        let ctx = LowerCtx::new(db.upcast(), self.file_id);
         let hir_path = Path::from_src(&ctx, path.clone())?;
 
         // Case where path is a qualifier of a use tree, e.g. foo::bar::{Baz, Qux} where we are

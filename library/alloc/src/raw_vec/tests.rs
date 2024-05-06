@@ -105,13 +105,14 @@ fn zst() {
     let v: RawVec<ZST> = RawVec::with_capacity_in(100, Global);
     zst_sanity(&v);
 
-    let v: RawVec<ZST> = RawVec::allocate_in(0, AllocInit::Uninitialized, Global);
+    let v: RawVec<ZST> = RawVec::try_allocate_in(0, AllocInit::Uninitialized, Global).unwrap();
     zst_sanity(&v);
 
-    let v: RawVec<ZST> = RawVec::allocate_in(100, AllocInit::Uninitialized, Global);
+    let v: RawVec<ZST> = RawVec::try_allocate_in(100, AllocInit::Uninitialized, Global).unwrap();
     zst_sanity(&v);
 
-    let mut v: RawVec<ZST> = RawVec::allocate_in(usize::MAX, AllocInit::Uninitialized, Global);
+    let mut v: RawVec<ZST> =
+        RawVec::try_allocate_in(usize::MAX, AllocInit::Uninitialized, Global).unwrap();
     zst_sanity(&v);
 
     // Check all these operations work as expected with zero-sized elements.

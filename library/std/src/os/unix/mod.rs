@@ -79,6 +79,8 @@ mod platform {
     pub use crate::os::solaris::*;
     #[cfg(target_os = "tvos")]
     pub use crate::os::tvos::*;
+    #[cfg(target_os = "visionos")]
+    pub use crate::os::visionos::*;
     #[cfg(target_os = "vita")]
     pub use crate::os::vita::*;
     #[cfg(target_os = "vxworks")]
@@ -94,22 +96,6 @@ pub mod net;
 pub mod process;
 pub mod raw;
 pub mod thread;
-
-#[unstable(feature = "peer_credentials_unix_socket", issue = "42839", reason = "unstable")]
-#[cfg(any(
-    target_os = "android",
-    target_os = "linux",
-    target_os = "dragonfly",
-    target_os = "freebsd",
-    target_os = "ios",
-    target_os = "tvos",
-    target_os = "watchos",
-    target_os = "macos",
-    target_os = "netbsd",
-    target_os = "openbsd",
-    target_os = "nto",
-))]
-pub mod ucred;
 
 /// A prelude for conveniently writing platform-specific code.
 ///

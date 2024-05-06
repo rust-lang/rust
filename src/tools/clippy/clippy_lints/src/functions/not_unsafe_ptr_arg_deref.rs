@@ -1,4 +1,4 @@
-use rustc_hir::{self as hir, intravisit, HirIdSet};
+use rustc_hir::{self as hir, intravisit, HirId, HirIdSet};
 use rustc_lint::LateContext;
 use rustc_middle::ty;
 use rustc_span::def_id::LocalDefId;
@@ -74,8 +74,8 @@ fn check_raw_ptr<'tcx>(
     }
 }
 
-fn raw_ptr_arg(cx: &LateContext<'_>, arg: &hir::Param<'_>) -> Option<hir::HirId> {
-    if let (&hir::PatKind::Binding(_, id, _, _), Some(&ty::RawPtr(_))) = (
+fn raw_ptr_arg(cx: &LateContext<'_>, arg: &hir::Param<'_>) -> Option<HirId> {
+    if let (&hir::PatKind::Binding(_, id, _, _), Some(&ty::RawPtr(_, _))) = (
         &arg.pat.kind,
         cx.maybe_typeck_results()
             .map(|typeck_results| typeck_results.pat_ty(arg.pat).kind()),

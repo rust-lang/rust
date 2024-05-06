@@ -454,7 +454,7 @@ pub trait Hasher {
     /// ```
     /// #![feature(hasher_prefixfree_extras)]
     /// # // Stubs to make the `impl` below pass the compiler
-    /// # #![cfg_attr(not(bootstrap), allow(non_local_definitions))]
+    /// # #![allow(non_local_definitions)]
     /// # struct MyCollection<T>(Option<T>);
     /// # impl<T> MyCollection<T> {
     /// #     fn len(&self) -> usize { todo!() }
@@ -752,6 +752,18 @@ pub trait BuildHasher {
 #[stable(since = "1.7.0", feature = "build_hasher")]
 pub struct BuildHasherDefault<H>(marker::PhantomData<fn() -> H>);
 
+impl<H> BuildHasherDefault<H> {
+    /// Creates a new BuildHasherDefault for Hasher `H`.
+    #[unstable(
+        feature = "build_hasher_default_const_new",
+        issue = "123197",
+        reason = "recently added"
+    )]
+    pub const fn new() -> Self {
+        BuildHasherDefault(marker::PhantomData)
+    }
+}
+
 #[stable(since = "1.9.0", feature = "core_impl_debug")]
 impl<H> fmt::Debug for BuildHasherDefault<H> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -778,7 +790,7 @@ impl<H> Clone for BuildHasherDefault<H> {
 #[stable(since = "1.7.0", feature = "build_hasher")]
 impl<H> Default for BuildHasherDefault<H> {
     fn default() -> BuildHasherDefault<H> {
-        BuildHasherDefault(marker::PhantomData)
+        Self::new()
     }
 }
 

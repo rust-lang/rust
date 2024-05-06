@@ -20,7 +20,7 @@ struct Person {
 }
 
 pub struct S {
-    v: String,
+    v: usize,
 }
 
 fn main() {
@@ -59,11 +59,22 @@ fn main() {
     let _ = RangeToInclusive { end: end };
 
     external! {
-        let v = String::new();
+        let v = 1;
         let _ = S {
             v: v
         };
     }
+
+    let v = 2;
+    macro_rules! internal {
+        ($i:ident) => {
+            let _ = S { v: v };
+            let _ = S { $i: v };
+            let _ = S { v: $i };
+            let _ = S { $i: $i };
+        };
+    }
+    internal!(v);
 }
 
 fn issue_3476() {

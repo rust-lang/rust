@@ -5,6 +5,7 @@ use crate::common::IntPredicate;
 use crate::meth;
 use crate::traits::*;
 use rustc_hir::LangItem;
+use rustc_middle::bug;
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
 use rustc_middle::ty::{self, Ty};
 use rustc_target::abi::WrappingRange;
@@ -62,14 +63,23 @@ pub fn size_and_align_of_dst<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             let msg = bx.const_str(&msg_str);
 
             // Obtain the panic entry point.
-            let (fn_abi, llfn) = common::build_langcall(bx, None, LangItem::PanicNounwind);
+            let (fn_abi, llfn, _instance) =
+                common::build_langcall(bx, None, LangItem::PanicNounwind);
 
             // Generate the call.
             // Cannot use `do_call` since we don't have a MIR terminator so we can't create a `TerminationCodegenHelper`.
             // (But we are in good company, this code is duplicated plenty of times.)
             let fn_ty = bx.fn_decl_backend_type(fn_abi);
 
-            bx.call(fn_ty, /* fn_attrs */ None, Some(fn_abi), llfn, &[msg.0, msg.1], None);
+            bx.call(
+                fn_ty,
+                /* fn_attrs */ None,
+                Some(fn_abi),
+                llfn,
+                &[msg.0, msg.1],
+                None,
+                None,
+            );
 
             // This function does not return so we can now return whatever we want.
             let size = bx.const_usize(layout.size.bytes());

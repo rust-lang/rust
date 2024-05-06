@@ -3,7 +3,6 @@ use arrayvec::ArrayVec;
 use base_db::{AnchoredPath, FileId};
 use hir_expand::{name::Name, HirFileIdExt, MacroFileIdExt};
 use limit::Limit;
-use syntax::SmolStr;
 
 use crate::{db::DefDatabase, HirFileId};
 
@@ -29,9 +28,9 @@ impl ModDir {
     pub(super) fn descend_into_definition(
         &self,
         name: &Name,
-        attr_path: Option<&SmolStr>,
+        attr_path: Option<&str>,
     ) -> Option<ModDir> {
-        let path = match attr_path.map(SmolStr::as_str) {
+        let path = match attr_path {
             None => {
                 let mut path = self.dir_path.clone();
                 path.push(&name.unescaped().to_smol_str());
@@ -63,10 +62,9 @@ impl ModDir {
         db: &dyn DefDatabase,
         file_id: HirFileId,
         name: &Name,
-        attr_path: Option<&SmolStr>,
+        attr_path: Option<&str>,
     ) -> Result<(FileId, bool, ModDir), Box<[String]>> {
         let name = name.unescaped();
-        let orig_file_id = file_id.original_file_respecting_includes(db.upcast());
 
         let mut candidate_files = ArrayVec::<_, 2>::new();
         match attr_path {
@@ -91,17 +89,19 @@ impl ModDir {
             }
         };
 
+        let orig_file_id = file_id.original_file_respecting_includes(db.upcast());
         for candidate in candidate_files.iter() {
             let path = AnchoredPath { anchor: orig_file_id, path: candidate.as_str() };
             if let Some(file_id) = db.resolve_path(path) {
                 let is_mod_rs = candidate.ends_with("/mod.rs");
 
-                let (dir_path, root_non_dir_owner) = if is_mod_rs || attr_path.is_some() {
-                    (DirPath::empty(), false)
+                let root_dir_owner = is_mod_rs || attr_path.is_some();
+                let dir_path = if root_dir_owner {
+                    DirPath::empty()
                 } else {
-                    (DirPath::new(format!("{}/", name.display(db.upcast()))), true)
+                    DirPath::new(format!("{}/", name.display(db.upcast())))
                 };
-                if let Some(mod_dir) = self.child(dir_path, root_non_dir_owner) {
+                if let Some(mod_dir) = self.child(dir_path, !root_dir_owner) {
                     return Ok((file_id, is_mod_rs, mod_dir));
                 }
             }

@@ -22,11 +22,11 @@ fn attributes() {
     check_highlighting(
         r#"
 //- proc_macros: identity
-//- minicore: derive, copy
+//- minicore: derive, copy, default
 #[allow(dead_code)]
 #[rustfmt::skip]
 #[proc_macros::identity]
-#[derive(Copy)]
+#[derive(Default)]
 /// This is a doc comment
 // This is a normal comment
 /// This is a doc comment
@@ -36,7 +36,10 @@ fn attributes() {
 // This is another normal comment
 #[derive(Copy, Unresolved)]
 // The reason for these being here is to test AttrIds
-struct Foo;
+enum Foo {
+    #[default]
+    Bar
+}
 "#,
         expect_file!["./test_data/highlight_attributes.html"],
         false,
@@ -297,7 +300,7 @@ impl Bool {
         true
     }
 }
-const USAGE_OF_BOOL:bool = Bool::True.to_primitive();
+const USAGE_OF_BOOL: bool = Bool::True.to_primitive();
 
 trait Baz {
     type Qux;
@@ -625,6 +628,52 @@ fn main() {
 }
 "#,
         expect_file!["./test_data/highlight_unsafe.html"],
+        false,
+    );
+}
+
+#[test]
+fn test_const_highlighting() {
+    check_highlighting(
+        r#"
+macro_rules! id {
+    ($($tt:tt)*) => {
+        $($tt)*
+    };
+}
+const CONST_ITEM: *const () = &raw const ();
+const fn const_fn<const CONST_PARAM: ()>(const {}: const fn()) where (): const ConstTrait {
+    CONST_ITEM;
+    CONST_PARAM;
+    const {
+        const || {}
+    }
+    id!(
+        CONST_ITEM;
+        CONST_PARAM;
+        const {
+            const || {}
+        };
+        &raw const ();
+        const
+    );
+}
+trait ConstTrait {
+    const ASSOC_CONST: () = ();
+    const fn assoc_const_fn() {}
+}
+impl const ConstTrait for () {
+    const ASSOC_CONST: () = ();
+    const fn assoc_const_fn() {}
+}
+
+macro_rules! unsafe_deref {
+    () => {
+        *(&() as *const ())
+    };
+}
+"#,
+        expect_file!["./test_data/highlight_const.html"],
         false,
     );
 }
@@ -1173,8 +1222,27 @@ fn benchmark_syntax_highlighting_parser() {
             .highlight(HL_CONFIG, file_id)
             .unwrap()
             .iter()
-            .filter(|it| it.highlight.tag == HlTag::Symbol(SymbolKind::Function))
+            .filter(|it| {
+                matches!(it.highlight.tag, HlTag::Symbol(SymbolKind::Function | SymbolKind::Method))
+            })
             .count()
     };
     assert_eq!(hash, 1169);
+}
+
+#[test]
+fn highlight_trait_with_lifetimes_regression_16958() {
+    let (analysis, file_id) = fixture::file(
+        r#"
+pub trait Deserialize<'de> {
+    fn deserialize();
+}
+
+fn f<'de, T: Deserialize<'de>>() {
+    T::deserialize();
+}
+"#
+        .trim(),
+    );
+    let _ = analysis.highlight(HL_CONFIG, file_id).unwrap();
 }

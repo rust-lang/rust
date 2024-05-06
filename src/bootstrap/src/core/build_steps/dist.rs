@@ -25,8 +25,7 @@ use crate::core::build_steps::llvm;
 use crate::core::build_steps::tool::{self, Tool};
 use crate::core::builder::{Builder, Kind, RunConfig, ShouldRun, Step};
 use crate::core::config::TargetSelection;
-use crate::utils::cache::{Interned, INTERNER};
-use crate::utils::channel;
+use crate::utils::channel::{self, Info};
 use crate::utils::helpers::{exe, is_dylib, output, t, target_supports_cranelift_backend, timeit};
 use crate::utils::tarball::{GeneratedTarball, OverlayKind, Tarball};
 use crate::{Compiler, DependencyType, Mode, LLVM_TOOLS};
@@ -108,7 +107,7 @@ impl Step for JsonDocs {
             builder.top_stage,
             host,
             builder,
-            DocumentationFormat::JSON,
+            DocumentationFormat::Json,
         ));
 
         let dest = "share/doc/rust/json";
@@ -129,6 +128,7 @@ pub struct RustcDocs {
 impl Step for RustcDocs {
     type Output = Option<GeneratedTarball>;
     const DEFAULT: bool = true;
+    const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let builder = run.builder;
@@ -272,7 +272,7 @@ fn make_win_dist(
     let dist_bin_dir = rust_root.join("bin/");
     fs::create_dir_all(&dist_bin_dir).expect("creating dist_bin_dir failed");
     for src in rustc_dlls {
-        builder.copy_to_folder(&src, &dist_bin_dir);
+        builder.copy_link_to_folder(&src, &dist_bin_dir);
     }
 
     //Copy platform tools to platform-specific bin directory
@@ -284,7 +284,7 @@ fn make_win_dist(
         .join("self-contained");
     fs::create_dir_all(&target_bin_dir).expect("creating target_bin_dir failed");
     for src in target_tools {
-        builder.copy_to_folder(&src, &target_bin_dir);
+        builder.copy_link_to_folder(&src, &target_bin_dir);
     }
 
     // Warn windows-gnu users that the bundled GCC cannot compile C files
@@ -304,7 +304,7 @@ fn make_win_dist(
         .join("self-contained");
     fs::create_dir_all(&target_lib_dir).expect("creating target_lib_dir failed");
     for src in target_libs {
-        builder.copy_to_folder(&src, &target_lib_dir);
+        builder.copy_link_to_folder(&src, &target_lib_dir);
     }
 }
 
@@ -400,7 +400,7 @@ impl Step for Rustc {
 
             // Copy rustc binary
             t!(fs::create_dir_all(image.join("bin")));
-            builder.cp_r(&src.join("bin"), &image.join("bin"));
+            builder.cp_link_r(&src.join("bin"), &image.join("bin"));
 
             // If enabled, copy rustdoc binary
             if builder
@@ -458,13 +458,13 @@ impl Step for Rustc {
             if builder.config.lld_enabled {
                 let src_dir = builder.sysroot_libdir(compiler, host).parent().unwrap().join("bin");
                 let rust_lld = exe("rust-lld", compiler.host);
-                builder.copy(&src_dir.join(&rust_lld), &dst_dir.join(&rust_lld));
+                builder.copy_link(&src_dir.join(&rust_lld), &dst_dir.join(&rust_lld));
                 let self_contained_lld_src_dir = src_dir.join("gcc-ld");
                 let self_contained_lld_dst_dir = dst_dir.join("gcc-ld");
                 t!(fs::create_dir(&self_contained_lld_dst_dir));
                 for name in crate::LLD_FILE_NAMES {
                     let exe_name = exe(name, compiler.host);
-                    builder.copy(
+                    builder.copy_link(
                         &self_contained_lld_src_dir.join(&exe_name),
                         &self_contained_lld_dst_dir.join(&exe_name),
                     );
@@ -488,8 +488,7 @@ impl Step for Rustc {
             }
 
             // Debugger scripts
-            builder
-                .ensure(DebuggerScripts { sysroot: INTERNER.intern_path(image.to_owned()), host });
+            builder.ensure(DebuggerScripts { sysroot: image.to_owned(), host });
 
             // Misc license info
             let cp = |file: &str| {
@@ -503,9 +502,9 @@ impl Step for Rustc {
     }
 }
 
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct DebuggerScripts {
-    pub sysroot: Interned<PathBuf>,
+    pub sysroot: PathBuf,
     pub host: TargetSelection,
 }
 
@@ -610,9 +609,9 @@ fn copy_target_libs(builder: &Builder<'_>, target: TargetSelection, image: &Path
     t!(fs::create_dir_all(&self_contained_dst));
     for (path, dependency_type) in builder.read_stamp_file(stamp) {
         if dependency_type == DependencyType::TargetSelfContained {
-            builder.copy(&path, &self_contained_dst.join(path.file_name().unwrap()));
+            builder.copy_link(&path, &self_contained_dst.join(path.file_name().unwrap()));
         } else if dependency_type == DependencyType::Target || builder.config.build == target {
-            builder.copy(&path, &dst.join(path.file_name().unwrap()));
+            builder.copy_link(&path, &dst.join(path.file_name().unwrap()));
         }
     }
 }
@@ -831,6 +830,12 @@ fn copy_src_dirs(
             return false;
         }
 
+        // Cargo tests use some files like `.gitignore` that we would otherwise exclude.
+        const CARGO_TESTS: &[&str] = &["tools/cargo/tests", "tools\\cargo\\tests"];
+        if CARGO_TESTS.iter().any(|path| spath.contains(path)) {
+            return true;
+        }
+
         let full_path = Path::new(dir).join(path);
         if exclude_dirs.iter().any(|excl| full_path == Path::new(excl)) {
             return false;
@@ -866,7 +871,8 @@ fn copy_src_dirs(
     for item in src_dirs {
         let dst = &dst_dir.join(item);
         t!(fs::create_dir_all(dst));
-        builder.cp_filtered(&base.join(item), dst, &|path| filter_fn(exclude_dirs, item, path));
+        builder
+            .cp_link_filtered(&base.join(item), dst, &|path| filter_fn(exclude_dirs, item, path));
     }
 }
 
@@ -924,7 +930,7 @@ impl Step for Src {
             &dst_src,
         );
         for file in src_files.iter() {
-            builder.copy(&builder.src.join(file), &dst_src.join(file));
+            builder.copy_link(&builder.src.join(file), &dst_src.join(file));
         }
 
         tarball.generate()
@@ -980,35 +986,45 @@ impl Step for PlainSourceTarball {
 
         // Copy the files normally
         for item in &src_files {
-            builder.copy(&builder.src.join(item), &plain_dst_src.join(item));
+            builder.copy_link(&builder.src.join(item), &plain_dst_src.join(item));
         }
 
         // Create the version file
         builder.create(&plain_dst_src.join("version"), &builder.rust_version());
-        if let Some(info) = builder.rust_info().info() {
-            channel::write_commit_hash_file(plain_dst_src, &info.sha);
-            channel::write_commit_info_file(plain_dst_src, info);
-        }
+
+        // Create the files containing git info, to ensure --version outputs the same.
+        let write_git_info = |info: Option<&Info>, path: &Path| {
+            if let Some(info) = info {
+                t!(std::fs::create_dir_all(path));
+                channel::write_commit_hash_file(path, &info.sha);
+                channel::write_commit_info_file(path, info);
+            }
+        };
+        write_git_info(builder.rust_info().info(), plain_dst_src);
+        write_git_info(builder.cargo_info.info(), &plain_dst_src.join("./src/tools/cargo"));
 
         // If we're building from git or tarball sources, we need to vendor
         // a complete distribution.
         if builder.rust_info().is_managed_git_subrepository()
             || builder.rust_info().is_from_tarball()
         {
-            if builder.rust_info().is_managed_git_subrepository() {
-                // Ensure we have the submodules checked out.
-                builder.update_submodule(Path::new("src/tools/cargo"));
+            // Ensure we have all submodules from src and other directories checked out.
+            for submodule in builder.get_all_submodules() {
+                builder.update_submodule(Path::new(submodule));
             }
 
             // Vendor all Cargo dependencies
             let mut cmd = Command::new(&builder.initial_cargo);
             cmd.arg("vendor")
+                .arg("--versioned-dirs")
                 .arg("--sync")
                 .arg(builder.src.join("./src/tools/cargo/Cargo.toml"))
                 .arg("--sync")
                 .arg(builder.src.join("./src/tools/rust-analyzer/Cargo.toml"))
                 .arg("--sync")
                 .arg(builder.src.join("./compiler/rustc_codegen_cranelift/Cargo.toml"))
+                .arg("--sync")
+                .arg(builder.src.join("./compiler/rustc_codegen_gcc/Cargo.toml"))
                 .arg("--sync")
                 .arg(builder.src.join("./src/bootstrap/Cargo.toml"))
                 // Will read the libstd Cargo.toml
@@ -1025,6 +1041,20 @@ impl Step for PlainSourceTarball {
             let cargo_config_dir = plain_dst_src.join(".cargo");
             builder.create_dir(&cargo_config_dir);
             builder.create(&cargo_config_dir.join("config.toml"), &config);
+        }
+
+        // Delete extraneous directories
+        // FIXME: if we're managed by git, we should probably instead ask git if the given path
+        // is managed by it?
+        for entry in walkdir::WalkDir::new(tarball.image_dir())
+            .follow_links(true)
+            .into_iter()
+            .filter_map(|e| e.ok())
+        {
+            if entry.path().is_dir() && entry.path().file_name() == Some(OsStr::new("__pycache__"))
+            {
+                t!(fs::remove_dir_all(entry.path()));
+            }
         }
 
         tarball.bare()
@@ -1114,7 +1144,7 @@ impl Step for Rls {
         let rls = builder.ensure(tool::Rls { compiler, target, extra_features: Vec::new() });
 
         let mut tarball = Tarball::new(builder, "rls", &target.triple);
-        tarball.set_overlay(OverlayKind::RLS);
+        tarball.set_overlay(OverlayKind::Rls);
         tarball.is_preview(true);
         tarball.add_file(rls, "bin", 0o755);
         tarball.add_legal_and_readme_to("share/doc/rls");
@@ -1263,10 +1293,10 @@ impl Step for Miri {
     }
 }
 
-#[derive(Debug, PartialOrd, Ord, Copy, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, PartialOrd, Ord, Clone, Hash, PartialEq, Eq)]
 pub struct CodegenBackend {
     pub compiler: Compiler,
-    pub backend: Interned<String>,
+    pub backend: String,
 }
 
 impl Step for CodegenBackend {
@@ -1279,14 +1309,14 @@ impl Step for CodegenBackend {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        for &backend in run.builder.config.codegen_backends(run.target) {
+        for backend in run.builder.config.codegen_backends(run.target) {
             if backend == "llvm" {
                 continue; // Already built as part of rustc
             }
 
             run.builder.ensure(CodegenBackend {
                 compiler: run.builder.compiler(run.builder.top_stage, run.target),
-                backend,
+                backend: backend.clone(),
             });
         }
     }
@@ -1303,7 +1333,8 @@ impl Step for CodegenBackend {
             return None;
         }
 
-        if !builder.config.codegen_backends(self.compiler.host).contains(&self.backend) {
+        if !builder.config.codegen_backends(self.compiler.host).contains(&self.backend.to_string())
+        {
             return None;
         }
 
@@ -1528,8 +1559,9 @@ impl Step for Extended {
         add_component!("analysis" => Analysis { compiler, target });
         add_component!("rustc-codegen-cranelift" => CodegenBackend {
             compiler: builder.compiler(stage, target),
-            backend: INTERNER.intern_str("cranelift"),
+            backend: "cranelift".to_string(),
         });
+        add_component!("llvm-bitcode-linker" => LlvmBitcodeLinker {compiler, target});
 
         let etc = builder.src.join("src/etc/installer");
 
@@ -1608,7 +1640,7 @@ impl Step for Extended {
 
             let prepare = |name: &str| {
                 builder.create_dir(&pkg.join(name));
-                builder.cp_r(
+                builder.cp_link_r(
                     &work.join(format!("{}-{}", pkgname(builder, name), target.triple)),
                     &pkg.join(name),
                 );
@@ -1672,7 +1704,7 @@ impl Step for Extended {
                 } else {
                     name.to_string()
                 };
-                builder.cp_r(
+                builder.cp_link_r(
                     &work.join(format!("{}-{}", pkgname(builder, name), target.triple)).join(dir),
                     &exe.join(name),
                 );
@@ -2040,16 +2072,24 @@ fn install_llvm_file(
         if install_symlink {
             // For download-ci-llvm, also install the symlink, to match what LLVM does. Using a
             // symlink is fine here, as this is not a rustup component.
-            builder.copy(&source, &full_dest);
+            builder.copy_link(source, &full_dest);
         } else {
             // Otherwise, replace the symlink with an equivalent linker script. This is used when
             // projects like miri link against librustc_driver.so. We don't use a symlink, as
             // these are not allowed inside rustup components.
             let link = t!(fs::read_link(source));
-            t!(std::fs::write(full_dest, format!("INPUT({})\n", link.display())));
+            let mut linker_script = t!(fs::File::create(full_dest));
+            t!(write!(linker_script, "INPUT({})\n", link.display()));
+
+            // We also want the linker script to have the same mtime as the source, otherwise it
+            // can trigger rebuilds.
+            let meta = t!(fs::metadata(source));
+            if let Ok(mtime) = meta.modified() {
+                t!(linker_script.set_modified(mtime));
+            }
         }
     } else {
-        builder.install(&source, destination, 0o644);
+        builder.install(source, destination, 0o644);
     }
 }
 
@@ -2094,12 +2134,12 @@ fn maybe_install_llvm(
             builder.install(&llvm_dylib_path, dst_libdir, 0o644);
         }
         !builder.config.dry_run()
-    } else if let Ok(llvm::LlvmResult { llvm_config, .. }) =
+    } else if let llvm::LlvmBuildStatus::AlreadyBuilt(llvm::LlvmResult { llvm_config, .. }) =
         llvm::prebuilt_llvm_config(builder, target)
     {
         let mut cmd = Command::new(llvm_config);
         cmd.arg("--libfiles");
-        builder.verbose(&format!("running {cmd:?}"));
+        builder.verbose(|| println!("running {cmd:?}"));
         let files = if builder.config.dry_run() { "".into() } else { output(&mut cmd) };
         let build_llvm_out = &builder.llvm_out(builder.config.build);
         let target_llvm_out = &builder.llvm_out(target);
@@ -2175,7 +2215,7 @@ impl Step for LlvmTools {
         builder.ensure(crate::core::build_steps::llvm::Llvm { target });
 
         let mut tarball = Tarball::new(builder, "llvm-tools", &target.triple);
-        tarball.set_overlay(OverlayKind::LLVM);
+        tarball.set_overlay(OverlayKind::Llvm);
         tarball.is_preview(true);
 
         if builder.config.llvm_tools_enabled {
@@ -2198,9 +2238,56 @@ impl Step for LlvmTools {
     }
 }
 
-// Tarball intended for internal consumption to ease rustc/std development.
-//
-// Should not be considered stable by end users.
+#[derive(Debug, PartialOrd, Ord, Clone, Hash, PartialEq, Eq)]
+pub struct LlvmBitcodeLinker {
+    pub compiler: Compiler,
+    pub target: TargetSelection,
+}
+
+impl Step for LlvmBitcodeLinker {
+    type Output = Option<GeneratedTarball>;
+    const DEFAULT: bool = true;
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        let default = should_build_extended_tool(run.builder, "llvm-bitcode-linker");
+        run.alias("llvm-bitcode-linker").default_condition(default)
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(LlvmBitcodeLinker {
+            compiler: run.builder.compiler_for(
+                run.builder.top_stage,
+                run.builder.config.build,
+                run.target,
+            ),
+            target: run.target,
+        });
+    }
+
+    fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
+        let compiler = self.compiler;
+        let target = self.target;
+
+        let llbc_linker =
+            builder.ensure(tool::LlvmBitcodeLinker { compiler, target, extra_features: vec![] });
+
+        let self_contained_bin_dir = format!("lib/rustlib/{}/bin/self-contained", target.triple);
+
+        // Prepare the image directory
+        let mut tarball = Tarball::new(builder, "llvm-bitcode-linker", &target.triple);
+        tarball.set_overlay(OverlayKind::LlvmBitcodeLinker);
+        tarball.is_preview(true);
+
+        tarball.add_file(llbc_linker, self_contained_bin_dir, 0o755);
+
+        Some(tarball.generate())
+    }
+}
+
+/// Tarball intended for internal consumption to ease rustc/std development.
+///
+/// Should not be considered stable by end users.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct RustDev {
     pub target: TargetSelection,
@@ -2231,7 +2318,7 @@ impl Step for RustDev {
         }
 
         let mut tarball = Tarball::new(builder, "rust-dev", &target.triple);
-        tarball.set_overlay(OverlayKind::LLVM);
+        tarball.set_overlay(OverlayKind::Llvm);
         // LLVM requires a shared object symlink to exist on some platforms.
         tarball.permit_symlinks(true);
 
@@ -2282,9 +2369,9 @@ impl Step for RustDev {
     }
 }
 
-// Tarball intended for internal consumption to ease rustc/std development.
-//
-// Should not be considered stable by end users.
+/// Tarball intended for internal consumption to ease rustc/std development.
+///
+/// Should not be considered stable by end users.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Bootstrap {
     pub target: TargetSelection,

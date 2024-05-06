@@ -12,7 +12,7 @@ pub(crate) fn provide(providers: &mut Providers) {
 macro_rules! rtry {
     ($e:expr) => {
         match $e {
-            e @ Representability::Infinite => return e,
+            e @ Representability::Infinite(_) => return e,
             Representability::Representable => {}
         }
     };

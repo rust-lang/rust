@@ -4,7 +4,6 @@
 
 use crate::setup::{Knobs, ParDatabaseImpl};
 use salsa::ParallelDatabase;
-use test_log::test;
 
 // Recover cycle test:
 //

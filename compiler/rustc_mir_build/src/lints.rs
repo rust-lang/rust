@@ -199,9 +199,10 @@ impl<'mir, 'tcx, C: TerminatorClassifier<'tcx>> TriColorVisitor<BasicBlocks<'tcx
             | TerminatorKind::Unreachable
             | TerminatorKind::Yield { .. } => ControlFlow::Break(NonRecursive),
 
-            // A diverging InlineAsm is treated as non-recursing
-            TerminatorKind::InlineAsm { destination, .. } => {
-                if destination.is_some() {
+            // A InlineAsm without targets (diverging and contains no labels)
+            // is treated as non-recursing.
+            TerminatorKind::InlineAsm { ref targets, .. } => {
+                if !targets.is_empty() {
                     ControlFlow::Continue(())
                 } else {
                     ControlFlow::Break(NonRecursive)

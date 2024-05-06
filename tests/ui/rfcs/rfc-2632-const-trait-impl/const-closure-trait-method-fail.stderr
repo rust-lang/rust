@@ -11,11 +11,14 @@ LL |     x(())
    |     ^^^^^
    |
    = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
-   = help: add `#![feature(effects)]` to the crate attributes to enable
 help: consider further restricting this bound
    |
 LL | const fn need_const_closure<T: ~const FnOnce(()) -> i32 + ~const std::ops::FnOnce<((),)>>(x: T) -> i32 {
    |                                                         ++++++++++++++++++++++++++++++++
+help: add `#![feature(effects)]` to the crate attributes to enable
+   |
+LL + #![feature(effects)]
+   |
 
 error: aborting due to 2 previous errors
 

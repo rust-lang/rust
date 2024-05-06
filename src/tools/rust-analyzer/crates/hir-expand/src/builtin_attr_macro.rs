@@ -4,23 +4,17 @@ use span::{MacroCallId, Span};
 use crate::{db::ExpandDatabase, name, tt, ExpandResult, MacroCallKind};
 
 macro_rules! register_builtin {
-    ($expand_fn:ident: $(($name:ident, $variant:ident) => $expand:ident),* ) => {
+    ($(($name:ident, $variant:ident) => $expand:ident),* ) => {
         #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
         pub enum BuiltinAttrExpander {
             $($variant),*
         }
 
         impl BuiltinAttrExpander {
-            pub fn $expand_fn(
-                &self,
-                db: &dyn ExpandDatabase,
-                id: MacroCallId,
-                tt: &tt::Subtree,
-            ) -> ExpandResult<tt::Subtree> {
-                let expander = match *self {
+            pub fn expander(&self) -> fn (&dyn ExpandDatabase, MacroCallId, &tt::Subtree, Span) -> ExpandResult<tt::Subtree>  {
+                match *self {
                     $( BuiltinAttrExpander::$variant => $expand, )*
-                };
-                expander(db, id, tt)
+                }
             }
 
             fn find_by_name(name: &name::Name) -> Option<Self> {
@@ -35,6 +29,16 @@ macro_rules! register_builtin {
 }
 
 impl BuiltinAttrExpander {
+    pub fn expand(
+        &self,
+        db: &dyn ExpandDatabase,
+        id: MacroCallId,
+        tt: &tt::Subtree,
+        span: Span,
+    ) -> ExpandResult<tt::Subtree> {
+        self.expander()(db, id, tt, span)
+    }
+
     pub fn is_derive(self) -> bool {
         matches!(self, BuiltinAttrExpander::Derive | BuiltinAttrExpander::DeriveConst)
     }
@@ -46,7 +50,7 @@ impl BuiltinAttrExpander {
     }
 }
 
-register_builtin! { expand:
+register_builtin! {
     (bench, Bench) => dummy_attr_expand,
     (cfg, Cfg) => dummy_attr_expand,
     (cfg_attr, CfgAttr) => dummy_attr_expand,
@@ -68,6 +72,7 @@ fn dummy_attr_expand(
     _db: &dyn ExpandDatabase,
     _id: MacroCallId,
     tt: &tt::Subtree,
+    _span: Span,
 ) -> ExpandResult<tt::Subtree> {
     ExpandResult::ok(tt.clone())
 }
@@ -97,6 +102,7 @@ fn derive_expand(
     db: &dyn ExpandDatabase,
     id: MacroCallId,
     tt: &tt::Subtree,
+    span: Span,
 ) -> ExpandResult<tt::Subtree> {
     let loc = db.lookup_intern_macro_call(id);
     let derives = match &loc.kind {
@@ -104,17 +110,14 @@ fn derive_expand(
             attr_args
         }
         _ => {
-            return ExpandResult::ok(tt::Subtree::empty(tt::DelimSpan {
-                open: loc.call_site,
-                close: loc.call_site,
-            }))
+            return ExpandResult::ok(tt::Subtree::empty(tt::DelimSpan { open: span, close: span }))
         }
     };
-    pseudo_derive_attr_expansion(tt, derives, loc.call_site)
+    pseudo_derive_attr_expansion(tt, derives, span)
 }
 
 pub fn pseudo_derive_attr_expansion(
-    tt: &tt::Subtree,
+    _: &tt::Subtree,
     args: &tt::Subtree,
     call_site: Span,
 ) -> ExpandResult<tt::Subtree> {
@@ -138,7 +141,7 @@ pub fn pseudo_derive_attr_expansion(
         token_trees.push(mk_leaf(']'));
     }
     ExpandResult::ok(tt::Subtree {
-        delimiter: tt.delimiter,
+        delimiter: args.delimiter,
         token_trees: token_trees.into_boxed_slice(),
     })
 }

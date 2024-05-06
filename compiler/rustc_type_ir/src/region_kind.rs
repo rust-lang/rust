@@ -1,5 +1,7 @@
 #[cfg(feature = "nightly")]
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+#[cfg(feature = "nightly")]
+use rustc_macros::{TyDecodable, TyEncodable};
 use std::fmt;
 
 use crate::{DebruijnIndex, DebugWithInfcx, InferCtxtLike, Interner, WithInfcx};
@@ -113,15 +115,7 @@ use self::RegionKind::*;
 /// [2]: https://smallcultfollowing.com/babysteps/blog/2013/11/04/intermingled-parameter-lists/
 /// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/traits/hrtb.html
 #[derive(derivative::Derivative)]
-#[derivative(
-    Clone(bound = ""),
-    Copy(bound = ""),
-    PartialOrd(bound = ""),
-    PartialOrd = "feature_allow_slow_enum",
-    Ord(bound = ""),
-    Ord = "feature_allow_slow_enum",
-    Hash(bound = "")
-)]
+#[derivative(Clone(bound = ""), Copy(bound = ""), Hash(bound = ""))]
 #[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable))]
 pub enum RegionKind<I: Interner> {
     /// A region parameter; for example `'a` in `impl<'a> Trait for &'a ()`.
@@ -223,23 +217,27 @@ impl<I: Interner> DebugWithInfcx<I> for RegionKind<I> {
         f: &mut core::fmt::Formatter<'_>,
     ) -> core::fmt::Result {
         match this.data {
-            ReEarlyParam(data) => write!(f, "ReEarlyParam({data:?})"),
+            ReEarlyParam(data) => write!(f, "{data:?}"),
 
             ReBound(binder_id, bound_region) => {
-                write!(f, "ReBound({binder_id:?}, {bound_region:?})")
+                write!(f, "'")?;
+                crate::debug_bound_var(f, *binder_id, bound_region)
             }
 
             ReLateParam(fr) => write!(f, "{fr:?}"),
 
-            ReStatic => f.write_str("ReStatic"),
+            ReStatic => f.write_str("'static"),
 
             ReVar(vid) => write!(f, "{:?}", &this.wrap(vid)),
 
-            RePlaceholder(placeholder) => write!(f, "RePlaceholder({placeholder:?})"),
+            RePlaceholder(placeholder) => write!(f, "{placeholder:?}"),
 
-            ReErased => f.write_str("ReErased"),
+            // Use `'{erased}` as the output instead of `'erased` so that its more obviously distinct from
+            // a `ReEarlyParam` named `'erased`. Technically that would print as `'erased/#IDX` so this is
+            // not strictly necessary but *shrug*
+            ReErased => f.write_str("'{erased}"),
 
-            ReError(_) => f.write_str("ReError"),
+            ReError(_) => f.write_str("'{region error}"),
         }
     }
 }

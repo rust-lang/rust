@@ -16,7 +16,25 @@ LL | struct Foo<T:Trait> {
    |              ^^^^^ required by this bound in `Foo`
 
 error[E0277]: the trait bound `usize: Trait` is not satisfied
-  --> $DIR/on-structs-and-enums-static.rs:11:8
+  --> $DIR/on-structs-and-enums-static.rs:9:11
+   |
+LL | static X: Foo<usize> = Foo {
+   |           ^^^^^^^^^^ the trait `Trait` is not implemented for `usize`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/on-structs-and-enums-static.rs:1:1
+   |
+LL | trait Trait {
+   | ^^^^^^^^^^^
+note: required by a bound in `Foo`
+  --> $DIR/on-structs-and-enums-static.rs:5:14
+   |
+LL | struct Foo<T:Trait> {
+   |              ^^^^^ required by this bound in `Foo`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0277]: the trait bound `usize: Trait` is not satisfied
+  --> $DIR/on-structs-and-enums-static.rs:12:8
    |
 LL |     x: 1,
    |        ^ the trait `Trait` is not implemented for `usize`
@@ -32,6 +50,6 @@ note: required by a bound in `Foo`
 LL | struct Foo<T:Trait> {
    |              ^^^^^ required by this bound in `Foo`
 
-error: aborting due to 2 previous errors
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

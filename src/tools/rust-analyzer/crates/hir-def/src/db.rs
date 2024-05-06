@@ -12,7 +12,7 @@ use crate::{
     attr::{Attrs, AttrsWithOwner},
     body::{scope::ExprScopes, Body, BodySourceMap},
     data::{
-        adt::{EnumData, EnumVariantData, StructData},
+        adt::{EnumData, EnumVariantData, StructData, VariantData},
         ConstData, ExternCrateDeclData, FunctionData, ImplData, Macro2Data, MacroRulesData,
         ProcMacroData, StaticData, TraitAliasData, TraitData, TypeAliasData,
     },
@@ -87,14 +87,10 @@ pub trait DefDatabase: InternDatabase + ExpandDatabase + Upcast<dyn ExpandDataba
     fn file_item_tree(&self, file_id: HirFileId) -> Arc<ItemTree>;
 
     #[salsa::invoke(ItemTree::block_item_tree_query)]
-    fn block_item_tree_query(&self, block_id: BlockId) -> Arc<ItemTree>;
-
-    #[salsa::invoke(crate_def_map_wait)]
-    #[salsa::transparent]
-    fn crate_def_map(&self, krate: CrateId) -> Arc<DefMap>;
+    fn block_item_tree(&self, block_id: BlockId) -> Arc<ItemTree>;
 
     #[salsa::invoke(DefMap::crate_def_map_query)]
-    fn crate_def_map_query(&self, krate: CrateId) -> Arc<DefMap>;
+    fn crate_def_map(&self, krate: CrateId) -> Arc<DefMap>;
 
     /// Computes the block-level `DefMap`.
     #[salsa::invoke(DefMap::block_def_map_query)]
@@ -131,6 +127,9 @@ pub trait DefDatabase: InternDatabase + ExpandDatabase + Upcast<dyn ExpandDataba
         id: EnumVariantId,
     ) -> (Arc<EnumVariantData>, DefDiagnostics);
 
+    #[salsa::transparent]
+    #[salsa::invoke(VariantData::variant_data)]
+    fn variant_data(&self, id: VariantId) -> Arc<VariantData>;
     #[salsa::transparent]
     #[salsa::invoke(ImplData::impl_data_query)]
     fn impl_data(&self, e: ImplId) -> Arc<ImplData>;
@@ -253,11 +252,6 @@ fn include_macro_invoc(db: &dyn DefDatabase, krate: CrateId) -> Vec<(MacroCallId
         .collect()
 }
 
-fn crate_def_map_wait(db: &dyn DefDatabase, krate: CrateId) -> Arc<DefMap> {
-    let _p = tracing::span!(tracing::Level::INFO, "crate_def_map:wait").entered();
-    db.crate_def_map_query(krate)
-}
-
 fn crate_supports_no_std(db: &dyn DefDatabase, crate_id: CrateId) -> bool {
     let file = db.crate_graph()[crate_id].root_file_id;
     let item_tree = db.file_item_tree(file.into());
@@ -318,13 +312,9 @@ fn macro_def(db: &dyn DefDatabase, id: MacroId) -> MacroDefId {
                 kind: kind(loc.expander, loc.id.file_id(), makro.ast_id.upcast()),
                 local_inner: false,
                 allow_internal_unsafe: loc.allow_internal_unsafe,
-                span: db
-                    .span_map(loc.id.file_id())
-                    .span_for_range(db.ast_id_map(loc.id.file_id()).get(makro.ast_id).text_range()),
                 edition: loc.edition,
             }
         }
-
         MacroId::MacroRulesId(it) => {
             let loc: MacroRulesLoc = it.lookup(db);
 
@@ -337,9 +327,6 @@ fn macro_def(db: &dyn DefDatabase, id: MacroId) -> MacroDefId {
                 allow_internal_unsafe: loc
                     .flags
                     .contains(MacroRulesLocFlags::ALLOW_INTERNAL_UNSAFE),
-                span: db
-                    .span_map(loc.id.file_id())
-                    .span_for_range(db.ast_id_map(loc.id.file_id()).get(makro.ast_id).text_range()),
                 edition: loc.edition,
             }
         }
@@ -357,9 +344,6 @@ fn macro_def(db: &dyn DefDatabase, id: MacroId) -> MacroDefId {
                 ),
                 local_inner: false,
                 allow_internal_unsafe: false,
-                span: db
-                    .span_map(loc.id.file_id())
-                    .span_for_range(db.ast_id_map(loc.id.file_id()).get(makro.ast_id).text_range()),
                 edition: loc.edition,
             }
         }

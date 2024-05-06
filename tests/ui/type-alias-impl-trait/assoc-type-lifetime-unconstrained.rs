@@ -20,6 +20,7 @@ impl<'a, I> UnwrapItemsExt for I {
 
     fn unwrap_items(self) -> Self::Iter {
         MyStruct {}
+        //~^ ERROR expected generic lifetime parameter
     }
 }
 

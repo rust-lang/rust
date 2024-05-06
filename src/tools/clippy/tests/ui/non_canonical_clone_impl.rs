@@ -1,4 +1,5 @@
 #![allow(clippy::clone_on_copy, unused)]
+#![allow(clippy::assigning_clones)]
 #![no_main]
 
 // lint

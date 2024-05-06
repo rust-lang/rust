@@ -329,7 +329,7 @@ static HOOK: AtomicPtr<()> = AtomicPtr::new(ptr::null_mut());
 /// ```
 #[unstable(feature = "alloc_error_hook", issue = "51245")]
 pub fn set_alloc_error_hook(hook: fn(Layout)) {
-    HOOK.store(hook as *mut (), Ordering::SeqCst);
+    HOOK.store(hook as *mut (), Ordering::Release);
 }
 
 /// Unregisters the current allocation error hook, returning it.
@@ -339,7 +339,7 @@ pub fn set_alloc_error_hook(hook: fn(Layout)) {
 /// If no custom hook is registered, the default hook will be returned.
 #[unstable(feature = "alloc_error_hook", issue = "51245")]
 pub fn take_alloc_error_hook() -> fn(Layout) {
-    let hook = HOOK.swap(ptr::null_mut(), Ordering::SeqCst);
+    let hook = HOOK.swap(ptr::null_mut(), Ordering::Acquire);
     if hook.is_null() { default_alloc_error_hook } else { unsafe { mem::transmute(hook) } }
 }
 
@@ -353,6 +353,12 @@ fn default_alloc_error_hook(layout: Layout) {
     if unsafe { __rust_alloc_error_handler_should_panic != 0 } {
         panic!("memory allocation of {} bytes failed", layout.size());
     } else {
+        // This is the default path taken on OOM, and the only path taken on stable with std.
+        // Crucially, it does *not* call any user-defined code, and therefore users do not have to
+        // worry about allocation failure causing reentrancy issues. That makes it different from
+        // the default `__rdl_oom` defined in alloc (i.e., the default alloc error handler that is
+        // called when there is no `#[alloc_error_handler]`), which triggers a regular panic and
+        // thus can invoke a user-defined panic hook, executing arbitrary user-defined code.
         rtprintpanic!("memory allocation of {} bytes failed\n", layout.size());
     }
 }
@@ -362,7 +368,7 @@ fn default_alloc_error_hook(layout: Layout) {
 #[alloc_error_handler]
 #[unstable(feature = "alloc_internals", issue = "none")]
 pub fn rust_oom(layout: Layout) -> ! {
-    let hook = HOOK.load(Ordering::SeqCst);
+    let hook = HOOK.load(Ordering::Acquire);
     let hook: fn(Layout) =
         if hook.is_null() { default_alloc_error_hook } else { unsafe { mem::transmute(hook) } };
     hook(layout);

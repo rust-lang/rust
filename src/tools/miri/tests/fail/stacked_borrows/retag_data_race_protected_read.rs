@@ -1,4 +1,5 @@
-//@compile-flags: -Zmiri-preemption-rate=0
+// Avoid accidental synchronization via address reuse.
+//@compile-flags: -Zmiri-preemption-rate=0 -Zmiri-address-reuse-cross-thread-rate=0
 use std::thread;
 
 #[derive(Copy, Clone)]
@@ -13,7 +14,7 @@ fn main() {
         let ptr = ptr;
         // We do a protected mutable retag (but no write!) in this thread.
         fn retag(_x: &mut i32) {}
-        retag(unsafe { &mut *ptr.0 }); //~ERROR: Data race detected between (1) non-atomic read on thread `main` and (2) non-atomic write on thread `unnamed-1`
+        retag(unsafe { &mut *ptr.0 }); //~ERROR: Data race detected between (1) non-atomic read on thread `main` and (2) retag write of type `i32` on thread `unnamed-1`
     });
 
     // We do a read in the main thread.

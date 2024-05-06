@@ -1,7 +1,5 @@
 //@ edition: 2021
 
-#![allow(incomplete_features)]
-
 trait Foo {
     async fn foo<T>();
 }

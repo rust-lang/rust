@@ -110,6 +110,10 @@ pub trait TypeVisitor<I: Interner>: Sized {
     fn visit_predicate(&mut self, p: I::Predicate) -> Self::Result {
         p.super_visit_with(self)
     }
+
+    fn visit_clauses(&mut self, p: I::Clauses) -> Self::Result {
+        p.super_visit_with(self)
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -223,8 +227,8 @@ pub trait TypeVisitableExt<I: Interner>: TypeVisitable<I> {
         self.has_vars_bound_at_or_above(ty::INNERMOST)
     }
 
-    fn has_projections(&self) -> bool {
-        self.has_type_flags(TypeFlags::HAS_PROJECTION)
+    fn has_aliases(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_ALIASES)
     }
 
     fn has_inherent_projections(&self) -> bool {
@@ -423,6 +427,16 @@ impl<I: Interner> TypeVisitor<I> for HasTypeFlagsVisitor {
             ControlFlow::Continue(())
         }
     }
+
+    #[inline]
+    fn visit_clauses(&mut self, clauses: I::Clauses) -> Self::Result {
+        // Note: no `super_visit_with` call.
+        if clauses.flags().intersects(self.flags) {
+            ControlFlow::Break(FoundFlags)
+        } else {
+            ControlFlow::Continue(())
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
@@ -510,6 +524,15 @@ impl<I: Interner> TypeVisitor<I> for HasEscapingVarsVisitor {
     #[inline]
     fn visit_predicate(&mut self, predicate: I::Predicate) -> Self::Result {
         if predicate.outer_exclusive_binder() > self.outer_index {
+            ControlFlow::Break(FoundEscapingVars)
+        } else {
+            ControlFlow::Continue(())
+        }
+    }
+
+    #[inline]
+    fn visit_clauses(&mut self, clauses: I::Clauses) -> Self::Result {
+        if clauses.outer_exclusive_binder() > self.outer_index {
             ControlFlow::Break(FoundEscapingVars)
         } else {
             ControlFlow::Continue(())

@@ -1,5 +1,3 @@
-#![feature(associated_type_bounds)]
-
 use std::mem::ManuallyDrop;
 
 struct S1 { f: dyn Iterator<Item: Copy> }

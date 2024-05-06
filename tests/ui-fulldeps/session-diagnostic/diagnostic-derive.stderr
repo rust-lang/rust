@@ -618,14 +618,14 @@ LL | #[derive(Diagnostic)]
    |
    = note: this error originates in the derive macro `Diagnostic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0277]: the trait bound `Hello: IntoDiagnosticArg` is not satisfied
+error[E0277]: the trait bound `Hello: IntoDiagArg` is not satisfied
   --> $DIR/diagnostic-derive.rs:349:12
    |
 LL | #[derive(Diagnostic)]
    |          ---------- required by a bound introduced by this call
 ...
 LL |     other: Hello,
-   |            ^^^^^ the trait `IntoDiagnosticArg` is not implemented for `Hello`
+   |            ^^^^^ the trait `IntoDiagArg` is not implemented for `Hello`
    |
    = help: normalized in stderr
 note: required by a bound in `Diag::<'a, G>::arg`

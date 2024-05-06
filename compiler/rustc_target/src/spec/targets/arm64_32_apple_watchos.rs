@@ -1,11 +1,17 @@
-use crate::spec::base::apple::{opts, Arch};
+use crate::spec::base::apple::{opts, watchos_llvm_target, Arch};
 use crate::spec::{Target, TargetOptions};
 
 pub fn target() -> Target {
-    let base = opts("watchos", Arch::Arm64_32);
+    let arch = Arch::Arm64_32;
+    let base = opts("watchos", arch);
     Target {
-        llvm_target: "arm64_32-apple-watchos".into(),
-        description: None,
+        llvm_target: watchos_llvm_target(arch).into(),
+        metadata: crate::spec::TargetMetadata {
+            description: None,
+            tier: None,
+            host_tools: None,
+            std: None,
+        },
         pointer_width: 32,
         data_layout: "e-m:o-p:32:32-i64:64-i128:128-n32:64-S128".into(),
         arch: "aarch64".into(),

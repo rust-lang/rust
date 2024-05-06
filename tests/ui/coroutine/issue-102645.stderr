@@ -1,5 +1,5 @@
 error[E0061]: this method takes 1 argument but 0 arguments were supplied
-  --> $DIR/issue-102645.rs:14:22
+  --> $DIR/issue-102645.rs:15:22
    |
 LL |     Pin::new(&mut b).resume();
    |                      ^^^^^^-- an argument of type `()` is missing

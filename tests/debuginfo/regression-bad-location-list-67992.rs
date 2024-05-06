@@ -10,8 +10,8 @@
 // === LLDB TESTS ==================================================================================
 
 // lldb-command:run
-// lldb-command:print a
-// lldbg-check:(regression_bad_location_list_67992::Foo) $0 = [...]
+// lldb-command:v a
+// lldbg-check:(regression_bad_location_list_67992::Foo) [...]
 // lldbr-check:(regression_bad_location_list_67992::Foo) a = [...]
 
 const ARRAY_SIZE: usize = 1024;

@@ -5,14 +5,11 @@
 // identify what tests are needed, perform the tests, and then filter
 // the candidates based on the result.
 
-use crate::build::expr::as_place::PlaceBuilder;
-use crate::build::matches::{Candidate, MatchPair, Test, TestCase, TestKind};
+use crate::build::matches::{Candidate, MatchPair, Test, TestBranch, TestCase, TestKind};
 use crate::build::Builder;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir::{LangItem, RangeEnd};
-use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::*;
-use rustc_middle::thir::*;
 use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::GenericArg;
 use rustc_middle::ty::{self, adjustment::PointerCoercion, Ty, TyCtxt};
@@ -20,7 +17,6 @@ use rustc_span::def_id::DefId;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
-use rustc_target::abi::VariantIdx;
 
 use std::cmp::Ordering;
 
@@ -30,22 +26,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// It is a bug to call this with a not-fully-simplified pattern.
     pub(super) fn test<'pat>(&mut self, match_pair: &MatchPair<'pat, 'tcx>) -> Test<'tcx> {
         let kind = match match_pair.test_case {
-            TestCase::Variant { adt_def, variant_index: _ } => {
-                TestKind::Switch { adt_def, variants: BitSet::new_empty(adt_def.variants().len()) }
-            }
+            TestCase::Variant { adt_def, variant_index: _ } => TestKind::Switch { adt_def },
 
             TestCase::Constant { .. } if match_pair.pattern.ty.is_bool() => TestKind::If,
-
-            TestCase::Constant { .. } if is_switch_ty(match_pair.pattern.ty) => {
-                // For integers, we use a `SwitchInt` match, which allows
-                // us to handle more cases.
-                TestKind::SwitchInt {
-                    // these maps are empty to start; cases are
-                    // added below in add_cases_to_switch
-                    options: Default::default(),
-                }
-            }
-
+            TestCase::Constant { .. } if is_switch_ty(match_pair.pattern.ty) => TestKind::SwitchInt,
             TestCase::Constant { value } => TestKind::Eq { value, ty: match_pair.pattern.ty },
 
             TestCase::Range(range) => {
@@ -57,6 +41,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let op = if variable_length { BinOp::Ge } else { BinOp::Eq };
                 TestKind::Len { len: len as u64, op }
             }
+
+            TestCase::Deref { temp, mutability } => TestKind::Deref { temp, mutability },
 
             TestCase::Or { .. } => bug!("or-patterns should have already been handled"),
 
@@ -70,101 +56,37 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         Test { span: match_pair.pattern.span, kind }
     }
 
-    pub(super) fn add_cases_to_switch<'pat>(
-        &mut self,
-        test_place: &PlaceBuilder<'tcx>,
-        candidate: &Candidate<'pat, 'tcx>,
-        options: &mut FxIndexMap<Const<'tcx>, u128>,
-    ) -> bool {
-        let Some(match_pair) = candidate.match_pairs.iter().find(|mp| mp.place == *test_place)
-        else {
-            return false;
-        };
-
-        match match_pair.test_case {
-            TestCase::Constant { value } => {
-                options.entry(value).or_insert_with(|| value.eval_bits(self.tcx, self.param_env));
-                true
-            }
-            TestCase::Variant { .. } => {
-                panic!("you should have called add_variants_to_switch instead!");
-            }
-            TestCase::Range(ref range) => {
-                // Check that none of the switch values are in the range.
-                self.values_not_contained_in_range(&*range, options).unwrap_or(false)
-            }
-            // don't know how to add these patterns to a switch
-            _ => false,
-        }
-    }
-
-    pub(super) fn add_variants_to_switch<'pat>(
-        &mut self,
-        test_place: &PlaceBuilder<'tcx>,
-        candidate: &Candidate<'pat, 'tcx>,
-        variants: &mut BitSet<VariantIdx>,
-    ) -> bool {
-        let Some(match_pair) = candidate.match_pairs.iter().find(|mp| mp.place == *test_place)
-        else {
-            return false;
-        };
-
-        match match_pair.test_case {
-            TestCase::Variant { variant_index, .. } => {
-                // We have a pattern testing for variant `variant_index`
-                // set the corresponding index to true
-                variants.insert(variant_index);
-                true
-            }
-            // don't know how to add these patterns to a switch
-            _ => false,
-        }
-    }
-
-    #[instrument(skip(self, target_blocks, place_builder), level = "debug")]
+    #[instrument(skip(self, target_blocks, place), level = "debug")]
     pub(super) fn perform_test(
         &mut self,
         match_start_span: Span,
         scrutinee_span: Span,
         block: BasicBlock,
-        place_builder: &PlaceBuilder<'tcx>,
+        otherwise_block: BasicBlock,
+        place: Place<'tcx>,
         test: &Test<'tcx>,
-        target_blocks: Vec<BasicBlock>,
+        target_blocks: FxIndexMap<TestBranch<'tcx>, BasicBlock>,
     ) {
-        let place = place_builder.to_place(self);
         let place_ty = place.ty(&self.local_decls, self.tcx);
-        debug!(?place, ?place_ty,);
+        debug!(?place, ?place_ty);
+        let target_block = |branch| target_blocks.get(&branch).copied().unwrap_or(otherwise_block);
 
         let source_info = self.source_info(test.span);
         match test.kind {
-            TestKind::Switch { adt_def, ref variants } => {
-                // Variants is a BitVec of indexes into adt_def.variants.
-                let num_enum_variants = adt_def.variants().len();
-                debug_assert_eq!(target_blocks.len(), num_enum_variants + 1);
-                let otherwise_block = *target_blocks.last().unwrap();
-                let tcx = self.tcx;
+            TestKind::Switch { adt_def } => {
+                let otherwise_block = target_block(TestBranch::Failure);
                 let switch_targets = SwitchTargets::new(
-                    adt_def.discriminants(tcx).filter_map(|(idx, discr)| {
-                        if variants.contains(idx) {
-                            debug_assert_ne!(
-                                target_blocks[idx.index()],
-                                otherwise_block,
-                                "no candidates for tested discriminant: {discr:?}",
-                            );
-                            Some((discr.val, target_blocks[idx.index()]))
+                    adt_def.discriminants(self.tcx).filter_map(|(idx, discr)| {
+                        if let Some(&block) = target_blocks.get(&TestBranch::Variant(idx)) {
+                            Some((discr.val, block))
                         } else {
-                            debug_assert_eq!(
-                                target_blocks[idx.index()],
-                                otherwise_block,
-                                "found candidates for untested discriminant: {discr:?}",
-                            );
                             None
                         }
                     }),
                     otherwise_block,
                 );
-                debug!("num_enum_variants: {}, variants: {:?}", num_enum_variants, variants);
-                let discr_ty = adt_def.repr().discr_type().to_ty(tcx);
+                debug!("num_enum_variants: {}", adt_def.variants().len());
+                let discr_ty = adt_def.repr().discr_type().to_ty(self.tcx);
                 let discr = self.temp(discr_ty, test.span);
                 self.cfg.push_assign(
                     block,
@@ -182,12 +104,17 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 );
             }
 
-            TestKind::SwitchInt { ref options } => {
+            TestKind::SwitchInt => {
                 // The switch may be inexhaustive so we have a catch-all block
-                debug_assert_eq!(options.len() + 1, target_blocks.len());
-                let otherwise_block = *target_blocks.last().unwrap();
+                let otherwise_block = target_block(TestBranch::Failure);
                 let switch_targets = SwitchTargets::new(
-                    options.values().copied().zip(target_blocks),
+                    target_blocks.iter().filter_map(|(&branch, &block)| {
+                        if let TestBranch::Constant(_, bits) = branch {
+                            Some((bits, block))
+                        } else {
+                            None
+                        }
+                    }),
                     otherwise_block,
                 );
                 let terminator = TerminatorKind::SwitchInt {
@@ -198,18 +125,17 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
 
             TestKind::If => {
-                let [false_bb, true_bb] = *target_blocks else {
-                    bug!("`TestKind::If` should have two targets")
-                };
-                let terminator = TerminatorKind::if_(Operand::Copy(place), true_bb, false_bb);
+                let success_block = target_block(TestBranch::Success);
+                let fail_block = target_block(TestBranch::Failure);
+                let terminator =
+                    TerminatorKind::if_(Operand::Copy(place), success_block, fail_block);
                 self.cfg.terminate(block, self.source_info(match_start_span), terminator);
             }
 
             TestKind::Eq { value, ty } => {
                 let tcx = self.tcx;
-                let [success_block, fail_block] = *target_blocks else {
-                    bug!("`TestKind::Eq` should have two target blocks")
-                };
+                let success_block = target_block(TestBranch::Success);
+                let fail_block = target_block(TestBranch::Failure);
                 if let ty::Adt(def, _) = ty.kind()
                     && Some(def.did()) == tcx.lang_items().string()
                 {
@@ -219,34 +145,18 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         );
                     }
                     let re_erased = tcx.lifetimes.re_erased;
-                    let ref_string = self.temp(Ty::new_imm_ref(tcx, re_erased, ty), test.span);
                     let ref_str_ty = Ty::new_imm_ref(tcx, re_erased, tcx.types.str_);
                     let ref_str = self.temp(ref_str_ty, test.span);
-                    let deref = tcx.require_lang_item(LangItem::Deref, None);
-                    let method = trait_method(tcx, deref, sym::deref, [ty]);
                     let eq_block = self.cfg.start_new_block();
-                    self.cfg.push_assign(
+                    // `let ref_str: &str = <String as Deref>::deref(&place);`
+                    self.call_deref(
                         block,
-                        source_info,
-                        ref_string,
-                        Rvalue::Ref(re_erased, BorrowKind::Shared, place),
-                    );
-                    self.cfg.terminate(
-                        block,
-                        source_info,
-                        TerminatorKind::Call {
-                            func: Operand::Constant(Box::new(ConstOperand {
-                                span: test.span,
-                                user_ty: None,
-                                const_: method,
-                            })),
-                            args: vec![Spanned { node: Operand::Move(ref_string), span: DUMMY_SP }],
-                            destination: ref_str,
-                            target: Some(eq_block),
-                            unwind: UnwindAction::Continue,
-                            call_source: CallSource::Misc,
-                            fn_span: source_info.span,
-                        },
+                        eq_block,
+                        place,
+                        Mutability::Not,
+                        ty,
+                        ref_str,
+                        test.span,
                     );
                     self.non_scalar_compare(
                         eq_block,
@@ -286,9 +196,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
 
             TestKind::Range(ref range) => {
-                let [success, fail] = *target_blocks else {
-                    bug!("`TestKind::Range` should have two target blocks");
-                };
+                let success = target_block(TestBranch::Success);
+                let fail = target_block(TestBranch::Failure);
                 // Test `val` by computing `lo <= val && val <= hi`, using primitive comparisons.
                 let val = Operand::Copy(place);
 
@@ -333,22 +242,78 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // expected = <N>
                 let expected = self.push_usize(block, source_info, len);
 
-                let [true_bb, false_bb] = *target_blocks else {
-                    bug!("`TestKind::Len` should have two target blocks");
-                };
+                let success_block = target_block(TestBranch::Success);
+                let fail_block = target_block(TestBranch::Failure);
                 // result = actual == expected OR result = actual < expected
                 // branch based on result
                 self.compare(
                     block,
-                    true_bb,
-                    false_bb,
+                    success_block,
+                    fail_block,
                     source_info,
                     op,
                     Operand::Move(actual),
                     Operand::Move(expected),
                 );
             }
+
+            TestKind::Deref { temp, mutability } => {
+                let ty = place_ty.ty;
+                let target = target_block(TestBranch::Success);
+                self.call_deref(block, target, place, mutability, ty, temp, test.span);
+            }
         }
+    }
+
+    /// Perform `let temp = <ty as Deref>::deref(&place)`.
+    /// or `let temp = <ty as DerefMut>::deref_mut(&mut place)`.
+    pub(super) fn call_deref(
+        &mut self,
+        block: BasicBlock,
+        target_block: BasicBlock,
+        place: Place<'tcx>,
+        mutability: Mutability,
+        ty: Ty<'tcx>,
+        temp: Place<'tcx>,
+        span: Span,
+    ) {
+        let (trait_item, method) = match mutability {
+            Mutability::Not => (LangItem::Deref, sym::deref),
+            Mutability::Mut => (LangItem::DerefMut, sym::deref_mut),
+        };
+        let borrow_kind = super::util::ref_pat_borrow_kind(mutability);
+        let source_info = self.source_info(span);
+        let re_erased = self.tcx.lifetimes.re_erased;
+        let trait_item = self.tcx.require_lang_item(trait_item, None);
+        let method = trait_method(self.tcx, trait_item, method, [ty]);
+        let ref_src = self.temp(Ty::new_ref(self.tcx, re_erased, ty, mutability), span);
+        // `let ref_src = &src_place;`
+        // or `let ref_src = &mut src_place;`
+        self.cfg.push_assign(
+            block,
+            source_info,
+            ref_src,
+            Rvalue::Ref(re_erased, borrow_kind, place),
+        );
+        // `let temp = <Ty as Deref>::deref(ref_src);`
+        // or `let temp = <Ty as DerefMut>::deref_mut(ref_src);`
+        self.cfg.terminate(
+            block,
+            source_info,
+            TerminatorKind::Call {
+                func: Operand::Constant(Box::new(ConstOperand {
+                    span,
+                    user_ty: None,
+                    const_: method,
+                })),
+                args: vec![Spanned { node: Operand::Move(ref_src), span }],
+                destination: temp,
+                target: Some(target_block),
+                unwind: UnwindAction::Continue,
+                call_source: CallSource::Misc,
+                fn_span: source_info.span,
+            },
+        );
     }
 
     /// Compare using the provided built-in comparison operator
@@ -526,10 +491,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
     /// Given that we are performing `test` against `test_place`, this job
     /// sorts out what the status of `candidate` will be after the test. See
-    /// `test_candidates` for the usage of this function. The returned index is
-    /// the index that this candidate should be placed in the
-    /// `target_candidates` vec. The candidate may be modified to update its
-    /// `match_pairs`.
+    /// `test_candidates` for the usage of this function. The candidate may
+    /// be modified to update its `match_pairs`.
     ///
     /// So, for example, if this candidate is `x @ Some(P0)` and the `Test` is
     /// a variant test, then we would modify the candidate to be `(x as
@@ -551,32 +514,36 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// that it *doesn't* apply. For now, we return false, indicate that the
     /// test does not apply to this candidate, but it might be we can get
     /// tighter match code if we do something a bit different.
-    pub(super) fn sort_candidate<'pat>(
+    pub(super) fn sort_candidate(
         &mut self,
-        test_place: &PlaceBuilder<'tcx>,
+        test_place: Place<'tcx>,
         test: &Test<'tcx>,
-        candidate: &mut Candidate<'pat, 'tcx>,
-    ) -> Option<usize> {
+        candidate: &mut Candidate<'_, 'tcx>,
+        sorted_candidates: &FxIndexMap<TestBranch<'tcx>, Vec<&mut Candidate<'_, 'tcx>>>,
+    ) -> Option<TestBranch<'tcx>> {
         // Find the match_pair for this place (if any). At present,
         // afaik, there can be at most one. (In the future, if we
         // adopted a more general `@` operator, there might be more
         // than one, but it'd be very unusual to have two sides that
         // both require tests; you'd expect one side to be simplified
         // away.)
-        let (match_pair_index, match_pair) =
-            candidate.match_pairs.iter().enumerate().find(|&(_, mp)| mp.place == *test_place)?;
+        let (match_pair_index, match_pair) = candidate
+            .match_pairs
+            .iter()
+            .enumerate()
+            .find(|&(_, mp)| mp.place == Some(test_place))?;
 
         let fully_matched;
         let ret = match (&test.kind, &match_pair.test_case) {
             // If we are performing a variant switch, then this
             // informs variant patterns, but nothing else.
             (
-                &TestKind::Switch { adt_def: tested_adt_def, .. },
+                &TestKind::Switch { adt_def: tested_adt_def },
                 &TestCase::Variant { adt_def, variant_index },
             ) => {
                 assert_eq!(adt_def, tested_adt_def);
                 fully_matched = true;
-                Some(variant_index.as_usize())
+                Some(TestBranch::Variant(variant_index))
             }
 
             // If we are performing a switch over integers, then this informs integer
@@ -584,35 +551,54 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             //
             // FIXME(#29623) we could use PatKind::Range to rule
             // things out here, in some cases.
-            (TestKind::SwitchInt { options }, TestCase::Constant { value })
+            (TestKind::SwitchInt, &TestCase::Constant { value })
                 if is_switch_ty(match_pair.pattern.ty) =>
             {
-                fully_matched = true;
-                let index = options.get_index_of(value).unwrap();
-                Some(index)
+                // Beware: there might be some ranges sorted into the failure case; we must not add
+                // a success case that could be matched by one of these ranges.
+                let is_covering_range = |test_case: &TestCase<'_, 'tcx>| {
+                    test_case.as_range().is_some_and(|range| {
+                        matches!(range.contains(value, self.tcx, self.param_env), None | Some(true))
+                    })
+                };
+                let is_conflicting_candidate = |candidate: &&mut Candidate<'_, 'tcx>| {
+                    candidate
+                        .match_pairs
+                        .iter()
+                        .any(|mp| mp.place == Some(test_place) && is_covering_range(&mp.test_case))
+                };
+                if sorted_candidates
+                    .get(&TestBranch::Failure)
+                    .is_some_and(|candidates| candidates.iter().any(is_conflicting_candidate))
+                {
+                    fully_matched = false;
+                    None
+                } else {
+                    fully_matched = true;
+                    let bits = value.eval_bits(self.tcx, self.param_env);
+                    Some(TestBranch::Constant(value, bits))
+                }
             }
-            (TestKind::SwitchInt { options }, TestCase::Range(range)) => {
+            (TestKind::SwitchInt, TestCase::Range(range)) => {
                 fully_matched = false;
                 let not_contained =
-                    self.values_not_contained_in_range(&*range, options).unwrap_or(false);
+                    sorted_candidates.keys().filter_map(|br| br.as_constant()).copied().all(
+                        |val| matches!(range.contains(val, self.tcx, self.param_env), Some(false)),
+                    );
 
                 not_contained.then(|| {
                     // No switch values are contained in the pattern range,
                     // so the pattern can be matched only if this test fails.
-                    options.len()
+                    TestBranch::Failure
                 })
             }
 
-            (&TestKind::If, TestCase::Constant { value }) => {
+            (TestKind::If, TestCase::Constant { value }) => {
                 fully_matched = true;
                 let value = value.try_eval_bool(self.tcx, self.param_env).unwrap_or_else(|| {
                     span_bug!(test.span, "expected boolean value but got {value:?}")
                 });
-                Some(value as usize)
-            }
-            (&TestKind::If, _) => {
-                fully_matched = false;
-                None
+                Some(if value { TestBranch::Success } else { TestBranch::Failure })
             }
 
             (
@@ -624,14 +610,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         // on true, min_len = len = $actual_length,
                         // on false, len != $actual_length
                         fully_matched = true;
-                        Some(0)
+                        Some(TestBranch::Success)
                     }
                     (Ordering::Less, _) => {
                         // test_len < pat_len. If $actual_len = test_len,
                         // then $actual_len < pat_len and we don't have
                         // enough elements.
                         fully_matched = false;
-                        Some(1)
+                        Some(TestBranch::Failure)
                     }
                     (Ordering::Equal | Ordering::Greater, true) => {
                         // This can match both if $actual_len = test_len >= pat_len,
@@ -643,7 +629,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         // test_len != pat_len, so if $actual_len = test_len, then
                         // $actual_len != pat_len.
                         fully_matched = false;
-                        Some(1)
+                        Some(TestBranch::Failure)
                     }
                 }
             }
@@ -657,20 +643,20 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         // $actual_len >= test_len = pat_len,
                         // so we can match.
                         fully_matched = true;
-                        Some(0)
+                        Some(TestBranch::Success)
                     }
                     (Ordering::Less, _) | (Ordering::Equal, false) => {
                         // test_len <= pat_len. If $actual_len < test_len,
                         // then it is also < pat_len, so the test passing is
                         // necessary (but insufficient).
                         fully_matched = false;
-                        Some(0)
+                        Some(TestBranch::Success)
                     }
                     (Ordering::Greater, false) => {
                         // test_len > pat_len. If $actual_len >= test_len > pat_len,
                         // then we know we won't have a match.
                         fully_matched = false;
-                        Some(1)
+                        Some(TestBranch::Failure)
                     }
                     (Ordering::Greater, true) => {
                         // test_len < pat_len, and is therefore less
@@ -684,12 +670,16 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             (TestKind::Range(test), &TestCase::Range(pat)) => {
                 if test.as_ref() == pat {
                     fully_matched = true;
-                    Some(0)
+                    Some(TestBranch::Success)
                 } else {
                     fully_matched = false;
                     // If the testing range does not overlap with pattern range,
                     // the pattern can be matched only if this test fails.
-                    if !test.overlaps(pat, self.tcx, self.param_env)? { Some(1) } else { None }
+                    if !test.overlaps(pat, self.tcx, self.param_env)? {
+                        Some(TestBranch::Failure)
+                    } else {
+                        None
+                    }
                 }
             }
             (TestKind::Range(range), &TestCase::Constant { value }) => {
@@ -697,26 +687,37 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 if !range.contains(value, self.tcx, self.param_env)? {
                     // `value` is not contained in the testing range,
                     // so `value` can be matched only if this test fails.
-                    Some(1)
+                    Some(TestBranch::Failure)
                 } else {
                     None
                 }
             }
 
-            // FIXME(#29623): return `Some(1)` when the values are different.
-            (TestKind::Eq { value: test_val, .. }, TestCase::Constant { value: case_val })
-                if test_val == case_val =>
+            (TestKind::Eq { value: test_val, .. }, TestCase::Constant { value: case_val }) => {
+                if test_val == case_val {
+                    fully_matched = true;
+                    Some(TestBranch::Success)
+                } else {
+                    fully_matched = false;
+                    Some(TestBranch::Failure)
+                }
+            }
+
+            (TestKind::Deref { temp: test_temp, .. }, TestCase::Deref { temp, .. })
+                if test_temp == temp =>
             {
                 fully_matched = true;
-                Some(0)
+                Some(TestBranch::Success)
             }
 
             (
                 TestKind::Switch { .. }
                 | TestKind::SwitchInt { .. }
+                | TestKind::If
                 | TestKind::Len { .. }
                 | TestKind::Range { .. }
-                | TestKind::Eq { .. },
+                | TestKind::Eq { .. }
+                | TestKind::Deref { .. },
                 _,
             ) => {
                 fully_matched = false;
@@ -733,36 +734,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
 
         ret
-    }
-
-    fn values_not_contained_in_range(
-        &self,
-        range: &PatRange<'tcx>,
-        options: &FxIndexMap<Const<'tcx>, u128>,
-    ) -> Option<bool> {
-        for &val in options.keys() {
-            if range.contains(val, self.tcx, self.param_env)? {
-                return Some(false);
-            }
-        }
-
-        Some(true)
-    }
-}
-
-impl Test<'_> {
-    pub(super) fn targets(&self) -> usize {
-        match self.kind {
-            TestKind::Eq { .. } | TestKind::Range(_) | TestKind::Len { .. } | TestKind::If => 2,
-            TestKind::Switch { adt_def, .. } => {
-                // While the switch that we generate doesn't test for all
-                // variants, we have a target for each variant and the
-                // otherwise case, and we make sure that all of the cases not
-                // specified have the same block.
-                adt_def.variants().len() + 1
-            }
-            TestKind::SwitchInt { ref options } => options.len() + 1,
-        }
     }
 }
 

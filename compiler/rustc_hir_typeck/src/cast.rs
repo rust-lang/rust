@@ -40,17 +40,19 @@ use rustc_middle::mir::Mutability;
 use rustc_middle::ty::adjustment::AllowTwoPhase;
 use rustc_middle::ty::cast::{CastKind, CastTy};
 use rustc_middle::ty::error::TypeError;
+use rustc_middle::ty::TyCtxt;
 use rustc_middle::ty::{self, Ty, TypeAndMut, TypeVisitableExt, VariantDef};
 use rustc_session::lint;
 use rustc_span::def_id::{DefId, LOCAL_CRATE};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
+use rustc_span::DUMMY_SP;
 use rustc_trait_selection::infer::InferCtxtExt;
 
 /// Reifies a cast check to be checked once we have full type information for
 /// a function context.
 #[derive(Debug)]
-pub struct CastCheck<'tcx> {
+pub(crate) struct CastCheck<'tcx> {
     /// The expression whose value is being casted
     expr: &'tcx hir::Expr<'tcx>,
     /// The source type for the cast expression
@@ -60,8 +62,6 @@ pub struct CastCheck<'tcx> {
     cast_ty: Ty<'tcx>,
     cast_span: Span,
     span: Span,
-    /// whether the cast is made in a const context or not.
-    pub constness: hir::Constness,
 }
 
 /// The kind of pointer and associated metadata (thin, length or vtable) - we
@@ -128,8 +128,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             | ty::Float(_)
             | ty::Array(..)
             | ty::CoroutineWitness(..)
-            | ty::RawPtr(_)
+            | ty::RawPtr(_, _)
             | ty::Ref(..)
+            | ty::Pat(..)
             | ty::FnDef(..)
             | ty::FnPtr(..)
             | ty::Closure(..)
@@ -194,18 +195,45 @@ fn make_invalid_casting_error<'a, 'tcx>(
     )
 }
 
+/// If a cast from `from_ty` to `to_ty` is valid, returns a `Some` containing the kind
+/// of the cast.
+///
+/// This is a helper used from clippy.
+pub fn check_cast<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    e: &'tcx hir::Expr<'tcx>,
+    from_ty: Ty<'tcx>,
+    to_ty: Ty<'tcx>,
+) -> Option<CastKind> {
+    let hir_id = e.hir_id;
+    let local_def_id = hir_id.owner.def_id;
+
+    let root_ctxt = crate::TypeckRootCtxt::new(tcx, local_def_id);
+    let fn_ctxt = FnCtxt::new(&root_ctxt, param_env, local_def_id);
+
+    if let Ok(check) = CastCheck::new(
+        &fn_ctxt, e, from_ty, to_ty,
+        // We won't show any errors to the user, so the span is irrelevant here.
+        DUMMY_SP, DUMMY_SP,
+    ) {
+        check.do_check(&fn_ctxt).ok()
+    } else {
+        None
+    }
+}
+
 impl<'a, 'tcx> CastCheck<'tcx> {
-    pub fn new(
+    pub(crate) fn new(
         fcx: &FnCtxt<'a, 'tcx>,
         expr: &'tcx hir::Expr<'tcx>,
         expr_ty: Ty<'tcx>,
         cast_ty: Ty<'tcx>,
         cast_span: Span,
         span: Span,
-        constness: hir::Constness,
     ) -> Result<CastCheck<'tcx>, ErrorGuaranteed> {
         let expr_span = expr.span.find_ancestor_inside(span).unwrap_or(expr.span);
-        let check = CastCheck { expr, expr_ty, expr_span, cast_ty, cast_span, span, constness };
+        let check = CastCheck { expr, expr_ty, expr_span, cast_ty, cast_span, span };
 
         // For better error messages, check for some obviously unsized
         // cases now. We do a more thorough check at the end, once
@@ -332,13 +360,9 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 let mut sugg = None;
                 let mut sugg_mutref = false;
                 if let ty::Ref(reg, cast_ty, mutbl) = *self.cast_ty.kind() {
-                    if let ty::RawPtr(TypeAndMut { ty: expr_ty, .. }) = *self.expr_ty.kind()
+                    if let ty::RawPtr(expr_ty, _) = *self.expr_ty.kind()
                         && fcx.can_coerce(
-                            Ty::new_ref(
-                                fcx.tcx,
-                                fcx.tcx.lifetimes.re_erased,
-                                TypeAndMut { ty: expr_ty, mutbl },
-                            ),
+                            Ty::new_ref(fcx.tcx, fcx.tcx.lifetimes.re_erased, expr_ty, mutbl),
                             self.cast_ty,
                         )
                     {
@@ -346,14 +370,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     } else if let ty::Ref(expr_reg, expr_ty, expr_mutbl) = *self.expr_ty.kind()
                         && expr_mutbl == Mutability::Not
                         && mutbl == Mutability::Mut
-                        && fcx.can_coerce(
-                            Ty::new_ref(
-                                fcx.tcx,
-                                expr_reg,
-                                TypeAndMut { ty: expr_ty, mutbl: Mutability::Mut },
-                            ),
-                            self.cast_ty,
-                        )
+                        && fcx.can_coerce(Ty::new_mut_ref(fcx.tcx, expr_reg, expr_ty), self.cast_ty)
                     {
                         sugg_mutref = true;
                     }
@@ -361,19 +378,15 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     if !sugg_mutref
                         && sugg == None
                         && fcx.can_coerce(
-                            Ty::new_ref(fcx.tcx, reg, TypeAndMut { ty: self.expr_ty, mutbl }),
+                            Ty::new_ref(fcx.tcx, reg, self.expr_ty, mutbl),
                             self.cast_ty,
                         )
                     {
                         sugg = Some((format!("&{}", mutbl.prefix_str()), false));
                     }
-                } else if let ty::RawPtr(TypeAndMut { mutbl, .. }) = *self.cast_ty.kind()
+                } else if let ty::RawPtr(_, mutbl) = *self.cast_ty.kind()
                     && fcx.can_coerce(
-                        Ty::new_ref(
-                            fcx.tcx,
-                            fcx.tcx.lifetimes.re_erased,
-                            TypeAndMut { ty: self.expr_ty, mutbl },
-                        ),
+                        Ty::new_ref(fcx.tcx, fcx.tcx.lifetimes.re_erased, self.expr_ty, mutbl),
                         self.cast_ty,
                     )
                 {
@@ -659,7 +672,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
     /// Checks a cast, and report an error if one exists. In some cases, this
     /// can return Ok and create type errors in the fcx rather than returning
     /// directly. coercion-cast is handled in check instead of here.
-    pub fn do_check(&self, fcx: &FnCtxt<'a, 'tcx>) -> Result<CastKind, CastError> {
+    fn do_check(&self, fcx: &FnCtxt<'a, 'tcx>) -> Result<CastKind, CastError> {
         use rustc_middle::ty::cast::CastTy::*;
         use rustc_middle::ty::cast::IntTy::*;
 
@@ -868,7 +881,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 // from a region pointer to a vector.
 
                 // Coerce to a raw pointer so that we generate AddressOf in MIR.
-                let array_ptr_type = Ty::new_ptr(fcx.tcx, m_expr);
+                let array_ptr_type = Ty::new_ptr(fcx.tcx, m_expr.ty, m_expr.mutbl);
                 fcx.coerce(self.expr, self.expr_ty, array_ptr_type, AllowTwoPhase::No, None)
                     .unwrap_or_else(|_| {
                         bug!(

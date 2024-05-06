@@ -23,11 +23,12 @@ pub use core::num::{FpCategory, ParseFloatError, ParseIntError, TryFromIntError}
 )]
 pub use core::num::ZeroablePrimitive;
 
-#[unstable(feature = "generic_nonzero", issue = "120257")]
+#[stable(feature = "generic_nonzero", since = "1.79.0")]
 pub use core::num::NonZero;
 
 #[stable(feature = "signed_nonzero", since = "1.34.0")]
 pub use core::num::{NonZeroI128, NonZeroI16, NonZeroI32, NonZeroI64, NonZeroI8, NonZeroIsize};
+
 #[stable(feature = "nonzero", since = "1.28.0")]
 pub use core::num::{NonZeroU128, NonZeroU16, NonZeroU32, NonZeroU64, NonZeroU8, NonZeroUsize};
 

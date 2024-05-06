@@ -10,6 +10,7 @@ use rustc_errors::{codes::*, struct_span_code_err};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
+use rustc_session::parse::feature_err;
 use rustc_span::{sym, ErrorGuaranteed};
 use rustc_trait_selection::traits;
 
@@ -48,6 +49,19 @@ fn enforce_trait_manually_implementable(
     trait_def: &ty::TraitDef,
 ) -> Result<(), ErrorGuaranteed> {
     let impl_header_span = tcx.def_span(impl_def_id);
+
+    if tcx.lang_items().freeze_trait() == Some(trait_def_id) {
+        if !tcx.features().freeze_impls {
+            feature_err(
+                &tcx.sess,
+                sym::freeze_impls,
+                impl_header_span,
+                "explicit impls for the `Freeze` trait are not permitted",
+            )
+            .with_span_label(impl_header_span, format!("impl of `Freeze` not allowed"))
+            .emit();
+        }
+    }
 
     // Disallow *all* explicit impls of traits marked `#[rustc_deny_explicit_impl]`
     if trait_def.deny_explicit_impl {
@@ -134,11 +148,12 @@ fn coherent_trait(tcx: TyCtxt<'_>, def_id: DefId) -> Result<(), ErrorGuaranteed>
     let mut res = tcx.ensure().specialization_graph_of(def_id);
 
     for &impl_def_id in impls {
-        let trait_header = tcx.impl_trait_header(impl_def_id).unwrap().instantiate_identity();
-        let trait_def = tcx.trait_def(trait_header.trait_ref.def_id);
+        let trait_header = tcx.impl_trait_header(impl_def_id).unwrap();
+        let trait_ref = trait_header.trait_ref.instantiate_identity();
+        let trait_def = tcx.trait_def(trait_ref.def_id);
 
-        res = res.and(check_impl(tcx, impl_def_id, trait_header.trait_ref, trait_def));
-        res = res.and(check_object_overlap(tcx, impl_def_id, trait_header.trait_ref));
+        res = res.and(check_impl(tcx, impl_def_id, trait_ref, trait_def));
+        res = res.and(check_object_overlap(tcx, impl_def_id, trait_ref));
 
         res = res.and(unsafety::check_item(tcx, impl_def_id, trait_header, trait_def));
         res = res.and(tcx.ensure().orphan_check_impl(impl_def_id));

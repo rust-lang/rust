@@ -1,4 +1,4 @@
-#[cfg(feature="master")]
+#[cfg(feature = "master")]
 use gccjit::FnAttribute;
 use gccjit::{Context, FunctionType, GlobalKind, ToRValue, Type};
 use rustc_ast::expand::allocator::{
@@ -11,15 +11,20 @@ use rustc_session::config::OomStrategy;
 
 use crate::GccContext;
 
-pub(crate) unsafe fn codegen(tcx: TyCtxt<'_>, mods: &mut GccContext, _module_name: &str, kind: AllocatorKind, alloc_error_handler_kind: AllocatorKind) {
+pub(crate) unsafe fn codegen(
+    tcx: TyCtxt<'_>,
+    mods: &mut GccContext,
+    _module_name: &str,
+    kind: AllocatorKind,
+    alloc_error_handler_kind: AllocatorKind,
+) {
     let context = &mods.context;
-    let usize =
-        match tcx.sess.target.pointer_width {
-            16 => context.new_type::<u16>(),
-            32 => context.new_type::<u32>(),
-            64 => context.new_type::<u64>(),
-            tws => bug!("Unsupported target word size for int: {}", tws),
-        };
+    let usize = match tcx.sess.target.pointer_width {
+        16 => context.new_type::<u16>(),
+        32 => context.new_type::<u32>(),
+        64 => context.new_type::<u64>(),
+        tws => bug!("Unsupported target word size for int: {}", tws),
+    };
     let i8 = context.new_type::<i8>();
     let i8p = i8.make_pointer();
 
@@ -58,7 +63,7 @@ pub(crate) unsafe fn codegen(tcx: TyCtxt<'_>, mods: &mut GccContext, _module_nam
         tcx,
         context,
         "__rust_alloc_error_handler",
-        &alloc_error_handler_name(alloc_error_handler_kind),
+        alloc_error_handler_name(alloc_error_handler_kind),
         &[usize, usize],
         None,
     );
@@ -85,24 +90,42 @@ fn create_wrapper_function(
 ) {
     let void = context.new_type::<()>();
 
-    let args: Vec<_> = types.iter().enumerate()
-        .map(|(index, typ)| context.new_parameter(None, *typ, &format!("param{}", index)))
+    let args: Vec<_> = types
+        .iter()
+        .enumerate()
+        .map(|(index, typ)| context.new_parameter(None, *typ, format!("param{}", index)))
         .collect();
-    let func = context.new_function(None, FunctionType::Exported, output.unwrap_or(void), &args, from_name, false);
+    let func = context.new_function(
+        None,
+        FunctionType::Exported,
+        output.unwrap_or(void),
+        &args,
+        from_name,
+        false,
+    );
 
     if tcx.sess.default_hidden_visibility() {
-        #[cfg(feature="master")]
+        #[cfg(feature = "master")]
         func.add_attribute(FnAttribute::Visibility(gccjit::Visibility::Hidden));
     }
     if tcx.sess.must_emit_unwind_tables() {
         // TODO(antoyo): emit unwind tables.
     }
 
-    let args: Vec<_> = types.iter().enumerate()
-        .map(|(index, typ)| context.new_parameter(None, *typ, &format!("param{}", index)))
+    let args: Vec<_> = types
+        .iter()
+        .enumerate()
+        .map(|(index, typ)| context.new_parameter(None, *typ, format!("param{}", index)))
         .collect();
-    let callee = context.new_function(None, FunctionType::Extern, output.unwrap_or(void), &args, to_name, false);
-    #[cfg(feature="master")]
+    let callee = context.new_function(
+        None,
+        FunctionType::Extern,
+        output.unwrap_or(void),
+        &args,
+        to_name,
+        false,
+    );
+    #[cfg(feature = "master")]
     callee.add_attribute(FnAttribute::Visibility(gccjit::Visibility::Hidden));
 
     let block = func.new_block("entry");
@@ -116,8 +139,7 @@ fn create_wrapper_function(
     //llvm::LLVMSetTailCall(ret, True);
     if output.is_some() {
         block.end_with_return(None, ret);
-    }
-    else {
+    } else {
         block.end_with_void_return(None);
     }
 

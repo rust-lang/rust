@@ -210,6 +210,15 @@ fn read_buf_exact() {
 }
 
 #[test]
+#[should_panic]
+fn borrowed_cursor_advance_overflow() {
+    let mut buf = [0; 512];
+    let mut buf = BorrowedBuf::from(&mut buf[..]);
+    buf.unfilled().advance(1);
+    buf.unfilled().advance(usize::MAX);
+}
+
+#[test]
 fn take_eof() {
     struct R;
 
@@ -691,4 +700,16 @@ fn read_buf_full_read() {
     }
 
     assert_eq!(BufReader::new(FullRead).fill_buf().unwrap().len(), DEFAULT_BUF_SIZE);
+}
+
+#[test]
+// Miri does not support signalling OOM
+#[cfg_attr(miri, ignore)]
+// 64-bit only to be sure the allocator will fail fast on an impossible to satsify size
+#[cfg(target_pointer_width = "64")]
+fn try_oom_error() {
+    let mut v = Vec::<u8>::new();
+    let reserve_err = v.try_reserve(isize::MAX as usize - 1).unwrap_err();
+    let io_err = io::Error::from(reserve_err);
+    assert_eq!(io::ErrorKind::OutOfMemory, io_err.kind());
 }

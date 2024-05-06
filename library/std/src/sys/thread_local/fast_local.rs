@@ -1,7 +1,7 @@
 use super::lazy::LazyKeyInner;
 use crate::cell::Cell;
 use crate::sys::thread_local_dtor::register_dtor;
-use crate::{fmt, mem, panic};
+use crate::{fmt, mem, panic, ptr};
 
 #[doc(hidden)]
 #[allow_internal_unstable(thread_local_internals, cfg_target_thread_local, thread_local)]
@@ -13,22 +13,21 @@ pub macro thread_local_inner {
     (@key $t:ty, const $init:expr) => {{
         #[inline]
         #[deny(unsafe_op_in_unsafe_fn)]
-        // FIXME: Use `SyncUnsafeCell` instead of allowing `static_mut_refs` lint
-        #[cfg_attr(bootstrap, allow(static_mut_ref))]
-        #[cfg_attr(not(bootstrap), allow(static_mut_refs))]
         unsafe fn __getit(
             _init: $crate::option::Option<&mut $crate::option::Option<$t>>,
         ) -> $crate::option::Option<&'static $t> {
             const INIT_EXPR: $t = $init;
             // If the platform has support for `#[thread_local]`, use it.
             #[thread_local]
-            static mut VAL: $t = INIT_EXPR;
+            // We use `UnsafeCell` here instead of `static mut` to ensure any generated TLS shims
+            // have a nonnull attribute on their return value.
+            static VAL: $crate::cell::UnsafeCell<$t> = $crate::cell::UnsafeCell::new(INIT_EXPR);
 
             // If a dtor isn't needed we can do something "very raw" and
             // just get going.
             if !$crate::mem::needs_drop::<$t>() {
                 unsafe {
-                    return $crate::option::Option::Some(&VAL)
+                    return $crate::option::Option::Some(&*VAL.get())
                 }
             }
 
@@ -55,15 +54,15 @@ pub macro thread_local_inner {
                     //   so now.
                     0 => {
                         $crate::thread::local_impl::Key::<$t>::register_dtor(
-                            $crate::ptr::addr_of_mut!(VAL) as *mut $crate::primitive::u8,
+                            VAL.get() as *mut $crate::primitive::u8,
                             destroy,
                         );
                         STATE.set(1);
-                        $crate::option::Option::Some(&VAL)
+                        $crate::option::Option::Some(&*VAL.get())
                     }
                     // 1 == the destructor is registered and the value
                     //   is valid, so return the pointer.
-                    1 => $crate::option::Option::Some(&VAL),
+                    1 => $crate::option::Option::Some(&*VAL.get()),
                     // otherwise the destructor has already run, so we
                     // can't give access.
                     _ => $crate::option::Option::None,
@@ -238,8 +237,9 @@ unsafe extern "C" fn destroy_value<T>(ptr: *mut u8) {
     // Wrap the call in a catch to ensure unwinding is caught in the event
     // a panic takes place in a destructor.
     if let Err(_) = panic::catch_unwind(panic::AssertUnwindSafe(|| unsafe {
-        let value = (*ptr).inner.take();
-        (*ptr).dtor_state.set(DtorState::RunningOrHasRun);
+        let Key { inner, dtor_state } = &*ptr;
+        let value = inner.take();
+        dtor_state.set(DtorState::RunningOrHasRun);
         drop(value);
     })) {
         rtabort!("thread local panicked on drop");

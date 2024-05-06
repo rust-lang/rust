@@ -5,6 +5,7 @@ use crate::{
 use rustc_errors::MultiSpan;
 use rustc_hir as hir;
 use rustc_middle::ty;
+use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::{sym, Symbol};
 
 declare_lint! {
@@ -105,7 +106,7 @@ const SYNC_GUARD_SYMBOLS: [Symbol; 3] = [
 
 impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
     #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
-    fn check_local(&mut self, cx: &LateContext<'_>, local: &hir::Local<'_>) {
+    fn check_local(&mut self, cx: &LateContext<'_>, local: &hir::LetStmt<'_>) {
         if matches!(local.source, rustc_hir::LocalSource::AsyncFn) {
             return;
         }

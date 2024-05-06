@@ -4,5 +4,13 @@ error: `~const` can only be applied to `#[const_trait]` traits
 LL | const fn test() -> impl ~const Fn() {
    |                                ^^^^
 
-error: aborting due to 1 previous error
+error: `~const` can only be applied to `#[const_trait]` traits
+  --> $DIR/const-closure-parse-not-item.rs:7:32
+   |
+LL | const fn test() -> impl ~const Fn() {
+   |                                ^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 2 previous errors
 

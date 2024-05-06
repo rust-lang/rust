@@ -137,7 +137,7 @@ fn stmt_to_expr<'tcx>(stmt: &Stmt<'tcx>) -> Option<(&'tcx Expr<'tcx>, Option<&'t
     match stmt.kind {
         StmtKind::Semi(e) | StmtKind::Expr(e) => Some((e, None)),
         // add the let...else expression (if present)
-        StmtKind::Local(local) => local.init.map(|init| (init, local.els)),
+        StmtKind::Let(local) => local.init.map(|init| (init, local.els)),
         StmtKind::Item(..) => None,
     }
 }
@@ -159,12 +159,9 @@ fn never_loop_expr<'tcx>(
         | ExprKind::DropTemps(e) => never_loop_expr(cx, e, local_labels, main_loop_id),
         ExprKind::Let(let_expr) => never_loop_expr(cx, let_expr.init, local_labels, main_loop_id),
         ExprKind::Array(es) | ExprKind::Tup(es) => never_loop_expr_all(cx, es.iter(), local_labels, main_loop_id),
-        ExprKind::MethodCall(_, receiver, es, _) => never_loop_expr_all(
-            cx,
-            std::iter::once(receiver).chain(es.iter()),
-            local_labels,
-            main_loop_id,
-        ),
+        ExprKind::MethodCall(_, receiver, es, _) => {
+            never_loop_expr_all(cx, once(receiver).chain(es.iter()), local_labels, main_loop_id)
+        },
         ExprKind::Struct(_, fields, base) => {
             let fields = never_loop_expr_all(cx, fields.iter().map(|f| f.expr), local_labels, main_loop_id);
             if let Some(base) = base {
@@ -255,6 +252,7 @@ fn never_loop_expr<'tcx>(
             InlineAsmOperand::Const { .. } | InlineAsmOperand::SymFn { .. } | InlineAsmOperand::SymStatic { .. } => {
                 NeverLoopResult::Normal
             },
+            InlineAsmOperand::Label { block } => never_loop_block(cx, block, local_labels, main_loop_id),
         })),
         ExprKind::OffsetOf(_, _)
         | ExprKind::Yield(_, _)

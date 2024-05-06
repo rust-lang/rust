@@ -36,8 +36,11 @@ LL |     field2: SafeEnum::Variant4("str".to_string()),
    |                                      ^^^^^^^^^^^
    |
    = note: calls in statics are limited to constant functions, tuple structs and tuple variants
-   = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
    = note: consider wrapping this expression in `Lazy::new(|| ...)` from the `once_cell` crate: https://crates.io/crates/once_cell
+help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
+   |
+LL + #![feature(const_trait_impl)]
+   |
 
 error[E0010]: allocations are not allowed in statics
   --> $DIR/check-static-values-constraints.rs:96:5
@@ -157,6 +160,10 @@ help: consider borrowing here
    |
 LL |         &x
    |         +
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |         x.clone()
+   |          ++++++++
 
 error: aborting due to 17 previous errors
 

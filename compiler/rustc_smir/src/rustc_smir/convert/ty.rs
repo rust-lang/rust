@@ -330,8 +330,11 @@ impl<'tcx> Stable<'tcx> for ty::TyKind<'tcx> {
             ty::Array(ty, constant) => {
                 TyKind::RigidTy(RigidTy::Array(ty.stable(tables), constant.stable(tables)))
             }
+            ty::Pat(ty, pat) => {
+                TyKind::RigidTy(RigidTy::Pat(ty.stable(tables), pat.stable(tables)))
+            }
             ty::Slice(ty) => TyKind::RigidTy(RigidTy::Slice(ty.stable(tables))),
-            ty::RawPtr(ty::TypeAndMut { ty, mutbl }) => {
+            ty::RawPtr(ty, mutbl) => {
                 TyKind::RigidTy(RigidTy::RawPtr(ty.stable(tables), mutbl.stable(tables)))
             }
             ty::Ref(region, ty, mutbl) => TyKind::RigidTy(RigidTy::Ref(
@@ -381,6 +384,20 @@ impl<'tcx> Stable<'tcx> for ty::TyKind<'tcx> {
             ty::Placeholder(..) | ty::Infer(_) | ty::Error(_) => {
                 unreachable!();
             }
+        }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for ty::Pattern<'tcx> {
+    type T = stable_mir::ty::Pattern;
+
+    fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
+        match **self {
+            ty::PatternKind::Range { start, end, include_end } => stable_mir::ty::Pattern::Range {
+                start: start.stable(tables),
+                end: end.stable(tables),
+                include_end,
+            },
         }
     }
 }
@@ -719,6 +736,18 @@ impl<'tcx> Stable<'tcx> for ty::ImplPolarity {
     }
 }
 
+impl<'tcx> Stable<'tcx> for ty::PredicatePolarity {
+    type T = stable_mir::ty::PredicatePolarity;
+
+    fn stable(&self, _: &mut Tables<'_>) -> Self::T {
+        use rustc_middle::ty::PredicatePolarity::*;
+        match self {
+            Positive => stable_mir::ty::PredicatePolarity::Positive,
+            Negative => stable_mir::ty::PredicatePolarity::Negative,
+        }
+    }
+}
+
 impl<'tcx> Stable<'tcx> for ty::Region<'tcx> {
     type T = stable_mir::ty::Region;
 
@@ -778,7 +807,10 @@ impl<'tcx> Stable<'tcx> for ty::Instance<'tcx> {
             | ty::InstanceDef::ThreadLocalShim(..)
             | ty::InstanceDef::DropGlue(..)
             | ty::InstanceDef::CloneShim(..)
-            | ty::InstanceDef::FnPtrShim(..) => stable_mir::mir::mono::InstanceKind::Shim,
+            | ty::InstanceDef::FnPtrShim(..)
+            | ty::InstanceDef::AsyncDropGlueCtorShim(..) => {
+                stable_mir::mir::mono::InstanceKind::Shim
+            }
         };
         stable_mir::mir::mono::Instance { def, kind }
     }

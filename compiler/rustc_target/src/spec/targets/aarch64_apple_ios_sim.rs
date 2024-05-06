@@ -12,7 +12,12 @@ pub fn target() -> Target {
         // This is required for the simulator target to pick the right
         // MACH-O commands, so we do too.
         llvm_target: ios_sim_llvm_target(arch).into(),
-        description: None,
+        metadata: crate::spec::TargetMetadata {
+            description: None,
+            tier: None,
+            host_tools: None,
+            std: None,
+        },
         pointer_width: 64,
         data_layout: "e-m:o-i64:64-i128:128-n32:64-S128".into(),
         arch: arch.target_arch(),

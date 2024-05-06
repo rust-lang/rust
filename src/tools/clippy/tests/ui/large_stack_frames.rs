@@ -1,3 +1,5 @@
+//@ normalize-stderr-test: "\b10000(08|16|32)\b" -> "100$$PTR"
+//@ normalize-stderr-test: "\b2500(060|120)\b" -> "250$$PTR"
 #![allow(unused, incomplete_features)]
 #![warn(clippy::large_stack_frames)]
 #![feature(unsized_locals)]
@@ -23,8 +25,7 @@ impl<const N: usize> Default for ArrayDefault<N> {
 }
 
 fn many_small_arrays() {
-    //~^ ERROR: this function allocates a large amount of stack space
-    //~| NOTE: allocating large amounts of stack space can overflow the stack
+    //~^ ERROR: this function may allocate
     let x = [0u8; 500_000];
     let x2 = [0u8; 500_000];
     let x3 = [0u8; 500_000];
@@ -34,15 +35,19 @@ fn many_small_arrays() {
 }
 
 fn large_return_value() -> ArrayDefault<1_000_000> {
-    //~^ ERROR: this function allocates a large amount of stack space
-    //~| NOTE: allocating large amounts of stack space can overflow the stack
+    //~^ ERROR: this function may allocate 1000000 bytes on the stack
     Default::default()
 }
 
 fn large_fn_arg(x: ArrayDefault<1_000_000>) {
-    //~^ ERROR: this function allocates a large amount of stack space
-    //~| NOTE: allocating large amounts of stack space can overflow the stack
+    //~^ ERROR: this function may allocate
     black_box(&x);
+}
+
+fn has_large_closure() {
+    let f = || black_box(&[0u8; 1_000_000]);
+    //~^ ERROR: this function may allocate
+    f();
 }
 
 fn main() {

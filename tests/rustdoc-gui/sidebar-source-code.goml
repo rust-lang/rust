@@ -1,18 +1,15 @@
 // The goal of this test is to ensure that the sidebar is working as expected in the source
 // code pages.
+include: "utils.goml"
 go-to: "file://" + |DOC_PATH| + "/src/test_docs/lib.rs.html"
 show-text: true
 
 // First, check the sidebar colors.
 define-function: (
     "check-colors",
-    (theme, color, background_color),
+    [theme, color, background_color],
     block {
-        set-local-storage: {
-            "rustdoc-theme": |theme|,
-            "rustdoc-use-system-theme": "false",
-        }
-        reload:
+        call-function: ("switch-theme", {"theme": |theme|})
         // Checking results colors.
         assert-css: (".src .sidebar", {
             "color": |color|,

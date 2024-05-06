@@ -5,9 +5,11 @@
 mod macros;
 
 mod fs;
+mod io;
 mod miri_extern;
 
 pub use self::fs::*;
+pub use self::io::*;
 pub use self::miri_extern::*;
 
 pub fn run_provenance_gc() {

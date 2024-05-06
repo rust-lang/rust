@@ -29,13 +29,11 @@
                   debug precision => _8;
                   let _8: usize;
                   scope 5 (inlined Formatter::<'_>::precision) {
-                      debug self => _1;
                   }
               }
           }
       }
       scope 4 (inlined Formatter::<'_>::sign_plus) {
-          debug self => _1;
           let mut _20: u32;
           let mut _21: u32;
       }
@@ -69,7 +67,7 @@
           StorageLive(_6);
           _6 = ((*_1).4: std::option::Option<usize>);
           _7 = discriminant(_6);
-          switchInt(move _7) -> [1: bb4, otherwise: bb6];
+          switchInt(move _7) -> [1: bb4, 0: bb6, otherwise: bb9];
       }
   
       bb4: {
@@ -134,6 +132,10 @@
           StorageDead(_4);
           StorageDead(_6);
           return;
+      }
+  
+      bb9: {
+          unreachable;
       }
   }
   

@@ -6,16 +6,17 @@ use std::assert_matches::assert_matches;
 use either::{Either, Left, Right};
 
 use rustc_hir::def::Namespace;
+use rustc_middle::mir::interpret::ScalarSizeMismatch;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::print::{FmtPrinter, PrettyPrinter};
-use rustc_middle::ty::{ConstInt, Ty, TyCtxt};
+use rustc_middle::ty::{ConstInt, ScalarInt, Ty, TyCtxt};
 use rustc_middle::{mir, ty};
 use rustc_target::abi::{self, Abi, HasDataLayout, Size};
 
 use super::{
-    alloc_range, from_known_layout, mir_assign_valid_types, CtfeProvenance, Frame, InterpCx,
-    InterpResult, MPlaceTy, Machine, MemPlace, MemPlaceMeta, OffsetMode, PlaceTy, Pointer,
-    Projectable, Provenance, Scalar,
+    alloc_range, from_known_layout, mir_assign_valid_types, CtfeProvenance, InterpCx, InterpResult,
+    MPlaceTy, Machine, MemPlace, MemPlaceMeta, OffsetMode, PlaceTy, Pointer, Projectable,
+    Provenance, Scalar,
 };
 
 /// An `Immediate` represents a single immediate self-contained Rust value.
@@ -211,6 +212,12 @@ impl<'tcx, Prov: Provenance> ImmTy<'tcx, Prov> {
     }
 
     #[inline]
+    pub fn from_scalar_int(s: ScalarInt, layout: TyAndLayout<'tcx>) -> Self {
+        assert_eq!(s.size(), layout.size);
+        Self::from_scalar(Scalar::from(s), layout)
+    }
+
+    #[inline]
     pub fn try_from_uint(i: impl Into<u128>, layout: TyAndLayout<'tcx>) -> Option<Self> {
         Some(Self::from_scalar(Scalar::try_from_uint(i, layout.size)?, layout))
     }
@@ -223,7 +230,6 @@ impl<'tcx, Prov: Provenance> ImmTy<'tcx, Prov> {
     pub fn try_from_int(i: impl Into<i128>, layout: TyAndLayout<'tcx>) -> Option<Self> {
         Some(Self::from_scalar(Scalar::try_from_int(i, layout.size)?, layout))
     }
-
     #[inline]
     pub fn from_int(i: impl Into<i128>, layout: TyAndLayout<'tcx>) -> Self {
         Self::from_scalar(Scalar::from_int(i, layout.size), layout)
@@ -233,6 +239,27 @@ impl<'tcx, Prov: Provenance> ImmTy<'tcx, Prov> {
     pub fn from_bool(b: bool, tcx: TyCtxt<'tcx>) -> Self {
         let layout = tcx.layout_of(ty::ParamEnv::reveal_all().and(tcx.types.bool)).unwrap();
         Self::from_scalar(Scalar::from_bool(b), layout)
+    }
+
+    #[inline]
+    pub fn from_ordering(c: std::cmp::Ordering, tcx: TyCtxt<'tcx>) -> Self {
+        let ty = tcx.ty_ordering_enum(None);
+        let layout = tcx.layout_of(ty::ParamEnv::reveal_all().and(ty)).unwrap();
+        Self::from_scalar(Scalar::from_i8(c as i8), layout)
+    }
+
+    /// Return the immediate as a `ScalarInt`. Ensures that it has the size that the layout of the
+    /// immediate indicates.
+    #[inline]
+    pub fn to_scalar_int(&self) -> InterpResult<'tcx, ScalarInt> {
+        let s = self.to_scalar().to_scalar_int()?;
+        if s.size() != self.layout.size {
+            throw_ub!(ScalarSizeMismatch(ScalarSizeMismatch {
+                target_size: self.layout.size.bytes(),
+                data_size: s.size().bytes(),
+            }));
+        }
+        Ok(s)
     }
 
     #[inline]
@@ -633,17 +660,17 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
     }
 
-    /// Read from a local.
+    /// Read from a local of the current frame.
     /// Will not access memory, instead an indirect `Operand` is returned.
     ///
     /// This is public because it is used by [priroda](https://github.com/oli-obk/priroda) to get an
     /// OpTy from a local.
     pub fn local_to_op(
         &self,
-        frame: &Frame<'mir, 'tcx, M::Provenance, M::FrameExtra>,
         local: mir::Local,
         layout: Option<TyAndLayout<'tcx>>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
+        let frame = self.frame();
         let layout = self.layout_of_local(frame, local, layout)?;
         let op = *frame.locals[local].access()?;
         if matches!(op, Operand::Immediate(_)) {
@@ -661,9 +688,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
         match place.as_mplace_or_local() {
             Left(mplace) => Ok(mplace.into()),
-            Right((frame, local, offset)) => {
+            Right((local, offset, locals_addr)) => {
                 debug_assert!(place.layout.is_sized()); // only sized locals can ever be `Place::Local`.
-                let base = self.local_to_op(&self.stack()[frame], local, None)?;
+                debug_assert_eq!(locals_addr, self.frame().locals_addr());
+                let base = self.local_to_op(local, None)?;
                 Ok(match offset {
                     Some(offset) => base.offset(offset, place.layout, self)?,
                     None => {
@@ -687,7 +715,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // here is not the entire place.
         let layout = if mir_place.projection.is_empty() { layout } else { None };
 
-        let mut op = self.local_to_op(self.frame(), mir_place.local, layout)?;
+        let mut op = self.local_to_op(mir_place.local, layout)?;
         // Using `try_fold` turned out to be bad for performance, hence the loop.
         for elem in mir_place.projection.iter() {
             op = self.project(&op, elem)?
@@ -740,7 +768,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // * During ConstProp, with `TooGeneric` or since the `required_consts` were not all
                 //   checked yet.
                 // * During CTFE, since promoteds in `const`/`static` initializer bodies can fail.
-                self.eval_mir_constant(&c, Some(constant.span), layout)?
+                self.eval_mir_constant(&c, constant.span, layout)?
             }
         };
         trace!("{:?}: {:?}", mir_op, op);
@@ -756,7 +784,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // Other cases need layout.
         let adjust_scalar = |scalar| -> InterpResult<'tcx, _> {
             Ok(match scalar {
-                Scalar::Ptr(ptr, size) => Scalar::Ptr(self.global_base_pointer(ptr)?, size),
+                Scalar::Ptr(ptr, size) => Scalar::Ptr(self.global_root_pointer(ptr)?, size),
                 Scalar::Int(int) => Scalar::Int(int),
             })
         };
@@ -764,7 +792,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let imm = match val_val {
             mir::ConstValue::Indirect { alloc_id, offset } => {
                 // This is const data, no mutation allowed.
-                let ptr = self.global_base_pointer(Pointer::new(
+                let ptr = self.global_root_pointer(Pointer::new(
                     CtfeProvenance::from(alloc_id).as_immutable(),
                     offset,
                 ))?;
@@ -776,7 +804,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // This is const data, no mutation allowed.
                 let alloc_id = self.tcx.reserve_and_set_memory_alloc(data);
                 let ptr = Pointer::new(CtfeProvenance::from(alloc_id).as_immutable(), Size::ZERO);
-                Immediate::new_slice(self.global_base_pointer(ptr)?.into(), meta, self)
+                Immediate::new_slice(self.global_root_pointer(ptr)?.into(), meta, self)
             }
         };
         Ok(OpTy { op: Operand::Immediate(imm), layout })
@@ -784,7 +812,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 }
 
 // Some nodes are used a lot. Make sure they don't unintentionally get bigger.
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+#[cfg(target_pointer_width = "64")]
 mod size_asserts {
     use super::*;
     use rustc_data_structures::static_assert_size;

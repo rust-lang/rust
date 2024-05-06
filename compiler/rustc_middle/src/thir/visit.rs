@@ -162,6 +162,7 @@ pub fn walk_expr<'thir, 'tcx: 'thir, V: Visitor<'thir, 'tcx>>(
                     | Const { value: _, span: _ }
                     | SymFn { value: _, span: _ }
                     | SymStatic { def_id: _ } => {}
+                    Label { block } => visitor.visit_block(&visitor.thir()[*block]),
                 }
             }
         }
@@ -228,15 +229,8 @@ pub fn walk_pat<'thir, 'tcx: 'thir, V: Visitor<'thir, 'tcx>>(
     match &pat.kind {
         AscribeUserType { subpattern, ascription: _ }
         | Deref { subpattern }
-        | Binding {
-            subpattern: Some(subpattern),
-            mutability: _,
-            mode: _,
-            var: _,
-            ty: _,
-            is_primary: _,
-            name: _,
-        } => visitor.visit_pat(subpattern),
+        | DerefPattern { subpattern, .. }
+        | Binding { subpattern: Some(subpattern), .. } => visitor.visit_pat(subpattern),
         Binding { .. } | Wild | Never | Error(_) => {}
         Variant { subpatterns, adt_def: _, args: _, variant_index: _ } | Leaf { subpatterns } => {
             for subpattern in subpatterns {

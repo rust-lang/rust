@@ -177,7 +177,9 @@ fn _format(
     use ide_db::base_db::{FileLoader, SourceDatabase};
     // hack until we get hygiene working (same character amount to preserve formatting as much as possible)
     const DOLLAR_CRATE_REPLACE: &str = "__r_a_";
-    let expansion = expansion.replace("$crate", DOLLAR_CRATE_REPLACE);
+    const BUILTIN_REPLACE: &str = "builtin__POUND";
+    let expansion =
+        expansion.replace("$crate", DOLLAR_CRATE_REPLACE).replace("builtin #", BUILTIN_REPLACE);
     let (prefix, suffix) = match kind {
         SyntaxKind::MACRO_PAT => ("fn __(", ": u32);"),
         SyntaxKind::MACRO_EXPR | SyntaxKind::MACRO_STMTS => ("fn __() {", "}"),
@@ -189,7 +191,7 @@ fn _format(
     let &crate_id = db.relevant_crates(file_id).iter().next()?;
     let edition = db.crate_graph()[crate_id].edition;
 
-    let mut cmd = std::process::Command::new(toolchain::rustfmt());
+    let mut cmd = std::process::Command::new(toolchain::Tool::Rustfmt.path());
     cmd.arg("--edition");
     cmd.arg(edition.to_string());
 
@@ -206,7 +208,9 @@ fn _format(
     let captured_stdout = String::from_utf8(output.stdout).ok()?;
 
     if output.status.success() && !captured_stdout.trim().is_empty() {
-        let output = captured_stdout.replace(DOLLAR_CRATE_REPLACE, "$crate");
+        let output = captured_stdout
+            .replace(DOLLAR_CRATE_REPLACE, "$crate")
+            .replace(BUILTIN_REPLACE, "builtin #");
         let output = output.trim().strip_prefix(prefix)?;
         let output = match kind {
             SyntaxKind::MACRO_PAT => {
@@ -308,8 +312,8 @@ f$0oo!();
             expect![[r#"
                 foo!
                 fn some_thing() -> u32 {
-                  let a = 0;
-                  a+10
+                    let a = 0;
+                    a+10
                 }"#]],
         );
     }
@@ -342,13 +346,13 @@ fn main() {
             expect![[r#"
                 match_ast!
                 {
-                  if let Some(it) = ast::TraitDef::cast(container.clone()){}
-                  else if let Some(it) = ast::ImplDef::cast(container.clone()){}
-                  else {
-                    {
-                      continue
+                    if let Some(it) = ast::TraitDef::cast(container.clone()){}
+                    else if let Some(it) = ast::ImplDef::cast(container.clone()){}
+                    else {
+                        {
+                            continue
+                        }
                     }
-                  }
                 }"#]],
         );
     }
@@ -397,12 +401,12 @@ fn main() {
             expect![[r#"
                 foo!
                 {
-                  macro_rules! bar {
-                    () => {
-                      42
+                    macro_rules! bar {
+                        () => {
+                            42
+                        }
                     }
-                  }
-                  42
+                    42
                 }"#]],
         );
     }
@@ -482,16 +486,16 @@ struct Foo {}
             expect![[r#"
                 Clone
                 impl < >$crate::clone::Clone for Foo< >where {
-                  fn clone(&self) -> Self {
-                    match self {
-                      Foo{}
-                       => Foo{}
-                      ,
+                    fn clone(&self) -> Self {
+                        match self {
+                            Foo{}
+                             => Foo{}
+                            ,
 
-                      }
-                  }
+                            }
+                    }
 
-                  }"#]],
+                    }"#]],
         );
     }
 
@@ -534,16 +538,16 @@ struct Foo {}
             expect![[r#"
                 Clone
                 impl < >$crate::clone::Clone for Foo< >where {
-                  fn clone(&self) -> Self {
-                    match self {
-                      Foo{}
-                       => Foo{}
-                      ,
+                    fn clone(&self) -> Self {
+                        match self {
+                            Foo{}
+                             => Foo{}
+                            ,
 
-                      }
-                  }
+                            }
+                    }
 
-                  }"#]],
+                    }"#]],
         );
     }
 }

@@ -46,6 +46,10 @@ hir_typeck_ctor_is_private = tuple struct constructor `{$def}` is private
 
 hir_typeck_deref_is_empty = this expression `Deref`s to `{$deref_ty}` which implements `is_empty`
 
+hir_typeck_dereferencing_mut_binding = dereferencing `mut` binding
+    .label = `mut` dereferences the type of this binding
+    .help = this will change in edition 2024
+
 hir_typeck_expected_default_return_type = expected `()` because of default return type
 
 hir_typeck_expected_return_type = expected `{$expected}` because of return type
@@ -86,22 +90,32 @@ hir_typeck_invalid_callee = expected function, found {$ty}
 hir_typeck_lossy_provenance_int2ptr =
     strict provenance disallows casting integer `{$expr_ty}` to pointer `{$cast_ty}`
     .suggestion = use `.with_addr()` to adjust a valid pointer in the same allocation, to this address
-    .help = if you can't comply with strict provenance and don't have a pointer with the correct provenance you can use `std::ptr::from_exposed_addr()` instead
+    .help = if you can't comply with strict provenance and don't have a pointer with the correct provenance you can use `std::ptr::with_exposed_provenance()` instead
 
 hir_typeck_lossy_provenance_ptr2int =
     under strict provenance it is considered bad style to cast pointer `{$expr_ty}` to integer `{$cast_ty}`
     .suggestion = use `.addr()` to obtain the address of a pointer
-    .help = if you can't comply with strict provenance and need to expose the pointer provenance you can use `.expose_addr()` instead
-
-hir_typeck_method_call_on_unknown_raw_pointee =
-    cannot call a method on a raw pointer with an unknown pointee type
+    .help = if you can't comply with strict provenance and need to expose the pointer provenance you can use `.expose_provenance()` instead
 
 hir_typeck_missing_parentheses_in_range = can't call method `{$method_name}` on type `{$ty_str}`
+
+hir_typeck_never_type_fallback_flowing_into_unsafe_call = never type fallback affects this call to an `unsafe` function
+    .help = specify the type explicitly
+hir_typeck_never_type_fallback_flowing_into_unsafe_deref = never type fallback affects this raw pointer dereference
+    .help = specify the type explicitly
+hir_typeck_never_type_fallback_flowing_into_unsafe_method = never type fallback affects this call to an `unsafe` method
+    .help = specify the type explicitly
+hir_typeck_never_type_fallback_flowing_into_unsafe_path = never type fallback affects this `unsafe` function
+    .help = specify the type explicitly
+hir_typeck_never_type_fallback_flowing_into_unsafe_union_field = never type fallback affects this union access
+    .help = specify the type explicitly
 
 hir_typeck_no_associated_item = no {$item_kind} named `{$item_name}` found for {$ty_prefix} `{$ty_str}`{$trait_missing_method ->
     [true] {""}
     *[other] {" "}in the current scope
 }
+
+hir_typeck_note_caller_chooses_ty_for_ty_param = the caller chooses a type for `{$ty_param_name}` which can be different from `{$found_ty}`
 
 hir_typeck_note_edition_guide = for more on editions, read https://doc.rust-lang.org/edition-guide
 
@@ -119,6 +133,10 @@ hir_typeck_return_stmt_outside_of_fn_body =
     {$statement_kind} statement outside of function body
     .encl_body_label = the {$statement_kind} is part of this body...
     .encl_fn_label = ...not the enclosing function body
+
+hir_typeck_rpit_box_return_expr = if you change the return type to expect trait objects, box the returned expressions
+
+hir_typeck_rpit_change_return_type = you could change the return type to be a boxed trait object
 
 hir_typeck_rustcall_incorrect_args =
     functions with the "rust-call" ABI must take a single non-self tuple argument

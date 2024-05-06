@@ -21,20 +21,24 @@ jobs:
         libgccjit_version:
           - gcc: "libgccjit.so"
             artifacts_branch: "master"
-            # TODO: switch back to --no-default-features in the case of libgccjit 12 when the default is to enable
-            # master again.
-            extra: "--features master"
           - gcc: "libgccjit_without_int128.so"
             artifacts_branch: "master-without-128bit-integers"
-            extra: "--features master"
           - gcc: "libgccjit12.so"
             artifacts_branch: "gcc12"
+            extra: "--no-default-features"
             # FIXME(antoyo): we need to set GCC_EXEC_PREFIX so that the linker can find the linker plugin.
             # Not sure why it's not found otherwise.
             env_extra: "TEST_FLAGS='-Cpanic=abort -Zpanic-abort-tests' GCC_EXEC_PREFIX=/usr/lib/gcc/"
 
     steps:
     - uses: actions/checkout@v3
+
+    # `rustup show` installs from rust-toolchain.toml
+    - name: Setup rust toolchain
+      run: rustup show
+
+    - name: Setup rust cache
+      uses: Swatinem/rust-cache@v2
 
     - name: Install packages
       run: sudo apt-get install ninja-build ripgrep
@@ -45,55 +49,26 @@ jobs:
 
     - name: Setup path to libgccjit
       if: matrix.libgccjit_version.gcc == 'libgccjit12.so'
-      run: echo /usr/lib/gcc/x86_64-linux-gnu/12 > gcc_path
+      run: |
+          echo 'gcc-path = "/usr/lib/gcc/x86_64-linux-gnu/12"' > config.toml
+          echo "LIBRARY_PATH=/usr/lib/gcc/x86_64-linux-gnu/12" >> $GITHUB_ENV
+          echo "LD_LIBRARY_PATH=/usr/lib/gcc/x86_64-linux-gnu/12" >> $GITHUB_ENV
 
     - name: Download artifact
       if: matrix.libgccjit_version.gcc != 'libgccjit12.so'
-      uses: dawidd6/action-download-artifact@v2
-      with:
-          workflow: main.yml
-          name: gcc-13
-          path: gcc-13
-          repo: antoyo/gcc
-          branch: ${{ matrix.libgccjit_version.artifacts_branch }}
-          event: push
-          search_artifacts: true # Because, instead, the action only check the last job ran and that won't work since we want multiple artifacts.
+      run: curl -LO https://github.com/antoyo/gcc/releases/latest/download/gcc-13.deb
 
     - name: Setup path to libgccjit
       if: matrix.libgccjit_version.gcc != 'libgccjit12.so'
       run: |
-          sudo dpkg --force-overwrite -i gcc-13/gcc-13.deb
-          echo /usr/lib/ > gcc_path
+          sudo dpkg --force-overwrite -i gcc-13.deb
+          echo 'gcc-path = "/usr/lib"' > config.toml
+          echo "LIBRARY_PATH=/usr/lib" >> $GITHUB_ENV
+          echo "LD_LIBRARY_PATH=/usr/lib" >> $GITHUB_ENV
 
     - name: Set env
       run: |
-        echo "LIBRARY_PATH=$(cat gcc_path)" >> $GITHUB_ENV
-        echo "LD_LIBRARY_PATH=$(cat gcc_path)" >> $GITHUB_ENV
         echo "workspace="$GITHUB_WORKSPACE >> $GITHUB_ENV
-
-    - name: Cache cargo installed crates
-      uses: actions/cache@v3
-      with:
-        path: ~/.cargo/bin
-        key: cargo-installed-crates2-ubuntu-latest
-
-    - name: Cache cargo registry
-      uses: actions/cache@v3
-      with:
-        path: ~/.cargo/registry
-        key: ${{ runner.os }}-cargo-registry2-${{ hashFiles('**/Cargo.lock') }}
-
-    - name: Cache cargo index
-      uses: actions/cache@v3
-      with:
-        path: ~/.cargo/git
-        key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
-
-    - name: Cache cargo target dir
-      uses: actions/cache@v3
-      with:
-        path: target
-        key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('rust-toolchain') }}
 
     #- name: Cache rust repository
       #uses: actions/cache@v3
@@ -115,18 +90,11 @@ jobs:
       if: matrix.libgccjit_version.gcc != 'libgccjit12.so'
       run: ./y.sh prepare
 
-    # Compile is a separate step, as the actions-rs/cargo action supports error annotations
-    - name: Compile
-      uses: actions-rs/cargo@v1.0.3
-      with:
-        command: build
-        args: --release
-
     - name: Add more failing tests because the sysroot is not compiled with LTO
-      run: cat failing-non-lto-tests.txt >> failing-ui-tests.txt
+      run: cat tests/failing-non-lto-tests.txt >> tests/failing-ui-tests.txt
 
     - name: Run tests
       id: tests
       run: |
-        ${{ matrix.libgccjit_version.env_extra }} ./test.sh --release --clean --build-sysroot --test-failing-rustc ${{ matrix.libgccjit_version.extra }} | tee output_log
+        ${{ matrix.libgccjit_version.env_extra }} ./y.sh test --release --clean --build-sysroot --test-failing-rustc ${{ matrix.libgccjit_version.extra }} | tee output_log
         rg --text "test result" output_log >> $GITHUB_STEP_SUMMARY

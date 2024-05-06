@@ -12,46 +12,38 @@ pub fn maybe_expr_static_mut(tcx: TyCtxt<'_>, expr: hir::Expr<'_>) {
     let hir_id = expr.hir_id;
     if let hir::ExprKind::AddrOf(borrow_kind, m, expr) = expr.kind
         && matches!(borrow_kind, hir::BorrowKind::Ref)
-        && let Some(var) = is_path_static_mut(*expr)
+        && let Some(var) = path_if_static_mut(tcx, expr)
     {
-        handle_static_mut_ref(
-            tcx,
-            span,
-            var,
-            span.edition().at_least_rust_2024(),
-            matches!(m, Mutability::Mut),
-            hir_id,
-        );
+        handle_static_mut_ref(tcx, span, var, span.edition().at_least_rust_2024(), m, hir_id);
     }
 }
 
 /// Check for shared or mutable references of `static mut` inside statement
 pub fn maybe_stmt_static_mut(tcx: TyCtxt<'_>, stmt: hir::Stmt<'_>) {
-    if let hir::StmtKind::Local(loc) = stmt.kind
+    if let hir::StmtKind::Let(loc) = stmt.kind
         && let hir::PatKind::Binding(ba, _, _, _) = loc.pat.kind
-        && matches!(ba.0, rustc_ast::ByRef::Yes)
+        && let hir::ByRef::Yes(rmutbl) = ba.0
         && let Some(init) = loc.init
-        && let Some(var) = is_path_static_mut(*init)
+        && let Some(var) = path_if_static_mut(tcx, init)
     {
         handle_static_mut_ref(
             tcx,
             init.span,
             var,
             loc.span.edition().at_least_rust_2024(),
-            matches!(ba.1, Mutability::Mut),
+            rmutbl,
             stmt.hir_id,
         );
     }
 }
 
-fn is_path_static_mut(expr: hir::Expr<'_>) -> Option<String> {
+fn path_if_static_mut(tcx: TyCtxt<'_>, expr: &hir::Expr<'_>) -> Option<String> {
     if let hir::ExprKind::Path(qpath) = expr.kind
         && let hir::QPath::Resolved(_, path) = qpath
         && let hir::def::Res::Def(def_kind, _) = path.res
-        && let hir::def::DefKind::Static(mt) = def_kind
-        && matches!(mt, Mutability::Mut)
+        && let hir::def::DefKind::Static { mutability: Mutability::Mut, nested: false } = def_kind
     {
-        return Some(qpath_to_string(&qpath));
+        return Some(qpath_to_string(&tcx, &qpath));
     }
     None
 }
@@ -61,28 +53,27 @@ fn handle_static_mut_ref(
     span: Span,
     var: String,
     e2024: bool,
-    mutable: bool,
+    mutable: Mutability,
     hir_id: hir::HirId,
 ) {
     if e2024 {
-        let (sugg, shared) = if mutable {
+        let (sugg, shared) = if mutable == Mutability::Mut {
             (errors::StaticMutRefSugg::Mut { span, var }, "mutable")
         } else {
             (errors::StaticMutRefSugg::Shared { span, var }, "shared")
         };
         tcx.sess.psess.dcx.emit_err(errors::StaticMutRef { span, sugg, shared });
-        return;
-    }
-
-    let (sugg, shared) = if mutable {
-        (errors::RefOfMutStaticSugg::Mut { span, var }, "mutable")
     } else {
-        (errors::RefOfMutStaticSugg::Shared { span, var }, "shared")
-    };
-    tcx.emit_node_span_lint(
-        STATIC_MUT_REFS,
-        hir_id,
-        span,
-        errors::RefOfMutStatic { span, sugg, shared },
-    );
+        let (sugg, shared) = if mutable == Mutability::Mut {
+            (errors::RefOfMutStaticSugg::Mut { span, var }, "mutable")
+        } else {
+            (errors::RefOfMutStaticSugg::Shared { span, var }, "shared")
+        };
+        tcx.emit_node_span_lint(
+            STATIC_MUT_REFS,
+            hir_id,
+            span,
+            errors::RefOfMutStatic { span, sugg, shared },
+        );
+    }
 }

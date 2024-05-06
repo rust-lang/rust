@@ -179,21 +179,14 @@ pub fn main() {
     rustc_driver::init_logger(&early_dcx, rustc_log::LoggerConfig::from_env("RUSTDOC_LOG"));
 
     let exit_code = rustc_driver::catch_with_exit_code(|| {
-        let args = env::args_os()
-            .enumerate()
-            .map(|(i, arg)| {
-                arg.into_string().unwrap_or_else(|arg| {
-                    early_dcx.early_fatal(format!("argument {i} is not valid Unicode: {arg:?}"))
-                })
-            })
-            .collect::<Vec<_>>();
-        main_args(&mut early_dcx, &args, using_internal_features)
+        let at_args = rustc_driver::args::raw_args(&early_dcx)?;
+        main_args(&mut early_dcx, &at_args, using_internal_features)
     });
     process::exit(exit_code);
 }
 
 fn init_logging(early_dcx: &EarlyDiagCtxt) {
-    let color_logs = match std::env::var("RUSTDOC_LOG_COLOR").as_deref() {
+    let color_logs = match env::var("RUSTDOC_LOG_COLOR").as_deref() {
         Ok("always") => true,
         Ok("never") => false,
         Ok("auto") | Err(VarError::NotPresent) => io::stdout().is_terminal(),
@@ -249,7 +242,7 @@ fn opts() -> Vec<RustcOptGroup> {
             o.optmulti("L", "library-path", "directory to add to crate search path", "DIR")
         }),
         stable("cfg", |o| o.optmulti("", "cfg", "pass a --cfg to rustc", "")),
-        unstable("check-cfg", |o| o.optmulti("", "check-cfg", "pass a --check-cfg to rustc", "")),
+        stable("check-cfg", |o| o.optmulti("", "check-cfg", "pass a --check-cfg to rustc", "")),
         stable("extern", |o| o.optmulti("", "extern", "pass an --extern to rustc", "NAME[=PATH]")),
         unstable("extern-html-root-url", |o| {
             o.optmulti(
@@ -537,6 +530,14 @@ fn opts() -> Vec<RustcOptGroup> {
         unstable("test-builder", |o| {
             o.optopt("", "test-builder", "The rustc-like binary to use as the test builder", "PATH")
         }),
+        unstable("test-builder-wrapper", |o| {
+            o.optmulti(
+                "",
+                "test-builder-wrapper",
+                "Wrapper program to pass test-builder and arguments",
+                "PATH",
+            )
+        }),
         unstable("check", |o| o.optflagmulti("", "check", "Run rustdoc checks")),
         unstable("generate-redirect-map", |o| {
             o.optflagmulti(
@@ -663,7 +664,7 @@ fn usage(argv0: &str) {
 /// A result type used by several functions under `main()`.
 type MainResult = Result<(), ErrorGuaranteed>;
 
-fn wrap_return(dcx: &rustc_errors::DiagCtxt, res: Result<(), String>) -> MainResult {
+pub(crate) fn wrap_return(dcx: &rustc_errors::DiagCtxt, res: Result<(), String>) -> MainResult {
     match res {
         Ok(()) => dcx.has_errors().map_or(Ok(()), Err),
         Err(err) => Err(dcx.err(err)),
@@ -705,7 +706,7 @@ fn main_args(
     // the compiler with @empty_file as argv[0] and no more arguments.
     let at_args = at_args.get(1..).unwrap_or_default();
 
-    let args = rustc_driver::args::arg_expand_all(early_dcx, at_args);
+    let args = rustc_driver::args::arg_expand_all(early_dcx, at_args)?;
 
     let mut options = getopts::Options::new();
     for option in opts() {
@@ -730,7 +731,7 @@ fn main_args(
 
     match (options.should_test, options.markdown_input()) {
         (true, true) => return wrap_return(&diag, markdown::test(options)),
-        (true, false) => return doctest::run(options),
+        (true, false) => return doctest::run(&diag, options),
         (false, true) => {
             let input = options.input.clone();
             let edition = options.edition;

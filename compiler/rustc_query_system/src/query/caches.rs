@@ -9,13 +9,6 @@ use rustc_span::def_id::DefId;
 use rustc_span::def_id::DefIndex;
 use std::fmt::Debug;
 use std::hash::Hash;
-use std::marker::PhantomData;
-
-pub trait CacheSelector<'tcx, V> {
-    type Cache
-    where
-        V: Copy;
-}
 
 pub trait QueryCache: Sized {
     type Key: Hash + Eq + Copy + Debug;
@@ -27,14 +20,6 @@ pub trait QueryCache: Sized {
     fn complete(&self, key: Self::Key, value: Self::Value, index: DepNodeIndex);
 
     fn iter(&self, f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex));
-}
-
-pub struct DefaultCacheSelector<K>(PhantomData<K>);
-
-impl<'tcx, K: Eq + Hash, V: 'tcx> CacheSelector<'tcx, V> for DefaultCacheSelector<K> {
-    type Cache = DefaultCache<K, V>
-    where
-        V: Copy;
 }
 
 pub struct DefaultCache<K, V> {
@@ -81,14 +66,6 @@ where
     }
 }
 
-pub struct SingleCacheSelector;
-
-impl<'tcx, V: 'tcx> CacheSelector<'tcx, V> for SingleCacheSelector {
-    type Cache = SingleCache<V>
-    where
-        V: Copy;
-}
-
 pub struct SingleCache<V> {
     cache: OnceLock<(V, DepNodeIndex)>,
 }
@@ -123,16 +100,8 @@ where
     }
 }
 
-pub struct VecCacheSelector<K>(PhantomData<K>);
-
-impl<'tcx, K: Idx, V: 'tcx> CacheSelector<'tcx, V> for VecCacheSelector<K> {
-    type Cache = VecCache<K, V>
-    where
-        V: Copy;
-}
-
 pub struct VecCache<K: Idx, V> {
-    cache: Sharded<IndexVec<K, Option<(V, DepNodeIndex)>>>,
+    cache: Lock<IndexVec<K, Option<(V, DepNodeIndex)>>>,
 }
 
 impl<K: Idx, V> Default for VecCache<K, V> {
@@ -151,35 +120,23 @@ where
 
     #[inline(always)]
     fn lookup(&self, key: &K) -> Option<(V, DepNodeIndex)> {
-        // FIXME: lock_shard_by_hash will use high bits which are usually zero in the index() passed
-        // here. This makes sharding essentially useless, always selecting the zero'th shard.
-        let lock = self.cache.lock_shard_by_hash(key.index() as u64);
+        let lock = self.cache.lock();
         if let Some(Some(value)) = lock.get(*key) { Some(*value) } else { None }
     }
 
     #[inline]
     fn complete(&self, key: K, value: V, index: DepNodeIndex) {
-        let mut lock = self.cache.lock_shard_by_hash(key.index() as u64);
+        let mut lock = self.cache.lock();
         lock.insert(key, (value, index));
     }
 
     fn iter(&self, f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex)) {
-        for shard in self.cache.lock_shards() {
-            for (k, v) in shard.iter_enumerated() {
-                if let Some(v) = v {
-                    f(&k, &v.0, v.1);
-                }
+        for (k, v) in self.cache.lock().iter_enumerated() {
+            if let Some(v) = v {
+                f(&k, &v.0, v.1);
             }
         }
     }
-}
-
-pub struct DefIdCacheSelector;
-
-impl<'tcx, V: 'tcx> CacheSelector<'tcx, V> for DefIdCacheSelector {
-    type Cache = DefIdCache<V>
-    where
-        V: Copy;
 }
 
 pub struct DefIdCache<V> {
@@ -188,9 +145,6 @@ pub struct DefIdCache<V> {
     ///
     /// The second element of the tuple is the set of keys actually present in the IndexVec, used
     /// for faster iteration in `iter()`.
-    // FIXME: This may want to be sharded, like VecCache. However *how* to shard an IndexVec isn't
-    // super clear; VecCache is effectively not sharded today (see FIXME there). For now just omit
-    // that complexity here.
     local: Lock<(IndexVec<DefIndex, Option<(V, DepNodeIndex)>>, Vec<DefIndex>)>,
     foreign: DefaultCache<DefId, V>,
 }

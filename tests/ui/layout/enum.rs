@@ -16,3 +16,9 @@ enum UninhabitedVariantSpace { //~ERROR: size: Size(16 bytes)
     A,
     B([u8; 15], !), // make sure there is space being reserved for this field.
 }
+
+#[rustc_layout(abi)]
+enum ScalarPairDifferingSign { //~ERROR: abi: ScalarPair
+    A(u8),
+    B(i8),
+}

@@ -35,14 +35,14 @@ LL |     -> <::std::ops::Range<impl Debug> as Iterator>::Item
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Step` is not implemented for `impl Debug`, which is required by `std::ops::Range<impl Debug>: Iterator`
    |
    = help: the following other types implement trait `Step`:
+             Char
+             Ipv4Addr
+             Ipv6Addr
              char
-             isize
-             i8
+             i128
              i16
              i32
              i64
-             i128
-             usize
            and 8 others
    = note: required for `std::ops::Range<impl Debug>` to implement `Iterator`
 
@@ -56,14 +56,14 @@ LL | | }
    | |_^ the trait `Step` is not implemented for `impl Debug`, which is required by `std::ops::Range<impl Debug>: Iterator`
    |
    = help: the following other types implement trait `Step`:
+             Char
+             Ipv4Addr
+             Ipv6Addr
              char
-             isize
-             i8
+             i128
              i16
              i32
              i64
-             i128
-             usize
            and 8 others
    = note: required for `std::ops::Range<impl Debug>` to implement `Iterator`
 

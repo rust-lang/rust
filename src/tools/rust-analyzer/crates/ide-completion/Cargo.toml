@@ -23,7 +23,6 @@ smallvec.workspace = true
 # local deps
 base-db.workspace = true
 ide-db.workspace = true
-profile.workspace = true
 stdx.workspace = true
 syntax.workspace = true
 text-edit.workspace = true

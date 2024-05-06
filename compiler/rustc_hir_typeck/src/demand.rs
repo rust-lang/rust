@@ -57,7 +57,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             || self.suggest_into(err, expr, expr_ty, expected)
             || self.suggest_floating_point_literal(err, expr, expected)
             || self.suggest_null_ptr_for_literal_zero_given_to_ptr_arg(err, expr, expected)
-            || self.suggest_coercing_result_via_try_operator(err, expr, expected, expr_ty);
+            || self.suggest_coercing_result_via_try_operator(err, expr, expected, expr_ty)
+            || self.suggest_returning_value_after_loop(err, expr, expected);
 
         if !suggested {
             self.note_source_of_type_mismatch_constraint(
@@ -299,8 +300,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return false;
         };
         let (init_ty_hir_id, init) = match self.tcx.parent_hir_node(pat.hir_id) {
-            hir::Node::Local(hir::Local { ty: Some(ty), init, .. }) => (ty.hir_id, *init),
-            hir::Node::Local(hir::Local { init: Some(init), .. }) => (init.hir_id, Some(*init)),
+            hir::Node::LetStmt(hir::LetStmt { ty: Some(ty), init, .. }) => (ty.hir_id, *init),
+            hir::Node::LetStmt(hir::LetStmt { init: Some(init), .. }) => (init.hir_id, Some(*init)),
             _ => return false,
         };
         let Some(init_ty) = self.node_ty_opt(init_ty_hir_id) else {
@@ -337,10 +338,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty_op: |ty| {
                 if let ty::Infer(infer) = ty.kind() {
                     match infer {
-                        ty::TyVar(_) => self.next_ty_var(TypeVariableOrigin {
-                            kind: TypeVariableOriginKind::MiscVariable,
-                            span: DUMMY_SP,
-                        }),
+                        ty::TyVar(_) => self
+                            .next_ty_var(TypeVariableOrigin { param_def_id: None, span: DUMMY_SP }),
                         ty::IntVar(_) => self.next_int_var(),
                         ty::FloatVar(_) => self.next_float_var(),
                         ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_) => {
@@ -356,10 +355,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if let ty::ConstKind::Infer(_) = ct.kind() {
                     self.next_const_var(
                         ct.ty(),
-                        ConstVariableOrigin {
-                            kind: ConstVariableOriginKind::MiscVariable,
-                            span: DUMMY_SP,
-                        },
+                        ConstVariableOrigin { param_def_id: None, span: DUMMY_SP },
                     )
                 } else {
                     ct
@@ -400,7 +396,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // what our ideal rcvr ty would look like.
                     let _ = self
                         .at(&ObligationCause::dummy(), self.param_env)
-                        .eq(DefineOpaqueTypes::No, method.sig.inputs()[idx + 1], arg_ty)
+                        .eq(DefineOpaqueTypes::Yes, method.sig.inputs()[idx + 1], arg_ty)
                         .ok()?;
                     self.select_obligations_where_possible(|errs| {
                         // Yeet the errors, we're already reporting errors.
@@ -479,7 +475,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .and_then(|method| {
                         let _ = self
                             .at(&ObligationCause::dummy(), self.param_env)
-                            .eq(DefineOpaqueTypes::No, ideal_rcvr_ty, expected_ty)
+                            .eq(DefineOpaqueTypes::Yes, ideal_rcvr_ty, expected_ty)
                             .ok()?;
                         Some(method)
                     });
@@ -678,7 +674,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         error: Option<TypeError<'tcx>>,
     ) {
         match (self.tcx.parent_hir_node(expr.hir_id), error) {
-            (hir::Node::Local(hir::Local { ty: Some(ty), init: Some(init), .. }), _)
+            (hir::Node::LetStmt(hir::LetStmt { ty: Some(ty), init: Some(init), .. }), _)
                 if init.hir_id == expr.hir_id =>
             {
                 // Point at `let` assignment type.
@@ -699,7 +695,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         hir::Path {
                             res:
                                 hir::def::Res::Def(
-                                    hir::def::DefKind::Static(_) | hir::def::DefKind::Const,
+                                    hir::def::DefKind::Static { .. } | hir::def::DefKind::Const,
                                     def_id,
                                 ),
                             ..
@@ -724,11 +720,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             primary_span = pat.span;
                             secondary_span = pat.span;
                             match self.tcx.parent_hir_node(pat.hir_id) {
-                                hir::Node::Local(hir::Local { ty: Some(ty), .. }) => {
+                                hir::Node::LetStmt(hir::LetStmt { ty: Some(ty), .. }) => {
                                     primary_span = ty.span;
                                     post_message = " type";
                                 }
-                                hir::Node::Local(hir::Local { init: Some(init), .. }) => {
+                                hir::Node::LetStmt(hir::LetStmt { init: Some(init), .. }) => {
                                     primary_span = init.span;
                                     post_message = " value";
                                 }
@@ -894,7 +890,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             [candidate] => format!(
                 "the method of the same name on {} `{}`",
                 match candidate.kind {
-                    probe::CandidateKind::InherentImplCandidate(..) => "the inherent impl for",
+                    probe::CandidateKind::InherentImplCandidate(_) => "the inherent impl for",
                     _ => "trait",
                 },
                 self.tcx.def_path_str(candidate.item.container_id(self.tcx))
@@ -1071,7 +1067,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     err.span_suggestion_verbose(
                         *span,
                         "use the type name directly",
-                        self.tcx.value_path_str_with_args(*alias_to, e_args),
+                        self.tcx.value_path_str_with_args(e_def.did(), e_args),
                         Applicability::MaybeIncorrect,
                     );
                 }

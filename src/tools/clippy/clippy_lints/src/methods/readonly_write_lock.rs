@@ -4,7 +4,7 @@ use clippy_utils::mir::{enclosing_mir, visit_local_usage};
 use clippy_utils::source::snippet;
 use clippy_utils::ty::is_type_diagnostic_item;
 use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind, Node};
+use rustc_hir::{Expr, ExprKind, Node, PatKind};
 use rustc_lint::LateContext;
 use rustc_middle::mir::{Location, START_BLOCK};
 use rustc_span::sym;
@@ -24,7 +24,12 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, receiver
         && let Node::Expr(unwrap_call_expr) = cx.tcx.parent_hir_node(expr.hir_id)
         && is_unwrap_call(cx, unwrap_call_expr)
         && let parent = cx.tcx.parent_hir_node(unwrap_call_expr.hir_id)
-        && let Node::Local(local) = parent
+        && let Node::LetStmt(local) = parent
+        && let PatKind::Binding(.., ident, _) = local.pat.kind
+        // if the binding is prefixed with `_`, it typically means
+        // that this guard only exists to protect a section of code
+        // rather than the contained data
+        && !ident.as_str().starts_with('_')
         && let Some(mir) = enclosing_mir(cx.tcx, expr.hir_id)
         && let Some((local, _)) = mir
             .local_decls

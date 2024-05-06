@@ -1,10 +1,12 @@
 //! Performs various peephole optimizations.
 
 use crate::simplify::simplify_duplicate_switch_targets;
+use rustc_ast::attr;
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout;
 use rustc_middle::ty::layout::ValidityRequirement;
 use rustc_middle::ty::{self, GenericArgsRef, ParamEnv, Ty, TyCtxt};
+use rustc_span::sym;
 use rustc_span::symbol::Symbol;
 use rustc_target::abi::FieldIdx;
 use rustc_target::spec::abi::Abi;
@@ -22,13 +24,19 @@ impl<'tcx> MirPass<'tcx> for InstSimplify {
             local_decls: &body.local_decls,
             param_env: tcx.param_env_reveal_all_normalized(body.source.def_id()),
         };
+        let preserve_ub_checks =
+            attr::contains_name(tcx.hir().krate_attrs(), sym::rustc_preserve_ub_checks);
         for block in body.basic_blocks.as_mut() {
             for statement in block.statements.iter_mut() {
                 match statement.kind {
                     StatementKind::Assign(box (_place, ref mut rvalue)) => {
+                        if !preserve_ub_checks {
+                            ctx.simplify_ub_check(&statement.source_info, rvalue);
+                        }
                         ctx.simplify_bool_cmp(&statement.source_info, rvalue);
                         ctx.simplify_ref_deref(&statement.source_info, rvalue);
                         ctx.simplify_len(&statement.source_info, rvalue);
+                        ctx.simplify_ptr_aggregate(&statement.source_info, rvalue);
                         ctx.simplify_cast(rvalue);
                     }
                     _ => {}
@@ -51,8 +59,17 @@ struct InstSimplifyContext<'tcx, 'a> {
 
 impl<'tcx> InstSimplifyContext<'tcx, '_> {
     fn should_simplify(&self, source_info: &SourceInfo, rvalue: &Rvalue<'tcx>) -> bool {
+        self.should_simplify_custom(source_info, "Rvalue", rvalue)
+    }
+
+    fn should_simplify_custom(
+        &self,
+        source_info: &SourceInfo,
+        label: &str,
+        value: impl std::fmt::Debug,
+    ) -> bool {
         self.tcx.consider_optimizing(|| {
-            format!("InstSimplify - Rvalue: {rvalue:?} SourceInfo: {source_info:?}")
+            format!("InstSimplify - {label}: {value:?} SourceInfo: {source_info:?}")
         })
     }
 
@@ -104,7 +121,7 @@ impl<'tcx> InstSimplifyContext<'tcx, '_> {
         if a.const_.ty().is_bool() { a.const_.try_to_bool() } else { None }
     }
 
-    /// Transform "&(*a)" ==> "a".
+    /// Transform `&(*a)` ==> `a`.
     fn simplify_ref_deref(&self, source_info: &SourceInfo, rvalue: &mut Rvalue<'tcx>) {
         if let Rvalue::Ref(_, _, place) = rvalue {
             if let Some((base, ProjectionElem::Deref)) = place.as_ref().last_projection() {
@@ -124,7 +141,7 @@ impl<'tcx> InstSimplifyContext<'tcx, '_> {
         }
     }
 
-    /// Transform "Len([_; N])" ==> "N".
+    /// Transform `Len([_; N])` ==> `N`.
     fn simplify_len(&self, source_info: &SourceInfo, rvalue: &mut Rvalue<'tcx>) {
         if let Rvalue::Len(ref place) = *rvalue {
             let place_ty = place.ty(self.local_decls, self.tcx).ty;
@@ -137,6 +154,38 @@ impl<'tcx> InstSimplifyContext<'tcx, '_> {
                 let constant = ConstOperand { span: source_info.span, const_, user_ty: None };
                 *rvalue = Rvalue::Use(Operand::Constant(Box::new(constant)));
             }
+        }
+    }
+
+    /// Transform `Aggregate(RawPtr, [p, ()])` ==> `Cast(PtrToPtr, p)`.
+    fn simplify_ptr_aggregate(&self, source_info: &SourceInfo, rvalue: &mut Rvalue<'tcx>) {
+        if let Rvalue::Aggregate(box AggregateKind::RawPtr(pointee_ty, mutability), fields) = rvalue
+        {
+            let meta_ty = fields.raw[1].ty(self.local_decls, self.tcx);
+            if meta_ty.is_unit() {
+                // The mutable borrows we're holding prevent printing `rvalue` here
+                if !self.should_simplify_custom(
+                    source_info,
+                    "Aggregate::RawPtr",
+                    (&pointee_ty, *mutability, &fields),
+                ) {
+                    return;
+                }
+
+                let mut fields = std::mem::take(fields);
+                let _meta = fields.pop().unwrap();
+                let data = fields.pop().unwrap();
+                let ptr_ty = Ty::new_ptr(self.tcx, *pointee_ty, *mutability);
+                *rvalue = Rvalue::Cast(CastKind::PtrToPtr, data, ptr_ty);
+            }
+        }
+    }
+
+    fn simplify_ub_check(&self, source_info: &SourceInfo, rvalue: &mut Rvalue<'tcx>) {
+        if let Rvalue::NullaryOp(NullOp::UbChecks, _) = *rvalue {
+            let const_ = Const::from_bool(self.tcx, self.tcx.sess.ub_checks());
+            let constant = ConstOperand { span: source_info.span, const_, user_ty: None };
+            *rvalue = Rvalue::Use(Operand::Constant(Box::new(constant)));
         }
     }
 

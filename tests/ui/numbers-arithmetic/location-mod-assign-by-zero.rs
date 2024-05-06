@@ -1,5 +1,4 @@
 //@ run-fail
-//@ ignore-wasm32
 //@ error-pattern:location-mod-assign-by-zero.rs
 
 fn main() {

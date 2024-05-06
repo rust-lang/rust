@@ -230,3 +230,13 @@ fn issue_11568() {}
 
 /// There is no try (do() or do_not()).
 fn parenthesized_word() {}
+
+/// ABes
+/// OSes
+/// UXes
+fn plural_acronym_test() {}
+
+extern {
+    /// foo()
+    fn in_extern();
+}

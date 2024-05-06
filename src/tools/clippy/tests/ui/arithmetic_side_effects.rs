@@ -10,7 +10,7 @@
     arithmetic_overflow,
     unconditional_panic
 )]
-#![feature(const_mut_refs, inline_const)]
+#![feature(const_mut_refs)]
 #![warn(clippy::arithmetic_side_effects)]
 
 extern crate proc_macro_derive;
@@ -519,6 +519,16 @@ pub fn issue_11393() {
     let [x, maybe_zero] = [1, 0].map(Wrapping);
     example_div(x, maybe_zero);
     example_rem(x, maybe_zero);
+}
+
+pub fn issue_12318() {
+    use core::ops::{AddAssign, DivAssign, MulAssign, RemAssign, SubAssign};
+    let mut one: i32 = 1;
+    one.add_assign(1);
+    one.div_assign(1);
+    one.mul_assign(1);
+    one.rem_assign(1);
+    one.sub_assign(1);
 }
 
 fn main() {}

@@ -29,7 +29,7 @@ fn track_span_parent(def_id: rustc_span::def_id::LocalDefId) {
 /// This is a callback from `rustc_errors` as it cannot access the implicit state
 /// in `rustc_middle` otherwise. It is used when diagnostic messages are
 /// emitted and stores them in the current query, if there is one.
-fn track_diagnostic(diagnostic: DiagInner, f: &mut dyn FnMut(DiagInner)) {
+fn track_diagnostic<R>(diagnostic: DiagInner, f: &mut dyn FnMut(DiagInner) -> R) -> R {
     tls::with_context_opt(|icx| {
         if let Some(icx) = icx {
             if let Some(diagnostics) = icx.diagnostics {
@@ -38,11 +38,11 @@ fn track_diagnostic(diagnostic: DiagInner, f: &mut dyn FnMut(DiagInner)) {
 
             // Diagnostics are tracked, we can ignore the dependency.
             let icx = tls::ImplicitCtxt { task_deps: TaskDepsRef::Ignore, ..icx.clone() };
-            return tls::enter_context(&icx, move || (*f)(diagnostic));
+            tls::enter_context(&icx, move || (*f)(diagnostic))
+        } else {
+            // In any other case, invoke diagnostics anyway.
+            (*f)(diagnostic)
         }
-
-        // In any other case, invoke diagnostics anyway.
-        (*f)(diagnostic);
     })
 }
 

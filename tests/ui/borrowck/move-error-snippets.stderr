@@ -9,6 +9,16 @@ LL |         let a = $c;
 LL | sss!();
    | ------ in this macro invocation
    |
+note: if `A` implemented `Clone`, you could clone the value
+  --> $DIR/move-error-snippets.rs:9:1
+   |
+LL | struct A;
+   | ^^^^^^^^ consider implementing `Clone` for this type
+   |
+  ::: $DIR/move-error-snippets-ext.rs:5:17
+   |
+LL |         let a = $c;
+   |                 -- you could clone this value
    = note: this error originates in the macro `aaa` which comes from the expansion of the macro `sss` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider borrowing here
    |

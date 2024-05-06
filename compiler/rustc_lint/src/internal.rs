@@ -351,15 +351,14 @@ declare_tool_lint! {
 
 declare_tool_lint! {
     /// The `diagnostic_outside_of_impl` lint detects calls to functions annotated with
-    /// `#[rustc_lint_diagnostics]` that are outside an `IntoDiagnostic`, `AddToDiagnostic`, or
-    /// `DecorateLint` impl, or a `#[derive(Diagnostic)]`, `#[derive(Subdiagnostic)]`,
-    /// `#[derive(DecorateLint)]` expansion.
+    /// `#[rustc_lint_diagnostics]` that are outside an `Diagnostic`, `Subdiagnostic`, or
+    /// `LintDiagnostic` impl (either hand-written or derived).
     ///
     /// More details on diagnostics implementations can be found
     /// [here](https://rustc-dev-guide.rust-lang.org/diagnostics/diagnostic-structs.html).
     pub rustc::DIAGNOSTIC_OUTSIDE_OF_IMPL,
     Deny,
-    "prevent creation of diagnostics outside of `IntoDiagnostic`/`AddToDiagnostic` impls",
+    "prevent diagnostic creation outside of `Diagnostic`/`Subdiagnostic`/`LintDiagnostic` impls",
     report_in_external_macro: true
 }
 
@@ -379,13 +378,15 @@ impl LateLintPass<'_> for Diagnostics {
                     _ => return, // occurs for fns passed as args
                 }
             }
-            ExprKind::MethodCall(segment, _recv, args, _span) => {
-                let def_id = cx.typeck_results().type_dependent_def_id(expr.hir_id).unwrap();
-                let fn_gen_args = cx.typeck_results().node_args(expr.hir_id);
+            ExprKind::MethodCall(_segment, _recv, args, _span) => {
+                let Some((span, def_id, fn_gen_args)) = typeck_results_of_method_fn(cx, expr)
+                else {
+                    return;
+                };
                 let mut call_tys: Vec<_> =
                     args.iter().map(|arg| cx.typeck_results().expr_ty(arg)).collect();
                 call_tys.insert(0, cx.tcx.types.self_param); // dummy inserted for `self`
-                (segment.ident.span, def_id, fn_gen_args, call_tys)
+                (span, def_id, fn_gen_args, call_tys)
             }
             _ => return,
         };
@@ -408,9 +409,8 @@ impl LateLintPass<'_> for Diagnostics {
             }
         };
 
-        // Does the callee have a `impl Into<{D,Subd}iagMessage>` parameter? (There should be at
-        // most one.)
-        let mut impl_into_diagnostic_message_param = None;
+        // Does the callee have one or more `impl Into<{D,Subd}iagMessage>` parameters?
+        let mut impl_into_diagnostic_message_params = vec![];
         let fn_sig = cx.tcx.fn_sig(def_id).instantiate_identity().skip_binder();
         let predicates = cx.tcx.predicates_of(def_id).instantiate_identity(cx.tcx).predicates;
         for (i, &param_ty) in fn_sig.inputs().iter().enumerate() {
@@ -424,20 +424,14 @@ impl LateLintPass<'_> for Diagnostics {
                         && let ty1 = trait_ref.args.type_at(1)
                         && is_diag_message(ty1)
                     {
-                        if impl_into_diagnostic_message_param.is_some() {
-                            cx.tcx.dcx().span_bug(
-                                span,
-                                "can't handle multiple `impl Into<{D,Sub}iagMessage>` params",
-                            );
-                        }
-                        impl_into_diagnostic_message_param = Some((i, p.name));
+                        impl_into_diagnostic_message_params.push((i, p.name));
                     }
                 }
             }
         }
 
         // Is the callee interesting?
-        if !has_attr && impl_into_diagnostic_message_param.is_none() {
+        if !has_attr && impl_into_diagnostic_message_params.is_empty() {
             return;
         }
 
@@ -453,7 +447,7 @@ impl LateLintPass<'_> for Diagnostics {
         }
 
         // Calls to `#[rustc_lint_diagnostics]`-marked functions should only occur:
-        // - inside an impl of `IntoDiagnostic`, `AddToDiagnostic`, or `DecorateLint`, or
+        // - inside an impl of `Diagnostic`, `Subdiagnostic`, or `LintDiagnostic`, or
         // - inside a parent function that is itself marked with `#[rustc_lint_diagnostics]`.
         //
         // Otherwise, emit a `DIAGNOSTIC_OUTSIDE_OF_IMPL` lint.
@@ -465,10 +459,7 @@ impl LateLintPass<'_> for Diagnostics {
                     && let Impl { of_trait: Some(of_trait), .. } = impl_
                     && let Some(def_id) = of_trait.trait_def_id()
                     && let Some(name) = cx.tcx.get_diagnostic_name(def_id)
-                    && matches!(
-                        name,
-                        sym::IntoDiagnostic | sym::AddToDiagnostic | sym::DecorateLint
-                    )
+                    && matches!(name, sym::Diagnostic | sym::Subdiagnostic | sym::LintDiagnostic)
                 {
                     is_inside_appropriate_impl = true;
                     break;
@@ -483,7 +474,7 @@ impl LateLintPass<'_> for Diagnostics {
         // Calls to methods with an `impl Into<{D,Subd}iagMessage>` parameter must be passed an arg
         // with type `{D,Subd}iagMessage` or `impl Into<{D,Subd}iagMessage>`. Otherwise, emit an
         // `UNTRANSLATABLE_DIAGNOSTIC` lint.
-        if let Some((param_i, param_i_p_name)) = impl_into_diagnostic_message_param {
+        for (param_i, param_i_p_name) in impl_into_diagnostic_message_params {
             // Is the arg type `{Sub,D}iagMessage`or `impl Into<{Sub,D}iagMessage>`?
             let arg_ty = call_tys[param_i];
             let is_translatable = is_diag_message(arg_ty)

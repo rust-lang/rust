@@ -23,7 +23,6 @@ trait Qux<T,T> {}
 
 impl<T,T> Qux<T,T> for Option<T> {}
 //~^ ERROR the name `T` is already used
-//~^^ ERROR the type parameter `T` is not constrained
 
 fn main() {
 }

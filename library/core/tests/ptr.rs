@@ -1,4 +1,5 @@
 use core::cell::RefCell;
+use core::marker::Freeze;
 use core::mem::{self, MaybeUninit};
 use core::num::NonZero;
 use core::ptr;
@@ -841,9 +842,17 @@ fn ptr_metadata_bounds() {
     fn static_assert_expected_bounds_for_metadata<Meta>()
     where
         // Keep this in sync with the associated type in `library/core/src/ptr/metadata.rs`
-        Meta: Copy + Send + Sync + Ord + std::hash::Hash + Unpin,
+        Meta: Debug + Copy + Send + Sync + Ord + std::hash::Hash + Unpin + Freeze,
     {
     }
+}
+
+#[test]
+fn pointee_metadata_debug() {
+    assert_eq!("()", format!("{:?}", metadata::<u32>(&17)));
+    assert_eq!("2", format!("{:?}", metadata::<[u32]>(&[19, 23])));
+    let for_dyn = format!("{:?}", metadata::<dyn Debug>(&29));
+    assert!(for_dyn.starts_with("DynMetadata(0x"), "{:?}", for_dyn);
 }
 
 #[test]
@@ -1140,4 +1149,25 @@ fn test_const_copy() {
         assert!(*ptr1 == 1);
         assert!(*ptr2 == 1);
     };
+}
+
+#[test]
+fn test_null_array_as_slice() {
+    let arr: *mut [u8; 4] = null_mut();
+    let ptr: *mut [u8] = arr.as_mut_slice();
+    assert!(ptr.is_null());
+    assert_eq!(ptr.len(), 4);
+
+    let arr: *const [u8; 4] = null();
+    let ptr: *const [u8] = arr.as_slice();
+    assert!(ptr.is_null());
+    assert_eq!(ptr.len(), 4);
+}
+
+#[test]
+fn test_ptr_from_raw_parts_in_const() {
+    const EMPTY_SLICE_PTR: *const [i32] =
+        std::ptr::slice_from_raw_parts(std::ptr::without_provenance(123), 456);
+    assert_eq!(EMPTY_SLICE_PTR.addr(), 123);
+    assert_eq!(EMPTY_SLICE_PTR.len(), 456);
 }

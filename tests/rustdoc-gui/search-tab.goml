@@ -1,16 +1,15 @@
 // Checking the colors of the search tab headers.
+include: "utils.goml"
 go-to: "file://" + |DOC_PATH| + "/test_docs/fn.foo.html?search=foo"
 show-text: true
 
 define-function: (
     "check-colors",
-    (theme, background, background_selected, background_hover, border_bottom,
+    [theme, background, background_selected, background_hover, border_bottom,
      border_bottom_selected, border_bottom_hover, border_top, border_top_selected,
-     border_top_hover),
+     border_top_hover],
     block {
-        // Setting the theme.
-        set-local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
-        reload:
+        call-function: ("switch-theme", {"theme": |theme|})
 
         // These two commands are used to be sure the search will be run.
         focus: ".search-input"
@@ -93,12 +92,12 @@ assert-property: ("#search-tabs > button:nth-child(3) > .count", {"offsetWidth":
 compare-elements-position: (
     "#search-tabs > button:nth-child(1) > .count",
     "#search-tabs > button:nth-child(2) > .count",
-    ("y")
+    ["y"]
 )
 compare-elements-position: (
     "#search-tabs > button:nth-child(2) > .count",
     "#search-tabs > button:nth-child(3) > .count",
-    ("y")
+    ["y"]
 )
 // Check that counts are beside the titles and haven't wrapped
 compare-elements-position-near: (
@@ -135,12 +134,12 @@ assert-property: ("#search-tabs > button:nth-child(3) > .count", {"offsetWidth":
 compare-elements-position: (
     "#search-tabs > button:nth-child(1) > .count",
     "#search-tabs > button:nth-child(2) > .count",
-    ("y")
+    ["y"]
 )
 compare-elements-position: (
     "#search-tabs > button:nth-child(2) > .count",
     "#search-tabs > button:nth-child(3) > .count",
-    ("y")
+    ["y"]
 )
 // Check that counts are NOT beside the titles; now they have wrapped
 compare-elements-position-near-false: (

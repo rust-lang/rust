@@ -98,7 +98,7 @@ declare_features! (
     (removed, external_doc, "1.54.0", Some(44732),
      Some("use #[doc = include_str!(\"filename\")] instead, which handles macro invocations")),
     /// Allows using `#[ffi_returns_twice]` on foreign functions.
-    (removed, ffi_returns_twice, "CURRENT_RUSTC_VERSION", Some(58314),
+    (removed, ffi_returns_twice, "1.78.0", Some(58314),
      Some("being investigated by the ffi-unwind project group")),
     /// Allows generators to be cloned.
     (removed, generator_clone, "1.65.0", Some(95360), Some("renamed to `coroutine_clone`")),

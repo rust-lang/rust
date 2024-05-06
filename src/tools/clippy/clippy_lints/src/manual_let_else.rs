@@ -53,7 +53,7 @@ impl<'tcx> QuestionMark {
             return;
         }
 
-        if let StmtKind::Local(local) = stmt.kind
+        if let StmtKind::Let(local) = stmt.kind
             && let Some(init) = local.init
             && local.els.is_none()
             && local.ty.is_none()

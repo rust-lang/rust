@@ -4,7 +4,7 @@ use rustc_ast as ast;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir_analysis::autoderef::Autoderef;
-use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use rustc_infer::infer::type_variable::TypeVariableOrigin;
 use rustc_infer::infer::InferOk;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, OverloadedDeref, PointerCoercion};
 use rustc_middle::ty::adjustment::{AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
@@ -147,10 +147,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // If some lookup succeeds, write callee into table and extract index/element
             // type from the method signature.
             // If some lookup succeeded, install method in table
-            let input_ty = self.next_ty_var(TypeVariableOrigin {
-                kind: TypeVariableOriginKind::AutoDeref,
-                span: base_expr.span,
-            });
+            let input_ty =
+                self.next_ty_var(TypeVariableOrigin { param_def_id: None, span: base_expr.span });
             let method =
                 self.try_overloaded_place_op(expr.span, self_ty, &[input_ty], PlaceOp::Index);
 
@@ -162,11 +160,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if let ty::Ref(region, _, hir::Mutability::Not) = method.sig.inputs()[0].kind() {
                     adjustments.push(Adjustment {
                         kind: Adjust::Borrow(AutoBorrow::Ref(*region, AutoBorrowMutability::Not)),
-                        target: Ty::new_ref(
-                            self.tcx,
-                            *region,
-                            ty::TypeAndMut { mutbl: hir::Mutability::Not, ty: adjusted_ty },
-                        ),
+                        target: Ty::new_imm_ref(self.tcx, *region, adjusted_ty),
                     });
                 } else {
                     span_bug!(expr.span, "input to index is not a ref?");
@@ -400,11 +394,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         allow_two_phase_borrow: AllowTwoPhase::No,
                     };
                     adjustment.kind = Adjust::Borrow(AutoBorrow::Ref(*region, mutbl));
-                    adjustment.target = Ty::new_ref(
-                        self.tcx,
-                        *region,
-                        ty::TypeAndMut { ty: source, mutbl: mutbl.into() },
-                    );
+                    adjustment.target = Ty::new_ref(self.tcx, *region, source, mutbl.into());
                 }
                 source = adjustment.target;
             }

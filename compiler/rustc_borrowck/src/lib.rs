@@ -4,8 +4,8 @@
 #![feature(rustdoc_internals)]
 #![doc(rust_logo)]
 #![feature(assert_matches)]
-#![feature(associated_type_bounds)]
 #![feature(box_patterns)]
+#![feature(control_flow_enum)]
 #![feature(let_chains)]
 #![feature(min_specialization)]
 #![feature(never_type)]
@@ -13,8 +13,6 @@
 #![feature(stmt_expr_attributes)]
 #![feature(try_blocks)]
 
-#[macro_use]
-extern crate rustc_middle;
 #[macro_use]
 extern crate tracing;
 
@@ -31,8 +29,8 @@ use rustc_infer::infer::{
 use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::mir::*;
 use rustc_middle::query::Providers;
-use rustc_middle::traits::DefiningAnchor;
 use rustc_middle::ty::{self, ParamEnv, RegionVid, TyCtxt};
+use rustc_middle::{bug, span_bug};
 use rustc_session::lint::builtin::UNUSED_MUT;
 use rustc_span::{Span, Symbol};
 use rustc_target::abi::FieldIdx;
@@ -125,10 +123,7 @@ fn mir_borrowck(tcx: TyCtxt<'_>, def: LocalDefId) -> &BorrowCheckResult<'_> {
         return tcx.arena.alloc(result);
     }
 
-    let hir_owner = tcx.local_def_id_to_hir_id(def).owner;
-
-    let infcx =
-        tcx.infer_ctxt().with_opaque_type_inference(DefiningAnchor::Bind(hir_owner.def_id)).build();
+    let infcx = tcx.infer_ctxt().with_opaque_type_inference(def).build();
     let promoted: &IndexSlice<_, _> = &promoted.borrow();
     let opt_closure_req = do_mir_borrowck(&infcx, input_body, promoted, None).0;
     debug!("mir_borrowck done");
@@ -723,7 +718,7 @@ impl<'cx, 'tcx, R> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx, R> for MirBorro
                 operands,
                 options: _,
                 line_spans: _,
-                destination: _,
+                targets: _,
                 unwind: _,
             } => {
                 for op in operands {
@@ -749,7 +744,8 @@ impl<'cx, 'tcx, R> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx, R> for MirBorro
                         }
                         InlineAsmOperand::Const { value: _ }
                         | InlineAsmOperand::SymFn { value: _ }
-                        | InlineAsmOperand::SymStatic { def_id: _ } => {}
+                        | InlineAsmOperand::SymStatic { def_id: _ }
+                        | InlineAsmOperand::Label { target_index: _ } => {}
                     }
                 }
             }
@@ -1058,18 +1054,19 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     Control::Continue
                 }
 
-                (Read(_), BorrowKind::Shared | BorrowKind::Fake)
-                | (Read(ReadKind::Borrow(BorrowKind::Fake)), BorrowKind::Mut { .. }) => {
-                    Control::Continue
-                }
+                (Read(_), BorrowKind::Shared | BorrowKind::Fake(_))
+                | (
+                    Read(ReadKind::Borrow(BorrowKind::Fake(FakeBorrowKind::Shallow))),
+                    BorrowKind::Mut { .. },
+                ) => Control::Continue,
 
-                (Reservation(_), BorrowKind::Fake | BorrowKind::Shared) => {
+                (Reservation(_), BorrowKind::Fake(_) | BorrowKind::Shared) => {
                     // This used to be a future compatibility warning (to be
                     // disallowed on NLL). See rust-lang/rust#56254
                     Control::Continue
                 }
 
-                (Write(WriteKind::Move), BorrowKind::Fake) => {
+                (Write(WriteKind::Move), BorrowKind::Fake(FakeBorrowKind::Shallow)) => {
                     // Handled by initialization checks.
                     Control::Continue
                 }
@@ -1177,10 +1174,12 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         match rvalue {
             &Rvalue::Ref(_ /*rgn*/, bk, place) => {
                 let access_kind = match bk {
-                    BorrowKind::Fake => {
+                    BorrowKind::Fake(FakeBorrowKind::Shallow) => {
                         (Shallow(Some(ArtificialField::FakeBorrow)), Read(ReadKind::Borrow(bk)))
                     }
-                    BorrowKind::Shared => (Deep, Read(ReadKind::Borrow(bk))),
+                    BorrowKind::Shared | BorrowKind::Fake(FakeBorrowKind::Deep) => {
+                        (Deep, Read(ReadKind::Borrow(bk)))
+                    }
                     BorrowKind::Mut { .. } => {
                         let wk = WriteKind::MutableBorrow(bk);
                         if allow_two_phase_borrow(bk) {
@@ -1199,7 +1198,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     flow_state,
                 );
 
-                let action = if bk == BorrowKind::Fake {
+                let action = if bk == BorrowKind::Fake(FakeBorrowKind::Shallow) {
                     InitializationRequiringAction::MatchOn
                 } else {
                     InitializationRequiringAction::Borrow
@@ -1317,7 +1316,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     }
                     AggregateKind::Adt(..)
                     | AggregateKind::Array(..)
-                    | AggregateKind::Tuple { .. } => (),
+                    | AggregateKind::Tuple { .. }
+                    | AggregateKind::RawPtr(..) => (),
                 }
 
                 for operand in operands {
@@ -1558,7 +1558,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
             // only mutable borrows should be 2-phase
             assert!(match borrow.kind {
-                BorrowKind::Shared | BorrowKind::Fake => false,
+                BorrowKind::Shared | BorrowKind::Fake(_) => false,
                 BorrowKind::Mut { .. } => true,
             });
 
@@ -1607,6 +1607,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     | ty::Foreign(_)
                     | ty::Str
                     | ty::Array(_, _)
+                    | ty::Pat(_, _)
                     | ty::Slice(_)
                     | ty::FnDef(_, _)
                     | ty::FnPtr(_)
@@ -1649,8 +1650,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     | ty::Foreign(_)
                     | ty::Str
                     | ty::Array(_, _)
+                    | ty::Pat(_, _)
                     | ty::Slice(_)
-                    | ty::RawPtr(_)
+                    | ty::RawPtr(_, _)
                     | ty::Ref(_, _, _)
                     | ty::FnDef(_, _)
                     | ty::FnPtr(_)
@@ -2121,14 +2123,14 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 | WriteKind::Replace
                 | WriteKind::StorageDeadOrDrop
                 | WriteKind::MutableBorrow(BorrowKind::Shared)
-                | WriteKind::MutableBorrow(BorrowKind::Fake),
+                | WriteKind::MutableBorrow(BorrowKind::Fake(_)),
             )
             | Write(
                 WriteKind::Move
                 | WriteKind::Replace
                 | WriteKind::StorageDeadOrDrop
                 | WriteKind::MutableBorrow(BorrowKind::Shared)
-                | WriteKind::MutableBorrow(BorrowKind::Fake),
+                | WriteKind::MutableBorrow(BorrowKind::Fake(_)),
             ) => {
                 if self.is_mutable(place.as_ref(), is_local_mutation_allowed).is_err()
                     && !self.has_buffered_diags()
@@ -2152,7 +2154,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 return false;
             }
             Read(
-                ReadKind::Borrow(BorrowKind::Mut { .. } | BorrowKind::Shared | BorrowKind::Fake)
+                ReadKind::Borrow(BorrowKind::Mut { .. } | BorrowKind::Shared | BorrowKind::Fake(_))
                 | ReadKind::Copy,
             ) => {
                 // Access authorized
@@ -2285,8 +2287,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                     }
                                 }
                             }
-                            ty::RawPtr(tnm) => {
-                                match tnm.mutbl {
+                            ty::RawPtr(_, mutbl) => {
+                                match mutbl {
                                     // `*const` raw pointers are not mutable
                                     hir::Mutability::Not => Err(place),
                                     // `*mut` raw pointers are always mutable, regardless of

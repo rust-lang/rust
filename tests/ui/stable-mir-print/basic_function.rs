@@ -1,8 +1,9 @@
 //@ compile-flags: -Z unpretty=stable-mir -Z mir-opt-level=3
 //@ check-pass
 //@ only-x86_64
+//@ needs-unwind unwind edges are different with panic=abort
 
-fn foo(i:i32) -> i32 {
+fn foo(i: i32) -> i32 {
     i + 1
 }
 
@@ -12,4 +13,13 @@ fn bar(vec: &mut Vec<i32>) -> Vec<i32> {
     new_vec
 }
 
-fn main(){}
+pub fn demux(input: u8) -> u8 {
+    match input {
+        0 => 10,
+        1 => 6,
+        2 => 8,
+        _ => 0,
+    }
+}
+
+fn main() {}

@@ -5,8 +5,7 @@ LL | /     match i {
 LL | |         // Add `bool` to the overall `coercion`.
 LL | |         0 => true,
    | |              ---- this is found to be of type `bool`
-LL | |
-LL | |         // Necessary to cause the ICE:
+...  |
 LL | |         1 => true,
    | |              ---- this is found to be of type `bool`
 ...  |

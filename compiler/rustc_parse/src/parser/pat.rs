@@ -4,11 +4,11 @@ use crate::errors::{
     DotDotDotRestPattern, EnumPatternInsteadOfIdentifier, ExpectedBindingLeftOfAt,
     ExpectedCommaAfterPatternField, GenericArgsInPatRequireTurbofishSyntax,
     InclusiveRangeExtraEquals, InclusiveRangeMatchArrow, InclusiveRangeNoEnd, InvalidMutInPattern,
-    PatternOnWrongSideOfAt, RefMutOrderIncorrect, RemoveLet, RepeatedMutInPattern,
-    SwitchRefBoxOrder, TopLevelOrPatternNotAllowed, TopLevelOrPatternNotAllowedSugg,
-    TrailingVertNotAllowed, UnexpectedExpressionInPattern, UnexpectedLifetimeInPattern,
-    UnexpectedParenInRangePat, UnexpectedParenInRangePatSugg,
-    UnexpectedVertVertBeforeFunctionParam, UnexpectedVertVertInPattern,
+    PatternOnWrongSideOfAt, RemoveLet, RepeatedMutInPattern, SwitchRefBoxOrder,
+    TopLevelOrPatternNotAllowed, TopLevelOrPatternNotAllowedSugg, TrailingVertNotAllowed,
+    UnexpectedExpressionInPattern, UnexpectedLifetimeInPattern, UnexpectedParenInRangePat,
+    UnexpectedParenInRangePatSugg, UnexpectedVertVertBeforeFunctionParam,
+    UnexpectedVertVertInPattern,
 };
 use crate::parser::expr::could_be_unclosed_char_literal;
 use crate::{maybe_recover_from_interpolated_ty_qpath, maybe_whole};
@@ -16,8 +16,8 @@ use rustc_ast::mut_visit::{noop_visit_pat, MutVisitor};
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, BinOpToken, Delimiter, Token};
 use rustc_ast::{
-    self as ast, AttrVec, BindingAnnotation, ByRef, Expr, ExprKind, MacCall, Mutability, Pat,
-    PatField, PatFieldsRest, PatKind, Path, QSelf, RangeEnd, RangeSyntax,
+    self as ast, AttrVec, BindingMode, ByRef, Expr, ExprKind, MacCall, Mutability, Pat, PatField,
+    PatFieldsRest, PatKind, Path, QSelf, RangeEnd, RangeSyntax,
 };
 use rustc_ast_pretty::pprust;
 use rustc_errors::{Applicability, Diag, PResult};
@@ -435,7 +435,7 @@ impl<'a> Parser<'a> {
         syntax_loc: Option<PatternLocation>,
     ) -> PResult<'a, P<Pat>> {
         maybe_recover_from_interpolated_ty_qpath!(self, true);
-        maybe_whole!(self, NtPat, |x| x);
+        maybe_whole!(self, NtPat, |pat| pat);
 
         let mut lo = self.token.span;
 
@@ -476,7 +476,7 @@ impl<'a> Parser<'a> {
             // Parse `_`
             PatKind::Wild
         } else if self.eat_keyword(kw::Mut) {
-            self.parse_pat_ident_mut(syntax_loc)?
+            self.parse_pat_ident_mut()?
         } else if self.eat_keyword(kw::Ref) {
             if self.check_keyword(kw::Box) {
                 // Suggest `box ref`.
@@ -486,7 +486,7 @@ impl<'a> Parser<'a> {
             }
             // Parse ref ident @ pat / ref mut ident @ pat
             let mutbl = self.parse_mutability();
-            self.parse_pat_ident(BindingAnnotation(ByRef::Yes, mutbl), syntax_loc)?
+            self.parse_pat_ident(BindingMode(ByRef::Yes(mutbl), Mutability::Not), syntax_loc)?
         } else if self.eat_keyword(kw::Box) {
             self.parse_pat_box()?
         } else if self.check_inline_const(0) {
@@ -498,17 +498,20 @@ impl<'a> Parser<'a> {
             } else {
                 PatKind::Lit(const_expr)
             }
+        } else if self.is_builtin() {
+            self.parse_pat_builtin()?
+        }
         // Don't eagerly error on semantically invalid tokens when matching
         // declarative macros, as the input to those doesn't have to be
         // semantically valid. For attribute/derive proc macros this is not the
         // case, so doing the recovery for them is fine.
-        } else if self.can_be_ident_pat()
+        else if self.can_be_ident_pat()
             || (self.is_lit_bad_ident().is_some() && self.may_recover())
         {
             // Parse `ident @ pat`
             // This can give false positives and parse nullary enums,
             // they are dealt with later in resolve.
-            self.parse_pat_ident(BindingAnnotation::NONE, syntax_loc)?
+            self.parse_pat_ident(BindingMode::NONE, syntax_loc)?
         } else if self.is_start_of_pat_with_path() {
             // Parse pattern starting with a path
             let (qself, path) = if self.eat_lt() {
@@ -743,13 +746,12 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse a mutable binding with the `mut` token already eaten.
-    fn parse_pat_ident_mut(&mut self, syntax_loc: Option<PatternLocation>) -> PResult<'a, PatKind> {
+    fn parse_pat_ident_mut(&mut self) -> PResult<'a, PatKind> {
         let mut_span = self.prev_token.span;
 
-        if self.eat_keyword(kw::Ref) {
-            self.dcx().emit_err(RefMutOrderIncorrect { span: mut_span.to(self.prev_token.span) });
-            return self.parse_pat_ident(BindingAnnotation::REF_MUT, syntax_loc);
-        }
+        self.recover_additional_muts();
+
+        let byref = self.parse_byref();
 
         self.recover_additional_muts();
 
@@ -764,10 +766,11 @@ impl<'a> Parser<'a> {
         let mut pat = self.parse_pat_no_top_alt(Some(Expected::Identifier), None)?;
 
         // If we don't have `mut $ident (@ pat)?`, error.
-        if let PatKind::Ident(BindingAnnotation(ByRef::No, m @ Mutability::Not), ..) = &mut pat.kind
+        if let PatKind::Ident(BindingMode(br @ ByRef::No, m @ Mutability::Not), ..) = &mut pat.kind
         {
             // Don't recurse into the subpattern.
             // `mut` on the outer binding doesn't affect the inner bindings.
+            *br = byref;
             *m = Mutability::Mut;
         } else {
             // Add `mut` to any binding in the parsed pattern.
@@ -775,6 +778,9 @@ impl<'a> Parser<'a> {
             self.ban_mut_general_pat(mut_span, &pat, changed_any_binding);
         }
 
+        if matches!(pat.kind, PatKind::Ident(BindingMode(ByRef::Yes(_), Mutability::Mut), ..)) {
+            self.psess.gated_spans.gate(sym::mut_ref, pat.span);
+        }
         Ok(pat.into_inner().kind)
     }
 
@@ -784,7 +790,7 @@ impl<'a> Parser<'a> {
         struct AddMut(bool);
         impl MutVisitor for AddMut {
             fn visit_pat(&mut self, pat: &mut P<Pat>) {
-                if let PatKind::Ident(BindingAnnotation(ByRef::No, m @ Mutability::Not), ..) =
+                if let PatKind::Ident(BindingMode(ByRef::No, m @ Mutability::Not), ..) =
                     &mut pat.kind
                 {
                     self.0 = true;
@@ -1008,7 +1014,7 @@ impl<'a> Parser<'a> {
         && self.look_ahead(1, |t| !matches!(t.kind, token::OpenDelim(Delimiter::Parenthesis) // A tuple struct pattern.
             | token::OpenDelim(Delimiter::Brace) // A struct pattern.
             | token::DotDotDot | token::DotDotEq | token::DotDot // A range pattern.
-            | token::ModSep // A tuple / struct variant pattern.
+            | token::PathSep // A tuple / struct variant pattern.
             | token::Not)) // A macro expanding to a pattern.
     }
 
@@ -1017,7 +1023,7 @@ impl<'a> Parser<'a> {
     /// error message when parsing mistakes like `ref foo(a, b)`.
     fn parse_pat_ident(
         &mut self,
-        binding_annotation: BindingAnnotation,
+        binding_annotation: BindingMode,
         syntax_loc: Option<PatternLocation>,
     ) -> PResult<'a, PatKind> {
         let ident = self.parse_ident_common(false)?;
@@ -1119,6 +1125,21 @@ impl<'a> Parser<'a> {
         .contains(&self.token.kind)
     }
 
+    fn parse_pat_builtin(&mut self) -> PResult<'a, PatKind> {
+        self.parse_builtin(|self_, _lo, ident| {
+            Ok(match ident.name {
+                // builtin#deref(PAT)
+                sym::deref => Some(ast::PatKind::Deref(self_.parse_pat_allow_top_alt(
+                    None,
+                    RecoverComma::Yes,
+                    RecoverColon::Yes,
+                    CommaRecoveryMode::LikelyTuple,
+                )?)),
+                _ => None,
+            })
+        })
+    }
+
     /// Parses `box pat`
     fn parse_pat_box(&mut self) -> PResult<'a, PatKind> {
         let box_span = self.prev_token.span;
@@ -1140,7 +1161,7 @@ impl<'a> Parser<'a> {
                 None
             };
 
-            Ok(PatKind::Ident(BindingAnnotation::NONE, Ident::new(kw::Box, box_span), sub))
+            Ok(PatKind::Ident(BindingMode::NONE, Ident::new(kw::Box, box_span), sub))
         } else {
             let pat = self.parse_pat_with_range_pat(false, None, None)?;
             self.psess.gated_spans.gate(sym::box_patterns, box_span.to(self.prev_token.span));
@@ -1321,7 +1342,7 @@ impl<'a> Parser<'a> {
         if let Some(last) = fields.iter().last()
             && last.is_shorthand
             && let PatKind::Ident(binding, ident, None) = last.pat.kind
-            && binding != BindingAnnotation::NONE
+            && binding != BindingMode::NONE
             && self.token == token::Colon
             // We found `ref mut? ident:`, try to parse a `name,` or `name }`.
             && let Some(name_span) = self.look_ahead(1, |t| t.is_ident().then(|| t.span))
@@ -1372,16 +1393,12 @@ impl<'a> Parser<'a> {
             // Parsing a pattern of the form `(box) (ref) (mut) fieldname`.
             let is_box = self.eat_keyword(kw::Box);
             let boxed_span = self.token.span;
-            let is_ref = self.eat_keyword(kw::Ref);
-            let is_mut = self.eat_keyword(kw::Mut);
+            let mutability = self.parse_mutability();
+            let by_ref = self.parse_byref();
+
             let fieldname = self.parse_field_name()?;
             hi = self.prev_token.span;
-
-            let mutability = match is_mut {
-                false => Mutability::Not,
-                true => Mutability::Mut,
-            };
-            let ann = BindingAnnotation(ByRef::from(is_ref), mutability);
+            let ann = BindingMode(by_ref, mutability);
             let fieldpat = self.mk_pat_ident(boxed_span.to(hi), ann, fieldname);
             let subpat =
                 if is_box { self.mk_pat(lo.to(hi), PatKind::Box(fieldpat)) } else { fieldpat };
@@ -1399,7 +1416,7 @@ impl<'a> Parser<'a> {
         })
     }
 
-    pub(super) fn mk_pat_ident(&self, span: Span, ann: BindingAnnotation, ident: Ident) -> P<Pat> {
+    pub(super) fn mk_pat_ident(&self, span: Span, ann: BindingMode, ident: Ident) -> P<Pat> {
         self.mk_pat(span, PatKind::Ident(ann, ident, None))
     }
 

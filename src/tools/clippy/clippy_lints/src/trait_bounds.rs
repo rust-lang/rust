@@ -237,6 +237,7 @@ impl TraitBounds {
         }
     }
 
+    #[allow(clippy::mutable_key_type)]
     fn check_type_repetition<'tcx>(&self, cx: &LateContext<'tcx>, gen: &'tcx Generics<'_>) {
         struct SpanlessTy<'cx, 'tcx> {
             ty: &'tcx Ty<'tcx>,
@@ -293,7 +294,7 @@ impl TraitBounds {
                     p.span,
                     "this type has already been used as a bound predicate",
                     None,
-                    &hint_string,
+                    hint_string,
                 );
             }
         }
@@ -420,7 +421,11 @@ fn into_comparable_trait_ref(trait_ref: &TraitRef<'_>) -> ComparableTraitRef {
     )
 }
 
-fn rollup_traits(cx: &LateContext<'_>, bounds: &[GenericBound<'_>], msg: &str) -> Vec<(ComparableTraitRef, Span)> {
+fn rollup_traits(
+    cx: &LateContext<'_>,
+    bounds: &[GenericBound<'_>],
+    msg: &'static str,
+) -> Vec<(ComparableTraitRef, Span)> {
     let mut map = FxHashMap::default();
     let mut repeated_res = false;
 

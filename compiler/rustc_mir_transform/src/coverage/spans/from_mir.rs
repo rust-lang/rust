@@ -1,5 +1,6 @@
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashSet;
+use rustc_middle::mir::coverage::CoverageKind;
 use rustc_middle::mir::{
     self, AggregateKind, FakeReadCause, Rvalue, Statement, StatementKind, Terminator,
     TerminatorKind,
@@ -179,16 +180,12 @@ fn is_closure_like(statement: &Statement<'_>) -> bool {
 /// If the MIR `Statement` has a span contributive to computing coverage spans,
 /// return it; otherwise return `None`.
 fn filtered_statement_span(statement: &Statement<'_>) -> Option<Span> {
-    use mir::coverage::CoverageKind;
-
     match statement.kind {
         // These statements have spans that are often outside the scope of the executed source code
         // for their parent `BasicBlock`.
         StatementKind::StorageLive(_)
         | StatementKind::StorageDead(_)
-        // Ignore `ConstEvalCounter`s
         | StatementKind::ConstEvalCounter
-        // Ignore `Nop`s
         | StatementKind::Nop => None,
 
         // FIXME(#78546): MIR InstrumentCoverage - Can the source_info.span for `FakeRead`
@@ -210,25 +207,31 @@ fn filtered_statement_span(statement: &Statement<'_>) -> Option<Span> {
         StatementKind::FakeRead(box (FakeReadCause::ForGuardBinding, _)) => None,
 
         // Retain spans from most other statements.
-        StatementKind::FakeRead(box (_, _)) // Not including `ForGuardBinding`
+        StatementKind::FakeRead(_)
         | StatementKind::Intrinsic(..)
-        | StatementKind::Coverage(box mir::Coverage {
+        | StatementKind::Coverage(
             // The purpose of `SpanMarker` is to be matched and accepted here.
-            kind: CoverageKind::SpanMarker
-        })
+            CoverageKind::SpanMarker,
+        )
         | StatementKind::Assign(_)
         | StatementKind::SetDiscriminant { .. }
         | StatementKind::Deinit(..)
         | StatementKind::Retag(_, _)
         | StatementKind::PlaceMention(..)
-        | StatementKind::AscribeUserType(_, _) => {
-            Some(statement.source_info.span)
-        }
+        | StatementKind::AscribeUserType(_, _) => Some(statement.source_info.span),
 
-        StatementKind::Coverage(box mir::Coverage {
-            // These coverage statements should not exist prior to coverage instrumentation.
-            kind: CoverageKind::CounterIncrement { .. } | CoverageKind::ExpressionUsed { .. }
-        }) => bug!("Unexpected coverage statement found during coverage instrumentation: {statement:?}"),
+        // Block markers are used for branch coverage, so ignore them here.
+        StatementKind::Coverage(CoverageKind::BlockMarker { .. }) => None,
+
+        // These coverage statements should not exist prior to coverage instrumentation.
+        StatementKind::Coverage(
+            CoverageKind::CounterIncrement { .. }
+            | CoverageKind::ExpressionUsed { .. }
+            | CoverageKind::CondBitmapUpdate { .. }
+            | CoverageKind::TestVectorBitmapUpdate { .. },
+        ) => bug!(
+            "Unexpected coverage statement found during coverage instrumentation: {statement:?}"
+        ),
     }
 }
 
@@ -280,7 +283,7 @@ fn filtered_terminator_span(terminator: &Terminator<'_>) -> Option<Span> {
 ///
 /// [^1]Expansions result from Rust syntax including macros, syntactic sugar,
 /// etc.).
-fn unexpand_into_body_span_with_visible_macro(
+pub(crate) fn unexpand_into_body_span_with_visible_macro(
     original_span: Span,
     body_span: Span,
 ) -> Option<(Span, Option<Symbol>)> {

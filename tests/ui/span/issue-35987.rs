@@ -7,6 +7,7 @@ impl<T: Clone, Add> Add for Foo<T> {
     type Output = usize;
 
     fn add(self, rhs: Self) -> Self::Output {
+        //~^ ERROR ambiguous associated type
         unimplemented!();
     }
 }

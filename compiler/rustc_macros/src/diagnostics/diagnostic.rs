@@ -10,7 +10,7 @@ use quote::quote;
 use syn::spanned::Spanned;
 use synstructure::Structure;
 
-/// The central struct for constructing the `into_diagnostic` method from an annotated struct.
+/// The central struct for constructing the `into_diag` method from an annotated struct.
 pub(crate) struct DiagnosticDerive<'a> {
     structure: Structure<'a>,
 }
@@ -72,14 +72,11 @@ impl<'a> DiagnosticDerive<'a> {
 
         // A lifetime of `'a` causes conflicts, but `_sess` is fine.
         let mut imp = structure.gen_impl(quote! {
-            gen impl<'_sess, G>
-                    rustc_errors::IntoDiagnostic<'_sess, G>
-                    for @Self
+            gen impl<'_sess, G> rustc_errors::Diagnostic<'_sess, G> for @Self
                 where G: rustc_errors::EmissionGuarantee
             {
-
                 #[track_caller]
-                fn into_diagnostic(
+                fn into_diag(
                     self,
                     dcx: &'_sess rustc_errors::DiagCtxt,
                     level: rustc_errors::Level
@@ -156,7 +153,7 @@ impl<'a> LintDiagnosticDerive<'a> {
         });
 
         let mut imp = structure.gen_impl(quote! {
-            gen impl<'__a> rustc_errors::DecorateLint<'__a, ()> for @Self {
+            gen impl<'__a> rustc_errors::LintDiagnostic<'__a, ()> for @Self {
                 #[track_caller]
                 fn decorate_lint<'__b>(
                     self,

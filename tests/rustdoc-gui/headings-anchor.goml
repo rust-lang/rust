@@ -4,7 +4,7 @@ show-text: true
 
 define-function: (
     "check-heading-anchor",
-    (heading_id),
+    [heading_id],
     block {
         // The anchor should not be displayed by default.
         assert-css: ("#" + |heading_id| + " .doc-anchor", { "display": "none" })
@@ -27,6 +27,6 @@ move-cursor-to: "#top-doc-prose-title"
 // to prevent it from overlapping with the `[-]` element.
 assert-css: ("#top-doc-prose-title:hover .doc-anchor", { "display": "none" })
 
-call-function: ("check-heading-anchor", ("top-doc-prose-sub-heading"))
-call-function: ("check-heading-anchor", ("top-doc-prose-sub-sub-heading"))
-call-function: ("check-heading-anchor", ("you-know-the-drill"))
+call-function: ("check-heading-anchor", {"heading_id": "top-doc-prose-sub-heading"})
+call-function: ("check-heading-anchor", {"heading_id": "top-doc-prose-sub-sub-heading"})
+call-function: ("check-heading-anchor", {"heading_id": "you-know-the-drill"})

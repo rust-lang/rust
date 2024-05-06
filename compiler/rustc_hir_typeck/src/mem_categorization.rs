@@ -58,24 +58,24 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::pat_util::EnumerateAndAdjustIterator;
-use rustc_hir::PatKind;
+use rustc_hir::{HirId, PatKind};
 use rustc_infer::infer::InferCtxt;
 use rustc_span::Span;
 use rustc_target::abi::{FieldIdx, VariantIdx, FIRST_VARIANT};
 use rustc_trait_selection::infer::InferCtxtExt;
 
 pub(crate) trait HirNode {
-    fn hir_id(&self) -> hir::HirId;
+    fn hir_id(&self) -> HirId;
 }
 
 impl HirNode for hir::Expr<'_> {
-    fn hir_id(&self) -> hir::HirId {
+    fn hir_id(&self) -> HirId {
         self.hir_id
     }
 }
 
 impl HirNode for hir::Pat<'_> {
-    fn hir_id(&self) -> hir::HirId {
+    fn hir_id(&self) -> HirId {
         self.hir_id
     }
 }
@@ -86,7 +86,7 @@ pub(crate) struct MemCategorizationContext<'a, 'tcx> {
     infcx: &'a InferCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     body_owner: LocalDefId,
-    upvars: Option<&'tcx FxIndexMap<hir::HirId, hir::Upvar>>,
+    upvars: Option<&'tcx FxIndexMap<HirId, hir::Upvar>>,
 }
 
 pub(crate) type McResult<T> = Result<T, ()>;
@@ -127,11 +127,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         self.infcx.tainted_by_errors().is_some()
     }
 
-    fn resolve_type_vars_or_error(
-        &self,
-        id: hir::HirId,
-        ty: Option<Ty<'tcx>>,
-    ) -> McResult<Ty<'tcx>> {
+    fn resolve_type_vars_or_error(&self, id: HirId, ty: Option<Ty<'tcx>>) -> McResult<Ty<'tcx>> {
         match ty {
             Some(ty) => {
                 let ty = self.resolve_vars_if_possible(ty);
@@ -153,7 +149,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         }
     }
 
-    pub(crate) fn node_ty(&self, hir_id: hir::HirId) -> McResult<Ty<'tcx>> {
+    pub(crate) fn node_ty(&self, hir_id: HirId) -> McResult<Ty<'tcx>> {
         self.resolve_type_vars_or_error(hir_id, self.typeck_results.node_type_opt(hir_id))
     }
 
@@ -206,7 +202,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
                     .get(pat.hir_id)
                     .expect("missing binding mode");
 
-                if let ty::BindByReference(_) = bm {
+                if matches!(bm.0, hir::ByRef::Yes(_)) {
                     // a bind-by-ref means that the base_ty will be the type of the ident itself,
                     // but what we want here is the type of the underlying value being borrowed.
                     // So peel off one-level, turning the &T into T.
@@ -268,11 +264,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
             adjustment::Adjust::Deref(overloaded) => {
                 // Equivalent to *expr or something similar.
                 let base = if let Some(deref) = overloaded {
-                    let ref_ty = Ty::new_ref(
-                        self.tcx(),
-                        deref.region,
-                        ty::TypeAndMut { ty: target, mutbl: deref.mutbl },
-                    );
+                    let ref_ty = Ty::new_ref(self.tcx(), deref.region, target, deref.mutbl);
                     self.cat_rvalue(expr.hir_id, ref_ty)
                 } else {
                     previous()?
@@ -381,7 +373,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
     #[instrument(level = "debug", skip(self, span), ret)]
     pub(crate) fn cat_res(
         &self,
-        hir_id: hir::HirId,
+        hir_id: HirId,
         span: Span,
         expr_ty: Ty<'tcx>,
         res: Res,
@@ -398,7 +390,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
             )
             | Res::SelfCtor(..) => Ok(self.cat_rvalue(hir_id, expr_ty)),
 
-            Res::Def(DefKind::Static(_), _) => {
+            Res::Def(DefKind::Static { .. }, _) => {
                 Ok(PlaceWithHirId::new(hir_id, expr_ty, PlaceBase::StaticItem, Vec::new()))
             }
 
@@ -420,7 +412,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
     /// environment and upvar reference as appropriate. Only regionck cares
     /// about these dereferences, so we let it compute them as needed.
     #[instrument(level = "debug", skip(self), ret)]
-    fn cat_upvar(&self, hir_id: hir::HirId, var_id: hir::HirId) -> McResult<PlaceWithHirId<'tcx>> {
+    fn cat_upvar(&self, hir_id: HirId, var_id: HirId) -> McResult<PlaceWithHirId<'tcx>> {
         let closure_expr_def_id = self.body_owner;
 
         let upvar_id = ty::UpvarId {
@@ -433,7 +425,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
     }
 
     #[instrument(level = "debug", skip(self), ret)]
-    pub(crate) fn cat_rvalue(&self, hir_id: hir::HirId, expr_ty: Ty<'tcx>) -> PlaceWithHirId<'tcx> {
+    pub(crate) fn cat_rvalue(&self, hir_id: HirId, expr_ty: Ty<'tcx>) -> PlaceWithHirId<'tcx> {
         PlaceWithHirId::new(hir_id, expr_ty, PlaceBase::Rvalue, Vec::new())
     }
 
@@ -479,7 +471,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         let ty::Ref(region, _, mutbl) = *base_ty.kind() else {
             span_bug!(expr.span, "cat_overloaded_place: base is not a reference");
         };
-        let ref_ty = Ty::new_ref(self.tcx(), region, ty::TypeAndMut { ty: place_ty, mutbl });
+        let ref_ty = Ty::new_ref(self.tcx(), region, place_ty, mutbl);
 
         let base = self.cat_rvalue(expr.hir_id, ref_ty);
         self.cat_deref(expr, base)
@@ -527,7 +519,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
     fn variant_index_for_adt(
         &self,
         qpath: &hir::QPath<'_>,
-        pat_hir_id: hir::HirId,
+        pat_hir_id: HirId,
         span: Span,
     ) -> McResult<VariantIdx> {
         let res = self.typeck_results.qpath_res(qpath, pat_hir_id);
@@ -560,7 +552,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
     /// Here `pat_hir_id` is the HirId of the pattern itself.
     fn total_fields_in_adt_variant(
         &self,
-        pat_hir_id: hir::HirId,
+        pat_hir_id: HirId,
         variant_index: VariantIdx,
         span: Span,
     ) -> McResult<usize> {
@@ -577,7 +569,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
 
     /// Returns the total number of fields in a tuple used within a Tuple pattern.
     /// Here `pat_hir_id` is the HirId of the pattern itself.
-    fn total_fields_in_tuple(&self, pat_hir_id: hir::HirId, span: Span) -> McResult<usize> {
+    fn total_fields_in_tuple(&self, pat_hir_id: HirId, span: Span) -> McResult<usize> {
         let ty = self.typeck_results.node_type(pat_hir_id);
         match ty.kind() {
             ty::Tuple(args) => Ok(args.len()),
@@ -725,6 +717,16 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
                 // in the type.
                 let subplace = self.cat_deref(pat, place_with_id)?;
                 self.cat_pattern_(subplace, subpat, op)?;
+            }
+            PatKind::Deref(subpat) => {
+                let mutable = self.typeck_results.pat_has_ref_mut_binding(subpat);
+                let mutability = if mutable { hir::Mutability::Mut } else { hir::Mutability::Not };
+                let re_erased = self.tcx().lifetimes.re_erased;
+                let ty = self.pat_ty_adjusted(subpat)?;
+                let ty = Ty::new_ref(self.tcx(), re_erased, ty, mutability);
+                // A deref pattern generates a temporary.
+                let place = self.cat_rvalue(pat.hir_id, ty);
+                self.cat_pattern_(place, subpat, op)?;
             }
 
             PatKind::Slice(before, ref slice, after) => {

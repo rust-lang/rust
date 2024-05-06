@@ -1,4 +1,5 @@
 // Checks that the interactions with the source code pages are working as expected.
+include: "utils.goml"
 go-to: "file://" + |DOC_PATH| + "/src/test_docs/lib.rs.html"
 show-text: true
 // Check that we can click on the line number.
@@ -21,10 +22,9 @@ assert-attribute-false: (".src-line-numbers > a:nth-child(7)", {"class": "line-h
 
 define-function: (
     "check-colors",
-    (theme, color, background_color, highlight_color, highlight_background_color),
+    [theme, color, background_color, highlight_color, highlight_background_color],
     block {
-        set-local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
-        reload:
+        call-function: ("switch-theme", {"theme": |theme|})
         assert-css: (
             ".src-line-numbers > a:not(.line-highlighted)",
             {"color": |color|, "background-color": |background_color|},
@@ -61,7 +61,7 @@ call-function: ("check-colors", {
 })
 
 // This is to ensure that the content is correctly align with the line numbers.
-compare-elements-position: ("//*[@id='1']", ".rust > code > span", ("y"))
+compare-elements-position: ("//*[@id='1']", ".rust > code > span", ["y"])
 // Check the `href` property so that users can treat anchors as links.
 assert-property: (".src-line-numbers > a:nth-child(1)", {
     "href": |DOC_PATH| + "/src/test_docs/lib.rs.html#1"
@@ -122,7 +122,7 @@ store-property: (
 )
 define-function: (
     "check-sidebar-dir-entry",
-    (x, y),
+    [x, y],
     block {
         assert: "details:first-of-type.dir-entry[open] > summary::marker"
         assert-css: ("#src-sidebar > details:first-of-type.dir-entry", {"padding-left": "4px"})

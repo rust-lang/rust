@@ -25,8 +25,9 @@ impl ShortOffsetRunHeader {
 
 impl RawEmitter {
     pub fn emit_skiplist(&mut self, ranges: &[Range<u32>]) {
+        let first_code_point = ranges.first().unwrap().start;
         let mut offsets = Vec::<u32>::new();
-        let points = ranges.iter().flat_map(|r| vec![r.start, r.end]).collect::<Vec<u32>>();
+        let points = ranges.iter().flat_map(|r| [r.start, r.end]).collect::<Vec<u32>>();
         let mut offset = 0;
         for pt in points {
             let delta = pt - offset;
@@ -86,7 +87,26 @@ impl RawEmitter {
         .unwrap();
         self.bytes_used += coded_offsets.len();
 
-        writeln!(&mut self.file, "pub fn lookup(c: char) -> bool {{").unwrap();
+        // The inlining in this code works like the following:
+        //
+        // The `skip_search` function is always inlined into the parent `lookup` fn,
+        // thus the compiler can generate optimal code based on the referenced `static`s.
+        //
+        // In the case of ASCII optimization, the lower-bounds check is inlined into
+        // the caller, and slower-path `skip_search` is outlined into a separate `lookup_slow` fn.
+        //
+        // Thus, in both cases, the `skip_search` function is specialized for the `static`s,
+        // and outlined into the prebuilt `std`.
+        if first_code_point > 0x7f {
+            writeln!(&mut self.file, "#[inline]").unwrap();
+            writeln!(&mut self.file, "pub fn lookup(c: char) -> bool {{").unwrap();
+            writeln!(&mut self.file, "    (c as u32) >= {first_code_point:#04x} && lookup_slow(c)")
+                .unwrap();
+            writeln!(&mut self.file, "}}").unwrap();
+            writeln!(&mut self.file, "fn lookup_slow(c: char) -> bool {{").unwrap();
+        } else {
+            writeln!(&mut self.file, "pub fn lookup(c: char) -> bool {{").unwrap();
+        }
         writeln!(&mut self.file, "    super::skip_search(",).unwrap();
         writeln!(&mut self.file, "        c as u32,").unwrap();
         writeln!(&mut self.file, "        &SHORT_OFFSET_RUNS,").unwrap();

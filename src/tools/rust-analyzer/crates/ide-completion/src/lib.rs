@@ -207,7 +207,7 @@ pub fn completions(
             CompletionAnalysis::String { original, expanded: Some(expanded) } => {
                 completions::extern_abi::complete_extern_abi(acc, ctx, expanded);
                 completions::format_string::format_string(acc, ctx, original, expanded);
-                completions::env_vars::complete_cargo_env_vars(acc, ctx, expanded);
+                completions::env_vars::complete_cargo_env_vars(acc, ctx, original, expanded);
             }
             CompletionAnalysis::UnexpandedAttrTT {
                 colon_prefix,

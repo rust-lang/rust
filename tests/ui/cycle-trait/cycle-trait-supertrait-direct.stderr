@@ -5,7 +5,7 @@ LL | trait Chromosome: Chromosome {
    |                   ^^^^^^^^^^
    |
    = note: ...which immediately requires computing the super predicates of `Chromosome` again
-note: cycle used when collecting item types in top-level module
+note: cycle used when checking that `Chromosome` is well-formed
   --> $DIR/cycle-trait-supertrait-direct.rs:3:1
    |
 LL | / trait Chromosome: Chromosome {

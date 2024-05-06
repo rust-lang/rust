@@ -1,12 +1,14 @@
 #![feature(
     core_intrinsics,
     coroutines,
+    stmt_expr_attributes,
     coroutine_trait,
     is_sorted,
     repr_simd,
     tuple_trait,
     unboxed_closures
 )]
+#![allow(internal_features)]
 
 #[cfg(target_arch = "x86_64")]
 use std::arch::x86_64::*;
@@ -122,9 +124,12 @@ fn main() {
         test_simd();
     }
 
-    Box::pin(move |mut _task_context| {
-        yield ();
-    })
+    Box::pin(
+        #[coroutine]
+        move |mut _task_context| {
+            yield ();
+        },
+    )
     .as_mut()
     .resume(0);
 
@@ -167,6 +172,14 @@ fn main() {
     transmute_fat_pointer();
 
     rust_call_abi();
+
+    const fn no_str() -> Option<Box<str>> {
+        None
+    }
+
+    static STATIC_WITH_MAYBE_NESTED_BOX: &Option<Box<str>> = &no_str();
+
+    println!("{:?}", STATIC_WITH_MAYBE_NESTED_BOX);
 }
 
 fn panic(_: u128) {

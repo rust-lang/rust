@@ -15,6 +15,7 @@ use crate::panic::{RefUnwindSafe, UnwindSafe};
 use crate::sync::atomic::{AtomicBool, Ordering};
 use crate::sync::{Arc, Mutex, MutexGuard, OnceLock, ReentrantLock, ReentrantLockGuard};
 use crate::sys::stdio;
+use crate::thread::AccessError;
 
 type LocalStream = Arc<Mutex<Vec<u8>>>;
 
@@ -128,8 +129,8 @@ impl Write for StdoutRaw {
     }
 
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
-        let total = bufs.iter().map(|b| b.len()).sum();
-        handle_ebadf(self.0.write_vectored(bufs), total)
+        let total = || bufs.iter().map(|b| b.len()).sum();
+        handle_ebadf_lazy(self.0.write_vectored(bufs), total)
     }
 
     #[inline]
@@ -160,8 +161,8 @@ impl Write for StderrRaw {
     }
 
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
-        let total = bufs.iter().map(|b| b.len()).sum();
-        handle_ebadf(self.0.write_vectored(bufs), total)
+        let total = || bufs.iter().map(|b| b.len()).sum();
+        handle_ebadf_lazy(self.0.write_vectored(bufs), total)
     }
 
     #[inline]
@@ -189,6 +190,13 @@ impl Write for StderrRaw {
 fn handle_ebadf<T>(r: io::Result<T>, default: T) -> io::Result<T> {
     match r {
         Err(ref e) if stdio::is_ebadf(e) => Ok(default),
+        r => r,
+    }
+}
+
+fn handle_ebadf_lazy<T>(r: io::Result<T>, default: impl FnOnce() -> T) -> io::Result<T> {
+    match r {
+        Err(ref e) if stdio::is_ebadf(e) => Ok(default()),
         r => r,
     }
 }
@@ -444,6 +452,38 @@ impl Read for Stdin {
     fn read_exact(&mut self, buf: &mut [u8]) -> io::Result<()> {
         self.lock().read_exact(buf)
     }
+    fn read_buf_exact(&mut self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
+        self.lock().read_buf_exact(cursor)
+    }
+}
+
+#[stable(feature = "read_shared_stdin", since = "1.78.0")]
+impl Read for &Stdin {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        self.lock().read(buf)
+    }
+    fn read_buf(&mut self, buf: BorrowedCursor<'_>) -> io::Result<()> {
+        self.lock().read_buf(buf)
+    }
+    fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
+        self.lock().read_vectored(bufs)
+    }
+    #[inline]
+    fn is_read_vectored(&self) -> bool {
+        self.lock().is_read_vectored()
+    }
+    fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
+        self.lock().read_to_end(buf)
+    }
+    fn read_to_string(&mut self, buf: &mut String) -> io::Result<usize> {
+        self.lock().read_to_string(buf)
+    }
+    fn read_exact(&mut self, buf: &mut [u8]) -> io::Result<()> {
+        self.lock().read_exact(buf)
+    }
+    fn read_buf_exact(&mut self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
+        self.lock().read_buf_exact(cursor)
+    }
 }
 
 // only used by platform-dependent io::copy specializations, i.e. unused on some platforms
@@ -483,6 +523,10 @@ impl Read for StdinLock<'_> {
 
     fn read_exact(&mut self, buf: &mut [u8]) -> io::Result<()> {
         self.inner.read_exact(buf)
+    }
+
+    fn read_buf_exact(&mut self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
+        self.inner.read_buf_exact(cursor)
     }
 }
 
@@ -1021,12 +1065,31 @@ impl fmt::Debug for StderrLock<'_> {
 )]
 #[doc(hidden)]
 pub fn set_output_capture(sink: Option<LocalStream>) -> Option<LocalStream> {
+    try_set_output_capture(sink).expect(
+        "cannot access a Thread Local Storage value \
+         during or after destruction",
+    )
+}
+
+/// Tries to set the thread-local output capture buffer and returns the old one.
+/// This may fail once thread-local destructors are called. It's used in panic
+/// handling instead of `set_output_capture`.
+#[unstable(
+    feature = "internal_output_capture",
+    reason = "this function is meant for use in the test crate \
+    and may disappear in the future",
+    issue = "none"
+)]
+#[doc(hidden)]
+pub fn try_set_output_capture(
+    sink: Option<LocalStream>,
+) -> Result<Option<LocalStream>, AccessError> {
     if sink.is_none() && !OUTPUT_CAPTURE_USED.load(Ordering::Relaxed) {
         // OUTPUT_CAPTURE is definitely None since OUTPUT_CAPTURE_USED is false.
-        return None;
+        return Ok(None);
     }
     OUTPUT_CAPTURE_USED.store(true, Ordering::Relaxed);
-    OUTPUT_CAPTURE.with(move |slot| slot.replace(sink))
+    OUTPUT_CAPTURE.try_with(move |slot| slot.replace(sink))
 }
 
 /// Write `args` to the capture buffer if enabled and possible, or `global_s`

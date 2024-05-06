@@ -1,5 +1,6 @@
 //@ check-pass
 //@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
 
 #![allow(non_upper_case_globals)]

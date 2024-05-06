@@ -12,6 +12,8 @@ incremental = true
 # Using these defaults will download the stage2 compiler (see `download-rustc`
 # setting) and the stage2 toolchain should therefore be used for these defaults.
 download-rustc = "if-unchanged"
+# Build the llvm-bitcode-linker as it is required for running nvptx tests
+llvm-bitcode-linker = true
 
 [build]
 # Document with the in-tree rustdoc by default, since `download-rustc` makes it quick to compile.

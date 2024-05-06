@@ -7,7 +7,6 @@ use rustc_middle::ty::util::{CheckRegions, NotUniqueParam};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::ty::{TypeSuperVisitable, TypeVisitable, TypeVisitor};
 use rustc_span::Span;
-use rustc_trait_selection::traits::check_args_compatible;
 
 use crate::errors::{DuplicateArg, NotParam};
 
@@ -54,7 +53,7 @@ impl<'tcx> OpaqueTypeCollector<'tcx> {
         self.span = old;
     }
 
-    fn parent_trait_ref(&self) -> Option<ty::TraitRef<'tcx>> {
+    fn parent_impl_trait_ref(&self) -> Option<ty::TraitRef<'tcx>> {
         let parent = self.parent()?;
         if matches!(self.tcx.def_kind(parent), DefKind::Impl { .. }) {
             Some(self.tcx.impl_trait_ref(parent)?.instantiate_identity())
@@ -131,7 +130,7 @@ impl<'tcx> OpaqueTypeCollector<'tcx> {
         TaitInBodyFinder { collector: self }.visit_expr(body);
     }
 
-    fn visit_opaque_ty(&mut self, alias_ty: &ty::AliasTy<'tcx>) {
+    fn visit_opaque_ty(&mut self, alias_ty: ty::AliasTy<'tcx>) {
         if !self.seen.insert(alias_ty.def_id.expect_local()) {
             return;
         }
@@ -141,7 +140,7 @@ impl<'tcx> OpaqueTypeCollector<'tcx> {
         trace!(?origin);
         match origin {
             rustc_hir::OpaqueTyOrigin::FnReturn(_) | rustc_hir::OpaqueTyOrigin::AsyncFn(_) => {}
-            rustc_hir::OpaqueTyOrigin::TyAlias { in_assoc_ty } => {
+            rustc_hir::OpaqueTyOrigin::TyAlias { in_assoc_ty, .. } => {
                 if !in_assoc_ty {
                     if !self.check_tait_defining_scope(alias_ty.def_id.expect_local()) {
                         return;
@@ -206,10 +205,11 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
     #[instrument(skip(self), ret, level = "trace")]
     fn visit_ty(&mut self, t: Ty<'tcx>) {
         t.super_visit_with(self);
-        match t.kind() {
+        match *t.kind() {
             ty::Alias(ty::Opaque, alias_ty) if alias_ty.def_id.is_local() => {
                 self.visit_opaque_ty(alias_ty);
             }
+            // Skips type aliases, as they are meant to be transparent.
             ty::Alias(ty::Weak, alias_ty) if alias_ty.def_id.is_local() => {
                 self.tcx
                     .type_of(alias_ty.def_id)
@@ -220,11 +220,11 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
                 // This avoids having to do normalization of `Self::AssocTy` by only
                 // supporting the case of a method defining opaque types from assoc types
                 // in the same impl block.
-                if let Some(parent_trait_ref) = self.parent_trait_ref() {
+                if let Some(impl_trait_ref) = self.parent_impl_trait_ref() {
                     // If the trait ref of the associated item and the impl differs,
                     // then we can't use the impl's identity args below, so
                     // just skip.
-                    if alias_ty.trait_ref(self.tcx) == parent_trait_ref {
+                    if alias_ty.trait_ref(self.tcx) == impl_trait_ref {
                         let parent = self.parent().expect("we should have a parent here");
 
                         for &assoc in self.tcx.associated_items(parent).in_definition_order() {
@@ -239,13 +239,17 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
                                 continue;
                             }
 
+                            if !self.seen.insert(assoc.def_id.expect_local()) {
+                                return;
+                            }
+
                             let impl_args = alias_ty.args.rebase_onto(
                                 self.tcx,
-                                parent_trait_ref.def_id,
+                                impl_trait_ref.def_id,
                                 ty::GenericArgs::identity_for_item(self.tcx, parent),
                             );
 
-                            if check_args_compatible(self.tcx, assoc, impl_args) {
+                            if self.tcx.check_args_compatible(assoc.def_id, impl_args) {
                                 self.tcx
                                     .type_of(assoc.def_id)
                                     .instantiate(self.tcx, impl_args)
@@ -259,6 +263,24 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
                             }
                         }
                     }
+                } else if let Some(ty::ImplTraitInTraitData::Trait { fn_def_id, .. }) =
+                    self.tcx.opt_rpitit_info(alias_ty.def_id)
+                    && fn_def_id == self.item.into()
+                {
+                    // RPITIT in trait definitions get desugared to an associated type. For
+                    // default methods we also create an opaque type this associated type
+                    // normalizes to. The associated type is only known to normalize to the
+                    // opaque if it is fully concrete. There could otherwise be an impl
+                    // overwriting the default method.
+                    //
+                    // However, we have to be able to normalize the associated type while inside
+                    // of the default method. This is normally handled by adding an unchecked
+                    // `Projection(<Self as Trait>::synthetic_assoc_ty, trait_def::opaque)`
+                    // assumption to the `param_env` of the default method. We also separately
+                    // rely on that assumption here.
+                    let ty = self.tcx.type_of(alias_ty.def_id).instantiate(self.tcx, alias_ty.args);
+                    let ty::Alias(ty::Opaque, alias_ty) = *ty.kind() else { bug!("{ty:?}") };
+                    self.visit_opaque_ty(alias_ty);
                 }
             }
             ty::Adt(def, _) if def.did().is_local() => {
@@ -299,7 +321,7 @@ fn opaque_types_defined_by<'tcx>(
     match kind {
         DefKind::AssocFn
         | DefKind::Fn
-        | DefKind::Static(_)
+        | DefKind::Static { .. }
         | DefKind::Const
         | DefKind::AssocConst
         | DefKind::AnonConst => {

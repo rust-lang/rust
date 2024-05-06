@@ -170,14 +170,14 @@ fn wait_timeout_wake() {
         let t = thread::spawn(move || {
             let _g = m2.lock().unwrap();
             thread::sleep(Duration::from_millis(1));
-            notified_copy.store(true, Ordering::SeqCst);
+            notified_copy.store(true, Ordering::Relaxed);
             c2.notify_one();
         });
         let (g, timeout_res) = c.wait_timeout(g, Duration::from_millis(u64::MAX)).unwrap();
         assert!(!timeout_res.timed_out());
         // spurious wakeups mean this isn't necessarily true
         // so execute test again, if not notified
-        if !notified.load(Ordering::SeqCst) {
+        if !notified.load(Ordering::Relaxed) {
             t.join().unwrap();
             continue;
         }

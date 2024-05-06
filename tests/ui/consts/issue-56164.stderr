@@ -6,7 +6,10 @@ LL | const fn foo() { (||{})() }
    |
    = note: closures need an RFC before allowed to be called in constant functions
    = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
-   = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
+help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
+   |
+LL + #![feature(const_trait_impl)]
+   |
 
 error: function pointer calls are not allowed in constant functions
   --> $DIR/issue-56164.rs:5:5

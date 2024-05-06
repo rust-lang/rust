@@ -1,6 +1,6 @@
 use rustc_errors::{
-    codes::*, AddToDiagnostic, Diag, DiagCtxt, EmissionGuarantee, IntoDiagnostic, Level, MultiSpan,
-    SingleLabelManySpans, SubdiagMessageOp,
+    codes::*, Diag, DiagCtxt, Diagnostic, EmissionGuarantee, Level, MultiSpan,
+    SingleLabelManySpans, SubdiagMessageOp, Subdiagnostic,
 };
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{symbol::Ident, Span, Symbol};
@@ -425,9 +425,9 @@ pub(crate) struct EnvNotDefinedWithUserMessage {
 }
 
 // Hand-written implementation to support custom user messages.
-impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for EnvNotDefinedWithUserMessage {
+impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for EnvNotDefinedWithUserMessage {
     #[track_caller]
-    fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> Diag<'a, G> {
+    fn into_diag(self, dcx: &'a DiagCtxt, level: Level) -> Diag<'a, G> {
         #[expect(
             rustc::untranslatable_diagnostic,
             reason = "cannot translate user-provided messages"
@@ -456,6 +456,14 @@ pub(crate) enum EnvNotDefined<'a> {
         var: Symbol,
         var_expr: &'a rustc_ast::Expr,
     },
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_env_not_unicode)]
+pub(crate) struct EnvNotUnicode {
+    #[primary_span]
+    pub(crate) span: Span,
+    pub(crate) var: Symbol,
 }
 
 #[derive(Diagnostic)]
@@ -571,7 +579,7 @@ pub(crate) struct FormatUnknownTrait<'a> {
     style = "tool-only",
     applicability = "maybe-incorrect"
 )]
-pub struct FormatUnknownTraitSugg {
+pub(crate) struct FormatUnknownTraitSugg {
     #[primary_span]
     pub span: Span,
     pub fmt: &'static str,
@@ -589,11 +597,11 @@ pub(crate) struct FormatUnusedArg {
 
 // Allow the singular form to be a subdiagnostic of the multiple-unused
 // form of diagnostic.
-impl AddToDiagnostic for FormatUnusedArg {
-    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
+impl Subdiagnostic for FormatUnusedArg {
+    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
-        f: F,
+        f: &F,
     ) {
         diag.arg("named", self.named);
         let msg = f(diag, crate::fluent_generated::builtin_macros_format_unused_arg.into());
@@ -767,6 +775,13 @@ pub(crate) struct AsmNoReturn {
 }
 
 #[derive(Diagnostic)]
+#[diag(builtin_macros_asm_mayunwind)]
+pub(crate) struct AsmMayUnwind {
+    #[primary_span]
+    pub(crate) labels_sp: Vec<Span>,
+}
+
+#[derive(Diagnostic)]
 #[diag(builtin_macros_global_asm_clobber_abi)]
 pub(crate) struct GlobalAsmClobberAbi {
     #[primary_span]
@@ -778,8 +793,8 @@ pub(crate) struct AsmClobberNoReg {
     pub(crate) clobbers: Vec<Span>,
 }
 
-impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for AsmClobberNoReg {
-    fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> Diag<'a, G> {
+impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AsmClobberNoReg {
+    fn into_diag(self, dcx: &'a DiagCtxt, level: Level) -> Diag<'a, G> {
         // eager translation as `span_labels` takes `AsRef<str>`
         let lbl1 = dcx.eagerly_translate_to_string(
             crate::fluent_generated::builtin_macros_asm_clobber_abi,
@@ -826,4 +841,27 @@ pub(crate) struct TestRunnerNargs {
 pub(crate) struct ExpectedRegisterClassOrExplicitRegister {
     #[primary_span]
     pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_expected_comma_in_list)]
+pub(crate) struct ExpectedCommaInList {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_only_one_argument)]
+pub(crate) struct OnlyOneArgument<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub name: &'a str,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_takes_no_arguments)]
+pub(crate) struct TakesNoArguments<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub name: &'a str,
 }

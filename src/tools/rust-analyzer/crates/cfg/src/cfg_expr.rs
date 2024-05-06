@@ -47,6 +47,7 @@ impl CfgExpr {
     pub fn parse<S>(tt: &tt::Subtree<S>) -> CfgExpr {
         next_cfg_expr(&mut tt.token_trees.iter()).unwrap_or(CfgExpr::Invalid)
     }
+
     /// Fold the cfg by querying all basic `Atom` and `KeyValue` predicates.
     pub fn fold(&self, query: &dyn Fn(&CfgAtom) -> bool) -> Option<bool> {
         match self {
@@ -62,7 +63,6 @@ impl CfgExpr {
         }
     }
 }
-
 fn next_cfg_expr<S>(it: &mut SliceIter<'_, tt::TokenTree<S>>) -> Option<CfgExpr> {
     let name = match it.next() {
         None => return None,

@@ -59,7 +59,7 @@ pub use core::time::TryFromFloatSecsError;
 /// experience time dilation (slow down or speed up), but it will never go
 /// backwards.
 /// As part of this non-guarantee it is also not specified whether system suspends count as
-/// elapsed time or not. The behavior varies across platforms and rust versions.
+/// elapsed time or not. The behavior varies across platforms and Rust versions.
 ///
 /// Instants are opaque types that can only be compared to one another. There is
 /// no method to get "the number of seconds" from an instant. Instead, it only
@@ -142,7 +142,7 @@ pub use core::time::TryFromFloatSecsError;
 /// where monotonicity is violated, or `Instant`s are subtracted in the wrong order.
 ///
 /// This workaround obscures programming errors where earlier and later instants are accidentally
-/// swapped. For this reason future rust versions may reintroduce panics.
+/// swapped. For this reason future Rust versions may reintroduce panics.
 ///
 /// [tier 1]: https://doc.rust-lang.org/rustc/platform-support.html
 /// [`duration_since`]: Instant::duration_since
@@ -290,7 +290,7 @@ impl Instant {
     ///
     /// # Panics
     ///
-    /// Previous rust versions panicked when `earlier` was later than `self`. Currently this
+    /// Previous Rust versions panicked when `earlier` was later than `self`. Currently this
     /// method saturates. Future versions may reintroduce the panic in some circumstances.
     /// See [Monotonicity].
     ///
@@ -365,7 +365,7 @@ impl Instant {
     ///
     /// # Panics
     ///
-    /// Previous rust versions panicked when the current time was earlier than self. Currently this
+    /// Previous Rust versions panicked when the current time was earlier than self. Currently this
     /// method returns a Duration of zero in that case. Future versions may reintroduce the panic.
     /// See [Monotonicity].
     ///
@@ -450,7 +450,7 @@ impl Sub<Instant> for Instant {
     ///
     /// # Panics
     ///
-    /// Previous rust versions panicked when `other` was later than `self`. Currently this
+    /// Previous Rust versions panicked when `other` was later than `self`. Currently this
     /// method saturates. Future versions may reintroduce the panic in some circumstances.
     /// See [Monotonicity].
     ///

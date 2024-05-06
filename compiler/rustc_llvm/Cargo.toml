@@ -8,12 +8,7 @@ edition = "2021"
 libc = "0.2.73"
 # tidy-alphabetical-end
 
-# FIXME: updating cc past 1.0.79 breaks libstd bootstrapping, pin
-# to the last working version here so `cargo update` doesn't cause the
-# a higher version to be selected
-# https://github.com/rust-lang/cc-rs/issues/913
-# 1.0.{84, 85} fix this but have been yanked
 [build-dependencies]
 # tidy-alphabetical-start
-cc = "=1.0.79"
+cc = "1.0.90"
 # tidy-alphabetical-end

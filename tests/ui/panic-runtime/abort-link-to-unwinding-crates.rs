@@ -3,7 +3,7 @@
 //@ compile-flags:-C panic=abort
 //@ aux-build:exit-success-if-unwind.rs
 //@ no-prefer-dynamic
-//@ ignore-emscripten no processes
+//@ ignore-wasm32 no processes
 //@ ignore-sgx no processes
 //@ ignore-macos
 

@@ -11,7 +11,8 @@ use crate::value::Value;
 use rustc_codegen_ssa::base::{wants_msvc_seh, wants_wasm_eh};
 use rustc_codegen_ssa::errors as ssa_errors;
 use rustc_codegen_ssa::traits::*;
-use rustc_data_structures::base_n;
+use rustc_data_structures::base_n::ToBaseN;
+use rustc_data_structures::base_n::ALPHANUMERIC_ONLY;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_hir::def_id::DefId;
@@ -27,9 +28,7 @@ use rustc_session::config::{CrateType, DebugInfo, PAuthKey, PacRet};
 use rustc_session::Session;
 use rustc_span::source_map::Spanned;
 use rustc_span::Span;
-use rustc_target::abi::{
-    call::FnAbi, HasDataLayout, PointeeInfo, Size, TargetDataLayout, VariantIdx,
-};
+use rustc_target::abi::{call::FnAbi, HasDataLayout, TargetDataLayout, VariantIdx};
 use rustc_target::spec::{HasTargetSpec, RelocModel, Target, TlsModel};
 use smallvec::SmallVec;
 
@@ -77,13 +76,12 @@ pub struct CodegenCx<'ll, 'tcx> {
     /// See <https://llvm.org/docs/LangRef.html#the-llvm-compiler-used-global-variable> for details
     pub compiler_used_statics: RefCell<Vec<&'ll Value>>,
 
-    /// Mapping of non-scalar types to llvm types and field remapping if needed.
-    pub type_lowering: RefCell<FxHashMap<(Ty<'tcx>, Option<VariantIdx>), TypeLowering<'ll>>>,
+    /// Mapping of non-scalar types to llvm types.
+    pub type_lowering: RefCell<FxHashMap<(Ty<'tcx>, Option<VariantIdx>), &'ll Type>>,
 
     /// Mapping of scalar types to llvm types.
     pub scalar_lltypes: RefCell<FxHashMap<Ty<'tcx>, &'ll Type>>,
 
-    pub pointee_infos: RefCell<FxHashMap<(Ty<'tcx>, Size), Option<PointeeInfo>>>,
     pub isize_ty: &'ll Type,
 
     pub coverage_cx: Option<coverageinfo::CrateCoverageContext<'ll, 'tcx>>,
@@ -103,15 +101,6 @@ pub struct CodegenCx<'ll, 'tcx> {
     /// `global_asm!` needs to be able to find this new global so that it can
     /// compute the correct mangled symbol name to insert into the asm.
     pub renamed_statics: RefCell<FxHashMap<DefId, &'ll Value>>,
-}
-
-pub struct TypeLowering<'ll> {
-    /// Associated LLVM type
-    pub lltype: &'ll Type,
-
-    /// If padding is used the slice maps fields from source order
-    /// to llvm order.
-    pub field_remapping: Option<SmallVec<[u32; 4]>>,
 }
 
 fn to_llvm_tls_model(tls_model: TlsModel) -> llvm::ThreadLocalMode {
@@ -135,17 +124,6 @@ pub unsafe fn create_module<'ll>(
 
     let mut target_data_layout = sess.target.data_layout.to_string();
     let llvm_version = llvm_util::get_version();
-    if llvm_version < (17, 0, 0) {
-        if sess.target.arch.starts_with("powerpc") {
-            // LLVM 17 specifies function pointer alignment for ppc:
-            // https://reviews.llvm.org/D147016
-            target_data_layout = target_data_layout
-                .replace("-Fn32", "")
-                .replace("-Fi32", "")
-                .replace("-Fn64", "")
-                .replace("-Fi64", "");
-        }
-    }
     if llvm_version < (18, 0, 0) {
         if sess.target.arch == "x86" || sess.target.arch == "x86_64" {
             // LLVM 18 adjusts i128 to be 128-bit aligned on x86 variants.
@@ -203,13 +181,13 @@ pub unsafe fn create_module<'ll>(
     // to ensure intrinsic calls don't use it.
     if !sess.needs_plt() {
         let avoid_plt = c"RtLibUseGOT".as_ptr().cast();
-        llvm::LLVMRustAddModuleFlag(llmod, llvm::LLVMModFlagBehavior::Warning, avoid_plt, 1);
+        llvm::LLVMRustAddModuleFlagU32(llmod, llvm::LLVMModFlagBehavior::Warning, avoid_plt, 1);
     }
 
     // Enable canonical jump tables if CFI is enabled. (See https://reviews.llvm.org/D65629.)
     if sess.is_sanitizer_cfi_canonical_jump_tables_enabled() && sess.is_sanitizer_cfi_enabled() {
         let canonical_jump_tables = c"CFI Canonical Jump Tables".as_ptr().cast();
-        llvm::LLVMRustAddModuleFlag(
+        llvm::LLVMRustAddModuleFlagU32(
             llmod,
             llvm::LLVMModFlagBehavior::Override,
             canonical_jump_tables,
@@ -220,7 +198,7 @@ pub unsafe fn create_module<'ll>(
     // Enable LTO unit splitting if specified or if CFI is enabled. (See https://reviews.llvm.org/D53891.)
     if sess.is_split_lto_unit_enabled() || sess.is_sanitizer_cfi_enabled() {
         let enable_split_lto_unit = c"EnableSplitLTOUnit".as_ptr().cast();
-        llvm::LLVMRustAddModuleFlag(
+        llvm::LLVMRustAddModuleFlagU32(
             llmod,
             llvm::LLVMModFlagBehavior::Override,
             enable_split_lto_unit,
@@ -231,7 +209,7 @@ pub unsafe fn create_module<'ll>(
     // Add "kcfi" module flag if KCFI is enabled. (See https://reviews.llvm.org/D119296.)
     if sess.is_sanitizer_kcfi_enabled() {
         let kcfi = c"kcfi".as_ptr().cast();
-        llvm::LLVMRustAddModuleFlag(llmod, llvm::LLVMModFlagBehavior::Override, kcfi, 1);
+        llvm::LLVMRustAddModuleFlagU32(llmod, llvm::LLVMModFlagBehavior::Override, kcfi, 1);
     }
 
     // Control Flow Guard is currently only supported by the MSVC linker on Windows.
@@ -240,7 +218,7 @@ pub unsafe fn create_module<'ll>(
             CFGuard::Disabled => {}
             CFGuard::NoChecks => {
                 // Set `cfguard=1` module flag to emit metadata only.
-                llvm::LLVMRustAddModuleFlag(
+                llvm::LLVMRustAddModuleFlagU32(
                     llmod,
                     llvm::LLVMModFlagBehavior::Warning,
                     c"cfguard".as_ptr() as *const _,
@@ -249,7 +227,7 @@ pub unsafe fn create_module<'ll>(
             }
             CFGuard::Checks => {
                 // Set `cfguard=2` module flag to emit metadata and checks.
-                llvm::LLVMRustAddModuleFlag(
+                llvm::LLVMRustAddModuleFlagU32(
                     llmod,
                     llvm::LLVMModFlagBehavior::Warning,
                     c"cfguard".as_ptr() as *const _,
@@ -260,35 +238,29 @@ pub unsafe fn create_module<'ll>(
     }
 
     if let Some(BranchProtection { bti, pac_ret }) = sess.opts.unstable_opts.branch_protection {
-        let behavior = if llvm_version >= (15, 0, 0) {
-            llvm::LLVMModFlagBehavior::Min
-        } else {
-            llvm::LLVMModFlagBehavior::Error
-        };
-
         if sess.target.arch == "aarch64" {
-            llvm::LLVMRustAddModuleFlag(
+            llvm::LLVMRustAddModuleFlagU32(
                 llmod,
-                behavior,
+                llvm::LLVMModFlagBehavior::Min,
                 c"branch-target-enforcement".as_ptr().cast(),
                 bti.into(),
             );
-            llvm::LLVMRustAddModuleFlag(
+            llvm::LLVMRustAddModuleFlagU32(
                 llmod,
-                behavior,
+                llvm::LLVMModFlagBehavior::Min,
                 c"sign-return-address".as_ptr().cast(),
                 pac_ret.is_some().into(),
             );
             let pac_opts = pac_ret.unwrap_or(PacRet { leaf: false, key: PAuthKey::A });
-            llvm::LLVMRustAddModuleFlag(
+            llvm::LLVMRustAddModuleFlagU32(
                 llmod,
-                behavior,
+                llvm::LLVMModFlagBehavior::Min,
                 c"sign-return-address-all".as_ptr().cast(),
                 pac_opts.leaf.into(),
             );
-            llvm::LLVMRustAddModuleFlag(
+            llvm::LLVMRustAddModuleFlagU32(
                 llmod,
-                behavior,
+                llvm::LLVMModFlagBehavior::Min,
                 c"sign-return-address-with-bkey".as_ptr().cast(),
                 u32::from(pac_opts.key == PAuthKey::B),
             );
@@ -302,7 +274,7 @@ pub unsafe fn create_module<'ll>(
 
     // Pass on the control-flow protection flags to LLVM (equivalent to `-fcf-protection` in Clang).
     if let CFProtection::Branch | CFProtection::Full = sess.opts.unstable_opts.cf_protection {
-        llvm::LLVMRustAddModuleFlag(
+        llvm::LLVMRustAddModuleFlagU32(
             llmod,
             llvm::LLVMModFlagBehavior::Override,
             c"cf-protection-branch".as_ptr().cast(),
@@ -310,7 +282,7 @@ pub unsafe fn create_module<'ll>(
         )
     }
     if let CFProtection::Return | CFProtection::Full = sess.opts.unstable_opts.cf_protection {
-        llvm::LLVMRustAddModuleFlag(
+        llvm::LLVMRustAddModuleFlagU32(
             llmod,
             llvm::LLVMModFlagBehavior::Override,
             c"cf-protection-return".as_ptr().cast(),
@@ -319,7 +291,7 @@ pub unsafe fn create_module<'ll>(
     }
 
     if sess.opts.unstable_opts.virtual_function_elimination {
-        llvm::LLVMRustAddModuleFlag(
+        llvm::LLVMRustAddModuleFlagU32(
             llmod,
             llvm::LLVMModFlagBehavior::Error,
             c"Virtual Function Elim".as_ptr().cast(),
@@ -329,7 +301,7 @@ pub unsafe fn create_module<'ll>(
 
     // Set module flag to enable Windows EHCont Guard (/guard:ehcont).
     if sess.opts.unstable_opts.ehcont_guard {
-        llvm::LLVMRustAddModuleFlag(
+        llvm::LLVMRustAddModuleFlagU32(
             llmod,
             llvm::LLVMModFlagBehavior::Warning,
             c"ehcontguard".as_ptr() as *const _,
@@ -341,6 +313,7 @@ pub unsafe fn create_module<'ll>(
     //
     // On the wasm targets it will get hooked up to the "producer" sections
     // `processed-by` information.
+    #[allow(clippy::option_env_unwrap)]
     let rustc_producer =
         format!("rustc version {}", option_env!("CFG_VERSION").expect("CFG_VERSION"));
     let name_metadata = llvm::LLVMMDStringInContext(
@@ -353,6 +326,22 @@ pub unsafe fn create_module<'ll>(
         c"llvm.ident".as_ptr(),
         llvm::LLVMMDNodeInContext(llcx, &name_metadata, 1),
     );
+
+    // Emit RISC-V specific target-abi metadata
+    // to workaround lld as the LTO plugin not
+    // correctly setting target-abi for the LTO object
+    // FIXME: https://github.com/llvm/llvm-project/issues/50591
+    // If llvm_abiname is empty, emit nothing.
+    let llvm_abiname = &sess.target.options.llvm_abiname;
+    if matches!(sess.target.arch.as_ref(), "riscv32" | "riscv64") && !llvm_abiname.is_empty() {
+        llvm::LLVMRustAddModuleFlagString(
+            llmod,
+            llvm::LLVMModFlagBehavior::Error,
+            c"target-abi".as_ptr(),
+            llvm_abiname.as_ptr().cast(),
+            llvm_abiname.len(),
+        );
+    }
 
     // Add module flags specified via -Z llvm_module_flag
     for (key, value, behavior) in &sess.opts.unstable_opts.llvm_module_flag {
@@ -369,7 +358,7 @@ pub unsafe fn create_module<'ll>(
             // We already checked this during option parsing
             _ => unreachable!(),
         };
-        llvm::LLVMRustAddModuleFlag(llmod, behavior, key.as_ptr().cast(), *value)
+        llvm::LLVMRustAddModuleFlagU32(llmod, behavior, key.as_ptr().cast(), *value)
     }
 
     llmod
@@ -475,7 +464,6 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
             compiler_used_statics: RefCell::new(Vec::new()),
             type_lowering: Default::default(),
             scalar_lltypes: Default::default(),
-            pointee_infos: Default::default(),
             isize_ty,
             coverage_cx,
             dbg_cx,
@@ -564,11 +552,12 @@ impl<'ll, 'tcx> MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
         let tcx = self.tcx;
         let llfn = match tcx.lang_items().eh_personality() {
-            Some(def_id) if name.is_none() => self.get_fn_addr(
-                ty::Instance::resolve(tcx, ty::ParamEnv::reveal_all(), def_id, ty::List::empty())
-                    .unwrap()
-                    .unwrap(),
-            ),
+            Some(def_id) if name.is_none() => self.get_fn_addr(ty::Instance::expect_resolve(
+                tcx,
+                ty::ParamEnv::reveal_all(),
+                def_id,
+                ty::List::empty(),
+            )),
             _ => {
                 let name = name.unwrap_or("rust_eh_personality");
                 if let Some(llfn) = self.get_declared_value(name) {
@@ -1027,7 +1016,7 @@ impl CodegenCx<'_, '_> {
         let mut name = String::with_capacity(prefix.len() + 6);
         name.push_str(prefix);
         name.push('.');
-        base_n::push_str(idx as u128, base_n::ALPHANUMERIC_ONLY, &mut name);
+        name.push_str(&(idx as u64).to_base(ALPHANUMERIC_ONLY));
         name
     }
 }

@@ -13,31 +13,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         ast_block: BlockId,
         source_info: SourceInfo,
     ) -> BlockAnd<()> {
-        let Block { region_scope, span, ref stmts, expr, targeted_by_break, safety_mode } =
+        let Block { region_scope, span, ref stmts, expr, targeted_by_break, safety_mode: _ } =
             self.thir[ast_block];
         self.in_scope((region_scope, source_info), LintLevel::Inherited, move |this| {
             if targeted_by_break {
                 this.in_breakable_scope(None, destination, span, |this| {
-                    Some(this.ast_block_stmts(
-                        destination,
-                        block,
-                        span,
-                        stmts,
-                        expr,
-                        safety_mode,
-                        region_scope,
-                    ))
+                    Some(this.ast_block_stmts(destination, block, span, stmts, expr, region_scope))
                 })
             } else {
-                this.ast_block_stmts(
-                    destination,
-                    block,
-                    span,
-                    stmts,
-                    expr,
-                    safety_mode,
-                    region_scope,
-                )
+                this.ast_block_stmts(destination, block, span, stmts, expr, region_scope)
             }
         })
     }
@@ -49,7 +33,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         span: Span,
         stmts: &[StmtId],
         expr: Option<ExprId>,
-        safety_mode: BlockSafety,
         region_scope: Scope,
     ) -> BlockAnd<()> {
         let this = self;
@@ -72,13 +55,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // First we build all the statements in the block.
         let mut let_scope_stack = Vec::with_capacity(8);
         let outer_source_scope = this.source_scope;
-        let outer_in_scope_unsafe = this.in_scope_unsafe;
         // This scope information is kept for breaking out of the parent remainder scope in case
         // one let-else pattern matching fails.
         // By doing so, we can be sure that even temporaries that receive extended lifetime
         // assignments are dropped, too.
         let mut last_remainder_scope = region_scope;
-        this.update_source_scope_for_safety_mode(span, safety_mode);
 
         let source_info = this.source_info(span);
         for stmt in stmts {
@@ -202,7 +183,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     let_scope_stack.push(remainder_scope);
 
                     let visibility_scope =
-                        Some(this.new_source_scope(remainder_span, LintLevel::Inherited, None));
+                        Some(this.new_source_scope(remainder_span, LintLevel::Inherited));
 
                     let initializer_span = this.thir[*initializer].span;
                     let scope = (*init_scope, source_info);
@@ -218,7 +199,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             this.visit_primary_bindings(
                                 pattern,
                                 UserTypeProjections::none(),
-                                &mut |this, _, _, _, node, span, _, _| {
+                                &mut |this, _, _, node, span, _, _| {
                                     this.storage_live_binding(
                                         block,
                                         node,
@@ -271,7 +252,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     let remainder_span = remainder_scope.span(this.tcx, this.region_scope_tree);
 
                     let visibility_scope =
-                        Some(this.new_source_scope(remainder_span, LintLevel::Inherited, None));
+                        Some(this.new_source_scope(remainder_span, LintLevel::Inherited));
 
                     // Evaluate the initializer, if present.
                     if let Some(init) = *initializer {
@@ -308,7 +289,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         this.visit_primary_bindings(
                             pattern,
                             UserTypeProjections::none(),
-                            &mut |this, _, _, _, node, span, _, _| {
+                            &mut |this, _, _, node, span, _, _| {
                                 this.storage_live_binding(block, node, span, OutsideGuard, true);
                                 this.schedule_drop_for_binding(node, span, OutsideGuard);
                             },
@@ -364,22 +345,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
         // Restore the original source scope.
         this.source_scope = outer_source_scope;
-        this.in_scope_unsafe = outer_in_scope_unsafe;
         block.unit()
-    }
-
-    /// If we are entering an unsafe block, create a new source scope
-    fn update_source_scope_for_safety_mode(&mut self, span: Span, safety_mode: BlockSafety) {
-        debug!("update_source_scope_for({:?}, {:?})", span, safety_mode);
-        let new_unsafety = match safety_mode {
-            BlockSafety::Safe => return,
-            BlockSafety::BuiltinUnsafe => Safety::BuiltinUnsafe,
-            BlockSafety::ExplicitUnsafe(hir_id) => {
-                self.in_scope_unsafe = Safety::ExplicitUnsafe(hir_id);
-                Safety::ExplicitUnsafe(hir_id)
-            }
-        };
-
-        self.source_scope = self.new_source_scope(span, LintLevel::Inherited, Some(new_unsafety));
     }
 }

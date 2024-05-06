@@ -2121,6 +2121,7 @@ async fn main() {
         "#,
         expect![[r#"
             16..193 '{     ...2 }; }': ()
+            16..193 '{     ...2 }; }': impl Future<Output = ()>
             26..27 'x': i32
             30..43 'unsafe { 92 }': i32
             39..41 '92': i32
@@ -2130,6 +2131,8 @@ async fn main() {
             65..83 'async ....await': ()
             73..75 '()': ()
             95..96 'z': ControlFlow<(), ()>
+            130..140 'try { () }': ControlFlow<(), ()>
+            130..140 'try { () }': fn from_output<ControlFlow<(), ()>>(<ControlFlow<(), ()> as Try>::Output) -> ControlFlow<(), ()>
             130..140 'try { () }': ControlFlow<(), ()>
             136..138 '()': ()
             150..151 'w': i32
@@ -3089,7 +3092,7 @@ fn main() {
             389..394 'boxed': Box<Foo<i32>>
             389..406 'boxed....nner()': &i32
             416..421 'good1': &i32
-            424..438 'Foo::get_inner': fn get_inner<i32>(&Box<Foo<i32>>) -> &i32
+            424..438 'Foo::get_inner': fn get_inner<i32, '{error}>(&Box<Foo<i32>>) -> &i32
             424..446 'Foo::g...boxed)': &i32
             439..445 '&boxed': &Box<Foo<i32>>
             440..445 'boxed': Box<Foo<i32>>
@@ -3097,7 +3100,7 @@ fn main() {
             464..469 'boxed': Box<Foo<i32>>
             464..480 'boxed....self()': &Foo<i32>
             490..495 'good2': &Foo<i32>
-            498..511 'Foo::get_self': fn get_self<i32>(&Box<Foo<i32>>) -> &Foo<i32>
+            498..511 'Foo::get_self': fn get_self<i32, '{error}>(&Box<Foo<i32>>) -> &Foo<i32>
             498..519 'Foo::g...boxed)': &Foo<i32>
             512..518 '&boxed': &Box<Foo<i32>>
             513..518 'boxed': Box<Foo<i32>>
@@ -3656,7 +3659,7 @@ fn main() {
     let are = "are";
     let count = 10;
     builtin#format_args("hello {count:02} {} friends, we {are:?} {0}{last}", "fancy", last = "!");
- // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type: Arguments<'_>
+ // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type: Arguments<'{error}>
 }
 "#,
     );

@@ -1,5 +1,5 @@
 error[E0380]: auto traits cannot have associated items
-  --> $DIR/issue-23080-2.rs:8:10
+  --> $DIR/issue-23080-2.rs:9:10
    |
 LL | unsafe auto trait Trait {
    |                   ----- auto traits cannot have associated items

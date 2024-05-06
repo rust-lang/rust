@@ -10,7 +10,10 @@ help: this trait has no implementations, consider adding one
 LL | trait Bar<X> { }
    | ^^^^^^^^^^^^
    = help: see issue #48214
-   = help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
+help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
+   |
+LL + #![feature(trivial_bounds)]
+   |
 
 error[E0277]: the trait bound `i32: Bar<u32>` is not satisfied
   --> $DIR/cross-fn-cache-hole.rs:30:15

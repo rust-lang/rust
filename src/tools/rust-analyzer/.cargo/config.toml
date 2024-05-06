@@ -3,6 +3,7 @@ xtask = "run --package xtask --bin xtask --"
 tq = "test -- -q"
 qt = "tq"
 lint = "clippy --all-targets -- --cap-lints warn"
+codegen = "run --package xtask --bin xtask -- codegen"
 
 [target.x86_64-pc-windows-msvc]
 linker = "rust-lld"

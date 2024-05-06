@@ -1,6 +1,4 @@
 #![allow(clippy::print_stderr)]
-#[cfg(not(feature = "in-rust-tree"))]
-mod sourcegen;
 
 use ide_db::{
     assists::AssistResolveStrategy, base_db::SourceDatabaseExt, LineIndexDatabase, RootDatabase,
@@ -285,6 +283,10 @@ fn test_disabled_diagnostics() {
 
 #[test]
 fn minicore_smoke_test() {
+    if test_utils::skip_slow_tests() {
+        return;
+    }
+
     fn check(minicore: MiniCore) {
         let source = minicore.source_code();
         let mut config = DiagnosticsConfig::test_sample();

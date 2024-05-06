@@ -1,6 +1,5 @@
 //@ run-pass
 #![allow(dead_code)]
-//@ ignore-wasm32-bare no libc to test ffi with
 //@ pretty-expanded FIXME #23616
 #![feature(rustc_private)]
 

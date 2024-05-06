@@ -82,15 +82,6 @@ LL |     type W where Self: Eq;
    = help: add `#![feature(inherent_associated_types)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0592]: duplicate definitions with name `W`
-  --> $DIR/impl-item-type-no-body-semantic-fail.rs:18:5
-   |
-LL |     type W: Ord where Self: Eq;
-   |     ------ other definition for `W`
-...
-LL |     type W where Self: Eq;
-   |     ^^^^^^ duplicate definitions for `W`
-
 error[E0277]: the trait bound `X: Eq` is not satisfied
   --> $DIR/impl-item-type-no-body-semantic-fail.rs:13:23
    |
@@ -98,11 +89,14 @@ LL |     type W: Ord where Self: Eq;
    |                       ^^^^^^^^ the trait `Eq` is not implemented for `X`
    |
    = help: see issue #48214
-   = help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
 help: consider annotating `X` with `#[derive(Eq)]`
    |
 LL + #[derive(Eq)]
 LL | struct X;
+   |
+help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
+   |
+LL + #![feature(trivial_bounds)]
    |
 
 error[E0277]: the trait bound `X: Eq` is not satisfied
@@ -112,12 +106,24 @@ LL |     type W where Self: Eq;
    |                  ^^^^^^^^ the trait `Eq` is not implemented for `X`
    |
    = help: see issue #48214
-   = help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
 help: consider annotating `X` with `#[derive(Eq)]`
    |
 LL + #[derive(Eq)]
 LL | struct X;
    |
+help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
+   |
+LL + #![feature(trivial_bounds)]
+   |
+
+error[E0592]: duplicate definitions with name `W`
+  --> $DIR/impl-item-type-no-body-semantic-fail.rs:18:5
+   |
+LL |     type W: Ord where Self: Eq;
+   |     ------ other definition for `W`
+...
+LL |     type W where Self: Eq;
+   |     ^^^^^^ duplicate definitions for `W`
 
 error: aborting due to 13 previous errors
 

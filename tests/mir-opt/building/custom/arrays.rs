@@ -1,5 +1,5 @@
 // skip-filecheck
-#![feature(custom_mir, core_intrinsics, inline_const)]
+#![feature(custom_mir, core_intrinsics)]
 
 extern crate core;
 use core::intrinsics::mir::*;

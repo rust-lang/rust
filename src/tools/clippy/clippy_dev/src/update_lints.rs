@@ -689,6 +689,8 @@ fn gen_deprecated_lints_test(lints: &[DeprecatedLint]) -> String {
 fn gen_renamed_lints_test(lints: &[RenamedLint]) -> String {
     let mut seen_lints = HashSet::new();
     let mut res: String = GENERATED_FILE_COMMENT.into();
+
+    res.push_str("#![allow(clippy::duplicated_attributes)]\n");
     for lint in lints {
         if seen_lints.insert(&lint.new_name) {
             writeln!(res, "#![allow({})]", lint.new_name).unwrap();
@@ -990,7 +992,7 @@ fn replace_region_in_text<'a>(
 }
 
 fn try_rename_file(old_name: &Path, new_name: &Path) -> bool {
-    match fs::OpenOptions::new().create_new(true).write(true).open(new_name) {
+    match OpenOptions::new().create_new(true).write(true).open(new_name) {
         Ok(file) => drop(file),
         Err(e) if matches!(e.kind(), io::ErrorKind::AlreadyExists | io::ErrorKind::NotFound) => return false,
         Err(e) => panic_file(e, new_name, "create"),
@@ -1014,7 +1016,7 @@ fn panic_file(error: io::Error, name: &Path, action: &str) -> ! {
 }
 
 fn rewrite_file(path: &Path, f: impl FnOnce(&str) -> Option<String>) {
-    let mut file = fs::OpenOptions::new()
+    let mut file = OpenOptions::new()
         .write(true)
         .read(true)
         .open(path)

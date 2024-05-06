@@ -9,8 +9,11 @@ use rustc_middle::{
 use rustc_span::def_id::DefId;
 use rustc_target::abi::{Abi, Size};
 
-use crate::borrow_tracker::{GlobalState, GlobalStateInner, ProtectorKind};
 use crate::*;
+use crate::{
+    borrow_tracker::{GlobalState, GlobalStateInner, ProtectorKind},
+    concurrency::data_race::NaReadType,
+};
 
 pub mod diagnostics;
 mod perms;
@@ -31,10 +34,10 @@ impl<'tcx> Tree {
         id: AllocId,
         size: Size,
         state: &mut GlobalStateInner,
-        _kind: MemoryKind<machine::MiriMemoryKind>,
+        _kind: MemoryKind,
         machine: &MiriMachine<'_, 'tcx>,
     ) -> Self {
-        let tag = state.base_ptr_tag(id, machine); // Fresh tag for the root
+        let tag = state.root_ptr_tag(id, machine); // Fresh tag for the root
         let span = machine.current_span();
         Tree::new(tag, size, span)
     }
@@ -80,7 +83,7 @@ impl<'tcx> Tree {
         &mut self,
         alloc_id: AllocId,
         prov: ProvenanceExtra,
-        range: AllocRange,
+        size: Size,
         machine: &MiriMachine<'_, 'tcx>,
     ) -> InterpResult<'tcx> {
         // TODO: for now we bail out on wildcard pointers. Eventually we should
@@ -91,7 +94,7 @@ impl<'tcx> Tree {
         };
         let global = machine.borrow_tracker.as_ref().unwrap();
         let span = machine.current_span();
-        self.dealloc(tag, range, global, alloc_id, span)
+        self.dealloc(tag, alloc_range(Size::ZERO, size), global, alloc_id, span)
     }
 
     pub fn expose_tag(&mut self, _tag: BorTag) {
@@ -312,7 +315,13 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
         // Also inform the data race model (but only if any bytes are actually affected).
         if range.size.bytes() > 0 {
             if let Some(data_race) = alloc_extra.data_race.as_ref() {
-                data_race.read(alloc_id, range, &this.machine)?;
+                data_race.read(
+                    alloc_id,
+                    range,
+                    NaReadType::Retag,
+                    Some(place.layout.ty),
+                    &this.machine,
+                )?;
             }
         }
 
@@ -441,14 +450,22 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             /// Regardless of how `Unique` is handled, Boxes are always reborrowed.
             /// When `Unique` is also reborrowed, then it behaves exactly like `Box`
             /// except for the fact that `Box` has a non-zero-sized reborrow.
-            fn visit_box(&mut self, place: &PlaceTy<'tcx, Provenance>) -> InterpResult<'tcx> {
-                let new_perm = NewPermission::from_unique_ty(
-                    place.layout.ty,
-                    self.kind,
-                    self.ecx,
-                    /* zero_size */ false,
-                );
-                self.retag_ptr_inplace(place, new_perm)
+            fn visit_box(
+                &mut self,
+                box_ty: Ty<'tcx>,
+                place: &PlaceTy<'tcx, Provenance>,
+            ) -> InterpResult<'tcx> {
+                // Only boxes for the global allocator get any special treatment.
+                if box_ty.is_box_global(*self.ecx.tcx) {
+                    let new_perm = NewPermission::from_unique_ty(
+                        place.layout.ty,
+                        self.kind,
+                        self.ecx,
+                        /* zero_size */ false,
+                    );
+                    self.retag_ptr_inplace(place, new_perm)?;
+                }
+                Ok(())
             }
 
             fn visit_value(&mut self, place: &PlaceTy<'tcx, Provenance>) -> InterpResult<'tcx> {
@@ -467,7 +484,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                             NewPermission::from_ref_ty(pointee, mutability, self.kind, self.ecx);
                         self.retag_ptr_inplace(place, new_perm)?;
                     }
-                    ty::RawPtr(_) => {
+                    ty::RawPtr(_, _) => {
                         // We definitely do *not* want to recurse into raw pointers -- wide raw
                         // pointers have fields, and for dyn Trait pointees those can have reference
                         // type!

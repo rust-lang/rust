@@ -59,24 +59,22 @@ impl EarlyLintPass for RedundantFieldNames {
         }
         if let ExprKind::Struct(ref se) = expr.kind {
             for field in &se.fields {
-                if field.is_shorthand {
-                    continue;
-                }
-                if let ExprKind::Path(None, path) = &field.expr.kind {
-                    if path.segments.len() == 1
-                        && path.segments[0].ident == field.ident
-                        && path.segments[0].args.is_none()
-                    {
-                        span_lint_and_sugg(
-                            cx,
-                            REDUNDANT_FIELD_NAMES,
-                            field.span,
-                            "redundant field names in struct initialization",
-                            "replace it with",
-                            field.ident.to_string(),
-                            Applicability::MachineApplicable,
-                        );
-                    }
+                if !field.is_shorthand
+                    && let ExprKind::Path(None, path) = &field.expr.kind
+                    && let [segment] = path.segments.as_slice()
+                    && segment.args.is_none()
+                    && segment.ident == field.ident
+                    && field.span.eq_ctxt(field.ident.span)
+                {
+                    span_lint_and_sugg(
+                        cx,
+                        REDUNDANT_FIELD_NAMES,
+                        field.span,
+                        "redundant field names in struct initialization",
+                        "replace it with",
+                        field.ident.to_string(),
+                        Applicability::MachineApplicable,
+                    );
                 }
             }
         }

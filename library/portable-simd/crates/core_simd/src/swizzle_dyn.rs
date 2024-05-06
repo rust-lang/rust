@@ -16,7 +16,10 @@ where
     #[inline]
     pub fn swizzle_dyn(self, idxs: Simd<u8, N>) -> Self {
         #![allow(unused_imports, unused_unsafe)]
-        #[cfg(all(target_arch = "aarch64", target_endian = "little"))]
+        #[cfg(all(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            target_endian = "little"
+        ))]
         use core::arch::aarch64::{uint8x8_t, vqtbl1q_u8, vtbl1_u8};
         #[cfg(all(
             target_arch = "arm",
@@ -37,6 +40,7 @@ where
                 #[cfg(all(
                     any(
                         target_arch = "aarch64",
+                        target_arch = "arm64ec",
                         all(target_arch = "arm", target_feature = "v7")
                     ),
                     target_feature = "neon",
@@ -48,7 +52,7 @@ where
                 #[cfg(target_feature = "simd128")]
                 16 => transize(wasm::i8x16_swizzle, self, idxs),
                 #[cfg(all(
-                    target_arch = "aarch64",
+                    any(target_arch = "aarch64", target_arch = "arm64ec"),
                     target_feature = "neon",
                     target_endian = "little"
                 ))]

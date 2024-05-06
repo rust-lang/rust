@@ -10,6 +10,7 @@
 #include "llvm/IR/IntrinsicsARM.h"
 #include "llvm/IR/LLVMRemarkStreamer.h"
 #include "llvm/IR/Mangler.h"
+#include "llvm/IR/Value.h"
 #include "llvm/Remarks/RemarkStreamer.h"
 #include "llvm/Remarks/RemarkSerializer.h"
 #include "llvm/Remarks/RemarkFormat.h"
@@ -23,6 +24,13 @@
 #include "llvm/Support/Signals.h"
 
 #include <iostream>
+
+// for raw `write` in the bad-alloc handler
+#ifdef _MSC_VER
+#include <io.h>
+#else
+#include <unistd.h>
+#endif
 
 //===----------------------------------------------------------------------===
 //
@@ -87,8 +95,24 @@ static void FatalErrorHandler(void *UserData,
   exit(101);
 }
 
-extern "C" void LLVMRustInstallFatalErrorHandler() {
+// Custom error handler for bad-alloc LLVM errors.
+//
+// It aborts the process without any further allocations, similar to LLVM's
+// default except that may be configured to `throw std::bad_alloc()` instead.
+static void BadAllocErrorHandler(void *UserData,
+                                 const char* Reason,
+                                 bool GenCrashDiag) {
+  const char *OOM = "rustc-LLVM ERROR: out of memory\n";
+  (void)!::write(2, OOM, strlen(OOM));
+  (void)!::write(2, Reason, strlen(Reason));
+  (void)!::write(2, "\n", 1);
+  abort();
+}
+
+extern "C" void LLVMRustInstallErrorHandlers() {
+  install_bad_alloc_error_handler(BadAllocErrorHandler);
   install_fatal_error_handler(FatalErrorHandler);
+  install_out_of_memory_new_handler();
 }
 
 extern "C" void LLVMRustDisableSystemDialogsOnCrash() {
@@ -288,6 +312,16 @@ static Attribute::AttrKind fromRust(LLVMRustAttribute Kind) {
     return Attribute::SafeStack;
   case FnRetThunkExtern:
     return Attribute::FnRetThunkExtern;
+#if LLVM_VERSION_GE(18, 0)
+  case Writable:
+    return Attribute::Writable;
+  case DeadOnUnwind:
+    return Attribute::DeadOnUnwind;
+#else
+  case Writable:
+  case DeadOnUnwind:
+    report_fatal_error("Not supported on this LLVM version");
+#endif
   }
   report_fatal_error("bad AttributeKind");
 }
@@ -793,12 +827,22 @@ extern "C" uint32_t LLVMRustVersionMinor() { return LLVM_VERSION_MINOR; }
 
 extern "C" uint32_t LLVMRustVersionMajor() { return LLVM_VERSION_MAJOR; }
 
-extern "C" void LLVMRustAddModuleFlag(
+extern "C" void LLVMRustAddModuleFlagU32(
     LLVMModuleRef M,
     Module::ModFlagBehavior MergeBehavior,
     const char *Name,
     uint32_t Value) {
   unwrap(M)->addModuleFlag(MergeBehavior, Name, Value);
+}
+
+extern "C" void LLVMRustAddModuleFlagString(
+    LLVMModuleRef M,
+    Module::ModFlagBehavior MergeBehavior,
+    const char *Name,
+    const char *Value,
+    size_t ValueLen) {
+  unwrap(M)->addModuleFlag(MergeBehavior, Name,
+    MDString::get(unwrap(M)->getContext(), StringRef(Value, ValueLen)));
 }
 
 extern "C" bool LLVMRustHasModuleFlag(LLVMModuleRef M, const char *Name,
@@ -1111,11 +1155,16 @@ extern "C" LLVMValueRef LLVMRustDIBuilderInsertDeclareAtEnd(
     LLVMRustDIBuilderRef Builder, LLVMValueRef V, LLVMMetadataRef VarInfo,
     uint64_t *AddrOps, unsigned AddrOpsCount, LLVMMetadataRef DL,
     LLVMBasicBlockRef InsertAtEnd) {
-  return wrap(Builder->insertDeclare(
+  auto Result = Builder->insertDeclare(
       unwrap(V), unwrap<DILocalVariable>(VarInfo),
       Builder->createExpression(llvm::ArrayRef<uint64_t>(AddrOps, AddrOpsCount)),
       DebugLoc(cast<MDNode>(unwrap(DL))),
-      unwrap(InsertAtEnd)));
+      unwrap(InsertAtEnd));
+#if LLVM_VERSION_GE(19, 0)
+  return wrap(Result.get<llvm::Instruction *>());
+#else
+  return wrap(Result);
+#endif
 }
 
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateEnumerator(
@@ -1221,14 +1270,6 @@ extern "C" void LLVMRustWriteValueToString(LLVMValueRef V,
     unwrap<llvm::Value>(V)->print(OS);
     OS << ")";
   }
-}
-
-// LLVMArrayType function does not support 64-bit ElementCount
-// FIXME: replace with LLVMArrayType2 when bumped minimal version to llvm-17
-// https://github.com/llvm/llvm-project/commit/35276f16e5a2cae0dfb49c0fbf874d4d2f177acc
-extern "C" LLVMTypeRef LLVMRustArrayType(LLVMTypeRef ElementTy,
-                                         uint64_t ElementCount) {
-  return wrap(ArrayType::get(unwrap(ElementTy), ElementCount));
 }
 
 DEFINE_SIMPLE_CONVERSION_FUNCTIONS(Twine, LLVMTwineRef)
@@ -1491,20 +1532,56 @@ extern "C" void LLVMRustFreeOperandBundleDef(OperandBundleDef *Bundle) {
   delete Bundle;
 }
 
+// OpBundlesIndirect is an array of pointers (*not* a pointer to an array).
 extern "C" LLVMValueRef LLVMRustBuildCall(LLVMBuilderRef B, LLVMTypeRef Ty, LLVMValueRef Fn,
                                           LLVMValueRef *Args, unsigned NumArgs,
-                                          OperandBundleDef **OpBundles,
+                                          OperandBundleDef **OpBundlesIndirect,
                                           unsigned NumOpBundles) {
   Value *Callee = unwrap(Fn);
   FunctionType *FTy = unwrap<FunctionType>(Ty);
+
+  // FIXME: Is there a way around this?
+  SmallVector<OperandBundleDef> OpBundles;
+  OpBundles.reserve(NumOpBundles);
+  for (unsigned i = 0; i < NumOpBundles; ++i) {
+    OpBundles.push_back(*OpBundlesIndirect[i]);
+  }
+
   return wrap(unwrap(B)->CreateCall(
       FTy, Callee, ArrayRef<Value*>(unwrap(Args), NumArgs),
-      ArrayRef<OperandBundleDef>(*OpBundles, NumOpBundles)));
+      ArrayRef<OperandBundleDef>(OpBundles)));
 }
 
 extern "C" LLVMValueRef LLVMRustGetInstrProfIncrementIntrinsic(LLVMModuleRef M) {
-  return wrap(llvm::Intrinsic::getDeclaration(unwrap(M),
-              (llvm::Intrinsic::ID)llvm::Intrinsic::instrprof_increment));
+  return wrap(llvm::Intrinsic::getDeclaration(
+      unwrap(M), llvm::Intrinsic::instrprof_increment));
+}
+
+extern "C" LLVMValueRef LLVMRustGetInstrProfMCDCParametersIntrinsic(LLVMModuleRef M) {
+#if LLVM_VERSION_GE(18, 0)
+  return wrap(llvm::Intrinsic::getDeclaration(
+      unwrap(M), llvm::Intrinsic::instrprof_mcdc_parameters));
+#else
+  report_fatal_error("LLVM 18.0 is required for mcdc intrinsic functions");
+#endif
+}
+
+extern "C" LLVMValueRef LLVMRustGetInstrProfMCDCTVBitmapUpdateIntrinsic(LLVMModuleRef M) {
+#if LLVM_VERSION_GE(18, 0)
+  return wrap(llvm::Intrinsic::getDeclaration(
+      unwrap(M), llvm::Intrinsic::instrprof_mcdc_tvbitmap_update));
+#else
+  report_fatal_error("LLVM 18.0 is required for mcdc intrinsic functions");
+#endif
+}
+
+extern "C" LLVMValueRef LLVMRustGetInstrProfMCDCCondBitmapIntrinsic(LLVMModuleRef M) {
+#if LLVM_VERSION_GE(18, 0)
+  return wrap(llvm::Intrinsic::getDeclaration(
+      unwrap(M), llvm::Intrinsic::instrprof_mcdc_condbitmap_update));
+#else
+  report_fatal_error("LLVM 18.0 is required for mcdc intrinsic functions");
+#endif
 }
 
 extern "C" LLVMValueRef LLVMRustBuildMemCpy(LLVMBuilderRef B,
@@ -1535,18 +1612,60 @@ extern "C" LLVMValueRef LLVMRustBuildMemSet(LLVMBuilderRef B,
       unwrap(Dst), unwrap(Val), unwrap(Size), MaybeAlign(DstAlign), IsVolatile));
 }
 
+// OpBundlesIndirect is an array of pointers (*not* a pointer to an array).
 extern "C" LLVMValueRef
 LLVMRustBuildInvoke(LLVMBuilderRef B, LLVMTypeRef Ty, LLVMValueRef Fn,
                     LLVMValueRef *Args, unsigned NumArgs,
                     LLVMBasicBlockRef Then, LLVMBasicBlockRef Catch,
-                    OperandBundleDef **OpBundles, unsigned NumOpBundles,
+                    OperandBundleDef **OpBundlesIndirect, unsigned NumOpBundles,
                     const char *Name) {
   Value *Callee = unwrap(Fn);
   FunctionType *FTy = unwrap<FunctionType>(Ty);
+
+  // FIXME: Is there a way around this?
+  SmallVector<OperandBundleDef> OpBundles;
+  OpBundles.reserve(NumOpBundles);
+  for (unsigned i = 0; i < NumOpBundles; ++i) {
+    OpBundles.push_back(*OpBundlesIndirect[i]);
+  }
+
   return wrap(unwrap(B)->CreateInvoke(FTy, Callee, unwrap(Then), unwrap(Catch),
                                       ArrayRef<Value*>(unwrap(Args), NumArgs),
-                                      ArrayRef<OperandBundleDef>(*OpBundles, NumOpBundles),
+                                      ArrayRef<OperandBundleDef>(OpBundles),
                                       Name));
+}
+
+// OpBundlesIndirect is an array of pointers (*not* a pointer to an array).
+extern "C" LLVMValueRef
+LLVMRustBuildCallBr(LLVMBuilderRef B, LLVMTypeRef Ty, LLVMValueRef Fn,
+                    LLVMBasicBlockRef DefaultDest,
+                    LLVMBasicBlockRef *IndirectDests, unsigned NumIndirectDests,
+                    LLVMValueRef *Args, unsigned NumArgs,
+                    OperandBundleDef **OpBundlesIndirect, unsigned NumOpBundles,
+                    const char *Name) {
+  Value *Callee = unwrap(Fn);
+  FunctionType *FTy = unwrap<FunctionType>(Ty);
+
+  // FIXME: Is there a way around this?
+  std::vector<BasicBlock*> IndirectDestsUnwrapped;
+  IndirectDestsUnwrapped.reserve(NumIndirectDests);
+  for (unsigned i = 0; i < NumIndirectDests; ++i) {
+    IndirectDestsUnwrapped.push_back(unwrap(IndirectDests[i]));
+  }
+
+  // FIXME: Is there a way around this?
+  SmallVector<OperandBundleDef> OpBundles;
+  OpBundles.reserve(NumOpBundles);
+  for (unsigned i = 0; i < NumOpBundles; ++i) {
+    OpBundles.push_back(*OpBundlesIndirect[i]);
+  }
+
+  return wrap(unwrap(B)->CreateCallBr(
+      FTy, Callee, unwrap(DefaultDest),
+      ArrayRef<BasicBlock*>(IndirectDestsUnwrapped),
+      ArrayRef<Value*>(unwrap(Args), NumArgs),
+      ArrayRef<OperandBundleDef>(OpBundles),
+      Name));
 }
 
 extern "C" void LLVMRustPositionBuilderAtStart(LLVMBuilderRef B,
@@ -1946,7 +2065,11 @@ extern "C" void LLVMRustContextConfigureDiagnosticHandler(
         }
       }
       if (DiagnosticHandlerCallback) {
+#if LLVM_VERSION_GE(19, 0)
+        DiagnosticHandlerCallback(&DI, DiagnosticHandlerContext);
+#else
         DiagnosticHandlerCallback(DI, DiagnosticHandlerContext);
+#endif
         return true;
       }
       return false;
@@ -2089,3 +2212,20 @@ extern "C" bool LLVMRustLLVMHasZlibCompressionForDebugSymbols() {
 extern "C" bool LLVMRustLLVMHasZstdCompressionForDebugSymbols() {
   return llvm::compression::zstd::isAvailable();
 }
+
+// Operations on composite constants.
+// These are clones of LLVM api functions that will become available in future releases.
+// They can be removed once Rust's minimum supported LLVM version supports them.
+// See https://github.com/rust-lang/rust/issues/121868
+// See https://llvm.org/doxygen/group__LLVMCCoreValueConstantComposite.html
+
+// FIXME: Remove when Rust's minimum supported LLVM version reaches 19.
+// https://github.com/llvm/llvm-project/commit/e1405e4f71c899420ebf8262d5e9745598419df8
+#if LLVM_VERSION_LT(19, 0)
+extern "C" LLVMValueRef LLVMConstStringInContext2(LLVMContextRef C,
+                                                  const char *Str,
+                                                  size_t Length,
+                                                  bool DontNullTerminate) {
+  return wrap(ConstantDataArray::getString(*unwrap(C), StringRef(Str, Length), !DontNullTerminate));
+}
+#endif

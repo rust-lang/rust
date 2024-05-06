@@ -13,7 +13,7 @@ pub use NamePadding::*;
 pub use TestFn::*;
 pub use TestName::*;
 
-/// Type of the test according to the [rust book](https://doc.rust-lang.org/cargo/guide/tests.html)
+/// Type of the test according to the [Rust book](https://doc.rust-lang.org/cargo/guide/tests.html)
 /// conventions.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum TestType {

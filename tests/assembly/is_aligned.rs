@@ -7,7 +7,7 @@
 #![crate_type="rlib"]
 
 #![feature(core_intrinsics)]
-#![feature(pointer_is_aligned)]
+#![feature(pointer_is_aligned_to)]
 
 // CHECK-LABEL: is_aligned_to_unchecked
 // CHECK: decq

@@ -243,7 +243,7 @@ const EMULATE_ATOMIC_BOOL: bool =
 
 /// A boolean type which can be safely shared between threads.
 ///
-/// This type has the same in-memory representation as a [`bool`].
+/// This type has the same size, alignment, and bit validity as a [`bool`].
 ///
 /// **Note**: This type is only available on platforms that support atomic
 /// loads and stores of `u8`.
@@ -272,7 +272,7 @@ unsafe impl Sync for AtomicBool {}
 
 /// A raw pointer type which can be safely shared between threads.
 ///
-/// This type has the same in-memory representation as a `*mut T`.
+/// This type has the same size and bit validity as a `*mut T`.
 ///
 /// **Note**: This type is only available on platforms that support atomic
 /// loads and stores of pointers. Its size depends on the target pointer's size.
@@ -418,14 +418,12 @@ impl AtomicBool {
     /// # Examples
     ///
     /// ```
-    /// #![feature(pointer_is_aligned)]
     /// use std::sync::atomic::{self, AtomicBool};
-    /// use std::mem::align_of;
     ///
     /// // Get a pointer to an allocated value
     /// let ptr: *mut bool = Box::into_raw(Box::new(false));
     ///
-    /// assert!(ptr.is_aligned_to(align_of::<AtomicBool>()));
+    /// assert!(ptr.cast::<AtomicBool>().is_aligned());
     ///
     /// {
     ///     // Create an atomic view of the allocated value
@@ -513,7 +511,7 @@ impl AtomicBool {
     /// # Examples
     ///
     /// ```
-    /// #![feature(atomic_from_mut, inline_const)]
+    /// #![feature(atomic_from_mut)]
     /// use std::sync::atomic::{AtomicBool, Ordering};
     ///
     /// let mut some_bools = [const { AtomicBool::new(false) }; 10];
@@ -580,9 +578,9 @@ impl AtomicBool {
     /// ```
     #[inline]
     #[stable(feature = "atomic_access", since = "1.15.0")]
-    #[rustc_const_unstable(feature = "const_cell_into_inner", issue = "78729")]
+    #[rustc_const_stable(feature = "const_atomic_into_inner", since = "1.79.0")]
     pub const fn into_inner(self) -> bool {
-        self.v.into_inner() != 0
+        self.v.primitive_into_inner() != 0
     }
 
     /// Loads a value from the bool.
@@ -1216,14 +1214,12 @@ impl<T> AtomicPtr<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(pointer_is_aligned)]
     /// use std::sync::atomic::{self, AtomicPtr};
-    /// use std::mem::align_of;
     ///
     /// // Get a pointer to an allocated value
     /// let ptr: *mut *mut u8 = Box::into_raw(Box::new(std::ptr::null_mut()));
     ///
-    /// assert!(ptr.is_aligned_to(align_of::<AtomicPtr<u8>>()));
+    /// assert!(ptr.cast::<AtomicPtr<u8>>().is_aligned());
     ///
     /// {
     ///     // Create an atomic view of the allocated value
@@ -1317,7 +1313,7 @@ impl<T> AtomicPtr<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(atomic_from_mut, inline_const)]
+    /// #![feature(atomic_from_mut)]
     /// use std::ptr::null_mut;
     /// use std::sync::atomic::{AtomicPtr, Ordering};
     ///
@@ -1401,9 +1397,9 @@ impl<T> AtomicPtr<T> {
     /// ```
     #[inline]
     #[stable(feature = "atomic_access", since = "1.15.0")]
-    #[rustc_const_unstable(feature = "const_cell_into_inner", issue = "78729")]
+    #[rustc_const_stable(feature = "const_atomic_into_inner", since = "1.79.0")]
     pub const fn into_inner(self) -> *mut T {
-        self.p.into_inner()
+        self.p.primitive_into_inner()
     }
 
     /// Loads a value from the pointer.
@@ -2121,7 +2117,7 @@ macro_rules! atomic_int {
      $int_type:ident $atomic_type:ident) => {
         /// An integer type which can be safely shared between threads.
         ///
-        /// This type has the same in-memory representation as the underlying
+        /// This type has the same size and bit validity as the underlying
         /// integer type, [`
         #[doc = $s_int_type]
         /// `].
@@ -2199,14 +2195,12 @@ macro_rules! atomic_int {
             /// # Examples
             ///
             /// ```
-            /// #![feature(pointer_is_aligned)]
             #[doc = concat!($extra_feature, "use std::sync::atomic::{self, ", stringify!($atomic_type), "};")]
-            /// use std::mem::align_of;
             ///
             /// // Get a pointer to an allocated value
             #[doc = concat!("let ptr: *mut ", stringify!($int_type), " = Box::into_raw(Box::new(0));")]
             ///
-            #[doc = concat!("assert!(ptr.is_aligned_to(align_of::<", stringify!($atomic_type), ">()));")]
+            #[doc = concat!("assert!(ptr.cast::<", stringify!($atomic_type), ">().is_aligned());")]
             ///
             /// {
             ///     // Create an atomic view of the allocated value
@@ -2309,7 +2303,7 @@ macro_rules! atomic_int {
             /// # Examples
             ///
             /// ```
-            /// #![feature(atomic_from_mut, inline_const)]
+            /// #![feature(atomic_from_mut)]
             #[doc = concat!($extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
             ///
             #[doc = concat!("let mut some_ints = [const { ", stringify!($atomic_type), "::new(0) }; 10];")]
@@ -2384,9 +2378,9 @@ macro_rules! atomic_int {
             /// ```
             #[inline]
             #[$stable_access]
-            #[rustc_const_unstable(feature = "const_cell_into_inner", issue = "78729")]
+            #[rustc_const_stable(feature = "const_atomic_into_inner", since = "1.79.0")]
             pub const fn into_inner(self) -> $int_type {
-                self.v.into_inner()
+                self.v.primitive_into_inner()
             }
 
             /// Loads a value from the atomic integer.

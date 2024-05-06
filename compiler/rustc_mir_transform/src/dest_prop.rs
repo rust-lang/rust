@@ -648,7 +648,8 @@ impl WriteInfo {
                         }
                         InlineAsmOperand::Const { .. }
                         | InlineAsmOperand::SymFn { .. }
-                        | InlineAsmOperand::SymStatic { .. } => (),
+                        | InlineAsmOperand::SymStatic { .. }
+                        | InlineAsmOperand::Label { .. } => {}
                     }
                 }
             }

@@ -9,8 +9,8 @@ use rustc_span::symbol::sym;
 use rustc_span::Span;
 use thin_vec::{thin_vec, ThinVec};
 
-pub fn expand_deriving_eq(
-    cx: &mut ExtCtxt<'_>,
+pub(crate) fn expand_deriving_eq(
+    cx: &ExtCtxt<'_>,
     span: Span,
     mitem: &MetaItem,
     item: &Annotatable,
@@ -49,7 +49,7 @@ pub fn expand_deriving_eq(
 }
 
 fn cs_total_eq_assert(
-    cx: &mut ExtCtxt<'_>,
+    cx: &ExtCtxt<'_>,
     trait_span: Span,
     substr: &Substructure<'_>,
 ) -> BlockOrExpr {

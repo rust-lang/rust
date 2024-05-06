@@ -76,19 +76,16 @@ fn list_(p: &mut Parser<'_>, flavor: Flavor) {
             m.abandon(p);
             if p.eat(T![,]) {
                 continue;
-            } else {
-                break;
             }
+            break;
         }
         param(p, m, flavor);
-        if !p.at(T![,]) {
+        if !p.eat(T![,]) {
             if p.at_ts(PARAM_FIRST.union(ATTRIBUTE_FIRST)) {
                 p.error("expected `,`");
             } else {
                 break;
             }
-        } else {
-            p.bump(T![,]);
         }
     }
 

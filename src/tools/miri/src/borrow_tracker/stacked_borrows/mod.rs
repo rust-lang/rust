@@ -18,6 +18,7 @@ use crate::borrow_tracker::{
     stacked_borrows::diagnostics::{AllocHistory, DiagnosticCx, DiagnosticCxBuilder},
     GlobalStateInner, ProtectorKind,
 };
+use crate::concurrency::data_race::{NaReadType, NaWriteType};
 use crate::*;
 
 use diagnostics::{RetagCause, RetagInfo};
@@ -90,7 +91,7 @@ impl NewPermission {
                     }
                 }
             }
-            ty::RawPtr(ty::TypeAndMut { mutbl: Mutability::Mut, .. }) => {
+            ty::RawPtr(_, Mutability::Mut) => {
                 assert!(protector.is_none()); // RetagKind can't be both FnEntry and Raw.
                 // Mutable raw pointer. No access, not protected.
                 NewPermission::Uniform {
@@ -114,7 +115,7 @@ impl NewPermission {
                     // This fixes https://github.com/rust-lang/rust/issues/55005.
                 }
             }
-            ty::RawPtr(ty::TypeAndMut { mutbl: Mutability::Not, .. }) => {
+            ty::RawPtr(_, Mutability::Not) => {
                 assert!(protector.is_none()); // RetagKind can't be both FnEntry and Raw.
                 // `*const T`, when freshly created, are read-only in the frozen part.
                 NewPermission::FreezeSensitive {
@@ -508,7 +509,7 @@ impl Stacks {
         id: AllocId,
         size: Size,
         state: &mut GlobalStateInner,
-        kind: MemoryKind<MiriMemoryKind>,
+        kind: MemoryKind,
         machine: &MiriMachine<'_, '_>,
     ) -> Self {
         let (base_tag, perm) = match kind {
@@ -517,9 +518,9 @@ impl Stacks {
             // not through a pointer). That is, whenever we directly write to a local, this will pop
             // everything else off the stack, invalidating all previous pointers,
             // and in particular, *all* raw pointers.
-            MemoryKind::Stack => (state.base_ptr_tag(id, machine), Permission::Unique),
+            MemoryKind::Stack => (state.root_ptr_tag(id, machine), Permission::Unique),
             // Everything else is shared by default.
-            _ => (state.base_ptr_tag(id, machine), Permission::SharedReadWrite),
+            _ => (state.root_ptr_tag(id, machine), Permission::SharedReadWrite),
         };
         Stacks::new(size, perm, base_tag, id, machine)
     }
@@ -574,13 +575,13 @@ impl Stacks {
         &mut self,
         alloc_id: AllocId,
         tag: ProvenanceExtra,
-        range: AllocRange,
+        size: Size,
         machine: &MiriMachine<'_, 'tcx>,
     ) -> InterpResult<'tcx> {
-        trace!("deallocation with tag {:?}: {:?}, size {}", tag, alloc_id, range.size.bytes());
+        trace!("deallocation with tag {:?}: {:?}, size {}", tag, alloc_id, size.bytes());
         let dcx = DiagnosticCxBuilder::dealloc(machine, tag);
         let state = machine.borrow_tracker.as_ref().unwrap().borrow();
-        self.for_each(range, dcx, |stack, dcx, exposed_tags| {
+        self.for_each(alloc_range(Size::ZERO, size), dcx, |stack, dcx, exposed_tags| {
             stack.dealloc(tag, &state, dcx, exposed_tags)
         })?;
         Ok(())
@@ -751,7 +752,13 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
                     assert_eq!(access, AccessKind::Write);
                     // Make sure the data race model also knows about this.
                     if let Some(data_race) = alloc_extra.data_race.as_mut() {
-                        data_race.write(alloc_id, range, machine)?;
+                        data_race.write(
+                            alloc_id,
+                            range,
+                            NaWriteType::Retag,
+                            Some(place.layout.ty),
+                            machine,
+                        )?;
                     }
                 }
             }
@@ -794,7 +801,13 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
                         assert_eq!(access, AccessKind::Read);
                         // Make sure the data race model also knows about this.
                         if let Some(data_race) = alloc_extra.data_race.as_ref() {
-                            data_race.read(alloc_id, range, &this.machine)?;
+                            data_race.read(
+                                alloc_id,
+                                range,
+                                NaReadType::Retag,
+                                Some(place.layout.ty),
+                                &this.machine,
+                            )?;
                         }
                     }
                     Ok(())
@@ -873,9 +886,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let this = self.eval_context_mut();
         let retag_fields = this.machine.borrow_tracker.as_mut().unwrap().get_mut().retag_fields;
         let retag_cause = match kind {
-            RetagKind::Raw | RetagKind::TwoPhase { .. } => unreachable!(), // these can only happen in `retag_ptr_value`
+            RetagKind::TwoPhase { .. } => unreachable!(), // can only happen in `retag_ptr_value`
             RetagKind::FnEntry => RetagCause::FnEntry,
-            RetagKind::Default => RetagCause::Normal,
+            RetagKind::Default | RetagKind::Raw => RetagCause::Normal,
         };
         let mut visitor =
             RetagVisitor { ecx: this, kind, retag_cause, retag_fields, in_field: false };
@@ -916,10 +929,18 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 self.ecx
             }
 
-            fn visit_box(&mut self, place: &PlaceTy<'tcx, Provenance>) -> InterpResult<'tcx> {
-                // Boxes get a weak protectors, since they may be deallocated.
-                let new_perm = NewPermission::from_box_ty(place.layout.ty, self.kind, self.ecx);
-                self.retag_ptr_inplace(place, new_perm)
+            fn visit_box(
+                &mut self,
+                box_ty: Ty<'tcx>,
+                place: &PlaceTy<'tcx, Provenance>,
+            ) -> InterpResult<'tcx> {
+                // Only boxes for the global allocator get any special treatment.
+                if box_ty.is_box_global(*self.ecx.tcx) {
+                    // Boxes get a weak protectors, since they may be deallocated.
+                    let new_perm = NewPermission::from_box_ty(place.layout.ty, self.kind, self.ecx);
+                    self.retag_ptr_inplace(place, new_perm)?;
+                }
+                Ok(())
             }
 
             fn visit_value(&mut self, place: &PlaceTy<'tcx, Provenance>) -> InterpResult<'tcx> {
@@ -933,14 +954,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
                 // Check the type of this value to see what to do with it (retag, or recurse).
                 match place.layout.ty.kind() {
-                    ty::Ref(..) => {
-                        let new_perm =
-                            NewPermission::from_ref_ty(place.layout.ty, self.kind, self.ecx);
-                        self.retag_ptr_inplace(place, new_perm)?;
-                    }
-                    ty::RawPtr(..) => {
-                        // We do *not* want to recurse into raw pointers -- wide raw pointers have
-                        // fields, and for dyn Trait pointees those can have reference type!
+                    ty::Ref(..) | ty::RawPtr(..) => {
+                        if matches!(place.layout.ty.kind(), ty::Ref(..))
+                            || self.kind == RetagKind::Raw
+                        {
+                            let new_perm =
+                                NewPermission::from_ref_ty(place.layout.ty, self.kind, self.ecx);
+                            self.retag_ptr_inplace(place, new_perm)?;
+                        }
                     }
                     ty::Adt(adt, _) if adt.is_box() => {
                         // Recurse for boxes, they require some tricky handling and will end up in `visit_box` above.

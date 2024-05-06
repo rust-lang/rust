@@ -35,8 +35,12 @@ wait-for: "#alternative-display #search"
 assert: "#main-content.hidden"
 
 // Now let's check the content of the settings menu.
+// If we are on the settings page, the menu doesn't work the same so we set
+// the theme manually.
 set-local-storage: {"rustdoc-theme": "dark", "rustdoc-use-system-theme": "false"}
+// We reload the page so the local storage settings are being used.
 reload:
+
 click: "#settings-menu"
 wait-for: "#settings"
 
@@ -304,7 +308,7 @@ wait-for: "#settings"
 assert-css: (".setting-radio", {"cursor": "pointer"})
 
 assert-attribute-false: ("#settings", {"class": "popover"}, CONTAINS)
-compare-elements-position: (".sub form", "#settings", ("x"))
+compare-elements-position: (".sub form", "#settings", ["x"])
 
 // Check that setting-line has the same margin in this mode as in the popover.
 assert-css: (".setting-line", {"margin": |setting_line_margin|})

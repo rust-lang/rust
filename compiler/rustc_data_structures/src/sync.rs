@@ -20,6 +20,7 @@
 //! | ----------------------- | ------------------- | ------------------------------- |
 //! | `Lrc<T>`                | `rc::Rc<T>`         | `sync::Arc<T>`                  |
 //! |` Weak<T>`               | `rc::Weak<T>`       | `sync::Weak<T>`                 |
+//! | `LRef<'a, T>` [^2]      | `&'a mut T`         | `&'a T`                         |
 //! |                         |                     |                                 |
 //! | `AtomicBool`            | `Cell<bool>`        | `atomic::AtomicBool`            |
 //! | `AtomicU32`             | `Cell<u32>`         | `atomic::AtomicU32`             |
@@ -38,13 +39,14 @@
 //! of a `RefCell`. This is appropriate when interior mutability is not
 //! required.
 //!
-//! [^2] `MTLockRef` is a typedef.
+//! [^2] `MTRef`, `MTLockRef` are type aliases.
 
 pub use crate::marker::*;
 use std::collections::HashMap;
 use std::hash::{BuildHasher, Hash};
 
 mod lock;
+#[doc(no_inline)]
 pub use lock::{Lock, LockGuard, Mode};
 
 mod worker_local;
@@ -198,17 +200,22 @@ cfg_match! {
 
         pub use std::rc::Rc as Lrc;
         pub use std::rc::Weak as Weak;
+        #[doc(no_inline)]
         pub use std::cell::Ref as ReadGuard;
+        #[doc(no_inline)]
         pub use std::cell::Ref as MappedReadGuard;
+        #[doc(no_inline)]
         pub use std::cell::RefMut as WriteGuard;
+        #[doc(no_inline)]
         pub use std::cell::RefMut as MappedWriteGuard;
+        #[doc(no_inline)]
         pub use std::cell::RefMut as MappedLockGuard;
 
         pub use std::cell::OnceCell as OnceLock;
 
         use std::cell::RefCell as InnerRwLock;
 
-        pub type MTLockRef<'a, T> = &'a mut MTLock<T>;
+        pub type LRef<'a, T> = &'a mut T;
 
         #[derive(Debug, Default)]
         pub struct MTLock<T>(T);
@@ -274,7 +281,7 @@ cfg_match! {
         pub use std::sync::Arc as Lrc;
         pub use std::sync::Weak as Weak;
 
-        pub type MTLockRef<'a, T> = &'a MTLock<T>;
+        pub type LRef<'a, T> = &'a T;
 
         #[derive(Debug, Default)]
         pub struct MTLock<T>(Lock<T>);
@@ -313,6 +320,8 @@ cfg_match! {
         const ERROR_CHECKING: bool = false;
     }
 }
+
+pub type MTLockRef<'a, T> = LRef<'a, MTLock<T>>;
 
 #[derive(Default)]
 #[cfg_attr(parallel_compiler, repr(align(64)))]

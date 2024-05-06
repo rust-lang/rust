@@ -1,5 +1,5 @@
 warning: `#[diagnostic::on_unimplemented]` can only be applied to trait definitions
-  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:24:1
+  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:22:1
    |
 LL | #[diagnostic::on_unimplemented(message = "Not allowed to apply it on a impl")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -7,7 +7,7 @@ LL | #[diagnostic::on_unimplemented(message = "Not allowed to apply it on a impl
    = note: `#[warn(unknown_or_malformed_diagnostic_attributes)]` on by default
 
 warning: malformed `on_unimplemented` attribute
-  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:4:5
+  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:2:5
    |
 LL |     on(_Self = "&str"),
    |     ^^^^^^^^^^^^^^^^^^ invalid option found here
@@ -15,7 +15,7 @@ LL |     on(_Self = "&str"),
    = help: only `message`, `note` and `label` are allowed as options
 
 warning: malformed `on_unimplemented` attribute
-  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:10:5
+  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:8:5
    |
 LL |     parent_label = "in this scope",
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ invalid option found here
@@ -23,7 +23,7 @@ LL |     parent_label = "in this scope",
    = help: only `message`, `note` and `label` are allowed as options
 
 warning: malformed `on_unimplemented` attribute
-  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:13:5
+  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:11:5
    |
 LL |     append_const_msg
    |     ^^^^^^^^^^^^^^^^ invalid option found here
@@ -31,7 +31,7 @@ LL |     append_const_msg
    = help: only `message`, `note` and `label` are allowed as options
 
 warning: malformed `on_unimplemented` attribute
-  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:19:32
+  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:17:32
    |
 LL | #[diagnostic::on_unimplemented = "Message"]
    |                                ^^^^^^^^^^^ invalid option found here
@@ -39,7 +39,7 @@ LL | #[diagnostic::on_unimplemented = "Message"]
    = help: only `message`, `note` and `label` are allowed as options
 
 warning: there is no parameter `from_desugaring` on trait `Baz`
-  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:31:5
+  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:29:5
    |
 LL |     message = "{from_desugaring}{direct}{cause}{integral}{integer}",
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -47,7 +47,7 @@ LL |     message = "{from_desugaring}{direct}{cause}{integral}{integer}",
    = help: expect either a generic argument name or `{Self}` as format argument
 
 warning: there is no parameter `direct` on trait `Baz`
-  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:31:5
+  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:29:5
    |
 LL |     message = "{from_desugaring}{direct}{cause}{integral}{integer}",
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -55,7 +55,7 @@ LL |     message = "{from_desugaring}{direct}{cause}{integral}{integer}",
    = help: expect either a generic argument name or `{Self}` as format argument
 
 warning: there is no parameter `cause` on trait `Baz`
-  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:31:5
+  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:29:5
    |
 LL |     message = "{from_desugaring}{direct}{cause}{integral}{integer}",
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -63,7 +63,7 @@ LL |     message = "{from_desugaring}{direct}{cause}{integral}{integer}",
    = help: expect either a generic argument name or `{Self}` as format argument
 
 warning: there is no parameter `integral` on trait `Baz`
-  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:31:5
+  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:29:5
    |
 LL |     message = "{from_desugaring}{direct}{cause}{integral}{integer}",
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -71,7 +71,7 @@ LL |     message = "{from_desugaring}{direct}{cause}{integral}{integer}",
    = help: expect either a generic argument name or `{Self}` as format argument
 
 warning: there is no parameter `integer` on trait `Baz`
-  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:31:5
+  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:29:5
    |
 LL |     message = "{from_desugaring}{direct}{cause}{integral}{integer}",
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -79,7 +79,7 @@ LL |     message = "{from_desugaring}{direct}{cause}{integral}{integer}",
    = help: expect either a generic argument name or `{Self}` as format argument
 
 warning: there is no parameter `float` on trait `Baz`
-  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:42:5
+  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:40:5
    |
 LL |     label = "{float}{_Self}{crate_local}{Trait}{ItemContext}"
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -87,7 +87,7 @@ LL |     label = "{float}{_Self}{crate_local}{Trait}{ItemContext}"
    = help: expect either a generic argument name or `{Self}` as format argument
 
 warning: there is no parameter `_Self` on trait `Baz`
-  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:42:5
+  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:40:5
    |
 LL |     label = "{float}{_Self}{crate_local}{Trait}{ItemContext}"
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -95,7 +95,7 @@ LL |     label = "{float}{_Self}{crate_local}{Trait}{ItemContext}"
    = help: expect either a generic argument name or `{Self}` as format argument
 
 warning: there is no parameter `crate_local` on trait `Baz`
-  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:42:5
+  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:40:5
    |
 LL |     label = "{float}{_Self}{crate_local}{Trait}{ItemContext}"
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -103,7 +103,7 @@ LL |     label = "{float}{_Self}{crate_local}{Trait}{ItemContext}"
    = help: expect either a generic argument name or `{Self}` as format argument
 
 warning: there is no parameter `Trait` on trait `Baz`
-  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:42:5
+  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:40:5
    |
 LL |     label = "{float}{_Self}{crate_local}{Trait}{ItemContext}"
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -111,7 +111,7 @@ LL |     label = "{float}{_Self}{crate_local}{Trait}{ItemContext}"
    = help: expect either a generic argument name or `{Self}` as format argument
 
 warning: there is no parameter `ItemContext` on trait `Baz`
-  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:42:5
+  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:40:5
    |
 LL |     label = "{float}{_Self}{crate_local}{Trait}{ItemContext}"
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -119,7 +119,7 @@ LL |     label = "{float}{_Self}{crate_local}{Trait}{ItemContext}"
    = help: expect either a generic argument name or `{Self}` as format argument
 
 warning: malformed `on_unimplemented` attribute
-  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:4:5
+  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:2:5
    |
 LL |     on(_Self = "&str"),
    |     ^^^^^^^^^^^^^^^^^^ invalid option found here
@@ -128,7 +128,7 @@ LL |     on(_Self = "&str"),
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 warning: malformed `on_unimplemented` attribute
-  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:10:5
+  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:8:5
    |
 LL |     parent_label = "in this scope",
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ invalid option found here
@@ -137,7 +137,7 @@ LL |     parent_label = "in this scope",
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 warning: malformed `on_unimplemented` attribute
-  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:13:5
+  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:11:5
    |
 LL |     append_const_msg
    |     ^^^^^^^^^^^^^^^^ invalid option found here
@@ -146,7 +146,7 @@ LL |     append_const_msg
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0277]: trait has `()` and `i32` as params
-  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:61:15
+  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:59:15
    |
 LL |     takes_foo(());
    |     --------- ^^ trait has `()` and `i32` as params
@@ -156,18 +156,18 @@ LL |     takes_foo(());
    = help: the trait `Foo<i32>` is not implemented for `()`
    = note: trait has `()` and `i32` as params
 help: this trait has no implementations, consider adding one
-  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:17:1
+  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:15:1
    |
 LL | trait Foo<T> {}
    | ^^^^^^^^^^^^
 note: required by a bound in `takes_foo`
-  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:56:22
+  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:54:22
    |
 LL | fn takes_foo(_: impl Foo<i32>) {}
    |                      ^^^^^^^^ required by this bound in `takes_foo`
 
 warning: malformed `on_unimplemented` attribute
-  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:19:32
+  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:17:32
    |
 LL | #[diagnostic::on_unimplemented = "Message"]
    |                                ^^^^^^^^^^^ invalid option found here
@@ -176,7 +176,7 @@ LL | #[diagnostic::on_unimplemented = "Message"]
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0277]: the trait bound `(): Bar` is not satisfied
-  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:63:15
+  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:61:15
    |
 LL |     takes_bar(());
    |     --------- ^^ the trait `Bar` is not implemented for `()`
@@ -185,13 +185,13 @@ LL |     takes_bar(());
    |
    = help: the trait `Bar` is implemented for `i32`
 note: required by a bound in `takes_bar`
-  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:57:22
+  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:55:22
    |
 LL | fn takes_bar(_: impl Bar) {}
    |                      ^^^ required by this bound in `takes_bar`
 
 warning: there is no parameter `from_desugaring` on trait `Baz`
-  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:31:5
+  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:29:5
    |
 LL |     message = "{from_desugaring}{direct}{cause}{integral}{integer}",
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -200,7 +200,7 @@ LL |     message = "{from_desugaring}{direct}{cause}{integral}{integer}",
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 warning: there is no parameter `direct` on trait `Baz`
-  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:31:5
+  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:29:5
    |
 LL |     message = "{from_desugaring}{direct}{cause}{integral}{integer}",
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -209,7 +209,7 @@ LL |     message = "{from_desugaring}{direct}{cause}{integral}{integer}",
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 warning: there is no parameter `cause` on trait `Baz`
-  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:31:5
+  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:29:5
    |
 LL |     message = "{from_desugaring}{direct}{cause}{integral}{integer}",
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -218,7 +218,7 @@ LL |     message = "{from_desugaring}{direct}{cause}{integral}{integer}",
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 warning: there is no parameter `integral` on trait `Baz`
-  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:31:5
+  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:29:5
    |
 LL |     message = "{from_desugaring}{direct}{cause}{integral}{integer}",
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -227,7 +227,7 @@ LL |     message = "{from_desugaring}{direct}{cause}{integral}{integer}",
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 warning: there is no parameter `integer` on trait `Baz`
-  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:31:5
+  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:29:5
    |
 LL |     message = "{from_desugaring}{direct}{cause}{integral}{integer}",
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -236,7 +236,7 @@ LL |     message = "{from_desugaring}{direct}{cause}{integral}{integer}",
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 warning: there is no parameter `float` on trait `Baz`
-  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:42:5
+  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:40:5
    |
 LL |     label = "{float}{_Self}{crate_local}{Trait}{ItemContext}"
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -245,7 +245,7 @@ LL |     label = "{float}{_Self}{crate_local}{Trait}{ItemContext}"
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 warning: there is no parameter `_Self` on trait `Baz`
-  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:42:5
+  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:40:5
    |
 LL |     label = "{float}{_Self}{crate_local}{Trait}{ItemContext}"
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -254,7 +254,7 @@ LL |     label = "{float}{_Self}{crate_local}{Trait}{ItemContext}"
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 warning: there is no parameter `crate_local` on trait `Baz`
-  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:42:5
+  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:40:5
    |
 LL |     label = "{float}{_Self}{crate_local}{Trait}{ItemContext}"
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -263,7 +263,7 @@ LL |     label = "{float}{_Self}{crate_local}{Trait}{ItemContext}"
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 warning: there is no parameter `Trait` on trait `Baz`
-  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:42:5
+  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:40:5
    |
 LL |     label = "{float}{_Self}{crate_local}{Trait}{ItemContext}"
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -272,7 +272,7 @@ LL |     label = "{float}{_Self}{crate_local}{Trait}{ItemContext}"
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 warning: there is no parameter `ItemContext` on trait `Baz`
-  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:42:5
+  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:40:5
    |
 LL |     label = "{float}{_Self}{crate_local}{Trait}{ItemContext}"
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -281,7 +281,7 @@ LL |     label = "{float}{_Self}{crate_local}{Trait}{ItemContext}"
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0277]: {from_desugaring}{direct}{cause}{integral}{integer}
-  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:65:15
+  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:63:15
    |
 LL |     takes_baz(());
    |     --------- ^^ {float}{_Self}{crate_local}{Trait}{ItemContext}
@@ -290,12 +290,12 @@ LL |     takes_baz(());
    |
    = help: the trait `Baz` is not implemented for `()`
 help: this trait has no implementations, consider adding one
-  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:54:1
+  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:52:1
    |
 LL | trait Baz {}
    | ^^^^^^^^^
 note: required by a bound in `takes_baz`
-  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:58:22
+  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:56:22
    |
 LL | fn takes_baz(_: impl Baz) {}
    |                      ^^^ required by this bound in `takes_baz`

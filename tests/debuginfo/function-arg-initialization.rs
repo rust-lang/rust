@@ -119,100 +119,100 @@
 // lldb-command:run
 
 // IMMEDIATE ARGS
-// lldb-command:print a
-// lldb-check:[...]$0 = 1
-// lldb-command:print b
-// lldb-check:[...]$1 = true
-// lldb-command:print c
-// lldb-check:[...]$2 = 2.5
+// lldb-command:v a
+// lldb-check:[...] 1
+// lldb-command:v b
+// lldb-check:[...] true
+// lldb-command:v c
+// lldb-check:[...] 2.5
 // lldb-command:continue
 
 // NON IMMEDIATE ARGS
-// lldb-command:print a
-// lldb-check:[...]$3 = BigStruct { a: 3, b: 4, c: 5, d: 6, e: 7, f: 8, g: 9, h: 10 }
-// lldb-command:print b
-// lldb-check:[...]$4 = BigStruct { a: 11, b: 12, c: 13, d: 14, e: 15, f: 16, g: 17, h: 18 }
+// lldb-command:v a
+// lldb-check:[...] BigStruct { a: 3, b: 4, c: 5, d: 6, e: 7, f: 8, g: 9, h: 10 }
+// lldb-command:v b
+// lldb-check:[...] BigStruct { a: 11, b: 12, c: 13, d: 14, e: 15, f: 16, g: 17, h: 18 }
 // lldb-command:continue
 
 // BINDING
-// lldb-command:print a
-// lldb-check:[...]$5 = 19
-// lldb-command:print b
-// lldb-check:[...]$6 = 20
-// lldb-command:print c
-// lldb-check:[...]$7 = 21.5
+// lldb-command:v a
+// lldb-check:[...] 19
+// lldb-command:v b
+// lldb-check:[...] 20
+// lldb-command:v c
+// lldb-check:[...] 21.5
 // lldb-command:continue
 
 // ASSIGNMENT
-// lldb-command:print a
-// lldb-check:[...]$8 = 22
-// lldb-command:print b
-// lldb-check:[...]$9 = 23
-// lldb-command:print c
-// lldb-check:[...]$10 = 24.5
+// lldb-command:v a
+// lldb-check:[...] 22
+// lldb-command:v b
+// lldb-check:[...] 23
+// lldb-command:v c
+// lldb-check:[...] 24.5
 // lldb-command:continue
 
 // FUNCTION CALL
-// lldb-command:print x
-// lldb-check:[...]$11 = 25
-// lldb-command:print y
-// lldb-check:[...]$12 = 26
-// lldb-command:print z
-// lldb-check:[...]$13 = 27.5
+// lldb-command:v x
+// lldb-check:[...] 25
+// lldb-command:v y
+// lldb-check:[...] 26
+// lldb-command:v z
+// lldb-check:[...] 27.5
 // lldb-command:continue
 
 // EXPR
-// lldb-command:print x
-// lldb-check:[...]$14 = 28
-// lldb-command:print y
-// lldb-check:[...]$15 = 29
-// lldb-command:print z
-// lldb-check:[...]$16 = 30.5
+// lldb-command:v x
+// lldb-check:[...] 28
+// lldb-command:v y
+// lldb-check:[...] 29
+// lldb-command:v z
+// lldb-check:[...] 30.5
 // lldb-command:continue
 
 // RETURN EXPR
-// lldb-command:print x
-// lldb-check:[...]$17 = 31
-// lldb-command:print y
-// lldb-check:[...]$18 = 32
-// lldb-command:print z
-// lldb-check:[...]$19 = 33.5
+// lldb-command:v x
+// lldb-check:[...] 31
+// lldb-command:v y
+// lldb-check:[...] 32
+// lldb-command:v z
+// lldb-check:[...] 33.5
 // lldb-command:continue
 
 // ARITHMETIC EXPR
-// lldb-command:print x
-// lldb-check:[...]$20 = 34
-// lldb-command:print y
-// lldb-check:[...]$21 = 35
-// lldb-command:print z
-// lldb-check:[...]$22 = 36.5
+// lldb-command:v x
+// lldb-check:[...] 34
+// lldb-command:v y
+// lldb-check:[...] 35
+// lldb-command:v z
+// lldb-check:[...] 36.5
 // lldb-command:continue
 
 // IF EXPR
-// lldb-command:print x
-// lldb-check:[...]$23 = 37
-// lldb-command:print y
-// lldb-check:[...]$24 = 38
-// lldb-command:print z
-// lldb-check:[...]$25 = 39.5
+// lldb-command:v x
+// lldb-check:[...] 37
+// lldb-command:v y
+// lldb-check:[...] 38
+// lldb-command:v z
+// lldb-check:[...] 39.5
 // lldb-command:continue
 
 // WHILE EXPR
-// lldb-command:print x
-// lldb-check:[...]$26 = 40
-// lldb-command:print y
-// lldb-check:[...]$27 = 41
-// lldb-command:print z
-// lldb-check:[...]$28 = 42
+// lldb-command:v x
+// lldb-check:[...] 40
+// lldb-command:v y
+// lldb-check:[...] 41
+// lldb-command:v z
+// lldb-check:[...] 42
 // lldb-command:continue
 
 // LOOP EXPR
-// lldb-command:print x
-// lldb-check:[...]$29 = 43
-// lldb-command:print y
-// lldb-check:[...]$30 = 44
-// lldb-command:print z
-// lldb-check:[...]$31 = 45
+// lldb-command:v x
+// lldb-check:[...] 43
+// lldb-command:v y
+// lldb-check:[...] 44
+// lldb-command:v z
+// lldb-check:[...] 45
 // lldb-command:continue
 
 

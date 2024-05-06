@@ -12,49 +12,6 @@ error[E0229]: associated type bindings are not allowed here
 LL |     (): Test<{ 1 + (<() as Elide(&())>::call) }>,
    |                            ^^^^^^^^^^ associated type not allowed here
 
-error[E0277]: the trait bound `(): Elide<(&(),)>` is not satisfied
-  --> $DIR/escaping_bound_vars.rs:11:22
-   |
-LL |     (): Test<{ 1 + (<() as Elide(&())>::call) }>,
-   |                      ^^ the trait `Elide<(&(),)>` is not implemented for `()`
-   |
-help: this trait has no implementations, consider adding one
-  --> $DIR/escaping_bound_vars.rs:5:1
-   |
-LL | trait Elide<T> {
-   | ^^^^^^^^^^^^^^
+error: aborting due to 2 previous errors
 
-error[E0277]: cannot add `fn() {<() as Elide<(&(),)>>::call}` to `{integer}`
-  --> $DIR/escaping_bound_vars.rs:11:18
-   |
-LL |     (): Test<{ 1 + (<() as Elide(&())>::call) }>,
-   |                  ^ no implementation for `{integer} + fn() {<() as Elide<(&(),)>>::call}`
-   |
-   = help: the trait `Add<fn() {<() as Elide<(&(),)>>::call}>` is not implemented for `{integer}`
-   = help: the following other types implement trait `Add<Rhs>`:
-             <isize as Add>
-             <isize as Add<&isize>>
-             <i8 as Add>
-             <i8 as Add<&i8>>
-             <i16 as Add>
-             <i16 as Add<&i16>>
-             <i32 as Add>
-             <i32 as Add<&i32>>
-           and 48 others
-
-error[E0277]: the trait bound `(): Elide<(&(),)>` is not satisfied
-  --> $DIR/escaping_bound_vars.rs:11:18
-   |
-LL |     (): Test<{ 1 + (<() as Elide(&())>::call) }>,
-   |                  ^ the trait `Elide<(&(),)>` is not implemented for `()`
-   |
-help: this trait has no implementations, consider adding one
-  --> $DIR/escaping_bound_vars.rs:5:1
-   |
-LL | trait Elide<T> {
-   | ^^^^^^^^^^^^^^
-
-error: aborting due to 5 previous errors
-
-Some errors have detailed explanations: E0229, E0277.
-For more information about an error, try `rustc --explain E0229`.
+For more information about this error, try `rustc --explain E0229`.

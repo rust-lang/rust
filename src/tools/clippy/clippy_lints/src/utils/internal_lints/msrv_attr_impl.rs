@@ -42,7 +42,7 @@ impl LateLintPass<'_> for MsrvAttrImpl {
                     .filter(|t| matches!(t.unpack(), GenericArgKind::Type(_)))
                     .any(|t| match_type(cx, t.expect_ty(), &paths::MSRV))
             })
-            && !items.iter().any(|item| item.ident.name == sym!(enter_lint_attrs))
+            && !items.iter().any(|item| item.ident.name == sym!(check_attributes))
         {
             let context = if is_late_pass { "LateContext" } else { "EarlyContext" };
             let lint_pass = if is_late_pass { "LateLintPass" } else { "EarlyLintPass" };
@@ -51,8 +51,8 @@ impl LateLintPass<'_> for MsrvAttrImpl {
                 cx,
                 MISSING_MSRV_ATTR_IMPL,
                 span,
-                &format!("`extract_msrv_attr!` macro missing from `{lint_pass}` implementation"),
-                &format!("add `extract_msrv_attr!({context})` to the `{lint_pass}` implementation"),
+                format!("`extract_msrv_attr!` macro missing from `{lint_pass}` implementation"),
+                format!("add `extract_msrv_attr!({context})` to the `{lint_pass}` implementation"),
                 format!("{}\n    extract_msrv_attr!({context});", snippet(cx, span, "..")),
                 Applicability::MachineApplicable,
             );

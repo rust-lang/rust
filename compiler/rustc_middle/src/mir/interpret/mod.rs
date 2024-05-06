@@ -100,7 +100,7 @@ macro_rules! err_ub_custom {
                 msg: || $msg,
                 add_args: Box::new(move |mut set_arg| {
                     $($(
-                        set_arg(stringify!($name).into(), rustc_errors::IntoDiagnosticArg::into_diagnostic_arg($name));
+                        set_arg(stringify!($name).into(), rustc_errors::IntoDiagArg::into_diag_arg($name));
                     )*)?
                 })
             }
@@ -130,8 +130,8 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::{HashMapExt, Lock};
 use rustc_data_structures::tiny_list::TinyList;
 use rustc_errors::ErrorGuaranteed;
-use rustc_hir::def_id::DefId;
-use rustc_macros::HashStable;
+use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_serialize::{Decodable, Encodable};
 use rustc_target::abi::{AddressSpace, Endian, HasDataLayout};
@@ -627,6 +627,16 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
+    /// Freezes an `AllocId` created with `reserve` by pointing it at a static item. Trying to
+    /// call this function twice, even with the same `DefId` will ICE the compiler.
+    pub fn set_nested_alloc_id_static(self, id: AllocId, def_id: LocalDefId) {
+        if let Some(old) =
+            self.alloc_map.lock().alloc_map.insert(id, GlobalAlloc::Static(def_id.to_def_id()))
+        {
+            bug!("tried to set allocation ID {id:?}, but it was already existing as {old:#?}");
+        }
+    }
+
     /// Freezes an `AllocId` created with `reserve` by pointing it at an `Allocation`. May be called
     /// twice for the same `(AllocId, Allocation)` pair.
     fn set_alloc_id_same_memory(self, id: AllocId, mem: ConstAllocation<'tcx>) {
@@ -661,11 +671,11 @@ pub fn read_target_uint(endianness: Endian, mut source: &[u8]) -> Result<u128, i
     // So we do not read exactly 16 bytes into the u128, just the "payload".
     let uint = match endianness {
         Endian::Little => {
-            source.read(&mut buf)?;
+            source.read_exact(&mut buf[..source.len()])?;
             Ok(u128::from_le_bytes(buf))
         }
         Endian::Big => {
-            source.read(&mut buf[16 - source.len()..])?;
+            source.read_exact(&mut buf[16 - source.len()..])?;
             Ok(u128::from_be_bytes(buf))
         }
     };

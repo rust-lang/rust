@@ -7,19 +7,18 @@
       let mut _2: E;
       let mut _3: &U;
       let _4: U;
+      let mut _5: &U;
       scope 1 {
           debug i => _1;
-      }
-      scope 2 {
-          let mut _5: &U;
       }
   
       bb0: {
           StorageLive(_2);
           StorageLive(_3);
-          _5 = const _;
+          _5 = const f::promoted[0];
           _3 = &(*_5);
-          _2 = ((*_3).1: E);
+-         _2 = ((*_3).1: E);
++         _2 = ((*_5).1: E);
           StorageLive(_1);
 -         _1 = ((_2 as A).1: u32);
 +         _1 = const 0_u32;

@@ -20,19 +20,23 @@ note: ...which requires computing normalized predicates of `user`...
 LL | fn user<T>() where S<T>::P: std::fmt::Debug {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: ...which again requires computing predicates of `user`, completing the cycle
-note: cycle used when collecting item types in top-level module
-  --> $DIR/cycle-iat-inside-of-where-predicate.rs:3:1
+note: cycle used when checking that `user` is well-formed
+  --> $DIR/cycle-iat-inside-of-where-predicate.rs:8:1
    |
-LL | / #![feature(inherent_associated_types)]
-LL | | #![allow(incomplete_features)]
-LL | |
-LL | | // FIXME(inherent_associated_types): This shouldn't lead to a cycle error.
-...  |
-LL | |
-LL | | fn main() {}
-   | |____________^
+LL | fn user<T>() where S<T>::P: std::fmt::Debug {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
-error: aborting due to 1 previous error
+error[E0392]: type parameter `T` is never used
+  --> $DIR/cycle-iat-inside-of-where-predicate.rs:10:10
+   |
+LL | struct S<T>;
+   |          ^ unused type parameter
+   |
+   = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
+   = help: if you intended `T` to be a const parameter, use `const T: /* Type */` instead
 
-For more information about this error, try `rustc --explain E0391`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0391, E0392.
+For more information about an error, try `rustc --explain E0391`.

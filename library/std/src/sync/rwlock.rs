@@ -8,7 +8,7 @@ use crate::mem::ManuallyDrop;
 use crate::ops::{Deref, DerefMut};
 use crate::ptr::NonNull;
 use crate::sync::{poison, LockResult, TryLockError, TryLockResult};
-use crate::sys::locks as sys;
+use crate::sys::sync as sys;
 
 /// A reader-writer lock
 ///
@@ -31,13 +31,14 @@ use crate::sys::locks as sys;
 /// <details><summary>Potential deadlock example</summary>
 ///
 /// ```text
-/// // Thread 1             |  // Thread 2
-/// let _rg = lock.read();  |
-///                         |  // will block
-///                         |  let _wg = lock.write();
-/// // may deadlock         |
-/// let _rg = lock.read();  |
+/// // Thread 1              |  // Thread 2
+/// let _rg1 = lock.read();  |
+///                          |  // will block
+///                          |  let _wg = lock.write();
+/// // may deadlock          |
+/// let _rg2 = lock.read();  |
 /// ```
+///
 /// </details>
 ///
 /// The type parameter `T` represents the data that this lock protects. It is
@@ -439,7 +440,7 @@ impl<T: ?Sized> RwLock<T> {
         self.poison.get()
     }
 
-    /// Clear the poisoned state from a lock
+    /// Clear the poisoned state from a lock.
     ///
     /// If the lock is poisoned, it will remain poisoned until this function is called. This allows
     /// recovering from a poisoned state and marking that it has recovered. For example, if the

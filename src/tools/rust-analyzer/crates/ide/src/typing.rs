@@ -127,7 +127,8 @@ fn on_opening_bracket_typed(
     if !stdx::always!(range.len() == TextSize::of(opening_bracket)) {
         return None;
     }
-    let file = file.reparse(&Indel::delete(range));
+    // FIXME: Edition
+    let file = file.reparse(&Indel::delete(range), span::Edition::CURRENT);
 
     if let Some(edit) = bracket_expr(&file.tree(), offset, opening_bracket, closing_bracket) {
         return Some(edit);
@@ -175,9 +176,21 @@ fn on_opening_bracket_typed(
             }
         }
 
-        // If it's a statement in a block, we don't know how many statements should be included
-        if ast::ExprStmt::can_cast(expr.syntax().parent()?.kind()) {
-            return None;
+        if let Some(parent) = expr.syntax().parent().and_then(ast::Expr::cast) {
+            let mut node = expr.syntax().clone();
+            let all_prev_sib_attr = loop {
+                match node.prev_sibling() {
+                    Some(sib) if sib.kind().is_trivia() || sib.kind() == SyntaxKind::ATTR => {
+                        node = sib
+                    }
+                    Some(_) => break false,
+                    None => break true,
+                };
+            };
+
+            if all_prev_sib_attr {
+                expr = parent;
+            }
         }
 
         // Insert the closing bracket right after the expression.
@@ -399,7 +412,7 @@ mod tests {
         let (offset, mut before) = extract_offset(before);
         let edit = TextEdit::insert(offset, char_typed.to_string());
         edit.apply(&mut before);
-        let parse = SourceFile::parse(&before);
+        let parse = SourceFile::parse(&before, span::Edition::CURRENT);
         on_char_typed_inner(&parse, offset, char_typed).map(|it| {
             it.apply(&mut before);
             before.to_string()
@@ -824,6 +837,21 @@ fn f() {
         0 => {()},
         1 => (),
     }
+}
+            "#,
+        );
+        type_char(
+            '{',
+            r#"
+fn main() {
+    #[allow(unreachable_code)]
+    $0g();
+}
+            "#,
+            r#"
+fn main() {
+    #[allow(unreachable_code)]
+    {g()};
 }
             "#,
         );

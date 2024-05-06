@@ -10,7 +10,12 @@ pub fn target() -> Target {
 
     Target {
         llvm_target: "powerpc64-unknown-linux-musl".into(),
-        description: None,
+        metadata: crate::spec::TargetMetadata {
+            description: None,
+            tier: None,
+            host_tools: None,
+            std: None,
+        },
         pointer_width: 64,
         data_layout: "E-m:e-Fn32-i64:64-n32:64-S128-v256:256:256-v512:512:512".into(),
         arch: "powerpc64".into(),

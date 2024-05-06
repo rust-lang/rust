@@ -2,12 +2,12 @@
 // on musl target
 // override -Ctarget-feature=-crt-static from compiletest
 //@ compile-flags: --crate-type proc-macro -Ctarget-feature=
-//@ ignore-wasm32
 //@ ignore-sgx no support for proc-macro crate type
 //@ build-pass
 //@ force-host
 //@ no-prefer-dynamic
 //@ needs-dynamic-linking
+//@ needs-unwind compiling proc macros with panic=abort causes a warning
 
 #![crate_type = "proc-macro"]
 

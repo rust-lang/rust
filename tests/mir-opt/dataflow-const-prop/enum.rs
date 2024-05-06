@@ -1,4 +1,4 @@
-//@ unit-test: DataflowConstProp
+//@ test-mir-pass: DataflowConstProp
 // EMIT_MIR_FOR_EACH_BIT_WIDTH
 
 #![feature(custom_mir, core_intrinsics, rustc_attrs)]
@@ -34,7 +34,7 @@ fn constant() {
     // CHECK: debug x => [[x:_.*]];
     const C: E = E::V1(0);
 
-    // CHECK: [[e]] = const _;
+    // CHECK: [[e]] = const constant::C;
     let e = C;
     // CHECK: switchInt(const 0_isize) -> [0: [[target_bb:bb.*]], 1: bb2, otherwise: bb1];
     // CHECK: [[target_bb]]: {

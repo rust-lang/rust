@@ -16,7 +16,7 @@ LL | trait T3 = T1 + T3;
    |            ^^
    = note: ...which again requires computing the super predicates of `T1`, completing the cycle
    = note: trait aliases cannot be recursive
-note: cycle used when collecting item types in top-level module
+note: cycle used when checking that `T1` is well-formed
   --> $DIR/infinite-trait-alias-recursion.rs:3:1
    |
 LL | trait T1 = T2;

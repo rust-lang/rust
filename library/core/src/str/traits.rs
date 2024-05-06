@@ -1,10 +1,11 @@
 //! Trait implementations for `str`.
 
 use crate::cmp::Ordering;
+use crate::intrinsics::unchecked_sub;
 use crate::ops;
-use crate::panic::debug_assert_nounwind;
 use crate::ptr;
 use crate::slice::SliceIndex;
+use crate::ub_checks::assert_unsafe_precondition;
 
 use super::ParseBoolError;
 
@@ -192,36 +193,48 @@ unsafe impl SliceIndex<str> for ops::Range<usize> {
     unsafe fn get_unchecked(self, slice: *const str) -> *const Self::Output {
         let slice = slice as *const [u8];
 
-        debug_assert_nounwind!(
+        assert_unsafe_precondition!(
             // We'd like to check that the bounds are on char boundaries,
             // but there's not really a way to do so without reading
             // behind the pointer, which has aliasing implications.
             // It's also not possible to move this check up to
             // `str::get_unchecked` without adding a special function
             // to `SliceIndex` just for this.
-            self.end >= self.start && self.end <= slice.len(),
-            "str::get_unchecked requires that the range is within the string slice"
+            check_library_ub,
+            "str::get_unchecked requires that the range is within the string slice",
+            (
+                start: usize = self.start,
+                end: usize = self.end,
+                len: usize = slice.len()
+            ) => end >= start && end <= len,
         );
 
         // SAFETY: the caller guarantees that `self` is in bounds of `slice`
         // which satisfies all the conditions for `add`.
-        let ptr = unsafe { slice.as_ptr().add(self.start) };
-        let len = self.end - self.start;
-        ptr::slice_from_raw_parts(ptr, len) as *const str
+        unsafe {
+            let new_len = unchecked_sub(self.end, self.start);
+            ptr::slice_from_raw_parts(slice.as_ptr().add(self.start), new_len) as *const str
+        }
     }
     #[inline]
     unsafe fn get_unchecked_mut(self, slice: *mut str) -> *mut Self::Output {
         let slice = slice as *mut [u8];
 
-        debug_assert_nounwind!(
-            self.end >= self.start && self.end <= slice.len(),
-            "str::get_unchecked_mut requires that the range is within the string slice"
+        assert_unsafe_precondition!(
+            check_library_ub,
+            "str::get_unchecked_mut requires that the range is within the string slice",
+            (
+                start: usize = self.start,
+                end: usize = self.end,
+                len: usize = slice.len()
+            ) => end >= start && end <= len,
         );
 
         // SAFETY: see comments for `get_unchecked`.
-        let ptr = unsafe { slice.as_mut_ptr().add(self.start) };
-        let len = self.end - self.start;
-        ptr::slice_from_raw_parts_mut(ptr, len) as *mut str
+        unsafe {
+            let new_len = unchecked_sub(self.end, self.start);
+            ptr::slice_from_raw_parts_mut(slice.as_mut_ptr().add(self.start), new_len) as *mut str
+        }
     }
     #[inline]
     fn index(self, slice: &str) -> &Self::Output {

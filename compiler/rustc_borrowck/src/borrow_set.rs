@@ -6,6 +6,7 @@ use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::traversal;
 use rustc_middle::mir::visit::{MutatingUseContext, NonUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::{self, Body, Local, Location};
+use rustc_middle::span_bug;
 use rustc_middle::ty::{RegionVid, TyCtxt};
 use rustc_mir_dataflow::move_paths::MoveData;
 use std::fmt;
@@ -69,7 +70,8 @@ impl<'tcx> fmt::Display for BorrowData<'tcx> {
     fn fmt(&self, w: &mut fmt::Formatter<'_>) -> fmt::Result {
         let kind = match self.kind {
             mir::BorrowKind::Shared => "",
-            mir::BorrowKind::Fake => "fake ",
+            mir::BorrowKind::Fake(mir::FakeBorrowKind::Deep) => "fake ",
+            mir::BorrowKind::Fake(mir::FakeBorrowKind::Shallow) => "fake shallow ",
             mir::BorrowKind::Mut { kind: mir::MutBorrowKind::ClosureCapture } => "uniq ",
             // FIXME: differentiate `TwoPhaseBorrow`
             mir::BorrowKind::Mut {
@@ -108,9 +110,7 @@ impl LocalsStateAtExit {
             has_storage_dead.visit_body(body);
             let mut has_storage_dead_or_moved = has_storage_dead.0;
             for move_out in &move_data.moves {
-                if let Some(index) = move_data.base_local(move_out.path) {
-                    has_storage_dead_or_moved.insert(index);
-                }
+                has_storage_dead_or_moved.insert(move_data.base_local(move_out.path));
             }
             LocalsStateAtExit::SomeAreInvalidated { has_storage_dead_or_moved }
         }
@@ -159,7 +159,7 @@ impl<'tcx> BorrowSet<'tcx> {
     }
 
     pub(crate) fn indices(&self) -> impl Iterator<Item = BorrowIndex> {
-        BorrowIndex::from_usize(0)..BorrowIndex::from_usize(self.len())
+        BorrowIndex::ZERO..BorrowIndex::from_usize(self.len())
     }
 
     pub(crate) fn iter_enumerated(&self) -> impl Iterator<Item = (BorrowIndex, &BorrowData<'tcx>)> {

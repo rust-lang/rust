@@ -2,7 +2,7 @@ use crate::*;
 use rustc_ast::ast::Mutability;
 use rustc_middle::ty::layout::LayoutOf as _;
 use rustc_middle::ty::{self, Instance, Ty};
-use rustc_span::{BytePos, Loc, Symbol};
+use rustc_span::{hygiene, BytePos, Loc, Symbol};
 use rustc_target::{abi::Size, spec::abi::Abi};
 
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
@@ -12,7 +12,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         abi: Abi,
         link_name: Symbol,
         args: &[OpTy<'tcx, Provenance>],
-        dest: &PlaceTy<'tcx, Provenance>,
+        dest: &MPlaceTy<'tcx, Provenance>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         let [flags] = this.check_shim(abi, Abi::Rust, link_name, args)?;
@@ -32,7 +32,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         abi: Abi,
         link_name: Symbol,
         args: &[OpTy<'tcx, Provenance>],
-        dest: &PlaceTy<'tcx, Provenance>,
+        dest: &MPlaceTy<'tcx, Provenance>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         let tcx = this.tcx;
@@ -45,12 +45,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
         let mut data = Vec::new();
         for frame in this.active_thread_stack().iter().rev() {
-            let mut span = frame.current_span();
-            // Match the behavior of runtime backtrace spans
-            // by using a non-macro span in our backtrace. See `FunctionCx::debug_loc`.
-            if span.from_expansion() && !tcx.sess.opts.unstable_opts.debug_macros {
-                span = rustc_span::hygiene::walk_chain(span, frame.body.span.ctxt())
-            }
+            // Match behavior of debuginfo (`FunctionCx::adjusted_span_and_dbg_scope`).
+            let span = hygiene::walk_chain_collapsed(frame.current_span(), frame.body.span);
             data.push((frame.instance, span.lo()));
         }
 
@@ -145,7 +141,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         abi: Abi,
         link_name: Symbol,
         args: &[OpTy<'tcx, Provenance>],
-        dest: &PlaceTy<'tcx, Provenance>,
+        dest: &MPlaceTy<'tcx, Provenance>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         let [ptr, flags] = this.check_shim(abi, Abi::Rust, link_name, args)?;
@@ -174,7 +170,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         // `lo.col` is 0-based - add 1 to make it 1-based for the caller.
         let colno: u32 = u32::try_from(lo.col.0.saturating_add(1)).unwrap_or(0);
 
-        let dest = this.force_allocation(dest)?;
         if let ty::Adt(adt, _) = dest.layout.ty.kind() {
             if !adt.repr().c() {
                 throw_ub_format!(
@@ -191,29 +186,29 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let filename_alloc =
                     this.allocate_str(&filename, MiriMemoryKind::Rust.into(), Mutability::Mut)?;
 
-                this.write_immediate(name_alloc.to_ref(this), &this.project_field(&dest, 0)?)?;
-                this.write_immediate(filename_alloc.to_ref(this), &this.project_field(&dest, 1)?)?;
+                this.write_immediate(name_alloc.to_ref(this), &this.project_field(dest, 0)?)?;
+                this.write_immediate(filename_alloc.to_ref(this), &this.project_field(dest, 1)?)?;
             }
             1 => {
                 this.write_scalar(
                     Scalar::from_target_usize(name.len().try_into().unwrap(), this),
-                    &this.project_field(&dest, 0)?,
+                    &this.project_field(dest, 0)?,
                 )?;
                 this.write_scalar(
                     Scalar::from_target_usize(filename.len().try_into().unwrap(), this),
-                    &this.project_field(&dest, 1)?,
+                    &this.project_field(dest, 1)?,
                 )?;
             }
             _ => throw_unsup_format!("unknown `miri_resolve_frame` flags {}", flags),
         }
 
-        this.write_scalar(Scalar::from_u32(lineno), &this.project_field(&dest, 2)?)?;
-        this.write_scalar(Scalar::from_u32(colno), &this.project_field(&dest, 3)?)?;
+        this.write_scalar(Scalar::from_u32(lineno), &this.project_field(dest, 2)?)?;
+        this.write_scalar(Scalar::from_u32(colno), &this.project_field(dest, 3)?)?;
 
         // Support a 4-field struct for now - this is deprecated
         // and slated for removal.
         if num_fields == 5 {
-            this.write_pointer(fn_ptr, &this.project_field(&dest, 4)?)?;
+            this.write_pointer(fn_ptr, &this.project_field(dest, 4)?)?;
         }
 
         Ok(())

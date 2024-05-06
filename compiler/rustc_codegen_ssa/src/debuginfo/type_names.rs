@@ -16,9 +16,11 @@ use rustc_data_structures::stable_hasher::{Hash64, HashStable, StableHasher};
 use rustc_hir::def_id::DefId;
 use rustc_hir::definitions::{DefPathData, DefPathDataName, DisambiguatedDefPathData};
 use rustc_hir::{CoroutineDesugaring, CoroutineKind, CoroutineSource, Mutability};
+use rustc_middle::bug;
 use rustc_middle::ty::layout::{IntegerExt, TyAndLayout};
 use rustc_middle::ty::{self, ExistentialProjection, ParamEnv, Ty, TyCtxt};
 use rustc_middle::ty::{GenericArgKind, GenericArgsRef};
+use rustc_span::DUMMY_SP;
 use rustc_target::abi::Integer;
 use smallvec::SmallVec;
 
@@ -137,7 +139,7 @@ fn push_debuginfo_type_name<'tcx>(
                 output.push(')');
             }
         }
-        ty::RawPtr(ty::TypeAndMut { ty: inner_type, mutbl }) => {
+        ty::RawPtr(inner_type, mutbl) => {
             if cpp_like_debuginfo {
                 match mutbl {
                     Mutability::Not => output.push_str("ptr_const$<"),
@@ -199,6 +201,16 @@ fn push_debuginfo_type_name<'tcx>(
                     )
                     .unwrap(),
                 }
+            }
+        }
+        ty::Pat(inner_type, pat) => {
+            if cpp_like_debuginfo {
+                output.push_str("pat$<");
+                push_debuginfo_type_name(tcx, inner_type, true, output, visited);
+                // FIXME(wg-debugging): implement CPP like printing for patterns.
+                write!(output, ",{:?}>", pat).unwrap();
+            } else {
+                write!(output, "{:?}", t).unwrap();
             }
         }
         ty::Slice(inner_type) => {
@@ -704,7 +716,7 @@ fn push_const_param<'tcx>(tcx: TyCtxt<'tcx>, ct: ty::Const<'tcx>, output: &mut S
                 // avoiding collisions and will make the emitted type names shorter.
                 let hash_short = tcx.with_stable_hashing_context(|mut hcx| {
                     let mut hasher = StableHasher::new();
-                    let ct = ct.eval(tcx, ty::ParamEnv::reveal_all(), None).unwrap();
+                    let ct = ct.eval(tcx, ty::ParamEnv::reveal_all(), DUMMY_SP).unwrap();
                     hcx.while_hashing_spans(false, |hcx| ct.hash_stable(hcx, &mut hasher));
                     hasher.finish::<Hash64>()
                 });

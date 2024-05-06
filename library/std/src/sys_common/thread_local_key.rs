@@ -1,4 +1,4 @@
-//! OS-based thread local storage
+//! OS-based thread local storage for non-Windows systems
 //!
 //! This module provides an implementation of OS-based thread local storage,
 //! using the native OS-provided facilities (think `TlsAlloc` or
@@ -10,6 +10,9 @@
 //! initialization, and does not contain a `Drop` implementation to deallocate
 //! the OS-TLS key. The other is a type which does implement `Drop` and hence
 //! has a safe interface.
+//!
+//! Windows doesn't use this module at all; `sys::pal::windows::thread_local_key`
+//! gets imported in its stead.
 //!
 //! # Usage
 //!
@@ -128,7 +131,7 @@ impl StaticKey {
 
     #[inline]
     unsafe fn key(&self) -> imp::Key {
-        match self.key.load(Ordering::Relaxed) {
+        match self.key.load(Ordering::Acquire) {
             KEY_SENTVAL => self.lazy_init() as imp::Key,
             n => n as imp::Key,
         }
@@ -156,8 +159,8 @@ impl StaticKey {
         match self.key.compare_exchange(
             KEY_SENTVAL,
             key as usize,
-            Ordering::SeqCst,
-            Ordering::SeqCst,
+            Ordering::Release,
+            Ordering::Acquire,
         ) {
             // The CAS succeeded, so we've created the actual key
             Ok(_) => key as usize,

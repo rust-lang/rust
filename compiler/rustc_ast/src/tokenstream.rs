@@ -20,7 +20,7 @@ use crate::AttrVec;
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::{self, Lrc};
-use rustc_macros::HashStable_Generic;
+use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_serialize::{Decodable, Encodable};
 use rustc_span::{sym, Span, SpanDecoder, SpanEncoder, Symbol, DUMMY_SP};
 use smallvec::{smallvec, SmallVec};
@@ -28,18 +28,7 @@ use smallvec::{smallvec, SmallVec};
 use std::borrow::Cow;
 use std::{cmp, fmt, iter};
 
-/// When the main Rust parser encounters a syntax-extension invocation, it
-/// parses the arguments to the invocation as a token tree. This is a very
-/// loose structure, such that all sorts of different AST fragments can
-/// be passed to syntax extensions using a uniform type.
-///
-/// If the syntax extension is an MBE macro, it will attempt to match its
-/// LHS token tree against the provided token tree, and if it finds a
-/// match, will transcribe the RHS token tree, splicing in any captured
-/// `macro_parser::matched_nonterminals` into the `SubstNt`s it finds.
-///
-/// The RHS of an MBE macro is the only place `SubstNt`s are substituted.
-/// Nothing special happens to misnamed or misplaced `SubstNt`s.
+/// Part of a `TokenStream`.
 #[derive(Debug, Clone, PartialEq, Encodable, Decodable, HashStable_Generic)]
 pub enum TokenTree {
     /// A single token. Should never be `OpenDelim` or `CloseDelim`, because
@@ -151,9 +140,8 @@ impl fmt::Debug for LazyAttrTokenStream {
 }
 
 impl<S: SpanEncoder> Encodable<S> for LazyAttrTokenStream {
-    fn encode(&self, s: &mut S) {
-        // Used by AST json printing.
-        Encodable::encode(&self.to_attr_token_stream(), s);
+    fn encode(&self, _s: &mut S) {
+        panic!("Attempted to encode LazyAttrTokenStream");
     }
 }
 
@@ -779,7 +767,7 @@ impl DelimSpacing {
 }
 
 // Some types are used a lot. Make sure they don't unintentionally get bigger.
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+#[cfg(target_pointer_width = "64")]
 mod size_asserts {
     use super::*;
     use rustc_data_structures::static_assert_size;

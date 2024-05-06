@@ -38,6 +38,11 @@ LL |         let [y, z @ ..] = x;
 LL |     };
 LL |     &x;
    |     ^^ value borrowed here after move
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |         let [y, z @ ..] = x.clone();
+   |                            ++++++++
 
 error[E0502]: cannot borrow `*x` as mutable because it is also borrowed as immutable
   --> $DIR/borrowck-closures-slice-patterns.rs:33:13
@@ -79,6 +84,12 @@ LL |         let [y, z @ ..] = *x;
 LL |     };
 LL |     &x;
    |     ^^ value borrowed here after move
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL -         let [y, z @ ..] = *x;
+LL +         let [y, z @ ..] = x.clone();
+   |
 
 error[E0502]: cannot borrow `*x` as mutable because it is also borrowed as immutable
   --> $DIR/borrowck-closures-slice-patterns.rs:59:13

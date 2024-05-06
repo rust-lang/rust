@@ -81,7 +81,7 @@ pub struct NoMatchData<'tcx> {
 
 // A pared down enum describing just the places from which a method
 // candidate can arise. Used for error reporting only.
-#[derive(Copy, Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum CandidateSource {
     Impl(DefId),
     Trait(DefId /* trait id */),
@@ -200,11 +200,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if let Some(span) = result.illegal_sized_bound {
             let mut needs_mut = false;
             if let ty::Ref(region, t_type, mutability) = self_ty.kind() {
-                let trait_type = Ty::new_ref(
-                    self.tcx,
-                    *region,
-                    ty::TypeAndMut { ty: *t_type, mutbl: mutability.invert() },
-                );
+                let trait_type = Ty::new_ref(self.tcx, *region, *t_type, mutability.invert());
                 // We probe again to see if there might be a borrow mutability discrepancy.
                 match self.lookup_probe(
                     segment.ident,

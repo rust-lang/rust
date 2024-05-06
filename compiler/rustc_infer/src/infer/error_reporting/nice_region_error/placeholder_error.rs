@@ -8,7 +8,7 @@ use crate::infer::ValuePairs;
 use crate::infer::{SubregionOrigin, TypeTrace};
 use crate::traits::{ObligationCause, ObligationCauseCode};
 use rustc_data_structures::intern::Interned;
-use rustc_errors::{Diag, IntoDiagnosticArg};
+use rustc_errors::{Diag, IntoDiagArg};
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::error::ExpectedFound;
@@ -26,11 +26,11 @@ pub struct Highlighted<'tcx, T> {
     value: T,
 }
 
-impl<'tcx, T> IntoDiagnosticArg for Highlighted<'tcx, T>
+impl<'tcx, T> IntoDiagArg for Highlighted<'tcx, T>
 where
     T: for<'a> Print<'tcx, FmtPrinter<'a, 'tcx>>,
 {
-    fn into_diagnostic_arg(self) -> rustc_errors::DiagArgValue {
+    fn into_diag_arg(self) -> rustc_errors::DiagArgValue {
         rustc_errors::DiagArgValue::Str(self.to_string().into())
     }
 }
@@ -195,13 +195,13 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
         value_pairs: &ValuePairs<'tcx>,
     ) -> Option<Diag<'tcx>> {
         let (expected_args, found_args, trait_def_id) = match value_pairs {
-            ValuePairs::PolyTraitRefs(ExpectedFound { expected, found })
-                if expected.def_id() == found.def_id() =>
+            ValuePairs::TraitRefs(ExpectedFound { expected, found })
+                if expected.def_id == found.def_id =>
             {
                 // It's possible that the placeholders come from a binder
                 // outside of this value pair. Use `no_bound_vars` as a
                 // simple heuristic for that.
-                (expected.no_bound_vars()?.args, found.no_bound_vars()?.args, expected.def_id())
+                (expected.args, found.args, expected.def_id)
             }
             _ => return None,
         };

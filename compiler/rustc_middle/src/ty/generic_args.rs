@@ -9,15 +9,16 @@ use crate::ty::{self, Lift, List, ParamConst, Ty, TyCtxt};
 use rustc_ast_ir::visit::VisitorResult;
 use rustc_ast_ir::walk_visitable_list;
 use rustc_data_structures::intern::Interned;
-use rustc_errors::{DiagArgValue, IntoDiagnosticArg};
+use rustc_errors::{DiagArgValue, IntoDiagArg};
 use rustc_hir::def_id::DefId;
-use rustc_macros::HashStable;
+use rustc_macros::{
+    Decodable, Encodable, HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable,
+};
 use rustc_serialize::{Decodable, Encodable};
 use rustc_type_ir::WithCachedTypeInfo;
 use smallvec::SmallVec;
 
 use core::intrinsics;
-use std::cmp::Ordering;
 use std::marker::PhantomData;
 use std::mem;
 use std::num::NonZero;
@@ -57,9 +58,9 @@ unsafe impl<'tcx> Sync for GenericArg<'tcx> where
 {
 }
 
-impl<'tcx> IntoDiagnosticArg for GenericArg<'tcx> {
-    fn into_diagnostic_arg(self) -> DiagArgValue {
-        self.to_string().into_diagnostic_arg()
+impl<'tcx> IntoDiagArg for GenericArg<'tcx> {
+    fn into_diag_arg(self) -> DiagArgValue {
+        self.to_string().into_diag_arg()
     }
 }
 
@@ -68,7 +69,7 @@ const TYPE_TAG: usize = 0b00;
 const REGION_TAG: usize = 0b01;
 const CONST_TAG: usize = 0b10;
 
-#[derive(Debug, TyEncodable, TyDecodable, PartialEq, Eq, PartialOrd, Ord, HashStable)]
+#[derive(Debug, TyEncodable, TyDecodable, PartialEq, Eq, HashStable)]
 pub enum GenericArgKind<'tcx> {
     Lifetime(ty::Region<'tcx>),
     Type(Ty<'tcx>),
@@ -97,18 +98,6 @@ impl<'tcx> GenericArgKind<'tcx> {
         };
 
         GenericArg { ptr: ptr.map_addr(|addr| addr | tag), marker: PhantomData }
-    }
-}
-
-impl<'tcx> Ord for GenericArg<'tcx> {
-    fn cmp(&self, other: &GenericArg<'tcx>) -> Ordering {
-        self.unpack().cmp(&other.unpack())
-    }
-}
-
-impl<'tcx> PartialOrd for GenericArg<'tcx> {
-    fn partial_cmp(&self, other: &GenericArg<'tcx>) -> Option<Ordering> {
-        Some(self.cmp(other))
     }
 }
 

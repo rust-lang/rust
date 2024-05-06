@@ -1,4 +1,7 @@
 //@compile-flags: -Zmiri-preemption-rate=0.0
+// Avoid accidental synchronization via address reuse inside `thread::spawn`.
+//@compile-flags: -Zmiri-address-reuse-cross-thread-rate=0
+
 use std::sync::atomic::{AtomicU16, Ordering};
 use std::thread;
 

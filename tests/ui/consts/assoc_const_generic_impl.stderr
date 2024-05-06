@@ -4,6 +4,12 @@ error[E0080]: evaluation of `<u32 as ZeroSized>::I_AM_ZERO_SIZED` failed
 LL |     const I_AM_ZERO_SIZED: ()  = [()][std::mem::size_of::<Self>()];
    |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ index out of bounds: the length is 1 but the index is 4
 
+note: erroneous constant encountered
+  --> $DIR/assoc_const_generic_impl.rs:11:9
+   |
+LL |         Self::I_AM_ZERO_SIZED;
+   |         ^^^^^^^^^^^^^^^^^^^^^
+
 note: the above error was encountered while instantiating `fn <u32 as ZeroSized>::requires_zero_size`
   --> $DIR/assoc_const_generic_impl.rs:18:5
    |

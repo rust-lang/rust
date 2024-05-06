@@ -19,6 +19,7 @@ extern crate stable_mir;
 
 use std::assert_matches::assert_matches;
 use mir::{mono::Instance, TerminatorKind::*};
+use stable_mir::mir::mono::InstanceKind;
 use rustc_smir::rustc_internal;
 use stable_mir::ty::{RigidTy, TyKind, Ty, UintTy};
 use stable_mir::*;
@@ -35,9 +36,10 @@ fn test_stable_mir() -> ControlFlow<()> {
     assert_eq!(main_fn.trimmed_name(), "main");
 
     let instances = get_instances(main_fn.body().unwrap());
-    assert_eq!(instances.len(), 2);
+    assert_eq!(instances.len(), 3);
     test_fn(instances[0], "from_u32", "std::char::from_u32", "core");
     test_fn(instances[1], "Vec::<u8>::new", "std::vec::Vec::<u8>::new", "alloc");
+    test_fn(instances[2], "ctpop::<u8>", "std::intrinsics::ctpop::<u8>", "core");
     test_vec_new(instances[1]);
     ControlFlow::Continue(())
 }
@@ -47,6 +49,14 @@ fn test_fn(instance: Instance, expected_trimmed: &str, expected_qualified: &str,
     let qualified = instance.name();
     assert_eq!(&trimmed, expected_trimmed);
     assert_eq!(&qualified, expected_qualified);
+
+    if instance.kind == InstanceKind::Intrinsic {
+        let intrinsic = instance.intrinsic_name().unwrap();
+        let (trimmed_base, _trimmed_args) = trimmed.split_once("::").unwrap();
+        assert_eq!(intrinsic, trimmed_base);
+        return;
+    }
+    assert!(instance.intrinsic_name().is_none());
 
     let item = CrateItem::try_from(instance).unwrap();
     let trimmed = item.trimmed_name();
@@ -119,10 +129,12 @@ fn generate_input(path: &str) -> std::io::Result<()> {
     write!(
         file,
         r#"
+        #![feature(core_intrinsics)]
 
         fn main() {{
             let _c = core::char::from_u32(99);
             let _v = Vec::<u8>::new();
+            let _i = std::intrinsics::ctpop::<u8>(0);
         }}
     "#
     )?;

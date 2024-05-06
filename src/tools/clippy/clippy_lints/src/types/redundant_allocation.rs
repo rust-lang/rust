@@ -4,7 +4,7 @@ use clippy_utils::{path_def_id, qpath_generic_tys};
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, QPath, TyKind};
-use rustc_hir_analysis::hir_ty_to_ty;
+use rustc_hir_analysis::lower_ty;
 use rustc_lint::LateContext;
 use rustc_middle::ty::TypeVisitableExt;
 use rustc_span::symbol::sym;
@@ -29,7 +29,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, hir_ty: &hir::Ty<'tcx>, qpath:
             cx,
             REDUNDANT_ALLOCATION,
             hir_ty.span,
-            &format!("usage of `{outer_sym}<{generic_snippet}>`"),
+            format!("usage of `{outer_sym}<{generic_snippet}>`"),
             |diag| {
                 diag.span_suggestion(hir_ty.span, "try", format!("{generic_snippet}"), applicability);
                 diag.note(format!(
@@ -56,10 +56,10 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, hir_ty: &hir::Ty<'tcx>, qpath:
     };
     let inner_span = match qpath_generic_tys(inner_qpath).next() {
         Some(hir_ty) => {
-            // Reallocation of a fat pointer causes it to become thin. `hir_ty_to_ty` is safe to use
+            // Reallocation of a fat pointer causes it to become thin. `lower_ty` is safe to use
             // here because `mod.rs` guarantees this lint is only run on types outside of bodies and
             // is not run on locals.
-            let ty = hir_ty_to_ty(cx.tcx, hir_ty);
+            let ty = lower_ty(cx.tcx, hir_ty);
             if ty.has_escaping_bound_vars() || !ty.is_sized(cx.tcx, cx.param_env) {
                 return false;
             }
@@ -73,7 +73,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, hir_ty: &hir::Ty<'tcx>, qpath:
             cx,
             REDUNDANT_ALLOCATION,
             hir_ty.span,
-            &format!("usage of `{outer_sym}<{inner_sym}<{generic_snippet}>>`"),
+            format!("usage of `{outer_sym}<{inner_sym}<{generic_snippet}>>`"),
             |diag| {
                 diag.span_suggestion(
                     hir_ty.span,
@@ -92,7 +92,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, hir_ty: &hir::Ty<'tcx>, qpath:
             cx,
             REDUNDANT_ALLOCATION,
             hir_ty.span,
-            &format!("usage of `{outer_sym}<{inner_sym}<{generic_snippet}>>`"),
+            format!("usage of `{outer_sym}<{inner_sym}<{generic_snippet}>>`"),
             |diag| {
                 diag.note(format!(
                     "`{inner_sym}<{generic_snippet}>` is already on the heap, `{outer_sym}<{inner_sym}<{generic_snippet}>>` makes an extra allocation"

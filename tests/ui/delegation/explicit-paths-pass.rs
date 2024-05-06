@@ -1,7 +1,7 @@
 //@ run-pass
 
 #![feature(fn_delegation)]
-//~^ WARN the feature `fn_delegation` is incomplete
+#![allow(incomplete_features)]
 
 trait Trait {
     fn bar(&self, x: i32) -> i32 { x }
@@ -10,7 +10,6 @@ trait Trait {
     }
     fn static_method(x: i32) -> i32 { x }
     fn static_method2(x: i32, y: i32) -> i32 { x + y }
-    fn baz<'a>(&self, x: &'a i32) -> &'a i32 { x }
 }
 
 struct F;
@@ -29,11 +28,9 @@ impl Trait for S {
     reuse Trait::description { &self.0 }
     reuse <F as Trait>::static_method;
     reuse <F as Trait>::static_method2 { S::static_method(self) }
-    reuse Trait::baz { &self.0 }
 }
 
 impl S {
-    reuse Trait::baz { &self.0 }
     reuse <F as Trait>::static_method { to_reuse::foo(self) }
 }
 
@@ -49,16 +46,8 @@ fn main() {
     assert_eq!(42, <S as Trait>::static_method(42));
     assert_eq!(21, S::static_method2(10, 10));
 
-    reuse <S as Trait>::static_method;
-    reuse <S as Trait>::static_method2 { static_method(self) }
     #[inline]
     reuse to_reuse::foo;
-    assert_eq!(42, static_method(42));
-    assert_eq!(21, static_method2(10, 10));
     assert_eq!(43, foo(42));
     assert_eq!(15, zero_args());
-
-    let x: i32 = 15;
-    assert_eq!(&x, <S as Trait>::baz(&s, &x));
-    assert_eq!(&x, S::baz(&s, &x));
 }

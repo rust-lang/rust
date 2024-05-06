@@ -125,15 +125,7 @@ fn variance_of_opaque(tcx: TyCtxt<'_>, item_def_id: LocalDefId) -> &[ty::Varianc
 
     // By default, RPIT are invariant wrt type and const generics, but they are bivariant wrt
     // lifetime generics.
-    let variances = std::iter::repeat(ty::Invariant).take(generics.count());
-
-    let mut variances: Vec<_> = match tcx.opaque_type_origin(item_def_id) {
-        rustc_hir::OpaqueTyOrigin::FnReturn(_) | rustc_hir::OpaqueTyOrigin::AsyncFn(_) => {
-            variances.collect()
-        }
-        // But TAIT are invariant for all generics
-        rustc_hir::OpaqueTyOrigin::TyAlias { .. } => return tcx.arena.alloc_from_iter(variances),
-    };
+    let mut variances = vec![ty::Invariant; generics.count()];
 
     // Mark all lifetimes from parent generics as unused (Bivariant).
     // This will be overridden later if required.

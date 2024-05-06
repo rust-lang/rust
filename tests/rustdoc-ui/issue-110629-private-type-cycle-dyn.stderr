@@ -8,17 +8,11 @@ LL | type Bar<'a, 'b> = Box<dyn PartialEq<Bar<'a, 'b>>>;
    = note: type aliases cannot be recursive
    = help: consider using a struct, enum, or union instead to break the cycle
    = help: see <https://doc.rust-lang.org/reference/types.html#recursive-types> for more information
-note: cycle used when collecting item types in top-level module
+note: cycle used when checking that `Bar` is well-formed
   --> $DIR/issue-110629-private-type-cycle-dyn.rs:1:1
    |
-LL | / type Bar<'a, 'b> = Box<dyn PartialEq<Bar<'a, 'b>>>;
-LL | |
-LL | |
-LL | | fn bar<'a, 'b>(i: &'a i32) -> Bar<'a, 'b> {
-...  |
-LL | |     assert!(bar(&meh) == bar(&muh));
-LL | | }
-   | |_^
+LL | type Bar<'a, 'b> = Box<dyn PartialEq<Bar<'a, 'b>>>;
+   | ^^^^^^^^^^^^^^^^
    = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
 error: aborting due to 1 previous error

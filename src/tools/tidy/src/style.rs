@@ -18,8 +18,12 @@
 // ignore-tidy-dbg
 
 use crate::walk::{filter_dirs, walk};
-use regex::{Regex, RegexSet};
+use regex::RegexSet;
+use rustc_hash::FxHashMap;
 use std::{ffi::OsStr, path::Path};
+
+#[cfg(test)]
+mod tests;
 
 /// Error code markdown is restricted to 80 columns because they can be
 /// displayed on the console with --example.
@@ -65,11 +69,55 @@ const ANNOTATIONS_TO_IGNORE: &[&str] = &[
     "//@ normalize-stderr-test",
 ];
 
+fn generate_problems<'a>(
+    consts: &'a [u32],
+    letter_digit: &'a FxHashMap<char, char>,
+) -> impl Iterator<Item = u32> + 'a {
+    consts.iter().flat_map(move |const_value| {
+        let problem =
+            letter_digit.iter().fold(format!("{:X}", const_value), |acc, (key, value)| {
+                acc.replace(&value.to_string(), &key.to_string())
+            });
+        let indexes: Vec<usize> = problem
+            .chars()
+            .enumerate()
+            .filter_map(|(index, c)| if letter_digit.contains_key(&c) { Some(index) } else { None })
+            .collect();
+        (0..1 << indexes.len()).map(move |i| {
+            u32::from_str_radix(
+                &problem
+                    .chars()
+                    .enumerate()
+                    .map(|(index, c)| {
+                        if let Some(pos) = indexes.iter().position(|&x| x == index) {
+                            if (i >> pos) & 1 == 1 { letter_digit[&c] } else { c }
+                        } else {
+                            c
+                        }
+                    })
+                    .collect::<String>(),
+                0x10,
+            )
+            .unwrap()
+        })
+    })
+}
+
 // Intentionally written in decimal rather than hex
-const PROBLEMATIC_CONSTS: &[u32] = &[
+const ROOT_PROBLEMATIC_CONSTS: &[u32] = &[
     184594741, 2880289470, 2881141438, 2965027518, 2976579765, 3203381950, 3405691582, 3405697037,
-    3735927486, 3735932941, 4027431614, 4276992702,
+    3735927486, 3735932941, 4027431614, 4276992702, 195934910, 252707358, 762133, 179681982,
+    173390526, 721077,
 ];
+
+fn generate_problematic_strings(
+    consts: &[u32],
+    letter_digit: &FxHashMap<char, char>,
+) -> Vec<String> {
+    generate_problems(consts, letter_digit)
+        .flat_map(|v| vec![v.to_string(), format!("{:x}", v), format!("{:X}", v)])
+        .collect()
+}
 
 const INTERNAL_COMPILER_DOCS_LINE: &str = "#### This error code is internal to the compiler and will not be emitted with normal Rust code.";
 
@@ -130,20 +178,14 @@ fn should_ignore(line: &str) -> bool {
     // Matches test annotations like `//~ ERROR text`.
     // This mirrors the regex in src/tools/compiletest/src/runtest.rs, please
     // update both if either are changed.
-    lazy_static::lazy_static! {
-        static ref ANNOTATION_RE: Regex = Regex::new("\\s*//(\\[.*\\])?~.*").unwrap();
-    }
+    static_regex!("\\s*//(\\[.*\\])?~.*").is_match(line)
+        || ANNOTATIONS_TO_IGNORE.iter().any(|a| line.contains(a))
+
     // For `ui_test`-style UI test directives, also ignore
     // - `//@[rev] compile-flags`
     // - `//@[rev] normalize-stderr-test`
-    lazy_static::lazy_static! {
-        static ref UI_TEST_LONG_DIRECTIVES_RE: Regex =
-        Regex::new("\\s*//@(\\[.*\\]) (compile-flags|normalize-stderr-test|error-pattern).*")
-            .unwrap();
-    }
-    ANNOTATION_RE.is_match(line)
-        || ANNOTATIONS_TO_IGNORE.iter().any(|a| line.contains(a))
-        || UI_TEST_LONG_DIRECTIVES_RE.is_match(line)
+        || static_regex!("\\s*//@(\\[.*\\]) (compile-flags|normalize-stderr-test|error-pattern).*")
+            .is_match(line)
 }
 
 /// Returns `true` if `line` is allowed to be longer than the normal limit.
@@ -178,6 +220,7 @@ fn contains_ignore_directive(can_contain: bool, contents: &str, check: &str) -> 
     if contents.contains(&format!("// ignore-tidy-{check}"))
         || contents.contains(&format!("# ignore-tidy-{check}"))
         || contents.contains(&format!("/* ignore-tidy-{check} */"))
+        || contents.contains(&format!("<!-- ignore-tidy-{check} -->"))
     {
         Directive::Ignore(false)
     } else {
@@ -267,11 +310,10 @@ pub fn check(path: &Path, bad: &mut bool) {
         // We only check CSS files in rustdoc.
         path.extension().map_or(false, |e| e == "css") && !is_in(path, "src", "librustdoc")
     }
-
-    let problematic_consts_strings: Vec<String> = (PROBLEMATIC_CONSTS.iter().map(u32::to_string))
-        .chain(PROBLEMATIC_CONSTS.iter().map(|v| format!("{:x}", v)))
-        .chain(PROBLEMATIC_CONSTS.iter().map(|v| format!("{:X}", v)))
-        .collect();
+    let problematic_consts_strings = generate_problematic_strings(
+        ROOT_PROBLEMATIC_CONSTS,
+        &[('A', '4'), ('B', '8'), ('E', '3')].iter().cloned().collect(),
+    );
     let problematic_regex = RegexSet::new(problematic_consts_strings.as_slice()).unwrap();
 
     walk(path, skip, &mut |entry, contents| {
@@ -305,7 +347,8 @@ pub fn check(path: &Path, bad: &mut bool) {
 
         let can_contain = contents.contains("// ignore-tidy-")
             || contents.contains("# ignore-tidy-")
-            || contents.contains("/* ignore-tidy-");
+            || contents.contains("/* ignore-tidy-")
+            || contents.contains("<!-- ignore-tidy-");
         // Enable testing ICE's that require specific (untidy)
         // file formats easily eg. `issue-1234-ignore-tidy.rs`
         if filename.contains("ignore-tidy") {

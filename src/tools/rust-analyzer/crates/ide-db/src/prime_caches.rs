@@ -129,7 +129,7 @@ pub fn parallel_prime_caches(
                 crates_currently_indexing.insert(crate_id, crate_name);
             }
             ParallelPrimeCacheWorkerProgress::EndCrate { crate_id } => {
-                crates_currently_indexing.remove(&crate_id);
+                crates_currently_indexing.swap_remove(&crate_id);
                 crates_to_prime.mark_done(crate_id);
                 crates_done += 1;
             }

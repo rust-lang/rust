@@ -6,9 +6,6 @@
 #![feature(try_blocks)]
 #![feature(let_chains)]
 
-#[macro_use]
-extern crate tracing;
-
 mod errors;
 
 use rustc_ast::visit::{try_visit, VisitorResult};
@@ -31,6 +28,7 @@ use rustc_session::lint;
 use rustc_span::hygiene::Transparency;
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Span;
+use tracing::debug;
 
 use std::fmt;
 use std::marker::PhantomData;
@@ -67,7 +65,7 @@ impl<'tcx> fmt::Display for LazyDefPathStr<'tcx> {
 /// First, it doesn't have overridable `fn visit_trait_ref`, so we have to catch trait `DefId`s
 /// manually. Second, it doesn't visit some type components like signatures of fn types, or traits
 /// in `impl Trait`, see individual comments in `DefIdVisitorSkeleton::visit_ty`.
-trait DefIdVisitor<'tcx> {
+pub trait DefIdVisitor<'tcx> {
     type Result: VisitorResult = ();
     const SHALLOW: bool = false;
     const SKIP_ASSOC_TYS: bool = false;
@@ -98,7 +96,7 @@ trait DefIdVisitor<'tcx> {
     }
 }
 
-struct DefIdVisitorSkeleton<'v, 'tcx, V: ?Sized> {
+pub struct DefIdVisitorSkeleton<'v, 'tcx, V: ?Sized> {
     def_id_visitor: &'v mut V,
     visited_opaque_tys: FxHashSet<DefId>,
     dummy: PhantomData<TyCtxt<'tcx>>,
@@ -276,6 +274,7 @@ where
             | ty::Tuple(..)
             | ty::RawPtr(..)
             | ty::Ref(..)
+            | ty::Pat(..)
             | ty::FnPtr(..)
             | ty::Param(..)
             | ty::Bound(..)
@@ -549,7 +548,7 @@ impl<'tcx> EmbargoVisitor<'tcx> {
         self.update(def_id, macro_ev, Level::Reachable);
         match def_kind {
             // No type privacy, so can be directly marked as reachable.
-            DefKind::Const | DefKind::Static(_) | DefKind::TraitAlias | DefKind::TyAlias => {
+            DefKind::Const | DefKind::Static { .. } | DefKind::TraitAlias | DefKind::TyAlias => {
                 if vis.is_accessible_from(module, self.tcx) {
                     self.update(def_id, macro_ev, Level::Reachable);
                 }
@@ -1170,12 +1169,12 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
         let def = def.filter(|(kind, _)| {
             matches!(
                 kind,
-                DefKind::AssocFn | DefKind::AssocConst | DefKind::AssocTy | DefKind::Static(_)
+                DefKind::AssocFn | DefKind::AssocConst | DefKind::AssocTy | DefKind::Static { .. }
             )
         });
         if let Some((kind, def_id)) = def {
             let is_local_static =
-                if let DefKind::Static(_) = kind { def_id.is_local() } else { false };
+                if let DefKind::Static { .. } = kind { def_id.is_local() } else { false };
             if !self.item_is_accessible(def_id) && !is_local_static {
                 let name = match *qpath {
                     hir::QPath::LangItem(it, ..) => {
@@ -1209,7 +1208,7 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
         intravisit::walk_pat(self, pattern);
     }
 
-    fn visit_local(&mut self, local: &'tcx hir::Local<'tcx>) {
+    fn visit_local(&mut self, local: &'tcx hir::LetStmt<'tcx>) {
         if let Some(init) = local.init {
             if self.check_expr_pat_type(init.hir_id, init.span) {
                 // Do not report duplicate errors for `let x = y`.
@@ -1496,7 +1495,7 @@ impl<'tcx> PrivateItemsInPublicInterfacesChecker<'tcx, '_> {
         let def_kind = tcx.def_kind(def_id);
 
         match def_kind {
-            DefKind::Const | DefKind::Static(_) | DefKind::Fn | DefKind::TyAlias => {
+            DefKind::Const | DefKind::Static { .. } | DefKind::Fn | DefKind::TyAlias => {
                 if let DefKind::TyAlias = def_kind {
                     self.check_unnameable(def_id, effective_vis);
                 }
@@ -1696,7 +1695,7 @@ fn check_mod_privacy(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
         }
     }
 
-    for id in module.items() {
+    for id in module.free_items() {
         if let ItemKind::Impl(i) = tcx.hir().item(id).kind {
             if let Some(item) = i.of_trait {
                 let trait_ref = tcx.impl_trait_ref(id.owner_id.def_id).unwrap();

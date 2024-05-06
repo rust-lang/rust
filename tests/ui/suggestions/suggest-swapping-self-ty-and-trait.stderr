@@ -1,5 +1,5 @@
 error[E0404]: expected trait, found struct `Struct`
-  --> $DIR/suggest-swapping-self-ty-and-trait.rs:10:13
+  --> $DIR/suggest-swapping-self-ty-and-trait.rs:13:13
    |
 LL | impl<'a, T> Struct<T> for Trait<'a, T> {}
    |             ^^^^^^^^^ not a trait
@@ -10,7 +10,7 @@ LL | impl<'a, T> Trait<'a, T> for Struct<T> {}
    |             ~~~~~~~~~~~~     ~~~~~~~~~
 
 error[E0404]: expected trait, found enum `Enum`
-  --> $DIR/suggest-swapping-self-ty-and-trait.rs:15:13
+  --> $DIR/suggest-swapping-self-ty-and-trait.rs:18:13
    |
 LL | impl<'a, T> Enum<T> for Trait<'a, T> {}
    |             ^^^^^^^ not a trait
@@ -21,7 +21,7 @@ LL | impl<'a, T> Trait<'a, T> for Enum<T> {}
    |             ~~~~~~~~~~~~     ~~~~~~~
 
 error[E0404]: expected trait, found union `Union`
-  --> $DIR/suggest-swapping-self-ty-and-trait.rs:18:13
+  --> $DIR/suggest-swapping-self-ty-and-trait.rs:23:13
    |
 LL | impl<'a, T> Union<T> for Trait<'a, T> {}
    |             ^^^^^^^^ not a trait
@@ -31,8 +31,35 @@ help: `impl` items mention the trait being implemented first and the type it is 
 LL | impl<'a, T> Trait<'a, T> for Union<T> {}
    |             ~~~~~~~~~~~~     ~~~~~~~~
 
+error[E0392]: type parameter `T` is never used
+  --> $DIR/suggest-swapping-self-ty-and-trait.rs:3:19
+   |
+LL | pub struct Struct<T>;
+   |                   ^ unused type parameter
+   |
+   = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
+   = help: if you intended `T` to be a const parameter, use `const T: /* Type */` instead
+
+error[E0392]: type parameter `T` is never used
+  --> $DIR/suggest-swapping-self-ty-and-trait.rs:5:15
+   |
+LL | pub enum Enum<T> {}
+   |               ^ unused type parameter
+   |
+   = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
+   = help: if you intended `T` to be a const parameter, use `const T: /* Type */` instead
+
+error[E0392]: type parameter `T` is never used
+  --> $DIR/suggest-swapping-self-ty-and-trait.rs:8:17
+   |
+LL | pub union Union<T> {
+   |                 ^ unused type parameter
+   |
+   = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
+   = help: if you intended `T` to be a const parameter, use `const T: /* Type */` instead
+
 warning: trait objects without an explicit `dyn` are deprecated
-  --> $DIR/suggest-swapping-self-ty-and-trait.rs:10:27
+  --> $DIR/suggest-swapping-self-ty-and-trait.rs:13:27
    |
 LL | impl<'a, T> Struct<T> for Trait<'a, T> {}
    |                           ^^^^^^^^^^^^
@@ -45,6 +72,33 @@ help: if this is an object-safe trait, use `dyn`
 LL | impl<'a, T> Struct<T> for dyn Trait<'a, T> {}
    |                           +++
 
-error: aborting due to 3 previous errors; 1 warning emitted
+warning: trait objects without an explicit `dyn` are deprecated
+  --> $DIR/suggest-swapping-self-ty-and-trait.rs:18:25
+   |
+LL | impl<'a, T> Enum<T> for Trait<'a, T> {}
+   |                         ^^^^^^^^^^^^
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
+help: if this is an object-safe trait, use `dyn`
+   |
+LL | impl<'a, T> Enum<T> for dyn Trait<'a, T> {}
+   |                         +++
 
-For more information about this error, try `rustc --explain E0404`.
+warning: trait objects without an explicit `dyn` are deprecated
+  --> $DIR/suggest-swapping-self-ty-and-trait.rs:23:26
+   |
+LL | impl<'a, T> Union<T> for Trait<'a, T> {}
+   |                          ^^^^^^^^^^^^
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
+help: if this is an object-safe trait, use `dyn`
+   |
+LL | impl<'a, T> Union<T> for dyn Trait<'a, T> {}
+   |                          +++
+
+error: aborting due to 6 previous errors; 3 warnings emitted
+
+Some errors have detailed explanations: E0392, E0404.
+For more information about an error, try `rustc --explain E0392`.

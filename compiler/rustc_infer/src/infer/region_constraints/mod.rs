@@ -3,15 +3,15 @@
 use self::CombineMapType::*;
 use self::UndoLog::*;
 
-use super::{
-    InferCtxtUndoLogs, MiscVariable, RegionVariableOrigin, Rollback, Snapshot, SubregionOrigin,
-};
+use super::{MiscVariable, RegionVariableOrigin, Rollback, SubregionOrigin};
+use crate::infer::snapshot::undo_log::{InferCtxtUndoLogs, Snapshot};
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::undo_log::UndoLogs;
 use rustc_data_structures::unify as ut;
 use rustc_index::IndexVec;
+use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_middle::infer::unify_key::{RegionVariableValue, RegionVidKey};
 use rustc_middle::ty::ReStatic;
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -105,7 +105,7 @@ pub struct RegionConstraintData<'tcx> {
 }
 
 /// Represents a constraint that influences the inference process.
-#[derive(Clone, Copy, PartialEq, Eq, Debug, PartialOrd, Ord)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
 pub enum Constraint<'tcx> {
     /// A region variable is a subregion of another.
     VarSubVar(RegionVid, RegionVid),
@@ -360,7 +360,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
     ///
     /// Not legal during a snapshot.
     pub fn into_infos_and_data(self) -> (VarInfos, RegionConstraintData<'tcx>) {
-        assert!(!UndoLogs::<super::UndoLog<'_>>::in_snapshot(&self.undo_log));
+        assert!(!UndoLogs::<UndoLog<'_>>::in_snapshot(&self.undo_log));
         (mem::take(&mut self.storage.var_infos), mem::take(&mut self.storage.data))
     }
 
@@ -377,7 +377,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
     ///
     /// Not legal during a snapshot.
     pub fn take_and_reset_data(&mut self) -> RegionConstraintData<'tcx> {
-        assert!(!UndoLogs::<super::UndoLog<'_>>::in_snapshot(&self.undo_log));
+        assert!(!UndoLogs::<UndoLog<'_>>::in_snapshot(&self.undo_log));
 
         // If you add a new field to `RegionConstraintCollector`, you
         // should think carefully about whether it needs to be cleared

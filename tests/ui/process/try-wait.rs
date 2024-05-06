@@ -1,9 +1,8 @@
 //@ run-pass
 
 #![allow(stable_features)]
-//@ ignore-emscripten no processes
+//@ ignore-wasm32 no processes
 //@ ignore-sgx no processes
-
 #![feature(process_try_wait)]
 
 use std::env;

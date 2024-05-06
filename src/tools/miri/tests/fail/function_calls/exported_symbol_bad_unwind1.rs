@@ -1,4 +1,3 @@
-//@compile-flags: -Zmiri-disable-abi-check
 #![feature(c_unwind)]
 
 #[no_mangle]

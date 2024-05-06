@@ -1,4 +1,4 @@
-error: higher kinded lifetime bounds on nested opaque types are not supported yet
+error[E0657]: `impl Trait` cannot capture higher-ranked lifetime from outer `impl Trait`
   --> $DIR/issue-67830.rs:21:62
    |
 LL | fn test() -> impl for<'a> MyFn<&'a A, Output=impl Iterator + 'a> {
@@ -31,3 +31,4 @@ LL |     Wrap(|a| Some(a).into_iter())
 
 error: aborting due to 3 previous errors
 
+For more information about this error, try `rustc --explain E0657`.

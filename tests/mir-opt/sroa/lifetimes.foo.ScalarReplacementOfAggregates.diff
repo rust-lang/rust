@@ -93,7 +93,7 @@
           StorageLive(_12);
           StorageLive(_13);
           StorageLive(_14);
-          _26 = const _;
+          _26 = const foo::<T>::promoted[0];
           _14 = &(*_26);
           _13 = &(*_14);
           _12 = move _13 as &[&str] (PointerCoercion(Unsize));

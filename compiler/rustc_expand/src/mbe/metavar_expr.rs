@@ -3,6 +3,7 @@ use rustc_ast::tokenstream::{RefTokenTreeCursor, TokenStream, TokenTree};
 use rustc_ast::{LitIntType, LitKind};
 use rustc_ast_pretty::pprust;
 use rustc_errors::{Applicability, PResult};
+use rustc_macros::{Decodable, Encodable};
 use rustc_session::parse::ParseSess;
 use rustc_span::symbol::Ident;
 use rustc_span::Span;

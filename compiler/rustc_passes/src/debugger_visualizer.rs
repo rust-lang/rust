@@ -87,7 +87,7 @@ impl<'ast> rustc_ast::visit::Visitor<'ast> for DebuggerVisualizerCollector<'_> {
 
 /// Traverses and collects the debugger visualizers for a specific crate.
 fn debugger_visualizers(tcx: TyCtxt<'_>, _: LocalCrate) -> Vec<DebuggerVisualizerFile> {
-    let resolver_and_krate = tcx.resolver_for_lowering(()).borrow();
+    let resolver_and_krate = tcx.resolver_for_lowering().borrow();
     let krate = &*resolver_and_krate.1;
 
     let mut visitor = DebuggerVisualizerCollector { sess: tcx.sess, visualizers: Vec::new() };

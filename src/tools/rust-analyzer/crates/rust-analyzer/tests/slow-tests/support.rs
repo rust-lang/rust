@@ -1,7 +1,6 @@
 use std::{
     cell::{Cell, RefCell},
     fs,
-    path::{Path, PathBuf},
     sync::Once,
     time::Duration,
 };
@@ -9,6 +8,7 @@ use std::{
 use crossbeam_channel::{after, select, Receiver};
 use lsp_server::{Connection, Message, Notification, Request};
 use lsp_types::{notification::Exit, request::Shutdown, TextDocumentIdentifier, Url};
+use paths::{Utf8Path, Utf8PathBuf};
 use rust_analyzer::{config::Config, lsp, main_loop};
 use serde::Serialize;
 use serde_json::{json, to_string_pretty, Value};
@@ -21,7 +21,7 @@ use crate::testdir::TestDir;
 pub(crate) struct Project<'a> {
     fixture: &'a str,
     tmp_dir: Option<TestDir>,
-    roots: Vec<PathBuf>,
+    roots: Vec<Utf8PathBuf>,
     config: serde_json::Value,
     root_dir_contains_symlink: bool,
 }
@@ -125,7 +125,7 @@ impl Project<'_> {
         }
 
         let mut config = Config::new(
-            tmp_dir_path,
+            tmp_dir_path.clone(),
             lsp_types::ClientCapabilities {
                 workspace: Some(lsp_types::WorkspaceClientCapabilities {
                     did_change_watched_files: Some(
@@ -159,6 +159,18 @@ impl Project<'_> {
                         content_format: Some(vec![lsp_types::MarkupKind::Markdown]),
                         ..Default::default()
                     }),
+                    inlay_hint: Some(lsp_types::InlayHintClientCapabilities {
+                        resolve_support: Some(lsp_types::InlayHintResolveClientCapabilities {
+                            properties: vec![
+                                "textEdits".to_owned(),
+                                "tooltip".to_owned(),
+                                "label.tooltip".to_owned(),
+                                "label.location".to_owned(),
+                                "label.command".to_owned(),
+                            ],
+                        }),
+                        ..Default::default()
+                    }),
                     ..Default::default()
                 }),
                 window: Some(lsp_types::WindowClientCapabilities {
@@ -171,12 +183,16 @@ impl Project<'_> {
                 ..Default::default()
             },
             roots,
-            false,
+            None,
         );
-        config.update(self.config).expect("invalid config");
+        // TODO: don't hardcode src/lib.rs as detached file
+        let mut c = self.config;
+        let p = tmp_dir_path.join("src/lib.rs").to_string();
+        c["detachedFiles"] = serde_json::json!([p]);
+        config.update(c).expect("invalid config");
         config.rediscover_workspaces();
 
-        Server::new(tmp_dir, config)
+        Server::new(tmp_dir.keep(), config)
     }
 }
 
@@ -271,6 +287,7 @@ impl Server {
         }
     }
 
+    #[track_caller]
     pub(crate) fn send_request<R>(&self, params: R::Params) -> Value
     where
         R: lsp_types::request::Request,
@@ -282,6 +299,7 @@ impl Server {
         let r = Request::new(id.into(), R::METHOD.to_owned(), params);
         self.send_request_(r)
     }
+    #[track_caller]
     fn send_request_(&self, r: Request) -> Value {
         let id = r.id.clone();
         self.client.sender.send(r.clone().into()).unwrap();
@@ -359,8 +377,18 @@ impl Server {
         self.client.sender.send(Message::Notification(not)).unwrap();
     }
 
-    pub(crate) fn path(&self) -> &Path {
+    pub(crate) fn path(&self) -> &Utf8Path {
         self.dir.path()
+    }
+
+    pub(crate) fn write_file_and_save(&self, path: &str, text: String) {
+        fs::write(self.dir.path().join(path), &text).unwrap();
+        self.notification::<lsp_types::notification::DidSaveTextDocument>(
+            lsp_types::DidSaveTextDocumentParams {
+                text_document: self.doc_id(path),
+                text: Some(text),
+            },
+        )
     }
 }
 

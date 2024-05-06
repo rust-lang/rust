@@ -6,6 +6,7 @@ use super::{
 };
 use crate::errors::{self, MacroExpandsToAdtField};
 use crate::fluent_generated as fluent;
+use crate::maybe_whole;
 use ast::token::IdentIsRaw;
 use rustc_ast::ast::*;
 use rustc_ast::ptr::P;
@@ -115,17 +116,10 @@ impl<'a> Parser<'a> {
         fn_parse_mode: FnParseMode,
         force_collect: ForceCollect,
     ) -> PResult<'a, Option<Item>> {
-        // Don't use `maybe_whole` so that we have precise control
-        // over when we bump the parser
-        if let token::Interpolated(nt) = &self.token.kind
-            && let token::NtItem(item) = &nt.0
-        {
-            let mut item = item.clone();
-            self.bump();
-
+        maybe_whole!(self, NtItem, |item| {
             attrs.prepend_to_nt_inner(&mut item.attrs);
-            return Ok(Some(item.into_inner()));
-        };
+            Some(item.into_inner())
+        });
 
         let item =
             self.collect_tokens_trailing_token(attrs, force_collect, |this: &mut Self, attrs| {
@@ -364,12 +358,12 @@ impl<'a> Parser<'a> {
     fn is_reuse_path_item(&mut self) -> bool {
         // no: `reuse ::path` for compatibility reasons with macro invocations
         self.token.is_keyword(kw::Reuse)
-            && self.look_ahead(1, |t| t.is_path_start() && t.kind != token::ModSep)
+            && self.look_ahead(1, |t| t.is_path_start() && t.kind != token::PathSep)
     }
 
     /// Are we sure this could not possibly be a macro invocation?
     fn isnt_macro_invocation(&mut self) -> bool {
-        self.check_ident() && self.look_ahead(1, |t| *t != token::Not && *t != token::ModSep)
+        self.check_ident() && self.look_ahead(1, |t| *t != token::Not && *t != token::PathSep)
     }
 
     /// Recover on encountering a struct or method definition where the user
@@ -631,7 +625,7 @@ impl<'a> Parser<'a> {
                     // This notably includes paths passed through `ty` macro fragments (#46438).
                     TyKind::Path(None, path) => path,
                     other => {
-                        if let TyKind::ImplTrait(_, bounds) = other
+                        if let TyKind::ImplTrait(_, bounds, None) = other
                             && let [bound] = bounds.as_slice()
                         {
                             // Suggest removing extra `impl` keyword:
@@ -692,6 +686,8 @@ impl<'a> Parser<'a> {
             (None, self.parse_path(PathStyle::Expr)?)
         };
 
+        let rename = if self.eat_keyword(kw::As) { Some(self.parse_ident()?) } else { None };
+
         let body = if self.check(&token::OpenDelim(Delimiter::Brace)) {
             Some(self.parse_block()?)
         } else {
@@ -701,11 +697,9 @@ impl<'a> Parser<'a> {
         let span = span.to(self.prev_token.span);
         self.psess.gated_spans.gate(sym::fn_delegation, span);
 
-        let ident = path.segments.last().map(|seg| seg.ident).unwrap_or(Ident::empty());
-        Ok((
-            ident,
-            ItemKind::Delegation(Box::new(Delegation { id: DUMMY_NODE_ID, qself, path, body })),
-        ))
+        let ident = rename.unwrap_or_else(|| path.segments.last().unwrap().ident);
+        let deleg = Delegation { id: DUMMY_NODE_ID, qself, path, rename, body };
+        Ok((ident, ItemKind::Delegation(Box::new(deleg))))
     }
 
     fn parse_item_list<T>(
@@ -1026,7 +1020,7 @@ impl<'a> Parser<'a> {
         {
             // `use *;` or `use ::*;` or `use {...};` or `use ::{...};`
             let mod_sep_ctxt = self.token.span.ctxt();
-            if self.eat(&token::ModSep) {
+            if self.eat(&token::PathSep) {
                 prefix
                     .segments
                     .push(PathSegment::path_root(lo.shrink_to_lo().with_ctxt(mod_sep_ctxt)));
@@ -1037,7 +1031,7 @@ impl<'a> Parser<'a> {
             // `use path::*;` or `use path::{...};` or `use path;` or `use path as bar;`
             prefix = self.parse_path(PathStyle::Mod)?;
 
-            if self.eat(&token::ModSep) {
+            if self.eat(&token::PathSep) {
                 self.parse_use_tree_glob_or_nested()?
             } else {
                 // Recover from using a colon as path separator.
@@ -1069,7 +1063,7 @@ impl<'a> Parser<'a> {
     /// Parses a `UseTreeKind::Nested(list)`.
     ///
     /// ```text
-    /// USE_TREE_LIST = Ø | (USE_TREE `,`)* USE_TREE [`,`]
+    /// USE_TREE_LIST = ∅ | (USE_TREE `,`)* USE_TREE [`,`]
     /// ```
     fn parse_use_tree_list(&mut self) -> PResult<'a, ThinVec<(UseTree, ast::NodeId)>> {
         self.parse_delim_comma_seq(Delimiter::Brace, |p| {
@@ -1197,7 +1191,11 @@ impl<'a> Parser<'a> {
                                 ident_span: ident.span,
                                 const_span,
                             });
-                            ForeignItemKind::Static(ty, Mutability::Not, expr)
+                            ForeignItemKind::Static(Box::new(StaticForeignItem {
+                                ty,
+                                mutability: Mutability::Not,
+                                expr,
+                            }))
                         }
                         _ => return self.error_bad_item_kind(span, &kind, "`extern` blocks"),
                     },
@@ -1514,7 +1512,7 @@ impl<'a> Parser<'a> {
                 let ident = this.parse_field_ident("enum", vlo)?;
 
                 if this.token == token::Not {
-                    if let Err(err) = this.unexpected::<()>() {
+                    if let Err(err) = this.unexpected() {
                         err.with_note(fluent::parse_macro_expands_to_enum_variant).emit();
                     }
 
@@ -1937,7 +1935,7 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, FieldDef> {
         let name = self.parse_field_ident(adt_ty, lo)?;
         if self.token.kind == token::Not {
-            if let Err(mut err) = self.unexpected::<FieldDef>() {
+            if let Err(mut err) = self.unexpected() {
                 // Encounter the macro invocation
                 err.subdiagnostic(self.dcx(), MacroExpandsToAdtField { adt_ty });
                 return Err(err);
@@ -1974,11 +1972,8 @@ impl<'a> Parser<'a> {
         } else if matches!(is_raw, IdentIsRaw::No) && ident.is_reserved() {
             let snapshot = self.create_snapshot_for_diagnostic();
             let err = if self.check_fn_front_matter(false, Case::Sensitive) {
-                let inherited_vis = Visibility {
-                    span: rustc_span::DUMMY_SP,
-                    kind: VisibilityKind::Inherited,
-                    tokens: None,
-                };
+                let inherited_vis =
+                    Visibility { span: DUMMY_SP, kind: VisibilityKind::Inherited, tokens: None };
                 // We use `parse_fn` to get a span for the function
                 let fn_parse_mode = FnParseMode { req_name: |_| true, req_body: true };
                 match self.parse_fn(
@@ -2067,7 +2062,7 @@ impl<'a> Parser<'a> {
             let params = self.parse_token_tree(); // `MacParams`
             let pspan = params.span();
             if !self.check(&token::OpenDelim(Delimiter::Brace)) {
-                return self.unexpected();
+                self.unexpected()?;
             }
             let body = self.parse_token_tree(); // `MacBody`
             // Convert `MacParams MacBody` into `{ MacParams => MacBody }`.
@@ -2077,7 +2072,7 @@ impl<'a> Parser<'a> {
             let dspan = DelimSpan::from_pair(pspan.shrink_to_lo(), bspan.shrink_to_hi());
             P(DelimArgs { dspan, delim: Delimiter::Brace, tokens })
         } else {
-            return self.unexpected();
+            self.unexpected_any()?
         };
 
         self.psess.gated_spans.gate(sym::decl_macro, lo.to(self.prev_token.span));
@@ -2692,7 +2687,7 @@ impl<'a> Parser<'a> {
                 debug!("parse_param_general parse_pat (is_name_required:{})", is_name_required);
                 let (pat, colon) = this.parse_fn_param_pat_colon()?;
                 if !colon {
-                    let mut err = this.unexpected::<()>().unwrap_err();
+                    let mut err = this.unexpected().unwrap_err();
                     return if let Some(ident) =
                         this.parameter_without_type(&mut err, pat, is_name_required, first_param)
                     {
@@ -2716,12 +2711,12 @@ impl<'a> Parser<'a> {
                 {
                     // This wasn't actually a type, but a pattern looking like a type,
                     // so we are going to rollback and re-parse for recovery.
-                    ty = this.unexpected();
+                    ty = this.unexpected_any();
                 }
                 match ty {
                     Ok(ty) => {
                         let ident = Ident::new(kw::Empty, this.prev_token.span);
-                        let bm = BindingAnnotation::NONE;
+                        let bm = BindingMode::NONE;
                         let pat = this.mk_pat_ident(ty.span, bm, ident);
                         (pat, ty)
                     }
@@ -2758,7 +2753,7 @@ impl<'a> Parser<'a> {
         // Is `self` `n` tokens ahead?
         let is_isolated_self = |this: &Self, n| {
             this.is_keyword_ahead(n, &[kw::SelfLower])
-                && this.look_ahead(n + 1, |t| t != &token::ModSep)
+                && this.look_ahead(n + 1, |t| t != &token::PathSep)
         };
         // Is `mut self` `n` tokens ahead?
         let is_isolated_mut_self =

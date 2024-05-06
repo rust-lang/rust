@@ -16,7 +16,7 @@
   
       bb0: {
           StorageLive(_4);
-          _4 = const _;
+          _4 = const aggregate::FOO;
           StorageLive(_2);
           _2 = (_4.0: u8);
           StorageLive(_3);

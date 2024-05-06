@@ -16,12 +16,14 @@
     rustc::diagnostic_outside_of_impl,
     rustc::untranslatable_diagnostic
 )]
-// warn on the same lints as `clippy_lints`
-#![warn(trivial_casts, trivial_numeric_casts)]
-// warn on lints, that are included in `rust-lang/rust`s bootstrap
-#![warn(rust_2018_idioms, unused_lifetimes)]
-// warn on rustc internal lints
-#![warn(rustc::internal)]
+#![warn(
+    trivial_casts,
+    trivial_numeric_casts,
+    rust_2018_idioms,
+    unused_lifetimes,
+    unused_qualifications,
+    rustc::internal
+)]
 
 // FIXME: switch to something more ergonomic here, once available.
 // (Currently there is no way to opt into sysroot crates without `extern crate`.)
@@ -97,22 +99,21 @@ use rustc_hir::hir_id::{HirIdMap, HirIdSet};
 use rustc_hir::intravisit::{walk_expr, FnKind, Visitor};
 use rustc_hir::LangItem::{OptionNone, OptionSome, ResultErr, ResultOk};
 use rustc_hir::{
-    self as hir, def, Arm, ArrayLen, BindingAnnotation, Block, BlockCheckMode, Body, Closure, Destination, Expr,
+    self as hir, def, Arm, ArrayLen, BindingMode, Block, BlockCheckMode, Body, ByRef, Closure, Destination, Expr,
     ExprField, ExprKind, FnDecl, FnRetTy, GenericArgs, HirId, Impl, ImplItem, ImplItemKind, ImplItemRef, Item,
-    ItemKind, LangItem, Local, MatchSource, Mutability, Node, OwnerId, Param, Pat, PatKind, Path, PathSegment, PrimTy,
-    QPath, Stmt, StmtKind, TraitItem, TraitItemKind, TraitItemRef, TraitRef, TyKind, UnOp,
+    ItemKind, LangItem, LetStmt, MatchSource, Mutability, Node, OwnerId, Param, Pat, PatKind, Path, PathSegment,
+    PrimTy, QPath, Stmt, StmtKind, TraitItem, TraitItemKind, TraitItemRef, TraitRef, TyKind, UnOp,
 };
 use rustc_lexer::{tokenize, TokenKind};
 use rustc_lint::{LateContext, Level, Lint, LintContext};
 use rustc_middle::hir::place::PlaceBase;
 use rustc_middle::mir::Const;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow};
-use rustc_middle::ty::binding::BindingMode;
 use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{
     self as rustc_ty, Binder, BorrowKind, ClosureKind, EarlyBinder, FloatTy, GenericArgsRef, IntTy, ParamEnv,
-    ParamEnvAnd, Ty, TyCtxt, TypeAndMut, TypeVisitableExt, UintTy, UpvarCapture,
+    ParamEnvAnd, Ty, TyCtxt, TypeVisitableExt, UintTy, UpvarCapture,
 };
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::source_map::SourceMap;
@@ -131,14 +132,14 @@ use rustc_middle::hir::nested_filter;
 #[macro_export]
 macro_rules! extract_msrv_attr {
     ($context:ident) => {
-        fn enter_lint_attrs(&mut self, cx: &rustc_lint::$context<'_>, attrs: &[rustc_ast::ast::Attribute]) {
+        fn check_attributes(&mut self, cx: &rustc_lint::$context<'_>, attrs: &[rustc_ast::ast::Attribute]) {
             let sess = rustc_lint::LintContext::sess(cx);
-            self.msrv.enter_lint_attrs(sess, attrs);
+            self.msrv.check_attributes(sess, attrs);
         }
 
-        fn exit_lint_attrs(&mut self, cx: &rustc_lint::$context<'_>, attrs: &[rustc_ast::ast::Attribute]) {
+        fn check_attributes_post(&mut self, cx: &rustc_lint::$context<'_>, attrs: &[rustc_ast::ast::Attribute]) {
             let sess = rustc_lint::LintContext::sess(cx);
-            self.msrv.exit_lint_attrs(sess, attrs);
+            self.msrv.check_attributes_post(sess, attrs);
         }
     };
 }
@@ -183,8 +184,8 @@ pub fn expr_or_init<'a, 'b, 'tcx: 'b>(cx: &LateContext<'tcx>, mut expr: &'a Expr
 /// canonical binding `HirId`.
 pub fn find_binding_init<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Option<&'tcx Expr<'tcx>> {
     if let Node::Pat(pat) = cx.tcx.hir_node(hir_id)
-        && matches!(pat.kind, PatKind::Binding(BindingAnnotation::NONE, ..))
-        && let Node::Local(local) = cx.tcx.parent_hir_node(hir_id)
+        && matches!(pat.kind, PatKind::Binding(BindingMode::NONE, ..))
+        && let Node::LetStmt(local) = cx.tcx.parent_hir_node(hir_id)
     {
         return local.init;
     }
@@ -298,9 +299,10 @@ pub fn is_ty_alias(qpath: &QPath<'_>) -> bool {
 /// Checks if the method call given in `expr` belongs to the given trait.
 /// This is a deprecated function, consider using [`is_trait_method`].
 pub fn match_trait_method(cx: &LateContext<'_>, expr: &Expr<'_>, path: &[&str]) -> bool {
-    let def_id = cx.typeck_results().type_dependent_def_id(expr.hir_id).unwrap();
-    let trt_id = cx.tcx.trait_of_item(def_id);
-    trt_id.map_or(false, |trt_id| match_def_path(cx, trt_id, path))
+    cx.typeck_results()
+        .type_dependent_def_id(expr.hir_id)
+        .and_then(|defid| cx.tcx.trait_of_item(defid))
+        .map_or(false, |trt_id| match_def_path(cx, trt_id, path))
 }
 
 /// Checks if a method is defined in an impl of a diagnostic item
@@ -330,8 +332,7 @@ pub fn is_trait_method(cx: &LateContext<'_>, expr: &Expr<'_>, diag_item: Symbol)
 
 /// Checks if the `def_id` belongs to a function that is part of a trait impl.
 pub fn is_def_id_trait_method(cx: &LateContext<'_>, def_id: LocalDefId) -> bool {
-    if let Some(hir_id) = cx.tcx.opt_local_def_id_to_hir_id(def_id)
-        && let Node::Item(item) = cx.tcx.parent_hir_node(hir_id)
+    if let Node::Item(item) = cx.tcx.parent_hir_node(cx.tcx.local_def_id_to_hir_id(def_id))
         && let ItemKind::Impl(imp) = item.kind
     {
         imp.of_trait.is_some()
@@ -350,7 +351,7 @@ pub fn is_def_id_trait_method(cx: &LateContext<'_>, def_id: LocalDefId) -> bool 
 /// refers to an item of the trait `Default`, which is associated with the
 /// `diag_item` of `sym::Default`.
 pub fn is_trait_item(cx: &LateContext<'_>, expr: &Expr<'_>, diag_item: Symbol) -> bool {
-    if let hir::ExprKind::Path(ref qpath) = expr.kind {
+    if let ExprKind::Path(ref qpath) = expr.kind {
         cx.qpath_res(qpath, expr.hir_id)
             .opt_def_id()
             .map_or(false, |def_id| is_diag_trait_item(cx, def_id, diag_item))
@@ -574,12 +575,12 @@ fn local_item_children_by_name(tcx: TyCtxt<'_>, local_id: LocalDefId, name: Symb
     let hir = tcx.hir();
 
     let root_mod;
-    let item_kind = match tcx.opt_hir_node_by_def_id(local_id) {
-        Some(Node::Crate(r#mod)) => {
+    let item_kind = match tcx.hir_node_by_def_id(local_id) {
+        Node::Crate(r#mod) => {
             root_mod = ItemKind::Mod(r#mod);
             &root_mod
         },
-        Some(Node::Item(item)) => &item.kind,
+        Node::Item(item) => &item.kind,
         _ => return Vec::new(),
     };
 
@@ -724,8 +725,8 @@ pub fn trait_ref_of_method<'tcx>(cx: &LateContext<'tcx>, def_id: LocalDefId) -> 
     let hir_id = cx.tcx.local_def_id_to_hir_id(def_id);
     let parent_impl = cx.tcx.hir().get_parent_item(hir_id);
     if parent_impl != hir::CRATE_OWNER_ID
-        && let hir::Node::Item(item) = cx.tcx.hir_node_by_def_id(parent_impl.def_id)
-        && let hir::ItemKind::Impl(impl_) = &item.kind
+        && let Node::Item(item) = cx.tcx.hir_node_by_def_id(parent_impl.def_id)
+        && let ItemKind::Impl(impl_) = &item.kind
     {
         return impl_.of_trait.as_ref();
     }
@@ -831,7 +832,7 @@ fn is_default_equivalent_ctor(cx: &LateContext<'_>, def_id: DefId, path: &QPath<
 
 /// Returns true if the expr is equal to `Default::default` when evaluated.
 pub fn is_default_equivalent_call(cx: &LateContext<'_>, repl_func: &Expr<'_>) -> bool {
-    if let hir::ExprKind::Path(ref repl_func_qpath) = repl_func.kind
+    if let ExprKind::Path(ref repl_func_qpath) = repl_func.kind
         && let Some(repl_def_id) = cx.qpath_res(repl_func_qpath, repl_func.hir_id).opt_def_id()
         && (is_diag_trait_item(cx, repl_def_id, sym::Default)
             || is_default_equivalent_ctor(cx, repl_def_id, repl_func_qpath))
@@ -1007,11 +1008,12 @@ pub fn capture_local_usage(cx: &LateContext<'_>, e: &Expr<'_>) -> CaptureKind {
             .typeck_results()
             .extract_binding_mode(cx.sess(), id, span)
             .unwrap()
+            .0
         {
-            BindingMode::BindByValue(_) if !is_copy(cx, cx.typeck_results().node_type(id)) => {
+            ByRef::No if !is_copy(cx, cx.typeck_results().node_type(id)) => {
                 capture = CaptureKind::Value;
             },
-            BindingMode::BindByReference(Mutability::Mut) if capture != CaptureKind::Value => {
+            ByRef::Yes(Mutability::Mut) if capture != CaptureKind::Value => {
                 capture = CaptureKind::Ref(Mutability::Mut);
             },
             _ => (),
@@ -1041,7 +1043,7 @@ pub fn capture_local_usage(cx: &LateContext<'_>, e: &Expr<'_>) -> CaptureKind {
             .get(child_id)
             .map_or(&[][..], |x| &**x)
         {
-            if let rustc_ty::RawPtr(TypeAndMut { mutbl: mutability, .. }) | rustc_ty::Ref(_, _, mutability) =
+            if let rustc_ty::RawPtr(_, mutability) | rustc_ty::Ref(_, _, mutability) =
                 *adjust.last().map_or(target, |a| a.target).kind()
             {
                 return CaptureKind::Ref(mutability);
@@ -1080,7 +1082,7 @@ pub fn capture_local_usage(cx: &LateContext<'_>, e: &Expr<'_>) -> CaptureKind {
                 },
                 _ => break,
             },
-            Node::Local(l) => match pat_capture_kind(cx, l.pat) {
+            Node::LetStmt(l) => match pat_capture_kind(cx, l.pat) {
                 CaptureKind::Value => break,
                 capture @ CaptureKind::Ref(_) => return capture,
             },
@@ -1254,12 +1256,10 @@ pub fn is_in_panic_handler(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
 /// Gets the name of the item the expression is in, if available.
 pub fn get_item_name(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<Symbol> {
     let parent_id = cx.tcx.hir().get_parent_item(expr.hir_id).def_id;
-    match cx.tcx.opt_hir_node_by_def_id(parent_id) {
-        Some(
-            Node::Item(Item { ident, .. })
-            | Node::TraitItem(TraitItem { ident, .. })
-            | Node::ImplItem(ImplItem { ident, .. }),
-        ) => Some(ident.name),
+    match cx.tcx.hir_node_by_def_id(parent_id) {
+        Node::Item(Item { ident, .. })
+        | Node::TraitItem(TraitItem { ident, .. })
+        | Node::ImplItem(ImplItem { ident, .. }) => Some(ident.name),
         _ => None,
     }
 }
@@ -1298,7 +1298,7 @@ pub fn contains_name<'tcx>(name: Symbol, expr: &'tcx Expr<'_>, cx: &LateContext<
 /// Returns `true` if `expr` contains a return expression
 pub fn contains_return<'tcx>(expr: impl Visitable<'tcx>) -> bool {
     for_each_expr(expr, |e| {
-        if matches!(e.kind, hir::ExprKind::Ret(..)) {
+        if matches!(e.kind, ExprKind::Ret(..)) {
             ControlFlow::Break(())
         } else {
             ControlFlow::Continue(())
@@ -1314,7 +1314,7 @@ pub fn get_parent_expr<'tcx>(cx: &LateContext<'tcx>, e: &Expr<'_>) -> Option<&'t
 
 /// This retrieves the parent for the given `HirId` if it's an expression. This is useful for
 /// constraint lints
-pub fn get_parent_expr_for_hir<'tcx>(cx: &LateContext<'tcx>, hir_id: hir::HirId) -> Option<&'tcx Expr<'tcx>> {
+pub fn get_parent_expr_for_hir<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Option<&'tcx Expr<'tcx>> {
     match cx.tcx.parent_hir_node(hir_id) {
         Node::Expr(parent) => Some(parent),
         _ => None,
@@ -1360,7 +1360,7 @@ pub fn get_enclosing_loop_or_multi_call_closure<'tcx>(
                 ExprKind::Closure { .. } | ExprKind::Loop(..) => return Some(e),
                 _ => (),
             },
-            Node::Stmt(_) | Node::Block(_) | Node::Local(_) | Node::Arm(_) => (),
+            Node::Stmt(_) | Node::Block(_) | Node::LetStmt(_) | Node::Arm(_) => (),
             _ => break,
         }
     }
@@ -1465,7 +1465,7 @@ pub fn is_else_clause(tcx: TyCtxt<'_>, expr: &Expr<'_>) -> bool {
 pub fn is_inside_let_else(tcx: TyCtxt<'_>, expr: &Expr<'_>) -> bool {
     let mut child_id = expr.hir_id;
     for (parent_id, node) in tcx.hir().parent_iter(child_id) {
-        if let Node::Local(Local {
+        if let Node::LetStmt(LetStmt {
             init: Some(init),
             els: Some(els),
             ..
@@ -1485,7 +1485,7 @@ pub fn is_inside_let_else(tcx: TyCtxt<'_>, expr: &Expr<'_>) -> bool {
 pub fn is_else_clause_in_let_else(tcx: TyCtxt<'_>, expr: &Expr<'_>) -> bool {
     let mut child_id = expr.hir_id;
     for (parent_id, node) in tcx.hir().parent_iter(child_id) {
-        if let Node::Local(Local { els: Some(els), .. }) = node
+        if let Node::LetStmt(LetStmt { els: Some(els), .. }) = node
             && els.hir_id == child_id
         {
             return true;
@@ -1638,13 +1638,13 @@ pub fn is_direct_expn_of(span: Span, name: &str) -> Option<Span> {
 }
 
 /// Convenience function to get the return type of a function.
-pub fn return_ty<'tcx>(cx: &LateContext<'tcx>, fn_def_id: hir::OwnerId) -> Ty<'tcx> {
+pub fn return_ty<'tcx>(cx: &LateContext<'tcx>, fn_def_id: OwnerId) -> Ty<'tcx> {
     let ret_ty = cx.tcx.fn_sig(fn_def_id).instantiate_identity().output();
     cx.tcx.instantiate_bound_regions_with_erased(ret_ty)
 }
 
 /// Convenience function to get the nth argument type of a function.
-pub fn nth_arg<'tcx>(cx: &LateContext<'tcx>, fn_def_id: hir::OwnerId, nth: usize) -> Ty<'tcx> {
+pub fn nth_arg<'tcx>(cx: &LateContext<'tcx>, fn_def_id: OwnerId, nth: usize) -> Ty<'tcx> {
     let arg = cx.tcx.fn_sig(fn_def_id).instantiate_identity().input(nth);
     cx.tcx.instantiate_bound_regions_with_erased(arg)
 }
@@ -1655,8 +1655,8 @@ pub fn is_ctor_or_promotable_const_function(cx: &LateContext<'_>, expr: &Expr<'_
         if let ExprKind::Path(ref qp) = fun.kind {
             let res = cx.qpath_res(qp, fun.hir_id);
             return match res {
-                def::Res::Def(DefKind::Variant | DefKind::Ctor(..), ..) => true,
-                def::Res::Def(_, def_id) => cx.tcx.is_promotable_const_fn(def_id),
+                Res::Def(DefKind::Variant | DefKind::Ctor(..), ..) => true,
+                Res::Def(_, def_id) => cx.tcx.is_promotable_const_fn(def_id),
                 _ => false,
             };
         }
@@ -1670,7 +1670,7 @@ pub fn is_refutable(cx: &LateContext<'_>, pat: &Pat<'_>) -> bool {
     fn is_enum_variant(cx: &LateContext<'_>, qpath: &QPath<'_>, id: HirId) -> bool {
         matches!(
             cx.qpath_res(qpath, id),
-            def::Res::Def(DefKind::Variant, ..) | Res::Def(DefKind::Ctor(def::CtorOf::Variant, _), _)
+            Res::Def(DefKind::Variant, ..) | Res::Def(DefKind::Ctor(def::CtorOf::Variant, _), _)
         )
     }
 
@@ -1681,7 +1681,7 @@ pub fn is_refutable(cx: &LateContext<'_>, pat: &Pat<'_>) -> bool {
     match pat.kind {
         PatKind::Wild | PatKind::Never => false, // If `!` typechecked then the type is empty, so not refutable.
         PatKind::Binding(_, _, _, pat) => pat.map_or(false, |pat| is_refutable(cx, pat)),
-        PatKind::Box(pat) | PatKind::Ref(pat, _) => is_refutable(cx, pat),
+        PatKind::Box(pat) | PatKind::Deref(pat) | PatKind::Ref(pat, _) => is_refutable(cx, pat),
         PatKind::Path(ref qpath) => is_enum_variant(cx, qpath, pat.hir_id),
         PatKind::Or(pats) => {
             // TODO: should be the honest check, that pats is exhaustive set
@@ -1826,26 +1826,26 @@ pub fn strip_pat_refs<'hir>(mut pat: &'hir Pat<'hir>) -> &'hir Pat<'hir> {
     pat
 }
 
-pub fn int_bits(tcx: TyCtxt<'_>, ity: rustc_ty::IntTy) -> u64 {
+pub fn int_bits(tcx: TyCtxt<'_>, ity: IntTy) -> u64 {
     Integer::from_int_ty(&tcx, ity).size().bits()
 }
 
 #[expect(clippy::cast_possible_wrap)]
 /// Turn a constant int byte representation into an i128
-pub fn sext(tcx: TyCtxt<'_>, u: u128, ity: rustc_ty::IntTy) -> i128 {
+pub fn sext(tcx: TyCtxt<'_>, u: u128, ity: IntTy) -> i128 {
     let amt = 128 - int_bits(tcx, ity);
     ((u as i128) << amt) >> amt
 }
 
 #[expect(clippy::cast_sign_loss)]
 /// clip unused bytes
-pub fn unsext(tcx: TyCtxt<'_>, u: i128, ity: rustc_ty::IntTy) -> u128 {
+pub fn unsext(tcx: TyCtxt<'_>, u: i128, ity: IntTy) -> u128 {
     let amt = 128 - int_bits(tcx, ity);
     ((u as u128) << amt) >> amt
 }
 
 /// clip unused bytes
-pub fn clip(tcx: TyCtxt<'_>, u: u128, ity: rustc_ty::UintTy) -> u128 {
+pub fn clip(tcx: TyCtxt<'_>, u: u128, ity: UintTy) -> u128 {
     let bits = Integer::from_uint_ty(&tcx, ity).size().bits();
     let amt = 128 - bits;
     (u << amt) >> amt
@@ -2010,7 +2010,7 @@ pub fn is_must_use_func_call(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     let did = match expr.kind {
         ExprKind::Call(path, _) => {
             if let ExprKind::Path(ref qpath) = path.kind
-                && let def::Res::Def(_, did) = cx.qpath_res(qpath, path.hir_id)
+                && let Res::Def(_, did) = cx.qpath_res(qpath, path.hir_id)
             {
                 Some(did)
             } else {
@@ -2038,7 +2038,7 @@ fn is_body_identity_function(cx: &LateContext<'_>, func: &Body<'_>) -> bool {
             .typeck_results()
             .pat_binding_modes()
             .get(pat.hir_id)
-            .is_some_and(|mode| matches!(mode, BindingMode::BindByReference(_)))
+            .is_some_and(|mode| matches!(mode.0, ByRef::Yes(_)))
         {
             // If a tuple `(x, y)` is of type `&(i32, i32)`, then due to match ergonomics,
             // the inner patterns become references. Don't consider this the identity function
@@ -2161,7 +2161,7 @@ pub fn is_expr_used_or_unified(tcx: TyCtxt<'_>, expr: &Expr<'_>) -> bool {
             Node::Stmt(Stmt {
                 kind: StmtKind::Expr(_)
                     | StmtKind::Semi(_)
-                    | StmtKind::Local(Local {
+                    | StmtKind::Let(LetStmt {
                         pat: Pat {
                             kind: PatKind::Wild,
                             ..
@@ -2221,7 +2221,7 @@ pub fn is_no_core_crate(cx: &LateContext<'_>) -> bool {
 /// ```
 pub fn is_trait_impl_item(cx: &LateContext<'_>, hir_id: HirId) -> bool {
     if let Node::Item(item) = cx.tcx.parent_hir_node(hir_id) {
-        matches!(item.kind, ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }))
+        matches!(item.kind, ItemKind::Impl(Impl { of_trait: Some(_), .. }))
     } else {
         false
     }
@@ -2249,8 +2249,21 @@ pub fn fn_has_unsatisfiable_preds(cx: &LateContext<'_>, did: DefId) -> bool {
 
 /// Returns the `DefId` of the callee if the given expression is a function or method call.
 pub fn fn_def_id(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<DefId> {
+    fn_def_id_with_node_args(cx, expr).map(|(did, _)| did)
+}
+
+/// Returns the `DefId` of the callee if the given expression is a function or method call,
+/// as well as its node args.
+pub fn fn_def_id_with_node_args<'tcx>(
+    cx: &LateContext<'tcx>,
+    expr: &Expr<'_>,
+) -> Option<(DefId, GenericArgsRef<'tcx>)> {
+    let typeck = cx.typeck_results();
     match &expr.kind {
-        ExprKind::MethodCall(..) => cx.typeck_results().type_dependent_def_id(expr.hir_id),
+        ExprKind::MethodCall(..) => Some((
+            typeck.type_dependent_def_id(expr.hir_id)?,
+            typeck.node_args(expr.hir_id),
+        )),
         ExprKind::Call(
             Expr {
                 kind: ExprKind::Path(qpath),
@@ -2262,9 +2275,9 @@ pub fn fn_def_id(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<DefId> {
             // Only return Fn-like DefIds, not the DefIds of statics/consts/etc that contain or
             // deref to fn pointers, dyn Fn, impl Fn - #8850
             if let Res::Def(DefKind::Fn | DefKind::Ctor(..) | DefKind::AssocFn, id) =
-                cx.typeck_results().qpath_res(qpath, *path_hir_id)
+                typeck.qpath_res(qpath, *path_hir_id)
             {
-                Some(id)
+                Some((id, typeck.node_args(*path_hir_id)))
             } else {
                 None
             }
@@ -2315,10 +2328,10 @@ pub fn is_slice_of_primitives(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<S
 ///
 /// Given functions `eq` and `hash` such that `eq(a, b) == true`
 /// implies `hash(a) == hash(b)`
-pub fn search_same<T, Hash, Eq>(exprs: &[T], hash: Hash, eq: Eq) -> Vec<(&T, &T)>
+pub fn search_same<T, Hash, Eq>(exprs: &[T], mut hash: Hash, mut eq: Eq) -> Vec<(&T, &T)>
 where
-    Hash: Fn(&T) -> u64,
-    Eq: Fn(&T, &T) -> bool,
+    Hash: FnMut(&T) -> u64,
+    Eq: FnMut(&T, &T) -> bool,
 {
     match exprs {
         [a, b] if eq(a, b) => return vec![(a, b)],
@@ -2490,10 +2503,11 @@ fn with_test_item_names(tcx: TyCtxt<'_>, module: LocalModDefId, f: impl Fn(&[Sym
 /// Checks if the function containing the given `HirId` is a `#[test]` function
 ///
 /// Note: Add `//@compile-flags: --test` to UI tests with a `#[test]` function
-pub fn is_in_test_function(tcx: TyCtxt<'_>, id: hir::HirId) -> bool {
+pub fn is_in_test_function(tcx: TyCtxt<'_>, id: HirId) -> bool {
     with_test_item_names(tcx, tcx.parent_module(id), |names| {
-        tcx.hir()
-            .parent_iter(id)
+        let node = tcx.hir_node(id);
+        once((id, node))
+            .chain(tcx.hir().parent_iter(id))
             // Since you can nest functions we need to collect all until we leave
             // function scope
             .any(|(_id, node)| {
@@ -2513,7 +2527,7 @@ pub fn is_in_test_function(tcx: TyCtxt<'_>, id: hir::HirId) -> bool {
 ///
 /// This only checks directly applied attributes, to see if a node is inside a `#[cfg(test)]` parent
 /// use [`is_in_cfg_test`]
-pub fn is_cfg_test(tcx: TyCtxt<'_>, id: hir::HirId) -> bool {
+pub fn is_cfg_test(tcx: TyCtxt<'_>, id: HirId) -> bool {
     tcx.hir().attrs(id).iter().any(|attr| {
         if attr.has_name(sym::cfg)
             && let Some(items) = attr.meta_item_list()
@@ -2528,10 +2542,15 @@ pub fn is_cfg_test(tcx: TyCtxt<'_>, id: hir::HirId) -> bool {
 }
 
 /// Checks if any parent node of `HirId` has `#[cfg(test)]` attribute applied
-pub fn is_in_cfg_test(tcx: TyCtxt<'_>, id: hir::HirId) -> bool {
+pub fn is_in_cfg_test(tcx: TyCtxt<'_>, id: HirId) -> bool {
     tcx.hir()
         .parent_id_iter(id)
         .any(|parent_id| is_cfg_test(tcx, parent_id))
+}
+
+/// Checks if the node is in a `#[test]` function or has any parent node marked `#[cfg(test)]`
+pub fn is_in_test(tcx: TyCtxt<'_>, hir_id: HirId) -> bool {
+    is_in_test_function(tcx, hir_id) || is_in_cfg_test(tcx, hir_id)
 }
 
 /// Checks if the item of any of its parents has `#[cfg(...)]` attribute applied.
@@ -2629,7 +2648,7 @@ pub struct ExprUseCtxt<'tcx> {
 /// The node which consumes a value.
 pub enum ExprUseNode<'tcx> {
     /// Assignment to, or initializer for, a local
-    Local(&'tcx Local<'tcx>),
+    LetStmt(&'tcx LetStmt<'tcx>),
     /// Initializer for a const or static item.
     ConstStatic(OwnerId),
     /// Implicit or explicit return from a function.
@@ -2661,17 +2680,16 @@ impl<'tcx> ExprUseNode<'tcx> {
     /// Gets the needed type as it's defined without any type inference.
     pub fn defined_ty(&self, cx: &LateContext<'tcx>) -> Option<DefinedTy<'tcx>> {
         match *self {
-            Self::Local(Local { ty: Some(ty), .. }) => Some(DefinedTy::Hir(ty)),
+            Self::LetStmt(LetStmt { ty: Some(ty), .. }) => Some(DefinedTy::Hir(ty)),
             Self::ConstStatic(id) => Some(DefinedTy::Mir(
                 cx.param_env
                     .and(Binder::dummy(cx.tcx.type_of(id).instantiate_identity())),
             )),
             Self::Return(id) => {
-                let hir_id = cx.tcx.local_def_id_to_hir_id(id.def_id);
                 if let Node::Expr(Expr {
                     kind: ExprKind::Closure(c),
                     ..
-                }) = cx.tcx.hir_node(hir_id)
+                }) = cx.tcx.hir_node_by_def_id(id.def_id)
                 {
                     match c.fn_decl.output {
                         FnRetTy::DefaultReturn(_) => None,
@@ -2722,7 +2740,7 @@ impl<'tcx> ExprUseNode<'tcx> {
                 let sig = cx.tcx.fn_sig(id).skip_binder();
                 Some(DefinedTy::Mir(cx.tcx.param_env(id).and(sig.input(i))))
             },
-            Self::Local(_) | Self::FieldAccess(..) | Self::Callee | Self::Expr | Self::Other => None,
+            Self::LetStmt(_) | Self::FieldAccess(..) | Self::Callee | Self::Expr | Self::Other => None,
         }
     }
 }
@@ -2761,7 +2779,7 @@ pub fn expr_use_ctxt<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'tcx>) -> Optio
     .continue_value()
     .map(|(use_node, child_id)| {
         let node = match use_node {
-            Node::Local(l) => ExprUseNode::Local(l),
+            Node::LetStmt(l) => ExprUseNode::LetStmt(l),
             Node::ExprField(field) => ExprUseNode::Field(field),
 
             Node::Item(&Item {
@@ -3149,7 +3167,7 @@ pub fn is_never_expr<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> Option<
             }
         }
 
-        fn visit_local(&mut self, l: &'tcx Local<'_>) {
+        fn visit_local(&mut self, l: &'tcx LetStmt<'_>) {
             if let Some(e) = l.init {
                 self.visit_expr(e);
             }
@@ -3226,7 +3244,7 @@ fn get_path_to_ty<'tcx>(tcx: TyCtxt<'tcx>, from: LocalDefId, ty: Ty<'tcx>, args:
         rustc_ty::Array(..)
         | rustc_ty::Dynamic(..)
         | rustc_ty::Never
-        | rustc_ty::RawPtr(_)
+        | rustc_ty::RawPtr(_, _)
         | rustc_ty::Ref(..)
         | rustc_ty::Slice(_)
         | rustc_ty::Tuple(_) => format!("<{}>", EarlyBinder::bind(ty).instantiate(tcx, args)),
@@ -3273,7 +3291,7 @@ fn maybe_get_relative_path(from: &DefPath, to: &DefPath, max_super: usize) -> St
             Right(r) => Right(r.data),
         });
 
-    // 2. for the remaning segments, construct relative path using only mod names and `super`
+    // 2. for the remaining segments, construct relative path using only mod names and `super`
     let mut go_up_by = 0;
     let mut path = Vec::new();
     for el in unique_parts {
@@ -3323,4 +3341,13 @@ fn maybe_get_relative_path(from: &DefPath, to: &DefPath, max_super: usize) -> St
     } else {
         repeat(String::from("super")).take(go_up_by).chain(path).join("::")
     }
+}
+
+/// Returns true if the specified `HirId` is the top-level expression of a statement or the only
+/// expression in a block.
+pub fn is_parent_stmt(cx: &LateContext<'_>, id: HirId) -> bool {
+    matches!(
+        cx.tcx.parent_hir_node(id),
+        Node::Stmt(..) | Node::Block(Block { stmts: &[], .. })
+    )
 }

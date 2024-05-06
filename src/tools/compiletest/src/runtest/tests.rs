@@ -50,72 +50,68 @@ fn normalize_platform_differences() {
 }
 
 /// Test for anonymizing line numbers in coverage reports, especially for
-/// branch regions.
+/// MC/DC regions.
 ///
-/// FIXME(#119681): This test can be removed when we have examples of branch
+/// FIXME(#123409): This test can be removed when we have examples of MC/DC
 /// coverage in the actual coverage test suite.
 #[test]
 fn anonymize_coverage_line_numbers() {
     let anon = |coverage| TestCx::anonymize_coverage_line_numbers(coverage);
 
     let input = r#"
-    6|      3|fn print_size<T>() {
-    7|      3|    if std::mem::size_of::<T>() > 4 {
+    7|      2|fn mcdc_check_neither(a: bool, b: bool) {
+    8|      2|    if a && b {
+                          ^0
   ------------------
-  |  Branch (7:8): [True: 0, False: 1]
-  |  Branch (7:8): [True: 0, False: 1]
-  |  Branch (7:8): [True: 1, False: 0]
+  |---> MC/DC Decision Region (8:8) to (8:14)
+  |
+  |  Number of Conditions: 2
+  |     Condition C1 --> (8:8)
+  |     Condition C2 --> (8:13)
+  |
+  |  Executed MC/DC Test Vectors:
+  |
+  |     C1, C2    Result
+  |  1 { F,  -  = F      }
+  |
+  |  C1-Pair: not covered
+  |  C2-Pair: not covered
+  |  MC/DC Coverage for Decision: 0.00%
+  |
   ------------------
-    8|      1|        println!("size > 4");
+    9|      0|        say("a and b");
+   10|      2|    } else {
+   11|      2|        say("not both");
+   12|      2|    }
+   13|      2|}
 "#;
 
     let expected = r#"
-   LL|      3|fn print_size<T>() {
-   LL|      3|    if std::mem::size_of::<T>() > 4 {
+   LL|      2|fn mcdc_check_neither(a: bool, b: bool) {
+   LL|      2|    if a && b {
+                          ^0
   ------------------
-  |  Branch (LL:8): [True: 0, False: 1]
-  |  Branch (LL:8): [True: 0, False: 1]
-  |  Branch (LL:8): [True: 1, False: 0]
+  |---> MC/DC Decision Region (LL:8) to (LL:14)
+  |
+  |  Number of Conditions: 2
+  |     Condition C1 --> (LL:8)
+  |     Condition C2 --> (LL:13)
+  |
+  |  Executed MC/DC Test Vectors:
+  |
+  |     C1, C2    Result
+  |  1 { F,  -  = F      }
+  |
+  |  C1-Pair: not covered
+  |  C2-Pair: not covered
+  |  MC/DC Coverage for Decision: 0.00%
+  |
   ------------------
-   LL|      1|        println!("size > 4");
-"#;
-
-    assert_eq!(anon(input), expected);
-
-    //////////
-
-    let input = r#"
-   12|      3|}
-  ------------------
-  | branch_generics::print_size::<()>:
-  |    6|      1|fn print_size<T>() {
-  |    7|      1|    if std::mem::size_of::<T>() > 4 {
-  |  ------------------
-  |  |  Branch (7:8): [True: 0, False: 1]
-  |  ------------------
-  |    8|      0|        println!("size > 4");
-  |    9|      1|    } else {
-  |   10|      1|        println!("size <= 4");
-  |   11|      1|    }
-  |   12|      1|}
-  ------------------
-"#;
-
-    let expected = r#"
-   LL|      3|}
-  ------------------
-  | branch_generics::print_size::<()>:
-  |   LL|      1|fn print_size<T>() {
-  |   LL|      1|    if std::mem::size_of::<T>() > 4 {
-  |  ------------------
-  |  |  Branch (LL:8): [True: 0, False: 1]
-  |  ------------------
-  |   LL|      0|        println!("size > 4");
-  |   LL|      1|    } else {
-  |   LL|      1|        println!("size <= 4");
-  |   LL|      1|    }
-  |   LL|      1|}
-  ------------------
+   LL|      0|        say("a and b");
+   LL|      2|    } else {
+   LL|      2|        say("not both");
+   LL|      2|    }
+   LL|      2|}
 "#;
 
     assert_eq!(anon(input), expected);

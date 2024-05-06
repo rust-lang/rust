@@ -346,14 +346,9 @@ $ llvm-cov report \
   more fine-grained coverage options are added.
   Using this value is currently not recommended.
 
-### Unstable values
+## `-Z coverage-options=<options>`
 
-- `-Z unstable-options -C instrument-coverage=branch`:
-  Placeholder for potential branch coverage support in the future.
-- `-Z unstable-options -C instrument-coverage=except-unused-generics`:
-  Instrument all functions except unused generics.
-- `-Z unstable-options -C instrument-coverage=except-unused-functions`:
-  Instrument only used (called) functions and instantiated generic functions.
+[This unstable option is described in the Unstable Book.](../unstable-book/compiler-flags/coverage-options.html)
 
 ## Other references
 

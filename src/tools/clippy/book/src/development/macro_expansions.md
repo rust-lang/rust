@@ -52,7 +52,7 @@ if expr.span.from_expansion() {
 
 ### `Span.ctxt` method
 
-The `span`'s context, given by the method [`ctxt`] and returning [SpanContext],
+The `span`'s context, given by the method [`ctxt`] and returning [SyntaxContext],
 represents if the span is from a macro expansion and, if it is, which
 macro call expanded this span.
 
@@ -155,4 +155,4 @@ if in_external_macro(cx.sess(), foo_span) {
 [`from_expansion`]: https://doc.rust-lang.org/stable/nightly-rustc/rustc_span/struct.Span.html#method.from_expansion
 [`in_external_macro`]: https://doc.rust-lang.org/stable/nightly-rustc/rustc_middle/lint/fn.in_external_macro.html
 [Span]: https://doc.rust-lang.org/stable/nightly-rustc/rustc_span/struct.Span.html
-[SpanContext]: https://doc.rust-lang.org/stable/nightly-rustc/rustc_span/hygiene/struct.SyntaxContext.html
+[SyntaxContext]: https://doc.rust-lang.org/stable/nightly-rustc/rustc_span/hygiene/struct.SyntaxContext.html

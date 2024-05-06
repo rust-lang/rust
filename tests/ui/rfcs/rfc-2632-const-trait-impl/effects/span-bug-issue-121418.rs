@@ -8,6 +8,8 @@ impl const dyn T {
     //~^ ERROR inherent impls cannot be `const`
     //~| ERROR the const parameter `host` is not constrained by the impl trait, self type, or
     pub const fn new() -> std::sync::Mutex<dyn T> {}
+    //~^ ERROR mismatched types
+    //~| ERROR cannot be known at compilation time
 }
 
 fn main() {}

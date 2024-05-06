@@ -150,6 +150,14 @@ help: consider introducing a named lifetime parameter
 LL |     fn g<'a>(mut x: impl Iterator<Item = &'a ()>) -> Option<&()> { x.next() }
    |         ++++                              ++
 
+error: lifetime may not live long enough
+  --> $DIR/impl-trait-missing-lifetime-gated.rs:19:67
+   |
+LL |     async fn i(mut x: impl Iterator<Item = &()>) -> Option<&()> { x.next() }
+   |     -----------------------------------------------------------   ^^^^^^^^ returning this value requires that `'1` must outlive `'static`
+   |     |
+   |     return type `impl Future<Output = Option<&'static ()>>` contains a lifetime `'1`
+
 error[E0658]: anonymous lifetimes in `impl Trait` are unstable
   --> $DIR/impl-trait-missing-lifetime-gated.rs:25:35
    |
@@ -175,6 +183,14 @@ help: consider introducing a named lifetime parameter
    |
 LL |     fn g<'a>(mut x: impl Iterator<Item = &'a ()>) -> Option<&'_ ()> { x.next() }
    |         ++++                              ~~
+
+error: lifetime may not live long enough
+  --> $DIR/impl-trait-missing-lifetime-gated.rs:38:73
+   |
+LL |     async fn i(mut x: impl Iterator<Item = &'_ ()>) -> Option<&'_ ()> { x.next() }
+   |     -----------------------------------------------------------------   ^^^^^^^^ returning this value requires that `'1` must outlive `'static`
+   |     |
+   |     return type `impl Future<Output = Option<&'static ()>>` contains a lifetime `'1`
 
 error[E0658]: anonymous lifetimes in `impl Trait` are unstable
   --> $DIR/impl-trait-missing-lifetime-gated.rs:46:18
@@ -227,22 +243,6 @@ help: consider introducing a named lifetime parameter
    |
 LL |     fn g<'a>(mut x: impl Foo<'a, ()>) -> Option<&()> { x.next() }
    |         ++++                 +++
-
-error: lifetime may not live long enough
-  --> $DIR/impl-trait-missing-lifetime-gated.rs:19:67
-   |
-LL |     async fn i(mut x: impl Iterator<Item = &()>) -> Option<&()> { x.next() }
-   |     -----------------------------------------------------------   ^^^^^^^^ returning this value requires that `'1` must outlive `'static`
-   |     |
-   |     return type `impl Future<Output = Option<&'static ()>>` contains a lifetime `'1`
-
-error: lifetime may not live long enough
-  --> $DIR/impl-trait-missing-lifetime-gated.rs:38:73
-   |
-LL |     async fn i(mut x: impl Iterator<Item = &'_ ()>) -> Option<&'_ ()> { x.next() }
-   |     -----------------------------------------------------------------   ^^^^^^^^ returning this value requires that `'1` must outlive `'static`
-   |     |
-   |     return type `impl Future<Output = Option<&'static ()>>` contains a lifetime `'1`
 
 error: aborting due to 16 previous errors
 

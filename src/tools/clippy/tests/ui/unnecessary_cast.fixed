@@ -221,4 +221,10 @@ mod fixable {
     fn issue_9603() {
         let _: f32 = -0x400 as f32;
     }
+
+    // Issue #11968: The suggestion for this lint removes the parentheses and leave the code as
+    // `*x.pow(2)` which tries to dereference the return value rather than `x`.
+    fn issue_11968(x: &usize) -> usize {
+        { *x }.pow(2)
+    }
 }

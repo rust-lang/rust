@@ -106,8 +106,8 @@ impl<'tcx> Value<TyCtxt<'tcx>> for Representability {
                 representable_ids.insert(def_id);
             }
         }
-        recursive_type_error(tcx, item_and_field_ids, &representable_ids);
-        Representability::Infinite
+        let guar = recursive_type_error(tcx, item_and_field_ids, &representable_ids);
+        Representability::Infinite(guar)
     }
 }
 
@@ -128,6 +128,27 @@ impl<'tcx> Value<TyCtxt<'tcx>> for ty::EarlyBinder<ty::Binder<'_, ty::FnSig<'_>>
         guar: ErrorGuaranteed,
     ) -> Self {
         ty::EarlyBinder::bind(ty::Binder::from_cycle_error(tcx, cycle_error, guar))
+    }
+}
+
+impl<'tcx> Value<TyCtxt<'tcx>> for &[ty::Variance] {
+    fn from_cycle_error(
+        tcx: TyCtxt<'tcx>,
+        cycle_error: &CycleError,
+        _guar: ErrorGuaranteed,
+    ) -> Self {
+        if let Some(frame) = cycle_error.cycle.get(0)
+            && frame.query.dep_kind == dep_kinds::variances_of
+            && let Some(def_id) = frame.query.def_id
+        {
+            let n = tcx.generics_of(def_id).params.len();
+            vec![ty::Variance::Bivariant; n].leak()
+        } else {
+            span_bug!(
+                cycle_error.usage.as_ref().unwrap().0,
+                "only `variances_of` returns `&[ty::Variance]`"
+            );
+        }
     }
 }
 
@@ -247,7 +268,7 @@ pub fn recursive_type_error(
     tcx: TyCtxt<'_>,
     mut item_and_field_ids: Vec<(LocalDefId, LocalDefId)>,
     representable_ids: &FxHashSet<LocalDefId>,
-) {
+) -> ErrorGuaranteed {
     const ITEM_LIMIT: usize = 5;
 
     // Rotate the cycle so that the item with the lowest span is first
@@ -323,7 +344,7 @@ pub fn recursive_type_error(
         suggestion,
         Applicability::HasPlaceholders,
     )
-    .emit();
+    .emit()
 }
 
 fn find_item_ty_spans(

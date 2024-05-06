@@ -95,11 +95,21 @@ pub(crate) fn emit_unescape_error(
                     }
                     escaped.push(c);
                 }
-                let sugg = format!("{prefix}\"{escaped}\"");
-                MoreThanOneCharSugg::Quotes {
-                    span: full_lit_span,
-                    is_byte: mode == Mode::Byte,
-                    sugg,
+                if escaped.len() != lit.len() || full_lit_span.is_empty() {
+                    let sugg = format!("{prefix}\"{escaped}\"");
+                    MoreThanOneCharSugg::QuotesFull {
+                        span: full_lit_span,
+                        is_byte: mode == Mode::Byte,
+                        sugg,
+                    }
+                } else {
+                    MoreThanOneCharSugg::Quotes {
+                        start: full_lit_span
+                            .with_hi(full_lit_span.lo() + BytePos((prefix.len() + 1) as u32)),
+                        end: full_lit_span.with_lo(full_lit_span.hi() - BytePos(1)),
+                        is_byte: mode == Mode::Byte,
+                        prefix,
+                    }
                 }
             });
             dcx.emit_err(UnescapeError::MoreThanOneChar {

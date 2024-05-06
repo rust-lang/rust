@@ -4,7 +4,12 @@
 //@[disabled] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/undocumented_unsafe_blocks/disabled
 
 #![warn(clippy::undocumented_unsafe_blocks, clippy::unnecessary_safety_comment)]
-#![allow(deref_nullptr, non_local_definitions, clippy::let_unit_value, clippy::missing_safety_doc)]
+#![allow(
+    deref_nullptr,
+    non_local_definitions,
+    clippy::let_unit_value,
+    clippy::missing_safety_doc
+)]
 #![feature(lint_reasons)]
 
 extern crate proc_macro_unsafe;

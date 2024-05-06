@@ -4,6 +4,14 @@ error[E0080]: evaluation of `post_monomorphization_error::ValidateConstImm::<2, 
 LL |         let _ = 1 / ((IMM >= MIN && IMM <= MAX) as usize);
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attempt to divide `1_usize` by zero
 
+note: erroneous constant encountered
+  --> $DIR/auxiliary/post_monomorphization_error.rs:19:5
+   |
+LL |     static_assert_imm1!(IMM1);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this note originates in the macro `static_assert_imm1` (in Nightly builds, run with -Z macro-backtrace for more info)
+
 note: the above error was encountered while instantiating `fn post_monomorphization_error::stdarch_intrinsic::<2>`
   --> $DIR/issue-85155.rs:19:5
    |

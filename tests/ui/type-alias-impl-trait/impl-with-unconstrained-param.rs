@@ -12,6 +12,8 @@ impl<T> X for () {
     //~^ ERROR the type parameter `T` is not constrained
     type I = impl Sized;
     fn f() -> Self::I {}
+    //~^ ERROR type annotations needed
+    //~| ERROR type annotations needed
 }
 
 fn main() {}

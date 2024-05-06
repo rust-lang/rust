@@ -13,10 +13,20 @@ use crate::fmt;
 use crate::marker::PhantomData;
 use crate::ops::{Deref, DerefMut};
 
+#[doc(no_inline)]
 #[stable(feature = "core_c_str", since = "1.64.0")]
-pub use self::c_str::{CStr, FromBytesUntilNulError, FromBytesWithNulError};
+pub use self::c_str::FromBytesWithNulError;
 
-mod c_str;
+#[doc(no_inline)]
+#[stable(feature = "cstr_from_bytes_until_nul", since = "1.69.0")]
+pub use self::c_str::FromBytesUntilNulError;
+
+#[doc(inline)]
+#[stable(feature = "core_c_str", since = "1.64.0")]
+pub use self::c_str::CStr;
+
+#[unstable(feature = "c_str_module", issue = "112134")]
+pub mod c_str;
 
 macro_rules! type_alias {
     {
@@ -203,7 +213,7 @@ impl fmt::Debug for c_void {
         not(target_arch = "s390x"),
         not(target_arch = "x86_64")
     ),
-    all(target_arch = "aarch64", any(target_os = "macos", target_os = "ios", target_os = "tvos")),
+    all(target_arch = "aarch64", target_vendor = "apple"),
     target_family = "wasm",
     target_os = "uefi",
     windows,
@@ -231,7 +241,7 @@ pub struct VaListImpl<'f> {
         not(target_arch = "s390x"),
         not(target_arch = "x86_64")
     ),
-    all(target_arch = "aarch64", any(target_os = "macos", target_os = "ios", target_os = "tvos")),
+    all(target_arch = "aarch64", target_vendor = "apple"),
     target_family = "wasm",
     target_os = "uefi",
     windows,
@@ -255,7 +265,7 @@ impl<'f> fmt::Debug for VaListImpl<'f> {
 /// http://infocenter.arm.com/help/topic/com.arm.doc.ihi0055b/IHI0055B_aapcs64.pdf
 #[cfg(all(
     target_arch = "aarch64",
-    not(any(target_os = "macos", target_os = "ios", target_os = "tvos")),
+    not(target_vendor = "apple"),
     not(target_os = "uefi"),
     not(windows),
 ))]
@@ -352,10 +362,7 @@ pub struct VaList<'a, 'f: 'a> {
             not(target_arch = "s390x"),
             not(target_arch = "x86_64")
         ),
-        all(
-            target_arch = "aarch64",
-            any(target_os = "macos", target_os = "ios", target_os = "tvos")
-        ),
+        all(target_arch = "aarch64", target_vendor = "apple"),
         target_family = "wasm",
         target_os = "uefi",
         windows,
@@ -369,10 +376,7 @@ pub struct VaList<'a, 'f: 'a> {
             target_arch = "s390x",
             target_arch = "x86_64"
         ),
-        any(
-            not(target_arch = "aarch64"),
-            not(any(target_os = "macos", target_os = "ios", target_os = "tvos"))
-        ),
+        any(not(target_arch = "aarch64"), not(target_vendor = "apple")),
         not(target_family = "wasm"),
         not(target_os = "uefi"),
         not(windows),
@@ -389,7 +393,7 @@ pub struct VaList<'a, 'f: 'a> {
         not(target_arch = "s390x"),
         not(target_arch = "x86_64")
     ),
-    all(target_arch = "aarch64", any(target_os = "macos", target_os = "ios", target_os = "tvos")),
+    all(target_arch = "aarch64", target_vendor = "apple"),
     target_family = "wasm",
     target_os = "uefi",
     windows,
@@ -415,10 +419,7 @@ impl<'f> VaListImpl<'f> {
         target_arch = "s390x",
         target_arch = "x86_64"
     ),
-    any(
-        not(target_arch = "aarch64"),
-        not(any(target_os = "macos", target_os = "ios", target_os = "tvos"))
-    ),
+    any(not(target_arch = "aarch64"), not(target_vendor = "apple")),
     not(target_family = "wasm"),
     not(target_os = "uefi"),
     not(windows),
@@ -599,3 +600,13 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     fn va_arg<T: sealed_trait::VaArgSafe>(ap: &mut VaListImpl<'_>) -> T;
 }
+
+// Link the MSVC default lib
+#[cfg(all(windows, target_env = "msvc"))]
+#[link(
+    name = "/defaultlib:msvcrt",
+    modifiers = "+verbatim",
+    cfg(not(target_feature = "crt-static"))
+)]
+#[link(name = "/defaultlib:libcmt", modifiers = "+verbatim", cfg(target_feature = "crt-static"))]
+extern "C" {}

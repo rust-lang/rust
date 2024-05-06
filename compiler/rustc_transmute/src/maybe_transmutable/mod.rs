@@ -1,3 +1,5 @@
+use tracing::{debug, instrument, trace};
+
 pub(crate) mod query_context;
 #[cfg(test)]
 mod tests;
@@ -33,6 +35,9 @@ mod rustc {
     use super::*;
     use crate::layout::tree::rustc::Err;
 
+    use rustc_middle::ty::layout::LayoutCx;
+    use rustc_middle::ty::layout::LayoutOf;
+    use rustc_middle::ty::ParamEnv;
     use rustc_middle::ty::Ty;
     use rustc_middle::ty::TyCtxt;
 
@@ -43,12 +48,20 @@ mod rustc {
         pub fn answer(self) -> Answer<<TyCtxt<'tcx> as QueryContext>::Ref> {
             let Self { src, dst, assume, context } = self;
 
+            let layout_cx = LayoutCx { tcx: context, param_env: ParamEnv::reveal_all() };
+            let layout_of = |ty| {
+                layout_cx
+                    .layout_of(ty)
+                    .map_err(|_| Err::NotYetSupported)
+                    .and_then(|tl| Tree::from_ty(tl, layout_cx))
+            };
+
             // Convert `src` and `dst` from their rustc representations, to `Tree`-based
             // representations. If these conversions fail, conclude that the transmutation is
             // unacceptable; the layouts of both the source and destination types must be
             // well-defined.
-            let src = Tree::from_ty(src, context);
-            let dst = Tree::from_ty(dst, context);
+            let src = layout_of(src);
+            let dst = layout_of(dst);
 
             match (src, dst) {
                 (Err(Err::TypeError(_)), _) | (_, Err(Err::TypeError(_))) => {
@@ -56,8 +69,8 @@ mod rustc {
                 }
                 (Err(Err::UnknownLayout), _) => Answer::No(Reason::SrcLayoutUnknown),
                 (_, Err(Err::UnknownLayout)) => Answer::No(Reason::DstLayoutUnknown),
-                (Err(Err::Unspecified), _) => Answer::No(Reason::SrcIsUnspecified),
-                (_, Err(Err::Unspecified)) => Answer::No(Reason::DstIsUnspecified),
+                (Err(Err::NotYetSupported), _) => Answer::No(Reason::SrcIsNotYetSupported),
+                (_, Err(Err::NotYetSupported)) => Answer::No(Reason::DstIsNotYetSupported),
                 (Err(Err::SizeOverflow), _) => Answer::No(Reason::SrcSizeOverflow),
                 (_, Err(Err::SizeOverflow)) => Answer::No(Reason::DstSizeOverflow),
                 (Ok(src), Ok(dst)) => MaybeTransmutableQuery { src, dst, assume, context }.answer(),
@@ -85,6 +98,10 @@ where
         // more sophisticated to handle transmutations between mutable
         // references.
         let src = src.prune(&|def| false);
+
+        if src.is_inhabited() && !dst.is_inhabited() {
+            return Answer::No(Reason::DstUninhabited);
+        }
 
         trace!(?src, "pruned src");
 
@@ -265,6 +282,11 @@ where
                                             Answer::No(Reason::DstHasStricterAlignment {
                                                 src_min_align: src_ref.min_align(),
                                                 dst_min_align: dst_ref.min_align(),
+                                            })
+                                        } else if dst_ref.size() > src_ref.size() {
+                                            Answer::No(Reason::DstRefIsTooBig {
+                                                src: src_ref,
+                                                dst: dst_ref,
                                             })
                                         } else {
                                             // ...such that `src` is transmutable into `dst`, if

@@ -91,7 +91,7 @@ fn assert_expand_impl(
     let res = expander
         .expand(macro_name, fixture.into_subtree(call_site), attr, def_site, call_site, mixed_site)
         .unwrap();
-    expect_s.assert_eq(&format!("{res:?}"));
+    expect_s.assert_eq(&format!("{res:#?}"));
 }
 
 pub(crate) fn list() -> Vec<String> {

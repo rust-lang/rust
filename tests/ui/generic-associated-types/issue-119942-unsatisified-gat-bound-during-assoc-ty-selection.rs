@@ -29,5 +29,5 @@ where
 
 fn main() {
     let mut list = RcNode::<i32>::new();
-    //~^ ERROR the size for values of type `Node<i32, RcFamily>` cannot be known at compilation time
+    //~^ ERROR the variant or associated item `new` exists for enum `Node<i32, RcFamily>`, but its trait bounds were not satisfied
 }

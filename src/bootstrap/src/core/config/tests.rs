@@ -1,4 +1,5 @@
-use super::{flags::Flags, Config};
+use super::{flags::Flags, ChangeIdWrapper, Config};
+use crate::core::build_steps::clippy::get_clippy_rules_in_order;
 use crate::core::config::{LldMode, TomlConfig};
 
 use clap::CommandFactory;
@@ -11,12 +12,13 @@ use std::{
 };
 
 fn parse(config: &str) -> Config {
-    let config = format!("{config} \r\n build.rustc = \"/does-not-exists\" ");
     Config::parse_inner(
         &[
-            "check".to_owned(),
-            "--config=/does/not/exist".to_owned(),
-            "--skip-stage0-validation".to_owned(),
+            "check".to_string(),
+            "--set=build.rustc=/does/not/exist".to_string(),
+            "--set=build.cargo=/does/not/exist".to_string(),
+            "--config=/does/not/exist".to_string(),
+            "--skip-stage0-validation".to_string(),
         ],
         |&_| toml::from_str(&config).unwrap(),
     )
@@ -169,7 +171,10 @@ fn override_toml_duplicate() {
     Config::parse_inner(
         &[
             "check".to_owned(),
+            "--set=build.rustc=/does/not/exist".to_string(),
+            "--set=build.cargo=/does/not/exist".to_string(),
             "--config=/does/not/exist".to_owned(),
+            "--skip-stage0-validation".to_owned(),
             "--set=change-id=1".to_owned(),
             "--set=change-id=2".to_owned(),
         ],
@@ -192,7 +197,15 @@ fn profile_user_dist() {
             .and_then(|table: toml::Value| TomlConfig::deserialize(table))
             .unwrap()
     }
-    Config::parse_inner(&["check".to_owned()], get_toml);
+    Config::parse_inner(
+        &[
+            "check".to_owned(),
+            "--set=build.rustc=/does/not/exist".to_string(),
+            "--set=build.cargo=/does/not/exist".to_string(),
+            "--skip-stage0-validation".to_string(),
+        ],
+        get_toml,
+    );
 }
 
 #[test]
@@ -236,4 +249,52 @@ fn rust_lld() {
     assert!(matches!(parse("rust.use-lld = \"external\"").lld_mode, LldMode::External));
     assert!(matches!(parse("rust.use-lld = true").lld_mode, LldMode::External));
     assert!(matches!(parse("rust.use-lld = false").lld_mode, LldMode::Unused));
+}
+
+#[test]
+#[should_panic]
+fn parse_config_with_unknown_field() {
+    parse("unknown-key = 1");
+}
+
+#[test]
+fn parse_change_id_with_unknown_field() {
+    let config = r#"
+        change-id = 3461
+        unknown-key = 1
+    "#;
+
+    let change_id_wrapper: ChangeIdWrapper = toml::from_str(config).unwrap();
+    assert_eq!(change_id_wrapper.inner, Some(3461));
+}
+
+#[test]
+fn order_of_clippy_rules() {
+    let args = vec![
+        "clippy".to_string(),
+        "--fix".to_string(),
+        "--allow-dirty".to_string(),
+        "--allow-staged".to_string(),
+        "-Aclippy:all".to_string(),
+        "-Wclippy::style".to_string(),
+        "-Aclippy::foo1".to_string(),
+        "-Aclippy::foo2".to_string(),
+    ];
+    let config = Config::parse(&args);
+
+    let actual = match &config.cmd {
+        crate::Subcommand::Clippy { allow, deny, warn, forbid, .. } => {
+            get_clippy_rules_in_order(&args, &allow, &deny, &warn, &forbid)
+        }
+        _ => panic!("invalid subcommand"),
+    };
+
+    let expected = vec![
+        "-Aclippy:all".to_string(),
+        "-Wclippy::style".to_string(),
+        "-Aclippy::foo1".to_string(),
+        "-Aclippy::foo2".to_string(),
+    ];
+
+    assert_eq!(expected, actual);
 }

@@ -5,7 +5,7 @@ use rustc_ast as ast;
 use rustc_ast::NodeId;
 use rustc_data_structures::stable_hasher::ToStableHashKey;
 use rustc_data_structures::unord::UnordMap;
-use rustc_macros::HashStable_Generic;
+use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::kw;
@@ -75,7 +75,12 @@ pub enum DefKind {
     Const,
     /// Constant generic parameter: `struct Foo<const N: usize> { ... }`
     ConstParam,
-    Static(ast::Mutability),
+    Static {
+        /// Whether it's a `static mut` or just a `static`.
+        mutability: ast::Mutability,
+        /// Whether it's an anonymous static generated for nested allocations.
+        nested: bool,
+    },
     /// Refers to the struct or enum variant's constructor.
     ///
     /// The reason `Ctor` exists in addition to [`DefKind::Struct`] and
@@ -108,6 +113,9 @@ pub enum DefKind {
     InlineConst,
     /// Opaque type, aka `impl Trait`.
     OpaqueTy,
+    /// A field in a struct, enum or union. e.g.
+    /// - `bar` in `struct Foo { bar: u8 }`
+    /// - `Foo::Bar::0` in `enum Foo { Bar(u8) }`
     Field,
     /// Lifetime parameter: the `'a` in `struct Foo<'a> { ... }`
     LifetimeParam,
@@ -136,7 +144,7 @@ impl DefKind {
             DefKind::Fn => "function",
             DefKind::Mod if def_id.is_crate_root() && !def_id.is_local() => "crate",
             DefKind::Mod => "module",
-            DefKind::Static(..) => "static",
+            DefKind::Static { .. } => "static",
             DefKind::Enum => "enum",
             DefKind::Variant => "variant",
             DefKind::Ctor(CtorOf::Variant, CtorKind::Fn) => "tuple variant",
@@ -199,7 +207,6 @@ impl DefKind {
             | DefKind::Enum
             | DefKind::Variant
             | DefKind::Trait
-            | DefKind::OpaqueTy
             | DefKind::TyAlias
             | DefKind::ForeignTy
             | DefKind::TraitAlias
@@ -209,7 +216,7 @@ impl DefKind {
             DefKind::Fn
             | DefKind::Const
             | DefKind::ConstParam
-            | DefKind::Static(..)
+            | DefKind::Static { .. }
             | DefKind::Ctor(..)
             | DefKind::AssocFn
             | DefKind::AssocConst => Some(Namespace::ValueNS),
@@ -226,7 +233,8 @@ impl DefKind {
             | DefKind::Use
             | DefKind::ForeignMod
             | DefKind::GlobalAsm
-            | DefKind::Impl { .. } => None,
+            | DefKind::Impl { .. }
+            | DefKind::OpaqueTy => None,
         }
     }
 
@@ -245,10 +253,13 @@ impl DefKind {
             | DefKind::AssocTy
             | DefKind::TyParam
             | DefKind::ExternCrate => DefPathData::TypeNs(name),
+            // It's not exactly an anon const, but wrt DefPathData, there
+            // is no difference.
+            DefKind::Static { nested: true, .. } => DefPathData::AnonConst,
             DefKind::Fn
             | DefKind::Const
             | DefKind::ConstParam
-            | DefKind::Static(..)
+            | DefKind::Static { .. }
             | DefKind::AssocFn
             | DefKind::AssocConst
             | DefKind::Field => DefPathData::ValueNs(name),
@@ -278,7 +289,7 @@ impl DefKind {
             | DefKind::AssocFn
             | DefKind::Ctor(..)
             | DefKind::Closure
-            | DefKind::Static(_) => true,
+            | DefKind::Static { .. } => true,
             DefKind::Mod
             | DefKind::Struct
             | DefKind::Union
@@ -802,6 +813,8 @@ pub enum LifetimeRes {
         param: NodeId,
         /// Id of the introducing place. See `Param`.
         binder: NodeId,
+        /// Kind of elided lifetime
+        kind: hir::MissingLifetimeKind,
     },
     /// This variant is used for anonymous lifetimes that we did not resolve during
     /// late resolution. Those lifetimes will be inferred by typechecking.

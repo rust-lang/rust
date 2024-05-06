@@ -4,6 +4,7 @@
 
 async fn copy() -> Result<()>
 //~^ ERROR enum takes 2 generic arguments
+//~| ERROR enum takes 2 generic arguments
 {
     Ok(())
 }

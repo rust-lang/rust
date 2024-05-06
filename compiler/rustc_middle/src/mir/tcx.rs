@@ -14,8 +14,8 @@ pub struct PlaceTy<'tcx> {
 }
 
 // At least on 64 bit systems, `PlaceTy` should not be larger than two or three pointers.
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-static_assert_size!(PlaceTy<'_>, 16);
+#[cfg(target_pointer_width = "64")]
+rustc_data_structures::static_assert_size!(PlaceTy<'_>, 16);
 
 impl<'tcx> PlaceTy<'tcx> {
     #[inline]
@@ -170,11 +170,11 @@ impl<'tcx> Rvalue<'tcx> {
             Rvalue::ThreadLocalRef(did) => tcx.thread_local_ptr_ty(did),
             Rvalue::Ref(reg, bk, ref place) => {
                 let place_ty = place.ty(local_decls, tcx).ty;
-                Ty::new_ref(tcx, reg, ty::TypeAndMut { ty: place_ty, mutbl: bk.to_mutbl_lossy() })
+                Ty::new_ref(tcx, reg, place_ty, bk.to_mutbl_lossy())
             }
             Rvalue::AddressOf(mutability, ref place) => {
                 let place_ty = place.ty(local_decls, tcx).ty;
-                Ty::new_ptr(tcx, ty::TypeAndMut { ty: place_ty, mutbl: mutability })
+                Ty::new_ptr(tcx, place_ty, mutability)
             }
             Rvalue::Len(..) => tcx.types.usize,
             Rvalue::Cast(.., ty) => ty,
@@ -194,7 +194,7 @@ impl<'tcx> Rvalue<'tcx> {
             Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf | NullOp::OffsetOf(..), _) => {
                 tcx.types.usize
             }
-            Rvalue::NullaryOp(NullOp::DebugAssertions, _) => tcx.types.bool,
+            Rvalue::NullaryOp(NullOp::UbChecks, _) => tcx.types.bool,
             Rvalue::Aggregate(ref ak, ref ops) => match **ak {
                 AggregateKind::Array(ty) => Ty::new_array(tcx, ty, ops.len() as u64),
                 AggregateKind::Tuple => {
@@ -206,6 +206,7 @@ impl<'tcx> Rvalue<'tcx> {
                 AggregateKind::CoroutineClosure(did, args) => {
                     Ty::new_coroutine_closure(tcx, did, args)
                 }
+                AggregateKind::RawPtr(ty, mutability) => Ty::new_ptr(tcx, ty, mutability),
             },
             Rvalue::ShallowInitBox(_, ty) => Ty::new_box(tcx, ty),
             Rvalue::CopyForDeref(ref place) => place.ty(local_decls, tcx).ty,
@@ -276,6 +277,11 @@ impl<'tcx> BinOp {
             &BinOp::Eq | &BinOp::Lt | &BinOp::Le | &BinOp::Ne | &BinOp::Ge | &BinOp::Gt => {
                 tcx.types.bool
             }
+            &BinOp::Cmp => {
+                // these should be integer-like types of the same size.
+                assert_eq!(lhs_ty, rhs_ty);
+                tcx.ty_ordering_enum(None)
+            }
         }
     }
 }
@@ -288,7 +294,7 @@ impl BorrowKind {
 
             // We have no type corresponding to a shallow borrow, so use
             // `&` as an approximation.
-            BorrowKind::Fake => hir::Mutability::Not,
+            BorrowKind::Fake(_) => hir::Mutability::Not,
         }
     }
 }
@@ -312,7 +318,8 @@ impl BinOp {
             BinOp::Gt => hir::BinOpKind::Gt,
             BinOp::Le => hir::BinOpKind::Le,
             BinOp::Ge => hir::BinOpKind::Ge,
-            BinOp::AddUnchecked
+            BinOp::Cmp
+            | BinOp::AddUnchecked
             | BinOp::SubUnchecked
             | BinOp::MulUnchecked
             | BinOp::ShlUnchecked

@@ -16,7 +16,7 @@ LL | |         let _unit: ();
 LL | |         {
 LL | |             let non_copy = S(42);
 ...  |
-LL | |
+LL | |         }
 LL | |     }
    | |_____^
 help: the protected tag <TAG> was created here, in the initial state Reserved

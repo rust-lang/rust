@@ -400,7 +400,7 @@ enum Chunk {
 }
 
 // This type is used a lot. Make sure it doesn't unintentionally get bigger.
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+#[cfg(target_pointer_width = "64")]
 crate::static_assert_size!(Chunk, 16);
 
 impl<T> ChunkedBitSet<T> {

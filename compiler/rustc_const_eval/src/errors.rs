@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
 use rustc_errors::{
-    codes::*, Diag, DiagArgValue, DiagCtxt, DiagMessage, EmissionGuarantee, IntoDiagnostic, Level,
+    codes::*, Diag, DiagArgValue, DiagCtxt, DiagMessage, Diagnostic, EmissionGuarantee, Level,
 };
 use rustc_hir::ConstContext;
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
@@ -26,9 +26,19 @@ pub(crate) struct DanglingPtrInFinal {
 }
 
 #[derive(Diagnostic)]
+#[diag(const_eval_nested_static_in_thread_local)]
+pub(crate) struct NestedStaticInThreadLocal {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(LintDiagnostic)]
 #[diag(const_eval_mutable_ptr_in_final)]
 pub(crate) struct MutablePtrInFinal {
-    #[primary_span]
+    // rust-lang/rust#122153: This was marked as `#[primary_span]` under
+    // `derive(Diagnostic)`. Since we expect we may hard-error in future, we are
+    // keeping the field (and skipping it under `derive(LintDiagnostic)`).
+    #[skip_arg]
     pub span: Span,
     pub kind: InternKind,
 }
@@ -239,7 +249,7 @@ pub(crate) struct NonConstImplNote {
     pub span: Span,
 }
 
-#[derive(Subdiagnostic, PartialEq, Eq, Clone)]
+#[derive(Subdiagnostic, Clone)]
 #[note(const_eval_frame_note)]
 pub struct FrameNote {
     #[primary_span]
@@ -409,11 +419,11 @@ pub struct NullaryIntrinsicError {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_undefined_behavior, code = E0080)]
-pub struct UndefinedBehavior {
+#[diag(const_eval_validation_failure, code = E0080)]
+pub struct ValidationFailure {
     #[primary_span]
     pub span: Span,
-    #[note(const_eval_undefined_behavior_note)]
+    #[note(const_eval_validation_failure_note)]
     pub ub_note: Option<()>,
     #[subdiagnostic]
     pub frames: Vec<FrameNote>,
@@ -488,6 +498,7 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
             InvalidTag(_) => const_eval_invalid_tag,
             InvalidFunctionPointer(_) => const_eval_invalid_function_pointer,
             InvalidVTablePointer(_) => const_eval_invalid_vtable_pointer,
+            InvalidVTableTrait { .. } => const_eval_invalid_vtable_trait,
             InvalidStr(_) => const_eval_invalid_str,
             InvalidUninitBytes(None) => const_eval_invalid_uninit_bytes_unknown,
             InvalidUninitBytes(Some(_)) => const_eval_invalid_uninit_bytes,
@@ -527,12 +538,20 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
             | DeadLocal
             | UninhabitedEnumVariantWritten(_)
             | UninhabitedEnumVariantRead(_) => {}
+
             BoundsCheckFailed { len, index } => {
                 diag.arg("len", len);
                 diag.arg("index", index);
             }
             UnterminatedCString(ptr) | InvalidFunctionPointer(ptr) | InvalidVTablePointer(ptr) => {
                 diag.arg("pointer", ptr);
+            }
+            InvalidVTableTrait { expected_trait, vtable_trait } => {
+                diag.arg("expected_trait", expected_trait.to_string());
+                diag.arg(
+                    "vtable_trait",
+                    vtable_trait.map(|t| t.to_string()).unwrap_or_else(|| format!("<trivial>")),
+                );
             }
             PointerUseAfterFree(alloc_id, msg) => {
                 diag.arg("alloc_id", alloc_id)
@@ -624,6 +643,7 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
             UninhabitedEnumVariant => const_eval_validation_uninhabited_enum_variant,
             Uninit { .. } => const_eval_validation_uninit,
             InvalidVTablePtr { .. } => const_eval_validation_invalid_vtable_ptr,
+            InvalidMetaWrongTrait { .. } => const_eval_validation_invalid_vtable_trait,
             InvalidMetaSliceTooLarge { ptr_kind: PointerKind::Box } => {
                 const_eval_validation_invalid_box_slice_meta
             }
@@ -763,6 +783,13 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
             DanglingPtrNoProvenance { pointer, .. } => {
                 err.arg("pointer", pointer);
             }
+            InvalidMetaWrongTrait { expected_trait: ref_trait, vtable_trait } => {
+                err.arg("ref_trait", ref_trait.to_string());
+                err.arg(
+                    "vtable_trait",
+                    vtable_trait.map(|t| t.to_string()).unwrap_or_else(|| format!("<trivial>")),
+                );
+            }
             NullPtr { .. }
             | PtrToStatic { .. }
             | ConstRefToMutable
@@ -858,8 +885,7 @@ impl<'tcx> ReportErrorExt for InvalidProgramInfo<'tcx> {
             InvalidProgramInfo::Layout(e) => {
                 // The level doesn't matter, `dummy_diag` is consumed without it being used.
                 let dummy_level = Level::Bug;
-                let dummy_diag: Diag<'_, ()> =
-                    e.into_diagnostic().into_diagnostic(diag.dcx, dummy_level);
+                let dummy_diag: Diag<'_, ()> = e.into_diagnostic().into_diag(diag.dcx, dummy_level);
                 for (name, val) in dummy_diag.args.iter() {
                     diag.arg(name.clone(), val.clone());
                 }
@@ -882,13 +908,14 @@ impl ReportErrorExt for ResourceExhaustionInfo {
             ResourceExhaustionInfo::StackFrameLimitReached => const_eval_stack_frame_limit_reached,
             ResourceExhaustionInfo::MemoryExhausted => const_eval_memory_exhausted,
             ResourceExhaustionInfo::AddressSpaceFull => const_eval_address_space_full,
+            ResourceExhaustionInfo::Interrupted => const_eval_interrupted,
         }
     }
     fn add_args<G: EmissionGuarantee>(self, _: &mut Diag<'_, G>) {}
 }
 
-impl rustc_errors::IntoDiagnosticArg for InternKind {
-    fn into_diagnostic_arg(self) -> DiagArgValue {
+impl rustc_errors::IntoDiagArg for InternKind {
+    fn into_diag_arg(self) -> DiagArgValue {
         DiagArgValue::Str(Cow::Borrowed(match self {
             InternKind::Static(Mutability::Not) => "static",
             InternKind::Static(Mutability::Mut) => "static_mut",

@@ -50,7 +50,7 @@
 #
 # Note that many of the LLVM options are not currently supported for
 # downloading. Currently only the "assertions" option can be toggled.
-#download-ci-llvm = if rust.channel == "dev" { "if-unchanged" } else { false }
+#download-ci-llvm = if rust.channel == "dev" || rust.download-rustc != false { "if-unchanged" } else { false }
 
 # Indicates whether the LLVM build is a Release or Debug build
 #optimize = true
@@ -254,6 +254,10 @@
 # executing the debuginfo test suite.
 #gdb = "gdb"
 
+# The path to (or name of) the LLDB executable to use. This is only used for
+# executing the debuginfo test suite.
+#lldb = "lldb"
+
 # The node.js executable to use. Note that this is only used for the emscripten
 # target when running tests, otherwise this can be omitted.
 #nodejs = "node"
@@ -302,7 +306,7 @@
 
 # Set the bootstrap/download cache path. It is useful when building rust
 # repeatedly in a CI invironment.
-# bootstrap-cache-path = /shared/cache
+#bootstrap-cache-path = /path/to/shared/cache
 
 # Enable a build of the extended Rust tool set which is not only the compiler
 # but also tools such as Cargo. This will also produce "combined installers"
@@ -517,11 +521,8 @@
 #overflow-checks-std = rust.overflow-checks (boolean)
 
 # Debuginfo level for most of Rust code, corresponds to the `-C debuginfo=N` option of `rustc`.
-# `0` - no debug info
-# `1` - line tables only - sufficient to generate backtraces that include line
-#       information and inlined functions, set breakpoints at source code
-#       locations, and step through execution in a debugger.
-# `2` - full debug info with variable and type information
+# See https://doc.rust-lang.org/rustc/codegen-options/index.html#debuginfo for available options.
+#
 # Can be overridden for specific subsets of Rust code (rustc, std or tools).
 # Debuginfo for tests run with compiletest is not controlled by this option
 # and needs to be enabled separately with `debuginfo-level-tests`.
@@ -543,23 +544,15 @@
 # FIXME(#61117): Some tests fail when this option is enabled.
 #debuginfo-level-tests = 0
 
-# Should rustc be build with split debuginfo? Default is platform dependent.
-# Valid values are the same as those accepted by `-C split-debuginfo`
-# (`off`/`unpacked`/`packed`).
+# Should rustc and the standard library be built with split debuginfo? Default
+# is platform dependent.
 #
-# On Linux, split debuginfo is disabled by default.
+# This field is deprecated, use `target.<triple>.split-debuginfo` instead.
 #
-# On Apple platforms, unpacked split debuginfo is used by default. Unpacked
-# debuginfo does not run `dsymutil`, which packages debuginfo from disparate
-# object files into a single `.dSYM` file. `dsymutil` adds time to builds for
-# no clear benefit, and also makes it more difficult for debuggers to find
-# debug info. The compiler currently defaults to running `dsymutil` to preserve
-# its historical default, but when compiling the compiler itself, we skip it by
-# default since we know it's safe to do so in that case.
+# The value specified here is only used when targeting the `build.build` triple,
+# and is overridden by `target.<triple>.split-debuginfo` if specified.
 #
-# On Windows platforms, packed debuginfo is the only supported option,
-# producing a `.pdb` file.
-#split-debuginfo = if linux { off } else if windows { packed } else if apple { unpacked }
+#split-debuginfo = see target.<triple>.split-debuginfo
 
 # Whether or not `panic!`s generate backtraces (RUST_BACKTRACE)
 #backtrace = true
@@ -679,6 +672,10 @@
 # sysroot.
 #llvm-tools = true
 
+# Indicates whether the `self-contained` llvm-bitcode-linker, will be made available
+# in the sysroot
+#llvm-bitcode-linker = false
+
 # Whether to deny warnings in crates
 #deny-warnings = true
 
@@ -769,6 +766,26 @@
 # Setting this will override the `use-lld` option for Rust code when targeting MSVC.
 #linker = "cc" (path)
 
+# Should rustc and the standard library be built with split debuginfo? Default
+# is platform dependent.
+#
+# Valid values are the same as those accepted by `-C split-debuginfo`
+# (`off`/`unpacked`/`packed`).
+#
+# On Linux, split debuginfo is disabled by default.
+#
+# On Apple platforms, unpacked split debuginfo is used by default. Unpacked
+# debuginfo does not run `dsymutil`, which packages debuginfo from disparate
+# object files into a single `.dSYM` file. `dsymutil` adds time to builds for
+# no clear benefit, and also makes it more difficult for debuggers to find
+# debug info. The compiler currently defaults to running `dsymutil` to preserve
+# its historical default, but when compiling the compiler itself, we skip it by
+# default since we know it's safe to do so in that case.
+#
+# On Windows platforms, packed debuginfo is the only supported option,
+# producing a `.pdb` file.
+#split-debuginfo = if linux { off } else if windows { packed } else if apple { unpacked }
+
 # Path to the `llvm-config` binary of the installation of a custom LLVM to link
 # against. Note that if this is specified we don't compile LLVM at all for this
 # target.
@@ -842,6 +859,17 @@
 # See that option for more info.
 #codegen-backends = rust.codegen-backends (array)
 
+# This is a "runner" to pass to `compiletest` when executing tests. Tests will
+# execute this tool where the binary-to-test is passed as an argument. Can
+# be useful for situations such as when WebAssembly is being tested and a
+# runtime needs to be configured. This value is similar to
+# Cargo's `CARGO_$target_RUNNER` configuration.
+#
+# This configuration is a space-separated list of arguments so `foo bar` would
+# execute the program `foo` with the first argument as `bar` and the second
+# argument as the test binary.
+#runner = <none> (string)
+
 # =============================================================================
 # Distribution options
 #
@@ -888,6 +916,6 @@
 # Available options: fast, balanced, best
 #compression-profile = "fast"
 
-# Copy the linker, DLLs, and various libraries from MinGW into the rustc toolchain.
+# Copy the linker, DLLs, and various libraries from MinGW into the Rust toolchain.
 # Only applies when the host or target is pc-windows-gnu.
 #include-mingw-linker = true

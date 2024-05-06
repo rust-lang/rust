@@ -3,6 +3,7 @@ use crate::ty::{EarlyBinder, GenericArgsRef};
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;
+use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_span::symbol::{kw, Symbol};
 use rustc_span::Span;
 
@@ -263,7 +264,7 @@ impl<'tcx> Generics {
     /// Returns the `GenericParamDef` associated with this `EarlyParamRegion`.
     pub fn region_param(
         &'tcx self,
-        param: &ty::EarlyParamRegion,
+        param: ty::EarlyParamRegion,
         tcx: TyCtxt<'tcx>,
     ) -> &'tcx GenericParamDef {
         let param = self.param_at(param.index as usize, tcx);
@@ -274,7 +275,7 @@ impl<'tcx> Generics {
     }
 
     /// Returns the `GenericParamDef` associated with this `ParamTy`.
-    pub fn type_param(&'tcx self, param: &ParamTy, tcx: TyCtxt<'tcx>) -> &'tcx GenericParamDef {
+    pub fn type_param(&'tcx self, param: ParamTy, tcx: TyCtxt<'tcx>) -> &'tcx GenericParamDef {
         let param = self.param_at(param.index as usize, tcx);
         match param.kind {
             GenericParamDefKind::Type { .. } => param,
@@ -286,7 +287,7 @@ impl<'tcx> Generics {
     /// `Generics`.
     pub fn opt_type_param(
         &'tcx self,
-        param: &ParamTy,
+        param: ParamTy,
         tcx: TyCtxt<'tcx>,
     ) -> Option<&'tcx GenericParamDef> {
         let param = self.opt_param_at(param.index as usize, tcx)?;
@@ -297,7 +298,7 @@ impl<'tcx> Generics {
     }
 
     /// Returns the `GenericParamDef` associated with this `ParamConst`.
-    pub fn const_param(&'tcx self, param: &ParamConst, tcx: TyCtxt<'tcx>) -> &GenericParamDef {
+    pub fn const_param(&'tcx self, param: ParamConst, tcx: TyCtxt<'tcx>) -> &GenericParamDef {
         let param = self.param_at(param.index as usize, tcx);
         match param.kind {
             GenericParamDefKind::Const { .. } => param,
@@ -316,11 +317,11 @@ impl<'tcx> Generics {
     /// of this item, excluding `Self`.
     ///
     /// **This should only be used for diagnostics purposes.**
-    pub fn own_args_no_defaults(
+    pub fn own_args_no_defaults<'a>(
         &'tcx self,
         tcx: TyCtxt<'tcx>,
-        args: &'tcx [ty::GenericArg<'tcx>],
-    ) -> &'tcx [ty::GenericArg<'tcx>] {
+        args: &'a [ty::GenericArg<'tcx>],
+    ) -> &'a [ty::GenericArg<'tcx>] {
         let mut own_params = self.parent_count..self.count();
         if self.has_self && self.parent.is_none() {
             own_params.start = 1;

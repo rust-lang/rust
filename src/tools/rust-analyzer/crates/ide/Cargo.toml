@@ -17,11 +17,11 @@ arrayvec.workspace = true
 either.workspace = true
 itertools.workspace = true
 tracing.workspace = true
-oorandom = "11.1.3"
-pulldown-cmark-to-cmark = "10.0.4"
-pulldown-cmark = { version = "0.9.1", default-features = false }
-url = "2.3.1"
-dot = "0.1.4"
+oorandom.workspace = true
+pulldown-cmark-to-cmark.workspace = true
+pulldown-cmark.workspace = true
+url.workspace = true
+dot.workspace = true
 smallvec.workspace = true
 triomphe.workspace = true
 nohash-hasher.workspace = true
@@ -36,6 +36,7 @@ ide-ssr.workspace = true
 profile.workspace = true
 stdx.workspace = true
 syntax.workspace = true
+span.workspace = true
 text-edit.workspace = true
 # ide should depend only on the top-level `hir` package. if you need
 # something from some `hir-xxx` subpackage, reexport the API via `hir`.
@@ -52,7 +53,7 @@ test-utils.workspace = true
 test-fixture.workspace = true
 
 [features]
-in-rust-tree = ["ide-assists/in-rust-tree", "ide-diagnostics/in-rust-tree"]
+in-rust-tree = []
 
 [lints]
 workspace = true

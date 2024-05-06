@@ -153,4 +153,30 @@ pub enum MissingEqNonExhaustive3 {
     Bar,
 }
 
+mod struct_gen {
+    // issue 9413
+    pub trait Group {
+        type Element: Eq + PartialEq;
+    }
+
+    pub trait Suite {
+        type Group: Group;
+    }
+
+    #[derive(PartialEq, Eq)]
+    //~^ ERROR: you are deriving `PartialEq` and can implement `Eq`
+    pub struct Foo<C: Suite>(<C::Group as Group>::Element);
+
+    #[derive(PartialEq, Eq)]
+    pub struct Bar<C: Suite>(i32, <C::Group as Group>::Element);
+
+    // issue 9319
+    #[derive(PartialEq, Eq)]
+    //~^ ERROR: you are deriving `PartialEq` and can implement `Eq`
+    pub struct Oof<T: Fn()>(T);
+
+    #[derive(PartialEq, Eq)]
+    pub struct Rab<T: Fn()>(T);
+}
+
 fn main() {}

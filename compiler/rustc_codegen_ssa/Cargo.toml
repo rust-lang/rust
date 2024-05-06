@@ -5,10 +5,10 @@ edition = "2021"
 
 [dependencies]
 # tidy-alphabetical-start
-ar_archive_writer = "0.1.5"
+ar_archive_writer = "0.2.0"
 bitflags = "2.4.1"
-cc = "1.0.69"
-itertools = "0.11"
+cc = "1.0.90"
+itertools = "0.12"
 jobserver = "0.1.28"
 pathdiff = "0.2.0"
 regex = "1.4"
@@ -25,6 +25,7 @@ rustc_index = { path = "../rustc_index" }
 rustc_macros = { path = "../rustc_macros" }
 rustc_metadata = { path = "../rustc_metadata" }
 rustc_middle = { path = "../rustc_middle" }
+rustc_monomorphize = { path = "../rustc_monomorphize" }
 rustc_query_system = { path = "../rustc_query_system" }
 rustc_serialize = { path = "../rustc_serialize" }
 rustc_session = { path = "../rustc_session" }

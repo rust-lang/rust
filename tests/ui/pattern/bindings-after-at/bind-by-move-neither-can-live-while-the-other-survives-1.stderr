@@ -13,7 +13,7 @@ LL |         Some(_z @ ref _y) => {}
    |              ^^   ------ value borrowed here after move
    |              |
    |              value moved into `_z` here
-   |              move occurs because `_z` has type `X` which does not implement the `Copy` trait
+   |              move occurs because `_z` has type `X`, which does not implement the `Copy` trait
    |
 help: borrow this binding in the pattern to avoid moving the value
    |
@@ -35,7 +35,7 @@ LL |         Some(_z @ ref mut _y) => {}
    |              ^^   ---------- value borrowed here after move
    |              |
    |              value moved into `_z` here
-   |              move occurs because `_z` has type `X` which does not implement the `Copy` trait
+   |              move occurs because `_z` has type `X`, which does not implement the `Copy` trait
    |
 help: borrow this binding in the pattern to avoid moving the value
    |

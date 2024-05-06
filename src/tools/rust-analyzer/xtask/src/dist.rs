@@ -10,7 +10,11 @@ use time::OffsetDateTime;
 use xshell::{cmd, Shell};
 use zip::{write::FileOptions, DateTime, ZipWriter};
 
-use crate::{date_iso, flags, project_root};
+use crate::{
+    date_iso,
+    flags::{self, Malloc},
+    project_root,
+};
 
 const VERSION_STABLE: &str = "0.3";
 const VERSION_NIGHTLY: &str = "0.4";
@@ -22,6 +26,7 @@ impl flags::Dist {
 
         let project_root = project_root();
         let target = Target::get(&project_root);
+        let allocator = self.allocator();
         let dist = project_root.join("dist");
         sh.remove_path(&dist)?;
         sh.create_dir(&dist)?;
@@ -33,11 +38,11 @@ impl flags::Dist {
                 // A hack to make VS Code prefer nightly over stable.
                 format!("{VERSION_NIGHTLY}.{patch_version}")
             };
-            dist_server(sh, &format!("{version}-standalone"), &target)?;
+            dist_server(sh, &format!("{version}-standalone"), &target, allocator)?;
             let release_tag = if stable { date_iso(sh)? } else { "nightly".to_owned() };
             dist_client(sh, &version, &release_tag, &target)?;
         } else {
-            dist_server(sh, "0.0.0-standalone", &target)?;
+            dist_server(sh, "0.0.0-standalone", &target, allocator)?;
         }
         Ok(())
     }
@@ -73,7 +78,12 @@ fn dist_client(
     Ok(())
 }
 
-fn dist_server(sh: &Shell, release: &str, target: &Target) -> anyhow::Result<()> {
+fn dist_server(
+    sh: &Shell,
+    release: &str,
+    target: &Target,
+    allocator: Malloc,
+) -> anyhow::Result<()> {
     let _e = sh.push_env("CFG_RELEASE", release);
     let _e = sh.push_env("CARGO_PROFILE_RELEASE_LTO", "thin");
 
@@ -87,7 +97,8 @@ fn dist_server(sh: &Shell, release: &str, target: &Target) -> anyhow::Result<()>
     }
 
     let target_name = &target.name;
-    cmd!(sh, "cargo build --manifest-path ./crates/rust-analyzer/Cargo.toml --bin rust-analyzer --target {target_name} --release").run()?;
+    let features = allocator.to_features();
+    cmd!(sh, "cargo build --manifest-path ./crates/rust-analyzer/Cargo.toml --bin rust-analyzer --target {target_name} {features...} --release").run()?;
 
     let dst = Path::new("dist").join(&target.artifact_name);
     gzip(&target.server_path, &dst.with_extension("gz"))?;

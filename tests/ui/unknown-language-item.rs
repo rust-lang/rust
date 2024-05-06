@@ -3,7 +3,7 @@
 
 #[lang = "foo"]
 fn bar() -> ! {
-//~^^ ERROR definition of an unknown language item: `foo`
+//~^^ ERROR definition of an unknown lang item: `foo`
     loop {}
 }
 

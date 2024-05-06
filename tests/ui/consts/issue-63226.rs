@@ -8,5 +8,7 @@
 use issue_63226::VTable;
 
 static ICE_ICE:&'static VTable=VTable::vtable();
+static MORE_ICE:&'static VTable=VTable::VTABLE2;
+static MORE_ICE3:&'static VTable=issue_63226::VTABLE3;
 
 fn main() {}

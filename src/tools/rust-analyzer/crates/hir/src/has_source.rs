@@ -9,6 +9,7 @@ use hir_def::{
 };
 use hir_expand::{HirFileId, InFile};
 use syntax::ast;
+use tt::TextRange;
 
 use crate::{
     db::HirDatabase, Adt, Const, Enum, ExternCrateDecl, Field, FieldSource, Function, Impl,
@@ -35,6 +36,12 @@ impl Module {
     pub fn definition_source(self, db: &dyn HirDatabase) -> InFile<ModuleSource> {
         let def_map = self.id.def_map(db.upcast());
         def_map[self.id.local_id].definition_source(db.upcast())
+    }
+
+    /// Returns a node which defines this module. That is, a file or a `mod foo {}` with items.
+    pub fn definition_source_range(self, db: &dyn HirDatabase) -> InFile<TextRange> {
+        let def_map = self.id.def_map(db.upcast());
+        def_map[self.id.local_id].definition_source_range(db.upcast())
     }
 
     pub fn definition_source_file_id(self, db: &dyn HirDatabase) -> HirFileId {
@@ -70,6 +77,13 @@ impl Module {
     pub fn declaration_source(self, db: &dyn HirDatabase) -> Option<InFile<ast::Module>> {
         let def_map = self.id.def_map(db.upcast());
         def_map[self.id.local_id].declaration_source(db.upcast())
+    }
+
+    /// Returns a text range which declares this module, either a `mod foo;` or a `mod foo {}`.
+    /// `None` for the crate root.
+    pub fn declaration_source_range(self, db: &dyn HirDatabase) -> Option<InFile<TextRange>> {
+        let def_map = self.id.def_map(db.upcast());
+        def_map[self.id.local_id].declaration_source_range(db.upcast())
     }
 }
 

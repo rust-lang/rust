@@ -42,14 +42,28 @@ pub struct Meta {
     root: String,
 }
 
-// Linker flags to pass to LLVM's CMake invocation.
+pub enum LlvmBuildStatus {
+    AlreadyBuilt(LlvmResult),
+    ShouldBuild(Meta),
+}
+
+impl LlvmBuildStatus {
+    pub fn should_build(&self) -> bool {
+        match self {
+            LlvmBuildStatus::AlreadyBuilt(_) => false,
+            LlvmBuildStatus::ShouldBuild(_) => true,
+        }
+    }
+}
+
+/// Linker flags to pass to LLVM's CMake invocation.
 #[derive(Debug, Clone, Default)]
 struct LdFlags {
-    // CMAKE_EXE_LINKER_FLAGS
+    /// CMAKE_EXE_LINKER_FLAGS
     exe: OsString,
-    // CMAKE_SHARED_LINKER_FLAGS
+    /// CMAKE_SHARED_LINKER_FLAGS
     shared: OsString,
-    // CMAKE_MODULE_LINKER_FLAGS
+    /// CMAKE_MODULE_LINKER_FLAGS
     module: OsString,
 }
 
@@ -72,10 +86,10 @@ impl LdFlags {
 ///
 /// This will return the llvm-config if it can get it (but it will not build it
 /// if not).
-pub fn prebuilt_llvm_config(
-    builder: &Builder<'_>,
-    target: TargetSelection,
-) -> Result<LlvmResult, Meta> {
+pub fn prebuilt_llvm_config(builder: &Builder<'_>, target: TargetSelection) -> LlvmBuildStatus {
+    // If we have llvm submodule initialized already, sync it.
+    builder.update_existing_submodule(&Path::new("src").join("llvm-project"));
+
     builder.config.maybe_download_ci_llvm();
 
     // If we're using a custom LLVM bail out here, but we can only use a
@@ -90,9 +104,12 @@ pub fn prebuilt_llvm_config(
             llvm_cmake_dir.push("lib");
             llvm_cmake_dir.push("cmake");
             llvm_cmake_dir.push("llvm");
-            return Ok(LlvmResult { llvm_config, llvm_cmake_dir });
+            return LlvmBuildStatus::AlreadyBuilt(LlvmResult { llvm_config, llvm_cmake_dir });
         }
     }
+
+    // Initialize the llvm submodule if not initialized already.
+    builder.update_submodule(&Path::new("src").join("llvm-project"));
 
     let root = "src/llvm-project/llvm";
     let out_dir = builder.llvm_out(target);
@@ -125,10 +142,10 @@ pub fn prebuilt_llvm_config(
                 stamp.path.display()
             ));
         }
-        return Ok(res);
+        return LlvmBuildStatus::AlreadyBuilt(res);
     }
 
-    Err(Meta { stamp, res, out_dir, root: root.into() })
+    LlvmBuildStatus::ShouldBuild(Meta { stamp, res, out_dir, root: root.into() })
 }
 
 /// This retrieves the LLVM sha we *want* to use, according to git history.
@@ -274,12 +291,12 @@ impl Step for Llvm {
             target.to_string()
         };
 
+        // If LLVM has already been built or been downloaded through download-ci-llvm, we avoid building it again.
         let Meta { stamp, res, out_dir, root } = match prebuilt_llvm_config(builder, target) {
-            Ok(p) => return p,
-            Err(m) => m,
+            LlvmBuildStatus::AlreadyBuilt(p) => return p,
+            LlvmBuildStatus::ShouldBuild(m) => m,
         };
 
-        builder.update_submodule(&Path::new("src").join("llvm-project"));
         if builder.llvm_link_shared() && target.is_windows() {
             panic!("shared linking to LLVM is not currently supported on {}", target.triple);
         }
@@ -364,10 +381,11 @@ impl Step for Llvm {
             cfg.define("LLVM_ENABLE_ZLIB", "OFF");
         }
 
-        // Are we compiling for iOS/tvOS/watchOS?
+        // Are we compiling for iOS/tvOS/watchOS/visionOS?
         if target.contains("apple-ios")
             || target.contains("apple-tvos")
             || target.contains("apple-watchos")
+            || target.contains("apple-visionos")
         {
             // These two defines prevent CMake from automatically trying to add a MacOSX sysroot, which leads to a compiler error.
             cfg.define("CMAKE_OSX_SYSROOT", "/");
@@ -564,11 +582,11 @@ fn check_llvm_version(builder: &Builder<'_>, llvm_config: &Path) {
     let version = output(cmd.arg("--version"));
     let mut parts = version.split('.').take(2).filter_map(|s| s.parse::<u32>().ok());
     if let (Some(major), Some(_minor)) = (parts.next(), parts.next()) {
-        if major >= 16 {
+        if major >= 17 {
             return;
         }
     }
-    panic!("\n\nbad LLVM version: {version}, need >=16.0\n\n")
+    panic!("\n\nbad LLVM version: {version}, need >=17.0\n\n")
 }
 
 fn configure_cmake(

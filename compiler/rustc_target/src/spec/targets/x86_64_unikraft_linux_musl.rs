@@ -3,7 +3,12 @@ use crate::spec::{base, Cc, LinkerFlavor, Lld, StackProbeType, Target, TargetOpt
 pub fn target() -> Target {
     Target {
         llvm_target: "x86_64-unknown-linux-musl".into(),
-        description: None,
+        metadata: crate::spec::TargetMetadata {
+            description: None,
+            tier: None,
+            host_tools: None,
+            std: None,
+        },
         pointer_width: 64,
         arch: "x86_64".into(),
         data_layout:

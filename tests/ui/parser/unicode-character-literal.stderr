@@ -9,10 +9,10 @@ note: this `♠` is followed by the combining mark `\u{fe0f}`
    |
 LL |     let _spade = '♠️';
    |                   ^
-help: if you meant to write a `str` literal, use double quotes
+help: if you meant to write a string literal, use double quotes
    |
 LL |     let _spade = "♠️";
-   |                  ~~~
+   |                  ~ ~
 
 error: character literal may only contain one codepoint
   --> $DIR/unicode-character-literal.rs:12:14
@@ -25,10 +25,10 @@ note: this `s` is followed by the combining marks `\u{323}\u{307}\u{302}\u{30a}`
    |
 LL |     let _s = 'ṩ̂̊';
    |               ^
-help: if you meant to write a `str` literal, use double quotes
+help: if you meant to write a string literal, use double quotes
    |
 LL |     let _s = "ṩ̂̊";
-   |              ~~~
+   |              ~ ~
 
 error: character literal may only contain one codepoint
   --> $DIR/unicode-character-literal.rs:17:14

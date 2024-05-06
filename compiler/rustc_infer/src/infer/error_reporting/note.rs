@@ -5,7 +5,7 @@ use crate::errors::{
 use crate::fluent_generated as fluent;
 use crate::infer::error_reporting::{note_and_explain_region, TypeErrCtxt};
 use crate::infer::{self, SubregionOrigin};
-use rustc_errors::{AddToDiagnostic, Diag};
+use rustc_errors::{Diag, Subdiagnostic};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::traits::ObligationCauseCode;
 use rustc_middle::ty::error::TypeError;
@@ -22,13 +22,13 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 requirement: ObligationCauseAsDiagArg(trace.cause.clone()),
                 expected_found: self.values_str(trace.values).map(|(e, f, _)| (e, f)),
             }
-            .add_to_diagnostic(err),
+            .add_to_diag(err),
             infer::Reborrow(span) => {
-                RegionOriginNote::Plain { span, msg: fluent::infer_reborrow }.add_to_diagnostic(err)
+                RegionOriginNote::Plain { span, msg: fluent::infer_reborrow }.add_to_diag(err)
             }
             infer::RelateObjectBound(span) => {
                 RegionOriginNote::Plain { span, msg: fluent::infer_relate_object_bound }
-                    .add_to_diagnostic(err);
+                    .add_to_diag(err);
             }
             infer::ReferenceOutlivesReferent(ty, span) => {
                 RegionOriginNote::WithName {
@@ -37,7 +37,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     name: &self.ty_to_string(ty),
                     continues: false,
                 }
-                .add_to_diagnostic(err);
+                .add_to_diag(err);
             }
             infer::RelateParamBound(span, ty, opt_span) => {
                 RegionOriginNote::WithName {
@@ -46,19 +46,19 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     name: &self.ty_to_string(ty),
                     continues: opt_span.is_some(),
                 }
-                .add_to_diagnostic(err);
+                .add_to_diag(err);
                 if let Some(span) = opt_span {
                     RegionOriginNote::Plain { span, msg: fluent::infer_relate_param_bound_2 }
-                        .add_to_diagnostic(err);
+                        .add_to_diag(err);
                 }
             }
             infer::RelateRegionParamBound(span) => {
                 RegionOriginNote::Plain { span, msg: fluent::infer_relate_region_param_bound }
-                    .add_to_diagnostic(err);
+                    .add_to_diag(err);
             }
             infer::CompareImplItemObligation { span, .. } => {
                 RegionOriginNote::Plain { span, msg: fluent::infer_compare_impl_item_obligation }
-                    .add_to_diagnostic(err);
+                    .add_to_diag(err);
             }
             infer::CheckAssociatedTypeBounds { ref parent, .. } => {
                 self.note_region_origin(err, parent);
@@ -68,7 +68,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     span,
                     msg: fluent::infer_ascribe_user_type_prove_predicate,
                 }
-                .add_to_diagnostic(err);
+                .add_to_diag(err);
             }
         }
     }

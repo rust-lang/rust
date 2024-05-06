@@ -1,11 +1,11 @@
 error: method should be `async` or return a future, but it is synchronous
-  --> $DIR/fn-not-async-err.rs:10:5
+  --> $DIR/fn-not-async-err.rs:8:5
    |
 LL |     fn foo(&self) -> i32 {
    |     ^^^^^^^^^^^^^^^^^^^^
    |
 note: this method is `async` so it expects a future to be returned
-  --> $DIR/fn-not-async-err.rs:6:5
+  --> $DIR/fn-not-async-err.rs:4:5
    |
 LL |     async fn foo(&self) -> i32;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^

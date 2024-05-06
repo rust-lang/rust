@@ -80,6 +80,10 @@ use rustc_span::symbol::sym;
 use rustc_span::Span;
 use rustc_target::abi::{FieldIdx, VariantIdx};
 use rustc_target::spec::PanicStrategy;
+use rustc_trait_selection::infer::TyCtxtInferExt as _;
+use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
+use rustc_trait_selection::traits::ObligationCtxt;
+use rustc_trait_selection::traits::{ObligationCause, ObligationCauseCode};
 use std::{iter, ops};
 
 pub struct StateTransform;
@@ -168,7 +172,7 @@ impl<'tcx> MutVisitor<'tcx> for PinArgVisitor<'tcx> {
                 Place {
                     local: SELF_ARG,
                     projection: self.tcx().mk_place_elems(&[ProjectionElem::Field(
-                        FieldIdx::new(0),
+                        FieldIdx::ZERO,
                         self.ref_coroutine_ty,
                     )]),
                 },
@@ -267,7 +271,7 @@ impl<'tcx> TransformVisitor<'tcx> {
                 Rvalue::Aggregate(
                     Box::new(AggregateKind::Adt(
                         option_def_id,
-                        VariantIdx::from_usize(0),
+                        VariantIdx::ZERO,
                         self.tcx.mk_args(&[self.old_yield_ty.into()]),
                         None,
                         None,
@@ -329,7 +333,7 @@ impl<'tcx> TransformVisitor<'tcx> {
                     Rvalue::Aggregate(
                         Box::new(AggregateKind::Adt(
                             poll_def_id,
-                            VariantIdx::from_usize(0),
+                            VariantIdx::ZERO,
                             args,
                             None,
                             None,
@@ -358,7 +362,7 @@ impl<'tcx> TransformVisitor<'tcx> {
                     Rvalue::Aggregate(
                         Box::new(AggregateKind::Adt(
                             option_def_id,
-                            VariantIdx::from_usize(0),
+                            VariantIdx::ZERO,
                             args,
                             None,
                             None,
@@ -420,7 +424,7 @@ impl<'tcx> TransformVisitor<'tcx> {
                     Rvalue::Aggregate(
                         Box::new(AggregateKind::Adt(
                             coroutine_state_def_id,
-                            VariantIdx::from_usize(0),
+                            VariantIdx::ZERO,
                             args,
                             None,
                             None,
@@ -570,11 +574,7 @@ impl<'tcx> MutVisitor<'tcx> for TransformVisitor<'tcx> {
 fn make_coroutine_state_argument_indirect<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     let coroutine_ty = body.local_decls.raw[1].ty;
 
-    let ref_coroutine_ty = Ty::new_ref(
-        tcx,
-        tcx.lifetimes.re_erased,
-        ty::TypeAndMut { ty: coroutine_ty, mutbl: Mutability::Mut },
-    );
+    let ref_coroutine_ty = Ty::new_mut_ref(tcx, tcx.lifetimes.re_erased, coroutine_ty);
 
     // Replace the by value coroutine argument
     body.local_decls.raw[1].ty = ref_coroutine_ty;
@@ -1230,7 +1230,7 @@ fn create_coroutine_drop_shim<'tcx>(
     tcx: TyCtxt<'tcx>,
     transform: &TransformVisitor<'tcx>,
     coroutine_ty: Ty<'tcx>,
-    body: &mut Body<'tcx>,
+    body: &Body<'tcx>,
     drop_clean: BasicBlock,
 ) -> Body<'tcx> {
     let mut body = body.clone();
@@ -1260,15 +1260,13 @@ fn create_coroutine_drop_shim<'tcx>(
     }
 
     // Replace the return variable
-    body.local_decls[RETURN_PLACE] = LocalDecl::with_source_info(Ty::new_unit(tcx), source_info);
+    body.local_decls[RETURN_PLACE] = LocalDecl::with_source_info(tcx.types.unit, source_info);
 
     make_coroutine_state_argument_indirect(tcx, &mut body);
 
     // Change the coroutine argument from &mut to *mut
-    body.local_decls[SELF_ARG] = LocalDecl::with_source_info(
-        Ty::new_ptr(tcx, ty::TypeAndMut { ty: coroutine_ty, mutbl: hir::Mutability::Mut }),
-        source_info,
-    );
+    body.local_decls[SELF_ARG] =
+        LocalDecl::with_source_info(Ty::new_mut_ptr(tcx, coroutine_ty), source_info);
 
     // Make sure we remove dead blocks to remove
     // unrelated code from the resume part of the function
@@ -1590,8 +1588,44 @@ pub(crate) fn mir_coroutine_witnesses<'tcx>(
     let (_, coroutine_layout, _) = compute_layout(liveness_info, body);
 
     check_suspend_tys(tcx, &coroutine_layout, body);
+    check_field_tys_sized(tcx, &coroutine_layout, def_id);
 
     Some(coroutine_layout)
+}
+
+fn check_field_tys_sized<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    coroutine_layout: &CoroutineLayout<'tcx>,
+    def_id: LocalDefId,
+) {
+    // No need to check if unsized_locals/unsized_fn_params is disabled,
+    // since we will error during typeck.
+    if !tcx.features().unsized_locals && !tcx.features().unsized_fn_params {
+        return;
+    }
+
+    let infcx = tcx.infer_ctxt().ignoring_regions().build();
+    let param_env = tcx.param_env(def_id);
+
+    let ocx = ObligationCtxt::new(&infcx);
+    for field_ty in &coroutine_layout.field_tys {
+        ocx.register_bound(
+            ObligationCause::new(
+                field_ty.source_info.span,
+                def_id,
+                ObligationCauseCode::SizedCoroutineInterior(def_id),
+            ),
+            param_env,
+            field_ty.ty,
+            tcx.require_lang_item(hir::LangItem::Sized, Some(field_ty.source_info.span)),
+        );
+    }
+
+    let errors = ocx.select_all_or_error();
+    debug!(?errors);
+    if !errors.is_empty() {
+        infcx.err_ctxt().report_fulfillment_errors(errors);
+    }
 }
 
 impl<'tcx> MirPass<'tcx> for StateTransform {
@@ -1964,15 +1998,21 @@ fn check_must_not_suspend_ty<'tcx>(
     debug!("Checking must_not_suspend for {}", ty);
 
     match *ty.kind() {
-        ty::Adt(..) if ty.is_box() => {
-            let boxed_ty = ty.boxed_ty();
-            let descr_pre = &format!("{}boxed ", data.descr_pre);
+        ty::Adt(_, args) if ty.is_box() => {
+            let boxed_ty = args.type_at(0);
+            let allocator_ty = args.type_at(1);
             check_must_not_suspend_ty(
                 tcx,
                 boxed_ty,
                 hir_id,
                 param_env,
-                SuspendCheckData { descr_pre, ..data },
+                SuspendCheckData { descr_pre: &format!("{}boxed ", data.descr_pre), ..data },
+            ) || check_must_not_suspend_ty(
+                tcx,
+                allocator_ty,
+                hir_id,
+                param_env,
+                SuspendCheckData { descr_pre: &format!("{}allocator ", data.descr_pre), ..data },
             )
         }
         ty::Adt(def, _) => check_must_not_suspend_def(tcx, def.did(), hir_id, data),

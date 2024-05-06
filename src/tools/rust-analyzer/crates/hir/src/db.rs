@@ -4,10 +4,10 @@
 //!
 //! But we need this for at least LRU caching at the query level.
 pub use hir_def::db::{
-    AttrsQuery, BlockDefMapQuery, BlockItemTreeQueryQuery, BodyQuery, BodyWithSourceMapQuery,
-    ConstDataQuery, ConstVisibilityQuery, CrateDefMapQueryQuery, CrateLangItemsQuery,
-    CrateSupportsNoStdQuery, DefDatabase, DefDatabaseStorage, EnumDataQuery,
-    EnumVariantDataWithDiagnosticsQuery, ExprScopesQuery, ExternCrateDeclDataQuery,
+    AttrsQuery, BlockDefMapQuery, BlockItemTreeQuery, BodyQuery, BodyWithSourceMapQuery,
+    ConstDataQuery, ConstVisibilityQuery, CrateDefMapQuery, CrateLangItemsQuery,
+    CrateNotableTraitsQuery, CrateSupportsNoStdQuery, DefDatabase, DefDatabaseStorage,
+    EnumDataQuery, EnumVariantDataWithDiagnosticsQuery, ExprScopesQuery, ExternCrateDeclDataQuery,
     FieldVisibilitiesQuery, FieldsAttrsQuery, FieldsAttrsSourceMapQuery, FileItemTreeQuery,
     FunctionDataQuery, FunctionVisibilityQuery, GenericParamsQuery, ImplDataWithDiagnosticsQuery,
     ImportMapQuery, InternAnonymousConstQuery, InternBlockQuery, InternConstQuery, InternDatabase,
@@ -24,4 +24,15 @@ pub use hir_expand::db::{
     ExpandProcMacroQuery, InternMacroCallQuery, InternSyntaxContextQuery, MacroArgQuery,
     ParseMacroExpansionErrorQuery, ParseMacroExpansionQuery, ProcMacrosQuery, RealSpanMapQuery,
 };
-pub use hir_ty::db::*;
+pub use hir_ty::db::{
+    AdtDatumQuery, AdtVarianceQuery, AssociatedTyDataQuery, AssociatedTyValueQuery, BorrowckQuery,
+    CallableItemSignatureQuery, ConstEvalDiscriminantQuery, ConstEvalQuery, ConstEvalStaticQuery,
+    ConstParamTyQuery, FieldTypesQuery, FnDefDatumQuery, FnDefVarianceQuery, GenericDefaultsQuery,
+    GenericPredicatesForParamQuery, GenericPredicatesQuery, HirDatabase, HirDatabaseStorage,
+    ImplDatumQuery, ImplSelfTyQuery, ImplTraitQuery, IncoherentInherentImplCratesQuery,
+    InherentImplsInBlockQuery, InherentImplsInCrateQuery, InternCallableDefQuery,
+    InternClosureQuery, InternCoroutineQuery, InternImplTraitIdQuery, InternLifetimeParamIdQuery,
+    InternTypeOrConstParamIdQuery, LayoutOfAdtQuery, MirBodyQuery, ProgramClausesForChalkEnvQuery,
+    ReturnTypeImplTraitsQuery, TargetDataLayoutQuery, TraitDatumQuery, TraitEnvironmentQuery,
+    TraitImplsInBlockQuery, TraitImplsInCrateQuery, TraitImplsInDepsQuery, TyQuery, ValueTyQuery,
+};

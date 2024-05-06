@@ -63,7 +63,7 @@ impl<'tcx> Cx<'tcx> {
                         // ignore for purposes of the MIR
                         None
                     }
-                    hir::StmtKind::Local(local) => {
+                    hir::StmtKind::Let(local) => {
                         let remainder_scope = region::Scope {
                             id: block_id,
                             data: region::ScopeData::Remainder(region::FirstStatementIndex::new(

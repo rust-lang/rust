@@ -8,6 +8,7 @@ use rustc_infer::infer::at::At;
 use rustc_infer::infer::InferOk;
 use rustc_infer::traits::PredicateObligation;
 use rustc_infer::traits::{FulfillmentError, Normalized, Obligation, TraitEngine};
+use rustc_macros::extension;
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode, Reveal};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFolder};
 use rustc_middle::ty::{TypeFoldable, TypeSuperFoldable, TypeVisitable, TypeVisitableExt};
@@ -101,6 +102,8 @@ pub(super) fn needs_normalization<'tcx, T: TypeVisitable<TyCtxt<'tcx>>>(
     value: &T,
     reveal: Reveal,
 ) -> bool {
+    // This mirrors `ty::TypeFlags::HAS_ALIASES` except that we take `Reveal` into account.
+
     let mut flags = ty::TypeFlags::HAS_TY_PROJECTION
         | ty::TypeFlags::HAS_TY_WEAK
         | ty::TypeFlags::HAS_TY_INHERENT

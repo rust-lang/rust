@@ -2,7 +2,7 @@
 
 set -e
 echo "[BUILD] build system" 1>&2
-cd build_system
+pushd $(dirname "$0")/build_system > /dev/null
 cargo build --release
-cd ..
-./build_system/target/release/y $@
+popd > /dev/null
+$(dirname "$0")/build_system/target/release/y $@

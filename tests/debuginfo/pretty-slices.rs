@@ -18,19 +18,19 @@
 // gdb-command: print mut_str_slice
 // gdb-check: $4 = "mutable string slice"
 
-// lldb-command: run
+// lldb-command:run
 
-// lldb-command: print slice
-// lldb-check: (&[i32]) $0 = size=3 { [0] = 0 [1] = 1 [2] = 2 }
+// lldb-command:v slice
+// lldb-check:(&[i32]) slice = size=3 { [0] = 0 [1] = 1 [2] = 2 }
 
-// lldb-command: print mut_slice
-// lldb-check: (&mut [i32]) $1 = size=4 { [0] = 2 [1] = 3 [2] = 5 [3] = 7 }
+// lldb-command:v mut_slice
+// lldb-check:(&mut [i32]) mut_slice = size=4 { [0] = 2 [1] = 3 [2] = 5 [3] = 7 }
 
-// lldb-command: print str_slice
-// lldb-check: (&str) $2 = "string slice" { data_ptr = [...] length = 12 }
+// lldb-command:v str_slice
+// lldb-check:(&str) str_slice = "string slice" { data_ptr = [...] length = 12 }
 
-// lldb-command: print mut_str_slice
-// lldb-check: (&mut str) $3 = "mutable string slice" { data_ptr = [...] length = 20 }
+// lldb-command:v mut_str_slice
+// lldb-check:(&mut str) mut_str_slice = "mutable string slice" { data_ptr = [...] length = 20 }
 
 fn b() {}
 

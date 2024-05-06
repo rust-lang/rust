@@ -11,8 +11,8 @@ where
 }
 
 impl<T: Copy + std::ops::Deref> UnsafeCopy<'_, T> for T {
-    //~^ type mismatch resolving `<T as Deref>::Target == T`
     type Item = T;
+    //~^ type mismatch resolving `<T as Deref>::Target == T`
 }
 
 pub fn main() {

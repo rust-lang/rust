@@ -190,7 +190,7 @@ pub fn main() {
     });
 
     exit(rustc_driver::catch_with_exit_code(move || {
-        let mut orig_args: Vec<String> = env::args().collect();
+        let mut orig_args = rustc_driver::args::raw_args(&early_dcx)?;
 
         let has_sysroot_arg = |args: &mut [String]| -> bool {
             if arg_value(args, "--sysroot", |_| true).is_some() {

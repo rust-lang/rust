@@ -111,3 +111,20 @@ fn fp_11274() {
     }
     m!(|x| println!("{x}"));
 }
+
+// Issue #12358: When a macro expands into a closure, immediately calling the expanded closure
+// triggers the lint.
+fn issue_12358() {
+    macro_rules! make_closure {
+        () => {
+            (|| || {})
+        };
+        (x) => {
+            make_closure!()()
+        };
+    }
+
+    // The lint would suggest to alter the line below to `make_closure!(x)`, which is semantically
+    // different.
+    make_closure!(x)();
+}

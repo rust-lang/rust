@@ -10,10 +10,10 @@ help: consider using a semicolon here
    |
 LL |     vec!['a'].iter().map(|c| c);
    |                                +
-help: a return type might be missing here
+help: try adding a return type
    |
-LL | fn foo() -> _ {
-   |          ++++
+LL | fn foo() -> impl Iterator<Item = &char> {
+   |          ++++++++++++++++++++++++++++++
 
 error: aborting due to 1 previous error
 

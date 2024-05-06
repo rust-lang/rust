@@ -125,11 +125,7 @@ impl<'tcx> Cx<'tcx> {
 
                 expr = Expr {
                     temp_lifetime,
-                    ty: Ty::new_ref(
-                        self.tcx,
-                        deref.region,
-                        ty::TypeAndMut { ty: expr.ty, mutbl: deref.mutbl },
-                    ),
+                    ty: Ty::new_ref(self.tcx, deref.region, expr.ty, deref.mutbl),
                     span,
                     kind: ExprKind::Borrow {
                         borrow_kind: deref.mutbl.to_borrow_kind(),
@@ -656,6 +652,9 @@ impl<'tcx> Cx<'tcx> {
                         hir::InlineAsmOperand::SymStatic { path: _, def_id } => {
                             InlineAsmOperand::SymStatic { def_id }
                         }
+                        hir::InlineAsmOperand::Label { block } => {
+                            InlineAsmOperand::Label { block: self.mirror_block(block) }
+                        }
                     })
                     .collect(),
                 options: asm.options,
@@ -717,10 +716,11 @@ impl<'tcx> Cx<'tcx> {
                 then: self.mirror_expr(then),
                 else_opt: else_opt.map(|el| self.mirror_expr(el)),
             },
-            hir::ExprKind::Match(discr, arms, _) => ExprKind::Match {
+            hir::ExprKind::Match(discr, arms, match_source) => ExprKind::Match {
                 scrutinee: self.mirror_expr(discr),
                 scrutinee_hir_id: discr.hir_id,
                 arms: arms.iter().map(|a| self.convert_arm(a)).collect(),
+                match_source,
             },
             hir::ExprKind::Loop(body, ..) => {
                 let block_ty = self.typeck_results().node_type(body.hir_id);
@@ -939,7 +939,7 @@ impl<'tcx> Cx<'tcx> {
 
             // We encode uses of statics as a `*&STATIC` where the `&STATIC` part is
             // a constant reference (or constant raw pointer for `static mut`) in MIR
-            Res::Def(DefKind::Static(_), id) => {
+            Res::Def(DefKind::Static { .. }, id) => {
                 let ty = self.tcx.static_ptr_ty(id);
                 let temp_lifetime = self
                     .rvalue_scopes
@@ -1018,7 +1018,7 @@ impl<'tcx> Cx<'tcx> {
         let ty::Ref(region, _, mutbl) = *self.thir[args[0]].ty.kind() else {
             span_bug!(span, "overloaded_place: receiver is not a reference");
         };
-        let ref_ty = Ty::new_ref(self.tcx, region, ty::TypeAndMut { ty: place_ty, mutbl });
+        let ref_ty = Ty::new_ref(self.tcx, region, place_ty, mutbl);
 
         // construct the complete expression `foo()` for the overloaded call,
         // which will yield the &T type

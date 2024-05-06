@@ -8,12 +8,20 @@ use crate::core::builder::{
     self, crate_description, Alias, Builder, Kind, RunConfig, ShouldRun, Step,
 };
 use crate::core::config::TargetSelection;
-use crate::utils::cache::Interned;
-use crate::INTERNER;
 use crate::{Compiler, Mode, Subcommand};
 use std::path::{Path, PathBuf};
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub fn cargo_subcommand(kind: Kind) -> &'static str {
+    match kind {
+        Kind::Check
+        // We ensure check steps for both std and rustc from build_steps/clippy, so handle `Kind::Clippy` as well.
+        | Kind::Clippy => "check",
+        Kind::Fix => "fix",
+        _ => unreachable!(),
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Std {
     pub target: TargetSelection,
     /// Whether to build only a subset of crates.
@@ -21,75 +29,12 @@ pub struct Std {
     /// This shouldn't be used from other steps; see the comment on [`compile::Rustc`].
     ///
     /// [`compile::Rustc`]: crate::core::build_steps::compile::Rustc
-    crates: Interned<Vec<String>>,
-}
-
-/// Returns args for the subcommand itself (not for cargo)
-fn args(builder: &Builder<'_>) -> Vec<String> {
-    fn strings<'a>(arr: &'a [&str]) -> impl Iterator<Item = String> + 'a {
-        arr.iter().copied().map(String::from)
-    }
-
-    if let Subcommand::Clippy { fix, allow_dirty, allow_staged, allow, deny, warn, forbid } =
-        &builder.config.cmd
-    {
-        // disable the most spammy clippy lints
-        let ignored_lints = [
-            "many_single_char_names", // there are a lot in stdarch
-            "collapsible_if",
-            "type_complexity",
-            "missing_safety_doc", // almost 3K warnings
-            "too_many_arguments",
-            "needless_lifetimes", // people want to keep the lifetimes
-            "wrong_self_convention",
-        ];
-        let mut args = vec![];
-        if *fix {
-            #[rustfmt::skip]
-            args.extend(strings(&[
-                "--fix", "-Zunstable-options",
-                // FIXME: currently, `--fix` gives an error while checking tests for libtest,
-                // possibly because libtest is not yet built in the sysroot.
-                // As a workaround, avoid checking tests and benches when passed --fix.
-                "--lib", "--bins", "--examples",
-            ]));
-
-            if *allow_dirty {
-                args.push("--allow-dirty".to_owned());
-            }
-
-            if *allow_staged {
-                args.push("--allow-staged".to_owned());
-            }
-        }
-
-        args.extend(strings(&["--", "--cap-lints", "warn"]));
-        args.extend(ignored_lints.iter().map(|lint| format!("-Aclippy::{}", lint)));
-        let mut clippy_lint_levels: Vec<String> = Vec::new();
-        allow.iter().for_each(|v| clippy_lint_levels.push(format!("-A{}", v)));
-        deny.iter().for_each(|v| clippy_lint_levels.push(format!("-D{}", v)));
-        warn.iter().for_each(|v| clippy_lint_levels.push(format!("-W{}", v)));
-        forbid.iter().for_each(|v| clippy_lint_levels.push(format!("-F{}", v)));
-        args.extend(clippy_lint_levels);
-        args.extend(builder.config.free_args.clone());
-        args
-    } else {
-        builder.config.free_args.clone()
-    }
-}
-
-fn cargo_subcommand(kind: Kind) -> &'static str {
-    match kind {
-        Kind::Check => "check",
-        Kind::Clippy => "clippy",
-        Kind::Fix => "fix",
-        _ => unreachable!(),
-    }
+    crates: Vec<String>,
 }
 
 impl Std {
     pub fn new(target: TargetSelection) -> Self {
-        Self { target, crates: INTERNER.intern_list(vec![]) }
+        Self { target, crates: vec![] }
     }
 }
 
@@ -138,7 +83,7 @@ impl Step for Std {
         run_cargo(
             builder,
             cargo,
-            args(builder),
+            builder.config.free_args.clone(),
             &libstd_stamp(builder, compiler, target),
             vec![],
             true,
@@ -195,7 +140,7 @@ impl Step for Std {
         run_cargo(
             builder,
             cargo,
-            args(builder),
+            builder.config.free_args.clone(),
             &libstd_test_stamp(builder, compiler, target),
             vec![],
             true,
@@ -204,7 +149,7 @@ impl Step for Std {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Rustc {
     pub target: TargetSelection,
     /// Whether to build only a subset of crates.
@@ -212,7 +157,7 @@ pub struct Rustc {
     /// This shouldn't be used from other steps; see the comment on [`compile::Rustc`].
     ///
     /// [`compile::Rustc`]: crate::core::build_steps::compile::Rustc
-    crates: Interned<Vec<String>>,
+    crates: Vec<String>,
 }
 
 impl Rustc {
@@ -222,7 +167,7 @@ impl Rustc {
             .into_iter()
             .map(|krate| krate.name.to_string())
             .collect();
-        Self { target, crates: INTERNER.intern_list(crates) }
+        Self { target, crates }
     }
 }
 
@@ -270,7 +215,7 @@ impl Step for Rustc {
             cargo_subcommand(builder.kind),
         );
 
-        rustc_cargo(builder, &mut cargo, target, compiler.stage);
+        rustc_cargo(builder, &mut cargo, target, &compiler);
 
         // For ./x.py clippy, don't run with --all-targets because
         // linting tests and benchmarks can produce very noisy results
@@ -292,7 +237,7 @@ impl Step for Rustc {
         run_cargo(
             builder,
             cargo,
-            args(builder),
+            builder.config.free_args.clone(),
             &librustc_stamp(builder, compiler, target),
             vec![],
             true,
@@ -305,10 +250,10 @@ impl Step for Rustc {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CodegenBackend {
     pub target: TargetSelection,
-    pub backend: Interned<String>,
+    pub backend: &'static str,
 }
 
 impl Step for CodegenBackend {
@@ -321,14 +266,14 @@ impl Step for CodegenBackend {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        for &backend in &[INTERNER.intern_str("cranelift"), INTERNER.intern_str("gcc")] {
+        for &backend in &["cranelift", "gcc"] {
             run.builder.ensure(CodegenBackend { target: run.target, backend });
         }
     }
 
     fn run(self, builder: &Builder<'_>) {
         // FIXME: remove once https://github.com/rust-lang/rust/issues/112393 is resolved
-        if builder.build.config.vendor && &self.backend == "gcc" {
+        if builder.build.config.vendor && self.backend == "gcc" {
             println!("Skipping checking of `rustc_codegen_gcc` with vendoring enabled.");
             return;
         }
@@ -358,7 +303,7 @@ impl Step for CodegenBackend {
         run_cargo(
             builder,
             cargo,
-            args(builder),
+            builder.config.free_args.clone(),
             &codegen_backend_stamp(builder, compiler, target, backend),
             vec![],
             true,
@@ -424,7 +369,7 @@ impl Step for RustAnalyzer {
         run_cargo(
             builder,
             cargo,
-            args(builder),
+            builder.config.free_args.clone(),
             &stamp(builder, compiler, target),
             vec![],
             true,
@@ -449,7 +394,7 @@ macro_rules! tool_check_step {
         impl Step for $name {
             type Output = ();
             const ONLY_HOSTS: bool = true;
-            // don't ever check out-of-tree tools by default, they'll fail when toolstate is broken
+            /// don't ever check out-of-tree tools by default, they'll fail when toolstate is broken
             const DEFAULT: bool = matches!($source_type, SourceType::InTree) $( && $default )?;
 
             fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -487,7 +432,7 @@ macro_rules! tool_check_step {
                 run_cargo(
                     builder,
                     cargo,
-                    args(builder),
+                    builder.config.free_args.clone(),
                     &stamp(builder, compiler, target),
                     vec![],
                     true,
@@ -552,7 +497,7 @@ fn codegen_backend_stamp(
     builder: &Builder<'_>,
     compiler: Compiler,
     target: TargetSelection,
-    backend: Interned<String>,
+    backend: &str,
 ) -> PathBuf {
     builder
         .cargo_out(compiler, Mode::Codegen, target)

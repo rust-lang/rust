@@ -4,9 +4,12 @@ error: called `.iter().nth()` on a `Vec`
 LL |         let bad_vec = some_vec.iter().nth(3);
    |                       ^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: calling `.get()` is both faster and more readable
    = note: `-D clippy::iter-nth` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::iter_nth)]`
+help: `get` is equivalent but more concise
+   |
+LL |         let bad_vec = some_vec.get(3);
+   |                                ~~~
 
 error: called `.iter().nth()` on a slice
   --> tests/ui/iter_nth.rs:35:26
@@ -14,7 +17,10 @@ error: called `.iter().nth()` on a slice
 LL |         let bad_slice = &some_vec[..].iter().nth(3);
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: calling `.get()` is both faster and more readable
+help: `get` is equivalent but more concise
+   |
+LL |         let bad_slice = &some_vec[..].get(3);
+   |                                       ~~~
 
 error: called `.iter().nth()` on a slice
   --> tests/ui/iter_nth.rs:36:31
@@ -22,7 +28,10 @@ error: called `.iter().nth()` on a slice
 LL |         let bad_boxed_slice = boxed_slice.iter().nth(3);
    |                               ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: calling `.get()` is both faster and more readable
+help: `get` is equivalent but more concise
+   |
+LL |         let bad_boxed_slice = boxed_slice.get(3);
+   |                                           ~~~
 
 error: called `.iter().nth()` on a `VecDeque`
   --> tests/ui/iter_nth.rs:37:29
@@ -30,7 +39,10 @@ error: called `.iter().nth()` on a `VecDeque`
 LL |         let bad_vec_deque = some_vec_deque.iter().nth(3);
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: calling `.get()` is both faster and more readable
+help: `get` is equivalent but more concise
+   |
+LL |         let bad_vec_deque = some_vec_deque.get(3);
+   |                                            ~~~
 
 error: called `.iter_mut().nth()` on a `Vec`
   --> tests/ui/iter_nth.rs:42:23
@@ -38,7 +50,10 @@ error: called `.iter_mut().nth()` on a `Vec`
 LL |         let bad_vec = some_vec.iter_mut().nth(3);
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: calling `.get_mut()` is both faster and more readable
+help: `get_mut` is equivalent but more concise
+   |
+LL |         let bad_vec = some_vec.get_mut(3);
+   |                                ~~~~~~~
 
 error: called `.iter_mut().nth()` on a slice
   --> tests/ui/iter_nth.rs:45:26
@@ -46,7 +61,10 @@ error: called `.iter_mut().nth()` on a slice
 LL |         let bad_slice = &some_vec[..].iter_mut().nth(3);
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: calling `.get_mut()` is both faster and more readable
+help: `get_mut` is equivalent but more concise
+   |
+LL |         let bad_slice = &some_vec[..].get_mut(3);
+   |                                       ~~~~~~~
 
 error: called `.iter_mut().nth()` on a `VecDeque`
   --> tests/ui/iter_nth.rs:48:29
@@ -54,7 +72,21 @@ error: called `.iter_mut().nth()` on a `VecDeque`
 LL |         let bad_vec_deque = some_vec_deque.iter_mut().nth(3);
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: calling `.get_mut()` is both faster and more readable
+help: `get_mut` is equivalent but more concise
+   |
+LL |         let bad_vec_deque = some_vec_deque.get_mut(3);
+   |                                            ~~~~~~~
 
-error: aborting due to 7 previous errors
+error: called `.iter().nth()` on a `Vec`
+  --> tests/ui/iter_nth.rs:52:5
+   |
+LL |     vec_ref.iter().nth(3);
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+help: `get` is equivalent but more concise
+   |
+LL |     vec_ref.get(3);
+   |             ~~~
+
+error: aborting due to 8 previous errors
 

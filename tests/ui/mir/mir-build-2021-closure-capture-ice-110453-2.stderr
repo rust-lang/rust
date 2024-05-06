@@ -1,0 +1,9 @@
+error[E0412]: cannot find type `as_str` in this scope
+  --> $DIR/mir-build-2021-closure-capture-ice-110453-2.rs:8:47
+   |
+LL | pub fn dup(f: impl Fn(i32) -> i32) -> impl Fn(as_str) -> i32 {
+   |                                               ^^^^^^ not found in this scope
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0412`.

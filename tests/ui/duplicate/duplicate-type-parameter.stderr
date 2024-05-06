@@ -54,13 +54,6 @@ LL | impl<T,T> Qux<T,T> for Option<T> {}
    |      |
    |      first use of `T`
 
-error[E0207]: the type parameter `T` is not constrained by the impl trait, self type, or predicates
-  --> $DIR/duplicate-type-parameter.rs:24:8
-   |
-LL | impl<T,T> Qux<T,T> for Option<T> {}
-   |        ^ unconstrained type parameter
+error: aborting due to 7 previous errors
 
-error: aborting due to 8 previous errors
-
-Some errors have detailed explanations: E0207, E0403.
-For more information about an error, try `rustc --explain E0207`.
+For more information about this error, try `rustc --explain E0403`.

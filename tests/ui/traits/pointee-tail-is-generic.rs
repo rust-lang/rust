@@ -4,10 +4,12 @@
 #![feature(ptr_metadata)]
 #![feature(type_alias_impl_trait)]
 
-type Opaque = impl std::future::Future;
+mod opaque {
+    pub type Opaque = impl std::future::Future;
 
-fn opaque() -> Opaque {
-    async {}
+    fn opaque() -> Opaque {
+        async {}
+    }
 }
 
 fn a<T>() {
@@ -16,7 +18,7 @@ fn a<T>() {
     // tail of ADT (which is a type param) is known to be sized
     is_thin::<std::cell::Cell<T>>();
     // opaque type is known to be sized
-    is_thin::<Opaque>();
+    is_thin::<opaque::Opaque>();
 }
 
 fn a2<T: Iterator>() {

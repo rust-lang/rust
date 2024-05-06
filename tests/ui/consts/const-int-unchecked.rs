@@ -1,5 +1,5 @@
 #![feature(core_intrinsics)]
-#![feature(const_int_unchecked_arith)]
+
 
 use std::intrinsics;
 
@@ -27,7 +27,7 @@ const SHL_U128: u128 = unsafe { intrinsics::unchecked_shl(5_u128, 128) };
 
 const SHL_I8: i8 = unsafe { intrinsics::unchecked_shl(5_i8, 8) };
 //~^ ERROR evaluation of constant value failed
-const SHL_I16: i16 = unsafe { intrinsics::unchecked_shl(5_16, 16) };
+const SHL_I16: i16 = unsafe { intrinsics::unchecked_shl(5_i16, 16) };
 //~^ ERROR evaluation of constant value failed
 const SHL_I32: i32 = unsafe { intrinsics::unchecked_shl(5_i32, 32) };
 //~^ ERROR evaluation of constant value failed
@@ -40,7 +40,7 @@ const SHL_I128: i128 = unsafe { intrinsics::unchecked_shl(5_i128, 128) };
 
 const SHL_I8_NEG: i8 = unsafe { intrinsics::unchecked_shl(5_i8, -1) };
 //~^ ERROR evaluation of constant value failed
-const SHL_I16_NEG: i16 = unsafe { intrinsics::unchecked_shl(5_16, -1) };
+const SHL_I16_NEG: i16 = unsafe { intrinsics::unchecked_shl(5_i16, -1) };
 //~^ ERROR evaluation of constant value failed
 const SHL_I32_NEG: i32 = unsafe { intrinsics::unchecked_shl(5_i32, -1) };
 //~^ ERROR evaluation of constant value failed
@@ -54,7 +54,7 @@ const SHL_I128_NEG: i128 = unsafe { intrinsics::unchecked_shl(5_i128, -1) };
 
 const SHL_I8_NEG_RANDOM: i8 = unsafe { intrinsics::unchecked_shl(5_i8, -6) };
 //~^ ERROR evaluation of constant value failed
-const SHL_I16_NEG_RANDOM: i16 = unsafe { intrinsics::unchecked_shl(5_16, -13) };
+const SHL_I16_NEG_RANDOM: i16 = unsafe { intrinsics::unchecked_shl(5_i16, -13) };
 //~^ ERROR evaluation of constant value failed
 const SHL_I32_NEG_RANDOM: i32 = unsafe { intrinsics::unchecked_shl(5_i32, -25) };
 //~^ ERROR evaluation of constant value failed
@@ -82,7 +82,7 @@ const SHR_U128: u128 = unsafe { intrinsics::unchecked_shr(5_u128, 128) };
 
 const SHR_I8: i8 = unsafe { intrinsics::unchecked_shr(5_i8, 8) };
 //~^ ERROR evaluation of constant value failed
-const SHR_I16: i16 = unsafe { intrinsics::unchecked_shr(5_16, 16) };
+const SHR_I16: i16 = unsafe { intrinsics::unchecked_shr(5_i16, 16) };
 //~^ ERROR evaluation of constant value failed
 const SHR_I32: i32 = unsafe { intrinsics::unchecked_shr(5_i32, 32) };
 //~^ ERROR evaluation of constant value failed
@@ -95,7 +95,7 @@ const SHR_I128: i128 = unsafe { intrinsics::unchecked_shr(5_i128, 128) };
 
 const SHR_I8_NEG: i8 = unsafe { intrinsics::unchecked_shr(5_i8, -1) };
 //~^ ERROR evaluation of constant value failed
-const SHR_I16_NEG: i16 = unsafe { intrinsics::unchecked_shr(5_16, -1) };
+const SHR_I16_NEG: i16 = unsafe { intrinsics::unchecked_shr(5_i16, -1) };
 //~^ ERROR evaluation of constant value failed
 const SHR_I32_NEG: i32 = unsafe { intrinsics::unchecked_shr(5_i32, -1) };
 //~^ ERROR evaluation of constant value failed
@@ -109,7 +109,7 @@ const SHR_I128_NEG: i128 = unsafe { intrinsics::unchecked_shr(5_i128, -1) };
 
 const SHR_I8_NEG_RANDOM: i8 = unsafe { intrinsics::unchecked_shr(5_i8, -6) };
 //~^ ERROR evaluation of constant value failed
-const SHR_I16_NEG_RANDOM: i16 = unsafe { intrinsics::unchecked_shr(5_16, -13) };
+const SHR_I16_NEG_RANDOM: i16 = unsafe { intrinsics::unchecked_shr(5_i16, -13) };
 //~^ ERROR evaluation of constant value failed
 const SHR_I32_NEG_RANDOM: i32 = unsafe { intrinsics::unchecked_shr(5_i32, -25) };
 //~^ ERROR evaluation of constant value failed

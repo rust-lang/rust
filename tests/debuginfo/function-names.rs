@@ -83,7 +83,7 @@
 #![allow(unused_variables)]
 #![feature(omit_gdb_pretty_printer_section)]
 #![omit_gdb_pretty_printer_section]
-#![feature(adt_const_params, coroutines, coroutine_trait)]
+#![feature(adt_const_params, coroutines, coroutine_trait, stmt_expr_attributes)]
 #![allow(incomplete_features)]
 
 use std::ops::Coroutine;
@@ -111,7 +111,8 @@ fn main() {
     closure();
 
     // Coroutine
-    let mut coroutine = || {
+    let mut coroutine = #[coroutine]
+    || {
         yield;
         return;
     };

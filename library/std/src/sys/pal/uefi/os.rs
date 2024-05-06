@@ -1,4 +1,4 @@
-use super::{unsupported, RawOsError};
+use super::{helpers, unsupported, RawOsError};
 use crate::error::Error as StdError;
 use crate::ffi::{OsStr, OsString};
 use crate::fmt;
@@ -7,6 +7,7 @@ use crate::marker::PhantomData;
 use crate::os::uefi;
 use crate::path::{self, PathBuf};
 use crate::ptr::NonNull;
+use r_efi::efi::protocols::{device_path, loaded_image_device_path};
 use r_efi::efi::Status;
 
 pub fn errno() -> RawOsError {
@@ -164,7 +165,10 @@ impl fmt::Display for JoinPathsError {
 impl StdError for JoinPathsError {}
 
 pub fn current_exe() -> io::Result<PathBuf> {
-    unsupported()
+    let protocol = helpers::image_handle_protocol::<device_path::Protocol>(
+        loaded_image_device_path::PROTOCOL_GUID,
+    )?;
+    helpers::device_path_to_text(protocol).map(PathBuf::from)
 }
 
 pub struct Env(!);

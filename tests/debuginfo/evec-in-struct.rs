@@ -30,23 +30,23 @@
 
 // lldb-command:run
 
-// lldb-command:print no_padding1
-// lldbg-check:[...]$0 = { x = { [0] = 0 [1] = 1 [2] = 2 } y = -3 z = { [0] = 4.5 [1] = 5.5 } }
+// lldb-command:v no_padding1
+// lldbg-check:[...] { x = { [0] = 0 [1] = 1 [2] = 2 } y = -3 z = { [0] = 4.5 [1] = 5.5 } }
 // lldbr-check:(evec_in_struct::NoPadding1) no_padding1 = { x = { [0] = 0 [1] = 1 [2] = 2 } y = -3 z = { [0] = 4.5 [1] = 5.5 } }
-// lldb-command:print no_padding2
-// lldbg-check:[...]$1 = { x = { [0] = 6 [1] = 7 [2] = 8 } y = { [0] = { [0] = 9 [1] = 10 } [1] = { [0] = 11 [1] = 12 } } }
+// lldb-command:v no_padding2
+// lldbg-check:[...] { x = { [0] = 6 [1] = 7 [2] = 8 } y = { [0] = { [0] = 9 [1] = 10 } [1] = { [0] = 11 [1] = 12 } } }
 // lldbr-check:(evec_in_struct::NoPadding2) no_padding2 = { x = { [0] = 6 [1] = 7 [2] = 8 } y = { [0] = { [0] = 9 [1] = 10 } [1] = { [0] = 11 [1] = 12 } } }
 
-// lldb-command:print struct_internal_padding
-// lldbg-check:[...]$2 = { x = { [0] = 13 [1] = 14 } y = { [0] = 15 [1] = 16 } }
+// lldb-command:v struct_internal_padding
+// lldbg-check:[...] { x = { [0] = 13 [1] = 14 } y = { [0] = 15 [1] = 16 } }
 // lldbr-check:(evec_in_struct::StructInternalPadding) struct_internal_padding = { x = { [0] = 13 [1] = 14 } y = { [0] = 15 [1] = 16 } }
 
-// lldb-command:print single_vec
-// lldbg-check:[...]$3 = { x = { [0] = 17 [1] = 18 [2] = 19 [3] = 20 [4] = 21 } }
+// lldb-command:v single_vec
+// lldbg-check:[...] { x = { [0] = 17 [1] = 18 [2] = 19 [3] = 20 [4] = 21 } }
 // lldbr-check:(evec_in_struct::SingleVec) single_vec = { x = { [0] = 17 [1] = 18 [2] = 19 [3] = 20 [4] = 21 } }
 
-// lldb-command:print struct_padded_at_end
-// lldbg-check:[...]$4 = { x = { [0] = 22 [1] = 23 } y = { [0] = 24 [1] = 25 } }
+// lldb-command:v struct_padded_at_end
+// lldbg-check:[...] { x = { [0] = 22 [1] = 23 } y = { [0] = 24 [1] = 25 } }
 // lldbr-check:(evec_in_struct::StructPaddedAtEnd) struct_padded_at_end = { x = { [0] = 22 [1] = 23 } y = { [0] = 24 [1] = 25 } }
 
 #![allow(unused_variables)]

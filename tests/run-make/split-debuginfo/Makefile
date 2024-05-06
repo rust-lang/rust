@@ -142,7 +142,7 @@ packed-remapped-single:
 packed-remapped-scope:
 	$(RUSTC) $(UNSTABLEOPTS) -C split-debuginfo=packed -C debuginfo=2 \
 		-Z split-dwarf-kind=single --remap-path-prefix $(TMPDIR)=/a \
-		-Z remap-path-scope=split-debuginfo-path foo.rs -g
+		-Z remap-path-scope=debuginfo foo.rs -g
 	objdump -Wi $(TMPDIR)/foo | grep DW_AT_GNU_dwo_name | (! grep $(TMPDIR)) || exit 1
 	ls $(TMPDIR)/*.o && exit 1 || exit 0
 	ls $(TMPDIR)/*.dwo && exit 1 || exit 0
@@ -298,7 +298,7 @@ unpacked-remapped-single:
 unpacked-remapped-scope:
 	$(RUSTC) $(UNSTABLEOPTS) -C split-debuginfo=unpacked -C debuginfo=2 \
 		-Z split-dwarf-kind=single --remap-path-prefix $(TMPDIR)=/a \
-		-Z remap-path-scope=split-debuginfo-path foo.rs -g
+		-Z remap-path-scope=debuginfo foo.rs -g
 	objdump -Wi $(TMPDIR)/foo | grep DW_AT_GNU_dwo_name | (! grep $(TMPDIR)) || exit 1
 	rm $(TMPDIR)/*.o
 	ls $(TMPDIR)/*.dwo && exit 1 || exit 0

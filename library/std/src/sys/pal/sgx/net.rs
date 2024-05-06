@@ -97,10 +97,7 @@ impl TcpStream {
 
     pub fn connect_timeout(addr: &SocketAddr, dur: Duration) -> io::Result<TcpStream> {
         if dur == Duration::default() {
-            return Err(io::const_io_error!(
-                io::ErrorKind::InvalidInput,
-                "cannot set a 0 duration timeout",
-            ));
+            return Err(io::Error::ZERO_TIMEOUT);
         }
         Self::connect(Ok(addr)) // FIXME: ignoring timeout
     }
@@ -108,10 +105,7 @@ impl TcpStream {
     pub fn set_read_timeout(&self, dur: Option<Duration>) -> io::Result<()> {
         match dur {
             Some(dur) if dur == Duration::default() => {
-                return Err(io::const_io_error!(
-                    io::ErrorKind::InvalidInput,
-                    "cannot set a 0 duration timeout",
-                ));
+                return Err(io::Error::ZERO_TIMEOUT);
             }
             _ => sgx_ineffective(()),
         }
@@ -120,10 +114,7 @@ impl TcpStream {
     pub fn set_write_timeout(&self, dur: Option<Duration>) -> io::Result<()> {
         match dur {
             Some(dur) if dur == Duration::default() => {
-                return Err(io::const_io_error!(
-                    io::ErrorKind::InvalidInput,
-                    "cannot set a 0 duration timeout",
-                ));
+                return Err(io::Error::ZERO_TIMEOUT);
             }
             _ => sgx_ineffective(()),
         }
@@ -524,6 +515,7 @@ pub mod netc {
 
     #[derive(Copy, Clone)]
     pub struct sockaddr_in {
+        #[allow(dead_code)]
         pub sin_family: sa_family_t,
         pub sin_port: u16,
         pub sin_addr: in_addr,
@@ -536,6 +528,7 @@ pub mod netc {
 
     #[derive(Copy, Clone)]
     pub struct sockaddr_in6 {
+        #[allow(dead_code)]
         pub sin6_family: sa_family_t,
         pub sin6_port: u16,
         pub sin6_addr: in6_addr,

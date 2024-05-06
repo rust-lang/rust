@@ -1,7 +1,6 @@
 // Test that we detect changes to the `dep_kind` query. If the change is not
 // detected then -Zincremental-verify-ich will trigger an assertion.
 
-//@ ignore-wasm32-bare compiled with panic=abort by default
 //@ needs-unwind
 //@ revisions:cfail1 cfail2
 //@ compile-flags: -Z query-dep-graph -Cpanic=unwind

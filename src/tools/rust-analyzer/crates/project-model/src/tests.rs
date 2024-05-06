@@ -1,12 +1,9 @@
-use std::{
-    ops::Deref,
-    path::{Path, PathBuf},
-};
+use std::ops::Deref;
 
 use base_db::{CrateGraph, FileId, ProcMacroPaths};
 use cfg::{CfgAtom, CfgDiff};
 use expect_test::{expect_file, ExpectFile};
-use paths::{AbsPath, AbsPathBuf};
+use paths::{AbsPath, AbsPathBuf, Utf8Path, Utf8PathBuf};
 use rustc_hash::FxHashMap;
 use serde::de::DeserializeOwned;
 use triomphe::Arc;
@@ -78,6 +75,7 @@ fn load_rust_project(file: &str) -> (CrateGraph, ProcMacroPaths) {
         rustc_cfg: Vec::new(),
         toolchain: None,
         target_layout: Err(Arc::from("test has no data layout")),
+        cfg_overrides: Default::default(),
     };
     to_crate_graph(project_workspace)
 }
@@ -100,6 +98,11 @@ fn get_test_json_file<T: DeserializeOwned>(file: &str) -> T {
     }
 }
 
+fn replace_cargo(s: &mut String) {
+    let path = toolchain::Tool::Cargo.path().to_string().escape_debug().collect::<String>();
+    *s = s.replace(&path, "$CARGO$");
+}
+
 fn replace_root(s: &mut String, direction: bool) {
     if direction {
         let root = if cfg!(windows) { r#"C:\\ROOT\"# } else { "/ROOT/" };
@@ -113,17 +116,16 @@ fn replace_root(s: &mut String, direction: bool) {
 fn replace_fake_sys_root(s: &mut String) {
     let fake_sysroot_path = get_test_path("fake-sysroot");
     let fake_sysroot_path = if cfg!(windows) {
-        let normalized_path =
-            fake_sysroot_path.to_str().expect("expected str").replace('\\', r#"\\"#);
+        let normalized_path = fake_sysroot_path.as_str().replace('\\', r#"\\"#);
         format!(r#"{}\\"#, normalized_path)
     } else {
-        format!("{}/", fake_sysroot_path.to_str().expect("expected str"))
+        format!("{}/", fake_sysroot_path.as_str())
     };
     *s = s.replace(&fake_sysroot_path, "$FAKESYSROOT$")
 }
 
-fn get_test_path(file: &str) -> PathBuf {
-    let base = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+fn get_test_path(file: &str) -> Utf8PathBuf {
+    let base = Utf8PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     base.join("test_data").join(file)
 }
 
@@ -139,7 +141,7 @@ fn get_fake_sysroot() -> Sysroot {
 fn rooted_project_json(data: ProjectJsonData) -> ProjectJson {
     let mut root = "$ROOT$".to_owned();
     replace_root(&mut root, true);
-    let path = Path::new(&root);
+    let path = Utf8Path::new(&root);
     let base = AbsPath::assert(path);
     ProjectJson::new(base, data)
 }
@@ -159,7 +161,9 @@ fn to_crate_graph(project_workspace: ProjectWorkspace) -> (CrateGraph, ProcMacro
 
 fn check_crate_graph(crate_graph: CrateGraph, expect: ExpectFile) {
     let mut crate_graph = format!("{crate_graph:#?}");
+
     replace_root(&mut crate_graph, false);
+    replace_cargo(&mut crate_graph);
     replace_fake_sys_root(&mut crate_graph);
     expect.assert_eq(&crate_graph);
 }
@@ -268,7 +272,7 @@ fn smoke_test_real_sysroot_cargo() {
 
     let cargo_workspace = CargoWorkspace::new(meta);
     let sysroot = Ok(Sysroot::discover(
-        AbsPath::assert(Path::new(env!("CARGO_MANIFEST_DIR"))),
+        AbsPath::assert(Utf8Path::new(env!("CARGO_MANIFEST_DIR"))),
         &Default::default(),
         true,
     )

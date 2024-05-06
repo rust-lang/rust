@@ -3,24 +3,22 @@ use crate::{
     infer::canonical::Canonical,
     traits::ObligationCause,
     ty::{
-        self, tls, BindingMode, BoundVar, CanonicalPolyFnSig, ClosureSizeProfileData,
-        GenericArgKind, GenericArgs, GenericArgsRef, Ty, UserArgs,
+        self, tls, BoundVar, CanonicalPolyFnSig, ClosureSizeProfileData, GenericArgKind,
+        GenericArgs, GenericArgsRef, Ty, UserArgs,
     },
 };
-use rustc_data_structures::{
-    fx::FxIndexMap,
-    unord::{ExtendUnord, UnordItems, UnordSet},
-};
+use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
+use rustc_data_structures::unord::{ExtendUnord, UnordItems, UnordSet};
 use rustc_errors::ErrorGuaranteed;
-use rustc_hir as hir;
 use rustc_hir::{
+    self as hir,
     def::{DefKind, Res},
     def_id::{DefId, LocalDefId, LocalDefIdMap},
     hir_id::OwnerId,
-    HirId, ItemLocalId, ItemLocalMap, ItemLocalSet,
+    BindingMode, ByRef, HirId, ItemLocalId, ItemLocalMap, ItemLocalSet, Mutability,
 };
-use rustc_index::{Idx, IndexVec};
-use rustc_macros::HashStable;
+use rustc_index::IndexVec;
+use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_middle::mir::FakeReadCause;
 use rustc_session::Session;
 use rustc_span::Span;
@@ -78,7 +76,7 @@ pub struct TypeckResults<'tcx> {
 
     adjustments: ItemLocalMap<Vec<ty::adjustment::Adjustment<'tcx>>>,
 
-    /// Stores the actual binding mode for all instances of hir::BindingAnnotation.
+    /// Stores the actual binding mode for all instances of [`BindingMode`].
     pat_binding_modes: ItemLocalMap<BindingMode>,
 
     /// Stores the types which were implicitly dereferenced in pattern binding modes
@@ -95,6 +93,10 @@ pub struct TypeckResults<'tcx> {
     /// See:
     /// <https://github.com/rust-lang/rfcs/blob/master/text/2005-match-ergonomics.md#definitions>
     pat_adjustments: ItemLocalMap<Vec<Ty<'tcx>>>,
+
+    /// Set of reference patterns that match against a match-ergonomics inserted reference
+    /// (as opposed to against a reference in the scrutinee type).
+    skipped_ref_pats: ItemLocalSet,
 
     /// Records the reasons that we picked the kind of each closure;
     /// not all closures are present in the map.
@@ -188,7 +190,7 @@ pub struct TypeckResults<'tcx> {
     /// we never capture `t`. This becomes an issue when we build MIR as we require
     /// information on `t` in order to create place `t.0` and `t.1`. We can solve this
     /// issue by fake reading `t`.
-    pub closure_fake_reads: LocalDefIdMap<Vec<(HirPlace<'tcx>, FakeReadCause, hir::HirId)>>,
+    pub closure_fake_reads: LocalDefIdMap<Vec<(HirPlace<'tcx>, FakeReadCause, HirId)>>,
 
     /// Tracks the rvalue scoping rules which defines finer scoping for rvalue expressions
     /// by applying extended parameter rules.
@@ -197,8 +199,7 @@ pub struct TypeckResults<'tcx> {
 
     /// Stores the predicates that apply on coroutine witness types.
     /// formatting modified file tests/ui/coroutine/retain-resume-ref.rs
-    pub coroutine_interior_predicates:
-        LocalDefIdMap<Vec<(ty::Predicate<'tcx>, ObligationCause<'tcx>)>>,
+    pub coroutine_stalled_predicates: FxIndexSet<(ty::Predicate<'tcx>, ObligationCause<'tcx>)>,
 
     /// We sometimes treat byte string literals (which are of type `&[u8; N]`)
     /// as `&[u8]`, depending on the pattern in which they are used.
@@ -228,6 +229,7 @@ impl<'tcx> TypeckResults<'tcx> {
             adjustments: Default::default(),
             pat_binding_modes: Default::default(),
             pat_adjustments: Default::default(),
+            skipped_ref_pats: Default::default(),
             closure_kind_origins: Default::default(),
             liberated_fn_sigs: Default::default(),
             fru_field_types: Default::default(),
@@ -238,7 +240,7 @@ impl<'tcx> TypeckResults<'tcx> {
             closure_min_captures: Default::default(),
             closure_fake_reads: Default::default(),
             rvalue_scopes: Default::default(),
-            coroutine_interior_predicates: Default::default(),
+            coroutine_stalled_predicates: Default::default(),
             treat_byte_string_as_slice: Default::default(),
             closure_size_eval: Default::default(),
             offset_of_data: Default::default(),
@@ -246,7 +248,7 @@ impl<'tcx> TypeckResults<'tcx> {
     }
 
     /// Returns the final resolution of a `QPath` in an `Expr` or `Pat` node.
-    pub fn qpath_res(&self, qpath: &hir::QPath<'_>, id: hir::HirId) -> Res {
+    pub fn qpath_res(&self, qpath: &hir::QPath<'_>, id: HirId) -> Res {
         match *qpath {
             hir::QPath::Resolved(_, path) => path.res,
             hir::QPath::TypeRelative(..) | hir::QPath::LangItem(..) => self
@@ -284,11 +286,11 @@ impl<'tcx> TypeckResults<'tcx> {
         LocalTableInContextMut { hir_owner: self.hir_owner, data: &mut self.field_indices }
     }
 
-    pub fn field_index(&self, id: hir::HirId) -> FieldIdx {
+    pub fn field_index(&self, id: HirId) -> FieldIdx {
         self.field_indices().get(id).cloned().expect("no index for a field")
     }
 
-    pub fn opt_field_index(&self, id: hir::HirId) -> Option<FieldIdx> {
+    pub fn opt_field_index(&self, id: HirId) -> Option<FieldIdx> {
         self.field_indices().get(id).cloned()
     }
 
@@ -300,7 +302,7 @@ impl<'tcx> TypeckResults<'tcx> {
         LocalTableInContextMut { hir_owner: self.hir_owner, data: &mut self.nested_fields }
     }
 
-    pub fn nested_field_tys_and_indices(&self, id: hir::HirId) -> &[(Ty<'tcx>, FieldIdx)] {
+    pub fn nested_field_tys_and_indices(&self, id: HirId) -> &[(Ty<'tcx>, FieldIdx)] {
         self.nested_fields().get(id).map_or(&[], Vec::as_slice)
     }
 
@@ -322,13 +324,13 @@ impl<'tcx> TypeckResults<'tcx> {
         LocalTableInContextMut { hir_owner: self.hir_owner, data: &mut self.node_types }
     }
 
-    pub fn node_type(&self, id: hir::HirId) -> Ty<'tcx> {
+    pub fn node_type(&self, id: HirId) -> Ty<'tcx> {
         self.node_type_opt(id).unwrap_or_else(|| {
             bug!("node_type: no type for node {}", tls::with(|tcx| tcx.hir().node_to_string(id)))
         })
     }
 
-    pub fn node_type_opt(&self, id: hir::HirId) -> Option<Ty<'tcx>> {
+    pub fn node_type_opt(&self, id: HirId) -> Option<Ty<'tcx>> {
         validate_hir_id_for_typeck_results(self.hir_owner, id);
         self.node_types.get(&id.local_id).cloned()
     }
@@ -337,12 +339,12 @@ impl<'tcx> TypeckResults<'tcx> {
         LocalTableInContextMut { hir_owner: self.hir_owner, data: &mut self.node_args }
     }
 
-    pub fn node_args(&self, id: hir::HirId) -> GenericArgsRef<'tcx> {
+    pub fn node_args(&self, id: HirId) -> GenericArgsRef<'tcx> {
         validate_hir_id_for_typeck_results(self.hir_owner, id);
         self.node_args.get(&id.local_id).cloned().unwrap_or_else(|| GenericArgs::empty())
     }
 
-    pub fn node_args_opt(&self, id: hir::HirId) -> Option<GenericArgsRef<'tcx>> {
+    pub fn node_args_opt(&self, id: HirId) -> Option<GenericArgsRef<'tcx>> {
         validate_hir_id_for_typeck_results(self.hir_owner, id);
         self.node_args.get(&id.local_id).cloned()
     }
@@ -430,6 +432,39 @@ impl<'tcx> TypeckResults<'tcx> {
         LocalTableInContextMut { hir_owner: self.hir_owner, data: &mut self.pat_adjustments }
     }
 
+    pub fn skipped_ref_pats(&self) -> LocalSetInContext<'_> {
+        LocalSetInContext { hir_owner: self.hir_owner, data: &self.skipped_ref_pats }
+    }
+
+    pub fn skipped_ref_pats_mut(&mut self) -> LocalSetInContextMut<'_> {
+        LocalSetInContextMut { hir_owner: self.hir_owner, data: &mut self.skipped_ref_pats }
+    }
+
+    /// Does the pattern recursively contain a `ref mut` binding in it?
+    ///
+    /// This is used to determined whether a `deref` pattern should emit a `Deref`
+    /// or `DerefMut` call for its pattern scrutinee.
+    ///
+    /// This is computed from the typeck results since we want to make
+    /// sure to apply any match-ergonomics adjustments, which we cannot
+    /// determine from the HIR alone.
+    pub fn pat_has_ref_mut_binding(&self, pat: &hir::Pat<'_>) -> bool {
+        let mut has_ref_mut = false;
+        pat.walk(|pat| {
+            if let hir::PatKind::Binding(_, id, _, _) = pat.kind
+                && let Some(BindingMode(ByRef::Yes(Mutability::Mut), _)) =
+                    self.pat_binding_modes().get(id)
+            {
+                has_ref_mut = true;
+                // No need to continue recursing
+                false
+            } else {
+                true
+            }
+        });
+        has_ref_mut
+    }
+
     /// For a given closure, returns the iterator of `ty::CapturedPlace`s that are captured
     /// by the closure.
     pub fn closure_min_captures_flattened(
@@ -469,7 +504,7 @@ impl<'tcx> TypeckResults<'tcx> {
         LocalTableInContextMut { hir_owner: self.hir_owner, data: &mut self.fru_field_types }
     }
 
-    pub fn is_coercion_cast(&self, hir_id: hir::HirId) -> bool {
+    pub fn is_coercion_cast(&self, hir_id: HirId) -> bool {
         validate_hir_id_for_typeck_results(self.hir_owner, hir_id);
         self.coercion_casts.contains(&hir_id.local_id)
     }
@@ -503,7 +538,7 @@ impl<'tcx> TypeckResults<'tcx> {
 /// would result in lookup errors, or worse, in silently wrong data being
 /// stored/returned.
 #[inline]
-fn validate_hir_id_for_typeck_results(hir_owner: OwnerId, hir_id: hir::HirId) {
+fn validate_hir_id_for_typeck_results(hir_owner: OwnerId, hir_id: HirId) {
     if hir_id.owner != hir_owner {
         invalid_hir_id_for_typeck_results(hir_owner, hir_id);
     }
@@ -511,7 +546,7 @@ fn validate_hir_id_for_typeck_results(hir_owner: OwnerId, hir_id: hir::HirId) {
 
 #[cold]
 #[inline(never)]
-fn invalid_hir_id_for_typeck_results(hir_owner: OwnerId, hir_id: hir::HirId) {
+fn invalid_hir_id_for_typeck_results(hir_owner: OwnerId, hir_id: HirId) {
     ty::tls::with(|tcx| {
         bug!(
             "node {} cannot be placed in TypeckResults with hir_owner {:?}",
@@ -527,12 +562,12 @@ pub struct LocalTableInContext<'a, V> {
 }
 
 impl<'a, V> LocalTableInContext<'a, V> {
-    pub fn contains_key(&self, id: hir::HirId) -> bool {
+    pub fn contains_key(&self, id: HirId) -> bool {
         validate_hir_id_for_typeck_results(self.hir_owner, id);
         self.data.contains_key(&id.local_id)
     }
 
-    pub fn get(&self, id: hir::HirId) -> Option<&'a V> {
+    pub fn get(&self, id: HirId) -> Option<&'a V> {
         validate_hir_id_for_typeck_results(self.hir_owner, id);
         self.data.get(&id.local_id)
     }
@@ -549,10 +584,10 @@ impl<'a, V> LocalTableInContext<'a, V> {
     }
 }
 
-impl<'a, V> ::std::ops::Index<hir::HirId> for LocalTableInContext<'a, V> {
+impl<'a, V> ::std::ops::Index<HirId> for LocalTableInContext<'a, V> {
     type Output = V;
 
-    fn index(&self, key: hir::HirId) -> &V {
+    fn index(&self, key: HirId) -> &V {
         self.get(key).expect("LocalTableInContext: key not found")
     }
 }
@@ -563,34 +598,79 @@ pub struct LocalTableInContextMut<'a, V> {
 }
 
 impl<'a, V> LocalTableInContextMut<'a, V> {
-    pub fn get_mut(&mut self, id: hir::HirId) -> Option<&mut V> {
+    pub fn get_mut(&mut self, id: HirId) -> Option<&mut V> {
         validate_hir_id_for_typeck_results(self.hir_owner, id);
         self.data.get_mut(&id.local_id)
     }
 
-    pub fn entry(&mut self, id: hir::HirId) -> Entry<'_, hir::ItemLocalId, V> {
+    pub fn get(&mut self, id: HirId) -> Option<&V> {
+        validate_hir_id_for_typeck_results(self.hir_owner, id);
+        self.data.get(&id.local_id)
+    }
+
+    pub fn entry(&mut self, id: HirId) -> Entry<'_, hir::ItemLocalId, V> {
         validate_hir_id_for_typeck_results(self.hir_owner, id);
         self.data.entry(id.local_id)
     }
 
-    pub fn insert(&mut self, id: hir::HirId, val: V) -> Option<V> {
+    pub fn insert(&mut self, id: HirId, val: V) -> Option<V> {
         validate_hir_id_for_typeck_results(self.hir_owner, id);
         self.data.insert(id.local_id, val)
     }
 
-    pub fn remove(&mut self, id: hir::HirId) -> Option<V> {
+    pub fn remove(&mut self, id: HirId) -> Option<V> {
         validate_hir_id_for_typeck_results(self.hir_owner, id);
         self.data.remove(&id.local_id)
     }
 
-    pub fn extend(
-        &mut self,
-        items: UnordItems<(hir::HirId, V), impl Iterator<Item = (hir::HirId, V)>>,
-    ) {
+    pub fn extend(&mut self, items: UnordItems<(HirId, V), impl Iterator<Item = (HirId, V)>>) {
         self.data.extend_unord(items.map(|(id, value)| {
             validate_hir_id_for_typeck_results(self.hir_owner, id);
             (id.local_id, value)
         }))
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct LocalSetInContext<'a> {
+    hir_owner: OwnerId,
+    data: &'a ItemLocalSet,
+}
+
+impl<'a> LocalSetInContext<'a> {
+    pub fn is_empty(&self) -> bool {
+        self.data.is_empty()
+    }
+
+    pub fn contains(&self, id: hir::HirId) -> bool {
+        validate_hir_id_for_typeck_results(self.hir_owner, id);
+        self.data.contains(&id.local_id)
+    }
+}
+
+#[derive(Debug)]
+pub struct LocalSetInContextMut<'a> {
+    hir_owner: OwnerId,
+    data: &'a mut ItemLocalSet,
+}
+
+impl<'a> LocalSetInContextMut<'a> {
+    pub fn is_empty(&self) -> bool {
+        self.data.is_empty()
+    }
+
+    pub fn contains(&self, id: hir::HirId) -> bool {
+        validate_hir_id_for_typeck_results(self.hir_owner, id);
+        self.data.contains(&id.local_id)
+    }
+    pub fn insert(&mut self, id: hir::HirId) -> bool {
+        validate_hir_id_for_typeck_results(self.hir_owner, id);
+        self.data.insert(id.local_id)
+    }
+
+    pub fn remove(&mut self, id: hir::HirId) -> bool {
+        validate_hir_id_for_typeck_results(self.hir_owner, id);
+        self.data.remove(&id.local_id)
     }
 }
 
@@ -645,7 +725,7 @@ impl<'tcx> IsIdentity for CanonicalUserType<'tcx> {
                     return false;
                 }
 
-                iter::zip(user_args.args, BoundVar::new(0)..).all(|(kind, cvar)| {
+                iter::zip(user_args.args, BoundVar::ZERO..).all(|(kind, cvar)| {
                     match kind.unpack() {
                         GenericArgKind::Type(ty) => match ty.kind() {
                             ty::Bound(debruijn, b) => {

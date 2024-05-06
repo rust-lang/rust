@@ -1,4 +1,5 @@
 // This test ensures that opening the help page in its own tab works.
+include: "utils.goml"
 go-to: "file://" + |DOC_PATH| + "/help.html"
 set-window-size: (1000, 1000) // Try desktop size first.
 wait-for: "#help"
@@ -7,22 +8,19 @@ assert-css: ("#help dd", {"font-size": "16px"})
 click: "#help-button > a"
 assert-css: ("#help", {"display": "block"})
 compare-elements-property: (".sub", "#help", ["offsetWidth"])
-compare-elements-position: (".sub", "#help", ("x"))
+compare-elements-position: (".sub", "#help", ["x"])
 set-window-size: (500, 1000) // Try mobile next.
 assert-css: ("#help", {"display": "block"})
 compare-elements-property: (".sub", "#help", ["offsetWidth"])
-compare-elements-position: (".sub", "#help", ("x"))
+compare-elements-position: (".sub", "#help", ["x"])
 
 // Checking the color of the elements of the help menu.
 show-text: true
 define-function: (
     "check-colors",
-    (theme, color, background, box_shadow),
+    [theme, color, background, box_shadow],
     block {
-        // Setting the theme.
-        set-local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
-        // We reload the page so the local storage settings are being used.
-        reload:
+        call-function: ("switch-theme", {"theme": |theme|})
         assert-css: ("#help kbd", {
             "color": |color|,
             "background-color": |background|,
@@ -60,7 +58,7 @@ assert-css: ("#help dd", {"font-size": "16px"})
 click: "#help-button > a"
 assert-css: ("#help", {"display": "none"})
 compare-elements-property-false: (".sub", "#help", ["offsetWidth"])
-compare-elements-position-false: (".sub", "#help", ("x"))
+compare-elements-position-false: (".sub", "#help", ["x"])
 
 // This test ensures that the "the rustdoc book" anchor link within the help popover works.
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"

@@ -25,5 +25,17 @@ error: initializer for `thread_local` value can be made `const`
 LL |         static BUF_4_CAN_BE_MADE_CONST: RefCell<String> = RefCell::new(String::new());
    |                                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `const { RefCell::new(String::new()) }`
 
-error: aborting due to 4 previous errors
+error: initializer for `thread_local` value can be made `const`
+  --> tests/ui/thread_local_initializer_can_be_made_const.rs:32:31
+   |
+LL |         static PEEL_ME: i32 = { 1 };
+   |                               ^^^^^ help: replace with: `const { 1 }`
+
+error: initializer for `thread_local` value can be made `const`
+  --> tests/ui/thread_local_initializer_can_be_made_const.rs:34:36
+   |
+LL |         static PEEL_ME_MANY: i32 = { let x = 1; x * x };
+   |                                    ^^^^^^^^^^^^^^^^^^^^ help: replace with: `const { { let x = 1; x * x } }`
+
+error: aborting due to 6 previous errors
 

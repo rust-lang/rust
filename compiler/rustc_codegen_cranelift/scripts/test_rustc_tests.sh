@@ -15,7 +15,12 @@ for test in $(rg --files-with-matches "lto" tests/{codegen-units,ui,incremental}
   rm $test
 done
 
-for test in $(rg -i --files-with-matches "//(\[\w+\])?~[^\|]*\s*ERR|// error-pattern:|// build-fail|// run-fail|-Cllvm-args" tests/ui); do
+# should-fail tests don't work when compiletest is compiled with panic=abort
+for test in $(rg --files-with-matches "//@ should-fail" tests/{codegen-units,ui,incremental}); do
+  rm $test
+done
+
+for test in $(rg -i --files-with-matches "//(\[\w+\])?~[^\|]*\s*ERR|//@ error-pattern:|//@(\[.*\])? build-fail|//@(\[.*\])? run-fail|-Cllvm-args" tests/ui); do
   rm $test
 done
 
@@ -27,24 +32,8 @@ rm tests/ui/parser/unclosed-delimiter-in-dep.rs # submodule contains //~ERROR
 # missing features
 # ================
 
-# requires stack unwinding
-# FIXME add needs-unwind to these tests
-rm -r tests/run-make/libtest-junit
-rm tests/ui/asm/may_unwind.rs
-rm tests/ui/stable-mir-print/basic_function.rs
-
-# extra warning about -Cpanic=abort for proc macros
-rm tests/ui/proc-macro/crt-static.rs
-rm tests/ui/proc-macro/proc-macro-deprecated-attr.rs
-rm tests/ui/proc-macro/quote-debug.rs
-rm tests/ui/proc-macro/no-missing-docs.rs
-rm tests/ui/rust-2018/proc-macro-crate-in-paths.rs
-rm tests/ui/proc-macro/allowed-signatures.rs
-rm tests/ui/proc-macro/no-mangle-in-proc-macro-issue-111888.rs
-
 # vendor intrinsics
-rm tests/ui/sse2.rs # CodegenBackend::target_features not yet implemented
-rm tests/ui/simd/array-type.rs # "Index argument for `simd_insert` is not a constant"
+rm tests/ui/asm/x86_64/evex512-implicit-feature.rs # unimplemented AVX512 x86 vendor intrinsic
 
 # exotic linkages
 rm tests/ui/issues/issue-33992.rs # unsupported linkages
@@ -60,17 +49,13 @@ rm -r tests/run-make/c-link-to-rust-va-list-fn # requires callee side vararg sup
 rm -r tests/run-pass-valgrind/unsized-locals
 
 # misc unimplemented things
-rm tests/ui/intrinsics/intrinsic-nearby.rs # unimplemented nearbyintf32 and nearbyintf64 intrinsics
 rm tests/ui/target-feature/missing-plusminus.rs # error not implemented
-rm tests/ui/fn/dyn-fn-alignment.rs # wants a 256 byte alignment
-rm -r tests/run-make/emit-named-files # requires full --emit support
 rm -r tests/run-make/repr128-dwarf # debuginfo test
 rm -r tests/run-make/split-debuginfo # same
-rm -r tests/run-make/symbols-include-type-name # --emit=asm not supported
 rm -r tests/run-make/target-specs # i686 not supported by Cranelift
 rm -r tests/run-make/mismatching-target-triples # same
-rm tests/ui/asm/x86_64/issue-82869.rs # vector regs in inline asm not yet supported
 rm tests/ui/asm/x86_64/issue-96797.rs # const and sym inline asm operands don't work entirely correctly
+rm tests/ui/asm/x86_64/goto.rs # inline asm labels not supported
 
 # requires LTO
 rm -r tests/run-make/cdylib
@@ -93,7 +78,6 @@ rm -r tests/run-make/fmt-write-bloat/ # tests an optimization
 # ======================
 rm tests/incremental/thinlto/cgu_invalidated_when_import_{added,removed}.rs # requires LLVM
 rm -r tests/run-make/cross-lang-lto # same
-rm -r tests/run-make/issue-7349 # same
 rm -r tests/run-make/sepcomp-inlining # same
 rm -r tests/run-make/sepcomp-separate # same
 rm -r tests/run-make/sepcomp-cci-copies # same
@@ -104,46 +88,37 @@ rm tests/ui/abi/stack-protector.rs # requires stack protector support
 rm -r tests/run-make/emit-stack-sizes # requires support for -Z emit-stack-sizes
 rm -r tests/run-make/optimization-remarks-dir # remarks are LLVM specific
 
+# requires asm, llvm-ir and/or llvm-bc emit support
+# =============================================
+rm -r tests/run-make/emit-named-files
+rm -r tests/run-make/issue-30063
+rm -r tests/run-make/multiple-emits
+rm -r tests/run-make/output-type-permutations
+rm -r tests/run-make/emit-to-stdout
+rm -r tests/run-make/compressed-debuginfo
+rm -r tests/run-make/symbols-include-type-name
+
+
 # giving different but possibly correct results
 # =============================================
 rm tests/ui/mir/mir_misc_casts.rs # depends on deduplication of constants
 rm tests/ui/mir/mir_raw_fat_ptr.rs # same
 rm tests/ui/consts/issue-33537.rs # same
-rm tests/ui/layout/valid_range_oob.rs # different ICE message
-rm tests/ui/const-generics/generic_const_exprs/issue-80742.rs # gives error instead of ICE with cg_clif
-
-# rustdoc-clif passes extra args, suppressing the help message when no args are passed
-rm -r tests/run-make/issue-88756-default-output
+rm tests/ui/consts/const-mut-refs-crate.rs # same
 
 # doesn't work due to the way the rustc test suite is invoked.
 # should work when using ./x.py test the way it is intended
 # ============================================================
 rm -r tests/run-make/remap-path-prefix-dwarf # requires llvm-dwarfdump
-rm -r tests/ui/consts/missing_span_in_backtrace.rs # expects sysroot source to be elsewhere
+rm -r tests/run-make/compiler-builtins # Expects lib/rustlib/src/rust to contains the standard library source
 
 # genuine bugs
 # ============
-rm tests/incremental/spike-neg1.rs # errors out for some reason
-rm tests/incremental/spike-neg2.rs # same
-
-rm tests/ui/simd/simd-bitmask.rs # simd_bitmask doesn't implement [u*; N] return type
-
-rm -r tests/run-make/issue-51671 # wrong filename given in case of --emit=obj
-rm -r tests/run-make/issue-30063 # same
-rm -r tests/run-make/multiple-emits # same
-rm -r tests/run-make/output-type-permutations # same
-rm -r tests/run-make/used # same
-rm -r tests/run-make/no-alloc-shim
-rm -r tests/run-make/emit-to-stdout
-rm -r tests/run-make/compressed-debuginfo
-
 rm -r tests/run-make/extern-fn-explicit-align # argument alignment not yet supported
-
-rm tests/ui/codegen/subtyping-enforces-type-equality.rs # assert_assignable bug with Coroutine's
+rm -r tests/run-make/panic-abort-eh_frame # .eh_frame emitted with panic=abort
 
 # bugs in the test suite
 # ======================
-rm tests/ui/backtrace.rs # TODO warning
 rm tests/ui/process/nofile-limit.rs # TODO some AArch64 linking issue
 
 rm tests/ui/stdio-is-blocking.rs # really slow with unoptimized libstd
@@ -166,6 +141,19 @@ index ea06b620c4c..b969d0009c6 100644
  ifdef RUSTC_LINKER
  RUSTC := \$(RUSTC) -Clinker='\$(RUSTC_LINKER)'
  RUSTDOC := \$(RUSTDOC) -Clinker='\$(RUSTC_LINKER)'
+diff --git a/src/tools/run-make-support/src/rustdoc.rs b/src/tools/run-make-support/src/rustdoc.rs
+index 9607ff02f96..b7d97caf9a2 100644
+--- a/src/tools/run-make-support/src/rustdoc.rs
++++ b/src/tools/run-make-support/src/rustdoc.rs
+@@ -34,8 +34,6 @@ pub fn bare() -> Self {
+     /// Construct a \`rustdoc\` invocation with \`-L \$(TARGET_RPATH_DIR)\` set.
+     pub fn new() -> Self {
+         let mut cmd = setup_common();
+-        let target_rpath_dir = env::var_os("TARGET_RPATH_DIR").unwrap();
+-        cmd.arg(format!("-L{}", target_rpath_dir.to_string_lossy()));
+         Self { cmd }
+     }
+
 EOF
 
 echo "[TEST] rustc test suite"

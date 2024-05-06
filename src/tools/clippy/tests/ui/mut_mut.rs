@@ -1,4 +1,5 @@
 //@aux-build:proc_macros.rs
+
 #![warn(clippy::mut_mut)]
 #![allow(unused)]
 #![allow(
@@ -79,4 +80,9 @@ mod issue9035 {
     }
 
     fn bar(_: &mut impl Display) {}
+}
+
+fn allow_works() {
+    #[allow(clippy::mut_mut)]
+    let _ = &mut &mut 1;
 }

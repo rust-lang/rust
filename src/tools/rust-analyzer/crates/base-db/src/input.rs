@@ -6,11 +6,12 @@
 //! actual IO. See `vfs` and `project_model` in the `rust-analyzer` crate for how
 //! actual IO is done and lowered to input.
 
-use std::{fmt, mem, ops, str::FromStr};
+use std::{fmt, mem, ops};
 
 use cfg::CfgOptions;
 use la_arena::{Arena, Idx, RawIdx};
 use rustc_hash::{FxHashMap, FxHashSet};
+use span::Edition;
 use syntax::SmolStr;
 use triomphe::Arc;
 use vfs::{file_set::FileSet, AbsPathBuf, AnchoredPath, FileId, VfsPath};
@@ -18,6 +19,10 @@ use vfs::{file_set::FileSet, AbsPathBuf, AnchoredPath, FileId, VfsPath};
 // Map from crate id to the name of the crate and path of the proc-macro. If the value is `None`,
 // then the crate for the proc-macro hasn't been build yet as the build data is missing.
 pub type ProcMacroPaths = FxHashMap<CrateId, Result<(Option<String>, AbsPathBuf), String>>;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct SourceRootId(pub u32);
+
 /// Files are grouped into source roots. A source root is a directory on the
 /// file systems which is watched for changes. Typically it corresponds to a
 /// Rust crate. Source roots *might* be nested: in this case, a file belongs to
@@ -25,9 +30,6 @@ pub type ProcMacroPaths = FxHashMap<CrateId, Result<(Option<String>, AbsPathBuf)
 /// source root, and the analyzer does not know the root path of the source root at
 /// all. So, a file from one source root can't refer to a file in another source
 /// root by path.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct SourceRootId(pub u32);
-
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SourceRoot {
     /// Sysroot or crates.io library.
@@ -284,49 +286,37 @@ pub struct CrateData {
     /// For purposes of analysis, crates are anonymous (only names in
     /// `Dependency` matters), this name should only be used for UI.
     pub display_name: Option<CrateDisplayName>,
-    pub cfg_options: CfgOptions,
+    pub cfg_options: Arc<CfgOptions>,
     /// The cfg options that could be used by the crate
-    pub potential_cfg_options: Option<CfgOptions>,
+    pub potential_cfg_options: Option<Arc<CfgOptions>>,
     pub env: Env,
     pub dependencies: Vec<Dependency>,
     pub origin: CrateOrigin,
     pub is_proc_macro: bool,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum Edition {
-    Edition2015,
-    Edition2018,
-    Edition2021,
-    Edition2024,
-}
-
-impl Edition {
-    pub const CURRENT: Edition = Edition::Edition2021;
-    pub const DEFAULT: Edition = Edition::Edition2015;
-}
-
-#[derive(Default, Debug, Clone, PartialEq, Eq)]
+#[derive(Default, Clone, PartialEq, Eq)]
 pub struct Env {
     entries: FxHashMap<String, String>,
 }
 
-impl Env {
-    pub fn new_for_test_fixture() -> Self {
-        Env {
-            entries: FxHashMap::from_iter([(
-                String::from("__ra_is_test_fixture"),
-                String::from("__ra_is_test_fixture"),
-            )]),
-        }
-    }
-}
+impl fmt::Debug for Env {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        struct EnvDebug<'s>(Vec<(&'s String, &'s String)>);
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub enum DependencyKind {
-    Normal,
-    Dev,
-    Build,
+        impl fmt::Debug for EnvDebug<'_> {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                f.debug_map().entries(self.0.iter().copied()).finish()
+            }
+        }
+        f.debug_struct("Env")
+            .field("entries", &{
+                let mut entries: Vec<_> = self.entries.iter().collect();
+                entries.sort();
+                EnvDebug(entries)
+            })
+            .finish()
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -358,12 +348,13 @@ impl CrateGraph {
         edition: Edition,
         display_name: Option<CrateDisplayName>,
         version: Option<String>,
-        cfg_options: CfgOptions,
-        potential_cfg_options: Option<CfgOptions>,
-        env: Env,
+        cfg_options: Arc<CfgOptions>,
+        potential_cfg_options: Option<Arc<CfgOptions>>,
+        mut env: Env,
         is_proc_macro: bool,
         origin: CrateOrigin,
     ) -> CrateId {
+        env.entries.shrink_to_fit();
         let data = CrateData {
             root_file_id,
             edition,
@@ -530,13 +521,6 @@ impl CrateGraph {
         }
     }
 
-    // FIXME: this only finds one crate with the given root; we could have multiple
-    pub fn crate_id_for_crate_root(&self, file_id: FileId) -> Option<CrateId> {
-        let (crate_id, _) =
-            self.arena.iter().find(|(_crate_id, data)| data.root_file_id == file_id)?;
-        Some(crate_id)
-    }
-
     pub fn sort_deps(&mut self) {
         self.arena
             .iter_mut()
@@ -653,6 +637,10 @@ impl CrateGraph {
         }
         id_map
     }
+
+    pub fn shrink_to_fit(&mut self) {
+        self.arena.shrink_to_fit();
+    }
 }
 
 impl ops::Index<CrateId> for CrateGraph {
@@ -670,32 +658,6 @@ impl CrateData {
     }
 }
 
-impl FromStr for Edition {
-    type Err = ParseEditionError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let res = match s {
-            "2015" => Edition::Edition2015,
-            "2018" => Edition::Edition2018,
-            "2021" => Edition::Edition2021,
-            "2024" => Edition::Edition2024,
-            _ => return Err(ParseEditionError { invalid_input: s.to_owned() }),
-        };
-        Ok(res)
-    }
-}
-
-impl fmt::Display for Edition {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(match self {
-            Edition::Edition2015 => "2015",
-            Edition::Edition2018 => "2018",
-            Edition::Edition2021 => "2021",
-            Edition::Edition2024 => "2024",
-        })
-    }
-}
-
 impl Extend<(String, String)> for Env {
     fn extend<T: IntoIterator<Item = (String, String)>>(&mut self, iter: T) {
         self.entries.extend(iter);
@@ -709,31 +671,26 @@ impl FromIterator<(String, String)> for Env {
 }
 
 impl Env {
-    pub fn set(&mut self, env: &str, value: String) {
-        self.entries.insert(env.to_owned(), value);
+    pub fn set(&mut self, env: &str, value: impl Into<String>) {
+        self.entries.insert(env.to_owned(), value.into());
     }
 
     pub fn get(&self, env: &str) -> Option<String> {
         self.entries.get(env).cloned()
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = (&str, &str)> {
-        self.entries.iter().map(|(k, v)| (k.as_str(), v.as_str()))
+    pub fn extend_from_other(&mut self, other: &Env) {
+        self.entries.extend(other.entries.iter().map(|(x, y)| (x.to_owned(), y.to_owned())));
     }
 }
 
-#[derive(Debug)]
-pub struct ParseEditionError {
-    invalid_input: String,
-}
-
-impl fmt::Display for ParseEditionError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "invalid edition: {:?}", self.invalid_input)
+impl From<Env> for Vec<(String, String)> {
+    fn from(env: Env) -> Vec<(String, String)> {
+        let mut entries: Vec<_> = env.entries.into_iter().collect();
+        entries.sort();
+        entries
     }
 }
-
-impl std::error::Error for ParseEditionError {}
 
 #[derive(Debug)]
 pub struct CyclicDependenciesError {

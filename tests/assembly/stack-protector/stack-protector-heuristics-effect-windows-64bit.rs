@@ -37,23 +37,9 @@ pub fn array_char(f: fn(*const char)) {
     f(&b as *const _);
     f(&c as *const _);
 
-    // Any type of local array variable leads to stack protection with the
-    // "strong" heuristic. The 'basic' heuristic only adds stack protection to
-    // functions with local array variables of a byte-sized type, however. Since
-    // 'char' is 4 bytes in Rust, this function is not protected by the 'basic'
-    // heuristic
-    //
-    // (This test *also* takes the address of the local stack variables. We
-    // cannot know that this isn't what triggers the `strong` heuristic.
-    // However, the test strategy of passing the address of a stack array to an
-    // external function is sufficient to trigger the `basic` heuristic (see
-    // test `array_u8_large()`). Since the `basic` heuristic only checks for the
-    // presence of stack-local array variables, we can be confident that this
-    // test also captures this part of the `strong` heuristic specification.)
-
     // all: __security_check_cookie
     // strong: __security_check_cookie
-    // basic-NOT: __security_check_cookie
+    // basic: __security_check_cookie
     // none-NOT: __security_check_cookie
     // missing-NOT: __security_check_cookie
 }
@@ -239,8 +225,8 @@ pub fn local_large_var_moved(f: fn(Gigastruct)) {
     // Even though the local variable conceptually doesn't have its address
     // taken, it's so large that the "move" is implemented with a reference to a
     // stack-local variable in the ABI. Consequently, this function *is*
-    // protected by the `strong` heuristic. This is also the case for
-    // rvalue-references in C++, regardless of struct size:
+    // protected. This is also the case for rvalue-references in C++,
+    // regardless of struct size:
     // ```
     // cat <<EOF | clang++ -O2 -fstack-protector-strong -S -x c++ - -o - | grep stack_chk
     // #include <cstdint>
@@ -254,7 +240,7 @@ pub fn local_large_var_moved(f: fn(Gigastruct)) {
 
     // all: __security_check_cookie
     // strong: __security_check_cookie
-    // basic-NOT: __security_check_cookie
+    // basic: __security_check_cookie
     // none-NOT: __security_check_cookie
     // missing-NOT: __security_check_cookie
 }
@@ -267,9 +253,9 @@ pub fn local_large_var_cloned(f: fn(Gigastruct)) {
     // A new instance of `Gigastruct` is passed to `f()`, without any apparent
     // connection to this stack frame. Still, since instances of `Gigastruct`
     // are sufficiently large, it is allocated in the caller stack frame and
-    // passed as a pointer. As such, this function is *also* protected by the
-    // `strong` heuristic, just like `local_large_var_moved`. This is also the
-    // case for pass-by-value of sufficiently large structs in C++:
+    // passed as a pointer. As such, this function is *also* protected, just
+    // like `local_large_var_moved`. This is also the case for pass-by-value
+    // of sufficiently large structs in C++:
     // ```
     // cat <<EOF | clang++ -O2 -fstack-protector-strong -S -x c++ - -o - | grep stack_chk
     // #include <cstdint>
@@ -284,7 +270,7 @@ pub fn local_large_var_cloned(f: fn(Gigastruct)) {
 
     // all: __security_check_cookie
     // strong: __security_check_cookie
-    // basic-NOT: __security_check_cookie
+    // basic: __security_check_cookie
     // none-NOT: __security_check_cookie
     // missing-NOT: __security_check_cookie
 }

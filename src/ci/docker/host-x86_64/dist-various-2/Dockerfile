@@ -85,11 +85,9 @@ RUN /tmp/build-solaris-toolchain.sh sparcv9 sparcv9 solaris-sparc sun
 COPY host-x86_64/dist-various-2/build-x86_64-fortanix-unknown-sgx-toolchain.sh /tmp/
 RUN /tmp/build-x86_64-fortanix-unknown-sgx-toolchain.sh
 
-COPY host-x86_64/dist-various-2/build-wasi-toolchain.sh /tmp/
-RUN /tmp/build-wasi-toolchain.sh
-
-COPY host-x86_64/dist-various-2/build-wasi-threads-toolchain.sh /tmp/
-RUN /tmp/build-wasi-threads-toolchain.sh
+RUN curl -L https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-22/wasi-sdk-22.0-linux.tar.gz | \
+  tar -xz
+ENV WASI_SDK_PATH=/tmp/wasi-sdk-22.0
 
 COPY scripts/freebsd-toolchain.sh /tmp/
 RUN /tmp/freebsd-toolchain.sh i686
@@ -113,7 +111,7 @@ ENV TARGETS=$TARGETS,aarch64-unknown-fuchsia
 ENV TARGETS=$TARGETS,wasm32-unknown-unknown
 ENV TARGETS=$TARGETS,wasm32-wasi
 ENV TARGETS=$TARGETS,wasm32-wasip1
-ENV TARGETS=$TARGETS,wasm32-wasi-preview1-threads
+ENV TARGETS=$TARGETS,wasm32-wasip1-threads
 ENV TARGETS=$TARGETS,sparcv9-sun-solaris
 ENV TARGETS=$TARGETS,x86_64-pc-solaris
 ENV TARGETS=$TARGETS,x86_64-unknown-linux-gnux32
@@ -135,10 +133,7 @@ ENV TARGETS=$TARGETS,x86_64-unknown-uefi
 # Luckily one of the folders is /usr/local/include so symlink /usr/include/x86_64-linux-gnu/asm there
 RUN ln -s /usr/include/x86_64-linux-gnu/asm /usr/local/include/asm
 
-ENV RUST_CONFIGURE_ARGS --enable-extended --enable-lld --disable-docs \
-  --set target.wasm32-wasi.wasi-root=/wasm32-wasip1 \
-  --set target.wasm32-wasip1.wasi-root=/wasm32-wasip1 \
-  --set target.wasm32-wasi-preview1-threads.wasi-root=/wasm32-wasi-preview1-threads \
+ENV RUST_CONFIGURE_ARGS --enable-extended --enable-lld --enable-llvm-bitcode-linker --disable-docs \
   --musl-root-armv7=/musl-armv7
 
 ENV SCRIPT python3 ../x.py dist --host='' --target $TARGETS

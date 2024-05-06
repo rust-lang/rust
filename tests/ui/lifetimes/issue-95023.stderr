@@ -32,12 +32,6 @@ help: parenthesized trait syntax expands to `Fn<(&isize,), Output=()>`
 LL | impl Fn(&isize) for Error {
    |      ^^^^^^^^^^
 
-error[E0220]: associated type `B` not found for `Self`
-  --> $DIR/issue-95023.rs:8:44
-   |
-LL |     fn foo<const N: usize>(&self) -> Self::B<{ N }>;
-   |                                            ^ help: `Self` has the following associated type: `Output`
-
 error[E0277]: expected a `FnMut(&isize)` closure, found `Error`
   --> $DIR/issue-95023.rs:3:21
    |
@@ -55,6 +49,12 @@ LL | impl Fn(&isize) for Error {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^ missing `call` in implementation
    |
    = help: implement the missing item: `fn call(&self, _: (&isize,)) -> <Self as FnOnce<(&isize,)>>::Output { todo!() }`
+
+error[E0220]: associated type `B` not found for `Self`
+  --> $DIR/issue-95023.rs:8:44
+   |
+LL |     fn foo<const N: usize>(&self) -> Self::B<{ N }>;
+   |                                            ^ help: `Self` has the following associated type: `Output`
 
 error[E0220]: associated type `B` not found for `Self`
   --> $DIR/issue-95023.rs:8:44

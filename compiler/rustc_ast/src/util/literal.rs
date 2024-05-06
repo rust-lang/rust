@@ -8,6 +8,7 @@ use rustc_lexer::unescape::{
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
 use std::{ascii, fmt, str};
+use tracing::debug;
 
 // Escapes a string, represented as a symbol. Reuses the original symbol,
 // avoiding interning, if no changes are required.
@@ -276,8 +277,10 @@ fn filtered_float_lit(
         Some(suffix) => LitKind::Float(
             symbol,
             ast::LitFloatType::Suffixed(match suffix {
+                sym::f16 => ast::FloatTy::F16,
                 sym::f32 => ast::FloatTy::F32,
                 sym::f64 => ast::FloatTy::F64,
+                sym::f128 => ast::FloatTy::F128,
                 _ => return Err(LitError::InvalidFloatSuffix(suffix)),
             }),
         ),

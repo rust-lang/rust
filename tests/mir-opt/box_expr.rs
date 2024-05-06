@@ -1,4 +1,4 @@
-//@ unit-test: ElaborateDrops
+//@ test-mir-pass: ElaborateDrops
 //@ needs-unwind
 
 #![feature(rustc_attrs, stmt_expr_attributes)]

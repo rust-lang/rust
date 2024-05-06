@@ -1,5 +1,5 @@
 // skip-filecheck
-//@ unit-test: SimplifyLocals-before-const-prop
+//@ test-mir-pass: SimplifyLocals-before-const-prop
 
 
 #![feature(thread_local)]
@@ -63,8 +63,8 @@ fn t4() -> u32 {
     unsafe { X + 1 }
 }
 
-// EMIT_MIR simplify_locals.expose_addr.SimplifyLocals-before-const-prop.diff
-fn expose_addr(p: *const usize) {
+// EMIT_MIR simplify_locals.expose_provenance.SimplifyLocals-before-const-prop.diff
+fn expose_provenance(p: *const usize) {
     // Used pointer to address cast. Has a side effect of exposing the provenance.
     p as usize;
 }
@@ -78,5 +78,5 @@ fn main() {
     t2();
     t3();
     t4();
-    expose_addr(&0);
+    expose_provenance(&0);
 }

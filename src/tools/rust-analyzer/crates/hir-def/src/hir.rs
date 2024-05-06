@@ -101,7 +101,7 @@ pub enum Literal {
 /// Used in range patterns.
 pub enum LiteralOrConst {
     Literal(Literal),
-    Const(Path),
+    Const(PatId),
 }
 
 impl Literal {

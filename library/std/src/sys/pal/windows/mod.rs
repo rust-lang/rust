@@ -5,12 +5,15 @@ use crate::io::ErrorKind;
 use crate::mem::MaybeUninit;
 use crate::os::windows::ffi::{OsStrExt, OsStringExt};
 use crate::path::PathBuf;
+use crate::sys::pal::windows::api::wide_str;
 use crate::time::Duration;
 
 pub use self::rand::hashmap_random_keys;
 
 #[macro_use]
 pub mod compat;
+
+mod api;
 
 pub mod alloc;
 pub mod args;
@@ -30,7 +33,6 @@ pub mod stdio;
 pub mod thread;
 pub mod thread_local_dtor;
 pub mod thread_local_key;
-pub mod thread_parking;
 pub mod time;
 cfg_if::cfg_if! {
     if #[cfg(not(target_vendor = "uwp"))] {
@@ -40,8 +42,6 @@ cfg_if::cfg_if! {
         pub use self::stack_overflow_uwp as stack_overflow;
     }
 }
-
-mod api;
 
 /// Map a Result<T, WinError> to io::Result<T>.
 trait IoResult<T> {
@@ -60,7 +60,7 @@ pub unsafe fn init(_argc: isize, _argv: *const *const u8, _sigpipe: u8) {
 
     // Normally, `thread::spawn` will call `Thread::set_name` but since this thread already
     // exists, we have to call it ourselves.
-    thread::Thread::set_name(&c"main");
+    thread::Thread::set_name_wide(wide_str!("main"));
 }
 
 // SAFETY: must be called only once during runtime cleanup.
@@ -200,14 +200,21 @@ pub fn to_u16s<S: AsRef<OsStr>>(s: S) -> crate::io::Result<Vec<u16>> {
 // currently reside in the buffer. This function is an abstraction over these
 // functions by making them easier to call.
 //
-// The first callback, `f1`, is yielded a (pointer, len) pair which can be
+// The first callback, `f1`, is passed a (pointer, len) pair which can be
 // passed to a syscall. The `ptr` is valid for `len` items (u16 in this case).
-// The closure is expected to return what the syscall returns which will be
-// interpreted by this function to determine if the syscall needs to be invoked
-// again (with more buffer space).
+// The closure is expected to:
+// - On success, return the actual length of the written data *without* the null terminator.
+//   This can be 0. In this case the last_error must be left unchanged.
+// - On insufficient buffer space,
+//   - either return the required length *with* the null terminator,
+//   - or set the last-error to ERROR_INSUFFICIENT_BUFFER and return `len`.
+// - On other failure, return 0 and set last_error.
+//
+// This is how most but not all syscalls indicate the required buffer space.
+// Other syscalls may need translation to match this protocol.
 //
 // Once the syscall has completed (errors bail out early) the second closure is
-// yielded the data which has been read from the syscall. The return value
+// passed the data which has been read from the syscall. The return value
 // from this closure is then the return value of the function.
 pub fn fill_utf16_buf<F1, F2, T>(mut f1: F1, f2: F2) -> crate::io::Result<T>
 where
@@ -331,7 +338,7 @@ pub fn abort_internal() -> ! {
                 core::arch::asm!("int $$0x29", in("ecx") c::FAST_FAIL_FATAL_APP_EXIT, options(noreturn, nostack));
             } else if #[cfg(all(target_arch = "arm", target_feature = "thumb-mode"))] {
                 core::arch::asm!(".inst 0xDEFB", in("r0") c::FAST_FAIL_FATAL_APP_EXIT, options(noreturn, nostack));
-            } else if #[cfg(target_arch = "aarch64")] {
+            } else if #[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))] {
                 core::arch::asm!("brk 0xF003", in("x0") c::FAST_FAIL_FATAL_APP_EXIT, options(noreturn, nostack));
             } else {
                 core::intrinsics::abort();

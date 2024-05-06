@@ -1,6 +1,7 @@
 //@compile-flags: --test
 #![warn(clippy::dbg_macro)]
-//@no-rustfix
+#![allow(clippy::unnecessary_operation, clippy::no_effect)]
+
 fn foo(n: u32) -> u32 {
     if let Some(n) = dbg!(n.checked_sub(4)) { n } else { n }
 }
@@ -15,9 +16,7 @@ fn factorial(n: u32) -> u32 {
 
 fn main() {
     dbg!(42);
-    dbg!(dbg!(dbg!(42)));
     foo(3) + dbg!(factorial(4));
-    dbg!(1, 2, dbg!(3, 4));
     dbg!(1, 2, 3, 4, 5);
 }
 

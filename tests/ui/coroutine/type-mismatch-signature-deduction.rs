@@ -4,6 +4,7 @@ use std::ops::Coroutine;
 
 fn foo() -> impl Coroutine<Return = i32> {
     //~^ ERROR type mismatch
+    #[coroutine]
     || {
         if false {
             return Ok(6);

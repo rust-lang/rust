@@ -50,10 +50,7 @@ pub fn unsupported<T>() -> crate::io::Result<T> {
 }
 
 pub fn unsupported_err() -> crate::io::Error {
-    crate::io::const_io_error!(
-        crate::io::ErrorKind::Unsupported,
-        "operation not supported on this platform",
-    )
+    crate::io::Error::UNSUPPORTED_PLATFORM
 }
 
 #[inline]

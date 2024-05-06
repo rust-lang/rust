@@ -72,7 +72,7 @@ fn is_vec_pop_unwrap(cx: &LateContext<'_>, expr: &Expr<'_>, is_empty_recv: &Expr
 }
 
 fn check_local(cx: &LateContext<'_>, stmt: &Stmt<'_>, is_empty_recv: &Expr<'_>, loop_span: Span) {
-    if let StmtKind::Local(local) = stmt.kind
+    if let StmtKind::Let(local) = stmt.kind
         && let Some(init) = local.init
         && is_vec_pop_unwrap(cx, init, is_empty_recv)
     {

@@ -175,8 +175,7 @@ fn add_func_to_accumulator(
         edit.edit_file(file);
 
         let target = function_builder.target.clone();
-        let function_template = function_builder.render();
-        let func = function_template.to_ast(ctx.config.snippet_cap, edit);
+        let func = function_builder.render(ctx.config.snippet_cap, edit);
 
         if let Some(name) = adt_name {
             let name = make::ty_path(make::ext::ident_path(&format!("{}", name.display(ctx.db()))));
@@ -198,42 +197,11 @@ fn get_adt_source(
     adt: &hir::Adt,
     fn_name: &str,
 ) -> Option<(Option<ast::Impl>, FileId)> {
-    let range = adt.source(ctx.sema.db)?.syntax().original_file_range(ctx.sema.db);
+    let range = adt.source(ctx.sema.db)?.syntax().original_file_range_rooted(ctx.sema.db);
     let file = ctx.sema.parse(range.file_id);
     let adt_source =
         ctx.sema.find_node_at_offset_with_macros(file.syntax(), range.range.start())?;
     find_struct_impl(ctx, &adt_source, &[fn_name.to_owned()]).map(|impl_| (impl_, range.file_id))
-}
-
-struct FunctionTemplate {
-    fn_def: ast::Fn,
-    ret_type: Option<ast::RetType>,
-    should_focus_return_type: bool,
-    tail_expr: ast::Expr,
-}
-
-impl FunctionTemplate {
-    fn to_ast(&self, cap: Option<SnippetCap>, edit: &mut SourceChangeBuilder) -> ast::Fn {
-        let Self { fn_def, ret_type, should_focus_return_type, tail_expr } = self;
-
-        if let Some(cap) = cap {
-            if *should_focus_return_type {
-                // Focus the return type if there is one
-                match ret_type {
-                    Some(ret_type) => {
-                        edit.add_placeholder_snippet(cap, ret_type.clone());
-                    }
-                    None => {
-                        edit.add_placeholder_snippet(cap, tail_expr.clone());
-                    }
-                }
-            } else {
-                edit.add_placeholder_snippet(cap, tail_expr.clone());
-            }
-        }
-
-        fn_def.clone()
-    }
 }
 
 struct FunctionBuilder {
@@ -339,7 +307,7 @@ impl FunctionBuilder {
         })
     }
 
-    fn render(self) -> FunctionTemplate {
+    fn render(self, cap: Option<SnippetCap>, edit: &mut SourceChangeBuilder) -> ast::Fn {
         let placeholder_expr = make::ext::expr_todo();
         let fn_body = make::block_expr(vec![], Some(placeholder_expr));
         let visibility = match self.visibility {
@@ -361,17 +329,31 @@ impl FunctionBuilder {
         )
         .clone_for_update();
 
-        FunctionTemplate {
-            ret_type: fn_def.ret_type(),
-            // PANIC: we guarantee we always create a function body with a tail expr
-            tail_expr: fn_def
-                .body()
-                .expect("generated function should have a body")
-                .tail_expr()
-                .expect("function body should have a tail expression"),
-            should_focus_return_type: self.should_focus_return_type,
-            fn_def,
+        let ret_type = fn_def.ret_type();
+        // PANIC: we guarantee we always create a function body with a tail expr
+        let tail_expr = fn_def
+            .body()
+            .expect("generated function should have a body")
+            .tail_expr()
+            .expect("function body should have a tail expression");
+
+        if let Some(cap) = cap {
+            if self.should_focus_return_type {
+                // Focus the return type if there is one
+                match ret_type {
+                    Some(ret_type) => {
+                        edit.add_placeholder_snippet(cap, ret_type.clone());
+                    }
+                    None => {
+                        edit.add_placeholder_snippet(cap, tail_expr.clone());
+                    }
+                }
+            } else {
+                edit.add_placeholder_snippet(cap, tail_expr.clone());
+            }
         }
+
+        fn_def
     }
 }
 

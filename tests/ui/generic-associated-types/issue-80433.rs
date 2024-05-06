@@ -29,5 +29,5 @@ fn test_simpler<'a>(dst: &'a mut impl TestMut<Output = &'a mut f32>)
 
 fn main() {
     let mut t1: E<f32> = Default::default();
-    test_simpler(&mut t1); //~ ERROR does not live long enough
+    test_simpler(&mut t1);
 }

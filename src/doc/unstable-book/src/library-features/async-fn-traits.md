@@ -10,4 +10,4 @@ for creating custom closure-like types that return futures.
 [`AsyncFn*`]: ../../std/ops/trait.AsyncFn.html
 
 The main difference to the `Fn*` family of traits is that `AsyncFn` can return a future
-that borrows from itself (`FnOnce::Output` has no lifetime parameters, while `AsyncFn::CallFuture` does).
+that borrows from itself (`FnOnce::Output` has no lifetime parameters, while `AsyncFnMut::CallRefFuture` does).

@@ -161,11 +161,12 @@ impl fmt::Display for PanicInfo<'_> {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         formatter.write_str("panicked at ")?;
         self.location.fmt(formatter)?;
+        formatter.write_str(":")?;
         if let Some(message) = self.message {
-            formatter.write_str(":\n")?;
+            formatter.write_str("\n")?;
             formatter.write_fmt(*message)?;
         } else if let Some(payload) = self.payload.downcast_ref::<&'static str>() {
-            formatter.write_str(":\n")?;
+            formatter.write_str("\n")?;
             formatter.write_str(payload)?;
         }
         // NOTE: we cannot use downcast_ref::<String>() here

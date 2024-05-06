@@ -1,14 +1,15 @@
-use crate::const_eval::CompileTimeEvalContext;
+use crate::const_eval::{CompileTimeEvalContext, CompileTimeInterpreter, InterpretationResult};
 use crate::interpret::{MemPlaceMeta, MemoryKind};
-use rustc_middle::mir::interpret::{AllocId, Allocation, InterpResult, Pointer};
+use rustc_hir::def_id::LocalDefId;
+use rustc_middle::mir;
+use rustc_middle::mir::interpret::{Allocation, InterpResult, Pointer};
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{
     self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
 };
-use rustc_span::def_id::DefId;
 use std::ops::ControlFlow;
 
-use super::MPlaceTy;
+use super::{InterpCx, MPlaceTy};
 
 /// Checks whether a type contains generic parameters which must be instantiated.
 ///
@@ -80,22 +81,26 @@ where
     }
 }
 
-pub(crate) fn take_static_root_alloc<'mir, 'tcx: 'mir>(
-    ecx: &mut CompileTimeEvalContext<'mir, 'tcx>,
-    alloc_id: AllocId,
-) -> Allocation {
-    ecx.memory.alloc_map.swap_remove(&alloc_id).unwrap().1
+impl<'tcx> InterpretationResult<'tcx> for mir::interpret::ConstAllocation<'tcx> {
+    fn make_result<'mir>(
+        mplace: MPlaceTy<'tcx>,
+        ecx: &mut InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>,
+    ) -> Self {
+        let alloc_id = mplace.ptr().provenance.unwrap().alloc_id();
+        let alloc = ecx.memory.alloc_map.swap_remove(&alloc_id).unwrap().1;
+        ecx.tcx.mk_const_alloc(alloc)
+    }
 }
 
 pub(crate) fn create_static_alloc<'mir, 'tcx: 'mir>(
     ecx: &mut CompileTimeEvalContext<'mir, 'tcx>,
-    static_def_id: DefId,
+    static_def_id: LocalDefId,
     layout: TyAndLayout<'tcx>,
 ) -> InterpResult<'tcx, MPlaceTy<'tcx>> {
     let alloc = Allocation::try_uninit(layout.size, layout.align.abi)?;
-    let alloc_id = ecx.tcx.reserve_and_set_static_alloc(static_def_id);
-    assert_eq!(ecx.machine.static_root_alloc_id, None);
-    ecx.machine.static_root_alloc_id = Some(alloc_id);
+    let alloc_id = ecx.tcx.reserve_and_set_static_alloc(static_def_id.into());
+    assert_eq!(ecx.machine.static_root_ids, None);
+    ecx.machine.static_root_ids = Some((alloc_id, static_def_id));
     assert!(ecx.memory.alloc_map.insert(alloc_id, (MemoryKind::Stack, alloc)).is_none());
     Ok(ecx.ptr_with_meta_to_mplace(Pointer::from(alloc_id).into(), MemPlaceMeta::None, layout))
 }

@@ -1,10 +1,9 @@
 //@ ignore-lldb
-#![feature(collapse_debuginfo)]
 
-// Test that line numbers are not replaced with those of the outermost expansion site when the
-// `collapse_debuginfo` feature is active and the attribute is not provided.
+// Test that line numbers are not replaced with those of the outermost expansion site when
+// `#[collapse_debuginfo]` attribute us not used.
 
-//@ compile-flags:-g -Z collapse_macro_debuginfo=no
+//@ compile-flags:-g
 
 // === GDB TESTS ===================================================================================
 

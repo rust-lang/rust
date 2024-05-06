@@ -1,7 +1,8 @@
 warning: unused coroutine that must be used
-  --> $DIR/yield-in-initializer.rs:6:5
+  --> $DIR/yield-in-initializer.rs:6:18
    |
-LL | /     static || {
+LL |       #[coroutine] static || {
+   |  __________________^
 LL | |         loop {
 LL | |             // Test that `opt` is not live across the yield, even when borrowed in a loop
 LL | |             // See https://github.com/rust-lang/rust/issues/52792

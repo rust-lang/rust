@@ -42,7 +42,7 @@ pub(super) fn check<'tcx>(
                             cx,
                             EXPLICIT_COUNTER_LOOP,
                             span,
-                            &format!("the variable `{name}` is used as a loop counter"),
+                            format!("the variable `{name}` is used as a loop counter"),
                             "consider using",
                             format!(
                                 "for ({name}, {}) in {}.enumerate()",
@@ -62,7 +62,7 @@ pub(super) fn check<'tcx>(
                     cx,
                     EXPLICIT_COUNTER_LOOP,
                     span,
-                    &format!("the variable `{name}` is used as a loop counter"),
+                    format!("the variable `{name}` is used as a loop counter"),
                     |diag| {
                         diag.span_suggestion(
                             span,

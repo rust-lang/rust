@@ -6,6 +6,46 @@ use crate::iter::FusedIterator;
 use super::from_utf8_unchecked;
 use super::validations::utf8_char_width;
 
+impl [u8] {
+    /// Creates an iterator over the contiguous valid UTF-8 ranges of this
+    /// slice, and the non-UTF-8 fragments in between.
+    ///
+    /// # Examples
+    ///
+    /// This function formats arbitrary but mostly-UTF-8 bytes into Rust source
+    /// code in the form of a C-string literal (`c"..."`).
+    ///
+    /// ```
+    /// use std::fmt::Write as _;
+    ///
+    /// pub fn cstr_literal(bytes: &[u8]) -> String {
+    ///     let mut repr = String::new();
+    ///     repr.push_str("c\"");
+    ///     for chunk in bytes.utf8_chunks() {
+    ///         for ch in chunk.valid().chars() {
+    ///             // Escapes \0, \t, \r, \n, \\, \', \", and uses \u{...} for non-printable characters.
+    ///             write!(repr, "{}", ch.escape_debug()).unwrap();
+    ///         }
+    ///         for byte in chunk.invalid() {
+    ///             write!(repr, "\\x{:02X}", byte).unwrap();
+    ///         }
+    ///     }
+    ///     repr.push('"');
+    ///     repr
+    /// }
+    ///
+    /// fn main() {
+    ///     let lit = cstr_literal(b"\xferris the \xf0\x9f\xa6\x80\x07");
+    ///     let expected = stringify!(c"\xFErris the 🦀\u{7}");
+    ///     assert_eq!(lit, expected);
+    /// }
+    /// ```
+    #[stable(feature = "utf8_chunks", since = "1.79.0")]
+    pub fn utf8_chunks(&self) -> Utf8Chunks<'_> {
+        Utf8Chunks { source: self }
+    }
+}
+
 /// An item returned by the [`Utf8Chunks`] iterator.
 ///
 /// A `Utf8Chunk` stores a sequence of [`u8`] up to the first broken character
@@ -14,15 +54,11 @@ use super::validations::utf8_char_width;
 /// # Examples
 ///
 /// ```
-/// #![feature(utf8_chunks)]
-///
-/// use std::str::Utf8Chunks;
-///
 /// // An invalid UTF-8 string
 /// let bytes = b"foo\xF1\x80bar";
 ///
 /// // Decode the first `Utf8Chunk`
-/// let chunk = Utf8Chunks::new(bytes).next().unwrap();
+/// let chunk = bytes.utf8_chunks().next().unwrap();
 ///
 /// // The first three characters are valid UTF-8
 /// assert_eq!("foo", chunk.valid());
@@ -30,7 +66,7 @@ use super::validations::utf8_char_width;
 /// // The fourth character is broken
 /// assert_eq!(b"\xF1\x80", chunk.invalid());
 /// ```
-#[unstable(feature = "utf8_chunks", issue = "99543")]
+#[stable(feature = "utf8_chunks", since = "1.79.0")]
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Utf8Chunk<'a> {
     valid: &'a str,
@@ -43,7 +79,7 @@ impl<'a> Utf8Chunk<'a> {
     /// This substring can be empty at the start of the string or between
     /// broken UTF-8 characters.
     #[must_use]
-    #[unstable(feature = "utf8_chunks", issue = "99543")]
+    #[stable(feature = "utf8_chunks", since = "1.79.0")]
     pub fn valid(&self) -> &'a str {
         self.valid
     }
@@ -63,7 +99,7 @@ impl<'a> Utf8Chunk<'a> {
     /// [`valid`]: Self::valid
     /// [`U+FFFD REPLACEMENT CHARACTER`]: crate::char::REPLACEMENT_CHARACTER
     #[must_use]
-    #[unstable(feature = "utf8_chunks", issue = "99543")]
+    #[stable(feature = "utf8_chunks", since = "1.79.0")]
     pub fn invalid(&self) -> &'a [u8] {
         self.invalid
     }
@@ -78,7 +114,7 @@ impl fmt::Debug for Debug<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         f.write_char('"')?;
 
-        for chunk in Utf8Chunks::new(self.0) {
+        for chunk in self.0.utf8_chunks() {
             // Valid part.
             // Here we partially parse UTF-8 again which is suboptimal.
             {
@@ -123,12 +159,8 @@ impl fmt::Debug for Debug<'_> {
 /// [`String::from_utf8_lossy`] without allocating heap memory:
 ///
 /// ```
-/// #![feature(utf8_chunks)]
-///
-/// use std::str::Utf8Chunks;
-///
 /// fn from_utf8_lossy<F>(input: &[u8], mut push: F) where F: FnMut(&str) {
-///     for chunk in Utf8Chunks::new(input) {
+///     for chunk in input.utf8_chunks() {
 ///         push(chunk.valid());
 ///
 ///         if !chunk.invalid().is_empty() {
@@ -140,19 +172,13 @@ impl fmt::Debug for Debug<'_> {
 ///
 /// [`String::from_utf8_lossy`]: ../../std/string/struct.String.html#method.from_utf8_lossy
 #[must_use = "iterators are lazy and do nothing unless consumed"]
-#[unstable(feature = "utf8_chunks", issue = "99543")]
+#[stable(feature = "utf8_chunks", since = "1.79.0")]
 #[derive(Clone)]
 pub struct Utf8Chunks<'a> {
     source: &'a [u8],
 }
 
 impl<'a> Utf8Chunks<'a> {
-    /// Creates a new iterator to decode the bytes.
-    #[unstable(feature = "utf8_chunks", issue = "99543")]
-    pub fn new(bytes: &'a [u8]) -> Self {
-        Self { source: bytes }
-    }
-
     #[doc(hidden)]
     #[unstable(feature = "str_internals", issue = "none")]
     pub fn debug(&self) -> Debug<'_> {
@@ -160,7 +186,7 @@ impl<'a> Utf8Chunks<'a> {
     }
 }
 
-#[unstable(feature = "utf8_chunks", issue = "99543")]
+#[stable(feature = "utf8_chunks", since = "1.79.0")]
 impl<'a> Iterator for Utf8Chunks<'a> {
     type Item = Utf8Chunk<'a>;
 
@@ -259,10 +285,10 @@ impl<'a> Iterator for Utf8Chunks<'a> {
     }
 }
 
-#[unstable(feature = "utf8_chunks", issue = "99543")]
+#[stable(feature = "utf8_chunks", since = "1.79.0")]
 impl FusedIterator for Utf8Chunks<'_> {}
 
-#[unstable(feature = "utf8_chunks", issue = "99543")]
+#[stable(feature = "utf8_chunks", since = "1.79.0")]
 impl fmt::Debug for Utf8Chunks<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         f.debug_struct("Utf8Chunks").field("source", &self.debug()).finish()

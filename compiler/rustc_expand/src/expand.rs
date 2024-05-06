@@ -4,7 +4,6 @@ use crate::errors::{
     IncompleteParse, RecursionLimitReached, RemoveExprNotSupported, RemoveNodeNotSupported,
     UnsupportedKeyValue, WrongFragmentKind,
 };
-use crate::hygiene::SyntaxContext;
 use crate::mbe::diagnostics::annotate_err_with_kind;
 use crate::module::{mod_dir_path, parse_external_mod, DirOwnership, ParsedExternalMod};
 use crate::placeholders::{placeholder, PlaceholderExpander};
@@ -32,6 +31,7 @@ use rustc_session::lint::builtin::{UNUSED_ATTRIBUTES, UNUSED_DOC_COMMENTS};
 use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::parse::feature_err;
 use rustc_session::{Limit, Session};
+use rustc_span::hygiene::SyntaxContext;
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::{ErrorGuaranteed, FileName, LocalExpnId, Span};
 
@@ -87,7 +87,7 @@ macro_rules! ast_fragments {
         }
 
         impl AstFragment {
-            pub fn add_placeholders(&mut self, placeholders: &[NodeId]) {
+            fn add_placeholders(&mut self, placeholders: &[NodeId]) {
                 if placeholders.is_empty() {
                     return;
                 }
@@ -100,14 +100,14 @@ macro_rules! ast_fragments {
                 }
             }
 
-            pub fn make_opt_expr(self) -> Option<P<ast::Expr>> {
+            pub(crate) fn make_opt_expr(self) -> Option<P<ast::Expr>> {
                 match self {
                     AstFragment::OptExpr(expr) => expr,
                     _ => panic!("AstFragment::make_* called on the wrong kind of fragment"),
                 }
             }
 
-            pub fn make_method_receiver_expr(self) -> P<ast::Expr> {
+            pub(crate) fn make_method_receiver_expr(self) -> P<ast::Expr> {
                 match self {
                     AstFragment::MethodReceiverExpr(expr) => expr,
                     _ => panic!("AstFragment::make_* called on the wrong kind of fragment"),
@@ -125,7 +125,7 @@ macro_rules! ast_fragments {
                 T::fragment_to_output(self)
             }
 
-            pub fn mut_visit_with<F: MutVisitor>(&mut self, vis: &mut F) {
+            pub(crate) fn mut_visit_with<F: MutVisitor>(&mut self, vis: &mut F) {
                 match self {
                     AstFragment::OptExpr(opt_expr) => {
                         visit_clobber(opt_expr, |opt_expr| {
@@ -372,6 +372,14 @@ impl Invocation {
             InvocationKind::Derive { path, .. } => path.span,
         }
     }
+
+    fn span_mut(&mut self) -> &mut Span {
+        match &mut self.kind {
+            InvocationKind::Bang { span, .. } => span,
+            InvocationKind::Attr { attr, .. } => &mut attr.span,
+            InvocationKind::Derive { path, .. } => &mut path.span,
+        }
+    }
 }
 
 pub struct MacroExpander<'a, 'b> {
@@ -432,7 +440,8 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     break;
                 }
                 invocations = mem::take(&mut undetermined_invocations);
-                force = !mem::replace(&mut progress, false);
+                force = !progress;
+                progress = false;
                 if force && self.monotonic {
                     self.cx.dcx().span_delayed_bug(
                         invocations.last().unwrap().0.span(),
@@ -471,7 +480,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             self.cx.force_mode = force;
 
             let fragment_kind = invoc.fragment_kind;
-            let (expanded_fragment, new_invocations) = match self.expand_invoc(invoc, &ext.kind) {
+            match self.expand_invoc(invoc, &ext.kind) {
                 ExpandResult::Ready(fragment) => {
                     let mut derive_invocations = Vec::new();
                     let derive_placeholders = self
@@ -482,7 +491,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                             derive_invocations.reserve(derives.len());
                             derives
                                 .into_iter()
-                                .map(|(path, item, _exts, is_const)| {
+                                .map(|DeriveResolution { path, item, exts: _, is_const }| {
                                     // FIXME: Consider using the derive resolutions (`_exts`)
                                     // instead of enqueuing the derives to be resolved again later.
                                     let expn_id = LocalExpnId::fresh_empty();
@@ -503,12 +512,19 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         })
                         .unwrap_or_default();
 
-                    let (fragment, collected_invocations) =
+                    let (expanded_fragment, collected_invocations) =
                         self.collect_invocations(fragment, &derive_placeholders);
-                    // We choose to expand any derive invocations associated with this macro invocation
-                    // *before* any macro invocations collected from the output fragment
+                    // We choose to expand any derive invocations associated with this macro
+                    // invocation *before* any macro invocations collected from the output
+                    // fragment.
                     derive_invocations.extend(collected_invocations);
-                    (fragment, derive_invocations)
+
+                    progress = true;
+                    if expanded_fragments.len() < depth {
+                        expanded_fragments.push(Vec::new());
+                    }
+                    expanded_fragments[depth - 1].push((expn_id, expanded_fragment));
+                    invocations.extend(derive_invocations.into_iter().rev());
                 }
                 ExpandResult::Retry(invoc) => {
                     if force {
@@ -519,17 +535,9 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     } else {
                         // Cannot expand, will retry this invocation later.
                         undetermined_invocations.push((invoc, Some(ext)));
-                        continue;
                     }
                 }
-            };
-
-            progress = true;
-            if expanded_fragments.len() < depth {
-                expanded_fragments.push(Vec::new());
             }
-            expanded_fragments[depth - 1].push((expn_id, expanded_fragment));
-            invocations.extend(new_invocations.into_iter().rev());
         }
 
         self.cx.current_expansion = orig_expansion_data;
@@ -590,11 +598,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 for (invoc, _) in invocations.iter_mut() {
                     let expn_id = invoc.expansion_data.id;
                     let parent_def = self.cx.resolver.invocation_parent(expn_id);
-                    let span = match &mut invoc.kind {
-                        InvocationKind::Bang { span, .. } => span,
-                        InvocationKind::Attr { attr, .. } => &mut attr.span,
-                        InvocationKind::Derive { path, .. } => &mut path.span,
-                    };
+                    let span = invoc.span_mut();
                     *span = span.with_parent(Some(parent_def));
                 }
             }
@@ -659,7 +663,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 
         let (fragment_kind, span) = (invoc.fragment_kind, invoc.span());
         ExpandResult::Ready(match invoc.kind {
-            InvocationKind::Bang { mac, .. } => match ext {
+            InvocationKind::Bang { mac, span } => match ext {
                 SyntaxExtensionKind::Bang(expander) => {
                     match expander.expand(self.cx, span, mac.args.tokens.clone()) {
                         Ok(tok_result) => {
@@ -669,7 +673,16 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     }
                 }
                 SyntaxExtensionKind::LegacyBang(expander) => {
-                    let tok_result = expander.expand(self.cx, span, mac.args.tokens.clone());
+                    let tok_result = match expander.expand(self.cx, span, mac.args.tokens.clone()) {
+                        ExpandResult::Ready(tok_result) => tok_result,
+                        ExpandResult::Retry(_) => {
+                            // retry the original
+                            return ExpandResult::Retry(Invocation {
+                                kind: InvocationKind::Bang { mac, span },
+                                ..invoc
+                            });
+                        }
+                    };
                     let result = if let Some(result) = fragment_kind.make_from(tok_result) {
                         result
                     } else {
@@ -862,7 +875,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         let mut parser = self.cx.new_parser_from_tts(toks);
         match parse_ast_fragment(&mut parser, kind) {
             Ok(fragment) => {
-                ensure_complete_parse(&mut parser, path, kind.name(), span);
+                ensure_complete_parse(&parser, path, kind.name(), span);
                 fragment
             }
             Err(mut err) => {
@@ -948,8 +961,8 @@ pub fn parse_ast_fragment<'a>(
     })
 }
 
-pub fn ensure_complete_parse<'a>(
-    parser: &mut Parser<'a>,
+pub(crate) fn ensure_complete_parse<'a>(
+    parser: &Parser<'a>,
     macro_path: &ast::Path,
     kind_name: &str,
     span: Span,
@@ -1209,7 +1222,7 @@ impl InvocationCollectorNode for AstNodeWrapper<P<ast::AssocItem>, TraitItemTag>
         fragment.make_trait_items()
     }
     fn noop_flat_map<V: MutVisitor>(self, visitor: &mut V) -> Self::OutputTy {
-        noop_flat_map_assoc_item(self.wrapped, visitor)
+        noop_flat_map_item(self.wrapped, visitor)
     }
     fn is_mac_call(&self) -> bool {
         matches!(self.wrapped.kind, AssocItemKind::MacCall(..))
@@ -1234,7 +1247,7 @@ impl InvocationCollectorNode for AstNodeWrapper<P<ast::AssocItem>, ImplItemTag> 
         fragment.make_impl_items()
     }
     fn noop_flat_map<V: MutVisitor>(self, visitor: &mut V) -> Self::OutputTy {
-        noop_flat_map_assoc_item(self.wrapped, visitor)
+        noop_flat_map_item(self.wrapped, visitor)
     }
     fn is_mac_call(&self) -> bool {
         matches!(self.wrapped.kind, AssocItemKind::MacCall(..))
@@ -1257,7 +1270,7 @@ impl InvocationCollectorNode for P<ast::ForeignItem> {
         fragment.make_foreign_items()
     }
     fn noop_flat_map<V: MutVisitor>(self, visitor: &mut V) -> Self::OutputTy {
-        noop_flat_map_foreign_item(self, visitor)
+        noop_flat_map_item(self, visitor)
     }
     fn is_mac_call(&self) -> bool {
         matches!(self.kind, ForeignItemKind::MacCall(..))
@@ -1380,7 +1393,7 @@ impl InvocationCollectorNode for ast::Stmt {
             StmtKind::Item(item) => matches!(item.kind, ItemKind::MacCall(..)),
             StmtKind::Semi(expr) => matches!(expr.kind, ExprKind::MacCall(..)),
             StmtKind::Expr(..) => unreachable!(),
-            StmtKind::Local(..) | StmtKind::Empty => false,
+            StmtKind::Let(..) | StmtKind::Empty => false,
         }
     }
     fn take_mac_call(self) -> (P<ast::MacCall>, Self::AttrsTy, AddSemicolon) {

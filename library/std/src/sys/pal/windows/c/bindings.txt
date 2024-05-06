@@ -2476,6 +2476,7 @@ Windows.Win32.System.Pipes.PIPE_WAIT
 Windows.Win32.System.SystemInformation.GetSystemDirectoryW
 Windows.Win32.System.SystemInformation.GetSystemInfo
 Windows.Win32.System.SystemInformation.GetSystemTimeAsFileTime
+Windows.Win32.System.SystemInformation.GetSystemTimePreciseAsFileTime
 Windows.Win32.System.SystemInformation.GetWindowsDirectoryW
 Windows.Win32.System.SystemInformation.PROCESSOR_ARCHITECTURE
 Windows.Win32.System.SystemInformation.SYSTEM_INFO

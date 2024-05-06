@@ -1,7 +1,7 @@
 //@ run-fail
 //@ check-stdout
 //@ compile-flags: --test
-//@ ignore-emscripten
+//@ needs-unwind
 
 #[test]
 #[should_panic(expected = "foobar")]

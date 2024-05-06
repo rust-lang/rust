@@ -1,5 +1,5 @@
-// skip-filecheck
-//@ unit-test: EarlyOtherwiseBranch
+//@ test-mir-pass: EarlyOtherwiseBranch
+//@ compile-flags: -Zmir-enable-passes=+UnreachableEnumBranching
 
 // FIXME: This test was broken by the derefer change.
 
@@ -19,6 +19,13 @@ pub extern "C" fn try_sum(
     x: &ViewportPercentageLength,
     other: &ViewportPercentageLength,
 ) -> Result<ViewportPercentageLength, ()> {
+    // CHECK-LABEL: fn try_sum(
+    // CHECK: bb0: {
+    // CHECK: [[LOCAL1:_.*]] = discriminant({{.*}});
+    // CHECK-NOT: Ne
+    // CHECK-NOT: discriminant
+    // CHECK: switchInt(move [[LOCAL1]]) -> [
+    // CHECK-NEXT: }
     use self::ViewportPercentageLength::*;
     Ok(match (x, other) {
         (&Vw(one), &Vw(other)) => Vw(one + other),

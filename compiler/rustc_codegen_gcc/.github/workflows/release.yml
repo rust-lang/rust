@@ -26,63 +26,36 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
+    # `rustup show` installs from rust-toolchain.toml
+    - name: Setup rust toolchain
+      run: rustup show
+
+    - name: Setup rust cache
+      uses: Swatinem/rust-cache@v2
+
     - name: Install packages
       run: sudo apt-get install ninja-build ripgrep
 
     - name: Download artifact
-      uses: dawidd6/action-download-artifact@v2
-      with:
-          workflow: main.yml
-          name: gcc-13
-          path: gcc-13
-          repo: antoyo/gcc
-          branch: "master"
-          event: push
-          search_artifacts: true # Because, instead, the action only check the last job ran and that won't work since we want multiple artifacts.
+      run: curl -LO https://github.com/antoyo/gcc/releases/latest/download/gcc-13.deb
 
     - name: Setup path to libgccjit
       run: |
-          sudo dpkg --force-overwrite -i gcc-13/gcc-13.deb
-          echo /usr/lib/ > gcc_path
+          sudo dpkg --force-overwrite -i gcc-13.deb
+          echo 'gcc-path = "/usr/lib/"' > config.toml
 
     - name: Set env
       run: |
-        echo "LIBRARY_PATH=$(cat gcc_path)" >> $GITHUB_ENV
-        echo "LD_LIBRARY_PATH=$(cat gcc_path)" >> $GITHUB_ENV
         echo "workspace="$GITHUB_WORKSPACE >> $GITHUB_ENV
-
-    - name: Cache cargo installed crates
-      uses: actions/cache@v3
-      with:
-        path: ~/.cargo/bin
-        key: cargo-installed-crates2-ubuntu-latest
-
-    - name: Cache cargo registry
-      uses: actions/cache@v3
-      with:
-        path: ~/.cargo/registry
-        key: ${{ runner.os }}-cargo-registry2-${{ hashFiles('**/Cargo.lock') }}
-
-    - name: Cache cargo index
-      uses: actions/cache@v3
-      with:
-        path: ~/.cargo/git
-        key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
-
-    - name: Cache cargo target dir
-      uses: actions/cache@v3
-      with:
-        path: target
-        key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('rust-toolchain') }}
+        echo "LIBRARY_PATH=/usr/lib" >> $GITHUB_ENV
+        echo "LD_LIBRARY_PATH=/usr/lib" >> $GITHUB_ENV
 
     - name: Build
       run: |
         ./y.sh prepare --only-libcore
-        # TODO: remove --features master when it is back to the default.
-        EMBED_LTO_BITCODE=1 ./y.sh build --release --release-sysroot --features master
-        # TODO: remove --features master when it is back to the default.
-        cargo test --features master
-        ./clean_all.sh
+        EMBED_LTO_BITCODE=1 ./y.sh build --release --release-sysroot
+        cargo test
+        ./y.sh clean all
 
     - name: Prepare dependencies
       run: |
@@ -92,17 +65,9 @@ jobs:
         # FIXME(antoyo): we cannot enable LTO for stdarch tests currently because of some failing LTO tests using proc-macros.
         echo -n 'lto = "fat"' >> build_sysroot/Cargo.toml
 
-    # Compile is a separate step, as the actions-rs/cargo action supports error annotations
-    - name: Compile
-      uses: actions-rs/cargo@v1.0.3
-      with:
-        command: build
-        args: --release
-
     - name: Add more failing tests because of undefined symbol errors (FIXME)
-      run: cat failing-lto-tests.txt >> failing-ui-tests.txt
+      run: cat tests/failing-lto-tests.txt >> tests/failing-ui-tests.txt
 
     - name: Run tests
       run: |
-        # TODO: remove --features master when it is back to the default.
-        EMBED_LTO_BITCODE=1 ./test.sh --release --clean --release-sysroot --build-sysroot ${{ matrix.commands }} --features master
+        EMBED_LTO_BITCODE=1 ./y.sh test --release --clean --release-sysroot --build-sysroot ${{ matrix.commands }}

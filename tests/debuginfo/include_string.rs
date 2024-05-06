@@ -1,4 +1,6 @@
 //@ min-lldb-version: 310
+//@ ignore-gdb-version: 15.0 - 99.0
+// ^ test temporarily disabled as it fails under gdb 15
 
 //@ compile-flags:-g
 // gdb-command:run
@@ -15,14 +17,14 @@
 
 // lldb-command:run
 
-// lldb-command:print string1.length
-// lldbg-check:[...]$0 = 48
+// lldb-command:v string1.length
+// lldbg-check:[...] 48
 // lldbr-check:(usize) length = 48
-// lldb-command:print string2.length
-// lldbg-check:[...]$1 = 49
+// lldb-command:v string2.length
+// lldbg-check:[...] 49
 // lldbr-check:(usize) length = 49
-// lldb-command:print string3.length
-// lldbg-check:[...]$2 = 50
+// lldb-command:v string3.length
+// lldbg-check:[...] 50
 // lldbr-check:(usize) length = 50
 
 // lldb-command:continue

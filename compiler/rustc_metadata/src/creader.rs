@@ -13,10 +13,10 @@ use rustc_data_structures::sync::{self, FreezeReadGuard, FreezeWriteGuard};
 use rustc_errors::DiagCtxt;
 use rustc_expand::base::SyntaxExtension;
 use rustc_fs_util::try_canonicalize;
-use rustc_hir::def_id::{CrateNum, LocalDefId, StableCrateId, StableCrateIdMap, LOCAL_CRATE};
+use rustc_hir::def_id::{CrateNum, LocalDefId, StableCrateId, LOCAL_CRATE};
 use rustc_hir::definitions::Definitions;
 use rustc_index::IndexVec;
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{TyCtxt, TyCtxtFeed};
 use rustc_session::config::{self, CrateType, ExternLocation};
 use rustc_session::cstore::{CrateDepKind, CrateSource, ExternCrate, ExternCrateSource};
 use rustc_session::lint;
@@ -31,8 +31,9 @@ use proc_macro::bridge::client::ProcMacro;
 use std::error::Error;
 use std::ops::Fn;
 use std::path::Path;
+use std::str::FromStr;
 use std::time::Duration;
-use std::{cmp, iter};
+use std::{cmp, env, iter};
 
 /// The backend's way to give the crate store access to the metadata in a library.
 /// Note that it returns the raw metadata bytes stored in the library file, whether
@@ -60,9 +61,6 @@ pub struct CStore {
     has_global_allocator: bool,
     /// This crate has a `#[alloc_error_handler]` item.
     has_alloc_error_handler: bool,
-
-    /// The interned [StableCrateId]s.
-    pub(crate) stable_crate_ids: StableCrateIdMap,
 
     /// Unused externs of the crate
     unused_externs: Vec<Symbol>,
@@ -164,25 +162,27 @@ impl CStore {
         })
     }
 
-    fn intern_stable_crate_id(&mut self, root: &CrateRoot) -> Result<CrateNum, CrateError> {
-        assert_eq!(self.metas.len(), self.stable_crate_ids.len());
-        let num = CrateNum::new(self.stable_crate_ids.len());
-        if let Some(&existing) = self.stable_crate_ids.get(&root.stable_crate_id()) {
+    fn intern_stable_crate_id<'tcx>(
+        &mut self,
+        root: &CrateRoot,
+        tcx: TyCtxt<'tcx>,
+    ) -> Result<TyCtxtFeed<'tcx, CrateNum>, CrateError> {
+        assert_eq!(self.metas.len(), tcx.untracked().stable_crate_ids.read().len());
+        let num = tcx.create_crate_num(root.stable_crate_id()).map_err(|existing| {
             // Check for (potential) conflicts with the local crate
             if existing == LOCAL_CRATE {
-                Err(CrateError::SymbolConflictsCurrent(root.name()))
+                CrateError::SymbolConflictsCurrent(root.name())
             } else if let Some(crate_name1) = self.metas[existing].as_ref().map(|data| data.name())
             {
                 let crate_name0 = root.name();
-                Err(CrateError::StableCrateIdCollision(crate_name0, crate_name1))
+                CrateError::StableCrateIdCollision(crate_name0, crate_name1)
             } else {
-                Err(CrateError::NotFound(root.name()))
+                CrateError::NotFound(root.name())
             }
-        } else {
-            self.metas.push(None);
-            self.stable_crate_ids.insert(root.stable_crate_id(), num);
-            Ok(num)
-        }
+        })?;
+
+        self.metas.push(None);
+        Ok(num)
     }
 
     pub fn has_crate_data(&self, cnum: CrateNum) -> bool {
@@ -288,12 +288,7 @@ impl CStore {
         }
     }
 
-    pub fn new(
-        metadata_loader: Box<MetadataLoaderDyn>,
-        local_stable_crate_id: StableCrateId,
-    ) -> CStore {
-        let mut stable_crate_ids = StableCrateIdMap::default();
-        stable_crate_ids.insert(local_stable_crate_id, LOCAL_CRATE);
+    pub fn new(metadata_loader: Box<MetadataLoaderDyn>) -> CStore {
         CStore {
             metadata_loader,
             // We add an empty entry for LOCAL_CRATE (which maps to zero) in
@@ -306,7 +301,6 @@ impl CStore {
             alloc_error_handler_kind: None,
             has_global_allocator: false,
             has_alloc_error_handler: false,
-            stable_crate_ids,
             unused_externs: Vec::new(),
         }
     }
@@ -388,6 +382,15 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         None
     }
 
+    // The `dependency` type is determined by the command line arguments(`--extern`) and
+    // `private_dep`. However, sometimes the directly dependent crate is not specified by
+    // `--extern`, in this case, `private-dep` is none during loading. This is equivalent to the
+    // scenario where the command parameter is set to `public-dependency`
+    fn is_private_dep(&self, name: &str, private_dep: Option<bool>) -> bool {
+        self.sess.opts.externs.get(name).map_or(private_dep.unwrap_or(false), |e| e.is_private_dep)
+            && private_dep.unwrap_or(true)
+    }
+
     fn register_crate(
         &mut self,
         host_lib: Option<Library>,
@@ -397,22 +400,17 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         name: Symbol,
         private_dep: Option<bool>,
     ) -> Result<CrateNum, CrateError> {
-        let _prof_timer = self.sess.prof.generic_activity("metadata_register_crate");
+        let _prof_timer =
+            self.sess.prof.generic_activity_with_arg("metadata_register_crate", name.as_str());
 
         let Library { source, metadata } = lib;
         let crate_root = metadata.get_root();
         let host_hash = host_lib.as_ref().map(|lib| lib.metadata.get_root().hash());
-
-        let private_dep = self
-            .sess
-            .opts
-            .externs
-            .get(name.as_str())
-            .map_or(private_dep.unwrap_or(false), |e| e.is_private_dep)
-            && private_dep.unwrap_or(true);
+        let private_dep = self.is_private_dep(name.as_str(), private_dep);
 
         // Claim this crate number and cache it
-        let cnum = self.cstore.intern_stable_crate_id(&crate_root)?;
+        let feed = self.cstore.intern_stable_crate_id(&crate_root, self.tcx)?;
+        let cnum = feed.key();
 
         info!(
             "register crate `{}` (cnum = {}. private_dep = {})",
@@ -599,14 +597,17 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
 
         match result {
             (LoadResult::Previous(cnum), None) => {
+                // When `private_dep` is none, it indicates the directly dependent crate. If it is
+                // not specified by `--extern` on command line parameters, it may be
+                // `private-dependency` when `register_crate` is called for the first time. Then it must be updated to
+                // `public-dependency` here.
+                let private_dep = self.is_private_dep(name.as_str(), private_dep);
                 let data = self.cstore.get_crate_data_mut(cnum);
                 if data.is_proc_macro_crate() {
                     dep_kind = CrateDepKind::MacrosOnly;
                 }
                 data.set_dep_kind(cmp::max(data.dep_kind(), dep_kind));
-                if let Some(private_dep) = private_dep {
-                    data.update_and_private_dep(private_dep);
-                }
+                data.update_and_private_dep(private_dep);
                 Ok(cnum)
             }
             (LoadResult::Loaded(library), host_library) => {
@@ -985,6 +986,44 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         }
     }
 
+    fn report_future_incompatible_deps(&self, krate: &ast::Crate) {
+        let name = self.tcx.crate_name(LOCAL_CRATE);
+
+        if name.as_str() == "wasm_bindgen" {
+            let major = env::var("CARGO_PKG_VERSION_MAJOR")
+                .ok()
+                .and_then(|major| u64::from_str(&major).ok());
+            let minor = env::var("CARGO_PKG_VERSION_MINOR")
+                .ok()
+                .and_then(|minor| u64::from_str(&minor).ok());
+            let patch = env::var("CARGO_PKG_VERSION_PATCH")
+                .ok()
+                .and_then(|patch| u64::from_str(&patch).ok());
+
+            match (major, minor, patch) {
+                // v1 or bigger is valid.
+                (Some(1..), _, _) => return,
+                // v0.3 or bigger is valid.
+                (Some(0), Some(3..), _) => return,
+                // v0.2.88 or bigger is valid.
+                (Some(0), Some(2), Some(88..)) => return,
+                // Not using Cargo.
+                (None, None, None) => return,
+                _ => (),
+            }
+
+            // Make a point span rather than covering the whole file
+            let span = krate.spans.inner_span.shrink_to_lo();
+
+            self.sess.psess.buffer_lint(
+                lint::builtin::WASM_C_ABI,
+                span,
+                ast::CRATE_NODE_ID,
+                crate::fluent_generated::metadata_wasm_c_abi,
+            );
+        }
+    }
+
     pub fn postprocess(&mut self, krate: &ast::Crate) {
         self.inject_forced_externs();
         self.inject_profiler_runtime(krate);
@@ -992,6 +1031,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         self.inject_panic_runtime(krate);
 
         self.report_unused_deps(krate);
+        self.report_future_incompatible_deps(krate);
 
         info!("{:?}", CrateDump(self.cstore));
     }

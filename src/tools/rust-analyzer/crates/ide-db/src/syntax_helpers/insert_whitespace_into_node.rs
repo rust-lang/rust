@@ -20,7 +20,7 @@ pub fn insert_ws_into(syn: SyntaxNode) -> SyntaxNode {
     let after = Position::after;
 
     let do_indent = |pos: fn(_) -> Position, token: &SyntaxToken, indent| {
-        (pos(token.clone()), make::tokens::whitespace(&" ".repeat(2 * indent)))
+        (pos(token.clone()), make::tokens::whitespace(&" ".repeat(4 * indent)))
     };
     let do_ws = |pos: fn(_) -> Position, token: &SyntaxToken| {
         (pos(token.clone()), make::tokens::single_space())
@@ -41,7 +41,7 @@ pub fn insert_ws_into(syn: SyntaxNode) -> SyntaxNode {
                 if indent > 0 {
                     mods.push((
                         Position::after(node.clone()),
-                        make::tokens::whitespace(&" ".repeat(2 * indent)),
+                        make::tokens::whitespace(&" ".repeat(4 * indent)),
                     ));
                 }
                 if node.parent().is_some() {
@@ -91,10 +91,7 @@ pub fn insert_ws_into(syn: SyntaxNode) -> SyntaxNode {
             LIFETIME_IDENT if is_next(is_text, true) => {
                 mods.push(do_ws(after, tok));
             }
-            MUT_KW if is_next(|it| it == SELF_KW, false) => {
-                mods.push(do_ws(after, tok));
-            }
-            AS_KW | DYN_KW | IMPL_KW | CONST_KW => {
+            AS_KW | DYN_KW | IMPL_KW | CONST_KW | MUT_KW => {
                 mods.push(do_ws(after, tok));
             }
             T![;] if is_next(|it| it != R_CURLY, true) => {

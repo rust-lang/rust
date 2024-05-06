@@ -1,3 +1,14 @@
+#[cfg(any(
+    target_os = "android",
+    target_os = "linux",
+    target_os = "dragonfly",
+    target_os = "freebsd",
+    target_os = "netbsd",
+    target_os = "openbsd",
+    target_os = "nto",
+    target_vendor = "apple",
+))]
+use super::{peer_cred, UCred};
 #[cfg(any(doc, target_os = "android", target_os = "linux"))]
 use super::{recv_vectored_with_ancillary_from, send_vectored_with_ancillary_to, SocketAncillary};
 use super::{sockaddr_un, SocketAddr};
@@ -5,39 +16,12 @@ use crate::fmt;
 use crate::io::{self, IoSlice, IoSliceMut};
 use crate::net::Shutdown;
 use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
-#[cfg(any(
-    target_os = "android",
-    target_os = "linux",
-    target_os = "dragonfly",
-    target_os = "freebsd",
-    target_os = "ios",
-    target_os = "tvos",
-    target_os = "macos",
-    target_os = "watchos",
-    target_os = "netbsd",
-    target_os = "openbsd"
-))]
-use crate::os::unix::ucred;
 use crate::path::Path;
+use crate::sealed::Sealed;
 use crate::sys::cvt;
 use crate::sys::net::Socket;
 use crate::sys_common::{AsInner, FromInner};
 use crate::time::Duration;
-
-#[unstable(feature = "peer_credentials_unix_socket", issue = "42839", reason = "unstable")]
-#[cfg(any(
-    target_os = "android",
-    target_os = "linux",
-    target_os = "dragonfly",
-    target_os = "freebsd",
-    target_os = "ios",
-    target_os = "tvos",
-    target_os = "macos",
-    target_os = "watchos",
-    target_os = "netbsd",
-    target_os = "openbsd"
-))]
-pub use ucred::UCred;
 
 /// A Unix stream socket.
 ///
@@ -58,6 +42,10 @@ pub use ucred::UCred;
 /// ```
 #[stable(feature = "unix_socket", since = "1.10.0")]
 pub struct UnixStream(pub(super) Socket);
+
+/// Allows extension traits within `std`.
+#[unstable(feature = "sealed", issue = "none")]
+impl Sealed for UnixStream {}
 
 #[stable(feature = "unix_socket", since = "1.10.0")]
 impl fmt::Debug for UnixStream {
@@ -239,15 +227,13 @@ impl UnixStream {
         target_os = "linux",
         target_os = "dragonfly",
         target_os = "freebsd",
-        target_os = "ios",
-        target_os = "tvos",
-        target_os = "macos",
-        target_os = "watchos",
         target_os = "netbsd",
-        target_os = "openbsd"
+        target_os = "openbsd",
+        target_os = "nto",
+        target_vendor = "apple",
     ))]
     pub fn peer_cred(&self) -> io::Result<UCred> {
-        ucred::peer_cred(self)
+        peer_cred(self)
     }
 
     /// Sets the read timeout for the socket.
@@ -392,69 +378,6 @@ impl UnixStream {
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
         self.0.set_nonblocking(nonblocking)
-    }
-
-    /// Moves the socket to pass unix credentials as control message in [`SocketAncillary`].
-    ///
-    /// Set the socket option `SO_PASSCRED`.
-    ///
-    /// # Examples
-    ///
-    #[cfg_attr(
-        any(
-            target_os = "android",
-            target_os = "linux",
-            target_os = "netbsd",
-            target_os = "freebsd"
-        ),
-        doc = "```no_run"
-    )]
-    #[cfg_attr(
-        not(any(
-            target_os = "android",
-            target_os = "linux",
-            target_os = "netbsd",
-            target_os = "freebsd"
-        )),
-        doc = "```ignore"
-    )]
-    /// #![feature(unix_socket_ancillary_data)]
-    /// use std::os::unix::net::UnixStream;
-    ///
-    /// fn main() -> std::io::Result<()> {
-    ///     let socket = UnixStream::connect("/tmp/sock")?;
-    ///     socket.set_passcred(true).expect("Couldn't set passcred");
-    ///     Ok(())
-    /// }
-    /// ```
-    #[cfg(any(
-        doc,
-        target_os = "android",
-        target_os = "linux",
-        target_os = "netbsd",
-        target_os = "freebsd"
-    ))]
-    #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
-    pub fn set_passcred(&self, passcred: bool) -> io::Result<()> {
-        self.0.set_passcred(passcred)
-    }
-
-    /// Get the current value of the socket for passing unix credentials in [`SocketAncillary`].
-    /// This value can be change by [`set_passcred`].
-    ///
-    /// Get the socket option `SO_PASSCRED`.
-    ///
-    /// [`set_passcred`]: UnixStream::set_passcred
-    #[cfg(any(
-        doc,
-        target_os = "android",
-        target_os = "linux",
-        target_os = "netbsd",
-        target_os = "freebsd"
-    ))]
-    #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
-    pub fn passcred(&self) -> io::Result<bool> {
-        self.0.passcred()
     }
 
     /// Set the id of the socket for network filtering purpose
@@ -651,6 +574,10 @@ impl io::Read for UnixStream {
         io::Read::read(&mut &*self, buf)
     }
 
+    fn read_buf(&mut self, buf: io::BorrowedCursor<'_>) -> io::Result<()> {
+        io::Read::read_buf(&mut &*self, buf)
+    }
+
     fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         io::Read::read_vectored(&mut &*self, bufs)
     }
@@ -665,6 +592,10 @@ impl io::Read for UnixStream {
 impl<'a> io::Read for &'a UnixStream {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         self.0.read(buf)
+    }
+
+    fn read_buf(&mut self, buf: io::BorrowedCursor<'_>) -> io::Result<()> {
+        self.0.read_buf(buf)
     }
 
     fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
@@ -764,5 +695,12 @@ impl From<OwnedFd> for UnixStream {
     #[inline]
     fn from(owned: OwnedFd) -> Self {
         unsafe { Self::from_raw_fd(owned.into_raw_fd()) }
+    }
+}
+
+impl AsInner<Socket> for UnixStream {
+    #[inline]
+    fn as_inner(&self) -> &Socket {
+        &self.0
     }
 }

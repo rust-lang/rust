@@ -5,7 +5,12 @@ pub fn target() -> Target {
     let arch = Arch::Armv7k;
     Target {
         llvm_target: "armv7k-apple-watchos".into(),
-        description: None,
+        metadata: crate::spec::TargetMetadata {
+            description: None,
+            tier: None,
+            host_tools: None,
+            std: None,
+        },
         pointer_width: 32,
         data_layout: "e-m:o-p:32:32-Fi8-i64:64-a:0:32-n32-S128".into(),
         arch: arch.target_arch(),

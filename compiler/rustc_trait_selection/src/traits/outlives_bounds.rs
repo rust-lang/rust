@@ -3,6 +3,7 @@ use crate::traits::{ObligationCause, ObligationCtxt};
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_infer::infer::resolve::OpportunisticRegionResolver;
 use rustc_infer::infer::InferOk;
+use rustc_macros::extension;
 use rustc_middle::infer::canonical::{OriginalQueryValues, QueryRegionConstraints};
 use rustc_middle::ty::{self, ParamEnv, Ty, TypeFolder, TypeVisitableExt};
 use rustc_span::def_id::LocalDefId;

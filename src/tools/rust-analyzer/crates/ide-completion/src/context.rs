@@ -17,7 +17,7 @@ use ide_db::{
 };
 use syntax::{
     ast::{self, AttrKind, NameOrNameRef},
-    AstNode, SmolStr,
+    AstNode, Edition, SmolStr,
     SyntaxKind::{self, *},
     SyntaxToken, TextRange, TextSize, T,
 };
@@ -540,7 +540,7 @@ impl CompletionContext<'_> {
     /// Whether the given trait is an operator trait or not.
     pub(crate) fn is_ops_trait(&self, trait_: hir::Trait) -> bool {
         match trait_.attrs(self.db).lang() {
-            Some(lang) => OP_TRAIT_LANG_NAMES.contains(&lang.as_str()),
+            Some(lang) => OP_TRAIT_LANG_NAMES.contains(&lang),
             None => false,
         }
     }
@@ -667,7 +667,8 @@ impl<'a> CompletionContext<'a> {
         let file_with_fake_ident = {
             let parse = db.parse(file_id);
             let edit = Indel::insert(offset, COMPLETION_MARKER.to_owned());
-            parse.reparse(&edit).tree()
+            // FIXME: Edition
+            parse.reparse(&edit, Edition::CURRENT).tree()
         };
 
         // always pick the token to the immediate left of the cursor, as that is what we are actually

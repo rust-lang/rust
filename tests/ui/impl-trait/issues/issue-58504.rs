@@ -3,7 +3,7 @@
 use std::ops::Coroutine;
 
 fn mk_gen() -> impl Coroutine<Return=!, Yield=()> {
-    || { loop { yield; } }
+    #[coroutine] || { loop { yield; } }
 }
 
 fn main() {

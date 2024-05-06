@@ -1,5 +1,7 @@
 //@ only-x86_64
 
+#![feature(asm_unwind, asm_goto)]
+
 use std::arch::{asm, global_asm};
 
 fn main() {
@@ -14,6 +16,8 @@ fn main() {
         //~^ ERROR asm with the `pure` option must have at least one output
         asm!("{}", out(reg) foo, options(noreturn));
         //~^ ERROR asm outputs are not allowed with the `noreturn` option
+        asm!("{}", label {}, options(may_unwind));
+        //~^ ERROR asm labels are not allowed with the `may_unwind` option
     }
 
     unsafe {

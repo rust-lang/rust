@@ -40,17 +40,18 @@ error: expected one of `:`, `@`, or `|`, found keyword `Self`
 LL |     fn baz(&mur Self @ _) {}
    |                 ^^^^ expected one of `:`, `@`, or `|`
 
-error: the `Self` constructor can only be used with tuple or unit structs
+error[E0533]: expected unit struct, found self constructor `Self`
   --> $DIR/issue-70549-resolve-after-recovered-self-ctor.rs:4:17
    |
 LL |     fn foo(&mur Self) {}
-   |                 ^^^^ help: use curly brackets: `Self { /* fields */ }`
+   |                 ^^^^ not a unit struct
 
-error: the `Self` constructor can only be used with tuple or unit structs
+error[E0533]: expected unit struct, found self constructor `Self`
   --> $DIR/issue-70549-resolve-after-recovered-self-ctor.rs:8:25
    |
 LL |     fn bar(&'static mur Self) {}
-   |                         ^^^^ help: use curly brackets: `Self { /* fields */ }`
+   |                         ^^^^ not a unit struct
 
 error: aborting due to 8 previous errors
 
+For more information about this error, try `rustc --explain E0533`.

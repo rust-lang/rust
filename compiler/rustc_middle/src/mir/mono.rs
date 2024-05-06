@@ -1,7 +1,9 @@
 use crate::dep_graph::{DepNode, WorkProduct, WorkProductId};
 use crate::ty::{GenericArgs, Instance, InstanceDef, SymbolName, TyCtxt};
 use rustc_attr::InlineAttr;
-use rustc_data_structures::base_n;
+use rustc_data_structures::base_n::BaseNString;
+use rustc_data_structures::base_n::ToBaseN;
+use rustc_data_structures::base_n::CASE_INSENSITIVE;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::fx::FxIndexMap;
@@ -9,6 +11,7 @@ use rustc_data_structures::stable_hasher::{Hash128, HashStable, StableHasher};
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_hir::ItemId;
 use rustc_index::Idx;
+use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_query_system::ich::StableHashingContext;
 use rustc_session::config::OptLevel;
 use rustc_span::symbol::Symbol;
@@ -65,7 +68,9 @@ impl<'tcx> MonoItem<'tcx> {
                 match instance.def {
                     // "Normal" functions size estimate: the number of
                     // statements, plus one for the terminator.
-                    InstanceDef::Item(..) | InstanceDef::DropGlue(..) => {
+                    InstanceDef::Item(..)
+                    | InstanceDef::DropGlue(..)
+                    | InstanceDef::AsyncDropGlueCtorShim(..) => {
                         let mir = tcx.instance_mir(instance.def);
                         mir.basic_blocks.iter().map(|bb| bb.statements.len() + 1).sum()
                     }
@@ -334,14 +339,11 @@ impl<'tcx> CodegenUnit<'tcx> {
         self.is_code_coverage_dead_code_cgu = true;
     }
 
-    pub fn mangle_name(human_readable_name: &str) -> String {
-        // We generate a 80 bit hash from the name. This should be enough to
-        // avoid collisions and is still reasonably short for filenames.
+    pub fn mangle_name(human_readable_name: &str) -> BaseNString {
         let mut hasher = StableHasher::new();
         human_readable_name.hash(&mut hasher);
         let hash: Hash128 = hasher.finish();
-        let hash = hash.as_u128() & ((1u128 << 80) - 1);
-        base_n::encode(hash, base_n::CASE_INSENSITIVE)
+        hash.as_u128().to_base_fixed_len(CASE_INSENSITIVE)
     }
 
     pub fn compute_size_estimate(&mut self) {
@@ -406,7 +408,8 @@ impl<'tcx> CodegenUnit<'tcx> {
                             | InstanceDef::DropGlue(..)
                             | InstanceDef::CloneShim(..)
                             | InstanceDef::ThreadLocalShim(..)
-                            | InstanceDef::FnPtrAddrShim(..) => None,
+                            | InstanceDef::FnPtrAddrShim(..)
+                            | InstanceDef::AsyncDropGlueCtorShim(..) => None,
                         }
                     }
                     MonoItem::Static(def_id) => def_id.as_local().map(Idx::index),

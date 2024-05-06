@@ -7,6 +7,7 @@ trait Deserializable {
 impl<'a, T: Deserializable> Deserializable for &'a str {
     //~^ ERROR type parameter `T` is not constrained
     fn deserialize_token<D: Deserializer<'a>>(_x: D, _y: &'a str) -> &'a str {
+        //~^ ERROR mismatched types
     }
 }
 

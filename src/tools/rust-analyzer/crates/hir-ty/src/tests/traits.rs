@@ -1232,6 +1232,87 @@ fn test(x: impl Trait<u64>, y: &impl Trait<u64>) {
 }
 
 #[test]
+fn argument_impl_trait_with_projection() {
+    check_infer(
+        r#"
+trait X {
+    type Item;
+}
+
+impl<T> X for [T; 2] {
+    type Item = T;
+}
+
+trait Y {}
+
+impl<T> Y for T {}
+
+enum R<T, U> {
+    A(T),
+    B(U),
+}
+
+fn foo<T>(x: impl X<Item = R<impl Y, T>>) -> T { loop {} }
+
+fn bar() {
+    let a = foo([R::A(()), R::B(7)]);
+}
+"#,
+        expect![[r#"
+            153..154 'x': impl X<Item = R<impl Y + ?Sized, T>> + ?Sized
+            190..201 '{ loop {} }': T
+            192..199 'loop {}': !
+            197..199 '{}': ()
+            212..253 '{     ...)]); }': ()
+            222..223 'a': i32
+            226..229 'foo': fn foo<i32>([R<(), i32>; 2]) -> i32
+            226..250 'foo([R...B(7)])': i32
+            230..249 '[R::A(...:B(7)]': [R<(), i32>; 2]
+            231..235 'R::A': extern "rust-call" A<(), i32>(()) -> R<(), i32>
+            231..239 'R::A(())': R<(), i32>
+            236..238 '()': ()
+            241..245 'R::B': extern "rust-call" B<(), i32>(i32) -> R<(), i32>
+            241..248 'R::B(7)': R<(), i32>
+            246..247 '7': i32
+        "#]],
+    );
+}
+
+#[test]
+fn argument_assoc_impl_trait() {
+    check_infer(
+        r#"
+trait Outer {
+    type Item;
+}
+
+trait Inner { }
+
+fn foo<T: Outer<Item = impl Inner>>(baz: T) {
+}
+
+impl Outer for usize {
+    type Item = usize;
+}
+
+impl Inner for usize {}
+
+fn main() {
+    foo(2);
+}
+"#,
+        expect![[r#"
+            85..88 'baz': T
+            93..96 '{ }': ()
+            182..197 '{     foo(2); }': ()
+            188..191 'foo': fn foo<usize>(usize)
+            188..194 'foo(2)': ()
+            192..193 '2': usize
+        "#]],
+    );
+}
+
+#[test]
 fn simple_return_pos_impl_trait() {
     cov_mark::check!(lower_rpit);
     check_infer(
@@ -1521,7 +1602,7 @@ fn weird_bounds() {
         r#"
 //- minicore: sized
 trait Trait {}
-fn test(
+fn test<'lifetime>(
     a: impl Trait + 'lifetime,
     b: impl 'lifetime,
     c: impl (Trait),
@@ -1531,13 +1612,13 @@ fn test(
 ) {}
 "#,
         expect![[r#"
-            28..29 'a': impl Trait
-            59..60 'b': impl Sized
-            82..83 'c': impl Trait
-            103..104 'd': impl Sized
-            128..129 'e': impl ?Sized
-            148..149 'f': impl Trait + ?Sized
-            173..175 '{}': ()
+            39..40 'a': impl Trait + 'lifetime
+            70..71 'b': impl 'lifetime
+            93..94 'c': impl Trait
+            114..115 'd': impl 'lifetime
+            139..140 'e': impl ?Sized
+            159..160 'f': impl Trait + ?Sized
+            184..186 '{}': ()
         "#]],
     );
 }
@@ -4606,5 +4687,80 @@ fn f<T: Send, U>() {
   //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^{unknown}
 }
 "#,
+    );
+}
+
+#[test]
+fn associated_type_impl_trait() {
+    check_types(
+        r#"
+trait Foo {}
+struct S1;
+impl Foo for S1 {}
+
+trait Bar {
+    type Item;
+    fn bar(&self) -> Self::Item;
+}
+struct S2;
+impl Bar for S2 {
+    type Item = impl Foo;
+    fn bar(&self) -> Self::Item {
+        S1
+    }
+}
+
+fn test() {
+    let x = S2.bar();
+      //^ impl Foo + ?Sized
+}
+        "#,
+    );
+}
+
+#[test]
+fn associated_type_impl_traits_complex() {
+    check_types(
+        r#"
+struct Unary<T>(T);
+struct Binary<T, U>(T, U);
+
+trait Foo {}
+struct S1;
+impl Foo for S1 {}
+
+trait Bar {
+    type Item;
+    fn bar(&self) -> Unary<Self::Item>;
+}
+struct S2;
+impl Bar for S2 {
+    type Item = Unary<impl Foo>;
+    fn bar(&self) -> Unary<<Self as Bar>::Item> {
+        Unary(Unary(S1))
+    }
+}
+
+trait Baz {
+    type Target1;
+    type Target2;
+    fn baz(&self) -> Binary<Self::Target1, Self::Target2>;
+}
+struct S3;
+impl Baz for S3 {
+    type Target1 = impl Foo;
+    type Target2 = Unary<impl Bar>;
+    fn baz(&self) -> Binary<Self::Target1, Self::Target2> {
+        Binary(S1, Unary(S2))
+    }
+}
+
+fn test() {
+    let x = S3.baz();
+      //^ Binary<impl Foo + ?Sized, Unary<impl Bar + ?Sized>>
+    let y = x.1.0.bar();
+      //^ Unary<Bar::Item<impl Bar + ?Sized>>
+}
+        "#,
     );
 }

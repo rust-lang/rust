@@ -32,11 +32,7 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Immut<'a>, K, V, marker::LeafOrInternal> 
                 result += &format!("\n{}{:?}", indent, leaf.keys());
             }
             navigate::Position::Internal(_) => {}
-            navigate::Position::InternalKV(kv) => {
-                let depth = self.height() - kv.into_node().height();
-                let indent = "  ".repeat(depth);
-                result += &format!("\n{}{:?}", indent, kv.into_kv().0);
-            }
+            navigate::Position::InternalKV => {}
         });
         result
     }

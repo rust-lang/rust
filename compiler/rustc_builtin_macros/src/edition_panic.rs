@@ -16,11 +16,11 @@ use rustc_span::Span;
 ///
 /// `$crate` will refer to either the `std` or `core` crate depending on which
 /// one we're expanding from.
-pub fn expand_panic<'cx>(
+pub(crate) fn expand_panic<'cx>(
     cx: &'cx mut ExtCtxt<'_>,
     sp: Span,
     tts: TokenStream,
-) -> Box<dyn MacResult + 'cx> {
+) -> MacroExpanderResult<'cx> {
     let mac = if use_panic_2021(sp) { sym::panic_2021 } else { sym::panic_2015 };
     expand(mac, cx, sp, tts)
 }
@@ -29,24 +29,24 @@ pub fn expand_panic<'cx>(
 /// - `$crate::panic::unreachable_2015!(...)` or
 /// - `$crate::panic::unreachable_2021!(...)`
 /// depending on the edition.
-pub fn expand_unreachable<'cx>(
+pub(crate) fn expand_unreachable<'cx>(
     cx: &'cx mut ExtCtxt<'_>,
     sp: Span,
     tts: TokenStream,
-) -> Box<dyn MacResult + 'cx> {
+) -> MacroExpanderResult<'cx> {
     let mac = if use_panic_2021(sp) { sym::unreachable_2021 } else { sym::unreachable_2015 };
     expand(mac, cx, sp, tts)
 }
 
 fn expand<'cx>(
     mac: rustc_span::Symbol,
-    cx: &'cx mut ExtCtxt<'_>,
+    cx: &'cx ExtCtxt<'_>,
     sp: Span,
     tts: TokenStream,
-) -> Box<dyn MacResult + 'cx> {
+) -> MacroExpanderResult<'cx> {
     let sp = cx.with_call_site_ctxt(sp);
 
-    MacEager::expr(
+    ExpandResult::Ready(MacEager::expr(
         cx.expr(
             sp,
             ExprKind::MacCall(P(MacCall {
@@ -66,10 +66,10 @@ fn expand<'cx>(
                 }),
             })),
         ),
-    )
+    ))
 }
 
-pub fn use_panic_2021(mut span: Span) -> bool {
+pub(crate) fn use_panic_2021(mut span: Span) -> bool {
     // To determine the edition, we check the first span up the expansion
     // stack that does not have #[allow_internal_unstable(edition_panic)].
     // (To avoid using the edition of e.g. the assert!() or debug_assert!() definition.)

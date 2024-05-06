@@ -24,6 +24,9 @@ smallvec = "1.7"
 aes = { version = "0.8.3", features = ["hazmat"] }
 measureme = "11"
 ctrlc = "3.2.5"
+chrono = { version = "0.4.38", default-features = false }
+chrono-tz = "0.9"
+directories = "5"
 
 # Copied from `compiler/rustc/Cargo.toml`.
 # But only for some targets, it fails for others. Rustc configures this in its CI, but we can't
@@ -44,7 +47,7 @@ colored = "2"
 ui_test = "0.21.1"
 rustc_version = "0.4"
 regex = "1.5.5"
-lazy_static = "1.4.0"
+tempfile = "3"
 
 [package.metadata.rust-analyzer]
 # This crate uses #[feature(rustc_private)].
@@ -52,12 +55,13 @@ lazy_static = "1.4.0"
 rustc_private = true
 
 [[test]]
-name = "compiletest"
+name = "ui"
 harness = false
 
 [features]
 default = ["stack-cache"]
 stack-cache = []
+stack-cache-consistency-check = ["stack-cache"]
 
 # Be aware that this file is inside a workspace when used via the
 # submodule in the rustc repo. That means there are many cargo features

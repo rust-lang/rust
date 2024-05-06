@@ -1,5 +1,5 @@
 error[E0277]: Foo
-  --> $DIR/multiple_notes.rs:14:15
+  --> $DIR/multiple_notes.rs:12:15
    |
 LL |     takes_foo(());
    |     --------- ^^ Bar
@@ -10,18 +10,18 @@ LL |     takes_foo(());
    = note: Baz
    = note: Boom
 help: this trait has no implementations, consider adding one
-  --> $DIR/multiple_notes.rs:4:1
+  --> $DIR/multiple_notes.rs:2:1
    |
 LL | trait Foo {}
    | ^^^^^^^^^
 note: required by a bound in `takes_foo`
-  --> $DIR/multiple_notes.rs:10:22
+  --> $DIR/multiple_notes.rs:8:22
    |
 LL | fn takes_foo(_: impl Foo) {}
    |                      ^^^ required by this bound in `takes_foo`
 
 error[E0277]: Bar
-  --> $DIR/multiple_notes.rs:16:15
+  --> $DIR/multiple_notes.rs:14:15
    |
 LL |     takes_bar(());
    |     --------- ^^ Foo
@@ -32,12 +32,12 @@ LL |     takes_bar(());
    = note: Baz
    = note: Baz2
 help: this trait has no implementations, consider adding one
-  --> $DIR/multiple_notes.rs:8:1
+  --> $DIR/multiple_notes.rs:6:1
    |
 LL | trait Bar {}
    | ^^^^^^^^^
 note: required by a bound in `takes_bar`
-  --> $DIR/multiple_notes.rs:11:22
+  --> $DIR/multiple_notes.rs:9:22
    |
 LL | fn takes_bar(_: impl Bar) {}
    |                      ^^^ required by this bound in `takes_bar`

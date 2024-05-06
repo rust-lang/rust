@@ -12,6 +12,7 @@ trait Trait {
 #[rustc_variance]
 struct Foo<T: Trait> { //~ ERROR [o]
     field: [u8; <T as Trait>::Const]
+    //~^ ERROR: unconstrained generic constant
 }
 
 fn main() { }

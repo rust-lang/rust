@@ -20,6 +20,8 @@ use std::fmt::{self, Debug};
 use super::print::PrettyPrinter;
 use super::{GenericArg, GenericArgKind, Region};
 
+use super::Pattern;
+
 impl fmt::Debug for ty::TraitDef {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         ty::tls::with(|tcx| {
@@ -207,6 +209,22 @@ impl<'tcx> DebugWithInfcx<TyCtxt<'tcx>> for AliasTy<'tcx> {
             .field("args", &this.map(|data| data.args))
             .field("def_id", &this.data.def_id)
             .finish()
+    }
+}
+
+impl<'tcx> DebugWithInfcx<TyCtxt<'tcx>> for Pattern<'tcx> {
+    fn fmt<Infcx: InferCtxtLike<Interner = TyCtxt<'tcx>>>(
+        this: WithInfcx<'_, Infcx, &Self>,
+        f: &mut core::fmt::Formatter<'_>,
+    ) -> core::fmt::Result {
+        match &**this.data {
+            ty::PatternKind::Range { start, end, include_end } => f
+                .debug_struct("Pattern::Range")
+                .field("start", start)
+                .field("end", end)
+                .field("include_end", include_end)
+                .finish(),
+        }
     }
 }
 
@@ -402,11 +420,14 @@ TrivialTypeTraversalImpls! {
     ::rustc_span::symbol::Symbol,
     ::rustc_hir::def::Res,
     ::rustc_hir::def_id::LocalDefId,
+    ::rustc_hir::ByRef,
     ::rustc_hir::HirId,
     ::rustc_hir::MatchSource,
     ::rustc_target::asm::InlineAsmRegOrRegClass,
+    crate::mir::coverage::BlockMarkerId,
     crate::mir::coverage::CounterId,
     crate::mir::coverage::ExpressionId,
+    crate::mir::coverage::ConditionId,
     crate::mir::Local,
     crate::mir::Promoted,
     crate::traits::Reveal,
@@ -447,6 +468,7 @@ TrivialTypeTraversalAndLiftImpls! {
     crate::ty::ClosureKind,
     crate::ty::ParamConst,
     crate::ty::ParamTy,
+    crate::ty::instance::ReifyReason,
     interpret::AllocId,
     interpret::CtfeProvenance,
     interpret::Scalar,
@@ -538,6 +560,22 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for &'tcx ty::List<ty::Const<'tcx>> {
     }
 }
 
+impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for Pattern<'tcx> {
+    fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
+        self,
+        folder: &mut F,
+    ) -> Result<Self, F::Error> {
+        let pat = (*self).clone().try_fold_with(folder)?;
+        Ok(if pat == *self { self } else { folder.interner().mk_pat(pat) })
+    }
+}
+
+impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for Pattern<'tcx> {
+    fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> V::Result {
+        (**self).visit_with(visitor)
+    }
+}
+
 impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for Ty<'tcx> {
     fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
         self,
@@ -559,7 +597,7 @@ impl<'tcx> TypeSuperFoldable<TyCtxt<'tcx>> for Ty<'tcx> {
         folder: &mut F,
     ) -> Result<Self, F::Error> {
         let kind = match *self.kind() {
-            ty::RawPtr(tm) => ty::RawPtr(tm.try_fold_with(folder)?),
+            ty::RawPtr(ty, mutbl) => ty::RawPtr(ty.try_fold_with(folder)?, mutbl),
             ty::Array(typ, sz) => ty::Array(typ.try_fold_with(folder)?, sz.try_fold_with(folder)?),
             ty::Slice(typ) => ty::Slice(typ.try_fold_with(folder)?),
             ty::Adt(tid, args) => ty::Adt(tid, args.try_fold_with(folder)?),
@@ -583,6 +621,7 @@ impl<'tcx> TypeSuperFoldable<TyCtxt<'tcx>> for Ty<'tcx> {
                 ty::CoroutineClosure(did, args.try_fold_with(folder)?)
             }
             ty::Alias(kind, data) => ty::Alias(kind, data.try_fold_with(folder)?),
+            ty::Pat(ty, pat) => ty::Pat(ty.try_fold_with(folder)?, pat.try_fold_with(folder)?),
 
             ty::Bool
             | ty::Char
@@ -606,7 +645,7 @@ impl<'tcx> TypeSuperFoldable<TyCtxt<'tcx>> for Ty<'tcx> {
 impl<'tcx> TypeSuperVisitable<TyCtxt<'tcx>> for Ty<'tcx> {
     fn super_visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> V::Result {
         match self.kind() {
-            ty::RawPtr(ref tm) => tm.visit_with(visitor),
+            ty::RawPtr(ty, _mutbl) => ty.visit_with(visitor),
             ty::Array(typ, sz) => {
                 try_visit!(typ.visit_with(visitor));
                 sz.visit_with(visitor)
@@ -629,6 +668,11 @@ impl<'tcx> TypeSuperVisitable<TyCtxt<'tcx>> for Ty<'tcx> {
             ty::Closure(_did, ref args) => args.visit_with(visitor),
             ty::CoroutineClosure(_did, ref args) => args.visit_with(visitor),
             ty::Alias(_, ref data) => data.visit_with(visitor),
+
+            ty::Pat(ty, pat) => {
+                try_visit!(ty.visit_with(visitor));
+                pat.visit_with(visitor)
+            }
 
             ty::Bool
             | ty::Char
@@ -709,7 +753,19 @@ impl<'tcx> TypeSuperVisitable<TyCtxt<'tcx>> for ty::Predicate<'tcx> {
     }
 }
 
-impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for &'tcx ty::List<ty::Clause<'tcx>> {
+impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for ty::Clauses<'tcx> {
+    fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> V::Result {
+        visitor.visit_clauses(self)
+    }
+}
+
+impl<'tcx> TypeSuperVisitable<TyCtxt<'tcx>> for ty::Clauses<'tcx> {
+    fn super_visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> V::Result {
+        self.as_slice().visit_with(visitor)
+    }
+}
+
+impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ty::Clauses<'tcx> {
     fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
         self,
         folder: &mut F,

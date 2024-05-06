@@ -48,11 +48,8 @@ impl<T: ?Sized> *const T {
             }
         }
 
-        #[cfg_attr(not(bootstrap), allow(unused_unsafe))] // on bootstrap bump, remove unsafe block
-        // SAFETY: The two versions are equivalent at runtime.
-        unsafe {
-            const_eval_select((self as *const u8,), const_impl, runtime_impl)
-        }
+        #[allow(unused_unsafe)]
+        const_eval_select((self as *const u8,), const_impl, runtime_impl)
     }
 
     /// Casts to a pointer of another type.
@@ -139,7 +136,7 @@ impl<T: ?Sized> *const T {
     #[unstable(feature = "ptr_to_from_bits", issue = "91126")]
     #[deprecated(
         since = "1.67.0",
-        note = "replaced by the `expose_addr` method, or update your code \
+        note = "replaced by the `expose_provenance` method, or update your code \
             to follow the strict provenance rules using its APIs"
     )]
     #[inline(always)]
@@ -168,7 +165,7 @@ impl<T: ?Sized> *const T {
     #[unstable(feature = "ptr_to_from_bits", issue = "91126")]
     #[deprecated(
         since = "1.67.0",
-        note = "replaced by the `ptr::from_exposed_addr` function, or update \
+        note = "replaced by the `ptr::with_exposed_provenance` function, or update \
             your code to follow the strict provenance rules using its APIs"
     )]
     #[allow(fuzzy_provenance_casts)] // this is an unstable and semi-deprecated cast function
@@ -190,7 +187,7 @@ impl<T: ?Sized> *const T {
     ///
     /// If using those APIs is not possible because there is no way to preserve a pointer with the
     /// required provenance, then Strict Provenance might not be for you. Use pointer-integer casts
-    /// or [`expose_addr`][pointer::expose_addr] and [`from_exposed_addr`][from_exposed_addr]
+    /// or [`expose_provenance`][pointer::expose_provenance] and [`with_exposed_provenance`][with_exposed_provenance]
     /// instead. However, note that this makes your code less portable and less amenable to tools
     /// that check for compliance with the Rust memory model.
     ///
@@ -213,35 +210,35 @@ impl<T: ?Sized> *const T {
         unsafe { mem::transmute(self.cast::<()>()) }
     }
 
-    /// Gets the "address" portion of the pointer, and 'exposes' the "provenance" part for future
-    /// use in [`from_exposed_addr`][].
+    /// Exposes the "provenance" part of the pointer for future use in
+    /// [`with_exposed_provenance`][] and returns the "address" portion.
     ///
     /// This is equivalent to `self as usize`, which semantically discards *provenance* and
     /// *address-space* information. Furthermore, this (like the `as` cast) has the implicit
     /// side-effect of marking the provenance as 'exposed', so on platforms that support it you can
-    /// later call [`from_exposed_addr`][] to reconstitute the original pointer including its
+    /// later call [`with_exposed_provenance`][] to reconstitute the original pointer including its
     /// provenance. (Reconstructing address space information, if required, is your responsibility.)
     ///
     /// Using this method means that code is *not* following [Strict
     /// Provenance][super#strict-provenance] rules. Supporting
-    /// [`from_exposed_addr`][] complicates specification and reasoning and may not be supported by
+    /// [`with_exposed_provenance`][] complicates specification and reasoning and may not be supported by
     /// tools that help you to stay conformant with the Rust memory model, so it is recommended to
     /// use [`addr`][pointer::addr] wherever possible.
     ///
     /// On most platforms this will produce a value with the same bytes as the original pointer,
     /// because all the bytes are dedicated to describing the address. Platforms which need to store
     /// additional information in the pointer may not support this operation, since the 'expose'
-    /// side-effect which is required for [`from_exposed_addr`][] to work is typically not
+    /// side-effect which is required for [`with_exposed_provenance`][] to work is typically not
     /// available.
     ///
     /// It is unclear whether this method can be given a satisfying unambiguous specification. This
     /// API and its claimed semantics are part of [Exposed Provenance][super#exposed-provenance].
     ///
-    /// [`from_exposed_addr`]: from_exposed_addr
+    /// [`with_exposed_provenance`]: with_exposed_provenance
     #[must_use]
     #[inline(always)]
     #[unstable(feature = "exposed_provenance", issue = "95228")]
-    pub fn expose_addr(self) -> usize {
+    pub fn expose_provenance(self) -> usize {
         // FIXME(strict_provenance_magic): I am magic and should be a compiler intrinsic.
         self.cast::<()>() as usize
     }
@@ -359,6 +356,54 @@ impl<T: ?Sized> *const T {
         // SAFETY: the caller must guarantee that `self` is valid
         // for a reference if it isn't null.
         if self.is_null() { None } else { unsafe { Some(&*self) } }
+    }
+
+    /// Returns a shared reference to the value behind the pointer.
+    /// If the pointer may be null or the value may be uninitialized, [`as_uninit_ref`] must be used instead.
+    /// If the pointer may be null, but the value is known to have been initialized, [`as_ref`] must be used instead.
+    ///
+    /// [`as_ref`]: #method.as_ref
+    /// [`as_uninit_ref`]: #method.as_uninit_ref
+    ///
+    /// # Safety
+    ///
+    /// When calling this method, you have to ensure that all of the following is true:
+    ///
+    /// * The pointer must be properly aligned.
+    ///
+    /// * It must be "dereferenceable" in the sense defined in [the module documentation].
+    ///
+    /// * The pointer must point to an initialized instance of `T`.
+    ///
+    /// * You must enforce Rust's aliasing rules, since the returned lifetime `'a` is
+    ///   arbitrarily chosen and does not necessarily reflect the actual lifetime of the data.
+    ///   In particular, while this reference exists, the memory the pointer points to must
+    ///   not get mutated (except inside `UnsafeCell`).
+    ///
+    /// This applies even if the result of this method is unused!
+    /// (The part about being initialized is not yet fully decided, but until
+    /// it is, the only safe approach is to ensure that they are indeed initialized.)
+    ///
+    /// [the module documentation]: crate::ptr#safety
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ptr_as_ref_unchecked)]
+    /// let ptr: *const u8 = &10u8 as *const u8;
+    ///
+    /// unsafe {
+    ///     println!("We got back the value: {}!", ptr.as_ref_unchecked());
+    /// }
+    /// ```
+    // FIXME: mention it in the docs for `as_ref` and `as_uninit_ref` once stabilized.
+    #[unstable(feature = "ptr_as_ref_unchecked", issue = "122034")]
+    #[rustc_const_unstable(feature = "const_ptr_as_ref", issue = "91822")]
+    #[inline]
+    #[must_use]
+    pub const unsafe fn as_ref_unchecked<'a>(self) -> &'a T {
+        // SAFETY: the caller must guarantee that `self` is valid for a reference
+        unsafe { &*self }
     }
 
     /// Returns `None` if the pointer is null, or else returns a shared reference to
@@ -809,18 +854,26 @@ impl<T: ?Sized> *const T {
     where
         T: Sized,
     {
-        #[cfg_attr(not(bootstrap), allow(unused_unsafe))] // on bootstrap bump, remove unsafe block
-        // SAFETY: The comparison has no side-effects, and the intrinsic
-        // does this check internally in the CTFE implementation.
-        unsafe {
-            assert_unsafe_precondition!(
-                "ptr::sub_ptr requires `self >= origin`",
-                (
-                    this: *const () = self as *const (),
-                    origin: *const () = origin as *const (),
-                ) => this >= origin
-            )
-        };
+        const fn runtime_ptr_ge(this: *const (), origin: *const ()) -> bool {
+            fn runtime(this: *const (), origin: *const ()) -> bool {
+                this >= origin
+            }
+            const fn comptime(_: *const (), _: *const ()) -> bool {
+                true
+            }
+
+            #[allow(unused_unsafe)]
+            intrinsics::const_eval_select((this, origin), comptime, runtime)
+        }
+
+        ub_checks::assert_unsafe_precondition!(
+            check_language_ub,
+            "ptr::sub_ptr requires `self >= origin`",
+            (
+                this: *const () = self as *const (),
+                origin: *const () = origin as *const (),
+            ) => runtime_ptr_ge(this, origin)
+        );
 
         let pointee_size = mem::size_of::<T>();
         assert!(0 < pointee_size && pointee_size <= isize::MAX as usize);
@@ -1024,8 +1077,6 @@ impl<T: ?Sized> *const T {
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[must_use = "returns a new pointer rather than modifying its argument"]
     #[rustc_const_stable(feature = "const_ptr_offset", since = "1.61.0")]
-    // We could always go back to wrapping if unchecked becomes unacceptable
-    #[rustc_allow_const_fn_unstable(const_int_unchecked_arith)]
     #[inline(always)]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub const unsafe fn sub(self, count: usize) -> Self
@@ -1326,9 +1377,7 @@ impl<T: ?Sized> *const T {
     /// `align`.
     ///
     /// If it is not possible to align the pointer, the implementation returns
-    /// `usize::MAX`. It is permissible for the implementation to *always*
-    /// return `usize::MAX`. Only your algorithm's performance can depend
-    /// on getting a usable offset here, not its correctness.
+    /// `usize::MAX`.
     ///
     /// The offset is expressed in number of `T` elements, and not bytes. The value returned can be
     /// used with the `wrapping_add` method.
@@ -1336,6 +1385,15 @@ impl<T: ?Sized> *const T {
     /// There are no guarantees whatsoever that offsetting the pointer will not overflow or go
     /// beyond the allocation that the pointer points into. It is up to the caller to ensure that
     /// the returned offset is correct in all terms other than alignment.
+    ///
+    /// When this is called during compile-time evaluation (which is unstable), the implementation
+    /// may return `usize::MAX` in cases where that can never happen at runtime. This is because the
+    /// actual alignment of pointers is not known yet during compile-time, so an offset with
+    /// guaranteed alignment can sometimes not be computed. For example, a buffer declared as `[u8;
+    /// N]` might be allocated at an odd or an even address, but at compile-time this is not yet
+    /// known, so the execution has to be correct for either choice. It is therefore impossible to
+    /// find an offset that is guaranteed to be 2-aligned. (This behavior is subject to change, as usual
+    /// for unstable APIs.)
     ///
     /// # Panics
     ///
@@ -1391,8 +1449,6 @@ impl<T: ?Sized> *const T {
     /// # Examples
     ///
     /// ```
-    /// #![feature(pointer_is_aligned)]
-    ///
     /// // On some platforms, the alignment of i32 is less than 4.
     /// #[repr(align(4))]
     /// struct AlignedI32(i32);
@@ -1415,7 +1471,6 @@ impl<T: ?Sized> *const T {
     /// underlying allocation.
     ///
     /// ```
-    /// #![feature(pointer_is_aligned)]
     /// #![feature(const_pointer_is_aligned)]
     ///
     /// // On some platforms, the alignment of primitives is less than their size.
@@ -1441,7 +1496,6 @@ impl<T: ?Sized> *const T {
     /// pointer is aligned, even if the compiletime pointer wasn't aligned.
     ///
     /// ```
-    /// #![feature(pointer_is_aligned)]
     /// #![feature(const_pointer_is_aligned)]
     ///
     /// // On some platforms, the alignment of primitives is less than their size.
@@ -1467,7 +1521,6 @@ impl<T: ?Sized> *const T {
     /// runtime and compiletime.
     ///
     /// ```
-    /// #![feature(pointer_is_aligned)]
     /// #![feature(const_pointer_is_aligned)]
     ///
     /// // On some platforms, the alignment of primitives is less than their size.
@@ -1491,7 +1544,7 @@ impl<T: ?Sized> *const T {
     /// [tracking issue]: https://github.com/rust-lang/rust/issues/104203
     #[must_use]
     #[inline]
-    #[unstable(feature = "pointer_is_aligned", issue = "96284")]
+    #[stable(feature = "pointer_is_aligned", since = "1.79.0")]
     #[rustc_const_unstable(feature = "const_pointer_is_aligned", issue = "104203")]
     pub const fn is_aligned(self) -> bool
     where
@@ -1512,7 +1565,7 @@ impl<T: ?Sized> *const T {
     /// # Examples
     ///
     /// ```
-    /// #![feature(pointer_is_aligned)]
+    /// #![feature(pointer_is_aligned_to)]
     ///
     /// // On some platforms, the alignment of i32 is less than 4.
     /// #[repr(align(4))]
@@ -1541,7 +1594,7 @@ impl<T: ?Sized> *const T {
     /// cannot be stricter aligned than the reference's underlying allocation.
     ///
     /// ```
-    /// #![feature(pointer_is_aligned)]
+    /// #![feature(pointer_is_aligned_to)]
     /// #![feature(const_pointer_is_aligned)]
     ///
     /// // On some platforms, the alignment of i32 is less than 4.
@@ -1566,7 +1619,7 @@ impl<T: ?Sized> *const T {
     /// pointer is aligned, even if the compiletime pointer wasn't aligned.
     ///
     /// ```
-    /// #![feature(pointer_is_aligned)]
+    /// #![feature(pointer_is_aligned_to)]
     /// #![feature(const_pointer_is_aligned)]
     ///
     /// // On some platforms, the alignment of i32 is less than 4.
@@ -1590,7 +1643,7 @@ impl<T: ?Sized> *const T {
     /// runtime and compiletime.
     ///
     /// ```
-    /// #![feature(pointer_is_aligned)]
+    /// #![feature(pointer_is_aligned_to)]
     /// #![feature(const_pointer_is_aligned)]
     ///
     /// const _: () = {
@@ -1606,7 +1659,7 @@ impl<T: ?Sized> *const T {
     /// [tracking issue]: https://github.com/rust-lang/rust/issues/104203
     #[must_use]
     #[inline]
-    #[unstable(feature = "pointer_is_aligned", issue = "96284")]
+    #[unstable(feature = "pointer_is_aligned_to", issue = "96284")]
     #[rustc_const_unstable(feature = "const_pointer_is_aligned", issue = "104203")]
     pub const fn is_aligned_to(self, align: usize) -> bool {
         if !align.is_power_of_two() {
@@ -1621,17 +1674,13 @@ impl<T: ?Sized> *const T {
         #[inline]
         const fn const_impl(ptr: *const (), align: usize) -> bool {
             // We can't use the address of `self` in a `const fn`, so we use `align_offset` instead.
-            // The cast to `()` is used to
-            //   1. deal with fat pointers; and
-            //   2. ensure that `align_offset` doesn't actually try to compute an offset.
             ptr.align_offset(align) == 0
         }
 
-        #[cfg_attr(not(bootstrap), allow(unused_unsafe))] // on bootstrap bump, remove unsafe block
-        // SAFETY: The two versions are equivalent at runtime.
-        unsafe {
-            const_eval_select((self.cast::<()>(), align), const_impl, runtime_impl)
-        }
+        // The cast to `()` is used to
+        //   1. deal with fat pointers; and
+        //   2. ensure that `align_offset` (in `const_impl`) doesn't actually try to compute an offset.
+        const_eval_select((self.cast::<()>(), align), const_impl, runtime_impl)
     }
 }
 
@@ -1646,16 +1695,15 @@ impl<T> *const [T] {
     /// # Examples
     ///
     /// ```rust
-    /// #![feature(slice_ptr_len)]
-    ///
     /// use std::ptr;
     ///
     /// let slice: *const [i8] = ptr::slice_from_raw_parts(ptr::null(), 3);
     /// assert_eq!(slice.len(), 3);
     /// ```
     #[inline]
-    #[unstable(feature = "slice_ptr_len", issue = "71146")]
-    #[rustc_const_unstable(feature = "const_slice_ptr_len", issue = "71146")]
+    #[stable(feature = "slice_ptr_len", since = "1.79.0")]
+    #[rustc_const_stable(feature = "const_slice_ptr_len", since = "1.79.0")]
+    #[rustc_allow_const_fn_unstable(ptr_metadata)]
     pub const fn len(self) -> usize {
         metadata(self)
     }
@@ -1665,15 +1713,14 @@ impl<T> *const [T] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(slice_ptr_len)]
     /// use std::ptr;
     ///
     /// let slice: *const [i8] = ptr::slice_from_raw_parts(ptr::null(), 3);
     /// assert!(!slice.is_empty());
     /// ```
     #[inline(always)]
-    #[unstable(feature = "slice_ptr_len", issue = "71146")]
-    #[rustc_const_unstable(feature = "const_slice_ptr_len", issue = "71146")]
+    #[stable(feature = "slice_ptr_len", since = "1.79.0")]
+    #[rustc_const_stable(feature = "const_slice_ptr_len", since = "1.79.0")]
     pub const fn is_empty(self) -> bool {
         self.len() == 0
     }
@@ -1777,6 +1824,46 @@ impl<T> *const [T] {
     }
 }
 
+impl<T, const N: usize> *const [T; N] {
+    /// Returns a raw pointer to the array's buffer.
+    ///
+    /// This is equivalent to casting `self` to `*const T`, but more type-safe.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// #![feature(array_ptr_get)]
+    /// use std::ptr;
+    ///
+    /// let arr: *const [i8; 3] = ptr::null();
+    /// assert_eq!(arr.as_ptr(), ptr::null());
+    /// ```
+    #[inline]
+    #[unstable(feature = "array_ptr_get", issue = "119834")]
+    #[rustc_const_unstable(feature = "array_ptr_get", issue = "119834")]
+    pub const fn as_ptr(self) -> *const T {
+        self as *const T
+    }
+
+    /// Returns a raw pointer to a slice containing the entire array.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(array_ptr_get)]
+    ///
+    /// let arr: *const [i32; 3] = &[1, 2, 4] as *const [i32; 3];
+    /// let slice: *const [i32] = arr.as_slice();
+    /// assert_eq!(slice.len(), 3);
+    /// ```
+    #[inline]
+    #[unstable(feature = "array_ptr_get", issue = "119834")]
+    #[rustc_const_unstable(feature = "array_ptr_get", issue = "119834")]
+    pub const fn as_slice(self) -> *const [T] {
+        self
+    }
+}
+
 // Equality for pointers
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> PartialEq for *const T {
@@ -1809,6 +1896,7 @@ impl<T: ?Sized> Ord for *const T {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> PartialOrd for *const T {
     #[inline]
+    #[allow(ambiguous_wide_pointer_comparisons)]
     fn partial_cmp(&self, other: &*const T) -> Option<Ordering> {
         Some(self.cmp(other))
     }

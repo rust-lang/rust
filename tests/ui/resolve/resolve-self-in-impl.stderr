@@ -14,6 +14,20 @@ LL | impl Tr for S<Self> {}
    |
    = note: replace `Self` with a different type
 
+error[E0391]: cycle detected when computing trait implemented by `<impl at $DIR/resolve-self-in-impl.rs:19:1: 19:23>`
+  --> $DIR/resolve-self-in-impl.rs:19:1
+   |
+LL | impl Tr<Self::A> for S {}
+   | ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: ...which immediately requires computing trait implemented by `<impl at $DIR/resolve-self-in-impl.rs:19:1: 19:23>` again
+note: cycle used when building specialization graph of trait `Tr`
+  --> $DIR/resolve-self-in-impl.rs:4:1
+   |
+LL | trait Tr<T = u8> {
+   | ^^^^^^^^^^^^^^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+
 error: `Self` is not valid in the self type of an impl block
   --> $DIR/resolve-self-in-impl.rs:16:6
    |
@@ -37,26 +51,6 @@ LL | impl (Self, Self) {}
    |       ^^^^  ^^^^
    |
    = note: replace `Self` with a different type
-
-error[E0391]: cycle detected when computing trait implemented by `<impl at $DIR/resolve-self-in-impl.rs:19:1: 19:23>`
-  --> $DIR/resolve-self-in-impl.rs:19:1
-   |
-LL | impl Tr<Self::A> for S {}
-   | ^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: ...which immediately requires computing trait implemented by `<impl at $DIR/resolve-self-in-impl.rs:19:1: 19:23>` again
-note: cycle used when collecting item types in top-level module
-  --> $DIR/resolve-self-in-impl.rs:1:1
-   |
-LL | / #![feature(associated_type_defaults)]
-LL | |
-LL | | struct S<T = u8>(T);
-LL | | trait Tr<T = u8> {
-...  |
-LL | |
-LL | | fn main() {}
-   | |____________^
-   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
 error: aborting due to 6 previous errors
 

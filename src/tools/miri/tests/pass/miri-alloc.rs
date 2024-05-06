@@ -1,5 +1,6 @@
-#![feature(lang_items, start)]
+#![feature(start)]
 #![no_std]
+//@compile-flags: -Cpanic=abort
 // windows tls dtors go through libstd right now, thus this test
 // cannot pass. When windows tls dtors go through the special magic
 // windows linker section, we can run this test on windows again.
@@ -24,6 +25,3 @@ fn start(_: isize, _: *const *const u8) -> isize {
 fn panic_handler(_: &core::panic::PanicInfo) -> ! {
     loop {}
 }
-
-#[lang = "eh_personality"]
-fn eh_personality() {}

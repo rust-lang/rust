@@ -204,7 +204,7 @@ pub struct NoSuchField {
 
 #[derive(Debug)]
 pub struct PrivateAssocItem {
-    pub expr_or_pat: InFile<AstPtr<Either<ast::Expr, Either<ast::Pat, ast::SelfParam>>>>,
+    pub expr_or_pat: InFile<AstPtr<Either<ast::Expr, ast::Pat>>>,
     pub item: AssocItem,
 }
 
@@ -240,7 +240,7 @@ pub struct UnresolvedMethodCall {
 
 #[derive(Debug)]
 pub struct UnresolvedAssocItem {
-    pub expr_or_pat: InFile<AstPtr<Either<ast::Expr, Either<ast::Pat, ast::SelfParam>>>>,
+    pub expr_or_pat: InFile<AstPtr<Either<ast::Expr, ast::Pat>>>,
 }
 
 #[derive(Debug)]

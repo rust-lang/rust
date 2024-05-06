@@ -1,6 +1,6 @@
 //@aux-build:proc_macro_derive.rs
 
-#![allow(unused)]
+#![allow(unused, clippy::duplicated_attributes)]
 #![warn(clippy::useless_attribute)]
 #![warn(unreachable_pub)]
 #![feature(rustc_private)]

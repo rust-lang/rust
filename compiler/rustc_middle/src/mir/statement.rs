@@ -237,6 +237,11 @@ impl<'tcx> PlaceRef<'tcx> {
     }
 
     #[inline]
+    pub fn to_place(&self, tcx: TyCtxt<'tcx>) -> Place<'tcx> {
+        Place { local: self.local, projection: tcx.mk_place_elems(self.projection) }
+    }
+
+    #[inline]
     pub fn last_projection(&self) -> Option<(PlaceRef<'tcx>, PlaceElem<'tcx>)> {
         if let &[ref proj_base @ .., elem] = self.projection {
             Some((PlaceRef { local: self.local, projection: proj_base }, elem))
@@ -409,7 +414,7 @@ impl<'tcx> Rvalue<'tcx> {
             // Pointer to int casts may be side-effects due to exposing the provenance.
             // While the model is undecided, we should be conservative. See
             // <https://www.ralfj.de/blog/2022/04/11/provenance-exposed.html>
-            Rvalue::Cast(CastKind::PointerExposeAddress, _, _) => false,
+            Rvalue::Cast(CastKind::PointerExposeProvenance, _, _) => false,
 
             Rvalue::Use(_)
             | Rvalue::CopyForDeref(_)
@@ -426,7 +431,7 @@ impl<'tcx> Rvalue<'tcx> {
                 | CastKind::FnPtrToPtr
                 | CastKind::PtrToPtr
                 | CastKind::PointerCoercion(_)
-                | CastKind::PointerFromExposedAddress
+                | CastKind::PointerWithExposedProvenance
                 | CastKind::DynStar
                 | CastKind::Transmute,
                 _,
@@ -446,7 +451,7 @@ impl<'tcx> Rvalue<'tcx> {
 impl BorrowKind {
     pub fn mutability(&self) -> Mutability {
         match *self {
-            BorrowKind::Shared | BorrowKind::Fake => Mutability::Not,
+            BorrowKind::Shared | BorrowKind::Fake(_) => Mutability::Not,
             BorrowKind::Mut { .. } => Mutability::Mut,
         }
     }
@@ -454,7 +459,7 @@ impl BorrowKind {
     pub fn allows_two_phase_borrow(&self) -> bool {
         match *self {
             BorrowKind::Shared
-            | BorrowKind::Fake
+            | BorrowKind::Fake(_)
             | BorrowKind::Mut { kind: MutBorrowKind::Default | MutBorrowKind::ClosureCapture } => {
                 false
             }

@@ -10,6 +10,7 @@ struct NotCopy;
 const FOO: IsCopy<Option<NotCopy>> = IsCopy { t: None };
 //~^ ERROR E0277
 //~| ERROR E0277
+//~| ERROR E0277
 
 
 fn main() { }

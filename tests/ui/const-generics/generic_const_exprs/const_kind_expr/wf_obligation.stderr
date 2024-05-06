@@ -13,7 +13,10 @@ error: unconstrained generic constant
 LL |     foo::<_, L>([(); L + 1 + L]);
    |                      ^^^^^^^^^
    |
-   = help: try adding a `where` bound using this expression: `where [(); L + 1 + L]:`
+help: try adding a `where` bound
+   |
+LL |     [(); (L - 1) + 1 + L]:, [(); L + 1 + L]:
+   |                           ~~~~~~~~~~~~~~~~~~
 
 error: aborting due to 2 previous errors
 

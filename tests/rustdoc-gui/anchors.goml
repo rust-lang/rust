@@ -1,17 +1,15 @@
 // This test is to ensure that the anchors (`§`) have the expected color and position.
+include: "utils.goml"
 
 define-function: (
     "check-colors",
-    (theme, main_color, title_color, main_heading_color, main_heading_type_color, src_link_color, sidebar_link_color),
+    [theme, main_color, title_color, main_heading_color, main_heading_type_color, src_link_color, sidebar_link_color],
     block {
         go-to: "file://" + |DOC_PATH| + "/staged_api/struct.Foo.html"
         // This is needed to ensure that the text color is computed.
         show-text: true
 
-        // Setting the theme.
-        set-local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
-        // We reload the page so the local storage settings are being used.
-        reload:
+        call-function: ("switch-theme", {"theme": |theme|})
 
         assert-css: ("#toggle-all-docs", {"color": |main_color|})
         assert-css: (".main-heading h1 a:nth-of-type(1)", {"color": |main_heading_color|})

@@ -1,4 +1,5 @@
 #![warn(clippy::redundant_as_str)]
+#![allow(clippy::const_is_empty)]
 
 fn main() {
     let string = "Hello, world!".to_owned();

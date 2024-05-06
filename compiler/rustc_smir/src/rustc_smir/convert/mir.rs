@@ -229,7 +229,7 @@ impl<'tcx> Stable<'tcx> for mir::BorrowKind {
         use rustc_middle::mir::BorrowKind::*;
         match *self {
             Shared => stable_mir::mir::BorrowKind::Shared,
-            Fake => stable_mir::mir::BorrowKind::Fake,
+            Fake(kind) => stable_mir::mir::BorrowKind::Fake(kind.stable(tables)),
             Mut { kind } => stable_mir::mir::BorrowKind::Mut { kind: kind.stable(tables) },
         }
     }
@@ -247,6 +247,17 @@ impl<'tcx> Stable<'tcx> for mir::MutBorrowKind {
     }
 }
 
+impl<'tcx> Stable<'tcx> for mir::FakeBorrowKind {
+    type T = stable_mir::mir::FakeBorrowKind;
+    fn stable(&self, _: &mut Tables<'_>) -> Self::T {
+        use rustc_middle::mir::FakeBorrowKind::*;
+        match *self {
+            Deep => stable_mir::mir::FakeBorrowKind::Deep,
+            Shallow => stable_mir::mir::FakeBorrowKind::Shallow,
+        }
+    }
+}
+
 impl<'tcx> Stable<'tcx> for mir::NullOp<'tcx> {
     type T = stable_mir::mir::NullOp;
     fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
@@ -257,7 +268,7 @@ impl<'tcx> Stable<'tcx> for mir::NullOp<'tcx> {
             OffsetOf(indices) => stable_mir::mir::NullOp::OffsetOf(
                 indices.iter().map(|idx| idx.stable(tables)).collect(),
             ),
-            DebugAssertions => stable_mir::mir::NullOp::DebugAssertions,
+            UbChecks => stable_mir::mir::NullOp::UbChecks,
         }
     }
 }
@@ -267,8 +278,8 @@ impl<'tcx> Stable<'tcx> for mir::CastKind {
     fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
         use rustc_middle::mir::CastKind::*;
         match self {
-            PointerExposeAddress => stable_mir::mir::CastKind::PointerExposeAddress,
-            PointerFromExposedAddress => stable_mir::mir::CastKind::PointerFromExposedAddress,
+            PointerExposeProvenance => stable_mir::mir::CastKind::PointerExposeAddress,
+            PointerWithExposedProvenance => stable_mir::mir::CastKind::PointerWithExposedProvenance,
             PointerCoercion(c) => stable_mir::mir::CastKind::PointerCoercion(c.stable(tables)),
             DynStar => stable_mir::mir::CastKind::DynStar,
             IntToInt => stable_mir::mir::CastKind::IntToInt,
@@ -493,6 +504,7 @@ impl<'tcx> Stable<'tcx> for mir::BinOp {
             BinOp::Ne => stable_mir::mir::BinOp::Ne,
             BinOp::Ge => stable_mir::mir::BinOp::Ge,
             BinOp::Gt => stable_mir::mir::BinOp::Gt,
+            BinOp::Cmp => stable_mir::mir::BinOp::Cmp,
             BinOp::Offset => stable_mir::mir::BinOp::Offset,
         }
     }
@@ -542,6 +554,9 @@ impl<'tcx> Stable<'tcx> for mir::AggregateKind<'tcx> {
             mir::AggregateKind::CoroutineClosure(..) => {
                 todo!("FIXME(async_closures): Lower these to SMIR")
             }
+            mir::AggregateKind::RawPtr(ty, mutability) => {
+                stable_mir::mir::AggregateKind::RawPtr(ty.stable(tables), mutability.stable(tables))
+            }
         }
     }
 }
@@ -559,7 +574,8 @@ impl<'tcx> Stable<'tcx> for mir::InlineAsmOperand<'tcx> {
             }
             InlineAsmOperand::Const { .. }
             | InlineAsmOperand::SymFn { .. }
-            | InlineAsmOperand::SymStatic { .. } => (None, None),
+            | InlineAsmOperand::SymStatic { .. }
+            | InlineAsmOperand::Label { .. } => (None, None),
         };
 
         stable_mir::mir::InlineAsmOperand { in_value, out_place, raw_rpr: format!("{self:?}") }
@@ -632,14 +648,15 @@ impl<'tcx> Stable<'tcx> for mir::TerminatorKind<'tcx> {
                 operands,
                 options,
                 line_spans,
-                destination,
+                targets,
                 unwind,
             } => TerminatorKind::InlineAsm {
                 template: format!("{template:?}"),
                 operands: operands.iter().map(|operand| operand.stable(tables)).collect(),
                 options: format!("{options:?}"),
                 line_spans: format!("{line_spans:?}"),
-                destination: destination.map(|d| d.as_usize()),
+                // FIXME: Figure out how to do labels in SMIR
+                destination: targets.first().map(|d| d.as_usize()),
                 unwind: unwind.stable(tables),
             },
             mir::TerminatorKind::Yield { .. }
