@@ -124,13 +124,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let new_align = this.min_align(new_size, kind);
         if this.ptr_is_null(old_ptr)? {
             // Here we must behave like `malloc`.
-            if new_size == 0 {
-                Ok(Pointer::null())
-            } else {
-                let new_ptr =
-                    this.allocate_ptr(Size::from_bytes(new_size), new_align, kind.into())?;
-                Ok(new_ptr.into())
-            }
+            self.malloc(new_size, /*zero_init*/ false, kind)
         } else {
             if new_size == 0 {
                 // C, in their infinite wisdom, made this UB.
