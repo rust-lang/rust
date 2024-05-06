@@ -31,6 +31,7 @@ struct ExpectedSig<'tcx> {
     sig: ty::PolyFnSig<'tcx>,
 }
 
+#[derive(Debug)]
 struct ClosureSignatures<'tcx> {
     /// The signature users of the closure see.
     bound_sig: ty::PolyFnSig<'tcx>,
@@ -713,25 +714,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // [c2]: https://github.com/rust-lang/rust/pull/45072#issuecomment-341096796
         self.commit_if_ok(|_| {
             let mut all_obligations = vec![];
-            let inputs: Vec<_> = iter::zip(
-                decl.inputs,
-                supplied_sig.inputs().skip_binder(), // binder moved to (*) below
-            )
-            .map(|(hir_ty, &supplied_ty)| {
-                // Instantiate (this part of..) S to S', i.e., with fresh variables.
-                self.instantiate_binder_with_fresh_vars(
-                    hir_ty.span,
-                    BoundRegionConversionTime::FnCall,
-                    // (*) binder moved to here
-                    supplied_sig.inputs().rebind(supplied_ty),
-                )
-            })
-            .collect();
+            let supplied_sig = self.instantiate_binder_with_fresh_vars(
+                self.tcx.def_span(expr_def_id),
+                BoundRegionConversionTime::FnCall,
+                supplied_sig,
+            );
 
             // The liberated version of this signature should be a subtype
             // of the liberated form of the expectation.
             for ((hir_ty, &supplied_ty), expected_ty) in iter::zip(
-                iter::zip(decl.inputs, &inputs),
+                iter::zip(decl.inputs, supplied_sig.inputs()),
                 expected_sigs.liberated_sig.inputs(), // `liberated_sig` is E'.
             ) {
                 // Check that E' = S'.
@@ -744,11 +736,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 all_obligations.extend(obligations);
             }
 
-            let supplied_output_ty = self.instantiate_binder_with_fresh_vars(
-                decl.output.span(),
-                BoundRegionConversionTime::FnCall,
-                supplied_sig.output(),
-            );
+            let supplied_output_ty = supplied_sig.output();
             let cause = &self.misc(decl.output.span());
             let InferOk { value: (), obligations } = self.at(cause, self.param_env).eq(
                 DefineOpaqueTypes::Yes,
@@ -757,7 +745,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             )?;
             all_obligations.extend(obligations);
 
-            let inputs = inputs.into_iter().map(|ty| self.resolve_vars_if_possible(ty));
+            let inputs =
+                supplied_sig.inputs().into_iter().map(|&ty| self.resolve_vars_if_possible(ty));
 
             expected_sigs.liberated_sig = self.tcx.mk_fn_sig(
                 inputs,
@@ -1013,6 +1002,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         result
     }
 
+    #[instrument(level = "debug", skip(self), ret)]
     fn closure_sigs(
         &self,
         expr_def_id: LocalDefId,
