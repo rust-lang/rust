@@ -262,13 +262,14 @@ impl CheckCfg {
 
         ins!(sym::debug_assertions, no_values);
 
-        // These four are never set by rustc, but we set them anyway; they
-        // should not trigger the lint because `cargo clippy`, `cargo doc`,
-        // `cargo test`, `cargo miri run` and `cargo fmt` (respectively)
-        // can set them.
+        // These are never set by rustc, but we set them anyway; they
+        // should not trigger the lint because they are integral parts of
+        // widely-used tools. In other words, they are well-known.
         ins!(sym::clippy, no_values);
         ins!(sym::doc, no_values);
         ins!(sym::doctest, no_values);
+        ins!(sym::fuzzing, no_values);
+        ins!(sym::loom, no_values);
         ins!(sym::miri, no_values);
         ins!(sym::rustfmt, no_values);
 

@@ -79,6 +79,8 @@ As of `2024-05-06T`, the list of known names is as follows:
  - `debug_assertions`
  - `doc`
  - `doctest`
+ - `fuzzing`
+ - `loom`
  - `miri`
  - `overflow_checks`
  - `panic`
