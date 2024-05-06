@@ -124,7 +124,10 @@ macro_rules! impl_vec_trait {
         impl_vec_trait!{ [$Trait $m]+ $w (vector_bool_int, vector_bool_int) -> vector_bool_int }
         impl_vec_trait!{ [$Trait $m]+ $w (vector_unsigned_int, vector_unsigned_int) -> vector_unsigned_int }
         impl_vec_trait!{ [$Trait $m]+ $w (vector_signed_int, vector_signed_int) -> vector_signed_int }
-    }
+    };
+    ([$Trait:ident $m:ident]+ 2b ($fn:ident)) => {
+        impl_vec_trait!{ [$Trait $m]+ 2b ($fn, $fn, $fn) }
+    };
 }
 
 macro_rules! s_t_l {
