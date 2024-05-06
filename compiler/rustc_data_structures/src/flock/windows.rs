@@ -2,6 +2,7 @@ use std::fs::{File, OpenOptions};
 use std::io;
 use std::os::windows::prelude::*;
 use std::path::Path;
+use tracing::debug;
 
 use windows::{
     Win32::Foundation::{ERROR_INVALID_FUNCTION, HANDLE},

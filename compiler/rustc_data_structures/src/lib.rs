@@ -42,9 +42,6 @@
 #![feature(unwrap_infallible)]
 // tidy-alphabetical-end
 
-#[macro_use]
-extern crate tracing;
-
 pub use atomic_ref::AtomicRef;
 pub use ena::snapshot_vec;
 pub use ena::undo_log;
