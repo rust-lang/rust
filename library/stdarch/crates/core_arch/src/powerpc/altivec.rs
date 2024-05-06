@@ -1295,6 +1295,24 @@ mod sealed {
 
     impl_vec_trait! { [VectorAndc vec_andc]+ 2b (andc) }
 
+    #[inline]
+    #[target_feature(enable = "altivec")]
+    #[cfg_attr(all(test, not(target_feature = "vsx")), assert_instr(vorc))]
+    #[cfg_attr(all(test, target_feature = "vsx"), assert_instr(xxlorc))]
+    unsafe fn orc(a: vector_signed_char, b: vector_signed_char) -> vector_signed_char {
+        let a = transmute(a);
+        let b = transmute(b);
+        transmute(simd_or(simd_xor(u8x16::splat(0xff), b), a))
+    }
+
+    #[unstable(feature = "stdarch_powerpc", issue = "111145")]
+    pub trait VectorOrc<Other> {
+        type Result;
+        unsafe fn vec_orc(self, b: Other) -> Self::Result;
+    }
+
+    impl_vec_trait! { [VectorOrc vec_orc]+ 2b (orc) }
+
     test_impl! { vec_vand(a: vector_signed_char, b: vector_signed_char) -> vector_signed_char [ simd_and, vand / xxland ] }
 
     #[unstable(feature = "stdarch_powerpc", issue = "111145")]
@@ -3701,6 +3719,23 @@ where
     T: sealed::VectorAndc<U>,
 {
     a.vec_andc(b)
+}
+
+/// Vector OR with Complement
+///
+/// ## Purpose
+/// Performs a bitwise OR of the first vector with the bitwise-complemented second vector.
+///
+/// ## Result value
+/// r is the bitwise OR of a and the bitwise complement of b.
+#[inline]
+#[target_feature(enable = "altivec")]
+#[unstable(feature = "stdarch_powerpc", issue = "111145")]
+pub unsafe fn vec_orc<T, U>(a: T, b: U) -> <T as sealed::VectorOrc<U>>::Result
+where
+    T: sealed::VectorOrc<U>,
+{
+    a.vec_orc(b)
 }
 
 /// Vector and.
