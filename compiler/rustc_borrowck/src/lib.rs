@@ -182,6 +182,12 @@ fn do_mir_borrowck<'tcx>(
         nll::replace_regions_in_mir(&infcx, param_env, &mut body_owned, &mut promoted);
     let body = &body_owned; // no further changes
 
+    // FIXME(-Znext-solver): A bit dubious that we're only registering
+    // predefined opaques in the typeck root.
+    if infcx.next_trait_solver() && !infcx.tcx.is_typeck_child(body.source.def_id()) {
+        infcx.register_predefined_opaques_for_next_solver(def);
+    }
+
     let location_table = LocationTable::new(body);
 
     let move_data = MoveData::gather_moves(body, tcx, param_env, |_| true);
@@ -487,6 +493,28 @@ impl<'tcx> BorrowckInferCtxt<'tcx> {
         }
 
         next_region
+    }
+
+    /// With the new solver we prepopulate the opaque type storage during
+    /// MIR borrowck with the hidden types from HIR typeck. This is necessary
+    /// to avoid ambiguities as earlier goals can rely on the hidden type
+    /// of an opaque which is only constrained by a later goal.
+    fn register_predefined_opaques_for_next_solver(&self, def_id: LocalDefId) {
+        let tcx = self.tcx;
+        // OK to use the identity arguments for each opaque type key, since
+        // we remap opaques from HIR typeck back to their definition params.
+        for data in tcx.typeck(def_id).concrete_opaque_types.iter().map(|(k, v)| (*k, *v)) {
+            // HIR typeck did not infer the regions of the opaque, so we instantiate
+            // them with fresh inference variables.
+            let (key, hidden_ty) = tcx.fold_regions(data, |_, _| {
+                self.next_nll_region_var_in_universe(
+                    NllRegionVariableOrigin::Existential { from_forall: false },
+                    ty::UniverseIndex::ROOT,
+                )
+            });
+
+            self.inject_new_hidden_type_unchecked(key, hidden_ty);
+        }
     }
 }
 

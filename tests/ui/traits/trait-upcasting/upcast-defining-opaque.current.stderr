@@ -1,11 +1,11 @@
 error[E0308]: mismatched types
-  --> $DIR/illegal-upcast-from-impl-opaque.rs:26:5
+  --> $DIR/upcast-defining-opaque.rs:21:5
    |
 LL | type Foo = impl Sized;
    |            ---------- the found opaque type
 LL |
-LL | fn illegal(x: &dyn Sub<Assoc = Foo>) -> &dyn Super<Assoc = i32> {
-   |                                         ----------------------- expected `&dyn Super<Assoc = i32>` because of return type
+LL | fn upcast(x: &dyn Sub<Assoc = Foo>) -> &dyn Super<Assoc = i32> {
+   |                                        ----------------------- expected `&dyn Super<Assoc = i32>` because of return type
 LL |     x
    |     ^ expected trait `Super`, found trait `Sub`
    |
