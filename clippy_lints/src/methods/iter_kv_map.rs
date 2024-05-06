@@ -12,8 +12,10 @@ use rustc_middle::ty;
 use rustc_span::{sym, Span};
 
 /// lint use of:
+///
 /// - `hashmap.iter().map(|(_, v)| v)`
 /// - `hashmap.into_iter().map(|(_, v)| v)`
+///
 /// on `HashMaps` and `BTreeMaps` in std
 
 pub(super) fn check<'tcx>(

@@ -126,15 +126,15 @@ enum FilterType {
 ///
 /// How this is done:
 /// 1. we know that this is invoked in a method call with `filter` as the method name via `mod.rs`
-/// 2. we check that we are in a trait method. Therefore we are in an
-/// `(x as Iterator).filter({filter_arg})` method call.
+/// 2. we check that we are in a trait method. Therefore we are in an `(x as
+///    Iterator).filter({filter_arg})` method call.
 /// 3. we check that the parent expression is not a map. This is because we don't want to lint
 ///    twice, and we already have a specialized lint for that.
 /// 4. we check that the span of the filter does not contain a comment.
 /// 5. we get the type of the `Item` in the `Iterator`, and compare against the type of Option and
-///   Result.
+///    Result.
 /// 6. we finally check the contents of the filter argument to see if it is a call to `is_some` or
-///   `is_ok`.
+///    `is_ok`.
 /// 7. if all of the above are true, then we return the `FilterType`
 fn expression_type(
     cx: &LateContext<'_>,

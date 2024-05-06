@@ -1513,15 +1513,18 @@ pub fn is_else_clause_in_let_else(tcx: TyCtxt<'_>, expr: &Expr<'_>) -> bool {
 }
 
 /// Checks whether the given `Expr` is a range equivalent to a `RangeFull`.
+///
 /// For the lower bound, this means that:
 /// - either there is none
 /// - or it is the smallest value that can be represented by the range's integer type
+///
 /// For the upper bound, this means that:
 /// - either there is none
 /// - or it is the largest value that can be represented by the range's integer type and is
 ///   inclusive
 /// - or it is a call to some container's `len` method and is exclusive, and the range is passed to
 ///   a method call on that same container (e.g. `v.drain(..v.len())`)
+///
 /// If the given `Expr` is not some kind of range, the function returns `false`.
 pub fn is_range_full(cx: &LateContext<'_>, expr: &Expr<'_>, container_path: Option<&Path<'_>>) -> bool {
     let ty = cx.typeck_results().expr_ty(expr);
