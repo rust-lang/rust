@@ -105,6 +105,7 @@
 #![feature(box_uninit_write)]
 #![feature(bstr)]
 #![feature(bstr_internals)]
+#![feature(char_internals)]
 #![feature(char_max_len)]
 #![feature(clone_to_uninit)]
 #![feature(coerce_unsized)]
