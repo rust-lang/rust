@@ -58,6 +58,12 @@ impl<'tcx> inspect::ProofTreeVisitor<'tcx> for Select {
             )));
         }
 
+        // Don't winnow until `Certainty::Yes` -- we don't need to winnow until
+        // codegen, and only on the good path.
+        if matches!(goal.result().unwrap(), Certainty::Maybe(..)) {
+            return ControlFlow::Break(Ok(None));
+        }
+
         // We need to winnow. See comments on `candidate_should_be_dropped_in_favor_of`.
         let mut i = 0;
         while i < candidates.len() {
@@ -86,7 +92,7 @@ fn candidate_should_be_dropped_in_favor_of<'tcx>(
     other: &inspect::InspectCandidate<'_, 'tcx>,
 ) -> bool {
     // Don't winnow until `Certainty::Yes` -- we don't need to winnow until
-    // codegen, technically.
+    // codegen, and only on the good path.
     if matches!(other.result().unwrap(), Certainty::Maybe(..)) {
         return false;
     }
@@ -105,12 +111,14 @@ fn candidate_should_be_dropped_in_favor_of<'tcx>(
             bug!("should not have assembled a CoherenceUnknowable candidate")
         }
 
+        // In the old trait solver, we arbitrarily choose lower vtable candidates
+        // over higher ones.
+        (
+            CandidateSource::BuiltinImpl(BuiltinImplSource::Object { vtable_base: a }),
+            CandidateSource::BuiltinImpl(BuiltinImplSource::Object { vtable_base: b }),
+        ) => a >= b,
         // Prefer dyn candidates over non-dyn candidates. This is necessary to
         // handle the unsoundness between `impl<T: ?Sized> Any for T` and `dyn Any: Any`.
-        (
-            CandidateSource::BuiltinImpl(BuiltinImplSource::Object { .. }),
-            CandidateSource::BuiltinImpl(BuiltinImplSource::Object { .. }),
-        ) => false,
         (
             CandidateSource::Impl(_) | CandidateSource::ParamEnv(_) | CandidateSource::AliasBound,
             CandidateSource::BuiltinImpl(BuiltinImplSource::Object { .. }),

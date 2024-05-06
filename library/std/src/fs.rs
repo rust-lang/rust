@@ -2258,7 +2258,7 @@ pub fn canonicalize<P: AsRef<Path>>(path: P) -> io::Result<PathBuf> {
 /// # Platform-specific behavior
 ///
 /// This function currently corresponds to the `mkdir` function on Unix
-/// and the `CreateDirectory` function on Windows.
+/// and the `CreateDirectoryW` function on Windows.
 /// Note that, this [may change in the future][changes].
 ///
 /// [changes]: io#platform-specific-behavior
@@ -2298,10 +2298,14 @@ pub fn create_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// Recursively create a directory and all of its parent components if they
 /// are missing.
 ///
+/// If this function returns an error, some of the parent components might have
+/// been created already.
+///
 /// # Platform-specific behavior
 ///
-/// This function currently corresponds to the `mkdir` function on Unix
-/// and the `CreateDirectory` function on Windows.
+/// This function currently corresponds to multiple calls to the `mkdir`
+/// function on Unix and the `CreateDirectoryW` function on Windows.
+///
 /// Note that, this [may change in the future][changes].
 ///
 /// [changes]: io#platform-specific-behavior

@@ -14,7 +14,7 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::symbol::sym;
 
 use super::eval_ctxt::GenerateProofTree;
-use super::inspect::{ProofTreeInferCtxtExt, ProofTreeVisitor};
+use super::inspect::{InspectCandidate, InspectGoal, ProofTreeInferCtxtExt, ProofTreeVisitor};
 use super::{Certainty, InferCtxtEvalExt};
 
 /// A trait engine using the new trait solver.
@@ -304,6 +304,46 @@ impl<'tcx> BestObligation<'tcx> {
         self.obligation = old_obligation;
         res
     }
+
+    /// Filter out the candidates that aren't either error or ambiguous (depending
+    /// on what we are looking for), and also throw out candidates that have no
+    /// failing WC (or higher-ranked obligations, for which there should only be
+    /// one candidate anyways -- but I digress). This most likely means that the
+    /// goal just didn't unify at all, e.g. a param candidate with an alias in it.
+    fn non_trivial_candidates<'a>(
+        &self,
+        goal: &'a InspectGoal<'a, 'tcx>,
+    ) -> Vec<InspectCandidate<'a, 'tcx>> {
+        let mut candidates = goal
+            .candidates()
+            .into_iter()
+            .filter(|candidate| match self.consider_ambiguities {
+                true => matches!(candidate.result(), Ok(Certainty::Maybe(_))),
+                false => matches!(candidate.result(), Err(_)),
+            })
+            .collect::<Vec<_>>();
+
+        // If we have >1 candidate, one may still be due to "boring" reasons, like
+        // an alias-relate that failed to hold when deeply evaluated. We really
+        // don't care about reasons like this.
+        if candidates.len() > 1 {
+            candidates.retain(|candidate| {
+                goal.infcx().probe(|_| {
+                    candidate.instantiate_nested_goals(self.span()).iter().any(|nested_goal| {
+                        matches!(
+                            nested_goal.source(),
+                            GoalSource::ImplWhereBound | GoalSource::InstantiateHigherRanked
+                        ) && match self.consider_ambiguities {
+                            true => matches!(nested_goal.result(), Ok(Certainty::Maybe(_))),
+                            false => matches!(nested_goal.result(), Err(_)),
+                        }
+                    })
+                })
+            });
+        }
+
+        candidates
+    }
 }
 
 impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
@@ -314,11 +354,7 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
     }
 
     fn visit_goal(&mut self, goal: &super::inspect::InspectGoal<'_, 'tcx>) -> Self::Result {
-        // FIXME: Throw out candidates that have no failing WC and >0 failing misc goal.
-        // This most likely means that the goal just didn't unify at all, e.g. a param
-        // candidate with an alias in it.
-        let candidates = goal.candidates();
-
+        let candidates = self.non_trivial_candidates(goal);
         let [candidate] = candidates.as_slice() else {
             return ControlFlow::Break(self.obligation.clone());
         };
