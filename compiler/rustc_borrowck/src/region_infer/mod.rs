@@ -250,10 +250,7 @@ pub enum ExtraConstraintInfo {
 }
 
 #[instrument(skip(infcx, sccs), level = "debug")]
-fn sccs_info<'cx, 'tcx>(
-    infcx: &'cx BorrowckInferCtxt<'cx, 'tcx>,
-    sccs: Rc<Sccs<RegionVid, ConstraintSccIndex>>,
-) {
+fn sccs_info<'tcx>(infcx: &BorrowckInferCtxt<'tcx>, sccs: Rc<Sccs<RegionVid, ConstraintSccIndex>>) {
     use crate::renumber::RegionCtxt;
 
     let var_to_origin = infcx.reg_var_to_origin.borrow();
@@ -322,8 +319,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     ///
     /// The `outlives_constraints` and `type_tests` are an initial set
     /// of constraints produced by the MIR type check.
-    pub(crate) fn new<'cx>(
-        _infcx: &BorrowckInferCtxt<'cx, 'tcx>,
+    pub(crate) fn new(
+        _infcx: &BorrowckInferCtxt<'tcx>,
         var_infos: VarInfos,
         universal_regions: Rc<UniversalRegions<'tcx>>,
         placeholder_indices: Rc<PlaceholderIndices>,

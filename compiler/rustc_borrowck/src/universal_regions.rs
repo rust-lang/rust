@@ -240,7 +240,7 @@ impl<'tcx> UniversalRegions<'tcx> {
     /// signature. This will also compute the relationships that are
     /// known between those regions.
     pub fn new(
-        infcx: &BorrowckInferCtxt<'_, 'tcx>,
+        infcx: &BorrowckInferCtxt<'tcx>,
         mir_def: LocalDefId,
         param_env: ty::ParamEnv<'tcx>,
     ) -> Self {
@@ -411,7 +411,7 @@ impl<'tcx> UniversalRegions<'tcx> {
 }
 
 struct UniversalRegionsBuilder<'cx, 'tcx> {
-    infcx: &'cx BorrowckInferCtxt<'cx, 'tcx>,
+    infcx: &'cx BorrowckInferCtxt<'tcx>,
     mir_def: LocalDefId,
     param_env: ty::ParamEnv<'tcx>,
 }
@@ -796,7 +796,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
 }
 
 #[extension(trait InferCtxtExt<'tcx>)]
-impl<'cx, 'tcx> BorrowckInferCtxt<'cx, 'tcx> {
+impl<'tcx> BorrowckInferCtxt<'tcx> {
     #[instrument(skip(self), level = "debug")]
     fn replace_free_regions_with_nll_infer_vars<T>(
         &self,

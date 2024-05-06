@@ -236,7 +236,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             normalization_nested_goals,
         } = external_constraints.deref();
         self.register_region_constraints(region_constraints);
-        self.register_new_opaque_types(param_env, opaque_types);
+        self.register_new_opaque_types(opaque_types);
         (normalization_nested_goals.clone(), certainty)
     }
 
@@ -368,13 +368,10 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         assert!(region_constraints.member_constraints.is_empty());
     }
 
-    fn register_new_opaque_types(
-        &mut self,
-        param_env: ty::ParamEnv<'tcx>,
-        opaque_types: &[(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)],
-    ) {
+    fn register_new_opaque_types(&mut self, opaque_types: &[(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)]) {
         for &(key, ty) in opaque_types {
-            self.insert_hidden_type(key, param_env, ty).unwrap();
+            let hidden_ty = ty::OpaqueHiddenType { ty, span: DUMMY_SP };
+            self.infcx.inject_new_hidden_type_unchecked(key, hidden_ty);
         }
     }
 }

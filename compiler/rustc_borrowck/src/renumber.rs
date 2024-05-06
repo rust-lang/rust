@@ -11,7 +11,7 @@ use rustc_span::Symbol;
 /// inference variables, returning the number of variables created.
 #[instrument(skip(infcx, body, promoted), level = "debug")]
 pub fn renumber_mir<'tcx>(
-    infcx: &BorrowckInferCtxt<'_, 'tcx>,
+    infcx: &BorrowckInferCtxt<'tcx>,
     body: &mut Body<'tcx>,
     promoted: &mut IndexSlice<Promoted, Body<'tcx>>,
 ) {
@@ -57,7 +57,7 @@ impl RegionCtxt {
 }
 
 struct RegionRenumberer<'a, 'tcx> {
-    infcx: &'a BorrowckInferCtxt<'a, 'tcx>,
+    infcx: &'a BorrowckInferCtxt<'tcx>,
 }
 
 impl<'a, 'tcx> RegionRenumberer<'a, 'tcx> {
