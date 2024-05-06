@@ -8,6 +8,13 @@
 [bytecount#92]: https://github.com/llogiq/bytecount/pull/92
 [bytecount#93]: https://github.com/llogiq/bytecount/pull/93
 
+- Output correct syntax for type ascription builtin [#6159](https://github.com/rust-lang/rustfmt/issues/6159)
+  ```rust
+  fn main() {
+      builtin # type_ascribe(10, usize)
+  }
+  ```
+
 ## [1.7.0] 2023-10-22
 
 ### Fixed

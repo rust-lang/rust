@@ -263,14 +263,6 @@ pub(crate) fn format_expr(
             shape,
             SeparatorPlace::Front,
         ),
-        ast::ExprKind::Type(ref expr, ref ty) => rewrite_pair(
-            &**expr,
-            &**ty,
-            PairParts::infix(": "),
-            context,
-            shape,
-            SeparatorPlace::Back,
-        ),
         ast::ExprKind::Index(ref expr, ref index, _) => {
             rewrite_index(&**expr, &**index, context, shape)
         }
@@ -412,6 +404,7 @@ pub(crate) fn format_expr(
         }
         ast::ExprKind::Underscore => Some("_".to_owned()),
         ast::ExprKind::FormatArgs(..)
+        | ast::ExprKind::Type(..)
         | ast::ExprKind::IncludedBytes(..)
         | ast::ExprKind::OffsetOf(..) => {
             // These don't normally occur in the AST because macros aren't expanded. However,
