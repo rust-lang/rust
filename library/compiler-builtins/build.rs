@@ -375,15 +375,6 @@ mod c {
             ]);
         }
 
-        // When compiling in rustbuild (the rust-lang/rust repo) this library
-        // also needs to satisfy intrinsics that jemalloc or C in general may
-        // need, so include a few more that aren't typically needed by
-        // LLVM/Rust.
-        #[allow(unexpected_cfgs)]
-        if cfg!(feature = "rustbuild") {
-            sources.extend(&[("__ffsdi2", "ffsdi2.c")]);
-        }
-
         // On iOS and 32-bit OSX these are all just empty intrinsics, no need to
         // include them.
         if target_os != "ios"
