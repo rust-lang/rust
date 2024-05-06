@@ -408,7 +408,9 @@ impl File {
     ///
     /// This function will create a file if it does not exist, or return an error if it does. This
     /// way, if the call succeeds, the file returned is guaranteed to be new.
-    /// If a file exists at the target location before, creating file will fail with [`AlreadyExists`].
+    /// If a file exists at the target location, creating a new file will fail with [`AlreadyExists`]
+    /// or another error based on the situation. See [`OpenOptions::open`] for a
+    /// non-exhaustive list of likely errors.
     ///
     /// This option is useful because it is atomic. Otherwise between checking whether a file
     /// exists and creating a new one, the file may have been created by another process (a TOCTOU
@@ -1074,7 +1076,9 @@ impl OpenOptions {
     ///
     /// No file is allowed to exist at the target location, also no (dangling) symlink. In this
     /// way, if the call succeeds, the file returned is guaranteed to be new.
-    /// If a file exists at the target location before, creating file will fail with [`AlreadyExists`].
+    /// If a file exists at the target location, creating a new file will fail with [`AlreadyExists`]
+    /// or another error based on the situation. See [`OpenOptions::open`] for a
+    /// non-exhaustive list of likely errors.
     ///
     /// This option is useful because it is atomic. Otherwise between checking
     /// whether a file exists and creating a new one, the file may have been
