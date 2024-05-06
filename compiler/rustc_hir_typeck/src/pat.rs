@@ -131,14 +131,6 @@ enum AdjustMode {
     /// Reset binding mode to the initial mode.
     /// Used for destructuring assignment, where we don't want any match ergonomics.
     Reset,
-    /// Produced by ref patterns.
-    /// Reset the binding mode to the initial mode,
-    /// and if the old biding mode was by-reference
-    /// with mutability matching the pattern,
-    /// mark the pattern as having consumed this reference.
-    ///
-    /// `Span` is that of the `&` or `&mut` itself.
-    ResetAndConsumeRef(Mutability, Option<Span>),
     /// Pass on the input binding mode and expected type.
     Pass,
 }
@@ -170,6 +162,7 @@ enum MutblCap {
 }
 
 impl MutblCap {
+    #[must_use]
     fn cap_to_weakly_not(self, span: Option<Span>) -> Self {
         match self {
             MutblCap::Not => MutblCap::Not,
@@ -177,6 +170,7 @@ impl MutblCap {
         }
     }
 
+    #[must_use]
     fn as_mutbl(self) -> Mutability {
         match self {
             MutblCap::Not | MutblCap::WeaklyNot(_) => Mutability::Not,
@@ -214,14 +208,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /// Type check the given `pat` against the `expected` type
-    /// with the provided `def_bm` (default binding mode).
+    /// with the provided `binding_mode` (default binding mode).
     ///
     /// Outside of this module, `check_pat_top` should always be used.
     /// Conversely, inside this module, `check_pat_top` should never be used.
     #[instrument(level = "debug", skip(self, pat_info))]
     fn check_pat(&self, pat: &'tcx Pat<'tcx>, expected: Ty<'tcx>, pat_info: PatInfo<'tcx, '_>) {
-        let PatInfo { binding_mode: def_bm, max_ref_mutbl, top_info: ti, current_depth, .. } =
-            pat_info;
+        let PatInfo { binding_mode, max_ref_mutbl, top_info: ti, current_depth, .. } = pat_info;
 
         let path_res = match &pat.kind {
             PatKind::Path(qpath) => Some(
@@ -230,10 +223,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             _ => None,
         };
         let adjust_mode = self.calc_adjust_mode(pat, path_res.map(|(res, ..)| res));
-        let (expected, def_bm, max_ref_mutbl, ref_pattern_already_consumed) =
-            self.calc_default_binding_mode(pat, expected, def_bm, adjust_mode, max_ref_mutbl);
+        let (expected, binding_mode, max_ref_mutbl) =
+            self.calc_default_binding_mode(pat, expected, binding_mode, adjust_mode, max_ref_mutbl);
         let pat_info = PatInfo {
-            binding_mode: def_bm,
+            binding_mode,
             max_ref_mutbl,
             top_info: ti,
             decl_origin: pat_info.decl_origin,
@@ -269,14 +262,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             PatKind::Box(inner) => self.check_pat_box(pat.span, inner, expected, pat_info),
             PatKind::Deref(inner) => self.check_pat_deref(pat.span, inner, expected, pat_info),
-            PatKind::Ref(inner, mutbl) => self.check_pat_ref(
-                pat,
-                inner,
-                mutbl,
-                expected,
-                pat_info,
-                ref_pattern_already_consumed,
-            ),
+            PatKind::Ref(inner, mutbl) => self.check_pat_ref(pat, inner, mutbl, expected, pat_info),
             PatKind::Slice(before, slice, after) => {
                 self.check_pat_slice(pat.span, before, slice, after, expected, pat_info)
             }
@@ -329,10 +315,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// Compute the new expected type and default binding mode from the old ones
     /// as well as the pattern form we are currently checking.
-    ///
-    /// Last entry is only relevant for ref patterns (`&` and `&mut`);
-    /// if `true`, then the ref pattern consumed a match ergonomics inserted reference
-    /// and so does no need to match against a reference in the scrutinee type.
     fn calc_default_binding_mode(
         &self,
         pat: &'tcx Pat<'tcx>,
@@ -340,50 +322,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         def_br: ByRef,
         adjust_mode: AdjustMode,
         max_ref_mutbl: MutblCap,
-    ) -> (Ty<'tcx>, ByRef, MutblCap, bool) {
+    ) -> (Ty<'tcx>, ByRef, MutblCap) {
         if let ByRef::Yes(Mutability::Mut) = def_br {
             debug_assert!(max_ref_mutbl == MutblCap::Mut);
         }
         match adjust_mode {
-            AdjustMode::Pass => (expected, def_br, max_ref_mutbl, false),
-            AdjustMode::Reset => (expected, ByRef::No, MutblCap::Mut, false),
-            AdjustMode::ResetAndConsumeRef(ref_pat_mutbl, ref_span) => {
-                // `&` pattern eats `&mut`
-                let mutbls_match =
-                    if let ByRef::Yes(def_mut) = def_br { ref_pat_mutbl <= def_mut } else { false };
-
-                if pat.span.at_least_rust_2024() && self.tcx.features().ref_pat_eat_one_layer_2024 {
-                    let max_ref_mutbl = if ref_pat_mutbl == Mutability::Not {
-                        max_ref_mutbl.cap_to_weakly_not(ref_span)
-                    } else {
-                        max_ref_mutbl
-                    };
-
-                    if mutbls_match {
-                        debug!("consuming inherited reference");
-                        (expected, ByRef::No, max_ref_mutbl, true)
-                    } else {
-                        let (new_ty, new_bm, max_ref_mutbl) = if ref_pat_mutbl == Mutability::Mut {
-                            self.peel_off_references(
-                                pat,
-                                expected,
-                                def_br,
-                                Mutability::Not,
-                                max_ref_mutbl,
-                            )
-                        } else {
-                            (expected, def_br.cap_ref_mutability(Mutability::Not), max_ref_mutbl)
-                        };
-                        (new_ty, new_bm, max_ref_mutbl, false)
-                    }
-                } else {
-                    (expected, ByRef::No, max_ref_mutbl, mutbls_match)
-                }
-            }
+            AdjustMode::Pass => (expected, def_br, max_ref_mutbl),
+            AdjustMode::Reset => (expected, ByRef::No, MutblCap::Mut),
             AdjustMode::Peel => {
-                let peeled =
-                    self.peel_off_references(pat, expected, def_br, Mutability::Mut, max_ref_mutbl);
-                (peeled.0, peeled.1, peeled.2, false)
+                self.peel_off_references(pat, expected, def_br, Mutability::Mut, max_ref_mutbl)
             }
         }
     }
@@ -429,17 +376,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // a reference type wherefore peeling doesn't give up any expressiveness.
                 _ => AdjustMode::Peel,
             },
-            // When encountering a `& mut? pat` pattern, reset to "by value".
-            // This is so that `x` and `y` here are by value, as they appear to be:
-            //
-            // ```
-            // match &(&22, &44) {
-            //   (&x, &y) => ...
-            // }
-            // ```
-            //
-            // See issue #46688.
-            PatKind::Ref(inner, mutbl) => AdjustMode::ResetAndConsumeRef(*mutbl, inner.span.find_ancestor_inside(pat.span).map(|end| pat.span.until(end))),
+            // Ref patterns are complicated, we handle them in `check_pat_ref`.
+            PatKind::Ref(..) => AdjustMode::Pass,
             // A `_` pattern works with any expected type, so there's no need to do anything.
             PatKind::Wild
             // A malformed pattern doesn't have an expected type, so let's just accept any type.
@@ -2179,96 +2117,135 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         pat: &'tcx Pat<'tcx>,
         inner: &'tcx Pat<'tcx>,
-        mutbl: Mutability,
-        expected: Ty<'tcx>,
-        pat_info: PatInfo<'tcx, '_>,
-        consumed_inherited_ref: bool,
+        pat_mutbl: Mutability,
+        mut expected: Ty<'tcx>,
+        mut pat_info: PatInfo<'tcx, '_>,
     ) -> Ty<'tcx> {
-        if consumed_inherited_ref
-            && pat.span.at_least_rust_2024()
-            && self.tcx.features().ref_pat_eat_one_layer_2024
-        {
-            self.typeck_results.borrow_mut().skipped_ref_pats_mut().insert(pat.hir_id);
-            self.check_pat(inner, expected, pat_info);
-            expected
-        } else {
-            let tcx = self.tcx;
-            let expected = self.shallow_resolve(expected);
-            let (ref_ty, inner_ty, pat_info) = match self
-                .check_dereferenceable(pat.span, expected, inner)
+        // FIXME: repace with `bool` once final decision on 1 vs 2 layers is made
+        #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+        enum MatchErgonomicsMode {
+            EatOneLayer,
+            EatTwoLayers,
+            Legacy,
+        }
+
+        let match_ergonomics_mode =
+            if pat.span.at_least_rust_2024() && self.tcx.features().ref_pat_eat_one_layer_2024 {
+                MatchErgonomicsMode::EatOneLayer
+            } else if self.tcx.features().ref_pat_everywhere {
+                MatchErgonomicsMode::EatTwoLayers
+            } else {
+                MatchErgonomicsMode::Legacy
+            };
+
+        let mut inherited_ref_mutbl_match = false;
+        if match_ergonomics_mode != MatchErgonomicsMode::Legacy {
+            if pat_mutbl == Mutability::Not {
+                pat_info.max_ref_mutbl = pat_info.max_ref_mutbl.cap_to_weakly_not(
+                    inner.span.find_ancestor_inside(pat.span).map(|end| pat.span.until(end)),
+                );
+            }
+
+            if let ByRef::Yes(inh_mut) = pat_info.binding_mode {
+                inherited_ref_mutbl_match = pat_mutbl <= inh_mut;
+            }
+
+            if inherited_ref_mutbl_match {
+                pat_info.binding_mode = ByRef::No;
+                if match_ergonomics_mode == MatchErgonomicsMode::EatOneLayer {
+                    self.typeck_results.borrow_mut().skipped_ref_pats_mut().insert(pat.hir_id);
+                    self.check_pat(inner, expected, pat_info);
+                    return expected;
+                }
+            } else if match_ergonomics_mode == MatchErgonomicsMode::EatOneLayer
+                && pat_mutbl == Mutability::Mut
             {
-                Ok(()) => {
-                    // `demand::subtype` would be good enough, but using `eqtype` turns
-                    // out to be equally general. See (note_1) for details.
+                // `&mut` patterns pell off `&` references
+                let (new_expected, new_bm, max_ref_mutbl) = self.peel_off_references(
+                    pat,
+                    expected,
+                    pat_info.binding_mode,
+                    Mutability::Not,
+                    pat_info.max_ref_mutbl,
+                );
+                expected = new_expected;
+                pat_info.binding_mode = new_bm;
+                pat_info.max_ref_mutbl = max_ref_mutbl;
+            }
+        } else {
+            // Reset binding mode on old editions
+            pat_info.binding_mode = ByRef::No;
+            pat_info.max_ref_mutbl = MutblCap::Mut
+        }
 
-                    // Take region, inner-type from expected type if we can,
-                    // to avoid creating needless variables. This also helps with
-                    // the bad interactions of the given hack detailed in (note_1).
-                    debug!("check_pat_ref: expected={:?}", expected);
-                    match *expected.kind() {
-                        ty::Ref(_, r_ty, r_mutbl) if r_mutbl == mutbl => {
-                            let pat_info = if r_mutbl == Mutability::Not
-                                && ((pat.span.at_least_rust_2024()
-                                    && self.tcx.features().ref_pat_eat_one_layer_2024)
-                                    || self.tcx.features().ref_pat_everywhere)
-                            {
-                                PatInfo { max_ref_mutbl: MutblCap::Not, ..pat_info }
-                            } else {
-                                pat_info
-                            };
-                            (expected, r_ty, pat_info)
-                        }
+        let tcx = self.tcx;
+        expected = self.try_structurally_resolve_type(pat.span, expected);
+        let (ref_ty, inner_ty) = match self.check_dereferenceable(pat.span, expected, inner) {
+            Ok(()) => {
+                // `demand::subtype` would be good enough, but using `eqtype` turns
+                // out to be equally general. See (note_1) for details.
 
-                        // `&` pattern eats `&mut` reference
-                        ty::Ref(_, r_ty, Mutability::Mut)
-                            if mutbl == Mutability::Not
-                                && ((pat.span.at_least_rust_2024()
-                                    && self.tcx.features().ref_pat_eat_one_layer_2024)
-                                    || self.tcx.features().ref_pat_everywhere) =>
+                // Take region, inner-type from expected type if we can,
+                // to avoid creating needless variables. This also helps with
+                // the bad interactions of the given hack detailed in (note_1).
+                debug!("check_pat_ref: expected={:?}", expected);
+                match *expected.kind() {
+                    ty::Ref(_, r_ty, r_mutbl) if r_mutbl == pat_mutbl => {
+                        if r_mutbl == Mutability::Not
+                            && match_ergonomics_mode != MatchErgonomicsMode::Legacy
                         {
-                            (expected, r_ty, pat_info)
+                            pat_info.max_ref_mutbl = MutblCap::Not;
                         }
 
-                        _ if consumed_inherited_ref && self.tcx.features().ref_pat_everywhere => {
-                            // We already matched against a match-ergonmics inserted reference,
-                            // so we don't need to match against a reference from the original type.
-                            // Save this infor for use in lowering later
-                            self.typeck_results
-                                .borrow_mut()
-                                .skipped_ref_pats_mut()
-                                .insert(pat.hir_id);
-                            (expected, expected, pat_info)
-                        }
+                        (expected, r_ty)
+                    }
 
-                        _ => {
-                            let inner_ty = self.next_ty_var(inner.span);
-                            let ref_ty = self.new_ref_ty(pat.span, mutbl, inner_ty);
-                            debug!("check_pat_ref: demanding {:?} = {:?}", expected, ref_ty);
-                            let err = self.demand_eqtype_pat_diag(
-                                pat.span,
-                                expected,
-                                ref_ty,
-                                pat_info.top_info,
-                            );
+                    // `&` pattern eats `&mut` reference
+                    ty::Ref(_, r_ty, Mutability::Mut)
+                        if pat_mutbl == Mutability::Not
+                            && match_ergonomics_mode != MatchErgonomicsMode::Legacy =>
+                    {
+                        (expected, r_ty)
+                    }
 
-                            // Look for a case like `fn foo(&foo: u32)` and suggest
-                            // `fn foo(foo: &u32)`
-                            if let Some(mut err) = err {
-                                self.borrow_pat_suggestion(&mut err, pat);
-                                err.emit();
-                            }
-                            (ref_ty, inner_ty, pat_info)
+                    _ if inherited_ref_mutbl_match
+                        && match_ergonomics_mode == MatchErgonomicsMode::EatTwoLayers =>
+                    {
+                        // We already matched against a match-ergonmics inserted reference,
+                        // so we don't need to match against a reference from the original type.
+                        // Save this info for use in lowering later
+                        self.typeck_results.borrow_mut().skipped_ref_pats_mut().insert(pat.hir_id);
+                        (expected, expected)
+                    }
+
+                    _ => {
+                        let inner_ty = self.next_ty_var(inner.span);
+                        let ref_ty = self.new_ref_ty(pat.span, pat_mutbl, inner_ty);
+                        debug!("check_pat_ref: demanding {:?} = {:?}", expected, ref_ty);
+                        let err = self.demand_eqtype_pat_diag(
+                            pat.span,
+                            expected,
+                            ref_ty,
+                            pat_info.top_info,
+                        );
+
+                        // Look for a case like `fn foo(&foo: u32)` and suggest
+                        // `fn foo(foo: &u32)`
+                        if let Some(mut err) = err {
+                            self.borrow_pat_suggestion(&mut err, pat);
+                            err.emit();
                         }
+                        (ref_ty, inner_ty)
                     }
                 }
-                Err(guar) => {
-                    let err = Ty::new_error(tcx, guar);
-                    (err, err, pat_info)
-                }
-            };
-            self.check_pat(inner, inner_ty, pat_info);
-            ref_ty
-        }
+            }
+            Err(guar) => {
+                let err = Ty::new_error(tcx, guar);
+                (err, err)
+            }
+        };
+        self.check_pat(inner, inner_ty, pat_info);
+        ref_ty
     }
 
     /// Create a reference type with a fresh region variable.
