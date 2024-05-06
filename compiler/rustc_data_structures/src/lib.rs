@@ -72,15 +72,14 @@ pub mod small_c_str;
 pub mod snapshot_map;
 pub mod svh;
 pub use ena::snapshot_vec;
-pub mod memmap;
-pub mod sorted_map;
-#[macro_use]
-pub mod stable_hasher;
 mod atomic_ref;
 pub mod fingerprint;
 pub mod marker;
+pub mod memmap;
 pub mod profiling;
 pub mod sharded;
+pub mod sorted_map;
+pub mod stable_hasher;
 pub mod stack;
 pub mod sync;
 pub mod tiny_list;
