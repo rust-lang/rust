@@ -1,5 +1,7 @@
 //! Term search
 
+use std::time::{Duration, Instant};
+
 use hir_def::type_ref::Mutability;
 use hir_ty::db::HirDatabase;
 use itertools::Itertools;
@@ -190,10 +192,10 @@ impl LookupTable {
             }
             None => {
                 self.data.insert(ty.clone(), AlternativeExprs::new(self.many_threshold, exprs));
+                for it in self.new_types.values_mut() {
+                    it.push(ty.clone());
+                }
             }
-        }
-        for it in self.new_types.values_mut() {
-            it.push(ty.clone());
         }
     }
 
@@ -269,13 +271,20 @@ pub struct TermSearchConfig {
     pub enable_borrowcheck: bool,
     /// Indicate when to squash multiple trees to `Many` as there are too many to keep track
     pub many_alternatives_threshold: usize,
-    /// Depth of the search eg. number of cycles to run
+    /// Depth of the search i.e. number of cycles to run
     pub depth: usize,
+    /// Time fuel for term search
+    pub fuel: Option<Duration>,
 }
 
 impl Default for TermSearchConfig {
     fn default() -> Self {
-        Self { enable_borrowcheck: true, many_alternatives_threshold: 1, depth: 6 }
+        Self {
+            enable_borrowcheck: true,
+            many_alternatives_threshold: 1,
+            depth: 5,
+            fuel: Some(Duration::from_millis(100)),
+        }
     }
 }
 
@@ -294,8 +303,7 @@ impl Default for TermSearchConfig {
 ///    transformation tactics. For example functions take as from set of types (arguments) to some
 ///    type (return type). Other transformations include methods on type, type constructors and
 ///    projections to struct fields (field access).
-/// 3. Once we manage to find path to type we are interested in we continue for single round to see
-///    if we can find more paths that take us to the `goal` type.
+/// 3. If we run out of fuel (term search takes too long) we stop iterating.
 /// 4. Return all the paths (type trees) that take us to the `goal` type.
 ///
 /// Note that there are usually more ways we can get to the `goal` type but some are discarded to
@@ -311,6 +319,7 @@ pub fn term_search<DB: HirDatabase>(ctx: &TermSearchCtx<'_, DB>) -> Vec<Expr> {
     });
 
     let mut lookup = LookupTable::new(ctx.config.many_alternatives_threshold, ctx.goal.clone());
+    let start = Instant::now();
 
     // Try trivial tactic first, also populates lookup table
     let mut solutions: Vec<Expr> = tactics::trivial(ctx, &defs, &mut lookup).collect();
@@ -320,11 +329,29 @@ pub fn term_search<DB: HirDatabase>(ctx: &TermSearchCtx<'_, DB>) -> Vec<Expr> {
     for _ in 0..ctx.config.depth {
         lookup.new_round();
 
+        if ctx.config.fuel.is_some_and(|timeout| start.elapsed() > timeout) {
+            break;
+        }
         solutions.extend(tactics::type_constructor(ctx, &defs, &mut lookup));
+        if ctx.config.fuel.is_some_and(|timeout| start.elapsed() > timeout) {
+            break;
+        }
         solutions.extend(tactics::free_function(ctx, &defs, &mut lookup));
+        if ctx.config.fuel.is_some_and(|timeout| start.elapsed() > timeout) {
+            break;
+        }
         solutions.extend(tactics::impl_method(ctx, &defs, &mut lookup));
+        if ctx.config.fuel.is_some_and(|timeout| start.elapsed() > timeout) {
+            break;
+        }
         solutions.extend(tactics::struct_projection(ctx, &defs, &mut lookup));
+        if ctx.config.fuel.is_some_and(|timeout| start.elapsed() > timeout) {
+            break;
+        }
         solutions.extend(tactics::impl_static_method(ctx, &defs, &mut lookup));
+        if ctx.config.fuel.is_some_and(|timeout| start.elapsed() > timeout) {
+            break;
+        }
         solutions.extend(tactics::make_tuple(ctx, &defs, &mut lookup));
 
         // Discard not interesting `ScopeDef`s for speedup
