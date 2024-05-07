@@ -1731,6 +1731,51 @@ fn foo(a: A) { B { bar: a.$0 }; }
     }
 
     #[test]
+    fn tuple_field_detail() {
+        check(
+            r#"
+struct S(i32);
+
+fn f() -> i32 {
+    let s = S(0);
+    s.0$0
+}
+"#,
+            SymbolKind::Field,
+            expect![[r#"
+                [
+                    CompletionItem {
+                        label: "0",
+                        source_range: 56..57,
+                        delete: 56..57,
+                        insert: "0",
+                        kind: SymbolKind(
+                            Field,
+                        ),
+                        detail: "i32",
+                        relevance: CompletionRelevance {
+                            exact_name_match: false,
+                            type_match: Some(
+                                Exact,
+                            ),
+                            is_local: false,
+                            is_item_from_trait: false,
+                            is_item_from_notable_trait: false,
+                            is_name_already_imported: false,
+                            requires_import: false,
+                            is_op_method: false,
+                            is_private_editable: false,
+                            postfix_match: None,
+                            is_definite: false,
+                            function: None,
+                        },
+                    },
+                ]
+            "#]],
+        );
+    }
+
+    #[test]
     fn record_field_and_call_relevances() {
         check_relevance(
             r#"

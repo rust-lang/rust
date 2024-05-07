@@ -466,7 +466,7 @@ impl CompletionContext<'_> {
                 cov_mark::hit!(completes_if_lifetime_without_idents);
                 TextRange::at(self.original_token.text_range().start(), TextSize::from(1))
             }
-            IDENT | LIFETIME_IDENT | UNDERSCORE => self.original_token.text_range(),
+            IDENT | LIFETIME_IDENT | UNDERSCORE | INT_NUMBER => self.original_token.text_range(),
             _ if kind.is_keyword() => self.original_token.text_range(),
             _ => TextRange::empty(self.position.offset),
         }
