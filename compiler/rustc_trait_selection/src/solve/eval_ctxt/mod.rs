@@ -1052,12 +1052,12 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         ty: Ty<'tcx>,
     ) -> Option<ty::Const<'tcx>> {
         use rustc_middle::mir::interpret::ErrorHandled;
-        match self.infcx.try_const_eval_resolve(param_env, unevaluated, ty, DUMMY_SP) {
-            Ok(ct) => Some(ct),
+        match self.infcx.const_eval_resolve(param_env, unevaluated, DUMMY_SP) {
+            Ok(Some(val)) => Some(ty::Const::new_value(self.tcx(), val, ty)),
+            Ok(None) | Err(ErrorHandled::TooGeneric(_)) => None,
             Err(ErrorHandled::Reported(e, _)) => {
                 Some(ty::Const::new_error(self.tcx(), e.into(), ty))
             }
-            Err(ErrorHandled::TooGeneric(_)) => None,
         }
     }
 
