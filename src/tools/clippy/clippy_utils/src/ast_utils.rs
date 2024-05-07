@@ -308,13 +308,15 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 ty: lt,
                 mutability: lm,
                 expr: le,
+                safety: ls,
             }),
             Static(box StaticItem {
                 ty: rt,
                 mutability: rm,
                 expr: re,
+                safety: rs,
             }),
-        ) => lm == rm && eq_ty(lt, rt) && eq_expr_opt(le, re),
+        ) => lm == rm && ls == rs && eq_ty(lt, rt) && eq_expr_opt(le, re),
         (
             Const(box ConstItem {
                 defaultness: ld,

@@ -2,6 +2,7 @@ use crate::build::ExprCategory;
 use crate::errors::*;
 
 use rustc_errors::DiagArgValue;
+use rustc_hir::def::DefKind;
 use rustc_hir::{self as hir, BindingMode, ByRef, HirId, Mutability};
 use rustc_middle::mir::BorrowKind;
 use rustc_middle::span_bug;
@@ -456,7 +457,10 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                     if self.tcx.is_mutable_static(def_id) {
                         self.requires_unsafe(expr.span, UseOfMutableStatic);
                     } else if self.tcx.is_foreign_item(def_id) {
-                        self.requires_unsafe(expr.span, UseOfExternStatic);
+                        match self.tcx.def_kind(def_id) {
+                            DefKind::Static { safety: hir::Safety::Safe, .. } => {}
+                            _ => self.requires_unsafe(expr.span, UseOfExternStatic),
+                        }
                     }
                 } else if self.thir[arg].ty.is_unsafe_ptr() {
                     self.requires_unsafe(expr.span, DerefOfRawPointer);

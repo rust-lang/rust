@@ -171,7 +171,8 @@ impl<'a> State<'a> {
                 self.print_use_tree(tree);
                 self.word(";");
             }
-            ast::ItemKind::Static(box StaticItem { ty, mutability: mutbl, expr: body }) => {
+            ast::ItemKind::Static(box StaticItem { ty, safety, mutability: mutbl, expr: body }) => {
+                self.print_safety(*safety);
                 self.print_item_const(
                     item.ident,
                     Some(*mutbl),

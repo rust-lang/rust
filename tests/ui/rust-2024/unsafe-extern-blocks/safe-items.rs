@@ -5,11 +5,12 @@
 //@ check-pass
 
 unsafe extern "C" {
+    safe static TEST1: i32;
     safe fn test1(i: i32);
 }
 
-fn test2(i: i32) {
-    test1(i);
+fn test2() {
+    test1(TEST1);
 }
 
 fn main() {}

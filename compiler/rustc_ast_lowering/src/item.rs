@@ -181,7 +181,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
                 self.lower_use_tree(use_tree, &prefix, id, vis_span, ident, attrs)
             }
-            ItemKind::Static(box ast::StaticItem { ty: t, mutability: m, expr: e }) => {
+            ItemKind::Static(box ast::StaticItem { ty: t, safety: _, mutability: m, expr: e }) => {
                 let (ty, body_id) =
                     self.lower_const_item(t, span, e.as_deref(), ImplTraitPosition::StaticTy);
                 hir::ItemKind::Static(ty, *m, body_id)

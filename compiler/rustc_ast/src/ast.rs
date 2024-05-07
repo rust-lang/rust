@@ -3164,6 +3164,7 @@ pub struct DelegationMac {
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct StaticItem {
     pub ty: P<Ty>,
+    pub safety: Safety,
     pub mutability: Mutability,
     pub expr: Option<P<Expr>>,
 }
@@ -3182,7 +3183,7 @@ impl From<StaticItem> for StaticForeignItem {
     fn from(static_item: StaticItem) -> StaticForeignItem {
         StaticForeignItem {
             ty: static_item.ty,
-            safety: Safety::Default,
+            safety: static_item.safety,
             mutability: static_item.mutability,
             expr: static_item.expr,
         }
@@ -3193,6 +3194,7 @@ impl From<StaticForeignItem> for StaticItem {
     fn from(static_item: StaticForeignItem) -> StaticItem {
         StaticItem {
             ty: static_item.ty,
+            safety: static_item.safety,
             mutability: static_item.mutability,
             expr: static_item.expr,
         }

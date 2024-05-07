@@ -711,7 +711,9 @@ fn mutability<'tcx>(ecx: &InterpCx<'tcx, impl Machine<'tcx>>, alloc_id: AllocId)
     // We're not using `try_global_alloc` since dangling pointers have already been handled.
     match ecx.tcx.global_alloc(alloc_id) {
         GlobalAlloc::Static(did) => {
-            let DefKind::Static { mutability, nested } = ecx.tcx.def_kind(did) else { bug!() };
+            let DefKind::Static { safety: _, mutability, nested } = ecx.tcx.def_kind(did) else {
+                bug!()
+            };
             if nested {
                 assert!(
                     ecx.memory.alloc_map.get(alloc_id).is_none(),
