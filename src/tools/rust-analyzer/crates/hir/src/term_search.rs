@@ -1,7 +1,5 @@
 //! Term search
 
-use std::time::{Duration, Instant};
-
 use hir_def::type_ref::Mutability;
 use hir_ty::db::HirDatabase;
 use itertools::Itertools;
@@ -271,20 +269,13 @@ pub struct TermSearchConfig {
     pub enable_borrowcheck: bool,
     /// Indicate when to squash multiple trees to `Many` as there are too many to keep track
     pub many_alternatives_threshold: usize,
-    /// Depth of the search i.e. number of cycles to run
-    pub depth: usize,
-    /// Time fuel for term search
-    pub fuel: Option<Duration>,
+    /// Fuel for term search
+    pub fuel: u64,
 }
 
 impl Default for TermSearchConfig {
     fn default() -> Self {
-        Self {
-            enable_borrowcheck: true,
-            many_alternatives_threshold: 1,
-            depth: 5,
-            fuel: Some(Duration::from_millis(100)),
-        }
+        Self { enable_borrowcheck: true, many_alternatives_threshold: 1, fuel: 400 }
     }
 }
 
@@ -319,40 +310,31 @@ pub fn term_search<DB: HirDatabase>(ctx: &TermSearchCtx<'_, DB>) -> Vec<Expr> {
     });
 
     let mut lookup = LookupTable::new(ctx.config.many_alternatives_threshold, ctx.goal.clone());
-    let start = Instant::now();
+    let fuel = std::cell::Cell::new(ctx.config.fuel);
+
+    let should_continue = &|| {
+        let remaining = fuel.get();
+        fuel.set(remaining.saturating_sub(1));
+        if remaining == 0 {
+            tracing::debug!("fuel exhausted");
+        }
+        remaining > 0
+    };
 
     // Try trivial tactic first, also populates lookup table
     let mut solutions: Vec<Expr> = tactics::trivial(ctx, &defs, &mut lookup).collect();
     // Use well known types tactic before iterations as it does not depend on other tactics
     solutions.extend(tactics::famous_types(ctx, &defs, &mut lookup));
 
-    for _ in 0..ctx.config.depth {
+    while should_continue() {
         lookup.new_round();
 
-        if ctx.config.fuel.is_some_and(|timeout| start.elapsed() > timeout) {
-            break;
-        }
-        solutions.extend(tactics::type_constructor(ctx, &defs, &mut lookup));
-        if ctx.config.fuel.is_some_and(|timeout| start.elapsed() > timeout) {
-            break;
-        }
-        solutions.extend(tactics::free_function(ctx, &defs, &mut lookup));
-        if ctx.config.fuel.is_some_and(|timeout| start.elapsed() > timeout) {
-            break;
-        }
-        solutions.extend(tactics::impl_method(ctx, &defs, &mut lookup));
-        if ctx.config.fuel.is_some_and(|timeout| start.elapsed() > timeout) {
-            break;
-        }
-        solutions.extend(tactics::struct_projection(ctx, &defs, &mut lookup));
-        if ctx.config.fuel.is_some_and(|timeout| start.elapsed() > timeout) {
-            break;
-        }
-        solutions.extend(tactics::impl_static_method(ctx, &defs, &mut lookup));
-        if ctx.config.fuel.is_some_and(|timeout| start.elapsed() > timeout) {
-            break;
-        }
-        solutions.extend(tactics::make_tuple(ctx, &defs, &mut lookup));
+        solutions.extend(tactics::type_constructor(ctx, &defs, &mut lookup, should_continue));
+        solutions.extend(tactics::free_function(ctx, &defs, &mut lookup, should_continue));
+        solutions.extend(tactics::impl_method(ctx, &defs, &mut lookup, should_continue));
+        solutions.extend(tactics::struct_projection(ctx, &defs, &mut lookup, should_continue));
+        solutions.extend(tactics::impl_static_method(ctx, &defs, &mut lookup, should_continue));
+        solutions.extend(tactics::make_tuple(ctx, &defs, &mut lookup, should_continue));
 
         // Discard not interesting `ScopeDef`s for speedup
         for def in lookup.exhausted_scopedefs() {
