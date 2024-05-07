@@ -1723,7 +1723,7 @@ impl Build {
             return;
         }
         let _ = fs::remove_file(dst);
-        let metadata = t!(src.symlink_metadata());
+        let metadata = t!(src.symlink_metadata(), format!("src = {}", src.display()));
         let mut src = src.to_path_buf();
         if metadata.file_type().is_symlink() {
             if dereference_symlinks {
