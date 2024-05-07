@@ -226,7 +226,7 @@ impl f16 {
     /// See [explanation of NaN as a special value](f32) for more info.
     #[inline]
     #[must_use]
-    #[unstable(feature = "f128", issue = "116909")]
+    #[unstable(feature = "f16", issue = "116909")]
     pub fn is_sign_positive(self) -> bool {
         !self.is_sign_negative()
     }
@@ -239,7 +239,7 @@ impl f16 {
     /// See [explanation of NaN as a special value](f32) for more info.
     #[inline]
     #[must_use]
-    #[unstable(feature = "f128", issue = "116909")]
+    #[unstable(feature = "f16", issue = "116909")]
     pub fn is_sign_negative(self) -> bool {
         // IEEE754 says: isSignMinus(x) is true if and only if x has negative sign. isSignMinus
         // applies to zeros and NaNs as well.
