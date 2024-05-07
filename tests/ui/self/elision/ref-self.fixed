@@ -20,39 +20,39 @@ impl<T, P> Deref for Wrap<T, P> {
 impl Struct {
     // Test using `&self` sugar:
 
-    fn ref_self<'a>(&'a self, f: &'a u32) -> &'a u32 {
+    fn ref_self<'a>(&self, f: &'a u32) -> &'a u32 {
         f
         //~^ ERROR lifetime may not live long enough
     }
 
     // Test using `&Self` explicitly:
 
-    fn ref_Self<'a>(self: &'a Self, f: &'a u32) -> &'a u32 {
+    fn ref_Self<'a>(self: &Self, f: &'a u32) -> &'a u32 {
         f
         //~^ ERROR lifetime may not live long enough
     }
 
-    fn box_ref_Self<'a>(self: Box<&'a Self>, f: &'a u32) -> &'a u32 {
+    fn box_ref_Self<'a>(self: Box<&Self>, f: &'a u32) -> &'a u32 {
         f
         //~^ ERROR lifetime may not live long enough
     }
 
-    fn pin_ref_Self<'a>(self: Pin<&'a Self>, f: &'a u32) -> &'a u32 {
+    fn pin_ref_Self<'a>(self: Pin<&Self>, f: &'a u32) -> &'a u32 {
         f
         //~^ ERROR lifetime may not live long enough
     }
 
-    fn box_box_ref_Self<'a>(self: Box<Box<&'a Self>>, f: &'a u32) -> &'a u32 {
+    fn box_box_ref_Self<'a>(self: Box<Box<&Self>>, f: &'a u32) -> &'a u32 {
         f
         //~^ ERROR lifetime may not live long enough
     }
 
-    fn box_pin_ref_Self<'a>(self: Box<Pin<&'a Self>>, f: &'a u32) -> &'a u32 {
+    fn box_pin_ref_Self<'a>(self: Box<Pin<&Self>>, f: &'a u32) -> &'a u32 {
         f
         //~^ ERROR lifetime may not live long enough
     }
 
-    fn wrap_ref_Self_Self<'a>(self: Wrap<&'a Self, Self>, f: &'a u8) -> &'a u8 {
+    fn wrap_ref_Self_Self<'a>(self: Wrap<&Self, Self>, f: &'a u8) -> &'a u8 {
         f
         //~^ ERROR lifetime may not live long enough
     }

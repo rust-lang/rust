@@ -10,8 +10,8 @@ LL |         f
    |
 help: consider introducing a named lifetime parameter and update trait if needed
    |
-LL |     fn a<'a>(self: Pin<&'a Foo>, f: &'a Foo) -> &'a Foo {
-   |         ++++            ++           ++          ++
+LL |     fn a<'a>(self: Pin<&Foo>, f: &'a Foo) -> &'a Foo {
+   |         ++++                      ++          ++
 
 error: lifetime may not live long enough
   --> $DIR/arbitrary_self_types_pin_lifetime_mismatch.rs:14:9
@@ -25,8 +25,8 @@ LL |         (self, f)
    |
 help: consider introducing a named lifetime parameter and update trait if needed
    |
-LL |     fn c<'a>(self: Pin<&'a Self>, f: &'a Foo, g: &Foo) -> (Pin<&'a Foo>, &'a Foo) {
-   |         ++++            ++            ++                        ++        ++
+LL |     fn c<'a>(self: Pin<&Self>, f: &'a Foo, g: &Foo) -> (Pin<&'a Foo>, &'a Foo) {
+   |         ++++                       ++                        ++        ++
 
 error: lifetime may not live long enough
   --> $DIR/arbitrary_self_types_pin_lifetime_mismatch.rs:21:9
@@ -40,8 +40,8 @@ LL |         arg
    |
 help: consider introducing a named lifetime parameter and update trait if needed
    |
-LL |     fn bar<'a>(self: Alias<&'a Self>, arg: &'a ()) -> &'a () {
-   |                             ++                         ++
+LL |     fn bar<'a>(self: Alias<&Self>, arg: &'a ()) -> &'a () {
+   |                                                     ++
 
 error: aborting due to 3 previous errors
 
