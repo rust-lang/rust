@@ -5,7 +5,7 @@ use rustc_span::source_map::SourceMap;
 use rustc_span::Span;
 
 #[derive(Default)]
-pub struct TokenTreeDiagInfo {
+pub(super) struct TokenTreeDiagInfo {
     /// Stack of open delimiters and their spans. Used for error message.
     pub open_braces: Vec<(Delimiter, Span)>,
     pub unmatched_delims: Vec<UnmatchedDelim>,
@@ -21,7 +21,7 @@ pub struct TokenTreeDiagInfo {
     pub matching_block_spans: Vec<(Span, Span)>,
 }
 
-pub fn same_indentation_level(sm: &SourceMap, open_sp: Span, close_sp: Span) -> bool {
+pub(super) fn same_indentation_level(sm: &SourceMap, open_sp: Span, close_sp: Span) -> bool {
     match (sm.span_to_margin(open_sp), sm.span_to_margin(close_sp)) {
         (Some(open_padding), Some(close_padding)) => open_padding == close_padding,
         _ => false,
@@ -30,7 +30,7 @@ pub fn same_indentation_level(sm: &SourceMap, open_sp: Span, close_sp: Span) -> 
 
 // When we get a `)` or `]` for `{`, we should emit help message here
 // it's more friendly compared to report `unmatched error` in later phase
-pub fn report_missing_open_delim(err: &mut Diag<'_>, unmatched_delims: &[UnmatchedDelim]) -> bool {
+fn report_missing_open_delim(err: &mut Diag<'_>, unmatched_delims: &[UnmatchedDelim]) -> bool {
     let mut reported_missing_open = false;
     for unmatch_brace in unmatched_delims.iter() {
         if let Some(delim) = unmatch_brace.found_delim
@@ -51,7 +51,7 @@ pub fn report_missing_open_delim(err: &mut Diag<'_>, unmatched_delims: &[Unmatch
     reported_missing_open
 }
 
-pub fn report_suspicious_mismatch_block(
+pub(super) fn report_suspicious_mismatch_block(
     err: &mut Diag<'_>,
     diag_info: &TokenTreeDiagInfo,
     sm: &SourceMap,
