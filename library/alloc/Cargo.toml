@@ -20,6 +20,10 @@ rand_xorshift = "0.3.0"
 name = "alloctests"
 path = "tests/lib.rs"
 
+[[test]]
+name = "vec_deque_alloc_error"
+path = "tests/vec_deque_alloc_error.rs"
+
 [[bench]]
 name = "allocbenches"
 path = "benches/lib.rs"
