@@ -241,6 +241,44 @@ fn test_reallocarray() {
     }
 }
 
+#[cfg(not(target_os = "windows"))]
+fn test_aligned_alloc() {
+    // libc doesn't have this function (https://github.com/rust-lang/libc/issues/3689),
+    // so we declare it ourselves.
+    extern "C" {
+        fn aligned_alloc(alignment: libc::size_t, size: libc::size_t) -> *mut libc::c_void;
+    }
+    // size not a multiple of the alignment
+    unsafe {
+        let p = aligned_alloc(16, 3);
+        assert_eq!(p, ptr::null_mut());
+    }
+
+    // alignment not power of 2
+    unsafe {
+        let p = aligned_alloc(63, 8);
+        assert_eq!(p, ptr::null_mut());
+    }
+
+    // alignment lesser than a word but still a successful allocation
+    unsafe {
+        let p = aligned_alloc(1, 4);
+        assert!(!p.is_null());
+        assert!(p.is_aligned_to(4));
+        libc::free(p);
+    }
+
+    // repeated tests on correct alignment/size
+    for _ in 0..16 {
+        unsafe {
+            let p = aligned_alloc(16, 16);
+            assert!(!p.is_null());
+            assert!(p.is_aligned_to(16));
+            libc::free(p);
+        }
+    }
+}
+
 fn main() {
     test_malloc();
     test_calloc();
@@ -254,6 +292,8 @@ fn main() {
         target_os = "wasi",
     )))]
     test_reallocarray();
+    #[cfg(not(target_os = "windows"))]
+    test_aligned_alloc();
 
     test_memcpy();
     test_strcpy();
