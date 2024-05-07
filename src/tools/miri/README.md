@@ -265,24 +265,11 @@ To get a backtrace, you need to disable isolation
 RUST_BACKTRACE=1 MIRIFLAGS="-Zmiri-disable-isolation" cargo miri test
 ```
 
-#### "found possibly newer version of crate `std` which `<dependency>` depends on"
-
-Your build directory may contain artifacts from an earlier build that have/have
-not been built for Miri. Run `cargo clean` before switching from non-Miri to
-Miri builds and vice-versa.
-
 #### "found crate `std` compiled by an incompatible version of rustc"
 
 You may be running `cargo miri` with a different compiler version than the one
 used to build the custom libstd that Miri uses, and Miri failed to detect that.
 Try running `cargo miri clean`.
-
-#### "no mir for `std::rt::lang_start_internal`"
-
-This means the sysroot you are using was not compiled with Miri in mind.  This
-should never happen when you use `cargo miri` because that takes care of setting
-up the sysroot.  If you are using `miri` (the Miri driver) directly, see the
-[contributors' guide](CONTRIBUTING.md) for how to use `./miri` to best do that.
 
 
 ## Miri `-Z` flags and environment variables
