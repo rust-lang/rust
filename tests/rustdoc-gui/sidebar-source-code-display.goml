@@ -4,7 +4,7 @@ javascript: false
 go-to: "file://" + |DOC_PATH| + "/src/test_docs/lib.rs.html"
 // Since the javascript is disabled, there shouldn't be a toggle.
 wait-for-css: (".sidebar", {"display": "none"})
-assert-css: ("#sidebar-button", {"display": "none"})
+assert-false: "#sidebar-button"
 
 // Let's retry with javascript enabled.
 javascript: true
