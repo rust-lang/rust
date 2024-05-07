@@ -1,31 +1,26 @@
 # Miri
 
-An experimental interpreter for [Rust][rust]'s
-[mid-level intermediate representation][mir] (MIR). It can run binaries and
-test suites of cargo projects and detect certain classes of
-[undefined behavior](https://doc.rust-lang.org/reference/behavior-considered-undefined.html),
-for example:
+Miri is an [Undefined Behavior][reference-ub] detection tool for Rust. It can run binaries and test
+suites of cargo projects and detect unsafe code that fails to uphold its safety requirements. For
+instance:
 
 * Out-of-bounds memory accesses and use-after-free
 * Invalid use of uninitialized data
 * Violation of intrinsic preconditions (an [`unreachable_unchecked`] being
   reached, calling [`copy_nonoverlapping`] with overlapping ranges, ...)
 * Not sufficiently aligned memory accesses and references
-* Violation of *some* basic type invariants (a `bool` that is not 0 or 1, for example,
+* Violation of basic type invariants (a `bool` that is not 0 or 1, for example,
   or an invalid enum discriminant)
 * **Experimental**: Violations of the [Stacked Borrows] rules governing aliasing
   for reference types
 * **Experimental**: Violations of the [Tree Borrows] aliasing rules, as an optional
   alternative to [Stacked Borrows]
-* **Experimental**: Data races
+* **Experimental**: Data races and emulation of weak memory effects, i.e.,
+  atomic reads can return outdated values.
 
 On top of that, Miri will also tell you about memory leaks: when there is memory
 still allocated at the end of the execution, and that memory is not reachable
 from a global `static`, Miri will raise an error.
-
-Miri supports almost all Rust language features; in particular, unwinding and
-concurrency are properly supported (including some experimental emulation of
-weak memory effects, i.e., reads can return outdated values).
 
 You can use Miri to emulate programs on other targets, e.g. to ensure that
 byte-level data manipulation works correctly both on little-endian and
@@ -33,7 +28,7 @@ big-endian systems. See
 [cross-interpretation](#cross-interpretation-running-for-different-targets)
 below.
 
-Miri has already discovered some [real-world bugs](#bugs-found-by-miri). If you
+Miri has already discovered many [real-world bugs](#bugs-found-by-miri). If you
 found a bug with Miri, we'd appreciate if you tell us and we'll add it to the
 list!
 
@@ -45,24 +40,27 @@ clocks, are replaced by deterministic "fake" implementations. Set
 (In particular, the "fake" system RNG APIs make Miri **not suited for
 cryptographic use**! Do not generate keys using Miri.)
 
-All that said, be aware that Miri will **not catch all cases of undefined
-behavior** in your program, and cannot run all programs:
+All that said, be aware that Miri does **not catch every violation of the Rust specification** in
+your program, not least because there is no such specification. Miri uses its own approximation of
+what is and is not Undefined Behavior in Rust. To the best of our knowledge, all Undefined Behavior
+that has the potential to affect a program's correctness *is* being detected by Miri (modulo
+[bugs][I-misses-ub]), but you should consult [the Reference][reference-ub] for the official
+definition of Undefined Behavior. Miri will be updated with the Rust compiler to protect against UB
+as it is understood by the current compiler, but it makes no promises about future versions of
+rustc.
 
-* There are still plenty of open questions around the basic invariants for some
-  types and when these invariants even have to hold. Miri tries to avoid false
-  positives here, so if your program runs fine in Miri right now that is by no
-  means a guarantee that it is UB-free when these questions get answered.
+Further caveats that Miri users should be aware of:
 
-    In particular, Miri does not check that references point to valid data.
 * If the program relies on unspecified details of how data is laid out, it will
   still run fine in Miri -- but might break (including causing UB) on different
-  compiler versions or different platforms.
+  compiler versions or different platforms. (You can use `-Zrandomize-layout`
+  to detect some of these cases.)
 * Program execution is non-deterministic when it depends, for example, on where
   exactly in memory allocations end up, or on the exact interleaving of
   concurrent threads. Miri tests one of many possible executions of your
-  program. You can alleviate this to some extent by running Miri with different
-  values for `-Zmiri-seed`, but that will still by far not explore all possible
-  executions.
+  program, but it will miss bugs that only occur in a different possible execution.
+  You can alleviate this to some extent by running Miri with different
+  values for `-Zmiri-seed`, but that will still by far not explore all possible executions.
 * Miri runs the program as a platform-independent interpreter, so the program
   has no access to most platform-specific APIs or FFI. A few APIs have been
   implemented (such as printing to stdout, accessing environment variables, and
@@ -70,8 +68,8 @@ behavior** in your program, and cannot run all programs:
   not support networking. System API support varies between targets; if you run
   on Windows it is a good idea to use `--target x86_64-unknown-linux-gnu` to get
   better support.
-* Weak memory emulation may [produce weak behaviours](https://github.com/rust-lang/miri/issues/2301)
-  unobservable by compiled programs running on real hardware when `SeqCst` fences are used, and it
+* Weak memory emulation may [produce weak behaviors](https://github.com/rust-lang/miri/issues/2301)
+  when `SeqCst` fences are used that are not actually permitted by the Rust memory model, and it
   cannot produce all behaviors possibly observable on real hardware.
 
 Moreover, Miri fundamentally cannot tell you whether your code is *sound*. [Soundness] is the property
@@ -87,6 +85,8 @@ coverage.
 [Stacked Borrows]: https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md
 [Tree Borrows]: https://perso.crans.org/vanille/treebor/
 [Soundness]: https://rust-lang.github.io/unsafe-code-guidelines/glossary.html#soundness-of-code--of-a-library
+[reference-ub]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
+[I-misses-ub]: https://github.com/rust-lang/miri/labels/I-misses-UB
 
 
 ## Using Miri
@@ -97,14 +97,8 @@ Install Miri on Rust nightly via `rustup`:
 rustup +nightly component add miri
 ```
 
-If `rustup` says the `miri` component is unavailable, that's because not all
-nightly releases come with all tools. Check out
-[this website](https://rust-lang.github.io/rustup-components-history) to
-determine a nightly version that comes with Miri and install that using `rustup
-toolchain install nightly-YYYY-MM-DD`. Either way, all of the following commands
-assume the right toolchain is pinned via `rustup override set nightly` or
-`rustup override set nightly-YYYY-MM-DD`. (Alternatively, use `cargo
-+nightly`/`cargo +nightly-YYYY-MM-DD` for each of the following commands.)
+All the following commands assume the nightly toolchain is pinned via `rustup override set nightly`.
+Alternatively, use `cargo +nightly` for each of the following commands.
 
 Now you can run your project in Miri:
 
@@ -118,12 +112,12 @@ dependencies. It will ask you for confirmation before installing anything.
 example, `cargo miri test filter` only runs the tests containing `filter` in
 their name.
 
-You can pass arguments to Miri via `MIRIFLAGS`. For example,
+You can pass [flags][miri-flags] to Miri via `MIRIFLAGS`. For example,
 `MIRIFLAGS="-Zmiri-disable-stacked-borrows" cargo miri run` runs the program
 without checking the aliasing of references.
 
 When compiling code via `cargo miri`, the `cfg(miri)` config flag is set for code
-that will be interpret under Miri. You can use this to ignore test cases that fail
+that will be interpreted under Miri. You can use this to ignore test cases that fail
 under Miri because they do things Miri does not support:
 
 ```rust
@@ -159,10 +153,8 @@ endian-sensitive code.
 
 ### Running Miri on CI
 
-To run Miri on CI, make sure that you handle the case where the latest nightly
-does not ship the Miri component because it currently does not build. `rustup
-toolchain install --component` knows how to handle this situation, so the
-following snippet should always work:
+When running Miri on CI, use the following snippet to install a nightly toolchain with the Miri
+component:
 
 ```sh
 rustup toolchain install nightly --component miri
