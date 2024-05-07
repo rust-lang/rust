@@ -1,3 +1,6 @@
+# When the cdylib crate type was added as a variation of dylib, it needed a test to verify its function.
+# See https://github.com/rust-lang/rust/pull/33553
+
 # ignore-cross-compile
 include ../tools.mk
 

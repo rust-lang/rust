@@ -1,3 +1,6 @@
+# Both GCC and Clang write by default a `.comment` section with compiler information. Rustc received a similar .comment section, so this tests checks that this section properly appears.
+# See https://github.com/rust-lang/rust/commit/74b8d324eb77a8f337b35dc68ac91b0c2c06debc
+
 include ../tools.mk
 
 # only-linux

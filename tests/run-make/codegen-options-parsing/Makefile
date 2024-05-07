@@ -1,3 +1,5 @@
+# This test intentionally feeds invalid inputs to codegen and checks if the error message outputs contain the expected strings.
+
 # ignore-cross-compile
 include ../tools.mk
 
