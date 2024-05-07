@@ -555,7 +555,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
 
         // Select just those fields of the `with`
         // expression that will actually be used
-        match with_place.place.ty().kind() {
+        match self.mc.try_structurally_resolve_type(with_expr.span, with_place.place.ty()).kind() {
             ty::Adt(adt, args) if adt.is_struct() => {
                 // Consume those fields of the with expression that are needed.
                 for (f_index, with_field) in adt.non_enum_variant().fields.iter_enumerated() {

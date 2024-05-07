@@ -471,7 +471,9 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         let place_ty = self.expr_ty(expr)?;
         let base_ty = self.expr_ty_adjusted(base)?;
 
-        let ty::Ref(region, _, mutbl) = *base_ty.kind() else {
+        let ty::Ref(region, _, mutbl) =
+            *self.try_structurally_resolve_type(base.span, base_ty).kind()
+        else {
             span_bug!(expr.span, "cat_overloaded_place: base is not a reference");
         };
         let ref_ty = Ty::new_ref(self.tcx, region, place_ty, mutbl);
@@ -487,7 +489,10 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         base_place: PlaceWithHirId<'tcx>,
     ) -> McResult<PlaceWithHirId<'tcx>> {
         let base_curr_ty = base_place.place.ty();
-        let deref_ty = match base_curr_ty.builtin_deref(true) {
+        let deref_ty = match self
+            .try_structurally_resolve_type(self.tcx.hir().span(node.hir_id()), base_curr_ty)
+            .builtin_deref(true)
+        {
             Some(mt) => mt.ty,
             None => {
                 debug!("explicit deref of non-derefable type: {:?}", base_curr_ty);
@@ -531,7 +536,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
     ) -> McResult<VariantIdx> {
         let res = self.typeck_results().qpath_res(qpath, pat_hir_id);
         let ty = self.typeck_results().node_type(pat_hir_id);
-        let ty::Adt(adt_def, _) = ty.kind() else {
+        let ty::Adt(adt_def, _) = self.try_structurally_resolve_type(span, ty).kind() else {
             self.tcx
                 .dcx()
                 .span_delayed_bug(span, "struct or tuple struct pattern not applied to an ADT");
@@ -564,7 +569,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         span: Span,
     ) -> McResult<usize> {
         let ty = self.typeck_results().node_type(pat_hir_id);
-        match ty.kind() {
+        match self.try_structurally_resolve_type(span, ty).kind() {
             ty::Adt(adt_def, _) => Ok(adt_def.variant(variant_index).fields.len()),
             _ => {
                 self.tcx
@@ -578,7 +583,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
     /// Here `pat_hir_id` is the HirId of the pattern itself.
     fn total_fields_in_tuple(&self, pat_hir_id: HirId, span: Span) -> McResult<usize> {
         let ty = self.typeck_results().node_type(pat_hir_id);
-        match ty.kind() {
+        match self.try_structurally_resolve_type(span, ty).kind() {
             ty::Tuple(args) => Ok(args.len()),
             _ => {
                 self.tcx.dcx().span_delayed_bug(span, "tuple pattern not applied to a tuple");
