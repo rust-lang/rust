@@ -12,7 +12,9 @@ struct Wrap<T, P>(T, PhantomData<P>);
 
 impl<T, P> Deref for Wrap<T, P> {
     type Target = T;
-    fn deref(&self) -> &T { &self.0 }
+    fn deref(&self) -> &T {
+        &self.0
+    }
 }
 
 impl Struct {
@@ -56,4 +58,4 @@ impl Struct {
     }
 }
 
-fn main() { }
+fn main() {}

@@ -5,13 +5,10 @@ struct Foo {
 }
 
 impl Foo {
-  fn foo<'a>(&self, x: &'a i32) -> &i32 {
-
-    x
-    //~^ ERROR lifetime may not live long enough
-
-  }
-
+    fn foo<'a>(&self, x: &'a i32) -> &i32 {
+        x
+        //~^ ERROR lifetime may not live long enough
+    }
 }
 
 fn main() {}

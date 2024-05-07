@@ -3,7 +3,7 @@
 
 use std::pin::Pin;
 
-struct Struct { }
+struct Struct {}
 
 impl Struct {
     // Test using `&mut Struct` explicitly:
@@ -34,4 +34,4 @@ impl Struct {
     }
 }
 
-fn main() { }
+fn main() {}
