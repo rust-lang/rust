@@ -175,7 +175,8 @@ fn to_selection<'tcx>(
         | ProbeKind::UnsizeAssembly
         | ProbeKind::UpcastProjectionCompatibility
         | ProbeKind::OpaqueTypeStorageLookup { result: _ }
-        | ProbeKind::Root { result: _ } => {
+        | ProbeKind::Root { result: _ }
+        | ProbeKind::ShadowedEnvProbing => {
             span_bug!(span, "didn't expect to assemble trait candidate from {:#?}", cand.kind())
         }
     })
