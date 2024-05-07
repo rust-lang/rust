@@ -4,7 +4,7 @@ javascript: false
 
 go-to: "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html"
 show-text: true
-assert-css: (".sub", {"display": "none"})
+assert-false: ".sub"
 
 // Even though JS is disabled, we should still have themes applied. Links are never black-colored
 // if styles are applied so we check that they are not.
