@@ -1494,8 +1494,9 @@ impl<'tcx> LateLintPass<'tcx> for TypeAliasBounds {
 
         let ty = cx.tcx.type_of(item.owner_id).skip_binder();
         if ty.has_inherent_projections() {
-            // Bounds of type aliases that contain opaque types or inherent projections are respected.
-            // E.g: `type X = impl Trait;`, `type X = (impl Trait, Y);`, `type X = Type::Inherent;`.
+            // Bounds of type aliases that contain opaque types or inherent projections are
+            // respected. E.g: `type X = impl Trait;`, `type X = (impl Trait, Y);`, `type X =
+            // Type::Inherent;`.
             return;
         }
 
@@ -2224,7 +2225,8 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
                         hir_generics.span.shrink_to_hi().to(where_span)
                     };
 
-                // Due to macro expansions, the `full_where_span` might not actually contain all predicates.
+                // Due to macro expansions, the `full_where_span` might not actually contain all
+                // predicates.
                 if where_lint_spans.iter().all(|&sp| full_where_span.contains(sp)) {
                     lint_spans.push(full_where_span);
                 } else {
@@ -2601,7 +2603,8 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                     };
                     // So we have at least one potentially inhabited variant. Might we have two?
                     let Some(second_variant) = potential_variants.next() else {
-                        // There is only one potentially inhabited variant. So we can recursively check that variant!
+                        // There is only one potentially inhabited variant. So we can recursively
+                        // check that variant!
                         return variant_find_init_error(
                             cx,
                             ty,
@@ -2611,10 +2614,10 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                             init,
                         );
                     };
-                    // So we have at least two potentially inhabited variants.
-                    // If we can prove that we have at least two *definitely* inhabited variants,
-                    // then we have a tag and hence leaving this uninit is definitely disallowed.
-                    // (Leaving it zeroed could be okay, depending on which variant is encoded as zero tag.)
+                    // So we have at least two potentially inhabited variants. If we can prove that
+                    // we have at least two *definitely* inhabited variants, then we have a tag and
+                    // hence leaving this uninit is definitely disallowed. (Leaving it zeroed could
+                    // be okay, depending on which variant is encoded as zero tag.)
                     if init == InitKind::Uninit {
                         let definitely_inhabited = (first_variant.1 as usize)
                             + (second_variant.1 as usize)
@@ -2825,7 +2828,8 @@ impl<'tcx> LateLintPass<'tcx> for NamedAsmLabels {
 
                 let mut found_labels = Vec::new();
 
-                // A semicolon might not actually be specified as a separator for all targets, but it seems like LLVM accepts it always
+                // A semicolon might not actually be specified as a separator for all targets, but
+                // it seems like LLVM accepts it always.
                 let statements = template_str.split(|c| matches!(c, '\n' | ';'));
                 for statement in statements {
                     // If there's a comment, trim it from the statement
@@ -2838,7 +2842,8 @@ impl<'tcx> LateLintPass<'tcx> for NamedAsmLabels {
                         let mut chars = possible_label.chars();
 
                         let Some(start) = chars.next() else {
-                            // Empty string means a leading ':' in this section, which is not a label.
+                            // Empty string means a leading ':' in this section, which is not a
+                            // label.
                             break 'label_loop;
                         };
 
@@ -2855,12 +2860,15 @@ impl<'tcx> LateLintPass<'tcx> for NamedAsmLabels {
 
                         // Labels continue with ASCII alphanumeric characters, _, or $
                         for c in chars {
-                            // Inside a template format arg, any character is permitted for the puproses of label detection
-                            // because we assume that it can be replaced with some other valid label string later.
-                            // `options(raw)` asm blocks cannot have format args, so they are excluded from this special case.
+                            // Inside a template format arg, any character is permitted for the
+                            // puproses of label detection because we assume that it can be
+                            // replaced with some other valid label string later. `options(raw)`
+                            // asm blocks cannot have format args, so they are excluded from this
+                            // special case.
                             if !raw && in_bracket {
                                 if c == '{' {
-                                    // Nested brackets are not allowed in format args, this cannot be a label.
+                                    // Nested brackets are not allowed in format args, this cannot
+                                    // be a label.
                                     break 'label_loop;
                                 }
 
@@ -2873,7 +2881,8 @@ impl<'tcx> LateLintPass<'tcx> for NamedAsmLabels {
                                 in_bracket = true;
                             } else {
                                 if !(c.is_ascii_alphanumeric() || matches!(c, '_' | '$')) {
-                                    // The potential label had an invalid character inside it, it cannot be a label.
+                                    // The potential label had an invalid character inside it, it
+                                    // cannot be a label.
                                     break 'label_loop;
                                 }
                             }
@@ -2892,7 +2901,8 @@ impl<'tcx> LateLintPass<'tcx> for NamedAsmLabels {
                         .into_iter()
                         .filter_map(|label| find_label_span(label))
                         .collect::<Vec<Span>>();
-                    // If there were labels but we couldn't find a span, combine the warnings and use the template span
+                    // If there were labels but we couldn't find a span, combine the warnings and
+                    // use the template span.
                     let target_spans: MultiSpan =
                         if spans.len() > 0 { spans.into() } else { (*template_span).into() };
 
