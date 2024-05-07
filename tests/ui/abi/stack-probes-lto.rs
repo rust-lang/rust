@@ -6,6 +6,7 @@
 //@[x64] only-x86_64
 //@ ignore-sgx no processes
 //@ ignore-musl FIXME #31506
+//@ ignore-android handler not yet registered #124823
 //@ ignore-fuchsia no exception handler registered for segfault
 //@ compile-flags: -C lto
 //@ no-prefer-dynamic
