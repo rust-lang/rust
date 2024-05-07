@@ -750,7 +750,8 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
 
             let level = match Level::from_attr(attr) {
                 None => continue,
-                // This is the only lint level with a `LintExpectationId` that can be created from an attribute
+                // This is the only lint level with a `LintExpectationId` that can be created from
+                // an attribute.
                 Some(Level::Expect(unstable_id)) if let Some(hir_id) = source_hir_id => {
                     let LintExpectationId::Unstable { attr_id, lint_index } = unstable_id else {
                         bug!("stable id Level::from_attr")
@@ -760,8 +761,8 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                         hir_id,
                         attr_index: attr_index.try_into().unwrap(),
                         lint_index,
-                        // we pass the previous unstable attr_id such that we can trace the ast id when building a map
-                        // to go from unstable to stable id.
+                        // We pass the previous unstable attr_id such that we can trace the ast id
+                        // when building a map to go from unstable to stable id.
                         attr_id: Some(attr_id),
                     };
 
@@ -860,13 +861,15 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                     self.store.check_lint_name(&name, tool_name, self.registered_tools);
                 match &lint_result {
                     CheckLintNameResult::Ok(ids) => {
-                        // This checks for instances where the user writes `#[expect(unfulfilled_lint_expectations)]`
-                        // in that case we want to avoid overriding the lint level but instead add an expectation that
-                        // can't be fulfilled. The lint message will include an explanation, that the
+                        // This checks for instances where the user writes
+                        // `#[expect(unfulfilled_lint_expectations)]` in that case we want to avoid
+                        // overriding the lint level but instead add an expectation that can't be
+                        // fulfilled. The lint message will include an explanation, that the
                         // `unfulfilled_lint_expectations` lint can't be expected.
                         if let Level::Expect(expect_id) = level {
-                            // The `unfulfilled_lint_expectations` lint is not part of any lint groups. Therefore. we
-                            // only need to check the slice if it contains a single lint.
+                            // The `unfulfilled_lint_expectations` lint is not part of any lint
+                            // groups. Therefore. we only need to check the slice if it contains a
+                            // single lint.
                             let is_unfulfilled_lint_expectations = match ids {
                                 [lint] => *lint == LintId::of(UNFULFILLED_LINT_EXPECTATIONS),
                                 _ => false,
@@ -997,7 +1000,8 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                 // we don't warn about the name change.
                 if let CheckLintNameResult::Renamed(new_name) = lint_result {
                     // Ignore any errors or warnings that happen because the new name is inaccurate
-                    // NOTE: `new_name` already includes the tool name, so we don't have to add it again.
+                    // NOTE: `new_name` already includes the tool name, so we don't have to add it
+                    // again.
                     let CheckLintNameResult::Ok(ids) =
                         self.store.check_lint_name(&new_name, None, self.registered_tools)
                     else {
