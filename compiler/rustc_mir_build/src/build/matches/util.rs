@@ -124,7 +124,8 @@ impl<'pat, 'tcx> MatchPair<'pat, 'tcx> {
         let default_irrefutable = || TestCase::Irrefutable { binding: None, ascription: None };
         let mut subpairs = Vec::new();
         let test_case = match pattern.kind {
-            PatKind::Never | PatKind::Wild | PatKind::Error(_) => default_irrefutable(),
+            PatKind::Wild | PatKind::Error(_) => default_irrefutable(),
+
             PatKind::Or { ref pats } => TestCase::Or {
                 pats: pats.iter().map(|pat| FlatPat::new(place_builder.clone(), pat, cx)).collect(),
             },
@@ -260,6 +261,8 @@ impl<'pat, 'tcx> MatchPair<'pat, 'tcx> {
                 subpairs.push(MatchPair::new(PlaceBuilder::from(temp).deref(), subpattern, cx));
                 TestCase::Deref { temp, mutability }
             }
+
+            PatKind::Never => TestCase::Never,
         };
 
         MatchPair { place, test_case, subpairs, pattern }

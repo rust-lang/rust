@@ -1,5 +1,5 @@
 error: a never pattern is always unreachable
-  --> $DIR/check.rs:14:20
+  --> $DIR/check.rs:15:20
    |
 LL |         Some(!) => {}
    |                    ^^
@@ -8,13 +8,13 @@ LL |         Some(!) => {}
    |                    help: remove this expression
 
 error: a guard on a never pattern will never be run
-  --> $DIR/check.rs:19:20
+  --> $DIR/check.rs:20:20
    |
 LL |         Some(!) if true,
    |                    ^^^^ help: remove this guard
 
 error: a never pattern is always unreachable
-  --> $DIR/check.rs:24:28
+  --> $DIR/check.rs:25:28
    |
 LL |         Some(!) if true => {}
    |                            ^^
@@ -23,7 +23,7 @@ LL |         Some(!) if true => {}
    |                            help: remove this expression
 
 error: a never pattern is always unreachable
-  --> $DIR/check.rs:29:27
+  --> $DIR/check.rs:30:27
    |
 LL |         Some(never!()) => {}
    |                           ^^
@@ -32,7 +32,7 @@ LL |         Some(never!()) => {}
    |                           help: remove this expression
 
 error[E0004]: non-exhaustive patterns: `Some(!)` not covered
-  --> $DIR/check.rs:18:11
+  --> $DIR/check.rs:19:11
    |
 LL |     match None::<Void> {
    |           ^^^^^^^^^^^^ pattern `Some(!)` not covered
@@ -50,7 +50,7 @@ LL +         Some(!)
    |
 
 error[E0004]: non-exhaustive patterns: `Some(!)` not covered
-  --> $DIR/check.rs:23:11
+  --> $DIR/check.rs:24:11
    |
 LL |     match None::<Void> {
    |           ^^^^^^^^^^^^ pattern `Some(!)` not covered
