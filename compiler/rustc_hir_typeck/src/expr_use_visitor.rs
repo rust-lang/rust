@@ -134,6 +134,8 @@ pub trait TypeInformationCtxt<'tcx> {
 
     fn resolve_vars_if_possible<T: TypeFoldable<TyCtxt<'tcx>>>(&self, t: T) -> T;
 
+    fn try_structurally_resolve_type(&self, span: Span, ty: Ty<'tcx>) -> Ty<'tcx>;
+
     fn tainted_by_errors(&self) -> Option<ErrorGuaranteed>;
 
     fn type_is_copy_modulo_regions(&self, ty: Ty<'tcx>) -> bool;
@@ -154,6 +156,10 @@ impl<'tcx> TypeInformationCtxt<'tcx> for &FnCtxt<'_, 'tcx> {
 
     fn resolve_vars_if_possible<T: TypeFoldable<TyCtxt<'tcx>>>(&self, t: T) -> T {
         self.infcx.resolve_vars_if_possible(t)
+    }
+
+    fn try_structurally_resolve_type(&self, sp: Span, ty: Ty<'tcx>) -> Ty<'tcx> {
+        (**self).try_structurally_resolve_type(sp, ty)
     }
 
     fn tainted_by_errors(&self) -> Option<ErrorGuaranteed> {
@@ -180,6 +186,11 @@ impl<'tcx> TypeInformationCtxt<'tcx> for (&LateContext<'tcx>, LocalDefId) {
 
     fn typeck_results(&self) -> Self::TypeckResults<'_> {
         self.0.maybe_typeck_results().expect("expected typeck results")
+    }
+
+    fn try_structurally_resolve_type(&self, _span: Span, ty: Ty<'tcx>) -> Ty<'tcx> {
+        // FIXME: Maybe need to normalize here.
+        ty
     }
 
     fn resolve_vars_if_possible<T: TypeFoldable<TyCtxt<'tcx>>>(&self, t: T) -> T {
@@ -543,7 +554,8 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                             _ => {
                                 // Otherwise, this is a struct/enum variant, and so it's
                                 // only a read if we need to read the discriminant.
-                                needs_to_be_read |= is_multivariant_adt(place.place.ty());
+                                needs_to_be_read |=
+                                    self.is_multivariant_adt(place.place.ty(), pat.span);
                             }
                         }
                     }
@@ -555,7 +567,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                         // perform some reads).
 
                         let place_ty = place.place.ty();
-                        needs_to_be_read |= is_multivariant_adt(place_ty);
+                        needs_to_be_read |= self.is_multivariant_adt(place_ty, pat.span);
                     }
                     PatKind::Lit(_) | PatKind::Range(..) => {
                         // If the PatKind is a Lit or a Range then we want
@@ -676,7 +688,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
 
         // Select just those fields of the `with`
         // expression that will actually be used
-        match with_place.place.ty().kind() {
+        match self.cx.try_structurally_resolve_type(with_expr.span, with_place.place.ty()).kind() {
             ty::Adt(adt, args) if adt.is_struct() => {
                 // Consume those fields of the with expression that are needed.
                 for (f_index, with_field) in adt.non_enum_variant().fields.iter_enumerated() {
@@ -1099,8 +1111,12 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                     // a bind-by-ref means that the base_ty will be the type of the ident itself,
                     // but what we want here is the type of the underlying value being borrowed.
                     // So peel off one-level, turning the &T into T.
-                    match base_ty.builtin_deref(false) {
-                        Some(t) => Ok(t.ty),
+                    match self
+                        .cx
+                        .try_structurally_resolve_type(pat.span, base_ty)
+                        .builtin_deref(false)
+                    {
+                        Some(ty) => Ok(ty),
                         None => {
                             debug!("By-ref binding of non-derefable type");
                             Err(self
@@ -1333,7 +1349,15 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         // Opaque types can't have field projections, but we can instead convert
         // the current place in-place (heh) to the hidden type, and then apply all
         // follow up projections on that.
-        if node_ty != place_ty && matches!(place_ty.kind(), ty::Alias(ty::Opaque, ..)) {
+        if node_ty != place_ty
+            && self
+                .cx
+                .try_structurally_resolve_type(
+                    self.cx.tcx().hir().span(base_place.hir_id),
+                    place_ty,
+                )
+                .is_impl_trait()
+        {
             projections.push(Projection { kind: ProjectionKind::OpaqueCast, ty: node_ty });
         }
         projections.push(Projection { kind, ty });
@@ -1351,7 +1375,9 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         let place_ty = self.expr_ty(expr)?;
         let base_ty = self.expr_ty_adjusted(base)?;
 
-        let ty::Ref(region, _, mutbl) = *base_ty.kind() else {
+        let ty::Ref(region, _, mutbl) =
+            *self.cx.try_structurally_resolve_type(base.span, base_ty).kind()
+        else {
             span_bug!(expr.span, "cat_overloaded_place: base is not a reference");
         };
         let ref_ty = Ty::new_ref(self.cx.tcx(), region, place_ty, mutbl);
@@ -1366,8 +1392,15 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         base_place: PlaceWithHirId<'tcx>,
     ) -> McResult<PlaceWithHirId<'tcx>> {
         let base_curr_ty = base_place.place.ty();
-        let deref_ty = match base_curr_ty.builtin_deref(true) {
-            Some(mt) => mt.ty,
+        let deref_ty = match self
+            .cx
+            .try_structurally_resolve_type(
+                self.cx.tcx().hir().span(base_place.hir_id),
+                base_curr_ty,
+            )
+            .builtin_deref(true)
+        {
+            Some(ty) => ty,
             None => {
                 debug!("explicit deref of non-derefable type: {:?}", base_curr_ty);
                 return Err(self.cx.tcx().dcx().span_delayed_bug(
@@ -1404,7 +1437,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
     ) -> McResult<VariantIdx> {
         let res = self.cx.typeck_results().qpath_res(qpath, pat_hir_id);
         let ty = self.cx.typeck_results().node_type(pat_hir_id);
-        let ty::Adt(adt_def, _) = ty.kind() else {
+        let ty::Adt(adt_def, _) = self.cx.try_structurally_resolve_type(span, ty).kind() else {
             return Err(self
                 .cx
                 .tcx()
@@ -1438,7 +1471,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         span: Span,
     ) -> McResult<usize> {
         let ty = self.cx.typeck_results().node_type(pat_hir_id);
-        match ty.kind() {
+        match self.cx.try_structurally_resolve_type(span, ty).kind() {
             ty::Adt(adt_def, _) => Ok(adt_def.variant(variant_index).fields.len()),
             _ => {
                 self.cx
@@ -1453,7 +1486,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
     /// Here `pat_hir_id` is the HirId of the pattern itself.
     fn total_fields_in_tuple(&self, pat_hir_id: HirId, span: Span) -> McResult<usize> {
         let ty = self.cx.typeck_results().node_type(pat_hir_id);
-        match ty.kind() {
+        match self.cx.try_structurally_resolve_type(span, ty).kind() {
             ty::Tuple(args) => Ok(args.len()),
             _ => Err(self
                 .cx
@@ -1668,23 +1701,23 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
 
         Ok(())
     }
-}
 
-fn is_multivariant_adt(ty: Ty<'_>) -> bool {
-    if let ty::Adt(def, _) = ty.kind() {
-        // Note that if a non-exhaustive SingleVariant is defined in another crate, we need
-        // to assume that more cases will be added to the variant in the future. This mean
-        // that we should handle non-exhaustive SingleVariant the same way we would handle
-        // a MultiVariant.
-        // If the variant is not local it must be defined in another crate.
-        let is_non_exhaustive = match def.adt_kind() {
-            AdtKind::Struct | AdtKind::Union => {
-                def.non_enum_variant().is_field_list_non_exhaustive()
-            }
-            AdtKind::Enum => def.is_variant_list_non_exhaustive(),
-        };
-        def.variants().len() > 1 || (!def.did().is_local() && is_non_exhaustive)
-    } else {
-        false
+    fn is_multivariant_adt(&self, ty: Ty<'tcx>, span: Span) -> bool {
+        if let ty::Adt(def, _) = self.cx.try_structurally_resolve_type(span, ty).kind() {
+            // Note that if a non-exhaustive SingleVariant is defined in another crate, we need
+            // to assume that more cases will be added to the variant in the future. This mean
+            // that we should handle non-exhaustive SingleVariant the same way we would handle
+            // a MultiVariant.
+            // If the variant is not local it must be defined in another crate.
+            let is_non_exhaustive = match def.adt_kind() {
+                AdtKind::Struct | AdtKind::Union => {
+                    def.non_enum_variant().is_field_list_non_exhaustive()
+                }
+                AdtKind::Enum => def.is_variant_list_non_exhaustive(),
+            };
+            def.variants().len() > 1 || (!def.did().is_local() && is_non_exhaustive)
+        } else {
+            false
+        }
     }
 }
