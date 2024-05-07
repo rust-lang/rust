@@ -376,7 +376,10 @@ impl<'tcx> ProofTreeBuilder<'tcx> {
                 (
                     DebugSolver::GoalEvaluation(goal_evaluation),
                     DebugSolver::CanonicalGoalEvaluation(canonical_goal_evaluation),
-                ) => goal_evaluation.evaluation = Some(canonical_goal_evaluation),
+                ) => {
+                    let prev = goal_evaluation.evaluation.replace(canonical_goal_evaluation);
+                    assert_eq!(prev, None);
+                }
                 _ => unreachable!(),
             }
         }
