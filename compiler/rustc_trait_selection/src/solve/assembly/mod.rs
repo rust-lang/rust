@@ -1,7 +1,7 @@
 //! Code shared by trait and projection goals for candidate assembly.
 
 use crate::solve::GoalSource;
-use crate::solve::{inspect, EvalCtxt, SolverMode};
+use crate::solve::{EvalCtxt, SolverMode};
 use rustc_hir::def_id::DefId;
 use rustc_infer::traits::query::NoSolution;
 use rustc_middle::bug;
@@ -16,7 +16,6 @@ use rustc_middle::ty::{fast_reject, TypeFoldable};
 use rustc_middle::ty::{ToPredicate, TypeVisitableExt};
 use rustc_span::{ErrorGuaranteed, DUMMY_SP};
 use std::fmt::Debug;
-use std::mem;
 
 pub(super) mod structural_traits;
 
@@ -792,17 +791,16 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         goal: Goal<'tcx, G>,
         candidates: &mut Vec<Candidate<'tcx>>,
     ) {
-        // HACK: We temporarily remove the `ProofTreeBuilder` to
-        // avoid adding `Trait` candidates to the candidates used
-        // to prove the current goal.
-        let inspect = mem::replace(&mut self.inspect, inspect::ProofTreeBuilder::new_noop());
-
         let tcx = self.tcx();
         let trait_goal: Goal<'tcx, ty::TraitPredicate<'tcx>> =
             goal.with(tcx, goal.predicate.trait_ref(tcx));
-        let mut trait_candidates_from_env = Vec::new();
-        self.assemble_param_env_candidates(trait_goal, &mut trait_candidates_from_env);
-        self.assemble_alias_bound_candidates(trait_goal, &mut trait_candidates_from_env);
+
+        let mut trait_candidates_from_env = vec![];
+        self.probe(|_| ProbeKind::ShadowedEnvProbing).enter(|ecx| {
+            ecx.assemble_param_env_candidates(trait_goal, &mut trait_candidates_from_env);
+            ecx.assemble_alias_bound_candidates(trait_goal, &mut trait_candidates_from_env);
+        });
+
         if !trait_candidates_from_env.is_empty() {
             let trait_env_result = self.merge_candidates(trait_candidates_from_env);
             match trait_env_result.unwrap().value.certainty {
@@ -831,7 +829,6 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                 }
             }
         }
-        self.inspect = inspect;
     }
 
     /// If there are multiple ways to prove a trait or projection goal, we have
