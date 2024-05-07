@@ -593,7 +593,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                     let lint = UnknownLintFromCommandLine { name, suggestion, requested_level };
                     self.emit_lint(UNKNOWN_LINTS, lint);
                 }
-                CheckLintNameResult::Tool(Err((Some(_), ref replace))) => {
+                CheckLintNameResult::Tool(_, Some(ref replace)) => {
                     let name = lint_name.clone();
                     let requested_level = RequestedLevel { level, lint_name };
                     let lint = DeprecatedLintNameFromCommandLine { name, replace, requested_level };
@@ -902,32 +902,20 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                         }
                     }
 
-                    CheckLintNameResult::Tool(result) => {
-                        match *result {
-                            Ok(ids) => {
+                    CheckLintNameResult::Tool(ids, new_lint_name) => {
+                        let src = match new_lint_name {
+                            None => {
                                 let complete_name =
                                     &format!("{}::{}", tool_ident.unwrap().name, name);
-                                let src = LintLevelSource::Node {
+                                LintLevelSource::Node {
                                     name: Symbol::intern(complete_name),
                                     span: sp,
                                     reason,
-                                };
-                                for &id in ids {
-                                    if self.check_gated_lint(id, attr.span, false) {
-                                        self.insert_spec(id, (level, src));
-                                    }
-                                }
-                                if let Level::Expect(expect_id) = level {
-                                    self.provider.push_expectation(
-                                        expect_id,
-                                        LintExpectation::new(reason, sp, false, tool_name),
-                                    );
                                 }
                             }
-                            Err((Some(ids), ref new_lint_name)) => {
-                                let lint = builtin::RENAMED_AND_REMOVED_LINTS;
+                            Some(new_lint_name) => {
                                 self.emit_span_lint(
-                                    lint,
+                                    builtin::RENAMED_AND_REMOVED_LINTS,
                                     sp.into(),
                                     DeprecatedLintName {
                                         name,
@@ -935,29 +923,31 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                                         replace: new_lint_name,
                                     },
                                 );
-
-                                let src = LintLevelSource::Node {
+                                LintLevelSource::Node {
                                     name: Symbol::intern(new_lint_name),
                                     span: sp,
                                     reason,
-                                };
-                                for id in ids {
-                                    self.insert_spec(*id, (level, src));
-                                }
-                                if let Level::Expect(expect_id) = level {
-                                    self.provider.push_expectation(
-                                        expect_id,
-                                        LintExpectation::new(reason, sp, false, tool_name),
-                                    );
                                 }
                             }
-                            Err((None, _)) => {
-                                // If Tool(Err(None, _)) is returned, then either the lint does not
-                                // exist in the tool or the code was not compiled with the tool and
-                                // therefore the lint was never added to the `LintStore`. To detect
-                                // this is the responsibility of the lint tool.
+                        };
+                        for &id in *ids {
+                            if self.check_gated_lint(id, attr.span, false) {
+                                self.insert_spec(id, (level, src));
                             }
                         }
+                        if let Level::Expect(expect_id) = level {
+                            self.provider.push_expectation(
+                                expect_id,
+                                LintExpectation::new(reason, sp, false, tool_name),
+                            );
+                        }
+                    }
+
+                    CheckLintNameResult::MissingTool => {
+                        // If `MissingTool` is returned, then either the lint does not
+                        // exist in the tool or the code was not compiled with the tool and
+                        // therefore the lint was never added to the `LintStore`. To detect
+                        // this is the responsibility of the lint tool.
                     }
 
                     &CheckLintNameResult::NoTool => {
