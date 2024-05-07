@@ -14,13 +14,14 @@ use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::{HirId, PatKind};
-use rustc_infer::infer::InferCtxt;
 use rustc_middle::hir::place::ProjectionKind;
 use rustc_middle::mir::FakeReadCause;
+use rustc_middle::ty::BorrowKind::ImmBorrow;
 use rustc_middle::ty::{self, adjustment, AdtKind, Ty, TyCtxt};
 use rustc_target::abi::FIRST_VARIANT;
-use ty::BorrowKind::ImmBorrow;
+use rustc_trait_selection::infer::InferCtxtExt;
 
+use crate::fn_ctxt::FnCtxt;
 use crate::mem_categorization as mc;
 
 /// This trait defines the callbacks you can expect to receive when
@@ -93,7 +94,6 @@ enum ConsumeMode {
 /// This is the code that actually walks the tree.
 pub struct ExprUseVisitor<'a, 'tcx> {
     mc: mc::MemCategorizationContext<'a, 'tcx>,
-    body_owner: LocalDefId,
     delegate: &'a mut dyn Delegate<'tcx>,
 }
 
@@ -122,18 +122,12 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
     /// - `delegate` -- who receives the callbacks
     /// - `param_env` --- parameter environment for trait lookups (esp. pertaining to `Copy`)
     /// - `typeck_results` --- typeck results for the code being analyzed
-    pub fn new(
+    pub(crate) fn new(
         delegate: &'a mut (dyn Delegate<'tcx> + 'a),
-        infcx: &'a InferCtxt<'tcx>,
-        body_owner: LocalDefId,
-        param_env: ty::ParamEnv<'tcx>,
-        typeck_results: &'a ty::TypeckResults<'tcx>,
+        fcx: &'a FnCtxt<'a, 'tcx>,
+        body_id: LocalDefId,
     ) -> Self {
-        ExprUseVisitor {
-            mc: mc::MemCategorizationContext::new(infcx, param_env, body_owner, typeck_results),
-            body_owner,
-            delegate,
-        }
+        ExprUseVisitor { mc: mc::MemCategorizationContext::new(fcx, body_id), delegate }
     }
 
     #[instrument(skip(self), level = "debug")]
@@ -151,7 +145,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
     }
 
     fn tcx(&self) -> TyCtxt<'tcx> {
-        self.mc.tcx()
+        self.mc.tcx
     }
 
     fn delegate_consume(&mut self, place_with_id: &PlaceWithHirId<'tcx>, diag_expr_id: HirId) {
@@ -347,7 +341,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
             }
 
             hir::ExprKind::AssignOp(_, lhs, rhs) => {
-                if self.mc.typeck_results.is_method_call(expr) {
+                if self.mc.typeck_results().is_method_call(expr) {
                     self.consume_expr(lhs);
                 } else {
                     self.mutate_expr(lhs);
@@ -398,7 +392,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         // discr does not necessarily need to be borrowed.
         // We only want to borrow discr if the pattern contain something other
         // than wildcards.
-        let ExprUseVisitor { ref mc, body_owner: _, delegate: _ } = *self;
+        let ExprUseVisitor { ref mc, delegate: _ } = *self;
         let mut needs_to_be_read = false;
         for pat in pats {
             mc.cat_pattern(discr_place.clone(), pat, |place, pat| {
@@ -419,7 +413,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                         // A `Path` pattern is just a name like `Foo`. This is either a
                         // named constant or else it refers to an ADT variant
 
-                        let res = self.mc.typeck_results.qpath_res(qpath, pat.hir_id);
+                        let res = self.mc.typeck_results().qpath_res(qpath, pat.hir_id);
                         match res {
                             Res::Def(DefKind::Const, _) | Res::Def(DefKind::AssocConst, _) => {
                                 // Named constants have to be equated with the value
@@ -545,7 +539,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
             self.consume_expr(field.expr);
 
             // The struct path probably didn't resolve
-            if self.mc.typeck_results.opt_field_index(field.hir_id).is_none() {
+            if self.mc.typeck_results().opt_field_index(field.hir_id).is_none() {
                 self.tcx().dcx().span_delayed_bug(field.span, "couldn't resolve index for field");
             }
         }
@@ -565,9 +559,9 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
             ty::Adt(adt, args) if adt.is_struct() => {
                 // Consume those fields of the with expression that are needed.
                 for (f_index, with_field) in adt.non_enum_variant().fields.iter_enumerated() {
-                    let is_mentioned = fields
-                        .iter()
-                        .any(|f| self.mc.typeck_results.opt_field_index(f.hir_id) == Some(f_index));
+                    let is_mentioned = fields.iter().any(|f| {
+                        self.mc.typeck_results().opt_field_index(f.hir_id) == Some(f_index)
+                    });
                     if !is_mentioned {
                         let field_place = self.mc.cat_projection(
                             &*with_expr,
@@ -599,7 +593,8 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
     /// consumed or borrowed as part of the automatic adjustment
     /// process.
     fn walk_adjustment(&mut self, expr: &hir::Expr<'_>) {
-        let adjustments = self.mc.typeck_results.expr_adjustments(expr);
+        let typeck_results = self.mc.typeck_results();
+        let adjustments = typeck_results.expr_adjustments(expr);
         let mut place_with_id = return_if_err!(self.mc.cat_expr_unadjusted(expr));
         for adjustment in adjustments {
             debug!("walk_adjustment expr={:?} adj={:?}", expr, adjustment);
@@ -710,12 +705,12 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         debug!("walk_pat(discr_place={:?}, pat={:?}, has_guard={:?})", discr_place, pat, has_guard);
 
         let tcx = self.tcx();
-        let ExprUseVisitor { ref mc, body_owner: _, ref mut delegate } = *self;
+        let ExprUseVisitor { ref mc, ref mut delegate } = *self;
         return_if_err!(mc.cat_pattern(discr_place.clone(), pat, |place, pat| {
             if let PatKind::Binding(_, canonical_id, ..) = pat.kind {
                 debug!("walk_pat: binding place={:?} pat={:?}", place, pat);
                 if let Some(bm) =
-                    mc.typeck_results.extract_binding_mode(tcx.sess, pat.hir_id, pat.span)
+                    mc.typeck_results().extract_binding_mode(tcx.sess, pat.hir_id, pat.span)
                 {
                     debug!("walk_pat: pat.hir_id={:?} bm={:?}", pat.hir_id, bm);
 
@@ -755,7 +750,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                 // determines whether to borrow *at the level of the deref pattern* rather than
                 // borrowing the bound place (since that inner place is inside the temporary that
                 // stores the result of calling `deref()`/`deref_mut()` so can't be captured).
-                let mutable = mc.typeck_results.pat_has_ref_mut_binding(subpattern);
+                let mutable = mc.typeck_results().pat_has_ref_mut_binding(subpattern);
                 let mutability = if mutable { hir::Mutability::Mut } else { hir::Mutability::Not };
                 let bk = ty::BorrowKind::from_mutbl(mutability);
                 delegate.borrow(place, discr_place.hir_id, bk);
@@ -795,14 +790,14 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
 
         let tcx = self.tcx();
         let closure_def_id = closure_expr.def_id;
-        let upvars = tcx.upvars_mentioned(self.body_owner);
+        let upvars = tcx.upvars_mentioned(self.mc.inner_body_id);
 
         // For purposes of this function, coroutine and closures are equivalent.
         let body_owner_is_closure =
-            matches!(tcx.hir().body_owner_kind(self.body_owner), hir::BodyOwnerKind::Closure,);
+            matches!(tcx.hir().body_owner_kind(self.mc.inner_body_id), hir::BodyOwnerKind::Closure);
 
         // If we have a nested closure, we want to include the fake reads present in the nested closure.
-        if let Some(fake_reads) = self.mc.typeck_results.closure_fake_reads.get(&closure_def_id) {
+        if let Some(fake_reads) = self.mc.typeck_results().closure_fake_reads.get(&closure_def_id) {
             for (fake_read, cause, hir_id) in fake_reads.iter() {
                 match fake_read.base {
                     PlaceBase::Upvar(upvar_id) => {
@@ -845,7 +840,8 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
             }
         }
 
-        if let Some(min_captures) = self.mc.typeck_results.closure_min_captures.get(&closure_def_id)
+        if let Some(min_captures) =
+            self.mc.typeck_results().closure_min_captures.get(&closure_def_id)
         {
             for (var_hir_id, min_list) in min_captures.iter() {
                 if upvars.map_or(body_owner_is_closure, |upvars| !upvars.contains_key(var_hir_id)) {
@@ -860,7 +856,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
 
                     let place_base = if body_owner_is_closure {
                         // Mark the place to be captured by the enclosing closure
-                        PlaceBase::Upvar(ty::UpvarId::new(*var_hir_id, self.body_owner))
+                        PlaceBase::Upvar(ty::UpvarId::new(*var_hir_id, self.mc.inner_body_id))
                     } else {
                         // If the body owner isn't a closure then the variable must
                         // be a local variable
@@ -898,7 +894,7 @@ fn copy_or_move<'a, 'tcx>(
     mc: &mc::MemCategorizationContext<'a, 'tcx>,
     place_with_id: &PlaceWithHirId<'tcx>,
 ) -> ConsumeMode {
-    if !mc.type_is_copy_modulo_regions(place_with_id.place.ty()) {
+    if !mc.type_is_copy_modulo_regions(mc.param_env, place_with_id.place.ty()) {
         ConsumeMode::Move
     } else {
         ConsumeMode::Copy

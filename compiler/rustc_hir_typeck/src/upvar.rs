@@ -252,14 +252,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
 
-        euv::ExprUseVisitor::new(
-            &mut delegate,
-            &self.infcx,
-            closure_def_id,
-            self.param_env,
-            &self.typeck_results.borrow(),
-        )
-        .consume_body(body);
+        euv::ExprUseVisitor::new(&mut delegate, self, closure_def_id).consume_body(body);
 
         // If a coroutine is comes from a coroutine-closure that is `move`, but
         // the coroutine-closure was inferred to be `FnOnce` during signature
