@@ -131,8 +131,14 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         match ty {
             Some(ty) => {
                 let ty = self.resolve_vars_if_possible(ty);
-                if ty.references_error() || ty.is_ty_var() {
+                if ty.references_error() {
                     debug!("resolve_type_vars_or_error: error from {:?}", ty);
+                    Err(())
+                } else if ty.is_ty_var() {
+                    debug!("resolve_type_vars_or_error: infer var from {:?}", ty);
+                    self.tcx()
+                        .dcx()
+                        .span_delayed_bug(self.tcx().hir().span(id), "encountered type variable");
                     Err(())
                 } else {
                     Ok(ty)
@@ -210,6 +216,9 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
                         Some(ty) => Ok(ty),
                         None => {
                             debug!("By-ref binding of non-derefable type");
+                            self.tcx()
+                                .dcx()
+                                .span_delayed_bug(pat.span, "by-ref binding of non-derefable type");
                             Err(())
                         }
                     }
@@ -488,6 +497,10 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
             Some(pointee_ty) => pointee_ty,
             None => {
                 debug!("explicit deref of non-derefable type: {:?}", base_curr_ty);
+                self.tcx().dcx().span_delayed_bug(
+                    self.tcx().hir().span(node.hir_id()),
+                    "explicit deref of non-derefable type",
+                );
                 return Err(());
             }
         };
@@ -732,6 +745,9 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
             PatKind::Slice(before, ref slice, after) => {
                 let Some(element_ty) = place_with_id.place.ty().builtin_index() else {
                     debug!("explicit index of non-indexable type {:?}", place_with_id);
+                    self.tcx()
+                        .dcx()
+                        .span_delayed_bug(pat.span, "explicit index of non-indexable type");
                     return Err(());
                 };
                 let elt_place = self.cat_projection(
