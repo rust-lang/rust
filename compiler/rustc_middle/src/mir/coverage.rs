@@ -129,17 +129,11 @@ pub enum CoverageKind {
     /// Marks the point in MIR control flow represented by a evaluated condition.
     ///
     /// This is eventually lowered to `llvm.instrprof.mcdc.condbitmap.update` in LLVM IR.
-    ///
-    /// If this statement does not survive MIR optimizations, the condition would never be
-    /// taken as evaluated.
     CondBitmapUpdate { id: ConditionId, value: bool, decision_depth: u16 },
 
     /// Marks the point in MIR control flow represented by a evaluated decision.
     ///
     /// This is eventually lowered to `llvm.instrprof.mcdc.tvbitmap.update` in LLVM IR.
-    ///
-    /// If this statement does not survive MIR optimizations, the decision would never be
-    /// taken as evaluated.
     TestVectorBitmapUpdate { bitmap_idx: u32, decision_depth: u16 },
 }
 
@@ -335,14 +329,14 @@ pub struct MCDCBranchSpan {
 #[derive(TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable, TypeVisitable)]
 pub struct DecisionInfo {
     pub bitmap_idx: u32,
-    pub conditions_num: u16,
+    pub num_conditions: u16,
 }
 
 #[derive(Clone, Debug)]
 #[derive(TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable, TypeVisitable)]
 pub struct MCDCDecisionSpan {
     pub span: Span,
-    pub conditions_num: usize,
+    pub num_conditions: usize,
     pub end_markers: Vec<BlockMarkerId>,
     pub decision_depth: u16,
 }

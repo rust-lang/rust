@@ -48,7 +48,7 @@ pub(super) struct MCDCDecision {
     pub(super) span: Span,
     pub(super) end_bcbs: BTreeSet<BasicCoverageBlock>,
     pub(super) bitmap_idx: u32,
-    pub(super) conditions_num: u16,
+    pub(super) num_conditions: u16,
     pub(super) decision_depth: u16,
 }
 
@@ -136,8 +136,8 @@ pub(super) fn generate_coverage_spans(
     // Determine the length of the test vector bitmap.
     let test_vector_bitmap_bytes = mcdc_decisions
         .iter()
-        .map(|&MCDCDecision { bitmap_idx, conditions_num, .. }| {
-            bitmap_idx + (1_u32 << u32::from(conditions_num)).div_ceil(8)
+        .map(|&MCDCDecision { bitmap_idx, num_conditions, .. }| {
+            bitmap_idx + (1_u32 << u32::from(num_conditions)).div_ceil(8)
         })
         .max()
         .unwrap_or(0);
@@ -266,13 +266,13 @@ pub(super) fn extract_mcdc_mappings(
                 .collect::<Option<_>>()?;
 
             let bitmap_idx = next_bitmap_idx;
-            next_bitmap_idx += (1_u32 << decision.conditions_num).div_ceil(8);
+            next_bitmap_idx += (1_u32 << decision.num_conditions).div_ceil(8);
 
             Some(MCDCDecision {
                 span,
                 end_bcbs,
                 bitmap_idx,
-                conditions_num: decision.conditions_num as u16,
+                num_conditions: decision.num_conditions as u16,
                 decision_depth: decision.decision_depth,
             })
         },
