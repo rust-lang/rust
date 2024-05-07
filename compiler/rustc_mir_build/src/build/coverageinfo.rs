@@ -1,16 +1,17 @@
-mod mcdc;
 use std::assert_matches::assert_matches;
 use std::collections::hash_map::Entry;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::mir::coverage::{BlockMarkerId, BranchSpan, CoverageKind};
 use rustc_middle::mir::{self, BasicBlock, SourceInfo, UnOp};
-use rustc_middle::thir::{ExprId, ExprKind, Thir};
+use rustc_middle::thir::{ExprId, ExprKind, Pat, Thir};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::LocalDefId;
 
 use crate::build::coverageinfo::mcdc::MCDCInfoBuilder;
 use crate::build::{Builder, CFG};
+
+mod mcdc;
 
 pub(crate) struct BranchInfoBuilder {
     /// Maps condition expressions to their enclosing `!`, for better instrumentation.
@@ -155,7 +156,7 @@ impl BranchInfoBuilder {
     }
 }
 
-impl Builder<'_, '_> {
+impl<'tcx> Builder<'_, 'tcx> {
     /// If branch coverage is enabled, inject marker statements into `then_block`
     /// and `else_block`, and record their IDs in the table of branch spans.
     pub(crate) fn visit_coverage_branch_condition(
@@ -194,5 +195,24 @@ impl Builder<'_, '_> {
         }
 
         branch_info.add_two_way_branch(&mut self.cfg, source_info, then_block, else_block);
+    }
+
+    /// If branch coverage is enabled, inject marker statements into `true_block`
+    /// and `false_block`, and record their IDs in the table of branches.
+    ///
+    /// Used to instrument let-else and if-let (including let-chains) for branch coverage.
+    pub(crate) fn visit_coverage_conditional_let(
+        &mut self,
+        pattern: &Pat<'tcx>, // Pattern that has been matched when the true path is taken
+        true_block: BasicBlock,
+        false_block: BasicBlock,
+    ) {
+        // Bail out if branch coverage is not enabled for this function.
+        let Some(branch_info) = self.coverage_branch_info.as_mut() else { return };
+
+        // FIXME(#124144) This may need special handling when MC/DC is enabled.
+
+        let source_info = SourceInfo { span: pattern.span, scope: self.source_scope };
+        branch_info.add_two_way_branch(&mut self.cfg, source_info, true_block, false_block);
     }
 }
