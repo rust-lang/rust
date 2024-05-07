@@ -6,6 +6,8 @@
 //@ no-auto-check-cfg
 //@ compile-flags: --check-cfg=cfg()
 
+#![warn(unexpected_cfgs)]
+
 #[cfg(linux)]
 //~^ WARNING unexpected `cfg` condition name: `linux`
 fn x() {}

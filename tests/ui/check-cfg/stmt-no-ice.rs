@@ -4,6 +4,8 @@
 //@ no-auto-check-cfg
 //@ compile-flags:--check-cfg=cfg()
 
+#![warn(unexpected_cfgs)]
+
 fn main() {
     #[cfg(crossbeam_loom)]
     //~^ WARNING unexpected `cfg` condition name

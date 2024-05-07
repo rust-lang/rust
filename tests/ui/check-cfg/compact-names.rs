@@ -4,6 +4,8 @@
 //@ no-auto-check-cfg
 //@ compile-flags: --check-cfg=cfg()
 
+#![warn(unexpected_cfgs)]
+
 #![feature(cfg_target_compact)]
 
 #[cfg(target(os = "linux", arch = "arm"))]

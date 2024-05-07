@@ -4,6 +4,8 @@
 //@ no-auto-check-cfg
 //@ compile-flags: --check-cfg=cfg()
 
+#![warn(unexpected_cfgs)]
+
 #[allow(unexpected_cfgs)]
 mod aa {
     #[cfg(FALSE)]

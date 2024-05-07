@@ -1,15 +1,19 @@
 warning: unexpected `cfg` condition name: `featur`
-  --> $DIR/diagnotics.rs:8:7
+  --> $DIR/diagnotics.rs:10:7
    |
 LL | #[cfg(featur)]
    |       ^^^^^^ help: there is a config with a similar name: `feature`
    |
    = help: expected values for `feature` are: `foo`
    = note: see <https://doc.rust-lang.org/nightly/cargo/reference/build-scripts.html#rustc-check-cfg> for more information about checking conditional configuration
-   = note: `#[warn(unexpected_cfgs)]` on by default
+note: the lint level is defined here
+  --> $DIR/diagnotics.rs:8:9
+   |
+LL | #![warn(unexpected_cfgs)]
+   |         ^^^^^^^^^^^^^^^
 
 warning: unexpected `cfg` condition name: `featur`
-  --> $DIR/diagnotics.rs:12:7
+  --> $DIR/diagnotics.rs:14:7
    |
 LL | #[cfg(featur = "foo")]
    |       ^^^^^^^^^^^^^^
@@ -21,7 +25,7 @@ LL | #[cfg(feature = "foo")]
    |       ~~~~~~~
 
 warning: unexpected `cfg` condition name: `featur`
-  --> $DIR/diagnotics.rs:16:7
+  --> $DIR/diagnotics.rs:18:7
    |
 LL | #[cfg(featur = "fo")]
    |       ^^^^^^^^^^^^^
@@ -34,7 +38,7 @@ LL | #[cfg(feature = "foo")]
    |       ~~~~~~~~~~~~~~~
 
 warning: unexpected `cfg` condition name: `no_value`
-  --> $DIR/diagnotics.rs:23:7
+  --> $DIR/diagnotics.rs:25:7
    |
 LL | #[cfg(no_value)]
    |       ^^^^^^^^ help: there is a config with a similar name: `no_values`
@@ -43,7 +47,7 @@ LL | #[cfg(no_value)]
    = note: see <https://doc.rust-lang.org/nightly/cargo/reference/build-scripts.html#rustc-check-cfg> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition name: `no_value`
-  --> $DIR/diagnotics.rs:27:7
+  --> $DIR/diagnotics.rs:29:7
    |
 LL | #[cfg(no_value = "foo")]
    |       ^^^^^^^^^^^^^^^^
@@ -56,7 +60,7 @@ LL | #[cfg(no_values)]
    |       ~~~~~~~~~
 
 warning: unexpected `cfg` condition value: `bar`
-  --> $DIR/diagnotics.rs:31:7
+  --> $DIR/diagnotics.rs:33:7
    |
 LL | #[cfg(no_values = "bar")]
    |       ^^^^^^^^^--------

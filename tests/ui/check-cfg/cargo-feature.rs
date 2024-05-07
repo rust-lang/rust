@@ -11,6 +11,8 @@
 //@ [some]compile-flags: --check-cfg=cfg(CONFIG_NVME,values("y"))
 //@ [none]error-pattern:Cargo.toml
 
+#![warn(unexpected_cfgs)]
+
 #[cfg(feature = "serde")]
 //~^ WARNING unexpected `cfg` condition value
 fn ser() {}

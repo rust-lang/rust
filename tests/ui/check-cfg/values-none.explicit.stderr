@@ -1,5 +1,5 @@
 warning: unexpected `cfg` condition value: `too`
-  --> $DIR/values-none.rs:11:7
+  --> $DIR/values-none.rs:13:7
    |
 LL | #[cfg(foo = "too")]
    |       ^^^--------
@@ -9,10 +9,14 @@ LL | #[cfg(foo = "too")]
    = note: no expected value for `foo`
    = help: to expect this configuration use `--check-cfg=cfg(foo, values("too"))`
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
-   = note: `#[warn(unexpected_cfgs)]` on by default
+note: the lint level is defined here
+  --> $DIR/values-none.rs:11:9
+   |
+LL | #![warn(unexpected_cfgs)]
+   |         ^^^^^^^^^^^^^^^
 
 warning: unexpected `cfg` condition value: `bar`
-  --> $DIR/values-none.rs:16:7
+  --> $DIR/values-none.rs:18:7
    |
 LL | #[cfg(foo = "bar")]
    |       ^^^--------

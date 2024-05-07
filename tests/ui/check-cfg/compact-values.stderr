@@ -1,12 +1,16 @@
 warning: unexpected `cfg` condition value: `X`
-  --> $DIR/compact-values.rs:12:28
+  --> $DIR/compact-values.rs:14:28
    |
 LL | #[cfg(target(os = "linux", pointer_width = "X"))]
    |                            ^^^^^^^^^^^^^^^^^^^
    |
    = note: expected values for `target_pointer_width` are: `16`, `32`, `64`
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
-   = note: `#[warn(unexpected_cfgs)]` on by default
+note: the lint level is defined here
+  --> $DIR/compact-values.rs:7:9
+   |
+LL | #![warn(unexpected_cfgs)]
+   |         ^^^^^^^^^^^^^^^
 
 warning: 1 warning emitted
 

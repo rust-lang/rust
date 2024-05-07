@@ -9,6 +9,8 @@
 //@ compile-flags: --check-cfg=cfg()
 //@ compile-flags: -Zcheck-cfg-all-expected
 
+#![warn(unexpected_cfgs)]
+
 #![feature(cfg_overflow_checks)]
 #![feature(cfg_relocation_model)]
 #![feature(cfg_sanitize)]

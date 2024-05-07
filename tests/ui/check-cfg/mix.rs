@@ -7,6 +7,8 @@
 //@ compile-flags: --cfg feature="bar" --cfg unknown_name
 //@ compile-flags: --check-cfg=cfg(feature,values("foo"))
 
+#![warn(unexpected_cfgs)]
+
 #[cfg(windows)]
 fn do_windows_stuff() {}
 

@@ -8,6 +8,8 @@
 //@ [mixed]compile-flags: --check-cfg=cfg(test,feature)
 //@ [empty]compile-flags: --check-cfg=cfg(test,feature,values(none()))
 
+#![warn(unexpected_cfgs)]
+
 #[cfg(feature = "foo")]
 //~^ WARNING unexpected `cfg` condition value
 fn do_foo() {}

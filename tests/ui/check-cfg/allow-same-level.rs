@@ -4,6 +4,8 @@
 //@ no-auto-check-cfg
 //@ compile-flags: --check-cfg=cfg()
 
+#![warn(unexpected_cfgs)]
+
 #[allow(unexpected_cfgs)]
 #[cfg(FALSE)]
 //~^ WARNING unexpected `cfg` condition name

@@ -5,6 +5,8 @@
 //@ no-auto-check-cfg
 //@ compile-flags: --check-cfg=cfg(foo,values("value")) --check-cfg=cfg(bar,values("value")) --check-cfg=cfg(bee,values("value")) --check-cfg=cfg(cow,values("value"))
 
+#![warn(unexpected_cfgs)]
+
 #[cfg(value)]
 //~^ WARNING unexpected `cfg` condition name: `value`
 fn x() {}

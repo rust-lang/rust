@@ -6,6 +6,8 @@
 //@ [values_before]compile-flags: --check-cfg=cfg(a,values("b")) --check-cfg=cfg(a)
 //@ [values_after]compile-flags: --check-cfg=cfg(a) --check-cfg=cfg(a,values("b"))
 
+#![warn(unexpected_cfgs)]
+
 #[cfg(a)]
 fn my_cfg() {}
 

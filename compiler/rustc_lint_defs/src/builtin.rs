@@ -3345,7 +3345,7 @@ declare_lint! {
     /// The known condition include names or values passed in `--check-cfg`, and some
     /// well-knows names and values built into the compiler.
     pub UNEXPECTED_CFGS,
-    Warn,
+    Allow,
     "detects unexpected names and values in `#[cfg]` conditions",
 }
 

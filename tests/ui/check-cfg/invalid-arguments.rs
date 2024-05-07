@@ -34,4 +34,6 @@
 //@ [giberich]compile-flags: --check-cfg=cfg(...)
 //@ [unterminated]compile-flags: --check-cfg=cfg(
 
+#![warn(unexpected_cfgs)]
+
 fn main() {}

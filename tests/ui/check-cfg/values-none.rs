@@ -8,6 +8,8 @@
 //@ [concat_1]compile-flags: --check-cfg=cfg(foo) --check-cfg=cfg(foo,values("too"))
 //@ [concat_2]compile-flags: --check-cfg=cfg(foo,values("too")) --check-cfg=cfg(foo)
 
+#![warn(unexpected_cfgs)]
+
 #[cfg(foo = "too")]
 //[explicit]~^ WARNING unexpected `cfg` condition value
 //[implicit]~^^ WARNING unexpected `cfg` condition value

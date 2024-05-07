@@ -5,6 +5,8 @@
 //@ [cargo]rustc-env:CARGO_CRATE_NAME=foo
 //@ compile-flags: --check-cfg=cfg(feature,values("foo")) --check-cfg=cfg(no_values)
 
+#![warn(unexpected_cfgs)]
+
 #[cfg(featur)]
 //~^ WARNING unexpected `cfg` condition name
 fn feature() {}

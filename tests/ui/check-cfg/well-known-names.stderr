@@ -1,19 +1,23 @@
 warning: unexpected `cfg` condition name: `target_oz`
-  --> $DIR/well-known-names.rs:7:7
+  --> $DIR/well-known-names.rs:9:7
    |
 LL | #[cfg(target_oz = "linux")]
    |       ^^^^^^^^^^^^^^^^^^^
    |
    = help: to expect this configuration use `--check-cfg=cfg(target_oz, values("linux"))`
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
-   = note: `#[warn(unexpected_cfgs)]` on by default
+note: the lint level is defined here
+  --> $DIR/well-known-names.rs:7:9
+   |
+LL | #![warn(unexpected_cfgs)]
+   |         ^^^^^^^^^^^^^^^
 help: there is a config with a similar name and value
    |
 LL | #[cfg(target_os = "linux")]
    |       ~~~~~~~~~
 
 warning: unexpected `cfg` condition name: `features`
-  --> $DIR/well-known-names.rs:14:7
+  --> $DIR/well-known-names.rs:16:7
    |
 LL | #[cfg(features = "foo")]
    |       ^^^^^^^^^^^^^^^^
@@ -23,7 +27,7 @@ LL | #[cfg(features = "foo")]
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition name: `feature`
-  --> $DIR/well-known-names.rs:18:7
+  --> $DIR/well-known-names.rs:20:7
    |
 LL | #[cfg(feature = "foo")]
    |       ^^^^^^^^^^^^^^^
@@ -32,7 +36,7 @@ LL | #[cfg(feature = "foo")]
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition name: `uniw`
-  --> $DIR/well-known-names.rs:22:7
+  --> $DIR/well-known-names.rs:24:7
    |
 LL | #[cfg(uniw)]
    |       ^^^^ help: there is a config with a similar name: `unix`

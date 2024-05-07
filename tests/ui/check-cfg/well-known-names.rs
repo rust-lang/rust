@@ -4,6 +4,8 @@
 //@ no-auto-check-cfg
 //@ compile-flags: --check-cfg=cfg()
 
+#![warn(unexpected_cfgs)]
+
 #[cfg(target_oz = "linux")]
 //~^ WARNING unexpected `cfg` condition name
 fn target_os_misspell() {}

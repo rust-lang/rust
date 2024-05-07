@@ -4,6 +4,8 @@
 //@ no-auto-check-cfg
 //@ compile-flags: --check-cfg=cfg(foo,values())
 
+#![warn(unexpected_cfgs)]
+
 #[cfg(foo = "foo")]
 //~^ WARNING unexpected `cfg` condition value
 fn do_foo() {}

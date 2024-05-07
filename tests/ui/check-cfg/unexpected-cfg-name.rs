@@ -4,6 +4,8 @@
 //@ no-auto-check-cfg
 //@ compile-flags: --check-cfg=cfg()
 
+#![warn(unexpected_cfgs)]
+
 #[cfg(widnows)]
 //~^ WARNING unexpected `cfg` condition name
 pub fn f() {}

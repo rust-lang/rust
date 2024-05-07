@@ -5,6 +5,8 @@
 //@ needs-llvm-components: x86
 //@ compile-flags: --crate-type=lib --check-cfg=cfg() --target={{src-base}}/check-cfg/my-awesome-platform.json
 
+#![warn(unexpected_cfgs)]
+
 #![feature(lang_items, no_core, auto_traits)]
 #![no_core]
 

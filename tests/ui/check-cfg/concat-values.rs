@@ -3,6 +3,8 @@
 //@ compile-flags: --check-cfg=cfg(my_cfg,values("foo")) --check-cfg=cfg(my_cfg,values("bar"))
 //@ compile-flags: --check-cfg=cfg(my_cfg,values())
 
+#![warn(unexpected_cfgs)]
+
 #[cfg(my_cfg)]
 //~^ WARNING unexpected `cfg` condition value
 fn my_cfg() {}

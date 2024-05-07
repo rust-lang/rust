@@ -7,6 +7,8 @@
 //@ [feature]compile-flags: --check-cfg=cfg(feature,values("std"))
 //@ [full]compile-flags: --check-cfg=cfg(feature,values("std")) --check-cfg=cfg()
 
+#![warn(unexpected_cfgs)]
+
 #[cfg(unknown_key = "value")]
 //~^ WARNING unexpected `cfg` condition name
 pub fn f() {}

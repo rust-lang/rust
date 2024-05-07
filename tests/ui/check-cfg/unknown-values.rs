@@ -8,6 +8,8 @@
 //@ [mixed]compile-flags: --check-cfg=cfg(foo) --check-cfg=cfg(foo,values(any()))
 //@ [with_values]compile-flags:--check-cfg=cfg(foo,values(any())) --check-cfg=cfg(foo,values("aa"))
 
+#![warn(unexpected_cfgs)]
+
 #[cfg(foo = "value")]
 pub fn f() {}
 

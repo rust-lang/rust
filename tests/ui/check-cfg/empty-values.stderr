@@ -1,5 +1,5 @@
 warning: unexpected `cfg` condition value: `foo`
-  --> $DIR/empty-values.rs:7:7
+  --> $DIR/empty-values.rs:9:7
    |
 LL | #[cfg(foo = "foo")]
    |       ^^^^^^^^^^^ help: remove the condition
@@ -7,10 +7,14 @@ LL | #[cfg(foo = "foo")]
    = note: no expected values for `foo`
    = help: to expect this configuration use `--check-cfg=cfg(foo, values("foo"))`
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
-   = note: `#[warn(unexpected_cfgs)]` on by default
+note: the lint level is defined here
+  --> $DIR/empty-values.rs:7:9
+   |
+LL | #![warn(unexpected_cfgs)]
+   |         ^^^^^^^^^^^^^^^
 
 warning: unexpected `cfg` condition value: (none)
-  --> $DIR/empty-values.rs:11:7
+  --> $DIR/empty-values.rs:13:7
    |
 LL | #[cfg(foo)]
    |       ^^^ help: remove the condition

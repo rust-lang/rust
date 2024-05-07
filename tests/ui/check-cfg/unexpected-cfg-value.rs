@@ -5,6 +5,8 @@
 //@ compile-flags: --cfg=feature="rand"
 //@ compile-flags: --check-cfg=cfg(feature,values("serde","full"))
 
+#![warn(unexpected_cfgs)]
+
 #[cfg(feature = "sedre")]
 //~^ WARNING unexpected `cfg` condition value
 pub fn f() {}

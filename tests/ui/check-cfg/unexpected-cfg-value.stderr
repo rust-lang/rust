@@ -1,5 +1,5 @@
 warning: unexpected `cfg` condition value: `sedre`
-  --> $DIR/unexpected-cfg-value.rs:8:7
+  --> $DIR/unexpected-cfg-value.rs:10:7
    |
 LL | #[cfg(feature = "sedre")]
    |       ^^^^^^^^^^-------
@@ -9,10 +9,14 @@ LL | #[cfg(feature = "sedre")]
    = note: expected values for `feature` are: `full`, `serde`
    = help: to expect this configuration use `--check-cfg=cfg(feature, values("sedre"))`
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
-   = note: `#[warn(unexpected_cfgs)]` on by default
+note: the lint level is defined here
+  --> $DIR/unexpected-cfg-value.rs:8:9
+   |
+LL | #![warn(unexpected_cfgs)]
+   |         ^^^^^^^^^^^^^^^
 
 warning: unexpected `cfg` condition value: `rand`
-  --> $DIR/unexpected-cfg-value.rs:15:7
+  --> $DIR/unexpected-cfg-value.rs:17:7
    |
 LL | #[cfg(feature = "rand")]
    |       ^^^^^^^^^^^^^^^^
