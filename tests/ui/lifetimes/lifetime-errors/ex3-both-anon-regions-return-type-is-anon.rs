@@ -1,5 +1,7 @@
+//@ run-rustfix
+#![allow(dead_code)]
 struct Foo {
-  field: i32
+  field: i32,
 }
 
 impl Foo {

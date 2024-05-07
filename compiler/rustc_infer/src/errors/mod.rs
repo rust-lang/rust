@@ -1,4 +1,5 @@
 use hir::GenericParamKind;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{
     codes::*, Applicability, Diag, DiagMessage, DiagStyledString, EmissionGuarantee, IntoDiagArg,
     MultiSpan, SubdiagMessageOp, Subdiagnostic,
@@ -362,13 +363,27 @@ impl Subdiagnostic for AddLifetimeParamsSuggestion<'_> {
 
             let node = self.tcx.hir_node_by_def_id(anon_reg.def_id);
             let is_impl = matches!(&node, hir::Node::ImplItem(_));
-            let generics = match node {
+            let (generics, parent_generics) = match node {
                 hir::Node::Item(&hir::Item {
                     kind: hir::ItemKind::Fn(_, ref generics, ..),
                     ..
                 })
                 | hir::Node::TraitItem(&hir::TraitItem { ref generics, .. })
-                | hir::Node::ImplItem(&hir::ImplItem { ref generics, .. }) => generics,
+                | hir::Node::ImplItem(&hir::ImplItem { ref generics, .. }) => (
+                    generics,
+                    match self.tcx.parent_hir_node(self.tcx.local_def_id_to_hir_id(anon_reg.def_id))
+                    {
+                        hir::Node::Item(hir::Item {
+                            kind: hir::ItemKind::Trait(_, _, ref generics, ..),
+                            ..
+                        })
+                        | hir::Node::Item(hir::Item {
+                            kind: hir::ItemKind::Impl(hir::Impl { ref generics, .. }),
+                            ..
+                        }) => Some(generics),
+                        _ => None,
+                    },
+                ),
                 _ => return false,
             };
 
@@ -379,8 +394,29 @@ impl Subdiagnostic for AddLifetimeParamsSuggestion<'_> {
                 .map(|p| p.name.ident().name)
                 .find(|i| *i != kw::UnderscoreLifetime);
             let introduce_new = suggestion_param_name.is_none();
+
+            let mut default = "'a".to_string();
+            if let Some(parent_generics) = parent_generics {
+                let used: FxHashSet<_> = parent_generics
+                    .params
+                    .iter()
+                    .filter(|p| matches!(p.kind, GenericParamKind::Lifetime { .. }))
+                    .map(|p| p.name.ident().name)
+                    .filter(|i| *i != kw::UnderscoreLifetime)
+                    .map(|l| l.to_string())
+                    .collect();
+                if let Some(lt) =
+                    ('a'..='z').map(|it| format!("'{it}")).find(|it| !used.contains(it))
+                {
+                    // We want a lifetime that *isn't* present in the `trait` or `impl` that assoc
+                    // `fn` belongs to. We could suggest reusing one of their lifetimes, but it is
+                    // likely to be an over-constraining lifetime requirement, so we always add a
+                    // lifetime to the `fn`.
+                    default = lt;
+                }
+            }
             let suggestion_param_name =
-                suggestion_param_name.map(|n| n.to_string()).unwrap_or_else(|| "'a".to_owned());
+                suggestion_param_name.map(|n| n.to_string()).unwrap_or_else(|| default);
 
             struct ImplicitLifetimeFinder {
                 suggestions: Vec<(Span, String)>,

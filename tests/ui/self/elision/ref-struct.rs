@@ -1,4 +1,5 @@
-#![allow(non_snake_case)]
+//@ run-rustfix
+#![allow(non_snake_case, dead_code)]
 
 use std::pin::Pin;
 

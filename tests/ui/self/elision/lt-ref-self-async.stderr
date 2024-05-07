@@ -10,7 +10,7 @@ LL |         f
    |
 help: consider introducing a named lifetime parameter and update trait if needed
    |
-LL |     async fn ref_self<'a>(&'a self, f: &'a u32) -> &u32 {
+LL |     async fn ref_self<'b>(&'b self, f: &'b u32) -> &u32 {
    |                      ++++  ++           ++
 
 error: lifetime may not live long enough
@@ -25,7 +25,7 @@ LL |         f
    |
 help: consider introducing a named lifetime parameter and update trait if needed
    |
-LL |     async fn ref_Self<'a>(self: &'a Self, f: &'a u32) -> &u32 {
+LL |     async fn ref_Self<'b>(self: &'b Self, f: &'b u32) -> &u32 {
    |                      ++++        ++           ++
 
 error: lifetime may not live long enough
@@ -40,7 +40,7 @@ LL |         f
    |
 help: consider introducing a named lifetime parameter and update trait if needed
    |
-LL |     async fn box_ref_Self<'a>(self: Box<&'a Self>, f: &'a u32) -> &u32 {
+LL |     async fn box_ref_Self<'b>(self: Box<&'b Self>, f: &'b u32) -> &u32 {
    |                          ++++            ++            ++
 
 error: lifetime may not live long enough
@@ -55,7 +55,7 @@ LL |         f
    |
 help: consider introducing a named lifetime parameter and update trait if needed
    |
-LL |     async fn pin_ref_Self<'a>(self: Pin<&'a Self>, f: &'a u32) -> &u32 {
+LL |     async fn pin_ref_Self<'b>(self: Pin<&'b Self>, f: &'b u32) -> &u32 {
    |                          ++++            ++            ++
 
 error: lifetime may not live long enough
@@ -70,7 +70,7 @@ LL |         f
    |
 help: consider introducing a named lifetime parameter and update trait if needed
    |
-LL |     async fn box_box_ref_Self<'a>(self: Box<Box<&'a Self>>, f: &'a u32) -> &u32 {
+LL |     async fn box_box_ref_Self<'b>(self: Box<Box<&'b Self>>, f: &'b u32) -> &u32 {
    |                              ++++                ++             ++
 
 error: lifetime may not live long enough
@@ -85,7 +85,7 @@ LL |         f
    |
 help: consider introducing a named lifetime parameter and update trait if needed
    |
-LL |     async fn box_pin_Self<'a>(self: Box<Pin<&'a Self>>, f: &'a u32) -> &u32 {
+LL |     async fn box_pin_Self<'b>(self: Box<Pin<&'b Self>>, f: &'b u32) -> &u32 {
    |                          ++++                ++             ++
 
 error: aborting due to 6 previous errors
