@@ -11,12 +11,14 @@ use rustc_middle::mir;
 use rustc_middle::ty;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::Ty;
+use rustc_middle::{bug, span_bug};
 use rustc_target::abi::{Abi, Align, HasDataLayout, Size};
 
 use super::{
-    alloc_range, mir_assign_valid_types, AllocRef, AllocRefMut, CheckAlignMsg, CtfeProvenance,
-    ImmTy, Immediate, InterpCx, InterpResult, Machine, MemoryKind, Misalignment, OffsetMode, OpTy,
-    Operand, Pointer, PointerArithmetic, Projectable, Provenance, Readable, Scalar,
+    alloc_range, mir_assign_valid_types, throw_ub, AllocRef, AllocRefMut, CheckAlignMsg,
+    CtfeProvenance, ImmTy, Immediate, InterpCx, InterpResult, Machine, MemoryKind, Misalignment,
+    OffsetMode, OpTy, Operand, Pointer, PointerArithmetic, Projectable, Provenance, Readable,
+    Scalar,
 };
 
 #[derive(Copy, Clone, Hash, PartialEq, Eq, Debug)]

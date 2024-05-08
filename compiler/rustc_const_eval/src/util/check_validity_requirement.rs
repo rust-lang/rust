@@ -1,3 +1,4 @@
+use rustc_middle::bug;
 use rustc_middle::ty::layout::{LayoutCx, LayoutError, LayoutOf, TyAndLayout, ValidityRequirement};
 use rustc_middle::ty::{ParamEnv, ParamEnvAnd, Ty, TyCtxt};
 use rustc_target::abi::{Abi, FieldsShape, Scalar, Variants};
