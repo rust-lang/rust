@@ -4,6 +4,7 @@ use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{ForeignItem, ForeignItemKind};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::{ObligationCause, WellFormedLoc};
+use rustc_middle::bug;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::def_id::LocalDefId;

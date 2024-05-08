@@ -24,6 +24,7 @@ use rustc_middle::ty::{
     TypeVisitable, TypeVisitableExt, TypeVisitor,
 };
 use rustc_middle::ty::{GenericArgKind, GenericArgs};
+use rustc_middle::{bug, span_bug};
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::{Span, DUMMY_SP};

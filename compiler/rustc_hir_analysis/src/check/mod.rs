@@ -90,6 +90,7 @@ use rustc_middle::query::Providers;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::ty::{GenericArgs, GenericArgsRef};
+use rustc_middle::{bug, span_bug};
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{def_id::CRATE_DEF_ID, BytePos, Span, Symbol, DUMMY_SP};

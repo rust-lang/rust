@@ -44,6 +44,7 @@ use rustc_middle::ty::{
     self, Const, GenericArgKind, GenericArgsRef, GenericParamDefKind, ParamEnv, Ty, TyCtxt,
     TypeVisitableExt,
 };
+use rustc_middle::{bug, span_bug};
 use rustc_session::lint::builtin::AMBIGUOUS_ASSOCIATED_ITEMS;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::symbol::{kw, Ident, Symbol};

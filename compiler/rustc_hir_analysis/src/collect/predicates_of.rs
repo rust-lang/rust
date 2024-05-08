@@ -10,6 +10,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::ty::{GenericPredicates, ImplTraitInTraitData, ToPredicate};
+use rustc_middle::{bug, span_bug};
 use rustc_span::symbol::Ident;
 use rustc_span::{Span, DUMMY_SP};
 
