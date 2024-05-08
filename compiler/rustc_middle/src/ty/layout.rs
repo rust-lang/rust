@@ -333,7 +333,22 @@ impl<'tcx> SizeSkeleton<'tcx> {
         match *ty.kind() {
             ty::Ref(_, pointee, _) | ty::RawPtr(pointee, _) => {
                 let non_zero = !ty.is_unsafe_ptr();
-                let tail = tcx.struct_tail_erasing_lifetimes(pointee, param_env);
+
+                let tail = tcx.struct_tail_with_normalize(
+                    pointee,
+                    |ty| match tcx.try_normalize_erasing_regions(param_env, ty) {
+                        Ok(ty) => ty,
+                        Err(_e) => {
+                            if let Some(guar) = tcx.dcx().has_errors() {
+                                Ty::new_error(tcx, guar)
+                            } else {
+                                bug!("normalization failed, but no errors reported");
+                            }
+                        }
+                    },
+                    || {},
+                );
+
                 match tail.kind() {
                     ty::Param(_) | ty::Alias(ty::Projection | ty::Inherent, _) => {
                         debug_assert!(tail.has_non_region_param());
