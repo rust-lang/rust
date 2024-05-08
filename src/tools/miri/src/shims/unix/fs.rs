@@ -378,7 +378,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         // Reject if isolation is enabled.
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`open`", reject_with)?;
-            this.set_last_error_from_io_error(ErrorKind::PermissionDenied)?;
+            this.set_last_error_from_io_error(ErrorKind::PermissionDenied.into())?;
             return Ok(-1);
         }
 
@@ -434,7 +434,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         // Reject if isolation is enabled.
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`unlink`", reject_with)?;
-            this.set_last_error_from_io_error(ErrorKind::PermissionDenied)?;
+            this.set_last_error_from_io_error(ErrorKind::PermissionDenied.into())?;
             return Ok(-1);
         }
 
@@ -465,7 +465,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         // Reject if isolation is enabled.
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`symlink`", reject_with)?;
-            this.set_last_error_from_io_error(ErrorKind::PermissionDenied)?;
+            this.set_last_error_from_io_error(ErrorKind::PermissionDenied.into())?;
             return Ok(-1);
         }
 
@@ -766,7 +766,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         // Reject if isolation is enabled.
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`rename`", reject_with)?;
-            this.set_last_error_from_io_error(ErrorKind::PermissionDenied)?;
+            this.set_last_error_from_io_error(ErrorKind::PermissionDenied.into())?;
             return Ok(-1);
         }
 
@@ -794,7 +794,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         // Reject if isolation is enabled.
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`mkdir`", reject_with)?;
-            this.set_last_error_from_io_error(ErrorKind::PermissionDenied)?;
+            this.set_last_error_from_io_error(ErrorKind::PermissionDenied.into())?;
             return Ok(-1);
         }
 
@@ -822,7 +822,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         // Reject if isolation is enabled.
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`rmdir`", reject_with)?;
-            this.set_last_error_from_io_error(ErrorKind::PermissionDenied)?;
+            this.set_last_error_from_io_error(ErrorKind::PermissionDenied.into())?;
             return Ok(-1);
         }
 
@@ -859,7 +859,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 Ok(Scalar::from_target_usize(id, this))
             }
             Err(e) => {
-                this.set_last_error_from_io_error(e.kind())?;
+                this.set_last_error_from_io_error(e)?;
                 Ok(Scalar::null_ptr(this))
             }
         }
@@ -947,7 +947,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 None
             }
             Some(Err(e)) => {
-                this.set_last_error_from_io_error(e.kind())?;
+                this.set_last_error_from_io_error(e)?;
                 None
             }
         };
@@ -1299,7 +1299,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 Ok(path_bytes.len().try_into().unwrap())
             }
             Err(e) => {
-                this.set_last_error_from_io_error(e.kind())?;
+                this.set_last_error_from_io_error(e)?;
                 Ok(-1)
             }
         }
@@ -1382,7 +1382,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 Ok(Scalar::from_maybe_pointer(dest, this))
             }
             Err(e) => {
-                this.set_last_error_from_io_error(e.kind())?;
+                this.set_last_error_from_io_error(e)?;
                 Ok(Scalar::from_target_usize(0, this))
             }
         }
@@ -1503,7 +1503,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                         _ => {
                             // "On error, -1 is returned, and errno is set to
                             // indicate the error"
-                            this.set_last_error_from_io_error(e.kind())?;
+                            this.set_last_error_from_io_error(e)?;
                             return Ok(-1);
                         }
                     },
@@ -1582,7 +1582,7 @@ impl FileMetadata {
         let metadata = match metadata {
             Ok(metadata) => metadata,
             Err(e) => {
-                ecx.set_last_error_from_io_error(e.kind())?;
+                ecx.set_last_error_from_io_error(e)?;
                 return Ok(None);
             }
         };

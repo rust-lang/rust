@@ -751,26 +751,23 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
     /// This function tries to produce the most similar OS error from the `std::io::ErrorKind`
     /// as a platform-specific errnum.
-    fn io_error_to_errnum(
-        &self,
-        err_kind: std::io::ErrorKind,
-    ) -> InterpResult<'tcx, Scalar<Provenance>> {
+    fn io_error_to_errnum(&self, err: std::io::Error) -> InterpResult<'tcx, Scalar<Provenance>> {
         let this = self.eval_context_ref();
         let target = &this.tcx.sess.target;
         if target.families.iter().any(|f| f == "unix") {
             for &(name, kind) in UNIX_IO_ERROR_TABLE {
-                if err_kind == kind {
+                if err.kind() == kind {
                     return Ok(this.eval_libc(name));
                 }
             }
-            throw_unsup_format!("io error {:?} cannot be translated into a raw os error", err_kind)
+            throw_unsup_format!("unsupported io error: {err}")
         } else if target.families.iter().any(|f| f == "windows") {
             for &(name, kind) in WINDOWS_IO_ERROR_TABLE {
-                if err_kind == kind {
+                if err.kind() == kind {
                     return Ok(this.eval_windows("c", name));
                 }
             }
-            throw_unsup_format!("io error {:?} cannot be translated into a raw os error", err_kind);
+            throw_unsup_format!("unsupported io error: {err}");
         } else {
             throw_unsup_format!(
                 "converting io::Error into errnum is unsupported for OS {}",
@@ -812,8 +809,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     }
 
     /// Sets the last OS error using a `std::io::ErrorKind`.
-    fn set_last_error_from_io_error(&mut self, err_kind: std::io::ErrorKind) -> InterpResult<'tcx> {
-        self.set_last_error(self.io_error_to_errnum(err_kind)?)
+    fn set_last_error_from_io_error(&mut self, err: std::io::Error) -> InterpResult<'tcx> {
+        self.set_last_error(self.io_error_to_errnum(err)?)
     }
 
     /// Helper function that consumes an `std::io::Result<T>` and returns an
@@ -829,7 +826,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         match result {
             Ok(ok) => Ok(ok),
             Err(e) => {
-                self.eval_context_mut().set_last_error_from_io_error(e.kind())?;
+                self.eval_context_mut().set_last_error_from_io_error(e)?;
                 Ok((-1).into())
             }
         }

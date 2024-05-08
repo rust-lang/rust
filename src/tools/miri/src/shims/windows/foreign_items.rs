@@ -225,7 +225,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let filename = this.read_path_from_wide_str(filename)?;
                 let result = match win_absolute(&filename)? {
                     Err(err) => {
-                        this.set_last_error_from_io_error(err.kind())?;
+                        this.set_last_error_from_io_error(err)?;
                         Scalar::from_u32(0) // return zero upon failure
                     }
                     Ok(abs_filename) => {
