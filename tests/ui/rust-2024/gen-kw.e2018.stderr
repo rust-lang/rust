@@ -22,5 +22,14 @@ LL |     let gen = r#gen;
    = warning: this is accepted in the current edition (Rust 2018) but is a hard error in Rust 2024!
    = note: for more information, see issue #49716 <https://github.com/rust-lang/rust/issues/49716>
 
-error: aborting due to 2 previous errors
+error: `gen` is a keyword in the 2024 edition
+  --> $DIR/gen-kw.rs:19:27
+   |
+LL |     () => { mod test { fn gen() {} } }
+   |                           ^^^ help: you can use a raw identifier to stay compatible: `r#gen`
+   |
+   = warning: this is accepted in the current edition (Rust 2018) but is a hard error in Rust 2024!
+   = note: for more information, see issue #49716 <https://github.com/rust-lang/rust/issues/49716>
+
+error: aborting due to 3 previous errors
 

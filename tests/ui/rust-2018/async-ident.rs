@@ -11,14 +11,12 @@ macro_rules! foo {
     ($foo:ident) => {};
     ($async:expr, async) => {};
     //~^ ERROR async
-    //~| ERROR async
-    //~| WARN this is accepted in the current edition
     //~| WARN this is accepted in the current edition
 }
 
 foo!(async);
-    //~^ ERROR async
-    //~| WARN this is accepted in the current edition
+//~^ ERROR async
+//~| WARN this is accepted in the current edition
 
 mod dont_lint_raw {
     fn r#async() {}
