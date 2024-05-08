@@ -69,14 +69,11 @@ pub(super) fn check<'tcx>(
             let mut delegate = MoveDelegate {
                 used_move: HirIdSet::default(),
             };
-            let infcx = cx.tcx.infer_ctxt().build();
 
-            ExprUseVisitor::new(
+            ExprUseVisitor::for_clippy(
+                cx,
+                closure.def_id,
                 &mut delegate,
-                &infcx,
-                closure.body.hir_id.owner.def_id,
-                cx.param_env,
-                cx.typeck_results(),
             )
             .consume_body(body);
 

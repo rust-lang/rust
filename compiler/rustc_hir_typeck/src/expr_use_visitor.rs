@@ -9,6 +9,7 @@ use std::slice::from_ref;
 use hir::def::DefKind;
 use hir::pat_util::EnumerateAndAdjustIterator as _;
 use hir::Expr;
+use rustc_lint::LateContext;
 // Export these here so that Clippy can use them.
 pub use rustc_middle::hir::place::{Place, PlaceBase, PlaceWithHirId, Projection};
 
@@ -172,6 +173,36 @@ impl<'tcx> TypeInformationCtxt<'tcx> for &FnCtxt<'_, 'tcx> {
     }
 }
 
+impl<'tcx> TypeInformationCtxt<'tcx> for (&LateContext<'tcx>, LocalDefId) {
+    type TypeckResults<'a> = &'tcx ty::TypeckResults<'tcx>
+    where
+        Self: 'a;
+
+    fn typeck_results(&self) -> Self::TypeckResults<'_> {
+        self.0.maybe_typeck_results().expect("expected typeck results")
+    }
+
+    fn resolve_vars_if_possible<T: TypeFoldable<TyCtxt<'tcx>>>(&self, t: T) -> T {
+        t
+    }
+
+    fn tainted_by_errors(&self) -> Option<ErrorGuaranteed> {
+        None
+    }
+
+    fn type_is_copy_modulo_regions(&self, ty: Ty<'tcx>) -> bool {
+        ty.is_copy_modulo_regions(self.0.tcx, self.0.param_env)
+    }
+
+    fn body_owner_def_id(&self) -> LocalDefId {
+        self.1
+    }
+
+    fn tcx(&self) -> TyCtxt<'tcx> {
+        self.0.tcx
+    }
+}
+
 /// The ExprUseVisitor type
 ///
 /// This is the code that actually walks the tree.
@@ -200,13 +231,19 @@ macro_rules! return_if_err {
     };
 }
 
+impl<'a, 'tcx, D: Delegate<'tcx>> ExprUseVisitor<'tcx, (&'a LateContext<'tcx>, LocalDefId), D> {
+    pub fn for_clippy(cx: &'a LateContext<'tcx>, body_def_id: LocalDefId, delegate: D) -> Self {
+        Self::new((cx, body_def_id), delegate)
+    }
+}
+
 impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx, Cx, D> {
     /// Creates the ExprUseVisitor, configuring it with the various options provided:
     ///
     /// - `delegate` -- who receives the callbacks
     /// - `param_env` --- parameter environment for trait lookups (esp. pertaining to `Copy`)
     /// - `typeck_results` --- typeck results for the code being analyzed
-    pub fn new(cx: Cx, delegate: D) -> Self {
+    pub(crate) fn new(cx: Cx, delegate: D) -> Self {
         ExprUseVisitor {
             delegate: RefCell::new(delegate),
             upvars: cx.tcx().upvars_mentioned(cx.body_owner_def_id()),

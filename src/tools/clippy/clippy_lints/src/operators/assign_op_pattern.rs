@@ -11,7 +11,6 @@ use rustc_hir_typeck::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceBase, Pl
 use rustc_lint::LateContext;
 use rustc_middle::mir::FakeReadCause;
 use rustc_middle::ty::BorrowKind;
-use rustc_trait_selection::infer::TyCtxtInferExt;
 
 use super::ASSIGN_OP_PATTERN;
 
@@ -119,14 +118,7 @@ fn imm_borrows_in_expr(cx: &LateContext<'_>, e: &hir::Expr<'_>) -> HirIdSet {
     }
 
     let mut s = S(HirIdSet::default());
-    let infcx = cx.tcx.infer_ctxt().build();
-    let v = ExprUseVisitor::new(
-        &mut s,
-        &infcx,
-        cx.tcx.hir().body_owner_def_id(cx.enclosing_body.unwrap()),
-        cx.param_env,
-        cx.typeck_results(),
-    );
+    let v = ExprUseVisitor::for_clippy(cx, e.hir_id.owner.def_id, &mut s);
     v.consume_expr(e);
     s.0
 }
@@ -151,14 +143,7 @@ fn mut_borrows_in_expr(cx: &LateContext<'_>, e: &hir::Expr<'_>) -> HirIdSet {
     }
 
     let mut s = S(HirIdSet::default());
-    let infcx = cx.tcx.infer_ctxt().build();
-    let v = ExprUseVisitor::new(
-        &mut s,
-        &infcx,
-        cx.tcx.hir().body_owner_def_id(cx.enclosing_body.unwrap()),
-        cx.param_env,
-        cx.typeck_results(),
-    );
+    let v = ExprUseVisitor::for_clippy(cx, e.hir_id.owner.def_id, &mut s);
     v.consume_expr(e);
     s.0
 }

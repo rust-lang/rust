@@ -5,7 +5,6 @@ use hir::def::Res;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{self as hir, Expr, ExprKind, HirId, HirIdSet};
 use rustc_hir_typeck::expr_use_visitor::{Delegate, ExprUseVisitor, Place, PlaceBase, PlaceWithHirId};
-use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::LateContext;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::mir::FakeReadCause;
@@ -17,13 +16,10 @@ pub fn mutated_variables<'tcx>(expr: &'tcx Expr<'_>, cx: &LateContext<'tcx>) -> 
         used_mutably: HirIdSet::default(),
         skip: false,
     };
-    let infcx = cx.tcx.infer_ctxt().build();
-    ExprUseVisitor::new(
-        &mut delegate,
-        &infcx,
+    ExprUseVisitor::for_clippy(
+        cx,
         expr.hir_id.owner.def_id,
-        cx.param_env,
-        cx.typeck_results(),
+        &mut delegate,
     )
     .walk_expr(expr);
 
