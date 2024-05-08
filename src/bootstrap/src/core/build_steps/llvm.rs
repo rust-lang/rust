@@ -631,6 +631,16 @@ fn configure_cmake(
             cfg.define("CMAKE_SYSTEM_NAME", "SunOS");
         } else if target.contains("linux") {
             cfg.define("CMAKE_SYSTEM_NAME", "Linux");
+        } else if target.contains("darwin") {
+            cfg.define("CMAKE_SYSTEM_NAME", "Darwin");
+        } else if target.contains("ios") {
+            cfg.define("CMAKE_SYSTEM_NAME", "iOS");
+        } else if target.contains("tvos") {
+            cfg.define("CMAKE_SYSTEM_NAME", "tvOS");
+        } else if target.contains("watchos") {
+            cfg.define("CMAKE_SYSTEM_NAME", "watchOS");
+        } else if target.contains("visionos") {
+            cfg.define("CMAKE_SYSTEM_NAME", "visionOS");
         } else {
             builder.info(&format!(
                 "could not determine CMAKE_SYSTEM_NAME from the target `{target}`, build may fail",

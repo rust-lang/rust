@@ -37,7 +37,7 @@ test = false
 # bootstrap codebase(e.g., https://github.com/rust-lang/rust/issues/124565);
 # otherwise, some targets will fail. That's why these dependencies are explicitly pinned.
 cc = "=1.0.97"
-cmake = "=0.1.48"
+cmake = "=0.1.50"
 
 build_helper = { path = "../tools/build_helper" }
 clap = { version = "4.4", default-features = false, features = ["std", "usage", "help", "derive", "error-context"] }
