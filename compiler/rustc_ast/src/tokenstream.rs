@@ -706,7 +706,7 @@ impl<'t> Iterator for RefTokenTreeCursor<'t> {
 /// involve associated types) for getting individual elements, or
 /// `RefTokenTreeCursor` if you really want an `Iterator`, e.g. in a `for`
 /// loop.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct TokenTreeCursor {
     pub stream: TokenStream,
     index: usize,
