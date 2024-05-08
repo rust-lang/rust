@@ -399,7 +399,7 @@ passes_lang_item_fn_with_target_feature =
 
 passes_lang_item_fn_with_track_caller =
     {passes_lang_item_fn} is not allowed to have `#[track_caller]`
-    .label = {passes_lang_item_fn} is not allowed to have `#[target_feature]`
+    .label = {passes_lang_item_fn} is not allowed to have `#[track_caller]`
 
 passes_lang_item_on_incorrect_target =
     `{$name}` lang item must be applied to a {$expected_target}
