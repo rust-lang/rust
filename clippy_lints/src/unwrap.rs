@@ -253,7 +253,7 @@ impl<'a, 'tcx> UnwrappableVariablesVisitor<'a, 'tcx> {
             };
 
             let infcx = self.cx.tcx.infer_ctxt().build();
-            let mut vis = ExprUseVisitor::new(
+            let vis = ExprUseVisitor::new(
                 &mut delegate,
                 &infcx,
                 cond.hir_id.owner.def_id,
