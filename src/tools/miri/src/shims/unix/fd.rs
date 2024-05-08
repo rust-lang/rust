@@ -312,7 +312,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             // Reject if isolation is enabled.
             if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
                 this.reject_in_isolation("`fcntl`", reject_with)?;
-                this.set_last_error_from_io_error(ErrorKind::PermissionDenied)?;
+                this.set_last_error_from_io_error(ErrorKind::PermissionDenied.into())?;
                 return Ok(-1);
             }
 
@@ -394,7 +394,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 Ok(read_bytes)
             }
             Err(e) => {
-                this.set_last_error_from_io_error(e.kind())?;
+                this.set_last_error_from_io_error(e)?;
                 Ok(-1)
             }
         }
