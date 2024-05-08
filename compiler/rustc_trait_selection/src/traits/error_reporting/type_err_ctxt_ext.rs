@@ -45,6 +45,7 @@ use rustc_middle::ty::{
     self, SubtypePredicate, ToPolyTraitRef, ToPredicate, TraitRef, Ty, TyCtxt, TypeFoldable,
     TypeVisitable, TypeVisitableExt,
 };
+use rustc_middle::{bug, span_bug};
 use rustc_session::config::DumpSolverProofTree;
 use rustc_session::Limit;
 use rustc_span::def_id::LOCAL_CRATE;

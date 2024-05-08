@@ -3,6 +3,7 @@ use crate::traits;
 use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
 use rustc_infer::traits::ObligationCauseCode;
+use rustc_middle::bug;
 use rustc_middle::ty::{
     self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
 };

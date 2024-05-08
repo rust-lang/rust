@@ -16,6 +16,7 @@ use rustc_infer::traits::ObligationCause;
 use rustc_infer::traits::{Obligation, PolyTraitObligation, SelectionError};
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
 use rustc_middle::ty::{self, ToPolyTraitRef, Ty, TypeVisitableExt};
+use rustc_middle::{bug, span_bug};
 
 use crate::traits;
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
