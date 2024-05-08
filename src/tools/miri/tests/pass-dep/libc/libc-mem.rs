@@ -110,9 +110,10 @@ fn test_malloc() {
     }
 
     unsafe {
-        // Realloc with size 0 is okay for the null pointer
+        // Realloc with size 0 is okay for the null pointer (and acts like `malloc(0)`)
         let p2 = libc::realloc(ptr::null_mut(), 0);
-        assert!(p2.is_null());
+        assert!(!p2.is_null());
+        libc::free(p2);
     }
 
     unsafe {
@@ -126,13 +127,16 @@ fn test_malloc() {
 fn test_calloc() {
     unsafe {
         let p1 = libc::calloc(0, 0);
-        assert!(p1.is_null());
+        assert!(!p1.is_null());
+        libc::free(p1);
 
         let p2 = libc::calloc(20, 0);
-        assert!(p2.is_null());
+        assert!(!p2.is_null());
+        libc::free(p2);
 
         let p3 = libc::calloc(0, 20);
-        assert!(p3.is_null());
+        assert!(!p3.is_null());
+        libc::free(p3);
 
         let p4 = libc::calloc(4, 8);
         assert!(!p4.is_null());
