@@ -17,6 +17,7 @@ use rustc_middle::ty::ReStatic;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::ty::{ReBound, ReVar};
 use rustc_middle::ty::{Region, RegionVid};
+use rustc_middle::{bug, span_bug};
 use rustc_span::Span;
 
 use std::ops::Range;

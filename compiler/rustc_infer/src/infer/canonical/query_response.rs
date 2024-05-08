@@ -25,6 +25,7 @@ use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::{self, BoundVar, Ty, TyCtxt};
 use rustc_middle::ty::{GenericArg, GenericArgKind};
+use rustc_middle::{bug, span_bug};
 use std::fmt::Debug;
 use std::iter;
 
