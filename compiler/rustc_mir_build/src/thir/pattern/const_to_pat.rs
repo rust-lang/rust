@@ -4,6 +4,7 @@ use rustc_index::Idx;
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::Obligation;
 use rustc_middle::mir;
+use rustc_middle::span_bug;
 use rustc_middle::thir::{FieldPat, Pat, PatKind};
 use rustc_middle::ty::{self, Ty, TyCtxt, ValTree};
 use rustc_session::lint;
