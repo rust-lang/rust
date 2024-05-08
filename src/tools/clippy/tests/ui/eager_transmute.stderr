@@ -155,36 +155,36 @@ LL |     (op < 4).then(|| std::mem::transmute::<_, Opcode>(op));
    |              ~~~~ ++
 
 error: this transmute is always evaluated eagerly, even if the condition is false
-  --> tests/ui/eager_transmute.rs:90:60
+  --> tests/ui/eager_transmute.rs:90:62
    |
-LL |     let _: Option<NonZeroU8> = (v1 > 0).then_some(unsafe { std::mem::transmute(v1) });
-   |                                                            ^^^^^^^^^^^^^^^^^^^^^^^
+LL |     let _: Option<NonZero<u8>> = (v1 > 0).then_some(unsafe { std::mem::transmute(v1) });
+   |                                                              ^^^^^^^^^^^^^^^^^^^^^^^
    |
 help: consider using `bool::then` to only transmute if the condition holds
    |
-LL |     let _: Option<NonZeroU8> = (v1 > 0).then(|| unsafe { std::mem::transmute(v1) });
-   |                                         ~~~~ ++
+LL |     let _: Option<NonZero<u8>> = (v1 > 0).then(|| unsafe { std::mem::transmute(v1) });
+   |                                           ~~~~ ++
 
 error: this transmute is always evaluated eagerly, even if the condition is false
   --> tests/ui/eager_transmute.rs:96:86
    |
-LL |     let _: Option<NonMaxU8> = (v2 < NonZeroU8::new(255).unwrap()).then_some(unsafe { std::mem::transmute(v2) });
+LL |     let _: Option<NonMaxU8> = (v2 < NonZero::new(255u8).unwrap()).then_some(unsafe { std::mem::transmute(v2) });
    |                                                                                      ^^^^^^^^^^^^^^^^^^^^^^^
    |
 help: consider using `bool::then` to only transmute if the condition holds
    |
-LL |     let _: Option<NonMaxU8> = (v2 < NonZeroU8::new(255).unwrap()).then(|| unsafe { std::mem::transmute(v2) });
+LL |     let _: Option<NonMaxU8> = (v2 < NonZero::new(255u8).unwrap()).then(|| unsafe { std::mem::transmute(v2) });
    |                                                                   ~~~~ ++
 
 error: this transmute is always evaluated eagerly, even if the condition is false
   --> tests/ui/eager_transmute.rs:102:93
    |
-LL |     let _: Option<NonZeroNonMaxU8> = (v2 < NonZeroU8::new(255).unwrap()).then_some(unsafe { std::mem::transmute(v2) });
+LL |     let _: Option<NonZeroNonMaxU8> = (v2 < NonZero::new(255u8).unwrap()).then_some(unsafe { std::mem::transmute(v2) });
    |                                                                                             ^^^^^^^^^^^^^^^^^^^^^^^
    |
 help: consider using `bool::then` to only transmute if the condition holds
    |
-LL |     let _: Option<NonZeroNonMaxU8> = (v2 < NonZeroU8::new(255).unwrap()).then(|| unsafe { std::mem::transmute(v2) });
+LL |     let _: Option<NonZeroNonMaxU8> = (v2 < NonZero::new(255u8).unwrap()).then(|| unsafe { std::mem::transmute(v2) });
    |                                                                          ~~~~ ++
 
 error: aborting due to 17 previous errors

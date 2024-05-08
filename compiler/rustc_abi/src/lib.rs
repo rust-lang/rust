@@ -4,7 +4,7 @@
 #![cfg_attr(feature = "nightly", feature(rustdoc_internals))]
 
 use std::fmt;
-use std::num::{NonZeroUsize, ParseIntError};
+use std::num::{NonZero, ParseIntError};
 use std::ops::{Add, AddAssign, Mul, RangeInclusive, Sub};
 use std::str::FromStr;
 
@@ -1149,7 +1149,7 @@ pub enum FieldsShape<FieldIdx: Idx> {
     Primitive,
 
     /// All fields start at no offset. The `usize` is the field count.
-    Union(NonZeroUsize),
+    Union(NonZero<usize>),
 
     /// Array/vector-like placement, with all fields of identical types.
     Array { stride: Size, count: u64 },

@@ -1,5 +1,5 @@
 use clap::Parser;
-use std::num::NonZeroUsize;
+use std::num::NonZero;
 use std::path::PathBuf;
 
 #[derive(Clone, Debug, Parser)]
@@ -61,7 +61,7 @@ impl LintcheckConfig {
             config.max_jobs = if config.fix || config.recursive {
                 1
             } else {
-                std::thread::available_parallelism().map_or(1, NonZeroUsize::get)
+                std::thread::available_parallelism().map_or(1, NonZero::get)
             };
         };
 

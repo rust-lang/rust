@@ -257,7 +257,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for transmutes from integers to `NonZero*` types, and suggests their `new_unchecked`
+    /// Checks for transmutes from `T` to `NonZero<T>`, and suggests the `new_unchecked`
     /// method instead.
     ///
     /// ### Why is this bad?
@@ -266,13 +266,13 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```no_run
-    /// # use core::num::NonZeroU32;
-    /// let _non_zero: NonZeroU32 = unsafe { std::mem::transmute(123) };
+    /// # use core::num::NonZero;
+    /// let _: NonZero<u32> = unsafe { std::mem::transmute(123) };
     /// ```
     /// Use instead:
     /// ```no_run
-    /// # use core::num::NonZeroU32;
-    /// let _non_zero = unsafe { NonZeroU32::new_unchecked(123) };
+    /// # use core::num::NonZero;
+    /// let _: NonZero<u32> = unsafe { NonZero::new_unchecked(123) };
     /// ```
     #[clippy::version = "1.69.0"]
     pub TRANSMUTE_INT_TO_NON_ZERO,
