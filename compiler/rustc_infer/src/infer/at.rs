@@ -27,6 +27,7 @@
 
 use super::*;
 
+use rustc_middle::bug;
 use rustc_middle::ty::relate::{Relate, TypeRelation};
 use rustc_middle::ty::{Const, ImplSubject};
 
