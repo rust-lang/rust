@@ -389,6 +389,10 @@ declare_lint_pass!(StrToString => [STR_TO_STRING]);
 
 impl<'tcx> LateLintPass<'tcx> for StrToString {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &Expr<'_>) {
+        if expr.span.from_expansion() {
+            return;
+        }
+
         if let ExprKind::MethodCall(path, self_arg, ..) = &expr.kind
             && path.ident.name == sym::to_string
             && let ty = cx.typeck_results().expr_ty(self_arg)
@@ -437,6 +441,10 @@ declare_lint_pass!(StringToString => [STRING_TO_STRING]);
 
 impl<'tcx> LateLintPass<'tcx> for StringToString {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &Expr<'_>) {
+        if expr.span.from_expansion() {
+            return;
+        }
+
         if let ExprKind::MethodCall(path, self_arg, ..) = &expr.kind
             && path.ident.name == sym::to_string
             && let ty = cx.typeck_results().expr_ty(self_arg)
