@@ -3,10 +3,11 @@ use rustc_middle::mir;
 use rustc_middle::mir::interpret::{InterpResult, Scalar};
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, FloatTy, ScalarInt, Ty};
+use rustc_middle::{bug, span_bug};
 use rustc_span::symbol::sym;
 use rustc_target::abi::Abi;
 
-use super::{ImmTy, Immediate, InterpCx, Machine, PlaceTy};
+use super::{err_ub, throw_ub, throw_ub_custom, ImmTy, Immediate, InterpCx, Machine, PlaceTy};
 
 use crate::fluent_generated as fluent;
 

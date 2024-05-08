@@ -11,6 +11,7 @@ use rustc_span::{Span, Symbol};
 
 use super::CompileTimeInterpreter;
 use crate::errors::{self, FrameNote, ReportErrorExt};
+use crate::interpret::{err_inval, err_machine_stop};
 use crate::interpret::{ErrorHandled, Frame, InterpError, InterpErrorInfo, MachineStopType};
 
 /// The CTFE machine has some custom error kinds.

@@ -3,6 +3,7 @@ use std::sync::atomic::Ordering::Relaxed;
 use either::{Left, Right};
 
 use rustc_hir::def::DefKind;
+use rustc_middle::bug;
 use rustc_middle::mir::interpret::{AllocId, ErrorHandled, InterpErrorInfo};
 use rustc_middle::mir::{self, ConstAlloc, ConstValue};
 use rustc_middle::query::TyCtxtAt;
@@ -24,7 +25,7 @@ use crate::interpret::{
     InternKind, InterpCx, InterpError, InterpResult, MPlaceTy, MemoryKind, OpTy, RefTracking,
     StackPopCleanup,
 };
-use crate::interpret::{eval_nullary_intrinsic, InternResult};
+use crate::interpret::{eval_nullary_intrinsic, throw_exhaust, InternResult};
 use crate::CTRL_C_RECEIVED;
 
 // Returns a pointer to where the result lives
