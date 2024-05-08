@@ -120,7 +120,7 @@ fn imm_borrows_in_expr(cx: &LateContext<'_>, e: &hir::Expr<'_>) -> HirIdSet {
 
     let mut s = S(HirIdSet::default());
     let infcx = cx.tcx.infer_ctxt().build();
-    let mut v = ExprUseVisitor::new(
+    let v = ExprUseVisitor::new(
         &mut s,
         &infcx,
         cx.tcx.hir().body_owner_def_id(cx.enclosing_body.unwrap()),
@@ -152,7 +152,7 @@ fn mut_borrows_in_expr(cx: &LateContext<'_>, e: &hir::Expr<'_>) -> HirIdSet {
 
     let mut s = S(HirIdSet::default());
     let infcx = cx.tcx.infer_ctxt().build();
-    let mut v = ExprUseVisitor::new(
+    let v = ExprUseVisitor::new(
         &mut s,
         &infcx,
         cx.tcx.hir().body_owner_def_id(cx.enclosing_body.unwrap()),
