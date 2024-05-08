@@ -4,6 +4,7 @@
 //! * `ctx` - Context for the term search
 //! * `defs` - Set of items in scope at term search target location
 //! * `lookup` - Lookup table for types
+//! * `should_continue` - Function that indicates when to stop iterating
 //! And they return iterator that yields type trees that unify with the `goal` type.
 
 use std::iter;
@@ -97,6 +98,7 @@ pub(super) fn trivial<'a, DB: HirDatabase>(
 /// * `ctx` - Context for the term search
 /// * `defs` - Set of items in scope at term search target location
 /// * `lookup` - Lookup table for types
+/// * `should_continue` - Function that indicates when to stop iterating
 pub(super) fn type_constructor<'a, DB: HirDatabase>(
     ctx: &'a TermSearchCtx<'a, DB>,
     defs: &'a FxHashSet<ScopeDef>,
@@ -357,6 +359,7 @@ pub(super) fn type_constructor<'a, DB: HirDatabase>(
 /// * `ctx` - Context for the term search
 /// * `defs` - Set of items in scope at term search target location
 /// * `lookup` - Lookup table for types
+/// * `should_continue` - Function that indicates when to stop iterating
 pub(super) fn free_function<'a, DB: HirDatabase>(
     ctx: &'a TermSearchCtx<'a, DB>,
     defs: &'a FxHashSet<ScopeDef>,
@@ -488,6 +491,7 @@ pub(super) fn free_function<'a, DB: HirDatabase>(
 /// * `ctx` - Context for the term search
 /// * `defs` - Set of items in scope at term search target location
 /// * `lookup` - Lookup table for types
+/// * `should_continue` - Function that indicates when to stop iterating
 pub(super) fn impl_method<'a, DB: HirDatabase>(
     ctx: &'a TermSearchCtx<'a, DB>,
     _defs: &'a FxHashSet<ScopeDef>,
@@ -661,6 +665,7 @@ pub(super) fn impl_method<'a, DB: HirDatabase>(
 /// * `ctx` - Context for the term search
 /// * `defs` - Set of items in scope at term search target location
 /// * `lookup` - Lookup table for types
+/// * `should_continue` - Function that indicates when to stop iterating
 pub(super) fn struct_projection<'a, DB: HirDatabase>(
     ctx: &'a TermSearchCtx<'a, DB>,
     _defs: &'a FxHashSet<ScopeDef>,
@@ -734,6 +739,7 @@ pub(super) fn famous_types<'a, DB: HirDatabase>(
 /// * `ctx` - Context for the term search
 /// * `defs` - Set of items in scope at term search target location
 /// * `lookup` - Lookup table for types
+/// * `should_continue` - Function that indicates when to stop iterating
 pub(super) fn impl_static_method<'a, DB: HirDatabase>(
     ctx: &'a TermSearchCtx<'a, DB>,
     _defs: &'a FxHashSet<ScopeDef>,
@@ -905,6 +911,7 @@ pub(super) fn impl_static_method<'a, DB: HirDatabase>(
 /// * `ctx` - Context for the term search
 /// * `defs` - Set of items in scope at term search target location
 /// * `lookup` - Lookup table for types
+/// * `should_continue` - Function that indicates when to stop iterating
 pub(super) fn make_tuple<'a, DB: HirDatabase>(
     ctx: &'a TermSearchCtx<'a, DB>,
     _defs: &'a FxHashSet<ScopeDef>,

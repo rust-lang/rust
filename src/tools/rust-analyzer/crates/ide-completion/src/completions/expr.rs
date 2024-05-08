@@ -354,7 +354,6 @@ pub(crate) fn complete_expr(acc: &mut Completions, ctx: &CompletionContext<'_>) 
                 enable_borrowcheck: false,
                 many_alternatives_threshold: 1,
                 fuel: 200,
-                ..Default::default()
             },
         };
         let exprs = hir::term_search::term_search(&term_search_ctx);

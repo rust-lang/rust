@@ -269,7 +269,7 @@ pub struct TermSearchConfig {
     pub enable_borrowcheck: bool,
     /// Indicate when to squash multiple trees to `Many` as there are too many to keep track
     pub many_alternatives_threshold: usize,
-    /// Fuel for term search
+    /// Fuel for term search in "units of work"
     pub fuel: u64,
 }
 

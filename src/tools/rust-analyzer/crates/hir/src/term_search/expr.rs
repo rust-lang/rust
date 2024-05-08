@@ -474,9 +474,7 @@ impl Expr {
             Expr::Method { target, func, .. } => {
                 match func.as_assoc_item(db).and_then(|it| it.container_or_implemented_trait(db)) {
                     Some(_) => false,
-                    None => {
-                        target.is_many()
-                    }
+                    None => target.is_many(),
                 }
             }
             Expr::Field { expr, .. } => expr.contains_many_in_illegal_pos(db),

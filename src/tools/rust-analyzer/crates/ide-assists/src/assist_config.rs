@@ -16,4 +16,5 @@ pub struct AssistConfig {
     pub prefer_no_std: bool,
     pub prefer_prelude: bool,
     pub assist_emit_must_use: bool,
+    pub term_search_fuel: u64,
 }

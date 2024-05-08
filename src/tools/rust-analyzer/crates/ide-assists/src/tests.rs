@@ -31,6 +31,7 @@ pub(crate) const TEST_CONFIG: AssistConfig = AssistConfig {
     prefer_no_std: false,
     prefer_prelude: true,
     assist_emit_must_use: false,
+    term_search_fuel: 400,
 };
 
 pub(crate) const TEST_CONFIG_NO_SNIPPET_CAP: AssistConfig = AssistConfig {
@@ -46,6 +47,7 @@ pub(crate) const TEST_CONFIG_NO_SNIPPET_CAP: AssistConfig = AssistConfig {
     prefer_no_std: false,
     prefer_prelude: true,
     assist_emit_must_use: false,
+    term_search_fuel: 400,
 };
 
 pub(crate) const TEST_CONFIG_IMPORT_ONE: AssistConfig = AssistConfig {
@@ -61,6 +63,7 @@ pub(crate) const TEST_CONFIG_IMPORT_ONE: AssistConfig = AssistConfig {
     prefer_no_std: false,
     prefer_prelude: true,
     assist_emit_must_use: false,
+    term_search_fuel: 400,
 };
 
 pub(crate) fn with_single_file(text: &str) -> (RootDatabase, FileId) {

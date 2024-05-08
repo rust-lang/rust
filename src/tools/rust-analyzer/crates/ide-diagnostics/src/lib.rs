@@ -232,6 +232,7 @@ pub struct DiagnosticsConfig {
     pub insert_use: InsertUseConfig,
     pub prefer_no_std: bool,
     pub prefer_prelude: bool,
+    pub term_search_fuel: u64,
 }
 
 impl DiagnosticsConfig {
@@ -256,6 +257,7 @@ impl DiagnosticsConfig {
             },
             prefer_no_std: false,
             prefer_prelude: true,
+            term_search_fuel: 400,
         }
     }
 }

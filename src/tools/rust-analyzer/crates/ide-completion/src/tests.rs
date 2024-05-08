@@ -80,6 +80,7 @@ pub(crate) const TEST_CONFIG: CompletionConfig = CompletionConfig {
     },
     snippets: Vec::new(),
     limit: None,
+    term_search_fuel: 200,
 };
 
 pub(crate) fn completion_list(ra_fixture: &str) -> String {
