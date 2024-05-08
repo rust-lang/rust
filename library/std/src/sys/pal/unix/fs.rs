@@ -1493,11 +1493,11 @@ impl fmt::Debug for File {
             readlink(&p).ok()
         }
 
-        #[cfg(target_os = "macos")]
+        #[cfg(target_vendor = "apple")]
         fn get_path(fd: c_int) -> Option<PathBuf> {
             // FIXME: The use of PATH_MAX is generally not encouraged, but it
-            // is inevitable in this case because macOS defines `fcntl` with
-            // `F_GETPATH` in terms of `MAXPATHLEN`, and there are no
+            // is inevitable in this case because Apple targets define `fcntl`
+            // with `F_GETPATH` in terms of `MAXPATHLEN`, and there are no
             // alternatives. If a better method is invented, it should be used
             // instead.
             let mut buf = vec![0; libc::PATH_MAX as usize];
@@ -1538,12 +1538,12 @@ impl fmt::Debug for File {
 
         #[cfg(not(any(
             target_os = "linux",
-            target_os = "macos",
             target_os = "vxworks",
             all(target_os = "freebsd", target_arch = "x86_64"),
             target_os = "netbsd",
             target_os = "illumos",
-            target_os = "solaris"
+            target_os = "solaris",
+            target_vendor = "apple",
         )))]
         fn get_path(_fd: c_int) -> Option<PathBuf> {
             // FIXME(#24570): implement this for other Unix platforms
@@ -1552,12 +1552,12 @@ impl fmt::Debug for File {
 
         #[cfg(any(
             target_os = "linux",
-            target_os = "macos",
             target_os = "freebsd",
             target_os = "hurd",
             target_os = "netbsd",
             target_os = "openbsd",
-            target_os = "vxworks"
+            target_os = "vxworks",
+            target_vendor = "apple",
         ))]
         fn get_mode(fd: c_int) -> Option<(bool, bool)> {
             let mode = unsafe { libc::fcntl(fd, libc::F_GETFL) };
@@ -1574,12 +1574,12 @@ impl fmt::Debug for File {
 
         #[cfg(not(any(
             target_os = "linux",
-            target_os = "macos",
             target_os = "freebsd",
             target_os = "hurd",
             target_os = "netbsd",
             target_os = "openbsd",
-            target_os = "vxworks"
+            target_os = "vxworks",
+            target_vendor = "apple",
         )))]
         fn get_mode(_fd: c_int) -> Option<(bool, bool)> {
             // FIXME(#24570): implement this for other Unix platforms
