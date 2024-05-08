@@ -1,11 +1,12 @@
 #[cfg(all(test, not(target_os = "emscripten")))]
 mod tests;
 
+use cfg_if::cfg_if;
+
 use crate::cell::UnsafeCell;
 use crate::fmt;
 use crate::ops::Deref;
 use crate::panic::{RefUnwindSafe, UnwindSafe};
-use crate::sync::atomic::{AtomicUsize, Ordering::Relaxed};
 use crate::sys::sync as sys;
 
 /// A re-entrant mutual exclusion lock
@@ -53,8 +54,8 @@ use crate::sys::sync as sys;
 //
 // The 'owner' field tracks which thread has locked the mutex.
 //
-// We use current_thread_unique_ptr() as the thread identifier,
-// which is just the address of a thread local variable.
+// We use current_thread_id() as the thread identifier, which is just the
+// current thread's ThreadId, so it's unique across the process lifetime.
 //
 // If `owner` is set to the identifier of the current thread,
 // we assume the mutex is already locked and instead of locking it again,
@@ -72,13 +73,94 @@ use crate::sys::sync as sys;
 // since we're not dealing with multiple threads. If it's not equal,
 // synchronization is left to the mutex, making relaxed memory ordering for
 // the `owner` field fine in all cases.
+//
+// On systems without 64 bit atomics we use a simple seqlock to emulate a 64 bit Tid using
+// 32 bit atomics (which should be supported on all platforms with `std`). This works
+// because only one thread at a time (the one holding the mutex) writes to it.
 #[unstable(feature = "reentrant_lock", issue = "121440")]
 pub struct ReentrantLock<T: ?Sized> {
     mutex: sys::Mutex,
-    owner: AtomicUsize,
+    owner: Tid,
     lock_count: UnsafeCell<u32>,
     data: T,
 }
+
+cfg_if!(
+    if #[cfg(target_has_atomic = "64")] {
+        use crate::sync::atomic::{AtomicU64, Ordering::Relaxed};
+
+        struct Tid(AtomicU64);
+
+        impl Tid {
+            const fn new(tid: u64) -> Self {
+                Self(AtomicU64::new(tid))
+            }
+
+            #[inline]
+            fn get(&self) -> u64 {
+                self.0.load(Relaxed)
+            }
+
+            #[inline]
+            fn set(&self, tid: u64) {
+                self.0.store(tid, Relaxed)
+            }
+        }
+    } else if #[cfg(target_has_atomic = "32")] {
+        use crate::sync::atomic::{AtomicU32, Ordering::{Acquire, Relaxed, Release}};
+
+        struct Tid {
+            seq: AtomicU32,
+            low: AtomicU32,
+            high: AtomicU32,
+        }
+
+        impl Tid {
+            const fn new(tid: u64) -> Self {
+                Self {
+                    seq: AtomicU32::new(0),
+                    low: AtomicU32::new(tid as u32),
+                    high: AtomicU32::new((tid >> 32) as u32),
+                }
+            }
+
+            #[inline]
+            fn get(&self) -> u64 {
+                // Synchronizes with the release-increment in `set()` to ensure
+                // we only read the data after it's been fully written.
+                let mut seq = self.seq.load(Acquire);
+                loop {
+                    if seq % 2 == 0 {
+                        let low = self.low.load(Relaxed);
+                        let high = self.high.load(Relaxed);
+                        // The acquire-increment in `set()` synchronizes with this release
+                        // store to ensure that `get()` doesn't see data from a subsequent
+                        // `set()` call.
+                        match self.seq.compare_exchange_weak(seq, seq, Release, Acquire) {
+                            Ok(_) => return u64::from(low) | (u64::from(high) << 32),
+                            Err(new) => seq = new,
+                        }
+                    } else {
+                        crate::hint::spin_loop();
+                        seq = self.seq.load(Acquire);
+                    }
+                }
+            }
+
+            #[inline]
+            // This may only be called from one thread at a time, otherwise
+            // concurrent `get()` calls may return teared data.
+            fn set(&self, tid: u64) {
+                self.seq.fetch_add(1, Acquire);
+                self.low.store(tid as u32, Relaxed);
+                self.high.store((tid >> 32) as u32, Relaxed);
+                self.seq.fetch_add(1, Release);
+            }
+        }
+    } else {
+        compile_error!("`ReentrantLock` requires at least 32 bit atomics!");
+    }
+);
 
 #[unstable(feature = "reentrant_lock", issue = "121440")]
 unsafe impl<T: Send + ?Sized> Send for ReentrantLock<T> {}
@@ -131,7 +213,7 @@ impl<T> ReentrantLock<T> {
     pub const fn new(t: T) -> ReentrantLock<T> {
         ReentrantLock {
             mutex: sys::Mutex::new(),
-            owner: AtomicUsize::new(0),
+            owner: Tid::new(0),
             lock_count: UnsafeCell::new(0),
             data: t,
         }
@@ -181,14 +263,14 @@ impl<T: ?Sized> ReentrantLock<T> {
     /// assert_eq!(lock.lock().get(), 10);
     /// ```
     pub fn lock(&self) -> ReentrantLockGuard<'_, T> {
-        let this_thread = current_thread_unique_ptr();
+        let this_thread = current_thread_id();
         // Safety: We only touch lock_count when we own the lock.
         unsafe {
-            if self.owner.load(Relaxed) == this_thread {
+            if self.owner.get() == this_thread {
                 self.increment_lock_count().expect("lock count overflow in reentrant mutex");
             } else {
                 self.mutex.lock();
-                self.owner.store(this_thread, Relaxed);
+                self.owner.set(this_thread);
                 debug_assert_eq!(*self.lock_count.get(), 0);
                 *self.lock_count.get() = 1;
             }
@@ -223,14 +305,14 @@ impl<T: ?Sized> ReentrantLock<T> {
     ///
     /// This function does not block.
     pub(crate) fn try_lock(&self) -> Option<ReentrantLockGuard<'_, T>> {
-        let this_thread = current_thread_unique_ptr();
+        let this_thread = current_thread_id();
         // Safety: We only touch lock_count when we own the lock.
         unsafe {
-            if self.owner.load(Relaxed) == this_thread {
+            if self.owner.get() == this_thread {
                 self.increment_lock_count()?;
                 Some(ReentrantLockGuard { lock: self })
             } else if self.mutex.try_lock() {
-                self.owner.store(this_thread, Relaxed);
+                self.owner.set(this_thread);
                 debug_assert_eq!(*self.lock_count.get(), 0);
                 *self.lock_count.get() = 1;
                 Some(ReentrantLockGuard { lock: self })
@@ -303,18 +385,23 @@ impl<T: ?Sized> Drop for ReentrantLockGuard<'_, T> {
         unsafe {
             *self.lock.lock_count.get() -= 1;
             if *self.lock.lock_count.get() == 0 {
-                self.lock.owner.store(0, Relaxed);
+                self.lock.owner.set(0);
                 self.lock.mutex.unlock();
             }
         }
     }
 }
 
-/// Get an address that is unique per running thread.
+/// Returns the current thread's ThreadId value, which is guaranteed
+/// to be unique across the lifetime of the process.
 ///
-/// This can be used as a non-null usize-sized ID.
-pub(crate) fn current_thread_unique_ptr() -> usize {
-    // Use a non-drop type to make sure it's still available during thread destruction.
-    thread_local! { static X: u8 = const { 0 } }
-    X.with(|x| <*const _>::addr(x))
+/// Panics if called during a TLS destructor on a thread that hasn't
+/// been assigned an ID.
+pub(crate) fn current_thread_id() -> u64 {
+    #[cold]
+    fn no_tid() -> ! {
+        panic!("Thread hasn't been assigned an ID!")
+    }
+
+    crate::thread::try_current_id().map_or_else(|| no_tid(), |tid| tid.as_u64().get())
 }
