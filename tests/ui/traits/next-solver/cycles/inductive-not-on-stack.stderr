@@ -1,25 +1,9 @@
-error[E0275]: overflow evaluating the requirement `(): B`
+error[E0275]: overflow evaluating the requirement `(): A`
   --> $DIR/inductive-not-on-stack.rs:41:15
    |
 LL |     impls_a::<()>();
    |               ^^
    |
-note: required for `()` to implement `A`
-  --> $DIR/inductive-not-on-stack.rs:21:16
-   |
-LL | impl<T: B + C> A for T {}
-   |         -      ^     ^
-   |         |
-   |         unsatisfied trait bound introduced here
-note: required for `()` to implement `B`
-  --> $DIR/inductive-not-on-stack.rs:22:12
-   |
-LL | impl<T: A> B for T {}
-   |         -  ^     ^
-   |         |
-   |         unsatisfied trait bound introduced here
-   = note: 7 redundant requirements hidden
-   = note: required for `()` to implement `A`
 note: required by a bound in `impls_a`
   --> $DIR/inductive-not-on-stack.rs:25:15
    |
@@ -32,29 +16,6 @@ error[E0275]: overflow evaluating the requirement `(): AR`
 LL |     impls_ar::<()>();
    |                ^^
    |
-note: required for `()` to implement `BR`
-  --> $DIR/inductive-not-on-stack.rs:35:13
-   |
-LL | impl<T: AR> BR for T {}
-   |         --  ^^     ^
-   |         |
-   |         unsatisfied trait bound introduced here
-note: required for `()` to implement `CR`
-  --> $DIR/inductive-not-on-stack.rs:36:13
-   |
-LL | impl<T: BR> CR for T {}
-   |         --  ^^     ^
-   |         |
-   |         unsatisfied trait bound introduced here
-note: required for `()` to implement `AR`
-  --> $DIR/inductive-not-on-stack.rs:34:18
-   |
-LL | impl<T: CR + BR> AR for T {}
-   |         --       ^^     ^
-   |         |
-   |         unsatisfied trait bound introduced here
-   = note: 6 redundant requirements hidden
-   = note: required for `()` to implement `AR`
 note: required by a bound in `impls_ar`
   --> $DIR/inductive-not-on-stack.rs:38:16
    |

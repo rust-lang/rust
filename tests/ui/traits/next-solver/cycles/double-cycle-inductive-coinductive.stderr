@@ -1,53 +1,21 @@
-error[E0275]: overflow evaluating the requirement `(): Inductive`
+error[E0275]: overflow evaluating the requirement `(): Trait`
   --> $DIR/double-cycle-inductive-coinductive.rs:32:19
    |
 LL |     impls_trait::<()>();
    |                   ^^
    |
-note: required for `()` to implement `Trait`
-  --> $DIR/double-cycle-inductive-coinductive.rs:9:34
-   |
-LL | impl<T: Inductive + Coinductive> Trait for T {}
-   |         ---------                ^^^^^     ^
-   |         |
-   |         unsatisfied trait bound introduced here
-note: required for `()` to implement `Inductive`
-  --> $DIR/double-cycle-inductive-coinductive.rs:12:16
-   |
-LL | impl<T: Trait> Inductive for T {}
-   |         -----  ^^^^^^^^^     ^
-   |         |
-   |         unsatisfied trait bound introduced here
-   = note: 7 redundant requirements hidden
-   = note: required for `()` to implement `Trait`
 note: required by a bound in `impls_trait`
   --> $DIR/double-cycle-inductive-coinductive.rs:17:19
    |
 LL | fn impls_trait<T: Trait>() {}
    |                   ^^^^^ required by this bound in `impls_trait`
 
-error[E0275]: overflow evaluating the requirement `(): CoinductiveRev`
+error[E0275]: overflow evaluating the requirement `(): TraitRev`
   --> $DIR/double-cycle-inductive-coinductive.rs:35:23
    |
 LL |     impls_trait_rev::<()>();
    |                       ^^
    |
-note: required for `()` to implement `TraitRev`
-  --> $DIR/double-cycle-inductive-coinductive.rs:21:40
-   |
-LL | impl<T: CoinductiveRev + InductiveRev> TraitRev for T {}
-   |         --------------                 ^^^^^^^^     ^
-   |         |
-   |         unsatisfied trait bound introduced here
-note: required for `()` to implement `CoinductiveRev`
-  --> $DIR/double-cycle-inductive-coinductive.rs:27:19
-   |
-LL | impl<T: TraitRev> CoinductiveRev for T {}
-   |         --------  ^^^^^^^^^^^^^^     ^
-   |         |
-   |         unsatisfied trait bound introduced here
-   = note: 7 redundant requirements hidden
-   = note: required for `()` to implement `TraitRev`
 note: required by a bound in `impls_trait_rev`
   --> $DIR/double-cycle-inductive-coinductive.rs:29:23
    |

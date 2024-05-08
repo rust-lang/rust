@@ -5,15 +5,6 @@ LL |     impls_trait::<Four<Four<Four<Four<()>>>>>();
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: consider increasing the recursion limit by adding a `#![recursion_limit = "18"]` attribute to your crate (`global_cache`)
-note: required for `Inc<Inc<Inc<Inc<Inc<Inc<Inc<Inc<Inc<Inc<Inc<()>>>>>>>>>>>` to implement `Trait`
-  --> $DIR/global-cache.rs:12:16
-   |
-LL | impl<T: Trait> Trait for Inc<T> {}
-   |         -----  ^^^^^     ^^^^^^
-   |         |
-   |         unsatisfied trait bound introduced here
-   = note: 5 redundant requirements hidden
-   = note: required for `Inc<Inc<Inc<Inc<Inc<Inc<Inc<Inc<Inc<Inc<Inc<Inc<Inc<Inc<Inc<Inc<()>>>>>>>>>>>>>>>>` to implement `Trait`
 note: required by a bound in `impls_trait`
   --> $DIR/global-cache.rs:15:19
    |

@@ -244,16 +244,23 @@ fn fulfillment_error_for_no_solution<'tcx>(
 
 fn fulfillment_error_for_stalled<'tcx>(
     infcx: &InferCtxt<'tcx>,
-    obligation: PredicateObligation<'tcx>,
+    root_obligation: PredicateObligation<'tcx>,
 ) -> FulfillmentError<'tcx> {
-    let code = infcx.probe(|_| {
-        match infcx.evaluate_root_goal(obligation.clone().into(), GenerateProofTree::Never).0 {
+    let (code, refine_obligation) = infcx.probe(|_| {
+        match infcx.evaluate_root_goal(root_obligation.clone().into(), GenerateProofTree::Never).0 {
             Ok((_, Certainty::Maybe(MaybeCause::Ambiguity))) => {
-                FulfillmentErrorCode::Ambiguity { overflow: None }
+                (FulfillmentErrorCode::Ambiguity { overflow: None }, true)
             }
-            Ok((_, Certainty::Maybe(MaybeCause::Overflow { suggest_increasing_limit }))) => {
-                FulfillmentErrorCode::Ambiguity { overflow: Some(suggest_increasing_limit) }
-            }
+            Ok((_, Certainty::Maybe(MaybeCause::Overflow { suggest_increasing_limit }))) => (
+                FulfillmentErrorCode::Ambiguity { overflow: Some(suggest_increasing_limit) },
+                // Don't look into overflows because we treat overflows weirdly anyways.
+                // In `instantiate_response_discarding_overflow` we set `has_changed = false`,
+                // recomputing the goal again during `find_best_leaf_obligation` may apply
+                // inference guidance that makes other goals go from ambig -> pass, for example.
+                //
+                // FIXME: We should probably just look into overflows here.
+                false,
+            ),
             Ok((_, Certainty::Yes)) => {
                 bug!("did not expect successful goal when collecting ambiguity errors")
             }
@@ -264,9 +271,13 @@ fn fulfillment_error_for_stalled<'tcx>(
     });
 
     FulfillmentError {
-        obligation: find_best_leaf_obligation(infcx, &obligation, true),
+        obligation: if refine_obligation {
+            find_best_leaf_obligation(infcx, &root_obligation, true)
+        } else {
+            root_obligation.clone()
+        },
         code,
-        root_obligation: obligation,
+        root_obligation,
     }
 }
 
@@ -302,41 +313,50 @@ impl<'tcx> BestObligation<'tcx> {
         res
     }
 
-    /// Filter out the candidates that aren't either error or ambiguous (depending
-    /// on what we are looking for), and also throw out candidates that have no
-    /// failing WC (or higher-ranked obligations, for which there should only be
-    /// one candidate anyways -- but I digress). This most likely means that the
-    /// goal just didn't unify at all, e.g. a param candidate with an alias in it.
+    /// Filter out the candidates that aren't interesting to visit for the
+    /// purposes of reporting errors. For ambiguities, we only consider
+    /// candidates that may hold. For errors, we only consider candidates that
+    /// *don't* hold and which have impl-where clauses that also don't hold.
     fn non_trivial_candidates<'a>(
         &self,
         goal: &'a InspectGoal<'a, 'tcx>,
     ) -> Vec<InspectCandidate<'a, 'tcx>> {
-        let mut candidates = goal
-            .candidates()
-            .into_iter()
-            .filter(|candidate| match self.consider_ambiguities {
-                true => matches!(candidate.result(), Ok(Certainty::Maybe(_))),
-                false => matches!(candidate.result(), Err(_)),
-            })
-            .collect::<Vec<_>>();
-
-        // If we have >1 candidate, one may still be due to "boring" reasons, like
-        // an alias-relate that failed to hold when deeply evaluated. We really
-        // don't care about reasons like this.
-        if candidates.len() > 1 {
-            candidates.retain(|candidate| {
-                goal.infcx().probe(|_| {
-                    candidate.instantiate_nested_goals(self.span()).iter().any(|nested_goal| {
-                        matches!(
-                            nested_goal.source(),
-                            GoalSource::ImplWhereBound | GoalSource::InstantiateHigherRanked
-                        ) && match self.consider_ambiguities {
-                            true => matches!(nested_goal.result(), Ok(Certainty::Maybe(_))),
-                            false => matches!(nested_goal.result(), Err(_)),
-                        }
-                    })
-                })
-            });
+        let mut candidates = goal.candidates();
+        match self.consider_ambiguities {
+            true => {
+                // If we have an ambiguous obligation, we must consider *all* candidates
+                // that hold, or else we may guide inference causing other goals to go
+                // from ambig -> pass/fail.
+                candidates.retain(|candidate| candidate.result().is_ok());
+            }
+            false => {
+                // If we have >1 candidate, one may still be due to "boring" reasons, like
+                // an alias-relate that failed to hold when deeply evaluated. We really
+                // don't care about reasons like this.
+                if candidates.len() > 1 {
+                    candidates.retain(|candidate| {
+                        goal.infcx().probe(|_| {
+                            candidate.instantiate_nested_goals(self.span()).iter().any(
+                                |nested_goal| {
+                                    matches!(
+                                        nested_goal.source(),
+                                        GoalSource::ImplWhereBound
+                                            | GoalSource::InstantiateHigherRanked
+                                    ) && match self.consider_ambiguities {
+                                        true => {
+                                            matches!(
+                                                nested_goal.result(),
+                                                Ok(Certainty::Maybe(MaybeCause::Ambiguity))
+                                            )
+                                        }
+                                        false => matches!(nested_goal.result(), Err(_)),
+                                    }
+                                },
+                            )
+                        })
+                    });
+                }
+            }
         }
 
         candidates
@@ -401,7 +421,10 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
 
             // Skip nested goals that aren't the *reason* for our goal's failure.
             match self.consider_ambiguities {
-                true if matches!(nested_goal.result(), Ok(Certainty::Maybe(_))) => {}
+                true if matches!(
+                    nested_goal.result(),
+                    Ok(Certainty::Maybe(MaybeCause::Ambiguity))
+                ) => {}
                 false if matches!(nested_goal.result(), Err(_)) => {}
                 _ => continue,
             }
