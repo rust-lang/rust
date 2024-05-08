@@ -20,9 +20,6 @@
 extern crate proc_macro;
 
 #[macro_use]
-extern crate rustc_middle;
-
-#[macro_use]
 extern crate tracing;
 
 pub use rmeta::provide;
