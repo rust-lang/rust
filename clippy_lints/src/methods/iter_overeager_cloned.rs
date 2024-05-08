@@ -9,10 +9,10 @@ use rustc_lint::LateContext;
 use rustc_middle::mir::{FakeReadCause, Mutability};
 use rustc_middle::ty::{self, BorrowKind};
 use rustc_span::sym;
+use rustc_trait_selection::infer::TyCtxtInferExt;
 
 use super::ITER_OVEREAGER_CLONED;
 use crate::redundant_clone::REDUNDANT_CLONE;
-use crate::rustc_trait_selection::infer::TyCtxtInferExt;
 
 #[derive(Clone, Copy)]
 pub(super) enum Op<'a> {
