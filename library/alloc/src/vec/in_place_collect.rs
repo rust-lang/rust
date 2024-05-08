@@ -230,19 +230,12 @@ where
     <I as SourceIter>::Source: AsVecIntoIter,
 {
     default fn from_iter(iterator: I) -> Self {
-        // Select the implementation in const eval to avoid codegen of the dead branch to improve compile times.
-        let fun: fn(I) -> Vec<T> = const {
-            // See "Layout constraints" section in the module documentation. We use const conditions here
-            // since these conditions currently cannot be expressed as trait bounds
-            if in_place_collectible::<T, I::Src>(I::MERGE_BY, I::EXPAND_BY) {
-                from_iter_in_place
-            } else {
-                // fallback
-                SpecFromIterNested::<T, I>::from_iter
-            }
-        };
-
-        fun(iterator)
+        if const { in_place_collectible::<T, I::Src>(I::MERGE_BY, I::EXPAND_BY) } {
+            from_iter_in_place(iterator)
+        } else {
+            // fallback
+            SpecFromIterNested::<T, I>::from_iter(iterator)
+        }
     }
 }
 
