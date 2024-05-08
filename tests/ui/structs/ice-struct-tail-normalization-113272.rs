@@ -1,9 +1,10 @@
-//@ known-bug: #113272
 trait Trait {
     type RefTarget;
 }
 
 impl Trait for () where Missing: Trait {}
+//~^ ERROR cannot find type `Missing` in this scope
+//~| ERROR not all trait items implemented, missing: `RefTarget`
 
 struct Other {
     data: <() as Trait>::RefTarget,

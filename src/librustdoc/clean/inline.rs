@@ -14,6 +14,7 @@ use rustc_hir::Mutability;
 use rustc_metadata::creader::{CStore, LoadedMacro};
 use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::{self, TyCtxt};
+use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Symbol};
 
@@ -444,24 +445,24 @@ pub(crate) fn build_impl(
 
     let associated_trait = tcx.impl_trait_ref(did).map(ty::EarlyBinder::skip_binder);
 
+    // Do not inline compiler-internal items unless we're a compiler-internal crate.
+    let is_compiler_internal = |did| {
+        tcx.lookup_stability(did)
+            .is_some_and(|stab| stab.is_unstable() && stab.feature == sym::rustc_private)
+    };
+    let document_compiler_internal = is_compiler_internal(LOCAL_CRATE.as_def_id());
+    let is_directly_public = |cx: &mut DocContext<'_>, did| {
+        cx.cache.effective_visibilities.is_directly_public(tcx, did)
+            && (document_compiler_internal || !is_compiler_internal(did))
+    };
+
     // Only inline impl if the implemented trait is
     // reachable in rustdoc generated documentation
     if !did.is_local()
         && let Some(traitref) = associated_trait
+        && !is_directly_public(cx, traitref.def_id)
     {
-        let did = traitref.def_id;
-        if !cx.cache.effective_visibilities.is_directly_public(tcx, did) {
-            return;
-        }
-
-        if !tcx.features().rustc_private && !cx.render_options.force_unstable_if_unmarked {
-            if let Some(stab) = tcx.lookup_stability(did)
-                && stab.is_unstable()
-                && stab.feature == sym::rustc_private
-            {
-                return;
-            }
-        }
+        return;
     }
 
     let impl_item = match did.as_local() {
@@ -484,21 +485,11 @@ pub(crate) fn build_impl(
 
     // Only inline impl if the implementing type is
     // reachable in rustdoc generated documentation
-    if !did.is_local() {
-        if let Some(did) = for_.def_id(&cx.cache) {
-            if !cx.cache.effective_visibilities.is_directly_public(tcx, did) {
-                return;
-            }
-
-            if !tcx.features().rustc_private && !cx.render_options.force_unstable_if_unmarked {
-                if let Some(stab) = tcx.lookup_stability(did)
-                    && stab.is_unstable()
-                    && stab.feature == sym::rustc_private
-                {
-                    return;
-                }
-            }
-        }
+    if !did.is_local()
+        && let Some(did) = for_.def_id(&cx.cache)
+        && !is_directly_public(cx, did)
+    {
+        return;
     }
 
     let document_hidden = cx.render_options.document_hidden;
