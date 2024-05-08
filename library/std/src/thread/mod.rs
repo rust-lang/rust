@@ -159,7 +159,7 @@
 mod tests;
 
 use crate::any::Any;
-use crate::cell::{OnceCell, UnsafeCell};
+use crate::cell::{Cell, OnceCell, UnsafeCell};
 use crate::env;
 use crate::ffi::{CStr, CString};
 use crate::fmt;
@@ -699,16 +699,18 @@ where
 
 thread_local! {
     static CURRENT: OnceCell<Thread> = const { OnceCell::new() };
+    static CURRENT_ID: Cell<Option<ThreadId>> = const { Cell::new(None) };
 }
 
 /// Sets the thread handle for the current thread.
 ///
 /// Aborts if the handle has been set already to reduce code size.
 pub(crate) fn set_current(thread: Thread) {
+    let tid = thread.id();
     // Using `unwrap` here can add ~3kB to the binary size. We have complete
     // control over where this is called, so just abort if there is a bug.
     CURRENT.with(|current| match current.set(thread) {
-        Ok(()) => {}
+        Ok(()) => CURRENT_ID.set(Some(tid)),
         Err(_) => rtabort!("thread::set_current should only be called once per thread"),
     });
 }
@@ -718,7 +720,25 @@ pub(crate) fn set_current(thread: Thread) {
 /// In contrast to the public `current` function, this will not panic if called
 /// from inside a TLS destructor.
 pub(crate) fn try_current() -> Option<Thread> {
-    CURRENT.try_with(|current| current.get_or_init(|| Thread::new_unnamed()).clone()).ok()
+    CURRENT
+        .try_with(|current| {
+            let thread = current.get_or_init(Thread::new_unnamed).clone();
+            CURRENT_ID.set(Some(thread.id()));
+            thread
+        })
+        .ok()
+}
+
+/// Gets the id of the thread that invokes it.
+///
+/// If called from inside a TLS destructor and the thread was never
+/// assigned an id, returns `None`.
+#[inline]
+pub(crate) fn try_current_id() -> Option<ThreadId> {
+    if CURRENT_ID.get().is_none() {
+        let _ = try_current();
+    }
+    CURRENT_ID.get()
 }
 
 /// Gets a handle to the thread that invokes it.
