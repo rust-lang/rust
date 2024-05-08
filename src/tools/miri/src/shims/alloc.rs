@@ -36,6 +36,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         if kind == MiriMemoryKind::WinHeap || size >= min_align {
             return Align::from_bytes(min_align).unwrap();
         }
+        if size == 0 {
+            return Align::ONE;
+        }
         // We have `size < min_align`. Round `size` *down* to the next power of two and use that.
         fn prev_power_of_two(x: u64) -> u64 {
             let next_pow2 = x.next_power_of_two();
@@ -85,21 +88,17 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         kind: MiriMemoryKind,
     ) -> InterpResult<'tcx, Pointer<Option<Provenance>>> {
         let this = self.eval_context_mut();
-        if size == 0 {
-            Ok(Pointer::null())
-        } else {
-            let align = this.min_align(size, kind);
-            let ptr = this.allocate_ptr(Size::from_bytes(size), align, kind.into())?;
-            if zero_init {
-                // We just allocated this, the access is definitely in-bounds and fits into our address space.
-                this.write_bytes_ptr(
-                    ptr.into(),
-                    iter::repeat(0u8).take(usize::try_from(size).unwrap()),
-                )
-                .unwrap();
-            }
-            Ok(ptr.into())
+        let align = this.min_align(size, kind);
+        let ptr = this.allocate_ptr(Size::from_bytes(size), align, kind.into())?;
+        if zero_init {
+            // We just allocated this, the access is definitely in-bounds and fits into our address space.
+            this.write_bytes_ptr(
+                ptr.into(),
+                iter::repeat(0u8).take(usize::try_from(size).unwrap()),
+            )
+            .unwrap();
         }
+        Ok(ptr.into())
     }
 
     fn free(
