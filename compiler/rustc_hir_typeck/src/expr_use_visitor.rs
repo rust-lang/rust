@@ -2,7 +2,8 @@
 //! normal visitor, which just walks the entire body in one shot, the
 //! `ExprUseVisitor` determines how expressions are being used.
 
-use std::cell::RefCell;
+use std::cell::{Ref, RefCell};
+use std::ops::Deref;
 use std::slice::from_ref;
 
 use hir::def::DefKind;
@@ -16,7 +17,6 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, Res};
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::{HirId, PatKind};
-use rustc_infer::infer::InferCtxt;
 use rustc_middle::hir::place::ProjectionKind;
 use rustc_middle::mir::FakeReadCause;
 use rustc_middle::ty::{
@@ -24,8 +24,10 @@ use rustc_middle::ty::{
 };
 use rustc_span::{ErrorGuaranteed, Span};
 use rustc_target::abi::{FieldIdx, VariantIdx, FIRST_VARIANT};
-use rustc_trait_selection::infer::InferCtxtExt as _;
+use rustc_trait_selection::infer::InferCtxtExt;
 use ty::BorrowKind::ImmBorrow;
+
+use crate::fn_ctxt::FnCtxt;
 
 type McResult<T> = Result<T, ErrorGuaranteed>;
 
@@ -122,16 +124,61 @@ impl<'tcx, D: Delegate<'tcx>> Delegate<'tcx> for &mut D {
     }
 }
 
+pub trait TypeInformationCtxt<'tcx> {
+    type TypeckResults<'a>: Deref<Target = ty::TypeckResults<'tcx>>
+    where
+        Self: 'a;
+
+    fn typeck_results(&self) -> Self::TypeckResults<'_>;
+
+    fn resolve_vars_if_possible<T: TypeFoldable<TyCtxt<'tcx>>>(&self, t: T) -> T;
+
+    fn tainted_by_errors(&self) -> Option<ErrorGuaranteed>;
+
+    fn type_is_copy_modulo_regions(&self, ty: Ty<'tcx>) -> bool;
+
+    fn body_owner_def_id(&self) -> LocalDefId;
+
+    fn tcx(&self) -> TyCtxt<'tcx>;
+}
+
+impl<'tcx> TypeInformationCtxt<'tcx> for &FnCtxt<'_, 'tcx> {
+    type TypeckResults<'a> = Ref<'a, ty::TypeckResults<'tcx>>
+    where
+        Self: 'a;
+
+    fn typeck_results(&self) -> Self::TypeckResults<'_> {
+        self.typeck_results.borrow()
+    }
+
+    fn resolve_vars_if_possible<T: TypeFoldable<TyCtxt<'tcx>>>(&self, t: T) -> T {
+        self.infcx.resolve_vars_if_possible(t)
+    }
+
+    fn tainted_by_errors(&self) -> Option<ErrorGuaranteed> {
+        if let Some(guar) = self.infcx.tainted_by_errors() { Err(guar) } else { Ok(()) }
+    }
+
+    fn type_is_copy_modulo_regions(&self, ty: Ty<'tcx>) -> bool {
+        self.infcx.type_is_copy_modulo_regions(self.param_env, ty)
+    }
+
+    fn body_owner_def_id(&self) -> LocalDefId {
+        self.body_id
+    }
+
+    fn tcx(&self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+}
+
 /// The ExprUseVisitor type
 ///
 /// This is the code that actually walks the tree.
-pub struct ExprUseVisitor<'a, 'tcx, D: Delegate<'tcx>> {
-    typeck_results: &'a ty::TypeckResults<'tcx>,
-    infcx: &'a InferCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
-    upvars: Option<&'tcx FxIndexMap<HirId, hir::Upvar>>,
-    body_owner: LocalDefId,
+pub struct ExprUseVisitor<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> {
+    cx: Cx,
     delegate: RefCell<D>,
+    upvars: Option<&'tcx FxIndexMap<HirId, hir::Upvar>>,
 }
 
 /// If the MC results in an error, it's because the type check
@@ -153,30 +200,20 @@ macro_rules! return_if_err {
     };
 }
 
-impl<'a, 'tcx, D: Delegate<'tcx>> ExprUseVisitor<'a, 'tcx, D> {
+impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx, Cx, D> {
     /// Creates the ExprUseVisitor, configuring it with the various options provided:
     ///
     /// - `delegate` -- who receives the callbacks
     /// - `param_env` --- parameter environment for trait lookups (esp. pertaining to `Copy`)
     /// - `typeck_results` --- typeck results for the code being analyzed
-    pub fn new(
-        delegate: D,
-        infcx: &'a InferCtxt<'tcx>,
-        body_owner: LocalDefId,
-        param_env: ty::ParamEnv<'tcx>,
-        typeck_results: &'a ty::TypeckResults<'tcx>,
-    ) -> Self {
+    pub fn new(cx: Cx, delegate: D) -> Self {
         ExprUseVisitor {
-            infcx,
-            param_env,
-            typeck_results,
-            body_owner,
             delegate: RefCell::new(delegate),
-            upvars: infcx.tcx.upvars_mentioned(body_owner),
+            upvars: cx.tcx().upvars_mentioned(cx.body_owner_def_id()),
+            cx,
         }
     }
 
-    #[instrument(skip(self), level = "debug")]
     pub fn consume_body(&self, body: &hir::Body<'_>) {
         for param in body.params {
             let param_ty = return_if_err!(self.pat_ty_adjusted(param.pat));
@@ -190,14 +227,10 @@ impl<'a, 'tcx, D: Delegate<'tcx>> ExprUseVisitor<'a, 'tcx, D> {
         self.consume_expr(body.value);
     }
 
-    fn tcx(&self) -> TyCtxt<'tcx> {
-        self.infcx.tcx
-    }
-
     fn consume_or_copy(&self, place_with_id: &PlaceWithHirId<'tcx>, diag_expr_id: HirId) {
         debug!("delegate_consume(place_with_id={:?})", place_with_id);
 
-        if self.type_is_copy_modulo_regions(place_with_id.place.ty()) {
+        if self.cx.type_is_copy_modulo_regions(place_with_id.place.ty()) {
             self.delegate.borrow_mut().copy(place_with_id, diag_expr_id)
         } else {
             self.delegate.borrow_mut().consume(place_with_id, diag_expr_id)
@@ -390,7 +423,7 @@ impl<'a, 'tcx, D: Delegate<'tcx>> ExprUseVisitor<'a, 'tcx, D> {
             }
 
             hir::ExprKind::AssignOp(_, lhs, rhs) => {
-                if self.typeck_results.is_method_call(expr) {
+                if self.cx.typeck_results().is_method_call(expr) {
                     self.consume_expr(lhs);
                 } else {
                     self.mutate_expr(lhs);
@@ -461,7 +494,7 @@ impl<'a, 'tcx, D: Delegate<'tcx>> ExprUseVisitor<'a, 'tcx, D> {
                         // A `Path` pattern is just a name like `Foo`. This is either a
                         // named constant or else it refers to an ADT variant
 
-                        let res = self.typeck_results.qpath_res(qpath, pat.hir_id);
+                        let res = self.cx.typeck_results().qpath_res(qpath, pat.hir_id);
                         match res {
                             Res::Def(DefKind::Const, _) | Res::Def(DefKind::AssocConst, _) => {
                                 // Named constants have to be equated with the value
@@ -587,8 +620,11 @@ impl<'a, 'tcx, D: Delegate<'tcx>> ExprUseVisitor<'a, 'tcx, D> {
             self.consume_expr(field.expr);
 
             // The struct path probably didn't resolve
-            if self.typeck_results.opt_field_index(field.hir_id).is_none() {
-                self.tcx().dcx().span_delayed_bug(field.span, "couldn't resolve index for field");
+            if self.cx.typeck_results().opt_field_index(field.hir_id).is_none() {
+                self.cx
+                    .tcx()
+                    .dcx()
+                    .span_delayed_bug(field.span, "couldn't resolve index for field");
             }
         }
 
@@ -607,14 +643,14 @@ impl<'a, 'tcx, D: Delegate<'tcx>> ExprUseVisitor<'a, 'tcx, D> {
             ty::Adt(adt, args) if adt.is_struct() => {
                 // Consume those fields of the with expression that are needed.
                 for (f_index, with_field) in adt.non_enum_variant().fields.iter_enumerated() {
-                    let is_mentioned = fields
-                        .iter()
-                        .any(|f| self.typeck_results.opt_field_index(f.hir_id) == Some(f_index));
+                    let is_mentioned = fields.iter().any(|f| {
+                        self.cx.typeck_results().opt_field_index(f.hir_id) == Some(f_index)
+                    });
                     if !is_mentioned {
                         let field_place = self.cat_projection(
                             with_expr.hir_id,
                             with_place.clone(),
-                            with_field.ty(self.tcx(), args),
+                            with_field.ty(self.cx.tcx(), args),
                             ProjectionKind::Field(f_index, FIRST_VARIANT),
                         );
                         self.consume_or_copy(&field_place, field_place.hir_id);
@@ -626,7 +662,7 @@ impl<'a, 'tcx, D: Delegate<'tcx>> ExprUseVisitor<'a, 'tcx, D> {
                 // struct; however, when EUV is run during typeck, it
                 // may not. This will generate an error earlier in typeck,
                 // so we can just ignore it.
-                if self.tcx().dcx().has_errors().is_none() {
+                if self.cx.tcx().dcx().has_errors().is_none() {
                     span_bug!(with_expr.span, "with expression doesn't evaluate to a struct");
                 }
             }
@@ -641,7 +677,8 @@ impl<'a, 'tcx, D: Delegate<'tcx>> ExprUseVisitor<'a, 'tcx, D> {
     /// consumed or borrowed as part of the automatic adjustment
     /// process.
     fn walk_adjustment(&self, expr: &hir::Expr<'_>) {
-        let adjustments = self.typeck_results.expr_adjustments(expr);
+        let typeck_results = self.cx.typeck_results();
+        let adjustments = typeck_results.expr_adjustments(expr);
         let mut place_with_id = return_if_err!(self.cat_expr_unadjusted(expr));
         for adjustment in adjustments {
             debug!("walk_adjustment expr={:?} adj={:?}", expr, adjustment);
@@ -749,12 +786,12 @@ impl<'a, 'tcx, D: Delegate<'tcx>> ExprUseVisitor<'a, 'tcx, D> {
     fn walk_pat(&self, discr_place: &PlaceWithHirId<'tcx>, pat: &hir::Pat<'_>, has_guard: bool) {
         debug!("walk_pat(discr_place={:?}, pat={:?}, has_guard={:?})", discr_place, pat, has_guard);
 
-        let tcx = self.tcx();
+        let tcx = self.cx.tcx();
         return_if_err!(self.cat_pattern(discr_place.clone(), pat, |place, pat| {
             if let PatKind::Binding(_, canonical_id, ..) = pat.kind {
                 debug!("walk_pat: binding place={:?} pat={:?}", place, pat);
                 if let Some(bm) =
-                    self.typeck_results.extract_binding_mode(tcx.sess, pat.hir_id, pat.span)
+                    self.cx.typeck_results().extract_binding_mode(tcx.sess, pat.hir_id, pat.span)
                 {
                     debug!("walk_pat: pat.hir_id={:?} bm={:?}", pat.hir_id, bm);
 
@@ -794,7 +831,7 @@ impl<'a, 'tcx, D: Delegate<'tcx>> ExprUseVisitor<'a, 'tcx, D> {
                 // determines whether to borrow *at the level of the deref pattern* rather than
                 // borrowing the bound place (since that inner place is inside the temporary that
                 // stores the result of calling `deref()`/`deref_mut()` so can't be captured).
-                let mutable = self.typeck_results.pat_has_ref_mut_binding(subpattern);
+                let mutable = self.cx.typeck_results().pat_has_ref_mut_binding(subpattern);
                 let mutability = if mutable { hir::Mutability::Mut } else { hir::Mutability::Not };
                 let bk = ty::BorrowKind::from_mutbl(mutability);
                 self.delegate.borrow_mut().borrow(place, discr_place.hir_id, bk);
@@ -832,21 +869,21 @@ impl<'a, 'tcx, D: Delegate<'tcx>> ExprUseVisitor<'a, 'tcx, D> {
 
         debug!("walk_captures({:?})", closure_expr);
 
-        let tcx = self.tcx();
+        let tcx = self.cx.tcx();
         let closure_def_id = closure_expr.def_id;
-        let upvars = tcx.upvars_mentioned(self.body_owner);
-
         // For purposes of this function, coroutine and closures are equivalent.
-        let body_owner_is_closure =
-            matches!(tcx.hir().body_owner_kind(self.body_owner), hir::BodyOwnerKind::Closure,);
+        let body_owner_is_closure = matches!(
+            tcx.hir().body_owner_kind(self.cx.body_owner_def_id()),
+            hir::BodyOwnerKind::Closure
+        );
 
         // If we have a nested closure, we want to include the fake reads present in the nested closure.
-        if let Some(fake_reads) = self.typeck_results.closure_fake_reads.get(&closure_def_id) {
+        if let Some(fake_reads) = self.cx.typeck_results().closure_fake_reads.get(&closure_def_id) {
             for (fake_read, cause, hir_id) in fake_reads.iter() {
                 match fake_read.base {
                     PlaceBase::Upvar(upvar_id) => {
                         if upvar_is_local_variable(
-                            upvars,
+                            self.upvars,
                             upvar_id.var_path.hir_id,
                             body_owner_is_closure,
                         ) {
@@ -884,9 +921,14 @@ impl<'a, 'tcx, D: Delegate<'tcx>> ExprUseVisitor<'a, 'tcx, D> {
             }
         }
 
-        if let Some(min_captures) = self.typeck_results.closure_min_captures.get(&closure_def_id) {
+        if let Some(min_captures) =
+            self.cx.typeck_results().closure_min_captures.get(&closure_def_id)
+        {
             for (var_hir_id, min_list) in min_captures.iter() {
-                if upvars.map_or(body_owner_is_closure, |upvars| !upvars.contains_key(var_hir_id)) {
+                if self
+                    .upvars
+                    .map_or(body_owner_is_closure, |upvars| !upvars.contains_key(var_hir_id))
+                {
                     // The nested closure might be capturing the current (enclosing) closure's local variables.
                     // We check if the root variable is ever mentioned within the enclosing closure, if not
                     // then for the current body (if it's a closure) these aren't captures, we will ignore them.
@@ -898,7 +940,7 @@ impl<'a, 'tcx, D: Delegate<'tcx>> ExprUseVisitor<'a, 'tcx, D> {
 
                     let place_base = if body_owner_is_closure {
                         // Mark the place to be captured by the enclosing closure
-                        PlaceBase::Upvar(ty::UpvarId::new(*var_hir_id, self.body_owner))
+                        PlaceBase::Upvar(ty::UpvarId::new(*var_hir_id, self.cx.body_owner_def_id()))
                     } else {
                         // If the body owner isn't a closure then the variable must
                         // be a local variable
@@ -931,46 +973,29 @@ impl<'a, 'tcx, D: Delegate<'tcx>> ExprUseVisitor<'a, 'tcx, D> {
         }
     }
 
-    fn type_is_copy_modulo_regions(&self, ty: Ty<'tcx>) -> bool {
-        self.infcx.type_is_copy_modulo_regions(self.param_env, ty)
-    }
-
-    fn resolve_vars_if_possible<T>(&self, value: T) -> T
-    where
-        T: TypeFoldable<TyCtxt<'tcx>>,
-    {
-        self.infcx.resolve_vars_if_possible(value)
-    }
-
-    fn tainted_by_errors(&self) -> Option<ErrorGuaranteed> {
-        self.infcx.tainted_by_errors()
-    }
-
     fn resolve_type_vars_or_error(&self, id: HirId, ty: Option<Ty<'tcx>>) -> McResult<Ty<'tcx>> {
         match ty {
             Some(ty) => {
-                let ty = self.resolve_vars_if_possible(ty);
-                if let Err(guar) = ty.error_reported() {
-                    debug!("resolve_type_vars_or_error: error from {:?}", ty);
-                    Err(guar)
-                } else if ty.is_ty_var() {
+                let ty = self.cx.resolve_vars_if_possible(ty);
+                self.cx.error_reported_in_ty(ty)?;
+                if ty.is_ty_var() {
                     debug!("resolve_type_vars_or_error: infer var from {:?}", ty);
-                    Err(self
-                        .tcx()
-                        .dcx()
-                        .span_delayed_bug(self.tcx().hir().span(id), "encountered type variable"))
+                    Err(self.cx.tcx().dcx().span_delayed_bug(
+                        self.cx.tcx().hir().span(id),
+                        "encountered type variable",
+                    ))
                 } else {
                     Ok(ty)
                 }
             }
             None => {
                 // FIXME
-                if let Some(guar) = self.tainted_by_errors() {
+                if let Some(guar) = self.cx.tainted_by_errors() {
                     Err(guar)
                 } else {
                     bug!(
                         "no type for node {} in mem_categorization",
-                        self.tcx().hir().node_to_string(id)
+                        self.cx.tcx().hir().node_to_string(id)
                     );
                 }
             }
@@ -978,15 +1003,18 @@ impl<'a, 'tcx, D: Delegate<'tcx>> ExprUseVisitor<'a, 'tcx, D> {
     }
 
     fn node_ty(&self, hir_id: HirId) -> McResult<Ty<'tcx>> {
-        self.resolve_type_vars_or_error(hir_id, self.typeck_results.node_type_opt(hir_id))
+        self.resolve_type_vars_or_error(hir_id, self.cx.typeck_results().node_type_opt(hir_id))
     }
 
     fn expr_ty(&self, expr: &hir::Expr<'_>) -> McResult<Ty<'tcx>> {
-        self.resolve_type_vars_or_error(expr.hir_id, self.typeck_results.expr_ty_opt(expr))
+        self.resolve_type_vars_or_error(expr.hir_id, self.cx.typeck_results().expr_ty_opt(expr))
     }
 
     fn expr_ty_adjusted(&self, expr: &hir::Expr<'_>) -> McResult<Ty<'tcx>> {
-        self.resolve_type_vars_or_error(expr.hir_id, self.typeck_results.expr_ty_adjusted_opt(expr))
+        self.resolve_type_vars_or_error(
+            expr.hir_id,
+            self.cx.typeck_results().expr_ty_adjusted_opt(expr),
+        )
     }
 
     /// Returns the type of value that this pattern matches against.
@@ -1004,7 +1032,7 @@ impl<'a, 'tcx, D: Delegate<'tcx>> ExprUseVisitor<'a, 'tcx, D> {
         // that these are never attached to binding patterns, so
         // actually this is somewhat "disjoint" from the code below
         // that aims to account for `ref x`.
-        if let Some(vec) = self.typeck_results.pat_adjustments().get(pat.hir_id) {
+        if let Some(vec) = self.cx.typeck_results().pat_adjustments().get(pat.hir_id) {
             if let Some(first_ty) = vec.first() {
                 debug!("pat_ty(pat={:?}) found adjusted ty `{:?}`", pat, first_ty);
                 return Ok(*first_ty);
@@ -1015,7 +1043,6 @@ impl<'a, 'tcx, D: Delegate<'tcx>> ExprUseVisitor<'a, 'tcx, D> {
     }
 
     /// Like `pat_ty`, but ignores implicit `&` patterns.
-    #[instrument(level = "debug", skip(self), ret)]
     fn pat_ty_unadjusted(&self, pat: &hir::Pat<'_>) -> McResult<Ty<'tcx>> {
         let base_ty = self.node_ty(pat.hir_id)?;
         trace!(?base_ty);
@@ -1025,7 +1052,8 @@ impl<'a, 'tcx, D: Delegate<'tcx>> ExprUseVisitor<'a, 'tcx, D> {
         match pat.kind {
             PatKind::Binding(..) => {
                 let bm = *self
-                    .typeck_results
+                    .cx
+                    .typeck_results()
                     .pat_binding_modes()
                     .get(pat.hir_id)
                     .expect("missing binding mode");
@@ -1039,6 +1067,7 @@ impl<'a, 'tcx, D: Delegate<'tcx>> ExprUseVisitor<'a, 'tcx, D> {
                         None => {
                             debug!("By-ref binding of non-derefable type");
                             Err(self
+                                .cx
                                 .tcx()
                                 .dcx()
                                 .span_delayed_bug(pat.span, "by-ref binding of non-derefable type"))
@@ -1053,22 +1082,22 @@ impl<'a, 'tcx, D: Delegate<'tcx>> ExprUseVisitor<'a, 'tcx, D> {
     }
 
     fn cat_expr(&self, expr: &hir::Expr<'_>) -> McResult<PlaceWithHirId<'tcx>> {
-        // This recursion helper avoids going through *too many*
-        // adjustments, since *only* non-overloaded deref recurses.
-        fn helper<'a, 'tcx, D: Delegate<'tcx>>(
-            this: &ExprUseVisitor<'a, 'tcx, D>,
-            expr: &hir::Expr<'_>,
-            adjustments: &[adjustment::Adjustment<'tcx>],
-        ) -> McResult<PlaceWithHirId<'tcx>> {
-            match adjustments.split_last() {
-                None => this.cat_expr_unadjusted(expr),
-                Some((adjustment, previous)) => {
-                    this.cat_expr_adjusted_with(expr, || helper(this, expr, previous), adjustment)
-                }
+        self.cat_expr_(expr, self.cx.typeck_results().expr_adjustments(expr))
+    }
+
+    /// This recursion helper avoids going through *too many*
+    /// adjustments, since *only* non-overloaded deref recurses.
+    fn cat_expr_(
+        &self,
+        expr: &hir::Expr<'_>,
+        adjustments: &[adjustment::Adjustment<'tcx>],
+    ) -> McResult<PlaceWithHirId<'tcx>> {
+        match adjustments.split_last() {
+            None => self.cat_expr_unadjusted(expr),
+            Some((adjustment, previous)) => {
+                self.cat_expr_adjusted_with(expr, || self.cat_expr_(expr, previous), adjustment)
             }
         }
-
-        helper(self, expr, self.typeck_results.expr_adjustments(expr))
     }
 
     fn cat_expr_adjusted(
@@ -1080,7 +1109,6 @@ impl<'a, 'tcx, D: Delegate<'tcx>> ExprUseVisitor<'a, 'tcx, D> {
         self.cat_expr_adjusted_with(expr, || Ok(previous), adjustment)
     }
 
-    #[instrument(level = "debug", skip(self, previous))]
     fn cat_expr_adjusted_with<F>(
         &self,
         expr: &hir::Expr<'_>,
@@ -1090,12 +1118,12 @@ impl<'a, 'tcx, D: Delegate<'tcx>> ExprUseVisitor<'a, 'tcx, D> {
     where
         F: FnOnce() -> McResult<PlaceWithHirId<'tcx>>,
     {
-        let target = self.resolve_vars_if_possible(adjustment.target);
+        let target = self.cx.resolve_vars_if_possible(adjustment.target);
         match adjustment.kind {
             adjustment::Adjust::Deref(overloaded) => {
                 // Equivalent to *expr or something similar.
                 let base = if let Some(deref) = overloaded {
-                    let ref_ty = Ty::new_ref(self.tcx(), deref.region, target, deref.mutbl);
+                    let ref_ty = Ty::new_ref(self.cx.tcx(), deref.region, target, deref.mutbl);
                     self.cat_rvalue(expr.hir_id, ref_ty)
                 } else {
                     previous()?
@@ -1113,12 +1141,11 @@ impl<'a, 'tcx, D: Delegate<'tcx>> ExprUseVisitor<'a, 'tcx, D> {
         }
     }
 
-    #[instrument(level = "debug", skip(self), ret)]
     fn cat_expr_unadjusted(&self, expr: &hir::Expr<'_>) -> McResult<PlaceWithHirId<'tcx>> {
         let expr_ty = self.expr_ty(expr)?;
         match expr.kind {
             hir::ExprKind::Unary(hir::UnOp::Deref, e_base) => {
-                if self.typeck_results.is_method_call(expr) {
+                if self.cx.typeck_results().is_method_call(expr) {
                     self.cat_overloaded_place(expr, e_base)
                 } else {
                     let base = self.cat_expr(e_base)?;
@@ -1131,7 +1158,8 @@ impl<'a, 'tcx, D: Delegate<'tcx>> ExprUseVisitor<'a, 'tcx, D> {
                 debug!(?base);
 
                 let field_idx = self
-                    .typeck_results
+                    .cx
+                    .typeck_results()
                     .field_indices()
                     .get(expr.hir_id)
                     .cloned()
@@ -1146,7 +1174,7 @@ impl<'a, 'tcx, D: Delegate<'tcx>> ExprUseVisitor<'a, 'tcx, D> {
             }
 
             hir::ExprKind::Index(base, _, _) => {
-                if self.typeck_results.is_method_call(expr) {
+                if self.cx.typeck_results().is_method_call(expr) {
                     // If this is an index implemented by a method call, then it
                     // will include an implicit deref of the result.
                     // The call to index() returns a `&T` value, which
@@ -1160,7 +1188,7 @@ impl<'a, 'tcx, D: Delegate<'tcx>> ExprUseVisitor<'a, 'tcx, D> {
             }
 
             hir::ExprKind::Path(ref qpath) => {
-                let res = self.typeck_results.qpath_res(qpath, expr.hir_id);
+                let res = self.cx.typeck_results().qpath_res(qpath, expr.hir_id);
                 self.cat_res(expr.hir_id, expr.span, expr_ty, res)
             }
 
@@ -1198,7 +1226,6 @@ impl<'a, 'tcx, D: Delegate<'tcx>> ExprUseVisitor<'a, 'tcx, D> {
         }
     }
 
-    #[instrument(level = "debug", skip(self, span), ret)]
     fn cat_res(
         &self,
         hir_id: HirId,
@@ -1239,9 +1266,8 @@ impl<'a, 'tcx, D: Delegate<'tcx>> ExprUseVisitor<'a, 'tcx, D> {
     /// Note: the actual upvar access contains invisible derefs of closure
     /// environment and upvar reference as appropriate. Only regionck cares
     /// about these dereferences, so we let it compute them as needed.
-    #[instrument(level = "debug", skip(self), ret)]
     fn cat_upvar(&self, hir_id: HirId, var_id: HirId) -> McResult<PlaceWithHirId<'tcx>> {
-        let closure_expr_def_id = self.body_owner;
+        let closure_expr_def_id = self.cx.body_owner_def_id();
 
         let upvar_id = ty::UpvarId {
             var_path: ty::UpvarPath { hir_id: var_id },
@@ -1252,12 +1278,10 @@ impl<'a, 'tcx, D: Delegate<'tcx>> ExprUseVisitor<'a, 'tcx, D> {
         Ok(PlaceWithHirId::new(hir_id, var_ty, PlaceBase::Upvar(upvar_id), Vec::new()))
     }
 
-    #[instrument(level = "debug", skip(self), ret)]
     fn cat_rvalue(&self, hir_id: HirId, expr_ty: Ty<'tcx>) -> PlaceWithHirId<'tcx> {
         PlaceWithHirId::new(hir_id, expr_ty, PlaceBase::Rvalue, Vec::new())
     }
 
-    #[instrument(level = "debug", skip(self, node), ret)]
     fn cat_projection(
         &self,
         node: HirId,
@@ -1268,7 +1292,7 @@ impl<'a, 'tcx, D: Delegate<'tcx>> ExprUseVisitor<'a, 'tcx, D> {
         let place_ty = base_place.place.ty();
         let mut projections = base_place.place.projections;
 
-        let node_ty = self.typeck_results.node_type(node);
+        let node_ty = self.cx.typeck_results().node_type(node);
         // Opaque types can't have field projections, but we can instead convert
         // the current place in-place (heh) to the hidden type, and then apply all
         // follow up projections on that.
@@ -1279,7 +1303,6 @@ impl<'a, 'tcx, D: Delegate<'tcx>> ExprUseVisitor<'a, 'tcx, D> {
         PlaceWithHirId::new(node, base_place.place.base_ty, base_place.place.base, projections)
     }
 
-    #[instrument(level = "debug", skip(self))]
     fn cat_overloaded_place(
         &self,
         expr: &hir::Expr<'_>,
@@ -1294,13 +1317,12 @@ impl<'a, 'tcx, D: Delegate<'tcx>> ExprUseVisitor<'a, 'tcx, D> {
         let ty::Ref(region, _, mutbl) = *base_ty.kind() else {
             span_bug!(expr.span, "cat_overloaded_place: base is not a reference");
         };
-        let ref_ty = Ty::new_ref(self.tcx(), region, place_ty, mutbl);
+        let ref_ty = Ty::new_ref(self.cx.tcx(), region, place_ty, mutbl);
 
         let base = self.cat_rvalue(expr.hir_id, ref_ty);
         self.cat_deref(expr.hir_id, base)
     }
 
-    #[instrument(level = "debug", skip(self, node), ret)]
     fn cat_deref(
         &self,
         node: HirId,
@@ -1311,8 +1333,8 @@ impl<'a, 'tcx, D: Delegate<'tcx>> ExprUseVisitor<'a, 'tcx, D> {
             Some(mt) => mt.ty,
             None => {
                 debug!("explicit deref of non-derefable type: {:?}", base_curr_ty);
-                return Err(self.tcx().dcx().span_delayed_bug(
-                    self.tcx().hir().span(node),
+                return Err(self.cx.tcx().dcx().span_delayed_bug(
+                    self.cx.tcx().hir().span(node),
                     "explicit deref of non-derefable type",
                 ));
             }
@@ -1343,10 +1365,11 @@ impl<'a, 'tcx, D: Delegate<'tcx>> ExprUseVisitor<'a, 'tcx, D> {
         pat_hir_id: HirId,
         span: Span,
     ) -> McResult<VariantIdx> {
-        let res = self.typeck_results.qpath_res(qpath, pat_hir_id);
-        let ty = self.typeck_results.node_type(pat_hir_id);
+        let res = self.cx.typeck_results().qpath_res(qpath, pat_hir_id);
+        let ty = self.cx.typeck_results().node_type(pat_hir_id);
         let ty::Adt(adt_def, _) = ty.kind() else {
             return Err(self
+                .cx
                 .tcx()
                 .dcx()
                 .span_delayed_bug(span, "struct or tuple struct pattern not applied to an ADT"));
@@ -1377,11 +1400,12 @@ impl<'a, 'tcx, D: Delegate<'tcx>> ExprUseVisitor<'a, 'tcx, D> {
         variant_index: VariantIdx,
         span: Span,
     ) -> McResult<usize> {
-        let ty = self.typeck_results.node_type(pat_hir_id);
+        let ty = self.cx.typeck_results().node_type(pat_hir_id);
         match ty.kind() {
             ty::Adt(adt_def, _) => Ok(adt_def.variant(variant_index).fields.len()),
             _ => {
-                self.tcx()
+                self.cx
+                    .tcx()
                     .dcx()
                     .span_bug(span, "struct or tuple struct pattern not applied to an ADT");
             }
@@ -1391,12 +1415,14 @@ impl<'a, 'tcx, D: Delegate<'tcx>> ExprUseVisitor<'a, 'tcx, D> {
     /// Returns the total number of fields in a tuple used within a Tuple pattern.
     /// Here `pat_hir_id` is the HirId of the pattern itself.
     fn total_fields_in_tuple(&self, pat_hir_id: HirId, span: Span) -> McResult<usize> {
-        let ty = self.typeck_results.node_type(pat_hir_id);
+        let ty = self.cx.typeck_results().node_type(pat_hir_id);
         match ty.kind() {
             ty::Tuple(args) => Ok(args.len()),
-            _ => {
-                Err(self.tcx().dcx().span_delayed_bug(span, "tuple pattern not applied to a tuple"))
-            }
+            _ => Err(self
+                .cx
+                .tcx()
+                .dcx()
+                .span_delayed_bug(span, "tuple pattern not applied to a tuple")),
         }
     }
 
@@ -1406,7 +1432,6 @@ impl<'a, 'tcx, D: Delegate<'tcx>> ExprUseVisitor<'a, 'tcx, D> {
     /// In general, the way that this works is that we walk down the pattern,
     /// constructing a `PlaceWithHirId` that represents the path that will be taken
     /// to reach the value being matched.
-    #[instrument(skip(self, op), ret, level = "debug")]
     fn cat_pattern_<F>(
         &self,
         mut place_with_id: PlaceWithHirId<'tcx>,
@@ -1448,7 +1473,9 @@ impl<'a, 'tcx, D: Delegate<'tcx>> ExprUseVisitor<'a, 'tcx, D> {
         // Then we see that to get the same result, we must start with
         // `deref { deref { place_foo }}` instead of `place_foo` since the pattern is now `Some(x,)`
         // and not `&&Some(x,)`, even though its assigned type is that of `&&Some(x,)`.
-        for _ in 0..self.typeck_results.pat_adjustments().get(pat.hir_id).map_or(0, |v| v.len()) {
+        for _ in
+            0..self.cx.typeck_results().pat_adjustments().get(pat.hir_id).map_or(0, |v| v.len())
+        {
             debug!("applying adjustment to place_with_id={:?}", place_with_id);
             place_with_id = self.cat_deref(pat.hir_id, place_with_id)?;
         }
@@ -1513,7 +1540,8 @@ impl<'a, 'tcx, D: Delegate<'tcx>> ExprUseVisitor<'a, 'tcx, D> {
                 for fp in field_pats {
                     let field_ty = self.pat_ty_adjusted(fp.pat)?;
                     let field_index = self
-                        .typeck_results
+                        .cx
+                        .typeck_results()
                         .field_indices()
                         .get(fp.hir_id)
                         .cloned()
@@ -1547,11 +1575,11 @@ impl<'a, 'tcx, D: Delegate<'tcx>> ExprUseVisitor<'a, 'tcx, D> {
                 self.cat_pattern_(subplace, subpat, op)?;
             }
             PatKind::Deref(subpat) => {
-                let mutable = self.typeck_results.pat_has_ref_mut_binding(subpat);
+                let mutable = self.cx.typeck_results().pat_has_ref_mut_binding(subpat);
                 let mutability = if mutable { hir::Mutability::Mut } else { hir::Mutability::Not };
-                let re_erased = self.tcx().lifetimes.re_erased;
+                let re_erased = self.cx.tcx().lifetimes.re_erased;
                 let ty = self.pat_ty_adjusted(subpat)?;
-                let ty = Ty::new_ref(self.tcx(), re_erased, ty, mutability);
+                let ty = Ty::new_ref(self.cx.tcx(), re_erased, ty, mutability);
                 // A deref pattern generates a temporary.
                 let place = self.cat_rvalue(pat.hir_id, ty);
                 self.cat_pattern_(place, subpat, op)?;
@@ -1561,6 +1589,7 @@ impl<'a, 'tcx, D: Delegate<'tcx>> ExprUseVisitor<'a, 'tcx, D> {
                 let Some(element_ty) = place_with_id.place.ty().builtin_index() else {
                     debug!("explicit index of non-indexable type {:?}", place_with_id);
                     return Err(self
+                        .cx
                         .tcx()
                         .dcx()
                         .span_delayed_bug(pat.span, "explicit index of non-indexable type"));
