@@ -59,7 +59,7 @@ function run_tests {
     # them. Also error locations change so we don't run the failing tests.
     # We explicitly enable debug-assertions here, they are disabled by -O but we have tests
     # which exist to check that we panic on debug assertion failures.
-    time MIRIFLAGS="${MIRIFLAGS-} -O -Zmir-opt-level=4 -Cdebug-assertions=yes" MIRI_SKIP_UI_CHECKS=1 ./miri test -- tests/{pass,panic}
+    time MIRIFLAGS="${MIRIFLAGS-} -O -Zmir-opt-level=4 -Cdebug-assertions=yes" MIRI_SKIP_UI_CHECKS=1 ./miri test tests/{pass,panic}
   fi
   if [ -n "${MANY_SEEDS-}" ]; then
     # Also run some many-seeds tests.
@@ -107,7 +107,7 @@ function run_tests_minimal {
     exit 1
   fi
 
-  time ./miri test -- "$@"
+  time ./miri test "$@"
 
   # Ensure that a small smoke test of cargo-miri works.
   time cargo miri run --manifest-path test-cargo-miri/no-std-smoke/Cargo.toml --target ${MIRI_TEST_TARGET-$HOST_TARGET}
