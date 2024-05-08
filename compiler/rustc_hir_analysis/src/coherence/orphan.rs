@@ -10,6 +10,7 @@ use rustc_lint_defs::builtin::UNCOVERED_PARAM_IN_PROJECTION;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::ty::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor};
+use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_trait_selection::traits::{self, IsFirstInputType, UncoveredTyParams};
 use rustc_trait_selection::traits::{OrphanCheckErr, OrphanCheckMode};

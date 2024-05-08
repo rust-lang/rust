@@ -5,6 +5,7 @@ use rustc_errors::{codes::*, struct_span_code_err};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_middle::bug;
 use rustc_middle::ty::print::PrintTraitRefExt as _;
 use rustc_middle::ty::{self as ty, IsSuggestable, Ty, TyCtxt};
 use rustc_span::symbol::Ident;
