@@ -13,6 +13,7 @@
 //!
 
 use crate::util::is_within_packed;
+use rustc_middle::bug;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;

@@ -41,6 +41,7 @@ use rustc_const_eval::interpret::{ImmTy, Immediate, InterpCx, OpTy, Projectable}
 use rustc_data_structures::fx::FxHashSet;
 use rustc_index::bit_set::BitSet;
 use rustc_index::IndexVec;
+use rustc_middle::bug;
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;

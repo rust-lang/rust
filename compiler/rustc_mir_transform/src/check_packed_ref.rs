@@ -1,5 +1,6 @@
 use rustc_middle::mir::visit::{PlaceContext, Visitor};
 use rustc_middle::mir::*;
+use rustc_middle::span_bug;
 use rustc_middle::ty::{self, TyCtxt};
 
 use crate::MirLint;

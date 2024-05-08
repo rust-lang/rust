@@ -14,6 +14,7 @@ use rustc_middle::mir::{
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::util::Discr;
 use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::{bug, span_bug};
 use rustc_span::source_map::respan;
 use rustc_span::{Span, Symbol};
 use rustc_target::abi::{FieldIdx, VariantIdx};

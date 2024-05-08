@@ -16,8 +16,6 @@
 
 #[macro_use]
 extern crate tracing;
-#[macro_use]
-extern crate rustc_middle;
 
 use hir::ConstContext;
 use required_consts::RequiredConstsVisitor;
@@ -38,6 +36,7 @@ use rustc_middle::mir::{
 use rustc_middle::query;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
 use rustc_middle::util::Providers;
+use rustc_middle::{bug, span_bug};
 use rustc_span::{source_map::Spanned, sym, DUMMY_SP};
 use rustc_trait_selection::traits;
 

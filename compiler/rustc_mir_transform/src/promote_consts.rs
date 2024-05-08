@@ -20,6 +20,7 @@ use rustc_middle::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Vis
 use rustc_middle::mir::*;
 use rustc_middle::ty::GenericArgs;
 use rustc_middle::ty::{self, List, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::{bug, span_bug};
 use rustc_span::Span;
 
 use rustc_index::{Idx, IndexSlice, IndexVec};
