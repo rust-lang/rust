@@ -397,6 +397,7 @@ fn test_mul_add() {
     assert_eq!((-3.2f64).mul_add(2.4, neg_inf), neg_inf);
 }
 
+#[cfg(not(bootstrap))]
 #[test]
 fn test_mul_add_fast() {
     let nan: f64 = f64::NAN;

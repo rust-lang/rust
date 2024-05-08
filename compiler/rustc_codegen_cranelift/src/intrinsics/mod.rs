@@ -328,8 +328,8 @@ fn codegen_float_intrinsic_call<'tcx>(
         sym::fabsf64 => ("fabs", 1, fx.tcx.types.f64, types::F64),
         sym::fmaf32 => ("fmaf", 3, fx.tcx.types.f32, types::F32),
         sym::fmaf64 => ("fma", 3, fx.tcx.types.f64, types::F64),
-        sym::fmuladdf32 => ("fmaf", 3, fx.tcx.types.f32, types::F32), // NOTE: pessimal without FMA target feature
-        sym::fmuladdf64 => ("fma", 3, fx.tcx.types.f64, types::F64), // NOTE: pessimal without FMA target feature
+        sym::fmuladdf32 => ("fmaf", 3, fx.tcx.types.f32, types::F32), // NOTE: software emulation without FMA target feature
+        sym::fmuladdf64 => ("fma", 3, fx.tcx.types.f64, types::F64), // NOTE: software emulation without FMA target feature
         sym::copysignf32 => ("copysignf", 2, fx.tcx.types.f32, types::F32),
         sym::copysignf64 => ("copysign", 2, fx.tcx.types.f64, types::F64),
         sym::floorf32 => ("floorf", 1, fx.tcx.types.f32, types::F32),
