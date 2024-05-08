@@ -338,13 +338,14 @@ impl<'tcx> SizeSkeleton<'tcx> {
                     pointee,
                     |ty| match tcx.try_normalize_erasing_regions(param_env, ty) {
                         Ok(ty) => ty,
-                        Err(_e) => {
-                            if let Some(guar) = tcx.dcx().has_errors() {
-                                Ty::new_error(tcx, guar)
-                            } else {
-                                bug!("normalization failed, but no errors reported");
-                            }
-                        }
+                        Err(e) => Ty::new_error_with_message(
+                            tcx,
+                            DUMMY_SP,
+                            format!(
+                                "normalization failed for {} but no errors reported",
+                                e.get_type_for_failure()
+                            ),
+                        ),
                     },
                     || {},
                 );

@@ -128,7 +128,7 @@ impl<'a, 'b, 'tcx> UnusedImportCheckVisitor<'a, 'b, 'tcx> {
                     self.unused_import(self.base_id).add(id);
                 }
             }
-            ast::UseTreeKind::Nested(ref items) => self.check_imports_as_underscore(items),
+            ast::UseTreeKind::Nested { ref items, .. } => self.check_imports_as_underscore(items),
             _ => {}
         }
     }
@@ -254,7 +254,7 @@ impl<'a, 'b, 'tcx> Visitor<'a> for UnusedImportCheckVisitor<'a, 'b, 'tcx> {
             return;
         }
 
-        if let ast::UseTreeKind::Nested(ref items) = use_tree.kind {
+        if let ast::UseTreeKind::Nested { ref items, .. } = use_tree.kind {
             if items.is_empty() {
                 self.unused_import(self.base_id).add(id);
             }
@@ -268,9 +268,8 @@ impl<'a, 'b, 'tcx> Visitor<'a> for UnusedImportCheckVisitor<'a, 'b, 'tcx> {
 
 enum UnusedSpanResult {
     Used,
-    FlatUnused(Span, Span),
-    NestedFullUnused(Vec<Span>, Span),
-    NestedPartialUnused(Vec<Span>, Vec<Span>),
+    Unused { spans: Vec<Span>, remove: Span },
+    PartialUnused { spans: Vec<Span>, remove: Vec<Span> },
 }
 
 fn calc_unused_spans(
@@ -288,36 +287,33 @@ fn calc_unused_spans(
     match use_tree.kind {
         ast::UseTreeKind::Simple(..) | ast::UseTreeKind::Glob => {
             if unused_import.unused.contains(&use_tree_id) {
-                UnusedSpanResult::FlatUnused(use_tree.span, full_span)
+                UnusedSpanResult::Unused { spans: vec![use_tree.span], remove: full_span }
             } else {
                 UnusedSpanResult::Used
             }
         }
-        ast::UseTreeKind::Nested(ref nested) => {
+        ast::UseTreeKind::Nested { items: ref nested, span: tree_span } => {
             if nested.is_empty() {
-                return UnusedSpanResult::FlatUnused(use_tree.span, full_span);
+                return UnusedSpanResult::Unused { spans: vec![use_tree.span], remove: full_span };
             }
 
             let mut unused_spans = Vec::new();
             let mut to_remove = Vec::new();
-            let mut all_nested_unused = true;
+            let mut used_childs = 0;
+            let mut contains_self = false;
             let mut previous_unused = false;
             for (pos, (use_tree, use_tree_id)) in nested.iter().enumerate() {
                 let remove = match calc_unused_spans(unused_import, use_tree, *use_tree_id) {
                     UnusedSpanResult::Used => {
-                        all_nested_unused = false;
+                        used_childs += 1;
                         None
                     }
-                    UnusedSpanResult::FlatUnused(span, remove) => {
-                        unused_spans.push(span);
-                        Some(remove)
-                    }
-                    UnusedSpanResult::NestedFullUnused(mut spans, remove) => {
+                    UnusedSpanResult::Unused { mut spans, remove } => {
                         unused_spans.append(&mut spans);
                         Some(remove)
                     }
-                    UnusedSpanResult::NestedPartialUnused(mut spans, mut to_remove_extra) => {
-                        all_nested_unused = false;
+                    UnusedSpanResult::PartialUnused { mut spans, remove: mut to_remove_extra } => {
+                        used_childs += 1;
                         unused_spans.append(&mut spans);
                         to_remove.append(&mut to_remove_extra);
                         None
@@ -326,7 +322,7 @@ fn calc_unused_spans(
                 if let Some(remove) = remove {
                     let remove_span = if nested.len() == 1 {
                         remove
-                    } else if pos == nested.len() - 1 || !all_nested_unused {
+                    } else if pos == nested.len() - 1 || used_childs > 0 {
                         // Delete everything from the end of the last import, to delete the
                         // previous comma
                         nested[pos - 1].0.span.shrink_to_hi().to(use_tree.span)
@@ -344,14 +340,38 @@ fn calc_unused_spans(
                         to_remove.push(remove_span);
                     }
                 }
+                contains_self |= use_tree.prefix == kw::SelfLower
+                    && matches!(use_tree.kind, ast::UseTreeKind::Simple(None));
                 previous_unused = remove.is_some();
             }
             if unused_spans.is_empty() {
                 UnusedSpanResult::Used
-            } else if all_nested_unused {
-                UnusedSpanResult::NestedFullUnused(unused_spans, full_span)
+            } else if used_childs == 0 {
+                UnusedSpanResult::Unused { spans: unused_spans, remove: full_span }
             } else {
-                UnusedSpanResult::NestedPartialUnused(unused_spans, to_remove)
+                // If there is only one remaining child that is used, the braces around the use
+                // tree are not needed anymore. In that case, we determine the span of the left
+                // brace and the right brace, and tell rustfix to remove them as well.
+                //
+                // This means that `use a::{B, C};` will be turned into `use a::B;` rather than
+                // `use a::{B};`, removing a rustfmt roundtrip.
+                //
+                // Note that we cannot remove the braces if the only item inside the use tree is
+                // `self`: `use foo::{self};` is valid Rust syntax, while `use foo::self;` errors
+                // out. We also cannot turn `use foo::{self}` into `use foo`, as the former doesn't
+                // import types with the same name as the module.
+                if used_childs == 1 && !contains_self {
+                    // Left brace, from the start of the nested group to the first item.
+                    to_remove.push(
+                        tree_span.shrink_to_lo().to(nested.first().unwrap().0.span.shrink_to_lo()),
+                    );
+                    // Right brace, from the end of the last item to the end of the nested group.
+                    to_remove.push(
+                        nested.last().unwrap().0.span.shrink_to_hi().to(tree_span.shrink_to_hi()),
+                    );
+                }
+
+                UnusedSpanResult::PartialUnused { spans: unused_spans, remove: to_remove }
             }
         }
     }
@@ -417,15 +437,11 @@ impl Resolver<'_, '_> {
             let mut fixes = Vec::new();
             let spans = match calc_unused_spans(unused, &unused.use_tree, unused.use_tree_id) {
                 UnusedSpanResult::Used => continue,
-                UnusedSpanResult::FlatUnused(span, remove) => {
-                    fixes.push((remove, String::new()));
-                    vec![span]
-                }
-                UnusedSpanResult::NestedFullUnused(spans, remove) => {
+                UnusedSpanResult::Unused { spans, remove } => {
                     fixes.push((remove, String::new()));
                     spans
                 }
-                UnusedSpanResult::NestedPartialUnused(spans, remove) => {
+                UnusedSpanResult::PartialUnused { spans, remove } => {
                     for fix in &remove {
                         fixes.push((*fix, String::new()));
                     }

@@ -6,7 +6,6 @@ use crate::fn_ctxt::rustc_span::BytePos;
 use crate::hir::is_range_literal;
 use crate::method::probe;
 use crate::method::probe::{IsSuggestion, Mode, ProbeScope};
-use crate::rustc_middle::ty::Article;
 use core::cmp::min;
 use core::iter;
 use hir::def_id::LocalDefId;
@@ -28,7 +27,7 @@ use rustc_middle::lint::in_external_macro;
 use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{
-    self, suggest_constraining_type_params, Binder, IsSuggestable, ToPredicate, Ty,
+    self, suggest_constraining_type_params, Article, Binder, IsSuggestable, ToPredicate, Ty,
     TypeVisitableExt,
 };
 use rustc_session::errors::ExprParenthesesNeeded;
@@ -2227,7 +2226,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> bool {
         let tcx = self.tcx;
         let (adt, args, unwrap) = match expected.kind() {
-            // In case Option<NonZero*> is wanted, but * is provided, suggest calling new
+            // In case `Option<NonZero<T>>` is wanted, but `T` is provided, suggest calling `new`.
             ty::Adt(adt, args) if tcx.is_diagnostic_item(sym::Option, adt.did()) => {
                 let nonzero_type = args.type_at(0); // Unwrap option type.
                 let ty::Adt(adt, args) = nonzero_type.kind() else {
@@ -2235,7 +2234,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 };
                 (adt, args, "")
             }
-            // In case `NonZero<*>` is wanted but `*` is provided, also add `.unwrap()` to satisfy types.
+            // In case `NonZero<T>` is wanted but `T` is provided, also add `.unwrap()` to satisfy types.
             ty::Adt(adt, args) => (adt, args, ".unwrap()"),
             _ => return false,
         };
@@ -2244,32 +2243,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return false;
         }
 
-        // FIXME: This can be simplified once `NonZero<T>` is stable.
-        let coercable_types = [
-            ("NonZeroU8", tcx.types.u8),
-            ("NonZeroU16", tcx.types.u16),
-            ("NonZeroU32", tcx.types.u32),
-            ("NonZeroU64", tcx.types.u64),
-            ("NonZeroU128", tcx.types.u128),
-            ("NonZeroI8", tcx.types.i8),
-            ("NonZeroI16", tcx.types.i16),
-            ("NonZeroI32", tcx.types.i32),
-            ("NonZeroI64", tcx.types.i64),
-            ("NonZeroI128", tcx.types.i128),
-        ];
-
         let int_type = args.type_at(0);
-
-        let Some(nonzero_alias) = coercable_types.iter().find_map(|(nonzero_alias, t)| {
-            if *t == int_type && self.can_coerce(expr_ty, *t) { Some(nonzero_alias) } else { None }
-        }) else {
+        if !self.can_coerce(expr_ty, int_type) {
             return false;
-        };
+        }
 
         err.multipart_suggestion(
-            format!("consider calling `{nonzero_alias}::new`"),
+            format!("consider calling `{}::new`", sym::NonZero),
             vec![
-                (expr.span.shrink_to_lo(), format!("{nonzero_alias}::new(")),
+                (expr.span.shrink_to_lo(), format!("{}::new(", sym::NonZero)),
                 (expr.span.shrink_to_hi(), format!("){unwrap}")),
             ],
             Applicability::MaybeIncorrect,

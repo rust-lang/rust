@@ -1,9 +1,9 @@
 fn main() {
-    let _: std::num::NonZeroU64 = 1;
+    let _: std::num::NonZero<u64> = 1;
     //~^ ERROR mismatched types
-    //~| HELP  consider calling `NonZeroU64::new`
+    //~| HELP  consider calling `NonZero::new`
 
-    let _: Option<std::num::NonZeroU64> = 1;
+    let _: Option<std::num::NonZero<u64>> = 1;
     //~^ ERROR mismatched types
-    //~| HELP  consider calling `NonZeroU64::new`
+    //~| HELP  consider calling `NonZero::new`
 }
