@@ -88,6 +88,9 @@ pub trait Step: 'static + Clone + Debug + PartialEq + Eq + Hash {
 
     /// Primary function to execute this rule. Can call `builder.ensure()`
     /// with other steps to run those.
+    ///
+    /// This gets called twice during a normal `./x.py` execution: first
+    /// with `dry_run() == true`, and then for real.
     fn run(self, builder: &Builder<'_>) -> Self::Output;
 
     /// When bootstrap is passed a set of paths, this controls whether this rule
