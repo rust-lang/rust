@@ -1,0 +1,17 @@
+error[E0277]: the trait bound `{integer}: Test` is not satisfied
+  --> $DIR/on_unimplemented_ice.rs:16:14
+   |
+LL |     breakage(1);
+   |     -------- ^ the trait `Test` is not implemented for `{integer}`
+   |     |
+   |     required by a bound introduced by this call
+   |
+note: required by a bound in `breakage`
+  --> $DIR/on_unimplemented_ice.rs:12:16
+   |
+LL | fn breakage<T: Test>(_: T) {}
+   |                ^^^^ required by this bound in `breakage`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.
