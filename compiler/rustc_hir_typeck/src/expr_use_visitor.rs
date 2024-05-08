@@ -86,6 +86,42 @@ pub trait Delegate<'tcx> {
     );
 }
 
+impl<'tcx, D: Delegate<'tcx>> Delegate<'tcx> for &mut D {
+    fn consume(&mut self, place_with_id: &PlaceWithHirId<'tcx>, diag_expr_id: HirId) {
+        (**self).consume(place_with_id, diag_expr_id)
+    }
+
+    fn borrow(
+        &mut self,
+        place_with_id: &PlaceWithHirId<'tcx>,
+        diag_expr_id: HirId,
+        bk: ty::BorrowKind,
+    ) {
+        (**self).borrow(place_with_id, diag_expr_id, bk)
+    }
+
+    fn copy(&mut self, place_with_id: &PlaceWithHirId<'tcx>, diag_expr_id: HirId) {
+        (**self).copy(place_with_id, diag_expr_id)
+    }
+
+    fn mutate(&mut self, assignee_place: &PlaceWithHirId<'tcx>, diag_expr_id: HirId) {
+        (**self).mutate(assignee_place, diag_expr_id)
+    }
+
+    fn bind(&mut self, binding_place: &PlaceWithHirId<'tcx>, diag_expr_id: HirId) {
+        (**self).bind(binding_place, diag_expr_id)
+    }
+
+    fn fake_read(
+        &mut self,
+        place_with_id: &PlaceWithHirId<'tcx>,
+        cause: FakeReadCause,
+        diag_expr_id: HirId,
+    ) {
+        (**self).fake_read(place_with_id, cause, diag_expr_id)
+    }
+}
+
 /// The ExprUseVisitor type
 ///
 /// This is the code that actually walks the tree.
@@ -95,7 +131,7 @@ pub struct ExprUseVisitor<'a, 'tcx, D: Delegate<'tcx>> {
     param_env: ty::ParamEnv<'tcx>,
     upvars: Option<&'tcx FxIndexMap<HirId, hir::Upvar>>,
     body_owner: LocalDefId,
-    delegate: RefCell<&'a mut D>,
+    delegate: RefCell<D>,
 }
 
 /// If the MC results in an error, it's because the type check
@@ -124,7 +160,7 @@ impl<'a, 'tcx, D: Delegate<'tcx>> ExprUseVisitor<'a, 'tcx, D> {
     /// - `param_env` --- parameter environment for trait lookups (esp. pertaining to `Copy`)
     /// - `typeck_results` --- typeck results for the code being analyzed
     pub fn new(
-        delegate: &'a mut D,
+        delegate: D,
         infcx: &'a InferCtxt<'tcx>,
         body_owner: LocalDefId,
         param_env: ty::ParamEnv<'tcx>,
