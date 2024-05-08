@@ -11,6 +11,7 @@
 
 use rustc_hir::def::DefKind;
 use rustc_infer::infer::InferCtxt;
+use rustc_middle::bug;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;

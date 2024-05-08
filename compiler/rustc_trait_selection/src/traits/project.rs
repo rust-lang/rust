@@ -16,6 +16,7 @@ use super::{Normalized, NormalizedTy, ProjectionCacheEntry, ProjectionCacheKey};
 use rustc_middle::traits::BuiltinImplSource;
 use rustc_middle::traits::ImplSource;
 use rustc_middle::traits::ImplSourceUserDefinedData;
+use rustc_middle::{bug, span_bug};
 
 use crate::errors::InherentProjectionNormalizationOverflow;
 use crate::infer::type_variable::TypeVariableOrigin;

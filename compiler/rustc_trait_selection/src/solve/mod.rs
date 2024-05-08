@@ -17,6 +17,7 @@ use rustc_hir::def_id::DefId;
 use rustc_infer::infer::canonical::{Canonical, CanonicalVarValues};
 use rustc_infer::traits::query::NoSolution;
 use rustc_macros::extension;
+use rustc_middle::bug;
 use rustc_middle::infer::canonical::CanonicalVarInfos;
 use rustc_middle::traits::solve::{
     CanonicalResponse, Certainty, ExternalConstraintsData, Goal, GoalSource, QueryResult, Response,

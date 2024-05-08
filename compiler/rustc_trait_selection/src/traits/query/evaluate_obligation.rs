@@ -1,4 +1,5 @@
 use rustc_macros::extension;
+use rustc_middle::span_bug;
 
 use crate::infer::canonical::OriginalQueryValues;
 use crate::infer::InferCtxt;

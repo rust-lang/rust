@@ -6,6 +6,7 @@
 use std::mem;
 
 use rustc_infer::infer::InferCtxt;
+use rustc_middle::bug;
 use rustc_middle::infer::canonical::CanonicalVarValues;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::solve::{
