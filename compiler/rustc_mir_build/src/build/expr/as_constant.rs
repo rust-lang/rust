@@ -9,6 +9,7 @@ use rustc_middle::thir::*;
 use rustc_middle::ty::{
     self, CanonicalUserType, CanonicalUserTypeAnnotation, TyCtxt, UserTypeAnnotationIndex,
 };
+use rustc_middle::{bug, span_bug};
 use rustc_target::abi::Size;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
