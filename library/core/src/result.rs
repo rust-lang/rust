@@ -224,6 +224,21 @@
 //! [`Err(E)`]: Err
 //! [io::Error]: ../../std/io/struct.Error.html "io::Error"
 //!
+//! # Representation
+//!
+//! In some cases, [`Result<T, E>`] will gain the same size, alignment, and ABI
+//! guarantees as [`Option<T>`] has. One of either the `T` or `E` type must be a
+//! type that qualifies for `Option` guarantees, and the *other* type must meet
+//! all of the following conditions:
+//! * Is a zero-sized type with alignment 1 (a "1-ZST").
+//! * Has no fields.
+//! * Does not have the #[non_exhaustive] attribute.
+//!
+//! For example, `Result<NonZeroI32, ()>` or `Result<(), NonZeroI32>` would both
+//! have the same guarantees as `Option<NonZeroI32>`. The only difference is the
+//! implied semantics: `Result<NonZeroI32, ()>` is "a non-zero success value"
+//! while `Result<(), NonZeroI32>` is "a non-zero error value".
+//!
 //! # Method overview
 //!
 //! In addition to working with pattern matching, [`Result`] provides a
