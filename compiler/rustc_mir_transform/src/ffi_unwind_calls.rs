@@ -4,6 +4,7 @@ use rustc_middle::query::LocalCrate;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::layout;
 use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::{bug, span_bug};
 use rustc_session::lint::builtin::FFI_UNWIND_CALLS;
 use rustc_target::spec::abi::Abi;
 use rustc_target::spec::PanicStrategy;
