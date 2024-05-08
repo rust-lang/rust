@@ -17,8 +17,6 @@
 #![feature(never_type)]
 
 #[macro_use]
-extern crate rustc_middle;
-#[macro_use]
 extern crate tracing;
 
 use rustc_middle::query::Providers;
