@@ -232,7 +232,7 @@
 //! all of the following conditions:
 //! * Is a zero-sized type with alignment 1 (a "1-ZST").
 //! * Has no fields.
-//! * Does not have the #[non_exhaustive] attribute.
+//! * Does not have the `#[non_exhaustive]` attribute.
 //!
 //! For example, `Result<NonZeroI32, ()>` or `Result<(), NonZeroI32>` would both
 //! have the same guarantees as `Option<NonZeroI32>`. The only difference is the
