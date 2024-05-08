@@ -7,8 +7,8 @@ use rustc_data_structures::stable_hasher::{Hash64, HashStable, StableHasher};
 use rustc_data_structures::sync::Lock;
 use rustc_data_structures::unord::UnordMap;
 use rustc_errors::DiagInner;
-
 use rustc_index::Idx;
+use rustc_middle::bug;
 use rustc_middle::dep_graph::dep_kinds;
 use rustc_middle::dep_graph::{
     self, DepContext, DepKind, DepKindStruct, DepNode, DepNodeIndex, SerializedDepNodeIndex,
@@ -781,6 +781,7 @@ macro_rules! define_queries {
         #[allow(nonstandard_style)]
         mod query_callbacks {
             use super::*;
+            use rustc_middle::bug;
             use rustc_query_system::dep_graph::FingerprintStyle;
 
             // We use this for most things when incr. comp. is turned off.
@@ -849,7 +850,7 @@ macro_rules! define_queries {
         }
 
         pub fn query_callbacks<'tcx>(arena: &'tcx Arena<'tcx>) -> &'tcx [DepKindStruct<'tcx>] {
-            arena.alloc_from_iter(make_dep_kind_array!(query_callbacks))
+            arena.alloc_from_iter(rustc_middle::make_dep_kind_array!(query_callbacks))
         }
     }
 }

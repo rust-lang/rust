@@ -8,9 +8,6 @@
 #![allow(rustc::potential_query_instability, unused_parens)]
 #![allow(internal_features)]
 
-#[macro_use]
-extern crate rustc_middle;
-
 use crate::plumbing::{__rust_begin_short_backtrace, encode_all_query_results, try_mark_green};
 use crate::profiling_support::QueryKeyStringCache;
 use field_offset::offset_of;
@@ -222,4 +219,4 @@ pub fn query_system<'tcx>(
     }
 }
 
-rustc_query_append! { define_queries! }
+rustc_middle::rustc_query_append! { define_queries! }
