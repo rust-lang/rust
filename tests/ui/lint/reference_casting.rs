@@ -255,6 +255,12 @@ unsafe fn bigger_layout() {
         let a3 = a2 as *mut u64;
         unsafe { *a3 = 3 };
     }
+
+    unsafe fn field_access(v: &mut Vec3<i32>) {
+        let r = &mut v.0;
+        let ptr = r as *mut i32 as *mut Vec3<i32>;
+        unsafe { *ptr = Vec3(0, 0, 0) }
+    }
 }
 
 const RAW_PTR: *mut u8 = 1 as *mut u8;

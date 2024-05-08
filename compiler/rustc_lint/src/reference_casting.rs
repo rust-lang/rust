@@ -201,7 +201,8 @@ fn is_cast_to_bigger_memory_layout<'tcx>(
 
     // if the current expr looks like this `&mut expr[index]` then just looking
     // at `expr[index]` won't give us the underlying allocation, so we just skip it
-    if let ExprKind::Index(..) = e_alloc.kind {
+    // the same logic applies field access like `&mut expr.field`
+    if let ExprKind::Index(..) | ExprKind::Field(..) = e_alloc.kind {
         return None;
     }
 
