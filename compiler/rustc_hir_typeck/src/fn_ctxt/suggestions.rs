@@ -6,7 +6,6 @@ use crate::fn_ctxt::rustc_span::BytePos;
 use crate::hir::is_range_literal;
 use crate::method::probe;
 use crate::method::probe::{IsSuggestion, Mode, ProbeScope};
-use crate::rustc_middle::ty::Article;
 use core::cmp::min;
 use core::iter;
 use hir::def_id::LocalDefId;
@@ -28,7 +27,7 @@ use rustc_middle::lint::in_external_macro;
 use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{
-    self, suggest_constraining_type_params, Binder, IsSuggestable, ToPredicate, Ty,
+    self, suggest_constraining_type_params, Article, Binder, IsSuggestable, ToPredicate, Ty,
     TypeVisitableExt,
 };
 use rustc_session::errors::ExprParenthesesNeeded;
