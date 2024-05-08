@@ -24,6 +24,7 @@ use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo};
 use rustc_middle::middle::resolve_bound_vars::ObjectLifetimeDefault;
 use rustc_middle::mir;
+use rustc_middle::trivially_parameterized_over_tcx;
 use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::{self, ReprOptions, Ty, UnusedGenericParams};
 use rustc_middle::ty::{DeducedParamAttrs, ParameterizedOverTcx, TyCtxt};
