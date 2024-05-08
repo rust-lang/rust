@@ -47,6 +47,7 @@ use rustc_middle::ty::{
     self, ClosureSizeProfileData, Ty, TyCtxt, TypeVisitableExt as _, TypeckResults, UpvarArgs,
     UpvarCapture,
 };
+use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
 use rustc_span::sym;
 use rustc_span::{BytePos, Pos, Span, Symbol};

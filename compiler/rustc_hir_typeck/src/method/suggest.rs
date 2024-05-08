@@ -23,6 +23,7 @@ use rustc_hir::PatKind::Binding;
 use rustc_hir::PathSegment;
 use rustc_hir::{ExprKind, Node, QPath};
 use rustc_infer::infer::{self, RegionVariableOrigin};
+use rustc_middle::bug;
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
 use rustc_middle::ty::fast_reject::{simplify_type, TreatParams};
 use rustc_middle::ty::print::{

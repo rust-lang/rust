@@ -7,6 +7,7 @@ use hir::HirId;
 use hir::ItemKind;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
+use rustc_middle::span_bug;
 use rustc_middle::ty::{self, Ty};
 use rustc_session::lint::builtin::RUST_2021_PRELUDE_COLLISIONS;
 use rustc_span::symbol::kw::{Empty, Underscore};

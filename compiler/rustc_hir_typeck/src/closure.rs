@@ -10,6 +10,7 @@ use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes};
 use rustc_infer::infer::{InferOk, InferResult};
 use rustc_infer::traits::ObligationCauseCode;
 use rustc_macros::{TypeFoldable, TypeVisitable};
+use rustc_middle::span_bug;
 use rustc_middle::ty::visit::{TypeVisitable, TypeVisitableExt};
 use rustc_middle::ty::GenericArgs;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitor};

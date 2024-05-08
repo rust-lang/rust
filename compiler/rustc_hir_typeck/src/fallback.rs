@@ -9,6 +9,7 @@ use rustc_hir as hir;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::HirId;
 use rustc_infer::infer::{DefineOpaqueTypes, InferOk};
+use rustc_middle::bug;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable};
 use rustc_session::lint;
 use rustc_span::DUMMY_SP;

@@ -16,6 +16,7 @@ use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::{
     self, GenericArgs, GenericArgsRef, GenericParamDefKind, Ty, TyCtxt, UserArgs, UserType,
 };
+use rustc_middle::{bug, span_bug};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_trait_selection::traits;
 
