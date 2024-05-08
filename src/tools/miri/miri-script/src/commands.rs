@@ -23,7 +23,9 @@ const JOSH_PORT: &str = "42042";
 
 impl MiriEnv {
     /// Returns the location of the sysroot.
-    fn build_miri_sysroot(&mut self, quiet: bool) -> Result<PathBuf> {
+    ///
+    /// If the target is None the sysroot will be built for the host machine.
+    fn build_miri_sysroot(&mut self, quiet: bool, target: Option<&str>) -> Result<PathBuf> {
         if let Some(miri_sysroot) = self.sh.var_os("MIRI_SYSROOT") {
             // Sysroot already set, use that.
             return Ok(miri_sysroot.into());
@@ -35,26 +37,27 @@ impl MiriEnv {
         self.build(path!(self.miri_dir / "Cargo.toml"), &[], quiet)?;
         self.build(&manifest_path, &[], quiet)?;
 
-        let target = &match self.sh.var("MIRI_TEST_TARGET") {
-            Ok(target) => vec!["--target".into(), target],
-            Err(_) => vec![],
-        };
+        let target_flag =
+            &if let Some(target) = target { vec!["--target", target] } else { vec![] };
+
         if !quiet {
-            match self.sh.var("MIRI_TEST_TARGET") {
-                Ok(target) => eprintln!("$ (building Miri sysroot for {target})"),
-                Err(_) => eprintln!("$ (building Miri sysroot)"),
+            if let Some(target) = target {
+                eprintln!("$ (building Miri sysroot for {target})");
+            } else {
+                eprintln!("$ (building Miri sysroot)");
             }
         }
+
         let output = cmd!(self.sh,
             "cargo +{toolchain} --quiet run {cargo_extra_flags...} --manifest-path {manifest_path} --
-             miri setup --print-sysroot {target...}"
+             miri setup --print-sysroot {target_flag...}"
         ).read();
         let Ok(output) = output else {
             // Run it again (without `--print-sysroot` or `--quiet`) so the user can see the error.
             cmd!(
                 self.sh,
                 "cargo +{toolchain} run {cargo_extra_flags...} --manifest-path {manifest_path} --
-                miri setup {target...}"
+                miri setup {target_flag...}"
             )
             .run()
             .with_context(|| "`cargo miri setup` failed")?;
@@ -161,7 +164,7 @@ impl Command {
             Command::Install { flags } => Self::install(flags),
             Command::Build { flags } => Self::build(flags),
             Command::Check { flags } => Self::check(flags),
-            Command::Test { bless, flags } => Self::test(bless, flags),
+            Command::Test { bless, flags, target } => Self::test(bless, flags, target),
             Command::Run { dep, verbose, many_seeds, flags } =>
                 Self::run(dep, verbose, many_seeds, flags),
             Command::Fmt { flags } => Self::fmt(flags),
@@ -446,16 +449,23 @@ impl Command {
         Ok(())
     }
 
-    fn test(bless: bool, flags: Vec<OsString>) -> Result<()> {
+    fn test(bless: bool, flags: Vec<OsString>, target: Option<String>) -> Result<()> {
         let mut e = MiriEnv::new()?;
+
+        if let Some(target) = target.as_deref() {
+            // Tell the sysroot which target to test.
+            e.sh.set_var("MIRI_TEST_TARGET", target);
+        }
+
         // Prepare a sysroot.
-        e.build_miri_sysroot(/* quiet */ false)?;
+        e.build_miri_sysroot(/* quiet */ false, target.as_deref())?;
 
         // Then test, and let caller control flags.
         // Only in root project as `cargo-miri` has no tests.
         if bless {
             e.sh.set_var("RUSTC_BLESS", "Gesundheit");
         }
+
         e.test(path!(e.miri_dir / "Cargo.toml"), &flags)?;
         Ok(())
     }
@@ -476,14 +486,26 @@ impl Command {
             .take_while(|arg| *arg != "--")
             .tuple_windows()
             .find(|(first, _)| *first == "--target");
-        if let Some((_, target)) = target {
+
+        let target_triple = if let Some((_, target)) = target {
             // Found it!
             e.sh.set_var("MIRI_TEST_TARGET", target);
+
+            let triple = target
+                .clone()
+                .into_string()
+                .map_err(|_| anyhow!("invalid target triple encoding"))?;
+            Some(triple)
         } else if let Ok(target) = std::env::var("MIRI_TEST_TARGET") {
             // Convert `MIRI_TEST_TARGET` into `--target`.
             flags.push("--target".into());
-            flags.push(target.into());
-        }
+            flags.push(target.clone().into());
+
+            Some(target)
+        } else {
+            None
+        };
+
         // Scan for "--edition", set one ourselves if that flag is not present.
         let have_edition =
             flags.iter().take_while(|arg| *arg != "--").any(|arg| *arg == "--edition");
@@ -492,7 +514,8 @@ impl Command {
         }
 
         // Prepare a sysroot, and add it to the flags.
-        let miri_sysroot = e.build_miri_sysroot(/* quiet */ !verbose)?;
+        let miri_sysroot =
+            e.build_miri_sysroot(/* quiet */ !verbose, target_triple.as_deref())?;
         flags.push("--sysroot".into());
         flags.push(miri_sysroot.into());
 
