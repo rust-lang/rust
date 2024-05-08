@@ -49,6 +49,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses the contents of a module (inner attributes followed by module items).
+    /// We exit once we hit `term`
     pub fn parse_mod(
         &mut self,
         term: &TokenKind,
@@ -101,9 +102,9 @@ impl<'a> Parser<'a> {
         fn_parse_mode: FnParseMode,
         force_collect: ForceCollect,
     ) -> PResult<'a, Option<Item>> {
-        self.recover_diff_marker();
+        self.recover_vcs_conflict_marker();
         let attrs = self.parse_outer_attributes()?;
-        self.recover_diff_marker();
+        self.recover_vcs_conflict_marker();
         self.parse_item_common(attrs, true, false, fn_parse_mode, force_collect)
     }
 
@@ -723,7 +724,7 @@ impl<'a> Parser<'a> {
             if self.recover_doc_comment_before_brace() {
                 continue;
             }
-            self.recover_diff_marker();
+            self.recover_vcs_conflict_marker();
             match parse_item(self) {
                 Ok(None) => {
                     let mut is_unnecessary_semicolon = !items.is_empty()
@@ -1070,7 +1071,7 @@ impl<'a> Parser<'a> {
     /// ```
     fn parse_use_tree_list(&mut self) -> PResult<'a, ThinVec<(UseTree, ast::NodeId)>> {
         self.parse_delim_comma_seq(Delimiter::Brace, |p| {
-            p.recover_diff_marker();
+            p.recover_vcs_conflict_marker();
             Ok((p.parse_use_tree()?, DUMMY_NODE_ID))
         })
         .map(|(r, _)| r)
@@ -1497,9 +1498,9 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_enum_variant(&mut self, span: Span) -> PResult<'a, Option<Variant>> {
-        self.recover_diff_marker();
+        self.recover_vcs_conflict_marker();
         let variant_attrs = self.parse_outer_attributes()?;
-        self.recover_diff_marker();
+        self.recover_vcs_conflict_marker();
         let help = "enum variants can be `Variant`, `Variant = <integer>`, \
                     `Variant(Type, ..., TypeN)` or `Variant { fields: Types }`";
         self.collect_tokens_trailing_token(
@@ -1688,6 +1689,10 @@ impl<'a> Parser<'a> {
         Ok((class_name, ItemKind::Union(vdata, generics)))
     }
 
+    /// This function parses the fields of record structs:
+    ///
+    ///   - `struct S { ... }`
+    ///   - `enum E { Variant { ... } }`
     pub(crate) fn parse_record_struct_body(
         &mut self,
         adt_ty: &str,
@@ -1714,19 +1719,10 @@ impl<'a> Parser<'a> {
             self.eat(&token::CloseDelim(Delimiter::Brace));
         } else {
             let token_str = super::token_descr(&self.token);
-            let msg = format!(
-                "expected {}`{{` after struct name, found {}",
-                if parsed_where { "" } else { "`where`, or " },
-                token_str
-            );
+            let where_str = if parsed_where { "" } else { "`where`, or " };
+            let msg = format!("expected {where_str}`{{` after struct name, found {token_str}");
             let mut err = self.dcx().struct_span_err(self.token.span, msg);
-            err.span_label(
-                self.token.span,
-                format!(
-                    "expected {}`{{` after struct name",
-                    if parsed_where { "" } else { "`where`, or " }
-                ),
-            );
+            err.span_label(self.token.span, format!("expected {where_str}`{{` after struct name",));
             return Err(err);
         }
 
@@ -1740,7 +1736,7 @@ impl<'a> Parser<'a> {
             let attrs = p.parse_outer_attributes()?;
             p.collect_tokens_trailing_token(attrs, ForceCollect::No, |p, attrs| {
                 let mut snapshot = None;
-                if p.is_diff_marker(&TokenKind::BinOp(token::Shl), &TokenKind::Lt) {
+                if p.is_vcs_conflict_marker(&TokenKind::BinOp(token::Shl), &TokenKind::Lt) {
                     // Account for `<<<<<<<` diff markers. We can't proactively error here because
                     // that can be a valid type start, so we snapshot and reparse only we've
                     // encountered another parse error.
@@ -1751,7 +1747,7 @@ impl<'a> Parser<'a> {
                     Ok(vis) => vis,
                     Err(err) => {
                         if let Some(ref mut snapshot) = snapshot {
-                            snapshot.recover_diff_marker();
+                            snapshot.recover_vcs_conflict_marker();
                         }
                         return Err(err);
                     }
@@ -1760,7 +1756,7 @@ impl<'a> Parser<'a> {
                     Ok(ty) => ty,
                     Err(err) => {
                         if let Some(ref mut snapshot) = snapshot {
-                            snapshot.recover_diff_marker();
+                            snapshot.recover_vcs_conflict_marker();
                         }
                         return Err(err);
                     }
@@ -1785,9 +1781,9 @@ impl<'a> Parser<'a> {
 
     /// Parses an element of a struct declaration.
     fn parse_field_def(&mut self, adt_ty: &str) -> PResult<'a, FieldDef> {
-        self.recover_diff_marker();
+        self.recover_vcs_conflict_marker();
         let attrs = self.parse_outer_attributes()?;
-        self.recover_diff_marker();
+        self.recover_vcs_conflict_marker();
         self.collect_tokens_trailing_token(attrs, ForceCollect::No, |this, attrs| {
             let lo = this.token.span;
             let vis = this.parse_visibility(FollowedByType::No)?;
@@ -2647,7 +2643,7 @@ impl<'a> Parser<'a> {
         }
 
         let (mut params, _) = self.parse_paren_comma_seq(|p| {
-            p.recover_diff_marker();
+            p.recover_vcs_conflict_marker();
             let snapshot = p.create_snapshot_for_diagnostic();
             let param = p.parse_param_general(req_name, first_param).or_else(|e| {
                 let guar = e.emit();

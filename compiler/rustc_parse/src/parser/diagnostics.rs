@@ -2954,13 +2954,23 @@ impl<'a> Parser<'a> {
         err
     }
 
-    pub fn is_diff_marker(&mut self, long_kind: &TokenKind, short_kind: &TokenKind) -> bool {
+    /// This checks if this is a conflict marker, depending of the parameter passed.
+    ///
+    /// * `>>>>>`
+    /// * `=====`
+    /// * `<<<<<`
+    ///
+    pub fn is_vcs_conflict_marker(
+        &mut self,
+        long_kind: &TokenKind,
+        short_kind: &TokenKind,
+    ) -> bool {
         (0..3).all(|i| self.look_ahead(i, |tok| tok == long_kind))
             && self.look_ahead(3, |tok| tok == short_kind)
     }
 
-    fn diff_marker(&mut self, long_kind: &TokenKind, short_kind: &TokenKind) -> Option<Span> {
-        if self.is_diff_marker(long_kind, short_kind) {
+    fn conflict_marker(&mut self, long_kind: &TokenKind, short_kind: &TokenKind) -> Option<Span> {
+        if self.is_vcs_conflict_marker(long_kind, short_kind) {
             let lo = self.token.span;
             for _ in 0..4 {
                 self.bump();
@@ -2970,15 +2980,16 @@ impl<'a> Parser<'a> {
         None
     }
 
-    pub fn recover_diff_marker(&mut self) {
-        if let Err(err) = self.err_diff_marker() {
+    pub fn recover_vcs_conflict_marker(&mut self) {
+        if let Err(err) = self.err_vcs_conflict_marker() {
             err.emit();
             FatalError.raise();
         }
     }
 
-    pub fn err_diff_marker(&mut self) -> PResult<'a, ()> {
-        let Some(start) = self.diff_marker(&TokenKind::BinOp(token::Shl), &TokenKind::Lt) else {
+    pub fn err_vcs_conflict_marker(&mut self) -> PResult<'a, ()> {
+        let Some(start) = self.conflict_marker(&TokenKind::BinOp(token::Shl), &TokenKind::Lt)
+        else {
             return Ok(());
         };
         let mut spans = Vec::with_capacity(3);
@@ -2990,13 +3001,15 @@ impl<'a> Parser<'a> {
             if self.token.kind == TokenKind::Eof {
                 break;
             }
-            if let Some(span) = self.diff_marker(&TokenKind::OrOr, &TokenKind::BinOp(token::Or)) {
+            if let Some(span) = self.conflict_marker(&TokenKind::OrOr, &TokenKind::BinOp(token::Or))
+            {
                 middlediff3 = Some(span);
             }
-            if let Some(span) = self.diff_marker(&TokenKind::EqEq, &TokenKind::Eq) {
+            if let Some(span) = self.conflict_marker(&TokenKind::EqEq, &TokenKind::Eq) {
                 middle = Some(span);
             }
-            if let Some(span) = self.diff_marker(&TokenKind::BinOp(token::Shr), &TokenKind::Gt) {
+            if let Some(span) = self.conflict_marker(&TokenKind::BinOp(token::Shr), &TokenKind::Gt)
+            {
                 spans.push(span);
                 end = Some(span);
                 break;
