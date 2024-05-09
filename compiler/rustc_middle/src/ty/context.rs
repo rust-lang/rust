@@ -2449,7 +2449,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     span,
                     msg,
                     format!("#![feature({feature})]\n"),
-                    Applicability::MachineApplicable,
+                    Applicability::MaybeIncorrect,
                 );
             } else {
                 diag.help(msg);
