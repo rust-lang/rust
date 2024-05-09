@@ -494,7 +494,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 {
                     self.suggest_cloning(err, ty, expr, None, Some(move_spans));
                 } else if self.suggest_hoisting_call_outside_loop(err, expr) {
-                    // The place where the the type moves would be misleading to suggest clone.
+                    // The place where the type moves would be misleading to suggest clone.
                     // #121466
                     self.suggest_cloning(err, ty, expr, None, Some(move_spans));
                 }
