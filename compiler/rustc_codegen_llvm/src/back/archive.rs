@@ -14,11 +14,11 @@ use crate::errors::{
 };
 use crate::llvm::archive_ro::{ArchiveRO, Child};
 use crate::llvm::{self, ArchiveKind, LLVMMachineType, LLVMRustCOFFShortExport};
+
 use rustc_codegen_ssa::back::archive::{
     get_native_object_symbols, try_extract_macho_fat_archive, ArArchiveBuilder,
     ArchiveBuildFailure, ArchiveBuilder, ArchiveBuilderBuilder, UnknownArchiveKind,
 };
-
 use rustc_session::cstore::DllImport;
 use rustc_session::Session;
 

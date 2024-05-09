@@ -33,6 +33,7 @@
 use super::FnCtxt;
 
 use crate::expr_use_visitor as euv;
+use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::unord::{ExtendUnord, UnordSet};
 use rustc_errors::{Applicability, MultiSpan};
 use rustc_hir as hir;
@@ -51,10 +52,8 @@ use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
 use rustc_span::sym;
 use rustc_span::{BytePos, Pos, Span, Symbol};
-use rustc_trait_selection::infer::InferCtxtExt;
-
-use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_target::abi::FIRST_VARIANT;
+use rustc_trait_selection::infer::InferCtxtExt;
 
 use std::iter;
 

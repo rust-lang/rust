@@ -29,6 +29,9 @@ use rustc_macros::extension;
 use rustc_middle::hir::map;
 use rustc_middle::traits::IsConstable;
 use rustc_middle::ty::error::TypeError::{self, Sorts};
+use rustc_middle::ty::print::{
+    with_forced_trimmed_paths, with_no_trimmed_paths, PrintTraitPredicateExt as _,
+};
 use rustc_middle::ty::{
     self, suggest_arbitrary_trait_bound, suggest_constraining_type_param, AdtKind, GenericArgs,
     InferTy, IsSuggestable, ToPredicate, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
@@ -46,9 +49,6 @@ use std::iter;
 use crate::infer::InferCtxtExt as _;
 use crate::traits::error_reporting::type_err_ctxt_ext::InferCtxtPrivExt;
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
-use rustc_middle::ty::print::{
-    with_forced_trimmed_paths, with_no_trimmed_paths, PrintTraitPredicateExt as _,
-};
 
 use itertools::EitherOrBoth;
 use itertools::Itertools;

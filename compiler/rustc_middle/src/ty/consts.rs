@@ -7,6 +7,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::LocalDefId;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
+use rustc_span::{Span, DUMMY_SP};
 use rustc_type_ir::ConstKind as IrConstKind;
 use rustc_type_ir::{TypeFlags, WithCachedTypeInfo};
 
@@ -16,8 +17,6 @@ mod valtree;
 
 pub use int::*;
 pub use kind::*;
-use rustc_span::Span;
-use rustc_span::DUMMY_SP;
 pub use valtree::*;
 
 pub type ConstKind<'tcx> = IrConstKind<TyCtxt<'tcx>>;

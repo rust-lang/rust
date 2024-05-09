@@ -10,6 +10,7 @@ use crate::lint::{
     builtin::UNSTABLE_SYNTAX_PRE_EXPANSION, BufferedEarlyLint, BuiltinLintDiag, Lint, LintId,
 };
 use crate::Session;
+use rustc_ast::attr::AttrIdGenerator;
 use rustc_ast::node_id::NodeId;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
 use rustc_data_structures::sync::{AppendOnlyVec, Lock, Lrc};
@@ -24,7 +25,6 @@ use rustc_span::hygiene::ExpnId;
 use rustc_span::source_map::{FilePathMapping, SourceMap};
 use rustc_span::{Span, Symbol};
 
-use rustc_ast::attr::AttrIdGenerator;
 use std::str;
 
 /// Collected spans during parsing for places where a certain feature was

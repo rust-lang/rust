@@ -13,24 +13,22 @@
 //! move analysis runs after promotion on broken MIR.
 
 use either::{Left, Right};
+use rustc_const_eval::transform::check_consts::{qualifs, ConstCx};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
+use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_middle::mir;
 use rustc_middle::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::GenericArgs;
 use rustc_middle::ty::{self, List, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::{bug, span_bug};
-use rustc_span::Span;
-
-use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_span::source_map::Spanned;
+use rustc_span::Span;
 
 use std::assert_matches::assert_matches;
 use std::cell::Cell;
 use std::{cmp, iter, mem};
-
-use rustc_const_eval::transform::check_consts::{qualifs, ConstCx};
 
 /// A `MirPass` for promotion.
 ///

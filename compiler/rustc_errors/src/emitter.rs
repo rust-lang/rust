@@ -7,9 +7,6 @@
 //!
 //! The output types are defined in `rustc_session::config::ErrorOutputType`.
 
-use rustc_span::source_map::SourceMap;
-use rustc_span::{FileLines, FileName, SourceFile, Span};
-
 use crate::snippet::{
     Annotation, AnnotationColumn, AnnotationType, Line, MultilineAnnotation, Style, StyledString,
 };
@@ -26,6 +23,8 @@ use rustc_data_structures::sync::{DynSend, IntoDynSyncSend, Lrc};
 use rustc_error_messages::{FluentArgs, SpanLabel};
 use rustc_lint_defs::pluralize;
 use rustc_span::hygiene::{ExpnKind, MacroKind};
+use rustc_span::source_map::SourceMap;
+use rustc_span::{FileLines, FileName, SourceFile, Span};
 use std::borrow::Cow;
 use std::cmp::{max, min, Reverse};
 use std::error::Report;

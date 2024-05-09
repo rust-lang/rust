@@ -13,18 +13,8 @@ use super::Selection;
 use super::SelectionContext;
 use super::SelectionError;
 use super::{Normalized, NormalizedTy, ProjectionCacheEntry, ProjectionCacheKey};
-use rustc_infer::traits::ObligationCauseCode;
-use rustc_middle::traits::BuiltinImplSource;
-use rustc_middle::traits::ImplSource;
-use rustc_middle::traits::ImplSourceUserDefinedData;
-use rustc_middle::{bug, span_bug};
 
-use crate::errors::InherentProjectionNormalizationOverflow;
-use crate::infer::{BoundRegionConversionTime, InferOk};
-use crate::traits::normalize::normalize_with_depth;
-use crate::traits::normalize::normalize_with_depth_to;
-use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
-use crate::traits::select::ProjectionMatchesProjection;
+use rustc_infer::traits::ObligationCauseCode;
 use rustc_data_structures::sso::SsoHashSet;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::ErrorGuaranteed;
@@ -33,10 +23,19 @@ use rustc_hir::lang_items::LangItem;
 use rustc_infer::infer::resolve::OpportunisticRegionResolver;
 use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_middle::traits::select::OverflowError;
+use rustc_middle::traits::{BuiltinImplSource, ImplSource, ImplSourceUserDefinedData};
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::visit::{MaxUniverse, TypeVisitable, TypeVisitableExt};
 use rustc_middle::ty::{self, Term, ToPredicate, Ty, TyCtxt};
+use rustc_middle::{bug, span_bug};
 use rustc_span::symbol::sym;
+
+use crate::errors::InherentProjectionNormalizationOverflow;
+use crate::infer::{BoundRegionConversionTime, InferOk};
+use crate::traits::normalize::normalize_with_depth;
+use crate::traits::normalize::normalize_with_depth_to;
+use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
+use crate::traits::select::ProjectionMatchesProjection;
 
 pub use rustc_middle::traits::Reveal;
 

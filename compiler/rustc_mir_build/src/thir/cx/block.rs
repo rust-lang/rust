@@ -1,11 +1,10 @@
 use crate::thir::cx::Cx;
 
 use rustc_hir as hir;
+use rustc_index::Idx;
 use rustc_middle::middle::region;
 use rustc_middle::thir::*;
 use rustc_middle::ty;
-
-use rustc_index::Idx;
 use rustc_middle::ty::CanonicalUserTypeAnnotation;
 
 impl<'tcx> Cx<'tcx> {

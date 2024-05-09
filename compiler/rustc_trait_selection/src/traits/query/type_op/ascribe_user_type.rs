@@ -5,9 +5,9 @@ use rustc_infer::traits::Obligation;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::{self, ParamEnvAnd, Ty, TyCtxt, UserArgs, UserSelfTy, UserType};
+use rustc_span::{Span, DUMMY_SP};
 
 pub use rustc_middle::traits::query::type_op::AscribeUserType;
-use rustc_span::{Span, DUMMY_SP};
 
 impl<'tcx> super::QueryTypeOp<'tcx> for AscribeUserType<'tcx> {
     type QueryResponse = ();

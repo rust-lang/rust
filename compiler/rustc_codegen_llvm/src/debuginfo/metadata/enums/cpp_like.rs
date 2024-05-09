@@ -5,7 +5,6 @@ use rustc_codegen_ssa::{
     debuginfo::{type_names::compute_debuginfo_type_name, wants_c_like_enum_debuginfo},
     traits::ConstMethods,
 };
-
 use rustc_index::IndexVec;
 use rustc_middle::{
     bug,

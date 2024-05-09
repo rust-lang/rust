@@ -8,9 +8,8 @@ use rustc_ast_pretty::pprust;
 use rustc_feature::Features;
 use rustc_session::parse::feature_err;
 use rustc_session::Session;
-use rustc_span::symbol::{kw, sym, Ident};
-
 use rustc_span::edition::Edition;
+use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Span;
 
 const VALID_FRAGMENT_NAMES_MSG: &str = "valid fragment specifiers are \

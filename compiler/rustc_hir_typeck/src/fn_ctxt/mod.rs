@@ -5,14 +5,12 @@ mod checks;
 mod inspect_obligations;
 mod suggestions;
 
-use rustc_errors::ErrorGuaranteed;
-
 use crate::coercion::DynamicCoerceMany;
 use crate::fallback::DivergingFallbackBehavior;
 use crate::fn_ctxt::checks::DivergingBlockBehavior;
 use crate::{CoroutineTypes, Diverges, EnclosingBreakables, TypeckRootCtxt};
 use hir::def_id::CRATE_DEF_ID;
-use rustc_errors::DiagCtxt;
+use rustc_errors::{DiagCtxt, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;

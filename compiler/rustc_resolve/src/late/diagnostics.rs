@@ -7,7 +7,6 @@ use crate::ty::fast_reject::SimplifiedType;
 use crate::{errors, path_names_to_string};
 use crate::{Module, ModuleKind, ModuleOrUniformRoot};
 use crate::{PathResult, PathSource, Segment};
-use rustc_hir::def::Namespace::{self, *};
 
 use rustc_ast::ptr::P;
 use rustc_ast::visit::{walk_ty, FnCtxt, FnKind, LifetimeCtxt, Visitor};
@@ -22,9 +21,11 @@ use rustc_errors::{
     SuggestionStyle,
 };
 use rustc_hir as hir;
+use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, CtorOf, DefKind};
 use rustc_hir::def_id::{DefId, CRATE_DEF_ID};
 use rustc_hir::{MissingLifetimeKind, PrimTy};
+use rustc_middle::ty;
 use rustc_session::lint;
 use rustc_session::Session;
 use rustc_span::edit_distance::find_best_match_for_name;
@@ -32,8 +33,6 @@ use rustc_span::edition::Edition;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
-
-use rustc_middle::ty;
 
 use std::borrow::Cow;
 use std::iter;

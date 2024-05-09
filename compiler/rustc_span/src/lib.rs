@@ -38,6 +38,10 @@ extern crate self as rustc_span;
 #[macro_use]
 extern crate tracing;
 
+use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::stable_hasher::HashingControls;
+use rustc_data_structures::stable_hasher::{Hash128, Hash64, HashStable, StableHasher};
+use rustc_data_structures::sync::{FreezeLock, FreezeWriteGuard, Lock, Lrc};
 use rustc_data_structures::{outline, AtomicRef};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_serialize::opaque::{FileEncoder, MemDecoder};
@@ -54,7 +58,6 @@ pub mod hygiene;
 use hygiene::Transparency;
 pub use hygiene::{DesugaringKind, ExpnKind, MacroKind};
 pub use hygiene::{ExpnData, ExpnHash, ExpnId, LocalExpnId, SyntaxContext};
-use rustc_data_structures::stable_hasher::HashingControls;
 pub mod def_id;
 use def_id::{CrateNum, DefId, DefIndex, DefPathHash, LocalDefId, StableCrateId, LOCAL_CRATE};
 pub mod edit_distance;
@@ -68,10 +71,6 @@ mod analyze_source_file;
 pub mod fatal_error;
 
 pub mod profiling;
-
-use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::stable_hasher::{Hash128, Hash64, HashStable, StableHasher};
-use rustc_data_structures::sync::{FreezeLock, FreezeWriteGuard, Lock, Lrc};
 
 use std::borrow::Cow;
 use std::cmp::{self, Ordering};

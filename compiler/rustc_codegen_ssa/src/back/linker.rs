@@ -1,7 +1,6 @@
 use super::command::Command;
 use super::symbol_export;
 use crate::errors;
-use rustc_span::symbol::sym;
 
 use std::ffi::{OsStr, OsString};
 use std::fs::{self, File};
@@ -19,6 +18,7 @@ use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo, S
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{self, CrateType, DebugInfo, LinkerPluginLto, Lto, OptLevel, Strip};
 use rustc_session::Session;
+use rustc_span::symbol::sym;
 use rustc_target::spec::{Cc, LinkOutputKind, LinkerFlavor, Lld};
 
 use cc::windows_registry;

@@ -10,8 +10,7 @@
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/traits/specialization.html
 
 pub mod specialization_graph;
-use rustc_infer::infer::DefineOpaqueTypes;
-use rustc_middle::ty::print::PrintTraitRefExt as _;
+
 use specialization_graph::GraphExt;
 
 use crate::errors::NegativePositiveConflict;
@@ -23,9 +22,11 @@ use crate::traits::{
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{codes::*, DelayDm, Diag, EmissionGuarantee};
 use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_middle::bug;
 use rustc_middle::ty::{self, ImplSubject, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::ty::{GenericArgs, GenericArgsRef};
+use rustc_middle::ty::print::PrintTraitRefExt as _;
 use rustc_session::lint::builtin::COHERENCE_LEAK_CHECK;
 use rustc_session::lint::builtin::ORDER_DEPENDENT_TRAIT_OBJECTS;
 use rustc_span::{sym, ErrorGuaranteed, Span, DUMMY_SP};

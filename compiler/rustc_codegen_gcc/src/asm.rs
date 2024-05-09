@@ -6,7 +6,6 @@ use rustc_codegen_ssa::traits::{
     AsmBuilderMethods, AsmMethods, BaseTypeMethods, BuilderMethods, GlobalAsmOperandRef,
     InlineAsmOperandRef,
 };
-
 use rustc_middle::{bug, ty::Instance};
 use rustc_span::Span;
 use rustc_target::asm::*;

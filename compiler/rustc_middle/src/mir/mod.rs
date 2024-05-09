@@ -13,28 +13,27 @@ use crate::ty::{self, List, Ty, TyCtxt};
 use crate::ty::{AdtDef, Instance, InstanceDef, UserTypeAnnotationIndex};
 use crate::ty::{GenericArg, GenericArgsRef};
 
+use polonius_engine::Atom;
+pub use rustc_ast::Mutability;
 use rustc_data_structures::captures::Captures;
+use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::graph::dominators::Dominators;
 use rustc_errors::{DiagArgName, DiagArgValue, DiagMessage, ErrorGuaranteed, IntoDiagArg};
 use rustc_hir::def::{CtorKind, Namespace};
 use rustc_hir::def_id::{DefId, CRATE_DEF_ID};
 use rustc_hir::{
     self as hir, BindingMode, ByRef, CoroutineDesugaring, CoroutineKind, HirId, ImplicitSelfKind,
 };
-use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
-use rustc_session::Session;
-use rustc_span::source_map::Spanned;
-use rustc_target::abi::{FieldIdx, VariantIdx};
-
-use polonius_engine::Atom;
-pub use rustc_ast::Mutability;
-use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::graph::dominators::Dominators;
 use rustc_index::bit_set::BitSet;
 use rustc_index::{Idx, IndexSlice, IndexVec};
+use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_serialize::{Decodable, Encodable};
+use rustc_session::Session;
+use rustc_span::source_map::Spanned;
 use rustc_span::symbol::Symbol;
 use rustc_span::{Span, DUMMY_SP};
+use rustc_target::abi::{FieldIdx, VariantIdx};
 
 use either::Either;
 

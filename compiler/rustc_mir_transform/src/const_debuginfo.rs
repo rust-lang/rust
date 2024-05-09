@@ -1,6 +1,7 @@
 //! Finds locals which are assigned once to a const and unused except for debuginfo and converts
 //! their debuginfo to use the const directly, allowing the local to be removed.
 
+use rustc_index::{bit_set::BitSet, IndexVec};
 use rustc_middle::{
     mir::{
         visit::{PlaceContext, Visitor},
@@ -10,7 +11,6 @@ use rustc_middle::{
 };
 
 use crate::MirPass;
-use rustc_index::{bit_set::BitSet, IndexVec};
 
 pub struct ConstDebugInfo;
 

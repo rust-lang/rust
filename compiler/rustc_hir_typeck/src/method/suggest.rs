@@ -18,10 +18,10 @@ use rustc_errors::{
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
+use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::PatKind::Binding;
-use rustc_hir::PathSegment;
-use rustc_hir::{ExprKind, Node, QPath};
+use rustc_hir::{ExprKind, Node, PathSegment, QPath};
 use rustc_infer::infer::{self, RegionVariableOrigin};
 use rustc_middle::bug;
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
@@ -46,7 +46,6 @@ use std::borrow::Cow;
 
 use super::probe::{AutorefOrPtrAdjustment, IsSuggestion, Mode, ProbeScope};
 use super::{CandidateSource, MethodError, NoMatchData};
-use rustc_hir::intravisit::Visitor;
 use std::iter;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {

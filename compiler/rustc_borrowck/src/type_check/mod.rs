@@ -32,7 +32,10 @@ use rustc_middle::ty::{
 };
 use rustc_middle::ty::{GenericArgsRef, UserArgs};
 use rustc_middle::{bug, span_bug};
+use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
+use rustc_mir_dataflow::move_paths::MoveData;
 use rustc_mir_dataflow::points::DenseLocationMap;
+use rustc_mir_dataflow::ResultsCursor;
 use rustc_span::def_id::CRATE_DEF_ID;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::sym;
@@ -41,12 +44,7 @@ use rustc_target::abi::{FieldIdx, FIRST_VARIANT};
 use rustc_trait_selection::traits::query::type_op::custom::scrape_region_constraints;
 use rustc_trait_selection::traits::query::type_op::custom::CustomTypeOp;
 use rustc_trait_selection::traits::query::type_op::{TypeOp, TypeOpOutput};
-
 use rustc_trait_selection::traits::PredicateObligation;
-
-use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
-use rustc_mir_dataflow::move_paths::MoveData;
-use rustc_mir_dataflow::ResultsCursor;
 
 use crate::session_diagnostics::{MoveUnsized, SimdIntrinsicArgConst};
 use crate::{

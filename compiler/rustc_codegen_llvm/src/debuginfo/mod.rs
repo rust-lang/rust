@@ -1,8 +1,5 @@
 #![doc = include_str!("doc.md")]
 
-use rustc_codegen_ssa::mir::debuginfo::VariableKind::*;
-use rustc_data_structures::unord::UnordMap;
-
 use self::metadata::{file_metadata, type_di_node};
 use self::metadata::{UNKNOWN_COLUMN_NUMBER, UNKNOWN_LINE_NUMBER};
 use self::namespace::mangled_name_of_instance;
@@ -19,9 +16,11 @@ use crate::llvm::debuginfo::{
 use crate::value::Value;
 
 use rustc_codegen_ssa::debuginfo::type_names;
+use rustc_codegen_ssa::mir::debuginfo::VariableKind::*;
 use rustc_codegen_ssa::mir::debuginfo::{DebugScope, FunctionDebugContext, VariableKind};
 use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::sync::Lrc;
+use rustc_data_structures::unord::UnordMap;
 use rustc_hir::def_id::{DefId, DefIdMap};
 use rustc_index::IndexVec;
 use rustc_middle::mir;

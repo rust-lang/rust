@@ -19,6 +19,8 @@ extern crate tracing;
 
 use hir::ConstContext;
 use required_consts::RequiredConstsVisitor;
+use rustc_const_eval::transform::check_consts::{self, ConstCx};
+use rustc_const_eval::transform::validate;
 use rustc_const_eval::util;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::steal::Steal;
@@ -37,6 +39,7 @@ use rustc_middle::query;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
 use rustc_middle::util::Providers;
 use rustc_middle::{bug, span_bug};
+use rustc_mir_dataflow::rustc_peek;
 use rustc_span::{source_map::Spanned, sym, DUMMY_SP};
 use rustc_trait_selection::traits;
 
@@ -109,10 +112,6 @@ mod simplify_comparison_integral;
 mod sroa;
 mod unreachable_enum_branching;
 mod unreachable_prop;
-
-use rustc_const_eval::transform::check_consts::{self, ConstCx};
-use rustc_const_eval::transform::validate;
-use rustc_mir_dataflow::rustc_peek;
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 

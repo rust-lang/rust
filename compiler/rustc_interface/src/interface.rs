@@ -11,7 +11,6 @@ use rustc_data_structures::sync::Lrc;
 use rustc_errors::registry::Registry;
 use rustc_errors::{DiagCtxt, ErrorGuaranteed};
 use rustc_lint::LintStore;
-
 use rustc_middle::ty;
 use rustc_middle::ty::CurrentGcx;
 use rustc_middle::util::Providers;

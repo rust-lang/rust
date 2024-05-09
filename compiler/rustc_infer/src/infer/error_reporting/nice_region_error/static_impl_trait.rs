@@ -19,10 +19,9 @@ use rustc_hir::{
 use rustc_middle::ty::{
     self, AssocItemContainer, StaticLifetimeVisitor, Ty, TyCtxt, TypeSuperVisitable, TypeVisitor,
 };
+use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
-
-use rustc_span::def_id::LocalDefId;
 
 impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
     /// Print the error message for lifetime errors when the return type is a static `impl Trait`,

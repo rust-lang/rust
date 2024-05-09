@@ -4,7 +4,6 @@ use crate::SPAN_TRACK;
 use crate::{BytePos, SpanData};
 
 use rustc_data_structures::fx::FxIndexSet;
-
 // This code is very hot and uses lots of arithmetic, avoid overflow checks for performance.
 // See https://github.com/rust-lang/rust/pull/119440#issuecomment-1874255727
 use rustc_serialize::int_overflow::DebugStrictAdd;

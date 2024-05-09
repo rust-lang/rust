@@ -1,3 +1,4 @@
+use rustc_ast_ir::Mutability;
 #[cfg(feature = "nightly")]
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 #[cfg(feature = "nightly")]
@@ -11,8 +12,6 @@ use crate::Interner;
 use crate::{DebruijnIndex, DebugWithInfcx, InferCtxtLike, WithInfcx};
 
 use self::TyKind::*;
-
-use rustc_ast_ir::Mutability;
 
 /// Specifies how a trait object is represented.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]

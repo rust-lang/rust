@@ -1,18 +1,18 @@
 use super::metadata::file_metadata;
 use super::utils::DIB;
-use rustc_codegen_ssa::mir::debuginfo::{DebugScope, FunctionDebugContext};
-use rustc_codegen_ssa::traits::*;
 
 use crate::common::CodegenCx;
 use crate::llvm;
 use crate::llvm::debuginfo::{DILocation, DIScope};
+
+use rustc_codegen_ssa::mir::debuginfo::{DebugScope, FunctionDebugContext};
+use rustc_codegen_ssa::traits::*;
+use rustc_index::bit_set::BitSet;
+use rustc_index::Idx;
 use rustc_middle::mir::{Body, SourceScope};
 use rustc_middle::ty::layout::FnAbiOf;
 use rustc_middle::ty::{self, Instance};
 use rustc_session::config::DebugInfo;
-
-use rustc_index::bit_set::BitSet;
-use rustc_index::Idx;
 
 /// Produces DIScope DIEs for each MIR Scope which has variables defined in it.
 // FIXME(eddyb) almost all of this should be in `rustc_codegen_ssa::mir::debuginfo`.

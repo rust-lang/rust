@@ -26,6 +26,7 @@ use rustc_serialize::opaque::MemDecoder;
 use rustc_serialize::{Decodable, Decoder};
 use rustc_session::cstore::{CrateSource, ExternCrate};
 use rustc_session::Session;
+use rustc_span::hygiene::HygieneDecodeContext;
 use rustc_span::symbol::kw;
 use rustc_span::{BytePos, Pos, SpanData, SpanDecoder, SyntaxContext, DUMMY_SP};
 
@@ -35,7 +36,6 @@ use std::path::Path;
 use std::{io, iter, mem};
 
 pub(super) use cstore_impl::provide;
-use rustc_span::hygiene::HygieneDecodeContext;
 
 mod cstore_impl;
 

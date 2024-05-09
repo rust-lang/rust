@@ -9,13 +9,13 @@ use crate::infer::canonical::{
     Canonical, CanonicalTyVarKind, CanonicalVarInfo, CanonicalVarKind, OriginalQueryValues,
 };
 use crate::infer::InferCtxt;
+use rustc_data_structures::fx::FxHashMap;
+use rustc_index::Idx;
 use rustc_middle::bug;
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::GenericArg;
 use rustc_middle::ty::{self, BoundVar, InferConst, List, Ty, TyCtxt, TypeFlags, TypeVisitableExt};
 
-use rustc_data_structures::fx::FxHashMap;
-use rustc_index::Idx;
 use smallvec::SmallVec;
 
 impl<'tcx> InferCtxt<'tcx> {

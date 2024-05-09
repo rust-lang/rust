@@ -1,9 +1,9 @@
 /// Functionality for terminators and helper types that appear in terminators.
-use rustc_hir::LangItem;
 use smallvec::{smallvec, SmallVec};
 
 use super::TerminatorKind;
 use rustc_data_structures::packed::Pu128;
+use rustc_hir::LangItem;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use std::slice;
 

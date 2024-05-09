@@ -5,10 +5,10 @@
 use self::EvaluationResult::*;
 
 use super::{SelectionError, SelectionResult};
-use rustc_errors::ErrorGuaranteed;
 
 use crate::ty;
 
+use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::DefId;
 use rustc_macros::{HashStable, TypeVisitable};
 use rustc_query_system::cache::Cache;

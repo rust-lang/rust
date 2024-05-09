@@ -22,18 +22,17 @@ use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{FieldIdx, VariantIdx, FIRST_VARIANT};
 use rustc_target::spec::abi::{self, Abi};
-use std::assert_matches::debug_assert_matches;
-use std::borrow::Cow;
-use std::iter;
-use std::ops::{ControlFlow, Deref, Range};
-use ty::util::IntTypeExt;
-
 use rustc_type_ir::BoundVar;
 use rustc_type_ir::CollectAndApply;
 use rustc_type_ir::DynKind;
 use rustc_type_ir::TyKind as IrTyKind;
 use rustc_type_ir::TyKind::*;
 use rustc_type_ir::TypeAndMut as IrTypeAndMut;
+use std::assert_matches::debug_assert_matches;
+use std::borrow::Cow;
+use std::iter;
+use std::ops::{ControlFlow, Deref, Range};
+use ty::util::IntTypeExt;
 
 use super::fold::FnMutDelegate;
 use super::GenericParamDefKind;

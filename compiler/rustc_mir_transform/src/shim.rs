@@ -1,16 +1,15 @@
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
+use rustc_index::{Idx, IndexVec};
+use rustc_middle::mir::patch::MirPatch;
 use rustc_middle::mir::*;
 use rustc_middle::query::Providers;
-use rustc_middle::ty::GenericArgs;
-use rustc_middle::ty::{self, CoroutineArgs, EarlyBinder, Ty, TyCtxt};
+use rustc_middle::ty::{self, CoroutineArgs, EarlyBinder, GenericArgs, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
-use rustc_target::abi::{FieldIdx, VariantIdx, FIRST_VARIANT};
-
-use rustc_index::{Idx, IndexVec};
-
+use rustc_mir_dataflow::elaborate_drops::{self, DropElaborator, DropFlagMode, DropStyle};
 use rustc_span::{source_map::Spanned, Span, DUMMY_SP};
+use rustc_target::abi::{FieldIdx, VariantIdx, FIRST_VARIANT};
 use rustc_target::spec::abi::Abi;
 
 use std::fmt;
@@ -20,8 +19,6 @@ use crate::{
     abort_unwinding_calls, add_call_guards, add_moves_for_packed_drops, deref_separator,
     mentioned_items, pass_manager as pm, remove_noop_landing_pads, simplify,
 };
-use rustc_middle::mir::patch::MirPatch;
-use rustc_mir_dataflow::elaborate_drops::{self, DropElaborator, DropFlagMode, DropStyle};
 
 mod async_destructor_ctor;
 
