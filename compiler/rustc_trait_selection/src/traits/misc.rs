@@ -10,7 +10,7 @@ use rustc_infer::infer::canonical::Canonical;
 use rustc_infer::infer::{RegionResolutionError, TyCtxtInferExt};
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::{infer::outlives::env::OutlivesEnvironment, traits::FulfillmentError};
-use rustc_middle::ty::{self, AdtDef, GenericArg, List, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::DUMMY_SP;
 
 use super::outlives_bounds::InferCtxtExt;
@@ -129,7 +129,7 @@ pub fn all_fields_implement_trait<'tcx>(
     param_env: ty::ParamEnv<'tcx>,
     self_type: Ty<'tcx>,
     adt: AdtDef<'tcx>,
-    args: &'tcx List<GenericArg<'tcx>>,
+    args: ty::GenericArgsRef<'tcx>,
     parent_cause: ObligationCause<'tcx>,
     lang_item: LangItem,
 ) -> Result<(), Vec<(&'tcx ty::FieldDef, Ty<'tcx>, InfringingFieldsReason<'tcx>)>> {
