@@ -252,7 +252,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
 
-        euv::ExprUseVisitor::new(
+        let _ = euv::ExprUseVisitor::new(
             &FnCtxt::new(self, self.tcx.param_env(closure_def_id), closure_def_id),
             &mut delegate,
         )

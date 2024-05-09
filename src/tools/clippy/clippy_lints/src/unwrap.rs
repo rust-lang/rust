@@ -256,8 +256,8 @@ impl<'a, 'tcx> UnwrappableVariablesVisitor<'a, 'tcx> {
                 cond.hir_id.owner.def_id,
                 &mut delegate,
             );
-            vis.walk_expr(cond);
-            vis.walk_expr(branch);
+            vis.walk_expr(cond).into_ok();
+            vis.walk_expr(branch).into_ok();
 
             if delegate.is_mutated {
                 // if the variable is mutated, we don't know whether it can be unwrapped.

@@ -65,7 +65,7 @@ fn check_for_mutation(
         body.hir_id.owner.def_id,
         &mut delegate,
     )
-    .walk_expr(body);
+    .walk_expr(body).into_ok();
 
     delegate.mutation_span()
 }

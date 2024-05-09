@@ -830,7 +830,9 @@ pub fn deref_closure_args(cx: &LateContext<'_>, closure: &hir::Expr<'_>) -> Opti
             applicability: Applicability::MachineApplicable,
         };
 
-        ExprUseVisitor::for_clippy(cx, def_id, &mut visitor).consume_body(closure_body);
+        ExprUseVisitor::for_clippy(cx, def_id, &mut visitor)
+            .consume_body(closure_body)
+            .into_ok();
 
         if !visitor.suggestion_start.is_empty() {
             return Some(DerefClosure {
