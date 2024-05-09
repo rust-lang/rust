@@ -3,11 +3,9 @@ use crate::traits::query::evaluate_obligation::InferCtxtExt;
 use crate::traits::{BoundVarReplacer, PlaceholderReplacer};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_infer::infer::at::At;
-use rustc_infer::infer::type_variable::TypeVariableOrigin;
 use rustc_infer::infer::InferCtxt;
 use rustc_infer::traits::TraitEngineExt;
 use rustc_infer::traits::{FulfillmentError, Obligation, TraitEngine};
-use rustc_middle::infer::unify_key::ConstVariableOrigin;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::{self, AliasTy, Ty, TyCtxt, UniverseIndex};
 use rustc_middle::ty::{FallibleTypeFolder, TypeFolder, TypeSuperFoldable};
@@ -74,8 +72,7 @@ impl<'tcx> NormalizationFolder<'_, 'tcx> {
 
         self.depth += 1;
 
-        let new_infer_ty =
-            infcx.next_ty_var(TypeVariableOrigin { param_def_id: None, span: self.at.cause.span });
+        let new_infer_ty = infcx.next_ty_var(self.at.cause.span);
         let obligation = Obligation::new(
             tcx,
             self.at.cause.clone(),
@@ -120,10 +117,7 @@ impl<'tcx> NormalizationFolder<'_, 'tcx> {
 
         self.depth += 1;
 
-        let new_infer_ct = infcx.next_const_var(
-            ty,
-            ConstVariableOrigin { param_def_id: None, span: self.at.cause.span },
-        );
+        let new_infer_ct = infcx.next_const_var(ty, self.at.cause.span);
         let obligation = Obligation::new(
             tcx,
             self.at.cause.clone(),

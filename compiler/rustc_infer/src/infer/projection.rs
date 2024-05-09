@@ -3,7 +3,6 @@ use rustc_middle::ty::{self, Ty};
 
 use crate::traits::{Obligation, PredicateObligation};
 
-use super::type_variable::TypeVariableOrigin;
 use super::InferCtxt;
 
 impl<'tcx> InferCtxt<'tcx> {
@@ -23,10 +22,7 @@ impl<'tcx> InferCtxt<'tcx> {
     ) -> Ty<'tcx> {
         debug_assert!(!self.next_trait_solver());
         let def_id = projection_ty.def_id;
-        let ty_var = self.next_ty_var(TypeVariableOrigin {
-            param_def_id: None,
-            span: self.tcx.def_span(def_id),
-        });
+        let ty_var = self.next_ty_var(self.tcx.def_span(def_id));
         let projection = ty::Binder::dummy(ty::PredicateKind::Clause(ty::ClauseKind::Projection(
             ty::ProjectionPredicate { projection_ty, term: ty_var.into() },
         )));

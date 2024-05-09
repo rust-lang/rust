@@ -31,7 +31,6 @@ use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
 use rustc_hir_analysis::structured_errors::StructuredDiag;
 use rustc_index::IndexVec;
 use rustc_infer::infer::error_reporting::{FailureCode, ObligationCauseExt};
-use rustc_infer::infer::type_variable::TypeVariableOrigin;
 use rustc_infer::infer::TypeTrace;
 use rustc_infer::infer::{DefineOpaqueTypes, InferOk};
 use rustc_middle::traits::ObligationCauseCode::ExprBindingObligation;
@@ -40,7 +39,7 @@ use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::{self, IsSuggestable, Ty, TyCtxt};
 use rustc_session::Session;
 use rustc_span::symbol::{kw, Ident};
-use rustc_span::{sym, BytePos, Span};
+use rustc_span::{sym, BytePos, Span, DUMMY_SP};
 use rustc_trait_selection::traits::{self, ObligationCauseCode, SelectionContext};
 
 use std::iter;
@@ -2180,13 +2179,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         let trait_ref = ty::TraitRef::new(
                             self.tcx,
                             self.tcx.fn_trait_kind_to_def_id(call_kind)?,
-                            [
-                                callee_ty,
-                                self.next_ty_var(TypeVariableOrigin {
-                                    param_def_id: None,
-                                    span: rustc_span::DUMMY_SP,
-                                }),
-                            ],
+                            [callee_ty, self.next_ty_var(DUMMY_SP)],
                         );
                         let obligation = traits::Obligation::new(
                             self.tcx,

@@ -24,7 +24,6 @@ use rustc_hir::is_range_literal;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{CoroutineDesugaring, CoroutineKind, CoroutineSource, Expr, HirId, Node};
 use rustc_infer::infer::error_reporting::TypeErrCtxt;
-use rustc_infer::infer::type_variable::TypeVariableOrigin;
 use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes, InferOk};
 use rustc_macros::extension;
 use rustc_middle::hir::map;
@@ -1893,8 +1892,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 ty::Tuple(inputs) if infcx.tcx.is_fn_trait(trait_ref.def_id) => {
                     infcx.tcx.mk_fn_sig(
                         *inputs,
-                        infcx
-                            .next_ty_var(TypeVariableOrigin { span: DUMMY_SP, param_def_id: None }),
+                        infcx.next_ty_var(DUMMY_SP),
                         false,
                         hir::Unsafety::Normal,
                         abi::Abi::Rust,
@@ -1902,7 +1900,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 }
                 _ => infcx.tcx.mk_fn_sig(
                     [inputs],
-                    infcx.next_ty_var(TypeVariableOrigin { span: DUMMY_SP, param_def_id: None }),
+                    infcx.next_ty_var(DUMMY_SP),
                     false,
                     hir::Unsafety::Normal,
                     abi::Abi::Rust,
@@ -4263,7 +4261,6 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 continue;
             };
 
-            let origin = TypeVariableOrigin { param_def_id: None, span };
             // Make `Self` be equivalent to the type of the call chain
             // expression we're looking at now, so that we can tell what
             // for example `Iterator::Item` is at this point in the chain.
@@ -4277,7 +4274,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             // This will hold the resolved type of the associated type, if the
             // current expression implements the trait that associated type is
             // in. For example, this would be what `Iterator::Item` is here.
-            let ty = self.infcx.next_ty_var(origin);
+            let ty = self.infcx.next_ty_var(span);
             // This corresponds to `<ExprTy as Iterator>::Item = _`.
             let projection = ty::Binder::dummy(ty::PredicateKind::Clause(
                 ty::ClauseKind::Projection(ty::ProjectionPredicate {
