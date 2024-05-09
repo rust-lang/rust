@@ -465,8 +465,9 @@ impl<T: ?Sized> *const T {
     /// If any of the following conditions are violated, the result is Undefined
     /// Behavior:
     ///
-    /// * Both the starting and resulting pointer must be either in bounds or one
-    ///   byte past the end of the same [allocated object].
+    /// * If the computed offset is non-zero, then both the starting and resulting pointer must be
+    ///   either in bounds or one byte past the end of the same [allocated object].
+    ///   (If it is zero, then the function is always well-defined.)
     ///
     /// * The computed offset, **in bytes**, cannot overflow an `isize`.
     ///
@@ -676,11 +677,11 @@ impl<T: ?Sized> *const T {
     /// If any of the following conditions are violated, the result is Undefined
     /// Behavior:
     ///
-    /// * Both `self` and `origin` must be either in bounds or one
-    ///   byte past the end of the same [allocated object].
+    /// * `self` and `origin` must either
     ///
-    /// * Both pointers must be *derived from* a pointer to the same object.
-    ///   (See below for an example.)
+    ///   * both be *derived from* a pointer to the same [allocated object], and the memory range between
+    ///     the two pointers must be either empty or in bounds of that object. (See below for an example.)
+    ///   * or both be derived from an integer literal/constant, and point to the same address.
     ///
     /// * The distance between the pointers, in bytes, must be an exact multiple
     ///   of the size of `T`.
@@ -951,8 +952,9 @@ impl<T: ?Sized> *const T {
     /// If any of the following conditions are violated, the result is Undefined
     /// Behavior:
     ///
-    /// * Both the starting and resulting pointer must be either in bounds or one
-    ///   byte past the end of the same [allocated object].
+    /// * If the computed offset is non-zero, then both the starting and resulting pointer must be
+    ///   either in bounds or one byte past the end of the same [allocated object].
+    ///   (If it is zero, then the function is always well-defined.)
     ///
     /// * The computed offset, **in bytes**, cannot overflow an `isize`.
     ///
@@ -1035,8 +1037,9 @@ impl<T: ?Sized> *const T {
     /// If any of the following conditions are violated, the result is Undefined
     /// Behavior:
     ///
-    /// * Both the starting and resulting pointer must be either in bounds or one
-    ///   byte past the end of the same [allocated object].
+    /// * If the computed offset is non-zero, then both the starting and resulting pointer must be
+    ///   either in bounds or one byte past the end of the same [allocated object].
+    ///   (If it is zero, then the function is always well-defined.)
     ///
     /// * The computed offset cannot exceed `isize::MAX` **bytes**.
     ///
