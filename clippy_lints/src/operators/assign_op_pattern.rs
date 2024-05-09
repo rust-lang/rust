@@ -119,7 +119,7 @@ fn imm_borrows_in_expr(cx: &LateContext<'_>, e: &hir::Expr<'_>) -> HirIdSet {
 
     let mut s = S(HirIdSet::default());
     let v = ExprUseVisitor::for_clippy(cx, e.hir_id.owner.def_id, &mut s);
-    v.consume_expr(e);
+    v.consume_expr(e).into_ok();
     s.0
 }
 
@@ -144,6 +144,6 @@ fn mut_borrows_in_expr(cx: &LateContext<'_>, e: &hir::Expr<'_>) -> HirIdSet {
 
     let mut s = S(HirIdSet::default());
     let v = ExprUseVisitor::for_clippy(cx, e.hir_id.owner.def_id, &mut s);
-    v.consume_expr(e);
+    v.consume_expr(e).into_ok();
     s.0
 }

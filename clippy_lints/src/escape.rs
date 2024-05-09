@@ -104,7 +104,7 @@ impl<'tcx> LateLintPass<'tcx> for BoxedLocal {
             too_large_for_stack: self.too_large_for_stack,
         };
 
-        ExprUseVisitor::for_clippy(cx, fn_def_id, &mut v).consume_body(body);
+        ExprUseVisitor::for_clippy(cx, fn_def_id, &mut v).consume_body(body).into_ok();
 
         for node in v.set {
             span_lint_hir(
