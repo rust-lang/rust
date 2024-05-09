@@ -180,7 +180,10 @@ fn iter_exprs(depth: usize, f: &mut dyn FnMut(P<Expr>)) {
             18 => {
                 let pat =
                     P(Pat { id: DUMMY_NODE_ID, kind: PatKind::Wild, span: DUMMY_SP, tokens: None });
-                iter_exprs(depth - 1, &mut |e| g(ExprKind::Let(pat.clone(), e, DUMMY_SP, None)))
+                iter_exprs(
+                    depth - 1,
+                    &mut |e| g(ExprKind::Let(pat.clone(), e, DUMMY_SP, Recovered::No))
+                )
             }
             _ => panic!("bad counter value in iter_exprs"),
         }

@@ -27,13 +27,12 @@ use rustc_ast::tokenstream::{TokenStream, TokenTree, TokenTreeCursor};
 use rustc_ast::util::case::Case;
 use rustc_ast::{
     self as ast, AnonConst, AttrArgs, AttrArgsEq, AttrId, ByRef, Const, CoroutineKind, DelimArgs,
-    Expr, ExprKind, Extern, HasAttrs, HasTokens, Mutability, StrLit, Unsafe, Visibility,
+    Expr, ExprKind, Extern, HasAttrs, HasTokens, Mutability, Recovered, StrLit, Unsafe, Visibility,
     VisibilityKind, DUMMY_NODE_ID,
 };
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::PResult;
-use rustc_errors::{Applicability, Diag, FatalError, MultiSpan};
+use rustc_errors::{Applicability, Diag, FatalError, MultiSpan, PResult};
 use rustc_session::parse::ParseSess;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
@@ -372,19 +371,6 @@ impl SeqSep {
 pub enum FollowedByType {
     Yes,
     No,
-}
-
-/// Whether a function performed recovery
-#[derive(Copy, Clone, Debug)]
-pub enum Recovered {
-    No,
-    Yes,
-}
-
-impl From<Recovered> for bool {
-    fn from(r: Recovered) -> bool {
-        matches!(r, Recovered::Yes)
-    }
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -856,9 +842,9 @@ impl<'a> Parser<'a> {
                         Ok(Recovered::No) => {
                             self.current_closure.take();
                         }
-                        Ok(Recovered::Yes) => {
+                        Ok(Recovered::Yes(guar)) => {
                             self.current_closure.take();
-                            recovered = Recovered::Yes;
+                            recovered = Recovered::Yes(guar);
                             break;
                         }
                         Err(mut expect_err) => {

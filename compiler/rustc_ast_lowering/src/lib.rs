@@ -1283,7 +1283,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         fields.iter().enumerate().map(|f| this.lower_field_def(f)),
                     );
                     let span = t.span;
-                    let variant_data = hir::VariantData::Struct { fields, recovered: false };
+                    let variant_data =
+                        hir::VariantData::Struct { fields, recovered: ast::Recovered::No };
                     // FIXME: capture the generics from the outer adt.
                     let generics = hir::Generics::empty();
                     let kind = match t.kind {
