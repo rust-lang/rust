@@ -30,8 +30,6 @@ use ty::BorrowKind::ImmBorrow;
 
 use crate::fn_ctxt::FnCtxt;
 
-type McResult<T> = Result<T, ErrorGuaranteed>;
-
 /// This trait defines the callbacks you can expect to receive when
 /// employing the ExprUseVisitor.
 pub trait Delegate<'tcx> {
@@ -219,6 +217,8 @@ impl<'tcx> TypeInformationCtxt<'tcx> for (&LateContext<'tcx>, LocalDefId) {
 /// This is the code that actually walks the tree.
 pub struct ExprUseVisitor<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> {
     cx: Cx,
+    /// We use a `RefCell` here so that delegates can mutate themselves, but we can
+    /// still have calls to our own helper functions.
     delegate: RefCell<D>,
     upvars: Option<&'tcx FxIndexMap<HirId, hir::Upvar>>,
 }
@@ -517,14 +517,14 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         discr: &Expr<'_>,
         discr_place: PlaceWithHirId<'tcx>,
         pats: impl Iterator<Item = &'t hir::Pat<'t>>,
-    ) -> McResult<()> {
+    ) -> Result<(), ErrorGuaranteed> {
         // Matching should not always be considered a use of the place, hence
         // discr does not necessarily need to be borrowed.
         // We only want to borrow discr if the pattern contain something other
         // than wildcards.
         let mut needs_to_be_read = false;
         for pat in pats {
-            self.cat_pattern(discr_place.clone(), pat, |place, pat| {
+            self.cat_pattern(discr_place.clone(), pat, &mut |place, pat| {
                 match &pat.kind {
                     PatKind::Binding(.., opt_sub_pat) => {
                         // If the opt_sub_pat is None, then the binding does not count as
@@ -836,7 +836,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         debug!("walk_pat(discr_place={:?}, pat={:?}, has_guard={:?})", discr_place, pat, has_guard);
 
         let tcx = self.cx.tcx();
-        return_if_err!(self.cat_pattern(discr_place.clone(), pat, |place, pat| {
+        return_if_err!(self.cat_pattern(discr_place.clone(), pat, &mut |place, pat| {
             if let PatKind::Binding(_, canonical_id, ..) = pat.kind {
                 debug!("walk_pat: binding place={:?} pat={:?}", place, pat);
                 if let Some(bm) =
@@ -1021,8 +1021,61 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
             }
         }
     }
+}
 
-    fn resolve_type_vars_or_error(&self, id: HirId, ty: Option<Ty<'tcx>>) -> McResult<Ty<'tcx>> {
+/// The job of the categorization methods is to analyze an expression to
+/// determine what kind of memory is used in evaluating it (for example,
+/// where dereferences occur and what kind of pointer is dereferenced;
+/// whether the memory is mutable, etc.).
+///
+/// Categorization effectively transforms all of our expressions into
+/// expressions of the following forms (the actual enum has many more
+/// possibilities, naturally, but they are all variants of these base
+/// forms):
+/// ```ignore (not-rust)
+/// E = rvalue    // some computed rvalue
+///   | x         // address of a local variable or argument
+///   | *E        // deref of a ptr
+///   | E.comp    // access to an interior component
+/// ```
+/// Imagine a routine ToAddr(Expr) that evaluates an expression and returns an
+/// address where the result is to be found. If Expr is a place, then this
+/// is the address of the place. If `Expr` is an rvalue, this is the address of
+/// some temporary spot in memory where the result is stored.
+///
+/// Now, `cat_expr()` classifies the expression `Expr` and the address `A = ToAddr(Expr)`
+/// as follows:
+///
+/// - `cat`: what kind of expression was this? This is a subset of the
+///   full expression forms which only includes those that we care about
+///   for the purpose of the analysis.
+/// - `mutbl`: mutability of the address `A`.
+/// - `ty`: the type of data found at the address `A`.
+///
+/// The resulting categorization tree differs somewhat from the expressions
+/// themselves. For example, auto-derefs are explicit. Also, an index `a[b]` is
+/// decomposed into two operations: a dereference to reach the array data and
+/// then an index to jump forward to the relevant item.
+///
+/// ## By-reference upvars
+///
+/// One part of the codegen which may be non-obvious is that we translate
+/// closure upvars into the dereference of a borrowed pointer; this more closely
+/// resembles the runtime codegen. So, for example, if we had:
+///
+///     let mut x = 3;
+///     let y = 5;
+///     let inc = || x += y;
+///
+/// Then when we categorize `x` (*within* the closure) we would yield a
+/// result of `*x'`, effectively, where `x'` is a `Categorization::Upvar` reference
+/// tied to `x`. The type of `x'` will be a borrowed pointer.
+impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx, Cx, D> {
+    fn resolve_type_vars_or_error(
+        &self,
+        id: HirId,
+        ty: Option<Ty<'tcx>>,
+    ) -> Result<Ty<'tcx>, ErrorGuaranteed> {
         match ty {
             Some(ty) => {
                 let ty = self.cx.resolve_vars_if_possible(ty);
@@ -1051,15 +1104,15 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         }
     }
 
-    fn node_ty(&self, hir_id: HirId) -> McResult<Ty<'tcx>> {
+    fn node_ty(&self, hir_id: HirId) -> Result<Ty<'tcx>, ErrorGuaranteed> {
         self.resolve_type_vars_or_error(hir_id, self.cx.typeck_results().node_type_opt(hir_id))
     }
 
-    fn expr_ty(&self, expr: &hir::Expr<'_>) -> McResult<Ty<'tcx>> {
+    fn expr_ty(&self, expr: &hir::Expr<'_>) -> Result<Ty<'tcx>, ErrorGuaranteed> {
         self.resolve_type_vars_or_error(expr.hir_id, self.cx.typeck_results().expr_ty_opt(expr))
     }
 
-    fn expr_ty_adjusted(&self, expr: &hir::Expr<'_>) -> McResult<Ty<'tcx>> {
+    fn expr_ty_adjusted(&self, expr: &hir::Expr<'_>) -> Result<Ty<'tcx>, ErrorGuaranteed> {
         self.resolve_type_vars_or_error(
             expr.hir_id,
             self.cx.typeck_results().expr_ty_adjusted_opt(expr),
@@ -1076,7 +1129,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
     ///   implicit deref patterns attached (e.g., it is really
     ///   `&Some(x)`). In that case, we return the "outermost" type
     ///   (e.g., `&Option<T>`).
-    fn pat_ty_adjusted(&self, pat: &hir::Pat<'_>) -> McResult<Ty<'tcx>> {
+    fn pat_ty_adjusted(&self, pat: &hir::Pat<'_>) -> Result<Ty<'tcx>, ErrorGuaranteed> {
         // Check for implicit `&` types wrapping the pattern; note
         // that these are never attached to binding patterns, so
         // actually this is somewhat "disjoint" from the code below
@@ -1091,8 +1144,8 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         self.pat_ty_unadjusted(pat)
     }
 
-    /// Like `pat_ty`, but ignores implicit `&` patterns.
-    fn pat_ty_unadjusted(&self, pat: &hir::Pat<'_>) -> McResult<Ty<'tcx>> {
+    /// Like `TypeckResults::pat_ty`, but ignores implicit `&` patterns.
+    fn pat_ty_unadjusted(&self, pat: &hir::Pat<'_>) -> Result<Ty<'tcx>, ErrorGuaranteed> {
         let base_ty = self.node_ty(pat.hir_id)?;
         trace!(?base_ty);
 
@@ -1134,7 +1187,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         }
     }
 
-    fn cat_expr(&self, expr: &hir::Expr<'_>) -> McResult<PlaceWithHirId<'tcx>> {
+    fn cat_expr(&self, expr: &hir::Expr<'_>) -> Result<PlaceWithHirId<'tcx>, ErrorGuaranteed> {
         self.cat_expr_(expr, self.cx.typeck_results().expr_adjustments(expr))
     }
 
@@ -1144,7 +1197,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         &self,
         expr: &hir::Expr<'_>,
         adjustments: &[adjustment::Adjustment<'tcx>],
-    ) -> McResult<PlaceWithHirId<'tcx>> {
+    ) -> Result<PlaceWithHirId<'tcx>, ErrorGuaranteed> {
         match adjustments.split_last() {
             None => self.cat_expr_unadjusted(expr),
             Some((adjustment, previous)) => {
@@ -1158,7 +1211,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         expr: &hir::Expr<'_>,
         previous: PlaceWithHirId<'tcx>,
         adjustment: &adjustment::Adjustment<'tcx>,
-    ) -> McResult<PlaceWithHirId<'tcx>> {
+    ) -> Result<PlaceWithHirId<'tcx>, ErrorGuaranteed> {
         self.cat_expr_adjusted_with(expr, || Ok(previous), adjustment)
     }
 
@@ -1167,9 +1220,9 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         expr: &hir::Expr<'_>,
         previous: F,
         adjustment: &adjustment::Adjustment<'tcx>,
-    ) -> McResult<PlaceWithHirId<'tcx>>
+    ) -> Result<PlaceWithHirId<'tcx>, ErrorGuaranteed>
     where
-        F: FnOnce() -> McResult<PlaceWithHirId<'tcx>>,
+        F: FnOnce() -> Result<PlaceWithHirId<'tcx>, ErrorGuaranteed>,
     {
         let target = self.cx.resolve_vars_if_possible(adjustment.target);
         match adjustment.kind {
@@ -1194,7 +1247,10 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         }
     }
 
-    fn cat_expr_unadjusted(&self, expr: &hir::Expr<'_>) -> McResult<PlaceWithHirId<'tcx>> {
+    fn cat_expr_unadjusted(
+        &self,
+        expr: &hir::Expr<'_>,
+    ) -> Result<PlaceWithHirId<'tcx>, ErrorGuaranteed> {
         let expr_ty = self.expr_ty(expr)?;
         match expr.kind {
             hir::ExprKind::Unary(hir::UnOp::Deref, e_base) => {
@@ -1285,7 +1341,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         span: Span,
         expr_ty: Ty<'tcx>,
         res: Res,
-    ) -> McResult<PlaceWithHirId<'tcx>> {
+    ) -> Result<PlaceWithHirId<'tcx>, ErrorGuaranteed> {
         match res {
             Res::Def(
                 DefKind::Ctor(..)
@@ -1319,7 +1375,11 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
     /// Note: the actual upvar access contains invisible derefs of closure
     /// environment and upvar reference as appropriate. Only regionck cares
     /// about these dereferences, so we let it compute them as needed.
-    fn cat_upvar(&self, hir_id: HirId, var_id: HirId) -> McResult<PlaceWithHirId<'tcx>> {
+    fn cat_upvar(
+        &self,
+        hir_id: HirId,
+        var_id: HirId,
+    ) -> Result<PlaceWithHirId<'tcx>, ErrorGuaranteed> {
         let closure_expr_def_id = self.cx.body_owner_def_id();
 
         let upvar_id = ty::UpvarId {
@@ -1368,7 +1428,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         &self,
         expr: &hir::Expr<'_>,
         base: &hir::Expr<'_>,
-    ) -> McResult<PlaceWithHirId<'tcx>> {
+    ) -> Result<PlaceWithHirId<'tcx>, ErrorGuaranteed> {
         // Reconstruct the output assuming it's a reference with the
         // same region and mutability as the receiver. This holds for
         // `Deref(Mut)::Deref(_mut)` and `Index(Mut)::index(_mut)`.
@@ -1390,7 +1450,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         &self,
         node: HirId,
         base_place: PlaceWithHirId<'tcx>,
-    ) -> McResult<PlaceWithHirId<'tcx>> {
+    ) -> Result<PlaceWithHirId<'tcx>, ErrorGuaranteed> {
         let base_curr_ty = base_place.place.ty();
         let deref_ty = match self
             .cx
@@ -1415,18 +1475,6 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         Ok(PlaceWithHirId::new(node, base_place.place.base_ty, base_place.place.base, projections))
     }
 
-    fn cat_pattern<F>(
-        &self,
-        place: PlaceWithHirId<'tcx>,
-        pat: &hir::Pat<'_>,
-        mut op: F,
-    ) -> McResult<()>
-    where
-        F: FnMut(&PlaceWithHirId<'tcx>, &hir::Pat<'_>),
-    {
-        self.cat_pattern_(place, pat, &mut op)
-    }
-
     /// Returns the variant index for an ADT used within a Struct or TupleStruct pattern
     /// Here `pat_hir_id` is the HirId of the pattern itself.
     fn variant_index_for_adt(
@@ -1434,7 +1482,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         qpath: &hir::QPath<'_>,
         pat_hir_id: HirId,
         span: Span,
-    ) -> McResult<VariantIdx> {
+    ) -> Result<VariantIdx, ErrorGuaranteed> {
         let res = self.cx.typeck_results().qpath_res(qpath, pat_hir_id);
         let ty = self.cx.typeck_results().node_type(pat_hir_id);
         let ty::Adt(adt_def, _) = self.cx.try_structurally_resolve_type(span, ty).kind() else {
@@ -1469,7 +1517,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         pat_hir_id: HirId,
         variant_index: VariantIdx,
         span: Span,
-    ) -> McResult<usize> {
+    ) -> Result<usize, ErrorGuaranteed> {
         let ty = self.cx.typeck_results().node_type(pat_hir_id);
         match self.cx.try_structurally_resolve_type(span, ty).kind() {
             ty::Adt(adt_def, _) => Ok(adt_def.variant(variant_index).fields.len()),
@@ -1484,7 +1532,11 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
 
     /// Returns the total number of fields in a tuple used within a Tuple pattern.
     /// Here `pat_hir_id` is the HirId of the pattern itself.
-    fn total_fields_in_tuple(&self, pat_hir_id: HirId, span: Span) -> McResult<usize> {
+    fn total_fields_in_tuple(
+        &self,
+        pat_hir_id: HirId,
+        span: Span,
+    ) -> Result<usize, ErrorGuaranteed> {
         let ty = self.cx.typeck_results().node_type(pat_hir_id);
         match self.cx.try_structurally_resolve_type(span, ty).kind() {
             ty::Tuple(args) => Ok(args.len()),
@@ -1502,12 +1554,12 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
     /// In general, the way that this works is that we walk down the pattern,
     /// constructing a `PlaceWithHirId` that represents the path that will be taken
     /// to reach the value being matched.
-    fn cat_pattern_<F>(
+    fn cat_pattern<F>(
         &self,
         mut place_with_id: PlaceWithHirId<'tcx>,
         pat: &hir::Pat<'_>,
         op: &mut F,
-    ) -> McResult<()>
+    ) -> Result<(), ErrorGuaranteed>
     where
         F: FnMut(&PlaceWithHirId<'tcx>, &hir::Pat<'_>),
     {
@@ -1578,7 +1630,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                         subpat_ty,
                         projection_kind,
                     );
-                    self.cat_pattern_(sub_place, subpat, op)?;
+                    self.cat_pattern(sub_place, subpat, op)?;
                 }
             }
 
@@ -1598,7 +1650,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                         subpat_ty,
                         projection_kind,
                     );
-                    self.cat_pattern_(sub_place, subpat, op)?;
+                    self.cat_pattern(sub_place, subpat, op)?;
                 }
             }
 
@@ -1623,18 +1675,18 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                         field_ty,
                         ProjectionKind::Field(field_index, variant_index),
                     );
-                    self.cat_pattern_(field_place, fp.pat, op)?;
+                    self.cat_pattern(field_place, fp.pat, op)?;
                 }
             }
 
             PatKind::Or(pats) => {
                 for pat in pats {
-                    self.cat_pattern_(place_with_id.clone(), pat, op)?;
+                    self.cat_pattern(place_with_id.clone(), pat, op)?;
                 }
             }
 
             PatKind::Binding(.., Some(subpat)) => {
-                self.cat_pattern_(place_with_id, subpat, op)?;
+                self.cat_pattern(place_with_id, subpat, op)?;
             }
 
             PatKind::Box(subpat) | PatKind::Ref(subpat, _) => {
@@ -1642,7 +1694,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                 // PatKind::Ref since that information is already contained
                 // in the type.
                 let subplace = self.cat_deref(pat.hir_id, place_with_id)?;
-                self.cat_pattern_(subplace, subpat, op)?;
+                self.cat_pattern(subplace, subpat, op)?;
             }
             PatKind::Deref(subpat) => {
                 let mutable = self.cx.typeck_results().pat_has_ref_mut_binding(subpat);
@@ -1652,7 +1704,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                 let ty = Ty::new_ref(self.cx.tcx(), re_erased, ty, mutability);
                 // A deref pattern generates a temporary.
                 let place = self.cat_rvalue(pat.hir_id, ty);
-                self.cat_pattern_(place, subpat, op)?;
+                self.cat_pattern(place, subpat, op)?;
             }
 
             PatKind::Slice(before, ref slice, after) => {
@@ -1671,7 +1723,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                     ProjectionKind::Index,
                 );
                 for before_pat in before {
-                    self.cat_pattern_(elt_place.clone(), before_pat, op)?;
+                    self.cat_pattern(elt_place.clone(), before_pat, op)?;
                 }
                 if let Some(slice_pat) = *slice {
                     let slice_pat_ty = self.pat_ty_adjusted(slice_pat)?;
@@ -1681,10 +1733,10 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                         slice_pat_ty,
                         ProjectionKind::Subslice,
                     );
-                    self.cat_pattern_(slice_place, slice_pat, op)?;
+                    self.cat_pattern(slice_place, slice_pat, op)?;
                 }
                 for after_pat in after {
-                    self.cat_pattern_(elt_place.clone(), after_pat, op)?;
+                    self.cat_pattern(elt_place.clone(), after_pat, op)?;
                 }
             }
 
