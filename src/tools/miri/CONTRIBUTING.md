@@ -72,14 +72,14 @@ For example:
 
 You can (cross-)run the entire test suite using:
 
-```
+```sh
 ./miri test
-MIRI_TEST_TARGET=i686-unknown-linux-gnu ./miri test
+./miri test --target i686-unknown-linux-gnu
 ```
 
 `./miri test FILTER` only runs those tests that contain `FILTER` in their filename (including the
-base directory, e.g. `./miri test fail` will run all compile-fail tests). These filters are passed
-to `cargo test`, so for multiple filters you need to use `./miri test -- FILTER1 FILTER2`.
+base directory, e.g. `./miri test fail` will run all compile-fail tests). Multiple filters 
+are supported: `./miri test FILTER1 FILTER2`.
 
 #### Fine grained logging
 

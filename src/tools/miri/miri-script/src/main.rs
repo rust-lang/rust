@@ -33,6 +33,9 @@ pub enum Command {
         bless: bool,
         /// Flags that are passed through to `cargo test`.
         flags: Vec<OsString>,
+        /// The cross-interpretation target.
+        /// If none then the host is the target.
+        target: Option<String>,
     },
     /// Build miri, set up a sysroot and then run the driver with the given <flags>.
     /// (Also respects MIRIFLAGS environment variable.)
@@ -84,9 +87,9 @@ Just build miri. <flags> are passed to `cargo build`.
 ./miri check <flags>:
 Just check miri. <flags> are passed to `cargo check`.
 
-./miri test [--bless] <flags>:
+./miri test [--bless] [--target <target>] <flags>:
 Build miri, set up a sysroot and then run the test suite. <flags> are passed
-to the final `cargo test` invocation.
+to the test harness.
 
 ./miri run [--dep] [-v|--verbose] [--many-seeds|--many-seeds=..to|--many-seeds=from..to] <flags>:
 Build miri, set up a sysroot and then run the driver with the given <flags>.
@@ -147,12 +150,38 @@ fn main() -> Result<()> {
         Some("build") => Command::Build { flags: args.collect() },
         Some("check") => Command::Check { flags: args.collect() },
         Some("test") => {
-            let bless = args.peek().is_some_and(|a| a.to_str() == Some("--bless"));
-            if bless {
-                // Consume the flag.
+            let mut target = std::env::var("MIRI_TEST_TARGET").ok();
+            let mut bless = false;
+
+            while let Some(arg) = args.peek().and_then(|s| s.to_str()) {
+                match arg {
+                    "--bless" => bless = true,
+                    "--target" => {
+                        // Skip "--target"
+                        args.next().unwrap();
+
+                        // Check that there is a target triple, and that it is unicode.
+                        target = if let Some(value) = args.peek() {
+                            let target_str = value
+                                .clone()
+                                .into_string()
+                                .map_err(|_| anyhow!("target triple is not UTF-8"))?;
+                            Some(target_str)
+                        } else {
+                            bail!("no target triple found")
+                        }
+                    }
+                    // Only parse the leading flags.
+                    _ => break,
+                }
+
+                // Consume the flag, look at the next one.
                 args.next().unwrap();
             }
-            Command::Test { bless, flags: args.collect() }
+
+            // Prepend a "--" so that the rest of the arguments are passed to the test driver.
+            let args = std::iter::once(OsString::from("--")).chain(args);
+            Command::Test { bless, flags: args.collect(), target }
         }
         Some("run") => {
             let mut dep = false;

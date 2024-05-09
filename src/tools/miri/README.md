@@ -464,7 +464,7 @@ by all intended entry points, i.e. `cargo miri` and `./miri {test,run}`):
   setup -- only set this if you do not want to use the automatically created sysroot. When invoking
   `cargo miri setup`, this indicates where the sysroot will be put.
 * `MIRI_TEST_TARGET` (recognized by `./miri {test,run}`) indicates which target
-  architecture to test against.  `miri` and `cargo miri` accept the `--target` flag for the same
+  architecture to test against.  The `--target` flag may be used for the same
   purpose.
 * `MIRI_TEST_THREADS` (recognized by `./miri test`): set the number of threads to use for running tests.
   By default, the number of cores is used.
