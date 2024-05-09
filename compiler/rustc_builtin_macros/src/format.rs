@@ -315,7 +315,7 @@ fn make_format_args(
 
     let mut used = vec![false; args.explicit_args().len()];
     let mut invalid_refs = Vec::new();
-    let mut numeric_refences_to_named_arg = Vec::new();
+    let mut numeric_references_to_named_arg = Vec::new();
 
     enum ArgRef<'a> {
         Index(usize),
@@ -336,7 +336,7 @@ fn make_format_args(
                     used[index] = true;
                     if arg.kind.ident().is_some() {
                         // This was a named argument, but it was used as a positional argument.
-                        numeric_refences_to_named_arg.push((index, span, used_as));
+                        numeric_references_to_named_arg.push((index, span, used_as));
                     }
                     Ok(index)
                 } else {
@@ -544,7 +544,7 @@ fn make_format_args(
     // Only check for unused named argument names if there are no other errors to avoid causing
     // too much noise in output errors, such as when a named argument is entirely unused.
     if invalid_refs.is_empty() && !has_unused && !unnamed_arg_after_named_arg {
-        for &(index, span, used_as) in &numeric_refences_to_named_arg {
+        for &(index, span, used_as) in &numeric_references_to_named_arg {
             let (position_sp_to_replace, position_sp_for_msg) = match used_as {
                 Placeholder(pspan) => (span, pspan),
                 Precision => {

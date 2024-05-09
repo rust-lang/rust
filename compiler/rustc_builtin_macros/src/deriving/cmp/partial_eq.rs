@@ -31,7 +31,7 @@ pub(crate) fn expand_deriving_partial_eq(
                     };
 
                     // We received arguments of type `&T`. Convert them to type `T` by stripping
-                    // any leading `&` or adding `*`. This isn't necessary for type checking, but
+                    // any leading `&`. This isn't necessary for type checking, but
                     // it results in better error messages if something goes wrong.
                     //
                     // Note: for arguments that look like `&{ x }`, which occur with packed
@@ -53,8 +53,7 @@ pub(crate) fn expand_deriving_partial_eq(
                                 inner.clone()
                             }
                         } else {
-                            // No leading `&`: add a leading `*`.
-                            cx.expr_deref(field.span, expr.clone())
+                            expr.clone()
                         }
                     };
                     cx.expr_binary(
