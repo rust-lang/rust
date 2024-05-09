@@ -13,7 +13,7 @@ use rustc_span::hygiene::DesugaringKind;
 use rustc_span::{BytePos, Span};
 
 use crate::errors::{
-    BreakInsideAsyncBlock, BreakInsideClosure, BreakNonLoop, ContinueLabeledBlock, OutsideLoop,
+    BreakInsideClosure, BreakInsideCoroutine, BreakNonLoop, ContinueLabeledBlock, OutsideLoop,
     OutsideLoopSuggestion, UnlabeledCfInWhileCondition, UnlabeledInLabeledBlock,
 };
 
@@ -23,7 +23,7 @@ enum Context {
     Fn,
     Loop(hir::LoopSource),
     Closure(Span),
-    AsyncClosure(Span),
+    Coroutine { coroutine_span: Span, kind: hir::CoroutineDesugaring, source: hir::CoroutineSource },
     UnlabeledBlock(Span),
     LabeledBlock,
     Constant,
@@ -89,12 +89,10 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
             hir::ExprKind::Closure(&hir::Closure {
                 ref fn_decl, body, fn_decl_span, kind, ..
             }) => {
-                // FIXME(coroutines): This doesn't handle coroutines correctly
                 let cx = match kind {
-                    hir::ClosureKind::Coroutine(hir::CoroutineKind::Desugared(
-                        hir::CoroutineDesugaring::Async,
-                        hir::CoroutineSource::Block,
-                    )) => AsyncClosure(fn_decl_span),
+                    hir::ClosureKind::Coroutine(hir::CoroutineKind::Desugared(kind, source)) => {
+                        Coroutine { coroutine_span: fn_decl_span, kind, source }
+                    }
                     _ => Closure(fn_decl_span),
                 };
                 self.visit_fn_decl(fn_decl);
@@ -227,8 +225,24 @@ impl<'a, 'hir> CheckLoopVisitor<'a, 'hir> {
             Closure(closure_span) => {
                 self.sess.dcx().emit_err(BreakInsideClosure { span, closure_span, name });
             }
-            AsyncClosure(closure_span) => {
-                self.sess.dcx().emit_err(BreakInsideAsyncBlock { span, closure_span, name });
+            Coroutine { coroutine_span, kind, source } => {
+                let kind = match kind {
+                    hir::CoroutineDesugaring::Async => "async",
+                    hir::CoroutineDesugaring::Gen => "gen",
+                    hir::CoroutineDesugaring::AsyncGen => "async gen",
+                };
+                let source = match source {
+                    hir::CoroutineSource::Block => "block",
+                    hir::CoroutineSource::Closure => "closure",
+                    hir::CoroutineSource::Fn => "function",
+                };
+                self.sess.dcx().emit_err(BreakInsideCoroutine {
+                    span,
+                    coroutine_span,
+                    name,
+                    kind,
+                    source,
+                });
             }
             UnlabeledBlock(block_span) if is_break && block_span.eq_ctxt(break_span) => {
                 let suggestion = Some(OutsideLoopSuggestion { block_span, break_span });
