@@ -56,7 +56,7 @@ jobs:
       - name: install the bootstrap toolchain
         run: |
           # Extract the stage0 version
-          TOOLCHAIN=$(jq -r '.compiler | {version,date} | join("-")' -- src/stage0.json)
+          TOOLCHAIN=$(awk -F= '{a[$1]=$2} END {print(a["compiler_version"] "-" a["compiler_date"])}' src/stage0)
           # Install and set as default
           rustup toolchain install --no-self-update --profile minimal $TOOLCHAIN
           rustup default $TOOLCHAIN
