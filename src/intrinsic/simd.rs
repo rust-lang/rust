@@ -434,6 +434,141 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         return Ok(bx.vector_select(args[0].immediate(), args[1].immediate(), args[2].immediate()));
     }
 
+    if name == sym::simd_cast_ptr {
+        require_simd!(ret_ty, InvalidMonomorphization::SimdReturn { span, name, ty: ret_ty });
+        let (out_len, out_elem) = ret_ty.simd_size_and_type(bx.tcx());
+
+        require!(
+            in_len == out_len,
+            InvalidMonomorphization::ReturnLengthInputType {
+                span,
+                name,
+                in_len,
+                in_ty,
+                ret_ty,
+                out_len
+            }
+        );
+
+        match *in_elem.kind() {
+            ty::RawPtr(p) => {
+                let metadata = p.ty.ptr_metadata_ty(bx.tcx, |ty| {
+                    bx.tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), ty)
+                });
+                require!(
+                    metadata.is_unit(),
+                    InvalidMonomorphization::CastFatPointer { span, name, ty: in_elem }
+                );
+            }
+            _ => {
+                return_error!(InvalidMonomorphization::ExpectedPointer { span, name, ty: in_elem })
+            }
+        }
+        match *out_elem.kind() {
+            ty::RawPtr(p) => {
+                let metadata = p.ty.ptr_metadata_ty(bx.tcx, |ty| {
+                    bx.tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), ty)
+                });
+                require!(
+                    metadata.is_unit(),
+                    InvalidMonomorphization::CastFatPointer { span, name, ty: out_elem }
+                );
+            }
+            _ => {
+                return_error!(InvalidMonomorphization::ExpectedPointer { span, name, ty: out_elem })
+            }
+        }
+
+        let arg = args[0].immediate();
+        let elem_type = llret_ty.dyncast_vector().expect("vector return type").get_element_type();
+        let values: Vec<_> = (0..in_len)
+            .map(|i| {
+                let idx = bx.gcc_int(bx.usize_type, i as _);
+                let value = bx.extract_element(arg, idx);
+                bx.pointercast(value, elem_type)
+            })
+            .collect();
+        return Ok(bx.context.new_rvalue_from_vector(bx.location, llret_ty, &values));
+    }
+
+    if name == sym::simd_expose_addr {
+        require_simd!(ret_ty, InvalidMonomorphization::SimdReturn { span, name, ty: ret_ty });
+        let (out_len, out_elem) = ret_ty.simd_size_and_type(bx.tcx());
+
+        require!(
+            in_len == out_len,
+            InvalidMonomorphization::ReturnLengthInputType {
+                span,
+                name,
+                in_len,
+                in_ty,
+                ret_ty,
+                out_len
+            }
+        );
+
+        match *in_elem.kind() {
+            ty::RawPtr(_) => {}
+            _ => {
+                return_error!(InvalidMonomorphization::ExpectedPointer { span, name, ty: in_elem })
+            }
+        }
+        match *out_elem.kind() {
+            ty::Uint(ty::UintTy::Usize) => {}
+            _ => return_error!(InvalidMonomorphization::ExpectedUsize { span, name, ty: out_elem }),
+        }
+
+        let arg = args[0].immediate();
+        let elem_type = llret_ty.dyncast_vector().expect("vector return type").get_element_type();
+        let values: Vec<_> = (0..in_len)
+            .map(|i| {
+                let idx = bx.gcc_int(bx.usize_type, i as _);
+                let value = bx.extract_element(arg, idx);
+                bx.ptrtoint(value, elem_type)
+            })
+            .collect();
+        return Ok(bx.context.new_rvalue_from_vector(bx.location, llret_ty, &values));
+    }
+
+    if name == sym::simd_from_exposed_addr {
+        require_simd!(ret_ty, InvalidMonomorphization::SimdReturn { span, name, ty: ret_ty });
+        let (out_len, out_elem) = ret_ty.simd_size_and_type(bx.tcx());
+
+        require!(
+            in_len == out_len,
+            InvalidMonomorphization::ReturnLengthInputType {
+                span,
+                name,
+                in_len,
+                in_ty,
+                ret_ty,
+                out_len
+            }
+        );
+
+        match *in_elem.kind() {
+            ty::Uint(ty::UintTy::Usize) => {}
+            _ => return_error!(InvalidMonomorphization::ExpectedUsize { span, name, ty: in_elem }),
+        }
+        match *out_elem.kind() {
+            ty::RawPtr(_) => {}
+            _ => {
+                return_error!(InvalidMonomorphization::ExpectedPointer { span, name, ty: out_elem })
+            }
+        }
+
+        let arg = args[0].immediate();
+        let elem_type = llret_ty.dyncast_vector().expect("vector return type").get_element_type();
+        let values: Vec<_> = (0..in_len)
+            .map(|i| {
+                let idx = bx.gcc_int(bx.usize_type, i as _);
+                let value = bx.extract_element(arg, idx);
+                bx.inttoptr(value, elem_type)
+            })
+            .collect();
+        return Ok(bx.context.new_rvalue_from_vector(bx.location, llret_ty, &values));
+    }
+
     #[cfg(feature = "master")]
     if name == sym::simd_cast || name == sym::simd_as {
         require_simd!(ret_ty, InvalidMonomorphization::SimdReturn { span, name, ty: ret_ty });

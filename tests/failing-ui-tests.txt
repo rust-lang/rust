@@ -33,7 +33,6 @@ tests/ui/panic-runtime/abort.rs
 tests/ui/panic-runtime/link-to-abort.rs
 tests/ui/unwind-no-uwtable.rs
 tests/ui/parser/unclosed-delimiter-in-dep.rs
-tests/ui/simd/intrinsic/ptr-cast.rs
 tests/ui/consts/missing_span_in_backtrace.rs
 tests/ui/drop/dynamic-drop.rs
 tests/ui/issues/issue-40883.rs
