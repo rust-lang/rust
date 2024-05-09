@@ -52,6 +52,8 @@ jobs:
       - name: Checkout the source code
         uses: actions/checkout@v4
       - name: Calculate the CI job matrix
+        env:
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
         run: python3 src/ci/github-actions/calculate-job-matrix.py >> $GITHUB_OUTPUT
         id: jobs
   job:
@@ -75,14 +77,6 @@ jobs:
       matrix:
         # Check the `calculate_matrix` job to see how is the matrix defined.
         include: ${{ fromJSON(needs.calculate_matrix.outputs.jobs) }}
-    # GitHub Actions fails the workflow if an empty list of jobs is provided to
-    # the workflow, so we need to skip this job if nothing was produced by
-    # the Python script.
-    #
-    # Unfortunately checking whether a list is empty is not possible in a nice
-    # way due to GitHub Actions expressions limits.
-    # This hack is taken from https://github.com/ferrocene/ferrocene/blob/d43edc6b7697cf1719ec1c17c54904ab94825763/.github/workflows/release.yml#L75-L82
-    if: fromJSON(needs.calculate_matrix.outputs.jobs)[0] != null
     steps:
       - if: contains(matrix.os, 'windows')
         uses: msys2/setup-msys2@v2.22.0
