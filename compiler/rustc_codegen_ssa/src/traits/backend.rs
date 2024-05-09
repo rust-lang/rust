@@ -1,4 +1,5 @@
 use std::any::Any;
+use std::fmt;
 
 use super::write::WriteBackendMethods;
 use super::CodegenObject;
@@ -21,8 +22,6 @@ use rustc_session::{
 };
 use rustc_span::symbol::Symbol;
 use rustc_target::abi::call::FnAbi;
-
-use std::fmt;
 
 pub trait BackendTypes {
     type Value: CodegenObject;

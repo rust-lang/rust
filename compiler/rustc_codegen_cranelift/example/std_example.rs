@@ -14,6 +14,7 @@
 use std::arch::x86_64::*;
 use std::hint::black_box;
 use std::io::Write;
+use std::mem::transmute;
 use std::ops::Coroutine;
 
 fn main() {
@@ -185,8 +186,6 @@ fn main() {
 fn panic(_: u128) {
     panic!();
 }
-
-use std::mem::transmute;
 
 #[cfg(target_pointer_width = "32")]
 type TwoPtrs = i64;
