@@ -2331,7 +2331,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn mk_args_from_iter<I, T>(self, iter: I) -> T::Output
     where
         I: Iterator<Item = T>,
-        T: CollectAndApply<GenericArg<'tcx>, &'tcx List<GenericArg<'tcx>>>,
+        T: CollectAndApply<GenericArg<'tcx>, ty::GenericArgsRef<'tcx>>,
     {
         T::collect_and_apply(iter, |xs| self.mk_args(xs))
     }

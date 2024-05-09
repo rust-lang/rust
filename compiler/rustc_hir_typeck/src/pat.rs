@@ -1676,7 +1676,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         unmentioned_fields: &mut Vec<(&'tcx ty::FieldDef, Ident)>,
         pat: &'tcx Pat<'tcx>,
         variant: &ty::VariantDef,
-        args: &'tcx ty::List<ty::GenericArg<'tcx>>,
+        args: ty::GenericArgsRef<'tcx>,
     ) -> Diag<'tcx> {
         let tcx = self.tcx;
         let (field_names, t, plural) = if let [field] = inexistent_fields {
