@@ -549,6 +549,7 @@ impl<'hir> Map<'hir> {
                     Node::Block(Block { expr: None, .. }) => return None,
                     // The current node is not the tail expression of its parent.
                     Node::Block(Block { expr: Some(e), .. }) if hir_id != e.hir_id => return None,
+                    Node::Block(Block { expr: Some(e), ..}) if matches!(e.kind, ExprKind::If(_, _, None)) => return None,
                     _ => {}
                 }
             }
@@ -563,9 +564,6 @@ impl<'hir> Map<'hir> {
                     // We verify that indirectly by checking that the previous node is the
                     // current node's body
                     if node.body_id().map(|b| b.hir_id) == prev_hir_id =>  {
-                        if let Node::Expr(Expr { kind: ExprKind::Block(_, _), ..}) = self.tcx.hir_node(prev_hir_id.unwrap()) {
-                            return None;
-                        }
                         return Some(hir_id)
                 }
                 // Ignore `return`s on the first iteration
