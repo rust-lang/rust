@@ -603,19 +603,6 @@ impl LinkSelfContainedDefault {
         self == LinkSelfContainedDefault::False
     }
 
-    /// Returns whether the target spec explicitly requests self-contained linking, i.e. not via
-    /// inference.
-    pub fn is_linker_enabled(self) -> bool {
-        match self {
-            LinkSelfContainedDefault::True => true,
-            LinkSelfContainedDefault::False => false,
-            LinkSelfContainedDefault::WithComponents(c) => {
-                c.contains(LinkSelfContainedComponents::LINKER)
-            }
-            _ => false,
-        }
-    }
-
     /// Returns the key to use when serializing the setting to json:
     /// - individual components in a `link-self-contained` object value
     /// - the other variants as a backwards-compatible `crt-objects-fallback` string
