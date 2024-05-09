@@ -10,7 +10,7 @@ use rustc_middle::ty::{self, Instance, Mutability};
 use rustc_session::impl_lint_pass;
 use rustc_span::def_id::DefId;
 use rustc_span::symbol::sym;
-use rustc_span::ExpnKind;
+use rustc_span::{ExpnKind, SyntaxContext};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -68,7 +68,8 @@ impl_lint_pass!(AssigningClones => [ASSIGNING_CLONES]);
 impl<'tcx> LateLintPass<'tcx> for AssigningClones {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, assign_expr: &'tcx Expr<'_>) {
         // Do not fire the lint in macros
-        let expn_data = assign_expr.span().ctxt().outer_expn_data();
+        let ctxt = assign_expr.span().ctxt();
+        let expn_data = ctxt.outer_expn_data();
         match expn_data.kind {
             ExpnKind::AstPass(_) | ExpnKind::Desugaring(_) | ExpnKind::Macro(..) => return,
             ExpnKind::Root => {},
@@ -83,7 +84,7 @@ impl<'tcx> LateLintPass<'tcx> for AssigningClones {
         };
 
         if is_ok_to_suggest(cx, lhs, &call, &self.msrv) {
-            suggest(cx, assign_expr, lhs, &call);
+            suggest(cx, ctxt, assign_expr, lhs, &call);
         }
     }
 
@@ -221,14 +222,20 @@ fn is_ok_to_suggest<'tcx>(cx: &LateContext<'tcx>, lhs: &Expr<'tcx>, call: &CallC
     implemented_fns.contains_key(&provided_fn.def_id)
 }
 
-fn suggest<'tcx>(cx: &LateContext<'tcx>, assign_expr: &Expr<'tcx>, lhs: &Expr<'tcx>, call: &CallCandidate<'tcx>) {
+fn suggest<'tcx>(
+    cx: &LateContext<'tcx>,
+    ctxt: SyntaxContext,
+    assign_expr: &Expr<'tcx>,
+    lhs: &Expr<'tcx>,
+    call: &CallCandidate<'tcx>,
+) {
     span_lint_and_then(cx, ASSIGNING_CLONES, assign_expr.span, call.message(), |diag| {
         let mut applicability = Applicability::Unspecified;
 
         diag.span_suggestion(
             assign_expr.span,
             call.suggestion_msg(),
-            call.suggested_replacement(cx, lhs, &mut applicability),
+            call.suggested_replacement(cx, ctxt, lhs, &mut applicability),
             applicability,
         );
     });
@@ -274,6 +281,7 @@ impl<'tcx> CallCandidate<'tcx> {
     fn suggested_replacement(
         &self,
         cx: &LateContext<'tcx>,
+        ctxt: SyntaxContext,
         lhs: &Expr<'tcx>,
         applicability: &mut Applicability,
     ) -> String {
@@ -293,7 +301,7 @@ impl<'tcx> CallCandidate<'tcx> {
                         // Determine whether we need to reference the argument to clone_from().
                         let clone_receiver_type = cx.typeck_results().expr_ty(receiver);
                         let clone_receiver_adj_type = cx.typeck_results().expr_ty_adjusted(receiver);
-                        let mut arg_sugg = Sugg::hir_with_applicability(cx, receiver, "_", applicability);
+                        let mut arg_sugg = Sugg::hir_with_context(cx, receiver, ctxt, "_", applicability);
                         if clone_receiver_type != clone_receiver_adj_type {
                             // The receiver may have been a value type, so we need to add an `&` to
                             // be sure the argument to clone_from will be a reference.
@@ -311,7 +319,7 @@ impl<'tcx> CallCandidate<'tcx> {
                             Sugg::hir_with_applicability(cx, lhs, "_", applicability).mut_addr()
                         };
                         // The RHS had to be exactly correct before the call, there is no auto-deref for function calls.
-                        let rhs_sugg = Sugg::hir_with_applicability(cx, self_arg, "_", applicability);
+                        let rhs_sugg = Sugg::hir_with_context(cx, self_arg, ctxt, "_", applicability);
 
                         format!("Clone::clone_from({self_sugg}, {rhs_sugg})")
                     },
@@ -340,11 +348,11 @@ impl<'tcx> CallCandidate<'tcx> {
 
                 match self.kind {
                     CallKind::MethodCall { receiver } => {
-                        let receiver_sugg = Sugg::hir_with_applicability(cx, receiver, "_", applicability);
+                        let receiver_sugg = Sugg::hir_with_context(cx, receiver, ctxt, "_", applicability);
                         format!("{receiver_sugg}.clone_into({rhs_sugg})")
                     },
                     CallKind::FunctionCall { self_arg, .. } => {
-                        let self_sugg = Sugg::hir_with_applicability(cx, self_arg, "_", applicability);
+                        let self_sugg = Sugg::hir_with_context(cx, self_arg, ctxt, "_", applicability);
                         format!("ToOwned::clone_into({self_sugg}, {rhs_sugg})")
                     },
                 }
