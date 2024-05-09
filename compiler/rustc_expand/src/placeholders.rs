@@ -174,7 +174,10 @@ pub(crate) fn placeholder(
         }]),
         AstFragmentKind::Variants => AstFragment::Variants(smallvec![ast::Variant {
             attrs: Default::default(),
-            data: ast::VariantData::Struct { fields: Default::default(), recovered: false },
+            data: ast::VariantData::Struct {
+                fields: Default::default(),
+                recovered: ast::Recovered::No
+            },
             disr_expr: None,
             id,
             ident,

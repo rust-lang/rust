@@ -7,14 +7,13 @@ use rustc_ast::{token, StmtKind};
 use rustc_ast::{
     Expr, ExprKind, FormatAlignment, FormatArgPosition, FormatArgPositionKind, FormatArgs,
     FormatArgsPiece, FormatArgument, FormatArgumentKind, FormatArguments, FormatCount,
-    FormatDebugHex, FormatOptions, FormatPlaceholder, FormatSign, FormatTrait,
+    FormatDebugHex, FormatOptions, FormatPlaceholder, FormatSign, FormatTrait, Recovered,
 };
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{Applicability, Diag, MultiSpan, PResult, SingleLabelManySpans};
 use rustc_expand::base::*;
 use rustc_lint_defs::builtin::NAMED_ARGUMENTS_USED_POSITIONALLY;
 use rustc_lint_defs::{BufferedEarlyLint, BuiltinLintDiag, LintId};
-use rustc_parse::parser::Recovered;
 use rustc_parse_format as parse;
 use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::{BytePos, ErrorGuaranteed, InnerSpan, Span};
@@ -112,7 +111,7 @@ fn parse_args<'a>(ecx: &ExtCtxt<'a>, sp: Span, tts: TokenStream) -> PResult<'a, 
                         _ => return Err(err),
                     }
                 }
-                Ok(Recovered::Yes) => (),
+                Ok(Recovered::Yes(_)) => (),
                 Ok(Recovered::No) => unreachable!(),
             }
         }

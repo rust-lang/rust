@@ -1271,7 +1271,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // otherwise check exactly as a let statement
         self.check_decl((let_expr, hir_id).into());
         // but return a bool, for this is a boolean expression
-        if let Some(error_guaranteed) = let_expr.is_recovered {
+        if let ast::Recovered::Yes(error_guaranteed) = let_expr.recovered {
             self.set_tainted_by_errors(error_guaranteed);
             Ty::new_error(self.tcx, error_guaranteed)
         } else {
