@@ -380,10 +380,10 @@ name = "bump-stage0"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "build_helper",
  "curl",
  "indexmap",
  "serde",
- "serde_json",
  "toml 0.5.11",
 ]
 

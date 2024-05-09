@@ -181,7 +181,7 @@ pub struct Config {
     pub test_compare_mode: bool,
     pub color: Color,
     pub patch_binaries_for_nix: Option<bool>,
-    pub stage0_metadata: Stage0Metadata,
+    pub stage0_metadata: build_helper::stage0_parser::Stage0,
     pub android_ndk: Option<PathBuf>,
     /// Whether to use the `c` feature of the `compiler_builtins` crate.
     pub optimized_compiler_builtins: bool,
@@ -348,34 +348,6 @@ pub struct Config {
     /// The paths to work with. For example: with `./x check foo bar` we get
     /// `paths=["foo", "bar"]`.
     pub paths: Vec<PathBuf>,
-}
-
-#[derive(Default, Deserialize, Clone)]
-pub struct Stage0Metadata {
-    pub compiler: CompilerMetadata,
-    pub config: Stage0Config,
-    pub checksums_sha256: HashMap<String, String>,
-    pub rustfmt: Option<RustfmtMetadata>,
-}
-#[derive(Default, Deserialize, Clone)]
-pub struct CompilerMetadata {
-    pub date: String,
-    pub version: String,
-}
-
-#[derive(Default, Deserialize, Clone)]
-pub struct Stage0Config {
-    pub dist_server: String,
-    pub artifacts_server: String,
-    pub artifacts_with_llvm_assertions_server: String,
-    pub git_merge_commit_email: String,
-    pub git_repository: String,
-    pub nightly_branch: String,
-}
-#[derive(Default, Deserialize, Clone)]
-pub struct RustfmtMetadata {
-    pub date: String,
-    pub version: String,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -1296,13 +1268,13 @@ impl Config {
                 Some(p) => PathBuf::from(p),
                 None => git_root,
             };
-            // If this doesn't have at least `stage0.json`, we guessed wrong. This can happen when,
+            // If this doesn't have at least `stage0`, we guessed wrong. This can happen when,
             // for example, the build directory is inside of another unrelated git directory.
             // In that case keep the original `CARGO_MANIFEST_DIR` handling.
             //
             // NOTE: this implies that downloadable bootstrap isn't supported when the build directory is outside
             // the source directory. We could fix that by setting a variable from all three of python, ./x, and x.ps1.
-            if git_root.join("src").join("stage0.json").exists() {
+            if git_root.join("src").join("stage0").exists() {
                 config.src = git_root;
             }
         } else {
@@ -1320,9 +1292,7 @@ impl Config {
             .to_path_buf();
         }
 
-        let stage0_json = t!(std::fs::read(config.src.join("src").join("stage0.json")));
-
-        config.stage0_metadata = t!(serde_json::from_slice::<Stage0Metadata>(&stage0_json));
+        config.stage0_metadata = build_helper::stage0_parser::parse_stage0_file();
 
         // Read from `--config`, then `RUST_BOOTSTRAP_CONFIG`, then `./config.toml`, then `config.toml` in the root directory.
         let toml_path = flags

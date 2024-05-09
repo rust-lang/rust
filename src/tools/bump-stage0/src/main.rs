@@ -1,4 +1,7 @@
+#![deny(unused_variables)]
+
 use anyhow::{Context, Error};
+use build_helper::stage0_parser::{parse_stage0_file, Stage0Config, VersionMetadata};
 use curl::easy::Easy;
 use indexmap::IndexMap;
 use std::collections::HashMap;
@@ -8,7 +11,7 @@ const COMPILER_COMPONENTS: &[&str] = &["rustc", "rust-std", "cargo", "clippy-pre
 const RUSTFMT_COMPONENTS: &[&str] = &["rustfmt-preview", "rustc"];
 
 struct Tool {
-    config: Config,
+    config: Stage0Config,
 
     channel: Channel,
     date: Option<String>,
@@ -34,73 +37,9 @@ impl Tool {
             .try_into()
             .map_err(|_| anyhow::anyhow!("failed to parse version"))?;
 
-        // let existing: Stage0 = serde_json::from_slice(&std::fs::read(PATH)?)?;
-        let existing = Self::parse_stage0_file()?;
+        let existing = parse_stage0_file();
 
-        Ok(Self {
-            channel,
-            version,
-            date,
-            config: existing.config,
-            checksums: IndexMap::new(),
-        })
-    }
-
-    fn parse_stage0_file() -> Result<Stage0, Error> {
-        let stage0_content = include_str!("../../../stage0");
-
-        let mut stage0 = Stage0::default();
-
-        for line in stage0_content.lines() {
-            let line = line.trim();
-
-            if line.is_empty() {
-                continue;
-            }
-
-            // Ignore comments
-            if line.starts_with('#') {
-                continue;
-            }
-
-            let key_value: Vec<&str> = line.splitn(2, '=').collect();
-            let (key, value) = (*key_value.get(0).unwrap(), *key_value.get(1).unwrap());
-
-            match key {
-                "dist_server" => stage0.config.dist_server = value.to_owned(),
-                "artifacts_server"
-                | "artifacts_with_llvm_assertions_server"
-                | "git_merge_commit_email"
-                | "git_repository"
-                | "nightly_branch" => {
-                    stage0.config.other.insert(key.to_owned(), value.to_owned());
-                }
-
-                "compiler_date" => stage0.compiler.date = value.to_owned(),
-                "compiler_version" => stage0.compiler.version = value.to_owned(),
-
-                "rustfmt_date" => {
-                    let mut rustfmt = stage0.rustfmt.unwrap_or(Stage0Toolchain::default());
-                    rustfmt.date = value.to_owned();
-                    stage0.rustfmt = Some(rustfmt);
-                }
-                "rustfmt_version" => {
-                    let mut rustfmt = stage0.rustfmt.unwrap_or(Stage0Toolchain::default());
-                    rustfmt.version = value.to_owned();
-                    stage0.rustfmt = Some(rustfmt);
-                }
-
-                dist if dist.starts_with("dist") => {
-                    stage0.checksums_sha256.insert(key.to_owned(), value.to_owned());
-                }
-
-                unsupported => {
-                    println!("'{unsupported}' field is not supported.");
-                }
-            }
-        }
-
-        Ok(stage0)
+        Ok(Self { channel, version, date, config: existing.config, checksums: IndexMap::new() })
     }
 
     fn update_stage0_file(mut self) -> Result<(), Error> {
@@ -115,11 +54,25 @@ impl Tool {
             "#;
 
         let mut file_content = HEADER.to_owned();
-        file_content.push_str(&format!("\ndist_server={}", self.config.dist_server));
 
-        for (key, value) in &self.config.other {
-            file_content.push_str(&format!("\n{}={}", key, value.as_str()));
-        }
+        let Stage0Config {
+            dist_server,
+            artifacts_server,
+            artifacts_with_llvm_assertions_server,
+            git_merge_commit_email,
+            git_repository,
+            nightly_branch,
+        } = &self.config;
+
+        file_content.push_str(&format!("\ndist_server={}", dist_server));
+        file_content.push_str(&format!("\nartifacts_server={}", artifacts_server));
+        file_content.push_str(&format!(
+            "\nartifacts_with_llvm_assertions_server={}",
+            artifacts_with_llvm_assertions_server
+        ));
+        file_content.push_str(&format!("\ngit_merge_commit_email={}", git_merge_commit_email));
+        file_content.push_str(&format!("\ngit_repository={}", git_repository));
+        file_content.push_str(&format!("\nnightly_branch={}", nightly_branch));
 
         file_content.push_str("\n");
 
@@ -149,7 +102,7 @@ impl Tool {
     // On the master branch the compiler version is configured to `beta` whereas if you're looking
     // at the beta or stable channel you'll likely see `1.x.0` as the version, with the previous
     // release's version number.
-    fn detect_compiler(&mut self) -> Result<Stage0Toolchain, Error> {
+    fn detect_compiler(&mut self) -> Result<VersionMetadata, Error> {
         let channel = match self.channel {
             Channel::Stable | Channel::Beta => {
                 // The 1.XX manifest points to the latest point release of that minor release.
@@ -160,7 +113,7 @@ impl Tool {
 
         let manifest = fetch_manifest(&self.config, &channel, self.date.as_deref())?;
         self.collect_checksums(&manifest, COMPILER_COMPONENTS)?;
-        Ok(Stage0Toolchain {
+        Ok(VersionMetadata {
             date: manifest.date,
             version: if self.channel == Channel::Nightly {
                 "beta".to_string()
@@ -179,14 +132,14 @@ impl Tool {
     /// We use a nightly rustfmt to format the source because it solves some bootstrapping issues
     /// with use of new syntax in this repo. For the beta/stable channels rustfmt is not provided,
     /// as we don't want to depend on rustfmt from nightly there.
-    fn detect_rustfmt(&mut self) -> Result<Option<Stage0Toolchain>, Error> {
+    fn detect_rustfmt(&mut self) -> Result<Option<VersionMetadata>, Error> {
         if self.channel != Channel::Nightly {
             return Ok(None);
         }
 
         let manifest = fetch_manifest(&self.config, "nightly", self.date.as_deref())?;
         self.collect_checksums(&manifest, RUSTFMT_COMPONENTS)?;
-        Ok(Some(Stage0Toolchain { date: manifest.date, version: "nightly".into() }))
+        Ok(Some(VersionMetadata { date: manifest.date, version: "nightly".into() }))
     }
 
     fn collect_checksums(&mut self, manifest: &Manifest, components: &[&str]) -> Result<(), Error> {
@@ -220,7 +173,11 @@ fn main() -> Result<(), Error> {
     Ok(())
 }
 
-fn fetch_manifest(config: &Config, channel: &str, date: Option<&str>) -> Result<Manifest, Error> {
+fn fetch_manifest(
+    config: &Stage0Config,
+    channel: &str,
+    date: Option<&str>,
+) -> Result<Manifest, Error> {
     let url = if let Some(date) = date {
         format!("{}/dist/{}/channel-rust-{}.toml", config.dist_server, date, channel)
     } else {
@@ -251,31 +208,6 @@ enum Channel {
     Stable,
     Beta,
     Nightly,
-}
-
-#[derive(Debug, Default, serde::Serialize, serde::Deserialize)]
-struct Stage0 {
-    config: Config,
-    compiler: Stage0Toolchain,
-    rustfmt: Option<Stage0Toolchain>,
-    checksums_sha256: IndexMap<String, String>,
-}
-
-#[derive(Debug, Default, serde::Serialize, serde::Deserialize)]
-struct Config {
-    dist_server: String,
-    /// There are other fields in the configuration, which will be read by src/bootstrap or other
-    /// tools consuming stage0 file. To avoid the need to update bump-stage0 every time a new field
-    /// is added, we collect all the fields in `IndexMap<String, String>` and serialize them back with the
-    /// same order and structure they were deserialized in.
-    #[serde(flatten)]
-    other: IndexMap<String, String>,
-}
-
-#[derive(Debug, Default, serde::Serialize, serde::Deserialize)]
-struct Stage0Toolchain {
-    date: String,
-    version: String,
 }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
