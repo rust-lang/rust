@@ -10,6 +10,7 @@ import os
 import re
 import subprocess
 import sys
+import argparse
 
 CGREEN  = '\33[32m'
 CBOLD   = '\33[1m'
@@ -25,8 +26,8 @@ def cargo_miri(cmd, quiet = True):
     args = ["cargo", "miri", cmd] + CARGO_EXTRA_FLAGS
     if quiet:
         args += ["-q"]
-    if 'MIRI_TEST_TARGET' in os.environ:
-        args += ["--target", os.environ['MIRI_TEST_TARGET']]
+    if ARGS.target:
+        args += ["--target", ARGS.target]
     return args
 
 def normalize_stdout(str):
@@ -35,7 +36,7 @@ def normalize_stdout(str):
     return str
 
 def check_output(actual, path, name):
-    if os.environ.get("RUSTC_BLESS", "0") != "0":
+    if ARGS.bless:
         # Write the output only if bless is set
         open(path, mode='w').write(actual)
         return True
@@ -133,7 +134,7 @@ def test_cargo_miri_run():
 
 def test_cargo_miri_test():
     # rustdoc is not run on foreign targets
-    is_foreign = 'MIRI_TEST_TARGET' in os.environ
+    is_foreign = ARGS.target is not None
     default_ref = "test.cross-target.stdout.ref" if is_foreign else "test.default.stdout.ref"
     filter_ref = "test.filter.cross-target.stdout.ref" if is_foreign else "test.filter.stdout.ref"
 
@@ -182,16 +183,22 @@ def test_cargo_miri_test():
         env={'MIRIFLAGS': "-Zmiri-permissive-provenance"},
     )
 
+args_parser = argparse.ArgumentParser(description='`cargo miri` testing')
+args_parser.add_argument('--target', help='the target to test')
+args_parser.add_argument('--bless', help='bless the reference files', action='store_true')
+ARGS = args_parser.parse_args()
+
 os.chdir(os.path.dirname(os.path.realpath(__file__)))
 os.environ["CARGO_TARGET_DIR"] = "target" # this affects the location of the target directory that we need to check
 os.environ["RUST_TEST_NOCAPTURE"] = "0" # this affects test output, so make sure it is not set
 os.environ["RUST_TEST_THREADS"] = "1" # avoid non-deterministic output due to concurrent test runs
 
-target_str = " for target {}".format(os.environ['MIRI_TEST_TARGET']) if 'MIRI_TEST_TARGET' in os.environ else ""
+target_str = " for target {}".format(ARGS.target) if ARGS.target else ""
 print(CGREEN + CBOLD + "## Running `cargo miri` tests{}".format(target_str) + CEND)
 
 test_cargo_miri_run()
 test_cargo_miri_test()
+
 # Ensure we did not create anything outside the expected target dir.
 for target_dir in ["target", "custom-run", "custom-test", "config-cli"]:
     if os.listdir(target_dir) != ["miri"]:
