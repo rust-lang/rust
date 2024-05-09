@@ -36,7 +36,7 @@ def normalize_stdout(str):
     return str
 
 def check_output(actual, path, name):
-    if os.environ.get("RUSTC_BLESS", "0") != "0":
+    if ARGS.bless:
         # Write the output only if bless is set
         open(path, mode='w').write(actual)
         return True
@@ -185,6 +185,7 @@ def test_cargo_miri_test():
 
 args_parser = argparse.ArgumentParser(description='`cargo miri` testing')
 args_parser.add_argument('--target', help='the target to test')
+args_parser.add_argument('--bless', help='bless the reference files', action='store_true')
 ARGS = args_parser.parse_args()
 
 os.chdir(os.path.dirname(os.path.realpath(__file__)))

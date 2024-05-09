@@ -322,3 +322,5 @@ binaries, and as such worth documenting:
   perform verbose logging.
 * `MIRI_HOST_SYSROOT` is set by bootstrap to tell `cargo-miri` which sysroot to use for *host*
   operations.
+* `RUSTC_BLESS` is set by `./miri test` (and `./x.py test miri`) to indicate bless-mode to the test
+  harness.

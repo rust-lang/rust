@@ -468,8 +468,6 @@ by all intended entry points, i.e. `cargo miri` and `./miri {test,run}`):
 * `MIRI_NO_STD` makes sure that the target's sysroot is built without libstd. This allows testing
   and running no_std programs. (Miri has a heuristic to detect no-std targets based on the target
   name; this environment variable is only needed when that heuristic fails.)
-* `RUSTC_BLESS` (recognized by `./miri test` and `cargo-miri-test/run-test.py`): overwrite all
-  `stderr` and `stdout` files instead of checking whether the output matches.
 * `MIRI_SKIP_UI_CHECKS` (recognized by `./miri test`): don't check whether the
   `stderr` or `stdout` files match the actual output.
 
