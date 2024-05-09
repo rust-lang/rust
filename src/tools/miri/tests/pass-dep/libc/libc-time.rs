@@ -1,4 +1,4 @@
-//@ignore-target-windows: no libc on Windows
+//@ignore-target-windows: no libc time APIs on Windows
 //@compile-flags: -Zmiri-disable-isolation
 use std::ffi::CStr;
 use std::{env, mem, ptr};
