@@ -360,12 +360,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         error: &traits::FulfillmentError<'tcx>,
         span: Span,
     ) -> bool {
-        if let traits::FulfillmentErrorCode::SelectionError(
-            traits::SelectionError::SignatureMismatch(box traits::SignatureMismatchData {
-                expected_trait_ref,
-                ..
-            }),
-        ) = error.code
+        if let traits::FulfillmentErrorCode::Select(traits::SelectionError::SignatureMismatch(
+            box traits::SignatureMismatchData { expected_trait_ref, .. },
+        )) = error.code
             && let ty::Closure(def_id, _) | ty::Coroutine(def_id, ..) =
                 expected_trait_ref.self_ty().kind()
             && span.overlaps(self.tcx.def_span(*def_id))

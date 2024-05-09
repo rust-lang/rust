@@ -203,39 +203,35 @@ fn fulfillment_error_for_no_solution<'tcx>(
 
     let code = match obligation.predicate.kind().skip_binder() {
         ty::PredicateKind::Clause(ty::ClauseKind::Projection(_)) => {
-            FulfillmentErrorCode::ProjectionError(
+            FulfillmentErrorCode::Project(
                 // FIXME: This could be a `Sorts` if the term is a type
                 MismatchedProjectionTypes { err: TypeError::Mismatch },
             )
         }
         ty::PredicateKind::NormalizesTo(..) => {
-            FulfillmentErrorCode::ProjectionError(MismatchedProjectionTypes {
-                err: TypeError::Mismatch,
-            })
+            FulfillmentErrorCode::Project(MismatchedProjectionTypes { err: TypeError::Mismatch })
         }
         ty::PredicateKind::AliasRelate(_, _, _) => {
-            FulfillmentErrorCode::ProjectionError(MismatchedProjectionTypes {
-                err: TypeError::Mismatch,
-            })
+            FulfillmentErrorCode::Project(MismatchedProjectionTypes { err: TypeError::Mismatch })
         }
         ty::PredicateKind::Subtype(pred) => {
             let (a, b) = infcx.enter_forall_and_leak_universe(
                 obligation.predicate.kind().rebind((pred.a, pred.b)),
             );
             let expected_found = ExpectedFound::new(true, a, b);
-            FulfillmentErrorCode::SubtypeError(expected_found, TypeError::Sorts(expected_found))
+            FulfillmentErrorCode::Subtype(expected_found, TypeError::Sorts(expected_found))
         }
         ty::PredicateKind::Coerce(pred) => {
             let (a, b) = infcx.enter_forall_and_leak_universe(
                 obligation.predicate.kind().rebind((pred.a, pred.b)),
             );
             let expected_found = ExpectedFound::new(false, a, b);
-            FulfillmentErrorCode::SubtypeError(expected_found, TypeError::Sorts(expected_found))
+            FulfillmentErrorCode::Subtype(expected_found, TypeError::Sorts(expected_found))
         }
         ty::PredicateKind::Clause(_)
         | ty::PredicateKind::ObjectSafe(_)
         | ty::PredicateKind::Ambiguous => {
-            FulfillmentErrorCode::SelectionError(SelectionError::Unimplemented)
+            FulfillmentErrorCode::Select(SelectionError::Unimplemented)
         }
         ty::PredicateKind::ConstEquate(..) => {
             bug!("unexpected goal: {obligation:?}")

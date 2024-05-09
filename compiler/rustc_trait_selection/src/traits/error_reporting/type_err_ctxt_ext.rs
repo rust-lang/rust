@@ -1504,13 +1504,12 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         }
 
         match error.code {
-            FulfillmentErrorCode::SelectionError(ref selection_error) => self
-                .report_selection_error(
-                    error.obligation.clone(),
-                    &error.root_obligation,
-                    selection_error,
-                ),
-            FulfillmentErrorCode::ProjectionError(ref e) => {
+            FulfillmentErrorCode::Select(ref selection_error) => self.report_selection_error(
+                error.obligation.clone(),
+                &error.root_obligation,
+                selection_error,
+            ),
+            FulfillmentErrorCode::Project(ref e) => {
                 self.report_projection_error(&error.obligation, e)
             }
             FulfillmentErrorCode::Ambiguity { overflow: None } => {
@@ -1519,7 +1518,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             FulfillmentErrorCode::Ambiguity { overflow: Some(suggest_increasing_limit) } => {
                 self.report_overflow_no_abort(error.obligation.clone(), suggest_increasing_limit)
             }
-            FulfillmentErrorCode::SubtypeError(ref expected_found, ref err) => self
+            FulfillmentErrorCode::Subtype(ref expected_found, ref err) => self
                 .report_mismatched_types(
                     &error.obligation.cause,
                     expected_found.expected,
@@ -1527,7 +1526,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     *err,
                 )
                 .emit(),
-            FulfillmentErrorCode::ConstEquateError(ref expected_found, ref err) => {
+            FulfillmentErrorCode::ConstEquate(ref expected_found, ref err) => {
                 let mut diag = self.report_mismatched_consts(
                     &error.obligation.cause,
                     expected_found.expected,
