@@ -1,3 +1,10 @@
+dist_server=https://static.rust-lang.org
+artifacts_server=https://ci-artifacts.rust-lang.org/rustc-builds
+artifacts_with_llvm_assertions_server=https://ci-artifacts.rust-lang.org/rustc-builds-alt
+git_merge_commit_email=bors@rust-lang.org
+git_repository=rust-lang/rust
+nightly_branch=master
+
 # The configuration above this comment is editable, and can be changed
 # by forks of the repository if they have alternate values.
 #
@@ -6,14 +13,7 @@
 #
 # All changes below this comment will be overridden the next time the
 # tool is executed.
-
-dist_server=https://static.rust-lang.org
-artifacts_server=https://ci-artifacts.rust-lang.org/rustc-builds
-artifacts_with_llvm_assertions_server=https://ci-artifacts.rust-lang.org/rustc-builds-alt
-git_merge_commit_email=bors@rust-lang.org
-git_repository=rust-lang/rust
-nightly_branch=master
-
+            
 compiler_date=2024-04-29
 compiler_version=beta
 rustfmt_date=2024-04-29
