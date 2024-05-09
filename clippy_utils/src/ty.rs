@@ -10,7 +10,6 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{Expr, FnDecl, LangItem, TyKind, Unsafety};
-use rustc_infer::infer::type_variable::TypeVariableOrigin;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::LateContext;
 use rustc_middle::mir::interpret::Scalar;
@@ -276,11 +275,7 @@ pub fn implements_trait_with_env_from_iter<'tcx>(
         .into_iter()
         .map(|arg| {
             arg.into().unwrap_or_else(|| {
-                let orig = TypeVariableOrigin {
-                    span: DUMMY_SP,
-                    param_def_id: None,
-                };
-                infcx.next_ty_var(orig).into()
+                infcx.next_ty_var(DUMMY_SP).into()
             })
         })
         .collect::<Vec<_>>();
