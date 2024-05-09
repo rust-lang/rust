@@ -41,5 +41,5 @@ Item            |  Kind    | Short description           | Chapter            | 
 [Emitting Diagnostics]: ../diagnostics.html
 [Macro expansion]: ../macro-expansion.html
 [Name resolution]: ../name-resolution.html
-[Parameter Environment]: ../param_env.html
+[Parameter Environment]: ../param_env/param_env_summary.html
 [Trait Solving: Goals and Clauses]: ../traits/goals-and-clauses.html#domain-goals
