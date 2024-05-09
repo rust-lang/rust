@@ -1,21 +1,17 @@
 //@ignore-target-windows: File handling is not implemented yet
 //@compile-flags: -Zmiri-disable-isolation
 
-// If this test is failing for you locally, you can try
-// 1. Deleting the files `/tmp/miri_*`
-// 2. Setting `MIRI_TEMP` or `TMPDIR` to a different directory, without the `miri_*` files
-
 #![feature(io_error_more)]
 #![feature(io_error_uncategorized)]
 
 use std::collections::HashMap;
 use std::ffi::OsString;
 use std::fs::{
-    canonicalize, create_dir, read_dir, read_link, remove_dir, remove_dir_all, remove_file, rename,
-    File, OpenOptions,
+    canonicalize, create_dir, read_dir, remove_dir, remove_dir_all, remove_file, rename, File,
+    OpenOptions,
 };
 use std::io::{Error, ErrorKind, IsTerminal, Read, Result, Seek, SeekFrom, Write};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 #[path = "../../utils/mod.rs"]
 mod utils;
@@ -29,36 +25,11 @@ fn main() {
     test_metadata();
     test_file_set_len();
     test_file_sync();
-    test_symlink();
     test_errors();
     test_rename();
     test_directory();
     test_canonicalize();
     test_from_raw_os_error();
-}
-
-/// Prepare: compute filename and make sure the file does not exist.
-fn prepare(filename: &str) -> PathBuf {
-    let path = utils::tmp().join(filename);
-    // Clean the paths for robustness.
-    remove_file(&path).ok();
-    path
-}
-
-/// Prepare directory: compute directory name and make sure it does not exist.
-fn prepare_dir(dirname: &str) -> PathBuf {
-    let path = utils::tmp().join(&dirname);
-    // Clean the directory for robustness.
-    remove_dir_all(&path).ok();
-    path
-}
-
-/// Prepare like above, and also write some initial content to the file.
-fn prepare_with_content(filename: &str, content: &[u8]) -> PathBuf {
-    let path = prepare(filename);
-    let mut file = File::create(&path).unwrap();
-    file.write(content).unwrap();
-    path
 }
 
 fn test_path_conversion() {
@@ -69,7 +40,7 @@ fn test_path_conversion() {
 
 fn test_file() {
     let bytes = b"Hello, World!\n";
-    let path = prepare("miri_test_fs_file.txt");
+    let path = utils::prepare("miri_test_fs_file.txt");
 
     // Test creating, writing and closing a file (closing is tested when `file` is dropped).
     let mut file = File::create(&path).unwrap();
@@ -96,7 +67,7 @@ fn test_file() {
 
 fn test_file_clone() {
     let bytes = b"Hello, World!\n";
-    let path = prepare_with_content("miri_test_fs_file_clone.txt", bytes);
+    let path = utils::prepare_with_content("miri_test_fs_file_clone.txt", bytes);
 
     // Cloning a file should be successful.
     let file = File::open(&path).unwrap();
@@ -111,7 +82,7 @@ fn test_file_clone() {
 }
 
 fn test_file_create_new() {
-    let path = prepare("miri_test_fs_file_create_new.txt");
+    let path = utils::prepare("miri_test_fs_file_create_new.txt");
 
     // Creating a new file that doesn't yet exist should succeed.
     OpenOptions::new().write(true).create_new(true).open(&path).unwrap();
@@ -129,7 +100,7 @@ fn test_file_create_new() {
 
 fn test_seek() {
     let bytes = b"Hello, entire World!\n";
-    let path = prepare_with_content("miri_test_fs_seek.txt", bytes);
+    let path = utils::prepare_with_content("miri_test_fs_seek.txt", bytes);
 
     let mut file = File::open(&path).unwrap();
     let mut contents = Vec::new();
@@ -168,7 +139,7 @@ fn check_metadata(bytes: &[u8], path: &Path) -> Result<()> {
 
 fn test_metadata() {
     let bytes = b"Hello, meta-World!\n";
-    let path = prepare_with_content("miri_test_fs_metadata.txt", bytes);
+    let path = utils::prepare_with_content("miri_test_fs_metadata.txt", bytes);
 
     // Test that metadata of an absolute path is correct.
     check_metadata(bytes, &path).unwrap();
@@ -182,7 +153,7 @@ fn test_metadata() {
 
 fn test_file_set_len() {
     let bytes = b"Hello, World!\n";
-    let path = prepare_with_content("miri_test_fs_set_len.txt", bytes);
+    let path = utils::prepare_with_content("miri_test_fs_set_len.txt", bytes);
 
     // Test extending the file
     let mut file = OpenOptions::new().read(true).write(true).open(&path).unwrap();
@@ -208,7 +179,7 @@ fn test_file_set_len() {
 
 fn test_file_sync() {
     let bytes = b"Hello, World!\n";
-    let path = prepare_with_content("miri_test_fs_sync.txt", bytes);
+    let path = utils::prepare_with_content("miri_test_fs_sync.txt", bytes);
 
     // Test that we can call sync_data and sync_all (can't readily test effects of this operation)
     let file = OpenOptions::new().write(true).open(&path).unwrap();
@@ -223,38 +194,9 @@ fn test_file_sync() {
     remove_file(&path).unwrap();
 }
 
-fn test_symlink() {
-    let bytes = b"Hello, World!\n";
-    let path = prepare_with_content("miri_test_fs_link_target.txt", bytes);
-    let symlink_path = prepare("miri_test_fs_symlink.txt");
-
-    // Creating a symbolic link should succeed.
-    #[cfg(unix)]
-    std::os::unix::fs::symlink(&path, &symlink_path).unwrap();
-    #[cfg(windows)]
-    std::os::windows::fs::symlink_file(&path, &symlink_path).unwrap();
-    // Test that the symbolic link has the same contents as the file.
-    let mut symlink_file = File::open(&symlink_path).unwrap();
-    let mut contents = Vec::new();
-    symlink_file.read_to_end(&mut contents).unwrap();
-    assert_eq!(bytes, contents.as_slice());
-
-    // Test that metadata of a symbolic link (i.e., the file it points to) is correct.
-    check_metadata(bytes, &symlink_path).unwrap();
-    // Test that the metadata of a symbolic link is correct when not following it.
-    assert!(symlink_path.symlink_metadata().unwrap().file_type().is_symlink());
-    // Check that we can follow the link.
-    assert_eq!(read_link(&symlink_path).unwrap(), path);
-    // Removing symbolic link should succeed.
-    remove_file(&symlink_path).unwrap();
-
-    // Removing file should succeed.
-    remove_file(&path).unwrap();
-}
-
 fn test_errors() {
     let bytes = b"Hello, World!\n";
-    let path = prepare("miri_test_fs_errors.txt");
+    let path = utils::prepare("miri_test_fs_errors.txt");
 
     // The following tests also check that the `__errno_location()` shim is working properly.
     // Opening a non-existing file should fail with a "not found" error.
@@ -269,8 +211,8 @@ fn test_errors() {
 
 fn test_rename() {
     // Renaming a file should succeed.
-    let path1 = prepare("miri_test_fs_rename_source.txt");
-    let path2 = prepare("miri_test_fs_rename_destination.txt");
+    let path1 = utils::prepare("miri_test_fs_rename_source.txt");
+    let path2 = utils::prepare("miri_test_fs_rename_destination.txt");
 
     let file = File::create(&path1).unwrap();
     drop(file);
@@ -289,7 +231,7 @@ fn test_rename() {
 }
 
 fn test_canonicalize() {
-    let dir_path = prepare_dir("miri_test_fs_dir");
+    let dir_path = utils::prepare_dir("miri_test_fs_dir");
     create_dir(&dir_path).unwrap();
     let path = dir_path.join("test_file");
     drop(File::create(&path).unwrap());
@@ -301,7 +243,7 @@ fn test_canonicalize() {
 }
 
 fn test_directory() {
-    let dir_path = prepare_dir("miri_test_fs_dir");
+    let dir_path = utils::prepare_dir("miri_test_fs_dir");
     // Creating a directory should succeed.
     create_dir(&dir_path).unwrap();
     // Test that the metadata of a directory is correct.
