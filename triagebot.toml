@@ -302,7 +302,7 @@ trigger_files = [
     "configure",
     "Cargo.toml",
     "config.example.toml",
-    "src/stage0.json",
+    "src/stage0",
     "src/tools/compiletest",
     "src/tools/tidy",
     "src/tools/rustdoc-gui-test",
@@ -362,7 +362,7 @@ trigger_files = [
 [autolabel."T-release"]
 trigger_files = [
     "RELEASES.md",
-    "src/stage0.json",
+    "src/stage0",
     "src/version"
 ]
 
@@ -1038,7 +1038,7 @@ project-exploit-mitigations = [
 "/src/librustdoc" =                                      ["rustdoc"]
 "/src/llvm-project" =                                    ["@cuviper"]
 "/src/rustdoc-json-types" =                              ["rustdoc"]
-"/src/stage0.json" =                                     ["bootstrap"]
+"/src/stage0" =                                          ["bootstrap"]
 "/tests/run-make" =                                      ["@jieyouxu"]
 "/tests/ui" =                                            ["compiler"]
 "/src/tools/cargo" =                                     ["@ehuss"]

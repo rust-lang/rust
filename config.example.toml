@@ -213,17 +213,17 @@
 # the root of the repository.
 #build-dir = "build"
 
-# Instead of downloading the src/stage0.json version of Cargo specified, use
+# Instead of downloading the src/stage0 version of Cargo specified, use
 # this Cargo binary instead to build all Rust code
 # If you set this, you likely want to set `rustc` as well.
 #cargo = "/path/to/cargo"
 
-# Instead of downloading the src/stage0.json version of the compiler
+# Instead of downloading the src/stage0 version of the compiler
 # specified, use this rustc binary instead as the stage0 snapshot compiler.
 # If you set this, you likely want to set `cargo` as well.
 #rustc = "/path/to/rustc"
 
-# Instead of downloading the src/stage0.json version of rustfmt specified,
+# Instead of downloading the src/stage0 version of rustfmt specified,
 # use this rustfmt binary instead as the stage0 snapshot rustfmt.
 #rustfmt = "/path/to/rustfmt"
 
