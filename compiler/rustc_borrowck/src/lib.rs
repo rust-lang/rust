@@ -52,10 +52,12 @@ use crate::session_diagnostics::VarNeedNotMut;
 
 use self::diagnostics::{AccessKind, IllegalMoveOriginKind, MoveError, RegionName};
 use self::location::LocationTable;
-use self::prefixes::PrefixSet;
-use consumers::{BodyWithBorrowckFacts, ConsumerOptions};
-
 use self::path_utils::*;
+use self::prefixes::PrefixSet;
+use self::AccessDepth::{Deep, Shallow};
+use self::ReadOrWrite::{Activation, Read, Reservation, Write};
+
+use consumers::{BodyWithBorrowckFacts, ConsumerOptions};
 
 pub mod borrow_set;
 mod borrowck_errors;
@@ -834,9 +836,6 @@ impl<'cx, 'tcx, R> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx, R> for MirBorro
         }
     }
 }
-
-use self::AccessDepth::{Deep, Shallow};
-use self::ReadOrWrite::{Activation, Read, Reservation, Write};
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 enum ArtificialField {
