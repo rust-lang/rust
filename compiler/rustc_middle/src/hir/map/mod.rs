@@ -563,6 +563,9 @@ impl<'hir> Map<'hir> {
                     // We verify that indirectly by checking that the previous node is the
                     // current node's body
                     if node.body_id().map(|b| b.hir_id) == prev_hir_id =>  {
+                        if let Node::Expr(Expr { kind: ExprKind::Block(_, _), ..}) = self.tcx.hir_node(prev_hir_id.unwrap()) {
+                            return None;
+                        }
                         return Some(hir_id)
                 }
                 // Ignore `return`s on the first iteration
