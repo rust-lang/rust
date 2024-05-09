@@ -1,5 +1,4 @@
 //! Inlining pass for MIR functions
-use crate::deref_separator::deref_finder;
 use rustc_attr::InlineAttr;
 use rustc_const_eval::transform::validate::validate_types;
 use rustc_hir::def::DefKind;
@@ -19,6 +18,7 @@ use rustc_target::abi::FieldIdx;
 use rustc_target::spec::abi::Abi;
 
 use crate::cost_checker::CostChecker;
+use crate::deref_separator::deref_finder;
 use crate::simplify::simplify_cfg;
 use crate::util;
 use std::iter;

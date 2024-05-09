@@ -1,4 +1,3 @@
-use crate::infer::error_reporting::hir::Path;
 use core::ops::ControlFlow;
 use hir::def::CtorKind;
 use hir::intravisit::{walk_expr, walk_stmt, Visitor};
@@ -22,6 +21,7 @@ use crate::errors::{
     FunctionPointerSuggestion, SuggestAccessingField, SuggestRemoveSemiOrReturnBinding,
     SuggestTuplePatternMany, SuggestTuplePatternOne, TypeErrorAdditionalDiags,
 };
+use crate::infer::error_reporting::hir::Path;
 
 use super::TypeErrCtxt;
 

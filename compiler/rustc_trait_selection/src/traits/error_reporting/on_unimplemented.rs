@@ -1,5 +1,4 @@
 use super::{ObligationCauseCode, PredicateObligation};
-use crate::infer::error_reporting::TypeErrCtxt;
 use rustc_ast::AttrArgs;
 use rustc_ast::AttrArgsEq;
 use rustc_ast::AttrKind;
@@ -24,7 +23,7 @@ use std::path::PathBuf;
 use crate::errors::{
     EmptyOnClauseInOnUnimplemented, InvalidOnClauseInOnUnimplemented, NoValueInOnUnimplemented,
 };
-
+use crate::infer::error_reporting::TypeErrCtxt;
 use crate::traits::error_reporting::type_err_ctxt_ext::InferCtxtPrivExt;
 
 /// The symbols which are always allowed in a format string

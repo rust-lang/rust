@@ -2,8 +2,6 @@
 #![allow(rustc::untranslatable_diagnostic)]
 use std::num::NonZero;
 
-use crate::errors::RequestedLevel;
-use crate::fluent_generated as fluent;
 use rustc_errors::{
     codes::*, Applicability, Diag, DiagMessage, DiagStyledString, EmissionGuarantee,
     LintDiagnostic, SubdiagMessageOp, Subdiagnostic, SuggestionStyle,
@@ -16,6 +14,8 @@ use rustc_middle::ty::{
 use rustc_session::Session;
 use rustc_span::{edition::Edition, sym, symbol::Ident, Span, Symbol};
 
+use crate::errors::RequestedLevel;
+use crate::fluent_generated as fluent;
 use crate::{
     builtin::InitError, builtin::TypeAliasBounds, errors::OverruledAttributeSub, LateContext,
 };

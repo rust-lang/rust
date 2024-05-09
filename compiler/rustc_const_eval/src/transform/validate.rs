@@ -13,9 +13,7 @@ use rustc_middle::{bug, span_bug};
 use rustc_target::abi::{Size, FIRST_VARIANT};
 use rustc_target::spec::abi::Abi;
 
-use crate::util::is_within_packed;
-
-use crate::util::relate_types;
+use crate::util::{is_within_packed, relate_types};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum EdgeKind {

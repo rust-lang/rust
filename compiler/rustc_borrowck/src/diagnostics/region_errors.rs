@@ -31,19 +31,19 @@ use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{Obligation, ObligationCtxt};
 
 use crate::borrowck_errors;
+use crate::region_infer::{BlameConstraint, ExtraConstraintInfo};
 use crate::session_diagnostics::{
     FnMutError, FnMutReturnTypeErr, GenericDoesNotLiveLongEnough, LifetimeOutliveErr,
     LifetimeReturnCategoryErr, RequireStaticErr, VarHereDenote,
 };
-
-use super::{OutlivesSuggestionBuilder, RegionName, RegionNameSource};
-use crate::region_infer::{BlameConstraint, ExtraConstraintInfo};
 use crate::{
     nll::ConstraintDescription,
     region_infer::{values::RegionElement, TypeTest},
     universal_regions::DefiningTy,
     MirBorrowckCtxt,
 };
+
+use super::{OutlivesSuggestionBuilder, RegionName, RegionNameSource};
 
 impl<'tcx> ConstraintDescription for ConstraintCategory<'tcx> {
     fn description(&self) -> &'static str {

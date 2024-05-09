@@ -1,6 +1,5 @@
-use crate::util::check_builtin_macro_attribute;
-
 use crate::errors;
+use crate::util::check_builtin_macro_attribute;
 use rustc_ast::expand::allocator::{
     global_fn_name, AllocatorMethod, AllocatorMethodInput, AllocatorTy, ALLOCATOR_METHODS,
 };

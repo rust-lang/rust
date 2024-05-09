@@ -1,6 +1,5 @@
 use crate::opaque::MemDecoder;
 use crate::serialize::Decoder;
-
 // This code is very hot and uses lots of arithmetic, avoid overflow checks for performance.
 // See https://github.com/rust-lang/rust/pull/119440#issuecomment-1874255727
 use crate::int_overflow::DebugStrictAdd;

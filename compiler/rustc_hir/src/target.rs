@@ -4,10 +4,10 @@
 //! conflicts between multiple such attributes attached to the same
 //! item.
 
+use crate::def::DefKind;
 use crate::hir;
 use crate::{Item, ItemKind, TraitItem, TraitItemKind};
 
-use crate::def::DefKind;
 use std::fmt::{self, Display};
 
 #[derive(Copy, Clone, PartialEq, Debug)]

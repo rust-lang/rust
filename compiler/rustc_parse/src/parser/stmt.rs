@@ -8,9 +8,8 @@ use super::{
     AttrWrapper, BlockMode, FnParseMode, ForceCollect, Parser, Restrictions, SemiColonMode,
 };
 use crate::errors;
-use crate::maybe_whole;
-
 use crate::errors::MalformedLoopLabel;
+use crate::maybe_whole;
 use ast::Label;
 use rustc_ast as ast;
 use rustc_ast::ptr::P;

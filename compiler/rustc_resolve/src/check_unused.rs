@@ -25,9 +25,8 @@
 
 use crate::imports::{Import, ImportKind};
 use crate::module_to_string;
-use crate::Resolver;
+use crate::{LexicalScopeBinding, NameBindingKind, Resolver};
 
-use crate::{LexicalScopeBinding, NameBindingKind};
 use rustc_ast as ast;
 use rustc_ast::visit::{self, Visitor};
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};

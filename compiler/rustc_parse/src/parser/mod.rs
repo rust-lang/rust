@@ -10,7 +10,6 @@ mod path;
 mod stmt;
 mod ty;
 
-use crate::lexer::UnmatchedDelim;
 use ast::token::IdentIsRaw;
 pub use attr_wrapper::AttrWrapper;
 pub use diagnostics::AttemptLocalParseRecovery;
@@ -44,6 +43,7 @@ use tracing::debug;
 use crate::errors::{
     self, IncorrectVisibilityRestriction, MismatchedClosingDelimiter, NonStringAbiLiteral,
 };
+use crate::lexer::UnmatchedDelim;
 
 #[cfg(test)]
 mod tests;

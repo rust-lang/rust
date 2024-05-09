@@ -5,10 +5,6 @@ use super::{
     PredicateObligation,
 };
 
-use crate::errors;
-use crate::infer::InferCtxt;
-use crate::traits::{ImplDerivedCause, NormalizeExt, ObligationCtxt};
-
 use hir::def::CtorOf;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::stack::ensure_sufficient_stack;
@@ -46,9 +42,12 @@ use std::assert_matches::debug_assert_matches;
 use std::borrow::Cow;
 use std::iter;
 
+use crate::errors;
+use crate::infer::InferCtxt;
 use crate::infer::InferCtxtExt as _;
 use crate::traits::error_reporting::type_err_ctxt_ext::InferCtxtPrivExt;
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
+use crate::traits::{ImplDerivedCause, NormalizeExt, ObligationCtxt};
 
 use itertools::EitherOrBoth;
 use itertools::Itertools;

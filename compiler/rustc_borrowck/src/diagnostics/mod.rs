@@ -1,9 +1,11 @@
 //! Borrow checker diagnostics.
 
+use crate::fluent_generated as fluent;
 use crate::session_diagnostics::{
     CaptureArgLabel, CaptureReasonLabel, CaptureReasonNote, CaptureReasonSuggest, CaptureVarCause,
     CaptureVarKind, CaptureVarPathUseCause, OnClosureNote,
 };
+
 use rustc_errors::{Applicability, Diag};
 use rustc_errors::{DiagCtxt, MultiSpan};
 use rustc_hir as hir;
@@ -30,8 +32,6 @@ use rustc_target::abi::{FieldIdx, VariantIdx};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::error_reporting::suggestions::TypeErrCtxtExt as _;
 use rustc_trait_selection::traits::type_known_to_meet_bound_modulo_regions;
-
-use crate::fluent_generated as fluent;
 
 use super::borrow_set::BorrowData;
 use super::MirBorrowckCtxt;

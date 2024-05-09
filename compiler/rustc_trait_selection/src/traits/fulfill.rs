@@ -1,6 +1,3 @@
-use crate::infer::{InferCtxt, TyOrConstInferVar};
-use crate::traits::error_reporting::TypeErrCtxtExt;
-use crate::traits::normalize::normalize_with_depth_to;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::obligation_forest::ProcessResult;
 use rustc_data_structures::obligation_forest::{Error, ForestObligation, Outcome};
@@ -25,6 +22,9 @@ use super::PredicateObligation;
 use super::Unimplemented;
 use super::{FulfillmentError, FulfillmentErrorCode};
 
+use crate::infer::{InferCtxt, TyOrConstInferVar};
+use crate::traits::error_reporting::TypeErrCtxtExt;
+use crate::traits::normalize::normalize_with_depth_to;
 use crate::traits::project::PolyProjectionObligation;
 use crate::traits::project::ProjectionCacheKeyExt as _;
 use crate::traits::query::evaluate_obligation::InferCtxtExt;

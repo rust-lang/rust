@@ -1,9 +1,8 @@
 // .debug_gdb_scripts binary section.
 
-use crate::llvm;
-
 use crate::builder::Builder;
 use crate::common::CodegenCx;
+use crate::llvm;
 use crate::value::Value;
 use rustc_ast::attr;
 use rustc_codegen_ssa::base::collect_debugger_visualizers_transitive;

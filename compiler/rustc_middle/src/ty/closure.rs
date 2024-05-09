@@ -1,11 +1,11 @@
 use crate::hir::place::{
     Place as HirPlace, PlaceBase as HirPlaceBase, ProjectionKind as HirProjectionKind,
 };
+use crate::query::Providers;
 use crate::{mir, ty};
 
 use std::fmt::Write;
 
-use crate::query::Providers;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir as hir;

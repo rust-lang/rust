@@ -1,4 +1,7 @@
-use crate::errors::{CheckNameUnknownTool, RequestedLevel, UnsupportedGroup};
+use crate::errors::{
+    CheckNameUnknownTool, MalformedAttribute, MalformedAttributeSub, OverruledAttribute,
+    OverruledAttributeSub, RequestedLevel, UnknownToolInScopedLint, UnsupportedGroup,
+};
 use crate::lints::{
     DeprecatedLintNameFromCommandLine, RemovedLintFromCommandLine, RenamedLintFromCommandLine,
     UnknownLintFromCommandLine,
@@ -41,11 +44,6 @@ use rustc_session::parse::feature_err;
 use rustc_session::Session;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
-
-use crate::errors::{
-    MalformedAttribute, MalformedAttributeSub, OverruledAttribute, OverruledAttributeSub,
-    UnknownToolInScopedLint,
-};
 
 /// Collection of lint levels for the whole crate.
 /// This is used by AST-based lints, which do not

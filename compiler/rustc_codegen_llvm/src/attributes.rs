@@ -11,14 +11,14 @@ use rustc_target::spec::{FramePointer, SanitizerSet, StackProbeType, StackProtec
 use smallvec::SmallVec;
 
 use crate::attributes;
+use crate::context::CodegenCx;
 use crate::errors::{MissingFeatures, SanitizerMemtagRequiresMte, TargetFeatureDisableOrEnable};
 use crate::llvm::AttributePlace::Function;
 use crate::llvm::{self, AllocKindFlags, Attribute, AttributeKind, AttributePlace, MemoryEffects};
 use crate::llvm_util;
-pub use rustc_attr::{InlineAttr, InstructionSetAttr, OptimizeAttr};
-
-use crate::context::CodegenCx;
 use crate::value::Value;
+
+pub use rustc_attr::{InlineAttr, InstructionSetAttr, OptimizeAttr};
 
 pub fn apply_to_llfn(llfn: &Value, idx: AttributePlace, attrs: &[&Attribute]) {
     if !attrs.is_empty() {

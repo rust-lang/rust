@@ -1,4 +1,3 @@
-use crate::attributes;
 use libc::c_uint;
 use rustc_ast::expand::allocator::{
     alloc_error_handler_name, default_fn_name, global_fn_name, AllocatorKind, AllocatorTy,
@@ -8,6 +7,7 @@ use rustc_middle::bug;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{DebugInfo, OomStrategy};
 
+use crate::attributes;
 use crate::debuginfo;
 use crate::llvm::{self, Context, False, Module, True, Type};
 use crate::ModuleLlvm;

@@ -1,9 +1,8 @@
-use crate::llvm;
-
 use crate::builder::Builder;
 use crate::common::CodegenCx;
 use crate::coverageinfo::ffi::{CounterExpression, CounterMappingRegion};
 use crate::coverageinfo::map_data::FunctionCoverageCollector;
+use crate::llvm;
 
 use libc::c_uint;
 use rustc_codegen_ssa::traits::{
