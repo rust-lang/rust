@@ -403,7 +403,7 @@
 //! is, a formatting implementation must and may only return an error if the
 //! passed-in [`Formatter`] returns an error. This is because, contrary to what
 //! the function signature might suggest, string formatting is an infallible
-//! operation. This function only returns a result because writing to the
+//! operation. This function only returns a [`Result`] because writing to the
 //! underlying stream might fail and it must provide a way to propagate the fact
 //! that an error has occurred back up the stack.
 //!
