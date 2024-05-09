@@ -491,10 +491,8 @@ impl Command {
             // Found it!
             e.sh.set_var("MIRI_TEST_TARGET", target);
 
-            let triple = target
-                .clone()
-                .into_string()
-                .map_err(|_| anyhow!("invalid target triple encoding"))?;
+            let triple =
+                target.clone().into_string().map_err(|_| anyhow!("target triple is not UTF-8"))?;
             Some(triple)
         } else if let Ok(target) = std::env::var("MIRI_TEST_TARGET") {
             // Convert `MIRI_TEST_TARGET` into `--target`.

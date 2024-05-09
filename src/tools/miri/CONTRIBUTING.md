@@ -73,6 +73,7 @@ For example:
 You can (cross-)run the entire test suite using:
 
 ```sh
+./miri test
 ./miri test --target i686-unknown-linux-gnu
 ```
 

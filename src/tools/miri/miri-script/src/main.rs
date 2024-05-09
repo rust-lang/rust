@@ -87,7 +87,7 @@ Just build miri. <flags> are passed to `cargo build`.
 ./miri check <flags>:
 Just check miri. <flags> are passed to `cargo check`.
 
-./miri test [--bless] [--target] <flags>:
+./miri test [--bless] [--target <target>] <flags>:
 Build miri, set up a sysroot and then run the test suite. <flags> are passed
 to the test harness.
 
@@ -165,7 +165,7 @@ fn main() -> Result<()> {
                             let target_str = value
                                 .clone()
                                 .into_string()
-                                .map_err(|_| anyhow!("invalid target triple encoding"))?;
+                                .map_err(|_| anyhow!("target triple is not UTF-8"))?;
                             Some(target_str)
                         } else {
                             bail!("no target triple found")
