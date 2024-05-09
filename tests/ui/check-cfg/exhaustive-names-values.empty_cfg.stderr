@@ -30,7 +30,7 @@ LL | #[cfg(feature = "unk")]
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition name: `feature`
-  --> $DIR/exhaustive-names-values.rs:25:7
+  --> $DIR/exhaustive-names-values.rs:24:7
    |
 LL | #[cfg(feature = "std")]
    |       ^^^^^^^^^^^^^^^

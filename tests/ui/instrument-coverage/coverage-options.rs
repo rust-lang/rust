@@ -1,5 +1,5 @@
 //@ needs-profiler-support
-//@ revisions: block branch bad
+//@ revisions: block branch mcdc bad
 //@ compile-flags -Cinstrument-coverage
 
 //@ [block] check-pass

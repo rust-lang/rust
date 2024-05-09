@@ -4,6 +4,6 @@
 //@ check-pass
 //@[version] compile-flags: -V
 //@[verbose-version] compile-flags: -vV
-//@[long-verbose-verison] compile-flags: --version --verbose
+//@[long-verbose-version] compile-flags: --version --verbose
 
 fn main() {}
