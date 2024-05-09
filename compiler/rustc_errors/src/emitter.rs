@@ -1347,7 +1347,7 @@ impl HumanEmitter {
                 label_width += 2;
             }
             let mut line = 0;
-            for (text, _) in msgs.iter() {
+            for (text, style) in msgs.iter() {
                 let text = self.translate_message(text, args).map_err(Report::new).unwrap();
                 // Account for newlines to align output to its label.
                 for text in normalize_whitespace(&text).lines() {
@@ -1358,7 +1358,10 @@ impl HumanEmitter {
                             if line == 0 { String::new() } else { " ".repeat(label_width) },
                             text
                         ),
-                        header_style,
+                        match style {
+                            Style::Highlight => *style,
+                            _ => header_style,
+                        },
                     );
                     line += 1;
                 }
