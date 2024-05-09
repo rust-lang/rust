@@ -989,12 +989,9 @@ impl<'tcx> InferCtxt<'tcx> {
         self.inner.borrow_mut().type_variables().num_vars()
     }
 
-    pub fn next_ty_var_id(&self, origin: TypeVariableOrigin) -> TyVid {
-        self.inner.borrow_mut().type_variables().new_var(self.universe(), origin)
-    }
-
     pub fn next_ty_var(&self, origin: TypeVariableOrigin) -> Ty<'tcx> {
-        Ty::new_var(self.tcx, self.next_ty_var_id(origin))
+        let vid = self.inner.borrow_mut().type_variables().new_var(self.universe(), origin);
+        Ty::new_var(self.tcx, vid)
     }
 
     pub fn next_ty_var_id_in_universe(
@@ -1015,7 +1012,13 @@ impl<'tcx> InferCtxt<'tcx> {
     }
 
     pub fn next_const_var(&self, ty: Ty<'tcx>, origin: ConstVariableOrigin) -> ty::Const<'tcx> {
-        ty::Const::new_var(self.tcx, self.next_const_var_id(origin), ty)
+        let vid = self
+            .inner
+            .borrow_mut()
+            .const_unification_table()
+            .new_key(ConstVariableValue::Unknown { origin, universe: self.universe() })
+            .vid;
+        ty::Const::new_var(self.tcx, vid, ty)
     }
 
     pub fn next_const_var_in_universe(
@@ -1033,28 +1036,14 @@ impl<'tcx> InferCtxt<'tcx> {
         ty::Const::new_var(self.tcx, vid, ty)
     }
 
-    pub fn next_const_var_id(&self, origin: ConstVariableOrigin) -> ConstVid {
-        self.inner
-            .borrow_mut()
-            .const_unification_table()
-            .new_key(ConstVariableValue::Unknown { origin, universe: self.universe() })
-            .vid
-    }
-
-    fn next_int_var_id(&self) -> IntVid {
-        self.inner.borrow_mut().int_unification_table().new_key(None)
-    }
-
     pub fn next_int_var(&self) -> Ty<'tcx> {
-        Ty::new_int_var(self.tcx, self.next_int_var_id())
-    }
-
-    fn next_float_var_id(&self) -> FloatVid {
-        self.inner.borrow_mut().float_unification_table().new_key(None)
+        let vid = self.inner.borrow_mut().int_unification_table().new_key(None);
+        Ty::new_int_var(self.tcx, vid)
     }
 
     pub fn next_float_var(&self) -> Ty<'tcx> {
-        Ty::new_float_var(self.tcx, self.next_float_var_id())
+        let vid = self.inner.borrow_mut().float_unification_table().new_key(None);
+        Ty::new_float_var(self.tcx, vid)
     }
 
     /// Creates a fresh region variable with the next available index.
