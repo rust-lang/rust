@@ -8,21 +8,16 @@ use rustc_middle::ty::layout::{LayoutOf as _, ValidityRequirement};
 use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_middle::{
-    mir::{
-        self,
-        interpret::{
-            Allocation, ConstAllocation, GlobalId, InterpResult, PointerArithmetic, Scalar,
-        },
-        BinOp, ConstValue, NonDivergingIntrinsic,
-    },
+    mir::{self, BinOp, ConstValue, NonDivergingIntrinsic},
     ty::layout::TyAndLayout,
 };
 use rustc_span::symbol::{sym, Symbol};
 use rustc_target::abi::Size;
 
 use super::{
-    memory::MemoryKind, util::ensure_monomorphic_enough, CheckInAllocMsg, ImmTy, InterpCx,
-    MPlaceTy, Machine, OpTy, Pointer,
+    memory::MemoryKind, util::ensure_monomorphic_enough, Allocation, CheckInAllocMsg,
+    ConstAllocation, GlobalId, ImmTy, InterpCx, InterpResult, MPlaceTy, Machine, OpTy, Pointer,
+    PointerArithmetic, Scalar,
 };
 
 use crate::fluent_generated as fluent;
@@ -249,14 +244,22 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     match (self.ptr_try_get_alloc_id(a), self.ptr_try_get_alloc_id(b)) {
                         (Err(a), Err(b)) => {
                             // Neither pointer points to an allocation.
-                            // If these are inequal or null, this *will* fail the deref check below.
+                            // This is okay only if they are the same.
+                            if a != b {
+                                // We'd catch this below in the "dereferenceable" check, but
+                                // show a nicer error for this particular case.
+                                throw_ub_custom!(
+                                    fluent::const_eval_offset_from_different_integers,
+                                    name = intrinsic_name,
+                                );
+                            }
                             (a, b)
                         }
                         (Err(_), _) | (_, Err(_)) => {
                             // We managed to find a valid allocation for one pointer, but not the other.
                             // That means they are definitely not pointing to the same allocation.
                             throw_ub_custom!(
-                                fluent::const_eval_different_allocations,
+                                fluent::const_eval_offset_from_different_allocations,
                                 name = intrinsic_name,
                             );
                         }
@@ -264,7 +267,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                             // Found allocation for both. They must be into the same allocation.
                             if a_alloc_id != b_alloc_id {
                                 throw_ub_custom!(
-                                    fluent::const_eval_different_allocations,
+                                    fluent::const_eval_offset_from_different_allocations,
                                     name = intrinsic_name,
                                 );
                             }
@@ -286,7 +289,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         // a < b
                         if intrinsic_name == sym::ptr_offset_from_unsigned {
                             throw_ub_custom!(
-                                fluent::const_eval_unsigned_offset_from_overflow,
+                                fluent::const_eval_offset_from_unsigned_overflow,
                                 a_offset = a_offset,
                                 b_offset = b_offset,
                             );
