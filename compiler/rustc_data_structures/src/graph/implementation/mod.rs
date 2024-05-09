@@ -22,6 +22,7 @@
 
 use rustc_index::bit_set::BitSet;
 use std::fmt::Debug;
+use tracing::debug;
 
 #[cfg(test)]
 mod tests;

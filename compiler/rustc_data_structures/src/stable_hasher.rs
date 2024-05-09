@@ -296,6 +296,8 @@ macro_rules! impl_stable_traits_for_trivial_type {
     };
 }
 
+pub(crate) use impl_stable_traits_for_trivial_type;
+
 impl_stable_traits_for_trivial_type!(i8);
 impl_stable_traits_for_trivial_type!(i16);
 impl_stable_traits_for_trivial_type!(i32);
