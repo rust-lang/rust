@@ -463,9 +463,6 @@ by all intended entry points, i.e. `cargo miri` and `./miri {test,run}`):
 * `MIRI_SYSROOT` indicates the sysroot to use. When using `cargo miri`, this skips the automatic
   setup -- only set this if you do not want to use the automatically created sysroot. When invoking
   `cargo miri setup`, this indicates where the sysroot will be put.
-* `MIRI_TEST_TARGET` (recognized by `./miri {test,run}`) indicates which target
-  architecture to test against.  The `--target` flag may be used for the same
-  purpose.
 * `MIRI_TEST_THREADS` (recognized by `./miri test`): set the number of threads to use for running tests.
   By default, the number of cores is used.
 * `MIRI_NO_STD` makes sure that the target's sysroot is built without libstd. This allows testing
@@ -475,37 +472,6 @@ by all intended entry points, i.e. `cargo miri` and `./miri {test,run}`):
   `stderr` and `stdout` files instead of checking whether the output matches.
 * `MIRI_SKIP_UI_CHECKS` (recognized by `./miri test`): don't check whether the
   `stderr` or `stdout` files match the actual output.
-
-The following environment variables are *internal* and must not be used by
-anyone but Miri itself. They are used to communicate between different Miri
-binaries, and as such worth documenting:
-
-* `MIRI_BE_RUSTC` can be set to `host` or `target`. It tells the Miri driver to
-  actually not interpret the code but compile it like rustc would. With `target`, Miri sets
-  some compiler flags to prepare the code for interpretation; with `host`, this is not done.
-  This environment variable is useful to be sure that the compiled `rlib`s are compatible
-  with Miri.
-* `MIRI_CALLED_FROM_SETUP` is set during the Miri sysroot build,
-  which will re-invoke `cargo-miri` as the `rustc` to use for this build.
-* `MIRI_CALLED_FROM_RUSTDOC` when set to any value tells `cargo-miri` that it is
-  running as a child process of `rustdoc`, which invokes it twice for each doc-test
-  and requires special treatment, most notably a check-only build before interpretation.
-  This is set by `cargo-miri` itself when running as a `rustdoc`-wrapper.
-* `MIRI_CWD` when set to any value tells the Miri driver to change to the given
-  directory after loading all the source files, but before commencing
-  interpretation. This is useful if the interpreted program wants a different
-  working directory at run-time than at build-time.
-* `MIRI_LOCAL_CRATES` is set by `cargo-miri` to tell the Miri driver which
-  crates should be given special treatment in diagnostics, in addition to the
-  crate currently being compiled.
-* `MIRI_ORIG_RUSTDOC` is set and read by different phases of `cargo-miri` to remember the
-  value of `RUSTDOC` from before it was overwritten.
-* `MIRI_REPLACE_LIBRS_IF_NOT_TEST` when set to any value enables a hack that helps bootstrap
-  run the standard library tests in Miri.
-* `MIRI_VERBOSE` when set to any value tells the various `cargo-miri` phases to
-  perform verbose logging.
-* `MIRI_HOST_SYSROOT` is set by bootstrap to tell `cargo-miri` which sysroot to use for *host*
-  operations.
 
 [testing-miri]: CONTRIBUTING.md#testing-the-miri-driver
 
