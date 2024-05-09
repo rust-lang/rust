@@ -1,4 +1,4 @@
-# This test verifies that C linking with Rust does not encounter any errors, with dynamic libraries.
+# This test checks that C linking with Rust does not encounter any errors, with dynamic libraries.
 # See https://github.com/rust-lang/rust/issues/10434
 
 # ignore-cross-compile

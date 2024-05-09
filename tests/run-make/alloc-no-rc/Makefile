@@ -1,4 +1,4 @@
-# This test verifies that the Rust compiler can still compile correctly when the unstable no_rc feature is turned on, which disables rc in alloc.
+# This test checks that alloc can still compile correctly when the unstable no_rc feature is turned on.
 # See https://github.com/rust-lang/rust/pull/89891
 
 include ../tools.mk

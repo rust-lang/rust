@@ -1,4 +1,4 @@
-# This test verifies that dynamic Rust linking with C does not encounter any errors, with dynamic dependencies given preference over static.
+# This test checks that dynamic Rust linking with C does not encounter any errors, with dynamic dependencies given preference over static.
 # See https://github.com/rust-lang/rust/issues/10434
 
 # ignore-cross-compile

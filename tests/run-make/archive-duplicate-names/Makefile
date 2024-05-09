@@ -1,4 +1,5 @@
-# This test reads two object archives with the same filename, and extracts each one to a unique location. This checks that the functionality of the linked PR is preserved.
+# When two object archives with the same filename are present, an iterator is supposed to inspect each object, recognize the duplication and extract each one to a different directory.
+# This test checks that this duplicate handling behaviour has not been broken.
 # See https://github.com/rust-lang/rust/pull/24439
 
 # ignore-cross-compile
