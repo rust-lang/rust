@@ -693,7 +693,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         let vtable_base = vtable_trait_first_method_offset(
             tcx,
-            (unnormalized_upcast_trait_ref, ty::Binder::dummy(object_trait_ref)),
+            unnormalized_upcast_trait_ref,
+            ty::Binder::dummy(object_trait_ref),
         );
 
         Ok(ImplSource::Builtin(BuiltinImplSource::Object { vtable_base: vtable_base }, nested))
