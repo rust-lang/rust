@@ -18,9 +18,7 @@ use rustc_type_ir::{ConstKind, DebugWithInfcx, InferCtxtLike, WithInfcx};
 use std::fmt::{self, Debug};
 
 use super::print::PrettyPrinter;
-use super::{GenericArg, GenericArgKind, Region};
-
-use super::Pattern;
+use super::{GenericArg, GenericArgKind, Pattern, Region};
 
 impl fmt::Debug for ty::TraitDef {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

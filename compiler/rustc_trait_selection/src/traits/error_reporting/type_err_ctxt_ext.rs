@@ -2,6 +2,10 @@
 
 use super::on_unimplemented::{AppendConstMessage, OnUnimplementedNote, TypeErrCtxtExt as _};
 use super::suggestions::{get_explanation_based_on_obligation, TypeErrCtxtExt as _};
+use super::{
+    dump_proof_tree, ArgKind, CandidateSimilarity, FindExprBySpan, FindTypeParam,
+    GetSafeTransmuteErrorAndReason, HasNumericInferVisitor, ImplCandidate, UnsatisfiedConst,
+};
 use crate::errors::{
     AsyncClosureNotFn, ClosureFnMutLabel, ClosureFnOnceLabel, ClosureKindMismatch,
 };
@@ -54,11 +58,6 @@ use rustc_span::{BytePos, ExpnKind, Span, Symbol, DUMMY_SP};
 use std::borrow::Cow;
 use std::fmt;
 use std::iter;
-
-use super::{
-    dump_proof_tree, ArgKind, CandidateSimilarity, FindExprBySpan, FindTypeParam,
-    GetSafeTransmuteErrorAndReason, HasNumericInferVisitor, ImplCandidate, UnsatisfiedConst,
-};
 
 pub use rustc_infer::traits::error_reporting::*;
 

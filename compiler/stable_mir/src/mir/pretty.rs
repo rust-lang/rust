@@ -6,9 +6,7 @@ use std::fmt::Debug;
 use std::io::Write;
 use std::{fmt, io, iter};
 
-use super::{AssertMessage, BinOp, TerminatorKind};
-
-use super::{BorrowKind, FakeBorrowKind};
+use super::{AssertMessage, BinOp, BorrowKind, FakeBorrowKind, TerminatorKind};
 
 impl Display for Ty {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {

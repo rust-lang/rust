@@ -32,7 +32,6 @@ use super::{
     GlobalAlloc, ImmTy, Immediate, InterpCx, InterpResult, MPlaceTy, Machine, MemPlaceMeta, OpTy,
     Pointer, Projectable, Scalar, ValueVisitor,
 };
-
 // for the validation errors
 use super::InterpError::UndefinedBehavior as Ub;
 use super::InterpError::Unsupported as Unsup;

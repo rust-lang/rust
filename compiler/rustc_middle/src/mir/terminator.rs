@@ -2,12 +2,12 @@
 use smallvec::{smallvec, SmallVec};
 
 use super::TerminatorKind;
+use super::*;
+
 use rustc_data_structures::packed::Pu128;
 use rustc_hir::LangItem;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use std::slice;
-
-use super::*;
 
 impl SwitchTargets {
     /// Creates switch targets from an iterator of values and target blocks.

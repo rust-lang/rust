@@ -7,13 +7,12 @@ use super::debuginfo::{
     DISPFlags, DIScope, DISubprogram, DISubrange, DITemplateTypeParameter, DIType, DIVariable,
     DebugEmissionKind, DebugNameTableKind,
 };
+use super::RustString;
 
 use libc::{c_char, c_int, c_uint, size_t};
 use libc::{c_ulonglong, c_void};
 
 use std::marker::PhantomData;
-
-use super::RustString;
 
 pub type Bool = c_uint;
 
