@@ -211,12 +211,12 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
         // First deal with any external C functions in linked .so file.
         #[cfg(target_os = "linux")]
-        if this.machine.external_so_lib.as_ref().is_some() {
-            use crate::shims::ffi_support::EvalContextExt as _;
+        if this.machine.native_lib.as_ref().is_some() {
+            use crate::shims::native_lib::EvalContextExt as _;
             // An Ok(false) here means that the function being called was not exported
             // by the specified `.so` file; we should continue and check if it corresponds to
             // a provided shim.
-            if this.call_external_c_fct(link_name, dest, args)? {
+            if this.call_native_fn(link_name, dest, args)? {
                 return Ok(EmulateItemResult::NeedsJumping);
             }
         }

@@ -2,9 +2,9 @@
 
 mod alloc;
 mod backtrace;
-#[cfg(target_os = "linux")]
-pub mod ffi_support;
 pub mod foreign_items;
+#[cfg(target_os = "linux")]
+pub mod native_lib;
 pub mod unix;
 pub mod windows;
 mod x86;

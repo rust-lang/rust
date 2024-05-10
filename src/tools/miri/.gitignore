@@ -9,5 +9,5 @@ tex/*/out
 perf.data
 perf.data.old
 flamegraph.svg
-tests/extern-so/libtestlib.so
+tests/native-lib/libtestlib.so
 .auto-*
