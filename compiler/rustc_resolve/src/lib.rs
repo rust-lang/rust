@@ -961,7 +961,6 @@ struct DeriveData {
     has_derive_copy: bool,
 }
 
-#[derive(Clone)]
 struct MacroData {
     ext: Lrc<SyntaxExtension>,
     rule_spans: Vec<(usize, Span)>,
