@@ -58,7 +58,7 @@ pub(super) fn check(
                     span.shrink_to_hi(),
                     "indent this line",
                     std::iter::repeat(" ").take(indent).join(""),
-                    Applicability::MachineApplicable,
+                    Applicability::MaybeIncorrect,
                     SuggestionStyle::ShowAlways,
                 );
                 diag.help("if this is supposed to be its own paragraph, add a blank line");
