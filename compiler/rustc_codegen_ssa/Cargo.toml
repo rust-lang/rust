@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 # tidy-alphabetical-start
-ar_archive_writer = "0.2.0"
+ar_archive_writer = "0.3.0"
 bitflags = "2.4.1"
 cc = "1.0.97"
 itertools = "0.12"
