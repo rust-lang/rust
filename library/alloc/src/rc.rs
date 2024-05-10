@@ -1809,7 +1809,9 @@ impl<T: Clone, A: Allocator + Clone> Rc<T, A> {
         // reference to the allocation.
         unsafe { &mut this.ptr.as_mut().value }
     }
+}
 
+impl<T: Clone, A: Allocator> Rc<T, A> {
     /// If we have the only reference to `T` then unwrap it. Otherwise, clone `T` and return the
     /// clone.
     ///

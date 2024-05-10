@@ -2227,7 +2227,9 @@ impl<T: Clone, A: Allocator + Clone> Arc<T, A> {
         // either unique to begin with, or became one upon cloning the contents.
         unsafe { Self::get_mut_unchecked(this) }
     }
+}
 
+impl<T: Clone, A: Allocator> Arc<T, A> {
     /// If we have the only reference to `T` then unwrap it. Otherwise, clone `T` and return the
     /// clone.
     ///
