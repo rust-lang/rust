@@ -322,6 +322,7 @@ const PATH_REMAP: &[(&str, &[&str])] = &[
             "tests/codegen-units",
             "tests/coverage",
             "tests/coverage-run-rustdoc",
+            "tests/crashes",
             "tests/debuginfo",
             "tests/incremental",
             "tests/mir-opt",
