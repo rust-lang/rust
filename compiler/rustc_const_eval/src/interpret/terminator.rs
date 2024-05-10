@@ -2,6 +2,7 @@ use std::borrow::Cow;
 
 use either::Either;
 
+use rustc_middle::span_bug;
 use rustc_middle::{
     mir,
     ty::{
@@ -19,8 +20,9 @@ use rustc_target::abi::{
 use rustc_target::spec::abi::Abi;
 
 use super::{
-    CtfeProvenance, FnVal, ImmTy, InterpCx, InterpResult, MPlaceTy, Machine, OpTy, PlaceTy,
-    Projectable, Provenance, Scalar, StackPopCleanup,
+    throw_ub, throw_ub_custom, throw_unsup_format, CtfeProvenance, FnVal, ImmTy, InterpCx,
+    InterpResult, MPlaceTy, Machine, OpTy, PlaceTy, Projectable, Provenance, Scalar,
+    StackPopCleanup,
 };
 use crate::fluent_generated as fluent;
 

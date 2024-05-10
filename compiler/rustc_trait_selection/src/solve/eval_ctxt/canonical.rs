@@ -23,6 +23,7 @@ use rustc_infer::infer::type_variable::TypeVariableOrigin;
 use rustc_infer::infer::RegionVariableOrigin;
 use rustc_infer::infer::{InferCtxt, InferOk};
 use rustc_infer::traits::solve::NestedNormalizationGoals;
+use rustc_middle::bug;
 use rustc_middle::infer::canonical::Canonical;
 use rustc_middle::infer::unify_key::ConstVariableOrigin;
 use rustc_middle::traits::query::NoSolution;

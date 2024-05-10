@@ -8,6 +8,7 @@ use rustc_data_structures::obligation_forest::{ObligationForest, ObligationProce
 use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_infer::traits::ProjectionCacheKey;
 use rustc_infer::traits::{PolyTraitObligation, SelectionError, TraitEngine};
+use rustc_middle::bug;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};

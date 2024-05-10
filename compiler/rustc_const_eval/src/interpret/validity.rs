@@ -13,6 +13,7 @@ use hir::def::DefKind;
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
+use rustc_middle::bug;
 use rustc_middle::mir::interpret::{
     ExpectedKind, InterpError, InvalidMetaKind, Misalignment, PointerKind, Provenance,
     ValidationErrorInfo, ValidationErrorKind, ValidationErrorKind::*,
@@ -27,9 +28,9 @@ use rustc_target::abi::{
 use std::hash::Hash;
 
 use super::{
-    format_interp_error, machine::AllocMap, AllocId, CheckInAllocMsg, GlobalAlloc, ImmTy,
-    Immediate, InterpCx, InterpResult, MPlaceTy, Machine, MemPlaceMeta, OpTy, Pointer, Projectable,
-    Scalar, ValueVisitor,
+    err_ub, format_interp_error, machine::AllocMap, throw_ub, AllocId, CheckInAllocMsg,
+    GlobalAlloc, ImmTy, Immediate, InterpCx, InterpResult, MPlaceTy, Machine, MemPlaceMeta, OpTy,
+    Pointer, Projectable, Scalar, ValueVisitor,
 };
 
 // for the validation errors

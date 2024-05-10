@@ -16,6 +16,7 @@ use rustc_fs_util::try_canonicalize;
 use rustc_hir::def_id::{CrateNum, LocalDefId, StableCrateId, LOCAL_CRATE};
 use rustc_hir::definitions::Definitions;
 use rustc_index::IndexVec;
+use rustc_middle::bug;
 use rustc_middle::ty::{TyCtxt, TyCtxtFeed};
 use rustc_session::config::{self, CrateType, ExternLocation};
 use rustc_session::cstore::{CrateDepKind, CrateSource, ExternCrate, ExternCrateSource};

@@ -5,6 +5,7 @@ use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, ImplTraitInTraitData, TyCtxt};
+use rustc_middle::{bug, span_bug};
 use rustc_span::symbol::kw;
 
 pub(crate) fn provide(providers: &mut Providers) {

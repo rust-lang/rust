@@ -8,6 +8,7 @@
 
 use crate::infer::canonical::{Canonical, CanonicalVarValues};
 use rustc_macros::extension;
+use rustc_middle::bug;
 use rustc_middle::ty::fold::{FnMutDelegate, TypeFoldable};
 use rustc_middle::ty::GenericArgKind;
 use rustc_middle::ty::{self, TyCtxt};

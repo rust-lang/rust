@@ -30,6 +30,7 @@ use super::graph::{self, BasicCoverageBlock};
 use itertools::Itertools;
 use rustc_data_structures::graph::{DirectedGraph, Successors};
 use rustc_index::{Idx, IndexVec};
+use rustc_middle::bug;
 use rustc_middle::mir::*;
 use rustc_middle::ty;
 use rustc_span::{BytePos, Pos, Span, DUMMY_SP};

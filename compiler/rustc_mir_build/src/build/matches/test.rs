@@ -13,6 +13,7 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::GenericArg;
 use rustc_middle::ty::{self, adjustment::PointerCoercion, Ty, TyCtxt};
+use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::DefId;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{sym, Symbol};

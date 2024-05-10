@@ -2,6 +2,7 @@ use std::iter;
 
 use super::MirPass;
 use rustc_middle::{
+    bug,
     mir::{
         interpret::Scalar, BasicBlock, BinOp, Body, Operand, Place, Rvalue, Statement,
         StatementKind, SwitchTargets, TerminatorKind,

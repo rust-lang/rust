@@ -18,6 +18,7 @@ use rustc_infer::infer::InferCtxt;
 use rustc_middle::hir::place::ProjectionKind;
 use rustc_middle::mir::FakeReadCause;
 use rustc_middle::ty::{self, adjustment, AdtKind, Ty, TyCtxt};
+use rustc_middle::{bug, span_bug};
 use rustc_target::abi::FIRST_VARIANT;
 use ty::BorrowKind::ImmBorrow;
 

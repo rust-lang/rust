@@ -18,9 +18,9 @@ use rustc_target::abi::{Align, Size};
 use rustc_target::spec::abi::Abi as CallAbi;
 
 use super::{
-    AllocBytes, AllocId, AllocKind, AllocRange, Allocation, ConstAllocation, CtfeProvenance, FnArg,
-    Frame, ImmTy, InterpCx, InterpResult, MPlaceTy, MemoryKind, Misalignment, OpTy, PlaceTy,
-    Pointer, Provenance,
+    throw_unsup, throw_unsup_format, AllocBytes, AllocId, AllocKind, AllocRange, Allocation,
+    ConstAllocation, CtfeProvenance, FnArg, Frame, ImmTy, InterpCx, InterpResult, MPlaceTy,
+    MemoryKind, Misalignment, OpTy, PlaceTy, Pointer, Provenance,
 };
 
 /// Data returned by Machine::stack_pop,

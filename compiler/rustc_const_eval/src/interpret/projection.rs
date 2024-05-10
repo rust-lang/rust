@@ -14,10 +14,14 @@ use rustc_middle::mir;
 use rustc_middle::ty;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::Ty;
+use rustc_middle::{bug, span_bug};
 use rustc_target::abi::Size;
 use rustc_target::abi::{self, VariantIdx};
 
-use super::{InterpCx, InterpResult, MPlaceTy, Machine, MemPlaceMeta, OpTy, Provenance, Scalar};
+use super::{
+    throw_ub, throw_unsup_format, InterpCx, InterpResult, MPlaceTy, Machine, MemPlaceMeta, OpTy,
+    Provenance, Scalar,
+};
 
 /// Describes the constraints placed on offset-projections.
 #[derive(Copy, Clone, Debug)]

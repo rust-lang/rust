@@ -17,6 +17,7 @@ use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
 use rustc_middle::ty::NormalizesTo;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::ty::{ToPredicate, TypeVisitableExt};
+use rustc_middle::{bug, span_bug};
 use rustc_span::{sym, ErrorGuaranteed, DUMMY_SP};
 
 mod anon_const;

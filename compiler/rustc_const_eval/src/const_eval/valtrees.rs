@@ -1,4 +1,5 @@
 use rustc_data_structures::stack::ensure_sufficient_stack;
+use rustc_middle::bug;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::{EvalToValTreeResult, GlobalId};
 use rustc_middle::ty::layout::{LayoutCx, LayoutOf, TyAndLayout};

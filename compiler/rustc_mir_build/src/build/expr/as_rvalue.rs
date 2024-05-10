@@ -9,6 +9,7 @@ use crate::build::expr::as_place::PlaceBase;
 use crate::build::expr::category::{Category, RvalueFunc};
 use crate::build::{BlockAnd, BlockAndExtension, Builder, NeedsTemporary};
 use rustc_hir::lang_items::LangItem;
+use rustc_middle::bug;
 use rustc_middle::middle::region;
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::*;

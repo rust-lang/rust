@@ -24,7 +24,7 @@ use rustc_middle::ty::layout::TyAndLayout;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::sym;
 
-use super::{AllocId, Allocation, InterpCx, MPlaceTy, Machine, MemoryKind, PlaceTy};
+use super::{err_ub, AllocId, Allocation, InterpCx, MPlaceTy, Machine, MemoryKind, PlaceTy};
 use crate::const_eval;
 use crate::errors::NestedStaticInThreadLocal;
 

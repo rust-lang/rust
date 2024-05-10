@@ -2,6 +2,7 @@
 
 use crate::simplify::simplify_duplicate_switch_targets;
 use rustc_ast::attr;
+use rustc_middle::bug;
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout;
 use rustc_middle::ty::layout::ValidityRequirement;

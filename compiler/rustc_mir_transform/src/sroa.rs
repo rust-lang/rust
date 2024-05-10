@@ -1,6 +1,7 @@
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_index::bit_set::{BitSet, GrowableBitSet};
 use rustc_index::IndexVec;
+use rustc_middle::bug;
 use rustc_middle::mir::patch::MirPatch;
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;

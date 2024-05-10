@@ -48,11 +48,6 @@
 //! result of `*x'`, effectively, where `x'` is a `Categorization::Upvar` reference
 //! tied to `x`. The type of `x'` will be a borrowed pointer.
 
-use rustc_middle::hir::place::*;
-use rustc_middle::ty::adjustment;
-use rustc_middle::ty::fold::TypeFoldable;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
-
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
@@ -60,6 +55,11 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_hir::pat_util::EnumerateAndAdjustIterator;
 use rustc_hir::{HirId, PatKind};
 use rustc_infer::infer::InferCtxt;
+use rustc_middle::hir::place::*;
+use rustc_middle::ty::adjustment;
+use rustc_middle::ty::fold::TypeFoldable;
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::{bug, span_bug};
 use rustc_span::Span;
 use rustc_target::abi::{FieldIdx, VariantIdx, FIRST_VARIANT};
 use rustc_trait_selection::infer::InferCtxtExt;

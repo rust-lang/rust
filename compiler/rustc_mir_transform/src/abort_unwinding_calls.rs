@@ -1,5 +1,6 @@
 use rustc_ast::InlineAsmOptions;
 use rustc_middle::mir::*;
+use rustc_middle::span_bug;
 use rustc_middle::ty::layout;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_target::spec::abi::Abi;

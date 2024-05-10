@@ -20,6 +20,7 @@ use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::ty::{ReBound, RePlaceholder, ReVar};
 use rustc_middle::ty::{ReEarlyParam, ReErased, ReError, ReLateParam, ReStatic};
 use rustc_middle::ty::{Region, RegionVid};
+use rustc_middle::{bug, span_bug};
 use rustc_span::Span;
 use std::fmt;
 

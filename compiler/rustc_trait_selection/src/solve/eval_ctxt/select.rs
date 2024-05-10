@@ -8,6 +8,7 @@ use rustc_infer::traits::{
     PolyTraitObligation, Selection, SelectionError, SelectionResult,
 };
 use rustc_macros::extension;
+use rustc_middle::{bug, span_bug};
 use rustc_span::Span;
 
 use crate::solve::inspect::{self, ProofTreeInferCtxtExt};

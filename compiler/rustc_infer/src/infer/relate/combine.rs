@@ -24,6 +24,7 @@ use super::type_relating::TypeRelating;
 use super::StructurallyRelateAliases;
 use crate::infer::{DefineOpaqueTypes, InferCtxt, TypeTrace};
 use crate::traits::{Obligation, PredicateObligations};
+use rustc_middle::bug;
 use rustc_middle::infer::canonical::OriginalQueryValues;
 use rustc_middle::infer::unify_key::EffectVarValue;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};

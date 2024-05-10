@@ -20,6 +20,7 @@ use rustc_middle::mir::*;
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::thir::{self, ExprId, LintLevel, LocalVarId, Param, ParamId, PatKind, Thir};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::{bug, span_bug};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 use rustc_span::Symbol;
