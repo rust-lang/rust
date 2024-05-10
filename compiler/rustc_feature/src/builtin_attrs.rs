@@ -515,12 +515,6 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         EncodeCrossCrate::Yes, experimental!(deprecated_safe),
     ),
 
-    // RFC 2397
-    gated!(
-        do_not_recommend, Normal, template!(Word), WarnFollowing,
-        EncodeCrossCrate::Yes, experimental!(do_not_recommend)
-    ),
-
     // `#[cfi_encoding = ""]`
     gated!(
         cfi_encoding, Normal, template!(NameValueStr: "encoding"), ErrorPreceding,

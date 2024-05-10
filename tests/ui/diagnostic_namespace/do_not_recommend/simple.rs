@@ -6,7 +6,7 @@
 
 trait Foo {}
 
-#[do_not_recommend]
+#[diagnostic::do_not_recommend]
 impl<T> Foo for T where T: Send {}
 
 fn needs_foo<T: Foo>() {}

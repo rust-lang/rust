@@ -8,7 +8,7 @@ trait Root {}
 trait DontRecommend {}
 trait Other {}
 
-#[do_not_recommend]
+#[diagnostic::do_not_recommend]
 impl<T> Root for T where T: DontRecommend {}
 
 impl<T> DontRecommend for T where T: Other {}

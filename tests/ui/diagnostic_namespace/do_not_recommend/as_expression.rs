@@ -26,7 +26,7 @@ impl<T> Expression for Bound<T> {
     type SqlType = T;
 }
 
-#[do_not_recommend]
+#[diagnostic::do_not_recommend]
 impl<T, ST> AsExpression<ST> for T
 where
     T: Expression<SqlType = ST>,

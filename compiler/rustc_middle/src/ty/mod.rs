@@ -1805,6 +1805,11 @@ impl<'tcx> TyCtxt<'tcx> {
         self.get_attrs(did, attr).next().is_some()
     }
 
+    /// Determines whether an item is annotated with a multi-segement attribute
+    pub fn has_attrs_with_path(self, did: impl Into<DefId>, attrs: &[Symbol]) -> bool {
+        self.get_attrs_by_path(did.into(), attrs).next().is_some()
+    }
+
     /// Returns `true` if this is an `auto trait`.
     pub fn trait_is_auto(self, trait_def_id: DefId) -> bool {
         self.trait_def(trait_def_id).has_auto_impl
