@@ -357,7 +357,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Offset => {
                 let ptr = left.to_scalar().to_pointer(self)?;
                 let offset_count = right.to_scalar().to_target_isize(self)?;
-                let pointee_ty = left.layout.ty.builtin_deref(true).unwrap().ty;
+                let pointee_ty = left.layout.ty.builtin_deref(true).unwrap();
 
                 // We cannot overflow i64 as a type's size must be <= isize::MAX.
                 let pointee_size = i64::try_from(self.layout_of(pointee_ty)?.size.bytes()).unwrap();

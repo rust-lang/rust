@@ -267,7 +267,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                         Op::WrappingOffset => {
                             let ptr = left.to_scalar().to_pointer(this)?;
                             let offset_count = right.to_scalar().to_target_isize(this)?;
-                            let pointee_ty = left.layout.ty.builtin_deref(true).unwrap().ty;
+                            let pointee_ty = left.layout.ty.builtin_deref(true).unwrap();
 
                             let pointee_size = i64::try_from(this.layout_of(pointee_ty)?.size.bytes()).unwrap();
                             let offset_bytes = offset_count.wrapping_mul(pointee_size);

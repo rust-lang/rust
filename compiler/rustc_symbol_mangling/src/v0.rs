@@ -630,8 +630,7 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
                         let pointee_ty = ct
                             .ty()
                             .builtin_deref(true)
-                            .expect("tried to dereference on non-ptr type")
-                            .ty;
+                            .expect("tried to dereference on non-ptr type");
                         // FIXME(const_generics): add an assert that we only do this for valtrees.
                         let dereferenced_const = self.tcx.mk_ct_from_kind(ct.kind(), pointee_ty);
                         dereferenced_const.print(self)?;
