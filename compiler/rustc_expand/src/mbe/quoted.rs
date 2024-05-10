@@ -357,7 +357,7 @@ fn parse_sep_and_kleene_op<'a>(
 
 // `$$` or a meta-variable is the lhs of a macro but shouldn't.
 //
-// For example, `macro_rules! foo { ( ${length()} ) => {} }`
+// For example, `macro_rules! foo { ( ${len()} ) => {} }`
 fn span_dollar_dollar_or_metavar_in_the_lhs_err(sess: &Session, token: &Token) {
     sess.dcx()
         .span_err(token.span, format!("unexpected token: {}", pprust::token_to_string(token)));
