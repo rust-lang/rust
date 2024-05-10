@@ -350,4 +350,8 @@ where
             Ok(())
         })
     }
+
+    fn print_debug(t: &T, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        with_no_trimmed_paths!(Self::print(t, fmt))
+    }
 }

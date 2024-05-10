@@ -1,5 +1,3 @@
-use std::fmt;
-
 use rustc_macros::{HashStable_NoContext, TyDecodable, TyEncodable};
 
 use crate::fold::{FallibleTypeFolder, TypeFoldable};
@@ -68,25 +66,6 @@ impl<I: Interner> TraitRef<I> {
     #[inline]
     pub fn self_ty(&self) -> I::Ty {
         self.args.type_at(0)
-    }
-}
-
-impl<I: Interner> fmt::Debug for TraitRef<I> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let TraitRef { def_id, args, _use_trait_ref_new_instead: () } = self;
-        let mut args = args.into_iter().peekable();
-        write!(f, "{def_id:?}")?;
-        if args.peek().is_some() {
-            write!(f, "<")?;
-            for (i, arg) in args.enumerate() {
-                if i > 0 {
-                    write!(f, ", ")?;
-                }
-                write!(f, "{arg:#?}")?;
-            }
-            write!(f, ">")?;
-        }
-        Ok(())
     }
 }
 
