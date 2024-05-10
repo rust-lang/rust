@@ -14,8 +14,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         error: &mut traits::FulfillmentError<'tcx>,
     ) -> bool {
-        let (traits::ExprItemObligation(def_id, hir_id, idx)
-        | traits::ExprBindingObligation(def_id, _, hir_id, idx)) =
+        let (ObligationCauseCode::ExprItemObligation(def_id, hir_id, idx)
+        | ObligationCauseCode::ExprBindingObligation(def_id, _, hir_id, idx)) =
             *error.obligation.cause.code().peel_derives()
         else {
             return false;

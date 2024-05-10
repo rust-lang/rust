@@ -8,6 +8,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
 use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes};
 use rustc_infer::infer::{InferOk, InferResult};
+use rustc_infer::traits::ObligationCauseCode;
 use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_middle::ty::visit::{TypeVisitable, TypeVisitableExt};
 use rustc_middle::ty::GenericArgs;
@@ -119,7 +120,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Gen, _)
                     | hir::CoroutineKind::Coroutine(_) => {
                         let yield_ty = self.next_ty_var(expr_span);
-                        self.require_type_is_sized(yield_ty, expr_span, traits::SizedYieldType);
+                        self.require_type_is_sized(
+                            yield_ty,
+                            expr_span,
+                            ObligationCauseCode::SizedYieldType,
+                        );
                         yield_ty
                     }
                     // HACK(-Ztrait-solver=next): In the *old* trait solver, we must eagerly
@@ -128,7 +133,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // not a problem.
                     hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::AsyncGen, _) => {
                         let yield_ty = self.next_ty_var(expr_span);
-                        self.require_type_is_sized(yield_ty, expr_span, traits::SizedYieldType);
+                        self.require_type_is_sized(
+                            yield_ty,
+                            expr_span,
+                            ObligationCauseCode::SizedYieldType,
+                        );
 
                         Ty::new_adt(
                             tcx,

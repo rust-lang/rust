@@ -2,11 +2,11 @@ use crate::FnCtxt;
 use rustc_hir as hir;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{HirId, PatKind};
+use rustc_infer::traits::ObligationCauseCode;
 use rustc_middle::ty::Ty;
 use rustc_middle::ty::UserType;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::Span;
-use rustc_trait_selection::traits;
 
 /// Provides context for checking patterns in declarations. More specifically this
 /// allows us to infer array types if the pattern is irrefutable and allows us to infer
@@ -146,7 +146,7 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
                         p.span,
                         // ty_span == ident.span iff this is a closure parameter with no type
                         // ascription, or if it's an implicit `self` parameter
-                        traits::SizedArgumentType(
+                        ObligationCauseCode::SizedArgumentType(
                             if ty_span == ident.span
                                 && self.fcx.tcx.is_closure_like(self.fcx.body_id.into())
                             {
@@ -159,7 +159,11 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
                 }
             } else {
                 if !self.fcx.tcx.features().unsized_locals {
-                    self.fcx.require_type_is_sized(var_ty, p.span, traits::VariableType(p.hir_id));
+                    self.fcx.require_type_is_sized(
+                        var_ty,
+                        p.span,
+                        ObligationCauseCode::VariableType(p.hir_id),
+                    );
                 }
             }
 

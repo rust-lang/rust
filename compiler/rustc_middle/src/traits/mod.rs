@@ -33,8 +33,6 @@ use std::hash::{Hash, Hasher};
 
 pub use self::select::{EvaluationCache, EvaluationResult, OverflowError, SelectionCache};
 
-pub use self::ObligationCauseCode::*;
-
 /// Depending on the stage of compilation, we want projection to be
 /// more or less conservative.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, HashStable, Encodable, Decodable)]
@@ -129,7 +127,7 @@ impl<'tcx> ObligationCause<'tcx> {
     }
 
     pub fn misc(span: Span, body_id: LocalDefId) -> ObligationCause<'tcx> {
-        ObligationCause::new(span, body_id, MiscObligation)
+        ObligationCause::new(span, body_id, ObligationCauseCode::MiscObligation)
     }
 
     #[inline(always)]
@@ -189,8 +187,8 @@ impl<'tcx> ObligationCause<'tcx> {
 
     pub fn to_constraint_category(&self) -> ConstraintCategory<'tcx> {
         match self.code() {
-            MatchImpl(cause, _) => cause.to_constraint_category(),
-            AscribeUserTypeProvePredicate(predicate_span) => {
+            ObligationCauseCode::MatchImpl(cause, _) => cause.to_constraint_category(),
+            ObligationCauseCode::AscribeUserTypeProvePredicate(predicate_span) => {
                 ConstraintCategory::Predicate(*predicate_span)
             }
             _ => ConstraintCategory::BoringNoLocation,
@@ -540,19 +538,22 @@ impl<'tcx> ObligationCauseCode<'tcx> {
 
     pub fn parent(&self) -> Option<(&Self, Option<ty::PolyTraitPredicate<'tcx>>)> {
         match self {
-            FunctionArgumentObligation { parent_code, .. } => Some((parent_code, None)),
-            BuiltinDerivedObligation(derived)
-            | WellFormedDerivedObligation(derived)
-            | ImplDerivedObligation(box ImplDerivedObligationCause { derived, .. }) => {
-                Some((&derived.parent_code, Some(derived.parent_trait_pred)))
+            ObligationCauseCode::FunctionArgumentObligation { parent_code, .. } => {
+                Some((parent_code, None))
             }
+            ObligationCauseCode::BuiltinDerivedObligation(derived)
+            | ObligationCauseCode::WellFormedDerivedObligation(derived)
+            | ObligationCauseCode::ImplDerivedObligation(box ImplDerivedObligationCause {
+                derived,
+                ..
+            }) => Some((&derived.parent_code, Some(derived.parent_trait_pred))),
             _ => None,
         }
     }
 
     pub fn peel_match_impls(&self) -> &Self {
         match self {
-            MatchImpl(cause, _) => cause.code(),
+            ObligationCauseCode::MatchImpl(cause, _) => cause.code(),
             _ => self,
         }
     }

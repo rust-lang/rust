@@ -2012,9 +2012,9 @@ pub(super) fn check_type_bounds<'tcx>(
     );
     let mk_cause = |span: Span| {
         let code = if span.is_dummy() {
-            traits::ItemObligation(trait_ty.def_id)
+            ObligationCauseCode::ItemObligation(trait_ty.def_id)
         } else {
-            traits::BindingObligation(trait_ty.def_id, span)
+            ObligationCauseCode::BindingObligation(trait_ty.def_id, span)
         };
         ObligationCause::new(impl_ty_span, impl_ty_def_id, code)
     };
@@ -2251,7 +2251,8 @@ fn try_report_async_mismatch<'tcx>(
     };
 
     for error in errors {
-        if let traits::BindingObligation(def_id, _) = *error.root_obligation.cause.code()
+        if let ObligationCauseCode::BindingObligation(def_id, _) =
+            *error.root_obligation.cause.code()
             && def_id == async_future_def_id
             && let Some(proj) = error.root_obligation.predicate.to_opt_poly_projection_pred()
             && let Some(proj) = proj.no_bound_vars()

@@ -7,7 +7,7 @@ use rustc_infer::traits::solve::inspect::ProbeKind;
 use rustc_infer::traits::solve::{CandidateSource, GoalSource, MaybeCause};
 use rustc_infer::traits::{
     self, FulfillmentError, FulfillmentErrorCode, MismatchedProjectionTypes, Obligation,
-    ObligationCause, PredicateObligation, SelectionError, TraitEngine,
+    ObligationCause, ObligationCauseCode, PredicateObligation, SelectionError, TraitEngine,
 };
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{self, TyCtxt};
@@ -425,17 +425,20 @@ fn derive_cause<'tcx>(
                 tcx.predicates_of(impl_def_id).instantiate_identity(tcx).iter().nth(idx)
             {
                 cause = cause.derived_cause(parent_trait_pred, |derived| {
-                    traits::ImplDerivedObligation(Box::new(traits::ImplDerivedObligationCause {
-                        derived,
-                        impl_or_alias_def_id: impl_def_id,
-                        impl_def_predicate_index: Some(idx),
-                        span,
-                    }))
+                    ObligationCauseCode::ImplDerivedObligation(Box::new(
+                        traits::ImplDerivedObligationCause {
+                            derived,
+                            impl_or_alias_def_id: impl_def_id,
+                            impl_def_predicate_index: Some(idx),
+                            span,
+                        },
+                    ))
                 })
             }
         }
         ProbeKind::TraitCandidate { source: CandidateSource::BuiltinImpl(..), result: _ } => {
-            cause = cause.derived_cause(parent_trait_pred, traits::BuiltinDerivedObligation);
+            cause = cause
+                .derived_cause(parent_trait_pred, ObligationCauseCode::BuiltinDerivedObligation);
         }
         _ => {}
     };

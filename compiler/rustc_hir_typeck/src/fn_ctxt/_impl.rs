@@ -409,7 +409,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub fn lower_ty(&self, hir_ty: &hir::Ty<'tcx>) -> LoweredTy<'tcx> {
         let ty = self.lowerer().lower_ty(hir_ty);
-        self.register_wf_obligation(ty.into(), hir_ty.span, traits::WellFormed(None));
+        self.register_wf_obligation(ty.into(), hir_ty.span, ObligationCauseCode::WellFormed(None));
         LoweredTy::from_raw(self, hir_ty.span, ty)
     }
 
@@ -520,7 +520,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         for arg in args.iter().filter(|arg| {
             matches!(arg.unpack(), GenericArgKind::Type(..) | GenericArgKind::Const(..))
         }) {
-            self.register_wf_obligation(arg, expr.span, traits::WellFormed(None));
+            self.register_wf_obligation(arg, expr.span, ObligationCauseCode::WellFormed(None));
         }
     }
 
@@ -775,7 +775,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
         if let Some(&cached_result) = self.typeck_results.borrow().type_dependent_defs().get(hir_id)
         {
-            self.register_wf_obligation(ty.raw.into(), qself.span, traits::WellFormed(None));
+            self.register_wf_obligation(
+                ty.raw.into(),
+                qself.span,
+                ObligationCauseCode::WellFormed(None),
+            );
             // Return directly on cache hit. This is useful to avoid doubly reporting
             // errors with default match binding modes. See #44614.
             let def = cached_result.map_or(Res::Err, |(kind, def_id)| Res::Def(kind, def_id));
@@ -814,7 +818,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.register_wf_obligation(
                         ty.raw.into(),
                         qself.span,
-                        traits::WellFormed(None),
+                        ObligationCauseCode::WellFormed(None),
                     );
                 }
 
@@ -848,7 +852,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             });
 
         if result.is_ok() {
-            self.register_wf_obligation(ty.raw.into(), qself.span, traits::WellFormed(None));
+            self.register_wf_obligation(
+                ty.raw.into(),
+                qself.span,
+                ObligationCauseCode::WellFormed(None),
+            );
         }
 
         // Write back the new resolution.
