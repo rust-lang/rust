@@ -107,8 +107,8 @@ fn relate_mir_and_user_args<'tcx>(
         let span = if span == DUMMY_SP { predicate_span } else { span };
         let cause = ObligationCause::new(
             span,
-            CRATE_DEF_ID,
-            ObligationCauseCode::AscribeUserTypeProvePredicate(predicate_span),
+            def_id.as_local().unwrap_or(CRATE_DEF_ID),
+            ObligationCauseCode::AscribeUserTypeProvePredicate(def_id, predicate_span),
         );
         let instantiated_predicate =
             ocx.normalize(&cause.clone(), param_env, instantiated_predicate);
@@ -118,7 +118,7 @@ fn relate_mir_and_user_args<'tcx>(
 
     // Now prove the well-formedness of `def_id` with `args`.
     // Note for some items, proving the WF of `ty` is not sufficient because the
-    // well-formedness of an item may depend on the WF of gneneric args not present in the
+    // well-formedness of an item may depend on the WF of generic args not present in the
     // item's type. Currently this is true for associated consts, e.g.:
     // ```rust
     // impl<T> MyTy<T> {
