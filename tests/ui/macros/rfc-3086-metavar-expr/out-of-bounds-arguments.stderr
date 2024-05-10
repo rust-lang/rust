@@ -10,11 +10,11 @@ error: depth parameter of meta-variable expression `index` must be less than 3
 LL |                 ${index(10)},
    |                  ^^^^^^^^^^^
 
-error: depth parameter of meta-variable expression `length` must be less than 2
+error: depth parameter of meta-variable expression `len` must be less than 2
   --> $DIR/out-of-bounds-arguments.rs:32:18
    |
-LL |                 ${length(10)}
-   |                  ^^^^^^^^^^^^
+LL |                 ${len(10)}
+   |                  ^^^^^^^^^
 
 error: aborting due to 3 previous errors
 

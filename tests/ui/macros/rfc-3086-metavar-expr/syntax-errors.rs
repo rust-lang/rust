@@ -18,23 +18,27 @@ macro_rules! curly__rhs_dollar__no_round {
     //~^ ERROR `count` can not be placed inside the inner-most repetition
 }
 
+#[rustfmt::skip] // autoformatters can break a few of the error traces
 macro_rules! no_curly__no_rhs_dollar__round {
     ( $( $i:ident ),* ) => { count(i) };
     //~^ ERROR cannot find function `count` in this scope
     //~| ERROR cannot find value `i` in this scope
 }
 
+#[rustfmt::skip] // autoformatters can break a few of the error traces
 macro_rules! no_curly__no_rhs_dollar__no_round {
     ( $i:ident ) => { count(i) };
     //~^ ERROR cannot find function `count` in this scope
     //~| ERROR cannot find value `i` in this scope
 }
 
+#[rustfmt::skip] // autoformatters can break a few of the error traces
 macro_rules! no_curly__rhs_dollar__round {
     ( $( $i:ident ),* ) => { count($i) };
     //~^ ERROR variable 'i' is still repeating at this depth
 }
 
+#[rustfmt::skip] // autoformatters can break a few of the error traces
 macro_rules! no_curly__rhs_dollar__no_round {
     ( $i:ident ) => { count($i) };
     //~^ ERROR cannot find function `count` in this scope
@@ -44,7 +48,7 @@ macro_rules! no_curly__rhs_dollar__no_round {
 
 macro_rules! dollar_dollar_in_the_lhs {
     ( $$ $a:ident ) => {
-    //~^ ERROR unexpected token: $
+        //~^ ERROR unexpected token: $
     };
 }
 
@@ -85,7 +89,7 @@ macro_rules! metavar_depth_is_not_literal {
 }
 
 macro_rules! metavar_in_the_lhs {
-    ( ${ length() } ) => {
+    ( ${ len() } ) => {
         //~^ ERROR unexpected token: {
         //~| ERROR expected one of: `*`, `+`, or `?`
     };
@@ -109,6 +113,7 @@ macro_rules! metavar_without_parens {
     //~| ERROR expected expression, found `$`
 }
 
+#[rustfmt::skip]
 macro_rules! open_brackets_without_tokens {
     ( $( $i:ident ),* ) => { ${ {} } };
     //~^ ERROR expected expression, found `$`

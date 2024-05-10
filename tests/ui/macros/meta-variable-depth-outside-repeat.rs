@@ -2,8 +2,8 @@
 
 macro_rules! metavar {
     ( $i:expr ) => {
-        ${length(0)}
-        //~^ ERROR meta-variable expression `length` with depth parameter must be called inside of a macro repetition
+        ${len(0)}
+        //~^ ERROR meta-variable expression `len` with depth parameter must be called inside of a macro repetition
     };
 }
 

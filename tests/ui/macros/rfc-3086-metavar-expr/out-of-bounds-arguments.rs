@@ -28,9 +28,9 @@ macro_rules! c {
         (
             $( $(
                 ${ignore($foo)}
-                ${length(0)}
-                ${length(10)}
-                //~^ ERROR depth parameter of meta-variable expression `length` must be less than 2
+                ${len(0)}
+                ${len(10)}
+                //~^ ERROR depth parameter of meta-variable expression `len` must be less than 2
             )* )*
         )
     };
