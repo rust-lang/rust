@@ -251,23 +251,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let trait_path = self.trait_path_or_bare_name(span, expr_id, container_id);
                 let trait_generics = self.tcx.generics_of(container_id);
 
-                let trait_name = if trait_generics.params.len() <= trait_generics.has_self as usize
-                {
-                    trait_path
-                } else {
-                    let counts = trait_generics.own_counts();
-                    format!(
-                        "{}<{}>",
-                        trait_path,
-                        std::iter::repeat("'_")
-                            .take(counts.lifetimes)
-                            .chain(std::iter::repeat("_").take(
-                                counts.types + counts.consts - trait_generics.has_self as usize
-                            ))
-                            .collect::<Vec<_>>()
-                            .join(", ")
-                    )
-                };
+                let trait_name =
+                    if trait_generics.own_params.len() <= trait_generics.has_self as usize {
+                        trait_path
+                    } else {
+                        let counts = trait_generics.own_counts();
+                        format!(
+                            "{}<{}>",
+                            trait_path,
+                            std::iter::repeat("'_")
+                                .take(counts.lifetimes)
+                                .chain(std::iter::repeat("_").take(
+                                    counts.types + counts.consts - trait_generics.has_self as usize
+                                ))
+                                .collect::<Vec<_>>()
+                                .join(", ")
+                        )
+                    };
 
                 let mut self_ty_name = self_ty_span
                     .find_ancestor_inside(span)
@@ -280,7 +280,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if !self_ty_name.contains('<') {
                     if let ty::Adt(def, _) = self_ty.kind() {
                         let generics = self.tcx.generics_of(def.did());
-                        if !generics.params.is_empty() {
+                        if !generics.own_params.is_empty() {
                             let counts = generics.own_counts();
                             self_ty_name += &format!(
                                 "<{}>",

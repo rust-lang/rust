@@ -1299,7 +1299,7 @@ pub fn prohibit_assoc_item_binding(
         // same name as the assoc type name in type binding
         let generics = tcx.generics_of(def_id);
         let matching_param =
-            generics.params.iter().find(|p| p.name.as_str() == binding.ident.as_str());
+            generics.own_params.iter().find(|p| p.name.as_str() == binding.ident.as_str());
 
         // Now emit the appropriate suggestion
         if let Some(matching_param) = matching_param {

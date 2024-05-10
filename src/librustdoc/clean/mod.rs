@@ -795,7 +795,7 @@ fn clean_ty_generics<'tcx>(
     let mut impl_trait = BTreeMap::<u32, Vec<GenericBound>>::default();
 
     let params: ThinVec<_> = gens
-        .params
+        .own_params
         .iter()
         .filter(|param| match param.kind {
             ty::GenericParamDefKind::Lifetime => !param.is_anonymous_lifetime(),
@@ -1988,7 +1988,7 @@ impl<'tcx> ContainerTy<'_, 'tcx> {
                 let generics = tcx.generics_of(container);
                 debug_assert_eq!(generics.parent_count, 0);
 
-                let param = generics.params[index].def_id;
+                let param = generics.own_params[index].def_id;
                 let default = tcx.object_lifetime_default(param);
                 match default {
                     rbv::ObjectLifetimeDefault::Param(lifetime) => {

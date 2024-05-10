@@ -431,7 +431,7 @@ fn check_gat_where_clauses(tcx: TyCtxt<'_>, trait_def_id: LocalDefId) {
             }
             let gat_generics = tcx.generics_of(gat_def_id);
             // FIXME(jackh726): we can also warn in the more general case
-            if gat_generics.params.is_empty() {
+            if gat_generics.own_params.is_empty() {
                 continue;
             }
 
@@ -1400,7 +1400,7 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
     //     struct Foo<T = Vec<[u32]>> { .. }
     //
     // Here, the default `Vec<[u32]>` is not WF because `[u32]: Sized` does not hold.
-    for param in &generics.params {
+    for param in &generics.own_params {
         match param.kind {
             GenericParamDefKind::Type { .. } => {
                 if is_our_default(param) {
@@ -1879,7 +1879,7 @@ fn check_variances_for_type_defn<'tcx>(
             continue;
         }
 
-        let ty_param = &ty_generics.params[index];
+        let ty_param = &ty_generics.own_params[index];
         let hir_param = &hir_generics.params[index];
 
         if ty_param.def_id != hir_param.def_id.into() {

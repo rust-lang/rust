@@ -523,7 +523,7 @@ impl<'tcx> Stable<'tcx> for ty::Generics {
     fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
         use stable_mir::ty::Generics;
 
-        let params: Vec<_> = self.params.iter().map(|param| param.stable(tables)).collect();
+        let params: Vec<_> = self.own_params.iter().map(|param| param.stable(tables)).collect();
         let param_def_id_to_index =
             params.iter().map(|param| (param.def_id, param.index)).collect();
 

@@ -1070,11 +1070,11 @@ pub fn approx_ty_size<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> u64 {
 fn assert_generic_args_match<'tcx>(tcx: TyCtxt<'tcx>, did: DefId, args: &[GenericArg<'tcx>]) {
     let g = tcx.generics_of(did);
     let parent = g.parent.map(|did| tcx.generics_of(did));
-    let count = g.parent_count + g.params.len();
+    let count = g.parent_count + g.own_params.len();
     let params = parent
-        .map_or([].as_slice(), |p| p.params.as_slice())
+        .map_or([].as_slice(), |p| p.own_params.as_slice())
         .iter()
-        .chain(&g.params)
+        .chain(&g.own_params)
         .map(|x| &x.kind);
 
     assert!(

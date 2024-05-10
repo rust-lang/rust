@@ -729,7 +729,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             };
 
             let struct_generic_parameters: &ty::Generics = self.tcx.generics_of(in_ty_adt.did());
-            if drill_generic_index >= struct_generic_parameters.params.len() {
+            if drill_generic_index >= struct_generic_parameters.own_params.len() {
                 return Err(expr);
             }
 
@@ -852,7 +852,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             };
 
             let struct_generic_parameters: &ty::Generics = self.tcx.generics_of(in_ty_adt.did());
-            if drill_generic_index >= struct_generic_parameters.params.len() {
+            if drill_generic_index >= struct_generic_parameters.own_params.len() {
                 return Err(expr);
             }
 

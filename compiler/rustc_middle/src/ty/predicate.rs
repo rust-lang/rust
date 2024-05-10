@@ -250,7 +250,7 @@ impl<'tcx> PolyExistentialPredicate<'tcx> {
             }
             ExistentialPredicate::AutoTrait(did) => {
                 let generics = tcx.generics_of(did);
-                let trait_ref = if generics.params.len() == 1 {
+                let trait_ref = if generics.own_params.len() == 1 {
                     ty::TraitRef::new(tcx, did, [self_ty])
                 } else {
                     // If this is an ill-formed auto trait, then synthesize
@@ -373,7 +373,7 @@ impl<'tcx> TraitRef<'tcx> {
         args: GenericArgsRef<'tcx>,
     ) -> ty::TraitRef<'tcx> {
         let defs = tcx.generics_of(trait_id);
-        ty::TraitRef::new(tcx, trait_id, tcx.mk_args(&args[..defs.params.len()]))
+        ty::TraitRef::new(tcx, trait_id, tcx.mk_args(&args[..defs.own_params.len()]))
     }
 
     /// Returns a `TraitRef` of the form `P0: Foo<P1..Pn>` where `Pi`

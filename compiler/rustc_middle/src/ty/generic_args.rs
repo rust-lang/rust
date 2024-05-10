@@ -359,8 +359,8 @@ impl<'tcx> GenericArgs<'tcx> {
     ) where
         F: FnMut(&ty::GenericParamDef, &[GenericArg<'tcx>]) -> GenericArg<'tcx>,
     {
-        args.reserve(defs.params.len());
-        for param in &defs.params {
+        args.reserve(defs.own_params.len());
+        for param in &defs.own_params {
             let kind = mk_kind(param, args);
             assert_eq!(param.index as usize, args.len(), "{args:#?}, {defs:#?}");
             args.push(kind);

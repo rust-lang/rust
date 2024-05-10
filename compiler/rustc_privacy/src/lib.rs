@@ -787,7 +787,7 @@ impl<'tcx> Visitor<'tcx> for EmbargoVisitor<'tcx> {
 
 impl ReachEverythingInTheInterfaceVisitor<'_, '_> {
     fn generics(&mut self) -> &mut Self {
-        for param in &self.ev.tcx.generics_of(self.item_def_id).params {
+        for param in &self.ev.tcx.generics_of(self.item_def_id).own_params {
             match param.kind {
                 GenericParamDefKind::Lifetime => {}
                 GenericParamDefKind::Type { has_default, .. } => {
@@ -1259,7 +1259,7 @@ struct SearchInterfaceForPrivateItemsVisitor<'tcx> {
 impl SearchInterfaceForPrivateItemsVisitor<'_> {
     fn generics(&mut self) -> &mut Self {
         self.in_primary_interface = true;
-        for param in &self.tcx.generics_of(self.item_def_id).params {
+        for param in &self.tcx.generics_of(self.item_def_id).own_params {
             match param.kind {
                 GenericParamDefKind::Lifetime => {}
                 GenericParamDefKind::Type { has_default, .. } => {

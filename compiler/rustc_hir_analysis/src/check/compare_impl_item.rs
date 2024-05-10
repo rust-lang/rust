@@ -716,7 +716,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
                 // since we previously enforce that the trait method and impl method have the
                 // same generics.
                 let num_trait_args = trait_to_impl_args.len();
-                let num_impl_args = tcx.generics_of(impl_m.container_id(tcx)).params.len();
+                let num_impl_args = tcx.generics_of(impl_m.container_id(tcx)).own_params.len();
                 let ty = match ty.try_fold_with(&mut RemapHiddenTyRegions {
                     tcx,
                     map,
@@ -1494,14 +1494,16 @@ fn compare_synthetic_generics<'tcx>(
     let mut error_found = None;
     let impl_m_generics = tcx.generics_of(impl_m.def_id);
     let trait_m_generics = tcx.generics_of(trait_m.def_id);
-    let impl_m_type_params = impl_m_generics.params.iter().filter_map(|param| match param.kind {
-        GenericParamDefKind::Type { synthetic, .. } => Some((param.def_id, synthetic)),
-        GenericParamDefKind::Lifetime | GenericParamDefKind::Const { .. } => None,
-    });
-    let trait_m_type_params = trait_m_generics.params.iter().filter_map(|param| match param.kind {
-        GenericParamDefKind::Type { synthetic, .. } => Some((param.def_id, synthetic)),
-        GenericParamDefKind::Lifetime | GenericParamDefKind::Const { .. } => None,
-    });
+    let impl_m_type_params =
+        impl_m_generics.own_params.iter().filter_map(|param| match param.kind {
+            GenericParamDefKind::Type { synthetic, .. } => Some((param.def_id, synthetic)),
+            GenericParamDefKind::Lifetime | GenericParamDefKind::Const { .. } => None,
+        });
+    let trait_m_type_params =
+        trait_m_generics.own_params.iter().filter_map(|param| match param.kind {
+            GenericParamDefKind::Type { synthetic, .. } => Some((param.def_id, synthetic)),
+            GenericParamDefKind::Lifetime | GenericParamDefKind::Const { .. } => None,
+        });
     for ((impl_def_id, impl_synthetic), (trait_def_id, trait_synthetic)) in
         iter::zip(impl_m_type_params, trait_m_type_params)
     {
@@ -1639,7 +1641,7 @@ fn compare_generic_param_kinds<'tcx>(
     assert_eq!(impl_item.kind, trait_item.kind);
 
     let ty_const_params_of = |def_id| {
-        tcx.generics_of(def_id).params.iter().filter(|param| {
+        tcx.generics_of(def_id).own_params.iter().filter(|param| {
             matches!(
                 param.kind,
                 GenericParamDefKind::Const { .. } | GenericParamDefKind::Type { .. }
@@ -2140,7 +2142,7 @@ fn param_env_with_gat_bounds<'tcx>(
         };
 
         let mut bound_vars: smallvec::SmallVec<[ty::BoundVariableKind; 8]> =
-            smallvec::SmallVec::with_capacity(tcx.generics_of(impl_ty.def_id).params.len());
+            smallvec::SmallVec::with_capacity(tcx.generics_of(impl_ty.def_id).own_params.len());
         // Extend the impl's identity args with late-bound GAT vars
         let normalize_impl_ty_args = ty::GenericArgs::identity_for_item(tcx, container_id)
             .extend_to(tcx, impl_ty.def_id, |param, _| match param.kind {

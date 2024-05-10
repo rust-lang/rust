@@ -165,7 +165,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 ));
             }
 
-            for param in generics.params.iter() {
+            for param in generics.own_params.iter() {
                 let value = match param.kind {
                     GenericParamDefKind::Type { .. } | GenericParamDefKind::Const { .. } => {
                         args[param.index as usize].to_string()
@@ -821,7 +821,7 @@ impl<'tcx> OnUnimplementedFormatString {
                                     ()
                                 }
                                 // So is `{A}` if A is a type parameter
-                                s if generics.params.iter().any(|param| param.name == s) => (),
+                                s if generics.own_params.iter().any(|param| param.name == s) => (),
                                 s => {
                                     if self.is_diagnostic_namespace_variant {
                                         if let Some(item_def_id) = item_def_id.as_local() {
@@ -915,7 +915,7 @@ impl<'tcx> OnUnimplementedFormatString {
         let trait_str = tcx.def_path_str(trait_ref.def_id);
         let generics = tcx.generics_of(trait_ref.def_id);
         let generic_map = generics
-            .params
+            .own_params
             .iter()
             .filter_map(|param| {
                 let value = match param.kind {

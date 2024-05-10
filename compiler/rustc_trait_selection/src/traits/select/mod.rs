@@ -1777,7 +1777,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // If this type is a GAT, and of the GAT args resolve to something new,
             // that means that we must have newly inferred something about the GAT.
             // We should give up in that case.
-            if !generics.params.is_empty()
+            if !generics.own_params.is_empty()
                 && obligation.predicate.args[generics.parent_count..].iter().any(|&p| {
                     p.has_non_region_infer() && self.infcx.resolve_vars_if_possible(p) != p
                 })
@@ -2441,7 +2441,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                     });
 
                 let tcx = self.tcx();
-                let trait_ref = if tcx.generics_of(trait_def_id).params.len() == 1 {
+                let trait_ref = if tcx.generics_of(trait_def_id).own_params.len() == 1 {
                     ty::TraitRef::new(tcx, trait_def_id, [normalized_ty])
                 } else {
                     // If this is an ill-formed auto/built-in trait, then synthesize

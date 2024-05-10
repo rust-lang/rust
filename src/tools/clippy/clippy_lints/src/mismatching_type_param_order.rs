@@ -76,7 +76,7 @@ impl<'tcx> LateLintPass<'tcx> for TypeParamMismatch {
             };
 
             // get the names of the generic parameters in the type
-            let type_params = &cx.tcx.generics_of(defid).params;
+            let type_params = &cx.tcx.generics_of(defid).own_params;
             let type_param_names: Vec<_> = type_params
                 .iter()
                 .filter_map(|p| match p.kind {

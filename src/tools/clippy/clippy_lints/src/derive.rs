@@ -480,7 +480,7 @@ fn param_env_for_derived_eq(tcx: TyCtxt<'_>, did: DefId, eq_trait_id: DefId) -> 
     // Vec<(param_def, needs_eq)>
     let mut params = tcx
         .generics_of(did)
-        .params
+        .own_params
         .iter()
         .map(|p| (p, matches!(p.kind, GenericParamDefKind::Type { .. })))
         .collect::<Vec<_>>();

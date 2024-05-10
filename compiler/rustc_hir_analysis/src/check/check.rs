@@ -561,7 +561,7 @@ fn check_opaque_precise_captures<'tcx>(tcx: TyCtxt<'tcx>, opaque_def_id: LocalDe
         let generics = tcx.generics_of(generics);
         def_id = generics.parent;
 
-        for param in &generics.params {
+        for param in &generics.own_params {
             if expected_captures.contains(&param.def_id) {
                 assert_eq!(
                     variances[param.index as usize],
@@ -778,7 +778,7 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                         let def_id = item.id.owner_id.def_id;
                         let generics = tcx.generics_of(def_id);
                         let own_counts = generics.own_counts();
-                        if generics.params.len() - own_counts.lifetimes != 0 {
+                        if generics.own_params.len() - own_counts.lifetimes != 0 {
                             let (kinds, kinds_pl, egs) = match (own_counts.types, own_counts.consts)
                             {
                                 (_, 0) => ("type", "types", Some("u32")),
@@ -1544,7 +1544,7 @@ fn check_type_alias_type_params_are_used<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalD
             .collect::<FxIndexMap<_, _>>()
     });
 
-    let mut params_used = BitSet::new_empty(generics.params.len());
+    let mut params_used = BitSet::new_empty(generics.own_params.len());
     for leaf in ty.walk() {
         if let GenericArgKind::Type(leaf_ty) = leaf.unpack()
             && let ty::Param(param) = leaf_ty.kind()
@@ -1554,7 +1554,7 @@ fn check_type_alias_type_params_are_used<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalD
         }
     }
 
-    for param in &generics.params {
+    for param in &generics.own_params {
         if !params_used.contains(param.index)
             && let ty::GenericParamDefKind::Type { .. } = param.kind
         {
