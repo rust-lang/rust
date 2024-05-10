@@ -17,9 +17,12 @@ error: implementation of `Foo` is not general enough
   --> $DIR/hrtb-higher-ranker-supertraits.rs:14:5
    |
 LL |     want_foo_for_any_tcx(f);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^ implementation of `Foo` is not general enough
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ doesn't satisfy where-clause
+...
+LL | fn want_foo_for_any_tcx<F: for<'tcx> Foo<'tcx>>(f: &F) {
+   |                            ------------------- due to a where-clause on `want_foo_for_any_tcx`...
    |
-   = note: `F` must implement `Foo<'0>`, for any lifetime `'0`...
+   = note: ...`F` must implement `Foo<'0>`, for any lifetime `'0`...
    = note: ...but it actually implements `Foo<'1>`, for some specific lifetime `'1`
 
 error: lifetime may not live long enough
@@ -41,9 +44,12 @@ error: implementation of `Bar` is not general enough
   --> $DIR/hrtb-higher-ranker-supertraits.rs:29:5
    |
 LL |     want_bar_for_any_ccx(b);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^ implementation of `Bar` is not general enough
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ doesn't satisfy where-clause
+...
+LL | fn want_bar_for_any_ccx<B: for<'ccx> Bar<'ccx>>(b: &B) {
+   |                            ------------------- due to a where-clause on `want_bar_for_any_ccx`...
    |
-   = note: `B` must implement `Bar<'0>`, for any lifetime `'0`...
+   = note: ...`B` must implement `Bar<'0>`, for any lifetime `'0`...
    = note: ...but it actually implements `Bar<'1>`, for some specific lifetime `'1`
 
 error: aborting due to 4 previous errors

@@ -101,13 +101,13 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         &mut self,
         // Keep this parameter for now, in case we start using
         // it in `ConstraintCategory` at some point.
-        _def_id: DefId,
+        def_id: DefId,
         instantiated_predicates: ty::InstantiatedPredicates<'tcx>,
         locations: Locations,
     ) {
         for (predicate, span) in instantiated_predicates {
             debug!(?span, ?predicate);
-            let category = ConstraintCategory::Predicate(span);
+            let category = ConstraintCategory::Predicate(def_id, span);
             let predicate = self.normalize_with_category(predicate, locations, category);
             self.prove_predicate(predicate, locations, category);
         }

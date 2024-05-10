@@ -239,20 +239,21 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
     ) -> Diag<'tcx> {
         let span = cause.span();
 
-        let (leading_ellipsis, satisfy_span, where_span, dup_span, def_id) =
-            if let ObligationCauseCode::ItemObligation(def_id)
-            | ObligationCauseCode::ExprItemObligation(def_id, ..) = *cause.code()
-            {
-                (
-                    true,
-                    Some(span),
-                    Some(self.tcx().def_span(def_id)),
-                    None,
-                    self.tcx().def_path_str(def_id),
-                )
-            } else {
-                (false, None, None, Some(span), String::new())
-            };
+        let (leading_ellipsis, satisfy_span, where_span, dup_span, def_id) = match *cause.code() {
+            ObligationCauseCode::ItemObligation(def_id)
+            | ObligationCauseCode::ExprItemObligation(def_id, ..) => (
+                true,
+                Some(span),
+                self.tcx().def_ident_span(def_id),
+                None,
+                self.tcx().def_path_str(def_id),
+            ),
+            ObligationCauseCode::BindingObligation(def_id, pred_span)
+            | ObligationCauseCode::ExprBindingObligation(def_id, pred_span, ..) => {
+                (true, Some(span), Some(pred_span), None, self.tcx().def_path_str(def_id))
+            }
+            _ => (false, None, None, Some(span), String::new()),
+        };
 
         let expected_trait_ref = self.cx.resolve_vars_if_possible(ty::TraitRef::new(
             self.cx.tcx,
