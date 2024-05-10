@@ -2549,7 +2549,12 @@ impl Cargo {
         // FIXME: the guard against msvc shouldn't need to be here
         if target.is_msvc() {
             if let Some(ref cl) = builder.config.llvm_clang_cl {
-                self.command.env("CC", cl).env("CXX", cl);
+                // FIXME: There is a bug in Clang 18 when building for ARM64:
+                // https://github.com/llvm/llvm-project/pull/81849. This is
+                // fixed in LLVM 19, but can't be backported.
+                if !target.starts_with("aarch64") && !target.starts_with("arm64ec") {
+                    self.command.env("CC", cl).env("CXX", cl);
+                }
             }
         } else {
             let ccache = builder.config.ccache.as_ref();
