@@ -8,7 +8,6 @@ use rustc_hir::def::DefKind;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir_analysis::check::{check_function_signature, forbid_intrinsic_abi};
-use rustc_infer::infer::type_variable::TypeVariableOrigin;
 use rustc_infer::infer::RegionVariableOrigin;
 use rustc_infer::traits::WellFormedLoc;
 use rustc_middle::ty::{self, Binder, Ty, TyCtxt};
@@ -142,7 +141,7 @@ pub(super) fn check_fn<'a, 'tcx>(
         // We have special-cased the case where the function is declared
         // `-> dyn Foo` and we don't actually relate it to the
         // `fcx.ret_coercion`, so just instantiate a type variable.
-        actual_return_ty = fcx.next_ty_var(TypeVariableOrigin { param_def_id: None, span });
+        actual_return_ty = fcx.next_ty_var(span);
         debug!("actual_return_ty replaced with {:?}", actual_return_ty);
     }
 

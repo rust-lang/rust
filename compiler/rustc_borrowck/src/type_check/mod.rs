@@ -16,7 +16,6 @@ use rustc_index::{IndexSlice, IndexVec};
 use rustc_infer::infer::canonical::QueryRegionConstraints;
 use rustc_infer::infer::outlives::env::RegionBoundPairs;
 use rustc_infer::infer::region_constraints::RegionConstraintData;
-use rustc_infer::infer::type_variable::TypeVariableOrigin;
 use rustc_infer::infer::{
     BoundRegion, BoundRegionConversionTime, InferCtxt, NllRegionVariableOrigin,
 };
@@ -2356,10 +2355,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     // Types with regions are comparable if they have a common super-type.
                     ty::RawPtr(_, _) | ty::FnPtr(_) => {
                         let ty_right = right.ty(body, tcx);
-                        let common_ty = self.infcx.next_ty_var(TypeVariableOrigin {
-                            param_def_id: None,
-                            span: body.source_info(location).span,
-                        });
+                        let common_ty = self.infcx.next_ty_var(body.source_info(location).span);
                         self.sub_types(
                             ty_left,
                             common_ty,

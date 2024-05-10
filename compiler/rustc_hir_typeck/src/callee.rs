@@ -11,9 +11,8 @@ use rustc_hir::def_id::DefId;
 use rustc_hir_analysis::autoderef::Autoderef;
 use rustc_infer::{
     infer,
-    traits::{self, Obligation},
+    traits::{self, Obligation, ObligationCause},
 };
-use rustc_infer::{infer::type_variable::TypeVariableOrigin, traits::ObligationCause};
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability,
 };
@@ -180,14 +179,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     infer::FnCall,
                     closure_args.coroutine_closure_sig(),
                 );
-                let tupled_upvars_ty = self
-                    .next_ty_var(TypeVariableOrigin { param_def_id: None, span: callee_expr.span });
+                let tupled_upvars_ty = self.next_ty_var(callee_expr.span);
                 // We may actually receive a coroutine back whose kind is different
                 // from the closure that this dispatched from. This is because when
                 // we have no captures, we automatically implement `FnOnce`. This
                 // impl forces the closure kind to `FnOnce` i.e. `u8`.
-                let kind_ty = self
-                    .next_ty_var(TypeVariableOrigin { param_def_id: None, span: callee_expr.span });
+                let kind_ty = self.next_ty_var(callee_expr.span);
                 let call_sig = self.tcx.mk_fn_sig(
                     [coroutine_closure_sig.tupled_inputs_ty],
                     coroutine_closure_sig.to_coroutine(
@@ -298,12 +295,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let Some(trait_def_id) = opt_trait_def_id else { continue };
 
             let opt_input_type = opt_arg_exprs.map(|arg_exprs| {
-                Ty::new_tup_from_iter(
-                    self.tcx,
-                    arg_exprs.iter().map(|e| {
-                        self.next_ty_var(TypeVariableOrigin { param_def_id: None, span: e.span })
-                    }),
-                )
+                Ty::new_tup_from_iter(self.tcx, arg_exprs.iter().map(|e| self.next_ty_var(e.span)))
             });
 
             if let Some(ok) = self.lookup_method_in_trait(

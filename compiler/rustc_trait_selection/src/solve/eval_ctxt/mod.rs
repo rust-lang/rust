@@ -2,7 +2,6 @@ use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::at::ToTrace;
 use rustc_infer::infer::canonical::CanonicalVarValues;
-use rustc_infer::infer::type_variable::TypeVariableOrigin;
 use rustc_infer::infer::{
     BoundRegionConversionTime, DefineOpaqueTypes, InferCtxt, InferOk, TyCtxtInferExt,
 };
@@ -11,7 +10,6 @@ use rustc_infer::traits::solve::{MaybeCause, NestedNormalizationGoals};
 use rustc_infer::traits::ObligationCause;
 use rustc_macros::{extension, HashStable};
 use rustc_middle::infer::canonical::CanonicalVarInfos;
-use rustc_middle::infer::unify_key::ConstVariableOrigin;
 use rustc_middle::traits::solve::inspect;
 use rustc_middle::traits::solve::{
     CanonicalInput, CanonicalResponse, Certainty, PredefinedOpaques, PredefinedOpaquesData,
@@ -600,15 +598,13 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     }
 
     pub(super) fn next_ty_infer(&mut self) -> Ty<'tcx> {
-        let ty = self.infcx.next_ty_var(TypeVariableOrigin { param_def_id: None, span: DUMMY_SP });
+        let ty = self.infcx.next_ty_var(DUMMY_SP);
         self.inspect.add_var_value(ty);
         ty
     }
 
     pub(super) fn next_const_infer(&mut self, ty: Ty<'tcx>) -> ty::Const<'tcx> {
-        let ct = self
-            .infcx
-            .next_const_var(ty, ConstVariableOrigin { param_def_id: None, span: DUMMY_SP });
+        let ct = self.infcx.next_const_var(ty, DUMMY_SP);
         self.inspect.add_var_value(ct);
         ct
     }

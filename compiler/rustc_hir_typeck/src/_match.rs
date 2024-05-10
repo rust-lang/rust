@@ -5,7 +5,6 @@ use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::{self as hir, ExprKind, PatKind};
 use rustc_hir_pretty::ty_to_string;
-use rustc_infer::infer::type_variable::TypeVariableOrigin;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::Span;
 use rustc_trait_selection::traits::{
@@ -67,7 +66,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // arm for inconsistent arms or to the whole match when a `()` type
                 // is required).
                 Expectation::ExpectHasType(ety) if ety != tcx.types.unit => ety,
-                _ => self.next_ty_var(TypeVariableOrigin { param_def_id: None, span: expr.span }),
+                _ => self.next_ty_var(expr.span),
             };
             CoerceMany::with_coercion_sites(coerce_first, arms)
         };
@@ -575,8 +574,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // ...but otherwise we want to use any supertype of the
             // scrutinee. This is sort of a workaround, see note (*) in
             // `check_pat` for some details.
-            let scrut_ty =
-                self.next_ty_var(TypeVariableOrigin { param_def_id: None, span: scrut.span });
+            let scrut_ty = self.next_ty_var(scrut.span);
             self.check_expr_has_type_or_error(scrut, scrut_ty, |_| {});
             scrut_ty
         }

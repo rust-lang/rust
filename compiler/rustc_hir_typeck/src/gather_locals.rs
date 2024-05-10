@@ -2,7 +2,6 @@ use crate::FnCtxt;
 use rustc_hir as hir;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{HirId, PatKind};
-use rustc_infer::infer::type_variable::TypeVariableOrigin;
 use rustc_middle::ty::Ty;
 use rustc_middle::ty::UserType;
 use rustc_span::def_id::LocalDefId;
@@ -72,7 +71,7 @@ impl<'a, 'tcx> GatherLocalsVisitor<'a, 'tcx> {
         match ty_opt {
             None => {
                 // Infer the variable's type.
-                let var_ty = self.fcx.next_ty_var(TypeVariableOrigin { param_def_id: None, span });
+                let var_ty = self.fcx.next_ty_var(span);
                 self.fcx.locals.borrow_mut().insert(nid, var_ty);
                 var_ty
             }

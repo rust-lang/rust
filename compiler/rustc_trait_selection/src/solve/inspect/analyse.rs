@@ -12,10 +12,8 @@
 use rustc_ast_ir::try_visit;
 use rustc_ast_ir::visit::VisitorResult;
 use rustc_infer::infer::resolve::EagerResolver;
-use rustc_infer::infer::type_variable::TypeVariableOrigin;
 use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, InferOk};
 use rustc_macros::extension;
-use rustc_middle::infer::unify_key::ConstVariableOrigin;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::solve::{inspect, QueryResult};
 use rustc_middle::traits::solve::{Certainty, Goal};
@@ -206,15 +204,8 @@ impl<'a, 'tcx> InspectCandidate<'a, 'tcx> {
             .map(|(source, goal)| match goal.predicate.kind().no_bound_vars() {
                 Some(ty::PredicateKind::NormalizesTo(ty::NormalizesTo { alias, term })) => {
                     let unconstrained_term = match term.unpack() {
-                        ty::TermKind::Ty(_) => infcx
-                            .next_ty_var(TypeVariableOrigin { param_def_id: None, span })
-                            .into(),
-                        ty::TermKind::Const(ct) => infcx
-                            .next_const_var(
-                                ct.ty(),
-                                ConstVariableOrigin { param_def_id: None, span },
-                            )
-                            .into(),
+                        ty::TermKind::Ty(_) => infcx.next_ty_var(span).into(),
+                        ty::TermKind::Const(ct) => infcx.next_const_var(ct.ty(), span).into(),
                     };
                     let goal =
                         goal.with(infcx.tcx, ty::NormalizesTo { alias, term: unconstrained_term });
