@@ -409,6 +409,7 @@ pub(in crate::solve) fn make_canonical_state<'tcx, T: TypeFoldable<TyCtxt<'tcx>>
 /// This currently assumes that unifying the var values trivially succeeds.
 /// Adding any inference constraints which weren't present when originally
 /// computing the canonical query can result in bugs.
+#[instrument(level = "debug", skip(infcx, span, param_env))]
 pub(in crate::solve) fn instantiate_canonical_state<'tcx, T: TypeFoldable<TyCtxt<'tcx>>>(
     infcx: &InferCtxt<'tcx>,
     span: Span,
