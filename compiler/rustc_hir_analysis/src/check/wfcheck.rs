@@ -1161,7 +1161,7 @@ fn check_type_defn<'tcx>(
                 let cause = traits::ObligationCause::new(
                     tcx.def_span(discr_def_id),
                     wfcx.body_def_id,
-                    ObligationCauseCode::MiscObligation,
+                    ObligationCauseCode::Misc,
                 );
                 wfcx.register_obligation(traits::Obligation::new(
                     tcx,
@@ -1550,7 +1550,7 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
             let cause = traits::ObligationCause::new(
                 sp,
                 wfcx.body_def_id,
-                ObligationCauseCode::ItemObligation(def_id.to_def_id()),
+                ObligationCauseCode::MiscItem(def_id.to_def_id()),
             );
             traits::Obligation::new(tcx, cause, wfcx.param_env, pred)
         });

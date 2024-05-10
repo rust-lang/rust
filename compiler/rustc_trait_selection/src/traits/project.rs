@@ -574,9 +574,9 @@ pub fn normalize_inherent_projection<'a, 'b, 'tcx>(
             // diagnostics which is not ideal.
             // Consider creating separate cause codes for this specific situation.
             if span.is_dummy() {
-                ObligationCauseCode::ItemObligation(alias_ty.def_id)
+                ObligationCauseCode::MiscItem(alias_ty.def_id)
             } else {
-                ObligationCauseCode::BindingObligation(alias_ty.def_id, span)
+                ObligationCauseCode::Where(alias_ty.def_id, span)
             },
         );
 
@@ -2114,7 +2114,7 @@ fn assoc_ty_own_obligations<'cx, 'tcx>(
 
         let nested_cause = if matches!(
             obligation.cause.code(),
-            ObligationCauseCode::CompareImplItemObligation { .. }
+            ObligationCauseCode::CompareImplItem { .. }
                 | ObligationCauseCode::CheckAssociatedTypeBounds { .. }
                 | ObligationCauseCode::AscribeUserTypeProvePredicate(..)
         ) {
@@ -2123,13 +2123,13 @@ fn assoc_ty_own_obligations<'cx, 'tcx>(
             ObligationCause::new(
                 obligation.cause.span,
                 obligation.cause.body_id,
-                ObligationCauseCode::ItemObligation(obligation.predicate.def_id),
+                ObligationCauseCode::MiscItem(obligation.predicate.def_id),
             )
         } else {
             ObligationCause::new(
                 obligation.cause.span,
                 obligation.cause.body_id,
-                ObligationCauseCode::BindingObligation(obligation.predicate.def_id, span),
+                ObligationCauseCode::Where(obligation.predicate.def_id, span),
             )
         };
         nested.push(Obligation::with_depth(

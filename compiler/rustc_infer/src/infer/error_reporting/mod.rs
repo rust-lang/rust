@@ -883,9 +883,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 err.help("...or use `match` instead of `let...else`");
             }
             _ => {
-                if let ObligationCauseCode::BindingObligation(_, span)
-                | ObligationCauseCode::ExprBindingObligation(_, span, ..) =
-                    cause.code().peel_derives()
+                if let ObligationCauseCode::Where(_, span)
+                | ObligationCauseCode::WhereInExpr(_, span, ..) = cause.code().peel_derives()
                     && let TypeError::RegionsPlaceholderMismatch = terr
                 {
                     err.span_note(*span, "the lifetime requirement is introduced here");
@@ -2776,7 +2775,7 @@ impl<'tcx> ObligationCause<'tcx> {
         match self.code() {
             ObligationCauseCode::IfExpressionWithNoElse => FailureCode::Error0317,
             ObligationCauseCode::MainFunctionType => FailureCode::Error0580,
-            ObligationCauseCode::CompareImplItemObligation { .. }
+            ObligationCauseCode::CompareImplItem { .. }
             | ObligationCauseCode::MatchExpressionArm(_)
             | ObligationCauseCode::IfExpression { .. }
             | ObligationCauseCode::LetElse
@@ -2806,15 +2805,15 @@ impl<'tcx> ObligationCause<'tcx> {
         subdiags: Vec<TypeErrorAdditionalDiags>,
     ) -> ObligationCauseFailureCode {
         match self.code() {
-            ObligationCauseCode::CompareImplItemObligation { kind: ty::AssocKind::Fn, .. } => {
+            ObligationCauseCode::CompareImplItem { kind: ty::AssocKind::Fn, .. } => {
                 ObligationCauseFailureCode::MethodCompat { span, subdiags }
             }
-            ObligationCauseCode::CompareImplItemObligation {
-                kind: ty::AssocKind::Type, ..
-            } => ObligationCauseFailureCode::TypeCompat { span, subdiags },
-            ObligationCauseCode::CompareImplItemObligation {
-                kind: ty::AssocKind::Const, ..
-            } => ObligationCauseFailureCode::ConstCompat { span, subdiags },
+            ObligationCauseCode::CompareImplItem { kind: ty::AssocKind::Type, .. } => {
+                ObligationCauseFailureCode::TypeCompat { span, subdiags }
+            }
+            ObligationCauseCode::CompareImplItem { kind: ty::AssocKind::Const, .. } => {
+                ObligationCauseFailureCode::ConstCompat { span, subdiags }
+            }
             ObligationCauseCode::BlockTailExpression(.., hir::MatchSource::TryDesugar(_)) => {
                 ObligationCauseFailureCode::TryCompat { span, subdiags }
             }
@@ -2870,15 +2869,15 @@ impl<'tcx> ObligationCause<'tcx> {
 
     fn as_requirement_str(&self) -> &'static str {
         match self.code() {
-            ObligationCauseCode::CompareImplItemObligation { kind: ty::AssocKind::Fn, .. } => {
+            ObligationCauseCode::CompareImplItem { kind: ty::AssocKind::Fn, .. } => {
                 "method type is compatible with trait"
             }
-            ObligationCauseCode::CompareImplItemObligation {
-                kind: ty::AssocKind::Type, ..
-            } => "associated type is compatible with trait",
-            ObligationCauseCode::CompareImplItemObligation {
-                kind: ty::AssocKind::Const, ..
-            } => "const is compatible with trait",
+            ObligationCauseCode::CompareImplItem { kind: ty::AssocKind::Type, .. } => {
+                "associated type is compatible with trait"
+            }
+            ObligationCauseCode::CompareImplItem { kind: ty::AssocKind::Const, .. } => {
+                "const is compatible with trait"
+            }
             ObligationCauseCode::MainFunctionType => "`main` function has the correct type",
             ObligationCauseCode::StartFunctionType => "`#[start]` function has the correct type",
             ObligationCauseCode::LangFunctionType(_) => "lang item function has the correct type",
@@ -2895,15 +2894,11 @@ pub struct ObligationCauseAsDiagArg<'tcx>(pub ObligationCause<'tcx>);
 impl IntoDiagArg for ObligationCauseAsDiagArg<'_> {
     fn into_diag_arg(self) -> rustc_errors::DiagArgValue {
         let kind = match self.0.code() {
-            ObligationCauseCode::CompareImplItemObligation { kind: ty::AssocKind::Fn, .. } => {
-                "method_compat"
+            ObligationCauseCode::CompareImplItem { kind: ty::AssocKind::Fn, .. } => "method_compat",
+            ObligationCauseCode::CompareImplItem { kind: ty::AssocKind::Type, .. } => "type_compat",
+            ObligationCauseCode::CompareImplItem { kind: ty::AssocKind::Const, .. } => {
+                "const_compat"
             }
-            ObligationCauseCode::CompareImplItemObligation {
-                kind: ty::AssocKind::Type, ..
-            } => "type_compat",
-            ObligationCauseCode::CompareImplItemObligation {
-                kind: ty::AssocKind::Const, ..
-            } => "const_compat",
             ObligationCauseCode::MainFunctionType => "fn_main_correct_type",
             ObligationCauseCode::StartFunctionType => "fn_start_correct_type",
             ObligationCauseCode::LangFunctionType(_) => "fn_lang_correct_type",

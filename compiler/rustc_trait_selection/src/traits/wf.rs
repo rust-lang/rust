@@ -566,9 +566,9 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
         iter::zip(predicates, origins.into_iter().rev())
             .map(|((pred, span), origin_def_id)| {
                 let code = if span.is_dummy() {
-                    ObligationCauseCode::ItemObligation(origin_def_id)
+                    ObligationCauseCode::MiscItem(origin_def_id)
                 } else {
-                    ObligationCauseCode::BindingObligation(origin_def_id, span)
+                    ObligationCauseCode::Where(origin_def_id, span)
                 };
                 let cause = self.cause(code);
                 traits::Obligation::with_depth(
@@ -683,7 +683,7 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
             }
 
             ty::Pat(subty, _) => {
-                self.require_sized(subty, ObligationCauseCode::MiscObligation);
+                self.require_sized(subty, ObligationCauseCode::Misc);
             }
 
             ty::Tuple(tys) => {

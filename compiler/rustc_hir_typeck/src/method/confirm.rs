@@ -565,14 +565,9 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         for obligation in traits::predicates_for_generics(
             |idx, span| {
                 let code = if span.is_dummy() {
-                    ObligationCauseCode::ExprItemObligation(def_id, self.call_expr.hir_id, idx)
+                    ObligationCauseCode::MiscItemInExpr(def_id, self.call_expr.hir_id, idx)
                 } else {
-                    ObligationCauseCode::ExprBindingObligation(
-                        def_id,
-                        span,
-                        self.call_expr.hir_id,
-                        idx,
-                    )
+                    ObligationCauseCode::WhereInExpr(def_id, span, self.call_expr.hir_id, idx)
                 };
                 traits::ObligationCause::new(self.span, self.body_id, code)
             },

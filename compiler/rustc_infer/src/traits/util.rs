@@ -129,14 +129,12 @@ impl<'tcx> Elaboratable<'tcx> for PredicateObligation<'tcx> {
         index: usize,
     ) -> Self {
         let cause = self.cause.clone().derived_cause(parent_trait_pred, |derived| {
-            ObligationCauseCode::ImplDerivedObligation(Box::new(
-                traits::ImplDerivedObligationCause {
-                    derived,
-                    impl_or_alias_def_id: parent_trait_pred.def_id(),
-                    impl_def_predicate_index: Some(index),
-                    span,
-                },
-            ))
+            ObligationCauseCode::ImplDerived(Box::new(traits::ImplDerivedObligationCause {
+                derived,
+                impl_or_alias_def_id: parent_trait_pred.def_id(),
+                impl_def_predicate_index: Some(index),
+                span,
+            }))
         });
         Obligation {
             cause,

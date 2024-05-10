@@ -3083,7 +3083,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             polarity: ty::PredicatePolarity::Positive,
                         }),
                         |derived| {
-                            ObligationCauseCode::ImplDerivedObligation(Box::new(
+                            ObligationCauseCode::ImplDerived(Box::new(
                                 traits::ImplDerivedObligationCause {
                                     derived,
                                     impl_or_alias_def_id: impl_def_id,
@@ -3352,11 +3352,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let field_ty = self.field_ty(expr.span, field, args);
 
                     // FIXME: DSTs with static alignment should be allowed
-                    self.require_type_is_sized(
-                        field_ty,
-                        expr.span,
-                        ObligationCauseCode::MiscObligation,
-                    );
+                    self.require_type_is_sized(field_ty, expr.span, ObligationCauseCode::Misc);
 
                     if field.vis.is_accessible_from(sub_def_scope, self.tcx) {
                         self.tcx.check_stability(field.did, Some(expr.hir_id), expr.span, None);
@@ -3384,11 +3380,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         let field_ty = self.field_ty(expr.span, field, args);
 
                         // FIXME: DSTs with static alignment should be allowed
-                        self.require_type_is_sized(
-                            field_ty,
-                            expr.span,
-                            ObligationCauseCode::MiscObligation,
-                        );
+                        self.require_type_is_sized(field_ty, expr.span, ObligationCauseCode::Misc);
 
                         if field.vis.is_accessible_from(def_scope, self.tcx) {
                             self.tcx.check_stability(field.did, Some(expr.hir_id), expr.span, None);
@@ -3409,11 +3401,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         && field.name == sym::integer(index)
                     {
                         for ty in tys.iter().take(index + 1) {
-                            self.require_type_is_sized(
-                                ty,
-                                expr.span,
-                                ObligationCauseCode::MiscObligation,
-                            );
+                            self.require_type_is_sized(ty, expr.span, ObligationCauseCode::Misc);
                         }
                         if let Some(&field_ty) = tys.get(index) {
                             field_indices.push((FIRST_VARIANT, index.into()));

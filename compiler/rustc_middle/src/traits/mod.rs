@@ -127,7 +127,7 @@ impl<'tcx> ObligationCause<'tcx> {
     }
 
     pub fn misc(span: Span, body_id: LocalDefId) -> ObligationCause<'tcx> {
-        ObligationCause::new(span, body_id, ObligationCauseCode::MiscObligation)
+        ObligationCause::new(span, body_id, ObligationCauseCode::Misc)
     }
 
     #[inline(always)]
@@ -207,7 +207,7 @@ pub struct UnifyReceiverContext<'tcx> {
 #[derive(Clone, PartialEq, Eq, Default, HashStable)]
 #[derive(TypeVisitable, TypeFoldable, TyEncodable, TyDecodable)]
 pub struct InternedObligationCauseCode<'tcx> {
-    /// `None` for `ObligationCauseCode::MiscObligation` (a common case, occurs ~60% of
+    /// `None` for `ObligationCauseCode::Misc` (a common case, occurs ~60% of
     /// the time). `Some` otherwise.
     code: Option<Lrc<ObligationCauseCode<'tcx>>>,
 }
@@ -223,11 +223,7 @@ impl<'tcx> ObligationCauseCode<'tcx> {
     #[inline(always)]
     fn into(self) -> InternedObligationCauseCode<'tcx> {
         InternedObligationCauseCode {
-            code: if let ObligationCauseCode::MiscObligation = self {
-                None
-            } else {
-                Some(Lrc::new(self))
-            },
+            code: if let ObligationCauseCode::Misc = self { None } else { Some(Lrc::new(self)) },
         }
     }
 }
@@ -236,7 +232,7 @@ impl<'tcx> std::ops::Deref for InternedObligationCauseCode<'tcx> {
     type Target = ObligationCauseCode<'tcx>;
 
     fn deref(&self) -> &Self::Target {
-        self.code.as_deref().unwrap_or(&ObligationCauseCode::MiscObligation)
+        self.code.as_deref().unwrap_or(&ObligationCauseCode::Misc)
     }
 }
 
@@ -244,7 +240,7 @@ impl<'tcx> std::ops::Deref for InternedObligationCauseCode<'tcx> {
 #[derive(TypeVisitable, TypeFoldable)]
 pub enum ObligationCauseCode<'tcx> {
     /// Not well classified or should be obvious from the span.
-    MiscObligation,
+    Misc,
 
     /// A slice or array is WF only if `T: Sized`.
     SliceOrArrayElem,
@@ -254,20 +250,20 @@ pub enum ObligationCauseCode<'tcx> {
 
     /// Must satisfy all of the where-clause predicates of the
     /// given item.
-    ItemObligation(DefId),
+    MiscItem(DefId),
 
-    /// Like `ItemObligation`, but carries the span of the
+    /// Like `MiscItem`, but carries the span of the
     /// predicate when it can be identified.
-    BindingObligation(DefId, Span),
+    Where(DefId, Span),
 
     /// Like `ItemObligation`, but carries the `HirId` of the
     /// expression that caused the obligation, and the `usize`
     /// indicates exactly which predicate it is in the list of
     /// instantiated predicates.
-    ExprItemObligation(DefId, HirId, usize),
+    MiscItemInExpr(DefId, HirId, usize),
 
     /// Combines `ExprItemObligation` and `BindingObligation`.
-    ExprBindingObligation(DefId, Span, HirId, usize),
+    WhereInExpr(DefId, Span, HirId, usize),
 
     /// A type like `&'a T` is WF only if `T: 'a`.
     ReferenceOutlivesReferent(Ty<'tcx>),
@@ -331,14 +327,14 @@ pub enum ObligationCauseCode<'tcx> {
 
     /// Derived obligation (i.e. theoretical `where` clause) on a built-in
     /// implementation like `Copy` or `Sized`.
-    BuiltinDerivedObligation(DerivedObligationCause<'tcx>),
+    BuiltinDerived(DerivedObligationCause<'tcx>),
 
     /// Derived obligation (i.e. `where` clause) on an user-provided impl
     /// or a trait alias.
-    ImplDerivedObligation(Box<ImplDerivedObligationCause<'tcx>>),
+    ImplDerived(Box<ImplDerivedObligationCause<'tcx>>),
 
     /// Derived obligation for WF goals.
-    WellFormedDerivedObligation(DerivedObligationCause<'tcx>),
+    WellFormedDerived(DerivedObligationCause<'tcx>),
 
     FunctionArgumentObligation {
         /// The node of the relevant argument in the function call.
@@ -430,8 +426,8 @@ pub enum ObligationCauseCode<'tcx> {
     /// then it will be used to perform HIR-based wf checking
     /// after an error occurs, in order to generate a more precise error span.
     /// This is purely for diagnostic purposes - it is always
-    /// correct to use `MiscObligation` instead, or to specify
-    /// `WellFormed(None)`
+    /// correct to use `Misc` instead, or to specify
+    /// `WellFormed(None)`.
     WellFormed(Option<WellFormedLoc>),
 
     /// From `match_impl`. The cause for us having to match an impl, and the DefId we are matching against.
@@ -538,14 +534,11 @@ impl<'tcx> ObligationCauseCode<'tcx> {
 
     pub fn parent(&self) -> Option<(&Self, Option<ty::PolyTraitPredicate<'tcx>>)> {
         match self {
-            ObligationCauseCode::FunctionArgumentObligation { parent_code, .. } => {
-                Some((parent_code, None))
-            }
-            ObligationCauseCode::BuiltinDerivedObligation(derived)
-            | ObligationCauseCode::WellFormedDerivedObligation(derived)
-            | ObligationCauseCode::ImplDerivedObligation(box ImplDerivedObligationCause {
-                derived,
-                ..
+            ObligationCauseCode::FunctionArg { parent_code, .. } => Some((parent_code, None)),
+            ObligationCauseCode::BuiltinDerived(derived)
+            | ObligationCauseCode::WellFormedDerived(derived)
+            | ObligationCauseCode::ImplDerived(box ImplDerivedObligationCause {
+                derived, ..
             }) => Some((&derived.parent_code, Some(derived.parent_trait_pred))),
             _ => None,
         }

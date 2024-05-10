@@ -357,13 +357,12 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             infer::Subtype(box ref trace)
                 if matches!(
                     &trace.cause.code().peel_derives(),
-                    ObligationCauseCode::BindingObligation(..)
-                        | ObligationCauseCode::ExprBindingObligation(..)
+                    ObligationCauseCode::Where(..) | ObligationCauseCode::WhereInExpr(..)
                 ) =>
             {
                 // Hack to get around the borrow checker because trace.cause has an `Rc`.
-                if let ObligationCauseCode::BindingObligation(_, span)
-                | ObligationCauseCode::ExprBindingObligation(_, span, ..) =
+                if let ObligationCauseCode::Where(_, span)
+                | ObligationCauseCode::WhereInExpr(_, span, ..) =
                     &trace.cause.code().peel_derives()
                 {
                     let span = *span;

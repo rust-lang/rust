@@ -150,11 +150,8 @@ fn suggest_question_mark<'tcx>(
     let ocx = ObligationCtxt::new(&infcx);
 
     let body_def_id = cx.tcx.hir().body_owner_def_id(body_id);
-    let cause = ObligationCause::new(
-        span,
-        body_def_id,
-        rustc_infer::traits::ObligationCauseCode::MiscObligation,
-    );
+    let cause =
+        ObligationCause::new(span, body_def_id, rustc_infer::traits::ObligationCauseCode::Misc);
 
     ocx.register_bound(
         cause,

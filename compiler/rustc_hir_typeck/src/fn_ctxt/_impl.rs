@@ -1413,9 +1413,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) {
         self.add_required_obligations_with_code(span, def_id, args, |idx, span| {
             if span.is_dummy() {
-                ObligationCauseCode::ExprItemObligation(def_id, hir_id, idx)
+                ObligationCauseCode::MiscItemInExpr(def_id, hir_id, idx)
             } else {
-                ObligationCauseCode::ExprBindingObligation(def_id, span, hir_id, idx)
+                ObligationCauseCode::WhereInExpr(def_id, span, hir_id, idx)
             }
         })
     }

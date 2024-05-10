@@ -1402,13 +1402,13 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     ocx.register_obligations(traits::predicates_for_generics(
                         |idx, span| {
                             let code = if span.is_dummy() {
-                                ObligationCauseCode::ExprItemObligation(
+                                ObligationCauseCode::MiscItemInExpr(
                                     impl_def_id,
                                     self.scope_expr_id,
                                     idx,
                                 )
                             } else {
-                                ObligationCauseCode::ExprBindingObligation(
+                                ObligationCauseCode::WhereInExpr(
                                     impl_def_id,
                                     span,
                                     self.scope_expr_id,

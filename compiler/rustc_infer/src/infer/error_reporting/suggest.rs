@@ -167,7 +167,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             exp_span, exp_found.expected, exp_found.found,
         );
 
-        if let ObligationCauseCode::CompareImplItemObligation { .. } = cause.code() {
+        if let ObligationCauseCode::CompareImplItem { .. } = cause.code() {
             return;
         }
 

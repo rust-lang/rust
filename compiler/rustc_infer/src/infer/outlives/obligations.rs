@@ -103,8 +103,8 @@ impl<'tcx> InferCtxt<'tcx> {
                 cause.span,
                 sup_type,
                 match cause.code().peel_derives() {
-                    ObligationCauseCode::BindingObligation(_, span)
-                    | ObligationCauseCode::ExprBindingObligation(_, span, ..) => Some(*span),
+                    ObligationCauseCode::Where(_, span)
+                    | ObligationCauseCode::WhereInExpr(_, span, ..) => Some(*span),
                     _ => None,
                 },
             )

@@ -1396,7 +1396,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             debug!(?args, "impl args");
 
             let cause = obligation.derived_cause(|derived| {
-                ObligationCauseCode::ImplDerivedObligation(Box::new(ImplDerivedObligationCause {
+                ObligationCauseCode::ImplDerived(Box::new(ImplDerivedObligationCause {
                     derived,
                     impl_or_alias_def_id: impl_def_id,
                     impl_def_predicate_index: None,

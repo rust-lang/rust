@@ -2771,14 +2771,12 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                     cause.clone()
                 } else {
                     cause.clone().derived_cause(parent_trait_pred, |derived| {
-                        ObligationCauseCode::ImplDerivedObligation(Box::new(
-                            ImplDerivedObligationCause {
-                                derived,
-                                impl_or_alias_def_id: def_id,
-                                impl_def_predicate_index: Some(index),
-                                span,
-                            },
-                        ))
+                        ObligationCauseCode::ImplDerived(Box::new(ImplDerivedObligationCause {
+                            derived,
+                            impl_or_alias_def_id: def_id,
+                            impl_def_predicate_index: Some(index),
+                            span,
+                        }))
                     })
                 };
             let clause = normalize_with_depth_to(

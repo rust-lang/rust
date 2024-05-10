@@ -14,8 +14,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         error: &mut traits::FulfillmentError<'tcx>,
     ) -> bool {
-        let (ObligationCauseCode::ExprItemObligation(def_id, hir_id, idx)
-        | ObligationCauseCode::ExprBindingObligation(def_id, _, hir_id, idx)) =
+        let (ObligationCauseCode::MiscItemInExpr(def_id, hir_id, idx)
+        | ObligationCauseCode::WhereInExpr(def_id, _, hir_id, idx)) =
             *error.obligation.cause.code().peel_derives()
         else {
             return false;
@@ -167,7 +167,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // the method's turbofish segments but still use `FunctionArgumentObligation`
                     // elsewhere. Hopefully this doesn't break something.
                     error.obligation.cause.map_code(|parent_code| {
-                        ObligationCauseCode::FunctionArgumentObligation {
+                        ObligationCauseCode::FunctionArg {
                             arg_hir_id: receiver.hir_id,
                             call_hir_id: hir_id,
                             parent_code,
@@ -456,12 +456,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.blame_specific_expr_if_possible(error, arg_expr)
             }
 
-            error.obligation.cause.map_code(|parent_code| {
-                ObligationCauseCode::FunctionArgumentObligation {
-                    arg_hir_id: arg.hir_id,
-                    call_hir_id,
-                    parent_code,
-                }
+            error.obligation.cause.map_code(|parent_code| ObligationCauseCode::FunctionArg {
+                arg_hir_id: arg.hir_id,
+                call_hir_id,
+                parent_code,
             });
             return true;
         } else if args_referencing_param.len() > 0 {
@@ -514,12 +512,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &'tcx hir::Expr<'tcx>,
     ) -> Result<&'tcx hir::Expr<'tcx>, &'tcx hir::Expr<'tcx>> {
         match obligation_cause_code {
-            traits::ObligationCauseCode::ExprBindingObligation(_, _, _, _) => {
+            traits::ObligationCauseCode::WhereInExpr(_, _, _, _) => {
                 // This is the "root"; we assume that the `expr` is already pointing here.
                 // Therefore, we return `Ok` so that this `expr` can be refined further.
                 Ok(expr)
             }
-            traits::ObligationCauseCode::ImplDerivedObligation(impl_derived) => self
+            traits::ObligationCauseCode::ImplDerived(impl_derived) => self
                 .blame_specific_expr_if_possible_for_derived_predicate_obligation(
                     impl_derived,
                     expr,

@@ -206,7 +206,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.register_wf_obligation(
                 fn_input_ty.into(),
                 arg_expr.span,
-                ObligationCauseCode::MiscObligation,
+                ObligationCauseCode::Misc,
             );
         }
 
