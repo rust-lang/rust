@@ -450,7 +450,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         // `foo.bar::<u32>(...)` -- the `Self` type here will be the
         // type of `foo` (possibly adjusted), but we don't want to
         // include that. We want just the `[_, u32]` part.
-        if !args.is_empty() && !generics.params.is_empty() {
+        if !args.is_empty() && !generics.own_params.is_empty() {
             let user_type_annotation = self.probe(|_| {
                 let user_args = UserArgs {
                     args: GenericArgs::for_item(self.tcx, pick.item.def_id, |param, _| {

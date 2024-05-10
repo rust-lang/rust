@@ -522,7 +522,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 infer_subdiags.push(SourceKindSubdiag::GenericLabel {
                     span,
                     is_type,
-                    param_name: generics.params[argument_index].name.to_string(),
+                    param_name: generics.own_params[argument_index].name.to_string(),
                     parent_exists,
                     parent_prefix,
                     parent_name,

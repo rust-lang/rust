@@ -397,7 +397,7 @@ pub fn object_safety_violations_for_assoc_item(
         // Associated types can only be object safe if they have `Self: Sized` bounds.
         ty::AssocKind::Type => {
             if !tcx.features().generic_associated_types_extended
-                && !tcx.generics_of(item.def_id).params.is_empty()
+                && !tcx.generics_of(item.def_id).own_params.is_empty()
                 && !item.is_impl_trait_in_trait()
             {
                 vec![ObjectSafetyViolation::GAT(item.name, item.ident(tcx).span)]

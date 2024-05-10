@@ -2507,7 +2507,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             let generics = self.tcx.generics_of(lifetime_scope);
             let mut used_names =
                 iter::successors(Some(generics), |g| g.parent.map(|p| self.tcx.generics_of(p)))
-                    .flat_map(|g| &g.params)
+                    .flat_map(|g| &g.own_params)
                     .filter(|p| matches!(p.kind, ty::GenericParamDefKind::Lifetime))
                     .map(|p| p.name)
                     .collect::<Vec<_>>();

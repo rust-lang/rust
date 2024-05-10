@@ -22,28 +22,28 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
         let trait_def_id = tcx.parent(fn_def_id);
         let opaque_ty_generics = tcx.generics_of(opaque_def_id);
         let opaque_ty_parent_count = opaque_ty_generics.parent_count;
-        let mut params = opaque_ty_generics.params.clone();
+        let mut own_params = opaque_ty_generics.own_params.clone();
 
         let parent_generics = tcx.generics_of(trait_def_id);
-        let parent_count = parent_generics.parent_count + parent_generics.params.len();
+        let parent_count = parent_generics.parent_count + parent_generics.own_params.len();
 
-        let mut trait_fn_params = tcx.generics_of(fn_def_id).params.clone();
+        let mut trait_fn_params = tcx.generics_of(fn_def_id).own_params.clone();
 
-        for param in &mut params {
+        for param in &mut own_params {
             param.index = param.index + parent_count as u32 + trait_fn_params.len() as u32
                 - opaque_ty_parent_count as u32;
         }
 
-        trait_fn_params.extend(params);
-        params = trait_fn_params;
+        trait_fn_params.extend(own_params);
+        own_params = trait_fn_params;
 
         let param_def_id_to_index =
-            params.iter().map(|param| (param.def_id, param.index)).collect();
+            own_params.iter().map(|param| (param.def_id, param.index)).collect();
 
         return ty::Generics {
             parent: Some(trait_def_id),
             parent_count,
-            params,
+            own_params,
             param_def_id_to_index,
             has_self: opaque_ty_generics.has_self,
             has_late_bound_regions: opaque_ty_generics.has_late_bound_regions,
@@ -124,9 +124,9 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                     let generics = tcx.generics_of(parent_def_id.to_def_id());
                     let param_def_idx = generics.param_def_id_to_index[&param_id.to_def_id()];
                     // In the above example this would be .params[..N#0]
-                    let params = generics.params_to(param_def_idx as usize, tcx).to_owned();
+                    let own_params = generics.params_to(param_def_idx as usize, tcx).to_owned();
                     let param_def_id_to_index =
-                        params.iter().map(|param| (param.def_id, param.index)).collect();
+                        own_params.iter().map(|param| (param.def_id, param.index)).collect();
 
                     return ty::Generics {
                         // we set the parent of these generics to be our parent's parent so that we
@@ -134,7 +134,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                         // struct Foo<const N: usize, const M: usize = { ... }>;
                         parent: generics.parent,
                         parent_count: generics.parent_count,
-                        params,
+                        own_params,
                         param_def_id_to_index,
                         has_self: generics.has_self,
                         has_late_bound_regions: generics.has_late_bound_regions,
@@ -274,17 +274,17 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
         parent_has_self = generics.has_self;
         host_effect_index = generics.host_effect_index;
         own_start = generics.count() as u32;
-        generics.parent_count + generics.params.len()
+        generics.parent_count + generics.own_params.len()
     });
 
-    let mut params: Vec<_> = Vec::with_capacity(hir_generics.params.len() + has_self as usize);
+    let mut own_params: Vec<_> = Vec::with_capacity(hir_generics.params.len() + has_self as usize);
 
     if let Some(opt_self) = opt_self {
-        params.push(opt_self);
+        own_params.push(opt_self);
     }
 
     let early_lifetimes = super::early_bound_lifetimes_from_generics(tcx, hir_generics);
-    params.extend(early_lifetimes.enumerate().map(|(i, param)| ty::GenericParamDef {
+    own_params.extend(early_lifetimes.enumerate().map(|(i, param)| ty::GenericParamDef {
         name: param.name.ident().name,
         index: own_start + i as u32,
         def_id: param.def_id.to_def_id(),
@@ -293,7 +293,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
     }));
 
     // Now create the real type and const parameters.
-    let type_start = own_start - has_self as u32 + params.len() as u32;
+    let type_start = own_start - has_self as u32 + own_params.len() as u32;
     let mut i: u32 = 0;
     let mut next_index = || {
         let prev = i;
@@ -304,7 +304,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
     const TYPE_DEFAULT_NOT_ALLOWED: &'static str = "defaults for type parameters are only allowed in \
     `struct`, `enum`, `type`, or `trait` definitions";
 
-    params.extend(hir_generics.params.iter().filter_map(|param| match param.kind {
+    own_params.extend(hir_generics.params.iter().filter_map(|param| match param.kind {
         GenericParamKind::Lifetime { .. } => None,
         GenericParamKind::Type { default, synthetic, .. } => {
             if default.is_some() {
@@ -404,7 +404,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
             ][..],
         };
 
-        params.extend(dummy_args.iter().map(|&arg| ty::GenericParamDef {
+        own_params.extend(dummy_args.iter().map(|&arg| ty::GenericParamDef {
             index: next_index(),
             name: Symbol::intern(arg),
             def_id: def_id.to_def_id(),
@@ -415,7 +415,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
 
     // provide junk type parameter defs for const blocks.
     if let Node::ConstBlock(_) = node {
-        params.push(ty::GenericParamDef {
+        own_params.push(ty::GenericParamDef {
             index: next_index(),
             name: Symbol::intern("<const_ty>"),
             def_id: def_id.to_def_id(),
@@ -424,12 +424,13 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
         });
     }
 
-    let param_def_id_to_index = params.iter().map(|param| (param.def_id, param.index)).collect();
+    let param_def_id_to_index =
+        own_params.iter().map(|param| (param.def_id, param.index)).collect();
 
     ty::Generics {
         parent: parent_def_id,
         parent_count,
-        params,
+        own_params,
         param_def_id_to_index,
         has_self: has_self || parent_has_self,
         has_late_bound_regions: has_late_bound_regions(tcx, node),

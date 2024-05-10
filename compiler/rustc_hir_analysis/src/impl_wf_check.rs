@@ -114,7 +114,7 @@ fn enforce_impl_params_are_constrained(
         .collect();
 
     let mut res = Ok(());
-    for param in &impl_generics.params {
+    for param in &impl_generics.own_params {
         match param.kind {
             // Disallow ANY unconstrained type parameters.
             ty::GenericParamDefKind::Type { .. } => {

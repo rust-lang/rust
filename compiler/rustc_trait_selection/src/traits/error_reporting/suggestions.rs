@@ -2799,7 +2799,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         // Check if this is an implicit bound, even in foreign crates.
                         if tcx
                             .generics_of(item_def_id)
-                            .params
+                            .own_params
                             .iter()
                             .any(|param| tcx.def_span(param.def_id) == span)
                         {

@@ -421,7 +421,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
         // We could not gather enough lifetime parameters in the scope.
         // We use the parameter names from the target type's definition instead.
         self.gen_params
-            .params
+            .own_params
             .iter()
             .skip(self.params_offset + self.num_provided_lifetime_args())
             .take(num_params_to_take)
@@ -464,7 +464,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
             })
         };
         self.gen_params
-            .params
+            .own_params
             .iter()
             .skip(self.params_offset + self.num_provided_type_or_const_args())
             .take(num_params_to_take)
@@ -1076,7 +1076,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
             } else {
                 let params = self
                     .gen_params
-                    .params
+                    .own_params
                     .iter()
                     .skip(self.params_offset)
                     .take(bound)
