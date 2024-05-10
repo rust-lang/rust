@@ -249,20 +249,20 @@ pub enum ObligationCauseCode<'tcx> {
 
     /// Must satisfy all of the where-clause predicates of the
     /// given item.
-    MiscItem(DefId),
+    WhereClause(DefId),
 
-    /// Like `MiscItem`, but carries the span of the
+    /// Like `WhereClause`, but carries the span of the
     /// predicate when it can be identified.
-    SpannedItem(DefId, Span),
+    SpannedWhereClause(DefId, Span),
 
-    /// Like `MiscItem`, but carries the `HirId` of the
+    /// Like `WhereClause`, but carries the `HirId` of the
     /// expression that caused the obligation, and the `usize`
     /// indicates exactly which predicate it is in the list of
     /// instantiated predicates.
-    MiscItemInExpr(DefId, HirId, usize),
+    WhereClauseInExpr(DefId, HirId, usize),
 
-    /// Combines `SpannedItem` and `MiscItemInExpr`.
-    SpannedItemInExpr(DefId, Span, HirId, usize),
+    /// Combines `SpannedWhereClause` and `WhereClauseInExpr`.
+    SpannedWhereClauseInExpr(DefId, Span, HirId, usize),
 
     /// A type like `&'a T` is WF only if `T: 'a`.
     ReferenceOutlivesReferent(Ty<'tcx>),

@@ -566,9 +566,9 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
         iter::zip(predicates, origins.into_iter().rev())
             .map(|((pred, span), origin_def_id)| {
                 let code = if span.is_dummy() {
-                    ObligationCauseCode::MiscItem(origin_def_id)
+                    ObligationCauseCode::WhereClause(origin_def_id)
                 } else {
-                    ObligationCauseCode::SpannedItem(origin_def_id, span)
+                    ObligationCauseCode::SpannedWhereClause(origin_def_id, span)
                 };
                 let cause = self.cause(code);
                 traits::Obligation::with_depth(

@@ -574,9 +574,9 @@ pub fn normalize_inherent_projection<'a, 'b, 'tcx>(
             // diagnostics which is not ideal.
             // Consider creating separate cause codes for this specific situation.
             if span.is_dummy() {
-                ObligationCauseCode::MiscItem(alias_ty.def_id)
+                ObligationCauseCode::WhereClause(alias_ty.def_id)
             } else {
-                ObligationCauseCode::SpannedItem(alias_ty.def_id, span)
+                ObligationCauseCode::SpannedWhereClause(alias_ty.def_id, span)
             },
         );
 
@@ -2123,13 +2123,13 @@ fn assoc_ty_own_obligations<'cx, 'tcx>(
             ObligationCause::new(
                 obligation.cause.span,
                 obligation.cause.body_id,
-                ObligationCauseCode::MiscItem(obligation.predicate.def_id),
+                ObligationCauseCode::WhereClause(obligation.predicate.def_id),
             )
         } else {
             ObligationCause::new(
                 obligation.cause.span,
                 obligation.cause.body_id,
-                ObligationCauseCode::SpannedItem(obligation.predicate.def_id, span),
+                ObligationCauseCode::SpannedWhereClause(obligation.predicate.def_id, span),
             )
         };
         nested.push(Obligation::with_depth(

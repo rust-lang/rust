@@ -240,8 +240,8 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
         let span = cause.span();
 
         let (leading_ellipsis, satisfy_span, where_span, dup_span, def_id) =
-            if let ObligationCauseCode::MiscItem(def_id)
-            | ObligationCauseCode::MiscItemInExpr(def_id, ..) = *cause.code()
+            if let ObligationCauseCode::WhereClause(def_id)
+            | ObligationCauseCode::WhereClauseInExpr(def_id, ..) = *cause.code()
             {
                 (
                     true,

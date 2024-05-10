@@ -38,8 +38,8 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         let ObligationCauseCode::MatchImpl(parent, impl_def_id) = code else {
             return None;
         };
-        let (ObligationCauseCode::SpannedItem(_, binding_span)
-        | ObligationCauseCode::SpannedItemInExpr(_, binding_span, ..)) = *parent.code()
+        let (ObligationCauseCode::SpannedWhereClause(_, binding_span)
+        | ObligationCauseCode::SpannedWhereClauseInExpr(_, binding_span, ..)) = *parent.code()
         else {
             return None;
         };

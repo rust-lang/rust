@@ -2013,7 +2013,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         for (span, code) in errors_causecode {
             self.dcx().try_steal_modify_and_emit_err(span, StashKey::MaybeForgetReturn, |err| {
                 if let Some(fn_sig) = self.body_fn_sig()
-                    && let ObligationCauseCode::SpannedItemInExpr(_, _, binding_hir_id, ..) = code
+                    && let ObligationCauseCode::SpannedWhereClauseInExpr(_, _, binding_hir_id, ..) =
+                        code
                     && !fn_sig.output().is_unit()
                 {
                     let mut block_num = 0;
@@ -2102,7 +2103,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         //
         // This is because due to normalization, we often register duplicate
         // obligations with misc obligations that are basically impossible to
-        // line back up with a useful SpannedItemInExpr.
+        // line back up with a useful SpannedWhereClauseInExpr.
         for error in not_adjusted {
             for (span, predicate, cause) in &remap_cause {
                 if *predicate == error.obligation.predicate

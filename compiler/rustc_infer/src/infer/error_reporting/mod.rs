@@ -883,8 +883,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 err.help("...or use `match` instead of `let...else`");
             }
             _ => {
-                if let ObligationCauseCode::SpannedItem(_, span)
-                | ObligationCauseCode::SpannedItemInExpr(_, span, ..) =
+                if let ObligationCauseCode::SpannedWhereClause(_, span)
+                | ObligationCauseCode::SpannedWhereClauseInExpr(_, span, ..) =
                     cause.code().peel_derives()
                     && let TypeError::RegionsPlaceholderMismatch = terr
                 {
