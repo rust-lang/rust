@@ -624,10 +624,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// returns a type of `&T`, but the actual type we assign to the
     /// *expression* is `T`. So this function just peels off the return
     /// type by one layer to yield `T`.
-    pub(crate) fn make_overloaded_place_return_type(
-        &self,
-        method: MethodCallee<'tcx>,
-    ) -> ty::TypeAndMut<'tcx> {
+    pub(crate) fn make_overloaded_place_return_type(&self, method: MethodCallee<'tcx>) -> Ty<'tcx> {
         // extract method return type, which will be &T;
         let ret_ty = method.sig.output();
 

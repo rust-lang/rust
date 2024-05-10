@@ -26,8 +26,8 @@ where
 {
     match ret.layout.field(cx, i).abi {
         abi::Abi::Scalar(scalar) => match scalar.primitive() {
-            abi::F32 => Some(Reg::f32()),
-            abi::F64 => Some(Reg::f64()),
+            abi::Float(abi::F32) => Some(Reg::f32()),
+            abi::Float(abi::F64) => Some(Reg::f64()),
             _ => None,
         },
         _ => None,
@@ -110,7 +110,7 @@ where
 
                 // We only care about aligned doubles
                 if let abi::Abi::Scalar(scalar) = field.abi {
-                    if let abi::F64 = scalar.primitive() {
+                    if scalar.primitive() == abi::Float(abi::F64) {
                         if offset.is_aligned(dl.f64_align.abi) {
                             // Insert enough integers to cover [last_offset, offset)
                             assert!(last_offset.is_aligned(dl.f64_align.abi));

@@ -400,7 +400,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
             } else if let Some(static_def_id) = constant.check_static_ptr(tcx) {
                 let unnormalized_ty = tcx.type_of(static_def_id).instantiate_identity();
                 let normalized_ty = self.cx.normalize(unnormalized_ty, locations);
-                let literal_ty = constant.const_.ty().builtin_deref(true).unwrap().ty;
+                let literal_ty = constant.const_.ty().builtin_deref(true).unwrap();
 
                 if let Err(terr) = self.cx.eq_types(
                     literal_ty,
@@ -637,7 +637,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
         match pi {
             ProjectionElem::Deref => {
                 let deref_ty = base_ty.builtin_deref(true);
-                PlaceTy::from_ty(deref_ty.map(|t| t.ty).unwrap_or_else(|| {
+                PlaceTy::from_ty(deref_ty.unwrap_or_else(|| {
                     span_mirbug_and_err!(self, place, "deref of non-pointer {:?}", base_ty)
                 }))
             }

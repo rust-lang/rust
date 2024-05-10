@@ -974,7 +974,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             intrinsic_args!(fx, args => (ptr, offset); intrinsic);
 
             let (lane_count, ptr_lane_ty) = ptr.layout().ty.simd_size_and_type(fx.tcx);
-            let pointee_ty = ptr_lane_ty.builtin_deref(true).unwrap().ty;
+            let pointee_ty = ptr_lane_ty.builtin_deref(true).unwrap();
             let pointee_size = fx.layout_of(pointee_ty).size.bytes();
             let (ret_lane_count, ret_lane_ty) = ret.layout().ty.simd_size_and_type(fx.tcx);
             let ret_lane_layout = fx.layout_of(ret_lane_ty);

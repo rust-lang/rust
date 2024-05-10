@@ -978,21 +978,13 @@ pub(crate) struct InvalidMetaItem {
     #[primary_span]
     pub span: Span,
     pub token: Token,
-}
-
-#[derive(Diagnostic)]
-#[diag(parse_invalid_meta_item_unquoted_ident)]
-pub(crate) struct InvalidMetaItemUnquotedIdent {
-    #[primary_span]
-    pub span: Span,
-    pub token: Token,
     #[subdiagnostic]
-    pub sugg: InvalidMetaItemSuggQuoteIdent,
+    pub quote_ident_sugg: Option<InvalidMetaItemQuoteIdentSugg>,
 }
 
 #[derive(Subdiagnostic)]
-#[multipart_suggestion(parse_suggestion, applicability = "machine-applicable")]
-pub(crate) struct InvalidMetaItemSuggQuoteIdent {
+#[multipart_suggestion(parse_quote_ident_sugg, applicability = "machine-applicable")]
+pub(crate) struct InvalidMetaItemQuoteIdentSugg {
     #[suggestion_part(code = "\"")]
     pub before: Span,
     #[suggestion_part(code = "\"")]

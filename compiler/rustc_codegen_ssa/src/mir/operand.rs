@@ -215,8 +215,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
             .layout
             .ty
             .builtin_deref(true)
-            .unwrap_or_else(|| bug!("deref of non-pointer {:?}", self))
-            .ty;
+            .unwrap_or_else(|| bug!("deref of non-pointer {:?}", self));
 
         let (llptr, llextra) = match self.val {
             OperandValue::Immediate(llptr) => (llptr, None),
@@ -455,8 +454,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandValue<V> {
             .layout
             .ty
             .builtin_deref(true)
-            .unwrap_or_else(|| bug!("indirect_dest has non-pointer type: {:?}", indirect_dest))
-            .ty;
+            .unwrap_or_else(|| bug!("indirect_dest has non-pointer type: {:?}", indirect_dest));
 
         let OperandValue::Ref(PlaceValue { llval: llptr, llextra: Some(llextra), .. }) = self
         else {

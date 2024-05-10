@@ -120,7 +120,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> DebugInfoOffsetLocation<'tcx, Bx>
 {
     fn deref(&self, bx: &mut Bx) -> Self {
         bx.cx().layout_of(
-            self.ty.builtin_deref(true).unwrap_or_else(|| bug!("cannot deref `{}`", self.ty)).ty,
+            self.ty.builtin_deref(true).unwrap_or_else(|| bug!("cannot deref `{}`", self.ty)),
         )
     }
 

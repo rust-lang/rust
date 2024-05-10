@@ -5,7 +5,7 @@ use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::mir::{CoroutineLayout, CoroutineSavedLocal};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::layout::{
-    IntegerExt, LayoutCx, LayoutError, LayoutOf, TyAndLayout, MAX_SIMD_LANES,
+    FloatExt, IntegerExt, LayoutCx, LayoutError, LayoutOf, TyAndLayout, MAX_SIMD_LANES,
 };
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{
@@ -180,12 +180,7 @@ fn layout_of_uncached<'tcx>(
         )),
         ty::Int(ity) => scalar(Int(Integer::from_int_ty(dl, ity), true)),
         ty::Uint(ity) => scalar(Int(Integer::from_uint_ty(dl, ity), false)),
-        ty::Float(fty) => scalar(match fty {
-            ty::FloatTy::F16 => F16,
-            ty::FloatTy::F32 => F32,
-            ty::FloatTy::F64 => F64,
-            ty::FloatTy::F128 => F128,
-        }),
+        ty::Float(fty) => scalar(Float(Float::from_float_ty(fty))),
         ty::FnPtr(_) => {
             let mut ptr = scalar_unit(Pointer(dl.instruction_address_space));
             ptr.valid_range_mut().start = 1;

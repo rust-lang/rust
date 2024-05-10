@@ -18,7 +18,7 @@ use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, LayoutOf};
 use rustc_middle::ty::{self, GenericArgsRef, Ty};
 use rustc_middle::{bug, span_bug};
 use rustc_span::{sym, Span, Symbol};
-use rustc_target::abi::{self, Align, HasDataLayout, Primitive, Size};
+use rustc_target::abi::{self, Align, Float, HasDataLayout, Primitive, Size};
 use rustc_target::spec::{HasTargetSpec, PanicStrategy};
 
 use std::cmp::Ordering;
@@ -231,13 +231,17 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                                     emit_va_arg(self, args[0], ret_ty)
                                 }
                             }
-                            Primitive::F16 => bug!("the va_arg intrinsic does not work with `f16`"),
-                            Primitive::F64 | Primitive::Pointer(_) => {
+                            Primitive::Float(Float::F16) => {
+                                bug!("the va_arg intrinsic does not work with `f16`")
+                            }
+                            Primitive::Float(Float::F64) | Primitive::Pointer(_) => {
                                 emit_va_arg(self, args[0], ret_ty)
                             }
                             // `va_arg` should never be used with the return type f32.
-                            Primitive::F32 => bug!("the va_arg intrinsic does not work with `f32`"),
-                            Primitive::F128 => {
+                            Primitive::Float(Float::F32) => {
+                                bug!("the va_arg intrinsic does not work with `f32`")
+                            }
+                            Primitive::Float(Float::F128) => {
                                 bug!("the va_arg intrinsic does not work with `f128`")
                             }
                         }
@@ -2383,7 +2387,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         let pointee = in_elem.builtin_deref(true).unwrap_or_else(|| {
             span_bug!(span, "must be called with a vector of pointer types as first argument")
         });
-        let layout = bx.layout_of(pointee.ty);
+        let layout = bx.layout_of(pointee);
         let ptrs = args[0].immediate();
         // The second argument must be a ptr-sized integer.
         // (We don't care about the signedness, this is wrapping anyway.)
