@@ -27,11 +27,12 @@ pub fn flagsplit(flags: &str) -> Vec<String> {
     flags.split(' ').map(str::trim).filter(|s| !s.is_empty()).map(str::to_string).collect()
 }
 
-// Build the shared object file for testing external C function calls.
-fn build_so_for_c_ffi_tests() -> PathBuf {
+// Build the shared object file for testing native function calls.
+fn build_native_lib() -> PathBuf {
     let cc = option_env!("CC").unwrap_or("cc");
     // Target directory that we can write to.
-    let so_target_dir = Path::new(&env::var_os("CARGO_TARGET_DIR").unwrap()).join("miri-extern-so");
+    let so_target_dir =
+        Path::new(&env::var_os("CARGO_TARGET_DIR").unwrap()).join("miri-native-lib");
     // Create the directory if it does not already exist.
     std::fs::create_dir_all(&so_target_dir)
         .expect("Failed to create directory for shared object file");
@@ -41,18 +42,18 @@ fn build_so_for_c_ffi_tests() -> PathBuf {
             "-shared",
             "-o",
             so_file_path.to_str().unwrap(),
-            "tests/extern-so/test.c",
+            "tests/native-lib/test.c",
             // Only add the functions specified in libcode.version to the shared object file.
             // This is to avoid automatically adding `malloc`, etc.
             // Source: https://anadoxin.org/blog/control-over-symbol-exports-in-gcc.html/
             "-fPIC",
-            "-Wl,--version-script=tests/extern-so/libtest.map",
+            "-Wl,--version-script=tests/native-lib/libtest.map",
         ])
         .output()
-        .expect("failed to generate shared object file for testing external C function calls");
+        .expect("failed to generate shared object file for testing native function calls");
     if !cc_output.status.success() {
         panic!(
-            "error in generating shared object file for testing external C function calls:\n{}",
+            "error generating shared object file for testing native function calls:\n{}",
             String::from_utf8_lossy(&cc_output.stderr),
         );
     }
@@ -132,13 +133,12 @@ fn run_tests(
     config.program.args.push("--target".into());
     config.program.args.push(target.into());
 
-    // If we're testing the extern-so functionality, then build the shared object file for testing
+    // If we're testing the native-lib functionality, then build the shared object file for testing
     // external C function calls and push the relevant compiler flag.
-    if path.starts_with("tests/extern-so/") {
-        assert!(cfg!(target_os = "linux"));
-        let so_file_path = build_so_for_c_ffi_tests();
-        let mut flag = std::ffi::OsString::from("-Zmiri-extern-so-file=");
-        flag.push(so_file_path.into_os_string());
+    if path.starts_with("tests/native-lib/") {
+        let native_lib = build_native_lib();
+        let mut flag = std::ffi::OsString::from("-Zmiri-native-lib=");
+        flag.push(native_lib.into_os_string());
         config.program.args.push(flag);
     }
 
@@ -292,10 +292,10 @@ fn main() -> Result<()> {
         tmpdir.path(),
     )?;
     if cfg!(target_os = "linux") {
-        ui(Mode::Pass, "tests/extern-so/pass", &target, WithoutDependencies, tmpdir.path())?;
+        ui(Mode::Pass, "tests/native-lib/pass", &target, WithoutDependencies, tmpdir.path())?;
         ui(
             Mode::Fail { require_patterns: true, rustfix: RustfixMode::Disabled },
-            "tests/extern-so/fail",
+            "tests/native-lib/fail",
             &target,
             WithoutDependencies,
             tmpdir.path(),
