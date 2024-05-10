@@ -4,6 +4,8 @@
 
 pub mod tls;
 
+pub use rustc_type_ir::lift::Lift;
+
 use crate::arena::Arena;
 use crate::dep_graph::{DepGraph, DepKindStruct};
 use crate::infer::canonical::{CanonicalParamEnvCache, CanonicalVarInfo, CanonicalVarInfos};
@@ -137,6 +139,19 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
 
     fn mk_canonical_var_infos(self, infos: &[ty::CanonicalVarInfo<Self>]) -> Self::CanonicalVars {
         self.mk_canonical_var_infos(infos)
+    }
+
+    type GenericsOf = &'tcx ty::Generics;
+    fn generics_of(self, def_id: DefId) -> &'tcx ty::Generics {
+        self.generics_of(def_id)
+    }
+
+    fn check_and_mk_args(
+        self,
+        def_id: DefId,
+        args: impl IntoIterator<Item: Into<ty::GenericArg<'tcx>>>,
+    ) -> ty::GenericArgsRef<'tcx> {
+        self.check_and_mk_args(def_id, args)
     }
 }
 
@@ -917,7 +932,7 @@ impl<'tcx> TyCtxt<'tcx> {
         )
     }
 
-    pub fn lift<T: Lift<'tcx>>(self, value: T) -> Option<T::Lifted> {
+    pub fn lift<T: Lift<TyCtxt<'tcx>>>(self, value: T) -> Option<T::Lifted> {
         value.lift_to_tcx(self)
     }
 
@@ -1524,31 +1539,9 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 }
 
-/// A trait implemented for all `X<'a>` types that can be safely and
-/// efficiently converted to `X<'tcx>` as long as they are part of the
-/// provided `TyCtxt<'tcx>`.
-/// This can be done, for example, for `Ty<'tcx>` or `GenericArgsRef<'tcx>`
-/// by looking them up in their respective interners.
-///
-/// However, this is still not the best implementation as it does
-/// need to compare the components, even for interned values.
-/// It would be more efficient if `TypedArena` provided a way to
-/// determine whether the address is in the allocated range.
-///
-/// `None` is returned if the value or one of the components is not part
-/// of the provided context.
-/// For `Ty`, `None` can be returned if either the type interner doesn't
-/// contain the `TyKind` key or if the address of the interned
-/// pointer differs. The latter case is possible if a primitive type,
-/// e.g., `()` or `u8`, was interned in a different context.
-pub trait Lift<'tcx>: fmt::Debug {
-    type Lifted: fmt::Debug + 'tcx;
-    fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted>;
-}
-
 macro_rules! nop_lift {
     ($set:ident; $ty:ty => $lifted:ty) => {
-        impl<'a, 'tcx> Lift<'tcx> for $ty {
+        impl<'a, 'tcx> Lift<TyCtxt<'tcx>> for $ty {
             type Lifted = $lifted;
             fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
                 // Assert that the set has the right type.
@@ -1583,7 +1576,7 @@ macro_rules! nop_lift {
 
 macro_rules! nop_list_lift {
     ($set:ident; $ty:ty => $lifted:ty) => {
-        impl<'a, 'tcx> Lift<'tcx> for &'a List<$ty> {
+        impl<'a, 'tcx> Lift<TyCtxt<'tcx>> for &'a List<$ty> {
             type Lifted = &'tcx List<$lifted>;
             fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
                 // Assert that the set has the right type.
@@ -1621,7 +1614,7 @@ nop_list_lift! {args; GenericArg<'a> => GenericArg<'tcx>}
 
 macro_rules! nop_slice_lift {
     ($ty:ty => $lifted:ty) => {
-        impl<'a, 'tcx> Lift<'tcx> for &'a [$ty] {
+        impl<'a, 'tcx> Lift<TyCtxt<'tcx>> for &'a [$ty] {
             type Lifted = &'tcx [$lifted];
             fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
                 if self.is_empty() {

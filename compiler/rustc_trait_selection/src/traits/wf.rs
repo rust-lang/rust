@@ -526,8 +526,11 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
     fn require_sized(&mut self, subty: Ty<'tcx>, cause: traits::ObligationCauseCode<'tcx>) {
         if !subty.has_escaping_bound_vars() {
             let cause = self.cause(cause);
-            let trait_ref =
-                ty::TraitRef::from_lang_item(self.tcx(), LangItem::Sized, cause.span, [subty]);
+            let trait_ref = ty::TraitRef::new(
+                self.tcx(),
+                self.tcx().require_lang_item(LangItem::Sized, Some(cause.span)),
+                [subty],
+            );
             self.out.push(traits::Obligation::with_depth(
                 self.tcx(),
                 cause,

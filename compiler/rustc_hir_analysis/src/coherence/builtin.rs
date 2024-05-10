@@ -14,6 +14,7 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::infer::{self, RegionResolutionError};
 use rustc_infer::traits::Obligation;
 use rustc_middle::ty::adjustment::CoerceUnsizedInfo;
+use rustc_middle::ty::print::PrintTraitRefExt as _;
 use rustc_middle::ty::{self, suggest_constraining_type_params, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt;

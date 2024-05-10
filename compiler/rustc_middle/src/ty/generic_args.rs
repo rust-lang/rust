@@ -39,6 +39,16 @@ pub struct GenericArg<'tcx> {
     marker: PhantomData<(Ty<'tcx>, ty::Region<'tcx>, ty::Const<'tcx>)>,
 }
 
+impl<'tcx> rustc_type_ir::inherent::GenericArgs<TyCtxt<'tcx>> for ty::GenericArgsRef<'tcx> {
+    fn type_at(self, i: usize) -> Ty<'tcx> {
+        self.type_at(i)
+    }
+
+    fn identity_for_item(tcx: TyCtxt<'tcx>, def_id: DefId) -> ty::GenericArgsRef<'tcx> {
+        GenericArgs::identity_for_item(tcx, def_id)
+    }
+}
+
 #[cfg(parallel_compiler)]
 unsafe impl<'tcx> rustc_data_structures::sync::DynSend for GenericArg<'tcx> where
     &'tcx (Ty<'tcx>, ty::Region<'tcx>, ty::Const<'tcx>): rustc_data_structures::sync::DynSend
@@ -205,7 +215,7 @@ impl<'tcx> GenericArg<'tcx> {
     }
 }
 
-impl<'a, 'tcx> Lift<'tcx> for GenericArg<'a> {
+impl<'a, 'tcx> Lift<TyCtxt<'tcx>> for GenericArg<'a> {
     type Lifted = GenericArg<'tcx>;
 
     fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {

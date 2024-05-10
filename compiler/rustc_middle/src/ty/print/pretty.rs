@@ -16,7 +16,7 @@ use rustc_hir::def::{self, CtorKind, DefKind, Namespace};
 use rustc_hir::def_id::{DefIdMap, DefIdSet, ModDefId, CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::definitions::{DefKey, DefPathDataName};
 use rustc_hir::LangItem;
-use rustc_macros::Lift;
+use rustc_macros::{extension, Lift};
 use rustc_session::cstore::{ExternCrate, ExternCrateSource};
 use rustc_session::Limit;
 use rustc_span::symbol::{kw, Ident, Symbol};
@@ -2919,16 +2919,17 @@ impl<'tcx> fmt::Debug for TraitRefPrintOnlyTraitName<'tcx> {
     }
 }
 
+#[extension(pub trait PrintTraitRefExt<'tcx>)]
 impl<'tcx> ty::TraitRef<'tcx> {
-    pub fn print_only_trait_path(self) -> TraitRefPrintOnlyTraitPath<'tcx> {
+    fn print_only_trait_path(self) -> TraitRefPrintOnlyTraitPath<'tcx> {
         TraitRefPrintOnlyTraitPath(self)
     }
 
-    pub fn print_trait_sugared(self) -> TraitRefPrintSugared<'tcx> {
+    fn print_trait_sugared(self) -> TraitRefPrintSugared<'tcx> {
         TraitRefPrintSugared(self)
     }
 
-    pub fn print_only_trait_name(self) -> TraitRefPrintOnlyTraitName<'tcx> {
+    fn print_only_trait_name(self) -> TraitRefPrintOnlyTraitName<'tcx> {
         TraitRefPrintOnlyTraitName(self)
     }
 }
@@ -3032,6 +3033,10 @@ forward_display_to_print! {
 define_print! {
     (self, cx):
 
+    ty::TraitRef<'tcx> {
+        p!(write("<{} as {}>", self.self_ty(), self.print_only_trait_path()))
+    }
+
     ty::TypeAndMut<'tcx> {
         p!(write("{}", self.mutbl.prefix_str()), print(self.ty))
     }
@@ -3111,10 +3116,6 @@ define_print_and_forward_display! {
         }
 
         p!("fn", pretty_fn_sig(self.inputs(), self.c_variadic, self.output()));
-    }
-
-    ty::TraitRef<'tcx> {
-        p!(write("<{} as {}>", self.self_ty(), self.print_only_trait_path()))
     }
 
     TraitRefPrintOnlyTraitPath<'tcx> {

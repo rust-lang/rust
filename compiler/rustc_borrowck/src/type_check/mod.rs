@@ -532,8 +532,11 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
 
         if let PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy) = context {
             let tcx = self.tcx();
-            let trait_ref =
-                ty::TraitRef::from_lang_item(tcx, LangItem::Copy, self.last_span, [place_ty.ty]);
+            let trait_ref = ty::TraitRef::new(
+                tcx,
+                tcx.require_lang_item(LangItem::Copy, Some(self.last_span)),
+                [place_ty.ty],
+            );
 
             // To have a `Copy` operand, the type `T` of the
             // value must be `Copy`. Note that we prove that `T: Copy`,
@@ -1273,10 +1276,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
                 self.check_rvalue(body, rv, location);
                 if !self.unsized_feature_enabled() {
-                    let trait_ref = ty::TraitRef::from_lang_item(
+                    let trait_ref = ty::TraitRef::new(
                         tcx,
-                        LangItem::Sized,
-                        self.last_span,
+                        tcx.require_lang_item(LangItem::Sized, Some(self.last_span)),
                         [place_ty],
                     );
                     self.prove_trait_ref(
@@ -1925,8 +1927,11 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         Operand::Move(place) => {
                             // Make sure that repeated elements implement `Copy`.
                             let ty = place.ty(body, tcx).ty;
-                            let trait_ref =
-                                ty::TraitRef::from_lang_item(tcx, LangItem::Copy, span, [ty]);
+                            let trait_ref = ty::TraitRef::new(
+                                tcx,
+                                tcx.require_lang_item(LangItem::Copy, Some(span)),
+                                [ty],
+                            );
 
                             self.prove_trait_ref(
                                 trait_ref,
@@ -1939,7 +1944,11 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             }
 
             &Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf, ty) => {
-                let trait_ref = ty::TraitRef::from_lang_item(tcx, LangItem::Sized, span, [ty]);
+                let trait_ref = ty::TraitRef::new(
+                    tcx,
+                    tcx.require_lang_item(LangItem::Sized, Some(span)),
+                    [ty],
+                );
 
                 self.prove_trait_ref(
                     trait_ref,
@@ -1952,7 +1961,11 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             Rvalue::ShallowInitBox(operand, ty) => {
                 self.check_operand(operand, location);
 
-                let trait_ref = ty::TraitRef::from_lang_item(tcx, LangItem::Sized, span, [*ty]);
+                let trait_ref = ty::TraitRef::new(
+                    tcx,
+                    tcx.require_lang_item(LangItem::Sized, Some(span)),
+                    [*ty],
+                );
 
                 self.prove_trait_ref(
                     trait_ref,
@@ -2050,10 +2063,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
                     CastKind::PointerCoercion(PointerCoercion::Unsize) => {
                         let &ty = ty;
-                        let trait_ref = ty::TraitRef::from_lang_item(
+                        let trait_ref = ty::TraitRef::new(
                             tcx,
-                            LangItem::CoerceUnsized,
-                            span,
+                            tcx.require_lang_item(LangItem::CoerceUnsized, Some(span)),
                             [op.ty(body, tcx), ty],
                         );
 

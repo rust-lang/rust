@@ -537,10 +537,12 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                             self.tcx,
                             obligation.cause.clone(),
                             obligation.param_env,
-                            ty::TraitRef::from_lang_item(
+                            ty::TraitRef::new(
                                 self.tcx,
-                                hir::LangItem::Sized,
-                                obligation.cause.span,
+                                self.tcx.require_lang_item(
+                                    hir::LangItem::Sized,
+                                    Some(obligation.cause.span),
+                                ),
                                 [base_ty],
                             ),
                         );
@@ -4033,10 +4035,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         let node = tcx.hir_node_by_def_id(hir.get_parent_item(expr.hir_id).def_id);
 
                         let pred = ty::Binder::dummy(ty::TraitPredicate {
-                            trait_ref: ty::TraitRef::from_lang_item(
+                            trait_ref: ty::TraitRef::new(
                                 tcx,
-                                LangItem::Clone,
-                                span,
+                                tcx.require_lang_item(LangItem::Clone, Some(span)),
                                 [*ty],
                             ),
                             polarity: ty::PredicatePolarity::Positive,

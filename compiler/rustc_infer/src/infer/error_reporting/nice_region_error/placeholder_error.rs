@@ -12,7 +12,7 @@ use rustc_errors::{Diag, IntoDiagArg};
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::error::ExpectedFound;
-use rustc_middle::ty::print::{FmtPrinter, Print, RegionHighlightMode};
+use rustc_middle::ty::print::{FmtPrinter, Print, PrintTraitRefExt as _, RegionHighlightMode};
 use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::{self, RePlaceholder, Region, TyCtxt};
 

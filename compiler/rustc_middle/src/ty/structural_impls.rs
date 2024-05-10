@@ -132,12 +132,6 @@ impl<'tcx> DebugWithInfcx<TyCtxt<'tcx>> for ty::FnSig<'tcx> {
     }
 }
 
-impl<'tcx> fmt::Debug for ty::TraitRef<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        with_no_trimmed_paths!(fmt::Display::fmt(self, f))
-    }
-}
-
 impl<'tcx> ty::DebugWithInfcx<TyCtxt<'tcx>> for Ty<'tcx> {
     fn fmt<Infcx: InferCtxtLike<Interner = TyCtxt<'tcx>>>(
         this: WithInfcx<'_, Infcx, &Self>,
@@ -478,7 +472,7 @@ TrivialTypeTraversalAndLiftImpls! {
 ///////////////////////////////////////////////////////////////////////////
 // Lift implementations
 
-impl<'tcx, T: Lift<'tcx>> Lift<'tcx> for Option<T> {
+impl<'tcx, T: Lift<TyCtxt<'tcx>>> Lift<TyCtxt<'tcx>> for Option<T> {
     type Lifted = Option<T::Lifted>;
     fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
         Some(match self {
@@ -488,7 +482,7 @@ impl<'tcx, T: Lift<'tcx>> Lift<'tcx> for Option<T> {
     }
 }
 
-impl<'a, 'tcx> Lift<'tcx> for Term<'a> {
+impl<'a, 'tcx> Lift<TyCtxt<'tcx>> for Term<'a> {
     type Lifted = ty::Term<'tcx>;
     fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
         Some(

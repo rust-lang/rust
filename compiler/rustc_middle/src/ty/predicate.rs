@@ -2,19 +2,19 @@ use rustc_data_structures::captures::Captures;
 use rustc_data_structures::intern::Interned;
 use rustc_errors::{DiagArgValue, IntoDiagArg};
 use rustc_hir::def_id::DefId;
-use rustc_hir::LangItem;
 use rustc_macros::{HashStable, Lift, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
-use rustc_span::Span;
 use rustc_type_ir::ClauseKind as IrClauseKind;
 use rustc_type_ir::PredicateKind as IrPredicateKind;
+use rustc_type_ir::TraitRef as IrTraitRef;
 use std::cmp::Ordering;
 
 use crate::ty::visit::TypeVisitableExt;
 use crate::ty::{
-    self, AliasTy, Binder, DebruijnIndex, DebugWithInfcx, EarlyBinder, GenericArg, GenericArgs,
-    GenericArgsRef, PredicatePolarity, Term, Ty, TyCtxt, TypeFlags, WithCachedTypeInfo,
+    self, AliasTy, Binder, DebruijnIndex, DebugWithInfcx, EarlyBinder, GenericArgsRef,
+    PredicatePolarity, Term, Ty, TyCtxt, TypeFlags, WithCachedTypeInfo,
 };
 
+pub type TraitRef<'tcx> = IrTraitRef<TyCtxt<'tcx>>;
 pub type ClauseKind<'tcx> = IrClauseKind<TyCtxt<'tcx>>;
 pub type PredicateKind<'tcx> = IrPredicateKind<TyCtxt<'tcx>>;
 
@@ -29,6 +29,8 @@ pub type PredicateKind<'tcx> = IrPredicateKind<TyCtxt<'tcx>>;
 pub struct Predicate<'tcx>(
     pub(super) Interned<'tcx, WithCachedTypeInfo<ty::Binder<'tcx, PredicateKind<'tcx>>>>,
 );
+
+impl<'tcx> rustc_type_ir::inherent::Predicate<TyCtxt<'tcx>> for Predicate<'tcx> {}
 
 impl<'tcx> rustc_type_ir::visit::Flags for Predicate<'tcx> {
     fn flags(&self) -> TypeFlags {
@@ -326,76 +328,6 @@ impl<'tcx> ty::List<ty::PolyExistentialPredicate<'tcx>> {
     }
 }
 
-/// A complete reference to a trait. These take numerous guises in syntax,
-/// but perhaps the most recognizable form is in a where-clause:
-/// ```ignore (illustrative)
-/// T: Foo<U>
-/// ```
-/// This would be represented by a trait-reference where the `DefId` is the
-/// `DefId` for the trait `Foo` and the args define `T` as parameter 0,
-/// and `U` as parameter 1.
-///
-/// Trait references also appear in object types like `Foo<U>`, but in
-/// that case the `Self` parameter is absent from the generic parameters.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
-#[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
-pub struct TraitRef<'tcx> {
-    pub def_id: DefId,
-    pub args: GenericArgsRef<'tcx>,
-    /// This field exists to prevent the creation of `TraitRef` without
-    /// calling [`TraitRef::new`].
-    pub(super) _use_trait_ref_new_instead: (),
-}
-
-impl<'tcx> TraitRef<'tcx> {
-    pub fn new(
-        tcx: TyCtxt<'tcx>,
-        trait_def_id: DefId,
-        args: impl IntoIterator<Item: Into<GenericArg<'tcx>>>,
-    ) -> Self {
-        let args = tcx.check_and_mk_args(trait_def_id, args);
-        Self { def_id: trait_def_id, args, _use_trait_ref_new_instead: () }
-    }
-
-    pub fn from_lang_item(
-        tcx: TyCtxt<'tcx>,
-        trait_lang_item: LangItem,
-        span: Span,
-        args: impl IntoIterator<Item: Into<ty::GenericArg<'tcx>>>,
-    ) -> Self {
-        let trait_def_id = tcx.require_lang_item(trait_lang_item, Some(span));
-        Self::new(tcx, trait_def_id, args)
-    }
-
-    pub fn from_method(
-        tcx: TyCtxt<'tcx>,
-        trait_id: DefId,
-        args: GenericArgsRef<'tcx>,
-    ) -> ty::TraitRef<'tcx> {
-        let defs = tcx.generics_of(trait_id);
-        ty::TraitRef::new(tcx, trait_id, tcx.mk_args(&args[..defs.own_params.len()]))
-    }
-
-    /// Returns a `TraitRef` of the form `P0: Foo<P1..Pn>` where `Pi`
-    /// are the parameters defined on trait.
-    pub fn identity(tcx: TyCtxt<'tcx>, def_id: DefId) -> TraitRef<'tcx> {
-        ty::TraitRef::new(tcx, def_id, GenericArgs::identity_for_item(tcx, def_id))
-    }
-
-    pub fn with_self_ty(self, tcx: TyCtxt<'tcx>, self_ty: Ty<'tcx>) -> Self {
-        ty::TraitRef::new(
-            tcx,
-            self.def_id,
-            [self_ty.into()].into_iter().chain(self.args.iter().skip(1)),
-        )
-    }
-
-    #[inline]
-    pub fn self_ty(&self) -> Ty<'tcx> {
-        self.args.type_at(0)
-    }
-}
-
 pub type PolyTraitRef<'tcx> = ty::Binder<'tcx, TraitRef<'tcx>>;
 
 impl<'tcx> PolyTraitRef<'tcx> {
@@ -405,12 +337,6 @@ impl<'tcx> PolyTraitRef<'tcx> {
 
     pub fn def_id(&self) -> DefId {
         self.skip_binder().def_id
-    }
-}
-
-impl<'tcx> IntoDiagArg for TraitRef<'tcx> {
-    fn into_diag_arg(self) -> DiagArgValue {
-        self.to_string().into_diag_arg()
     }
 }
 

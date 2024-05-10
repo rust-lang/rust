@@ -145,6 +145,12 @@ pub struct Generics {
     pub host_effect_index: Option<usize>,
 }
 
+impl<'tcx> rustc_type_ir::inherent::GenericsOf<TyCtxt<'tcx>> for &'tcx Generics {
+    fn count(&self) -> usize {
+        self.parent_count + self.own_params.len()
+    }
+}
+
 impl<'tcx> Generics {
     /// Looks through the generics and all parents to find the index of the
     /// given param def-id. This is in comparison to the `param_def_id_to_index`

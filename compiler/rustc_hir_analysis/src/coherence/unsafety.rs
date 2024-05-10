@@ -3,6 +3,7 @@
 
 use rustc_errors::{codes::*, struct_span_code_err};
 use rustc_hir::Unsafety;
+use rustc_middle::ty::print::PrintTraitRefExt as _;
 use rustc_middle::ty::{ImplPolarity::*, ImplTraitHeader, TraitDef, TyCtxt};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::ErrorGuaranteed;

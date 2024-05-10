@@ -4,7 +4,7 @@ use rustc_errors::{
     SubdiagMessageOp, Subdiagnostic,
 };
 use rustc_macros::{Diagnostic, Subdiagnostic};
-use rustc_middle::ty::{self, ClosureKind, PolyTraitRef, Ty};
+use rustc_middle::ty::{self, print::PrintTraitRefExt as _, ClosureKind, PolyTraitRef, Ty};
 use rustc_span::{Span, Symbol};
 
 #[derive(Diagnostic)]
