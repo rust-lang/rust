@@ -1,5 +1,5 @@
 warning: non-local `impl` definition, they should be avoided as they go against expectation
-  --> $DIR/exhaustive.rs:10:5
+  --> $DIR/exhaustive.rs:12:5
    |
 LL | /     impl Test {
 LL | |
@@ -11,10 +11,14 @@ LL | |     }
    = note: an `impl` definition is non-local if it is nested inside an item and may impact type checking outside of that item. This can be the case if neither the trait or the self type are at the same nesting level as the `impl`
    = note: one exception to the rule are anon-const (`const _: () = { ... }`) at top-level module and anon-const at the same nesting as the trait or type
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
-   = note: `#[warn(non_local_definitions)]` on by default
+note: the lint level is defined here
+  --> $DIR/exhaustive.rs:4:9
+   |
+LL | #![warn(non_local_definitions)]
+   |         ^^^^^^^^^^^^^^^^^^^^^
 
 warning: non-local `impl` definition, they should be avoided as they go against expectation
-  --> $DIR/exhaustive.rs:15:5
+  --> $DIR/exhaustive.rs:17:5
    |
 LL | /     impl Display for Test {
 LL | |
@@ -30,7 +34,7 @@ LL | |     }
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, they should be avoided as they go against expectation
-  --> $DIR/exhaustive.rs:22:5
+  --> $DIR/exhaustive.rs:24:5
    |
 LL |     impl dyn Trait {}
    |     ^^^^^^^^^^^^^^^^^
@@ -41,7 +45,7 @@ LL |     impl dyn Trait {}
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, they should be avoided as they go against expectation
-  --> $DIR/exhaustive.rs:25:5
+  --> $DIR/exhaustive.rs:27:5
    |
 LL |     impl<T: Trait> Trait for Vec<T> { }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -52,7 +56,7 @@ LL |     impl<T: Trait> Trait for Vec<T> { }
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, they should be avoided as they go against expectation
-  --> $DIR/exhaustive.rs:28:5
+  --> $DIR/exhaustive.rs:30:5
    |
 LL |     impl Trait for &dyn Trait {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -63,7 +67,7 @@ LL |     impl Trait for &dyn Trait {}
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, they should be avoided as they go against expectation
-  --> $DIR/exhaustive.rs:31:5
+  --> $DIR/exhaustive.rs:33:5
    |
 LL |     impl Trait for *mut Test {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -74,7 +78,7 @@ LL |     impl Trait for *mut Test {}
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, they should be avoided as they go against expectation
-  --> $DIR/exhaustive.rs:34:5
+  --> $DIR/exhaustive.rs:36:5
    |
 LL |     impl Trait for *mut [Test] {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -85,7 +89,7 @@ LL |     impl Trait for *mut [Test] {}
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, they should be avoided as they go against expectation
-  --> $DIR/exhaustive.rs:37:5
+  --> $DIR/exhaustive.rs:39:5
    |
 LL |     impl Trait for [Test; 8] {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -96,7 +100,7 @@ LL |     impl Trait for [Test; 8] {}
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, they should be avoided as they go against expectation
-  --> $DIR/exhaustive.rs:40:5
+  --> $DIR/exhaustive.rs:42:5
    |
 LL |     impl Trait for (Test,) {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -107,7 +111,7 @@ LL |     impl Trait for (Test,) {}
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, they should be avoided as they go against expectation
-  --> $DIR/exhaustive.rs:43:5
+  --> $DIR/exhaustive.rs:45:5
    |
 LL |     impl Trait for fn(Test) -> () {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -118,7 +122,7 @@ LL |     impl Trait for fn(Test) -> () {}
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, they should be avoided as they go against expectation
-  --> $DIR/exhaustive.rs:46:5
+  --> $DIR/exhaustive.rs:48:5
    |
 LL |     impl Trait for fn() -> Test {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -129,7 +133,7 @@ LL |     impl Trait for fn() -> Test {}
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, they should be avoided as they go against expectation
-  --> $DIR/exhaustive.rs:50:9
+  --> $DIR/exhaustive.rs:52:9
    |
 LL |         impl Trait for Test {}
    |         ^^^^^^^^^^^^^^^^^^^^^^
@@ -140,7 +144,7 @@ LL |         impl Trait for Test {}
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, they should be avoided as they go against expectation
-  --> $DIR/exhaustive.rs:58:5
+  --> $DIR/exhaustive.rs:60:5
    |
 LL |     impl Trait for *mut InsideMain {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -151,7 +155,7 @@ LL |     impl Trait for *mut InsideMain {}
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, they should be avoided as they go against expectation
-  --> $DIR/exhaustive.rs:60:5
+  --> $DIR/exhaustive.rs:62:5
    |
 LL |     impl Trait for *mut [InsideMain] {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -162,7 +166,7 @@ LL |     impl Trait for *mut [InsideMain] {}
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, they should be avoided as they go against expectation
-  --> $DIR/exhaustive.rs:62:5
+  --> $DIR/exhaustive.rs:64:5
    |
 LL |     impl Trait for [InsideMain; 8] {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -173,7 +177,7 @@ LL |     impl Trait for [InsideMain; 8] {}
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, they should be avoided as they go against expectation
-  --> $DIR/exhaustive.rs:64:5
+  --> $DIR/exhaustive.rs:66:5
    |
 LL |     impl Trait for (InsideMain,) {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -184,7 +188,7 @@ LL |     impl Trait for (InsideMain,) {}
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, they should be avoided as they go against expectation
-  --> $DIR/exhaustive.rs:66:5
+  --> $DIR/exhaustive.rs:68:5
    |
 LL |     impl Trait for fn(InsideMain) -> () {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -195,7 +199,7 @@ LL |     impl Trait for fn(InsideMain) -> () {}
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, they should be avoided as they go against expectation
-  --> $DIR/exhaustive.rs:68:5
+  --> $DIR/exhaustive.rs:70:5
    |
 LL |     impl Trait for fn() -> InsideMain {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -206,7 +210,7 @@ LL |     impl Trait for fn() -> InsideMain {}
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, they should be avoided as they go against expectation
-  --> $DIR/exhaustive.rs:72:9
+  --> $DIR/exhaustive.rs:74:9
    |
 LL | /         impl Display for InsideMain {
 LL | |
@@ -222,7 +226,7 @@ LL | |         }
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, they should be avoided as they go against expectation
-  --> $DIR/exhaustive.rs:79:9
+  --> $DIR/exhaustive.rs:81:9
    |
 LL | /         impl InsideMain {
 LL | |

@@ -1,6 +1,8 @@
 //@ check-pass
 //@ edition:2021
 
+#![warn(non_local_definitions)]
+
 trait Uto {}
 struct Test;
 

@@ -5,6 +5,7 @@
 //@ normalize-stdout-test "finished in \d+\.\d+s" -> "finished in $$TIME"
 
 //! ```
+//! #![warn(non_local_definitions)]
 //! #[macro_export]
 //! macro_rules! a_macro { () => {} }
 //! ```
