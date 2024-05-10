@@ -434,7 +434,8 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 found_bytes: has.bytes()
             },
         );
-        // Make sure this is non-null. (ZST references can be dereferenceable and null.)
+        // Make sure this is non-null. We checked dereferenceability above, but if `size` is zero
+        // that does not imply non-null.
         if self.ecx.scalar_may_be_null(Scalar::from_maybe_pointer(place.ptr(), self.ecx))? {
             throw_validation_failure!(self.path, NullPtr { ptr_kind })
         }

@@ -480,8 +480,8 @@ impl<T: ?Sized> *mut T {
     /// If any of the following conditions are violated, the result is Undefined
     /// Behavior:
     ///
-    /// * If the computed offset is non-zero, then both the starting and resulting pointer must be
-    ///   either in bounds or one byte past the end of the same [allocated object].
+    /// * If the computed offset, **in bytes**, is non-zero, then both the starting and resulting
+    ///   pointer must be either in bounds or at the end of the same [allocated object].
     ///   (If it is zero, then the function is always well-defined.)
     ///
     /// * The computed offset, **in bytes**, cannot overflow an `isize`.
@@ -1096,8 +1096,8 @@ impl<T: ?Sized> *mut T {
     /// If any of the following conditions are violated, the result is Undefined
     /// Behavior:
     ///
-    /// * If the computed offset is non-zero, then both the starting and resulting pointer must be
-    ///   either in bounds or one byte past the end of the same [allocated object].
+    /// * If the computed offset, **in bytes**, is non-zero, then both the starting and resulting
+    ///   pointer must be either in bounds or at the end of the same [allocated object].
     ///   (If it is zero, then the function is always well-defined.)
     ///
     /// * The computed offset, **in bytes**, cannot overflow an `isize`.
@@ -1181,8 +1181,8 @@ impl<T: ?Sized> *mut T {
     /// If any of the following conditions are violated, the result is Undefined
     /// Behavior:
     ///
-    /// * If the computed offset is non-zero, then both the starting and resulting pointer must be
-    ///   either in bounds or one byte past the end of the same [allocated object].
+    /// * If the computed offset, **in bytes**, is non-zero, then both the starting and resulting
+    ///   pointer must be either in bounds or at the end of the same [allocated object].
     ///   (If it is zero, then the function is always well-defined.)
     ///
     /// * The computed offset cannot exceed `isize::MAX` **bytes**.
