@@ -66,6 +66,7 @@ use crate::infer::snapshot::undo_log::UndoLog;
 use crate::infer::{self, GenericKind, InferCtxt, RegionObligation, SubregionOrigin, VerifyBound};
 use crate::traits::{ObligationCause, ObligationCauseCode};
 use rustc_data_structures::undo_log::UndoLogs;
+use rustc_hir::def_id::CRATE_DEF_ID;
 use rustc_middle::bug;
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::traits::query::NoSolution;
@@ -153,11 +154,20 @@ impl<'tcx> InferCtxt<'tcx> {
                 Some(
                     deeply_normalize_ty(
                         outlives,
-                        SubregionOrigin::AscribeUserTypeProvePredicate(DUMMY_SP),
+                        SubregionOrigin::AscribeUserTypeProvePredicate(
+                            CRATE_DEF_ID.to_def_id(),
+                            DUMMY_SP,
+                        ),
                     )
                     // FIXME(-Znext-solver): How do we accurately report an error span here :(
                     .map_err(|NoSolution| {
-                        (outlives, SubregionOrigin::AscribeUserTypeProvePredicate(DUMMY_SP))
+                        (
+                            outlives,
+                            SubregionOrigin::AscribeUserTypeProvePredicate(
+                                CRATE_DEF_ID.to_def_id(),
+                                DUMMY_SP,
+                            ),
+                        )
                     }),
                 )
             })

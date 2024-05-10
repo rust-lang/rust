@@ -262,7 +262,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             infer::CheckAssociatedTypeBounds { ref parent, .. } => {
                 self.note_region_origin(err, parent);
             }
-            infer::AscribeUserTypeProvePredicate(span) => {
+            infer::AscribeUserTypeProvePredicate(_, span) => {
                 RegionOriginNote::Plain {
                     span,
                     msg: fluent::infer_ascribe_user_type_prove_predicate,
@@ -483,7 +483,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 );
                 err
             }
-            infer::AscribeUserTypeProvePredicate(span) => {
+            infer::AscribeUserTypeProvePredicate(_, span) => {
                 let instantiated = note_and_explain::RegionExplanation::new(
                     self.tcx,
                     generic_param_scope,

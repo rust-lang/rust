@@ -4,7 +4,7 @@ use crate::mir;
 use crate::ty::{self, CoroutineArgsExt, OpaqueHiddenType, Ty, TyCtxt};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::ErrorGuaranteed;
-use rustc_hir::def_id::LocalDefId;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_index::bit_set::BitMatrix;
 use rustc_index::{Idx, IndexVec};
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
@@ -263,7 +263,7 @@ pub enum ConstraintCategory<'tcx> {
     /// A constraint from a user-written predicate
     /// with the provided span, written on the item
     /// with the given `DefId`
-    Predicate(Span),
+    Predicate(#[derivative(PartialOrd = "ignore", Ord = "ignore")] DefId, Span),
 
     /// A "boring" constraint (caused by the given location) is one that
     /// the user probably doesn't want to see described in diagnostics,

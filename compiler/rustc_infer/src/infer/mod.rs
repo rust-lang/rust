@@ -413,7 +413,7 @@ pub enum SubregionOrigin<'tcx> {
         trait_item_def_id: DefId,
     },
 
-    AscribeUserTypeProvePredicate(Span),
+    AscribeUserTypeProvePredicate(DefId, Span),
 }
 
 // `SubregionOrigin` is used a lot. Make sure it doesn't unintentionally get bigger.
@@ -424,7 +424,9 @@ impl<'tcx> SubregionOrigin<'tcx> {
     pub fn to_constraint_category(&self) -> ConstraintCategory<'tcx> {
         match self {
             Self::Subtype(type_trace) => type_trace.cause.to_constraint_category(),
-            Self::AscribeUserTypeProvePredicate(span) => ConstraintCategory::Predicate(*span),
+            Self::AscribeUserTypeProvePredicate(def_id, span) => {
+                ConstraintCategory::Predicate(*def_id, *span)
+            }
             _ => ConstraintCategory::BoringNoLocation,
         }
     }
@@ -1766,7 +1768,7 @@ impl<'tcx> SubregionOrigin<'tcx> {
             Reborrow(a) => a,
             ReferenceOutlivesReferent(_, a) => a,
             CompareImplItemObligation { span, .. } => span,
-            AscribeUserTypeProvePredicate(span) => span,
+            AscribeUserTypeProvePredicate(_, span) => span,
             CheckAssociatedTypeBounds { ref parent, .. } => parent.span(),
         }
     }
@@ -1799,8 +1801,8 @@ impl<'tcx> SubregionOrigin<'tcx> {
                 parent: Box::new(default()),
             },
 
-            traits::ObligationCauseCode::AscribeUserTypeProvePredicate(span) => {
-                SubregionOrigin::AscribeUserTypeProvePredicate(span)
+            traits::ObligationCauseCode::AscribeUserTypeProvePredicate(def_id, span) => {
+                SubregionOrigin::AscribeUserTypeProvePredicate(def_id, span)
             }
 
             _ => default(),
