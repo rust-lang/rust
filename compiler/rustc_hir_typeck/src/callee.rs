@@ -9,6 +9,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{self, CtorKind, Namespace, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir_analysis::autoderef::Autoderef;
+use rustc_infer::traits::ObligationCauseCode;
 use rustc_infer::{
     infer,
     traits::{self, Obligation, ObligationCause},
@@ -117,7 +118,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         // we must check that return type of called functions is WF:
-        self.register_wf_obligation(output.into(), call_expr.span, traits::WellFormed(None));
+        self.register_wf_obligation(
+            output.into(),
+            call_expr.span,
+            ObligationCauseCode::WellFormed(None),
+        );
 
         output
     }
@@ -524,9 +529,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.register_bound(
                     ty,
                     self.tcx.require_lang_item(hir::LangItem::Tuple, Some(sp)),
-                    traits::ObligationCause::new(sp, self.body_id, traits::RustCall),
+                    traits::ObligationCause::new(sp, self.body_id, ObligationCauseCode::RustCall),
                 );
-                self.require_type_is_sized(ty, sp, traits::RustCall);
+                self.require_type_is_sized(ty, sp, ObligationCauseCode::RustCall);
             } else {
                 self.dcx().emit_err(errors::RustCallIncorrectArgs { span: sp });
             }

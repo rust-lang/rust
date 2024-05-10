@@ -1876,7 +1876,7 @@ impl<'tcx> SubregionOrigin<'tcx> {
                 SubregionOrigin::ReferenceOutlivesReferent(ref_type, cause.span)
             }
 
-            traits::ObligationCauseCode::CompareImplItemObligation {
+            traits::ObligationCauseCode::CompareImplItem {
                 impl_item_def_id,
                 trait_item_def_id,
                 kind: _,

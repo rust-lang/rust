@@ -1700,7 +1700,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                     }
                     for error in errors {
-                        if let traits::FulfillmentErrorCode::SelectionError(
+                        if let traits::FulfillmentErrorCode::Select(
                             traits::SelectionError::Unimplemented,
                         ) = error.code
                             && let ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred)) =

@@ -14,7 +14,6 @@ use rustc_middle::ty::{self, Binder, Ty, TyCtxt};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::sym;
 use rustc_target::spec::abi::Abi;
-use rustc_trait_selection::traits;
 use rustc_trait_selection::traits::{ObligationCause, ObligationCauseCode};
 
 /// Helper used for fns and closures. Does the grungy work of checking a function
@@ -76,7 +75,7 @@ pub(super) fn check_fn<'a, 'tcx>(
             fcx.register_wf_obligation(
                 param_ty.into(),
                 param.span,
-                traits::WellFormed(Some(WellFormedLoc::Param {
+                ObligationCauseCode::WellFormed(Some(WellFormedLoc::Param {
                     function: fn_def_id,
                     param_idx: idx,
                 })),
@@ -101,7 +100,7 @@ pub(super) fn check_fn<'a, 'tcx>(
                 param.pat.span,
                 // ty.span == binding_span iff this is a closure parameter with no type ascription,
                 // or if it's an implicit `self` parameter
-                traits::SizedArgumentType(
+                ObligationCauseCode::SizedArgumentType(
                     if ty_span == Some(param.span) && tcx.is_closure_like(fn_def_id.into()) {
                         None
                     } else {
@@ -121,10 +120,18 @@ pub(super) fn check_fn<'a, 'tcx>(
         hir::FnRetTy::Return(ty) => ty.span,
     };
 
-    fcx.require_type_is_sized(declared_ret_ty, return_or_body_span, traits::SizedReturnType);
+    fcx.require_type_is_sized(
+        declared_ret_ty,
+        return_or_body_span,
+        ObligationCauseCode::SizedReturnType,
+    );
     // We checked the root's signature during wfcheck, but not the child.
     if fcx.tcx.is_typeck_child(fn_def_id.to_def_id()) {
-        fcx.require_type_is_sized(declared_ret_ty, return_or_body_span, traits::WellFormed(None));
+        fcx.require_type_is_sized(
+            declared_ret_ty,
+            return_or_body_span,
+            ObligationCauseCode::WellFormed(None),
+        );
     }
 
     fcx.is_whole_body.set(true);

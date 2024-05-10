@@ -18,7 +18,7 @@ use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{BytePos, Span, DUMMY_SP};
 use rustc_target::abi::FieldIdx;
-use rustc_trait_selection::traits::{ObligationCause, Pattern};
+use rustc_trait_selection::traits::{ObligationCause, ObligationCauseCode};
 use ty::VariantDef;
 
 use std::cmp;
@@ -88,8 +88,11 @@ struct PatInfo<'tcx, 'a> {
 
 impl<'tcx> FnCtxt<'_, 'tcx> {
     fn pattern_cause(&self, ti: TopInfo<'tcx>, cause_span: Span) -> ObligationCause<'tcx> {
-        let code =
-            Pattern { span: ti.span, root_ty: ti.expected, origin_expr: ti.origin_expr.is_some() };
+        let code = ObligationCauseCode::Pattern {
+            span: ti.span,
+            root_ty: ti.expected,
+            origin_expr: ti.origin_expr.is_some(),
+        };
         self.cause(cause_span, code)
     }
 

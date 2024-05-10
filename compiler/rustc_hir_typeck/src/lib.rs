@@ -62,7 +62,6 @@ use rustc_hir_analysis::check::check_abi;
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
 use rustc_infer::traits::{ObligationCauseCode, ObligationInspector, WellFormedLoc};
 use rustc_middle::query::Providers;
-use rustc_middle::traits;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::config;
 use rustc_span::def_id::LocalDefId;
@@ -170,7 +169,7 @@ fn typeck_with_fallback<'tcx>(
         let wf_code = ObligationCauseCode::WellFormed(Some(WellFormedLoc::Ty(def_id)));
         fcx.register_wf_obligation(expected_type.into(), body.value.span, wf_code);
 
-        fcx.require_type_is_sized(expected_type, body.value.span, traits::ConstSized);
+        fcx.require_type_is_sized(expected_type, body.value.span, ObligationCauseCode::ConstSized);
 
         // Gather locals in statics (because of block expressions).
         GatherLocalsVisitor::new(&fcx).visit_body(body);

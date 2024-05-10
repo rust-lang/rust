@@ -1136,7 +1136,7 @@ fn check_type_defn<'tcx>(
                     traits::ObligationCause::new(
                         hir_ty.span,
                         wfcx.body_def_id,
-                        traits::FieldSized {
+                        ObligationCauseCode::FieldSized {
                             adt_kind: match &item.kind {
                                 ItemKind::Struct(..) => AdtKind::Struct,
                                 ItemKind::Union(..) => AdtKind::Union,
@@ -1161,7 +1161,7 @@ fn check_type_defn<'tcx>(
                 let cause = traits::ObligationCause::new(
                     tcx.def_span(discr_def_id),
                     wfcx.body_def_id,
-                    traits::MiscObligation,
+                    ObligationCauseCode::Misc,
                 );
                 wfcx.register_obligation(traits::Obligation::new(
                     tcx,
@@ -1278,7 +1278,11 @@ fn check_item_type(
         wfcx.register_wf_obligation(ty_span, Some(WellFormedLoc::Ty(item_id)), item_ty.into());
         if forbid_unsized {
             wfcx.register_bound(
-                traits::ObligationCause::new(ty_span, wfcx.body_def_id, traits::WellFormed(None)),
+                traits::ObligationCause::new(
+                    ty_span,
+                    wfcx.body_def_id,
+                    ObligationCauseCode::WellFormed(None),
+                ),
                 wfcx.param_env,
                 item_ty,
                 tcx.require_lang_item(LangItem::Sized, None),
@@ -1293,7 +1297,11 @@ fn check_item_type(
 
         if should_check_for_sync {
             wfcx.register_bound(
-                traits::ObligationCause::new(ty_span, wfcx.body_def_id, traits::SharedStatic),
+                traits::ObligationCause::new(
+                    ty_span,
+                    wfcx.body_def_id,
+                    ObligationCauseCode::SharedStatic,
+                ),
                 wfcx.param_env,
                 item_ty,
                 tcx.require_lang_item(LangItem::Sync, Some(ty_span)),
@@ -1542,7 +1550,7 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
             let cause = traits::ObligationCause::new(
                 sp,
                 wfcx.body_def_id,
-                traits::ItemObligation(def_id.to_def_id()),
+                ObligationCauseCode::WhereClause(def_id.to_def_id()),
             );
             traits::Obligation::new(tcx, cause, wfcx.param_env, pred)
         });
@@ -1982,7 +1990,11 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
 
                 let obligation = traits::Obligation::new(
                     tcx,
-                    traits::ObligationCause::new(span, self.body_def_id, traits::TrivialBound),
+                    traits::ObligationCause::new(
+                        span,
+                        self.body_def_id,
+                        ObligationCauseCode::TrivialBound,
+                    ),
                     empty_env,
                     pred,
                 );

@@ -146,7 +146,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return false;
         };
         let trait_ref = ty::TraitRef::new(self.tcx, into_iterator_trait, [ty]);
-        let cause = ObligationCause::new(span, self.body_id, ObligationCauseCode::MiscObligation);
+        let cause = ObligationCause::new(span, self.body_id, ObligationCauseCode::Misc);
         let obligation = Obligation::new(self.tcx, cause, self.param_env, trait_ref);
         if !self.predicate_must_hold_modulo_regions(&obligation) {
             return false;
@@ -826,12 +826,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // Extract the predicate span and parent def id of the cause,
                 // if we have one.
                 let (item_def_id, cause_span) = match cause.as_ref().map(|cause| cause.code()) {
-                    Some(ObligationCauseCode::ImplDerivedObligation(data)) => {
+                    Some(ObligationCauseCode::ImplDerived(data)) => {
                         (data.impl_or_alias_def_id, data.span)
                     }
                     Some(
-                        ObligationCauseCode::ExprBindingObligation(def_id, span, _, _)
-                        | ObligationCauseCode::BindingObligation(def_id, span),
+                        ObligationCauseCode::SpannedWhereClauseInExpr(def_id, span, _, _)
+                        | ObligationCauseCode::SpannedWhereClause(def_id, span),
                     ) => (*def_id, *span),
                     _ => continue,
                 };

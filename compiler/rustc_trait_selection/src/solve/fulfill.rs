@@ -7,7 +7,7 @@ use rustc_infer::traits::solve::inspect::ProbeKind;
 use rustc_infer::traits::solve::{CandidateSource, GoalSource, MaybeCause};
 use rustc_infer::traits::{
     self, FulfillmentError, FulfillmentErrorCode, MismatchedProjectionTypes, Obligation,
-    ObligationCause, PredicateObligation, SelectionError, TraitEngine,
+    ObligationCause, ObligationCauseCode, PredicateObligation, SelectionError, TraitEngine,
 };
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{self, TyCtxt};
@@ -203,39 +203,35 @@ fn fulfillment_error_for_no_solution<'tcx>(
 
     let code = match obligation.predicate.kind().skip_binder() {
         ty::PredicateKind::Clause(ty::ClauseKind::Projection(_)) => {
-            FulfillmentErrorCode::ProjectionError(
+            FulfillmentErrorCode::Project(
                 // FIXME: This could be a `Sorts` if the term is a type
                 MismatchedProjectionTypes { err: TypeError::Mismatch },
             )
         }
         ty::PredicateKind::NormalizesTo(..) => {
-            FulfillmentErrorCode::ProjectionError(MismatchedProjectionTypes {
-                err: TypeError::Mismatch,
-            })
+            FulfillmentErrorCode::Project(MismatchedProjectionTypes { err: TypeError::Mismatch })
         }
         ty::PredicateKind::AliasRelate(_, _, _) => {
-            FulfillmentErrorCode::ProjectionError(MismatchedProjectionTypes {
-                err: TypeError::Mismatch,
-            })
+            FulfillmentErrorCode::Project(MismatchedProjectionTypes { err: TypeError::Mismatch })
         }
         ty::PredicateKind::Subtype(pred) => {
             let (a, b) = infcx.enter_forall_and_leak_universe(
                 obligation.predicate.kind().rebind((pred.a, pred.b)),
             );
             let expected_found = ExpectedFound::new(true, a, b);
-            FulfillmentErrorCode::SubtypeError(expected_found, TypeError::Sorts(expected_found))
+            FulfillmentErrorCode::Subtype(expected_found, TypeError::Sorts(expected_found))
         }
         ty::PredicateKind::Coerce(pred) => {
             let (a, b) = infcx.enter_forall_and_leak_universe(
                 obligation.predicate.kind().rebind((pred.a, pred.b)),
             );
             let expected_found = ExpectedFound::new(false, a, b);
-            FulfillmentErrorCode::SubtypeError(expected_found, TypeError::Sorts(expected_found))
+            FulfillmentErrorCode::Subtype(expected_found, TypeError::Sorts(expected_found))
         }
         ty::PredicateKind::Clause(_)
         | ty::PredicateKind::ObjectSafe(_)
         | ty::PredicateKind::Ambiguous => {
-            FulfillmentErrorCode::SelectionError(SelectionError::Unimplemented)
+            FulfillmentErrorCode::Select(SelectionError::Unimplemented)
         }
         ty::PredicateKind::ConstEquate(..) => {
             bug!("unexpected goal: {obligation:?}")
@@ -429,7 +425,7 @@ fn derive_cause<'tcx>(
                 tcx.predicates_of(impl_def_id).instantiate_identity(tcx).iter().nth(idx)
             {
                 cause = cause.derived_cause(parent_trait_pred, |derived| {
-                    traits::ImplDerivedObligation(Box::new(traits::ImplDerivedObligationCause {
+                    ObligationCauseCode::ImplDerived(Box::new(traits::ImplDerivedCause {
                         derived,
                         impl_or_alias_def_id: impl_def_id,
                         impl_def_predicate_index: Some(idx),
@@ -439,7 +435,7 @@ fn derive_cause<'tcx>(
             }
         }
         ProbeKind::TraitCandidate { source: CandidateSource::BuiltinImpl(..), result: _ } => {
-            cause = cause.derived_cause(parent_trait_pred, traits::BuiltinDerivedObligation);
+            cause = cause.derived_cause(parent_trait_pred, ObligationCauseCode::BuiltinDerived);
         }
         _ => {}
     };

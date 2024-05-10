@@ -2059,7 +2059,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     // We currently do not store the `DefId` in the `ConstraintCategory`
                     // for performances reasons. The error reporting code used by NLL only
                     // uses the span, so this doesn't cause any problems at the moment.
-                    Some(ObligationCauseCode::BindingObligation(
+                    Some(ObligationCauseCode::SpannedWhereClause(
                         CRATE_DEF_ID.to_def_id(),
                         predicate_span,
                     ))
@@ -2067,7 +2067,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     None
                 }
             })
-            .unwrap_or_else(|| ObligationCauseCode::MiscObligation);
+            .unwrap_or_else(|| ObligationCauseCode::Misc);
 
         // Classify each of the constraints along the path.
         let mut categorized_path: Vec<BlameConstraint<'tcx>> = path

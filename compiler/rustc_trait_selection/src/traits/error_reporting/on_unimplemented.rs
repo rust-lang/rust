@@ -127,9 +127,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         flags.push((sym::ItemContext, enclosure));
 
         match obligation.cause.code() {
-            ObligationCauseCode::BuiltinDerivedObligation(..)
-            | ObligationCauseCode::ImplDerivedObligation(..)
-            | ObligationCauseCode::WellFormedDerivedObligation(..) => {}
+            ObligationCauseCode::BuiltinDerived(..)
+            | ObligationCauseCode::ImplDerived(..)
+            | ObligationCauseCode::WellFormedDerived(..) => {}
             _ => {
                 // this is a "direct", user-specified, rather than derived,
                 // obligation.

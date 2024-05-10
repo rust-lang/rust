@@ -13,9 +13,9 @@ use super::util;
 use super::util::closure_trait_ref_and_return_type;
 use super::wf;
 use super::{
-    ImplDerivedObligation, ImplDerivedObligationCause, Normalized, Obligation, ObligationCause,
-    ObligationCauseCode, Overflow, PolyTraitObligation, PredicateObligation, Selection,
-    SelectionError, SelectionResult, TraitQueryMode,
+    ImplDerivedCause, Normalized, Obligation, ObligationCause, ObligationCauseCode, Overflow,
+    PolyTraitObligation, PredicateObligation, Selection, SelectionError, SelectionResult,
+    TraitQueryMode,
 };
 
 use crate::infer::{InferCtxt, InferOk, TypeFreshener};
@@ -2771,7 +2771,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                     cause.clone()
                 } else {
                     cause.clone().derived_cause(parent_trait_pred, |derived| {
-                        ImplDerivedObligation(Box::new(ImplDerivedObligationCause {
+                        ObligationCauseCode::ImplDerived(Box::new(ImplDerivedCause {
                             derived,
                             impl_or_alias_def_id: def_id,
                             impl_def_predicate_index: Some(index),

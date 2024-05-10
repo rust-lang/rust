@@ -214,8 +214,8 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                 _ => cause.code(),
             }
             && let (
-                &ObligationCauseCode::ItemObligation(item_def_id)
-                | &ObligationCauseCode::ExprItemObligation(item_def_id, ..),
+                &ObligationCauseCode::WhereClause(item_def_id)
+                | &ObligationCauseCode::WhereClauseInExpr(item_def_id, ..),
                 None,
             ) = (code, override_error_code)
         {

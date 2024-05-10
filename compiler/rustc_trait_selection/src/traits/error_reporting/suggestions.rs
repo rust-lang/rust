@@ -7,7 +7,7 @@ use super::{
 
 use crate::errors;
 use crate::infer::InferCtxt;
-use crate::traits::{ImplDerivedObligationCause, NormalizeExt, ObligationCtxt};
+use crate::traits::{ImplDerivedCause, NormalizeExt, ObligationCtxt};
 
 use hir::def::CtorOf;
 use rustc_data_structures::fx::FxHashSet;
@@ -455,8 +455,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         trait_pred: ty::PolyTraitPredicate<'tcx>,
     ) -> bool {
         let mut code = obligation.cause.code();
-        if let ObligationCauseCode::FunctionArgumentObligation { arg_hir_id, call_hir_id, .. } =
-            code
+        if let ObligationCauseCode::FunctionArg { arg_hir_id, call_hir_id, .. } = code
             && let Some(typeck_results) = &self.typeck_results
             && let hir::Node::Expr(expr) = self.tcx.hir_node(*arg_hir_id)
             && let Some(arg_ty) = typeck_results.expr_ty_adjusted_opt(expr)
@@ -846,7 +845,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             .collect::<Vec<_>>()
             .join(", ");
 
-        if matches!(obligation.cause.code(), ObligationCauseCode::FunctionArgumentObligation { .. })
+        if matches!(obligation.cause.code(), ObligationCauseCode::FunctionArg { .. })
             && obligation.cause.span.can_be_used_for_suggestions()
         {
             // When the obligation error has been ensured to have been caused by
@@ -980,8 +979,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             };
             let ty::Ref(_, inner_ty, hir::Mutability::Not) = ty.kind() else { return false };
             let ty::Param(param) = inner_ty.kind() else { return false };
-            let ObligationCauseCode::FunctionArgumentObligation { arg_hir_id, .. } =
-                obligation.cause.code()
+            let ObligationCauseCode::FunctionArg { arg_hir_id, .. } = obligation.cause.code()
             else {
                 return false;
             };
@@ -1204,9 +1202,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         let span = obligation.cause.span;
 
         let code = match obligation.cause.code() {
-            ObligationCauseCode::FunctionArgumentObligation { parent_code, .. } => parent_code,
-            c @ ObligationCauseCode::ItemObligation(_)
-            | c @ ObligationCauseCode::ExprItemObligation(..) => c,
+            ObligationCauseCode::FunctionArg { parent_code, .. } => parent_code,
+            c @ ObligationCauseCode::WhereClause(_)
+            | c @ ObligationCauseCode::WhereClauseInExpr(..) => c,
             c if matches!(
                 span.ctxt().outer_expn_data().kind,
                 ExpnKind::Desugaring(DesugaringKind::ForLoop)
@@ -1262,8 +1260,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             let mut_ref_self_ty_satisfies_pred = mk_result(trait_pred_and_mut_ref);
 
             let (ref_inner_ty_satisfies_pred, ref_inner_ty_mut) =
-                if let ObligationCauseCode::ItemObligation(_)
-                | ObligationCauseCode::ExprItemObligation(..) = obligation.cause.code()
+                if let ObligationCauseCode::WhereClause(_)
+                | ObligationCauseCode::WhereClauseInExpr(..) = obligation.cause.code()
                     && let ty::Ref(_, ty, mutability) = old_pred.self_ty().skip_binder().kind()
                 {
                     (
@@ -1401,12 +1399,12 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             return false;
         };
 
-        if let ObligationCauseCode::ImplDerivedObligation(cause) = &*code {
+        if let ObligationCauseCode::ImplDerived(cause) = &*code {
             try_borrowing(cause.derived.parent_trait_pred, &[])
-        } else if let ObligationCauseCode::BindingObligation(_, _)
-        | ObligationCauseCode::ItemObligation(_)
-        | ObligationCauseCode::ExprItemObligation(..)
-        | ObligationCauseCode::ExprBindingObligation(..) = code
+        } else if let ObligationCauseCode::SpannedWhereClause(_, _)
+        | ObligationCauseCode::WhereClause(_)
+        | ObligationCauseCode::WhereClauseInExpr(..)
+        | ObligationCauseCode::SpannedWhereClauseInExpr(..) = code
         {
             try_borrowing(poly_trait_pred, &never_suggest_borrow)
         } else {
@@ -1644,10 +1642,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         err: &mut Diag<'_>,
         trait_pred: ty::PolyTraitPredicate<'tcx>,
     ) {
-        let points_at_arg = matches!(
-            obligation.cause.code(),
-            ObligationCauseCode::FunctionArgumentObligation { .. },
-        );
+        let points_at_arg =
+            matches!(obligation.cause.code(), ObligationCauseCode::FunctionArg { .. },);
 
         let span = obligation.cause.span;
         if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
@@ -1953,7 +1949,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         found: Ty<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
     ) {
-        let ObligationCauseCode::FunctionArgumentObligation { arg_hir_id, .. } = cause else {
+        let ObligationCauseCode::FunctionArg { arg_hir_id, .. } = cause else {
             return;
         };
         let ty::FnPtr(expected) = expected.kind() else {
@@ -2104,10 +2100,10 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         cause: &ObligationCauseCode<'tcx>,
         err: &mut Diag<'tcx>,
     ) {
-        // First, look for an `ExprBindingObligation`, which means we can get
+        // First, look for an `SpannedWhereClauseInExpr`, which means we can get
         // the uninstantiated predicate list of the called function. And check
         // that the predicate that we failed to satisfy is a `Fn`-like trait.
-        if let ObligationCauseCode::ExprBindingObligation(def_id, _, _, idx) = cause
+        if let ObligationCauseCode::SpannedWhereClauseInExpr(def_id, _, _, idx) = cause
             && let predicates = self.tcx.predicates_of(def_id).instantiate_identity(self.tcx)
             && let Some(pred) = predicates.predicates.get(*idx)
             && let ty::ClauseKind::Trait(trait_pred) = pred.kind().skip_binder()
@@ -2261,10 +2257,10 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         while let Some(code) = next_code {
             debug!(?code);
             match code {
-                ObligationCauseCode::FunctionArgumentObligation { parent_code, .. } => {
+                ObligationCauseCode::FunctionArg { parent_code, .. } => {
                     next_code = Some(parent_code);
                 }
-                ObligationCauseCode::ImplDerivedObligation(cause) => {
+                ObligationCauseCode::ImplDerived(cause) => {
                     let ty = cause.derived.parent_trait_pred.skip_binder().self_ty();
                     debug!(
                         parent_trait_ref = ?cause.derived.parent_trait_pred,
@@ -2293,8 +2289,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
                     next_code = Some(&cause.derived.parent_code);
                 }
-                ObligationCauseCode::WellFormedDerivedObligation(derived_obligation)
-                | ObligationCauseCode::BuiltinDerivedObligation(derived_obligation) => {
+                ObligationCauseCode::WellFormedDerived(derived_obligation)
+                | ObligationCauseCode::BuiltinDerived(derived_obligation) => {
                     let ty = derived_obligation.parent_trait_pred.skip_binder().self_ty();
                     debug!(
                         parent_trait_ref = ?derived_obligation.parent_trait_pred,
@@ -2719,7 +2715,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             | ObligationCauseCode::MethodReceiver
             | ObligationCauseCode::ReturnNoExpression
             | ObligationCauseCode::UnifyReceiver(..)
-            | ObligationCauseCode::MiscObligation
+            | ObligationCauseCode::Misc
             | ObligationCauseCode::WellFormed(..)
             | ObligationCauseCode::MatchImpl(..)
             | ObligationCauseCode::ReturnValue(_)
@@ -2748,13 +2744,12 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             ObligationCauseCode::TupleElem => {
                 err.note("only the last element of a tuple may have a dynamically sized type");
             }
-            ObligationCauseCode::ItemObligation(_)
-            | ObligationCauseCode::ExprItemObligation(..) => {
+            ObligationCauseCode::WhereClause(_) | ObligationCauseCode::WhereClauseInExpr(..) => {
                 // We hold the `DefId` of the item introducing the obligation, but displaying it
                 // doesn't add user usable information. It always point at an associated item.
             }
-            ObligationCauseCode::BindingObligation(item_def_id, span)
-            | ObligationCauseCode::ExprBindingObligation(item_def_id, span, ..) => {
+            ObligationCauseCode::SpannedWhereClause(item_def_id, span)
+            | ObligationCauseCode::SpannedWhereClauseInExpr(item_def_id, span, ..) => {
                 let item_name = tcx.def_path_str(item_def_id);
                 let short_item_name = with_forced_trimmed_paths!(tcx.def_path_str(item_def_id));
                 let mut multispan = MultiSpan::from(span);
@@ -3175,7 +3170,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             ObligationCauseCode::SharedStatic => {
                 err.note("shared static variables must have a type that implements `Sync`");
             }
-            ObligationCauseCode::BuiltinDerivedObligation(ref data) => {
+            ObligationCauseCode::BuiltinDerived(ref data) => {
                 let parent_trait_ref = self.resolve_vars_if_possible(data.parent_trait_pred);
                 let ty = parent_trait_ref.skip_binder().self_ty();
                 if parent_trait_ref.references_error() {
@@ -3190,8 +3185,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 let is_upvar_tys_infer_tuple = if !matches!(ty.kind(), ty::Tuple(..)) {
                     false
                 } else {
-                    if let ObligationCauseCode::BuiltinDerivedObligation(data) = &*data.parent_code
-                    {
+                    if let ObligationCauseCode::BuiltinDerived(data) = &*data.parent_code {
                         let parent_trait_ref =
                             self.resolve_vars_if_possible(data.parent_trait_pred);
                         let nested_ty = parent_trait_ref.skip_binder().self_ty();
@@ -3297,7 +3291,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     });
                 }
             }
-            ObligationCauseCode::ImplDerivedObligation(ref data) => {
+            ObligationCauseCode::ImplDerived(ref data) => {
                 let mut parent_trait_pred =
                     self.resolve_vars_if_possible(data.derived.parent_trait_pred);
                 let parent_def_id = parent_trait_pred.def_id();
@@ -3367,9 +3361,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 if is_auto_trait {
                     // We don't want to point at the ADT saying "required because it appears within
                     // the type `X`", like we would otherwise do in test `supertrait-auto-trait.rs`.
-                    while let ObligationCauseCode::BuiltinDerivedObligation(derived) =
-                        &*data.parent_code
-                    {
+                    while let ObligationCauseCode::BuiltinDerived(derived) = &*data.parent_code {
                         let child_trait_ref =
                             self.resolve_vars_if_possible(derived.parent_trait_pred);
                         let child_def_id = child_trait_ref.def_id();
@@ -3381,7 +3373,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         parent_trait_pred = child_trait_ref;
                     }
                 }
-                while let ObligationCauseCode::ImplDerivedObligation(child) = &*data.parent_code {
+                while let ObligationCauseCode::ImplDerived(child) = &*data.parent_code {
                     // Skip redundant recursive obligation notes. See `ui/issue-20413.rs`.
                     let child_trait_pred =
                         self.resolve_vars_if_possible(child.derived.parent_trait_pred);
@@ -3422,7 +3414,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     )
                 });
             }
-            ObligationCauseCode::WellFormedDerivedObligation(ref data) => {
+            ObligationCauseCode::WellFormedDerived(ref data) => {
                 let parent_trait_ref = self.resolve_vars_if_possible(data.parent_trait_pred);
                 let parent_predicate = parent_trait_ref;
                 // #74711: avoid a stack overflow
@@ -3458,11 +3450,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     format!("required by a bound on the type alias `{}`", tcx.item_name(def_id)),
                 );
             }
-            ObligationCauseCode::FunctionArgumentObligation {
-                arg_hir_id,
-                call_hir_id,
-                ref parent_code,
-                ..
+            ObligationCauseCode::FunctionArg {
+                arg_hir_id, call_hir_id, ref parent_code, ..
             } => {
                 self.note_function_argument_obligation(
                     body_id,
@@ -3485,7 +3474,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     )
                 });
             }
-            ObligationCauseCode::CompareImplItemObligation { trait_item_def_id, kind, .. } => {
+            ObligationCauseCode::CompareImplItem { trait_item_def_id, kind, .. } => {
                 let item_name = tcx.item_name(trait_item_def_id);
                 let msg = format!(
                     "the requirement `{predicate}` appears on the `impl`'s {kind} \
@@ -3694,7 +3683,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         err: &mut Diag<'_>,
         trait_pred: ty::PolyTraitPredicate<'tcx>,
     ) {
-        if let ObligationCauseCode::ImplDerivedObligation(_) = obligation.cause.code()
+        if let ObligationCauseCode::ImplDerived(_) = obligation.cause.code()
             && self
                 .tcx
                 .is_diagnostic_item(sym::SliceIndex, trait_pred.skip_binder().trait_ref.def_id)
@@ -3811,7 +3800,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             // to an associated type (as seen from `trait_pred`) in the predicate. Like in
             // trait_pred `S: Sum<<Self as Iterator>::Item>` and predicate `i32: Sum<&()>`
             let mut type_diffs = vec![];
-            if let ObligationCauseCode::ExprBindingObligation(def_id, _, _, idx) = parent_code
+            if let ObligationCauseCode::SpannedWhereClauseInExpr(def_id, _, _, idx) = parent_code
                 && let Some(node_args) = typeck_results.node_args_opt(call_hir_id)
                 && let where_clauses =
                     self.tcx.predicates_of(def_id).instantiate(self.tcx, node_args)
@@ -4320,8 +4309,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     ) {
         // We can only suggest the slice coersion for function and binary operation arguments,
         // since the suggestion would make no sense in turbofish or call
-        let (ObligationCauseCode::BinOp { .. }
-        | ObligationCauseCode::FunctionArgumentObligation { .. }) = obligation.cause.code()
+        let (ObligationCauseCode::BinOp { .. } | ObligationCauseCode::FunctionArg { .. }) =
+            obligation.cause.code()
         else {
             return;
         };
@@ -4407,7 +4396,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     return;
                 }
 
-                if let ObligationCauseCode::FunctionArgumentObligation {
+                if let ObligationCauseCode::FunctionArg {
                     call_hir_id,
                     arg_hir_id,
                     parent_code: _,
@@ -4967,7 +4956,7 @@ fn point_at_assoc_type_restriction<G: EmissionGuarantee>(
     trait_name: &str,
     predicate: ty::Predicate<'_>,
     generics: &hir::Generics<'_>,
-    data: &ImplDerivedObligationCause<'_>,
+    data: &ImplDerivedCause<'_>,
 ) {
     let ty::PredicateKind::Clause(clause) = predicate.kind().skip_binder() else {
         return;

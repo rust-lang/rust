@@ -565,9 +565,9 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         for obligation in traits::predicates_for_generics(
             |idx, span| {
                 let code = if span.is_dummy() {
-                    ObligationCauseCode::ExprItemObligation(def_id, self.call_expr.hir_id, idx)
+                    ObligationCauseCode::WhereClauseInExpr(def_id, self.call_expr.hir_id, idx)
                 } else {
-                    ObligationCauseCode::ExprBindingObligation(
+                    ObligationCauseCode::SpannedWhereClauseInExpr(
                         def_id,
                         span,
                         self.call_expr.hir_id,
@@ -589,7 +589,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         // the function type must also be well-formed (this is not
         // implied by the args being well-formed because of inherent
         // impls and late-bound regions - see issue #28609).
-        self.register_wf_obligation(fty.into(), self.span, traits::WellFormed(None));
+        self.register_wf_obligation(fty.into(), self.span, ObligationCauseCode::WellFormed(None));
     }
 
     ///////////////////////////////////////////////////////////////////////////

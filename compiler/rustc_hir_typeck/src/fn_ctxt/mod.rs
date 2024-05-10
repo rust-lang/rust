@@ -154,7 +154,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     pub fn misc(&self, span: Span) -> ObligationCause<'tcx> {
-        self.cause(span, ObligationCauseCode::MiscObligation)
+        self.cause(span, ObligationCauseCode::Misc)
     }
 
     pub fn sess(&self) -> &Session {

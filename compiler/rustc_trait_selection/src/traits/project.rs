@@ -13,6 +13,7 @@ use super::Selection;
 use super::SelectionContext;
 use super::SelectionError;
 use super::{Normalized, NormalizedTy, ProjectionCacheEntry, ProjectionCacheKey};
+use rustc_infer::traits::ObligationCauseCode;
 use rustc_middle::traits::BuiltinImplSource;
 use rustc_middle::traits::ImplSource;
 use rustc_middle::traits::ImplSourceUserDefinedData;
@@ -573,9 +574,9 @@ pub fn normalize_inherent_projection<'a, 'b, 'tcx>(
             // diagnostics which is not ideal.
             // Consider creating separate cause codes for this specific situation.
             if span.is_dummy() {
-                super::ItemObligation(alias_ty.def_id)
+                ObligationCauseCode::WhereClause(alias_ty.def_id)
             } else {
-                super::BindingObligation(alias_ty.def_id, span)
+                ObligationCauseCode::SpannedWhereClause(alias_ty.def_id, span)
             },
         );
 
@@ -2113,22 +2114,22 @@ fn assoc_ty_own_obligations<'cx, 'tcx>(
 
         let nested_cause = if matches!(
             obligation.cause.code(),
-            super::CompareImplItemObligation { .. }
-                | super::CheckAssociatedTypeBounds { .. }
-                | super::AscribeUserTypeProvePredicate(..)
+            ObligationCauseCode::CompareImplItem { .. }
+                | ObligationCauseCode::CheckAssociatedTypeBounds { .. }
+                | ObligationCauseCode::AscribeUserTypeProvePredicate(..)
         ) {
             obligation.cause.clone()
         } else if span.is_dummy() {
             ObligationCause::new(
                 obligation.cause.span,
                 obligation.cause.body_id,
-                super::ItemObligation(obligation.predicate.def_id),
+                ObligationCauseCode::WhereClause(obligation.predicate.def_id),
             )
         } else {
             ObligationCause::new(
                 obligation.cause.span,
                 obligation.cause.body_id,
-                super::BindingObligation(obligation.predicate.def_id, span),
+                ObligationCauseCode::SpannedWhereClause(obligation.predicate.def_id, span),
             )
         };
         nested.push(Obligation::with_depth(

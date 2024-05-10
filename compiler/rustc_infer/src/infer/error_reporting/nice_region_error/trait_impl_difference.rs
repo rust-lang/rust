@@ -4,13 +4,13 @@ use crate::errors::{ConsiderBorrowingParamHelp, RelationshipHelp, TraitImplDiff}
 use crate::infer::error_reporting::nice_region_error::NiceRegionError;
 use crate::infer::lexical_region_resolve::RegionResolutionError;
 use crate::infer::{Subtype, ValuePairs};
-use crate::traits::ObligationCauseCode::CompareImplItemObligation;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
 use rustc_middle::hir::nested_filter;
+use rustc_middle::traits::ObligationCauseCode;
 use rustc_middle::ty::error::ExpectedFound;
 use rustc_middle::ty::print::RegionHighlightMode;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitor};
@@ -31,7 +31,8 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             _,
         ) = error.clone()
             && let (Subtype(sup_trace), Subtype(sub_trace)) = (&sup_origin, &sub_origin)
-            && let CompareImplItemObligation { trait_item_def_id, .. } = sub_trace.cause.code()
+            && let ObligationCauseCode::CompareImplItem { trait_item_def_id, .. } =
+                sub_trace.cause.code()
             && sub_trace.values == sup_trace.values
             && let ValuePairs::PolySigs(ExpectedFound { expected, found }) = sub_trace.values
         {
