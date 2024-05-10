@@ -15,7 +15,7 @@
 #![no_std]
 
 use compiler_builtins::float::Float;
-use compiler_builtins::int::Int;
+use compiler_builtins::int::{Int, MinInt};
 
 use rand_xoshiro::rand_core::{RngCore, SeedableRng};
 use rand_xoshiro::Xoshiro128StarStar;
@@ -101,7 +101,10 @@ macro_rules! edge_cases {
 
 /// Feeds a series of fuzzing inputs to `f`. The fuzzer first uses an algorithm designed to find
 /// edge cases, followed by a more random fuzzer that runs `n` times.
-pub fn fuzz<I: Int, F: FnMut(I)>(n: u32, mut f: F) {
+pub fn fuzz<I: Int, F: FnMut(I)>(n: u32, mut f: F)
+where
+    <I as MinInt>::UnsignedInt: Int,
+{
     // edge case tester. Calls `f` 210 times for u128.
     // zero gets skipped by the loop
     f(I::ZERO);
@@ -111,7 +114,7 @@ pub fn fuzz<I: Int, F: FnMut(I)>(n: u32, mut f: F) {
 
     // random fuzzer
     let mut rng = Xoshiro128StarStar::seed_from_u64(0);
-    let mut x: I = Int::ZERO;
+    let mut x: I = MinInt::ZERO;
     for _ in 0..n {
         fuzz_step(&mut rng, &mut x);
         f(x)
@@ -119,7 +122,10 @@ pub fn fuzz<I: Int, F: FnMut(I)>(n: u32, mut f: F) {
 }
 
 /// The same as `fuzz`, except `f` has two inputs.
-pub fn fuzz_2<I: Int, F: Fn(I, I)>(n: u32, f: F) {
+pub fn fuzz_2<I: Int, F: Fn(I, I)>(n: u32, f: F)
+where
+    <I as MinInt>::UnsignedInt: Int,
+{
     // Check cases where the first and second inputs are zero. Both call `f` 210 times for `u128`.
     edge_cases!(I, case, {
         f(I::ZERO, case);
@@ -150,10 +156,10 @@ pub fn fuzz_shift<I: Int, F: Fn(I, u32)>(f: F) {
     // Shift functions are very simple and do not need anything other than shifting a small
     // set of random patterns for every fuzz length.
     let mut rng = Xoshiro128StarStar::seed_from_u64(0);
-    let mut x: I = Int::ZERO;
+    let mut x: I = MinInt::ZERO;
     for i in 0..I::FUZZ_NUM {
         fuzz_step(&mut rng, &mut x);
-        f(x, Int::ZERO);
+        f(x, MinInt::ZERO);
         f(x, I::FUZZ_LENGTHS[i] as u32);
     }
 }

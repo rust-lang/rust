@@ -1,5 +1,5 @@
 use crate::float::Float;
-use crate::int::{CastInto, DInt, HInt, Int};
+use crate::int::{CastInto, DInt, HInt, Int, MinInt};
 
 fn mul<F: Float>(a: F, b: F) -> F
 where
