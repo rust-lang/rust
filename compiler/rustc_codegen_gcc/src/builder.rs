@@ -1301,19 +1301,13 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     fn memmove(
         &mut self,
         dst: RValue<'gcc>,
-        dst_align: Align,
+        _dst_align: Align,
         src: RValue<'gcc>,
-        src_align: Align,
+        _src_align: Align,
         size: RValue<'gcc>,
         flags: MemFlags,
     ) {
-        if flags.contains(MemFlags::NONTEMPORAL) {
-            // HACK(nox): This is inefficient but there is no nontemporal memmove.
-            let val = self.load(src.get_type().get_pointee().expect("get_pointee"), src, src_align);
-            let ptr = self.pointercast(dst, self.type_ptr_to(self.val_ty(val)));
-            self.store_with_flags(val, ptr, dst_align, flags);
-            return;
-        }
+        assert!(!flags.contains(MemFlags::NONTEMPORAL), "non-temporal memmove not supported");
         let size = self.intcast(size, self.type_size_t(), false);
         let _is_volatile = flags.contains(MemFlags::VOLATILE);
         let dst = self.pointercast(dst, self.type_i8p());
@@ -1335,6 +1329,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         _align: Align,
         flags: MemFlags,
     ) {
+        assert!(!flags.contains(MemFlags::NONTEMPORAL), "non-temporal memset not supported");
         let _is_volatile = flags.contains(MemFlags::VOLATILE);
         let ptr = self.pointercast(ptr, self.type_i8p());
         let memset = self.context.get_builtin_function("memset");
