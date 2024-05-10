@@ -342,7 +342,7 @@ pub fn from_fn_attrs<'ll, 'tcx>(
     }
 
     // patchable-function is only implemented on x86 on LLVM
-    if cx.sess().opts.unstable_opts.ms_hotpatch && cx.sess().target.is_x86() {
+    if cx.sess().opts.unstable_opts.hotpatch && cx.sess().target.is_x86() {
         to_add.push(llvm::CreateAttrStringValue(
             cx.llcx,
             "patchable-function",

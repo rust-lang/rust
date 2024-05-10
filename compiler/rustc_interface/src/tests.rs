@@ -778,6 +778,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(fuel, Some(("abc".to_string(), 99)));
     tracked!(function_return, FunctionReturn::ThunkExtern);
     tracked!(function_sections, Some(false));
+    tracked!(hotpatch, true);
     tracked!(human_readable_cgu_names, true);
     tracked!(incremental_ignore_spans, true);
     tracked!(inline_in_all_cgus, Some(true));
@@ -798,7 +799,6 @@ fn test_unstable_options_tracking_hash() {
     tracked!(mir_keep_place_mention, true);
     tracked!(mir_opt_level, Some(4));
     tracked!(move_size_limit, Some(4096));
-    tracked!(ms_hotpatch, true);
     tracked!(mutable_noalias, false);
     tracked!(
         next_solver,

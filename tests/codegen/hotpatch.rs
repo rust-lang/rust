@@ -1,7 +1,7 @@
 //@ revisions: x32 x64
 //@[x32] only-x86
 //@[x64] only-x86_64
-//@ compile-flags: -Z ms-hotpatch
+//@ compile-flags: -Z hotpatch
 
 #![crate_type = "lib"]
 

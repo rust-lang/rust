@@ -222,7 +222,7 @@ pub fn target_machine_factory(
 
     // this annotes in the debug file that code is hotpatchable. In addtion without it -functionpadmin will be ignored.
     // See: https://github.com/llvm/llvm-project/blob/d703b922961e0d02a5effdd4bfbb23ad50a3cc9f/lld/COFF/Writer.cpp#L1298
-    let use_hotpatch = sess.opts.unstable_opts.ms_hotpatch && sess.target.is_x86();
+    let use_hotpatch = sess.opts.unstable_opts.hotpatch && sess.target.is_x86();
 
     let path_mapping = sess.source_map().path_mapping().clone();
 
