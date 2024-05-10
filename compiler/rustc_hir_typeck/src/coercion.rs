@@ -41,7 +41,6 @@ use rustc_errors::{codes::*, struct_span_code_err, Applicability, Diag};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
-use rustc_infer::infer::type_variable::TypeVariableOrigin;
 use rustc_infer::infer::{Coercion, DefineOpaqueTypes, InferOk, InferResult};
 use rustc_infer::traits::{IfExpressionCause, MatchExpressionArmCause};
 use rustc_infer::traits::{Obligation, PredicateObligation};
@@ -257,11 +256,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
         if b.is_ty_var() {
             // Two unresolved type variables: create a `Coerce` predicate.
-            let target_ty = if self.use_lub {
-                self.next_ty_var(TypeVariableOrigin { param_def_id: None, span: self.cause.span })
-            } else {
-                b
-            };
+            let target_ty = if self.use_lub { self.next_ty_var(self.cause.span) } else { b };
 
             let mut obligations = Vec::with_capacity(2);
             for &source_ty in &[a, b] {
@@ -557,8 +552,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         // the `CoerceUnsized` target type and the expected type.
         // We only have the latter, so we use an inference variable
         // for the former and let type inference do the rest.
-        let origin = TypeVariableOrigin { param_def_id: None, span: self.cause.span };
-        let coerce_target = self.next_ty_var(origin);
+        let coerce_target = self.next_ty_var(self.cause.span);
         let mut coercion = self.unify_and(coerce_target, target, |target| {
             let unsize = Adjustment { kind: Adjust::Pointer(PointerCoercion::Unsize), target };
             match reborrow {

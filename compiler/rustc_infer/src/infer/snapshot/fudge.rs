@@ -195,7 +195,7 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for InferenceFudger<'a, 'tcx> {
                     // Recreate it with a fresh variable here.
                     let idx = vid.as_usize() - self.type_vars.0.start.as_usize();
                     let origin = self.type_vars.1[idx];
-                    self.infcx.next_ty_var(origin)
+                    self.infcx.next_ty_var_with_origin(origin)
                 } else {
                     // This variable was created before the
                     // "fudging". Since we refresh all type
@@ -244,7 +244,7 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for InferenceFudger<'a, 'tcx> {
                 // Recreate it with a fresh variable here.
                 let idx = vid.index() - self.const_vars.0.start.index();
                 let origin = self.const_vars.1[idx];
-                self.infcx.next_const_var(ct.ty(), origin)
+                self.infcx.next_const_var_with_origin(ct.ty(), origin)
             } else {
                 ct
             }

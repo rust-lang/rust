@@ -22,8 +22,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_hir::PatKind::Binding;
 use rustc_hir::PathSegment;
 use rustc_hir::{ExprKind, Node, QPath};
-use rustc_infer::infer::{self, type_variable::TypeVariableOrigin, RegionVariableOrigin};
-use rustc_middle::infer::unify_key::ConstVariableOrigin;
+use rustc_infer::infer::{self, RegionVariableOrigin};
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
 use rustc_middle::ty::fast_reject::{simplify_type, TreatParams};
 use rustc_middle::ty::print::{with_crate_prefix, with_forced_trimmed_paths};
@@ -75,11 +74,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.autoderef(span, ty).any(|(ty, _)| {
                     info!("check deref {:?} impl FnOnce", ty);
                     self.probe(|_| {
-                        let trait_ref = ty::TraitRef::new(
-                            tcx,
-                            fn_once,
-                            [ty, self.next_ty_var(TypeVariableOrigin { param_def_id: None, span })],
-                        );
+                        let trait_ref =
+                            ty::TraitRef::new(tcx, fn_once, [ty, self.next_ty_var(span)]);
                         let poly_trait_ref = ty::Binder::dummy(trait_ref);
                         let obligation = Obligation::misc(
                             tcx,
@@ -1259,12 +1255,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             args.map(|args| {
                 args.iter()
                     .map(|expr| {
-                        self.node_ty_opt(expr.hir_id).unwrap_or_else(|| {
-                            self.next_ty_var(TypeVariableOrigin {
-                                param_def_id: None,
-                                span: expr.span,
-                            })
-                        })
+                        self.node_ty_opt(expr.hir_id).unwrap_or_else(|| self.next_ty_var(expr.span))
                     })
                     .collect()
             }),
@@ -1846,18 +1837,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             GenericArgKind::Lifetime(_) => self
                                 .next_region_var(RegionVariableOrigin::MiscVariable(DUMMY_SP))
                                 .into(),
-                            GenericArgKind::Type(_) => self
-                                .next_ty_var(TypeVariableOrigin {
-                                    span: DUMMY_SP,
-                                    param_def_id: None,
-                                })
-                                .into(),
-                            GenericArgKind::Const(arg) => self
-                                .next_const_var(
-                                    arg.ty(),
-                                    ConstVariableOrigin { span: DUMMY_SP, param_def_id: None },
-                                )
-                                .into(),
+                            GenericArgKind::Type(_) => self.next_ty_var(DUMMY_SP).into(),
+                            GenericArgKind::Const(arg) => {
+                                self.next_const_var(arg.ty(), DUMMY_SP).into()
+                            }
                         }
                     } else {
                         arg

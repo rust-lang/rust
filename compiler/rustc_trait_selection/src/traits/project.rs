@@ -18,7 +18,6 @@ use rustc_middle::traits::ImplSource;
 use rustc_middle::traits::ImplSourceUserDefinedData;
 
 use crate::errors::InherentProjectionNormalizationOverflow;
-use crate::infer::type_variable::TypeVariableOrigin;
 use crate::infer::{BoundRegionConversionTime, InferOk};
 use crate::traits::normalize::normalize_with_depth;
 use crate::traits::normalize::normalize_with_depth_to;
@@ -521,10 +520,7 @@ fn normalize_to_error<'a, 'tcx>(
         predicate: trait_ref.to_predicate(selcx.tcx()),
     };
     let tcx = selcx.infcx.tcx;
-    let new_value = selcx.infcx.next_ty_var(TypeVariableOrigin {
-        param_def_id: None,
-        span: tcx.def_span(projection_ty.def_id),
-    });
+    let new_value = selcx.infcx.next_ty_var(tcx.def_span(projection_ty.def_id));
     Normalized { value: new_value, obligations: vec![trait_obligation] }
 }
 
