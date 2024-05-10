@@ -1533,9 +1533,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     *err,
                 );
                 let code = error.obligation.cause.code().peel_derives().peel_match_impls();
-                if let ObligationCauseCode::Where(..)
+                if let ObligationCauseCode::SpannedItem(..)
                 | ObligationCauseCode::MiscItem(..)
-                | ObligationCauseCode::WhereInExpr(..)
+                | ObligationCauseCode::SpannedItemInExpr(..)
                 | ObligationCauseCode::MiscItemInExpr(..) = code
                 {
                     self.note_obligation_cause_code(
@@ -1611,9 +1611,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 let is_normalized_term_expected = !matches!(
                     obligation.cause.code().peel_derives(),
                     ObligationCauseCode::MiscItem(_)
-                        | ObligationCauseCode::Where(_, _)
+                        | ObligationCauseCode::SpannedItem(_, _)
                         | ObligationCauseCode::MiscItemInExpr(..)
-                        | ObligationCauseCode::WhereInExpr(..)
+                        | ObligationCauseCode::SpannedItemInExpr(..)
                         | ObligationCauseCode::Coercion { .. }
                 );
 
@@ -2881,8 +2881,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         else {
             return;
         };
-        let (ObligationCauseCode::Where(item_def_id, span)
-        | ObligationCauseCode::WhereInExpr(item_def_id, span, ..)) =
+        let (ObligationCauseCode::SpannedItem(item_def_id, span)
+        | ObligationCauseCode::SpannedItemInExpr(item_def_id, span, ..)) =
             *obligation.cause.code().peel_derives()
         else {
             return;
@@ -3179,7 +3179,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             ObligationCauseCode::RustCall => {
                 err.primary_message("functions with the \"rust-call\" ABI must take a single non-self tuple argument");
             }
-            ObligationCauseCode::Where(def_id, _) | ObligationCauseCode::MiscItem(def_id)
+            ObligationCauseCode::SpannedItem(def_id, _) | ObligationCauseCode::MiscItem(def_id)
                 if self.tcx.is_fn_trait(*def_id) =>
             {
                 err.code(E0059);

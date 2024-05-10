@@ -1415,7 +1415,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if span.is_dummy() {
                 ObligationCauseCode::MiscItemInExpr(def_id, hir_id, idx)
             } else {
-                ObligationCauseCode::WhereInExpr(def_id, span, hir_id, idx)
+                ObligationCauseCode::SpannedItemInExpr(def_id, span, hir_id, idx)
             }
         })
     }

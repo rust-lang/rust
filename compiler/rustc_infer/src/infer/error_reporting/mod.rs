@@ -883,8 +883,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 err.help("...or use `match` instead of `let...else`");
             }
             _ => {
-                if let ObligationCauseCode::Where(_, span)
-                | ObligationCauseCode::WhereInExpr(_, span, ..) = cause.code().peel_derives()
+                if let ObligationCauseCode::SpannedItem(_, span)
+                | ObligationCauseCode::SpannedItemInExpr(_, span, ..) =
+                    cause.code().peel_derives()
                     && let TypeError::RegionsPlaceholderMismatch = terr
                 {
                     err.span_note(*span, "the lifetime requirement is introduced here");
@@ -2011,7 +2012,6 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         trace: &TypeTrace<'tcx>,
         terr: TypeError<'tcx>,
     ) -> Vec<TypeErrorAdditionalDiags> {
-        use crate::traits::ObligationCauseCode::{BlockTailExpression, MatchExpressionArm};
         let mut suggestions = Vec::new();
         let span = trace.cause.span();
         let values = self.resolve_vars_if_possible(trace.values);
@@ -2078,8 +2078,11 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             }
         }
         let code = trace.cause.code();
-        if let &(MatchExpressionArm(box MatchExpressionArmCause { source, .. })
-        | BlockTailExpression(.., source)) = code
+        if let &(ObligationCauseCode::MatchExpressionArm(box MatchExpressionArmCause {
+            source,
+            ..
+        })
+        | ObligationCauseCode::BlockTailExpression(.., source)) = code
             && let hir::MatchSource::TryDesugar(_) = source
             && let Some((expected_ty, found_ty, _)) = self.values_str(trace.values)
         {

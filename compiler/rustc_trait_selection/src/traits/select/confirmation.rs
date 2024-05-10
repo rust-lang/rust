@@ -26,7 +26,7 @@ use crate::traits::vtable::{
     VtblSegment,
 };
 use crate::traits::{
-    ImplDerivedObligationCause, ImplSource, ImplSourceUserDefinedData, Normalized, Obligation,
+    ImplDerivedCause, ImplSource, ImplSourceUserDefinedData, Normalized, Obligation,
     ObligationCause, PolyTraitObligation, PredicateObligation, Selection, SelectionError,
     SignatureMismatch, TraitNotObjectSafe, TraitObligation, Unimplemented,
 };
@@ -275,7 +275,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 bug!("obligation {:?} had matched a builtin impl but now doesn't", obligation);
             };
 
-            let cause = obligation.derived_cause(ObligationCauseCode::BuiltinDerivedObligation);
+            let cause = obligation.derived_cause(ObligationCauseCode::BuiltinDerived);
             self.collect_predicates_for_types(
                 obligation.param_env,
                 cause,
@@ -435,7 +435,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     ) -> Vec<PredicateObligation<'tcx>> {
         debug!(?nested, "vtable_auto_impl");
         ensure_sufficient_stack(|| {
-            let cause = obligation.derived_cause(ObligationCauseCode::BuiltinDerivedObligation);
+            let cause = obligation.derived_cause(ObligationCauseCode::BuiltinDerived);
 
             let poly_trait_ref = obligation.predicate.to_poly_trait_ref();
             let trait_ref = self.infcx.enter_forall_and_leak_universe(poly_trait_ref);
@@ -723,7 +723,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         let mut nested =
             self.equate_trait_refs(obligation.with(tcx, placeholder_predicate), trait_ref)?;
-        let cause = obligation.derived_cause(ObligationCauseCode::BuiltinDerivedObligation);
+        let cause = obligation.derived_cause(ObligationCauseCode::BuiltinDerived);
 
         // Confirm the `type Output: Sized;` bound that is present on `FnOnce`
         let output_ty = self.infcx.enter_forall_and_leak_universe(sig.output());
@@ -1381,7 +1381,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let self_ty = obligation.self_ty().map_bound(|ty| self.infcx.shallow_resolve(ty));
 
         let mut nested = vec![];
-        let cause = obligation.derived_cause(ObligationCauseCode::BuiltinDerivedObligation);
+        let cause = obligation.derived_cause(ObligationCauseCode::BuiltinDerived);
 
         // If we have a custom `impl const Drop`, then
         // first check it like a regular impl candidate.
@@ -1396,7 +1396,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             debug!(?args, "impl args");
 
             let cause = obligation.derived_cause(|derived| {
-                ObligationCauseCode::ImplDerived(Box::new(ImplDerivedObligationCause {
+                ObligationCauseCode::ImplDerived(Box::new(ImplDerivedCause {
                     derived,
                     impl_or_alias_def_id: impl_def_id,
                     impl_def_predicate_index: None,

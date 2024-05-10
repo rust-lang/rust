@@ -7,7 +7,7 @@ use super::{
 
 use crate::errors;
 use crate::infer::InferCtxt;
-use crate::traits::{ImplDerivedObligationCause, NormalizeExt, ObligationCtxt};
+use crate::traits::{ImplDerivedCause, NormalizeExt, ObligationCtxt};
 
 use hir::def::CtorOf;
 use rustc_data_structures::fx::FxHashSet;
@@ -1400,10 +1400,10 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
         if let ObligationCauseCode::ImplDerived(cause) = &*code {
             try_borrowing(cause.derived.parent_trait_pred, &[])
-        } else if let ObligationCauseCode::Where(_, _)
+        } else if let ObligationCauseCode::SpannedItem(_, _)
         | ObligationCauseCode::MiscItem(_)
         | ObligationCauseCode::MiscItemInExpr(..)
-        | ObligationCauseCode::WhereInExpr(..) = code
+        | ObligationCauseCode::SpannedItemInExpr(..) = code
         {
             try_borrowing(poly_trait_pred, &never_suggest_borrow)
         } else {
@@ -2099,10 +2099,10 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         cause: &ObligationCauseCode<'tcx>,
         err: &mut Diag<'tcx>,
     ) {
-        // First, look for an `ExprBindingObligation`, which means we can get
+        // First, look for an `SpannedItemInExpr`, which means we can get
         // the uninstantiated predicate list of the called function. And check
         // that the predicate that we failed to satisfy is a `Fn`-like trait.
-        if let ObligationCauseCode::WhereInExpr(def_id, _, _, idx) = cause
+        if let ObligationCauseCode::SpannedItemInExpr(def_id, _, _, idx) = cause
             && let predicates = self.tcx.predicates_of(def_id).instantiate_identity(self.tcx)
             && let Some(pred) = predicates.predicates.get(*idx)
             && let ty::ClauseKind::Trait(trait_pred) = pred.kind().skip_binder()
@@ -2747,8 +2747,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 // We hold the `DefId` of the item introducing the obligation, but displaying it
                 // doesn't add user usable information. It always point at an associated item.
             }
-            ObligationCauseCode::Where(item_def_id, span)
-            | ObligationCauseCode::WhereInExpr(item_def_id, span, ..) => {
+            ObligationCauseCode::SpannedItem(item_def_id, span)
+            | ObligationCauseCode::SpannedItemInExpr(item_def_id, span, ..) => {
                 let item_name = tcx.def_path_str(item_def_id);
                 let short_item_name = with_forced_trimmed_paths!(tcx.def_path_str(item_def_id));
                 let mut multispan = MultiSpan::from(span);
@@ -3799,7 +3799,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             // to an associated type (as seen from `trait_pred`) in the predicate. Like in
             // trait_pred `S: Sum<<Self as Iterator>::Item>` and predicate `i32: Sum<&()>`
             let mut type_diffs = vec![];
-            if let ObligationCauseCode::WhereInExpr(def_id, _, _, idx) = parent_code
+            if let ObligationCauseCode::SpannedItemInExpr(def_id, _, _, idx) = parent_code
                 && let Some(node_args) = typeck_results.node_args_opt(call_hir_id)
                 && let where_clauses =
                     self.tcx.predicates_of(def_id).instantiate(self.tcx, node_args)
@@ -4955,7 +4955,7 @@ fn point_at_assoc_type_restriction<G: EmissionGuarantee>(
     trait_name: &str,
     predicate: ty::Predicate<'_>,
     generics: &hir::Generics<'_>,
-    data: &ImplDerivedObligationCause<'_>,
+    data: &ImplDerivedCause<'_>,
 ) {
     let ty::PredicateKind::Clause(clause) = predicate.kind().skip_binder() else {
         return;

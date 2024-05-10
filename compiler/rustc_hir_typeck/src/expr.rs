@@ -3083,14 +3083,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             polarity: ty::PredicatePolarity::Positive,
                         }),
                         |derived| {
-                            ObligationCauseCode::ImplDerived(Box::new(
-                                traits::ImplDerivedObligationCause {
-                                    derived,
-                                    impl_or_alias_def_id: impl_def_id,
-                                    impl_def_predicate_index: Some(idx),
-                                    span,
-                                },
-                            ))
+                            ObligationCauseCode::ImplDerived(Box::new(traits::ImplDerivedCause {
+                                derived,
+                                impl_or_alias_def_id: impl_def_id,
+                                impl_def_predicate_index: Some(idx),
+                                span,
+                            }))
                         },
                     )
                 },

@@ -830,8 +830,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         (data.impl_or_alias_def_id, data.span)
                     }
                     Some(
-                        ObligationCauseCode::WhereInExpr(def_id, span, _, _)
-                        | ObligationCauseCode::Where(def_id, span),
+                        ObligationCauseCode::SpannedItemInExpr(def_id, span, _, _)
+                        | ObligationCauseCode::SpannedItem(def_id, span),
                     ) => (*def_id, *span),
                     _ => continue,
                 };

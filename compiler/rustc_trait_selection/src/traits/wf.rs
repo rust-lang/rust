@@ -382,7 +382,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
             if let Some(parent_trait_pred) = predicate.to_opt_poly_trait_pred() {
                 cause = cause.derived_cause(
                     parent_trait_pred,
-                    traits::ObligationCauseCode::WellFormedDerivedObligation,
+                    traits::ObligationCauseCode::WellFormedDerived,
                 );
             }
             extend_cause_with_original_assoc_item_obligation(tcx, item, &mut cause, predicate);
@@ -568,7 +568,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                 let code = if span.is_dummy() {
                     ObligationCauseCode::MiscItem(origin_def_id)
                 } else {
-                    ObligationCauseCode::Where(origin_def_id, span)
+                    ObligationCauseCode::SpannedItem(origin_def_id, span)
                 };
                 let cause = self.cause(code);
                 traits::Obligation::with_depth(

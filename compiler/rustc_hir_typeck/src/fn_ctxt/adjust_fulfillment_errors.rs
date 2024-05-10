@@ -15,7 +15,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         error: &mut traits::FulfillmentError<'tcx>,
     ) -> bool {
         let (ObligationCauseCode::MiscItemInExpr(def_id, hir_id, idx)
-        | ObligationCauseCode::WhereInExpr(def_id, _, hir_id, idx)) =
+        | ObligationCauseCode::SpannedItemInExpr(def_id, _, hir_id, idx)) =
             *error.obligation.cause.code().peel_derives()
         else {
             return false;
@@ -512,7 +512,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &'tcx hir::Expr<'tcx>,
     ) -> Result<&'tcx hir::Expr<'tcx>, &'tcx hir::Expr<'tcx>> {
         match obligation_cause_code {
-            traits::ObligationCauseCode::WhereInExpr(_, _, _, _) => {
+            traits::ObligationCauseCode::SpannedItemInExpr(_, _, _, _) => {
                 // This is the "root"; we assume that the `expr` is already pointing here.
                 // Therefore, we return `Ok` so that this `expr` can be refined further.
                 Ok(expr)
@@ -555,7 +555,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// only a partial success - but it cannot be refined even further.
     fn blame_specific_expr_if_possible_for_derived_predicate_obligation(
         &self,
-        obligation: &traits::ImplDerivedObligationCause<'tcx>,
+        obligation: &traits::ImplDerivedCause<'tcx>,
         expr: &'tcx hir::Expr<'tcx>,
     ) -> Result<&'tcx hir::Expr<'tcx>, &'tcx hir::Expr<'tcx>> {
         // First, we attempt to refine the `expr` for our span using the parent obligation.

@@ -576,7 +576,7 @@ pub fn normalize_inherent_projection<'a, 'b, 'tcx>(
             if span.is_dummy() {
                 ObligationCauseCode::MiscItem(alias_ty.def_id)
             } else {
-                ObligationCauseCode::Where(alias_ty.def_id, span)
+                ObligationCauseCode::SpannedItem(alias_ty.def_id, span)
             },
         );
 
@@ -2129,7 +2129,7 @@ fn assoc_ty_own_obligations<'cx, 'tcx>(
             ObligationCause::new(
                 obligation.cause.span,
                 obligation.cause.body_id,
-                ObligationCauseCode::Where(obligation.predicate.def_id, span),
+                ObligationCauseCode::SpannedItem(obligation.predicate.def_id, span),
             )
         };
         nested.push(Obligation::with_depth(

@@ -105,7 +105,7 @@ impl<'tcx> PredicateObligation<'tcx> {
 impl<'tcx> PolyTraitObligation<'tcx> {
     pub fn derived_cause(
         &self,
-        variant: impl FnOnce(DerivedObligationCause<'tcx>) -> ObligationCauseCode<'tcx>,
+        variant: impl FnOnce(DerivedCause<'tcx>) -> ObligationCauseCode<'tcx>,
     ) -> ObligationCause<'tcx> {
         self.cause.clone().derived_cause(self.predicate, variant)
     }

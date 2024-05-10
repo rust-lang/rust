@@ -165,7 +165,7 @@ impl<'tcx> ObligationCause<'tcx> {
     pub fn derived_cause(
         mut self,
         parent_trait_pred: ty::PolyTraitPredicate<'tcx>,
-        variant: impl FnOnce(DerivedObligationCause<'tcx>) -> ObligationCauseCode<'tcx>,
+        variant: impl FnOnce(DerivedCause<'tcx>) -> ObligationCauseCode<'tcx>,
     ) -> ObligationCause<'tcx> {
         /*!
          * Creates a cause for obligations that are derived from
@@ -180,8 +180,7 @@ impl<'tcx> ObligationCause<'tcx> {
         // NOTE(flaper87): As of now, it keeps track of the whole error
         // chain. Ideally, we should have a way to configure this either
         // by using -Z verbose-internals or just a CLI argument.
-        self.code =
-            variant(DerivedObligationCause { parent_trait_pred, parent_code: self.code }).into();
+        self.code = variant(DerivedCause { parent_trait_pred, parent_code: self.code }).into();
         self
     }
 
@@ -254,16 +253,16 @@ pub enum ObligationCauseCode<'tcx> {
 
     /// Like `MiscItem`, but carries the span of the
     /// predicate when it can be identified.
-    Where(DefId, Span),
+    SpannedItem(DefId, Span),
 
-    /// Like `ItemObligation`, but carries the `HirId` of the
+    /// Like `MiscItem`, but carries the `HirId` of the
     /// expression that caused the obligation, and the `usize`
     /// indicates exactly which predicate it is in the list of
     /// instantiated predicates.
     MiscItemInExpr(DefId, HirId, usize),
 
-    /// Combines `ExprItemObligation` and `BindingObligation`.
-    WhereInExpr(DefId, Span, HirId, usize),
+    /// Combines `SpannedItem` and `MiscItemInExpr`.
+    SpannedItemInExpr(DefId, Span, HirId, usize),
 
     /// A type like `&'a T` is WF only if `T: 'a`.
     ReferenceOutlivesReferent(Ty<'tcx>),
@@ -327,16 +326,18 @@ pub enum ObligationCauseCode<'tcx> {
 
     /// Derived obligation (i.e. theoretical `where` clause) on a built-in
     /// implementation like `Copy` or `Sized`.
-    BuiltinDerived(DerivedObligationCause<'tcx>),
+    BuiltinDerived(DerivedCause<'tcx>),
 
     /// Derived obligation (i.e. `where` clause) on an user-provided impl
     /// or a trait alias.
-    ImplDerived(Box<ImplDerivedObligationCause<'tcx>>),
+    ImplDerived(Box<ImplDerivedCause<'tcx>>),
 
     /// Derived obligation for WF goals.
-    WellFormedDerived(DerivedObligationCause<'tcx>),
+    WellFormedDerived(DerivedCause<'tcx>),
 
-    FunctionArgumentObligation {
+    /// Derived obligation refined to point at a specific argument in
+    /// a call or method expression.
+    FunctionArg {
         /// The node of the relevant argument in the function call.
         arg_hir_id: HirId,
         /// The node of the function call.
@@ -347,7 +348,7 @@ pub enum ObligationCauseCode<'tcx> {
 
     /// Error derived when checking an impl item is compatible with
     /// its corresponding trait item's definition
-    CompareImplItemObligation {
+    CompareImplItem {
         impl_item_def_id: LocalDefId,
         trait_item_def_id: DefId,
         kind: ty::AssocKind,
@@ -495,8 +496,8 @@ pub enum WellFormedLoc {
 
 #[derive(Clone, Debug, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
 #[derive(TypeVisitable, TypeFoldable)]
-pub struct ImplDerivedObligationCause<'tcx> {
-    pub derived: DerivedObligationCause<'tcx>,
+pub struct ImplDerivedCause<'tcx> {
+    pub derived: DerivedCause<'tcx>,
     /// The `DefId` of the `impl` that gave rise to the `derived` obligation.
     /// If the `derived` obligation arose from a trait alias, which conceptually has a synthetic impl,
     /// then this will be the `DefId` of that trait alias. Care should therefore be taken to handle
@@ -537,9 +538,9 @@ impl<'tcx> ObligationCauseCode<'tcx> {
             ObligationCauseCode::FunctionArg { parent_code, .. } => Some((parent_code, None)),
             ObligationCauseCode::BuiltinDerived(derived)
             | ObligationCauseCode::WellFormedDerived(derived)
-            | ObligationCauseCode::ImplDerived(box ImplDerivedObligationCause {
-                derived, ..
-            }) => Some((&derived.parent_code, Some(derived.parent_trait_pred))),
+            | ObligationCauseCode::ImplDerived(box ImplDerivedCause { derived, .. }) => {
+                Some((&derived.parent_code, Some(derived.parent_trait_pred)))
+            }
             _ => None,
         }
     }
@@ -592,7 +593,7 @@ pub struct IfExpressionCause<'tcx> {
 
 #[derive(Clone, Debug, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
 #[derive(TypeVisitable, TypeFoldable)]
-pub struct DerivedObligationCause<'tcx> {
+pub struct DerivedCause<'tcx> {
     /// The trait predicate of the parent obligation that led to the
     /// current obligation. Note that only trait obligations lead to
     /// derived obligations, so we just store the trait predicate here

@@ -1408,7 +1408,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                                     idx,
                                 )
                             } else {
-                                ObligationCauseCode::WhereInExpr(
+                                ObligationCauseCode::SpannedItemInExpr(
                                     impl_def_id,
                                     span,
                                     self.scope_expr_id,

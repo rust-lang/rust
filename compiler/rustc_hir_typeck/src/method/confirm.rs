@@ -567,7 +567,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                 let code = if span.is_dummy() {
                     ObligationCauseCode::MiscItemInExpr(def_id, self.call_expr.hir_id, idx)
                 } else {
-                    ObligationCauseCode::WhereInExpr(def_id, span, self.call_expr.hir_id, idx)
+                    ObligationCauseCode::SpannedItemInExpr(def_id, span, self.call_expr.hir_id, idx)
                 };
                 traits::ObligationCause::new(self.span, self.body_id, code)
             },

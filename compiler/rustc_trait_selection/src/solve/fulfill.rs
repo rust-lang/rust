@@ -425,7 +425,7 @@ fn derive_cause<'tcx>(
                 tcx.predicates_of(impl_def_id).instantiate_identity(tcx).iter().nth(idx)
             {
                 cause = cause.derived_cause(parent_trait_pred, |derived| {
-                    ObligationCauseCode::ImplDerived(Box::new(traits::ImplDerivedObligationCause {
+                    ObligationCauseCode::ImplDerived(Box::new(traits::ImplDerivedCause {
                         derived,
                         impl_or_alias_def_id: impl_def_id,
                         impl_def_predicate_index: Some(idx),
@@ -435,8 +435,7 @@ fn derive_cause<'tcx>(
             }
         }
         ProbeKind::TraitCandidate { source: CandidateSource::BuiltinImpl(..), result: _ } => {
-            cause = cause
-                .derived_cause(parent_trait_pred, ObligationCauseCode::BuiltinDerivedObligation);
+            cause = cause.derived_cause(parent_trait_pred, ObligationCauseCode::BuiltinDerived);
         }
         _ => {}
     };
