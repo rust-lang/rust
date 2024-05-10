@@ -529,8 +529,8 @@ pub enum RegionVariableOrigin {
 
     /// Region variables created as the values for early-bound regions.
     ///
-    /// FIXME(@lcnr): This can also store a `DefId`, similar to
-    /// `TypeVariableOriginKind::TypeParameterDefinition`.
+    /// FIXME(@lcnr): This should also store a `DefId`, similar to
+    /// `TypeVariableOrigin`.
     RegionParameterDefinition(Span, Symbol),
 
     /// Region variables created when instantiating a binder with
