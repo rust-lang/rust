@@ -306,17 +306,15 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         self.assume_scalar_range(bx, imm, from_scalar, from_backend_ty);
 
         imm = match (from_scalar.primitive(), to_scalar.primitive()) {
-            (Int(..) | F16 | F32 | F64 | F128, Int(..) | F16 | F32 | F64 | F128) => {
-                bx.bitcast(imm, to_backend_ty)
-            }
+            (Int(..) | Float(_), Int(..) | Float(_)) => bx.bitcast(imm, to_backend_ty),
             (Pointer(..), Pointer(..)) => bx.pointercast(imm, to_backend_ty),
             (Int(..), Pointer(..)) => bx.ptradd(bx.const_null(bx.type_ptr()), imm),
             (Pointer(..), Int(..)) => bx.ptrtoint(imm, to_backend_ty),
-            (F16 | F32 | F64 | F128, Pointer(..)) => {
+            (Float(_), Pointer(..)) => {
                 let int_imm = bx.bitcast(imm, bx.cx().type_isize());
                 bx.ptradd(bx.const_null(bx.type_ptr()), int_imm)
             }
-            (Pointer(..), F16 | F32 | F64 | F128) => {
+            (Pointer(..), Float(_)) => {
                 let int_imm = bx.ptrtoint(imm, bx.cx().type_isize());
                 bx.bitcast(int_imm, to_backend_ty)
             }
