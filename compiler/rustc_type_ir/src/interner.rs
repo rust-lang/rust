@@ -3,13 +3,12 @@ use std::fmt::Debug;
 use std::hash::Hash;
 
 use crate::fold::TypeSuperFoldable;
+use crate::inherent::*;
+use crate::ir_print::IrPrint;
 use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable};
-use crate::{
-    new, BoundVar, BoundVars, CanonicalVarInfo, ConstKind, DebugWithInfcx, RegionKind, TyKind,
-    UniverseIndex,
-};
+use crate::{CanonicalVarInfo, ConstKind, DebugWithInfcx, RegionKind, TraitRef, TyKind};
 
-pub trait Interner: Sized + Copy {
+pub trait Interner: Sized + Copy + IrPrint<TraitRef<Self>> {
     type DefId: Copy + Debug + Hash + Eq;
     type DefiningOpaqueTypes: Copy + Debug + Hash + Default + Eq + TypeVisitable<Self>;
     type AdtDef: Copy + Debug + Hash + Eq;
@@ -18,7 +17,8 @@ pub trait Interner: Sized + Copy {
         + DebugWithInfcx<Self>
         + Hash
         + Eq
-        + IntoIterator<Item = Self::GenericArg>;
+        + IntoIterator<Item = Self::GenericArg>
+        + GenericArgs<Self>;
     type GenericArg: Copy + DebugWithInfcx<Self> + Hash + Eq;
     type Term: Copy + Debug + Hash + Eq;
 
@@ -38,7 +38,7 @@ pub trait Interner: Sized + Copy {
         + TypeSuperVisitable<Self>
         + TypeSuperFoldable<Self>
         + Flags
-        + new::Ty<Self>;
+        + Ty<Self>;
     type Tys: Copy + Debug + Hash + Eq + IntoIterator<Item = Self::Ty>;
     type AliasTy: Copy + DebugWithInfcx<Self> + Hash + Eq;
     type ParamTy: Copy + Debug + Hash + Eq;
@@ -59,11 +59,10 @@ pub trait Interner: Sized + Copy {
         + Eq
         + Into<Self::GenericArg>
         + IntoKind<Kind = ConstKind<Self>>
-        + ConstTy<Self>
         + TypeSuperVisitable<Self>
         + TypeSuperFoldable<Self>
         + Flags
-        + new::Const<Self>;
+        + Const<Self>;
     type AliasConst: Copy + DebugWithInfcx<Self> + Hash + Eq;
     type PlaceholderConst: Copy + Debug + Hash + Eq + PlaceholderLike;
     type ParamConst: Copy + Debug + Hash + Eq;
@@ -79,7 +78,7 @@ pub trait Interner: Sized + Copy {
         + Into<Self::GenericArg>
         + IntoKind<Kind = RegionKind<Self>>
         + Flags
-        + new::Region<Self>;
+        + Region<Self>;
     type EarlyParamRegion: Copy + Debug + Hash + Eq;
     type LateParamRegion: Copy + Debug + Hash + Eq;
     type BoundRegion: Copy + Debug + Hash + Eq;
@@ -105,26 +104,15 @@ pub trait Interner: Sized + Copy {
     type Clauses: Copy + Debug + Hash + Eq + TypeSuperVisitable<Self> + Flags;
 
     fn mk_canonical_var_infos(self, infos: &[CanonicalVarInfo<Self>]) -> Self::CanonicalVars;
-}
 
-/// Common capabilities of placeholder kinds
-pub trait PlaceholderLike {
-    fn universe(self) -> UniverseIndex;
-    fn var(self) -> BoundVar;
+    type GenericsOf: GenericsOf<Self>;
+    fn generics_of(self, def_id: Self::DefId) -> Self::GenericsOf;
 
-    fn with_updated_universe(self, ui: UniverseIndex) -> Self;
-
-    fn new(ui: UniverseIndex, var: BoundVar) -> Self;
-}
-
-pub trait IntoKind {
-    type Kind;
-
-    fn kind(self) -> Self::Kind;
-}
-
-pub trait ConstTy<I: Interner> {
-    fn ty(self) -> I::Ty;
+    fn check_and_mk_args(
+        self,
+        def_id: Self::DefId,
+        args: impl IntoIterator<Item: Into<Self::GenericArg>>,
+    ) -> Self::GenericArgs;
 }
 
 /// Imagine you have a function `F: FnOnce(&[T]) -> R`, plus an iterator `iter`

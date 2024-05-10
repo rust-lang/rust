@@ -8,7 +8,7 @@ use rustc_hir::def_id::DefId;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::{ImplSource, Obligation, ObligationCause};
 use rustc_middle::mir::{self, CallSource};
-use rustc_middle::ty::print::with_no_trimmed_paths;
+use rustc_middle::ty::print::{with_no_trimmed_paths, PrintTraitRefExt as _};
 use rustc_middle::ty::{
     self, suggest_constraining_type_param, Closure, FnDef, FnPtr, GenericArgKind, GenericArgsRef,
     Param, TraitRef, Ty,

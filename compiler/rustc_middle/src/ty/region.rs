@@ -19,7 +19,7 @@ pub type RegionKind<'tcx> = IrRegionKind<TyCtxt<'tcx>>;
 #[rustc_pass_by_value]
 pub struct Region<'tcx>(pub Interned<'tcx, RegionKind<'tcx>>);
 
-impl<'tcx> rustc_type_ir::IntoKind for Region<'tcx> {
+impl<'tcx> rustc_type_ir::inherent::IntoKind for Region<'tcx> {
     type Kind = RegionKind<'tcx>;
 
     fn kind(self) -> RegionKind<'tcx> {
@@ -137,7 +137,7 @@ impl<'tcx> Region<'tcx> {
     }
 }
 
-impl<'tcx> rustc_type_ir::new::Region<TyCtxt<'tcx>> for Region<'tcx> {
+impl<'tcx> rustc_type_ir::inherent::Region<TyCtxt<'tcx>> for Region<'tcx> {
     fn new_anon_bound(tcx: TyCtxt<'tcx>, debruijn: ty::DebruijnIndex, var: ty::BoundVar) -> Self {
         Region::new_bound(tcx, debruijn, ty::BoundRegion { var, kind: ty::BoundRegionKind::BrAnon })
     }

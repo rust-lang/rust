@@ -140,6 +140,19 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     fn mk_canonical_var_infos(self, infos: &[ty::CanonicalVarInfo<Self>]) -> Self::CanonicalVars {
         self.mk_canonical_var_infos(infos)
     }
+
+    type GenericsOf = &'tcx ty::Generics;
+    fn generics_of(self, def_id: DefId) -> &'tcx ty::Generics {
+        self.generics_of(def_id)
+    }
+
+    fn check_and_mk_args(
+        self,
+        def_id: DefId,
+        args: impl IntoIterator<Item: Into<ty::GenericArg<'tcx>>>,
+    ) -> ty::GenericArgsRef<'tcx> {
+        self.check_and_mk_args(def_id, args)
+    }
 }
 
 type InternedSet<'tcx, T> = ShardedHashMap<InternedInSet<'tcx, T>, ()>;

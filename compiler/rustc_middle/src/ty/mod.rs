@@ -530,7 +530,7 @@ pub struct CReaderCacheKey {
 #[rustc_pass_by_value]
 pub struct Ty<'tcx>(Interned<'tcx, WithCachedTypeInfo<TyKind<'tcx>>>);
 
-impl<'tcx> IntoKind for Ty<'tcx> {
+impl<'tcx> rustc_type_ir::inherent::IntoKind for Ty<'tcx> {
     type Kind = TyKind<'tcx>;
 
     fn kind(self) -> TyKind<'tcx> {
@@ -981,7 +981,7 @@ pub struct Placeholder<T> {
 
 pub type PlaceholderRegion = Placeholder<BoundRegion>;
 
-impl PlaceholderLike for PlaceholderRegion {
+impl rustc_type_ir::inherent::PlaceholderLike for PlaceholderRegion {
     fn universe(self) -> UniverseIndex {
         self.universe
     }
@@ -1001,7 +1001,7 @@ impl PlaceholderLike for PlaceholderRegion {
 
 pub type PlaceholderType = Placeholder<BoundTy>;
 
-impl PlaceholderLike for PlaceholderType {
+impl rustc_type_ir::inherent::PlaceholderLike for PlaceholderType {
     fn universe(self) -> UniverseIndex {
         self.universe
     }
@@ -1028,7 +1028,7 @@ pub struct BoundConst<'tcx> {
 
 pub type PlaceholderConst = Placeholder<BoundVar>;
 
-impl PlaceholderLike for PlaceholderConst {
+impl rustc_type_ir::inherent::PlaceholderLike for PlaceholderConst {
     fn universe(self) -> UniverseIndex {
         self.universe
     }

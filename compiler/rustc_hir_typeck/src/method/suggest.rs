@@ -25,7 +25,9 @@ use rustc_hir::{ExprKind, Node, QPath};
 use rustc_infer::infer::{self, RegionVariableOrigin};
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
 use rustc_middle::ty::fast_reject::{simplify_type, TreatParams};
-use rustc_middle::ty::print::{with_crate_prefix, with_forced_trimmed_paths};
+use rustc_middle::ty::print::{
+    with_crate_prefix, with_forced_trimmed_paths, PrintTraitRefExt as _,
+};
 use rustc_middle::ty::IsSuggestable;
 use rustc_middle::ty::{self, GenericArgKind, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::def_id::DefIdSet;

@@ -735,7 +735,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             output_ty,
             &mut nested,
         );
-        let tr = ty::TraitRef::from_lang_item(self.tcx(), LangItem::Sized, cause.span, [output_ty]);
+        let tr = ty::TraitRef::new(
+            self.tcx(),
+            self.tcx().require_lang_item(LangItem::Sized, Some(cause.span)),
+            [output_ty],
+        );
         nested.push(Obligation::new(self.infcx.tcx, cause, obligation.param_env, tr));
 
         Ok(nested)
@@ -1009,10 +1013,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         } else {
             nested.push(obligation.with(
                 self.tcx(),
-                ty::TraitRef::from_lang_item(
+                ty::TraitRef::new(
                     self.tcx(),
-                    LangItem::AsyncFnKindHelper,
-                    obligation.cause.span,
+                    self.tcx().require_lang_item(
+                        LangItem::AsyncFnKindHelper,
+                        Some(obligation.cause.span),
+                    ),
                     [kind_ty, Ty::from_closure_kind(self.tcx(), goal_kind)],
                 ),
             ));
@@ -1241,10 +1247,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     .collect();
 
                 // We can only make objects from sized types.
-                let tr = ty::TraitRef::from_lang_item(
+                let tr = ty::TraitRef::new(
                     tcx,
-                    LangItem::Sized,
-                    obligation.cause.span,
+                    tcx.require_lang_item(LangItem::Sized, Some(obligation.cause.span)),
                     [source],
                 );
                 nested.push(predicate_to_obligation(tr.to_predicate(tcx)));
@@ -1474,10 +1479,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         cause.clone(),
                         obligation.recursion_depth + 1,
                         self_ty.rebind(ty::TraitPredicate {
-                            trait_ref: ty::TraitRef::from_lang_item(
+                            trait_ref: ty::TraitRef::new(
                                 self.tcx(),
-                                LangItem::Destruct,
-                                cause.span,
+                                self.tcx().require_lang_item(LangItem::Destruct, Some(cause.span)),
                                 [nested_ty.into(), host_effect_param],
                             ),
                             polarity: ty::PredicatePolarity::Positive,
@@ -1507,10 +1511,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | ty::Infer(_)
                 | ty::Placeholder(_) => {
                     let predicate = self_ty.rebind(ty::TraitPredicate {
-                        trait_ref: ty::TraitRef::from_lang_item(
+                        trait_ref: ty::TraitRef::new(
                             self.tcx(),
-                            LangItem::Destruct,
-                            cause.span,
+                            self.tcx().require_lang_item(LangItem::Destruct, Some(cause.span)),
                             [nested_ty.into(), host_effect_param],
                         ),
                         polarity: ty::PredicatePolarity::Positive,

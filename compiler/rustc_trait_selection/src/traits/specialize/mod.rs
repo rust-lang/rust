@@ -11,6 +11,7 @@
 
 pub mod specialization_graph;
 use rustc_infer::infer::DefineOpaqueTypes;
+use rustc_middle::ty::print::PrintTraitRefExt as _;
 use specialization_graph::GraphExt;
 
 use crate::errors::NegativePositiveConflict;

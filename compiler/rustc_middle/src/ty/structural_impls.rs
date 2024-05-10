@@ -132,12 +132,6 @@ impl<'tcx> DebugWithInfcx<TyCtxt<'tcx>> for ty::FnSig<'tcx> {
     }
 }
 
-impl<'tcx> fmt::Debug for ty::TraitRef<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        with_no_trimmed_paths!(fmt::Display::fmt(self, f))
-    }
-}
-
 impl<'tcx> ty::DebugWithInfcx<TyCtxt<'tcx>> for Ty<'tcx> {
     fn fmt<Infcx: InferCtxtLike<Interner = TyCtxt<'tcx>>>(
         this: WithInfcx<'_, Infcx, &Self>,

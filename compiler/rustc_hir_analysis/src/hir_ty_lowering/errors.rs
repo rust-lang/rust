@@ -17,6 +17,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_infer::traits::FulfillmentError;
 use rustc_middle::query::Key;
+use rustc_middle::ty::print::PrintTraitRefExt as _;
 use rustc_middle::ty::GenericParamDefKind;
 use rustc_middle::ty::{self, suggest_constraining_type_param};
 use rustc_middle::ty::{AdtDef, Ty, TyCtxt, TypeVisitableExt};

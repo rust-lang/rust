@@ -16,7 +16,7 @@ use rustc_middle::traits::{BuiltinImplSource, Reveal};
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
 use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt};
 use rustc_middle::ty::{TraitPredicate, TypeVisitableExt};
-use rustc_span::{ErrorGuaranteed, DUMMY_SP};
+use rustc_span::ErrorGuaranteed;
 
 impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
     fn self_ty(self) -> Ty<'tcx> {
@@ -307,7 +307,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
                 }
             };
         let output_is_sized_pred = tupled_inputs_and_output.map_bound(|(_, output)| {
-            ty::TraitRef::from_lang_item(tcx, LangItem::Sized, DUMMY_SP, [output])
+            ty::TraitRef::new(tcx, tcx.require_lang_item(LangItem::Sized, None), [output])
         });
 
         let pred = tupled_inputs_and_output
@@ -346,7 +346,11 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
             )?;
         let output_is_sized_pred = tupled_inputs_and_output_and_coroutine.map_bound(
             |AsyncCallableRelevantTypes { output_coroutine_ty, .. }| {
-                ty::TraitRef::from_lang_item(tcx, LangItem::Sized, DUMMY_SP, [output_coroutine_ty])
+                ty::TraitRef::new(
+                    tcx,
+                    tcx.require_lang_item(LangItem::Sized, None),
+                    [output_coroutine_ty],
+                )
             },
         );
 

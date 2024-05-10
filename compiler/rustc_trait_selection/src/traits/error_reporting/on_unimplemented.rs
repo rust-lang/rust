@@ -10,6 +10,7 @@ use rustc_errors::{codes::*, struct_span_code_err, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_macros::{extension, LintDiagnostic};
+use rustc_middle::ty::print::PrintTraitRefExt as _;
 use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::{self, GenericParamDefKind, TyCtxt};
 use rustc_parse_format::{ParseMode, Parser, Piece, Position};

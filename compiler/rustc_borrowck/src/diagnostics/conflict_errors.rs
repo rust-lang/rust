@@ -22,6 +22,7 @@ use rustc_middle::mir::{
     Operand, Place, PlaceRef, ProjectionElem, Rvalue, Statement, StatementKind, Terminator,
     TerminatorKind, VarBindingForm,
 };
+use rustc_middle::ty::print::PrintTraitRefExt as _;
 use rustc_middle::ty::{
     self, suggest_constraining_type_params, PredicateKind, ToPredicate, Ty, TyCtxt,
     TypeSuperVisitable, TypeVisitor,

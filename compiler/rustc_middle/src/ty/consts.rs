@@ -8,7 +8,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::LocalDefId;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_type_ir::ConstKind as IrConstKind;
-use rustc_type_ir::{ConstTy, IntoKind, TypeFlags, WithCachedTypeInfo};
+use rustc_type_ir::{TypeFlags, WithCachedTypeInfo};
 
 mod int;
 mod kind;
@@ -30,7 +30,7 @@ rustc_data_structures::static_assert_size!(ConstKind<'_>, 32);
 #[rustc_pass_by_value]
 pub struct Const<'tcx>(pub(super) Interned<'tcx, WithCachedTypeInfo<ConstData<'tcx>>>);
 
-impl<'tcx> IntoKind for Const<'tcx> {
+impl<'tcx> rustc_type_ir::inherent::IntoKind for Const<'tcx> {
     type Kind = ConstKind<'tcx>;
 
     fn kind(self) -> ConstKind<'tcx> {
@@ -45,12 +45,6 @@ impl<'tcx> rustc_type_ir::visit::Flags for Const<'tcx> {
 
     fn outer_exclusive_binder(&self) -> rustc_type_ir::DebruijnIndex {
         self.0.outer_exclusive_binder
-    }
-}
-
-impl<'tcx> ConstTy<TyCtxt<'tcx>> for Const<'tcx> {
-    fn ty(self) -> Ty<'tcx> {
-        self.ty()
     }
 }
 
@@ -180,7 +174,7 @@ impl<'tcx> Const<'tcx> {
     }
 }
 
-impl<'tcx> rustc_type_ir::new::Const<TyCtxt<'tcx>> for Const<'tcx> {
+impl<'tcx> rustc_type_ir::inherent::Const<TyCtxt<'tcx>> for Const<'tcx> {
     fn new_anon_bound(
         tcx: TyCtxt<'tcx>,
         debruijn: ty::DebruijnIndex,
@@ -188,6 +182,10 @@ impl<'tcx> rustc_type_ir::new::Const<TyCtxt<'tcx>> for Const<'tcx> {
         ty: Ty<'tcx>,
     ) -> Self {
         Const::new_bound(tcx, debruijn, var, ty)
+    }
+
+    fn ty(self) -> Ty<'tcx> {
+        self.ty()
     }
 }
 
