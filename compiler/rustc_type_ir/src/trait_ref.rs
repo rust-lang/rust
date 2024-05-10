@@ -31,7 +31,7 @@ pub struct TraitRef<I: Interner> {
     pub args: I::GenericArgs,
     /// This field exists to prevent the creation of `TraitRef` without
     /// calling [`TraitRef::new`].
-    pub(super) _use_trait_ref_new_instead: (),
+    _use_trait_ref_new_instead: (),
 }
 
 impl<I: Interner> TraitRef<I> {

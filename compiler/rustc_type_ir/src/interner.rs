@@ -2,23 +2,17 @@ use smallvec::SmallVec;
 use std::fmt::Debug;
 use std::hash::Hash;
 
-use crate::fold::TypeSuperFoldable;
 use crate::inherent::*;
 use crate::ir_print::IrPrint;
 use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable};
-use crate::{CanonicalVarInfo, ConstKind, DebugWithInfcx, RegionKind, TraitRef, TyKind};
+use crate::{CanonicalVarInfo, DebugWithInfcx, TraitRef};
 
 pub trait Interner: Sized + Copy + IrPrint<TraitRef<Self>> {
     type DefId: Copy + Debug + Hash + Eq;
     type DefiningOpaqueTypes: Copy + Debug + Hash + Default + Eq + TypeVisitable<Self>;
     type AdtDef: Copy + Debug + Hash + Eq;
 
-    type GenericArgs: Copy
-        + DebugWithInfcx<Self>
-        + Hash
-        + Eq
-        + IntoIterator<Item = Self::GenericArg>
-        + GenericArgs<Self>;
+    type GenericArgs: GenericArgs<Self>;
     type GenericArg: Copy + DebugWithInfcx<Self> + Hash + Eq;
     type Term: Copy + Debug + Hash + Eq;
 
@@ -29,21 +23,12 @@ pub trait Interner: Sized + Copy + IrPrint<TraitRef<Self>> {
     type CanonicalVars: Copy + Debug + Hash + Eq + IntoIterator<Item = CanonicalVarInfo<Self>>;
 
     // Kinds of tys
-    type Ty: Copy
-        + DebugWithInfcx<Self>
-        + Hash
-        + Eq
-        + Into<Self::GenericArg>
-        + IntoKind<Kind = TyKind<Self>>
-        + TypeSuperVisitable<Self>
-        + TypeSuperFoldable<Self>
-        + Flags
-        + Ty<Self>;
+    type Ty: Ty<Self>;
     type Tys: Copy + Debug + Hash + Eq + IntoIterator<Item = Self::Ty>;
     type AliasTy: Copy + DebugWithInfcx<Self> + Hash + Eq;
     type ParamTy: Copy + Debug + Hash + Eq;
     type BoundTy: Copy + Debug + Hash + Eq;
-    type PlaceholderTy: Copy + Debug + Hash + Eq + PlaceholderLike;
+    type PlaceholderTy: PlaceholderLike;
 
     // Things stored inside of tys
     type ErrorGuaranteed: Copy + Debug + Hash + Eq;
@@ -53,46 +38,24 @@ pub trait Interner: Sized + Copy + IrPrint<TraitRef<Self>> {
     type Pat: Copy + Debug + Hash + Eq + DebugWithInfcx<Self>;
 
     // Kinds of consts
-    type Const: Copy
-        + DebugWithInfcx<Self>
-        + Hash
-        + Eq
-        + Into<Self::GenericArg>
-        + IntoKind<Kind = ConstKind<Self>>
-        + TypeSuperVisitable<Self>
-        + TypeSuperFoldable<Self>
-        + Flags
-        + Const<Self>;
+    type Const: Const<Self>;
     type AliasConst: Copy + DebugWithInfcx<Self> + Hash + Eq;
-    type PlaceholderConst: Copy + Debug + Hash + Eq + PlaceholderLike;
+    type PlaceholderConst: PlaceholderLike;
     type ParamConst: Copy + Debug + Hash + Eq;
     type BoundConst: Copy + Debug + Hash + Eq;
     type ValueConst: Copy + Debug + Hash + Eq;
     type ExprConst: Copy + DebugWithInfcx<Self> + Hash + Eq;
 
     // Kinds of regions
-    type Region: Copy
-        + DebugWithInfcx<Self>
-        + Hash
-        + Eq
-        + Into<Self::GenericArg>
-        + IntoKind<Kind = RegionKind<Self>>
-        + Flags
-        + Region<Self>;
+    type Region: Region<Self>;
     type EarlyParamRegion: Copy + Debug + Hash + Eq;
     type LateParamRegion: Copy + Debug + Hash + Eq;
     type BoundRegion: Copy + Debug + Hash + Eq;
     type InferRegion: Copy + DebugWithInfcx<Self> + Hash + Eq;
-    type PlaceholderRegion: Copy + Debug + Hash + Eq + PlaceholderLike;
+    type PlaceholderRegion: PlaceholderLike;
 
     // Predicates
-    type Predicate: Copy
-        + Debug
-        + Hash
-        + Eq
-        + TypeSuperVisitable<Self>
-        + TypeSuperFoldable<Self>
-        + Flags;
+    type Predicate: Predicate<Self>;
     type TraitPredicate: Copy + Debug + Hash + Eq;
     type RegionOutlivesPredicate: Copy + Debug + Hash + Eq;
     type TypeOutlivesPredicate: Copy + Debug + Hash + Eq;

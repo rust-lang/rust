@@ -8,7 +8,7 @@ pub trait IrPrint<T> {
 }
 
 macro_rules! define_display_via_print {
-    ($($ty:ident,)*) => {
+    ($($ty:ident),+ $(,)?) => {
         $(
             impl<I: Interner> fmt::Display for $ty<I> {
                 fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {

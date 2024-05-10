@@ -30,6 +30,8 @@ pub struct Predicate<'tcx>(
     pub(super) Interned<'tcx, WithCachedTypeInfo<ty::Binder<'tcx, PredicateKind<'tcx>>>>,
 );
 
+impl<'tcx> rustc_type_ir::inherent::Predicate<TyCtxt<'tcx>> for Predicate<'tcx> {}
+
 impl<'tcx> rustc_type_ir::visit::Flags for Predicate<'tcx> {
     fn flags(&self) -> TypeFlags {
         self.0.flags
