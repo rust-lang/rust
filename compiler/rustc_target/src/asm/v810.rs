@@ -1,4 +1,4 @@
-use super::{InlineAsmArch, InlineAsmType};
+use super::{InlineAsmArch, InlineAsmType, ModifierInfo};
 use rustc_span::Symbol;
 use std::fmt;
 
@@ -22,21 +22,21 @@ impl V810InlineAsmRegClass {
         self,
         _arch: InlineAsmArch,
         _ty: InlineAsmType,
-    ) -> Option<(char, &'static str)> {
+    ) -> Option<ModifierInfo> {
         None
     }
 
-    pub fn default_modifier(self, _arch: InlineAsmArch) -> Option<(char, &'static str)> {
+    pub fn default_modifier(self, _arch: InlineAsmArch) -> Option<ModifierInfo> {
         None
     }
 
     pub fn supported_types(
         self,
-        _arch: InlineAsmArch
+        _arch: InlineAsmArch,
     ) -> &'static [(InlineAsmType, Option<Symbol>)] {
         match self {
             Self::reg => types! { _: I8, I16, I32, F32; },
-            Self::sreg => types! { _: I32; }
+            Self::sreg => types! { _: I32; },
         }
     }
 }
