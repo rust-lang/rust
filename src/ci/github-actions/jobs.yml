@@ -75,17 +75,17 @@ envs:
 # These jobs automatically inherit envs.pr, to avoid repeating
 # it in each job definition.
 pr:
-  - image: mingw-check
-    <<: *job-linux-4c
-  - image: mingw-check-tidy
-    continue_on_error: true
-    <<: *job-linux-4c
-  - image: x86_64-gnu-llvm-17
+  - image: dist-aarch64-msvc
     env:
-      ENABLE_GCC_CODEGEN: "1"
-    <<: *job-linux-16c
-  - image: x86_64-gnu-tools
-    <<: *job-linux-16c
+      RUST_CONFIGURE_ARGS: >-
+        --build=x86_64-pc-windows-msvc
+        --host=aarch64-pc-windows-msvc
+        --target=aarch64-pc-windows-msvc,arm64ec-pc-windows-msvc
+        --enable-full-tools
+        --enable-profiler
+      SCRIPT: python x.py dist bootstrap --include-default-paths
+      DIST_REQUIRE_ALL_TOOLS: 1
+    <<: *job-windows-8c
 
 # Jobs that run when you perform a try build (@bors try)
 # These jobs automatically inherit envs.try, to avoid repeating
@@ -425,6 +425,7 @@ auto:
       RUST_CONFIGURE_ARGS: >-
         --build=x86_64-pc-windows-msvc
         --host=aarch64-pc-windows-msvc
+        --target=aarch64-pc-windows-msvc,arm64ec-pc-windows-msvc
         --enable-full-tools
         --enable-profiler
       SCRIPT: python x.py dist bootstrap --include-default-paths
