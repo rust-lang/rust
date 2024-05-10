@@ -832,9 +832,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         (data.impl_or_alias_def_id, data.span)
                     }
                     Some(
-                        ObligationCauseCode::SpannedWhereClauseInExpr(def_id, span, _, _)
-                        | ObligationCauseCode::SpannedWhereClause(def_id, span),
-                    ) => (*def_id, *span),
+                        ObligationCauseCode::WhereClauseInExpr(def_id, span, _, _)
+                        | ObligationCauseCode::WhereClause(def_id, span),
+                    ) if !span.is_dummy() => (*def_id, *span),
                     _ => continue,
                 };
 
