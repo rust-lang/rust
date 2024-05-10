@@ -32,6 +32,8 @@ use rustc_span::Span;
 
 use std::cell::Cell;
 
+use tracing::debug;
+
 type Res = def::Res<NodeId>;
 
 impl<'a, Id: Into<DefId>> ToNameBinding<'a>
