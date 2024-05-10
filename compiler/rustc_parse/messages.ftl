@@ -401,10 +401,8 @@ parse_invalid_logical_operator = `{$incorrect}` is not a logical operator
     .use_amp_amp_for_conjunction = use `&&` to perform logical conjunction
     .use_pipe_pipe_for_disjunction = use `||` to perform logical disjunction
 
-parse_invalid_meta_item = expected unsuffixed literal or identifier, found `{$token}`
-
-parse_invalid_meta_item_unquoted_ident = expected unsuffixed literal, found `{$token}`
-    .suggestion = surround the identifier with quotation marks to parse it as a string
+parse_invalid_meta_item = expected unsuffixed literal, found `{$token}`
+    .quote_ident_sugg = surround the identifier with quotation marks to make it into a string literal
 
 parse_invalid_offset_of = offset_of expects dot-separated field and variant names
 
