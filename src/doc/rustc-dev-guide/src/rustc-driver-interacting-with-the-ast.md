@@ -5,7 +5,7 @@ The [`rustc_interface`] allows you to interact with Rust code at various stages 
 ## Getting the type of an expression
 
 To get the type of an expression, use the [`global_ctxt`] query to [get] a [`TyCtxt`].
-The following was tested with <!-- date-check: jan 2024 --> `nightly-2024-01-19`:
+The following was tested with <!-- date-check: may 2024 --> `nightly-2024-05-09`:
 
 ```rust
 {{#include ../examples/rustc-driver-interacting-with-the-ast.rs}}

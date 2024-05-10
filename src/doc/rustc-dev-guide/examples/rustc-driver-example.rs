@@ -47,7 +47,7 @@ fn main() {
         locale_resources: rustc_driver::DEFAULT_LOCALE_RESOURCES,
         lint_caps: FxHashMap::default(), // FxHashMap<lint::LintId, lint::Level>
         // This is a callback from the driver that is called when [`ParseSess`] is created.
-        parse_sess_created: None, //Option<Box<dyn FnOnce(&mut ParseSess) + Send>>
+        psess_created: None, //Option<Box<dyn FnOnce(&mut ParseSess) + Send>>
         // This is a callback from the driver that is called when we're registering lints;
         // it is called during plugin registration when we have the LintStore in a non-shared state.
         //
@@ -60,7 +60,7 @@ fn main() {
         // The second parameter is local providers and the third parameter is external providers.
         override_queries: None, // Option<fn(&Session, &mut ty::query::Providers<'_>, &mut ty::query::Providers<'_>)>
         // Registry of diagnostics codes.
-        registry: registry::Registry::new(rustc_error_codes::DIAGNOSTICS),
+        registry: registry::Registry::new(rustc_errors::codes::DIAGNOSTICS),
         make_codegen_backend: None,
         expanded_args: Vec::new(),
         ice_file: None,

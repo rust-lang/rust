@@ -36,8 +36,8 @@ impl Translate for DebugEmitter {
 }
 
 impl Emitter for DebugEmitter {
-    fn emit_diagnostic(&mut self, diag: &DiagInner) {
-        self.diagnostics.lock().unwrap().push(diag.clone());
+    fn emit_diagnostic(&mut self, diag: DiagInner) {
+        self.diagnostics.lock().unwrap().push(diag);
     }
 
     fn source_map(&self) -> Option<&Arc<SourceMap>> {
@@ -76,15 +76,15 @@ fn main() {
         file_loader: None,
         locale_resources: rustc_driver::DEFAULT_LOCALE_RESOURCES,
         lint_caps: rustc_hash::FxHashMap::default(),
-        parse_sess_created: Some(Box::new(|parse_sess| {
-            parse_sess.dcx = DiagCtxt::with_emitter(Box::new(DebugEmitter {
+        psess_created: Some(Box::new(|parse_sess| {
+            parse_sess.dcx = DiagCtxt::new(Box::new(DebugEmitter {
                 source_map: parse_sess.clone_source_map(),
                 diagnostics,
             }))
         })),
         register_lints: None,
         override_queries: None,
-        registry: registry::Registry::new(rustc_error_codes::DIAGNOSTICS),
+        registry: registry::Registry::new(rustc_errors::codes::DIAGNOSTICS),
         make_codegen_backend: None,
         expanded_args: Vec::new(),
         ice_file: None,

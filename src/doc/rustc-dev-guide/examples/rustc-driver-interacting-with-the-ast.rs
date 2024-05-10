@@ -45,11 +45,11 @@ fn main() {
         file_loader: None,
         locale_resources: rustc_driver::DEFAULT_LOCALE_RESOURCES,
         lint_caps: rustc_hash::FxHashMap::default(),
-        parse_sess_created: None,
+        psess_created: None,
         register_lints: None,
         override_queries: None,
         make_codegen_backend: None,
-        registry: registry::Registry::new(rustc_error_codes::DIAGNOSTICS),
+        registry: registry::Registry::new(rustc_errors::codes::DIAGNOSTICS),
         expanded_args: Vec::new(),
         ice_file: None,
         hash_untracked_state: None,
@@ -73,8 +73,8 @@ fn main() {
                     if let rustc_hir::ItemKind::Fn(_, _, body_id) = item.kind {
                         let expr = &tcx.hir().body(body_id).value;
                         if let rustc_hir::ExprKind::Block(block, _) = expr.kind {
-                            if let rustc_hir::StmtKind::Local(local) = block.stmts[0].kind {
-                                if let Some(expr) = local.init {
+                            if let rustc_hir::StmtKind::Let(let_stmt) = block.stmts[0].kind {
+                                if let Some(expr) = let_stmt.init {
                                     let hir_id = expr.hir_id; // hir_id identifies the string "Hello, world!"
                                     let def_id = item.hir_id().owner.def_id; // def_id identifies the main function
                                     let ty = tcx.typeck(def_id).node_type(hir_id);
