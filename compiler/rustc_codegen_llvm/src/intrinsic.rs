@@ -2383,7 +2383,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         let pointee = in_elem.builtin_deref(true).unwrap_or_else(|| {
             span_bug!(span, "must be called with a vector of pointer types as first argument")
         });
-        let layout = bx.layout_of(pointee.ty);
+        let layout = bx.layout_of(pointee);
         let ptrs = args[0].immediate();
         // The second argument must be a ptr-sized integer.
         // (We don't care about the signedness, this is wrapping anyway.)

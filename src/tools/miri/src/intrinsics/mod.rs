@@ -117,7 +117,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
             "write_bytes" | "volatile_set_memory" => {
                 let [ptr, val_byte, count] = check_arg_count(args)?;
-                let ty = ptr.layout.ty.builtin_deref(true).unwrap().ty;
+                let ty = ptr.layout.ty.builtin_deref(true).unwrap();
                 let ty_layout = this.layout_of(ty)?;
                 let val_byte = this.read_scalar(val_byte)?.to_u8()?;
                 let ptr = this.read_pointer(ptr)?;

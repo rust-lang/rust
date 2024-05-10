@@ -134,7 +134,7 @@ fn check_rvalue<'tcx>(
         ) => Err((span, "function pointer casts are not allowed in const fn".into())),
         Rvalue::Cast(CastKind::PointerCoercion(PointerCoercion::Unsize), op, cast_ty) => {
             let pointee_ty = if let Some(deref_ty) = cast_ty.builtin_deref(true) {
-                deref_ty.ty
+                deref_ty
             } else {
                 // We cannot allow this for now.
                 return Err((span, "unsizing casts are only allowed for references right now".into()));

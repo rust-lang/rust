@@ -79,8 +79,8 @@ impl<'tcx> Visitor<'tcx> for MentionedItemsVisitor<'_, 'tcx> {
                 // add everything that may involve a vtable.
                 let source_ty = operand.ty(self.body, self.tcx);
                 let may_involve_vtable = match (
-                    source_ty.builtin_deref(true).map(|t| t.ty.kind()),
-                    target_ty.builtin_deref(true).map(|t| t.ty.kind()),
+                    source_ty.builtin_deref(true).map(|t| t.kind()),
+                    target_ty.builtin_deref(true).map(|t| t.kind()),
                 ) {
                     (Some(ty::Array(..)), Some(ty::Str | ty::Slice(..))) => false, // &str/&[T] unsizing
                     _ => true,
