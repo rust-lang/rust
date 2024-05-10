@@ -1496,6 +1496,34 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
         ptr
     }
 
+    /// Consumes the `Arc`, returning the wrapped pointer and allocator.
+    ///
+    /// To avoid a memory leak the pointer must be converted back to an `Arc` using
+    /// [`Arc::from_raw_in`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(allocator_api)]
+    /// use std::sync::Arc;
+    /// use std::alloc::System;
+    ///
+    /// let x = Arc::new_in("hello".to_owned(), System);
+    /// let (ptr, alloc) = Arc::into_raw_with_allocator(x);
+    /// assert_eq!(unsafe { &*ptr }, "hello");
+    /// let x = unsafe { Arc::from_raw_in(ptr, alloc) };
+    /// assert_eq!(&*x, "hello");
+    /// ```
+    #[must_use = "losing the pointer will leak memory"]
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    pub fn into_raw_with_allocator(this: Self) -> (*const T, A) {
+        let this = mem::ManuallyDrop::new(this);
+        let ptr = Self::as_ptr(&this);
+        // Safety: `this` is ManuallyDrop so the allocator will not be double-dropped
+        let alloc = unsafe { ptr::read(Self::allocator(&this)) };
+        (ptr, alloc)
+    }
+
     /// Provides a raw pointer to the data.
     ///
     /// The counts are not affected in any way and the `Arc` is not consumed. The pointer is valid for
@@ -2738,6 +2766,45 @@ impl<T: ?Sized, A: Allocator> Weak<T, A> {
         let result = self.as_ptr();
         mem::forget(self);
         result
+    }
+
+    /// Consumes the `Weak<T>`, returning the wrapped pointer and allocator.
+    ///
+    /// This converts the weak pointer into a raw pointer, while still preserving the ownership of
+    /// one weak reference (the weak count is not modified by this operation). It can be turned
+    /// back into the `Weak<T>` with [`from_raw_in`].
+    ///
+    /// The same restrictions of accessing the target of the pointer as with
+    /// [`as_ptr`] apply.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(allocator_api)]
+    /// use std::sync::{Arc, Weak};
+    /// use std::alloc::System;
+    ///
+    /// let strong = Arc::new_in("hello".to_owned(), System);
+    /// let weak = Arc::downgrade(&strong);
+    /// let (raw, alloc) = weak.into_raw_with_allocator();
+    ///
+    /// assert_eq!(1, Arc::weak_count(&strong));
+    /// assert_eq!("hello", unsafe { &*raw });
+    ///
+    /// drop(unsafe { Weak::from_raw_in(raw, alloc) });
+    /// assert_eq!(0, Arc::weak_count(&strong));
+    /// ```
+    ///
+    /// [`from_raw_in`]: Weak::from_raw_in
+    /// [`as_ptr`]: Weak::as_ptr
+    #[must_use = "losing the pointer will leak memory"]
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    pub fn into_raw_with_allocator(self) -> (*const T, A) {
+        let this = mem::ManuallyDrop::new(self);
+        let result = this.as_ptr();
+        // Safety: `this` is ManuallyDrop so the allocator will not be double-dropped
+        let alloc = unsafe { ptr::read(Self::allocator(&this)) };
+        (result, alloc)
     }
 
     /// Converts a raw pointer previously created by [`into_raw`] back into `Weak<T>` in the provided
