@@ -68,7 +68,7 @@ fn verify(tcx: TyCtxt<'_>, items: &lang_items::LanguageItems) {
     }
 
     let mut missing = FxHashSet::default();
-    for &cnum in tcx.crates(()).iter() {
+    for &cnum in tcx.used_crates(()).iter() {
         for &item in tcx.missing_lang_items(cnum).iter() {
             missing.insert(item);
         }

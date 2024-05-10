@@ -82,7 +82,7 @@ fn all_diagnostic_items(tcx: TyCtxt<'_>, (): ()) -> DiagnosticItems {
     let mut items = DiagnosticItems::default();
 
     // Collect diagnostic items in other crates.
-    for &cnum in tcx.crates(()).iter().chain(std::iter::once(&LOCAL_CRATE)) {
+    for &cnum in tcx.crates_including_speculative(()).iter().chain(std::iter::once(&LOCAL_CRATE)) {
         for (&name, &def_id) in &tcx.diagnostic_items(cnum).name_to_id {
             collect_item(tcx, &mut items, name, def_id);
         }
