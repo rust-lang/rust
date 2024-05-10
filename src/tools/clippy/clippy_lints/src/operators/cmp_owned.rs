@@ -70,7 +70,7 @@ fn check_op(cx: &LateContext<'_>, expr: &Expr<'_>, other: &Expr<'_>, left: bool)
     let without_deref = symmetric_partial_eq(cx, arg_ty, other_ty).unwrap_or_default();
     let with_deref = arg_ty
         .builtin_deref(true)
-        .and_then(|tam| symmetric_partial_eq(cx, tam.ty, other_ty))
+        .and_then(|ty| symmetric_partial_eq(cx, ty, other_ty))
         .unwrap_or_default();
 
     if !with_deref.is_implemented() && !without_deref.is_implemented() {

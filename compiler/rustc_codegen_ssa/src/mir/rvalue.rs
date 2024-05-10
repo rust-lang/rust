@@ -868,8 +868,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::BinOp::Offset => {
                 let pointee_type = input_ty
                     .builtin_deref(true)
-                    .unwrap_or_else(|| bug!("deref of non-pointer {:?}", input_ty))
-                    .ty;
+                    .unwrap_or_else(|| bug!("deref of non-pointer {:?}", input_ty));
                 let pointee_layout = bx.cx().layout_of(pointee_type);
                 if pointee_layout.is_zst() {
                     // `Offset` works in terms of the size of pointee,

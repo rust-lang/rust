@@ -202,7 +202,7 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
                 if let Some(target_len) = self.map().find_len(target.as_ref())
                     && let operand_ty = operand.ty(self.local_decls, self.tcx)
                     && let Some(operand_ty) = operand_ty.builtin_deref(true)
-                    && let ty::Array(_, len) = operand_ty.ty.kind()
+                    && let ty::Array(_, len) = operand_ty.kind()
                     && let Some(len) = Const::Ty(*len).try_eval_scalar_int(self.tcx, self.param_env)
                 {
                     state.insert_value_idx(target_len, FlatSet::Elem(len.into()), self.map());

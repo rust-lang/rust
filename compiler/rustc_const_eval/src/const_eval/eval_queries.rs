@@ -222,7 +222,7 @@ pub(super) fn op_to_const<'tcx>(
                 // This codepath solely exists for `valtree_to_const_value` to not need to generate
                 // a `ConstValue::Indirect` for wide references, so it is tightly restricted to just
                 // that case.
-                let pointee_ty = imm.layout.ty.builtin_deref(false).unwrap().ty; // `false` = no raw ptrs
+                let pointee_ty = imm.layout.ty.builtin_deref(false).unwrap(); // `false` = no raw ptrs
                 debug_assert!(
                     matches!(
                         ecx.tcx.struct_tail_without_normalization(pointee_ty).kind(),

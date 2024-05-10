@@ -78,13 +78,9 @@ impl<'tcx> PlaceTy<'tcx> {
         }
         let answer = match *elem {
             ProjectionElem::Deref => {
-                let ty = self
-                    .ty
-                    .builtin_deref(true)
-                    .unwrap_or_else(|| {
-                        bug!("deref projection of non-dereferenceable ty {:?}", self)
-                    })
-                    .ty;
+                let ty = self.ty.builtin_deref(true).unwrap_or_else(|| {
+                    bug!("deref projection of non-dereferenceable ty {:?}", self)
+                });
                 PlaceTy::from_ty(ty)
             }
             ProjectionElem::Index(_) | ProjectionElem::ConstantIndex { .. } => {

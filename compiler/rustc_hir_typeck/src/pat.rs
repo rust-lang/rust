@@ -918,8 +918,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         inner: &Pat<'_>,
     ) -> Result<(), ErrorGuaranteed> {
         if let PatKind::Binding(..) = inner.kind
-            && let Some(mt) = self.shallow_resolve(expected).builtin_deref(true)
-            && let ty::Dynamic(..) = mt.ty.kind()
+            && let Some(pointee_ty) = self.shallow_resolve(expected).builtin_deref(true)
+            && let ty::Dynamic(..) = pointee_ty.kind()
         {
             // This is "x = dyn SomeTrait" being reduced from
             // "let &x = &dyn SomeTrait" or "let box x = Box<dyn SomeTrait>", an error.

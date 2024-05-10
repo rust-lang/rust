@@ -605,7 +605,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         nonoverlapping: bool,
     ) -> InterpResult<'tcx> {
         let count = self.read_target_usize(count)?;
-        let layout = self.layout_of(src.layout.ty.builtin_deref(true).unwrap().ty)?;
+        let layout = self.layout_of(src.layout.ty.builtin_deref(true).unwrap())?;
         let (size, align) = (layout.size, layout.align.abi);
         // `checked_mul` enforces a too small bound (the correct one would probably be target_isize_max),
         // but no actual allocation can be big enough for the difference to be noticeable.
@@ -649,7 +649,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         byte: &OpTy<'tcx, <M as Machine<'mir, 'tcx>>::Provenance>,
         count: &OpTy<'tcx, <M as Machine<'mir, 'tcx>>::Provenance>,
     ) -> InterpResult<'tcx> {
-        let layout = self.layout_of(dst.layout.ty.builtin_deref(true).unwrap().ty)?;
+        let layout = self.layout_of(dst.layout.ty.builtin_deref(true).unwrap())?;
 
         let dst = self.read_pointer(dst)?;
         let byte = self.read_scalar(byte)?.to_u8()?;
@@ -688,7 +688,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         lhs: &OpTy<'tcx, <M as Machine<'mir, 'tcx>>::Provenance>,
         rhs: &OpTy<'tcx, <M as Machine<'mir, 'tcx>>::Provenance>,
     ) -> InterpResult<'tcx, Scalar<M::Provenance>> {
-        let layout = self.layout_of(lhs.layout.ty.builtin_deref(true).unwrap().ty)?;
+        let layout = self.layout_of(lhs.layout.ty.builtin_deref(true).unwrap())?;
         assert!(layout.is_sized());
 
         let get_bytes = |this: &InterpCx<'mir, 'tcx, M>,
