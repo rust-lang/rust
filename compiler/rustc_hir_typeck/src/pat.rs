@@ -2141,6 +2141,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut inherited_ref_mutbl_match = false;
         if match_ergonomics_mode != MatchErgonomicsMode::Legacy {
             if pat_mutbl == Mutability::Not {
+                // Prevent the inner pattern from binding with `ref mut`.
                 pat_info.max_ref_mutbl = pat_info.max_ref_mutbl.cap_to_weakly_not(
                     inner.span.find_ancestor_inside(pat.span).map(|end| pat.span.until(end)),
                 );
