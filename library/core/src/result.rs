@@ -67,7 +67,7 @@
 //!
 //! // Consume the result and return the contents with `unwrap`.
 //! let final_awesome_result = good_result.unwrap();
-//! assert_eq!(final_awesome_result)
+//! assert!(final_awesome_result)
 //! ```
 //!
 //! # Results must be used
