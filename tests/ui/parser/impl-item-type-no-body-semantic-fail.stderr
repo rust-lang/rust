@@ -89,11 +89,14 @@ LL |     type W: Ord where Self: Eq;
    |                       ^^^^^^^^ the trait `Eq` is not implemented for `X`
    |
    = help: see issue #48214
-   = help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
 help: consider annotating `X` with `#[derive(Eq)]`
    |
 LL + #[derive(Eq)]
 LL | struct X;
+   |
+help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
+   |
+LL + #![feature(trivial_bounds)]
    |
 
 error[E0277]: the trait bound `X: Eq` is not satisfied
@@ -103,11 +106,14 @@ LL |     type W where Self: Eq;
    |                  ^^^^^^^^ the trait `Eq` is not implemented for `X`
    |
    = help: see issue #48214
-   = help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
 help: consider annotating `X` with `#[derive(Eq)]`
    |
 LL + #[derive(Eq)]
 LL | struct X;
+   |
+help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
+   |
+LL + #![feature(trivial_bounds)]
    |
 
 error[E0592]: duplicate definitions with name `W`

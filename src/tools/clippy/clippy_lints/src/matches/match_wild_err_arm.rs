@@ -19,7 +19,7 @@ pub(crate) fn check<'tcx>(cx: &LateContext<'tcx>, ex: &Expr<'tcx>, arms: &[Arm<'
     if is_type_diagnostic_item(cx, ex_ty, sym::Result) {
         for arm in arms {
             if let PatKind::TupleStruct(ref path, inner, _) = arm.pat.kind {
-                let path_str = rustc_hir_pretty::qpath_to_string(path);
+                let path_str = rustc_hir_pretty::qpath_to_string(&cx.tcx, path);
                 if path_str == "Err" {
                     let mut matching_wild = inner.iter().any(is_wild);
                     let mut ident_bind_name = kw::Underscore;
@@ -43,7 +43,7 @@ pub(crate) fn check<'tcx>(cx: &LateContext<'tcx>, ex: &Expr<'tcx>, arms: &[Arm<'
                             cx,
                             MATCH_WILD_ERR_ARM,
                             arm.pat.span,
-                            &format!("`Err({ident_bind_name})` matches all errors"),
+                            format!("`Err({ident_bind_name})` matches all errors"),
                             None,
                             "match each error separately or use the error output, or use `.expect(msg)` if the error case is unreachable",
                         );

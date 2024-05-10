@@ -23,12 +23,12 @@ use lsp_types::{
     notification::DidOpenTextDocument,
     request::{
         CodeActionRequest, Completion, Formatting, GotoTypeDefinition, HoverRequest,
-        WillRenameFiles, WorkspaceSymbolRequest,
+        InlayHintRequest, InlayHintResolveRequest, WillRenameFiles, WorkspaceSymbolRequest,
     },
     CodeActionContext, CodeActionParams, CompletionParams, DidOpenTextDocumentParams,
     DocumentFormattingParams, FileRename, FormattingOptions, GotoDefinitionParams, HoverParams,
-    PartialResultParams, Position, Range, RenameFilesParams, TextDocumentItem,
-    TextDocumentPositionParams, WorkDoneProgressParams,
+    InlayHint, InlayHintLabel, InlayHintParams, PartialResultParams, Position, Range,
+    RenameFilesParams, TextDocumentItem, TextDocumentPositionParams, WorkDoneProgressParams,
 };
 use rust_analyzer::lsp::ext::{OnEnter, Runnables, RunnablesParams, UnindexedProject};
 use serde_json::json;
@@ -76,6 +76,147 @@ use std::collections::Spam;
 }
 
 #[test]
+fn resolves_inlay_hints() {
+    if skip_slow_tests() {
+        return;
+    }
+
+    let server = Project::with_fixture(
+        r#"
+//- /Cargo.toml
+[package]
+name = "foo"
+version = "0.0.0"
+
+//- /src/lib.rs
+struct Foo;
+fn f() {
+    let x = Foo;
+}
+"#,
+    )
+    .server()
+    .wait_until_workspace_is_loaded();
+
+    let res = server.send_request::<InlayHintRequest>(InlayHintParams {
+        range: Range::new(Position::new(0, 0), Position::new(3, 1)),
+        text_document: server.doc_id("src/lib.rs"),
+        work_done_progress_params: WorkDoneProgressParams::default(),
+    });
+    let mut hints = serde_json::from_value::<Option<Vec<InlayHint>>>(res).unwrap().unwrap();
+    let hint = hints.pop().unwrap();
+    assert!(hint.data.is_some());
+    assert!(
+        matches!(&hint.label, InlayHintLabel::LabelParts(parts) if parts[1].location.is_none())
+    );
+    let res = server.send_request::<InlayHintResolveRequest>(hint);
+    let hint = serde_json::from_value::<InlayHint>(res).unwrap();
+    assert!(hint.data.is_none());
+    assert!(
+        matches!(&hint.label, InlayHintLabel::LabelParts(parts) if parts[1].location.is_some())
+    );
+}
+
+#[test]
+fn completes_items_from_standard_library_in_cargo_script() {
+    // this test requires nightly so CI can't run it
+    if skip_slow_tests() || std::env::var("CI").is_ok() {
+        return;
+    }
+
+    let server = Project::with_fixture(
+        r#"
+//- /dependency/Cargo.toml
+[package]
+name = "dependency"
+version = "0.1.0"
+//- /dependency/src/lib.rs
+pub struct SpecialHashMap;
+//- /dependency2/Cargo.toml
+[package]
+name = "dependency2"
+version = "0.1.0"
+//- /dependency2/src/lib.rs
+pub struct SpecialHashMap2;
+//- /src/lib.rs
+#!/usr/bin/env -S cargo +nightly -Zscript
+---
+[dependencies]
+dependency = { path = "../dependency" }
+---
+use dependency::Spam;
+use dependency2::Spam;
+"#,
+    )
+    .with_config(serde_json::json!({
+        "cargo": { "sysroot": null },
+    }))
+    .server()
+    .wait_until_workspace_is_loaded();
+
+    let res = server.send_request::<Completion>(CompletionParams {
+        text_document_position: TextDocumentPositionParams::new(
+            server.doc_id("src/lib.rs"),
+            Position::new(5, 18),
+        ),
+        context: None,
+        partial_result_params: PartialResultParams::default(),
+        work_done_progress_params: WorkDoneProgressParams::default(),
+    });
+    assert!(res.to_string().contains("SpecialHashMap"), "{}", res.to_string());
+
+    let res = server.send_request::<Completion>(CompletionParams {
+        text_document_position: TextDocumentPositionParams::new(
+            server.doc_id("src/lib.rs"),
+            Position::new(6, 18),
+        ),
+        context: None,
+        partial_result_params: PartialResultParams::default(),
+        work_done_progress_params: WorkDoneProgressParams::default(),
+    });
+    assert!(!res.to_string().contains("SpecialHashMap"));
+
+    server.write_file_and_save(
+        "src/lib.rs",
+        r#"#!/usr/bin/env -S cargo +nightly -Zscript
+---
+[dependencies]
+dependency2 = { path = "../dependency2" }
+---
+use dependency::Spam;
+use dependency2::Spam;
+"#
+        .to_owned(),
+    );
+
+    let server = server.wait_until_workspace_is_loaded();
+
+    std::thread::sleep(std::time::Duration::from_secs(3));
+
+    let res = server.send_request::<Completion>(CompletionParams {
+        text_document_position: TextDocumentPositionParams::new(
+            server.doc_id("src/lib.rs"),
+            Position::new(5, 18),
+        ),
+        context: None,
+        partial_result_params: PartialResultParams::default(),
+        work_done_progress_params: WorkDoneProgressParams::default(),
+    });
+    assert!(!res.to_string().contains("SpecialHashMap"));
+
+    let res = server.send_request::<Completion>(CompletionParams {
+        text_document_position: TextDocumentPositionParams::new(
+            server.doc_id("src/lib.rs"),
+            Position::new(6, 18),
+        ),
+        context: None,
+        partial_result_params: PartialResultParams::default(),
+        work_done_progress_params: WorkDoneProgressParams::default(),
+    });
+    assert!(res.to_string().contains("SpecialHashMap"));
+}
+
+#[test]
 fn test_runnables_project() {
     if skip_slow_tests() {
         return;
@@ -115,7 +256,7 @@ fn main() {}
           {
             "args": {
               "cargoArgs": ["test", "--package", "foo", "--test", "spam"],
-              "executableArgs": ["test_eggs", "--exact", "--nocapture"],
+              "executableArgs": ["test_eggs", "--exact", "--show-output"],
               "cargoExtraArgs": [],
               "overrideCargo": null,
               "workspaceRoot": server.path().join("foo")
@@ -148,7 +289,7 @@ fn main() {}
               "cargoExtraArgs": [],
               "executableArgs": [
                 "",
-                "--nocapture"
+                "--show-output"
               ]
             },
             "kind": "cargo",
@@ -903,6 +1044,7 @@ fn out_dirs_check() {
 }
 
 #[test]
+#[cfg(not(windows))] // windows requires elevated permissions to create symlinks
 fn root_contains_symlink_out_dirs_check() {
     out_dirs_check_impl(true);
 }
@@ -917,7 +1059,7 @@ fn resolve_proc_macro() {
     }
 
     let sysroot = project_model::Sysroot::discover_no_source(
-        &AbsPathBuf::assert(std::env::current_dir().unwrap()),
+        &AbsPathBuf::assert_utf8(std::env::current_dir().unwrap()),
         &Default::default(),
     )
     .unwrap();
@@ -1002,7 +1144,7 @@ pub fn foo(_input: TokenStream) -> TokenStream {
         },
         "procMacro": {
             "enable": true,
-            "server": proc_macro_server_path.as_path().as_ref(),
+            "server": proc_macro_server_path.as_path().as_str(),
         }
     }))
     .root("foo")
@@ -1039,7 +1181,7 @@ fn test_will_rename_files_same_level() {
 
     let tmp_dir = TestDir::new();
     let tmp_dir_path = tmp_dir.path().to_owned();
-    let tmp_dir_str = tmp_dir_path.to_str().unwrap();
+    let tmp_dir_str = tmp_dir_path.as_str();
     let base_path = PathBuf::from(format!("file://{tmp_dir_str}"));
 
     let code = r#"
@@ -1084,7 +1226,7 @@ use crate::old_folder::nested::foo as bar;
           "documentChanges": [
             {
               "textDocument": {
-                "uri": format!("file://{}", tmp_dir_path.join("src").join("lib.rs").to_str().unwrap().to_owned().replace("C:\\", "/c:/").replace('\\', "/")),
+                "uri": format!("file://{}", tmp_dir_path.join("src").join("lib.rs").as_str().to_owned().replace("C:\\", "/c:/").replace('\\', "/")),
                 "version": null
               },
               "edits": [
@@ -1141,7 +1283,7 @@ use crate::old_folder::nested::foo as bar;
           "documentChanges": [
             {
               "textDocument": {
-                "uri": format!("file://{}", tmp_dir_path.join("src").join("lib.rs").to_str().unwrap().to_owned().replace("C:\\", "/c:/").replace('\\', "/")),
+                "uri": format!("file://{}", tmp_dir_path.join("src").join("lib.rs").as_str().to_owned().replace("C:\\", "/c:/").replace('\\', "/")),
                 "version": null
               },
               "edits": [
@@ -1162,7 +1304,7 @@ use crate::old_folder::nested::foo as bar;
             },
             {
               "textDocument": {
-                "uri": format!("file://{}", tmp_dir_path.join("src").join("old_folder").join("nested.rs").to_str().unwrap().to_owned().replace("C:\\", "/c:/").replace('\\', "/")),
+                "uri": format!("file://{}", tmp_dir_path.join("src").join("old_folder").join("nested.rs").as_str().to_owned().replace("C:\\", "/c:/").replace('\\', "/")),
                 "version": null
               },
               "edits": [

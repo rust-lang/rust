@@ -1,5 +1,5 @@
 error: the `dbg!` macro is intended as a debugging tool
-  --> tests/ui-toml/dbg_macro/dbg_macro.rs:5:22
+  --> tests/ui-toml/dbg_macro/dbg_macro.rs:6:22
    |
 LL |     if let Some(n) = dbg!(n.checked_sub(4)) { n } else { n }
    |                      ^^^^^^^^^^^^^^^^^^^^^^
@@ -12,7 +12,7 @@ LL |     if let Some(n) = n.checked_sub(4) { n } else { n }
    |                      ~~~~~~~~~~~~~~~~
 
 error: the `dbg!` macro is intended as a debugging tool
-  --> tests/ui-toml/dbg_macro/dbg_macro.rs:9:8
+  --> tests/ui-toml/dbg_macro/dbg_macro.rs:10:8
    |
 LL |     if dbg!(n <= 1) {
    |        ^^^^^^^^^^^^
@@ -23,7 +23,7 @@ LL |     if n <= 1 {
    |        ~~~~~~
 
 error: the `dbg!` macro is intended as a debugging tool
-  --> tests/ui-toml/dbg_macro/dbg_macro.rs:10:9
+  --> tests/ui-toml/dbg_macro/dbg_macro.rs:11:9
    |
 LL |         dbg!(1)
    |         ^^^^^^^
@@ -34,7 +34,7 @@ LL |         1
    |
 
 error: the `dbg!` macro is intended as a debugging tool
-  --> tests/ui-toml/dbg_macro/dbg_macro.rs:12:9
+  --> tests/ui-toml/dbg_macro/dbg_macro.rs:13:9
    |
 LL |         dbg!(n * factorial(n - 1))
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -45,7 +45,7 @@ LL |         n * factorial(n - 1)
    |
 
 error: the `dbg!` macro is intended as a debugging tool
-  --> tests/ui-toml/dbg_macro/dbg_macro.rs:17:5
+  --> tests/ui-toml/dbg_macro/dbg_macro.rs:18:5
    |
 LL |     dbg!(42);
    |     ^^^^^^^^
@@ -54,17 +54,6 @@ help: remove the invocation before committing it to a version control system
    |
 LL |     42;
    |     ~~
-
-error: the `dbg!` macro is intended as a debugging tool
-  --> tests/ui-toml/dbg_macro/dbg_macro.rs:18:5
-   |
-LL |     dbg!(dbg!(dbg!(42)));
-   |     ^^^^^^^^^^^^^^^^^^^^
-   |
-help: remove the invocation before committing it to a version control system
-   |
-LL |     dbg!(dbg!(42));
-   |     ~~~~~~~~~~~~~~
 
 error: the `dbg!` macro is intended as a debugging tool
   --> tests/ui-toml/dbg_macro/dbg_macro.rs:19:14
@@ -80,17 +69,6 @@ LL |     foo(3) + factorial(4);
 error: the `dbg!` macro is intended as a debugging tool
   --> tests/ui-toml/dbg_macro/dbg_macro.rs:20:5
    |
-LL |     dbg!(1, 2, dbg!(3, 4));
-   |     ^^^^^^^^^^^^^^^^^^^^^^
-   |
-help: remove the invocation before committing it to a version control system
-   |
-LL |     (1, 2, dbg!(3, 4));
-   |     ~~~~~~~~~~~~~~~~~~
-
-error: the `dbg!` macro is intended as a debugging tool
-  --> tests/ui-toml/dbg_macro/dbg_macro.rs:21:5
-   |
 LL |     dbg!(1, 2, 3, 4, 5);
    |     ^^^^^^^^^^^^^^^^^^^
    |
@@ -99,5 +77,5 @@ help: remove the invocation before committing it to a version control system
 LL |     (1, 2, 3, 4, 5);
    |     ~~~~~~~~~~~~~~~
 
-error: aborting due to 9 previous errors
+error: aborting due to 7 previous errors
 

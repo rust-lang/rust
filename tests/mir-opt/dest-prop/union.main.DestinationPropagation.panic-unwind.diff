@@ -8,13 +8,11 @@
       let mut _3: u32;
       scope 1 {
           debug un => _1;
-          scope 2 {
-          }
-          scope 4 (inlined std::mem::drop::<u32>) {
+          scope 3 (inlined std::mem::drop::<u32>) {
               debug _x => _3;
           }
       }
-      scope 3 (inlined val) {
+      scope 2 (inlined val) {
       }
   
       bb0: {

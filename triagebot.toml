@@ -106,12 +106,18 @@ resolved/implemented on Fuchsia. Could one of you weigh in?
 """
 label = "O-fuchsia"
 
-[ping.macos]
+[ping.apple]
+alias = ["macos", "ios", "tvos", "watchos", "visionos"]
 message = """\
-Hey MacOS Group! This issue or PR could use some MacOS-specific guidance. Could one
-of you weigh in? Thanks <3
+Hey Apple notification group! This issue or PR could use some Apple-specific
+guidance. Could one of you weigh in? Thanks <3
+
+(In case it's useful, here are some [instructions] for tackling these sorts of
+issues).
+
+[instructions]: https://rustc-dev-guide.rust-lang.org/notification-groups/apple.html
 """
-label = "O-macos"
+label = "O-apple"
 
 [prioritize]
 label = "I-prioritize"
@@ -227,7 +233,9 @@ trigger_files = [
 
 [autolabel."O-macos"]
 trigger_files = [
-    "library/std/src/os/macos"
+    "library/std/src/os/macos",
+    "library/std/src/sys/pal/unix/thread_parking/darwin.rs",
+    "compiler/rustc_target/src/spec/base/apple",
 ]
 
 [autolabel."O-netbsd"]
@@ -284,6 +292,11 @@ trigger_files = [
 trigger_files = [
     "library/std/src/sys/pal/windows",
     "library/std/src/os/windows"
+]
+
+[autolabel."O-visionos"]
+trigger_files = [
+    "library/std/src/os/visionos"
 ]
 
 [autolabel."T-bootstrap"]
@@ -377,6 +390,25 @@ trigger_files = [
     "compiler/rustc_middle/src/traits/solve"
 ]
 
+[autolabel."PG-exploit-mitigations"]
+trigger_files = [
+    "compiler/rustc_sanitizers",
+    "src/doc/rustc/src/exploit-mitigations.md",
+    "src/doc/unstable-book/src/compiler-flags/branch-protection.md",
+    "src/doc/unstable-book/src/compiler-flags/cf-protection.md",
+    "src/doc/unstable-book/src/compiler-flags/control-flow-guard.md",
+    "src/doc/unstable-book/src/compiler-flags/sanitizer.md",
+    "src/doc/unstable-book/src/language-features/cfg-sanitize.md",
+    "src/doc/unstable-book/src/language-features/cfi-encoding.md",
+    "src/doc/unstable-book/src/language-features/no-sanitize.md",
+    "tests/codegen/sanitizer",
+    "tests/codegen/split-lto-unit.rs",
+    "tests/codegen/stack-probes-inline.rs",
+    "tests/codegen/stack-protector.rs",
+    "tests/ui/sanitizer",
+    "tests/ui/stack-protector"
+]
+
 [notify-zulip."I-prioritize"]
 zulip_stream = 245100 # #t-compiler/wg-prioritization/alerts
 topic = "#{number} {title}"
@@ -393,6 +425,54 @@ message_on_remove = "Issue #{number}'s prioritization request has been removed."
 message_on_close = "Issue #{number} has been closed while requested for prioritization."
 message_on_reopen = "Issue #{number} has been reopened."
 
+# FIXME: Patch triagebot to support `notify-zulip.<label>` getting mapped to an array of actions.
+#        At the moment, the beta-nominated+T-rustdoc action fully occupies the beta-nominated slot
+#        preventing others from adding more beta-nominated actions.
+[notify-zulip."beta-nominated"]
+required_labels = ["T-rustdoc"]
+zulip_stream = 266220 # #t-rustdoc
+topic = "beta-nominated: #{number}"
+# Zulip polls may not be preceded by any other text and pings & short links inside
+# the title of a poll don't get recognized. Therefore we need to send two messages.
+message_on_add = [
+    """\
+@*T-rustdoc* PR #{number} "{title}" has been nominated for beta backport.
+""",
+    """\
+/poll Approve beta backport of #{number}?
+approve
+decline
+don't know
+""",
+]
+message_on_remove = "PR #{number}'s beta-nomination has been removed."
+message_on_close = "PR #{number} has been closed. Thanks for participating!"
+message_on_reopen = "PR #{number} has been reopened. Pinging @*T-rustdoc*."
+
+# FIXME: Patch triagebot to support `notify-zulip.<label>` getting mapped to an array of actions.
+#        At the moment, the stable-nominated+T-rustdoc action fully occupies the stable-nominated slot
+#        preventing others from adding more stable-nominated actions.
+[notify-zulip."stable-nominated"]
+required_labels = ["T-rustdoc"]
+zulip_stream = 266220 # #t-rustdoc
+topic = "stable-nominated: #{number}"
+# Zulip polls may not be preceded by any other text and pings & short links inside
+# the title of a poll don't get recognized. Therefore we need to send two messages.
+message_on_add = [
+    """\
+@*T-rustdoc* PR #{number} "{title}" has been nominated for stable backport.
+""",
+    """\
+/poll Approve stable backport of #{number}?
+approve
+decline
+don't know
+""",
+]
+message_on_remove = "PR #{number}'s stable-nomination has been removed."
+message_on_close = "PR #{number} has been closed. Thanks for participating!"
+message_on_reopen = "PR #{number} has been reopened. Pinging @*T-rustdoc*."
+
 [notify-zulip."I-types-nominated"]
 zulip_stream = 326866 # #T-types/nominated
 topic = "#{number}: {title}"
@@ -405,7 +485,15 @@ message_on_reopen = "Issue #{number} has been reopened. Pinging @*T-types*."
 
 [notify-zulip."A-edition-2021"]
 required_labels = ["C-bug"]
-zulip_stream = 268952 # #edition 2021
+zulip_stream = 268952 # #edition
+topic = "Edition Bugs"
+message_on_add = """\
+Issue #{number} "{title}" has been added (previous edition 2021).
+"""
+
+[notify-zulip."A-edition-2024"]
+required_labels = ["C-bug"]
+zulip_stream = 268952 # #edition
 topic = "Edition Bugs"
 message_on_add = """\
 Issue #{number} "{title}" has been added.
@@ -442,11 +530,15 @@ message = "Some changes occurred in need_type_info.rs"
 cc = ["@lcnr"]
 
 [mentions."compiler/rustc_middle/src/ty/relate.rs"]
-message = "Type relation code was changed"
+message = "changes to the core type system"
 cc = ["@compiler-errors", "@lcnr"]
 
 [mentions."compiler/rustc_infer/src/infer/relate"]
-message = "Type relation code was changed"
+message = "changes to the core type system"
+cc = ["@compiler-errors", "@lcnr"]
+
+[mentions."compiler/rustc_hir_analysis/src/fn_ctxt/inspect_obligations.rs"]
+message = "changes to `inspect_obligations.rs`"
 cc = ["@compiler-errors", "@lcnr"]
 
 [mentions."compiler/rustc_middle/src/mir/interpret"]
@@ -456,6 +548,10 @@ cc = ["@rust-lang/miri"]
 [mentions."compiler/rustc_mir_transform/src/"]
 message = "Some changes occurred to MIR optimizations"
 cc = ["@rust-lang/wg-mir-opt"]
+
+[mentions."compiler/rustc_trait_selection/src/traits/wf.rs"]
+message = "changes to the core type system"
+cc = ["@compiler-errors", "@lcnr"]
 
 [mentions."compiler/rustc_trait_selection/src/traits/const_evaluatable.rs"]
 message = "Some changes occurred in `const_evaluatable.rs`"
@@ -480,6 +576,10 @@ of `ObligationCtxt`.
 """
 cc = ["@lcnr", "@compiler-errors"]
 
+[mentions."compiler/rustc_hir_analysis/src/hir_ty_lowering"]
+message = "HIR ty lowering was modified"
+cc = ["@fmease"]
+
 [mentions."compiler/rustc_error_codes/src/lib.rs"]
 message = "Some changes occurred in diagnostic error codes"
 cc = ["@GuillaumeGomez"]
@@ -495,6 +595,14 @@ cc = ["@Nadrieril"]
 [mentions."compiler/rustc_pattern_analysis"]
 message = "Some changes occurred in exhaustiveness checking"
 cc = ["@Nadrieril"]
+
+[mentions."compiler/rustc_session/src/config/cfg.rs"]
+message = "Some changes occurred in cfg and check-cfg configuration"
+cc = ["@Urgau"]
+
+[mentions."compiler/rustc_lint/src/context/diagnostics/check_cfg.rs"]
+message = "Some changes occurred in check-cfg diagnostics"
+cc = ["@Urgau"]
 
 [mentions."library/core/src/intrinsics/simd.rs"]
 message = """
@@ -529,6 +637,10 @@ cc = ["@GuillaumeGomez"]
 message = "Some changes occurred in GUI tests."
 cc = ["@GuillaumeGomez"]
 
+[mentions."tests/run-make/"]
+message = "Some changes occurred in run-make tests."
+cc = ["@jieyouxu"]
+
 [mentions."src/librustdoc/html/static/css/themes/ayu.css"]
 message = "A change occurred in the Ayu theme."
 cc = ["@Cldfire"]
@@ -552,9 +664,16 @@ cc = ["@ehuss"]
 [mentions."src/tools/clippy"]
 cc = ["@rust-lang/clippy"]
 
+[mentions."src/tools/compiletest"]
+cc = ["@jieyouxu"]
+
 [mentions."src/tools/miri"]
 message = "The Miri subtree was changed"
 cc = ["@rust-lang/miri"]
+
+[mentions."src/tools/run-make-support"]
+message = "The run-make-support library was changed"
+cc = ["@jieyouxu"]
 
 [mentions."src/tools/rust-analyzer"]
 message = """
@@ -586,7 +705,7 @@ cc = ["@davidtwco", "@compiler-errors", "@TaKO8Ki"]
 
 [mentions."compiler/stable_mir"]
 message = "This PR changes Stable MIR"
-cc = ["@oli-obk", "@celinval", "@spastorino", "@ouz-a"]
+cc = ["@oli-obk", "@celinval", "@ouz-a"]
 
 [mentions."compiler/rustc_target/src/spec"]
 message = """
@@ -642,6 +761,84 @@ cc = ["@nnethercote"]
 message = "Changes to the size of AST and/or HIR nodes."
 cc = ["@nnethercote"]
 
+[mentions."compiler/rustc_sanitizers"]
+cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
+
+[mentions."src/doc/rustc/src/exploit-mitigations.md"]
+cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
+
+[mentions."src/doc/unstable-book/src/compiler-flags/branch-protection.md"]
+cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
+
+[mentions."src/doc/unstable-book/src/compiler-flags/cf-protection.md"]
+cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
+
+[mentions."src/doc/unstable-book/src/compiler-flags/control-flow-guard.md"]
+cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
+
+[mentions."src/doc/unstable-book/src/compiler-flags/sanitizer.md"]
+cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
+
+[mentions."src/doc/unstable-book/src/language-features/cfg-sanitize.md"]
+cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
+
+[mentions."src/doc/unstable-book/src/language-features/cfi-encoding.md"]
+cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
+
+[mentions."src/doc/unstable-book/src/language-features/no-sanitize.md"]
+cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
+
+[mentions."src/doc/rustc/src/check-cfg.md"]
+cc = ["@Urgau"]
+
+[mentions."src/doc/rustc/src/platform-support"]
+cc = ["@Nilstrieb"]
+
+[mentions."tests/codegen/sanitizer"]
+cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
+
+[mentions."tests/codegen/split-lto-unit.rs"]
+cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
+
+[mentions."tests/codegen/stack-probes-inline.rs"]
+cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
+
+[mentions."tests/codegen/stack-protector.rs"]
+cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
+
+[mentions."tests/ui/sanitizer"]
+cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
+
+[mentions."tests/ui/stack-protector"]
+cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
+
+[mentions."tests/ui/check-cfg"]
+cc = ["@Urgau"]
+
+[mentions."compiler/rustc_middle/src/mir/coverage.rs"]
+message = "Some changes occurred in coverage instrumentation."
+cc = ["@Zalathar"]
+
+[mentions."compiler/rustc_mir_build/src/build/coverageinfo.rs"]
+message = "Some changes occurred in coverage instrumentation."
+cc = ["@Zalathar"]
+
+[mentions."compiler/rustc_mir_transform/src/coverage"]
+message = "Some changes occurred in coverage instrumentation."
+cc = ["@Zalathar"]
+
+[mentions."compiler/rustc_codegen_llvm/src/coverageinfo"]
+message = "Some changes occurred in coverage instrumentation."
+cc = ["@Zalathar"]
+
+[mentions."compiler/rustc_codegen_ssa/src/mir/coverageinfo.rs"]
+message = "Some changes occurred in coverage instrumentation."
+cc = ["@Zalathar"]
+
+[mentions."tests/coverage"]
+message = "Some changes occurred in coverage tests."
+cc = ["@Zalathar"]
+
 [assign]
 warn_non_default_branch = true
 contributing_url = "https://rustc-dev-guide.rust-lang.org/getting-started.html"
@@ -666,6 +863,7 @@ compiler-team-contributors = [
     "@nnethercote",
     "@fmease",
     "@fee1-dead",
+    "@jieyouxu",
 ]
 compiler = [
     "compiler-team",
@@ -721,6 +919,7 @@ parser = [
     "@estebank",
     "@nnethercote",
     "@petrochenkov",
+    "@spastorino",
 ]
 lexer = [
     "@nnethercote",
@@ -729,6 +928,7 @@ lexer = [
 ]
 arena = [
     "@nnethercote",
+    "@spastorino",
 ]
 mir = [
     "@davidtwco",
@@ -781,6 +981,11 @@ project-stable-mir = [
     "@oli-obk",
     "@spastorino",
     "@ouz-a",
+]
+
+project-exploit-mitigations = [
+    "@cuviper",
+    "@rcvalle",
 ]
 
 [assign.owners]
@@ -842,10 +1047,12 @@ project-stable-mir = [
 "/src/llvm-project" =                                    ["@cuviper"]
 "/src/rustdoc-json-types" =                              ["rustdoc"]
 "/src/stage0.json" =                                     ["bootstrap"]
+"/tests/run-make" =                                      ["@jieyouxu"]
 "/tests/ui" =                                            ["compiler"]
 "/src/tools/cargo" =                                     ["@ehuss"]
-"/src/tools/compiletest" =                               ["bootstrap", "@wesleywiser", "@oli-obk", "@compiler-errors"]
+"/src/tools/compiletest" =                               ["bootstrap", "@wesleywiser", "@oli-obk", "@compiler-errors", "@jieyouxu"]
 "/src/tools/linkchecker" =                               ["@ehuss"]
+"/src/tools/run-make-support" =                          ["@jieyouxu"]
 "/src/tools/rust-installer" =                            ["bootstrap"]
 "/src/tools/rustbook" =                                  ["@ehuss"]
 "/src/tools/rustdoc" =                                   ["rustdoc"]
@@ -854,3 +1061,11 @@ project-stable-mir = [
 "/src/tools/tidy" =                                      ["bootstrap"]
 "/src/tools/x" =                                         ["bootstrap"]
 "/src/tools/rustdoc-gui-test" =                          ["bootstrap", "@onur-ozkan"]
+
+# Enable tracking of PR review assignment
+# Documentation at: https://forge.rust-lang.org/triagebot/pr-assignment-tracking.html
+[pr-tracking]
+
+# Enable issue transfers within the org
+# Documentation at: https://forge.rust-lang.org/triagebot/transfer.html
+[transfer]

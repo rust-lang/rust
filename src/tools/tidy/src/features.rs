@@ -17,8 +17,6 @@ use std::fs;
 use std::num::NonZeroU32;
 use std::path::{Path, PathBuf};
 
-use regex::Regex;
-
 #[cfg(test)]
 mod tests;
 
@@ -251,16 +249,10 @@ fn format_features<'a>(
 }
 
 fn find_attr_val<'a>(line: &'a str, attr: &str) -> Option<&'a str> {
-    lazy_static::lazy_static! {
-        static ref ISSUE: Regex = Regex::new(r#"issue\s*=\s*"([^"]*)""#).unwrap();
-        static ref FEATURE: Regex = Regex::new(r#"feature\s*=\s*"([^"]*)""#).unwrap();
-        static ref SINCE: Regex = Regex::new(r#"since\s*=\s*"([^"]*)""#).unwrap();
-    }
-
     let r = match attr {
-        "issue" => &*ISSUE,
-        "feature" => &*FEATURE,
-        "since" => &*SINCE,
+        "issue" => static_regex!(r#"issue\s*=\s*"([^"]*)""#),
+        "feature" => static_regex!(r#"feature\s*=\s*"([^"]*)""#),
+        "since" => static_regex!(r#"since\s*=\s*"([^"]*)""#),
         _ => unimplemented!("{attr} not handled"),
     };
 
@@ -528,11 +520,8 @@ fn map_lib_features(
                     }};
                 }
 
-                lazy_static::lazy_static! {
-                    static ref COMMENT_LINE: Regex = Regex::new(r"^\s*//").unwrap();
-                }
                 // exclude commented out lines
-                if COMMENT_LINE.is_match(line) {
+                if static_regex!(r"^\s*//").is_match(line) {
                     continue;
                 }
 

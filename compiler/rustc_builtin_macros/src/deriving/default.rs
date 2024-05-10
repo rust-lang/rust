@@ -12,8 +12,8 @@ use rustc_span::{ErrorGuaranteed, Span};
 use smallvec::SmallVec;
 use thin_vec::{thin_vec, ThinVec};
 
-pub fn expand_deriving_default(
-    cx: &mut ExtCtxt<'_>,
+pub(crate) fn expand_deriving_default(
+    cx: &ExtCtxt<'_>,
     span: Span,
     mitem: &ast::MetaItem,
     item: &Annotatable,
@@ -54,7 +54,7 @@ pub fn expand_deriving_default(
 }
 
 fn default_struct_substructure(
-    cx: &mut ExtCtxt<'_>,
+    cx: &ExtCtxt<'_>,
     trait_span: Span,
     substr: &Substructure<'_>,
     summary: &StaticFields,
@@ -81,7 +81,7 @@ fn default_struct_substructure(
 }
 
 fn default_enum_substructure(
-    cx: &mut ExtCtxt<'_>,
+    cx: &ExtCtxt<'_>,
     trait_span: Span,
     enum_def: &EnumDef,
 ) -> BlockOrExpr {
@@ -103,7 +103,7 @@ fn default_enum_substructure(
 }
 
 fn extract_default_variant<'a>(
-    cx: &mut ExtCtxt<'_>,
+    cx: &ExtCtxt<'_>,
     enum_def: &'a EnumDef,
     trait_span: Span,
 ) -> Result<&'a rustc_ast::Variant, ErrorGuaranteed> {
@@ -173,7 +173,7 @@ fn extract_default_variant<'a>(
 }
 
 fn validate_default_attribute(
-    cx: &mut ExtCtxt<'_>,
+    cx: &ExtCtxt<'_>,
     default_variant: &rustc_ast::Variant,
 ) -> Result<(), ErrorGuaranteed> {
     let attrs: SmallVec<[_; 1]> =

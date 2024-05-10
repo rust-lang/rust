@@ -96,7 +96,7 @@ fn complete_trait_impl_name(
             .parent()
         }
     }?;
-    let item = ctx.sema.original_syntax_node(&item)?;
+    let item = ctx.sema.original_syntax_node_rooted(&item)?;
     // item -> ASSOC_ITEM_LIST -> IMPL
     let impl_def = ast::Impl::cast(item.parent()?.parent()?)?;
     let replacement_range = {
@@ -186,11 +186,11 @@ fn add_function_impl(
         if func.assoc_fn_params(ctx.db).is_empty() { "" } else { ".." }
     );
 
-    let completion_kind = if func.has_self_param(ctx.db) {
-        CompletionItemKind::Method
+    let completion_kind = CompletionItemKind::SymbolKind(if func.has_self_param(ctx.db) {
+        SymbolKind::Method
     } else {
-        CompletionItemKind::SymbolKind(SymbolKind::Function)
-    };
+        SymbolKind::Function
+    });
 
     let mut item = CompletionItem::new(completion_kind, replacement_range, label);
     item.lookup_by(format!("fn {}", fn_name.display(ctx.db)))

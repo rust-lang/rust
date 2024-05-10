@@ -65,7 +65,7 @@ const BASE_HIR: &[&str] = &[
 const BASE_IMPL: &[&str] =
     &[label_strs::associated_item_def_ids, label_strs::generics_of, label_strs::impl_trait_header];
 
-/// DepNodes for mir_built/Optimized, which is relevant in "executable"
+/// DepNodes for exported mir bodies, which is relevant in "executable"
 /// code, i.e., functions+methods
 const BASE_MIR: &[&str] = &[label_strs::optimized_mir, label_strs::promoted_mir];
 
@@ -148,7 +148,7 @@ pub fn check_dirty_clean_annotations(tcx: TyCtxt<'_>) {
 
         let crate_items = tcx.hir_crate_items(());
 
-        for id in crate_items.items() {
+        for id in crate_items.free_items() {
             dirty_clean_visitor.check_item(id.owner_id.def_id);
         }
 

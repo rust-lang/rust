@@ -1,0 +1,61 @@
+// MIR for `vec_deref_to_slice` after PreCodegen
+
+fn vec_deref_to_slice(_1: &Vec<u8>) -> &[u8] {
+    debug v => _1;
+    let mut _0: &[u8];
+    scope 1 (inlined <Vec<u8> as Deref>::deref) {
+        debug self => _1;
+        let mut _4: *const u8;
+        let mut _5: usize;
+        scope 2 (inlined Vec::<u8>::as_ptr) {
+            debug self => _1;
+            let mut _2: &alloc::raw_vec::RawVec<u8>;
+            scope 3 (inlined alloc::raw_vec::RawVec::<u8>::ptr) {
+                debug self => _2;
+                let mut _3: std::ptr::NonNull<u8>;
+                scope 4 (inlined Unique::<u8>::as_ptr) {
+                    debug ((self: Unique<u8>).0: std::ptr::NonNull<u8>) => _3;
+                    debug ((self: Unique<u8>).1: std::marker::PhantomData<u8>) => const PhantomData::<u8>;
+                    scope 5 (inlined NonNull::<u8>::as_ptr) {
+                        debug self => _3;
+                    }
+                }
+            }
+        }
+        scope 6 (inlined std::slice::from_raw_parts::<'_, u8>) {
+            debug data => _4;
+            debug len => _5;
+            let _6: *const [u8];
+            scope 7 (inlined core::ub_checks::check_language_ub) {
+                scope 8 (inlined core::ub_checks::check_language_ub::runtime) {
+                }
+            }
+            scope 9 (inlined std::mem::size_of::<u8>) {
+            }
+            scope 10 (inlined align_of::<u8>) {
+            }
+            scope 11 (inlined slice_from_raw_parts::<u8>) {
+                debug data => _4;
+                debug len => _5;
+            }
+        }
+    }
+
+    bb0: {
+        StorageLive(_4);
+        StorageLive(_2);
+        _2 = &((*_1).0: alloc::raw_vec::RawVec<u8>);
+        StorageLive(_3);
+        _3 = ((((*_1).0: alloc::raw_vec::RawVec<u8>).0: std::ptr::Unique<u8>).0: std::ptr::NonNull<u8>);
+        _4 = (_3.0: *const u8);
+        StorageDead(_3);
+        StorageDead(_2);
+        StorageLive(_5);
+        _5 = ((*_1).1: usize);
+        _6 = *const [u8] from (_4, _5);
+        StorageDead(_5);
+        StorageDead(_4);
+        _0 = &(*_6);
+        return;
+    }
+}

@@ -35,7 +35,6 @@ LL |     writes_to_specific_path(&cap);
    |     |
    |     required by a bound introduced by this call
    |
-   = help: try adding a `where` bound using this expression: `where [(); { contains::<T, U>() }]:`
 note: required for `&C` to implement `Contains<(), true>`
   --> $DIR/issue-85848.rs:21:12
    |
@@ -53,6 +52,10 @@ note: required by a bound in `writes_to_specific_path`
    |
 LL | fn writes_to_specific_path<C: Delegates<()>>(cap: &C) {}
    |                               ^^^^^^^^^^^^^ required by this bound in `writes_to_specific_path`
+help: try adding a `where` bound
+   |
+LL | fn writes_to_path<C>(cap: &C) where [(); { contains::<T, U>() } as usize]: {
+   |                               ++++++++++++++++++++++++++++++++++++++++++++
 
 error[E0308]: mismatched types
   --> $DIR/issue-85848.rs:24:5

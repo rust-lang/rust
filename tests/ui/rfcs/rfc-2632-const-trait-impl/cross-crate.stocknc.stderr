@@ -5,7 +5,10 @@ LL |     NonConst.func();
    |              ^^^^^^
    |
    = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
-   = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
+help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
+   |
+LL + #![feature(const_trait_impl)]
+   |
 
 error[E0015]: cannot call non-const fn `<cross_crate::Const as cross_crate::MyTrait>::func` in constant functions
   --> $DIR/cross-crate.rs:20:11
@@ -14,7 +17,10 @@ LL |     Const.func();
    |           ^^^^^^
    |
    = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
-   = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
+help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
+   |
+LL + #![feature(const_trait_impl)]
+   |
 
 error: aborting due to 2 previous errors
 

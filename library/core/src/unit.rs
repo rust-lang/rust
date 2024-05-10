@@ -1,5 +1,3 @@
-use crate::iter::FromIterator;
-
 /// Collapses all unit items from an iterator into one.
 ///
 /// This is more useful when combined with higher-level abstractions, like

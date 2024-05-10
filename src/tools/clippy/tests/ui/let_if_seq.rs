@@ -57,6 +57,17 @@ fn early_return() -> u8 {
     foo
 }
 
+fn allow_works() -> i32 {
+    #[allow(clippy::useless_let_if_seq)]
+    let x;
+    if true {
+        x = 1;
+    } else {
+        x = 2;
+    }
+    x
+}
+
 fn main() {
     early_return();
     issue975();

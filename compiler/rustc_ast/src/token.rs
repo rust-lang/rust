@@ -9,8 +9,9 @@ use crate::util::case::Case;
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lrc;
-use rustc_macros::HashStable_Generic;
+use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::symbol::{kw, sym};
+#[allow(clippy::useless_attribute)] // FIXME: following use of `hidden_glob_reexports` incorrectly triggers `useless_attribute` lint.
 #[allow(hidden_glob_reexports)]
 use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::{edition::Edition, ErrorGuaranteed, Span, DUMMY_SP};
@@ -50,7 +51,7 @@ pub enum Delimiter {
     Brace,
     /// `[ ... ]`
     Bracket,
-    /// `Ø ... Ø`
+    /// `∅ ... ∅`
     /// An invisible delimiter, that may, for example, appear around tokens coming from a
     /// "macro variable" `$var`. It is important to preserve operator priorities in cases like
     /// `$var * 3` where `$var` is `1 + 2`.
@@ -104,7 +105,7 @@ impl Lit {
         }
     }
 
-    /// Keep this in sync with `Token::can_begin_literal_or_bool` excluding unary negation.
+    /// Keep this in sync with `Token::can_begin_literal_maybe_minus` excluding unary negation.
     pub fn from_token(token: &Token) -> Option<Lit> {
         match token.uninterpolate().kind {
             Ident(name, IdentIsRaw::No) if name.is_bool_lit() => Some(Lit::new(Bool, name, None)),
@@ -166,7 +167,7 @@ impl LitKind {
 
     pub fn descr(self) -> &'static str {
         match self {
-            Bool => panic!("literal token contains `Lit::Bool`"),
+            Bool => "boolean",
             Byte => "byte",
             Char => "char",
             Integer => "integer",
@@ -289,7 +290,7 @@ pub enum TokenKind {
     /// `:`
     Colon,
     /// `::`
-    ModSep,
+    PathSep,
     /// `->`
     RArrow,
     /// `<-`
@@ -392,7 +393,7 @@ impl TokenKind {
             BinOpEq(Shr) => (Gt, Ge),
             DotDot => (Dot, Dot),
             DotDotDot => (Dot, DotDot),
-            ModSep => (Colon, Colon),
+            PathSep => (Colon, Colon),
             RArrow => (BinOp(Minus), Gt),
             LArrow => (Lt, BinOp(Minus)),
             FatArrow => (Eq, Gt),
@@ -453,7 +454,9 @@ impl Token {
         match self.kind {
             Eq | Lt | Le | EqEq | Ne | Ge | Gt | AndAnd | OrOr | Not | Tilde | BinOp(_)
             | BinOpEq(_) | At | Dot | DotDot | DotDotDot | DotDotEq | Comma | Semi | Colon
-            | ModSep | RArrow | LArrow | FatArrow | Pound | Dollar | Question | SingleQuote => true,
+            | PathSep | RArrow | LArrow | FatArrow | Pound | Dollar | Question | SingleQuote => {
+                true
+            }
 
             OpenDelim(..) | CloseDelim(..) | Literal(..) | DocComment(..) | Ident(..)
             | Lifetime(..) | Interpolated(..) | Eof => false,
@@ -480,7 +483,7 @@ impl Token {
             // DotDotDot is no longer supported, but we need some way to display the error
             DotDot | DotDotDot | DotDotEq     | // range notation
             Lt | BinOp(Shl)                   | // associated path
-            ModSep                            | // global path
+            PathSep                            | // global path
             Lifetime(..)                      | // labeled loop
             Pound                             => true, // expression attributes
             Interpolated(ref nt) => matches!(&nt.0, NtLiteral(..) |
@@ -506,7 +509,7 @@ impl Token {
             // DotDotDot is no longer supported
             | DotDot | DotDotDot | DotDotEq      // ranges
             | Lt | BinOp(Shl)                    // associated path
-            | ModSep                    => true, // global path
+            | PathSep                    => true, // global path
             Interpolated(ref nt) => matches!(&nt.0, NtLiteral(..) |
                 NtPat(..)     |
                 NtBlock(..)   |
@@ -529,7 +532,7 @@ impl Token {
             Question                    | // maybe bound in trait object
             Lifetime(..)                | // lifetime bound in trait object
             Lt | BinOp(Shl)             | // associated path
-            ModSep                      => true, // global path
+            PathSep                      => true, // global path
             Interpolated(ref nt) => matches!(&nt.0, NtTy(..) | NtPath(..)),
             // For anonymous structs or unions, which only appear in specific positions
             // (type of struct fields or union fields), we don't consider them as regular types
@@ -663,7 +666,7 @@ impl Token {
     }
 
     /// Returns `true` if the token is an interpolated path.
-    fn is_path(&self) -> bool {
+    fn is_whole_path(&self) -> bool {
         if let Interpolated(nt) = &self.kind
             && let NtPath(..) = &nt.0
         {
@@ -707,9 +710,9 @@ impl Token {
     }
 
     pub fn is_path_start(&self) -> bool {
-        self == &ModSep
+        self == &PathSep
             || self.is_qpath_start()
-            || self.is_path()
+            || self.is_whole_path()
             || self.is_path_segment_keyword()
             || self.is_ident() && !self.is_reserved_ident()
     }
@@ -820,7 +823,7 @@ impl Token {
                 _ => return None,
             },
             Colon => match joint.kind {
-                Colon => ModSep,
+                Colon => PathSep,
                 _ => return None,
             },
             SingleQuote => match joint.kind {
@@ -829,7 +832,7 @@ impl Token {
             },
 
             Le | EqEq | Ne | Ge | AndAnd | OrOr | Tilde | BinOpEq(..) | At | DotDotDot
-            | DotDotEq | Comma | Semi | ModSep | RArrow | LArrow | FatArrow | Pound | Dollar
+            | DotDotEq | Comma | Semi | PathSep | RArrow | LArrow | FatArrow | Pound | Dollar
             | Question | OpenDelim(..) | CloseDelim(..) | Literal(..) | Ident(..)
             | Lifetime(..) | Interpolated(..) | DocComment(..) | Eof => return None,
         };
@@ -1020,7 +1023,7 @@ where
 }
 
 // Some types are used a lot. Make sure they don't unintentionally get bigger.
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+#[cfg(target_pointer_width = "64")]
 mod size_asserts {
     use super::*;
     use rustc_data_structures::static_assert_size;

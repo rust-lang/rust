@@ -6,7 +6,7 @@ use crate::ty::{Align, IndexedVal, Ty, VariantIdx};
 use crate::Error;
 use crate::Opaque;
 use std::fmt::{self, Debug};
-use std::num::NonZeroUsize;
+use std::num::NonZero;
 use std::ops::RangeInclusive;
 
 /// A function ABI definition.
@@ -133,7 +133,7 @@ pub enum FieldsShape {
     Primitive,
 
     /// All fields start at no offset. The `usize` is the field count.
-    Union(NonZeroUsize),
+    Union(NonZero<usize>),
 
     /// Array/vector-like placement, with all fields of identical types.
     Array { stride: Size, count: u64 },
@@ -383,7 +383,7 @@ impl WrappingRange {
             return Err(error!("Expected size <= 128 bits, but found {} instead", size.bits()));
         };
         if self.start <= max_value && self.end <= max_value {
-            Ok(self.start == 0 && max_value == self.end)
+            Ok(self.start == (self.end.wrapping_add(1) & max_value))
         } else {
             Err(error!("Range `{self:?}` out of bounds for size `{}` bits.", size.bits()))
         }

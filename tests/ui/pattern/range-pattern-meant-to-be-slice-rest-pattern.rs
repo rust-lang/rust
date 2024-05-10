@@ -11,7 +11,6 @@ fn main() {
         [_, ..tail] => println!("{tail}"),
         //~^ ERROR cannot find value `tail` in this scope
         //~| ERROR cannot find value `tail` in this scope
-        //~| ERROR exclusive range pattern syntax is experimental
     }
     match &[7, 8, 9][..] {
         [] => {}

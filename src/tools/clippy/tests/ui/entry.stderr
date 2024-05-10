@@ -214,5 +214,26 @@ LL +         v
 LL +     });
    |
 
-error: aborting due to 10 previous errors
+error: usage of `contains_key` followed by `insert` on a `HashMap`
+  --> tests/ui/entry.rs:184:5
+   |
+LL | /     if !map.contains_key(&1) {
+LL | |         let Some(1) = Some(2) else {
+LL | |             return None;
+LL | |         };
+LL | |         map.insert(1, 42);
+LL | |     }
+   | |_____^
+   |
+help: try
+   |
+LL ~     if let std::collections::hash_map::Entry::Vacant(e) = map.entry(1) {
+LL +         let Some(1) = Some(2) else {
+LL +             return None;
+LL +         };
+LL +         e.insert(42);
+LL +     }
+   |
+
+error: aborting due to 11 previous errors
 

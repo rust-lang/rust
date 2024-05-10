@@ -1,5 +1,6 @@
 //@ run-pass
 //@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
 //@[current] compile-flags: -C opt-level=0
 //@[next] compile-flags: -Znext-solver -C opt-level=0
 

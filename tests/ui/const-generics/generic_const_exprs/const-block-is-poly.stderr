@@ -1,8 +1,8 @@
 warning: the feature `generic_const_exprs` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/const-block-is-poly.rs:1:26
+  --> $DIR/const-block-is-poly.rs:1:12
    |
-LL | #![feature(inline_const, generic_const_exprs)]
-   |                          ^^^^^^^^^^^^^^^^^^^
+LL | #![feature(generic_const_exprs)]
+   |            ^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #76560 <https://github.com/rust-lang/rust/issues/76560> for more information
    = note: `#[warn(incomplete_features)]` on by default

@@ -8,8 +8,8 @@ LL |     return x;
    |
 help: consider assigning a value
    |
-LL |     let x: isize = 0;
-   |                  +++
+LL |     let x: isize = 42;
+   |                  ++++
 
 error: aborting due to 1 previous error
 

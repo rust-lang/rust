@@ -1,5 +1,5 @@
 use super::unsupported;
-use crate::ffi::{CStr, CString};
+use crate::ffi::CStr;
 use crate::io;
 use crate::num::NonZero;
 use crate::time::Duration;
@@ -22,10 +22,6 @@ impl Thread {
         // nope
     }
 
-    pub fn get_name() -> Option<CString> {
-        None
-    }
-
     pub fn sleep(_dur: Duration) {
         panic!("can't sleep");
     }
@@ -37,14 +33,4 @@ impl Thread {
 
 pub fn available_parallelism() -> io::Result<NonZero<usize>> {
     unsupported()
-}
-
-pub mod guard {
-    pub type Guard = !;
-    pub unsafe fn current() -> Option<Guard> {
-        None
-    }
-    pub unsafe fn init() -> Option<Guard> {
-        None
-    }
 }

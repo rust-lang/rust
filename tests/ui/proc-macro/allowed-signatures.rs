@@ -1,6 +1,7 @@
 //@ check-pass
 //@ force-host
 //@ no-prefer-dynamic
+//@ needs-unwind compiling proc macros with panic=abort causes a warning
 
 #![crate_type = "proc-macro"]
 #![allow(private_interfaces)]
@@ -9,7 +10,7 @@ use proc_macro::TokenStream;
 
 #[proc_macro]
 pub fn foo<T>(t: T) -> TokenStream {
-  TokenStream::new()
+    TokenStream::new()
 }
 
 trait Project {

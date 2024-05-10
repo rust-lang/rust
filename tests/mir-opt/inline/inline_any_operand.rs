@@ -1,4 +1,4 @@
-//@ compile-flags: -Z span_free_formats
+//@ compile-flags: -Z span_free_formats -C debuginfo=full
 
 // Tests that MIR inliner works for any operand
 

@@ -77,7 +77,7 @@ impl<'tcx> LateLintPass<'tcx> for MultipleUnsafeOpsPerBlock {
                 cx,
                 MULTIPLE_UNSAFE_OPS_PER_BLOCK,
                 block.span,
-                &format!(
+                format!(
                     "this `unsafe` block contains {} unsafe operations, expected only one",
                     unsafe_ops.len()
                 ),
@@ -109,7 +109,14 @@ fn collect_unsafe_exprs<'tcx>(
             ExprKind::Path(QPath::Resolved(
                 _,
                 hir::Path {
-                    res: Res::Def(DefKind::Static(Mutability::Mut), _),
+                    res:
+                        Res::Def(
+                            DefKind::Static {
+                                mutability: Mutability::Mut,
+                                ..
+                            },
+                            _,
+                        ),
                     ..
                 },
             )) => {
@@ -149,7 +156,13 @@ fn collect_unsafe_exprs<'tcx>(
                     ExprKind::Path(QPath::Resolved(
                         _,
                         hir::Path {
-                            res: Res::Def(DefKind::Static(Mutability::Mut), _),
+                            res: Res::Def(
+                                DefKind::Static {
+                                    mutability: Mutability::Mut,
+                                    ..
+                                },
+                                _
+                            ),
                             ..
                         }
                     ))

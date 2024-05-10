@@ -10,8 +10,11 @@ use crate::ty::{GenericArg, GenericArgKind, GenericArgsRef};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
+use rustc_macros::TypeVisitable;
 use rustc_target::spec::abi;
 use std::iter;
+
+use super::Pattern;
 
 pub type RelateResult<'tcx, T> = Result<T, TypeError<'tcx>>;
 
@@ -93,28 +96,6 @@ pub trait Relate<'tcx>: TypeFoldable<TyCtxt<'tcx>> + PartialEq + Copy {
 
 ///////////////////////////////////////////////////////////////////////////
 // Relate impls
-
-pub fn relate_type_and_mut<'tcx, R: TypeRelation<'tcx>>(
-    relation: &mut R,
-    a: ty::TypeAndMut<'tcx>,
-    b: ty::TypeAndMut<'tcx>,
-    base_ty: Ty<'tcx>,
-) -> RelateResult<'tcx, ty::TypeAndMut<'tcx>> {
-    debug!("{}.mts({:?}, {:?})", relation.tag(), a, b);
-    if a.mutbl != b.mutbl {
-        Err(TypeError::Mutability)
-    } else {
-        let mutbl = a.mutbl;
-        let (variance, info) = match mutbl {
-            hir::Mutability::Not => (ty::Covariant, ty::VarianceDiagInfo::None),
-            hir::Mutability::Mut => {
-                (ty::Invariant, ty::VarianceDiagInfo::Invariant { ty: base_ty, param_index: 0 })
-            }
-        };
-        let ty = relation.relate_with_variance(variance, info, a.ty, b.ty)?;
-        Ok(ty::TypeAndMut { ty, mutbl })
-    }
-}
 
 #[inline]
 pub fn relate_args_invariantly<'tcx, R: TypeRelation<'tcx>>(
@@ -373,6 +354,36 @@ impl<'tcx> Relate<'tcx> for Ty<'tcx> {
     }
 }
 
+impl<'tcx> Relate<'tcx> for Pattern<'tcx> {
+    #[inline]
+    fn relate<R: TypeRelation<'tcx>>(
+        relation: &mut R,
+        a: Self,
+        b: Self,
+    ) -> RelateResult<'tcx, Self> {
+        match (&*a, &*b) {
+            (
+                &ty::PatternKind::Range { start: start_a, end: end_a, include_end: inc_a },
+                &ty::PatternKind::Range { start: start_b, end: end_b, include_end: inc_b },
+            ) => {
+                // FIXME(pattern_types): make equal patterns equal (`0..=` is the same as `..=`).
+                let mut relate_opt_const = |a, b| match (a, b) {
+                    (None, None) => Ok(None),
+                    (Some(a), Some(b)) => relation.relate(a, b).map(Some),
+                    // FIXME(pattern_types): report a better error
+                    _ => Err(TypeError::Mismatch),
+                };
+                let start = relate_opt_const(start_a, start_b)?;
+                let end = relate_opt_const(end_a, end_b)?;
+                if inc_a != inc_b {
+                    todo!()
+                }
+                Ok(relation.tcx().mk_pat(ty::PatternKind::Range { start, end, include_end: inc_a }))
+            }
+        }
+    }
+}
+
 /// Relates `a` and `b` structurally, calling the relation for all nested values.
 /// Any semantic equality, e.g. of projections, and inference variables have to be
 /// handled by the caller.
@@ -465,17 +476,39 @@ pub fn structurally_relate_tys<'tcx, R: TypeRelation<'tcx>>(
             Ok(Ty::new_coroutine_closure(tcx, a_id, args))
         }
 
-        (&ty::RawPtr(a_mt), &ty::RawPtr(b_mt)) => {
-            let mt = relate_type_and_mut(relation, a_mt, b_mt, a)?;
-            Ok(Ty::new_ptr(tcx, mt))
+        (&ty::RawPtr(a_ty, a_mutbl), &ty::RawPtr(b_ty, b_mutbl)) => {
+            if a_mutbl != b_mutbl {
+                return Err(TypeError::Mutability);
+            }
+
+            let (variance, info) = match a_mutbl {
+                hir::Mutability::Not => (ty::Covariant, ty::VarianceDiagInfo::None),
+                hir::Mutability::Mut => {
+                    (ty::Invariant, ty::VarianceDiagInfo::Invariant { ty: a, param_index: 0 })
+                }
+            };
+
+            let ty = relation.relate_with_variance(variance, info, a_ty, b_ty)?;
+
+            Ok(Ty::new_ptr(tcx, ty, a_mutbl))
         }
 
         (&ty::Ref(a_r, a_ty, a_mutbl), &ty::Ref(b_r, b_ty, b_mutbl)) => {
+            if a_mutbl != b_mutbl {
+                return Err(TypeError::Mutability);
+            }
+
+            let (variance, info) = match a_mutbl {
+                hir::Mutability::Not => (ty::Covariant, ty::VarianceDiagInfo::None),
+                hir::Mutability::Mut => {
+                    (ty::Invariant, ty::VarianceDiagInfo::Invariant { ty: a, param_index: 0 })
+                }
+            };
+
             let r = relation.relate(a_r, b_r)?;
-            let a_mt = ty::TypeAndMut { ty: a_ty, mutbl: a_mutbl };
-            let b_mt = ty::TypeAndMut { ty: b_ty, mutbl: b_mutbl };
-            let mt = relate_type_and_mut(relation, a_mt, b_mt, a)?;
-            Ok(Ty::new_ref(tcx, r, mt))
+            let ty = relation.relate_with_variance(variance, info, a_ty, b_ty)?;
+
+            Ok(Ty::new_ref(tcx, r, ty, a_mutbl))
         }
 
         (&ty::Array(a_t, sz_a), &ty::Array(b_t, sz_b)) => {
@@ -531,6 +564,12 @@ pub fn structurally_relate_tys<'tcx, R: TypeRelation<'tcx>>(
             let alias_ty = relation.relate(a_data, b_data)?;
             assert_eq!(a_kind, b_kind);
             Ok(Ty::new_alias(tcx, a_kind, alias_ty))
+        }
+
+        (&ty::Pat(a_ty, a_pat), &ty::Pat(b_ty, b_pat)) => {
+            let ty = relation.relate(a_ty, b_ty)?;
+            let pat = relation.relate(a_pat, b_pat)?;
+            Ok(Ty::new_pat(tcx, ty, pat))
         }
 
         _ => Err(TypeError::Sorts(expected_found(a, b))),
@@ -769,12 +808,12 @@ impl<'tcx> Relate<'tcx> for GenericArg<'tcx> {
     }
 }
 
-impl<'tcx> Relate<'tcx> for ty::ImplPolarity {
+impl<'tcx> Relate<'tcx> for ty::PredicatePolarity {
     fn relate<R: TypeRelation<'tcx>>(
         _relation: &mut R,
-        a: ty::ImplPolarity,
-        b: ty::ImplPolarity,
-    ) -> RelateResult<'tcx, ty::ImplPolarity> {
+        a: ty::PredicatePolarity,
+        b: ty::PredicatePolarity,
+    ) -> RelateResult<'tcx, ty::PredicatePolarity> {
         if a != b { Err(TypeError::PolarityMismatch(expected_found(a, b))) } else { Ok(a) }
     }
 }

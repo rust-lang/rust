@@ -7,6 +7,15 @@ LL |     drop(foo);
    |          --- value moved here
 LL |     match foo {
    |     ^^^^^^^^^ value used here after move
+   |
+note: if `X` implemented `Clone`, you could clone the value
+  --> $DIR/issue-17385.rs:1:1
+   |
+LL | struct X(isize);
+   | ^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     drop(foo);
+   |          --- you could clone this value
 
 error[E0382]: use of moved value: `e`
   --> $DIR/issue-17385.rs:25:11
@@ -17,6 +26,15 @@ LL |     drop(e);
    |          - value moved here
 LL |     match e {
    |           ^ value used here after move
+   |
+note: if `Enum` implemented `Clone`, you could clone the value
+  --> $DIR/issue-17385.rs:3:1
+   |
+LL | enum Enum {
+   | ^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     drop(e);
+   |          - you could clone this value
 
 error: aborting due to 2 previous errors
 

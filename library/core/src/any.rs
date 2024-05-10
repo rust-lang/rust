@@ -40,10 +40,10 @@
 //!
 //! ## Examples
 //!
-//! Consider a situation where we want to log out a value passed to a function.
-//! We know the value we're working on implements Debug, but we don't know its
+//! Consider a situation where we want to log a value passed to a function.
+//! We know the value we're working on implements `Debug`, but we don't know its
 //! concrete type. We want to give special treatment to certain types: in this
-//! case printing out the length of String values prior to their value.
+//! case printing out the length of `String` values prior to their value.
 //! We don't know the concrete type of our value at compile time, so we need to
 //! use runtime reflection instead.
 //!
@@ -51,7 +51,7 @@
 //! use std::fmt::Debug;
 //! use std::any::Any;
 //!
-//! // Logger function for any type that implements Debug.
+//! // Logger function for any type that implements `Debug`.
 //! fn log<T: Any + Debug>(value: &T) {
 //!     let value_any = value as &dyn Any;
 //!

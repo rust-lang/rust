@@ -6,7 +6,8 @@ use gccjit::{
 use rustc_codegen_ssa::base::wants_msvc_seh;
 use rustc_codegen_ssa::errors as ssa_errors;
 use rustc_codegen_ssa::traits::{BackendTypes, BaseTypeMethods, MiscMethods};
-use rustc_data_structures::base_n;
+use rustc_data_structures::base_n::ToBaseN;
+use rustc_data_structures::base_n::ALPHANUMERIC_ONLY;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_middle::mir::mono::CodegenUnit;
 use rustc_middle::span_bug;
@@ -20,7 +21,7 @@ use rustc_span::{source_map::respan, Span};
 use rustc_target::abi::{
     call::FnAbi, HasDataLayout, PointeeInfo, Size, TargetDataLayout, VariantIdx,
 };
-use rustc_target::spec::{HasTargetSpec, Target, TlsModel};
+use rustc_target::spec::{HasTargetSpec, HasWasmCAbiOpt, Target, TlsModel, WasmCAbi};
 
 use crate::callee::get_fn;
 use crate::common::SignType;
@@ -110,6 +111,7 @@ pub struct CodegenCx<'gcc, 'tcx> {
     local_gen_sym_counter: Cell<usize>,
 
     eh_personality: Cell<Option<RValue<'gcc>>>,
+    #[cfg(feature="master")]
     pub rust_try_fn: Cell<Option<(Type<'gcc>, Function<'gcc>)>>,
 
     pub pointee_infos: RefCell<FxHashMap<(Ty<'tcx>, Size), Option<PointeeInfo>>>,
@@ -121,6 +123,7 @@ pub struct CodegenCx<'gcc, 'tcx> {
     /// FIXME(antoyo): fix the rustc API to avoid having this hack.
     pub structs_as_pointer: RefCell<FxHashSet<RValue<'gcc>>>,
 
+    #[cfg(feature="master")]
     pub cleanup_blocks: RefCell<FxHashSet<Block<'gcc>>>,
 }
 
@@ -325,9 +328,11 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             struct_types: Default::default(),
             local_gen_sym_counter: Cell::new(0),
             eh_personality: Cell::new(None),
+            #[cfg(feature="master")]
             rust_try_fn: Cell::new(None),
             pointee_infos: Default::default(),
             structs_as_pointer: Default::default(),
+            #[cfg(feature="master")]
             cleanup_blocks: Default::default(),
         };
         // TODO(antoyo): instead of doing this, add SsizeT to libgccjit.
@@ -553,6 +558,12 @@ impl<'gcc, 'tcx> HasTargetSpec for CodegenCx<'gcc, 'tcx> {
     }
 }
 
+impl<'gcc, 'tcx> HasWasmCAbiOpt for CodegenCx<'gcc, 'tcx> {
+    fn wasm_c_abi_opt(&self) -> WasmCAbi {
+        self.tcx.sess.opts.unstable_opts.wasm_c_abi
+    }
+}
+
 impl<'gcc, 'tcx> LayoutOfHelpers<'tcx> for CodegenCx<'gcc, 'tcx> {
     type LayoutOfResult = TyAndLayout<'tcx>;
 
@@ -611,7 +622,7 @@ impl<'b, 'tcx> CodegenCx<'b, 'tcx> {
         let mut name = String::with_capacity(prefix.len() + 6);
         name.push_str(prefix);
         name.push_str(".");
-        base_n::push_str(idx as u128, base_n::ALPHANUMERIC_ONLY, &mut name);
+        name.push_str(&(idx as u64).to_base(ALPHANUMERIC_ONLY));
         name
     }
 }

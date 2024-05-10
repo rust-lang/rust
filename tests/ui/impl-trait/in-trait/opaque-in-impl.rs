@@ -1,7 +1,5 @@
 //@ check-pass
 
-#![allow(incomplete_features)]
-
 use std::fmt::Debug;
 
 trait Foo {

@@ -2,7 +2,7 @@ error[E0277]: `Src` cannot be safely transmuted into `Unexpected`
   --> $DIR/should_respect_endianness.rs:35:36
    |
 LL |     assert::is_transmutable::<Src, Unexpected>();
-   |                                    ^^^^^^^^^^ At least one value of `Src` isn't a bit-valid value of `Unexpected`
+   |                                    ^^^^^^^^^^ at least one value of `Src` isn't a bit-valid value of `Unexpected`
    |
 note: required by a bound in `is_transmutable`
   --> $DIR/should_respect_endianness.rs:13:14

@@ -10,7 +10,7 @@ LL |     dyn_star_foreign::require_dyn_star_display(1usize);
                       found type `usize`
    = help: `usize` implements `Display`, `#[feature(dyn_star)]` is likely not enabled; that feature it is currently incomplete
 note: function defined here
-  --> $DIR/auxiliary/dyn-star-foreign.rs:6:8
+  --> $DIR/auxiliary/dyn-star-foreign.rs:5:8
    |
 LL | pub fn require_dyn_star_display(_: dyn* Display) {}
    |        ^^^^^^^^^^^^^^^^^^^^^^^^

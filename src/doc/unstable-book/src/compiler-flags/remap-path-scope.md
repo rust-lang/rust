@@ -10,11 +10,9 @@ This flag accepts a comma-separated list of values and may be specified multiple
 
 - `macro` - apply remappings to the expansion of `std::file!()` macro. This is where paths in embedded panic messages come from
 - `diagnostics` - apply remappings to printed compiler diagnostics
-- `unsplit-debuginfo` - apply remappings to debug information only when they are written to compiled executables or libraries, but not when they are in split debuginfo files
-- `split-debuginfo` - apply remappings to debug information only when they are written to split debug information files, but not in compiled executables or libraries
-- `split-debuginfo-path` - apply remappings to the paths pointing to split debug information files. Does nothing when these files are not generated.
-- `object` - an alias for `macro,unsplit-debuginfo,split-debuginfo-path`. This ensures all paths in compiled executables or libraries are remapped, but not elsewhere.
-- `all` and `true` - an alias for all of the above, also equivalent to supplying only `--remap-path-prefix` without `--remap-path-scope`.
+- `debuginfo` - apply remappings to debug informations
+- `object` - apply remappings to all paths in compiled executables or libraries, but not elsewhere. Currently an alias for `macro,debuginfo`.
+- `all` - an alias for all of the above, also equivalent to supplying only `--remap-path-prefix` without `--remap-path-scope`.
 
 ## Example
 ```sh

@@ -25,6 +25,7 @@ impl Foo for C {
 struct Private;
 impl Foo for Private {
     fn bar() -> () {}
+    //~^ ERROR impl method signature does not match trait method signature
 }
 
 pub trait Arg<A> {
@@ -32,6 +33,7 @@ pub trait Arg<A> {
 }
 impl Arg<Private> for A {
     fn bar() -> () {}
+    //~^ ERROR impl method signature does not match trait method signature
 }
 
 pub trait Late {
@@ -52,6 +54,7 @@ mod unreachable {
     struct E;
     impl UnreachablePub for E {
         fn bar() {}
+        //~^ ERROR impl method signature does not match trait method signature
     }
 }
 

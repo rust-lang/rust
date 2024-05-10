@@ -4,22 +4,22 @@ use smallvec::SmallVec;
 use std::{
     cmp::Ordering,
     fmt::Debug,
-    ops::{Index, IndexMut},
+    ops::{Index, Shr},
 };
+
+use super::data_race::NaReadType;
 
 /// A vector clock index, this is associated with a thread id
 /// but in some cases one vector index may be shared with
 /// multiple thread ids if it's safe to do so.
 #[derive(Clone, Copy, Debug, PartialOrd, Ord, PartialEq, Eq, Hash)]
-pub struct VectorIdx(u32);
+pub(super) struct VectorIdx(u32);
 
 impl VectorIdx {
     #[inline(always)]
-    pub fn to_u32(self) -> u32 {
+    fn to_u32(self) -> u32 {
         self.0
     }
-
-    pub const MAX_INDEX: VectorIdx = VectorIdx(u32::MAX);
 }
 
 impl Idx for VectorIdx {
@@ -49,22 +49,60 @@ const SMALL_VECTOR: usize = 4;
 /// a 32-bit unsigned integer which is the actual timestamp, and a `Span`
 /// so that diagnostics can report what code was responsible for an operation.
 #[derive(Clone, Copy, Debug)]
-pub struct VTimestamp {
-    time: u32,
+pub(super) struct VTimestamp {
+    /// The lowest bit indicates read type, the rest is the time.
+    /// `1` indicates a retag read, `0` a regular read.
+    time_and_read_type: u32,
     pub span: Span,
 }
 
 impl VTimestamp {
-    pub const ZERO: VTimestamp = VTimestamp { time: 0, span: DUMMY_SP };
+    pub const ZERO: VTimestamp = VTimestamp::new(0, NaReadType::Read, DUMMY_SP);
 
-    pub fn span_data(&self) -> SpanData {
+    #[inline]
+    const fn encode_time_and_read_type(time: u32, read_type: NaReadType) -> u32 {
+        let read_type_bit = match read_type {
+            NaReadType::Read => 0,
+            NaReadType::Retag => 1,
+        };
+        // Put the `read_type` in the lowest bit and `time` in the rest
+        read_type_bit | time.checked_mul(2).expect("Vector clock overflow")
+    }
+
+    #[inline]
+    const fn new(time: u32, read_type: NaReadType, span: Span) -> Self {
+        Self { time_and_read_type: Self::encode_time_and_read_type(time, read_type), span }
+    }
+
+    #[inline]
+    fn time(&self) -> u32 {
+        self.time_and_read_type.shr(1)
+    }
+
+    #[inline]
+    fn set_time(&mut self, time: u32) {
+        self.time_and_read_type = Self::encode_time_and_read_type(time, self.read_type());
+    }
+
+    #[inline]
+    pub(super) fn read_type(&self) -> NaReadType {
+        if self.time_and_read_type & 1 == 0 { NaReadType::Read } else { NaReadType::Retag }
+    }
+
+    #[inline]
+    pub(super) fn set_read_type(&mut self, read_type: NaReadType) {
+        self.time_and_read_type = Self::encode_time_and_read_type(self.time(), read_type);
+    }
+
+    #[inline]
+    pub(super) fn span_data(&self) -> SpanData {
         self.span.data()
     }
 }
 
 impl PartialEq for VTimestamp {
     fn eq(&self, other: &Self) -> bool {
-        self.time == other.time
+        self.time() == other.time()
     }
 }
 
@@ -78,7 +116,7 @@ impl PartialOrd for VTimestamp {
 
 impl Ord for VTimestamp {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.time.cmp(&other.time)
+        self.time().cmp(&other.time())
     }
 }
 
@@ -98,7 +136,7 @@ pub struct VClock(SmallVec<[VTimestamp; SMALL_VECTOR]>);
 impl VClock {
     /// Create a new vector-clock containing all zeros except
     /// for a value at the given index
-    pub fn new_with_index(index: VectorIdx, timestamp: VTimestamp) -> VClock {
+    pub(super) fn new_with_index(index: VectorIdx, timestamp: VTimestamp) -> VClock {
         let len = index.index() + 1;
         let mut vec = smallvec::smallvec![VTimestamp::ZERO; len];
         vec[index.index()] = timestamp;
@@ -107,12 +145,18 @@ impl VClock {
 
     /// Load the internal timestamp slice in the vector clock
     #[inline]
-    pub fn as_slice(&self) -> &[VTimestamp] {
+    pub(super) fn as_slice(&self) -> &[VTimestamp] {
+        debug_assert!(!self.0.last().is_some_and(|t| t.time() == 0));
         self.0.as_slice()
     }
 
+    #[inline]
+    pub(super) fn index_mut(&mut self, index: VectorIdx) -> &mut VTimestamp {
+        self.0.as_mut_slice().get_mut(index.to_u32() as usize).unwrap()
+    }
+
     /// Get a mutable slice to the internal vector with minimum `min_len`
-    /// elements, to preserve invariants this vector must modify
+    /// elements. To preserve invariants, the caller must modify
     /// the `min_len`-1 nth element to a non-zero value
     #[inline]
     fn get_mut_with_min_len(&mut self, min_len: usize) -> &mut [VTimestamp] {
@@ -126,11 +170,11 @@ impl VClock {
     /// Increment the vector clock at a known index
     /// this will panic if the vector index overflows
     #[inline]
-    pub fn increment_index(&mut self, idx: VectorIdx, current_span: Span) {
+    pub(super) fn increment_index(&mut self, idx: VectorIdx, current_span: Span) {
         let idx = idx.index();
         let mut_slice = self.get_mut_with_min_len(idx + 1);
         let idx_ref = &mut mut_slice[idx];
-        idx_ref.time = idx_ref.time.checked_add(1).expect("Vector clock overflow");
+        idx_ref.set_time(idx_ref.time().checked_add(1).expect("Vector clock overflow"));
         if !current_span.is_dummy() {
             idx_ref.span = current_span;
         }
@@ -150,27 +194,35 @@ impl VClock {
         }
     }
 
-    /// Set the element at the current index of the vector
-    pub fn set_at_index(&mut self, other: &Self, idx: VectorIdx) {
+    /// Set the element at the current index of the vector. May only increase elements.
+    pub(super) fn set_at_index(&mut self, other: &Self, idx: VectorIdx) {
+        let new_timestamp = other[idx];
+        // Setting to 0 is different, since the last element cannot be 0.
+        if new_timestamp.time() == 0 {
+            if idx.index() >= self.0.len() {
+                // This index does not even exist yet in our clock. Just do nothing.
+                return;
+            }
+            // This changes an existing element. Since it can only increase, that
+            // can never make the last element 0.
+        }
+
         let mut_slice = self.get_mut_with_min_len(idx.index() + 1);
+        let mut_timestamp = &mut mut_slice[idx.index()];
 
-        let prev_span = mut_slice[idx.index()].span;
+        let prev_span = mut_timestamp.span;
 
-        mut_slice[idx.index()] = other[idx];
+        assert!(*mut_timestamp <= new_timestamp, "set_at_index: may only increase the timestamp");
+        *mut_timestamp = new_timestamp;
 
-        let span = &mut mut_slice[idx.index()].span;
+        let span = &mut mut_timestamp.span;
         *span = span.substitute_dummy(prev_span);
     }
 
     /// Set the vector to the all-zero vector
     #[inline]
-    pub fn set_zero_vector(&mut self) {
+    pub(super) fn set_zero_vector(&mut self) {
         self.0.clear();
-    }
-
-    /// Return if this vector is the all-zero vector
-    pub fn is_zero_vector(&self) -> bool {
-        self.0.is_empty()
     }
 }
 
@@ -367,20 +419,13 @@ impl Index<VectorIdx> for VClock {
     }
 }
 
-impl IndexMut<VectorIdx> for VClock {
-    #[inline]
-    fn index_mut(&mut self, index: VectorIdx) -> &mut VTimestamp {
-        self.0.as_mut_slice().get_mut(index.to_u32() as usize).unwrap()
-    }
-}
-
 /// Test vector clock ordering operations
 ///  data-race detection is tested in the external
 ///  test suite
 #[cfg(test)]
 mod tests {
-
     use super::{VClock, VTimestamp, VectorIdx};
+    use crate::concurrency::data_race::NaReadType;
     use rustc_span::DUMMY_SP;
     use std::cmp::Ordering;
 
@@ -448,7 +493,13 @@ mod tests {
         while let Some(0) = slice.last() {
             slice = &slice[..slice.len() - 1]
         }
-        VClock(slice.iter().copied().map(|time| VTimestamp { time, span: DUMMY_SP }).collect())
+        VClock(
+            slice
+                .iter()
+                .copied()
+                .map(|time| VTimestamp::new(time, NaReadType::Read, DUMMY_SP))
+                .collect(),
+        )
     }
 
     fn assert_order(l: &[u32], r: &[u32], o: Option<Ordering>) {
@@ -506,5 +557,16 @@ mod tests {
             r >= l,
             "Invalid alt (>=):\n l: {l:?}\n r: {r:?}"
         );
+    }
+
+    #[test]
+    fn set_index_to_0() {
+        let mut clock1 = from_slice(&[0, 1, 2, 3]);
+        let clock2 = from_slice(&[0, 2, 3, 4, 0, 5]);
+        // Naively, this would extend clock1 with a new index and set it to 0, making
+        // the last index 0. Make sure that does not happen.
+        clock1.set_at_index(&clock2, VectorIdx(4));
+        // This must not have made the last element 0.
+        assert!(clock1.0.last().unwrap().time() != 0);
     }
 }

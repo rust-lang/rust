@@ -102,6 +102,7 @@ fn fn_sig_for_fn_abi<'tcx>(
             )
         }
         ty::CoroutineClosure(def_id, args) => {
+            let coroutine_ty = Ty::new_coroutine_closure(tcx, def_id, args);
             let sig = args.as_coroutine_closure().coroutine_closure_sig();
             let bound_vars = tcx.mk_bound_variable_kinds_from_iter(
                 sig.bound_vars().iter().chain(iter::once(ty::BoundVariableKind::Region(ty::BrEnv))),
@@ -111,18 +112,28 @@ fn fn_sig_for_fn_abi<'tcx>(
                 kind: ty::BoundRegionKind::BrEnv,
             };
             let env_region = ty::Region::new_bound(tcx, ty::INNERMOST, br);
-
             // When this `CoroutineClosure` comes from a `ConstructCoroutineInClosureShim`,
             // make sure we respect the `target_kind` in that shim.
             // FIXME(async_closures): This shouldn't be needed, and we should be populating
             // a separate def-id for these bodies.
-            let mut kind = args.as_coroutine_closure().kind();
-            if let InstanceDef::ConstructCoroutineInClosureShim { target_kind, .. } = instance.def {
-                kind = target_kind;
-            }
+            let mut coroutine_kind = args.as_coroutine_closure().kind();
 
             let env_ty =
-                tcx.closure_env_ty(Ty::new_coroutine_closure(tcx, def_id, args), kind, env_region);
+                if let InstanceDef::ConstructCoroutineInClosureShim { receiver_by_ref, .. } =
+                    instance.def
+                {
+                    coroutine_kind = ty::ClosureKind::FnOnce;
+
+                    // Implementations of `FnMut` and `Fn` for coroutine-closures
+                    // still take their receiver by (mut) ref.
+                    if receiver_by_ref {
+                        Ty::new_mut_ref(tcx, tcx.lifetimes.re_erased, coroutine_ty)
+                    } else {
+                        coroutine_ty
+                    }
+                } else {
+                    tcx.closure_env_ty(coroutine_ty, coroutine_kind, env_region)
+                };
 
             let sig = sig.skip_binder();
             ty::Binder::bind_with_vars(
@@ -132,7 +143,7 @@ fn fn_sig_for_fn_abi<'tcx>(
                         tcx,
                         args.as_coroutine_closure().parent_args(),
                         tcx.coroutine_for_closure(def_id),
-                        kind,
+                        coroutine_kind,
                         env_region,
                         args.as_coroutine_closure().tupled_upvars_ty(),
                         args.as_coroutine_closure().coroutine_captures_by_ref_ty(),
@@ -161,7 +172,7 @@ fn fn_sig_for_fn_abi<'tcx>(
             // make sure we respect the `target_kind` in that shim.
             // FIXME(async_closures): This shouldn't be needed, and we should be populating
             // a separate def-id for these bodies.
-            if let InstanceDef::CoroutineKindShim { target_kind, .. } = instance.def {
+            if let InstanceDef::CoroutineKindShim { .. } = instance.def {
                 // Grab the parent coroutine-closure. It has the same args for the purposes
                 // of instantiation, so this will be okay to do.
                 let ty::CoroutineClosure(_, coroutine_closure_args) = *tcx
@@ -181,7 +192,7 @@ fn fn_sig_for_fn_abi<'tcx>(
                             tcx,
                             coroutine_closure_args.parent_args(),
                             did,
-                            target_kind,
+                            ty::ClosureKind::FnOnce,
                             tcx.lifetimes.re_erased,
                             coroutine_closure_args.tupled_upvars_ty(),
                             coroutine_closure_args.coroutine_captures_by_ref_ty(),
@@ -311,7 +322,7 @@ fn fn_sig_for_fn_abi<'tcx>(
 #[inline]
 fn conv_from_spec_abi(tcx: TyCtxt<'_>, abi: SpecAbi, c_variadic: bool) -> Conv {
     use rustc_target::spec::abi::Abi::*;
-    match tcx.sess.target.adjust_abi(abi, c_variadic) {
+    match tcx.sess.target.adjust_abi(&tcx, abi, c_variadic) {
         RustIntrinsic | Rust | RustCall => Conv::Rust,
 
         // This is intentionally not using `Conv::Cold`, as that has to preserve
@@ -616,7 +627,7 @@ fn fn_abi_new_uncached<'tcx>(
         let is_return = arg_idx.is_none();
         let is_drop_target = is_drop_in_place && arg_idx == Some(0);
         let drop_target_pointee = is_drop_target.then(|| match ty.kind() {
-            ty::RawPtr(ty::TypeAndMut { ty, .. }) => *ty,
+            ty::RawPtr(ty, _) => *ty,
             _ => bug!("argument to drop_in_place is not a raw ptr: {:?}", ty),
         });
 
@@ -843,7 +854,7 @@ fn make_thin_self_ptr<'tcx>(
     // we now have a type like `*mut RcBox<dyn Trait>`
     // change its layout to that of `*mut ()`, a thin pointer, but keep the same type
     // this is understood as a special case elsewhere in the compiler
-    let unit_ptr_ty = Ty::new_mut_ptr(tcx, Ty::new_unit(tcx));
+    let unit_ptr_ty = Ty::new_mut_ptr(tcx, tcx.types.unit);
 
     TyAndLayout {
         ty: fat_pointer_ty,

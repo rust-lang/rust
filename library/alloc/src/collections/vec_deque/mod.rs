@@ -113,9 +113,13 @@ impl<T: Clone, A: Allocator + Clone> Clone for VecDeque<T, A> {
         deq
     }
 
-    fn clone_from(&mut self, other: &Self) {
+    /// Overwrites the contents of `self` with a clone of the contents of `source`.
+    ///
+    /// This method is preferred over simply assigning `source.clone()` to `self`,
+    /// as it avoids reallocation if possible.
+    fn clone_from(&mut self, source: &Self) {
         self.clear();
-        self.extend(other.iter().cloned());
+        self.extend(source.iter().cloned());
     }
 }
 
@@ -1614,7 +1618,10 @@ impl<T, A: Allocator> VecDeque<T, A> {
             let old_head = self.head;
             self.head = self.to_physical_idx(1);
             self.len -= 1;
-            Some(unsafe { self.buffer_read(old_head) })
+            unsafe {
+                core::hint::assert_unchecked(self.len < self.capacity());
+                Some(self.buffer_read(old_head))
+            }
         }
     }
 
@@ -1638,7 +1645,10 @@ impl<T, A: Allocator> VecDeque<T, A> {
             None
         } else {
             self.len -= 1;
-            Some(unsafe { self.buffer_read(self.to_physical_idx(self.len)) })
+            unsafe {
+                core::hint::assert_unchecked(self.len < self.capacity());
+                Some(self.buffer_read(self.to_physical_idx(self.len)))
+            }
         }
     }
 
@@ -2087,7 +2097,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
         // buffer without it being full emerge
         debug_assert!(self.is_full());
         let old_cap = self.capacity();
-        self.buf.reserve_for_push(old_cap);
+        self.buf.grow_one();
         unsafe {
             self.handle_capacity_increase(old_cap);
         }
@@ -2464,8 +2474,10 @@ impl<T, A: Allocator> VecDeque<T, A> {
     ///
     /// let mut deque: VecDeque<_> = [0, 1, 1, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55].into();
     /// let num = 42;
-    /// let idx = deque.partition_point(|&x| x < num);
-    /// // The above is equivalent to `let idx = deque.binary_search(&num).unwrap_or_else(|x| x);`
+    /// let idx = deque.partition_point(|&x| x <= num);
+    /// // If `num` is unique, `s.partition_point(|&x| x < num)` (with `<`) is equivalent to
+    /// // `s.binary_search(&num).unwrap_or_else(|x| x)`, but using `<=` may allow `insert`
+    /// // to shift less elements.
     /// deque.insert(idx, num);
     /// assert_eq!(deque, &[0, 1, 1, 1, 1, 2, 3, 5, 8, 13, 21, 34, 42, 55]);
     /// ```

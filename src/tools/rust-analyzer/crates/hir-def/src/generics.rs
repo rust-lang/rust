@@ -3,13 +3,15 @@
 //! generic parameters. See also the `Generics` type and the `generics_of` query
 //! in rustc.
 
+use std::ops;
+
 use either::Either;
 use hir_expand::{
     name::{AsName, Name},
     ExpandResult,
 };
 use intern::Interned;
-use la_arena::{Arena, Idx};
+use la_arena::Arena;
 use once_cell::unsync::Lazy;
 use stdx::impl_from;
 use syntax::ast::{self, HasGenericParams, HasName, HasTypeBounds};
@@ -22,13 +24,15 @@ use crate::{
     lower::LowerCtx,
     nameres::{DefMap, MacroSubNs},
     type_ref::{ConstRef, LifetimeRef, TypeBound, TypeRef},
-    AdtId, ConstParamId, GenericDefId, HasModule, ItemTreeLoc, LocalTypeOrConstParamId, Lookup,
-    TypeOrConstParamId, TypeParamId,
+    AdtId, ConstParamId, GenericDefId, HasModule, ItemTreeLoc, LifetimeParamId,
+    LocalLifetimeParamId, LocalTypeOrConstParamId, Lookup, TypeOrConstParamId, TypeParamId,
 };
 
 /// Data about a generic type parameter (to a function, struct, impl, ...).
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub struct TypeParamData {
+    /// [`None`] only if the type ref is an [`TypeRef::ImplTrait`]. FIXME: Might be better to just
+    /// make it always be a value, giving impl trait a special name.
     pub name: Option<Name>,
     pub default: Option<Interned<TypeRef>>,
     pub provenance: TypeParamProvenance,
@@ -102,12 +106,72 @@ impl TypeOrConstParamData {
 
 impl_from!(TypeParamData, ConstParamData for TypeOrConstParamData);
 
+#[derive(Clone, PartialEq, Eq, Debug, Hash)]
+pub enum GenericParamData {
+    TypeParamData(TypeParamData),
+    ConstParamData(ConstParamData),
+    LifetimeParamData(LifetimeParamData),
+}
+
+impl GenericParamData {
+    pub fn name(&self) -> Option<&Name> {
+        match self {
+            GenericParamData::TypeParamData(it) => it.name.as_ref(),
+            GenericParamData::ConstParamData(it) => Some(&it.name),
+            GenericParamData::LifetimeParamData(it) => Some(&it.name),
+        }
+    }
+
+    pub fn type_param(&self) -> Option<&TypeParamData> {
+        match self {
+            GenericParamData::TypeParamData(it) => Some(it),
+            _ => None,
+        }
+    }
+
+    pub fn const_param(&self) -> Option<&ConstParamData> {
+        match self {
+            GenericParamData::ConstParamData(it) => Some(it),
+            _ => None,
+        }
+    }
+
+    pub fn lifetime_param(&self) -> Option<&LifetimeParamData> {
+        match self {
+            GenericParamData::LifetimeParamData(it) => Some(it),
+            _ => None,
+        }
+    }
+}
+
+impl_from!(TypeParamData, ConstParamData, LifetimeParamData for GenericParamData);
+
+pub enum GenericParamDataRef<'a> {
+    TypeParamData(&'a TypeParamData),
+    ConstParamData(&'a ConstParamData),
+    LifetimeParamData(&'a LifetimeParamData),
+}
+
 /// Data about the generic parameters of a function, struct, impl, etc.
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub struct GenericParams {
     pub type_or_consts: Arena<TypeOrConstParamData>,
     pub lifetimes: Arena<LifetimeParamData>,
     pub where_predicates: Box<[WherePredicate]>,
+}
+
+impl ops::Index<LocalTypeOrConstParamId> for GenericParams {
+    type Output = TypeOrConstParamData;
+    fn index(&self, index: LocalTypeOrConstParamId) -> &TypeOrConstParamData {
+        &self.type_or_consts[index]
+    }
+}
+
+impl ops::Index<LocalLifetimeParamId> for GenericParams {
+    type Output = LifetimeParamData;
+    fn index(&self, index: LocalLifetimeParamId) -> &LifetimeParamData {
+        &self.lifetimes[index]
+    }
 }
 
 /// A single predicate from a where clause, i.e. `where Type: Trait`. Combined
@@ -151,7 +215,7 @@ impl GenericParamsCollector {
         lower_ctx: &LowerCtx<'_>,
         node: &dyn HasGenericParams,
         add_param_attrs: impl FnMut(
-            Either<Idx<TypeOrConstParamData>, Idx<LifetimeParamData>>,
+            Either<LocalTypeOrConstParamId, LocalLifetimeParamId>,
             ast::GenericParam,
         ),
     ) {
@@ -179,7 +243,7 @@ impl GenericParamsCollector {
         lower_ctx: &LowerCtx<'_>,
         params: ast::GenericParamList,
         mut add_param_attrs: impl FnMut(
-            Either<Idx<TypeOrConstParamData>, Idx<LifetimeParamData>>,
+            Either<LocalTypeOrConstParamId, LocalLifetimeParamId>,
             ast::GenericParam,
         ),
     ) {
@@ -358,11 +422,27 @@ impl GenericParamsCollector {
 }
 
 impl GenericParams {
+    /// Number of Generic parameters (type_or_consts + lifetimes)
+    pub fn len(&self) -> usize {
+        self.type_or_consts.len() + self.lifetimes.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
     /// Iterator of type_or_consts field
-    pub fn iter(
+    pub fn iter_type_or_consts(
         &self,
-    ) -> impl DoubleEndedIterator<Item = (Idx<TypeOrConstParamData>, &TypeOrConstParamData)> {
+    ) -> impl DoubleEndedIterator<Item = (LocalTypeOrConstParamId, &TypeOrConstParamData)> {
         self.type_or_consts.iter()
+    }
+
+    /// Iterator of lifetimes field
+    pub fn iter_lt(
+        &self,
+    ) -> impl DoubleEndedIterator<Item = (LocalLifetimeParamId, &LifetimeParamData)> {
+        self.lifetimes.iter()
     }
 
     pub(crate) fn generic_params_query(
@@ -505,6 +585,20 @@ impl GenericParams {
                 })
             )
             .then(|| id)
+        })
+    }
+
+    pub fn find_lifetime_by_name(
+        &self,
+        name: &Name,
+        parent: GenericDefId,
+    ) -> Option<LifetimeParamId> {
+        self.lifetimes.iter().find_map(|(id, p)| {
+            if &p.name == name {
+                Some(LifetimeParamId { local_id: id, parent })
+            } else {
+                None
+            }
         })
     }
 }

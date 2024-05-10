@@ -11,14 +11,15 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::StashKey;
 use rustc_errors::{Applicability, DiagCtxt, IntoDiagArg, MultiSpan};
 use rustc_feature::{AttributeDuplicates, AttributeType, BuiltinAttribute, BUILTIN_ATTRIBUTE_MAP};
-use rustc_hir as hir;
 use rustc_hir::def_id::LocalModDefId;
 use rustc_hir::intravisit::{self, Visitor};
+use rustc_hir::{self as hir};
 use rustc_hir::{
     self, FnSig, ForeignItem, HirId, Item, ItemKind, TraitItem, CRATE_HIR_ID, CRATE_OWNER_ID,
 };
 use rustc_hir::{MethodKind, Target, Unsafety};
 use rustc_macros::LintDiagnostic;
+use rustc_middle::bug;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::resolve_bound_vars::ObjectLifetimeDefault;
 use rustc_middle::query::Providers;
@@ -541,7 +542,26 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 self.dcx().emit_err(errors::NakedTrackedCaller { attr_span });
                 false
             }
-            Target::Fn | Target::Method(..) | Target::ForeignFn | Target::Closure => true,
+            Target::Fn => {
+                // `#[track_caller]` is not valid on weak lang items because they are called via
+                // `extern` declarations and `#[track_caller]` would alter their ABI.
+                if let Some((lang_item, _)) = hir::lang_items::extract(attrs)
+                    && let Some(item) = hir::LangItem::from_name(lang_item)
+                    && item.is_weak()
+                {
+                    let sig = self.tcx.hir_node(hir_id).fn_sig().unwrap();
+
+                    self.dcx().emit_err(errors::LangItemWithTrackCaller {
+                        attr_span,
+                        name: lang_item,
+                        sig_span: sig.span,
+                    });
+                    false
+                } else {
+                    true
+                }
+            }
+            Target::Method(..) | Target::ForeignFn | Target::Closure => true,
             // FIXME(#80564): We permit struct fields, match arms and macro defs to have an
             // `#[track_caller]` attribute with just a lint, because we previously
             // erroneously allowed it and some crates used it accidentally, to be compatible
@@ -624,20 +644,14 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     ) -> bool {
         match target {
             Target::Fn => {
-                // `#[target_feature]` is not allowed in language items.
+                // `#[target_feature]` is not allowed in lang items.
                 if let Some((lang_item, _)) = hir::lang_items::extract(attrs)
                     // Calling functions with `#[target_feature]` is
                     // not unsafe on WASM, see #84988
                     && !self.tcx.sess.target.is_like_wasm
                     && !self.tcx.sess.opts.actually_rustdoc
                 {
-                    let hir::Node::Item(item) = self.tcx.hir_node(hir_id) else {
-                        unreachable!();
-                    };
-                    let hir::ItemKind::Fn(sig, _, _) = item.kind else {
-                        // target is `Fn`
-                        unreachable!();
-                    };
+                    let sig = self.tcx.hir_node(hir_id).fn_sig().unwrap();
 
                     self.dcx().emit_err(errors::LangItemWithTargetFeature {
                         attr_span: attr.span,
@@ -2466,7 +2480,7 @@ impl<'tcx> Visitor<'tcx> for CheckAttrVisitor<'tcx> {
 
     fn visit_stmt(&mut self, stmt: &'tcx hir::Stmt<'tcx>) {
         // When checking statements ignore expressions, they will be checked later.
-        if let hir::StmtKind::Local(l) = stmt.kind {
+        if let hir::StmtKind::Let(l) = stmt.kind {
             self.check_attributes(l.hir_id, stmt.span, Target::Statement, None);
         }
         intravisit::walk_stmt(self, stmt)
@@ -2531,7 +2545,6 @@ fn check_invalid_crate_level_attr(tcx: TyCtxt<'_>, attrs: &[Attribute]) {
         sym::automatically_derived,
         sym::start,
         sym::rustc_main,
-        sym::unix_sigpipe,
         sym::derive,
         sym::test,
         sym::test_case,

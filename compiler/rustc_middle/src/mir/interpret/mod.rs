@@ -125,13 +125,14 @@ use std::io::{Read, Write};
 use std::num::NonZero;
 use std::sync::atomic::{AtomicU32, Ordering};
 
+use smallvec::{smallvec, SmallVec};
+
 use rustc_ast::LitKind;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::{HashMapExt, Lock};
-use rustc_data_structures::tiny_list::TinyList;
 use rustc_errors::ErrorGuaranteed;
-use rustc_hir::def_id::DefId;
-use rustc_macros::HashStable;
+use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_serialize::{Decodable, Encodable};
 use rustc_target::abi::{AddressSpace, Endian, HasDataLayout};
@@ -266,8 +267,8 @@ type DecodingSessionId = NonZero<u32>;
 #[derive(Clone)]
 enum State {
     Empty,
-    InProgressNonAlloc(TinyList<DecodingSessionId>),
-    InProgress(TinyList<DecodingSessionId>, AllocId),
+    InProgressNonAlloc(SmallVec<[DecodingSessionId; 1]>),
+    InProgress(SmallVec<[DecodingSessionId; 1]>, AllocId),
     Done(AllocId),
 }
 
@@ -337,8 +338,7 @@ impl<'s> AllocDecodingSession<'s> {
                             // If this is an allocation, we need to reserve an
                             // `AllocId` so we can decode cyclic graphs.
                             let alloc_id = decoder.interner().reserve_alloc_id();
-                            *entry =
-                                State::InProgress(TinyList::new_single(self.session_id), alloc_id);
+                            *entry = State::InProgress(smallvec![self.session_id], alloc_id);
                             Some(alloc_id)
                         }
                         AllocDiscriminant::Fn
@@ -346,8 +346,7 @@ impl<'s> AllocDecodingSession<'s> {
                         | AllocDiscriminant::VTable => {
                             // Fns and statics cannot be cyclic, and their `AllocId`
                             // is determined later by interning.
-                            *entry =
-                                State::InProgressNonAlloc(TinyList::new_single(self.session_id));
+                            *entry = State::InProgressNonAlloc(smallvec![self.session_id]);
                             None
                         }
                     }
@@ -357,7 +356,7 @@ impl<'s> AllocDecodingSession<'s> {
                         bug!("this should be unreachable");
                     } else {
                         // Start decoding concurrently.
-                        sessions.insert(self.session_id);
+                        sessions.push(self.session_id);
                         None
                     }
                 }
@@ -367,7 +366,7 @@ impl<'s> AllocDecodingSession<'s> {
                         return alloc_id;
                     } else {
                         // Start decoding concurrently.
-                        sessions.insert(self.session_id);
+                        sessions.push(self.session_id);
                         Some(alloc_id)
                     }
                 }
@@ -627,6 +626,16 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
+    /// Freezes an `AllocId` created with `reserve` by pointing it at a static item. Trying to
+    /// call this function twice, even with the same `DefId` will ICE the compiler.
+    pub fn set_nested_alloc_id_static(self, id: AllocId, def_id: LocalDefId) {
+        if let Some(old) =
+            self.alloc_map.lock().alloc_map.insert(id, GlobalAlloc::Static(def_id.to_def_id()))
+        {
+            bug!("tried to set allocation ID {id:?}, but it was already existing as {old:#?}");
+        }
+    }
+
     /// Freezes an `AllocId` created with `reserve` by pointing it at an `Allocation`. May be called
     /// twice for the same `(AllocId, Allocation)` pair.
     fn set_alloc_id_same_memory(self, id: AllocId, mem: ConstAllocation<'tcx>) {
@@ -661,11 +670,11 @@ pub fn read_target_uint(endianness: Endian, mut source: &[u8]) -> Result<u128, i
     // So we do not read exactly 16 bytes into the u128, just the "payload".
     let uint = match endianness {
         Endian::Little => {
-            source.read(&mut buf)?;
+            source.read_exact(&mut buf[..source.len()])?;
             Ok(u128::from_le_bytes(buf))
         }
         Endian::Big => {
-            source.read(&mut buf[16 - source.len()..])?;
+            source.read_exact(&mut buf[16 - source.len()..])?;
             Ok(u128::from_be_bytes(buf))
         }
     };

@@ -7,7 +7,7 @@ LL |         let _: i32 = loop { break };
    |             |        this loop is expected to be of type `i32`
    |             expected because of this assignment
    |
-help: give it a value of the expected type
+help: give the `break` a value of the expected type
    |
 LL |         let _: i32 = loop { break 42 };
    |                                   ++
@@ -21,7 +21,7 @@ LL |         let _: i32 = 'inner: loop { break 'inner };
    |             |                this loop is expected to be of type `i32`
    |             expected because of this assignment
    |
-help: give it a value of the expected type
+help: give the `break` a value of the expected type
    |
 LL |         let _: i32 = 'inner: loop { break 'inner 42 };
    |                                                  ++
@@ -35,7 +35,7 @@ LL |         let _: i32 = 'inner2: loop { loop { break 'inner2 } };
    |             |                 this loop is expected to be of type `i32`
    |             expected because of this assignment
    |
-help: give it a value of the expected type
+help: give the `break` a value of the expected type
    |
 LL |         let _: i32 = 'inner2: loop { loop { break 'inner2 42 } };
    |                                                           ++

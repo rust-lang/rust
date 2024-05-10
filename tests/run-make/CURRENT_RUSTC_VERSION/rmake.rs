@@ -1,24 +1,20 @@
 // ignore-tidy-linelength
 
-extern crate run_make_support;
+// Check that the `CURRENT_RUSTC_VERSION` placeholder is correctly replaced by the current
+// `rustc` version and the `since` property in feature stability gating is properly respected.
 
 use std::path::PathBuf;
 
 use run_make_support::{aux_build, rustc};
 
 fn main() {
-    aux_build()
-        .arg("--emit=metadata")
-        .arg("stable.rs")
-        .run();
+    aux_build().input("stable.rs").emit("metadata").run();
+
     let mut stable_path = PathBuf::from(env!("TMPDIR"));
     stable_path.push("libstable.rmeta");
-    let output = rustc()
-        .arg("--emit=metadata")
-        .arg("--extern")
-        .arg(&format!("stable={}", &stable_path.to_string_lossy()))
-        .arg("main.rs")
-        .run();
+
+    let output =
+        rustc().input("main.rs").emit("metadata").extern_("stable", &stable_path).command_output();
 
     let stderr = String::from_utf8_lossy(&output.stderr);
     let version = include_str!(concat!(env!("S"), "/src/version"));

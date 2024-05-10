@@ -1,3 +1,4 @@
+use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::{EvalToValTreeResult, GlobalId};
 use rustc_middle::ty::layout::{LayoutCx, LayoutOf, TyAndLayout};
@@ -98,7 +99,17 @@ fn const_to_valtree_inner<'tcx>(
             Ok(ty::ValTree::Leaf(val.assert_int()))
         }
 
-        ty::RawPtr(_) => {
+        ty::Pat(base, ..) => {
+            let mut place = place.clone();
+            // The valtree of the base type is the same as the valtree of the pattern type.
+            // Since the returned valtree does not contain the type or layout, we can just
+            // switch to the base type.
+            place.layout = ecx.layout_of(*base).unwrap();
+            ensure_sufficient_stack(|| const_to_valtree_inner(ecx, &place, num_nodes))
+        },
+
+
+        ty::RawPtr(_, _) => {
             // Not all raw pointers are allowed, as we cannot properly test them for
             // equality at compile-time (see `ptr_guaranteed_cmp`).
             // However we allow those that are just integers in disguise.
@@ -273,12 +284,12 @@ pub fn valtree_to_const_value<'tcx>(
 
     let (param_env, ty) = param_env_ty.into_parts();
 
-    match ty.kind() {
+    match *ty.kind() {
         ty::FnDef(..) => {
             assert!(valtree.unwrap_branch().is_empty());
             mir::ConstValue::ZeroSized
         }
-        ty::Bool | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Char | ty::RawPtr(_) => {
+        ty::Bool | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Char | ty::RawPtr(_, _) => {
             match valtree {
                 ty::ValTree::Leaf(scalar_int) => mir::ConstValue::Scalar(Scalar::Int(scalar_int)),
                 ty::ValTree::Branch(_) => bug!(
@@ -286,10 +297,11 @@ pub fn valtree_to_const_value<'tcx>(
                 ),
             }
         }
+        ty::Pat(ty, _) => valtree_to_const_value(tcx, param_env.and(ty), valtree),
         ty::Ref(_, inner_ty, _) => {
             let mut ecx =
                 mk_eval_cx_to_read_const_val(tcx, DUMMY_SP, param_env, CanAccessMutGlobal::No);
-            let imm = valtree_to_ref(&mut ecx, valtree, *inner_ty);
+            let imm = valtree_to_ref(&mut ecx, valtree, inner_ty);
             let imm = ImmTy::from_immediate(imm, tcx.layout_of(param_env_ty).unwrap());
             op_to_const(&ecx, &imm.into(), /* for diagnostics */ false)
         }

@@ -144,7 +144,7 @@
 //!     * e.g. [`drop`]ping the [`Future`] [^pin-drop-future]
 //!
 //! There are two possible ways to ensure the invariants required for 2. and 3. above (which
-//! apply to any address-sensitive type, not just self-referrential types) do not get broken.
+//! apply to any address-sensitive type, not just self-referential types) do not get broken.
 //!
 //! 1. Have the value detect when it is moved and update all the pointers that point to itself.
 //! 2. Guarantee that the address of the value does not change (and that memory is not re-used
@@ -170,7 +170,7 @@
 //! become viral throughout all code that interacts with the object.
 //!
 //! The second option is a viable solution to the problem for some use cases, in particular
-//! for self-referrential types. Under this model, any type that has an address sensitive state
+//! for self-referential types. Under this model, any type that has an address sensitive state
 //! would ultimately store its data in something like a [`Box<T>`], carefully manage internal
 //! access to that data to ensure no *moves* or other invalidation occurs, and finally
 //! provide a safe interface on top.
@@ -186,8 +186,8 @@
 //!
 //! Although there were other reason as well, this issue of expensive composition is the key thing
 //! that drove Rust towards adopting a different model. It is particularly a problem
-//! when one considers, for exapmle, the implications of composing together the [`Future`]s which
-//! will eventaully make up an asynchronous task (including address-sensitive `async fn` state
+//! when one considers, for example, the implications of composing together the [`Future`]s which
+//! will eventually make up an asynchronous task (including address-sensitive `async fn` state
 //! machines). It is plausible that there could be many layers of [`Future`]s composed together,
 //! including multiple layers of `async fn`s handling different parts of a task. It was deemed
 //! unacceptable to force indirection and allocation for each layer of composition in this case.
@@ -359,7 +359,7 @@
 //! Builtin types that are [`Unpin`] include all of the primitive types, like [`bool`], [`i32`],
 //! and [`f32`], references (<code>[&]T</code> and <code>[&mut] T</code>), etc., as well as many
 //! core and standard library types like [`Box<T>`], [`String`], and more.
-//! These types are marked [`Unpin`] because they do not have an ddress-sensitive state like the
+//! These types are marked [`Unpin`] because they do not have an address-sensitive state like the
 //! ones we discussed above. If they did have such a state, those parts of their interface would be
 //! unsound without being expressed through pinning, and they would then need to not
 //! implement [`Unpin`].
@@ -379,11 +379,11 @@
 //!
 //! Exposing access to the inner field which you want to remain pinned must then be carefully
 //! considered as well! Remember, exposing a method that gives access to a
-//! <code>[Pin]<[&mut] InnerT>></code> where `InnerT: [Unpin]` would allow safe code to trivially
-//! move the inner value out of that pinning pointer, which is precisely what you're seeking to
-//! prevent! Exposing a field of a pinned value through a pinning pointer is called "projecting"
-//! a pin, and the more general case of deciding in which cases a pin should be able to be
-//! projected or not is called "structural pinning." We will go into more detail about this
+//! <code>[Pin]<[&mut] InnerT>></code> where <code>InnerT: [Unpin]</code> would allow safe code to
+//! trivially move the inner value out of that pinning pointer, which is precisely what you're
+//! seeking to prevent! Exposing a field of a pinned value through a pinning pointer is called
+//! "projecting" a pin, and the more general case of deciding in which cases a pin should be able
+//! to be projected or not is called "structural pinning." We will go into more detail about this
 //! [below][structural-pinning].
 //!
 //! # Examples of address-sensitive types
@@ -806,7 +806,7 @@
 //!
 //!     As a consequence, the struct *must not* be [`#[repr(packed)]`][packed].
 //!
-//! 3.  *Structural Notice of Destruction.* You must uphold the the
+//! 3.  *Structural Notice of Destruction.* You must uphold the
 //!     [`Drop` guarantee][drop-guarantee]: once your struct is pinned, the struct's storage cannot
 //!     be re-used without calling the structurally-pinned fields' destructors, as well.
 //!
@@ -923,7 +923,7 @@
 use crate::cmp;
 use crate::fmt;
 use crate::hash::{Hash, Hasher};
-use crate::ops::{CoerceUnsized, Deref, DerefMut, DispatchFromDyn, Receiver};
+use crate::ops::{CoerceUnsized, Deref, DerefMut, DerefPure, DispatchFromDyn, Receiver};
 
 #[allow(unused_imports)]
 use crate::{
@@ -953,7 +953,7 @@ use crate::{
 /// discussed below.
 ///
 /// We call such a [`Pin`]-wrapped pointer a **pinning pointer** (or pinning ref, or pinning
-/// [`Box`], etc.) because its existince is the thing that is pinning the underlying pointee in
+/// [`Box`], etc.) because its existence is the thing that is pinning the underlying pointee in
 /// place: it is the metaphorical "pin" securing the data in place on the pinboard (in memory).
 ///
 /// It is important to stress that the thing in the [`Pin`] is not the value which we want to pin
@@ -962,7 +962,7 @@ use crate::{
 ///
 /// The most common set of types which require pinning related guarantees for soundness are the
 /// compiler-generated state machines that implement [`Future`] for the return value of
-/// `async fn`s. These compiler-generated [`Future`]s may contain self-referrential pointers, one
+/// `async fn`s. These compiler-generated [`Future`]s may contain self-referential pointers, one
 /// of the most common use cases for [`Pin`]. More details on this point are provided in the
 /// [`pin` module] docs, but suffice it to say they require the guarantees provided by pinning to
 /// be implemented soundly.
@@ -1198,7 +1198,7 @@ impl<Ptr: Deref<Target: Unpin>> Pin<Ptr> {
     /// Unwraps this `Pin<Ptr>`, returning the underlying pointer.
     ///
     /// Doing this operation safely requires that the data pointed at by this pinning pointer
-    /// implemts [`Unpin`] so that we can ignore the pinning invariants when unwrapping it.
+    /// implements [`Unpin`] so that we can ignore the pinning invariants when unwrapping it.
     ///
     /// # Examples
     ///
@@ -1684,6 +1684,9 @@ impl<Ptr: DerefMut<Target: Unpin>> DerefMut for Pin<Ptr> {
     }
 }
 
+#[unstable(feature = "deref_pure_trait", issue = "87121")]
+unsafe impl<Ptr: DerefPure> DerefPure for Pin<Ptr> {}
+
 #[unstable(feature = "receiver_trait", issue = "none")]
 impl<Ptr: Receiver> Receiver for Pin<Ptr> {}
 
@@ -1809,7 +1812,7 @@ impl<Ptr, U> DispatchFromDyn<Pin<U>> for Pin<Ptr> where Ptr: DispatchFromDyn<U> 
 /// fn coroutine_fn() -> impl Coroutine<Yield = usize, Return = ()> /* not Unpin */ {
 ///  // Allow coroutine to be self-referential (not `Unpin`)
 ///  // vvvvvv        so that locals can cross yield points.
-///     static || {
+///     #[coroutine] static || {
 ///         let foo = String::from("foo");
 ///         let foo_ref = &foo; // ------+
 ///         yield 0;                  // | <- crosses yield point!

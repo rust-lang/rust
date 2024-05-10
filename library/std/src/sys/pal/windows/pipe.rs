@@ -7,7 +7,7 @@ use crate::path::Path;
 use crate::ptr;
 use crate::slice;
 use crate::sync::atomic::AtomicUsize;
-use crate::sync::atomic::Ordering::SeqCst;
+use crate::sync::atomic::Ordering::Relaxed;
 use crate::sys::c;
 use crate::sys::fs::{File, OpenOptions};
 use crate::sys::handle::Handle;
@@ -214,11 +214,11 @@ pub fn spawn_pipe_relay(
 fn random_number() -> usize {
     static N: AtomicUsize = AtomicUsize::new(0);
     loop {
-        if N.load(SeqCst) != 0 {
-            return N.fetch_add(1, SeqCst);
+        if N.load(Relaxed) != 0 {
+            return N.fetch_add(1, Relaxed);
         }
 
-        N.store(hashmap_random_keys().0 as usize, SeqCst);
+        N.store(hashmap_random_keys().0 as usize, Relaxed);
     }
 }
 

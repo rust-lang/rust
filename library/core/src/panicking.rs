@@ -117,32 +117,95 @@ pub const fn panic_nounwind_fmt(fmt: fmt::Arguments<'_>, force_no_backtrace: boo
         panic_fmt(fmt);
     }
 
-    #[cfg_attr(not(bootstrap), allow(unused_unsafe))] // on bootstrap bump, remove unsafe block
-    // SAFETY: const panic does not care about unwinding
-    unsafe {
-        super::intrinsics::const_eval_select((fmt, force_no_backtrace), comptime, runtime);
-    }
+    super::intrinsics::const_eval_select((fmt, force_no_backtrace), comptime, runtime);
 }
 
 // Next we define a bunch of higher-level wrappers that all bottom out in the two core functions
 // above.
 
 /// The underlying implementation of core's `panic!` macro when no formatting is used.
-// never inline unless panic_immediate_abort to avoid code
-// bloat at the call sites as much as possible
+// Never inline unless panic_immediate_abort to avoid code
+// bloat at the call sites as much as possible.
 #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold)]
 #[cfg_attr(feature = "panic_immediate_abort", inline)]
 #[track_caller]
 #[rustc_const_unstable(feature = "panic_internals", issue = "none")]
-#[lang = "panic"] // needed by codegen for panic on overflow and other `Assert` MIR terminators
+#[lang = "panic"] // used by lints and miri for panics
 pub const fn panic(expr: &'static str) -> ! {
-    // Use Arguments::new_v1 instead of format_args!("{expr}") to potentially
+    // Use Arguments::new_const instead of format_args!("{expr}") to potentially
     // reduce size overhead. The format_args! macro uses str's Display trait to
     // write expr, which calls Formatter::pad, which must accommodate string
     // truncation and padding (even though none is used here). Using
-    // Arguments::new_v1 may allow the compiler to omit Formatter::pad from the
+    // Arguments::new_const may allow the compiler to omit Formatter::pad from the
     // output binary, saving up to a few kilobytes.
+    // However, this optimization only works for `'static` strings: `new_const` also makes this
+    // message return `Some` from `Arguments::as_str`, which means it can become part of the panic
+    // payload without any allocation or copying. Shorter-lived strings would become invalid as
+    // stack frames get popped during unwinding, and couldn't be directly referenced from the
+    // payload.
     panic_fmt(fmt::Arguments::new_const(&[expr]));
+}
+
+// We generate functions for usage by compiler-generated assertions.
+//
+// Placing these functions in libcore means that all Rust programs can generate a jump into this
+// code rather than expanding to panic("...") above, which adds extra bloat to call sites (for the
+// constant string argument's pointer and length).
+//
+// This is especially important when this code is called often (e.g., with -Coverflow-checks) for
+// reducing binary size impact.
+macro_rules! panic_const {
+    ($($lang:ident = $message:expr,)+) => {
+        pub mod panic_const {
+            use super::*;
+
+            $(
+                /// This is a panic called with a message that's a result of a MIR-produced Assert.
+                //
+                // never inline unless panic_immediate_abort to avoid code
+                // bloat at the call sites as much as possible
+                #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold)]
+                #[cfg_attr(feature = "panic_immediate_abort", inline)]
+                #[track_caller]
+                #[rustc_const_unstable(feature = "panic_internals", issue = "none")]
+                #[lang = stringify!($lang)]
+                pub const fn $lang() -> ! {
+                    // Use Arguments::new_const instead of format_args!("{expr}") to potentially
+                    // reduce size overhead. The format_args! macro uses str's Display trait to
+                    // write expr, which calls Formatter::pad, which must accommodate string
+                    // truncation and padding (even though none is used here). Using
+                    // Arguments::new_const may allow the compiler to omit Formatter::pad from the
+                    // output binary, saving up to a few kilobytes.
+                    panic_fmt(fmt::Arguments::new_const(&[$message]));
+                }
+            )+
+        }
+    }
+}
+
+// Unfortunately this set of strings is replicated here and in a few places in the compiler in
+// slightly different forms. It's not clear if there's a good way to deduplicate without adding
+// special cases to the compiler (e.g., a const generic function wouldn't have a single definition
+// shared across crates, which is exactly what we want here).
+panic_const! {
+    panic_const_add_overflow = "attempt to add with overflow",
+    panic_const_sub_overflow = "attempt to subtract with overflow",
+    panic_const_mul_overflow = "attempt to multiply with overflow",
+    panic_const_div_overflow = "attempt to divide with overflow",
+    panic_const_rem_overflow = "attempt to calculate the remainder with overflow",
+    panic_const_neg_overflow = "attempt to negate with overflow",
+    panic_const_shr_overflow = "attempt to shift right with overflow",
+    panic_const_shl_overflow = "attempt to shift left with overflow",
+    panic_const_div_by_zero = "attempt to divide by zero",
+    panic_const_rem_by_zero = "attempt to calculate the remainder with a divisor of zero",
+    panic_const_coroutine_resumed = "coroutine resumed after completion",
+    panic_const_async_fn_resumed = "`async fn` resumed after completion",
+    panic_const_async_gen_fn_resumed = "`async gen fn` resumed after completion",
+    panic_const_gen_fn_none = "`gen fn` should just keep returning `None` after completion",
+    panic_const_coroutine_resumed_panic = "coroutine resumed after panicking",
+    panic_const_async_fn_resumed_panic = "`async fn` resumed after panicking",
+    panic_const_async_gen_fn_resumed_panic = "`async gen fn` resumed after panicking",
+    panic_const_gen_fn_none_panic = "`gen fn` should just keep returning `None` after panicking",
 }
 
 /// Like `panic`, but without unwinding and track_caller to reduce the impact on codesize on the caller.
@@ -164,14 +227,6 @@ pub fn panic_nounwind_nobacktrace(expr: &'static str) -> ! {
     panic_nounwind_fmt(fmt::Arguments::new_const(&[expr]), /* force_no_backtrace */ true);
 }
 
-#[inline]
-#[track_caller]
-#[rustc_diagnostic_item = "panic_str"]
-#[rustc_const_unstable(feature = "panic_internals", issue = "none")]
-pub const fn panic_str(expr: &str) -> ! {
-    panic_display(&expr);
-}
-
 #[track_caller]
 #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold)]
 #[cfg_attr(feature = "panic_immediate_abort", inline)]
@@ -185,6 +240,16 @@ pub const fn panic_explicit() -> ! {
 #[rustc_diagnostic_item = "unreachable_display"] // needed for `non-fmt-panics` lint
 pub fn unreachable_display<T: fmt::Display>(x: &T) -> ! {
     panic_fmt(format_args!("internal error: entered unreachable code: {}", *x));
+}
+
+/// This exists solely for the 2015 edition `panic!` macro to trigger
+/// a lint on `panic!(my_str_variable);`.
+#[inline]
+#[track_caller]
+#[rustc_diagnostic_item = "panic_str_2015"]
+#[rustc_const_unstable(feature = "panic_internals", issue = "none")]
+pub const fn panic_str_2015(expr: &str) -> ! {
+    panic_display(&expr);
 }
 
 #[inline]

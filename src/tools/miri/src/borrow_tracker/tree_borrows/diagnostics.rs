@@ -48,7 +48,7 @@ impl AccessCause {
 /// Complete data for an event:
 #[derive(Clone, Debug)]
 pub struct Event {
-    /// Transformation of permissions that occured because of this event.
+    /// Transformation of permissions that occurred because of this event.
     pub transition: PermTransition,
     /// Kind of the access that triggered this event.
     pub access_cause: AccessCause,
@@ -58,7 +58,7 @@ pub struct Event {
     /// `None` means that this is an implicit access to the entire allocation
     /// (used for the implicit read on protector release).
     pub access_range: Option<AllocRange>,
-    /// The transition recorded by this event only occured on a subrange of
+    /// The transition recorded by this event only occurred on a subrange of
     /// `access_range`: a single access on `access_range` triggers several events,
     /// each with their own mutually disjoint `transition_range`. No-op transitions
     /// should not be recorded as events, so the union of all `transition_range` is not
@@ -365,7 +365,7 @@ type S = &'static str;
 /// Pretty-printing details
 ///
 /// Example:
-/// ```
+/// ```rust,ignore (private type)
 /// DisplayFmtWrapper {
 ///     top: '>',
 ///     bot: '<',
@@ -393,7 +393,7 @@ struct DisplayFmtWrapper {
 /// Formating of the permissions on each range.
 ///
 /// Example:
-/// ```
+/// ```rust,ignore (private type)
 /// DisplayFmtPermission {
 ///     open: "[",
 ///     sep: "|",
@@ -425,7 +425,7 @@ struct DisplayFmtPermission {
 /// Formating of the tree structure.
 ///
 /// Example:
-/// ```
+/// ```rust,ignore (private type)
 /// DisplayFmtPadding {
 ///     join_middle: "|-",
 ///     join_last: "'-",
@@ -463,7 +463,7 @@ struct DisplayFmtPadding {
 /// How to show whether a location has been accessed
 ///
 /// Example:
-/// ```
+/// ```rust,ignore (private type)
 /// DisplayFmtAccess {
 ///     yes: " ",
 ///     no: "?",

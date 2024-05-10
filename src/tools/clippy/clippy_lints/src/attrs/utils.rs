@@ -52,7 +52,7 @@ fn is_relevant_block(cx: &LateContext<'_>, typeck_results: &ty::TypeckResults<'_
             .as_ref()
             .map_or(false, |e| is_relevant_expr(cx, typeck_results, e)),
         |stmt| match &stmt.kind {
-            StmtKind::Local(_) => true,
+            StmtKind::Let(_) => true,
             StmtKind::Expr(expr) | StmtKind::Semi(expr) => is_relevant_expr(cx, typeck_results, expr),
             StmtKind::Item(_) => false,
         },

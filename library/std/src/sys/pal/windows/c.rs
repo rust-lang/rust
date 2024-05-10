@@ -344,6 +344,7 @@ compat_fn_with_fallback! {
 
     // >= Win8 / Server 2012
     // https://docs.microsoft.com/en-us/windows/win32/api/sysinfoapi/nf-sysinfoapi-getsystemtimepreciseasfiletime
+    #[cfg(target_vendor = "win7")]
     pub fn GetSystemTimePreciseAsFileTime(lpsystemtimeasfiletime: *mut FILETIME) -> () {
         GetSystemTimeAsFileTime(lpsystemtimeasfiletime)
     }
@@ -356,7 +357,19 @@ compat_fn_with_fallback! {
 }
 
 #[cfg(not(target_vendor = "win7"))]
-#[link(name = "synchronization")]
+// Use raw-dylib to import synchronization functions to workaround issues with the older mingw import library.
+#[cfg_attr(
+    target_arch = "x86",
+    link(
+        name = "api-ms-win-core-synch-l1-2-0",
+        kind = "raw-dylib",
+        import_name_type = "undecorated"
+    )
+)]
+#[cfg_attr(
+    not(target_arch = "x86"),
+    link(name = "api-ms-win-core-synch-l1-2-0", kind = "raw-dylib")
+)]
 extern "system" {
     pub fn WaitOnAddress(
         address: *const c_void,

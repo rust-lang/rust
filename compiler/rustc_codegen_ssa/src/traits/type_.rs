@@ -3,6 +3,7 @@ use super::Backend;
 use super::HasCodegen;
 use crate::common::TypeKind;
 use crate::mir::place::PlaceRef;
+use rustc_middle::bug;
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{self, Ty};
 use rustc_target::abi::call::{ArgAbi, CastTarget, FnAbi, Reg};
@@ -120,26 +121,18 @@ pub trait LayoutTypeMethods<'tcx>: Backend<'tcx> {
         immediate: bool,
     ) -> Self::Type;
 
-    /// A type that can be used in a [`super::BuilderMethods::load`] +
-    /// [`super::BuilderMethods::store`] pair to implement a *typed* copy,
-    /// such as a MIR `*_0 = *_1`.
+    /// A type that produces an [`OperandValue::Ref`] when loaded.
     ///
-    /// It's always legal to return `None` here, as the provided impl does,
-    /// in which case callers should use [`super::BuilderMethods::memcpy`]
-    /// instead of the `load`+`store` pair.
+    /// AKA one that's not a ZST, not `is_backend_immediate`, and
+    /// not `is_backend_scalar_pair`. For such a type, a
+    /// [`load_operand`] doesn't actually `load` anything.
     ///
-    /// This can be helpful for things like arrays, where the LLVM backend type
-    /// `[3 x i16]` optimizes to three separate loads and stores, but it can
-    /// instead be copied via an `i48` that stays as the single `load`+`store`.
-    /// (As of 2023-05 LLVM cannot necessarily optimize away a `memcpy` in these
-    /// cases, due to `poison` handling, but in codegen we have more information
-    /// about the type invariants, so can emit something better instead.)
-    ///
-    /// This *should* return `None` for particularly-large types, where leaving
-    /// the `memcpy` may well be important to avoid code size explosion.
-    fn scalar_copy_backend_type(&self, layout: TyAndLayout<'tcx>) -> Option<Self::Type> {
-        let _ = layout;
-        None
+    /// [`OperandValue::Ref`]: crate::mir::operand::OperandValue::Ref
+    /// [`load_operand`]: super::BuilderMethods::load_operand
+    fn is_backend_ref(&self, layout: TyAndLayout<'tcx>) -> bool {
+        !(layout.is_zst()
+            || self.is_backend_immediate(layout)
+            || self.is_backend_scalar_pair(layout))
     }
 }
 

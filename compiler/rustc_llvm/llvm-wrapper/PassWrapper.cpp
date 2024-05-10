@@ -24,9 +24,7 @@
 #include "llvm/Passes/StandardInstrumentations.h"
 #include "llvm/Support/CBindingWrapping.h"
 #include "llvm/Support/FileSystem.h"
-#if LLVM_VERSION_GE(17, 0)
 #include "llvm/Support/VirtualFileSystem.h"
-#endif
 #include "llvm/Target/TargetMachine.h"
 #include "llvm/Transforms/IPO/AlwaysInliner.h"
 #include "llvm/Transforms/IPO/FunctionImport.h"
@@ -340,14 +338,8 @@ extern "C" void LLVMRustPrintTargetCPUs(LLVMTargetMachineRef TM,
 
   std::ostringstream Buf;
 
-#if LLVM_VERSION_GE(17, 0)
   const MCSubtargetInfo *MCInfo = Target->getMCSubtargetInfo();
   const ArrayRef<SubtargetSubTypeKV> CPUTable = MCInfo->getAllProcessorDescriptions();
-#else
-  Buf << "Full target CPU help is not supported by this LLVM version.\n\n";
-  SubtargetSubTypeKV TargetCPUKV = { TargetCPU, {{}}, {{}} };
-  const ArrayRef<SubtargetSubTypeKV> CPUTable = TargetCPUKV;
-#endif
   unsigned MaxCPULen = getLongestEntryLength(CPUTable);
 
   Buf << "Available CPUs for this target:\n";
@@ -482,10 +474,6 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
   Options.RelaxELFRelocations = RelaxELFRelocations;
 #endif
   Options.UseInitArray = UseInitArray;
-
-#if LLVM_VERSION_LT(17, 0)
-  Options.ExplicitEmulatedTLS = true;
-#endif
   Options.EmulatedTLS = UseEmulatedTls;
 
   if (TrapUnreachable) {
@@ -767,16 +755,10 @@ LLVMRustOptimize(
   }
 
   std::optional<PGOOptions> PGOOpt;
-#if LLVM_VERSION_GE(17, 0)
   auto FS = vfs::getRealFileSystem();
-#endif
   if (PGOGenPath) {
     assert(!PGOUsePath && !PGOSampleUsePath);
-    PGOOpt = PGOOptions(PGOGenPath, "", "",
-#if LLVM_VERSION_GE(17, 0)
-                        "",
-                        FS,
-#endif
+    PGOOpt = PGOOptions(PGOGenPath, "", "", "", FS,
                         PGOOptions::IRInstr, PGOOptions::NoCSAction,
 #if LLVM_VERSION_GE(19, 0)
                         PGOOptions::ColdFuncOpt::Default,
@@ -784,33 +766,21 @@ LLVMRustOptimize(
                         DebugInfoForProfiling);
   } else if (PGOUsePath) {
     assert(!PGOSampleUsePath);
-    PGOOpt = PGOOptions(PGOUsePath, "", "",
-#if LLVM_VERSION_GE(17, 0)
-                        "",
-                        FS,
-#endif
+    PGOOpt = PGOOptions(PGOUsePath, "", "", "", FS,
                         PGOOptions::IRUse, PGOOptions::NoCSAction,
 #if LLVM_VERSION_GE(19, 0)
                         PGOOptions::ColdFuncOpt::Default,
 #endif
                         DebugInfoForProfiling);
   } else if (PGOSampleUsePath) {
-    PGOOpt = PGOOptions(PGOSampleUsePath, "", "",
-#if LLVM_VERSION_GE(17, 0)
-                        "",
-                        FS,
-#endif
+    PGOOpt = PGOOptions(PGOSampleUsePath, "", "", "", FS,
                         PGOOptions::SampleUse, PGOOptions::NoCSAction,
 #if LLVM_VERSION_GE(19, 0)
                         PGOOptions::ColdFuncOpt::Default,
 #endif
                         DebugInfoForProfiling);
   } else if (DebugInfoForProfiling) {
-    PGOOpt = PGOOptions("", "", "",
-#if LLVM_VERSION_GE(17, 0)
-                        "",
-                        FS,
-#endif
+    PGOOpt = PGOOptions("", "", "", "", FS,
                         PGOOptions::NoAction, PGOOptions::NoCSAction,
 #if LLVM_VERSION_GE(19, 0)
                         PGOOptions::ColdFuncOpt::Default,
@@ -1359,9 +1329,7 @@ LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules,
   ComputeCrossModuleImport(
     Ret->Index,
     Ret->ModuleToDefinedGVSummaries,
-#if LLVM_VERSION_GE(17, 0)
     isPrevailing,
-#endif
     Ret->ImportLists,
     Ret->ExportLists
   );

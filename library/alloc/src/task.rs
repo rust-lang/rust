@@ -148,7 +148,7 @@ fn raw_waker<W: Wake + Send + Sync + 'static>(waker: Arc<W>) -> RawWaker {
     unsafe fn clone_waker<W: Wake + Send + Sync + 'static>(waker: *const ()) -> RawWaker {
         unsafe { Arc::increment_strong_count(waker as *const W) };
         RawWaker::new(
-            waker as *const (),
+            waker,
             &RawWakerVTable::new(clone_waker::<W>, wake::<W>, wake_by_ref::<W>, drop_waker::<W>),
         )
     }
@@ -320,7 +320,7 @@ fn local_raw_waker<W: LocalWake + 'static>(waker: Rc<W>) -> RawWaker {
     unsafe fn clone_waker<W: LocalWake + 'static>(waker: *const ()) -> RawWaker {
         unsafe { Rc::increment_strong_count(waker as *const W) };
         RawWaker::new(
-            waker as *const (),
+            waker,
             &RawWakerVTable::new(clone_waker::<W>, wake::<W>, wake_by_ref::<W>, drop_waker::<W>),
         )
     }

@@ -12,6 +12,9 @@ fn assert_zst<T>() {
         //~| NOTE: the evaluated program panicked
     }
     F::<T>::V;
+    //~^NOTE: erroneous constant
+    //~|NOTE: erroneous constant
+    //~|NOTE: duplicate
 }
 
 fn foo<U>() {

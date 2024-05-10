@@ -104,8 +104,8 @@ pub(super) fn check(
             cx,
             OPTION_AS_REF_DEREF,
             expr.span,
-            &msg,
-            &suggestion,
+            msg,
+            suggestion,
             hint,
             Applicability::MachineApplicable,
         );

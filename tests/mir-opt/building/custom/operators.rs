@@ -1,6 +1,6 @@
 // skip-filecheck
 //@ compile-flags: --crate-type=lib
-#![feature(custom_mir, core_intrinsics, inline_const)]
+#![feature(custom_mir, core_intrinsics)]
 use std::intrinsics::mir::*;
 
 // EMIT_MIR operators.f.built.after.mir

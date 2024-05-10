@@ -1,5 +1,6 @@
+//@ run-rustfix
 #![feature(generic_const_exprs, adt_const_params)]
-#![allow(incomplete_features)]
+#![allow(incomplete_features, dead_code)]
 
 struct FieldElement<const N: &'static str> {
     n: [u64; num_limbs(N)],

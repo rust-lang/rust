@@ -215,7 +215,7 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
 
     fn parse_local_decls(&mut self, mut stmts: impl Iterator<Item = StmtId>) -> PResult<()> {
         let (ret_var, ..) = self.parse_let_statement(stmts.next().unwrap())?;
-        self.local_map.insert(ret_var, Local::from_u32(0));
+        self.local_map.insert(ret_var, Local::ZERO);
 
         for stmt in stmts {
             let (var, ty, span) = self.parse_let_statement(stmt)?;

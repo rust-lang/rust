@@ -1,0 +1,30 @@
+error: the type `<[[[[[[u8]]]]]] as WellUnformed>::RequestNormalize` is not well-formed
+  --> $DIR/wf-normalization-sized.rs:19:10
+   |
+LL | const _: <[[[[[[u8]]]]]] as WellUnformed>::RequestNormalize = ();
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: the type `<[[[[[[u8]]]]]] as WellUnformed>::RequestNormalize` is not well-formed
+  --> $DIR/wf-normalization-sized.rs:19:10
+   |
+LL | const _: <[[[[[[u8]]]]]] as WellUnformed>::RequestNormalize = ();
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: the type `<Vec<str> as WellUnformed>::RequestNormalize` is not well-formed
+  --> $DIR/wf-normalization-sized.rs:22:10
+   |
+LL | const _: <Vec<str> as WellUnformed>::RequestNormalize = ();
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: the type `<Vec<str> as WellUnformed>::RequestNormalize` is not well-formed
+  --> $DIR/wf-normalization-sized.rs:22:10
+   |
+LL | const _: <Vec<str> as WellUnformed>::RequestNormalize = ();
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 4 previous errors
+

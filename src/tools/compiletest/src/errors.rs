@@ -6,8 +6,8 @@ use std::io::prelude::*;
 use std::io::BufReader;
 use std::path::Path;
 use std::str::FromStr;
+use std::sync::OnceLock;
 
-use once_cell::sync::Lazy;
 use regex::Regex;
 use tracing::*;
 
@@ -117,10 +117,11 @@ fn parse_expected(
     //     //~^^^^^
     //     //[rev1]~
     //     //[rev1,rev2]~^^
-    static RE: Lazy<Regex> =
-        Lazy::new(|| Regex::new(r"//(?:\[(?P<revs>[\w,]+)])?~(?P<adjust>\||\^*)").unwrap());
+    static RE: OnceLock<Regex> = OnceLock::new();
 
-    let captures = RE.captures(line)?;
+    let captures = RE
+        .get_or_init(|| Regex::new(r"//(?:\[(?P<revs>[\w\-,]+)])?~(?P<adjust>\||\^*)").unwrap())
+        .captures(line)?;
 
     match (test_revision, captures.name("revs")) {
         // Only error messages that contain our revision between the square brackets apply to us.
@@ -178,3 +179,6 @@ fn parse_expected(
     );
     Some((which, Error { line_num, kind, msg }))
 }
+
+#[cfg(test)]
+mod tests;

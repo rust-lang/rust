@@ -6,7 +6,6 @@ fn e() {
     //~| ERROR cannot find value
     //~| ERROR associated const equality
     //~| ERROR cannot find trait `p` in this scope
-    //~| ERROR associated type bounds
 }
 
 fn main() {}

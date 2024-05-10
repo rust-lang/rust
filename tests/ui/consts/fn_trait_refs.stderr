@@ -81,7 +81,10 @@ LL |         assert!(test_one == (1, 1, 1));
    |                 ^^^^^^^^^^^^^^^^^^^^^
    |
    = note: calls in constants are limited to constant functions, tuple structs and tuple variants
-   = help: add `#![feature(effects)]` to the crate attributes to enable
+help: add `#![feature(effects)]` to the crate attributes to enable
+   |
+LL + #![feature(effects)]
+   |
 
 error[E0015]: cannot call non-const operator in constants
   --> $DIR/fn_trait_refs.rs:75:17
@@ -90,7 +93,10 @@ LL |         assert!(test_two == (2, 2));
    |                 ^^^^^^^^^^^^^^^^^^
    |
    = note: calls in constants are limited to constant functions, tuple structs and tuple variants
-   = help: add `#![feature(effects)]` to the crate attributes to enable
+help: add `#![feature(effects)]` to the crate attributes to enable
+   |
+LL + #![feature(effects)]
+   |
 
 error[E0015]: cannot call non-const closure in constant functions
   --> $DIR/fn_trait_refs.rs:17:5
@@ -99,11 +105,14 @@ LL |     f()
    |     ^^^
    |
    = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
-   = help: add `#![feature(effects)]` to the crate attributes to enable
 help: consider further restricting this bound
    |
 LL |     T: ~const Fn<()> + ~const Destruct + ~const std::ops::Fn<()>,
    |                                        +++++++++++++++++++++++++
+help: add `#![feature(effects)]` to the crate attributes to enable
+   |
+LL + #![feature(effects)]
+   |
 
 error[E0493]: destructor of `T` cannot be evaluated at compile-time
   --> $DIR/fn_trait_refs.rs:13:23
@@ -121,11 +130,14 @@ LL |     f()
    |     ^^^
    |
    = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
-   = help: add `#![feature(effects)]` to the crate attributes to enable
 help: consider further restricting this bound
    |
 LL |     T: ~const FnMut<()> + ~const Destruct + ~const std::ops::FnMut<()>,
    |                                           ++++++++++++++++++++++++++++
+help: add `#![feature(effects)]` to the crate attributes to enable
+   |
+LL + #![feature(effects)]
+   |
 
 error[E0493]: destructor of `T` cannot be evaluated at compile-time
   --> $DIR/fn_trait_refs.rs:20:27
@@ -143,11 +155,14 @@ LL |     f()
    |     ^^^
    |
    = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
-   = help: add `#![feature(effects)]` to the crate attributes to enable
 help: consider further restricting this bound
    |
 LL |     T: ~const FnOnce<()> + ~const std::ops::FnOnce<()>,
    |                          +++++++++++++++++++++++++++++
+help: add `#![feature(effects)]` to the crate attributes to enable
+   |
+LL + #![feature(effects)]
+   |
 
 error[E0493]: destructor of `T` cannot be evaluated at compile-time
   --> $DIR/fn_trait_refs.rs:34:21

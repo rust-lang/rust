@@ -25,8 +25,8 @@ fn raw_parts_kind(cx: &LateContext<'_>, did: DefId) -> Option<RawPartsKind> {
 
 pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, cast_expr: &Expr<'_>, cast_to: Ty<'_>, msrv: &Msrv) {
     if msrv.meets(msrvs::PTR_SLICE_RAW_PARTS)
-        && let ty::RawPtr(ptrty) = cast_to.kind()
-        && let ty::Slice(_) = ptrty.ty.kind()
+        && let ty::RawPtr(ptrty, _) = cast_to.kind()
+        && let ty::Slice(_) = ptrty.kind()
         && let ExprKind::Call(fun, [ptr_arg, len_arg]) = cast_expr.peel_blocks().kind
         && let ExprKind::Path(ref qpath) = fun.kind
         && let Some(fun_def_id) = cx.qpath_res(qpath, fun.hir_id).opt_def_id()
@@ -46,7 +46,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, cast_expr: &Expr<'_>,
             cx,
             CAST_SLICE_FROM_RAW_PARTS,
             span,
-            &format!("casting the result of `{func}` to {cast_to}"),
+            format!("casting the result of `{func}` to {cast_to}"),
             "replace with",
             format!("core::ptr::slice_{func}({ptr}, {len})"),
             applicability,

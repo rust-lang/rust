@@ -12,7 +12,7 @@ use crate::{
     attr::{Attrs, AttrsWithOwner},
     body::{scope::ExprScopes, Body, BodySourceMap},
     data::{
-        adt::{EnumData, EnumVariantData, StructData},
+        adt::{EnumData, EnumVariantData, StructData, VariantData},
         ConstData, ExternCrateDeclData, FunctionData, ImplData, Macro2Data, MacroRulesData,
         ProcMacroData, StaticData, TraitAliasData, TraitData, TypeAliasData,
     },
@@ -127,6 +127,9 @@ pub trait DefDatabase: InternDatabase + ExpandDatabase + Upcast<dyn ExpandDataba
         id: EnumVariantId,
     ) -> (Arc<EnumVariantData>, DefDiagnostics);
 
+    #[salsa::transparent]
+    #[salsa::invoke(VariantData::variant_data)]
+    fn variant_data(&self, id: VariantId) -> Arc<VariantData>;
     #[salsa::transparent]
     #[salsa::invoke(ImplData::impl_data_query)]
     fn impl_data(&self, e: ImplId) -> Arc<ImplData>;
@@ -309,13 +312,9 @@ fn macro_def(db: &dyn DefDatabase, id: MacroId) -> MacroDefId {
                 kind: kind(loc.expander, loc.id.file_id(), makro.ast_id.upcast()),
                 local_inner: false,
                 allow_internal_unsafe: loc.allow_internal_unsafe,
-                span: db
-                    .span_map(loc.id.file_id())
-                    .span_for_range(db.ast_id_map(loc.id.file_id()).get(makro.ast_id).text_range()),
                 edition: loc.edition,
             }
         }
-
         MacroId::MacroRulesId(it) => {
             let loc: MacroRulesLoc = it.lookup(db);
 
@@ -328,9 +327,6 @@ fn macro_def(db: &dyn DefDatabase, id: MacroId) -> MacroDefId {
                 allow_internal_unsafe: loc
                     .flags
                     .contains(MacroRulesLocFlags::ALLOW_INTERNAL_UNSAFE),
-                span: db
-                    .span_map(loc.id.file_id())
-                    .span_for_range(db.ast_id_map(loc.id.file_id()).get(makro.ast_id).text_range()),
                 edition: loc.edition,
             }
         }
@@ -348,9 +344,6 @@ fn macro_def(db: &dyn DefDatabase, id: MacroId) -> MacroDefId {
                 ),
                 local_inner: false,
                 allow_internal_unsafe: false,
-                span: db
-                    .span_map(loc.id.file_id())
-                    .span_for_range(db.ast_id_map(loc.id.file_id()).get(makro.ast_id).text_range()),
                 edition: loc.edition,
             }
         }

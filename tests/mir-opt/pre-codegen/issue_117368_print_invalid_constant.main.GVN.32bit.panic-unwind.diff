@@ -18,20 +18,15 @@
               debug ptr => _3;
           }
           scope 5 (inlined <std::alloc::Global as Allocator>::allocate) {
-              debug self => _9;
-              debug layout => _8;
           }
           scope 6 (inlined NonNull::<[u8]>::as_ptr) {
-              debug self => _5;
               let mut _12: *const [u8];
           }
       }
       scope 3 (inlined #[track_caller] Option::<Layout>::unwrap) {
-          debug self => _2;
           let mut _10: isize;
           let mut _11: !;
           scope 4 {
-              debug val => _1;
           }
       }
   

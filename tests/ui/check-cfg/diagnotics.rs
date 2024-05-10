@@ -1,8 +1,9 @@
 //@ check-pass
+//@ no-auto-check-cfg
 //@ revisions: cargo rustc
 //@ [rustc]unset-rustc-env:CARGO_CRATE_NAME
 //@ [cargo]rustc-env:CARGO_CRATE_NAME=foo
-//@ compile-flags: --check-cfg=cfg(feature,values("foo")) --check-cfg=cfg(no_values) -Z unstable-options
+//@ compile-flags: --check-cfg=cfg(feature,values("foo")) --check-cfg=cfg(no_values)
 
 #[cfg(featur)]
 //~^ WARNING unexpected `cfg` condition name

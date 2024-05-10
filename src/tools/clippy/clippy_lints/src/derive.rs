@@ -11,8 +11,7 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::traits::Reveal;
 use rustc_middle::ty::{
-    self, ClauseKind, GenericArgKind, GenericParamDefKind, ImplPolarity, ParamEnv, ToPredicate, TraitPredicate, Ty,
-    TyCtxt,
+    self, ClauseKind, GenericArgKind, GenericParamDefKind, ParamEnv, ToPredicate, TraitPredicate, Ty, TyCtxt,
 };
 use rustc_session::declare_lint_pass;
 use rustc_span::def_id::LocalDefId;
@@ -133,7 +132,7 @@ declare_clippy_lint! {
     ///
     /// ### Why is this bad?
     /// Deriving `serde::Deserialize` will create a constructor
-    /// that may violate invariants hold by another constructor.
+    /// that may violate invariants held by another constructor.
     ///
     /// ### Example
     /// ```rust,ignore
@@ -481,7 +480,7 @@ fn param_env_for_derived_eq(tcx: TyCtxt<'_>, did: DefId, eq_trait_id: DefId) -> 
     // Vec<(param_def, needs_eq)>
     let mut params = tcx
         .generics_of(did)
-        .params
+        .own_params
         .iter()
         .map(|p| (p, matches!(p.kind, GenericParamDefKind::Type { .. })))
         .collect::<Vec<_>>();
@@ -502,7 +501,7 @@ fn param_env_for_derived_eq(tcx: TyCtxt<'_>, did: DefId, eq_trait_id: DefId) -> 
             params.iter().filter(|&&(_, needs_eq)| needs_eq).map(|&(param, _)| {
                 ClauseKind::Trait(TraitPredicate {
                     trait_ref: ty::TraitRef::new(tcx, eq_trait_id, [tcx.mk_param_from_def(param)]),
-                    polarity: ImplPolarity::Positive,
+                    polarity: ty::PredicatePolarity::Positive,
                 })
                 .to_predicate(tcx)
             }),

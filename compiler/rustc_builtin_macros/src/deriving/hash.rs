@@ -7,8 +7,8 @@ use rustc_span::symbol::sym;
 use rustc_span::Span;
 use thin_vec::thin_vec;
 
-pub fn expand_deriving_hash(
-    cx: &mut ExtCtxt<'_>,
+pub(crate) fn expand_deriving_hash(
+    cx: &ExtCtxt<'_>,
     span: Span,
     mitem: &MetaItem,
     item: &Annotatable,
@@ -46,11 +46,7 @@ pub fn expand_deriving_hash(
     hash_trait_def.expand(cx, mitem, item, push);
 }
 
-fn hash_substructure(
-    cx: &mut ExtCtxt<'_>,
-    trait_span: Span,
-    substr: &Substructure<'_>,
-) -> BlockOrExpr {
+fn hash_substructure(cx: &ExtCtxt<'_>, trait_span: Span, substr: &Substructure<'_>) -> BlockOrExpr {
     let [state_expr] = substr.nonselflike_args else {
         cx.dcx().span_bug(trait_span, "incorrect number of arguments in `derive(Hash)`");
     };
@@ -70,9 +66,9 @@ fn hash_substructure(
                 fields.iter().map(|field| call_hash(field.span, field.self_expr.clone())).collect();
             (stmts, None)
         }
-        EnumTag(tag_field, match_expr) => {
-            assert!(tag_field.other_selflike_exprs.is_empty());
-            let stmts = thin_vec![call_hash(tag_field.span, tag_field.self_expr.clone())];
+        EnumDiscr(discr_field, match_expr) => {
+            assert!(discr_field.other_selflike_exprs.is_empty());
+            let stmts = thin_vec![call_hash(discr_field.span, discr_field.self_expr.clone())];
             (stmts, match_expr.clone())
         }
         _ => cx.dcx().span_bug(trait_span, "impossible substructure in `derive(Hash)`"),

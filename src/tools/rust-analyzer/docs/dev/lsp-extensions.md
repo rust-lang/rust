@@ -1,5 +1,5 @@
 <!---
-lsp/ext.rs hash: 6bc140531b403717
+lsp/ext.rs hash: dd51139b0530147e
 
 If you need to change the above hash to make the test pass, please check if you
 need to adjust this doc as well and ping this issue:
@@ -417,7 +417,7 @@ interface TestItem {
     // A human readable name for this test
     label: string;
     // The kind of this test item. Based on the kind,
-	// an icon is chosen by the editor. 
+	// an icon is chosen by the editor.
     kind: "package" | "module" | "test";
     // True if this test may have children not available eagerly
     canResolveChildren: boolean;
@@ -440,7 +440,11 @@ interface DiscoverTestResults {
     // For each test which its id is in this list, the response
     // contains all tests that are children of this test, and
     // client should remove old tests not included in the response.
-    scope: string[];
+    scope: string[] | undefined;
+    // For each file which its uri is in this list, the response
+    // contains all tests that are located in this file, and
+    // client should remove old tests not included in the response.
+    scopeFile: lc.TextDocumentIdentifier[] | undefined;
 }
 ```
 
@@ -492,9 +496,9 @@ a `experimental/endRunTest` when is done.
 **Notification:** `ChangeTestStateParams`
 
 ```typescript
-type TestState = { tag: "passed" } 
+type TestState = { tag: "passed" }
     | {
-        tag: "failed"; 
+        tag: "failed";
         // The standard error of the test, containing the panic message. Clients should
         // render it similar to a terminal, and e.g. handle ansi colors.
         message: string;
@@ -508,6 +512,13 @@ interface ChangeTestStateParams {
     state: TestState;
 }
 ```
+
+**Method:** `experimental/appendOutputToRunTest`
+
+**Notification:** `string`
+
+This notification is used for reporting messages independent of any single test and related to the run session
+in general, e.g. cargo compiling progress messages or warnings.
 
 ## Open External Documentation
 

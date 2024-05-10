@@ -38,15 +38,6 @@ const PARSED = [
         error: null,
     },
     {
-        query: 'a,b(c)',
-        elems: [],
-        foundElems: 0,
-        original: "a,b(c)",
-        returned: [],
-        userQuery: "a,b(c)",
-        error: "Expected `,`, `:` or `->`, found `(`",
-    },
-    {
         query: 'aaa,a',
         elems: [
             {

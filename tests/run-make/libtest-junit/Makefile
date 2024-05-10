@@ -1,4 +1,5 @@
 # ignore-cross-compile
+# needs-unwind contains should_panic test
 include ../tools.mk
 
 # Test expected libtest's junit output

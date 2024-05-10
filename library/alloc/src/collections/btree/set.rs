@@ -27,7 +27,7 @@ use crate::alloc::{Allocator, Global};
 /// `BTreeSet` that observed the logic error and not result in undefined behavior. This could
 /// include panics, incorrect results, aborts, memory leaks, and non-termination.
 ///
-/// Iterators returned by [`BTreeSet::iter`] produce their items in order, and take worst-case
+/// Iterators returned by [`BTreeSet::iter`] and [`BTreeSet::into_iter`] produce their items in order, and take worst-case
 /// logarithmic and amortized constant time per item returned.
 ///
 /// [`Cell`]: core::cell::Cell
@@ -116,8 +116,8 @@ impl<T: Clone, A: Allocator + Clone> Clone for BTreeSet<T, A> {
         BTreeSet { map: self.map.clone() }
     }
 
-    fn clone_from(&mut self, other: &Self) {
-        self.map.clone_from(&other.map);
+    fn clone_from(&mut self, source: &Self) {
+        self.map.clone_from(&source.map);
     }
 }
 
@@ -140,7 +140,7 @@ impl<T: fmt::Debug> fmt::Debug for Iter<'_, T> {
     }
 }
 
-/// An owning iterator over the items of a `BTreeSet`.
+/// An owning iterator over the items of a `BTreeSet` in ascending order.
 ///
 /// This `struct` is created by the [`into_iter`] method on [`BTreeSet`]
 /// (provided by the [`IntoIterator`] trait). See its documentation for more.
@@ -1237,7 +1237,7 @@ impl<T, A: Allocator + Clone> IntoIterator for BTreeSet<T, A> {
     type Item = T;
     type IntoIter = IntoIter<T, A>;
 
-    /// Gets an iterator for moving out the `BTreeSet`'s contents.
+    /// Gets an iterator for moving out the `BTreeSet`'s contents in ascending order.
     ///
     /// # Examples
     ///

@@ -1,22 +1,40 @@
-//@ revisions: arm mips thumb wasm32
-//@ compile-flags: -C no-prepopulate-passes
-//
-//@[arm] only-arm
-//@[mips] only-mips
-//@[thumb] only-thumb
-//@[wasm32] only-wasm32
-//@ ignore-emscripten
+//@ revisions: arm-linux arm-android armv7-linux armv7-android mips thumb sparc
+//@ compile-flags: -O -C no-prepopulate-passes
+
+//@[arm-linux] compile-flags: --target arm-unknown-linux-gnueabi
+//@[arm-linux] needs-llvm-components: arm
+//@[arm-android] compile-flags: --target arm-linux-androideabi
+//@[arm-android] needs-llvm-components: arm
+//@[armv7-linux] compile-flags: --target armv7-unknown-linux-gnueabi
+//@[armv7-linux] needs-llvm-components: arm
+//@[armv7-android] compile-flags: --target armv7-linux-androideabi
+//@[armv7-android] needs-llvm-components: arm
+//@[mips] compile-flags: --target mips-unknown-linux-gnu
+//@[mips] needs-llvm-components: mips
+//@[thumb] compile-flags: --target thumbv7neon-linux-androideabi
+//@[thumb] needs-llvm-components: arm
+//@[sparc] compile-flags: --target sparc-unknown-linux-gnu
+//@[sparc] needs-llvm-components: sparc
+
 // See ./transparent.rs
 // Some platforms pass large aggregates using immediate arrays in LLVMIR
 // Other platforms pass large aggregates using struct pointer in LLVMIR
 // This covers the "immediate array" case.
 
-#![feature(transparent_unions)]
+#![feature(no_core, lang_items, transparent_unions)]
+#![crate_type = "lib"]
+#![no_std]
+#![no_core]
 
-#![crate_type="lib"]
+#[lang="sized"] trait Sized { }
+#[lang="freeze"] trait Freeze { }
+#[lang="copy"] trait Copy { }
+
+impl Copy for [u32; 16] {}
+impl Copy for BigS {}
+impl Copy for BigU {}
 
 
-#[derive(Clone, Copy)]
 #[repr(C)]
 pub struct BigS([u32; 16]);
 
@@ -33,24 +51,23 @@ pub enum TeBigS {
     Variant(BigS),
 }
 
-// CHECK: define void @test_BigS(ptr [[BIGS_RET_ATTRS1:.*]] sret(%BigS) [[BIGS_RET_ATTRS2:.*]], [16 x i32]
+// CHECK: define void @test_BigS(ptr [[BIGS_RET_ATTRS1:.*]] sret([64 x i8]) [[BIGS_RET_ATTRS2:.*]], [16 x i32]
 #[no_mangle]
 pub extern fn test_BigS(_: BigS) -> BigS { loop {} }
 
-// CHECK: define void @test_TsBigS(ptr [[BIGS_RET_ATTRS1]] sret(%TsBigS) [[BIGS_RET_ATTRS2]], [16 x i32]
+// CHECK: define void @test_TsBigS(ptr [[BIGS_RET_ATTRS1]] sret([64 x i8]) [[BIGS_RET_ATTRS2]], [16 x i32]
 #[no_mangle]
 pub extern fn test_TsBigS(_: TsBigS) -> TsBigS { loop {} }
 
-// CHECK: define void @test_TuBigS(ptr [[BIGS_RET_ATTRS1]] sret(%TuBigS) [[BIGS_RET_ATTRS2]], [16 x i32]
+// CHECK: define void @test_TuBigS(ptr [[BIGS_RET_ATTRS1]] sret([64 x i8]) [[BIGS_RET_ATTRS2]], [16 x i32]
 #[no_mangle]
 pub extern fn test_TuBigS(_: TuBigS) -> TuBigS { loop {} }
 
-// CHECK: define void @test_TeBigS(ptr [[BIGS_RET_ATTRS1]] sret(%"TeBigS::Variant") [[BIGS_RET_ATTRS2]], [16 x i32]
+// CHECK: define void @test_TeBigS(ptr [[BIGS_RET_ATTRS1]] sret([64 x i8]) [[BIGS_RET_ATTRS2]], [16 x i32]
 #[no_mangle]
 pub extern fn test_TeBigS(_: TeBigS) -> TeBigS { loop {} }
 
 
-#[derive(Clone, Copy)]
 #[repr(C)]
 pub union BigU {
     foo: [u32; 16],
@@ -69,18 +86,18 @@ pub enum TeBigU {
     Variant(BigU),
 }
 
-// CHECK: define void @test_BigU(ptr [[BIGU_RET_ATTRS1:.*]] sret(%BigU) [[BIGU_RET_ATTRS2:.*]], [16 x i32]
+// CHECK: define void @test_BigU(ptr [[BIGU_RET_ATTRS1:.*]] sret([64 x i8]) [[BIGU_RET_ATTRS2:.*]], [16 x i32]
 #[no_mangle]
 pub extern fn test_BigU(_: BigU) -> BigU { loop {} }
 
-// CHECK: define void @test_TsBigU(ptr [[BIGU_RET_ATTRS1]] sret(%TsBigU) [[BIGU_RET_ATTRS2]], [16 x i32]
+// CHECK: define void @test_TsBigU(ptr [[BIGU_RET_ATTRS1]] sret([64 x i8]) [[BIGU_RET_ATTRS2]], [16 x i32]
 #[no_mangle]
 pub extern fn test_TsBigU(_: TsBigU) -> TsBigU { loop {} }
 
-// CHECK: define void @test_TuBigU(ptr [[BIGU_RET_ATTRS1]] sret(%TuBigU) [[BIGU_RET_ATTRS2]], [16 x i32]
+// CHECK: define void @test_TuBigU(ptr [[BIGU_RET_ATTRS1]] sret([64 x i8]) [[BIGU_RET_ATTRS2]], [16 x i32]
 #[no_mangle]
 pub extern fn test_TuBigU(_: TuBigU) -> TuBigU { loop {} }
 
-// CHECK: define void @test_TeBigU(ptr [[BIGU_RET_ATTRS1]] sret(%"TeBigU::Variant") [[BIGU_RET_ATTRS2]], [16 x i32]
+// CHECK: define void @test_TeBigU(ptr [[BIGU_RET_ATTRS1]] sret([64 x i8]) [[BIGU_RET_ATTRS2]], [16 x i32]
 #[no_mangle]
 pub extern fn test_TeBigU(_: TeBigU) -> TeBigU { loop {} }

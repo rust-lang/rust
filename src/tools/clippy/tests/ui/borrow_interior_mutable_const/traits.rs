@@ -158,7 +158,7 @@ trait BothOfCellAndGeneric<T> {
     const INDIRECT: Cell<*const T>;
 
     fn function() {
-        let _ = &Self::DIRECT;
+        let _ = &Self::DIRECT; //~ ERROR: interior mutability
         let _ = &Self::INDIRECT; //~ ERROR: interior mutability
     }
 }
@@ -168,7 +168,7 @@ impl<T: ConstDefault> BothOfCellAndGeneric<T> for Vec<T> {
     const INDIRECT: Cell<*const T> = Cell::new(std::ptr::null());
 
     fn function() {
-        let _ = &Self::DIRECT;
+        let _ = &Self::DIRECT; //~ ERROR: interior mutability
         let _ = &Self::INDIRECT; //~ ERROR: interior mutability
     }
 }

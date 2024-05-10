@@ -46,7 +46,7 @@ pub enum HlTag {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[repr(u8)]
 pub enum HlMod {
-    /// Used for items in traits and impls.
+    /// Used for associated items.
     Associated = 0,
     /// Used with keywords like `async` and `await`.
     Async,
@@ -54,6 +54,8 @@ pub enum HlMod {
     Attribute,
     /// Callable item or value.
     Callable,
+    /// Constant operation.
+    Const,
     /// Value that is being consumed in a function call
     Consuming,
     /// Used with keywords like `if` and `break`.
@@ -75,13 +77,15 @@ pub enum HlMod {
     Library,
     /// Used to differentiate individual elements within macro calls.
     Macro,
+    /// Used to differentiate individual elements within proc-macro calls.
+    ProcMacro,
     /// Mutable binding.
     Mutable,
     /// Used for public items.
     Public,
     /// Immutable reference.
     Reference,
-    /// Used for associated functions.
+    /// Used for associated items, except Methods. (Some languages call these static members)
     Static,
     /// Used for items in traits and trait impls.
     Trait,
@@ -110,7 +114,7 @@ pub enum HlPunct {
     Semi,
     /// ! (only for macro calls)
     MacroBang,
-    ///
+    /// Other punctutations
     Other,
 }
 
@@ -124,7 +128,7 @@ pub enum HlOperator {
     Logical,
     /// >, <, ==, >=, <=, !=
     Comparison,
-    ///
+    /// Other operators
     Other,
 }
 
@@ -146,6 +150,8 @@ impl HlTag {
                 SymbolKind::LifetimeParam => "lifetime",
                 SymbolKind::Local => "variable",
                 SymbolKind::Macro => "macro",
+                SymbolKind::Method => "method",
+                SymbolKind::ProcMacro => "proc_macro",
                 SymbolKind::Module => "module",
                 SymbolKind::SelfParam => "self_keyword",
                 SymbolKind::SelfType => "self_type_keyword",
@@ -209,6 +215,7 @@ impl HlMod {
         HlMod::Async,
         HlMod::Attribute,
         HlMod::Callable,
+        HlMod::Const,
         HlMod::Consuming,
         HlMod::ControlFlow,
         HlMod::CrateRoot,
@@ -220,6 +227,7 @@ impl HlMod {
         HlMod::Library,
         HlMod::Macro,
         HlMod::Mutable,
+        HlMod::ProcMacro,
         HlMod::Public,
         HlMod::Reference,
         HlMod::Static,
@@ -234,6 +242,7 @@ impl HlMod {
             HlMod::Attribute => "attribute",
             HlMod::Callable => "callable",
             HlMod::Consuming => "consuming",
+            HlMod::Const => "const",
             HlMod::ControlFlow => "control",
             HlMod::CrateRoot => "crate_root",
             HlMod::DefaultLibrary => "default_library",
@@ -243,6 +252,7 @@ impl HlMod {
             HlMod::IntraDocLink => "intra_doc_link",
             HlMod::Library => "library",
             HlMod::Macro => "macro",
+            HlMod::ProcMacro => "proc_macro",
             HlMod::Mutable => "mutable",
             HlMod::Public => "public",
             HlMod::Reference => "reference",
@@ -253,6 +263,7 @@ impl HlMod {
     }
 
     fn mask(self) -> u32 {
+        debug_assert!(Self::ALL.len() <= 32, "HlMod::mask is not enough to cover all variants");
         1 << (self as u32)
     }
 }

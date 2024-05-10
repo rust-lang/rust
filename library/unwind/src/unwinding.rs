@@ -1,6 +1,6 @@
 #![allow(nonstandard_style)]
 
-use libc::{c_int, c_void};
+use core::ffi::{c_int, c_void};
 
 #[repr(C)]
 #[derive(Copy, Clone, PartialEq)]
@@ -46,7 +46,7 @@ pub const unwinder_private_data_size: usize = core::mem::size_of::<UnwindExcepti
     - core::mem::size_of::<_Unwind_Exception_Cleanup_Fn>();
 
 pub type _Unwind_Exception_Cleanup_Fn =
-    extern "C" fn(unwind_code: _Unwind_Reason_Code, exception: *mut _Unwind_Exception);
+    Option<extern "C" fn(unwind_code: _Unwind_Reason_Code, exception: *mut _Unwind_Exception)>;
 
 #[repr(C)]
 pub struct _Unwind_Exception {

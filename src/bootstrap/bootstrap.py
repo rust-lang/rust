@@ -612,8 +612,14 @@ class RustBuild(object):
                 self.fix_bin_or_dylib("{}/libexec/rust-analyzer-proc-macro-srv".format(bin_root))
                 lib_dir = "{}/lib".format(bin_root)
                 for lib in os.listdir(lib_dir):
-                    if lib.endswith(".so"):
-                        self.fix_bin_or_dylib(os.path.join(lib_dir, lib))
+                    # .so is not necessarily the suffix, there can be version numbers afterwards.
+                    if ".so" in lib:
+                        elf_path = os.path.join(lib_dir, lib)
+                        with open(elf_path, "rb") as f:
+                            magic = f.read(4)
+                            # Patchelf will skip non-ELF files, but issue a warning.
+                            if magic == b"\x7fELF":
+                                self.fix_bin_or_dylib(elf_path)
 
             with output(self.rustc_stamp()) as rust_stamp:
                 rust_stamp.write(key)
@@ -725,7 +731,7 @@ class RustBuild(object):
             os.path.join(os.path.realpath(nix_deps_dir), "lib")
         ]
         patchelf_args = ["--set-rpath", ":".join(rpath_entries)]
-        if not fname.endswith(".so"):
+        if ".so" not in fname:
             # Finally, set the correct .interp for binaries
             with open("{}/nix-support/dynamic-linker".format(nix_deps_dir)) as dynamic_linker:
                 patchelf_args += ["--set-interpreter", dynamic_linker.read().rstrip()]
@@ -1029,13 +1035,8 @@ class RustBuild(object):
         if self.use_vendored_sources:
             vendor_dir = os.path.join(self.rust_root, 'vendor')
             if not os.path.exists(vendor_dir):
-                sync_dirs = "--sync ./src/tools/cargo/Cargo.toml " \
-                            "--sync ./src/tools/rust-analyzer/Cargo.toml " \
-                            "--sync ./compiler/rustc_codegen_cranelift/Cargo.toml " \
-                            "--sync ./src/bootstrap/Cargo.toml "
                 eprint('ERROR: vendoring required, but vendor directory does not exist.')
-                eprint('       Run `cargo vendor {}` to initialize the '
-                      'vendor directory.'.format(sync_dirs))
+                eprint('       Run `x.py vendor` to initialize the vendor directory.')
                 eprint('       Alternatively, use the pre-vendored `rustc-src` dist component.')
                 eprint('       To get a stable/beta/nightly version, download it from: ')
                 eprint('       '

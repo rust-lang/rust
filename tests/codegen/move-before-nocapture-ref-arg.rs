@@ -1,7 +1,6 @@
 // Verify that move before the call of the function with noalias, nocapture, readonly.
 // #107436
 //@ compile-flags: -O
-//@ min-llvm-version: 17
 
 #![crate_type = "lib"]
 

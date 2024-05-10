@@ -7,12 +7,13 @@ use crate::{
 use rustc_ast as ast;
 use rustc_ast_pretty::pprust;
 use rustc_hir as hir;
+use rustc_macros::Subdiagnostic;
 use rustc_span::edition::Edition;
 use rustc_span::symbol::{Ident, MacroRulesNormalizedIdent, Symbol};
 use rustc_span::Span;
 use rustc_target::abi::TargetDataLayoutErrors;
 use rustc_target::spec::{PanicStrategy, SplitDebuginfo, StackProtector, TargetTriple};
-use rustc_type_ir as type_ir;
+use rustc_type_ir::{ClosureKind, FloatTy};
 use std::backtrace::Backtrace;
 use std::borrow::Cow;
 use std::fmt;
@@ -46,6 +47,7 @@ impl<'a, T: Clone + IntoDiagArg> IntoDiagArg for &'a T {
     }
 }
 
+#[macro_export]
 macro_rules! into_diag_arg_using_display {
     ($( $ty:ty ),+ $(,)?) => {
         $(
@@ -194,7 +196,7 @@ impl IntoDiagArg for ast::token::TokenKind {
     }
 }
 
-impl IntoDiagArg for type_ir::FloatTy {
+impl IntoDiagArg for FloatTy {
     fn into_diag_arg(self) -> DiagArgValue {
         DiagArgValue::Str(Cow::Borrowed(self.name_str()))
     }
@@ -226,6 +228,36 @@ impl IntoDiagArg for rustc_lint_defs::Level {
     }
 }
 
+impl<Id> IntoDiagArg for hir::def::Res<Id> {
+    fn into_diag_arg(self) -> DiagArgValue {
+        DiagArgValue::Str(Cow::Borrowed(self.descr()))
+    }
+}
+
+impl IntoDiagArg for DiagLocation {
+    fn into_diag_arg(self) -> DiagArgValue {
+        DiagArgValue::Str(Cow::from(self.to_string()))
+    }
+}
+
+impl IntoDiagArg for Backtrace {
+    fn into_diag_arg(self) -> DiagArgValue {
+        DiagArgValue::Str(Cow::from(self.to_string()))
+    }
+}
+
+impl IntoDiagArg for Level {
+    fn into_diag_arg(self) -> DiagArgValue {
+        DiagArgValue::Str(Cow::from(self.to_string()))
+    }
+}
+
+impl IntoDiagArg for ClosureKind {
+    fn into_diag_arg(self) -> DiagArgValue {
+        DiagArgValue::Str(self.as_str().into())
+    }
+}
+
 #[derive(Clone)]
 pub struct DiagSymbolList(Vec<Symbol>);
 
@@ -240,12 +272,6 @@ impl IntoDiagArg for DiagSymbolList {
         DiagArgValue::StrListSepByAnd(
             self.0.into_iter().map(|sym| Cow::Owned(format!("`{sym}`"))).collect(),
         )
-    }
-}
-
-impl<Id> IntoDiagArg for hir::def::Res<Id> {
-    fn into_diag_arg(self) -> DiagArgValue {
-        DiagArgValue::Str(Cow::Borrowed(self.descr()))
     }
 }
 
@@ -301,7 +327,7 @@ impl Subdiagnostic for SingleLabelManySpans {
     fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
-        _: F,
+        _: &F,
     ) {
         diag.span_labels(self.spans, self.label);
     }
@@ -315,24 +341,6 @@ pub struct ExpectedLifetimeParameter {
     pub count: usize,
 }
 
-impl IntoDiagArg for DiagLocation {
-    fn into_diag_arg(self) -> DiagArgValue {
-        DiagArgValue::Str(Cow::from(self.to_string()))
-    }
-}
-
-impl IntoDiagArg for Backtrace {
-    fn into_diag_arg(self) -> DiagArgValue {
-        DiagArgValue::Str(Cow::from(self.to_string()))
-    }
-}
-
-impl IntoDiagArg for Level {
-    fn into_diag_arg(self) -> DiagArgValue {
-        DiagArgValue::Str(Cow::from(self.to_string()))
-    }
-}
-
 #[derive(Subdiagnostic)]
 #[suggestion(errors_indicate_anonymous_lifetime, code = "{suggestion}", style = "verbose")]
 pub struct IndicateAnonymousLifetime {
@@ -342,8 +350,10 @@ pub struct IndicateAnonymousLifetime {
     pub suggestion: String,
 }
 
-impl IntoDiagArg for type_ir::ClosureKind {
-    fn into_diag_arg(self) -> DiagArgValue {
-        DiagArgValue::Str(self.as_str().into())
-    }
+#[derive(Subdiagnostic)]
+pub struct ElidedLifetimeInPathSubdiag {
+    #[subdiagnostic]
+    pub expected: ExpectedLifetimeParameter,
+    #[subdiagnostic]
+    pub indicate: Option<IndicateAnonymousLifetime>,
 }

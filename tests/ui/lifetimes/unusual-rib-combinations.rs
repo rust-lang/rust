@@ -1,5 +1,3 @@
-#![feature(inline_const)]
-
 struct S<'a>(&'a u8);
 fn foo() {}
 

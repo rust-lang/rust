@@ -1,6 +1,7 @@
-//@ revisions: classic next
+//@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
-//@[next] check-pass
+//@ check-pass
 
 fn ice()
 where
@@ -10,5 +11,4 @@ where
 
 fn main() {
     ice();
-    //[classic]~^ ERROR expected a `Fn(&'w ())` closure, found `fn(&'w ())`
 }

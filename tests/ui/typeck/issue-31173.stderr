@@ -34,7 +34,7 @@ LL | |         .cloned()
 LL | |         .collect();
    | |         -^^^^^^^ method cannot be called due to unsatisfied trait bounds
    | |_________|
-   | 
+   |
    |
    = note: the following trait bounds were not satisfied:
            `<TakeWhile<&mut std::vec::IntoIter<u8>, {closure@$DIR/issue-31173.rs:7:21: 7:25}> as Iterator>::Item = &_`

@@ -48,20 +48,7 @@ LL |         *dst.test_mut() = n.into();
    |          `dst` escapes the function body here
    |          argument requires that `'a` must outlive `'static`
 
-error[E0597]: `t1` does not live long enough
-  --> $DIR/issue-80433.rs:32:18
-   |
-LL |     let mut t1: E<f32> = Default::default();
-   |         ------ binding `t1` declared here
-LL |     test_simpler(&mut t1);
-   |     -------------^^^^^^^-
-   |     |            |
-   |     |            borrowed value does not live long enough
-   |     argument requires that `t1` is borrowed for `'static`
-LL | }
-   | - `t1` dropped here while still borrowed
+error: aborting due to 4 previous errors
 
-error: aborting due to 5 previous errors
-
-Some errors have detailed explanations: E0107, E0499, E0521, E0597.
+Some errors have detailed explanations: E0107, E0499, E0521.
 For more information about an error, try `rustc --explain E0107`.

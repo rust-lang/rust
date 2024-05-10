@@ -99,6 +99,12 @@ impl Ty {
     }
 }
 
+/// Represents a pattern in the type system
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum Pattern {
+    Range { start: Option<Const>, end: Option<Const>, include_end: bool },
+}
+
 /// Represents a constant in MIR or from the Type system.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Const {
@@ -128,12 +134,37 @@ impl Const {
 
     /// Creates an interned usize constant.
     fn try_from_target_usize(val: u64) -> Result<Self, Error> {
-        with(|cx| cx.usize_to_const(val))
+        with(|cx| cx.try_new_const_uint(val.into(), UintTy::Usize))
     }
 
     /// Try to evaluate to a target `usize`.
     pub fn eval_target_usize(&self) -> Result<u64, Error> {
         with(|cx| cx.eval_target_usize(self))
+    }
+
+    /// Create a constant that represents a new zero-sized constant of type T.
+    /// Fails if the type is not a ZST or if it doesn't have a known size.
+    pub fn try_new_zero_sized(ty: Ty) -> Result<Const, Error> {
+        with(|cx| cx.try_new_const_zst(ty))
+    }
+
+    /// Build a new constant that represents the given string.
+    ///
+    /// Note that there is no guarantee today about duplication of the same constant.
+    /// I.e.: Calling this function multiple times with the same argument may or may not return
+    /// the same allocation.
+    pub fn from_str(value: &str) -> Const {
+        with(|cx| cx.new_const_str(value))
+    }
+
+    /// Build a new constant that represents the given boolean value.
+    pub fn from_bool(value: bool) -> Const {
+        with(|cx| cx.new_const_bool(value))
+    }
+
+    /// Build a new constant that represents the given unsigned integer.
+    pub fn try_from_uint(value: u128, uint_ty: UintTy) -> Result<Const, Error> {
+        with(|cx| cx.try_new_const_uint(value, uint_ty))
     }
 }
 
@@ -456,6 +487,7 @@ pub enum RigidTy {
     Foreign(ForeignDef),
     Str,
     Array(Ty, Const),
+    Pat(Ty, Pattern),
     Slice(Ty),
     RawPtr(Ty, Mutability),
     Ref(Region, Ty, Mutability),
@@ -629,7 +661,7 @@ impl AdtDef {
         with(|cx| cx.def_ty(self.0))
     }
 
-    /// Retrieve the type of this Adt instantiating the type with the given arguments.
+    /// Retrieve the type of this Adt by instantiating and normalizing it with the given arguments.
     ///
     /// This will assume the type can be instantiated with these arguments.
     pub fn ty_with_args(&self, args: &GenericArgs) -> Ty {
@@ -708,7 +740,7 @@ pub struct FieldDef {
 }
 
 impl FieldDef {
-    /// Retrieve the type of this field instantiating the type with the given arguments.
+    /// Retrieve the type of this field instantiating and normalizing it with the given arguments.
     ///
     /// This will assume the type can be instantiated with these arguments.
     pub fn ty_with_args(&self, args: &GenericArgs) -> Ty {
@@ -1307,7 +1339,7 @@ pub enum AliasRelationDirection {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TraitPredicate {
     pub trait_ref: TraitRef,
-    pub polarity: ImplPolarity,
+    pub polarity: PredicatePolarity,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -1327,6 +1359,12 @@ pub enum ImplPolarity {
     Positive,
     Negative,
     Reservation,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum PredicatePolarity {
+    Positive,
+    Negative,
 }
 
 pub trait IndexedVal {

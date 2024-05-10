@@ -62,7 +62,7 @@ error[E0308]: mismatched types
   --> $DIR/async-closure-gate.rs:27:5
    |
 LL |   fn foo3() {
-   |            - help: a return type might be missing here: `-> _`
+   |            - help: try adding a return type: `-> impl Future<Output = ()>`
 LL | /     async {
 LL | |
 LL | |         let _ = #[track_caller] || {
@@ -78,7 +78,7 @@ error[E0308]: mismatched types
   --> $DIR/async-closure-gate.rs:44:5
    |
 LL |   fn foo5() {
-   |            - help: a return type might be missing here: `-> _`
+   |            - help: try adding a return type: `-> impl Future<Output = ()>`
 LL | /     async {
 LL | |
 LL | |         let _ = || {

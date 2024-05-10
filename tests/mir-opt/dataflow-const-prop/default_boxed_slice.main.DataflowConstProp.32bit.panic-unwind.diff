@@ -12,34 +12,28 @@
           let _3: std::ptr::Unique<[bool]>;
           let mut _4: std::ptr::Unique<[bool; 0]>;
           scope 3 {
-              debug ptr => _3;
           }
           scope 4 (inlined Unique::<[bool; 0]>::dangling) {
               let mut _5: std::ptr::NonNull<[bool; 0]>;
               scope 5 (inlined NonNull::<[bool; 0]>::dangling) {
+                  let _6: *mut [bool; 0];
                   scope 6 {
-                      let _6: *mut [bool; 0];
-                      scope 7 {
-                          debug ptr => _6;
-                          scope 12 (inlined NonNull::<[bool; 0]>::new_unchecked) {
-                              debug ptr => _6;
-                              let mut _8: bool;
-                              let _9: ();
-                              let mut _10: *mut ();
-                              let mut _11: *const [bool; 0];
-                              scope 13 {
+                      scope 10 (inlined NonNull::<[bool; 0]>::new_unchecked) {
+                          let mut _8: bool;
+                          let _9: ();
+                          let mut _10: *mut ();
+                          let mut _11: *const [bool; 0];
+                          scope 11 (inlined core::ub_checks::check_language_ub) {
+                              scope 12 (inlined core::ub_checks::check_language_ub::runtime) {
                               }
                           }
                       }
-                      scope 8 (inlined dangling_mut::<[bool; 0]>) {
-                          let mut _7: usize;
-                          scope 9 (inlined align_of::<[bool; 0]>) {
-                          }
-                          scope 10 (inlined without_provenance_mut::<[bool; 0]>) {
-                              debug addr => _7;
-                              scope 11 {
-                              }
-                          }
+                  }
+                  scope 7 (inlined dangling_mut::<[bool; 0]>) {
+                      let mut _7: usize;
+                      scope 8 (inlined align_of::<[bool; 0]>) {
+                      }
+                      scope 9 (inlined without_provenance_mut::<[bool; 0]>) {
                       }
                   }
               }
@@ -60,7 +54,7 @@
           StorageDead(_7);
           StorageLive(_11);
           StorageLive(_8);
-          _8 = UbCheck(LanguageUb);
+          _8 = UbChecks();
           switchInt(move _8) -> [0: bb5, otherwise: bb3];
       }
   

@@ -2,24 +2,23 @@
 //! generate the actual methods on tcx which find and execute the provider,
 //! manage the caches, and so forth.
 
-use crate::rustc_middle::dep_graph::DepContext;
-use crate::rustc_middle::ty::TyEncoder;
 use crate::QueryConfigRestored;
 use rustc_data_structures::stable_hasher::{Hash64, HashStable, StableHasher};
 use rustc_data_structures::sync::Lock;
+use rustc_data_structures::unord::UnordMap;
 use rustc_errors::DiagInner;
 
 use rustc_index::Idx;
 use rustc_middle::dep_graph::dep_kinds;
 use rustc_middle::dep_graph::{
-    self, DepKind, DepKindStruct, DepNode, DepNodeIndex, SerializedDepNodeIndex,
+    self, DepContext, DepKind, DepKindStruct, DepNode, DepNodeIndex, SerializedDepNodeIndex,
 };
 use rustc_middle::query::on_disk_cache::AbsoluteBytePos;
 use rustc_middle::query::on_disk_cache::{CacheDecoder, CacheEncoder, EncodedDepNodeIndex};
 use rustc_middle::query::Key;
 use rustc_middle::ty::print::with_reduced_queries;
 use rustc_middle::ty::tls::{self, ImplicitCtxt};
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::ty::{self, TyCtxt, TyEncoder};
 use rustc_query_system::dep_graph::{DepNodeParams, HasDepContext};
 use rustc_query_system::ich::StableHashingContext;
 use rustc_query_system::query::{
@@ -186,6 +185,16 @@ pub(super) fn encode_all_query_results<'tcx>(
 ) {
     for encode in super::ENCODE_QUERY_RESULTS.iter().copied().flatten() {
         encode(tcx, encoder, query_result_index);
+    }
+}
+
+pub fn query_key_hash_verify_all<'tcx>(tcx: TyCtxt<'tcx>) {
+    if tcx.sess().opts.unstable_opts.incremental_verify_ich || cfg!(debug_assertions) {
+        tcx.sess.time("query_key_hash_verify_all", || {
+            for verify in super::QUERY_KEY_HASH_VERIFY.iter() {
+                verify(tcx);
+            }
+        })
     }
 }
 
@@ -366,6 +375,34 @@ pub(crate) fn encode_query_results<'a, 'tcx, Q>(
             // Encode the type check tables with the `SerializedDepNodeIndex`
             // as tag.
             encoder.encode_tagged(dep_node, &Q::restore(*value));
+        }
+    });
+}
+
+pub(crate) fn query_key_hash_verify<'tcx>(
+    query: impl QueryConfig<QueryCtxt<'tcx>>,
+    qcx: QueryCtxt<'tcx>,
+) {
+    let _timer =
+        qcx.profiler().generic_activity_with_arg("query_key_hash_verify_for", query.name());
+
+    let mut map = UnordMap::default();
+
+    let cache = query.query_cache(qcx);
+    cache.iter(&mut |key, _, _| {
+        let node = DepNode::construct(qcx.tcx, query.dep_kind(), key);
+        if let Some(other_key) = map.insert(node, *key) {
+            bug!(
+                "query key:\n\
+                `{:?}`\n\
+                and key:\n\
+                `{:?}`\n\
+                mapped to the same dep node:\n\
+                {:?}",
+                key,
+                other_key,
+                node
+            );
         }
     });
 }
@@ -691,6 +728,13 @@ macro_rules! define_queries {
                     )
                 }
             }}
+
+            pub fn query_key_hash_verify<'tcx>(tcx: TyCtxt<'tcx>) {
+                $crate::plumbing::query_key_hash_verify(
+                    query_impl::$name::QueryType::config(tcx),
+                    QueryCtxt::new(tcx),
+                )
+            }
         })*}
 
         pub(crate) fn engine(incremental: bool) -> QueryEngine {
@@ -729,6 +773,10 @@ macro_rules! define_queries {
                 &mut EncodedDepNodeIndex)
             >
         ] = &[$(expand_if_cached!([$($modifiers)*], query_impl::$name::encode_query_results)),*];
+
+        const QUERY_KEY_HASH_VERIFY: &[
+            for<'tcx> fn(TyCtxt<'tcx>)
+        ] = &[$(query_impl::$name::query_key_hash_verify),*];
 
         #[allow(nonstandard_style)]
         mod query_callbacks {

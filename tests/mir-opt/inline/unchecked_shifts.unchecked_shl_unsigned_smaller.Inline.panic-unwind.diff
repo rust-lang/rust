@@ -8,12 +8,6 @@
       let mut _3: u16;
       let mut _4: u32;
 +     scope 1 (inlined core::num::<impl u16>::unchecked_shl) {
-+         debug self => _3;
-+         debug rhs => _4;
-+         let mut _5: u16;
-+         let mut _6: bool;
-+         scope 2 {
-+         }
 +     }
   
       bb0: {
@@ -25,14 +19,7 @@
 -     }
 - 
 -     bb1: {
-+         StorageLive(_5);
-+         StorageLive(_6);
-+         _6 = Le(_4, const 65535_u32);
-+         assume(move _6);
-+         StorageDead(_6);
-+         _5 = _4 as u16 (IntToInt);
-+         _0 = ShlUnchecked(_3, move _5);
-+         StorageDead(_5);
++         _0 = ShlUnchecked(_3, _4);
           StorageDead(_4);
           StorageDead(_3);
           return;

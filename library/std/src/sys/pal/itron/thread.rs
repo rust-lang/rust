@@ -8,7 +8,7 @@ use super::{
 };
 use crate::{
     cell::UnsafeCell,
-    ffi::{CStr, CString},
+    ffi::CStr,
     hint, io,
     mem::ManuallyDrop,
     num::NonZero,
@@ -98,7 +98,7 @@ impl Thread {
         });
 
         unsafe extern "C" fn trampoline(exinf: isize) {
-            let p_inner: *mut ThreadInner = crate::ptr::from_exposed_addr_mut(exinf as usize);
+            let p_inner: *mut ThreadInner = crate::ptr::with_exposed_provenance_mut(exinf as usize);
             // Safety: `ThreadInner` is alive at this point
             let inner = unsafe { &*p_inner };
 
@@ -181,7 +181,7 @@ impl Thread {
             abi::acre_tsk(&abi::T_CTSK {
                 // Activate this task immediately
                 tskatr: abi::TA_ACT,
-                exinf: p_inner.as_ptr().expose_addr() as abi::EXINF,
+                exinf: p_inner.as_ptr().expose_provenance() as abi::EXINF,
                 // The entry point
                 task: Some(trampoline),
                 // Inherit the calling task's base priority
@@ -202,10 +202,6 @@ impl Thread {
 
     pub fn set_name(_name: &CStr) {
         // nope
-    }
-
-    pub fn get_name() -> Option<CString> {
-        None
     }
 
     pub fn sleep(dur: Duration) {
@@ -309,16 +305,6 @@ impl Drop for Thread {
             }
             _ => unsafe { hint::unreachable_unchecked() },
         }
-    }
-}
-
-pub mod guard {
-    pub type Guard = !;
-    pub unsafe fn current() -> Option<Guard> {
-        None
-    }
-    pub unsafe fn init() -> Option<Guard> {
-        None
     }
 }
 

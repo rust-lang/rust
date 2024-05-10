@@ -75,7 +75,7 @@ fn protected_enforces_noalias() {
     }
 }
 
-/// We are going to exhaustively test the possibily of inserting
+/// We are going to exhaustively test the possibility of inserting
 /// a spurious read in some code.
 ///
 /// We choose some pointer `x` through which we want a spurious read to be inserted.
@@ -270,7 +270,7 @@ mod spurious_read {
             match self {
                 TestEvent::Access(acc) => write!(f, "{acc}"),
                 // The fields of the `Ret` variants just serve to make them
-                // impossible to instanciate via the `RetX = NoRet` type; we can
+                // impossible to instantiate via the `RetX = NoRet` type; we can
                 // always ignore their value.
                 TestEvent::RetX(_) => write!(f, "ret x"),
                 TestEvent::RetY(_) => write!(f, "ret y"),
@@ -395,7 +395,7 @@ mod spurious_read {
             match evt {
                 TestEvent::Access(acc) => self.perform_test_access(acc),
                 // The fields of the `Ret` variants just serve to make them
-                // impossible to instanciate via the `RetX = NoRet` type; we can
+                // impossible to instantiate via the `RetX = NoRet` type; we can
                 // always ignore their value.
                 TestEvent::RetX(_) => self.end_protector_x(),
                 TestEvent::RetY(_) => self.end_protector_y(),
@@ -516,11 +516,11 @@ mod spurious_read {
         let source = LocStateProtPair {
             xy_rel: RelPosXY::MutuallyForeign,
             x: LocStateProt {
-                state: LocationState::new(Permission::new_frozen()).with_access(),
+                state: LocationState::new_init(Permission::new_frozen()),
                 prot: true,
             },
             y: LocStateProt {
-                state: LocationState::new(Permission::new_reserved(false)),
+                state: LocationState::new_uninit(Permission::new_reserved(false)),
                 prot: true,
             },
         };

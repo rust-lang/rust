@@ -11,14 +11,13 @@ use crate::errors;
 use crate::maybe_whole;
 
 use crate::errors::MalformedLoopLabel;
-use crate::parser::Recovered;
 use ast::Label;
 use rustc_ast as ast;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, TokenKind};
 use rustc_ast::util::classify;
 use rustc_ast::{AttrStyle, AttrVec, LocalKind, MacCall, MacCallStmt, MacStmtStyle};
-use rustc_ast::{Block, BlockCheckMode, Expr, ExprKind, HasAttrs, Local, Stmt};
+use rustc_ast::{Block, BlockCheckMode, Expr, ExprKind, HasAttrs, Local, Recovered, Stmt};
 use rustc_ast::{StmtKind, DUMMY_NODE_ID};
 use rustc_errors::{Applicability, Diag, PResult};
 use rustc_span::symbol::{kw, sym, Ident};
@@ -40,8 +39,8 @@ impl<'a> Parser<'a> {
         }))
     }
 
-    /// If `force_collect` is [`ForceCollect::Yes`], forces collection of tokens regardless of whether
-    /// or not we have attributes
+    /// If `force_collect` is [`ForceCollect::Yes`], forces collection of tokens regardless of
+    /// whether or not we have attributes.
     // Public for `cfg_eval` macro expansion.
     pub fn parse_stmt_without_recovery(
         &mut self,
@@ -51,18 +50,12 @@ impl<'a> Parser<'a> {
         let attrs = self.parse_outer_attributes()?;
         let lo = self.token.span;
 
-        // Don't use `maybe_whole` so that we have precise control
-        // over when we bump the parser
-        if let token::Interpolated(nt) = &self.token.kind
-            && let token::NtStmt(stmt) = &nt.0
-        {
-            let mut stmt = stmt.clone();
-            self.bump();
+        maybe_whole!(self, NtStmt, |stmt| {
             stmt.visit_attrs(|stmt_attrs| {
                 attrs.prepend_to_nt_inner(stmt_attrs);
             });
-            return Ok(Some(stmt.into_inner()));
-        }
+            Some(stmt.into_inner())
+        });
 
         if self.token.is_keyword(kw::Mut) && self.is_keyword_ahead(1, &[kw::Let]) {
             self.bump();
@@ -254,7 +247,7 @@ impl<'a> Parser<'a> {
                 let local = this.parse_local(attrs)?;
                 // FIXME - maybe capture semicolon in recovery?
                 Ok((
-                    this.mk_stmt(lo.to(this.prev_token.span), StmtKind::Local(local)),
+                    this.mk_stmt(lo.to(this.prev_token.span), StmtKind::Let(local)),
                     TrailingToken::None,
                 ))
             })?;
@@ -278,7 +271,7 @@ impl<'a> Parser<'a> {
             } else {
                 TrailingToken::None
             };
-            Ok((this.mk_stmt(lo.to(this.prev_token.span), StmtKind::Local(local)), trailing))
+            Ok((this.mk_stmt(lo.to(this.prev_token.span), StmtKind::Let(local)), trailing))
         })
     }
 
@@ -539,7 +532,7 @@ impl<'a> Parser<'a> {
         blk_mode: BlockCheckMode,
         can_be_struct_literal: bool,
     ) -> PResult<'a, (AttrVec, P<Block>)> {
-        maybe_whole!(self, NtBlock, |x| (AttrVec::new(), x));
+        maybe_whole!(self, NtBlock, |block| (AttrVec::new(), block));
 
         let maybe_ident = self.prev_token.clone();
         self.maybe_recover_unexpected_block_label();
@@ -643,7 +636,7 @@ impl<'a> Parser<'a> {
         recover: AttemptLocalParseRecovery,
     ) -> PResult<'a, Option<Stmt>> {
         // Skip looking for a trailing semicolon when we have an interpolated statement.
-        maybe_whole!(self, NtStmt, |x| Some(x.into_inner()));
+        maybe_whole!(self, NtStmt, |stmt| Some(stmt.into_inner()));
 
         let Some(mut stmt) = self.parse_stmt_without_recovery(true, ForceCollect::No)? else {
             return Ok(None);
@@ -681,11 +674,8 @@ impl<'a> Parser<'a> {
                 let replace_with_err = 'break_recover: {
                     match expect_result {
                         Ok(Recovered::No) => None,
-                        Ok(Recovered::Yes) => {
+                        Ok(Recovered::Yes(guar)) => {
                             // Skip type error to avoid extra errors.
-                            let guar = self
-                                .dcx()
-                                .span_delayed_bug(self.prev_token.span, "expected `;` or `}`");
                             Some(guar)
                         }
                         Err(e) => {
@@ -764,7 +754,7 @@ impl<'a> Parser<'a> {
                 }
             }
             StmtKind::Expr(_) | StmtKind::MacCall(_) => {}
-            StmtKind::Local(local) if let Err(mut e) = self.expect_semi() => {
+            StmtKind::Let(local) if let Err(mut e) = self.expect_semi() => {
                 // We might be at the `,` in `let x = foo<bar, baz>;`. Try to recover.
                 match &mut local.kind {
                     LocalKind::Init(expr) | LocalKind::InitElse(expr, _) => {
@@ -820,7 +810,7 @@ impl<'a> Parser<'a> {
                 }
                 eat_semi = false;
             }
-            StmtKind::Empty | StmtKind::Item(_) | StmtKind::Local(_) | StmtKind::Semi(_) => {
+            StmtKind::Empty | StmtKind::Item(_) | StmtKind::Let(_) | StmtKind::Semi(_) => {
                 eat_semi = false
             }
         }

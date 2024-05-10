@@ -10,7 +10,6 @@ use std::ops::Index;
 
 use base_db::CrateId;
 use cfg::{CfgExpr, CfgOptions};
-use either::Either;
 use hir_expand::{name::Name, HirFileId, InFile};
 use la_arena::{Arena, ArenaMap};
 use rustc_hash::FxHashMap;
@@ -45,7 +44,8 @@ pub struct Body {
     ///
     /// If this `Body` is for the body of a constant, this will just be
     /// empty.
-    pub params: Vec<PatId>,
+    pub params: Box<[PatId]>,
+    pub self_param: Option<BindingId>,
     /// The `ExprId` of the actual body expression.
     pub body_expr: ExprId,
     /// Block expressions in this body that may contain inner items.
@@ -55,7 +55,7 @@ pub struct Body {
 pub type ExprPtr = AstPtr<ast::Expr>;
 pub type ExprSource = InFile<ExprPtr>;
 
-pub type PatPtr = AstPtr<Either<ast::Pat, ast::SelfParam>>;
+pub type PatPtr = AstPtr<ast::Pat>;
 pub type PatSource = InFile<PatPtr>;
 
 pub type LabelPtr = AstPtr<ast::Label>;
@@ -63,6 +63,7 @@ pub type LabelSource = InFile<LabelPtr>;
 
 pub type FieldPtr = AstPtr<ast::RecordExprField>;
 pub type FieldSource = InFile<FieldPtr>;
+
 pub type PatFieldPtr = AstPtr<ast::RecordPatField>;
 pub type PatFieldSource = InFile<PatFieldPtr>;
 
@@ -87,6 +88,8 @@ pub struct BodySourceMap {
 
     label_map: FxHashMap<LabelSource, LabelId>,
     label_map_back: ArenaMap<LabelId, LabelSource>,
+
+    self_param: Option<InFile<AstPtr<ast::SelfParam>>>,
 
     /// We don't create explicit nodes for record fields (`S { record_field: 92 }`).
     /// Instead, we use id of expression (`92`) to identify the field.
@@ -215,10 +218,11 @@ impl Body {
     fn shrink_to_fit(&mut self) {
         let Self {
             body_expr: _,
+            params: _,
+            self_param: _,
             block_scopes,
             exprs,
             labels,
-            params,
             pats,
             bindings,
             binding_owners,
@@ -226,7 +230,6 @@ impl Body {
         block_scopes.shrink_to_fit();
         exprs.shrink_to_fit();
         labels.shrink_to_fit();
-        params.shrink_to_fit();
         pats.shrink_to_fit();
         bindings.shrink_to_fit();
         binding_owners.shrink_to_fit();
@@ -297,6 +300,7 @@ impl Default for Body {
             params: Default::default(),
             block_scopes: Default::default(),
             binding_owners: Default::default(),
+            self_param: Default::default(),
         }
     }
 }
@@ -354,14 +358,12 @@ impl BodySourceMap {
         self.pat_map_back.get(pat).cloned().ok_or(SyntheticSyntax)
     }
 
-    pub fn node_pat(&self, node: InFile<&ast::Pat>) -> Option<PatId> {
-        let src = node.map(|it| AstPtr::new(it).wrap_left());
-        self.pat_map.get(&src).cloned()
+    pub fn self_param_syntax(&self) -> Option<InFile<AstPtr<ast::SelfParam>>> {
+        self.self_param
     }
 
-    pub fn node_self_param(&self, node: InFile<&ast::SelfParam>) -> Option<PatId> {
-        let src = node.map(|it| AstPtr::new(it).wrap_right());
-        self.pat_map.get(&src).cloned()
+    pub fn node_pat(&self, node: InFile<&ast::Pat>) -> Option<PatId> {
+        self.pat_map.get(&node.map(AstPtr::new)).cloned()
     }
 
     pub fn label_syntax(&self, label: LabelId) -> LabelSource {
@@ -401,6 +403,7 @@ impl BodySourceMap {
 
     fn shrink_to_fit(&mut self) {
         let Self {
+            self_param: _,
             expr_map,
             expr_map_back,
             pat_map,

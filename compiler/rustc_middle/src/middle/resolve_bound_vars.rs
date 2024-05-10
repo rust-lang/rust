@@ -6,7 +6,7 @@ use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{ItemLocalId, OwnerId};
-use rustc_macros::HashStable;
+use rustc_macros::{Decodable, Encodable, HashStable, TyDecodable, TyEncodable};
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, TyEncodable, TyDecodable, Debug, HashStable)]
 pub enum ResolvedArg {

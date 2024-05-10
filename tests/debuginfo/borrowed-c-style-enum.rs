@@ -22,16 +22,16 @@
 
 // lldb-command:run
 
-// lldb-command:print *the_a_ref
-// lldbg-check:[...]$0 = TheA
+// lldb-command:v *the_a_ref
+// lldbg-check:[...] TheA
 // lldbr-check:(borrowed_c_style_enum::ABC) *the_a_ref = borrowed_c_style_enum::ABC::TheA
 
-// lldb-command:print *the_b_ref
-// lldbg-check:[...]$1 = TheB
+// lldb-command:v *the_b_ref
+// lldbg-check:[...] TheB
 // lldbr-check:(borrowed_c_style_enum::ABC) *the_b_ref = borrowed_c_style_enum::ABC::TheB
 
-// lldb-command:print *the_c_ref
-// lldbg-check:[...]$2 = TheC
+// lldb-command:v *the_c_ref
+// lldbg-check:[...] TheC
 // lldbr-check:(borrowed_c_style_enum::ABC) *the_c_ref = borrowed_c_style_enum::ABC::TheC
 
 #![allow(unused_variables)]

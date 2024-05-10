@@ -655,7 +655,7 @@ impl<BorrowType: marker::BorrowType, K, V> NodeRef<BorrowType, K, V, marker::Lea
 pub enum Position<BorrowType, K, V> {
     Leaf(NodeRef<BorrowType, K, V, marker::Leaf>),
     Internal(NodeRef<BorrowType, K, V, marker::Internal>),
-    InternalKV(Handle<NodeRef<BorrowType, K, V, marker::Internal>, marker::KV>),
+    InternalKV,
 }
 
 impl<'a, K: 'a, V: 'a> NodeRef<marker::Immut<'a>, K, V, marker::LeafOrInternal> {
@@ -677,7 +677,7 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Immut<'a>, K, V, marker::LeafOrInternal> 
                             visit(Position::Leaf(leaf));
                             match edge.next_kv() {
                                 Ok(kv) => {
-                                    visit(Position::InternalKV(kv));
+                                    visit(Position::InternalKV);
                                     kv.right_edge()
                                 }
                                 Err(_) => return,
@@ -699,7 +699,7 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Immut<'a>, K, V, marker::LeafOrInternal> 
         self.visit_nodes_in_order(|pos| match pos {
             Position::Leaf(node) => result += node.len(),
             Position::Internal(node) => result += node.len(),
-            Position::InternalKV(_) => (),
+            Position::InternalKV => (),
         });
         result
     }

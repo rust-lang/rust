@@ -21,7 +21,7 @@ use core::marker::{PhantomData, Unsize};
 #[cfg(not(no_global_oom_handling))]
 use core::mem::size_of_val;
 use core::mem::{self, align_of_val_raw};
-use core::ops::{CoerceUnsized, Deref, DispatchFromDyn, Receiver};
+use core::ops::{CoerceUnsized, Deref, DerefPure, DispatchFromDyn, Receiver};
 use core::panic::{RefUnwindSafe, UnwindSafe};
 use core::pin::Pin;
 use core::ptr::{self, NonNull};
@@ -233,7 +233,7 @@ macro_rules! acquire {
 ///     let val = Arc::clone(&val);
 ///
 ///     thread::spawn(move || {
-///         let v = val.fetch_add(1, Ordering::SeqCst);
+///         let v = val.fetch_add(1, Ordering::Relaxed);
 ///         println!("{v:?}");
 ///     });
 /// }
@@ -807,7 +807,10 @@ impl<T, A: Allocator> Arc<T, A> {
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[inline]
-    pub fn pin_in(data: T, alloc: A) -> Pin<Arc<T, A>> {
+    pub fn pin_in(data: T, alloc: A) -> Pin<Arc<T, A>>
+    where
+        A: 'static,
+    {
         unsafe { Pin::new_unchecked(Arc::new_in(data, alloc)) }
     }
 
@@ -815,7 +818,10 @@ impl<T, A: Allocator> Arc<T, A> {
     /// fails.
     #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
-    pub fn try_pin_in(data: T, alloc: A) -> Result<Pin<Arc<T, A>>, AllocError> {
+    pub fn try_pin_in(data: T, alloc: A) -> Result<Pin<Arc<T, A>>, AllocError>
+    where
+        A: 'static,
+    {
         unsafe { Ok(Pin::new_unchecked(Arc::try_new_in(data, alloc)?)) }
     }
 
@@ -1062,7 +1068,9 @@ impl<T, A: Allocator> Arc<T, A> {
     ///
     /// // Create a long list and clone it
     /// let mut x = LinkedList::new();
-    /// for i in 0..100000 {
+    /// let size = 100000;
+    /// # let size = if cfg!(miri) { 100 } else { size };
+    /// for i in 0..size {
     ///     x.push(i); // Adds i to the front of x
     /// }
     /// let y = x.clone();
@@ -2106,6 +2114,9 @@ impl<T: ?Sized, A: Allocator> Deref for Arc<T, A> {
         &self.inner().data
     }
 }
+
+#[unstable(feature = "deref_pure_trait", issue = "87121")]
+unsafe impl<T: ?Sized, A: Allocator> DerefPure for Arc<T, A> {}
 
 #[unstable(feature = "receiver_trait", issue = "none")]
 impl<T: ?Sized> Receiver for Arc<T> {}

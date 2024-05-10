@@ -118,10 +118,10 @@ Here the HIR sees the types without "thinking" about them, it knows that the fun
 an `u32`. As far as `hir::Ty` is concerned those might be different types. But at the `ty::Ty` level the compiler
 understands that they're the same type, in-depth lifetimes, etc...
 
-To get from a `hir::Ty` to a `ty::Ty`, you can use the [`hir_ty_to_ty`][hir_ty_to_ty] function outside of bodies or
+To get from a `hir::Ty` to a `ty::Ty`, you can use the [`lower_ty`][lower_ty] function outside of bodies or
 the [`TypeckResults::node_type()`][node_type] method inside of bodies.
 
-> **Warning**: Don't use `hir_ty_to_ty` inside of bodies, because this can cause ICEs.
+> **Warning**: Don't use `lower_ty` inside of bodies, because this can cause ICEs.
 
 ## Creating Types programmatically
 
@@ -162,6 +162,6 @@ in this chapter:
 [Ty]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.Ty.html
 [TyKind]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_type_ir/ty_kind/enum.TyKind.html
 [TypeckResults]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TypeckResults.html
-[middle_ty]: https://doc.rust-lang.org/beta/nightly-rustc/rustc_middle/ty/struct.Ty.html
-[hir_ty]: https://doc.rust-lang.org/beta/nightly-rustc/rustc_hir/struct.Ty.html
-[hir_ty_to_ty]: https://doc.rust-lang.org/beta/nightly-rustc/rustc_hir_analysis/fn.hir_ty_to_ty.html
+[middle_ty]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.Ty.html
+[hir_ty]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/struct.Ty.html
+[lower_ty]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_analysis/fn.lower_ty.html

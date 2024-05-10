@@ -1,3 +1,5 @@
+use crate::errors;
+use crate::util::expr_to_spanned_string;
 use parse::Position::ArgumentNamed;
 use rustc_ast::ptr::P;
 use rustc_ast::tokenstream::TokenStream;
@@ -5,18 +7,16 @@ use rustc_ast::{token, StmtKind};
 use rustc_ast::{
     Expr, ExprKind, FormatAlignment, FormatArgPosition, FormatArgPositionKind, FormatArgs,
     FormatArgsPiece, FormatArgument, FormatArgumentKind, FormatArguments, FormatCount,
-    FormatDebugHex, FormatOptions, FormatPlaceholder, FormatSign, FormatTrait,
+    FormatDebugHex, FormatOptions, FormatPlaceholder, FormatSign, FormatTrait, Recovered,
 };
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{Applicability, Diag, MultiSpan, PResult, SingleLabelManySpans};
-use rustc_expand::base::{self, *};
-use rustc_parse::parser::Recovered;
+use rustc_expand::base::*;
+use rustc_lint_defs::builtin::NAMED_ARGUMENTS_USED_POSITIONALLY;
+use rustc_lint_defs::{BufferedEarlyLint, BuiltinLintDiag, LintId};
 use rustc_parse_format as parse;
 use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::{BytePos, ErrorGuaranteed, InnerSpan, Span};
-
-use rustc_lint_defs::builtin::NAMED_ARGUMENTS_USED_POSITIONALLY;
-use rustc_lint_defs::{BufferedEarlyLint, BuiltinLintDiag, LintId};
 
 // The format_args!() macro is expanded in three steps:
 //  1. First, `parse_args` will parse the `(literal, arg, arg, name=arg, name=arg)` syntax,
@@ -38,8 +38,7 @@ enum PositionUsedAs {
 }
 use PositionUsedAs::*;
 
-use crate::errors;
-
+#[derive(Debug)]
 struct MacroInput {
     fmtstr: P<Expr>,
     args: FormatArguments,
@@ -64,7 +63,7 @@ struct MacroInput {
 /// ```text
 /// Ok((fmtstr, parsed arguments))
 /// ```
-fn parse_args<'a>(ecx: &mut ExtCtxt<'a>, sp: Span, tts: TokenStream) -> PResult<'a, MacroInput> {
+fn parse_args<'a>(ecx: &ExtCtxt<'a>, sp: Span, tts: TokenStream) -> PResult<'a, MacroInput> {
     let mut args = FormatArguments::new();
 
     let mut p = ecx.new_parser_from_tts(tts);
@@ -112,7 +111,7 @@ fn parse_args<'a>(ecx: &mut ExtCtxt<'a>, sp: Span, tts: TokenStream) -> PResult<
                         _ => return Err(err),
                     }
                 }
-                Ok(Recovered::Yes) => (),
+                Ok(Recovered::Yes(_)) => (),
                 Ok(Recovered::No) => unreachable!(),
             }
         }
@@ -160,54 +159,61 @@ fn make_format_args(
     ecx: &mut ExtCtxt<'_>,
     input: MacroInput,
     append_newline: bool,
-) -> Result<FormatArgs, ErrorGuaranteed> {
+) -> ExpandResult<Result<FormatArgs, ErrorGuaranteed>, ()> {
     let msg = "format argument must be a string literal";
     let unexpanded_fmt_span = input.fmtstr.span;
 
     let MacroInput { fmtstr: efmt, mut args, is_direct_literal } = input;
 
-    let (fmt_str, fmt_style, fmt_span) = match expr_to_spanned_string(ecx, efmt.clone(), msg) {
-        Ok(mut fmt) if append_newline => {
-            fmt.0 = Symbol::intern(&format!("{}\n", fmt.0));
-            fmt
-        }
-        Ok(fmt) => fmt,
-        Err(err) => {
-            let guar = match err {
-                Ok((mut err, suggested)) => {
-                    if !suggested {
-                        if let ExprKind::Block(block, None) = &efmt.kind
-                            && block.stmts.len() == 1
-                            && let StmtKind::Expr(expr) = &block.stmts[0].kind
-                            && let ExprKind::Path(None, path) = &expr.kind
-                            && path.is_potential_trivial_const_arg()
-                        {
-                            err.multipart_suggestion(
-                                "quote your inlined format argument to use as string literal",
-                                vec![
-                                    (unexpanded_fmt_span.shrink_to_hi(), "\"".to_string()),
-                                    (unexpanded_fmt_span.shrink_to_lo(), "\"".to_string()),
-                                ],
-                                Applicability::MaybeIncorrect,
-                            );
-                        } else {
-                            let sugg_fmt = match args.explicit_args().len() {
-                                0 => "{}".to_string(),
-                                _ => format!("{}{{}}", "{} ".repeat(args.explicit_args().len())),
-                            };
-                            err.span_suggestion(
-                                unexpanded_fmt_span.shrink_to_lo(),
-                                "you might be missing a string literal to format with",
-                                format!("\"{sugg_fmt}\", "),
-                                Applicability::MaybeIncorrect,
-                            );
+    let (fmt_str, fmt_style, fmt_span) = {
+        let ExpandResult::Ready(mac) = expr_to_spanned_string(ecx, efmt.clone(), msg) else {
+            return ExpandResult::Retry(());
+        };
+        match mac {
+            Ok(mut fmt) if append_newline => {
+                fmt.0 = Symbol::intern(&format!("{}\n", fmt.0));
+                fmt
+            }
+            Ok(fmt) => fmt,
+            Err(err) => {
+                let guar = match err {
+                    Ok((mut err, suggested)) => {
+                        if !suggested {
+                            if let ExprKind::Block(block, None) = &efmt.kind
+                                && block.stmts.len() == 1
+                                && let StmtKind::Expr(expr) = &block.stmts[0].kind
+                                && let ExprKind::Path(None, path) = &expr.kind
+                                && path.is_potential_trivial_const_arg()
+                            {
+                                err.multipart_suggestion(
+                                    "quote your inlined format argument to use as string literal",
+                                    vec![
+                                        (unexpanded_fmt_span.shrink_to_hi(), "\"".to_string()),
+                                        (unexpanded_fmt_span.shrink_to_lo(), "\"".to_string()),
+                                    ],
+                                    Applicability::MaybeIncorrect,
+                                );
+                            } else {
+                                let sugg_fmt = match args.explicit_args().len() {
+                                    0 => "{}".to_string(),
+                                    _ => {
+                                        format!("{}{{}}", "{} ".repeat(args.explicit_args().len()))
+                                    }
+                                };
+                                err.span_suggestion(
+                                    unexpanded_fmt_span.shrink_to_lo(),
+                                    "you might be missing a string literal to format with",
+                                    format!("\"{sugg_fmt}\", "),
+                                    Applicability::MaybeIncorrect,
+                                );
+                            }
                         }
+                        err.emit()
                     }
-                    err.emit()
-                }
-                Err(guar) => guar,
-            };
-            return Err(guar);
+                    Err(guar) => guar,
+                };
+                return ExpandResult::Ready(Err(guar));
+            }
         }
     };
 
@@ -297,10 +303,10 @@ fn make_format_args(
             }
         }
         let guar = ecx.dcx().emit_err(e);
-        return Err(guar);
+        return ExpandResult::Ready(Err(guar));
     }
 
-    let to_span = |inner_span: rustc_parse_format::InnerSpan| {
+    let to_span = |inner_span: parse::InnerSpan| {
         is_source_literal.then(|| {
             fmt_span.from_inner(InnerSpan { start: inner_span.start, end: inner_span.end })
         })
@@ -308,7 +314,7 @@ fn make_format_args(
 
     let mut used = vec![false; args.explicit_args().len()];
     let mut invalid_refs = Vec::new();
-    let mut numeric_refences_to_named_arg = Vec::new();
+    let mut numeric_references_to_named_arg = Vec::new();
 
     enum ArgRef<'a> {
         Index(usize),
@@ -329,7 +335,7 @@ fn make_format_args(
                     used[index] = true;
                     if arg.kind.ident().is_some() {
                         // This was a named argument, but it was used as a positional argument.
-                        numeric_refences_to_named_arg.push((index, span, used_as));
+                        numeric_references_to_named_arg.push((index, span, used_as));
                     }
                     Ok(index)
                 } else {
@@ -537,7 +543,7 @@ fn make_format_args(
     // Only check for unused named argument names if there are no other errors to avoid causing
     // too much noise in output errors, such as when a named argument is entirely unused.
     if invalid_refs.is_empty() && !has_unused && !unnamed_arg_after_named_arg {
-        for &(index, span, used_as) in &numeric_refences_to_named_arg {
+        for &(index, span, used_as) in &numeric_references_to_named_arg {
             let (position_sp_to_replace, position_sp_for_msg) = match used_as {
                 Placeholder(pspan) => (span, pspan),
                 Precision => {
@@ -564,13 +570,13 @@ fn make_format_args(
         }
     }
 
-    Ok(FormatArgs { span: fmt_span, template, arguments: args })
+    ExpandResult::Ready(Ok(FormatArgs { span: fmt_span, template, arguments: args }))
 }
 
 fn invalid_placeholder_type_error(
     ecx: &ExtCtxt<'_>,
     ty: &str,
-    ty_span: Option<rustc_parse_format::InnerSpan>,
+    ty_span: Option<parse::InnerSpan>,
     fmt_span: Span,
 ) {
     let sp = ty_span.map(|sp| fmt_span.from_inner(InnerSpan::new(sp.start, sp.end)));
@@ -596,7 +602,7 @@ fn invalid_placeholder_type_error(
 }
 
 fn report_missing_placeholders(
-    ecx: &mut ExtCtxt<'_>,
+    ecx: &ExtCtxt<'_>,
     unused: Vec<(Span, bool)>,
     used: &[bool],
     args: &FormatArguments,
@@ -726,7 +732,7 @@ fn report_missing_placeholders(
 /// This function detects and reports unused format!() arguments that are
 /// redundant due to implicit captures (e.g. `format!("{x}", x)`).
 fn report_redundant_format_arguments<'a>(
-    ecx: &mut ExtCtxt<'a>,
+    ecx: &ExtCtxt<'a>,
     args: &FormatArguments,
     used: &[bool],
     placeholders: Vec<(Span, &str)>,
@@ -798,7 +804,7 @@ fn report_redundant_format_arguments<'a>(
 /// there are named arguments or numbered positional arguments in the
 /// format string.
 fn report_invalid_references(
-    ecx: &mut ExtCtxt<'_>,
+    ecx: &ExtCtxt<'_>,
     invalid_refs: &[(usize, Option<Span>, PositionUsedAs, FormatArgPositionKind)],
     template: &[FormatArgsPiece],
     fmt_span: Span,
@@ -972,32 +978,39 @@ fn expand_format_args_impl<'cx>(
     mut sp: Span,
     tts: TokenStream,
     nl: bool,
-) -> Box<dyn base::MacResult + 'cx> {
+) -> MacroExpanderResult<'cx> {
     sp = ecx.with_def_site_ctxt(sp);
-    match parse_args(ecx, sp, tts) {
-        Ok(input) => match make_format_args(ecx, input, nl) {
-            Ok(format_args) => MacEager::expr(ecx.expr(sp, ExprKind::FormatArgs(P(format_args)))),
-            Err(guar) => MacEager::expr(DummyResult::raw_expr(sp, Some(guar))),
-        },
+    ExpandResult::Ready(match parse_args(ecx, sp, tts) {
+        Ok(input) => {
+            let ExpandResult::Ready(mac) = make_format_args(ecx, input, nl) else {
+                return ExpandResult::Retry(());
+            };
+            match mac {
+                Ok(format_args) => {
+                    MacEager::expr(ecx.expr(sp, ExprKind::FormatArgs(P(format_args))))
+                }
+                Err(guar) => MacEager::expr(DummyResult::raw_expr(sp, Some(guar))),
+            }
+        }
         Err(err) => {
             let guar = err.emit();
             DummyResult::any(sp, guar)
         }
-    }
+    })
 }
 
-pub fn expand_format_args<'cx>(
+pub(crate) fn expand_format_args<'cx>(
     ecx: &'cx mut ExtCtxt<'_>,
     sp: Span,
     tts: TokenStream,
-) -> Box<dyn base::MacResult + 'cx> {
+) -> MacroExpanderResult<'cx> {
     expand_format_args_impl(ecx, sp, tts, false)
 }
 
-pub fn expand_format_args_nl<'cx>(
+pub(crate) fn expand_format_args_nl<'cx>(
     ecx: &'cx mut ExtCtxt<'_>,
     sp: Span,
     tts: TokenStream,
-) -> Box<dyn base::MacResult + 'cx> {
+) -> MacroExpanderResult<'cx> {
     expand_format_args_impl(ecx, sp, tts, true)
 }

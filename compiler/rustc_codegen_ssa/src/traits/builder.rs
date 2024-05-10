@@ -1,22 +1,24 @@
 use super::abi::AbiBuilderMethods;
 use super::asm::AsmBuilderMethods;
+use super::consts::ConstMethods;
 use super::coverageinfo::CoverageInfoBuilderMethods;
 use super::debuginfo::DebugInfoBuilderMethods;
 use super::intrinsic::IntrinsicCallMethods;
 use super::misc::MiscMethods;
-use super::type_::{ArgAbiMethods, BaseTypeMethods};
+use super::type_::{ArgAbiMethods, BaseTypeMethods, LayoutTypeMethods};
 use super::{HasCodegen, StaticBuilderMethods};
 
 use crate::common::{
     AtomicOrdering, AtomicRmwBinOp, IntPredicate, RealPredicate, SynchronizationScope, TypeKind,
 };
-use crate::mir::operand::OperandRef;
-use crate::mir::place::PlaceRef;
+use crate::mir::operand::{OperandRef, OperandValue};
+use crate::mir::place::{PlaceRef, PlaceValue};
 use crate::MemFlags;
 
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::ty::layout::{HasParamEnv, TyAndLayout};
-use rustc_middle::ty::Ty;
+use rustc_middle::ty::{Instance, Ty};
+use rustc_session::config::OptLevel;
 use rustc_span::Span;
 use rustc_target::abi::call::FnAbi;
 use rustc_target::abi::{Abi, Align, Scalar, Size, WrappingRange};
@@ -80,6 +82,7 @@ pub trait BuilderMethods<'a, 'tcx>:
         then: Self::BasicBlock,
         catch: Self::BasicBlock,
         funclet: Option<&Self::Funclet>,
+        instance: Option<Instance<'tcx>>,
     ) -> Self::Value;
     fn unreachable(&mut self);
 
@@ -141,8 +144,8 @@ pub trait BuilderMethods<'a, 'tcx>:
     }
     fn to_immediate_scalar(&mut self, val: Self::Value, scalar: Scalar) -> Self::Value;
 
-    fn alloca(&mut self, ty: Self::Type, align: Align) -> Self::Value;
-    fn byte_array_alloca(&mut self, len: Self::Value, align: Align) -> Self::Value;
+    fn alloca(&mut self, size: Size, align: Align) -> Self::Value;
+    fn dynamic_alloca(&mut self, size: Self::Value, align: Align) -> Self::Value;
 
     fn load(&mut self, ty: Self::Type, ptr: Self::Value, align: Align) -> Self::Value;
     fn volatile_load(&mut self, ty: Self::Type, ptr: Self::Value) -> Self::Value;
@@ -153,6 +156,10 @@ pub trait BuilderMethods<'a, 'tcx>:
         order: AtomicOrdering,
         size: Size,
     ) -> Self::Value;
+    fn load_from_place(&mut self, ty: Self::Type, place: PlaceValue<Self::Value>) -> Self::Value {
+        debug_assert_eq!(place.llextra, None);
+        self.load(ty, place.llval, place.align)
+    }
     fn load_operand(&mut self, place: PlaceRef<'tcx, Self::Value>)
     -> OperandRef<'tcx, Self::Value>;
 
@@ -168,6 +175,10 @@ pub trait BuilderMethods<'a, 'tcx>:
     fn nonnull_metadata(&mut self, load: Self::Value);
 
     fn store(&mut self, val: Self::Value, ptr: Self::Value, align: Align) -> Self::Value;
+    fn store_to_place(&mut self, val: Self::Value, place: PlaceValue<Self::Value>) -> Self::Value {
+        debug_assert_eq!(place.llextra, None);
+        self.store(val, place.llval, place.align)
+    }
     fn store_with_flags(
         &mut self,
         val: Self::Value,
@@ -267,6 +278,69 @@ pub trait BuilderMethods<'a, 'tcx>:
         flags: MemFlags,
     );
 
+    /// *Typed* copy for non-overlapping places.
+    ///
+    /// Has a default implementation in terms of `memcpy`, but specific backends
+    /// can override to do something smarter if possible.
+    ///
+    /// (For example, typed load-stores with alias metadata.)
+    fn typed_place_copy(
+        &mut self,
+        dst: PlaceRef<'tcx, Self::Value>,
+        src: PlaceRef<'tcx, Self::Value>,
+    ) {
+        self.typed_place_copy_with_flags(dst, src, MemFlags::empty());
+    }
+
+    fn typed_place_copy_with_flags(
+        &mut self,
+        dst: PlaceRef<'tcx, Self::Value>,
+        src: PlaceRef<'tcx, Self::Value>,
+        flags: MemFlags,
+    ) {
+        debug_assert!(src.val.llextra.is_none(), "cannot directly copy from unsized values");
+        debug_assert!(dst.val.llextra.is_none(), "cannot directly copy into unsized values");
+        debug_assert_eq!(dst.layout.size, src.layout.size);
+        if flags.contains(MemFlags::NONTEMPORAL) {
+            // HACK(nox): This is inefficient but there is no nontemporal memcpy.
+            let ty = self.backend_type(dst.layout);
+            let val = self.load_from_place(ty, src.val);
+            self.store_with_flags(val, dst.val.llval, dst.val.align, flags);
+        } else if self.sess().opts.optimize == OptLevel::No && self.is_backend_immediate(dst.layout)
+        {
+            // If we're not optimizing, the aliasing information from `memcpy`
+            // isn't useful, so just load-store the value for smaller code.
+            let temp = self.load_operand(src);
+            temp.val.store_with_flags(self, dst, flags);
+        } else if !dst.layout.is_zst() {
+            let bytes = self.const_usize(dst.layout.size.bytes());
+            self.memcpy(dst.val.llval, dst.val.align, src.val.llval, src.val.align, bytes, flags);
+        }
+    }
+
+    /// *Typed* swap for non-overlapping places.
+    ///
+    /// Avoids `alloca`s for Immediates and ScalarPairs.
+    ///
+    /// FIXME: Maybe do something smarter for Ref types too?
+    /// For now, the `typed_swap` intrinsic just doesn't call this for those
+    /// cases (in non-debug), preferring the fallback body instead.
+    fn typed_place_swap(
+        &mut self,
+        left: PlaceRef<'tcx, Self::Value>,
+        right: PlaceRef<'tcx, Self::Value>,
+    ) {
+        let mut temp = self.load_operand(left);
+        if let OperandValue::Ref(..) = temp.val {
+            // The SSA value isn't stand-alone, so we need to copy it elsewhere
+            let alloca = PlaceRef::alloca(self, left.layout);
+            self.typed_place_copy(alloca, left);
+            temp = self.load_operand(alloca);
+        }
+        self.typed_place_copy(left, right);
+        temp.val.store(self, right);
+    }
+
     fn select(
         &mut self,
         cond: Self::Value,
@@ -339,6 +413,7 @@ pub trait BuilderMethods<'a, 'tcx>:
         llfn: Self::Value,
         args: &[Self::Value],
         funclet: Option<&Self::Funclet>,
+        instance: Option<Instance<'tcx>>,
     ) -> Self::Value;
     fn zext(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
 

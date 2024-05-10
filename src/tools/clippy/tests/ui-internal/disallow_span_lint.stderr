@@ -4,6 +4,7 @@ error: use of a disallowed method `rustc_lint::context::LintContext::span_lint`
 LL |     cx.span_lint(lint, span, msg, |_| {});
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = note: this function does not add a link to our documentation, please use the `clippy_utils::diagnostics::span_lint*` functions instead (from clippy.toml)
    = note: `-D clippy::disallowed-methods` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::disallowed_methods)]`
 
@@ -12,6 +13,8 @@ error: use of a disallowed method `rustc_middle::ty::context::TyCtxt::node_span_
    |
 LL |     tcx.node_span_lint(lint, hir_id, span, msg, |_| {});
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function does not add a link to our documentation, please use the `clippy_utils::diagnostics::span_lint_hir*` functions instead (from clippy.toml)
 
 error: aborting due to 2 previous errors
 

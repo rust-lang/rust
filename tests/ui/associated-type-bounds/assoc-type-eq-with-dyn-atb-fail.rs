@@ -8,8 +8,6 @@
 // Additionally, as reported in https://github.com/rust-lang/rust/issues/63594,
 // we check that the spans for the error message are sane here.
 
-#![feature(associated_type_bounds)]
-
 fn main() {}
 
 trait Bar {

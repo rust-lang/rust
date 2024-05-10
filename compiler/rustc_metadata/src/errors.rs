@@ -4,8 +4,7 @@ use std::{
 };
 
 use rustc_errors::{codes::*, Diag, DiagCtxt, Diagnostic, EmissionGuarantee, Level};
-use rustc_macros::Diagnostic;
-use rustc_session::config;
+use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{sym, Span, Symbol};
 use rustc_target::spec::{PanicStrategy, TargetTriple};
 
@@ -37,6 +36,14 @@ pub struct RustcLibRequired<'a> {
 #[diag(metadata_crate_dep_multiple)]
 #[help]
 pub struct CrateDepMultiple {
+    pub crate_name: Symbol,
+    #[subdiagnostic]
+    pub non_static_deps: Vec<NonStaticCrateDep>,
+}
+
+#[derive(Subdiagnostic)]
+#[note(metadata_crate_dep_not_static)]
+pub struct NonStaticCrateDep {
     pub crate_name: Symbol,
 }
 
@@ -632,9 +639,7 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for CannotFindCrate {
         diag.arg("locator_triple", self.locator_triple.triple());
         diag.code(E0463);
         diag.span(self.span);
-        if (self.crate_name == sym::std || self.crate_name == sym::core)
-            && self.locator_triple != TargetTriple::from_triple(config::host_triple())
-        {
+        if self.crate_name == sym::std || self.crate_name == sym::core {
             if self.missing_core {
                 diag.note(fluent::metadata_target_not_installed);
             } else {

@@ -16,6 +16,9 @@ borrowck_borrow_due_to_use_closure =
 borrowck_borrow_due_to_use_coroutine =
     borrow occurs due to use in coroutine
 
+borrowck_calling_operator_moves =
+    calling this operator moves the value
+
 borrowck_calling_operator_moves_lhs =
     calling this operator moves the left-hand side
 
@@ -84,6 +87,12 @@ borrowck_move_unsized =
 borrowck_moved_a_fn_once_in_call =
     this value implements `FnOnce`, which causes it to be moved when called
 
+borrowck_moved_a_fn_once_in_call_call =
+    `FnOnce` closures can only be called once
+
+borrowck_moved_a_fn_once_in_call_def =
+    `{$ty}` is made to be an `FnOnce` closure here
+
 borrowck_moved_due_to_await =
     {$place_name} {$is_partial ->
         [true] partially moved
@@ -128,6 +137,12 @@ borrowck_moved_due_to_usage_in_operator =
         [true] operator, in previous iteration of loop
         *[false] operator
     }
+
+borrowck_opaque_type_lifetime_mismatch =
+    opaque type used twice with different lifetimes
+    .label = lifetime `{$arg}` used here
+    .prev_lifetime_label = lifetime `{$prev}` previously used here
+    .note = if all non-lifetime generic parameters are the same, but the lifetime parameters differ, it is not possible to differentiate the opaque types
 
 borrowck_opaque_type_non_generic_param =
     expected generic {$kind} parameter, found `{$ty}`

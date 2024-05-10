@@ -7,7 +7,7 @@ LL | #![feature(return_type_notation)]
    = note: see issue #109417 <https://github.com/rust-lang/rust/issues/109417> for more information
    = note: `#[warn(incomplete_features)]` on by default
 
-error[E0308]: mismatched types
+error: implementation of `Send` is not general enough
   --> $DIR/issue-110963-early.rs:14:5
    |
 LL | /     spawn(async move {
@@ -16,17 +16,12 @@ LL | |         if !hc.check().await {
 LL | |             log_health_check_failure().await;
 LL | |         }
 LL | |     });
-   | |______^ one type is more general than the other
+   | |______^ implementation of `Send` is not general enough
    |
-   = note: expected trait `Send`
-              found trait `for<'a> Send`
-note: the lifetime requirement is introduced here
-  --> $DIR/issue-110963-early.rs:34:17
-   |
-LL |     F: Future + Send + 'static,
-   |                 ^^^^
+   = note: `Send` would have to be implemented for the type `impl Future<Output = bool> { <HC as HealthCheck>::check<'0>() }`, for any two lifetimes `'0` and `'1`...
+   = note: ...but `Send` is actually implemented for the type `impl Future<Output = bool> { <HC as HealthCheck>::check<'2>() }`, for some specific lifetime `'2`
 
-error[E0308]: mismatched types
+error: implementation of `Send` is not general enough
   --> $DIR/issue-110963-early.rs:14:5
    |
 LL | /     spawn(async move {
@@ -35,17 +30,11 @@ LL | |         if !hc.check().await {
 LL | |             log_health_check_failure().await;
 LL | |         }
 LL | |     });
-   | |______^ one type is more general than the other
+   | |______^ implementation of `Send` is not general enough
    |
-   = note: expected trait `Send`
-              found trait `for<'a> Send`
-note: the lifetime requirement is introduced here
-  --> $DIR/issue-110963-early.rs:34:17
-   |
-LL |     F: Future + Send + 'static,
-   |                 ^^^^
+   = note: `Send` would have to be implemented for the type `impl Future<Output = bool> { <HC as HealthCheck>::check<'0>() }`, for any two lifetimes `'0` and `'1`...
+   = note: ...but `Send` is actually implemented for the type `impl Future<Output = bool> { <HC as HealthCheck>::check<'2>() }`, for some specific lifetime `'2`
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 2 previous errors; 1 warning emitted
 
-For more information about this error, try `rustc --explain E0308`.

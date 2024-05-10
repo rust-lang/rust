@@ -1,7 +1,5 @@
 //@ check-pass
 
-#![feature(associated_type_bounds)]
-
 trait A<'a> {
     type Assoc: ?Sized;
 }

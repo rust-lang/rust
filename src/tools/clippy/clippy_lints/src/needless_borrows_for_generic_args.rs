@@ -13,7 +13,7 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::mir::{Rvalue, StatementKind};
 use rustc_middle::ty::{
-    self, ClauseKind, EarlyBinder, FnSig, GenericArg, GenericArgKind, List, ParamTy, ProjectionPredicate, Ty,
+    self, ClauseKind, EarlyBinder, FnSig, GenericArg, GenericArgKind, ParamTy, ProjectionPredicate, Ty,
 };
 use rustc_session::impl_lint_pass;
 use rustc_span::symbol::sym;
@@ -23,7 +23,7 @@ use std::collections::VecDeque;
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for borrow operations (`&`) that used as a generic argument to a
+    /// Checks for borrow operations (`&`) that are used as a generic argument to a
     /// function when the borrowed value could be used.
     ///
     /// ### Why is this bad?
@@ -161,7 +161,7 @@ fn needless_borrow_count<'tcx>(
     cx: &LateContext<'tcx>,
     possible_borrowers: &mut Vec<(LocalDefId, PossibleBorrowerMap<'tcx, 'tcx>)>,
     fn_id: DefId,
-    callee_args: &'tcx List<GenericArg<'tcx>>,
+    callee_args: ty::GenericArgsRef<'tcx>,
     arg_index: usize,
     param_ty: ParamTy,
     mut expr: &Expr<'tcx>,
@@ -381,7 +381,7 @@ fn replace_types<'tcx>(
     fn_sig: FnSig<'tcx>,
     arg_index: usize,
     projection_predicates: &[ProjectionPredicate<'tcx>],
-    args: &mut [ty::GenericArg<'tcx>],
+    args: &mut [GenericArg<'tcx>],
 ) -> bool {
     let mut replaced = BitSet::new_empty(args.len());
 
@@ -399,7 +399,7 @@ fn replace_types<'tcx>(
             return false;
         }
 
-        args[param_ty.index as usize] = ty::GenericArg::from(new_ty);
+        args[param_ty.index as usize] = GenericArg::from(new_ty);
 
         // The `replaced.insert(...)` check provides some protection against infinite loops.
         if replaced.insert(param_ty.index) {
@@ -414,7 +414,7 @@ fn replace_types<'tcx>(
                     ));
 
                     if let Ok(projected_ty) = cx.tcx.try_normalize_erasing_regions(cx.param_env, projection)
-                        && args[term_param_ty.index as usize] != ty::GenericArg::from(projected_ty)
+                        && args[term_param_ty.index as usize] != GenericArg::from(projected_ty)
                     {
                         deque.push_back((*term_param_ty, projected_ty));
                     }

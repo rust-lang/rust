@@ -1,9 +1,9 @@
-use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::ty::{is_type_diagnostic_item, peel_mid_ty_refs_is_mutable};
 use clippy_utils::{fn_def_id, is_trait_method, path_to_local_id, peel_ref_operators};
 use rustc_ast::Mutability;
 use rustc_hir::intravisit::{walk_expr, Visitor};
-use rustc_hir::{Block, Expr, ExprKind, HirId, Local, Node, PatKind, PathSegment, StmtKind};
+use rustc_hir::{Block, Expr, ExprKind, HirId, LetStmt, Node, PatKind, PathSegment, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter::OnlyBodies;
 use rustc_session::declare_lint_pass;
@@ -56,7 +56,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedPeekable {
 
         for (idx, stmt) in block.stmts.iter().enumerate() {
             if !stmt.span.from_expansion()
-                && let StmtKind::Local(local) = stmt.kind
+                && let StmtKind::Let(local) = stmt.kind
                 && let PatKind::Binding(_, binding, ident, _) = local.pat.kind
                 && let Some(init) = local.init
                 && !init.span.from_expansion()
@@ -79,13 +79,15 @@ impl<'tcx> LateLintPass<'tcx> for UnusedPeekable {
                 }
 
                 if !vis.found_peek_call {
-                    span_lint_and_help(
+                    span_lint_hir_and_then(
                         cx,
                         UNUSED_PEEKABLE,
+                        local.hir_id,
                         ident.span,
                         "`peek` never called on `Peekable` iterator",
-                        None,
-                        "consider removing the call to `peekable`",
+                        |diag| {
+                            diag.help("consider removing the call to `peekable`");
+                        },
                     );
                 }
             }
@@ -188,7 +190,7 @@ impl<'tcx> Visitor<'tcx> for PeekableVisitor<'_, 'tcx> {
                             },
                         }
                     },
-                    Node::Local(Local { init: Some(init), .. }) => {
+                    Node::LetStmt(LetStmt { init: Some(init), .. }) => {
                         if arg_is_mut_peekable(self.cx, init) {
                             self.found_peek_call = true;
                         }
@@ -197,7 +199,7 @@ impl<'tcx> Visitor<'tcx> for PeekableVisitor<'_, 'tcx> {
                     },
                     Node::Stmt(stmt) => {
                         match stmt.kind {
-                            StmtKind::Local(_) | StmtKind::Item(_) => self.found_peek_call = true,
+                            StmtKind::Let(_) | StmtKind::Item(_) => self.found_peek_call = true,
                             StmtKind::Expr(_) | StmtKind::Semi(_) => {},
                         }
 

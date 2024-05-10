@@ -1,4 +1,4 @@
-use rustc_errors::{codes::*, Applicability};
+use rustc_errors::{codes::*, Applicability, ElidedLifetimeInPathSubdiag, MultiSpan};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{
     symbol::{Ident, Symbol},
@@ -495,8 +495,8 @@ pub(crate) struct Relative2018 {
 pub(crate) struct AncestorOnly(#[primary_span] pub(crate) Span);
 
 #[derive(Diagnostic)]
-#[diag(resolve_expected_found, code = E0577)]
-pub(crate) struct ExpectedFound {
+#[diag(resolve_expected_module_found, code = E0577)]
+pub(crate) struct ExpectedModuleFound {
     #[primary_span]
     #[label]
     pub(crate) span: Span,
@@ -525,8 +525,10 @@ pub(crate) struct ModuleOnly(#[primary_span] pub(crate) Span);
 #[diag(resolve_macro_expected_found)]
 pub(crate) struct MacroExpectedFound<'a> {
     #[primary_span]
+    #[label]
     pub(crate) span: Span,
     pub(crate) found: &'a str,
+    pub(crate) article: &'static str,
     pub(crate) expected: &'a str,
     pub(crate) macro_path: &'a str,
     #[subdiagnostic]
@@ -800,4 +802,424 @@ pub(crate) struct UnexpectedResUseAtOpInSlicePatWithRangeSugg {
     pub span: Span,
     pub ident: Ident,
     pub snippet: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(resolve_extern_crate_loading_macro_not_at_crate_root, code = E0468)]
+pub(crate) struct ExternCrateLoadingMacroNotAtCrateRoot {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(resolve_bad_macro_import, code = E0466)]
+pub(crate) struct BadMacroImport {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(resolve_extern_crate_self_requires_renaming)]
+pub(crate) struct ExternCrateSelfRequiresRenaming {
+    #[primary_span]
+    #[suggestion(code = "extern crate self as name;", applicability = "has-placeholders")]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(resolve_macro_use_name_already_in_use)]
+#[note]
+pub(crate) struct MacroUseNameAlreadyInUse {
+    #[primary_span]
+    pub(crate) span: Span,
+    pub(crate) name: Symbol,
+}
+
+#[derive(Diagnostic)]
+#[diag(resolve_imported_macro_not_found, code = E0469)]
+pub(crate) struct ImportedMacroNotFound {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(resolve_macro_extern_deprecated)]
+pub(crate) struct MacroExternDeprecated {
+    #[primary_span]
+    pub(crate) span: Span,
+    #[help]
+    pub inner_attribute: Option<()>,
+}
+
+#[derive(Diagnostic)]
+#[diag(resolve_arguments_macro_use_not_allowed)]
+pub(crate) struct ArgumentsMacroUseNotAllowed {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(resolve_unnamed_crate_root_import)]
+pub(crate) struct UnnamedCrateRootImport {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(resolve_macro_expanded_extern_crate_cannot_shadow_extern_arguments)]
+pub(crate) struct MacroExpandedExternCrateCannotShadowExternArguments {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(resolve_elided_anonymous_lifetime_report_error, code = E0637)]
+pub(crate) struct ElidedAnonymousLivetimeReportError {
+    #[primary_span]
+    #[label]
+    pub(crate) span: Span,
+    #[subdiagnostic]
+    pub(crate) suggestion: Option<ElidedAnonymousLivetimeReportErrorSuggestion>,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(
+    resolve_elided_anonymous_lifetime_report_error_suggestion,
+    applicability = "machine-applicable"
+)]
+pub(crate) struct ElidedAnonymousLivetimeReportErrorSuggestion {
+    #[suggestion_part(code = "for<'a> ")]
+    pub(crate) lo: Span,
+    #[suggestion_part(code = "'a ")]
+    pub(crate) hi: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(resolve_explicit_anonymous_lifetime_report_error, code = E0637)]
+pub(crate) struct ExplicitAnonymousLivetimeReportError {
+    #[primary_span]
+    #[label]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(resolve_implicit_elided_lifetimes_not_allowed_here, code = E0726)]
+pub(crate) struct ImplicitElidedLifetimeNotAllowedHere {
+    #[primary_span]
+    pub(crate) span: Span,
+    #[subdiagnostic]
+    pub(crate) subdiag: ElidedLifetimeInPathSubdiag,
+}
+
+#[derive(Diagnostic)]
+#[diag(resolve_underscore_lifetime_is_reserved, code = E0637)]
+pub(crate) struct UnderscoreLifetimeIsReserved {
+    #[primary_span]
+    #[label]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(resolve_static_lifetime_is_reserved, code = E0262)]
+pub(crate) struct StaticLifetimeIsReserved {
+    #[primary_span]
+    #[label]
+    pub(crate) span: Span,
+    pub(crate) lifetime: Ident,
+}
+
+#[derive(Diagnostic)]
+#[diag(resolve_attempt_to_define_builtin_macro_twice, code = E0773)]
+pub(crate) struct AttemptToDefineBuiltinMacroTwice {
+    #[primary_span]
+    pub(crate) span: Span,
+    #[note]
+    pub(crate) note_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(resolve_variable_is_not_bound_in_all_patterns, code = E0408)]
+pub(crate) struct VariableIsNotBoundInAllPatterns {
+    #[primary_span]
+    pub(crate) multispan: MultiSpan,
+    pub(crate) name: Symbol,
+}
+
+#[derive(Subdiagnostic, Debug, Clone)]
+#[label(resolve_pattern_doesnt_bind_name)]
+pub(crate) struct PatternDoesntBindName {
+    #[primary_span]
+    pub(crate) span: Span,
+    pub(crate) name: Symbol,
+}
+
+#[derive(Subdiagnostic, Debug, Clone)]
+#[label(resolve_variable_not_in_all_patterns)]
+pub(crate) struct VariableNotInAllPatterns {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(resolve_name_defined_multiple_time)]
+#[note]
+pub(crate) struct NameDefinedMultipleTime {
+    #[primary_span]
+    pub(crate) span: Span,
+    pub(crate) descr: &'static str,
+    pub(crate) container: &'static str,
+    #[subdiagnostic]
+    pub(crate) label: NameDefinedMultipleTimeLabel,
+    #[subdiagnostic]
+    pub(crate) old_binding_label: Option<NameDefinedMultipleTimeOldBindingLabel>,
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum NameDefinedMultipleTimeLabel {
+    #[label(resolve_name_defined_multiple_time_reimported)]
+    Reimported {
+        #[primary_span]
+        span: Span,
+        name: Symbol,
+    },
+    #[label(resolve_name_defined_multiple_time_redefined)]
+    Redefined {
+        #[primary_span]
+        span: Span,
+        name: Symbol,
+    },
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum NameDefinedMultipleTimeOldBindingLabel {
+    #[label(resolve_name_defined_multiple_time_old_binding_import)]
+    Import {
+        #[primary_span]
+        span: Span,
+        name: Symbol,
+        old_kind: &'static str,
+    },
+    #[label(resolve_name_defined_multiple_time_old_binding_definition)]
+    Definition {
+        #[primary_span]
+        span: Span,
+        name: Symbol,
+        old_kind: &'static str,
+    },
+}
+
+#[derive(Diagnostic)]
+#[diag(resolve_is_private, code = E0603)]
+pub(crate) struct IsPrivate<'a> {
+    #[primary_span]
+    #[label]
+    pub(crate) span: Span,
+    pub(crate) ident_descr: &'a str,
+    pub(crate) ident: Ident,
+}
+
+#[derive(Diagnostic)]
+#[diag(resolve_generic_arguments_in_macro_path)]
+pub(crate) struct GenericArgumentsInMacroPath {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(resolve_attributes_starting_with_rustc_are_reserved)]
+pub(crate) struct AttributesStartingWithRustcAreReserved {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(resolve_cannot_use_through_an_import)]
+pub(crate) struct CannotUseThroughAnImport {
+    #[primary_span]
+    pub(crate) span: Span,
+    pub(crate) article: &'static str,
+    pub(crate) descr: &'static str,
+    #[note]
+    pub(crate) binding_span: Option<Span>,
+}
+
+#[derive(Diagnostic)]
+#[diag(resolve_name_reserved_in_attribute_namespace)]
+pub(crate) struct NameReservedInAttributeNamespace {
+    #[primary_span]
+    pub(crate) span: Span,
+    pub(crate) ident: Ident,
+}
+
+#[derive(Diagnostic)]
+#[diag(resolve_cannot_find_builtin_macro_with_name)]
+pub(crate) struct CannotFindBuiltinMacroWithName {
+    #[primary_span]
+    pub(crate) span: Span,
+    pub(crate) ident: Ident,
+}
+
+#[derive(Diagnostic)]
+#[diag(resolve_tool_was_already_registered)]
+pub(crate) struct ToolWasAlreadyRegistered {
+    #[primary_span]
+    pub(crate) span: Span,
+    pub(crate) tool: Ident,
+    #[label]
+    pub(crate) old_ident_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(resolve_tool_only_accepts_identifiers)]
+pub(crate) struct ToolOnlyAcceptsIdentifiers {
+    #[label]
+    #[primary_span]
+    pub(crate) span: Span,
+    pub(crate) tool: Symbol,
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum DefinedHere {
+    #[label(resolve_similarly_named_defined_here)]
+    SimilarlyNamed {
+        #[primary_span]
+        span: Span,
+        candidate_descr: &'static str,
+        candidate: Symbol,
+    },
+    #[label(resolve_single_item_defined_here)]
+    SingleItem {
+        #[primary_span]
+        span: Span,
+        candidate_descr: &'static str,
+        candidate: Symbol,
+    },
+}
+
+#[derive(Subdiagnostic)]
+#[label(resolve_outer_ident_is_not_publicly_reexported)]
+pub(crate) struct OuterIdentIsNotPubliclyReexported {
+    #[primary_span]
+    pub(crate) span: Span,
+    pub(crate) outer_ident_descr: &'static str,
+    pub(crate) outer_ident: Ident,
+}
+
+#[derive(Subdiagnostic)]
+#[label(resolve_constructor_private_if_any_field_private)]
+pub(crate) struct ConstructorPrivateIfAnyFieldPrivate {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(
+    resolve_consider_making_the_field_public,
+    applicability = "maybe-incorrect",
+    style = "verbose"
+)]
+pub(crate) struct ConsiderMakingTheFieldPublic {
+    #[suggestion_part(code = "pub ")]
+    pub(crate) spans: Vec<Span>,
+    pub(crate) number_of_fields: usize,
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum ImportIdent {
+    #[suggestion(
+        resolve_suggestion_import_ident_through_reexport,
+        code = "{path}",
+        applicability = "machine-applicable",
+        style = "verbose"
+    )]
+    ThroughReExport {
+        #[primary_span]
+        span: Span,
+        ident: Ident,
+        path: String,
+    },
+    #[suggestion(
+        resolve_suggestion_import_ident_directly,
+        code = "{path}",
+        applicability = "machine-applicable",
+        style = "verbose"
+    )]
+    Directly {
+        #[primary_span]
+        span: Span,
+        ident: Ident,
+        path: String,
+    },
+}
+
+#[derive(Subdiagnostic)]
+#[note(resolve_note_and_refers_to_the_item_defined_here)]
+pub(crate) struct NoteAndRefersToTheItemDefinedHere<'a> {
+    #[primary_span]
+    pub(crate) span: MultiSpan,
+    pub(crate) binding_descr: &'a str,
+    pub(crate) binding_name: Ident,
+    pub(crate) first: bool,
+    pub(crate) dots: bool,
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion(resolve_remove_unnecessary_import, code = "", applicability = "maybe-incorrect")]
+pub(crate) struct RemoveUnnecessaryImport {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion(
+    resolve_remove_unnecessary_import,
+    code = "",
+    applicability = "maybe-incorrect",
+    style = "tool-only"
+)]
+pub(crate) struct ToolOnlyRemoveUnnecessaryImport {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Subdiagnostic)]
+#[note(resolve_ident_imported_here_but_it_is_desc)]
+pub(crate) struct IdentImporterHereButItIsDesc<'a> {
+    #[primary_span]
+    pub(crate) span: Span,
+    pub(crate) imported_ident: Ident,
+    pub(crate) imported_ident_desc: &'a str,
+}
+
+#[derive(Subdiagnostic)]
+#[note(resolve_ident_in_scope_but_it_is_desc)]
+pub(crate) struct IdentInScopeButItIsDesc<'a> {
+    pub(crate) imported_ident: Ident,
+    pub(crate) imported_ident_desc: &'a str,
+}
+
+#[derive(Subdiagnostic)]
+#[note(resolve_found_an_item_configured_out)]
+pub(crate) struct FoundItemConfigureOut {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Subdiagnostic)]
+#[note(resolve_item_was_behind_feature)]
+pub(crate) struct ItemWasBehindFeature {
+    pub(crate) feature: Symbol,
+}
+
+#[derive(Diagnostic)]
+#[diag(resolve_trait_impl_mismatch)]
+pub(crate) struct TraitImplMismatch {
+    #[primary_span]
+    #[label]
+    pub(crate) span: Span,
+    pub(crate) name: Symbol,
+    pub(crate) kind: &'static str,
+    pub(crate) trait_path: String,
+    #[label(resolve_trait_impl_mismatch_label_item)]
+    pub(crate) trait_item_span: Span,
 }

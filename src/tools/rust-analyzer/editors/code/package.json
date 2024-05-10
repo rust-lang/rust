@@ -546,6 +546,11 @@
                     "minimum": 0,
                     "maximum": 255
                 },
+                "rust-analyzer.cargo.allTargets": {
+                    "markdownDescription": "Pass `--all-targets` to cargo invocation.",
+                    "default": true,
+                    "type": "boolean"
+                },
                 "rust-analyzer.cargo.autoreload": {
                     "markdownDescription": "Automatically refresh project info via `cargo metadata` on\n`Cargo.toml` or `.cargo/config.toml` changes.",
                     "default": true,
@@ -605,7 +610,10 @@
                 },
                 "rust-analyzer.cargo.cfgs": {
                     "markdownDescription": "List of cfg options to enable with the given values.",
-                    "default": {},
+                    "default": {
+                        "debug_assertions": null,
+                        "miri": null
+                    },
                     "type": "object"
                 },
                 "rust-analyzer.cargo.extraArgs": {
@@ -691,25 +699,18 @@
                         }
                     ]
                 },
-                "rust-analyzer.cargo.unsetTest": {
-                    "markdownDescription": "Unsets the implicit `#[cfg(test)]` for the specified crates.",
-                    "default": [
-                        "core"
-                    ],
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
                 "rust-analyzer.checkOnSave": {
                     "markdownDescription": "Run the check command for diagnostics on save.",
                     "default": true,
                     "type": "boolean"
                 },
                 "rust-analyzer.check.allTargets": {
-                    "markdownDescription": "Check all targets and tests (`--all-targets`).",
-                    "default": true,
-                    "type": "boolean"
+                    "markdownDescription": "Check all targets and tests (`--all-targets`). Defaults to\n`#rust-analyzer.cargo.allTargets#`.",
+                    "default": null,
+                    "type": [
+                        "null",
+                        "boolean"
+                    ]
                 },
                 "rust-analyzer.check.command": {
                     "markdownDescription": "Cargo command to use for `cargo check`.",
@@ -1144,6 +1145,15 @@
                         }
                     ]
                 },
+                "rust-analyzer.hover.show.structFields": {
+                    "markdownDescription": "How many fields of a struct to display when hovering a struct.",
+                    "default": null,
+                    "type": [
+                        "null",
+                        "integer"
+                    ],
+                    "minimum": 0
+                },
                 "rust-analyzer.hover.show.traitAssocItems": {
                     "markdownDescription": "How many associated items of a trait to display when hovering a trait.",
                     "default": null,
@@ -1577,6 +1587,16 @@
                         "type": "string"
                     }
                 },
+                "rust-analyzer.runnables.extraTestBinaryArgs": {
+                    "markdownDescription": "Additional arguments to be passed through Cargo to launched tests, benchmarks, or\ndoc-tests.\n\nUnless the launched target uses a\n[custom test harness](https://doc.rust-lang.org/cargo/reference/cargo-targets.html#the-harness-field),\nthey will end up being interpreted as options to\n[`rustc`’s built-in test harness (“libtest”)](https://doc.rust-lang.org/rustc/tests/index.html#cli-arguments).",
+                    "default": [
+                        "--show-output"
+                    ],
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "rust-analyzer.rustc.source": {
                     "markdownDescription": "Path to the Cargo.toml of the rust compiler workspace, for usage in rustc_private\nprojects, or \"discover\" to try to automatically find it if the `rustc-dev` component\nis installed.\n\nAny project which uses rust-analyzer with the rustcPrivate\ncrates must set `[package.metadata.rust-analyzer] rustc_private=true` to use it.\n\nThis option does not take effect until rust-analyzer is restarted.",
                     "default": null,
@@ -1918,6 +1938,11 @@
                 "description": "Style for const generics"
             },
             {
+                "id": "const",
+                "description": "Style for consts",
+                "superType": "variable"
+            },
+            {
                 "id": "derive",
                 "description": "Style for derives",
                 "superType": "attribute"
@@ -1963,18 +1988,23 @@
                 "superType": "punctuation"
             },
             {
-                "id": "operator",
-                "description": "Style for operators",
-                "superType": "punctuation"
-            },
-            {
                 "id": "parenthesis",
                 "description": "Style for ( or )",
                 "superType": "punctuation"
             },
             {
+                "id": "procMacro",
+                "description": "Style for proc macro code",
+                "superType": "macro"
+            },
+            {
                 "id": "punctuation",
                 "description": "Style for generic punctuation"
+            },
+            {
+                "id": "operator",
+                "description": "Style for operators",
+                "superType": "punctuation"
             },
             {
                 "id": "selfKeyword",
@@ -1990,6 +2020,16 @@
                 "id": "semicolon",
                 "description": "Style for ;",
                 "superType": "punctuation"
+            },
+            {
+                "id": "static",
+                "description": "Style for statics",
+                "superType": "variable"
+            },
+            {
+                "id": "toolModule",
+                "description": "Style for tool module attributes",
+                "superType": "decorator"
             },
             {
                 "id": "typeAlias",
@@ -2048,8 +2088,16 @@
                 "description": "Style for items that are defined outside of the current crate"
             },
             {
+                "id": "macro",
+                "description": "Style for tokens inside of macro calls"
+            },
+            {
                 "id": "mutable",
                 "description": "Style for mutable locals and statics as well as functions taking `&mut self`"
+            },
+            {
+                "id": "procMacro",
+                "description": "Style for tokens inside of proc-macro calls"
             },
             {
                 "id": "public",

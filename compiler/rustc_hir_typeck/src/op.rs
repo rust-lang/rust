@@ -7,7 +7,6 @@ use rustc_ast as ast;
 use rustc_data_structures::packed::Pu128;
 use rustc_errors::{codes::*, struct_span_code_err, Applicability, Diag};
 use rustc_hir as hir;
-use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::traits::ObligationCauseCode;
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability,
@@ -39,7 +38,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let ty =
             if !lhs_ty.is_ty_var() && !rhs_ty.is_ty_var() && is_builtin_binop(lhs_ty, rhs_ty, op) {
                 self.enforce_builtin_binop_types(lhs.span, lhs_ty, rhs.span, rhs_ty, op);
-                Ty::new_unit(self.tcx)
+                self.tcx.types.unit
             } else {
                 return_ty
             };
@@ -219,10 +218,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // e.g., adding `&'a T` and `&'b T`, given `&'x T: Add<&'x T>`, will result
                 // in `&'a T <: &'x T` and `&'b T <: &'x T`, instead of `'a = 'b = 'x`.
                 let lhs_ty = self.check_expr(lhs_expr);
-                let fresh_var = self.next_ty_var(TypeVariableOrigin {
-                    kind: TypeVariableOriginKind::MiscVariable,
-                    span: lhs_expr.span,
-                });
+                let fresh_var = self.next_ty_var(lhs_expr.span);
                 self.demand_coerce(lhs_expr, lhs_ty, fresh_var, Some(rhs_expr), AllowTwoPhase::No)
             }
             IsAssign::Yes => {
@@ -241,10 +237,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // using this variable as the expected type, which sometimes lets
         // us do better coercions than we would be able to do otherwise,
         // particularly for things like `String + &String`.
-        let rhs_ty_var = self.next_ty_var(TypeVariableOrigin {
-            kind: TypeVariableOriginKind::MiscVariable,
-            span: rhs_expr.span,
-        });
+        let rhs_ty_var = self.next_ty_var(rhs_expr.span);
 
         let result = self.lookup_op_method(
             (lhs_expr, lhs_ty),
@@ -382,11 +375,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         (err, output_def_id)
                     }
                 };
-                if self.check_for_missing_semi(expr, &mut err)
-                    && let hir::Node::Expr(expr) = self.tcx.parent_hir_node(expr.hir_id)
-                    && let hir::ExprKind::Assign(..) = expr.kind
+
+                // Try to suggest a semicolon if it's `A \n *B` where `B` is a place expr
+                let maybe_missing_semi = self.check_for_missing_semi(expr, &mut err);
+
+                // We defer to the later error produced by `check_lhs_assignable`.
+                // We only downgrade this if it's the LHS, though.
+                if maybe_missing_semi
+                    && let hir::Node::Expr(parent) = self.tcx.parent_hir_node(expr.hir_id)
+                    && let hir::ExprKind::Assign(lhs, _, _) = parent.kind
+                    && lhs.hir_id == expr.hir_id
                 {
-                    // We defer to the later error produced by `check_lhs_assignable`.
                     err.downgrade_to_delayed_bug();
                 }
 
@@ -508,11 +507,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         suggest_deref_binop(&mut err, *lhs_deref_ty);
                     } else {
                         let lhs_inv_mutbl = mutbl.invert();
-                        let lhs_inv_mutbl_ty = Ty::new_ref(
-                            self.tcx,
-                            *region,
-                            ty::TypeAndMut { ty: *lhs_deref_ty, mutbl: lhs_inv_mutbl },
-                        );
+                        let lhs_inv_mutbl_ty =
+                            Ty::new_ref(self.tcx, *region, *lhs_deref_ty, lhs_inv_mutbl);
 
                         suggest_different_borrow(
                             &mut err,
@@ -524,11 +520,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                         if let Ref(region, rhs_deref_ty, mutbl) = rhs_ty.kind() {
                             let rhs_inv_mutbl = mutbl.invert();
-                            let rhs_inv_mutbl_ty = Ty::new_ref(
-                                self.tcx,
-                                *region,
-                                ty::TypeAndMut { ty: *rhs_deref_ty, mutbl: rhs_inv_mutbl },
-                            );
+                            let rhs_inv_mutbl_ty =
+                                Ty::new_ref(self.tcx, *region, *rhs_deref_ty, rhs_inv_mutbl);
 
                             suggest_different_borrow(
                                 &mut err,
@@ -601,8 +594,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                             if let Some(output_def_id) = output_def_id
                                                 && let Some(trait_def_id) = trait_def_id
                                                 && self.tcx.parent(output_def_id) == trait_def_id
-                                                && let Some(output_ty) =
-                                                    output_ty.make_suggestable(self.tcx, false)
+                                                && let Some(output_ty) = output_ty
+                                                    .make_suggestable(self.tcx, false, None)
                                             {
                                                 Some(("Output", output_ty))
                                             } else {

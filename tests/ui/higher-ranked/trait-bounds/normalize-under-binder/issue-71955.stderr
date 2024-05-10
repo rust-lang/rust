@@ -1,79 +1,40 @@
-error[E0308]: mismatched types
+error: implementation of `FnOnce` is not general enough
   --> $DIR/issue-71955.rs:45:5
    |
 LL |     foo(bar, "string", |s| s.len() == 5);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ one type is more general than the other
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ implementation of `FnOnce` is not general enough
    |
-   = note: expected trait `for<'a, 'b> FnOnce(&'a &'b str)`
-              found trait `for<'a> FnOnce(&'a &str)`
-note: this closure does not fulfill the lifetime requirements
-  --> $DIR/issue-71955.rs:45:24
-   |
-LL |     foo(bar, "string", |s| s.len() == 5);
-   |                        ^^^
-note: the lifetime requirement is introduced here
-  --> $DIR/issue-71955.rs:25:9
-   |
-LL |     F2: FnOnce(&<F1 as Parser>::Output) -> bool
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: closure with signature `for<'a> fn(&'a &'2 str) -> bool` must implement `FnOnce<(&&'1 str,)>`, for any lifetime `'1`...
+   = note: ...but it actually implements `FnOnce<(&&'2 str,)>`, for some specific lifetime `'2`
 
-error[E0308]: mismatched types
+error: implementation of `FnOnce` is not general enough
   --> $DIR/issue-71955.rs:45:5
    |
 LL |     foo(bar, "string", |s| s.len() == 5);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ one type is more general than the other
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ implementation of `FnOnce` is not general enough
    |
-   = note: expected trait `for<'a, 'b> FnOnce(&'a &'b str)`
-              found trait `for<'a> FnOnce(&'a &str)`
-note: this closure does not fulfill the lifetime requirements
-  --> $DIR/issue-71955.rs:45:24
-   |
-LL |     foo(bar, "string", |s| s.len() == 5);
-   |                        ^^^
-note: the lifetime requirement is introduced here
-  --> $DIR/issue-71955.rs:25:44
-   |
-LL |     F2: FnOnce(&<F1 as Parser>::Output) -> bool
-   |                                            ^^^^
+   = note: closure with signature `for<'a> fn(&'a &'2 str) -> bool` must implement `FnOnce<(&&'1 str,)>`, for any lifetime `'1`...
+   = note: ...but it actually implements `FnOnce<(&&'2 str,)>`, for some specific lifetime `'2`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error[E0308]: mismatched types
+error: implementation of `FnOnce` is not general enough
   --> $DIR/issue-71955.rs:48:5
    |
 LL |     foo(baz, "string", |s| s.0.len() == 5);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ one type is more general than the other
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ implementation of `FnOnce` is not general enough
    |
-   = note: expected trait `for<'a, 'b> FnOnce(&'a Wrapper<'b>)`
-              found trait `for<'a> FnOnce(&'a Wrapper<'_>)`
-note: this closure does not fulfill the lifetime requirements
-  --> $DIR/issue-71955.rs:48:24
-   |
-LL |     foo(baz, "string", |s| s.0.len() == 5);
-   |                        ^^^
-note: the lifetime requirement is introduced here
-  --> $DIR/issue-71955.rs:25:9
-   |
-LL |     F2: FnOnce(&<F1 as Parser>::Output) -> bool
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: closure with signature `for<'a> fn(&'a Wrapper<'2>) -> bool` must implement `FnOnce<(&Wrapper<'1>,)>`, for any lifetime `'1`...
+   = note: ...but it actually implements `FnOnce<(&Wrapper<'2>,)>`, for some specific lifetime `'2`
 
-error[E0308]: mismatched types
+error: implementation of `FnOnce` is not general enough
   --> $DIR/issue-71955.rs:48:5
    |
 LL |     foo(baz, "string", |s| s.0.len() == 5);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ one type is more general than the other
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ implementation of `FnOnce` is not general enough
    |
-   = note: expected trait `for<'a, 'b> FnOnce(&'a Wrapper<'b>)`
-              found trait `for<'a> FnOnce(&'a Wrapper<'_>)`
-note: this closure does not fulfill the lifetime requirements
-  --> $DIR/issue-71955.rs:48:24
-   |
-LL |     foo(baz, "string", |s| s.0.len() == 5);
-   |                        ^^^
-note: the lifetime requirement is introduced here
-  --> $DIR/issue-71955.rs:25:44
-   |
-LL |     F2: FnOnce(&<F1 as Parser>::Output) -> bool
-   |                                            ^^^^
+   = note: closure with signature `for<'a> fn(&'a Wrapper<'2>) -> bool` must implement `FnOnce<(&Wrapper<'1>,)>`, for any lifetime `'1`...
+   = note: ...but it actually implements `FnOnce<(&Wrapper<'2>,)>`, for some specific lifetime `'2`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 4 previous errors
 
-For more information about this error, try `rustc --explain E0308`.

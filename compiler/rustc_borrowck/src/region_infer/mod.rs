@@ -11,6 +11,7 @@ use rustc_index::{IndexSlice, IndexVec};
 use rustc_infer::infer::outlives::test_type_match;
 use rustc_infer::infer::region_constraints::{GenericKind, VarInfos, VerifyBound, VerifyIfEq};
 use rustc_infer::infer::{InferCtxt, NllRegionVariableOrigin, RegionVariableOrigin};
+use rustc_middle::bug;
 use rustc_middle::mir::{
     BasicBlock, Body, ClosureOutlivesRequirement, ClosureOutlivesSubject, ClosureOutlivesSubjectTy,
     ClosureRegionRequirements, ConstraintCategory, Local, Location, ReturnConstraint,
@@ -95,9 +96,11 @@ pub struct RegionInferenceContext<'tcx> {
     /// visible from this index.
     scc_universes: IndexVec<ConstraintSccIndex, ty::UniverseIndex>,
 
-    /// Contains a "representative" from each SCC. This will be the
-    /// minimal RegionVid belonging to that universe. It is used as a
-    /// kind of hacky way to manage checking outlives relationships,
+    /// Contains the "representative" region of each SCC.
+    /// It is defined as the one with the minimal RegionVid, favoring
+    /// free regions, then placeholders, then existential regions.
+    ///
+    /// It is a hacky way to manage checking regions for equality,
     /// since we can 'canonicalize' each region to the representative
     /// of its SCC and be sure that -- if they have the same repr --
     /// they *must* be equal (though not having the same repr does not
@@ -247,10 +250,7 @@ pub enum ExtraConstraintInfo {
 }
 
 #[instrument(skip(infcx, sccs), level = "debug")]
-fn sccs_info<'cx, 'tcx>(
-    infcx: &'cx BorrowckInferCtxt<'cx, 'tcx>,
-    sccs: Rc<Sccs<RegionVid, ConstraintSccIndex>>,
-) {
+fn sccs_info<'tcx>(infcx: &BorrowckInferCtxt<'tcx>, sccs: Rc<Sccs<RegionVid, ConstraintSccIndex>>) {
     use crate::renumber::RegionCtxt;
 
     let var_to_origin = infcx.reg_var_to_origin.borrow();
@@ -319,8 +319,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     ///
     /// The `outlives_constraints` and `type_tests` are an initial set
     /// of constraints produced by the MIR type check.
-    pub(crate) fn new<'cx>(
-        _infcx: &BorrowckInferCtxt<'cx, 'tcx>,
+    pub(crate) fn new(
+        _infcx: &BorrowckInferCtxt<'tcx>,
         var_infos: VarInfos,
         universal_regions: Rc<UniversalRegions<'tcx>>,
         placeholder_indices: Rc<PlaceholderIndices>,
@@ -481,8 +481,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         scc_universes
     }
 
-    /// For each SCC, we compute a unique `RegionVid` (in fact, the
-    /// minimal one that belongs to the SCC). See
+    /// For each SCC, we compute a unique `RegionVid`. See the
     /// `scc_representatives` field of `RegionInferenceContext` for
     /// more details.
     fn compute_scc_representatives(
@@ -490,13 +489,20 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         definitions: &IndexSlice<RegionVid, RegionDefinition<'tcx>>,
     ) -> IndexVec<ConstraintSccIndex, ty::RegionVid> {
         let num_sccs = constraints_scc.num_sccs();
-        let next_region_vid = definitions.next_index();
-        let mut scc_representatives = IndexVec::from_elem_n(next_region_vid, num_sccs);
+        let mut scc_representatives = IndexVec::from_elem_n(RegionVid::MAX, num_sccs);
 
-        for region_vid in definitions.indices() {
-            let scc = constraints_scc.scc(region_vid);
-            let prev_min = scc_representatives[scc];
-            scc_representatives[scc] = region_vid.min(prev_min);
+        // Iterate over all RegionVids *in-order* and pick the least RegionVid as the
+        // representative of its SCC. This naturally prefers free regions over others.
+        for (vid, def) in definitions.iter_enumerated() {
+            let repr = &mut scc_representatives[constraints_scc.scc(vid)];
+            if *repr == ty::RegionVid::MAX {
+                *repr = vid;
+            } else if matches!(def.origin, NllRegionVariableOrigin::Placeholder(_))
+                && matches!(definitions[*repr].origin, NllRegionVariableOrigin::Existential { .. })
+            {
+                // Pick placeholders over existentials even if they have a greater RegionVid.
+                *repr = vid;
+            }
         }
 
         scc_representatives
@@ -1320,14 +1326,20 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         })
     }
 
-    // Evaluate whether `sup_region == sub_region`.
-    fn eval_equal(&self, r1: RegionVid, r2: RegionVid) -> bool {
+    /// Evaluate whether `sup_region == sub_region`.
+    ///
+    /// Panics if called before `solve()` executes,
+    // This is `pub` because it's used by unstable external borrowck data users, see `consumers.rs`.
+    pub fn eval_equal(&self, r1: RegionVid, r2: RegionVid) -> bool {
         self.eval_outlives(r1, r2) && self.eval_outlives(r2, r1)
     }
 
-    // Evaluate whether `sup_region: sub_region`.
+    /// Evaluate whether `sup_region: sub_region`.
+    ///
+    /// Panics if called before `solve()` executes,
+    // This is `pub` because it's used by unstable external borrowck data users, see `consumers.rs`.
     #[instrument(skip(self), level = "debug", ret)]
-    fn eval_outlives(&self, sup_region: RegionVid, sub_region: RegionVid) -> bool {
+    pub fn eval_outlives(&self, sup_region: RegionVid, sub_region: RegionVid) -> bool {
         debug!(
             "sup_region's value = {:?} universal={:?}",
             self.region_value_str(sup_region),
@@ -1554,7 +1566,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         // Because this free region must be in the ROOT universe, we
         // know it cannot contain any bound universes.
-        assert!(self.scc_universes[longer_fr_scc] == ty::UniverseIndex::ROOT);
+        assert!(self.scc_universes[longer_fr_scc].is_root());
         debug_assert!(self.scc_values.placeholders_contained_in(longer_fr_scc).next().is_none());
 
         // Only check all of the relations for the main representative of each
@@ -2065,7 +2077,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 from_closure: constraint.from_closure,
                 cause: ObligationCause::new(constraint.span, CRATE_DEF_ID, cause_code.clone()),
                 variance_info: constraint.variance_info,
-                outlives_constraint: *constraint,
             })
             .collect();
         debug!("categorized_path={:#?}", categorized_path);
@@ -2241,7 +2252,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     }
 
     /// Access to the SCC constraint graph.
-    pub(crate) fn constraint_sccs(&self) -> &Sccs<RegionVid, ConstraintSccIndex> {
+    /// This can be used to quickly under-approximate the regions which are equal to each other
+    /// and their relative orderings.
+    // This is `pub` because it's used by unstable external borrowck data users, see `consumers.rs`.
+    pub fn constraint_sccs(&self) -> &Sccs<RegionVid, ConstraintSccIndex> {
         self.constraint_sccs.as_ref()
     }
 
@@ -2294,5 +2308,4 @@ pub struct BlameConstraint<'tcx> {
     pub from_closure: bool,
     pub cause: ObligationCause<'tcx>,
     pub variance_info: ty::VarianceDiagInfo<'tcx>,
-    pub outlives_constraint: OutlivesConstraint<'tcx>,
 }

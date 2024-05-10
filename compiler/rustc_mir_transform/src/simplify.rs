@@ -37,11 +37,14 @@ pub enum SimplifyCfg {
     Initial,
     PromoteConsts,
     RemoveFalseEdges,
-    EarlyOpt,
-    ElaborateDrops,
+    /// Runs at the beginning of "analysis to runtime" lowering, *before* drop elaboration.
+    PostAnalysis,
+    /// Runs at the end of "analysis to runtime" lowering, *after* drop elaboration.
+    /// This is before the main optimization passes on runtime MIR kick in.
+    PreOptimizations,
     Final,
     MakeShim,
-    AfterUninhabitedEnumBranching,
+    AfterUnreachableEnumBranching,
 }
 
 impl SimplifyCfg {
@@ -50,12 +53,12 @@ impl SimplifyCfg {
             SimplifyCfg::Initial => "SimplifyCfg-initial",
             SimplifyCfg::PromoteConsts => "SimplifyCfg-promote-consts",
             SimplifyCfg::RemoveFalseEdges => "SimplifyCfg-remove-false-edges",
-            SimplifyCfg::EarlyOpt => "SimplifyCfg-early-opt",
-            SimplifyCfg::ElaborateDrops => "SimplifyCfg-elaborate-drops",
+            SimplifyCfg::PostAnalysis => "SimplifyCfg-post-analysis",
+            SimplifyCfg::PreOptimizations => "SimplifyCfg-pre-optimizations",
             SimplifyCfg::Final => "SimplifyCfg-final",
             SimplifyCfg::MakeShim => "SimplifyCfg-make_shim",
-            SimplifyCfg::AfterUninhabitedEnumBranching => {
-                "SimplifyCfg-after-uninhabited-enum-branching"
+            SimplifyCfg::AfterUnreachableEnumBranching => {
+                "SimplifyCfg-after-unreachable-enum-branching"
             }
         }
     }
@@ -412,7 +415,7 @@ fn make_local_map<V>(
     used_locals: &UsedLocals,
 ) -> IndexVec<Local, Option<Local>> {
     let mut map: IndexVec<Local, Option<Local>> = IndexVec::from_elem(None, local_decls);
-    let mut used = Local::new(0);
+    let mut used = Local::ZERO;
 
     for alive_index in local_decls.indices() {
         // `is_used` treats the `RETURN_PLACE` and arguments as used.

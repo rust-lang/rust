@@ -152,6 +152,7 @@ fn r#match() {
 }
 
 fn i_yield() {
+    #[coroutine]
     static || {
         yield yield yield yield yield yield yield yield yield;
     };
@@ -256,6 +257,20 @@ fn fake_macros() -> impl std::fmt::Debug {
     }
 }
 
+fn fish_fight() {
+    trait Rope {
+        fn _____________<U>(_: Self, _: U) where Self: Sized {}
+    }
+
+    struct T;
+
+    impl Rope for T {}
+
+    fn tug_o_war(_: impl Fn(T, T)) {}
+
+    tug_o_war(<T>::_____________::<T>);
+}
+
 pub fn main() {
     strange();
     funny();
@@ -284,4 +299,5 @@ pub fn main() {
     infcx();
     return_already();
     fake_macros();
+    fish_fight();
 }

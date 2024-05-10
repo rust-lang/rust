@@ -1,5 +1,5 @@
 error: expected type, found constant
-  --> $DIR/consts.rs:3:29
+  --> $DIR/consts.rs:1:29
    |
 LL | pub fn accept(_: impl Trait<K: Copy>) {}
    |                             ^------ bounds are not allowed on associated constants
@@ -7,7 +7,7 @@ LL | pub fn accept(_: impl Trait<K: Copy>) {}
    |                             unexpected constant
    |
 note: the associated constant is defined here
-  --> $DIR/consts.rs:7:5
+  --> $DIR/consts.rs:5:5
    |
 LL |     const K: i32;
    |     ^^^^^^^^^^^^

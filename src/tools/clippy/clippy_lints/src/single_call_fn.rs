@@ -95,7 +95,7 @@ impl SingleCallFn {
 /// to be considered.
 fn is_valid_item_kind(cx: &LateContext<'_>, def_id: LocalDefId) -> bool {
     matches!(
-        cx.tcx.hir_node(cx.tcx.local_def_id_to_hir_id(def_id)),
+        cx.tcx.hir_node_by_def_id(def_id),
         Node::Item(_) | Node::ImplItem(_) | Node::TraitItem(_)
     )
 }

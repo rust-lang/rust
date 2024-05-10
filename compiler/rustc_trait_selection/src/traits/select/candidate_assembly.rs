@@ -56,7 +56,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let mut candidates = SelectionCandidateSet { vec: Vec::new(), ambiguous: false };
 
         // Negative trait predicates have different rules than positive trait predicates.
-        if obligation.polarity() == ty::ImplPolarity::Negative {
+        if obligation.polarity() == ty::PredicatePolarity::Negative {
             self.assemble_candidates_for_trait_alias(obligation, &mut candidates);
             self.assemble_candidates_from_impls(obligation, &mut candidates);
             self.assemble_candidates_from_caller_bounds(stack, &mut candidates)?;
@@ -81,12 +81,23 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             } else if lang_items.discriminant_kind_trait() == Some(def_id) {
                 // `DiscriminantKind` is automatically implemented for every type.
                 candidates.vec.push(BuiltinCandidate { has_nested: false });
+            } else if lang_items.async_destruct_trait() == Some(def_id) {
+                // `AsyncDestruct` is automatically implemented for every type.
+                candidates.vec.push(BuiltinCandidate { has_nested: false });
             } else if lang_items.pointee_trait() == Some(def_id) {
                 // `Pointee` is automatically implemented for every type.
                 candidates.vec.push(BuiltinCandidate { has_nested: false });
             } else if lang_items.sized_trait() == Some(def_id) {
                 // Sized is never implementable by end-users, it is
                 // always automatically computed.
+
+                // FIXME: Consider moving this check to the top level as it
+                // may also be useful for predicates other than `Sized`
+                // Error type cannot possibly implement `Sized` (fixes #123154)
+                if let Err(e) = obligation.predicate.skip_binder().self_ty().error_reported() {
+                    return Err(SelectionError::Overflow(e.into()));
+                }
+
                 let sized_conditions = self.sized_conditions(obligation);
                 self.assemble_builtin_bound_candidates(sized_conditions, &mut candidates);
             } else if lang_items.unsize_trait() == Some(def_id) {
@@ -118,6 +129,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     self.assemble_future_candidates(obligation, &mut candidates);
                 } else if lang_items.iterator_trait() == Some(def_id) {
                     self.assemble_iterator_candidates(obligation, &mut candidates);
+                } else if lang_items.fused_iterator_trait() == Some(def_id) {
+                    self.assemble_fused_iterator_candidates(obligation, &mut candidates);
                 } else if lang_items.async_iterator_trait() == Some(def_id) {
                     self.assemble_async_iterator_candidates(obligation, &mut candidates);
                 } else if lang_items.async_fn_kind_helper() == Some(def_id) {
@@ -165,7 +178,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             let poly_trait_predicate = self.infcx.resolve_vars_if_possible(obligation.predicate);
             let placeholder_trait_predicate =
                 self.infcx.enter_forall_and_leak_universe(poly_trait_predicate);
-            debug!(?placeholder_trait_predicate);
 
             // The bounds returned by `item_bounds` may contain duplicates after
             // normalization, so try to deduplicate when possible to avoid
@@ -184,8 +196,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     selcx.infcx.probe(|_| {
                         match selcx.match_normalize_trait_ref(
                             obligation,
-                            bound.to_poly_trait_ref(),
                             placeholder_trait_predicate.trait_ref,
+                            bound.to_poly_trait_ref(),
                         ) {
                             Ok(None) => {
                                 candidates.vec.push(ProjectionCandidate(idx));
@@ -218,6 +230,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         candidates: &mut SelectionCandidateSet<'tcx>,
     ) -> Result<(), SelectionError<'tcx>> {
         debug!(?stack.obligation);
+
+        // An error type will unify with anything. So, avoid
+        // matching an error type with `ParamCandidate`.
+        // This helps us avoid spurious errors like issue #121941.
+        if stack.obligation.predicate.references_error() {
+            return Ok(());
+        }
 
         let all_bounds = stack
             .obligation
@@ -296,14 +315,31 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         candidates: &mut SelectionCandidateSet<'tcx>,
     ) {
         let self_ty = obligation.self_ty().skip_binder();
-        if let ty::Coroutine(did, ..) = self_ty.kind() {
-            // gen constructs get lowered to a special kind of coroutine that
-            // should directly `impl Iterator`.
-            if self.tcx().coroutine_is_gen(*did) {
-                debug!(?self_ty, ?obligation, "assemble_iterator_candidates",);
+        // gen constructs get lowered to a special kind of coroutine that
+        // should directly `impl Iterator`.
+        if let ty::Coroutine(did, ..) = self_ty.kind()
+            && self.tcx().coroutine_is_gen(*did)
+        {
+            debug!(?self_ty, ?obligation, "assemble_iterator_candidates",);
 
-                candidates.vec.push(IteratorCandidate);
-            }
+            candidates.vec.push(IteratorCandidate);
+        }
+    }
+
+    fn assemble_fused_iterator_candidates(
+        &mut self,
+        obligation: &PolyTraitObligation<'tcx>,
+        candidates: &mut SelectionCandidateSet<'tcx>,
+    ) {
+        let self_ty = obligation.self_ty().skip_binder();
+        // gen constructs get lowered to a special kind of coroutine that
+        // should directly `impl FusedIterator`.
+        if let ty::Coroutine(did, ..) = self_ty.kind()
+            && self.tcx().coroutine_is_gen(*did)
+        {
+            debug!(?self_ty, ?obligation, "assemble_fused_iterator_candidates",);
+
+            candidates.vec.push(BuiltinCandidate { has_nested: false });
         }
     }
 
@@ -375,39 +411,36 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
             }
             ty::CoroutineClosure(def_id, args) => {
+                let args = args.as_coroutine_closure();
                 let is_const = self.tcx().is_const_fn_raw(def_id);
-                match self.infcx.closure_kind(self_ty) {
-                    Some(closure_kind) => {
-                        let no_borrows = match self
-                            .infcx
-                            .shallow_resolve(args.as_coroutine_closure().tupled_upvars_ty())
-                            .kind()
-                        {
-                            ty::Tuple(tys) => tys.is_empty(),
-                            ty::Error(_) => false,
-                            _ => bug!("tuple_fields called on non-tuple"),
-                        };
-                        // A coroutine-closure implements `FnOnce` *always*, since it may
-                        // always be called once. It additionally implements `Fn`/`FnMut`
-                        // only if it has no upvars (therefore no borrows from the closure
-                        // that would need to be represented with a lifetime) and if the
-                        // closure kind permits it.
-                        // FIXME(async_closures): Actually, it could also implement `Fn`/`FnMut`
-                        // if it takes all of its upvars by copy, and none by ref. This would
-                        // require us to record a bit more information during upvar analysis.
-                        if no_borrows && closure_kind.extends(kind) {
-                            candidates.vec.push(ClosureCandidate { is_const });
-                        } else if kind == ty::ClosureKind::FnOnce {
-                            candidates.vec.push(ClosureCandidate { is_const });
-                        }
+                if let Some(closure_kind) = self.infcx.closure_kind(self_ty)
+                    // Ambiguity if upvars haven't been constrained yet
+                    && !args.tupled_upvars_ty().is_ty_var()
+                {
+                    let no_borrows = match args.tupled_upvars_ty().kind() {
+                        ty::Tuple(tys) => tys.is_empty(),
+                        ty::Error(_) => false,
+                        _ => bug!("tuple_fields called on non-tuple"),
+                    };
+                    // A coroutine-closure implements `FnOnce` *always*, since it may
+                    // always be called once. It additionally implements `Fn`/`FnMut`
+                    // only if it has no upvars (therefore no borrows from the closure
+                    // that would need to be represented with a lifetime) and if the
+                    // closure kind permits it.
+                    // FIXME(async_closures): Actually, it could also implement `Fn`/`FnMut`
+                    // if it takes all of its upvars by copy, and none by ref. This would
+                    // require us to record a bit more information during upvar analysis.
+                    if no_borrows && closure_kind.extends(kind) {
+                        candidates.vec.push(ClosureCandidate { is_const });
+                    } else if kind == ty::ClosureKind::FnOnce {
+                        candidates.vec.push(ClosureCandidate { is_const });
                     }
-                    None => {
-                        if kind == ty::ClosureKind::FnOnce {
-                            candidates.vec.push(ClosureCandidate { is_const });
-                        } else {
-                            // This stays ambiguous until kind+upvars are determined.
-                            candidates.ambiguous = true;
-                        }
+                } else {
+                    if kind == ty::ClosureKind::FnOnce {
+                        candidates.vec.push(ClosureCandidate { is_const });
+                    } else {
+                        // This stays ambiguous until kind+upvars are determined.
+                        candidates.ambiguous = true;
                     }
                 }
             }
@@ -645,8 +678,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | ty::Foreign(_)
                 | ty::Str
                 | ty::Array(_, _)
+                | ty::Pat(_, _)
                 | ty::Slice(_)
-                | ty::RawPtr(_)
+                | ty::RawPtr(_, _)
                 | ty::Ref(_, _, _)
                 | ty::Closure(..)
                 | ty::CoroutineClosure(..)
@@ -778,9 +812,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | ty::Float(_)
                 | ty::Str
                 | ty::Array(_, _)
+                | ty::Pat(_, _)
                 | ty::Slice(_)
                 | ty::Adt(..)
-                | ty::RawPtr(_)
+                | ty::RawPtr(_, _)
                 | ty::Ref(..)
                 | ty::FnDef(..)
                 | ty::FnPtr(_)
@@ -874,8 +909,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         self.infcx.probe(|_| {
                             self.match_normalize_trait_ref(
                                 obligation,
-                                upcast_trait_ref,
                                 placeholder_trait_predicate.trait_ref,
+                                upcast_trait_ref,
                             )
                             .is_ok()
                         })
@@ -1141,8 +1176,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             return;
         }
 
-        let self_ty = self.infcx.shallow_resolve(obligation.self_ty());
-        match self_ty.skip_binder().kind() {
+        let self_ty = self.infcx.shallow_resolve(obligation.self_ty().skip_binder());
+        match self_ty.kind() {
             ty::Alias(..)
             | ty::Dynamic(..)
             | ty::Error(_)
@@ -1161,13 +1196,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Infer(ty::IntVar(_))
             | ty::Infer(ty::FloatVar(_))
             | ty::Str
-            | ty::RawPtr(_)
+            | ty::RawPtr(_, _)
             | ty::Ref(..)
             | ty::FnDef(..)
             | ty::FnPtr(_)
             | ty::Never
             | ty::Foreign(_)
             | ty::Array(..)
+            | ty::Pat(..)
             | ty::Slice(_)
             | ty::Closure(..)
             | ty::CoroutineClosure(..)
@@ -1242,9 +1278,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Str
             | ty::Array(_, _)
             | ty::Slice(_)
-            | ty::RawPtr(_)
+            | ty::RawPtr(_, _)
             | ty::Ref(_, _, _)
             | ty::FnDef(_, _)
+            | ty::Pat(_, _)
             | ty::FnPtr(_)
             | ty::Dynamic(_, _, _)
             | ty::Closure(..)
@@ -1291,7 +1328,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         obligation: &PolyTraitObligation<'tcx>,
         candidates: &mut SelectionCandidateSet<'tcx>,
     ) {
-        let self_ty = self.infcx.shallow_resolve(obligation.self_ty());
+        let self_ty = self.infcx.resolve_vars_if_possible(obligation.self_ty());
 
         match self_ty.skip_binder().kind() {
             ty::FnPtr(_) => candidates.vec.push(BuiltinCandidate { has_nested: false }),
@@ -1304,8 +1341,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Foreign(..)
             | ty::Str
             | ty::Array(..)
+            | ty::Pat(..)
             | ty::Slice(_)
-            | ty::RawPtr(_)
+            | ty::RawPtr(_, _)
             | ty::Ref(..)
             | ty::FnDef(..)
             | ty::Placeholder(..)

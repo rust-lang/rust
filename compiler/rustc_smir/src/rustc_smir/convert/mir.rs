@@ -229,7 +229,7 @@ impl<'tcx> Stable<'tcx> for mir::BorrowKind {
         use rustc_middle::mir::BorrowKind::*;
         match *self {
             Shared => stable_mir::mir::BorrowKind::Shared,
-            Fake => stable_mir::mir::BorrowKind::Fake,
+            Fake(kind) => stable_mir::mir::BorrowKind::Fake(kind.stable(tables)),
             Mut { kind } => stable_mir::mir::BorrowKind::Mut { kind: kind.stable(tables) },
         }
     }
@@ -247,23 +247,28 @@ impl<'tcx> Stable<'tcx> for mir::MutBorrowKind {
     }
 }
 
+impl<'tcx> Stable<'tcx> for mir::FakeBorrowKind {
+    type T = stable_mir::mir::FakeBorrowKind;
+    fn stable(&self, _: &mut Tables<'_>) -> Self::T {
+        use rustc_middle::mir::FakeBorrowKind::*;
+        match *self {
+            Deep => stable_mir::mir::FakeBorrowKind::Deep,
+            Shallow => stable_mir::mir::FakeBorrowKind::Shallow,
+        }
+    }
+}
+
 impl<'tcx> Stable<'tcx> for mir::NullOp<'tcx> {
     type T = stable_mir::mir::NullOp;
     fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
         use rustc_middle::mir::NullOp::*;
-        use rustc_middle::mir::UbKind;
         match self {
             SizeOf => stable_mir::mir::NullOp::SizeOf,
             AlignOf => stable_mir::mir::NullOp::AlignOf,
             OffsetOf(indices) => stable_mir::mir::NullOp::OffsetOf(
                 indices.iter().map(|idx| idx.stable(tables)).collect(),
             ),
-            UbCheck(UbKind::LanguageUb) => {
-                stable_mir::mir::NullOp::UbCheck(stable_mir::mir::UbKind::LanguageUb)
-            }
-            UbCheck(UbKind::LibraryUb) => {
-                stable_mir::mir::NullOp::UbCheck(stable_mir::mir::UbKind::LibraryUb)
-            }
+            UbChecks => stable_mir::mir::NullOp::UbChecks,
         }
     }
 }
@@ -273,8 +278,8 @@ impl<'tcx> Stable<'tcx> for mir::CastKind {
     fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
         use rustc_middle::mir::CastKind::*;
         match self {
-            PointerExposeAddress => stable_mir::mir::CastKind::PointerExposeAddress,
-            PointerFromExposedAddress => stable_mir::mir::CastKind::PointerFromExposedAddress,
+            PointerExposeProvenance => stable_mir::mir::CastKind::PointerExposeAddress,
+            PointerWithExposedProvenance => stable_mir::mir::CastKind::PointerWithExposedProvenance,
             PointerCoercion(c) => stable_mir::mir::CastKind::PointerCoercion(c.stable(tables)),
             DynStar => stable_mir::mir::CastKind::DynStar,
             IntToInt => stable_mir::mir::CastKind::IntToInt,
@@ -499,6 +504,7 @@ impl<'tcx> Stable<'tcx> for mir::BinOp {
             BinOp::Ne => stable_mir::mir::BinOp::Ne,
             BinOp::Ge => stable_mir::mir::BinOp::Ge,
             BinOp::Gt => stable_mir::mir::BinOp::Gt,
+            BinOp::Cmp => stable_mir::mir::BinOp::Cmp,
             BinOp::Offset => stable_mir::mir::BinOp::Offset,
         }
     }
@@ -547,6 +553,9 @@ impl<'tcx> Stable<'tcx> for mir::AggregateKind<'tcx> {
             }
             mir::AggregateKind::CoroutineClosure(..) => {
                 todo!("FIXME(async_closures): Lower these to SMIR")
+            }
+            mir::AggregateKind::RawPtr(ty, mutability) => {
+                stable_mir::mir::AggregateKind::RawPtr(ty.stable(tables), mutability.stable(tables))
             }
         }
     }

@@ -83,7 +83,11 @@ export type TestItem = {
     range?: lc.Range | undefined;
     runnable?: Runnable | undefined;
 };
-export type DiscoverTestResults = { tests: TestItem[]; scope: string[] };
+export type DiscoverTestResults = {
+    tests: TestItem[];
+    scope: string[] | undefined;
+    scopeFile: lc.TextDocumentIdentifier[] | undefined;
+};
 export type TestState =
     | { tag: "failed"; message: string }
     | { tag: "passed" }
@@ -100,6 +104,9 @@ export const discoveredTests = new lc.NotificationType<DiscoverTestResults>(
 export const runTest = new lc.RequestType<RunTestParams, void, void>("experimental/runTest");
 export const abortRunTest = new lc.NotificationType0("experimental/abortRunTest");
 export const endRunTest = new lc.NotificationType0("experimental/endRunTest");
+export const appendOutputToRunTest = new lc.NotificationType<string>(
+    "experimental/appendOutputToRunTest",
+);
 export const changeTestState = new lc.NotificationType<ChangeTestStateParams>(
     "experimental/changeTestState",
 );

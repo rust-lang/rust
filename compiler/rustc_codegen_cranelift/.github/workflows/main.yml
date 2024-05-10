@@ -4,6 +4,20 @@ on:
   - push
   - pull_request
 
+defaults:
+  run:
+    shell: bash
+
+permissions: {}
+
+env:
+  # Disabling incr comp reduces cache size and incr comp doesn't save as much
+  # on CI anyway.
+  CARGO_BUILD_INCREMENTAL: false
+  # Rust's CI denies warnings. Deny them here too to ensure subtree syncs don't
+  # fail because of warnings.
+  RUSTFLAGS: "-Dwarnings"
+
 jobs:
   rustfmt:
     runs-on: ubuntu-latest
@@ -23,15 +37,15 @@ jobs:
         cargo fmt --check
         rustfmt --check build_system/main.rs
         rustfmt --check example/*
+        rustfmt --check scripts/*.rs
 
 
   test:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
 
-    defaults:
-      run:
-        shell: bash
+    env:
+      CG_CLIF_EXPENSIVE_CHECKS: 1
 
     strategy:
       fail-fast: false
@@ -44,19 +58,22 @@ jobs:
             env:
               TARGET_TRIPLE: x86_64-apple-darwin
           # cross-compile from Linux to Windows using mingw
-          # FIXME The wine version in Ubuntu 22.04 is missing ProcessPrng
-          #- os: ubuntu-latest
-          #  env:
-          #    TARGET_TRIPLE: x86_64-pc-windows-gnu
+          - os: ubuntu-latest
+            env:
+              TARGET_TRIPLE: x86_64-pc-windows-gnu
+            apt_deps: gcc-mingw-w64-x86-64 wine-stable
           - os: ubuntu-latest
             env:
               TARGET_TRIPLE: aarch64-unknown-linux-gnu
+            apt_deps: gcc-aarch64-linux-gnu qemu-user
           - os: ubuntu-latest
             env:
               TARGET_TRIPLE: s390x-unknown-linux-gnu
+            apt_deps: gcc-s390x-linux-gnu qemu-user
           - os: ubuntu-latest
             env:
               TARGET_TRIPLE: riscv64gc-unknown-linux-gnu
+            apt_deps: gcc-riscv64-linux-gnu qemu-user
           - os: windows-latest
             env:
               TARGET_TRIPLE: x86_64-pc-windows-msvc
@@ -81,32 +98,23 @@ jobs:
       if: matrix.os == 'windows-latest' && matrix.env.TARGET_TRIPLE == 'x86_64-pc-windows-gnu'
       run: rustup set default-host x86_64-pc-windows-gnu
 
-    #- name: Install MinGW toolchain and wine
-    #  if: matrix.os == 'ubuntu-latest' && matrix.env.TARGET_TRIPLE == 'x86_64-pc-windows-gnu'
-    #  run: |
-    #    sudo apt-get update
-    #    sudo apt-get install -y gcc-mingw-w64-x86-64 wine-stable
-
-    - name: Install AArch64 toolchain and qemu
-      if: matrix.os == 'ubuntu-latest' && matrix.env.TARGET_TRIPLE == 'aarch64-unknown-linux-gnu'
+    - name: Install toolchain and emulator
+      if: matrix.apt_deps != null
       run: |
         sudo apt-get update
-        sudo apt-get install -y gcc-aarch64-linux-gnu qemu-user
-
-    - name: Install s390x toolchain and qemu
-      if: matrix.env.TARGET_TRIPLE == 's390x-unknown-linux-gnu'
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y gcc-s390x-linux-gnu qemu-user
-
-    - name: Install riscv64gc toolchain and qemu
-      if: matrix.env.TARGET_TRIPLE == 'riscv64gc-unknown-linux-gnu'
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y gcc-riscv64-linux-gnu qemu-user
+        sudo apt-get install -y ${{ matrix.apt_deps }}
 
     - name: Prepare dependencies
       run: ./y.sh prepare
+
+    # The Wine version shipped with Ubuntu 22.04 doesn't implement bcryptprimitives.dll
+    - name: Build bcryptprimitives.dll shim for Wine
+      if: matrix.os == 'ubuntu-latest' && matrix.env.TARGET_TRIPLE == 'x86_64-pc-windows-gnu'
+      run: |
+        rustup target add x86_64-pc-windows-gnu
+        mkdir wine_shims
+        rustc patches/bcryptprimitives.rs -Copt-level=3 -Clto=fat --out-dir wine_shims --target x86_64-pc-windows-gnu
+        echo "WINEPATH=$(pwd)/wine_shims" >> $GITHUB_ENV
 
     - name: Build
       run: ./y.sh build --sysroot none
@@ -134,10 +142,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
 
-    defaults:
-      run:
-        shell: bash
-
     steps:
     - uses: actions/checkout@v4
 
@@ -160,10 +164,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
 
-    defaults:
-      run:
-        shell: bash
-
     steps:
     - uses: actions/checkout@v4
 
@@ -185,19 +185,15 @@ jobs:
       run: ./y.sh prepare
 
     - name: Build
-      run: CI_OPT=1 ./y.sh build --sysroot none
+      run: ./y.sh build --sysroot none
 
     - name: Benchmark
-      run: CI_OPT=1 ./y.sh bench
+      run: ./y.sh bench
 
 
   dist:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
-
-    defaults:
-      run:
-        shell: bash
 
     strategy:
       fail-fast: false
@@ -234,20 +230,20 @@ jobs:
       if: matrix.os == 'windows-latest' && matrix.env.TARGET_TRIPLE == 'x86_64-pc-windows-gnu'
       run: rustup set default-host x86_64-pc-windows-gnu
 
-    - name: Install MinGW toolchain and wine
+    - name: Install MinGW toolchain
       if: matrix.os == 'ubuntu-latest' && matrix.env.TARGET_TRIPLE == 'x86_64-pc-windows-gnu'
       run: |
         sudo apt-get update
-        sudo apt-get install -y gcc-mingw-w64-x86-64 wine-stable
+        sudo apt-get install -y gcc-mingw-w64-x86-64
 
     - name: Prepare dependencies
       run: ./y.sh prepare
 
     - name: Build backend
-      run: CI_OPT=1 ./y.sh build --sysroot none
+      run: ./y.sh build --sysroot none
 
     - name: Build sysroot
-      run: CI_OPT=1 ./y.sh build
+      run: ./y.sh build
 
     - name: Package prebuilt cg_clif
       run: tar cvfJ cg_clif.tar.xz dist
@@ -271,6 +267,9 @@ jobs:
     timeout-minutes: 10
     if: ${{ github.ref == 'refs/heads/master' }}
     needs: [rustfmt, test, bench, dist]
+
+    permissions:
+      contents: write # for creating the dev tag and release
 
     concurrency:
       group: release-dev

@@ -115,7 +115,7 @@ fn format_stmt(
     skip_out_of_file_lines_range!(context, stmt.span());
 
     let result = match stmt.kind {
-        ast::StmtKind::Local(ref local) => local.rewrite(context, shape),
+        ast::StmtKind::Let(ref local) => local.rewrite(context, shape),
         ast::StmtKind::Expr(ref ex) | ast::StmtKind::Semi(ref ex) => {
             let suffix = if semicolon_for_stmt(context, stmt, is_last_expr) {
                 ";"

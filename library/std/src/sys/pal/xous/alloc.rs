@@ -46,7 +46,10 @@ unsafe impl GlobalAlloc for System {
 }
 
 mod lock {
-    use crate::sync::atomic::{AtomicI32, Ordering::SeqCst};
+    use crate::sync::atomic::{
+        AtomicI32,
+        Ordering::{Acquire, Release},
+    };
 
     static LOCKED: AtomicI32 = AtomicI32::new(0);
 
@@ -54,7 +57,7 @@ mod lock {
 
     pub fn lock() -> DropLock {
         loop {
-            if LOCKED.swap(1, SeqCst) == 0 {
+            if LOCKED.swap(1, Acquire) == 0 {
                 return DropLock;
             }
             crate::os::xous::ffi::do_yield();
@@ -63,7 +66,7 @@ mod lock {
 
     impl Drop for DropLock {
         fn drop(&mut self) {
-            let r = LOCKED.swap(0, SeqCst);
+            let r = LOCKED.swap(0, Release);
             debug_assert_eq!(r, 1);
         }
     }

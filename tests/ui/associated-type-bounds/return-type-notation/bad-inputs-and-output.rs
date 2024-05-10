@@ -9,11 +9,9 @@ trait Trait {
 
 fn foo<T: Trait<method(i32): Send>>() {}
 //~^ ERROR argument types not allowed with return type notation
-//~| ERROR associated type bounds are unstable
 
 fn bar<T: Trait<method() -> (): Send>>() {}
 //~^ ERROR return type not allowed with return type notation
-//~| ERROR associated type bounds are unstable
 
 fn baz<T: Trait<method(..): Send>>() {}
 //~^ ERROR return type notation uses `()` instead of `(..)` for elided arguments

@@ -603,6 +603,17 @@ impl<T> Vec<T> {
     pub unsafe fn from_raw_parts(ptr: *mut T, length: usize, capacity: usize) -> Self {
         unsafe { Self::from_raw_parts_in(ptr, length, capacity, Global) }
     }
+
+    /// A convenience method for hoisting the non-null precondition out of [`Vec::from_raw_parts`].
+    ///
+    /// # Safety
+    ///
+    /// See [`Vec::from_raw_parts`].
+    #[inline]
+    #[cfg(not(no_global_oom_handling))] // required by tests/run-make/alloc-no-oom-handling
+    pub(crate) unsafe fn from_nonnull(ptr: NonNull<T>, length: usize, capacity: usize) -> Self {
+        unsafe { Self::from_nonnull_in(ptr, length, capacity, Global) }
+    }
 }
 
 impl<T, A: Allocator> Vec<T, A> {
@@ -818,6 +829,22 @@ impl<T, A: Allocator> Vec<T, A> {
     #[unstable(feature = "allocator_api", issue = "32838")]
     pub unsafe fn from_raw_parts_in(ptr: *mut T, length: usize, capacity: usize, alloc: A) -> Self {
         unsafe { Vec { buf: RawVec::from_raw_parts_in(ptr, capacity, alloc), len: length } }
+    }
+
+    /// A convenience method for hoisting the non-null precondition out of [`Vec::from_raw_parts_in`].
+    ///
+    /// # Safety
+    ///
+    /// See [`Vec::from_raw_parts_in`].
+    #[inline]
+    #[cfg(not(no_global_oom_handling))] // required by tests/run-make/alloc-no-oom-handling
+    pub(crate) unsafe fn from_nonnull_in(
+        ptr: NonNull<T>,
+        length: usize,
+        capacity: usize,
+        alloc: A,
+    ) -> Self {
+        unsafe { Vec { buf: RawVec::from_nonnull_in(ptr, capacity, alloc), len: length } }
     }
 
     /// Decomposes a `Vec<T>` into its raw components: `(pointer, length, capacity)`.
@@ -1462,7 +1489,7 @@ impl<T, A: Allocator> Vec<T, A> {
     ///
     /// The removed element is replaced by the last element of the vector.
     ///
-    /// This does not preserve ordering, but is *O*(1).
+    /// This does not preserve ordering of the remaining elements, but is *O*(1).
     /// If you need to preserve the element order, use [`remove`] instead.
     ///
     /// [`remove`]: Vec::remove
@@ -1541,10 +1568,13 @@ impl<T, A: Allocator> Vec<T, A> {
         }
 
         let len = self.len();
+        if index > len {
+            assert_failed(index, len);
+        }
 
         // space for the new element
         if len == self.buf.capacity() {
-            self.reserve(1);
+            self.buf.grow_one();
         }
 
         unsafe {
@@ -1556,10 +1586,6 @@ impl<T, A: Allocator> Vec<T, A> {
                     // Shift everything over to make space. (Duplicating the
                     // `index`th element into two consecutive places.)
                     ptr::copy(p, p.add(1), len - index);
-                } else if index == len {
-                    // No elements need shifting.
-                } else {
-                    assert_failed(index, len);
                 }
                 // Write it in, overwriting the first copy of the `index`th
                 // element.
@@ -1965,15 +1991,17 @@ impl<T, A: Allocator> Vec<T, A> {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_confusables("push_back", "put", "append")]
     pub fn push(&mut self, value: T) {
+        // Inform codegen that the length does not change across grow_one().
+        let len = self.len;
         // This will panic or abort if we would allocate > isize::MAX bytes
         // or if the length increment would overflow for zero-sized types.
-        if self.len == self.buf.capacity() {
-            self.buf.reserve_for_push(self.len);
+        if len == self.buf.capacity() {
+            self.buf.grow_one();
         }
         unsafe {
-            let end = self.as_mut_ptr().add(self.len);
+            let end = self.as_mut_ptr().add(len);
             ptr::write(end, value);
-            self.len += 1;
+            self.len = len + 1;
         }
     }
 
@@ -2057,6 +2085,31 @@ impl<T, A: Allocator> Vec<T, A> {
                 Some(ptr::read(self.as_ptr().add(self.len())))
             }
         }
+    }
+
+    /// Removes and returns the last element in a vector if the predicate
+    /// returns `true`, or [`None`] if the predicate returns false or the vector
+    /// is empty.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(vec_pop_if)]
+    ///
+    /// let mut vec = vec![1, 2, 3, 4];
+    /// let pred = |x: &mut i32| *x % 2 == 0;
+    ///
+    /// assert_eq!(vec.pop_if(pred), Some(4));
+    /// assert_eq!(vec, [1, 2, 3]);
+    /// assert_eq!(vec.pop_if(pred), None);
+    /// ```
+    #[unstable(feature = "vec_pop_if", issue = "122741")]
+    pub fn pop_if<F>(&mut self, f: F) -> Option<T>
+    where
+        F: FnOnce(&mut T) -> bool,
+    {
+        let last = self.last_mut()?;
+        if f(last) { self.pop() } else { None }
     }
 
     /// Moves all the elements of `other` into `self`, leaving `other` empty.
@@ -2773,6 +2826,9 @@ impl<T, A: Allocator> ops::DerefMut for Vec<T, A> {
     }
 }
 
+#[unstable(feature = "deref_pure_trait", issue = "87121")]
+unsafe impl<T, A: Allocator> ops::DerefPure for Vec<T, A> {}
+
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Clone, A: Allocator + Clone> Clone for Vec<T, A> {
@@ -2792,8 +2848,30 @@ impl<T: Clone, A: Allocator + Clone> Clone for Vec<T, A> {
         crate::slice::to_vec(&**self, alloc)
     }
 
-    fn clone_from(&mut self, other: &Self) {
-        crate::slice::SpecCloneIntoVec::clone_into(other.as_slice(), self);
+    /// Overwrites the contents of `self` with a clone of the contents of `source`.
+    ///
+    /// This method is preferred over simply assigning `source.clone()` to `self`,
+    /// as it avoids reallocation if possible. Additionally, if the element type
+    /// `T` overrides `clone_from()`, this will reuse the resources of `self`'s
+    /// elements as well.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let x = vec![5, 6, 7];
+    /// let mut y = vec![8, 9, 10];
+    /// let yp: *const i32 = y.as_ptr();
+    ///
+    /// y.clone_from(&x);
+    ///
+    /// // The value is the same
+    /// assert_eq!(x, y);
+    ///
+    /// // And no reallocation occurred
+    /// assert_eq!(yp, y.as_ptr());
+    /// ```
+    fn clone_from(&mut self, source: &Self) {
+        crate::slice::SpecCloneIntoVec::clone_into(source.as_slice(), self);
     }
 }
 

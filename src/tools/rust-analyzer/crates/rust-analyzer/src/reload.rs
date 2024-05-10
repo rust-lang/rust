@@ -26,7 +26,6 @@ use itertools::Itertools;
 use load_cargo::{load_proc_macro, ProjectFolders};
 use proc_macro_api::ProcMacroServer;
 use project_model::{ProjectWorkspace, WorkspaceBuildScripts};
-use rustc_hash::FxHashSet;
 use stdx::{format_to, thread::ThreadIntent};
 use triomphe::Arc;
 use vfs::{AbsPath, AbsPathBuf, ChangeKind};
@@ -77,9 +76,9 @@ impl GlobalState {
         if self.config.lru_parse_query_capacity() != old_config.lru_parse_query_capacity() {
             self.analysis_host.update_lru_capacity(self.config.lru_parse_query_capacity());
         }
-        if self.config.lru_query_capacities() != old_config.lru_query_capacities() {
+        if self.config.lru_query_capacities_config() != old_config.lru_query_capacities_config() {
             self.analysis_host.update_lru_capacities(
-                &self.config.lru_query_capacities().cloned().unwrap_or_default(),
+                &self.config.lru_query_capacities_config().cloned().unwrap_or_default(),
             );
         }
         if self.config.linked_or_discovered_projects() != old_config.linked_or_discovered_projects()
@@ -154,7 +153,7 @@ impl GlobalState {
         for ws in self.workspaces.iter() {
             let (ProjectWorkspace::Cargo { sysroot, .. }
             | ProjectWorkspace::Json { sysroot, .. }
-            | ProjectWorkspace::DetachedFiles { sysroot, .. }) = ws;
+            | ProjectWorkspace::DetachedFile { sysroot, .. }) = ws;
             match sysroot {
                 Err(None) => (),
                 Err(Some(e)) => {
@@ -185,10 +184,8 @@ impl GlobalState {
                 message.push_str(
                     "`rust-analyzer.linkedProjects` have been specified, which may be incorrect. Specified project paths:\n",
                 );
-                message.push_str(&format!(
-                    "    {}",
-                    self.config.linked_manifests().map(|it| it.display()).format("\n    ")
-                ));
+                message
+                    .push_str(&format!("    {}", self.config.linked_manifests().format("\n    ")));
                 if self.config.has_linked_project_jsons() {
                     message.push_str("\nAdditionally, one or more project jsons are specified")
                 }
@@ -237,6 +234,7 @@ impl GlobalState {
                                 it.clone(),
                                 cargo_config.target.as_deref(),
                                 &cargo_config.extra_env,
+                                &cargo_config.cfg_overrides,
                             ))
                         }
                     })
@@ -257,7 +255,7 @@ impl GlobalState {
                 }
 
                 if !detached_files.is_empty() {
-                    workspaces.push(project_model::ProjectWorkspace::load_detached_files(
+                    workspaces.extend(project_model::ProjectWorkspace::load_detached_files(
                         detached_files,
                         &cargo_config,
                     ));
@@ -431,27 +429,46 @@ impl GlobalState {
         }
 
         if let FilesWatcher::Client = self.config.files().watcher {
-            let registration_options = lsp_types::DidChangeWatchedFilesRegistrationOptions {
-                watchers: self
-                    .workspaces
-                    .iter()
-                    .flat_map(|ws| ws.to_roots())
-                    .filter(|it| it.is_local)
+            let filter =
+                self.workspaces.iter().flat_map(|ws| ws.to_roots()).filter(|it| it.is_local);
+
+            let watchers = if self.config.did_change_watched_files_relative_pattern_support() {
+                // When relative patterns are supported by the client, prefer using them
+                filter
                     .flat_map(|root| {
-                        root.include.into_iter().flat_map(|it| {
-                            [
-                                format!("{it}/**/*.rs"),
-                                format!("{it}/**/Cargo.toml"),
-                                format!("{it}/**/Cargo.lock"),
-                            ]
+                        root.include.into_iter().flat_map(|base| {
+                            [(base.clone(), "**/*.rs"), (base, "**/Cargo.{lock,toml}")]
+                        })
+                    })
+                    .map(|(base, pat)| lsp_types::FileSystemWatcher {
+                        glob_pattern: lsp_types::GlobPattern::Relative(
+                            lsp_types::RelativePattern {
+                                base_uri: lsp_types::OneOf::Right(
+                                    lsp_types::Url::from_file_path(base).unwrap(),
+                                ),
+                                pattern: pat.to_owned(),
+                            },
+                        ),
+                        kind: None,
+                    })
+                    .collect()
+            } else {
+                // When they're not, integrate the base to make them into absolute patterns
+                filter
+                    .flat_map(|root| {
+                        root.include.into_iter().flat_map(|base| {
+                            [format!("{base}/**/*.rs"), format!("{base}/**/Cargo.{{lock,toml}}")]
                         })
                     })
                     .map(|glob_pattern| lsp_types::FileSystemWatcher {
                         glob_pattern: lsp_types::GlobPattern::String(glob_pattern),
                         kind: None,
                     })
-                    .collect(),
+                    .collect()
             };
+
+            let registration_options =
+                lsp_types::DidChangeWatchedFilesRegistrationOptions { watchers };
             let registration = lsp_types::Registration {
                 id: "workspace/didChangeWatchedFiles".to_owned(),
                 method: "workspace/didChangeWatchedFiles".to_owned(),
@@ -523,28 +540,34 @@ impl GlobalState {
     }
 
     fn recreate_crate_graph(&mut self, cause: String) {
+        self.report_progress(
+            "Building CrateGraph",
+            crate::lsp::utils::Progress::Begin,
+            None,
+            None,
+            None,
+        );
+
         // crate graph construction relies on these paths, record them so when one of them gets
         // deleted or created we trigger a reconstruction of the crate graph
-        let mut crate_graph_file_dependencies = FxHashSet::default();
+        self.crate_graph_file_dependencies.clear();
+        self.detached_files = self
+            .workspaces
+            .iter()
+            .filter_map(|ws| match ws {
+                ProjectWorkspace::DetachedFile { file, .. } => Some(file.clone()),
+                _ => None,
+            })
+            .collect();
 
         let (crate_graph, proc_macro_paths, layouts, toolchains) = {
             // Create crate graph from all the workspaces
             let vfs = &mut self.vfs.write().0;
-            let loader = &mut self.loader;
 
             let load = |path: &AbsPath| {
-                let _p = tracing::span!(tracing::Level::DEBUG, "switch_workspaces::load").entered();
                 let vfs_path = vfs::VfsPath::from(path.to_path_buf());
-                crate_graph_file_dependencies.insert(vfs_path.clone());
-                match vfs.file_id(&vfs_path) {
-                    Some(file_id) => Some(file_id),
-                    None => {
-                        // FIXME: Consider not loading this here?
-                        let contents = loader.handle.load_sync(path);
-                        vfs.set_file_contents(vfs_path.clone(), contents);
-                        vfs.file_id(&vfs_path)
-                    }
-                }
+                self.crate_graph_file_dependencies.insert(vfs_path.clone());
+                vfs.file_id(&vfs_path)
             };
 
             ws_to_crate_graph(&self.workspaces, self.config.extra_env(), load)
@@ -563,7 +586,13 @@ impl GlobalState {
         change.set_target_data_layouts(layouts);
         change.set_toolchains(toolchains);
         self.analysis_host.apply_change(change);
-        self.crate_graph_file_dependencies = crate_graph_file_dependencies;
+        self.report_progress(
+            "Building CrateGraph",
+            crate::lsp::utils::Progress::End,
+            None,
+            None,
+            None,
+        );
 
         self.process_changes();
         self.reload_flycheck();
@@ -653,7 +682,8 @@ impl GlobalState {
                                 _ => None,
                             }
                         }
-                        ProjectWorkspace::DetachedFiles { .. } => None,
+                        // FIXME
+                        ProjectWorkspace::DetachedFile { .. } => None,
                     })
                     .map(|(id, root, sysroot_root)| {
                         let sender = sender.clone();
@@ -692,15 +722,9 @@ pub fn ws_to_crate_graph(
         let (other, mut crate_proc_macros) = ws.to_crate_graph(&mut load, extra_env);
         let num_layouts = layouts.len();
         let num_toolchains = toolchains.len();
-        let (toolchain, layout) = match ws {
-            ProjectWorkspace::Cargo { toolchain, target_layout, .. }
-            | ProjectWorkspace::Json { toolchain, target_layout, .. } => {
-                (toolchain.clone(), target_layout.clone())
-            }
-            ProjectWorkspace::DetachedFiles { .. } => {
-                (None, Err("detached files have no layout".into()))
-            }
-        };
+        let (ProjectWorkspace::Cargo { toolchain, target_layout, .. }
+        | ProjectWorkspace::Json { toolchain, target_layout, .. }
+        | ProjectWorkspace::DetachedFile { toolchain, target_layout, .. }) = ws;
 
         let mapping = crate_graph.extend(
             other,
@@ -709,7 +733,7 @@ pub fn ws_to_crate_graph(
                 // if the newly created crate graph's layout is equal to the crate of the merged graph, then
                 // we can merge the crates.
                 let id = cg_id.into_raw().into_u32() as usize;
-                layouts[id] == layout && toolchains[id] == toolchain && cg_data == o_data
+                layouts[id] == *target_layout && toolchains[id] == *toolchain && cg_data == o_data
             },
         );
         // Populate the side tables for the newly merged crates
@@ -721,17 +745,19 @@ pub fn ws_to_crate_graph(
                 if layouts.len() <= idx {
                     layouts.resize(idx + 1, e.clone());
                 }
-                layouts[idx] = layout.clone();
+                layouts[idx].clone_from(target_layout);
             }
             if idx >= num_toolchains {
                 if toolchains.len() <= idx {
                     toolchains.resize(idx + 1, None);
                 }
-                toolchains[idx] = toolchain.clone();
+                toolchains[idx].clone_from(toolchain);
             }
         });
         proc_macro_paths.push(crate_proc_macros);
     }
+    crate_graph.shrink_to_fit();
+    proc_macro_paths.shrink_to_fit();
     (crate_graph, proc_macro_paths, layouts, toolchains)
 }
 
@@ -739,7 +765,7 @@ pub(crate) fn should_refresh_for_change(path: &AbsPath, change_kind: ChangeKind)
     const IMPLICIT_TARGET_FILES: &[&str] = &["build.rs", "src/main.rs", "src/lib.rs"];
     const IMPLICIT_TARGET_DIRS: &[&str] = &["src/bin", "examples", "tests", "benches"];
 
-    let file_name = match path.file_name().unwrap_or_default().to_str() {
+    let file_name = match path.file_name() {
         Some(it) => it,
         None => return false,
     };
@@ -754,18 +780,18 @@ pub(crate) fn should_refresh_for_change(path: &AbsPath, change_kind: ChangeKind)
     // .cargo/config{.toml}
     if path.extension().unwrap_or_default() != "rs" {
         let is_cargo_config = matches!(file_name, "config.toml" | "config")
-            && path.parent().map(|parent| parent.as_ref().ends_with(".cargo")).unwrap_or(false);
+            && path.parent().map(|parent| parent.as_str().ends_with(".cargo")).unwrap_or(false);
         return is_cargo_config;
     }
 
-    if IMPLICIT_TARGET_FILES.iter().any(|it| path.as_ref().ends_with(it)) {
+    if IMPLICIT_TARGET_FILES.iter().any(|it| path.as_str().ends_with(it)) {
         return true;
     }
     let parent = match path.parent() {
         Some(it) => it,
         None => return false,
     };
-    if IMPLICIT_TARGET_DIRS.iter().any(|it| parent.as_ref().ends_with(it)) {
+    if IMPLICIT_TARGET_DIRS.iter().any(|it| parent.as_str().ends_with(it)) {
         return true;
     }
     if file_name == "main.rs" {
@@ -773,7 +799,7 @@ pub(crate) fn should_refresh_for_change(path: &AbsPath, change_kind: ChangeKind)
             Some(it) => it,
             None => return false,
         };
-        if IMPLICIT_TARGET_DIRS.iter().any(|it| grand_parent.as_ref().ends_with(it)) {
+        if IMPLICIT_TARGET_DIRS.iter().any(|it| grand_parent.as_str().ends_with(it)) {
             return true;
         }
     }

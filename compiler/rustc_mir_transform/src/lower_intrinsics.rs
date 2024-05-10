@@ -20,30 +20,13 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                     sym::unreachable => {
                         terminator.kind = TerminatorKind::Unreachable;
                     }
-                    sym::check_language_ub => {
+                    sym::ub_checks => {
                         let target = target.unwrap();
                         block.statements.push(Statement {
                             source_info: terminator.source_info,
                             kind: StatementKind::Assign(Box::new((
                                 *destination,
-                                Rvalue::NullaryOp(
-                                    NullOp::UbCheck(UbKind::LanguageUb),
-                                    tcx.types.bool,
-                                ),
-                            ))),
-                        });
-                        terminator.kind = TerminatorKind::Goto { target };
-                    }
-                    sym::check_library_ub => {
-                        let target = target.unwrap();
-                        block.statements.push(Statement {
-                            source_info: terminator.source_info,
-                            kind: StatementKind::Assign(Box::new((
-                                *destination,
-                                Rvalue::NullaryOp(
-                                    NullOp::UbCheck(UbKind::LibraryUb),
-                                    tcx.types.bool,
-                                ),
+                                Rvalue::NullaryOp(NullOp::UbChecks, tcx.types.bool),
                             ))),
                         });
                         terminator.kind = TerminatorKind::Goto { target };
@@ -107,6 +90,7 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                     sym::wrapping_add
                     | sym::wrapping_sub
                     | sym::wrapping_mul
+                    | sym::three_way_compare
                     | sym::unchecked_add
                     | sym::unchecked_sub
                     | sym::unchecked_mul
@@ -126,6 +110,7 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                             sym::wrapping_add => BinOp::Add,
                             sym::wrapping_sub => BinOp::Sub,
                             sym::wrapping_mul => BinOp::Mul,
+                            sym::three_way_compare => BinOp::Cmp,
                             sym::unchecked_add => BinOp::AddUnchecked,
                             sym::unchecked_sub => BinOp::SubUnchecked,
                             sym::unchecked_mul => BinOp::MulUnchecked,
@@ -301,6 +286,34 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                         } else {
                             terminator.kind = TerminatorKind::Unreachable;
                         }
+                    }
+                    sym::aggregate_raw_ptr => {
+                        let Ok([data, meta]) = <[_; 2]>::try_from(std::mem::take(args)) else {
+                            span_bug!(
+                                terminator.source_info.span,
+                                "Wrong number of arguments for aggregate_raw_ptr intrinsic",
+                            );
+                        };
+                        let target = target.unwrap();
+                        let pointer_ty = generic_args.type_at(0);
+                        let kind = if let ty::RawPtr(pointee_ty, mutability) = pointer_ty.kind() {
+                            AggregateKind::RawPtr(*pointee_ty, *mutability)
+                        } else {
+                            span_bug!(
+                                terminator.source_info.span,
+                                "Return type of aggregate_raw_ptr intrinsic must be a raw pointer",
+                            );
+                        };
+                        let fields = [data.node, meta.node];
+                        block.statements.push(Statement {
+                            source_info: terminator.source_info,
+                            kind: StatementKind::Assign(Box::new((
+                                *destination,
+                                Rvalue::Aggregate(Box::new(kind), fields.into()),
+                            ))),
+                        });
+
+                        terminator.kind = TerminatorKind::Goto { target };
                     }
                     _ => {}
                 }

@@ -1,4 +1,4 @@
-//@ unit-test: InstSimplify
+//@ test-mir-pass: InstSimplify
 
 #![feature(custom_mir, core_intrinsics)]
 #![crate_type = "lib"]

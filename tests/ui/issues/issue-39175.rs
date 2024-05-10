@@ -4,7 +4,7 @@
 // these platforms also.
 
 //@ ignore-windows
-//@ ignore-emscripten
+//@ ignore-wasm32 no processes
 //@ ignore-sgx no processes
 
 use std::process::Command;

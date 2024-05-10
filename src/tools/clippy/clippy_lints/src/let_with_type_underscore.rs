@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::source::snippet;
-use rustc_hir::{Local, TyKind};
+use rustc_hir::{LetStmt, TyKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::declare_lint_pass;
@@ -26,7 +26,7 @@ declare_clippy_lint! {
 declare_lint_pass!(UnderscoreTyped => [LET_WITH_TYPE_UNDERSCORE]);
 
 impl LateLintPass<'_> for UnderscoreTyped {
-    fn check_local(&mut self, cx: &LateContext<'_>, local: &Local<'_>) {
+    fn check_local(&mut self, cx: &LateContext<'_>, local: &LetStmt<'_>) {
         if !in_external_macro(cx.tcx.sess, local.span)
             && let Some(ty) = local.ty // Ensure that it has a type defined
             && let TyKind::Infer = &ty.kind // that type is '_'

@@ -17,6 +17,8 @@ LL | fn main() {
    |          - expected `()` because of default return type
 LL |     type_ascribe!(0, u8<e<5>=e>)
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `()`, found `u8`
+   |
+   = note: this error originates in the macro `type_ascribe` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 3 previous errors
 

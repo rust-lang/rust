@@ -1,6 +1,7 @@
 //@ ignore-compare-mode-polonius
 
 //@ revisions: a
+//@ unused-revision-names: b
 //@ should-fail
 
 // This is a "meta-test" of the compilertest framework itself.  In

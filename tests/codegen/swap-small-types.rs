@@ -12,7 +12,7 @@ type RGB48 = [u16; 3];
 pub fn swap_rgb48_manually(x: &mut RGB48, y: &mut RGB48) {
     // FIXME: See #115212 for why this has an alloca again
 
-    // CHECK: alloca [3 x i16], align 2
+    // CHECK: alloca [6 x i8], align 2
     // CHECK: call void @llvm.memcpy.p0.p0.i64({{.+}}, i64 6, i1 false)
     // CHECK: call void @llvm.memcpy.p0.p0.i64({{.+}}, i64 6, i1 false)
     // CHECK: call void @llvm.memcpy.p0.p0.i64({{.+}}, i64 6, i1 false)
@@ -70,10 +70,7 @@ pub fn swap_slices<'a>(x: &mut &'a [u32], y: &mut &'a [u32]) {
     // CHECK-NOT: alloca
     // CHECK: load ptr
     // CHECK: load i64
-    // CHECK: load ptr
-    // CHECK: load i64
-    // CHECK: store ptr
-    // CHECK: store i64
+    // CHECK: call void @llvm.memcpy.p0.p0.i64({{.+}}, i64 16, i1 false)
     // CHECK: store ptr
     // CHECK: store i64
     swap(x, y)

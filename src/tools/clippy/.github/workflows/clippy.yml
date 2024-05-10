@@ -26,6 +26,12 @@ env:
   NO_FMT_TEST: 1
   CARGO_INCREMENTAL: 0
 
+concurrency:
+  # For a given workflow, if we push to the same PR, cancel all previous builds on that PR.
+  # If the push is not attached to a PR, we will cancel all builds on the same branch.
+  group: "${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}"
+  cancel-in-progress: true
+
 jobs:
   base:
     # NOTE: If you modify this job, make sure you copy the changes to clippy_bors.yml
@@ -33,10 +39,6 @@ jobs:
 
     steps:
     # Setup
-    - uses: rust-lang/simpleinfra/github-actions/cancel-outdated-builds@master
-      with:
-        github_token: "${{ secrets.github_token }}"
-
     - name: Checkout
       uses: actions/checkout@v4
 

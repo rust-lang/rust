@@ -1,0 +1,48 @@
+error[E0283]: type annotations needed
+  --> $DIR/leak-check-in-selection-3.rs:18:5
+   |
+LL |     impls_leak::<Box<_>>();
+   |     ^^^^^^^^^^^^^^^^^^^^ cannot infer type of the type parameter `T` declared on the function `impls_leak`
+   |
+note: multiple `impl`s satisfying `for<'a> Box<_>: Leak<'a>` found
+  --> $DIR/leak-check-in-selection-3.rs:9:1
+   |
+LL | impl Leak<'_> for Box<u32> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | impl Leak<'static> for Box<u16> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: required by a bound in `impls_leak`
+  --> $DIR/leak-check-in-selection-3.rs:12:18
+   |
+LL | fn impls_leak<T: for<'a> Leak<'a>>() {}
+   |                  ^^^^^^^^^^^^^^^^ required by this bound in `impls_leak`
+
+error[E0283]: type annotations needed
+  --> $DIR/leak-check-in-selection-3.rs:35:5
+   |
+LL |     impls_indirect_leak::<Box<_>>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type of the type parameter `T` declared on the function `impls_indirect_leak`
+   |
+note: multiple `impl`s satisfying `for<'a> Box<_>: Leak<'a>` found
+  --> $DIR/leak-check-in-selection-3.rs:9:1
+   |
+LL | impl Leak<'_> for Box<u32> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | impl Leak<'static> for Box<u16> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: required for `Box<_>` to implement `for<'a> IndirectLeak<'a>`
+  --> $DIR/leak-check-in-selection-3.rs:23:23
+   |
+LL | impl<'a, T: Leak<'a>> IndirectLeak<'a> for T {}
+   |             --------  ^^^^^^^^^^^^^^^^     ^
+   |             |
+   |             unsatisfied trait bound introduced here
+note: required by a bound in `impls_indirect_leak`
+  --> $DIR/leak-check-in-selection-3.rs:25:27
+   |
+LL | fn impls_indirect_leak<T: for<'a> IndirectLeak<'a>>() {}
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `impls_indirect_leak`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0283`.

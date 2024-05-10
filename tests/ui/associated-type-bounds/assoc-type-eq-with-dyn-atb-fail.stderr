@@ -1,5 +1,5 @@
 error: associated type bounds are not allowed in `dyn` types
-  --> $DIR/assoc-type-eq-with-dyn-atb-fail.rs:30:28
+  --> $DIR/assoc-type-eq-with-dyn-atb-fail.rs:28:28
    |
 LL |     type Out = Box<dyn Bar<Assoc: Copy>>;
    |                            ^^^^^^^^^^^

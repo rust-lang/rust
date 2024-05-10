@@ -121,7 +121,7 @@ fn emit_help(cx: &EarlyContext<'_>, snip: &str, (open, close): (char, char), spa
             cx,
             NONSTANDARD_MACRO_BRACES,
             span,
-            &format!("use of irregular braces for `{macro_name}!` macro"),
+            format!("use of irregular braces for `{macro_name}!` macro"),
             "consider writing",
             format!("{macro_name}!{open}{macro_args}{close}"),
             Applicability::MachineApplicable,

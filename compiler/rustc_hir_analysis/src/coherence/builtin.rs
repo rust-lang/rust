@@ -10,8 +10,8 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::ItemKind;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
+use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::infer::{self, RegionResolutionError};
-use rustc_infer::infer::{DefineOpaqueTypes, TyCtxtInferExt};
 use rustc_infer::traits::Obligation;
 use rustc_middle::ty::adjustment::CoerceUnsizedInfo;
 use rustc_middle::ty::{self, suggest_constraining_type_params, Ty, TyCtxt, TypeVisitableExt};
@@ -189,13 +189,10 @@ fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<()
     // even if they do not carry that attribute.
     use rustc_type_ir::TyKind::*;
     match (source.kind(), target.kind()) {
-        (&Ref(r_a, _, mutbl_a), Ref(r_b, _, mutbl_b))
-            if infcx.at(&cause, param_env).eq(DefineOpaqueTypes::No, r_a, *r_b).is_ok()
-                && mutbl_a == *mutbl_b =>
-        {
+        (&Ref(r_a, _, mutbl_a), Ref(r_b, _, mutbl_b)) if r_a == *r_b && mutbl_a == *mutbl_b => {
             Ok(())
         }
-        (&RawPtr(tm_a), &RawPtr(tm_b)) if tm_a.mutbl == tm_b.mutbl => Ok(()),
+        (&RawPtr(_, a_mutbl), &RawPtr(_, b_mutbl)) if a_mutbl == b_mutbl => Ok(()),
         (&Adt(def_a, args_a), &Adt(def_b, args_b)) if def_a.is_struct() && def_b.is_struct() => {
             if def_a != def_b {
                 let source_path = tcx.def_path_str(def_a.did());
@@ -230,18 +227,14 @@ fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<()
                         }
                     }
 
-                    if let Ok(ok) =
-                        infcx.at(&cause, param_env).eq(DefineOpaqueTypes::No, ty_a, ty_b)
-                    {
-                        if ok.obligations.is_empty() {
-                            res = Err(tcx.dcx().emit_err(errors::DispatchFromDynZST {
-                                span,
-                                name: field.name,
-                                ty: ty_a,
-                            }));
+                    if ty_a == ty_b {
+                        res = Err(tcx.dcx().emit_err(errors::DispatchFromDynZST {
+                            span,
+                            name: field.name,
+                            ty: ty_a,
+                        }));
 
-                            return false;
-                        }
+                        return false;
                     }
 
                     return true;
@@ -351,14 +344,17 @@ pub fn coerce_unsized_info<'tcx>(
             check_mutbl(mt_a, mt_b, &|ty| Ty::new_imm_ref(tcx, r_b, ty))
         }
 
-        (&ty::Ref(_, ty_a, mutbl_a), &ty::RawPtr(mt_b)) => {
-            let mt_a = ty::TypeAndMut { ty: ty_a, mutbl: mutbl_a };
-            check_mutbl(mt_a, mt_b, &|ty| Ty::new_imm_ptr(tcx, ty))
-        }
+        (&ty::Ref(_, ty_a, mutbl_a), &ty::RawPtr(ty_b, mutbl_b)) => check_mutbl(
+            ty::TypeAndMut { ty: ty_a, mutbl: mutbl_a },
+            ty::TypeAndMut { ty: ty_b, mutbl: mutbl_b },
+            &|ty| Ty::new_imm_ptr(tcx, ty),
+        ),
 
-        (&ty::RawPtr(mt_a), &ty::RawPtr(mt_b)) => {
-            check_mutbl(mt_a, mt_b, &|ty| Ty::new_imm_ptr(tcx, ty))
-        }
+        (&ty::RawPtr(ty_a, mutbl_a), &ty::RawPtr(ty_b, mutbl_b)) => check_mutbl(
+            ty::TypeAndMut { ty: ty_a, mutbl: mutbl_a },
+            ty::TypeAndMut { ty: ty_b, mutbl: mutbl_b },
+            &|ty| Ty::new_imm_ptr(tcx, ty),
+        ),
 
         (&ty::Adt(def_a, args_a), &ty::Adt(def_b, args_b))
             if def_a.is_struct() && def_b.is_struct() =>
@@ -430,14 +426,12 @@ pub fn coerce_unsized_info<'tcx>(
                     // something more accepting, but we use
                     // equality because we want to be able to
                     // perform this check without computing
-                    // variance where possible. (This is because
-                    // we may have to evaluate constraint
+                    // variance or constraining opaque types' hidden types.
+                    // (This is because we may have to evaluate constraint
                     // expressions in the course of execution.)
                     // See e.g., #41936.
-                    if let Ok(ok) = infcx.at(&cause, param_env).eq(DefineOpaqueTypes::No, a, b) {
-                        if ok.obligations.is_empty() {
-                            return None;
-                        }
+                    if a == b {
+                        return None;
                     }
 
                     // Collect up all fields that were significantly changed
@@ -551,7 +545,7 @@ fn infringing_fields_error(
                     }
                     if let ty::PredicateKind::Clause(ty::ClauseKind::Trait(ty::TraitPredicate {
                         trait_ref,
-                        polarity: ty::ImplPolarity::Positive,
+                        polarity: ty::PredicatePolarity::Positive,
                         ..
                     })) = error_predicate.kind().skip_binder()
                     {

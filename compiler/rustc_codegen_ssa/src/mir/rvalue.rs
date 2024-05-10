@@ -3,15 +3,16 @@ use super::place::PlaceRef;
 use super::{FunctionCx, LocalRef};
 
 use crate::base;
-use crate::common::{self, IntPredicate};
+use crate::common::IntPredicate;
 use crate::traits::*;
 use crate::MemFlags;
 
-use rustc_middle::mir;
-use rustc_middle::mir::Operand;
+use rustc_hir as hir;
+use rustc_middle::mir::{self, AggregateKind, Operand};
 use rustc_middle::ty::cast::{CastTy, IntTy};
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, adjustment::PointerCoercion, Instance, Ty, TyCtxt};
+use rustc_middle::{bug, span_bug};
 use rustc_session::config::OptLevel;
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{self, FIRST_VARIANT};
@@ -67,12 +68,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         base::coerce_unsized_into(bx, scratch, dest);
                         scratch.storage_dead(bx);
                     }
-                    OperandValue::Ref(llref, None, align) => {
-                        let source = PlaceRef::new_sized_aligned(llref, operand.layout, align);
+                    OperandValue::Ref(val) => {
+                        if val.llextra.is_some() {
+                            bug!("unsized coercion on an unsized rvalue");
+                        }
+                        let source = PlaceRef { val, layout: operand.layout };
                         base::coerce_unsized_into(bx, source, dest);
-                    }
-                    OperandValue::Ref(_, Some(_), _) => {
-                        bug!("unsized coercion on an unsized rvalue");
                     }
                     OperandValue::ZeroSized => {
                         bug!("unsized coercion on a ZST rvalue");
@@ -94,20 +95,20 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 }
 
                 if let OperandValue::Immediate(v) = cg_elem.val {
-                    let start = dest.llval;
+                    let start = dest.val.llval;
                     let size = bx.const_usize(dest.layout.size.bytes());
 
                     // Use llvm.memset.p0i8.* to initialize all zero arrays
                     if bx.cx().const_to_opt_u128(v, false) == Some(0) {
                         let fill = bx.cx().const_u8(0);
-                        bx.memset(start, fill, size, dest.align, MemFlags::empty());
+                        bx.memset(start, fill, size, dest.val.align, MemFlags::empty());
                         return;
                     }
 
                     // Use llvm.memset.p0i8.* to initialize byte arrays
                     let v = bx.from_immediate(v);
                     if bx.cx().val_ty(v) == bx.cx().type_i8() {
-                        bx.memset(start, v, size, dest.align, MemFlags::empty());
+                        bx.memset(start, v, size, dest.val.align, MemFlags::empty());
                         return;
                     }
                 }
@@ -181,7 +182,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             OperandValue::Immediate(..) | OperandValue::Pair(..) => {
                 // When we have immediate(s), the alignment of the source is irrelevant,
                 // so we can store them using the destination's alignment.
-                src.val.store(bx, PlaceRef::new_sized_aligned(dst.llval, src.layout, dst.align));
+                src.val.store(
+                    bx,
+                    PlaceRef::new_sized_aligned(dst.val.llval, src.layout, dst.val.align),
+                );
             }
         }
     }
@@ -216,10 +220,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let cast_kind = self.value_kind(cast);
 
         match operand.val {
-            OperandValue::Ref(ptr, meta, align) => {
-                debug_assert_eq!(meta, None);
+            OperandValue::Ref(source_place_val) => {
+                debug_assert_eq!(source_place_val.llextra, None);
                 debug_assert!(matches!(operand_kind, OperandValueKind::Ref));
-                let fake_place = PlaceRef::new_sized_aligned(ptr, cast, align);
+                let fake_place = PlaceRef { val: source_place_val, layout: cast };
                 Some(bx.load_operand(fake_place).val)
             }
             OperandValue::ZeroSized => {
@@ -306,11 +310,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 bx.bitcast(imm, to_backend_ty)
             }
             (Pointer(..), Pointer(..)) => bx.pointercast(imm, to_backend_ty),
-            (Int(..), Pointer(..)) => bx.inttoptr(imm, to_backend_ty),
+            (Int(..), Pointer(..)) => bx.ptradd(bx.const_null(bx.type_ptr()), imm),
             (Pointer(..), Int(..)) => bx.ptrtoint(imm, to_backend_ty),
             (F16 | F32 | F64 | F128, Pointer(..)) => {
                 let int_imm = bx.bitcast(imm, bx.cx().type_isize());
-                bx.inttoptr(int_imm, to_backend_ty)
+                bx.ptradd(bx.const_null(bx.type_ptr()), int_imm)
             }
             (Pointer(..), F16 | F32 | F64 | F128) => {
                 let int_imm = bx.ptrtoint(imm, bx.cx().type_isize());
@@ -374,7 +378,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     ) {
         debug!(
             "codegen_rvalue_unsized(indirect_dest.llval={:?}, rvalue={:?})",
-            indirect_dest.llval, rvalue
+            indirect_dest.val.llval, rvalue
         );
 
         match *rvalue {
@@ -404,7 +408,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let cast = bx.cx().layout_of(self.monomorphize(mir_cast_ty));
 
                 let val = match *kind {
-                    mir::CastKind::PointerExposeAddress => {
+                    mir::CastKind::PointerExposeProvenance => {
                         assert!(bx.cx().is_backend_immediate(cast));
                         let llptr = operand.immediate();
                         let llcast_ty = bx.cx().immediate_backend_type(cast);
@@ -486,7 +490,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     }
                     mir::CastKind::DynStar => {
                         let (lldata, llextra) = match operand.val {
-                            OperandValue::Ref(_, _, _) => todo!(),
+                            OperandValue::Ref(..) => todo!(),
                             OperandValue::Immediate(v) => (v, None),
                             OperandValue::Pair(v, l) => (v, Some(l)),
                             OperandValue::ZeroSized => bug!("ZST -- which is not PointerLike -- in DynStar"),
@@ -508,7 +512,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     // Since int2ptr can have arbitrary integer types as input (so we have to do
                     // sign extension and all that), it is currently best handled in the same code
                     // path as the other integer-to-X casts.
-                    | mir::CastKind::PointerFromExposedAddress => {
+                    | mir::CastKind::PointerWithExposedProvenance => {
                         assert!(bx.cx().is_backend_immediate(cast));
                         let ll_t_out = bx.cx().immediate_backend_type(cast);
                         if operand.layout.abi.is_uninhabited() {
@@ -572,20 +576,15 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
             mir::Rvalue::Ref(_, bk, place) => {
                 let mk_ref = move |tcx: TyCtxt<'tcx>, ty: Ty<'tcx>| {
-                    Ty::new_ref(
-                        tcx,
-                        tcx.lifetimes.re_erased,
-                        ty::TypeAndMut { ty, mutbl: bk.to_mutbl_lossy() },
-                    )
+                    Ty::new_ref(tcx, tcx.lifetimes.re_erased, ty, bk.to_mutbl_lossy())
                 };
                 self.codegen_place_to_pointer(bx, place, mk_ref)
             }
 
             mir::Rvalue::CopyForDeref(place) => self.codegen_operand(bx, &Operand::Copy(place)),
             mir::Rvalue::AddressOf(mutability, place) => {
-                let mk_ptr = move |tcx: TyCtxt<'tcx>, ty: Ty<'tcx>| {
-                    Ty::new_ptr(tcx, ty::TypeAndMut { ty, mutbl: mutability })
-                };
+                let mk_ptr =
+                    move |tcx: TyCtxt<'tcx>, ty: Ty<'tcx>| Ty::new_ptr(tcx, ty, mutability);
                 self.codegen_place_to_pointer(bx, place, mk_ptr)
             }
 
@@ -685,9 +684,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         let val = layout.offset_of_subfield(bx.cx(), fields.iter()).bytes();
                         bx.cx().const_usize(val)
                     }
-                    mir::NullOp::UbCheck(_) => {
-                        // In codegen, we want to check for language UB and library UB
-                        let val = bx.tcx().sess.opts.debug_assertions;
+                    mir::NullOp::UbChecks => {
+                        let val = bx.tcx().sess.ub_checks();
                         bx.cx().const_bool(val)
                     }
                 };
@@ -715,13 +713,31 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     } else {
                         None
                     };
-                    bx.call(fn_ty, fn_attrs, Some(fn_abi), fn_ptr, &[], None)
+                    bx.call(fn_ty, fn_attrs, Some(fn_abi), fn_ptr, &[], None, Some(instance))
                 } else {
                     bx.get_static(def_id)
                 };
                 OperandRef { val: OperandValue::Immediate(static_), layout }
             }
             mir::Rvalue::Use(ref operand) => self.codegen_operand(bx, operand),
+            mir::Rvalue::Aggregate(box mir::AggregateKind::RawPtr(..), ref fields) => {
+                let ty = rvalue.ty(self.mir, self.cx.tcx());
+                let layout = self.cx.layout_of(self.monomorphize(ty));
+                let [data, meta] = &*fields.raw else {
+                    bug!("RawPtr fields: {fields:?}");
+                };
+                let data = self.codegen_operand(bx, data);
+                let meta = self.codegen_operand(bx, meta);
+                match (data.val, meta.val) {
+                    (p @ OperandValue::Immediate(_), OperandValue::ZeroSized) => {
+                        OperandRef { val: p, layout }
+                    }
+                    (OperandValue::Immediate(p), OperandValue::Immediate(m)) => {
+                        OperandRef { val: OperandValue::Pair(p, m), layout }
+                    }
+                    _ => bug!("RawPtr operands {data:?} {meta:?}"),
+                }
+            }
             mir::Rvalue::Repeat(..) | mir::Rvalue::Aggregate(..) => {
                 // According to `rvalue_creates_operand`, only ZST
                 // aggregate rvalues are allowed to be operands.
@@ -770,9 +786,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // Note: places are indirect, so storing the `llval` into the
         // destination effectively creates a reference.
         let val = if !bx.cx().type_has_metadata(ty) {
-            OperandValue::Immediate(cg_place.llval)
+            OperandValue::Immediate(cg_place.val.llval)
         } else {
-            OperandValue::Pair(cg_place.llval, cg_place.llextra.unwrap())
+            OperandValue::Pair(cg_place.val.llval, cg_place.val.llextra.unwrap())
         };
         OperandRef { val, layout: self.cx.layout_of(mk_ptr_ty(self.cx.tcx(), ty)) }
     }
@@ -866,14 +882,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     bx.inbounds_gep(llty, lhs, &[rhs])
                 }
             }
-            mir::BinOp::Shl => common::build_masked_lshift(bx, lhs, rhs),
-            mir::BinOp::ShlUnchecked => {
-                let rhs = base::cast_shift_expr_rhs(bx, lhs, rhs);
+            mir::BinOp::Shl | mir::BinOp::ShlUnchecked => {
+                let rhs = base::build_shift_expr_rhs(bx, lhs, rhs, op == mir::BinOp::ShlUnchecked);
                 bx.shl(lhs, rhs)
             }
-            mir::BinOp::Shr => common::build_masked_rshift(bx, input_ty, lhs, rhs),
-            mir::BinOp::ShrUnchecked => {
-                let rhs = base::cast_shift_expr_rhs(bx, lhs, rhs);
+            mir::BinOp::Shr | mir::BinOp::ShrUnchecked => {
+                let rhs = base::build_shift_expr_rhs(bx, lhs, rhs, op == mir::BinOp::ShrUnchecked);
                 if is_signed { bx.ashr(lhs, rhs) } else { bx.lshr(lhs, rhs) }
             }
             mir::BinOp::Ne
@@ -886,6 +900,35 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     bx.fcmp(base::bin_op_to_fcmp_predicate(op.to_hir_binop()), lhs, rhs)
                 } else {
                     bx.icmp(base::bin_op_to_icmp_predicate(op.to_hir_binop(), is_signed), lhs, rhs)
+                }
+            }
+            mir::BinOp::Cmp => {
+                use std::cmp::Ordering;
+                debug_assert!(!is_float);
+                let pred = |op| base::bin_op_to_icmp_predicate(op, is_signed);
+                if bx.cx().tcx().sess.opts.optimize == OptLevel::No {
+                    // FIXME: This actually generates tighter assembly, and is a classic trick
+                    // <https://graphics.stanford.edu/~seander/bithacks.html#CopyIntegerSign>
+                    // However, as of 2023-11 it optimizes worse in things like derived
+                    // `PartialOrd`, so only use it in debug for now. Once LLVM can handle it
+                    // better (see <https://github.com/llvm/llvm-project/issues/73417>), it'll
+                    // be worth trying it in optimized builds as well.
+                    let is_gt = bx.icmp(pred(hir::BinOpKind::Gt), lhs, rhs);
+                    let gtext = bx.zext(is_gt, bx.type_i8());
+                    let is_lt = bx.icmp(pred(hir::BinOpKind::Lt), lhs, rhs);
+                    let ltext = bx.zext(is_lt, bx.type_i8());
+                    bx.unchecked_ssub(gtext, ltext)
+                } else {
+                    // These operations are those expected by `tests/codegen/integer-cmp.rs`,
+                    // from <https://github.com/rust-lang/rust/pull/63767>.
+                    let is_lt = bx.icmp(pred(hir::BinOpKind::Lt), lhs, rhs);
+                    let is_ne = bx.icmp(pred(hir::BinOpKind::Ne), lhs, rhs);
+                    let ge = bx.select(
+                        is_ne,
+                        bx.cx().const_i8(Ordering::Greater as i8),
+                        bx.cx().const_i8(Ordering::Equal as i8),
+                    );
+                    bx.select(is_lt, bx.cx().const_i8(Ordering::Less as i8), ge)
                 }
             }
         }
@@ -1007,6 +1050,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::Rvalue::ThreadLocalRef(_) |
             mir::Rvalue::Use(..) => // (*)
                 true,
+            // This always produces a `ty::RawPtr`, so will be Immediate or Pair
+            mir::Rvalue::Aggregate(box AggregateKind::RawPtr(..), ..) => true,
             mir::Rvalue::Repeat(..) |
             mir::Rvalue::Aggregate(..) => {
                 let ty = rvalue.ty(self.mir, self.cx.tcx());

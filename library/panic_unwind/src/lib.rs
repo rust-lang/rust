@@ -19,6 +19,8 @@
 #![feature(panic_unwind)]
 #![feature(staged_api)]
 #![feature(std_internals)]
+#![feature(strict_provenance)]
+#![feature(exposed_provenance)]
 #![feature(rustc_attrs)]
 #![panic_runtime]
 #![feature(panic_runtime)]
@@ -53,12 +55,12 @@ cfg_if::cfg_if! {
         target_os = "solid_asp3",
         all(target_family = "unix", not(target_os = "espidf")),
         all(target_vendor = "fortanix", target_env = "sgx"),
+        target_family = "wasm",
     ))] {
         #[path = "gcc.rs"]
         mod real_imp;
     } else {
         // Targets that don't support unwinding.
-        // - family=wasm
         // - os=none ("bare metal" targets)
         // - os=uefi
         // - os=espidf

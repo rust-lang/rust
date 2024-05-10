@@ -6,22 +6,22 @@ mod matcher;
 mod transcriber;
 
 use rustc_hash::FxHashMap;
+use span::{Edition, Span};
 use syntax::SmolStr;
-use tt::Span;
 
-use crate::{parser::MetaVarKind, ExpandError, ExpandResult};
+use crate::{parser::MetaVarKind, ExpandError, ExpandResult, MatchedArmIndex};
 
-pub(crate) fn expand_rules<S: Span>(
-    rules: &[crate::Rule<S>],
-    input: &tt::Subtree<S>,
-    marker: impl Fn(&mut S) + Copy,
-    is_2021: bool,
+pub(crate) fn expand_rules(
+    rules: &[crate::Rule],
+    input: &tt::Subtree<Span>,
+    marker: impl Fn(&mut Span) + Copy,
     new_meta_vars: bool,
-    call_site: S,
-) -> ExpandResult<tt::Subtree<S>> {
-    let mut match_: Option<(matcher::Match<S>, &crate::Rule<S>)> = None;
-    for rule in rules {
-        let new_match = matcher::match_(&rule.lhs, input, is_2021);
+    call_site: Span,
+    def_site_edition: Edition,
+) -> ExpandResult<(tt::Subtree<Span>, MatchedArmIndex)> {
+    let mut match_: Option<(matcher::Match, &crate::Rule, usize)> = None;
+    for (idx, rule) in rules.iter().enumerate() {
+        let new_match = matcher::match_(&rule.lhs, input, def_site_edition);
 
         if new_match.err.is_none() {
             // If we find a rule that applies without errors, we're done.
@@ -35,31 +35,34 @@ pub(crate) fn expand_rules<S: Span>(
                 call_site,
             );
             if transcribe_err.is_none() {
-                return ExpandResult::ok(value);
+                return ExpandResult::ok((value, Some(idx as u32)));
             }
         }
         // Use the rule if we matched more tokens, or bound variables count
-        if let Some((prev_match, _)) = &match_ {
+        if let Some((prev_match, _, _)) = &match_ {
             if (new_match.unmatched_tts, -(new_match.bound_count as i32))
                 < (prev_match.unmatched_tts, -(prev_match.bound_count as i32))
             {
-                match_ = Some((new_match, rule));
+                match_ = Some((new_match, rule, idx));
             }
         } else {
-            match_ = Some((new_match, rule));
+            match_ = Some((new_match, rule, idx));
         }
     }
-    if let Some((match_, rule)) = match_ {
+    if let Some((match_, rule, idx)) = match_ {
         // if we got here, there was no match without errors
         let ExpandResult { value, err: transcribe_err } =
             transcriber::transcribe(&rule.rhs, &match_.bindings, marker, new_meta_vars, call_site);
-        ExpandResult { value, err: match_.err.or(transcribe_err) }
+        ExpandResult { value: (value, idx.try_into().ok()), err: match_.err.or(transcribe_err) }
     } else {
         ExpandResult::new(
-            tt::Subtree {
-                delimiter: tt::Delimiter::invisible_spanned(call_site),
-                token_trees: Box::new([]),
-            },
+            (
+                tt::Subtree {
+                    delimiter: tt::Delimiter::invisible_spanned(call_site),
+                    token_trees: Box::default(),
+                },
+                None,
+            ),
             ExpandError::NoMatchingRule,
         )
     }
@@ -110,30 +113,24 @@ pub(crate) fn expand_rules<S: Span>(
 /// In other words, `Bindings` is a *multi* mapping from `SmolStr` to
 /// `tt::TokenTree`, where the index to select a particular `TokenTree` among
 /// many is not a plain `usize`, but a `&[usize]`.
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct Bindings<S> {
-    inner: FxHashMap<SmolStr, Binding<S>>,
-}
-
-impl<S> Default for Bindings<S> {
-    fn default() -> Self {
-        Self { inner: Default::default() }
-    }
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
+struct Bindings {
+    inner: FxHashMap<SmolStr, Binding>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-enum Binding<S> {
-    Fragment(Fragment<S>),
-    Nested(Vec<Binding<S>>),
+enum Binding {
+    Fragment(Fragment),
+    Nested(Vec<Binding>),
     Empty,
     Missing(MetaVarKind),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-enum Fragment<S> {
+enum Fragment {
     Empty,
     /// token fragments are just copy-pasted into the output
-    Tokens(tt::TokenTree<S>),
+    Tokens(tt::TokenTree<Span>),
     /// Expr ast fragments are surrounded with `()` on insertion to preserve
     /// precedence. Note that this impl is different from the one currently in
     /// `rustc` -- `rustc` doesn't translate fragments into token trees at all.
@@ -141,7 +138,7 @@ enum Fragment<S> {
     /// At one point in time, we tried to use "fake" delimiters here à la
     /// proc-macro delimiter=none. As we later discovered, "none" delimiters are
     /// tricky to handle in the parser, and rustc doesn't handle those either.
-    Expr(tt::Subtree<S>),
+    Expr(tt::Subtree<Span>),
     /// There are roughly two types of paths: paths in expression context, where a
     /// separator `::` between an identifier and its following generic argument list
     /// is mandatory, and paths in type context, where `::` can be omitted.
@@ -151,5 +148,5 @@ enum Fragment<S> {
     /// and is trasncribed as an expression-context path, verbatim transcription
     /// would cause a syntax error. We need to fix it up just before transcribing;
     /// see `transcriber::fix_up_and_push_path_tt()`.
-    Path(tt::Subtree<S>),
+    Path(tt::Subtree<Span>),
 }

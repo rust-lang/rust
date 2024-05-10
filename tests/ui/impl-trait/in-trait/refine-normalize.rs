@@ -1,6 +1,7 @@
 //@ check-pass
 //@ edition: 2021
 //@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
 
 #![deny(refining_impl_trait)]

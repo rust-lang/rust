@@ -21,8 +21,7 @@
 //!
 //! [c]: https://rust-lang.github.io/chalk/book/canonical_queries/canonicalization.html
 
-use crate::infer::{ConstVariableOrigin, ConstVariableOriginKind};
-use crate::infer::{InferCtxt, RegionVariableOrigin, TypeVariableOrigin, TypeVariableOriginKind};
+use crate::infer::{InferCtxt, RegionVariableOrigin};
 use rustc_index::IndexVec;
 use rustc_middle::infer::unify_key::EffectVarValue;
 use rustc_middle::ty::fold::TypeFoldable;
@@ -38,8 +37,8 @@ mod instantiate;
 pub mod query_response;
 
 impl<'tcx> InferCtxt<'tcx> {
-    /// Creates an instantiation S for the canonical value with fresh
-    /// inference variables and applies it to the canonical value.
+    /// Creates an instantiation S for the canonical value with fresh inference
+    /// variables and placeholders then applies it to the canonical value.
     /// Returns both the instantiated result *and* the instantiation S.
     ///
     /// This can be invoked as part of constructing an
@@ -50,7 +49,7 @@ impl<'tcx> InferCtxt<'tcx> {
     /// At the end of processing, the instantiation S (once
     /// canonicalized) then represents the values that you computed
     /// for each of the canonical inputs to your query.
-    pub fn instantiate_canonical_with_fresh_inference_vars<T>(
+    pub fn instantiate_canonical<T>(
         &self,
         span: Span,
         canonical: &Canonical<'tcx, T>,
@@ -114,10 +113,9 @@ impl<'tcx> InferCtxt<'tcx> {
         match cv_info.kind {
             CanonicalVarKind::Ty(ty_kind) => {
                 let ty = match ty_kind {
-                    CanonicalTyVarKind::General(ui) => self.next_ty_var_in_universe(
-                        TypeVariableOrigin { kind: TypeVariableOriginKind::MiscVariable, span },
-                        universe_map(ui),
-                    ),
+                    CanonicalTyVarKind::General(ui) => {
+                        self.next_ty_var_in_universe(span, universe_map(ui))
+                    }
 
                     CanonicalTyVarKind::Int => self.next_int_var(),
 
@@ -145,13 +143,9 @@ impl<'tcx> InferCtxt<'tcx> {
                 ty::Region::new_placeholder(self.tcx, placeholder_mapped).into()
             }
 
-            CanonicalVarKind::Const(ui, ty) => self
-                .next_const_var_in_universe(
-                    ty,
-                    ConstVariableOrigin { kind: ConstVariableOriginKind::MiscVariable, span },
-                    universe_map(ui),
-                )
-                .into(),
+            CanonicalVarKind::Const(ui, ty) => {
+                self.next_const_var_in_universe(ty, span, universe_map(ui)).into()
+            }
             CanonicalVarKind::Effect => {
                 let vid = self
                     .inner

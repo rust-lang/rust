@@ -1,10 +1,11 @@
 use rustc_ast_ir::try_visit;
 use rustc_data_structures::intern::Interned;
+use rustc_macros::{HashStable, TypeFoldable, TypeVisitable};
 use rustc_span::def_id::DefId;
 
 use crate::infer::canonical::{CanonicalVarValues, QueryRegionConstraints};
 use crate::traits::query::NoSolution;
-use crate::traits::{Canonical, DefiningAnchor};
+use crate::traits::Canonical;
 use crate::ty::{
     self, FallibleTypeFolder, ToPredicate, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeVisitable,
     TypeVisitor,
@@ -114,7 +115,6 @@ impl MaybeCause {
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, HashStable, TypeFoldable, TypeVisitable)]
 pub struct QueryInput<'tcx, T> {
     pub goal: Goal<'tcx, T>,
-    pub anchor: DefiningAnchor,
     pub predefined_opaques_in_body: PredefinedOpaques<'tcx>,
 }
 
@@ -164,6 +164,19 @@ pub struct ExternalConstraintsData<'tcx> {
     // FIXME: implement this.
     pub region_constraints: QueryRegionConstraints<'tcx>,
     pub opaque_types: Vec<(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)>,
+    pub normalization_nested_goals: NestedNormalizationGoals<'tcx>,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Hash, HashStable, Default, TypeVisitable, TypeFoldable)]
+pub struct NestedNormalizationGoals<'tcx>(pub Vec<(GoalSource, Goal<'tcx, ty::Predicate<'tcx>>)>);
+impl<'tcx> NestedNormalizationGoals<'tcx> {
+    pub fn empty() -> Self {
+        NestedNormalizationGoals(vec![])
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
 }
 
 // FIXME: Having to clone `region_constraints` for folding feels bad and
@@ -183,6 +196,10 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ExternalConstraints<'tcx> {
                 .iter()
                 .map(|opaque| opaque.try_fold_with(folder))
                 .collect::<Result<_, F::Error>>()?,
+            normalization_nested_goals: self
+                .normalization_nested_goals
+                .clone()
+                .try_fold_with(folder)?,
         }))
     }
 
@@ -190,6 +207,7 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ExternalConstraints<'tcx> {
         TypeFolder::interner(folder).mk_external_constraints(ExternalConstraintsData {
             region_constraints: self.region_constraints.clone().fold_with(folder),
             opaque_types: self.opaque_types.iter().map(|opaque| opaque.fold_with(folder)).collect(),
+            normalization_nested_goals: self.normalization_nested_goals.clone().fold_with(folder),
         })
     }
 }
@@ -197,7 +215,8 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ExternalConstraints<'tcx> {
 impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for ExternalConstraints<'tcx> {
     fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> V::Result {
         try_visit!(self.region_constraints.visit_with(visitor));
-        self.opaque_types.visit_with(visitor)
+        try_visit!(self.opaque_types.visit_with(visitor));
+        self.normalization_nested_goals.visit_with(visitor)
     }
 }
 
@@ -239,7 +258,7 @@ impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for PredefinedOpaques<'tcx> {
 ///
 /// This is necessary as we treat nested goals different depending on
 /// their source.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable, TypeVisitable, TypeFoldable)]
 pub enum GoalSource {
     Misc,
     /// We're proving a where-bound of an impl.
@@ -254,12 +273,8 @@ pub enum GoalSource {
     /// they are from an impl where-clause. This is necessary due to
     /// backwards compatability, cc trait-system-refactor-initiatitive#70.
     ImplWhereBound,
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, HashStable)]
-pub enum IsNormalizesToHack {
-    Yes,
-    No,
+    /// Instantiating a higher-ranked goal and re-proving it.
+    InstantiateHigherRanked,
 }
 
 /// Possible ways the given goal can be proven.
@@ -320,4 +335,9 @@ pub enum CandidateSource {
     /// }
     /// ```
     AliasBound,
+    /// A candidate that is registered only during coherence to represent some
+    /// yet-unknown impl that could be produced downstream without violating orphan
+    /// rules.
+    // FIXME: Merge this with the forced ambiguity candidates, so those don't use `Misc`.
+    CoherenceUnknowable,
 }

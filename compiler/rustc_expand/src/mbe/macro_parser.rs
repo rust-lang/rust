@@ -266,7 +266,7 @@ struct MatcherPos {
 }
 
 // This type is used a lot. Make sure it doesn't unintentionally get bigger.
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+#[cfg(target_pointer_width = "64")]
 rustc_data_structures::static_assert_size!(MatcherPos, 16);
 
 impl MatcherPos {
@@ -392,12 +392,7 @@ pub(super) fn count_metavar_decls(matcher: &[TokenTree]) -> usize {
 #[derive(Debug, Clone)]
 pub(crate) enum NamedMatch {
     MatchedSeq(Vec<NamedMatch>),
-
-    // A metavar match of type `tt`.
-    MatchedTokenTree(rustc_ast::tokenstream::TokenTree),
-
-    // A metavar match of any type other than `tt`.
-    MatchedNonterminal(Lrc<(Nonterminal, rustc_span::Span)>),
+    MatchedSingle(ParseNtResult<Lrc<(Nonterminal, Span)>>),
 }
 
 /// Performs a token equality check, ignoring syntax context (that is, an unhygienic comparison)
@@ -691,11 +686,11 @@ impl TtParser {
                             }
                             Ok(nt) => nt,
                         };
-                        let m = match nt {
-                            ParseNtResult::Nt(nt) => MatchedNonterminal(Lrc::new((nt, span))),
-                            ParseNtResult::Tt(tt) => MatchedTokenTree(tt),
-                        };
-                        mp.push_match(next_metavar, seq_depth, m);
+                        mp.push_match(
+                            next_metavar,
+                            seq_depth,
+                            MatchedSingle(nt.map_nt(|nt| (Lrc::new((nt, span))))),
+                        );
                         mp.idx += 1;
                     } else {
                         unreachable!()

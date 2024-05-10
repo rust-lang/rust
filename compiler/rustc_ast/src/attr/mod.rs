@@ -298,7 +298,10 @@ impl MetaItem {
     }
 
     pub fn value_str(&self) -> Option<Symbol> {
-        self.kind.value_str()
+        match &self.kind {
+            MetaItemKind::NameValue(v) => v.kind.str(),
+            _ => None,
+        }
     }
 
     fn from_tokens<'a, I>(tokens: &mut iter::Peekable<I>) -> Option<MetaItem>
@@ -308,11 +311,11 @@ impl MetaItem {
         // FIXME: Share code with `parse_path`.
         let path = match tokens.next().map(|tt| TokenTree::uninterpolate(tt)).as_deref() {
             Some(&TokenTree::Token(
-                Token { kind: ref kind @ (token::Ident(..) | token::ModSep), span },
+                Token { kind: ref kind @ (token::Ident(..) | token::PathSep), span },
                 _,
             )) => 'arm: {
                 let mut segments = if let &token::Ident(name, _) = kind {
-                    if let Some(TokenTree::Token(Token { kind: token::ModSep, .. }, _)) =
+                    if let Some(TokenTree::Token(Token { kind: token::PathSep, .. }, _)) =
                         tokens.peek()
                     {
                         tokens.next();
@@ -331,7 +334,7 @@ impl MetaItem {
                     } else {
                         return None;
                     }
-                    if let Some(TokenTree::Token(Token { kind: token::ModSep, .. }, _)) =
+                    if let Some(TokenTree::Token(Token { kind: token::PathSep, .. }, _)) =
                         tokens.peek()
                     {
                         tokens.next();
@@ -362,13 +365,6 @@ impl MetaItem {
 }
 
 impl MetaItemKind {
-    pub fn value_str(&self) -> Option<Symbol> {
-        match self {
-            MetaItemKind::NameValue(v) => v.kind.str(),
-            _ => None,
-        }
-    }
-
     fn list_from_tokens(tokens: TokenStream) -> Option<ThinVec<NestedMetaItem>> {
         let mut tokens = tokens.trees().peekable();
         let mut result = ThinVec::new();
@@ -468,8 +464,9 @@ impl NestedMetaItem {
         self.meta_item().and_then(|meta_item| meta_item.meta_item_list())
     }
 
-    /// Returns a name and single literal value tuple of the `MetaItem`.
-    pub fn name_value_literal(&self) -> Option<(Symbol, &MetaItemLit)> {
+    /// If it's a singleton list of the form `foo(lit)`, returns the `foo` and
+    /// the `lit`.
+    pub fn singleton_lit_list(&self) -> Option<(Symbol, &MetaItemLit)> {
         self.meta_item().and_then(|meta_item| {
             meta_item.meta_item_list().and_then(|meta_item_list| {
                 if meta_item_list.len() == 1

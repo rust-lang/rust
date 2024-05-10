@@ -29,7 +29,8 @@ use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_errors::{DiagCtxt, FatalError, Level};
 use rustc_fs_util::{link_or_copy, path_to_c_string};
 use rustc_middle::ty::TyCtxt;
-use rustc_session::config::{self, Lto, OutputType, Passes, SplitDwarfKind, SwitchWithOptPath};
+use rustc_session::config::{self, Lto, OutputType, Passes};
+use rustc_session::config::{RemapPathScopeComponents, SplitDwarfKind, SwitchWithOptPath};
 use rustc_session::Session;
 use rustc_span::symbol::sym;
 use rustc_span::InnerSpan;
@@ -257,18 +258,17 @@ pub fn target_machine_factory(
     };
     let debuginfo_compression = SmallCStr::new(&debuginfo_compression);
 
-    let should_prefer_remapped_for_split_debuginfo_paths =
-        sess.should_prefer_remapped_for_split_debuginfo_paths();
+    let file_name_display_preference =
+        sess.filename_display_preference(RemapPathScopeComponents::DEBUGINFO);
 
     Arc::new(move |config: TargetMachineFactoryConfig| {
         let path_to_cstring_helper = |path: Option<PathBuf>| -> CString {
             let path = path.unwrap_or_default();
-            let path = if should_prefer_remapped_for_split_debuginfo_paths {
-                path_mapping.map_prefix(path).0
-            } else {
-                path.into()
-            };
-            CString::new(path.to_str().unwrap()).unwrap()
+            let path = path_mapping
+                .to_real_filename(path)
+                .to_string_lossy(file_name_display_preference)
+                .into_owned();
+            CString::new(path).unwrap()
         };
 
         let split_dwarf_file = path_to_cstring_helper(config.split_dwarf_file);
@@ -880,6 +880,8 @@ pub(crate) unsafe fn codegen(
         config.emit_obj != EmitObj::None,
         dwarf_object_emitted,
         config.emit_bc,
+        config.emit_asm,
+        config.emit_ir,
         &cgcx.output_filenames,
     ))
 }
@@ -912,6 +914,7 @@ fn target_is_apple(cgcx: &CodegenContext<LlvmCodegenBackend>) -> bool {
         || cgcx.opts.target_triple.triple().contains("-darwin")
         || cgcx.opts.target_triple.triple().contains("-tvos")
         || cgcx.opts.target_triple.triple().contains("-watchos")
+        || cgcx.opts.target_triple.triple().contains("-visionos")
 }
 
 fn target_is_aix(cgcx: &CodegenContext<LlvmCodegenBackend>) -> bool {

@@ -20,7 +20,10 @@ error: unconstrained generic constant
 LL |     let _: [u8; size_of::<*mut T>()]; // error on stable, error with gce
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: try adding a `where` bound using this expression: `where [(); size_of::<*mut T>()]:`
+help: try adding a `where` bound
+   |
+LL | fn foo<T>() where [(); size_of::<*mut T>()]: {
+   |             ++++++++++++++++++++++++++++++++
 
 error: unconstrained generic constant
   --> $DIR/dependence_lint.rs:10:9
@@ -28,7 +31,10 @@ error: unconstrained generic constant
 LL |     [0; size_of::<*mut T>()]; // lint on stable, error with `generic_const_exprs`
    |         ^^^^^^^^^^^^^^^^^^^
    |
-   = help: try adding a `where` bound using this expression: `where [(); size_of::<*mut T>()]:`
+help: try adding a `where` bound
+   |
+LL | fn foo<T>() where [(); size_of::<*mut T>()]: {
+   |             ++++++++++++++++++++++++++++++++
 
 error: aborting due to 4 previous errors
 

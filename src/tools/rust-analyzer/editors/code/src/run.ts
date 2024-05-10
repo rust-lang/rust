@@ -115,7 +115,7 @@ export async function createTask(runnable: ra.Runnable, config: Config): Promise
 
     const definition: tasks.CargoTaskDefinition = {
         type: tasks.TASK_TYPE,
-        command: args[0], // run, test, etc...
+        command: unwrapUndefinable(args[0]), // run, test, etc...
         args: args.slice(1),
         cwd: runnable.args.workspaceRoot || ".",
         env: prepareEnv(runnable, config.runnablesExtraEnv),
@@ -124,22 +124,21 @@ export async function createTask(runnable: ra.Runnable, config: Config): Promise
 
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
     const target = vscode.workspace.workspaceFolders![0]; // safe, see main activate()
-    const cargoTask = await tasks.buildCargoTask(
+    const task = await tasks.buildRustTask(
         target,
         definition,
         runnable.label,
-        args,
         config.problemMatcher,
         config.cargoRunner,
         true,
     );
 
-    cargoTask.presentationOptions.clear = true;
+    task.presentationOptions.clear = true;
     // Sadly, this doesn't prevent focus stealing if the terminal is currently
     // hidden, and will become revealed due to task execution.
-    cargoTask.presentationOptions.focus = false;
+    task.presentationOptions.focus = false;
 
-    return cargoTask;
+    return task;
 }
 
 export function createArgs(runnable: ra.Runnable): string[] {

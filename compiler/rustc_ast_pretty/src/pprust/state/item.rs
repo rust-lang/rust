@@ -1,5 +1,5 @@
 use crate::pp::Breaks::Inconsistent;
-use crate::pprust::state::expr::FixupContext;
+use crate::pprust::state::fixup::FixupContext;
 use crate::pprust::state::{AnnNode, PrintState, State, INDENT_UNIT};
 
 use ast::StaticItem;
@@ -30,15 +30,17 @@ impl<'a> State<'a> {
             ast::ForeignItemKind::Fn(box ast::Fn { defaultness, sig, generics, body }) => {
                 self.print_fn_full(sig, ident, generics, vis, *defaultness, body.as_deref(), attrs);
             }
-            ast::ForeignItemKind::Static(ty, mutbl, body) => self.print_item_const(
-                ident,
-                Some(*mutbl),
-                &ast::Generics::default(),
-                ty,
-                body.as_deref(),
-                vis,
-                ast::Defaultness::Final,
-            ),
+            ast::ForeignItemKind::Static(box ast::StaticForeignItem { ty, mutability, expr }) => {
+                self.print_item_const(
+                    ident,
+                    Some(*mutability),
+                    &ast::Generics::default(),
+                    ty,
+                    expr.as_deref(),
+                    vis,
+                    ast::Defaultness::Final,
+                )
+            }
             ast::ForeignItemKind::TyAlias(box ast::TyAlias {
                 defaultness,
                 generics,
@@ -236,6 +238,7 @@ impl<'a> State<'a> {
                 self.bclose(item.span, empty);
             }
             ast::ItemKind::GlobalAsm(asm) => {
+                // FIXME: Print `builtin # global_asm` once macro `global_asm` uses `builtin_syntax`.
                 self.head(visibility_qualified(&item.vis, "global_asm!"));
                 self.print_inline_asm(asm);
                 self.word(";");
@@ -712,7 +715,7 @@ impl<'a> State<'a> {
                 }
                 self.word("*");
             }
-            ast::UseTreeKind::Nested(items) => {
+            ast::UseTreeKind::Nested { items, .. } => {
                 if !tree.prefix.segments.is_empty() {
                     self.print_path(&tree.prefix, false, 0);
                     self.word("::");
@@ -731,7 +734,7 @@ impl<'a> State<'a> {
                         self.print_use_tree(&use_tree.0);
                         if !is_last {
                             self.word(",");
-                            if let ast::UseTreeKind::Nested(_) = use_tree.0.kind {
+                            if let ast::UseTreeKind::Nested { .. } = use_tree.0.kind {
                                 self.hardbreak();
                             } else {
                                 self.space();

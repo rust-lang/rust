@@ -7,7 +7,6 @@
 #![allow(internal_features)]
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::untranslatable_diagnostic)]
-#![cfg_attr(bootstrap, feature(min_specialization))]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
 #![feature(array_windows)]
@@ -16,7 +15,6 @@
 #![feature(box_patterns)]
 #![feature(error_reporter)]
 #![feature(extract_if)]
-#![feature(generic_nonzero)]
 #![feature(let_chains)]
 #![feature(negative_impls)]
 #![feature(never_type)]
@@ -27,12 +25,6 @@
 #![feature(yeet_expr)]
 // tidy-alphabetical-end
 
-#[macro_use]
-extern crate rustc_macros;
-
-#[macro_use]
-extern crate tracing;
-
 extern crate self as rustc_errors;
 
 pub use codes::*;
@@ -42,8 +34,8 @@ pub use diagnostic::{
     SubdiagMessageOp, Subdiagnostic,
 };
 pub use diagnostic_impls::{
-    DiagArgFromDisplay, DiagSymbolList, ExpectedLifetimeParameter, IndicateAnonymousLifetime,
-    SingleLabelManySpans,
+    DiagArgFromDisplay, DiagSymbolList, ElidedLifetimeInPathSubdiag, ExpectedLifetimeParameter,
+    IndicateAnonymousLifetime, SingleLabelManySpans,
 };
 pub use emitter::ColorConfig;
 pub use rustc_error_messages::{
@@ -66,6 +58,7 @@ use rustc_data_structures::stable_hasher::{Hash128, StableHasher};
 use rustc_data_structures::sync::{Lock, Lrc};
 use rustc_data_structures::AtomicRef;
 use rustc_lint_defs::LintExpectationId;
+use rustc_macros::{Decodable, Encodable};
 use rustc_span::source_map::SourceMap;
 use rustc_span::{Loc, Span, DUMMY_SP};
 use std::backtrace::{Backtrace, BacktraceStatus};
@@ -78,6 +71,7 @@ use std::num::NonZero;
 use std::ops::DerefMut;
 use std::panic;
 use std::path::{Path, PathBuf};
+use tracing::debug;
 
 use Level::*;
 
@@ -103,9 +97,9 @@ pub type PResult<'a, T> = Result<T, PErr<'a>>;
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
 // `PResult` is used a lot. Make sure it doesn't unintentionally get bigger.
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+#[cfg(target_pointer_width = "64")]
 rustc_data_structures::static_assert_size!(PResult<'_, ()>, 16);
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+#[cfg(target_pointer_width = "64")]
 rustc_data_structures::static_assert_size!(PResult<'_, bool>, 16);
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, Encodable, Decodable)]
@@ -442,8 +436,8 @@ struct DiagCtxtInner {
     emitter: Box<DynEmitter>,
 
     /// Must we produce a diagnostic to justify the use of the expensive
-    /// `trimmed_def_paths` function?
-    must_produce_diag: bool,
+    /// `trimmed_def_paths` function? Backtrace is the location of the call.
+    must_produce_diag: Option<Backtrace>,
 
     /// Has this diagnostic context printed any diagnostics? (I.e. has
     /// `self.emitter.emit_diagnostic()` been called?
@@ -504,7 +498,7 @@ struct DiagCtxtInner {
 }
 
 /// A key denoting where from a diagnostic was stashed.
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum StashKey {
     ItemNoType,
     UnderscoreForArrayLengths,
@@ -526,12 +520,15 @@ pub enum StashKey {
     UndeterminedMacroResolution,
 }
 
-fn default_track_diagnostic(diag: DiagInner, f: &mut dyn FnMut(DiagInner)) {
+fn default_track_diagnostic<R>(diag: DiagInner, f: &mut dyn FnMut(DiagInner) -> R) -> R {
     (*f)(diag)
 }
 
-pub static TRACK_DIAGNOSTIC: AtomicRef<fn(DiagInner, &mut dyn FnMut(DiagInner))> =
-    AtomicRef::new(&(default_track_diagnostic as _));
+/// Diagnostics emitted by `DiagCtxtInner::emit_diagnostic` are passed through this function. Used
+/// for tracking by incremental, to replay diagnostics as necessary.
+pub static TRACK_DIAGNOSTIC: AtomicRef<
+    fn(DiagInner, &mut dyn FnMut(DiagInner) -> Option<ErrorGuaranteed>) -> Option<ErrorGuaranteed>,
+> = AtomicRef::new(&(default_track_diagnostic as _));
 
 #[derive(Copy, Clone, Default)]
 pub struct DiagCtxtFlags {
@@ -572,10 +569,11 @@ impl Drop for DiagCtxtInner {
         }
 
         if !self.has_printed && !self.suppressed_expected_diag && !std::thread::panicking() {
-            if self.must_produce_diag {
+            if let Some(backtrace) = &self.must_produce_diag {
                 panic!(
-                    "must_produce_diag: trimmed_def_paths called but no diagnostics emitted; \
-                       use `DelayDm` for lints or `with_no_trimmed_paths` for debugging"
+                    "must_produce_diag: `trimmed_def_paths` called but no diagnostics emitted; \
+                       use `DelayDm` for lints or `with_no_trimmed_paths` for debugging. \
+                       called at: {backtrace}"
                 );
             }
         }
@@ -609,12 +607,18 @@ impl DiagCtxt {
         Self { inner: Lock::new(DiagCtxtInner::new(emitter)) }
     }
 
-    pub fn make_silent(&mut self, fallback_bundle: LazyFallbackBundle, fatal_note: Option<String>) {
+    pub fn make_silent(
+        &mut self,
+        fallback_bundle: LazyFallbackBundle,
+        fatal_note: Option<String>,
+        emit_fatal_diagnostic: bool,
+    ) {
         self.wrap_emitter(|old_dcx| {
             Box::new(emitter::SilentEmitter {
                 fallback_bundle,
                 fatal_dcx: DiagCtxt { inner: Lock::new(old_dcx) },
                 fatal_note,
+                emit_fatal_diagnostic,
             })
         });
     }
@@ -721,7 +725,7 @@ impl DiagCtxt {
         *delayed_bugs = Default::default();
         *deduplicated_err_count = 0;
         *deduplicated_warn_count = 0;
-        *must_produce_diag = false;
+        *must_produce_diag = None;
         *has_printed = false;
         *suppressed_expected_diag = false;
         *taught_diagnostics = Default::default();
@@ -768,13 +772,10 @@ impl DiagCtxt {
                     format!("invalid level in `stash_diagnostic`: {:?}", diag.level),
                 );
             }
-            Error => {
-                // This `unchecked_error_guaranteed` is valid. It is where the
-                // `ErrorGuaranteed` for stashed errors originates. See
-                // `DiagCtxtInner::drop`.
-                #[allow(deprecated)]
-                Some(ErrorGuaranteed::unchecked_error_guaranteed())
-            }
+            // We delay a bug here so that `-Ztreat-err-as-bug -Zeagerly-emit-delayed-bugs`
+            // can be used to create a backtrace at the stashing site insted of whenever the
+            // diagnostic context is dropped and thus delayed bugs are emitted.
+            Error => Some(self.span_delayed_bug(span, format!("stashing {key:?}"))),
             DelayedBug => return self.inner.borrow_mut().emit_diagnostic(diag),
             ForceWarning(_) | Warning | Note | OnceNote | Help | OnceHelp | FailureNote | Allow
             | Expect(_) => None,
@@ -1091,8 +1092,13 @@ impl DiagCtxt {
 
     /// Used when trimmed_def_paths is called and we must produce a diagnostic
     /// to justify its cost.
+    #[track_caller]
     pub fn set_must_produce_diag(&self) {
-        self.inner.borrow_mut().must_produce_diag = true;
+        assert!(
+            self.inner.borrow().must_produce_diag.is_none(),
+            "should only need to collect a backtrace once"
+        );
+        self.inner.borrow_mut().must_produce_diag = Some(Backtrace::capture());
     }
 }
 
@@ -1384,7 +1390,7 @@ impl DiagCtxtInner {
             deduplicated_err_count: 0,
             deduplicated_warn_count: 0,
             emitter,
-            must_produce_diag: false,
+            must_produce_diag: None,
             has_printed: false,
             suppressed_expected_diag: false,
             taught_diagnostics: Default::default(),
@@ -1419,74 +1425,103 @@ impl DiagCtxtInner {
 
     // Return value is only `Some` if the level is `Error` or `DelayedBug`.
     fn emit_diagnostic(&mut self, mut diagnostic: DiagInner) -> Option<ErrorGuaranteed> {
-        assert!(diagnostic.level.can_be_top_or_sub().0);
-
-        if let Some(expectation_id) = diagnostic.level.get_expectation_id() {
-            // The `LintExpectationId` can be stable or unstable depending on when it was created.
-            // Diagnostics created before the definition of `HirId`s are unstable and can not yet
-            // be stored. Instead, they are buffered until the `LintExpectationId` is replaced by
-            // a stable one by the `LintLevelsBuilder`.
-            if let LintExpectationId::Unstable { .. } = expectation_id {
-                self.unstable_expect_diagnostics.push(diagnostic);
-                return None;
-            }
-            self.suppressed_expected_diag = true;
-            self.fulfilled_expectations.insert(expectation_id.normalize());
-        }
-
         if diagnostic.has_future_breakage() {
             // Future breakages aren't emitted if they're `Level::Allow`,
             // but they still need to be constructed and stashed below,
             // so they'll trigger the must_produce_diag check.
-            self.suppressed_expected_diag = true;
+            assert!(matches!(diagnostic.level, Error | Warning | Allow));
             self.future_breakage_diagnostics.push(diagnostic.clone());
         }
 
-        // Note that because this comes before the `match` below,
-        // `-Zeagerly-emit-delayed-bugs` continues to work even after we've
-        // issued an error and stopped recording new delayed bugs.
-        if diagnostic.level == DelayedBug && self.flags.eagerly_emit_delayed_bugs {
-            diagnostic.level = Error;
-        }
-
+        // We call TRACK_DIAGNOSTIC with an empty closure for the cases that
+        // return early *and* have some kind of side-effect, except where
+        // noted.
         match diagnostic.level {
-            // This must come after the possible promotion of `DelayedBug` to
-            // `Error` above.
-            Fatal | Error if self.treat_next_err_as_bug() => {
-                diagnostic.level = Bug;
+            Bug => {}
+            Fatal | Error => {
+                if self.treat_next_err_as_bug() {
+                    // `Fatal` and `Error` can be promoted to `Bug`.
+                    diagnostic.level = Bug;
+                }
             }
             DelayedBug => {
-                // If we have already emitted at least one error, we don't need
-                // to record the delayed bug, because it'll never be used.
-                return if let Some(guar) = self.has_errors() {
-                    Some(guar)
+                // Note that because we check these conditions first,
+                // `-Zeagerly-emit-delayed-bugs` and `-Ztreat-err-as-bug`
+                // continue to work even after we've issued an error and
+                // stopped recording new delayed bugs.
+                if self.flags.eagerly_emit_delayed_bugs {
+                    // `DelayedBug` can be promoted to `Error` or `Bug`.
+                    if self.treat_next_err_as_bug() {
+                        diagnostic.level = Bug;
+                    } else {
+                        diagnostic.level = Error;
+                    }
                 } else {
-                    let backtrace = std::backtrace::Backtrace::capture();
-                    // This `unchecked_error_guaranteed` is valid. It is where the
-                    // `ErrorGuaranteed` for delayed bugs originates. See
-                    // `DiagCtxtInner::drop`.
-                    #[allow(deprecated)]
-                    let guar = ErrorGuaranteed::unchecked_error_guaranteed();
-                    self.delayed_bugs
-                        .push((DelayedDiagInner::with_backtrace(diagnostic, backtrace), guar));
-                    Some(guar)
-                };
+                    // If we have already emitted at least one error, we don't need
+                    // to record the delayed bug, because it'll never be used.
+                    return if let Some(guar) = self.has_errors() {
+                        Some(guar)
+                    } else {
+                        // No `TRACK_DIAGNOSTIC` call is needed, because the
+                        // incremental session is deleted if there is a delayed
+                        // bug. This also saves us from cloning the diagnostic.
+                        let backtrace = std::backtrace::Backtrace::capture();
+                        // This `unchecked_error_guaranteed` is valid. It is where the
+                        // `ErrorGuaranteed` for delayed bugs originates. See
+                        // `DiagCtxtInner::drop`.
+                        #[allow(deprecated)]
+                        let guar = ErrorGuaranteed::unchecked_error_guaranteed();
+                        self.delayed_bugs
+                            .push((DelayedDiagInner::with_backtrace(diagnostic, backtrace), guar));
+                        Some(guar)
+                    };
+                }
             }
-            Warning if !self.flags.can_emit_warnings => {
+            ForceWarning(None) => {} // `ForceWarning(Some(...))` is below, with `Expect`
+            Warning => {
+                if !self.flags.can_emit_warnings {
+                    // We are not emitting warnings.
+                    if diagnostic.has_future_breakage() {
+                        // The side-effect is at the top of this method.
+                        TRACK_DIAGNOSTIC(diagnostic, &mut |_| None);
+                    }
+                    return None;
+                }
+            }
+            Note | Help | FailureNote => {}
+            OnceNote | OnceHelp => panic!("bad level: {:?}", diagnostic.level),
+            Allow => {
+                // Nothing emitted for allowed lints.
                 if diagnostic.has_future_breakage() {
-                    (*TRACK_DIAGNOSTIC)(diagnostic, &mut |_| {});
+                    // The side-effect is at the top of this method.
+                    TRACK_DIAGNOSTIC(diagnostic, &mut |_| None);
+                    self.suppressed_expected_diag = true;
                 }
                 return None;
             }
-            Allow | Expect(_) => {
-                (*TRACK_DIAGNOSTIC)(diagnostic, &mut |_| {});
-                return None;
+            Expect(expect_id) | ForceWarning(Some(expect_id)) => {
+                // Diagnostics created before the definition of `HirId`s are
+                // unstable and can not yet be stored. Instead, they are
+                // buffered until the `LintExpectationId` is replaced by a
+                // stable one by the `LintLevelsBuilder`.
+                if let LintExpectationId::Unstable { .. } = expect_id {
+                    // We don't call TRACK_DIAGNOSTIC because we wait for the
+                    // unstable ID to be updated, whereupon the diagnostic will
+                    // be passed into this method again.
+                    self.unstable_expect_diagnostics.push(diagnostic);
+                    return None;
+                }
+                self.fulfilled_expectations.insert(expect_id.normalize());
+                if let Expect(_) = diagnostic.level {
+                    // Nothing emitted here for expected lints.
+                    TRACK_DIAGNOSTIC(diagnostic, &mut |_| None);
+                    self.suppressed_expected_diag = true;
+                    return None;
+                }
             }
-            _ => {}
         }
 
-        let mut guaranteed = None;
-        (*TRACK_DIAGNOSTIC)(diagnostic, &mut |mut diagnostic| {
+        TRACK_DIAGNOSTIC(diagnostic, &mut |mut diagnostic| {
             if let Some(code) = diagnostic.code {
                 self.emitted_diagnostic_codes.insert(code);
             }
@@ -1549,17 +1584,17 @@ impl DiagCtxtInner {
                 // `ErrorGuaranteed` for errors and lint errors originates.
                 #[allow(deprecated)]
                 let guar = ErrorGuaranteed::unchecked_error_guaranteed();
-                guaranteed = Some(guar);
                 if is_lint {
                     self.lint_err_guars.push(guar);
                 } else {
                     self.err_guars.push(guar);
                 }
                 self.panic_if_treat_err_as_bug();
+                Some(guar)
+            } else {
+                None
             }
-        });
-
-        guaranteed
+        })
     }
 
     fn treat_err_as_bug(&self) -> bool {
@@ -1860,49 +1895,36 @@ impl Level {
         matches!(*self, FailureNote)
     }
 
-    pub fn get_expectation_id(&self) -> Option<LintExpectationId> {
-        match self {
-            Expect(id) | ForceWarning(Some(id)) => Some(*id),
-            _ => None,
-        }
-    }
-
-    // Can this level be used in a top-level diagnostic message and/or a
-    // subdiagnostic message?
-    fn can_be_top_or_sub(&self) -> (bool, bool) {
+    // Can this level be used in a subdiagnostic message?
+    fn can_be_subdiag(&self) -> bool {
         match self {
             Bug | DelayedBug | Fatal | Error | ForceWarning(_) | FailureNote | Allow
-            | Expect(_) => (true, false),
+            | Expect(_) => false,
 
-            Warning | Note | Help => (true, true),
-
-            OnceNote | OnceHelp => (false, true),
+            Warning | Note | Help | OnceNote | OnceHelp => true,
         }
     }
 }
 
 // FIXME(eddyb) this doesn't belong here AFAICT, should be moved to callsite.
-pub fn add_elided_lifetime_in_path_suggestion<G: EmissionGuarantee>(
+pub fn elided_lifetime_in_path_suggestion(
     source_map: &SourceMap,
-    diag: &mut Diag<'_, G>,
     n: usize,
     path_span: Span,
     incl_angl_brckt: bool,
     insertion_span: Span,
-) {
-    diag.subdiagnostic(diag.dcx, ExpectedLifetimeParameter { span: path_span, count: n });
-    if !source_map.is_span_accessible(insertion_span) {
-        // Do not try to suggest anything if generated by a proc-macro.
-        return;
-    }
-    let anon_lts = vec!["'_"; n].join(", ");
-    let suggestion =
-        if incl_angl_brckt { format!("<{anon_lts}>") } else { format!("{anon_lts}, ") };
+) -> ElidedLifetimeInPathSubdiag {
+    let expected = ExpectedLifetimeParameter { span: path_span, count: n };
+    // Do not try to suggest anything if generated by a proc-macro.
+    let indicate = source_map.is_span_accessible(insertion_span).then(|| {
+        let anon_lts = vec!["'_"; n].join(", ");
+        let suggestion =
+            if incl_angl_brckt { format!("<{anon_lts}>") } else { format!("{anon_lts}, ") };
 
-    diag.subdiagnostic(
-        diag.dcx,
-        IndicateAnonymousLifetime { span: insertion_span.shrink_to_hi(), count: n, suggestion },
-    );
+        IndicateAnonymousLifetime { span: insertion_span.shrink_to_hi(), count: n, suggestion }
+    });
+
+    ElidedLifetimeInPathSubdiag { expected, indicate }
 }
 
 pub fn report_ambiguity_error<'a, G: EmissionGuarantee>(
@@ -1918,6 +1940,39 @@ pub fn report_ambiguity_error<'a, G: EmissionGuarantee>(
     diag.span_note(ambiguity.b2_span, ambiguity.b2_note_msg);
     for help_msg in ambiguity.b2_help_msgs {
         diag.help(help_msg);
+    }
+}
+
+/// Grammatical tool for displaying messages to end users in a nice form.
+///
+/// Returns "an" if the given string starts with a vowel, and "a" otherwise.
+pub fn a_or_an(s: &str) -> &'static str {
+    let mut chars = s.chars();
+    let Some(mut first_alpha_char) = chars.next() else {
+        return "a";
+    };
+    if first_alpha_char == '`' {
+        let Some(next) = chars.next() else {
+            return "a";
+        };
+        first_alpha_char = next;
+    }
+    if ["a", "e", "i", "o", "u", "&"].contains(&&first_alpha_char.to_lowercase().to_string()[..]) {
+        "an"
+    } else {
+        "a"
+    }
+}
+
+/// Grammatical tool for displaying messages to end users in a nice form.
+///
+/// Take a list ["a", "b", "c"] and output a display friendly version "a, b and c"
+pub fn display_list_with_comma_and<T: std::fmt::Display>(v: &[T]) -> String {
+    match v.len() {
+        0 => "".to_string(),
+        1 => v[0].to_string(),
+        2 => format!("{} and {}", v[0], v[1]),
+        _ => format!("{}, {}", v[0], display_list_with_comma_and(&v[1..])),
     }
 }
 

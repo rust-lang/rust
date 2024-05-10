@@ -96,6 +96,7 @@ llvm-config = "{llvm_config}"
         "tests/pretty",
         "tests/run-pass-valgrind",
         "tests/ui",
+        "tests/crashes",
     ];
     for test_path in env.skipped_tests() {
         args.extend(["--skip", test_path]);

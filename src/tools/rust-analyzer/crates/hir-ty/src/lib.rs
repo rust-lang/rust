@@ -15,7 +15,8 @@ extern crate rustc_abi;
 #[cfg(not(feature = "in-rust-tree"))]
 extern crate ra_ap_rustc_abi as rustc_abi;
 
-// No need to use the in-tree one.
+// Use the crates.io version unconditionally until the API settles enough that we can switch to
+// using the in-tree one.
 extern crate ra_ap_rustc_pattern_analysis as rustc_pattern_analysis;
 
 mod builder;
@@ -55,7 +56,6 @@ use base_db::salsa::impl_intern_value_trivial;
 use chalk_ir::{
     fold::{Shift, TypeFoldable},
     interner::HasInterner,
-    visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor},
     NoSolution,
 };
 use either::Either;
@@ -89,15 +89,17 @@ pub use lower::{
 };
 pub use mapping::{
     from_assoc_type_id, from_chalk_trait_id, from_foreign_def_id, from_placeholder_idx,
-    lt_from_placeholder_idx, to_assoc_type_id, to_chalk_trait_id, to_foreign_def_id,
-    to_placeholder_idx,
+    lt_from_placeholder_idx, lt_to_placeholder_idx, to_assoc_type_id, to_chalk_trait_id,
+    to_foreign_def_id, to_placeholder_idx,
 };
 pub use method_resolution::check_orphan_rules;
 pub use traits::TraitEnvironment;
 pub use utils::{all_super_traits, is_fn_unsafe_to_call};
 
 pub use chalk_ir::{
-    cast::Cast, AdtId, BoundVar, DebruijnIndex, Mutability, Safety, Scalar, TyVariableKind,
+    cast::Cast,
+    visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor},
+    AdtId, BoundVar, DebruijnIndex, Mutability, Safety, Scalar, TyVariableKind,
 };
 
 pub type ForeignDefId = chalk_ir::ForeignDefId<Interner>;
@@ -287,7 +289,7 @@ impl Hash for ConstScalar {
 
 /// Return an index of a parameter in the generic type parameter list by it's id.
 pub fn param_idx(db: &dyn HirDatabase, id: TypeOrConstParamId) -> Option<usize> {
-    generics(db.upcast(), id.parent).param_idx(id)
+    generics(db.upcast(), id.parent).type_or_const_param_idx(id)
 }
 
 pub(crate) fn wrap_empty_binders<T>(value: T) -> Binders<T>
@@ -334,11 +336,23 @@ pub(crate) fn make_binders_with_count<T: HasInterner<Interner = Interner>>(
     generics: &Generics,
     value: T,
 ) -> Binders<T> {
-    let it = generics.iter_id().take(count).map(|id| match id {
-        Either::Left(_) => None,
-        Either::Right(id) => Some(db.const_param_ty(id)),
-    });
-    crate::make_type_and_const_binders(it, value)
+    let it = generics.iter_id().take(count);
+
+    Binders::new(
+        VariableKinds::from_iter(
+            Interner,
+            it.map(|x| match x {
+                hir_def::GenericParamId::ConstParamId(id) => {
+                    chalk_ir::VariableKind::Const(db.const_param_ty(id))
+                }
+                hir_def::GenericParamId::TypeParamId(_) => {
+                    chalk_ir::VariableKind::Ty(chalk_ir::TyVariableKind::General)
+                }
+                hir_def::GenericParamId::LifetimeParamId(_) => chalk_ir::VariableKind::Lifetime,
+            }),
+        ),
+        value,
+    )
 }
 
 pub(crate) fn make_binders<T: HasInterner<Interner = Interner>>(
@@ -584,27 +598,32 @@ impl TypeFoldable<Interner> for CallableSig {
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
 pub enum ImplTraitId {
-    ReturnTypeImplTrait(hir_def::FunctionId, RpitId),
+    ReturnTypeImplTrait(hir_def::FunctionId, ImplTraitIdx),
+    AssociatedTypeImplTrait(hir_def::TypeAliasId, ImplTraitIdx),
     AsyncBlockTypeImplTrait(hir_def::DefWithBodyId, ExprId),
 }
 impl_intern_value_trivial!(ImplTraitId);
 
-#[derive(Clone, PartialEq, Eq, Debug, Hash)]
-pub struct ReturnTypeImplTraits {
-    pub(crate) impl_traits: Arena<ReturnTypeImplTrait>,
+#[derive(PartialEq, Eq, Debug, Hash)]
+pub struct ImplTraits {
+    pub(crate) impl_traits: Arena<ImplTrait>,
 }
 
-has_interner!(ReturnTypeImplTraits);
+has_interner!(ImplTraits);
 
-#[derive(Clone, PartialEq, Eq, Debug, Hash)]
-pub struct ReturnTypeImplTrait {
+#[derive(PartialEq, Eq, Debug, Hash)]
+pub struct ImplTrait {
     pub(crate) bounds: Binders<Vec<QuantifiedWhereClause>>,
 }
 
-pub type RpitId = Idx<ReturnTypeImplTrait>;
+pub type ImplTraitIdx = Idx<ImplTrait>;
 
 pub fn static_lifetime() -> Lifetime {
     LifetimeData::Static.intern(Interner)
+}
+
+pub fn error_lifetime() -> Lifetime {
+    LifetimeData::Error.intern(Interner)
 }
 
 pub(crate) fn fold_free_vars<T: HasInterner<Interner = Interner> + TypeFoldable<Interner>>(
@@ -691,6 +710,55 @@ pub(crate) fn fold_tys_and_consts<T: HasInterner<Interner = Interner> + TypeFold
 
         fn fold_const(&mut self, c: Const, outer_binder: DebruijnIndex) -> Const {
             self.0(Either::Right(c), outer_binder).right().unwrap()
+        }
+    }
+    t.fold_with(&mut TyFolder(f), binders)
+}
+
+pub(crate) fn fold_generic_args<T: HasInterner<Interner = Interner> + TypeFoldable<Interner>>(
+    t: T,
+    f: impl FnMut(GenericArgData, DebruijnIndex) -> GenericArgData,
+    binders: DebruijnIndex,
+) -> T {
+    use chalk_ir::fold::{TypeFolder, TypeSuperFoldable};
+    #[derive(chalk_derive::FallibleTypeFolder)]
+    #[has_interner(Interner)]
+    struct TyFolder<F: FnMut(GenericArgData, DebruijnIndex) -> GenericArgData>(F);
+    impl<F: FnMut(GenericArgData, DebruijnIndex) -> GenericArgData> TypeFolder<Interner>
+        for TyFolder<F>
+    {
+        fn as_dyn(&mut self) -> &mut dyn TypeFolder<Interner> {
+            self
+        }
+
+        fn interner(&self) -> Interner {
+            Interner
+        }
+
+        fn fold_ty(&mut self, ty: Ty, outer_binder: DebruijnIndex) -> Ty {
+            let ty = ty.super_fold_with(self.as_dyn(), outer_binder);
+            self.0(GenericArgData::Ty(ty), outer_binder)
+                .intern(Interner)
+                .ty(Interner)
+                .unwrap()
+                .clone()
+        }
+
+        fn fold_const(&mut self, c: Const, outer_binder: DebruijnIndex) -> Const {
+            self.0(GenericArgData::Const(c), outer_binder)
+                .intern(Interner)
+                .constant(Interner)
+                .unwrap()
+                .clone()
+        }
+
+        fn fold_lifetime(&mut self, lt: Lifetime, outer_binder: DebruijnIndex) -> Lifetime {
+            let lt = lt.super_fold_with(self.as_dyn(), outer_binder);
+            self.0(GenericArgData::Lifetime(lt), outer_binder)
+                .intern(Interner)
+                .lifetime(Interner)
+                .unwrap()
+                .clone()
         }
     }
     t.fold_with(&mut TyFolder(f), binders)
@@ -794,7 +862,7 @@ where
             if cfg!(debug_assertions) {
                 Err(NoSolution)
             } else {
-                Ok(static_lifetime())
+                Ok(error_lifetime())
             }
         }
 
@@ -806,7 +874,7 @@ where
             if cfg!(debug_assertions) {
                 Err(NoSolution)
             } else {
-                Ok(static_lifetime())
+                Ok(error_lifetime())
             }
         }
     }

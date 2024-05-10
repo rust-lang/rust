@@ -197,7 +197,7 @@ declare_clippy_lint! {
     /// pedantic = { level = "warn", priority = -1 }
     /// similar_names = "allow"
     /// ```
-    #[clippy::version = "1.76.0"]
+    #[clippy::version = "1.78.0"]
     pub LINT_GROUPS_PRIORITY,
     correctness,
     "a lint group in `Cargo.toml` at the same priority as a lint"
@@ -241,7 +241,7 @@ impl LateLintPass<'_> for Cargo {
                 },
                 Err(e) => {
                     for lint in NO_DEPS_LINTS {
-                        span_lint(cx, lint, DUMMY_SP, &format!("could not read cargo metadata: {e}"));
+                        span_lint(cx, lint, DUMMY_SP, format!("could not read cargo metadata: {e}"));
                     }
                 },
             }
@@ -257,7 +257,7 @@ impl LateLintPass<'_> for Cargo {
                 },
                 Err(e) => {
                     for lint in WITH_DEPS_LINTS {
-                        span_lint(cx, lint, DUMMY_SP, &format!("could not read cargo metadata: {e}"));
+                        span_lint(cx, lint, DUMMY_SP, format!("could not read cargo metadata: {e}"));
                     }
                 },
             }

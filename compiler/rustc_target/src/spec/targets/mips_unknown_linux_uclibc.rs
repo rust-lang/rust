@@ -4,7 +4,12 @@ use crate::spec::{base, Target, TargetOptions};
 pub fn target() -> Target {
     Target {
         llvm_target: "mips-unknown-linux-uclibc".into(),
-        description: None,
+        metadata: crate::spec::TargetMetadata {
+            description: None,
+            tier: None,
+            host_tools: None,
+            std: None,
+        },
         pointer_width: 32,
         data_layout: "E-m:m-p:32:32-i8:8:32-i16:16:32-i64:64-n32-S64".into(),
         arch: "mips".into(),

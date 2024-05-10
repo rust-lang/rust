@@ -219,61 +219,76 @@ impl VisitProvenance for TlsData<'_> {
 }
 
 #[derive(Debug, Default)]
-pub struct TlsDtorsState(TlsDtorsStatePriv);
+pub struct TlsDtorsState<'tcx>(TlsDtorsStatePriv<'tcx>);
 
 #[derive(Debug, Default)]
-enum TlsDtorsStatePriv {
+enum TlsDtorsStatePriv<'tcx> {
     #[default]
     Init,
     PthreadDtors(RunningDtorState),
+    /// For Windows Dtors, we store the list of functions that we still have to call.
+    /// These are functions from the magic `.CRT$XLB` linker section.
+    WindowsDtors(Vec<ImmTy<'tcx, Provenance>>),
     Done,
 }
 
-impl TlsDtorsState {
-    pub fn on_stack_empty<'tcx>(
+impl<'tcx> TlsDtorsState<'tcx> {
+    pub fn on_stack_empty(
         &mut self,
         this: &mut MiriInterpCx<'_, 'tcx>,
     ) -> InterpResult<'tcx, Poll<()>> {
         use TlsDtorsStatePriv::*;
-        match &mut self.0 {
-            Init => {
-                match this.tcx.sess.target.os.as_ref() {
-                    "linux" | "freebsd" | "android" => {
-                        // Run the pthread dtors.
-                        self.0 = PthreadDtors(Default::default());
-                    }
-                    "macos" => {
-                        // The macOS thread wide destructor runs "before any TLS slots get
-                        // freed", so do that first.
-                        this.schedule_macos_tls_dtor()?;
-                        // When the stack is empty again, go on with the pthread dtors.
-                        self.0 = PthreadDtors(Default::default());
-                    }
-                    "windows" => {
-                        // Run the special magic hook.
-                        this.schedule_windows_tls_dtors()?;
-                        // And move to the final state.
-                        self.0 = Done;
-                    }
-                    _ => {
-                        // No TLS dtor support.
-                        // FIXME: should we do something on wasi?
-                        self.0 = Done;
+        let new_state = 'new_state: {
+            match &mut self.0 {
+                Init => {
+                    match this.tcx.sess.target.os.as_ref() {
+                        "macos" => {
+                            // The macOS thread wide destructor runs "before any TLS slots get
+                            // freed", so do that first.
+                            this.schedule_macos_tls_dtor()?;
+                            // When that destructor is done, go on with the pthread dtors.
+                            break 'new_state PthreadDtors(Default::default());
+                        }
+                        _ if this.target_os_is_unix() => {
+                            // All other Unixes directly jump to running the pthread dtors.
+                            break 'new_state PthreadDtors(Default::default());
+                        }
+                        "windows" => {
+                            // Determine which destructors to run.
+                            let dtors = this.lookup_windows_tls_dtors()?;
+                            // And move to the next state, that runs them.
+                            break 'new_state WindowsDtors(dtors);
+                        }
+                        _ => {
+                            // No TLS dtor support.
+                            // FIXME: should we do something on wasi?
+                            break 'new_state Done;
+                        }
                     }
                 }
-            }
-            PthreadDtors(state) => {
-                match this.schedule_next_pthread_tls_dtor(state)? {
-                    Poll::Pending => {} // just keep going
-                    Poll::Ready(()) => self.0 = Done,
+                PthreadDtors(state) => {
+                    match this.schedule_next_pthread_tls_dtor(state)? {
+                        Poll::Pending => return Ok(Poll::Pending), // just keep going
+                        Poll::Ready(()) => break 'new_state Done,
+                    }
+                }
+                WindowsDtors(dtors) => {
+                    if let Some(dtor) = dtors.pop() {
+                        this.schedule_windows_tls_dtor(dtor)?;
+                        return Ok(Poll::Pending); // we stay in this state (but `dtors` got shorter)
+                    } else {
+                        // No more destructors to run.
+                        break 'new_state Done;
+                    }
+                }
+                Done => {
+                    this.machine.tls.delete_all_thread_tls(this.get_active_thread());
+                    return Ok(Poll::Ready(()));
                 }
             }
-            Done => {
-                this.machine.tls.delete_all_thread_tls(this.get_active_thread());
-                return Ok(Poll::Ready(()));
-            }
-        }
+        };
 
+        self.0 = new_state;
         Ok(Poll::Pending)
     }
 }
@@ -282,22 +297,19 @@ impl<'mir, 'tcx: 'mir> EvalContextPrivExt<'mir, 'tcx> for crate::MiriInterpCx<'m
 trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     /// Schedule TLS destructors for Windows.
     /// On windows, TLS destructors are managed by std.
-    fn schedule_windows_tls_dtors(&mut self) -> InterpResult<'tcx> {
+    fn lookup_windows_tls_dtors(&mut self) -> InterpResult<'tcx, Vec<ImmTy<'tcx, Provenance>>> {
         let this = self.eval_context_mut();
 
         // Windows has a special magic linker section that is run on certain events.
-        // Instead of searching for that section and supporting arbitrary hooks in there
-        // (that would be basically https://github.com/rust-lang/miri/issues/450),
-        // we specifically look up the static in libstd that we know is placed
-        // in that section.
-        if !this.have_module(&["std"]) {
-            // Looks like we are running in a `no_std` crate.
-            // That also means no TLS dtors callback to call.
-            return Ok(());
-        }
-        let thread_callback =
-            this.eval_windows("thread_local_key", "p_thread_callback").to_pointer(this)?;
-        let thread_callback = this.get_ptr_fn(thread_callback)?.as_instance()?;
+        // We don't support most of that, but just enough to make thread-local dtors in `std` work.
+        Ok(this.lookup_link_section(".CRT$XLB")?)
+    }
+
+    fn schedule_windows_tls_dtor(&mut self, dtor: ImmTy<'tcx, Provenance>) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+
+        let dtor = dtor.to_scalar().to_pointer(this)?;
+        let thread_callback = this.get_ptr_fn(dtor)?.as_instance()?;
 
         // FIXME: Technically, the reason should be `DLL_PROCESS_DETACH` when the main thread exits
         // but std treats both the same.
@@ -305,7 +317,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
         // The signature of this function is `unsafe extern "system" fn(h: c::LPVOID, dwReason: c::DWORD, pv: c::LPVOID)`.
         // FIXME: `h` should be a handle to the current module and what `pv` should be is unknown
-        // but both are ignored by std
+        // but both are ignored by std.
         this.call_function(
             thread_callback,
             Abi::System { unwind: false },

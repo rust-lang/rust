@@ -1,6 +1,7 @@
 use crate::abi::{self, Abi, Align, FieldsShape, Size};
 use crate::abi::{HasDataLayout, TyAbiInterface, TyAndLayout};
-use crate::spec::{self, HasTargetSpec};
+use crate::spec::{self, HasTargetSpec, HasWasmCAbiOpt};
+use rustc_macros::HashStable_Generic;
 use rustc_span::Symbol;
 use std::fmt;
 use std::str::FromStr;
@@ -47,16 +48,24 @@ pub enum PassMode {
     ///
     /// The argument has a layout abi of `ScalarPair`.
     Pair(ArgAttributes, ArgAttributes),
-    /// Pass the argument after casting it. See the `CastTarget` docs for details. The bool
-    /// indicates if a `Reg::i32()` dummy argument is emitted before the real argument.
+    /// Pass the argument after casting it. See the `CastTarget` docs for details.
+    ///
+    /// `pad_i32` indicates if a `Reg::i32()` dummy argument is emitted before the real argument.
     Cast { pad_i32: bool, cast: Box<CastTarget> },
     /// Pass the argument indirectly via a hidden pointer.
+    ///
     /// The `meta_attrs` value, if any, is for the metadata (vtable or length) of an unsized
     /// argument. (This is the only mode that supports unsized arguments.)
+    ///
     /// `on_stack` defines that the value should be passed at a fixed stack offset in accordance to
     /// the ABI rather than passed using a pointer. This corresponds to the `byval` LLVM argument
-    /// attribute (using the Rust type of this argument). `on_stack` cannot be true for unsized
-    /// arguments, i.e., when `meta_attrs` is `Some`.
+    /// attribute. The `byval` argument will use a byte array with the same size as the Rust type
+    /// (which ensures that padding is preserved and that we do not rely on LLVM's struct layout),
+    /// and will use the alignment specified in `attrs.pointee_align` (if `Some`) or the type's
+    /// alignment (if `None`). This means that the alignment will not always
+    /// match the Rust type's alignment; see documentation of `make_indirect_byval` for more info.
+    ///
+    /// `on_stack` cannot be true for unsized arguments, i.e., when `meta_attrs` is `Some`.
     Indirect { attrs: ArgAttributes, meta_attrs: Option<ArgAttributes>, on_stack: bool },
 }
 
@@ -93,6 +102,8 @@ pub use attr_impl::ArgAttribute;
 #[allow(non_upper_case_globals)]
 #[allow(unused)]
 mod attr_impl {
+    use rustc_macros::HashStable_Generic;
+
     // The subset of llvm::Attribute needed for arguments, packed into a bitfield.
     #[derive(Clone, Copy, Default, Hash, PartialEq, Eq, HashStable_Generic)]
     pub struct ArgAttribute(u8);
@@ -244,21 +255,38 @@ pub struct Uniform {
     /// The total size of the argument, which can be:
     /// * equal to `unit.size` (one scalar/vector),
     /// * a multiple of `unit.size` (an array of scalar/vectors),
-    /// * if `unit.kind` is `Integer`, the last element
-    ///   can be shorter, i.e., `{ i64, i64, i32 }` for
-    ///   64-bit integers with a total size of 20 bytes.
+    /// * if `unit.kind` is `Integer`, the last element can be shorter, i.e., `{ i64, i64, i32 }`
+    ///   for 64-bit integers with a total size of 20 bytes. When the argument is actually passed,
+    ///   this size will be rounded up to the nearest multiple of `unit.size`.
     pub total: Size,
+
+    /// Indicate that the argument is consecutive, in the sense that either all values need to be
+    /// passed in register, or all on the stack. If they are passed on the stack, there should be
+    /// no additional padding between elements.
+    pub is_consecutive: bool,
 }
 
 impl From<Reg> for Uniform {
     fn from(unit: Reg) -> Uniform {
-        Uniform { unit, total: unit.size }
+        Uniform { unit, total: unit.size, is_consecutive: false }
     }
 }
 
 impl Uniform {
     pub fn align<C: HasDataLayout>(&self, cx: &C) -> Align {
         self.unit.align(cx)
+    }
+
+    /// Pass using one or more values of the given type, without requiring them to be consecutive.
+    /// That is, some values may be passed in register and some on the stack.
+    pub fn new(unit: Reg, total: Size) -> Self {
+        Uniform { unit, total, is_consecutive: false }
+    }
+
+    /// Pass using one or more consecutive values of the given type. Either all values will be
+    /// passed in registers, or all on the stack.
+    pub fn consecutive(unit: Reg, total: Size) -> Self {
+        Uniform { unit, total, is_consecutive: true }
     }
 }
 
@@ -312,14 +340,17 @@ impl CastTarget {
     }
 
     pub fn size<C: HasDataLayout>(&self, _cx: &C) -> Size {
-        let mut size = self.rest.total;
-        for i in 0..self.prefix.iter().count() {
-            match self.prefix[i] {
-                Some(v) => size += v.size,
-                None => {}
-            }
-        }
-        return size;
+        // Prefix arguments are passed in specific designated registers
+        let prefix_size = self
+            .prefix
+            .iter()
+            .filter_map(|x| x.map(|reg| reg.size))
+            .fold(Size::ZERO, |acc, size| acc + size);
+        // Remaining arguments are passed in chunks of the unit size
+        let rest_size =
+            self.rest.unit.size * self.rest.total.bytes().div_ceil(self.rest.unit.size.bytes());
+
+        prefix_size + rest_size
     }
 
     pub fn align<C: HasDataLayout>(&self, cx: &C) -> Align {
@@ -597,6 +628,8 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
         }
     }
 
+    /// Pass this argument indirectly, by passing a (thin or fat) pointer to the argument instead.
+    /// This is valid for both sized and unsized arguments.
     pub fn make_indirect(&mut self) {
         match self.mode {
             PassMode::Direct(_) | PassMode::Pair(_, _) => {
@@ -610,7 +643,24 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
         }
     }
 
+    /// Pass this argument indirectly, by placing it at a fixed stack offset.
+    /// This corresponds to the `byval` LLVM argument attribute.
+    /// This is only valid for sized arguments.
+    ///
+    /// `byval_align` specifies the alignment of the `byval` stack slot, which does not need to
+    /// correspond to the type's alignment. This will be `Some` if the target's ABI specifies that
+    /// stack slots used for arguments passed by-value have specific alignment requirements which
+    /// differ from the alignment used in other situations.
+    ///
+    /// If `None`, the type's alignment is used.
+    ///
+    /// If the resulting alignment differs from the type's alignment,
+    /// the argument will be copied to an alloca with sufficient alignment,
+    /// either in the caller (if the type's alignment is lower than the byval alignment)
+    /// or in the callee (if the type's alignment is higher than the byval alignment),
+    /// to ensure that Rust code never sees an underaligned pointer.
     pub fn make_indirect_byval(&mut self, byval_align: Option<Align>) {
+        assert!(!self.layout.is_unsized(), "used byval ABI for unsized layout");
         self.make_indirect();
         match self.mode {
             PassMode::Indirect { ref mut attrs, meta_attrs: _, ref mut on_stack } => {
@@ -783,7 +833,7 @@ impl<'a, Ty> FnAbi<'a, Ty> {
     ) -> Result<(), AdjustForForeignAbiError>
     where
         Ty: TyAbiInterface<'a, C> + Copy,
-        C: HasDataLayout + HasTargetSpec,
+        C: HasDataLayout + HasTargetSpec + HasWasmCAbiOpt,
     {
         if abi == spec::abi::Abi::X86Interrupt {
             if let Some(arg) = self.args.first_mut() {
@@ -840,7 +890,9 @@ impl<'a, Ty> FnAbi<'a, Ty> {
             "sparc" => sparc::compute_abi_info(cx, self),
             "sparc64" => sparc64::compute_abi_info(cx, self),
             "nvptx64" => {
-                if cx.target_spec().adjust_abi(abi, self.c_variadic) == spec::abi::Abi::PtxKernel {
+                if cx.target_spec().adjust_abi(cx, abi, self.c_variadic)
+                    == spec::abi::Abi::PtxKernel
+                {
                     nvptx64::compute_ptx_kernel_abi_info(cx, self)
                 } else {
                     nvptx64::compute_abi_info(self)
@@ -849,7 +901,7 @@ impl<'a, Ty> FnAbi<'a, Ty> {
             "hexagon" => hexagon::compute_abi_info(self),
             "riscv32" | "riscv64" => riscv::compute_abi_info(cx, self),
             "wasm32" | "wasm64" => {
-                if cx.target_spec().adjust_abi(abi, self.c_variadic) == spec::abi::Abi::Wasm {
+                if cx.target_spec().adjust_abi(cx, abi, self.c_variadic) == spec::abi::Abi::Wasm {
                     wasm::compute_wasm_abi_info(self)
                 } else {
                     wasm::compute_c_abi_info(cx, self)
@@ -902,7 +954,7 @@ impl FromStr for Conv {
 }
 
 // Some types are used a lot. Make sure they don't unintentionally get bigger.
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+#[cfg(target_pointer_width = "64")]
 mod size_asserts {
     use super::*;
     use rustc_data_structures::static_assert_size;

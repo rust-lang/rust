@@ -320,7 +320,7 @@ pub trait Visitor<'v>: Sized {
     fn visit_foreign_item(&mut self, i: &'v ForeignItem<'v>) -> Self::Result {
         walk_foreign_item(self, i)
     }
-    fn visit_local(&mut self, l: &'v Local<'v>) -> Self::Result {
+    fn visit_local(&mut self, l: &'v LetStmt<'v>) -> Self::Result {
         walk_local(self, l)
     }
     fn visit_block(&mut self, b: &'v Block<'v>) -> Self::Result {
@@ -338,7 +338,7 @@ pub trait Visitor<'v>: Sized {
     fn visit_pat_field(&mut self, f: &'v PatField<'v>) -> Self::Result {
         walk_pat_field(self, f)
     }
-    fn visit_array_length(&mut self, len: &'v ArrayLen) -> Self::Result {
+    fn visit_array_length(&mut self, len: &'v ArrayLen<'v>) -> Self::Result {
         walk_array_len(self, len)
     }
     fn visit_anon_const(&mut self, c: &'v AnonConst) -> Self::Result {
@@ -355,6 +355,11 @@ pub trait Visitor<'v>: Sized {
     }
     fn visit_ty(&mut self, t: &'v Ty<'v>) -> Self::Result {
         walk_ty(self, t)
+    }
+    fn visit_pattern_type_pattern(&mut self, _p: &'v Pat<'v>) {
+        // Do nothing. Only a few visitors need to know the details of the pattern type,
+        // and they opt into it. All other visitors will just choke on our fake patterns
+        // because they aren't in a body.
     }
     fn visit_generic_param(&mut self, p: &'v GenericParam<'v>) -> Self::Result {
         walk_generic_param(self, p)
@@ -407,6 +412,9 @@ pub trait Visitor<'v>: Sized {
     }
     fn visit_param_bound(&mut self, bounds: &'v GenericBound<'v>) -> Self::Result {
         walk_param_bound(self, bounds)
+    }
+    fn visit_precise_capturing_arg(&mut self, arg: &'v PreciseCapturingArg<'v>) -> Self::Result {
+        walk_precise_capturing_arg(self, arg)
     }
     fn visit_poly_trait_ref(&mut self, t: &'v PolyTraitRef<'v>) -> Self::Result {
         walk_poly_trait_ref(self, t)
@@ -521,10 +529,15 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) -> V::
             try_visit!(visitor.visit_ty(ty));
             try_visit!(visitor.visit_generics(generics));
         }
-        ItemKind::OpaqueTy(&OpaqueTy { generics, bounds, .. }) => {
+        ItemKind::OpaqueTy(&OpaqueTy { generics, bounds, precise_capturing_args, .. }) => {
             try_visit!(visitor.visit_id(item.hir_id()));
             try_visit!(walk_generics(visitor, generics));
             walk_list!(visitor, visit_param_bound, bounds);
+            if let Some(precise_capturing_args) = precise_capturing_args {
+                for arg in precise_capturing_args {
+                    try_visit!(visitor.visit_precise_capturing_arg(arg));
+                }
+            }
         }
         ItemKind::Enum(ref enum_definition, ref generics) => {
             try_visit!(visitor.visit_generics(generics));
@@ -606,7 +619,7 @@ pub fn walk_foreign_item<'v, V: Visitor<'v>>(
     V::Result::output()
 }
 
-pub fn walk_local<'v, V: Visitor<'v>>(visitor: &mut V, local: &'v Local<'v>) -> V::Result {
+pub fn walk_local<'v, V: Visitor<'v>>(visitor: &mut V, local: &'v LetStmt<'v>) -> V::Result {
     // Intentionally visiting the expr first - the initialization expr
     // dominates the local's definition.
     visit_opt!(visitor, visit_expr, local.init);
@@ -627,7 +640,7 @@ pub fn walk_block<'v, V: Visitor<'v>>(visitor: &mut V, block: &'v Block<'v>) -> 
 pub fn walk_stmt<'v, V: Visitor<'v>>(visitor: &mut V, statement: &'v Stmt<'v>) -> V::Result {
     try_visit!(visitor.visit_id(statement.hir_id));
     match statement.kind {
-        StmtKind::Local(ref local) => visitor.visit_local(local),
+        StmtKind::Let(ref local) => visitor.visit_local(local),
         StmtKind::Item(item) => visitor.visit_nested_item(item),
         StmtKind::Expr(ref expression) | StmtKind::Semi(ref expression) => {
             visitor.visit_expr(expression)
@@ -660,7 +673,9 @@ pub fn walk_pat<'v, V: Visitor<'v>>(visitor: &mut V, pattern: &'v Pat<'v>) -> V:
         PatKind::Tuple(tuple_elements, _) => {
             walk_list!(visitor, visit_pat, tuple_elements);
         }
-        PatKind::Box(ref subpattern) | PatKind::Ref(ref subpattern, _) => {
+        PatKind::Box(ref subpattern)
+        | PatKind::Deref(ref subpattern)
+        | PatKind::Ref(ref subpattern, _) => {
             try_visit!(visitor.visit_pat(subpattern));
         }
         PatKind::Binding(_, _hir_id, ident, ref optional_subpattern) => {
@@ -688,7 +703,7 @@ pub fn walk_pat_field<'v, V: Visitor<'v>>(visitor: &mut V, field: &'v PatField<'
     visitor.visit_pat(field.pat)
 }
 
-pub fn walk_array_len<'v, V: Visitor<'v>>(visitor: &mut V, len: &'v ArrayLen) -> V::Result {
+pub fn walk_array_len<'v, V: Visitor<'v>>(visitor: &mut V, len: &'v ArrayLen<'v>) -> V::Result {
     match len {
         // FIXME: Use `visit_infer` here.
         ArrayLen::Infer(InferArg { hir_id, span: _ }) => visitor.visit_id(*hir_id),
@@ -753,7 +768,7 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr<'v>) 
         ExprKind::DropTemps(ref subexpression) => {
             try_visit!(visitor.visit_expr(subexpression));
         }
-        ExprKind::Let(Let { span: _, pat, ty, init, is_recovered: _ }) => {
+        ExprKind::Let(LetExpr { span: _, pat, ty, init, recovered: _ }) => {
             // match the visit order in walk_local
             try_visit!(visitor.visit_expr(init));
             try_visit!(visitor.visit_pat(pat));
@@ -880,6 +895,10 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty<'v>) -> V::Resul
         TyKind::AnonAdt(item_id) => {
             try_visit!(visitor.visit_nested_item(item_id));
         }
+        TyKind::Pat(ty, pat) => {
+            try_visit!(visitor.visit_ty(ty));
+            try_visit!(visitor.visit_pattern_type_pattern(pat));
+        }
     }
     V::Result::output()
 }
@@ -899,7 +918,7 @@ pub fn walk_generic_param<'v, V: Visitor<'v>>(
         GenericParamKind::Const { ref ty, ref default, is_host_effect: _ } => {
             try_visit!(visitor.visit_ty(ty));
             if let Some(ref default) = default {
-                visitor.visit_const_param_default(param.hir_id, default);
+                try_visit!(visitor.visit_const_param_default(param.hir_id, default));
             }
         }
     }
@@ -1123,6 +1142,16 @@ pub fn walk_param_bound<'v, V: Visitor<'v>>(
     match *bound {
         GenericBound::Trait(ref typ, _modifier) => visitor.visit_poly_trait_ref(typ),
         GenericBound::Outlives(ref lifetime) => visitor.visit_lifetime(lifetime),
+    }
+}
+
+pub fn walk_precise_capturing_arg<'v, V: Visitor<'v>>(
+    visitor: &mut V,
+    arg: &'v PreciseCapturingArg<'v>,
+) -> V::Result {
+    match *arg {
+        PreciseCapturingArg::Lifetime(lt) => visitor.visit_lifetime(lt),
+        PreciseCapturingArg::Param(param) => visitor.visit_id(param.hir_id),
     }
 }
 

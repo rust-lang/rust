@@ -9,9 +9,10 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::{ImplSource, Obligation, ObligationCause};
 use rustc_middle::mir::{self, CallSource};
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_middle::ty::TraitRef;
-use rustc_middle::ty::{suggest_constraining_type_param, Adt, Closure, FnDef, FnPtr, Param, Ty};
-use rustc_middle::ty::{GenericArgKind, GenericArgsRef};
+use rustc_middle::ty::{
+    self, suggest_constraining_type_param, Closure, FnDef, FnPtr, GenericArgKind, GenericArgsRef,
+    Param, TraitRef, Ty,
+};
 use rustc_middle::util::{call_kind, CallDesugaringKind, CallKind};
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::sym;
@@ -99,7 +100,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
     #[allow(rustc::untranslatable_diagnostic)]
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, _: Span) -> Diag<'tcx> {
         let FnCallNonConst { caller, callee, args, span, call_source, feature } = *self;
-        let ConstCx { tcx, param_env, .. } = *ccx;
+        let ConstCx { tcx, param_env, body, .. } = *ccx;
 
         let diag_trait = |err, self_ty: Ty<'_>, trait_id| {
             let trait_ref = TraitRef::from_method(tcx, trait_id, args);
@@ -123,7 +124,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
                         );
                     }
                 }
-                Adt(..) => {
+                ty::Adt(..) => {
                     let obligation =
                         Obligation::new(tcx, ObligationCause::dummy(), param_env, trait_ref);
 
@@ -297,10 +298,12 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
             ccx.const_kind(),
         ));
 
-        if let Some(feature) = feature
-            && ccx.tcx.sess.is_nightly_build()
-        {
-            err.help(format!("add `#![feature({feature})]` to the crate attributes to enable",));
+        if let Some(feature) = feature {
+            ccx.tcx.disabled_nightly_features(
+                &mut err,
+                body.source.def_id().as_local().map(|local| ccx.tcx.local_def_id_to_hir_id(local)),
+                [(String::new(), feature)],
+            );
         }
 
         if let ConstContext::Static(_) = ccx.const_kind() {
@@ -618,7 +621,7 @@ impl<'tcx> NonConstOp<'tcx> for ThreadLocalAccess {
 }
 
 /// Types that cannot appear in the signature or locals of a `const fn`.
-pub mod ty {
+pub mod mut_ref {
     use super::*;
 
     #[derive(Debug)]

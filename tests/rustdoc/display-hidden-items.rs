@@ -5,19 +5,22 @@
 #![crate_name = "foo"]
 
 // @has 'foo/index.html'
-// @has - '//*[@id="reexport.hidden_reexport"]/code' 'pub use hidden::inside_hidden as hidden_reexport;'
+// @has - '//*[@class="item-name"]/span[@title="Hidden item"]' '👻'
+
+// @has - '//*[@id="reexport.hidden_reexport"]/code' '#[doc(hidden)] pub use hidden::inside_hidden as hidden_reexport;'
 #[doc(hidden)]
 pub use hidden::inside_hidden as hidden_reexport;
 
 // @has - '//*[@class="item-name"]/a[@class="trait"]' 'TraitHidden'
 // @has 'foo/trait.TraitHidden.html'
+// @has - '//code' '#[doc(hidden)] pub trait TraitHidden'
 #[doc(hidden)]
 pub trait TraitHidden {}
 
 // @has 'foo/index.html' '//*[@class="item-name"]/a[@class="trait"]' 'Trait'
 pub trait Trait {
     // @has 'foo/trait.Trait.html'
-    // @has - '//*[@id="associatedconstant.BAR"]/*[@class="code-header"]' 'const BAR: u32 = 0u32'
+    // @has - '//*[@id="associatedconstant.BAR"]/*[@class="code-header"]' '#[doc(hidden)] const BAR: u32 = 0u32'
     #[doc(hidden)]
     const BAR: u32 = 0;
 
@@ -41,14 +44,15 @@ impl Struct {
 }
 
 impl Trait for Struct {
-    // @has - '//*[@id="associatedconstant.BAR"]/*[@class="code-header"]' 'const BAR: u32 = 0u32'
-    // @has - '//*[@id="method.foo"]/*[@class="code-header"]' 'fn foo()'
+    // @has - '//*[@id="associatedconstant.BAR"]/*[@class="code-header"]' '#[doc(hidden)] const BAR: u32 = 0u32'
+    // @has - '//*[@id="method.foo"]/*[@class="code-header"]' '#[doc(hidden)] fn foo()'
 }
 // @has - '//*[@id="impl-TraitHidden-for-Struct"]/*[@class="code-header"]' 'impl TraitHidden for Struct'
 impl TraitHidden for Struct {}
 
 // @has 'foo/index.html' '//*[@class="item-name"]/a[@class="enum"]' 'HiddenEnum'
 // @has 'foo/enum.HiddenEnum.html'
+// @has - '//code' '#[doc(hidden)] pub enum HiddenEnum'
 #[doc(hidden)]
 pub enum HiddenEnum {
     A,

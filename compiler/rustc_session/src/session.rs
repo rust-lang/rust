@@ -1,8 +1,8 @@
 use crate::code_stats::CodeStats;
 pub use crate::code_stats::{DataTypeKind, FieldInfo, FieldKind, SizeKind, VariantInfo};
 use crate::config::{
-    self, CrateType, FunctionReturn, InstrumentCoverage, OptLevel, OutFileName, OutputType,
-    RemapPathScopeComponents, SwitchWithOptPath,
+    self, CoverageLevel, CrateType, FunctionReturn, InstrumentCoverage, OptLevel, OutFileName,
+    OutputType, RemapPathScopeComponents, SwitchWithOptPath,
 };
 use crate::config::{ErrorOutputType, Input};
 use crate::errors;
@@ -28,8 +28,9 @@ use rustc_errors::{
 use rustc_macros::HashStable_Generic;
 pub use rustc_span::def_id::StableCrateId;
 use rustc_span::edition::Edition;
-use rustc_span::source_map::{FileLoader, FilePathMapping, RealFileLoader, SourceMap};
-use rustc_span::{SourceFileHashAlgorithm, Span, Symbol};
+use rustc_span::source_map::{FilePathMapping, SourceMap};
+use rustc_span::{FileNameDisplayPreference, RealFileName};
+use rustc_span::{Span, Symbol};
 use rustc_target::asm::InlineAsmArch;
 use rustc_target::spec::{CodeModel, PanicStrategy, RelocModel, RelroLevel};
 use rustc_target::spec::{
@@ -250,13 +251,8 @@ impl Session {
         self.miri_unleashed_features.lock().push((span, feature_gate));
     }
 
-    pub fn local_crate_source_file(&self) -> Option<PathBuf> {
-        let path = self.io.input.opt_path()?;
-        if self.should_prefer_remapped_for_codegen() {
-            Some(self.opts.file_path_mapping().map_prefix(path).0.into_owned())
-        } else {
-            Some(path.to_path_buf())
-        }
+    pub fn local_crate_source_file(&self) -> Option<RealFileName> {
+        Some(self.source_map().path_mapping().to_real_filename(self.io.input.opt_path()?))
     }
 
     fn check_miri_unleashed_features(&self) -> Option<ErrorGuaranteed> {
@@ -353,15 +349,13 @@ impl Session {
     }
 
     pub fn instrument_coverage_branch(&self) -> bool {
-        self.opts.cg.instrument_coverage() == InstrumentCoverage::Branch
+        self.instrument_coverage()
+            && self.opts.unstable_opts.coverage_options.level >= CoverageLevel::Branch
     }
 
-    pub fn instrument_coverage_except_unused_generics(&self) -> bool {
-        self.opts.cg.instrument_coverage() == InstrumentCoverage::ExceptUnusedGenerics
-    }
-
-    pub fn instrument_coverage_except_unused_functions(&self) -> bool {
-        self.opts.cg.instrument_coverage() == InstrumentCoverage::ExceptUnusedFunctions
+    pub fn instrument_coverage_mcdc(&self) -> bool {
+        self.instrument_coverage()
+            && self.opts.unstable_opts.coverage_options.level >= CoverageLevel::Mcdc
     }
 
     pub fn is_sanitizer_cfi_enabled(&self) -> bool {
@@ -585,7 +579,7 @@ impl Session {
 
         let dbg_opts = &self.opts.unstable_opts;
 
-        let relro_level = dbg_opts.relro_level.unwrap_or(self.target.relro_level);
+        let relro_level = self.opts.cg.relro_level.unwrap_or(self.target.relro_level);
 
         // Only enable this optimization by default if full relro is also enabled.
         // In this case, lazy binding was already unavailable, so nothing is lost.
@@ -747,6 +741,10 @@ impl Session {
         self.opts.cg.overflow_checks.unwrap_or(self.opts.debug_assertions)
     }
 
+    pub fn ub_checks(&self) -> bool {
+        self.opts.unstable_opts.ub_checks.unwrap_or(self.opts.debug_assertions)
+    }
+
     pub fn relocation_model(&self) -> RelocModel {
         self.opts.cg.relocation_model.unwrap_or(self.target.relocation_model)
     }
@@ -894,38 +892,19 @@ impl Session {
         self.opts.cg.link_dead_code.unwrap_or(false)
     }
 
-    pub fn should_prefer_remapped_for_codegen(&self) -> bool {
-        let has_split_debuginfo = match self.split_debuginfo() {
-            SplitDebuginfo::Off => false,
-            SplitDebuginfo::Packed => true,
-            SplitDebuginfo::Unpacked => true,
-        };
-
-        let remap_path_scopes = &self.opts.unstable_opts.remap_path_scope;
-        let mut prefer_remapped = false;
-
-        if remap_path_scopes.contains(RemapPathScopeComponents::UNSPLIT_DEBUGINFO) {
-            prefer_remapped |= !has_split_debuginfo;
+    pub fn filename_display_preference(
+        &self,
+        scope: RemapPathScopeComponents,
+    ) -> FileNameDisplayPreference {
+        assert!(
+            scope.bits().count_ones() == 1,
+            "one and only one scope should be passed to `Session::filename_display_preference`"
+        );
+        if self.opts.unstable_opts.remap_path_scope.contains(scope) {
+            FileNameDisplayPreference::Remapped
+        } else {
+            FileNameDisplayPreference::Local
         }
-
-        if remap_path_scopes.contains(RemapPathScopeComponents::SPLIT_DEBUGINFO) {
-            prefer_remapped |= has_split_debuginfo;
-        }
-
-        prefer_remapped
-    }
-
-    pub fn should_prefer_remapped_for_split_debuginfo_paths(&self) -> bool {
-        let has_split_debuginfo = match self.split_debuginfo() {
-            SplitDebuginfo::Off => false,
-            SplitDebuginfo::Packed | SplitDebuginfo::Unpacked => true,
-        };
-
-        self.opts
-            .unstable_opts
-            .remap_path_scope
-            .contains(RemapPathScopeComponents::SPLIT_DEBUGINFO_PATH)
-            && has_split_debuginfo
     }
 }
 
@@ -1015,8 +994,8 @@ pub fn build_session(
     registry: rustc_errors::registry::Registry,
     fluent_resources: Vec<&'static str>,
     driver_lint_caps: FxHashMap<lint::LintId, lint::Level>,
-    file_loader: Option<Box<dyn FileLoader + Send + Sync + 'static>>,
-    target_override: Option<Target>,
+    target: Target,
+    sysroot: PathBuf,
     cfg_version: &'static str,
     ice_file: Option<PathBuf>,
     using_internal_features: Arc<AtomicBool>,
@@ -1033,12 +1012,6 @@ pub fn build_session(
     let cap_lints_allow = sopts.lint_cap.is_some_and(|cap| cap == lint::Allow);
     let can_emit_warnings = !(warnings_allow || cap_lints_allow);
 
-    let sysroot = match &sopts.maybe_sysroot {
-        Some(sysroot) => sysroot.clone(),
-        None => filesearch::get_or_default_sysroot().expect("Failed finding sysroot"),
-    };
-
-    let target_cfg = config::build_target_config(&early_dcx, &sopts, target_override, &sysroot);
     let host_triple = TargetTriple::from_triple(config::host_triple());
     let (host, target_warnings) = Target::search(&host_triple, &sysroot).unwrap_or_else(|e| {
         early_dcx.early_fatal(format!("Error loading host specification: {e}"))
@@ -1047,24 +1020,11 @@ pub fn build_session(
         early_dcx.early_warn(warning)
     }
 
-    let loader = file_loader.unwrap_or_else(|| Box::new(RealFileLoader));
-    let hash_kind = sopts.unstable_opts.src_hash_algorithm.unwrap_or_else(|| {
-        if target_cfg.is_like_msvc {
-            SourceFileHashAlgorithm::Sha256
-        } else {
-            SourceFileHashAlgorithm::Md5
-        }
-    });
-    let source_map = Lrc::new(SourceMap::with_file_loader_and_hash_kind(
-        loader,
-        sopts.file_path_mapping(),
-        hash_kind,
-    ));
-
     let fallback_bundle = fallback_fluent_bundle(
         fluent_resources,
         sopts.unstable_opts.translate_directionality_markers,
     );
+    let source_map = rustc_span::source_map::get_source_map().unwrap();
     let emitter = default_emitter(&sopts, registry, source_map.clone(), bundle, fallback_bundle);
 
     let mut dcx =
@@ -1130,11 +1090,10 @@ pub fn build_session(
         _ => CtfeBacktrace::Disabled,
     });
 
-    let asm_arch =
-        if target_cfg.allow_asm { InlineAsmArch::from_str(&target_cfg.arch).ok() } else { None };
+    let asm_arch = if target.allow_asm { InlineAsmArch::from_str(&target.arch).ok() } else { None };
 
     let sess = Session {
-        target: target_cfg,
+        target,
         host,
         opts: sopts,
         host_tlib_path,
@@ -1246,6 +1205,11 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
         && !(sess.lto() == config::Lto::Fat || sess.opts.cg.linker_plugin_lto.enabled())
     {
         sess.dcx().emit_err(errors::SanitizerCfiRequiresLto);
+    }
+
+    // KCFI requires panic=abort
+    if sess.is_sanitizer_kcfi_enabled() && sess.panic_strategy() != PanicStrategy::Abort {
+        sess.dcx().emit_err(errors::SanitizerKcfiRequiresPanicAbort);
     }
 
     // LLVM CFI using rustc LTO requires a single codegen unit.
@@ -1439,16 +1403,10 @@ impl EarlyDiagCtxt {
         self.dcx.warn(msg)
     }
 
-    pub fn initialize_checked_jobserver(&self) {
-        // initialize jobserver before getting `jobserver::client` and `build_session`.
-        jobserver::initialize_checked(|err| {
-            #[allow(rustc::untranslatable_diagnostic)]
-            #[allow(rustc::diagnostic_outside_of_impl)]
-            self.dcx
-                .struct_warn(err)
-                .with_note("the build environment is likely misconfigured")
-                .emit()
-        });
+    #[allow(rustc::untranslatable_diagnostic)]
+    #[allow(rustc::diagnostic_outside_of_impl)]
+    pub fn early_struct_warn(&self, msg: impl Into<DiagMessage>) -> Diag<'_, ()> {
+        self.dcx.struct_warn(msg)
     }
 }
 
@@ -1483,12 +1441,8 @@ pub trait RemapFileNameExt {
 
     /// Returns a possibly remapped filename based on the passed scope and remap cli options.
     ///
-    /// One and only one scope should be passed to this method. For anything related to
-    /// "codegen" see the [`RemapFileNameExt::for_codegen`] method.
+    /// One and only one scope should be passed to this method, it will panic otherwise.
     fn for_scope(&self, sess: &Session, scope: RemapPathScopeComponents) -> Self::Output<'_>;
-
-    /// Return a possibly remapped filename, to be used in "codegen" related parts.
-    fn for_codegen(&self, sess: &Session) -> Self::Output<'_>;
 }
 
 impl RemapFileNameExt for rustc_span::FileName {
@@ -1505,14 +1459,6 @@ impl RemapFileNameExt for rustc_span::FileName {
             self.prefer_local()
         }
     }
-
-    fn for_codegen(&self, sess: &Session) -> Self::Output<'_> {
-        if sess.should_prefer_remapped_for_codegen() {
-            self.prefer_remapped_unconditionaly()
-        } else {
-            self.prefer_local()
-        }
-    }
 }
 
 impl RemapFileNameExt for rustc_span::RealFileName {
@@ -1524,14 +1470,6 @@ impl RemapFileNameExt for rustc_span::RealFileName {
             "one and only one scope should be passed to for_scope"
         );
         if sess.opts.unstable_opts.remap_path_scope.contains(scope) {
-            self.remapped_path_if_available()
-        } else {
-            self.local_path_if_available()
-        }
-    }
-
-    fn for_codegen(&self, sess: &Session) -> Self::Output<'_> {
-        if sess.should_prefer_remapped_for_codegen() {
             self.remapped_path_if_available()
         } else {
             self.local_path_if_available()

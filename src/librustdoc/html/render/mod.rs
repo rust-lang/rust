@@ -56,7 +56,7 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::RustcVersion;
 use rustc_span::{
     symbol::{sym, Symbol},
-    BytePos, FileName, RealFileName,
+    BytePos, FileName, RealFileName, DUMMY_SP,
 };
 use serde::ser::SerializeMap;
 use serde::{Serialize, Serializer};
@@ -111,11 +111,13 @@ pub(crate) enum RenderMode {
 #[derive(Debug)]
 pub(crate) struct IndexItem {
     pub(crate) ty: ItemType,
+    pub(crate) defid: Option<DefId>,
     pub(crate) name: Symbol,
     pub(crate) path: String,
     pub(crate) desc: String,
     pub(crate) parent: Option<DefId>,
     pub(crate) parent_idx: Option<isize>,
+    pub(crate) exact_path: Option<String>,
     pub(crate) impl_id: Option<DefId>,
     pub(crate) search_type: Option<IndexItemFunctionType>,
     pub(crate) aliases: Box<[Symbol]>,
@@ -150,13 +152,13 @@ impl RenderType {
             string.push('{');
             write_optional_id(self.id, string);
             string.push('{');
-            for generic in &self.generics.as_ref().map(Vec::as_slice).unwrap_or_default()[..] {
+            for generic in &self.generics.as_deref().unwrap_or_default()[..] {
                 generic.write_to_string(string);
             }
             string.push('}');
             if self.bindings.is_some() {
                 string.push('{');
-                for binding in &self.bindings.as_ref().map(Vec::as_slice).unwrap_or_default()[..] {
+                for binding in &self.bindings.as_deref().unwrap_or_default()[..] {
                     string.push('{');
                     binding.0.write_to_string(string);
                     string.push('{');
@@ -180,44 +182,20 @@ pub(crate) enum RenderTypeId {
     Primitive(clean::PrimitiveType),
     AssociatedType(Symbol),
     Index(isize),
+    Mut,
 }
 
 impl RenderTypeId {
     pub fn write_to_string(&self, string: &mut String) {
-        // (sign, value)
-        let (sign, id): (bool, u32) = match &self {
+        let id: i32 = match &self {
             // 0 is a sentinel, everything else is one-indexed
             // concrete type
-            RenderTypeId::Index(idx) if *idx >= 0 => (false, (idx + 1isize).try_into().unwrap()),
+            RenderTypeId::Index(idx) if *idx >= 0 => (idx + 1isize).try_into().unwrap(),
             // generic type parameter
-            RenderTypeId::Index(idx) => (true, (-*idx).try_into().unwrap()),
+            RenderTypeId::Index(idx) => (*idx).try_into().unwrap(),
             _ => panic!("must convert render types to indexes before serializing"),
         };
-        // zig-zag encoding
-        let value: u32 = (id << 1) | (if sign { 1 } else { 0 });
-        // Self-terminating hex use capital letters for everything but the
-        // least significant digit, which is lowercase. For example, decimal 17
-        // would be `` Aa `` if zig-zag encoding weren't used.
-        //
-        // Zig-zag encoding, however, stores the sign bit as the last bit.
-        // This means, in the last hexit, 1 is actually `c`, -1 is `b`
-        // (`a` is the imaginary -0), and, because all the bits are shifted
-        // by one, `` A` `` is actually 8 and `` Aa `` is -8.
-        //
-        // https://rust-lang.github.io/rustc-dev-guide/rustdoc-internals/search.html
-        // describes the encoding in more detail.
-        let mut shift: u32 = 28;
-        let mut mask: u32 = 0xF0_00_00_00;
-        while shift < 32 {
-            let hexit = (value & mask) >> shift;
-            if hexit != 0 || shift == 0 {
-                let hex =
-                    char::try_from(if shift == 0 { '`' } else { '@' } as u32 + hexit).unwrap();
-                string.push(hex);
-            }
-            shift = shift.wrapping_sub(4);
-            mask = mask >> 4;
-        }
+        search_index::encode::write_vlqhex_to_string(id, string);
     }
 }
 
@@ -883,7 +861,7 @@ fn assoc_const(
         w,
         "{indent}{vis}const <a{href} class=\"constant\">{name}</a>{generics}: {ty}",
         indent = " ".repeat(indent),
-        vis = visibility_print_with_space(it.visibility(tcx), it.item_id, cx),
+        vis = visibility_print_with_space(it, cx),
         href = assoc_href_attr(it, link, cx),
         name = it.name.as_ref().unwrap(),
         generics = generics.print(cx),
@@ -912,12 +890,11 @@ fn assoc_type(
     indent: usize,
     cx: &Context<'_>,
 ) {
-    let tcx = cx.tcx();
     write!(
         w,
         "{indent}{vis}type <a{href} class=\"associatedtype\">{name}</a>{generics}",
         indent = " ".repeat(indent),
-        vis = visibility_print_with_space(it.visibility(tcx), it.item_id, cx),
+        vis = visibility_print_with_space(it, cx),
         href = assoc_href_attr(it, link, cx),
         name = it.name.as_ref().unwrap(),
         generics = generics.print(cx),
@@ -945,7 +922,7 @@ fn assoc_method(
     let tcx = cx.tcx();
     let header = meth.fn_header(tcx).expect("Trying to get header from a non-function item");
     let name = meth.name.as_ref().unwrap();
-    let vis = visibility_print_with_space(meth.visibility(tcx), meth.item_id, cx).to_string();
+    let vis = visibility_print_with_space(meth, cx).to_string();
     let defaultness = print_default_space(meth.is_default());
     // FIXME: Once https://github.com/rust-lang/rust/issues/67792 is implemented, we can remove
     // this condition.
@@ -1020,32 +997,20 @@ fn assoc_method(
 /// consequence of the above rules.
 fn render_stability_since_raw_with_extra(
     w: &mut Buffer,
-    ver: Option<StableSince>,
+    stable_version: Option<StableSince>,
     const_stability: Option<ConstStability>,
-    containing_ver: Option<StableSince>,
-    containing_const_ver: Option<StableSince>,
     extra_class: &str,
 ) -> bool {
-    let stable_version = if ver != containing_ver
-        && let Some(ver) = &ver
-    {
-        since_to_string(ver)
-    } else {
-        None
-    };
-
     let mut title = String::new();
     let mut stability = String::new();
 
-    if let Some(ver) = stable_version {
-        stability.push_str(ver.as_str());
-        title.push_str(&format!("Stable since Rust version {ver}"));
+    if let Some(version) = stable_version.and_then(|version| since_to_string(&version)) {
+        stability.push_str(&version);
+        title.push_str(&format!("Stable since Rust version {version}"));
     }
 
     let const_title_and_stability = match const_stability {
-        Some(ConstStability { level: StabilityLevel::Stable { since, .. }, .. })
-            if Some(since) != containing_const_ver =>
-        {
+        Some(ConstStability { level: StabilityLevel::Stable { since, .. }, .. }) => {
             since_to_string(&since)
                 .map(|since| (format!("const since {since}"), format!("const: {since}")))
         }
@@ -1100,17 +1065,8 @@ fn render_stability_since_raw(
     w: &mut Buffer,
     ver: Option<StableSince>,
     const_stability: Option<ConstStability>,
-    containing_ver: Option<StableSince>,
-    containing_const_ver: Option<StableSince>,
 ) -> bool {
-    render_stability_since_raw_with_extra(
-        w,
-        ver,
-        const_stability,
-        containing_ver,
-        containing_const_ver,
-        "",
-    )
+    render_stability_since_raw_with_extra(w, ver, const_stability, "")
 }
 
 fn render_assoc_item(
@@ -1609,7 +1565,6 @@ fn render_impl(
         cx: &mut Context<'_>,
         item: &clean::Item,
         parent: &clean::Item,
-        containing_item: &clean::Item,
         link: AssocItemLink<'_>,
         render_mode: RenderMode,
         is_default_item: bool,
@@ -1698,13 +1653,14 @@ fn render_impl(
                     let id = cx.derive_id(format!("{item_type}.{name}"));
                     let source_id = trait_
                         .and_then(|trait_| {
-                            trait_.items.iter().find(|item| {
-                                item.name.map(|n| n.as_str().eq(name.as_str())).unwrap_or(false)
-                            })
+                            trait_
+                                .items
+                                .iter()
+                                .find(|item| item.name.map(|n| n == *name).unwrap_or(false))
                         })
                         .map(|item| format!("{}.{name}", item.type_()));
                     write!(w, "<section id=\"{id}\" class=\"{item_type}{in_trait_class}\">");
-                    render_rightside(w, cx, item, containing_item, render_mode);
+                    render_rightside(w, cx, item, render_mode);
                     if trait_.is_some() {
                         // Anchors are only used on trait impls.
                         write!(w, "<a href=\"#{id}\" class=\"anchor\">§</a>");
@@ -1726,7 +1682,7 @@ fn render_impl(
                 let source_id = format!("{item_type}.{name}");
                 let id = cx.derive_id(&source_id);
                 write!(w, "<section id=\"{id}\" class=\"{item_type}{in_trait_class}\">");
-                render_rightside(w, cx, item, containing_item, render_mode);
+                render_rightside(w, cx, item, render_mode);
                 if trait_.is_some() {
                     // Anchors are only used on trait impls.
                     write!(w, "<a href=\"#{id}\" class=\"anchor\">§</a>");
@@ -1812,7 +1768,6 @@ fn render_impl(
             cx,
             trait_item,
             if trait_.is_some() { &i.impl_item } else { parent },
-            parent,
             link,
             render_mode,
             false,
@@ -1828,7 +1783,6 @@ fn render_impl(
         t: &clean::Trait,
         i: &clean::Impl,
         parent: &clean::Item,
-        containing_item: &clean::Item,
         render_mode: RenderMode,
         rendering_params: ImplRenderingParameters,
     ) {
@@ -1856,7 +1810,6 @@ fn render_impl(
                 cx,
                 trait_item,
                 parent,
-                containing_item,
                 assoc_link,
                 render_mode,
                 true,
@@ -1879,7 +1832,6 @@ fn render_impl(
                 t,
                 i.inner_impl(),
                 &i.impl_item,
-                parent,
                 render_mode,
                 rendering_params,
             );
@@ -1900,7 +1852,6 @@ fn render_impl(
             w,
             cx,
             i,
-            parent,
             parent,
             rendering_params.show_def_docs,
             use_absolute,
@@ -1949,20 +1900,14 @@ fn render_impl(
 
 // Render the items that appear on the right side of methods, impls, and
 // associated types. For example "1.0.0 (const: 1.39.0) · source".
-fn render_rightside(
-    w: &mut Buffer,
-    cx: &Context<'_>,
-    item: &clean::Item,
-    containing_item: &clean::Item,
-    render_mode: RenderMode,
-) {
+fn render_rightside(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, render_mode: RenderMode) {
     let tcx = cx.tcx();
 
     // FIXME: Once https://github.com/rust-lang/rust/issues/67792 is implemented, we can remove
     // this condition.
-    let (const_stability, const_stable_since) = match render_mode {
-        RenderMode::Normal => (item.const_stability(tcx), containing_item.const_stable_since(tcx)),
-        RenderMode::ForDeref { .. } => (None, None),
+    let const_stability = match render_mode {
+        RenderMode::Normal => item.const_stability(tcx),
+        RenderMode::ForDeref { .. } => None,
     };
     let src_href = cx.src_href(item);
     let has_src_ref = src_href.is_some();
@@ -1972,8 +1917,6 @@ fn render_rightside(
         &mut rightside,
         item.stable_since(tcx),
         const_stability,
-        containing_item.stable_since(tcx),
-        const_stable_since,
         if has_src_ref { "" } else { " rightside" },
     );
     if let Some(link) = src_href {
@@ -1995,7 +1938,6 @@ pub(crate) fn render_impl_summary(
     cx: &mut Context<'_>,
     i: &Impl,
     parent: &clean::Item,
-    containing_item: &clean::Item,
     show_def_docs: bool,
     use_absolute: Option<bool>,
     // This argument is used to reference same type with different paths to avoid duplication
@@ -2010,7 +1952,7 @@ pub(crate) fn render_impl_summary(
         format!(" data-aliases=\"{}\"", aliases.join(","))
     };
     write!(w, "<section id=\"{id}\" class=\"impl\"{aliases}>");
-    render_rightside(w, cx, &i.impl_item, containing_item, RenderMode::Normal);
+    render_rightside(w, cx, &i.impl_item, RenderMode::Normal);
     write!(
         w,
         "<a href=\"#{id}\" class=\"anchor\">§</a>\
@@ -2439,7 +2381,7 @@ fn render_call_locations<W: fmt::Write>(mut w: W, cx: &mut Context<'_>, item: &c
         let contents = match fs::read_to_string(&path) {
             Ok(contents) => contents,
             Err(err) => {
-                let span = item.span(tcx).map_or(rustc_span::DUMMY_SP, |span| span.inner());
+                let span = item.span(tcx).map_or(DUMMY_SP, |span| span.inner());
                 tcx.dcx().span_err(span, format!("failed to read file {}: {err}", path.display()));
                 return false;
             }
@@ -2506,7 +2448,7 @@ fn render_call_locations<W: fmt::Write>(mut w: W, cx: &mut Context<'_>, item: &c
         // Look for the example file in the source map if it exists, otherwise return a dummy span
         let file_span = (|| {
             let source_map = tcx.sess.source_map();
-            let crate_src = tcx.sess.local_crate_source_file()?;
+            let crate_src = tcx.sess.local_crate_source_file()?.into_local_path()?;
             let abs_crate_src = crate_src.canonicalize().ok()?;
             let crate_root = abs_crate_src.parent()?.parent()?;
             let rel_path = path.strip_prefix(crate_root).ok()?;
@@ -2520,7 +2462,7 @@ fn render_call_locations<W: fmt::Write>(mut w: W, cx: &mut Context<'_>, item: &c
                 file.start_pos + BytePos(byte_max),
             ))
         })()
-        .unwrap_or(rustc_span::DUMMY_SP);
+        .unwrap_or(DUMMY_SP);
 
         let mut decoration_info = FxHashMap::default();
         decoration_info.insert("highlight focus", vec![byte_ranges.remove(0)]);

@@ -1,4 +1,5 @@
 // This test ensures that the "pocket menus" are working as expected.
+include: "utils.goml"
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
 // First we check that the help menu doesn't exist yet.
 assert-false: "#help-button .popover"
@@ -31,13 +32,9 @@ assert-css: ("#settings-menu .popover", {"display": "none"})
 
 define-function: (
     "check-popover-colors",
-    (theme, border_color),
+    [theme, border_color],
     block {
-        set-local-storage: {
-            "rustdoc-theme": |theme|,
-            "rustdoc-use-system-theme": "false",
-        }
-        reload:
+        call-function: ("switch-theme", {"theme": |theme|})
 
         click: "#help-button"
         assert-css: (

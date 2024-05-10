@@ -1,5 +1,4 @@
 #![feature(decl_macro)]
-#![feature(generic_nonzero)]
 #![feature(lazy_cell)]
 #![feature(let_chains)]
 #![feature(thread_spawn_unchecked)]

@@ -1,7 +1,7 @@
 use rustc_ast as ast;
 use rustc_ast::visit::{self, AssocCtxt, FnCtxt, FnKind, Visitor};
 use rustc_ast::{attr, AssocConstraint, AssocConstraintKind, NodeId};
-use rustc_ast::{PatKind, RangeEnd};
+use rustc_ast::{token, PatKind};
 use rustc_feature::{AttributeGate, BuiltinAttribute, Features, GateIssue, BUILTIN_ATTRIBUTE_MAP};
 use rustc_session::parse::{feature_err, feature_err_issue, feature_warn};
 use rustc_session::Session;
@@ -319,7 +319,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             ast::ForeignItemKind::MacCall(..) => {}
         }
 
-        visit::walk_foreign_item(self, i)
+        visit::walk_item(self, i)
     }
 
     fn visit_ty(&mut self, ty: &'a ast::Ty) {
@@ -331,6 +331,9 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             }
             ast::TyKind::Never => {
                 gate!(&self, never_type, ty.span, "the `!` type is experimental");
+            }
+            ast::TyKind::Pat(..) => {
+                gate!(&self, pattern_types, ty.span, "pattern types are unstable");
             }
             _ => {}
         }
@@ -378,6 +381,17 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             ast::ExprKind::TryBlock(_) => {
                 gate!(&self, try_blocks, e.span, "`try` expression is experimental");
             }
+            ast::ExprKind::Lit(token::Lit { kind: token::LitKind::Float, suffix, .. }) => {
+                match suffix {
+                    Some(sym::f16) => {
+                        gate!(&self, f16, e.span, "the type `f16` is unstable")
+                    }
+                    Some(sym::f128) => {
+                        gate!(&self, f128, e.span, "the type `f128` is unstable")
+                    }
+                    _ => (),
+                }
+            }
             _ => {}
         }
         visit::walk_expr(self, e)
@@ -403,15 +417,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             }
             PatKind::Box(..) => {
                 gate!(&self, box_patterns, pattern.span, "box pattern syntax is experimental");
-            }
-            PatKind::Range(_, Some(_), Spanned { node: RangeEnd::Excluded, .. }) => {
-                gate!(
-                    &self,
-                    exclusive_range_pattern,
-                    pattern.span,
-                    "exclusive range pattern syntax is experimental",
-                    "use an inclusive range pattern, like N..=M"
-                );
             }
             _ => {}
         }
@@ -451,13 +456,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                     return_type_notation,
                     constraint.span,
                     "return type notation is experimental"
-                );
-            } else {
-                gate!(
-                    &self,
-                    associated_type_bounds,
-                    constraint.span,
-                    "associated type bounds are unstable"
                 );
             }
         }
@@ -549,7 +547,6 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
         half_open_range_patterns_in_slices,
         "half-open range patterns in slices are unstable"
     );
-    gate_all!(inline_const, "inline-const is experimental");
     gate_all!(inline_const_pat, "inline-const in pattern position is experimental");
     gate_all!(associated_const_equality, "associated const equality is incomplete");
     gate_all!(yeet_expr, "`do yeet` expression is experimental");
@@ -560,6 +557,9 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     gate_all!(generic_const_items, "generic const items are experimental");
     gate_all!(unnamed_fields, "unnamed fields are not yet fully implemented");
     gate_all!(fn_delegation, "functions delegation is not yet fully implemented");
+    gate_all!(postfix_match, "postfix match is experimental");
+    gate_all!(mut_ref, "mutable by-reference bindings are experimental");
+    gate_all!(precise_capturing, "precise captures on `impl Trait` are experimental");
 
     if !visitor.features.never_patterns {
         if let Some(spans) = spans.get(&sym::never_patterns) {
@@ -603,18 +603,13 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
         };
     }
 
+    gate_all_legacy_dont_use!(box_patterns, "box pattern syntax is experimental");
     gate_all_legacy_dont_use!(trait_alias, "trait aliases are experimental");
-    gate_all_legacy_dont_use!(associated_type_bounds, "associated type bounds are unstable");
     // Despite being a new feature, `where T: Trait<Assoc(): Sized>`, which is RTN syntax now,
     // used to be gated under associated_type_bounds, which are right above, so RTN needs to
     // be too.
     gate_all_legacy_dont_use!(return_type_notation, "return type notation is experimental");
     gate_all_legacy_dont_use!(decl_macro, "`macro` is experimental");
-    gate_all_legacy_dont_use!(box_patterns, "box pattern syntax is experimental");
-    gate_all_legacy_dont_use!(
-        exclusive_range_pattern,
-        "exclusive range pattern syntax is experimental"
-    );
     gate_all_legacy_dont_use!(try_blocks, "`try` blocks are unstable");
     gate_all_legacy_dont_use!(auto_traits, "`auto` traits are unstable");
 

@@ -2,6 +2,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::canonical::{Canonical, QueryResponse};
 use rustc_infer::infer::TyCtxtInferExt;
+use rustc_middle::bug;
 use rustc_middle::query::Providers;
 use rustc_middle::traits::query::{DropckConstraint, DropckOutlivesResult};
 use rustc_middle::ty::GenericArgs;
@@ -11,6 +12,7 @@ use rustc_trait_selection::traits::query::dropck_outlives::{
     compute_dropck_outlives_inner, dtorck_constraint_for_ty_inner,
 };
 use rustc_trait_selection::traits::query::{CanonicalTyGoal, NoSolution};
+use tracing::debug;
 
 pub(crate) fn provide(p: &mut Providers) {
     *p = Providers { dropck_outlives, adt_dtorck_constraint, ..*p };

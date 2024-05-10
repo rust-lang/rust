@@ -17,11 +17,13 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::DiagMessage;
 use rustc_hir as hir;
 use rustc_hir::{is_range_literal, Expr, ExprKind, Node};
+use rustc_middle::bug;
 use rustc_middle::ty::layout::{IntegerExt, LayoutOf, SizeSkeleton};
+use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::{
     self, AdtKind, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
 };
-use rustc_middle::ty::{GenericArgsRef, TypeAndMut};
+use rustc_session::{declare_lint, declare_lint_pass, impl_lint_pass};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::source_map;
 use rustc_span::symbol::sym;
@@ -561,10 +563,11 @@ fn lint_literal<'tcx>(
         ty::Float(t) => {
             let is_infinite = match lit.node {
                 ast::LitKind::Float(v, _) => match t {
-                    ty::FloatTy::F16 => unimplemented!("f16_f128"),
+                    // FIXME(f16_f128): add this check once we have library support
+                    ty::FloatTy::F16 => Ok(false),
                     ty::FloatTy::F32 => v.as_str().parse().map(f32::is_infinite),
                     ty::FloatTy::F64 => v.as_str().parse().map(f64::is_infinite),
-                    ty::FloatTy::F128 => unimplemented!("f16_f128"),
+                    ty::FloatTy::F128 => Ok(false),
                 },
                 _ => bug!(),
             };
@@ -656,14 +659,24 @@ fn lint_nan<'tcx>(
     cx.emit_span_lint(INVALID_NAN_COMPARISONS, e.span, lint);
 }
 
+#[derive(Debug, PartialEq)]
+enum ComparisonOp {
+    BinOp(hir::BinOpKind),
+    Other,
+}
+
 fn lint_wide_pointer<'tcx>(
     cx: &LateContext<'tcx>,
     e: &'tcx hir::Expr<'tcx>,
-    binop: hir::BinOpKind,
+    cmpop: ComparisonOp,
     l: &'tcx hir::Expr<'tcx>,
     r: &'tcx hir::Expr<'tcx>,
 ) {
-    let ptr_unsized = |mut ty: Ty<'tcx>| -> Option<(usize, bool)> {
+    let ptr_unsized = |mut ty: Ty<'tcx>| -> Option<(
+        /* number of refs */ usize,
+        /* modifiers */ String,
+        /* is dyn */ bool,
+    )> {
         let mut refs = 0;
         // here we remove any "implicit" references and count the number
         // of them to correctly suggest the right number of deref
@@ -671,14 +684,23 @@ fn lint_wide_pointer<'tcx>(
             ty = *inner_ty;
             refs += 1;
         }
-        match ty.kind() {
-            ty::RawPtr(TypeAndMut { mutbl: _, ty }) => (!ty.is_sized(cx.tcx, cx.param_env))
-                .then(|| (refs, matches!(ty.kind(), ty::Dynamic(_, _, ty::Dyn)))),
-            _ => None,
-        }
+
+        // get the inner type of a pointer (or akin)
+        let mut modifiers = String::new();
+        ty = match ty.kind() {
+            ty::RawPtr(ty, _) => *ty,
+            ty::Adt(def, args) if cx.tcx.is_diagnostic_item(sym::NonNull, def.did()) => {
+                modifiers.push_str(".as_ptr()");
+                args.type_at(0)
+            }
+            _ => return None,
+        };
+
+        (!ty.is_sized(cx.tcx, cx.param_env))
+            .then(|| (refs, modifiers, matches!(ty.kind(), ty::Dynamic(_, _, ty::Dyn))))
     };
 
-    // PartialEq::{eq,ne} takes references, remove any explicit references
+    // the left and right operands can have references, remove any explicit references
     let l = l.peel_borrows();
     let r = r.peel_borrows();
 
@@ -689,10 +711,10 @@ fn lint_wide_pointer<'tcx>(
         return;
     };
 
-    let Some((l_ty_refs, l_inner_ty_is_dyn)) = ptr_unsized(l_ty) else {
+    let Some((l_ty_refs, l_modifiers, l_inner_ty_is_dyn)) = ptr_unsized(l_ty) else {
         return;
     };
-    let Some((r_ty_refs, r_inner_ty_is_dyn)) = ptr_unsized(r_ty) else {
+    let Some((r_ty_refs, r_modifiers, r_inner_ty_is_dyn)) = ptr_unsized(r_ty) else {
         return;
     };
 
@@ -706,8 +728,8 @@ fn lint_wide_pointer<'tcx>(
         );
     };
 
-    let ne = if binop == hir::BinOpKind::Ne { "!" } else { "" };
-    let is_eq_ne = matches!(binop, hir::BinOpKind::Eq | hir::BinOpKind::Ne);
+    let ne = if cmpop == ComparisonOp::BinOp(hir::BinOpKind::Ne) { "!" } else { "" };
+    let is_eq_ne = matches!(cmpop, ComparisonOp::BinOp(hir::BinOpKind::Eq | hir::BinOpKind::Ne));
     let is_dyn_comparison = l_inner_ty_is_dyn && r_inner_ty_is_dyn;
 
     let left = e.span.shrink_to_lo().until(l_span.shrink_to_lo());
@@ -716,6 +738,9 @@ fn lint_wide_pointer<'tcx>(
 
     let deref_left = &*"*".repeat(l_ty_refs);
     let deref_right = &*"*".repeat(r_ty_refs);
+
+    let l_modifiers = &*l_modifiers;
+    let r_modifiers = &*r_modifiers;
 
     cx.emit_span_lint(
         AMBIGUOUS_WIDE_POINTER_COMPARISONS,
@@ -726,6 +751,8 @@ fn lint_wide_pointer<'tcx>(
                     ne,
                     deref_left,
                     deref_right,
+                    l_modifiers,
+                    r_modifiers,
                     left,
                     middle,
                     right,
@@ -736,6 +763,8 @@ fn lint_wide_pointer<'tcx>(
                     ne,
                     deref_left,
                     deref_right,
+                    l_modifiers,
+                    r_modifiers,
                     left,
                     middle,
                     right,
@@ -744,12 +773,14 @@ fn lint_wide_pointer<'tcx>(
                 AmbiguousWidePointerComparisonsAddrSuggestion::Cast {
                     deref_left,
                     deref_right,
-                    // those two Options are required for correctness as having
-                    // an empty span and an empty suggestion is not permitted
-                    left_before: (l_ty_refs != 0).then_some(left),
-                    right_before: (r_ty_refs != 0).then(|| r_span.shrink_to_lo()),
-                    left: l_span.shrink_to_hi(),
-                    right,
+                    l_modifiers,
+                    r_modifiers,
+                    paren_left: if l_ty_refs != 0 { ")" } else { "" },
+                    paren_right: if r_ty_refs != 0 { ")" } else { "" },
+                    left_before: (l_ty_refs != 0).then_some(l_span.shrink_to_lo()),
+                    left_after: l_span.shrink_to_hi(),
+                    right_before: (r_ty_refs != 0).then_some(r_span.shrink_to_lo()),
+                    right_after: r_span.shrink_to_hi(),
                 }
             },
         },
@@ -772,7 +803,7 @@ impl<'tcx> LateLintPass<'tcx> for TypeLimits {
                         cx.emit_span_lint(UNUSED_COMPARISONS, e.span, UnusedComparisons);
                     } else {
                         lint_nan(cx, e, binop, l, r);
-                        lint_wide_pointer(cx, e, binop.node, l, r);
+                        lint_wide_pointer(cx, e, ComparisonOp::BinOp(binop.node), l, r);
                     }
                 }
             }
@@ -781,16 +812,16 @@ impl<'tcx> LateLintPass<'tcx> for TypeLimits {
                 if let ExprKind::Path(ref qpath) = path.kind
                     && let Some(def_id) = cx.qpath_res(qpath, path.hir_id).opt_def_id()
                     && let Some(diag_item) = cx.tcx.get_diagnostic_name(def_id)
-                    && let Some(binop) = partialeq_binop(diag_item) =>
+                    && let Some(cmpop) = diag_item_cmpop(diag_item) =>
             {
-                lint_wide_pointer(cx, e, binop, l, r);
+                lint_wide_pointer(cx, e, cmpop, l, r);
             }
             hir::ExprKind::MethodCall(_, l, [r], _)
                 if let Some(def_id) = cx.typeck_results().type_dependent_def_id(e.hir_id)
                     && let Some(diag_item) = cx.tcx.get_diagnostic_name(def_id)
-                    && let Some(binop) = partialeq_binop(diag_item) =>
+                    && let Some(cmpop) = diag_item_cmpop(diag_item) =>
             {
-                lint_wide_pointer(cx, e, binop, l, r);
+                lint_wide_pointer(cx, e, cmpop, l, r);
             }
             _ => {}
         };
@@ -875,14 +906,20 @@ impl<'tcx> LateLintPass<'tcx> for TypeLimits {
             )
         }
 
-        fn partialeq_binop(diag_item: Symbol) -> Option<hir::BinOpKind> {
-            if diag_item == sym::cmp_partialeq_eq {
-                Some(hir::BinOpKind::Eq)
-            } else if diag_item == sym::cmp_partialeq_ne {
-                Some(hir::BinOpKind::Ne)
-            } else {
-                None
-            }
+        fn diag_item_cmpop(diag_item: Symbol) -> Option<ComparisonOp> {
+            Some(match diag_item {
+                sym::cmp_ord_max => ComparisonOp::Other,
+                sym::cmp_ord_min => ComparisonOp::Other,
+                sym::ord_cmp_method => ComparisonOp::Other,
+                sym::cmp_partialeq_eq => ComparisonOp::BinOp(hir::BinOpKind::Eq),
+                sym::cmp_partialeq_ne => ComparisonOp::BinOp(hir::BinOpKind::Ne),
+                sym::cmp_partialord_cmp => ComparisonOp::Other,
+                sym::cmp_partialord_ge => ComparisonOp::BinOp(hir::BinOpKind::Ge),
+                sym::cmp_partialord_gt => ComparisonOp::BinOp(hir::BinOpKind::Gt),
+                sym::cmp_partialord_le => ComparisonOp::BinOp(hir::BinOpKind::Le),
+                sym::cmp_partialord_lt => ComparisonOp::BinOp(hir::BinOpKind::Lt),
+                _ => return None,
+            })
         }
     }
 }
@@ -984,7 +1021,14 @@ pub fn transparent_newtype_field<'a, 'tcx>(
 }
 
 /// Is type known to be non-null?
-fn ty_is_known_nonnull<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, mode: CItemKind) -> bool {
+fn ty_is_known_nonnull<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    ty: Ty<'tcx>,
+    mode: CItemKind,
+) -> bool {
+    let ty = tcx.try_normalize_erasing_regions(param_env, ty).unwrap_or(ty);
+
     match ty.kind() {
         ty::FnPtr(_) => true,
         ty::Ref(..) => true,
@@ -1004,7 +1048,7 @@ fn ty_is_known_nonnull<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, mode: CItemKind) -
             def.variants()
                 .iter()
                 .filter_map(|variant| transparent_newtype_field(tcx, variant))
-                .any(|field| ty_is_known_nonnull(tcx, field.ty(tcx, args), mode))
+                .any(|field| ty_is_known_nonnull(tcx, param_env, field.ty(tcx, args), mode))
         }
         _ => false,
     }
@@ -1012,7 +1056,13 @@ fn ty_is_known_nonnull<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, mode: CItemKind) -
 
 /// Given a non-null scalar (or transparent) type `ty`, return the nullable version of that type.
 /// If the type passed in was not scalar, returns None.
-fn get_nullable_type<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
+fn get_nullable_type<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    ty: Ty<'tcx>,
+) -> Option<Ty<'tcx>> {
+    let ty = tcx.try_normalize_erasing_regions(param_env, ty).unwrap_or(ty);
+
     Some(match *ty.kind() {
         ty::Adt(field_def, field_args) => {
             let inner_field_ty = {
@@ -1028,22 +1078,19 @@ fn get_nullable_type<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'tcx>> 
                     .expect("No non-zst fields in transparent type.")
                     .ty(tcx, field_args)
             };
-            return get_nullable_type(tcx, inner_field_ty);
+            return get_nullable_type(tcx, param_env, inner_field_ty);
         }
         ty::Int(ty) => Ty::new_int(tcx, ty),
         ty::Uint(ty) => Ty::new_uint(tcx, ty),
-        ty::RawPtr(ty_mut) => Ty::new_ptr(tcx, ty_mut),
+        ty::RawPtr(ty, mutbl) => Ty::new_ptr(tcx, ty, mutbl),
         // As these types are always non-null, the nullable equivalent of
-        // Option<T> of these types are their raw pointer counterparts.
-        ty::Ref(_region, ty, mutbl) => Ty::new_ptr(tcx, ty::TypeAndMut { ty, mutbl }),
-        ty::FnPtr(..) => {
-            // There is no nullable equivalent for Rust's function pointers -- you
-            // must use an Option<fn(..) -> _> to represent it.
-            ty
-        }
-
-        // We should only ever reach this case if ty_is_known_nonnull is extended
-        // to other types.
+        // `Option<T>` of these types are their raw pointer counterparts.
+        ty::Ref(_region, ty, mutbl) => Ty::new_ptr(tcx, ty, mutbl),
+        // There is no nullable equivalent for Rust's function pointers,
+        // you must use an `Option<fn(..) -> _>` to represent it.
+        ty::FnPtr(..) => ty,
+        // We should only ever reach this case if `ty_is_known_nonnull` is
+        // extended to other types.
         ref unhandled => {
             debug!(
                 "get_nullable_type: Unhandled scalar kind: {:?} while checking {:?}",
@@ -1054,9 +1101,35 @@ fn get_nullable_type<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'tcx>> 
     })
 }
 
+/// A type is niche-optimization candidate iff:
+/// - Is a zero-sized type with alignment 1 (a “1-ZST”).
+/// - Has no fields.
+/// - Does not have the `#[non_exhaustive]` attribute.
+fn is_niche_optimization_candidate<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    ty: Ty<'tcx>,
+) -> bool {
+    if tcx.layout_of(param_env.and(ty)).is_ok_and(|layout| !layout.is_1zst()) {
+        return false;
+    }
+
+    match ty.kind() {
+        ty::Adt(ty_def, _) => {
+            let non_exhaustive = ty_def.is_variant_list_non_exhaustive();
+            let empty = (ty_def.is_struct() && ty_def.all_fields().next().is_none())
+                || (ty_def.is_enum() && ty_def.variants().is_empty());
+
+            !non_exhaustive && empty
+        }
+        ty::Tuple(tys) => tys.is_empty(),
+        _ => false,
+    }
+}
+
 /// Check if this enum can be safely exported based on the "nullable pointer optimization". If it
 /// can, return the type that `ty` can be safely converted to, otherwise return `None`.
-/// Currently restricted to function pointers, boxes, references, `core::num::NonZero*`,
+/// Currently restricted to function pointers, boxes, references, `core::num::NonZero`,
 /// `core::ptr::NonNull`, and `#[repr(transparent)]` newtypes.
 /// FIXME: This duplicates code in codegen.
 pub(crate) fn repr_nullable_ptr<'tcx>(
@@ -1070,12 +1143,28 @@ pub(crate) fn repr_nullable_ptr<'tcx>(
         let field_ty = match &ty_def.variants().raw[..] {
             [var_one, var_two] => match (&var_one.fields.raw[..], &var_two.fields.raw[..]) {
                 ([], [field]) | ([field], []) => field.ty(tcx, args),
+                ([field1], [field2]) => {
+                    if !tcx.features().result_ffi_guarantees {
+                        return None;
+                    }
+
+                    let ty1 = field1.ty(tcx, args);
+                    let ty2 = field2.ty(tcx, args);
+
+                    if is_niche_optimization_candidate(tcx, param_env, ty1) {
+                        ty2
+                    } else if is_niche_optimization_candidate(tcx, param_env, ty2) {
+                        ty1
+                    } else {
+                        return None;
+                    }
+                }
                 _ => return None,
             },
             _ => return None,
         };
 
-        if !ty_is_known_nonnull(tcx, field_ty, ckind) {
+        if !ty_is_known_nonnull(tcx, param_env, field_ty, ckind) {
             return None;
         }
 
@@ -1099,10 +1188,10 @@ pub(crate) fn repr_nullable_ptr<'tcx>(
                 WrappingRange { start: 0, end }
                     if end == field_ty_scalar.size(&tcx).unsigned_int_max() - 1 =>
                 {
-                    return Some(get_nullable_type(tcx, field_ty).unwrap());
+                    return Some(get_nullable_type(tcx, param_env, field_ty).unwrap());
                 }
                 WrappingRange { start: 1, .. } => {
-                    return Some(get_nullable_type(tcx, field_ty).unwrap());
+                    return Some(get_nullable_type(tcx, param_env, field_ty).unwrap());
                 }
                 WrappingRange { start, end } => {
                     unreachable!("Unhandled start and end range: ({}, {})", start, end)
@@ -1155,7 +1244,6 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         args: GenericArgsRef<'tcx>,
     ) -> FfiResult<'tcx> {
         use FfiResult::*;
-
         let transparent_with_all_zst_fields = if def.repr().transparent() {
             if let Some(field) = transparent_newtype_field(self.cx.tcx, variant) {
                 // Transparent newtypes have at most one non-ZST field which needs to be checked..
@@ -1282,27 +1370,29 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                             return FfiSafe;
                         }
 
-                        // Check for a repr() attribute to specify the size of the
-                        // discriminant.
-                        if !def.repr().c() && !def.repr().transparent() && def.repr().int.is_none()
-                        {
-                            // Special-case types like `Option<extern fn()>`.
-                            if repr_nullable_ptr(self.cx.tcx, self.cx.param_env, ty, self.mode)
-                                .is_none()
-                            {
-                                return FfiUnsafe {
-                                    ty,
-                                    reason: fluent::lint_improper_ctypes_enum_repr_reason,
-                                    help: Some(fluent::lint_improper_ctypes_enum_repr_help),
-                                };
-                            }
-                        }
-
                         if def.is_variant_list_non_exhaustive() && !def.did().is_local() {
                             return FfiUnsafe {
                                 ty,
                                 reason: fluent::lint_improper_ctypes_non_exhaustive,
                                 help: None,
+                            };
+                        }
+
+                        // Check for a repr() attribute to specify the size of the
+                        // discriminant.
+                        if !def.repr().c() && !def.repr().transparent() && def.repr().int.is_none()
+                        {
+                            // Special-case types like `Option<extern fn()>` and `Result<extern fn(), ()>`
+                            if let Some(ty) =
+                                repr_nullable_ptr(self.cx.tcx, self.cx.param_env, ty, self.mode)
+                            {
+                                return self.check_type_for_ffi(cache, ty);
+                            }
+
+                            return FfiUnsafe {
+                                ty,
+                                reason: fluent::lint_improper_ctypes_enum_repr_reason,
+                                help: Some(fluent::lint_improper_ctypes_enum_repr_help),
                             };
                         }
 
@@ -1334,6 +1424,12 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 help: Some(fluent::lint_improper_ctypes_char_help),
             },
 
+            ty::Pat(..) => FfiUnsafe {
+                ty,
+                reason: fluent::lint_improper_ctypes_pat_reason,
+                help: Some(fluent::lint_improper_ctypes_pat_help),
+            },
+
             ty::Int(ty::IntTy::I128) | ty::Uint(ty::UintTy::U128) => {
                 FfiUnsafe { ty, reason: fluent::lint_improper_ctypes_128bit, help: None }
             }
@@ -1363,7 +1459,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 help: Some(fluent::lint_improper_ctypes_tuple_help),
             },
 
-            ty::RawPtr(ty::TypeAndMut { ty, .. }) | ty::Ref(_, ty, _)
+            ty::RawPtr(ty, _) | ty::Ref(_, ty, _)
                 if {
                     matches!(self.mode, CItemKind::Definition)
                         && ty.is_sized(self.cx.tcx, self.cx.param_env)
@@ -1372,7 +1468,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 FfiSafe
             }
 
-            ty::RawPtr(ty::TypeAndMut { ty, .. })
+            ty::RawPtr(ty, _)
                 if match ty.kind() {
                     ty::Tuple(tuple) => tuple.is_empty(),
                     _ => false,
@@ -1381,9 +1477,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 FfiSafe
             }
 
-            ty::RawPtr(ty::TypeAndMut { ty, .. }) | ty::Ref(_, ty, _) => {
-                self.check_type_for_ffi(cache, ty)
-            }
+            ty::RawPtr(ty, _) | ty::Ref(_, ty, _) => self.check_type_for_ffi(cache, ty),
 
             ty::Array(inner_ty, _) => self.check_type_for_ffi(cache, inner_ty),
 

@@ -1,7 +1,5 @@
 //@ check-pass
 
-#![feature(associated_type_bounds)]
-
 use std::fmt::Debug;
 use std::iter::Once;
 

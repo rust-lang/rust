@@ -300,11 +300,8 @@ impl<'tcx> LateLintPass<'tcx> for StringLitAsBytes {
                     e.span,
                     "calling `as_bytes()` on `include_str!(..)`",
                     "consider using `include_bytes!(..)` instead",
-                    snippet_with_applicability(cx, receiver.span, r#""foo""#, &mut applicability).replacen(
-                        "include_str",
-                        "include_bytes",
-                        1,
-                    ),
+                    snippet_with_applicability(cx, receiver.span.source_callsite(), r#""foo""#, &mut applicability)
+                        .replacen("include_str", "include_bytes", 1),
                     applicability,
                 );
             } else if lit_content.as_str().is_ascii()
@@ -495,8 +492,8 @@ impl<'tcx> LateLintPass<'tcx> for TrimSplitWhitespace {
                 cx,
                 TRIM_SPLIT_WHITESPACE,
                 trim_span.with_hi(split_ws_span.lo()),
-                &format!("found call to `str::{trim_fn_name}` before `str::split_whitespace`"),
-                &format!("remove `{trim_fn_name}()`"),
+                format!("found call to `str::{trim_fn_name}` before `str::split_whitespace`"),
+                format!("remove `{trim_fn_name}()`"),
                 String::new(),
                 Applicability::MachineApplicable,
             );

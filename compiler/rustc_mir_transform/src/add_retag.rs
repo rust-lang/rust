@@ -24,7 +24,7 @@ fn may_contain_reference<'tcx>(ty: Ty<'tcx>, depth: u32, tcx: TyCtxt<'tcx>) -> b
         | ty::Str
         | ty::FnDef(..)
         | ty::Never => false,
-        // References
+        // References and Boxes (`noalias` sources)
         ty::Ref(..) => true,
         ty::Adt(..) if ty.is_box() => true,
         ty::Adt(adt, _) if Some(adt.did()) == tcx.lang_items().ptr_unique() => true,
@@ -118,22 +118,46 @@ impl<'tcx> MirPass<'tcx> for AddRetag {
         }
 
         // PART 3
-        // Add retag after assignments where data "enters" this function: the RHS is behind a deref and the LHS is not.
+        // Add retag after assignments.
         for block_data in basic_blocks {
             // We want to insert statements as we iterate. To this end, we
             // iterate backwards using indices.
             for i in (0..block_data.statements.len()).rev() {
                 let (retag_kind, place) = match block_data.statements[i].kind {
                     // Retag after assignments of reference type.
-                    StatementKind::Assign(box (ref place, ref rvalue)) if needs_retag(place) => {
+                    StatementKind::Assign(box (ref place, ref rvalue)) => {
                         let add_retag = match rvalue {
                             // Ptr-creating operations already do their own internal retagging, no
                             // need to also add a retag statement.
-                            Rvalue::Ref(..) | Rvalue::AddressOf(..) => false,
-                            _ => true,
+                            // *Except* if we are deref'ing a Box, because those get desugared to directly working
+                            // with the inner raw pointer! That's relevant for `AddressOf` as Miri otherwise makes it
+                            // a NOP when the original pointer is already raw.
+                            Rvalue::AddressOf(_mutbl, place) => {
+                                // Using `is_box_global` here is a bit sketchy: if this code is
+                                // generic over the allocator, we'll not add a retag! This is a hack
+                                // to make Stacked Borrows compatible with custom allocator code.
+                                // Long-term, we'll want to move to an aliasing model where "cast to
+                                // raw pointer" is a complete NOP, and then this will no longer be
+                                // an issue.
+                                if place.is_indirect_first_projection()
+                                    && body.local_decls[place.local].ty.is_box_global(tcx)
+                                {
+                                    Some(RetagKind::Raw)
+                                } else {
+                                    None
+                                }
+                            }
+                            Rvalue::Ref(..) => None,
+                            _ => {
+                                if needs_retag(place) {
+                                    Some(RetagKind::Default)
+                                } else {
+                                    None
+                                }
+                            }
                         };
-                        if add_retag {
-                            (RetagKind::Default, *place)
+                        if let Some(kind) = add_retag {
+                            (kind, *place)
                         } else {
                             continue;
                         }

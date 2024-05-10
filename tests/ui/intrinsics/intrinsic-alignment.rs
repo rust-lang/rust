@@ -1,5 +1,4 @@
 //@ run-pass
-//@ ignore-wasm32-bare seems not important to test here
 
 #![feature(intrinsics, rustc_attrs)]
 
@@ -56,6 +55,16 @@ mod m {
 }
 
 #[cfg(target_os = "windows")]
+mod m {
+    pub fn main() {
+        unsafe {
+            assert_eq!(::rusti::pref_align_of::<u64>(), 8);
+            assert_eq!(::rusti::min_align_of::<u64>(), 8);
+        }
+    }
+}
+
+#[cfg(target_family = "wasm")]
 mod m {
     pub fn main() {
         unsafe {

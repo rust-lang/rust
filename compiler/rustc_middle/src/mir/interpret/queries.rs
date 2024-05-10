@@ -24,7 +24,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let instance = ty::Instance::new(def_id, args);
         let cid = GlobalId { instance, promoted: None };
         let param_env = self.param_env(def_id).with_reveal_all_normalized(self);
-        self.const_eval_global_id(param_env, cid, None)
+        self.const_eval_global_id(param_env, cid, DUMMY_SP)
     }
     /// Resolves and evaluates a constant.
     ///
@@ -40,7 +40,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         param_env: ty::ParamEnv<'tcx>,
         ct: mir::UnevaluatedConst<'tcx>,
-        span: Option<Span>,
+        span: Span,
     ) -> EvalToConstValueResult<'tcx> {
         // Cannot resolve `Unevaluated` constants that contain inference
         // variables. We reject those here since `resolve`
@@ -73,7 +73,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         param_env: ty::ParamEnv<'tcx>,
         ct: ty::UnevaluatedConst<'tcx>,
-        span: Option<Span>,
+        span: Span,
     ) -> EvalToValTreeResult<'tcx> {
         // Cannot resolve `Unevaluated` constants that contain inference
         // variables. We reject those here since `resolve`
@@ -130,7 +130,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         param_env: ty::ParamEnv<'tcx>,
         instance: ty::Instance<'tcx>,
-        span: Option<Span>,
+        span: Span,
     ) -> EvalToConstValueResult<'tcx> {
         self.const_eval_global_id(param_env, GlobalId { instance, promoted: None }, span)
     }
@@ -141,12 +141,12 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         param_env: ty::ParamEnv<'tcx>,
         cid: GlobalId<'tcx>,
-        span: Option<Span>,
+        span: Span,
     ) -> EvalToConstValueResult<'tcx> {
         // Const-eval shouldn't depend on lifetimes at all, so we can erase them, which should
         // improve caching of queries.
         let inputs = self.erase_regions(param_env.with_reveal_all_normalized(self).and(cid));
-        if let Some(span) = span {
+        if !span.is_dummy() {
             // The query doesn't know where it is being invoked, so we need to fix the span.
             self.at(span).eval_to_const_value_raw(inputs).map_err(|e| e.with_span(span))
         } else {
@@ -160,13 +160,13 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         param_env: ty::ParamEnv<'tcx>,
         cid: GlobalId<'tcx>,
-        span: Option<Span>,
+        span: Span,
     ) -> EvalToValTreeResult<'tcx> {
         // Const-eval shouldn't depend on lifetimes at all, so we can erase them, which should
         // improve caching of queries.
         let inputs = self.erase_regions(param_env.with_reveal_all_normalized(self).and(cid));
         debug!(?inputs);
-        if let Some(span) = span {
+        if !span.is_dummy() {
             // The query doesn't know where it is being invoked, so we need to fix the span.
             self.at(span).eval_to_valtree(inputs).map_err(|e| e.with_span(span))
         } else {

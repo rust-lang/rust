@@ -58,7 +58,7 @@ pub(super) fn check(
                 cx,
                 UNNECESSARY_GET_THEN_CHECK,
                 both_calls_span,
-                &format!("unnecessary use of `{snippet}`"),
+                format!("unnecessary use of `{snippet}`"),
                 "replace it with",
                 suggestion,
                 Applicability::MaybeIncorrect,
@@ -70,7 +70,7 @@ pub(super) fn check(
                 cx,
                 UNNECESSARY_GET_THEN_CHECK,
                 both_calls_span,
-                &format!("unnecessary use of `{snippet}`"),
+                format!("unnecessary use of `{snippet}`"),
                 |diag| {
                     diag.span_suggestion(
                         full_span,

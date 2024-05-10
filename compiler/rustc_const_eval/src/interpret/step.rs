@@ -9,7 +9,9 @@ use rustc_middle::mir;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_target::abi::{FieldIdx, FIRST_VARIANT};
 
-use super::{ImmTy, InterpCx, InterpResult, Machine, PlaceTy, Projectable, Scalar};
+use super::{
+    ImmTy, Immediate, InterpCx, InterpResult, Machine, MemPlaceMeta, PlaceTy, Projectable, Scalar,
+};
 use crate::util;
 
 impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
@@ -144,7 +146,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         use rustc_middle::mir::Rvalue::*;
         match *rvalue {
             ThreadLocalRef(did) => {
-                let ptr = M::thread_local_static_base_pointer(self, did)?;
+                let ptr = M::thread_local_static_pointer(self, did)?;
                 self.write_pointer(ptr, &dest)?;
             }
 
@@ -258,17 +260,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         let val = layout.offset_of_subfield(self, fields.iter()).bytes();
                         Scalar::from_target_usize(val, self)
                     }
-                    mir::NullOp::UbCheck(kind) => {
-                        // We want to enable checks for library UB, because the interpreter doesn't
-                        // know about those on its own.
-                        // But we want to disable checks for language UB, because the interpreter
-                        // has its own better checks for that.
-                        let should_check = match kind {
-                            mir::UbKind::LibraryUb => self.tcx.sess.opts.debug_assertions,
-                            mir::UbKind::LanguageUb => false,
-                        };
-                        Scalar::from_bool(should_check)
-                    }
+                    mir::NullOp::UbChecks => Scalar::from_bool(self.tcx.sess.ub_checks()),
                 };
                 self.write_scalar(val, &dest)?;
             }
@@ -312,6 +304,27 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             mir::AggregateKind::Adt(_, variant_index, _, _, active_field_index) => {
                 let variant_dest = self.project_downcast(dest, variant_index)?;
                 (variant_index, variant_dest, active_field_index)
+            }
+            mir::AggregateKind::RawPtr(..) => {
+                // Pointers don't have "fields" in the normal sense, so the
+                // projection-based code below would either fail in projection
+                // or in type mismatches. Instead, build an `Immediate` from
+                // the parts and write that to the destination.
+                let [data, meta] = &operands.raw else {
+                    bug!("{kind:?} should have 2 operands, had {operands:?}");
+                };
+                let data = self.eval_operand(data, None)?;
+                let data = self.read_pointer(&data)?;
+                let meta = self.eval_operand(meta, None)?;
+                let meta = if meta.layout.is_zst() {
+                    MemPlaceMeta::None
+                } else {
+                    MemPlaceMeta::Meta(self.read_scalar(&meta)?)
+                };
+                let ptr_imm = Immediate::new_pointer_with_meta(data, meta, self);
+                let ptr = ImmTy::from_immediate(ptr_imm, dest.layout);
+                self.copy_op(&ptr, dest)?;
+                return Ok(());
             }
             _ => (FIRST_VARIANT, dest.clone(), None),
         };

@@ -1,6 +1,7 @@
 use super::ResolverAstLoweringExt;
 use rustc_ast::visit::{self, BoundKind, LifetimeCtxt, Visitor};
 use rustc_ast::{GenericBounds, Lifetime, NodeId, PathSegment, PolyTraitRef, Ty, TyKind};
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir::def::{DefKind, LifetimeRes, Res};
 use rustc_middle::span_bug;
 use rustc_middle::ty::ResolverAstLowering;
@@ -10,27 +11,23 @@ use rustc_span::Span;
 struct LifetimeCollectVisitor<'ast> {
     resolver: &'ast ResolverAstLowering,
     current_binders: Vec<NodeId>,
-    collected_lifetimes: Vec<Lifetime>,
+    collected_lifetimes: FxIndexSet<Lifetime>,
 }
 
 impl<'ast> LifetimeCollectVisitor<'ast> {
     fn new(resolver: &'ast ResolverAstLowering) -> Self {
-        Self { resolver, current_binders: Vec::new(), collected_lifetimes: Vec::new() }
+        Self { resolver, current_binders: Vec::new(), collected_lifetimes: FxIndexSet::default() }
     }
 
     fn record_lifetime_use(&mut self, lifetime: Lifetime) {
         match self.resolver.get_lifetime_res(lifetime.id).unwrap_or(LifetimeRes::Error) {
             LifetimeRes::Param { binder, .. } | LifetimeRes::Fresh { binder, .. } => {
                 if !self.current_binders.contains(&binder) {
-                    if !self.collected_lifetimes.contains(&lifetime) {
-                        self.collected_lifetimes.push(lifetime);
-                    }
+                    self.collected_lifetimes.insert(lifetime);
                 }
             }
             LifetimeRes::Static | LifetimeRes::Error => {
-                if !self.collected_lifetimes.contains(&lifetime) {
-                    self.collected_lifetimes.push(lifetime);
-                }
+                self.collected_lifetimes.insert(lifetime);
             }
             LifetimeRes::Infer => {}
             res => {
@@ -111,7 +108,7 @@ impl<'ast> Visitor<'ast> for LifetimeCollectVisitor<'ast> {
 pub(crate) fn lifetimes_in_bounds(
     resolver: &ResolverAstLowering,
     bounds: &GenericBounds,
-) -> Vec<Lifetime> {
+) -> FxIndexSet<Lifetime> {
     let mut visitor = LifetimeCollectVisitor::new(resolver);
     for bound in bounds {
         visitor.visit_param_bound(bound, BoundKind::Bound);

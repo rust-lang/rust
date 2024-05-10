@@ -70,7 +70,7 @@ impl flags::AnalysisStats {
 
         let mut db_load_sw = self.stop_watch();
 
-        let path = AbsPathBuf::assert(env::current_dir()?.join(&self.path));
+        let path = AbsPathBuf::assert_utf8(env::current_dir()?.join(&self.path));
         let manifest = ProjectManifest::discover_single(&path)?;
 
         let mut workspace = ProjectWorkspace::load(manifest, &cargo_config, no_progress)?;
@@ -279,7 +279,10 @@ impl flags::AnalysisStats {
         let mut all = 0;
         let mut fail = 0;
         for &a in adts {
-            if db.generic_params(a.into()).iter().next().is_some() {
+            let generic_params = db.generic_params(a.into());
+            if generic_params.iter_type_or_consts().next().is_some()
+                || generic_params.iter_lt().next().is_some()
+            {
                 // Data types with generics don't have layout.
                 continue;
             }
@@ -1053,7 +1056,7 @@ fn location_csv_expr(db: &RootDatabase, vfs: &Vfs, sm: &BodySourceMap, expr_id: 
     };
     let root = db.parse_or_expand(src.file_id);
     let node = src.map(|e| e.to_node(&root).syntax().clone());
-    let original_range = node.as_ref().original_file_range(db);
+    let original_range = node.as_ref().original_file_range_rooted(db);
     let path = vfs.file_path(original_range.file_id);
     let line_index = db.line_index(original_range.file_id);
     let text_range = original_range.range;
@@ -1069,7 +1072,7 @@ fn location_csv_pat(db: &RootDatabase, vfs: &Vfs, sm: &BodySourceMap, pat_id: Pa
     };
     let root = db.parse_or_expand(src.file_id);
     let node = src.map(|e| e.to_node(&root).syntax().clone());
-    let original_range = node.as_ref().original_file_range(db);
+    let original_range = node.as_ref().original_file_range_rooted(db);
     let path = vfs.file_path(original_range.file_id);
     let line_index = db.line_index(original_range.file_id);
     let text_range = original_range.range;
@@ -1088,7 +1091,7 @@ fn expr_syntax_range<'a>(
     if let Ok(src) = src {
         let root = db.parse_or_expand(src.file_id);
         let node = src.map(|e| e.to_node(&root).syntax().clone());
-        let original_range = node.as_ref().original_file_range(db);
+        let original_range = node.as_ref().original_file_range_rooted(db);
         let path = vfs.file_path(original_range.file_id);
         let line_index = db.line_index(original_range.file_id);
         let text_range = original_range.range;
@@ -1109,7 +1112,7 @@ fn pat_syntax_range<'a>(
     if let Ok(src) = src {
         let root = db.parse_or_expand(src.file_id);
         let node = src.map(|e| e.to_node(&root).syntax().clone());
-        let original_range = node.as_ref().original_file_range(db);
+        let original_range = node.as_ref().original_file_range_rooted(db);
         let path = vfs.file_path(original_range.file_id);
         let line_index = db.line_index(original_range.file_id);
         let text_range = original_range.range;

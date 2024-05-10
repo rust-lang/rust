@@ -5,6 +5,7 @@ use clippy_utils::is_bool;
 use clippy_utils::macros::span_is_local;
 use clippy_utils::source::is_present_in_source;
 use clippy_utils::str_utils::{camel_case_split, count_match_end, count_match_start, to_camel_case, to_snake_case};
+use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::{EnumDef, FieldDef, Item, ItemKind, OwnerId, Variant, VariantData};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
@@ -147,6 +148,7 @@ pub struct ItemNameRepetitions {
     struct_threshold: u64,
     avoid_breaking_exported_api: bool,
     allow_private_module_inception: bool,
+    allowed_prefixes: FxHashSet<String>,
 }
 
 impl ItemNameRepetitions {
@@ -156,6 +158,7 @@ impl ItemNameRepetitions {
         struct_threshold: u64,
         avoid_breaking_exported_api: bool,
         allow_private_module_inception: bool,
+        allowed_prefixes: &[String],
     ) -> Self {
         Self {
             modules: Vec::new(),
@@ -163,7 +166,12 @@ impl ItemNameRepetitions {
             struct_threshold,
             avoid_breaking_exported_api,
             allow_private_module_inception,
+            allowed_prefixes: allowed_prefixes.iter().map(|s| to_camel_case(s)).collect(),
         }
+    }
+
+    fn is_allowed_prefix(&self, prefix: &str) -> bool {
+        self.allowed_prefixes.contains(prefix)
     }
 }
 
@@ -240,9 +248,9 @@ fn check_fields(cx: &LateContext<'_>, threshold: u64, item: &Item<'_>, fields: &
             cx,
             STRUCT_FIELD_NAMES,
             item.span,
-            &format!("all fields have the same {what}fix: `{value}`"),
+            format!("all fields have the same {what}fix: `{value}`"),
             None,
-            &format!("remove the {what}fixes"),
+            format!("remove the {what}fixes"),
         );
     }
 }
@@ -370,9 +378,9 @@ fn check_variant(cx: &LateContext<'_>, threshold: u64, def: &EnumDef<'_>, item_n
         cx,
         ENUM_VARIANT_NAMES,
         span,
-        &format!("all variants have the same {what}fix: `{value}`"),
+        format!("all variants have the same {what}fix: `{value}`"),
         None,
-        &format!(
+        format!(
             "remove the {what}fixes and use full paths to \
              the variants instead of glob imports"
         ),
@@ -423,7 +431,9 @@ impl LateLintPass<'_> for ItemNameRepetitions {
                                 _ => (),
                             }
                         }
-                        if rmatching.char_count == nchars {
+                        if rmatching.char_count == nchars
+                            && !self.is_allowed_prefix(&item_camel[..item_camel.len() - rmatching.byte_count])
+                        {
                             span_lint(
                                 cx,
                                 MODULE_NAME_REPETITIONS,

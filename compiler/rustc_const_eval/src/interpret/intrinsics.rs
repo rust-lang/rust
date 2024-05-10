@@ -8,21 +8,16 @@ use rustc_middle::ty::layout::{LayoutOf as _, ValidityRequirement};
 use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_middle::{
-    mir::{
-        self,
-        interpret::{
-            Allocation, ConstAllocation, GlobalId, InterpResult, PointerArithmetic, Scalar,
-        },
-        BinOp, ConstValue, NonDivergingIntrinsic,
-    },
+    mir::{self, BinOp, ConstValue, NonDivergingIntrinsic},
     ty::layout::TyAndLayout,
 };
 use rustc_span::symbol::{sym, Symbol};
 use rustc_target::abi::Size;
 
 use super::{
-    util::ensure_monomorphic_enough, CheckInAllocMsg, ImmTy, InterpCx, MPlaceTy, Machine, OpTy,
-    Pointer,
+    memory::MemoryKind, util::ensure_monomorphic_enough, Allocation, CheckInAllocMsg,
+    ConstAllocation, GlobalId, ImmTy, InterpCx, InterpResult, MPlaceTy, Machine, OpTy, Pointer,
+    PointerArithmetic, Scalar,
 };
 
 use crate::fluent_generated as fluent;
@@ -69,6 +64,10 @@ pub(crate) fn eval_nullary_intrinsic<'tcx>(
             ty::Alias(..) | ty::Param(_) | ty::Placeholder(_) | ty::Infer(_) => {
                 throw_inval!(TooGeneric)
             }
+            ty::Pat(_, pat) => match **pat {
+                ty::PatternKind::Range { .. } => ConstValue::from_target_usize(0u64, &tcx),
+                // Future pattern kinds may have more variants
+            },
             ty::Bound(_, _) => bug!("bound ty during ctfe"),
             ty::Bool
             | ty::Char
@@ -79,7 +78,7 @@ pub(crate) fn eval_nullary_intrinsic<'tcx>(
             | ty::Str
             | ty::Array(_, _)
             | ty::Slice(_)
-            | ty::RawPtr(_)
+            | ty::RawPtr(_, _)
             | ty::Ref(_, _, _)
             | ty::FnDef(_, _)
             | ty::FnPtr(_)
@@ -109,10 +108,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx, bool> {
         let instance_args = instance.args;
         let intrinsic_name = self.tcx.item_name(instance.def_id());
-        let Some(ret) = ret else {
-            // We don't support any intrinsic without return place.
-            return Ok(false);
-        };
 
         match intrinsic_name {
             sym::caller_location => {
@@ -153,9 +148,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     sym::type_name => Ty::new_static_str(self.tcx.tcx),
                     _ => bug!(),
                 };
-                let val = self.ctfe_query(|tcx| {
-                    tcx.const_eval_global_id(self.param_env, gid, Some(tcx.span))
-                })?;
+                let val =
+                    self.ctfe_query(|tcx| tcx.const_eval_global_id(self.param_env, gid, tcx.span))?;
                 let val = self.const_val_to_op(val, ty, Some(dest.layout))?;
                 self.copy_op(&val, dest)?;
             }
@@ -170,7 +164,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let ty = instance_args.type_at(0);
                 let layout = self.layout_of(ty)?;
                 let val = self.read_scalar(&args[0])?;
-                let out_val = self.numeric_intrinsic(intrinsic_name, val, layout)?;
+
+                let out_val = self.numeric_intrinsic(intrinsic_name, val, layout, dest.layout)?;
                 self.write_scalar(out_val, dest)?;
             }
             sym::saturating_add | sym::saturating_sub => {
@@ -197,12 +192,15 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             sym::rotate_left | sym::rotate_right => {
                 // rotate_left: (X << (S % BW)) | (X >> ((BW - S) % BW))
                 // rotate_right: (X << ((BW - S) % BW)) | (X >> (S % BW))
-                let layout = self.layout_of(instance_args.type_at(0))?;
+                let layout_val = self.layout_of(instance_args.type_at(0))?;
                 let val = self.read_scalar(&args[0])?;
-                let val_bits = val.to_bits(layout.size)?;
+                let val_bits = val.to_bits(layout_val.size)?;
+
+                let layout_raw_shift = self.layout_of(self.tcx.types.u32)?;
                 let raw_shift = self.read_scalar(&args[1])?;
-                let raw_shift_bits = raw_shift.to_bits(layout.size)?;
-                let width_bits = u128::from(layout.size.bits());
+                let raw_shift_bits = raw_shift.to_bits(layout_raw_shift.size)?;
+
+                let width_bits = u128::from(layout_val.size.bits());
                 let shift_bits = raw_shift_bits % width_bits;
                 let inv_shift_bits = (width_bits - shift_bits) % width_bits;
                 let result_bits = if intrinsic_name == sym::rotate_left {
@@ -210,8 +208,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 } else {
                     (val_bits >> shift_bits) | (val_bits << inv_shift_bits)
                 };
-                let truncated_bits = self.truncate(result_bits, layout);
-                let result = Scalar::from_uint(truncated_bits, layout.size);
+                let truncated_bits = self.truncate(result_bits, layout_val);
+                let result = Scalar::from_uint(truncated_bits, layout_val.size);
                 self.write_scalar(result, dest)?;
             }
             sym::copy => {
@@ -246,14 +244,22 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     match (self.ptr_try_get_alloc_id(a), self.ptr_try_get_alloc_id(b)) {
                         (Err(a), Err(b)) => {
                             // Neither pointer points to an allocation.
-                            // If these are inequal or null, this *will* fail the deref check below.
+                            // This is okay only if they are the same.
+                            if a != b {
+                                // We'd catch this below in the "dereferenceable" check, but
+                                // show a nicer error for this particular case.
+                                throw_ub_custom!(
+                                    fluent::const_eval_offset_from_different_integers,
+                                    name = intrinsic_name,
+                                );
+                            }
                             (a, b)
                         }
                         (Err(_), _) | (_, Err(_)) => {
                             // We managed to find a valid allocation for one pointer, but not the other.
                             // That means they are definitely not pointing to the same allocation.
                             throw_ub_custom!(
-                                fluent::const_eval_different_allocations,
+                                fluent::const_eval_offset_from_different_allocations,
                                 name = intrinsic_name,
                             );
                         }
@@ -261,7 +267,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                             // Found allocation for both. They must be into the same allocation.
                             if a_alloc_id != b_alloc_id {
                                 throw_ub_custom!(
-                                    fluent::const_eval_different_allocations,
+                                    fluent::const_eval_offset_from_different_allocations,
                                     name = intrinsic_name,
                                 );
                             }
@@ -283,7 +289,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         // a < b
                         if intrinsic_name == sym::ptr_offset_from_unsigned {
                             throw_ub_custom!(
-                                fluent::const_eval_unsigned_offset_from_overflow,
+                                fluent::const_eval_offset_from_unsigned_overflow,
                                 a_offset = a_offset,
                                 b_offset = b_offset,
                             );
@@ -369,7 +375,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     };
 
                     M::panic_nounwind(self, &msg)?;
-                    // Skip the `go_to_block` at the end.
+                    // Skip the `return_to_block` at the end (we panicked, we do not return).
                     return Ok(true);
                 }
             }
@@ -407,13 +413,16 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 }
                 self.copy_op(&self.project_index(&input, index)?, dest)?;
             }
-            sym::likely | sym::unlikely | sym::black_box => {
+            sym::black_box => {
                 // These just return their argument
                 self.copy_op(&args[0], dest)?;
             }
             sym::raw_eq => {
                 let result = self.raw_eq_intrinsic(&args[0], &args[1])?;
                 self.write_scalar(result, dest)?;
+            }
+            sym::typed_swap => {
+                self.typed_swap_intrinsic(&args[0], &args[1])?;
             }
 
             sym::vtable_size => {
@@ -427,11 +436,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.write_scalar(Scalar::from_target_usize(align.bytes(), self), dest)?;
             }
 
+            // Unsupported intrinsic: skip the return_to_block below.
             _ => return Ok(false),
         }
 
         trace!("{:?}", self.dump_place(&dest.clone().into()));
-        self.go_to_block(ret);
+        self.return_to_block(ret)?;
         Ok(true)
     }
 
@@ -466,6 +476,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         name: Symbol,
         val: Scalar<M::Provenance>,
         layout: TyAndLayout<'tcx>,
+        ret_layout: TyAndLayout<'tcx>,
     ) -> InterpResult<'tcx, Scalar<M::Provenance>> {
         assert!(layout.ty.is_integral(), "invalid type for numeric intrinsic: {}", layout.ty);
         let bits = val.to_bits(layout.size)?;
@@ -477,11 +488,17 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
             sym::ctlz | sym::ctlz_nonzero => u128::from(bits.leading_zeros()) - extra,
             sym::cttz | sym::cttz_nonzero => u128::from((bits << extra).trailing_zeros()) - extra,
-            sym::bswap => (bits << extra).swap_bytes(),
-            sym::bitreverse => (bits << extra).reverse_bits(),
+            sym::bswap => {
+                assert_eq!(layout, ret_layout);
+                (bits << extra).swap_bytes()
+            }
+            sym::bitreverse => {
+                assert_eq!(layout, ret_layout);
+                (bits << extra).reverse_bits()
+            }
             _ => bug!("not a numeric intrinsic: {}", name),
         };
-        Ok(Scalar::from_uint(bits_out, layout.size))
+        Ok(Scalar::from_uint(bits_out, ret_layout.size))
     }
 
     pub fn exact_div(
@@ -606,6 +623,24 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         self.check_ptr_align(dst, align)?;
 
         self.mem_copy(src, dst, size, nonoverlapping)
+    }
+
+    /// Does a *typed* swap of `*left` and `*right`.
+    fn typed_swap_intrinsic(
+        &mut self,
+        left: &OpTy<'tcx, <M as Machine<'mir, 'tcx>>::Provenance>,
+        right: &OpTy<'tcx, <M as Machine<'mir, 'tcx>>::Provenance>,
+    ) -> InterpResult<'tcx> {
+        let left = self.deref_pointer(left)?;
+        let right = self.deref_pointer(right)?;
+        debug_assert_eq!(left.layout, right.layout);
+        let kind = MemoryKind::Stack;
+        let temp = self.allocate(left.layout, kind)?;
+        self.copy_op(&left, &temp)?;
+        self.copy_op(&right, &left)?;
+        self.copy_op(&temp, &right)?;
+        self.deallocate_ptr(temp.ptr(), None, kind)?;
+        Ok(())
     }
 
     pub(crate) fn write_bytes_intrinsic(

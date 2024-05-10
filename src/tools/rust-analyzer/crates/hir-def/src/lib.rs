@@ -73,7 +73,7 @@ use std::{
 use base_db::{
     impl_intern_key,
     salsa::{self, impl_intern_value_trivial},
-    CrateId, Edition,
+    CrateId,
 };
 use hir_expand::{
     builtin_attr_macro::BuiltinAttrExpander,
@@ -90,7 +90,7 @@ use hir_expand::{
 use item_tree::ExternBlock;
 use la_arena::Idx;
 use nameres::DefMap;
-use span::{AstIdNode, FileAstId, FileId, Span};
+use span::{AstIdNode, Edition, FileAstId, FileId, SyntaxContextId};
 use stdx::impl_from;
 use syntax::{ast, AstNode};
 
@@ -422,6 +422,10 @@ impl ModuleId {
         }
     }
 
+    pub fn crate_def_map(self, db: &dyn DefDatabase) -> Arc<DefMap> {
+        db.crate_def_map(self.krate)
+    }
+
     pub fn krate(self) -> CrateId {
         self.krate
     }
@@ -438,6 +442,8 @@ impl ModuleId {
         })
     }
 
+    /// Returns the module containing `self`, either the parent `mod`, or the module (or block) containing
+    /// the block, if `self` corresponds to a block expression.
     pub fn containing_module(self, db: &dyn DefDatabase) -> Option<ModuleId> {
         self.def_map(db).containing_module(self.local_id)
     }
@@ -929,6 +935,18 @@ impl GenericDefId {
             GenericDefId::EnumVariantId(_) => (FileId::BOGUS.into(), None),
         }
     }
+
+    pub fn assoc_trait_container(self, db: &dyn DefDatabase) -> Option<TraitId> {
+        match match self {
+            GenericDefId::FunctionId(f) => f.lookup(db).container,
+            GenericDefId::TypeAliasId(t) => t.lookup(db).container,
+            GenericDefId::ConstId(c) => c.lookup(db).container,
+            _ => return None,
+        } {
+            ItemContainerId::TraitId(trait_) => Some(trait_),
+            _ => None,
+        }
+    }
 }
 
 impl From<AssocItemId> for GenericDefId {
@@ -1342,21 +1360,22 @@ impl AsMacroCall for InFile<&ast::MacroCall> {
         let ast_id = AstId::new(self.file_id, db.ast_id_map(self.file_id).ast_id(self.value));
         let span_map = db.span_map(self.file_id);
         let path = self.value.path().and_then(|path| {
-            path::ModPath::from_src(db, path, &mut |range| {
+            let range = path.syntax().text_range();
+            let mod_path = path::ModPath::from_src(db, path, &mut |range| {
                 span_map.as_ref().span_for_range(range).ctx
-            })
+            })?;
+            let call_site = span_map.span_for_range(range);
+            Some((call_site, mod_path))
         });
 
-        let Some(path) = path else {
+        let Some((call_site, path)) = path else {
             return Ok(ExpandResult::only_err(ExpandError::other("malformed macro invocation")));
         };
-
-        let call_site = span_map.span_for_range(self.value.syntax().text_range());
 
         macro_call_as_call_id_with_eager(
             db,
             &AstIdWithPath::new(ast_id.file_id, ast_id.value, path),
-            call_site,
+            call_site.ctx,
             expands_to,
             krate,
             resolver,
@@ -1381,7 +1400,7 @@ impl<T: AstIdNode> AstIdWithPath<T> {
 fn macro_call_as_call_id(
     db: &dyn ExpandDatabase,
     call: &AstIdWithPath<ast::MacroCall>,
-    call_site: Span,
+    call_site: SyntaxContextId,
     expand_to: ExpandTo,
     krate: CrateId,
     resolver: impl Fn(path::ModPath) -> Option<MacroDefId> + Copy,
@@ -1393,7 +1412,7 @@ fn macro_call_as_call_id(
 fn macro_call_as_call_id_with_eager(
     db: &dyn ExpandDatabase,
     call: &AstIdWithPath<ast::MacroCall>,
-    call_site: Span,
+    call_site: SyntaxContextId,
     expand_to: ExpandTo,
     krate: CrateId,
     resolver: impl FnOnce(path::ModPath) -> Option<MacroDefId>,
@@ -1403,17 +1422,20 @@ fn macro_call_as_call_id_with_eager(
         resolver(call.path.clone()).ok_or_else(|| UnresolvedMacro { path: call.path.clone() })?;
 
     let res = match def.kind {
-        MacroDefKind::BuiltInEager(..) => {
-            let macro_call = InFile::new(call.ast_id.file_id, call.ast_id.to_node(db));
-            expand_eager_macro_input(db, krate, macro_call, def, call_site, &|path| {
-                eager_resolver(path).filter(MacroDefId::is_fn_like)
-            })
-        }
+        MacroDefKind::BuiltInEager(..) => expand_eager_macro_input(
+            db,
+            krate,
+            &call.ast_id.to_node(db),
+            call.ast_id,
+            def,
+            call_site,
+            &|path| eager_resolver(path).filter(MacroDefId::is_fn_like),
+        ),
         _ if def.is_fn_like() => ExpandResult {
-            value: Some(def.as_lazy_macro(
+            value: Some(def.make_call(
                 db,
                 krate,
-                MacroCallKind::FnLike { ast_id: call.ast_id, expand_to },
+                MacroCallKind::FnLike { ast_id: call.ast_id, expand_to, eager: None },
                 call_site,
             )),
             err: None,

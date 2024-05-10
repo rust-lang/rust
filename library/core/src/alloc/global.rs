@@ -24,10 +24,7 @@ use crate::ptr;
 /// use std::alloc::{GlobalAlloc, Layout};
 /// use std::cell::UnsafeCell;
 /// use std::ptr::null_mut;
-/// use std::sync::atomic::{
-///     AtomicUsize,
-///     Ordering::{Acquire, SeqCst},
-/// };
+/// use std::sync::atomic::{AtomicUsize, Ordering::Relaxed};
 ///
 /// const ARENA_SIZE: usize = 128 * 1024;
 /// const MAX_SUPPORTED_ALIGN: usize = 4096;
@@ -61,7 +58,7 @@ use crate::ptr;
 ///         let mut allocated = 0;
 ///         if self
 ///             .remaining
-///             .fetch_update(SeqCst, SeqCst, |mut remaining| {
+///             .fetch_update(Relaxed, Relaxed, |mut remaining| {
 ///                 if size > remaining {
 ///                     return None;
 ///                 }
@@ -81,7 +78,7 @@ use crate::ptr;
 ///
 /// fn main() {
 ///     let _s = format!("allocating a string!");
-///     let currently = ALLOCATOR.remaining.load(Acquire);
+///     let currently = ALLOCATOR.remaining.load(Relaxed);
 ///     println!("allocated so far: {}", ARENA_SIZE - currently);
 /// }
 /// ```

@@ -141,7 +141,7 @@ interpreter will explicitly tell you when it finds something unsupported:
 error: unsupported operation: can't call foreign function: bind
     ...
     = help: this is likely not a bug in the program; it indicates that the program \
-            performed an operation that the interpreter does not support
+            performed an operation that Miri does not support
 ```
 
 ### Cross-interpretation: running for different targets
@@ -224,8 +224,12 @@ degree documented below):
 - `s390x-unknown-linux-gnu` is supported as our "big-endian target of choice".
 - For every other target with OS `linux`, `macos`, or `windows`, Miri should generally work, but we
   make no promises and we don't run tests for such targets.
-- For targets on other operating systems, even basic operations such as printing to the standard
-  output might not work, and Miri might fail before even reaching the `main` function.
+- We have unofficial support (not maintained by the Miri team itself) for some further operating systems.
+  - `freebsd`: **maintainer wanted**. Supports `std::env` and parts of `std::{thread, fs}`, but not `std::sync`.
+  - `android`: **maintainer wanted**. Support very incomplete, but a basic "hello world" works.
+  - `illumos`: maintained by @devnexen. Support very incomplete, but a basic "hello world" works.
+  - `wasm`: **maintainer wanted**. Support very incomplete, not even standard output works, but an empty `main` function works.
+- For targets on other operating systems, Miri might fail before even reaching the `main` function.
 
 However, even for targets that we do support, the degree of support for accessing platform APIs
 (such as the file system) differs between targets: generally, Linux targets have the best support,
@@ -295,6 +299,16 @@ up the sysroot.  If you are using `miri` (the Miri driver) directly, see the
 Miri adds its own set of `-Z` flags, which are usually set via the `MIRIFLAGS`
 environment variable. We first document the most relevant and most commonly used flags:
 
+* `-Zmiri-address-reuse-rate=<rate>` changes the probability that a freed *non-stack* allocation
+  will be added to the pool for address reuse, and the probability that a new *non-stack* allocation
+  will be taken from the pool. Stack allocations never get added to or taken from the pool. The
+  default is `0.5`.
+* `-Zmiri-address-reuse-cross-thread-rate=<rate>` changes the probability that an allocation which
+  attempts to reuse a previously freed block of memory will also consider blocks freed by *other
+  threads*. The default is `0.1`, which means by default, in 90% of the cases where an address reuse
+  attempt is made, only addresses from the same thread will be considered. Reusing an address from
+  another thread induces synchronization between those threads, which can mask data races and weak
+  memory bugs.
 * `-Zmiri-compare-exchange-weak-failure-rate=<rate>` changes the failure rate of
   `compare_exchange_weak` operations. The default is `0.8` (so 4 out of 5 weak ops will fail).
   You can change it to any value between `0.0` and `1.0`, where `1.0` means it
@@ -311,6 +325,10 @@ environment variable. We first document the most relevant and most commonly used
 * `-Zmiri-env-forward=<var>` forwards the `var` environment variable to the interpreted program. Can
   be used multiple times to forward several variables. Execution will still be deterministic if the
   value of forwarded variables stays the same. Has no effect if `-Zmiri-disable-isolation` is set.
+* `-Zmiri-env-set=<var>=<value>` sets the `var` environment variable to `value` in the interpreted program.
+  It can be used to pass environment variables without needing to alter the host environment. It can
+  be used multiple times to set several variables. If `-Zmiri-disable-isolation` or `-Zmiri-env-forward`
+  is set, values set with this option will have priority over values from the host environment.
 * `-Zmiri-ignore-leaks` disables the memory leak checker, and also allows some
   remaining threads to exist when the main thread exits.
 * `-Zmiri-isolation-error=<action>` configures Miri's response to operations
@@ -324,7 +342,7 @@ environment variable. We first document the most relevant and most commonly used
   number of available CPUs is `1`. Note that this flag does not affect how miri handles threads in
   any way.
 * `-Zmiri-permissive-provenance` disables the warning for integer-to-pointer casts and
-  [`ptr::from_exposed_addr`](https://doc.rust-lang.org/nightly/std/ptr/fn.from_exposed_addr.html).
+  [`ptr::with_exposed_provenance`](https://doc.rust-lang.org/nightly/std/ptr/fn.with_exposed_provenance.html).
   This will necessarily miss some bugs as those operations are not efficiently and accurately
   implementable in a sanitizer, but it will only miss bugs that concern memory/pointers which is
   subject to these operations.
@@ -451,36 +469,32 @@ Some native rustc `-Z` flags are also very relevant for Miri:
 * `-Zmir-emit-retag` controls whether `Retag` statements are emitted. Miri
   enables this per default because it is needed for [Stacked Borrows] and [Tree Borrows].
 
-Moreover, Miri recognizes some environment variables:
+Moreover, Miri recognizes some environment variables (unless noted otherwise, these are supported
+by all intended entry points, i.e. `cargo miri` and `./miri {test,run}`):
 
 * `MIRI_AUTO_OPS` indicates whether the automatic execution of rustfmt, clippy and toolchain setup
   should be skipped. If it is set to `no`, they are skipped. This is used to allow automated IDE
   actions to avoid the auto ops.
 * `MIRI_LOG`, `MIRI_BACKTRACE` control logging and backtrace printing during
   Miri executions, also [see "Testing the Miri driver" in `CONTRIBUTING.md`][testing-miri].
-* `MIRIFLAGS` (recognized by `cargo miri` and the test suite) defines extra
-  flags to be passed to Miri.
-* `MIRI_LIB_SRC` defines the directory where Miri expects the sources of the
-  standard library that it will build and use for interpretation. This directory
-  must point to the `library` subdirectory of a `rust-lang/rust` repository
-  checkout.
-* `MIRI_SYSROOT` (recognized by `cargo miri` and the Miri driver) indicates the sysroot to use. When
-  using `cargo miri`, this skips the automatic setup -- only set this if you do not want to use the
-  automatically created sysroot. For directly invoking the Miri driver, this variable (or a
-  `--sysroot` flag) is mandatory. When invoking `cargo miri setup`, this indicates where the sysroot
-  will be put.
-* `MIRI_TEST_TARGET` (recognized by the test suite and the `./miri` script) indicates which target
+* `MIRIFLAGS` defines extra flags to be passed to Miri.
+* `MIRI_LIB_SRC` defines the directory where Miri expects the sources of the standard library that
+  it will build and use for interpretation. This directory must point to the `library` subdirectory
+  of a `rust-lang/rust` repository checkout.
+* `MIRI_SYSROOT` indicates the sysroot to use. When using `cargo miri`, this skips the automatic
+  setup -- only set this if you do not want to use the automatically created sysroot. When invoking
+  `cargo miri setup`, this indicates where the sysroot will be put.
+* `MIRI_TEST_TARGET` (recognized by `./miri {test,run}`) indicates which target
   architecture to test against.  `miri` and `cargo miri` accept the `--target` flag for the same
   purpose.
-* `MIRI_TEST_THREADS` (recognized by the test suite): set the number of threads to use for running tests.
-  By default the number of cores is used.
-* `MIRI_NO_STD` (recognized by `cargo miri`) makes sure that the target's sysroot is built without
-  libstd. This allows testing and running no_std programs.
-  (Miri has a heuristic to detect no-std targets based on the target name; this environment variable
-  is only needed when that heuristic fails.)
-* `RUSTC_BLESS` (recognized by the test suite and `cargo-miri-test/run-test.py`): overwrite all
+* `MIRI_TEST_THREADS` (recognized by `./miri test`): set the number of threads to use for running tests.
+  By default, the number of cores is used.
+* `MIRI_NO_STD` makes sure that the target's sysroot is built without libstd. This allows testing
+  and running no_std programs. (Miri has a heuristic to detect no-std targets based on the target
+  name; this environment variable is only needed when that heuristic fails.)
+* `RUSTC_BLESS` (recognized by `./miri test` and `cargo-miri-test/run-test.py`): overwrite all
   `stderr` and `stdout` files instead of checking whether the output matches.
-* `MIRI_SKIP_UI_CHECKS` (recognized by the test suite): don't check whether the
+* `MIRI_SKIP_UI_CHECKS` (recognized by `./miri test`): don't check whether the
   `stderr` or `stdout` files match the actual output.
 
 The following environment variables are *internal* and must not be used by
@@ -505,6 +519,10 @@ binaries, and as such worth documenting:
 * `MIRI_LOCAL_CRATES` is set by `cargo-miri` to tell the Miri driver which
   crates should be given special treatment in diagnostics, in addition to the
   crate currently being compiled.
+* `MIRI_ORIG_RUSTDOC` is set and read by different phases of `cargo-miri` to remember the
+  value of `RUSTDOC` from before it was overwritten.
+* `MIRI_REPLACE_LIBRS_IF_NOT_TEST` when set to any value enables a hack that helps bootstrap
+  run the standard library tests in Miri.
 * `MIRI_VERBOSE` when set to any value tells the various `cargo-miri` phases to
   perform verbose logging.
 * `MIRI_HOST_SYSROOT` is set by bootstrap to tell `cargo-miri` which sysroot to use for *host*
@@ -550,7 +568,8 @@ used according to their aliasing restrictions.
 
 ## Bugs found by Miri
 
-Miri has already found a number of bugs in the Rust standard library and beyond, which we collect here.
+Miri has already found a number of bugs in the Rust standard library and beyond, some of which we collect here.
+If Miri helped you find a subtle UB bug in your code, we'd appreciate a PR adding it to the list!
 
 Definite bugs found:
 
@@ -585,6 +604,7 @@ Definite bugs found:
 * [Deallocating with the wrong layout in new specializations for in-place `Iterator::collect`](https://github.com/rust-lang/rust/pull/118460)
 * [Incorrect offset computation for highly-aligned types in `portable-atomic-util`](https://github.com/taiki-e/portable-atomic/pull/138)
 * [Occasional memory leak in `std::mpsc` channels](https://github.com/rust-lang/rust/issues/121582) (original code in [crossbeam](https://github.com/crossbeam-rs/crossbeam/pull/1084))
+* [Weak-memory-induced memory leak in Windows thread-local storage](https://github.com/rust-lang/rust/pull/124281)
 
 Violations of [Stacked Borrows] found that are likely bugs (but Stacked Borrows is currently just an experiment):
 

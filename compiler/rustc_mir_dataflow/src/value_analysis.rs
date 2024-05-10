@@ -40,6 +40,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_index::bit_set::BitSet;
 use rustc_index::{IndexSlice, IndexVec};
+use rustc_middle::bug;
 use rustc_middle::mir::visit::{MutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -843,7 +844,7 @@ impl Map {
             self.value_count += 1;
         }
 
-        if let ty::Ref(_, ref_ty, _) | ty::RawPtr(ty::TypeAndMut { ty: ref_ty, .. }) = ty.kind()
+        if let ty::Ref(_, ref_ty, _) | ty::RawPtr(ref_ty, _) = ty.kind()
             && let ty::Slice(..) = ref_ty.kind()
         {
             assert!(self.places[place].value_index.is_none(), "slices are not scalars");

@@ -1462,28 +1462,6 @@ fn f() {
 }
 
 #[test]
-fn trait_impl_in_synstructure_const() {
-    check_types(
-        r#"
-struct S;
-
-trait Tr {
-    fn method(&self) -> u16;
-}
-
-const _DERIVE_Tr_: () = {
-    impl Tr for S {}
-};
-
-fn f() {
-    S.method();
-  //^^^^^^^^^^ u16
-}
-    "#,
-    );
-}
-
-#[test]
 fn inherent_impl_in_unnamed_const() {
     check_types(
         r#"
@@ -1795,6 +1773,21 @@ fn test() {
     );
 }
 
+#[test]
+fn deref_into_inference_var() {
+    check_types(
+        r#"
+//- minicore:deref
+struct A<T>(T);
+impl core::ops::Deref for A<u32> {}
+impl A<i32> { fn foo(&self) {} }
+fn main() {
+    A(0).foo();
+  //^^^^^^^^^^ ()
+}
+"#,
+    );
+}
 #[test]
 fn receiver_adjustment_autoref() {
     check(

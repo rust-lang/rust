@@ -189,6 +189,7 @@ mod no_sync {
     use super::Mode;
     use std::cell::RefCell;
 
+    #[doc(no_inline)]
     pub use std::cell::RefMut as LockGuard;
 
     pub struct Lock<T>(RefCell<T>);

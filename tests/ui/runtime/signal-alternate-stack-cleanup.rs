@@ -3,7 +3,7 @@
 // main thread exit while still being in use by signal handlers. This test
 // triggers this situation by sending signal from atexit handler.
 //
-//@ ignore-wasm32-bare no libc
+//@ ignore-wasm32 no signals
 //@ ignore-windows
 //@ ignore-sgx no libc
 //@ ignore-vxworks no SIGWINCH in user space

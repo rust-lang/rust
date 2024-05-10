@@ -15,7 +15,6 @@ pub(crate) fn prepare(dirs: &Dirs) {
     RelPath::DOWNLOAD.ensure_exists(dirs);
     crate::tests::RAND_REPO.fetch(dirs);
     crate::tests::REGEX_REPO.fetch(dirs);
-    crate::tests::PORTABLE_SIMD_REPO.fetch(dirs);
 }
 
 pub(crate) fn prepare_stdlib(dirs: &Dirs, rustc: &Path) {

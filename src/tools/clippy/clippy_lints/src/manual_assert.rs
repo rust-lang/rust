@@ -1,12 +1,10 @@
-use crate::rustc_lint::LintContext;
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::macros::root_macro_call;
-use clippy_utils::{is_else_clause, peel_blocks_with_stmt, span_extract_comment, sugg};
+use clippy_utils::macros::{is_panic, root_macro_call};
+use clippy_utils::{is_else_clause, is_parent_stmt, peel_blocks_with_stmt, span_extract_comment, sugg};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, UnOp};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::declare_lint_pass;
-use rustc_span::sym;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -42,7 +40,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualAssert {
             && !expr.span.from_expansion()
             && let then = peel_blocks_with_stmt(then)
             && let Some(macro_call) = root_macro_call(then.span)
-            && cx.tcx.item_name(macro_call.def_id) == sym::panic
+            && is_panic(cx, macro_call.def_id)
             && !cx.tcx.sess.source_map().is_multiline(cond.span)
             && let Ok(panic_snippet) = cx.sess().source_map().span_to_snippet(macro_call.span)
             && let Some(panic_snippet) = panic_snippet.strip_suffix(')')
@@ -63,7 +61,8 @@ impl<'tcx> LateLintPass<'tcx> for ManualAssert {
                 _ => (cond, "!"),
             };
             let cond_sugg = sugg::Sugg::hir_with_applicability(cx, cond, "..", &mut applicability).maybe_par();
-            let sugg = format!("assert!({not}{cond_sugg}, {format_args_snip});");
+            let semicolon = if is_parent_stmt(cx, expr.hir_id) { ";" } else { "" };
+            let sugg = format!("assert!({not}{cond_sugg}, {format_args_snip}){semicolon}");
             // we show to the user the suggestion without the comments, but when applying the fix, include the
             // comments in the block
             span_lint_and_then(

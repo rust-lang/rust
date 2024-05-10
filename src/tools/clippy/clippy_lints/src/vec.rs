@@ -7,9 +7,9 @@ use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::is_copy;
 use clippy_utils::visitors::for_each_local_use_after_expr;
-use clippy_utils::{get_parent_expr, higher, is_trait_method};
+use clippy_utils::{get_parent_expr, higher, is_in_test, is_trait_method};
 use rustc_errors::Applicability;
-use rustc_hir::{BorrowKind, Expr, ExprKind, HirId, Local, Mutability, Node, Pat, PatKind};
+use rustc_hir::{BorrowKind, Expr, ExprKind, HirId, LetStmt, Mutability, Node, Pat, PatKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_middle::ty::layout::LayoutOf;
@@ -22,6 +22,7 @@ pub struct UselessVec {
     pub too_large_for_stack: u64,
     pub msrv: Msrv,
     pub span_to_lint_map: BTreeMap<Span, Option<(HirId, SuggestedType, String, Applicability)>>,
+    pub allow_in_test: bool,
 }
 
 declare_clippy_lint! {
@@ -57,13 +58,16 @@ impl<'tcx> LateLintPass<'tcx> for UselessVec {
         let Some(vec_args) = higher::VecArgs::hir(cx, expr.peel_borrows()) else {
             return;
         };
+        if self.allow_in_test && is_in_test(cx.tcx, expr.hir_id) {
+            return;
+        };
         // the parent callsite of this `vec!` expression, or span to the borrowed one such as `&vec!`
         let callsite = expr.span.parent_callsite().unwrap_or(expr.span);
 
         match cx.tcx.parent_hir_node(expr.hir_id) {
             // search for `let foo = vec![_]` expressions where all uses of `foo`
             // adjust to slices or call a method that exist on slices (e.g. len)
-            Node::Local(Local {
+            Node::LetStmt(LetStmt {
                 ty: None,
                 pat:
                     Pat {
@@ -93,7 +97,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessVec {
                 }
             },
             // if the local pattern has a specified type, do not lint.
-            Node::Local(Local { ty: Some(_), .. }) if higher::VecArgs::hir(cx, expr).is_some() => {
+            Node::LetStmt(LetStmt { ty: Some(_), .. }) if higher::VecArgs::hir(cx, expr).is_some() => {
                 self.span_to_lint_map.insert(callsite, None);
             },
             // search for `for _ in vec![...]`

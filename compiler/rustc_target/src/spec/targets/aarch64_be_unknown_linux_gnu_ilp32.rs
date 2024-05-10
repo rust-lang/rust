@@ -7,9 +7,14 @@ pub fn target() -> Target {
 
     Target {
         llvm_target: "aarch64_be-unknown-linux-gnu_ilp32".into(),
-        description: None,
+        metadata: crate::spec::TargetMetadata {
+            description: None,
+            tier: None,
+            host_tools: None,
+            std: None,
+        },
         pointer_width: 32,
-        data_layout: "E-m:e-p:32:32-i8:8:32-i16:16:32-i64:64-i128:128-n32:64-S128".into(),
+        data_layout: "E-m:e-p:32:32-i8:8:32-i16:16:32-i64:64-i128:128-n32:64-S128-Fn32".into(),
         arch: "aarch64".into(),
         options: TargetOptions {
             abi: "ilp32".into(),

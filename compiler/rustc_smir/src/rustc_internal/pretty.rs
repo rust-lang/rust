@@ -14,7 +14,7 @@ pub fn write_smir_pretty<'tcx, W: io::Write>(tcx: TyCtxt<'tcx>, w: &mut W) -> io
     )?;
     let _ = run(tcx, || {
         let items = stable_mir::all_local_items();
-        let _ = items.iter().map(|item| -> io::Result<()> { item.dump(w) }).collect::<Vec<_>>();
+        let _ = items.iter().map(|item| -> io::Result<()> { item.emit_mir(w) }).collect::<Vec<_>>();
     });
     Ok(())
 }

@@ -1,6 +1,9 @@
+//@aux-build:proc_macro_attr.rs
+
 #![allow(unused)]
 #![warn(clippy::empty_docs)]
 #![allow(clippy::mixed_attributes_style)]
+#![feature(extern_types)]
 
 mod outer {
     //!
@@ -65,5 +68,19 @@ mod outer {
         x: i32,
         ///
         y: i32,
+    }
+}
+
+mod issue_12377 {
+    use proc_macro_attr::with_empty_docs;
+
+    #[with_empty_docs]
+    extern "C" {
+        type Test;
+    }
+
+    #[with_empty_docs]
+    struct Foo {
+        a: u8,
     }
 }

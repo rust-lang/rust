@@ -340,13 +340,13 @@
 //! clear where a satisfying unambiguous semantics can be defined for Exposed Provenance.
 //! Furthermore, Exposed Provenance will not work (well) with tools like [Miri] and [CHERI].
 //!
-//! Exposed Provenance is provided by the [`expose_addr`] and [`from_exposed_addr`] methods, which
-//! are meant to replace `as` casts between pointers and integers. [`expose_addr`] is a lot like
+//! Exposed Provenance is provided by the [`expose_provenance`] and [`with_exposed_provenance`] methods,
+//! which are meant to replace `as` casts between pointers and integers. [`expose_provenance`] is a lot like
 //! [`addr`], but additionally adds the provenance of the pointer to a global list of 'exposed'
 //! provenances. (This list is purely conceptual, it exists for the purpose of specifying Rust but
-//! is not materialized in actual executions, except in tools like [Miri].) [`from_exposed_addr`]
+//! is not materialized in actual executions, except in tools like [Miri].) [`with_exposed_provenance`]
 //! can be used to construct a pointer with one of these previously 'exposed' provenances.
-//! [`from_exposed_addr`] takes only `addr: usize` as arguments, so unlike in [`with_addr`] there is
+//! [`with_exposed_provenance`] takes only `addr: usize` as arguments, so unlike in [`with_addr`] there is
 //! no indication of what the correct provenance for the returned pointer is -- and that is exactly
 //! what makes pointer-usize-pointer roundtrips so tricky to rigorously specify! There is no
 //! algorithm that decides which provenance will be used. You can think of this as "guessing" the
@@ -355,10 +355,10 @@
 //! there is *no* previously 'exposed' provenance that justifies the way the returned pointer will
 //! be used, the program has undefined behavior.
 //!
-//! Using [`expose_addr`] or [`from_exposed_addr`] (or the `as` casts) means that code is
+//! Using [`expose_provenance`] or [`with_exposed_provenance`] (or the `as` casts) means that code is
 //! *not* following Strict Provenance rules. The goal of the Strict Provenance experiment is to
-//! determine how far one can get in Rust without the use of [`expose_addr`] and
-//! [`from_exposed_addr`], and to encourage code to be written with Strict Provenance APIs only.
+//! determine how far one can get in Rust without the use of [`expose_provenance`] and
+//! [`with_exposed_provenance`], and to encourage code to be written with Strict Provenance APIs only.
 //! Maximizing the amount of such code is a major win for avoiding specification complexity and to
 //! facilitate adoption of tools like [CHERI] and [Miri] that can be a big help in increasing the
 //! confidence in (unsafe) Rust code.
@@ -374,8 +374,8 @@
 //! [`map_addr`]: pointer::map_addr
 //! [`addr`]: pointer::addr
 //! [`ptr::dangling`]: core::ptr::dangling
-//! [`expose_addr`]: pointer::expose_addr
-//! [`from_exposed_addr`]: from_exposed_addr
+//! [`expose_provenance`]: pointer::expose_provenance
+//! [`with_exposed_provenance`]: with_exposed_provenance
 //! [Miri]: https://github.com/rust-lang/miri
 //! [CHERI]: https://www.cl.cam.ac.uk/research/security/ctsrd/cheri/
 //! [Strict Provenance]: https://github.com/rust-lang/rust/issues/95228
@@ -388,10 +388,9 @@
 use crate::cmp::Ordering;
 use crate::fmt;
 use crate::hash;
-use crate::intrinsics::{
-    self, assert_unsafe_precondition, is_aligned_and_not_null, is_nonoverlapping,
-};
+use crate::intrinsics;
 use crate::marker::FnPtr;
+use crate::ub_checks;
 
 use crate::mem::{self, align_of, size_of, MaybeUninit};
 
@@ -582,7 +581,7 @@ pub const fn null_mut<T: ?Sized + Thin>() -> *mut T {
 /// little more than a usize address in disguise.
 ///
 /// This is different from `addr as *const T`, which creates a pointer that picks up a previously
-/// exposed provenance. See [`from_exposed_addr`] for more details on that operation.
+/// exposed provenance. See [`with_exposed_provenance`] for more details on that operation.
 ///
 /// This API and its claimed semantics are part of the Strict Provenance experiment,
 /// see the [module documentation][crate::ptr] for details.
@@ -593,7 +592,7 @@ pub const fn null_mut<T: ?Sized + Thin>() -> *mut T {
 pub const fn without_provenance<T>(addr: usize) -> *const T {
     // FIXME(strict_provenance_magic): I am magic and should be a compiler intrinsic.
     // We use transmute rather than a cast so tools like Miri can tell that this
-    // is *not* the same as from_exposed_addr.
+    // is *not* the same as with_exposed_provenance.
     // SAFETY: every valid integer is also a valid pointer (as long as you don't dereference that
     // pointer).
     unsafe { mem::transmute(addr) }
@@ -626,7 +625,7 @@ pub const fn dangling<T>() -> *const T {
 /// little more than a usize address in disguise.
 ///
 /// This is different from `addr as *mut T`, which creates a pointer that picks up a previously
-/// exposed provenance. See [`from_exposed_addr_mut`] for more details on that operation.
+/// exposed provenance. See [`with_exposed_provenance_mut`] for more details on that operation.
 ///
 /// This API and its claimed semantics are part of the Strict Provenance experiment,
 /// see the [module documentation][crate::ptr] for details.
@@ -637,7 +636,7 @@ pub const fn dangling<T>() -> *const T {
 pub const fn without_provenance_mut<T>(addr: usize) -> *mut T {
     // FIXME(strict_provenance_magic): I am magic and should be a compiler intrinsic.
     // We use transmute rather than a cast so tools like Miri can tell that this
-    // is *not* the same as from_exposed_addr.
+    // is *not* the same as with_exposed_provenance.
     // SAFETY: every valid integer is also a valid pointer (as long as you don't dereference that
     // pointer).
     unsafe { mem::transmute(addr) }
@@ -664,7 +663,7 @@ pub const fn dangling_mut<T>() -> *mut T {
 ///
 /// This is a more rigorously specified alternative to `addr as *const T`. The provenance of the
 /// returned pointer is that of *any* pointer that was previously exposed by passing it to
-/// [`expose_addr`][pointer::expose_addr], or a `ptr as usize` cast. In addition, memory which is
+/// [`expose_provenance`][pointer::expose_provenance], or a `ptr as usize` cast. In addition, memory which is
 /// outside the control of the Rust abstract machine (MMIO registers, for example) is always
 /// considered to be exposed, so long as this memory is disjoint from memory that will be used by
 /// the abstract machine such as the stack, heap, and statics.
@@ -700,7 +699,7 @@ pub const fn dangling_mut<T>() -> *mut T {
 #[unstable(feature = "exposed_provenance", issue = "95228")]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 #[allow(fuzzy_provenance_casts)] // this *is* the explicit provenance API one should use instead
-pub fn from_exposed_addr<T>(addr: usize) -> *const T
+pub fn with_exposed_provenance<T>(addr: usize) -> *const T
 where
     T: Sized,
 {
@@ -712,7 +711,7 @@ where
 ///
 /// This is a more rigorously specified alternative to `addr as *mut T`. The provenance of the
 /// returned pointer is that of *any* pointer that was previously passed to
-/// [`expose_addr`][pointer::expose_addr] or a `ptr as usize` cast. If there is no previously
+/// [`expose_provenance`][pointer::expose_provenance] or a `ptr as usize` cast. If there is no previously
 /// 'exposed' provenance that justifies the way this pointer will be used, the program has undefined
 /// behavior. Note that there is no algorithm that decides which provenance will be used. You can
 /// think of this as "guessing" the right provenance, and the guess will be "maximally in your
@@ -740,7 +739,7 @@ where
 #[unstable(feature = "exposed_provenance", issue = "95228")]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 #[allow(fuzzy_provenance_casts)] // this *is* the explicit provenance API one should use instead
-pub fn from_exposed_addr_mut<T>(addr: usize) -> *mut T
+pub fn with_exposed_provenance_mut<T>(addr: usize) -> *mut T
 where
     T: Sized,
 {
@@ -813,7 +812,7 @@ pub const fn from_mut<T: ?Sized>(r: &mut T) -> *mut T {
 #[rustc_allow_const_fn_unstable(ptr_metadata)]
 #[rustc_diagnostic_item = "ptr_slice_from_raw_parts"]
 pub const fn slice_from_raw_parts<T>(data: *const T, len: usize) -> *const [T] {
-    from_raw_parts(data.cast(), len)
+    intrinsics::aggregate_raw_ptr(data, len)
 }
 
 /// Forms a raw mutable slice from a pointer and a length.
@@ -859,7 +858,7 @@ pub const fn slice_from_raw_parts<T>(data: *const T, len: usize) -> *const [T] {
 #[rustc_const_unstable(feature = "const_slice_from_raw_parts_mut", issue = "67456")]
 #[rustc_diagnostic_item = "ptr_slice_from_raw_parts_mut"]
 pub const fn slice_from_raw_parts_mut<T>(data: *mut T, len: usize) -> *mut [T] {
-    from_raw_parts_mut(data.cast(), len)
+    intrinsics::aggregate_raw_ptr(data, len)
 }
 
 /// Swaps the values at two mutable locations of the same type, without
@@ -1019,7 +1018,7 @@ pub const unsafe fn swap_nonoverlapping<T>(x: *mut T, y: *mut T, count: usize) {
         };
     }
 
-    assert_unsafe_precondition!(
+    ub_checks::assert_unsafe_precondition!(
         check_language_ub,
         "ptr::swap_nonoverlapping requires that both pointer arguments are aligned and non-null \
         and the specified memory ranges do not overlap",
@@ -1030,9 +1029,9 @@ pub const unsafe fn swap_nonoverlapping<T>(x: *mut T, y: *mut T, count: usize) {
             align: usize = align_of::<T>(),
             count: usize = count,
         ) =>
-        is_aligned_and_not_null(x, align)
-            && is_aligned_and_not_null(y, align)
-            && is_nonoverlapping(x, y, size, count)
+        ub_checks::is_aligned_and_not_null(x, align)
+            && ub_checks::is_aligned_and_not_null(y, align)
+            && ub_checks::is_nonoverlapping(x, y, size, count)
     );
 
     // Split up the slice into small power-of-two-sized chunks that LLVM is able
@@ -1062,11 +1061,26 @@ const unsafe fn swap_nonoverlapping_simple_untyped<T>(x: *mut T, y: *mut T, coun
     let mut i = 0;
     while i < count {
         // SAFETY: By precondition, `i` is in-bounds because it's below `n`
-        let x = unsafe { &mut *x.add(i) };
+        let x = unsafe { x.add(i) };
         // SAFETY: By precondition, `i` is in-bounds because it's below `n`
         // and it's distinct from `x` since the ranges are non-overlapping
-        let y = unsafe { &mut *y.add(i) };
-        mem::swap_simple::<MaybeUninit<T>>(x, y);
+        let y = unsafe { y.add(i) };
+
+        // If we end up here, it's because we're using a simple type -- like
+        // a small power-of-two-sized thing -- or a special type with particularly
+        // large alignment, particularly SIMD types.
+        // Thus we're fine just reading-and-writing it, as either it's small
+        // and that works well anyway or it's special and the type's author
+        // presumably wanted things to be done in the larger chunk.
+
+        // SAFETY: we're only ever given pointers that are valid to read/write,
+        // including being aligned, and nothing here panics so it's drop-safe.
+        unsafe {
+            let a: MaybeUninit<T> = read(x);
+            let b: MaybeUninit<T> = read(y);
+            write(x, b);
+            write(y, a);
+        }
 
         i += 1;
     }
@@ -1114,23 +1128,22 @@ const unsafe fn swap_nonoverlapping_simple_untyped<T>(x: *mut T, y: *mut T, coun
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_replace", issue = "83164")]
 #[rustc_diagnostic_item = "ptr_replace"]
-pub const unsafe fn replace<T>(dst: *mut T, mut src: T) -> T {
+pub const unsafe fn replace<T>(dst: *mut T, src: T) -> T {
     // SAFETY: the caller must guarantee that `dst` is valid to be
     // cast to a mutable reference (valid for writes, aligned, initialized),
     // and cannot overlap `src` since `dst` must point to a distinct
     // allocated object.
     unsafe {
-        assert_unsafe_precondition!(
+        ub_checks::assert_unsafe_precondition!(
             check_language_ub,
             "ptr::replace requires that the pointer argument is aligned and non-null",
             (
                 addr: *const () = dst as *const (),
                 align: usize = align_of::<T>(),
-            ) => is_aligned_and_not_null(addr, align)
+            ) => ub_checks::is_aligned_and_not_null(addr, align)
         );
-        mem::swap(&mut *dst, &mut src); // cannot overlap
+        mem::replace(&mut *dst, src)
     }
-    src
 }
 
 /// Reads the value from `src` without moving it. This leaves the
@@ -1273,13 +1286,13 @@ pub const unsafe fn read<T>(src: *const T) -> T {
     // SAFETY: the caller must guarantee that `src` is valid for reads.
     unsafe {
         #[cfg(debug_assertions)] // Too expensive to always enable (for now?)
-        assert_unsafe_precondition!(
+        ub_checks::assert_unsafe_precondition!(
             check_language_ub,
             "ptr::read requires that the pointer argument is aligned and non-null",
             (
                 addr: *const () = src as *const (),
                 align: usize = align_of::<T>(),
-            ) => is_aligned_and_not_null(addr, align)
+            ) => ub_checks::is_aligned_and_not_null(addr, align)
         );
         crate::intrinsics::read_via_copy(src)
     }
@@ -1482,13 +1495,13 @@ pub const unsafe fn write<T>(dst: *mut T, src: T) {
     // to `dst` while `src` is owned by this function.
     unsafe {
         #[cfg(debug_assertions)] // Too expensive to always enable (for now?)
-        assert_unsafe_precondition!(
+        ub_checks::assert_unsafe_precondition!(
             check_language_ub,
             "ptr::write requires that the pointer argument is aligned and non-null",
             (
                 addr: *mut () = dst as *mut (),
                 align: usize = align_of::<T>(),
-            ) => is_aligned_and_not_null(addr, align)
+            ) => ub_checks::is_aligned_and_not_null(addr, align)
         );
         intrinsics::write_via_move(dst, src)
     }
@@ -1654,13 +1667,13 @@ pub const unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
 pub unsafe fn read_volatile<T>(src: *const T) -> T {
     // SAFETY: the caller must uphold the safety contract for `volatile_load`.
     unsafe {
-        assert_unsafe_precondition!(
+        ub_checks::assert_unsafe_precondition!(
             check_language_ub,
             "ptr::read_volatile requires that the pointer argument is aligned and non-null",
             (
                 addr: *const () = src as *const (),
                 align: usize = align_of::<T>(),
-            ) => is_aligned_and_not_null(addr, align)
+            ) => ub_checks::is_aligned_and_not_null(addr, align)
         );
         intrinsics::volatile_load(src)
     }
@@ -1733,13 +1746,13 @@ pub unsafe fn read_volatile<T>(src: *const T) -> T {
 pub unsafe fn write_volatile<T>(dst: *mut T, src: T) {
     // SAFETY: the caller must uphold the safety contract for `volatile_store`.
     unsafe {
-        assert_unsafe_precondition!(
+        ub_checks::assert_unsafe_precondition!(
             check_language_ub,
             "ptr::write_volatile requires that the pointer argument is aligned and non-null",
             (
                 addr: *mut () = dst as *mut (),
                 align: usize = align_of::<T>(),
-            ) => is_aligned_and_not_null(addr, align)
+            ) => ub_checks::is_aligned_and_not_null(addr, align)
         );
         intrinsics::volatile_store(dst, src);
     }
@@ -1768,9 +1781,10 @@ pub(crate) const unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usiz
     // FIXME(#75598): Direct use of these intrinsics improves codegen significantly at opt-level <=
     // 1, where the method versions of these operations are not inlined.
     use intrinsics::{
-        assume, cttz_nonzero, exact_div, mul_with_overflow, unchecked_rem, unchecked_shl,
-        unchecked_shr, unchecked_sub, wrapping_add, wrapping_mul, wrapping_sub,
+        assume, cttz_nonzero, exact_div, mul_with_overflow, unchecked_rem, unchecked_sub,
+        wrapping_add, wrapping_mul, wrapping_sub,
     };
+    use intrinsics::{unchecked_shl, unchecked_shr};
 
     /// Calculate multiplicative modular inverse of `x` modulo `m`.
     ///

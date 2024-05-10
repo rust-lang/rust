@@ -357,7 +357,7 @@ impl Printer<'_> {
                 wln!(self, "}}");
             }
             ModItem::Const(it) => {
-                let Const { name, visibility, type_ref, ast_id } = &self.tree[it];
+                let Const { name, visibility, type_ref, ast_id, has_body: _ } = &self.tree[it];
                 self.print_ast_id(ast_id.erase());
                 self.print_visibility(*visibility);
                 w!(self, "const ");
@@ -487,12 +487,12 @@ impl Printer<'_> {
                 }
             }
             ModItem::MacroCall(it) => {
-                let MacroCall { path, ast_id, expand_to, call_site } = &self.tree[it];
+                let MacroCall { path, ast_id, expand_to, ctxt } = &self.tree[it];
                 let _ = writeln!(
                     self,
-                    "// AstId: {:?}, Span: {}, ExpandTo: {:?}",
+                    "// AstId: {:?}, SyntaxContext: {}, ExpandTo: {:?}",
                     ast_id.erase().into_raw(),
-                    call_site,
+                    ctxt,
                     expand_to
                 );
                 wln!(self, "{}!(...);", path.display(self.db.upcast()));
@@ -526,7 +526,7 @@ impl Printer<'_> {
     }
 
     fn print_generic_params(&mut self, params: &GenericParams) {
-        if params.type_or_consts.is_empty() && params.lifetimes.is_empty() {
+        if params.is_empty() {
             return;
         }
 

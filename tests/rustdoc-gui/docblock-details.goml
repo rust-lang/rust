@@ -1,8 +1,8 @@
 // This ensures that the `<details>`/`<summary>` elements are displayed as expected.
+include: "utils.goml"
 go-to: "file://" + |DOC_PATH| + "/test_docs/details/struct.Details.html"
 show-text: true
-set-local-storage: {"rustdoc-theme": "dark", "rustdoc-use-system-theme": "false"}
-reload:
+call-function: ("switch-theme", {"theme": "dark"})
 
 // We first check that the headers in the `.top-doc` doc block still have their
 // bottom border.

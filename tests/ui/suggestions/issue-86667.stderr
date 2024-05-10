@@ -11,7 +11,7 @@ LL | async fn a<'a>(s1: &'a str, s2: &'a str) -> &'a str {
    |           ++++      ++           ++          ++
 
 error[E0106]: missing lifetime specifier
-  --> $DIR/issue-86667.rs:12:29
+  --> $DIR/issue-86667.rs:11:29
    |
 LL | fn b(s1: &str, s2: &str) -> &str {
    |          ----      ----     ^ expected named lifetime parameter
@@ -22,24 +22,6 @@ help: consider introducing a named lifetime parameter
 LL | fn b<'a>(s1: &'a str, s2: &'a str) -> &'a str {
    |     ++++      ++           ++          ++
 
-error: lifetime may not live long enough
-  --> $DIR/issue-86667.rs:8:5
-   |
-LL | async fn a(s1: &str, s2: &str) -> &str {
-   |                - let's call the lifetime of this reference `'1`
-LL |
-LL |     s1
-   |     ^^ returning this value requires that `'1` must outlive `'static`
-
-error: lifetime may not live long enough
-  --> $DIR/issue-86667.rs:14:5
-   |
-LL | fn b(s1: &str, s2: &str) -> &str {
-   |          - let's call the lifetime of this reference `'1`
-LL |
-LL |     s1
-   |     ^^ returning this value requires that `'1` must outlive `'static`
-
-error: aborting due to 4 previous errors
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0106`.

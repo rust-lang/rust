@@ -4,11 +4,8 @@
 use std::io;
 
 fn real_dispatch<T, F>(f: F) -> Result<(), io::Error>
-//~^ NOTE required by a bound in this
 where
     F: FnOnce(&mut UIView<T>) -> Result<(), io::Error> + Send + 'static,
-    //~^ NOTE required by this bound in `real_dispatch`
-    //~| NOTE required by a bound in `real_dispatch`
 {
     todo!()
 }
@@ -35,10 +32,10 @@ impl<'a, T: 'a> Handle<'a, T, UIView<'a, T>, Result<(), io::Error>> for TUIHandl
         F: FnOnce(&mut UIView<'a, T>) -> Result<(), io::Error> + Send + 'static,
     {
         real_dispatch(f)
-        //~^ ERROR expected a `FnOnce(&mut UIView<'_, T>)` closure, found `F`
-        //~| NOTE expected an `FnOnce(&mut UIView<'_, T>)` closure, found `F`
-        //~| NOTE expected a closure with arguments
-        //~| NOTE required by a bound introduced by this call
+        //~^ ERROR lifetime may not live long enough
+        //~| ERROR implementation of `FnOnce` is not general enough
+        //~| ERROR mismatched types
+        //
     }
 }
 

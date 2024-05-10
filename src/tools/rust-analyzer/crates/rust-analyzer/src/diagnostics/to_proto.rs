@@ -68,8 +68,13 @@ fn location(
     let range = {
         let position_encoding = snap.config.position_encoding();
         lsp_types::Range::new(
-            position(&position_encoding, span, span.line_start, span.column_start),
-            position(&position_encoding, span, span.line_end, span.column_end),
+            position(
+                &position_encoding,
+                span,
+                span.line_start,
+                span.column_start.saturating_sub(1),
+            ),
+            position(&position_encoding, span, span.line_end, span.column_end.saturating_sub(1)),
         )
     };
     lsp_types::Location::new(uri, range)
@@ -78,10 +83,10 @@ fn location(
 fn position(
     position_encoding: &PositionEncoding,
     span: &DiagnosticSpan,
-    line_offset: usize,
+    line_number: usize,
     column_offset_utf32: usize,
 ) -> lsp_types::Position {
-    let line_index = line_offset - span.line_start;
+    let line_index = line_number - span.line_start;
 
     let column_offset_encoded = match span.text.get(line_index) {
         // Fast path.
@@ -104,8 +109,8 @@ fn position(
     };
 
     lsp_types::Position {
-        line: (line_offset as u32).saturating_sub(1),
-        character: (column_offset_encoded as u32).saturating_sub(1),
+        line: (line_number as u32).saturating_sub(1),
+        character: column_offset_encoded as u32,
     }
 }
 
@@ -519,14 +524,13 @@ fn clippy_code_description(code: Option<&str>) -> Option<lsp_types::CodeDescript
 #[cfg(test)]
 #[cfg(not(windows))]
 mod tests {
-    use std::path::Path;
-
     use crate::{config::Config, global_state::GlobalState};
 
     use super::*;
 
     use expect_test::{expect_file, ExpectFile};
     use lsp_types::ClientCapabilities;
+    use paths::Utf8Path;
 
     fn check(diagnostics_json: &str, expect: ExpectFile) {
         check_with_config(DiagnosticsMapConfig::default(), diagnostics_json, expect)
@@ -534,7 +538,7 @@ mod tests {
 
     fn check_with_config(config: DiagnosticsMapConfig, diagnostics_json: &str, expect: ExpectFile) {
         let diagnostic: flycheck::Diagnostic = serde_json::from_str(diagnostics_json).unwrap();
-        let workspace_root: &AbsPath = Path::new("/test/").try_into().unwrap();
+        let workspace_root: &AbsPath = Utf8Path::new("/test/").try_into().unwrap();
         let (sender, _) = crossbeam_channel::unbounded();
         let state = GlobalState::new(
             sender,
@@ -542,7 +546,7 @@ mod tests {
                 workspace_root.to_path_buf(),
                 ClientCapabilities::default(),
                 Vec::new(),
-                false,
+                None,
             ),
         );
         let snap = state.snapshot();

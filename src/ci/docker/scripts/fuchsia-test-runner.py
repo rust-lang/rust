@@ -9,10 +9,8 @@ https://doc.rust-lang.org/stable/rustc/platform-support/fuchsia.html#aarch64-unk
 
 import argparse
 from dataclasses import dataclass
-import fcntl
 import glob
 import hashlib
-import io
 import json
 import os
 import platform
@@ -143,6 +141,14 @@ class TestEnvironment:
             return sys.stdout
         return subprocess.DEVNULL
 
+    def check_call(self, args, **kwargs):
+        self.log_info(f"Running: {' '.join(args)}")
+        return subprocess.check_call(args, **kwargs)
+
+    def check_output(self, args, **kwargs):
+        self.log_info(f"Running: {' '.join(args)}")
+        return subprocess.check_output(args, **kwargs)
+
     def ffx_daemon_log_path(self):
         return os.path.join(self.tmp_dir(), "ffx_daemon_log")
 
@@ -178,7 +184,7 @@ class TestEnvironment:
             )
 
         # Disable analytics
-        subprocess.check_call(
+        self.check_call(
             [
                 ffx_path,
                 "config",
@@ -197,7 +203,7 @@ class TestEnvironment:
             "test.experimental_structured_output": "true",
         }
         for key, value in configs.items():
-            subprocess.check_call(
+            self.check_call(
                 [
                     ffx_path,
                     "config",
@@ -222,7 +228,7 @@ class TestEnvironment:
         }
 
     def stop_ffx_isolation(self):
-        subprocess.check_call(
+        self.check_call(
             [
                 self.tool_path("ffx"),
                 "daemon",
@@ -265,7 +271,7 @@ class TestEnvironment:
         self.start_ffx_isolation()
 
         # Stop any running emulators (there shouldn't be any)
-        subprocess.check_call(
+        self.check_call(
             [
                 ffx_path,
                 "emu",
@@ -280,13 +286,13 @@ class TestEnvironment:
         # Look up the product bundle transfer manifest.
         self.log_info("Looking up the product bundle transfer manifest...")
         product_name = "minimal." + self.triple_to_arch(self.target)
-        fuchsia_version = "14.20230811.2.1"
+        fuchsia_version = "20.20240412.3.1"
 
-        # FIXME: We should be able to replace this with the machine parsable
-        # `ffx --machine json product lookup ...` once F15 is released.
-        out = subprocess.check_output(
+        out = self.check_output(
             [
                 ffx_path,
+                "--machine",
+                "json",
                 "product",
                 "lookup",
                 product_name,
@@ -300,16 +306,15 @@ class TestEnvironment:
 
         self.log_debug(out)
 
-        for line in io.BytesIO(out):
-            if line.startswith(b"gs://"):
-                transfer_manifest_url = line.rstrip()
-                break
-        else:
-            raise Exception("Unable to parse transfer manifest")
+        try:
+            transfer_manifest_url = json.loads(out)["transfer_manifest_url"]
+        except Exception as e:
+            print(e)
+            raise Exception("Unable to parse transfer manifest") from e
 
         # Download the product bundle.
         product_bundle_dir = os.path.join(self.tmp_dir(), 'product-bundle')
-        subprocess.check_call(
+        self.check_call(
             [
                 ffx_path,
                 "product",
@@ -325,7 +330,7 @@ class TestEnvironment:
 
         # Start emulator
         # FIXME: condition --accel hyper on target arch matching host arch
-        subprocess.check_call(
+        self.check_call(
             [
                 ffx_path,
                 "emu",
@@ -346,42 +351,52 @@ class TestEnvironment:
 
         # Create new package repo
         self.log_info("Creating package repo...")
-        subprocess.check_call(
-            [
-                self.tool_path("pm"),
-                "newrepo",
-                "-repo",
-                self.repo_dir(),
-            ],
-            stdout=self.subprocess_output(),
-            stderr=self.subprocess_output(),
-        )
-
-        # Add repo
-        subprocess.check_call(
+        self.check_call(
             [
                 ffx_path,
                 "repository",
-                "add-from-pm",
+                "create",
                 self.repo_dir(),
-                "--repository",
-                self.TEST_REPO_NAME,
             ],
             env=ffx_env,
             stdout=self.subprocess_output(),
             stderr=self.subprocess_output(),
         )
 
+        self.check_call(
+            [
+                ffx_path,
+                "repository",
+                "add-from-pm",
+                "--repository",
+                self.TEST_REPO_NAME,
+                self.repo_dir(),
+            ],
+            env=ffx_env,
+            stdout=self.subprocess_output(),
+            stderr=self.subprocess_output(),
+        )
+
+        # Write to file
+        self.write_to_file()
+
         # Start repository server
-        subprocess.check_call(
-            [ffx_path, "repository", "server", "start", "--address", "[::]:0"],
+        self.check_call(
+            [
+                ffx_path,
+                "repository",
+                "server",
+                "start",
+                "--address",
+                "[::]:0",
+            ],
             env=ffx_env,
             stdout=self.subprocess_output(),
             stderr=self.subprocess_output(),
         )
 
         # Register with newly-started emulator
-        subprocess.check_call(
+        self.check_call(
             [
                 ffx_path,
                 "target",
@@ -394,12 +409,6 @@ class TestEnvironment:
             stdout=self.subprocess_output(),
             stderr=self.subprocess_output(),
         )
-
-        # Create lockfiles
-        open(self.pm_lockfile_path(), "a").close()
-
-        # Write to file
-        self.write_to_file()
 
         self.log_info("Success! Your environment is ready to run tests.")
 
@@ -445,7 +454,6 @@ class TestEnvironment:
     meta/{package_name}.cm={package_dir}/meta/{package_name}.cm
     bin/{exe_name}={bin_path}
     lib/{libstd_name}={libstd_path}
-    lib/{libtest_name}={libtest_path}
     lib/ld.so.1={sdk_dir}/arch/{target_arch}/sysroot/dist/lib/ld.so.1
     lib/libfdio.so={sdk_dir}/arch/{target_arch}/dist/libfdio.so
     """
@@ -482,9 +490,6 @@ class TestEnvironment:
         if not libstd_paths:
             raise Exception(f"Failed to locate libstd (in {self.rustlibs_dir()})")
 
-        if not libtest_paths:
-            raise Exception(f"Failed to locate libtest (in {self.rustlibs_dir()})")
-
         # Build a unique, deterministic name for the test using the name of the
         # binary and the last 6 hex digits of the hash of the full path
         def path_checksum(path):
@@ -500,6 +505,7 @@ class TestEnvironment:
         cml_path = os.path.join(package_dir, "meta", f"{package_name}.cml")
         cm_path = os.path.join(package_dir, "meta", f"{package_name}.cm")
         manifest_path = os.path.join(package_dir, f"{package_name}.manifest")
+        manifest_json_path = os.path.join(package_dir, "package_manifest.json")
         far_path = os.path.join(package_dir, f"{package_name}-0.far")
 
         shared_libs = args.shared_libs[: args.n]
@@ -522,22 +528,6 @@ class TestEnvironment:
                 log_file.flush()
 
             log(f"Bin path: {bin_path}")
-
-            log("Setting up package...")
-
-            # Set up package
-            subprocess.check_call(
-                [
-                    self.tool_path("pm"),
-                    "-o",
-                    package_dir,
-                    "-n",
-                    package_name,
-                    "init",
-                ],
-                stdout=log_file,
-                stderr=log_file,
-            )
 
             log("Writing CML...")
 
@@ -563,7 +553,7 @@ class TestEnvironment:
 
             log("Compiling CML...")
 
-            subprocess.check_call(
+            self.check_call(
                 [
                     self.tool_path("cmc"),
                     "compile",
@@ -590,38 +580,61 @@ class TestEnvironment:
                         target=self.target,
                         sdk_dir=self.sdk_dir,
                         libstd_name=os.path.basename(libstd_paths[0]),
-                        libtest_name=os.path.basename(libtest_paths[0]),
                         libstd_path=libstd_paths[0],
-                        libtest_path=libtest_paths[0],
                         target_arch=self.triple_to_arch(self.target),
                     )
                 )
+                # `libtest`` was historically a shared library, but now seems to be (sometimes?)
+                # statically linked. If we find it as a shared library, include it in the manifest.
+                if libtest_paths:
+                    manifest.write(
+                        f"lib/{os.path.basename(libtest_paths[0])}={libtest_paths[0]}\n"
+                    )
                 for shared_lib in shared_libs:
                     manifest.write(f"lib/{os.path.basename(shared_lib)}={shared_lib}\n")
 
+            log("Determining API level...")
+            out = self.check_output(
+                [
+                    self.tool_path("ffx"),
+                    "--machine",
+                    "json",
+                    "version",
+                ],
+                env=self.ffx_cmd_env(),
+                stderr=log_file,
+            )
+            api_level = json.loads(out)["tool_version"]["api_level"]
+
             log("Compiling and archiving manifest...")
 
-            subprocess.check_call(
+            self.check_call(
                 [
-                    self.tool_path("pm"),
+                    self.tool_path("ffx"),
+                    "package",
+                    "build",
+                    manifest_path,
                     "-o",
                     package_dir,
-                    "-m",
-                    manifest_path,
-                    "build",
+                    "--api-level",
+                    str(api_level),
                 ],
+                env=self.ffx_cmd_env(),
                 stdout=log_file,
                 stderr=log_file,
             )
-            subprocess.check_call(
+
+            self.check_call(
                 [
-                    self.tool_path("pm"),
-                    "-o",
-                    package_dir,
-                    "-m",
-                    manifest_path,
+                    self.tool_path("ffx"),
+                    "package",
                     "archive",
+                    "create",
+                    "-o",
+                    far_path,
+                    manifest_json_path,
                 ],
+                env=self.ffx_cmd_env(),
                 stdout=log_file,
                 stderr=log_file,
             )
@@ -629,25 +642,18 @@ class TestEnvironment:
             log("Publishing package to repo...")
 
             # Publish package to repo
-            with open(self.pm_lockfile_path(), "w") as pm_lockfile:
-                fcntl.lockf(pm_lockfile.fileno(), fcntl.LOCK_EX)
-                subprocess.check_call(
-                    [
-                        self.tool_path("pm"),
-                        "publish",
-                        "-a",
-                        "-repo",
-                        self.repo_dir(),
-                        "-f",
-                        far_path,
-                    ],
-                    stdout=log_file,
-                    stderr=log_file,
-                )
-                # This lock should be released automatically when the pm
-                # lockfile is closed, but we'll be polite and unlock it now
-                # since the spec leaves some wiggle room.
-                fcntl.lockf(pm_lockfile.fileno(), fcntl.LOCK_UN)
+            self.check_call(
+                [
+                    self.tool_path("ffx"),
+                    "repository",
+                    "publish",
+                    "--package",
+                    os.path.join(package_dir, "package_manifest.json"),
+                    self.repo_dir(),
+                ],
+                stdout=log_file,
+                stderr=log_file,
+            )
 
             log("Running ffx test...")
 
@@ -765,7 +771,7 @@ class TestEnvironment:
 
         # Shut down the emulator
         self.log_info("Stopping emulator...")
-        subprocess.check_call(
+        self.check_call(
             [
                 self.tool_path("ffx"),
                 "emu",

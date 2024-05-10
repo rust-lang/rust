@@ -8,15 +8,15 @@ use rustc_span::symbol::sym;
 use rustc_span::Span;
 use thin_vec::thin_vec;
 
-pub fn expand_deriving_partial_eq(
-    cx: &mut ExtCtxt<'_>,
+pub(crate) fn expand_deriving_partial_eq(
+    cx: &ExtCtxt<'_>,
     span: Span,
     mitem: &MetaItem,
     item: &Annotatable,
     push: &mut dyn FnMut(Annotatable),
     is_const: bool,
 ) {
-    fn cs_eq(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>) -> BlockOrExpr {
+    fn cs_eq(cx: &ExtCtxt<'_>, span: Span, substr: &Substructure<'_>) -> BlockOrExpr {
         let base = true;
         let expr = cs_fold(
             true, // use foldl
@@ -31,7 +31,7 @@ pub fn expand_deriving_partial_eq(
                     };
 
                     // We received arguments of type `&T`. Convert them to type `T` by stripping
-                    // any leading `&` or adding `*`. This isn't necessary for type checking, but
+                    // any leading `&`. This isn't necessary for type checking, but
                     // it results in better error messages if something goes wrong.
                     //
                     // Note: for arguments that look like `&{ x }`, which occur with packed
@@ -53,8 +53,7 @@ pub fn expand_deriving_partial_eq(
                                 inner.clone()
                             }
                         } else {
-                            // No leading `&`: add a leading `*`.
-                            cx.expr_deref(field.span, expr.clone())
+                            expr.clone()
                         }
                     };
                     cx.expr_binary(

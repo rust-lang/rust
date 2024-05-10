@@ -1,8 +1,6 @@
 # Tests that raw-dylib cross compilation works correctly
 
-# only-gnu
-# needs-i686-dlltool
-# needs-x86_64-dlltool
+# needs-dlltool
 
 # i686 dlltool.exe can't product x64 binaries.
 # ignore-i686-pc-windows-gnu

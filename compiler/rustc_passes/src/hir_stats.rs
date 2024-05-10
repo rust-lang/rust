@@ -264,7 +264,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         hir_visit::walk_foreign_item(self, i)
     }
 
-    fn visit_local(&mut self, l: &'v hir::Local<'v>) {
+    fn visit_local(&mut self, l: &'v hir::LetStmt<'v>) {
         self.record("Local", Id::Node(l.hir_id), l);
         hir_visit::walk_local(self, l)
     }
@@ -277,7 +277,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
     fn visit_stmt(&mut self, s: &'v hir::Stmt<'v>) {
         record_variants!(
             (self, s, s.kind, Id::Node(s.hir_id), hir, Stmt, StmtKind),
-            [Local, Item, Expr, Semi]
+            [Let, Item, Expr, Semi]
         );
         hir_visit::walk_stmt(self, s)
     }
@@ -300,6 +300,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
                 Path,
                 Tuple,
                 Box,
+                Deref,
                 Ref,
                 Lit,
                 Range,
@@ -351,6 +352,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
                 TraitObject,
                 Typeof,
                 Infer,
+                Pat,
                 Err
             ]
         );
@@ -387,7 +389,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         hir_visit::walk_fn(self, fk, fd, b, id)
     }
 
-    fn visit_use(&mut self, p: &'v hir::UsePath<'v>, hir_id: hir::HirId) {
+    fn visit_use(&mut self, p: &'v hir::UsePath<'v>, hir_id: HirId) {
         // This is `visit_use`, but the type is `Path` so record it that way.
         self.record("Path", Id::None, p);
         hir_visit::walk_use(self, p, hir_id)
@@ -460,7 +462,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         hir_visit::walk_lifetime(self, lifetime)
     }
 
-    fn visit_path(&mut self, path: &hir::Path<'v>, _id: hir::HirId) {
+    fn visit_path(&mut self, path: &hir::Path<'v>, _id: HirId) {
         self.record("Path", Id::None, path);
         hir_visit::walk_path(self, path)
     }
@@ -496,7 +498,7 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
             (self, i, i.kind, Id::None, ast, ForeignItem, ForeignItemKind),
             [Static, Fn, TyAlias, MacCall]
         );
-        ast_visit::walk_foreign_item(self, i)
+        ast_visit::walk_item(self, i)
     }
 
     fn visit_item(&mut self, i: &'v ast::Item) {
@@ -539,7 +541,7 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
     fn visit_stmt(&mut self, s: &'v ast::Stmt) {
         record_variants!(
             (self, s, s.kind, Id::None, ast, Stmt, StmtKind),
-            [Local, Item, Expr, Semi, Empty, MacCall]
+            [Let, Item, Expr, Semi, Empty, MacCall]
         );
         ast_visit::walk_stmt(self, s)
     }
@@ -566,6 +568,7 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
                 Path,
                 Tuple,
                 Box,
+                Deref,
                 Ref,
                 Lit,
                 Range,
@@ -609,6 +612,7 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
                 AnonStruct,
                 AnonUnion,
                 Path,
+                Pat,
                 TraitObject,
                 ImplTrait,
                 Paren,

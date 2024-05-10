@@ -6,7 +6,7 @@ use rustc_middle::mir::interpret::{InterpResult, PointerArithmetic, Scalar};
 use rustc_middle::mir::CastKind;
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::layout::{IntegerExt, LayoutOf, TyAndLayout};
-use rustc_middle::ty::{self, FloatTy, Ty, TypeAndMut};
+use rustc_middle::ty::{self, FloatTy, Ty};
 use rustc_target::abi::Integer;
 use rustc_type_ir::TyKind::*;
 
@@ -34,15 +34,15 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.unsize_into(src, cast_layout, dest)?;
             }
 
-            CastKind::PointerExposeAddress => {
+            CastKind::PointerExposeProvenance => {
                 let src = self.read_immediate(src)?;
-                let res = self.pointer_expose_address_cast(&src, cast_layout)?;
+                let res = self.pointer_expose_provenance_cast(&src, cast_layout)?;
                 self.write_immediate(*res, dest)?;
             }
 
-            CastKind::PointerFromExposedAddress => {
+            CastKind::PointerWithExposedProvenance => {
                 let src = self.read_immediate(src)?;
-                let res = self.pointer_from_exposed_address_cast(&src, cast_layout)?;
+                let res = self.pointer_with_exposed_provenance_cast(&src, cast_layout)?;
                 self.write_immediate(*res, dest)?;
             }
 
@@ -225,12 +225,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
     }
 
-    pub fn pointer_expose_address_cast(
+    pub fn pointer_expose_provenance_cast(
         &mut self,
         src: &ImmTy<'tcx, M::Provenance>,
         cast_to: TyAndLayout<'tcx>,
     ) -> InterpResult<'tcx, ImmTy<'tcx, M::Provenance>> {
-        assert_matches!(src.layout.ty.kind(), ty::RawPtr(_) | ty::FnPtr(_));
+        assert_matches!(src.layout.ty.kind(), ty::RawPtr(_, _) | ty::FnPtr(_));
         assert!(cast_to.ty.is_integral());
 
         let scalar = src.to_scalar();
@@ -242,13 +242,13 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         Ok(ImmTy::from_scalar(self.cast_from_int_like(scalar, src.layout, cast_to.ty)?, cast_to))
     }
 
-    pub fn pointer_from_exposed_address_cast(
+    pub fn pointer_with_exposed_provenance_cast(
         &self,
         src: &ImmTy<'tcx, M::Provenance>,
         cast_to: TyAndLayout<'tcx>,
     ) -> InterpResult<'tcx, ImmTy<'tcx, M::Provenance>> {
         assert!(src.layout.ty.is_integral());
-        assert_matches!(cast_to.ty.kind(), ty::RawPtr(_));
+        assert_matches!(cast_to.ty.kind(), ty::RawPtr(_, _));
 
         // First cast to usize.
         let scalar = src.to_scalar();
@@ -393,6 +393,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let val = self.read_immediate(src)?;
                 if data_a.principal() == data_b.principal() {
                     // A NOP cast that doesn't actually change anything, should be allowed even with mismatching vtables.
+                    // (But currently mismatching vtables violate the validity invariant so UB is triggered anyway.)
                     return self.write_immediate(*val, dest);
                 }
                 let (old_data, old_vptr) = val.to_scalar_pair();
@@ -400,7 +401,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let old_vptr = old_vptr.to_pointer(self)?;
                 let (ty, old_trait) = self.get_ptr_vtable(old_vptr)?;
                 if old_trait != data_a.principal() {
-                    throw_ub_custom!(fluent::const_eval_upcast_mismatch);
+                    throw_ub!(InvalidVTableTrait {
+                        expected_trait: data_a,
+                        vtable_trait: old_trait,
+                    });
                 }
                 let new_vptr = self.get_vtable_ptr(ty, data_b.principal())?;
                 self.write_immediate(Immediate::new_dyn_trait(old_data, new_vptr, self), dest)
@@ -435,10 +439,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx> {
         trace!("Unsizing {:?} of type {} into {}", *src, src.layout.ty, cast_ty.ty);
         match (&src.layout.ty.kind(), &cast_ty.ty.kind()) {
-            (&ty::Ref(_, s, _), &ty::Ref(_, c, _) | &ty::RawPtr(TypeAndMut { ty: c, .. }))
-            | (&ty::RawPtr(TypeAndMut { ty: s, .. }), &ty::RawPtr(TypeAndMut { ty: c, .. })) => {
-                self.unsize_into_ptr(src, dest, *s, *c)
-            }
+            (&ty::Ref(_, s, _), &ty::Ref(_, c, _) | &ty::RawPtr(c, _))
+            | (&ty::RawPtr(s, _), &ty::RawPtr(c, _)) => self.unsize_into_ptr(src, dest, *s, *c),
             (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) => {
                 assert_eq!(def_a, def_b); // implies same number of fields
 

@@ -62,9 +62,11 @@ pub fn bolt_optimize(path: &Utf8Path, profile: &BoltProfile) -> anyhow::Result<(
         // Reorder basic blocks within functions
         .arg("-reorder-blocks=ext-tsp")
         // Reorder functions within the binary
-        .arg("-reorder-functions=hfsort+")
+        .arg("-reorder-functions=cdsort")
         // Split function code into hot and code regions
         .arg("-split-functions")
+        // Split using best available strategy (three-way splitting, Cache-Directed Sort)
+        .arg("-split-strategy=cdsplit")
         // Split as many basic blocks as possible
         .arg("-split-all-cold")
         // Move jump tables to a separate section

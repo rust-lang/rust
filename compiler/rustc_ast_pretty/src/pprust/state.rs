@@ -3,11 +3,12 @@
 //! Note that HIR pretty printing is layered on top of this crate.
 
 mod expr;
+mod fixup;
 mod item;
 
 use crate::pp::Breaks::{Consistent, Inconsistent};
 use crate::pp::{self, Breaks};
-use crate::pprust::state::expr::FixupContext;
+use crate::pprust::state::fixup::FixupContext;
 use ast::TraitBoundModifiers;
 use rustc_ast::attr::AttrIdGenerator;
 use rustc_ast::ptr::P;
@@ -15,9 +16,8 @@ use rustc_ast::token::{self, BinOpToken, CommentKind, Delimiter, Nonterminal, To
 use rustc_ast::tokenstream::{Spacing, TokenStream, TokenTree};
 use rustc_ast::util::classify;
 use rustc_ast::util::comments::{Comment, CommentStyle};
-use rustc_ast::util::parser;
 use rustc_ast::{self as ast, AttrArgs, AttrArgsEq, BlockCheckMode, PatKind};
-use rustc_ast::{attr, BindingAnnotation, ByRef, DelimArgs, RangeEnd, RangeSyntax, Term};
+use rustc_ast::{attr, BindingMode, ByRef, DelimArgs, RangeEnd, RangeSyntax, Term};
 use rustc_ast::{GenericArg, GenericBound, SelfKind};
 use rustc_ast::{InlineAsmOperand, InlineAsmRegOrRegClass};
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
@@ -893,7 +893,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
             token::Comma => ",".into(),
             token::Semi => ";".into(),
             token::Colon => ":".into(),
-            token::ModSep => "::".into(),
+            token::PathSep => "::".into(),
             token::RArrow => "->".into(),
             token::LArrow => "<-".into(),
             token::FatArrow => "=>".into(),
@@ -1150,8 +1150,17 @@ impl<'a> State<'a> {
                 }
                 self.print_type_bounds(bounds);
             }
-            ast::TyKind::ImplTrait(_, bounds) => {
+            ast::TyKind::ImplTrait(_, bounds, precise_capturing_args) => {
                 self.word_nbsp("impl");
+                if let Some((precise_capturing_args, ..)) = precise_capturing_args.as_deref() {
+                    self.word("use");
+                    self.word("<");
+                    self.commasep(Inconsistent, precise_capturing_args, |s, arg| match arg {
+                        ast::PreciseCapturingArg::Arg(p, _) => s.print_path(p, false, 0),
+                        ast::PreciseCapturingArg::Lifetime(lt) => s.print_lifetime(*lt),
+                    });
+                    self.word(">")
+                }
                 self.print_type_bounds(bounds);
             }
             ast::TyKind::Array(ty, length) => {
@@ -1188,6 +1197,11 @@ impl<'a> State<'a> {
             ast::TyKind::CVarArgs => {
                 self.word("...");
             }
+            ast::TyKind::Pat(ty, pat) => {
+                self.print_type(ty);
+                self.word(" is ");
+                self.print_pat(pat);
+            }
         }
         self.end();
     }
@@ -1212,7 +1226,7 @@ impl<'a> State<'a> {
     fn print_stmt(&mut self, st: &ast::Stmt) {
         self.maybe_print_comment(st.span.lo());
         match &st.kind {
-            ast::StmtKind::Local(loc) => {
+            ast::StmtKind::Let(loc) => {
                 self.print_outer_attributes(&loc.attrs);
                 self.space_if_not_bol();
                 self.ibox(INDENT_UNIT);
@@ -1238,22 +1252,14 @@ impl<'a> State<'a> {
             ast::StmtKind::Item(item) => self.print_item(item),
             ast::StmtKind::Expr(expr) => {
                 self.space_if_not_bol();
-                self.print_expr_outer_attr_style(
-                    expr,
-                    false,
-                    FixupContext { stmt: true, ..FixupContext::default() },
-                );
+                self.print_expr_outer_attr_style(expr, false, FixupContext::new_stmt());
                 if classify::expr_requires_semi_to_be_stmt(expr) {
                     self.word(";");
                 }
             }
             ast::StmtKind::Semi(expr) => {
                 self.space_if_not_bol();
-                self.print_expr_outer_attr_style(
-                    expr,
-                    false,
-                    FixupContext { stmt: true, ..FixupContext::default() },
-                );
+                self.print_expr_outer_attr_style(expr, false, FixupContext::new_stmt());
                 self.word(";");
             }
             ast::StmtKind::Empty => {
@@ -1305,11 +1311,7 @@ impl<'a> State<'a> {
                 ast::StmtKind::Expr(expr) if i == blk.stmts.len() - 1 => {
                     self.maybe_print_comment(st.span.lo());
                     self.space_if_not_bol();
-                    self.print_expr_outer_attr_style(
-                        expr,
-                        false,
-                        FixupContext { stmt: true, ..FixupContext::default() },
-                    );
+                    self.print_expr_outer_attr_style(expr, false, FixupContext::new_stmt());
                     self.maybe_print_trailing_comment(expr.span, Some(blk.span.hi()));
                 }
                 _ => self.print_stmt(st),
@@ -1353,8 +1355,7 @@ impl<'a> State<'a> {
         self.word_space("=");
         self.print_expr_cond_paren(
             expr,
-            fixup.parenthesize_exterior_struct_lit && parser::contains_exterior_struct_lit(expr)
-                || parser::needs_par_as_let_scrutinee(expr.precedence().order()),
+            fixup.needs_par_as_let_scrutinee(expr),
             FixupContext::default(),
         );
     }
@@ -1544,12 +1545,15 @@ impl<'a> State<'a> {
         match &pat.kind {
             PatKind::Wild => self.word("_"),
             PatKind::Never => self.word("!"),
-            PatKind::Ident(BindingAnnotation(by_ref, mutbl), ident, sub) => {
-                if *by_ref == ByRef::Yes {
-                    self.word_nbsp("ref");
-                }
+            PatKind::Ident(BindingMode(by_ref, mutbl), ident, sub) => {
                 if mutbl.is_mut() {
                     self.word_nbsp("mut");
+                }
+                if let ByRef::Yes(rmutbl) = by_ref {
+                    self.word_nbsp("ref");
+                    if rmutbl.is_mut() {
+                        self.word_nbsp("mut");
+                    }
                 }
                 self.print_ident(*ident);
                 if let Some(p) = sub {
@@ -1626,12 +1630,18 @@ impl<'a> State<'a> {
                 self.word("box ");
                 self.print_pat(inner);
             }
+            PatKind::Deref(inner) => {
+                self.word("deref!");
+                self.popen();
+                self.print_pat(inner);
+                self.pclose();
+            }
             PatKind::Ref(inner, mutbl) => {
                 self.word("&");
                 if mutbl.is_mut() {
                     self.word("mut ");
                 }
-                if let PatKind::Ident(ast::BindingAnnotation::MUT, ..) = inner.kind {
+                if let PatKind::Ident(ast::BindingMode::MUT, ..) = inner.kind {
                     self.popen();
                     self.print_pat(inner);
                     self.pclose();

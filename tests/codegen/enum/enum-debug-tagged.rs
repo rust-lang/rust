@@ -2,6 +2,7 @@
 // This is ignored for the fallback mode on MSVC due to problems with PDB.
 
 //@ ignore-msvc
+//@ ignore-wasi wasi codegens the main symbol differently
 
 //@ compile-flags: -g -C no-prepopulate-passes
 

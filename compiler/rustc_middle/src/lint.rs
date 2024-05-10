@@ -4,6 +4,7 @@ use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_errors::{Diag, DiagMessage, MultiSpan};
 use rustc_hir::{HirId, ItemLocalId};
+use rustc_macros::HashStable;
 use rustc_session::lint::{
     builtin::{self, FORBIDDEN_LINT_GROUPS},
     FutureIncompatibilityReason, Level, Lint, LintId,
@@ -398,8 +399,22 @@ pub fn lint_level(
             }
         }
 
-        // Finally, run `decorate`.
-        decorate(&mut err);
+        // Finally, run `decorate`. `decorate` can call `trimmed_path_str` (directly or indirectly),
+        // so we need to make sure when we do call `decorate` that the diagnostic is eventually
+        // emitted or we'll get a `must_produce_diag` ICE.
+        //
+        // When is a diagnostic *eventually* emitted? Well, that is determined by 2 factors:
+        // 1. If the corresponding `rustc_errors::Level` is beyond warning, i.e. `ForceWarning(_)`
+        //    or `Error`, then the diagnostic will be emitted regardless of CLI options.
+        // 2. If the corresponding `rustc_errors::Level` is warning, then that can be affected by
+        //    `-A warnings` or `--cap-lints=xxx` on the command line. In which case, the diagnostic
+        //    will be emitted if `can_emit_warnings` is true.
+        let skip = err_level == rustc_errors::Level::Warning && !sess.dcx().can_emit_warnings();
+
+        if !skip {
+            decorate(&mut err);
+        }
+
         explain_lint_level_source(lint, level, src, &mut err);
         err.emit()
     }

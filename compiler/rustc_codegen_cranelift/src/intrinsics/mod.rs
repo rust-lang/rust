@@ -26,6 +26,7 @@ use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{sym, Symbol};
 
 pub(crate) use self::llvm::codegen_llvm_intrinsic_call;
+use crate::cast::clif_intcast;
 use crate::prelude::*;
 
 fn bug_on_incorrect_arg_count(intrinsic: impl std::fmt::Display) -> ! {
@@ -341,6 +342,8 @@ fn codegen_float_intrinsic_call<'tcx>(
         sym::roundf64 => ("round", 1, fx.tcx.types.f64, types::F64),
         sym::roundevenf32 => ("roundevenf", 1, fx.tcx.types.f32, types::F32),
         sym::roundevenf64 => ("roundeven", 1, fx.tcx.types.f64, types::F64),
+        sym::nearbyintf32 => ("nearbyintf", 1, fx.tcx.types.f32, types::F32),
+        sym::nearbyintf64 => ("nearbyint", 1, fx.tcx.types.f64, types::F64),
         sym::sinf32 => ("sinf", 1, fx.tcx.types.f32, types::F32),
         sym::sinf64 => ("sin", 1, fx.tcx.types.f64, types::F64),
         sym::cosf32 => ("cosf", 1, fx.tcx.types.f32, types::F32),
@@ -392,6 +395,8 @@ fn codegen_float_intrinsic_call<'tcx>(
         | sym::ceilf64
         | sym::truncf32
         | sym::truncf64
+        | sym::nearbyintf32
+        | sym::nearbyintf64
         | sym::sqrtf32
         | sym::sqrtf64 => {
             let val = match intrinsic {
@@ -399,6 +404,7 @@ fn codegen_float_intrinsic_call<'tcx>(
                 sym::floorf32 | sym::floorf64 => fx.bcx.ins().floor(args[0]),
                 sym::ceilf32 | sym::ceilf64 => fx.bcx.ins().ceil(args[0]),
                 sym::truncf32 | sym::truncf64 => fx.bcx.ins().trunc(args[0]),
+                sym::nearbyintf32 | sym::nearbyintf64 => fx.bcx.ins().nearest(args[0]),
                 sym::sqrtf32 | sym::sqrtf64 => fx.bcx.ins().sqrt(args[0]),
                 _ => unreachable!(),
             };
@@ -622,7 +628,8 @@ fn codegen_regular_intrinsic_call<'tcx>(
 
             // FIXME trap on `ctlz_nonzero` with zero arg.
             let res = fx.bcx.ins().clz(val);
-            let res = CValue::by_val(res, arg.layout());
+            let res = clif_intcast(fx, res, types::I32, false);
+            let res = CValue::by_val(res, ret.layout());
             ret.write_cvalue(fx, res);
         }
         sym::cttz | sym::cttz_nonzero => {
@@ -631,7 +638,8 @@ fn codegen_regular_intrinsic_call<'tcx>(
 
             // FIXME trap on `cttz_nonzero` with zero arg.
             let res = fx.bcx.ins().ctz(val);
-            let res = CValue::by_val(res, arg.layout());
+            let res = clif_intcast(fx, res, types::I32, false);
+            let res = CValue::by_val(res, ret.layout());
             ret.write_cvalue(fx, res);
         }
         sym::ctpop => {
@@ -639,7 +647,8 @@ fn codegen_regular_intrinsic_call<'tcx>(
             let val = arg.load_scalar(fx);
 
             let res = fx.bcx.ins().popcnt(val);
-            let res = CValue::by_val(res, arg.layout());
+            let res = clif_intcast(fx, res, types::I32, false);
+            let res = CValue::by_val(res, ret.layout());
             ret.write_cvalue(fx, res);
         }
         sym::bitreverse => {
@@ -728,8 +737,10 @@ fn codegen_regular_intrinsic_call<'tcx>(
         | sym::variant_count => {
             intrinsic_args!(fx, args => (); intrinsic);
 
-            let const_val =
-                fx.tcx.const_eval_instance(ParamEnv::reveal_all(), instance, None).unwrap();
+            let const_val = fx
+                .tcx
+                .const_eval_instance(ParamEnv::reveal_all(), instance, source_info.span)
+                .unwrap();
             let val = crate::constant::codegen_const_value(fx, const_val, ret.layout().ty);
             ret.write_cvalue(fx, val);
         }
@@ -753,13 +764,6 @@ fn codegen_regular_intrinsic_call<'tcx>(
                 CValue::by_val(fx.bcx.ins().sdiv_imm(diff_bytes, pointee_size as i64), isize_layout)
             };
             ret.write_cvalue(fx, val);
-        }
-
-        sym::ptr_guaranteed_cmp => {
-            intrinsic_args!(fx, args => (a, b); intrinsic);
-
-            let val = crate::num::codegen_ptr_binop(fx, BinOp::Eq, a, b).load_scalar(fx);
-            ret.write_cvalue(fx, CValue::by_val(val, fx.layout_of(fx.tcx.types.u8)));
         }
 
         sym::caller_location => {

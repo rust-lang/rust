@@ -25,18 +25,18 @@
 
 // lldb-command:run
 
-// lldb-command:print int_int
-// lldbg-check:[...]$0 = AGenericStruct<i32, i32> { key: 0, value: 1 }
+// lldb-command:v int_int
+// lldbg-check:[...] AGenericStruct<i32, i32> { key: 0, value: 1 }
 // lldbr-check:(generic_struct::AGenericStruct<i32, i32>) int_int = AGenericStruct<i32, i32> { key: 0, value: 1 }
-// lldb-command:print int_float
-// lldbg-check:[...]$1 = AGenericStruct<i32, f64> { key: 2, value: 3.5 }
+// lldb-command:v int_float
+// lldbg-check:[...] AGenericStruct<i32, f64> { key: 2, value: 3.5 }
 // lldbr-check:(generic_struct::AGenericStruct<i32, f64>) int_float = AGenericStruct<i32, f64> { key: 2, value: 3.5 }
-// lldb-command:print float_int
-// lldbg-check:[...]$2 = AGenericStruct<f64, i32> { key: 4.5, value: 5 }
+// lldb-command:v float_int
+// lldbg-check:[...] AGenericStruct<f64, i32> { key: 4.5, value: 5 }
 // lldbr-check:(generic_struct::AGenericStruct<f64, i32>) float_int = AGenericStruct<f64, i32> { key: 4.5, value: 5 }
 
-// lldb-command:print float_int_float
-// lldbg-check:[...]$3 = AGenericStruct<f64, generic_struct::AGenericStruct<i32, f64>> { key: 6.5, value: AGenericStruct<i32, f64> { key: 7, value: 8.5 } }
+// lldb-command:v float_int_float
+// lldbg-check:[...] AGenericStruct<f64, generic_struct::AGenericStruct<i32, f64>> { key: 6.5, value: AGenericStruct<i32, f64> { key: 7, value: 8.5 } }
 // lldbr-check:(generic_struct::AGenericStruct<f64, generic_struct::AGenericStruct<i32, f64>>) float_int_float = AGenericStruct<f64, generic_struct::AGenericStruct<i32, f64>> { key: 6.5, value: AGenericStruct<i32, f64> { key: 7, value: 8.5 } }
 
 // === CDB TESTS ===================================================================================

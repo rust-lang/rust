@@ -11,11 +11,14 @@ LL |             Opt::None => f(),
    |                          ^^^
    |
    = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
-   = help: add `#![feature(effects)]` to the crate attributes to enable
 help: consider further restricting this bound
    |
 LL |     const fn unwrap_or_else<F: ~const FnOnce() -> T + ~const std::ops::FnOnce<()>>(self, f: F) -> T {
    |                                                     +++++++++++++++++++++++++++++
+help: add `#![feature(effects)]` to the crate attributes to enable
+   |
+LL + #![feature(effects)]
+   |
 
 error[E0493]: destructor of `F` cannot be evaluated at compile-time
   --> $DIR/unstable-const-fn-in-libcore.rs:19:60

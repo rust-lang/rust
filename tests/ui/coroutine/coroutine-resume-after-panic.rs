@@ -5,7 +5,7 @@
 
 // Test that we get the correct message for resuming a panicked coroutine.
 
-#![feature(coroutines, coroutine_trait)]
+#![feature(coroutines, coroutine_trait, stmt_expr_attributes)]
 
 use std::{
     ops::Coroutine,
@@ -14,7 +14,7 @@ use std::{
 };
 
 fn main() {
-    let mut g = || {
+    let mut g = #[coroutine] || {
         panic!();
         yield;
     };

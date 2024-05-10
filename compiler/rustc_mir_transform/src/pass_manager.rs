@@ -186,9 +186,6 @@ fn run_passes_inner<'tcx>(
         if let Some(by_move_body) = coroutine.by_move_body.as_mut() {
             run_passes_inner(tcx, by_move_body, passes, phase_change, validate_each);
         }
-        if let Some(by_mut_body) = coroutine.by_mut_body.as_mut() {
-            run_passes_inner(tcx, by_mut_body, passes, phase_change, validate_each);
-        }
     }
 }
 

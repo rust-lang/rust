@@ -101,7 +101,7 @@ pub(super) fn try_expr(
                 if let Some((inner, body)) = error_type_args {
                     inner_ty = inner;
                     body_ty = body;
-                    s = "Try Error".to_owned();
+                    "Try Error".clone_into(&mut s);
                 }
             }
         }
@@ -403,12 +403,23 @@ pub(super) fn definition(
     def: Definition,
     famous_defs: Option<&FamousDefs<'_, '_>>,
     notable_traits: &[(Trait, Vec<(Option<Type>, Name)>)],
+    macro_arm: Option<u32>,
     config: &HoverConfig,
 ) -> Markup {
     let mod_path = definition_mod_path(db, &def);
     let label = match def {
         Definition::Trait(trait_) => {
             trait_.display_limited(db, config.max_trait_assoc_items_count).to_string()
+        }
+        Definition::Adt(Adt::Struct(struct_)) => {
+            struct_.display_limited(db, config.max_struct_field_count).to_string()
+        }
+        Definition::Macro(it) => {
+            let mut label = it.display(db).to_string();
+            if let Some(macro_arm) = macro_arm {
+                format_to!(label, " // matched arm #{}", macro_arm);
+            }
+            label
         }
         _ => def.label(db),
     };
@@ -510,7 +521,7 @@ fn render_notable_trait_comment(
     let mut needs_impl_header = true;
     for (trait_, assoc_types) in notable_traits {
         desc.push_str(if mem::take(&mut needs_impl_header) {
-            " // Implements notable traits: "
+            "// Implements notable traits: "
         } else {
             ", "
         });
@@ -634,7 +645,7 @@ fn closure_ty(
         })
         .join("\n");
     if captures_rendered.trim().is_empty() {
-        captures_rendered = "This closure captures nothing".to_owned();
+        "This closure captures nothing".clone_into(&mut captures_rendered);
     }
     let mut targets: Vec<hir::ModuleDef> = Vec::new();
     let mut push_new_def = |item: hir::ModuleDef| {
@@ -661,7 +672,7 @@ fn closure_ty(
     if let Some(layout) =
         render_memory_layout(config.memory_layout, || original.layout(sema.db), |_| None, |_| None)
     {
-        format_to!(markup, "{layout}");
+        format_to!(markup, " {layout}");
     }
     if let Some(trait_) = c.fn_trait(sema.db).get_id(sema.db, original.krate(sema.db).into()) {
         push_new_def(hir::Trait::from(trait_).into())
@@ -730,7 +741,7 @@ fn render_memory_layout(
     let config = config?;
     let layout = layout().ok()?;
 
-    let mut label = String::from(" // ");
+    let mut label = String::from("// ");
 
     if let Some(render) = config.size {
         let size = match tag(&layout) {

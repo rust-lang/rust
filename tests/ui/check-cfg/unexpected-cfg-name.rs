@@ -1,7 +1,8 @@
 // Check warning for unexpected configuration name
 //
 //@ check-pass
-//@ compile-flags: --check-cfg=cfg() -Z unstable-options
+//@ no-auto-check-cfg
+//@ compile-flags: --check-cfg=cfg()
 
 #[cfg(widnows)]
 //~^ WARNING unexpected `cfg` condition name

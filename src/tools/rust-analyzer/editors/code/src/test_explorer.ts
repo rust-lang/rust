@@ -12,6 +12,7 @@ export const prepareTestExplorer = (
 ) => {
     let currentTestRun: vscode.TestRun | undefined;
     let idToTestMap: Map<string, vscode.TestItem> = new Map();
+    const fileToTestMap: Map<string, vscode.TestItem[]> = new Map();
     const idToRunnableMap: Map<string, ra.Runnable> = new Map();
 
     testController.createRunProfile(
@@ -59,6 +60,18 @@ export const prepareTestExplorer = (
         false,
     );
 
+    const deleteTest = (item: vscode.TestItem, parentList: vscode.TestItemCollection) => {
+        parentList.delete(item.id);
+        idToTestMap.delete(item.id);
+        idToRunnableMap.delete(item.id);
+        if (item.uri) {
+            fileToTestMap.set(
+                item.uri.toString(),
+                fileToTestMap.get(item.uri.toString())!.filter((t) => t.id !== item.id),
+            );
+        }
+    };
+
     const addTest = (item: ra.TestItem) => {
         const parentList = item.parent
             ? idToTestMap.get(item.parent)!.children
@@ -76,7 +89,7 @@ export const prepareTestExplorer = (
                 oldTest.range = range;
                 return;
             }
-            parentList.delete(item.id);
+            deleteTest(oldTest, parentList);
         }
         const iconToVscodeMap = {
             package: "package",
@@ -91,6 +104,12 @@ export const prepareTestExplorer = (
         test.range = range;
         test.canResolveChildren = item.canResolveChildren;
         idToTestMap.set(item.id, test);
+        if (uri) {
+            if (!fileToTestMap.has(uri.toString())) {
+                fileToTestMap.set(uri.toString(), []);
+            }
+            fileToTestMap.get(uri.toString())!.push(test);
+        }
         if (item.runnable) {
             idToRunnableMap.set(item.id, item.runnable);
         }
@@ -98,33 +117,47 @@ export const prepareTestExplorer = (
     };
 
     const addTestGroup = (testsAndScope: ra.DiscoverTestResults) => {
-        const { tests, scope } = testsAndScope;
+        const { tests, scope, scopeFile } = testsAndScope;
         const testSet: Set<string> = new Set();
         for (const test of tests) {
             addTest(test);
             testSet.add(test.id);
         }
         // FIXME(hack_recover_crate_name): We eagerly resolve every test if we got a lazy top level response (detected
-        // by `!scope`). ctx is not a good thing and wastes cpu and memory unnecessarily, so we should remove it.
-        if (!scope) {
+        // by checking that `scope` is empty). This is not a good thing and wastes cpu and memory unnecessarily, so we
+        // should remove it.
+        if (!scope && !scopeFile) {
             for (const test of tests) {
                 void testController.resolveHandler!(idToTestMap.get(test.id));
             }
         }
-        if (!scope) {
-            return;
-        }
-        const recursivelyRemove = (tests: vscode.TestItemCollection) => {
-            for (const [testId, _] of tests) {
-                if (!testSet.has(testId)) {
-                    tests.delete(testId);
-                } else {
-                    recursivelyRemove(tests.get(testId)!.children);
+        if (scope) {
+            const recursivelyRemove = (tests: vscode.TestItemCollection) => {
+                for (const [_, test] of tests) {
+                    if (!testSet.has(test.id)) {
+                        deleteTest(test, tests);
+                    } else {
+                        recursivelyRemove(test.children);
+                    }
                 }
+            };
+            for (const root of scope) {
+                recursivelyRemove(idToTestMap.get(root)!.children);
             }
-        };
-        for (const root of scope) {
-            recursivelyRemove(idToTestMap.get(root)!.children);
+        }
+        if (scopeFile) {
+            const removeByFile = (file: vscode.Uri) => {
+                const testsToBeRemoved = (fileToTestMap.get(file.toString()) || []).filter(
+                    (t) => !testSet.has(t.id),
+                );
+                for (const test of testsToBeRemoved) {
+                    const parentList = test.parent?.children || testController.items;
+                    deleteTest(test, parentList);
+                }
+            };
+            for (const file of scopeFile) {
+                removeByFile(vscode.Uri.parse(file.uri));
+            }
         }
     };
 
@@ -138,6 +171,12 @@ export const prepareTestExplorer = (
         client.onNotification(ra.endRunTest, () => {
             currentTestRun!.end();
             currentTestRun = undefined;
+        }),
+    );
+
+    ctx.pushClientCleanup(
+        client.onNotification(ra.appendOutputToRunTest, (output) => {
+            currentTestRun!.appendOutput(`${output}\r\n`);
         }),
     );
 

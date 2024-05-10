@@ -4,7 +4,6 @@
 #![feature(transmutability)]
 #![feature(marker_trait_attr)]
 #![allow(dead_code)]
-#![allow(incomplete_features)]
 
 mod assert {
     use std::mem::{Assume, BikeshedIntrinsicFrom};

@@ -1,7 +1,6 @@
 //@ check-pass
 
 #![crate_type="lib"]
-#![feature(associated_type_bounds)]
 
 trait A<'a> {}
 trait B<'b> {}

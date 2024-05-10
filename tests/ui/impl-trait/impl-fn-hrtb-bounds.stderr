@@ -1,5 +1,5 @@
 error[E0106]: missing lifetime specifier
-  --> $DIR/impl-fn-hrtb-bounds.rs:22:38
+  --> $DIR/impl-fn-hrtb-bounds.rs:19:38
    |
 LL | fn d() -> impl Fn() -> (impl Debug + '_) {
    |                                      ^^ expected named lifetime parameter
@@ -22,58 +22,31 @@ note: lifetime declared here
 LL | fn a() -> impl Fn(&u8) -> (impl Debug + '_) {
    |                   ^
 
-error: lifetime may not live long enough
-  --> $DIR/impl-fn-hrtb-bounds.rs:6:9
-   |
-LL |     |x| x
-   |      -- ^ returning this value requires that `'1` must outlive `'2`
-   |      ||
-   |      |return type of closure is impl Debug + '2
-   |      has type `&'1 u8`
-
 error[E0657]: `impl Trait` cannot capture higher-ranked lifetime from outer `impl Trait`
-  --> $DIR/impl-fn-hrtb-bounds.rs:10:52
+  --> $DIR/impl-fn-hrtb-bounds.rs:9:52
    |
 LL | fn b() -> impl for<'a> Fn(&'a u8) -> (impl Debug + 'a) {
    |                                                    ^^
    |
 note: lifetime declared here
-  --> $DIR/impl-fn-hrtb-bounds.rs:10:20
+  --> $DIR/impl-fn-hrtb-bounds.rs:9:20
    |
 LL | fn b() -> impl for<'a> Fn(&'a u8) -> (impl Debug + 'a) {
    |                    ^^
 
-error: lifetime may not live long enough
-  --> $DIR/impl-fn-hrtb-bounds.rs:12:9
-   |
-LL |     |x| x
-   |      -- ^ returning this value requires that `'1` must outlive `'2`
-   |      ||
-   |      |return type of closure is impl Debug + '2
-   |      has type `&'1 u8`
-
 error[E0657]: `impl Trait` cannot capture higher-ranked lifetime from outer `impl Trait`
-  --> $DIR/impl-fn-hrtb-bounds.rs:16:52
+  --> $DIR/impl-fn-hrtb-bounds.rs:14:52
    |
 LL | fn c() -> impl for<'a> Fn(&'a u8) -> (impl Debug + '_) {
    |                                                    ^^
    |
 note: lifetime declared here
-  --> $DIR/impl-fn-hrtb-bounds.rs:16:20
+  --> $DIR/impl-fn-hrtb-bounds.rs:14:20
    |
 LL | fn c() -> impl for<'a> Fn(&'a u8) -> (impl Debug + '_) {
    |                    ^^
 
-error: lifetime may not live long enough
-  --> $DIR/impl-fn-hrtb-bounds.rs:18:9
-   |
-LL |     |x| x
-   |      -- ^ returning this value requires that `'1` must outlive `'2`
-   |      ||
-   |      |return type of closure is impl Debug + '2
-   |      has type `&'1 u8`
-
-error: aborting due to 7 previous errors
+error: aborting due to 4 previous errors
 
 Some errors have detailed explanations: E0106, E0657.
 For more information about an error, try `rustc --explain E0106`.

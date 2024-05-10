@@ -32,11 +32,13 @@ use std::ops::ControlFlow;
 
 pub use crate::traits::{MethodViolationCode, ObjectSafetyViolation};
 
-/// Returns the object safety violations that affect
-/// astconv -- currently, `Self` in supertraits. This is needed
+/// Returns the object safety violations that affect HIR ty lowering.
+///
+/// Currently that is `Self` in supertraits. This is needed
 /// because `object_safety_violations` can't be used during
 /// type collection.
-pub fn astconv_object_safety_violations(
+#[instrument(level = "debug", skip(tcx))]
+pub fn hir_ty_lowering_object_safety_violations(
     tcx: TyCtxt<'_>,
     trait_def_id: DefId,
 ) -> Vec<ObjectSafetyViolation> {
@@ -46,9 +48,7 @@ pub fn astconv_object_safety_violations(
         .filter(|spans| !spans.is_empty())
         .map(ObjectSafetyViolation::SupertraitSelf)
         .collect();
-
-    debug!("astconv_object_safety_violations(trait_def_id={:?}) = {:?}", trait_def_id, violations);
-
+    debug!(?violations);
     violations
 }
 
@@ -397,7 +397,7 @@ pub fn object_safety_violations_for_assoc_item(
         // Associated types can only be object safe if they have `Self: Sized` bounds.
         ty::AssocKind::Type => {
             if !tcx.features().generic_associated_types_extended
-                && !tcx.generics_of(item.def_id).params.is_empty()
+                && !tcx.generics_of(item.def_id).own_params.is_empty()
                 && !item.is_impl_trait_in_trait()
             {
                 vec![ObjectSafetyViolation::GAT(item.name, item.ident(tcx).span)]
@@ -519,7 +519,7 @@ fn virtual_call_violations_for_method<'tcx>(
 
             // e.g., `Rc<()>`
             let unit_receiver_ty =
-                receiver_for_self_ty(tcx, receiver_ty, Ty::new_unit(tcx), method.def_id);
+                receiver_for_self_ty(tcx, receiver_ty, tcx.types.unit, method.def_id);
 
             match abi_of_ty(unit_receiver_ty) {
                 Some(Abi::Scalar(..)) => (),
@@ -584,7 +584,7 @@ fn virtual_call_violations_for_method<'tcx>(
         // implement auto traits if the underlying type does as well.
         if let ty::ClauseKind::Trait(ty::TraitPredicate {
             trait_ref: pred_trait_ref,
-            polarity: ty::ImplPolarity::Positive,
+            polarity: ty::PredicatePolarity::Positive,
         }) = pred.kind().skip_binder()
             && pred_trait_ref.self_ty() == tcx.types.self_param
             && tcx.trait_is_auto(pred_trait_ref.def_id)

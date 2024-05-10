@@ -1,5 +1,5 @@
 error[E0050]: method `calm_down_please` has 3 parameters but the declaration in trait `TooMuch::calm_down_please` has 0
-  --> $DIR/method-signature-matches.rs:35:28
+  --> $DIR/method-signature-matches.rs:33:28
    |
 LL |     fn calm_down_please() -> impl Sized;
    |     ------------------------------------ trait requires 0 parameters

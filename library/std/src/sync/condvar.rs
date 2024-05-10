@@ -3,7 +3,7 @@ mod tests;
 
 use crate::fmt;
 use crate::sync::{mutex, poison, LockResult, MutexGuard, PoisonError};
-use crate::sys::locks as sys;
+use crate::sys::sync as sys;
 use crate::time::{Duration, Instant};
 
 /// A type indicating whether a timed wait on a condition variable returned

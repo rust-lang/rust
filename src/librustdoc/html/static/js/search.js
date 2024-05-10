@@ -1,3 +1,4 @@
+// ignore-tidy-filelength
 /* global addClass, getNakedUrl, getSettingValue */
 /* global onEachLazy, removeClass, searchState, browserSupportsHistoryApi, exports */
 
@@ -78,7 +79,15 @@ const longItemTypes = [
 
 // used for special search precedence
 const TY_GENERIC = itemTypes.indexOf("generic");
+const TY_IMPORT = itemTypes.indexOf("import");
 const ROOT_PATH = typeof window !== "undefined" ? window.rootPath : "../";
+
+// Hard limit on how deep to recurse into generics when doing type-driven search.
+// This needs limited, partially because
+// a search for `Ty` shouldn't match `WithInfcx<ParamEnvAnd<Vec<ConstTy<Interner<Ty=Ty>>>>>`,
+// but mostly because this is the simplest and most principled way to limit the number
+// of permutations we need to check.
+const UNBOXING_LIMIT = 5;
 
 // In the search display, allows to switch between tabs.
 function printTab(nb) {
@@ -198,14 +207,14 @@ const editDistanceState = {
                     // insertion
                     this.current[j - 1] + 1,
                     // substitution
-                    this.prev[j - 1] + substitutionCost
+                    this.prev[j - 1] + substitutionCost,
                 );
 
                 if ((i > 1) && (j > 1) && (a[aIdx] === b[bIdx - 1]) && (a[aIdx - 1] === b[bIdx])) {
                     // transposition
                     this.current[j] = Math.min(
                         this.current[j],
-                        this.prevPrev[j - 2] + 1
+                        this.prevPrev[j - 2] + 1,
                     );
                 }
             }
@@ -235,6 +244,14 @@ function initSearch(rawSearchIndex) {
      */
     let searchIndex;
     /**
+     * @type {Map<String, RoaringBitmap>}
+     */
+    let searchIndexDeprecated;
+    /**
+     * @type {Map<String, RoaringBitmap>}
+     */
+    let searchIndexEmptyDesc;
+    /**
      *  @type {Uint32Array}
      */
     let functionTypeFingerprint;
@@ -245,33 +262,49 @@ function initSearch(rawSearchIndex) {
      *
      * @type {Map<string, {id: integer, assocOnly: boolean}>}
      */
-    let typeNameIdMap;
+    const typeNameIdMap = new Map();
     const ALIASES = new Map();
 
     /**
      * Special type name IDs for searching by array.
      */
-    let typeNameIdOfArray;
+    const typeNameIdOfArray = buildTypeMapIndex("array");
     /**
      * Special type name IDs for searching by slice.
      */
-    let typeNameIdOfSlice;
+    const typeNameIdOfSlice = buildTypeMapIndex("slice");
     /**
      * Special type name IDs for searching by both array and slice (`[]` syntax).
      */
-    let typeNameIdOfArrayOrSlice;
+    const typeNameIdOfArrayOrSlice = buildTypeMapIndex("[]");
     /**
      * Special type name IDs for searching by tuple.
      */
-    let typeNameIdOfTuple;
+    const typeNameIdOfTuple = buildTypeMapIndex("tuple");
     /**
      * Special type name IDs for searching by unit.
      */
-    let typeNameIdOfUnit;
+    const typeNameIdOfUnit = buildTypeMapIndex("unit");
     /**
      * Special type name IDs for searching by both tuple and unit (`()` syntax).
      */
-    let typeNameIdOfTupleOrUnit;
+    const typeNameIdOfTupleOrUnit = buildTypeMapIndex("()");
+    /**
+     * Special type name IDs for searching `fn`.
+     */
+    const typeNameIdOfFn = buildTypeMapIndex("fn");
+    /**
+     * Special type name IDs for searching `fnmut`.
+     */
+    const typeNameIdOfFnMut = buildTypeMapIndex("fnmut");
+    /**
+     * Special type name IDs for searching `fnonce`.
+     */
+    const typeNameIdOfFnOnce = buildTypeMapIndex("fnonce");
+    /**
+     * Special type name IDs for searching higher order functions (`->` syntax).
+     */
+    const typeNameIdOfHof = buildTypeMapIndex("->");
 
     /**
      * Add an item to the type Name->ID map, or, if one already exists, use it.
@@ -402,7 +435,7 @@ function initSearch(rawSearchIndex) {
         return c === "," || c === "=";
     }
 
-/**
+    /**
      * Returns `true` if the given `c` character is a path separator. For example
      * `:` in `a::b` or a whitespace in `a b`.
      *
@@ -464,6 +497,21 @@ function initSearch(rawSearchIndex) {
         }
     }
 
+    function makePrimitiveElement(name, extra) {
+        return Object.assign({
+            name,
+            id: null,
+            fullPath: [name],
+            pathWithoutLast: [],
+            pathLast: name,
+            normalizedPathLast: name,
+            generics: [],
+            bindings: new Map(),
+            typeFilter: "primitive",
+            bindingName: null,
+        }, extra);
+    }
+
     /**
      * @param {ParsedQuery} query
      * @param {ParserState} parserState
@@ -501,18 +549,7 @@ function initSearch(rawSearchIndex) {
             }
             const bindingName = parserState.isInBinding;
             parserState.isInBinding = null;
-            return {
-                name: "never",
-                id: null,
-                fullPath: ["never"],
-                pathWithoutLast: [],
-                pathLast: "never",
-                normalizedPathLast: "never",
-                generics: [],
-                bindings: new Map(),
-                typeFilter: "primitive",
-                bindingName,
-            };
+            return makePrimitiveElement("never", { bindingName });
         }
         const quadcolon = /::\s*::/.exec(path);
         if (path.startsWith("::")) {
@@ -558,7 +595,10 @@ function initSearch(rawSearchIndex) {
                 // Syntactically, bindings are parsed as generics,
                 // but the query engine treats them differently.
                 if (gen.bindingName !== null) {
-                    bindings.set(gen.bindingName.name, [gen, ...gen.bindingName.generics]);
+                    if (gen.name !== null) {
+                        gen.bindingName.generics.unshift(gen);
+                    }
+                    bindings.set(gen.bindingName.name, gen.bindingName.generics);
                     return false;
                 }
                 return true;
@@ -658,6 +698,38 @@ function initSearch(rawSearchIndex) {
         return end;
     }
 
+    function getFilteredNextElem(query, parserState, elems, isInGenerics) {
+        const start = parserState.pos;
+        if (parserState.userQuery[parserState.pos] === ":" && !isPathStart(parserState)) {
+            throw ["Expected type filter before ", ":"];
+        }
+        getNextElem(query, parserState, elems, isInGenerics);
+        if (parserState.userQuery[parserState.pos] === ":" && !isPathStart(parserState)) {
+            if (parserState.typeFilter !== null) {
+                throw [
+                    "Unexpected ",
+                    ":",
+                    " (expected path after type filter ",
+                    parserState.typeFilter + ":",
+                    ")",
+                ];
+            }
+            if (elems.length === 0) {
+                throw ["Expected type filter before ", ":"];
+            } else if (query.literalSearch) {
+                throw ["Cannot use quotes on type filter"];
+            }
+            // The type filter doesn't count as an element since it's a modifier.
+            const typeFilterElem = elems.pop();
+            checkExtraTypeFilterCharacters(start, parserState);
+            parserState.typeFilter = typeFilterElem.name;
+            parserState.pos += 1;
+            parserState.totalElems -= 1;
+            query.literalSearch = false;
+            getNextElem(query, parserState, elems, isInGenerics);
+        }
+    }
+
     /**
      * @param {ParsedQuery} query
      * @param {ParserState} parserState
@@ -671,28 +743,19 @@ function initSearch(rawSearchIndex) {
         let start = parserState.pos;
         let end;
         if ("[(".indexOf(parserState.userQuery[parserState.pos]) !== -1) {
-let endChar = ")";
-let name = "()";
-let friendlyName = "tuple";
+            let endChar = ")";
+            let name = "()";
+            let friendlyName = "tuple";
 
-if (parserState.userQuery[parserState.pos] === "[") {
-    endChar = "]";
-    name = "[]";
-    friendlyName = "slice";
-}
+            if (parserState.userQuery[parserState.pos] === "[") {
+                endChar = "]";
+                name = "[]";
+                friendlyName = "slice";
+            }
             parserState.pos += 1;
             const { foundSeparator } = getItemsBefore(query, parserState, generics, endChar);
             const typeFilter = parserState.typeFilter;
-            const isInBinding = parserState.isInBinding;
-            if (typeFilter !== null && typeFilter !== "primitive") {
-                throw [
-                    "Invalid search type: primitive ",
-                    name,
-                    " and ",
-                    typeFilter,
-                    " both specified",
-                ];
-            }
+            const bindingName = parserState.isInBinding;
             parserState.typeFilter = null;
             parserState.isInBinding = null;
             for (const gen of generics) {
@@ -702,24 +765,58 @@ if (parserState.userQuery[parserState.pos] === "[") {
             }
             if (name === "()" && !foundSeparator && generics.length === 1 && typeFilter === null) {
                 elems.push(generics[0]);
+            } else if (name === "()" && generics.length === 1 && generics[0].name === "->") {
+                // `primitive:(a -> b)` parser to `primitive:"->"<output=b, (a,)>`
+                // not `primitive:"()"<"->"<output=b, (a,)>>`
+                generics[0].typeFilter = typeFilter;
+                elems.push(generics[0]);
             } else {
+                if (typeFilter !== null && typeFilter !== "primitive") {
+                    throw [
+                        "Invalid search type: primitive ",
+                        name,
+                        " and ",
+                        typeFilter,
+                        " both specified",
+                    ];
+                }
                 parserState.totalElems += 1;
                 if (isInGenerics) {
                     parserState.genericsElems += 1;
                 }
-                elems.push({
-                    name: name,
-                    id: null,
-                    fullPath: [name],
-                    pathWithoutLast: [],
-                    pathLast: name,
-                    normalizedPathLast: name,
-                    generics,
-                    bindings: new Map(),
-                    typeFilter: "primitive",
-                    bindingName: isInBinding,
-                });
+                elems.push(makePrimitiveElement(name, { bindingName, generics }));
             }
+        } else if (parserState.userQuery[parserState.pos] === "&") {
+            if (parserState.typeFilter !== null && parserState.typeFilter !== "primitive") {
+                throw [
+                    "Invalid search type: primitive ",
+                    "&",
+                    " and ",
+                    parserState.typeFilter,
+                    " both specified",
+                ];
+            }
+            parserState.typeFilter = null;
+            parserState.pos += 1;
+            let c = parserState.userQuery[parserState.pos];
+            while (c === " " && parserState.pos < parserState.length) {
+                parserState.pos += 1;
+                c = parserState.userQuery[parserState.pos];
+            }
+            const generics = [];
+            if (parserState.userQuery.slice(parserState.pos, parserState.pos + 3) === "mut") {
+                generics.push(makePrimitiveElement("mut", { typeFilter: "keyword"}));
+                parserState.pos += 3;
+                c = parserState.userQuery[parserState.pos];
+            }
+            while (c === " " && parserState.pos < parserState.length) {
+                parserState.pos += 1;
+                c = parserState.userQuery[parserState.pos];
+            }
+            if (!isEndCharacter(c) && parserState.pos < parserState.length) {
+                getFilteredNextElem(query, parserState, generics, isInGenerics);
+            }
+            elems.push(makePrimitiveElement("reference", { generics }));
         } else {
             const isStringElem = parserState.userQuery[start] === "\"";
             // We handle the strings on their own mostly to make code easier to follow.
@@ -738,6 +835,32 @@ if (parserState.userQuery[parserState.pos] === "[") {
                 }
                 parserState.pos += 1;
                 getItemsBefore(query, parserState, generics, ">");
+            } else if (parserState.pos < parserState.length &&
+                parserState.userQuery[parserState.pos] === "("
+            ) {
+                if (start >= end) {
+                    throw ["Found generics without a path"];
+                }
+                if (parserState.isInBinding) {
+                    throw ["Unexpected ", "(", " after ", "="];
+                }
+                parserState.pos += 1;
+                const typeFilter = parserState.typeFilter;
+                parserState.typeFilter = null;
+                getItemsBefore(query, parserState, generics, ")");
+                skipWhitespace(parserState);
+                if (isReturnArrow(parserState)) {
+                    parserState.pos += 2;
+                    skipWhitespace(parserState);
+                    getFilteredNextElem(query, parserState, generics, isInGenerics);
+                    generics[generics.length - 1].bindingName = makePrimitiveElement("output");
+                } else {
+                    generics.push(makePrimitiveElement(null, {
+                        bindingName: makePrimitiveElement("output"),
+                        typeFilter: null,
+                    }));
+                }
+                parserState.typeFilter = typeFilter;
             }
             if (isStringElem) {
                 skipWhitespace(parserState);
@@ -773,8 +896,8 @@ if (parserState.userQuery[parserState.pos] === "[") {
                         parserState,
                         parserState.userQuery.slice(start, end),
                         generics,
-                        isInGenerics
-                    )
+                        isInGenerics,
+                    ),
                 );
             }
         }
@@ -797,13 +920,25 @@ if (parserState.userQuery[parserState.pos] === "[") {
     function getItemsBefore(query, parserState, elems, endChar) {
         let foundStopChar = true;
         let foundSeparator = false;
-        let start = parserState.pos;
 
         // If this is a generic, keep the outer item's type filter around.
         const oldTypeFilter = parserState.typeFilter;
         parserState.typeFilter = null;
         const oldIsInBinding = parserState.isInBinding;
         parserState.isInBinding = null;
+
+        // ML-style Higher Order Function notation
+        //
+        // a way to search for any closure or fn pointer regardless of
+        // which closure trait is used
+        //
+        // Looks like this:
+        //
+        //     `option<t>, (t -> u) -> option<u>`
+        //                  ^^^^^^
+        //
+        // The Rust-style closure notation is implemented in getNextElem
+        let hofParameters = null;
 
         let extra = "";
         if (endChar === ">") {
@@ -825,6 +960,21 @@ if (parserState.userQuery[parserState.pos] === "[") {
                     throw ["Unexpected ", endChar, " after ", "="];
                 }
                 break;
+            } else if (endChar !== "" && isReturnArrow(parserState)) {
+                // ML-style HOF notation only works when delimited in something,
+                // otherwise a function arrow starts the return type of the top
+                if (parserState.isInBinding) {
+                    throw ["Unexpected ", "->", " after ", "="];
+                }
+                hofParameters = [...elems];
+                elems.length = 0;
+                parserState.pos += 2;
+                foundStopChar = true;
+                foundSeparator = false;
+                continue;
+            } else if (c === " ") {
+                parserState.pos += 1;
+                continue;
             } else if (isSeparatorCharacter(c)) {
                 parserState.pos += 1;
                 foundStopChar = true;
@@ -832,24 +982,6 @@ if (parserState.userQuery[parserState.pos] === "[") {
                 continue;
             } else if (c === ":" && isPathStart(parserState)) {
                 throw ["Unexpected ", "::", ": paths cannot start with ", "::"];
-            }  else if (c === ":") {
-                if (parserState.typeFilter !== null) {
-                    throw ["Unexpected ", ":"];
-                }
-                if (elems.length === 0) {
-                    throw ["Expected type filter before ", ":"];
-                } else if (query.literalSearch) {
-                    throw ["Cannot use quotes on type filter"];
-                }
-                // The type filter doesn't count as an element since it's a modifier.
-                const typeFilterElem = elems.pop();
-                checkExtraTypeFilterCharacters(start, parserState);
-                parserState.typeFilter = typeFilterElem.name;
-                parserState.pos += 1;
-                parserState.totalElems -= 1;
-                query.literalSearch = false;
-                foundStopChar = true;
-                continue;
             } else if (isEndCharacter(c)) {
                 throw ["Unexpected ", c, " after ", extra];
             }
@@ -884,8 +1016,7 @@ if (parserState.userQuery[parserState.pos] === "[") {
                 ];
             }
             const posBefore = parserState.pos;
-            start = parserState.pos;
-            getNextElem(query, parserState, elems, endChar !== "");
+            getFilteredNextElem(query, parserState, elems, endChar !== "");
             if (endChar !== "" && parserState.pos >= parserState.length) {
                 throw ["Unclosed ", extra];
             }
@@ -903,6 +1034,27 @@ if (parserState.userQuery[parserState.pos] === "[") {
         // We are either at the end of the string or on the `endChar` character, let's move forward
         // in any case.
         parserState.pos += 1;
+
+        if (hofParameters) {
+            // Commas in a HOF don't cause wrapping parens to become a tuple.
+            // If you want a one-tuple with a HOF in it, write `((a -> b),)`.
+            foundSeparator = false;
+            // HOFs can't have directly nested bindings.
+            if ([...elems, ...hofParameters].some(x => x.bindingName) || parserState.isInBinding) {
+                throw ["Unexpected ", "=", " within ", "->"];
+            }
+            // HOFs are represented the same way closures are.
+            // The arguments are wrapped in a tuple, and the output
+            // is a binding, even though the compiler doesn't technically
+            // represent fn pointers that way.
+            const hofElem = makePrimitiveElement("->", {
+                generics: hofParameters,
+                bindings: new Map([["output", [...elems]]]),
+                typeFilter: null,
+            });
+            elems.length = 0;
+            elems[0] = hofElem;
+        }
 
         parserState.typeFilter = oldTypeFilter;
         parserState.isInBinding = oldIsInBinding;
@@ -941,7 +1093,6 @@ if (parserState.userQuery[parserState.pos] === "[") {
      */
     function parseInput(query, parserState) {
         let foundStopChar = true;
-        let start = parserState.pos;
 
         while (parserState.pos < parserState.length) {
             const c = parserState.userQuery[parserState.pos];
@@ -959,29 +1110,6 @@ if (parserState.userQuery[parserState.pos] === "[") {
                     throw ["Unexpected ", c, " after ", parserState.userQuery[parserState.pos - 1]];
                 }
                 throw ["Unexpected ", c];
-            } else if (c === ":" && !isPathStart(parserState)) {
-                if (parserState.typeFilter !== null) {
-                    throw [
-                        "Unexpected ",
-                        ":",
-                        " (expected path after type filter ",
-                        parserState.typeFilter + ":",
-                        ")",
-                    ];
-                } else if (query.elems.length === 0) {
-                    throw ["Expected type filter before ", ":"];
-                } else if (query.literalSearch) {
-                    throw ["Cannot use quotes on type filter"];
-                }
-                // The type filter doesn't count as an element since it's a modifier.
-                const typeFilterElem = query.elems.pop();
-                checkExtraTypeFilterCharacters(start, parserState);
-                parserState.typeFilter = typeFilterElem.name;
-                parserState.pos += 1;
-                parserState.totalElems -= 1;
-                query.literalSearch = false;
-                foundStopChar = true;
-                continue;
             } else if (c === " ") {
                 skipWhitespace(parserState);
                 continue;
@@ -1017,8 +1145,7 @@ if (parserState.userQuery[parserState.pos] === "[") {
                 ];
             }
             const before = query.elems.length;
-            start = parserState.pos;
-            getNextElem(query, parserState, query.elems, false);
+            getFilteredNextElem(query, parserState, query.elems, false);
             if (query.elems.length === before) {
                 // Nothing was added, weird... Let's increase the position to not remain stuck.
                 parserState.pos += 1;
@@ -1208,7 +1335,7 @@ if (parserState.userQuery[parserState.pos] === "[") {
      *
      * @return {ResultsTable}
      */
-    function execQuery(parsedQuery, filterCrates, currentCrate) {
+    async function execQuery(parsedQuery, filterCrates, currentCrate) {
         const results_others = new Map(), results_in_args = new Map(),
             results_returned = new Map();
 
@@ -1229,14 +1356,23 @@ if (parserState.userQuery[parserState.pos] === "[") {
                     obj.dist = result.dist;
                     const res = buildHrefAndPath(obj);
                     obj.displayPath = pathSplitter(res[0]);
-                    obj.fullPath = obj.displayPath + obj.name;
-                    // To be sure than it some items aren't considered as duplicate.
-                    obj.fullPath += "|" + obj.ty;
 
+                    // To be sure than it some items aren't considered as duplicate.
+                    obj.fullPath = res[2] + "|" + obj.ty;
                     if (duplicates.has(obj.fullPath)) {
                         continue;
                     }
+
+                    // Exports are specifically not shown if the items they point at
+                    // are already in the results.
+                    if (obj.ty === TY_IMPORT && duplicates.has(res[2])) {
+                        continue;
+                    }
+                    if (duplicates.has(res[2] + "|" + TY_IMPORT)) {
+                        continue;
+                    }
                     duplicates.add(obj.fullPath);
+                    duplicates.add(res[2]);
 
                     obj.href = res[1];
                     out.push(obj);
@@ -1255,14 +1391,9 @@ if (parserState.userQuery[parserState.pos] === "[") {
          * @param {Results} results
          * @param {boolean} isType
          * @param {string} preferredCrate
-         * @returns {[ResultObject]}
+         * @returns {Promise<[ResultObject]>}
          */
-        function sortResults(results, isType, preferredCrate) {
-            // if there are no results then return to default and fail
-            if (results.size === 0) {
-                return [];
-            }
-
+        async function sortResults(results, isType, preferredCrate) {
             const userQuery = parsedQuery.userQuery;
             const result_list = [];
             for (const result of results.values()) {
@@ -1312,8 +1443,8 @@ if (parserState.userQuery[parserState.pos] === "[") {
                 }
 
                 // sort deprecated items later
-                a = aaa.item.deprecated;
-                b = bbb.item.deprecated;
+                a = searchIndexDeprecated.get(aaa.item.crate).contains(aaa.item.bitIndex);
+                b = searchIndexDeprecated.get(bbb.item.crate).contains(bbb.item.bitIndex);
                 if (a !== b) {
                     return a - b;
                 }
@@ -1340,8 +1471,8 @@ if (parserState.userQuery[parserState.pos] === "[") {
                 }
 
                 // sort by description (no description goes later)
-                a = (aaa.item.desc === "");
-                b = (bbb.item.desc === "");
+                a = searchIndexEmptyDesc.get(aaa.item.crate).contains(aaa.item.bitIndex);
+                b = searchIndexEmptyDesc.get(bbb.item.crate).contains(bbb.item.bitIndex);
                 if (a !== b) {
                     return a - b;
                 }
@@ -1383,10 +1514,23 @@ if (parserState.userQuery[parserState.pos] === "[") {
          * @param {Map<number,number>|null} mgensIn
          *     - Map functions generics to query generics (never modified).
          * @param {null|Map<number,number> -> bool} solutionCb - Called for each `mgens` solution.
+         * @param {number} unboxingDepth
+         *     - Limit checks that Ty matches Vec<Ty>,
+         *       but not Vec<ParamEnvAnd<WithInfcx<ConstTy<Interner<Ty=Ty>>>>>
          *
          * @return {boolean} - Returns true if a match, false otherwise.
          */
-        function unifyFunctionTypes(fnTypesIn, queryElems, whereClause, mgensIn, solutionCb) {
+        function unifyFunctionTypes(
+            fnTypesIn,
+            queryElems,
+            whereClause,
+            mgensIn,
+            solutionCb,
+            unboxingDepth,
+        ) {
+            if (unboxingDepth >= UNBOXING_LIMIT) {
+                return false;
+            }
             /**
              * @type Map<integer, integer>|null
              */
@@ -1405,7 +1549,7 @@ if (parserState.userQuery[parserState.pos] === "[") {
                 && queryElems[0].bindings.size === 0) {
                 const queryElem = queryElems[0];
                 for (const fnType of fnTypesIn) {
-                    if (!unifyFunctionTypeIsMatchCandidate(fnType, queryElem, whereClause, mgens)) {
+                    if (!unifyFunctionTypeIsMatchCandidate(fnType, queryElem, mgens)) {
                         continue;
                     }
                     if (fnType.id < 0 && queryElem.id < 0) {
@@ -1424,7 +1568,13 @@ if (parserState.userQuery[parserState.pos] === "[") {
                     }
                 }
                 for (const fnType of fnTypesIn) {
-                    if (!unifyFunctionTypeIsUnboxCandidate(fnType, queryElem, whereClause, mgens)) {
+                    if (!unifyFunctionTypeIsUnboxCandidate(
+                        fnType,
+                        queryElem,
+                        whereClause,
+                        mgens,
+                        unboxingDepth + 1,
+                    )) {
                         continue;
                     }
                     if (fnType.id < 0) {
@@ -1439,7 +1589,8 @@ if (parserState.userQuery[parserState.pos] === "[") {
                             queryElems,
                             whereClause,
                             mgensScratch,
-                            solutionCb
+                            solutionCb,
+                            unboxingDepth + 1,
                         )) {
                             return true;
                         }
@@ -1448,7 +1599,8 @@ if (parserState.userQuery[parserState.pos] === "[") {
                         queryElems,
                         whereClause,
                         mgens ? new Map(mgens) : null,
-                        solutionCb
+                        solutionCb,
+                        unboxingDepth + 1,
                     )) {
                         return true;
                     }
@@ -1484,7 +1636,7 @@ if (parserState.userQuery[parserState.pos] === "[") {
             let queryElemsTmp = null;
             for (let i = flast; i >= 0; i -= 1) {
                 const fnType = fnTypes[i];
-                if (!unifyFunctionTypeIsMatchCandidate(fnType, queryElem, whereClause, mgens)) {
+                if (!unifyFunctionTypeIsMatchCandidate(fnType, queryElem, mgens)) {
                     continue;
                 }
                 let mgensScratch;
@@ -1521,7 +1673,8 @@ if (parserState.userQuery[parserState.pos] === "[") {
                             fnType,
                             queryElem,
                             whereClause,
-                            mgensScratch
+                            mgensScratch,
+                            unboxingDepth,
                         );
                         if (!solution) {
                             return false;
@@ -1533,14 +1686,16 @@ if (parserState.userQuery[parserState.pos] === "[") {
                                 queryElem.generics,
                                 whereClause,
                                 simplifiedMgens,
-                                solutionCb
+                                solutionCb,
+                                unboxingDepth,
                             );
                             if (passesUnification) {
                                 return true;
                             }
                         }
                         return false;
-                    }
+                    },
+                    unboxingDepth,
                 );
                 if (passesUnification) {
                     return true;
@@ -1552,7 +1707,13 @@ if (parserState.userQuery[parserState.pos] === "[") {
             }
             for (let i = flast; i >= 0; i -= 1) {
                 const fnType = fnTypes[i];
-                if (!unifyFunctionTypeIsUnboxCandidate(fnType, queryElem, whereClause, mgens)) {
+                if (!unifyFunctionTypeIsUnboxCandidate(
+                    fnType,
+                    queryElem,
+                    whereClause,
+                    mgens,
+                    unboxingDepth + 1,
+                )) {
                     continue;
                 }
                 let mgensScratch;
@@ -1576,7 +1737,8 @@ if (parserState.userQuery[parserState.pos] === "[") {
                     queryElems,
                     whereClause,
                     mgensScratch,
-                    solutionCb
+                    solutionCb,
+                    unboxingDepth + 1,
                 );
                 if (passesUnification) {
                     return true;
@@ -1595,11 +1757,10 @@ if (parserState.userQuery[parserState.pos] === "[") {
          *
          * @param {FunctionType} fnType
          * @param {QueryElement} queryElem
-         * @param {[FunctionSearchType]} whereClause - Trait bounds for generic items.
          * @param {Map<number,number>|null} mgensIn - Map functions generics to query generics.
          * @returns {boolean}
          */
-        function unifyFunctionTypeIsMatchCandidate(fnType, queryElem, whereClause, mgensIn) {
+        function unifyFunctionTypeIsMatchCandidate(fnType, queryElem, mgensIn) {
             // type filters look like `trait:Read` or `enum:Result`
             if (!typePassesFilter(queryElem.typeFilter, fnType.ty)) {
                 return false;
@@ -1634,6 +1795,12 @@ if (parserState.userQuery[parserState.pos] === "[") {
                     (fnType.id === typeNameIdOfTuple || fnType.id === typeNameIdOfUnit)
                 ) {
                     // () matches primitive:tuple or primitive:unit
+                    // if it matches, then we're fine, and this is an appropriate match candidate
+                } else if (queryElem.id === typeNameIdOfHof &&
+                    (fnType.id === typeNameIdOfFn || fnType.id === typeNameIdOfFnMut ||
+                        fnType.id === typeNameIdOfFnOnce)
+                ) {
+                    // -> matches fn, fnonce, and fnmut
                     // if it matches, then we're fine, and this is an appropriate match candidate
                 } else if (fnType.id !== queryElem.id || queryElem.id === null) {
                     return false;
@@ -1694,9 +1861,16 @@ if (parserState.userQuery[parserState.pos] === "[") {
          * @param {[FunctionType]} whereClause - Trait bounds for generic items.
          * @param {Map<number,number>} mgensIn - Map functions generics to query generics.
          *                                            Never modified.
+         * @param {number} unboxingDepth
          * @returns {false|{mgens: [Map<number,number>], simplifiedGenerics: [FunctionType]}}
          */
-        function unifyFunctionTypeCheckBindings(fnType, queryElem, whereClause, mgensIn) {
+        function unifyFunctionTypeCheckBindings(
+            fnType,
+            queryElem,
+            whereClause,
+            mgensIn,
+            unboxingDepth,
+        ) {
             if (fnType.bindings.size < queryElem.bindings.size) {
                 return false;
             }
@@ -1723,7 +1897,8 @@ if (parserState.userQuery[parserState.pos] === "[") {
                                 // return `false` makes unifyFunctionTypes return the full set of
                                 // possible solutions
                                 return false;
-                            }
+                            },
+                            unboxingDepth,
                         );
                         return newSolutions;
                     });
@@ -1753,9 +1928,19 @@ if (parserState.userQuery[parserState.pos] === "[") {
          * @param {QueryElement} queryElem
          * @param {[FunctionType]} whereClause - Trait bounds for generic items.
          * @param {Map<number,number>|null} mgens - Map functions generics to query generics.
+         * @param {number} unboxingDepth
          * @returns {boolean}
          */
-        function unifyFunctionTypeIsUnboxCandidate(fnType, queryElem, whereClause, mgens) {
+        function unifyFunctionTypeIsUnboxCandidate(
+            fnType,
+            queryElem,
+            whereClause,
+            mgens,
+            unboxingDepth,
+        ) {
+            if (unboxingDepth >= UNBOXING_LIMIT) {
+                return false;
+            }
             if (fnType.id < 0 && queryElem.id >= 0) {
                 if (!whereClause) {
                     return false;
@@ -1777,14 +1962,21 @@ if (parserState.userQuery[parserState.pos] === "[") {
                     whereClause[(-fnType.id) - 1],
                     queryElem,
                     whereClause,
-                    mgensTmp
+                    mgensTmp,
+                    unboxingDepth,
                 );
             } else if (fnType.generics.length > 0 || fnType.bindings.size > 0) {
                 const simplifiedGenerics = [
                     ...fnType.generics,
                     ...Array.from(fnType.bindings.values()).flat(),
                 ];
-                return checkIfInList(simplifiedGenerics, queryElem, whereClause, mgens);
+                return checkIfInList(
+                    simplifiedGenerics,
+                    queryElem,
+                    whereClause,
+                    mgens,
+                    unboxingDepth,
+                );
             }
             return false;
         }
@@ -1796,13 +1988,14 @@ if (parserState.userQuery[parserState.pos] === "[") {
           * @param {Array<FunctionType>} list
           * @param {QueryElement} elem          - The element from the parsed query.
           * @param {[FunctionType]} whereClause - Trait bounds for generic items.
-         * @param {Map<number,number>|null} mgens - Map functions generics to query generics.
+          * @param {Map<number,number>|null} mgens - Map functions generics to query generics.
+          * @param {number} unboxingDepth
           *
           * @return {boolean} - Returns true if found, false otherwise.
           */
-        function checkIfInList(list, elem, whereClause, mgens) {
+        function checkIfInList(list, elem, whereClause, mgens, unboxingDepth) {
             for (const entry of list) {
-                if (checkType(entry, elem, whereClause, mgens)) {
+                if (checkType(entry, elem, whereClause, mgens, unboxingDepth)) {
                     return true;
                 }
             }
@@ -1816,29 +2009,40 @@ if (parserState.userQuery[parserState.pos] === "[") {
           * @param {Row} row
           * @param {QueryElement} elem          - The element from the parsed query.
           * @param {[FunctionType]} whereClause - Trait bounds for generic items.
-         * @param {Map<number,number>|null} mgens - Map functions generics to query generics.
+          * @param {Map<number,number>|null} mgens - Map functions generics to query generics.
           *
           * @return {boolean} - Returns true if the type matches, false otherwise.
           */
-        function checkType(row, elem, whereClause, mgens) {
+        function checkType(row, elem, whereClause, mgens, unboxingDepth) {
+            if (unboxingDepth >= UNBOXING_LIMIT) {
+                return false;
+            }
             if (row.bindings.size === 0 && elem.bindings.size === 0) {
-                if (elem.id < 0) {
-                    return row.id < 0 || checkIfInList(row.generics, elem, whereClause, mgens);
+                if (elem.id < 0 && mgens === null) {
+                    return row.id < 0 || checkIfInList(
+                        row.generics,
+                        elem,
+                        whereClause,
+                        mgens,
+                        unboxingDepth + 1,
+                    );
                 }
                 if (row.id > 0 && elem.id > 0 && elem.pathWithoutLast.length === 0 &&
                     typePassesFilter(elem.typeFilter, row.ty) && elem.generics.length === 0 &&
                     // special case
                     elem.id !== typeNameIdOfArrayOrSlice && elem.id !== typeNameIdOfTupleOrUnit
+                    && elem.id !== typeNameIdOfHof
                 ) {
                     return row.id === elem.id || checkIfInList(
                         row.generics,
                         elem,
                         whereClause,
-                        mgens
+                        mgens,
+                        unboxingDepth,
                     );
                 }
             }
-            return unifyFunctionTypes([row], [elem], whereClause, mgens);
+            return unifyFunctionTypes([row], [elem], whereClause, mgens, null, unboxingDepth);
         }
 
         /**
@@ -1852,7 +2056,7 @@ if (parserState.userQuery[parserState.pos] === "[") {
                 return 0;
             }
             const maxPathEditDistance = Math.floor(
-                contains.reduce((acc, next) => acc + next.length, 0) / 3
+                contains.reduce((acc, next) => acc + next.length, 0) / 3,
             );
             let ret_dist = maxPathEditDistance + 1;
             const path = ty.path.split("::");
@@ -1911,12 +2115,14 @@ if (parserState.userQuery[parserState.pos] === "[") {
                 crate: item.crate,
                 name: item.name,
                 path: item.path,
-                desc: item.desc,
+                descShard: item.descShard,
+                descIndex: item.descIndex,
+                exactPath: item.exactPath,
                 ty: item.ty,
                 parent: item.parent,
                 type: item.type,
                 is_alias: true,
-                deprecated: item.deprecated,
+                bitIndex: item.bitIndex,
                 implDisambiguator: item.implDisambiguator,
             };
         }
@@ -2037,7 +2243,7 @@ if (parserState.userQuery[parserState.pos] === "[") {
             results_others,
             results_in_args,
             results_returned,
-            maxEditDistance
+            maxEditDistance,
         ) {
             if (!row || (filterCrates !== null && row.crate !== filterCrates)) {
                 return;
@@ -2049,13 +2255,13 @@ if (parserState.userQuery[parserState.pos] === "[") {
             // atoms in the function not present in the query
             const tfpDist = compareTypeFingerprints(
                 fullId,
-                parsedQuery.typeFingerprint
+                parsedQuery.typeFingerprint,
             );
             if (tfpDist !== null) {
                 const in_args = row.type && row.type.inputs
-                    && checkIfInList(row.type.inputs, elem, row.type.where_clause);
+                    && checkIfInList(row.type.inputs, elem, row.type.where_clause, null, 0);
                 const returned = row.type && row.type.output
-                    && checkIfInList(row.type.output, elem, row.type.where_clause);
+                    && checkIfInList(row.type.output, elem, row.type.where_clause, null, 0);
                 if (in_args) {
                     results_in_args.max_dist = Math.max(results_in_args.max_dist || 0, tfpDist);
                     const maxDist = results_in_args.size < MAX_RESULTS ?
@@ -2121,7 +2327,7 @@ if (parserState.userQuery[parserState.pos] === "[") {
 
             const tfpDist = compareTypeFingerprints(
                 row.id,
-                parsedQuery.typeFingerprint
+                parsedQuery.typeFingerprint,
             );
             if (tfpDist === null) {
                 return;
@@ -2141,9 +2347,12 @@ if (parserState.userQuery[parserState.pos] === "[") {
                         row.type.output,
                         parsedQuery.returned,
                         row.type.where_clause,
-                        mgens
+                        mgens,
+                        null,
+                        0, // unboxing depth
                     );
-                }
+                },
+                0, // unboxing depth
             )) {
                 return;
             }
@@ -2261,7 +2470,7 @@ if (parserState.userQuery[parserState.pos] === "[") {
                         }
 
                         return [typeNameIdMap.get(name).id, constraints];
-                    })
+                    }),
                 );
             }
 
@@ -2288,7 +2497,7 @@ if (parserState.userQuery[parserState.pos] === "[") {
                             results_others,
                             results_in_args,
                             results_returned,
-                            maxEditDistance
+                            maxEditDistance,
                         );
                     }
                 }
@@ -2319,12 +2528,27 @@ if (parserState.userQuery[parserState.pos] === "[") {
             innerRunQuery();
         }
 
-        const ret = createQueryResults(
+        const [sorted_in_args, sorted_returned, sorted_others] = await Promise.all([
             sortResults(results_in_args, true, currentCrate),
             sortResults(results_returned, true, currentCrate),
             sortResults(results_others, false, currentCrate),
+        ]);
+        const ret = createQueryResults(
+            sorted_in_args,
+            sorted_returned,
+            sorted_others,
             parsedQuery);
         handleAliases(ret, parsedQuery.original.replace(/"/g, ""), filterCrates, currentCrate);
+        await Promise.all([ret.others, ret.returned, ret.in_args].map(async list => {
+            const descs = await Promise.all(list.map(result => {
+                return searchIndexEmptyDesc.get(result.crate).contains(result.bitIndex) ?
+                    "" :
+                    searchState.loadDesc(result);
+            }));
+            for (const [i, result] of list.entries()) {
+                result.desc = descs[i];
+            }
+        }));
         if (parsedQuery.error !== null && ret.others.length !== 0) {
             // It means some doc aliases were found so let's "remove" the error!
             ret.query.error = null;
@@ -2357,6 +2581,7 @@ if (parserState.userQuery[parserState.pos] === "[") {
         const type = itemTypes[item.ty];
         const name = item.name;
         let path = item.path;
+        let exactPath = item.exactPath;
 
         if (type === "mod") {
             displayPath = path + "::";
@@ -2378,6 +2603,7 @@ if (parserState.userQuery[parserState.pos] === "[") {
             const parentType = itemTypes[myparent.ty];
             let pageType = parentType;
             let pageName = myparent.name;
+            exactPath = `${myparent.exactPath}::${myparent.name}`;
 
             if (parentType === "primitive") {
                 displayPath = myparent.name + "::";
@@ -2406,7 +2632,7 @@ if (parserState.userQuery[parserState.pos] === "[") {
             href = ROOT_PATH + item.path.replace(/::/g, "/") +
                 "/" + type + "." + name + ".html";
         }
-        return [displayPath, href];
+        return [displayPath, href, `${exactPath}::${name}`];
     }
 
     function pathSplitter(path) {
@@ -2423,14 +2649,14 @@ if (parserState.userQuery[parserState.pos] === "[") {
      * @param {ParsedQuery} query
      * @param {boolean}     display - True if this is the active tab
      */
-    function addTab(array, query, display) {
+    async function addTab(array, query, display) {
         const extraClass = display ? " active" : "";
 
         const output = document.createElement("div");
         if (array.length > 0) {
             output.className = "search-results " + extraClass;
 
-            array.forEach(item => {
+            for (const item of array) {
                 const name = item.name;
                 const type = itemTypes[item.ty];
                 const longType = longItemTypes[item.ty];
@@ -2466,7 +2692,7 @@ ${item.displayPath}<span class="${type}">${name}</span>\
 
                 link.appendChild(description);
                 output.appendChild(link);
-            });
+            }
         } else if (query.error === null) {
             output.className = "search-failed" + extraClass;
             output.innerHTML = "No results :(<br/>" +
@@ -2508,7 +2734,7 @@ ${item.displayPath}<span class="${type}">${name}</span>\
      * @param {boolean} go_to_first
      * @param {string} filterCrates
      */
-    function showResults(results, go_to_first, filterCrates) {
+    async function showResults(results, go_to_first, filterCrates) {
         const search = searchState.outputElement();
         if (go_to_first || (results.others.length === 1
             && getSettingValue("go-to-only-result") === "true")
@@ -2541,9 +2767,11 @@ ${item.displayPath}<span class="${type}">${name}</span>\
 
         currentResults = results.query.userQuery;
 
-        const ret_others = addTab(results.others, results.query, true);
-        const ret_in_args = addTab(results.in_args, results.query, false);
-        const ret_returned = addTab(results.returned, results.query, false);
+        const [ret_others, ret_in_args, ret_returned] = await Promise.all([
+            addTab(results.others, results.query, true),
+            addTab(results.in_args, results.query, false),
+            addTab(results.returned, results.query, false),
+        ]);
 
         // Navigate to the relevant tab if the current tab is empty, like in case users search
         // for "-> String". If they had selected another tab previously, they have to click on
@@ -2664,7 +2892,7 @@ ${item.displayPath}<span class="${type}">${name}</span>\
      * and display the results.
      * @param {boolean} [forced]
      */
-    function search(forced) {
+    async function search(forced) {
         const query = parseQuery(searchState.input.value.trim());
         let filterCrates = getFilterCrates();
 
@@ -2692,8 +2920,8 @@ ${item.displayPath}<span class="${type}">${name}</span>\
         // recent search query is added to the browser history.
         updateSearchHistory(buildUrl(query.original, filterCrates));
 
-        showResults(
-            execQuery(query, filterCrates, window.currentCrate),
+        await showResults(
+            await execQuery(query, filterCrates, window.currentCrate),
             params.go_to_first,
             filterCrates);
     }
@@ -2762,7 +2990,7 @@ ${item.displayPath}<span class="${type}">${name}</span>\
             pathIndex = type[PATH_INDEX_DATA];
             generics = buildItemSearchTypeAll(
                 type[GENERICS_DATA],
-                lowercasePaths
+                lowercasePaths,
             );
             if (type.length > BINDINGS_DATA && type[BINDINGS_DATA].length > 0) {
                 bindings = new Map(type[BINDINGS_DATA].map(binding => {
@@ -2797,6 +3025,7 @@ ${item.displayPath}<span class="${type}">${name}</span>\
                 id: pathIndex,
                 ty: TY_GENERIC,
                 path: null,
+                exactPath: null,
                 generics,
                 bindings,
             };
@@ -2806,6 +3035,7 @@ ${item.displayPath}<span class="${type}">${name}</span>\
                 id: null,
                 ty: null,
                 path: null,
+                exactPath: null,
                 generics,
                 bindings,
             };
@@ -2815,6 +3045,7 @@ ${item.displayPath}<span class="${type}">${name}</span>\
                 id: buildTypeMapIndex(item.name, isAssocType),
                 ty: item.ty,
                 path: item.path,
+                exactPath: item.exactPath,
                 generics,
                 bindings,
             };
@@ -2872,101 +3103,49 @@ ${item.displayPath}<span class="${type}">${name}</span>\
      * The raw function search type format is generated using serde in
      * librustdoc/html/render/mod.rs: IndexItemFunctionType::write_to_string
      *
-     * @param {{
-     *  string: string,
-     *  offset: number,
-     *  backrefQueue: FunctionSearchType[]
-     * }} itemFunctionDecoder
      * @param {Array<{name: string, ty: number}>} lowercasePaths
-     * @param {Map<string, integer>}
      *
      * @return {null|FunctionSearchType}
      */
-    function buildFunctionSearchType(itemFunctionDecoder, lowercasePaths) {
-        const c = itemFunctionDecoder.string.charCodeAt(itemFunctionDecoder.offset);
-        itemFunctionDecoder.offset += 1;
-        const [zero, ua, la, ob, cb] = ["0", "@", "`", "{", "}"].map(c => c.charCodeAt(0));
-        // `` ` `` is used as a sentinel because it's fewer bytes than `null`, and decodes to zero
-        // `0` is a backref
-        if (c === la) {
-            return null;
-        }
-        // sixteen characters after "0" are backref
-        if (c >= zero && c < ua) {
-            return itemFunctionDecoder.backrefQueue[c - zero];
-        }
-        if (c !== ob) {
-            throw ["Unexpected ", c, " in function: expected ", "{", "; this is a bug"];
-        }
-        // call after consuming `{`
-        function decodeList() {
-            let c = itemFunctionDecoder.string.charCodeAt(itemFunctionDecoder.offset);
-            const ret = [];
-            while (c !== cb) {
-                ret.push(decode());
-                c = itemFunctionDecoder.string.charCodeAt(itemFunctionDecoder.offset);
+    function buildFunctionSearchTypeCallback(lowercasePaths) {
+        return functionSearchType => {
+            if (functionSearchType === 0) {
+                return null;
             }
-            itemFunctionDecoder.offset += 1; // eat cb
-            return ret;
-        }
-        // consumes and returns a list or integer
-        function decode() {
-            let n = 0;
-            let c = itemFunctionDecoder.string.charCodeAt(itemFunctionDecoder.offset);
-            if (c === ob) {
-                itemFunctionDecoder.offset += 1;
-                return decodeList();
-            }
-            while (c < la) {
-                n = (n << 4) | (c & 0xF);
-                itemFunctionDecoder.offset += 1;
-                c = itemFunctionDecoder.string.charCodeAt(itemFunctionDecoder.offset);
-            }
-            // last character >= la
-            n = (n << 4) | (c & 0xF);
-            const [sign, value] = [n & 1, n >> 1];
-            itemFunctionDecoder.offset += 1;
-            return sign ? -value : value;
-        }
-        const functionSearchType = decodeList();
-        const INPUTS_DATA = 0;
-        const OUTPUT_DATA = 1;
-        let inputs, output;
-        if (typeof functionSearchType[INPUTS_DATA] === "number") {
-            inputs = [buildItemSearchType(functionSearchType[INPUTS_DATA], lowercasePaths)];
-        } else {
-            inputs = buildItemSearchTypeAll(
-                functionSearchType[INPUTS_DATA],
-                lowercasePaths
-            );
-        }
-        if (functionSearchType.length > 1) {
-            if (typeof functionSearchType[OUTPUT_DATA] === "number") {
-                output = [buildItemSearchType(functionSearchType[OUTPUT_DATA], lowercasePaths)];
+            const INPUTS_DATA = 0;
+            const OUTPUT_DATA = 1;
+            let inputs, output;
+            if (typeof functionSearchType[INPUTS_DATA] === "number") {
+                inputs = [buildItemSearchType(functionSearchType[INPUTS_DATA], lowercasePaths)];
             } else {
-                output = buildItemSearchTypeAll(
-                    functionSearchType[OUTPUT_DATA],
-                    lowercasePaths
+                inputs = buildItemSearchTypeAll(
+                    functionSearchType[INPUTS_DATA],
+                    lowercasePaths,
                 );
             }
-        } else {
-            output = [];
-        }
-        const where_clause = [];
-        const l = functionSearchType.length;
-        for (let i = 2; i < l; ++i) {
-            where_clause.push(typeof functionSearchType[i] === "number"
-                ? [buildItemSearchType(functionSearchType[i], lowercasePaths)]
-                : buildItemSearchTypeAll(functionSearchType[i], lowercasePaths));
-        }
-        const ret = {
-            inputs, output, where_clause,
+            if (functionSearchType.length > 1) {
+                if (typeof functionSearchType[OUTPUT_DATA] === "number") {
+                    output = [buildItemSearchType(functionSearchType[OUTPUT_DATA], lowercasePaths)];
+                } else {
+                    output = buildItemSearchTypeAll(
+                        functionSearchType[OUTPUT_DATA],
+                        lowercasePaths,
+                    );
+                }
+            } else {
+                output = [];
+            }
+            const where_clause = [];
+            const l = functionSearchType.length;
+            for (let i = 2; i < l; ++i) {
+                where_clause.push(typeof functionSearchType[i] === "number"
+                    ? [buildItemSearchType(functionSearchType[i], lowercasePaths)]
+                    : buildItemSearchTypeAll(functionSearchType[i], lowercasePaths));
+            }
+            return {
+                inputs, output, where_clause,
+            };
         };
-        itemFunctionDecoder.backrefQueue.unshift(ret);
-        if (itemFunctionDecoder.backrefQueue.length > 16) {
-            itemFunctionDecoder.backrefQueue.pop();
-        }
-        return ret;
     }
 
     /**
@@ -2991,7 +3170,7 @@ ${item.displayPath}<span class="${type}">${name}</span>\
      */
     function buildFunctionTypeFingerprint(type, output, fps) {
         let input = type.id;
-        // All forms of `[]`/`()` get collapsed down to one thing in the bloom filter.
+        // All forms of `[]`/`()`/`->` get collapsed down to one thing in the bloom filter.
         // Differentiating between arrays and slices, if the user asks for it, is
         // still done in the matching algorithm.
         if (input === typeNameIdOfArray || input === typeNameIdOfSlice) {
@@ -2999,6 +3178,10 @@ ${item.displayPath}<span class="${type}">${name}</span>\
         }
         if (input === typeNameIdOfTuple || input === typeNameIdOfUnit) {
             input = typeNameIdOfTupleOrUnit;
+        }
+        if (input === typeNameIdOfFn || input === typeNameIdOfFnMut ||
+            input === typeNameIdOfFnOnce) {
+            input = typeNameIdOfHof;
         }
         // http://burtleburtle.net/bob/hash/integer.html
         // ~~ is toInt32. It's used before adding, so
@@ -3083,6 +3266,185 @@ ${item.displayPath}<span class="${type}">${name}</span>\
         return functionTypeFingerprint[(fullId * 4) + 3];
     }
 
+    class VlqHexDecoder {
+        constructor(string, cons) {
+            this.string = string;
+            this.cons = cons;
+            this.offset = 0;
+            this.backrefQueue = [];
+        }
+        // call after consuming `{`
+        decodeList() {
+            const cb = "}".charCodeAt(0);
+            let c = this.string.charCodeAt(this.offset);
+            const ret = [];
+            while (c !== cb) {
+                ret.push(this.decode());
+                c = this.string.charCodeAt(this.offset);
+            }
+            this.offset += 1; // eat cb
+            return ret;
+        }
+        // consumes and returns a list or integer
+        decode() {
+            const [ob, la] = ["{", "`"].map(c => c.charCodeAt(0));
+            let n = 0;
+            let c = this.string.charCodeAt(this.offset);
+            if (c === ob) {
+                this.offset += 1;
+                return this.decodeList();
+            }
+            while (c < la) {
+                n = (n << 4) | (c & 0xF);
+                this.offset += 1;
+                c = this.string.charCodeAt(this.offset);
+            }
+            // last character >= la
+            n = (n << 4) | (c & 0xF);
+            const [sign, value] = [n & 1, n >> 1];
+            this.offset += 1;
+            return sign ? -value : value;
+        }
+        next() {
+            const c = this.string.charCodeAt(this.offset);
+            const [zero, ua, la] = ["0", "@", "`"].map(c => c.charCodeAt(0));
+            // sixteen characters after "0" are backref
+            if (c >= zero && c < ua) {
+                this.offset += 1;
+                return this.backrefQueue[c - zero];
+            }
+            // special exception: 0 doesn't use backref encoding
+            // it's already one character, and it's always nullish
+            if (c === la) {
+                this.offset += 1;
+                return this.cons(0);
+            }
+            const result = this.cons(this.decode());
+            this.backrefQueue.unshift(result);
+            if (this.backrefQueue.length > 16) {
+                this.backrefQueue.pop();
+            }
+            return result;
+        }
+    }
+    class RoaringBitmap {
+        constructor(str) {
+            const strdecoded = atob(str);
+            const u8array = new Uint8Array(strdecoded.length);
+            for (let j = 0; j < strdecoded.length; ++j) {
+                u8array[j] = strdecoded.charCodeAt(j);
+            }
+            const has_runs = u8array[0] === 0x3b;
+            const size = has_runs ?
+                ((u8array[2] | (u8array[3] << 8)) + 1) :
+                ((u8array[4] | (u8array[5] << 8) | (u8array[6] << 16) | (u8array[7] << 24)));
+            let i = has_runs ? 4 : 8;
+            let is_run;
+            if (has_runs) {
+                const is_run_len = Math.floor((size + 7) / 8);
+                is_run = u8array.slice(i, i + is_run_len);
+                i += is_run_len;
+            } else {
+                is_run = new Uint8Array();
+            }
+            this.keys = [];
+            this.cardinalities = [];
+            for (let j = 0; j < size; ++j) {
+                this.keys.push(u8array[i] | (u8array[i + 1] << 8));
+                i += 2;
+                this.cardinalities.push((u8array[i] | (u8array[i + 1] << 8)) + 1);
+                i += 2;
+            }
+            this.containers = [];
+            let offsets = null;
+            if (!has_runs || this.keys.length >= 4) {
+                offsets = [];
+                for (let j = 0; j < size; ++j) {
+                    offsets.push(u8array[i] | (u8array[i + 1] << 8) | (u8array[i + 2] << 16) |
+                        (u8array[i + 3] << 24));
+                    i += 4;
+                }
+            }
+            for (let j = 0; j < size; ++j) {
+                if (offsets && offsets[j] !== i) {
+                    console.log(this.containers);
+                    throw new Error(`corrupt bitmap ${j}: ${i} / ${offsets[j]}`);
+                }
+                if (is_run[j >> 3] & (1 << (j & 0x7))) {
+                    const runcount = (u8array[i] | (u8array[i + 1] << 8));
+                    i += 2;
+                    this.containers.push(new RoaringBitmapRun(
+                        runcount,
+                        u8array.slice(i, i + (runcount * 4)),
+                    ));
+                    i += runcount * 4;
+                } else if (this.cardinalities[j] >= 4096) {
+                    this.containers.push(new RoaringBitmapBits(u8array.slice(i, i + 8192)));
+                    i += 8192;
+                } else {
+                    const end = this.cardinalities[j] * 2;
+                    this.containers.push(new RoaringBitmapArray(
+                        this.cardinalities[j],
+                        u8array.slice(i, i + end),
+                    ));
+                    i += end;
+                }
+            }
+        }
+        contains(keyvalue) {
+            const key = keyvalue >> 16;
+            const value = keyvalue & 0xFFFF;
+            for (let i = 0; i < this.keys.length; ++i) {
+                if (this.keys[i] === key) {
+                    return this.containers[i].contains(value);
+                }
+            }
+            return false;
+        }
+    }
+
+    class RoaringBitmapRun {
+        constructor(runcount, array) {
+            this.runcount = runcount;
+            this.array = array;
+        }
+        contains(value) {
+            const l = this.runcount * 4;
+            for (let i = 0; i < l; i += 4) {
+                const start = this.array[i] | (this.array[i + 1] << 8);
+                const lenm1 = this.array[i + 2] | (this.array[i + 3] << 8);
+                if (value >= start && value <= (start + lenm1)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+    }
+    class RoaringBitmapArray {
+        constructor(cardinality, array) {
+            this.cardinality = cardinality;
+            this.array = array;
+        }
+        contains(value) {
+            const l = this.cardinality * 2;
+            for (let i = 0; i < l; i += 2) {
+                const start = this.array[i] | (this.array[i + 1] << 8);
+                if (value === start) {
+                    return true;
+                }
+            }
+            return false;
+        }
+    }
+    class RoaringBitmapBits {
+        constructor(array) {
+            this.array = array;
+        }
+        contains(value) {
+            return !!(this.array[value >> 3] & (1 << (value & 7)));
+        }
+    }
+
     /**
      * Convert raw search index into in-memory search index.
      *
@@ -3090,19 +3452,11 @@ ${item.displayPath}<span class="${type}">${name}</span>\
      */
     function buildIndex(rawSearchIndex) {
         searchIndex = [];
-        typeNameIdMap = new Map();
+        searchIndexDeprecated = new Map();
+        searchIndexEmptyDesc = new Map();
         const charA = "A".charCodeAt(0);
         let currentIndex = 0;
         let id = 0;
-
-        // Initialize type map indexes for primitive list types
-        // that can be searched using `[]` syntax.
-        typeNameIdOfArray = buildTypeMapIndex("array");
-        typeNameIdOfSlice = buildTypeMapIndex("slice");
-        typeNameIdOfTuple = buildTypeMapIndex("tuple");
-        typeNameIdOfUnit = buildTypeMapIndex("unit");
-        typeNameIdOfArrayOrSlice = buildTypeMapIndex("[]");
-        typeNameIdOfTupleOrUnit = buildTypeMapIndex("()");
 
         // Function type fingerprints are 128-bit bloom filters that are used to
         // estimate the distance between function and query.
@@ -3119,26 +3473,50 @@ ${item.displayPath}<span class="${type}">${name}</span>\
         id = 0;
 
         for (const [crate, crateCorpus] of rawSearchIndex) {
+            // a string representing the lengths of each description shard
+            // a string representing the list of function types
+            const itemDescShardDecoder = new VlqHexDecoder(crateCorpus.D, noop => noop);
+            let descShard = {
+                crate,
+                shard: 0,
+                start: 0,
+                len: itemDescShardDecoder.next(),
+                promise: null,
+                resolve: null,
+            };
+            const descShardList = [ descShard ];
+
+            // Deprecated items and items with no description
+            searchIndexDeprecated.set(crate, new RoaringBitmap(crateCorpus.c));
+            searchIndexEmptyDesc.set(crate, new RoaringBitmap(crateCorpus.e));
+            let descIndex = 0;
+
             // This object should have exactly the same set of fields as the "row"
             // object defined below. Your JavaScript runtime will thank you.
             // https://mathiasbynens.be/notes/shapes-ics
             const crateRow = {
-                crate: crate,
+                crate,
                 ty: 3, // == ExternCrate
                 name: crate,
                 path: "",
+                descShard,
+                descIndex,
+                exactPath: "",
                 desc: crateCorpus.doc,
                 parent: undefined,
                 type: null,
-                id: id,
+                id,
                 word: crate,
                 normalizedName: crate.indexOf("_") === -1 ? crate : crate.replace(/_/g, ""),
-                deprecated: null,
+                bitIndex: 0,
                 implDisambiguator: null,
             };
             id += 1;
             searchIndex.push(crateRow);
             currentIndex += 1;
+            if (!searchIndexEmptyDesc.get(crate).contains(0)) {
+                descIndex += 1;
+            }
 
             // a String of one character item type codes
             const itemTypes = crateCorpus.t;
@@ -3150,19 +3528,12 @@ ${item.displayPath}<span class="${type}">${name}</span>\
             // i.e. if indices 4 and 11 are present, but 5-10 and 12-13 are not present,
             // 5-10 will fall back to the path for 4 and 12-13 will fall back to the path for 11
             const itemPaths = new Map(crateCorpus.q);
-            // an array of (String) descriptions
-            const itemDescs = crateCorpus.d;
+            // An array of [(Number) item index, (Number) path index]
+            // Used to de-duplicate inlined and re-exported stuff
+            const itemReexports = new Map(crateCorpus.r);
             // an array of (Number) the parent path index + 1 to `paths`, or 0 if none
             const itemParentIdxs = crateCorpus.i;
-            // a string representing the list of function types
-            const itemFunctionDecoder = {
-                string: crateCorpus.f,
-                offset: 0,
-                backrefQueue: [],
-            };
-            // an array of (Number) indices for the deprecated items
-            const deprecatedItems = new Set(crateCorpus.c);
-            // an array of (Number) indices for the deprecated items
+            // a map Number, string for impl disambiguators
             const implDisambiguator = new Map(crateCorpus.b);
             // an array of [(Number) item type,
             //              (String) name]
@@ -3173,6 +3544,12 @@ ${item.displayPath}<span class="${type}">${name}</span>\
 
             // an array of [{name: String, ty: Number}]
             const lowercasePaths = [];
+
+            // a string representing the list of function types
+            const itemFunctionDecoder = new VlqHexDecoder(
+                crateCorpus.f,
+                buildFunctionSearchTypeCallback(lowercasePaths),
+            );
 
             // convert `rawPaths` entries into object form
             // generate normalizedPaths for function search mode
@@ -3187,9 +3564,10 @@ ${item.displayPath}<span class="${type}">${name}</span>\
                     path = itemPaths.has(elem[2]) ? itemPaths.get(elem[2]) : lastPath;
                     lastPath = path;
                 }
+                const exactPath = elem.length > 3 ? itemPaths.get(elem[3]) : path;
 
-                lowercasePaths.push({ty: ty, name: name.toLowerCase(), path: path});
-                paths[i] = {ty: ty, name: name, path: path};
+                lowercasePaths.push({ty, name: name.toLowerCase(), path, exactPath});
+                paths[i] = {ty, name, path, exactPath};
             }
 
             // convert `item*` into an object form, and construct word indices.
@@ -3202,12 +3580,26 @@ ${item.displayPath}<span class="${type}">${name}</span>\
             lastPath = "";
             len = itemTypes.length;
             for (let i = 0; i < len; ++i) {
+                const bitIndex = i + 1;
+                if (descIndex >= descShard.len &&
+                    !searchIndexEmptyDesc.get(crate).contains(bitIndex)) {
+                    descShard = {
+                        crate,
+                        shard: descShard.shard + 1,
+                        start: descShard.start + descShard.len,
+                        len: itemDescShardDecoder.next(),
+                        promise: null,
+                        resolve: null,
+                    };
+                    descIndex = 0;
+                    descShardList.push(descShard);
+                }
                 let word = "";
                 if (typeof itemNames[i] === "string") {
                     word = itemNames[i].toLowerCase();
                 }
                 const path = itemPaths.has(i) ? itemPaths.get(i) : lastPath;
-                const type = buildFunctionSearchType(itemFunctionDecoder, lowercasePaths);
+                const type = itemFunctionDecoder.next();
                 if (type !== null) {
                     if (type) {
                         const fp = functionTypeFingerprint.subarray(id * 4, (id + 1) * 4);
@@ -3228,22 +3620,27 @@ ${item.displayPath}<span class="${type}">${name}</span>\
                 // This object should have exactly the same set of fields as the "crateRow"
                 // object defined above.
                 const row = {
-                    crate: crate,
+                    crate,
                     ty: itemTypes.charCodeAt(i) - charA,
                     name: itemNames[i],
-                    path: path,
-                    desc: itemDescs[i],
+                    path,
+                    descShard,
+                    descIndex,
+                    exactPath: itemReexports.has(i) ? itemPaths.get(itemReexports.get(i)) : path,
                     parent: itemParentIdxs[i] > 0 ? paths[itemParentIdxs[i] - 1] : undefined,
                     type,
-                    id: id,
+                    id,
                     word,
                     normalizedName: word.indexOf("_") === -1 ? word : word.replace(/_/g, ""),
-                    deprecated: deprecatedItems.has(i),
+                    bitIndex,
                     implDisambiguator: implDisambiguator.has(i) ? implDisambiguator.get(i) : null,
                 };
                 id += 1;
                 searchIndex.push(row);
                 lastPath = row.path;
+                if (!searchIndexEmptyDesc.get(crate).contains(bitIndex)) {
+                    descIndex += 1;
+                }
             }
 
             if (aliases) {
@@ -3267,6 +3664,7 @@ ${item.displayPath}<span class="${type}">${name}</span>\
                 }
             }
             currentIndex += itemTypes.length;
+            searchState.descShards.set(crate, descShardList);
         }
         // Drop the (rather large) hash table used for reusing function items
         TYPES_POOL = new Map();

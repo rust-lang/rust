@@ -13,6 +13,15 @@ LL |         println!("child function: {}", fancy_num.num);
 ...
 LL |     println!("main function: {}", fancy_ref.num);
    |                                   ------------- borrow later used here
+   |
+note: if `FancyNum` implemented `Clone`, you could clone the value
+  --> $DIR/E0504.rs:1:1
+   |
+LL | struct FancyNum {
+   | ^^^^^^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     let fancy_ref = &fancy_num;
+   |                     ---------- you could clone this value
 
 error: aborting due to 1 previous error
 

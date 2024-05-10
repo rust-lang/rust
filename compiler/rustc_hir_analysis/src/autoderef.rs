@@ -1,6 +1,6 @@
 use crate::errors::AutoDerefReachedRecursionLimit;
+use crate::traits;
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
-use crate::traits::{self, TraitEngine, TraitEngineExt};
 use rustc_infer::infer::InferCtxt;
 use rustc_middle::ty::TypeVisitableExt;
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -8,7 +8,7 @@ use rustc_session::Limit;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::Span;
-use rustc_trait_selection::traits::StructurallyNormalizeExt;
+use rustc_trait_selection::traits::ObligationCtxt;
 
 #[derive(Copy, Clone, Debug)]
 pub enum AutoderefKind {
@@ -167,25 +167,19 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
         &self,
         ty: Ty<'tcx>,
     ) -> Option<(Ty<'tcx>, Vec<traits::PredicateObligation<'tcx>>)> {
-        let mut fulfill_cx = <dyn TraitEngine<'tcx>>::new(self.infcx);
-
-        let cause = traits::ObligationCause::misc(self.span, self.body_id);
-        let normalized_ty = match self
-            .infcx
-            .at(&cause, self.param_env)
-            .structurally_normalize(ty, &mut *fulfill_cx)
-        {
-            Ok(normalized_ty) => normalized_ty,
-            Err(errors) => {
-                // This shouldn't happen, except for evaluate/fulfill mismatches,
-                // but that's not a reason for an ICE (`predicate_may_hold` is conservative
-                // by design).
-                debug!(?errors, "encountered errors while fulfilling");
-                return None;
-            }
+        let ocx = ObligationCtxt::new(self.infcx);
+        let Ok(normalized_ty) = ocx.structurally_normalize(
+            &traits::ObligationCause::misc(self.span, self.body_id),
+            self.param_env,
+            ty,
+        ) else {
+            // We shouldn't have errors here, except for evaluate/fulfill mismatches,
+            // but that's not a reason for an ICE (`predicate_may_hold` is conservative
+            // by design).
+            // FIXME(-Znext-solver): This *actually* shouldn't happen then.
+            return None;
         };
-
-        let errors = fulfill_cx.select_where_possible(self.infcx);
+        let errors = ocx.select_where_possible();
         if !errors.is_empty() {
             // This shouldn't happen, except for evaluate/fulfill mismatches,
             // but that's not a reason for an ICE (`predicate_may_hold` is conservative
@@ -194,7 +188,7 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
             return None;
         }
 
-        Some((normalized_ty, fulfill_cx.pending_obligations()))
+        Some((normalized_ty, ocx.into_pending_obligations()))
     }
 
     /// Returns the final type we ended up with, which may be an inference

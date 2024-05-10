@@ -9,8 +9,7 @@ trait MyTrait<'a, 'b, T> {
 impl<'a, 'b, T, U> MyTrait<T> for U {
     //~^ ERROR: implicit elided lifetime not allowed here [E0726]
     async fn foo(_: T) -> (&'a U, &'b T) {}
-    //~^ ERROR: method `foo` has a `&self` declaration in the trait, but not in the impl [E0186]
-    //~| ERROR: mismatched types [E0308]
+    //~^ ERROR: mismatched types [E0308]
 }
 
 fn main() {}

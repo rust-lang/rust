@@ -1,7 +1,6 @@
 //@ run-pass
 #![allow(dead_code)]
 #![allow(unused_unsafe)]
-//@ ignore-wasm32-bare seems unimportant to test
 
 // Issue #2303
 
@@ -71,6 +70,14 @@ mod m {
 }
 
 #[cfg(target_os = "windows")]
+mod m {
+    pub mod m {
+        pub fn align() -> usize { 8 }
+        pub fn size() -> usize { 16 }
+    }
+}
+
+#[cfg(target_family = "wasm")]
 mod m {
     pub mod m {
         pub fn align() -> usize { 8 }

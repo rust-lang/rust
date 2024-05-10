@@ -216,7 +216,7 @@ fn check_fn_inner<'tcx>(
                     None
                 }))
                 .collect_vec(),
-            &format!("the following explicit lifetimes could be elided: {lts}"),
+            format!("the following explicit lifetimes could be elided: {lts}"),
             |diag| {
                 if sig.header.is_async() {
                     // async functions have usages whose spans point at the lifetime declaration which messes up
@@ -291,11 +291,7 @@ fn elision_suggestions(
                     }) => {
                         // expand `&'a T` to `&'a T`
                         //          ^^         ^^^
-                        let span = cx
-                            .sess()
-                            .source_map()
-                            .span_extend_while(usage.ident.span, |ch| ch.is_ascii_whitespace())
-                            .unwrap_or(usage.ident.span);
+                        let span = cx.sess().source_map().span_extend_while_whitespace(usage.ident.span);
 
                         (span, String::new())
                     },

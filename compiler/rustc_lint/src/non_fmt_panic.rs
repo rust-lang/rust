@@ -4,10 +4,12 @@ use rustc_ast as ast;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_infer::infer::TyCtxtInferExt;
+use rustc_middle::bug;
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty;
 use rustc_parse_format::{ParseMode, Parser, Piece};
 use rustc_session::lint::FutureIncompatibilityReason;
+use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::edition::Edition;
 use rustc_span::{hygiene, sym, symbol::kw, InnerSpan, Span, Symbol};
 use rustc_trait_selection::infer::InferCtxtExt;
@@ -53,7 +55,7 @@ impl<'tcx> LateLintPass<'tcx> for NonPanicFmt {
 
                 if Some(def_id) == cx.tcx.lang_items().begin_panic_fn()
                     || Some(def_id) == cx.tcx.lang_items().panic_fn()
-                    || f_diagnostic_name == Some(sym::panic_str)
+                    || f_diagnostic_name == Some(sym::panic_str_2015)
                 {
                     if let Some(id) = f.span.ctxt().outer_expn_data().macro_def_id {
                         if matches!(

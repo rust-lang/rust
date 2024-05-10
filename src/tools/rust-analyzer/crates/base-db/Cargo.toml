@@ -12,6 +12,8 @@ rust-version.workspace = true
 doctest = false
 
 [dependencies]
+lz4_flex = { version = "0.11", default-features = false }
+
 la-arena.workspace = true
 salsa.workspace = true
 rustc-hash.workspace = true

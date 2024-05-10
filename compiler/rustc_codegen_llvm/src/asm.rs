@@ -220,7 +220,7 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         constraints.append(&mut clobbers);
         if !options.contains(InlineAsmOptions::PRESERVES_FLAGS) {
             match asm_arch {
-                InlineAsmArch::AArch64 | InlineAsmArch::Arm => {
+                InlineAsmArch::AArch64 | InlineAsmArch::Arm64EC | InlineAsmArch::Arm => {
                     constraints.push("~{cc}".to_string());
                 }
                 InlineAsmArch::X86 | InlineAsmArch::X86_64 => {
@@ -467,11 +467,11 @@ pub(crate) fn inline_asm_call<'ll>(
 
             let call = if !labels.is_empty() {
                 assert!(catch_funclet.is_none());
-                bx.callbr(fty, None, None, v, inputs, dest.unwrap(), labels, None)
+                bx.callbr(fty, None, None, v, inputs, dest.unwrap(), labels, None, None)
             } else if let Some((catch, funclet)) = catch_funclet {
-                bx.invoke(fty, None, None, v, inputs, dest.unwrap(), catch, funclet)
+                bx.invoke(fty, None, None, v, inputs, dest.unwrap(), catch, funclet, None)
             } else {
-                bx.call(fty, None, None, v, inputs, None)
+                bx.call(fty, None, None, v, inputs, None, None)
             };
 
             // Store mark in a metadata node so we can map LLVM errors

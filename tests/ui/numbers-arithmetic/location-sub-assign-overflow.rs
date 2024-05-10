@@ -1,5 +1,4 @@
 //@ run-fail
-//@ ignore-wasm32
 //@ error-pattern:location-sub-assign-overflow.rs
 
 fn main() {

@@ -1,15 +1,9 @@
 // ignore-tidy-linelength
 //@ edition:2021
-//@ revisions: classic next
+//@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
-//@[next] check-pass
-//@[classic] known-bug: #112347
-//@[classic] build-fail
-//@[classic] failure-status: 101
-//@[classic] normalize-stderr-test "note: .*\n\n" -> ""
-//@[classic] normalize-stderr-test "thread 'rustc' panicked.*\n.*\n" -> ""
-//@[classic] normalize-stderr-test "(error: internal compiler error: [^:]+):\d+:\d+: " -> "$1:LL:CC: "
-//@[classic] rustc-env:RUST_BACKTRACE=0
+//@ check-pass
 
 #![feature(unboxed_closures)]
 

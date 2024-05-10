@@ -13,7 +13,10 @@ error: unconstrained generic constant
 LL |     [(); (1_u8 as usize) + N]
    |          ^^^^^^^^^^^^^^^^^^^
    |
-   = help: try adding a `where` bound using this expression: `where [(); (1_u8 as usize) + N]:`
+help: try adding a `where` bound
+   |
+LL | fn foo<const N: usize>() -> [(); (true as usize) + N] where [(); (1_u8 as usize) + N]: {
+   |                                                       ++++++++++++++++++++++++++++++++
 
 error: aborting due to 2 previous errors
 

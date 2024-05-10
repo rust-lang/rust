@@ -1,5 +1,5 @@
 error[E0119]: conflicting implementations of trait `MyTrait` for type `()`
-  --> $DIR/issue-65384.rs:10:1
+  --> $DIR/issue-65384.rs:9:1
    |
 LL | impl MyTrait for () {}
    | ------------------- first implementation here

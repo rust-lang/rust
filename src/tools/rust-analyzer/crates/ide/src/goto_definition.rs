@@ -1,10 +1,10 @@
-use std::mem::discriminant;
+use std::{iter, mem::discriminant};
 
 use crate::{
     doc_links::token_as_doc_comment, navigation_target::ToNav, FilePosition, NavigationTarget,
     RangeInfo, TryToNav,
 };
-use hir::{AsAssocItem, AssocItem, DescendPreference, ModuleDef, Semantics};
+use hir::{AsAssocItem, AssocItem, DescendPreference, MacroFileIdExt, ModuleDef, Semantics};
 use ide_db::{
     base_db::{AnchoredPath, FileId, FileLoader},
     defs::{Definition, IdentClass},
@@ -74,11 +74,13 @@ pub(crate) fn goto_definition(
         .filter_map(|token| {
             let parent = token.parent()?;
 
-            if let Some(tt) = ast::TokenTree::cast(parent.clone()) {
-                if let Some(x) = try_lookup_include_path(sema, tt, token.clone(), file_id) {
+            if let Some(token) = ast::String::cast(token.clone()) {
+                if let Some(x) = try_lookup_include_path(sema, token, file_id) {
                     return Some(vec![x]);
                 }
+            }
 
+            if ast::TokenTree::can_cast(parent.kind()) {
                 if let Some(x) = try_lookup_macro_def_in_macro_use(sema, token) {
                     return Some(vec![x]);
                 }
@@ -111,24 +113,17 @@ pub(crate) fn goto_definition(
 
 fn try_lookup_include_path(
     sema: &Semantics<'_, RootDatabase>,
-    tt: ast::TokenTree,
-    token: SyntaxToken,
+    token: ast::String,
     file_id: FileId,
 ) -> Option<NavigationTarget> {
-    let token = ast::String::cast(token)?;
-    let path = token.value()?.into_owned();
-    let macro_call = tt.syntax().parent().and_then(ast::MacroCall::cast)?;
-    let name = macro_call.path()?.segment()?.name_ref()?;
-    if !matches!(&*name.text(), "include" | "include_str" | "include_bytes") {
+    let file = sema.hir_file_for(&token.syntax().parent()?).macro_file()?;
+    if !iter::successors(Some(file), |file| file.parent(sema.db).macro_file())
+        // Check that we are in the eager argument expansion of an include macro
+        .any(|file| file.is_include_like_macro(sema.db) && file.eager_arg(sema.db).is_none())
+    {
         return None;
     }
-
-    // Ignore non-built-in macros to account for shadowing
-    if let Some(it) = sema.resolve_macro_call(&macro_call) {
-        if !matches!(it.kind(sema.db), hir::MacroKind::BuiltIn) {
-            return None;
-        }
-    }
+    let path = token.value()?;
 
     let file_id = sema.db.resolve_path(AnchoredPath { anchor: file_id, path: &path })?;
     let size = sema.db.file_text(file_id).len().try_into().ok()?;
@@ -1523,6 +1518,26 @@ macro_rules! include_str {}
 
 fn main() {
     let str = include_str!("foo.txt$0");
+}
+//- /foo.txt
+// empty
+//^file
+"#,
+        );
+    }
+
+    #[test]
+    fn goto_include_has_eager_input() {
+        check(
+            r#"
+//- /main.rs
+#[rustc_builtin_macro]
+macro_rules! include_str {}
+#[rustc_builtin_macro]
+macro_rules! concat {}
+
+fn main() {
+    let str = include_str!(concat!("foo", ".tx$0t"));
 }
 //- /foo.txt
 // empty

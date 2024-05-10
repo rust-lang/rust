@@ -420,7 +420,7 @@ pub fn from_fn_attrs<'ll, 'tcx>(
         to_add.push(llvm::CreateAttrString(cx.llcx, "interrupt"));
     }
     if let Some(align) = codegen_fn_attrs.alignment {
-        llvm::set_alignment(llfn, align as usize);
+        llvm::set_alignment(llfn, align);
     }
     to_add.extend(sanitize_attrs(cx, codegen_fn_attrs.no_sanitize));
 

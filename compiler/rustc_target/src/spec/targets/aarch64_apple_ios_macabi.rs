@@ -8,9 +8,14 @@ pub fn target() -> Target {
 
     Target {
         llvm_target: mac_catalyst_llvm_target(arch).into(),
-        description: None,
+        metadata: crate::spec::TargetMetadata {
+            description: None,
+            tier: None,
+            host_tools: None,
+            std: None,
+        },
         pointer_width: 64,
-        data_layout: "e-m:o-i64:64-i128:128-n32:64-S128".into(),
+        data_layout: "e-m:o-i64:64-i128:128-n32:64-S128-Fn32".into(),
         arch: arch.target_arch(),
         options: TargetOptions {
             features: "+neon,+fp-armv8,+apple-a12".into(),

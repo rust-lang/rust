@@ -9,11 +9,11 @@ use crate::{syntax_node::GreenNode, SyntaxError, SyntaxTreeBuilder};
 
 pub(crate) use crate::parsing::reparsing::incremental_reparse;
 
-pub(crate) fn parse_text(text: &str) -> (GreenNode, Vec<SyntaxError>) {
+pub(crate) fn parse_text(text: &str, edition: parser::Edition) -> (GreenNode, Vec<SyntaxError>) {
     let _p = tracing::span!(tracing::Level::INFO, "parse_text").entered();
     let lexed = parser::LexedStr::new(text);
     let parser_input = lexed.to_input();
-    let parser_output = parser::TopEntryPoint::SourceFile.parse(&parser_input);
+    let parser_output = parser::TopEntryPoint::SourceFile.parse(&parser_input, edition);
     let (node, errors, _eof) = build_tree(lexed, parser_output);
     (node, errors)
 }

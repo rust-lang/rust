@@ -1,6 +1,8 @@
 use crate::mir::mono::Linkage;
 use rustc_attr::{InlineAttr, InstructionSetAttr, OptimizeAttr};
+use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_span::symbol::Symbol;
+use rustc_target::abi::Align;
 use rustc_target::spec::SanitizerSet;
 
 #[derive(Clone, TyEncodable, TyDecodable, HashStable, Debug)]
@@ -42,12 +44,12 @@ pub struct CodegenFnAttrs {
     pub instruction_set: Option<InstructionSetAttr>,
     /// The `#[repr(align(...))]` attribute. Indicates the value of which the function should be
     /// aligned to.
-    pub alignment: Option<u32>,
+    pub alignment: Option<Align>,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, TyEncodable, TyDecodable, HashStable)]
 pub struct CodegenFnAttrFlags(u32);
-bitflags! {
+bitflags::bitflags! {
     impl CodegenFnAttrFlags: u32 {
         /// `#[cold]`: a hint to LLVM that this function, when called, is never on
         /// the hot path.

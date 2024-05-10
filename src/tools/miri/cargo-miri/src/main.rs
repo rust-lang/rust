@@ -11,10 +11,18 @@ use std::{env, iter};
 
 use crate::phases::*;
 
+/// Returns `true` if our flags look like they may be for rustdoc, i.e., this is cargo calling us to
+/// be rustdoc. It's hard to be sure as cargo does not have a RUSTDOC_WRAPPER or an env var that
+/// would let us get a clear signal.
+fn looks_like_rustdoc() -> bool {
+    // The `--test-run-directory` flag only exists for rustdoc and cargo always passes it. Perfect!
+    env::args().any(|arg| arg == "--test-run-directory")
+}
+
 fn main() {
     // Rustc does not support non-UTF-8 arguments so we make no attempt either.
     // (We do support non-UTF-8 environment variables though.)
-    let mut args = std::env::args();
+    let mut args = env::args();
     // Skip binary name.
     args.next().unwrap();
 
@@ -91,10 +99,16 @@ fn main() {
             // (see https://github.com/rust-lang/cargo/issues/10886).
             phase_rustc(args, RustcPhase::Build)
         }
-        _ => {
-            // Everything else must be rustdoc. But we need to get `first` "back onto the iterator",
+        _ if looks_like_rustdoc() => {
+            // This is probably rustdoc. But we need to get `first` "back onto the iterator",
             // it is some part of the rustdoc invocation.
             phase_rustdoc(iter::once(first).chain(args));
+        }
+        _ => {
+            show_error!(
+                "`cargo-miri` failed to recognize which phase of the build process this is, please report a bug.\nThe command-line arguments were: {:#?}",
+                Vec::from_iter(env::args()),
+            );
         }
     }
 }

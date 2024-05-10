@@ -39,9 +39,13 @@ tracing.workspace = true
 tracing-subscriber.workspace = true
 tracing-tree.workspace = true
 triomphe.workspace = true
+toml = "0.8.8"
 nohash-hasher.workspace = true
 always-assert = "0.2.0"
 walkdir = "2.3.2"
+semver.workspace = true
+memchr = "2.7.1"
+indexmap = { workspace = true, features = ["serde"] }
 
 cfg.workspace = true
 flycheck.workspace = true
@@ -62,7 +66,7 @@ parser.workspace = true
 toolchain.workspace = true
 vfs-notify.workspace = true
 vfs.workspace = true
-memchr = "2.7.1"
+paths.workspace = true
 
 [target.'cfg(windows)'.dependencies]
 winapi = "0.3.9"
@@ -90,6 +94,7 @@ in-rust-tree = [
     "hir/in-rust-tree",
     "hir-def/in-rust-tree",
     "hir-ty/in-rust-tree",
+    "load-cargo/in-rust-tree",
 ]
 
 [lints]

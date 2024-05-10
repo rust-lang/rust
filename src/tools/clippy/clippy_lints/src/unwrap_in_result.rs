@@ -59,7 +59,7 @@ declare_lint_pass!(UnwrapInResult=> [UNWRAP_IN_RESULT]);
 
 impl<'tcx> LateLintPass<'tcx> for UnwrapInResult {
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, impl_item: &'tcx hir::ImplItem<'_>) {
-        if let hir::ImplItemKind::Fn(ref _signature, _) = impl_item.kind
+        if let ImplItemKind::Fn(ref _signature, _) = impl_item.kind
             // first check if it's a method or function
             // checking if its return type is `result` or `option`
             && (is_type_diagnostic_item(cx, return_ty(cx, impl_item.owner_id), sym::Result)

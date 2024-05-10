@@ -2,12 +2,12 @@ use super::{AllocId, AllocRange, ConstAllocation, Pointer, Scalar};
 
 use crate::error;
 use crate::mir::{ConstAlloc, ConstValue};
-use crate::ty::{layout, tls, Ty, TyCtxt, ValTree};
+use crate::ty::{self, layout, tls, Ty, TyCtxt, ValTree};
 
 use rustc_ast_ir::Mutability;
 use rustc_data_structures::sync::Lock;
 use rustc_errors::{DiagArgName, DiagArgValue, DiagMessage, ErrorGuaranteed, IntoDiagArg};
-use rustc_macros::HashStable;
+use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_session::CtfeBacktrace;
 use rustc_span::{def_id::DefId, Span, DUMMY_SP};
 use rustc_target::abi::{call, Align, Size, VariantIdx, WrappingRange};
@@ -88,8 +88,8 @@ pub type EvalToConstValueResult<'tcx> = Result<ConstValue<'tcx>, ErrorHandled>;
 /// This is needed in `thir::pattern::lower_inline_const`.
 pub type EvalToValTreeResult<'tcx> = Result<Option<ValTree<'tcx>>, ErrorHandled>;
 
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-static_assert_size!(InterpErrorInfo<'_>, 8);
+#[cfg(target_pointer_width = "64")]
+rustc_data_structures::static_assert_size!(InterpErrorInfo<'_>, 8);
 
 /// Packages the kind of error we got from the const code interpreter
 /// up with a Rust-level backtrace of where the error occurred.
@@ -344,6 +344,11 @@ pub enum UndefinedBehaviorInfo<'tcx> {
     InvalidFunctionPointer(Pointer<AllocId>),
     /// Using a pointer-not-to-a-vtable as vtable pointer.
     InvalidVTablePointer(Pointer<AllocId>),
+    /// Using a vtable for the wrong trait.
+    InvalidVTableTrait {
+        expected_trait: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
+        vtable_trait: Option<ty::PolyExistentialTraitRef<'tcx>>,
+    },
     /// Using a string that is not valid UTF-8,
     InvalidStr(std::str::Utf8Error),
     /// Using uninitialized data where it is not allowed.
@@ -414,34 +419,86 @@ impl From<PointerKind> for ExpectedKind {
 
 #[derive(Debug)]
 pub enum ValidationErrorKind<'tcx> {
-    PointerAsInt { expected: ExpectedKind },
+    PointerAsInt {
+        expected: ExpectedKind,
+    },
     PartialPointer,
-    PtrToUninhabited { ptr_kind: PointerKind, ty: Ty<'tcx> },
-    PtrToStatic { ptr_kind: PointerKind },
+    PtrToUninhabited {
+        ptr_kind: PointerKind,
+        ty: Ty<'tcx>,
+    },
+    PtrToStatic {
+        ptr_kind: PointerKind,
+    },
     ConstRefToMutable,
     ConstRefToExtern,
     MutableRefToImmutable,
     UnsafeCellInImmutable,
     NullFnPtr,
     NeverVal,
-    NullablePtrOutOfRange { range: WrappingRange, max_value: u128 },
-    PtrOutOfRange { range: WrappingRange, max_value: u128 },
-    OutOfRange { value: String, range: WrappingRange, max_value: u128 },
-    UninhabitedVal { ty: Ty<'tcx> },
-    InvalidEnumTag { value: String },
+    NullablePtrOutOfRange {
+        range: WrappingRange,
+        max_value: u128,
+    },
+    PtrOutOfRange {
+        range: WrappingRange,
+        max_value: u128,
+    },
+    OutOfRange {
+        value: String,
+        range: WrappingRange,
+        max_value: u128,
+    },
+    UninhabitedVal {
+        ty: Ty<'tcx>,
+    },
+    InvalidEnumTag {
+        value: String,
+    },
     UninhabitedEnumVariant,
-    Uninit { expected: ExpectedKind },
-    InvalidVTablePtr { value: String },
-    InvalidMetaSliceTooLarge { ptr_kind: PointerKind },
-    InvalidMetaTooLarge { ptr_kind: PointerKind },
-    UnalignedPtr { ptr_kind: PointerKind, required_bytes: u64, found_bytes: u64 },
-    NullPtr { ptr_kind: PointerKind },
-    DanglingPtrNoProvenance { ptr_kind: PointerKind, pointer: String },
-    DanglingPtrOutOfBounds { ptr_kind: PointerKind },
-    DanglingPtrUseAfterFree { ptr_kind: PointerKind },
-    InvalidBool { value: String },
-    InvalidChar { value: String },
-    InvalidFnPtr { value: String },
+    Uninit {
+        expected: ExpectedKind,
+    },
+    InvalidVTablePtr {
+        value: String,
+    },
+    InvalidMetaWrongTrait {
+        expected_trait: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
+        vtable_trait: Option<ty::PolyExistentialTraitRef<'tcx>>,
+    },
+    InvalidMetaSliceTooLarge {
+        ptr_kind: PointerKind,
+    },
+    InvalidMetaTooLarge {
+        ptr_kind: PointerKind,
+    },
+    UnalignedPtr {
+        ptr_kind: PointerKind,
+        required_bytes: u64,
+        found_bytes: u64,
+    },
+    NullPtr {
+        ptr_kind: PointerKind,
+    },
+    DanglingPtrNoProvenance {
+        ptr_kind: PointerKind,
+        pointer: String,
+    },
+    DanglingPtrOutOfBounds {
+        ptr_kind: PointerKind,
+    },
+    DanglingPtrUseAfterFree {
+        ptr_kind: PointerKind,
+    },
+    InvalidBool {
+        value: String,
+    },
+    InvalidChar {
+        value: String,
+    },
+    InvalidFnPtr {
+        value: String,
+    },
 }
 
 /// Error information for when the program did something that might (or might not) be correct
@@ -482,6 +539,8 @@ pub enum ResourceExhaustionInfo {
     MemoryExhausted,
     /// The address space (of the target) is full.
     AddressSpaceFull,
+    /// The compiler got an interrupt signal (a user ran out of patience).
+    Interrupted,
 }
 
 /// A trait for machine-specific errors (or other "machine stop" conditions).

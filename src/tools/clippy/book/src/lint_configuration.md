@@ -132,6 +132,16 @@ Whether `unwrap` should be allowed in test functions or `#[cfg(test)]`
 * [`unwrap_used`](https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used)
 
 
+## `allow-useless-vec-in-tests`
+Whether `useless_vec` should ignore test functions or `#[cfg(test)]`
+
+**Default Value:** `false`
+
+---
+**Affected lints:**
+* [`useless_vec`](https://rust-lang.github.io/rust-clippy/master/index.html#useless_vec)
+
+
 ## `allowed-dotfiles`
 Additional dotfiles (files or directories starting with a dot) to allow
 
@@ -162,6 +172,32 @@ configuration of Clippy. By default, any configuration will replace the default 
 ---
 **Affected lints:**
 * [`min_ident_chars`](https://rust-lang.github.io/rust-clippy/master/index.html#min_ident_chars)
+
+
+## `allowed-prefixes`
+List of prefixes to allow when determining whether an item's name ends with the module's name.
+If the rest of an item's name is an allowed prefix (e.g. item `ToFoo` or `to_foo` in module `foo`),
+then don't emit a warning.
+
+#### Example
+
+```toml
+allowed-prefixes = [ "to", "from" ]
+```
+
+#### Noteworthy
+
+- By default, the following prefixes are allowed: `to`, `as`, `into`, `from`, `try_into` and `try_from`
+- PascalCase variant is included automatically for each snake_case variant (e.g. if `try_into` is included,
+  `TryInto` will also be included)
+- Use `".."` as part of the list to indicate that the configured values should be appended to the
+default configuration of Clippy. By default, any configuration will replace the default value
+
+**Default Value:** `["to", "as", "into", "from", "try_into", "try_from"]`
+
+---
+**Affected lints:**
+* [`module_name_repetitions`](https://rust-lang.github.io/rust-clippy/master/index.html#module_name_repetitions)
 
 
 ## `allowed-scripts`
@@ -480,13 +516,14 @@ The maximum byte size a `Future` can have, before it triggers the `clippy::large
 
 
 ## `ignore-interior-mutability`
-A list of paths to types that should be treated like `Arc`, i.e. ignored but
-for the generic parameters for determining interior mutability
+A list of paths to types that should be treated as if they do not contain interior mutability
 
 **Default Value:** `["bytes::Bytes"]`
 
 ---
 **Affected lints:**
+* [`borrow_interior_mutable_const`](https://rust-lang.github.io/rust-clippy/master/index.html#borrow_interior_mutable_const)
+* [`declare_interior_mutable_const`](https://rust-lang.github.io/rust-clippy/master/index.html#declare_interior_mutable_const)
 * [`ifs_same_cond`](https://rust-lang.github.io/rust-clippy/master/index.html#ifs_same_cond)
 * [`mutable_key_type`](https://rust-lang.github.io/rust-clippy/master/index.html#mutable_key_type)
 
@@ -602,6 +639,7 @@ The minimum rust version that the project supports. Defaults to the `rust-versio
 **Affected lints:**
 * [`almost_complete_range`](https://rust-lang.github.io/rust-clippy/master/index.html#almost_complete_range)
 * [`approx_constant`](https://rust-lang.github.io/rust-clippy/master/index.html#approx_constant)
+* [`assigning_clones`](https://rust-lang.github.io/rust-clippy/master/index.html#assigning_clones)
 * [`borrow_as_ptr`](https://rust-lang.github.io/rust-clippy/master/index.html#borrow_as_ptr)
 * [`cast_abs_to_unsigned`](https://rust-lang.github.io/rust-clippy/master/index.html#cast_abs_to_unsigned)
 * [`checked_conversions`](https://rust-lang.github.io/rust-clippy/master/index.html#checked_conversions)
@@ -615,6 +653,7 @@ The minimum rust version that the project supports. Defaults to the `rust-versio
 * [`if_then_some_else_none`](https://rust-lang.github.io/rust-clippy/master/index.html#if_then_some_else_none)
 * [`index_refutable_slice`](https://rust-lang.github.io/rust-clippy/master/index.html#index_refutable_slice)
 * [`iter_kv_map`](https://rust-lang.github.io/rust-clippy/master/index.html#iter_kv_map)
+* [`legacy_numeric_constants`](https://rust-lang.github.io/rust-clippy/master/index.html#legacy_numeric_constants)
 * [`manual_bits`](https://rust-lang.github.io/rust-clippy/master/index.html#manual_bits)
 * [`manual_c_str_literals`](https://rust-lang.github.io/rust-clippy/master/index.html#manual_c_str_literals)
 * [`manual_clamp`](https://rust-lang.github.io/rust-clippy/master/index.html#manual_clamp)

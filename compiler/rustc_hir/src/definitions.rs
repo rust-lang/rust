@@ -7,14 +7,14 @@
 pub use crate::def_id::DefPathHash;
 use crate::def_id::{CrateNum, DefIndex, LocalDefId, StableCrateId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use crate::def_path_hash_map::DefPathHashMap;
-
 use rustc_data_structures::stable_hasher::{Hash64, StableHasher};
 use rustc_data_structures::unord::UnordMap;
 use rustc_index::IndexVec;
+use rustc_macros::{Decodable, Encodable};
 use rustc_span::symbol::{kw, sym, Symbol};
-
 use std::fmt::{self, Write};
 use std::hash::Hash;
+use tracing::{debug, instrument};
 
 /// The `DefPathTable` maps `DefIndex`es to `DefKey`s and vice versa.
 /// Internally the `DefPathTable` holds a tree of `DefKey`s, where each `DefKey`
@@ -380,14 +380,19 @@ impl Definitions {
     pub fn local_def_path_hash_to_def_id(
         &self,
         hash: DefPathHash,
-        err: &mut dyn FnMut() -> !,
+        err_msg: &dyn std::fmt::Debug,
     ) -> LocalDefId {
         debug_assert!(hash.stable_crate_id() == self.table.stable_crate_id);
+        #[cold]
+        #[inline(never)]
+        fn err(err_msg: &dyn std::fmt::Debug) -> ! {
+            panic!("{err_msg:?}")
+        }
         self.table
             .def_path_hash_to_index
             .get(&hash.local_hash())
             .map(|local_def_index| LocalDefId { local_def_index })
-            .unwrap_or_else(|| err())
+            .unwrap_or_else(|| err(err_msg))
     }
 
     pub fn def_path_hash_to_def_index_map(&self) -> &DefPathHashMap {

@@ -72,7 +72,6 @@ pub(crate) struct GlobalState {
 
     // status
     pub(crate) shutdown_requested: bool,
-    pub(crate) send_hint_refresh_query: bool,
     pub(crate) last_reported_status: Option<lsp_ext::ServerStatusParams>,
 
     // proc macros
@@ -86,7 +85,10 @@ pub(crate) struct GlobalState {
     pub(crate) last_flycheck_error: Option<String>,
 
     // Test explorer
-    pub(crate) test_run_session: Option<flycheck::CargoTestHandle>,
+    pub(crate) test_run_session: Option<Vec<flycheck::CargoTestHandle>>,
+    pub(crate) test_run_sender: Sender<flycheck::CargoTestMessage>,
+    pub(crate) test_run_receiver: Receiver<flycheck::CargoTestMessage>,
+    pub(crate) test_run_remaining_jobs: usize,
 
     // VFS
     pub(crate) loader: Handle<Box<dyn vfs::loader::Handle>, Receiver<vfs::loader::Message>>,
@@ -123,6 +125,7 @@ pub(crate) struct GlobalState {
     /// to invalidate any salsa caches.
     pub(crate) workspaces: Arc<Vec<ProjectWorkspace>>,
     pub(crate) crate_graph_file_dependencies: FxHashSet<vfs::VfsPath>,
+    pub(crate) detached_files: FxHashSet<vfs::AbsPathBuf>,
 
     // op queues
     pub(crate) fetch_workspaces_queue:
@@ -187,10 +190,11 @@ impl GlobalState {
         };
 
         let mut analysis_host = AnalysisHost::new(config.lru_parse_query_capacity());
-        if let Some(capacities) = config.lru_query_capacities() {
+        if let Some(capacities) = config.lru_query_capacities_config() {
             analysis_host.update_lru_capacities(capacities);
         }
         let (flycheck_sender, flycheck_receiver) = unbounded();
+        let (test_run_sender, test_run_receiver) = unbounded();
         let mut this = GlobalState {
             sender,
             req_queue: ReqQueue::default(),
@@ -203,7 +207,6 @@ impl GlobalState {
             mem_docs: MemDocs::default(),
             semantic_tokens_cache: Arc::new(Default::default()),
             shutdown_requested: false,
-            send_hint_refresh_query: false,
             last_reported_status: None,
             source_root_config: SourceRootConfig::default(),
             local_roots_parent_map: FxHashMap::default(),
@@ -219,6 +222,9 @@ impl GlobalState {
             last_flycheck_error: None,
 
             test_run_session: None,
+            test_run_sender,
+            test_run_receiver,
+            test_run_remaining_jobs: 0,
 
             vfs: Arc::new(RwLock::new((vfs::Vfs::default(), IntMap::default()))),
             vfs_config_version: 0,
@@ -228,6 +234,7 @@ impl GlobalState {
 
             workspaces: Arc::from(Vec::new()),
             crate_graph_file_dependencies: FxHashSet::default(),
+            detached_files: FxHashSet::default(),
             fetch_workspaces_queue: OpQueue::default(),
             fetch_build_data_queue: OpQueue::default(),
             fetch_proc_macros_queue: OpQueue::default(),
@@ -307,16 +314,18 @@ impl GlobalState {
             for file in changed_files {
                 let vfs_path = vfs.file_path(file.file_id);
                 if let Some(path) = vfs_path.as_path() {
-                    let path = path.to_path_buf();
-                    if reload::should_refresh_for_change(&path, file.kind()) {
-                        workspace_structure_change = Some((path.clone(), false));
-                    }
-                    if file.is_created_or_deleted() {
-                        has_structure_changes = true;
-                        workspace_structure_change =
-                            Some((path, self.crate_graph_file_dependencies.contains(vfs_path)));
-                    } else if path.extension() == Some("rs".as_ref()) {
+                    has_structure_changes = file.is_created_or_deleted();
+
+                    if file.is_modified() && path.extension() == Some("rs") {
                         modified_rust_files.push(file.file_id);
+                    }
+
+                    let path = path.to_path_buf();
+                    if file.is_created_or_deleted() {
+                        workspace_structure_change.get_or_insert((path, false)).1 |=
+                            self.crate_graph_file_dependencies.contains(vfs_path);
+                    } else if reload::should_refresh_for_change(&path, file.kind()) {
+                        workspace_structure_change.get_or_insert((path.clone(), false));
                     }
                 }
 
@@ -330,7 +339,7 @@ impl GlobalState {
                         // FIXME: Consider doing normalization in the `vfs` instead? That allows
                         // getting rid of some locking
                         let (text, line_endings) = LineEndings::normalize(text);
-                        (Arc::from(text), line_endings)
+                        (text, line_endings)
                     })
                 } else {
                     None
@@ -512,7 +521,7 @@ impl GlobalStateSnapshot {
                 cargo.target_by_root(path).map(|it| (cargo, it))
             }
             ProjectWorkspace::Json { .. } => None,
-            ProjectWorkspace::DetachedFiles { .. } => None,
+            ProjectWorkspace::DetachedFile { .. } => None,
         })
     }
 

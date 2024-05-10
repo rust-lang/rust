@@ -26,7 +26,6 @@
 
 //@ ignore-windows - this is a unix-specific test
 //@ ignore-emscripten - the file-system issues do not replicate here
-//@ ignore-wasm - the file-system issues do not replicate here
 //@ ignore-arm - the file-system issues do not replicate here, at least on armhf-gnu
 
 #![crate_type = "lib"]

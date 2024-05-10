@@ -68,6 +68,8 @@ print-type-size type: `Union2<std::num::NonZero<u32>, u32>`: 4 bytes, alignment:
 print-type-size     variant `Union2`: 4 bytes
 print-type-size         field `.a`: 4 bytes
 print-type-size         field `.b`: 4 bytes, offset: 0 bytes, alignment: 4 bytes
+print-type-size type: `core::num::nonzero::private::NonZeroU32Inner`: 4 bytes, alignment: 4 bytes
+print-type-size     field `.0`: 4 bytes
 print-type-size type: `std::num::NonZero<u32>`: 4 bytes, alignment: 4 bytes
 print-type-size     field `.0`: 4 bytes
 print-type-size type: `std::option::Option<std::num::NonZero<u32>>`: 4 bytes, alignment: 4 bytes

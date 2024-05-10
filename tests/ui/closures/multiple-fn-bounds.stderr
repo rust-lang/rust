@@ -8,7 +8,7 @@ LL |     foo(move |x| v);
    |     expected due to this
    |
    = note: expected closure signature `fn(_) -> _`
-              found closure signature `for<'a> fn(&'a _) -> _`
+              found closure signature `fn(&_) -> _`
 note: closure inferred to have a different signature due to this bound
   --> $DIR/multiple-fn-bounds.rs:1:11
    |

@@ -1,5 +1,4 @@
 #![allow(bare_trait_objects)]
-#![feature(associated_type_bounds)]
 trait Item {
     type Core;
 }

@@ -4,6 +4,7 @@ use crate::mir::Body;
 use crate::ty::{Allocation, ClosureDef, ClosureKind, FnDef, GenericArgs, IndexedVal, Ty};
 use crate::{with, CrateItem, DefId, Error, ItemKind, Opaque, Symbol};
 use std::fmt::{Debug, Formatter};
+use std::io;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum MonoItem {
@@ -40,12 +41,21 @@ impl Instance {
         with(|cx| cx.instance_args(self.def))
     }
 
-    /// Get the body of an Instance. The body will be eagerly monomorphized.
+    /// Get the body of an Instance.
+    ///
+    /// The body will be eagerly monomorphized and all constants will already be evaluated.
+    ///
+    /// This method will return the intrinsic fallback body if one was defined.
     pub fn body(&self) -> Option<Body> {
         with(|context| context.instance_body(self.def))
     }
 
     /// Check whether this instance has a body available.
+    ///
+    /// For intrinsics with fallback body, this will return `true`. It is up to the user to decide
+    /// whether to specialize the intrinsic or to use its fallback body.
+    ///
+    /// For more information on fallback body, see <https://github.com/rust-lang/rust/issues/93145>.
     ///
     /// This call is much cheaper than `instance.body().is_some()`, since it doesn't try to build
     /// the StableMIR body.
@@ -88,6 +98,17 @@ impl Instance {
     /// path and print only the name.
     pub fn trimmed_name(&self) -> Symbol {
         with(|context| context.instance_name(self.def, true))
+    }
+
+    /// Retrieve the plain intrinsic name of an instance if it's an intrinsic.
+    ///
+    /// The plain name does not include type arguments (as `trimmed_name` does),
+    /// which is more convenient to match with intrinsic symbols.
+    pub fn intrinsic_name(&self) -> Option<Symbol> {
+        match self.kind {
+            InstanceKind::Intrinsic => Some(with(|context| context.intrinsic_name(self.def))),
+            InstanceKind::Item | InstanceKind::Virtual { .. } | InstanceKind::Shim => None,
+        }
     }
 
     /// Resolve an instance starting from a function definition and generic arguments.
@@ -136,7 +157,10 @@ impl Instance {
     /// When generating code for a Drop terminator, users can ignore an empty drop glue.
     /// These shims are only needed to generate a valid Drop call done via VTable.
     pub fn is_empty_shim(&self) -> bool {
-        self.kind == InstanceKind::Shim && with(|cx| cx.is_empty_drop_shim(self.def))
+        self.kind == InstanceKind::Shim
+            && with(|cx| {
+                cx.is_empty_drop_shim(self.def) || cx.is_empty_async_drop_ctor_shim(self.def)
+            })
     }
 
     /// Try to constant evaluate the instance into a constant with the given type.
@@ -145,6 +169,11 @@ impl Instance {
     /// `type_id`.
     pub fn try_const_eval(&self, const_ty: Ty) -> Result<Allocation, Error> {
         with(|cx| cx.eval_instance(self.def, const_ty))
+    }
+
+    /// Emit the body of this instance if it has one.
+    pub fn emit_mir<W: io::Write>(&self, w: &mut W) -> io::Result<()> {
+        if let Some(body) = self.body() { body.dump(w, &self.name()) } else { Ok(()) }
     }
 }
 

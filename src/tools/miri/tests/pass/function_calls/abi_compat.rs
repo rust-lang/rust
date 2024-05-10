@@ -70,7 +70,7 @@ fn main() {
         test_abi_compat(0usize, 0u64);
         test_abi_compat(0isize, 0i64);
     }
-    test_abi_compat(42u32, num::NonZeroU32::new(1).unwrap());
+    test_abi_compat(42u32, num::NonZero::new(1u32).unwrap());
     // - `char` and `u32`.
     test_abi_compat(42u32, 'x');
     // - Reference/pointer types with the same pointee.
@@ -86,9 +86,9 @@ fn main() {
     // - Guaranteed null-pointer-optimizations (RFC 3391).
     test_abi_compat(&0u32 as *const u32, Some(&0u32));
     test_abi_compat(main as fn(), Some(main as fn()));
-    test_abi_compat(0u32, Some(num::NonZeroU32::new(1).unwrap()));
+    test_abi_compat(0u32, Some(num::NonZero::new(1u32).unwrap()));
     test_abi_compat(&0u32 as *const u32, Some(Wrapper(&0u32)));
-    test_abi_compat(0u32, Some(Wrapper(num::NonZeroU32::new(1).unwrap())));
+    test_abi_compat(0u32, Some(Wrapper(num::NonZero::new(1u32).unwrap())));
 
     // These must work for *any* type, since we guarantee that `repr(transparent)` is ABI-compatible
     // with the wrapped field.
@@ -102,7 +102,7 @@ fn main() {
     test_abi_newtype::<[u32; 2]>();
     test_abi_newtype::<[u32; 32]>();
     test_abi_newtype::<Option<i32>>();
-    test_abi_newtype::<Option<num::NonZeroU32>>();
+    test_abi_newtype::<Option<num::NonZero<u32>>>();
 
     // Extra test for assumptions made by arbitrary-self-dyn-receivers.
     // This is interesting since these types are not `repr(transparent)`. So this is not part of our

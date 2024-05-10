@@ -10,6 +10,12 @@ LL |     let t1 = t0;
 LL |     *t1 = 22;
 LL |     p.use_ref();
    |     - borrow later used here
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL -     let p: &isize = &*t0; // Freezes `*t0`
+LL +     let p: &isize = t0.clone(); // Freezes `*t0`
+   |
 
 error: aborting due to 1 previous error
 

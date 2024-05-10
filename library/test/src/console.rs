@@ -46,7 +46,6 @@ pub struct ConsoleTestDiscoveryState {
     pub tests: usize,
     pub benchmarks: usize,
     pub ignored: usize,
-    pub options: Options,
 }
 
 impl ConsoleTestDiscoveryState {
@@ -56,13 +55,7 @@ impl ConsoleTestDiscoveryState {
             None => None,
         };
 
-        Ok(ConsoleTestDiscoveryState {
-            log_out,
-            tests: 0,
-            benchmarks: 0,
-            ignored: 0,
-            options: opts.options,
-        })
+        Ok(ConsoleTestDiscoveryState { log_out, tests: 0, benchmarks: 0, ignored: 0 })
     }
 
     pub fn write_log<F, S>(&mut self, msg: F) -> io::Result<()>
@@ -322,11 +315,10 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Resu
 
     // Prevent the usage of `Instant` in some cases:
     // - It's currently not supported for wasm targets.
-    // - We disable it for miri because it's not available when isolation is enabled.
-    let is_instant_supported =
-        !cfg!(target_family = "wasm") && !cfg!(target_os = "zkvm") && !cfg!(miri);
+    let is_instant_unsupported =
+        (cfg!(target_family = "wasm") && !cfg!(target_os = "wasi")) || cfg!(target_os = "zkvm");
 
-    let start_time = is_instant_supported.then(Instant::now);
+    let start_time = (!is_instant_unsupported).then(Instant::now);
     run_tests(opts, tests, |x| on_test_event(&x, &mut st, &mut *out))?;
     st.exec_time = start_time.map(|t| TestSuiteExecTime(t.elapsed()));
 

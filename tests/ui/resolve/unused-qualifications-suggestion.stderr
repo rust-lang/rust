@@ -16,7 +16,7 @@ LL +     bar();
    |
 
 error: unnecessary qualification
-  --> $DIR/unused-qualifications-suggestion.rs:21:5
+  --> $DIR/unused-qualifications-suggestion.rs:22:5
    |
 LL |     baz::qux::quux();
    |     ^^^^^^^^^^^^^^

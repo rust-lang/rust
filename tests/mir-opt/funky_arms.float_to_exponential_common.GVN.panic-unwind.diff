@@ -29,13 +29,11 @@
                   debug precision => _8;
                   let _8: usize;
                   scope 5 (inlined Formatter::<'_>::precision) {
-                      debug self => _1;
                   }
               }
           }
       }
       scope 4 (inlined Formatter::<'_>::sign_plus) {
-          debug self => _1;
           let mut _20: u32;
           let mut _21: u32;
       }

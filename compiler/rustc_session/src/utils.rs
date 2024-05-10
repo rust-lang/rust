@@ -1,6 +1,7 @@
 use crate::session::Session;
 use rustc_data_structures::profiling::VerboseTimingGuard;
 use rustc_fs_util::try_canonicalize;
+use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use std::{
     path::{Path, PathBuf},
     sync::OnceLock,
@@ -127,7 +128,7 @@ pub fn extra_compiler_flags() -> Option<(Vec<String>, bool)> {
 
     const ICE_REPORT_COMPILER_FLAGS_STRIP_VALUE: &[&str] = &["incremental"];
 
-    let mut args = std::env::args_os().map(|arg| arg.to_string_lossy().to_string()).peekable();
+    let mut args = std::env::args_os().map(|arg| arg.to_string_lossy().to_string());
 
     let mut result = Vec::new();
     let mut excluded_cargo_defaults = false;

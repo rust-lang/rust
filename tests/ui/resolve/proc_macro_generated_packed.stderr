@@ -9,8 +9,8 @@ LL | struct Dealigned<T>(u8, T);
    |
    = Box<dyn Any>
 query stack during panic:
-#0 [mir_const] preparing `<impl at $DIR/proc_macro_generated_packed.rs:15:10: 15:19>::eq` for borrow checking
-#1 [mir_promoted] promoting constants in MIR for `<impl at $DIR/proc_macro_generated_packed.rs:15:10: 15:19>::eq`
+#0 [mir_built] building MIR for `<impl at $DIR/proc_macro_generated_packed.rs:15:10: 15:19>::eq`
+#1 [check_unsafety] unsafety-checking `<impl at $DIR/proc_macro_generated_packed.rs:15:10: 15:19>::eq`
 end of query stack
 error: aborting due to 1 previous error
 

@@ -1,4 +1,4 @@
-//@ only-wasm32-bare
+//@ only-wasm32
 //@ assembly-output: emit-asm
 //@ compile-flags: -C target-feature=+exception-handling
 //@ compile-flags: -C panic=unwind

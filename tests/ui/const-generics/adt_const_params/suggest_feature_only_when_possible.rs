@@ -5,11 +5,16 @@
 // Can never be used as const generics.
 fn uwu_0<const N: &'static mut ()>() {}
 //~^ ERROR: forbidden as the type of a const generic
+//~| HELP: add `#![feature(adt_const_params)]`
+//~| HELP: add `#![feature(adt_const_params)]`
+//~| HELP: add `#![feature(adt_const_params)]`
+//~| HELP: add `#![feature(adt_const_params)]`
+//~| HELP: add `#![feature(adt_const_params)]`
+//~| HELP: add `#![feature(adt_const_params)]`
 
 // Needs the feature but can be used, so suggest adding the feature.
 fn owo_0<const N: &'static u32>() {}
 //~^ ERROR: forbidden as the type of a const generic
-//~^^ HELP: add `#![feature(adt_const_params)]`
 
 // Can only be used in const generics with changes.
 struct Meow {
@@ -18,22 +23,17 @@ struct Meow {
 
 fn meow_0<const N: Meow>() {}
 //~^ ERROR: forbidden as the type of a const generic
-//~^^ HELP: add `#![feature(adt_const_params)]`
 fn meow_1<const N: &'static Meow>() {}
 //~^ ERROR: forbidden as the type of a const generic
-//~^^ HELP: add `#![feature(adt_const_params)]`
 fn meow_2<const N: [Meow; 100]>() {}
 //~^ ERROR: forbidden as the type of a const generic
-//~^^ HELP: add `#![feature(adt_const_params)]`
 fn meow_3<const N: (Meow, u8)>() {}
 //~^ ERROR: forbidden as the type of a const generic
-//~^^ HELP: add `#![feature(adt_const_params)]`
 
 // This is suboptimal that it thinks it can be used
 // but better to suggest the feature to the user.
 fn meow_4<const N: (Meow, String)>() {}
 //~^ ERROR: forbidden as the type of a const generic
-//~^^ HELP: add `#![feature(adt_const_params)]`
 
 // Non-local ADT that does not impl `ConstParamTy`
 fn nya_0<const N: String>() {}

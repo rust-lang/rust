@@ -18,6 +18,8 @@ use crate::infer::error_reporting::{
     ObligationCauseAsDiagArg,
 };
 
+use std::path::PathBuf;
+
 pub mod note_and_explain;
 
 #[derive(Diagnostic)]
@@ -47,6 +49,9 @@ pub struct AnnotationRequired<'a> {
     pub infer_subdiags: Vec<SourceKindSubdiag<'a>>,
     #[subdiagnostic]
     pub multi_suggestions: Vec<SourceKindMultiSuggestion<'a>>,
+    #[note(infer_full_type_written)]
+    pub was_written: Option<()>,
+    pub path: PathBuf,
 }
 
 // Copy of `AnnotationRequired` for E0283
@@ -65,6 +70,9 @@ pub struct AmbiguousImpl<'a> {
     pub infer_subdiags: Vec<SourceKindSubdiag<'a>>,
     #[subdiagnostic]
     pub multi_suggestions: Vec<SourceKindMultiSuggestion<'a>>,
+    #[note(infer_full_type_written)]
+    pub was_written: Option<()>,
+    pub path: PathBuf,
 }
 
 // Copy of `AnnotationRequired` for E0284
@@ -83,6 +91,9 @@ pub struct AmbiguousReturn<'a> {
     pub infer_subdiags: Vec<SourceKindSubdiag<'a>>,
     #[subdiagnostic]
     pub multi_suggestions: Vec<SourceKindMultiSuggestion<'a>>,
+    #[note(infer_full_type_written)]
+    pub was_written: Option<()>,
+    pub path: PathBuf,
 }
 
 // Used when a better one isn't available
@@ -228,7 +239,7 @@ impl Subdiagnostic for RegionOriginNote<'_> {
     fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
-        _f: F,
+        _f: &F,
     ) {
         let mut label_or_note = |span, msg: DiagMessage| {
             let sub_count = diag.children.iter().filter(|d| d.span.is_dummy()).count();
@@ -293,7 +304,7 @@ impl Subdiagnostic for LifetimeMismatchLabels {
     fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
-        _f: F,
+        _f: &F,
     ) {
         match self {
             LifetimeMismatchLabels::InRet { param_span, ret_span, span, label_var1 } => {
@@ -341,7 +352,7 @@ impl Subdiagnostic for AddLifetimeParamsSuggestion<'_> {
     fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
-        _f: F,
+        _f: &F,
     ) {
         let mut mk_suggestion = || {
             let (
@@ -443,7 +454,7 @@ impl Subdiagnostic for IntroducesStaticBecauseUnmetLifetimeReq {
     fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         mut self,
         diag: &mut Diag<'_, G>,
-        _f: F,
+        _f: &F,
     ) {
         self.unmet_requirements
             .push_span_label(self.binding_span, fluent::infer_msl_introduces_static);
@@ -762,7 +773,7 @@ impl Subdiagnostic for ConsiderBorrowingParamHelp {
     fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
-        f: F,
+        f: &F,
     ) {
         let mut type_param_span: MultiSpan = self.spans.clone().into();
         for &span in &self.spans {
@@ -807,7 +818,7 @@ impl Subdiagnostic for DynTraitConstraintSuggestion {
     fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
-        f: F,
+        f: &F,
     ) {
         let mut multi_span: MultiSpan = vec![self.span].into();
         multi_span.push_span_label(self.span, fluent::infer_dtcs_has_lifetime_req_label);
@@ -854,7 +865,7 @@ impl Subdiagnostic for ReqIntroducedLocations {
     fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         mut self,
         diag: &mut Diag<'_, G>,
-        f: F,
+        f: &F,
     ) {
         for sp in self.spans {
             self.span.push_span_label(sp, fluent::infer_ril_introduced_here);
@@ -877,7 +888,7 @@ impl Subdiagnostic for MoreTargeted {
     fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
-        _f: F,
+        _f: &F,
     ) {
         diag.code(E0772);
         diag.primary_message(fluent::infer_more_targeted);
@@ -1263,24 +1274,6 @@ pub enum SuggestAccessingField<'a> {
 }
 
 #[derive(Subdiagnostic)]
-pub enum SuggestBoxingForReturnImplTrait {
-    #[multipart_suggestion(infer_sbfrit_change_return_type, applicability = "maybe-incorrect")]
-    ChangeReturnType {
-        #[suggestion_part(code = "Box<dyn")]
-        start_sp: Span,
-        #[suggestion_part(code = ">")]
-        end_sp: Span,
-    },
-    #[multipart_suggestion(infer_sbfrit_box_return_expr, applicability = "maybe-incorrect")]
-    BoxReturnExpr {
-        #[suggestion_part(code = "Box::new(")]
-        starts: Vec<Span>,
-        #[suggestion_part(code = ")")]
-        ends: Vec<Span>,
-    },
-}
-
-#[derive(Subdiagnostic)]
 #[multipart_suggestion(infer_stp_wrap_one, applicability = "maybe-incorrect")]
 pub struct SuggestTuplePatternOne {
     pub variant: String,
@@ -1300,7 +1293,7 @@ impl Subdiagnostic for SuggestTuplePatternMany {
     fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
-        f: F,
+        f: &F,
     ) {
         diag.arg("path", self.path);
         let message = f(diag, crate::fluent_generated::infer_stp_wrap_many.into());
@@ -1339,15 +1332,12 @@ pub enum TypeErrorAdditionalDiags {
         span: Span,
         code: String,
     },
-    #[suggestion(
-        infer_meant_str_literal,
-        code = "\"{code}\"",
-        applicability = "machine-applicable"
-    )]
+    #[multipart_suggestion(infer_meant_str_literal, applicability = "machine-applicable")]
     MeantStrLiteral {
-        #[primary_span]
-        span: Span,
-        code: String,
+        #[suggestion_part(code = "\"")]
+        start: Span,
+        #[suggestion_part(code = "\"")]
+        end: Span,
     },
     #[suggestion(
         infer_consider_specifying_length,

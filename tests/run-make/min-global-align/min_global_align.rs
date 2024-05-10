@@ -1,4 +1,4 @@
-#![feature(no_core, lang_items)]
+#![feature(no_core, lang_items, freeze_impls)]
 #![crate_type = "rlib"]
 #![no_core]
 

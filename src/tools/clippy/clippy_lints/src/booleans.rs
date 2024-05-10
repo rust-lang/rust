@@ -346,11 +346,18 @@ fn simplify_not(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<String> {
                 _ => None,
             }
             .and_then(|op| {
-                Some(format!(
-                    "{}{op}{}",
-                    snippet_opt(cx, lhs.span)?,
-                    snippet_opt(cx, rhs.span)?
-                ))
+                let lhs_snippet = snippet_opt(cx, lhs.span)?;
+                let rhs_snippet = snippet_opt(cx, rhs.span)?;
+
+                if !(lhs_snippet.starts_with('(') && lhs_snippet.ends_with(')')) {
+                    if let (ExprKind::Cast(..), BinOpKind::Ge) = (&lhs.kind, binop.node) {
+                        // e.g. `(a as u64) < b`. Without the parens the `<` is
+                        // interpreted as a start of generic arguments for `u64`
+                        return Some(format!("({lhs_snippet}){op}{rhs_snippet}"));
+                    }
+                }
+
+                Some(format!("{lhs_snippet}{op}{rhs_snippet}"))
             })
         },
         ExprKind::MethodCall(path, receiver, [], _) => {
@@ -392,13 +399,13 @@ fn simple_negate(b: Bool) -> Bool {
         t @ Term(_) => Not(Box::new(t)),
         And(mut v) => {
             for el in &mut v {
-                *el = simple_negate(::std::mem::replace(el, True));
+                *el = simple_negate(std::mem::replace(el, True));
             }
             Or(v)
         },
         Or(mut v) => {
             for el in &mut v {
-                *el = simple_negate(::std::mem::replace(el, True));
+                *el = simple_negate(std::mem::replace(el, True));
             }
             And(v)
         },

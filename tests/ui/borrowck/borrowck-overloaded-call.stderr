@@ -29,6 +29,15 @@ LL |     s(" world".to_string());
    |     - value moved here
 LL |     s(" world".to_string());
    |     ^ value used here after move
+   |
+note: if `SFnOnce` implemented `Clone`, you could clone the value
+  --> $DIR/borrowck-overloaded-call.rs:41:1
+   |
+LL | struct SFnOnce {
+   | ^^^^^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     s(" world".to_string());
+   |     - you could clone this value
 
 error: aborting due to 3 previous errors
 

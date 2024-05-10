@@ -1,7 +1,7 @@
 //@ run-pass
 
 //@ ignore-windows - this is a unix-specific test
-//@ ignore-emscripten no processes
+//@ ignore-wasm32 no processes
 //@ ignore-sgx no processes
 use std::env;
 use std::os::unix::process::CommandExt;

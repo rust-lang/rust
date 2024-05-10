@@ -4,7 +4,7 @@ use clippy_utils::ty::{implements_trait, is_type_diagnostic_item, peel_mid_ty_re
 use clippy_utils::{is_lint_allowed, is_unit_expr, is_wild, peel_blocks, peel_hir_pat_refs, peel_n_hir_expr_refs};
 use core::cmp::max;
 use rustc_errors::Applicability;
-use rustc_hir::{Arm, BindingAnnotation, Block, Expr, ExprKind, Pat, PatKind};
+use rustc_hir::{Arm, BindingMode, Block, Expr, ExprKind, Pat, PatKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::{sym, Span};
@@ -55,23 +55,15 @@ pub(crate) fn check(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], expr:
         };
 
         let ty = cx.typeck_results().expr_ty(ex);
-        if *ty.kind() != ty::Bool || is_lint_allowed(cx, MATCH_BOOL, ex.hir_id) {
-            check_single_pattern(cx, ex, arms, expr, els);
-            check_opt_like(cx, ex, arms, expr, ty, els);
+        if (*ty.kind() != ty::Bool || is_lint_allowed(cx, MATCH_BOOL, ex.hir_id)) &&
+            (check_single_pattern(arms) || check_opt_like(cx, arms, ty)) {
+            report_single_pattern(cx, ex, arms, expr, els);
         }
     }
 }
 
-fn check_single_pattern(
-    cx: &LateContext<'_>,
-    ex: &Expr<'_>,
-    arms: &[Arm<'_>],
-    expr: &Expr<'_>,
-    els: Option<&Expr<'_>>,
-) {
-    if is_wild(arms[1].pat) {
-        report_single_pattern(cx, ex, arms, expr, els);
-    }
+fn check_single_pattern(arms: &[Arm<'_>]) -> bool {
+    is_wild(arms[1].pat)
 }
 
 fn report_single_pattern(
@@ -83,7 +75,7 @@ fn report_single_pattern(
 ) {
     let lint = if els.is_some() { SINGLE_MATCH_ELSE } else { SINGLE_MATCH };
     let ctxt = expr.span.ctxt();
-    let mut app = Applicability::HasPlaceholders;
+    let mut app = Applicability::MachineApplicable;
     let els_str = els.map_or(String::new(), |els| {
         format!(" else {}", expr_block(cx, els, ctxt, "..", Some(expr.span), &mut app))
     });
@@ -140,19 +132,10 @@ fn report_single_pattern(
     span_lint_and_sugg(cx, lint, expr.span, msg, "try", sugg, app);
 }
 
-fn check_opt_like<'a>(
-    cx: &LateContext<'a>,
-    ex: &Expr<'_>,
-    arms: &[Arm<'_>],
-    expr: &Expr<'_>,
-    ty: Ty<'a>,
-    els: Option<&Expr<'_>>,
-) {
+fn check_opt_like<'a>(cx: &LateContext<'a>, arms: &[Arm<'_>], ty: Ty<'a>) -> bool {
     // We don't want to lint if the second arm contains an enum which could
     // have more variants in the future.
-    if form_exhaustive_matches(cx, ty, arms[0].pat, arms[1].pat) {
-        report_single_pattern(cx, ex, arms, expr, els);
-    }
+    form_exhaustive_matches(cx, ty, arms[0].pat, arms[1].pat)
 }
 
 /// Returns `true` if all of the types in the pattern are enums which we know
@@ -183,7 +166,7 @@ fn collect_pat_paths<'a>(acc: &mut Vec<Ty<'a>>, cx: &LateContext<'a>, pat: &Pat<
             let p_ty = cx.typeck_results().pat_ty(p);
             collect_pat_paths(acc, cx, p, p_ty);
         }),
-        PatKind::TupleStruct(..) | PatKind::Binding(BindingAnnotation::NONE, .., None) | PatKind::Path(_) => {
+        PatKind::TupleStruct(..) | PatKind::Binding(BindingMode::NONE, .., None) | PatKind::Path(_) => {
             acc.push(ty);
         },
         _ => {},

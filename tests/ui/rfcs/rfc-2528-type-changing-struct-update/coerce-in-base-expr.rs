@@ -1,7 +1,6 @@
 //@ check-pass
 
 #![feature(type_changing_struct_update)]
-#![allow(incomplete_features)]
 
 use std::any::Any;
 

@@ -12,9 +12,9 @@ struct Bug {
             //~^ ERROR future that resolves to `u8`, but it resolves to `()`
             async {}
         }
+        // FIXME(type_alias_impl_trait): inform the user about why `F` is not available here.
         let f: F = async { 1 };
-        //~^ ERROR item constrains opaque type that is not in its signature
-        //~| ERROR `async` blocks are not allowed in constants
+        //~^ ERROR mismatched types
         1
     }],
 }

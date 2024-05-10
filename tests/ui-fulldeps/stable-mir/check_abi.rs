@@ -99,7 +99,7 @@ fn check_result(abi: &ArgAbi) {
     assert_matches!(layout.variants, VariantsShape::Multiple { .. })
 }
 
-/// Check the niche information about: `NonZeroU8`
+/// Checks the niche information about `NonZero<u8>`.
 fn check_niche(abi: &ArgAbi) {
     assert!(abi.ty.kind().is_struct());
     assert_matches!(abi.mode, PassMode::Direct { .. });
@@ -150,12 +150,12 @@ fn generate_input(path: &str) -> std::io::Result<()> {
         #![feature(c_variadic)]
         #![allow(unused_variables)]
 
-        use std::num::NonZeroU8;
+        use std::num::NonZero;
 
         pub fn fn_abi(
             ignore: [u8; 0],
             primitive: char,
-            niche: NonZeroU8,
+            niche: NonZero<u8>,
         ) -> Result<usize, &'static str> {{
                 // We only care about the signature.
                 todo!()

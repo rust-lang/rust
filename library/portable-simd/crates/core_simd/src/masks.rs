@@ -34,6 +34,7 @@ mod sealed {
         fn eq(self, other: Self) -> bool;
 
         fn to_usize(self) -> usize;
+        fn max_unsigned() -> u64;
 
         type Unsigned: SimdElement;
 
@@ -76,6 +77,11 @@ macro_rules! impl_element {
             #[inline]
             fn to_usize(self) -> usize {
                 self as usize
+            }
+
+            #[inline]
+            fn max_unsigned() -> u64 {
+                <$unsigned>::MAX as u64
             }
 
             type Unsigned = $unsigned;

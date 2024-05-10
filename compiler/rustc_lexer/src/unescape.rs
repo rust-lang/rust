@@ -259,7 +259,7 @@ fn scan_escape<T: From<char> + From<u8>>(
             } else {
                 // This may be a high byte, but that will only happen if `T` is
                 // `MixedUnit`, because of the `allow_high_bytes` check above.
-                Ok(T::from(value as u8))
+                Ok(T::from(value))
             };
         }
         'u' => return scan_unicode(chars, mode.allow_unicode_escapes()).map(T::from),
@@ -300,7 +300,7 @@ fn scan_unicode(chars: &mut Chars<'_>, allow_unicode_escapes: bool) -> Result<ch
                     return Err(EscapeError::UnicodeEscapeInByte);
                 }
 
-                break std::char::from_u32(value).ok_or_else(|| {
+                break std::char::from_u32(value).ok_or({
                     if value > 0x10FFFF {
                         EscapeError::OutOfRangeUnicodeEscape
                     } else {

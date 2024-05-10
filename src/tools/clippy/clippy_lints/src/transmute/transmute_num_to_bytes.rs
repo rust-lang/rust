@@ -31,7 +31,7 @@ pub(super) fn check<'tcx>(
                 cx,
                 TRANSMUTE_NUM_TO_BYTES,
                 e.span,
-                &format!("transmute from a `{from_ty}` to a `{to_ty}`"),
+                format!("transmute from a `{from_ty}` to a `{to_ty}`"),
                 |diag| {
                     let arg = sugg::Sugg::hir(cx, arg, "..");
                     diag.span_suggestion(

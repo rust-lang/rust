@@ -55,6 +55,7 @@ pub enum DryRun {
 pub enum DebuginfoLevel {
     #[default]
     None,
+    LineDirectivesOnly,
     LineTablesOnly,
     Limited,
     Full,
@@ -70,16 +71,22 @@ impl<'de> Deserialize<'de> for DebuginfoLevel {
         use serde::de::Error;
 
         Ok(match Deserialize::deserialize(deserializer)? {
-            StringOrInt::String("none") | StringOrInt::Int(0) => DebuginfoLevel::None,
-            StringOrInt::String("line-tables-only") => DebuginfoLevel::LineTablesOnly,
-            StringOrInt::String("limited") | StringOrInt::Int(1) => DebuginfoLevel::Limited,
-            StringOrInt::String("full") | StringOrInt::Int(2) => DebuginfoLevel::Full,
+            StringOrInt::String(s) if s == "none" => DebuginfoLevel::None,
+            StringOrInt::Int(0) => DebuginfoLevel::None,
+            StringOrInt::String(s) if s == "line-directives-only" => {
+                DebuginfoLevel::LineDirectivesOnly
+            }
+            StringOrInt::String(s) if s == "line-tables-only" => DebuginfoLevel::LineTablesOnly,
+            StringOrInt::String(s) if s == "limited" => DebuginfoLevel::Limited,
+            StringOrInt::Int(1) => DebuginfoLevel::Limited,
+            StringOrInt::String(s) if s == "full" => DebuginfoLevel::Full,
+            StringOrInt::Int(2) => DebuginfoLevel::Full,
             StringOrInt::Int(n) => {
                 let other = serde::de::Unexpected::Signed(n);
                 return Err(D::Error::invalid_value(other, &"expected 0, 1, or 2"));
             }
             StringOrInt::String(s) => {
-                let other = serde::de::Unexpected::Str(s);
+                let other = serde::de::Unexpected::Str(&s);
                 return Err(D::Error::invalid_value(
                     other,
                     &"expected none, line-tables-only, limited, or full",
@@ -95,6 +102,7 @@ impl Display for DebuginfoLevel {
         use DebuginfoLevel::*;
         f.write_str(match self {
             None => "0",
+            LineDirectivesOnly => "line-directives-only",
             LineTablesOnly => "line-tables-only",
             Limited => "1",
             Full => "2",
@@ -145,7 +153,6 @@ impl LldMode {
 /// `config.example.toml`.
 #[derive(Default, Clone)]
 pub struct Config {
-    pub changelog_seen: Option<usize>, // FIXME: Deprecated field. Remove it at 2024.
     pub change_id: Option<usize>,
     pub bypass_bootstrap_lock: bool,
     pub ccache: Option<String>,
@@ -236,6 +243,7 @@ pub struct Config {
     pub lld_mode: LldMode,
     pub lld_enabled: bool,
     pub llvm_tools_enabled: bool,
+    pub llvm_bitcode_linker_enabled: bool,
 
     pub llvm_cflags: Option<String>,
     pub llvm_cxxflags: Option<String>,
@@ -255,7 +263,7 @@ pub struct Config {
     pub rust_debuginfo_level_std: DebuginfoLevel,
     pub rust_debuginfo_level_tools: DebuginfoLevel,
     pub rust_debuginfo_level_tests: DebuginfoLevel,
-    pub rust_split_debuginfo: SplitDebuginfo,
+    pub rust_split_debuginfo_for_build_triple: Option<SplitDebuginfo>, // FIXME: Deprecated field. Remove in Q3'24.
     pub rust_rpath: bool,
     pub rust_strip: bool,
     pub rust_frame_pointers: bool,
@@ -321,6 +329,7 @@ pub struct Config {
     pub nodejs: Option<PathBuf>,
     pub npm: Option<PathBuf>,
     pub gdb: Option<PathBuf>,
+    pub lldb: Option<PathBuf>,
     pub python: Option<PathBuf>,
     pub reuse: Option<PathBuf>,
     pub cargo_native_static: bool,
@@ -337,6 +346,8 @@ pub struct Config {
     #[cfg(test)]
     pub initial_rustfmt: RefCell<RustfmtState>,
 
+    /// The paths to work with. For example: with `./x check foo bar` we get
+    /// `paths=["foo", "bar"]`.
     pub paths: Vec<PathBuf>,
 }
 
@@ -573,6 +584,7 @@ pub struct Target {
     pub ranlib: Option<PathBuf>,
     pub default_linker: Option<PathBuf>,
     pub linker: Option<PathBuf>,
+    pub split_debuginfo: Option<SplitDebuginfo>,
     pub sanitizers: Option<bool>,
     pub profiler: Option<StringOrBool>,
     pub rpath: Option<bool>,
@@ -581,6 +593,7 @@ pub struct Target {
     pub musl_libdir: Option<PathBuf>,
     pub wasi_root: Option<PathBuf>,
     pub qemu_rootfs: Option<PathBuf>,
+    pub runner: Option<String>,
     pub no_std: bool,
     pub codegen_backends: Option<Vec<String>>,
 }
@@ -602,8 +615,8 @@ impl Target {
 #[derive(Deserialize, Default)]
 #[serde(deny_unknown_fields, rename_all = "kebab-case")]
 pub(crate) struct TomlConfig {
-    changelog_seen: Option<usize>, // FIXME: Deprecated field. Remove it at 2024.
-    change_id: Option<usize>,
+    #[serde(flatten)]
+    change_id: ChangeIdWrapper,
     build: Option<Build>,
     install: Option<Install>,
     llvm: Option<Llvm>,
@@ -611,6 +624,16 @@ pub(crate) struct TomlConfig {
     target: Option<HashMap<String, TomlTarget>>,
     dist: Option<Dist>,
     profile: Option<String>,
+}
+
+/// Since we use `#[serde(deny_unknown_fields)]` on `TomlConfig`, we need a wrapper type
+/// for the "change-id" field to parse it even if other fields are invalid. This ensures
+/// that if deserialization fails due to other fields, we can still provide the changelogs
+/// to allow developers to potentially find the reason for the failure in the logs..
+#[derive(Deserialize, Default)]
+pub(crate) struct ChangeIdWrapper {
+    #[serde(alias = "change-id")]
+    pub(crate) inner: Option<usize>,
 }
 
 /// Describes how to handle conflicts in merging two [`TomlConfig`]
@@ -631,17 +654,7 @@ trait Merge {
 impl Merge for TomlConfig {
     fn merge(
         &mut self,
-        TomlConfig {
-            build,
-            install,
-            llvm,
-            rust,
-            dist,
-            target,
-            profile: _,
-            changelog_seen,
-            change_id,
-        }: Self,
+        TomlConfig { build, install, llvm, rust, dist, target, profile: _, change_id }: Self,
         replace: ReplaceOpt,
     ) {
         fn do_merge<T: Merge>(x: &mut Option<T>, y: Option<T>, replace: ReplaceOpt) {
@@ -653,8 +666,7 @@ impl Merge for TomlConfig {
                 }
             }
         }
-        self.changelog_seen.merge(changelog_seen, replace);
-        self.change_id.merge(change_id, replace);
+        self.change_id.inner.merge(change_id.inner, replace);
         do_merge(&mut self.build, build, replace);
         do_merge(&mut self.install, install, replace);
         do_merge(&mut self.llvm, llvm, replace);
@@ -823,6 +835,7 @@ define_config! {
         docs_minification: Option<bool> = "docs-minification",
         submodules: Option<bool> = "submodules",
         gdb: Option<String> = "gdb",
+        lldb: Option<String> = "lldb",
         nodejs: Option<String> = "nodejs",
         npm: Option<String> = "npm",
         python: Option<String> = "python",
@@ -1020,8 +1033,8 @@ impl RustOptimize {
 
 #[derive(Deserialize)]
 #[serde(untagged)]
-enum StringOrInt<'a> {
-    String(&'a str),
+enum StringOrInt {
+    String(String),
     Int(i64),
 }
 
@@ -1098,6 +1111,7 @@ define_config! {
         dist_src: Option<bool> = "dist-src",
         save_toolstates: Option<String> = "save-toolstates",
         codegen_backends: Option<Vec<String>> = "codegen-backends",
+        llvm_bitcode_linker: Option<bool> = "llvm-bitcode-linker",
         lld: Option<bool> = "lld",
         lld_mode: Option<LldMode> = "use-lld",
         llvm_tools: Option<bool> = "llvm-tools",
@@ -1130,6 +1144,7 @@ define_config! {
         ranlib: Option<String> = "ranlib",
         default_linker: Option<PathBuf> = "default-linker",
         linker: Option<String> = "linker",
+        split_debuginfo: Option<String> = "split-debuginfo",
         llvm_config: Option<String> = "llvm-config",
         llvm_has_rust_patches: Option<bool> = "llvm-has-rust-patches",
         llvm_filecheck: Option<String> = "llvm-filecheck",
@@ -1144,6 +1159,7 @@ define_config! {
         qemu_rootfs: Option<String> = "qemu-rootfs",
         no_std: Option<bool> = "no-std",
         codegen_backends: Option<Vec<String>> = "codegen-backends",
+        runner: Option<String> = "runner",
     }
 }
 
@@ -1204,6 +1220,17 @@ impl Config {
             toml::from_str(&contents)
                 .and_then(|table: toml::Value| TomlConfig::deserialize(table))
                 .unwrap_or_else(|err| {
+                    if let Ok(Some(changes)) = toml::from_str(&contents)
+                        .and_then(|table: toml::Value| ChangeIdWrapper::deserialize(table)).map(|change_id| change_id.inner.map(crate::find_recent_config_change_ids))
+                    {
+                        if !changes.is_empty() {
+                            println!(
+                                "WARNING: There have been changes to x.py since you last updated:\n{}",
+                                crate::human_readable_changes(&changes)
+                            );
+                        }
+                    }
+
                     eprintln!("failed to parse TOML configuration '{}': {err}", file.display());
                     exit!(2);
                 })
@@ -1369,8 +1396,7 @@ impl Config {
         }
         toml.merge(override_toml, ReplaceOpt::Override);
 
-        config.changelog_seen = toml.changelog_seen;
-        config.change_id = toml.change_id;
+        config.change_id = toml.change_id.inner;
 
         let Build {
             build,
@@ -1386,6 +1412,7 @@ impl Config {
             docs_minification,
             submodules,
             gdb,
+            lldb,
             nodejs,
             npm,
             python,
@@ -1478,6 +1505,7 @@ impl Config {
         config.nodejs = nodejs.map(PathBuf::from);
         config.npm = npm.map(PathBuf::from);
         config.gdb = gdb.map(PathBuf::from);
+        config.lldb = lldb.map(PathBuf::from);
         config.python = python.map(PathBuf::from);
         config.reuse = reuse.map(PathBuf::from);
         config.submodules = submodules;
@@ -1569,6 +1597,7 @@ impl Config {
                 codegen_backends,
                 lld,
                 llvm_tools,
+                llvm_bitcode_linker,
                 deny_warnings,
                 backtrace_on_ice,
                 verify_llvm_ir,
@@ -1622,11 +1651,18 @@ impl Config {
             debuginfo_level_tools = debuginfo_level_tools_toml;
             debuginfo_level_tests = debuginfo_level_tests_toml;
 
-            config.rust_split_debuginfo = split_debuginfo
+            config.rust_split_debuginfo_for_build_triple = split_debuginfo
                 .as_deref()
                 .map(SplitDebuginfo::from_str)
-                .map(|v| v.expect("invalid value for rust.split_debuginfo"))
-                .unwrap_or(SplitDebuginfo::default_for_platform(config.build));
+                .map(|v| v.expect("invalid value for rust.split-debuginfo"));
+
+            if config.rust_split_debuginfo_for_build_triple.is_some() {
+                println!(
+                    "WARNING: specifying `rust.split-debuginfo` is deprecated, use `target.{}.split-debuginfo` instead",
+                    config.build
+                );
+            }
+
             optimize = optimize_toml;
             omit_git_hash = omit_git_hash_toml;
             config.rust_new_symbol_mangling = new_symbol_mangling;
@@ -1648,6 +1684,7 @@ impl Config {
             }
             set(&mut config.lld_mode, lld_mode);
             set(&mut config.lld_enabled, lld);
+            set(&mut config.llvm_bitcode_linker_enabled, llvm_bitcode_linker);
 
             if matches!(config.lld_mode, LldMode::SelfContained)
                 && !config.lld_enabled
@@ -1765,17 +1802,17 @@ impl Config {
             if let Some(v) = link_shared {
                 config.llvm_link_shared.set(Some(v));
             }
-            config.llvm_targets = targets.clone();
-            config.llvm_experimental_targets = experimental_targets.clone();
+            config.llvm_targets.clone_from(&targets);
+            config.llvm_experimental_targets.clone_from(&experimental_targets);
             config.llvm_link_jobs = link_jobs;
-            config.llvm_version_suffix = version_suffix.clone();
-            config.llvm_clang_cl = clang_cl.clone();
+            config.llvm_version_suffix.clone_from(&version_suffix);
+            config.llvm_clang_cl.clone_from(&clang_cl);
 
-            config.llvm_cflags = cflags.clone();
-            config.llvm_cxxflags = cxxflags.clone();
-            config.llvm_ldflags = ldflags.clone();
+            config.llvm_cflags.clone_from(&cflags);
+            config.llvm_cxxflags.clone_from(&cxxflags);
+            config.llvm_ldflags.clone_from(&ldflags);
             set(&mut config.llvm_use_libcxx, use_libcxx);
-            config.llvm_use_linker = use_linker.clone();
+            config.llvm_use_linker.clone_from(&use_linker);
             config.llvm_allow_old_toolchain = allow_old_toolchain.unwrap_or(false);
             config.llvm_polly = polly.unwrap_or(false);
             config.llvm_clang = clang.unwrap_or(false);
@@ -1847,10 +1884,11 @@ impl Config {
                 if let Some(ref s) = cfg.llvm_filecheck {
                     target.llvm_filecheck = Some(config.src.join(s));
                 }
-                target.llvm_libunwind = cfg
-                    .llvm_libunwind
-                    .as_ref()
-                    .map(|v| v.parse().expect("failed to parse rust.llvm-libunwind"));
+                target.llvm_libunwind = cfg.llvm_libunwind.as_ref().map(|v| {
+                    v.parse().unwrap_or_else(|_| {
+                        panic!("failed to parse target.{triple}.llvm-libunwind")
+                    })
+                });
                 if let Some(s) = cfg.no_std {
                     target.no_std = s;
                 }
@@ -1864,6 +1902,7 @@ impl Config {
                 target.musl_libdir = cfg.musl_libdir.map(PathBuf::from);
                 target.wasi_root = cfg.wasi_root.map(PathBuf::from);
                 target.qemu_rootfs = cfg.qemu_rootfs.map(PathBuf::from);
+                target.runner = cfg.runner;
                 target.sanitizers = cfg.sanitizers;
                 target.profiler = cfg.profiler;
                 target.rpath = cfg.rpath;
@@ -1885,6 +1924,12 @@ impl Config {
                         s.clone()
                     }).collect());
                 }
+
+                target.split_debuginfo = cfg.split_debuginfo.as_ref().map(|v| {
+                    v.parse().unwrap_or_else(|_| {
+                        panic!("invalid value for target.{triple}.split-debuginfo")
+                    })
+                });
 
                 config.target_config.insert(TargetSelection::from_user(&triple), target);
             }
@@ -1974,7 +2019,7 @@ impl Config {
             Subcommand::Build { .. } => {
                 flags.stage.or(build_stage).unwrap_or(if download_rustc { 2 } else { 1 })
             }
-            Subcommand::Test { .. } => {
+            Subcommand::Test { .. } | Subcommand::Miri { .. } => {
                 flags.stage.or(test_stage).unwrap_or(if download_rustc { 2 } else { 1 })
             }
             Subcommand::Bench { .. } => flags.stage.or(bench_stage).unwrap_or(2),
@@ -1988,7 +2033,8 @@ impl Config {
             | Subcommand::Run { .. }
             | Subcommand::Setup { .. }
             | Subcommand::Format { .. }
-            | Subcommand::Suggest { .. } => flags.stage.unwrap_or(0),
+            | Subcommand::Suggest { .. }
+            | Subcommand::Vendor { .. } => flags.stage.unwrap_or(0),
         };
 
         // CI should always run stage 2 builds, unless it specifically states otherwise
@@ -1996,6 +2042,7 @@ impl Config {
         if flags.stage.is_none() && crate::CiEnv::current() != crate::CiEnv::None {
             match config.cmd {
                 Subcommand::Test { .. }
+                | Subcommand::Miri { .. }
                 | Subcommand::Doc { .. }
                 | Subcommand::Build { .. }
                 | Subcommand::Bench { .. }
@@ -2014,7 +2061,8 @@ impl Config {
                 | Subcommand::Run { .. }
                 | Subcommand::Setup { .. }
                 | Subcommand::Format { .. }
-                | Subcommand::Suggest { .. } => {}
+                | Subcommand::Suggest { .. }
+                | Subcommand::Vendor { .. } => {}
             }
         }
 
@@ -2036,7 +2084,7 @@ impl Config {
         if self.dry_run() {
             return Ok(());
         }
-        self.verbose(&format!("running: {cmd:?}"));
+        self.verbose(|| println!("running: {cmd:?}"));
         build_helper::util::try_run(cmd, self.is_verbose())
     }
 
@@ -2051,7 +2099,9 @@ impl Config {
 
     pub(crate) fn test_args(&self) -> Vec<&str> {
         let mut test_args = match self.cmd {
-            Subcommand::Test { ref test_args, .. } | Subcommand::Bench { ref test_args, .. } => {
+            Subcommand::Test { ref test_args, .. }
+            | Subcommand::Bench { ref test_args, .. }
+            | Subcommand::Miri { ref test_args, .. } => {
                 test_args.iter().flat_map(|s| s.split_whitespace()).collect()
             }
             _ => vec![],
@@ -2223,9 +2273,10 @@ impl Config {
         }
     }
 
-    pub fn verbose(&self, msg: &str) {
+    /// Runs a function if verbosity is greater than 0
+    pub fn verbose(&self, f: impl Fn()) {
         if self.verbose > 0 {
-            println!("{msg}");
+            f()
         }
     }
 
@@ -2282,6 +2333,16 @@ impl Config {
             } else {
                 LlvmLibunwind::No
             })
+    }
+
+    pub fn split_debuginfo(&self, target: TargetSelection) -> SplitDebuginfo {
+        self.target_config
+            .get(&target)
+            .and_then(|t| t.split_debuginfo)
+            .or_else(|| {
+                if self.build == target { self.rust_split_debuginfo_for_build_triple } else { None }
+            })
+            .unwrap_or_else(|| SplitDebuginfo::default_for_platform(target))
     }
 
     pub fn submodules(&self, rust_info: &GitInfo) -> bool {
@@ -2421,13 +2482,19 @@ impl Config {
                 llvm::is_ci_llvm_available(self, asserts)
             }
         };
+
         match download_ci_llvm {
-            None => self.channel == "dev" && if_unchanged(),
-            Some(StringOrBool::Bool(b)) => b,
-            // FIXME: "if-available" is deprecated. Remove this block later (around mid 2024)
-            // to not break builds between the recent-to-old checkouts.
-            Some(StringOrBool::String(s)) if s == "if-available" => {
-                llvm::is_ci_llvm_available(self, asserts)
+            None => {
+                (self.channel == "dev" || self.download_rustc_commit.is_some()) && if_unchanged()
+            }
+            Some(StringOrBool::Bool(b)) => {
+                if !b && self.download_rustc_commit.is_some() {
+                    panic!(
+                        "`llvm.download-ci-llvm` cannot be set to `false` if `rust.download-rustc` is set to `true` or `if-unchanged`."
+                    );
+                }
+
+                b
             }
             Some(StringOrBool::String(s)) if s == "if-unchanged" => if_unchanged(),
             Some(StringOrBool::String(other)) => {

@@ -3,6 +3,8 @@ use rustc_ast_ir::try_visit;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 #[cfg(feature = "nightly")]
 use rustc_data_structures::unify::{EqUnifyValue, UnifyKey};
+#[cfg(feature = "nightly")]
+use rustc_macros::{Decodable, Encodable, HashStable_NoContext, TyDecodable, TyEncodable};
 use std::fmt;
 
 use crate::fold::{FallibleTypeFolder, TypeFoldable};
@@ -60,18 +62,10 @@ impl AliasKind {
 /// Defines the kinds of types used by the type system.
 ///
 /// Types written by the user start out as `hir::TyKind` and get
-/// converted to this representation using `AstConv::ast_ty_to_ty`.
+/// converted to this representation using `<dyn HirTyLowerer>::lower_ty`.
 #[cfg_attr(feature = "nightly", rustc_diagnostic_item = "IrTyKind")]
 #[derive(derivative::Derivative)]
-#[derivative(
-    Clone(bound = ""),
-    Copy(bound = ""),
-    PartialOrd(bound = ""),
-    PartialOrd = "feature_allow_slow_enum",
-    Ord(bound = ""),
-    Ord = "feature_allow_slow_enum",
-    Hash(bound = "")
-)]
+#[derivative(Clone(bound = ""), Copy(bound = ""), Hash(bound = ""))]
 #[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable, HashStable_NoContext))]
 pub enum TyKind<I: Interner> {
     /// The primitive boolean type. Written as `bool`.
@@ -108,11 +102,18 @@ pub enum TyKind<I: Interner> {
     /// An array with the given length. Written as `[T; N]`.
     Array(I::Ty, I::Const),
 
+    /// A pattern newtype. Takes any type and restricts its valid values to its pattern.
+    /// This will also change the layout to take advantage of this restriction.
+    /// Only `Copy` and `Clone` will automatically get implemented for pattern types.
+    /// Auto-traits treat this as if it were an aggregate with a single nested type.
+    /// Only supports integer range patterns for now.
+    Pat(I::Ty, I::Pat),
+
     /// The pointee of an array slice. Written as `[T]`.
     Slice(I::Ty),
 
     /// A raw pointer. Written as `*mut T` or `*const T`
-    RawPtr(TypeAndMut<I>),
+    RawPtr(I::Ty, Mutability),
 
     /// A reference; a pointer with an associated lifetime. Written as
     /// `&'a mut T` or `&'a T`.
@@ -182,9 +183,9 @@ pub enum TyKind<I: Interner> {
     /// Looking at the following example, the witness for this coroutine
     /// may end up as something like `for<'a> [Vec<i32>, &'a Vec<i32>]`:
     ///
-    /// ```ignore UNSOLVED (ask @compiler-errors, should this error? can we just swap the yields?)
+    /// ```
     /// #![feature(coroutines)]
-    /// |a| {
+    /// #[coroutine] static |a| {
     ///     let x = &vec![3];
     ///     yield a;
     ///     yield x[0];
@@ -228,7 +229,7 @@ pub enum TyKind<I: Interner> {
     /// A placeholder type, used during higher ranked subtyping to instantiate
     /// bound variables.
     ///
-    /// It is conventional to render anonymous placeholer types like `!N` or `!U_N`,
+    /// It is conventional to render anonymous placeholder types like `!N` or `!U_N`,
     /// where `N` is the placeholder variable's anonymous index (which corresponds
     /// to the bound variable's index from the binder from which it was instantiated),
     /// and `U` is the universe index in which it is instantiated, or totally omitted
@@ -270,7 +271,7 @@ const fn tykind_discriminant<I: Interner>(value: &TyKind<I>) -> usize {
         Str => 7,
         Array(_, _) => 8,
         Slice(_) => 9,
-        RawPtr(_) => 10,
+        RawPtr(_, _) => 10,
         Ref(_, _, _) => 11,
         FnDef(_, _) => 12,
         FnPtr(_) => 13,
@@ -281,12 +282,13 @@ const fn tykind_discriminant<I: Interner>(value: &TyKind<I>) -> usize {
         CoroutineWitness(_, _) => 18,
         Never => 19,
         Tuple(_) => 20,
-        Alias(_, _) => 21,
-        Param(_) => 22,
-        Bound(_, _) => 23,
-        Placeholder(_) => 24,
-        Infer(_) => 25,
-        Error(_) => 26,
+        Pat(_, _) => 21,
+        Alias(_, _) => 22,
+        Param(_) => 23,
+        Bound(_, _) => 24,
+        Placeholder(_) => 25,
+        Infer(_) => 26,
+        Error(_) => 27,
     }
 }
 
@@ -307,8 +309,9 @@ impl<I: Interner> PartialEq for TyKind<I> {
             (Adt(a_d, a_s), Adt(b_d, b_s)) => a_d == b_d && a_s == b_s,
             (Foreign(a_d), Foreign(b_d)) => a_d == b_d,
             (Array(a_t, a_c), Array(b_t, b_c)) => a_t == b_t && a_c == b_c,
+            (Pat(a_t, a_c), Pat(b_t, b_c)) => a_t == b_t && a_c == b_c,
             (Slice(a_t), Slice(b_t)) => a_t == b_t,
-            (RawPtr(a_t), RawPtr(b_t)) => a_t == b_t,
+            (RawPtr(a_t, a_m), RawPtr(b_t, b_m)) => a_t == b_t && a_m == b_m,
             (Ref(a_r, a_t, a_m), Ref(b_r, b_t, b_m)) => a_r == b_r && a_t == b_t && a_m == b_m,
             (FnDef(a_d, a_s), FnDef(b_d, b_s)) => a_d == b_d && a_s == b_s,
             (FnPtr(a_s), FnPtr(b_s)) => a_s == b_s,
@@ -330,7 +333,7 @@ impl<I: Interner> PartialEq for TyKind<I> {
             _ => {
                 debug_assert!(
                     tykind_discriminant(self) != tykind_discriminant(other),
-                    "This branch must be unreachable, maybe the match is missing an arm? self = self = {self:?}, other = {other:?}"
+                    "This branch must be unreachable, maybe the match is missing an arm? self = {self:?}, other = {other:?}"
                 );
                 false
             }
@@ -370,18 +373,10 @@ impl<I: Interner> DebugWithInfcx<I> for TyKind<I> {
             Foreign(d) => f.debug_tuple("Foreign").field(d).finish(),
             Str => write!(f, "str"),
             Array(t, c) => write!(f, "[{:?}; {:?}]", &this.wrap(t), &this.wrap(c)),
+            Pat(t, p) => write!(f, "pattern_type!({:?} is {:?})", &this.wrap(t), &this.wrap(p)),
             Slice(t) => write!(f, "[{:?}]", &this.wrap(t)),
-            RawPtr(TypeAndMut { ty, mutbl }) => {
-                match mutbl {
-                    Mutability::Mut => write!(f, "*mut "),
-                    Mutability::Not => write!(f, "*const "),
-                }?;
-                write!(f, "{:?}", &this.wrap(ty))
-            }
-            Ref(r, t, m) => match m {
-                Mutability::Mut => write!(f, "&{:?} mut {:?}", &this.wrap(r), &this.wrap(t)),
-                Mutability::Not => write!(f, "&{:?} {:?}", &this.wrap(r), &this.wrap(t)),
-            },
+            RawPtr(ty, mutbl) => write!(f, "*{} {:?}", mutbl.ptr_str(), this.wrap(ty)),
+            Ref(r, t, m) => write!(f, "&{:?} {}{:?}", this.wrap(r), m.prefix_str(), this.wrap(t)),
             FnDef(d, s) => f.debug_tuple("FnDef").field(d).field(&this.wrap(s)).finish(),
             FnPtr(s) => write!(f, "{:?}", &this.wrap(s)),
             Dynamic(p, r, repr) => match repr {
@@ -803,8 +798,6 @@ impl<I: Interner> DebugWithInfcx<I> for InferTy {
 #[derivative(
     Clone(bound = ""),
     Copy(bound = ""),
-    PartialOrd(bound = ""),
-    Ord(bound = ""),
     PartialEq(bound = ""),
     Eq(bound = ""),
     Hash(bound = ""),

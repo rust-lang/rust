@@ -63,7 +63,7 @@ impl<'gcc, 'tcx> StaticMethods for CodegenCx<'gcc, 'tcx> {
         global_value
     }
 
-    fn codegen_static(&self, def_id: DefId, is_mutable: bool) {
+    fn codegen_static(&self, def_id: DefId) {
         let attrs = self.tcx.codegen_fn_attrs(def_id);
 
         let value = match codegen_static_initializer(&self, def_id) {
@@ -92,7 +92,7 @@ impl<'gcc, 'tcx> StaticMethods for CodegenCx<'gcc, 'tcx> {
 
         // As an optimization, all shared statics which do not have interior
         // mutability are placed into read-only memory.
-        if !is_mutable && self.type_is_freeze(ty) {
+        if !self.tcx.static_mutability(def_id).unwrap().is_mut() && self.type_is_freeze(ty) {
             #[cfg(feature = "master")]
             global.global_set_readonly();
         }
@@ -349,7 +349,7 @@ pub fn const_alloc_to_gcc<'gcc, 'tcx>(
     cx.const_struct(&llvals, true)
 }
 
-pub fn codegen_static_initializer<'gcc, 'tcx>(
+fn codegen_static_initializer<'gcc, 'tcx>(
     cx: &CodegenCx<'gcc, 'tcx>,
     def_id: DefId,
 ) -> Result<(RValue<'gcc>, ConstAllocation<'tcx>), ErrorHandled> {

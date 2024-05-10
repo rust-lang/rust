@@ -62,7 +62,10 @@ LL | struct S<const S: (), const S: S = { S }>;
    |                   ^^
    |
    = note: the only supported types are integers, `bool` and `char`
-   = help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
+help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
+   |
+LL + #![feature(adt_const_params)]
+   |
 
 error: aborting due to 5 previous errors
 

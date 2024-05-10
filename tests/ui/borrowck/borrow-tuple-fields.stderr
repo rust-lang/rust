@@ -10,6 +10,12 @@ LL |     let y = x;
 LL |
 LL |     r.use_ref();
    |     - borrow later used here
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL -     let r = &x.0;
+LL +     let r = x.0.clone();
+   |
 
 error[E0502]: cannot borrow `x.0` as mutable because it is also borrowed as immutable
   --> $DIR/borrow-tuple-fields.rs:18:13
@@ -42,6 +48,12 @@ LL |     let y = x;
    |             ^ move out of `x` occurs here
 LL |     r.use_ref();
    |     - borrow later used here
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL -     let r = &x.0;
+LL +     let r = x.0.clone();
+   |
 
 error[E0502]: cannot borrow `x.0` as mutable because it is also borrowed as immutable
   --> $DIR/borrow-tuple-fields.rs:33:13

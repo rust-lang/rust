@@ -1,5 +1,5 @@
 error: a never pattern is always unreachable
-  --> $DIR/check.rs:14:20
+  --> $DIR/check.rs:15:20
    |
 LL |         Some(!) => {}
    |                    ^^
@@ -8,13 +8,13 @@ LL |         Some(!) => {}
    |                    help: remove this expression
 
 error: a guard on a never pattern will never be run
-  --> $DIR/check.rs:19:20
+  --> $DIR/check.rs:20:20
    |
 LL |         Some(!) if true,
    |                    ^^^^ help: remove this guard
 
 error: a never pattern is always unreachable
-  --> $DIR/check.rs:24:28
+  --> $DIR/check.rs:25:28
    |
 LL |         Some(!) if true => {}
    |                            ^^
@@ -23,7 +23,7 @@ LL |         Some(!) if true => {}
    |                            help: remove this expression
 
 error: a never pattern is always unreachable
-  --> $DIR/check.rs:29:27
+  --> $DIR/check.rs:30:27
    |
 LL |         Some(never!()) => {}
    |                           ^^
@@ -31,11 +31,11 @@ LL |         Some(never!()) => {}
    |                           this will never be executed
    |                           help: remove this expression
 
-error[E0004]: non-exhaustive patterns: `Some(_)` not covered
-  --> $DIR/check.rs:18:11
+error[E0004]: non-exhaustive patterns: `Some(!)` not covered
+  --> $DIR/check.rs:19:11
    |
 LL |     match None::<Void> {
-   |           ^^^^^^^^^^^^ pattern `Some(_)` not covered
+   |           ^^^^^^^^^^^^ pattern `Some(!)` not covered
    |
 note: `Option<Void>` defined here
   --> $SRC_DIR/core/src/option.rs:LL:COL
@@ -46,14 +46,14 @@ note: `Option<Void>` defined here
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
 LL ~         None => {},
-LL +         Some(_) => todo!()
+LL +         Some(!)
    |
 
-error[E0004]: non-exhaustive patterns: `Some(_)` not covered
-  --> $DIR/check.rs:23:11
+error[E0004]: non-exhaustive patterns: `Some(!)` not covered
+  --> $DIR/check.rs:24:11
    |
 LL |     match None::<Void> {
-   |           ^^^^^^^^^^^^ pattern `Some(_)` not covered
+   |           ^^^^^^^^^^^^ pattern `Some(!)` not covered
    |
 note: `Option<Void>` defined here
   --> $SRC_DIR/core/src/option.rs:LL:COL
@@ -64,7 +64,7 @@ note: `Option<Void>` defined here
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
 LL ~         None => {},
-LL +         Some(_) => todo!()
+LL +         Some(!)
    |
 
 error: aborting due to 6 previous errors

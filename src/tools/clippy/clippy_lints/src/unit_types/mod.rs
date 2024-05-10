@@ -3,7 +3,7 @@ mod unit_arg;
 mod unit_cmp;
 mod utils;
 
-use rustc_hir::{Expr, Local};
+use rustc_hir::{Expr, LetStmt};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
 
@@ -99,7 +99,7 @@ declare_clippy_lint! {
 declare_lint_pass!(UnitTypes => [LET_UNIT_VALUE, UNIT_CMP, UNIT_ARG]);
 
 impl<'tcx> LateLintPass<'tcx> for UnitTypes {
-    fn check_local(&mut self, cx: &LateContext<'tcx>, local: &'tcx Local<'tcx>) {
+    fn check_local(&mut self, cx: &LateContext<'tcx>, local: &'tcx LetStmt<'tcx>) {
         let_unit_value::check(cx, local);
     }
 

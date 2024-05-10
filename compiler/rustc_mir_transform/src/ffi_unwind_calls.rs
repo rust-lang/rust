@@ -11,7 +11,7 @@ use rustc_target::spec::PanicStrategy;
 use crate::errors;
 
 /// Some of the functions declared as "may unwind" by `fn_can_unwind` can't actually unwind. In
-/// particular, `extern "C"` is still considered as can-unwind on stable, but we need to to consider
+/// particular, `extern "C"` is still considered as can-unwind on stable, but we need to consider
 /// it cannot-unwind here. So below we check `fn_can_unwind() && abi_can_unwind()` before concluding
 /// that a function call can unwind.
 fn abi_can_unwind(abi: Abi) -> bool {

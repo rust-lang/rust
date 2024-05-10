@@ -7,6 +7,44 @@ use walkdir::WalkDir;
 
 mod groups;
 
+/// List of lints which have been renamed.
+///
+/// These will get redirects in the output to the new name. The
+/// format is `(level, [(old_name, new_name), ...])`.
+///
+/// Note: This hard-coded list is a temporary hack. The intent is in the
+/// future to have `rustc` expose this information in some way (like a `-Z`
+/// flag spitting out JSON). Also, this does not yet support changing the
+/// level of the lint, which will be more difficult to support, since rustc
+/// currently does not track that historical information.
+static RENAMES: &[(Level, &[(&str, &str)])] = &[
+    (
+        Level::Allow,
+        &[
+            ("single-use-lifetime", "single-use-lifetimes"),
+            ("elided-lifetime-in-path", "elided-lifetimes-in-paths"),
+            ("async-idents", "keyword-idents"),
+            ("disjoint-capture-migration", "rust-2021-incompatible-closure-captures"),
+            ("keyword-idents", "keyword-idents-2018"),
+            ("or-patterns-back-compat", "rust-2021-incompatible-or-patterns"),
+        ],
+    ),
+    (
+        Level::Warn,
+        &[
+            ("bare-trait-object", "bare-trait-objects"),
+            ("unstable-name-collision", "unstable-name-collisions"),
+            ("unused-doc-comment", "unused-doc-comments"),
+            ("redundant-semicolon", "redundant-semicolons"),
+            ("overlapping-patterns", "overlapping-range-endpoints"),
+            ("non-fmt-panic", "non-fmt-panics"),
+            ("unused-tuple-struct-fields", "dead-code"),
+            ("static-mut-ref", "static-mut-refs"),
+        ],
+    ),
+    (Level::Deny, &[("exceeding-bitshifts", "arithmetic-overflow")]),
+];
+
 pub struct LintExtractor<'a> {
     /// Path to the `src` directory, where it will scan for `.rs` files to
     /// find lint declarations.
@@ -126,6 +164,7 @@ impl<'a> LintExtractor<'a> {
                 )
             })?;
         }
+        add_renamed_lints(&mut lints);
         self.save_lints_markdown(&lints)?;
         self.generate_group_docs(&lints)?;
         Ok(())
@@ -270,7 +309,6 @@ impl<'a> LintExtractor<'a> {
         if matches!(
             lint.name.as_str(),
             "unused_features" // broken lint
-            | "unstable_features" // deprecated
         ) {
             return Ok(());
         }
@@ -483,12 +521,63 @@ impl<'a> LintExtractor<'a> {
             }
             result.push('\n');
         }
+        add_rename_redirect(level, &mut result);
         let out_path = self.out_path.join("listing").join(level.doc_filename());
         // Delete the output because rustbuild uses hard links in its copies.
         let _ = fs::remove_file(&out_path);
         fs::write(&out_path, result)
             .map_err(|e| format!("could not write to {}: {}", out_path.display(), e))?;
         Ok(())
+    }
+}
+
+/// Adds `Lint`s that have been renamed.
+fn add_renamed_lints(lints: &mut Vec<Lint>) {
+    for (level, names) in RENAMES {
+        for (from, to) in *names {
+            lints.push(Lint {
+                name: from.to_string(),
+                doc: vec![format!("The lint `{from}` has been renamed to [`{to}`](#{to}).")],
+                level: *level,
+                path: PathBuf::new(),
+                lineno: 0,
+            });
+        }
+    }
+}
+
+// This uses DOMContentLoaded instead of running immediately because for some
+// reason on Firefox (124 of this writing) doesn't update the `target` CSS
+// selector if only the hash changes.
+static RENAME_START: &str = "
+<script>
+document.addEventListener(\"DOMContentLoaded\", (event) => {
+    var fragments = {
+";
+
+static RENAME_END: &str = "\
+    };
+    var target = fragments[window.location.hash];
+    if (target) {
+        var url = window.location.toString();
+        var base = url.substring(0, url.lastIndexOf('/'));
+        window.location.replace(base + \"/\" + target);
+    }
+});
+</script>
+";
+
+/// Adds the javascript redirection code to the given markdown output.
+fn add_rename_redirect(level: Level, output: &mut String) {
+    for (rename_level, names) in RENAMES {
+        if *rename_level == level {
+            let filename = level.doc_filename().replace(".md", ".html");
+            output.push_str(RENAME_START);
+            for (from, to) in *names {
+                write!(output, "        \"#{from}\": \"{filename}#{to}\",\n").unwrap();
+            }
+            output.push_str(RENAME_END);
+        }
     }
 }
 

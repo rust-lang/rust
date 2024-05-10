@@ -8,7 +8,8 @@
     clippy::never_loop,
     clippy::needless_if,
     clippy::diverging_sub_expression,
-    clippy::single_match
+    clippy::single_match,
+    clippy::manual_unwrap_or_default
 )]
 #![warn(clippy::manual_let_else)]
 //@no-rustfix

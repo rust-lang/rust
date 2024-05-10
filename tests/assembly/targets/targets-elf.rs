@@ -369,6 +369,9 @@
 //@ revisions: riscv32im_unknown_none_elf
 //@ [riscv32im_unknown_none_elf] compile-flags: --target riscv32im-unknown-none-elf
 //@ [riscv32im_unknown_none_elf] needs-llvm-components: riscv
+//@ revisions: riscv32ima_unknown_none_elf
+//@ [riscv32ima_unknown_none_elf] compile-flags: --target riscv32ima-unknown-none-elf
+//@ [riscv32ima_unknown_none_elf] needs-llvm-components: riscv
 //@ revisions: riscv32imac_esp_espidf
 //@ [riscv32imac_esp_espidf] compile-flags: --target riscv32imac-esp-espidf
 //@ [riscv32imac_esp_espidf] needs-llvm-components: riscv
@@ -492,9 +495,9 @@
 //@ revisions: wasm32_wasip1
 //@ [wasm32_wasip1] compile-flags: --target wasm32-wasip1
 //@ [wasm32_wasip1] needs-llvm-components: webassembly
-//@ revisions: wasm32_wasi_preview1_threads
-//@ [wasm32_wasi_preview1_threads] compile-flags: --target wasm32-wasi-preview1-threads
-//@ [wasm32_wasi_preview1_threads] needs-llvm-components: webassembly
+//@ revisions: wasm32_wasip1_threads
+//@ [wasm32_wasip1_threads] compile-flags: --target wasm32-wasip1-threads
+//@ [wasm32_wasip1_threads] needs-llvm-components: webassembly
 //@ revisions: wasm32_wasip2
 //@ [wasm32_wasip2] compile-flags: --target wasm32-wasip2
 //@ [wasm32_wasip2] needs-llvm-components: webassembly

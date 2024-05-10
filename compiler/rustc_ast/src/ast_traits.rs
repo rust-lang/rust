@@ -182,7 +182,7 @@ impl<T: HasTokens> HasTokens for Option<T> {
 impl HasTokens for StmtKind {
     fn tokens(&self) -> Option<&LazyAttrTokenStream> {
         match self {
-            StmtKind::Local(local) => local.tokens.as_ref(),
+            StmtKind::Let(local) => local.tokens.as_ref(),
             StmtKind::Item(item) => item.tokens(),
             StmtKind::Expr(expr) | StmtKind::Semi(expr) => expr.tokens(),
             StmtKind::Empty => return None,
@@ -191,7 +191,7 @@ impl HasTokens for StmtKind {
     }
     fn tokens_mut(&mut self) -> Option<&mut Option<LazyAttrTokenStream>> {
         match self {
-            StmtKind::Local(local) => Some(&mut local.tokens),
+            StmtKind::Let(local) => Some(&mut local.tokens),
             StmtKind::Item(item) => item.tokens_mut(),
             StmtKind::Expr(expr) | StmtKind::Semi(expr) => expr.tokens_mut(),
             StmtKind::Empty => return None,
@@ -355,7 +355,7 @@ impl HasAttrs for StmtKind {
 
     fn attrs(&self) -> &[Attribute] {
         match self {
-            StmtKind::Local(local) => &local.attrs,
+            StmtKind::Let(local) => &local.attrs,
             StmtKind::Expr(expr) | StmtKind::Semi(expr) => expr.attrs(),
             StmtKind::Item(item) => item.attrs(),
             StmtKind::Empty => &[],
@@ -365,7 +365,7 @@ impl HasAttrs for StmtKind {
 
     fn visit_attrs(&mut self, f: impl FnOnce(&mut AttrVec)) {
         match self {
-            StmtKind::Local(local) => f(&mut local.attrs),
+            StmtKind::Let(local) => f(&mut local.attrs),
             StmtKind::Expr(expr) | StmtKind::Semi(expr) => expr.visit_attrs(f),
             StmtKind::Item(item) => item.visit_attrs(f),
             StmtKind::Empty => {}

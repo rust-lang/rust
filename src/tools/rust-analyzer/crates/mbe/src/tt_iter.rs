@@ -1,9 +1,10 @@
 //! A "Parser" structure for token trees. We use this when parsing a declarative
 //! macro definition into a list of patterns and templates.
 
+use core::fmt;
+
 use smallvec::{smallvec, SmallVec};
 use syntax::SyntaxKind;
-use tt::Span;
 
 use crate::{to_parser_input::to_parser_input, ExpandError, ExpandResult};
 
@@ -12,7 +13,7 @@ pub(crate) struct TtIter<'a, S> {
     pub(crate) inner: std::slice::Iter<'a, tt::TokenTree<S>>,
 }
 
-impl<'a, S: Span> TtIter<'a, S> {
+impl<'a, S: Copy> TtIter<'a, S> {
     pub(crate) fn new(subtree: &'a tt::Subtree<S>) -> TtIter<'a, S> {
         TtIter { inner: subtree.token_trees.iter() }
     }
@@ -130,14 +131,20 @@ impl<'a, S: Span> TtIter<'a, S> {
             _ => Ok(smallvec![first]),
         }
     }
+    pub(crate) fn peek_n(&self, n: usize) -> Option<&'a tt::TokenTree<S>> {
+        self.inner.as_slice().get(n)
+    }
+}
 
+impl<'a, S: Copy + fmt::Debug> TtIter<'a, S> {
     pub(crate) fn expect_fragment(
         &mut self,
         entry_point: parser::PrefixEntryPoint,
+        edition: parser::Edition,
     ) -> ExpandResult<Option<tt::TokenTree<S>>> {
         let buffer = tt::buffer::TokenBuffer::from_tokens(self.inner.as_slice());
         let parser_input = to_parser_input(&buffer);
-        let tree_traversal = entry_point.parse(&parser_input);
+        let tree_traversal = entry_point.parse(&parser_input, edition);
         let mut cursor = buffer.begin();
         let mut error = false;
         for step in tree_traversal.iter() {
@@ -184,10 +191,6 @@ impl<'a, S: Span> TtIter<'a, S> {
             })),
         };
         ExpandResult { value: res, err }
-    }
-
-    pub(crate) fn peek_n(&self, n: usize) -> Option<&'a tt::TokenTree<S>> {
-        self.inner.as_slice().get(n)
     }
 }
 

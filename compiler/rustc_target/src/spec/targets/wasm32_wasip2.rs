@@ -18,7 +18,7 @@
 
 use crate::spec::crt_objects;
 use crate::spec::LinkSelfContainedDefault;
-use crate::spec::{base, Target};
+use crate::spec::{base, RelocModel, Target};
 
 pub fn target() -> Target {
     let mut options = base::wasm::options();
@@ -54,9 +54,19 @@ pub fn target() -> Target {
     // signatures.
     options.entry_name = "__main_void".into();
 
+    // Default to PIC unlike base wasm. This makes precompiled objects such as
+    // the standard library more suitable to be used with shared libaries a la
+    // emscripten's dynamic linking convention.
+    options.relocation_model = RelocModel::Pic;
+
     Target {
-        llvm_target: "wasm32-unknown-unknown".into(),
-        description: None,
+        llvm_target: "wasm32-wasip2".into(),
+        metadata: crate::spec::TargetMetadata {
+            description: None,
+            tier: None,
+            host_tools: None,
+            std: None,
+        },
         pointer_width: 32,
         data_layout: "e-m:e-p:32:32-p10:8:8-p20:8:8-i64:64-n32:64-S128-ni:1:10:20".into(),
         arch: "wasm32".into(),

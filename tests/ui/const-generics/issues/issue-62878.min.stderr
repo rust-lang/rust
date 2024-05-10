@@ -13,7 +13,10 @@ LL | fn foo<const N: usize, const A: [u8; N]>() {}
    |                                 ^^^^^^^
    |
    = note: the only supported types are integers, `bool` and `char`
-   = help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
+help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
+   |
+LL + #![feature(adt_const_params)]
+   |
 
 error[E0747]: type provided when a constant was expected
   --> $DIR/issue-62878.rs:10:11
@@ -22,7 +25,10 @@ LL |     foo::<_, { [1] }>();
    |           ^
    |
    = help: const arguments cannot yet be inferred with `_`
-   = help: add `#![feature(generic_arg_infer)]` to the crate attributes to enable
+help: add `#![feature(generic_arg_infer)]` to the crate attributes to enable
+   |
+LL + #![feature(generic_arg_infer)]
+   |
 
 error: aborting due to 3 previous errors
 

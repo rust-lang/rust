@@ -186,7 +186,7 @@ impl<'tcx> LateLintPass<'tcx> for HashMapPass {
             cx,
             MAP_ENTRY,
             expr.span,
-            &format!("usage of `contains_key` followed by `insert` on a `{}`", map_ty.name()),
+            format!("usage of `contains_key` followed by `insert` on a `{}`", map_ty.name()),
             "try",
             sugg,
             app,
@@ -358,7 +358,7 @@ struct InsertSearcher<'cx, 'tcx> {
     can_use_entry: bool,
     /// Whether this expression is the final expression in this code path. This may be a statement.
     in_tail_pos: bool,
-    // Is this expression a single insert. A slightly better suggestion can be made in this case.
+    /// Is this expression a single insert. A slightly better suggestion can be made in this case.
     is_single_insert: bool,
     /// If the visitor has seen the map being used.
     is_map_used: bool,
@@ -423,13 +423,16 @@ impl<'tcx> Visitor<'tcx> for InsertSearcher<'_, 'tcx> {
                 }
             },
             StmtKind::Expr(e) => self.visit_expr(e),
-            StmtKind::Local(l) => {
+            StmtKind::Let(l) => {
                 self.visit_pat(l.pat);
                 if let Some(e) = l.init {
                     self.allow_insert_closure &= !self.in_tail_pos;
                     self.in_tail_pos = false;
                     self.is_single_insert = false;
                     self.visit_expr(e);
+                }
+                if let Some(els) = &l.els {
+                    self.visit_block(els);
                 }
             },
             StmtKind::Item(_) => {

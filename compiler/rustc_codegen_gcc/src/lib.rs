@@ -19,7 +19,6 @@
 #![feature(
     rustc_private,
     decl_macro,
-    associated_type_bounds,
     never_type,
     trusted_len,
     hash_raw_entry

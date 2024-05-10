@@ -1,13 +1,15 @@
 //! Span maps for real files and macro expansions.
-use span::{FileId, HirFileId, HirFileIdRepr, MacroFileId, Span};
-use syntax::{AstNode, TextRange};
+
+use span::{FileId, HirFileId, HirFileIdRepr, MacroFileId, Span, SyntaxContextId};
+use stdx::TupleExt;
+use syntax::{ast, AstNode, TextRange};
 use triomphe::Arc;
 
 pub use span::RealSpanMap;
 
-use crate::db::ExpandDatabase;
+use crate::{attrs::collect_attrs, db::ExpandDatabase};
 
-pub type ExpansionSpanMap = span::SpanMap<Span>;
+pub type ExpansionSpanMap = span::SpanMap<SyntaxContextId>;
 
 /// Spanmap for a macro file or a real file
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -82,13 +84,54 @@ pub(crate) fn real_span_map(db: &dyn ExpandDatabase, file_id: FileId) -> Arc<Rea
     let mut pairs = vec![(syntax::TextSize::new(0), span::ROOT_ERASED_FILE_AST_ID)];
     let ast_id_map = db.ast_id_map(file_id.into());
     let tree = db.parse(file_id).tree();
-    // FIXME: Descend into modules and other item containing items that are not annotated with attributes
-    // and allocate pairs for those as well. This gives us finer grained span anchors resulting in
-    // better incrementality
-    pairs.extend(
-        tree.items()
-            .map(|item| (item.syntax().text_range().start(), ast_id_map.ast_id(&item).erase())),
-    );
+    // This is an incrementality layer. Basically we can't use absolute ranges for our spans as that
+    // would mean we'd invalidate everything whenever we type. So instead we make the text ranges
+    // relative to some AstIds reducing the risk of invalidation as typing somewhere no longer
+    // affects all following spans in the file.
+    // There is some stuff to bear in mind here though, for one, the more "anchors" we create, the
+    // easier it gets to invalidate things again as spans are as stable as their anchor's ID.
+    // The other problem is proc-macros. Proc-macros have a `Span::join` api that allows them
+    // to join two spans that come from the same file. rust-analyzer's proc-macro server
+    // can only join two spans if they belong to the same anchor though, as the spans are relative
+    // to that anchor. To do cross anchor joining we'd need to access to the ast id map to resolve
+    // them again, something we might get access to in the future. But even then, proc-macros doing
+    // this kind of joining makes them as stable as the AstIdMap (which is basically changing on
+    // every input of the file)…
+
+    let item_to_entry =
+        |item: ast::Item| (item.syntax().text_range().start(), ast_id_map.ast_id(&item).erase());
+    // Top level items make for great anchors as they are the most stable and a decent boundary
+    pairs.extend(tree.items().map(item_to_entry));
+    // Unfortunately, assoc items are very common in Rust, so descend into those as well and make
+    // them anchors too, but only if they have no attributes attached, as those might be proc-macros
+    // and using different anchors inside of them will prevent spans from being joinable.
+    tree.items().for_each(|item| match &item {
+        ast::Item::ExternBlock(it)
+            if !collect_attrs(it).map(TupleExt::tail).any(|it| it.is_left()) =>
+        {
+            if let Some(extern_item_list) = it.extern_item_list() {
+                pairs.extend(
+                    extern_item_list.extern_items().map(ast::Item::from).map(item_to_entry),
+                );
+            }
+        }
+        ast::Item::Impl(it) if !collect_attrs(it).map(TupleExt::tail).any(|it| it.is_left()) => {
+            if let Some(assoc_item_list) = it.assoc_item_list() {
+                pairs.extend(assoc_item_list.assoc_items().map(ast::Item::from).map(item_to_entry));
+            }
+        }
+        ast::Item::Module(it) if !collect_attrs(it).map(TupleExt::tail).any(|it| it.is_left()) => {
+            if let Some(item_list) = it.item_list() {
+                pairs.extend(item_list.items().map(item_to_entry));
+            }
+        }
+        ast::Item::Trait(it) if !collect_attrs(it).map(TupleExt::tail).any(|it| it.is_left()) => {
+            if let Some(assoc_item_list) = it.assoc_item_list() {
+                pairs.extend(assoc_item_list.assoc_items().map(ast::Item::from).map(item_to_entry));
+            }
+        }
+        _ => (),
+    });
 
     Arc::new(RealSpanMap::from_file(
         file_id,

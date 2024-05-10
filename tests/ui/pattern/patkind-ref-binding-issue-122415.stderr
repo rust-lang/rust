@@ -1,0 +1,11 @@
+error[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
+  --> $DIR/patkind-ref-binding-issue-122415.rs:7:12
+   |
+LL | fn foo(&x: &i32) {
+   |        -- help: consider changing this to be mutable: `&(mut x)`
+LL |     mutate(&mut x);
+   |            ^^^^^^ cannot borrow as mutable
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0596`.

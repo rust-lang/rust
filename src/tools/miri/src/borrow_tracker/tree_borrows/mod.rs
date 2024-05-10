@@ -9,8 +9,11 @@ use rustc_middle::{
 use rustc_span::def_id::DefId;
 use rustc_target::abi::{Abi, Size};
 
-use crate::borrow_tracker::{GlobalState, GlobalStateInner, ProtectorKind};
 use crate::*;
+use crate::{
+    borrow_tracker::{GlobalState, GlobalStateInner, ProtectorKind},
+    concurrency::data_race::NaReadType,
+};
 
 pub mod diagnostics;
 mod perms;
@@ -31,10 +34,10 @@ impl<'tcx> Tree {
         id: AllocId,
         size: Size,
         state: &mut GlobalStateInner,
-        _kind: MemoryKind<machine::MiriMemoryKind>,
+        _kind: MemoryKind,
         machine: &MiriMachine<'_, 'tcx>,
     ) -> Self {
-        let tag = state.base_ptr_tag(id, machine); // Fresh tag for the root
+        let tag = state.root_ptr_tag(id, machine); // Fresh tag for the root
         let span = machine.current_span();
         Tree::new(tag, size, span)
     }
@@ -80,7 +83,7 @@ impl<'tcx> Tree {
         &mut self,
         alloc_id: AllocId,
         prov: ProvenanceExtra,
-        range: AllocRange,
+        size: Size,
         machine: &MiriMachine<'_, 'tcx>,
     ) -> InterpResult<'tcx> {
         // TODO: for now we bail out on wildcard pointers. Eventually we should
@@ -91,7 +94,7 @@ impl<'tcx> Tree {
         };
         let global = machine.borrow_tracker.as_ref().unwrap();
         let span = machine.current_span();
-        self.dealloc(tag, range, global, alloc_id, span)
+        self.dealloc(tag, alloc_range(Size::ZERO, size), global, alloc_id, span)
     }
 
     pub fn expose_tag(&mut self, _tag: BorTag) {
@@ -312,7 +315,13 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
         // Also inform the data race model (but only if any bytes are actually affected).
         if range.size.bytes() > 0 {
             if let Some(data_race) = alloc_extra.data_race.as_ref() {
-                data_race.read(alloc_id, range, &this.machine)?;
+                data_race.read(
+                    alloc_id,
+                    range,
+                    NaReadType::Retag,
+                    Some(place.layout.ty),
+                    &this.machine,
+                )?;
             }
         }
 
@@ -390,15 +399,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         } else {
             Ok(val.clone())
         }
-    }
-
-    fn tb_retag_box_to_raw(
-        &mut self,
-        val: &ImmTy<'tcx, Provenance>,
-        _alloc_ty: Ty<'tcx>,
-    ) -> InterpResult<'tcx, ImmTy<'tcx, Provenance>> {
-        // Casts to raw pointers are NOPs in Tree Borrows.
-        Ok(val.clone())
     }
 
     /// Retag all pointers that are stored in this place.
@@ -484,7 +484,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                             NewPermission::from_ref_ty(pointee, mutability, self.kind, self.ecx);
                         self.retag_ptr_inplace(place, new_perm)?;
                     }
-                    ty::RawPtr(_) => {
+                    ty::RawPtr(_, _) => {
                         // We definitely do *not* want to recurse into raw pointers -- wide raw
                         // pointers have fields, and for dyn Trait pointees those can have reference
                         // type!

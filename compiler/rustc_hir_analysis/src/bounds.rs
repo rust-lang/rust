@@ -1,5 +1,5 @@
-//! Bounds are restrictions applied to some types after they've been converted into the
-//! `ty` form from the HIR.
+//! Bounds are restrictions applied to some types after they've been lowered from the HIR to the
+//! [`rustc_middle::ty`] form.
 
 use rustc_hir::LangItem;
 use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt};
@@ -23,7 +23,7 @@ use rustc_span::Span;
 /// include the self type (e.g., `trait_bounds`) but in others we do not
 #[derive(Default, PartialEq, Eq, Clone, Debug)]
 pub struct Bounds<'tcx> {
-    pub clauses: Vec<(ty::Clause<'tcx>, Span)>,
+    clauses: Vec<(ty::Clause<'tcx>, Span)>,
 }
 
 impl<'tcx> Bounds<'tcx> {
@@ -42,26 +42,22 @@ impl<'tcx> Bounds<'tcx> {
         tcx: TyCtxt<'tcx>,
         trait_ref: ty::PolyTraitRef<'tcx>,
         span: Span,
-        polarity: ty::ImplPolarity,
+        polarity: ty::PredicatePolarity,
     ) {
-        self.push_trait_bound_inner(tcx, trait_ref, span, polarity);
-    }
-
-    fn push_trait_bound_inner(
-        &mut self,
-        tcx: TyCtxt<'tcx>,
-        trait_ref: ty::PolyTraitRef<'tcx>,
-        span: Span,
-        polarity: ty::ImplPolarity,
-    ) {
-        self.clauses.push((
+        let clause = (
             trait_ref
                 .map_bound(|trait_ref| {
                     ty::ClauseKind::Trait(ty::TraitPredicate { trait_ref, polarity })
                 })
                 .to_predicate(tcx),
             span,
-        ));
+        );
+        // FIXME(-Znext-solver): We can likely remove this hack once the new trait solver lands.
+        if tcx.lang_items().sized_trait() == Some(trait_ref.def_id()) {
+            self.clauses.insert(0, clause);
+        } else {
+            self.clauses.push(clause);
+        }
     }
 
     pub fn push_projection_bound(

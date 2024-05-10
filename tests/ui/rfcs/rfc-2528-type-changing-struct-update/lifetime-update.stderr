@@ -1,5 +1,5 @@
 error[E0597]: `s` does not live long enough
-  --> $DIR/lifetime-update.rs:20:17
+  --> $DIR/lifetime-update.rs:19:17
    |
 LL |     let s = String::from("hello");
    |         - binding `s` declared here

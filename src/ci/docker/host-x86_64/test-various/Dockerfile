@@ -3,6 +3,7 @@ FROM ubuntu:22.04
 ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
   clang-11 \
+  llvm-11 \
   g++ \
   make \
   ninja-build \
@@ -27,8 +28,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   qemu-system-x86 \
   && rm -rf /var/lib/apt/lists/*
 
-RUN curl -sL https://nodejs.org/dist/v18.12.0/node-v18.12.0-linux-x64.tar.xz | \
-  tar -xJ
+COPY scripts/nodejs.sh /scripts/
+RUN sh /scripts/nodejs.sh /node
+ENV PATH="/node/bin:${PATH}"
 
 WORKDIR /build/
 COPY scripts/musl-toolchain.sh /build/
@@ -38,9 +40,12 @@ WORKDIR /
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
+RUN curl -L https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-22/wasi-sdk-22.0-linux.tar.gz | \
+  tar -xz
+ENV WASI_SDK_PATH=/wasi-sdk-22.0
+
 ENV RUST_CONFIGURE_ARGS \
   --musl-root-x86_64=/usr/local/x86_64-linux-musl \
-  --set build.nodejs=/node-v18.12.0-linux-x64/bin/node \
   --set rust.lld
 
 # Some run-make tests have assertions about code size, and enabling debug
@@ -50,7 +55,11 @@ ENV RUST_CONFIGURE_ARGS \
 ENV NO_DEBUG_ASSERTIONS=1
 ENV NO_OVERFLOW_CHECKS=1
 
-ENV WASM_TARGETS=wasm32-unknown-unknown
+RUN curl -L https://github.com/bytecodealliance/wasmtime/releases/download/v19.0.0/wasmtime-v19.0.0-x86_64-linux.tar.xz | \
+  tar -xJ
+ENV PATH "$PATH:/wasmtime-v19.0.0-x86_64-linux"
+
+ENV WASM_TARGETS=wasm32-wasip1
 ENV WASM_SCRIPT python3 /checkout/x.py --stage 2 test --host='' --target $WASM_TARGETS \
   tests/run-make \
   tests/ui \
@@ -59,7 +68,6 @@ ENV WASM_SCRIPT python3 /checkout/x.py --stage 2 test --host='' --target $WASM_T
   tests/codegen \
   tests/assembly \
   library/core
-ENV CC_wasm32_unknown_unknown=clang-11
 
 ENV NVPTX_TARGETS=nvptx64-nvidia-cuda
 ENV NVPTX_SCRIPT python3 /checkout/x.py --stage 2 test --host='' --target $NVPTX_TARGETS \

@@ -103,6 +103,7 @@ use rustc_data_structures::sync;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, DefIdSet, LOCAL_CRATE};
 use rustc_hir::definitions::DefPathDataName;
+use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::exported_symbols::{SymbolExportInfo, SymbolExportLevel};
 use rustc_middle::mir::mono::{
@@ -117,7 +118,7 @@ use rustc_session::CodegenUnits;
 use rustc_span::symbol::Symbol;
 
 use crate::collector::UsageMap;
-use crate::collector::{self, MonoItemCollectionMode};
+use crate::collector::{self, MonoItemCollectionStrategy};
 use crate::errors::{CouldntDumpMonoStats, SymbolAlreadyDefined, UnknownCguCollectionMode};
 
 struct PartitioningCx<'a, 'tcx> {
@@ -175,9 +176,7 @@ where
     }
 
     // Mark one CGU for dead code, if necessary.
-    let instrument_dead_code =
-        tcx.sess.instrument_coverage() && !tcx.sess.instrument_coverage_except_unused_functions();
-    if instrument_dead_code {
+    if tcx.sess.instrument_coverage() {
         mark_code_coverage_dead_code_cgu(&mut codegen_units);
     }
 
@@ -627,7 +626,8 @@ fn characteristic_def_id_of_mono_item<'tcx>(
                 | ty::InstanceDef::Virtual(..)
                 | ty::InstanceDef::CloneShim(..)
                 | ty::InstanceDef::ThreadLocalShim(..)
-                | ty::InstanceDef::FnPtrAddrShim(..) => return None,
+                | ty::InstanceDef::FnPtrAddrShim(..)
+                | ty::InstanceDef::AsyncDropGlueCtorShim(..) => return None,
             };
 
             // If this is a method, we want to put it into the same module as
@@ -771,7 +771,9 @@ fn mono_item_visibility<'tcx>(
     };
 
     let def_id = match instance.def {
-        InstanceDef::Item(def_id) | InstanceDef::DropGlue(def_id, Some(_)) => def_id,
+        InstanceDef::Item(def_id)
+        | InstanceDef::DropGlue(def_id, Some(_))
+        | InstanceDef::AsyncDropGlueCtorShim(def_id, Some(_)) => def_id,
 
         // We match the visibility of statics here
         InstanceDef::ThreadLocalShim(def_id) => {
@@ -788,6 +790,7 @@ fn mono_item_visibility<'tcx>(
         | InstanceDef::ConstructCoroutineInClosureShim { .. }
         | InstanceDef::CoroutineKindShim { .. }
         | InstanceDef::DropGlue(..)
+        | InstanceDef::AsyncDropGlueCtorShim(..)
         | InstanceDef::CloneShim(..)
         | InstanceDef::FnPtrAddrShim(..) => return Visibility::Hidden,
     };
@@ -1089,31 +1092,34 @@ where
 }
 
 fn collect_and_partition_mono_items(tcx: TyCtxt<'_>, (): ()) -> (&DefIdSet, &[CodegenUnit<'_>]) {
-    let collection_mode = match tcx.sess.opts.unstable_opts.print_mono_items {
+    let collection_strategy = match tcx.sess.opts.unstable_opts.print_mono_items {
         Some(ref s) => {
             let mode = s.to_lowercase();
             let mode = mode.trim();
             if mode == "eager" {
-                MonoItemCollectionMode::Eager
+                MonoItemCollectionStrategy::Eager
             } else {
                 if mode != "lazy" {
                     tcx.dcx().emit_warn(UnknownCguCollectionMode { mode });
                 }
 
-                MonoItemCollectionMode::Lazy
+                MonoItemCollectionStrategy::Lazy
             }
         }
         None => {
             if tcx.sess.link_dead_code() {
-                MonoItemCollectionMode::Eager
+                MonoItemCollectionStrategy::Eager
             } else {
-                MonoItemCollectionMode::Lazy
+                MonoItemCollectionStrategy::Lazy
             }
         }
     };
 
-    let (items, usage_map) = collector::collect_crate_mono_items(tcx, collection_mode);
+    let (items, usage_map) = collector::collect_crate_mono_items(tcx, collection_strategy);
 
+    // If there was an error during collection (e.g. from one of the constants we evaluated),
+    // then we stop here. This way codegen does not have to worry about failing constants.
+    // (codegen relies on this and ICEs will happen if this is violated.)
     tcx.dcx().abort_if_errors();
 
     let (codegen_units, _) = tcx.sess.time("partition_and_assert_distinct_symbols", || {

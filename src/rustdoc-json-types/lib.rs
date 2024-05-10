@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
 /// rustdoc format-version.
-pub const FORMAT_VERSION: u32 = 28;
+pub const FORMAT_VERSION: u32 = 29;
 
 /// A `Crate` is the root of the emitted JSON blob. It contains all type/documentation information
 /// about the language items in the local crate, as well as info about external items to allow
@@ -314,7 +314,7 @@ pub enum StructKind {
     /// All [`Id`]'s will point to [`ItemEnum::StructField`]. Private and
     /// `#[doc(hidden)]` fields will be given as `None`
     Tuple(Vec<Option<Id>>),
-    /// A struct with nammed fields.
+    /// A struct with named fields.
     ///
     /// ```rust
     /// pub struct PlainStruct { x: i32 }
@@ -561,6 +561,13 @@ pub enum Type {
         #[serde(rename = "type")]
         type_: Box<Type>,
         len: String,
+    },
+    /// `u32 is 1..`
+    Pat {
+        #[serde(rename = "type")]
+        type_: Box<Type>,
+        #[doc(hidden)]
+        __pat_unstable_do_not_use: String,
     },
     /// `impl TraitA + TraitB + ...`
     ImplTrait(Vec<GenericBound>),

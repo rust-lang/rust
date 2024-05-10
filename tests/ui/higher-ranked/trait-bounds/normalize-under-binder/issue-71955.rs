@@ -43,9 +43,9 @@ fn main() {
     }
 
     foo(bar, "string", |s| s.len() == 5);
-    //~^ ERROR mismatched types
-    //~| ERROR mismatched types
+    //~^ ERROR implementation of `FnOnce` is not general enough
+    //~| ERROR implementation of `FnOnce` is not general enough
     foo(baz, "string", |s| s.0.len() == 5);
-    //~^ ERROR mismatched types
-    //~| ERROR mismatched types
+    //~^ ERROR implementation of `FnOnce` is not general enough
+    //~| ERROR implementation of `FnOnce` is not general enough
 }

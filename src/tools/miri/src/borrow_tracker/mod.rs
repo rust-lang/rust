@@ -5,7 +5,7 @@ use std::num::NonZero;
 use smallvec::SmallVec;
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_middle::{mir::RetagKind, ty::Ty};
+use rustc_middle::mir::RetagKind;
 use rustc_target::abi::Size;
 
 use crate::*;
@@ -89,10 +89,10 @@ pub struct GlobalStateInner {
     borrow_tracker_method: BorrowTrackerMethod,
     /// Next unused pointer ID (tag).
     next_ptr_tag: BorTag,
-    /// Table storing the "base" tag for each allocation.
-    /// The base tag is the one used for the initial pointer.
+    /// Table storing the "root" tag for each allocation.
+    /// The root tag is the one used for the initial pointer.
     /// We need this in a separate table to handle cyclic statics.
-    base_ptr_tags: FxHashMap<AllocId, BorTag>,
+    root_ptr_tags: FxHashMap<AllocId, BorTag>,
     /// Next unused call ID (for protectors).
     next_call_id: CallId,
     /// All currently protected tags.
@@ -175,7 +175,7 @@ impl GlobalStateInner {
         GlobalStateInner {
             borrow_tracker_method,
             next_ptr_tag: BorTag::one(),
-            base_ptr_tags: FxHashMap::default(),
+            root_ptr_tags: FxHashMap::default(),
             next_call_id: NonZero::new(1).unwrap(),
             protected_tags: FxHashMap::default(),
             tracked_pointer_tags,
@@ -213,8 +213,8 @@ impl GlobalStateInner {
         }
     }
 
-    pub fn base_ptr_tag(&mut self, id: AllocId, machine: &MiriMachine<'_, '_>) -> BorTag {
-        self.base_ptr_tags.get(&id).copied().unwrap_or_else(|| {
+    pub fn root_ptr_tag(&mut self, id: AllocId, machine: &MiriMachine<'_, '_>) -> BorTag {
+        self.root_ptr_tags.get(&id).copied().unwrap_or_else(|| {
             let tag = self.new_ptr();
             if self.tracked_pointer_tags.contains(&tag) {
                 machine.emit_diagnostic(NonHaltingDiagnostic::CreatedPointerTag(
@@ -223,14 +223,14 @@ impl GlobalStateInner {
                     None,
                 ));
             }
-            trace!("New allocation {:?} has base tag {:?}", id, tag);
-            self.base_ptr_tags.try_insert(id, tag).unwrap();
+            trace!("New allocation {:?} has rpot tag {:?}", id, tag);
+            self.root_ptr_tags.try_insert(id, tag).unwrap();
             tag
         })
     }
 
     pub fn remove_unreachable_allocs(&mut self, allocs: &LiveAllocs<'_, '_, '_>) {
-        self.base_ptr_tags.retain(|id, _| allocs.is_live(*id));
+        self.root_ptr_tags.retain(|id, _| allocs.is_live(*id));
     }
 }
 
@@ -260,7 +260,7 @@ impl GlobalStateInner {
         &mut self,
         id: AllocId,
         alloc_size: Size,
-        kind: MemoryKind<machine::MiriMemoryKind>,
+        kind: MemoryKind,
         machine: &MiriMachine<'_, '_>,
     ) -> AllocState {
         match self.borrow_tracker_method {
@@ -288,19 +288,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         match method {
             BorrowTrackerMethod::StackedBorrows => this.sb_retag_ptr_value(kind, val),
             BorrowTrackerMethod::TreeBorrows => this.tb_retag_ptr_value(kind, val),
-        }
-    }
-
-    fn retag_box_to_raw(
-        &mut self,
-        val: &ImmTy<'tcx, Provenance>,
-        alloc_ty: Ty<'tcx>,
-    ) -> InterpResult<'tcx, ImmTy<'tcx, Provenance>> {
-        let this = self.eval_context_mut();
-        let method = this.machine.borrow_tracker.as_ref().unwrap().borrow().borrow_tracker_method;
-        match method {
-            BorrowTrackerMethod::StackedBorrows => this.sb_retag_box_to_raw(val, alloc_ty),
-            BorrowTrackerMethod::TreeBorrows => this.tb_retag_box_to_raw(val, alloc_ty),
         }
     }
 
@@ -485,14 +472,14 @@ impl AllocState {
         &mut self,
         alloc_id: AllocId,
         prov_extra: ProvenanceExtra,
-        range: AllocRange,
+        size: Size,
         machine: &MiriMachine<'_, 'tcx>,
     ) -> InterpResult<'tcx> {
         match self {
             AllocState::StackedBorrows(sb) =>
-                sb.get_mut().before_memory_deallocation(alloc_id, prov_extra, range, machine),
+                sb.get_mut().before_memory_deallocation(alloc_id, prov_extra, size, machine),
             AllocState::TreeBorrows(tb) =>
-                tb.get_mut().before_memory_deallocation(alloc_id, prov_extra, range, machine),
+                tb.get_mut().before_memory_deallocation(alloc_id, prov_extra, size, machine),
         }
     }
 

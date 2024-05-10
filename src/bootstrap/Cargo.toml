@@ -33,10 +33,10 @@ path = "src/bin/sccache-plus-cl.rs"
 test = false
 
 [dependencies]
-# Most of the time updating these dependencies requires modifications
-# to the bootstrap codebase; otherwise, some targets will fail. That's
-# why these dependencies are explicitly pinned.
-cc = "=1.0.73"
+# Most of the time updating these dependencies requires modifications to the
+# bootstrap codebase(e.g., https://github.com/rust-lang/rust/issues/124565);
+# otherwise, some targets will fail. That's why these dependencies are explicitly pinned.
+cc = "=1.0.97"
 cmake = "=0.1.48"
 
 build_helper = { path = "../tools/build_helper" }
@@ -64,7 +64,7 @@ walkdir = "2.4"
 xz2 = "0.1"
 
 # Dependencies needed by the build-metrics feature
-sysinfo = { version = "0.30", optional = true }
+sysinfo = { version = "0.30", default-features = false, optional = true }
 
 [target.'cfg(windows)'.dependencies.junction]
 version = "1.0.0"

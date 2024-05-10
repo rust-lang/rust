@@ -7,7 +7,7 @@
 // non-ASCII characters.  The child process ensures all the strings are
 // intact.
 
-//@ ignore-emscripten no processes
+//@ ignore-wasm32 no processes
 //@ ignore-sgx no processes
 //@ ignore-fuchsia Filesystem manipulation privileged
 

@@ -18,7 +18,7 @@ use rustc_middle::span_bug;
 use rustc_middle::ty::layout::HasTyCtxt;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::{sym, Span, Symbol};
-use rustc_target::abi::Align;
+use rustc_target::abi::{Align, Size};
 
 use crate::builder::Builder;
 #[cfg(not(feature = "master"))]
@@ -82,7 +82,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
                 let place = PlaceRef::alloca(bx, args[0].layout);
                 args[0].val.store(bx, place);
                 let int_ty = bx.type_ix(expected_bytes * 8);
-                let ptr = bx.pointercast(place.llval, bx.cx.type_ptr_to(int_ty));
+                let ptr = bx.pointercast(place.val.llval, bx.cx.type_ptr_to(int_ty));
                 bx.load(int_ty, ptr, Align::ONE)
             }
             _ => return_error!(InvalidMonomorphization::InvalidBitmask {
@@ -558,7 +558,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
                 let ze = bx.zext(result, bx.type_ix(expected_bytes * 8));
 
                 // Convert the integer to a byte array
-                let ptr = bx.alloca(bx.type_ix(expected_bytes * 8), Align::ONE);
+                let ptr = bx.alloca(Size::from_bytes(expected_bytes), Align::ONE);
                 bx.store(ze, ptr, Align::ONE);
                 let array_ty = bx.type_array(bx.type_i8(), expected_bytes);
                 let ptr = bx.pointercast(ptr, bx.cx.type_ptr_to(array_ty));
@@ -796,16 +796,16 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
 
         // This counts how many pointers
         fn ptr_count(t: Ty<'_>) -> usize {
-            match t.kind() {
-                ty::RawPtr(p) => 1 + ptr_count(p.ty),
+            match *t.kind() {
+                ty::RawPtr(p_ty, _) => 1 + ptr_count(p_ty),
                 _ => 0,
             }
         }
 
         // Non-ptr type
         fn non_ptr(t: Ty<'_>) -> Ty<'_> {
-            match t.kind() {
-                ty::RawPtr(p) => non_ptr(p.ty),
+            match *t.kind() {
+                ty::RawPtr(p_ty, _) => non_ptr(p_ty),
                 _ => t,
             }
         }
@@ -814,8 +814,8 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         // to the element type of the first argument
         let (_, element_ty0) = arg_tys[0].simd_size_and_type(bx.tcx());
         let (_, element_ty1) = arg_tys[1].simd_size_and_type(bx.tcx());
-        let (pointer_count, underlying_ty) = match element_ty1.kind() {
-            ty::RawPtr(p) if p.ty == in_elem => (ptr_count(element_ty1), non_ptr(element_ty1)),
+        let (pointer_count, underlying_ty) = match *element_ty1.kind() {
+            ty::RawPtr(p_ty, _) if p_ty == in_elem => (ptr_count(element_ty1), non_ptr(element_ty1)),
             _ => {
                 require!(
                     false,
@@ -910,16 +910,16 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
 
         // This counts how many pointers
         fn ptr_count(t: Ty<'_>) -> usize {
-            match t.kind() {
-                ty::RawPtr(p) => 1 + ptr_count(p.ty),
+            match *t.kind() {
+                ty::RawPtr(p_ty, _) => 1 + ptr_count(p_ty),
                 _ => 0,
             }
         }
 
         // Non-ptr type
         fn non_ptr(t: Ty<'_>) -> Ty<'_> {
-            match t.kind() {
-                ty::RawPtr(p) => non_ptr(p.ty),
+            match *t.kind() {
+                ty::RawPtr(p_ty, _) => non_ptr(p_ty),
                 _ => t,
             }
         }
@@ -929,8 +929,8 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         let (_, element_ty0) = arg_tys[0].simd_size_and_type(bx.tcx());
         let (_, element_ty1) = arg_tys[1].simd_size_and_type(bx.tcx());
         let (_, element_ty2) = arg_tys[2].simd_size_and_type(bx.tcx());
-        let (pointer_count, underlying_ty) = match element_ty1.kind() {
-            ty::RawPtr(p) if p.ty == in_elem && p.mutbl == hir::Mutability::Mut => {
+        let (pointer_count, underlying_ty) = match *element_ty1.kind() {
+            ty::RawPtr(p_ty, mutbl) if p_ty == in_elem && mutbl == hir::Mutability::Mut => {
                 (ptr_count(element_ty1), non_ptr(element_ty1))
             }
             _ => {

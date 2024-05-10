@@ -7,7 +7,7 @@ fn take_foo(_: impl Foo) {}
 fn main() {
     take_foo(|a| a);
     //~^ ERROR implementation of `FnOnce` is not general enough
-    //~| ERROR mismatched types
+    //~| ERROR implementation of `Fn` is not general enough
     take_foo(|a: &i32| a);
     //~^ ERROR lifetime may not live long enough
     //~| ERROR mismatched types

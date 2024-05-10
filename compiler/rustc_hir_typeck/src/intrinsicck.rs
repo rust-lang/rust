@@ -17,7 +17,7 @@ fn unpack_option_like<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
         let data_idx;
 
         let one = VariantIdx::new(1);
-        let zero = VariantIdx::new(0);
+        let zero = VariantIdx::ZERO;
 
         if def.variant(zero).fields.is_empty() {
             data_idx = one;

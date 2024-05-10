@@ -1,2 +1,0 @@
-error: `-C instrument-coverage=branch` and `-C instrument-coverage=except-*` require `-Z unstable-options`
-

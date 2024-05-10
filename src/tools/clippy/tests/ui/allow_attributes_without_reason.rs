@@ -1,7 +1,7 @@
 //@aux-build:proc_macros.rs
 #![feature(lint_reasons)]
 #![deny(clippy::allow_attributes_without_reason)]
-#![allow(unfulfilled_lint_expectations)]
+#![allow(unfulfilled_lint_expectations, clippy::duplicated_attributes)]
 
 extern crate proc_macros;
 use proc_macros::{external, with_span};

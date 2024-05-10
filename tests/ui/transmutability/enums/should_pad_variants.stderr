@@ -2,7 +2,7 @@ error[E0277]: `Src` cannot be safely transmuted into `Dst`
   --> $DIR/should_pad_variants.rs:43:36
    |
 LL |     assert::is_transmutable::<Src, Dst>();
-   |                                    ^^^ The size of `Src` is smaller than the size of `Dst`
+   |                                    ^^^ the size of `Src` is smaller than the size of `Dst`
    |
 note: required by a bound in `is_transmutable`
   --> $DIR/should_pad_variants.rs:13:14

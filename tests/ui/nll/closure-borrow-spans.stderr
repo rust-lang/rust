@@ -25,6 +25,8 @@ LL |     f.use_ref();
 error[E0597]: `x` does not live long enough
   --> $DIR/closure-borrow-spans.rs:19:16
    |
+LL |         let x = 1;
+   |             - binding `x` declared here
 LL |         f = || x;
    |             -- ^ borrowed value does not live long enough
    |             |
@@ -85,6 +87,8 @@ LL |     f.use_ref();
 error[E0597]: `x` does not live long enough
   --> $DIR/closure-borrow-spans.rs:52:16
    |
+LL |         let mut x = 1;
+   |             ----- binding `x` declared here
 LL |         f = || x = 0;
    |             -- ^ borrowed value does not live long enough
    |             |
@@ -145,6 +149,8 @@ LL |     f.use_ref();
 error[E0597]: `x` does not live long enough
   --> $DIR/closure-borrow-spans.rs:86:16
    |
+LL |         let x = &mut z;
+   |             - binding `x` declared here
 LL |         f = || *x = 0;
    |             -- ^^ borrowed value does not live long enough
    |             |

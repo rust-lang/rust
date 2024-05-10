@@ -48,7 +48,7 @@ impl ChangeWithProcMacros {
         }
     }
 
-    pub fn change_file(&mut self, file_id: FileId, new_text: Option<Arc<str>>) {
+    pub fn change_file(&mut self, file_id: FileId, new_text: Option<String>) {
         self.source_change.change_file(file_id, new_text)
     }
 

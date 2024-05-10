@@ -6,7 +6,7 @@ use rustc_error_messages::MultiSpan;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::LocalDefId;
-use rustc_macros::HashStable;
+use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_type_ir::ConstKind as IrConstKind;
 use rustc_type_ir::{ConstTy, IntoKind, TypeFlags, WithCachedTypeInfo};
 
@@ -22,8 +22,11 @@ pub use valtree::*;
 
 pub type ConstKind<'tcx> = IrConstKind<TyCtxt<'tcx>>;
 
+#[cfg(target_pointer_width = "64")]
+rustc_data_structures::static_assert_size!(ConstKind<'_>, 32);
+
 /// Use this rather than `ConstData`, whenever possible.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, HashStable)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, HashStable)]
 #[rustc_pass_by_value]
 pub struct Const<'tcx>(pub(super) Interned<'tcx, WithCachedTypeInfo<ConstData<'tcx>>>);
 
@@ -52,15 +55,15 @@ impl<'tcx> ConstTy<TyCtxt<'tcx>> for Const<'tcx> {
 }
 
 /// Typed constant value.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
 #[derive(HashStable, TyEncodable, TyDecodable)]
 pub struct ConstData<'tcx> {
     pub ty: Ty<'tcx>,
     pub kind: ConstKind<'tcx>,
 }
 
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-static_assert_size!(ConstData<'_>, 40);
+#[cfg(target_pointer_width = "64")]
+rustc_data_structures::static_assert_size!(ConstData<'_>, 40);
 
 impl<'tcx> Const<'tcx> {
     #[inline]
@@ -335,7 +338,7 @@ impl<'tcx> Const<'tcx> {
         self,
         tcx: TyCtxt<'tcx>,
         param_env: ParamEnv<'tcx>,
-        span: Option<Span>,
+        span: Span,
     ) -> Result<ValTree<'tcx>, ErrorHandled> {
         assert!(!self.has_escaping_bound_vars(), "escaping vars in {self:?}");
         match self.kind() {
@@ -349,7 +352,7 @@ impl<'tcx> Const<'tcx> {
                 else {
                     // This can happen when we run on ill-typed code.
                     let e = tcx.dcx().span_delayed_bug(
-                        span.unwrap_or(DUMMY_SP),
+                        span,
                         "`ty::Const::eval` called on a non-valtree-compatible type",
                     );
                     return Err(e.into());
@@ -362,14 +365,14 @@ impl<'tcx> Const<'tcx> {
             | ConstKind::Infer(_)
             | ConstKind::Bound(_, _)
             | ConstKind::Placeholder(_)
-            | ConstKind::Expr(_) => Err(ErrorHandled::TooGeneric(span.unwrap_or(DUMMY_SP))),
+            | ConstKind::Expr(_) => Err(ErrorHandled::TooGeneric(span)),
         }
     }
 
     /// Normalizes the constant to a value or an error if possible.
     #[inline]
     pub fn normalize(self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> Self {
-        match self.eval(tcx, param_env, None) {
+        match self.eval(tcx, param_env, DUMMY_SP) {
             Ok(val) => Self::new_value(tcx, val, self.ty()),
             Err(ErrorHandled::Reported(r, _span)) => Self::new_error(tcx, r.into(), self.ty()),
             Err(ErrorHandled::TooGeneric(_span)) => self,
@@ -382,7 +385,7 @@ impl<'tcx> Const<'tcx> {
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
     ) -> Option<Scalar> {
-        self.eval(tcx, param_env, None).ok()?.try_to_scalar()
+        self.eval(tcx, param_env, DUMMY_SP).ok()?.try_to_scalar()
     }
 
     #[inline]
@@ -406,7 +409,7 @@ impl<'tcx> Const<'tcx> {
         let size =
             tcx.layout_of(param_env.with_reveal_all_normalized(tcx).and(self.ty())).ok()?.size;
         // if `ty` does not depend on generic parameters, use an empty param_env
-        int.to_bits(size).ok()
+        int.try_to_bits(size).ok()
     }
 
     #[inline]

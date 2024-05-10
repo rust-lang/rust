@@ -8,7 +8,7 @@
 //! Thank you!
 //! ~The `INTERNAL_METADATA_COLLECTOR` lint
 
-use rustc_errors::{Applicability, Diag, MultiSpan};
+use rustc_errors::{Applicability, Diag, DiagMessage, MultiSpan, SubdiagMessage};
 use rustc_hir::HirId;
 use rustc_lint::{LateContext, Lint, LintContext};
 use rustc_span::Span;
@@ -36,6 +36,20 @@ fn docs_link(diag: &mut Diag<'_, ()>, lint: &'static Lint) {
 /// Usually it's nicer to provide more context for lint messages.
 /// Be sure the output is understandable when you use this method.
 ///
+/// NOTE: Lint emissions are always bound to a node in the HIR, which is used to determine
+/// the lint level.
+/// For the `span_lint` function, the node that was passed into the `LintPass::check_*` function is
+/// used.
+///
+/// If you're emitting the lint at the span of a different node than the one provided by the
+/// `LintPass::check_*` function, consider using [`span_lint_hir`] instead.
+/// This is needed for `#[allow]` and `#[expect]` attributes to work on the node
+/// highlighted in the displayed warning.
+///
+/// If you're unsure which function you should use, you can test if the `#[allow]` attribute works
+/// where you would expect it to.
+/// If it doesn't, you likely need to use [`span_lint_hir`] instead.
+///
 /// # Example
 ///
 /// ```ignore
@@ -45,9 +59,9 @@ fn docs_link(diag: &mut Diag<'_, ()>, lint: &'static Lint) {
 /// 17 |     std::mem::forget(seven);
 ///    |     ^^^^^^^^^^^^^^^^^^^^^^^
 /// ```
-pub fn span_lint<T: LintContext>(cx: &T, lint: &'static Lint, sp: impl Into<MultiSpan>, msg: &str) {
+pub fn span_lint<T: LintContext>(cx: &T, lint: &'static Lint, sp: impl Into<MultiSpan>, msg: impl Into<DiagMessage>) {
     #[expect(clippy::disallowed_methods)]
-    cx.span_lint(lint, sp, msg.to_string(), |diag| {
+    cx.span_lint(lint, sp, msg.into(), |diag| {
         docs_link(diag, lint);
     });
 }
@@ -60,6 +74,20 @@ pub fn span_lint<T: LintContext>(cx: &T, lint: &'static Lint, sp: impl Into<Mult
 /// The `help` message can be optionally attached to a `Span`.
 ///
 /// If you change the signature, remember to update the internal lint `CollapsibleCalls`
+///
+/// NOTE: Lint emissions are always bound to a node in the HIR, which is used to determine
+/// the lint level.
+/// For the `span_lint_and_help` function, the node that was passed into the `LintPass::check_*`
+/// function is used.
+///
+/// If you're emitting the lint at the span of a different node than the one provided by the
+/// `LintPass::check_*` function, consider using [`span_lint_hir_and_then`] instead.
+/// This is needed for `#[allow]` and `#[expect]` attributes to work on the node
+/// highlighted in the displayed warning.
+///
+/// If you're unsure which function you should use, you can test if the `#[allow]` attribute works
+/// where you would expect it to.
+/// If it doesn't, you likely need to use [`span_lint_hir_and_then`] instead.
 ///
 /// # Example
 ///
@@ -76,17 +104,16 @@ pub fn span_lint_and_help<T: LintContext>(
     cx: &T,
     lint: &'static Lint,
     span: impl Into<MultiSpan>,
-    msg: &str,
+    msg: impl Into<DiagMessage>,
     help_span: Option<Span>,
-    help: &str,
+    help: impl Into<SubdiagMessage>,
 ) {
     #[expect(clippy::disallowed_methods)]
-    cx.span_lint(lint, span, msg.to_string(), |diag| {
-        let help = help.to_string();
+    cx.span_lint(lint, span, msg.into(), |diag| {
         if let Some(help_span) = help_span {
-            diag.span_help(help_span, help);
+            diag.span_help(help_span, help.into());
         } else {
-            diag.help(help);
+            diag.help(help.into());
         }
         docs_link(diag, lint);
     });
@@ -98,6 +125,20 @@ pub fn span_lint_and_help<T: LintContext>(
 /// and is attached to a specific span:
 ///
 /// If you change the signature, remember to update the internal lint `CollapsibleCalls`
+///
+/// NOTE: Lint emissions are always bound to a node in the HIR, which is used to determine
+/// the lint level.
+/// For the `span_lint_and_note` function, the node that was passed into the `LintPass::check_*`
+/// function is used.
+///
+/// If you're emitting the lint at the span of a different node than the one provided by the
+/// `LintPass::check_*` function, consider using [`span_lint_hir_and_then`] instead.
+/// This is needed for `#[allow]` and `#[expect]` attributes to work on the node
+/// highlighted in the displayed warning.
+///
+/// If you're unsure which function you should use, you can test if the `#[allow]` attribute works
+/// where you would expect it to.
+/// If it doesn't, you likely need to use [`span_lint_hir_and_then`] instead.
 ///
 /// # Example
 ///
@@ -119,17 +160,16 @@ pub fn span_lint_and_note<T: LintContext>(
     cx: &T,
     lint: &'static Lint,
     span: impl Into<MultiSpan>,
-    msg: &str,
+    msg: impl Into<DiagMessage>,
     note_span: Option<Span>,
-    note: &str,
+    note: impl Into<SubdiagMessage>,
 ) {
     #[expect(clippy::disallowed_methods)]
-    cx.span_lint(lint, span, msg.to_string(), |diag| {
-        let note = note.to_string();
+    cx.span_lint(lint, span, msg.into(), |diag| {
         if let Some(note_span) = note_span {
-            diag.span_note(note_span, note);
+            diag.span_note(note_span, note.into());
         } else {
-            diag.note(note);
+            diag.note(note.into());
         }
         docs_link(diag, lint);
     });
@@ -139,36 +179,99 @@ pub fn span_lint_and_note<T: LintContext>(
 ///
 /// If you need to customize your lint output a lot, use this function.
 /// If you change the signature, remember to update the internal lint `CollapsibleCalls`
-pub fn span_lint_and_then<C, S, F>(cx: &C, lint: &'static Lint, sp: S, msg: &str, f: F)
+///
+/// NOTE: Lint emissions are always bound to a node in the HIR, which is used to determine
+/// the lint level.
+/// For the `span_lint_and_then` function, the node that was passed into the `LintPass::check_*`
+/// function is used.
+///
+/// If you're emitting the lint at the span of a different node than the one provided by the
+/// `LintPass::check_*` function, consider using [`span_lint_hir_and_then`] instead.
+/// This is needed for `#[allow]` and `#[expect]` attributes to work on the node
+/// highlighted in the displayed warning.
+///
+/// If you're unsure which function you should use, you can test if the `#[allow]` attribute works
+/// where you would expect it to.
+/// If it doesn't, you likely need to use [`span_lint_hir_and_then`] instead.
+pub fn span_lint_and_then<C, S, M, F>(cx: &C, lint: &'static Lint, sp: S, msg: M, f: F)
 where
     C: LintContext,
     S: Into<MultiSpan>,
+    M: Into<DiagMessage>,
     F: FnOnce(&mut Diag<'_, ()>),
 {
     #[expect(clippy::disallowed_methods)]
-    cx.span_lint(lint, sp, msg.to_string(), |diag| {
+    cx.span_lint(lint, sp, msg, |diag| {
         f(diag);
         docs_link(diag, lint);
     });
 }
 
-pub fn span_lint_hir(cx: &LateContext<'_>, lint: &'static Lint, hir_id: HirId, sp: Span, msg: &str) {
+/// Like [`span_lint`], but emits the lint at the node identified by the given `HirId`.
+///
+/// This is in contrast to [`span_lint`], which always emits the lint at the node that was last
+/// passed to the `LintPass::check_*` function.
+///
+/// The `HirId` is used for checking lint level attributes and to fulfill lint expectations defined
+/// via the `#[expect]` attribute.
+///
+/// For example:
+/// ```ignore
+/// fn f() { /* <node_1> */
+///
+///     #[allow(clippy::some_lint)]
+///     let _x = /* <expr_1> */;
+/// }
+/// ```
+/// If `some_lint` does its analysis in `LintPass::check_fn` (at `<node_1>`) and emits a lint at
+/// `<expr_1>` using [`span_lint`], then allowing the lint at `<expr_1>` as attempted in the snippet
+/// will not work!
+/// Even though that is where the warning points at, which would be confusing to users.
+///
+/// Instead, use this function and also pass the `HirId` of `<expr_1>`, which will let
+/// the compiler check lint level attributes at the place of the expression and
+/// the `#[allow]` will work.
+pub fn span_lint_hir(cx: &LateContext<'_>, lint: &'static Lint, hir_id: HirId, sp: Span, msg: impl Into<DiagMessage>) {
     #[expect(clippy::disallowed_methods)]
-    cx.tcx.node_span_lint(lint, hir_id, sp, msg.to_string(), |diag| {
+    cx.tcx.node_span_lint(lint, hir_id, sp, msg.into(), |diag| {
         docs_link(diag, lint);
     });
 }
 
+/// Like [`span_lint_and_then`], but emits the lint at the node identified by the given `HirId`.
+///
+/// This is in contrast to [`span_lint_and_then`], which always emits the lint at the node that was
+/// last passed to the `LintPass::check_*` function.
+///
+/// The `HirId` is used for checking lint level attributes and to fulfill lint expectations defined
+/// via the `#[expect]` attribute.
+///
+/// For example:
+/// ```ignore
+/// fn f() { /* <node_1> */
+///
+///     #[allow(clippy::some_lint)]
+///     let _x = /* <expr_1> */;
+/// }
+/// ```
+/// If `some_lint` does its analysis in `LintPass::check_fn` (at `<node_1>`) and emits a lint at
+/// `<expr_1>` using [`span_lint`], then allowing the lint at `<expr_1>` as attempted in the snippet
+/// will not work!
+/// Even though that is where the warning points at, which would be confusing to users.
+///
+/// Instead, use this function and also pass the `HirId` of `<expr_1>`, which will let
+/// the compiler check lint level attributes at the place of the expression and
+/// the `#[allow]` will work.
 pub fn span_lint_hir_and_then(
     cx: &LateContext<'_>,
     lint: &'static Lint,
     hir_id: HirId,
     sp: impl Into<MultiSpan>,
-    msg: &str,
+    msg: impl Into<DiagMessage>,
     f: impl FnOnce(&mut Diag<'_, ()>),
 ) {
     #[expect(clippy::disallowed_methods)]
-    cx.tcx.node_span_lint(lint, hir_id, sp, msg.to_string(), |diag| {
+    cx.tcx.node_span_lint(lint, hir_id, sp, msg.into(), |diag| {
         f(diag);
         docs_link(diag, lint);
     });
@@ -181,6 +284,20 @@ pub fn span_lint_hir_and_then(
 /// 2)"`.
 ///
 /// If you change the signature, remember to update the internal lint `CollapsibleCalls`
+///
+/// NOTE: Lint emissions are always bound to a node in the HIR, which is used to determine
+/// the lint level.
+/// For the `span_lint_and_sugg` function, the node that was passed into the `LintPass::check_*`
+/// function is used.
+///
+/// If you're emitting the lint at the span of a different node than the one provided by the
+/// `LintPass::check_*` function, consider using [`span_lint_hir_and_then`] instead.
+/// This is needed for `#[allow]` and `#[expect]` attributes to work on the node
+/// highlighted in the displayed warning.
+///
+/// If you're unsure which function you should use, you can test if the `#[allow]` attribute works
+/// where you would expect it to.
+/// If it doesn't, you likely need to use [`span_lint_hir_and_then`] instead.
 ///
 /// # Example
 ///
@@ -198,13 +315,13 @@ pub fn span_lint_and_sugg<T: LintContext>(
     cx: &T,
     lint: &'static Lint,
     sp: Span,
-    msg: &str,
-    help: &str,
+    msg: impl Into<DiagMessage>,
+    help: impl Into<SubdiagMessage>,
     sugg: String,
     applicability: Applicability,
 ) {
-    span_lint_and_then(cx, lint, sp, msg, |diag| {
-        diag.span_suggestion(sp, help.to_string(), sugg, applicability);
+    span_lint_and_then(cx, lint, sp, msg.into(), |diag| {
+        diag.span_suggestion(sp, help.into(), sugg, applicability);
     });
 }
 
@@ -214,7 +331,7 @@ pub fn span_lint_and_sugg<T: LintContext>(
 /// appear once per
 /// replacement. In human-readable format though, it only appears once before
 /// the whole suggestion.
-pub fn multispan_sugg<I>(diag: &mut Diag<'_, ()>, help_msg: &str, sugg: I)
+pub fn multispan_sugg<I>(diag: &mut Diag<'_, ()>, help_msg: impl Into<SubdiagMessage>, sugg: I)
 where
     I: IntoIterator<Item = (Span, String)>,
 {
@@ -228,11 +345,11 @@ where
 /// Suggestions with multiple spans will be silently ignored.
 pub fn multispan_sugg_with_applicability<I>(
     diag: &mut Diag<'_, ()>,
-    help_msg: &str,
+    help_msg: impl Into<SubdiagMessage>,
     applicability: Applicability,
     sugg: I,
 ) where
     I: IntoIterator<Item = (Span, String)>,
 {
-    diag.multipart_suggestion(help_msg.to_string(), sugg.into_iter().collect(), applicability);
+    diag.multipart_suggestion(help_msg.into(), sugg.into_iter().collect(), applicability);
 }

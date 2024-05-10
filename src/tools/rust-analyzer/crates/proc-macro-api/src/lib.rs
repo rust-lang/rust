@@ -11,6 +11,7 @@ pub mod msg;
 mod process;
 mod version;
 
+use base_db::Env;
 use indexmap::IndexSet;
 use paths::AbsPathBuf;
 use rustc_hash::FxHashMap;
@@ -35,8 +36,11 @@ pub use version::{read_dylib_info, read_version, RustCInfo};
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub enum ProcMacroKind {
     CustomDerive,
-    FuncLike,
     Attr,
+    // This used to be called FuncLike, so that's what the server expects currently.
+    #[serde(alias = "Bang")]
+    #[serde(rename(serialize = "FuncLike", deserialize = "FuncLike"))]
+    Bang,
 }
 
 /// A handle to an external process which load dylibs with macros (.so or .dll)
@@ -149,16 +153,13 @@ impl ProcMacro {
         &self,
         subtree: &tt::Subtree<Span>,
         attr: Option<&tt::Subtree<Span>>,
-        env: Vec<(String, String)>,
+        env: Env,
         def_site: Span,
         call_site: Span,
         mixed_site: Span,
     ) -> Result<Result<tt::Subtree<Span>, PanicMessage>, ServerError> {
         let version = self.process.lock().unwrap_or_else(|e| e.into_inner()).version();
-        let current_dir = env
-            .iter()
-            .find(|(name, _)| name == "CARGO_MANIFEST_DIR")
-            .map(|(_, value)| value.clone());
+        let current_dir = env.get("CARGO_MANIFEST_DIR");
 
         let mut span_data_table = IndexSet::default();
         let def_site = span_data_table.insert_full(def_site).0;
@@ -169,7 +170,7 @@ impl ProcMacro {
             macro_name: self.name.to_string(),
             attributes: attr.map(|subtree| FlatTree::new(subtree, version, &mut span_data_table)),
             lib: self.dylib_path.to_path_buf().into(),
-            env,
+            env: env.into(),
             current_dir,
             has_global_spans: ExpnGlobals {
                 serialize: version >= HAS_GLOBAL_SPANS,

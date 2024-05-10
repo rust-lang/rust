@@ -241,30 +241,8 @@ impl ItemScope {
         })
     }
 
-    pub fn unnamed_consts<'a>(
-        &'a self,
-        db: &'a dyn DefDatabase,
-    ) -> impl Iterator<Item = ConstId> + 'a {
-        // FIXME: Also treat consts named `_DERIVE_*` as unnamed, since synstructure generates those.
-        // Should be removed once synstructure stops doing that.
-        let synstructure_hack_consts = self.values.values().filter_map(|(item, _, _)| match item {
-            &ModuleDefId::ConstId(id) => {
-                let loc = id.lookup(db);
-                let item_tree = loc.id.item_tree(db);
-                if item_tree[loc.id.value]
-                    .name
-                    .as_ref()
-                    .map_or(false, |n| n.to_smol_str().starts_with("_DERIVE_"))
-                {
-                    Some(id)
-                } else {
-                    None
-                }
-            }
-            _ => None,
-        });
-
-        self.unnamed_consts.iter().copied().chain(synstructure_hack_consts)
+    pub fn unnamed_consts(&self) -> impl Iterator<Item = ConstId> + '_ {
+        self.unnamed_consts.iter().copied()
     }
 
     /// Iterate over all module scoped macros
@@ -299,10 +277,40 @@ impl ItemScope {
             ItemInNs::Types(def) => self.types.iter().find_map(|(name, &(other_def, vis, i))| {
                 (other_def == def).then_some((name, vis, i.is_none()))
             }),
-
             ItemInNs::Values(def) => self.values.iter().find_map(|(name, &(other_def, vis, i))| {
                 (other_def == def).then_some((name, vis, i.is_none()))
             }),
+        }
+    }
+
+    /// XXX: this is O(N) rather than O(1), try to not introduce new usages.
+    pub(crate) fn names_of<T>(
+        &self,
+        item: ItemInNs,
+        mut cb: impl FnMut(&Name, Visibility, bool) -> Option<T>,
+    ) -> Option<T> {
+        match item {
+            ItemInNs::Macros(def) => self
+                .macros
+                .iter()
+                .filter_map(|(name, &(other_def, vis, i))| {
+                    (other_def == def).then_some((name, vis, i.is_none()))
+                })
+                .find_map(|(a, b, c)| cb(a, b, c)),
+            ItemInNs::Types(def) => self
+                .types
+                .iter()
+                .filter_map(|(name, &(other_def, vis, i))| {
+                    (other_def == def).then_some((name, vis, i.is_none()))
+                })
+                .find_map(|(a, b, c)| cb(a, b, c)),
+            ItemInNs::Values(def) => self
+                .values
+                .iter()
+                .filter_map(|(name, &(other_def, vis, i))| {
+                    (other_def == def).then_some((name, vis, i.is_none()))
+                })
+                .find_map(|(a, b, c)| cb(a, b, c)),
         }
     }
 

@@ -51,7 +51,7 @@ single stack.
 By default, the UEFI targets use the `link`-flavor of the LLVM linker `lld` to
 link binaries into the final PE32+ file suffixed with `*.efi`. The PE subsystem
 is set to `EFI_APPLICATION`, but can be modified by passing `/subsystem:<...>`
-to the linker. Similarly, the entry-point is to to `efi_main` but can be
+to the linker. Similarly, the entry-point is set to `efi_main` but can be
 changed via `/entry:<...>`. The panic-strategy is set to `abort`,
 
 The UEFI specification is available online for free:

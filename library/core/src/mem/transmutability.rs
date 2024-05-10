@@ -6,7 +6,7 @@ use crate::marker::ConstParamTy;
 /// any value of type `Self` are safely transmutable into a value of type `Dst`, in a given `Context`,
 /// notwithstanding whatever safety checks you have asked the compiler to [`Assume`] are satisfied.
 #[unstable(feature = "transmutability", issue = "99571")]
-#[cfg_attr(not(bootstrap), lang = "transmute_trait")]
+#[lang = "transmute_trait"]
 #[rustc_deny_explicit_impl(implement_via_object = false)]
 #[rustc_coinductive]
 pub unsafe trait BikeshedIntrinsicFrom<Src, const ASSUME: Assume = { Assume::NOTHING }>

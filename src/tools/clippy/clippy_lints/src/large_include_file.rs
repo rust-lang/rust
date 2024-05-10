@@ -71,10 +71,10 @@ impl LateLintPass<'_> for LargeIncludeFile {
             span_lint_and_note(
                 cx,
                 LARGE_INCLUDE_FILE,
-                expr.span,
+                expr.span.source_callsite(),
                 "attempted to include a large file",
                 None,
-                &format!(
+                format!(
                     "the configuration allows a maximum size of {} bytes",
                     self.max_file_size
                 ),

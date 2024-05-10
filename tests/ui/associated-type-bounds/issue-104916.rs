@@ -1,5 +1,3 @@
-#![feature(associated_type_bounds)]
-
 trait B {
     type AssocType;
 }

@@ -1,5 +1,5 @@
 use super::unsupported;
-use crate::ffi::{CStr, CString};
+use crate::ffi::CStr;
 use crate::io;
 use crate::num::NonZero;
 use crate::ptr::NonNull;
@@ -21,10 +21,6 @@ impl Thread {
 
     pub fn set_name(_name: &CStr) {
         // nope
-    }
-
-    pub fn get_name() -> Option<CString> {
-        None
     }
 
     pub fn sleep(dur: Duration) {
@@ -51,14 +47,4 @@ impl Thread {
 pub fn available_parallelism() -> io::Result<NonZero<usize>> {
     // UEFI is single threaded
     Ok(NonZero::new(1).unwrap())
-}
-
-pub mod guard {
-    pub type Guard = !;
-    pub unsafe fn current() -> Option<Guard> {
-        None
-    }
-    pub unsafe fn init() -> Option<Guard> {
-        None
-    }
 }

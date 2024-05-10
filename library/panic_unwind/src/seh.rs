@@ -48,9 +48,9 @@
 
 use alloc::boxed::Box;
 use core::any::Any;
+use core::ffi::{c_int, c_uint, c_void};
 use core::mem::{self, ManuallyDrop};
 use core::ptr::{addr_of, addr_of_mut};
-use libc::{c_int, c_uint, c_void};
 
 // NOTE(nbdd0121): The `canary` field is part of stable ABI.
 #[repr(C)]
@@ -109,58 +109,88 @@ struct Exception {
 // [1]: https://www.geoffchappell.com/studies/msvc/language/predefined/
 
 #[cfg(target_arch = "x86")]
-#[macro_use]
 mod imp {
-    pub type ptr_t = *mut u8;
+    #[repr(transparent)]
+    #[derive(Copy, Clone)]
+    pub struct ptr_t(*mut u8);
 
-    macro_rules! ptr {
-        (0) => {
-            core::ptr::null_mut()
-        };
-        ($e:expr) => {
-            $e as *mut u8
-        };
+    impl ptr_t {
+        pub const fn null() -> Self {
+            Self(core::ptr::null_mut())
+        }
+
+        pub const fn new(ptr: *mut u8) -> Self {
+            Self(ptr)
+        }
+
+        pub const fn raw(self) -> *mut u8 {
+            self.0
+        }
     }
 }
 
 #[cfg(not(target_arch = "x86"))]
-#[macro_use]
 mod imp {
-    pub type ptr_t = u32;
+    use core::ptr::addr_of;
+
+    // On 64-bit systems, SEH represents pointers as 32-bit offsets from `__ImageBase`.
+    #[repr(transparent)]
+    #[derive(Copy, Clone)]
+    pub struct ptr_t(u32);
 
     extern "C" {
         pub static __ImageBase: u8;
     }
 
-    macro_rules! ptr {
-        (0) => (0);
-        ($e:expr) => {
-            (($e as usize) - (addr_of!(imp::__ImageBase) as usize)) as u32
+    impl ptr_t {
+        pub const fn null() -> Self {
+            Self(0)
+        }
+
+        pub fn new(ptr: *mut u8) -> Self {
+            // We need to expose the provenance of the pointer because it is not carried by
+            // the `u32`, while the FFI needs to have this provenance to excess our statics.
+            //
+            // NOTE(niluxv): we could use `MaybeUninit<u32>` instead to leak the provenance
+            // into the FFI. In theory then the other side would need to do some processing
+            // to get a pointer with correct provenance, but these system functions aren't
+            // going to be cross-lang LTOed anyway. However, using expose is shorter and
+            // requires less unsafe.
+            let addr: usize = ptr.expose_provenance();
+            let image_base = unsafe { addr_of!(__ImageBase) }.addr();
+            let offset: usize = addr - image_base;
+            Self(offset as u32)
+        }
+
+        pub const fn raw(self) -> u32 {
+            self.0
         }
     }
 }
 
+use imp::ptr_t;
+
 #[repr(C)]
 pub struct _ThrowInfo {
     pub attributes: c_uint,
-    pub pmfnUnwind: imp::ptr_t,
-    pub pForwardCompat: imp::ptr_t,
-    pub pCatchableTypeArray: imp::ptr_t,
+    pub pmfnUnwind: ptr_t,
+    pub pForwardCompat: ptr_t,
+    pub pCatchableTypeArray: ptr_t,
 }
 
 #[repr(C)]
 pub struct _CatchableTypeArray {
     pub nCatchableTypes: c_int,
-    pub arrayOfCatchableTypes: [imp::ptr_t; 1],
+    pub arrayOfCatchableTypes: [ptr_t; 1],
 }
 
 #[repr(C)]
 pub struct _CatchableType {
     pub properties: c_uint,
-    pub pType: imp::ptr_t,
+    pub pType: ptr_t,
     pub thisDisplacement: _PMD,
     pub sizeOrOffset: c_int,
-    pub copyFunction: imp::ptr_t,
+    pub copyFunction: ptr_t,
 }
 
 #[repr(C)]
@@ -186,20 +216,20 @@ const TYPE_NAME: [u8; 11] = *b"rust_panic\0";
 
 static mut THROW_INFO: _ThrowInfo = _ThrowInfo {
     attributes: 0,
-    pmfnUnwind: ptr!(0),
-    pForwardCompat: ptr!(0),
-    pCatchableTypeArray: ptr!(0),
+    pmfnUnwind: ptr_t::null(),
+    pForwardCompat: ptr_t::null(),
+    pCatchableTypeArray: ptr_t::null(),
 };
 
 static mut CATCHABLE_TYPE_ARRAY: _CatchableTypeArray =
-    _CatchableTypeArray { nCatchableTypes: 1, arrayOfCatchableTypes: [ptr!(0)] };
+    _CatchableTypeArray { nCatchableTypes: 1, arrayOfCatchableTypes: [ptr_t::null()] };
 
 static mut CATCHABLE_TYPE: _CatchableType = _CatchableType {
     properties: 0,
-    pType: ptr!(0),
+    pType: ptr_t::null(),
     thisDisplacement: _PMD { mdisp: 0, pdisp: -1, vdisp: 0 },
     sizeOrOffset: mem::size_of::<Exception>() as c_int,
-    copyFunction: ptr!(0),
+    copyFunction: ptr_t::null(),
 };
 
 extern "C" {
@@ -246,9 +276,9 @@ macro_rules! define_cleanup {
                 super::__rust_drop_panic();
             }
         }
-        unsafe extern $abi2 fn exception_copy(_dest: *mut Exception,
-                                             _src: *mut Exception)
-                                             -> *mut Exception {
+        unsafe extern $abi2 fn exception_copy(
+            _dest: *mut Exception, _src: *mut Exception
+        ) -> *mut Exception {
             panic!("Rust panics cannot be copied");
         }
     }
@@ -296,24 +326,24 @@ pub unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
     // In any case, we basically need to do something like this until we can
     // express more operations in statics (and we may never be able to).
     atomic_store_seqcst(
-        addr_of_mut!(THROW_INFO.pmfnUnwind) as *mut u32,
-        ptr!(exception_cleanup) as u32,
+        addr_of_mut!(THROW_INFO.pmfnUnwind).cast(),
+        ptr_t::new(exception_cleanup as *mut u8).raw(),
     );
     atomic_store_seqcst(
-        addr_of_mut!(THROW_INFO.pCatchableTypeArray) as *mut u32,
-        ptr!(addr_of!(CATCHABLE_TYPE_ARRAY)) as u32,
+        addr_of_mut!(THROW_INFO.pCatchableTypeArray).cast(),
+        ptr_t::new(addr_of_mut!(CATCHABLE_TYPE_ARRAY).cast()).raw(),
     );
     atomic_store_seqcst(
-        addr_of_mut!(CATCHABLE_TYPE_ARRAY.arrayOfCatchableTypes[0]) as *mut u32,
-        ptr!(addr_of!(CATCHABLE_TYPE)) as u32,
+        addr_of_mut!(CATCHABLE_TYPE_ARRAY.arrayOfCatchableTypes[0]).cast(),
+        ptr_t::new(addr_of_mut!(CATCHABLE_TYPE).cast()).raw(),
     );
     atomic_store_seqcst(
-        addr_of_mut!(CATCHABLE_TYPE.pType) as *mut u32,
-        ptr!(addr_of!(TYPE_DESCRIPTOR)) as u32,
+        addr_of_mut!(CATCHABLE_TYPE.pType).cast(),
+        ptr_t::new(addr_of_mut!(TYPE_DESCRIPTOR).cast()).raw(),
     );
     atomic_store_seqcst(
-        addr_of_mut!(CATCHABLE_TYPE.copyFunction) as *mut u32,
-        ptr!(exception_copy) as u32,
+        addr_of_mut!(CATCHABLE_TYPE.copyFunction).cast(),
+        ptr_t::new(exception_copy as *mut u8).raw(),
     );
 
     extern "system-unwind" {

@@ -1,5 +1,3 @@
-#![feature(associated_type_bounds)]
-
 trait A {
     type T;
 }

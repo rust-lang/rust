@@ -2,6 +2,7 @@
 // Tests that we don't ICE when we have a trait impl on a TAIT.
 
 //@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
 //@ check-pass
 #![feature(type_alias_impl_trait)]

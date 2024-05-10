@@ -1,5 +1,5 @@
 error[E0605]: non-primitive cast: `&dyn Foo` as `&dyn Bar<_>`
-  --> $DIR/type-checking-test-1.rs:19:13
+  --> $DIR/type-checking-test-1.rs:20:13
    |
 LL |     let _ = x as &dyn Bar<_>; // Ambiguous
    |             ^^^^^^^^^^^^^^^^ an `as` expression can only be used to convert between primitive types or to coerce to a specific trait object

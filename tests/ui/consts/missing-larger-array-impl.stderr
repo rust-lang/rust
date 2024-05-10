@@ -5,14 +5,14 @@ LL |     <[X; 35] as Default>::default();
    |      ^^^^^^^ the trait `Default` is not implemented for `[X; 35]`
    |
    = help: the following other types implement trait `Default`:
+             &[T]
+             &mut [T]
              [T; 0]
-             [T; 1]
-             [T; 2]
-             [T; 3]
-             [T; 4]
-             [T; 5]
-             [T; 6]
-             [T; 7]
+             [T; 10]
+             [T; 11]
+             [T; 12]
+             [T; 13]
+             [T; 14]
            and 27 others
 
 error: aborting due to 1 previous error

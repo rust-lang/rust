@@ -5,13 +5,13 @@ use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::needs_ordered_drop;
 use clippy_utils::visitors::any_temporaries_need_ordered_drop;
 use rustc_errors::Applicability;
-use rustc_hir::{Block, Expr, ExprKind, Local, MatchSource, Pat, StmtKind};
+use rustc_hir::{Block, Expr, ExprKind, LetStmt, MatchSource, Pat, StmtKind};
 use rustc_lint::LateContext;
 
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, loop_block: &'tcx Block<'_>) {
     let (init, has_trailing_exprs) = match (loop_block.stmts, loop_block.expr) {
         ([stmt, stmts @ ..], expr) => {
-            if let StmtKind::Local(&Local {
+            if let StmtKind::Let(&LetStmt {
                 init: Some(e),
                 els: None,
                 ..

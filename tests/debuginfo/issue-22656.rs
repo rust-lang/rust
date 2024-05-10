@@ -10,11 +10,11 @@
 // === LLDB TESTS ==================================================================================
 // lldb-command:run
 
-// lldb-command:print v
-// lldbg-check:[...]$0 = size=3 { [0] = 1 [1] = 2 [2] = 3 }
+// lldb-command:v v
+// lldbg-check:[...] size=3 { [0] = 1 [1] = 2 [2] = 3 }
 // lldbr-check:(alloc::vec::Vec<i32>) v = size=3 { [0] = 1 [1] = 2 [2] = 3 }
-// lldb-command:print zs
-// lldbg-check:[...]$1 = { x = y = 123 z = w = 456 }
+// lldb-command:v zs
+// lldbg-check:[...] { x = y = 123 z = w = 456 }
 // lldbr-check:(issue_22656::StructWithZeroSizedField) zs = { x = y = 123 z = w = 456 }
 // lldbr-command:continue
 

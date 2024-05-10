@@ -5,6 +5,7 @@ use crate::errors::{
 };
 use crate::llvm;
 use libc::c_int;
+use rustc_codegen_ssa::base::wants_wasm_eh;
 use rustc_codegen_ssa::traits::PrintBackendInfo;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::small_c_str::SmallCStr;
@@ -48,7 +49,7 @@ unsafe fn configure_llvm(sess: &Session) {
     let mut llvm_c_strs = Vec::with_capacity(n_args + 1);
     let mut llvm_args = Vec::with_capacity(n_args + 1);
 
-    llvm::LLVMRustInstallFatalErrorHandler();
+    llvm::LLVMRustInstallErrorHandlers();
     // On Windows, an LLVM assertion will open an Abort/Retry/Ignore dialog
     // box for the purpose of launching a debugger. However, on CI this will
     // cause it to hang until it times out, which can take several hours.
@@ -96,6 +97,10 @@ unsafe fn configure_llvm(sess: &Session) {
             MergeFunctions::Aliases => {
                 add("-mergefunc-use-aliases", false);
             }
+        }
+
+        if wants_wasm_eh(sess) {
+            add("-wasm-enable-eh", false);
         }
 
         if sess.target.os == "emscripten" && sess.panic_strategy() == PanicStrategy::Unwind {
@@ -265,9 +270,10 @@ pub fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> LLVMFeature<'a> {
             "sve2-bitperm",
             TargetFeatureFoldStrength::EnableOnly("neon"),
         ),
-        // The unaligned-scalar-mem feature was renamed to fast-unaligned-access.
-        ("riscv32" | "riscv64", "fast-unaligned-access") if get_version().0 <= 17 => {
-            LLVMFeature::new("unaligned-scalar-mem")
+        // In LLVM 18, `unaligned-scalar-mem` was merged with `unaligned-vector-mem` into a single feature called
+        // `fast-unaligned-access`. In LLVM 19, it was split back out.
+        ("riscv32" | "riscv64", "unaligned-scalar-mem") if get_version().0 == 18 => {
+            LLVMFeature::new("fast-unaligned-access")
         }
         // For LLVM 18, enable the evex512 target feature if a avx512 target feature is enabled.
         ("x86", s) if get_version().0 >= 18 && s.starts_with("avx512") => {
@@ -522,6 +528,10 @@ pub(crate) fn global_llvm_features(sess: &Session, diagnostics: bool) -> Vec<Str
             .filter(|v| !v.is_empty() && backend_feature_name(sess, v).is_some())
             .map(String::from),
     );
+
+    if wants_wasm_eh(sess) && sess.panic_strategy() == PanicStrategy::Unwind {
+        features.push("+exception-handling".into());
+    }
 
     // -Ctarget-features
     let supported_features = sess.target.supported_target_features();

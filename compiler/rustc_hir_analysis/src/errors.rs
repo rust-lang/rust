@@ -7,6 +7,11 @@ use rustc_errors::{
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::Ty;
 use rustc_span::{symbol::Ident, Span, Symbol};
+mod pattern_types;
+pub use pattern_types::*;
+
+mod precise_captures;
+pub(crate) use precise_captures::*;
 
 #[derive(Diagnostic)]
 #[diag(hir_analysis_ambiguous_assoc_item)]
@@ -293,6 +298,44 @@ pub struct AssocTypeBindingNotAllowed {
 
     #[subdiagnostic]
     pub fn_trait_expansion: Option<ParenthesizedFnTraitExpansion>,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_param_in_ty_of_assoc_const_binding)]
+pub(crate) struct ParamInTyOfAssocConstBinding<'tcx> {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    pub assoc_const: Ident,
+    pub param_name: Symbol,
+    pub param_def_kind: &'static str,
+    pub param_category: &'static str,
+    #[label(hir_analysis_param_defined_here_label)]
+    pub param_defined_here_label: Option<Span>,
+    #[subdiagnostic]
+    pub ty_note: Option<TyOfAssocConstBindingNote<'tcx>>,
+}
+
+#[derive(Subdiagnostic, Clone, Copy)]
+#[note(hir_analysis_ty_of_assoc_const_binding_note)]
+pub(crate) struct TyOfAssocConstBindingNote<'tcx> {
+    pub assoc_const: Ident,
+    pub ty: Ty<'tcx>,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_escaping_bound_var_in_ty_of_assoc_const_binding)]
+pub(crate) struct EscapingBoundVarInTyOfAssocConstBinding<'tcx> {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    pub assoc_const: Ident,
+    pub var_name: Symbol,
+    pub var_def_kind: &'static str,
+    #[label(hir_analysis_var_defined_here_label)]
+    pub var_defined_here_label: Span,
+    #[subdiagnostic]
+    pub ty_note: Option<TyOfAssocConstBindingNote<'tcx>>,
 }
 
 #[derive(Subdiagnostic)]
@@ -1072,6 +1115,7 @@ pub struct UnusedAssociatedTypeBounds {
 #[derive(LintDiagnostic)]
 #[diag(hir_analysis_rpitit_refined)]
 #[note]
+#[note(hir_analysis_feedback_note)]
 pub(crate) struct ReturnPositionImplTraitInTraitRefined<'tcx> {
     #[suggestion(applicability = "maybe-incorrect", code = "{pre}{return_ty}{post}")]
     pub impl_return_span: Span,
@@ -1311,33 +1355,58 @@ pub struct CrossCrateTraitsDefined {
     pub traits: String,
 }
 
+// FIXME(fmease): Deduplicate:
+
 #[derive(Diagnostic)]
 #[diag(hir_analysis_ty_param_first_local, code = E0210)]
 #[note]
-pub struct TyParamFirstLocal<'a> {
+pub struct TyParamFirstLocal<'tcx> {
     #[primary_span]
     #[label]
     pub span: Span,
     #[note(hir_analysis_case_note)]
     pub note: (),
-    pub param_ty: Ty<'a>,
-    pub local_type: Ty<'a>,
+    pub param: Symbol,
+    pub local_type: Ty<'tcx>,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(hir_analysis_ty_param_first_local, code = E0210)]
+#[note]
+pub struct TyParamFirstLocalLint<'tcx> {
+    #[label]
+    pub span: Span,
+    #[note(hir_analysis_case_note)]
+    pub note: (),
+    pub param: Symbol,
+    pub local_type: Ty<'tcx>,
 }
 
 #[derive(Diagnostic)]
 #[diag(hir_analysis_ty_param_some, code = E0210)]
 #[note]
-pub struct TyParamSome<'a> {
+pub struct TyParamSome {
     #[primary_span]
     #[label]
     pub span: Span,
     #[note(hir_analysis_only_note)]
     pub note: (),
-    pub param_ty: Ty<'a>,
+    pub param: Symbol,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(hir_analysis_ty_param_some, code = E0210)]
+#[note]
+pub struct TyParamSomeLint {
+    #[label]
+    pub span: Span,
+    #[note(hir_analysis_only_note)]
+    pub note: (),
+    pub param: Symbol,
 }
 
 #[derive(Diagnostic)]
-pub enum OnlyCurrentTraits<'a> {
+pub enum OnlyCurrentTraits {
     #[diag(hir_analysis_only_current_traits_outside, code = E0117)]
     Outside {
         #[primary_span]
@@ -1345,18 +1414,6 @@ pub enum OnlyCurrentTraits<'a> {
         span: Span,
         #[note(hir_analysis_only_current_traits_note)]
         note: (),
-        #[subdiagnostic]
-        opaque: Vec<OnlyCurrentTraitsOpaque>,
-        #[subdiagnostic]
-        foreign: Vec<OnlyCurrentTraitsForeign>,
-        #[subdiagnostic]
-        name: Vec<OnlyCurrentTraitsName<'a>>,
-        #[subdiagnostic]
-        pointer: Vec<OnlyCurrentTraitsPointer<'a>>,
-        #[subdiagnostic]
-        ty: Vec<OnlyCurrentTraitsTy<'a>>,
-        #[subdiagnostic]
-        sugg: Option<OnlyCurrentTraitsPointerSugg<'a>>,
     },
     #[diag(hir_analysis_only_current_traits_primitive, code = E0117)]
     Primitive {
@@ -1365,18 +1422,6 @@ pub enum OnlyCurrentTraits<'a> {
         span: Span,
         #[note(hir_analysis_only_current_traits_note)]
         note: (),
-        #[subdiagnostic]
-        opaque: Vec<OnlyCurrentTraitsOpaque>,
-        #[subdiagnostic]
-        foreign: Vec<OnlyCurrentTraitsForeign>,
-        #[subdiagnostic]
-        name: Vec<OnlyCurrentTraitsName<'a>>,
-        #[subdiagnostic]
-        pointer: Vec<OnlyCurrentTraitsPointer<'a>>,
-        #[subdiagnostic]
-        ty: Vec<OnlyCurrentTraitsTy<'a>>,
-        #[subdiagnostic]
-        sugg: Option<OnlyCurrentTraitsPointerSugg<'a>>,
     },
     #[diag(hir_analysis_only_current_traits_arbitrary, code = E0117)]
     Arbitrary {
@@ -1385,18 +1430,6 @@ pub enum OnlyCurrentTraits<'a> {
         span: Span,
         #[note(hir_analysis_only_current_traits_note)]
         note: (),
-        #[subdiagnostic]
-        opaque: Vec<OnlyCurrentTraitsOpaque>,
-        #[subdiagnostic]
-        foreign: Vec<OnlyCurrentTraitsForeign>,
-        #[subdiagnostic]
-        name: Vec<OnlyCurrentTraitsName<'a>>,
-        #[subdiagnostic]
-        pointer: Vec<OnlyCurrentTraitsPointer<'a>>,
-        #[subdiagnostic]
-        ty: Vec<OnlyCurrentTraitsTy<'a>>,
-        #[subdiagnostic]
-        sugg: Option<OnlyCurrentTraitsPointerSugg<'a>>,
     },
 }
 
@@ -1406,7 +1439,6 @@ pub struct OnlyCurrentTraitsOpaque {
     #[primary_span]
     pub span: Span,
 }
-
 #[derive(Subdiagnostic)]
 #[label(hir_analysis_only_current_traits_foreign)]
 pub struct OnlyCurrentTraitsForeign {
@@ -1436,6 +1468,14 @@ pub struct OnlyCurrentTraitsTy<'a> {
     #[primary_span]
     pub span: Span,
     pub ty: Ty<'a>,
+}
+
+#[derive(Subdiagnostic)]
+#[label(hir_analysis_only_current_traits_adt)]
+pub struct OnlyCurrentTraitsAdt {
+    #[primary_span]
+    pub span: Span,
+    pub name: String,
 }
 
 #[derive(Subdiagnostic)]
@@ -1618,4 +1658,21 @@ pub struct OpaqueCapturesHigherRankedLifetime {
     #[note]
     pub decl_span: Span,
     pub bad_place: &'static str,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_pattern_type_non_const_range)]
+pub struct NonConstRange {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_invalid_receiver_ty, code = E0307)]
+#[note]
+#[help(hir_analysis_invalid_receiver_ty_help)]
+pub struct InvalidReceiverTy<'tcx> {
+    #[primary_span]
+    pub span: Span,
+    pub receiver_ty: Ty<'tcx>,
 }

@@ -24,7 +24,7 @@ use crate::slice::{self, SliceIndex};
 pub mod pattern;
 
 mod lossy;
-#[unstable(feature = "utf8_chunks", issue = "99543")]
+#[stable(feature = "utf8_chunks", since = "1.79.0")]
 pub use lossy::{Utf8Chunk, Utf8Chunks};
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -86,15 +86,7 @@ use iter::{MatchesInternal, SplitNInternal};
 #[rustc_allow_const_fn_unstable(const_eval_select)]
 #[cfg(not(feature = "panic_immediate_abort"))]
 const fn slice_error_fail(s: &str, begin: usize, end: usize) -> ! {
-    #[cfg_attr(not(bootstrap), allow(unused_unsafe))] // on bootstrap bump, remove unsafe block
-    // SAFETY: panics for both branches
-    unsafe {
-        crate::intrinsics::const_eval_select(
-            (s, begin, end),
-            slice_error_fail_ct,
-            slice_error_fail_rt,
-        )
-    }
+    crate::intrinsics::const_eval_select((s, begin, end), slice_error_fail_ct, slice_error_fail_rt)
 }
 
 #[cfg(feature = "panic_immediate_abort")]
@@ -729,8 +721,6 @@ impl str {
     /// # Examples
     ///
     /// ```
-    /// #![feature(split_at_checked)]
-    ///
     /// let s = "Per Martin-Löf";
     ///
     /// let (first, last) = s.split_at_checked(3).unwrap();
@@ -742,7 +732,7 @@ impl str {
     /// ```
     #[inline]
     #[must_use]
-    #[unstable(feature = "split_at_checked", reason = "new API", issue = "119128")]
+    #[stable(feature = "split_at_checked", since = "CURRENT_RUSTC_VERSION")]
     pub fn split_at_checked(&self, mid: usize) -> Option<(&str, &str)> {
         // is_char_boundary checks that the index is in [0, .len()]
         if self.is_char_boundary(mid) {
@@ -769,8 +759,6 @@ impl str {
     /// # Examples
     ///
     /// ```
-    /// #![feature(split_at_checked)]
-    ///
     /// let mut s = "Per Martin-Löf".to_string();
     /// if let Some((first, last)) = s.split_at_mut_checked(3) {
     ///     first.make_ascii_uppercase();
@@ -784,7 +772,7 @@ impl str {
     /// ```
     #[inline]
     #[must_use]
-    #[unstable(feature = "split_at_checked", reason = "new API", issue = "119128")]
+    #[stable(feature = "split_at_checked", since = "CURRENT_RUSTC_VERSION")]
     pub fn split_at_mut_checked(&mut self, mid: usize) -> Option<(&mut str, &mut str)> {
         // is_char_boundary checks that the index is in [0, .len()]
         if self.is_char_boundary(mid) {

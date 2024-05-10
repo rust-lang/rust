@@ -22,18 +22,18 @@
 
 // lldb-command:run
 
-// lldb-command:print a
-// lldbg-check:[...]$0 = 10101
+// lldb-command:v a
+// lldbg-check:[...] 10101
 // lldbr-check:(i32) a = 10101
 // lldb-command:continue
 
-// lldb-command:print b
-// lldbg-check:[...]$1 = 20202
+// lldb-command:v b
+// lldbg-check:[...] 20202
 // lldbr-check:(i32) b = 20202
 // lldb-command:continue
 
-// lldb-command:print c
-// lldbg-check:[...]$2 = 30303
+// lldb-command:v c
+// lldbg-check:[...] 30303
 // lldbr-check:(i32) c = 30303
 
 #![allow(unused_variables)]

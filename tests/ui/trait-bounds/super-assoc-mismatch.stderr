@@ -78,7 +78,10 @@ help: this trait has no implementations, consider adding one
 LL | trait Sub: Super<Assoc = u16> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = help: see issue #48214
-   = help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
+help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
+   |
+LL + #![feature(trivial_bounds)]
+   |
 
 error[E0277]: the trait bound `(): SubGeneric<u16>` is not satisfied
   --> $DIR/super-assoc-mismatch.rs:55:22

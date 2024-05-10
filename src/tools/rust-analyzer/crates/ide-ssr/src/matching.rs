@@ -125,9 +125,12 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
         let match_state = Matcher { sema, restrict_range: *restrict_range, rule };
         // First pass at matching, where we check that node types and idents match.
         match_state.attempt_match_node(&mut Phase::First, &rule.pattern.node, code)?;
-        match_state.validate_range(&sema.original_range(code))?;
+        let file_range = sema
+            .original_range_opt(code)
+            .ok_or(MatchFailed { reason: Some("def site definition".to_owned()) })?;
+        match_state.validate_range(&file_range)?;
         let mut the_match = Match {
-            range: sema.original_range(code),
+            range: file_range,
             matched_node: code.clone(),
             placeholder_values: FxHashMap::default(),
             ignored_comments: Vec::new(),
@@ -175,7 +178,10 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
                 self.check_constraint(constraint, code)?;
             }
             if let Phase::Second(matches_out) = phase {
-                let original_range = self.sema.original_range(code);
+                let original_range = self
+                    .sema
+                    .original_range_opt(code)
+                    .ok_or(MatchFailed { reason: Some("def site definition".to_owned()) })?;
                 // We validated the range for the node when we started the match, so the placeholder
                 // probably can't fail range validation, but just to be safe...
                 self.validate_range(&original_range)?;
@@ -487,7 +493,13 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
                     match_out.placeholder_values.insert(
                         placeholder.ident.clone(),
                         PlaceholderMatch::from_range(FileRange {
-                            file_id: self.sema.original_range(code).file_id,
+                            file_id: self
+                                .sema
+                                .original_range_opt(code)
+                                .ok_or(MatchFailed {
+                                    reason: Some("def site definition".to_owned()),
+                                })?
+                                .file_id,
                             range: first_matched_token
                                 .text_range()
                                 .cover(last_matched_token.text_range()),

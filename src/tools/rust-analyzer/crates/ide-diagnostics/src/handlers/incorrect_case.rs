@@ -38,7 +38,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::IncorrectCase) -> Option<Vec<Ass
     let def = NameClass::classify(&ctx.sema, &name_node)?.defined()?;
 
     let name_node = InFile::new(d.file, name_node.syntax());
-    let frange = name_node.original_file_range(ctx.sema.db);
+    let frange = name_node.original_file_range_rooted(ctx.sema.db);
 
     let label = format!("Rename to {}", d.suggested_text);
     let mut res = unresolved_fix("change_case", &label, frange.range);

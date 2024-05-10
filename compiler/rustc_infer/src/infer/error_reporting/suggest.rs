@@ -2,7 +2,7 @@ use crate::infer::error_reporting::hir::Path;
 use core::ops::ControlFlow;
 use hir::def::CtorKind;
 use hir::intravisit::{walk_expr, walk_stmt, Visitor};
-use hir::{Local, QPath};
+use hir::{LetStmt, QPath};
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{Applicability, Diag};
 use rustc_hir as hir;
@@ -15,13 +15,12 @@ use rustc_middle::traits::{
 };
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self as ty, GenericArgKind, IsSuggestable, Ty, TypeVisitableExt};
-use rustc_span::{sym, BytePos, Span};
+use rustc_span::{sym, Span};
 
 use crate::errors::{
     ConsiderAddingAwait, FnConsiderCasting, FnItemsAreDistinct, FnUniqTypes,
-    FunctionPointerSuggestion, SuggestAccessingField, SuggestBoxingForReturnImplTrait,
-    SuggestRemoveSemiOrReturnBinding, SuggestTuplePatternMany, SuggestTuplePatternOne,
-    TypeErrorAdditionalDiags,
+    FunctionPointerSuggestion, SuggestAccessingField, SuggestRemoveSemiOrReturnBinding,
+    SuggestTuplePatternMany, SuggestTuplePatternOne, TypeErrorAdditionalDiags,
 };
 
 use super::TypeErrCtxt;
@@ -78,28 +77,6 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 ret
             }
         }
-    }
-
-    pub(super) fn suggest_boxing_for_return_impl_trait(
-        &self,
-        err: &mut Diag<'_>,
-        return_sp: Span,
-        arm_spans: impl Iterator<Item = Span>,
-    ) {
-        let sugg = SuggestBoxingForReturnImplTrait::ChangeReturnType {
-            start_sp: return_sp.with_hi(return_sp.lo() + BytePos(4)),
-            end_sp: return_sp.shrink_to_hi(),
-        };
-        err.subdiagnostic(self.dcx(), sugg);
-
-        let mut starts = Vec::new();
-        let mut ends = Vec::new();
-        for span in arm_spans {
-            starts.push(span.shrink_to_lo());
-            ends.push(span.shrink_to_hi());
-        }
-        let sugg = SuggestBoxingForReturnImplTrait::BoxReturnExpr { starts, ends };
-        err.subdiagnostic(self.dcx(), sugg);
     }
 
     pub(super) fn suggest_tuple_pattern(
@@ -321,7 +298,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             && let Some(expr) = block.expr
             && let hir::ExprKind::Path(QPath::Resolved(_, Path { res, .. })) = expr.kind
             && let Res::Local(local) = res
-            && let Node::Local(Local { init: Some(init), .. }) = self.tcx.parent_hir_node(*local)
+            && let Node::LetStmt(LetStmt { init: Some(init), .. }) =
+                self.tcx.parent_hir_node(*local)
         {
             fn collect_blocks<'hir>(expr: &hir::Expr<'hir>, blocks: &mut Vec<&hir::Block<'hir>>) {
                 match expr.kind {
@@ -585,7 +563,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             }
 
             fn visit_stmt(&mut self, ex: &'v hir::Stmt<'v>) -> Self::Result {
-                if let hir::StmtKind::Local(hir::Local {
+                if let hir::StmtKind::Let(LetStmt {
                     span,
                     pat: hir::Pat { .. },
                     ty: None,
@@ -621,7 +599,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         &self,
         span: Span,
         hir: hir::Node<'_>,
-        exp_found: &ty::error::ExpectedFound<ty::PolyTraitRef<'tcx>>,
+        exp_found: &ty::error::ExpectedFound<ty::TraitRef<'tcx>>,
         diag: &mut Diag<'_>,
     ) {
         // 0. Extract fn_decl from hir
@@ -636,10 +614,10 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
         // 1. Get the args of the closure.
         // 2. Assume exp_found is FnOnce / FnMut / Fn, we can extract function parameters from [1].
-        let Some(expected) = exp_found.expected.skip_binder().args.get(1) else {
+        let Some(expected) = exp_found.expected.args.get(1) else {
             return;
         };
-        let Some(found) = exp_found.found.skip_binder().args.get(1) else {
+        let Some(found) = exp_found.found.args.get(1) else {
             return;
         };
         let expected = expected.unpack();
@@ -785,8 +763,14 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             let mac_call = rustc_span::source_map::original_sp(last_stmt.span, blk.span);
             self.tcx.sess.source_map().mac_call_stmt_semi_span(mac_call)?
         } else {
-            last_stmt.span.with_lo(last_stmt.span.hi() - BytePos(1))
+            self.tcx
+                .sess
+                .source_map()
+                .span_extend_while_whitespace(last_expr.span)
+                .shrink_to_hi()
+                .with_hi(last_stmt.span.hi())
         };
+
         Some((span, needs_box))
     }
 
@@ -824,7 +808,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
         let hir = self.tcx.hir();
         for stmt in blk.stmts.iter().rev() {
-            let hir::StmtKind::Local(local) = &stmt.kind else {
+            let hir::StmtKind::Let(local) = &stmt.kind else {
                 continue;
             };
             local.pat.walk(&mut find_compatible_candidates);
@@ -889,10 +873,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         format!(" {ident} ")
                     };
                     let left_span = sm.span_through_char(blk.span, '{').shrink_to_hi();
-                    (
-                        sm.span_extend_while(left_span, |c| c.is_whitespace()).unwrap_or(left_span),
-                        sugg,
-                    )
+                    (sm.span_extend_while_whitespace(left_span), sugg)
                 };
                 Some(SuggestRemoveSemiOrReturnBinding::Add { sp: span, code: sugg, ident: *ident })
             }

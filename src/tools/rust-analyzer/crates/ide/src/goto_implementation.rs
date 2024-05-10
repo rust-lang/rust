@@ -340,4 +340,75 @@ impl Tr for S {
 "#,
         );
     }
+
+    #[test]
+    fn goto_adt_implementation_inside_block() {
+        check(
+            r#"
+//- minicore: copy, derive
+trait Bar {}
+
+fn test() {
+    #[derive(Copy)]
+  //^^^^^^^^^^^^^^^
+    struct Foo$0;
+
+    impl Foo {}
+       //^^^
+
+    trait Baz {}
+
+    impl Bar for Foo {}
+               //^^^
+
+    impl Baz for Foo {}
+               //^^^
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn goto_trait_implementation_inside_block() {
+        check(
+            r#"
+struct Bar;
+
+fn test() {
+    trait Foo$0 {}
+
+    struct Baz;
+
+    impl Foo for Bar {}
+               //^^^
+
+    impl Foo for Baz {}
+               //^^^
+}
+"#,
+        );
+        check(
+            r#"
+struct Bar;
+
+fn test() {
+    trait Foo {
+        fn foo$0() {}
+    }
+
+    struct Baz;
+
+    impl Foo for Bar {
+        fn foo() {}
+         //^^^
+    }
+
+    impl Foo for Baz {
+        fn foo() {}
+         //^^^
+    }
+}
+"#,
+        );
+    }
 }

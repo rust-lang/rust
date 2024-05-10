@@ -24,13 +24,13 @@ use crate::util::logv;
 use build_helper::git::{get_git_modified_files, get_git_untracked_files};
 use core::panic;
 use getopts::Options;
-use lazycell::AtomicLazyCell;
 use std::collections::HashSet;
 use std::ffi::OsString;
 use std::fs;
 use std::io::{self, ErrorKind};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
+use std::sync::{Arc, OnceLock};
 use std::time::SystemTime;
 use std::{env, vec};
 use test::ColorConfig;
@@ -39,7 +39,6 @@ use walkdir::WalkDir;
 
 use self::header::{make_test_description, EarlyProps};
 use crate::header::HeadersCache;
-use std::sync::Arc;
 
 pub fn parse_config(args: Vec<String>) -> Config {
     let mut opts = Options::new();
@@ -65,7 +64,8 @@ pub fn parse_config(args: Vec<String>) -> Config {
             "mode",
             "which sort of compile tests to run",
             "run-pass-valgrind | pretty | debug-info | codegen | rustdoc \
-            | rustdoc-json | codegen-units | incremental | run-make | ui | js-doc-test | mir-opt | assembly",
+            | rustdoc-json | codegen-units | incremental | run-make | ui \
+            | js-doc-test | mir-opt | assembly | crashes",
         )
         .reqopt(
             "",
@@ -82,11 +82,16 @@ pub fn parse_config(args: Vec<String>) -> Config {
         .optopt("", "run", "whether to execute run-* tests", "auto | always | never")
         .optflag("", "ignored", "run tests marked as ignored")
         .optflag("", "with-debug-assertions", "whether to run tests with `ignore-debug` header")
-        .optmulti("", "skip", "skip tests matching SUBSTRING. Can be passed multiple times", "SUBSTRING")
+        .optmulti(
+            "",
+            "skip",
+            "skip tests matching SUBSTRING. Can be passed multiple times",
+            "SUBSTRING",
+        )
         .optflag("", "exact", "filters match exactly")
         .optopt(
             "",
-            "runtool",
+            "runner",
             "supervisor program to run tests under \
              (eg. emulator, valgrind)",
             "PROGRAM",
@@ -145,7 +150,11 @@ pub fn parse_config(args: Vec<String>) -> Config {
         .optflag("", "profiler-support", "is the profiler runtime enabled for this target")
         .optflag("h", "help", "show this message")
         .reqopt("", "channel", "current Rust channel", "CHANNEL")
-        .optflag("", "git-hash", "run tests which rely on commit version being compiled into the binaries")
+        .optflag(
+            "",
+            "git-hash",
+            "run tests which rely on commit version being compiled into the binaries",
+        )
         .optopt("", "edition", "default Rust edition", "EDITION")
         .reqopt("", "git-repository", "name of the git repository", "ORG/REPO")
         .reqopt("", "nightly-branch", "name of the git branch for nightly", "BRANCH");
@@ -256,7 +265,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
             _ => panic!("unknown `--run` option `{}` given", mode),
         }),
         logfile: matches.opt_str("logfile").map(|s| PathBuf::from(&s)),
-        runtool: matches.opt_str("runtool"),
+        runner: matches.opt_str("runner"),
         host_rustcflags: matches.opt_strs("host-rustcflags"),
         target_rustcflags: matches.opt_strs("target-rustcflags"),
         optimize_tests: matches.opt_present("optimize-tests"),
@@ -310,7 +319,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
 
         force_rerun: matches.opt_present("force-rerun"),
 
-        target_cfgs: AtomicLazyCell::new(),
+        target_cfgs: OnceLock::new(),
 
         nocapture: matches.opt_present("nocapture"),
 
@@ -341,7 +350,7 @@ pub fn log_config(config: &Config) {
         c,
         format!("force_pass_mode: {}", opt_str(&config.force_pass_mode.map(|m| format!("{}", m))),),
     );
-    logv(c, format!("runtool: {}", opt_str(&config.runtool)));
+    logv(c, format!("runner: {}", opt_str(&config.runner)));
     logv(c, format!("host-rustcflags: {:?}", config.host_rustcflags));
     logv(c, format!("target-rustcflags: {:?}", config.target_rustcflags));
     logv(c, format!("target: {}", config.target));
@@ -571,7 +580,9 @@ pub fn make_tests(
         &modified_tests,
         &mut poisoned,
     )
-    .unwrap_or_else(|_| panic!("Could not read tests from {}", config.src_base.display()));
+    .unwrap_or_else(|reason| {
+        panic!("Could not read tests from {}: {reason}", config.src_base.display())
+    });
 
     if poisoned {
         eprintln!();
@@ -608,6 +619,8 @@ fn common_inputs_stamp(config: &Config) -> Stamp {
         stamp.add_path(&rustdoc_path);
         stamp.add_path(&rust_src_dir.join("src/etc/htmldocck.py"));
     }
+
+    stamp.add_dir(&rust_src_dir.join("src/tools/run-make-support"));
 
     // Compiletest itself.
     stamp.add_dir(&rust_src_dir.join("src/tools/compiletest/"));

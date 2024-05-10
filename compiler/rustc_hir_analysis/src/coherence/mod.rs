@@ -10,6 +10,7 @@ use rustc_errors::{codes::*, struct_span_code_err};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
+use rustc_session::parse::feature_err;
 use rustc_span::{sym, ErrorGuaranteed};
 use rustc_trait_selection::traits;
 
@@ -48,6 +49,19 @@ fn enforce_trait_manually_implementable(
     trait_def: &ty::TraitDef,
 ) -> Result<(), ErrorGuaranteed> {
     let impl_header_span = tcx.def_span(impl_def_id);
+
+    if tcx.lang_items().freeze_trait() == Some(trait_def_id) {
+        if !tcx.features().freeze_impls {
+            feature_err(
+                &tcx.sess,
+                sym::freeze_impls,
+                impl_header_span,
+                "explicit impls for the `Freeze` trait are not permitted",
+            )
+            .with_span_label(impl_header_span, format!("impl of `Freeze` not allowed"))
+            .emit();
+        }
+    }
 
     // Disallow *all* explicit impls of traits marked `#[rustc_deny_explicit_impl]`
     if trait_def.deny_explicit_impl {

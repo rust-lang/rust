@@ -5,7 +5,10 @@ LL |     let array: [usize; Dim3::dim()]
    |                        ^^^^^^^^^^^
    |
    = note: calls in constants are limited to constant functions, tuple structs and tuple variants
-   = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
+help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
+   |
+LL + #![feature(const_trait_impl)]
+   |
 
 error[E0015]: cannot call non-const fn `<Dim3 as Dim>::dim` in constants
   --> $DIR/issue-39559-2.rs:16:15
@@ -14,7 +17,10 @@ LL |         = [0; Dim3::dim()];
    |               ^^^^^^^^^^^
    |
    = note: calls in constants are limited to constant functions, tuple structs and tuple variants
-   = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
+help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
+   |
+LL + #![feature(const_trait_impl)]
+   |
 
 error: aborting due to 2 previous errors
 

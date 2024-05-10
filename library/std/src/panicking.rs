@@ -21,15 +21,14 @@ use crate::sync::atomic::{AtomicBool, Ordering};
 use crate::sync::{PoisonError, RwLock};
 use crate::sys::stdio::panic_output;
 use crate::sys_common::backtrace;
-use crate::sys_common::thread_info;
 use crate::thread;
 
 #[cfg(not(test))]
-use crate::io::set_output_capture;
+use crate::io::try_set_output_capture;
 // make sure to use the stderr output configured
 // by libtest in the real copy of std
 #[cfg(test)]
-use realstd::io::set_output_capture;
+use realstd::io::try_set_output_capture;
 
 // Binary interface to the panic runtime that the standard library depends on.
 //
@@ -256,7 +255,7 @@ fn default_hook(info: &PanicInfo<'_>) {
             None => "Box<dyn Any>",
         },
     };
-    let thread = thread_info::current_thread();
+    let thread = thread::try_current();
     let name = thread.as_ref().and_then(|t| t.name()).unwrap_or("<unnamed>");
 
     let write = |err: &mut dyn crate::io::Write| {
@@ -272,12 +271,19 @@ fn default_hook(info: &PanicInfo<'_>) {
                 drop(backtrace::print(err, crate::backtrace_rs::PrintFmt::Full))
             }
             Some(BacktraceStyle::Off) => {
-                if FIRST_PANIC.swap(false, Ordering::SeqCst) {
+                if FIRST_PANIC.swap(false, Ordering::Relaxed) {
                     let _ = writeln!(
                         err,
                         "note: run with `RUST_BACKTRACE=1` environment variable to display a \
                              backtrace"
                     );
+                    if cfg!(miri) {
+                        let _ = writeln!(
+                            err,
+                            "note: in Miri, you may have to set `-Zmiri-env-forward=RUST_BACKTRACE` \
+                                for the environment variable to have an effect"
+                        );
+                    }
                 }
             }
             // If backtraces aren't supported or are forced-off, do nothing.
@@ -285,9 +291,9 @@ fn default_hook(info: &PanicInfo<'_>) {
         }
     };
 
-    if let Some(local) = set_output_capture(None) {
+    if let Ok(Some(local)) = try_set_output_capture(None) {
         write(&mut *local.lock().unwrap_or_else(|e| e.into_inner()));
-        set_output_capture(Some(local));
+        try_set_output_capture(Some(local)).ok();
     } else if let Some(mut out) = panic_output() {
         write(&mut out);
     }
@@ -391,6 +397,7 @@ pub mod panic_count {
     pub fn increase(run_panic_hook: bool) -> Option<MustAbort> {
         let global_count = GLOBAL_PANIC_COUNT.fetch_add(1, Ordering::Relaxed);
         if global_count & ALWAYS_ABORT_FLAG != 0 {
+            // Do *not* access thread-local state, we might be after a `fork`.
             return Some(MustAbort::AlwaysAbort);
         }
 
@@ -744,13 +751,22 @@ fn rust_panic_with_hook(
     if let Some(must_abort) = must_abort {
         match must_abort {
             panic_count::MustAbort::PanicInHook => {
-                // Don't try to print the message in this case
-                // - perhaps that is causing the recursive panics.
-                rtprintpanic!("thread panicked while processing panic. aborting.\n");
+                // Don't try to format the message in this case, perhaps that is causing the
+                // recursive panics. However if the message is just a string, no user-defined
+                // code is involved in printing it, so that is risk-free.
+                let msg_str = message.and_then(|m| m.as_str()).map(|m| [m]);
+                let message = msg_str.as_ref().map(|m| fmt::Arguments::new_const(m));
+                let panicinfo = PanicInfo::internal_constructor(
+                    message.as_ref(),
+                    location,
+                    can_unwind,
+                    force_no_backtrace,
+                );
+                rtprintpanic!("{panicinfo}\nthread panicked while processing panic. aborting.\n");
             }
             panic_count::MustAbort::AlwaysAbort => {
                 // Unfortunately, this does not print a backtrace, because creating
-                // a `Backtrace` will allocate, which we must to avoid here.
+                // a `Backtrace` will allocate, which we must avoid here.
                 let panicinfo = PanicInfo::internal_constructor(
                     message,
                     location,

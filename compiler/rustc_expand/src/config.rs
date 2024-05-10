@@ -20,6 +20,7 @@ use rustc_session::Session;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 use thin_vec::ThinVec;
+use tracing::instrument;
 
 /// A folder that strips out items that do not belong in the current configuration.
 pub struct StripUnconfigured<'a> {
@@ -98,10 +99,11 @@ pub fn features(sess: &Session, krate_attrs: &[Attribute], crate_name: Symbol) -
             // If the declared feature is unstable, record it.
             if let Some(f) = UNSTABLE_FEATURES.iter().find(|f| name == f.feature.name) {
                 (f.set_enabled)(&mut features);
-                // When the ICE comes from core, alloc or std (approximation of the standard library), there's a chance
-                // that the person hitting the ICE may be using -Zbuild-std or similar with an untested target.
-                // The bug is probably in the standard library and not the compiler in that case, but that doesn't
-                // really matter - we want a bug report.
+                // When the ICE comes from core, alloc or std (approximation of the standard
+                // library), there's a chance that the person hitting the ICE may be using
+                // -Zbuild-std or similar with an untested target. The bug is probably in the
+                // standard library and not the compiler in that case, but that doesn't really
+                // matter - we want a bug report.
                 if features.internal(name)
                     && ![sym::core, sym::alloc, sym::std].contains(&crate_name)
                 {

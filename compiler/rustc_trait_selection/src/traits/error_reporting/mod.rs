@@ -1,6 +1,6 @@
 // ignore-tidy-filelength :(
 
-mod ambiguity;
+pub mod ambiguity;
 mod infer_ctxt_ext;
 pub mod on_unimplemented;
 pub mod suggestions;
@@ -40,7 +40,7 @@ pub struct ImplCandidate<'tcx> {
 
 enum GetSafeTransmuteErrorAndReason {
     Silent,
-    Error { err_msg: String, safe_transmute_explanation: String },
+    Error { err_msg: String, safe_transmute_explanation: Option<String> },
 }
 
 struct UnsatisfiedConst(pub bool);
@@ -50,22 +50,38 @@ pub struct FindExprBySpan<'hir> {
     pub span: Span,
     pub result: Option<&'hir hir::Expr<'hir>>,
     pub ty_result: Option<&'hir hir::Ty<'hir>>,
+    pub include_closures: bool,
+    pub tcx: TyCtxt<'hir>,
 }
 
 impl<'hir> FindExprBySpan<'hir> {
-    pub fn new(span: Span) -> Self {
-        Self { span, result: None, ty_result: None }
+    pub fn new(span: Span, tcx: TyCtxt<'hir>) -> Self {
+        Self { span, result: None, ty_result: None, tcx, include_closures: false }
     }
 }
 
 impl<'v> Visitor<'v> for FindExprBySpan<'v> {
+    type NestedFilter = rustc_middle::hir::nested_filter::OnlyBodies;
+
+    fn nested_visit_map(&mut self) -> Self::Map {
+        self.tcx.hir()
+    }
+
     fn visit_expr(&mut self, ex: &'v hir::Expr<'v>) {
         if self.span == ex.span {
             self.result = Some(ex);
         } else {
+            if let hir::ExprKind::Closure(..) = ex.kind
+                && self.include_closures
+                && let closure_header_sp = self.span.with_hi(ex.span.hi())
+                && closure_header_sp == ex.span
+            {
+                self.result = Some(ex);
+            }
             hir::intravisit::walk_expr(self, ex);
         }
     }
+
     fn visit_ty(&mut self, ty: &'v hir::Ty<'v>) {
         if self.span == ty.span {
             self.ty_result = Some(ty);

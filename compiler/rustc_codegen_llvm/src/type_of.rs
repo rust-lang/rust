@@ -1,16 +1,13 @@
 use crate::common::*;
-use crate::context::TypeLowering;
 use crate::type_::Type;
 use rustc_codegen_ssa::traits::*;
 use rustc_middle::bug;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
 use rustc_middle::ty::{self, Ty, TypeVisitableExt};
-use rustc_target::abi::HasDataLayout;
 use rustc_target::abi::{Abi, Align, FieldsShape};
 use rustc_target::abi::{Int, Pointer, F128, F16, F32, F64};
 use rustc_target::abi::{Scalar, Size, Variants};
-use smallvec::{smallvec, SmallVec};
 
 use std::fmt::Write;
 
@@ -18,7 +15,6 @@ fn uncached_llvm_type<'a, 'tcx>(
     cx: &CodegenCx<'a, 'tcx>,
     layout: TyAndLayout<'tcx>,
     defer: &mut Option<(&'a Type, TyAndLayout<'tcx>)>,
-    field_remapping: &mut Option<SmallVec<[u32; 4]>>,
 ) -> &'a Type {
     match layout.abi {
         Abi::Scalar(_) => bug!("handled elsewhere"),
@@ -71,8 +67,7 @@ fn uncached_llvm_type<'a, 'tcx>(
         FieldsShape::Array { count, .. } => cx.type_array(layout.field(cx, 0).llvm_type(cx), count),
         FieldsShape::Arbitrary { .. } => match name {
             None => {
-                let (llfields, packed, new_field_remapping) = struct_llfields(cx, layout);
-                *field_remapping = new_field_remapping;
+                let (llfields, packed) = struct_llfields(cx, layout);
                 cx.type_struct(&llfields, packed)
             }
             Some(ref name) => {
@@ -87,7 +82,7 @@ fn uncached_llvm_type<'a, 'tcx>(
 fn struct_llfields<'a, 'tcx>(
     cx: &CodegenCx<'a, 'tcx>,
     layout: TyAndLayout<'tcx>,
-) -> (Vec<&'a Type>, bool, Option<SmallVec<[u32; 4]>>) {
+) -> (Vec<&'a Type>, bool) {
     debug!("struct_llfields: {:#?}", layout);
     let field_count = layout.fields.count();
 
@@ -95,7 +90,6 @@ fn struct_llfields<'a, 'tcx>(
     let mut offset = Size::ZERO;
     let mut prev_effective_align = layout.align.abi;
     let mut result: Vec<_> = Vec::with_capacity(1 + field_count * 2);
-    let mut field_remapping = smallvec![0; field_count];
     for i in layout.fields.index_by_increasing_offset() {
         let target_offset = layout.fields.offset(i as usize);
         let field = layout.field(cx, i);
@@ -120,12 +114,10 @@ fn struct_llfields<'a, 'tcx>(
             result.push(cx.type_padding_filler(padding, padding_align));
             debug!("    padding before: {:?}", padding);
         }
-        field_remapping[i] = result.len() as u32;
         result.push(field.llvm_type(cx));
         offset = target_offset + field.size;
         prev_effective_align = effective_field_align;
     }
-    let padding_used = result.len() > field_count;
     if layout.is_sized() && field_count > 0 {
         if offset > layout.size {
             bug!("layout: {:#?} stride: {:?} offset: {:?}", layout, layout.size, offset);
@@ -143,8 +135,7 @@ fn struct_llfields<'a, 'tcx>(
     } else {
         debug!("struct_llfields: offset: {:?} stride: {:?}", offset, layout.size);
     }
-    let field_remapping = padding_used.then_some(field_remapping);
-    (result, packed, field_remapping)
+    (result, packed)
 }
 
 impl<'a, 'tcx> CodegenCx<'a, 'tcx> {
@@ -174,7 +165,6 @@ pub trait LayoutLlvmExt<'tcx> {
         index: usize,
         immediate: bool,
     ) -> &'a Type;
-    fn scalar_copy_llvm_type<'a>(&self, cx: &CodegenCx<'a, 'tcx>) -> Option<&'a Type>;
 }
 
 impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
@@ -224,7 +214,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
             _ => None,
         };
         if let Some(llty) = cx.type_lowering.borrow().get(&(self.ty, variant_index)) {
-            return llty.lltype;
+            return llty;
         }
 
         debug!("llvm_type({:#?})", self);
@@ -236,7 +226,6 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
         let normal_ty = cx.tcx.erase_regions(self.ty);
 
         let mut defer = None;
-        let mut field_remapping = None;
         let llty = if self.ty != normal_ty {
             let mut layout = cx.layout_of(normal_ty);
             if let Some(v) = variant_index {
@@ -244,22 +233,15 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
             }
             layout.llvm_type(cx)
         } else {
-            uncached_llvm_type(cx, *self, &mut defer, &mut field_remapping)
+            uncached_llvm_type(cx, *self, &mut defer)
         };
         debug!("--> mapped {:#?} to llty={:?}", self, llty);
 
-        cx.type_lowering
-            .borrow_mut()
-            .insert((self.ty, variant_index), TypeLowering { lltype: llty, field_remapping });
+        cx.type_lowering.borrow_mut().insert((self.ty, variant_index), llty);
 
         if let Some((llty, layout)) = defer {
-            let (llfields, packed, new_field_remapping) = struct_llfields(cx, layout);
+            let (llfields, packed) = struct_llfields(cx, layout);
             cx.set_struct_body(llty, &llfields, packed);
-            cx.type_lowering
-                .borrow_mut()
-                .get_mut(&(self.ty, variant_index))
-                .unwrap()
-                .field_remapping = new_field_remapping;
         }
         llty
     }
@@ -323,45 +305,5 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
         }
 
         self.scalar_llvm_type_at(cx, scalar)
-    }
-
-    fn scalar_copy_llvm_type<'a>(&self, cx: &CodegenCx<'a, 'tcx>) -> Option<&'a Type> {
-        debug_assert!(self.is_sized());
-
-        // FIXME: this is a fairly arbitrary choice, but 128 bits on WASM
-        // (matching the 128-bit SIMD types proposal) and 256 bits on x64
-        // (like AVX2 registers) seems at least like a tolerable starting point.
-        let threshold = cx.data_layout().pointer_size * 4;
-        if self.layout.size() > threshold {
-            return None;
-        }
-
-        // Vectors, even for non-power-of-two sizes, have the same layout as
-        // arrays but don't count as aggregate types
-        // While LLVM theoretically supports non-power-of-two sizes, and they
-        // often work fine, sometimes x86-isel deals with them horribly
-        // (see #115212) so for now only use power-of-two ones.
-        if let FieldsShape::Array { count, .. } = self.layout.fields()
-            && count.is_power_of_two()
-            && let element = self.field(cx, 0)
-            && element.ty.is_integral()
-        {
-            // `cx.type_ix(bits)` is tempting here, but while that works great
-            // for things that *stay* as memory-to-memory copies, it also ends
-            // up suppressing vectorization as it introduces shifts when it
-            // extracts all the individual values.
-
-            let ety = element.llvm_type(cx);
-            if *count == 1 {
-                // Emitting `<1 x T>` would be silly; just use the scalar.
-                return Some(ety);
-            } else {
-                return Some(cx.type_vector(ety, *count));
-            }
-        }
-
-        // FIXME: The above only handled integer arrays; surely more things
-        // would also be possible. Be careful about provenance, though!
-        None
     }
 }

@@ -14,11 +14,9 @@
 #![feature(panic_update_hook)]
 #![feature(result_flattening)]
 
-#[macro_use]
-extern crate tracing;
-
 use rustc_ast as ast;
 use rustc_codegen_ssa::{traits::CodegenBackend, CodegenErrors, CodegenResults};
+use rustc_const_eval::CTRL_C_RECEIVED;
 use rustc_data_structures::profiling::{
     get_resident_set_size, print_time_passes_entry, TimePassesFormat,
 };
@@ -28,7 +26,7 @@ use rustc_errors::{
     markdown, ColorConfig, DiagCtxt, ErrCode, ErrorGuaranteed, FatalError, PResult,
 };
 use rustc_feature::find_gated_cfg;
-use rustc_interface::util::{self, collect_crate_types, get_codegen_backend};
+use rustc_interface::util::{self, get_codegen_backend};
 use rustc_interface::{interface, Queries};
 use rustc_lint::unerased_lint_store;
 use rustc_metadata::creader::MetadataLoader;
@@ -37,14 +35,14 @@ use rustc_session::config::{nightly_options, CG_OPTIONS, Z_OPTIONS};
 use rustc_session::config::{ErrorOutputType, Input, OutFileName, OutputType};
 use rustc_session::getopts::{self, Matches};
 use rustc_session::lint::{Lint, LintId};
-use rustc_session::{config, EarlyDiagCtxt, Session};
+use rustc_session::output::collect_crate_types;
+use rustc_session::{config, filesearch, EarlyDiagCtxt, Session};
 use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::source_map::FileLoader;
 use rustc_span::symbol::sym;
 use rustc_span::FileName;
 use rustc_target::json::ToJson;
 use rustc_target::spec::{Target, TargetTriple};
-
 use std::cmp::max;
 use std::collections::BTreeMap;
 use std::env;
@@ -59,7 +57,8 @@ use std::str;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, OnceLock};
 use std::time::{Instant, SystemTime};
-use time::{Date, OffsetDateTime, Time};
+use time::OffsetDateTime;
+use tracing::trace;
 
 #[allow(unused_macros)]
 macro do_not_use_print($($t:tt)*) {
@@ -887,7 +886,11 @@ pub fn version_at_macro_invocation(
 
         let debug_flags = matches.opt_strs("Z");
         let backend_name = debug_flags.iter().find_map(|x| x.strip_prefix("codegen-backend="));
-        get_codegen_backend(early_dcx, &None, backend_name).print_version();
+        let opts = config::Options::default();
+        let sysroot = filesearch::materialize_sysroot(opts.maybe_sysroot.clone());
+        let target = config::build_target_config(early_dcx, &opts, &sysroot);
+
+        get_codegen_backend(early_dcx, &sysroot, backend_name, &target).print_version();
     }
 }
 
@@ -965,7 +968,7 @@ Available lint options:
 
     let lint_store = unerased_lint_store(sess);
     let (loaded, builtin): (Vec<_>, _) =
-        lint_store.get_lints().iter().cloned().partition(|&lint| lint.is_loaded);
+        lint_store.get_lints().iter().cloned().partition(|&lint| lint.is_externally_loaded);
     let loaded = sort_lints(sess, loaded);
     let builtin = sort_lints(sess, builtin);
 
@@ -1092,7 +1095,12 @@ pub fn describe_flag_categories(early_dcx: &EarlyDiagCtxt, matches: &Matches) ->
 
     if cg_flags.iter().any(|x| *x == "passes=list") {
         let backend_name = debug_flags.iter().find_map(|x| x.strip_prefix("codegen-backend="));
-        get_codegen_backend(early_dcx, &None, backend_name).print_passes();
+
+        let opts = config::Options::default();
+        let sysroot = filesearch::materialize_sysroot(opts.maybe_sysroot.clone());
+        let target = config::build_target_config(early_dcx, &opts, &sysroot);
+
+        get_codegen_backend(early_dcx, &sysroot, backend_name, &target).print_passes();
         return true;
     }
 
@@ -1318,6 +1326,9 @@ pub fn install_ice_hook(
     panic::update_hook(Box::new(
         move |default_hook: &(dyn Fn(&PanicInfo<'_>) + Send + Sync + 'static),
               info: &PanicInfo<'_>| {
+            // Lock stderr to prevent interleaving of concurrent panics.
+            let _guard = io::stderr().lock();
+
             // If the error was caused by a broken pipe then this is not a bug.
             // Write the error and return immediately. See #98700.
             #[cfg(windows)]
@@ -1371,9 +1382,6 @@ pub fn install_ice_hook(
     using_internal_features
 }
 
-const DATE_FORMAT: &[time::format_description::FormatItem<'static>] =
-    &time::macros::format_description!("[year]-[month]-[day]");
-
 /// Prints the ICE message, including query stack, but without backtrace.
 ///
 /// The message will point the user at `bug_report_url` to report the ICE.
@@ -1402,33 +1410,14 @@ fn report_ice(
         dcx.emit_err(session_diagnostics::Ice);
     }
 
-    use time::ext::NumericalDuration;
-
-    // Try to hint user to update nightly if applicable when reporting an ICE.
-    // Attempt to calculate when current version was released, and add 12 hours
-    // as buffer. If the current version's release timestamp is older than
-    // the system's current time + 24 hours + 12 hours buffer if we're on
-    // nightly.
-    if let Some("nightly") = option_env!("CFG_RELEASE_CHANNEL")
-        && let Some(version) = option_env!("CFG_VERSION")
-        && let Some(ver_date_str) = option_env!("CFG_VER_DATE")
-        && let Ok(ver_date) = Date::parse(&ver_date_str, DATE_FORMAT)
-        && let ver_datetime = OffsetDateTime::new_utc(ver_date, Time::MIDNIGHT)
-        && let system_datetime = OffsetDateTime::from(SystemTime::now())
-        && system_datetime.checked_sub(36.hours()).is_some_and(|d| d > ver_datetime)
-        && !using_internal_features.load(std::sync::atomic::Ordering::Relaxed)
-    {
-        dcx.emit_note(session_diagnostics::IceBugReportOutdated {
-            version,
-            bug_report_url,
-            note_update: (),
-            note_url: (),
-        });
+    if using_internal_features.load(std::sync::atomic::Ordering::Relaxed) {
+        dcx.emit_note(session_diagnostics::IceBugReportInternalFeature);
     } else {
-        if using_internal_features.load(std::sync::atomic::Ordering::Relaxed) {
-            dcx.emit_note(session_diagnostics::IceBugReportInternalFeature);
-        } else {
-            dcx.emit_note(session_diagnostics::IceBugReport { bug_report_url });
+        dcx.emit_note(session_diagnostics::IceBugReport { bug_report_url });
+
+        // Only emit update nightly hint for users on nightly builds.
+        if rustc_feature::UnstableFeatures::from_environment(None).is_nightly_build() {
+            dcx.emit_note(session_diagnostics::UpdateNightlyNote);
         }
     }
 
@@ -1505,6 +1494,23 @@ pub fn init_logger(early_dcx: &EarlyDiagCtxt, cfg: rustc_log::LoggerConfig) {
     }
 }
 
+/// Install our usual `ctrlc` handler, which sets [`rustc_const_eval::CTRL_C_RECEIVED`].
+/// Making this handler optional lets tools can install a different handler, if they wish.
+pub fn install_ctrlc_handler() {
+    #[cfg(not(target_family = "wasm"))]
+    ctrlc::set_handler(move || {
+        // Indicate that we have been signaled to stop. If we were already signaled, exit
+        // immediately. In our interpreter loop we try to consult this value often, but if for
+        // whatever reason we don't get to that check or the cleanup we do upon finding that
+        // this bool has become true takes a long time, the exit here will promptly exit the
+        // process on the second Ctrl-C.
+        if CTRL_C_RECEIVED.swap(true, Ordering::Relaxed) {
+            std::process::exit(1);
+        }
+    })
+    .expect("Unable to install ctrlc handler");
+}
+
 pub fn main() -> ! {
     let start_time = Instant::now();
     let start_rss = get_resident_set_size();
@@ -1515,6 +1521,8 @@ pub fn main() -> ! {
     signal_handler::install();
     let mut callbacks = TimePassesCallbacks::default();
     let using_internal_features = install_ice_hook(DEFAULT_BUG_REPORT_URL, |_| ());
+    install_ctrlc_handler();
+
     let exit_code = catch_with_exit_code(|| {
         RunCompiler::new(&args::raw_args(&early_dcx)?, &mut callbacks)
             .set_using_internal_features(using_internal_features)

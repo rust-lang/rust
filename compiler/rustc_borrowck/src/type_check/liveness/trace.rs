@@ -1,5 +1,4 @@
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
-use rustc_data_structures::graph::WithSuccessors;
 use rustc_index::bit_set::BitSet;
 use rustc_index::interval::IntervalSet;
 use rustc_infer::infer::canonical::QueryRegionConstraints;
@@ -64,7 +63,10 @@ pub(super) fn trace<'mir, 'tcx>(
         // Traverse each issuing region's constraints, and record the loan as flowing into the
         // outlived region.
         for (loan, issuing_region_data) in borrow_set.iter_enumerated() {
-            for succ in region_graph.depth_first_search(issuing_region_data.region) {
+            for succ in rustc_data_structures::graph::depth_first_search(
+                &region_graph,
+                issuing_region_data.region,
+            ) {
                 // We don't need to mention that a loan flows into its issuing region.
                 if succ == issuing_region_data.region {
                     continue;
@@ -200,7 +202,7 @@ impl<'me, 'typeck, 'flow, 'tcx> LivenessResults<'me, 'typeck, 'flow, 'tcx> {
         for local in boring_locals {
             let local_ty = self.cx.body.local_decls[local].ty;
             let drop_data = self.cx.drop_data.entry(local_ty).or_insert_with({
-                let typeck = &mut self.cx.typeck;
+                let typeck = &self.cx.typeck;
                 move || LivenessContext::compute_drop_data(typeck, local_ty)
             });
 
@@ -542,7 +544,7 @@ impl<'tcx> LivenessContext<'_, '_, '_, 'tcx> {
         );
 
         let drop_data = self.drop_data.entry(dropped_ty).or_insert_with({
-            let typeck = &mut self.typeck;
+            let typeck = &self.typeck;
             move || Self::compute_drop_data(typeck, dropped_ty)
         });
 
@@ -597,10 +599,7 @@ impl<'tcx> LivenessContext<'_, '_, '_, 'tcx> {
         });
     }
 
-    fn compute_drop_data(
-        typeck: &mut TypeChecker<'_, 'tcx>,
-        dropped_ty: Ty<'tcx>,
-    ) -> DropData<'tcx> {
+    fn compute_drop_data(typeck: &TypeChecker<'_, 'tcx>, dropped_ty: Ty<'tcx>) -> DropData<'tcx> {
         debug!("compute_drop_data(dropped_ty={:?})", dropped_ty,);
 
         match typeck

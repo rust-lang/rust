@@ -1,4 +1,3 @@
-#![feature(generic_nonzero)]
 #![feature(let_chains)]
 #![feature(lazy_cell)]
 #![feature(option_get_or_insert_default)]
@@ -7,12 +6,7 @@
 #![feature(iter_intersperse)]
 #![allow(internal_features)]
 
-#[macro_use]
-extern crate rustc_macros;
 pub mod errors;
-
-#[macro_use]
-extern crate tracing;
 
 pub mod utils;
 pub use lint::{declare_lint, declare_lint_pass, declare_tool_lint, impl_lint_pass};

@@ -10,8 +10,8 @@ use crate::ty::TyCtxt;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::unord::UnordMap;
 use rustc_hir as hir;
-use rustc_hir::{HirIdMap, Node};
-use rustc_macros::HashStable;
+use rustc_hir::{HirId, HirIdMap, Node};
+use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_span::{Span, DUMMY_SP};
 
 use std::fmt;
@@ -153,7 +153,7 @@ rustc_index::newtype_index! {
 }
 
 // compilation error if size of `ScopeData` is not the same as a `u32`
-static_assert_size!(ScopeData, 4);
+rustc_data_structures::static_assert_size!(ScopeData, 4);
 
 impl Scope {
     /// Returns an item-local ID associated with this scope.
@@ -164,10 +164,10 @@ impl Scope {
         self.id
     }
 
-    pub fn hir_id(&self, scope_tree: &ScopeTree) -> Option<hir::HirId> {
+    pub fn hir_id(&self, scope_tree: &ScopeTree) -> Option<HirId> {
         scope_tree
             .root_body
-            .map(|hir_id| hir::HirId { owner: hir_id.owner, local_id: self.item_local_id() })
+            .map(|hir_id| HirId { owner: hir_id.owner, local_id: self.item_local_id() })
     }
 
     /// Returns the span of this `Scope`. Note that in general the
@@ -207,7 +207,7 @@ pub type ScopeDepth = u32;
 #[derive(Default, Debug, HashStable)]
 pub struct ScopeTree {
     /// If not empty, this body is the root of this region hierarchy.
-    pub root_body: Option<hir::HirId>,
+    pub root_body: Option<HirId>,
 
     /// Maps from a scope ID to the enclosing scope id;
     /// this is usually corresponding to the lexical nesting, though
@@ -341,11 +341,7 @@ impl ScopeTree {
         self.var_map.insert(var, lifetime);
     }
 
-    pub fn record_rvalue_candidate(
-        &mut self,
-        var: hir::HirId,
-        candidate_type: RvalueCandidateType,
-    ) {
+    pub fn record_rvalue_candidate(&mut self, var: HirId, candidate_type: RvalueCandidateType) {
         debug!("record_rvalue_candidate(var={var:?}, type={candidate_type:?})");
         match &candidate_type {
             RvalueCandidateType::Borrow { lifetime: Some(lifetime), .. }

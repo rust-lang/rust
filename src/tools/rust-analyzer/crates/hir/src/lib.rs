@@ -38,7 +38,7 @@ mod display;
 use std::{iter, mem::discriminant, ops::ControlFlow};
 
 use arrayvec::ArrayVec;
-use base_db::{CrateDisplayName, CrateId, CrateOrigin, Edition, FileId};
+use base_db::{CrateDisplayName, CrateId, CrateOrigin, FileId};
 use either::Either;
 use hir_def::{
     body::{BodyDiagnostic, SyntheticSyntax},
@@ -56,8 +56,8 @@ use hir_def::{
     AssocItemId, AssocItemLoc, AttrDefId, ConstId, ConstParamId, CrateRootModuleId, DefWithBodyId,
     EnumId, EnumVariantId, ExternCrateId, FunctionId, GenericDefId, GenericParamId, HasModule,
     ImplId, InTypeConstId, ItemContainerId, LifetimeParamId, LocalFieldId, Lookup, MacroExpander,
-    MacroId, ModuleId, StaticId, StructId, TraitAliasId, TraitId, TupleId, TypeAliasId,
-    TypeOrConstParamId, TypeParamId, UnionId,
+    ModuleId, StaticId, StructId, TraitAliasId, TraitId, TupleId, TypeAliasId, TypeOrConstParamId,
+    TypeParamId, UnionId,
 };
 use hir_expand::{attrs::collect_attrs, name::name, proc_macro::ProcMacroKind, MacroCallKind};
 use hir_ty::{
@@ -65,7 +65,7 @@ use hir_ty::{
     consteval::{try_const_usize, unknown_const_as_generic, ConstExt},
     db::InternedClosure,
     diagnostics::BodyValidationDiagnostic,
-    known_const_to_ast,
+    error_lifetime, known_const_to_ast,
     layout::{Layout as TyLayout, RustcEnumVariantIdx, RustcFieldIdx, TagEncoding},
     method_resolution::{self, TyFingerprint},
     mir::{interpret_mir, MutBorrowKind},
@@ -79,6 +79,7 @@ use hir_ty::{
 use itertools::Itertools;
 use nameres::diagnostics::DefDiagnosticKind;
 use rustc_hash::FxHashSet;
+use span::Edition;
 use stdx::{impl_from, never};
 use syntax::{
     ast::{self, HasAttrs as _, HasName},
@@ -122,7 +123,7 @@ pub use {
         visibility::Visibility,
         // FIXME: This is here since some queries take it as input that are used
         // outside of hir.
-        {AdtId, ModuleDefId},
+        {AdtId, MacroId, ModuleDefId},
     },
     hir_expand::{
         attrs::{Attr, AttrId},
@@ -238,7 +239,7 @@ impl Crate {
         db: &dyn DefDatabase,
         query: import_map::Query,
     ) -> impl Iterator<Item = Either<ModuleDef, Macro>> {
-        let _p = tracing::span!(tracing::Level::INFO, "query_external_importables");
+        let _p = tracing::span!(tracing::Level::INFO, "query_external_importables").entered();
         import_map::search_dependencies(db, self.into(), &query).into_iter().map(|item| {
             match ItemInNs::from(item) {
                 ItemInNs::Types(mod_id) | ItemInNs::Values(mod_id) => Either::Left(mod_id),
@@ -259,11 +260,11 @@ impl Crate {
         doc_url.map(|s| s.trim_matches('"').trim_end_matches('/').to_owned() + "/")
     }
 
-    pub fn cfg(&self, db: &dyn HirDatabase) -> CfgOptions {
+    pub fn cfg(&self, db: &dyn HirDatabase) -> Arc<CfgOptions> {
         db.crate_graph()[self.id].cfg_options.clone()
     }
 
-    pub fn potential_cfg(&self, db: &dyn HirDatabase) -> CfgOptions {
+    pub fn potential_cfg(&self, db: &dyn HirDatabase) -> Arc<CfgOptions> {
         let data = &db.crate_graph()[self.id];
         data.potential_cfg_options.clone().unwrap_or_else(|| data.cfg_options.clone())
     }
@@ -547,8 +548,8 @@ impl Module {
         acc: &mut Vec<AnyDiagnostic>,
         style_lints: bool,
     ) {
-        let name = self.name(db);
-        let _p = tracing::span!(tracing::Level::INFO, "Module::diagnostics", ?name);
+        let _p = tracing::span!(tracing::Level::INFO, "Module::diagnostics", name = ?self.name(db))
+            .entered();
         let def_map = self.id.def_map(db.upcast());
         for diag in def_map.diagnostics() {
             if diag.in_module != self.id.local_id {
@@ -652,7 +653,7 @@ impl Module {
                     GenericParamId::LifetimeParamId(LifetimeParamId { parent, local_id })
                 });
                 let type_params = generic_params
-                    .iter()
+                    .iter_type_or_consts()
                     .filter(|(_, it)| it.type_param().is_some())
                     .map(|(local_id, _)| {
                         GenericParamId::TypeParamId(TypeParamId::from_unchecked(
@@ -683,7 +684,7 @@ impl Module {
                 let items = &db.trait_data(trait_.into()).items;
                 let required_items = items.iter().filter(|&(_, assoc)| match *assoc {
                     AssocItemId::FunctionId(it) => !db.function_data(it).has_body(),
-                    AssocItemId::ConstId(id) => Const::from(id).value(db).is_none(),
+                    AssocItemId::ConstId(id) => !db.const_data(id).has_body,
                     AssocItemId::TypeAliasId(it) => db.type_alias_data(it).type_ref.is_none(),
                 });
                 impl_assoc_items_scratch.extend(db.impl_data(impl_def.id).items.iter().filter_map(
@@ -754,7 +755,7 @@ impl Module {
         scope
             .declarations()
             .map(ModuleDef::from)
-            .chain(scope.unnamed_consts(db.upcast()).map(|id| ModuleDef::Const(Const::from(id))))
+            .chain(scope.unnamed_consts().map(|id| ModuleDef::Const(Const::from(id))))
             .collect()
     }
 
@@ -971,7 +972,7 @@ fn precise_macro_call_location(
                 MacroKind::ProcMacro,
             )
         }
-        MacroCallKind::Derive { ast_id, derive_attr_index, derive_index } => {
+        MacroCallKind::Derive { ast_id, derive_attr_index, derive_index, .. } => {
             let node = ast_id.to_node(db.upcast());
             // Compute the precise location of the macro name's token in the derive
             // list.
@@ -1099,13 +1100,14 @@ impl Field {
             VariantDef::Union(it) => it.id.into(),
             VariantDef::Variant(it) => it.parent_enum(db).id.into(),
         };
-        let mut generics = generics.map(|it| it.ty.clone());
+        let mut generics = generics.map(|it| it.ty);
         let substs = TyBuilder::subst_for_def(db, def_id, None)
             .fill(|x| match x {
                 ParamKind::Type => {
                     generics.next().unwrap_or_else(|| TyKind::Error.intern(Interner)).cast(Interner)
                 }
                 ParamKind::Const(ty) => unknown_const_as_generic(ty.clone()),
+                ParamKind::Lifetime => error_lifetime().cast(Interner),
             })
             .build();
         let ty = db.field_types(var_id)[self.id].clone().substitute(Interner, &substs);
@@ -1416,16 +1418,14 @@ impl Adt {
     }
 
     pub fn layout(self, db: &dyn HirDatabase) -> Result<Layout, LayoutError> {
-        if db.generic_params(self.into()).iter().count() != 0 {
-            return Err(LayoutError::HasPlaceholder);
-        }
-        let krate = self.krate(db).id;
         db.layout_of_adt(
             self.into(),
-            Substitution::empty(Interner),
+            TyBuilder::adt(db, self.into())
+                .fill_with_defaults(db, || TyKind::Error.intern(Interner))
+                .build_into_subst(),
             db.trait_environment(self.into()),
         )
-        .map(|layout| Layout(layout, db.target_data_layout(krate).unwrap()))
+        .map(|layout| Layout(layout, db.target_data_layout(self.krate(db).id).unwrap()))
     }
 
     /// Turns this ADT into a type. Any type parameters of the ADT will be
@@ -1440,13 +1440,14 @@ impl Adt {
     /// the greatest API, FIXME find a better one.
     pub fn ty_with_args(self, db: &dyn HirDatabase, args: impl Iterator<Item = Type>) -> Type {
         let id = AdtId::from(self);
-        let mut it = args.map(|t| t.ty.clone());
+        let mut it = args.map(|t| t.ty);
         let ty = TyBuilder::def_ty(db, id.into(), None)
             .fill(|x| {
                 let r = it.next().unwrap_or_else(|| TyKind::Error.intern(Interner));
                 match x {
                     ParamKind::Type => r.cast(Interner),
                     ParamKind::Const(ty) => unknown_const_as_generic(ty.clone()),
+                    ParamKind::Lifetime => error_lifetime().cast(Interner),
                 }
             })
             .build();
@@ -1627,7 +1628,6 @@ impl DefWithBody {
         acc: &mut Vec<AnyDiagnostic>,
         style_lints: bool,
     ) {
-        db.unwind_if_cancelled();
         let krate = self.module(db).id.krate();
 
         let (body, source_map) = db.body_with_source_map(self.into());
@@ -1675,6 +1675,7 @@ impl DefWithBody {
         for d in &infer.diagnostics {
             acc.extend(AnyDiagnostic::inference_diagnostic(db, self.into(), d, &source_map));
         }
+
         for (pat_or_expr, mismatch) in infer.type_mismatches() {
             let expr_or_pat = match pat_or_expr {
                 ExprOrPatId::ExprId(expr) => source_map.expr_syntax(expr).map(Either::Left),
@@ -1725,6 +1726,10 @@ impl DefWithBody {
                             Ok(s) => s.map(|it| it.into()),
                             Err(_) => continue,
                         },
+                        mir::MirSpan::SelfParam => match source_map.self_param_syntax() {
+                            Some(s) => s.map(|it| it.into()),
+                            None => continue,
+                        },
                         mir::MirSpan::Unknown => continue,
                     };
                     acc.push(
@@ -1756,7 +1761,9 @@ impl DefWithBody {
                         need_mut = &mir::MutabilityReason::Not;
                     }
                     let local = Local { parent: self.into(), binding_id };
-                    match (need_mut, local.is_mut(db)) {
+                    let is_mut = body[binding_id].mode == BindingAnnotation::Mutable;
+
+                    match (need_mut, is_mut) {
                         (mir::MutabilityReason::Unused, _) => {
                             let should_ignore = matches!(body[binding_id].name.as_str(), Some(it) if it.starts_with('_'));
                             if !should_ignore {
@@ -1775,6 +1782,11 @@ impl DefWithBody {
                                     mir::MirSpan::PatId(p) => match source_map.pat_syntax(*p) {
                                         Ok(s) => s.map(|it| it.into()),
                                         Err(_) => continue,
+                                    },
+                                    mir::MirSpan::SelfParam => match source_map.self_param_syntax()
+                                    {
+                                        Some(s) => s.map(|it| it.into()),
+                                        None => continue,
                                     },
                                     mir::MirSpan::Unknown => continue,
                                 };
@@ -1850,12 +1862,13 @@ impl Function {
             ItemContainerId::TraitId(it) => Some(it.into()),
             ItemContainerId::ModuleId(_) | ItemContainerId::ExternBlockId(_) => None,
         };
-        let mut generics = generics.map(|it| it.ty.clone());
+        let mut generics = generics.map(|it| it.ty);
         let mut filler = |x: &_| match x {
             ParamKind::Type => {
                 generics.next().unwrap_or_else(|| TyKind::Error.intern(Interner)).cast(Interner)
             }
             ParamKind::Const(ty) => unknown_const_as_generic(ty.clone()),
+            ParamKind::Lifetime => error_lifetime().cast(Interner),
         };
 
         let parent_substs =
@@ -1945,7 +1958,7 @@ impl Function {
             ItemContainerId::TraitId(it) => Some(it.into()),
             ItemContainerId::ModuleId(_) | ItemContainerId::ExternBlockId(_) => None,
         };
-        let mut generics = generics.map(|it| it.ty.clone());
+        let mut generics = generics.map(|it| it.ty);
         let parent_substs = parent_id.map(|id| {
             TyBuilder::subst_for_def(db, id, None)
                 .fill(|x| match x {
@@ -1954,6 +1967,7 @@ impl Function {
                         .unwrap_or_else(|| TyKind::Error.intern(Interner))
                         .cast(Interner),
                     ParamKind::Const(ty) => unknown_const_as_generic(ty.clone()),
+                    ParamKind::Lifetime => error_lifetime().cast(Interner),
                 })
                 .build()
         });
@@ -1993,13 +2007,15 @@ impl Function {
 
     /// is this a `fn main` or a function with an `export_name` of `main`?
     pub fn is_main(self, db: &dyn HirDatabase) -> bool {
-        if !self.module(db).is_crate_root() {
-            return false;
-        }
         let data = db.function_data(self.id);
+        data.attrs.export_name() == Some("main")
+            || self.module(db).is_crate_root() && data.name.to_smol_str() == "main"
+    }
 
-        data.name.to_smol_str() == "main"
-            || data.attrs.export_name().map(core::ops::Deref::deref) == Some("main")
+    /// Is this a function with an `export_name` of `main`?
+    pub fn exported_main(self, db: &dyn HirDatabase) -> bool {
+        let data = db.function_data(self.id);
+        data.attrs.export_name() == Some("main")
     }
 
     /// Does this function have the ignore attribute?
@@ -2127,8 +2143,11 @@ impl Param {
     pub fn as_local(&self, db: &dyn HirDatabase) -> Option<Local> {
         let parent = DefWithBodyId::FunctionId(self.func.into());
         let body = db.body(parent);
-        let pat_id = body.params[self.idx];
-        if let Pat::Bind { id, .. } = &body[pat_id] {
+        if let Some(self_param) = body.self_param.filter(|_| self.idx == 0) {
+            Some(Local { parent, binding_id: self_param })
+        } else if let Pat::Bind { id, .. } =
+            &body[body.params[self.idx - body.self_param.is_some() as usize]]
+        {
             Some(Local { parent, binding_id: *id })
         } else {
             None
@@ -2143,7 +2162,7 @@ impl Param {
         let InFile { file_id, value } = self.func.source(db)?;
         let params = value.param_list()?;
         if params.self_param().is_some() {
-            params.params().nth(self.idx.checked_sub(1)?)
+            params.params().nth(self.idx.checked_sub(params.self_param().is_some() as usize)?)
         } else {
             params.params().nth(self.idx)
         }
@@ -2203,12 +2222,13 @@ impl SelfParam {
             }
         };
 
-        let mut generics = generics.map(|it| it.ty.clone());
+        let mut generics = generics.map(|it| it.ty);
         let mut filler = |x: &_| match x {
             ParamKind::Type => {
                 generics.next().unwrap_or_else(|| TyKind::Error.intern(Interner)).cast(Interner)
             }
             ParamKind::Const(ty) => unknown_const_as_generic(ty.clone()),
+            ParamKind::Lifetime => error_lifetime().cast(Interner),
         };
 
         let parent_substs = TyBuilder::subst_for_def(db, parent_id, None).fill(&mut filler).build();
@@ -2580,7 +2600,7 @@ impl Macro {
             },
             MacroId::ProcMacroId(it) => match it.lookup(db.upcast()).kind {
                 ProcMacroKind::CustomDerive => MacroKind::Derive,
-                ProcMacroKind::FuncLike => MacroKind::ProcMacro,
+                ProcMacroKind::Bang => MacroKind::ProcMacro,
                 ProcMacroKind::Attr => MacroKind::Attr,
             },
         }
@@ -2602,6 +2622,15 @@ impl Macro {
                 matches!(it.lookup(db.upcast()).expander, MacroExpander::BuiltInDerive(_))
             }
             MacroId::ProcMacroId(_) => false,
+        }
+    }
+
+    pub fn is_env_or_option_env(&self, db: &dyn HirDatabase) -> bool {
+        match self.id {
+            MacroId::Macro2Id(it) => {
+                matches!(it.lookup(db.upcast()).expander, MacroExpander::BuiltInEager(eager) if eager.is_env_or_option_env())
+            }
+            MacroId::MacroRulesId(_) | MacroId::ProcMacroId(_) => false,
         }
     }
 
@@ -3134,35 +3163,59 @@ impl Local {
     /// All definitions for this local. Example: `let (a$0, _) | (_, a$0) = it;`
     pub fn sources(self, db: &dyn HirDatabase) -> Vec<LocalSource> {
         let (body, source_map) = db.body_with_source_map(self.parent);
-        self.sources_(db, &body, &source_map).collect()
+        match body.self_param.zip(source_map.self_param_syntax()) {
+            Some((param, source)) if param == self.binding_id => {
+                let root = source.file_syntax(db.upcast());
+                vec![LocalSource {
+                    local: self,
+                    source: source.map(|ast| Either::Right(ast.to_node(&root))),
+                }]
+            }
+            _ => body[self.binding_id]
+                .definitions
+                .iter()
+                .map(|&definition| {
+                    let src = source_map.pat_syntax(definition).unwrap(); // Hmm...
+                    let root = src.file_syntax(db.upcast());
+                    LocalSource {
+                        local: self,
+                        source: src.map(|ast| match ast.to_node(&root) {
+                            ast::Pat::IdentPat(it) => Either::Left(it),
+                            _ => unreachable!("local with non ident-pattern"),
+                        }),
+                    }
+                })
+                .collect(),
+        }
     }
 
     /// The leftmost definition for this local. Example: `let (a$0, _) | (_, a) = it;`
     pub fn primary_source(self, db: &dyn HirDatabase) -> LocalSource {
         let (body, source_map) = db.body_with_source_map(self.parent);
-        let src = self.sources_(db, &body, &source_map).next().unwrap();
-        src
-    }
-
-    fn sources_<'a>(
-        self,
-        db: &'a dyn HirDatabase,
-        body: &'a hir_def::body::Body,
-        source_map: &'a hir_def::body::BodySourceMap,
-    ) -> impl Iterator<Item = LocalSource> + 'a {
-        body[self.binding_id]
-            .definitions
-            .iter()
-            .map(|&definition| {
-                let src = source_map.pat_syntax(definition).unwrap(); // Hmm...
-                let root = src.file_syntax(db.upcast());
-                src.map(|ast| match ast.to_node(&root) {
-                    Either::Left(ast::Pat::IdentPat(it)) => Either::Left(it),
-                    Either::Left(_) => unreachable!("local with non ident-pattern"),
-                    Either::Right(it) => Either::Right(it),
+        match body.self_param.zip(source_map.self_param_syntax()) {
+            Some((param, source)) if param == self.binding_id => {
+                let root = source.file_syntax(db.upcast());
+                LocalSource {
+                    local: self,
+                    source: source.map(|ast| Either::Right(ast.to_node(&root))),
+                }
+            }
+            _ => body[self.binding_id]
+                .definitions
+                .first()
+                .map(|&definition| {
+                    let src = source_map.pat_syntax(definition).unwrap(); // Hmm...
+                    let root = src.file_syntax(db.upcast());
+                    LocalSource {
+                        local: self,
+                        source: src.map(|ast| match ast.to_node(&root) {
+                            ast::Pat::IdentPat(it) => Either::Left(it),
+                            _ => unreachable!("local with non ident-pattern"),
+                        }),
+                    }
                 })
-            })
-            .map(move |source| LocalSource { local: self, source })
+                .unwrap(),
+        }
     }
 }
 
@@ -3583,15 +3636,40 @@ impl Impl {
                     .filter(filter),
             );
         }
+
+        if let Some(block) =
+            ty.adt_id(Interner).and_then(|def| def.0.module(db.upcast()).containing_block())
+        {
+            if let Some(inherent_impls) = db.inherent_impls_in_block(block) {
+                all.extend(
+                    inherent_impls.for_self_ty(&ty).iter().cloned().map(Self::from).filter(filter),
+                );
+            }
+            if let Some(trait_impls) = db.trait_impls_in_block(block) {
+                all.extend(
+                    trait_impls
+                        .for_self_ty_without_blanket_impls(fp)
+                        .map(Self::from)
+                        .filter(filter),
+                );
+            }
+        }
+
         all
     }
 
     pub fn all_for_trait(db: &dyn HirDatabase, trait_: Trait) -> Vec<Impl> {
-        let krate = trait_.module(db).krate();
+        let module = trait_.module(db);
+        let krate = module.krate();
         let mut all = Vec::new();
         for Crate { id } in krate.transitive_reverse_dependencies(db) {
             let impls = db.trait_impls_in_crate(id);
             all.extend(impls.for_trait(trait_.id).map(Self::from))
+        }
+        if let Some(block) = module.id.containing_block() {
+            if let Some(trait_impls) = db.trait_impls_in_block(block) {
+                all.extend(trait_impls.for_trait(trait_.id).map(Self::from));
+            }
         }
         all
     }
@@ -3638,7 +3716,7 @@ impl Impl {
         let macro_file = src.file_id.macro_file()?;
         let loc = macro_file.macro_call_id.lookup(db.upcast());
         let (derive_attr, derive_index) = match loc.kind {
-            MacroCallKind::Derive { ast_id, derive_attr_index, derive_index } => {
+            MacroCallKind::Derive { ast_id, derive_attr_index, derive_index, .. } => {
                 let module_id = self.id.lookup(db.upcast()).container;
                 (
                     db.crate_def_map(module_id.krate())[module_id.local_id]
@@ -3834,7 +3912,7 @@ impl Type {
         inner.derived(
             TyKind::Ref(
                 if m.is_mut() { hir_ty::Mutability::Mut } else { hir_ty::Mutability::Not },
-                hir_ty::static_lifetime(),
+                hir_ty::error_lifetime(),
                 inner.ty.clone(),
             )
             .intern(Interner),
@@ -4037,7 +4115,7 @@ impl Type {
 
         let canonical_ty =
             Canonical { value: self.ty.clone(), binders: CanonicalVarKinds::empty(Interner) };
-        method_resolution::implements_trait(&canonical_ty, db, self.env.clone(), trait_)
+        method_resolution::implements_trait(&canonical_ty, db, &self.env, trait_)
     }
 
     /// Checks that particular type `ty` implements `std::ops::FnOnce`.
@@ -4052,12 +4130,7 @@ impl Type {
 
         let canonical_ty =
             Canonical { value: self.ty.clone(), binders: CanonicalVarKinds::empty(Interner) };
-        method_resolution::implements_trait_unique(
-            &canonical_ty,
-            db,
-            self.env.clone(),
-            fnonce_trait,
-        )
+        method_resolution::implements_trait_unique(&canonical_ty, db, &self.env, fnonce_trait)
     }
 
     // FIXME: Find better API that also handles const generics
@@ -4074,6 +4147,7 @@ impl Type {
                         // FIXME: this code is not covered in tests.
                         unknown_const_as_generic(ty.clone())
                     }
+                    ParamKind::Lifetime => error_lifetime().cast(Interner),
                 }
             })
             .build();
@@ -4104,6 +4178,7 @@ impl Type {
                 match it {
                     ParamKind::Type => args.next().unwrap().ty.clone().cast(Interner),
                     ParamKind::Const(ty) => unknown_const_as_generic(ty.clone()),
+                    ParamKind::Lifetime => error_lifetime().cast(Interner),
                 }
             })
             .build();
@@ -4420,7 +4495,7 @@ impl Type {
         name: Option<&Name>,
         mut callback: impl FnMut(Function) -> Option<T>,
     ) -> Option<T> {
-        let _p = tracing::span!(tracing::Level::INFO, "iterate_method_candidates");
+        let _p = tracing::span!(tracing::Level::INFO, "iterate_method_candidates").entered();
         let mut slot = None;
 
         self.iterate_method_candidates_dyn(
@@ -4508,7 +4583,7 @@ impl Type {
         name: Option<&Name>,
         mut callback: impl FnMut(AssocItem) -> Option<T>,
     ) -> Option<T> {
-        let _p = tracing::span!(tracing::Level::INFO, "iterate_path_candidates");
+        let _p = tracing::span!(tracing::Level::INFO, "iterate_path_candidates").entered();
         let mut slot = None;
         self.iterate_path_candidates_dyn(
             db,
@@ -4575,7 +4650,7 @@ impl Type {
         &'a self,
         db: &'a dyn HirDatabase,
     ) -> impl Iterator<Item = Trait> + 'a {
-        let _p = tracing::span!(tracing::Level::INFO, "applicable_inherent_traits");
+        let _p = tracing::span!(tracing::Level::INFO, "applicable_inherent_traits").entered();
         self.autoderef_(db)
             .filter_map(|ty| ty.dyn_trait())
             .flat_map(move |dyn_trait_id| hir_ty::all_super_traits(db.upcast(), dyn_trait_id))
@@ -4583,7 +4658,7 @@ impl Type {
     }
 
     pub fn env_traits<'a>(&'a self, db: &'a dyn HirDatabase) -> impl Iterator<Item = Trait> + 'a {
-        let _p = tracing::span!(tracing::Level::INFO, "env_traits");
+        let _p = tracing::span!(tracing::Level::INFO, "env_traits").entered();
         self.autoderef_(db)
             .filter(|ty| matches!(ty.kind(Interner), TyKind::Placeholder(_)))
             .flat_map(|ty| {
@@ -4637,10 +4712,12 @@ impl Type {
                 if let WhereClause::Implemented(trait_ref) = pred.skip_binders() {
                     cb(type_.clone());
                     // skip the self type. it's likely the type we just got the bounds from
-                    for ty in
-                        trait_ref.substitution.iter(Interner).skip(1).filter_map(|a| a.ty(Interner))
-                    {
-                        walk_type(db, &type_.derived(ty.clone()), cb);
+                    if let [self_ty, params @ ..] = trait_ref.substitution.as_slice(Interner) {
+                        for ty in
+                            params.iter().filter(|&ty| ty != self_ty).filter_map(|a| a.ty(Interner))
+                        {
+                            walk_type(db, &type_.derived(ty.clone()), cb);
+                        }
                     }
                 }
             }

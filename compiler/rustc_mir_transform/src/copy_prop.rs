@@ -3,7 +3,6 @@ use rustc_index::IndexSlice;
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
-use rustc_mir_dataflow::impls::borrowed_locals;
 
 use crate::ssa::SsaLocals;
 
@@ -32,8 +31,8 @@ impl<'tcx> MirPass<'tcx> for CopyProp {
 }
 
 fn propagate_ssa<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-    let borrowed_locals = borrowed_locals(body);
-    let ssa = SsaLocals::new(body);
+    let param_env = tcx.param_env_reveal_all_normalized(body.source.def_id());
+    let ssa = SsaLocals::new(tcx, body, param_env);
 
     let fully_moved = fully_moved_locals(&ssa, body);
     debug!(?fully_moved);
@@ -51,7 +50,7 @@ fn propagate_ssa<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         tcx,
         copy_classes: ssa.copy_classes(),
         fully_moved,
-        borrowed_locals,
+        borrowed_locals: ssa.borrowed_locals(),
         storage_to_remove,
     }
     .visit_body_preserves_cfg(body);
@@ -101,7 +100,7 @@ struct Replacer<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     fully_moved: BitSet<Local>,
     storage_to_remove: BitSet<Local>,
-    borrowed_locals: BitSet<Local>,
+    borrowed_locals: &'a BitSet<Local>,
     copy_classes: &'a IndexSlice<Local, Local>,
 }
 
@@ -112,6 +111,12 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'_, 'tcx> {
 
     fn visit_local(&mut self, local: &mut Local, ctxt: PlaceContext, _: Location) {
         let new_local = self.copy_classes[*local];
+        // We must not unify two locals that are borrowed. But this is fine if one is borrowed and
+        // the other is not. We chose to check the original local, and not the target. That way, if
+        // the original local is borrowed and the target is not, we do not pessimize the whole class.
+        if self.borrowed_locals.contains(*local) {
+            return;
+        }
         match ctxt {
             // Do not modify the local in storage statements.
             PlaceContext::NonUse(NonUseContext::StorageLive | NonUseContext::StorageDead) => {}
@@ -122,32 +127,14 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'_, 'tcx> {
         }
     }
 
-    fn visit_place(&mut self, place: &mut Place<'tcx>, ctxt: PlaceContext, loc: Location) {
+    fn visit_place(&mut self, place: &mut Place<'tcx>, _: PlaceContext, loc: Location) {
         if let Some(new_projection) = self.process_projection(place.projection, loc) {
             place.projection = self.tcx().mk_place_elems(&new_projection);
         }
 
-        let observes_address = match ctxt {
-            PlaceContext::NonMutatingUse(
-                NonMutatingUseContext::SharedBorrow
-                | NonMutatingUseContext::FakeBorrow
-                | NonMutatingUseContext::AddressOf,
-            ) => true,
-            // For debuginfo, merging locals is ok.
-            PlaceContext::NonUse(NonUseContext::VarDebugInfo) => {
-                self.borrowed_locals.contains(place.local)
-            }
-            _ => false,
-        };
-        if observes_address && !place.is_indirect() {
-            // We observe the address of `place.local`. Do not replace it.
-        } else {
-            self.visit_local(
-                &mut place.local,
-                PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy),
-                loc,
-            )
-        }
+        // Any non-mutating use context is ok.
+        let ctxt = PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy);
+        self.visit_local(&mut place.local, ctxt, loc)
     }
 
     fn visit_operand(&mut self, operand: &mut Operand<'tcx>, loc: Location) {

@@ -69,9 +69,6 @@ const_eval_deref_function_pointer =
     accessing {$allocation} which contains a function
 const_eval_deref_vtable_pointer =
     accessing {$allocation} which contains a vtable
-const_eval_different_allocations =
-    `{$name}` called on pointers into different allocations
-
 const_eval_division_by_zero =
     dividing by zero
 const_eval_division_overflow =
@@ -81,12 +78,6 @@ const_eval_double_storage_live =
 
 const_eval_dyn_call_not_a_method =
     `dyn` call trying to call something that is not a method
-
-const_eval_dyn_call_vtable_mismatch =
-    `dyn` call on a pointer whose vtable does not match its type
-
-const_eval_dyn_star_call_vtable_mismatch =
-    `dyn*` call on a pointer whose vtable does not match its type
 
 const_eval_error = {$error_kind ->
     [static] could not evaluate static initializer
@@ -146,6 +137,8 @@ const_eval_intern_kind = {$kind ->
     *[other] {""}
 }
 
+const_eval_interrupted = compilation was interrupted
+
 const_eval_invalid_align_details =
     invalid align passed to `{$name}`: {$align} is {$err_kind ->
         [not_power_of_two] not a power of 2
@@ -190,6 +183,8 @@ const_eval_invalid_uninit_bytes_unknown =
 const_eval_invalid_vtable_pointer =
     using {$pointer} as vtable pointer but it does not point to a vtable
 
+const_eval_invalid_vtable_trait =
+    using vtable for trait `{$vtable_trait}` but trait `{$expected_trait}` was expected
 
 const_eval_live_drop =
     destructor of `{$dropped_ty}` cannot be evaluated at compile-time
@@ -220,6 +215,7 @@ const_eval_mut_deref =
 
 const_eval_mutable_ptr_in_final = encountered mutable pointer in final value of {const_eval_intern_kind}
 
+const_eval_nested_static_in_thread_local = #[thread_local] does not support implicit nested statics, please create explicit static items and refer to them instead
 const_eval_non_const_fmt_macro_call =
     cannot call non-const formatting macro in {const_eval_const_context}s
 
@@ -235,12 +231,18 @@ const_eval_not_enough_caller_args =
 const_eval_nullary_intrinsic_fail =
     could not evaluate nullary intrinsic
 
+const_eval_offset_from_different_allocations =
+    `{$name}` called on pointers into different allocations
+const_eval_offset_from_different_integers =
+    `{$name}` called on different pointers without provenance (i.e., without an associated allocation)
 const_eval_offset_from_overflow =
     `{$name}` called when first pointer is too far ahead of second
-
-const_eval_offset_from_test = out-of-bounds `offset_from`
+const_eval_offset_from_test =
+    out-of-bounds `offset_from`
 const_eval_offset_from_underflow =
     `{$name}` called when first pointer is too far before second
+const_eval_offset_from_unsigned_overflow =
+    `ptr_offset_from_unsigned` called when first pointer has smaller offset than second: {$a_offset} < {$b_offset}
 
 const_eval_operator_non_const =
     cannot call non-const operator in {const_eval_const_context}s
@@ -374,12 +376,6 @@ const_eval_unallowed_op_in_const_context =
 const_eval_unavailable_target_features_for_fn =
     calling a function that requires unavailable target features: {$unavailable_feats}
 
-const_eval_undefined_behavior =
-    it is undefined behavior to use this value
-
-const_eval_undefined_behavior_note =
-    The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-
 const_eval_uninhabited_enum_variant_read =
     read discriminant of an uninhabited enum variant
 const_eval_uninhabited_enum_variant_written =
@@ -388,8 +384,6 @@ const_eval_unreachable = entering unreachable code
 const_eval_unreachable_unwind =
     unwinding past a stack frame that does not allow unwinding
 
-const_eval_unsigned_offset_from_overflow =
-    `ptr_offset_from_unsigned` called when first pointer has smaller offset than second: {$a_offset} < {$b_offset}
 const_eval_unsized_local = unsized locals are not supported
 const_eval_unstable_const_fn = `{$def_path}` is not yet stable as a const fn
 
@@ -403,9 +397,6 @@ const_eval_unterminated_c_string =
 
 const_eval_unwind_past_top =
     unwinding past the topmost frame of the stack
-
-const_eval_upcast_mismatch =
-    upcast on a pointer whose vtable does not match its type
 
 ## The `front_matter`s here refer to either `const_eval_front_matter_invalid_value` or `const_eval_front_matter_invalid_value_with_path`.
 ## (We'd love to sort this differently to make that more clear but tidy won't let us...)
@@ -434,6 +425,12 @@ const_eval_validation_expected_raw_ptr = expected a raw pointer
 const_eval_validation_expected_ref = expected a reference
 const_eval_validation_expected_str = expected a string
 
+const_eval_validation_failure =
+    it is undefined behavior to use this value
+
+const_eval_validation_failure_note =
+    The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+
 const_eval_validation_front_matter_invalid_value = constructing invalid value
 const_eval_validation_front_matter_invalid_value_with_path = constructing invalid value at {$path}
 
@@ -447,6 +444,7 @@ const_eval_validation_invalid_fn_ptr = {$front_matter}: encountered {$value}, bu
 const_eval_validation_invalid_ref_meta = {$front_matter}: encountered invalid reference metadata: total size is bigger than largest supported object
 const_eval_validation_invalid_ref_slice_meta = {$front_matter}: encountered invalid reference metadata: slice is bigger than largest supported object
 const_eval_validation_invalid_vtable_ptr = {$front_matter}: encountered {$value}, but expected a vtable pointer
+const_eval_validation_invalid_vtable_trait = {$front_matter}: wrong trait in wide pointer vtable: expected `{$ref_trait}`, but encountered `{$vtable_trait}`
 const_eval_validation_mutable_ref_to_immutable = {$front_matter}: encountered mutable reference or box pointing to read-only memory
 const_eval_validation_never_val = {$front_matter}: encountered a value of the never type `!`
 const_eval_validation_null_box = {$front_matter}: encountered a null box

@@ -1,5 +1,5 @@
 //@ run-pass
-//@ ignore-emscripten no processes
+//@ ignore-wasm32 no processes
 //@ ignore-sgx no processes
 
 // Make sure that if a process doesn't have its stdio/stderr descriptors set up

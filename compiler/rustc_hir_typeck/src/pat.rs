@@ -5,21 +5,18 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{
     codes::*, pluralize, struct_span_code_err, Applicability, Diag, ErrorGuaranteed, MultiSpan,
 };
-use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::pat_util::EnumerateAndAdjustIterator;
-use rustc_hir::{HirId, Pat, PatKind};
+use rustc_hir::{self as hir, BindingMode, ByRef, HirId, Mutability, Pat, PatKind};
 use rustc_infer::infer;
-use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_middle::mir::interpret::ErrorHandled;
-use rustc_middle::ty::{self, Adt, BindingMode, Ty, TypeVisitableExt};
+use rustc_middle::ty::{self, Ty, TypeVisitableExt};
 use rustc_session::lint::builtin::NON_EXHAUSTIVE_OMITTED_PATTERNS;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident};
-use rustc_span::Span;
-use rustc_span::{BytePos, DUMMY_SP};
+use rustc_span::{BytePos, Span, DUMMY_SP};
 use rustc_target::abi::FieldIdx;
 use rustc_trait_selection::traits::{ObligationCause, Pattern};
 use ty::VariantDef;
@@ -80,9 +77,13 @@ struct TopInfo<'tcx> {
 
 #[derive(Copy, Clone)]
 struct PatInfo<'tcx, 'a> {
-    binding_mode: BindingMode,
+    binding_mode: ByRef,
+    max_ref_mutbl: Mutability,
     top_info: TopInfo<'tcx>,
     decl_origin: Option<DeclOrigin<'a>>,
+
+    /// The depth of current pattern
+    current_depth: u32,
 }
 
 impl<'tcx> FnCtxt<'_, 'tcx> {
@@ -122,14 +123,19 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
     }
 }
 
-const INITIAL_BM: BindingMode = BindingMode::BindByValue(hir::Mutability::Not);
-
 /// Mode for adjusting the expected type and binding mode.
 enum AdjustMode {
     /// Peel off all immediate reference types.
     Peel,
     /// Reset binding mode to the initial mode.
+    /// Used for destructuring assignment, where we don't want any match ergonomics.
     Reset,
+    /// Produced by ref patterns.
+    /// Reset the binding mode to the initial mode,
+    /// and if the old biding mode was by-reference
+    /// with mutability matching the pattern,
+    /// mark the pattern as having consumed this reference.
+    ResetAndConsumeRef(Mutability),
     /// Pass on the input binding mode and expected type.
     Pass,
 }
@@ -152,7 +158,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         decl_origin: Option<DeclOrigin<'tcx>>,
     ) {
         let info = TopInfo { expected, origin_expr, span };
-        let pat_info = PatInfo { binding_mode: INITIAL_BM, top_info: info, decl_origin };
+        let pat_info = PatInfo {
+            binding_mode: ByRef::No,
+            max_ref_mutbl: Mutability::Mut,
+            top_info: info,
+            decl_origin,
+            current_depth: 0,
+        };
         self.check_pat(pat, expected, pat_info);
     }
 
@@ -163,7 +175,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Conversely, inside this module, `check_pat_top` should never be used.
     #[instrument(level = "debug", skip(self, pat_info))]
     fn check_pat(&self, pat: &'tcx Pat<'tcx>, expected: Ty<'tcx>, pat_info: PatInfo<'tcx, '_>) {
-        let PatInfo { binding_mode: def_bm, top_info: ti, .. } = pat_info;
+        let PatInfo { binding_mode: def_bm, max_ref_mutbl, top_info: ti, current_depth, .. } =
+            pat_info;
+
         let path_res = match &pat.kind {
             PatKind::Path(qpath) => Some(
                 self.resolve_ty_and_res_fully_qualified_call(qpath, pat.hir_id, pat.span, None),
@@ -171,9 +185,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             _ => None,
         };
         let adjust_mode = self.calc_adjust_mode(pat, path_res.map(|(res, ..)| res));
-        let (expected, def_bm) = self.calc_default_binding_mode(pat, expected, def_bm, adjust_mode);
-        let pat_info =
-            PatInfo { binding_mode: def_bm, top_info: ti, decl_origin: pat_info.decl_origin };
+        let (expected, def_bm, max_ref_mutbl, ref_pattern_already_consumed) =
+            self.calc_default_binding_mode(pat, expected, def_bm, adjust_mode, max_ref_mutbl);
+        let pat_info = PatInfo {
+            binding_mode: def_bm,
+            max_ref_mutbl,
+            top_info: ti,
+            decl_origin: pat_info.decl_origin,
+            current_depth: current_depth + 1,
+        };
 
         let ty = match pat.kind {
             PatKind::Wild | PatKind::Err(_) => expected,
@@ -203,7 +223,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.check_pat_tuple(pat.span, elements, ddpos, expected, pat_info)
             }
             PatKind::Box(inner) => self.check_pat_box(pat.span, inner, expected, pat_info),
-            PatKind::Ref(inner, mutbl) => self.check_pat_ref(pat, inner, mutbl, expected, pat_info),
+            PatKind::Deref(inner) => self.check_pat_deref(pat.span, inner, expected, pat_info),
+            PatKind::Ref(inner, mutbl) => self.check_pat_ref(
+                pat,
+                inner,
+                mutbl,
+                expected,
+                pat_info,
+                ref_pattern_already_consumed,
+            ),
             PatKind::Slice(before, slice, after) => {
                 self.check_pat_slice(pat.span, before, slice, after, expected, pat_info)
             }
@@ -256,17 +284,53 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// Compute the new expected type and default binding mode from the old ones
     /// as well as the pattern form we are currently checking.
+    ///
+    /// Last entry is only relevant for ref patterns (`&` and `&mut`);
+    /// if `true`, then the ref pattern consumed a match ergonomics inserted reference
+    /// and so does no need to match against a reference in the scrutinee type.
     fn calc_default_binding_mode(
         &self,
         pat: &'tcx Pat<'tcx>,
         expected: Ty<'tcx>,
-        def_bm: BindingMode,
+        def_br: ByRef,
         adjust_mode: AdjustMode,
-    ) -> (Ty<'tcx>, BindingMode) {
+        max_ref_mutbl: Mutability,
+    ) -> (Ty<'tcx>, ByRef, Mutability, bool) {
+        if let ByRef::Yes(mutbl) = def_br {
+            debug_assert!(mutbl <= max_ref_mutbl);
+        }
         match adjust_mode {
-            AdjustMode::Pass => (expected, def_bm),
-            AdjustMode::Reset => (expected, INITIAL_BM),
-            AdjustMode::Peel => self.peel_off_references(pat, expected, def_bm),
+            AdjustMode::Pass => (expected, def_br, max_ref_mutbl, false),
+            AdjustMode::Reset => (expected, ByRef::No, Mutability::Mut, false),
+            AdjustMode::ResetAndConsumeRef(ref_pat_mutbl) => {
+                let mutbls_match = def_br == ByRef::Yes(ref_pat_mutbl);
+                if pat.span.at_least_rust_2024() && self.tcx.features().ref_pat_eat_one_layer_2024 {
+                    if mutbls_match {
+                        debug!("consuming inherited reference");
+                        (expected, ByRef::No, cmp::min(max_ref_mutbl, ref_pat_mutbl), true)
+                    } else {
+                        let (new_ty, new_bm, max_ref_mutbl) = if ref_pat_mutbl == Mutability::Mut {
+                            self.peel_off_references(
+                                pat,
+                                expected,
+                                def_br,
+                                Mutability::Not,
+                                max_ref_mutbl,
+                            )
+                        } else {
+                            (expected, def_br.cap_ref_mutability(Mutability::Not), Mutability::Not)
+                        };
+                        (new_ty, new_bm, max_ref_mutbl, false)
+                    }
+                } else {
+                    (expected, ByRef::No, max_ref_mutbl, mutbls_match)
+                }
+            }
+            AdjustMode::Peel => {
+                let peeled =
+                    self.peel_off_references(pat, expected, def_br, Mutability::Mut, max_ref_mutbl);
+                (peeled.0, peeled.1, peeled.2, false)
+            }
         }
     }
 
@@ -286,6 +350,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             | PatKind::TupleStruct(..)
             | PatKind::Tuple(..)
             | PatKind::Box(_)
+            | PatKind::Deref(_)
             | PatKind::Range(..)
             | PatKind::Slice(..) => AdjustMode::Peel,
             // A never pattern behaves somewhat like a literal or unit variant.
@@ -320,7 +385,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // ```
             //
             // See issue #46688.
-            PatKind::Ref(..) => AdjustMode::Reset,
+            PatKind::Ref(_, mutbl) => AdjustMode::ResetAndConsumeRef(*mutbl),
             // A `_` pattern works with any expected type, so there's no need to do anything.
             PatKind::Wild
             // A malformed pattern doesn't have an expected type, so let's just accept any type.
@@ -344,8 +409,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         pat: &'tcx Pat<'tcx>,
         expected: Ty<'tcx>,
-        mut def_bm: BindingMode,
-    ) -> (Ty<'tcx>, BindingMode) {
+        mut def_br: ByRef,
+        max_peelable_mutability: Mutability,
+        mut max_ref_mutability: Mutability,
+    ) -> (Ty<'tcx>, ByRef, Mutability) {
         let mut expected = self.try_structurally_resolve_type(pat.span, expected);
         // Peel off as many `&` or `&mut` from the scrutinee type as possible. For example,
         // for `match &&&mut Some(5)` the loop runs three times, aborting when it reaches
@@ -356,7 +423,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         //
         // See the examples in `ui/match-defbm*.rs`.
         let mut pat_adjustments = vec![];
-        while let ty::Ref(_, inner_ty, inner_mutability) = *expected.kind() {
+        while let ty::Ref(_, inner_ty, inner_mutability) = *expected.kind()
+            && inner_mutability <= max_peelable_mutability
+        {
             debug!("inspecting {:?}", expected);
 
             debug!("current discriminant is Ref, inserting implicit deref");
@@ -364,28 +433,34 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             pat_adjustments.push(expected);
 
             expected = self.try_structurally_resolve_type(pat.span, inner_ty);
-            def_bm = ty::BindByReference(match def_bm {
+            def_br = ByRef::Yes(match def_br {
                 // If default binding mode is by value, make it `ref` or `ref mut`
                 // (depending on whether we observe `&` or `&mut`).
-                ty::BindByValue(_) |
+                ByRef::No |
                 // When `ref mut`, stay a `ref mut` (on `&mut`) or downgrade to `ref` (on `&`).
-                ty::BindByReference(hir::Mutability::Mut) => inner_mutability,
+                ByRef::Yes(Mutability::Mut) => inner_mutability,
                 // Once a `ref`, always a `ref`.
                 // This is because a `& &mut` cannot mutate the underlying value.
-                ty::BindByReference(m @ hir::Mutability::Not) => m,
+                ByRef::Yes(Mutability::Not) => Mutability::Not,
             });
         }
 
+        if pat.span.at_least_rust_2024() && self.tcx.features().ref_pat_eat_one_layer_2024 {
+            def_br = def_br.cap_ref_mutability(max_ref_mutability);
+            if def_br == ByRef::Yes(Mutability::Not) {
+                max_ref_mutability = Mutability::Not;
+            }
+        }
+
         if !pat_adjustments.is_empty() {
-            debug!("default binding mode is now {:?}", def_bm);
-            self.inh
-                .typeck_results
+            debug!("default binding mode is now {:?}", def_br);
+            self.typeck_results
                 .borrow_mut()
                 .pat_adjustments_mut()
                 .insert(pat.hir_id, pat_adjustments);
         }
 
-        (expected, def_bm)
+        (expected, def_br, max_ref_mutability)
     }
 
     fn check_pat_lit(
@@ -590,27 +665,41 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn check_pat_ident(
         &self,
         pat: &'tcx Pat<'tcx>,
-        ba: hir::BindingAnnotation,
+        ba: BindingMode,
         var_id: HirId,
         sub: Option<&'tcx Pat<'tcx>>,
         expected: Ty<'tcx>,
         pat_info: PatInfo<'tcx, '_>,
     ) -> Ty<'tcx> {
-        let PatInfo { binding_mode: def_bm, top_info: ti, .. } = pat_info;
+        let PatInfo { binding_mode: def_br, top_info: ti, .. } = pat_info;
 
         // Determine the binding mode...
         let bm = match ba {
-            hir::BindingAnnotation::NONE => def_bm,
-            _ => BindingMode::convert(ba),
+            BindingMode(ByRef::No, Mutability::Mut)
+                if !(pat.span.at_least_rust_2024()
+                    && self.tcx.features().mut_preserve_binding_mode_2024)
+                    && matches!(def_br, ByRef::Yes(_)) =>
+            {
+                // `mut x` resets the binding mode in edition <= 2021.
+                self.tcx.emit_node_span_lint(
+                    rustc_lint::builtin::DEREFERENCING_MUT_BINDING,
+                    pat.hir_id,
+                    pat.span,
+                    errors::DereferencingMutBinding { span: pat.span },
+                );
+                BindingMode(ByRef::No, Mutability::Mut)
+            }
+            BindingMode(ByRef::No, mutbl) => BindingMode(def_br, mutbl),
+            BindingMode(ByRef::Yes(_), _) => ba,
         };
         // ...and store it in a side table:
-        self.inh.typeck_results.borrow_mut().pat_binding_modes_mut().insert(pat.hir_id, bm);
+        self.typeck_results.borrow_mut().pat_binding_modes_mut().insert(pat.hir_id, bm);
 
         debug!("check_pat_ident: pat.hir_id={:?} bm={:?}", pat.hir_id, bm);
 
         let local_ty = self.local_ty(pat.span, pat.hir_id);
-        let eq_ty = match bm {
-            ty::BindByReference(mutbl) => {
+        let eq_ty = match bm.0 {
+            ByRef::Yes(mutbl) => {
                 // If the binding is like `ref x | ref mut x`,
                 // then `x` is assigned a value of type `&M T` where M is the
                 // mutability and T is the expected type.
@@ -621,10 +710,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.new_ref_ty(pat.span, mutbl, expected)
             }
             // Otherwise, the type of x is the expected type `T`.
-            ty::BindByValue(_) => {
-                // As above, `T <: typeof(x)` is required, but we use equality, see (note_1).
-                expected
-            }
+            ByRef::No => expected, // As above, `T <: typeof(x)` is required, but we use equality, see (note_1).
         };
         self.demand_eqtype_pat(pat.span, eq_ty, local_ty, ti);
 
@@ -646,7 +732,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// bindings have the same type by comparing them all against the type of that first pat.
     fn check_binding_alt_eq_ty(
         &self,
-        ba: hir::BindingAnnotation,
+        ba: BindingMode,
         span: Span,
         var_id: HirId,
         ty: Ty<'tcx>,
@@ -686,10 +772,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         span: Span,
         expected: Ty<'tcx>,
         actual: Ty<'tcx>,
-        ba: hir::BindingAnnotation,
+        ba: BindingMode,
     ) {
         match (expected.kind(), actual.kind(), ba) {
-            (ty::Ref(_, inner_ty, _), _, hir::BindingAnnotation::NONE)
+            (ty::Ref(_, inner_ty, _), _, BindingMode::NONE)
                 if self.can_eq(self.param_env, *inner_ty, actual) =>
             {
                 err.span_suggestion_verbose(
@@ -699,7 +785,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     Applicability::MaybeIncorrect,
                 );
             }
-            (_, ty::Ref(_, inner_ty, _), hir::BindingAnnotation::REF)
+            (_, ty::Ref(_, inner_ty, _), BindingMode::REF)
                 if self.can_eq(self.param_env, expected, *inner_ty) =>
             {
                 err.span_suggestion_verbose(
@@ -713,7 +799,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    // Precondition: pat is a Ref(_) pattern
+    /// Precondition: pat is a `Ref(_)` pattern
     fn borrow_pat_suggestion(&self, err: &mut Diag<'_>, pat: &Pat<'_>) {
         let tcx = self.tcx;
         if let PatKind::Ref(inner, mutbl) = pat.kind
@@ -734,7 +820,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 let ident_kind = match binding_parent {
                     hir::Node::Param(_) => "parameter",
-                    hir::Node::Local(_) => "variable",
+                    hir::Node::LetStmt(_) => "variable",
                     hir::Node::Arm(_) => "binding",
 
                     // Provide diagnostics only if the parent pattern is struct-like,
@@ -751,6 +837,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         | PatKind::Binding(..)
                         | PatKind::Path(..)
                         | PatKind::Box(..)
+                        | PatKind::Deref(_)
                         | PatKind::Ref(..)
                         | PatKind::Lit(..)
                         | PatKind::Range(..)
@@ -790,7 +877,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         if let PatKind::Ref(the_ref, _) = i.kind
                             && let PatKind::Binding(mt, _, ident, _) = the_ref.kind
                         {
-                            let hir::BindingAnnotation(_, mtblty) = mt;
+                            let BindingMode(_, mtblty) = mt;
                             err.span_suggestion_verbose(
                                 i.span,
                                 format!("consider removing `&{mutability}` from the pattern"),
@@ -834,8 +921,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             && let Some(mt) = self.shallow_resolve(expected).builtin_deref(true)
             && let ty::Dynamic(..) = mt.ty.kind()
         {
-            // This is "x = SomeTrait" being reduced from
-            // "let &x = &SomeTrait" or "let box x = Box<SomeTrait>", an error.
+            // This is "x = dyn SomeTrait" being reduced from
+            // "let &x = &dyn SomeTrait" or "let box x = Box<dyn SomeTrait>", an error.
             let type_str = self.ty_to_string(expected);
             let mut err = struct_span_code_err!(
                 self.dcx(),
@@ -908,8 +995,25 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let e = report_unexpected_variant_res(tcx, res, qpath, pat.span, E0533, expected);
                 return Ty::new_error(tcx, e);
             }
-            Res::SelfCtor(..)
-            | Res::Def(
+            Res::SelfCtor(def_id) => {
+                if let ty::Adt(adt_def, _) = *tcx.type_of(def_id).skip_binder().kind()
+                    && adt_def.is_struct()
+                    && let Some((CtorKind::Const, _)) = adt_def.non_enum_variant().ctor
+                {
+                    // Ok, we allow unit struct ctors in patterns only.
+                } else {
+                    let e = report_unexpected_variant_res(
+                        tcx,
+                        res,
+                        qpath,
+                        pat.span,
+                        E0533,
+                        "unit struct",
+                    );
+                    return Ty::new_error(tcx, e);
+                }
+            }
+            Res::Def(
                 DefKind::Ctor(_, CtorKind::Const)
                 | DefKind::Const
                 | DefKind::AssocConst
@@ -998,7 +1102,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                     _ => {
                         let (type_def_id, item_def_id) = match pat_ty.kind() {
-                            Adt(def, _) => match res {
+                            ty::Adt(def, _) => match res {
                                 Res::Def(DefKind::Const, def_id) => (Some(def.did()), Some(def_id)),
                                 _ => (None, None),
                             },
@@ -1046,15 +1150,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         pat_info: PatInfo<'tcx, '_>,
     ) -> Ty<'tcx> {
-        let PatInfo { binding_mode: def_bm, top_info: ti, decl_origin } = pat_info;
         let tcx = self.tcx;
         let on_error = |e| {
             for pat in subpats {
-                self.check_pat(
-                    pat,
-                    Ty::new_error(tcx, e),
-                    PatInfo { binding_mode: def_bm, top_info: ti, decl_origin },
-                );
+                self.check_pat(pat, Ty::new_error(tcx, e), pat_info);
             }
         };
         let report_unexpected_res = |res: Res| {
@@ -1099,7 +1198,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let pat_ty = pat_ty.no_bound_vars().expect("expected fn type");
 
         // Type-check the tuple struct pattern against the expected type.
-        let diag = self.demand_eqtype_pat_diag(pat.span, expected, pat_ty, ti);
+        let diag = self.demand_eqtype_pat_diag(pat.span, expected, pat_ty, pat_info.top_info);
         let had_err = if let Some(err) = diag {
             err.emit();
             true
@@ -1117,11 +1216,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             for (i, subpat) in subpats.iter().enumerate_and_adjust(variant.fields.len(), ddpos) {
                 let field = &variant.fields[FieldIdx::from_usize(i)];
                 let field_ty = self.field_ty(subpat.span, field, args);
-                self.check_pat(
-                    subpat,
-                    field_ty,
-                    PatInfo { binding_mode: def_bm, top_info: ti, decl_origin },
-                );
+                self.check_pat(subpat, field_ty, pat_info);
 
                 self.tcx.check_stability(
                     variant.fields[FieldIdx::from_usize(i)].did,
@@ -1131,16 +1226,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 );
             }
         } else {
-            // Pattern has wrong number of fields.
-            let e =
-                self.e0023(pat.span, res, qpath, subpats, &variant.fields.raw, expected, had_err);
+            let e = self.emit_err_pat_wrong_number_of_fields(
+                pat.span,
+                res,
+                qpath,
+                subpats,
+                &variant.fields.raw,
+                expected,
+                had_err,
+            );
             on_error(e);
             return Ty::new_error(tcx, e);
         }
         pat_ty
     }
 
-    fn e0023(
+    fn emit_err_pat_wrong_number_of_fields(
         &self,
         pat_span: Span,
         res: Res,
@@ -1317,13 +1418,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
         let max_len = cmp::max(expected_len, elements.len());
 
-        let element_tys_iter = (0..max_len).map(|_| {
-            self.next_ty_var(
-                // FIXME: `MiscVariable` for now -- obtaining the span and name information
-                // from all tuple elements isn't trivial.
-                TypeVariableOrigin { kind: TypeVariableOriginKind::TypeInference, span },
-            )
-        });
+        let element_tys_iter = (0..max_len).map(|_| self.next_ty_var(span));
         let element_tys = tcx.mk_type_list_from_iter(element_tys_iter);
         let pat_ty = Ty::new_tup(tcx, element_tys);
         if let Some(err) = self.demand_eqtype_pat_diag(span, expected, pat_ty, pat_info.top_info) {
@@ -1513,7 +1608,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         {
             let has_shorthand_field_name = field_patterns.iter().any(|field| field.is_shorthand);
             if has_shorthand_field_name {
-                let path = rustc_hir_pretty::qpath_to_string(qpath);
+                let path = rustc_hir_pretty::qpath_to_string(&self.tcx, qpath);
                 let mut err = struct_span_code_err!(
                     self.dcx(),
                     pat.span,
@@ -1579,7 +1674,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         unmentioned_fields: &mut Vec<(&'tcx ty::FieldDef, Ident)>,
         pat: &'tcx Pat<'tcx>,
         variant: &ty::VariantDef,
-        args: &'tcx ty::List<ty::GenericArg<'tcx>>,
+        args: ty::GenericArgsRef<'tcx>,
     ) -> Diag<'tcx> {
         let tcx = self.tcx;
         let (field_names, t, plural) = if let [field] = inexistent_fields {
@@ -1695,7 +1790,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 return None;
             }
 
-            let path = rustc_hir_pretty::qpath_to_string(qpath);
+            let path = rustc_hir_pretty::qpath_to_string(&self.tcx, qpath);
             let mut err = struct_span_code_err!(
                 self.dcx(),
                 pat.span,
@@ -1745,7 +1840,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             f
                         }
                     }
-                    Err(_) => rustc_hir_pretty::pat_to_string(field.pat),
+                    Err(_) => rustc_hir_pretty::pat_to_string(&self.tcx, field.pat),
                 }
             })
             .collect::<Vec<String>>()
@@ -1949,10 +2044,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Ok(()) => {
                 // Here, `demand::subtype` is good enough, but I don't
                 // think any errors can be introduced by using `demand::eqtype`.
-                let inner_ty = self.next_ty_var(TypeVariableOrigin {
-                    kind: TypeVariableOriginKind::TypeInference,
-                    span: inner.span,
-                });
+                let inner_ty = self.next_ty_var(inner.span);
                 let box_ty = Ty::new_box(tcx, inner_ty);
                 self.demand_eqtype_pat(span, expected, box_ty, pat_info.top_info);
                 (box_ty, inner_ty)
@@ -1966,66 +2058,122 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         box_ty
     }
 
+    fn check_pat_deref(
+        &self,
+        span: Span,
+        inner: &'tcx Pat<'tcx>,
+        expected: Ty<'tcx>,
+        pat_info: PatInfo<'tcx, '_>,
+    ) -> Ty<'tcx> {
+        let tcx = self.tcx;
+        // Register a `DerefPure` bound, which is required by all `deref!()` pats.
+        self.register_bound(
+            expected,
+            tcx.require_lang_item(hir::LangItem::DerefPure, Some(span)),
+            self.misc(span),
+        );
+        // <expected as Deref>::Target
+        let ty = Ty::new_projection(
+            tcx,
+            tcx.require_lang_item(hir::LangItem::DerefTarget, Some(span)),
+            [expected],
+        );
+        let ty = self.normalize(span, ty);
+        let ty = self.try_structurally_resolve_type(span, ty);
+        self.check_pat(inner, ty, pat_info);
+
+        // Check if the pattern has any `ref mut` bindings, which would require
+        // `DerefMut` to be emitted in MIR building instead of just `Deref`.
+        // We do this *after* checking the inner pattern, since we want to make
+        // sure to apply any match-ergonomics adjustments.
+        if self.typeck_results.borrow().pat_has_ref_mut_binding(inner) {
+            self.register_bound(
+                expected,
+                tcx.require_lang_item(hir::LangItem::DerefMut, Some(span)),
+                self.misc(span),
+            );
+        }
+
+        expected
+    }
+
     // Precondition: Pat is Ref(inner)
     fn check_pat_ref(
         &self,
         pat: &'tcx Pat<'tcx>,
         inner: &'tcx Pat<'tcx>,
-        mutbl: hir::Mutability,
+        mutbl: Mutability,
         expected: Ty<'tcx>,
         pat_info: PatInfo<'tcx, '_>,
+        consumed_inherited_ref: bool,
     ) -> Ty<'tcx> {
-        let tcx = self.tcx;
-        let expected = self.shallow_resolve(expected);
-        let (ref_ty, inner_ty) = match self.check_dereferenceable(pat.span, expected, inner) {
-            Ok(()) => {
-                // `demand::subtype` would be good enough, but using `eqtype` turns
-                // out to be equally general. See (note_1) for details.
+        if consumed_inherited_ref
+            && pat.span.at_least_rust_2024()
+            && self.tcx.features().ref_pat_eat_one_layer_2024
+        {
+            self.typeck_results.borrow_mut().skipped_ref_pats_mut().insert(pat.hir_id);
+            self.check_pat(inner, expected, pat_info);
+            expected
+        } else {
+            let tcx = self.tcx;
+            let expected = self.shallow_resolve(expected);
+            let (ref_ty, inner_ty) = match self.check_dereferenceable(pat.span, expected, inner) {
+                Ok(()) => {
+                    // `demand::subtype` would be good enough, but using `eqtype` turns
+                    // out to be equally general. See (note_1) for details.
 
-                // Take region, inner-type from expected type if we can,
-                // to avoid creating needless variables. This also helps with
-                // the bad interactions of the given hack detailed in (note_1).
-                debug!("check_pat_ref: expected={:?}", expected);
-                match *expected.kind() {
-                    ty::Ref(_, r_ty, r_mutbl) if r_mutbl == mutbl => (expected, r_ty),
-                    _ => {
-                        let inner_ty = self.next_ty_var(TypeVariableOrigin {
-                            kind: TypeVariableOriginKind::TypeInference,
-                            span: inner.span,
-                        });
-                        let ref_ty = self.new_ref_ty(pat.span, mutbl, inner_ty);
-                        debug!("check_pat_ref: demanding {:?} = {:?}", expected, ref_ty);
-                        let err = self.demand_eqtype_pat_diag(
-                            pat.span,
-                            expected,
-                            ref_ty,
-                            pat_info.top_info,
-                        );
+                    // Take region, inner-type from expected type if we can,
+                    // to avoid creating needless variables. This also helps with
+                    // the bad interactions of the given hack detailed in (note_1).
+                    debug!("check_pat_ref: expected={:?}", expected);
+                    match *expected.kind() {
+                        ty::Ref(_, r_ty, r_mutbl) if r_mutbl == mutbl => (expected, r_ty),
+                        _ => {
+                            if consumed_inherited_ref && self.tcx.features().ref_pat_everywhere {
+                                // We already matched against a match-ergonmics inserted reference,
+                                // so we don't need to match against a reference from the original type.
+                                // Save this infor for use in lowering later
+                                self.typeck_results
+                                    .borrow_mut()
+                                    .skipped_ref_pats_mut()
+                                    .insert(pat.hir_id);
+                                (expected, expected)
+                            } else {
+                                let inner_ty = self.next_ty_var(inner.span);
+                                let ref_ty = self.new_ref_ty(pat.span, mutbl, inner_ty);
+                                debug!("check_pat_ref: demanding {:?} = {:?}", expected, ref_ty);
+                                let err = self.demand_eqtype_pat_diag(
+                                    pat.span,
+                                    expected,
+                                    ref_ty,
+                                    pat_info.top_info,
+                                );
 
-                        // Look for a case like `fn foo(&foo: u32)` and suggest
-                        // `fn foo(foo: &u32)`
-                        if let Some(mut err) = err {
-                            self.borrow_pat_suggestion(&mut err, pat);
-                            err.emit();
+                                // Look for a case like `fn foo(&foo: u32)` and suggest
+                                // `fn foo(foo: &u32)`
+                                if let Some(mut err) = err {
+                                    self.borrow_pat_suggestion(&mut err, pat);
+                                    err.emit();
+                                }
+                                (ref_ty, inner_ty)
+                            }
                         }
-                        (ref_ty, inner_ty)
                     }
                 }
-            }
-            Err(guar) => {
-                let err = Ty::new_error(tcx, guar);
-                (err, err)
-            }
-        };
-        self.check_pat(inner, inner_ty, pat_info);
-        ref_ty
+                Err(guar) => {
+                    let err = Ty::new_error(tcx, guar);
+                    (err, err)
+                }
+            };
+            self.check_pat(inner, inner_ty, pat_info);
+            ref_ty
+        }
     }
 
     /// Create a reference type with a fresh region variable.
-    fn new_ref_ty(&self, span: Span, mutbl: hir::Mutability, ty: Ty<'tcx>) -> Ty<'tcx> {
+    fn new_ref_ty(&self, span: Span, mutbl: Mutability, ty: Ty<'tcx>) -> Ty<'tcx> {
         let region = self.next_region_var(infer::PatternRegion(span));
-        let mt = ty::TypeAndMut { ty, mutbl };
-        Ty::new_ref(self.tcx, region, mt)
+        Ty::new_ref(self.tcx, region, ty, mutbl)
     }
 
     fn try_resolve_slice_ty_to_array_ty(
@@ -2040,9 +2188,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let tcx = self.tcx;
         let len = before.len();
-        let ty_var_origin =
-            TypeVariableOrigin { kind: TypeVariableOriginKind::TypeInference, span };
-        let inner_ty = self.next_ty_var(ty_var_origin);
+        let inner_ty = self.next_ty_var(span);
 
         Some(Ty::new_array(tcx, inner_ty, len.try_into().unwrap()))
     }
@@ -2134,7 +2280,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // The expected type must be an array or slice, but was neither, so error.
             _ => {
                 let guar = expected.error_reported().err().unwrap_or_else(|| {
-                    self.error_expected_array_or_slice(span, expected, pat_info.top_info)
+                    self.error_expected_array_or_slice(span, expected, pat_info)
                 });
                 let err = Ty::new_error(self.tcx, guar);
                 (err, Some(err), err)
@@ -2169,7 +2315,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         len: ty::Const<'tcx>,
         min_len: u64,
     ) -> (Option<Ty<'tcx>>, Ty<'tcx>) {
-        let len = match len.eval(self.tcx, self.param_env, None) {
+        let len = match len.eval(self.tcx, self.param_env, span) {
             Ok(val) => val
                 .try_to_scalar()
                 .and_then(|scalar| scalar.try_to_int().ok())
@@ -2273,8 +2419,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         span: Span,
         expected_ty: Ty<'tcx>,
-        ti: TopInfo<'tcx>,
+        pat_info: PatInfo<'tcx, '_>,
     ) -> ErrorGuaranteed {
+        let PatInfo { top_info: ti, current_depth, .. } = pat_info;
+
         let mut err = struct_span_code_err!(
             self.dcx(),
             span,
@@ -2292,9 +2440,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             && let Some(_) = ti.origin_expr
             && let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span)
         {
-            let ty = self.resolve_vars_if_possible(ti.expected);
-            let is_slice_or_array_or_vector = self.is_slice_or_array_or_vector(ty);
-            match is_slice_or_array_or_vector.1.kind() {
+            let resolved_ty = self.resolve_vars_if_possible(ti.expected);
+            let (is_slice_or_array_or_vector, resolved_ty) =
+                self.is_slice_or_array_or_vector(resolved_ty);
+            match resolved_ty.kind() {
                 ty::Adt(adt_def, _)
                     if self.tcx.is_diagnostic_item(sym::Option, adt_def.did())
                         || self.tcx.is_diagnostic_item(sym::Result, adt_def.did()) =>
@@ -2309,7 +2458,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 _ => (),
             }
-            if is_slice_or_array_or_vector.0 {
+
+            let is_top_level = current_depth <= 1;
+            if is_slice_or_array_or_vector && is_top_level {
                 err.span_suggestion(
                     span,
                     "consider slicing here",

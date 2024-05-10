@@ -1,5 +1,3 @@
-#![feature(associated_type_bounds)]
-
 // Test for <https://github.com/rust-lang/rust/issues/119857>.
 
 pub trait Iter {

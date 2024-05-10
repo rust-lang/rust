@@ -1,12 +1,10 @@
-use std::borrow::Cow;
-
 use crate::build::ExprCategory;
 use crate::errors::*;
-use rustc_middle::thir::visit::Visitor;
 
 use rustc_errors::DiagArgValue;
-use rustc_hir as hir;
+use rustc_hir::{self as hir, BindingMode, ByRef, HirId, Mutability};
 use rustc_middle::mir::BorrowKind;
+use rustc_middle::thir::visit::Visitor;
 use rustc_middle::thir::*;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt};
@@ -16,6 +14,7 @@ use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::symbol::Symbol;
 use rustc_span::{sym, Span};
 
+use std::borrow::Cow;
 use std::mem;
 use std::ops::Bound;
 
@@ -24,7 +23,7 @@ struct UnsafetyVisitor<'a, 'tcx> {
     thir: &'a Thir<'tcx>,
     /// The `HirId` of the current scope, which would be the `HirId`
     /// of the current HIR node, modulo adjustments. Used for lint levels.
-    hir_context: hir::HirId,
+    hir_context: HirId,
     /// The current "safety context". This notably tracks whether we are in an
     /// `unsafe` block, and whether it has been used.
     safety_context: SafetyContext,
@@ -123,7 +122,7 @@ impl<'tcx> UnsafetyVisitor<'_, 'tcx> {
 
     fn warn_unused_unsafe(
         &mut self,
-        hir_id: hir::HirId,
+        hir_id: HirId,
         block_span: Span,
         enclosing_unsafe: Option<UnusedUnsafeEnclosing>,
     ) {
@@ -250,6 +249,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                 | PatKind::Variant { .. }
                 | PatKind::Leaf { .. }
                 | PatKind::Deref { .. }
+                | PatKind::DerefPattern { .. }
                 | PatKind::Range { .. }
                 | PatKind::Slice { .. }
                 | PatKind::Array { .. } => {
@@ -288,29 +288,29 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                     visit::walk_pat(self, pat);
                 }
             }
-            PatKind::Binding { mode: BindingMode::ByRef(borrow_kind), ty, .. } => {
+            PatKind::Binding { mode: BindingMode(ByRef::Yes(rm), _), ty, .. } => {
                 if self.inside_adt {
                     let ty::Ref(_, ty, _) = ty.kind() else {
                         span_bug!(
                             pat.span,
-                            "BindingMode::ByRef in pattern, but found non-reference type {}",
+                            "ByRef::Yes in pattern, but found non-reference type {}",
                             ty
                         );
                     };
-                    match borrow_kind {
-                        BorrowKind::Fake | BorrowKind::Shared => {
+                    match rm {
+                        Mutability::Not => {
                             if !ty.is_freeze(self.tcx, self.param_env) {
                                 self.requires_unsafe(pat.span, BorrowOfLayoutConstrainedField);
                             }
                         }
-                        BorrowKind::Mut { .. } => {
+                        Mutability::Mut { .. } => {
                             self.requires_unsafe(pat.span, MutationOfLayoutConstrainedField);
                         }
                     }
                 }
                 visit::walk_pat(self, pat);
             }
-            PatKind::Deref { .. } => {
+            PatKind::Deref { .. } | PatKind::DerefPattern { .. } => {
                 let old_inside_adt = std::mem::replace(&mut self.inside_adt, false);
                 visit::walk_pat(self, pat);
                 self.inside_adt = old_inside_adt;
@@ -513,7 +513,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                 visit::walk_expr(&mut visitor, expr);
                 if visitor.found {
                     match borrow_kind {
-                        BorrowKind::Fake | BorrowKind::Shared
+                        BorrowKind::Fake(_) | BorrowKind::Shared
                             if !self.thir[arg].ty.is_freeze(self.tcx, self.param_env) =>
                         {
                             self.requires_unsafe(expr.span, BorrowOfLayoutConstrainedField)
@@ -521,7 +521,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                         BorrowKind::Mut { .. } => {
                             self.requires_unsafe(expr.span, MutationOfLayoutConstrainedField)
                         }
-                        BorrowKind::Fake | BorrowKind::Shared => {}
+                        BorrowKind::Fake(_) | BorrowKind::Shared => {}
                     }
                 }
             }
@@ -536,22 +536,17 @@ enum SafetyContext {
     Safe,
     BuiltinUnsafeBlock,
     UnsafeFn,
-    UnsafeBlock {
-        span: Span,
-        hir_id: hir::HirId,
-        used: bool,
-        nested_used_blocks: Vec<NestedUsedBlock>,
-    },
+    UnsafeBlock { span: Span, hir_id: HirId, used: bool, nested_used_blocks: Vec<NestedUsedBlock> },
 }
 
 #[derive(Clone, Copy)]
 struct NestedUsedBlock {
-    hir_id: hir::HirId,
+    hir_id: HirId,
     span: Span,
 }
 
 struct UnusedUnsafeWarning {
-    hir_id: hir::HirId,
+    hir_id: HirId,
     block_span: Span,
     enclosing_unsafe: Option<UnusedUnsafeEnclosing>,
 }
@@ -584,7 +579,7 @@ impl UnsafeOpKind {
     pub fn emit_unsafe_op_in_unsafe_fn_lint(
         &self,
         tcx: TyCtxt<'_>,
-        hir_id: hir::HirId,
+        hir_id: HirId,
         span: Span,
         suggest_unsafe_block: bool,
     ) {
@@ -725,7 +720,7 @@ impl UnsafeOpKind {
         &self,
         tcx: TyCtxt<'_>,
         span: Span,
-        hir_context: hir::HirId,
+        hir_context: HirId,
         unsafe_op_in_unsafe_fn_allowed: bool,
     ) {
         let note_non_inherited = tcx.hir().parent_iter(hir_context).find(|(id, node)| {
@@ -908,11 +903,6 @@ impl UnsafeOpKind {
 }
 
 pub fn check_unsafety(tcx: TyCtxt<'_>, def: LocalDefId) {
-    // THIR unsafeck can be disabled with `-Z thir-unsafeck=off`
-    if !tcx.sess.opts.unstable_opts.thir_unsafeck {
-        return;
-    }
-
     // Closures and inline consts are handled by their owner, if it has a body
     // Also, don't safety check custom MIR
     if tcx.is_typeck_child(def.to_def_id()) || tcx.has_attr(def, sym::custom_mir) {

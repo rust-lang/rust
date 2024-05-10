@@ -165,11 +165,16 @@ pub use self::bit::{BitAndAssign, BitOrAssign, BitXorAssign, ShlAssign, ShrAssig
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::deref::{Deref, DerefMut};
 
+#[unstable(feature = "deref_pure_trait", issue = "87121")]
+pub use self::deref::DerefPure;
+
 #[unstable(feature = "receiver_trait", issue = "none")]
 pub use self::deref::Receiver;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::drop::Drop;
+
+pub(crate) use self::drop::fallback_surface_drop;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::function::{Fn, FnMut, FnOnce};

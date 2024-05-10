@@ -1,5 +1,8 @@
-//@ check-pass
-//@ known-bug: #100041
+//@ revisions: current next
+//@[next] compile-flags: -Znext-solver
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@[current] check-pass
+//@[current] known-bug: #100041
 
 // Should fail. Normalization can bypass well-formedness checking.
 // `[[[[[[u8]]]]]]` is not a well-formed type since size of type `[u8]` cannot
@@ -14,6 +17,10 @@ impl<T: ?Sized> WellUnformed for T {
 }
 
 const _: <[[[[[[u8]]]]]] as WellUnformed>::RequestNormalize = ();
+//[next]~^ the type
+//[next]~| the type
 const _: <Vec<str> as WellUnformed>::RequestNormalize = ();
+//[next]~^ the type
+//[next]~| the type
 
 fn main() {}

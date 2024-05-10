@@ -1,4 +1,3 @@
-use super::TryFrom;
 use crate::num::TryFromIntError;
 
 mod private {
@@ -35,8 +34,10 @@ macro_rules! impl_float_to_int {
     }
 }
 
+impl_float_to_int!(f16 => u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize);
 impl_float_to_int!(f32 => u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize);
 impl_float_to_int!(f64 => u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize);
+impl_float_to_int!(f128 => u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize);
 
 // Conversion traits for primitive integer and float types
 // Conversions T -> T are covered by a blanket impl and therefore excluded
@@ -164,7 +165,12 @@ impl_from!(u16 => f64, #[stable(feature = "lossless_float_conv", since = "1.6.0"
 impl_from!(u32 => f64, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
 
 // float -> float
+// FIXME(f16_f128): adding additional `From` impls for existing types breaks inference. See
+// <https://github.com/rust-lang/rust/issues/123824>
+impl_from!(f16 => f128, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
 impl_from!(f32 => f64, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
+impl_from!(f32 => f128, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
+impl_from!(f64 => f128, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
 
 macro_rules! impl_float_from_bool {
     ($float:ty) => {
@@ -323,7 +329,6 @@ impl_try_from_lower_bounded!(isize => usize);
 #[cfg(target_pointer_width = "16")]
 mod ptr_try_from_impls {
     use super::TryFromIntError;
-    use crate::convert::TryFrom;
 
     impl_try_from_upper_bounded!(usize => u8);
     impl_try_from_unbounded!(usize => u16, u32, u64, u128);
@@ -346,7 +351,6 @@ mod ptr_try_from_impls {
 #[cfg(target_pointer_width = "32")]
 mod ptr_try_from_impls {
     use super::TryFromIntError;
-    use crate::convert::TryFrom;
 
     impl_try_from_upper_bounded!(usize => u8, u16);
     impl_try_from_unbounded!(usize => u32, u64, u128);
@@ -372,7 +376,6 @@ mod ptr_try_from_impls {
 #[cfg(target_pointer_width = "64")]
 mod ptr_try_from_impls {
     use super::TryFromIntError;
-    use crate::convert::TryFrom;
 
     impl_try_from_upper_bounded!(usize => u8, u16, u32);
     impl_try_from_unbounded!(usize => u64, u128);

@@ -1,3 +1,5 @@
+//@ compile-flags: -C debuginfo=full
+
 // EMIT_MIR issue_58867_inline_as_ref_as_mut.a.Inline.after.mir
 pub fn a<T>(x: &mut [T]) -> &mut [T] {
     // CHECK-LABEL: fn a(

@@ -4,7 +4,7 @@ use clippy_utils::sugg::Sugg;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, Mutability};
 use rustc_lint::LateContext;
-use rustc_middle::ty::{self, Ty, TypeAndMut};
+use rustc_middle::ty::{self, Ty};
 
 use super::PTR_CAST_CONSTNESS;
 
@@ -17,14 +17,8 @@ pub(super) fn check<'tcx>(
     msrv: &Msrv,
 ) {
     if msrv.meets(msrvs::POINTER_CAST_CONSTNESS)
-        && let ty::RawPtr(TypeAndMut {
-            mutbl: from_mutbl,
-            ty: from_ty,
-        }) = cast_from.kind()
-        && let ty::RawPtr(TypeAndMut {
-            mutbl: to_mutbl,
-            ty: to_ty,
-        }) = cast_to.kind()
+        && let ty::RawPtr(from_ty, from_mutbl) = cast_from.kind()
+        && let ty::RawPtr(to_ty, to_mutbl) = cast_to.kind()
         && matches!(
             (from_mutbl, to_mutbl),
             (Mutability::Not, Mutability::Mut) | (Mutability::Mut, Mutability::Not)
@@ -42,7 +36,7 @@ pub(super) fn check<'tcx>(
             PTR_CAST_CONSTNESS,
             expr.span,
             "`as` casting between raw pointers while changing only its constness",
-            &format!("try `pointer::cast_{constness}`, a safer alternative"),
+            format!("try `pointer::cast_{constness}`, a safer alternative"),
             format!("{}.cast_{constness}()", sugg.maybe_par()),
             Applicability::MachineApplicable,
         );

@@ -1,5 +1,5 @@
 error: unconstrained opaque type
-  --> $DIR/two_tait_defining_each_other2.rs:5:10
+  --> $DIR/two_tait_defining_each_other2.rs:6:10
    |
 LL | type A = impl Foo;
    |          ^^^^^^^^
@@ -7,18 +7,18 @@ LL | type A = impl Foo;
    = note: `A` must be used in combination with a concrete type within the same module
 
 error: opaque type's hidden type cannot be another opaque type from the same scope
-  --> $DIR/two_tait_defining_each_other2.rs:12:5
+  --> $DIR/two_tait_defining_each_other2.rs:13:5
    |
 LL |     x // B's hidden type is A (opaquely)
    |     ^ one of the two opaque types used here has to be outside its defining scope
    |
 note: opaque type whose hidden type is being assigned
-  --> $DIR/two_tait_defining_each_other2.rs:6:10
+  --> $DIR/two_tait_defining_each_other2.rs:7:10
    |
 LL | type B = impl Foo;
    |          ^^^^^^^^
 note: opaque type being used as hidden type
-  --> $DIR/two_tait_defining_each_other2.rs:5:10
+  --> $DIR/two_tait_defining_each_other2.rs:6:10
    |
 LL | type A = impl Foo;
    |          ^^^^^^^^

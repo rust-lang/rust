@@ -64,19 +64,22 @@ For example, you can (cross-)run the driver on a particular file by doing
 ./miri run tests/pass/hello.rs --target i686-unknown-linux-gnu
 ```
 
-and you can (cross-)run the entire test suite using:
+Tests in ``pass-dep`` need to be run using ``./miri run --dep <filename>``.  
+For example:
+```sh
+./miri run --dep tests/pass-dep/shims/libc-fs.rs
+```
+
+You can (cross-)run the entire test suite using:
 
 ```
 ./miri test
 MIRI_TEST_TARGET=i686-unknown-linux-gnu ./miri test
 ```
 
-If your target doesn't support libstd that should usually just work. However, if you are using a
-custom target file, you might have to set `MIRI_NO_STD=1`.
-
 `./miri test FILTER` only runs those tests that contain `FILTER` in their filename (including the
 base directory, e.g. `./miri test fail` will run all compile-fail tests). These filters are passed
-to `cargo test`, so for multiple filers you need to use `./miri test -- FILTER1 FILTER2`.
+to `cargo test`, so for multiple filters you need to use `./miri test -- FILTER1 FILTER2`.
 
 #### Fine grained logging
 
@@ -178,6 +181,7 @@ to `.vscode/settings.json` in your local Miri clone:
         "cargo",
         "clippy", // make this `check` when working with a locally built rustc
         "--message-format=json",
+        "--all-targets",
     ],
     // Contrary to what the name suggests, this also affects proc macros.
     "rust-analyzer.cargo.buildScripts.overrideCommand": [
@@ -187,6 +191,7 @@ to `.vscode/settings.json` in your local Miri clone:
         "cargo",
         "check",
         "--message-format=json",
+        "--all-targets",
     ],
 }
 ```
@@ -236,18 +241,20 @@ We use the [`josh` proxy](https://github.com/josh-project/josh) to transmit chan
 rustc and Miri repositories. You can install it as follows:
 
 ```sh
-cargo +stable install josh-proxy --git https://github.com/josh-project/josh --tag r22.12.06
+RUSTFLAGS="--cap-lints=warn" cargo +stable install josh-proxy --git https://github.com/josh-project/josh --tag r23.12.04
 ```
 
 Josh will automatically be started and stopped by `./miri`.
 
 ### Importing changes from the rustc repo
 
+*Note: this usually happens automatically, so these steps rarely have to be done by hand.*
+
 We assume we start on an up-to-date master branch in the Miri repo.
 
 ```sh
 # Fetch and merge rustc side of the history. Takes ca 5 min the first time.
-# This will also update the 'rustc-version' file.
+# This will also update the `rustc-version` file.
 ./miri rustc-pull
 # Update local toolchain and apply formatting.
 ./miri toolchain && ./miri fmt
@@ -261,12 +268,6 @@ needed.
 
 ### Exporting changes to the rustc repo
 
-Keep in mind that pushing is the most complicated job that josh has to do -- pulling just filters
-the rustc history, but pushing needs to construct a new rustc history that would filter to the given
-Miri history! To avoid problems, it is a good idea to always pull immediately before you push. If
-you are getting strange errors, chances are you are running into [this josh
-bug](https://github.com/josh-project/josh/issues/998). In that case, please get in touch on Zulip.
-
 We will use the josh proxy to push to your fork of rustc. Run the following in the Miri repo,
 assuming we are on an up-to-date master branch:
 
@@ -275,9 +276,9 @@ assuming we are on an up-to-date master branch:
 ./miri rustc-push YOUR_NAME miri
 ```
 
-This will create a new branch called 'miri' in your fork, and the output should
-include a link to create a rustc PR that will integrate those changes into the
-main repository.
+This will create a new branch called `miri` in your fork, and the output should include a link that
+creates a rustc PR to integrate those changes into the main repository. If that PR has conflicts,
+you need to pull rustc changes into Miri first, and then re-do the rustc push.
 
 If this fails due to authentication problems, it can help to make josh push via ssh instead of
 https. Add the following to your `.gitconfig`:

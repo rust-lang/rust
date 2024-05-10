@@ -5,8 +5,6 @@
       debug c => _1;
       let mut _0: i8;
       let mut _2: std::cmp::Ordering;
-      scope 1 {
-      }
   
       bb0: {
           StorageLive(_2);

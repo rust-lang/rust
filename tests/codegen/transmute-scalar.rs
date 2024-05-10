@@ -49,7 +49,7 @@ pub fn ptr_to_int(p: *mut u16) -> usize {
 }
 
 // CHECK: define{{.*}}ptr @int_to_ptr([[USIZE]] %i)
-// CHECK: %_0 = inttoptr [[USIZE]] %i to ptr
+// CHECK: %_0 = getelementptr i8, ptr null, [[USIZE]] %i
 // CHECK-NEXT: ret ptr %_0
 #[no_mangle]
 pub fn int_to_ptr(i: usize) -> *mut u16 {

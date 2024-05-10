@@ -13,6 +13,12 @@ error[E0308]: mismatched types
    |
 LL |     |y: Vec<[(); for x in 0..2 {}]>| {};
    |                  ^^^^^^^^^^^^^^^^ expected `usize`, found `()`
+   |
+   = note: `for` loops evaluate to unit type `()`
+help: consider returning a value here
+   |
+LL |     |y: Vec<[(); for x in 0..2 {} /* `usize` value */]>| {};
+   |                                   +++++++++++++++++++
 
 error: aborting due to 2 previous errors
 

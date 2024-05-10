@@ -12,14 +12,12 @@ use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{BorrowKind, Expr, ExprKind, ItemKind, LangItem, Node};
-use rustc_hir_typeck::{FnCtxt, Inherited};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::LateContext;
 use rustc_middle::mir::Mutability;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, OverloadedDeref};
 use rustc_middle::ty::{
-    self, ClauseKind, GenericArg, GenericArgKind, GenericArgsRef, ImplPolarity, ParamTy, ProjectionPredicate,
-    TraitPredicate, Ty,
+    self, ClauseKind, GenericArg, GenericArgKind, GenericArgsRef, ParamTy, ProjectionPredicate, TraitPredicate, Ty,
 };
 use rustc_span::{sym, Symbol};
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
@@ -138,7 +136,7 @@ fn check_addr_of_expr(
                 cx,
                 UNNECESSARY_TO_OWNED,
                 parent.span,
-                &format!("unnecessary use of `{method_name}`"),
+                format!("unnecessary use of `{method_name}`"),
                 "use",
                 format!(
                     "{:&>width$}{receiver_snippet}",
@@ -163,7 +161,7 @@ fn check_addr_of_expr(
                     cx,
                     UNNECESSARY_TO_OWNED,
                     parent.span,
-                    &format!("unnecessary use of `{method_name}`"),
+                    format!("unnecessary use of `{method_name}`"),
                     "use",
                     receiver_snippet,
                     Applicability::MachineApplicable,
@@ -173,7 +171,7 @@ fn check_addr_of_expr(
                     cx,
                     UNNECESSARY_TO_OWNED,
                     expr.span.with_lo(receiver.span.hi()),
-                    &format!("unnecessary use of `{method_name}`"),
+                    format!("unnecessary use of `{method_name}`"),
                     "remove this",
                     String::new(),
                     Applicability::MachineApplicable,
@@ -188,7 +186,7 @@ fn check_addr_of_expr(
                 cx,
                 UNNECESSARY_TO_OWNED,
                 parent.span,
-                &format!("unnecessary use of `{method_name}`"),
+                format!("unnecessary use of `{method_name}`"),
                 "use",
                 format!("{receiver_snippet}.as_ref()"),
                 Applicability::MachineApplicable,
@@ -232,7 +230,7 @@ fn check_into_iter_call_arg(
             cx,
             UNNECESSARY_TO_OWNED,
             parent.span,
-            &format!("unnecessary use of `{method_name}`"),
+            format!("unnecessary use of `{method_name}`"),
             "use",
             format!("{receiver_snippet}.iter().{cloned_or_copied}()"),
             Applicability::MaybeIncorrect,
@@ -271,7 +269,7 @@ fn check_split_call_arg(cx: &LateContext<'_>, expr: &Expr<'_>, method_name: Symb
             cx,
             UNNECESSARY_TO_OWNED,
             parent.span,
-            &format!("unnecessary use of `{method_name}`"),
+            format!("unnecessary use of `{method_name}`"),
             "use",
             format!("{receiver_snippet}{as_ref}.split({arg_snippet})"),
             Applicability::MaybeIncorrect,
@@ -336,12 +334,9 @@ fn check_other_call_arg<'tcx>(
         && let Some((n_refs, receiver_ty)) = if n_refs > 0 || is_copy(cx, receiver_ty) {
             Some((n_refs, receiver_ty))
         } else if trait_predicate.def_id() != deref_trait_id {
-            Some((1, Ty::new_ref(cx.tcx,
+            Some((1, Ty::new_imm_ref(cx.tcx,
                 cx.tcx.lifetimes.re_erased,
-                ty::TypeAndMut {
-                    ty: receiver_ty,
-                    mutbl: Mutability::Not,
-                },
+                receiver_ty,
             )))
         } else {
             None
@@ -353,7 +348,7 @@ fn check_other_call_arg<'tcx>(
             cx,
             UNNECESSARY_TO_OWNED,
             maybe_arg.span,
-            &format!("unnecessary use of `{method_name}`"),
+            format!("unnecessary use of `{method_name}`"),
             "use",
             format!("{:&>n_refs$}{receiver_snippet}", ""),
             Applicability::MachineApplicable,
@@ -441,9 +436,7 @@ fn can_change_type<'a>(cx: &LateContext<'a>, mut expr: &'a Expr<'a>, mut ty: Ty<
             Node::Item(item) => {
                 if let ItemKind::Fn(_, _, body_id) = &item.kind
                     && let output_ty = return_ty(cx, item.owner_id)
-                    && let inherited = Inherited::new(cx.tcx, item.owner_id.def_id)
-                    && let fn_ctxt = FnCtxt::new(&inherited, cx.param_env, item.owner_id.def_id)
-                    && fn_ctxt.can_coerce(ty, output_ty)
+                    && rustc_hir_typeck::can_coerce(cx.tcx, cx.param_env, item.owner_id.def_id, ty, output_ty)
                 {
                     if has_lifetime(output_ty) && has_lifetime(ty) {
                         return false;
@@ -645,7 +638,7 @@ fn check_if_applicable_to_argument<'tcx>(cx: &LateContext<'tcx>, arg: &Expr<'tcx
             cx,
             UNNECESSARY_TO_OWNED,
             arg.span,
-            &format!("unnecessary use of `{method_name}`"),
+            format!("unnecessary use of `{method_name}`"),
             "replace it with",
             if original_arg_ty.is_array() {
                 format!("{snippet}.as_slice()")
@@ -669,7 +662,7 @@ fn check_borrow_predicate<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) {
         && let Some(borrow_id) = cx.tcx.get_diagnostic_item(sym::Borrow)
         && cx.tcx.predicates_of(method_def_id).predicates.iter().any(|(pred, _)| {
             if let ClauseKind::Trait(trait_pred) = pred.kind().skip_binder()
-                && trait_pred.polarity == ImplPolarity::Positive
+                && trait_pred.polarity == ty::PredicatePolarity::Positive
                 && trait_pred.trait_ref.def_id == borrow_id
             {
                 true

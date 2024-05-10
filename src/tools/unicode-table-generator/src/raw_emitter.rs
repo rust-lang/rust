@@ -23,6 +23,7 @@ impl RawEmitter {
     }
 
     fn emit_bitset(&mut self, ranges: &[Range<u32>]) -> Result<(), String> {
+        let first_code_point = ranges.first().unwrap().start;
         let last_code_point = ranges.last().unwrap().end;
         // bitset for every bit in the codepoint range
         //
@@ -101,7 +102,10 @@ impl RawEmitter {
         )
         .unwrap();
         writeln!(&mut self.file, "pub const fn lookup(c: char) -> bool {{").unwrap();
-        writeln!(&mut self.file, "    super::bitset_search(",).unwrap();
+        if first_code_point > 0x7f {
+            writeln!(&mut self.file, "    (c as u32) >= {first_code_point:#04x} &&").unwrap();
+        }
+        writeln!(&mut self.file, "    super::bitset_search(").unwrap();
         writeln!(&mut self.file, "        c as u32,").unwrap();
         writeln!(&mut self.file, "        &BITSET_CHUNKS_MAP,").unwrap();
         writeln!(&mut self.file, "        &BITSET_INDEX_CHUNKS,").unwrap();

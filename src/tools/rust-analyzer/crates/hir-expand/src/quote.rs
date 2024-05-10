@@ -266,10 +266,11 @@ mod tests {
 
         let quoted = quote!(DUMMY =>#a);
         assert_eq!(quoted.to_string(), "hello");
-        let t = format!("{quoted:?}");
+        let t = format!("{quoted:#?}");
         expect![[r#"
-            SUBTREE $$ SpanData { range: 0..0, anchor: SpanAnchor(FileId(937550), 0), ctx: SyntaxContextId(0) } SpanData { range: 0..0, anchor: SpanAnchor(FileId(937550), 0), ctx: SyntaxContextId(0) }
-              IDENT   hello SpanData { range: 0..0, anchor: SpanAnchor(FileId(937550), 0), ctx: SyntaxContextId(0) }"#]].assert_eq(&t);
+            SUBTREE $$ 937550:0@0..0#0 937550:0@0..0#0
+              IDENT   hello 937550:0@0..0#0"#]]
+        .assert_eq(&t);
     }
 
     #[test]

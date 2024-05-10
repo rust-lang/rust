@@ -6,7 +6,7 @@ LL |     foo(cell, |cell_a, cell_x| {
    |
    = note: defining type: case1::{closure#0} with closure args [
                i32,
-               for<Region(BrAnon)> extern "rust-call" fn((std::cell::Cell<&'?1 u32>, std::cell::Cell<&ReBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrAnon }) u32>)),
+               for<Region(BrAnon)> extern "rust-call" fn((std::cell::Cell<&'?1 u32>, std::cell::Cell<&'^0 u32>)),
                (),
            ]
 
@@ -36,7 +36,7 @@ LL |     foo(cell, |cell_a, cell_x| {
    |
    = note: defining type: case2::{closure#0} with closure args [
                i32,
-               for<Region(BrAnon)> extern "rust-call" fn((std::cell::Cell<&'?1 u32>, std::cell::Cell<&ReBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrAnon }) u32>)),
+               for<Region(BrAnon)> extern "rust-call" fn((std::cell::Cell<&'?1 u32>, std::cell::Cell<&'^0 u32>)),
                (),
            ]
    = note: number of external vids: 2
@@ -53,17 +53,16 @@ LL | fn case2() {
 error[E0597]: `a` does not live long enough
   --> $DIR/propagate-approximated-shorter-to-static-comparing-against-free.rs:30:26
    |
-LL |       let a = 0;
-   |           - binding `a` declared here
-LL |       let cell = Cell::new(&a);
-   |                            ^^ borrowed value does not live long enough
+LL |     let a = 0;
+   |         - binding `a` declared here
+LL |     let cell = Cell::new(&a);
+   |                ----------^^-
+   |                |         |
+   |                |         borrowed value does not live long enough
+   |                argument requires that `a` is borrowed for `'static`
 ...
-LL | /     foo(cell, |cell_a, cell_x| {
-LL | |         cell_x.set(cell_a.get()); // forces 'a: 'x, implies 'a = 'static -> borrow error
-LL | |     })
-   | |______- argument requires that `a` is borrowed for `'static`
-LL |   }
-   |   - `a` dropped here while still borrowed
+LL | }
+   | - `a` dropped here while still borrowed
 
 error: aborting due to 2 previous errors
 

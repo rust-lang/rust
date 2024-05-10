@@ -201,7 +201,7 @@ pub trait Write {
         impl<W: Write + ?Sized> SpecWriteFmt for &mut W {
             #[inline]
             default fn spec_write_fmt(mut self, args: Arguments<'_>) -> Result {
-                if let Some(s) = args.as_const_str() {
+                if let Some(s) = args.as_statically_known_str() {
                     self.write_str(s)
                 } else {
                     write(&mut self, args)
@@ -212,7 +212,7 @@ pub trait Write {
         impl<W: Write> SpecWriteFmt for &mut W {
             #[inline]
             fn spec_write_fmt(self, args: Arguments<'_>) -> Result {
-                if let Some(s) = args.as_const_str() {
+                if let Some(s) = args.as_statically_known_str() {
                     self.write_str(s)
                 } else {
                     write(self, args)
@@ -442,7 +442,7 @@ impl<'a> Arguments<'a> {
     /// Same as [`Arguments::as_str`], but will only return `Some(s)` if it can be determined at compile time.
     #[must_use]
     #[inline]
-    fn as_const_str(&self) -> Option<&'static str> {
+    fn as_statically_known_str(&self) -> Option<&'static str> {
         let s = self.as_str();
         if core::intrinsics::is_val_statically_known(s.is_some()) { s } else { None }
     }
@@ -860,10 +860,10 @@ pub trait Binary {
 /// Basic usage with `i32`:
 ///
 /// ```
-/// let x = 42; // 42 is '2a' in hex
+/// let y = 42; // 42 is '2a' in hex
 ///
-/// assert_eq!(format!("{x:x}"), "2a");
-/// assert_eq!(format!("{x:#x}"), "0x2a");
+/// assert_eq!(format!("{y:x}"), "2a");
+/// assert_eq!(format!("{y:#x}"), "0x2a");
 ///
 /// assert_eq!(format!("{:x}", -16), "fffffff0");
 /// ```
@@ -915,10 +915,10 @@ pub trait LowerHex {
 /// Basic usage with `i32`:
 ///
 /// ```
-/// let x = 42; // 42 is '2A' in hex
+/// let y = 42; // 42 is '2A' in hex
 ///
-/// assert_eq!(format!("{x:X}"), "2A");
-/// assert_eq!(format!("{x:#X}"), "0x2A");
+/// assert_eq!(format!("{y:X}"), "2A");
+/// assert_eq!(format!("{y:#X}"), "0x2A");
 ///
 /// assert_eq!(format!("{:X}", -16), "FFFFFFF0");
 /// ```
@@ -1150,7 +1150,12 @@ pub fn write(output: &mut dyn Write, args: Arguments<'_>) -> Result {
                 if !piece.is_empty() {
                     formatter.buf.write_str(*piece)?;
                 }
-                arg.fmt(&mut formatter)?;
+
+                // SAFETY: There are no formatting parameters and hence no
+                // count arguments.
+                unsafe {
+                    arg.fmt(&mut formatter)?;
+                }
                 idx += 1;
             }
         }
@@ -1198,7 +1203,8 @@ unsafe fn run(fmt: &mut Formatter<'_>, arg: &rt::Placeholder, args: &[rt::Argume
     let value = unsafe { args.get_unchecked(arg.position) };
 
     // Then actually do some printing
-    value.fmt(fmt)
+    // SAFETY: this is a placeholder argument.
+    unsafe { value.fmt(fmt) }
 }
 
 unsafe fn getcount(args: &[rt::Argument<'_>], cnt: &rt::Count) -> Option<usize> {
@@ -1617,7 +1623,11 @@ impl<'a> Formatter<'a> {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn write_fmt(&mut self, fmt: Arguments<'_>) -> Result {
-        if let Some(s) = fmt.as_const_str() { self.buf.write_str(s) } else { write(self.buf, fmt) }
+        if let Some(s) = fmt.as_statically_known_str() {
+            self.buf.write_str(s)
+        } else {
+            write(self.buf, fmt)
+        }
     }
 
     /// Flags for formatting
@@ -2308,7 +2318,7 @@ impl Write for Formatter<'_> {
 
     #[inline]
     fn write_fmt(&mut self, args: Arguments<'_>) -> Result {
-        if let Some(s) = args.as_const_str() {
+        if let Some(s) = args.as_statically_known_str() {
             self.buf.write_str(s)
         } else {
             write(self.buf, args)
@@ -2434,8 +2444,8 @@ impl Display for char {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> Pointer for *const T {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        // Cast is needed here because `.expose_addr()` requires `T: Sized`.
-        pointer_fmt_inner((*self as *const ()).expose_addr(), f)
+        // Cast is needed here because `.expose_provenance()` requires `T: Sized`.
+        pointer_fmt_inner((*self as *const ()).expose_provenance(), f)
     }
 }
 

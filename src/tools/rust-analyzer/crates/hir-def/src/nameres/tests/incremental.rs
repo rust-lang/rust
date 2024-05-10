@@ -1,6 +1,5 @@
-use base_db::{SourceDatabase, SourceDatabaseExt};
+use base_db::{SourceDatabase, SourceDatabaseExt2 as _};
 use test_fixture::WithFixture;
-use triomphe::Arc;
 
 use crate::{db::DefDatabase, nameres::tests::TestDB, AdtId, ModuleDefId};
 
@@ -17,7 +16,7 @@ fn check_def_map_is_not_recomputed(ra_fixture_initial: &str, ra_fixture_change: 
         });
         assert!(format!("{events:?}").contains("crate_def_map"), "{events:#?}")
     }
-    db.set_file_text(pos.file_id, Arc::from(ra_fixture_change));
+    db.set_file_text(pos.file_id, ra_fixture_change);
 
     {
         let events = db.log_executed(|| {
@@ -267,7 +266,7 @@ fn quux() { 92 }
 m!(Y);
 m!(Z);
 "#;
-    db.set_file_text(pos.file_id, Arc::from(new_text));
+    db.set_file_text(pos.file_id, new_text);
 
     {
         let events = db.log_executed(|| {

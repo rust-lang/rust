@@ -4,10 +4,10 @@ use crate::ty::abstract_const::CastKind;
 use crate::ty::GenericArgsRef;
 use crate::ty::{self, visit::TypeVisitableExt as _, List, Ty, TyCtxt};
 use rustc_hir::def_id::DefId;
-use rustc_macros::HashStable;
+use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 
 /// An unevaluated (potentially generic) constant used in the type-system.
-#[derive(Copy, Clone, Eq, PartialEq, PartialOrd, Ord, TyEncodable, TyDecodable)]
+#[derive(Copy, Clone, Eq, PartialEq, TyEncodable, TyDecodable)]
 #[derive(Hash, HashStable, TypeFoldable, TypeVisitable)]
 pub struct UnevaluatedConst<'tcx> {
     pub def: DefId,
@@ -62,7 +62,7 @@ impl<'tcx> UnevaluatedConst<'tcx> {
     }
 }
 
-#[derive(Copy, Clone, Eq, PartialEq, PartialOrd, Ord, Hash)]
+#[derive(Copy, Clone, Eq, PartialEq, Hash)]
 #[derive(HashStable, TyEncodable, TyDecodable, TypeVisitable, TypeFoldable)]
 pub enum Expr<'tcx> {
     Binop(mir::BinOp, Const<'tcx>, Const<'tcx>),
@@ -71,8 +71,5 @@ pub enum Expr<'tcx> {
     Cast(CastKind, Const<'tcx>, Ty<'tcx>),
 }
 
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-static_assert_size!(Expr<'_>, 24);
-
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-static_assert_size!(super::ConstKind<'_>, 32);
+#[cfg(target_pointer_width = "64")]
+rustc_data_structures::static_assert_size!(Expr<'_>, 24);

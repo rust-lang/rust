@@ -4,16 +4,12 @@ fn unwrap_unchecked(_1: Option<T>) -> T {
     debug slf => _1;
     let mut _0: T;
     scope 1 (inlined #[track_caller] Option::<T>::unwrap_unchecked) {
-        debug self => _1;
         let mut _2: isize;
         scope 2 {
-            debug val => _0;
         }
-        scope 3 {
-            scope 4 (inlined unreachable_unchecked) {
-                let mut _3: bool;
-                let _4: ();
-                scope 5 {
+        scope 3 (inlined unreachable_unchecked) {
+            scope 4 (inlined core::ub_checks::check_language_ub) {
+                scope 5 (inlined core::ub_checks::check_language_ub::runtime) {
                 }
             }
         }
@@ -22,23 +18,16 @@ fn unwrap_unchecked(_1: Option<T>) -> T {
     bb0: {
         StorageLive(_2);
         _2 = discriminant(_1);
-        switchInt(move _2) -> [0: bb1, 1: bb2, otherwise: bb3];
+        switchInt(move _2) -> [0: bb2, 1: bb1, otherwise: bb2];
     }
 
     bb1: {
-        StorageLive(_3);
-        _3 = UbCheck(LanguageUb);
-        assume(_3);
-        _4 = unreachable_unchecked::precondition_check() -> [return: bb3, unwind unreachable];
-    }
-
-    bb2: {
         _0 = ((_1 as Some).0: T);
         StorageDead(_2);
         return;
     }
 
-    bb3: {
+    bb2: {
         unreachable;
     }
 }

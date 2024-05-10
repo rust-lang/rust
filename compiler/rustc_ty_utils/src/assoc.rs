@@ -258,9 +258,7 @@ fn associated_type_for_impl_trait_in_trait(
     let local_def_id = trait_assoc_ty.def_id();
     let def_id = local_def_id.to_def_id();
 
-    // There's no HIR associated with this new synthesized `def_id`, so feed
-    // `opt_local_def_id_to_hir_id` with `None`.
-    trait_assoc_ty.opt_local_def_id_to_hir_id(None);
+    trait_assoc_ty.feed_hir();
 
     // Copy span of the opaque.
     trait_assoc_ty.def_ident_span(Some(span));
@@ -304,11 +302,7 @@ fn associated_type_for_impl_trait_in_impl(
 ) -> LocalDefId {
     let impl_local_def_id = tcx.local_parent(impl_fn_def_id);
 
-    let decl = tcx
-        .opt_hir_node_by_def_id(impl_fn_def_id)
-        .expect("expected item")
-        .fn_decl()
-        .expect("expected decl");
+    let decl = tcx.hir_node_by_def_id(impl_fn_def_id).fn_decl().expect("expected decl");
     let span = match decl.output {
         hir::FnRetTy::DefaultReturn(_) => tcx.def_span(impl_fn_def_id),
         hir::FnRetTy::Return(ty) => ty.span,
@@ -318,9 +312,7 @@ fn associated_type_for_impl_trait_in_impl(
     let local_def_id = impl_assoc_ty.def_id();
     let def_id = local_def_id.to_def_id();
 
-    // There's no HIR associated with this new synthesized `def_id`, so feed
-    // `opt_local_def_id_to_hir_id` with `None`.
-    impl_assoc_ty.opt_local_def_id_to_hir_id(None);
+    impl_assoc_ty.feed_hir();
 
     // Copy span of the opaque.
     impl_assoc_ty.def_ident_span(Some(span));
@@ -348,22 +340,22 @@ fn associated_type_for_impl_trait_in_impl(
     impl_assoc_ty.generics_of({
         let trait_assoc_generics = tcx.generics_of(trait_assoc_def_id);
         let trait_assoc_parent_count = trait_assoc_generics.parent_count;
-        let mut params = trait_assoc_generics.params.clone();
+        let mut own_params = trait_assoc_generics.own_params.clone();
 
         let parent_generics = tcx.generics_of(impl_local_def_id.to_def_id());
-        let parent_count = parent_generics.parent_count + parent_generics.params.len();
+        let parent_count = parent_generics.parent_count + parent_generics.own_params.len();
 
-        for param in &mut params {
+        for param in &mut own_params {
             param.index = param.index + parent_count as u32 - trait_assoc_parent_count as u32;
         }
 
         let param_def_id_to_index =
-            params.iter().map(|param| (param.def_id, param.index)).collect();
+            own_params.iter().map(|param| (param.def_id, param.index)).collect();
 
         ty::Generics {
             parent: Some(impl_local_def_id.to_def_id()),
             parent_count,
-            params,
+            own_params,
             param_def_id_to_index,
             has_self: false,
             has_late_bound_regions: trait_assoc_generics.has_late_bound_regions,

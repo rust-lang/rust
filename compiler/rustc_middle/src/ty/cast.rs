@@ -4,7 +4,7 @@
 use crate::ty::{self, Ty};
 use rustc_middle::mir;
 
-use rustc_macros::HashStable;
+use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 
 /// Types that are represented as ints.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -69,7 +69,7 @@ impl<'tcx> CastTy<'tcx> {
             ty::Uint(u) => Some(CastTy::Int(IntTy::U(u))),
             ty::Float(_) => Some(CastTy::Float),
             ty::Adt(d, _) if d.is_enum() && d.is_payloadfree() => Some(CastTy::Int(IntTy::CEnum)),
-            ty::RawPtr(mt) => Some(CastTy::Ptr(mt)),
+            ty::RawPtr(ty, mutbl) => Some(CastTy::Ptr(ty::TypeAndMut { ty, mutbl })),
             ty::FnPtr(..) => Some(CastTy::FnPtr),
             ty::Dynamic(_, _, ty::DynStar) => Some(CastTy::DynStar),
             _ => None,
@@ -83,9 +83,9 @@ pub fn mir_cast_kind<'tcx>(from_ty: Ty<'tcx>, cast_ty: Ty<'tcx>) -> mir::CastKin
     let cast = CastTy::from_ty(cast_ty);
     let cast_kind = match (from, cast) {
         (Some(CastTy::Ptr(_) | CastTy::FnPtr), Some(CastTy::Int(_))) => {
-            mir::CastKind::PointerExposeAddress
+            mir::CastKind::PointerExposeProvenance
         }
-        (Some(CastTy::Int(_)), Some(CastTy::Ptr(_))) => mir::CastKind::PointerFromExposedAddress,
+        (Some(CastTy::Int(_)), Some(CastTy::Ptr(_))) => mir::CastKind::PointerWithExposedProvenance,
         (_, Some(CastTy::DynStar)) => mir::CastKind::DynStar,
         (Some(CastTy::Int(_)), Some(CastTy::Int(_))) => mir::CastKind::IntToInt,
         (Some(CastTy::FnPtr), Some(CastTy::Ptr(_))) => mir::CastKind::FnPtrToPtr,

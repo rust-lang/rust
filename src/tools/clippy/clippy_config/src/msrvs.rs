@@ -23,6 +23,7 @@ msrv_aliases! {
     1,70,0 { OPTION_RESULT_IS_VARIANT_AND, BINARY_HEAP_RETAIN }
     1,68,0 { PATH_MAIN_SEPARATOR_STR }
     1,65,0 { LET_ELSE, POINTER_CAST_CONSTNESS }
+    1,63,0 { CLONE_INTO }
     1,62,0 { BOOL_THEN_SOME, DEFAULT_ENUM_ATTRIBUTE }
     1,59,0 { THREAD_LOCAL_INITIALIZER_CAN_BE_MADE_CONST }
     1,58,0 { FORMAT_ARGS_CAPTURE, PATTERN_TRAIT_CHAR_ARRAY }
@@ -35,7 +36,7 @@ msrv_aliases! {
     1,47,0 { TAU, IS_ASCII_DIGIT_CONST, ARRAY_IMPL_ANY_LEN }
     1,46,0 { CONST_IF_MATCH }
     1,45,0 { STR_STRIP_PREFIX }
-    1,43,0 { LOG2_10, LOG10_2 }
+    1,43,0 { LOG2_10, LOG10_2, NUMERIC_ASSOCIATED_CONSTANTS }
     1,42,0 { MATCHES_MACRO, SLICE_PATTERNS, PTR_SLICE_RAW_PARTS }
     1,41,0 { RE_REBALANCING_COHERENCE, RESULT_MAP_OR_ELSE }
     1,40,0 { MEM_TAKE, NON_EXHAUSTIVE, OPTION_AS_DEREF }
@@ -142,13 +143,13 @@ impl Msrv {
         None
     }
 
-    pub fn enter_lint_attrs(&mut self, sess: &Session, attrs: &[Attribute]) {
+    pub fn check_attributes(&mut self, sess: &Session, attrs: &[Attribute]) {
         if let Some(version) = Self::parse_attr(sess, attrs) {
             self.stack.push(version);
         }
     }
 
-    pub fn exit_lint_attrs(&mut self, sess: &Session, attrs: &[Attribute]) {
+    pub fn check_attributes_post(&mut self, sess: &Session, attrs: &[Attribute]) {
         if Self::parse_attr(sess, attrs).is_some() {
             self.stack.pop();
         }

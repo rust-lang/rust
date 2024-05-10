@@ -7,7 +7,8 @@ description = "The Rust Core Library"
 autotests = false
 autobenches = false
 # If you update this, be sure to update it in a bunch of other places too!
-# As of 2022, it was the ci/pgo.sh script and the core-no-fp-fmt-parse test.
+# As of 2024, it was src/tools/opt-dist, the core-no-fp-fmt-parse test and
+# the version of the prelude imported in core/lib.rs.
 edition = "2021"
 
 [lib]

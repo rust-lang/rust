@@ -14,7 +14,7 @@ use ide_db::{
     helpers::pick_best_token,
     FxIndexSet, RootDatabase,
 };
-use itertools::Itertools;
+use itertools::{multizip, Itertools};
 use syntax::{ast, match_ast, AstNode, AstToken, SyntaxKind::*, SyntaxNode, T};
 
 use crate::{
@@ -33,6 +33,7 @@ pub struct HoverConfig {
     pub keywords: bool,
     pub format: HoverDocFormat,
     pub max_trait_assoc_items_count: Option<usize>,
+    pub max_struct_field_count: Option<usize>,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -148,7 +149,7 @@ fn hover_simple(
     if let Some(doc_comment) = token_as_doc_comment(&original_token) {
         cov_mark::hit!(no_highlight_on_comment_hover);
         return doc_comment.get_definition_with_descend_at(sema, offset, |def, node, range| {
-            let res = hover_for_definition(sema, file_id, def, &node, config);
+            let res = hover_for_definition(sema, file_id, def, &node, None, config);
             Some(RangeInfo::new(range, res))
         });
     }
@@ -161,6 +162,7 @@ fn hover_simple(
             file_id,
             Definition::from(resolution?),
             &original_token.parent()?,
+            None,
             config,
         );
         return Some(RangeInfo::new(range, res));
@@ -195,6 +197,29 @@ fn hover_simple(
             descended()
                 .filter_map(|token| {
                     let node = token.parent()?;
+
+                    // special case macro calls, we wanna render the invoked arm index
+                    if let Some(name) = ast::NameRef::cast(node.clone()) {
+                        if let Some(path_seg) =
+                            name.syntax().parent().and_then(ast::PathSegment::cast)
+                        {
+                            if let Some(macro_call) = path_seg
+                                .parent_path()
+                                .syntax()
+                                .parent()
+                                .and_then(ast::MacroCall::cast)
+                            {
+                                if let Some(macro_) = sema.resolve_macro_call(&macro_call) {
+                                    return Some(vec![(
+                                        Definition::Macro(macro_),
+                                        sema.resolve_macro_call_arm(&macro_call),
+                                        node,
+                                    )]);
+                                }
+                            }
+                        }
+                    }
+
                     match IdentClass::classify_node(sema, &node)? {
                         // It's better for us to fall back to the keyword hover here,
                         // rendering poll is very confusing
@@ -203,20 +228,19 @@ fn hover_simple(
                         IdentClass::NameRefClass(NameRefClass::ExternCrateShorthand {
                             decl,
                             ..
-                        }) => Some(vec![(Definition::ExternCrateDecl(decl), node)]),
+                        }) => Some(vec![(Definition::ExternCrateDecl(decl), None, node)]),
 
                         class => Some(
-                            class
-                                .definitions()
-                                .into_iter()
-                                .zip(iter::repeat(node))
+                            multizip((class.definitions(), iter::repeat(None), iter::repeat(node)))
                                 .collect::<Vec<_>>(),
                         ),
                     }
                 })
                 .flatten()
-                .unique_by(|&(def, _)| def)
-                .map(|(def, node)| hover_for_definition(sema, file_id, def, &node, config))
+                .unique_by(|&(def, _, _)| def)
+                .map(|(def, macro_arm, node)| {
+                    hover_for_definition(sema, file_id, def, &node, macro_arm, config)
+                })
                 .reduce(|mut acc: HoverResult, HoverResult { markup, actions }| {
                     acc.actions.extend(actions);
                     acc.markup = Markup::from(format!("{}\n---\n{markup}", acc.markup));
@@ -373,6 +397,7 @@ pub(crate) fn hover_for_definition(
     file_id: FileId,
     def: Definition,
     scope_node: &SyntaxNode,
+    macro_arm: Option<u32>,
     config: &HoverConfig,
 ) -> HoverResult {
     let famous_defs = match &def {
@@ -397,7 +422,8 @@ pub(crate) fn hover_for_definition(
     };
     let notable_traits = def_ty.map(|ty| notable_traits(db, &ty)).unwrap_or_default();
 
-    let markup = render::definition(sema.db, def, famous_defs.as_ref(), &notable_traits, config);
+    let markup =
+        render::definition(sema.db, def, famous_defs.as_ref(), &notable_traits, macro_arm, config);
     HoverResult {
         markup: render::process_markup(sema.db, def, &markup, config),
         actions: [

@@ -1,4 +1,5 @@
 #![warn(clippy::await_holding_lock)]
+#![allow(clippy::readonly_write_lock)]
 
 // When adding or modifying a test, please do the same for parking_lot::Mutex.
 mod std_mutex {

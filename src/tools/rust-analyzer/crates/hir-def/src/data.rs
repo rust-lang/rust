@@ -453,8 +453,8 @@ impl ProcMacroData {
             (
                 def.name,
                 match def.kind {
-                    ProcMacroKind::CustomDerive { helpers } => Some(helpers),
-                    ProcMacroKind::FnLike | ProcMacroKind::Attr => None,
+                    ProcMacroKind::Derive { helpers } => Some(helpers),
+                    ProcMacroKind::Bang | ProcMacroKind::Attr => None,
                 },
             )
         } else {
@@ -484,10 +484,11 @@ impl ExternCrateDeclData {
         let extern_crate = &item_tree[loc.id.value];
 
         let name = extern_crate.name.clone();
+        let krate = loc.container.krate();
         let crate_id = if name == hir_expand::name![self] {
-            Some(loc.container.krate())
+            Some(krate)
         } else {
-            db.crate_def_map(loc.container.krate())
+            db.crate_def_map(krate)
                 .extern_prelude()
                 .find(|&(prelude_name, ..)| *prelude_name == name)
                 .map(|(_, (root, _))| root.krate())
@@ -509,6 +510,7 @@ pub struct ConstData {
     pub type_ref: Interned<TypeRef>,
     pub visibility: RawVisibility,
     pub rustc_allow_incoherent_impl: bool,
+    pub has_body: bool,
 }
 
 impl ConstData {
@@ -532,6 +534,7 @@ impl ConstData {
             type_ref: konst.type_ref.clone(),
             visibility,
             rustc_allow_incoherent_impl,
+            has_body: konst.has_body,
         })
     }
 }
@@ -715,7 +718,7 @@ impl<'a> AssocItemCollector<'a> {
             }
             AssocItem::MacroCall(call) => {
                 let file_id = self.expander.current_file_id();
-                let MacroCall { ast_id, expand_to, call_site, ref path } = item_tree[call];
+                let MacroCall { ast_id, expand_to, ctxt, ref path } = item_tree[call];
                 let module = self.expander.module.local_id;
 
                 let resolver = |path| {
@@ -734,9 +737,9 @@ impl<'a> AssocItemCollector<'a> {
                 match macro_call_as_call_id(
                     self.db.upcast(),
                     &AstIdWithPath::new(file_id, ast_id, Clone::clone(path)),
-                    call_site,
+                    ctxt,
                     expand_to,
-                    self.expander.module.krate(),
+                    self.expander.krate(),
                     resolver,
                 ) {
                     Ok(Some(call_id)) => {
@@ -745,6 +748,7 @@ impl<'a> AssocItemCollector<'a> {
                         self.collect_macro_items(res, &|| hir_expand::MacroCallKind::FnLike {
                             ast_id: InFile::new(file_id, ast_id),
                             expand_to: hir_expand::ExpandTo::Items,
+                            eager: None,
                         });
                     }
                     Ok(None) => (),
@@ -754,6 +758,7 @@ impl<'a> AssocItemCollector<'a> {
                             MacroCallKind::FnLike {
                                 ast_id: InFile::new(file_id, ast_id),
                                 expand_to,
+                                eager: None,
                             },
                             Clone::clone(path),
                         ));

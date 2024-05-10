@@ -8,6 +8,7 @@ use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::fx::IndexEntry;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::LocalDefId;
 use rustc_hir::LangItem;
 use rustc_middle::mir;
 use rustc_middle::mir::AssertMessage;
@@ -59,8 +60,10 @@ pub struct CompileTimeInterpreter<'mir, 'tcx> {
     /// Whether to check alignment during evaluation.
     pub(super) check_alignment: CheckAlignment,
 
-    /// Used to prevent reads from a static's base allocation, as that may allow for self-initialization.
-    pub(crate) static_root_alloc_id: Option<AllocId>,
+    /// If `Some`, we are evaluating the initializer of the static with the given `LocalDefId`,
+    /// storing the result in the given `AllocId`.
+    /// Used to prevent reads from a static's base allocation, as that may allow for self-initialization loops.
+    pub(crate) static_root_ids: Option<(AllocId, LocalDefId)>,
 }
 
 #[derive(Copy, Clone)]
@@ -94,7 +97,7 @@ impl<'mir, 'tcx> CompileTimeInterpreter<'mir, 'tcx> {
             stack: Vec::new(),
             can_access_mut_global,
             check_alignment,
-            static_root_alloc_id: None,
+            static_root_ids: None,
         }
     }
 }
@@ -456,17 +459,14 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         dest: &MPlaceTy<'tcx, Self::Provenance>,
         target: Option<mir::BasicBlock>,
         _unwind: mir::UnwindAction,
-    ) -> InterpResult<'tcx> {
+    ) -> InterpResult<'tcx, Option<ty::Instance<'tcx>>> {
         // Shared intrinsics.
         if ecx.emulate_intrinsic(instance, args, dest, target)? {
-            return Ok(());
+            return Ok(None);
         }
         let intrinsic_name = ecx.tcx.item_name(instance.def_id());
 
         // CTFE-specific intrinsics.
-        let Some(ret) = target else {
-            throw_unsup_format!("intrinsic `{intrinsic_name}` is not supported at compile-time");
-        };
         match intrinsic_name {
             sym::ptr_guaranteed_cmp => {
                 let a = ecx.read_scalar(&args[0])?;
@@ -533,14 +533,22 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
             // not the optimization stage.)
             sym::is_val_statically_known => ecx.write_scalar(Scalar::from_bool(false), dest)?,
             _ => {
-                throw_unsup_format!(
-                    "intrinsic `{intrinsic_name}` is not supported at compile-time"
-                );
+                // We haven't handled the intrinsic, let's see if we can use a fallback body.
+                if ecx.tcx.intrinsic(instance.def_id()).unwrap().must_be_overridden {
+                    throw_unsup_format!(
+                        "intrinsic `{intrinsic_name}` is not supported at compile-time"
+                    );
+                }
+                return Ok(Some(ty::Instance {
+                    def: ty::InstanceDef::Item(instance.def_id()),
+                    args: instance.args,
+                }));
             }
         }
 
-        ecx.go_to_block(ret);
-        Ok(())
+        // Intrinsic is done, jump to next block.
+        ecx.return_to_block(target)?;
+        Ok(None)
     }
 
     fn assert_panic(
@@ -749,7 +757,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         ecx: &InterpCx<'mir, 'tcx, Self>,
         alloc_id: AllocId,
     ) -> InterpResult<'tcx> {
-        if Some(alloc_id) == ecx.machine.static_root_alloc_id {
+        if Some(alloc_id) == ecx.machine.static_root_ids.map(|(id, _)| id) {
             Err(ConstEvalErrKind::RecursiveStatic.into())
         } else {
             Ok(())

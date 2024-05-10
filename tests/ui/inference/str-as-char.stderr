@@ -4,7 +4,7 @@ error: character literal may only contain one codepoint
 LL |     let _: &str = '"""';
    |                   ^^^^^
    |
-help: if you meant to write a `str` literal, use double quotes
+help: if you meant to write a string literal, use double quotes
    |
 LL |     let _: &str = "\"\"\"";
    |                   ~~~~~~~~
@@ -15,10 +15,10 @@ error: character literal may only contain one codepoint
 LL |     let _: &str = '\"\"\"';
    |                   ^^^^^^^^
    |
-help: if you meant to write a `str` literal, use double quotes
+help: if you meant to write a string literal, use double quotes
    |
 LL |     let _: &str = "\"\"\"";
-   |                   ~~~~~~~~
+   |                   ~      ~
 
 error: character literal may only contain one codepoint
   --> $DIR/str-as-char.rs:10:19
@@ -26,7 +26,7 @@ error: character literal may only contain one codepoint
 LL |     let _: &str = '"\"\"\\"\\"';
    |                   ^^^^^^^^^^^^^^^^^
    |
-help: if you meant to write a `str` literal, use double quotes
+help: if you meant to write a string literal, use double quotes
    |
 LL |     let _: &str = "\"\"\\"\\"\\\"";
    |                   ~~~~~~~~~~~~~~~~~~~~
@@ -39,10 +39,10 @@ LL |     let _: &str = 'a';
    |            |
    |            expected due to this
    |
-help: if you meant to write a `str` literal, use double quotes
+help: if you meant to write a string literal, use double quotes
    |
 LL |     let _: &str = "a";
-   |                   ~~~
+   |                   ~ ~
 
 error: aborting due to 4 previous errors
 

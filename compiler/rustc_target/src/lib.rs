@@ -7,26 +7,19 @@
 //! more 'stuff' here in the future. It does not have a dependency on
 //! LLVM.
 
+// tidy-alphabetical-start
+#![allow(internal_features)]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
-#![cfg_attr(bootstrap, feature(exhaustive_patterns))]
-#![cfg_attr(not(bootstrap), feature(min_exhaustive_patterns))]
-#![feature(rustdoc_internals)]
 #![feature(assert_matches)]
 #![feature(iter_intersperse)]
 #![feature(let_chains)]
-#![cfg_attr(bootstrap, feature(min_specialization))]
+#![feature(min_exhaustive_patterns)]
 #![feature(rustc_attrs)]
-#![feature(step_trait)]
-#![allow(internal_features)]
+#![feature(rustdoc_internals)]
+// tidy-alphabetical-end
 
 use std::path::{Path, PathBuf};
-
-#[macro_use]
-extern crate rustc_macros;
-
-#[macro_use]
-extern crate tracing;
 
 pub mod abi;
 pub mod asm;

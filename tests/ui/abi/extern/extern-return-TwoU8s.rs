@@ -1,8 +1,6 @@
 //@ run-pass
 #![allow(improper_ctypes)]
 
-//@ ignore-wasm32-bare no libc to test ffi with
-
 pub struct TwoU8s {
     one: u8,
     two: u8,

@@ -33,13 +33,9 @@
       scope 1 {
           debug a => _1;
           let _3: *const [u8];
-          scope 3 {
+          scope 2 {
               debug b => _3;
           }
-          scope 4 {
-          }
-      }
-      scope 2 {
       }
   
       bb0: {

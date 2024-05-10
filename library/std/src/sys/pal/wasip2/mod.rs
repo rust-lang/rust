@@ -10,8 +10,6 @@
 pub mod alloc;
 #[path = "../wasi/args.rs"]
 pub mod args;
-#[path = "../unix/cmath.rs"]
-pub mod cmath;
 #[path = "../wasi/env.rs"]
 pub mod env;
 #[path = "../wasi/fd.rs"]
@@ -28,10 +26,6 @@ pub mod io;
 pub mod net;
 #[path = "../wasi/os.rs"]
 pub mod os;
-#[path = "../unix/os_str.rs"]
-pub mod os_str;
-#[path = "../unix/path.rs"]
-pub mod path;
 #[path = "../unsupported/pipe.rs"]
 pub mod pipe;
 #[path = "../unsupported/process.rs"]
@@ -46,19 +40,6 @@ pub mod thread_local_dtor;
 pub mod thread_local_key;
 #[path = "../wasi/time.rs"]
 pub mod time;
-
-cfg_if::cfg_if! {
-    if #[cfg(target_feature = "atomics")] {
-        compile_error!("The wasm32-wasip2 target does not support atomics");
-    } else {
-        #[path = "../unsupported/locks/mod.rs"]
-        pub mod locks;
-        #[path = "../unsupported/once.rs"]
-        pub mod once;
-        #[path = "../unsupported/thread_parking.rs"]
-        pub mod thread_parking;
-    }
-}
 
 #[path = "../unsupported/common.rs"]
 #[deny(unsafe_op_in_unsafe_fn)]
@@ -76,3 +57,5 @@ pub use helpers::decode_error_kind;
 use helpers::err2io;
 pub use helpers::hashmap_random_keys;
 pub use helpers::is_interrupted;
+
+mod cabi_realloc;

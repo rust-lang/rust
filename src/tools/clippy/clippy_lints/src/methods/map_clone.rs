@@ -1,7 +1,7 @@
 use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::ty::{is_copy, is_type_diagnostic_item};
+use clippy_utils::ty::{is_copy, is_type_diagnostic_item, should_call_clone_as_function};
 use clippy_utils::{is_diag_trait_item, match_def_path, paths, peel_blocks};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -50,14 +50,14 @@ pub(super) fn check(cx: &LateContext<'_>, e: &hir::Expr<'_>, recv: &hir::Expr<'_
                 let closure_body = cx.tcx.hir().body(body);
                 let closure_expr = peel_blocks(closure_body.value);
                 match closure_body.params[0].pat.kind {
-                    hir::PatKind::Ref(inner, hir::Mutability::Not) => {
-                        if let hir::PatKind::Binding(hir::BindingAnnotation::NONE, .., name, None) = inner.kind {
+                    hir::PatKind::Ref(inner, Mutability::Not) => {
+                        if let hir::PatKind::Binding(hir::BindingMode::NONE, .., name, None) = inner.kind {
                             if ident_eq(name, closure_expr) {
                                 lint_explicit_closure(cx, e.span, recv.span, true, msrv);
                             }
                         }
                     },
-                    hir::PatKind::Binding(hir::BindingAnnotation::NONE, .., name, None) => {
+                    hir::PatKind::Binding(hir::BindingMode::NONE, .., name, None) => {
                         match closure_expr.kind {
                             hir::ExprKind::Unary(hir::UnOp::Deref, inner) => {
                                 if ident_eq(name, inner) {
@@ -86,8 +86,11 @@ pub(super) fn check(cx: &LateContext<'_>, e: &hir::Expr<'_>, recv: &hir::Expr<'_
                                     }
                                 }
                             },
-                            hir::ExprKind::Call(call, [_]) => {
-                                if let hir::ExprKind::Path(qpath) = call.kind {
+                            hir::ExprKind::Call(call, args) => {
+                                if let hir::ExprKind::Path(qpath) = call.kind
+                                    && let [arg] = args
+                                    && ident_eq(name, arg)
+                                {
                                     handle_path(cx, call, &qpath, e, recv);
                                 }
                             },
@@ -118,7 +121,10 @@ fn handle_path(
         if let ty::Adt(_, args) = cx.typeck_results().expr_ty(recv).kind()
             && let args = args.as_slice()
             && let Some(ty) = args.iter().find_map(|generic_arg| generic_arg.as_type())
-            && ty.is_ref()
+            && let ty::Ref(_, ty, Mutability::Not) = ty.kind()
+            && let ty::FnDef(_, lst) = cx.typeck_results().expr_ty(arg).kind()
+            && lst.iter().all(|l| l.as_type() == Some(*ty))
+            && !should_call_clone_as_function(cx, *ty)
         {
             lint_path(cx, e.span, recv.span, is_copy(cx, ty.peel_refs()));
         }
@@ -155,7 +161,7 @@ fn lint_path(cx: &LateContext<'_>, replace: Span, root: Span, is_copy: bool) {
         MAP_CLONE,
         replace,
         "you are explicitly cloning with `.map()`",
-        &format!("consider calling the dedicated `{replacement}` method"),
+        format!("consider calling the dedicated `{replacement}` method"),
         format!(
             "{}.{replacement}()",
             snippet_with_applicability(cx, root, "..", &mut applicability),
@@ -178,7 +184,7 @@ fn lint_explicit_closure(cx: &LateContext<'_>, replace: Span, root: Span, is_cop
         MAP_CLONE,
         replace,
         message,
-        &format!("consider calling the dedicated `{sugg_method}` method"),
+        format!("consider calling the dedicated `{sugg_method}` method"),
         format!(
             "{}.{sugg_method}()",
             snippet_with_applicability(cx, root, "..", &mut applicability),

@@ -1,5 +1,5 @@
 //@ run-rustfix
-mod a {
+pub mod a {
     pub struct A(pub String);
 }
 

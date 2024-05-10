@@ -8,11 +8,13 @@ LL |     fn foo(&self) -> MyFuture {
    |                      ^^^^^^^^
    |
    = note: add `#[allow(refining_impl_trait)]` if it is intended for this to be part of the public API of this crate
+   = note: we are soliciting feedback, see issue #121718 <https://github.com/rust-lang/rust/issues/121718> for more information
 note: the lint level is defined here
   --> $DIR/async-example-desugared-manual.rs:21:12
    |
 LL |     #[warn(refining_impl_trait)]
    |            ^^^^^^^^^^^^^^^^^^^
+   = note: `#[warn(refining_impl_trait_reachable)]` implied by `#[warn(refining_impl_trait)]`
 help: replace the return type so that it matches the trait
    |
 LL |     fn foo(&self) -> impl Future<Output = i32> {

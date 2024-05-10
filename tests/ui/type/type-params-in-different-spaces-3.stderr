@@ -14,6 +14,7 @@ LL |         u
               found type parameter `X`
    = note: a type parameter was expected, but a different one was found; you might be missing a type parameter or trait bound
    = note: for more information, visit https://doc.rust-lang.org/book/ch10-02-traits.html#traits-as-parameters
+   = note: the caller chooses a type for `Self` which can be different from `X`
 
 error: aborting due to 1 previous error
 

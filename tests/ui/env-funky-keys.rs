@@ -3,7 +3,7 @@
 
 //@ ignore-android
 //@ ignore-windows
-//@ ignore-emscripten no execve
+//@ ignore-wasm32 no execve
 //@ ignore-sgx no execve
 //@ ignore-vxworks no execve
 //@ ignore-fuchsia no 'execve'

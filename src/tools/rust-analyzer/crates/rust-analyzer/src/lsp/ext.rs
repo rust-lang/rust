@@ -194,7 +194,8 @@ pub struct TestItem {
 #[serde(rename_all = "camelCase")]
 pub struct DiscoverTestResults {
     pub tests: Vec<TestItem>,
-    pub scope: Vec<String>,
+    pub scope: Option<Vec<String>>,
+    pub scope_file: Option<Vec<TextDocumentIdentifier>>,
 }
 
 pub enum DiscoverTest {}
@@ -232,6 +233,13 @@ pub enum EndRunTest {}
 impl Notification for EndRunTest {
     type Params = ();
     const METHOD: &'static str = "experimental/endRunTest";
+}
+
+pub enum AppendOutputToRunTest {}
+
+impl Notification for AppendOutputToRunTest {
+    type Params = String;
+    const METHOD: &'static str = "experimental/appendOutputToRunTest";
 }
 
 pub enum AbortRunTest {}
@@ -453,13 +461,6 @@ impl Request for RelatedTests {
 #[derive(Debug, Deserialize, Serialize)]
 pub struct TestInfo {
     pub runnable: Runnable,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct InlayHintsParams {
-    pub text_document: TextDocumentIdentifier,
-    pub range: Option<lsp_types::Range>,
 }
 
 pub enum Ssr {}
@@ -793,6 +794,8 @@ pub struct CompletionResolveData {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct InlayHintResolveData {
     pub file_id: u32,
+    // This is a string instead of a u64 as javascript can't represent u64 fully
+    pub hash: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

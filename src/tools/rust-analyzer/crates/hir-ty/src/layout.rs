@@ -371,8 +371,8 @@ pub fn layout_of_ty_query(
         TyKind::Never => cx.layout_of_never_type(),
         TyKind::Dyn(_) | TyKind::Foreign(_) => {
             let mut unit = layout_of_unit(&cx, dl)?;
-            match unit.abi {
-                Abi::Aggregate { ref mut sized } => *sized = false,
+            match &mut unit.abi {
+                Abi::Aggregate { sized } => *sized = false,
                 _ => return Err(LayoutError::Unknown),
             }
             unit
@@ -388,6 +388,9 @@ pub fn layout_of_ty_query(
                 crate::ImplTraitId::ReturnTypeImplTrait(func, idx) => {
                     let infer = db.infer(func.into());
                     return db.layout_of_ty(infer.type_of_rpit[idx].clone(), trait_env);
+                }
+                crate::ImplTraitId::AssociatedTypeImplTrait(..) => {
+                    return Err(LayoutError::NotImplemented);
                 }
                 crate::ImplTraitId::AsyncBlockTypeImplTrait(_, _) => {
                     return Err(LayoutError::NotImplemented)

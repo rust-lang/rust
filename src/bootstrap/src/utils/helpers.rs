@@ -296,6 +296,15 @@ pub fn up_to_date(src: &Path, dst: &Path) -> bool {
     }
 }
 
+/// Returns the filename without the hash prefix added by the cc crate.
+///
+/// Since v1.0.78 of the cc crate, object files are prefixed with a 16-character hash
+/// to avoid filename collisions.
+pub fn unhashed_basename(obj: &Path) -> &str {
+    let basename = obj.file_stem().unwrap().to_str().expect("UTF-8 file name");
+    basename.split_once('-').unwrap().1
+}
+
 fn dir_up_to_date(src: &Path, threshold: SystemTime) -> bool {
     t!(fs::read_dir(src)).map(|e| t!(e)).all(|e| {
         let meta = t!(e.metadata());
@@ -549,7 +558,12 @@ pub fn hex_encode<T>(input: T) -> String
 where
     T: AsRef<[u8]>,
 {
-    input.as_ref().iter().map(|x| format!("{:02x}", x)).collect()
+    use std::fmt::Write;
+
+    input.as_ref().iter().fold(String::with_capacity(input.as_ref().len() * 2), |mut acc, &byte| {
+        write!(&mut acc, "{:02x}", byte).expect("Failed to write byte to the hex String.");
+        acc
+    })
 }
 
 /// Create a `--check-cfg` argument invocation for a given name

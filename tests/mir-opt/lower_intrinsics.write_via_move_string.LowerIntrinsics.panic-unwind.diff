@@ -7,8 +7,6 @@
       let mut _0: ();
       let mut _3: *mut std::string::String;
       let mut _4: std::string::String;
-      scope 1 {
-      }
   
       bb0: {
           StorageLive(_3);

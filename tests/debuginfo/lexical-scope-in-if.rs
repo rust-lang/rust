@@ -68,74 +68,74 @@
 // lldb-command:run
 
 // BEFORE if
-// lldb-command:print x
-// lldbg-check:[...]$0 = 999
+// lldb-command:v x
+// lldbg-check:[...] 999
 // lldbr-check:(i32) x = 999
-// lldb-command:print y
-// lldbg-check:[...]$1 = -1
+// lldb-command:v y
+// lldbg-check:[...] -1
 // lldbr-check:(i32) y = -1
 // lldb-command:continue
 
 // AT BEGINNING of 'then' block
-// lldb-command:print x
-// lldbg-check:[...]$2 = 999
+// lldb-command:v x
+// lldbg-check:[...] 999
 // lldbr-check:(i32) x = 999
-// lldb-command:print y
-// lldbg-check:[...]$3 = -1
+// lldb-command:v y
+// lldbg-check:[...] -1
 // lldbr-check:(i32) y = -1
 // lldb-command:continue
 
 // AFTER 1st redeclaration of 'x'
-// lldb-command:print x
-// lldbg-check:[...]$4 = 1001
+// lldb-command:v x
+// lldbg-check:[...] 1001
 // lldbr-check:(i32) x = 1001
-// lldb-command:print y
-// lldbg-check:[...]$5 = -1
+// lldb-command:v y
+// lldbg-check:[...] -1
 // lldbr-check:(i32) y = -1
 // lldb-command:continue
 
 // AFTER 2st redeclaration of 'x'
-// lldb-command:print x
-// lldbg-check:[...]$6 = 1002
+// lldb-command:v x
+// lldbg-check:[...] 1002
 // lldbr-check:(i32) x = 1002
-// lldb-command:print y
-// lldbg-check:[...]$7 = 1003
+// lldb-command:v y
+// lldbg-check:[...] 1003
 // lldbr-check:(i32) y = 1003
 // lldb-command:continue
 
 // AFTER 1st if expression
-// lldb-command:print x
-// lldbg-check:[...]$8 = 999
+// lldb-command:v x
+// lldbg-check:[...] 999
 // lldbr-check:(i32) x = 999
-// lldb-command:print y
-// lldbg-check:[...]$9 = -1
+// lldb-command:v y
+// lldbg-check:[...] -1
 // lldbr-check:(i32) y = -1
 // lldb-command:continue
 
 // BEGINNING of else branch
-// lldb-command:print x
-// lldbg-check:[...]$10 = 999
+// lldb-command:v x
+// lldbg-check:[...] 999
 // lldbr-check:(i32) x = 999
-// lldb-command:print y
-// lldbg-check:[...]$11 = -1
+// lldb-command:v y
+// lldbg-check:[...] -1
 // lldbr-check:(i32) y = -1
 // lldb-command:continue
 
 // BEGINNING of else branch
-// lldb-command:print x
-// lldbg-check:[...]$12 = 1004
+// lldb-command:v x
+// lldbg-check:[...] 1004
 // lldbr-check:(i32) x = 1004
-// lldb-command:print y
-// lldbg-check:[...]$13 = 1005
+// lldb-command:v y
+// lldbg-check:[...] 1005
 // lldbr-check:(i32) y = 1005
 // lldb-command:continue
 
 // BEGINNING of else branch
-// lldb-command:print x
-// lldbg-check:[...]$14 = 999
+// lldb-command:v x
+// lldbg-check:[...] 999
 // lldbr-check:(i32) x = 999
-// lldb-command:print y
-// lldbg-check:[...]$15 = -1
+// lldb-command:v y
+// lldbg-check:[...] -1
 // lldbr-check:(i32) y = -1
 // lldb-command:continue
 

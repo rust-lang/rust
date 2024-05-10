@@ -1,11 +1,9 @@
 //@ run-pass
-//@ compile-flags:
 
 // check that cfg correctly chooses between the macro impls (see also
 // cfg-macros-foo.rs)
 
-
-#[cfg(foo)]
+#[cfg(FALSE)]
 #[macro_use]
 mod foo {
     macro_rules! bar {
@@ -13,7 +11,7 @@ mod foo {
     }
 }
 
-#[cfg(not(foo))]
+#[cfg(not(FALSE))]
 #[macro_use]
 mod foo {
     macro_rules! bar {
