@@ -3447,7 +3447,7 @@ dependencies = [
 [[package]]
 name = "rustc-hash"
 version = "1.1.0"
-source = "git+https://github.com/orlp/rustc-hash/?branch=mum-hash-perf-run#0bb327e2f6df4fd59b2b973da0d0182ee8fecd2d"
+source = "git+https://github.com/orlp/rustc-hash/?branch=mum-hash-perf-run#a43a6c7140ba914cab0ea40c3870322abd687517"
 
 [[package]]
 name = "rustc-main"
