@@ -129,6 +129,26 @@ fn validate_path_remap() {
 }
 
 #[test]
+fn check_missing_paths_for_x_test_tests() {
+    let build = Build::new(configure("test", &["A-A"], &["A-A"]));
+
+    let (_, tests_remap_paths) =
+        PATH_REMAP.iter().find(|(target_path, _)| *target_path == "tests").unwrap();
+
+    let tests_dir = fs::read_dir(build.src.join("tests")).unwrap();
+    for dir in tests_dir {
+        let path = dir.unwrap().path();
+
+        // Skip if not a test directory.
+        if path.ends_with("tests/auxiliary") || !path.is_dir() {
+            continue
+        }
+
+        assert!(tests_remap_paths.iter().any(|item| path.ends_with(*item)), "{} is missing in PATH_REMAP tests list.", path.display());
+    }
+}
+
+#[test]
 fn test_exclude() {
     let mut config = configure("test", &["A-A"], &["A-A"]);
     config.skip = vec!["src/tools/tidy".into()];
