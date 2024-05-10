@@ -41,7 +41,7 @@ pub fn lift_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::TokenStre
 
     s.add_impl_generic(newtcx);
     s.bound_impl(
-        quote!(::rustc_middle::ty::Lift<'__lifted>),
+        quote!(::rustc_middle::ty::Lift<::rustc_middle::ty::TyCtxt<'__lifted>>),
         quote! {
             type Lifted = #lifted;
 

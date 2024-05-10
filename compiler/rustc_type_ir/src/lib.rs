@@ -26,6 +26,7 @@ pub mod fold;
 pub mod new;
 pub mod ty_info;
 pub mod ty_kind;
+pub mod lift;
 
 #[macro_use]
 mod macros;
@@ -57,6 +58,7 @@ pub use DynKind::*;
 pub use InferTy::*;
 pub use RegionKind::*;
 pub use TyKind::*;
+pub use lift::*;
 
 rustc_index::newtype_index! {
     /// A [De Bruijn index][dbi] is a standard means of representing

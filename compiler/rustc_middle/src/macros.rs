@@ -57,7 +57,7 @@ macro_rules! span_bug {
 macro_rules! TrivialLiftImpls {
     ($($ty:ty),+ $(,)?) => {
         $(
-            impl<'tcx> $crate::ty::Lift<'tcx> for $ty {
+            impl<'tcx> $crate::ty::Lift<$crate::ty::TyCtxt<'tcx>> for $ty {
                 type Lifted = Self;
                 fn lift_to_tcx(self, _: $crate::ty::TyCtxt<'tcx>) -> Option<Self> {
                     Some(self)

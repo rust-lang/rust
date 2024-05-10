@@ -478,7 +478,7 @@ TrivialTypeTraversalAndLiftImpls! {
 ///////////////////////////////////////////////////////////////////////////
 // Lift implementations
 
-impl<'tcx, T: Lift<'tcx>> Lift<'tcx> for Option<T> {
+impl<'tcx, T: Lift<TyCtxt<'tcx>>> Lift<TyCtxt<'tcx>> for Option<T> {
     type Lifted = Option<T::Lifted>;
     fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
         Some(match self {
@@ -488,7 +488,7 @@ impl<'tcx, T: Lift<'tcx>> Lift<'tcx> for Option<T> {
     }
 }
 
-impl<'a, 'tcx> Lift<'tcx> for Term<'a> {
+impl<'a, 'tcx> Lift<TyCtxt<'tcx>> for Term<'a> {
     type Lifted = ty::Term<'tcx>;
     fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
         Some(

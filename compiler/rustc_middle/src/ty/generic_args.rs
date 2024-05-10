@@ -205,7 +205,7 @@ impl<'tcx> GenericArg<'tcx> {
     }
 }
 
-impl<'a, 'tcx> Lift<'tcx> for GenericArg<'a> {
+impl<'a, 'tcx> Lift<TyCtxt<'tcx>> for GenericArg<'a> {
     type Lifted = GenericArg<'tcx>;
 
     fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
