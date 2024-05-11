@@ -1271,7 +1271,12 @@ impl<FieldIdx: Idx> FieldsShape<FieldIdx> {
             }
         }
 
-        (0..self.count()).map(move |i| match *self {
+        // Primitives don't really have fields in the way that structs do,
+        // but having this return an empty iterator for them is unhelpful
+        // since that makes them look kinda like ZSTs, which they're not.
+        let pseudofield_count = if let FieldsShape::Primitive = self { 1 } else { self.count() };
+
+        (0..pseudofield_count).map(move |i| match *self {
             FieldsShape::Primitive | FieldsShape::Union(_) | FieldsShape::Array { .. } => i,
             FieldsShape::Arbitrary { .. } => {
                 if use_small {
