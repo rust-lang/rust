@@ -366,6 +366,12 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
     }
 
     #[inline]
+    fn into_inner_with_allocator(this: Self) -> (NonNull<RcBox<T>>, A) {
+        let this = mem::ManuallyDrop::new(this);
+        (this.ptr, unsafe { ptr::read(&this.alloc) })
+    }
+
+    #[inline]
     unsafe fn from_inner_in(ptr: NonNull<RcBox<T>>, alloc: A) -> Self {
         Self { ptr, phantom: PhantomData, alloc }
     }
@@ -1145,12 +1151,9 @@ impl<T, A: Allocator> Rc<mem::MaybeUninit<T>, A> {
     /// ```
     #[unstable(feature = "new_uninit", issue = "63291")]
     #[inline]
-    pub unsafe fn assume_init(self) -> Rc<T, A>
-    where
-        A: Clone,
-    {
-        let md_self = mem::ManuallyDrop::new(self);
-        unsafe { Rc::from_inner_in(md_self.ptr.cast(), md_self.alloc.clone()) }
+    pub unsafe fn assume_init(self) -> Rc<T, A> {
+        let (ptr, alloc) = Rc::into_inner_with_allocator(self);
+        unsafe { Rc::from_inner_in(ptr.cast(), alloc) }
     }
 }
 
@@ -1189,12 +1192,9 @@ impl<T, A: Allocator> Rc<[mem::MaybeUninit<T>], A> {
     /// ```
     #[unstable(feature = "new_uninit", issue = "63291")]
     #[inline]
-    pub unsafe fn assume_init(self) -> Rc<[T], A>
-    where
-        A: Clone,
-    {
-        let md_self = mem::ManuallyDrop::new(self);
-        unsafe { Rc::from_ptr_in(md_self.ptr.as_ptr() as _, md_self.alloc.clone()) }
+    pub unsafe fn assume_init(self) -> Rc<[T], A> {
+        let (ptr, alloc) = Rc::into_inner_with_allocator(self);
+        unsafe { Rc::from_ptr_in(ptr.as_ptr() as _, alloc) }
     }
 }
 
@@ -1809,7 +1809,9 @@ impl<T: Clone, A: Allocator + Clone> Rc<T, A> {
         // reference to the allocation.
         unsafe { &mut this.ptr.as_mut().value }
     }
+}
 
+impl<T: Clone, A: Allocator> Rc<T, A> {
     /// If we have the only reference to `T` then unwrap it. Otherwise, clone `T` and return the
     /// clone.
     ///
@@ -1845,7 +1847,7 @@ impl<T: Clone, A: Allocator + Clone> Rc<T, A> {
     }
 }
 
-impl<A: Allocator + Clone> Rc<dyn Any, A> {
+impl<A: Allocator> Rc<dyn Any, A> {
     /// Attempt to downcast the `Rc<dyn Any>` to a concrete type.
     ///
     /// # Examples
@@ -1869,10 +1871,8 @@ impl<A: Allocator + Clone> Rc<dyn Any, A> {
     pub fn downcast<T: Any>(self) -> Result<Rc<T, A>, Self> {
         if (*self).is::<T>() {
             unsafe {
-                let ptr = self.ptr.cast::<RcBox<T>>();
-                let alloc = self.alloc.clone();
-                forget(self);
-                Ok(Rc::from_inner_in(ptr, alloc))
+                let (ptr, alloc) = Rc::into_inner_with_allocator(self);
+                Ok(Rc::from_inner_in(ptr.cast(), alloc))
             }
         } else {
             Err(self)
@@ -1909,10 +1909,8 @@ impl<A: Allocator + Clone> Rc<dyn Any, A> {
     #[unstable(feature = "downcast_unchecked", issue = "90850")]
     pub unsafe fn downcast_unchecked<T: Any>(self) -> Rc<T, A> {
         unsafe {
-            let ptr = self.ptr.cast::<RcBox<T>>();
-            let alloc = self.alloc.clone();
-            mem::forget(self);
-            Rc::from_inner_in(ptr, alloc)
+            let (ptr, alloc) = Rc::into_inner_with_allocator(self);
+            Rc::from_inner_in(ptr.cast(), alloc)
         }
     }
 }
@@ -2661,12 +2659,13 @@ impl From<Rc<str>> for Rc<[u8]> {
 }
 
 #[stable(feature = "boxed_slice_try_from", since = "1.43.0")]
-impl<T, const N: usize> TryFrom<Rc<[T]>> for Rc<[T; N]> {
-    type Error = Rc<[T]>;
+impl<T, A: Allocator, const N: usize> TryFrom<Rc<[T], A>> for Rc<[T; N], A> {
+    type Error = Rc<[T], A>;
 
-    fn try_from(boxed_slice: Rc<[T]>) -> Result<Self, Self::Error> {
+    fn try_from(boxed_slice: Rc<[T], A>) -> Result<Self, Self::Error> {
         if boxed_slice.len() == N {
-            Ok(unsafe { Rc::from_raw(Rc::into_raw(boxed_slice) as *mut [T; N]) })
+            let (ptr, alloc) = Rc::into_inner_with_allocator(boxed_slice);
+            Ok(unsafe { Rc::from_inner_in(ptr.cast(), alloc) })
         } else {
             Err(boxed_slice)
         }
