@@ -176,6 +176,13 @@ impl Rustc {
         self
     }
 
+    /// Specify the crate name.
+    pub fn crate_name(&mut self, name: &str) -> &mut Self {
+        self.cmd.arg("--crate-name");
+        self.cmd.arg(name);
+        self
+    }
+
     /// Get the [`Output`][::std::process::Output] of the finished process.
     #[track_caller]
     pub fn command_output(&mut self) -> ::std::process::Output {

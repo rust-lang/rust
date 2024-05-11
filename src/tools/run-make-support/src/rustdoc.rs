@@ -114,6 +114,13 @@ impl Rustdoc {
         self
     }
 
+    /// Specify the crate name.
+    pub fn crate_name(&mut self, name: &str) -> &mut Self {
+        self.cmd.arg("--crate-name");
+        self.cmd.arg(name);
+        self
+    }
+
     #[track_caller]
     pub fn run_fail_assert_exit_code(&mut self, code: i32) -> Output {
         let caller_location = std::panic::Location::caller();
