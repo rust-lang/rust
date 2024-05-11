@@ -22,20 +22,33 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     /// Returns the minimum alignment for the target architecture for allocations of the given size.
     fn min_align(&self, size: u64, kind: MiriMemoryKind) -> Align {
         let this = self.eval_context_ref();
-        // List taken from `library/std/src/sys/pal/common/alloc.rs`.
-        // This list should be kept in sync with the one from libstd.
-        let min_align = match this.tcx.sess.target.arch.as_ref() {
+        // The C standard says: "The pointer returned if the allocation succeeds is suitably aligned
+        // so that it may be assigned to a pointer to any type of object with a fundamental
+        // alignment requirement and size less than or equal to the size requested."
+        // So first we need to figure out what the limits are for "fundamental alignment".
+        // This is given by `alignof(max_align_t)`. The following list is taken from
+        // `library/std/src/sys/pal/common/alloc.rs` (where this is called `MIN_ALIGN`) and should
+        // be kept in sync.
+        let max_fundamental_align = match this.tcx.sess.target.arch.as_ref() {
             "x86" | "arm" | "mips" | "mips32r6" | "powerpc" | "powerpc64" | "wasm32" => 8,
             "x86_64" | "aarch64" | "mips64" | "mips64r6" | "s390x" | "sparc64" | "loongarch64" =>
                 16,
             arch => bug!("unsupported target architecture for malloc: `{}`", arch),
         };
-        // Windows always aligns, even small allocations.
-        // Source: <https://support.microsoft.com/en-us/help/286470/how-to-use-pageheap-exe-in-windows-xp-windows-2000-and-windows-server>
-        // But jemalloc does not, so for the C heap we only align if the allocation is sufficiently big.
-        if kind == MiriMemoryKind::WinHeap || size >= min_align {
-            return Align::from_bytes(min_align).unwrap();
+        // The C standard only requires sufficient alignment for any *type* with size less than or
+        // equal to the size requested. Types one can define in standard C seem to never have an alignment
+        // bigger than their size. So if the size is 2, then only alignment 2 is guaranteed, even if
+        // `max_fundamental_align` is bigger.
+        // This matches what some real-world implementations do, see e.g.
+        // - https://github.com/jemalloc/jemalloc/issues/1533
+        // - https://github.com/llvm/llvm-project/issues/53540
+        // - https://www.open-std.org/jtc1/sc22/wg14/www/docs/n2293.htm
+        // However, Windows `HeapAlloc` always aligns, even small allocations, so it gets different treatment here.
+        // Source: <https://learn.microsoft.com/en-us/windows/win32/api/heapapi/nf-heapapi-heapalloc>
+        if kind == MiriMemoryKind::WinHeap || size >= max_fundamental_align {
+            return Align::from_bytes(max_fundamental_align).unwrap();
         }
+        // C doesn't have zero-sized types, so presumably nothing is guaranteed here.
         if size == 0 {
             return Align::ONE;
         }
