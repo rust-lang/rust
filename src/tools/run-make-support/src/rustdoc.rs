@@ -107,6 +107,13 @@ impl Rustdoc {
         self
     }
 
+    /// Specify the crate type.
+    pub fn crate_type(&mut self, crate_type: &str) -> &mut Self {
+        self.cmd.arg("--crate-type");
+        self.cmd.arg(crate_type);
+        self
+    }
+
     #[track_caller]
     pub fn run_fail_assert_exit_code(&mut self, code: i32) -> Output {
         let caller_location = std::panic::Location::caller();
