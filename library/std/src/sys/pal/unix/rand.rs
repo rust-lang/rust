@@ -59,7 +59,14 @@ mod imp {
         unsafe { getrandom(buf.as_mut_ptr().cast(), buf.len(), libc::GRND_NONBLOCK) }
     }
 
-    #[cfg(any(target_os = "espidf", target_os = "horizon", target_os = "freebsd", netbsd10))]
+    #[cfg(any(
+        target_os = "espidf",
+        target_os = "horizon",
+        target_os = "freebsd",
+        netbsd10,
+        target_os = "illumos",
+        target_os = "solaris"
+    ))]
     fn getrandom(buf: &mut [u8]) -> libc::ssize_t {
         unsafe { libc::getrandom(buf.as_mut_ptr().cast(), buf.len(), 0) }
     }
@@ -83,6 +90,8 @@ mod imp {
         target_os = "horizon",
         target_os = "freebsd",
         target_os = "dragonfly",
+        target_os = "solaris",
+        target_os = "illumos",
         netbsd10
     )))]
     fn getrandom_fill_bytes(_buf: &mut [u8]) -> bool {
@@ -96,6 +105,8 @@ mod imp {
         target_os = "horizon",
         target_os = "freebsd",
         target_os = "dragonfly",
+        target_os = "solaris",
+        target_os = "illumos",
         netbsd10
     ))]
     fn getrandom_fill_bytes(v: &mut [u8]) -> bool {
