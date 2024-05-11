@@ -1,4 +1,5 @@
 use std::ffi::OsString;
+use std::fs;
 use std::path::PathBuf;
 
 use super::miri_extern;
@@ -26,4 +27,27 @@ pub fn tmp() -> PathBuf {
         std::env::var_os("MIRI_TEMP").unwrap_or_else(|| std::env::temp_dir().into_os_string());
     // These are host paths. We need to convert them to the target.
     host_to_target_path(path)
+}
+
+/// Prepare: compute filename and make sure the file does not exist.
+pub fn prepare(filename: &str) -> PathBuf {
+    let path = tmp().join(filename);
+    // Clean the paths for robustness.
+    fs::remove_file(&path).ok();
+    path
+}
+
+/// Prepare like above, and also write some initial content to the file.
+pub fn prepare_with_content(filename: &str, content: &[u8]) -> PathBuf {
+    let path = prepare(filename);
+    fs::write(&path, content).unwrap();
+    path
+}
+
+/// Prepare directory: compute directory name and make sure it does not exist.
+pub fn prepare_dir(dirname: &str) -> PathBuf {
+    let path = tmp().join(&dirname);
+    // Clean the directory for robustness.
+    fs::remove_dir_all(&path).ok();
+    path
 }

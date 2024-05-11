@@ -211,12 +211,12 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
         // First deal with any external C functions in linked .so file.
         #[cfg(target_os = "linux")]
-        if this.machine.external_so_lib.as_ref().is_some() {
-            use crate::shims::ffi_support::EvalContextExt as _;
+        if this.machine.native_lib.as_ref().is_some() {
+            use crate::shims::native_lib::EvalContextExt as _;
             // An Ok(false) here means that the function being called was not exported
             // by the specified `.so` file; we should continue and check if it corresponds to
             // a provided shim.
-            if this.call_external_c_fct(link_name, dest, args)? {
+            if this.call_native_fn(link_name, dest, args)? {
                 return Ok(EmulateItemResult::NeedsJumping);
             }
         }
@@ -421,7 +421,7 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             "malloc" => {
                 let [size] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let size = this.read_target_usize(size)?;
-                let res = this.malloc(size, /*zero_init:*/ false, MiriMemoryKind::C)?;
+                let res = this.malloc(size, /*zero_init:*/ false)?;
                 this.write_pointer(res, dest)?;
             }
             "calloc" => {
@@ -432,20 +432,20 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let size = items
                     .checked_mul(len)
                     .ok_or_else(|| err_ub_format!("overflow during calloc size computation"))?;
-                let res = this.malloc(size, /*zero_init:*/ true, MiriMemoryKind::C)?;
+                let res = this.malloc(size, /*zero_init:*/ true)?;
                 this.write_pointer(res, dest)?;
             }
             "free" => {
                 let [ptr] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let ptr = this.read_pointer(ptr)?;
-                this.free(ptr, MiriMemoryKind::C)?;
+                this.free(ptr)?;
             }
             "realloc" => {
                 let [old_ptr, new_size] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let old_ptr = this.read_pointer(old_ptr)?;
                 let new_size = this.read_target_usize(new_size)?;
-                let res = this.realloc(old_ptr, new_size, MiriMemoryKind::C)?;
+                let res = this.realloc(old_ptr, new_size)?;
                 this.write_pointer(res, dest)?;
             }
 
@@ -652,6 +652,16 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let ptr = this.read_pointer(ptr)?;
                 // This reads at least 1 byte, so we are already enforcing that this is a valid pointer.
                 let n = this.read_c_str(ptr)?.len();
+                this.write_scalar(
+                    Scalar::from_target_usize(u64::try_from(n).unwrap(), this),
+                    dest,
+                )?;
+            }
+            "wcslen" => {
+                let [ptr] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let ptr = this.read_pointer(ptr)?;
+                // This reads at least 1 byte, so we are already enforcing that this is a valid pointer.
+                let n = this.read_wchar_t_str(ptr)?.len();
                 this.write_scalar(
                     Scalar::from_target_usize(u64::try_from(n).unwrap(), this),
                     dest,

@@ -27,6 +27,30 @@ pub fn flagsplit(flags: &str) -> Vec<String> {
     flags.split(' ').map(str::trim).filter(|s| !s.is_empty()).map(str::to_string).collect()
 }
 
+pub fn arg_flag_value(
+    args: impl IntoIterator<Item = impl AsRef<OsStr>>,
+    flag: &str,
+) -> Option<OsString> {
+    let mut args = args.into_iter();
+    while let Some(arg) = args.next() {
+        let arg = arg.as_ref();
+        if arg == "--" {
+            return None;
+        }
+        let Some(arg) = arg.to_str() else {
+            // Skip non-UTF-8 arguments.
+            continue;
+        };
+        if arg == flag {
+            // Next one is the value.
+            return Some(args.next()?.as_ref().to_owned());
+        } else if let Some(val) = arg.strip_prefix(flag).and_then(|s| s.strip_prefix("=")) {
+            return Some(val.to_owned().into());
+        }
+    }
+    None
+}
+
 /// Some extra state we track for building Miri, such as the right RUSTFLAGS.
 pub struct MiriEnv {
     /// miri_dir is the root of the miri repository checkout we are working in.

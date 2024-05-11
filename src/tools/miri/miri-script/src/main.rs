@@ -31,7 +31,10 @@ pub enum Command {
     /// Build miri, set up a sysroot and then run the test suite.
     Test {
         bless: bool,
-        /// Flags that are passed through to `cargo test`.
+        /// The cross-interpretation target.
+        /// If none then the host is the target.
+        target: Option<OsString>,
+        /// Flags that are passed through to the test harness.
         flags: Vec<OsString>,
     },
     /// Build miri, set up a sysroot and then run the driver with the given <flags>.
@@ -58,6 +61,7 @@ pub enum Command {
     Cargo { flags: Vec<OsString> },
     /// Runs the benchmarks from bench-cargo-miri in hyperfine. hyperfine needs to be installed.
     Bench {
+        target: Option<OsString>,
         /// List of benchmarks to run. By default all benchmarks are run.
         benches: Vec<OsString>,
     },
@@ -84,9 +88,9 @@ Just build miri. <flags> are passed to `cargo build`.
 ./miri check <flags>:
 Just check miri. <flags> are passed to `cargo check`.
 
-./miri test [--bless] <flags>:
-Build miri, set up a sysroot and then run the test suite. <flags> are passed
-to the final `cargo test` invocation.
+./miri test [--bless] [--target <target>] <flags>:
+Build miri, set up a sysroot and then run the test suite.
+<flags> are passed to the test harness.
 
 ./miri run [--dep] [-v|--verbose] [--many-seeds|--many-seeds=..to|--many-seeds=from..to] <flags>:
 Build miri, set up a sysroot and then run the driver with the given <flags>.
@@ -110,7 +114,7 @@ install`. Sets up the rpath such that the installed binary should work in any
 working directory. Note that the binaries are placed in the `miri` toolchain
 sysroot, to prevent conflicts with other toolchains.
 
-./miri bench <benches>:
+./miri bench [--target <target>] <benches>:
 Runs the benchmarks from bench-cargo-miri in hyperfine. hyperfine needs to be installed.
 <benches> can explicitly list the benchmarks to run; by default, all of them are run.
 
@@ -147,12 +151,30 @@ fn main() -> Result<()> {
         Some("build") => Command::Build { flags: args.collect() },
         Some("check") => Command::Check { flags: args.collect() },
         Some("test") => {
-            let bless = args.peek().is_some_and(|a| a.to_str() == Some("--bless"));
-            if bless {
-                // Consume the flag.
+            let mut target = None;
+            let mut bless = false;
+
+            while let Some(arg) = args.peek().and_then(|s| s.to_str()) {
+                match arg {
+                    "--bless" => bless = true,
+                    "--target" => {
+                        // Skip "--target"
+                        args.next().unwrap();
+                        // Next argument is the target triple.
+                        let val = args.peek().ok_or_else(|| {
+                            anyhow!("`--target` must be followed by target triple")
+                        })?;
+                        target = Some(val.to_owned());
+                    }
+                    // Only parse the leading flags.
+                    _ => break,
+                }
+
+                // Consume the flag, look at the next one.
                 args.next().unwrap();
             }
-            Command::Test { bless, flags: args.collect() }
+
+            Command::Test { bless, flags: args.collect(), target }
         }
         Some("run") => {
             let mut dep = false;
@@ -188,7 +210,29 @@ fn main() -> Result<()> {
         Some("clippy") => Command::Clippy { flags: args.collect() },
         Some("cargo") => Command::Cargo { flags: args.collect() },
         Some("install") => Command::Install { flags: args.collect() },
-        Some("bench") => Command::Bench { benches: args.collect() },
+        Some("bench") => {
+            let mut target = None;
+            while let Some(arg) = args.peek().and_then(|s| s.to_str()) {
+                match arg {
+                    "--target" => {
+                        // Skip "--target"
+                        args.next().unwrap();
+                        // Next argument is the target triple.
+                        let val = args.peek().ok_or_else(|| {
+                            anyhow!("`--target` must be followed by target triple")
+                        })?;
+                        target = Some(val.to_owned());
+                    }
+                    // Only parse the leading flags.
+                    _ => break,
+                }
+
+                // Consume the flag, look at the next one.
+                args.next().unwrap();
+            }
+
+            Command::Bench { target, benches: args.collect() }
+        }
         Some("toolchain") => Command::Toolchain { flags: args.collect() },
         Some("rustc-pull") => {
             let commit = args.next().map(|a| a.to_string_lossy().into_owned());
