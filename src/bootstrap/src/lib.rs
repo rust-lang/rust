@@ -683,6 +683,8 @@ impl Build {
 
         if !self.config.dry_run() {
             {
+                // We first do a dry-run. This is a sanity-check to ensure that
+                // steps don't do anything expensive in the dry-run.
                 self.config.dry_run = DryRun::SelfCheck;
                 let builder = builder::Builder::new(self);
                 builder.execute_cli();

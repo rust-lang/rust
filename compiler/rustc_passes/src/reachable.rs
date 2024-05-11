@@ -1,14 +1,26 @@
-//! Finds local items that are externally reachable, which means that other crates need access to
-//! their compiled machine code or their MIR.
+//! Finds local items that are "reachable", which means that other crates need access to their
+//! compiled code or their *runtime* MIR. (Compile-time MIR is always encoded anyway, so we don't
+//! worry about that here.)
 //!
-//! An item is "externally reachable" if it is relevant for other crates. This obviously includes
-//! all public items. However, some of these items cannot be compiled to machine code (because they
-//! are generic), and for some the machine code is not sufficient (because we want to cross-crate
-//! inline them). These items "need cross-crate MIR". When a reachable function `f` needs
-//! cross-crate MIR, then all the functions it calls also become reachable, as they will be
-//! necessary to use the MIR of `f` from another crate. Furthermore, an item can become "externally
-//! reachable" by having a `const`/`const fn` return a pointer to that item, so we also need to
-//! recurse into reachable `const`/`const fn`.
+//! An item is "reachable" if codegen that happens in downstream crates can end up referencing this
+//! item. This obviously includes all public items. However, some of these items cannot be codegen'd
+//! (because they are generic), and for some the compiled code is not sufficient (because we want to
+//! cross-crate inline them). These items "need cross-crate MIR". When a reachable function `f`
+//! needs cross-crate MIR, then its MIR may be codegen'd in a downstream crate, and hence items it
+//! mentions need to be considered reachable.
+//!
+//! Furthermore, if a `const`/`const fn` is reachable, then it can return pointers to other items,
+//! making those reachable as well. For instance, consider a `const fn` returning a pointer to an
+//! otherwise entirely private function: if a downstream crate calls that `const fn` to compute the
+//! initial value of a `static`, then it needs to generate a direct reference to this function --
+//! i.e., the function is directly reachable from that downstream crate! Hence we have to recurse
+//! into `const` and `const fn`.
+//!
+//! Conversely, reachability *stops* when it hits a monomorphic non-`const` function that we do not
+//! want to cross-crate inline. That function will just be codegen'd in this crate, which means the
+//! monomorphization collector will consider it a root and then do another graph traversal to
+//! codegen everything called by this function -- but that's a very different graph from what we are
+//! considering here as at that point, everything is monomorphic.
 
 use hir::def_id::LocalDefIdSet;
 use rustc_data_structures::stack::ensure_sufficient_stack;

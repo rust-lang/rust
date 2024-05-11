@@ -1,7 +1,6 @@
-//@ known-bug: #97006
 //@ compile-flags: -Zunpretty=hir
 
-#![allow(unused)]
+// issue#97006
 
 macro_rules! m {
     ($attr_path: path) => {
