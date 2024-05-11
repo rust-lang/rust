@@ -251,7 +251,6 @@ run-make/rustdoc-scrape-examples-ordering/Makefile
 run-make/rustdoc-scrape-examples-remap/Makefile
 run-make/rustdoc-scrape-examples-test/Makefile
 run-make/rustdoc-scrape-examples-whitespace/Makefile
-run-make/rustdoc-shared-flags/Makefile
 run-make/rustdoc-target-spec-json-path/Makefile
 run-make/rustdoc-themes/Makefile
 run-make/rustdoc-verify-output-files/Makefile
