@@ -120,6 +120,7 @@ fn pat_bindings(pat: &Pat<'_>) -> Vec<HirId> {
 /// operations performed on `binding_hir_ids` are:
 /// * to take non-mutable references to them
 /// * to use them as non-mutable `&self` in method calls
+///
 /// If any of `binding_hir_ids` is used in any other way, then `clone_or_copy_needed` will be true
 /// when `CloneOrCopyVisitor` is done visiting.
 struct CloneOrCopyVisitor<'cx, 'tcx> {
