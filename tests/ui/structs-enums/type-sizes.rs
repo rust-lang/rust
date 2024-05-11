@@ -322,6 +322,11 @@ pub fn main() {
     assert_eq!(size_of::<EnumManyVariant<Option2<NicheU16,u8>>>(), 6);
     assert_eq!(size_of::<EnumManyVariant<Option<(NicheU16,u8)>>>(), 6);
 
+    assert_eq!(size_of::<Option<&[()]>>(), 16, "ZST slice refs only have the null pointer niche");
+    assert_eq!(size_of::<Option<Option<Option<&[()]>>>>(), 24);
+    assert_eq!(size_of::<Option<Option<Option<&[u16]>>>>(), 16,
+        "non-ZST slice ref metadata provides than one niche");
+
 
     let v = Reorder4 {a: 0, b: 0, ary: [0; 4]};
     assert_eq!(size_of::<Reorder4>(), 12);

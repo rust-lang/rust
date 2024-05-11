@@ -7,7 +7,8 @@
 
 struct S(i32);
 
-struct SmallStruct(f32, Option<S>, &'static [f32]);
+#[repr(C)]
+struct SmallStruct(Option<S>, f32, &'static [f32]);
 
 // CHECK: [[const:@.*]] = private unnamed_addr constant
 // CHECK-SAME: , align 8
@@ -22,7 +23,7 @@ pub fn overaligned_constant() {
     s.0 = 3;
 
     // SMALL_VAL corresponds to a MIR allocation with alignment 8.
-    const SMALL_VAL: SmallStruct = SmallStruct(4., Some(S(1)), &[]);
+    const SMALL_VAL: SmallStruct = SmallStruct(Some(S(1)), 4., &[]);
 
     // In pre-codegen MIR:
     // `a` is a scalar 4.

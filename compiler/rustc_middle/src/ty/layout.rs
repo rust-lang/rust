@@ -6,6 +6,7 @@ use rustc_abi::{
     PointerKind, Primitive, ReprFlags, ReprOptions, Scalar, Size, TagEncoding, TargetDataLayout,
     TyAbiInterface, VariantIdx, Variants,
 };
+use rustc_ast::Mutability;
 use rustc_attr_ir::lang_items::LangItem;
 use rustc_errors::{Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, IntoDiagArg, Level};
 use rustc_hir as hir;
@@ -338,6 +339,8 @@ pub enum SizeSkeleton<'tcx> {
     Pointer {
         /// If true, this pointer is never null.
         non_zero: bool,
+        /// Available if the width of the pointer is known, i.e. whether it's 1 or 2 usizes
+        known_size: Option<Size>,
         /// The type which determines the unsized metadata, if any,
         /// of this pointer. Either a type parameter or a projection
         /// depending on one, with regions erased.
@@ -437,6 +440,20 @@ impl<'tcx> SizeSkeleton<'tcx> {
                         debug_assert!(tail.has_non_region_param());
                         Ok(SizeSkeleton::Pointer {
                             non_zero,
+                            tail: tcx.erase_and_anonymize_regions(tail),
+                            known_size: None,
+                        })
+                    }
+                    ty::Slice(_) => {
+                        debug_assert!(tail.has_non_region_param());
+                        // Assumption: all slice pointers have the same size. At most they differ in niches or or ptr/len ordering
+                        let simple_slice =
+                            Ty::new_ptr(tcx, Ty::new_slice(tcx, tcx.types.unit), Mutability::Not);
+                        let size =
+                            tcx.layout_of(typing_env.as_query_input(simple_slice)).unwrap().size;
+                        Ok(SizeSkeleton::Pointer {
+                            non_zero,
+                            known_size: Some(size),
                             tail: tcx.erase_and_anonymize_regions(tail),
                         })
                     }
@@ -547,8 +564,8 @@ impl<'tcx> SizeSkeleton<'tcx> {
                 // Single-variant case: Check if this is a newtype around a pointer.
                 // Such types are themselves pointer-sized.
                 if def.variants().len() == 1 {
-                    if let Some(SizeSkeleton::Pointer { non_zero, tail }) = v0 {
-                        return Ok(SizeSkeleton::Pointer { non_zero, tail });
+                    if let Some(SizeSkeleton::Pointer { non_zero, known_size, tail }) = v0 {
+                        return Ok(SizeSkeleton::Pointer { non_zero, known_size, tail });
                     } else {
                         return Err(err);
                     }
@@ -559,9 +576,9 @@ impl<'tcx> SizeSkeleton<'tcx> {
                 // 1-ZST. Such types are eligible to for the nullable pointer enum optimization, so
                 // they are themselves pointer-sized.
                 match (v0, v1) {
-                    (Some(SizeSkeleton::Pointer { non_zero: true, tail }), None)
-                    | (None, Some(SizeSkeleton::Pointer { non_zero: true, tail })) => {
-                        Ok(SizeSkeleton::Pointer { non_zero: false, tail })
+                    (Some(SizeSkeleton::Pointer { non_zero: true, known_size, tail }), None)
+                    | (None, Some(SizeSkeleton::Pointer { non_zero: true, known_size, tail })) => {
+                        Ok(SizeSkeleton::Pointer { non_zero: false, known_size, tail })
                     }
                     _ => Err(err),
                 }
@@ -586,8 +603,8 @@ impl<'tcx> SizeSkeleton<'tcx> {
                     // raw pointer.
                     ty::PatternKind::NotNull => match base? {
                         SizeSkeleton::Known(..) => base,
-                        SizeSkeleton::Pointer { non_zero: _, tail } => {
-                            Ok(SizeSkeleton::Pointer { non_zero: true, tail })
+                        SizeSkeleton::Pointer { non_zero: _, known_size, tail } => {
+                            Ok(SizeSkeleton::Pointer { non_zero: true, known_size, tail })
                         }
                     },
                 }
@@ -599,7 +616,10 @@ impl<'tcx> SizeSkeleton<'tcx> {
 
     pub fn same_size(self, other: SizeSkeleton<'tcx>) -> bool {
         match (self, other) {
-            (SizeSkeleton::Known(a, _), SizeSkeleton::Known(b, _)) => a == b,
+            (
+                SizeSkeleton::Known(a, _) | SizeSkeleton::Pointer { known_size: Some(a), .. },
+                SizeSkeleton::Known(b, _) | SizeSkeleton::Pointer { known_size: Some(b), .. },
+            ) => a == b,
             (SizeSkeleton::Pointer { tail: a, .. }, SizeSkeleton::Pointer { tail: b, .. }) => {
                 a == b
             }
