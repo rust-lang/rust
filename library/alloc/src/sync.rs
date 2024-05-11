@@ -3308,7 +3308,32 @@ impl Default for Arc<str> {
     /// This may or may not share an allocation with other Arcs.
     #[inline]
     fn default() -> Self {
-        Arc::from("")
+        let arc: Arc<[u8]> = Default::default();
+        debug_assert!(core::str::from_utf8(&*arc).is_ok());
+        let (ptr, alloc) = Arc::into_inner_with_allocator(arc);
+        unsafe { Arc::from_ptr_in(ptr.as_ptr() as *mut ArcInner<str>, alloc) }
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+#[stable(feature = "more_rc_default_impls", since = "CURRENT_RUSTC_VERSION")]
+impl Default for Arc<core::ffi::CStr> {
+    /// Creates an empty CStr inside an Arc
+    ///
+    /// This may or may not share an allocation with other Arcs.
+    #[inline]
+    fn default() -> Self {
+        use core::ffi::CStr;
+        static STATIC_INNER_CSTR: ArcInner<[u8; 1]> = ArcInner {
+            strong: atomic::AtomicUsize::new(1),
+            weak: atomic::AtomicUsize::new(1),
+            data: [0],
+        };
+        let inner: NonNull<ArcInner<[u8]>> = NonNull::from(&STATIC_INNER_CSTR);
+        let inner: NonNull<ArcInner<CStr>> = NonNull::new(inner.as_ptr() as *mut ArcInner<CStr>).unwrap();
+        // `this` semantically is the Arc "owned" by the static, so make sure not to drop it.
+        let this: mem::ManuallyDrop<Arc<CStr>> = unsafe { mem::ManuallyDrop::new(Arc::from_inner(inner)) };
+        (*this).clone()
     }
 }
 
@@ -3320,6 +3345,31 @@ impl<T> Default for Arc<[T]> {
     /// This may or may not share an allocation with other Arcs.
     #[inline]
     fn default() -> Self {
+        let alignment_of_t: usize = mem::align_of::<T>();
+        // We only make statics for the lowest five alignments.
+        // Alignments greater than that will use dynamic allocation.
+        macro_rules! use_static_inner_for_alignments {
+            ($($alignment:literal),*) => {
+                $(if alignment_of_t == $alignment {
+                    // Note: this must be in a new scope because static and type names are unhygenic.
+                    #[repr(align($alignment))]
+                    struct Aligned;
+                    static ALIGNED_STATIC_INNER: ArcInner<Aligned> = ArcInner {
+                        strong: atomic::AtomicUsize::new(1),
+                        weak: atomic::AtomicUsize::new(1),
+                        data: Aligned,
+                    };
+                    let inner: NonNull<ArcInner<Aligned>> = NonNull::from(&ALIGNED_STATIC_INNER);
+                    let inner: NonNull<ArcInner<[T; 0]>> = inner.cast();
+                    // `this` semantically is the Arc "owned" by the static, so make sure not to drop it.
+                    let this: mem::ManuallyDrop<Arc<[T; 0]>> = unsafe { mem::ManuallyDrop::new(Arc::from_inner(inner)) };
+                    return (*this).clone();
+                })*
+            };
+        }
+        use_static_inner_for_alignments!(1, 2, 4, 8, 16);
+
+        // If T's alignment is not one of the ones we have a static for, make a new unique allocation.
         let arr: [T; 0] = [];
         Arc::from(arr)
     }

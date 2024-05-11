@@ -912,19 +912,6 @@ impl From<&CStr> for Rc<CStr> {
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "more_rc_default_impls", since = "CURRENT_RUSTC_VERSION")]
-impl Default for Arc<CStr> {
-    /// Creates an empty CStr inside an Arc
-    ///
-    /// This may or may not share an allocation with other Arcs.
-    #[inline]
-    fn default() -> Self {
-        let c_str: &CStr = Default::default();
-        Arc::from(c_str)
-    }
-}
-
-#[cfg(not(no_global_oom_handling))]
-#[stable(feature = "more_rc_default_impls", since = "CURRENT_RUSTC_VERSION")]
 impl Default for Rc<CStr> {
     /// Creates an empty CStr inside an Rc
     ///
