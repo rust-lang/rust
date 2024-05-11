@@ -1,4 +1,5 @@
-// This test checks that alloc can still compile correctly when the unstable no_global_oom_handling feature is turned on.
+// This test checks that alloc can still compile correctly
+// when the unstable no_global_oom_handling feature is turned on.
 // See https://github.com/rust-lang/rust/pull/84266
 
 use run_make_support::rustc;
