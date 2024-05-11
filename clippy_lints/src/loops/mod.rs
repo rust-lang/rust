@@ -427,7 +427,7 @@ declare_clippy_lint! {
     ///
     /// ### Known problems
     /// The lint will catch all while loops comparing floating point
-    /// values no matter whether it's a threshold or something.
+    /// values without regarding the increment.
     ///
     /// ### Example
     /// ```no_run
