@@ -604,40 +604,41 @@ pub(crate) fn run_aot(
 
     let global_asm_config = Arc::new(crate::global_asm::GlobalAsmConfig::new(tcx));
 
-    let mut concurrency_limiter = ConcurrencyLimiter::new(tcx.sess, cgus.len());
+    let (todo_cgus, done_cgus) =
+        cgus.into_iter().enumerate().partition::<Vec<_>, _>(|&(i, _)| match cgu_reuse[i] {
+            _ if backend_config.disable_incr_cache => true,
+            CguReuse::No => true,
+            CguReuse::PreLto | CguReuse::PostLto => false,
+        });
 
-    let modules = tcx.sess.time("codegen mono items", || {
-        cgus.iter()
-            .enumerate()
-            .map(|(i, cgu)| {
-                let cgu_reuse =
-                    if backend_config.disable_incr_cache { CguReuse::No } else { cgu_reuse[i] };
-                match cgu_reuse {
-                    CguReuse::No => {
-                        let dep_node = cgu.codegen_dep_node(tcx);
-                        tcx.dep_graph
-                            .with_task(
-                                dep_node,
-                                tcx,
-                                (
-                                    backend_config.clone(),
-                                    global_asm_config.clone(),
-                                    cgu.name(),
-                                    concurrency_limiter.acquire(tcx.dcx()),
-                                ),
-                                module_codegen,
-                                Some(rustc_middle::dep_graph::hash_result),
-                            )
-                            .0
-                    }
-                    CguReuse::PreLto | CguReuse::PostLto => {
-                        concurrency_limiter.job_already_done();
-                        OngoingModuleCodegen::Sync(reuse_workproduct_for_cgu(tcx, cgu))
-                    }
-                }
-            })
-            .collect::<Vec<_>>()
-    });
+    let mut concurrency_limiter = ConcurrencyLimiter::new(tcx.sess, todo_cgus.len());
+
+    let modules =
+        tcx.sess.time("codegen mono items", || {
+            todo_cgus
+                .into_iter()
+                .map(|(_, cgu)| {
+                    let dep_node = cgu.codegen_dep_node(tcx);
+                    tcx.dep_graph
+                        .with_task(
+                            dep_node,
+                            tcx,
+                            (
+                                backend_config.clone(),
+                                global_asm_config.clone(),
+                                cgu.name(),
+                                concurrency_limiter.acquire(tcx.dcx()),
+                            ),
+                            module_codegen,
+                            Some(rustc_middle::dep_graph::hash_result),
+                        )
+                        .0
+                })
+                .chain(done_cgus.into_iter().map(|(_, cgu)| {
+                    OngoingModuleCodegen::Sync(reuse_workproduct_for_cgu(tcx, cgu))
+                }))
+                .collect::<Vec<_>>()
+        });
 
     let mut allocator_module = make_module(tcx.sess, &backend_config, "allocator_shim".to_string());
     let mut allocator_unwind_context = UnwindContext::new(allocator_module.isa(), true);

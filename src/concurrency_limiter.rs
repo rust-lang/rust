@@ -78,11 +78,6 @@ impl ConcurrencyLimiter {
         }
     }
 
-    pub(super) fn job_already_done(&mut self) {
-        let mut state = self.state.lock().unwrap();
-        state.job_already_done();
-    }
-
     pub(crate) fn finished(mut self) {
         self.helper_thread.take();
 
@@ -185,14 +180,6 @@ mod state {
             self.assert_invariants();
             self.pending_jobs -= 1;
             self.active_jobs -= 1;
-            self.assert_invariants();
-            self.drop_excess_capacity();
-            self.assert_invariants();
-        }
-
-        pub(super) fn job_already_done(&mut self) {
-            self.assert_invariants();
-            self.pending_jobs -= 1;
             self.assert_invariants();
             self.drop_excess_capacity();
             self.assert_invariants();
