@@ -1,4 +1,4 @@
-//@ignore-target-windows: No libc on Windows
+//@ignore-target-windows: No pthreads on Windows
 //@ignore-target-apple: pthread_condattr_setclock is not supported on MacOS.
 //@compile-flags: -Zmiri-disable-isolation
 

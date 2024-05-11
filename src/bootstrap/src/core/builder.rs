@@ -320,11 +320,13 @@ const PATH_REMAP: &[(&str, &[&str])] = &[
     (
         "tests",
         &[
+            // tidy-alphabetical-start
             "tests/assembly",
             "tests/codegen",
             "tests/codegen-units",
             "tests/coverage",
             "tests/coverage-run-rustdoc",
+            "tests/crashes",
             "tests/debuginfo",
             "tests/incremental",
             "tests/mir-opt",
@@ -340,6 +342,7 @@ const PATH_REMAP: &[(&str, &[&str])] = &[
             "tests/rustdoc-ui",
             "tests/ui",
             "tests/ui-fulldeps",
+            // tidy-alphabetical-end
         ],
     ),
 ];

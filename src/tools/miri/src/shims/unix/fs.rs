@@ -137,37 +137,28 @@ trait EvalContextExtPrivate<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx
         &mut self,
         file_type: std::io::Result<FileType>,
     ) -> InterpResult<'tcx, i32> {
+        #[cfg(unix)]
+        use std::os::unix::fs::FileTypeExt;
+
         let this = self.eval_context_mut();
         match file_type {
             Ok(file_type) => {
-                if file_type.is_dir() {
-                    Ok(this.eval_libc("DT_DIR").to_u8()?.into())
-                } else if file_type.is_file() {
-                    Ok(this.eval_libc("DT_REG").to_u8()?.into())
-                } else if file_type.is_symlink() {
-                    Ok(this.eval_libc("DT_LNK").to_u8()?.into())
-                } else {
+                match () {
+                    _ if file_type.is_dir() => Ok(this.eval_libc("DT_DIR").to_u8()?.into()),
+                    _ if file_type.is_file() => Ok(this.eval_libc("DT_REG").to_u8()?.into()),
+                    _ if file_type.is_symlink() => Ok(this.eval_libc("DT_LNK").to_u8()?.into()),
                     // Certain file types are only supported when the host is a Unix system.
-                    // (i.e. devices and sockets) If it is, check those cases, if not, fall back to
-                    // DT_UNKNOWN sooner.
-
                     #[cfg(unix)]
-                    {
-                        use std::os::unix::fs::FileTypeExt;
-                        if file_type.is_block_device() {
-                            Ok(this.eval_libc("DT_BLK").to_u8()?.into())
-                        } else if file_type.is_char_device() {
-                            Ok(this.eval_libc("DT_CHR").to_u8()?.into())
-                        } else if file_type.is_fifo() {
-                            Ok(this.eval_libc("DT_FIFO").to_u8()?.into())
-                        } else if file_type.is_socket() {
-                            Ok(this.eval_libc("DT_SOCK").to_u8()?.into())
-                        } else {
-                            Ok(this.eval_libc("DT_UNKNOWN").to_u8()?.into())
-                        }
-                    }
-                    #[cfg(not(unix))]
-                    Ok(this.eval_libc("DT_UNKNOWN").to_u8()?.into())
+                    _ if file_type.is_block_device() =>
+                        Ok(this.eval_libc("DT_BLK").to_u8()?.into()),
+                    #[cfg(unix)]
+                    _ if file_type.is_char_device() => Ok(this.eval_libc("DT_CHR").to_u8()?.into()),
+                    #[cfg(unix)]
+                    _ if file_type.is_fifo() => Ok(this.eval_libc("DT_FIFO").to_u8()?.into()),
+                    #[cfg(unix)]
+                    _ if file_type.is_socket() => Ok(this.eval_libc("DT_SOCK").to_u8()?.into()),
+                    // Fallback
+                    _ => Ok(this.eval_libc("DT_UNKNOWN").to_u8()?.into()),
                 }
             }
             Err(e) =>
@@ -387,7 +378,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         // Reject if isolation is enabled.
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`open`", reject_with)?;
-            this.set_last_error_from_io_error(ErrorKind::PermissionDenied)?;
+            this.set_last_error_from_io_error(ErrorKind::PermissionDenied.into())?;
             return Ok(-1);
         }
 
@@ -443,7 +434,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         // Reject if isolation is enabled.
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`unlink`", reject_with)?;
-            this.set_last_error_from_io_error(ErrorKind::PermissionDenied)?;
+            this.set_last_error_from_io_error(ErrorKind::PermissionDenied.into())?;
             return Ok(-1);
         }
 
@@ -474,7 +465,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         // Reject if isolation is enabled.
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`symlink`", reject_with)?;
-            this.set_last_error_from_io_error(ErrorKind::PermissionDenied)?;
+            this.set_last_error_from_io_error(ErrorKind::PermissionDenied.into())?;
             return Ok(-1);
         }
 
@@ -775,7 +766,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         // Reject if isolation is enabled.
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`rename`", reject_with)?;
-            this.set_last_error_from_io_error(ErrorKind::PermissionDenied)?;
+            this.set_last_error_from_io_error(ErrorKind::PermissionDenied.into())?;
             return Ok(-1);
         }
 
@@ -803,7 +794,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         // Reject if isolation is enabled.
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`mkdir`", reject_with)?;
-            this.set_last_error_from_io_error(ErrorKind::PermissionDenied)?;
+            this.set_last_error_from_io_error(ErrorKind::PermissionDenied.into())?;
             return Ok(-1);
         }
 
@@ -831,7 +822,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         // Reject if isolation is enabled.
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`rmdir`", reject_with)?;
-            this.set_last_error_from_io_error(ErrorKind::PermissionDenied)?;
+            this.set_last_error_from_io_error(ErrorKind::PermissionDenied.into())?;
             return Ok(-1);
         }
 
@@ -868,7 +859,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 Ok(Scalar::from_target_usize(id, this))
             }
             Err(e) => {
-                this.set_last_error_from_io_error(e.kind())?;
+                this.set_last_error_from_io_error(e)?;
                 Ok(Scalar::null_ptr(this))
             }
         }
@@ -956,7 +947,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 None
             }
             Some(Err(e)) => {
-                this.set_last_error_from_io_error(e.kind())?;
+                this.set_last_error_from_io_error(e)?;
                 None
             }
         };
@@ -1308,13 +1299,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 Ok(path_bytes.len().try_into().unwrap())
             }
             Err(e) => {
-                this.set_last_error_from_io_error(e.kind())?;
+                this.set_last_error_from_io_error(e)?;
                 Ok(-1)
             }
         }
     }
 
-    #[cfg_attr(not(unix), allow(unused))]
     fn isatty(
         &mut self,
         miri_fd: &OpTy<'tcx, Provenance>,
@@ -1392,7 +1382,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 Ok(Scalar::from_maybe_pointer(dest, this))
             }
             Err(e) => {
-                this.set_last_error_from_io_error(e.kind())?;
+                this.set_last_error_from_io_error(e)?;
                 Ok(Scalar::from_target_usize(0, this))
             }
         }
@@ -1467,8 +1457,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         #[cfg(unix)]
         {
             use std::os::unix::fs::OpenOptionsExt;
-            fopts.mode(0o600);
             // Do not allow others to read or modify this file.
+            fopts.mode(0o600);
             fopts.custom_flags(libc::O_EXCL);
         }
         #[cfg(windows)]
@@ -1513,7 +1503,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                         _ => {
                             // "On error, -1 is returned, and errno is set to
                             // indicate the error"
-                            this.set_last_error_from_io_error(e.kind())?;
+                            this.set_last_error_from_io_error(e)?;
                             return Ok(-1);
                         }
                     },
@@ -1592,7 +1582,7 @@ impl FileMetadata {
         let metadata = match metadata {
             Ok(metadata) => metadata,
             Err(e) => {
-                ecx.set_last_error_from_io_error(e.kind())?;
+                ecx.set_last_error_from_io_error(e)?;
                 return Ok(None);
             }
         };

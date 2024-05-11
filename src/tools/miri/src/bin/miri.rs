@@ -575,18 +575,15 @@ fn main() {
                 "full" => BacktraceStyle::Full,
                 _ => show_error!("-Zmiri-backtrace may only be 0, 1, or full"),
             };
-        } else if let Some(param) = arg.strip_prefix("-Zmiri-extern-so-file=") {
+        } else if let Some(param) = arg.strip_prefix("-Zmiri-native-lib=") {
             let filename = param.to_string();
             if std::path::Path::new(&filename).exists() {
-                if let Some(other_filename) = miri_config.external_so_file {
-                    show_error!(
-                        "-Zmiri-extern-so-file is already set to {}",
-                        other_filename.display()
-                    );
+                if let Some(other_filename) = miri_config.native_lib {
+                    show_error!("-Zmiri-native-lib is already set to {}", other_filename.display());
                 }
-                miri_config.external_so_file = Some(filename.into());
+                miri_config.native_lib = Some(filename.into());
             } else {
-                show_error!("-Zmiri-extern-so-file `{}` does not exist", filename);
+                show_error!("-Zmiri-native-lib `{}` does not exist", filename);
             }
         } else if let Some(param) = arg.strip_prefix("-Zmiri-num-cpus=") {
             let num_cpus = param

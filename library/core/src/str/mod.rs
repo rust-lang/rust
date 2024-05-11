@@ -2531,15 +2531,14 @@ impl str {
     /// # Examples
     ///
     /// ```
-    /// #![feature(byte_slice_trim_ascii)]
-    ///
     /// assert_eq!(" \t \u{3000}hello world\n".trim_ascii_start(), "\u{3000}hello world\n");
     /// assert_eq!("  ".trim_ascii_start(), "");
     /// assert_eq!("".trim_ascii_start(), "");
     /// ```
-    #[unstable(feature = "byte_slice_trim_ascii", issue = "94035")]
     #[must_use = "this returns the trimmed string as a new slice, \
                   without modifying the original"]
+    #[stable(feature = "byte_slice_trim_ascii", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "byte_slice_trim_ascii", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     pub const fn trim_ascii_start(&self) -> &str {
         // SAFETY: Removing ASCII characters from a `&str` does not invalidate
@@ -2557,15 +2556,14 @@ impl str {
     /// # Examples
     ///
     /// ```
-    /// #![feature(byte_slice_trim_ascii)]
-    ///
     /// assert_eq!("\r hello world\u{3000}\n ".trim_ascii_end(), "\r hello world\u{3000}");
     /// assert_eq!("  ".trim_ascii_end(), "");
     /// assert_eq!("".trim_ascii_end(), "");
     /// ```
-    #[unstable(feature = "byte_slice_trim_ascii", issue = "94035")]
     #[must_use = "this returns the trimmed string as a new slice, \
                   without modifying the original"]
+    #[stable(feature = "byte_slice_trim_ascii", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "byte_slice_trim_ascii", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     pub const fn trim_ascii_end(&self) -> &str {
         // SAFETY: Removing ASCII characters from a `&str` does not invalidate
@@ -2584,15 +2582,14 @@ impl str {
     /// # Examples
     ///
     /// ```
-    /// #![feature(byte_slice_trim_ascii)]
-    ///
     /// assert_eq!("\r hello world\n ".trim_ascii(), "hello world");
     /// assert_eq!("  ".trim_ascii(), "");
     /// assert_eq!("".trim_ascii(), "");
     /// ```
-    #[unstable(feature = "byte_slice_trim_ascii", issue = "94035")]
     #[must_use = "this returns the trimmed string as a new slice, \
                   without modifying the original"]
+    #[stable(feature = "byte_slice_trim_ascii", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "byte_slice_trim_ascii", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     pub const fn trim_ascii(&self) -> &str {
         // SAFETY: Removing ASCII characters from a `&str` does not invalidate
