@@ -3304,6 +3304,8 @@ impl<T: Default> Default for Arc<T> {
 #[stable(feature = "more_rc_default_impls", since = "CURRENT_RUSTC_VERSION")]
 impl Default for Arc<str> {
     /// Creates an empty str inside an Arc
+    ///
+    /// This may or may not share an allocation with other Arcs.
     #[inline]
     fn default() -> Self {
         Arc::from("")
@@ -3314,6 +3316,8 @@ impl Default for Arc<str> {
 #[stable(feature = "more_rc_default_impls", since = "CURRENT_RUSTC_VERSION")]
 impl<T> Default for Arc<[T]> {
     /// Creates an empty `[T]` inside an Arc
+    ///
+    /// This may or may not share an allocation with other Arcs.
     #[inline]
     fn default() -> Self {
         let arr: [T; 0] = [];
