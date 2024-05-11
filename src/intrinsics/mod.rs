@@ -586,7 +586,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
             intrinsic_args!(fx, args => (base, offset); intrinsic);
             let offset = offset.load_scalar(fx);
 
-            let pointee_ty = base.layout().ty.builtin_deref(true).unwrap().ty;
+            let pointee_ty = base.layout().ty.builtin_deref(true).unwrap();
             let pointee_size = fx.layout_of(pointee_ty).size.bytes();
             let ptr_diff = if pointee_size != 1 {
                 fx.bcx.ins().imul_imm(offset, pointee_size as i64)
@@ -610,7 +610,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
             let val = val.load_scalar(fx);
             let count = count.load_scalar(fx);
 
-            let pointee_ty = dst.layout().ty.builtin_deref(true).unwrap().ty;
+            let pointee_ty = dst.layout().ty.builtin_deref(true).unwrap();
             let pointee_size = fx.layout_of(pointee_ty).size.bytes();
             let count = if pointee_size != 1 {
                 fx.bcx.ins().imul_imm(count, pointee_size as i64)
@@ -715,7 +715,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
 
             // Cranelift treats loads as volatile by default
             // FIXME correctly handle unaligned_volatile_load
-            let inner_layout = fx.layout_of(ptr.layout().ty.builtin_deref(true).unwrap().ty);
+            let inner_layout = fx.layout_of(ptr.layout().ty.builtin_deref(true).unwrap());
             let val = CValue::by_ref(Pointer::new(ptr.load_scalar(fx)), inner_layout);
             ret.write_cvalue(fx, val);
         }

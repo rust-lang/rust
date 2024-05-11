@@ -819,7 +819,7 @@ impl<'tcx> CPlace<'tcx> {
     }
 
     pub(crate) fn place_deref(self, fx: &mut FunctionCx<'_, '_, 'tcx>) -> CPlace<'tcx> {
-        let inner_layout = fx.layout_of(self.layout().ty.builtin_deref(true).unwrap().ty);
+        let inner_layout = fx.layout_of(self.layout().ty.builtin_deref(true).unwrap());
         if has_ptr_meta(fx.tcx, inner_layout.ty) {
             let (addr, extra) = self.to_cvalue(fx).load_scalar_pair(fx);
             CPlace::for_ptr_with_extra(Pointer::new(addr), extra, inner_layout)
