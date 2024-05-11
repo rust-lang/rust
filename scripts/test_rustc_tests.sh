@@ -122,7 +122,6 @@ rm -r tests/run-make/panic-abort-eh_frame # .eh_frame emitted with panic=abort
 # bugs in the test suite
 # ======================
 rm tests/ui/process/nofile-limit.rs # TODO some AArch64 linking issue
-rm tests/ui/attributes/unix_sigpipe/unix_sigpipe-inherit.rs # TODO some symbol not being found, but works fine when manually invoked
 
 rm tests/ui/stdio-is-blocking.rs # really slow with unoptimized libstd
 
@@ -154,7 +153,7 @@ index 9607ff02f96..b7d97caf9a2 100644
          let mut cmd = setup_common();
 -        let target_rpath_dir = env::var_os("TARGET_RPATH_DIR").unwrap();
 -        cmd.arg(format!("-L{}", target_rpath_dir.to_string_lossy()));
-         Self { cmd }
+         Self { cmd, stdin: None }
      }
 
 EOF
