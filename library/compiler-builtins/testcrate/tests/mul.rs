@@ -82,16 +82,16 @@ fn overflowing_mul() {
 }
 
 macro_rules! float_mul {
-    ($($f:ty, $fn:ident);*;) => {
+    ($($f:ty, $fn:ident, $apfloat_ty:ident, $sys_available:meta);*;) => {
         $(
             fuzz_float_2(N, |x: $f, y: $f| {
-                let mul0 = x * y;
+                let mul0 = apfloat_fallback!($f, $apfloat_ty, $sys_available, Mul::mul, x, y);
                 let mul1: $f = $fn(x, y);
                 // multiplication of subnormals is not currently handled
                 if !(Float::is_subnormal(mul0) || Float::is_subnormal(mul1)) {
                     if !Float::eq_repr(mul0, mul1) {
                         panic!(
-                            "{}({}, {}): std: {}, builtins: {}",
+                            "{}({:?}, {:?}): std: {:?}, builtins: {:?}",
                             stringify!($fn), x, y, mul0, mul1
                         );
                     }
@@ -108,10 +108,11 @@ fn float_mul() {
         mul::{__muldf3, __mulsf3},
         Float,
     };
+    use core::ops::Mul;
 
     float_mul!(
-        f32, __mulsf3;
-        f64, __muldf3;
+        f32, __mulsf3, Single, all();
+        f64, __muldf3, Double, all();
     );
 }
 
@@ -122,9 +123,10 @@ fn float_mul_arm() {
         mul::{__muldf3vfp, __mulsf3vfp},
         Float,
     };
+    use core::ops::Mul;
 
     float_mul!(
-        f32, __mulsf3vfp;
-        f64, __muldf3vfp;
+        f32, __mulsf3vfp, Single, all();
+        f64, __muldf3vfp, Double, all();
     );
 }

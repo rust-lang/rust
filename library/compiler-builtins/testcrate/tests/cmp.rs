@@ -1,23 +1,48 @@
 #![allow(unused_macros)]
+#![allow(unreachable_code)]
 
 #[cfg(not(target_arch = "powerpc64"))]
 use testcrate::*;
 
 macro_rules! cmp {
-    ($x:ident, $y:ident, $($unordered_val:expr, $fn:ident);*;) => {
+    (
+        $f:ty, $x:ident, $y:ident, $apfloat_ty:ident, $sys_available:meta,
+        $($unordered_val:expr, $fn:ident);*;
+    ) => {
         $(
-            let cmp0 = if $x.is_nan() || $y.is_nan() {
+            let cmp0 = if apfloat_fallback!(
+                    $f, $apfloat_ty, $sys_available,
+                    |x: FloatTy| x.is_nan() => no_convert,
+                    $x
+                ) || apfloat_fallback!(
+                    $f, $apfloat_ty, $sys_available,
+                    |y: FloatTy| y.is_nan() => no_convert,
+                    $y
+                )
+            {
                 $unordered_val
-            } else if $x < $y {
+            } else if apfloat_fallback!(
+                $f, $apfloat_ty, $sys_available,
+                |x, y| x < y => no_convert,
+                $x, $y
+            ) {
                 -1
-            } else if $x == $y {
+            } else if apfloat_fallback!(
+                $f, $apfloat_ty, $sys_available,
+                |x, y| x == y => no_convert,
+                $x, $y
+            ) {
                 0
             } else {
                 1
             };
+
             let cmp1 = $fn($x, $y);
             if cmp0 != cmp1 {
-                panic!("{}({}, {}): std: {}, builtins: {}", stringify!($fn_builtins), $x, $y, cmp0, cmp1);
+                panic!(
+                    "{}({:?}, {:?}): std: {:?}, builtins: {:?}",
+                    stringify!($fn), $x, $y, cmp0, cmp1
+                );
             }
         )*
     };
@@ -34,7 +59,7 @@ fn float_comparisons() {
 
     fuzz_float_2(N, |x: f32, y: f32| {
         assert_eq!(__unordsf2(x, y) != 0, x.is_nan() || y.is_nan());
-        cmp!(x, y,
+        cmp!(f32, x, y, Single, all(),
             1, __ltsf2;
             1, __lesf2;
             1, __eqsf2;
@@ -45,7 +70,7 @@ fn float_comparisons() {
     });
     fuzz_float_2(N, |x: f64, y: f64| {
         assert_eq!(__unorddf2(x, y) != 0, x.is_nan() || y.is_nan());
-        cmp!(x, y,
+        cmp!(f64, x, y, Double, all(),
             1, __ltdf2;
             1, __ledf2;
             1, __eqdf2;

@@ -2,6 +2,7 @@
 
 use compiler_builtins::int::sdiv::{__divmoddi4, __divmodsi4, __divmodti4};
 use compiler_builtins::int::udiv::{__udivmoddi4, __udivmodsi4, __udivmodti4, u128_divide_sparc};
+
 use testcrate::*;
 
 // Division algorithms have by far the nastiest and largest number of edge cases, and experience shows
@@ -104,16 +105,20 @@ fn divide_sparc() {
 }
 
 macro_rules! float {
-    ($($i:ty, $fn:ident);*;) => {
+    ($($f:ty, $fn:ident, $apfloat_ty:ident, $sys_available:meta);*;) => {
         $(
-            fuzz_float_2(N, |x: $i, y: $i| {
-                let quo0 = x / y;
-                let quo1: $i = $fn(x, y);
+            fuzz_float_2(N, |x: $f, y: $f| {
+                let quo0: $f = apfloat_fallback!($f, $apfloat_ty, $sys_available, Div::div, x, y);
+                let quo1: $f = $fn(x, y);
                 #[cfg(not(target_arch = "arm"))]
                 if !Float::eq_repr(quo0, quo1) {
                     panic!(
-                        "{}({}, {}): std: {}, builtins: {}",
-                        stringify!($fn), x, y, quo0, quo1
+                        "{}({:?}, {:?}): std: {:?}, builtins: {:?}",
+                        stringify!($fn),
+                        x,
+                        y,
+                        quo0,
+                        quo1
                     );
                 }
 
@@ -122,8 +127,12 @@ macro_rules! float {
                 if !(Float::is_subnormal(quo0) || Float::is_subnormal(quo1)) {
                     if !Float::eq_repr(quo0, quo1) {
                         panic!(
-                            "{}({}, {}): std: {}, builtins: {}",
-                            stringify!($fn), x, y, quo0, quo1
+                            "{}({:?}, {:?}): std: {:?}, builtins: {:?}",
+                            stringify!($fn),
+                            x,
+                            y,
+                            quo0,
+                            quo1
                         );
                     }
                 }
@@ -139,10 +148,11 @@ fn float_div() {
         div::{__divdf3, __divsf3},
         Float,
     };
+    use core::ops::Div;
 
     float!(
-        f32, __divsf3;
-        f64, __divdf3;
+        f32, __divsf3, Single, all();
+        f64, __divdf3, Double, all();
     );
 }
 
@@ -153,9 +163,10 @@ fn float_div_arm() {
         div::{__divdf3vfp, __divsf3vfp},
         Float,
     };
+    use core::ops::Div;
 
     float!(
-        f32, __divsf3vfp;
-        f64, __divdf3vfp;
+        f32, __divsf3vfp, Single, all();
+        f64, __divdf3vfp, Double, all();
     );
 }
