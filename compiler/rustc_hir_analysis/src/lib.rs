@@ -181,7 +181,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
         let def_kind = tcx.def_kind(item_def_id);
         match def_kind {
             DefKind::Static { .. } => tcx.ensure().eval_static_initializer(item_def_id),
-            DefKind::Const if tcx.generics_of(item_def_id).own_params.is_empty() => {
+            DefKind::Const if tcx.generics_of(item_def_id).is_empty() => {
                 let instance = ty::Instance::new(item_def_id.into(), ty::GenericArgs::empty());
                 let cid = GlobalId { instance, promoted: None };
                 let param_env = ty::ParamEnv::reveal_all();
