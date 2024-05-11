@@ -28,16 +28,20 @@ pub(crate) fn codegen_set_discriminant<'tcx>(
         } => {
             let ptr = place.place_field(fx, FieldIdx::new(tag_field));
             let to = layout.ty.discriminant_for_variant(fx.tcx, variant_index).unwrap().val;
-            let to = if ptr.layout().abi.is_signed() {
-                ty::ScalarInt::try_from_int(
-                    ptr.layout().size.sign_extend(to) as i128,
-                    ptr.layout().size,
-                )
-                .unwrap()
-            } else {
-                ty::ScalarInt::try_from_uint(to, ptr.layout().size).unwrap()
+            let to = match ptr.layout().ty.kind() {
+                ty::Uint(UintTy::U128) | ty::Int(IntTy::I128) => {
+                    let lsb = fx.bcx.ins().iconst(types::I64, to as u64 as i64);
+                    let msb = fx.bcx.ins().iconst(types::I64, (to >> 64) as u64 as i64);
+                    fx.bcx.ins().iconcat(lsb, msb)
+                }
+                ty::Uint(_) | ty::Int(_) => {
+                    let clif_ty = fx.clif_type(ptr.layout().ty).unwrap();
+                    let raw_val = ptr.layout().size.truncate(to);
+                    fx.bcx.ins().iconst(clif_ty, raw_val as i64)
+                }
+                _ => unreachable!(),
             };
-            let discr = CValue::const_val(fx, ptr.layout(), to);
+            let discr = CValue::by_val(to, ptr.layout());
             ptr.write_cvalue(fx, discr);
         }
         Variants::Multiple {
@@ -85,16 +89,21 @@ pub(crate) fn codegen_get_discriminant<'tcx>(
                 .ty
                 .discriminant_for_variant(fx.tcx, *index)
                 .map_or(u128::from(index.as_u32()), |discr| discr.val);
-            let discr_val = if dest_layout.abi.is_signed() {
-                ty::ScalarInt::try_from_int(
-                    dest_layout.size.sign_extend(discr_val) as i128,
-                    dest_layout.size,
-                )
-                .unwrap()
-            } else {
-                ty::ScalarInt::try_from_uint(discr_val, dest_layout.size).unwrap()
+
+            let val = match dest_layout.ty.kind() {
+                ty::Uint(UintTy::U128) | ty::Int(IntTy::I128) => {
+                    let lsb = fx.bcx.ins().iconst(types::I64, discr_val as u64 as i64);
+                    let msb = fx.bcx.ins().iconst(types::I64, (discr_val >> 64) as u64 as i64);
+                    fx.bcx.ins().iconcat(lsb, msb)
+                }
+                ty::Uint(_) | ty::Int(_) => {
+                    let clif_ty = fx.clif_type(dest_layout.ty).unwrap();
+                    let raw_val = dest_layout.size.truncate(discr_val);
+                    fx.bcx.ins().iconst(clif_ty, raw_val as i64)
+                }
+                _ => unreachable!(),
             };
-            let res = CValue::const_val(fx, dest_layout, discr_val);
+            let res = CValue::by_val(val, dest_layout);
             dest.write_cvalue(fx, res);
             return;
         }
