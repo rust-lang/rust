@@ -310,7 +310,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                         this.write_null(dest)?;
                     }
                     Some(len) => {
-                        let res = this.realloc(ptr, len, MiriMemoryKind::C)?;
+                        let res = this.realloc(ptr, len)?;
                         this.write_pointer(res, dest)?;
                     }
                 }

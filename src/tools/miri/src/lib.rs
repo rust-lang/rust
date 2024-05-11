@@ -12,6 +12,7 @@
 #![feature(let_chains)]
 #![feature(lint_reasons)]
 #![feature(trait_upcasting)]
+#![feature(strict_overflow_ops)]
 // Configure clippy and other lints
 #![allow(
     clippy::collapsible_else_if,

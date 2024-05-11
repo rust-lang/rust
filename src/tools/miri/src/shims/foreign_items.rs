@@ -421,7 +421,7 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             "malloc" => {
                 let [size] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let size = this.read_target_usize(size)?;
-                let res = this.malloc(size, /*zero_init:*/ false, MiriMemoryKind::C)?;
+                let res = this.malloc(size, /*zero_init:*/ false)?;
                 this.write_pointer(res, dest)?;
             }
             "calloc" => {
@@ -432,20 +432,20 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let size = items
                     .checked_mul(len)
                     .ok_or_else(|| err_ub_format!("overflow during calloc size computation"))?;
-                let res = this.malloc(size, /*zero_init:*/ true, MiriMemoryKind::C)?;
+                let res = this.malloc(size, /*zero_init:*/ true)?;
                 this.write_pointer(res, dest)?;
             }
             "free" => {
                 let [ptr] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let ptr = this.read_pointer(ptr)?;
-                this.free(ptr, MiriMemoryKind::C)?;
+                this.free(ptr)?;
             }
             "realloc" => {
                 let [old_ptr, new_size] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let old_ptr = this.read_pointer(old_ptr)?;
                 let new_size = this.read_target_usize(new_size)?;
-                let res = this.realloc(old_ptr, new_size, MiriMemoryKind::C)?;
+                let res = this.realloc(old_ptr, new_size)?;
                 this.write_pointer(res, dest)?;
             }
 
