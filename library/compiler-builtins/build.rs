@@ -2,6 +2,7 @@ use std::{collections::BTreeMap, env, sync::atomic::Ordering};
 
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
+    configure_check_cfg();
 
     let target = env::var("TARGET").unwrap();
     let cwd = env::current_dir().unwrap();
@@ -9,6 +10,7 @@ fn main() {
     println!("cargo:compiler-rt={}", cwd.join("compiler-rt").display());
 
     // Activate libm's unstable features to make full use of Nightly.
+    println!("cargo::rustc-check-cfg=cfg(feature, values(\"unstable\"))");
     println!("cargo:rustc-cfg=feature=\"unstable\"");
 
     // Emscripten's runtime includes all the builtins
@@ -36,6 +38,7 @@ fn main() {
     }
 
     // These targets have hardware unaligned access support.
+    println!("cargo::rustc-check-cfg=cfg(feature, values(\"mem-unaligned\"))");
     if target.contains("x86_64")
         || target.contains("i686")
         || target.contains("aarch64")
@@ -64,6 +67,7 @@ fn main() {
     }
 
     // To compile intrinsics.rs for thumb targets, where there is no libc
+    println!("cargo::rustc-check-cfg=cfg(thumb)");
     if llvm_target[0].starts_with("thumb") {
         println!("cargo:rustc-cfg=thumb")
     }
@@ -71,6 +75,7 @@ fn main() {
     // compiler-rt `cfg`s away some intrinsics for thumbv6m and thumbv8m.base because
     // these targets do not have full Thumb-2 support but only original Thumb-1.
     // We have to cfg our code accordingly.
+    println!("cargo::rustc-check-cfg=cfg(thumb_1)");
     if llvm_target[0] == "thumbv6m" || llvm_target[0] == "thumbv8m.base" {
         println!("cargo:rustc-cfg=thumb_1")
     }
@@ -78,6 +83,7 @@ fn main() {
     // Only emit the ARM Linux atomic emulation on pre-ARMv6 architectures. This
     // includes the old androideabi. It is deprecated but it is available as a
     // rustc target (arm-linux-androideabi).
+    println!("cargo::rustc-check-cfg=cfg(kernel_user_helpers)");
     if llvm_target[0] == "armv4t"
         || llvm_target[0] == "armv5te"
         || target == "arm-linux-androideabi"
@@ -143,6 +149,72 @@ fn generate_aarch64_outlined_atomics() {
     }
     let dst = std::env::var("OUT_DIR").unwrap() + "/outlined_atomics.rs";
     std::fs::write(dst, buf).unwrap();
+}
+
+/// Emit directives for features we expect to support that aren't in `Cargo.toml`.
+///
+/// These are mostly cfg elements emitted by this `build.rs`.
+fn configure_check_cfg() {
+    // Functions where we can set the "optimized-c" flag
+    const HAS_OPTIMIZED_C: &[&str] = &[
+        "__ashldi3",
+        "__ashlsi3",
+        "__ashrdi3",
+        "__ashrsi3",
+        "__clzsi2",
+        "__divdi3",
+        "__divsi3",
+        "__divmoddi4",
+        "__divmodsi4",
+        "__divmodsi4",
+        "__divmodti4",
+        "__lshrdi3",
+        "__lshrsi3",
+        "__moddi3",
+        "__modsi3",
+        "__muldi3",
+        "__udivdi3",
+        "__udivmoddi4",
+        "__udivmodsi4",
+        "__udivsi3",
+        "__umoddi3",
+        "__umodsi3",
+    ];
+
+    // Build a list of all aarch64 atomic operation functions
+    let mut aarch_atomic = Vec::new();
+    for aarch_op in ["cas", "ldadd", "ldclr", "ldeor", "ldset", "swp"] {
+        let op_sizes = if aarch_op == "cas" {
+            [1, 2, 4, 8, 16].as_slice()
+        } else {
+            [1, 2, 4, 8].as_slice()
+        };
+
+        for op_size in op_sizes {
+            for ordering in ["relax", "acq", "rel", "acq_rel"] {
+                aarch_atomic.push(format!("__aarch64_{}{}_{}", aarch_op, op_size, ordering));
+            }
+        }
+    }
+
+    for fn_name in HAS_OPTIMIZED_C
+        .iter()
+        .copied()
+        .chain(aarch_atomic.iter().map(|s| s.as_str()))
+    {
+        println!(
+            "cargo::rustc-check-cfg=cfg({}, values(\"optimized-c\"))",
+            fn_name
+        );
+    }
+
+    // Rustc is unaware of sparc target features, but this does show up from
+    // `rustc --print target-features --target sparc64-unknown-linux-gnu`.
+    println!("cargo::rustc-check-cfg=cfg(target_feature, values(\"vis3\"))");
+
+    // FIXME: these come from libm and should be changed there
+    println!("cargo::rustc-check-cfg=cfg(feature, values(\"checked\"))");
+    println!("cargo::rustc-check-cfg=cfg(assert_no_panic)");
 }
 
 #[cfg(feature = "c")]
@@ -301,14 +373,6 @@ mod c {
                 ("__negdf2", "negdf2.c"),
                 ("__negsf2", "negsf2.c"),
             ]);
-        }
-
-        // When compiling in rustbuild (the rust-lang/rust repo) this library
-        // also needs to satisfy intrinsics that jemalloc or C in general may
-        // need, so include a few more that aren't typically needed by
-        // LLVM/Rust.
-        if cfg!(feature = "rustbuild") {
-            sources.extend(&[("__ffsdi2", "ffsdi2.c")]);
         }
 
         // On iOS and 32-bit OSX these are all just empty intrinsics, no need to

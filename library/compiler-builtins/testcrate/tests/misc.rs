@@ -1,7 +1,6 @@
 // makes configuration easier
 #![allow(unused_macros)]
 
-use compiler_builtins::float::Float;
 use testcrate::*;
 
 /// Make sure that the the edge case tester and randomized tester don't break, and list examples of
@@ -138,6 +137,7 @@ macro_rules! pow {
 #[test]
 fn float_pow() {
     use compiler_builtins::float::pow::{__powidf2, __powisf2};
+    use compiler_builtins::float::Float;
 
     pow!(
         f32, 1e-4, __powisf2;
