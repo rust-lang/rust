@@ -33,3 +33,5 @@ no-asm = ["compiler_builtins/no-asm"]
 no-f16-f128 = ["compiler_builtins/no-f16-f128"]
 mem = ["compiler_builtins/mem"]
 mangled-names = ["compiler_builtins/mangled-names"]
+# Skip tests that rely on f128 symbols being available on the system
+no-sys-f128 = []

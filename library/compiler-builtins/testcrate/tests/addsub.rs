@@ -1,6 +1,7 @@
 #![allow(unused_macros)]
+#![feature(f128)]
+#![feature(f16)]
 
-use core::ops::{Add, Sub};
 use testcrate::*;
 
 macro_rules! sum {
@@ -104,11 +105,24 @@ fn float_addsub() {
         sub::{__subdf3, __subsf3},
         Float,
     };
+    use core::ops::{Add, Sub};
 
     float_sum!(
         f32, __addsf3, __subsf3, Single, all();
         f64, __adddf3, __subdf3, Double, all();
     );
+
+    #[cfg(not(feature = "no-f16-f128"))]
+    {
+        #[cfg(any(target_arch = "powerpc", target_arch = "powerpc64"))]
+        use compiler_builtins::float::{add::__addkf3 as __addtf3, sub::__subkf3 as __subtf3};
+        #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
+        use compiler_builtins::float::{add::__addtf3, sub::__subtf3};
+
+        float_sum!(
+            f128, __addtf3, __subtf3, Quad, not(feature = "no-sys-f128");
+        );
+    }
 }
 
 #[cfg(target_arch = "arm")]
@@ -119,6 +133,7 @@ fn float_addsub_arm() {
         sub::{__subdf3vfp, __subsf3vfp},
         Float,
     };
+    use core::ops::{Add, Sub};
 
     float_sum!(
         f32, __addsf3vfp, __subsf3vfp, Single, all();
