@@ -1,4 +1,5 @@
 use std::env;
+use std::ffi::OsStr;
 use std::io::Write;
 use std::path::Path;
 use std::process::{Command, Output, Stdio};
@@ -130,9 +131,9 @@ impl Rustdoc {
     }
 
     /// Specify the crate name.
-    pub fn crate_name(&mut self, name: &str) -> &mut Self {
+    pub fn crate_name<S: AsRef<OsStr>>(&mut self, name: S) -> &mut Self {
         self.cmd.arg("--crate-name");
-        self.cmd.arg(name);
+        self.cmd.arg(name.as_ref());
         self
     }
 
