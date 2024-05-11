@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::is_integer_literal;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::{is_type_diagnostic_item, is_type_lang_item};
+use clippy_utils::{in_constant, is_integer_literal};
 use rustc_errors::Applicability;
 use rustc_hir::{def, Expr, ExprKind, LangItem, PrimTy, QPath, TyKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -47,6 +47,9 @@ impl<'tcx> LateLintPass<'tcx> for FromStrRadix10 {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, exp: &Expr<'tcx>) {
         if let ExprKind::Call(maybe_path, [src, radix]) = &exp.kind
             && let ExprKind::Path(QPath::TypeRelative(ty, pathseg)) = &maybe_path.kind
+            // do not lint in constant context, because the suggestion won't work.
+            // NB: keep this check until a new `const_trait_impl` is available and stablized.
+            && !in_constant(cx, exp.hir_id)
 
             // check if the first part of the path is some integer primitive
             && let TyKind::Path(ty_qpath) = &ty.kind
