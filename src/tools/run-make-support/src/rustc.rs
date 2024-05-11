@@ -91,7 +91,7 @@ impl Rustc {
         self
     }
 
-    /// Specify path to the output file.
+    /// Specify path to the output file. Equivalent to `-o`` in rustc.
     pub fn output<P: AsRef<Path>>(&mut self, path: P) -> &mut Self {
         self.cmd.arg("-o");
         self.cmd.arg(path.as_ref());
@@ -150,13 +150,7 @@ impl Rustc {
         self
     }
 
-    /// Enables link time optimizations in rustc. Equivalent to `-Clto``.
-    pub fn lto(&mut self) -> &mut Self {
-        self.cmd.arg("-Clto");
-        self
-    }
-
-    /// Add a directory to the library search path.
+    /// Add a directory to the library search path. Equivalent to `-L`` in rustc.
     pub fn library_search_path<P: AsRef<Path>>(&mut self, path: P) -> &mut Self {
         self.cmd.arg("-L");
         self.cmd.arg(path.as_ref());
