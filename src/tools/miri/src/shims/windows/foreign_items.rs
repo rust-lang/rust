@@ -5,10 +5,9 @@ use std::path::{self, Path, PathBuf};
 use std::str;
 
 use rustc_span::Symbol;
-use rustc_target::abi::Size;
+use rustc_target::abi::{Align, Size};
 use rustc_target::spec::abi::Abi;
 
-use crate::shims::alloc::EvalContextExt as _;
 use crate::shims::os_str::bytes_to_os_str;
 use crate::shims::windows::*;
 use crate::*;
@@ -248,8 +247,21 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let size = this.read_target_usize(size)?;
                 let heap_zero_memory = 0x00000008; // HEAP_ZERO_MEMORY
                 let zero_init = (flags & heap_zero_memory) == heap_zero_memory;
-                let res = this.malloc(size, zero_init, MiriMemoryKind::WinHeap)?;
-                this.write_pointer(res, dest)?;
+                // Alignment is twice the pointer size.
+                // Source: <https://learn.microsoft.com/en-us/windows/win32/api/heapapi/nf-heapapi-heapalloc>
+                let align = this.tcx.pointer_size().bytes().strict_mul(2);
+                let ptr = this.allocate_ptr(
+                    Size::from_bytes(size),
+                    Align::from_bytes(align).unwrap(),
+                    MiriMemoryKind::WinHeap.into(),
+                )?;
+                if zero_init {
+                    this.write_bytes_ptr(
+                        ptr.into(),
+                        iter::repeat(0u8).take(usize::try_from(size).unwrap()),
+                    )?;
+                }
+                this.write_pointer(ptr, dest)?;
             }
             "HeapFree" => {
                 let [handle, flags, ptr] =
@@ -257,23 +269,41 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 this.read_target_isize(handle)?;
                 this.read_scalar(flags)?.to_u32()?;
                 let ptr = this.read_pointer(ptr)?;
-                this.free(ptr, MiriMemoryKind::WinHeap)?;
+                // "This pointer can be NULL." It doesn't say what happens then, but presumably nothing.
+                // (https://learn.microsoft.com/en-us/windows/win32/api/heapapi/nf-heapapi-heapfree)
+                if !this.ptr_is_null(ptr)? {
+                    this.deallocate_ptr(ptr, None, MiriMemoryKind::WinHeap.into())?;
+                }
                 this.write_scalar(Scalar::from_i32(1), dest)?;
             }
             "HeapReAlloc" => {
-                let [handle, flags, ptr, size] =
+                let [handle, flags, old_ptr, size] =
                     this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 this.read_target_isize(handle)?;
                 this.read_scalar(flags)?.to_u32()?;
-                let ptr = this.read_pointer(ptr)?;
+                let old_ptr = this.read_pointer(old_ptr)?;
                 let size = this.read_target_usize(size)?;
-                let res = this.realloc(ptr, size, MiriMemoryKind::WinHeap)?;
-                this.write_pointer(res, dest)?;
+                let align = this.tcx.pointer_size().bytes().strict_mul(2); // same as above
+                // The docs say that `old_ptr` must come from an earlier HeapAlloc or HeapReAlloc,
+                // so unlike C `realloc` we do *not* allow a NULL here.
+                // (https://learn.microsoft.com/en-us/windows/win32/api/heapapi/nf-heapapi-heaprealloc)
+                let new_ptr = this.reallocate_ptr(
+                    old_ptr,
+                    None,
+                    Size::from_bytes(size),
+                    Align::from_bytes(align).unwrap(),
+                    MiriMemoryKind::WinHeap.into(),
+                )?;
+                this.write_pointer(new_ptr, dest)?;
             }
             "LocalFree" => {
                 let [ptr] = this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 let ptr = this.read_pointer(ptr)?;
-                this.free(ptr, MiriMemoryKind::WinLocal)?;
+                // "If the hMem parameter is NULL, LocalFree ignores the parameter and returns NULL."
+                // (https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-localfree)
+                if !this.ptr_is_null(ptr)? {
+                    this.deallocate_ptr(ptr, None, MiriMemoryKind::WinLocal.into())?;
+                }
                 this.write_null(dest)?;
             }
 

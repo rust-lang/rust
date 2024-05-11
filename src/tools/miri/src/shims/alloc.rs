@@ -19,8 +19,8 @@ pub(super) fn check_alloc_request<'tcx>(size: u64, align: u64) -> InterpResult<'
 
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
-    /// Returns the minimum alignment for the target architecture for allocations of the given size.
-    fn min_align(&self, size: u64, kind: MiriMemoryKind) -> Align {
+    /// Returns the alignment that `malloc` would guarantee for requests of the given size.
+    fn malloc_align(&self, size: u64) -> Align {
         let this = self.eval_context_ref();
         // The C standard says: "The pointer returned if the allocation succeeds is suitably aligned
         // so that it may be assigned to a pointer to any type of object with a fundamental
@@ -43,9 +43,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         // - https://github.com/jemalloc/jemalloc/issues/1533
         // - https://github.com/llvm/llvm-project/issues/53540
         // - https://www.open-std.org/jtc1/sc22/wg14/www/docs/n2293.htm
-        // However, Windows `HeapAlloc` always aligns, even small allocations, so it gets different treatment here.
-        // Source: <https://learn.microsoft.com/en-us/windows/win32/api/heapapi/nf-heapapi-heapalloc>
-        if kind == MiriMemoryKind::WinHeap || size >= max_fundamental_align {
+        if size >= max_fundamental_align {
             return Align::from_bytes(max_fundamental_align).unwrap();
         }
         // C doesn't have zero-sized types, so presumably nothing is guaranteed here.
@@ -98,11 +96,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         &mut self,
         size: u64,
         zero_init: bool,
-        kind: MiriMemoryKind,
     ) -> InterpResult<'tcx, Pointer<Option<Provenance>>> {
         let this = self.eval_context_mut();
-        let align = this.min_align(size, kind);
-        let ptr = this.allocate_ptr(Size::from_bytes(size), align, kind.into())?;
+        let align = this.malloc_align(size);
+        let ptr = this.allocate_ptr(Size::from_bytes(size), align, MiriMemoryKind::C.into())?;
         if zero_init {
             // We just allocated this, the access is definitely in-bounds and fits into our address space.
             this.write_bytes_ptr(
@@ -114,14 +111,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         Ok(ptr.into())
     }
 
-    fn free(
-        &mut self,
-        ptr: Pointer<Option<Provenance>>,
-        kind: MiriMemoryKind,
-    ) -> InterpResult<'tcx> {
+    fn free(&mut self, ptr: Pointer<Option<Provenance>>) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         if !this.ptr_is_null(ptr)? {
-            this.deallocate_ptr(ptr, None, kind.into())?;
+            this.deallocate_ptr(ptr, None, MiriMemoryKind::C.into())?;
         }
         Ok(())
     }
@@ -130,13 +123,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         &mut self,
         old_ptr: Pointer<Option<Provenance>>,
         new_size: u64,
-        kind: MiriMemoryKind,
     ) -> InterpResult<'tcx, Pointer<Option<Provenance>>> {
         let this = self.eval_context_mut();
-        let new_align = this.min_align(new_size, kind);
+        let new_align = this.malloc_align(new_size);
         if this.ptr_is_null(old_ptr)? {
             // Here we must behave like `malloc`.
-            self.malloc(new_size, /*zero_init*/ false, kind)
+            self.malloc(new_size, /*zero_init*/ false)
         } else {
             if new_size == 0 {
                 // C, in their infinite wisdom, made this UB.
@@ -148,7 +140,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     None,
                     Size::from_bytes(new_size),
                     new_align,
-                    kind.into(),
+                    MiriMemoryKind::C.into(),
                 )?;
                 Ok(new_ptr.into())
             }
