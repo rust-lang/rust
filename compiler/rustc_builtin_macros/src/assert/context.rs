@@ -120,10 +120,13 @@ impl<'cx, 'a> Context<'cx, 'a> {
                 thin_vec![self.cx.attr_nested_word(sym::allow, sym::unused_imports, self.span)],
                 ItemKind::Use(UseTree {
                     prefix: self.cx.path(self.span, self.cx.std_path(&[sym::asserting])),
-                    kind: UseTreeKind::Nested(thin_vec![
-                        nested_tree(self, sym::TryCaptureGeneric),
-                        nested_tree(self, sym::TryCapturePrintable),
-                    ]),
+                    kind: UseTreeKind::Nested {
+                        items: thin_vec![
+                            nested_tree(self, sym::TryCaptureGeneric),
+                            nested_tree(self, sym::TryCapturePrintable),
+                        ],
+                        span: self.span,
+                    },
                     span: self.span,
                 }),
             ),

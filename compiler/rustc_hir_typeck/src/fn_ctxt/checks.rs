@@ -31,16 +31,14 @@ use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
 use rustc_hir_analysis::structured_errors::StructuredDiag;
 use rustc_index::IndexVec;
 use rustc_infer::infer::error_reporting::{FailureCode, ObligationCauseExt};
-use rustc_infer::infer::type_variable::TypeVariableOrigin;
 use rustc_infer::infer::TypeTrace;
 use rustc_infer::infer::{DefineOpaqueTypes, InferOk};
-use rustc_middle::traits::ObligationCauseCode::ExprBindingObligation;
 use rustc_middle::ty::adjustment::AllowTwoPhase;
 use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::{self, IsSuggestable, Ty, TyCtxt};
 use rustc_session::Session;
 use rustc_span::symbol::{kw, Ident};
-use rustc_span::{sym, BytePos, Span};
+use rustc_span::{sym, BytePos, Span, DUMMY_SP};
 use rustc_trait_selection::traits::{self, ObligationCauseCode, SelectionContext};
 
 use std::iter;
@@ -204,7 +202,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // All the input types from the fn signature must outlive the call
         // so as to validate implied bounds.
         for (&fn_input_ty, arg_expr) in iter::zip(formal_input_tys, provided_args) {
-            self.register_wf_obligation(fn_input_ty.into(), arg_expr.span, traits::MiscObligation);
+            self.register_wf_obligation(
+                fn_input_ty.into(),
+                arg_expr.span,
+                ObligationCauseCode::Misc,
+            );
         }
 
         let mut err_code = E0061;
@@ -2011,7 +2013,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         for (span, code) in errors_causecode {
             self.dcx().try_steal_modify_and_emit_err(span, StashKey::MaybeForgetReturn, |err| {
                 if let Some(fn_sig) = self.body_fn_sig()
-                    && let ExprBindingObligation(_, _, binding_hir_id, ..) = code
+                    && let ObligationCauseCode::SpannedWhereClauseInExpr(_, _, binding_hir_id, ..) =
+                        code
                     && !fn_sig.output().is_unit()
                 {
                     let mut block_num = 0;
@@ -2100,7 +2103,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         //
         // This is because due to normalization, we often register duplicate
         // obligations with misc obligations that are basically impossible to
-        // line back up with a useful ExprBindingObligation.
+        // line back up with a useful SpannedWhereClauseInExpr.
         for error in not_adjusted {
             for (span, predicate, cause) in &remap_cause {
                 if *predicate == error.obligation.predicate
@@ -2180,13 +2183,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         let trait_ref = ty::TraitRef::new(
                             self.tcx,
                             self.tcx.fn_trait_kind_to_def_id(call_kind)?,
-                            [
-                                callee_ty,
-                                self.next_ty_var(TypeVariableOrigin {
-                                    param_def_id: None,
-                                    span: rustc_span::DUMMY_SP,
-                                }),
-                            ],
+                            [callee_ty, self.next_ty_var(DUMMY_SP)],
                         );
                         let obligation = traits::Obligation::new(
                             self.tcx,

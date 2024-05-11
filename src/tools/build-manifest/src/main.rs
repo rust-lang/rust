@@ -236,7 +236,7 @@ fn main() {
     let num_threads = if let Some(num) = env::var_os("BUILD_MANIFEST_NUM_THREADS") {
         num.to_str().unwrap().parse().expect("invalid number for BUILD_MANIFEST_NUM_THREADS")
     } else {
-        std::thread::available_parallelism().map_or(1, std::num::NonZeroUsize::get)
+        std::thread::available_parallelism().map_or(1, std::num::NonZero::get)
     };
     rayon::ThreadPoolBuilder::new()
         .num_threads(num_threads)

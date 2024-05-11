@@ -69,16 +69,8 @@ impl<'a> DescriptionCtx<'a> {
 
             ty::RePlaceholder(_) | ty::ReError(_) => return None,
 
-            // FIXME(#13998) RePlaceholder should probably print like
-            // ReLateParam rather than dumping Debug output on the user.
-            //
-            // We shouldn't really be having unification failures with ReVar
-            // and ReBound though.
-            //
-            // FIXME(@lcnr): figure out why we have to handle `ReBound`
-            // here, this feels somewhat off.
             ty::ReVar(_) | ty::ReBound(..) | ty::ReErased => {
-                (alt_span, "revar", format!("{region:?}"))
+                bug!("unexpected region for DescriptionCtx: {:?}", region);
             }
         };
         Some(DescriptionCtx { span, kind, arg })

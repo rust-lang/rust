@@ -106,12 +106,18 @@ resolved/implemented on Fuchsia. Could one of you weigh in?
 """
 label = "O-fuchsia"
 
-[ping.macos]
+[ping.apple]
+alias = ["macos", "ios", "tvos", "watchos", "visionos"]
 message = """\
-Hey MacOS Group! This issue or PR could use some MacOS-specific guidance. Could one
-of you weigh in? Thanks <3
+Hey Apple notification group! This issue or PR could use some Apple-specific
+guidance. Could one of you weigh in? Thanks <3
+
+(In case it's useful, here are some [instructions] for tackling these sorts of
+issues).
+
+[instructions]: https://rustc-dev-guide.rust-lang.org/notification-groups/apple.html
 """
-label = "O-macos"
+label = "O-apple"
 
 [prioritize]
 label = "I-prioritize"
@@ -227,7 +233,9 @@ trigger_files = [
 
 [autolabel."O-macos"]
 trigger_files = [
-    "library/std/src/os/macos"
+    "library/std/src/os/macos",
+    "library/std/src/sys/pal/unix/thread_parking/darwin.rs",
+    "compiler/rustc_target/src/spec/base/apple",
 ]
 
 [autolabel."O-netbsd"]
@@ -1057,3 +1065,7 @@ project-exploit-mitigations = [
 # Enable tracking of PR review assignment
 # Documentation at: https://forge.rust-lang.org/triagebot/pr-assignment-tracking.html
 [pr-tracking]
+
+# Enable issue transfers within the org
+# Documentation at: https://forge.rust-lang.org/triagebot/transfer.html
+[transfer]

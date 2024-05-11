@@ -136,7 +136,7 @@ impl NewPermission {
         cx: &crate::MiriInterpCx<'_, 'tcx>,
     ) -> Self {
         // `ty` is not the `Box` but the field of the Box with this pointer (due to allocator handling).
-        let pointee = ty.builtin_deref(true).unwrap().ty;
+        let pointee = ty.builtin_deref(true).unwrap();
         if pointee.is_unpin(*cx.tcx, cx.param_env()) {
             // A regular box. On `FnEntry` this is `noalias`, but not `dereferenceable` (hence only
             // a weak protector).

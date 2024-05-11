@@ -738,7 +738,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 let cause = ObligationCause::new(
                     terminator.source_info.span,
                     self.body.source.def_id().expect_local(),
-                    ObligationCauseCode::ItemObligation(callee),
+                    ObligationCauseCode::WhereClause(callee),
                 );
                 let normalized_predicates = ocx.normalize(&cause, param_env, predicates);
                 ocx.register_obligations(traits::predicates_for_generics(

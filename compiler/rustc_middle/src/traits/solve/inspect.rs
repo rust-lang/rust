@@ -123,6 +123,8 @@ pub enum ProbeStep<'tcx> {
     /// used whenever there are multiple candidates to prove the
     /// current goalby .
     NestedProbe(Probe<'tcx>),
+    /// A trait goal was satisfied by an impl candidate.
+    RecordImplArgs { impl_args: CanonicalState<'tcx, ty::GenericArgsRef<'tcx>> },
     /// A call to `EvalCtxt::evaluate_added_goals_make_canonical_response` with
     /// `Certainty` was made. This is the certainty passed in, so it's not unified
     /// with the certainty of the `try_evaluate_added_goals` that is done within;

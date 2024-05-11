@@ -125,10 +125,11 @@ use std::io::{Read, Write};
 use std::num::NonZero;
 use std::sync::atomic::{AtomicU32, Ordering};
 
+use smallvec::{smallvec, SmallVec};
+
 use rustc_ast::LitKind;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::{HashMapExt, Lock};
-use rustc_data_structures::tiny_list::TinyList;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
@@ -266,8 +267,8 @@ type DecodingSessionId = NonZero<u32>;
 #[derive(Clone)]
 enum State {
     Empty,
-    InProgressNonAlloc(TinyList<DecodingSessionId>),
-    InProgress(TinyList<DecodingSessionId>, AllocId),
+    InProgressNonAlloc(SmallVec<[DecodingSessionId; 1]>),
+    InProgress(SmallVec<[DecodingSessionId; 1]>, AllocId),
     Done(AllocId),
 }
 
@@ -337,8 +338,7 @@ impl<'s> AllocDecodingSession<'s> {
                             // If this is an allocation, we need to reserve an
                             // `AllocId` so we can decode cyclic graphs.
                             let alloc_id = decoder.interner().reserve_alloc_id();
-                            *entry =
-                                State::InProgress(TinyList::new_single(self.session_id), alloc_id);
+                            *entry = State::InProgress(smallvec![self.session_id], alloc_id);
                             Some(alloc_id)
                         }
                         AllocDiscriminant::Fn
@@ -346,8 +346,7 @@ impl<'s> AllocDecodingSession<'s> {
                         | AllocDiscriminant::VTable => {
                             // Fns and statics cannot be cyclic, and their `AllocId`
                             // is determined later by interning.
-                            *entry =
-                                State::InProgressNonAlloc(TinyList::new_single(self.session_id));
+                            *entry = State::InProgressNonAlloc(smallvec![self.session_id]);
                             None
                         }
                     }
@@ -357,7 +356,7 @@ impl<'s> AllocDecodingSession<'s> {
                         bug!("this should be unreachable");
                     } else {
                         // Start decoding concurrently.
-                        sessions.insert(self.session_id);
+                        sessions.push(self.session_id);
                         None
                     }
                 }
@@ -367,7 +366,7 @@ impl<'s> AllocDecodingSession<'s> {
                         return alloc_id;
                     } else {
                         // Start decoding concurrently.
-                        sessions.insert(self.session_id);
+                        sessions.push(self.session_id);
                         Some(alloc_id)
                     }
                 }

@@ -17,11 +17,6 @@ fn slice_ptr_get_unchecked_range(_1: *const [u32], _2: std::ops::Range<usize>) -
                 scope 7 (inlined std::ptr::const_ptr::<impl *const u32>::add) {
                 }
                 scope 8 (inlined slice_from_raw_parts::<u32>) {
-                    let mut _8: *const ();
-                    scope 9 (inlined std::ptr::const_ptr::<impl *const u32>::cast::<()>) {
-                    }
-                    scope 10 (inlined std::ptr::from_raw_parts::<[u32]>) {
-                    }
                 }
             }
             scope 4 (inlined std::ptr::const_ptr::<impl *const [u32]>::len) {
@@ -41,10 +36,7 @@ fn slice_ptr_get_unchecked_range(_1: *const [u32], _2: std::ops::Range<usize>) -
         _6 = _1 as *const u32 (PtrToPtr);
         _7 = Offset(_6, _3);
         StorageDead(_6);
-        StorageLive(_8);
-        _8 = _7 as *const () (PtrToPtr);
-        _0 = *const [u32] from (_8, _5);
-        StorageDead(_8);
+        _0 = *const [u32] from (_7, _5);
         StorageDead(_7);
         StorageDead(_5);
         return;

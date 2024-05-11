@@ -86,7 +86,8 @@ def synthetic_lookup(valobj, dict):
         return synthetic_lookup(valobj.GetChildAtIndex(discriminant), dict)
     if rust_type == RustType.SINGLETON_ENUM:
         return synthetic_lookup(valobj.GetChildAtIndex(0), dict)
-
+    if rust_type == RustType.ENUM:
+        return ClangEncodedEnumProvider(valobj, dict)
     if rust_type == RustType.STD_VEC:
         return StdVecSyntheticProvider(valobj, dict)
     if rust_type == RustType.STD_VEC_DEQUE:

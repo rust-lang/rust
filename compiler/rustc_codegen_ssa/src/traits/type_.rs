@@ -7,7 +7,7 @@ use rustc_middle::bug;
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{self, Ty};
 use rustc_target::abi::call::{ArgAbi, CastTarget, FnAbi, Reg};
-use rustc_target::abi::{AddressSpace, Integer};
+use rustc_target::abi::{AddressSpace, Float, Integer};
 
 // This depends on `Backend` and not `BackendTypes`, because consumers will probably want to use
 // `LayoutOf` or `HasTyCtxt`. This way, they don't have to add a constraint on it themselves.
@@ -62,6 +62,16 @@ pub trait DerivedTypeMethods<'tcx>: BaseTypeMethods<'tcx> + MiscMethods<'tcx> {
             I32 => self.type_i32(),
             I64 => self.type_i64(),
             I128 => self.type_i128(),
+        }
+    }
+
+    fn type_from_float(&self, f: Float) -> Self::Type {
+        use Float::*;
+        match f {
+            F16 => self.type_f16(),
+            F32 => self.type_f32(),
+            F64 => self.type_f64(),
+            F128 => self.type_f128(),
         }
     }
 

@@ -22,7 +22,7 @@ pub fn target() -> Target {
             std: None,
         },
         pointer_width: 64,
-        data_layout: "e-m:o-i64:64-i128:128-n32:64-S128".into(),
+        data_layout: "e-m:o-i64:64-i128:128-n32:64-S128-Fn32".into(),
         arch: arch.target_arch(),
         options: TargetOptions {
             mcount: "\u{1}mcount".into(),

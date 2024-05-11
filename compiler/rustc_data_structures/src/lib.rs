@@ -42,12 +42,52 @@
 #![feature(unwrap_infallible)]
 // tidy-alphabetical-end
 
-#[macro_use]
-extern crate tracing;
+pub use atomic_ref::AtomicRef;
+pub use ena::snapshot_vec;
+pub use ena::undo_log;
+pub use ena::unify;
+pub use rustc_index::static_assert_size;
 
 use std::fmt;
 
-pub use rustc_index::static_assert_size;
+pub mod aligned;
+pub mod base_n;
+pub mod binary_search_util;
+pub mod captures;
+pub mod fingerprint;
+pub mod flat_map_in_place;
+pub mod flock;
+pub mod frozen;
+pub mod fx;
+pub mod graph;
+pub mod intern;
+pub mod jobserver;
+pub mod marker;
+pub mod memmap;
+pub mod obligation_forest;
+pub mod owned_slice;
+pub mod packed;
+pub mod profiling;
+pub mod sharded;
+pub mod sip128;
+pub mod small_c_str;
+pub mod snapshot_map;
+pub mod sorted_map;
+pub mod sso;
+pub mod stable_hasher;
+pub mod stack;
+pub mod steal;
+pub mod svh;
+pub mod sync;
+pub mod tagged_ptr;
+pub mod temp_dir;
+pub mod transitive_relation;
+pub mod unhash;
+pub mod unord;
+pub mod work_queue;
+
+mod atomic_ref;
+mod hashes;
 
 /// This calls the passed function while ensuring it won't be inlined into the caller.
 #[inline(never)]
@@ -55,53 +95,6 @@ pub use rustc_index::static_assert_size;
 pub fn outline<F: FnOnce() -> R, R>(f: F) -> R {
     f()
 }
-
-pub mod base_n;
-pub mod binary_search_util;
-pub mod captures;
-pub mod flat_map_in_place;
-pub mod flock;
-pub mod fx;
-pub mod graph;
-pub mod intern;
-pub mod jobserver;
-pub mod macros;
-pub mod obligation_forest;
-pub mod sip128;
-pub mod small_c_str;
-pub mod snapshot_map;
-pub mod svh;
-pub use ena::snapshot_vec;
-pub mod memmap;
-pub mod sorted_map;
-#[macro_use]
-pub mod stable_hasher;
-mod atomic_ref;
-pub mod fingerprint;
-pub mod marker;
-pub mod profiling;
-pub mod sharded;
-pub mod stack;
-pub mod sync;
-pub mod tiny_list;
-pub mod transitive_relation;
-pub mod vec_linked_list;
-pub mod work_queue;
-pub use atomic_ref::AtomicRef;
-pub mod aligned;
-pub mod frozen;
-mod hashes;
-pub mod owned_slice;
-pub mod packed;
-pub mod sso;
-pub mod steal;
-pub mod tagged_ptr;
-pub mod temp_dir;
-pub mod unhash;
-pub mod unord;
-
-pub use ena::undo_log;
-pub use ena::unify;
 
 /// Returns a structure that calls `f` when dropped.
 pub fn defer<F: FnOnce()>(f: F) -> OnDrop<F> {

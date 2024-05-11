@@ -19,8 +19,6 @@ use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
 use rustc_infer::infer;
 use rustc_infer::infer::error_reporting::sub_relations::SubRelations;
 use rustc_infer::infer::error_reporting::TypeErrCtxt;
-use rustc_infer::infer::type_variable::TypeVariableOrigin;
-use rustc_middle::infer::unify_key::ConstVariableOrigin;
 use rustc_middle::ty::{self, Const, Ty, TyCtxt, TypeVisitableExt};
 use rustc_session::Session;
 use rustc_span::symbol::Ident;
@@ -156,7 +154,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     pub fn misc(&self, span: Span) -> ObligationCause<'tcx> {
-        self.cause(span, ObligationCauseCode::MiscObligation)
+        self.cause(span, ObligationCauseCode::Misc)
     }
 
     pub fn sess(&self) -> &Session {
@@ -239,7 +237,7 @@ impl<'a, 'tcx> HirTyLowerer<'tcx> for FnCtxt<'a, 'tcx> {
     fn ty_infer(&self, param: Option<&ty::GenericParamDef>, span: Span) -> Ty<'tcx> {
         match param {
             Some(param) => self.var_for_def(span, param).as_type().unwrap(),
-            None => self.next_ty_var(TypeVariableOrigin { param_def_id: None, span }),
+            None => self.next_ty_var(span),
         }
     }
 
@@ -258,7 +256,7 @@ impl<'a, 'tcx> HirTyLowerer<'tcx> for FnCtxt<'a, 'tcx> {
                 },
             ) => self.var_for_effect(param).as_const().unwrap(),
             Some(param) => self.var_for_def(span, param).as_const().unwrap(),
-            None => self.next_const_var(ty, ConstVariableOrigin { span, param_def_id: None }),
+            None => self.next_const_var(ty, span),
         }
     }
 

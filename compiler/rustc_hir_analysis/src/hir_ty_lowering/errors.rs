@@ -17,6 +17,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_infer::traits::FulfillmentError;
 use rustc_middle::query::Key;
+use rustc_middle::ty::print::PrintTraitRefExt as _;
 use rustc_middle::ty::GenericParamDefKind;
 use rustc_middle::ty::{self, suggest_constraining_type_param};
 use rustc_middle::ty::{AdtDef, Ty, TyCtxt, TypeVisitableExt};
@@ -1299,7 +1300,7 @@ pub fn prohibit_assoc_item_binding(
         // same name as the assoc type name in type binding
         let generics = tcx.generics_of(def_id);
         let matching_param =
-            generics.params.iter().find(|p| p.name.as_str() == binding.ident.as_str());
+            generics.own_params.iter().find(|p| p.name.as_str() == binding.ident.as_str());
 
         // Now emit the appropriate suggestion
         if let Some(matching_param) = matching_param {

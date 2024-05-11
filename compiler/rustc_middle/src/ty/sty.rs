@@ -942,7 +942,7 @@ where
     }
 }
 
-impl<'tcx, T> rustc_type_ir::BoundVars<TyCtxt<'tcx>> for ty::Binder<'tcx, T> {
+impl<'tcx, T> rustc_type_ir::inherent::BoundVars<TyCtxt<'tcx>> for ty::Binder<'tcx, T> {
     fn bound_vars(&self) -> &'tcx List<ty::BoundVariableKind> {
         self.bound_vars
     }
@@ -1812,7 +1812,7 @@ impl<'tcx> Ty<'tcx> {
     }
 }
 
-impl<'tcx> rustc_type_ir::new::Ty<TyCtxt<'tcx>> for Ty<'tcx> {
+impl<'tcx> rustc_type_ir::inherent::Ty<TyCtxt<'tcx>> for Ty<'tcx> {
     fn new_anon_bound(tcx: TyCtxt<'tcx>, debruijn: ty::DebruijnIndex, var: ty::BoundVar) -> Self {
         Ty::new_bound(tcx, debruijn, ty::BoundTy { var, kind: ty::BoundTyKind::Anon })
     }
@@ -2164,13 +2164,11 @@ impl<'tcx> Ty<'tcx> {
     ///
     /// The parameter `explicit` indicates if this is an *explicit* dereference.
     /// Some types -- notably unsafe ptrs -- can only be dereferenced explicitly.
-    pub fn builtin_deref(self, explicit: bool) -> Option<TypeAndMut<'tcx>> {
-        match self.kind() {
-            Adt(def, _) if def.is_box() => {
-                Some(TypeAndMut { ty: self.boxed_ty(), mutbl: hir::Mutability::Not })
-            }
-            Ref(_, ty, mutbl) => Some(TypeAndMut { ty: *ty, mutbl: *mutbl }),
-            RawPtr(ty, mutbl) if explicit => Some(TypeAndMut { ty: *ty, mutbl: *mutbl }),
+    pub fn builtin_deref(self, explicit: bool) -> Option<Ty<'tcx>> {
+        match *self.kind() {
+            Adt(def, _) if def.is_box() => Some(self.boxed_ty()),
+            Ref(_, ty, _) => Some(ty),
+            RawPtr(ty, _) if explicit => Some(ty),
             _ => None,
         }
     }

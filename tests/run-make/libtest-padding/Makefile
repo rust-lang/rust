@@ -2,7 +2,7 @@
 # needs-unwind because #[bench] and -Cpanic=abort requires -Zpanic-abort-tests
 include ../tools.mk
 
-NORMALIZE=sed 's%[0-9,]\{1,\} ns/iter (+/- [0-9,]\{1,\})%?? ns/iter (+/- ??)%' | sed 's%finished in [0-9\.]\{1,\}%finished in ??%'
+NORMALIZE=sed 's%[0-9,\.]\{1,\} ns/iter (+/- [0-9,\.]\{1,\})%?? ns/iter (+/- ??)%' | sed 's%finished in [0-9\.]\{1,\}%finished in ??%'
 
 all:
 	$(RUSTC) --test tests.rs

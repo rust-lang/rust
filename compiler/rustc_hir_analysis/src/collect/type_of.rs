@@ -255,7 +255,7 @@ fn anon_const_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx> {
     debug!(?parent_node);
     debug!(?generics, ?arg_idx);
     if let Some(param_def_id) = generics
-        .params
+        .own_params
         .iter()
         .filter(|param| param.kind.is_ty_or_const())
         .nth(match generics.has_self && generics.parent.is_none() {

@@ -6,7 +6,6 @@ use crate::errors::{
     AsyncClosureNotFn, ClosureFnMutLabel, ClosureFnOnceLabel, ClosureKindMismatch,
 };
 use crate::infer::error_reporting::{TyCategory, TypeAnnotationNeeded as ErrorCode};
-use crate::infer::type_variable::TypeVariableOrigin;
 use crate::infer::InferCtxtExt as _;
 use crate::infer::{self, InferCtxt};
 use crate::traits::error_reporting::infer_ctxt_ext::InferCtxtExt;
@@ -38,7 +37,9 @@ use rustc_middle::traits::SignatureMismatchData;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::fold::{BottomUpFolder, TypeFolder, TypeSuperFoldable};
-use rustc_middle::ty::print::{with_forced_trimmed_paths, FmtPrinter, Print};
+use rustc_middle::ty::print::{
+    with_forced_trimmed_paths, FmtPrinter, Print, PrintTraitRefExt as _,
+};
 use rustc_middle::ty::{
     self, SubtypePredicate, ToPolyTraitRef, ToPredicate, TraitRef, Ty, TyCtxt, TypeFoldable,
     TypeVisitable, TypeVisitableExt,
@@ -392,7 +393,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     }
                 }
 
-                if let ObligationCauseCode::CompareImplItemObligation {
+                if let ObligationCauseCode::CompareImplItem {
                     impl_item_def_id,
                     trait_item_def_id,
                     kind: _,
@@ -1018,7 +1019,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             if let Some((_, Some(parent))) = obligation.cause.code().parent() {
                 // If we have a derived obligation, then the parent will be a `AsyncFn*` goal.
                 trait_ref = parent.to_poly_trait_ref();
-            } else if let &ObligationCauseCode::FunctionArgumentObligation { arg_hir_id, .. } =
+            } else if let &ObligationCauseCode::FunctionArg { arg_hir_id, .. } =
                 obligation.cause.code()
                 && let Some(typeck_results) = &self.typeck_results
                 && let ty::Closure(closure_def_id, _) | ty::CoroutineClosure(closure_def_id, _) =
@@ -1105,8 +1106,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         &self,
         obligation: &PredicateObligation<'tcx>,
     ) -> Result<(), ErrorGuaranteed> {
-        if let ObligationCauseCode::FunctionArgumentObligation { arg_hir_id, .. } =
-            obligation.cause.code()
+        if let ObligationCauseCode::FunctionArg { arg_hir_id, .. } = obligation.cause.code()
             && let Node::Expr(arg) = self.tcx.hir_node(*arg_hir_id)
             && let arg = arg.peel_borrows()
             && let hir::ExprKind::Path(hir::QPath::Resolved(
@@ -1505,13 +1505,12 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         }
 
         match error.code {
-            FulfillmentErrorCode::SelectionError(ref selection_error) => self
-                .report_selection_error(
-                    error.obligation.clone(),
-                    &error.root_obligation,
-                    selection_error,
-                ),
-            FulfillmentErrorCode::ProjectionError(ref e) => {
+            FulfillmentErrorCode::Select(ref selection_error) => self.report_selection_error(
+                error.obligation.clone(),
+                &error.root_obligation,
+                selection_error,
+            ),
+            FulfillmentErrorCode::Project(ref e) => {
                 self.report_projection_error(&error.obligation, e)
             }
             FulfillmentErrorCode::Ambiguity { overflow: None } => {
@@ -1520,7 +1519,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             FulfillmentErrorCode::Ambiguity { overflow: Some(suggest_increasing_limit) } => {
                 self.report_overflow_no_abort(error.obligation.clone(), suggest_increasing_limit)
             }
-            FulfillmentErrorCode::SubtypeError(ref expected_found, ref err) => self
+            FulfillmentErrorCode::Subtype(ref expected_found, ref err) => self
                 .report_mismatched_types(
                     &error.obligation.cause,
                     expected_found.expected,
@@ -1528,7 +1527,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     *err,
                 )
                 .emit(),
-            FulfillmentErrorCode::ConstEquateError(ref expected_found, ref err) => {
+            FulfillmentErrorCode::ConstEquate(ref expected_found, ref err) => {
                 let mut diag = self.report_mismatched_consts(
                     &error.obligation.cause,
                     expected_found.expected,
@@ -1536,10 +1535,10 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     *err,
                 );
                 let code = error.obligation.cause.code().peel_derives().peel_match_impls();
-                if let ObligationCauseCode::BindingObligation(..)
-                | ObligationCauseCode::ItemObligation(..)
-                | ObligationCauseCode::ExprBindingObligation(..)
-                | ObligationCauseCode::ExprItemObligation(..) = code
+                if let ObligationCauseCode::SpannedWhereClause(..)
+                | ObligationCauseCode::WhereClause(..)
+                | ObligationCauseCode::SpannedWhereClauseInExpr(..)
+                | ObligationCauseCode::WhereClauseInExpr(..) = code
                 {
                     self.note_obligation_cause_code(
                         error.obligation.cause.body_id,
@@ -1613,10 +1612,10 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
                 let is_normalized_term_expected = !matches!(
                     obligation.cause.code().peel_derives(),
-                    ObligationCauseCode::ItemObligation(_)
-                        | ObligationCauseCode::BindingObligation(_, _)
-                        | ObligationCauseCode::ExprItemObligation(..)
-                        | ObligationCauseCode::ExprBindingObligation(..)
+                    ObligationCauseCode::WhereClause(_)
+                        | ObligationCauseCode::SpannedWhereClause(_, _)
+                        | ObligationCauseCode::WhereClauseInExpr(..)
+                        | ObligationCauseCode::SpannedWhereClauseInExpr(..)
                         | ObligationCauseCode::Coercion { .. }
                 );
 
@@ -2213,7 +2212,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         code: &ObligationCauseCode<'tcx>,
     ) -> Option<(Ty<'tcx>, Option<Span>)> {
         match code {
-            ObligationCauseCode::BuiltinDerivedObligation(data) => {
+            ObligationCauseCode::BuiltinDerived(data) => {
                 let parent_trait_ref = self.resolve_vars_if_possible(data.parent_trait_pred);
                 match self.get_parent_trait_ref(&data.parent_code) {
                     Some(t) => Some(t),
@@ -2225,7 +2224,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     }
                 }
             }
-            ObligationCauseCode::FunctionArgumentObligation { parent_code, .. } => {
+            ObligationCauseCode::FunctionArg { parent_code, .. } => {
                 self.get_parent_trait_ref(parent_code)
             }
             _ => None,
@@ -2448,8 +2447,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     }
                 }
 
-                if let ObligationCauseCode::ItemObligation(def_id)
-                | ObligationCauseCode::ExprItemObligation(def_id, ..) = *obligation.cause.code()
+                if let ObligationCauseCode::WhereClause(def_id)
+                | ObligationCauseCode::WhereClauseInExpr(def_id, ..) = *obligation.cause.code()
                 {
                     self.suggest_fully_qualified_path(&mut err, def_id, span, trait_ref.def_id());
                 }
@@ -2826,9 +2825,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
                 if let ty::Param(_) = *ty.kind() {
                     let infcx = self.infcx;
-                    *self.var_map.entry(ty).or_insert_with(|| {
-                        infcx.next_ty_var(TypeVariableOrigin { param_def_id: None, span: DUMMY_SP })
-                    })
+                    *self.var_map.entry(ty).or_insert_with(|| infcx.next_ty_var(DUMMY_SP))
                 } else {
                     ty.super_fold_with(self)
                 }
@@ -2886,8 +2883,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         else {
             return;
         };
-        let (ObligationCauseCode::BindingObligation(item_def_id, span)
-        | ObligationCauseCode::ExprBindingObligation(item_def_id, span, ..)) =
+        let (ObligationCauseCode::SpannedWhereClause(item_def_id, span)
+        | ObligationCauseCode::SpannedWhereClauseInExpr(item_def_id, span, ..)) =
             *obligation.cause.code().peel_derives()
         else {
             return;
@@ -3007,7 +3004,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         obligated_types: &mut Vec<Ty<'tcx>>,
         cause_code: &ObligationCauseCode<'tcx>,
     ) -> bool {
-        if let ObligationCauseCode::BuiltinDerivedObligation(ref data) = cause_code {
+        if let ObligationCauseCode::BuiltinDerived(ref data) = cause_code {
             let parent_trait_ref = self.resolve_vars_if_possible(data.parent_trait_pred);
             let self_ty = parent_trait_ref.skip_binder().self_ty();
             if obligated_types.iter().any(|ot| ot == &self_ty) {
@@ -3184,8 +3181,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             ObligationCauseCode::RustCall => {
                 err.primary_message("functions with the \"rust-call\" ABI must take a single non-self tuple argument");
             }
-            ObligationCauseCode::BindingObligation(def_id, _)
-            | ObligationCauseCode::ItemObligation(def_id)
+            ObligationCauseCode::SpannedWhereClause(def_id, _)
+            | ObligationCauseCode::WhereClause(def_id)
                 if self.tcx.is_fn_trait(*def_id) =>
             {
                 err.code(E0059);
@@ -3443,8 +3440,6 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         self.dcx().try_steal_replace_and_emit_err(self.tcx.def_span(def_id), StashKey::Cycle, err)
     }
 
-    // FIXME(@lcnr): This function could be changed to trait `TraitRef` directly
-    // instead of using a `Binder`.
     fn report_signature_mismatch_error(
         &self,
         obligation: &PredicateObligation<'tcx>,
@@ -3576,7 +3571,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     match self.tcx.sess.source_map().span_to_snippet(const_span) {
                         Ok(snippet) => {
                             let code = format!("[(); {snippet}{cast}]:");
-                            let def_id = if let ObligationCauseCode::CompareImplItemObligation {
+                            let def_id = if let ObligationCauseCode::CompareImplItem {
                                 trait_item_def_id,
                                 ..
                             } = obligation.cause.code()

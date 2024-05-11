@@ -136,6 +136,9 @@ impl<'a, 'b> ProofTreeFormatter<'a, 'b> {
                     ProbeStep::MakeCanonicalResponse { shallow_certainty } => {
                         writeln!(this.f, "EVALUATE GOALS AND MAKE RESPONSE: {shallow_certainty:?}")?
                     }
+                    ProbeStep::RecordImplArgs { impl_args } => {
+                        writeln!(this.f, "RECORDED IMPL ARGS: {impl_args:?}")?
+                    }
                 }
             }
             Ok(())

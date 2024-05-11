@@ -1,5 +1,3 @@
-#![feature(exclusive_range_pattern)]
-
 macro_rules! m {
     ($s:expr, $($t:tt)+) => {
         match $s { $($t)+ => {} }

@@ -91,12 +91,13 @@ fn main() {
         rustc_real
     };
 
-    let mut cmd = if let Some(wrapper) = env::var_os("RUSTC_WRAPPER_REAL") {
-        let mut cmd = Command::new(wrapper);
-        cmd.arg(rustc_driver);
-        cmd
-    } else {
-        Command::new(rustc_driver)
+    let mut cmd = match env::var_os("RUSTC_WRAPPER_REAL") {
+        Some(wrapper) if !wrapper.is_empty() => {
+            let mut cmd = Command::new(wrapper);
+            cmd.arg(rustc_driver);
+            cmd
+        }
+        _ => Command::new(rustc_driver),
     };
     cmd.args(&args).env(dylib_path_var(), env::join_paths(&dylib_path).unwrap());
 

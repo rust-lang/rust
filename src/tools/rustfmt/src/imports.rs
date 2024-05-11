@@ -458,7 +458,9 @@ impl UseTree {
                     version,
                 });
             }
-            UseTreeKind::Nested(ref list) => {
+            UseTreeKind::Nested {
+                items: ref list, ..
+            } => {
                 // Extract comments between nested use items.
                 // This needs to be done before sorting use items.
                 let items = itemize_list(

@@ -6,8 +6,9 @@ use std::fmt;
 use std::hash::Hash;
 
 use crate::fold::{FallibleTypeFolder, TypeFoldable};
+use crate::inherent::*;
 use crate::visit::{TypeVisitable, TypeVisitor};
-use crate::{Interner, PlaceholderLike, UniverseIndex};
+use crate::{Interner, UniverseIndex};
 
 /// A "canonicalized" type `V` is one where all free inference
 /// variables have been rewritten to "canonical vars". These are

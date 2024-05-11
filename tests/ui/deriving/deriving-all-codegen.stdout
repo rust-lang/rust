@@ -876,7 +876,7 @@ impl ::core::cmp::PartialEq for Enum1 {
     fn eq(&self, other: &Enum1) -> bool {
         match (self, other) {
             (Enum1::Single { x: __self_0 }, Enum1::Single { x: __arg1_0 }) =>
-                *__self_0 == *__arg1_0,
+                __self_0 == __arg1_0,
         }
     }
 }
@@ -1119,10 +1119,10 @@ impl ::core::cmp::PartialEq for Mixed {
         __self_discr == __arg1_discr &&
             match (self, other) {
                 (Mixed::R(__self_0), Mixed::R(__arg1_0)) =>
-                    *__self_0 == *__arg1_0,
+                    __self_0 == __arg1_0,
                 (Mixed::S { d1: __self_0, d2: __self_1 }, Mixed::S {
                     d1: __arg1_0, d2: __arg1_1 }) =>
-                    *__self_0 == *__arg1_0 && *__self_1 == *__arg1_1,
+                    __self_0 == __arg1_0 && __self_1 == __arg1_1,
                 _ => true,
             }
     }
@@ -1245,11 +1245,11 @@ impl ::core::cmp::PartialEq for Fielded {
         __self_discr == __arg1_discr &&
             match (self, other) {
                 (Fielded::X(__self_0), Fielded::X(__arg1_0)) =>
-                    *__self_0 == *__arg1_0,
+                    __self_0 == __arg1_0,
                 (Fielded::Y(__self_0), Fielded::Y(__arg1_0)) =>
-                    *__self_0 == *__arg1_0,
+                    __self_0 == __arg1_0,
                 (Fielded::Z(__self_0), Fielded::Z(__arg1_0)) =>
-                    *__self_0 == *__arg1_0,
+                    __self_0 == __arg1_0,
                 _ => unsafe { ::core::intrinsics::unreachable() }
             }
     }
@@ -1368,9 +1368,9 @@ impl<T: ::core::cmp::PartialEq, U: ::core::cmp::PartialEq>
         __self_discr == __arg1_discr &&
             match (self, other) {
                 (EnumGeneric::One(__self_0), EnumGeneric::One(__arg1_0)) =>
-                    *__self_0 == *__arg1_0,
+                    __self_0 == __arg1_0,
                 (EnumGeneric::Two(__self_0), EnumGeneric::Two(__arg1_0)) =>
-                    *__self_0 == *__arg1_0,
+                    __self_0 == __arg1_0,
                 _ => unsafe { ::core::intrinsics::unreachable() }
             }
     }
@@ -1424,6 +1424,30 @@ impl<T: ::core::cmp::Ord, U: ::core::cmp::Ord> ::core::cmp::Ord for
             cmp => cmp,
         }
     }
+}
+
+// An enum that has variant, which does't implement `Copy`.
+enum NonCopyEnum {
+
+    // The `dyn NonCopyTrait` implements `PartialEq`, but it doesn't require `Copy`.
+    // So we cannot generate `PartialEq` with dereference.
+    NonCopyField(Box<dyn NonCopyTrait>),
+}
+#[automatically_derived]
+impl ::core::marker::StructuralPartialEq for NonCopyEnum { }
+#[automatically_derived]
+impl ::core::cmp::PartialEq for NonCopyEnum {
+    #[inline]
+    fn eq(&self, other: &NonCopyEnum) -> bool {
+        match (self, other) {
+            (NonCopyEnum::NonCopyField(__self_0),
+                NonCopyEnum::NonCopyField(__arg1_0)) => __self_0 == __arg1_0,
+        }
+    }
+}
+trait NonCopyTrait {}
+impl PartialEq for dyn NonCopyTrait {
+    fn eq(&self, _other: &Self) -> bool { true }
 }
 
 // A union. Most builtin traits are not derivable for unions.

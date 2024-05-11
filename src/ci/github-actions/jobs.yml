@@ -32,14 +32,6 @@ runners:
     os: windows-2022-16core-64gb
     <<: *base-job
 
-  - &job-windows-2019-8c
-    os: windows-2019-8core-32gb
-    <<: *base-job
-
-  - &job-windows-2019-16c
-    os: windows-2019-16core-64gb
-    <<: *base-job
-
   - &job-aarch64-linux
     os: [ self-hosted, ARM64, linux ]
 
@@ -349,13 +341,13 @@ auto:
     env:
       RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-profiler
       SCRIPT: make ci-msvc
-    <<: *job-windows-2019-8c
+    <<: *job-windows-8c
 
   - image: i686-msvc
     env:
       RUST_CONFIGURE_ARGS: --build=i686-pc-windows-msvc
       SCRIPT: make ci-msvc
-    <<: *job-windows-2019-8c
+    <<: *job-windows-8c
 
   - image: x86_64-msvc-ext
     env:
@@ -363,7 +355,7 @@ auto:
       HOST_TARGET: x86_64-pc-windows-msvc
       RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-lld --save-toolstates=/tmp/toolstate/toolstates.json
       DEPLOY_TOOLSTATES_JSON: toolstates-windows.json
-    <<: *job-windows-2019-8c
+    <<: *job-windows-8c
 
   # 32/64-bit MinGW builds.
   #
@@ -414,7 +406,7 @@ auto:
         --set rust.codegen-units=1
       SCRIPT: python x.py build --set rust.debug=true opt-dist && PGO_HOST=x86_64-pc-windows-msvc ./build/x86_64-pc-windows-msvc/stage0-tools-bin/opt-dist windows-ci -- python x.py dist bootstrap --include-default-paths
       DIST_REQUIRE_ALL_TOOLS: 1
-    <<: *job-windows-2019-8c
+    <<: *job-windows-8c
 
   - image: dist-i686-msvc
     env:
@@ -426,7 +418,7 @@ auto:
         --enable-profiler
       SCRIPT: python x.py dist bootstrap --include-default-paths
       DIST_REQUIRE_ALL_TOOLS: 1
-    <<: *job-windows-2019-8c
+    <<: *job-windows-8c
 
   - image: dist-aarch64-msvc
     env:
@@ -437,7 +429,7 @@ auto:
         --enable-profiler
       SCRIPT: python x.py dist bootstrap --include-default-paths
       DIST_REQUIRE_ALL_TOOLS: 1
-    <<: *job-windows-2019-8c
+    <<: *job-windows-8c
 
   - image: dist-i686-mingw
     env:
@@ -471,4 +463,4 @@ auto:
     env:
       RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-extended --enable-profiler
       SCRIPT: python x.py dist bootstrap --include-default-paths
-    <<: *job-windows-2019-8c
+    <<: *job-windows-8c

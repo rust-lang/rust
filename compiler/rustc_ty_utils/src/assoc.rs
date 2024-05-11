@@ -340,22 +340,22 @@ fn associated_type_for_impl_trait_in_impl(
     impl_assoc_ty.generics_of({
         let trait_assoc_generics = tcx.generics_of(trait_assoc_def_id);
         let trait_assoc_parent_count = trait_assoc_generics.parent_count;
-        let mut params = trait_assoc_generics.params.clone();
+        let mut own_params = trait_assoc_generics.own_params.clone();
 
         let parent_generics = tcx.generics_of(impl_local_def_id.to_def_id());
-        let parent_count = parent_generics.parent_count + parent_generics.params.len();
+        let parent_count = parent_generics.parent_count + parent_generics.own_params.len();
 
-        for param in &mut params {
+        for param in &mut own_params {
             param.index = param.index + parent_count as u32 - trait_assoc_parent_count as u32;
         }
 
         let param_def_id_to_index =
-            params.iter().map(|param| (param.def_id, param.index)).collect();
+            own_params.iter().map(|param| (param.def_id, param.index)).collect();
 
         ty::Generics {
             parent: Some(impl_local_def_id.to_def_id()),
             parent_count,
-            params,
+            own_params,
             param_def_id_to_index,
             has_self: false,
             has_late_bound_regions: trait_assoc_generics.has_late_bound_regions,

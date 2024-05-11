@@ -162,6 +162,8 @@ declare_features! (
     (accepted, drop_types_in_const, "1.22.0", Some(33156)),
     /// Allows using `dyn Trait` as a syntax for trait objects.
     (accepted, dyn_trait, "1.27.0", Some(44662)),
+    /// Allows `X..Y` patterns.
+    (accepted, exclusive_range_pattern, "CURRENT_RUSTC_VERSION", Some(37854)),
     /// Allows integer match exhaustiveness checking (RFC 2591).
     (accepted, exhaustive_integer_patterns, "1.33.0", Some(50907)),
     /// Allows explicit generic arguments specification with `impl Trait` present.

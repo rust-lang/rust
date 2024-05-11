@@ -12,10 +12,8 @@
 use rustc_ast_ir::try_visit;
 use rustc_ast_ir::visit::VisitorResult;
 use rustc_infer::infer::resolve::EagerResolver;
-use rustc_infer::infer::type_variable::TypeVariableOrigin;
 use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, InferOk};
 use rustc_macros::extension;
-use rustc_middle::infer::unify_key::ConstVariableOrigin;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::solve::{inspect, QueryResult};
 use rustc_middle::traits::solve::{Certainty, Goal};
@@ -93,6 +91,7 @@ pub struct InspectCandidate<'a, 'tcx> {
     kind: inspect::ProbeKind<'tcx>,
     nested_goals: Vec<(GoalSource, inspect::CanonicalState<'tcx, Goal<'tcx, ty::Predicate<'tcx>>>)>,
     final_state: inspect::CanonicalState<'tcx, ()>,
+    impl_args: Option<inspect::CanonicalState<'tcx, ty::GenericArgsRef<'tcx>>>,
     result: QueryResult<'tcx>,
     shallow_certainty: Certainty,
 }
@@ -135,7 +134,25 @@ impl<'a, 'tcx> InspectCandidate<'a, 'tcx> {
 
     /// Instantiate the nested goals for the candidate without rolling back their
     /// inference constraints. This function modifies the state of the `infcx`.
+    ///
+    /// See [`Self::instantiate_nested_goals_and_opt_impl_args`] if you need the impl args too.
     pub fn instantiate_nested_goals(&self, span: Span) -> Vec<InspectGoal<'a, 'tcx>> {
+        self.instantiate_nested_goals_and_opt_impl_args(span).0
+    }
+
+    /// Instantiate the nested goals for the candidate without rolling back their
+    /// inference constraints, and optionally the args of an impl if this candidate
+    /// came from a `CandidateSource::Impl`. This function modifies the state of the
+    /// `infcx`.
+    #[instrument(
+        level = "debug",
+        skip_all,
+        fields(goal = ?self.goal.goal, nested_goals = ?self.nested_goals)
+    )]
+    pub fn instantiate_nested_goals_and_opt_impl_args(
+        &self,
+        span: Span,
+    ) -> (Vec<InspectGoal<'a, 'tcx>>, Option<ty::GenericArgsRef<'tcx>>) {
         let infcx = self.goal.infcx;
         let param_env = self.goal.goal.param_env;
         let mut orig_values = self.goal.orig_values.to_vec();
@@ -164,6 +181,17 @@ impl<'a, 'tcx> InspectCandidate<'a, 'tcx> {
             self.final_state,
         );
 
+        let impl_args = self.impl_args.map(|impl_args| {
+            canonical::instantiate_canonical_state(
+                infcx,
+                span,
+                param_env,
+                &mut orig_values,
+                impl_args,
+            )
+            .fold_with(&mut EagerResolver::new(infcx))
+        });
+
         if let Some(term_hack) = self.goal.normalizes_to_term_hack {
             // FIXME: We ignore the expected term of `NormalizesTo` goals
             // when computing the result of its candidates. This is
@@ -171,27 +199,33 @@ impl<'a, 'tcx> InspectCandidate<'a, 'tcx> {
             let _ = term_hack.constrain(infcx, span, param_env);
         }
 
-        instantiated_goals
+        let goals = instantiated_goals
             .into_iter()
             .map(|(source, goal)| match goal.predicate.kind().no_bound_vars() {
                 Some(ty::PredicateKind::NormalizesTo(ty::NormalizesTo { alias, term })) => {
                     let unconstrained_term = match term.unpack() {
-                        ty::TermKind::Ty(_) => infcx
-                            .next_ty_var(TypeVariableOrigin { param_def_id: None, span })
-                            .into(),
-                        ty::TermKind::Const(ct) => infcx
-                            .next_const_var(
-                                ct.ty(),
-                                ConstVariableOrigin { param_def_id: None, span },
-                            )
-                            .into(),
+                        ty::TermKind::Ty(_) => infcx.next_ty_var(span).into(),
+                        ty::TermKind::Const(ct) => infcx.next_const_var(ct.ty(), span).into(),
                     };
                     let goal =
                         goal.with(infcx.tcx, ty::NormalizesTo { alias, term: unconstrained_term });
-                    let proof_tree = EvalCtxt::enter_root(infcx, GenerateProofTree::Yes, |ecx| {
-                        ecx.evaluate_goal_raw(GoalEvaluationKind::Root, GoalSource::Misc, goal)
-                    })
-                    .1;
+                    // We have to use a `probe` here as evaluating a `NormalizesTo` can constrain the
+                    // expected term. This means that candidates which only fail due to nested goals
+                    // and which normalize to a different term then the final result could ICE: when
+                    // building their proof tree, the expected term was unconstrained, but when
+                    // instantiating the candidate it is already constrained to the result of another
+                    // candidate.
+                    let proof_tree = infcx
+                        .probe(|_| {
+                            EvalCtxt::enter_root(infcx, GenerateProofTree::Yes, |ecx| {
+                                ecx.evaluate_goal_raw(
+                                    GoalEvaluationKind::Root,
+                                    GoalSource::Misc,
+                                    goal,
+                                )
+                            })
+                        })
+                        .1;
                     InspectGoal::new(
                         infcx,
                         self.goal.depth + 1,
@@ -200,15 +234,21 @@ impl<'a, 'tcx> InspectCandidate<'a, 'tcx> {
                         source,
                     )
                 }
-                _ => InspectGoal::new(
-                    infcx,
-                    self.goal.depth + 1,
-                    infcx.evaluate_root_goal(goal, GenerateProofTree::Yes).1.unwrap(),
-                    None,
-                    source,
-                ),
+                _ => {
+                    // We're using a probe here as evaluating a goal could constrain
+                    // inference variables by choosing one candidate. If we then recurse
+                    // into another candidate who ends up with different inference
+                    // constraints, we get an ICE if we already applied the constraints
+                    // from the chosen candidate.
+                    let proof_tree = infcx
+                        .probe(|_| infcx.evaluate_root_goal(goal, GenerateProofTree::Yes).1)
+                        .unwrap();
+                    InspectGoal::new(infcx, self.goal.depth + 1, proof_tree, None, source)
+                }
             })
-            .collect()
+            .collect();
+
+        (goals, impl_args)
     }
 
     /// Visit all nested goals of this candidate, rolling back
@@ -245,9 +285,10 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
         probe: &inspect::Probe<'tcx>,
     ) {
         let mut shallow_certainty = None;
+        let mut impl_args = None;
         for step in &probe.steps {
-            match step {
-                &inspect::ProbeStep::AddGoal(source, goal) => nested_goals.push((source, goal)),
+            match *step {
+                inspect::ProbeStep::AddGoal(source, goal) => nested_goals.push((source, goal)),
                 inspect::ProbeStep::NestedProbe(ref probe) => {
                     // Nested probes have to prove goals added in their parent
                     // but do not leak them, so we truncate the added goals
@@ -257,7 +298,10 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
                     nested_goals.truncate(num_goals);
                 }
                 inspect::ProbeStep::MakeCanonicalResponse { shallow_certainty: c } => {
-                    assert_eq!(shallow_certainty.replace(*c), None);
+                    assert_eq!(shallow_certainty.replace(c), None);
+                }
+                inspect::ProbeStep::RecordImplArgs { impl_args: i } => {
+                    assert_eq!(impl_args.replace(i), None);
                 }
                 inspect::ProbeStep::EvaluateGoals(_) => (),
             }
@@ -284,6 +328,7 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
                         final_state: probe.final_state,
                         result,
                         shallow_certainty,
+                        impl_args,
                     });
                 }
             }

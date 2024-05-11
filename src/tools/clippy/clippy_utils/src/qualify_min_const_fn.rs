@@ -134,7 +134,7 @@ fn check_rvalue<'tcx>(
         ) => Err((span, "function pointer casts are not allowed in const fn".into())),
         Rvalue::Cast(CastKind::PointerCoercion(PointerCoercion::Unsize), op, cast_ty) => {
             let pointee_ty = if let Some(deref_ty) = cast_ty.builtin_deref(true) {
-                deref_ty.ty
+                deref_ty
             } else {
                 // We cannot allow this for now.
                 return Err((span, "unsizing casts are only allowed for references right now".into()));
@@ -402,7 +402,7 @@ fn is_ty_const_destruct<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, body: &Body<'tcx>
             tcx,
             ObligationCause::dummy_with_span(body.span),
             ConstCx::new(tcx, body).param_env,
-            TraitRef::from_lang_item(tcx, LangItem::Destruct, body.span, [ty]),
+            TraitRef::new(tcx, tcx.require_lang_item(LangItem::Destruct, Some(body.span)), [ty]),
         );
 
         let infcx = tcx.infer_ctxt().build();

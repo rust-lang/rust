@@ -1,18 +1,18 @@
-error[E0267]: `break` inside of an `async` block
+error[E0267]: `break` inside `async` block
   --> $DIR/async-block-control-flow-static-semantics.rs:32:9
    |
 LL | /     async {
 LL | |         break 0u8;
-   | |         ^^^^^^^^^ cannot `break` inside of an `async` block
+   | |         ^^^^^^^^^ cannot `break` inside `async` block
 LL | |     };
    | |_____- enclosing `async` block
 
-error[E0267]: `break` inside of an `async` block
+error[E0267]: `break` inside `async` block
   --> $DIR/async-block-control-flow-static-semantics.rs:39:13
    |
 LL | /         async {
 LL | |             break 0u8;
-   | |             ^^^^^^^^^ cannot `break` inside of an `async` block
+   | |             ^^^^^^^^^ cannot `break` inside `async` block
 LL | |         };
    | |_________- enclosing `async` block
 

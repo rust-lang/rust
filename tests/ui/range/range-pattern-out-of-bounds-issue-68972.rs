@@ -1,4 +1,3 @@
-#![feature(exclusive_range_pattern)]
 #![allow(unreachable_patterns)]
 fn main() {
     match 0u8 {

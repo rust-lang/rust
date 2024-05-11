@@ -55,21 +55,27 @@ macro_rules! language_item_table {
     (
         $( $(#[$attr:meta])* $variant:ident, $module:ident :: $name:ident, $method:ident, $target:expr, $generics:expr; )*
     ) => {
-
-        rustc_data_structures::enum_from_u32! {
-            /// A representation of all the valid lang items in Rust.
-            #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Encodable, Decodable)]
-            pub enum LangItem {
-                $(
-                    #[doc = concat!("The `", stringify!($name), "` lang item.")]
-                    ///
-                    $(#[$attr])*
-                    $variant,
-                )*
-            }
+        /// A representation of all the valid lang items in Rust.
+        #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Encodable, Decodable)]
+        pub enum LangItem {
+            $(
+                #[doc = concat!("The `", stringify!($name), "` lang item.")]
+                $(#[$attr])*
+                $variant,
+            )*
         }
 
         impl LangItem {
+            fn from_u32(u: u32) -> Option<LangItem> {
+                // This implementation is clumsy, but makes no assumptions
+                // about how discriminant tags are allocated within the
+                // range `0 .. std::mem::variant_count::<LangItem>()`.
+                $(if u == LangItem::$variant as u32 {
+                    return Some(LangItem::$variant)
+                })*
+                None
+            }
+
             /// Returns the `name` symbol in `#[lang = "$name"]`.
             /// For example, [`LangItem::PartialEq`]`.name()`
             /// would result in [`sym::eq`] since it is `#[lang = "eq"]`.
@@ -147,7 +153,7 @@ language_item_table! {
     Clone,                   sym::clone,               clone_trait,                Target::Trait,          GenericRequirement::None;
     Sync,                    sym::sync,                sync_trait,                 Target::Trait,          GenericRequirement::Exact(0);
     DiscriminantKind,        sym::discriminant_kind,   discriminant_kind_trait,    Target::Trait,          GenericRequirement::None;
-    /// The associated item of the [`DiscriminantKind`] trait.
+    /// The associated item of the `DiscriminantKind` trait.
     Discriminant,            sym::discriminant_type,   discriminant_type,          Target::AssocTy,        GenericRequirement::None;
 
     PointeeTrait,            sym::pointee_trait,       pointee_trait,              Target::Trait,          GenericRequirement::None;

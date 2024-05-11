@@ -131,7 +131,7 @@ fn mark_used_by_default_parameters<'tcx>(
 ) {
     match tcx.def_kind(def_id) {
         DefKind::Closure => {
-            for param in &generics.params {
+            for param in &generics.own_params {
                 debug!(?param, "(closure/gen)");
                 unused_parameters.mark_used(param.index);
             }
@@ -165,7 +165,7 @@ fn mark_used_by_default_parameters<'tcx>(
         | DefKind::LifetimeParam
         | DefKind::GlobalAsm
         | DefKind::Impl { .. } => {
-            for param in &generics.params {
+            for param in &generics.own_params {
                 debug!(?param, "(other)");
                 if let ty::GenericParamDefKind::Lifetime = param.kind {
                     unused_parameters.mark_used(param.index);
@@ -202,7 +202,7 @@ fn emit_unused_generic_params_error<'tcx>(
     let mut param_names = Vec::new();
     let mut next_generics = Some(generics);
     while let Some(generics) = next_generics {
-        for param in &generics.params {
+        for param in &generics.own_params {
             if unused_parameters.is_unused(param.index) {
                 debug!(?param);
                 let def_span = tcx.def_span(param.def_id);

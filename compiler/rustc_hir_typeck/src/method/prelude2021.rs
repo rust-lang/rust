@@ -7,7 +7,6 @@ use hir::HirId;
 use hir::ItemKind;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
-use rustc_infer::infer::type_variable::TypeVariableOrigin;
 use rustc_middle::ty::{self, Ty};
 use rustc_session::lint::builtin::RUST_2021_PRELUDE_COLLISIONS;
 use rustc_span::symbol::kw::{Empty, Underscore};
@@ -218,8 +217,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // If we know it does not, we don't need to warn.
         if method_name.name == sym::from_iter {
             if let Some(trait_def_id) = self.tcx.get_diagnostic_item(sym::FromIterator) {
-                let any_type =
-                    self.infcx.next_ty_var(TypeVariableOrigin { param_def_id: None, span });
+                let any_type = self.infcx.next_ty_var(span);
                 if !self
                     .infcx
                     .type_implements_trait(trait_def_id, [self_ty, any_type], self.param_env)
@@ -251,23 +249,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let trait_path = self.trait_path_or_bare_name(span, expr_id, container_id);
                 let trait_generics = self.tcx.generics_of(container_id);
 
-                let trait_name = if trait_generics.params.len() <= trait_generics.has_self as usize
-                {
-                    trait_path
-                } else {
-                    let counts = trait_generics.own_counts();
-                    format!(
-                        "{}<{}>",
-                        trait_path,
-                        std::iter::repeat("'_")
-                            .take(counts.lifetimes)
-                            .chain(std::iter::repeat("_").take(
-                                counts.types + counts.consts - trait_generics.has_self as usize
-                            ))
-                            .collect::<Vec<_>>()
-                            .join(", ")
-                    )
-                };
+                let trait_name =
+                    if trait_generics.own_params.len() <= trait_generics.has_self as usize {
+                        trait_path
+                    } else {
+                        let counts = trait_generics.own_counts();
+                        format!(
+                            "{}<{}>",
+                            trait_path,
+                            std::iter::repeat("'_")
+                                .take(counts.lifetimes)
+                                .chain(std::iter::repeat("_").take(
+                                    counts.types + counts.consts - trait_generics.has_self as usize
+                                ))
+                                .collect::<Vec<_>>()
+                                .join(", ")
+                        )
+                    };
 
                 let mut self_ty_name = self_ty_span
                     .find_ancestor_inside(span)
@@ -280,7 +278,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if !self_ty_name.contains('<') {
                     if let ty::Adt(def, _) = self_ty.kind() {
                         let generics = self.tcx.generics_of(def.did());
-                        if !generics.params.is_empty() {
+                        if !generics.own_params.is_empty() {
                             let counts = generics.own_counts();
                             self_ty_name += &format!(
                                 "<{}>",

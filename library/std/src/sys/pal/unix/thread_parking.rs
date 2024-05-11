@@ -5,7 +5,7 @@
 use crate::ffi::{c_int, c_void};
 use crate::ptr;
 use crate::time::Duration;
-use libc::{_lwp_self, clockid_t, lwpid_t, time_t, timespec, CLOCK_MONOTONIC};
+use libc::{_lwp_self, c_long, clockid_t, lwpid_t, time_t, timespec, CLOCK_MONOTONIC};
 
 extern "C" {
     fn ___lwp_park60(
@@ -38,7 +38,7 @@ pub fn park_timeout(dur: Duration, hint: usize) {
         // Saturate so that the operation will definitely time out
         // (even if it is after the heat death of the universe).
         tv_sec: dur.as_secs().try_into().ok().unwrap_or(time_t::MAX),
-        tv_nsec: dur.subsec_nanos().into(),
+        tv_nsec: dur.subsec_nanos() as c_long,
     };
 
     // Timeout needs to be mutable since it is modified on NetBSD 9.0 and

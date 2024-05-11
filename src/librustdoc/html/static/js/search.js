@@ -786,6 +786,37 @@ function initSearch(rawSearchIndex) {
                 }
                 elems.push(makePrimitiveElement(name, { bindingName, generics }));
             }
+        } else if (parserState.userQuery[parserState.pos] === "&") {
+            if (parserState.typeFilter !== null && parserState.typeFilter !== "primitive") {
+                throw [
+                    "Invalid search type: primitive ",
+                    "&",
+                    " and ",
+                    parserState.typeFilter,
+                    " both specified",
+                ];
+            }
+            parserState.typeFilter = null;
+            parserState.pos += 1;
+            let c = parserState.userQuery[parserState.pos];
+            while (c === " " && parserState.pos < parserState.length) {
+                parserState.pos += 1;
+                c = parserState.userQuery[parserState.pos];
+            }
+            const generics = [];
+            if (parserState.userQuery.slice(parserState.pos, parserState.pos + 3) === "mut") {
+                generics.push(makePrimitiveElement("mut", { typeFilter: "keyword"}));
+                parserState.pos += 3;
+                c = parserState.userQuery[parserState.pos];
+            }
+            while (c === " " && parserState.pos < parserState.length) {
+                parserState.pos += 1;
+                c = parserState.userQuery[parserState.pos];
+            }
+            if (!isEndCharacter(c) && parserState.pos < parserState.length) {
+                getFilteredNextElem(query, parserState, generics, isInGenerics);
+            }
+            elems.push(makePrimitiveElement("reference", { generics }));
         } else {
             const isStringElem = parserState.userQuery[start] === "\"";
             // We handle the strings on their own mostly to make code easier to follow.

@@ -32,7 +32,7 @@ fn configure_with_args(cmd: &[String], host: &[&str], target: &[&str]) -> Config
         .join(&thread::current().name().unwrap_or("unknown").replace(":", "-"));
     t!(fs::create_dir_all(&dir));
     config.out = dir;
-    config.build = TargetSelection::from_user("A");
+    config.build = TargetSelection::from_user("A-A");
     config.hosts = host.iter().map(|s| TargetSelection::from_user(s)).collect();
     config.targets = target.iter().map(|s| TargetSelection::from_user(s)).collect();
     config
@@ -53,27 +53,27 @@ fn run_build(paths: &[PathBuf], config: Config) -> Cache {
 fn check_cli<const N: usize>(paths: [&str; N]) {
     run_build(
         &paths.map(PathBuf::from),
-        configure_with_args(&paths.map(String::from), &["A"], &["A"]),
+        configure_with_args(&paths.map(String::from), &["A-A"], &["A-A"]),
     );
 }
 
 macro_rules! std {
     ($host:ident => $target:ident, stage = $stage:literal) => {
         compile::Std::new(
-            Compiler { host: TargetSelection::from_user(stringify!($host)), stage: $stage },
-            TargetSelection::from_user(stringify!($target)),
+            Compiler { host: TargetSelection::from_user(concat!(stringify!($host), "-", stringify!($host))), stage: $stage },
+            TargetSelection::from_user(concat!(stringify!($target), "-", stringify!($target))),
         )
     };
 }
 
 macro_rules! doc_std {
     ($host:ident => $target:ident, stage = $stage:literal) => {{
-        let config = configure("doc", &["A"], &["A"]);
+        let config = configure("doc", &["A-A"], &["A-A"]);
         let build = Build::new(config);
         let builder = Builder::new(&build);
         doc::Std::new(
             $stage,
-            TargetSelection::from_user(stringify!($target)),
+            TargetSelection::from_user(concat!(stringify!($target), "-", stringify!($target))),
             &builder,
             DocumentationFormat::Html,
         )
@@ -83,8 +83,8 @@ macro_rules! doc_std {
 macro_rules! rustc {
     ($host:ident => $target:ident, stage = $stage:literal) => {
         compile::Rustc::new(
-            Compiler { host: TargetSelection::from_user(stringify!($host)), stage: $stage },
-            TargetSelection::from_user(stringify!($target)),
+            Compiler { host: TargetSelection::from_user(concat!(stringify!($host), "-", stringify!($host))), stage: $stage },
+            TargetSelection::from_user(concat!(stringify!($target), "-", stringify!($target))),
         )
     };
 }
@@ -117,7 +117,7 @@ fn test_intersection() {
 
 #[test]
 fn validate_path_remap() {
-    let build = Build::new(configure("test", &["A"], &["A"]));
+    let build = Build::new(configure("test", &["A-A"], &["A-A"]));
 
     PATH_REMAP
         .iter()
@@ -130,7 +130,7 @@ fn validate_path_remap() {
 
 #[test]
 fn test_exclude() {
-    let mut config = configure("test", &["A"], &["A"]);
+    let mut config = configure("test", &["A-A"], &["A-A"]);
     config.skip = vec!["src/tools/tidy".into()];
     let cache = run_build(&[], config);
 
@@ -145,7 +145,7 @@ fn test_exclude() {
 fn test_exclude_kind() {
     let path = PathBuf::from("compiler/rustc_data_structures");
 
-    let mut config = configure("test", &["A"], &["A"]);
+    let mut config = configure("test", &["A-A"], &["A-A"]);
     // Ensure our test is valid, and `test::Rustc` would be run without the exclude.
     assert!(run_build(&[], config.clone()).contains::<test::CrateLibrustc>());
     // Ensure tests for rustc are not skipped.
@@ -159,13 +159,13 @@ fn test_exclude_kind() {
 #[test]
 fn alias_and_path_for_library() {
     let mut cache =
-        run_build(&["library".into(), "core".into()], configure("build", &["A"], &["A"]));
+        run_build(&["library".into(), "core".into()], configure("build", &["A-A"], &["A-A"]));
     assert_eq!(
         first(cache.all::<compile::Std>()),
         &[std!(A => A, stage = 0), std!(A => A, stage = 1)]
     );
 
-    let mut cache = run_build(&["library".into(), "core".into()], configure("doc", &["A"], &["A"]));
+    let mut cache = run_build(&["library".into(), "core".into()], configure("doc", &["A-A"], &["A-A"]));
     assert_eq!(first(cache.all::<doc::Std>()), &[doc_std!(A => A, stage = 0)]);
 }
 
@@ -177,9 +177,9 @@ mod defaults {
 
     #[test]
     fn build_default() {
-        let mut cache = run_build(&[], configure("build", &["A"], &["A"]));
+        let mut cache = run_build(&[], configure("build", &["A-A"], &["A-A"]));
 
-        let a = TargetSelection::from_user("A");
+        let a = TargetSelection::from_user("A-A");
         assert_eq!(
             first(cache.all::<compile::Std>()),
             &[std!(A => A, stage = 0), std!(A => A, stage = 1),]
@@ -197,10 +197,10 @@ mod defaults {
 
     #[test]
     fn build_stage_0() {
-        let config = Config { stage: 0, ..configure("build", &["A"], &["A"]) };
+        let config = Config { stage: 0, ..configure("build", &["A-A"], &["A-A"]) };
         let mut cache = run_build(&[], config);
 
-        let a = TargetSelection::from_user("A");
+        let a = TargetSelection::from_user("A-A");
         assert_eq!(first(cache.all::<compile::Std>()), &[std!(A => A, stage = 0)]);
         assert!(!cache.all::<compile::Assemble>().is_empty());
         assert_eq!(
@@ -214,11 +214,11 @@ mod defaults {
 
     #[test]
     fn build_cross_compile() {
-        let config = Config { stage: 1, ..configure("build", &["A", "B"], &["A", "B"]) };
+        let config = Config { stage: 1, ..configure("build", &["A-A", "B-B"], &["A-A", "B-B"]) };
         let mut cache = run_build(&[], config);
 
-        let a = TargetSelection::from_user("A");
-        let b = TargetSelection::from_user("B");
+        let a = TargetSelection::from_user("A-A");
+        let b = TargetSelection::from_user("B-B");
 
         // Ideally, this build wouldn't actually have `target: a`
         // rustdoc/rustcc/std here (the user only requested a host=B build, so
@@ -257,11 +257,11 @@ mod defaults {
 
     #[test]
     fn doc_default() {
-        let mut config = configure("doc", &["A"], &["A"]);
+        let mut config = configure("doc", &["A-A"], &["A-A"]);
         config.compiler_docs = true;
         config.cmd = Subcommand::Doc { open: false, json: false };
         let mut cache = run_build(&[], config);
-        let a = TargetSelection::from_user("A");
+        let a = TargetSelection::from_user("A-A");
 
         // error_index_generator uses stage 0 to share rustdoc artifacts with the
         // rustdoc tool.
@@ -291,9 +291,9 @@ mod dist {
 
     #[test]
     fn dist_baseline() {
-        let mut cache = run_build(&[], configure(&["A"], &["A"]));
+        let mut cache = run_build(&[], configure(&["A-A"], &["A-A"]));
 
-        let a = TargetSelection::from_user("A");
+        let a = TargetSelection::from_user("A-A");
 
         assert_eq!(first(cache.all::<dist::Docs>()), &[dist::Docs { host: a },]);
         assert_eq!(first(cache.all::<dist::Mingw>()), &[dist::Mingw { host: a },]);
@@ -315,10 +315,10 @@ mod dist {
 
     #[test]
     fn dist_with_targets() {
-        let mut cache = run_build(&[], configure(&["A"], &["A", "B"]));
+        let mut cache = run_build(&[], configure(&["A-A"], &["A-A", "B-B"]));
 
-        let a = TargetSelection::from_user("A");
-        let b = TargetSelection::from_user("B");
+        let a = TargetSelection::from_user("A-A");
+        let b = TargetSelection::from_user("B-B");
 
         assert_eq!(
             first(cache.all::<dist::Docs>()),
@@ -344,10 +344,10 @@ mod dist {
 
     #[test]
     fn dist_with_hosts() {
-        let mut cache = run_build(&[], configure(&["A", "B"], &["A", "B"]));
+        let mut cache = run_build(&[], configure(&["A-A", "B-B"], &["A-A", "B-B"]));
 
-        let a = TargetSelection::from_user("A");
-        let b = TargetSelection::from_user("B");
+        let a = TargetSelection::from_user("A-A");
+        let b = TargetSelection::from_user("B-B");
 
         assert_eq!(
             first(cache.all::<dist::Docs>()),
@@ -386,8 +386,8 @@ mod dist {
 
     #[test]
     fn dist_only_cross_host() {
-        let b = TargetSelection::from_user("B");
-        let mut config = configure(&["A", "B"], &["A", "B"]);
+        let b = TargetSelection::from_user("B-B");
+        let mut config = configure(&["A-A", "B-B"], &["A-A", "B-B"]);
         config.docs = false;
         config.extended = true;
         config.hosts = vec![b];
@@ -405,11 +405,11 @@ mod dist {
 
     #[test]
     fn dist_with_targets_and_hosts() {
-        let mut cache = run_build(&[], configure(&["A", "B"], &["A", "B", "C"]));
+        let mut cache = run_build(&[], configure(&["A-A", "B-B"], &["A-A", "B-B", "C-C"]));
 
-        let a = TargetSelection::from_user("A");
-        let b = TargetSelection::from_user("B");
-        let c = TargetSelection::from_user("C");
+        let a = TargetSelection::from_user("A-A");
+        let b = TargetSelection::from_user("B-B");
+        let c = TargetSelection::from_user("C-C");
 
         assert_eq!(
             first(cache.all::<dist::Docs>()),
@@ -439,11 +439,11 @@ mod dist {
 
     #[test]
     fn dist_with_empty_host() {
-        let config = configure(&[], &["C"]);
+        let config = configure(&[], &["C-C"]);
         let mut cache = run_build(&[], config);
 
-        let a = TargetSelection::from_user("A");
-        let c = TargetSelection::from_user("C");
+        let a = TargetSelection::from_user("A-A");
+        let c = TargetSelection::from_user("C-C");
 
         assert_eq!(first(cache.all::<dist::Docs>()), &[dist::Docs { host: c },]);
         assert_eq!(first(cache.all::<dist::Mingw>()), &[dist::Mingw { host: c },]);
@@ -455,10 +455,10 @@ mod dist {
 
     #[test]
     fn dist_with_same_targets_and_hosts() {
-        let mut cache = run_build(&[], configure(&["A", "B"], &["A", "B"]));
+        let mut cache = run_build(&[], configure(&["A-A", "B-B"], &["A-A", "B-B"]));
 
-        let a = TargetSelection::from_user("A");
-        let b = TargetSelection::from_user("B");
+        let a = TargetSelection::from_user("A-A");
+        let b = TargetSelection::from_user("B-B");
 
         assert_eq!(
             first(cache.all::<dist::Docs>()),
@@ -506,7 +506,7 @@ mod dist {
 
     #[test]
     fn build_all() {
-        let build = Build::new(configure(&["A", "B"], &["A", "B", "C"]));
+        let build = Build::new(configure(&["A-A", "B-B"], &["A-A", "B-B", "C-C"]));
         let mut builder = Builder::new(&build);
         builder.run_step_descriptions(
             &Builder::get_step_descriptions(Kind::Build),
@@ -539,29 +539,29 @@ mod dist {
 
     #[test]
     fn llvm_out_behaviour() {
-        let mut config = configure(&["A"], &["B"]);
+        let mut config = configure(&["A-A"], &["B-B"]);
         config.llvm_from_ci = true;
         let build = Build::new(config.clone());
 
-        let target = TargetSelection::from_user("A");
+        let target = TargetSelection::from_user("A-A");
         assert!(build.llvm_out(target).ends_with("ci-llvm"));
-        let target = TargetSelection::from_user("B");
+        let target = TargetSelection::from_user("B-B");
         assert!(build.llvm_out(target).ends_with("llvm"));
 
         config.llvm_from_ci = false;
         let build = Build::new(config.clone());
-        let target = TargetSelection::from_user("A");
+        let target = TargetSelection::from_user("A-A");
         assert!(build.llvm_out(target).ends_with("llvm"));
     }
 
     #[test]
     fn build_with_empty_host() {
-        let config = configure(&[], &["C"]);
+        let config = configure(&[], &["C-C"]);
         let build = Build::new(config);
         let mut builder = Builder::new(&build);
         builder.run_step_descriptions(&Builder::get_step_descriptions(Kind::Build), &[]);
 
-        let a = TargetSelection::from_user("A");
+        let a = TargetSelection::from_user("A-A");
 
         assert_eq!(
             first(builder.cache.all::<compile::Std>()),
@@ -583,7 +583,7 @@ mod dist {
 
     #[test]
     fn test_with_no_doc_stage0() {
-        let mut config = configure(&["A"], &["A"]);
+        let mut config = configure(&["A-A"], &["A-A"]);
         config.stage = 0;
         config.paths = vec!["library/std".into()];
         config.cmd = Subcommand::Test {
@@ -605,7 +605,7 @@ mod dist {
         let build = Build::new(config);
         let mut builder = Builder::new(&build);
 
-        let host = TargetSelection::from_user("A");
+        let host = TargetSelection::from_user("A-A");
 
         builder.run_step_descriptions(
             &[StepDescription::from::<test::Crate>(Kind::Test)],
@@ -627,13 +627,13 @@ mod dist {
 
     #[test]
     fn doc_ci() {
-        let mut config = configure(&["A"], &["A"]);
+        let mut config = configure(&["A-A"], &["A-A"]);
         config.compiler_docs = true;
         config.cmd = Subcommand::Doc { open: false, json: false };
         let build = Build::new(config);
         let mut builder = Builder::new(&build);
         builder.run_step_descriptions(&Builder::get_step_descriptions(Kind::Doc), &[]);
-        let a = TargetSelection::from_user("A");
+        let a = TargetSelection::from_user("A-A");
 
         // error_index_generator uses stage 1 to share rustdoc artifacts with the
         // rustdoc tool.
@@ -656,7 +656,7 @@ mod dist {
     #[test]
     fn test_docs() {
         // Behavior of `x.py test` doing various documentation tests.
-        let mut config = configure(&["A"], &["A"]);
+        let mut config = configure(&["A-A"], &["A-A"]);
         config.cmd = Subcommand::Test {
             test_args: vec![],
             rustc_args: vec![],
@@ -678,7 +678,7 @@ mod dist {
         let mut builder = Builder::new(&build);
 
         builder.run_step_descriptions(&Builder::get_step_descriptions(Kind::Test), &[]);
-        let a = TargetSelection::from_user("A");
+        let a = TargetSelection::from_user("A-A");
 
         // error_index_generator uses stage 1 to share rustdoc artifacts with the
         // rustdoc tool.

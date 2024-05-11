@@ -8,28 +8,6 @@ LL |     let [a @ 3.., b @ ..3, c @ 4..6, ..] = xs;
    = help: add `#![feature(half_open_range_patterns_in_slices)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: exclusive range pattern syntax is experimental
-  --> $DIR/slice_pattern_syntax_problem1.rs:4:23
-   |
-LL |     let [a @ 3.., b @ ..3, c @ 4..6, ..] = xs;
-   |                       ^^^
-   |
-   = note: see issue #37854 <https://github.com/rust-lang/rust/issues/37854> for more information
-   = help: add `#![feature(exclusive_range_pattern)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-   = help: use an inclusive range pattern, like N..=M
-
-error[E0658]: exclusive range pattern syntax is experimental
-  --> $DIR/slice_pattern_syntax_problem1.rs:4:32
-   |
-LL |     let [a @ 3.., b @ ..3, c @ 4..6, ..] = xs;
-   |                                ^^^^
-   |
-   = note: see issue #37854 <https://github.com/rust-lang/rust/issues/37854> for more information
-   = help: add `#![feature(exclusive_range_pattern)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-   = help: use an inclusive range pattern, like N..=M
-
 error[E0005]: refutable pattern in local binding
   --> $DIR/slice_pattern_syntax_problem1.rs:4:9
    |
@@ -44,7 +22,7 @@ help: you might want to use `let else` to handle the variant that isn't matched
 LL |     let [a @ 3.., b @ ..3, c @ 4..6, ..] = xs else { todo!() };
    |                                               ++++++++++++++++
 
-error: aborting due to 4 previous errors
+error: aborting due to 2 previous errors
 
 Some errors have detailed explanations: E0005, E0658.
 For more information about an error, try `rustc --explain E0005`.

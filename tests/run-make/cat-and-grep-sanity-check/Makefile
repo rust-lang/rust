@@ -1,3 +1,7 @@
+# grep in run-make tests was partially replaced with a custom script, CGREP. This tests that CGREP does its job correctly.
+# See https://github.com/rust-lang/rust/commit/ab788a2ee175c7560f0ca58bbc183ecfd57d2f7a
+# FIXME(Oneirical): Note that this test will likely become useless after the port to rmake.rs tests (see https://github.com/rust-lang/rust/issues/121876)
+
 include ../tools.mk
 
 all:

@@ -105,7 +105,7 @@ impl<'tcx> PredicateObligation<'tcx> {
 impl<'tcx> PolyTraitObligation<'tcx> {
     pub fn derived_cause(
         &self,
-        variant: impl FnOnce(DerivedObligationCause<'tcx>) -> ObligationCauseCode<'tcx>,
+        variant: impl FnOnce(DerivedCause<'tcx>) -> ObligationCauseCode<'tcx>,
     ) -> ObligationCause<'tcx> {
         self.cause.clone().derived_cause(self.predicate, variant)
     }
@@ -138,10 +138,10 @@ pub enum FulfillmentErrorCode<'tcx> {
     /// Inherently impossible to fulfill; this trait is implemented if and only
     /// if it is already implemented.
     Cycle(Vec<PredicateObligation<'tcx>>),
-    SelectionError(SelectionError<'tcx>),
-    ProjectionError(MismatchedProjectionTypes<'tcx>),
-    SubtypeError(ExpectedFound<Ty<'tcx>>, TypeError<'tcx>), // always comes from a SubtypePredicate
-    ConstEquateError(ExpectedFound<Const<'tcx>>, TypeError<'tcx>),
+    Select(SelectionError<'tcx>),
+    Project(MismatchedProjectionTypes<'tcx>),
+    Subtype(ExpectedFound<Ty<'tcx>>, TypeError<'tcx>), // always comes from a SubtypePredicate
+    ConstEquate(ExpectedFound<Const<'tcx>>, TypeError<'tcx>),
     Ambiguity {
         /// Overflow is only `Some(suggest_recursion_limit)` when using the next generation
         /// trait solver `-Znext-solver`. With the old solver overflow is eagerly handled by
@@ -209,10 +209,10 @@ impl<'tcx> FulfillmentError<'tcx> {
 
     pub fn is_true_error(&self) -> bool {
         match self.code {
-            FulfillmentErrorCode::SelectionError(_)
-            | FulfillmentErrorCode::ProjectionError(_)
-            | FulfillmentErrorCode::SubtypeError(_, _)
-            | FulfillmentErrorCode::ConstEquateError(_, _) => true,
+            FulfillmentErrorCode::Select(_)
+            | FulfillmentErrorCode::Project(_)
+            | FulfillmentErrorCode::Subtype(_, _)
+            | FulfillmentErrorCode::ConstEquate(_, _) => true,
             FulfillmentErrorCode::Cycle(_) | FulfillmentErrorCode::Ambiguity { overflow: _ } => {
                 false
             }

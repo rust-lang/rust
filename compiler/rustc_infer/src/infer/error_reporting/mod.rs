@@ -70,7 +70,7 @@ use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
 use rustc_macros::extension;
 use rustc_middle::dep_graph::DepContext;
-use rustc_middle::ty::print::{with_forced_trimmed_paths, PrintError};
+use rustc_middle::ty::print::{with_forced_trimmed_paths, PrintError, PrintTraitRefExt as _};
 use rustc_middle::ty::relate::{self, RelateResult, TypeRelation};
 use rustc_middle::ty::ToPredicate;
 use rustc_middle::ty::{
@@ -172,11 +172,9 @@ pub(super) fn note_and_explain_region<'tcx>(
 
         ty::ReError(_) => return,
 
-        // We shouldn't really be having unification failures with ReVar
-        // and ReBound though.
-        //
-        // FIXME(@lcnr): Figure out whether this is reachable and if so, why.
-        ty::ReVar(_) | ty::ReBound(..) | ty::ReErased => (format!("lifetime `{region}`"), alt_span),
+        ty::ReVar(_) | ty::ReBound(..) | ty::ReErased => {
+            bug!("unexpected region for note_and_explain_region: {:?}", region);
+        }
     };
 
     emit_msg_span(err, prefix, description, span, suffix);
@@ -885,8 +883,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 err.help("...or use `match` instead of `let...else`");
             }
             _ => {
-                if let ObligationCauseCode::BindingObligation(_, span)
-                | ObligationCauseCode::ExprBindingObligation(_, span, ..) =
+                if let ObligationCauseCode::SpannedWhereClause(_, span)
+                | ObligationCauseCode::SpannedWhereClauseInExpr(_, span, ..) =
                     cause.code().peel_derives()
                     && let TypeError::RegionsPlaceholderMismatch = terr
                 {
@@ -2014,7 +2012,6 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         trace: &TypeTrace<'tcx>,
         terr: TypeError<'tcx>,
     ) -> Vec<TypeErrorAdditionalDiags> {
-        use crate::traits::ObligationCauseCode::{BlockTailExpression, MatchExpressionArm};
         let mut suggestions = Vec::new();
         let span = trace.cause.span();
         let values = self.resolve_vars_if_possible(trace.values);
@@ -2081,8 +2078,11 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             }
         }
         let code = trace.cause.code();
-        if let &(MatchExpressionArm(box MatchExpressionArmCause { source, .. })
-        | BlockTailExpression(.., source)) = code
+        if let &(ObligationCauseCode::MatchExpressionArm(box MatchExpressionArmCause {
+            source,
+            ..
+        })
+        | ObligationCauseCode::BlockTailExpression(.., source)) = code
             && let hir::MatchSource::TryDesugar(_) = source
             && let Some((expected_ty, found_ty, _)) = self.values_str(trace.values)
         {
@@ -2507,7 +2507,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             let generics = self.tcx.generics_of(lifetime_scope);
             let mut used_names =
                 iter::successors(Some(generics), |g| g.parent.map(|p| self.tcx.generics_of(p)))
-                    .flat_map(|g| &g.params)
+                    .flat_map(|g| &g.own_params)
                     .filter(|p| matches!(p.kind, ty::GenericParamDefKind::Lifetime))
                     .map(|p| p.name)
                     .collect::<Vec<_>>();
@@ -2775,19 +2775,17 @@ pub enum FailureCode {
 #[extension(pub trait ObligationCauseExt<'tcx>)]
 impl<'tcx> ObligationCause<'tcx> {
     fn as_failure_code(&self, terr: TypeError<'tcx>) -> FailureCode {
-        use self::FailureCode::*;
-        use crate::traits::ObligationCauseCode::*;
         match self.code() {
-            IfExpressionWithNoElse => Error0317,
-            MainFunctionType => Error0580,
-            CompareImplItemObligation { .. }
-            | MatchExpressionArm(_)
-            | IfExpression { .. }
-            | LetElse
-            | StartFunctionType
-            | LangFunctionType(_)
-            | IntrinsicType
-            | MethodReceiver => Error0308,
+            ObligationCauseCode::IfExpressionWithNoElse => FailureCode::Error0317,
+            ObligationCauseCode::MainFunctionType => FailureCode::Error0580,
+            ObligationCauseCode::CompareImplItem { .. }
+            | ObligationCauseCode::MatchExpressionArm(_)
+            | ObligationCauseCode::IfExpression { .. }
+            | ObligationCauseCode::LetElse
+            | ObligationCauseCode::StartFunctionType
+            | ObligationCauseCode::LangFunctionType(_)
+            | ObligationCauseCode::IntrinsicType
+            | ObligationCauseCode::MethodReceiver => FailureCode::Error0308,
 
             // In the case where we have no more specific thing to
             // say, also take a look at the error code, maybe we can
@@ -2796,10 +2794,10 @@ impl<'tcx> ObligationCause<'tcx> {
                 TypeError::CyclicTy(ty)
                     if ty.is_closure() || ty.is_coroutine() || ty.is_coroutine_closure() =>
                 {
-                    Error0644
+                    FailureCode::Error0644
                 }
-                TypeError::IntrinsicCast => Error0308,
-                _ => Error0308,
+                TypeError::IntrinsicCast => FailureCode::Error0308,
+                _ => FailureCode::Error0308,
             },
         }
     }
@@ -2809,36 +2807,51 @@ impl<'tcx> ObligationCause<'tcx> {
         span: Span,
         subdiags: Vec<TypeErrorAdditionalDiags>,
     ) -> ObligationCauseFailureCode {
-        use crate::traits::ObligationCauseCode::*;
         match self.code() {
-            CompareImplItemObligation { kind: ty::AssocKind::Fn, .. } => {
+            ObligationCauseCode::CompareImplItem { kind: ty::AssocKind::Fn, .. } => {
                 ObligationCauseFailureCode::MethodCompat { span, subdiags }
             }
-            CompareImplItemObligation { kind: ty::AssocKind::Type, .. } => {
+            ObligationCauseCode::CompareImplItem { kind: ty::AssocKind::Type, .. } => {
                 ObligationCauseFailureCode::TypeCompat { span, subdiags }
             }
-            CompareImplItemObligation { kind: ty::AssocKind::Const, .. } => {
+            ObligationCauseCode::CompareImplItem { kind: ty::AssocKind::Const, .. } => {
                 ObligationCauseFailureCode::ConstCompat { span, subdiags }
             }
-            BlockTailExpression(.., hir::MatchSource::TryDesugar(_)) => {
+            ObligationCauseCode::BlockTailExpression(.., hir::MatchSource::TryDesugar(_)) => {
                 ObligationCauseFailureCode::TryCompat { span, subdiags }
             }
-            MatchExpressionArm(box MatchExpressionArmCause { source, .. }) => match source {
+            ObligationCauseCode::MatchExpressionArm(box MatchExpressionArmCause {
+                source, ..
+            }) => match source {
                 hir::MatchSource::TryDesugar(_) => {
                     ObligationCauseFailureCode::TryCompat { span, subdiags }
                 }
                 _ => ObligationCauseFailureCode::MatchCompat { span, subdiags },
             },
-            IfExpression { .. } => ObligationCauseFailureCode::IfElseDifferent { span, subdiags },
-            IfExpressionWithNoElse => ObligationCauseFailureCode::NoElse { span },
-            LetElse => ObligationCauseFailureCode::NoDiverge { span, subdiags },
-            MainFunctionType => ObligationCauseFailureCode::FnMainCorrectType { span },
-            StartFunctionType => ObligationCauseFailureCode::FnStartCorrectType { span, subdiags },
-            &LangFunctionType(lang_item_name) => {
+            ObligationCauseCode::IfExpression { .. } => {
+                ObligationCauseFailureCode::IfElseDifferent { span, subdiags }
+            }
+            ObligationCauseCode::IfExpressionWithNoElse => {
+                ObligationCauseFailureCode::NoElse { span }
+            }
+            ObligationCauseCode::LetElse => {
+                ObligationCauseFailureCode::NoDiverge { span, subdiags }
+            }
+            ObligationCauseCode::MainFunctionType => {
+                ObligationCauseFailureCode::FnMainCorrectType { span }
+            }
+            ObligationCauseCode::StartFunctionType => {
+                ObligationCauseFailureCode::FnStartCorrectType { span, subdiags }
+            }
+            &ObligationCauseCode::LangFunctionType(lang_item_name) => {
                 ObligationCauseFailureCode::FnLangCorrectType { span, subdiags, lang_item_name }
             }
-            IntrinsicType => ObligationCauseFailureCode::IntrinsicCorrectType { span, subdiags },
-            MethodReceiver => ObligationCauseFailureCode::MethodCorrectType { span, subdiags },
+            ObligationCauseCode::IntrinsicType => {
+                ObligationCauseFailureCode::IntrinsicCorrectType { span, subdiags }
+            }
+            ObligationCauseCode::MethodReceiver => {
+                ObligationCauseFailureCode::MethodCorrectType { span, subdiags }
+            }
 
             // In the case where we have no more specific thing to
             // say, also take a look at the error code, maybe we can
@@ -2858,22 +2871,21 @@ impl<'tcx> ObligationCause<'tcx> {
     }
 
     fn as_requirement_str(&self) -> &'static str {
-        use crate::traits::ObligationCauseCode::*;
         match self.code() {
-            CompareImplItemObligation { kind: ty::AssocKind::Fn, .. } => {
+            ObligationCauseCode::CompareImplItem { kind: ty::AssocKind::Fn, .. } => {
                 "method type is compatible with trait"
             }
-            CompareImplItemObligation { kind: ty::AssocKind::Type, .. } => {
+            ObligationCauseCode::CompareImplItem { kind: ty::AssocKind::Type, .. } => {
                 "associated type is compatible with trait"
             }
-            CompareImplItemObligation { kind: ty::AssocKind::Const, .. } => {
+            ObligationCauseCode::CompareImplItem { kind: ty::AssocKind::Const, .. } => {
                 "const is compatible with trait"
             }
-            MainFunctionType => "`main` function has the correct type",
-            StartFunctionType => "`#[start]` function has the correct type",
-            LangFunctionType(_) => "lang item function has the correct type",
-            IntrinsicType => "intrinsic has the correct type",
-            MethodReceiver => "method receiver has the correct type",
+            ObligationCauseCode::MainFunctionType => "`main` function has the correct type",
+            ObligationCauseCode::StartFunctionType => "`#[start]` function has the correct type",
+            ObligationCauseCode::LangFunctionType(_) => "lang item function has the correct type",
+            ObligationCauseCode::IntrinsicType => "intrinsic has the correct type",
+            ObligationCauseCode::MethodReceiver => "method receiver has the correct type",
             _ => "types are compatible",
         }
     }
@@ -2884,16 +2896,17 @@ pub struct ObligationCauseAsDiagArg<'tcx>(pub ObligationCause<'tcx>);
 
 impl IntoDiagArg for ObligationCauseAsDiagArg<'_> {
     fn into_diag_arg(self) -> rustc_errors::DiagArgValue {
-        use crate::traits::ObligationCauseCode::*;
         let kind = match self.0.code() {
-            CompareImplItemObligation { kind: ty::AssocKind::Fn, .. } => "method_compat",
-            CompareImplItemObligation { kind: ty::AssocKind::Type, .. } => "type_compat",
-            CompareImplItemObligation { kind: ty::AssocKind::Const, .. } => "const_compat",
-            MainFunctionType => "fn_main_correct_type",
-            StartFunctionType => "fn_start_correct_type",
-            LangFunctionType(_) => "fn_lang_correct_type",
-            IntrinsicType => "intrinsic_correct_type",
-            MethodReceiver => "method_correct_type",
+            ObligationCauseCode::CompareImplItem { kind: ty::AssocKind::Fn, .. } => "method_compat",
+            ObligationCauseCode::CompareImplItem { kind: ty::AssocKind::Type, .. } => "type_compat",
+            ObligationCauseCode::CompareImplItem { kind: ty::AssocKind::Const, .. } => {
+                "const_compat"
+            }
+            ObligationCauseCode::MainFunctionType => "fn_main_correct_type",
+            ObligationCauseCode::StartFunctionType => "fn_start_correct_type",
+            ObligationCauseCode::LangFunctionType(_) => "fn_lang_correct_type",
+            ObligationCauseCode::IntrinsicType => "intrinsic_correct_type",
+            ObligationCauseCode::MethodReceiver => "method_correct_type",
             _ => "other",
         }
         .into();

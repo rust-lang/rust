@@ -1,7 +1,7 @@
 use smallvec::smallvec;
 
 use crate::infer::outlives::components::{push_outlives_components, Component};
-use crate::traits::{self, Obligation, PredicateObligation};
+use crate::traits::{self, Obligation, ObligationCauseCode, PredicateObligation};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt};
 use rustc_span::symbol::Ident;
@@ -129,7 +129,7 @@ impl<'tcx> Elaboratable<'tcx> for PredicateObligation<'tcx> {
         index: usize,
     ) -> Self {
         let cause = self.cause.clone().derived_cause(parent_trait_pred, |derived| {
-            traits::ImplDerivedObligation(Box::new(traits::ImplDerivedObligationCause {
+            ObligationCauseCode::ImplDerived(Box::new(traits::ImplDerivedCause {
                 derived,
                 impl_or_alias_def_id: parent_trait_pred.def_id(),
                 impl_def_predicate_index: Some(index),

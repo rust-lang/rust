@@ -1281,7 +1281,7 @@ fn build_generic_type_param_di_nodes<'ll, 'tcx>(
         let mut names = generics
             .parent
             .map_or_else(Vec::new, |def_id| get_parameter_names(cx, cx.tcx.generics_of(def_id)));
-        names.extend(generics.params.iter().map(|param| param.name));
+        names.extend(generics.own_params.iter().map(|param| param.name));
         names
     }
 }

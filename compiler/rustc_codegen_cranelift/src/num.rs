@@ -388,12 +388,8 @@ pub(crate) fn codegen_ptr_binop<'tcx>(
     in_lhs: CValue<'tcx>,
     in_rhs: CValue<'tcx>,
 ) -> CValue<'tcx> {
-    let is_thin_ptr = in_lhs
-        .layout()
-        .ty
-        .builtin_deref(true)
-        .map(|TypeAndMut { ty, mutbl: _ }| !has_ptr_meta(fx.tcx, ty))
-        .unwrap_or(true);
+    let is_thin_ptr =
+        in_lhs.layout().ty.builtin_deref(true).map(|ty| !has_ptr_meta(fx.tcx, ty)).unwrap_or(true);
 
     if is_thin_ptr {
         match bin_op {
@@ -404,7 +400,7 @@ pub(crate) fn codegen_ptr_binop<'tcx>(
                 codegen_compare_bin_op(fx, bin_op, false, lhs, rhs)
             }
             BinOp::Offset => {
-                let pointee_ty = in_lhs.layout().ty.builtin_deref(true).unwrap().ty;
+                let pointee_ty = in_lhs.layout().ty.builtin_deref(true).unwrap();
                 let (base, offset) = (in_lhs, in_rhs.load_scalar(fx));
                 let pointee_size = fx.layout_of(pointee_ty).size.bytes();
                 let ptr_diff = fx.bcx.ins().imul_imm(offset, pointee_size as i64);

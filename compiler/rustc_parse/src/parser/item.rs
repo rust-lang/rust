@@ -1,8 +1,7 @@
 use super::diagnostics::{dummy_arg, ConsumeClosingDelim};
 use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
 use super::{
-    AttrWrapper, FollowedByType, ForceCollect, Parser, PathStyle, Recovered, Trailing,
-    TrailingToken,
+    AttrWrapper, FollowedByType, ForceCollect, Parser, PathStyle, Trailing, TrailingToken,
 };
 use crate::errors::{self, MacroExpandsToAdtField};
 use crate::fluent_generated as fluent;
@@ -336,7 +335,7 @@ impl<'a> Parser<'a> {
                 UseTreeKind::Glob => {
                     e.note("the wildcard token must be last on the path");
                 }
-                UseTreeKind::Nested(..) => {
+                UseTreeKind::Nested { .. } => {
                     e.note("glob-like brace syntax must be last on the path");
                 }
                 _ => (),
@@ -1056,7 +1055,11 @@ impl<'a> Parser<'a> {
         Ok(if self.eat(&token::BinOp(token::Star)) {
             UseTreeKind::Glob
         } else {
-            UseTreeKind::Nested(self.parse_use_tree_list()?)
+            let lo = self.token.span;
+            UseTreeKind::Nested {
+                items: self.parse_use_tree_list()?,
+                span: lo.to(self.prev_token.span),
+            }
         })
     }
 
@@ -1536,8 +1539,8 @@ impl<'a> Parser<'a> {
                                 this.bump(); // }
                                 err.span_label(span, "while parsing this enum");
                                 err.help(help);
-                                err.emit();
-                                (thin_vec![], Recovered::Yes)
+                                let guar = err.emit();
+                                (thin_vec![], Recovered::Yes(guar))
                             }
                         };
                     VariantData::Struct { fields, recovered: recovered.into() }
@@ -1695,16 +1698,15 @@ impl<'a> Parser<'a> {
         let mut recovered = Recovered::No;
         if self.eat(&token::OpenDelim(Delimiter::Brace)) {
             while self.token != token::CloseDelim(Delimiter::Brace) {
-                let field = self.parse_field_def(adt_ty).map_err(|e| {
-                    self.consume_block(Delimiter::Brace, ConsumeClosingDelim::No);
-                    recovered = Recovered::Yes;
-                    e
-                });
-                match field {
-                    Ok(field) => fields.push(field),
+                match self.parse_field_def(adt_ty) {
+                    Ok(field) => {
+                        fields.push(field);
+                    }
                     Err(mut err) => {
+                        self.consume_block(Delimiter::Brace, ConsumeClosingDelim::No);
                         err.span_label(ident_span, format!("while parsing this {adt_ty}"));
-                        err.emit();
+                        let guar = err.emit();
+                        recovered = Recovered::Yes(guar);
                         break;
                     }
                 }
@@ -2465,7 +2467,7 @@ impl<'a> Parser<'a> {
             // `self.expected_tokens`, therefore, do not use `self.unexpected()` which doesn't
             // account for this.
             match self.expect_one_of(&[], &[]) {
-                Ok(Recovered::Yes) => {}
+                Ok(Recovered::Yes(_)) => {}
                 Ok(Recovered::No) => unreachable!(),
                 Err(mut err) => {
                     // Qualifier keywords ordering check

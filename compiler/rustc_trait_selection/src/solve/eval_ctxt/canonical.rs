@@ -19,12 +19,10 @@ use rustc_infer::infer::canonical::query_response::make_query_region_constraints
 use rustc_infer::infer::canonical::CanonicalVarValues;
 use rustc_infer::infer::canonical::{CanonicalExt, QueryRegionConstraints};
 use rustc_infer::infer::resolve::EagerResolver;
-use rustc_infer::infer::type_variable::TypeVariableOrigin;
 use rustc_infer::infer::RegionVariableOrigin;
 use rustc_infer::infer::{InferCtxt, InferOk};
 use rustc_infer::traits::solve::NestedNormalizationGoals;
 use rustc_middle::infer::canonical::Canonical;
-use rustc_middle::infer::unify_key::ConstVariableOrigin;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::solve::{
     ExternalConstraintsData, MaybeCause, PredefinedOpaquesData, QueryInput,
@@ -236,7 +234,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             normalization_nested_goals,
         } = external_constraints.deref();
         self.register_region_constraints(region_constraints);
-        self.register_new_opaque_types(param_env, opaque_types);
+        self.register_new_opaque_types(opaque_types);
         (normalization_nested_goals.clone(), certainty)
     }
 
@@ -368,13 +366,10 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         assert!(region_constraints.member_constraints.is_empty());
     }
 
-    fn register_new_opaque_types(
-        &mut self,
-        param_env: ty::ParamEnv<'tcx>,
-        opaque_types: &[(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)],
-    ) {
+    fn register_new_opaque_types(&mut self, opaque_types: &[(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)]) {
         for &(key, ty) in opaque_types {
-            self.insert_hidden_type(key, param_env, ty).unwrap();
+            let hidden_ty = ty::OpaqueHiddenType { ty, span: DUMMY_SP };
+            self.infcx.inject_new_hidden_type_unchecked(key, hidden_ty);
         }
     }
 }
@@ -412,6 +407,7 @@ pub(in crate::solve) fn make_canonical_state<'tcx, T: TypeFoldable<TyCtxt<'tcx>>
 /// This currently assumes that unifying the var values trivially succeeds.
 /// Adding any inference constraints which weren't present when originally
 /// computing the canonical query can result in bugs.
+#[instrument(level = "debug", skip(infcx, span, param_env))]
 pub(in crate::solve) fn instantiate_canonical_state<'tcx, T: TypeFoldable<TyCtxt<'tcx>>>(
     infcx: &InferCtxt<'tcx>,
     span: Span,
@@ -427,12 +423,8 @@ pub(in crate::solve) fn instantiate_canonical_state<'tcx, T: TypeFoldable<TyCtxt
             ty::GenericArgKind::Lifetime(_) => {
                 infcx.next_region_var(RegionVariableOrigin::MiscVariable(span)).into()
             }
-            ty::GenericArgKind::Type(_) => {
-                infcx.next_ty_var(TypeVariableOrigin { param_def_id: None, span }).into()
-            }
-            ty::GenericArgKind::Const(ct) => infcx
-                .next_const_var(ct.ty(), ConstVariableOrigin { param_def_id: None, span })
-                .into(),
+            ty::GenericArgKind::Type(_) => infcx.next_ty_var(span).into(),
+            ty::GenericArgKind::Const(ct) => infcx.next_const_var(ct.ty(), span).into(),
         };
 
         orig_values.push(unconstrained);

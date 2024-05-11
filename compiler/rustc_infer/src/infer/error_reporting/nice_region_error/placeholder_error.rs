@@ -12,7 +12,7 @@ use rustc_errors::{Diag, IntoDiagArg};
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::error::ExpectedFound;
-use rustc_middle::ty::print::{FmtPrinter, Print, RegionHighlightMode};
+use rustc_middle::ty::print::{FmtPrinter, Print, PrintTraitRefExt as _, RegionHighlightMode};
 use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::{self, RePlaceholder, Region, TyCtxt};
 
@@ -240,8 +240,8 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
         let span = cause.span();
 
         let (leading_ellipsis, satisfy_span, where_span, dup_span, def_id) =
-            if let ObligationCauseCode::ItemObligation(def_id)
-            | ObligationCauseCode::ExprItemObligation(def_id, ..) = *cause.code()
+            if let ObligationCauseCode::WhereClause(def_id)
+            | ObligationCauseCode::WhereClauseInExpr(def_id, ..) = *cause.code()
             {
                 (
                     true,

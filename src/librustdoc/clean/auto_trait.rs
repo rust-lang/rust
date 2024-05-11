@@ -150,7 +150,7 @@ fn clean_param_env<'tcx>(
     let generics = tcx.generics_of(item_def_id);
 
     let params: ThinVec<_> = generics
-        .params
+        .own_params
         .iter()
         .inspect(|param| {
             if cfg!(debug_assertions) {
@@ -326,7 +326,7 @@ fn clean_region_outlives_constraints<'tcx>(
     }
 
     let region_params: FxIndexSet<_> = generics
-        .params
+        .own_params
         .iter()
         .filter_map(|param| match param.kind {
             ty::GenericParamDefKind::Lifetime => Some(param.name),

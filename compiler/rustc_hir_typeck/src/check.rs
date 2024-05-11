@@ -8,14 +8,12 @@ use rustc_hir::def::DefKind;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir_analysis::check::{check_function_signature, forbid_intrinsic_abi};
-use rustc_infer::infer::type_variable::TypeVariableOrigin;
 use rustc_infer::infer::RegionVariableOrigin;
 use rustc_infer::traits::WellFormedLoc;
 use rustc_middle::ty::{self, Binder, Ty, TyCtxt};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::sym;
 use rustc_target::spec::abi::Abi;
-use rustc_trait_selection::traits;
 use rustc_trait_selection::traits::{ObligationCause, ObligationCauseCode};
 
 /// Helper used for fns and closures. Does the grungy work of checking a function
@@ -77,7 +75,7 @@ pub(super) fn check_fn<'a, 'tcx>(
             fcx.register_wf_obligation(
                 param_ty.into(),
                 param.span,
-                traits::WellFormed(Some(WellFormedLoc::Param {
+                ObligationCauseCode::WellFormed(Some(WellFormedLoc::Param {
                     function: fn_def_id,
                     param_idx: idx,
                 })),
@@ -102,7 +100,7 @@ pub(super) fn check_fn<'a, 'tcx>(
                 param.pat.span,
                 // ty.span == binding_span iff this is a closure parameter with no type ascription,
                 // or if it's an implicit `self` parameter
-                traits::SizedArgumentType(
+                ObligationCauseCode::SizedArgumentType(
                     if ty_span == Some(param.span) && tcx.is_closure_like(fn_def_id.into()) {
                         None
                     } else {
@@ -122,10 +120,18 @@ pub(super) fn check_fn<'a, 'tcx>(
         hir::FnRetTy::Return(ty) => ty.span,
     };
 
-    fcx.require_type_is_sized(declared_ret_ty, return_or_body_span, traits::SizedReturnType);
+    fcx.require_type_is_sized(
+        declared_ret_ty,
+        return_or_body_span,
+        ObligationCauseCode::SizedReturnType,
+    );
     // We checked the root's signature during wfcheck, but not the child.
     if fcx.tcx.is_typeck_child(fn_def_id.to_def_id()) {
-        fcx.require_type_is_sized(declared_ret_ty, return_or_body_span, traits::WellFormed(None));
+        fcx.require_type_is_sized(
+            declared_ret_ty,
+            return_or_body_span,
+            ObligationCauseCode::WellFormed(None),
+        );
     }
 
     fcx.is_whole_body.set(true);
@@ -142,7 +148,7 @@ pub(super) fn check_fn<'a, 'tcx>(
         // We have special-cased the case where the function is declared
         // `-> dyn Foo` and we don't actually relate it to the
         // `fcx.ret_coercion`, so just instantiate a type variable.
-        actual_return_ty = fcx.next_ty_var(TypeVariableOrigin { param_def_id: None, span });
+        actual_return_ty = fcx.next_ty_var(span);
         debug!("actual_return_ty replaced with {:?}", actual_return_ty);
     }
 

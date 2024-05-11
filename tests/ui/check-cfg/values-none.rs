@@ -1,7 +1,7 @@
 //@ check-pass
 //
 //@ no-auto-check-cfg
-//@ revisions: explicit implicit
+//@ revisions: explicit implicit simple concat_1 concat_2
 //@ [explicit]compile-flags: --check-cfg=cfg(foo,values(none()))
 //@ [implicit]compile-flags: --check-cfg=cfg(foo)
 //@ [simple]  compile-flags: --check-cfg=cfg(foo,values(none(),"too"))

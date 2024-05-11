@@ -1,5 +1,4 @@
 // Matching against NaN should result in an error
-#![feature(exclusive_range_pattern)]
 #![allow(unused)]
 
 const NAN: f64 = f64::NAN;

@@ -1,4 +1,3 @@
-#![feature(exclusive_range_pattern)]
 #![feature(inline_const_pat)]
 #![allow(overlapping_range_endpoints)]
 

@@ -6,8 +6,8 @@ use base_db::salsa::Cycle;
 use chalk_ir::{AdtId, FloatTy, IntTy, TyKind, UintTy};
 use hir_def::{
     layout::{
-        Abi, FieldsShape, Integer, LayoutCalculator, LayoutS, Primitive, ReprOptions, Scalar, Size,
-        StructKind, TargetDataLayout, WrappingRange,
+        Abi, FieldsShape, Float, Integer, LayoutCalculator, LayoutS, Primitive, ReprOptions,
+        Scalar, Size, StructKind, TargetDataLayout, WrappingRange,
     },
     LocalFieldId, StructId,
 };
@@ -264,10 +264,10 @@ pub fn layout_of_ty_query(
             ),
             chalk_ir::Scalar::Float(f) => scalar(
                 dl,
-                match f {
-                    FloatTy::F32 => Primitive::F32,
-                    FloatTy::F64 => Primitive::F64,
-                },
+                Primitive::Float(match f {
+                    FloatTy::F32 => Float::F32,
+                    FloatTy::F64 => Float::F64,
+                }),
             ),
         },
         TyKind::Tuple(len, tys) => {

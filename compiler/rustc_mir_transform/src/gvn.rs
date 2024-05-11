@@ -594,7 +594,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 let ty = place.ty(self.local_decls, self.tcx).ty;
                 if let Some(Mutability::Not) = ty.ref_mutability()
                     && let Some(pointee_ty) = ty.builtin_deref(true)
-                    && pointee_ty.ty.is_freeze(self.tcx, self.param_env)
+                    && pointee_ty.is_freeze(self.tcx, self.param_env)
                 {
                     // An immutable borrow `_x` always points to the same value for the
                     // lifetime of the borrow, so we can merge all instances of `*_x`.
@@ -1133,9 +1133,9 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         if let Value::Cast { kind, from, to, .. } = self.get(inner)
             && let CastKind::PointerCoercion(ty::adjustment::PointerCoercion::Unsize) = kind
             && let Some(from) = from.builtin_deref(true)
-            && let ty::Array(_, len) = from.ty.kind()
+            && let ty::Array(_, len) = from.kind()
             && let Some(to) = to.builtin_deref(true)
-            && let ty::Slice(..) = to.ty.kind()
+            && let ty::Slice(..) = to.kind()
         {
             return self.insert_constant(Const::from_ty_const(*len, self.tcx));
         }

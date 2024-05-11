@@ -14,6 +14,9 @@
    LL|       |
    LL|      3|    if let Some(x) = input {
                               ^2
+  ------------------
+  |  Branch (LL:12): [True: 2, False: 1]
+  ------------------
    LL|      2|        say(x);
    LL|      2|    } else {
    LL|      1|        say("none");
@@ -24,8 +27,14 @@
    LL|     15|fn if_let_chain(a: Option<&str>, b: Option<&str>) {
    LL|     15|    if let Some(x) = a
                               ^12
+  ------------------
+  |  Branch (LL:12): [True: 12, False: 3]
+  ------------------
    LL|     12|        && let Some(y) = b
                                   ^8
+  ------------------
+  |  Branch (LL:16): [True: 8, False: 4]
+  ------------------
    LL|      8|    {
    LL|      8|        say(x);
    LL|      8|        say(y);

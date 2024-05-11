@@ -207,7 +207,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
                     // but what we want here is the type of the underlying value being borrowed.
                     // So peel off one-level, turning the &T into T.
                     match base_ty.builtin_deref(false) {
-                        Some(t) => Ok(t.ty),
+                        Some(ty) => Ok(ty),
                         None => {
                             debug!("By-ref binding of non-derefable type");
                             Err(())
@@ -485,7 +485,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
     ) -> McResult<PlaceWithHirId<'tcx>> {
         let base_curr_ty = base_place.place.ty();
         let deref_ty = match base_curr_ty.builtin_deref(true) {
-            Some(mt) => mt.ty,
+            Some(pointee_ty) => pointee_ty,
             None => {
                 debug!("explicit deref of non-derefable type: {:?}", base_curr_ty);
                 return Err(());

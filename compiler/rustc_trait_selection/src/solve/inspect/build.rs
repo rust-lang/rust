@@ -242,6 +242,7 @@ enum WipProbeStep<'tcx> {
     EvaluateGoals(WipAddedGoalsEvaluation<'tcx>),
     NestedProbe(WipProbe<'tcx>),
     MakeCanonicalResponse { shallow_certainty: Certainty },
+    RecordImplArgs { impl_args: inspect::CanonicalState<'tcx, ty::GenericArgsRef<'tcx>> },
 }
 
 impl<'tcx> WipProbeStep<'tcx> {
@@ -250,6 +251,9 @@ impl<'tcx> WipProbeStep<'tcx> {
             WipProbeStep::AddGoal(source, goal) => inspect::ProbeStep::AddGoal(source, goal),
             WipProbeStep::EvaluateGoals(eval) => inspect::ProbeStep::EvaluateGoals(eval.finalize()),
             WipProbeStep::NestedProbe(probe) => inspect::ProbeStep::NestedProbe(probe.finalize()),
+            WipProbeStep::RecordImplArgs { impl_args } => {
+                inspect::ProbeStep::RecordImplArgs { impl_args }
+            }
             WipProbeStep::MakeCanonicalResponse { shallow_certainty } => {
                 inspect::ProbeStep::MakeCanonicalResponse { shallow_certainty }
             }
@@ -372,7 +376,10 @@ impl<'tcx> ProofTreeBuilder<'tcx> {
                 (
                     DebugSolver::GoalEvaluation(goal_evaluation),
                     DebugSolver::CanonicalGoalEvaluation(canonical_goal_evaluation),
-                ) => goal_evaluation.evaluation = Some(canonical_goal_evaluation),
+                ) => {
+                    let prev = goal_evaluation.evaluation.replace(canonical_goal_evaluation);
+                    assert_eq!(prev, None);
+                }
                 _ => unreachable!(),
             }
         }
@@ -534,6 +541,30 @@ impl<'tcx> ProofTreeBuilder<'tcx> {
         }
     }
 
+    pub(crate) fn record_impl_args(
+        &mut self,
+        infcx: &InferCtxt<'tcx>,
+        max_input_universe: ty::UniverseIndex,
+        impl_args: ty::GenericArgsRef<'tcx>,
+    ) {
+        match self.as_mut() {
+            Some(DebugSolver::GoalEvaluationStep(state)) => {
+                let impl_args = canonical::make_canonical_state(
+                    infcx,
+                    &state.var_values,
+                    max_input_universe,
+                    impl_args,
+                );
+                state
+                    .current_evaluation_scope()
+                    .steps
+                    .push(WipProbeStep::RecordImplArgs { impl_args });
+            }
+            None => {}
+            _ => bug!(),
+        }
+    }
+
     pub fn make_canonical_response(&mut self, shallow_certainty: Certainty) {
         match self.as_mut() {
             Some(DebugSolver::GoalEvaluationStep(state)) => {
@@ -543,7 +574,7 @@ impl<'tcx> ProofTreeBuilder<'tcx> {
                     .push(WipProbeStep::MakeCanonicalResponse { shallow_certainty });
             }
             None => {}
-            _ => {}
+            _ => bug!(),
         }
     }
 

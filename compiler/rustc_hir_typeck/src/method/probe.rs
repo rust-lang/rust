@@ -15,6 +15,7 @@ use rustc_infer::infer::canonical::{Canonical, QueryResponse};
 use rustc_infer::infer::error_reporting::TypeAnnotationNeeded::E0282;
 use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_infer::infer::{self, InferOk, TyCtxtInferExt};
+use rustc_infer::traits::ObligationCauseCode;
 use rustc_middle::middle::stability;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::fast_reject::{simplify_type, TreatParams};
@@ -1401,9 +1402,13 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     ocx.register_obligations(traits::predicates_for_generics(
                         |idx, span| {
                             let code = if span.is_dummy() {
-                                traits::ExprItemObligation(impl_def_id, self.scope_expr_id, idx)
+                                ObligationCauseCode::WhereClauseInExpr(
+                                    impl_def_id,
+                                    self.scope_expr_id,
+                                    idx,
+                                )
                             } else {
-                                traits::ExprBindingObligation(
+                                ObligationCauseCode::SpannedWhereClauseInExpr(
                                     impl_def_id,
                                     span,
                                     self.scope_expr_id,
@@ -1735,7 +1740,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         let generics = self.tcx.generics_of(method);
         assert_eq!(args.len(), generics.parent_count);
 
-        let xform_fn_sig = if generics.params.is_empty() {
+        let xform_fn_sig = if generics.own_params.is_empty() {
             fn_sig.instantiate(self.tcx, args)
         } else {
             let args = GenericArgs::for_item(self.tcx, method, |param, _| {

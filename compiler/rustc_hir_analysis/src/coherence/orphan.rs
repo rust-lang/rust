@@ -571,7 +571,7 @@ impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for TyVarReplacer<'cx, 'tcx> {
         if let Some(def_id) = origin.param_def_id {
             // The generics of an `impl` don't have a parent, we can index directly.
             let index = self.generics.param_def_id_to_index[&def_id];
-            let name = self.generics.params[index as usize].name;
+            let name = self.generics.own_params[index as usize].name;
 
             Ty::new_param(self.infcx.tcx, index, name)
         } else {

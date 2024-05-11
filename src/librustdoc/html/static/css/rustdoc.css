@@ -1625,6 +1625,7 @@ a.tooltip:hover::after {
 	,5.1715698,7.5,6  S6.8284302,7.5,6,7.5z" fill="black"/></svg>');
 	width: 22px;
 	height: 22px;
+	filter: var(--settings-menu-filter);
 }
 
 #sidebar-button > a:before {
@@ -2419,6 +2420,7 @@ by default.
 	--search-tab-button-not-selected-background: #e6e6e6;
 	--search-tab-button-selected-border-top-color: #0089ff;
 	--search-tab-button-selected-background: #fff;
+	--settings-menu-filter: none;
 	--stab-background-color: #fff5d6;
 	--stab-code-color: #000;
 	--code-highlight-kw-color: #8959a8;
@@ -2524,6 +2526,7 @@ by default.
 	--search-tab-button-not-selected-background: #252525;
 	--search-tab-button-selected-border-top-color: #0089ff;
 	--search-tab-button-selected-background: #353535;
+	--settings-menu-filter: none;
 	--stab-background-color: #314559;
 	--stab-code-color: #e6e1cf;
 	--code-highlight-kw-color: #ab8ac1;
@@ -2636,6 +2639,7 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 	--search-tab-button-not-selected-background: transparent !important;
 	--search-tab-button-selected-border-top-color: none;
 	--search-tab-button-selected-background: #141920 !important;
+	--settings-menu-filter: invert(100%);
 	--stab-background-color: #314559;
 	--stab-code-color: #e6e1cf;
 	--code-highlight-kw-color: #ff7733;

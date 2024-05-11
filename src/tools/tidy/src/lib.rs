@@ -87,6 +87,7 @@ pub mod tests_placement;
 pub mod tests_revision_unpaired_stdout_stderr;
 pub mod ui_tests;
 pub mod unit_tests;
+pub mod unknown_revision;
 pub mod unstable_book;
 pub mod walk;
 pub mod x_version;
