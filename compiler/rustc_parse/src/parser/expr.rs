@@ -3,7 +3,7 @@ use super::diagnostics::SnapshotParser;
 use super::pat::{CommaRecoveryMode, Expected, RecoverColon, RecoverComma};
 use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
 use super::{
-    AttrWrapper, BlockMode, ClosureSpans, ForceCollect, Parser, PathStyle, Recovered, Restrictions,
+    AttrWrapper, BlockMode, ClosureSpans, ForceCollect, Parser, PathStyle, Restrictions,
     SemiColonMode, SeqSep, TokenExpectType, TokenType, Trailing, TrailingToken,
 };
 
@@ -11,7 +11,7 @@ use crate::errors;
 use crate::maybe_recover_from_interpolated_ty_qpath;
 use ast::mut_visit::{noop_visit_expr, MutVisitor};
 use ast::token::IdentIsRaw;
-use ast::{CoroutineKind, ForLoopKind, GenBlockKind, MatchKind, Pat, Path, PathSegment};
+use ast::{CoroutineKind, ForLoopKind, GenBlockKind, MatchKind, Pat, Path, PathSegment, Recovered};
 use core::mem;
 use core::ops::ControlFlow;
 use rustc_ast::ptr::P;
@@ -2629,7 +2629,7 @@ impl<'a> Parser<'a> {
 
         CondChecker::new(self).visit_expr(&mut cond);
 
-        if let ExprKind::Let(_, _, _, None) = cond.kind {
+        if let ExprKind::Let(_, _, _, Recovered::No) = cond.kind {
             // Remove the last feature gating of a `let` expression since it's stable.
             self.psess.gated_spans.ungate_last(sym::let_chains, cond.span);
         }
@@ -2639,7 +2639,7 @@ impl<'a> Parser<'a> {
 
     /// Parses a `let $pat = $expr` pseudo-expression.
     fn parse_expr_let(&mut self, restrictions: Restrictions) -> PResult<'a, P<Expr>> {
-        let is_recovered = if !restrictions.contains(Restrictions::ALLOW_LET) {
+        let recovered = if !restrictions.contains(Restrictions::ALLOW_LET) {
             let err = errors::ExpectedExpressionFoundLet {
                 span: self.token.span,
                 reason: ForbiddenLetReason::OtherForbidden,
@@ -2650,10 +2650,10 @@ impl<'a> Parser<'a> {
                 // This was part of a closure, the that part of the parser recover.
                 return Err(self.dcx().create_err(err));
             } else {
-                Some(self.dcx().emit_err(err))
+                Recovered::Yes(self.dcx().emit_err(err))
             }
         } else {
-            None
+            Recovered::No
         };
         self.bump(); // Eat `let` token
         let lo = self.prev_token.span;
@@ -2674,7 +2674,7 @@ impl<'a> Parser<'a> {
         }
         let expr = self.parse_expr_assoc_with(1 + prec_let_scrutinee_needs_par(), None.into())?;
         let span = lo.to(expr.span);
-        Ok(self.mk_expr(span, ExprKind::Let(pat, expr, span, is_recovered)))
+        Ok(self.mk_expr(span, ExprKind::Let(pat, expr, span, recovered)))
     }
 
     /// Parses an `else { ... }` expression (`else` token already eaten).
@@ -2998,7 +2998,7 @@ impl<'a> Parser<'a> {
         &mut self,
         first_expr: &P<Expr>,
         arrow_span: Span,
-    ) -> Option<P<Expr>> {
+    ) -> Option<(Span, ErrorGuaranteed)> {
         if self.token.kind != token::Semi {
             return None;
         }
@@ -3023,7 +3023,7 @@ impl<'a> Parser<'a> {
                     errors::MatchArmBodyWithoutBracesSugg::UseComma { semicolon: semi_sp }
                 },
             });
-            this.mk_expr_err(span, guar)
+            (span, guar)
         };
         // We might have either a `,` -> `;` typo, or a block without braces. We need
         // a more subtle parsing strategy.
@@ -3143,9 +3143,12 @@ impl<'a> Parser<'a> {
                     arm_body = Some(expr);
                     this.eat(&token::Comma);
                     Ok(Recovered::No)
-                } else if let Some(body) = this.parse_arm_body_missing_braces(&expr, arrow_span) {
+                } else if let Some((span, guar)) =
+                    this.parse_arm_body_missing_braces(&expr, arrow_span)
+                {
+                    let body = this.mk_expr_err(span, guar);
                     arm_body = Some(body);
-                    Ok(Recovered::Yes)
+                    Ok(Recovered::Yes(guar))
                 } else {
                     let expr_span = expr.span;
                     arm_body = Some(expr);
@@ -3223,10 +3226,10 @@ impl<'a> Parser<'a> {
                         .is_ok();
                     if pattern_follows && snapshot.check(&TokenKind::FatArrow) {
                         err.cancel();
-                        this.dcx().emit_err(errors::MissingCommaAfterMatchArm {
+                        let guar = this.dcx().emit_err(errors::MissingCommaAfterMatchArm {
                             span: arm_span.shrink_to_hi(),
                         });
-                        return Ok(Recovered::Yes);
+                        return Ok(Recovered::Yes(guar));
                     }
                     Err(err)
                 });
@@ -3904,15 +3907,16 @@ impl MutVisitor for CondChecker<'_> {
 
         let span = e.span;
         match e.kind {
-            ExprKind::Let(_, _, _, ref mut is_recovered @ None) => {
+            ExprKind::Let(_, _, _, ref mut recovered @ Recovered::No) => {
                 if let Some(reason) = self.forbid_let_reason {
-                    *is_recovered =
-                        Some(self.parser.dcx().emit_err(errors::ExpectedExpressionFoundLet {
+                    *recovered = Recovered::Yes(self.parser.dcx().emit_err(
+                        errors::ExpectedExpressionFoundLet {
                             span,
                             reason,
                             missing_let: self.missing_let,
                             comparison: self.comparison,
-                        }));
+                        },
+                    ));
                 } else {
                     self.parser.psess.gated_spans.gate(sym::let_chains, span);
                 }
@@ -3980,7 +3984,7 @@ impl MutVisitor for CondChecker<'_> {
                 self.visit_expr(op);
                 self.forbid_let_reason = forbid_let_reason;
             }
-            ExprKind::Let(_, _, _, Some(_))
+            ExprKind::Let(_, _, _, Recovered::Yes(_))
             | ExprKind::Array(_)
             | ExprKind::ConstBlock(_)
             | ExprKind::Lit(_)

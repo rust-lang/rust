@@ -133,6 +133,15 @@ pub unsafe fn create_module<'ll>(
         }
     }
 
+    if llvm_version < (19, 0, 0) {
+        if sess.target.arch == "aarch64" || sess.target.arch.starts_with("arm64") {
+            // LLVM 19 sets -Fn32 in its data layout string for 64-bit ARM
+            // Earlier LLVMs leave this default, so remove it.
+            // See https://github.com/llvm/llvm-project/pull/90702
+            target_data_layout = target_data_layout.replace("-Fn32", "");
+        }
+    }
+
     // Ensure the data-layout values hardcoded remain the defaults.
     {
         let tm = crate::back::write::create_informational_target_machine(tcx.sess);

@@ -19,9 +19,15 @@ For examples, `--cfg 'verbose'` or `--cfg 'feature="serde"'`. These correspond
 to `#[cfg(verbose)]` and `#[cfg(feature = "serde")]` respectively.
 
 <a id="option-check-cfg"></a>
-## `--check-cfg`: enables checking conditional configurations
+## `--check-cfg`: configure compile-time checking of conditional compilation
 
-This flag will enable checking conditional configurations.
+This flag enables checking conditional configurations of the crate at compile-time,
+specifically it helps configure the set of expected cfg names and values, in order
+to check that every _reachable_ `#[cfg]` matches the expected config names and values.
+
+This is different from the `--cfg` flag above which activates some config but do
+not expect them. This is useful to prevent stalled conditions, typos, ...
+
 Refer to the [Checking conditional configurations](check-cfg.md) of this book
 for further details and explanation.
 

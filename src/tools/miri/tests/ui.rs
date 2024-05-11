@@ -1,5 +1,5 @@
 use std::ffi::OsString;
-use std::num::NonZeroUsize;
+use std::num::NonZero;
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 use std::{env, process::Command};
@@ -77,7 +77,7 @@ fn miri_config(target: &str, path: &str, mode: Mode, with_dependencies: bool) ->
         edition: Some("2021".into()), // keep in sync with `./miri run`
         threads: std::env::var("MIRI_TEST_THREADS")
             .ok()
-            .map(|threads| NonZeroUsize::new(threads.parse().unwrap()).unwrap()),
+            .map(|threads| NonZero::new(threads.parse().unwrap()).unwrap()),
         ..Config::rustc(path)
     };
 

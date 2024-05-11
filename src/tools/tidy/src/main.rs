@@ -110,6 +110,7 @@ fn main() {
         check!(rustdoc_gui_tests, &tests_path);
         check!(rustdoc_css_themes, &librustdoc_path);
         check!(known_bug, &crashes_path);
+        check!(unknown_revision, &tests_path);
 
         // Checks that only make sense for the compiler.
         check!(error_codes, &root_path, &[&compiler_path, &librustdoc_path], verbose);

@@ -2,7 +2,6 @@ use crate::build::expr::as_place::{PlaceBase, PlaceBuilder};
 use crate::build::matches::{Binding, Candidate, FlatPat, MatchPair, TestCase};
 use crate::build::Builder;
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_infer::infer::type_variable::TypeVariableOrigin;
 use rustc_middle::mir::*;
 use rustc_middle::thir::{self, *};
 use rustc_middle::ty::TypeVisitableExt;
@@ -124,7 +123,8 @@ impl<'pat, 'tcx> MatchPair<'pat, 'tcx> {
         let default_irrefutable = || TestCase::Irrefutable { binding: None, ascription: None };
         let mut subpairs = Vec::new();
         let test_case = match pattern.kind {
-            PatKind::Never | PatKind::Wild | PatKind::Error(_) => default_irrefutable(),
+            PatKind::Wild | PatKind::Error(_) => default_irrefutable(),
+
             PatKind::Or { ref pats } => TestCase::Or {
                 pats: pats.iter().map(|pat| FlatPat::new(place_builder.clone(), pat, cx)).collect(),
             },
@@ -179,9 +179,7 @@ impl<'pat, 'tcx> MatchPair<'pat, 'tcx> {
                         cx.tcx,
                         ty::InlineConstArgsParts {
                             parent_args: ty::GenericArgs::identity_for_item(cx.tcx, parent_id),
-                            ty: cx
-                                .infcx
-                                .next_ty_var(TypeVariableOrigin { param_def_id: None, span }),
+                            ty: cx.infcx.next_ty_var(span),
                         },
                     )
                     .args;
@@ -260,6 +258,8 @@ impl<'pat, 'tcx> MatchPair<'pat, 'tcx> {
                 subpairs.push(MatchPair::new(PlaceBuilder::from(temp).deref(), subpattern, cx));
                 TestCase::Deref { temp, mutability }
             }
+
+            PatKind::Never => TestCase::Never,
         };
 
         MatchPair { place, test_case, subpairs, pattern }

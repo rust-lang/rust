@@ -6,7 +6,7 @@ use rustc_errors::{Applicability, Diag};
 use rustc_hir::intravisit::{walk_expr, Visitor};
 use rustc_hir::{Arm, Expr, ExprKind, MatchSource};
 use rustc_lint::{LateContext, LintContext};
-use rustc_middle::ty::{GenericArgKind, Ty, TypeAndMut};
+use rustc_middle::ty::{GenericArgKind, Ty};
 use rustc_span::Span;
 
 use super::SIGNIFICANT_DROP_IN_SCRUTINEE;
@@ -234,9 +234,9 @@ impl<'a, 'tcx> SigDropHelper<'a, 'tcx> {
         }
         let ty = self.sig_drop_checker.get_type(expr);
         if ty.is_ref() {
-            // We checked that the type was ref, so builtin_deref will return Some TypeAndMut,
-            // but let's avoid any chance of an ICE
-            if let Some(TypeAndMut { ty, .. }) = ty.builtin_deref(true) {
+            // We checked that the type was ref, so builtin_deref will return Some,
+            // but let's avoid any chance of an ICE.
+            if let Some(ty) = ty.builtin_deref(true) {
                 if ty.is_trivially_pure_clone_copy() {
                     self.replace_current_sig_drop(expr.span, false, LintSuggestion::MoveAndDerefToCopy);
                 } else if allow_move_and_clone {

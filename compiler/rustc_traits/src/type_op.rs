@@ -3,7 +3,7 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::query::Providers;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::{Clause, ParamEnvAnd};
-use rustc_middle::ty::{FnSig, Lift, PolyFnSig, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{FnSig, PolyFnSig, Ty, TyCtxt, TypeFoldable};
 use rustc_trait_selection::infer::InferCtxtBuilderExt;
 use rustc_trait_selection::traits::query::normalize::QueryNormalizeExt;
 use rustc_trait_selection::traits::query::type_op::ascribe_user_type::{
@@ -54,7 +54,7 @@ fn type_op_normalize<'tcx, T>(
     key: ParamEnvAnd<'tcx, Normalize<T>>,
 ) -> Result<T, NoSolution>
 where
-    T: fmt::Debug + TypeFoldable<TyCtxt<'tcx>> + Lift<'tcx>,
+    T: fmt::Debug + TypeFoldable<TyCtxt<'tcx>>,
 {
     let (param_env, Normalize { value }) = key.into_parts();
     let Normalized { value, obligations } =

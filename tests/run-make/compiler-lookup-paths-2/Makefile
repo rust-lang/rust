@@ -1,3 +1,6 @@
+# This test checks that extern crate declarations in Cargo without a corresponding declaration in the manifest of a dependency are NOT allowed.
+# See https://github.com/rust-lang/rust/pull/21113
+
 include ../tools.mk
 
 all:

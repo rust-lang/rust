@@ -25,7 +25,7 @@ fn vec_deref_to_slice(_1: &Vec<u8>) -> &[u8] {
         scope 6 (inlined std::slice::from_raw_parts::<'_, u8>) {
             debug data => _4;
             debug len => _5;
-            let _7: *const [u8];
+            let _6: *const [u8];
             scope 7 (inlined core::ub_checks::check_language_ub) {
                 scope 8 (inlined core::ub_checks::check_language_ub::runtime) {
                 }
@@ -37,14 +37,6 @@ fn vec_deref_to_slice(_1: &Vec<u8>) -> &[u8] {
             scope 11 (inlined slice_from_raw_parts::<u8>) {
                 debug data => _4;
                 debug len => _5;
-                let mut _6: *const ();
-                scope 12 (inlined std::ptr::const_ptr::<impl *const u8>::cast::<()>) {
-                    debug self => _4;
-                }
-                scope 13 (inlined std::ptr::from_raw_parts::<[u8]>) {
-                    debug data_pointer => _6;
-                    debug metadata => _5;
-                }
             }
         }
     }
@@ -60,13 +52,10 @@ fn vec_deref_to_slice(_1: &Vec<u8>) -> &[u8] {
         StorageDead(_2);
         StorageLive(_5);
         _5 = ((*_1).1: usize);
-        StorageLive(_6);
-        _6 = _4 as *const () (PtrToPtr);
-        _7 = *const [u8] from (_6, _5);
-        StorageDead(_6);
+        _6 = *const [u8] from (_4, _5);
         StorageDead(_5);
         StorageDead(_4);
-        _0 = &(*_7);
+        _0 = &(*_6);
         return;
     }
 }

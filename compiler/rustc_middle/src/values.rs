@@ -141,7 +141,7 @@ impl<'tcx> Value<TyCtxt<'tcx>> for &[ty::Variance] {
             && frame.query.dep_kind == dep_kinds::variances_of
             && let Some(def_id) = frame.query.def_id
         {
-            let n = tcx.generics_of(def_id).params.len();
+            let n = tcx.generics_of(def_id).own_params.len();
             vec![ty::Variance::Bivariant; n].leak()
         } else {
             span_bug!(

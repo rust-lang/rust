@@ -1,5 +1,5 @@
 error: cannot use NaN in patterns
-  --> $DIR/issue-6804-nan-match.rs:15:9
+  --> $DIR/issue-6804-nan-match.rs:14:9
    |
 LL |         NAN => {},
    |         ^^^
@@ -8,7 +8,7 @@ LL |         NAN => {},
    = help: try using the `is_nan` method instead
 
 error: cannot use NaN in patterns
-  --> $DIR/issue-6804-nan-match.rs:20:10
+  --> $DIR/issue-6804-nan-match.rs:19:10
    |
 LL |         [NAN, _] => {},
    |          ^^^
@@ -17,7 +17,7 @@ LL |         [NAN, _] => {},
    = help: try using the `is_nan` method instead
 
 error: cannot use NaN in patterns
-  --> $DIR/issue-6804-nan-match.rs:25:9
+  --> $DIR/issue-6804-nan-match.rs:24:9
    |
 LL |         C => {},
    |         ^
@@ -26,7 +26,7 @@ LL |         C => {},
    = help: try using the `is_nan` method instead
 
 error: cannot use NaN in patterns
-  --> $DIR/issue-6804-nan-match.rs:31:9
+  --> $DIR/issue-6804-nan-match.rs:30:9
    |
 LL |         NAN..=1.0 => {},
    |         ^^^
@@ -35,13 +35,13 @@ LL |         NAN..=1.0 => {},
    = help: try using the `is_nan` method instead
 
 error[E0030]: lower range bound must be less than or equal to upper
-  --> $DIR/issue-6804-nan-match.rs:31:9
+  --> $DIR/issue-6804-nan-match.rs:30:9
    |
 LL |         NAN..=1.0 => {},
    |         ^^^^^^^^^ lower bound larger than upper bound
 
 error: cannot use NaN in patterns
-  --> $DIR/issue-6804-nan-match.rs:33:16
+  --> $DIR/issue-6804-nan-match.rs:32:16
    |
 LL |         -1.0..=NAN => {},
    |                ^^^
@@ -50,13 +50,13 @@ LL |         -1.0..=NAN => {},
    = help: try using the `is_nan` method instead
 
 error[E0030]: lower range bound must be less than or equal to upper
-  --> $DIR/issue-6804-nan-match.rs:33:9
+  --> $DIR/issue-6804-nan-match.rs:32:9
    |
 LL |         -1.0..=NAN => {},
    |         ^^^^^^^^^^ lower bound larger than upper bound
 
 error: cannot use NaN in patterns
-  --> $DIR/issue-6804-nan-match.rs:35:9
+  --> $DIR/issue-6804-nan-match.rs:34:9
    |
 LL |         NAN.. => {},
    |         ^^^
@@ -65,13 +65,13 @@ LL |         NAN.. => {},
    = help: try using the `is_nan` method instead
 
 error[E0030]: lower range bound must be less than or equal to upper
-  --> $DIR/issue-6804-nan-match.rs:35:9
+  --> $DIR/issue-6804-nan-match.rs:34:9
    |
 LL |         NAN.. => {},
    |         ^^^^^ lower bound larger than upper bound
 
 error: cannot use NaN in patterns
-  --> $DIR/issue-6804-nan-match.rs:37:11
+  --> $DIR/issue-6804-nan-match.rs:36:11
    |
 LL |         ..NAN => {},
    |           ^^^
@@ -80,7 +80,7 @@ LL |         ..NAN => {},
    = help: try using the `is_nan` method instead
 
 error[E0579]: lower range bound must be less than upper
-  --> $DIR/issue-6804-nan-match.rs:37:9
+  --> $DIR/issue-6804-nan-match.rs:36:9
    |
 LL |         ..NAN => {},
    |         ^^^^^

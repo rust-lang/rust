@@ -12,7 +12,7 @@ use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::lint;
 use rustc_span::def_id::LocalDefId;
-use rustc_span::Span;
+use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{self, Abi};
 
 use super::{CanAccessMutGlobal, CompileTimeEvalContext, CompileTimeInterpreter};
@@ -222,7 +222,7 @@ pub(super) fn op_to_const<'tcx>(
                 // This codepath solely exists for `valtree_to_const_value` to not need to generate
                 // a `ConstValue::Indirect` for wide references, so it is tightly restricted to just
                 // that case.
-                let pointee_ty = imm.layout.ty.builtin_deref(false).unwrap().ty; // `false` = no raw ptrs
+                let pointee_ty = imm.layout.ty.builtin_deref(false).unwrap(); // `false` = no raw ptrs
                 debug_assert!(
                     matches!(
                         ecx.tcx.struct_tail_without_normalization(pointee_ty).kind(),
@@ -298,7 +298,7 @@ pub fn eval_to_const_value_raw_provider<'tcx>(
             super::report(
                 tcx,
                 error.into_kind(),
-                Some(span),
+                span,
                 || (span, vec![]),
                 |span, _| errors::NullaryIntrinsicError { span },
             )
@@ -406,7 +406,7 @@ fn eval_in_interpreter<'tcx, R: InterpretationResult<'tcx>>(
         super::report(
             *ecx.tcx,
             error,
-            None,
+            DUMMY_SP,
             || super::get_span_and_frames(ecx.tcx, ecx.stack()),
             |span, frames| ConstEvalError { span, error_kind: kind, instance, frame_notes: frames },
         )
@@ -461,7 +461,7 @@ fn report_validation_error<'mir, 'tcx>(
     crate::const_eval::report(
         *ecx.tcx,
         error,
-        None,
+        DUMMY_SP,
         || crate::const_eval::get_span_and_frames(ecx.tcx, ecx.stack()),
         move |span, frames| errors::ValidationFailure { span, ub_note, frames, raw_bytes },
     )

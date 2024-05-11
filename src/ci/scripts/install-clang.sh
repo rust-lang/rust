@@ -10,18 +10,24 @@ IFS=$'\n\t'
 source "$(cd "$(dirname "$0")" && pwd)/../shared.sh"
 
 # Update both macOS's and Windows's tarballs when bumping the version here.
-LLVM_VERSION="14.0.5"
+# Try to keep this in sync with src/ci/docker/host-x86_64/dist-x86_64-linux/build-clang.sh
+LLVM_VERSION="18.1.4"
 
 if isMacOS; then
+    # FIXME: This is the latest pre-built version of LLVM that's available for
+    # x86_64 MacOS. We may want to consider bulding our own LLVM binaries
+    # instead, or set `USE_XCODE_CLANG` like AArch64 does.
+    LLVM_VERSION="15.0.7"
+
     # If the job selects a specific Xcode version, use that instead of
     # downloading our own version.
     if [[ ${USE_XCODE_CLANG-0} -eq 1 ]]; then
         bindir="$(xcode-select --print-path)/Toolchains/XcodeDefault.xctoolchain/usr/bin"
     else
-        file="${MIRRORS_BASE}/clang%2Bllvm-${LLVM_VERSION}-x86_64-apple-darwin.tar.xz"
-        retry curl -f "${file}" -o "clang+llvm-${LLVM_VERSION}-x86_64-apple-darwin.tar.xz"
-        tar xJf "clang+llvm-${LLVM_VERSION}-x86_64-apple-darwin.tar.xz"
-        bindir="$(pwd)/clang+llvm-${LLVM_VERSION}-x86_64-apple-darwin/bin"
+        file="${MIRRORS_BASE}/clang%2Bllvm-${LLVM_VERSION}-x86_64-apple-darwin21.0.tar.xz"
+        retry curl -f "${file}" -o "clang+llvm-${LLVM_VERSION}-x86_64-apple-darwin21.0.tar.xz"
+        tar xJf "clang+llvm-${LLVM_VERSION}-x86_64-apple-darwin21.0.tar.xz"
+        bindir="$(pwd)/clang+llvm-${LLVM_VERSION}-x86_64-apple-darwin21.0/bin"
     fi
 
     ciCommandSetEnv CC "${bindir}/clang"

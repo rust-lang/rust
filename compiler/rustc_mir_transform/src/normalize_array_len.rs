@@ -48,9 +48,9 @@ fn compute_slice_length<'tcx>(
                 let operand_ty = operand.ty(body, tcx);
                 debug!(?operand_ty);
                 if let Some(operand_ty) = operand_ty.builtin_deref(true)
-                    && let ty::Array(_, len) = operand_ty.ty.kind()
+                    && let ty::Array(_, len) = operand_ty.kind()
                     && let Some(cast_ty) = cast_ty.builtin_deref(true)
-                    && let ty::Slice(..) = cast_ty.ty.kind()
+                    && let ty::Slice(..) = cast_ty.kind()
                 {
                     slice_lengths[local] = Some(*len);
                 }

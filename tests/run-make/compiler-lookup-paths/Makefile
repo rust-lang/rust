@@ -1,3 +1,6 @@
+# rustc supports different types of lookup paths, such as dependency, native or crate. This test checks that these lookup paths are functional and result in functional compilation.
+# See https://github.com/rust-lang/rust/pull/19941
+
 include ../tools.mk
 
 # ignore-wasm32 (need a C compiler)

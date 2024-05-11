@@ -1,11 +1,11 @@
 use std::cmp::Ordering;
 
 use rustc_type_ir::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
-use rustc_type_ir::new::{Const, Region, Ty};
+use rustc_type_ir::inherent::*;
 use rustc_type_ir::visit::TypeVisitableExt;
 use rustc_type_ir::{
-    self as ty, Canonical, CanonicalTyVarKind, CanonicalVarInfo, CanonicalVarKind, ConstTy,
-    InferCtxtLike, Interner, IntoKind, PlaceholderLike,
+    self as ty, Canonical, CanonicalTyVarKind, CanonicalVarInfo, CanonicalVarKind, InferCtxtLike,
+    Interner,
 };
 
 /// Whether we're canonicalizing a query input or the query response.
@@ -455,7 +455,7 @@ impl<I: Interner> TypeFolder<I> for RegionsToStatic<I> {
         I::Binder<T>: TypeSuperFoldable<I>,
     {
         self.binder.shift_in(1);
-        let t = t.fold_with(self);
+        let t = t.super_fold_with(self);
         self.binder.shift_out(1);
         t
     }

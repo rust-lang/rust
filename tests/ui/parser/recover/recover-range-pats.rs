@@ -3,7 +3,6 @@
 // 1. Things parse as they should.
 // 2. Or at least we have parser recovery if they don't.
 
-#![feature(exclusive_range_pattern)]
 #![deny(ellipsis_inclusive_range_patterns)]
 
 fn main() {}

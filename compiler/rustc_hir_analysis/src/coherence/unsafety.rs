@@ -3,6 +3,7 @@
 
 use rustc_errors::{codes::*, struct_span_code_err};
 use rustc_hir::Unsafety;
+use rustc_middle::ty::print::PrintTraitRefExt as _;
 use rustc_middle::ty::{ImplPolarity::*, ImplTraitHeader, TraitDef, TyCtxt};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::ErrorGuaranteed;
@@ -14,7 +15,7 @@ pub(super) fn check_item(
     trait_def: &TraitDef,
 ) -> Result<(), ErrorGuaranteed> {
     let unsafe_attr =
-        tcx.generics_of(def_id).params.iter().find(|p| p.pure_wrt_drop).map(|_| "may_dangle");
+        tcx.generics_of(def_id).own_params.iter().find(|p| p.pure_wrt_drop).map(|_| "may_dangle");
     let trait_ref = trait_header.trait_ref.instantiate_identity();
 
     match (trait_def.unsafety, unsafe_attr, trait_header.unsafety, trait_header.polarity) {

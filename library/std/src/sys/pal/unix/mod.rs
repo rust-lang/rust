@@ -63,11 +63,11 @@ pub unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
     args::init(argc, argv);
 
     // Normally, `thread::spawn` will call `Thread::set_name` but since this thread
-    // already exists, we have to call it ourselves. We only do this on macos
+    // already exists, we have to call it ourselves. We only do this on Apple targets
     // because some unix-like operating systems such as Linux share process-id and
     // thread-id for the main thread and so renaming the main thread will rename the
     // process and we only want to enable this on platforms we've tested.
-    if cfg!(target_os = "macos") {
+    if cfg!(target_vendor = "apple") {
         thread::Thread::set_name(&c"main");
     }
 

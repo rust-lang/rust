@@ -1,4 +1,5 @@
 use rustc_data_structures::intern::Interned;
+pub use Float::*;
 pub use Integer::*;
 pub use Primitive::*;
 
@@ -11,7 +12,8 @@ use rustc_macros::HashStable_Generic;
 
 pub mod call;
 
-pub use rustc_abi::*;
+// Explicitly import `Float` to avoid ambiguity with `Primitive::Float`.
+pub use rustc_abi::{Float, *};
 
 impl ToJson for Endian {
     fn to_json(&self) -> Json {
@@ -207,7 +209,7 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
         C: HasDataLayout,
     {
         match self.abi {
-            Abi::Scalar(scalar) => matches!(scalar.primitive(), F32 | F64),
+            Abi::Scalar(scalar) => matches!(scalar.primitive(), Float(F32 | F64)),
             Abi::Aggregate { .. } => {
                 if self.fields.count() == 1 && self.fields.offset(0).bytes() == 0 {
                     self.field(cx, 0).is_single_fp_element(cx)

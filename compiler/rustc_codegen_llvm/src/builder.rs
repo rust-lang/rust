@@ -576,7 +576,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                         }
                     }
                 }
-                abi::F16 | abi::F32 | abi::F64 | abi::F128 => {}
+                abi::Float(_) => {}
             }
         }
 
@@ -976,6 +976,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         align: Align,
         flags: MemFlags,
     ) {
+        assert!(!flags.contains(MemFlags::NONTEMPORAL), "non-temporal memset not supported");
         let is_volatile = flags.contains(MemFlags::VOLATILE);
         unsafe {
             llvm::LLVMRustBuildMemSet(

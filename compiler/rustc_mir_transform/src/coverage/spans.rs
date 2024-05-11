@@ -2,7 +2,7 @@ use rustc_middle::mir;
 use rustc_span::{BytePos, Span};
 
 use crate::coverage::graph::{BasicCoverageBlock, CoverageGraph};
-use crate::coverage::mappings::{BcbMapping, BcbMappingKind};
+use crate::coverage::mappings;
 use crate::coverage::spans::from_mir::SpanFromMir;
 use crate::coverage::ExtractedHirInfo;
 
@@ -17,14 +17,14 @@ pub(super) fn extract_refined_covspans(
     mir_body: &mir::Body<'_>,
     hir_info: &ExtractedHirInfo,
     basic_coverage_blocks: &CoverageGraph,
-    mappings: &mut impl Extend<BcbMapping>,
+    code_mappings: &mut impl Extend<mappings::CodeMapping>,
 ) {
     let sorted_spans =
         from_mir::mir_to_initial_sorted_coverage_spans(mir_body, hir_info, basic_coverage_blocks);
     let coverage_spans = SpansRefiner::refine_sorted_spans(sorted_spans);
-    mappings.extend(coverage_spans.into_iter().map(|RefinedCovspan { bcb, span, .. }| {
+    code_mappings.extend(coverage_spans.into_iter().map(|RefinedCovspan { bcb, span, .. }| {
         // Each span produced by the generator represents an ordinary code region.
-        BcbMapping { kind: BcbMappingKind::Code(bcb), span }
+        mappings::CodeMapping { span, bcb }
     }));
 }
 

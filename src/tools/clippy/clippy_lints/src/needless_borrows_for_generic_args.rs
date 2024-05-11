@@ -13,7 +13,7 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::mir::{Rvalue, StatementKind};
 use rustc_middle::ty::{
-    self, ClauseKind, EarlyBinder, FnSig, GenericArg, GenericArgKind, List, ParamTy, ProjectionPredicate, Ty,
+    self, ClauseKind, EarlyBinder, FnSig, GenericArg, GenericArgKind, ParamTy, ProjectionPredicate, Ty,
 };
 use rustc_session::impl_lint_pass;
 use rustc_span::symbol::sym;
@@ -161,7 +161,7 @@ fn needless_borrow_count<'tcx>(
     cx: &LateContext<'tcx>,
     possible_borrowers: &mut Vec<(LocalDefId, PossibleBorrowerMap<'tcx, 'tcx>)>,
     fn_id: DefId,
-    callee_args: &'tcx List<GenericArg<'tcx>>,
+    callee_args: ty::GenericArgsRef<'tcx>,
     arg_index: usize,
     param_ty: ParamTy,
     mut expr: &Expr<'tcx>,

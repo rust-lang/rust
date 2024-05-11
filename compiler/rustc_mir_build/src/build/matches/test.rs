@@ -44,6 +44,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             TestCase::Deref { temp, mutability } => TestKind::Deref { temp, mutability },
 
+            TestCase::Never => TestKind::Never,
+
             TestCase::Or { .. } => bug!("or-patterns should have already been handled"),
 
             TestCase::Irrefutable { .. } => span_bug!(
@@ -261,6 +263,20 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let ty = place_ty.ty;
                 let target = target_block(TestBranch::Success);
                 self.call_deref(block, target, place, mutability, ty, temp, test.span);
+            }
+
+            TestKind::Never => {
+                // Check that the place is initialized.
+                // FIXME(never_patterns): Also assert validity of the data at `place`.
+                self.cfg.push_fake_read(
+                    block,
+                    source_info,
+                    FakeReadCause::ForMatchedPlace(None),
+                    place,
+                );
+                // A never pattern is only allowed on an uninhabited type, so validity of the data
+                // implies unreachability.
+                self.cfg.terminate(block, source_info, TerminatorKind::Unreachable);
             }
         }
     }
@@ -706,6 +722,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             (TestKind::Deref { temp: test_temp, .. }, TestCase::Deref { temp, .. })
                 if test_temp == temp =>
             {
+                fully_matched = true;
+                Some(TestBranch::Success)
+            }
+
+            (TestKind::Never, _) => {
                 fully_matched = true;
                 Some(TestBranch::Success)
             }

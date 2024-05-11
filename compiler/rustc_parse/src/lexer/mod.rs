@@ -112,7 +112,7 @@ struct StringReader<'psess, 'src> {
 }
 
 impl<'psess, 'src> StringReader<'psess, 'src> {
-    pub fn dcx(&self) -> &'psess DiagCtxt {
+    fn dcx(&self) -> &'psess DiagCtxt {
         &self.psess.dcx
     }
 

@@ -215,8 +215,8 @@ impl<'a> Renderer<'a> {
             for bench in &self.benches {
                 rows.push((
                     &bench.name,
-                    format!("{:.2?}/iter", Duration::from_nanos(bench.median)),
-                    format!("+/- {:.2?}", Duration::from_nanos(bench.deviation)),
+                    format!("{:.2?}/iter", bench.median),
+                    format!("+/- {:.2?}", bench.deviation),
                 ));
             }
 
@@ -394,8 +394,8 @@ enum TestMessage {
 #[derive(serde_derive::Deserialize)]
 struct BenchOutcome {
     name: String,
-    median: u64,
-    deviation: u64,
+    median: f64,
+    deviation: f64,
 }
 
 #[derive(serde_derive::Deserialize)]

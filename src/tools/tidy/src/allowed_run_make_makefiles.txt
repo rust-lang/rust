@@ -44,7 +44,6 @@ run-make/dep-graph/Makefile
 run-make/dep-info-doesnt-run-much/Makefile
 run-make/dep-info-spaces/Makefile
 run-make/dep-info/Makefile
-run-make/doctests-runtool/Makefile
 run-make/dump-ice-to-disk/Makefile
 run-make/dump-mono-stats/Makefile
 run-make/duplicate-output-flavors/Makefile
@@ -245,10 +244,7 @@ run-make/rlib-format-packed-bundled-libs-3/Makefile
 run-make/rlib-format-packed-bundled-libs/Makefile
 run-make/rmeta-preferred/Makefile
 run-make/rustc-macro-dep-files/Makefile
-run-make/rustdoc-error-lines/Makefile
 run-make/rustdoc-io-error/Makefile
-run-make/rustdoc-map-file/Makefile
-run-make/rustdoc-output-path/Makefile
 run-make/rustdoc-scrape-examples-invalid-expr/Makefile
 run-make/rustdoc-scrape-examples-macros/Makefile
 run-make/rustdoc-scrape-examples-multiple/Makefile

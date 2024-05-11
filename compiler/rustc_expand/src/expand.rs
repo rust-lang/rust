@@ -1194,8 +1194,8 @@ impl InvocationCollectorNode for P<ast::Item> {
                 match &ut.kind {
                     ast::UseTreeKind::Glob => {}
                     ast::UseTreeKind::Simple(_) => idents.push(ut.ident()),
-                    ast::UseTreeKind::Nested(nested) => {
-                        for (ut, _) in nested {
+                    ast::UseTreeKind::Nested { items, .. } => {
+                        for (ut, _) in items {
                             collect_use_tree_leaves(ut, idents);
                         }
                     }

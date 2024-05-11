@@ -517,8 +517,8 @@ pub fn walk_use_tree<'a, V: Visitor<'a>>(
             visit_opt!(visitor, visit_ident, rename);
         }
         UseTreeKind::Glob => {}
-        UseTreeKind::Nested(ref use_trees) => {
-            for &(ref nested_tree, nested_id) in use_trees {
+        UseTreeKind::Nested { ref items, .. } => {
+            for &(ref nested_tree, nested_id) in items {
                 try_visit!(visitor.visit_use_tree(nested_tree, nested_id, true));
             }
         }

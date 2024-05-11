@@ -1,5 +1,4 @@
 //@ run-pass
-#![feature(exclusive_range_pattern)]
 
 pub fn main() {
     match 5_usize {

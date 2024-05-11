@@ -32,14 +32,14 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         // If we added a "points at argument expression" obligation, we remove it here, we care
         // about the original obligation only.
         let code = match cause.code() {
-            ObligationCauseCode::FunctionArgumentObligation { parent_code, .. } => &*parent_code,
+            ObligationCauseCode::FunctionArg { parent_code, .. } => &*parent_code,
             code => code,
         };
         let ObligationCauseCode::MatchImpl(parent, impl_def_id) = code else {
             return None;
         };
-        let (ObligationCauseCode::BindingObligation(_, binding_span)
-        | ObligationCauseCode::ExprBindingObligation(_, binding_span, ..)) = *parent.code()
+        let (ObligationCauseCode::SpannedWhereClause(_, binding_span)
+        | ObligationCauseCode::SpannedWhereClauseInExpr(_, binding_span, ..)) = *parent.code()
         else {
             return None;
         };

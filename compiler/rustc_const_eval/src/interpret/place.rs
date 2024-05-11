@@ -415,7 +415,7 @@ where
         val: &ImmTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::Provenance>> {
         let pointee_type =
-            val.layout.ty.builtin_deref(true).expect("`ref_to_mplace` called on non-ptr type").ty;
+            val.layout.ty.builtin_deref(true).expect("`ref_to_mplace` called on non-ptr type");
         let layout = self.layout_of(pointee_type)?;
         let (ptr, meta) = val.to_scalar_and_meta();
 

@@ -148,7 +148,7 @@ fn try_resolve_type<'tcx>(
     match args.get(index - 1) {
         Some(GenericArg::Type(ty)) => Some(lower_ty(tcx, ty)),
         Some(_) => None,
-        None => Some(tcx.type_of(generics.params[index].def_id).skip_binder()),
+        None => Some(tcx.type_of(generics.own_params[index].def_id).skip_binder()),
     }
 }
 

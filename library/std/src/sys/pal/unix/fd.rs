@@ -33,14 +33,15 @@ pub struct FileDesc(OwnedFd);
 // with the man page quoting that if the count of bytes to read is
 // greater than `SSIZE_MAX` the result is "unspecified".
 //
-// On macOS, however, apparently the 64-bit libc is either buggy or
+// On Apple targets however, apparently the 64-bit libc is either buggy or
 // intentionally showing odd behavior by rejecting any read with a size
 // larger than or equal to INT_MAX. To handle both of these the read
 // size is capped on both platforms.
-#[cfg(target_os = "macos")]
-const READ_LIMIT: usize = libc::c_int::MAX as usize - 1;
-#[cfg(not(target_os = "macos"))]
-const READ_LIMIT: usize = libc::ssize_t::MAX as usize;
+const READ_LIMIT: usize = if cfg!(target_vendor = "apple") {
+    libc::c_int::MAX as usize - 1
+} else {
+    libc::ssize_t::MAX as usize
+};
 
 #[cfg(any(
     target_os = "dragonfly",

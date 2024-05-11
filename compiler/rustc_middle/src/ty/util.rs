@@ -2,7 +2,7 @@
 
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::query::{IntoQueryParam, Providers};
-use crate::ty::layout::IntegerExt;
+use crate::ty::layout::{FloatExt, IntegerExt};
 use crate::ty::{
     self, FallibleTypeFolder, ToPredicate, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
     TypeVisitableExt,
@@ -20,7 +20,7 @@ use rustc_index::bit_set::GrowableBitSet;
 use rustc_macros::{extension, HashStable, TyDecodable, TyEncodable};
 use rustc_session::Limit;
 use rustc_span::sym;
-use rustc_target::abi::{Integer, IntegerType, Primitive, Size};
+use rustc_target::abi::{Float, Integer, IntegerType, Size};
 use rustc_target::spec::abi::Abi;
 use smallvec::{smallvec, SmallVec};
 use std::{fmt, iter};
@@ -1145,8 +1145,7 @@ impl<'tcx> Ty<'tcx> {
             ty::Char => Size::from_bytes(4),
             ty::Int(ity) => Integer::from_int_ty(&tcx, ity).size(),
             ty::Uint(uty) => Integer::from_uint_ty(&tcx, uty).size(),
-            ty::Float(ty::FloatTy::F32) => Primitive::F32.size(&tcx),
-            ty::Float(ty::FloatTy::F64) => Primitive::F64.size(&tcx),
+            ty::Float(fty) => Float::from_float_ty(fty).size(),
             _ => bug!("non primitive type"),
         }
     }

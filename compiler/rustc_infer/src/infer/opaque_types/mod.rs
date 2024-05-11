@@ -1,4 +1,3 @@
-use super::type_variable::TypeVariableOrigin;
 use super::{DefineOpaqueTypes, InferResult};
 use crate::errors::OpaqueHiddenTypeDiag;
 use crate::infer::{InferCtxt, InferOk};
@@ -65,7 +64,7 @@ impl<'tcx> InferCtxt<'tcx> {
                     let span = if span.contains(def_span) { def_span } else { span };
                     let code = traits::ObligationCauseCode::OpaqueReturnType(None);
                     let cause = ObligationCause::new(span, body_id, code);
-                    let ty_var = self.next_ty_var(TypeVariableOrigin { param_def_id: None, span });
+                    let ty_var = self.next_ty_var(span);
                     obligations.extend(
                         self.handle_opaque_type(ty, ty_var, &cause, param_env).unwrap().obligations,
                     );
@@ -483,6 +482,19 @@ impl<'tcx> InferCtxt<'tcx> {
         );
 
         Ok(InferOk { value: (), obligations })
+    }
+
+    /// Insert a hidden type into the opaque type storage, making sure
+    /// it hasn't previously been defined. This does not emit any
+    /// constraints and it's the responsibility of the caller to make
+    /// sure that the item bounds of the opaque are checked.
+    pub fn inject_new_hidden_type_unchecked(
+        &self,
+        opaque_type_key: OpaqueTypeKey<'tcx>,
+        hidden_ty: OpaqueHiddenType<'tcx>,
+    ) {
+        let prev = self.inner.borrow_mut().opaque_types().register(opaque_type_key, hidden_ty);
+        assert_eq!(prev, None);
     }
 
     /// Insert a hidden type into the opaque type storage, equating it

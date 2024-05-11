@@ -85,7 +85,7 @@ fn representability_adt_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Representab
 fn params_in_repr(tcx: TyCtxt<'_>, def_id: LocalDefId) -> BitSet<u32> {
     let adt_def = tcx.adt_def(def_id);
     let generics = tcx.generics_of(def_id);
-    let mut params_in_repr = BitSet::new_empty(generics.params.len());
+    let mut params_in_repr = BitSet::new_empty(generics.own_params.len());
     for variant in adt_def.variants() {
         for field in variant.fields.iter() {
             params_in_repr_ty(

@@ -1,5 +1,6 @@
 //@ revisions: old next
 //@[next] compile-flags: -Znext-solver
+//@ ignore-compare-mode-next-solver (explicit revisions)
 //@ check-pass
 
 // case 3 of https://github.com/rust-lang/trait-system-refactor-initiative/issues/8.

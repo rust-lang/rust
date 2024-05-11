@@ -1,15 +1,15 @@
 use std::fmt::Write;
 
-use crate::rustc_codegen_ssa::traits::{BaseTypeMethods, DerivedTypeMethods, LayoutTypeMethods};
 use gccjit::{Struct, Type};
+use rustc_codegen_ssa::traits::{BaseTypeMethods, DerivedTypeMethods, LayoutTypeMethods};
 use rustc_middle::bug;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, Ty, TypeVisitableExt};
 use rustc_target::abi::call::{CastTarget, FnAbi, Reg};
 use rustc_target::abi::{
-    self, Abi, Align, FieldsShape, Int, Integer, PointeeInfo, Pointer, Size, TyAbiInterface,
-    Variants, F128, F16, F32, F64,
+    self, Abi, Align, FieldsShape, Float, Int, Integer, PointeeInfo, Pointer, Size, TyAbiInterface,
+    Variants,
 };
 
 use crate::abi::{FnAbiGcc, FnAbiGccExt, GccType};
@@ -205,7 +205,7 @@ impl<'tcx> LayoutGccExt<'tcx> for TyAndLayout<'tcx> {
     /// of that field's type - this is useful for taking the address of
     /// that field and ensuring the struct has the right alignment.
     fn gcc_type<'gcc>(&self, cx: &CodegenCx<'gcc, 'tcx>) -> Type<'gcc> {
-        use crate::rustc_middle::ty::layout::FnAbiOf;
+        use rustc_middle::ty::layout::FnAbiOf;
         // This must produce the same result for `repr(transparent)` wrappers as for the inner type!
         // In other words, this should generally not look at the type at all, but only at the
         // layout.
@@ -283,10 +283,7 @@ impl<'tcx> LayoutGccExt<'tcx> for TyAndLayout<'tcx> {
         match scalar.primitive() {
             Int(i, true) => cx.type_from_integer(i),
             Int(i, false) => cx.type_from_unsigned_integer(i),
-            F16 => cx.type_f16(),
-            F32 => cx.type_f32(),
-            F64 => cx.type_f64(),
-            F128 => cx.type_f128(),
+            Float(f) => cx.type_from_float(f),
             Pointer(address_space) => {
                 // If we know the alignment, pick something better than i8.
                 let pointee = if let Some(pointee) = self.pointee_info_at(cx, offset) {

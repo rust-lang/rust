@@ -57,7 +57,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             || self.suggest_into(err, expr, expr_ty, expected)
             || self.suggest_floating_point_literal(err, expr, expected)
             || self.suggest_null_ptr_for_literal_zero_given_to_ptr_arg(err, expr, expected)
-            || self.suggest_coercing_result_via_try_operator(err, expr, expected, expr_ty);
+            || self.suggest_coercing_result_via_try_operator(err, expr, expected, expr_ty)
+            || self.suggest_returning_value_after_loop(err, expr, expected);
 
         if !suggested {
             self.note_source_of_type_mismatch_constraint(
@@ -329,16 +330,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             hir.body(hir.maybe_body_owned_by(self.body_id).expect("expected item to have body"));
         expr_finder.visit_expr(body.value);
 
-        use rustc_infer::infer::type_variable::*;
-        use rustc_middle::infer::unify_key::*;
         // Replaces all of the variables in the given type with a fresh inference variable.
         let mut fudger = BottomUpFolder {
             tcx: self.tcx,
             ty_op: |ty| {
                 if let ty::Infer(infer) = ty.kind() {
                     match infer {
-                        ty::TyVar(_) => self
-                            .next_ty_var(TypeVariableOrigin { param_def_id: None, span: DUMMY_SP }),
+                        ty::TyVar(_) => self.next_ty_var(DUMMY_SP),
                         ty::IntVar(_) => self.next_int_var(),
                         ty::FloatVar(_) => self.next_float_var(),
                         ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_) => {
@@ -352,10 +350,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             lt_op: |_| self.tcx.lifetimes.re_erased,
             ct_op: |ct| {
                 if let ty::ConstKind::Infer(_) = ct.kind() {
-                    self.next_const_var(
-                        ct.ty(),
-                        ConstVariableOrigin { param_def_id: None, span: DUMMY_SP },
-                    )
+                    self.next_const_var(ct.ty(), DUMMY_SP)
                 } else {
                     ct
                 }

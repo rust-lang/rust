@@ -40,6 +40,8 @@ error[E0308]: mismatched types
 LL | /         'c:
 LL | |         for _ in None { break }; // but here we cite the whole loop
    | |_______________________________^ expected `i32`, found `()`
+   |
+   = note: `for` loops evaluate to unit type `()`
 
 error[E0308]: mismatched types
   --> $DIR/issue-27042.rs:15:9

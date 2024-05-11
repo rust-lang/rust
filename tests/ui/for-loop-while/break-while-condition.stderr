@@ -20,6 +20,12 @@ LL | |             }
    |
    = note:   expected type `!`
            found unit type `()`
+   = note: `while` loops evaluate to unit type `()`
+help: consider adding a diverging expression here
+   |
+LL ~             }
+LL +             /* `loop {}` or `panic!("...")` */
+   |
 
 error[E0308]: mismatched types
   --> $DIR/break-while-condition.rs:24:13
@@ -31,14 +37,12 @@ LL | |             }
    |
    = note:   expected type `!`
            found unit type `()`
-note: the function expects a value to always be returned, but loops might run zero times
-  --> $DIR/break-while-condition.rs:24:13
+   = note: `while` loops evaluate to unit type `()`
+help: consider adding a diverging expression here
    |
-LL |             while false {
-   |             ^^^^^^^^^^^ this might have zero elements to iterate on
-LL |                 return
-   |                 ------ if the loop doesn't execute, this value would never get returned
-   = help: return a value for the case when the loop has zero elements to iterate on, otherwise consider changing the return type to account for that possibility
+LL ~             }
+LL +             /* `loop {}` or `panic!("...")` */
+   |
 
 error: aborting due to 3 previous errors
 

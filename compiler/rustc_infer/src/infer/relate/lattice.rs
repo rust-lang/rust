@@ -18,7 +18,6 @@
 //! [lattices]: https://en.wikipedia.org/wiki/Lattice_(order)
 
 use super::combine::ObligationEmittingRelation;
-use crate::infer::type_variable::TypeVariableOrigin;
 use crate::infer::{DefineOpaqueTypes, InferCtxt};
 use crate::traits::ObligationCause;
 
@@ -88,14 +87,12 @@ where
         // iterate on the subtype obligations that are returned, but I
         // think this suffices. -nmatsakis
         (&ty::Infer(TyVar(..)), _) => {
-            let v = infcx
-                .next_ty_var(TypeVariableOrigin { param_def_id: None, span: this.cause().span });
+            let v = infcx.next_ty_var(this.cause().span);
             this.relate_bound(v, b, a)?;
             Ok(v)
         }
         (_, &ty::Infer(TyVar(..))) => {
-            let v = infcx
-                .next_ty_var(TypeVariableOrigin { param_def_id: None, span: this.cause().span });
+            let v = infcx.next_ty_var(this.cause().span);
             this.relate_bound(v, a, b)?;
             Ok(v)
         }

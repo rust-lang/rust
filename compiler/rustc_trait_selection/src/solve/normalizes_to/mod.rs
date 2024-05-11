@@ -368,7 +368,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
                 }
             };
         let output_is_sized_pred = tupled_inputs_and_output.map_bound(|(_, output)| {
-            ty::TraitRef::from_lang_item(tcx, LangItem::Sized, DUMMY_SP, [output])
+            ty::TraitRef::new(tcx, tcx.require_lang_item(LangItem::Sized, None), [output])
         });
 
         let pred = tupled_inputs_and_output
@@ -414,7 +414,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
             )?;
         let output_is_sized_pred = tupled_inputs_and_output_and_coroutine.map_bound(
             |AsyncCallableRelevantTypes { output_coroutine_ty: output_ty, .. }| {
-                ty::TraitRef::from_lang_item(tcx, LangItem::Sized, DUMMY_SP, [output_ty])
+                ty::TraitRef::new(tcx, tcx.require_lang_item(LangItem::Sized, None), [output_ty])
             },
         );
 
@@ -576,10 +576,9 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
                     // and opaque types: If the `self_ty` is `Sized`, then the metadata is `()`.
                     // FIXME(ptr_metadata): This impl overlaps with the other impls and shouldn't
                     // exist. Instead, `Pointee<Metadata = ()>` should be a supertrait of `Sized`.
-                    let sized_predicate = ty::TraitRef::from_lang_item(
+                    let sized_predicate = ty::TraitRef::new(
                         tcx,
-                        LangItem::Sized,
-                        DUMMY_SP,
+                        tcx.require_lang_item(LangItem::Sized, None),
                         [ty::GenericArg::from(goal.predicate.self_ty())],
                     );
                     // FIXME(-Znext-solver=coinductive): Should this be `GoalSource::ImplWhereBound`?

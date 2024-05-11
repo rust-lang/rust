@@ -715,7 +715,7 @@ impl<'a> State<'a> {
                 }
                 self.word("*");
             }
-            ast::UseTreeKind::Nested(items) => {
+            ast::UseTreeKind::Nested { items, .. } => {
                 if !tree.prefix.segments.is_empty() {
                     self.print_path(&tree.prefix, false, 0);
                     self.word("::");
@@ -734,7 +734,7 @@ impl<'a> State<'a> {
                         self.print_use_tree(&use_tree.0);
                         if !is_last {
                             self.word(",");
-                            if let ast::UseTreeKind::Nested(_) = use_tree.0.kind {
+                            if let ast::UseTreeKind::Nested { .. } = use_tree.0.kind {
                                 self.hardbreak();
                             } else {
                                 self.space();

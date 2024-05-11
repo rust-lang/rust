@@ -99,6 +99,7 @@ pub use measureme::EventId;
 use measureme::{EventIdBuilder, Profiler, SerializableString, StringId};
 use parking_lot::RwLock;
 use smallvec::SmallVec;
+use tracing::warn;
 
 bitflags::bitflags! {
     #[derive(Clone, Copy)]

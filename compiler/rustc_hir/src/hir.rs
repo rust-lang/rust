@@ -1308,9 +1308,9 @@ pub struct LetExpr<'hir> {
     pub pat: &'hir Pat<'hir>,
     pub ty: Option<&'hir Ty<'hir>>,
     pub init: &'hir Expr<'hir>,
-    /// `Some` when this let expressions is not in a syntanctically valid location.
+    /// `Recovered::Yes` when this let expressions is not in a syntanctically valid location.
     /// Used to prevent building MIR in such situations.
-    pub is_recovered: Option<ErrorGuaranteed>,
+    pub recovered: ast::Recovered,
 }
 
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
@@ -3030,11 +3030,7 @@ pub enum VariantData<'hir> {
     /// A struct variant.
     ///
     /// E.g., `Bar { .. }` as in `enum Foo { Bar { .. } }`.
-    Struct {
-        fields: &'hir [FieldDef<'hir>],
-        // FIXME: investigate making this a `Option<ErrorGuaranteed>`
-        recovered: bool,
-    },
+    Struct { fields: &'hir [FieldDef<'hir>], recovered: ast::Recovered },
     /// A tuple variant.
     ///
     /// E.g., `Bar(..)` as in `enum Foo { Bar(..) }`.

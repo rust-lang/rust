@@ -6,7 +6,7 @@ use crate::ty::{Align, IndexedVal, Ty, VariantIdx};
 use crate::Error;
 use crate::Opaque;
 use std::fmt::{self, Debug};
-use std::num::NonZeroUsize;
+use std::num::NonZero;
 use std::ops::RangeInclusive;
 
 /// A function ABI definition.
@@ -133,7 +133,7 @@ pub enum FieldsShape {
     Primitive,
 
     /// All fields start at no offset. The `usize` is the field count.
-    Union(NonZeroUsize),
+    Union(NonZero<usize>),
 
     /// Array/vector-like placement, with all fields of identical types.
     Array { stride: Size, count: u64 },

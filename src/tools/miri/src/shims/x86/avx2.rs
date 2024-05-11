@@ -1,5 +1,5 @@
-use crate::rustc_middle::ty::layout::LayoutOf as _;
 use rustc_middle::mir;
+use rustc_middle::ty::layout::LayoutOf as _;
 use rustc_middle::ty::Ty;
 use rustc_span::Symbol;
 use rustc_target::spec::abi::Abi;

@@ -167,7 +167,7 @@ impl LitKind {
 
     pub fn descr(self) -> &'static str {
         match self {
-            Bool => panic!("literal token contains `Lit::Bool`"),
+            Bool => "boolean",
             Byte => "byte",
             Char => "char",
             Integer => "integer",

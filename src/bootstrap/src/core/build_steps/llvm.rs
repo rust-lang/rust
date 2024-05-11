@@ -20,7 +20,9 @@ use std::sync::OnceLock;
 use crate::core::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::core::config::{Config, TargetSelection};
 use crate::utils::channel;
-use crate::utils::helpers::{self, exe, get_clang_cl_resource_dir, output, t, up_to_date};
+use crate::utils::helpers::{
+    self, exe, get_clang_cl_resource_dir, output, t, unhashed_basename, up_to_date,
+};
 use crate::{generate_smart_stamp_hash, CLang, GitRepo, Kind};
 
 use build_helper::ci::CiEnv;
@@ -506,7 +508,7 @@ impl Step for Llvm {
             cfg.define("LLVM_VERSION_SUFFIX", suffix);
         }
 
-        configure_cmake(builder, target, &mut cfg, true, ldflags, &[]);
+        configure_cmake(builder, target, &mut cfg, true, ldflags, &[], &[]);
         configure_llvm(builder, target, &mut cfg);
 
         for (key, val) in &builder.config.llvm_build_config {
@@ -596,6 +598,7 @@ fn configure_cmake(
     use_compiler_launcher: bool,
     mut ldflags: LdFlags,
     extra_compiler_flags: &[&str],
+    suppressed_compiler_flag_prefixes: &[&str],
 ) {
     // Do not print installation messages for up-to-date files.
     // LLVM and LLD builds can produce a lot of those and hit CI limits on log size.
@@ -729,7 +732,17 @@ fn configure_cmake(
     }
 
     cfg.build_arg("-j").build_arg(builder.jobs().to_string());
-    let mut cflags: OsString = builder.cflags(target, GitRepo::Llvm, CLang::C).join(" ").into();
+    let mut cflags: OsString = builder
+        .cflags(target, GitRepo::Llvm, CLang::C)
+        .into_iter()
+        .filter(|flag| {
+            !suppressed_compiler_flag_prefixes
+                .iter()
+                .any(|suppressed_prefix| flag.starts_with(suppressed_prefix))
+        })
+        .collect::<Vec<String>>()
+        .join(" ")
+        .into();
     if let Some(ref s) = builder.config.llvm_cflags {
         cflags.push(" ");
         cflags.push(s);
@@ -742,7 +755,17 @@ fn configure_cmake(
         cflags.push(&format!(" {flag}"));
     }
     cfg.define("CMAKE_C_FLAGS", cflags);
-    let mut cxxflags: OsString = builder.cflags(target, GitRepo::Llvm, CLang::Cxx).join(" ").into();
+    let mut cxxflags: OsString = builder
+        .cflags(target, GitRepo::Llvm, CLang::Cxx)
+        .into_iter()
+        .filter(|flag| {
+            !suppressed_compiler_flag_prefixes
+                .iter()
+                .any(|suppressed_prefix| flag.starts_with(suppressed_prefix))
+        })
+        .collect::<Vec<String>>()
+        .join(" ")
+        .into();
     if let Some(ref s) = builder.config.llvm_cxxflags {
         cxxflags.push(" ");
         cxxflags.push(s);
@@ -921,7 +944,7 @@ impl Step for Lld {
             ldflags.push_all("-Wl,-rpath,'$ORIGIN/../../../'");
         }
 
-        configure_cmake(builder, target, &mut cfg, true, ldflags, &[]);
+        configure_cmake(builder, target, &mut cfg, true, ldflags, &[], &[]);
         configure_llvm(builder, target, &mut cfg);
 
         // Re-use the same flags as llvm to control the level of debug information
@@ -1022,6 +1045,12 @@ impl Step for Sanitizers {
         let use_compiler_launcher = !self.target.contains("apple-darwin");
         let extra_compiler_flags: &[&str] =
             if self.target.contains("apple") { &["-fembed-bitcode=off"] } else { &[] };
+        // Since v1.0.86, the cc crate adds -mmacosx-version-min to the default
+        // flags on MacOS. A long-standing bug in the CMake rules for compiler-rt
+        // causes architecture detection to be skipped when this flag is present,
+        // and compilation fails. https://github.com/llvm/llvm-project/issues/88780
+        let suppressed_compiler_flag_prefixes: &[&str] =
+            if self.target.contains("apple-darwin") { &["-mmacosx-version-min="] } else { &[] };
         configure_cmake(
             builder,
             self.target,
@@ -1029,6 +1058,7 @@ impl Step for Sanitizers {
             use_compiler_launcher,
             LdFlags::default(),
             extra_compiler_flags,
+            suppressed_compiler_flag_prefixes,
         );
 
         t!(fs::create_dir_all(&out_dir));
@@ -1190,7 +1220,7 @@ impl Step for CrtBeginEnd {
 
         let crtbegin_src = builder.src.join("src/llvm-project/compiler-rt/lib/builtins/crtbegin.c");
         let crtend_src = builder.src.join("src/llvm-project/compiler-rt/lib/builtins/crtend.c");
-        if up_to_date(&crtbegin_src, &out_dir.join("crtbegin.o"))
+        if up_to_date(&crtbegin_src, &out_dir.join("crtbeginS.o"))
             && up_to_date(&crtend_src, &out_dir.join("crtendS.o"))
         {
             return out_dir;
@@ -1222,10 +1252,15 @@ impl Step for CrtBeginEnd {
             .define("CRT_HAS_INITFINI_ARRAY", None)
             .define("EH_USE_FRAME_REGISTRY", None);
 
-        cfg.compile("crt");
+        let objs = cfg.compile_intermediates();
+        assert_eq!(objs.len(), 2);
+        for obj in objs {
+            let base_name = unhashed_basename(&obj);
+            assert!(base_name == "crtbegin" || base_name == "crtend");
+            t!(fs::copy(&obj, out_dir.join(format!("{}S.o", base_name))));
+            t!(fs::rename(&obj, out_dir.join(format!("{}.o", base_name))));
+        }
 
-        t!(fs::copy(out_dir.join("crtbegin.o"), out_dir.join("crtbeginS.o")));
-        t!(fs::copy(out_dir.join("crtend.o"), out_dir.join("crtendS.o")));
         out_dir
     }
 }
@@ -1372,9 +1407,9 @@ impl Step for Libunwind {
         for entry in fs::read_dir(&out_dir).unwrap() {
             let file = entry.unwrap().path().canonicalize().unwrap();
             if file.is_file() && file.extension() == Some(OsStr::new("o")) {
-                // file name starts with "Unwind-EHABI", "Unwind-seh" or "libunwind"
-                let file_name = file.file_name().unwrap().to_str().expect("UTF-8 file name");
-                if cpp_sources.iter().any(|f| file_name.starts_with(&f[..f.len() - 4])) {
+                // Object file name without the hash prefix is "Unwind-EHABI", "Unwind-seh" or "libunwind".
+                let base_name = unhashed_basename(&file);
+                if cpp_sources.iter().any(|f| *base_name == f[..f.len() - 4]) {
                     cc_cfg.object(&file);
                     count += 1;
                 }

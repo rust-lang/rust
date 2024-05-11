@@ -39,12 +39,12 @@ impl<'tcx> fmt::Debug for traits::FulfillmentErrorCode<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use traits::FulfillmentErrorCode::*;
         match *self {
-            SelectionError(ref e) => write!(f, "{e:?}"),
-            ProjectionError(ref e) => write!(f, "{e:?}"),
-            SubtypeError(ref a, ref b) => {
+            Select(ref e) => write!(f, "{e:?}"),
+            Project(ref e) => write!(f, "{e:?}"),
+            Subtype(ref a, ref b) => {
                 write!(f, "CodeSubtypeError({a:?}, {b:?})")
             }
-            ConstEquateError(ref a, ref b) => {
+            ConstEquate(ref a, ref b) => {
                 write!(f, "CodeConstEquateError({a:?}, {b:?})")
             }
             Ambiguity { overflow: None } => write!(f, "Ambiguity"),

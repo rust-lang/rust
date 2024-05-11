@@ -133,7 +133,7 @@ fn variance_of_opaque(tcx: TyCtxt<'_>, item_def_id: LocalDefId) -> &[ty::Varianc
         let mut generics = generics;
         while let Some(def_id) = generics.parent {
             generics = tcx.generics_of(def_id);
-            for param in &generics.params {
+            for param in &generics.own_params {
                 match param.kind {
                     ty::GenericParamDefKind::Lifetime => {
                         variances[param.index as usize] = ty::Bivariant;

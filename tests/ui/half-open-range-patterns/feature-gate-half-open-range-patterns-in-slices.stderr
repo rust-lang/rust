@@ -1,5 +1,5 @@
 error[E0658]: `X..` patterns in slices are experimental
-  --> $DIR/feature-gate-half-open-range-patterns-in-slices.rs:5:10
+  --> $DIR/feature-gate-half-open-range-patterns-in-slices.rs:3:10
    |
 LL |     let [a @ 3.., b @ ..3, c @ 4..6, ..] = xs;
    |          ^^^^^^^
@@ -9,7 +9,7 @@ LL |     let [a @ 3.., b @ ..3, c @ 4..6, ..] = xs;
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0005]: refutable pattern in local binding
-  --> $DIR/feature-gate-half-open-range-patterns-in-slices.rs:5:9
+  --> $DIR/feature-gate-half-open-range-patterns-in-slices.rs:3:9
    |
 LL |     let [a @ 3.., b @ ..3, c @ 4..6, ..] = xs;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ pattern `[i32::MIN..=2_i32, ..]` not covered

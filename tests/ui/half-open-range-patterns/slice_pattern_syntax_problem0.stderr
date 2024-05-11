@@ -1,5 +1,5 @@
 error[E0527]: pattern requires 2 elements but array has 8
-  --> $DIR/slice_pattern_syntax_problem0.rs:11:9
+  --> $DIR/slice_pattern_syntax_problem0.rs:10:9
    |
 LL |     let [first_three @ ..3, rest @ 2..] = xs;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected 8 elements

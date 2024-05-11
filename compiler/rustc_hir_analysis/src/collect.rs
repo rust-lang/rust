@@ -14,6 +14,7 @@
 //! At present, however, we do run collection across all items in the
 //! crate as a kind of pass. This should eventually be factored away.
 
+use rustc_ast::Recovered;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::unord::UnordMap;
@@ -1005,10 +1006,7 @@ fn lower_variant(
             vis: tcx.visibility(f.def_id),
         })
         .collect();
-    let recovered = match def {
-        hir::VariantData::Struct { recovered, .. } => *recovered,
-        _ => false,
-    };
+    let recovered = matches!(def, hir::VariantData::Struct { recovered: Recovered::Yes(_), .. });
     ty::VariantDef::new(
         ident.name,
         variant_did.map(LocalDefId::to_def_id),

@@ -20,6 +20,7 @@ use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{AssocItemKind, ForeignItemKind, ItemId, ItemKind, PatKind};
 use rustc_middle::middle::privacy::{EffectiveVisibilities, EffectiveVisibility, Level};
 use rustc_middle::query::Providers;
+use rustc_middle::ty::print::PrintTraitRefExt as _;
 use rustc_middle::ty::GenericArgs;
 use rustc_middle::ty::{self, Const, GenericParamDefKind};
 use rustc_middle::ty::{TraitRef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor};
@@ -787,7 +788,7 @@ impl<'tcx> Visitor<'tcx> for EmbargoVisitor<'tcx> {
 
 impl ReachEverythingInTheInterfaceVisitor<'_, '_> {
     fn generics(&mut self) -> &mut Self {
-        for param in &self.ev.tcx.generics_of(self.item_def_id).params {
+        for param in &self.ev.tcx.generics_of(self.item_def_id).own_params {
             match param.kind {
                 GenericParamDefKind::Lifetime => {}
                 GenericParamDefKind::Type { has_default, .. } => {
@@ -1259,7 +1260,7 @@ struct SearchInterfaceForPrivateItemsVisitor<'tcx> {
 impl SearchInterfaceForPrivateItemsVisitor<'_> {
     fn generics(&mut self) -> &mut Self {
         self.in_primary_interface = true;
-        for param in &self.tcx.generics_of(self.item_def_id).params {
+        for param in &self.tcx.generics_of(self.item_def_id).own_params {
             match param.kind {
                 GenericParamDefKind::Lifetime => {}
                 GenericParamDefKind::Type { has_default, .. } => {

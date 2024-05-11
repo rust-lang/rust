@@ -86,7 +86,14 @@ impl Socket {
                     // flag to atomically create the socket and set it as
                     // CLOEXEC. On Linux this was added in 2.6.27.
                     let fd = cvt(libc::socket(fam, ty | libc::SOCK_CLOEXEC, 0))?;
-                    Ok(Socket(FileDesc::from_raw_fd(fd)))
+                    let socket = Socket(FileDesc::from_raw_fd(fd));
+
+                    // DragonFlyBSD, FreeBSD and NetBSD use `SO_NOSIGPIPE` as a `setsockopt`
+                    // flag to disable `SIGPIPE` emission on socket.
+                    #[cfg(any(target_os = "freebsd", target_os = "netbsd", target_os = "dragonfly"))]
+                    setsockopt(&socket, libc::SOL_SOCKET, libc::SO_NOSIGPIPE, 1)?;
+
+                    Ok(socket)
                 } else {
                     let fd = cvt(libc::socket(fam, ty, 0))?;
                     let fd = FileDesc::from_raw_fd(fd);

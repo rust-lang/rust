@@ -11,7 +11,6 @@ use std::assert_matches::assert_matches;
 
 use itertools::Itertools;
 use rustc_hir as hir;
-use rustc_infer::infer::type_variable::TypeVariableOrigin;
 use rustc_infer::infer::{BoundRegionConversionTime, RegionVariableOrigin};
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty};
@@ -74,9 +73,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 }),
             );
 
-            let next_ty_var = || {
-                self.infcx.next_ty_var(TypeVariableOrigin { span: body.span, param_def_id: None })
-            };
+            let next_ty_var = || self.infcx.next_ty_var(body.span);
             let output_ty = Ty::new_coroutine(
                 self.tcx(),
                 self.tcx().coroutine_for_closure(mir_def_id),

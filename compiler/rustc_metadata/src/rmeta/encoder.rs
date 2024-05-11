@@ -1402,7 +1402,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 let inferred_outlives = self.tcx.inferred_outlives_of(def_id);
                 record_defaulted_array!(self.tables.inferred_outlives_of[def_id] <- inferred_outlives);
 
-                for param in &g.params {
+                for param in &g.own_params {
                     if let ty::GenericParamDefKind::Const { has_default: true, .. } = param.kind {
                         let default = self.tcx.const_param_default(param.def_id);
                         record!(self.tables.const_param_default[param.def_id] <- default);

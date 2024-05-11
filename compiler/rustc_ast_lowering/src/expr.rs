@@ -158,13 +158,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     let ohs = self.lower_expr(ohs);
                     hir::ExprKind::AddrOf(*k, *m, ohs)
                 }
-                ExprKind::Let(pat, scrutinee, span, is_recovered) => {
+                ExprKind::Let(pat, scrutinee, span, recovered) => {
                     hir::ExprKind::Let(self.arena.alloc(hir::LetExpr {
                         span: self.lower_span(*span),
                         pat: self.lower_pat(pat),
                         ty: None,
                         init: self.lower_expr(scrutinee),
-                        is_recovered: *is_recovered,
+                        recovered: *recovered,
                     }))
                 }
                 ExprKind::If(cond, then, else_opt) => {
@@ -581,8 +581,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 self.dcx().emit_err(NeverPatternWithGuard { span: g.span });
             }
 
-            // We add a fake `loop {}` arm body so that it typecks to `!`.
-            // FIXME(never_patterns): Desugar into a call to `unreachable_unchecked`.
+            // We add a fake `loop {}` arm body so that it typecks to `!`. The mir lowering of never
+            // patterns ensures this loop is not reachable.
             let block = self.arena.alloc(hir::Block {
                 stmts: &[],
                 expr: None,

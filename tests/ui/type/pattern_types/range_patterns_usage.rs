@@ -8,7 +8,7 @@
 
 use std::pat::pattern_type;
 
-type X = std::num::NonZeroU32;
+type X = std::num::NonZero<u32>;
 type Y = pattern_type!(u32 is 1..);
 type Z = Option<pattern_type!(u32 is 1..)>;
 struct NonZeroU32New(pattern_type!(u32 is 1..));

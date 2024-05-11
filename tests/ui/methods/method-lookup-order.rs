@@ -17,6 +17,7 @@
 // {mutbar_for_foo, valbar_for_etmut_foo} (which are lower precedent than the inherent `&mut self` method on `Foo`; e.g. b10101 *is* included.
 
 //@ revisions: b00001 b00010 b00011 b00100 b00101 b00110 b00111 b01000 b01001 b01100 b01101 b10000 b10001 b10010 b10011 b10101 b10111 b11000 b11001 b11101
+//@ unused-revision-names: b01010 b01011 b01110 b01111 b10100 b10110 b11010 b11011 b11100 b11110 b11111
 
 //@ compile-flags: --check-cfg=cfg(inherent_mut,bar_for_foo,mutbar_for_foo)
 //@ compile-flags: --check-cfg=cfg(valbar_for_et_foo,valbar_for_etmut_foo)

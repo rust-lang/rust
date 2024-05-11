@@ -123,7 +123,7 @@ fn assert_ty_bounds(
     span: Span,
     assert_path: &[Symbol],
 ) {
-    // Deny anonymous structs or unions to avoid wierd errors.
+    // Deny anonymous structs or unions to avoid weird errors.
     assert!(!ty.kind.is_anon_adt(), "Anonymous structs or unions cannot be type parameters");
     // Generate statement `let _: assert_path<ty>;`.
     let span = cx.with_def_site_ctxt(span);

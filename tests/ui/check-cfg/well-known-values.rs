@@ -43,6 +43,8 @@
     //~^ WARN unexpected `cfg` condition value
     relocation_model = "_UNEXPECTED_VALUE",
     //~^ WARN unexpected `cfg` condition value
+    rustfmt = "_UNEXPECTED_VALUE",
+    //~^ WARN unexpected `cfg` condition value
     sanitize = "_UNEXPECTED_VALUE",
     //~^ WARN unexpected `cfg` condition value
     target_abi = "_UNEXPECTED_VALUE",
@@ -114,5 +116,8 @@ fn doc() {}
 
 #[cfg(clippy)]
 fn clippy() {}
+
+#[cfg_attr(rustfmt, rustfmt::skip)]
+fn rustfmt() {}
 
 fn main() {}

@@ -14,6 +14,9 @@ use rustc_target::abi::{self, Abi, Align, Size};
 
 use std::fmt;
 
+use arrayvec::ArrayVec;
+use either::Either;
+
 /// The representation of a Rust value. The enum variant is in fact
 /// uniquely determined by the value's type, but is kept as a
 /// safety check.
@@ -56,6 +59,33 @@ pub enum OperandValue<V> {
     /// `is_zst` on its `Layout` returns `true`. Note however that
     /// these values can still require alignment.
     ZeroSized,
+}
+
+impl<V> OperandValue<V> {
+    /// If this is ZeroSized/Immediate/Pair, return an array of the 0/1/2 values.
+    /// If this is Ref, return the place.
+    #[inline]
+    pub fn immediates_or_place(self) -> Either<ArrayVec<V, 2>, PlaceValue<V>> {
+        match self {
+            OperandValue::ZeroSized => Either::Left(ArrayVec::new()),
+            OperandValue::Immediate(a) => Either::Left(ArrayVec::from_iter([a])),
+            OperandValue::Pair(a, b) => Either::Left([a, b].into()),
+            OperandValue::Ref(p) => Either::Right(p),
+        }
+    }
+
+    /// Given an array of 0/1/2 immediate values, return ZeroSized/Immediate/Pair.
+    #[inline]
+    pub fn from_immediates(immediates: ArrayVec<V, 2>) -> Self {
+        let mut it = immediates.into_iter();
+        let Some(a) = it.next() else {
+            return OperandValue::ZeroSized;
+        };
+        let Some(b) = it.next() else {
+            return OperandValue::Immediate(a);
+        };
+        OperandValue::Pair(a, b)
+    }
 }
 
 /// An `OperandRef` is an "SSA" reference to a Rust value, along with
@@ -215,8 +245,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
             .layout
             .ty
             .builtin_deref(true)
-            .unwrap_or_else(|| bug!("deref of non-pointer {:?}", self))
-            .ty;
+            .unwrap_or_else(|| bug!("deref of non-pointer {:?}", self));
 
         let (llptr, llextra) = match self.val {
             OperandValue::Immediate(llptr) => (llptr, None),
@@ -455,8 +484,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandValue<V> {
             .layout
             .ty
             .builtin_deref(true)
-            .unwrap_or_else(|| bug!("indirect_dest has non-pointer type: {:?}", indirect_dest))
-            .ty;
+            .unwrap_or_else(|| bug!("indirect_dest has non-pointer type: {:?}", indirect_dest));
 
         let OperandValue::Ref(PlaceValue { llval: llptr, llextra: Some(llextra), .. }) = self
         else {

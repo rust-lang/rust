@@ -13,7 +13,8 @@ fn main() {
     let mut stable_path = PathBuf::from(env!("TMPDIR"));
     stable_path.push("libstable.rmeta");
 
-    let output = rustc().input("main.rs").emit("metadata").extern_("stable", &stable_path).output();
+    let output =
+        rustc().input("main.rs").emit("metadata").extern_("stable", &stable_path).command_output();
 
     let stderr = String::from_utf8_lossy(&output.stderr);
     let version = include_str!(concat!(env!("S"), "/src/version"));

@@ -9,7 +9,6 @@ use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::pat_util::EnumerateAndAdjustIterator;
 use rustc_hir::{self as hir, BindingMode, ByRef, HirId, Mutability, Pat, PatKind};
 use rustc_infer::infer;
-use rustc_infer::infer::type_variable::TypeVariableOrigin;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::{self, Ty, TypeVisitableExt};
 use rustc_session::lint::builtin::NON_EXHAUSTIVE_OMITTED_PATTERNS;
@@ -19,7 +18,7 @@ use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{BytePos, Span, DUMMY_SP};
 use rustc_target::abi::FieldIdx;
-use rustc_trait_selection::traits::{ObligationCause, Pattern};
+use rustc_trait_selection::traits::{ObligationCause, ObligationCauseCode};
 use ty::VariantDef;
 
 use std::cmp;
@@ -89,8 +88,11 @@ struct PatInfo<'tcx, 'a> {
 
 impl<'tcx> FnCtxt<'_, 'tcx> {
     fn pattern_cause(&self, ti: TopInfo<'tcx>, cause_span: Span) -> ObligationCause<'tcx> {
-        let code =
-            Pattern { span: ti.span, root_ty: ti.expected, origin_expr: ti.origin_expr.is_some() };
+        let code = ObligationCauseCode::Pattern {
+            span: ti.span,
+            root_ty: ti.expected,
+            origin_expr: ti.origin_expr.is_some(),
+        };
         self.cause(cause_span, code)
     }
 
@@ -919,8 +921,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         inner: &Pat<'_>,
     ) -> Result<(), ErrorGuaranteed> {
         if let PatKind::Binding(..) = inner.kind
-            && let Some(mt) = self.shallow_resolve(expected).builtin_deref(true)
-            && let ty::Dynamic(..) = mt.ty.kind()
+            && let Some(pointee_ty) = self.shallow_resolve(expected).builtin_deref(true)
+            && let ty::Dynamic(..) = pointee_ty.kind()
         {
             // This is "x = dyn SomeTrait" being reduced from
             // "let &x = &dyn SomeTrait" or "let box x = Box<dyn SomeTrait>", an error.
@@ -1419,8 +1421,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
         let max_len = cmp::max(expected_len, elements.len());
 
-        let element_tys_iter =
-            (0..max_len).map(|_| self.next_ty_var(TypeVariableOrigin { param_def_id: None, span }));
+        let element_tys_iter = (0..max_len).map(|_| self.next_ty_var(span));
         let element_tys = tcx.mk_type_list_from_iter(element_tys_iter);
         let pat_ty = Ty::new_tup(tcx, element_tys);
         if let Some(err) = self.demand_eqtype_pat_diag(span, expected, pat_ty, pat_info.top_info) {
@@ -1676,7 +1677,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         unmentioned_fields: &mut Vec<(&'tcx ty::FieldDef, Ident)>,
         pat: &'tcx Pat<'tcx>,
         variant: &ty::VariantDef,
-        args: &'tcx ty::List<ty::GenericArg<'tcx>>,
+        args: ty::GenericArgsRef<'tcx>,
     ) -> Diag<'tcx> {
         let tcx = self.tcx;
         let (field_names, t, plural) = if let [field] = inexistent_fields {
@@ -2046,8 +2047,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Ok(()) => {
                 // Here, `demand::subtype` is good enough, but I don't
                 // think any errors can be introduced by using `demand::eqtype`.
-                let inner_ty =
-                    self.next_ty_var(TypeVariableOrigin { param_def_id: None, span: inner.span });
+                let inner_ty = self.next_ty_var(inner.span);
                 let box_ty = Ty::new_box(tcx, inner_ty);
                 self.demand_eqtype_pat(span, expected, box_ty, pat_info.top_info);
                 (box_ty, inner_ty)
@@ -2142,10 +2142,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     .insert(pat.hir_id);
                                 (expected, expected)
                             } else {
-                                let inner_ty = self.next_ty_var(TypeVariableOrigin {
-                                    param_def_id: None,
-                                    span: inner.span,
-                                });
+                                let inner_ty = self.next_ty_var(inner.span);
                                 let ref_ty = self.new_ref_ty(pat.span, mutbl, inner_ty);
                                 debug!("check_pat_ref: demanding {:?} = {:?}", expected, ref_ty);
                                 let err = self.demand_eqtype_pat_diag(
@@ -2194,8 +2191,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let tcx = self.tcx;
         let len = before.len();
-        let ty_var_origin = TypeVariableOrigin { param_def_id: None, span };
-        let inner_ty = self.next_ty_var(ty_var_origin);
+        let inner_ty = self.next_ty_var(span);
 
         Some(Ty::new_array(tcx, inner_ty, len.try_into().unwrap()))
     }

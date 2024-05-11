@@ -1,3 +1,6 @@
+# This test checks that cdylibs can link against dylibs as dependencies, after this restriction was disabled.
+# See https://github.com/rust-lang/rust/commit/72aaa3a414d17aa0c4f19feafa5bab5f84b60e63
+
 # ignore-cross-compile
 include ../tools.mk
 

@@ -239,3 +239,46 @@ window.addEventListener("pageshow", ev => {
         setTimeout(updateSidebarWidth, 0);
     }
 });
+
+// Custom elements are used to insert some JS-dependent features into Rustdoc,
+// because the [parser] runs the connected callback
+// synchronously. It needs to be added synchronously so that nothing below it
+// becomes visible until after it's done. Otherwise, you get layout jank.
+//
+// That's also why this is in storage.js and not main.js.
+//
+// [parser]: https://html.spec.whatwg.org/multipage/parsing.html
+class RustdocSearchElement extends HTMLElement {
+    constructor() {
+        super();
+    }
+    connectedCallback() {
+        const rootPath = getVar("root-path");
+        const currentCrate = getVar("current-crate");
+        this.innerHTML = `<nav class="sub">
+            <form class="search-form">
+                <span></span> <!-- This empty span is a hacky fix for Safari - See #93184 -->
+                <div id="sidebar-button" tabindex="-1">
+                    <a href="${rootPath}${currentCrate}/all.html" title="show sidebar"></a>
+                </div>
+                <input
+                    class="search-input"
+                    name="search"
+                    aria-label="Run search in the documentation"
+                    autocomplete="off"
+                    spellcheck="false"
+                    placeholder="Type ‘S’ or ‘/’ to search, ‘?’ for more options…"
+                    type="search">
+                <div id="help-button" tabindex="-1">
+                    <a href="${rootPath}help.html" title="help">?</a>
+                </div>
+                <div id="settings-menu" tabindex="-1">
+                    <a href="${rootPath}settings.html" title="settings">
+                        Settings
+                    </a>
+                </div>
+            </form>
+        </nav>`;
+    }
+}
+window.customElements.define("rustdoc-search", RustdocSearchElement);

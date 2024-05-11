@@ -540,7 +540,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     //                \-------/
                     //
                     let virtual_drop = Instance {
-                        def: ty::InstanceDef::Virtual(drop_fn.def_id(), 0),
+                        def: ty::InstanceDef::Virtual(drop_fn.def_id(), 0), // idx 0: the drop function
                         args: drop_fn.args,
                     };
                     debug!("ty = {:?}", ty);
@@ -581,7 +581,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     //
                     // SO THEN WE CAN USE THE ABOVE CODE.
                     let virtual_drop = Instance {
-                        def: ty::InstanceDef::Virtual(drop_fn.def_id(), 0),
+                        def: ty::InstanceDef::Virtual(drop_fn.def_id(), 0), // idx 0: the drop function
                         args: drop_fn.args,
                     };
                     debug!("ty = {:?}", ty);
@@ -649,8 +649,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             return helper.funclet_br(self, bx, target, mergeable_succ);
         }
 
-        // Pass the condition through llvm.expect for branch hinting.
-        let cond = bx.expect(cond, expected);
+        // Because we're branching to a panic block (either a `#[cold]` one
+        // or an inlined abort), there's no need to `expect` it.
 
         // Create the failure block and the conditional branch to it.
         let lltarget = helper.llbb_with_cleanup(self, target);
@@ -1060,7 +1060,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
                         // Make sure that we've actually unwrapped the rcvr down
                         // to a pointer or ref to `dyn* Trait`.
-                        if !op.layout.ty.builtin_deref(true).unwrap().ty.is_dyn_star() {
+                        if !op.layout.ty.builtin_deref(true).unwrap().is_dyn_star() {
                             span_bug!(span, "can't codegen a virtual call on {:#?}", op);
                         }
                         let place = op.deref(bx.cx());

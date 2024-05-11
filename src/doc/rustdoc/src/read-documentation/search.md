@@ -146,6 +146,7 @@ and number of matches. For example, a function with the signature
 `fn read_all(&mut self: impl Read) -> Result<Vec<u8>, Error>`
 will match these queries:
 
+* `&mut Read -> Result<Vec<u8>, Error>`
 * `Read -> Result<Vec<u8>, Error>`
 * `Read -> Result<Error, Vec>`
 * `Read -> Result<Vec<u8>>`
@@ -166,6 +167,10 @@ but you need to know which one you want.
 
 | Shorthand        | Explicit names                                    |
 | ---------------- | ------------------------------------------------- |
+| `&`              | `primitive:reference`                             |
+| `&T`             | `primitive:reference<T>`                          |
+| `&mut`           | `primitive:reference<keyword:mut>`                |
+| `&mut T`         | `primitive:reference<keyword:mut, T>`             |
 | `[]`             | `primitive:slice` and/or `primitive:array`        |
 | `[T]`            | `primitive:slice<T>` and/or `primitive:array<T>`  |
 | `()`             | `primitive:unit` and/or `primitive:tuple`         |
@@ -253,7 +258,8 @@ ident = *(ALPHA / DIGIT / "_")
 path = ident *(DOUBLE-COLON ident) [BANG]
 slice-like = OPEN-SQUARE-BRACKET [ nonempty-arg-list ] CLOSE-SQUARE-BRACKET
 tuple-like = OPEN-PAREN [ nonempty-arg-list ] CLOSE-PAREN
-arg = [type-filter *WS COLON *WS] (path [generics] / slice-like / tuple-like)
+borrow-ref = AMP *WS [MUT] *WS [arg]
+arg = [type-filter *WS COLON *WS] (path [generics] / slice-like / tuple-like / borrow-ref)
 type-sep = COMMA/WS *(COMMA/WS)
 nonempty-arg-list = *(type-sep) arg *(type-sep arg) *(type-sep) [ return-args ]
 generic-arg-list = *(type-sep) arg [ EQUAL arg ] *(type-sep arg [ EQUAL arg ]) *(type-sep)
@@ -310,6 +316,8 @@ COMMA = ","
 RETURN-ARROW = "->"
 EQUAL = "="
 BANG = "!"
+AMP = "&"
+MUT = "mut"
 
 ALPHA = %x41-5A / %x61-7A ; A-Z / a-z
 DIGIT = %x30-39

@@ -254,6 +254,10 @@
 # executing the debuginfo test suite.
 #gdb = "gdb"
 
+# The path to (or name of) the LLDB executable to use. This is only used for
+# executing the debuginfo test suite.
+#lldb = "lldb"
+
 # The node.js executable to use. Note that this is only used for the emscripten
 # target when running tests, otherwise this can be omitted.
 #nodejs = "node"

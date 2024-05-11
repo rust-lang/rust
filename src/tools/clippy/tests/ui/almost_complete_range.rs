@@ -1,7 +1,6 @@
 //@edition:2018
 //@aux-build:proc_macros.rs
 
-#![feature(exclusive_range_pattern)]
 #![feature(stmt_expr_attributes)]
 #![warn(clippy::almost_complete_range)]
 #![allow(ellipsis_inclusive_range_patterns)]

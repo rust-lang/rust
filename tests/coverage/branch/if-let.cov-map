@@ -1,13 +1,16 @@
 Function name: if_let::if_let
-Raw bytes (38): 0x[01, 01, 02, 05, 09, 09, 02, 06, 01, 0c, 01, 01, 10, 02, 03, 11, 00, 12, 05, 00, 16, 00, 1b, 02, 00, 1c, 02, 06, 09, 02, 0c, 02, 06, 07, 03, 05, 01, 02]
+Raw bytes (45): 0x[01, 01, 02, 05, 09, 09, 02, 07, 01, 0c, 01, 01, 10, 20, 02, 09, 03, 0c, 00, 13, 02, 00, 11, 00, 12, 05, 00, 16, 00, 1b, 02, 00, 1c, 02, 06, 09, 02, 0c, 02, 06, 07, 03, 05, 01, 02]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 2
 - expression 0 operands: lhs = Counter(1), rhs = Counter(2)
 - expression 1 operands: lhs = Counter(2), rhs = Expression(0, Sub)
-Number of file 0 mappings: 6
+Number of file 0 mappings: 7
 - Code(Counter(0)) at (prev + 12, 1) to (start + 1, 16)
-- Code(Expression(0, Sub)) at (prev + 3, 17) to (start + 0, 18)
+- Branch { true: Expression(0, Sub), false: Counter(2) } at (prev + 3, 12) to (start + 0, 19)
+    true  = (c1 - c2)
+    false = c2
+- Code(Expression(0, Sub)) at (prev + 0, 17) to (start + 0, 18)
     = (c1 - c2)
 - Code(Counter(1)) at (prev + 0, 22) to (start + 0, 27)
 - Code(Expression(0, Sub)) at (prev + 0, 28) to (start + 2, 6)
@@ -17,7 +20,7 @@ Number of file 0 mappings: 6
     = (c2 + (c1 - c2))
 
 Function name: if_let::if_let_chain
-Raw bytes (52): 0x[01, 01, 04, 01, 05, 05, 09, 0f, 0d, 05, 09, 08, 01, 17, 01, 00, 33, 02, 01, 11, 00, 12, 01, 00, 16, 00, 17, 0d, 01, 15, 00, 16, 02, 00, 1a, 00, 1b, 0d, 01, 05, 03, 06, 0f, 03, 0c, 02, 06, 0b, 03, 05, 01, 02]
+Raw bytes (66): 0x[01, 01, 04, 01, 05, 05, 09, 0f, 0d, 05, 09, 0a, 01, 17, 01, 00, 33, 20, 02, 05, 01, 0c, 00, 13, 02, 00, 11, 00, 12, 01, 00, 16, 00, 17, 20, 0d, 09, 01, 10, 00, 17, 0d, 00, 15, 00, 16, 02, 00, 1a, 00, 1b, 0d, 01, 05, 03, 06, 0f, 03, 0c, 02, 06, 0b, 03, 05, 01, 02]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 4
@@ -25,12 +28,18 @@ Number of expressions: 4
 - expression 1 operands: lhs = Counter(1), rhs = Counter(2)
 - expression 2 operands: lhs = Expression(3, Add), rhs = Counter(3)
 - expression 3 operands: lhs = Counter(1), rhs = Counter(2)
-Number of file 0 mappings: 8
+Number of file 0 mappings: 10
 - Code(Counter(0)) at (prev + 23, 1) to (start + 0, 51)
-- Code(Expression(0, Sub)) at (prev + 1, 17) to (start + 0, 18)
+- Branch { true: Expression(0, Sub), false: Counter(1) } at (prev + 1, 12) to (start + 0, 19)
+    true  = (c0 - c1)
+    false = c1
+- Code(Expression(0, Sub)) at (prev + 0, 17) to (start + 0, 18)
     = (c0 - c1)
 - Code(Counter(0)) at (prev + 0, 22) to (start + 0, 23)
-- Code(Counter(3)) at (prev + 1, 21) to (start + 0, 22)
+- Branch { true: Counter(3), false: Counter(2) } at (prev + 1, 16) to (start + 0, 23)
+    true  = c3
+    false = c2
+- Code(Counter(3)) at (prev + 0, 21) to (start + 0, 22)
 - Code(Expression(0, Sub)) at (prev + 0, 26) to (start + 0, 27)
     = (c0 - c1)
 - Code(Counter(3)) at (prev + 1, 5) to (start + 3, 6)

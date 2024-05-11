@@ -176,7 +176,7 @@ fn qpath_certainty(cx: &LateContext<'_>, qpath: &QPath<'_>, resolves_to_type: bo
             .get(*lang_item)
             .map_or(Certainty::Uncertain, |def_id| {
                 let generics = cx.tcx.generics_of(def_id);
-                if generics.parent_count == 0 && generics.params.is_empty() {
+                if generics.parent_count == 0 && generics.own_params.is_empty() {
                     Certainty::Certain(if resolves_to_type { Some(def_id) } else { None })
                 } else {
                     Certainty::Uncertain
@@ -206,7 +206,7 @@ fn path_segment_certainty(
             // Checking `res_generics_def_id(..)` before calling `generics_of` avoids an ICE.
             if cx.tcx.res_generics_def_id(path_segment.res).is_some() {
                 let generics = cx.tcx.generics_of(def_id);
-                let count = generics.params.len() - usize::from(generics.host_effect_index.is_some());
+                let count = generics.own_params.len() - usize::from(generics.host_effect_index.is_some());
                 let lhs = if (parent_certainty.is_certain() || generics.parent_count == 0) && count == 0 {
                     Certainty::Certain(None)
                 } else {
@@ -299,7 +299,7 @@ fn type_is_inferable_from_arguments(cx: &LateContext<'_>, expr: &Expr<'_>) -> bo
     let fn_sig = cx.tcx.fn_sig(callee_def_id).skip_binder();
 
     // Check that all type parameters appear in the functions input types.
-    (0..(generics.parent_count + generics.params.len()) as u32).all(|index| {
+    (0..(generics.parent_count + generics.own_params.len()) as u32).all(|index| {
         Some(index as usize) == generics.host_effect_index
             || fn_sig
                 .inputs()

@@ -13,9 +13,9 @@ use super::util;
 use super::util::closure_trait_ref_and_return_type;
 use super::wf;
 use super::{
-    ImplDerivedObligation, ImplDerivedObligationCause, Normalized, Obligation, ObligationCause,
-    ObligationCauseCode, Overflow, PolyTraitObligation, PredicateObligation, Selection,
-    SelectionError, SelectionResult, TraitQueryMode,
+    ImplDerivedCause, Normalized, Obligation, ObligationCause, ObligationCauseCode, Overflow,
+    PolyTraitObligation, PredicateObligation, Selection, SelectionError, SelectionResult,
+    TraitQueryMode,
 };
 
 use crate::infer::{InferCtxt, InferOk, TypeFreshener};
@@ -41,6 +41,7 @@ use rustc_middle::dep_graph::DepNodeIndex;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::_match::MatchAgainstFreshVars;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
+use rustc_middle::ty::print::PrintTraitRefExt as _;
 use rustc_middle::ty::relate::TypeRelation;
 use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::{self, PolyProjectionPredicate, ToPredicate};
@@ -1777,7 +1778,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // If this type is a GAT, and of the GAT args resolve to something new,
             // that means that we must have newly inferred something about the GAT.
             // We should give up in that case.
-            if !generics.params.is_empty()
+            if !generics.own_params.is_empty()
                 && obligation.predicate.args[generics.parent_count..].iter().any(|&p| {
                     p.has_non_region_infer() && self.infcx.resolve_vars_if_possible(p) != p
                 })
@@ -2441,7 +2442,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                     });
 
                 let tcx = self.tcx();
-                let trait_ref = if tcx.generics_of(trait_def_id).params.len() == 1 {
+                let trait_ref = if tcx.generics_of(trait_def_id).own_params.len() == 1 {
                     ty::TraitRef::new(tcx, trait_def_id, [normalized_ty])
                 } else {
                     // If this is an ill-formed auto/built-in trait, then synthesize
@@ -2771,7 +2772,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                     cause.clone()
                 } else {
                     cause.clone().derived_cause(parent_trait_pred, |derived| {
-                        ImplDerivedObligation(Box::new(ImplDerivedObligationCause {
+                        ObligationCauseCode::ImplDerived(Box::new(ImplDerivedCause {
                             derived,
                             impl_or_alias_def_id: def_id,
                             impl_def_predicate_index: Some(index),

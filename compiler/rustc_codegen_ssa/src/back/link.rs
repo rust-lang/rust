@@ -3127,7 +3127,13 @@ fn add_lld_args(
 
     // 2. Implement the "linker flavor" part of this feature by asking `cc` to use some kind of
     // `lld` as the linker.
-    cmd.arg("-fuse-ld=lld");
+    //
+    // Note that wasm targets skip this step since the only option there anyway
+    // is to use LLD but the `wasm32-wasip2` target relies on a wrapper around
+    // this, `wasm-component-ld`, which is overridden if this option is passed.
+    if !sess.target.is_like_wasm {
+        cmd.arg("-fuse-ld=lld");
+    }
 
     if !flavor.is_gnu() {
         // Tell clang to use a non-default LLD flavor.

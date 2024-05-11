@@ -583,7 +583,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
         let element_type_index = unsafe { llvm::LLVMRustGetElementTypeArgIndex(callsite) };
         if element_type_index >= 0 {
             let arg_ty = self.args[element_type_index as usize].layout.ty;
-            let pointee_ty = arg_ty.builtin_deref(true).expect("Must be pointer argument").ty;
+            let pointee_ty = arg_ty.builtin_deref(true).expect("Must be pointer argument");
             let element_type_attr = unsafe {
                 llvm::LLVMRustCreateElementTypeAttr(bx.llcx, bx.layout_of(pointee_ty).llvm_type(bx))
             };

@@ -164,9 +164,9 @@ pub(super) fn unexpected_cfg_name(
 
     if is_from_cargo {
         if !is_feature_cfg {
-            diag.help(format!("consider using a Cargo feature instead or adding `println!(\"cargo:rustc-check-cfg={inst}\");` to the top of a `build.rs`"));
+            diag.help(format!("consider using a Cargo feature instead or adding `println!(\"cargo::rustc-check-cfg={inst}\");` to the top of the `build.rs`"));
         }
-        diag.note("see <https://doc.rust-lang.org/nightly/cargo/reference/unstable.html#check-cfg> for more information about checking conditional configuration");
+        diag.note("see <https://doc.rust-lang.org/nightly/cargo/reference/build-scripts.html#rustc-check-cfg> for more information about checking conditional configuration");
     } else {
         diag.help(format!("to expect this configuration use `--check-cfg={inst}`"));
         diag.note("see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration");
@@ -266,9 +266,9 @@ pub(super) fn unexpected_cfg_value(
                 diag.help("consider defining some features in `Cargo.toml`");
             }
         } else if !is_cfg_a_well_know_name {
-            diag.help(format!("consider using a Cargo feature instead or adding `println!(\"cargo:rustc-check-cfg={inst}\");` to the top of a `build.rs`"));
+            diag.help(format!("consider using a Cargo feature instead or adding `println!(\"cargo::rustc-check-cfg={inst}\");` to the top of the `build.rs`"));
         }
-        diag.note("see <https://doc.rust-lang.org/nightly/cargo/reference/unstable.html#check-cfg> for more information about checking conditional configuration");
+        diag.note("see <https://doc.rust-lang.org/nightly/cargo/reference/build-scripts.html#rustc-check-cfg> for more information about checking conditional configuration");
     } else {
         if !is_cfg_a_well_know_name {
             diag.help(format!("to expect this configuration use `--check-cfg={inst}`"));

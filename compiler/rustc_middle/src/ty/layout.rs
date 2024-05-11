@@ -114,16 +114,35 @@ impl Integer {
     }
 }
 
+#[extension(pub trait FloatExt)]
+impl Float {
+    #[inline]
+    fn to_ty<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
+        match *self {
+            F16 => tcx.types.f16,
+            F32 => tcx.types.f32,
+            F64 => tcx.types.f64,
+            F128 => tcx.types.f128,
+        }
+    }
+
+    fn from_float_ty(fty: ty::FloatTy) -> Self {
+        match fty {
+            ty::FloatTy::F16 => F16,
+            ty::FloatTy::F32 => F32,
+            ty::FloatTy::F64 => F64,
+            ty::FloatTy::F128 => F128,
+        }
+    }
+}
+
 #[extension(pub trait PrimitiveExt)]
 impl Primitive {
     #[inline]
     fn to_ty<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         match *self {
             Int(i, signed) => i.to_ty(tcx, signed),
-            F16 => tcx.types.f16,
-            F32 => tcx.types.f32,
-            F64 => tcx.types.f64,
-            F128 => tcx.types.f128,
+            Float(f) => f.to_ty(tcx),
             // FIXME(erikdesjardins): handle non-default addrspace ptr sizes
             Pointer(_) => Ty::new_mut_ptr(tcx, tcx.types.unit),
         }
@@ -140,7 +159,7 @@ impl Primitive {
                 let signed = false;
                 tcx.data_layout().ptr_sized_integer().to_ty(tcx, signed)
             }
-            F16 | F32 | F64 | F128 => bug!("floats do not have an int type"),
+            Float(_) => bug!("floats do not have an int type"),
         }
     }
 }
@@ -333,7 +352,23 @@ impl<'tcx> SizeSkeleton<'tcx> {
         match *ty.kind() {
             ty::Ref(_, pointee, _) | ty::RawPtr(pointee, _) => {
                 let non_zero = !ty.is_unsafe_ptr();
-                let tail = tcx.struct_tail_erasing_lifetimes(pointee, param_env);
+
+                let tail = tcx.struct_tail_with_normalize(
+                    pointee,
+                    |ty| match tcx.try_normalize_erasing_regions(param_env, ty) {
+                        Ok(ty) => ty,
+                        Err(e) => Ty::new_error_with_message(
+                            tcx,
+                            DUMMY_SP,
+                            format!(
+                                "normalization failed for {} but no errors reported",
+                                e.get_type_for_failure()
+                            ),
+                        ),
+                    },
+                    || {},
+                );
+
                 match tail.kind() {
                     ty::Param(_) | ty::Alias(ty::Projection | ty::Inherent, _) => {
                         debug_assert!(tail.has_non_region_param());

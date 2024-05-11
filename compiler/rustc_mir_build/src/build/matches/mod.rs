@@ -1016,6 +1016,9 @@ struct PatternExtraData<'tcx> {
 
     /// Types that must be asserted.
     ascriptions: Vec<Ascription<'tcx>>,
+
+    /// Whether this corresponds to a never pattern.
+    is_never: bool,
 }
 
 impl<'tcx> PatternExtraData<'tcx> {
@@ -1041,12 +1044,14 @@ impl<'tcx, 'pat> FlatPat<'pat, 'tcx> {
         pattern: &'pat Pat<'tcx>,
         cx: &mut Builder<'_, 'tcx>,
     ) -> Self {
+        let is_never = pattern.is_never_pattern();
         let mut flat_pat = FlatPat {
             match_pairs: vec![MatchPair::new(place, pattern, cx)],
             extra_data: PatternExtraData {
                 span: pattern.span,
                 bindings: Vec::new(),
                 ascriptions: Vec::new(),
+                is_never,
             },
         };
         cx.simplify_match_pairs(&mut flat_pat.match_pairs, &mut flat_pat.extra_data);
@@ -1062,6 +1067,8 @@ struct Candidate<'pat, 'tcx> {
     match_pairs: Vec<MatchPair<'pat, 'tcx>>,
 
     /// ...and if this is non-empty, one of these subcandidates also has to match...
+    // Invariant: at the end of the algorithm, this must never contain a `is_never` candidate
+    // because that would break binding consistency.
     subcandidates: Vec<Candidate<'pat, 'tcx>>,
 
     /// ...and the guard must be evaluated if there is one.
@@ -1172,6 +1179,7 @@ enum TestCase<'pat, 'tcx> {
     Range(&'pat PatRange<'tcx>),
     Slice { len: usize, variable_length: bool },
     Deref { temp: Place<'tcx>, mutability: Mutability },
+    Never,
     Or { pats: Box<[FlatPat<'pat, 'tcx>]> },
 }
 
@@ -1238,6 +1246,9 @@ enum TestKind<'tcx> {
         temp: Place<'tcx>,
         mutability: Mutability,
     },
+
+    /// Assert unreachability of never patterns.
+    Never,
 }
 
 /// A test to perform to determine which [`Candidate`] matches a value.
@@ -1662,6 +1673,27 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 self.cfg.goto(or_block, source_info, any_matches);
             }
             candidate.pre_binding_block = Some(any_matches);
+        } else {
+            // Never subcandidates may have a set of bindings inconsistent with their siblings,
+            // which would break later code. So we filter them out. Note that we can't filter out
+            // top-level candidates this way.
+            candidate.subcandidates.retain_mut(|candidate| {
+                if candidate.extra_data.is_never {
+                    candidate.visit_leaves(|subcandidate| {
+                        let block = subcandidate.pre_binding_block.unwrap();
+                        // That block is already unreachable but needs a terminator to make the MIR well-formed.
+                        let source_info = self.source_info(subcandidate.extra_data.span);
+                        self.cfg.terminate(block, source_info, TerminatorKind::Unreachable);
+                    });
+                    false
+                } else {
+                    true
+                }
+            });
+            if candidate.subcandidates.is_empty() {
+                // If `candidate` has become a leaf candidate, ensure it has a `pre_binding_block`.
+                candidate.pre_binding_block = Some(self.cfg.start_new_block());
+            }
         }
     }
 
@@ -1968,6 +2000,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             false,
         );
 
+        // If branch coverage is enabled, record this branch.
+        self.visit_coverage_conditional_let(pat, post_guard_block, otherwise_post_guard_block);
+
         post_guard_block.unit()
     }
 
@@ -2006,6 +2041,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 candidate_source_info,
             );
             block = fresh_block;
+        }
+
+        if candidate.extra_data.is_never {
+            // This arm has a dummy body, we don't need to generate code for it. `block` is already
+            // unreachable (except via false edge).
+            let source_info = self.source_info(candidate.extra_data.span);
+            self.cfg.terminate(block, source_info, TerminatorKind::Unreachable);
+            return self.cfg.start_new_block();
         }
 
         self.ascribe_types(
@@ -2452,6 +2495,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 None,
                 true,
             );
+
+            // If branch coverage is enabled, record this branch.
+            this.visit_coverage_conditional_let(pattern, matching, failure);
+
             this.break_for_else(failure, this.source_info(initializer_span));
             matching.unit()
         });

@@ -1,21 +1,20 @@
-error[E0277]: the trait bound `X: IncompleteGuidance<_, _>` is not satisfied
+error[E0277]: the trait bound `A<X>: Trait<_, _, _>` is not satisfied
   --> $DIR/incompleteness-unstable-result.rs:63:19
    |
 LL |     impls_trait::<A<X>, _, _, _>();
-   |                   ^^^^ the trait `IncompleteGuidance<_, _>` is not implemented for `X`, which is required by `A<X>: Trait<_, _, _>`
+   |                   ^^^^ the trait `Trait<_, _, _>` is not implemented for `A<X>`, which is required by `A<X>: Trait<_, _, _>`
    |
-   = help: the following other types implement trait `IncompleteGuidance<T, V>`:
-             <T as IncompleteGuidance<U, i16>>
-             <T as IncompleteGuidance<U, i8>>
-             <T as IncompleteGuidance<U, u8>>
-note: required for `A<X>` to implement `Trait<_, _, u8>`
+   = help: the trait `Trait<U, V, D>` is implemented for `A<T>`
+note: required for `A<X>` to implement `Trait<_, _, _>`
   --> $DIR/incompleteness-unstable-result.rs:32:50
    |
 LL | impl<T: ?Sized, U: ?Sized, V: ?Sized, D: ?Sized> Trait<U, V, D> for A<T>
    |                                                  ^^^^^^^^^^^^^^     ^^^^
-LL | where
-LL |     T: IncompleteGuidance<U, V>,
-   |        ------------------------ unsatisfied trait bound introduced here
+...
+LL |     A<T>: Trait<U, D, V>,
+   |           -------------- unsatisfied trait bound introduced here
+   = note: 8 redundant requirements hidden
+   = note: required for `A<X>` to implement `Trait<_, _, _>`
 note: required by a bound in `impls_trait`
   --> $DIR/incompleteness-unstable-result.rs:51:28
    |

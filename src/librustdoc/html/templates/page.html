@@ -117,30 +117,9 @@
     <div class="sidebar-resizer"></div> {# #}
     <main> {# #}
         {% if page.css_class != "src" %}<div class="width-limiter">{% endif %}
-            <nav class="sub"> {# #}
-                <form class="search-form"> {# #}
-                    <span></span> {# This empty span is a hacky fix for Safari - See #93184 #}
-                    <div id="sidebar-button" tabindex="-1"> {# #}
-                        <a href="{{page.root_path|safe}}{{layout.krate|safe}}/all.html" title="show sidebar"></a> {# #}
-                    </div> {# #}
-                    <input {#+ #}
-                        class="search-input" {#+ #}
-                        name="search" {#+ #}
-                        aria-label="Run search in the documentation" {#+ #}
-                        autocomplete="off" {#+ #}
-                        spellcheck="false" {#+ #}
-                        placeholder="Type ‘S’ or ‘/’ to search, ‘?’ for more options…" {#+ #}
-                        type="search"> {# #}
-                    <div id="help-button" tabindex="-1"> {# #}
-                        <a href="{{page.root_path|safe}}help.html" title="help">?</a> {# #}
-                    </div> {# #}
-                    <div id="settings-menu" tabindex="-1"> {# #}
-                        <a href="{{page.root_path|safe}}settings.html" title="settings"> {# #}
-                            Settings {# #}
-                        </a> {# #}
-                    </div> {# #}
-                </form> {# #}
-            </nav> {# #}
+            {# defined in storage.js to avoid duplicating complex UI across every page #}
+            {# and because the search form only works if JS is enabled anyway #}
+            <rustdoc-search></rustdoc-search> {# #}
             <section id="main-content" class="content">{{ content|safe }}</section> {# #}
         {% if page.css_class != "src" %}</div>{% endif %}
     </main> {# #}

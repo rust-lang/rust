@@ -2,7 +2,7 @@
 #![feature(custom_mir)]
 
 use std::intrinsics::mir::*;
-use std::num::NonZeroI32;
+use std::num::NonZero;
 
 // We define our own option type so that we can control the variant indices.
 #[allow(unused)]
@@ -13,7 +13,7 @@ enum Option<T> {
 use Option::*;
 
 #[custom_mir(dialect = "runtime", phase = "optimized")]
-fn set_discriminant(ptr: &mut Option<NonZeroI32>) {
+fn set_discriminant(ptr: &mut Option<NonZero<i32>>) {
     mir! {
         {
             // We set the discriminant to `Some`, which is a NOP since this is the niched variant.

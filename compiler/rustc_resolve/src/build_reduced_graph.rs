@@ -560,7 +560,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
 
                 self.add_import(prefix, kind, use_tree.span, item, root_span, item.id, vis);
             }
-            ast::UseTreeKind::Nested(ref items) => {
+            ast::UseTreeKind::Nested { ref items, .. } => {
                 // Ensure there is at most one `self` in the list
                 let self_spans = items
                     .iter()

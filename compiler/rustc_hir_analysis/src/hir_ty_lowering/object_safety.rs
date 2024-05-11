@@ -227,7 +227,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     .skip(1) // Remove `Self` for `ExistentialPredicate`.
                     .map(|(index, arg)| {
                         if arg == dummy_self.into() {
-                            let param = &generics.params[index];
+                            let param = &generics.own_params[index];
                             missing_type_params.push(param.name);
                             Ty::new_misc_error(tcx).into()
                         } else if arg.walk().any(|arg| arg == dummy_self.into()) {

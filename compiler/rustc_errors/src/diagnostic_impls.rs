@@ -94,6 +94,12 @@ into_diag_arg_using_display!(
     ErrCode,
 );
 
+impl<I: rustc_type_ir::Interner> IntoDiagArg for rustc_type_ir::TraitRef<I> {
+    fn into_diag_arg(self) -> DiagArgValue {
+        self.to_string().into_diag_arg()
+    }
+}
+
 into_diag_arg_for_number!(i8, u8, i16, u16, i32, u32, i64, u64, i128, u128, isize, usize);
 
 impl IntoDiagArg for bool {

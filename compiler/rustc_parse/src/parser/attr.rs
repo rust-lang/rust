@@ -1,7 +1,4 @@
-use crate::errors::{
-    InvalidMetaItem, InvalidMetaItemSuggQuoteIdent, InvalidMetaItemUnquotedIdent,
-    SuffixedLiteralInAttribute,
-};
+use crate::errors;
 use crate::fluent_generated as fluent;
 use crate::maybe_whole;
 
@@ -318,7 +315,7 @@ impl<'a> Parser<'a> {
         debug!("checking if {:?} is unsuffixed", lit);
 
         if !lit.kind.is_unsuffixed() {
-            self.dcx().emit_err(SuffixedLiteralInAttribute { span: lit.span });
+            self.dcx().emit_err(errors::SuffixedLiteralInAttribute { span: lit.span });
         }
 
         Ok(lit)
@@ -356,10 +353,11 @@ impl<'a> Parser<'a> {
         Ok(nmis)
     }
 
-    /// Matches the following grammar (per RFC 1559).
+    /// Parse a meta item per RFC 1559.
+    ///
     /// ```ebnf
-    /// meta_item : PATH ( '=' UNSUFFIXED_LIT | '(' meta_item_inner? ')' )? ;
-    /// meta_item_inner : (meta_item | UNSUFFIXED_LIT) (',' meta_item_inner)? ;
+    /// MetaItem = SimplePath ( '=' UNSUFFIXED_LIT | '(' MetaSeq? ')' )? ;
+    /// MetaSeq = MetaItemInner (',' MetaItemInner)* ','? ;
     /// ```
     pub fn parse_meta_item(&mut self) -> PResult<'a, ast::MetaItem> {
         // We can't use `maybe_whole` here because it would bump in the `None`
@@ -387,7 +385,6 @@ impl<'a> Parser<'a> {
         Ok(if self.eat(&token::Eq) {
             ast::MetaItemKind::NameValue(self.parse_unsuffixed_meta_item_lit()?)
         } else if self.check(&token::OpenDelim(Delimiter::Parenthesis)) {
-            // Matches `meta_seq = ( COMMASEP(meta_item_inner) )`.
             let (list, _) = self.parse_paren_comma_seq(|p| p.parse_meta_item_inner())?;
             ast::MetaItemKind::List(list)
         } else {
@@ -395,38 +392,45 @@ impl<'a> Parser<'a> {
         })
     }
 
-    /// Matches `meta_item_inner : (meta_item | UNSUFFIXED_LIT) ;`.
+    /// Parse an inner meta item per RFC 1559.
+    ///
+    /// ```ebnf
+    /// MetaItemInner = UNSUFFIXED_LIT | MetaItem ;
+    /// ```
     fn parse_meta_item_inner(&mut self) -> PResult<'a, ast::NestedMetaItem> {
         match self.parse_unsuffixed_meta_item_lit() {
             Ok(lit) => return Ok(ast::NestedMetaItem::Lit(lit)),
-            Err(err) => err.cancel(),
+            Err(err) => err.cancel(), // we provide a better error below
         }
 
         match self.parse_meta_item() {
             Ok(mi) => return Ok(ast::NestedMetaItem::MetaItem(mi)),
-            Err(err) => err.cancel(),
+            Err(err) => err.cancel(), // we provide a better error below
         }
 
-        let token = self.token.clone();
+        let mut err = errors::InvalidMetaItem {
+            span: self.token.span,
+            token: self.token.clone(),
+            quote_ident_sugg: None,
+        };
 
-        // Check for unquoted idents in meta items, e.g.: #[cfg(key = foo)]
-        // `from_expansion()` ensures we don't suggest for cases such as
-        // `#[cfg(feature = $expr)]` in macros
-        if self.prev_token == token::Eq && !self.token.span.from_expansion() {
+        // Suggest quoting idents, e.g. in `#[cfg(key = value)]`. We don't use `Token::ident` and
+        // don't `uninterpolate` the token to avoid suggesting anything butchered or questionable
+        // when macro metavariables are involved.
+        if self.prev_token == token::Eq
+            && let token::Ident(..) = self.token.kind
+        {
             let before = self.token.span.shrink_to_lo();
-            while matches!(self.token.kind, token::Ident(..)) {
+            while let token::Ident(..) = self.token.kind {
                 self.bump();
             }
-            let after = self.prev_token.span.shrink_to_hi();
-            let sugg = InvalidMetaItemSuggQuoteIdent { before, after };
-            return Err(self.dcx().create_err(InvalidMetaItemUnquotedIdent {
-                span: token.span,
-                token,
-                sugg,
-            }));
+            err.quote_ident_sugg = Some(errors::InvalidMetaItemQuoteIdentSugg {
+                before,
+                after: self.prev_token.span.shrink_to_hi(),
+            });
         }
 
-        Err(self.dcx().create_err(InvalidMetaItem { span: token.span, token }))
+        Err(self.dcx().create_err(err))
     }
 }
 

@@ -320,16 +320,11 @@ fn vtable_entries<'tcx>(
 }
 
 /// Find slot base for trait methods within vtable entries of another trait
-// FIXME(@lcnr): This isn't a query, so why does it take a tuple as its argument.
 pub(super) fn vtable_trait_first_method_offset<'tcx>(
     tcx: TyCtxt<'tcx>,
-    key: (
-        ty::PolyTraitRef<'tcx>, // trait_to_be_found
-        ty::PolyTraitRef<'tcx>, // trait_owning_vtable
-    ),
+    trait_to_be_found: ty::PolyTraitRef<'tcx>,
+    trait_owning_vtable: ty::PolyTraitRef<'tcx>,
 ) -> usize {
-    let (trait_to_be_found, trait_owning_vtable) = key;
-
     // #90177
     let trait_to_be_found_erased = tcx.erase_regions(trait_to_be_found);
 
