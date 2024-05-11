@@ -19,7 +19,7 @@ use rustc_target::abi::{self, FieldIdx, FIRST_VARIANT};
 use arrayvec::ArrayVec;
 use tracing::{debug, instrument};
 
-impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
+impl<'body, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'body, 'a, 'tcx, Bx> {
     #[instrument(level = "trace", skip(self, bx))]
     pub fn codegen_rvalue(
         &mut self,
@@ -1027,7 +1027,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     }
 }
 
-impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
+impl<'body, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'body, 'a, 'tcx, Bx> {
     pub fn rvalue_creates_operand(&self, rvalue: &mir::Rvalue<'tcx>, span: Span) -> bool {
         match *rvalue {
             mir::Rvalue::Cast(mir::CastKind::Transmute, ref operand, cast_ty) => {

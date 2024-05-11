@@ -34,7 +34,7 @@ impl<'tcx, V> Locals<'tcx, V> {
     }
 }
 
-impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
+impl<'body, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'body, 'a, 'tcx, Bx> {
     pub(super) fn initialize_locals(&mut self, values: Vec<LocalRef<'tcx, Bx::Value>>) {
         assert!(self.locals.values.is_empty());
         // FIXME(#115215): After #115025 get's merged this might not be necessary

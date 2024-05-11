@@ -13,13 +13,9 @@ pub fn demo_for_i32() {
 
 // CHECK-LABEL: ; skip_mono_inside_if_false::generic_impl
 // CHECK: start:
-// CHECK-NEXT: br label %[[ELSE_BRANCH:bb[0-9]+]]
-// CHECK: [[ELSE_BRANCH]]:
 // CHECK-NEXT: call skip_mono_inside_if_false::small_impl
-// CHECK: bb{{[0-9]+}}:
+// CHECK-NEXT: call void @_ZN25skip_mono_inside_if_false10small_impl
 // CHECK-NEXT: ret void
-// CHECK: bb{{[0-9+]}}:
-// CHECK-NEXT: unreachable
 
 fn generic_impl<T>() {
     trait MagicTrait {

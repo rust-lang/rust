@@ -5,6 +5,7 @@ use cranelift_codegen::CodegenError;
 use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext};
 use cranelift_module::ModuleError;
 use rustc_ast::InlineAsmOptions;
+use rustc_codegen_ssa::mir::make_codegen_mir;
 use rustc_index::IndexVec;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::ty::adjustment::PointerCoercion;
@@ -40,7 +41,8 @@ pub(crate) fn codegen_fn<'tcx>(
     let symbol_name = tcx.symbol_name(instance).name.to_string();
     let _timer = tcx.prof.generic_activity_with_arg("codegen fn", &*symbol_name);
 
-    let mir = tcx.instance_mir(instance.def);
+    let mir = make_codegen_mir(tcx, instance);
+    let mir = &mir;
     let _mir_guard = crate::PrintOnPanic(|| {
         let mut buf = Vec::new();
         with_no_trimmed_paths!({
@@ -302,18 +304,9 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
         .generic_activity("codegen prelude")
         .run(|| crate::abi::codegen_fn_prelude(fx, start_block));
 
-    let reachable_blocks = traversal::mono_reachable_as_bitset(fx.mir, fx.tcx, fx.instance);
-
     for (bb, bb_data) in fx.mir.basic_blocks.iter_enumerated() {
         let block = fx.get_block(bb);
         fx.bcx.switch_to_block(block);
-
-        if !reachable_blocks.contains(bb) {
-            // We want to skip this block, because it's not reachable. But we still create
-            // the block so terminators in other blocks can reference it.
-            fx.bcx.ins().trap(TrapCode::UnreachableCodeReached);
-            continue;
-        }
 
         if bb_data.is_cleanup {
             // Unwinding after panicking is not supported

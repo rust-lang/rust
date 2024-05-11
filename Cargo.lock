@@ -3826,6 +3826,7 @@ dependencies = [
  "rustc_macros",
  "rustc_metadata",
  "rustc_middle",
+ "rustc_mir_transform",
  "rustc_monomorphize",
  "rustc_query_system",
  "rustc_serialize",

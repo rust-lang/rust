@@ -43,10 +43,10 @@ enum CachedLlbb<T> {
 }
 
 /// Master context for codegenning from MIR.
-pub struct FunctionCx<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
+pub struct FunctionCx<'body, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
     instance: Instance<'tcx>,
 
-    mir: &'tcx mir::Body<'tcx>,
+    mir: &'body mir::Body<'tcx>,
 
     debug_context: Option<FunctionDebugContext<'tcx, Bx::DIScope, Bx::DILocation>>,
 
@@ -115,14 +115,27 @@ pub struct FunctionCx<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
     caller_location: Option<OperandRef<'tcx, Bx::Value>>,
 }
 
-impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
+impl<'body, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'body, 'a, 'tcx, Bx> {
     pub fn monomorphize<T>(&self, value: T) -> T
     where
         T: Copy + TypeFoldable<TyCtxt<'tcx>>,
     {
-        debug!("monomorphize: self.instance={:?}", self.instance);
+        value
+    }
+}
+
+struct MonoCx<'tcx> {
+    tcx: TyCtxt<'tcx>,
+    instance: Instance<'tcx>,
+}
+
+impl<'tcx> MonoCx<'tcx> {
+    fn monomorphize<T>(&self, value: T) -> T
+    where
+        T: TypeFoldable<TyCtxt<'tcx>>,
+    {
         self.instance.instantiate_mir_and_normalize_erasing_regions(
-            self.cx.tcx(),
+            self.tcx,
             ty::ParamEnv::reveal_all(),
             ty::EarlyBinder::bind(value),
         )
@@ -155,7 +168,172 @@ impl<'tcx, V: CodegenObject> LocalRef<'tcx, V> {
     }
 }
 
-///////////////////////////////////////////////////////////////////////////
+use rustc_index::Idx;
+use rustc_middle::mir::visit::MutVisitor;
+use rustc_middle::mir::visit::Visitor;
+
+struct Reachable {
+    locals: BitSet<mir::Local>,
+}
+
+impl mir::visit::Visitor<'_> for Reachable {
+    fn visit_local(
+        &mut self,
+        local: mir::Local,
+        _context: mir::visit::PlaceContext,
+        _location: mir::Location,
+    ) {
+        self.locals.insert(local);
+    }
+}
+
+struct LocalRenamer<'tcx> {
+    tcx: TyCtxt<'tcx>,
+    replacements: Vec<mir::Local>,
+}
+
+impl<'tcx> mir::visit::MutVisitor<'tcx> for LocalRenamer<'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+
+    fn visit_local(
+        &mut self,
+        local: &mut mir::Local,
+        _context: mir::visit::PlaceContext,
+        _location: mir::Location,
+    ) {
+        *local = self.replacements[local.index()];
+    }
+}
+
+#[instrument(level = "debug", skip(tcx))]
+pub fn make_codegen_mir<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> mir::Body<'tcx> {
+    let mcx = MonoCx { tcx, instance };
+
+    let mir = tcx.instance_mir(instance.def);
+
+    // Create our new list of basic blocks. Initialy all blocks are turned into unreachables.
+    let mut blocks: IndexVec<_, _> = mir
+        .basic_blocks
+        .iter()
+        .map(|block| mir::BasicBlockData {
+            statements: Vec::new(),
+            terminator: Some(mir::Terminator {
+                source_info: block.terminator().source_info,
+                kind: mir::TerminatorKind::Unreachable,
+            }),
+            is_cleanup: block.is_cleanup,
+        })
+        .collect();
+
+    // Figure out which blocks are reachable, and which are mentioned.
+    // As we encounter reachable blocks, monomorphize them, and record which Locals they use.
+    let mut reachable = Reachable { locals: BitSet::new_empty(mir.local_decls.len()) };
+    for idx in 0..(mir.arg_count + 1) {
+        let local = mir::Local::new(idx);
+        reachable.locals.insert(local);
+    }
+    let mut it = traversal::mono_reachable::<true>(mir, tcx, instance);
+    while let Some((bb, block)) = it.next() {
+        let block = mcx.monomorphize(block.into_owned());
+        reachable.visit_basic_block_data(bb, &block);
+        blocks[bb] = block;
+    }
+    let reachable_blocks = it.visited();
+
+    // Delete all blocks which are not mentioned, and deduplicate non-cleanup unreachable blocks
+    // that remain.
+    let mut block_replacements: Vec<_> = (0..blocks.len()).map(mir::BasicBlock::new).collect();
+    let mut orig_index = 0;
+    let mut used_index = 0;
+    blocks.raw.retain(|_block| {
+        let orig_bb = mir::BasicBlock::new(orig_index);
+        // Block is not mentioned. Delete it.
+        if !reachable_blocks.contains(orig_bb) {
+            orig_index += 1;
+            return false;
+        }
+
+        let used_bb = mir::BasicBlock::new(used_index);
+        block_replacements[orig_index] = used_bb;
+        used_index += 1;
+        orig_index += 1;
+        true
+    });
+
+    let mut local_replacements: Vec<_> = (0..mir.local_decls.len()).map(mir::Local::new).collect();
+    let mut used_index = 0;
+    let local_decls = mir
+        .local_decls
+        .iter_enumerated()
+        .filter_map(|(local, decl)| {
+            let decl = decl.clone();
+            if !reachable.locals.contains(local) {
+                None
+            } else {
+                local_replacements[local.index()] = mir::Local::new(used_index);
+                used_index += 1;
+                Some(mcx.monomorphize(decl))
+            }
+        })
+        .collect();
+
+    let mut renamer = LocalRenamer { tcx, replacements: local_replacements };
+
+    for (bb, block) in blocks.iter_enumerated_mut() {
+        for target in block.terminator_mut().successors_mut() {
+            *target = block_replacements[target.index()];
+        }
+        renamer.visit_basic_block_data(bb, block);
+    }
+
+    let basic_blocks = mir::BasicBlocks::new(blocks);
+
+    let var_debug_info = mir
+        .var_debug_info
+        .iter()
+        .filter_map(|info| match info.value {
+            mir::VarDebugInfoContents::Place(place) => {
+                if reachable.locals.contains(place.local) {
+                    let place = mir::Place {
+                        local: renamer.replacements[place.local.index()],
+                        projection: place.projection,
+                    };
+                    let mut info = info.clone();
+                    info.value = mir::VarDebugInfoContents::Place(place);
+                    Some(info)
+                } else {
+                    None
+                }
+            }
+            _ => Some(info.clone()),
+        })
+        .map(|info| mcx.monomorphize(info))
+        .collect();
+
+    mir::Body {
+        basic_blocks,
+        arg_count: mir.arg_count,
+        coroutine: mir.coroutine.clone(),
+        coverage_branch_info: mir.coverage_branch_info.clone(),
+        function_coverage_info: mir.function_coverage_info.clone(),
+        injection_phase: mir.injection_phase,
+        is_polymorphic: mir.is_polymorphic,
+        local_decls,
+        mentioned_items: mir.mentioned_items.clone(),
+        pass_count: mir.pass_count,
+        phase: mir.phase,
+        required_consts: mir.required_consts.clone(),
+        source: mir.source,
+        source_scopes: mcx.monomorphize(mir.source_scopes.clone()), // Required for coverage
+        span: mir.span,
+        spread_arg: mir.spread_arg,
+        tainted_by_errors: mir.tainted_by_errors,
+        user_type_annotations: mir.user_type_annotations.clone(),
+        var_debug_info,
+    }
+}
 
 #[instrument(level = "debug", skip(cx))]
 pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
@@ -165,8 +343,10 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     assert!(!instance.args.has_infer());
 
     let llfn = cx.get_fn(instance);
+    let tcx = cx.tcx();
 
-    let mir = cx.tcx().instance_mir(instance.def);
+    let mir = make_codegen_mir(tcx, instance);
+    let mir = &mir;
 
     let fn_abi = cx.fn_abi_of_instance(instance, ty::List::empty());
     debug!("fn_abi: {:?}", fn_abi);
@@ -268,26 +448,18 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     // So drop the builder of `start_llbb` to avoid having two at the same time.
     drop(start_bx);
 
-    let reachable_blocks = traversal::mono_reachable_as_bitset(mir, cx.tcx(), instance);
-
     // Codegen the body of each block using reverse postorder
     for (bb, _) in traversal::reverse_postorder(mir) {
-        if reachable_blocks.contains(bb) {
-            fx.codegen_block(bb);
-        } else {
-            // We want to skip this block, because it's not reachable. But we still create
-            // the block so terminators in other blocks can reference it.
-            fx.codegen_block_as_unreachable(bb);
-        }
+        fx.codegen_block(bb);
     }
 }
 
 /// Produces, for each argument, a `Value` pointing at the
 /// argument's value. As arguments are places, these are always
 /// indirect.
-fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
+fn arg_local_refs<'body, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
-    fx: &mut FunctionCx<'a, 'tcx, Bx>,
+    fx: &mut FunctionCx<'body, 'a, 'tcx, Bx>,
     memory_locals: &BitSet<mir::Local>,
 ) -> Vec<LocalRef<'tcx, Bx::Value>> {
     let mir = fx.mir;

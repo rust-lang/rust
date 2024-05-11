@@ -283,7 +283,7 @@ pub(crate) fn create_wrapper_function(
     unwind_context.add_function(wrapper_func_id, &ctx, module.isa());
 }
 
-pub(crate) struct FunctionCx<'m, 'clif, 'tcx: 'm> {
+pub(crate) struct FunctionCx<'m, 'clif, 'tcx> {
     pub(crate) cx: &'clif mut crate::CodegenCx,
     pub(crate) module: &'m mut dyn Module,
     pub(crate) tcx: TyCtxt<'tcx>,
@@ -294,7 +294,7 @@ pub(crate) struct FunctionCx<'m, 'clif, 'tcx: 'm> {
 
     pub(crate) instance: Instance<'tcx>,
     pub(crate) symbol_name: String,
-    pub(crate) mir: &'tcx Body<'tcx>,
+    pub(crate) mir: &'m Body<'tcx>,
     pub(crate) fn_abi: &'tcx FnAbi<'tcx, Ty<'tcx>>,
 
     pub(crate) bcx: FunctionBuilder<'clif>,
