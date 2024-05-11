@@ -6,7 +6,7 @@ use rustc_session::Session;
 // FIXME don't panic when a worker thread panics
 
 pub(super) struct ConcurrencyLimiter {
-    helper_thread: Option<HelperThread>,
+    helper_thread: Option<Mutex<HelperThread>>,
     state: Arc<Mutex<state::ConcurrencyLimiterState>>,
     available_token_condvar: Arc<Condvar>,
     finished: bool,
@@ -39,14 +39,14 @@ impl ConcurrencyLimiter {
             })
             .unwrap();
         ConcurrencyLimiter {
-            helper_thread: Some(helper_thread),
+            helper_thread: Some(Mutex::new(helper_thread)),
             state,
             available_token_condvar,
             finished: false,
         }
     }
 
-    pub(super) fn acquire(&mut self, dcx: &rustc_errors::DiagCtxt) -> ConcurrencyLimiterToken {
+    pub(super) fn acquire(&self, dcx: &rustc_errors::DiagCtxt) -> ConcurrencyLimiterToken {
         let mut state = self.state.lock().unwrap();
         loop {
             state.assert_invariants();
@@ -73,7 +73,7 @@ impl ConcurrencyLimiter {
                 }
             }
 
-            self.helper_thread.as_mut().unwrap().request_token();
+            self.helper_thread.as_ref().unwrap().lock().unwrap().request_token();
             state = self.available_token_condvar.wait(state).unwrap();
         }
     }

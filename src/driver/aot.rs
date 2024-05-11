@@ -15,6 +15,7 @@ use rustc_codegen_ssa::errors as ssa_errors;
 use rustc_codegen_ssa::{CodegenResults, CompiledModule, CrateInfo, ModuleKind};
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::sync::{par_map, IntoDynSyncSend};
 use rustc_metadata::fs::copy_to_stdout;
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
@@ -611,34 +612,33 @@ pub(crate) fn run_aot(
             CguReuse::PreLto | CguReuse::PostLto => false,
         });
 
-    let mut concurrency_limiter = ConcurrencyLimiter::new(tcx.sess, todo_cgus.len());
+    let concurrency_limiter = IntoDynSyncSend(ConcurrencyLimiter::new(tcx.sess, todo_cgus.len()));
 
-    let modules =
-        tcx.sess.time("codegen mono items", || {
-            todo_cgus
-                .into_iter()
-                .map(|(_, cgu)| {
-                    let dep_node = cgu.codegen_dep_node(tcx);
-                    tcx.dep_graph
-                        .with_task(
-                            dep_node,
-                            tcx,
-                            (
-                                backend_config.clone(),
-                                global_asm_config.clone(),
-                                cgu.name(),
-                                concurrency_limiter.acquire(tcx.dcx()),
-                            ),
-                            module_codegen,
-                            Some(rustc_middle::dep_graph::hash_result),
-                        )
-                        .0
-                })
-                .chain(done_cgus.into_iter().map(|(_, cgu)| {
-                    OngoingModuleCodegen::Sync(reuse_workproduct_for_cgu(tcx, cgu))
-                }))
-                .collect::<Vec<_>>()
+    let modules = tcx.sess.time("codegen mono items", || {
+        let mut modules: Vec<_> = par_map(todo_cgus, |(_, cgu)| {
+            let dep_node = cgu.codegen_dep_node(tcx);
+            tcx.dep_graph
+                .with_task(
+                    dep_node,
+                    tcx,
+                    (
+                        backend_config.clone(),
+                        global_asm_config.clone(),
+                        cgu.name(),
+                        concurrency_limiter.acquire(tcx.dcx()),
+                    ),
+                    module_codegen,
+                    Some(rustc_middle::dep_graph::hash_result),
+                )
+                .0
         });
+        modules.extend(
+            done_cgus
+                .into_iter()
+                .map(|(_, cgu)| OngoingModuleCodegen::Sync(reuse_workproduct_for_cgu(tcx, cgu))),
+        );
+        modules
+    });
 
     let mut allocator_module = make_module(tcx.sess, &backend_config, "allocator_shim".to_string());
     let mut allocator_unwind_context = UnwindContext::new(allocator_module.isa(), true);
@@ -706,6 +706,6 @@ pub(crate) fn run_aot(
         metadata_module,
         metadata,
         crate_info: CrateInfo::new(tcx, target_cpu),
-        concurrency_limiter,
+        concurrency_limiter: concurrency_limiter.0,
     })
 }
