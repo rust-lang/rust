@@ -933,11 +933,13 @@ arena = [
 mir = [
     "@davidtwco",
     "@oli-obk",
-    "@matthewjasper"
+    "@matthewjasper",
+    "@saethlin",
 ]
 mir-opt = [
     "@oli-obk",
     "@wesleywiser",
+    "@saethlin",
 ]
 types = [
     "@compiler-errors",
@@ -1003,6 +1005,7 @@ project-exploit-mitigations = [
 "/compiler/rustc_lexer" =                                ["compiler", "lexer"]
 "/compiler/rustc_llvm" =                                 ["@cuviper"]
 "/compiler/rustc_codegen_llvm/src/debuginfo" =           ["compiler", "debuginfo"]
+"/compiler/rustc_codegen_ssa" =                          ["compiler", "@saethlin"]
 "/compiler/rustc_middle/src/mir" =                       ["compiler", "mir"]
 "/compiler/rustc_middle/src/traits" =                    ["compiler", "types"]
 "/compiler/rustc_middle/src/ty" =                        ["compiler", "types"]
