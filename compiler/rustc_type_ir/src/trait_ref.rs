@@ -1,9 +1,7 @@
 use rustc_macros::{HashStable_NoContext, TyDecodable, TyEncodable};
+use rustc_type_ir_macros::{Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic};
 
-use crate::fold::{FallibleTypeFolder, TypeFoldable};
 use crate::inherent::*;
-use crate::lift::Lift;
-use crate::visit::{TypeVisitable, TypeVisitor};
 use crate::Interner;
 
 /// A complete reference to a trait. These take numerous guises in syntax,
@@ -25,6 +23,7 @@ use crate::Interner;
     PartialEq(bound = ""),
     Eq(bound = "")
 )]
+#[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
 #[cfg_attr(feature = "nightly", derive(TyDecodable, TyEncodable, HashStable_NoContext))]
 pub struct TraitRef<I: Interner> {
     pub def_id: I::DefId,
@@ -66,44 +65,5 @@ impl<I: Interner> TraitRef<I> {
     #[inline]
     pub fn self_ty(&self) -> I::Ty {
         self.args.type_at(0)
-    }
-}
-
-// FIXME(compiler-errors): Make this into a `Lift_Generic` impl.
-impl<I: Interner, U: Interner> Lift<U> for TraitRef<I>
-where
-    I::DefId: Lift<U, Lifted = U::DefId>,
-    I::GenericArgs: Lift<U, Lifted = U::GenericArgs>,
-{
-    type Lifted = TraitRef<U>;
-
-    fn lift_to_tcx(self, tcx: U) -> Option<Self::Lifted> {
-        Some(TraitRef {
-            def_id: self.def_id.lift_to_tcx(tcx)?,
-            args: self.args.lift_to_tcx(tcx)?,
-            _use_trait_ref_new_instead: (),
-        })
-    }
-}
-
-impl<I: Interner> TypeVisitable<I> for TraitRef<I>
-where
-    I::GenericArgs: TypeVisitable<I>,
-{
-    fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> V::Result {
-        self.args.visit_with(visitor)
-    }
-}
-
-impl<I: Interner> TypeFoldable<I> for TraitRef<I>
-where
-    I::GenericArgs: TypeFoldable<I>,
-{
-    fn try_fold_with<F: FallibleTypeFolder<I>>(self, folder: &mut F) -> Result<Self, F::Error> {
-        Ok(TraitRef {
-            def_id: self.def_id,
-            args: self.args.try_fold_with(folder)?,
-            _use_trait_ref_new_instead: (),
-        })
     }
 }
