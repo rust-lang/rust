@@ -98,6 +98,10 @@ jobs:
       if: matrix.os == 'windows-latest' && matrix.env.TARGET_TRIPLE == 'x86_64-pc-windows-gnu'
       run: rustup set default-host x86_64-pc-windows-gnu
 
+    - name: Use x86_64 compiler on macOS
+      if: matrix.os == 'macos-latest' && matrix.env.TARGET_TRIPLE == 'x86_64-apple-darwin'
+      run: rustup set default-host x86_64-apple-darwin
+
     - name: Install toolchain and emulator
       if: matrix.apt_deps != null
       run: |
@@ -233,6 +237,10 @@ jobs:
     - name: Set MinGW as the default toolchain
       if: matrix.os == 'windows-latest' && matrix.env.TARGET_TRIPLE == 'x86_64-pc-windows-gnu'
       run: rustup set default-host x86_64-pc-windows-gnu
+
+    - name: Use x86_64 compiler on macOS
+      if: matrix.os == 'macos-latest' && matrix.env.TARGET_TRIPLE == 'x86_64-apple-darwin'
+      run: rustup set default-host x86_64-apple-darwin
 
     - name: Install MinGW toolchain
       if: matrix.os == 'ubuntu-latest' && matrix.env.TARGET_TRIPLE == 'x86_64-pc-windows-gnu'
