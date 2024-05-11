@@ -832,16 +832,27 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
             }
         }
 
-        "llvm.x86.sse42.crc32.32.32" => {
+        "llvm.x86.sse42.crc32.32.8"
+        | "llvm.x86.sse42.crc32.32.16"
+        | "llvm.x86.sse42.crc32.32.32"
+        | "llvm.x86.sse42.crc32.64.64" => {
             // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#ig_expand=1419&text=_mm_crc32_u32
             intrinsic_args!(fx, args => (crc, v); intrinsic);
 
             let crc = crc.load_scalar(fx);
             let v = v.load_scalar(fx);
 
+            let asm = match intrinsic {
+                "llvm.x86.sse42.crc32.32.8" => "crc32 eax, dl",
+                "llvm.x86.sse42.crc32.32.16" => "crc32 eax, dx",
+                "llvm.x86.sse42.crc32.32.32" => "crc32 eax, edx",
+                "llvm.x86.sse42.crc32.64.64" => "crc32 rax, rdx",
+                _ => unreachable!(),
+            };
+
             codegen_inline_asm_inner(
                 fx,
-                &[InlineAsmTemplatePiece::String("crc32 eax, edx".to_string())],
+                &[InlineAsmTemplatePiece::String(asm.to_string())],
                 &[
                     CInlineAsmOperand::InOut {
                         reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::ax)),
