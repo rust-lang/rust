@@ -1,5 +1,6 @@
 use hir::HirId;
 use rustc_abi::Primitive::Pointer;
+use rustc_abi::Size;
 use rustc_errors::codes::*;
 use rustc_errors::struct_span_code_err;
 use rustc_hir as hir;
@@ -88,8 +89,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
 
+        fn size_to_bits(size: Size) -> u128 {
+            let Some(bits) = u128::from(size.bytes()).checked_mul(8) else {
+                // `u128` should definitely be able to hold the size of different architectures
+                // larger sizes should be reported as error `are too big for the current architecture`
+                // otherwise we have a bug somewhere
+                bug!("{:?} overflow for u128", size)
+            };
+
+            bits
+        }
+
         // Try to display a sensible error with as much information as possible.
         let skeleton_string = |ty: Ty<'tcx>, sk: Result<_, &_>| match sk {
+            Ok(SizeSkeleton::Pointer { tail, known_size: Some(size), .. }) => {
+                format!("{} bits, pointer to `{tail}`", size_to_bits(size))
+            }
             Ok(SizeSkeleton::Pointer { tail, .. }) => format!("pointer to `{tail}`"),
             Ok(SizeSkeleton::Known(size, _)) => {
                 if let Some(v) = u128::from(size.bytes()).checked_mul(8) {

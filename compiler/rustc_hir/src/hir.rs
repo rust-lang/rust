@@ -4076,11 +4076,17 @@ mod size_asserts {
     use rustc_data_structures::static_assert_size;
 
     use super::*;
-    // tidy-alphabetical-start
     static_assert_size!(Block<'_>, 48);
     static_assert_size!(Body<'_>, 24);
+    #[cfg(bootstrap)]
     static_assert_size!(Expr<'_>, 64);
+    #[cfg(not(bootstrap))]
+    static_assert_size!(Expr<'_>, 56);
+    #[cfg(bootstrap)]
     static_assert_size!(ExprKind<'_>, 48);
+    #[cfg(not(bootstrap))]
+    // tidy-alphabetical-start
+    static_assert_size!(ExprKind<'_>, 40);
     static_assert_size!(FnDecl<'_>, 40);
     static_assert_size!(ForeignItem<'_>, 88);
     static_assert_size!(ForeignItemKind<'_>, 56);
