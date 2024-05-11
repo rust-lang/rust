@@ -90,7 +90,7 @@ pub trait BoundVars<I: Interner> {
     fn has_no_bound_vars(&self) -> bool;
 }
 
-// TODO: Uplift `AliasTy`
+// FIXME: Uplift `AliasTy`
 pub trait AliasTy<I: Interner>: Copy + DebugWithInfcx<I> + Hash + Eq + Sized {
     fn new(
         interner: I,
@@ -107,5 +107,4 @@ pub trait AliasTy<I: Interner>: Copy + DebugWithInfcx<I> + Hash + Eq + Sized {
     fn self_ty(self) -> I::Ty;
 
     fn with_self_ty(self, tcx: I, self_ty: I::Ty) -> Self;
-
 }

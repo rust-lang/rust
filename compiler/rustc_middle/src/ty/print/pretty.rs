@@ -3105,6 +3105,24 @@ define_print! {
         cx.reset_type_limit();
         p!(print(self.term))
     }
+
+    ty::SubtypePredicate<'tcx> {
+        p!(print(self.a), " <: ");
+        cx.reset_type_limit();
+        p!(print(self.b))
+    }
+
+    ty::CoercePredicate<'tcx> {
+        p!(print(self.a), " -> ");
+        cx.reset_type_limit();
+        p!(print(self.b))
+    }
+
+    ty::NormalizesTo<'tcx> {
+        p!(print(self.alias), " normalizes-to ");
+        cx.reset_type_limit();
+        p!(print(self.term))
+    }
 }
 
 define_print_and_forward_display! {
@@ -3178,24 +3196,6 @@ define_print_and_forward_display! {
 
     ty::ParamConst {
         p!(write("{}", self.name))
-    }
-
-    ty::SubtypePredicate<'tcx> {
-        p!(print(self.a), " <: ");
-        cx.reset_type_limit();
-        p!(print(self.b))
-    }
-
-    ty::CoercePredicate<'tcx> {
-        p!(print(self.a), " -> ");
-        cx.reset_type_limit();
-        p!(print(self.b))
-    }
-
-    ty::NormalizesTo<'tcx> {
-        p!(print(self.alias), " normalizes-to ");
-        cx.reset_type_limit();
-        p!(print(self.term))
     }
 
     ty::Term<'tcx> {

@@ -149,7 +149,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     fn mk_args(self, args: &[Self::GenericArg]) -> Self::GenericArgs {
         self.mk_args(args)
     }
-    
+
     fn check_and_mk_args(
         self,
         def_id: DefId,
@@ -157,7 +157,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     ) -> ty::GenericArgsRef<'tcx> {
         self.check_and_mk_args(def_id, args)
     }
-    
+
     fn parent(self, def_id: Self::DefId) -> Self::DefId {
         self.parent(def_id)
     }

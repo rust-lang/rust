@@ -100,8 +100,6 @@ impl<I: rustc_type_ir::Interner> IntoDiagArg for rustc_type_ir::TraitRef<I> {
     }
 }
 
-
-
 impl<I: rustc_type_ir::Interner> IntoDiagArg for rustc_type_ir::ExistentialTraitRef<I> {
     fn into_diag_arg(self) -> DiagArgValue {
         self.to_string().into_diag_arg()

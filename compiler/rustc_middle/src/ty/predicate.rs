@@ -3,17 +3,20 @@ use rustc_data_structures::intern::Interned;
 use rustc_hir::def_id::DefId;
 use rustc_macros::{HashStable, Lift, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_type_ir::ClauseKind as IrClauseKind;
+use rustc_type_ir::CoercePredicate as IrCoercePredicate;
+use rustc_type_ir::ExistentialProjection as IrExistentialProjection;
+use rustc_type_ir::ExistentialTraitRef as IrExistentialTraitRef;
+use rustc_type_ir::NormalizesTo as IrNormalizesTo;
 use rustc_type_ir::PredicateKind as IrPredicateKind;
+use rustc_type_ir::ProjectionPredicate as IrProjectionPredicate;
+use rustc_type_ir::SubtypePredicate as IrSubtypePredicate;
 use rustc_type_ir::TraitPredicate as IrTraitPredicate;
 use rustc_type_ir::TraitRef as IrTraitRef;
-use rustc_type_ir::ProjectionPredicate as IrProjectionPredicate;
-use rustc_type_ir::ExistentialTraitRef as IrExistentialTraitRef;
-use rustc_type_ir::ExistentialProjection as IrExistentialProjection;
 use std::cmp::Ordering;
 
 use crate::ty::{
-    self, AliasTy, Binder, DebruijnIndex, DebugWithInfcx, EarlyBinder,
-    PredicatePolarity, Term, Ty, TyCtxt, TypeFlags, WithCachedTypeInfo,
+    self, Binder, DebruijnIndex, DebugWithInfcx, EarlyBinder, PredicatePolarity, Term, Ty, TyCtxt,
+    TypeFlags, WithCachedTypeInfo,
 };
 
 pub type TraitRef<'tcx> = IrTraitRef<TyCtxt<'tcx>>;
@@ -23,6 +26,9 @@ pub type ExistentialProjection<'tcx> = IrExistentialProjection<TyCtxt<'tcx>>;
 pub type TraitPredicate<'tcx> = IrTraitPredicate<TyCtxt<'tcx>>;
 pub type ClauseKind<'tcx> = IrClauseKind<TyCtxt<'tcx>>;
 pub type PredicateKind<'tcx> = IrPredicateKind<TyCtxt<'tcx>>;
+pub type NormalizesTo<'tcx> = IrNormalizesTo<TyCtxt<'tcx>>;
+pub type CoercePredicate<'tcx> = IrCoercePredicate<TyCtxt<'tcx>>;
+pub type SubtypePredicate<'tcx> = IrSubtypePredicate<TyCtxt<'tcx>>;
 
 /// A statement that can be proven by a trait solver. This includes things that may
 /// show up in where clauses, such as trait predicates and projection predicates,
@@ -511,25 +517,8 @@ pub type TypeOutlivesPredicate<'tcx> = OutlivesPredicate<Ty<'tcx>, ty::Region<'t
 pub type PolyRegionOutlivesPredicate<'tcx> = ty::Binder<'tcx, RegionOutlivesPredicate<'tcx>>;
 pub type PolyTypeOutlivesPredicate<'tcx> = ty::Binder<'tcx, TypeOutlivesPredicate<'tcx>>;
 
-/// Encodes that `a` must be a subtype of `b`. The `a_is_expected` flag indicates
-/// whether the `a` type is the type that we should label as "expected" when
-/// presenting user diagnostics.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, TyEncodable, TyDecodable)]
-#[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
-pub struct SubtypePredicate<'tcx> {
-    pub a_is_expected: bool,
-    pub a: Ty<'tcx>,
-    pub b: Ty<'tcx>,
-}
 pub type PolySubtypePredicate<'tcx> = ty::Binder<'tcx, SubtypePredicate<'tcx>>;
 
-/// Encodes that we have to coerce *from* the `a` type to the `b` type.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, TyEncodable, TyDecodable)]
-#[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
-pub struct CoercePredicate<'tcx> {
-    pub a: Ty<'tcx>,
-    pub b: Ty<'tcx>,
-}
 pub type PolyCoercePredicate<'tcx> = ty::Binder<'tcx, CoercePredicate<'tcx>>;
 
 pub type PolyProjectionPredicate<'tcx> = Binder<'tcx, ProjectionPredicate<'tcx>>;
@@ -565,33 +554,6 @@ impl<'tcx> PolyProjectionPredicate<'tcx> {
     pub fn projection_def_id(&self) -> DefId {
         // Ok to skip binder since trait `DefId` does not care about regions.
         self.skip_binder().projection_ty.def_id
-    }
-}
-
-/// Used by the new solver. Unlike a `ProjectionPredicate` this can only be
-/// proven by actually normalizing `alias`.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
-#[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
-pub struct NormalizesTo<'tcx> {
-    pub alias: AliasTy<'tcx>,
-    pub term: Term<'tcx>,
-}
-
-impl<'tcx> NormalizesTo<'tcx> {
-    pub fn self_ty(self) -> Ty<'tcx> {
-        self.alias.self_ty()
-    }
-
-    pub fn with_self_ty(self, tcx: TyCtxt<'tcx>, self_ty: Ty<'tcx>) -> NormalizesTo<'tcx> {
-        Self { alias: self.alias.with_self_ty(tcx, self_ty), ..self }
-    }
-
-    pub fn trait_def_id(self, tcx: TyCtxt<'tcx>) -> DefId {
-        self.alias.trait_def_id(tcx)
-    }
-
-    pub fn def_id(self) -> DefId {
-        self.alias.def_id
     }
 }
 

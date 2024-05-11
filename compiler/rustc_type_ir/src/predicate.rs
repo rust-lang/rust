@@ -187,7 +187,11 @@ impl<I: Interner> ExistentialTraitRef<I> {
         // otherwise the escaping vars would be captured by the binder
         // debug_assert!(!self_ty.has_escaping_bound_vars());
 
-        TraitRef::new(interner, self.def_id, [self_ty.into()].into_iter().chain(self.args.into_iter()))
+        TraitRef::new(
+            interner,
+            self.def_id,
+            [self_ty.into()].into_iter().chain(self.args.into_iter()),
+        )
     }
 }
 
@@ -295,4 +299,82 @@ impl<I: Interner> fmt::Debug for ProjectionPredicate<I> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "ProjectionPredicate({:?}, {:?})", self.projection_ty, self.term)
     }
+}
+
+/// Used by the new solver. Unlike a `ProjectionPredicate` this can only be
+/// proven by actually normalizing `alias`.
+#[derive(derivative::Derivative)]
+#[derivative(
+    Clone(bound = ""),
+    Copy(bound = ""),
+    Hash(bound = ""),
+    PartialEq(bound = ""),
+    Eq(bound = "")
+)]
+#[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
+#[cfg_attr(feature = "nightly", derive(TyDecodable, TyEncodable, HashStable_NoContext))]
+pub struct NormalizesTo<I: Interner> {
+    pub alias: I::AliasTy,
+    pub term: I::Term,
+}
+
+impl<I: Interner> NormalizesTo<I> {
+    pub fn self_ty(self) -> I::Ty {
+        self.alias.self_ty()
+    }
+
+    pub fn with_self_ty(self, tcx: I, self_ty: I::Ty) -> NormalizesTo<I> {
+        Self { alias: self.alias.with_self_ty(tcx, self_ty), ..self }
+    }
+
+    pub fn trait_def_id(self, tcx: I) -> I::DefId {
+        self.alias.trait_def_id(tcx)
+    }
+
+    pub fn def_id(self) -> I::DefId {
+        self.alias.def_id()
+    }
+}
+
+impl<I: Interner> fmt::Debug for NormalizesTo<I> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "NormalizesTo({:?}, {:?})", self.alias, self.term)
+    }
+}
+
+/// Encodes that `a` must be a subtype of `b`. The `a_is_expected` flag indicates
+/// whether the `a` type is the type that we should label as "expected" when
+/// presenting user diagnostics.
+#[derive(derivative::Derivative)]
+#[derivative(
+    Clone(bound = ""),
+    Copy(bound = ""),
+    Hash(bound = ""),
+    PartialEq(bound = ""),
+    Eq(bound = ""),
+    Debug(bound = "")
+)]
+#[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
+#[cfg_attr(feature = "nightly", derive(TyDecodable, TyEncodable, HashStable_NoContext))]
+pub struct SubtypePredicate<I: Interner> {
+    pub a_is_expected: bool,
+    pub a: I::Ty,
+    pub b: I::Ty,
+}
+
+/// Encodes that we have to coerce *from* the `a` type to the `b` type.
+#[derive(derivative::Derivative)]
+#[derivative(
+    Clone(bound = ""),
+    Copy(bound = ""),
+    Hash(bound = ""),
+    PartialEq(bound = ""),
+    Eq(bound = ""),
+    Debug(bound = "")
+)]
+#[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
+#[cfg_attr(feature = "nightly", derive(TyDecodable, TyEncodable, HashStable_NoContext))]
+pub struct CoercePredicate<I: Interner> {
+    pub a: I::Ty,
+    pub b: I::Ty,
 }

@@ -6,8 +6,8 @@ use crate::inherent::*;
 use crate::ir_print::IrPrint;
 use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable};
 use crate::{
-    CanonicalVarInfo, DebugWithInfcx, ExistentialProjection, ExistentialTraitRef,
-    ProjectionPredicate, TraitPredicate, TraitRef,
+    CanonicalVarInfo, CoercePredicate, DebugWithInfcx, ExistentialProjection, ExistentialTraitRef,
+    NormalizesTo, ProjectionPredicate, SubtypePredicate, TraitPredicate, TraitRef,
 };
 
 pub trait Interner:
@@ -18,6 +18,9 @@ pub trait Interner:
     + IrPrint<ExistentialTraitRef<Self>>
     + IrPrint<ExistentialProjection<Self>>
     + IrPrint<ProjectionPredicate<Self>>
+    + IrPrint<NormalizesTo<Self>>
+    + IrPrint<SubtypePredicate<Self>>
+    + IrPrint<CoercePredicate<Self>>
 {
     type DefId: Copy + Debug + Hash + Eq;
     type DefiningOpaqueTypes: Copy + Debug + Hash + Default + Eq + TypeVisitable<Self>;
