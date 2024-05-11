@@ -211,6 +211,21 @@ struct I64X2(i64, i64);
 extern "C" fn foo(_a: I64X2) {}
 
 #[cfg(target_arch = "x86_64")]
+#[target_feature(enable = "sse4.2")]
+#[cfg(not(jit))]
+unsafe fn test_crc32() {
+    assert!(is_x86_feature_detected!("sse4.2"));
+
+    let a = 42u32;
+    let b = 0xdeadbeefu64;
+
+    assert_eq!(_mm_crc32_u8(a, b as u8), 4135334616);
+    assert_eq!(_mm_crc32_u16(a, b as u16), 1200687288);
+    assert_eq!(_mm_crc32_u32(a, b as u32), 2543798776);
+    assert_eq!(_mm_crc32_u64(a as u64, b as u64), 241952147);
+}
+
+#[cfg(target_arch = "x86_64")]
 #[target_feature(enable = "sse2")]
 unsafe fn test_simd() {
     assert!(is_x86_feature_detected!("sse2"));
@@ -249,6 +264,9 @@ unsafe fn test_simd() {
     #[rustfmt::skip]
     let mask1 = _mm_movemask_epi8(dbg!(_mm_setr_epi8(255u8 as i8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)));
     assert_eq!(mask1, 1);
+
+    #[cfg(not(jit))]
+    test_crc32();
 }
 
 #[cfg(target_arch = "x86_64")]
