@@ -1401,20 +1401,12 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     // Convert the bounds into obligations.
                     ocx.register_obligations(traits::predicates_for_generics(
                         |idx, span| {
-                            let code = if span.is_dummy() {
-                                ObligationCauseCode::WhereClauseInExpr(
-                                    impl_def_id,
-                                    self.scope_expr_id,
-                                    idx,
-                                )
-                            } else {
-                                ObligationCauseCode::SpannedWhereClauseInExpr(
-                                    impl_def_id,
-                                    span,
-                                    self.scope_expr_id,
-                                    idx,
-                                )
-                            };
+                            let code = ObligationCauseCode::WhereClauseInExpr(
+                                impl_def_id,
+                                span,
+                                self.scope_expr_id,
+                                idx,
+                            );
                             ObligationCause::new(self.span, self.body_id, code)
                         },
                         self.param_env,

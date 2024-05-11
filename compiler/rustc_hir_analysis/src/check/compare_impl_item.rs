@@ -819,7 +819,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ImplTraitInTraitCollector<'_, 'tcx> {
                     ObligationCause::new(
                         self.span,
                         self.body_id,
-                        ObligationCauseCode::SpannedWhereClause(proj.def_id, pred_span),
+                        ObligationCauseCode::WhereClause(proj.def_id, pred_span),
                     ),
                     self.param_env,
                     pred,
@@ -2011,11 +2011,7 @@ pub(super) fn check_type_bounds<'tcx>(
         },
     );
     let mk_cause = |span: Span| {
-        let code = if span.is_dummy() {
-            ObligationCauseCode::WhereClause(trait_ty.def_id)
-        } else {
-            ObligationCauseCode::SpannedWhereClause(trait_ty.def_id, span)
-        };
+        let code = ObligationCauseCode::WhereClause(trait_ty.def_id, span);
         ObligationCause::new(impl_ty_span, impl_ty_def_id, code)
     };
 
@@ -2251,8 +2247,7 @@ fn try_report_async_mismatch<'tcx>(
     };
 
     for error in errors {
-        if let ObligationCauseCode::SpannedWhereClause(def_id, _) =
-            *error.root_obligation.cause.code()
+        if let ObligationCauseCode::WhereClause(def_id, _) = *error.root_obligation.cause.code()
             && def_id == async_future_def_id
             && let Some(proj) = error.root_obligation.predicate.to_opt_poly_projection_pred()
             && let Some(proj) = proj.no_bound_vars()

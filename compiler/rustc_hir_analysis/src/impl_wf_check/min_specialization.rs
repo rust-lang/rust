@@ -212,7 +212,7 @@ fn get_impl_args(
             traits::ObligationCause::new(
                 impl1_span,
                 impl1_def_id,
-                traits::ObligationCauseCode::SpannedWhereClause(impl2_node.def_id(), span),
+                traits::ObligationCauseCode::WhereClause(impl2_node.def_id(), span),
             )
         },
     );

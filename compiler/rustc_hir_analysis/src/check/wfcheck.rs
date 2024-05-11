@@ -1550,7 +1550,7 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
             let cause = traits::ObligationCause::new(
                 sp,
                 wfcx.body_def_id,
-                ObligationCauseCode::WhereClause(def_id.to_def_id()),
+                ObligationCauseCode::WhereClause(def_id.to_def_id(), DUMMY_SP),
             );
             traits::Obligation::new(tcx, cause, wfcx.param_env, pred)
         });

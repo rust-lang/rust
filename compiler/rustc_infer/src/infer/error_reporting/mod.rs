@@ -883,9 +883,10 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 err.help("...or use `match` instead of `let...else`");
             }
             _ => {
-                if let ObligationCauseCode::SpannedWhereClause(_, span)
-                | ObligationCauseCode::SpannedWhereClauseInExpr(_, span, ..) =
+                if let ObligationCauseCode::WhereClause(_, span)
+                | ObligationCauseCode::WhereClauseInExpr(_, span, ..) =
                     cause.code().peel_derives()
+                    && !span.is_dummy()
                     && let TypeError::RegionsPlaceholderMismatch = terr
                 {
                     err.span_note(*span, "the lifetime requirement is introduced here");

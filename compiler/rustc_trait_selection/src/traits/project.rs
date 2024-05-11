@@ -573,11 +573,7 @@ pub fn normalize_inherent_projection<'a, 'b, 'tcx>(
             // cause code, inherent projections will be printed with identity instantiation in
             // diagnostics which is not ideal.
             // Consider creating separate cause codes for this specific situation.
-            if span.is_dummy() {
-                ObligationCauseCode::WhereClause(alias_ty.def_id)
-            } else {
-                ObligationCauseCode::SpannedWhereClause(alias_ty.def_id, span)
-            },
+            ObligationCauseCode::WhereClause(alias_ty.def_id, span),
         );
 
         obligations.push(Obligation::with_depth(
@@ -2130,17 +2126,11 @@ fn assoc_ty_own_obligations<'cx, 'tcx>(
                 | ObligationCauseCode::AscribeUserTypeProvePredicate(..)
         ) {
             obligation.cause.clone()
-        } else if span.is_dummy() {
-            ObligationCause::new(
-                obligation.cause.span,
-                obligation.cause.body_id,
-                ObligationCauseCode::WhereClause(obligation.predicate.def_id),
-            )
         } else {
             ObligationCause::new(
                 obligation.cause.span,
                 obligation.cause.body_id,
-                ObligationCauseCode::SpannedWhereClause(obligation.predicate.def_id, span),
+                ObligationCauseCode::WhereClause(obligation.predicate.def_id, span),
             )
         };
         nested.push(Obligation::with_depth(
