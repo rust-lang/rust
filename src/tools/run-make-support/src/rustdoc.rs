@@ -45,6 +45,21 @@ impl Rustdoc {
         Self { cmd, stdin: None }
     }
 
+    /// Specify where an external library is located.
+    pub fn extern_<P: AsRef<Path>>(&mut self, crate_name: &str, path: P) -> &mut Self {
+        assert!(
+            !crate_name.contains(|c: char| c.is_whitespace() || c == '\\' || c == '/'),
+            "crate name cannot contain whitespace or path separators"
+        );
+
+        let path = path.as_ref().to_string_lossy();
+
+        self.cmd.arg("--extern");
+        self.cmd.arg(format!("{crate_name}={path}"));
+
+        self
+    }
+
     /// Specify path to the input file.
     pub fn input<P: AsRef<Path>>(&mut self, path: P) -> &mut Self {
         self.cmd.arg(path.as_ref());
