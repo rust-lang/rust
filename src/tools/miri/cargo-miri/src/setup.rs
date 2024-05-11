@@ -6,7 +6,7 @@ use std::fmt::Write;
 use std::path::PathBuf;
 use std::process::{self, Command};
 
-use rustc_build_sysroot::{BuildMode, SysrootBuilder, SysrootConfig};
+use rustc_build_sysroot::{BuildMode, SysrootBuilder, SysrootConfig, SysrootStatus};
 use rustc_version::VersionMeta;
 
 use crate::util::*;
@@ -137,32 +137,52 @@ pub fn setup(
     // not apply `RUSTFLAGS` to the sysroot either.
     let rustflags = &["-Cdebug-assertions=off", "-Coverflow-checks=on"];
 
-    // Do the build.
-    if print_sysroot || quiet {
-        // Be silent.
-    } else {
+    let notify = || {
         let mut msg = String::new();
         write!(msg, "Preparing a sysroot for Miri (target: {target})").unwrap();
         if verbose > 0 {
             write!(msg, " in {}", sysroot_dir.display()).unwrap();
         }
         write!(msg, "...").unwrap();
-        if only_setup {
+
+        if print_sysroot || quiet {
+            // Be silent.
+        } else if only_setup {
             // We want to be explicit.
             eprintln!("{msg}");
         } else {
             // We want to be quiet, but still let the user know that something is happening.
             eprint!("{msg} ");
         }
-    }
-    SysrootBuilder::new(&sysroot_dir, target)
+    };
+
+    // Do the build.
+    let status = SysrootBuilder::new(&sysroot_dir, target)
         .build_mode(BuildMode::Check)
         .rustc_version(rustc_version.clone())
         .sysroot_config(sysroot_config)
         .rustflags(rustflags)
         .cargo(cargo_cmd)
-        .build_from_source(&rust_src)
-        .unwrap_or_else(|err| {
+        .when_build_required(notify)
+        .build_from_source(&rust_src);
+    match status {
+        Ok(SysrootStatus::AlreadyCached) =>
+            if only_setup && !(print_sysroot || quiet) {
+                eprintln!(
+                    "A sysroot for Miri is already available in `{}`.",
+                    sysroot_dir.display()
+                );
+            },
+        Ok(SysrootStatus::SysrootBuilt) => {
+            if print_sysroot || quiet {
+                // Be silent.
+            } else if only_setup {
+                eprintln!("A sysroot for Miri is now available in `{}`.", sysroot_dir.display());
+            } else {
+                eprintln!("done");
+            }
+        }
+        Err(err) =>
             if print_sysroot {
                 show_error!("failed to build sysroot")
             } else if only_setup {
@@ -171,15 +191,9 @@ pub fn setup(
                 show_error!(
                     "failed to build sysroot; run `cargo miri setup` to see the error details"
                 )
-            }
-        });
-    if print_sysroot || quiet {
-        // Be silent.
-    } else if only_setup {
-        eprintln!("A sysroot for Miri is now available in `{}`.", sysroot_dir.display());
-    } else {
-        eprintln!("done");
+            },
     }
+
     if print_sysroot {
         // Print just the sysroot and nothing else to stdout; this way we do not need any escaping.
         println!("{}", sysroot_dir.display());
