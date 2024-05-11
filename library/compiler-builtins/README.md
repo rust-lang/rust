@@ -233,7 +233,7 @@ These builtins are needed to support 128-bit integers.
 These builtins are needed to support `f16` and `f128`, which are in the process of being added to Rust.
 
 - [x] addtf3.c
-- [ ] comparetf2.c
+- [x] comparetf2.c
 - [ ] divtf3.c
 - [x] extenddftf2.c
 - [x] extendhfsf2.c
