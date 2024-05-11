@@ -1467,6 +1467,7 @@ mod prim_usize {}
 /// For all types, `T: ?Sized`, and for all `t: &T` or `t: &mut T`, when such values cross an API
 /// boundary, the following invariants must generally be upheld:
 ///
+/// * `t` is non-null
 /// * `t` is aligned to `align_of_val(t)`
 /// * if `size_of_val(t) > 0`, then `t` is dereferenceable for `size_of_val(t)` many bytes
 ///
