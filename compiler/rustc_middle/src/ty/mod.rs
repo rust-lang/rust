@@ -277,30 +277,6 @@ pub enum ImplSubject<'tcx> {
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable, HashStable, Debug)]
 #[derive(TypeFoldable, TypeVisitable)]
-pub enum ImplPolarity {
-    /// `impl Trait for Type`
-    Positive,
-    /// `impl !Trait for Type`
-    Negative,
-    /// `#[rustc_reservation_impl] impl Trait for Type`
-    ///
-    /// This is a "stability hack", not a real Rust feature.
-    /// See #64631 for details.
-    Reservation,
-}
-
-impl fmt::Display for ImplPolarity {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Positive => f.write_str("positive"),
-            Self::Negative => f.write_str("negative"),
-            Self::Reservation => f.write_str("reservation"),
-        }
-    }
-}
-
-#[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable, HashStable, Debug)]
-#[derive(TypeFoldable, TypeVisitable)]
 pub enum Asyncness {
     Yes,
     No,

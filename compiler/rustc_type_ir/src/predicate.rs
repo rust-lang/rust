@@ -115,6 +115,30 @@ impl<I: Interner> fmt::Debug for TraitPredicate<I> {
     }
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[cfg_attr(feature = "nightly", derive(TyDecodable, TyEncodable, HashStable_NoContext))]
+pub enum ImplPolarity {
+    /// `impl Trait for Type`
+    Positive,
+    /// `impl !Trait for Type`
+    Negative,
+    /// `#[rustc_reservation_impl] impl Trait for Type`
+    ///
+    /// This is a "stability hack", not a real Rust feature.
+    /// See #64631 for details.
+    Reservation,
+}
+
+impl fmt::Display for ImplPolarity {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Positive => f.write_str("positive"),
+            Self::Negative => f.write_str("negative"),
+            Self::Reservation => f.write_str("reservation"),
+        }
+    }
+}
+
 /// Polarity for a trait predicate. May either be negative or positive.
 /// Distinguished from [`ImplPolarity`] since we never compute goals with
 /// "reservation" level.
