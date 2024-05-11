@@ -244,6 +244,7 @@ unsafe fn test_simd() {
 
     test_mm256_shuffle_epi8();
     test_mm256_permute2x128_si256();
+    test_mm256_permutevar8x32_epi32();
 
     #[rustfmt::skip]
     let mask1 = _mm_movemask_epi8(dbg!(_mm_setr_epi8(255u8 as i8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)));
@@ -444,6 +445,16 @@ unsafe fn test_mm256_permute2x128_si256() {
     let b = _mm256_setr_epi64x(300, 400, 700, 800);
     let r = _mm256_permute2x128_si256::<0b00_01_00_11>(a, b);
     let e = _mm256_setr_epi64x(700, 800, 500, 600);
+    assert_eq_m256i(r, e);
+}
+
+#[cfg(target_arch = "x86_64")]
+#[target_feature(enable = "avx2")]
+unsafe fn test_mm256_permutevar8x32_epi32() {
+    let a = _mm256_setr_epi32(100, 200, 300, 400, 500, 600, 700, 800);
+    let idx = _mm256_setr_epi32(7, 6, 5, 4, 3, 2, 1, 0);
+    let r = _mm256_setr_epi32(800, 700, 600, 500, 400, 300, 200, 100);
+    let e = _mm256_permutevar8x32_epi32(a, idx);
     assert_eq_m256i(r, e);
 }
 
