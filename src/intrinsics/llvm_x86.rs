@@ -374,6 +374,21 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
                 }
             }
         }
+        "llvm.x86.avx2.permd" => {
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_permutevar8x32_epi32
+            intrinsic_args!(fx, args => (a, idx); intrinsic);
+
+            for j in 0..=7 {
+                let index = idx.value_typed_lane(fx, fx.tcx.types.u32, j).load_scalar(fx);
+                let index = fx.bcx.ins().uextend(fx.pointer_type, index);
+                let value = a.value_lane_dyn(fx, index).load_scalar(fx);
+                ret.place_typed_lane(fx, fx.tcx.types.u32, j).to_ptr().store(
+                    fx,
+                    value,
+                    MemFlags::trusted(),
+                );
+            }
+        }
         "llvm.x86.avx2.vperm2i128"
         | "llvm.x86.avx.vperm2f128.ps.256"
         | "llvm.x86.avx.vperm2f128.pd.256" => {
