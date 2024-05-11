@@ -18,6 +18,7 @@ use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{self, FieldIdx, FIRST_VARIANT};
 
 use arrayvec::ArrayVec;
+use either::Either;
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     #[instrument(level = "trace", skip(self, bx))]
@@ -696,35 +697,25 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 OperandRef { val: OperandValue::Immediate(static_), layout }
             }
             mir::Rvalue::Use(ref operand) => self.codegen_operand(bx, operand),
-            mir::Rvalue::Aggregate(box mir::AggregateKind::RawPtr(..), ref fields) => {
-                let ty = rvalue.ty(self.mir, self.cx.tcx());
-                let layout = self.cx.layout_of(self.monomorphize(ty));
-                let [data, meta] = &*fields.raw else {
-                    bug!("RawPtr fields: {fields:?}");
-                };
-                let data = self.codegen_operand(bx, data);
-                let meta = self.codegen_operand(bx, meta);
-                match (data.val, meta.val) {
-                    (p @ OperandValue::Immediate(_), OperandValue::ZeroSized) => {
-                        OperandRef { val: p, layout }
-                    }
-                    (OperandValue::Immediate(p), OperandValue::Immediate(m)) => {
-                        OperandRef { val: OperandValue::Pair(p, m), layout }
-                    }
-                    _ => bug!("RawPtr operands {data:?} {meta:?}"),
-                }
-            }
             mir::Rvalue::Repeat(..) => bug!("{rvalue:?} in codegen_rvalue_operand"),
-            mir::Rvalue::Aggregate(_, ref fields) => {
+            mir::Rvalue::Aggregate(ref kind, ref fields) => {
                 let ty = rvalue.ty(self.mir, self.cx.tcx());
                 let ty = self.monomorphize(ty);
                 let layout = self.cx.layout_of(ty);
+
+                let field_indices = if let mir::AggregateKind::RawPtr(..) = **kind {
+                    // `index_by_increasing_offset` gives an empty iterator for primitives
+                    Either::Left([0_usize, 1_usize].iter().copied())
+                } else {
+                    Either::Right(layout.fields.index_by_increasing_offset())
+                };
+                debug_assert_eq!(field_indices.len(), fields.len());
 
                 // `rvalue_creates_operand` has arranged that we only get here if
                 // we can build the aggregate immediate from the field immediates.
                 let mut inputs = ArrayVec::<Bx::Value, 2>::new();
                 let mut input_scalars = ArrayVec::<abi::Scalar, 2>::new();
-                for field_idx in layout.fields.index_by_increasing_offset() {
+                for field_idx in field_indices {
                     let field_idx = FieldIdx::from_usize(field_idx);
                     let op = self.codegen_operand(bx, &fields[field_idx]);
                     let values = op.val.immediates_or_place().left_or_else(|p| {
@@ -748,6 +739,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 );
 
                 let val = OperandValue::from_immediates(inputs);
+                debug_assert!(
+                    val.is_expected_variant_for_type(self.cx, layout),
+                    "Made wrong variant {val:?} for type {layout:?}",
+                );
                 OperandRef { val, layout }
             }
             mir::Rvalue::ShallowInitBox(ref operand, content_ty) => {
@@ -792,7 +787,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         debug_assert!(
             if bx.cx().type_has_metadata(ty) {
                 matches!(val, OperandValue::Pair(..))
-        } else {
+            } else {
                 matches!(val, OperandValue::Immediate(..))
             },
             "Address of place was unexpectedly {val:?} for pointee type {ty:?}",

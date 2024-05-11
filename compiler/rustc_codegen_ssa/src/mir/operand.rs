@@ -110,6 +110,19 @@ impl<V: CodegenObject> OperandValue<V> {
         let (llval, llextra) = self.pointer_parts();
         PlaceValue { llval, llextra, align }
     }
+
+    pub(crate) fn is_expected_variant_for_type<'tcx, Cx: LayoutTypeMethods<'tcx>>(
+        &self,
+        cx: &Cx,
+        ty: TyAndLayout<'tcx>,
+    ) -> bool {
+        match self {
+            OperandValue::ZeroSized => ty.is_zst(),
+            OperandValue::Immediate(_) => cx.is_backend_immediate(ty),
+            OperandValue::Pair(_, _) => cx.is_backend_scalar_pair(ty),
+            OperandValue::Ref(_) => cx.is_backend_ref(ty),
+        }
+    }
 }
 
 /// An `OperandRef` is an "SSA" reference to a Rust value, along with

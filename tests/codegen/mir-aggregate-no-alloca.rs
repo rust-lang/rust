@@ -55,7 +55,7 @@ pub fn make_cell_of_bool(b: bool) -> std::cell::Cell<bool> {
     std::cell::Cell::new(b)
 }
 
-// CHECK-LABLE: { i8, i16 } @make_cell_of_bool_and_short(i1 noundef zeroext %b, i16 noundef %s)
+// CHECK-LABEL: { i8, i16 } @make_cell_of_bool_and_short(i1 noundef zeroext %b, i16 noundef %s)
 #[no_mangle]
 pub fn make_cell_of_bool_and_short(b: bool, s: u16) -> std::cell::Cell<(bool, u16)> {
     // CHECK-NOT: alloca
