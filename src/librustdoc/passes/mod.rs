@@ -8,6 +8,9 @@ use crate::core::DocContext;
 mod stripper;
 pub(crate) use stripper::*;
 
+mod strip_aliased_non_local;
+pub(crate) use self::strip_aliased_non_local::STRIP_ALIASED_NON_LOCAL;
+
 mod strip_hidden;
 pub(crate) use self::strip_hidden::STRIP_HIDDEN;
 
@@ -71,6 +74,7 @@ pub(crate) enum Condition {
 pub(crate) const PASSES: &[Pass] = &[
     CHECK_CUSTOM_CODE_CLASSES,
     CHECK_DOC_TEST_VISIBILITY,
+    STRIP_ALIASED_NON_LOCAL,
     STRIP_HIDDEN,
     STRIP_PRIVATE,
     STRIP_PRIV_IMPORTS,
@@ -86,6 +90,7 @@ pub(crate) const DEFAULT_PASSES: &[ConditionalPass] = &[
     ConditionalPass::always(CHECK_CUSTOM_CODE_CLASSES),
     ConditionalPass::always(COLLECT_TRAIT_IMPLS),
     ConditionalPass::always(CHECK_DOC_TEST_VISIBILITY),
+    ConditionalPass::always(STRIP_ALIASED_NON_LOCAL),
     ConditionalPass::new(STRIP_HIDDEN, WhenNotDocumentHidden),
     ConditionalPass::new(STRIP_PRIVATE, WhenNotDocumentPrivate),
     ConditionalPass::new(STRIP_PRIV_IMPORTS, WhenDocumentPrivate),
