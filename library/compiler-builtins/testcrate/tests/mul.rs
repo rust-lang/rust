@@ -1,4 +1,6 @@
 #![allow(unused_macros)]
+#![feature(f128)]
+#![feature(f16)]
 
 use testcrate::*;
 
@@ -114,6 +116,21 @@ fn float_mul() {
         f32, __mulsf3, Single, all();
         f64, __muldf3, Double, all();
     );
+
+    #[cfg(not(feature = "no-f16-f128"))]
+    {
+        #[cfg(any(target_arch = "powerpc", target_arch = "powerpc64"))]
+        use compiler_builtins::float::mul::__mulkf3 as __multf3;
+        #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
+        use compiler_builtins::float::mul::__multf3;
+
+        float_mul!(
+            f128, __multf3, Quad,
+            // FIXME(llvm): there is a bug in LLVM rt.
+            // See <https://github.com/llvm/llvm-project/issues/91840>.
+            not(any(feature = "no-sys-f128", all(target_arch = "aarch64", target_os = "linux")));
+        );
+    }
 }
 
 #[cfg(target_arch = "arm")]
