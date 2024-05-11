@@ -60,7 +60,7 @@ pub type TypeAlias = X;
 pub type GenericTypeAlias = (Generic<(u32, ())>, Generic<u32>);
 
 // Regression test for the rustdoc equivalent of #85103.
-//@ hasraw type_layout/type.Edges.html 'Encountered an error during type layout; the type failed to be normalized.'
+//@ hasraw type_layout/type.Edges.html 'Unable to compute type layout'
 pub type Edges<'a, E> = std::borrow::Cow<'a, [E]>;
 
 //@ !hasraw type_layout/trait.MyTrait.html 'Size: '
