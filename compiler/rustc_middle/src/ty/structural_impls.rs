@@ -158,13 +158,6 @@ impl fmt::Debug for ty::ParamConst {
     }
 }
 
-impl<'tcx> fmt::Debug for ty::TraitPredicate<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // FIXME(effects) printing?
-        write!(f, "TraitPredicate({:?}, polarity:{:?})", self.trait_ref, self.polarity)
-    }
-}
-
 impl<'tcx> fmt::Debug for ty::ProjectionPredicate<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "ProjectionPredicate({:?}, {:?})", self.projection_ty, self.term)

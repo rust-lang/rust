@@ -2953,8 +2953,9 @@ impl<'tcx> fmt::Debug for TraitPredPrintModifiersAndPath<'tcx> {
     }
 }
 
+#[extension(pub trait PrintTraitPredicateExt<'tcx>)]
 impl<'tcx> ty::TraitPredicate<'tcx> {
-    pub fn print_modifiers_and_trait_path(self) -> TraitPredPrintModifiersAndPath<'tcx> {
+    fn print_modifiers_and_trait_path(self) -> TraitPredPrintModifiersAndPath<'tcx> {
         TraitPredPrintModifiersAndPath(self)
     }
 }
@@ -3035,6 +3036,15 @@ define_print! {
 
     ty::TraitRef<'tcx> {
         p!(write("<{} as {}>", self.self_ty(), self.print_only_trait_path()))
+    }
+
+    ty::TraitPredicate<'tcx> {
+        p!(print(self.trait_ref.self_ty()), ": ");
+        p!(pretty_print_bound_constness(self.trait_ref));
+        if let ty::PredicatePolarity::Negative = self.polarity {
+            p!("!");
+        }
+        p!(print(self.trait_ref.print_trait_sugared()))
     }
 
     ty::TypeAndMut<'tcx> {
@@ -3174,15 +3184,6 @@ define_print_and_forward_display! {
         p!(print(self.a), " -> ");
         cx.reset_type_limit();
         p!(print(self.b))
-    }
-
-    ty::TraitPredicate<'tcx> {
-        p!(print(self.trait_ref.self_ty()), ": ");
-        p!(pretty_print_bound_constness(self.trait_ref));
-        if let ty::PredicatePolarity::Negative = self.polarity {
-            p!("!");
-        }
-        p!(print(self.trait_ref.print_trait_sugared()))
     }
 
     ty::ProjectionPredicate<'tcx> {

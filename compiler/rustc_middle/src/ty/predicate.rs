@@ -5,6 +5,7 @@ use rustc_hir::def_id::DefId;
 use rustc_macros::{HashStable, Lift, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_type_ir::ClauseKind as IrClauseKind;
 use rustc_type_ir::PredicateKind as IrPredicateKind;
+use rustc_type_ir::TraitPredicate as IrTraitPredicate;
 use rustc_type_ir::TraitRef as IrTraitRef;
 use std::cmp::Ordering;
 
@@ -15,6 +16,7 @@ use crate::ty::{
 };
 
 pub type TraitRef<'tcx> = IrTraitRef<TyCtxt<'tcx>>;
+pub type TraitPredicate<'tcx> = IrTraitPredicate<TyCtxt<'tcx>>;
 pub type ClauseKind<'tcx> = IrClauseKind<TyCtxt<'tcx>>;
 pub type PredicateKind<'tcx> = IrPredicateKind<TyCtxt<'tcx>>;
 
@@ -578,36 +580,7 @@ impl<'tcx> Clause<'tcx> {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
-#[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
-pub struct TraitPredicate<'tcx> {
-    pub trait_ref: TraitRef<'tcx>,
-
-    /// If polarity is Positive: we are proving that the trait is implemented.
-    ///
-    /// If polarity is Negative: we are proving that a negative impl of this trait
-    /// exists. (Note that coherence also checks whether negative impls of supertraits
-    /// exist via a series of predicates.)
-    ///
-    /// If polarity is Reserved: that's a bug.
-    pub polarity: PredicatePolarity,
-}
-
 pub type PolyTraitPredicate<'tcx> = ty::Binder<'tcx, TraitPredicate<'tcx>>;
-
-impl<'tcx> TraitPredicate<'tcx> {
-    pub fn with_self_ty(self, tcx: TyCtxt<'tcx>, self_ty: Ty<'tcx>) -> Self {
-        Self { trait_ref: self.trait_ref.with_self_ty(tcx, self_ty), ..self }
-    }
-
-    pub fn def_id(self) -> DefId {
-        self.trait_ref.def_id
-    }
-
-    pub fn self_ty(self) -> Ty<'tcx> {
-        self.trait_ref.self_ty()
-    }
-}
 
 impl<'tcx> PolyTraitPredicate<'tcx> {
     pub fn def_id(self) -> DefId {

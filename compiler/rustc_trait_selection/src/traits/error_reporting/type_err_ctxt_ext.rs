@@ -38,7 +38,8 @@ use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::fold::{BottomUpFolder, TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::print::{
-    with_forced_trimmed_paths, FmtPrinter, Print, PrintTraitRefExt as _,
+    with_forced_trimmed_paths, FmtPrinter, Print, PrintTraitPredicateExt as _,
+    PrintTraitRefExt as _,
 };
 use rustc_middle::ty::{
     self, SubtypePredicate, ToPolyTraitRef, ToPredicate, TraitRef, Ty, TyCtxt, TypeFoldable,

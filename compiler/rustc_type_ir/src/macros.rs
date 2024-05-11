@@ -53,4 +53,5 @@ TrivialTypeTraversalImpls! {
     crate::UniverseIndex,
     rustc_ast_ir::Mutability,
     rustc_ast_ir::Movability,
+    crate::PredicatePolarity,
 }

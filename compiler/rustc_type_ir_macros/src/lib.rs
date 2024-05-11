@@ -1,6 +1,6 @@
-use synstructure::decl_derive;
 use quote::quote;
 use syn::{parse_quote, visit_mut::VisitMut};
+use synstructure::decl_derive;
 
 decl_derive!(
     [TypeFoldable_Generic] => type_foldable_derive

@@ -5,9 +5,9 @@ use std::hash::Hash;
 use crate::inherent::*;
 use crate::ir_print::IrPrint;
 use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable};
-use crate::{CanonicalVarInfo, DebugWithInfcx, TraitRef};
+use crate::{CanonicalVarInfo, DebugWithInfcx, TraitPredicate, TraitRef};
 
-pub trait Interner: Sized + Copy + IrPrint<TraitRef<Self>> {
+pub trait Interner: Sized + Copy + IrPrint<TraitRef<Self>> + IrPrint<TraitPredicate<Self>> {
     type DefId: Copy + Debug + Hash + Eq;
     type DefiningOpaqueTypes: Copy + Debug + Hash + Default + Eq + TypeVisitable<Self>;
     type AdtDef: Copy + Debug + Hash + Eq;
