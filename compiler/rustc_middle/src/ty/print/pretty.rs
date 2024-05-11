@@ -3087,14 +3087,6 @@ define_print! {
             ty::PredicateKind::AliasRelate(t1, t2, dir) => p!(print(t1), write(" {} ", dir), print(t2)),
         }
     }
-}
-
-define_print_and_forward_display! {
-    (self, cx):
-
-    &'tcx ty::List<Ty<'tcx>> {
-        p!("{{", comma_sep(self.iter()), "}}")
-    }
 
     ty::ExistentialTraitRef<'tcx> {
         // Use a type that can't appear in defaults of type parameters.
@@ -3106,6 +3098,20 @@ define_print_and_forward_display! {
     ty::ExistentialProjection<'tcx> {
         let name = cx.tcx().associated_item(self.def_id).name;
         p!(write("{} = ", name), print(self.term))
+    }
+
+    ty::ProjectionPredicate<'tcx> {
+        p!(print(self.projection_ty), " == ");
+        cx.reset_type_limit();
+        p!(print(self.term))
+    }
+}
+
+define_print_and_forward_display! {
+    (self, cx):
+
+    &'tcx ty::List<Ty<'tcx>> {
+        p!("{{", comma_sep(self.iter()), "}}")
     }
 
     ty::ExistentialPredicate<'tcx> {
@@ -3184,12 +3190,6 @@ define_print_and_forward_display! {
         p!(print(self.a), " -> ");
         cx.reset_type_limit();
         p!(print(self.b))
-    }
-
-    ty::ProjectionPredicate<'tcx> {
-        p!(print(self.projection_ty), " == ");
-        cx.reset_type_limit();
-        p!(print(self.term))
     }
 
     ty::NormalizesTo<'tcx> {

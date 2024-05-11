@@ -5,9 +5,20 @@ use std::hash::Hash;
 use crate::inherent::*;
 use crate::ir_print::IrPrint;
 use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable};
-use crate::{CanonicalVarInfo, DebugWithInfcx, TraitPredicate, TraitRef};
+use crate::{
+    CanonicalVarInfo, DebugWithInfcx, ExistentialProjection, ExistentialTraitRef,
+    ProjectionPredicate, TraitPredicate, TraitRef,
+};
 
-pub trait Interner: Sized + Copy + IrPrint<TraitRef<Self>> + IrPrint<TraitPredicate<Self>> {
+pub trait Interner:
+    Sized
+    + Copy
+    + IrPrint<TraitRef<Self>>
+    + IrPrint<TraitPredicate<Self>>
+    + IrPrint<ExistentialTraitRef<Self>>
+    + IrPrint<ExistentialProjection<Self>>
+    + IrPrint<ProjectionPredicate<Self>>
+{
     type DefId: Copy + Debug + Hash + Eq;
     type DefiningOpaqueTypes: Copy + Debug + Hash + Default + Eq + TypeVisitable<Self>;
     type AdtDef: Copy + Debug + Hash + Eq;
@@ -25,7 +36,7 @@ pub trait Interner: Sized + Copy + IrPrint<TraitRef<Self>> + IrPrint<TraitPredic
     // Kinds of tys
     type Ty: Ty<Self>;
     type Tys: Copy + Debug + Hash + Eq + IntoIterator<Item = Self::Ty>;
-    type AliasTy: Copy + DebugWithInfcx<Self> + Hash + Eq;
+    type AliasTy: AliasTy<Self>;
     type ParamTy: Copy + Debug + Hash + Eq;
     type BoundTy: Copy + Debug + Hash + Eq;
     type PlaceholderTy: PlaceholderLike;
@@ -71,11 +82,15 @@ pub trait Interner: Sized + Copy + IrPrint<TraitRef<Self>> + IrPrint<TraitPredic
     type GenericsOf: GenericsOf<Self>;
     fn generics_of(self, def_id: Self::DefId) -> Self::GenericsOf;
 
+    fn mk_args(self, args: &[Self::GenericArg]) -> Self::GenericArgs;
+
     fn check_and_mk_args(
         self,
         def_id: Self::DefId,
         args: impl IntoIterator<Item: Into<Self::GenericArg>>,
     ) -> Self::GenericArgs;
+
+    fn parent(self, def_id: Self::DefId) -> Self::DefId;
 }
 
 /// Imagine you have a function `F: FnOnce(&[T]) -> R`, plus an iterator `iter`

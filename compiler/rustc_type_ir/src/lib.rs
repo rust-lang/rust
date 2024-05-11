@@ -39,7 +39,7 @@ mod infcx;
 mod interner;
 mod predicate_kind;
 mod region_kind;
-mod trait_ref;
+mod predicate;
 
 pub use canonical::*;
 #[cfg(feature = "nightly")]
@@ -51,7 +51,7 @@ pub use infcx::InferCtxtLike;
 pub use interner::*;
 pub use predicate_kind::*;
 pub use region_kind::*;
-pub use trait_ref::*;
+pub use predicate::*;
 pub use ty_info::*;
 pub use ty_kind::*;
 pub use AliasKind::*;

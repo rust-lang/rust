@@ -1,6 +1,9 @@
 use std::fmt;
 
-use crate::{Interner, TraitPredicate, TraitRef};
+use crate::{
+    ExistentialProjection, ExistentialTraitRef, Interner, ProjectionPredicate, TraitPredicate,
+    TraitRef,
+};
 
 pub trait IrPrint<T> {
     fn print(t: &T, fmt: &mut fmt::Formatter<'_>) -> fmt::Result;
@@ -31,6 +34,12 @@ macro_rules! define_debug_via_print {
     }
 }
 
-define_display_via_print!(TraitRef, TraitPredicate,);
+define_display_via_print!(
+    TraitRef,
+    TraitPredicate,
+    ExistentialTraitRef,
+    ExistentialProjection,
+    ProjectionPredicate
+);
 
-define_debug_via_print!(TraitRef,);
+define_debug_via_print!(TraitRef, ExistentialTraitRef, ExistentialProjection);
