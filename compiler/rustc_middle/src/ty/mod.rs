@@ -96,13 +96,13 @@ pub use self::list::{List, ListWithCachedTypeInfo};
 pub use self::parameterized::ParameterizedOverTcx;
 pub use self::pattern::{Pattern, PatternKind};
 pub use self::predicate::{
-    Clause, ClauseKind, CoercePredicate, ExistentialPredicate, ExistentialProjection,
-    ExistentialTraitRef, NormalizesTo, OutlivesPredicate, PolyCoercePredicate,
-    PolyExistentialPredicate, PolyExistentialProjection, PolyExistentialTraitRef,
-    PolyProjectionPredicate, PolyRegionOutlivesPredicate, PolySubtypePredicate, PolyTraitPredicate,
-    PolyTraitRef, PolyTypeOutlivesPredicate, Predicate, PredicateKind, ProjectionPredicate,
-    RegionOutlivesPredicate, SubtypePredicate, ToPolyTraitRef, ToPredicate, TraitPredicate,
-    TraitRef, TypeOutlivesPredicate,
+    Clause, ClauseKind, CoercePredicate, ExistentialPredicate, ExistentialPredicateStableCmpExt,
+    ExistentialProjection, ExistentialTraitRef, NormalizesTo, OutlivesPredicate,
+    PolyCoercePredicate, PolyExistentialPredicate, PolyExistentialProjection,
+    PolyExistentialTraitRef, PolyProjectionPredicate, PolyRegionOutlivesPredicate,
+    PolySubtypePredicate, PolyTraitPredicate, PolyTraitRef, PolyTypeOutlivesPredicate, Predicate,
+    PredicateKind, ProjectionPredicate, RegionOutlivesPredicate, SubtypePredicate, ToPolyTraitRef,
+    ToPredicate, TraitPredicate, TraitRef, TypeOutlivesPredicate,
 };
 pub use self::region::{
     BoundRegion, BoundRegionKind, BoundRegionKind::*, EarlyParamRegion, LateParamRegion, Region,

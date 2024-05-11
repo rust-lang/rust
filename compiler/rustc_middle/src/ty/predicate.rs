@@ -1,34 +1,28 @@
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::intern::Interned;
 use rustc_hir::def_id::DefId;
-use rustc_macros::{HashStable, Lift, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
-use rustc_type_ir::ClauseKind as IrClauseKind;
-use rustc_type_ir::CoercePredicate as IrCoercePredicate;
-use rustc_type_ir::ExistentialProjection as IrExistentialProjection;
-use rustc_type_ir::ExistentialTraitRef as IrExistentialTraitRef;
-use rustc_type_ir::NormalizesTo as IrNormalizesTo;
-use rustc_type_ir::PredicateKind as IrPredicateKind;
-use rustc_type_ir::ProjectionPredicate as IrProjectionPredicate;
-use rustc_type_ir::SubtypePredicate as IrSubtypePredicate;
-use rustc_type_ir::TraitPredicate as IrTraitPredicate;
-use rustc_type_ir::TraitRef as IrTraitRef;
+use rustc_macros::{
+    extension, HashStable, Lift, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable,
+};
+use rustc_type_ir as ir;
 use std::cmp::Ordering;
 
 use crate::ty::{
-    self, Binder, DebruijnIndex, DebugWithInfcx, EarlyBinder, PredicatePolarity, Term, Ty, TyCtxt,
-    TypeFlags, WithCachedTypeInfo,
+    self, Binder, DebruijnIndex, EarlyBinder, PredicatePolarity, Term, Ty, TyCtxt, TypeFlags,
+    WithCachedTypeInfo,
 };
 
-pub type TraitRef<'tcx> = IrTraitRef<TyCtxt<'tcx>>;
-pub type ProjectionPredicate<'tcx> = IrProjectionPredicate<TyCtxt<'tcx>>;
-pub type ExistentialTraitRef<'tcx> = IrExistentialTraitRef<TyCtxt<'tcx>>;
-pub type ExistentialProjection<'tcx> = IrExistentialProjection<TyCtxt<'tcx>>;
-pub type TraitPredicate<'tcx> = IrTraitPredicate<TyCtxt<'tcx>>;
-pub type ClauseKind<'tcx> = IrClauseKind<TyCtxt<'tcx>>;
-pub type PredicateKind<'tcx> = IrPredicateKind<TyCtxt<'tcx>>;
-pub type NormalizesTo<'tcx> = IrNormalizesTo<TyCtxt<'tcx>>;
-pub type CoercePredicate<'tcx> = IrCoercePredicate<TyCtxt<'tcx>>;
-pub type SubtypePredicate<'tcx> = IrSubtypePredicate<TyCtxt<'tcx>>;
+pub type TraitRef<'tcx> = ir::TraitRef<TyCtxt<'tcx>>;
+pub type ProjectionPredicate<'tcx> = ir::ProjectionPredicate<TyCtxt<'tcx>>;
+pub type ExistentialPredicate<'tcx> = ir::ExistentialPredicate<TyCtxt<'tcx>>;
+pub type ExistentialTraitRef<'tcx> = ir::ExistentialTraitRef<TyCtxt<'tcx>>;
+pub type ExistentialProjection<'tcx> = ir::ExistentialProjection<TyCtxt<'tcx>>;
+pub type TraitPredicate<'tcx> = ir::TraitPredicate<TyCtxt<'tcx>>;
+pub type ClauseKind<'tcx> = ir::ClauseKind<TyCtxt<'tcx>>;
+pub type PredicateKind<'tcx> = ir::PredicateKind<TyCtxt<'tcx>>;
+pub type NormalizesTo<'tcx> = ir::NormalizesTo<TyCtxt<'tcx>>;
+pub type CoercePredicate<'tcx> = ir::CoercePredicate<TyCtxt<'tcx>>;
+pub type SubtypePredicate<'tcx> = ir::SubtypePredicate<TyCtxt<'tcx>>;
 
 /// A statement that can be proven by a trait solver. This includes things that may
 /// show up in where clauses, such as trait predicates and projection predicates,
@@ -207,43 +201,25 @@ impl<'tcx> Clause<'tcx> {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
-#[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
-pub enum ExistentialPredicate<'tcx> {
-    /// E.g., `Iterator`.
-    Trait(ExistentialTraitRef<'tcx>),
-    /// E.g., `Iterator::Item = T`.
-    Projection(ExistentialProjection<'tcx>),
-    /// E.g., `Send`.
-    AutoTrait(DefId),
-}
-
-impl<'tcx> DebugWithInfcx<TyCtxt<'tcx>> for ExistentialPredicate<'tcx> {
-    fn fmt<Infcx: rustc_type_ir::InferCtxtLike<Interner = TyCtxt<'tcx>>>(
-        this: rustc_type_ir::WithInfcx<'_, Infcx, &Self>,
-        f: &mut std::fmt::Formatter<'_>,
-    ) -> std::fmt::Result {
-        std::fmt::Debug::fmt(&this.data, f)
-    }
-}
-
+#[extension(pub trait ExistentialPredicateStableCmpExt<'tcx>)]
 impl<'tcx> ExistentialPredicate<'tcx> {
     /// Compares via an ordering that will not change if modules are reordered or other changes are
     /// made to the tree. In particular, this ordering is preserved across incremental compilations.
-    pub fn stable_cmp(&self, tcx: TyCtxt<'tcx>, other: &Self) -> Ordering {
-        use self::ExistentialPredicate::*;
+    fn stable_cmp(&self, tcx: TyCtxt<'tcx>, other: &Self) -> Ordering {
         match (*self, *other) {
-            (Trait(_), Trait(_)) => Ordering::Equal,
-            (Projection(ref a), Projection(ref b)) => {
+            (ExistentialPredicate::Trait(_), ExistentialPredicate::Trait(_)) => Ordering::Equal,
+            (ExistentialPredicate::Projection(ref a), ExistentialPredicate::Projection(ref b)) => {
                 tcx.def_path_hash(a.def_id).cmp(&tcx.def_path_hash(b.def_id))
             }
-            (AutoTrait(ref a), AutoTrait(ref b)) => {
+            (ExistentialPredicate::AutoTrait(ref a), ExistentialPredicate::AutoTrait(ref b)) => {
                 tcx.def_path_hash(*a).cmp(&tcx.def_path_hash(*b))
             }
-            (Trait(_), _) => Ordering::Less,
-            (Projection(_), Trait(_)) => Ordering::Greater,
-            (Projection(_), _) => Ordering::Less,
-            (AutoTrait(_), _) => Ordering::Greater,
+            (ExistentialPredicate::Trait(_), _) => Ordering::Less,
+            (ExistentialPredicate::Projection(_), ExistentialPredicate::Trait(_)) => {
+                Ordering::Greater
+            }
+            (ExistentialPredicate::Projection(_), _) => Ordering::Less,
+            (ExistentialPredicate::AutoTrait(_), _) => Ordering::Greater,
         }
     }
 }

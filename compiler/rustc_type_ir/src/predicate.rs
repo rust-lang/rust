@@ -5,7 +5,7 @@ use rustc_type_ir_macros::{Lift_Generic, TypeFoldable_Generic, TypeVisitable_Gen
 
 use crate::inherent::*;
 use crate::visit::TypeVisitableExt as _;
-use crate::Interner;
+use crate::{DebugWithInfcx, Interner};
 
 /// A complete reference to a trait. These take numerous guises in syntax,
 /// but perhaps the most recognizable form is in a where-clause:
@@ -143,6 +143,36 @@ impl fmt::Display for PredicatePolarity {
             Self::Positive => f.write_str("positive"),
             Self::Negative => f.write_str("negative"),
         }
+    }
+}
+
+#[derive(derivative::Derivative)]
+#[derivative(
+    Clone(bound = ""),
+    Copy(bound = ""),
+    Hash(bound = ""),
+    PartialEq(bound = ""),
+    Eq(bound = ""),
+    Debug(bound = "")
+)]
+#[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
+#[cfg_attr(feature = "nightly", derive(TyDecodable, TyEncodable, HashStable_NoContext))]
+pub enum ExistentialPredicate<I: Interner> {
+    /// E.g., `Iterator`.
+    Trait(ExistentialTraitRef<I>),
+    /// E.g., `Iterator::Item = T`.
+    Projection(ExistentialProjection<I>),
+    /// E.g., `Send`.
+    AutoTrait(I::DefId),
+}
+
+// FIXME: Implement this the right way after
+impl<I: Interner> DebugWithInfcx<I> for ExistentialPredicate<I> {
+    fn fmt<Infcx: rustc_type_ir::InferCtxtLike<Interner = I>>(
+        this: rustc_type_ir::WithInfcx<'_, Infcx, &Self>,
+        f: &mut fmt::Formatter<'_>,
+    ) -> fmt::Result {
+        fmt::Debug::fmt(&this.data, f)
     }
 }
 

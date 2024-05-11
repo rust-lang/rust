@@ -26,6 +26,7 @@ use crate::traits::solve;
 use crate::traits::solve::{
     ExternalConstraints, ExternalConstraintsData, PredefinedOpaques, PredefinedOpaquesData,
 };
+use crate::ty::predicate::ExistentialPredicateStableCmpExt as _;
 use crate::ty::{
     self, AdtDef, AdtDefData, AdtKind, Binder, Clause, Clauses, Const, ConstData,
     GenericParamDefKind, ImplPolarity, List, ListWithCachedTypeInfo, ParamConst, ParamTy, Pattern,

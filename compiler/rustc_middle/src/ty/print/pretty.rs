@@ -3088,6 +3088,16 @@ define_print! {
         }
     }
 
+    ty::ExistentialPredicate<'tcx> {
+        match *self {
+            ty::ExistentialPredicate::Trait(x) => p!(print(x)),
+            ty::ExistentialPredicate::Projection(x) => p!(print(x)),
+            ty::ExistentialPredicate::AutoTrait(def_id) => {
+                p!(print_def_path(def_id, &[]));
+            }
+        }
+    }
+
     ty::ExistentialTraitRef<'tcx> {
         // Use a type that can't appear in defaults of type parameters.
         let dummy_self = Ty::new_fresh(cx.tcx(), 0);
@@ -3130,16 +3140,6 @@ define_print_and_forward_display! {
 
     &'tcx ty::List<Ty<'tcx>> {
         p!("{{", comma_sep(self.iter()), "}}")
-    }
-
-    ty::ExistentialPredicate<'tcx> {
-        match *self {
-            ty::ExistentialPredicate::Trait(x) => p!(print(x)),
-            ty::ExistentialPredicate::Projection(x) => p!(print(x)),
-            ty::ExistentialPredicate::AutoTrait(def_id) => {
-                p!(print_def_path(def_id, &[]));
-            }
-        }
     }
 
     ty::FnSig<'tcx> {

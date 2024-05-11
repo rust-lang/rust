@@ -5,8 +5,10 @@
 //! subtyping, type equality, etc.
 
 use crate::ty::error::{ExpectedFound, TypeError};
-use crate::ty::{self, Expr, ImplSubject, Term, TermKind, Ty, TyCtxt, TypeFoldable};
-use crate::ty::{GenericArg, GenericArgKind, GenericArgsRef};
+use crate::ty::{
+    self, ExistentialPredicate, ExistentialPredicateStableCmpExt as _, Expr, GenericArg,
+    GenericArgKind, GenericArgsRef, ImplSubject, Term, TermKind, Ty, TyCtxt, TypeFoldable,
+};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
@@ -702,14 +704,21 @@ impl<'tcx> Relate<'tcx> for &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>> {
         }
 
         let v = iter::zip(a_v, b_v).map(|(ep_a, ep_b)| {
-            use crate::ty::ExistentialPredicate::*;
             match (ep_a.skip_binder(), ep_b.skip_binder()) {
-                (Trait(a), Trait(b)) => Ok(ep_a
-                    .rebind(Trait(relation.relate(ep_a.rebind(a), ep_b.rebind(b))?.skip_binder()))),
-                (Projection(a), Projection(b)) => Ok(ep_a.rebind(Projection(
-                    relation.relate(ep_a.rebind(a), ep_b.rebind(b))?.skip_binder(),
-                ))),
-                (AutoTrait(a), AutoTrait(b)) if a == b => Ok(ep_a.rebind(AutoTrait(a))),
+                (ExistentialPredicate::Trait(a), ExistentialPredicate::Trait(b)) => Ok(ep_a
+                    .rebind(ExistentialPredicate::Trait(
+                        relation.relate(ep_a.rebind(a), ep_b.rebind(b))?.skip_binder(),
+                    ))),
+                (ExistentialPredicate::Projection(a), ExistentialPredicate::Projection(b)) => {
+                    Ok(ep_a.rebind(ExistentialPredicate::Projection(
+                        relation.relate(ep_a.rebind(a), ep_b.rebind(b))?.skip_binder(),
+                    )))
+                }
+                (ExistentialPredicate::AutoTrait(a), ExistentialPredicate::AutoTrait(b))
+                    if a == b =>
+                {
+                    Ok(ep_a.rebind(ExistentialPredicate::AutoTrait(a)))
+                }
                 _ => Err(TypeError::ExistentialMismatch(expected_found(a, b))),
             }
         });
