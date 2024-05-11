@@ -832,6 +832,32 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
             }
         }
 
+        "llvm.x86.sse42.crc32.32.32" => {
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#ig_expand=1419&text=_mm_crc32_u32
+            intrinsic_args!(fx, args => (crc, v); intrinsic);
+
+            let crc = crc.load_scalar(fx);
+            let v = v.load_scalar(fx);
+
+            codegen_inline_asm_inner(
+                fx,
+                &[InlineAsmTemplatePiece::String("crc32 eax, edx".to_string())],
+                &[
+                    CInlineAsmOperand::InOut {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::ax)),
+                        _late: true,
+                        in_value: crc,
+                        out_place: Some(ret),
+                    },
+                    CInlineAsmOperand::In {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::dx)),
+                        value: v,
+                    },
+                ],
+                InlineAsmOptions::NOSTACK | InlineAsmOptions::PURE | InlineAsmOptions::NOMEM,
+            );
+        }
+
         "llvm.x86.sse42.pcmpestri128" => {
             // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_cmpestri&ig_expand=939
             intrinsic_args!(fx, args => (a, la, b, lb, _imm8); intrinsic);
