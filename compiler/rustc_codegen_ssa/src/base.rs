@@ -283,7 +283,7 @@ pub fn coerce_unsized_into<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 }
 
                 if src_f.layout.ty == dst_f.layout.ty {
-                    bx.typed_place_copy(dst_f, src_f);
+                    bx.typed_place_copy(dst_f.val, src_f.val, src_f.layout);
                 } else {
                     coerce_unsized_into(bx, src_f, dst_f);
                 }

@@ -1,4 +1,4 @@
-use super::operand::{OperandRef, OperandValue};
+use super::operand::OperandRef;
 use super::place::PlaceRef;
 use super::FunctionCx;
 use crate::errors;
@@ -93,9 +93,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 // into the (unoptimized) direct swapping implementation, so we disable it.
                 || bx.sess().target.arch == "spirv"
             {
-                let x_place = PlaceRef::new_sized(args[0].immediate(), pointee_layout);
-                let y_place = PlaceRef::new_sized(args[1].immediate(), pointee_layout);
-                bx.typed_place_swap(x_place, y_place);
+                let align = pointee_layout.align.abi;
+                let x_place = args[0].val.deref(align);
+                let y_place = args[1].val.deref(align);
+                bx.typed_place_swap(x_place, y_place, pointee_layout);
                 return Ok(());
             }
         }
@@ -113,15 +114,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             sym::va_end => bx.va_end(args[0].immediate()),
             sym::size_of_val => {
                 let tp_ty = fn_args.type_at(0);
-                let meta =
-                    if let OperandValue::Pair(_, meta) = args[0].val { Some(meta) } else { None };
+                let (_, meta) = args[0].val.pointer_parts();
                 let (llsize, _) = size_of_val::size_and_align_of_dst(bx, tp_ty, meta);
                 llsize
             }
             sym::min_align_of_val => {
                 let tp_ty = fn_args.type_at(0);
-                let meta =
-                    if let OperandValue::Pair(_, meta) = args[0].val { Some(meta) } else { None };
+                let (_, meta) = args[0].val.pointer_parts();
                 let (_, llalign) = size_of_val::size_and_align_of_dst(bx, tp_ty, meta);
                 llalign
             }

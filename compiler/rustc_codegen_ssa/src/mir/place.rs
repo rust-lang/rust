@@ -10,12 +10,15 @@ use rustc_middle::mir;
 use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, Ty};
-use rustc_target::abi::{Align, FieldsShape, Int, Pointer, TagEncoding};
+use rustc_target::abi::{Align, FieldsShape, Int, Pointer, Size, TagEncoding};
 use rustc_target::abi::{VariantIdx, Variants};
 
 /// The location and extra runtime properties of the place.
 ///
 /// Typically found in a [`PlaceRef`] or an [`OperandValue::Ref`].
+///
+/// As a location in memory, this has no specific type. If you want to
+/// load or store it using a typed operation, use [`Self::with_type`].
 #[derive(Copy, Clone, Debug)]
 pub struct PlaceValue<V> {
     /// A pointer to the contents of the place.
@@ -35,6 +38,41 @@ impl<V: CodegenObject> PlaceValue<V> {
     pub fn new_sized(llval: V, align: Align) -> PlaceValue<V> {
         PlaceValue { llval, llextra: None, align }
     }
+
+    /// Allocates a stack slot in the function for a value
+    /// of the specified size and alignment.
+    ///
+    /// The allocation itself is untyped.
+    pub fn alloca<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx, Value = V>>(
+        bx: &mut Bx,
+        size: Size,
+        align: Align,
+    ) -> PlaceValue<V> {
+        let llval = bx.alloca(size, align);
+        PlaceValue::new_sized(llval, align)
+    }
+
+    /// Creates a `PlaceRef` to this location with the given type.
+    pub fn with_type<'tcx>(self, layout: TyAndLayout<'tcx>) -> PlaceRef<'tcx, V> {
+        debug_assert!(
+            layout.is_unsized() || layout.abi.is_uninhabited() || self.llextra.is_none(),
+            "Had pointer metadata {:?} for sized type {layout:?}",
+            self.llextra,
+        );
+        PlaceRef { val: self, layout }
+    }
+
+    /// Gets the pointer to this place as an [`OperandValue::Immediate`]
+    /// or, for those needing metadata, an [`OperandValue::Pair`].
+    ///
+    /// This is the inverse of [`OperandValue::deref`].
+    pub fn address(self) -> OperandValue<V> {
+        if let Some(llextra) = self.llextra {
+            OperandValue::Pair(self.llval, llextra)
+        } else {
+            OperandValue::Immediate(self.llval)
+        }
+    }
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -52,9 +90,7 @@ pub struct PlaceRef<'tcx, V> {
 
 impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
     pub fn new_sized(llval: V, layout: TyAndLayout<'tcx>) -> PlaceRef<'tcx, V> {
-        assert!(layout.is_sized());
-        let val = PlaceValue::new_sized(llval, layout.align.abi);
-        PlaceRef { val, layout }
+        PlaceRef::new_sized_aligned(llval, layout, layout.align.abi)
     }
 
     pub fn new_sized_aligned(
@@ -63,8 +99,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         align: Align,
     ) -> PlaceRef<'tcx, V> {
         assert!(layout.is_sized());
-        let val = PlaceValue::new_sized(llval, align);
-        PlaceRef { val, layout }
+        PlaceValue::new_sized(llval, align).with_type(layout)
     }
 
     // FIXME(eddyb) pass something else for the name so no work is done
@@ -73,17 +108,8 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         bx: &mut Bx,
         layout: TyAndLayout<'tcx>,
     ) -> Self {
-        Self::alloca_aligned(bx, layout, layout.align.abi)
-    }
-
-    pub fn alloca_aligned<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
-        bx: &mut Bx,
-        layout: TyAndLayout<'tcx>,
-        align: Align,
-    ) -> Self {
         assert!(layout.is_sized(), "tried to statically allocate unsized place");
-        let tmp = bx.alloca(layout.size, align);
-        Self::new_sized_aligned(tmp, layout, align)
+        PlaceValue::alloca(bx, layout.size, layout.align.abi).with_type(layout)
     }
 
     /// Returns a place for an indirect reference to an unsized place.
@@ -132,18 +158,12 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
             } else {
                 bx.inbounds_ptradd(self.val.llval, bx.const_usize(offset.bytes()))
             };
-            PlaceRef {
-                val: PlaceValue {
+            let val = PlaceValue {
                     llval,
-                    llextra: if bx.cx().type_has_metadata(field.ty) {
-                        self.val.llextra
-                    } else {
-                        None
-                    },
+                llextra: if bx.cx().type_has_metadata(field.ty) { self.val.llextra } else { None },
                     align: effective_field_align,
-                },
-                layout: field,
-            }
+            };
+            val.with_type(field)
         };
 
         // Simple cases, which don't need DST adjustment:
@@ -198,7 +218,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         let ptr = bx.inbounds_ptradd(self.val.llval, offset);
         let val =
             PlaceValue { llval: ptr, llextra: self.val.llextra, align: effective_field_align };
-        PlaceRef { val, layout: field }
+        val.with_type(field)
     }
 
     /// Obtain the actual discriminant of a value.
@@ -387,18 +407,13 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
             layout.size
         };
 
-        PlaceRef {
-            val: PlaceValue {
-                llval: bx.inbounds_gep(
+        let llval = bx.inbounds_gep(
                     bx.cx().backend_type(self.layout),
                     self.val.llval,
                     &[bx.cx().const_usize(0), llindex],
-                ),
-                llextra: None,
-                align: self.val.align.restrict_for_offset(offset),
-            },
-            layout,
-        }
+        );
+        let align = self.val.align.restrict_for_offset(offset);
+        PlaceValue::new_sized(llval, align).with_type(layout)
     }
 
     pub fn project_downcast<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
