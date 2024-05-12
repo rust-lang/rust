@@ -1,14 +1,12 @@
-use rustc_ast_ir::try_visit;
 #[cfg(feature = "nightly")]
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 #[cfg(feature = "nightly")]
 use rustc_data_structures::unify::{EqUnifyValue, UnifyKey};
 #[cfg(feature = "nightly")]
 use rustc_macros::{Decodable, Encodable, HashStable_NoContext, TyDecodable, TyEncodable};
+use rustc_type_ir_macros::{TypeFoldable_Generic, TypeVisitable_Generic};
 use std::fmt;
 
-use crate::fold::{FallibleTypeFolder, TypeFoldable};
-use crate::visit::{TypeVisitable, TypeVisitor};
 use crate::Interner;
 use crate::{DebruijnIndex, DebugWithInfcx, InferCtxtLike, WithInfcx};
 
@@ -33,7 +31,7 @@ pub enum DynKind {
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 #[cfg_attr(feature = "nightly", derive(Encodable, Decodable, HashStable_NoContext))]
-pub enum AliasKind {
+pub enum AliasTyKind {
     /// A projection `<Type as Trait>::AssocType`.
     /// Can get normalized away if monomorphic enough.
     Projection,
@@ -48,13 +46,13 @@ pub enum AliasKind {
     Weak,
 }
 
-impl AliasKind {
+impl AliasTyKind {
     pub fn descr(self) -> &'static str {
         match self {
-            AliasKind::Projection => "associated type",
-            AliasKind::Inherent => "inherent associated type",
-            AliasKind::Opaque => "opaque type",
-            AliasKind::Weak => "type alias",
+            AliasTyKind::Projection => "associated type",
+            AliasTyKind::Inherent => "inherent associated type",
+            AliasTyKind::Opaque => "opaque type",
+            AliasTyKind::Weak => "type alias",
         }
     }
 }
@@ -65,7 +63,7 @@ impl AliasKind {
 /// converted to this representation using `<dyn HirTyLowerer>::lower_ty`.
 #[cfg_attr(feature = "nightly", rustc_diagnostic_item = "IrTyKind")]
 #[derive(derivative::Derivative)]
-#[derivative(Clone(bound = ""), Copy(bound = ""), Hash(bound = ""))]
+#[derivative(Clone(bound = ""), Copy(bound = ""), Hash(bound = ""), Eq(bound = ""))]
 #[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable, HashStable_NoContext))]
 pub enum TyKind<I: Interner> {
     /// The primitive boolean type. Written as `bool`.
@@ -203,7 +201,7 @@ pub enum TyKind<I: Interner> {
     /// A projection, opaque type, weak type alias, or inherent associated type.
     /// All of these types are represented as pairs of def-id and args, and can
     /// be normalized, so they are grouped conceptually.
-    Alias(AliasKind, I::AliasTy),
+    Alias(AliasTyKind, I::AliasTy),
 
     /// A type parameter; for example, `T` in `fn f<T>(x: T) {}`.
     Param(I::ParamTy),
@@ -340,9 +338,6 @@ impl<I: Interner> PartialEq for TyKind<I> {
         }
     }
 }
-
-// This is manually implemented because a derive would require `I: Eq`
-impl<I: Interner> Eq for TyKind<I> {}
 
 impl<I: Interner> DebugWithInfcx<I> for TyKind<I> {
     fn fmt<Infcx: InferCtxtLike<Interner = I>>(
@@ -804,29 +799,8 @@ impl<I: Interner> DebugWithInfcx<I> for InferTy {
     Debug(bound = "")
 )]
 #[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable, HashStable_NoContext))]
+#[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
 pub struct TypeAndMut<I: Interner> {
     pub ty: I::Ty,
     pub mutbl: Mutability,
-}
-
-impl<I: Interner> TypeFoldable<I> for TypeAndMut<I>
-where
-    I::Ty: TypeFoldable<I>,
-{
-    fn try_fold_with<F: FallibleTypeFolder<I>>(self, folder: &mut F) -> Result<Self, F::Error> {
-        Ok(TypeAndMut {
-            ty: self.ty.try_fold_with(folder)?,
-            mutbl: self.mutbl.try_fold_with(folder)?,
-        })
-    }
-}
-
-impl<I: Interner> TypeVisitable<I> for TypeAndMut<I>
-where
-    I::Ty: TypeVisitable<I>,
-{
-    fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> V::Result {
-        try_visit!(self.ty.visit_with(visitor));
-        self.mutbl.visit_with(visitor)
-    }
 }

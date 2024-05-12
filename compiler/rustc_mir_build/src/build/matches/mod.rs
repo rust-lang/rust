@@ -12,6 +12,7 @@ use crate::build::{BlockAnd, BlockAndExtension, Builder};
 use crate::build::{GuardFrame, GuardFrameLocal, LocalsForNode};
 use rustc_data_structures::{fx::FxIndexMap, stack::ensure_sufficient_stack};
 use rustc_hir::{BindingMode, ByRef};
+use rustc_middle::bug;
 use rustc_middle::middle::region;
 use rustc_middle::mir::{self, *};
 use rustc_middle::thir::{self, *};

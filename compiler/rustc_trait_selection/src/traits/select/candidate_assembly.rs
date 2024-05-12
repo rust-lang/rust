@@ -16,6 +16,7 @@ use rustc_infer::traits::ObligationCause;
 use rustc_infer::traits::{Obligation, PolyTraitObligation, SelectionError};
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
 use rustc_middle::ty::{self, ToPolyTraitRef, Ty, TypeVisitableExt};
+use rustc_middle::{bug, span_bug};
 
 use crate::traits;
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
@@ -944,7 +945,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
 
         self.infcx.probe(|_| {
-            let ty = traits::normalize_projection_type(
+            let ty = traits::normalize_projection_ty(
                 self,
                 param_env,
                 ty::AliasTy::new(tcx, tcx.lang_items().deref_target()?, trait_ref.args),

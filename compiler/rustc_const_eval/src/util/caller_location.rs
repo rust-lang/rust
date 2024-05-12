@@ -1,4 +1,5 @@
 use rustc_hir::LangItem;
+use rustc_middle::bug;
 use rustc_middle::mir;
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::layout::LayoutOf;

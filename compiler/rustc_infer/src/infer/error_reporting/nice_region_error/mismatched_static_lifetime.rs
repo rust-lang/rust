@@ -13,6 +13,7 @@ use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::intravisit::Visitor;
+use rustc_middle::bug;
 use rustc_middle::ty::TypeVisitor;
 
 impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
@@ -38,11 +39,14 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         let ObligationCauseCode::MatchImpl(parent, impl_def_id) = code else {
             return None;
         };
-        let (ObligationCauseCode::SpannedWhereClause(_, binding_span)
-        | ObligationCauseCode::SpannedWhereClauseInExpr(_, binding_span, ..)) = *parent.code()
+        let (ObligationCauseCode::WhereClause(_, binding_span)
+        | ObligationCauseCode::WhereClauseInExpr(_, binding_span, ..)) = *parent.code()
         else {
             return None;
         };
+        if binding_span.is_dummy() {
+            return None;
+        }
 
         // FIXME: we should point at the lifetime
         let multi_span: MultiSpan = vec![binding_span].into();

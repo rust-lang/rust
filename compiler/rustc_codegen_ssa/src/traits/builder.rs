@@ -186,6 +186,15 @@ pub trait BuilderMethods<'a, 'tcx>:
         align: Align,
         flags: MemFlags,
     ) -> Self::Value;
+    fn store_to_place_with_flags(
+        &mut self,
+        val: Self::Value,
+        place: PlaceValue<Self::Value>,
+        flags: MemFlags,
+    ) -> Self::Value {
+        debug_assert_eq!(place.llextra, None);
+        self.store_with_flags(val, place.llval, place.align, flags)
+    }
     fn atomic_store(
         &mut self,
         val: Self::Value,
@@ -286,35 +295,36 @@ pub trait BuilderMethods<'a, 'tcx>:
     /// (For example, typed load-stores with alias metadata.)
     fn typed_place_copy(
         &mut self,
-        dst: PlaceRef<'tcx, Self::Value>,
-        src: PlaceRef<'tcx, Self::Value>,
+        dst: PlaceValue<Self::Value>,
+        src: PlaceValue<Self::Value>,
+        layout: TyAndLayout<'tcx>,
     ) {
-        self.typed_place_copy_with_flags(dst, src, MemFlags::empty());
+        self.typed_place_copy_with_flags(dst, src, layout, MemFlags::empty());
     }
 
     fn typed_place_copy_with_flags(
         &mut self,
-        dst: PlaceRef<'tcx, Self::Value>,
-        src: PlaceRef<'tcx, Self::Value>,
+        dst: PlaceValue<Self::Value>,
+        src: PlaceValue<Self::Value>,
+        layout: TyAndLayout<'tcx>,
         flags: MemFlags,
     ) {
-        debug_assert!(src.val.llextra.is_none(), "cannot directly copy from unsized values");
-        debug_assert!(dst.val.llextra.is_none(), "cannot directly copy into unsized values");
-        debug_assert_eq!(dst.layout.size, src.layout.size);
+        debug_assert!(layout.is_sized(), "cannot typed-copy an unsigned type");
+        debug_assert!(src.llextra.is_none(), "cannot directly copy from unsized values");
+        debug_assert!(dst.llextra.is_none(), "cannot directly copy into unsized values");
         if flags.contains(MemFlags::NONTEMPORAL) {
             // HACK(nox): This is inefficient but there is no nontemporal memcpy.
-            let ty = self.backend_type(dst.layout);
-            let val = self.load_from_place(ty, src.val);
-            self.store_with_flags(val, dst.val.llval, dst.val.align, flags);
-        } else if self.sess().opts.optimize == OptLevel::No && self.is_backend_immediate(dst.layout)
-        {
+            let ty = self.backend_type(layout);
+            let val = self.load_from_place(ty, src);
+            self.store_to_place_with_flags(val, dst, flags);
+        } else if self.sess().opts.optimize == OptLevel::No && self.is_backend_immediate(layout) {
             // If we're not optimizing, the aliasing information from `memcpy`
             // isn't useful, so just load-store the value for smaller code.
-            let temp = self.load_operand(src);
-            temp.val.store_with_flags(self, dst, flags);
-        } else if !dst.layout.is_zst() {
-            let bytes = self.const_usize(dst.layout.size.bytes());
-            self.memcpy(dst.val.llval, dst.val.align, src.val.llval, src.val.align, bytes, flags);
+            let temp = self.load_operand(src.with_type(layout));
+            temp.val.store_with_flags(self, dst.with_type(layout), flags);
+        } else if !layout.is_zst() {
+            let bytes = self.const_usize(layout.size.bytes());
+            self.memcpy(dst.llval, dst.align, src.llval, src.align, bytes, flags);
         }
     }
 
@@ -327,18 +337,19 @@ pub trait BuilderMethods<'a, 'tcx>:
     /// cases (in non-debug), preferring the fallback body instead.
     fn typed_place_swap(
         &mut self,
-        left: PlaceRef<'tcx, Self::Value>,
-        right: PlaceRef<'tcx, Self::Value>,
+        left: PlaceValue<Self::Value>,
+        right: PlaceValue<Self::Value>,
+        layout: TyAndLayout<'tcx>,
     ) {
-        let mut temp = self.load_operand(left);
+        let mut temp = self.load_operand(left.with_type(layout));
         if let OperandValue::Ref(..) = temp.val {
             // The SSA value isn't stand-alone, so we need to copy it elsewhere
-            let alloca = PlaceRef::alloca(self, left.layout);
-            self.typed_place_copy(alloca, left);
+            let alloca = PlaceRef::alloca(self, layout);
+            self.typed_place_copy(alloca.val, left, layout);
             temp = self.load_operand(alloca);
         }
-        self.typed_place_copy(left, right);
-        temp.val.store(self, right);
+        self.typed_place_copy(left, right, layout);
+        temp.val.store(self, right.with_type(layout));
     }
 
     fn select(

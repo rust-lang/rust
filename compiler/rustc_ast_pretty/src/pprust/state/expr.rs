@@ -780,7 +780,7 @@ impl<'a> State<'a> {
                 }
                 _ => {
                     self.end(); // Close the ibox for the pattern.
-                    self.print_expr(body, FixupContext::new_stmt());
+                    self.print_expr(body, FixupContext::new_match_arm());
                     self.word(",");
                 }
             }

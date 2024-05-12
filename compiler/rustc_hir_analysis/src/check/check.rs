@@ -14,6 +14,7 @@ use rustc_infer::traits::Obligation;
 use rustc_lint_defs::builtin::REPR_TRANSPARENT_EXTERNAL_PRIVATE_FIELDS;
 use rustc_middle::middle::resolve_bound_vars::ResolvedArg;
 use rustc_middle::middle::stability::EvalResult;
+use rustc_middle::span_bug;
 use rustc_middle::ty::fold::BottomUpFolder;
 use rustc_middle::ty::layout::{LayoutError, MAX_SIMD_LANES};
 use rustc_middle::ty::util::{Discr, InspectCoroutineFields, IntTypeExt};
@@ -485,7 +486,7 @@ fn sanity_check_found_hidden_type<'tcx>(
 fn check_opaque_precise_captures<'tcx>(tcx: TyCtxt<'tcx>, opaque_def_id: LocalDefId) {
     let hir::OpaqueTy { precise_capturing_args, .. } =
         *tcx.hir_node_by_def_id(opaque_def_id).expect_item().expect_opaque_ty();
-    let Some(precise_capturing_args) = precise_capturing_args else {
+    let Some((precise_capturing_args, _)) = precise_capturing_args else {
         // No precise capturing args; nothing to validate
         return;
     };

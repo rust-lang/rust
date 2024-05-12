@@ -27,6 +27,7 @@
 
 use super::*;
 
+use rustc_middle::bug;
 use rustc_middle::ty::relate::{Relate, TypeRelation};
 use rustc_middle::ty::{Const, ImplSubject};
 
@@ -430,6 +431,20 @@ impl<'tcx> ToTrace<'tcx> for ty::TraitRef<'tcx> {
 }
 
 impl<'tcx> ToTrace<'tcx> for ty::AliasTy<'tcx> {
+    fn to_trace(
+        cause: &ObligationCause<'tcx>,
+        a_is_expected: bool,
+        a: Self,
+        b: Self,
+    ) -> TypeTrace<'tcx> {
+        TypeTrace {
+            cause: cause.clone(),
+            values: Aliases(ExpectedFound::new(a_is_expected, a.into(), b.into())),
+        }
+    }
+}
+
+impl<'tcx> ToTrace<'tcx> for ty::AliasTerm<'tcx> {
     fn to_trace(
         cause: &ObligationCause<'tcx>,
         a_is_expected: bool,

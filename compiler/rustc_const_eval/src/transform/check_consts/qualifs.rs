@@ -5,6 +5,7 @@
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::LangItem;
 use rustc_infer::infer::TyCtxtInferExt;
+use rustc_middle::bug;
 use rustc_middle::mir;
 use rustc_middle::mir::*;
 use rustc_middle::traits::BuiltinImplSource;

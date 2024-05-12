@@ -20,7 +20,7 @@ use rustc_middle::traits::solve::{Certainty, Goal, QueryResult};
 use rustc_middle::ty;
 
 impl<'tcx> EvalCtxt<'_, 'tcx> {
-    #[instrument(level = "debug", skip(self), ret)]
+    #[instrument(level = "trace", skip(self), ret)]
     pub(super) fn compute_alias_relate_goal(
         &mut self,
         goal: Goal<'tcx, (ty::Term<'tcx>, ty::Term<'tcx>, ty::AliasRelationDirection)>,
@@ -29,7 +29,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         let Goal { param_env, predicate: (lhs, rhs, direction) } = goal;
 
         // Structurally normalize the lhs.
-        let lhs = if let Some(alias) = lhs.to_alias_ty(self.tcx()) {
+        let lhs = if let Some(alias) = lhs.to_alias_term() {
             let term = self.next_term_infer_of_kind(lhs);
             self.add_normalizes_to_goal(goal.with(tcx, ty::NormalizesTo { alias, term }));
             term
@@ -38,7 +38,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         };
 
         // Structurally normalize the rhs.
-        let rhs = if let Some(alias) = rhs.to_alias_ty(self.tcx()) {
+        let rhs = if let Some(alias) = rhs.to_alias_term() {
             let term = self.next_term_infer_of_kind(rhs);
             self.add_normalizes_to_goal(goal.with(tcx, ty::NormalizesTo { alias, term }));
             term
@@ -50,13 +50,13 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         self.try_evaluate_added_goals()?;
         let lhs = self.resolve_vars_if_possible(lhs);
         let rhs = self.resolve_vars_if_possible(rhs);
-        debug!(?lhs, ?rhs);
+        trace!(?lhs, ?rhs);
 
         let variance = match direction {
             ty::AliasRelationDirection::Equate => ty::Variance::Invariant,
             ty::AliasRelationDirection::Subtype => ty::Variance::Covariant,
         };
-        match (lhs.to_alias_ty(tcx), rhs.to_alias_ty(tcx)) {
+        match (lhs.to_alias_term(), rhs.to_alias_term()) {
             (None, None) => {
                 self.relate(param_env, lhs, variance, rhs)?;
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)

@@ -9,6 +9,7 @@ use crate::errors::{
 
 use rustc_errors::{codes::*, struct_span_code_err, DiagMessage};
 use rustc_hir as hir;
+use rustc_middle::bug;
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::def_id::LocalDefId;

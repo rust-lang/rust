@@ -1,5 +1,6 @@
 use std::collections::VecDeque;
 
+use rustc_middle::bug;
 use rustc_middle::mir::coverage::{
     BlockMarkerId, ConditionId, ConditionInfo, MCDCBranchSpan, MCDCDecisionSpan,
 };

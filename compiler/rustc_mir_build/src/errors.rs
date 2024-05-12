@@ -950,3 +950,30 @@ pub enum RustcBoxAttrReason {
     #[note(mir_build_missing_box)]
     MissingBox,
 }
+
+#[derive(LintDiagnostic)]
+#[diag(mir_build_rust_2024_incompatible_pat)]
+pub struct Rust2024IncompatiblePat {
+    #[subdiagnostic]
+    pub sugg: Rust2024IncompatiblePatSugg,
+}
+
+pub struct Rust2024IncompatiblePatSugg {
+    pub suggestion: Vec<(Span, String)>,
+}
+
+impl Subdiagnostic for Rust2024IncompatiblePatSugg {
+    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
+        self,
+        diag: &mut Diag<'_, G>,
+        _f: &F,
+    ) {
+        let applicability =
+            if self.suggestion.iter().all(|(span, _)| span.can_be_used_for_suggestions()) {
+                Applicability::MachineApplicable
+            } else {
+                Applicability::MaybeIncorrect
+            };
+        diag.multipart_suggestion("desugar the match ergonomics", self.suggestion, applicability);
+    }
+}

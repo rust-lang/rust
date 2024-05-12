@@ -8,7 +8,8 @@ use rustc_hir::LangItem;
 use rustc_middle::bug;
 use rustc_middle::ty::fold::{TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::{
-    self, Instance, IntTy, List, Ty, TyCtxt, TypeFoldable, TypeVisitableExt, UintTy,
+    self, ExistentialPredicateStableCmpExt as _, Instance, IntTy, List, Ty, TyCtxt, TypeFoldable,
+    TypeVisitableExt, UintTy,
 };
 use rustc_span::sym;
 use rustc_trait_selection::traits;

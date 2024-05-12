@@ -8,7 +8,7 @@
 #![feature(stdarch_x86_avx512, avx512_target_feature)]
 use std::arch::x86_64::*;
 
-// CHECK-label: @demo(
+// CHECK-LABEL: @demo(
 #[no_mangle]
 #[target_feature(enable = "avx512f")] // Function-level target feature mismatches inhibit inlining
 pub unsafe fn demo() -> bool {

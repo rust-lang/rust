@@ -213,6 +213,21 @@ fn test_expr() {
         "match () { _ => ({ 1 }) - 1, }",
         "match () { _ => { 1 } - 1 }",
     );
+    c2_match_arm!(
+        [ m!() - 1 ],
+        "match () { _ => m!() - 1, }",
+        "match () { _ => m!() - 1 }",
+    );
+    c2_match_arm!(
+        [ m![] - 1 ],
+        "match () { _ => m![] - 1, }",
+        "match () { _ => m![] - 1 }",
+    );
+    c2_match_arm!(
+        [ m! {} - 1 ],
+        "match () { _ => m! {} - 1, }",
+        "match () { _ => m! {} - 1 }",
+    );
 
     // ExprKind::Closure
     c1!(expr, [ || {} ], "|| {}");
@@ -660,6 +675,11 @@ fn test_stmt() {
         "let (a, b): (u32, u32) = (1, 2);",
         "let (a, b): (u32, u32) = (1, 2)"
     );
+    c2!(stmt,
+        [ let _ = f() else { return; } ],
+        "let _ = f() else { return; };",
+        "let _ = f() else { return; }",
+    );
     macro_rules! c2_let_expr_minus_one {
         ([ $expr:expr ], $stmt_expected:expr, $tokens_expected:expr $(,)?) => {
             c2!(stmt, [ let _ = $expr - 1 ], $stmt_expected, $tokens_expected);
@@ -669,6 +689,16 @@ fn test_stmt() {
         [ match void {} ],
         "let _ = match void {} - 1;",
         "let _ = match void {} - 1",
+    );
+    macro_rules! c2_let_expr_else_return {
+        ([ $expr:expr ], $stmt_expected:expr, $tokens_expected:expr $(,)?) => {
+            c2!(stmt, [ let _ = $expr else { return; } ], $stmt_expected, $tokens_expected);
+        };
+    }
+    c2_let_expr_else_return!(
+        [ f() ],
+        "let _ = f() else { return; };",
+        "let _ = f() else { return; }",
     );
 
     // StmtKind::Item
@@ -719,6 +749,21 @@ fn test_stmt() {
         [ loop { break 1; } ],
         "(loop { break 1; }) - 1;",
         "loop { break 1; } - 1",
+    );
+    c2_minus_one!(
+        [ m!() ],
+        "m!() - 1;",
+        "m!() - 1"
+    );
+    c2_minus_one!(
+        [ m![] ],
+        "m![] - 1;",
+        "m![] - 1"
+    );
+    c2_minus_one!(
+        [ m! {} ],
+        "(m! {}) - 1;",
+        "m! {} - 1"
     );
 
     // StmtKind::Empty

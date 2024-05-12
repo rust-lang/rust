@@ -241,7 +241,7 @@ impl<'psess, 'src> TokenTreesReader<'psess, 'src> {
         // we have no way of tracking this in the lexer itself, so we piggyback on the parser
         let mut in_cond = false;
         while parser.token != token::Eof {
-            if let Err(diff_err) = parser.err_diff_marker() {
+            if let Err(diff_err) = parser.err_vcs_conflict_marker() {
                 diff_errs.push(diff_err);
             } else if parser.is_keyword_ahead(0, &[kw::If, kw::While]) {
                 in_cond = true;

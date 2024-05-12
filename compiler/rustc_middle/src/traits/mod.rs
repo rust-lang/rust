@@ -247,22 +247,15 @@ pub enum ObligationCauseCode<'tcx> {
     /// A tuple is WF only if its middle elements are `Sized`.
     TupleElem,
 
-    /// Must satisfy all of the where-clause predicates of the
-    /// given item.
-    WhereClause(DefId),
+    /// Represents a clause that comes from a specific item.
+    /// The span corresponds to the clause.
+    WhereClause(DefId, Span),
 
-    /// Like `WhereClause`, but carries the span of the
-    /// predicate when it can be identified.
-    SpannedWhereClause(DefId, Span),
-
-    /// Like `WhereClause`, but carries the `HirId` of the
-    /// expression that caused the obligation, and the `usize`
-    /// indicates exactly which predicate it is in the list of
-    /// instantiated predicates.
-    WhereClauseInExpr(DefId, HirId, usize),
-
-    /// Combines `SpannedWhereClause` and `WhereClauseInExpr`.
-    SpannedWhereClauseInExpr(DefId, Span, HirId, usize),
+    /// Like `WhereClause`, but also identifies the expression
+    /// which requires the `where` clause to be proven, and also
+    /// identifies the index of the predicate in the `predicates_of`
+    /// list of the item.
+    WhereClauseInExpr(DefId, Span, HirId, usize),
 
     /// A type like `&'a T` is WF only if `T: 'a`.
     ReferenceOutlivesReferent(Ty<'tcx>),

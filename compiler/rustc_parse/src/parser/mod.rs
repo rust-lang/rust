@@ -11,7 +11,6 @@ mod stmt;
 mod ty;
 
 use crate::lexer::UnmatchedDelim;
-use ast::token::IdentIsRaw;
 pub use attr_wrapper::AttrWrapper;
 pub use diagnostics::AttemptLocalParseRecovery;
 pub(crate) use expr::ForbiddenLetReason;
@@ -21,7 +20,7 @@ pub use path::PathStyle;
 
 use core::fmt;
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, Delimiter, Token, TokenKind};
+use rustc_ast::token::{self, Delimiter, IdentIsRaw, Nonterminal, Token, TokenKind};
 use rustc_ast::tokenstream::{AttributesData, DelimSpacing, DelimSpan, Spacing};
 use rustc_ast::tokenstream::{TokenStream, TokenTree, TokenTreeCursor};
 use rustc_ast::util::case::Case;
@@ -32,6 +31,7 @@ use rustc_ast::{
 };
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, Diag, FatalError, MultiSpan, PResult};
 use rustc_session::parse::ParseSess;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
@@ -107,7 +107,7 @@ pub enum TrailingToken {
 macro_rules! maybe_whole {
     ($p:expr, $constructor:ident, |$x:ident| $e:expr) => {
         if let token::Interpolated(nt) = &$p.token.kind
-            && let token::$constructor(x) = &nt.0
+            && let token::$constructor(x) = &**nt
         {
             #[allow(unused_mut)]
             let mut $x = x.clone();
@@ -125,7 +125,7 @@ macro_rules! maybe_recover_from_interpolated_ty_qpath {
             && $self.may_recover()
             && $self.look_ahead(1, |t| t == &token::PathSep)
             && let token::Interpolated(nt) = &$self.token.kind
-            && let token::NtTy(ty) = &nt.0
+            && let token::NtTy(ty) = &**nt
         {
             let ty = ty.clone();
             $self.bump();
@@ -407,7 +407,9 @@ pub(super) fn token_descr(token: &Token) -> String {
         (Some(TokenDescription::Keyword), _) => Some("keyword"),
         (Some(TokenDescription::ReservedKeyword), _) => Some("reserved keyword"),
         (Some(TokenDescription::DocComment), _) => Some("doc comment"),
-        (None, TokenKind::Interpolated(node)) => Some(node.0.descr()),
+        (None, TokenKind::NtIdent(..)) => Some("identifier"),
+        (None, TokenKind::NtLifetime(..)) => Some("lifetime"),
+        (None, TokenKind::Interpolated(node)) => Some(node.descr()),
         (None, _) => None,
     };
 
@@ -708,7 +710,7 @@ impl<'a> Parser<'a> {
     fn check_inline_const(&self, dist: usize) -> bool {
         self.is_keyword_ahead(dist, &[kw::Const])
             && self.look_ahead(dist + 1, |t| match &t.kind {
-                token::Interpolated(nt) => matches!(&nt.0, token::NtBlock(..)),
+                token::Interpolated(nt) => matches!(&**nt, token::NtBlock(..)),
                 token::OpenDelim(Delimiter::Brace) => true,
                 _ => false,
             })
@@ -1631,19 +1633,11 @@ pub enum FlatToken {
 
 // Metavar captures of various kinds.
 #[derive(Clone, Debug)]
-pub enum ParseNtResult<NtType> {
+pub enum ParseNtResult {
     Tt(TokenTree),
-    Nt(NtType),
-}
+    Ident(Ident, IdentIsRaw),
+    Lifetime(Ident),
 
-impl<T> ParseNtResult<T> {
-    pub fn map_nt<F, U>(self, mut f: F) -> ParseNtResult<U>
-    where
-        F: FnMut(T) -> U,
-    {
-        match self {
-            ParseNtResult::Tt(tt) => ParseNtResult::Tt(tt),
-            ParseNtResult::Nt(nt) => ParseNtResult::Nt(f(nt)),
-        }
-    }
+    /// This case will eventually be removed, along with `Token::Interpolate`.
+    Nt(Lrc<Nonterminal>),
 }

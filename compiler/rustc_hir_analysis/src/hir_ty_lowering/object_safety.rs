@@ -6,8 +6,9 @@ use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_lint_defs::builtin::UNUSED_ASSOCIATED_TYPE_BOUNDS;
+use rustc_middle::span_bug;
 use rustc_middle::ty::fold::BottomUpFolder;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, ExistentialPredicateStableCmpExt as _, Ty, TyCtxt, TypeFoldable};
 use rustc_middle::ty::{DynKind, ToPredicate};
 use rustc_span::{ErrorGuaranteed, Span};
 use rustc_trait_selection::traits::error_reporting::report_object_safety_error;
@@ -280,11 +281,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         let existential_projections = projection_bounds.iter().map(|(bound, _)| {
             bound.map_bound(|mut b| {
-                assert_eq!(b.projection_ty.self_ty(), dummy_self);
+                assert_eq!(b.projection_term.self_ty(), dummy_self);
 
                 // Like for trait refs, verify that `dummy_self` did not leak inside default type
                 // parameters.
-                let references_self = b.projection_ty.args.iter().skip(1).any(|arg| {
+                let references_self = b.projection_term.args.iter().skip(1).any(|arg| {
                     if arg.walk().any(|arg| arg == dummy_self.into()) {
                         return true;
                     }
@@ -294,7 +295,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     let guar = tcx
                         .dcx()
                         .span_delayed_bug(span, "trait object projection bounds reference `Self`");
-                    b.projection_ty = replace_dummy_self_with_error(tcx, b.projection_ty, guar);
+                    b.projection_term = replace_dummy_self_with_error(tcx, b.projection_term, guar);
                 }
 
                 ty::ExistentialProjection::erase_self_ty(tcx, b)

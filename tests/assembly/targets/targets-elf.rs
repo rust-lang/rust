@@ -555,6 +555,9 @@
 //@ revisions: x86_64_unknown_linux_ohos
 //@ [x86_64_unknown_linux_ohos] compile-flags: --target x86_64-unknown-linux-ohos
 //@ [x86_64_unknown_linux_ohos] needs-llvm-components: x86
+//@ revisions: x86_64_unknown_linux_none
+//@ [x86_64_unknown_linux_none] compile-flags: --target x86_64-unknown-linux-none
+//@ [x86_64_unknown_linux_none] needs-llvm-components: x86
 //@ revisions: x86_64_unknown_netbsd
 //@ [x86_64_unknown_netbsd] compile-flags: --target x86_64-unknown-netbsd
 //@ [x86_64_unknown_netbsd] needs-llvm-components: x86

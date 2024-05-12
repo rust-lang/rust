@@ -3,6 +3,7 @@ use crate::infer::GenericKind;
 use crate::traits::query::OutlivesBound;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::transitive_relation::TransitiveRelationBuilder;
+use rustc_middle::bug;
 use rustc_middle::ty::{self, Region};
 
 use super::explicit_outlives_bounds;

@@ -37,9 +37,9 @@ mod debug;
 mod flags;
 mod infcx;
 mod interner;
+mod predicate;
 mod predicate_kind;
 mod region_kind;
-mod trait_ref;
 
 pub use canonical::*;
 #[cfg(feature = "nightly")]
@@ -49,12 +49,12 @@ pub use debug::{DebugWithInfcx, WithInfcx};
 pub use flags::*;
 pub use infcx::InferCtxtLike;
 pub use interner::*;
+pub use predicate::*;
 pub use predicate_kind::*;
 pub use region_kind::*;
-pub use trait_ref::*;
 pub use ty_info::*;
 pub use ty_kind::*;
-pub use AliasKind::*;
+pub use AliasTyKind::*;
 pub use DynKind::*;
 pub use InferTy::*;
 pub use RegionKind::*;

@@ -36,6 +36,7 @@ use rustc_infer::infer::{DefineOpaqueTypes, InferOk};
 use rustc_middle::ty::adjustment::AllowTwoPhase;
 use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::{self, IsSuggestable, Ty, TyCtxt};
+use rustc_middle::{bug, span_bug};
 use rustc_session::Session;
 use rustc_span::symbol::{kw, Ident};
 use rustc_span::{sym, BytePos, Span, DUMMY_SP};
@@ -2013,8 +2014,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         for (span, code) in errors_causecode {
             self.dcx().try_steal_modify_and_emit_err(span, StashKey::MaybeForgetReturn, |err| {
                 if let Some(fn_sig) = self.body_fn_sig()
-                    && let ObligationCauseCode::SpannedWhereClauseInExpr(_, _, binding_hir_id, ..) =
-                        code
+                    && let ObligationCauseCode::WhereClauseInExpr(_, _, binding_hir_id, ..) = code
                     && !fn_sig.output().is_unit()
                 {
                     let mut block_num = 0;
@@ -2103,7 +2103,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         //
         // This is because due to normalization, we often register duplicate
         // obligations with misc obligations that are basically impossible to
-        // line back up with a useful SpannedWhereClauseInExpr.
+        // line back up with a useful WhereClauseInExpr.
         for error in not_adjusted {
             for (span, predicate, cause) in &remap_cause {
                 if *predicate == error.obligation.predicate

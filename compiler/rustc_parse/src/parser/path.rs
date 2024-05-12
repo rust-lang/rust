@@ -193,7 +193,7 @@ impl<'a> Parser<'a> {
         maybe_whole!(self, NtPath, |path| reject_generics_if_mod_style(self, path.into_inner()));
 
         if let token::Interpolated(nt) = &self.token.kind {
-            if let token::NtTy(ty) = &nt.0 {
+            if let token::NtTy(ty) = &**nt {
                 if let ast::TyKind::Path(None, path) = &ty.kind {
                     let path = path.clone();
                     self.bump();

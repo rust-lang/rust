@@ -17,6 +17,7 @@ use rustc_middle::ty::{
     self, GenericArgs, GenericArgsRef, GenericParamDefKind, ToPolyTraitRef, ToPredicate,
     TraitPredicate, Ty, TyCtxt,
 };
+use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::DefId;
 
 use crate::traits::normalize::{normalize_with_depth, normalize_with_depth_to};

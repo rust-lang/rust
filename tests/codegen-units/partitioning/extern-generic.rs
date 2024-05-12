@@ -1,6 +1,4 @@
-//
-// We specify incremental here because we want to test the partitioning for
-//@ incremental compilation
+// We specify incremental here because we want to test the partitioning for incremental compilation
 //@ incremental
 //@ compile-flags:-Zprint-mono-items=eager -Zshare-generics=y
 

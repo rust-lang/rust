@@ -9,7 +9,6 @@ use rustc_lint::LateContext;
 use rustc_middle::mir::{FakeReadCause, Mutability};
 use rustc_middle::ty::{self, BorrowKind};
 use rustc_span::sym;
-use rustc_trait_selection::infer::TyCtxtInferExt;
 
 use super::ITER_OVEREAGER_CLONED;
 use crate::redundant_clone::REDUNDANT_CLONE;
@@ -69,16 +68,13 @@ pub(super) fn check<'tcx>(
             let mut delegate = MoveDelegate {
                 used_move: HirIdSet::default(),
             };
-            let infcx = cx.tcx.infer_ctxt().build();
 
-            ExprUseVisitor::new(
+            ExprUseVisitor::for_clippy(
+                cx,
+                closure.def_id,
                 &mut delegate,
-                &infcx,
-                closure.body.hir_id.owner.def_id,
-                cx.param_env,
-                cx.typeck_results(),
             )
-            .consume_body(body);
+            .consume_body(body).into_ok();
 
             let mut to_be_discarded = false;
 

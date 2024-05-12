@@ -69,6 +69,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
 use rustc_macros::extension;
+use rustc_middle::bug;
 use rustc_middle::dep_graph::DepContext;
 use rustc_middle::ty::print::{with_forced_trimmed_paths, PrintError, PrintTraitRefExt as _};
 use rustc_middle::ty::relate::{self, RelateResult, TypeRelation};
@@ -410,7 +411,7 @@ impl<'tcx> InferCtxt<'tcx> {
                     .kind()
                     .map_bound(|kind| match kind {
                         ty::ClauseKind::Projection(projection_predicate)
-                            if projection_predicate.projection_ty.def_id == item_def_id =>
+                            if projection_predicate.projection_term.def_id == item_def_id =>
                         {
                             projection_predicate.term.ty()
                         }
@@ -883,9 +884,10 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 err.help("...or use `match` instead of `let...else`");
             }
             _ => {
-                if let ObligationCauseCode::SpannedWhereClause(_, span)
-                | ObligationCauseCode::SpannedWhereClauseInExpr(_, span, ..) =
+                if let ObligationCauseCode::WhereClause(_, span)
+                | ObligationCauseCode::WhereClauseInExpr(_, span, ..) =
                     cause.code().peel_derives()
+                    && !span.is_dummy()
                     && let TypeError::RegionsPlaceholderMismatch = terr
                 {
                     err.span_note(*span, "the lifetime requirement is introduced here");

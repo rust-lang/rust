@@ -220,6 +220,12 @@ impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)> for Vec<TokenTree<TokenStre
                 Ident(sym, is_raw) => {
                     trees.push(TokenTree::Ident(Ident { sym, is_raw: is_raw.into(), span }))
                 }
+                NtIdent(ident, is_raw) => trees.push(TokenTree::Ident(Ident {
+                    sym: ident.name,
+                    is_raw: is_raw.into(),
+                    span: ident.span,
+                })),
+
                 Lifetime(name) => {
                     let ident = symbol::Ident::new(name, span).without_first_quote();
                     trees.extend([
@@ -227,6 +233,15 @@ impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)> for Vec<TokenTree<TokenStre
                         TokenTree::Ident(Ident { sym: ident.name, is_raw: false, span }),
                     ]);
                 }
+                NtLifetime(ident) => {
+                    let stream = TokenStream::token_alone(token::Lifetime(ident.name), ident.span);
+                    trees.push(TokenTree::Group(Group {
+                        delimiter: pm::Delimiter::None,
+                        stream: Some(stream),
+                        span: DelimSpan::from_single(span),
+                    }))
+                }
+
                 Literal(token::Lit { kind, symbol, suffix }) => {
                     trees.push(TokenTree::Literal(self::Literal {
                         kind: FromInternal::from_internal(kind),
@@ -259,23 +274,15 @@ impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)> for Vec<TokenTree<TokenStre
                     }));
                 }
 
-                Interpolated(ref nt) if let NtIdent(ident, is_raw) = &nt.0 => {
-                    trees.push(TokenTree::Ident(Ident {
-                        sym: ident.name,
-                        is_raw: matches!(is_raw, IdentIsRaw::Yes),
-                        span: ident.span,
-                    }))
-                }
-
                 Interpolated(nt) => {
-                    let stream = TokenStream::from_nonterminal_ast(&nt.0);
+                    let stream = TokenStream::from_nonterminal_ast(&nt);
                     // A hack used to pass AST fragments to attribute and derive
                     // macros as a single nonterminal token instead of a token
                     // stream. Such token needs to be "unwrapped" and not
                     // represented as a delimited group.
                     // FIXME: It needs to be removed, but there are some
                     // compatibility issues (see #73345).
-                    if crate::base::nt_pretty_printing_compatibility_hack(&nt.0, rustc.ecx.sess) {
+                    if crate::base::nt_pretty_printing_compatibility_hack(&nt, rustc.ecx.sess) {
                         trees.extend(Self::from_internal((stream, rustc)));
                     } else {
                         trees.push(TokenTree::Group(Group {

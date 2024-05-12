@@ -17,6 +17,7 @@ use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
 use rustc_middle::ty::NormalizesTo;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::ty::{ToPredicate, TypeVisitableExt};
+use rustc_middle::{bug, span_bug};
 use rustc_span::{sym, ErrorGuaranteed, DUMMY_SP};
 
 mod anon_const;
@@ -25,7 +26,7 @@ mod opaque_types;
 mod weak_types;
 
 impl<'tcx> EvalCtxt<'_, 'tcx> {
-    #[instrument(level = "debug", skip(self), ret)]
+    #[instrument(level = "trace", skip(self), ret)]
     pub(super) fn compute_normalizes_to_goal(
         &mut self,
         goal: Goal<'tcx, NormalizesTo<'tcx>>,
@@ -40,26 +41,15 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             Ok(res) => Ok(res),
             Err(NoSolution) => {
                 let Goal { param_env, predicate: NormalizesTo { alias, term } } = goal;
-                if alias.opt_kind(self.tcx()).is_some() {
-                    self.relate_rigid_alias_non_alias(
-                        param_env,
-                        alias,
-                        ty::Variance::Invariant,
-                        term,
-                    )?;
-                    self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-                } else {
-                    // FIXME(generic_const_exprs): we currently do not support rigid
-                    // unevaluated constants.
-                    Err(NoSolution)
-                }
+                self.relate_rigid_alias_non_alias(param_env, alias, ty::Variance::Invariant, term)?;
+                self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
             }
         }
     }
 
     /// Normalize the given alias by at least one step. If the alias is rigid, this
     /// returns `NoSolution`.
-    #[instrument(level = "debug", skip(self), ret)]
+    #[instrument(level = "trace", skip(self), ret)]
     fn normalize_at_least_one_step(
         &mut self,
         goal: Goal<'tcx, NormalizesTo<'tcx>>,
@@ -132,7 +122,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
                     ecx.eq(
                         goal.param_env,
                         goal.predicate.alias,
-                        assumption_projection_pred.projection_ty,
+                        assumption_projection_pred.projection_term,
                     )?;
 
                     ecx.instantiate_normalizes_to_term(goal, assumption_projection_pred.term);
@@ -373,7 +363,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
 
         let pred = tupled_inputs_and_output
             .map_bound(|(inputs, output)| ty::ProjectionPredicate {
-                projection_ty: ty::AliasTy::new(
+                projection_term: ty::AliasTerm::new(
                     tcx,
                     goal.predicate.def_id(),
                     [goal.predicate.self_ty(), inputs],
@@ -425,9 +415,9 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
                      output_coroutine_ty,
                      coroutine_return_ty,
                  }| {
-                    let (projection_ty, term) = match tcx.item_name(goal.predicate.def_id()) {
+                    let (projection_term, term) = match tcx.item_name(goal.predicate.def_id()) {
                         sym::CallOnceFuture => (
-                            ty::AliasTy::new(
+                            ty::AliasTerm::new(
                                 tcx,
                                 goal.predicate.def_id(),
                                 [goal.predicate.self_ty(), tupled_inputs_ty],
@@ -435,7 +425,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
                             output_coroutine_ty.into(),
                         ),
                         sym::CallRefFuture => (
-                            ty::AliasTy::new(
+                            ty::AliasTerm::new(
                                 tcx,
                                 goal.predicate.def_id(),
                                 [
@@ -447,7 +437,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
                             output_coroutine_ty.into(),
                         ),
                         sym::Output => (
-                            ty::AliasTy::new(
+                            ty::AliasTerm::new(
                                 tcx,
                                 goal.predicate.def_id(),
                                 [
@@ -459,7 +449,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
                         ),
                         name => bug!("no such associated type: {name}"),
                     };
-                    ty::ProjectionPredicate { projection_ty, term }
+                    ty::ProjectionPredicate { projection_term, term }
                 },
             )
             .to_predicate(tcx);
@@ -636,7 +626,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
             CandidateSource::BuiltinImpl(BuiltinImplSource::Misc),
             goal,
             ty::ProjectionPredicate {
-                projection_ty: ty::AliasTy::new(ecx.tcx(), goal.predicate.def_id(), [self_ty]),
+                projection_term: ty::AliasTerm::new(ecx.tcx(), goal.predicate.def_id(), [self_ty]),
                 term,
             }
             .to_predicate(tcx),
@@ -668,7 +658,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
             CandidateSource::BuiltinImpl(BuiltinImplSource::Misc),
             goal,
             ty::ProjectionPredicate {
-                projection_ty: ty::AliasTy::new(ecx.tcx(), goal.predicate.def_id(), [self_ty]),
+                projection_term: ty::AliasTerm::new(ecx.tcx(), goal.predicate.def_id(), [self_ty]),
                 term,
             }
             .to_predicate(tcx),
@@ -752,7 +742,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
             CandidateSource::BuiltinImpl(BuiltinImplSource::Misc),
             goal,
             ty::ProjectionPredicate {
-                projection_ty: ty::AliasTy::new(
+                projection_term: ty::AliasTerm::new(
                     ecx.tcx(),
                     goal.predicate.def_id(),
                     [self_ty, coroutine.resume_ty()],
@@ -897,7 +887,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
 ///
 /// FIXME: We should merge these 3 implementations as it's likely that they otherwise
 /// diverge.
-#[instrument(level = "debug", skip(ecx, param_env), ret)]
+#[instrument(level = "trace", skip(ecx, param_env), ret)]
 fn fetch_eligible_assoc_item_def<'tcx>(
     ecx: &EvalCtxt<'_, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
@@ -920,7 +910,7 @@ fn fetch_eligible_assoc_item_def<'tcx>(
             let poly_trait_ref = ecx.resolve_vars_if_possible(goal_trait_ref);
             !poly_trait_ref.still_further_specializable()
         } else {
-            debug!(?node_item.item.def_id, "not eligible due to default");
+            trace!(?node_item.item.def_id, "not eligible due to default");
             false
         }
     };

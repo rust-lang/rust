@@ -2631,7 +2631,7 @@ pub struct OpaqueTy<'hir> {
     /// lowered as an associated type.
     pub in_trait: bool,
     /// List of arguments captured via `impl use<'a, P, ...> Trait` syntax.
-    pub precise_capturing_args: Option<&'hir [PreciseCapturingArg<'hir>]>,
+    pub precise_capturing_args: Option<(&'hir [PreciseCapturingArg<'hir>], Span)>,
 }
 
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
@@ -2639,6 +2639,15 @@ pub enum PreciseCapturingArg<'hir> {
     Lifetime(&'hir Lifetime),
     /// Non-lifetime argument (type or const)
     Param(PreciseCapturingNonLifetimeArg),
+}
+
+impl PreciseCapturingArg<'_> {
+    pub fn hir_id(self) -> HirId {
+        match self {
+            PreciseCapturingArg::Lifetime(lt) => lt.hir_id,
+            PreciseCapturingArg::Param(param) => param.hir_id,
+        }
+    }
 }
 
 /// We need to have a [`Node`] for the [`HirId`] that we attach the type/const param

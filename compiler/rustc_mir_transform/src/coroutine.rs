@@ -70,6 +70,7 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::CoroutineArgs;
 use rustc_middle::ty::InstanceDef;
 use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::{bug, span_bug};
 use rustc_mir_dataflow::impls::{
     MaybeBorrowedLocals, MaybeLiveLocals, MaybeRequiresStorage, MaybeStorageLive,
 };

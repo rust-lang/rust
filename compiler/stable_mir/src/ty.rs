@@ -897,6 +897,12 @@ pub struct AliasTy {
     pub args: GenericArgs,
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct AliasTerm {
+    pub def_id: AliasDef,
+    pub args: GenericArgs,
+}
+
 pub type PolyFnSig = Binder<FnSig>;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -1350,7 +1356,7 @@ pub type TypeOutlivesPredicate = OutlivesPredicate<Ty, Region>;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ProjectionPredicate {
-    pub projection_ty: AliasTy,
+    pub projection_term: AliasTerm,
     pub term: TermKind,
 }
 

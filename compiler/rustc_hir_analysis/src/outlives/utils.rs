@@ -2,6 +2,7 @@ use rustc_data_structures::fx::FxIndexMap;
 use rustc_infer::infer::outlives::components::{push_outlives_components, Component};
 use rustc_middle::ty::{self, Region, Ty, TyCtxt};
 use rustc_middle::ty::{GenericArg, GenericArgKind};
+use rustc_middle::{bug, span_bug};
 use rustc_span::Span;
 use smallvec::smallvec;
 

@@ -5,6 +5,7 @@ use rustc_hir as hir;
 use rustc_infer::traits::util;
 use rustc_middle::ty::GenericArgs;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable};
+use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::Span;
 
@@ -39,7 +40,7 @@ fn associated_type_bounds<'tcx>(
     let bounds_from_parent = trait_predicates.predicates.iter().copied().filter(|(pred, _)| {
         match pred.kind().skip_binder() {
             ty::ClauseKind::Trait(tr) => tr.self_ty() == item_ty,
-            ty::ClauseKind::Projection(proj) => proj.projection_ty.self_ty() == item_ty,
+            ty::ClauseKind::Projection(proj) => proj.projection_term.self_ty() == item_ty,
             ty::ClauseKind::TypeOutlives(outlives) => outlives.0 == item_ty,
             _ => false,
         }

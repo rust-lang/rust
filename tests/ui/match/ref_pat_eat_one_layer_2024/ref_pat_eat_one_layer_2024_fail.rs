@@ -14,18 +14,20 @@ pub fn main() {
         let _: &mut u32 = x;
         //~^ ERROR: mismatched types
     }
-    if let Some(&Some(&_)) = Some(&Some(&mut 0)) {
-        //~^ ERROR: mismatched types
-    }
     if let Some(&Some(&mut _)) = &mut Some(&Some(0)) {
         //~^ ERROR: mismatched types
     }
     if let Some(&Some(Some((&mut _)))) = &Some(Some(&mut Some(0))) {
         //~^ ERROR: mismatched types
     }
+    if let Some(&mut Some(x)) = &Some(Some(0)) {
+        //~^ ERROR: mismatched types
+    }
+    if let Some(&mut Some(x)) = &Some(Some(0)) {
+        //~^ ERROR: mismatched types
+    }
 
-
-    let &mut _= &&0;
+    let &mut _ = &&0;
     //~^ ERROR: mismatched types
 
     let &mut _ = &&&&&&&&&&&&&&&&&&&&&&&&&&&&0;

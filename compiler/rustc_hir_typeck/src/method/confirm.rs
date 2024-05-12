@@ -16,6 +16,7 @@ use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::{
     self, GenericArgs, GenericArgsRef, GenericParamDefKind, Ty, TyCtxt, UserArgs, UserType,
 };
+use rustc_middle::{bug, span_bug};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_trait_selection::traits;
 
@@ -564,16 +565,12 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         // `self.add_required_obligations(self.span, def_id, &all_args);`
         for obligation in traits::predicates_for_generics(
             |idx, span| {
-                let code = if span.is_dummy() {
-                    ObligationCauseCode::WhereClauseInExpr(def_id, self.call_expr.hir_id, idx)
-                } else {
-                    ObligationCauseCode::SpannedWhereClauseInExpr(
-                        def_id,
-                        span,
-                        self.call_expr.hir_id,
-                        idx,
-                    )
-                };
+                let code = ObligationCauseCode::WhereClauseInExpr(
+                    def_id,
+                    span,
+                    self.call_expr.hir_id,
+                    idx,
+                );
                 traits::ObligationCause::new(self.span, self.body_id, code)
             },
             self.param_env,

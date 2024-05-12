@@ -1,6 +1,7 @@
 use rustc_data_structures::intern::Interned;
 use rustc_hir::def_id::CrateNum;
 use rustc_hir::definitions::DisambiguatedDefPathData;
+use rustc_middle::bug;
 use rustc_middle::ty::{
     self,
     print::{PrettyPrinter, Print, PrintError, Printer},

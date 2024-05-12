@@ -36,6 +36,7 @@ use hir::ExprKind;
 use rustc_errors::{codes::*, Applicability, Diag, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_macros::{TypeFoldable, TypeVisitable};
+use rustc_middle::bug;
 use rustc_middle::mir::Mutability;
 use rustc_middle::ty::adjustment::AllowTwoPhase;
 use rustc_middle::ty::cast::{CastKind, CastTy};
@@ -140,7 +141,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             | ty::Never
             | ty::Dynamic(_, _, ty::DynStar)
             | ty::Error(_) => {
-                self.dcx().span_bug(span, format!("`{t:?}` should be sized but is not?"));
+                let guar = self
+                    .dcx()
+                    .span_delayed_bug(span, format!("`{t:?}` should be sized but is not?"));
+                return Err(guar);
             }
         })
     }

@@ -53,6 +53,12 @@ pub fn main() {
     if let Some(&Some(Some(&x))) = &Some(Some(&mut Some(0))) {
         let _: u32 = x;
     }
+    if let Some(&Some(&x)) = Some(&Some(&mut 0)) {
+        let _: u32 = x;
+    }
+    if let Some(&Some(x)) = &mut Some(Some(0)) {
+        let _: u32 = x;
+    }
 
     let &mut x = &&mut 0;
     let _: &u32 = x;

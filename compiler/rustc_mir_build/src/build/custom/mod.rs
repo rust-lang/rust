@@ -24,6 +24,7 @@ use rustc_hir::HirId;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::{
     mir::*,
+    span_bug,
     thir::*,
     ty::{ParamEnv, Ty, TyCtxt},
 };

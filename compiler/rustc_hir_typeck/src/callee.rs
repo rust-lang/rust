@@ -19,6 +19,7 @@ use rustc_middle::ty::adjustment::{
 };
 use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
@@ -574,7 +575,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             self.misc(span),
                             self.param_env,
                             ty::ProjectionPredicate {
-                                projection_ty: ty::AliasTy::new(
+                                projection_term: ty::AliasTerm::new(
                                     self.tcx,
                                     fn_once_output_def_id,
                                     [arg_ty.into(), fn_sig.inputs()[0].into(), const_param],

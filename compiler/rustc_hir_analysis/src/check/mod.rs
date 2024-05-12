@@ -90,6 +90,7 @@ use rustc_middle::query::Providers;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::ty::{GenericArgs, GenericArgsRef};
+use rustc_middle::{bug, span_bug};
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{def_id::CRATE_DEF_ID, BytePos, Span, Symbol, DUMMY_SP};
@@ -343,9 +344,10 @@ fn bounds_from_generic_predicates<'tcx>(
                 let mut projections_str = vec![];
                 for projection in &projections {
                     let p = projection.skip_binder();
-                    let alias_ty = p.projection_ty;
-                    if bound == tcx.parent(alias_ty.def_id) && alias_ty.self_ty() == ty {
-                        let name = tcx.item_name(alias_ty.def_id);
+                    if bound == tcx.parent(p.projection_term.def_id)
+                        && p.projection_term.self_ty() == ty
+                    {
+                        let name = tcx.item_name(p.projection_term.def_id);
                         projections_str.push(format!("{} = {}", name, p.term));
                     }
                 }

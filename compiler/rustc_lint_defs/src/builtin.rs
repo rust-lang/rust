@@ -38,7 +38,6 @@ declare_lint_pass! {
         DEPRECATED_CFG_ATTR_CRATE_TYPE_NAME,
         DEPRECATED_IN_FUTURE,
         DEPRECATED_WHERE_CLAUSE_LOCATION,
-        DEREFERENCING_MUT_BINDING,
         DUPLICATE_MACRO_ATTRIBUTES,
         ELIDED_LIFETIMES_IN_ASSOCIATED_CONSTANT,
         ELIDED_LIFETIMES_IN_PATHS,
@@ -90,6 +89,7 @@ declare_lint_pass! {
         RUST_2021_INCOMPATIBLE_OR_PATTERNS,
         RUST_2021_PREFIXES_INCOMPATIBLE_SYNTAX,
         RUST_2021_PRELUDE_COLLISIONS,
+        RUST_2024_INCOMPATIBLE_PAT,
         SEMICOLON_IN_EXPRESSIONS_FROM_MACROS,
         SINGLE_USE_LIFETIMES,
         SOFT_UNSTABLE,
@@ -1630,34 +1630,34 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `dereferencing_mut_binding` lint detects a `mut x` pattern that resets the binding mode,
-    /// as this behavior will change in rust 2024.
+    /// The `rust_2024_incompatible_pat` lint
+    /// detects patterns whose meaning will change in the Rust 2024 edition.
     ///
     /// ### Example
     ///
-    /// ```rust
-    /// # #![warn(dereferencing_mut_binding)]
-    /// let x = Some(123u32);
-    /// let _y = match &x {
-    ///     Some(mut x) => {
-    ///         x += 1;
-    ///         x
-    ///     }
-    ///     None => 0,
-    /// };
+    /// ```rust,edition2021
+    /// #![feature(ref_pat_eat_one_layer_2024)]
+    /// #![warn(rust_2024_incompatible_pat)]
+    ///
+    /// if let Some(&a) = &Some(&0u8) {
+    ///     let _: u8 = a;
+    /// }
+    /// if let Some(mut _a) = &mut Some(0u8) {
+    ///     _a = 7u8;
+    /// }
     /// ```
     ///
     /// {{produces}}
     ///
     /// ### Explanation
     ///
-    /// Without the `mut`, `x` would have type `&u32`. Pre-2024, adding `mut` makes `x` have type
-    /// `u32`, which was deemed surprising. After edition 2024, adding `mut` will not change the
-    /// type of `x`. This lint warns users of editions before 2024 to update their code.
-    pub DEREFERENCING_MUT_BINDING,
+    /// In Rust 2024 and above, the `mut` keyword does not reset the pattern binding mode,
+    /// and nor do `&` or `&mut` patterns. The lint will suggest code that
+    /// has the same meaning in all editions.
+    pub RUST_2024_INCOMPATIBLE_PAT,
     Allow,
-    "detects `mut x` bindings that change the type of `x`",
-    @feature_gate = sym::mut_preserve_binding_mode_2024;
+    "detects patterns whose meaning will change in Rust 2024",
+    @feature_gate = sym::ref_pat_eat_one_layer_2024;
     // FIXME uncomment below upon stabilization
     /*@future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::EditionSemanticsChange(Edition::Edition2024),

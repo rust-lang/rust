@@ -38,12 +38,14 @@ use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::fold::{BottomUpFolder, TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::print::{
-    with_forced_trimmed_paths, FmtPrinter, Print, PrintTraitRefExt as _,
+    with_forced_trimmed_paths, FmtPrinter, Print, PrintTraitPredicateExt as _,
+    PrintTraitRefExt as _,
 };
 use rustc_middle::ty::{
     self, SubtypePredicate, ToPolyTraitRef, ToPredicate, TraitRef, Ty, TyCtxt, TypeFoldable,
     TypeVisitable, TypeVisitableExt,
 };
+use rustc_middle::{bug, span_bug};
 use rustc_session::config::DumpSolverProofTree;
 use rustc_session::Limit;
 use rustc_span::def_id::LOCAL_CRATE;
@@ -61,7 +63,7 @@ use super::{
 pub use rustc_infer::traits::error_reporting::*;
 
 pub enum OverflowCause<'tcx> {
-    DeeplyNormalize(ty::AliasTy<'tcx>),
+    DeeplyNormalize(ty::AliasTerm<'tcx>),
     TraitSolver(ty::Predicate<'tcx>),
 }
 
@@ -245,10 +247,10 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         }
 
         let mut err = match cause {
-            OverflowCause::DeeplyNormalize(alias_ty) => {
-                let alias_ty = self.resolve_vars_if_possible(alias_ty);
-                let kind = alias_ty.opt_kind(self.tcx).map_or("alias", |k| k.descr());
-                let alias_str = with_short_path(self.tcx, alias_ty);
+            OverflowCause::DeeplyNormalize(alias_term) => {
+                let alias_term = self.resolve_vars_if_possible(alias_term);
+                let kind = alias_term.kind(self.tcx).descr();
+                let alias_str = with_short_path(self.tcx, alias_term);
                 struct_span_code_err!(
                     self.dcx(),
                     span,
@@ -1467,7 +1469,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         );
 
         let param_env = ty::ParamEnv::empty();
-        self.can_eq(param_env, goal.projection_ty, assumption.projection_ty)
+        self.can_eq(param_env, goal.projection_term, assumption.projection_term)
             && self.can_eq(param_env, goal.term, assumption.term)
     }
 
@@ -1535,9 +1537,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     *err,
                 );
                 let code = error.obligation.cause.code().peel_derives().peel_match_impls();
-                if let ObligationCauseCode::SpannedWhereClause(..)
-                | ObligationCauseCode::WhereClause(..)
-                | ObligationCauseCode::SpannedWhereClauseInExpr(..)
+                if let ObligationCauseCode::WhereClause(..)
                 | ObligationCauseCode::WhereClauseInExpr(..) = code
                 {
                     self.note_obligation_cause_code(
@@ -1584,23 +1584,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     infer::BoundRegionConversionTime::HigherRankedType,
                     bound_predicate.rebind(data),
                 );
-                let unnormalized_term = match data.term.unpack() {
-                    ty::TermKind::Ty(_) => Ty::new_projection(
-                        self.tcx,
-                        data.projection_ty.def_id,
-                        data.projection_ty.args,
-                    )
-                    .into(),
-                    ty::TermKind::Const(ct) => ty::Const::new_unevaluated(
-                        self.tcx,
-                        ty::UnevaluatedConst {
-                            def: data.projection_ty.def_id,
-                            args: data.projection_ty.args,
-                        },
-                        ct.ty(),
-                    )
-                    .into(),
-                };
+                let unnormalized_term = data.projection_term.to_term(self.tcx);
                 // FIXME(-Znext-solver): For diagnostic purposes, it would be nice
                 // to deeply normalize this type.
                 let normalized_term =
@@ -1612,11 +1596,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
                 let is_normalized_term_expected = !matches!(
                     obligation.cause.code().peel_derives(),
-                    ObligationCauseCode::WhereClause(_)
-                        | ObligationCauseCode::SpannedWhereClause(_, _)
-                        | ObligationCauseCode::WhereClauseInExpr(..)
-                        | ObligationCauseCode::SpannedWhereClauseInExpr(..)
-                        | ObligationCauseCode::Coercion { .. }
+                    |ObligationCauseCode::WhereClause(..)| ObligationCauseCode::WhereClauseInExpr(
+                        ..
+                    ) | ObligationCauseCode::Coercion { .. }
                 );
 
                 let (expected, actual) = if is_normalized_term_expected {
@@ -1667,13 +1649,13 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     return None;
                 };
 
-                let trait_assoc_item = self.tcx.opt_associated_item(proj.projection_ty.def_id)?;
+                let trait_assoc_item = self.tcx.opt_associated_item(proj.projection_term.def_id)?;
                 let trait_assoc_ident = trait_assoc_item.ident(self.tcx);
 
                 let mut associated_items = vec![];
                 self.tcx.for_each_relevant_impl(
-                    self.tcx.trait_of_item(proj.projection_ty.def_id)?,
-                    proj.projection_ty.self_ty(),
+                    self.tcx.trait_of_item(proj.projection_term.def_id)?,
+                    proj.projection_term.self_ty(),
                     |impl_def_id| {
                         associated_items.extend(
                             self.tcx
@@ -1742,11 +1724,11 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         normalized_ty: ty::Term<'tcx>,
         expected_ty: ty::Term<'tcx>,
     ) -> Option<String> {
-        let trait_def_id = pred.projection_ty.trait_def_id(self.tcx);
-        let self_ty = pred.projection_ty.self_ty();
+        let trait_def_id = pred.projection_term.trait_def_id(self.tcx);
+        let self_ty = pred.projection_term.self_ty();
 
         with_forced_trimmed_paths! {
-            if Some(pred.projection_ty.def_id) == self.tcx.lang_items().fn_once_output() {
+            if Some(pred.projection_term.def_id) == self.tcx.lang_items().fn_once_output() {
                 let fn_kind = self_ty.prefix_string(self.tcx);
                 let item = match self_ty.kind() {
                     ty::FnDef(def, _) => self.tcx.item_name(*def).to_string(),
@@ -2447,7 +2429,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     }
                 }
 
-                if let ObligationCauseCode::WhereClause(def_id)
+                if let ObligationCauseCode::WhereClause(def_id, _)
                 | ObligationCauseCode::WhereClauseInExpr(def_id, ..) = *obligation.cause.code()
                 {
                     self.suggest_fully_qualified_path(&mut err, def_id, span, trait_ref.def_id());
@@ -2625,14 +2607,14 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 }
 
                 if let Err(guar) =
-                    self.tcx.ensure().coherent_trait(self.tcx.parent(data.projection_ty.def_id))
+                    self.tcx.ensure().coherent_trait(self.tcx.parent(data.projection_term.def_id))
                 {
                     // Avoid bogus "type annotations needed `Foo: Bar`" errors on `impl Bar for Foo` in case
                     // other `Foo` impls are incoherent.
                     return guar;
                 }
                 let arg = data
-                    .projection_ty
+                    .projection_term
                     .args
                     .iter()
                     .chain(Some(data.term.into_arg()))
@@ -2883,12 +2865,15 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         else {
             return;
         };
-        let (ObligationCauseCode::SpannedWhereClause(item_def_id, span)
-        | ObligationCauseCode::SpannedWhereClauseInExpr(item_def_id, span, ..)) =
+        let (ObligationCauseCode::WhereClause(item_def_id, span)
+        | ObligationCauseCode::WhereClauseInExpr(item_def_id, span, ..)) =
             *obligation.cause.code().peel_derives()
         else {
             return;
         };
+        if span.is_dummy() {
+            return;
+        }
         debug!(?pred, ?item_def_id, ?span);
 
         let (Some(node), true) = (
@@ -3181,10 +3166,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             ObligationCauseCode::RustCall => {
                 err.primary_message("functions with the \"rust-call\" ABI must take a single non-self tuple argument");
             }
-            ObligationCauseCode::SpannedWhereClause(def_id, _)
-            | ObligationCauseCode::WhereClause(def_id)
-                if self.tcx.is_fn_trait(*def_id) =>
-            {
+            ObligationCauseCode::WhereClause(def_id, _) if self.tcx.is_fn_trait(*def_id) => {
                 err.code(E0059);
                 err.primary_message(format!(
                     "type parameter to bare `{}` trait must be a tuple",

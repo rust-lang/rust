@@ -1454,9 +1454,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         Some(pointee_align) => cmp::max(pointee_align, arg.layout.align.abi),
                         None => arg.layout.align.abi,
                     };
-                    let scratch = PlaceRef::alloca_aligned(bx, arg.layout, required_align);
-                    op.val.store(bx, scratch);
-                    (scratch.val.llval, scratch.val.align, true)
+                    let scratch = PlaceValue::alloca(bx, arg.layout.size, required_align);
+                    op.val.store(bx, scratch.with_type(arg.layout));
+                    (scratch.llval, scratch.align, true)
                 }
                 PassMode::Cast { .. } => {
                     let scratch = PlaceRef::alloca(bx, arg.layout);
@@ -1475,10 +1475,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         // For `foo(packed.large_field)`, and types with <4 byte alignment on x86,
                         // alignment requirements may be higher than the type's alignment, so copy
                         // to a higher-aligned alloca.
-                        let scratch = PlaceRef::alloca_aligned(bx, arg.layout, required_align);
-                        let op_place = PlaceRef { val: op_place_val, layout: op.layout };
-                        bx.typed_place_copy(scratch, op_place);
-                        (scratch.val.llval, scratch.val.align, true)
+                        let scratch = PlaceValue::alloca(bx, arg.layout.size, required_align);
+                        bx.typed_place_copy(scratch, op_place_val, op.layout);
+                        (scratch.llval, scratch.align, true)
                     } else {
                         (op_place_val.llval, op_place_val.align, true)
                     }
@@ -1567,7 +1566,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             if place_val.llextra.is_some() {
                 bug!("closure arguments must be sized");
             }
-            let tuple_ptr = PlaceRef { val: place_val, layout: tuple.layout };
+            let tuple_ptr = place_val.with_type(tuple.layout);
             for i in 0..tuple.layout.fields.count() {
                 let field_ptr = tuple_ptr.project_field(bx, i);
                 let field = bx.load_operand(field_ptr);

@@ -4,6 +4,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
 use rustc_infer::traits::util::PredicateSet;
 use rustc_infer::traits::ImplSource;
+use rustc_middle::bug;
 use rustc_middle::query::Providers;
 use rustc_middle::traits::BuiltinImplSource;
 use rustc_middle::ty::visit::TypeVisitableExt;

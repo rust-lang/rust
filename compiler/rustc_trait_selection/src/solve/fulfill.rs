@@ -9,6 +9,7 @@ use rustc_infer::traits::{
     self, FulfillmentError, FulfillmentErrorCode, MismatchedProjectionTypes, Obligation,
     ObligationCause, ObligationCauseCode, PredicateObligation, SelectionError, TraitEngine,
 };
+use rustc_middle::bug;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::symbol::sym;
@@ -119,7 +120,7 @@ impl<'tcx> FulfillmentCtxt<'tcx> {
 }
 
 impl<'tcx> TraitEngine<'tcx> for FulfillmentCtxt<'tcx> {
-    #[instrument(level = "debug", skip(self, infcx))]
+    #[instrument(level = "trace", skip(self, infcx))]
     fn register_predicate_obligation(
         &mut self,
         infcx: &InferCtxt<'tcx>,

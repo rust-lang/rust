@@ -17,14 +17,9 @@ pub enum Arch {
     Arm64e,
     Arm64_32,
     I386,
-    I386_sim,
     I686,
     X86_64,
     X86_64h,
-    X86_64_sim,
-    X86_64_macabi,
-    Arm64_macabi,
-    Arm64_sim,
 }
 
 impl Arch {
@@ -32,12 +27,12 @@ impl Arch {
         match self {
             Armv7k => "armv7k",
             Armv7s => "armv7s",
-            Arm64 | Arm64_macabi | Arm64_sim => "arm64",
+            Arm64 => "arm64",
             Arm64e => "arm64e",
             Arm64_32 => "arm64_32",
-            I386 | I386_sim => "i386",
+            I386 => "i386",
             I686 => "i686",
-            X86_64 | X86_64_sim | X86_64_macabi => "x86_64",
+            X86_64 => "x86_64",
             X86_64h => "x86_64h",
         }
     }
@@ -45,61 +40,70 @@ impl Arch {
     pub fn target_arch(self) -> Cow<'static, str> {
         Cow::Borrowed(match self {
             Armv7k | Armv7s => "arm",
-            Arm64 | Arm64e | Arm64_32 | Arm64_macabi | Arm64_sim => "aarch64",
-            I386 | I386_sim | I686 => "x86",
-            X86_64 | X86_64_sim | X86_64_macabi | X86_64h => "x86_64",
+            Arm64 | Arm64e | Arm64_32 => "aarch64",
+            I386 | I686 => "x86",
+            X86_64 | X86_64h => "x86_64",
         })
     }
 
-    fn target_abi(self) -> &'static str {
-        match self {
-            Armv7k | Armv7s | Arm64 | Arm64e | Arm64_32 | I386 | I686 | X86_64 | X86_64h => "",
-            X86_64_macabi | Arm64_macabi => "macabi",
-            I386_sim | Arm64_sim | X86_64_sim => "sim",
-        }
-    }
-
-    fn target_cpu(self) -> &'static str {
+    fn target_cpu(self, abi: TargetAbi) -> &'static str {
         match self {
             Armv7k => "cortex-a8",
             Armv7s => "swift", // iOS 10 is only supported on iPhone 5 or higher.
-            Arm64 => "apple-a7",
+            Arm64 => match abi {
+                TargetAbi::Normal => "apple-a7",
+                TargetAbi::Simulator => "apple-a12",
+                TargetAbi::MacCatalyst => "apple-a12",
+            },
             Arm64e => "apple-a12",
             Arm64_32 => "apple-s4",
             // Only macOS 10.12+ is supported, which means
             // all x86_64/x86 CPUs must be running at least penryn
             // https://github.com/llvm/llvm-project/blob/01f924d0e37a5deae51df0d77e10a15b63aa0c0f/clang/lib/Driver/ToolChains/Arch/X86.cpp#L79-L82
-            I386 | I386_sim | I686 => "penryn",
-            X86_64 | X86_64_sim => "penryn",
-            X86_64_macabi => "penryn",
+            I386 | I686 => "penryn",
+            X86_64 => "penryn",
             // Note: `core-avx2` is slightly more advanced than `x86_64h`, see
             // comments (and disabled features) in `x86_64h_apple_darwin` for
             // details. It is a higher baseline then `penryn` however.
             X86_64h => "core-avx2",
-            Arm64_macabi => "apple-a12",
-            Arm64_sim => "apple-a12",
         }
     }
 
     fn stack_probes(self) -> StackProbeType {
         match self {
             Armv7k | Armv7s => StackProbeType::None,
-            Arm64 | Arm64e | Arm64_32 | I386 | I386_sim | I686 | X86_64 | X86_64h | X86_64_sim
-            | X86_64_macabi | Arm64_macabi | Arm64_sim => StackProbeType::Inline,
+            Arm64 | Arm64e | Arm64_32 | I386 | I686 | X86_64 | X86_64h => StackProbeType::Inline,
         }
     }
 }
 
-fn pre_link_args(os: &'static str, arch: Arch, abi: &'static str) -> LinkArgs {
+#[derive(Copy, Clone, PartialEq)]
+pub enum TargetAbi {
+    Normal,
+    Simulator,
+    MacCatalyst,
+}
+
+impl TargetAbi {
+    fn target_abi(self) -> &'static str {
+        match self {
+            Self::Normal => "",
+            Self::MacCatalyst => "macabi",
+            Self::Simulator => "sim",
+        }
+    }
+}
+
+fn pre_link_args(os: &'static str, arch: Arch, abi: TargetAbi) -> LinkArgs {
     let platform_name: StaticCow<str> = match abi {
-        "sim" => format!("{os}-simulator").into(),
-        "macabi" => "mac-catalyst".into(),
-        _ => os.into(),
+        TargetAbi::Normal => os.into(),
+        TargetAbi::Simulator => format!("{os}-simulator").into(),
+        TargetAbi::MacCatalyst => "mac-catalyst".into(),
     };
 
     let min_version: StaticCow<str> = {
         let (major, minor) = match os {
-            "ios" => ios_deployment_target(arch, abi),
+            "ios" => ios_deployment_target(arch, abi.target_abi()),
             "tvos" => tvos_deployment_target(),
             "watchos" => watchos_deployment_target(),
             "visionos" => visionos_deployment_target(),
@@ -119,7 +123,7 @@ fn pre_link_args(os: &'static str, arch: Arch, abi: &'static str) -> LinkArgs {
         LinkerFlavor::Darwin(Cc::No, Lld::No),
         [platform_name, min_version, sdk_version].into_iter(),
     );
-    if abi != "macabi" {
+    if abi != TargetAbi::MacCatalyst {
         add_link_args(
             &mut args,
             LinkerFlavor::Darwin(Cc::Yes, Lld::No),
@@ -136,13 +140,11 @@ fn pre_link_args(os: &'static str, arch: Arch, abi: &'static str) -> LinkArgs {
     args
 }
 
-pub fn opts(os: &'static str, arch: Arch) -> TargetOptions {
-    let abi = arch.target_abi();
-
+pub fn opts(os: &'static str, arch: Arch, abi: TargetAbi) -> TargetOptions {
     TargetOptions {
-        abi: abi.into(),
+        abi: abi.target_abi().into(),
         os: os.into(),
-        cpu: arch.target_cpu().into(),
+        cpu: arch.target_cpu(abi).into(),
         link_env_remove: link_env_remove(os),
         vendor: "apple".into(),
         linker_flavor: LinkerFlavor::Darwin(Cc::Yes, Lld::No),
@@ -263,8 +265,7 @@ fn from_set_deployment_target(var_name: &str) -> Option<(u32, u32)> {
 
 fn macos_default_deployment_target(arch: Arch) -> (u32, u32) {
     match arch {
-        // Note: Arm64_sim is not included since macOS has no simulator.
-        Arm64 | Arm64e | Arm64_macabi => (11, 0),
+        Arm64 | Arm64e => (11, 0),
         _ => (10, 12),
     }
 }

@@ -83,7 +83,7 @@ pub(crate) struct IncorrectSemicolon<'a> {
     #[suggestion(style = "short", code = "", applicability = "machine-applicable")]
     pub span: Span,
     #[help]
-    pub opt_help: Option<()>,
+    pub show_help: bool,
     pub name: &'a str,
 }
 

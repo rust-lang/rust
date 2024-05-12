@@ -8,6 +8,7 @@ use rustc_data_structures::obligation_forest::{ObligationForest, ObligationProce
 use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_infer::traits::ProjectionCacheKey;
 use rustc_infer::traits::{PolyTraitObligation, SelectionError, TraitEngine};
+use rustc_middle::bug;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
@@ -770,13 +771,13 @@ impl<'a, 'tcx> FulfillProcessor<'a, 'tcx> {
             }
         }
 
-        match project::poly_project_and_unify_type(&mut self.selcx, &project_obligation) {
+        match project::poly_project_and_unify_term(&mut self.selcx, &project_obligation) {
             ProjectAndUnifyResult::Holds(os) => ProcessResult::Changed(mk_pending(os)),
             ProjectAndUnifyResult::FailedNormalization => {
                 stalled_on.clear();
                 stalled_on.extend(args_infer_vars(
                     &self.selcx,
-                    project_obligation.predicate.map_bound(|pred| pred.projection_ty.args),
+                    project_obligation.predicate.map_bound(|pred| pred.projection_term.args),
                 ));
                 ProcessResult::Unchanged
             }

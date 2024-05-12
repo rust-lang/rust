@@ -10,7 +10,8 @@ use crate::traits::{ObligationCause, ObligationCauseCode};
 use rustc_data_structures::intern::Interned;
 use rustc_errors::{Diag, IntoDiagArg};
 use rustc_hir::def::Namespace;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{DefId, CRATE_DEF_ID};
+use rustc_middle::bug;
 use rustc_middle::ty::error::ExpectedFound;
 use rustc_middle::ty::print::{FmtPrinter, Print, PrintTraitRefExt as _, RegionHighlightMode};
 use rustc_middle::ty::GenericArgsRef;
@@ -240,8 +241,9 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
         let span = cause.span();
 
         let (leading_ellipsis, satisfy_span, where_span, dup_span, def_id) =
-            if let ObligationCauseCode::WhereClause(def_id)
-            | ObligationCauseCode::WhereClauseInExpr(def_id, ..) = *cause.code()
+            if let ObligationCauseCode::WhereClause(def_id, span)
+            | ObligationCauseCode::WhereClauseInExpr(def_id, span, ..) = *cause.code()
+                && def_id != CRATE_DEF_ID.to_def_id()
             {
                 (
                     true,

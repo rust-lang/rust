@@ -8,6 +8,7 @@ use rustc_middle::ty::layout::{LayoutOf as _, ValidityRequirement};
 use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_middle::{
+    bug,
     mir::{self, BinOp, ConstValue, NonDivergingIntrinsic},
     ty::layout::TyAndLayout,
 };
@@ -15,9 +16,10 @@ use rustc_span::symbol::{sym, Symbol};
 use rustc_target::abi::Size;
 
 use super::{
-    memory::MemoryKind, util::ensure_monomorphic_enough, Allocation, CheckInAllocMsg,
-    ConstAllocation, GlobalId, ImmTy, InterpCx, InterpResult, MPlaceTy, Machine, OpTy, Pointer,
-    PointerArithmetic, Scalar,
+    err_inval, err_ub_custom, err_unsup_format, memory::MemoryKind, throw_inval, throw_ub_custom,
+    throw_ub_format, util::ensure_monomorphic_enough, Allocation, CheckInAllocMsg, ConstAllocation,
+    GlobalId, ImmTy, InterpCx, InterpResult, MPlaceTy, Machine, OpTy, Pointer, PointerArithmetic,
+    Scalar,
 };
 
 use crate::fluent_generated as fluent;

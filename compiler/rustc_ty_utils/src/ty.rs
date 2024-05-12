@@ -3,6 +3,7 @@ use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::LangItem;
 use rustc_index::bit_set::BitSet;
+use rustc_middle::bug;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, EarlyBinder, Ty, TyCtxt, TypeVisitableExt, TypeVisitor};
 use rustc_middle::ty::{ToPredicate, TypeSuperVisitable, TypeVisitable};
@@ -214,7 +215,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitFinder<'_, 'tcx> {
             self.predicates.push(
                 ty::Binder::bind_with_vars(
                     ty::ProjectionPredicate {
-                        projection_ty: shifted_alias_ty,
+                        projection_term: shifted_alias_ty.into(),
                         term: default_ty.into(),
                     },
                     self.bound_vars,

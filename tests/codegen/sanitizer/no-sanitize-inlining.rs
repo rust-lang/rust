@@ -16,7 +16,7 @@
 // ASAN:       }
 //
 // LSAN-LABEL: define void @test
-// LSAN-NO:      call
+// LSAN-NOT:     call
 // LSAN:       }
 #[no_mangle]
 pub fn test(n: &mut u32) {

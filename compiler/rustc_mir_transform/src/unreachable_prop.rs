@@ -3,6 +3,7 @@
 //! post-order traversal of the blocks.
 
 use rustc_data_structures::fx::FxHashSet;
+use rustc_middle::bug;
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::patch::MirPatch;
 use rustc_middle::mir::*;
