@@ -1,4 +1,5 @@
 use std::env;
+use std::ffi::OsStr;
 use std::io::Write;
 use std::path::Path;
 use std::process::{Command, Output, Stdio};
@@ -43,6 +44,21 @@ impl Rustdoc {
         let target_rpath_dir = env::var_os("TARGET_RPATH_DIR").unwrap();
         cmd.arg(format!("-L{}", target_rpath_dir.to_string_lossy()));
         Self { cmd, stdin: None }
+    }
+
+    /// Specify where an external library is located.
+    pub fn extern_<P: AsRef<Path>>(&mut self, crate_name: &str, path: P) -> &mut Self {
+        assert!(
+            !crate_name.contains(|c: char| c.is_whitespace() || c == '\\' || c == '/'),
+            "crate name cannot contain whitespace or path separators"
+        );
+
+        let path = path.as_ref().to_string_lossy();
+
+        self.cmd.arg("--extern");
+        self.cmd.arg(format!("{crate_name}={path}"));
+
+        self
     }
 
     /// Specify path to the input file.
@@ -104,6 +120,20 @@ impl Rustdoc {
     pub fn edition(&mut self, edition: &str) -> &mut Self {
         self.cmd.arg("--edition");
         self.cmd.arg(edition);
+        self
+    }
+
+    /// Specify the crate type.
+    pub fn crate_type(&mut self, crate_type: &str) -> &mut Self {
+        self.cmd.arg("--crate-type");
+        self.cmd.arg(crate_type);
+        self
+    }
+
+    /// Specify the crate name.
+    pub fn crate_name<S: AsRef<OsStr>>(&mut self, name: S) -> &mut Self {
+        self.cmd.arg("--crate-name");
+        self.cmd.arg(name.as_ref());
         self
     }
 

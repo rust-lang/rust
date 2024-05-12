@@ -54,6 +54,15 @@ pub fn static_lib(name: &str) -> PathBuf {
     tmp_dir().join(static_lib_name(name))
 }
 
+pub fn python_command() -> Command {
+    let python_path = std::env::var("PYTHON").expect("PYTHON environment variable does not exist");
+    Command::new(python_path)
+}
+
+pub fn source_path() -> PathBuf {
+    std::env::var("S").expect("S variable does not exist").into()
+}
+
 /// Construct the static library name based on the platform.
 pub fn static_lib_name(name: &str) -> String {
     // See tools.mk (irrelevant lines omitted):
