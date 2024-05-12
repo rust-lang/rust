@@ -20,7 +20,7 @@ pub fn target() -> Target {
         // Clang automatically chooses a more specific target based on
         // MACOSX_DEPLOYMENT_TARGET. To enable cross-language LTO to work
         // correctly, we do too.
-        llvm_target: macos_llvm_target(ARCH).into(),
+        llvm_target: MaybeLazy::lazy(|| macos_llvm_target(ARCH)),
         metadata: crate::spec::TargetMetadata {
             description: None,
             tier: None,

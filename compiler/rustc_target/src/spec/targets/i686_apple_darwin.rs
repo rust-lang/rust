@@ -20,7 +20,7 @@ pub fn target() -> Target {
         // correctly, we do too.
         //
         // While ld64 doesn't understand i686, LLVM does.
-        llvm_target: macos_llvm_target(Arch::I686).into(),
+        llvm_target: MaybeLazy::lazy(|| macos_llvm_target(Arch::I686)),
         metadata: crate::spec::TargetMetadata {
             description: None,
             tier: None,

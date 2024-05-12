@@ -7,7 +7,7 @@ pub fn target() -> Target {
     const ABI: TargetAbi = TargetAbi::Normal;
 
     Target {
-        llvm_target: ios_llvm_target(ARCH).into(),
+        llvm_target: MaybeLazy::lazy(|| ios_llvm_target(ARCH)),
         metadata: crate::spec::TargetMetadata {
             description: None,
             tier: None,

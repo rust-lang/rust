@@ -11,7 +11,7 @@ pub fn target() -> Target {
         // WATCHOS_DEPLOYMENT_TARGET.
         // This is required for the simulator target to pick the right
         // MACH-O commands, so we do too.
-        llvm_target: watchos_sim_llvm_target(ARCH).into(),
+        llvm_target: MaybeLazy::lazy(|| watchos_sim_llvm_target(ARCH)),
         metadata: crate::spec::TargetMetadata {
             description: None,
             tier: None,

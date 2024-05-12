@@ -11,7 +11,7 @@ pub fn target() -> Target {
     base.supported_sanitizers = SanitizerSet::ADDRESS | SanitizerSet::THREAD;
 
     Target {
-        llvm_target: visionos_llvm_target(ARCH).into(),
+        llvm_target: MaybeLazy::lazy(|| visionos_llvm_target(ARCH)),
         metadata: crate::spec::TargetMetadata {
             description: Some("ARM64 Apple visionOS".into()),
             tier: Some(3),

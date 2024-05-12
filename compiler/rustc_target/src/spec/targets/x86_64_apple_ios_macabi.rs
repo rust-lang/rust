@@ -10,7 +10,7 @@ pub fn target() -> Target {
     base.supported_sanitizers = SanitizerSet::ADDRESS | SanitizerSet::LEAK | SanitizerSet::THREAD;
 
     Target {
-        llvm_target: mac_catalyst_llvm_target(ARCH).into(),
+        llvm_target: MaybeLazy::lazy(|| mac_catalyst_llvm_target(ARCH)),
         metadata: crate::spec::TargetMetadata {
             description: None,
             tier: None,

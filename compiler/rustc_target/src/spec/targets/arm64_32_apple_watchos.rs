@@ -9,7 +9,7 @@ pub fn target() -> Target {
     let base = opts(OS, ARCH, ABI, MaybeLazy::lazy(|| pre_link_args(OS, ARCH, ABI)));
 
     Target {
-        llvm_target: watchos_llvm_target(ARCH).into(),
+        llvm_target: MaybeLazy::lazy(|| watchos_llvm_target(ARCH)),
         metadata: crate::spec::TargetMetadata {
             description: None,
             tier: None,

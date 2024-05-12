@@ -1882,7 +1882,7 @@ impl TargetWarnings {
 #[derive(PartialEq, Clone, Debug)]
 pub struct Target {
     /// Target triple to pass to LLVM.
-    pub llvm_target: StaticCow<str>,
+    pub llvm_target: MaybeLazy<str>,
     /// Metadata about a target, for example the description or tier.
     /// Used for generating target documentation.
     pub metadata: TargetMetadata,
@@ -2734,7 +2734,7 @@ impl Target {
         };
 
         let mut base = Target {
-            llvm_target: get_req_field("llvm-target")?.into(),
+            llvm_target: MaybeLazy::owned(get_req_field("llvm-target")?),
             metadata: Default::default(),
             pointer_width: get_req_field("target-pointer-width")?
                 .parse::<u32>()

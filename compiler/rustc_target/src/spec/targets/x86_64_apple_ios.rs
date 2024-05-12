@@ -12,7 +12,7 @@ pub fn target() -> Target {
     base.supported_sanitizers = SanitizerSet::ADDRESS | SanitizerSet::THREAD;
 
     Target {
-        llvm_target: ios_sim_llvm_target(ARCH).into(),
+        llvm_target: MaybeLazy::lazy(|| ios_sim_llvm_target(ARCH)),
         metadata: crate::spec::TargetMetadata {
             description: None,
             tier: None,

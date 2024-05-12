@@ -10,7 +10,7 @@ pub fn target() -> Target {
     const ABI: TargetAbi = TargetAbi::Simulator;
 
     Target {
-        llvm_target: tvos_sim_llvm_target(ARCH).into(),
+        llvm_target: MaybeLazy::lazy(|| tvos_sim_llvm_target(ARCH)),
         metadata: crate::spec::TargetMetadata {
             description: None,
             tier: None,
