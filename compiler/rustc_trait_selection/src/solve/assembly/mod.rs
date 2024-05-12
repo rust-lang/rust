@@ -331,7 +331,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             .enter(|this| this.evaluate_added_goals_and_make_canonical_response(certainty))
     }
 
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(level = "trace", skip_all)]
     fn assemble_non_blanket_impl_candidates<G: GoalKind<'tcx>>(
         &mut self,
         goal: Goal<'tcx, G>,
@@ -447,7 +447,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         }
     }
 
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(level = "trace", skip_all)]
     fn assemble_blanket_impl_candidates<G: GoalKind<'tcx>>(
         &mut self,
         goal: Goal<'tcx, G>,
@@ -470,7 +470,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         }
     }
 
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(level = "trace", skip_all)]
     fn assemble_builtin_impl_candidates<G: GoalKind<'tcx>>(
         &mut self,
         goal: Goal<'tcx, G>,
@@ -544,7 +544,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         }
     }
 
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(level = "trace", skip_all)]
     fn assemble_param_env_candidates<G: GoalKind<'tcx>>(
         &mut self,
         goal: Goal<'tcx, G>,
@@ -561,7 +561,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         }
     }
 
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(level = "trace", skip_all)]
     fn assemble_alias_bound_candidates<G: GoalKind<'tcx>>(
         &mut self,
         goal: Goal<'tcx, G>,
@@ -665,7 +665,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         }
     }
 
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(level = "trace", skip_all)]
     fn assemble_object_bound_candidates<G: GoalKind<'tcx>>(
         &mut self,
         goal: Goal<'tcx, G>,
@@ -756,7 +756,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     ///
     /// To do so we add an ambiguous candidate in case such an unknown impl could
     /// apply to the current goal.
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(level = "trace", skip_all)]
     fn assemble_coherence_unknowable_candidates<G: GoalKind<'tcx>>(
         &mut self,
         goal: Goal<'tcx, G>,
