@@ -127,7 +127,7 @@ pub(crate) fn codegen_inline_asm_terminator<'tcx>(
             }
             InlineAsmOperand::SymStatic { def_id } => {
                 assert!(fx.tcx.is_static(def_id));
-                let instance = Instance::mono(fx.tcx, def_id).polymorphize(fx.tcx);
+                let instance = Instance::mono(fx.tcx, def_id);
                 CInlineAsmOperand::Symbol { symbol: fx.tcx.symbol_name(instance).name.to_owned() }
             }
             InlineAsmOperand::Label { .. } => {
