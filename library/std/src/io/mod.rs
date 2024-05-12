@@ -1839,7 +1839,11 @@ pub trait Write {
                 if output.error.is_err() {
                     output.error
                 } else {
-                    Err(error::const_io_error!(ErrorKind::Uncategorized, "formatter error"))
+                    // This shouldn't happen: the underlying stream did not error, but somehow
+                    // the formatter still errored?
+                    panic!(
+                        "a formatting trait implementation returned an error when the underlying stream did not"
+                    );
                 }
             }
         }

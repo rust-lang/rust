@@ -630,7 +630,9 @@ pub fn format(args: Arguments<'_>) -> string::String {
     fn format_inner(args: Arguments<'_>) -> string::String {
         let capacity = args.estimated_capacity();
         let mut output = string::String::with_capacity(capacity);
-        output.write_fmt(args).expect("a formatting trait implementation returned an error");
+        output
+            .write_fmt(args)
+            .expect("a formatting trait implementation returned an error when the underlying stream did not");
         output
     }
 
