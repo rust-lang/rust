@@ -1715,10 +1715,56 @@ impl<Ptr: fmt::Pointer> fmt::Pointer for Pin<Ptr> {
 // for other reasons, though, so we just need to take care not to allow such
 // impls to land in std.
 #[stable(feature = "pin", since = "1.33.0")]
-impl<Ptr, U> CoerceUnsized<Pin<U>> for Pin<Ptr> where Ptr: CoerceUnsized<U> {}
+impl<Ptr, U> CoerceUnsized<Pin<U>> for Pin<Ptr>
+where
+    Ptr: CoerceUnsized<U> + PinCoerceUnsized,
+    U: PinCoerceUnsized,
+{
+}
 
 #[stable(feature = "pin", since = "1.33.0")]
-impl<Ptr, U> DispatchFromDyn<Pin<U>> for Pin<Ptr> where Ptr: DispatchFromDyn<U> {}
+impl<Ptr, U> DispatchFromDyn<Pin<U>> for Pin<Ptr>
+where
+    Ptr: DispatchFromDyn<U> + PinCoerceUnsized,
+    U: PinCoerceUnsized,
+{
+}
+
+#[unstable(feature = "pin_coerce_unsized_trait", issue = "123430")]
+/// Trait that indicates that this is a pointer or a wrapper for one, where
+/// unsizing can be performed on the pointee when it is pinned.
+///
+/// # Safety
+///
+/// If this type implements `Deref`, then the concrete type returned by `deref`
+/// and `deref_mut` must not change without a modification. The following
+/// operations are not considered modifications:
+///
+/// * Moving the pointer.
+/// * Performing unsizing coercions on the pointer.
+/// * Performing dynamic dispatch with the pointer.
+/// * Calling `deref` or `deref_mut` on the pointer.
+///
+/// The concrete type of a trait object is the type that the vtable corresponds
+/// to. The concrete type of a slice is an array of the same element type and
+/// the length specified in the metadata. The concrete type of a sized type
+/// is the type itself.
+pub unsafe trait PinCoerceUnsized {}
+
+#[stable(feature = "pin", since = "1.33.0")]
+unsafe impl<'a, T: ?Sized> PinCoerceUnsized for &'a T {}
+
+#[stable(feature = "pin", since = "1.33.0")]
+unsafe impl<'a, T: ?Sized> PinCoerceUnsized for &'a mut T {}
+
+#[stable(feature = "pin", since = "1.33.0")]
+unsafe impl<T: PinCoerceUnsized> PinCoerceUnsized for Pin<T> {}
+
+#[stable(feature = "pin", since = "1.33.0")]
+unsafe impl<T: ?Sized> PinCoerceUnsized for *const T {}
+
+#[stable(feature = "pin", since = "1.33.0")]
+unsafe impl<T: ?Sized> PinCoerceUnsized for *mut T {}
 
 /// Constructs a <code>[Pin]<[&mut] T></code>, by pinning a `value: T` locally.
 ///
