@@ -1717,10 +1717,50 @@ impl<Ptr: fmt::Pointer> fmt::Pointer for Pin<Ptr> {
 // for other reasons, though, so we just need to take care not to allow such
 // impls to land in std.
 #[stable(feature = "pin", since = "1.33.0")]
-impl<Ptr, U> CoerceUnsized<Pin<U>> for Pin<Ptr> where Ptr: CoerceUnsized<U> {}
+impl<Ptr, U> CoerceUnsized<Pin<U>> for Pin<Ptr>
+where
+    Ptr: CoerceUnsized<U> + PinCoerceUnsized,
+    U: PinCoerceUnsized,
+{
+}
 
 #[stable(feature = "pin", since = "1.33.0")]
-impl<Ptr, U> DispatchFromDyn<Pin<U>> for Pin<Ptr> where Ptr: DispatchFromDyn<U> {}
+impl<Ptr, U> DispatchFromDyn<Pin<U>> for Pin<Ptr>
+where
+    Ptr: DispatchFromDyn<U> + PinCoerceUnsized,
+    U: PinCoerceUnsized,
+{
+}
+
+#[unstable(feature = "pin_coerce_unsized_trait", issue = "123430")]
+/// # Safety
+///
+/// Implementing this unsafe traits requires the guarantee that any two calls
+/// to `Deref::deref` must return the same value at the same address, **even after moves
+/// or unsize-coercions of `self`**, with exceptions of mutations to `self`.
+///
+/// Here, "same value" means that if `deref` returns a trait object, then the actual
+/// concrete type behind that trait object must not change.
+/// Additionally, when you unsize- coerce from `Self` to `Unsized`,
+/// then if you call `deref` on `Unsized` which returns a trait object reference,
+/// the underlying type of that trait object must be `<Self as Deref>::Target`.
+///
+/// Analogous requirements apply to other unsized types. E.g., if `deref` returns
+/// `[T]`, then the length must not change. In other words, the underlying type
+/// must not change from `[T; N]` to `[T; M]` with an `N` different from `M`.
+///
+/// If this type alos implements `DerefMut`, then the same guarantee must be upheld by
+/// calls to `deref_mut`.
+pub unsafe trait PinCoerceUnsized: Deref {}
+
+#[stable(feature = "pin", since = "1.33.0")]
+unsafe impl<'a, T: ?Sized> PinCoerceUnsized for &'a T {}
+
+#[stable(feature = "pin", since = "1.33.0")]
+unsafe impl<'a, T: ?Sized> PinCoerceUnsized for &'a mut T {}
+
+#[stable(feature = "pin", since = "1.33.0")]
+unsafe impl<T: PinCoerceUnsized> PinCoerceUnsized for Pin<T> {}
 
 /// Constructs a <code>[Pin]<[&mut] T></code>, by pinning a `value: T` locally.
 ///

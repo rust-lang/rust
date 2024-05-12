@@ -265,6 +265,7 @@ symbols! {
         Path,
         PathBuf,
         Pending,
+        PinCoerceUnsized,
         Pointer,
         Poll,
         ProcMacro,
