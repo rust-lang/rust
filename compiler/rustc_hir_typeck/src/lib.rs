@@ -32,7 +32,6 @@ mod fallback;
 mod fn_ctxt;
 mod gather_locals;
 mod intrinsicck;
-mod mem_categorization;
 mod method;
 mod op;
 mod pat;
