@@ -346,6 +346,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
             _ => {}
         };
 
+        self.visit_rust_2024_migration_desugared_pats(p.hir_id);
         self.visit_skipped_ref_pats(p.hir_id);
         self.visit_pat_adjustments(p.span, p.hir_id);
 
@@ -652,6 +653,22 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                 debug!(?resolved_adjustment);
                 self.typeck_results.adjustments_mut().insert(hir_id, resolved_adjustment);
             }
+        }
+    }
+
+    #[instrument(skip(self), level = "debug")]
+    fn visit_rust_2024_migration_desugared_pats(&mut self, hir_id: hir::HirId) {
+        if self
+            .fcx
+            .typeck_results
+            .borrow_mut()
+            .rust_2024_migration_desugared_pats_mut()
+            .remove(hir_id)
+        {
+            debug!(
+                "node is a pat whose match ergonomics are desugared by the Rust 2024 migration lint"
+            );
+            self.typeck_results.rust_2024_migration_desugared_pats_mut().insert(hir_id);
         }
     }
 
