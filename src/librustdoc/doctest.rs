@@ -952,6 +952,132 @@ pub(crate) struct MakeTestArgs<'a, 'b> {
     pub no_run: bool,
 }
 
+#[derive(PartialEq, Eq, Debug)]
+enum ParsingResult {
+    Failed,
+    AstError,
+    Ok,
+}
+
+fn cancel_error_count(psess: &ParseSess) {
+    // Reset errors so that they won't be reported as compiler bugs when dropping the
+    // dcx. Any errors in the tests will be reported when the test file is compiled,
+    // Note that we still need to cancel the errors above otherwise `Diag` will panic on
+    // drop.
+    psess.dcx.reset_err_count();
+}
+
+fn parse_source(
+    filename: FileName,
+    source: String,
+    found_main_span: &mut Option<Span>,
+    found_extern_crate: &mut bool,
+    found_macro: &mut bool,
+    crate_name: &Option<String>,
+    supports_color: &mut bool,
+) -> ParsingResult {
+    use rustc_errors::emitter::{Emitter, HumanEmitter};
+    use rustc_errors::DiagCtxt;
+    use rustc_parse::parser::ForceCollect;
+    use rustc_span::source_map::FilePathMapping;
+
+    // Any errors in parsing should also appear when the doctest is compiled for real, so just
+    // send all the errors that librustc_ast emits directly into a `Sink` instead of stderr.
+    let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
+    let fallback_bundle = rustc_errors::fallback_fluent_bundle(
+        rustc_driver::DEFAULT_LOCALE_RESOURCES.to_vec(),
+        false,
+    );
+    *supports_color =
+        HumanEmitter::new(stderr_destination(ColorConfig::Auto), fallback_bundle.clone())
+            .supports_color();
+
+    let emitter = HumanEmitter::new(Box::new(io::sink()), fallback_bundle);
+
+    // FIXME(misdreavus): pass `-Z treat-err-as-bug` to the doctest parser
+    let dcx = DiagCtxt::new(Box::new(emitter)).disable_warnings();
+    let psess = ParseSess::with_dcx(dcx, sm);
+
+    let mut parser = match maybe_new_parser_from_source_str(&psess, filename, source) {
+        Ok(p) => p,
+        Err(errs) => {
+            errs.into_iter().for_each(|err| err.cancel());
+            cancel_error_count(&psess);
+            return ParsingResult::Failed;
+        }
+    };
+    let mut parsing_result = ParsingResult::Ok;
+
+    // Recurse through functions body. It is necessary because the doctest source code is
+    // wrapped in a function to limit the number of AST errors. If we don't recurse into
+    // functions, we would thing all top-level items (so basically nothing).
+    fn check_item(
+        item: &ast::Item,
+        found_main_span: &mut Option<Span>,
+        found_extern_crate: &mut bool,
+        found_macro: &mut bool,
+        crate_name: &Option<String>,
+    ) {
+        match item.kind {
+            ast::ItemKind::Fn(ref fn_item) if found_main_span.is_none() => {
+                if item.ident.name == sym::main {
+                    *found_main_span = Some(item.span);
+                }
+                if let Some(ref body) = fn_item.body {
+                    for stmt in &body.stmts {
+                        match stmt.kind {
+                            ast::StmtKind::Item(ref item) => check_item(
+                                item,
+                                found_main_span,
+                                found_extern_crate,
+                                found_macro,
+                                crate_name,
+                            ),
+                            ast::StmtKind::MacCall(..) => *found_macro = true,
+                            _ => {}
+                        }
+                    }
+                }
+            }
+            ast::ItemKind::ExternCrate(original) => {
+                if !*found_extern_crate && let Some(ref crate_name) = crate_name {
+                    *found_extern_crate = match original {
+                        Some(name) => name.as_str() == crate_name,
+                        None => item.ident.as_str() == crate_name,
+                    };
+                }
+            }
+            ast::ItemKind::MacCall(..) => *found_macro = true,
+            _ => {}
+        }
+    }
+
+    loop {
+        match parser.parse_item(ForceCollect::No) {
+            Ok(Some(item)) => {
+                check_item(&item, found_main_span, found_extern_crate, found_macro, crate_name);
+
+                if found_main_span.is_some() && *found_extern_crate {
+                    break;
+                }
+            }
+            Ok(None) => break,
+            Err(e) => {
+                parsing_result = ParsingResult::AstError;
+                e.cancel();
+                break;
+            }
+        }
+
+        // The supplied slice is only used for diagnostics,
+        // which are swallowed here anyway.
+        parser.maybe_consume_incorrect_semicolon(None);
+    }
+
+    cancel_error_count(&psess);
+    parsing_result
+}
+
 /// Transforms a test into code that can be compiled into a Rust binary, and returns the number of
 /// lines before the test code begins as well as if the output stream supports colors or not.
 pub(crate) fn make_test(test_args: MakeTestArgs<'_, '_>) -> DocTest {
@@ -960,7 +1086,7 @@ pub(crate) fn make_test(test_args: MakeTestArgs<'_, '_>) -> DocTest {
         crate_name,
         edition,
         name,
-        lang_string,
+        mut lang_string,
         line,
         file,
         rustdoc_test_options,
@@ -986,90 +1112,44 @@ pub(crate) fn make_test(test_args: MakeTestArgs<'_, '_>) -> DocTest {
     // crate already is included.
     let result = rustc_driver::catch_fatal_errors(|| {
         rustc_span::create_session_if_not_set_then(edition, |_| {
-            use rustc_errors::emitter::{Emitter, HumanEmitter};
-            use rustc_errors::DiagCtxt;
-            use rustc_parse::parser::ForceCollect;
-            use rustc_span::source_map::FilePathMapping;
-
-            let filename = FileName::anon_source_code(&source_code);
-            let source = format!("{crates}{everything_else}");
-
-            // Any errors in parsing should also appear when the doctest is compiled for real, so just
-            // send all the errors that librustc_ast emits directly into a `Sink` instead of stderr.
-            let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
-            let fallback_bundle = rustc_errors::fallback_fluent_bundle(
-                rustc_driver::DEFAULT_LOCALE_RESOURCES.to_vec(),
-                false,
-            );
-            supports_color =
-                HumanEmitter::new(stderr_destination(ColorConfig::Auto), fallback_bundle.clone())
-                    .supports_color();
-
-            let emitter = HumanEmitter::new(Box::new(io::sink()), fallback_bundle);
-
-            // FIXME(misdreavus): pass `-Z treat-err-as-bug` to the doctest parser
-            let dcx = DiagCtxt::new(Box::new(emitter)).disable_warnings();
-            let psess = ParseSess::with_dcx(dcx, sm);
-
             let mut found_main_span = None;
             let mut found_extern_crate = crate_name.is_none();
             let mut found_macro = false;
 
-            let mut parser = match maybe_new_parser_from_source_str(&psess, filename, source) {
-                Ok(p) => p,
-                Err(errs) => {
-                    errs.into_iter().for_each(|err| err.cancel());
-                    return (found_main_span, found_extern_crate, found_macro);
-                }
-            };
-
-            loop {
-                match parser.parse_item(ForceCollect::No) {
-                    Ok(Some(item)) => {
-                        if found_main_span.is_none()
-                            && let ast::ItemKind::Fn(..) = item.kind
-                            && item.ident.name == sym::main
-                        {
-                            found_main_span = Some(item.span);
-                        }
-
-                        if let ast::ItemKind::ExternCrate(original) = item.kind
-                            && !found_extern_crate
-                            && let Some(ref crate_name) = crate_name
-                        {
-                            found_extern_crate = match original {
-                                Some(name) => name.as_str() == crate_name,
-                                None => item.ident.as_str() == crate_name,
-                            };
-                        }
-
-                        if !found_macro && let ast::ItemKind::MacCall(..) = item.kind {
-                            found_macro = true;
-                        }
-
-                        if found_main_span.is_some() && found_extern_crate {
-                            break;
-                        }
-                    }
-                    Ok(None) => break,
-                    Err(e) => {
-                        e.cancel();
-                        break;
-                    }
-                }
-
-                // The supplied item is only used for diagnostics,
-                // which are swallowed here anyway.
-                parser.maybe_consume_incorrect_semicolon(None);
+            let mut parsing_result = parse_source(
+                FileName::anon_source_code(&source_code),
+                format!("{crates}{everything_else}"),
+                &mut found_main_span,
+                &mut found_extern_crate,
+                &mut found_macro,
+                &crate_name,
+                &mut supports_color,
+            );
+            // No need to double-check this if the "merged doctests" feature isn't enabled (so
+            // before the 2024 edition).
+            if edition >= Edition::Edition2024 && parsing_result != ParsingResult::Ok {
+                // If we found an AST error, we want to ensure it's because of an expression being
+                // used outside of a function.
+                //
+                // To do so, we wrap in a function in order to make sure that the doctest AST is
+                // correct. For example, if your doctest is `foo::bar()`, if we don't wrap it in a
+                // block, it would emit an AST error, which would be problematic for us since we
+                // want to filter out such errors which aren't "real" errors.
+                //
+                // The end goal is to be able to merge as many doctests as possible as one for much
+                // faster doctests run time.
+                parsing_result = parse_source(
+                    FileName::anon_source_code(&source_code),
+                    format!("{crates}\nfn __doctest_wrap(){{{everything_else}\n}}"),
+                    &mut found_main_span,
+                    &mut found_extern_crate,
+                    &mut found_macro,
+                    &crate_name,
+                    &mut supports_color,
+                );
             }
 
-            // Reset errors so that they won't be reported as compiler bugs when dropping the
-            // dcx. Any errors in the tests will be reported when the test file is compiled,
-            // Note that we still need to cancel the errors above otherwise `Diag` will panic on
-            // drop.
-            psess.dcx.reset_err_count();
-
-            (found_main_span, found_extern_crate, found_macro)
+            (found_main_span, found_extern_crate, found_macro, parsing_result)
         })
     });
 
@@ -1078,30 +1158,35 @@ pub(crate) fn make_test(test_args: MakeTestArgs<'_, '_>) -> DocTest {
         Ignore::None => false,
         Ignore::Some(ref ignores) => ignores.iter().any(|s| target_str.contains(s)),
     };
-    let Ok((mut main_fn_span, already_has_extern_crate, found_macro)) = result else {
-        // If the parser panicked due to a fatal error, pass the test code through unchanged.
-        // The error will be reported during compilation.
-        return DocTest {
-            test_code: source_code,
-            supports_color: false,
-            main_fn_span: None,
-            crate_attrs,
-            crates,
-            everything_else,
-            already_has_extern_crate: false,
-            ignore,
-            crate_name,
-            name,
-            lang_string,
-            line,
-            file,
-            failed_ast: true,
-            rustdoc_test_options,
-            outdir,
-            test_id,
-            path,
-            no_run,
-        };
+    let (mut main_fn_span, already_has_extern_crate, found_macro, parsing_result) = match result {
+        Err(..) | Ok((_, _, _, ParsingResult::Failed)) => {
+            // If the parser panicked due to a fatal error, pass the test code through unchanged.
+            // The error will be reported during compilation.
+            return DocTest {
+                test_code: source_code,
+                supports_color: false,
+                main_fn_span: None,
+                crate_attrs,
+                crates,
+                everything_else,
+                already_has_extern_crate: false,
+                ignore,
+                crate_name,
+                name,
+                lang_string,
+                line,
+                file,
+                failed_ast: true,
+                rustdoc_test_options,
+                outdir,
+                test_id,
+                path,
+                no_run,
+            };
+        }
+        Ok((main_fn_span, already_has_extern_crate, found_macro, parsing_result)) => {
+            (main_fn_span, already_has_extern_crate, found_macro, parsing_result)
+        }
     };
 
     // If a doctest's `fn main` is being masked by a wrapper macro, the parsing loop above won't
@@ -1121,6 +1206,11 @@ pub(crate) fn make_test(test_args: MakeTestArgs<'_, '_>) -> DocTest {
         main_fn_span = Some(DUMMY_SP);
     }
 
+    if parsing_result == ParsingResult::AstError {
+        // If we have any doubt about whether the AST of this doctest is invalid, we consider it
+        // as a standalone test so it doesn't impact other merged doctests.
+        lang_string.standalone = true;
+    }
     DocTest {
         test_code: source_code,
         supports_color,
@@ -1515,8 +1605,6 @@ impl DocTestKinds {
                 doctests.sort_by(|a, b| a.name.cmp(&b.name));
                 let outdir = Arc::clone(&doctests[0].outdir);
 
-                // When `DocTestRunner` is dropped, it'll run all pending doctests it didn't already
-                // run, so no need to worry about it.
                 let mut tests_runner = DocTestRunner::new();
                 let rustdoc_test_options = Arc::clone(&doctests[0].rustdoc_test_options);
 
