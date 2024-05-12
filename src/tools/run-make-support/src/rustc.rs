@@ -150,6 +150,20 @@ impl Rustc {
         self
     }
 
+    /// Pass a codegen option.
+    pub fn codegen_option(&mut self, option: &str) -> &mut Self {
+        self.cmd.arg("-C");
+        self.cmd.arg(option);
+        self
+    }
+
+    /// Add a directory to the library search path.
+    pub fn library_search_path<P: AsRef<Path>>(&mut self, path: P) -> &mut Self {
+        self.cmd.arg("-L");
+        self.cmd.arg(path.as_ref());
+        self
+    }
+
     /// Specify the edition year.
     pub fn edition(&mut self, edition: &str) -> &mut Self {
         self.cmd.arg("--edition");
