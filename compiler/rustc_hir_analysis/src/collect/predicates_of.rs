@@ -10,6 +10,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::ty::{GenericPredicates, ImplTraitInTraitData, ToPredicate};
+use rustc_middle::{bug, span_bug};
 use rustc_span::symbol::Ident;
 use rustc_span::{Span, DUMMY_SP};
 
@@ -445,7 +446,9 @@ pub(super) fn explicit_predicates_of<'tcx>(
             .copied()
             .filter(|(pred, _)| match pred.kind().skip_binder() {
                 ty::ClauseKind::Trait(tr) => !is_assoc_item_ty(tr.self_ty()),
-                ty::ClauseKind::Projection(proj) => !is_assoc_item_ty(proj.projection_ty.self_ty()),
+                ty::ClauseKind::Projection(proj) => {
+                    !is_assoc_item_ty(proj.projection_term.self_ty())
+                }
                 ty::ClauseKind::TypeOutlives(outlives) => !is_assoc_item_ty(outlives.0),
                 _ => true,
             })

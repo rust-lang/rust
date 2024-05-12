@@ -331,9 +331,9 @@ fn build_isa(sess: &Session, backend_config: &BackendConfig) -> Arc<dyn TargetIs
                     sess.dcx().fatal(format!("can't compile for {}: {}", target_triple, err));
                 });
             if target_triple.architecture == target_lexicon::Architecture::X86_64 {
-                // Don't use "haswell" as the default, as it implies `has_lzcnt`.
-                // macOS CI is still at Ivy Bridge EP, so `lzcnt` is interpreted as `bsr`.
-                builder.enable("nehalem").unwrap();
+                // Only set the target cpu on x86_64 as Cranelift is missing
+                // the target cpu list for most other targets.
+                builder.enable(sess.target.cpu.as_ref()).unwrap();
             }
             builder
         }

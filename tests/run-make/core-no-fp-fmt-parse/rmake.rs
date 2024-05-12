@@ -2,7 +2,6 @@
 // support for formatting and parsing floating-point numbers.
 
 use run_make_support::rustc;
-use std::path::PathBuf;
 
 fn main() {
     rustc()

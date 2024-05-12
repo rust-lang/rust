@@ -117,7 +117,7 @@ where
         if V::SHALLOW { V::Result::output() } else { args.visit_with(self) }
     }
 
-    fn visit_projection_ty(&mut self, projection: ty::AliasTy<'tcx>) -> V::Result {
+    fn visit_projection_term(&mut self, projection: ty::AliasTerm<'tcx>) -> V::Result {
         let tcx = self.def_id_visitor.tcx();
         let (trait_ref, assoc_args) = projection.trait_ref_and_own_args(tcx);
         try_visit!(self.visit_trait(trait_ref));
@@ -135,9 +135,12 @@ where
             ty::ClauseKind::Trait(ty::TraitPredicate { trait_ref, polarity: _ }) => {
                 self.visit_trait(trait_ref)
             }
-            ty::ClauseKind::Projection(ty::ProjectionPredicate { projection_ty, term }) => {
+            ty::ClauseKind::Projection(ty::ProjectionPredicate {
+                projection_term: projection_ty,
+                term,
+            }) => {
                 try_visit!(term.visit_with(self));
-                self.visit_projection_ty(projection_ty)
+                self.visit_projection_term(projection_ty)
             }
             ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(ty, _region)) => ty.visit_with(self),
             ty::ClauseKind::RegionOutlives(..) => V::Result::output(),
@@ -226,7 +229,7 @@ where
                 return if V::SHALLOW {
                     V::Result::output()
                 } else if kind == ty::Projection {
-                    self.visit_projection_ty(data)
+                    self.visit_projection_term(data.into())
                 } else {
                     V::Result::from_branch(
                         data.args.iter().try_for_each(|arg| arg.visit_with(self).branch()),

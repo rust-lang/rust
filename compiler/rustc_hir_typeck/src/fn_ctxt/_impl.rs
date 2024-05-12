@@ -29,6 +29,7 @@ use rustc_middle::ty::{
     self, AdtKind, CanonicalUserType, GenericParamDefKind, IsIdentity, Ty, TyCtxt, UserType,
 };
 use rustc_middle::ty::{GenericArgKind, GenericArgsRef, UserArgs, UserSelfTy};
+use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::hygiene::DesugaringKind;
@@ -1409,11 +1410,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         hir_id: HirId,
     ) {
         self.add_required_obligations_with_code(span, def_id, args, |idx, span| {
-            if span.is_dummy() {
-                ObligationCauseCode::WhereClauseInExpr(def_id, hir_id, idx)
-            } else {
-                ObligationCauseCode::SpannedWhereClauseInExpr(def_id, span, hir_id, idx)
-            }
+            ObligationCauseCode::WhereClauseInExpr(def_id, span, hir_id, idx)
         })
     }
 

@@ -294,10 +294,10 @@ impl FlagComputation {
                 self.add_ty(b);
             }
             ty::PredicateKind::Clause(ty::ClauseKind::Projection(ty::ProjectionPredicate {
-                projection_ty,
+                projection_term,
                 term,
             })) => {
-                self.add_alias_ty(projection_ty);
+                self.add_alias_term(projection_term);
                 self.add_term(term);
             }
             ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(arg)) => {
@@ -313,7 +313,7 @@ impl FlagComputation {
             }
             ty::PredicateKind::Ambiguous => {}
             ty::PredicateKind::NormalizesTo(ty::NormalizesTo { alias, term }) => {
-                self.add_alias_ty(alias);
+                self.add_alias_term(alias);
                 self.add_term(term);
             }
             ty::PredicateKind::AliasRelate(t1, t2, _) => {
@@ -408,6 +408,10 @@ impl FlagComputation {
 
     fn add_alias_ty(&mut self, alias_ty: ty::AliasTy<'_>) {
         self.add_args(alias_ty.args);
+    }
+
+    fn add_alias_term(&mut self, alias_term: ty::AliasTerm<'_>) {
+        self.add_args(alias_term.args);
     }
 
     fn add_args(&mut self, args: &[GenericArg<'_>]) {

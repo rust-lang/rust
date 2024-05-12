@@ -280,8 +280,8 @@ impl<T: ?Sized> Arc<T> {
 
 impl<T: ?Sized, A: Allocator> Arc<T, A> {
     #[inline]
-    fn internal_into_inner_with_allocator(self) -> (NonNull<ArcInner<T>>, A) {
-        let this = mem::ManuallyDrop::new(self);
+    fn into_inner_with_allocator(this: Self) -> (NonNull<ArcInner<T>>, A) {
+        let this = mem::ManuallyDrop::new(this);
         (this.ptr, unsafe { ptr::read(&this.alloc) })
     }
 
@@ -1290,7 +1290,7 @@ impl<T, A: Allocator> Arc<mem::MaybeUninit<T>, A> {
     #[must_use = "`self` will be dropped if the result is not used"]
     #[inline]
     pub unsafe fn assume_init(self) -> Arc<T, A> {
-        let (ptr, alloc) = self.internal_into_inner_with_allocator();
+        let (ptr, alloc) = Arc::into_inner_with_allocator(self);
         unsafe { Arc::from_inner_in(ptr.cast(), alloc) }
     }
 }
@@ -1332,7 +1332,7 @@ impl<T, A: Allocator> Arc<[mem::MaybeUninit<T>], A> {
     #[must_use = "`self` will be dropped if the result is not used"]
     #[inline]
     pub unsafe fn assume_init(self) -> Arc<[T], A> {
-        let (ptr, alloc) = self.internal_into_inner_with_allocator();
+        let (ptr, alloc) = Arc::into_inner_with_allocator(self);
         unsafe { Arc::from_ptr_in(ptr.as_ptr() as _, alloc) }
     }
 }
@@ -2227,7 +2227,9 @@ impl<T: Clone, A: Allocator + Clone> Arc<T, A> {
         // either unique to begin with, or became one upon cloning the contents.
         unsafe { Self::get_mut_unchecked(this) }
     }
+}
 
+impl<T: Clone, A: Allocator> Arc<T, A> {
     /// If we have the only reference to `T` then unwrap it. Otherwise, clone `T` and return the
     /// clone.
     ///
@@ -2499,7 +2501,7 @@ impl<A: Allocator> Arc<dyn Any + Send + Sync, A> {
     {
         if (*self).is::<T>() {
             unsafe {
-                let (ptr, alloc) = self.internal_into_inner_with_allocator();
+                let (ptr, alloc) = Arc::into_inner_with_allocator(self);
                 Ok(Arc::from_inner_in(ptr.cast(), alloc))
             }
         } else {
@@ -2540,7 +2542,7 @@ impl<A: Allocator> Arc<dyn Any + Send + Sync, A> {
         T: Any + Send + Sync,
     {
         unsafe {
-            let (ptr, alloc) = self.internal_into_inner_with_allocator();
+            let (ptr, alloc) = Arc::into_inner_with_allocator(self);
             Arc::from_inner_in(ptr.cast(), alloc)
         }
     }
@@ -3506,7 +3508,7 @@ impl<T, A: Allocator, const N: usize> TryFrom<Arc<[T], A>> for Arc<[T; N], A> {
 
     fn try_from(boxed_slice: Arc<[T], A>) -> Result<Self, Self::Error> {
         if boxed_slice.len() == N {
-            let (ptr, alloc) = boxed_slice.internal_into_inner_with_allocator();
+            let (ptr, alloc) = Arc::into_inner_with_allocator(boxed_slice);
             Ok(unsafe { Arc::from_inner_in(ptr.cast(), alloc) })
         } else {
             Err(boxed_slice)

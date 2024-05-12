@@ -43,6 +43,7 @@ include:
 - Miscellaneous `rustfmt` bugfixes.
 - Use version-sort (sort `x8`, `x16`, `x32`, `x64`, `x128` in that order).
 - Change "ASCIIbetical" sort to Unicode-aware "non-lowercase before lowercase".
+- Format single associated type `where` clauses on the same line if they fit.
 
 ## Rust 2015/2018/2021 style edition
 

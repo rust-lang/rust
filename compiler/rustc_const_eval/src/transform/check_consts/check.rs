@@ -8,10 +8,11 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
+use rustc_middle::span_bug;
 use rustc_middle::ty::{self, adjustment::PointerCoercion, Ty, TyCtxt};
 use rustc_middle::ty::{Instance, InstanceDef, TypeVisitableExt};
 use rustc_mir_dataflow::Analysis;
-use rustc_span::{sym, Span, Symbol};
+use rustc_span::{sym, Span, Symbol, DUMMY_SP};
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
 use rustc_trait_selection::traits::{self, ObligationCauseCode, ObligationCtxt};
 use rustc_type_ir::visit::{TypeSuperVisitable, TypeVisitor};
@@ -738,7 +739,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 let cause = ObligationCause::new(
                     terminator.source_info.span,
                     self.body.source.def_id().expect_local(),
-                    ObligationCauseCode::WhereClause(callee),
+                    ObligationCauseCode::WhereClause(callee, DUMMY_SP),
                 );
                 let normalized_predicates = ocx.normalize(&cause, param_env, predicates);
                 ocx.register_obligations(traits::predicates_for_generics(

@@ -8,4 +8,7 @@ pub fn main() {
         //~^ ERROR: cannot move out of a shared reference [E0507]
         let _: &u32 = x;
     }
+
+    let &ref mut x = &0;
+    //~^ cannot borrow data in a `&` reference as mutable [E0596]
 }

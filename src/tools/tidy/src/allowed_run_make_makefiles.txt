@@ -1,6 +1,3 @@
-run-make/alloc-no-oom-handling/Makefile
-run-make/alloc-no-rc/Makefile
-run-make/alloc-no-sync/Makefile
 run-make/allocator-shim-circular-deps/Makefile
 run-make/allow-non-lint-warnings-cmdline/Makefile
 run-make/allow-warnings-cmdline-stability/Makefile
@@ -12,7 +9,6 @@ run-make/c-dynamic-dylib/Makefile
 run-make/c-dynamic-rlib/Makefile
 run-make/c-link-to-rust-dylib/Makefile
 run-make/c-link-to-rust-staticlib/Makefile
-run-make/c-link-to-rust-va-list-fn/Makefile
 run-make/c-static-dylib/Makefile
 run-make/c-static-rlib/Makefile
 run-make/c-unwind-abi-catch-lib-panic/Makefile
@@ -248,12 +244,9 @@ run-make/rustdoc-io-error/Makefile
 run-make/rustdoc-scrape-examples-invalid-expr/Makefile
 run-make/rustdoc-scrape-examples-macros/Makefile
 run-make/rustdoc-scrape-examples-multiple/Makefile
-run-make/rustdoc-scrape-examples-ordering/Makefile
 run-make/rustdoc-scrape-examples-remap/Makefile
 run-make/rustdoc-scrape-examples-test/Makefile
 run-make/rustdoc-scrape-examples-whitespace/Makefile
-run-make/rustdoc-shared-flags/Makefile
-run-make/rustdoc-target-spec-json-path/Makefile
 run-make/rustdoc-themes/Makefile
 run-make/rustdoc-verify-output-files/Makefile
 run-make/rustdoc-with-out-dir-option/Makefile

@@ -11,6 +11,7 @@
 #![allow(internal_features)]
 #![feature(decl_macro)]
 #![feature(let_chains)]
+#![feature(panic_backtrace_config)]
 #![feature(panic_update_hook)]
 #![feature(result_flattening)]
 
@@ -1317,8 +1318,8 @@ pub fn install_ice_hook(
     // by the user. Compiler developers and other rustc users can
     // opt in to less-verbose backtraces by manually setting "RUST_BACKTRACE"
     // (e.g. `RUST_BACKTRACE=1`)
-    if std::env::var_os("RUST_BACKTRACE").is_none() {
-        std::env::set_var("RUST_BACKTRACE", "full");
+    if env::var_os("RUST_BACKTRACE").is_none() {
+        panic::set_backtrace_style(panic::BacktraceStyle::Full);
     }
 
     let using_internal_features = Arc::new(std::sync::atomic::AtomicBool::default());

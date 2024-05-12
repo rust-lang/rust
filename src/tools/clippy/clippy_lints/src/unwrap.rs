@@ -6,7 +6,6 @@ use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_expr, walk_fn, FnKind, Visitor};
 use rustc_hir::{BinOpKind, Body, Expr, ExprKind, FnDecl, HirId, Node, PathSegment, UnOp};
 use rustc_hir_typeck::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceWithHirId};
-use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::lint::in_external_macro;
@@ -252,16 +251,13 @@ impl<'a, 'tcx> UnwrappableVariablesVisitor<'a, 'tcx> {
                 local_id: unwrap_info.local_id,
             };
 
-            let infcx = self.cx.tcx.infer_ctxt().build();
-            let mut vis = ExprUseVisitor::new(
-                &mut delegate,
-                &infcx,
+            let vis = ExprUseVisitor::for_clippy(
+                self.cx,
                 cond.hir_id.owner.def_id,
-                self.cx.param_env,
-                self.cx.typeck_results(),
+                &mut delegate,
             );
-            vis.walk_expr(cond);
-            vis.walk_expr(branch);
+            vis.walk_expr(cond).into_ok();
+            vis.walk_expr(branch).into_ok();
 
             if delegate.is_mutated {
                 // if the variable is mutated, we don't know whether it can be unwrapped.

@@ -1774,6 +1774,9 @@ supported_targets! {
     ("aarch64-unknown-linux-ohos", aarch64_unknown_linux_ohos),
     ("armv7-unknown-linux-ohos", armv7_unknown_linux_ohos),
     ("x86_64-unknown-linux-ohos", x86_64_unknown_linux_ohos),
+
+    ("x86_64-unknown-linux-none", x86_64_unknown_linux_none),
+
 }
 
 /// Cow-Vec-Str: Cow<'static, [Cow<'static, str>]>

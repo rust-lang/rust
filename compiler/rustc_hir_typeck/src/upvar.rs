@@ -47,6 +47,7 @@ use rustc_middle::ty::{
     self, ClosureSizeProfileData, Ty, TyCtxt, TypeVisitableExt as _, TypeckResults, UpvarArgs,
     UpvarCapture,
 };
+use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
 use rustc_span::sym;
 use rustc_span::{BytePos, Pos, Span, Symbol};
@@ -252,12 +253,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
 
-        euv::ExprUseVisitor::new(
+        let _ = euv::ExprUseVisitor::new(
+            &FnCtxt::new(self, self.tcx.param_env(closure_def_id), closure_def_id),
             &mut delegate,
-            &self.infcx,
-            closure_def_id,
-            self.param_env,
-            &self.typeck_results.borrow(),
         )
         .consume_body(body);
 

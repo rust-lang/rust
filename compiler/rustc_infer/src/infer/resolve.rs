@@ -1,4 +1,5 @@
 use super::{FixupError, FixupResult, InferCtxt};
+use rustc_middle::bug;
 use rustc_middle::ty::fold::{FallibleTypeFolder, TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::{self, Const, InferConst, Ty, TyCtxt, TypeFoldable};

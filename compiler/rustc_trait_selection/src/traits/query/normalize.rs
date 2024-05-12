@@ -222,7 +222,7 @@ impl<'cx, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'cx, 'tcx> 
                                 .infcx
                                 .err_ctxt()
                                 .build_overflow_error(
-                                    OverflowCause::DeeplyNormalize(data),
+                                    OverflowCause::DeeplyNormalize(data.into()),
                                     self.cause.span,
                                     true,
                                 )

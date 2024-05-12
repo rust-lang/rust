@@ -61,9 +61,7 @@ unsafe impl GlobalAlloc for System {
 cfg_if::cfg_if! {
     if #[cfg(any(
         target_os = "android",
-        target_os = "illumos",
         target_os = "redox",
-        target_os = "solaris",
         target_os = "espidf",
         target_os = "horizon",
         target_os = "vita",

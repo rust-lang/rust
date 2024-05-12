@@ -9,7 +9,7 @@ use stable_mir::ty::{
 
 use crate::rustc_smir::{alloc, Stable, Tables};
 
-impl<'tcx> Stable<'tcx> for ty::AliasKind {
+impl<'tcx> Stable<'tcx> for ty::AliasTyKind {
     type T = stable_mir::ty::AliasKind;
     fn stable(&self, _: &mut Tables<'_>) -> Self::T {
         match self {
@@ -26,6 +26,14 @@ impl<'tcx> Stable<'tcx> for ty::AliasTy<'tcx> {
     fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
         let ty::AliasTy { args, def_id, .. } = self;
         stable_mir::ty::AliasTy { def_id: tables.alias_def(*def_id), args: args.stable(tables) }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for ty::AliasTerm<'tcx> {
+    type T = stable_mir::ty::AliasTerm;
+    fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
+        let ty::AliasTerm { args, def_id, .. } = self;
+        stable_mir::ty::AliasTerm { def_id: tables.alias_def(*def_id), args: args.stable(tables) }
     }
 }
 
@@ -715,9 +723,9 @@ impl<'tcx> Stable<'tcx> for ty::ProjectionPredicate<'tcx> {
     type T = stable_mir::ty::ProjectionPredicate;
 
     fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
-        let ty::ProjectionPredicate { projection_ty, term } = self;
+        let ty::ProjectionPredicate { projection_term, term } = self;
         stable_mir::ty::ProjectionPredicate {
-            projection_ty: projection_ty.stable(tables),
+            projection_term: projection_term.stable(tables),
             term: term.unpack().stable(tables),
         }
     }

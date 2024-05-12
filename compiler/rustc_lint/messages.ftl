@@ -269,6 +269,17 @@ lint_identifier_uncommon_codepoints = identifier contains {$codepoints_len ->
 
 lint_ignored_unless_crate_specified = {$level}({$name}) is ignored unless specified at crate level
 
+lint_impl_trait_overcaptures = `{$self_ty}` will capture more lifetimes than possibly intended in edition 2024
+    .note = specifically, {$num_captured ->
+        [one] this lifetime is
+        *[other] these lifetimes are
+     } in scope but not mentioned in the type's bounds
+    .note2 = all lifetimes in scope will be captured by `impl Trait`s in edition 2024
+    .suggestion = use the precise capturing `use<...>` syntax to make the captures explicit
+
+lint_impl_trait_redundant_captures = all possible in-scope parameters are already captured, so `use<...>` syntax is redundant
+    .suggestion = remove the `use<...>` syntax
+
 lint_improper_ctypes = `extern` {$desc} uses type `{$ty}`, which is not FFI-safe
     .label = not FFI-safe
     .note = the type is defined here

@@ -1,4 +1,5 @@
 use rustc_data_structures::fx::FxHashSet;
+use rustc_middle::bug;
 use rustc_middle::ty::visit::{TypeSuperVisitable, TypeVisitor};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::Span;
@@ -197,7 +198,7 @@ pub fn setup_constraining_predicates<'tcx>(
                 // Special case: watch out for some kind of sneaky attempt
                 // to project out an associated type defined by this very
                 // trait.
-                let unbound_trait_ref = projection.projection_ty.trait_ref(tcx);
+                let unbound_trait_ref = projection.projection_term.trait_ref(tcx);
                 if Some(unbound_trait_ref) == impl_trait_ref {
                     continue;
                 }
@@ -207,7 +208,7 @@ pub fn setup_constraining_predicates<'tcx>(
                 //     `<<T as Bar>::Baz as Iterator>::Output = <U as Iterator>::Output`
                 // Then the projection only applies if `T` is known, but it still
                 // does not determine `U`.
-                let inputs = parameters_for(tcx, projection.projection_ty, true);
+                let inputs = parameters_for(tcx, projection.projection_term, true);
                 let relies_only_on_inputs = inputs.iter().all(|p| input_parameters.contains(p));
                 if !relies_only_on_inputs {
                     continue;

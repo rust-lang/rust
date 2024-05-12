@@ -15,7 +15,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         goal: Goal<'tcx, ty::NormalizesTo<'tcx>>,
     ) -> QueryResult<'tcx> {
         let tcx = self.tcx();
-        let inherent = goal.predicate.alias;
+        let inherent = goal.predicate.alias.expect_ty(tcx);
 
         let impl_def_id = tcx.parent(inherent.def_id);
         let impl_args = self.fresh_args_for_item(impl_def_id);

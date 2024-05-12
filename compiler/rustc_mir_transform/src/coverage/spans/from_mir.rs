@@ -1,5 +1,6 @@
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashSet;
+use rustc_middle::bug;
 use rustc_middle::mir::coverage::CoverageKind;
 use rustc_middle::mir::{
     self, AggregateKind, FakeReadCause, Rvalue, Statement, StatementKind, Terminator,

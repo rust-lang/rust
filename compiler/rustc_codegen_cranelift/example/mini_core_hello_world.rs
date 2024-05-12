@@ -4,6 +4,7 @@
     never_type,
     linkage,
     extern_types,
+    naked_functions,
     thread_local,
     repr_simd,
     raw_ref_op
@@ -340,6 +341,7 @@ fn main() {
     ))]
     unsafe {
         global_asm_test();
+        naked_test();
     }
 
     // Both statics have a reference that points to the same anonymous allocation.
@@ -393,6 +395,14 @@ global_asm! {
     // comment that would normally be removed by LLVM
     ret
     "
+}
+
+#[cfg(all(not(jit), not(no_unstable_features), target_arch = "x86_64"))]
+#[naked]
+extern "C" fn naked_test() {
+    unsafe {
+        asm!("ret", options(noreturn));
+    }
 }
 
 #[repr(C)]

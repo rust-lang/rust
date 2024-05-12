@@ -26,6 +26,7 @@ use crate::traits::solve;
 use crate::traits::solve::{
     ExternalConstraints, ExternalConstraintsData, PredefinedOpaques, PredefinedOpaquesData,
 };
+use crate::ty::predicate::ExistentialPredicateStableCmpExt as _;
 use crate::ty::{
     self, AdtDef, AdtDefData, AdtKind, Binder, Clause, Clauses, Const, ConstData,
     GenericParamDefKind, ImplPolarity, List, ListWithCachedTypeInfo, ParamConst, ParamTy, Pattern,
@@ -99,17 +100,17 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type CanonicalVars = CanonicalVarInfos<'tcx>;
 
     type Ty = Ty<'tcx>;
-    type Pat = Pattern<'tcx>;
     type Tys = &'tcx List<Ty<'tcx>>;
     type AliasTy = ty::AliasTy<'tcx>;
     type ParamTy = ParamTy;
     type BoundTy = ty::BoundTy;
     type PlaceholderTy = ty::PlaceholderType;
-
     type ErrorGuaranteed = ErrorGuaranteed;
+
     type BoundExistentialPredicates = &'tcx List<PolyExistentialPredicate<'tcx>>;
     type PolyFnSig = PolyFnSig<'tcx>;
     type AllocId = crate::mir::interpret::AllocId;
+    type Pat = Pattern<'tcx>;
 
     type Const = ty::Const<'tcx>;
     type AliasConst = ty::UnevaluatedConst<'tcx>;
@@ -121,8 +122,8 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
 
     type Region = Region<'tcx>;
     type EarlyParamRegion = ty::EarlyParamRegion;
-    type BoundRegion = ty::BoundRegion;
     type LateParamRegion = ty::LateParamRegion;
+    type BoundRegion = ty::BoundRegion;
     type InferRegion = ty::RegionVid;
     type PlaceholderRegion = ty::PlaceholderRegion;
 
@@ -131,6 +132,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type RegionOutlivesPredicate = ty::RegionOutlivesPredicate<'tcx>;
     type TypeOutlivesPredicate = ty::TypeOutlivesPredicate<'tcx>;
     type ProjectionPredicate = ty::ProjectionPredicate<'tcx>;
+    type AliasTerm = ty::AliasTerm<'tcx>;
     type NormalizesTo = ty::NormalizesTo<'tcx>;
     type SubtypePredicate = ty::SubtypePredicate<'tcx>;
     type CoercePredicate = ty::CoercePredicate<'tcx>;
@@ -146,12 +148,20 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.generics_of(def_id)
     }
 
+    fn mk_args(self, args: &[Self::GenericArg]) -> Self::GenericArgs {
+        self.mk_args(args)
+    }
+
     fn check_and_mk_args(
         self,
         def_id: DefId,
         args: impl IntoIterator<Item: Into<ty::GenericArg<'tcx>>>,
     ) -> ty::GenericArgsRef<'tcx> {
         self.check_and_mk_args(def_id, args)
+    }
+
+    fn parent(self, def_id: Self::DefId) -> Self::DefId {
+        self.parent(def_id)
     }
 }
 

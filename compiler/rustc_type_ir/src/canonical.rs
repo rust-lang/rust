@@ -1,20 +1,25 @@
-use rustc_ast_ir::try_visit;
-use rustc_ast_ir::visit::VisitorResult;
 #[cfg(feature = "nightly")]
 use rustc_macros::{HashStable_NoContext, TyDecodable, TyEncodable};
+use rustc_type_ir_macros::{TypeFoldable_Generic, TypeVisitable_Generic};
 use std::fmt;
 use std::hash::Hash;
 
-use crate::fold::{FallibleTypeFolder, TypeFoldable};
 use crate::inherent::*;
-use crate::visit::{TypeVisitable, TypeVisitor};
 use crate::{Interner, UniverseIndex};
 
 /// A "canonicalized" type `V` is one where all free inference
 /// variables have been rewritten to "canonical vars". These are
 /// numbered starting from 0 in order of first appearance.
 #[derive(derivative::Derivative)]
-#[derivative(Clone(bound = "V: Clone"), Hash(bound = "V: Hash"))]
+#[derivative(
+    Clone(bound = "V: Clone"),
+    Hash(bound = "V: Hash"),
+    PartialEq(bound = "V: PartialEq"),
+    Eq(bound = "V: Eq"),
+    Debug(bound = "V: fmt::Debug"),
+    Copy(bound = "V: Copy")
+)]
+#[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
 #[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable, HashStable_NoContext))]
 pub struct Canonical<I: Interner, V> {
     pub value: V,
@@ -64,18 +69,6 @@ impl<I: Interner, V> Canonical<I, V> {
     }
 }
 
-impl<I: Interner, V: Eq> Eq for Canonical<I, V> {}
-
-impl<I: Interner, V: PartialEq> PartialEq for Canonical<I, V> {
-    fn eq(&self, other: &Self) -> bool {
-        let Self { value, max_universe, variables, defining_opaque_types } = self;
-        *value == other.value
-            && *max_universe == other.max_universe
-            && *variables == other.variables
-            && *defining_opaque_types == other.defining_opaque_types
-    }
-}
-
 impl<I: Interner, V: fmt::Display> fmt::Display for Canonical<I, V> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let Self { value, max_universe, variables, defining_opaque_types } = self;
@@ -86,82 +79,23 @@ impl<I: Interner, V: fmt::Display> fmt::Display for Canonical<I, V> {
     }
 }
 
-impl<I: Interner, V: fmt::Debug> fmt::Debug for Canonical<I, V> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let Self { value, max_universe, variables, defining_opaque_types } = self;
-        f.debug_struct("Canonical")
-            .field("value", &value)
-            .field("max_universe", &max_universe)
-            .field("variables", &variables)
-            .field("defining_opaque_types", &defining_opaque_types)
-            .finish()
-    }
-}
-
-impl<I: Interner, V: Copy> Copy for Canonical<I, V> where I::CanonicalVars: Copy {}
-
-impl<I: Interner, V: TypeFoldable<I>> TypeFoldable<I> for Canonical<I, V>
-where
-    I::CanonicalVars: TypeFoldable<I>,
-{
-    fn try_fold_with<F: FallibleTypeFolder<I>>(self, folder: &mut F) -> Result<Self, F::Error> {
-        Ok(Canonical {
-            value: self.value.try_fold_with(folder)?,
-            max_universe: self.max_universe.try_fold_with(folder)?,
-            variables: self.variables.try_fold_with(folder)?,
-            defining_opaque_types: self.defining_opaque_types,
-        })
-    }
-}
-
-impl<I: Interner, V: TypeVisitable<I>> TypeVisitable<I> for Canonical<I, V>
-where
-    I::CanonicalVars: TypeVisitable<I>,
-{
-    fn visit_with<F: TypeVisitor<I>>(&self, folder: &mut F) -> F::Result {
-        let Self { value, max_universe, variables, defining_opaque_types } = self;
-        try_visit!(value.visit_with(folder));
-        try_visit!(max_universe.visit_with(folder));
-        try_visit!(defining_opaque_types.visit_with(folder));
-        variables.visit_with(folder)
-    }
-}
-
 /// Information about a canonical variable that is included with the
 /// canonical value. This is sufficient information for code to create
 /// a copy of the canonical value in some other inference context,
 /// with fresh inference variables replacing the canonical values.
 #[derive(derivative::Derivative)]
-#[derivative(Clone(bound = ""), Copy(bound = ""), Hash(bound = ""), Debug(bound = ""))]
+#[derivative(
+    Clone(bound = ""),
+    Copy(bound = ""),
+    Hash(bound = ""),
+    Debug(bound = ""),
+    Eq(bound = ""),
+    PartialEq(bound = "")
+)]
+#[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
 #[cfg_attr(feature = "nightly", derive(TyDecodable, TyEncodable, HashStable_NoContext))]
 pub struct CanonicalVarInfo<I: Interner> {
     pub kind: CanonicalVarKind<I>,
-}
-
-impl<I: Interner> PartialEq for CanonicalVarInfo<I> {
-    fn eq(&self, other: &Self) -> bool {
-        self.kind == other.kind
-    }
-}
-
-impl<I: Interner> Eq for CanonicalVarInfo<I> {}
-
-impl<I: Interner> TypeVisitable<I> for CanonicalVarInfo<I>
-where
-    I::Ty: TypeVisitable<I>,
-{
-    fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> V::Result {
-        self.kind.visit_with(visitor)
-    }
-}
-
-impl<I: Interner> TypeFoldable<I> for CanonicalVarInfo<I>
-where
-    I::Ty: TypeFoldable<I>,
-{
-    fn try_fold_with<F: FallibleTypeFolder<I>>(self, folder: &mut F) -> Result<Self, F::Error> {
-        Ok(CanonicalVarInfo { kind: self.kind.try_fold_with(folder)? })
-    }
 }
 
 impl<I: Interner> CanonicalVarInfo<I> {
@@ -216,6 +150,7 @@ impl<I: Interner> CanonicalVarInfo<I> {
 /// that analyzes type-like values.
 #[derive(derivative::Derivative)]
 #[derivative(Clone(bound = ""), Copy(bound = ""), Hash(bound = ""), Debug(bound = ""))]
+#[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
 #[cfg_attr(feature = "nightly", derive(TyDecodable, TyEncodable, HashStable_NoContext))]
 pub enum CanonicalVarKind<I: Interner> {
     /// Some kind of type inference variable.
@@ -255,51 +190,6 @@ impl<I: Interner> PartialEq for CanonicalVarKind<I> {
             }
             _ => std::mem::discriminant(self) == std::mem::discriminant(other),
         }
-    }
-}
-
-impl<I: Interner> Eq for CanonicalVarKind<I> {}
-
-impl<I: Interner> TypeVisitable<I> for CanonicalVarKind<I>
-where
-    I::Ty: TypeVisitable<I>,
-{
-    fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> V::Result {
-        match self {
-            CanonicalVarKind::Ty(_)
-            | CanonicalVarKind::PlaceholderTy(_)
-            | CanonicalVarKind::Region(_)
-            | CanonicalVarKind::PlaceholderRegion(_)
-            | CanonicalVarKind::Effect => V::Result::output(),
-            CanonicalVarKind::Const(_, ty) | CanonicalVarKind::PlaceholderConst(_, ty) => {
-                ty.visit_with(visitor)
-            }
-        }
-    }
-}
-
-impl<I: Interner> TypeFoldable<I> for CanonicalVarKind<I>
-where
-    I::Ty: TypeFoldable<I>,
-{
-    fn try_fold_with<F: FallibleTypeFolder<I>>(self, folder: &mut F) -> Result<Self, F::Error> {
-        Ok(match self {
-            CanonicalVarKind::Ty(kind) => CanonicalVarKind::Ty(kind),
-            CanonicalVarKind::Region(kind) => CanonicalVarKind::Region(kind),
-            CanonicalVarKind::Const(kind, ty) => {
-                CanonicalVarKind::Const(kind, ty.try_fold_with(folder)?)
-            }
-            CanonicalVarKind::PlaceholderTy(placeholder) => {
-                CanonicalVarKind::PlaceholderTy(placeholder)
-            }
-            CanonicalVarKind::PlaceholderRegion(placeholder) => {
-                CanonicalVarKind::PlaceholderRegion(placeholder)
-            }
-            CanonicalVarKind::PlaceholderConst(placeholder, ty) => {
-                CanonicalVarKind::PlaceholderConst(placeholder, ty.try_fold_with(folder)?)
-            }
-            CanonicalVarKind::Effect => CanonicalVarKind::Effect,
-        })
     }
 }
 
@@ -355,6 +245,7 @@ impl<I: Interner> CanonicalVarKind<I> {
 /// usize or f32). In order to faithfully reproduce a type, we need to
 /// know what set of types a given type variable can be unified with.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
 #[cfg_attr(feature = "nightly", derive(TyDecodable, TyEncodable, HashStable_NoContext))]
 pub enum CanonicalTyVarKind {
     /// General type variable `?T` that can be unified with arbitrary types.

@@ -533,7 +533,7 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) -> V::
             try_visit!(visitor.visit_id(item.hir_id()));
             try_visit!(walk_generics(visitor, generics));
             walk_list!(visitor, visit_param_bound, bounds);
-            if let Some(precise_capturing_args) = precise_capturing_args {
+            if let Some((precise_capturing_args, _)) = precise_capturing_args {
                 for arg in precise_capturing_args {
                     try_visit!(visitor.visit_precise_capturing_arg(arg));
                 }

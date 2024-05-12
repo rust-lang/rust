@@ -781,10 +781,14 @@ pub fn visit_token<T: MutVisitor>(t: &mut Token, vis: &mut T) {
             *span = ident.span;
             return; // Avoid visiting the span for the second time.
         }
+        token::NtIdent(ident, _is_raw) => {
+            vis.visit_ident(ident);
+        }
+        token::NtLifetime(ident) => {
+            vis.visit_ident(ident);
+        }
         token::Interpolated(nt) => {
             let nt = Lrc::make_mut(nt);
-            let (nt, sp) = (&mut nt.0, &mut nt.1);
-            vis.visit_span(sp);
             visit_nonterminal(nt, vis);
         }
         _ => {}
@@ -834,8 +838,6 @@ fn visit_nonterminal<T: MutVisitor>(nt: &mut token::Nonterminal, vis: &mut T) {
         token::NtPat(pat) => vis.visit_pat(pat),
         token::NtExpr(expr) => vis.visit_expr(expr),
         token::NtTy(ty) => vis.visit_ty(ty),
-        token::NtIdent(ident, _is_raw) => vis.visit_ident(ident),
-        token::NtLifetime(ident) => vis.visit_ident(ident),
         token::NtLiteral(expr) => vis.visit_expr(expr),
         token::NtMeta(item) => {
             let AttrItem { path, args, tokens } = item.deref_mut();

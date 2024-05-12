@@ -7,7 +7,7 @@ use core::cmp::Ordering;
 use core::ptr::NonNull;
 use core::num::NonZero;
 
-// CHECK-lABEL: @non_zero_eq
+// CHECK-LABEL: @non_zero_eq
 #[no_mangle]
 pub fn non_zero_eq(l: Option<NonZero<u32>>, r: Option<NonZero<u32>>) -> bool {
     // CHECK: start:
@@ -16,7 +16,7 @@ pub fn non_zero_eq(l: Option<NonZero<u32>>, r: Option<NonZero<u32>>) -> bool {
     l == r
 }
 
-// CHECK-lABEL: @non_zero_signed_eq
+// CHECK-LABEL: @non_zero_signed_eq
 #[no_mangle]
 pub fn non_zero_signed_eq(l: Option<NonZero<i64>>, r: Option<NonZero<i64>>) -> bool {
     // CHECK: start:
@@ -25,7 +25,7 @@ pub fn non_zero_signed_eq(l: Option<NonZero<i64>>, r: Option<NonZero<i64>>) -> b
     l == r
 }
 
-// CHECK-lABEL: @non_null_eq
+// CHECK-LABEL: @non_null_eq
 #[no_mangle]
 pub fn non_null_eq(l: Option<NonNull<u8>>, r: Option<NonNull<u8>>) -> bool {
     // CHECK: start:
@@ -34,7 +34,7 @@ pub fn non_null_eq(l: Option<NonNull<u8>>, r: Option<NonNull<u8>>) -> bool {
     l == r
 }
 
-// CHECK-lABEL: @ordering_eq
+// CHECK-LABEL: @ordering_eq
 #[no_mangle]
 pub fn ordering_eq(l: Option<Ordering>, r: Option<Ordering>) -> bool {
     // CHECK: start:
@@ -54,7 +54,7 @@ pub enum EnumWithNiche {
     G,
 }
 
-// CHECK-lABEL: @niche_eq
+// CHECK-LABEL: @niche_eq
 #[no_mangle]
 pub fn niche_eq(l: Option<EnumWithNiche>, r: Option<EnumWithNiche>) -> bool {
     // CHECK: start:
@@ -64,7 +64,7 @@ pub fn niche_eq(l: Option<EnumWithNiche>, r: Option<EnumWithNiche>) -> bool {
 }
 
 // FIXME: This should work too
-// // FIXME-CHECK-lABEL: @bool_eq
+// // FIXME-CHECK-LABEL: @bool_eq
 // #[no_mangle]
 // pub fn bool_eq(l: Option<bool>, r: Option<bool>) -> bool {
 //     // FIXME-CHECK: start:

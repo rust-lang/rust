@@ -7,11 +7,13 @@ use rustc_middle::mir::CastKind;
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::layout::{IntegerExt, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, FloatTy, Ty};
+use rustc_middle::{bug, span_bug};
 use rustc_target::abi::Integer;
 use rustc_type_ir::TyKind::*;
 
 use super::{
-    util::ensure_monomorphic_enough, FnVal, ImmTy, Immediate, InterpCx, Machine, OpTy, PlaceTy,
+    err_inval, throw_ub, throw_ub_custom, util::ensure_monomorphic_enough, FnVal, ImmTy, Immediate,
+    InterpCx, Machine, OpTy, PlaceTy,
 };
 
 use crate::fluent_generated as fluent;

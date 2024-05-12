@@ -64,8 +64,13 @@ impl Default for BackendConfig {
         BackendConfig {
             codegen_mode: CodegenMode::Aot,
             jit_args: {
-                let args = std::env::var("CG_CLIF_JIT_ARGS").unwrap_or_else(|_| String::new());
-                args.split(' ').map(|arg| arg.to_string()).collect()
+                match std::env::var("CG_CLIF_JIT_ARGS") {
+                    Ok(args) => args.split(' ').map(|arg| arg.to_string()).collect(),
+                    Err(std::env::VarError::NotPresent) => vec![],
+                    Err(std::env::VarError::NotUnicode(s)) => {
+                        panic!("CG_CLIF_JIT_ARGS not unicode: {:?}", s);
+                    }
+                }
             },
             enable_verifier: cfg!(debug_assertions) || bool_env_var("CG_CLIF_ENABLE_VERIFIER"),
             disable_incr_cache: bool_env_var("CG_CLIF_DISABLE_INCR_CACHE"),

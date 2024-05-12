@@ -12,8 +12,6 @@
 
 #[macro_use]
 extern crate tracing;
-#[macro_use]
-extern crate rustc_middle;
 
 mod build;
 mod check_unsafety;

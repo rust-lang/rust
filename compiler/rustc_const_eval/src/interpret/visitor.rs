@@ -9,7 +9,7 @@ use rustc_target::abi::{FieldsShape, VariantIdx, Variants};
 
 use std::num::NonZero;
 
-use super::{InterpCx, MPlaceTy, Machine, Projectable};
+use super::{throw_inval, InterpCx, MPlaceTy, Machine, Projectable};
 
 /// How to traverse a value and what to do when we are at the leaves.
 pub trait ValueVisitor<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>>: Sized {

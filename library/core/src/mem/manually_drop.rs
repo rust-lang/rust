@@ -1,7 +1,7 @@
 use crate::ops::{Deref, DerefMut, DerefPure};
 use crate::ptr;
 
-/// A wrapper to inhibit compiler from automatically calling `T`’s destructor.
+/// A wrapper to inhibit the compiler from automatically calling `T`’s destructor.
 /// This wrapper is 0-cost.
 ///
 /// `ManuallyDrop<T>` is guaranteed to have the same layout and bit validity as

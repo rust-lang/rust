@@ -1,6 +1,7 @@
 use crate::build::ForGuard::OutsideGuard;
 use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder};
 use rustc_middle::middle::region::Scope;
+use rustc_middle::span_bug;
 use rustc_middle::thir::*;
 use rustc_middle::{mir::*, ty};
 use rustc_span::Span;

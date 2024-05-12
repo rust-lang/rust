@@ -201,10 +201,17 @@ impl<'a> StripUnconfigured<'a> {
                     inner = self.configure_tokens(&inner);
                     Some(AttrTokenTree::Delimited(sp, spacing, delim, inner)).into_iter()
                 }
-                AttrTokenTree::Token(ref token, _)
-                    if let TokenKind::Interpolated(nt) = &token.kind =>
-                {
-                    panic!("Nonterminal should have been flattened at {:?}: {:?}", token.span, nt);
+                AttrTokenTree::Token(
+                    Token {
+                        kind:
+                            TokenKind::NtIdent(..)
+                            | TokenKind::NtLifetime(..)
+                            | TokenKind::Interpolated(..),
+                        ..
+                    },
+                    _,
+                ) => {
+                    panic!("Nonterminal should have been flattened: {:?}", tree);
                 }
                 AttrTokenTree::Token(token, spacing) => {
                     Some(AttrTokenTree::Token(token, spacing)).into_iter()

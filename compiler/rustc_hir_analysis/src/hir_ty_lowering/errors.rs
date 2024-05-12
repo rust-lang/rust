@@ -16,6 +16,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_infer::traits::FulfillmentError;
+use rustc_middle::bug;
 use rustc_middle::query::Key;
 use rustc_middle::ty::print::PrintTraitRefExt as _;
 use rustc_middle::ty::GenericParamDefKind;
@@ -625,25 +626,17 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             let bound_predicate = pred.kind();
             match bound_predicate.skip_binder() {
                 ty::PredicateKind::Clause(ty::ClauseKind::Projection(pred)) => {
-                    let pred = bound_predicate.rebind(pred);
                     // `<Foo as Iterator>::Item = String`.
-                    let projection_ty = pred.skip_binder().projection_ty;
+                    let projection_term = pred.projection_term;
+                    let quiet_projection_term =
+                        projection_term.with_self_ty(tcx, Ty::new_var(tcx, ty::TyVid::ZERO));
 
-                    let args_with_infer_self = tcx.mk_args_from_iter(
-                        std::iter::once(Ty::new_var(tcx, ty::TyVid::ZERO).into())
-                            .chain(projection_ty.args.iter().skip(1)),
-                    );
+                    let term = pred.term;
+                    let obligation = format!("{projection_term} = {term}");
+                    let quiet = format!("{quiet_projection_term} = {term}");
 
-                    let quiet_projection_ty =
-                        ty::AliasTy::new(tcx, projection_ty.def_id, args_with_infer_self);
-
-                    let term = pred.skip_binder().term;
-
-                    let obligation = format!("{projection_ty} = {term}");
-                    let quiet = format!("{quiet_projection_ty} = {term}");
-
-                    bound_span_label(projection_ty.self_ty(), &obligation, &quiet);
-                    Some((obligation, projection_ty.self_ty()))
+                    bound_span_label(projection_term.self_ty(), &obligation, &quiet);
+                    Some((obligation, projection_term.self_ty()))
                 }
                 ty::PredicateKind::Clause(ty::ClauseKind::Trait(poly_trait_ref)) => {
                     let p = poly_trait_ref.trait_ref;

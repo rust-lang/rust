@@ -55,12 +55,6 @@ impl fmt::Debug for ty::UpvarId {
     }
 }
 
-impl<'tcx> fmt::Debug for ty::ExistentialTraitRef<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        with_no_trimmed_paths!(fmt::Display::fmt(self, f))
-    }
-}
-
 impl<'tcx> fmt::Debug for ty::adjustment::Adjustment<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?} -> {}", self.kind, self.target)
@@ -155,25 +149,6 @@ impl fmt::Debug for ty::ParamTy {
 impl fmt::Debug for ty::ParamConst {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}/#{}", self.name, self.index)
-    }
-}
-
-impl<'tcx> fmt::Debug for ty::TraitPredicate<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // FIXME(effects) printing?
-        write!(f, "TraitPredicate({:?}, polarity:{:?})", self.trait_ref, self.polarity)
-    }
-}
-
-impl<'tcx> fmt::Debug for ty::ProjectionPredicate<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "ProjectionPredicate({:?}, {:?})", self.projection_ty, self.term)
-    }
-}
-
-impl<'tcx> fmt::Debug for ty::NormalizesTo<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "NormalizesTo({:?}, {:?})", self.alias, self.term)
     }
 }
 
@@ -435,7 +410,7 @@ TrivialTypeTraversalImpls! {
     crate::ty::BoundRegionKind,
     crate::ty::AssocItem,
     crate::ty::AssocKind,
-    crate::ty::AliasKind,
+    crate::ty::AliasTyKind,
     crate::ty::Placeholder<crate::ty::BoundRegion>,
     crate::ty::Placeholder<crate::ty::BoundTy>,
     crate::ty::Placeholder<ty::BoundVar>,

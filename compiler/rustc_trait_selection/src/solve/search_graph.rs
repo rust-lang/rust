@@ -130,7 +130,7 @@ impl<'tcx> SearchGraph<'tcx> {
     }
 
     /// Update the stack and reached depths on cache hits.
-    #[instrument(level = "debug", skip(self))]
+    #[instrument(level = "trace", skip(self))]
     fn on_cache_hit(&mut self, additional_depth: usize, encountered_overflow: bool) {
         let reached_depth = self.stack.next_index().plus(additional_depth);
         if let Some(last) = self.stack.raw.last_mut() {
@@ -296,6 +296,7 @@ impl<'tcx> SearchGraph<'tcx> {
             }
 
             self.on_cache_hit(reached_depth, encountered_overflow);
+            debug!("global cache hit");
             return result;
         }
 
@@ -315,6 +316,7 @@ impl<'tcx> SearchGraph<'tcx> {
                     .filter(|p| !Self::stack_coinductive_from(tcx, &self.stack, p.head))
             })
         {
+            debug!("provisional cache hit");
             // We have a nested goal which is already in the provisional cache, use
             // its result. We do not provide any usage kind as that should have been
             // already set correctly while computing the cache entry.

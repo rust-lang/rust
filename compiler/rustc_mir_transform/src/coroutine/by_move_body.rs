@@ -71,6 +71,7 @@
 
 use rustc_data_structures::unord::UnordMap;
 use rustc_hir as hir;
+use rustc_middle::bug;
 use rustc_middle::hir::place::{Projection, ProjectionKind};
 use rustc_middle::mir::visit::MutVisitor;
 use rustc_middle::mir::{self, dump_mir, MirPass};
