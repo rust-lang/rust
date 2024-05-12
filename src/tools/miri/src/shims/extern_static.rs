@@ -76,6 +76,10 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
                 Self::null_ptr_extern_statics(this, &["bsd_signal"])?;
                 Self::weak_symbol_extern_statics(this, &["signal"])?;
             }
+            "solaris" | "illumos" => {
+                let environ = this.machine.env_vars.unix().environ();
+                Self::add_extern_static(this, "environ", environ);
+            }
             "windows" => {
                 // "_tls_used"
                 // This is some obscure hack that is part of the Windows TLS story. It's a `u8`.
