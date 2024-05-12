@@ -259,16 +259,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     let einval = this.eval_libc_i32("EINVAL");
                     this.write_int(einval, dest)?;
                 } else {
-                    if size == 0 {
-                        this.write_null(&ret)?;
-                    } else {
-                        let ptr = this.allocate_ptr(
-                            Size::from_bytes(size),
-                            Align::from_bytes(align).unwrap(),
-                            MiriMemoryKind::C.into(),
-                        )?;
-                        this.write_pointer(ptr, &ret)?;
-                    }
+                    let ptr = this.allocate_ptr(
+                        Size::from_bytes(size),
+                        Align::from_bytes(align).unwrap(),
+                        MiriMemoryKind::C.into(),
+                    )?;
+                    this.write_pointer(ptr, &ret)?;
                     this.write_null(dest)?;
                 }
             }
