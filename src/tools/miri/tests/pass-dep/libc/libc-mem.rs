@@ -190,11 +190,10 @@ fn test_memalign() {
         let align = 64;
         let size = 0;
         assert_eq!(libc::posix_memalign(&mut ptr, align, size), 0);
-        // We are not required to return null if size == 0, but we currently do.
-        // It's fine to remove this assert if we start returning non-null pointers.
-        assert!(ptr.is_null());
+        // Non-null pointer is returned if size == 0.
+        // (This is not a guarantee, it just reflects our current behavior.)
+        assert!(!ptr.is_null());
         assert!(ptr.is_aligned_to(align));
-        // Regardless of what we return, it must be `free`able.
         libc::free(ptr);
     }
 
