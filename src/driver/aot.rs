@@ -482,15 +482,16 @@ fn module_codegen(
             for (mono_item, _) in mono_items {
                 match mono_item {
                     MonoItem::Fn(inst) => {
-                        let codegened_function = crate::base::codegen_fn(
+                        if let Some(codegened_function) = crate::base::codegen_fn(
                             tcx,
                             &mut cx,
                             &mut type_dbg,
                             Function::new(),
                             &mut module,
                             inst,
-                        );
-                        codegened_functions.push(codegened_function);
+                        ) {
+                            codegened_functions.push(codegened_function);
+                        }
                     }
                     MonoItem::Static(def_id) => {
                         let data_id = crate::constant::codegen_static(tcx, &mut module, def_id);

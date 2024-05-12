@@ -6,6 +6,7 @@ use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext};
 use cranelift_module::ModuleError;
 use rustc_ast::InlineAsmOptions;
 use rustc_index::IndexVec;
+use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::layout::FnAbiOf;
 use rustc_middle::ty::print::with_no_trimmed_paths;
@@ -14,6 +15,7 @@ use rustc_monomorphize::is_call_from_compiler_builtins_to_upstream_monomorphizat
 
 use crate::constant::ConstantCx;
 use crate::debuginfo::{FunctionDebugContext, TypeDebugContext};
+use crate::inline_asm::codegen_naked_asm;
 use crate::prelude::*;
 use crate::pretty_clif::CommentWriter;
 
@@ -32,7 +34,7 @@ pub(crate) fn codegen_fn<'tcx>(
     cached_func: Function,
     module: &mut dyn Module,
     instance: Instance<'tcx>,
-) -> CodegenedFunction {
+) -> Option<CodegenedFunction> {
     debug_assert!(!instance.args.has_infer());
 
     let symbol_name = tcx.symbol_name(instance).name.to_string();
@@ -47,6 +49,37 @@ pub(crate) fn codegen_fn<'tcx>(
         });
         String::from_utf8_lossy(&buf).into_owned()
     });
+
+    if tcx.codegen_fn_attrs(instance.def_id()).flags.contains(CodegenFnAttrFlags::NAKED) {
+        assert_eq!(mir.basic_blocks.len(), 1);
+        assert!(mir.basic_blocks[START_BLOCK].statements.is_empty());
+
+        match &mir.basic_blocks[START_BLOCK].terminator().kind {
+            TerminatorKind::InlineAsm {
+                template,
+                operands,
+                options,
+                line_spans: _,
+                targets: _,
+                unwind: _,
+            } => {
+                codegen_naked_asm(
+                    tcx,
+                    cx,
+                    module,
+                    instance,
+                    mir.basic_blocks[START_BLOCK].terminator().source_info.span,
+                    &symbol_name,
+                    template,
+                    operands,
+                    *options,
+                );
+            }
+            _ => unreachable!(),
+        }
+
+        return None;
+    }
 
     // Declare function
     let sig = get_function_sig(tcx, module.target_config().default_call_conv, instance);
@@ -128,7 +161,7 @@ pub(crate) fn codegen_fn<'tcx>(
     // Verify function
     verify_func(tcx, &clif_comments, &func);
 
-    CodegenedFunction { symbol_name, func_id, func, clif_comments, func_debug_cx }
+    Some(CodegenedFunction { symbol_name, func_id, func, clif_comments, func_debug_cx })
 }
 
 pub(crate) fn compile_fn(
