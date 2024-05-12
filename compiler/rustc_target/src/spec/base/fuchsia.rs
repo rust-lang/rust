@@ -34,12 +34,14 @@ pub fn opts() -> TargetOptions {
         dynamic_linking: true,
         families: cvs!["unix"],
         pre_link_args,
-        pre_link_objects: crt_objects::new(&[
-            (LinkOutputKind::DynamicNoPicExe, &["Scrt1.o"]),
-            (LinkOutputKind::DynamicPicExe, &["Scrt1.o"]),
-            (LinkOutputKind::StaticNoPicExe, &["Scrt1.o"]),
-            (LinkOutputKind::StaticPicExe, &["Scrt1.o"]),
-        ]),
+        pre_link_objects: MaybeLazy::lazy(|| {
+            crt_objects::new(&[
+                (LinkOutputKind::DynamicNoPicExe, &["Scrt1.o"]),
+                (LinkOutputKind::DynamicPicExe, &["Scrt1.o"]),
+                (LinkOutputKind::StaticNoPicExe, &["Scrt1.o"]),
+                (LinkOutputKind::StaticPicExe, &["Scrt1.o"]),
+            ])
+        }),
         position_independent_executables: true,
         has_thread_local: true,
         frame_pointer: FramePointer::NonLeaf,

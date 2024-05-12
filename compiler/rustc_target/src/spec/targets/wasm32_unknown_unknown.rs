@@ -10,7 +10,8 @@
 //! This target is more or less managed by the Rust and WebAssembly Working
 //! Group nowadays at <https://github.com/rustwasm>.
 
-use crate::spec::{base, Cc, LinkerFlavor, MaybeLazy, Target};
+use crate::spec::add_link_args;
+use crate::spec::{base, Cc, LinkerFlavor, MaybeLazy, Target, TargetOptions};
 
 pub fn target() -> Target {
     let mut options = base::wasm::options();

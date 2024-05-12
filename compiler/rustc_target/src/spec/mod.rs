@@ -38,7 +38,7 @@ use crate::abi::call::Conv;
 use crate::abi::{Endian, Integer, Size, TargetDataLayout, TargetDataLayoutErrors};
 use crate::json::{Json, ToJson};
 use crate::spec::abi::Abi;
-use crate::spec::crt_objects::CrtObjects;
+use crate::spec::crt_objects::{CrtObjects, LazyCrtObjects};
 use rustc_fs_util::try_canonicalize;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
@@ -2017,11 +2017,11 @@ pub struct TargetOptions {
     linker_is_gnu_json: bool,
 
     /// Objects to link before and after all other object code.
-    pub pre_link_objects: CrtObjects,
-    pub post_link_objects: CrtObjects,
+    pub pre_link_objects: LazyCrtObjects,
+    pub post_link_objects: LazyCrtObjects,
     /// Same as `(pre|post)_link_objects`, but when self-contained linking mode is enabled.
-    pub pre_link_objects_self_contained: CrtObjects,
-    pub post_link_objects_self_contained: CrtObjects,
+    pub pre_link_objects_self_contained: LazyCrtObjects,
+    pub post_link_objects_self_contained: LazyCrtObjects,
     /// Behavior for the self-contained linking mode: inferred for some targets, or explicitly
     /// enabled (in bulk, or with individual components).
     pub link_self_contained: LinkSelfContainedDefault,
@@ -3095,7 +3095,7 @@ impl Target {
 
                         args.insert(kind, v);
                     }
-                    base.$key_name = args;
+                    base.$key_name = MaybeLazy::owned(args);
                 }
             } );
             ($key_name:ident = $json_name:expr, link_args) => ( {
