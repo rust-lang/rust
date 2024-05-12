@@ -5,7 +5,7 @@ use rustc_middle::traits::solve::{Certainty, Goal, QueryResult};
 use rustc_middle::ty::{self, ProjectionPredicate};
 
 impl<'tcx> EvalCtxt<'_, 'tcx> {
-    #[instrument(level = "debug", skip(self), ret)]
+    #[instrument(level = "trace", skip(self), ret)]
     pub(super) fn compute_projection_goal(
         &mut self,
         goal: Goal<'tcx, ProjectionPredicate<'tcx>>,

@@ -130,7 +130,7 @@ impl<'tcx> SearchGraph<'tcx> {
     }
 
     /// Update the stack and reached depths on cache hits.
-    #[instrument(level = "debug", skip(self))]
+    #[instrument(level = "trace", skip(self))]
     fn on_cache_hit(&mut self, additional_depth: usize, encountered_overflow: bool) {
         let reached_depth = self.stack.next_index().plus(additional_depth);
         if let Some(last) = self.stack.raw.last_mut() {
@@ -328,7 +328,7 @@ impl<'tcx> SearchGraph<'tcx> {
             );
             return entry.result;
         } else if let Some(stack_depth) = cache_entry.stack_depth {
-            debug!("encountered cycle with depth {stack_depth:?}");
+            trace!("encountered cycle with depth {stack_depth:?}");
             // We have a nested goal which directly relies on a goal deeper in the stack.
             //
             // We start by tagging all cycle participants, as that's necessary for caching.
@@ -436,7 +436,7 @@ impl<'tcx> SearchGraph<'tcx> {
                     }
                 }
 
-                debug!("canonical cycle overflow");
+                trace!("canonical cycle overflow");
                 let current_entry = self.pop_stack();
                 debug_assert!(current_entry.has_been_used.is_empty());
                 let result = Self::response_no_constraints(tcx, input, Certainty::overflow(false));

@@ -282,7 +282,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         };
 
         if normalized_self_ty.is_ty_var() {
-            debug!("self type has been normalized to infer");
+            trace!("self type has been normalized to infer");
             return self.forced_ambiguity(MaybeCause::Ambiguity).into_iter().collect();
         }
 
@@ -331,7 +331,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             .enter(|this| this.evaluate_added_goals_and_make_canonical_response(certainty))
     }
 
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(level = "trace", skip_all)]
     fn assemble_non_blanket_impl_candidates<G: GoalKind<'tcx>>(
         &mut self,
         goal: Goal<'tcx, G>,
@@ -447,7 +447,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         }
     }
 
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(level = "trace", skip_all)]
     fn assemble_blanket_impl_candidates<G: GoalKind<'tcx>>(
         &mut self,
         goal: Goal<'tcx, G>,
@@ -470,7 +470,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         }
     }
 
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(level = "trace", skip_all)]
     fn assemble_builtin_impl_candidates<G: GoalKind<'tcx>>(
         &mut self,
         goal: Goal<'tcx, G>,
@@ -544,7 +544,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         }
     }
 
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(level = "trace", skip_all)]
     fn assemble_param_env_candidates<G: GoalKind<'tcx>>(
         &mut self,
         goal: Goal<'tcx, G>,
@@ -561,7 +561,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         }
     }
 
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(level = "trace", skip_all)]
     fn assemble_alias_bound_candidates<G: GoalKind<'tcx>>(
         &mut self,
         goal: Goal<'tcx, G>,
@@ -665,7 +665,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         }
     }
 
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(level = "trace", skip_all)]
     fn assemble_object_bound_candidates<G: GoalKind<'tcx>>(
         &mut self,
         goal: Goal<'tcx, G>,
@@ -756,7 +756,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     ///
     /// To do so we add an ambiguous candidate in case such an unknown impl could
     /// apply to the current goal.
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(level = "trace", skip_all)]
     fn assemble_coherence_unknowable_candidates<G: GoalKind<'tcx>>(
         &mut self,
         goal: Goal<'tcx, G>,
@@ -785,7 +785,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     // FIXME(@lcnr): The current structure here makes me unhappy and feels ugly. idk how
     // to improve this however. However, this should make it fairly straightforward to refine
     // the filtering going forward, so it seems alright-ish for now.
-    #[instrument(level = "debug", skip(self, goal))]
+    #[instrument(level = "trace", skip(self, goal))]
     fn discard_impls_shadowed_by_env<G: GoalKind<'tcx>>(
         &mut self,
         goal: Goal<'tcx, G>,
@@ -814,7 +814,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                 Certainty::Yes => {
                     candidates.retain(|c| match c.source {
                         CandidateSource::Impl(_) | CandidateSource::BuiltinImpl(_) => {
-                            debug!(?c, "discard impl candidate");
+                            trace!(?c, "discard impl candidate");
                             false
                         }
                         CandidateSource::ParamEnv(_) | CandidateSource::AliasBound => true,
@@ -825,7 +825,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                 // to be ambig and wait for inference constraints. See
                 // tests/ui/traits/next-solver/env-shadows-impls/ambig-env-no-shadow.rs
                 Certainty::Maybe(cause) => {
-                    debug!(?cause, "force ambiguity");
+                    trace!(?cause, "force ambiguity");
                     *candidates = self.forced_ambiguity(cause).into_iter().collect();
                 }
             }
@@ -836,7 +836,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     /// If there are multiple ways to prove a trait or projection goal, we have
     /// to somehow try to merge the candidates into one. If that fails, we return
     /// ambiguity.
-    #[instrument(level = "debug", skip(self), ret)]
+    #[instrument(level = "trace", skip(self), ret)]
     pub(super) fn merge_candidates(
         &mut self,
         candidates: Vec<Candidate<'tcx>>,

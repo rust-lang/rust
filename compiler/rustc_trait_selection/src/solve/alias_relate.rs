@@ -20,7 +20,7 @@ use rustc_middle::traits::solve::{Certainty, Goal, QueryResult};
 use rustc_middle::ty;
 
 impl<'tcx> EvalCtxt<'_, 'tcx> {
-    #[instrument(level = "debug", skip(self), ret)]
+    #[instrument(level = "trace", skip(self), ret)]
     pub(super) fn compute_alias_relate_goal(
         &mut self,
         goal: Goal<'tcx, (ty::Term<'tcx>, ty::Term<'tcx>, ty::AliasRelationDirection)>,
@@ -50,7 +50,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         self.try_evaluate_added_goals()?;
         let lhs = self.resolve_vars_if_possible(lhs);
         let rhs = self.resolve_vars_if_possible(rhs);
-        debug!(?lhs, ?rhs);
+        trace!(?lhs, ?rhs);
 
         let variance = match direction {
             ty::AliasRelationDirection::Equate => ty::Variance::Invariant,
