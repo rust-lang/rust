@@ -10,7 +10,7 @@ use self::ConstKind::*;
 
 /// Represents a constant in Rust.
 #[derive(derivative::Derivative)]
-#[derivative(Clone(bound = ""), Copy(bound = ""), Hash(bound = ""))]
+#[derivative(Clone(bound = ""), Copy(bound = ""), Hash(bound = ""), Eq(bound = ""))]
 #[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable, HashStable_NoContext))]
 pub enum ConstKind<I: Interner> {
     /// A const generic parameter.
@@ -57,8 +57,6 @@ impl<I: Interner> PartialEq for ConstKind<I> {
         }
     }
 }
-
-impl<I: Interner> Eq for ConstKind<I> {}
 
 impl<I: Interner> fmt::Debug for ConstKind<I> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

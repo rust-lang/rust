@@ -2953,8 +2953,9 @@ impl<'tcx> fmt::Debug for TraitPredPrintModifiersAndPath<'tcx> {
     }
 }
 
+#[extension(pub trait PrintTraitPredicateExt<'tcx>)]
 impl<'tcx> ty::TraitPredicate<'tcx> {
-    pub fn print_modifiers_and_trait_path(self) -> TraitPredPrintModifiersAndPath<'tcx> {
+    fn print_modifiers_and_trait_path(self) -> TraitPredPrintModifiersAndPath<'tcx> {
         TraitPredPrintModifiersAndPath(self)
     }
 }
@@ -3037,6 +3038,15 @@ define_print! {
         p!(write("<{} as {}>", self.self_ty(), self.print_only_trait_path()))
     }
 
+    ty::TraitPredicate<'tcx> {
+        p!(print(self.trait_ref.self_ty()), ": ");
+        p!(pretty_print_bound_constness(self.trait_ref));
+        if let ty::PredicatePolarity::Negative = self.polarity {
+            p!("!");
+        }
+        p!(print(self.trait_ref.print_trait_sugared()))
+    }
+
     ty::TypeAndMut<'tcx> {
         p!(write("{}", self.mutbl.prefix_str()), print(self.ty))
     }
@@ -3077,13 +3087,15 @@ define_print! {
             ty::PredicateKind::AliasRelate(t1, t2, dir) => p!(print(t1), write(" {} ", dir), print(t2)),
         }
     }
-}
 
-define_print_and_forward_display! {
-    (self, cx):
-
-    &'tcx ty::List<Ty<'tcx>> {
-        p!("{{", comma_sep(self.iter()), "}}")
+    ty::ExistentialPredicate<'tcx> {
+        match *self {
+            ty::ExistentialPredicate::Trait(x) => p!(print(x)),
+            ty::ExistentialPredicate::Projection(x) => p!(print(x)),
+            ty::ExistentialPredicate::AutoTrait(def_id) => {
+                p!(print_def_path(def_id, &[]));
+            }
+        }
     }
 
     ty::ExistentialTraitRef<'tcx> {
@@ -3098,14 +3110,36 @@ define_print_and_forward_display! {
         p!(write("{} = ", name), print(self.term))
     }
 
-    ty::ExistentialPredicate<'tcx> {
-        match *self {
-            ty::ExistentialPredicate::Trait(x) => p!(print(x)),
-            ty::ExistentialPredicate::Projection(x) => p!(print(x)),
-            ty::ExistentialPredicate::AutoTrait(def_id) => {
-                p!(print_def_path(def_id, &[]));
-            }
-        }
+    ty::ProjectionPredicate<'tcx> {
+        p!(print(self.projection_ty), " == ");
+        cx.reset_type_limit();
+        p!(print(self.term))
+    }
+
+    ty::SubtypePredicate<'tcx> {
+        p!(print(self.a), " <: ");
+        cx.reset_type_limit();
+        p!(print(self.b))
+    }
+
+    ty::CoercePredicate<'tcx> {
+        p!(print(self.a), " -> ");
+        cx.reset_type_limit();
+        p!(print(self.b))
+    }
+
+    ty::NormalizesTo<'tcx> {
+        p!(print(self.alias), " normalizes-to ");
+        cx.reset_type_limit();
+        p!(print(self.term))
+    }
+}
+
+define_print_and_forward_display! {
+    (self, cx):
+
+    &'tcx ty::List<Ty<'tcx>> {
+        p!("{{", comma_sep(self.iter()), "}}")
     }
 
     ty::FnSig<'tcx> {
@@ -3162,39 +3196,6 @@ define_print_and_forward_display! {
 
     ty::ParamConst {
         p!(write("{}", self.name))
-    }
-
-    ty::SubtypePredicate<'tcx> {
-        p!(print(self.a), " <: ");
-        cx.reset_type_limit();
-        p!(print(self.b))
-    }
-
-    ty::CoercePredicate<'tcx> {
-        p!(print(self.a), " -> ");
-        cx.reset_type_limit();
-        p!(print(self.b))
-    }
-
-    ty::TraitPredicate<'tcx> {
-        p!(print(self.trait_ref.self_ty()), ": ");
-        p!(pretty_print_bound_constness(self.trait_ref));
-        if let ty::PredicatePolarity::Negative = self.polarity {
-            p!("!");
-        }
-        p!(print(self.trait_ref.print_trait_sugared()))
-    }
-
-    ty::ProjectionPredicate<'tcx> {
-        p!(print(self.projection_ty), " == ");
-        cx.reset_type_limit();
-        p!(print(self.term))
-    }
-
-    ty::NormalizesTo<'tcx> {
-        p!(print(self.alias), " normalizes-to ");
-        cx.reset_type_limit();
-        p!(print(self.term))
     }
 
     ty::Term<'tcx> {

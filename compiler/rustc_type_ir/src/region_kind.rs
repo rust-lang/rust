@@ -115,7 +115,7 @@ use self::RegionKind::*;
 /// [2]: https://smallcultfollowing.com/babysteps/blog/2013/11/04/intermingled-parameter-lists/
 /// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/traits/hrtb.html
 #[derive(derivative::Derivative)]
-#[derivative(Clone(bound = ""), Copy(bound = ""), Hash(bound = ""))]
+#[derivative(Clone(bound = ""), Copy(bound = ""), Hash(bound = ""), Eq(bound = ""))]
 #[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable))]
 pub enum RegionKind<I: Interner> {
     /// A region parameter; for example `'a` in `impl<'a> Trait for &'a ()`.
@@ -207,9 +207,6 @@ impl<I: Interner> PartialEq for RegionKind<I> {
             }
     }
 }
-
-// This is manually implemented because a derive would require `I: Eq`
-impl<I: Interner> Eq for RegionKind<I> {}
 
 impl<I: Interner> DebugWithInfcx<I> for RegionKind<I> {
     fn fmt<Infcx: InferCtxtLike<Interner = I>>(

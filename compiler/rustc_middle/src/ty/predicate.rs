@@ -1,22 +1,28 @@
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::intern::Interned;
-use rustc_errors::{DiagArgValue, IntoDiagArg};
 use rustc_hir::def_id::DefId;
-use rustc_macros::{HashStable, Lift, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
-use rustc_type_ir::ClauseKind as IrClauseKind;
-use rustc_type_ir::PredicateKind as IrPredicateKind;
-use rustc_type_ir::TraitRef as IrTraitRef;
+use rustc_macros::{
+    extension, HashStable, Lift, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable,
+};
+use rustc_type_ir as ir;
 use std::cmp::Ordering;
 
-use crate::ty::visit::TypeVisitableExt;
 use crate::ty::{
-    self, AliasTy, Binder, DebruijnIndex, DebugWithInfcx, EarlyBinder, GenericArgsRef,
-    PredicatePolarity, Term, Ty, TyCtxt, TypeFlags, WithCachedTypeInfo,
+    self, Binder, DebruijnIndex, EarlyBinder, PredicatePolarity, Term, Ty, TyCtxt, TypeFlags,
+    WithCachedTypeInfo,
 };
 
-pub type TraitRef<'tcx> = IrTraitRef<TyCtxt<'tcx>>;
-pub type ClauseKind<'tcx> = IrClauseKind<TyCtxt<'tcx>>;
-pub type PredicateKind<'tcx> = IrPredicateKind<TyCtxt<'tcx>>;
+pub type TraitRef<'tcx> = ir::TraitRef<TyCtxt<'tcx>>;
+pub type ProjectionPredicate<'tcx> = ir::ProjectionPredicate<TyCtxt<'tcx>>;
+pub type ExistentialPredicate<'tcx> = ir::ExistentialPredicate<TyCtxt<'tcx>>;
+pub type ExistentialTraitRef<'tcx> = ir::ExistentialTraitRef<TyCtxt<'tcx>>;
+pub type ExistentialProjection<'tcx> = ir::ExistentialProjection<TyCtxt<'tcx>>;
+pub type TraitPredicate<'tcx> = ir::TraitPredicate<TyCtxt<'tcx>>;
+pub type ClauseKind<'tcx> = ir::ClauseKind<TyCtxt<'tcx>>;
+pub type PredicateKind<'tcx> = ir::PredicateKind<TyCtxt<'tcx>>;
+pub type NormalizesTo<'tcx> = ir::NormalizesTo<TyCtxt<'tcx>>;
+pub type CoercePredicate<'tcx> = ir::CoercePredicate<TyCtxt<'tcx>>;
+pub type SubtypePredicate<'tcx> = ir::SubtypePredicate<TyCtxt<'tcx>>;
 
 /// A statement that can be proven by a trait solver. This includes things that may
 /// show up in where clauses, such as trait predicates and projection predicates,
@@ -195,43 +201,25 @@ impl<'tcx> Clause<'tcx> {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
-#[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
-pub enum ExistentialPredicate<'tcx> {
-    /// E.g., `Iterator`.
-    Trait(ExistentialTraitRef<'tcx>),
-    /// E.g., `Iterator::Item = T`.
-    Projection(ExistentialProjection<'tcx>),
-    /// E.g., `Send`.
-    AutoTrait(DefId),
-}
-
-impl<'tcx> DebugWithInfcx<TyCtxt<'tcx>> for ExistentialPredicate<'tcx> {
-    fn fmt<Infcx: rustc_type_ir::InferCtxtLike<Interner = TyCtxt<'tcx>>>(
-        this: rustc_type_ir::WithInfcx<'_, Infcx, &Self>,
-        f: &mut std::fmt::Formatter<'_>,
-    ) -> std::fmt::Result {
-        std::fmt::Debug::fmt(&this.data, f)
-    }
-}
-
+#[extension(pub trait ExistentialPredicateStableCmpExt<'tcx>)]
 impl<'tcx> ExistentialPredicate<'tcx> {
     /// Compares via an ordering that will not change if modules are reordered or other changes are
     /// made to the tree. In particular, this ordering is preserved across incremental compilations.
-    pub fn stable_cmp(&self, tcx: TyCtxt<'tcx>, other: &Self) -> Ordering {
-        use self::ExistentialPredicate::*;
+    fn stable_cmp(&self, tcx: TyCtxt<'tcx>, other: &Self) -> Ordering {
         match (*self, *other) {
-            (Trait(_), Trait(_)) => Ordering::Equal,
-            (Projection(ref a), Projection(ref b)) => {
+            (ExistentialPredicate::Trait(_), ExistentialPredicate::Trait(_)) => Ordering::Equal,
+            (ExistentialPredicate::Projection(ref a), ExistentialPredicate::Projection(ref b)) => {
                 tcx.def_path_hash(a.def_id).cmp(&tcx.def_path_hash(b.def_id))
             }
-            (AutoTrait(ref a), AutoTrait(ref b)) => {
+            (ExistentialPredicate::AutoTrait(ref a), ExistentialPredicate::AutoTrait(ref b)) => {
                 tcx.def_path_hash(*a).cmp(&tcx.def_path_hash(*b))
             }
-            (Trait(_), _) => Ordering::Less,
-            (Projection(_), Trait(_)) => Ordering::Greater,
-            (Projection(_), _) => Ordering::Less,
-            (AutoTrait(_), _) => Ordering::Greater,
+            (ExistentialPredicate::Trait(_), _) => Ordering::Less,
+            (ExistentialPredicate::Projection(_), ExistentialPredicate::Trait(_)) => {
+                Ordering::Greater
+            }
+            (ExistentialPredicate::Projection(_), _) => Ordering::Less,
+            (ExistentialPredicate::AutoTrait(_), _) => Ordering::Greater,
         }
     }
 }
@@ -340,52 +328,6 @@ impl<'tcx> PolyTraitRef<'tcx> {
     }
 }
 
-/// An existential reference to a trait, where `Self` is erased.
-/// For example, the trait object `Trait<'a, 'b, X, Y>` is:
-/// ```ignore (illustrative)
-/// exists T. T: Trait<'a, 'b, X, Y>
-/// ```
-/// The generic parameters don't include the erased `Self`, only trait
-/// type and lifetime parameters (`[X, Y]` and `['a, 'b]` above).
-#[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
-#[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
-pub struct ExistentialTraitRef<'tcx> {
-    pub def_id: DefId,
-    pub args: GenericArgsRef<'tcx>,
-}
-
-impl<'tcx> ExistentialTraitRef<'tcx> {
-    pub fn erase_self_ty(
-        tcx: TyCtxt<'tcx>,
-        trait_ref: ty::TraitRef<'tcx>,
-    ) -> ty::ExistentialTraitRef<'tcx> {
-        // Assert there is a Self.
-        trait_ref.args.type_at(0);
-
-        ty::ExistentialTraitRef {
-            def_id: trait_ref.def_id,
-            args: tcx.mk_args(&trait_ref.args[1..]),
-        }
-    }
-
-    /// Object types don't have a self type specified. Therefore, when
-    /// we convert the principal trait-ref into a normal trait-ref,
-    /// you must give *some* self type. A common choice is `mk_err()`
-    /// or some placeholder type.
-    pub fn with_self_ty(&self, tcx: TyCtxt<'tcx>, self_ty: Ty<'tcx>) -> ty::TraitRef<'tcx> {
-        // otherwise the escaping vars would be captured by the binder
-        // debug_assert!(!self_ty.has_escaping_bound_vars());
-
-        ty::TraitRef::new(tcx, self.def_id, [self_ty.into()].into_iter().chain(self.args.iter()))
-    }
-}
-
-impl<'tcx> IntoDiagArg for ExistentialTraitRef<'tcx> {
-    fn into_diag_arg(self) -> DiagArgValue {
-        self.to_string().into_diag_arg()
-    }
-}
-
 pub type PolyExistentialTraitRef<'tcx> = ty::Binder<'tcx, ExistentialTraitRef<'tcx>>;
 
 impl<'tcx> PolyExistentialTraitRef<'tcx> {
@@ -402,61 +344,7 @@ impl<'tcx> PolyExistentialTraitRef<'tcx> {
     }
 }
 
-/// A `ProjectionPredicate` for an `ExistentialTraitRef`.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, TyEncodable, TyDecodable)]
-#[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
-pub struct ExistentialProjection<'tcx> {
-    pub def_id: DefId,
-    pub args: GenericArgsRef<'tcx>,
-    pub term: Term<'tcx>,
-}
-
 pub type PolyExistentialProjection<'tcx> = ty::Binder<'tcx, ExistentialProjection<'tcx>>;
-
-impl<'tcx> ExistentialProjection<'tcx> {
-    /// Extracts the underlying existential trait reference from this projection.
-    /// For example, if this is a projection of `exists T. <T as Iterator>::Item == X`,
-    /// then this function would return an `exists T. T: Iterator` existential trait
-    /// reference.
-    pub fn trait_ref(&self, tcx: TyCtxt<'tcx>) -> ty::ExistentialTraitRef<'tcx> {
-        let def_id = tcx.parent(self.def_id);
-        let args_count = tcx.generics_of(def_id).count() - 1;
-        let args = tcx.mk_args(&self.args[..args_count]);
-        ty::ExistentialTraitRef { def_id, args }
-    }
-
-    pub fn with_self_ty(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        self_ty: Ty<'tcx>,
-    ) -> ty::ProjectionPredicate<'tcx> {
-        // otherwise the escaping regions would be captured by the binders
-        debug_assert!(!self_ty.has_escaping_bound_vars());
-
-        ty::ProjectionPredicate {
-            projection_ty: AliasTy::new(
-                tcx,
-                self.def_id,
-                [self_ty.into()].into_iter().chain(self.args),
-            ),
-            term: self.term,
-        }
-    }
-
-    pub fn erase_self_ty(
-        tcx: TyCtxt<'tcx>,
-        projection_predicate: ty::ProjectionPredicate<'tcx>,
-    ) -> Self {
-        // Assert there is a Self.
-        projection_predicate.projection_ty.args.type_at(0);
-
-        Self {
-            def_id: projection_predicate.projection_ty.def_id,
-            args: tcx.mk_args(&projection_predicate.projection_ty.args[1..]),
-            term: projection_predicate.term,
-        }
-    }
-}
 
 impl<'tcx> PolyExistentialProjection<'tcx> {
     pub fn with_self_ty(
@@ -578,36 +466,7 @@ impl<'tcx> Clause<'tcx> {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
-#[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
-pub struct TraitPredicate<'tcx> {
-    pub trait_ref: TraitRef<'tcx>,
-
-    /// If polarity is Positive: we are proving that the trait is implemented.
-    ///
-    /// If polarity is Negative: we are proving that a negative impl of this trait
-    /// exists. (Note that coherence also checks whether negative impls of supertraits
-    /// exist via a series of predicates.)
-    ///
-    /// If polarity is Reserved: that's a bug.
-    pub polarity: PredicatePolarity,
-}
-
 pub type PolyTraitPredicate<'tcx> = ty::Binder<'tcx, TraitPredicate<'tcx>>;
-
-impl<'tcx> TraitPredicate<'tcx> {
-    pub fn with_self_ty(self, tcx: TyCtxt<'tcx>, self_ty: Ty<'tcx>) -> Self {
-        Self { trait_ref: self.trait_ref.with_self_ty(tcx, self_ty), ..self }
-    }
-
-    pub fn def_id(self) -> DefId {
-        self.trait_ref.def_id
-    }
-
-    pub fn self_ty(self) -> Ty<'tcx> {
-        self.trait_ref.self_ty()
-    }
-}
 
 impl<'tcx> PolyTraitPredicate<'tcx> {
     pub fn def_id(self) -> DefId {
@@ -634,63 +493,9 @@ pub type TypeOutlivesPredicate<'tcx> = OutlivesPredicate<Ty<'tcx>, ty::Region<'t
 pub type PolyRegionOutlivesPredicate<'tcx> = ty::Binder<'tcx, RegionOutlivesPredicate<'tcx>>;
 pub type PolyTypeOutlivesPredicate<'tcx> = ty::Binder<'tcx, TypeOutlivesPredicate<'tcx>>;
 
-/// Encodes that `a` must be a subtype of `b`. The `a_is_expected` flag indicates
-/// whether the `a` type is the type that we should label as "expected" when
-/// presenting user diagnostics.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, TyEncodable, TyDecodable)]
-#[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
-pub struct SubtypePredicate<'tcx> {
-    pub a_is_expected: bool,
-    pub a: Ty<'tcx>,
-    pub b: Ty<'tcx>,
-}
 pub type PolySubtypePredicate<'tcx> = ty::Binder<'tcx, SubtypePredicate<'tcx>>;
 
-/// Encodes that we have to coerce *from* the `a` type to the `b` type.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, TyEncodable, TyDecodable)]
-#[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
-pub struct CoercePredicate<'tcx> {
-    pub a: Ty<'tcx>,
-    pub b: Ty<'tcx>,
-}
 pub type PolyCoercePredicate<'tcx> = ty::Binder<'tcx, CoercePredicate<'tcx>>;
-
-/// This kind of predicate has no *direct* correspondent in the
-/// syntax, but it roughly corresponds to the syntactic forms:
-///
-/// 1. `T: TraitRef<..., Item = Type>`
-/// 2. `<T as TraitRef<...>>::Item == Type` (NYI)
-///
-/// In particular, form #1 is "desugared" to the combination of a
-/// normal trait predicate (`T: TraitRef<...>`) and one of these
-/// predicates. Form #2 is a broader form in that it also permits
-/// equality between arbitrary types. Processing an instance of
-/// Form #2 eventually yields one of these `ProjectionPredicate`
-/// instances to normalize the LHS.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
-#[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
-pub struct ProjectionPredicate<'tcx> {
-    pub projection_ty: AliasTy<'tcx>,
-    pub term: Term<'tcx>,
-}
-
-impl<'tcx> ProjectionPredicate<'tcx> {
-    pub fn self_ty(self) -> Ty<'tcx> {
-        self.projection_ty.self_ty()
-    }
-
-    pub fn with_self_ty(self, tcx: TyCtxt<'tcx>, self_ty: Ty<'tcx>) -> ProjectionPredicate<'tcx> {
-        Self { projection_ty: self.projection_ty.with_self_ty(tcx, self_ty), ..self }
-    }
-
-    pub fn trait_def_id(self, tcx: TyCtxt<'tcx>) -> DefId {
-        self.projection_ty.trait_def_id(tcx)
-    }
-
-    pub fn def_id(self) -> DefId {
-        self.projection_ty.def_id
-    }
-}
 
 pub type PolyProjectionPredicate<'tcx> = Binder<'tcx, ProjectionPredicate<'tcx>>;
 
@@ -725,33 +530,6 @@ impl<'tcx> PolyProjectionPredicate<'tcx> {
     pub fn projection_def_id(&self) -> DefId {
         // Ok to skip binder since trait `DefId` does not care about regions.
         self.skip_binder().projection_ty.def_id
-    }
-}
-
-/// Used by the new solver. Unlike a `ProjectionPredicate` this can only be
-/// proven by actually normalizing `alias`.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
-#[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
-pub struct NormalizesTo<'tcx> {
-    pub alias: AliasTy<'tcx>,
-    pub term: Term<'tcx>,
-}
-
-impl<'tcx> NormalizesTo<'tcx> {
-    pub fn self_ty(self) -> Ty<'tcx> {
-        self.alias.self_ty()
-    }
-
-    pub fn with_self_ty(self, tcx: TyCtxt<'tcx>, self_ty: Ty<'tcx>) -> NormalizesTo<'tcx> {
-        Self { alias: self.alias.with_self_ty(tcx, self_ty), ..self }
-    }
-
-    pub fn trait_def_id(self, tcx: TyCtxt<'tcx>) -> DefId {
-        self.alias.trait_def_id(tcx)
-    }
-
-    pub fn def_id(self) -> DefId {
-        self.alias.def_id
     }
 }
 

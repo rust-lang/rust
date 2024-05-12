@@ -1142,6 +1142,36 @@ pub struct AliasTy<'tcx> {
     _use_alias_ty_new_instead: (),
 }
 
+impl<'tcx> rustc_type_ir::inherent::AliasTy<TyCtxt<'tcx>> for AliasTy<'tcx> {
+    fn new(
+        interner: TyCtxt<'tcx>,
+        trait_def_id: DefId,
+        args: impl IntoIterator<Item: Into<ty::GenericArg<'tcx>>>,
+    ) -> Self {
+        AliasTy::new(interner, trait_def_id, args)
+    }
+
+    fn def_id(self) -> DefId {
+        self.def_id
+    }
+
+    fn args(self) -> ty::GenericArgsRef<'tcx> {
+        self.args
+    }
+
+    fn trait_def_id(self, interner: TyCtxt<'tcx>) -> DefId {
+        self.trait_def_id(interner)
+    }
+
+    fn self_ty(self) -> Ty<'tcx> {
+        self.self_ty()
+    }
+
+    fn with_self_ty(self, tcx: TyCtxt<'tcx>, self_ty: Ty<'tcx>) -> Self {
+        self.with_self_ty(tcx, self_ty)
+    }
+}
+
 impl<'tcx> AliasTy<'tcx> {
     pub fn new(
         tcx: TyCtxt<'tcx>,

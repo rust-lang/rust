@@ -1,5 +1,6 @@
 use std::fmt::Debug;
 use std::hash::Hash;
+use std::ops::Deref;
 
 use crate::fold::TypeSuperFoldable;
 use crate::visit::{Flags, TypeSuperVisitable};
@@ -50,7 +51,12 @@ pub trait GenericsOf<I: Interner<GenericsOf = Self>> {
 }
 
 pub trait GenericArgs<I: Interner<GenericArgs = Self>>:
-    Copy + DebugWithInfcx<I> + Hash + Eq + IntoIterator<Item = I::GenericArg>
+    Copy
+    + DebugWithInfcx<I>
+    + Hash
+    + Eq
+    + IntoIterator<Item = I::GenericArg>
+    + Deref<Target: Deref<Target = [I::GenericArg]>>
 {
     fn type_at(self, i: usize) -> I::Ty;
 
@@ -82,4 +88,23 @@ pub trait BoundVars<I: Interner> {
     fn bound_vars(&self) -> I::BoundVars;
 
     fn has_no_bound_vars(&self) -> bool;
+}
+
+// FIXME: Uplift `AliasTy`
+pub trait AliasTy<I: Interner>: Copy + DebugWithInfcx<I> + Hash + Eq + Sized {
+    fn new(
+        interner: I,
+        trait_def_id: I::DefId,
+        args: impl IntoIterator<Item: Into<I::GenericArg>>,
+    ) -> Self;
+
+    fn def_id(self) -> I::DefId;
+
+    fn args(self) -> I::GenericArgs;
+
+    fn trait_def_id(self, interner: I) -> I::DefId;
+
+    fn self_ty(self) -> I::Ty;
+
+    fn with_self_ty(self, tcx: I, self_ty: I::Ty) -> Self;
 }
