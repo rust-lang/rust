@@ -751,6 +751,9 @@ where
 #[unstable(feature = "sgx_platform", issue = "56975")]
 impl<T: CoerceUnsized<U>, U> CoerceUnsized<UserRef<U>> for UserRef<T> {}
 
+#[unstable(feature = "pin_coerce_unsized_trait", issue = "123430")]
+unsafe impl<T: ?Sized> PinCoerceUnsized for UserRef<T> {}
+
 #[unstable(feature = "sgx_platform", issue = "56975")]
 impl<T, I> Index<I> for UserRef<[T]>
 where
