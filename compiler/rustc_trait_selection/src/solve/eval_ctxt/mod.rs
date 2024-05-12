@@ -137,7 +137,7 @@ impl<'tcx> InferCtxt<'tcx> {
     ///
     /// Using this while inside of the solver is wrong as it uses a new
     /// search graph which would break cycle detection.
-    #[instrument(level = "trace", skip(self))]
+    #[instrument(level = "debug", skip(self))]
     fn evaluate_root_goal(
         &self,
         goal: Goal<'tcx, ty::Predicate<'tcx>>,
@@ -276,7 +276,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
     /// Instead of calling this function directly, use either [EvalCtxt::evaluate_goal]
     /// if you're inside of the solver or [InferCtxtEvalExt::evaluate_root_goal] if you're
     /// outside of it.
-    #[instrument(level = "trace", skip(tcx, search_graph, goal_evaluation), ret)]
+    #[instrument(level = "debug", skip(tcx, search_graph, goal_evaluation), ret)]
     fn evaluate_canonical_goal(
         tcx: TyCtxt<'tcx>,
         search_graph: &'a mut search_graph::SearchGraph<'tcx>,
@@ -464,7 +464,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         self.nested_goals.normalizes_to_goals.push(goal);
     }
 
-    #[instrument(level = "trace", skip(self))]
+    #[instrument(level = "debug", skip(self))]
     pub(super) fn add_goal(&mut self, source: GoalSource, goal: Goal<'tcx, ty::Predicate<'tcx>>) {
         self.inspect.add_goal(self.infcx, self.max_input_universe, source, goal);
         self.nested_goals.goals.push((source, goal));

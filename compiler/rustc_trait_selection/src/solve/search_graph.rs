@@ -296,6 +296,7 @@ impl<'tcx> SearchGraph<'tcx> {
             }
 
             self.on_cache_hit(reached_depth, encountered_overflow);
+            debug!("global cache hit");
             return result;
         }
 
@@ -315,6 +316,7 @@ impl<'tcx> SearchGraph<'tcx> {
                     .filter(|p| !Self::stack_coinductive_from(tcx, &self.stack, p.head))
             })
         {
+            debug!("provisional cache hit");
             // We have a nested goal which is already in the provisional cache, use
             // its result. We do not provide any usage kind as that should have been
             // already set correctly while computing the cache entry.
@@ -328,7 +330,7 @@ impl<'tcx> SearchGraph<'tcx> {
             );
             return entry.result;
         } else if let Some(stack_depth) = cache_entry.stack_depth {
-            trace!("encountered cycle with depth {stack_depth:?}");
+            debug!("encountered cycle with depth {stack_depth:?}");
             // We have a nested goal which directly relies on a goal deeper in the stack.
             //
             // We start by tagging all cycle participants, as that's necessary for caching.
@@ -436,7 +438,7 @@ impl<'tcx> SearchGraph<'tcx> {
                     }
                 }
 
-                trace!("canonical cycle overflow");
+                debug!("canonical cycle overflow");
                 let current_entry = self.pop_stack();
                 debug_assert!(current_entry.has_been_used.is_empty());
                 let result = Self::response_no_constraints(tcx, input, Certainty::overflow(false));
