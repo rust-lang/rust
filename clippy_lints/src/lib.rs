@@ -595,6 +595,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
         ref allowed_duplicate_crates,
         allow_comparison_to_zero,
         ref allowed_prefixes,
+        ref allow_renamed_params_for,
 
         blacklisted_names: _,
         cyclomatic_complexity_threshold: _,
@@ -788,6 +789,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
             too_many_lines_threshold,
             large_error_threshold,
             avoid_breaking_exported_api,
+            allow_renamed_params_for.clone(),
         ))
     });
     store.register_late_pass(move |_| Box::new(doc::Documentation::new(doc_valid_idents, check_private_items)));

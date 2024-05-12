@@ -206,6 +206,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::functions::MUST_USE_CANDIDATE_INFO,
     crate::functions::MUST_USE_UNIT_INFO,
     crate::functions::NOT_UNSAFE_PTR_ARG_DEREF_INFO,
+    crate::functions::RENAMED_FUNCTION_PARAMS_INFO,
     crate::functions::RESULT_LARGE_ERR_INFO,
     crate::functions::RESULT_UNIT_ERR_INFO,
     crate::functions::TOO_MANY_ARGUMENTS_INFO,
