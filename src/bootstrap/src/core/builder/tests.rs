@@ -212,6 +212,55 @@ fn alias_and_path_for_library() {
     assert_eq!(first(cache.all::<doc::Std>()), &[doc_std!(A => A, stage = 0)]);
 }
 
+#[test]
+fn ci_rustc_if_unchanged_logic() {
+    let config = Config::parse_inner(
+        Flags::parse(&[
+            "build".to_owned(),
+            "--dry-run".to_owned(),
+            "--set=rust.download-rustc='if-unchanged'".to_owned(),
+        ]),
+        |&_| Ok(Default::default()),
+    );
+
+    let build = Build::new(config.clone());
+    let builder = Builder::new(&build);
+
+    if config.rust_info.is_from_tarball() {
+        return;
+    }
+
+    if config.out.exists() {
+        fs::remove_dir_all(&config.out).unwrap();
+    }
+
+    builder.run_step_descriptions(&Builder::get_step_descriptions(config.cmd.kind()), &[]);
+
+    let commit = helpers::get_closest_merge_base_commit(
+        Some(&builder.config.src),
+        &builder.config.git_config(),
+        &builder.config.stage0_metadata.config.git_merge_commit_email,
+        &[],
+    )
+    .unwrap();
+
+    let compiler_path = build.src.join("compiler");
+    let library_path = build.src.join("library");
+
+    let has_changes = helpers::git(Some(&builder.src))
+        .args(["diff-index", "--quiet", &commit])
+        .arg("--")
+        .args([compiler_path, library_path])
+        .as_command_mut()
+        .status()
+        .unwrap()
+        .success();
+
+    assert!(
+        has_changes != config.out.join(config.build.to_string()).join("ci-rustc-sysroot").exists()
+    );
+}
+
 mod defaults {
     use pretty_assertions::assert_eq;
 

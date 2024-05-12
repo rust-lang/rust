@@ -12,7 +12,7 @@ use super::{ChangeIdWrapper, Config};
 use crate::core::build_steps::clippy::get_clippy_rules_in_order;
 use crate::core::config::{LldMode, Target, TargetSelection, TomlConfig};
 
-fn parse(config: &str) -> Config {
+pub(crate) fn parse(config: &str) -> Config {
     Config::parse_inner(
         Flags::parse(&["check".to_string(), "--config=/does/not/exist".to_string()]),
         |&_| toml::from_str(&config),
