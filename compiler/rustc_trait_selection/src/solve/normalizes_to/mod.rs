@@ -25,7 +25,7 @@ mod opaque_types;
 mod weak_types;
 
 impl<'tcx> EvalCtxt<'_, 'tcx> {
-    #[instrument(level = "debug", skip(self), ret)]
+    #[instrument(level = "trace", skip(self), ret)]
     pub(super) fn compute_normalizes_to_goal(
         &mut self,
         goal: Goal<'tcx, NormalizesTo<'tcx>>,
@@ -59,7 +59,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
 
     /// Normalize the given alias by at least one step. If the alias is rigid, this
     /// returns `NoSolution`.
-    #[instrument(level = "debug", skip(self), ret)]
+    #[instrument(level = "trace", skip(self), ret)]
     fn normalize_at_least_one_step(
         &mut self,
         goal: Goal<'tcx, NormalizesTo<'tcx>>,
@@ -897,7 +897,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
 ///
 /// FIXME: We should merge these 3 implementations as it's likely that they otherwise
 /// diverge.
-#[instrument(level = "debug", skip(ecx, param_env), ret)]
+#[instrument(level = "trace", skip(ecx, param_env), ret)]
 fn fetch_eligible_assoc_item_def<'tcx>(
     ecx: &EvalCtxt<'_, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
@@ -920,7 +920,7 @@ fn fetch_eligible_assoc_item_def<'tcx>(
             let poly_trait_ref = ecx.resolve_vars_if_possible(goal_trait_ref);
             !poly_trait_ref.still_further_specializable()
         } else {
-            debug!(?node_item.item.def_id, "not eligible due to default");
+            trace!(?node_item.item.def_id, "not eligible due to default");
             false
         }
     };

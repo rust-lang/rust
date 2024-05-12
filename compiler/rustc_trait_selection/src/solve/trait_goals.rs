@@ -1130,7 +1130,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                     },
                 );
                 if let Some(def_id) = disqualifying_impl {
-                    debug!(?def_id, ?goal, "disqualified auto-trait implementation");
+                    trace!(?def_id, ?goal, "disqualified auto-trait implementation");
                     // No need to actually consider the candidate here,
                     // since we do that in `consider_impl_candidate`.
                     return Some(Err(NoSolution));
@@ -1171,7 +1171,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         })
     }
 
-    #[instrument(level = "debug", skip(self))]
+    #[instrument(level = "trace", skip(self))]
     pub(super) fn compute_trait_goal(
         &mut self,
         goal: Goal<'tcx, TraitPredicate<'tcx>>,

@@ -58,6 +58,7 @@ impl<'tcx, F> TraitProbeCtxt<'_, '_, 'tcx, F>
 where
     F: FnOnce(&QueryResult<'tcx>) -> inspect::ProbeKind<'tcx>,
 {
+    #[instrument(level = "debug", skip_all, fields(source = ?self.source))]
     pub(in crate::solve) fn enter(
         self,
         f: impl FnOnce(&mut EvalCtxt<'_, 'tcx>) -> QueryResult<'tcx>,
