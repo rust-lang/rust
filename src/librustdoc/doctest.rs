@@ -375,14 +375,14 @@ pub(crate) struct DocTestInfo {
     path: PathBuf,
 }
 
-fn build_test_dir(outdir: &Arc<DirState>, is_multiple_tests: bool) -> PathBuf {
+fn build_test_dir(outdir: &Arc<DirState>, is_multiple_tests: bool, test_id: &str) -> PathBuf {
     // Make sure we emit well-formed executable names for our target.
     let is_perm_dir = matches!(**outdir, DirState::Perm(..));
     let out_dir = outdir.path();
-    let out_dir = if is_multiple_tests && is_perm_dir {
-        // If this a "multiple tests" case and we generate it into a non temporary directory, we
-        // want to put it into the parent instead.
-        out_dir.parent().unwrap_or(out_dir)
+    let dir;
+    let out_dir = if !is_multiple_tests && is_perm_dir && !test_id.is_empty() {
+        dir = out_dir.join(test_id);
+        &dir
     } else {
         out_dir
     };
@@ -393,20 +393,33 @@ fn build_test_dir(outdir: &Arc<DirState>, is_multiple_tests: bool) -> PathBuf {
     out_dir.into()
 }
 
-fn run_test(
-    test: String,
+struct RunTestInfo {
+    test_code: String,
     supports_color: bool,
+    is_multiple_tests: bool,
+    edition: Edition,
+    no_run: bool,
+    lang_string: LangString,
+    out_dir: PathBuf,
+}
+
+fn run_test(
+    run_test_info: RunTestInfo,
     test_info: Option<DocTestInfo>,
     rustdoc_options: Arc<IndividualTestOptions>,
-    is_multiple_tests: bool,
-    mut lang_string: LangString,
-    edition: Edition,
     report_unused_externs: impl Fn(UnusedExterns),
-    no_run: bool,
     // Used to prevent overwriting a binary in case `--persist-doctests` is used.
     binary_extra: Option<&str>,
-    out_dir: PathBuf,
 ) -> Result<(), TestFailure> {
+    let RunTestInfo {
+        test_code,
+        supports_color,
+        is_multiple_tests,
+        edition,
+        no_run,
+        mut lang_string,
+        out_dir,
+    } = run_test_info;
     let rust_out =
         add_exe_suffix(format!("rust_out{}", binary_extra.unwrap_or("")), &rustdoc_options.target);
     let output_file = out_dir.join(rust_out);
@@ -477,7 +490,7 @@ fn run_test(
 
     if is_multiple_tests {
         let out_source = out_dir.join(&format!("doctest{}.rs", binary_extra.unwrap_or("combined")));
-        if std::fs::write(&out_source, &test).is_err() {
+        if std::fs::write(&out_source, &test_code).is_err() {
             // If we cannot write this file for any reason, we leave. All combined tests will be
             // tested as standalone tests.
             return Err(TestFailure::CompileError);
@@ -498,7 +511,7 @@ fn run_test(
         process::Output { status, stdout: Vec::new(), stderr: Vec::new() }
     } else {
         let stdin = child.stdin.as_mut().expect("Failed to open stdin");
-        stdin.write_all(test.as_bytes()).expect("could write out test sources");
+        stdin.write_all(test_code.as_bytes()).expect("could write out test sources");
         child.wait_with_output().expect("Failed to read stdout")
     };
 
@@ -758,7 +771,7 @@ impl DocTest {
         let Self {
             supports_color, rustdoc_test_options, lang_string, outdir, path, no_run, ..
         } = self;
-        let out_dir = build_test_dir(&outdir, false);
+        let out_dir = build_test_dir(&outdir, false, &self.test_id);
         TestDescAndFn {
             desc: test::TestDesc {
                 name: test::DynTestName(std::mem::replace(&mut self.name, String::new())),
@@ -780,17 +793,19 @@ impl DocTest {
                     unused_externs.lock().unwrap().push(uext);
                 };
                 let res = run_test(
-                    code,
-                    supports_color,
+                    RunTestInfo {
+                        test_code: code,
+                        supports_color,
+                        is_multiple_tests: false,
+                        edition,
+                        no_run,
+                        lang_string,
+                        out_dir,
+                    },
                     Some(DocTestInfo { line_offset, line: self.line, path }),
                     rustdoc_test_options,
-                    false,
-                    lang_string,
-                    edition,
                     report_unused_externs,
-                    no_run,
                     None,
-                    out_dir,
                 );
                 // We need to move `outdir` into the closure to ensure the `TempDir` struct won't
                 // be dropped before all tests have been run.
@@ -955,10 +970,7 @@ pub(crate) fn make_test(test_args: MakeTestArgs<'_, '_>) -> DocTest {
         no_run,
     } = test_args;
     let outdir = Arc::new(if let Some(ref path) = rustdoc_test_options.persist_doctests {
-        let mut path = path.clone();
-        path.push(&test_id);
-
-        DirState::Perm(path)
+        DirState::Perm(path.clone())
     } else {
         DirState::Temp(get_doctest_dir().expect("rustdoc needs a tempdir"))
     });
@@ -999,7 +1011,7 @@ pub(crate) fn make_test(test_args: MakeTestArgs<'_, '_>) -> DocTest {
             let dcx = DiagCtxt::new(Box::new(emitter)).disable_warnings();
             let psess = ParseSess::with_dcx(dcx, sm);
 
-            let mut found_main = None;
+            let mut found_main_span = None;
             let mut found_extern_crate = crate_name.is_none();
             let mut found_macro = false;
 
@@ -1007,34 +1019,35 @@ pub(crate) fn make_test(test_args: MakeTestArgs<'_, '_>) -> DocTest {
                 Ok(p) => p,
                 Err(errs) => {
                     errs.into_iter().for_each(|err| err.cancel());
-                    return (found_main, found_extern_crate, found_macro);
+                    return (found_main_span, found_extern_crate, found_macro);
                 }
             };
 
             loop {
                 match parser.parse_item(ForceCollect::No) {
                     Ok(Some(item)) => {
-                        if found_main.is_none()
+                        if found_main_span.is_none()
                             && let ast::ItemKind::Fn(..) = item.kind
                             && item.ident.name == sym::main
                         {
-                            found_main = Some(item.span);
+                            found_main_span = Some(item.span);
                         }
 
-                        if let ast::ItemKind::ExternCrate(original) = item.kind {
-                            if !found_extern_crate && let Some(ref crate_name) = crate_name {
-                                found_extern_crate = match original {
-                                    Some(name) => name.as_str() == crate_name,
-                                    None => item.ident.as_str() == crate_name,
-                                };
-                            }
+                        if let ast::ItemKind::ExternCrate(original) = item.kind
+                            && !found_extern_crate
+                            && let Some(ref crate_name) = crate_name
+                        {
+                            found_extern_crate = match original {
+                                Some(name) => name.as_str() == crate_name,
+                                None => item.ident.as_str() == crate_name,
+                            };
                         }
 
                         if !found_macro && let ast::ItemKind::MacCall(..) = item.kind {
                             found_macro = true;
                         }
 
-                        if found_main.is_some() && found_extern_crate {
+                        if found_main_span.is_some() && found_extern_crate {
                             break;
                         }
                     }
@@ -1056,7 +1069,7 @@ pub(crate) fn make_test(test_args: MakeTestArgs<'_, '_>) -> DocTest {
             // drop.
             psess.dcx.reset_err_count();
 
-            (found_main, found_extern_crate, found_macro)
+            (found_main_span, found_extern_crate, found_macro)
         })
     });
 
@@ -1407,20 +1420,22 @@ test::test_main(&[{test_args}], vec![{ids}], None);
             ids = self.ids,
         )
         .expect("failed to generate test code");
-        let out_dir = build_test_dir(outdir, true);
+        let out_dir = build_test_dir(outdir, true, "");
         let ret = run_test(
-            code,
-            self.supports_color,
+            RunTestInfo {
+                test_code: code,
+                supports_color: self.supports_color,
+                is_multiple_tests: true,
+                edition,
+                no_run: false,
+                lang_string: LangString::empty_for_test(),
+                out_dir,
+            },
             None,
             rustdoc_test_options,
-            true,
-            LangString::empty_for_test(),
-            edition,
             |_: UnusedExterns| {},
-            false,
             // To prevent writing over an existing doctest
             Some(&format!("_{}", edition)),
-            out_dir,
         );
         if let Err(TestFailure::CompileError) = ret { Err(()) } else { Ok(ret.is_ok()) }
     }

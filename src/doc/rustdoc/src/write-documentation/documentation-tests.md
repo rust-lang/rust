@@ -376,9 +376,12 @@ that the code sample should be compiled using the respective edition of Rust.
 # fn foo() {}
 ```
 
-Starting the 2024 edition, compatible doctests will be merged as one before being run.
-It means that they will share the process, so any change global/static variables will
-now impact the other doctests.
+Starting the 2024 edition[^edition-note], compatible doctests will be merged as one before being
+run. It means that they will share the process, so any change global/static variables will now
+impact the other doctests.
+
+[^edition-note]: This is based on the edition of the whole crate, not the edition of the individual
+test case that may be specified in its code attribute.
 
 For example, if you have:
 
