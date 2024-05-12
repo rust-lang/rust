@@ -11,14 +11,14 @@ LL |         let mut mutex = std::mem::zeroed(
    |                         ^^^^^^^^^^^^^^^^
 LL |
 LL |             file.as_raw_fd(),
-   |             ---------------- unexpected argument
+   |             ---------------- unexpected #1 argument
 LL |
 LL |             0,
-   |             - unexpected argument of type `{integer}`
+   |             - unexpected #2 argument of type `{integer}`
 LL |             0,
-   |             - unexpected argument of type `{integer}`
+   |             - unexpected #3 argument of type `{integer}`
 LL |             0,
-   |             - unexpected argument of type `{integer}`
+   |             - unexpected #4 argument of type `{integer}`
    |
 note: function defined here
   --> $SRC_DIR/core/src/mem/mod.rs:LL:COL

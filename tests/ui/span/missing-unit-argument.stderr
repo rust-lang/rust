@@ -31,7 +31,7 @@ error[E0061]: this function takes 2 arguments but 1 argument was supplied
   --> $DIR/missing-unit-argument.rs:13:5
    |
 LL |     foo(());
-   |     ^^^---- an argument of type `()` is missing
+   |     ^^^---- #2 argument of type `()` is missing
    |
 note: function defined here
   --> $DIR/missing-unit-argument.rs:1:4

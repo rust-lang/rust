@@ -1014,6 +1014,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .peek()
             .is_some_and(|first| matches!(first, Error::Extra(arg_idx) if arg_idx.index() == 0));
         let mut suggestions = vec![];
+
         while let Some(error) = errors.next() {
             only_extras_so_far &= matches!(error, Error::Extra(_));
 
@@ -1055,7 +1056,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     } else {
                         "".to_string()
                     };
-                    labels.push((provided_span, format!("unexpected argument{provided_ty_name}")));
+                    let ord = if provided_arg_tys.len() == 1 {
+                        "".to_string()
+                    } else {
+                        format!("#{} ", arg_idx.as_usize() + 1)
+                    };
+                    labels.push((
+                        provided_span,
+                        format!("unexpected {ord}argument{provided_ty_name}"),
+                    ));
                     let mut span = provided_span;
                     if span.can_be_used_for_suggestions()
                         && error_span.can_be_used_for_suggestions()
@@ -1136,7 +1145,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             } else {
                                 "".to_string()
                             };
-                            labels.push((span, format!("an argument{rendered} is missing")));
+                            let ord = if formal_and_expected_inputs.len() == 1 {
+                                "an".to_string()
+                            } else {
+                                format!("#{}", expected_idx.as_usize() + 1)
+                            };
+                            labels.push((span, format!("{ord} argument{rendered} is missing")));
+
                             suggestion_text = match suggestion_text {
                                 SuggestionText::None => SuggestionText::Provide(false),
                                 SuggestionText::Provide(_) => SuggestionText::Provide(true),
