@@ -1238,7 +1238,11 @@ impl<'a> State<'a> {
                 if let Some((init, els)) = loc.kind.init_else_opt() {
                     self.nbsp();
                     self.word_space("=");
-                    self.print_expr(init, FixupContext::default());
+                    self.print_expr_cond_paren(
+                        init,
+                        els.is_some() && classify::expr_trailing_brace(init).is_some(),
+                        FixupContext::default(),
+                    );
                     if let Some(els) = els {
                         self.cbox(INDENT_UNIT);
                         self.ibox(INDENT_UNIT);

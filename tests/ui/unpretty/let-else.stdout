@@ -11,5 +11,5 @@ macro_rules! expr { ($e:expr) => { $e }; }
 
 fn main() {
     let _ = 1 + 1 else { return; };
-    let _ = loop {} else { return; };
+    let _ = (loop {}) else { return; };
 }
