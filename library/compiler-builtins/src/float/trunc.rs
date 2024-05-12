@@ -155,19 +155,37 @@ intrinsics! {
 
     #[avr_skip]
     #[aapcs_on_arm]
+    #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
     pub extern "C" fn __trunctfhf2(a: f128) -> f16 {
         trunc(a)
     }
 
-    #[avr_skip]
-    #[aapcs_on_arm]
-    pub extern "C" fn __trunctfsf2(a: f128) -> f32 {
+    #[cfg(any(target_arch = "powerpc", target_arch = "powerpc64"))]
+    pub extern "C" fn __trunckfhf2(a: f128) -> f16 {
         trunc(a)
     }
 
     #[avr_skip]
     #[aapcs_on_arm]
+    #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
+    pub extern "C" fn __trunctfsf2(a: f128) -> f32 {
+        trunc(a)
+    }
+
+    #[cfg(any(target_arch = "powerpc", target_arch = "powerpc64"))]
+    pub extern "C" fn __trunckfsf2(a: f128) -> f32 {
+        trunc(a)
+    }
+
+    #[avr_skip]
+    #[aapcs_on_arm]
+    #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
     pub extern "C" fn __trunctfdf2(a: f128) -> f64 {
+        trunc(a)
+    }
+
+    #[cfg(any(target_arch = "powerpc", target_arch = "powerpc64"))]
+    pub extern "C" fn __trunckfdf2(a: f128) -> f64 {
         trunc(a)
     }
 }
