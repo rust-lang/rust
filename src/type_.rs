@@ -194,12 +194,20 @@ impl<'gcc, 'tcx> BaseTypeMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     fn type_kind(&self, typ: Type<'gcc>) -> TypeKind {
         if self.is_int_type_or_bool(typ) {
             TypeKind::Integer
+        } else if typ.get_pointee().is_some() {
+            TypeKind::Pointer
+        } else if typ.is_vector() {
+            TypeKind::Vector
+        } else if typ.dyncast_array().is_some() {
+            TypeKind::Array
+        } else if typ.is_struct().is_some() {
+            TypeKind::Struct
+        } else if typ.dyncast_function_ptr_type().is_some() {
+            TypeKind::Function
         } else if typ.is_compatible_with(self.float_type) {
             TypeKind::Float
         } else if typ.is_compatible_with(self.double_type) {
             TypeKind::Double
-        } else if typ.is_vector() {
-            TypeKind::Vector
         } else if typ.is_floating_point() {
             match typ.get_size() {
                 2 => TypeKind::Half,
@@ -208,9 +216,11 @@ impl<'gcc, 'tcx> BaseTypeMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                 16 => TypeKind::FP128,
                 _ => TypeKind::Void,
             }
+        } else if typ == self.type_void() {
+            TypeKind::Void
         } else {
             // TODO(antoyo): support other types.
-            TypeKind::Void
+            unimplemented!();
         }
     }
 
