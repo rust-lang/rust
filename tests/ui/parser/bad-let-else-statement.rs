@@ -196,4 +196,18 @@ fn s() {
     b!(2);
 }
 
+fn t() {
+    macro_rules! primitive {
+        (8) => { u8 };
+    }
+
+    let foo = &std::ptr::null as &'static dyn std::ops::Fn() -> *const primitive! {
+        //~^ WARN irrefutable `let...else` pattern
+        8
+    } else {
+        // FIXME: right curly brace `}` before `else` in a `let...else` statement not allowed
+        return;
+    };
+}
+
 fn main() {}

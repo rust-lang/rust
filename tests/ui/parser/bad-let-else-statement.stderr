@@ -299,5 +299,17 @@ LL |     let bad = format_args! {""} else { return; };
    = note: this pattern will always match, so the `else` clause is useless
    = help: consider removing the `else` clause
 
-error: aborting due to 19 previous errors; 4 warnings emitted
+warning: irrefutable `let...else` pattern
+  --> $DIR/bad-let-else-statement.rs:204:5
+   |
+LL | /     let foo = &std::ptr::null as &'static dyn std::ops::Fn() -> *const primitive! {
+LL | |
+LL | |         8
+LL | |     } else {
+   | |_____^
+   |
+   = note: this pattern will always match, so the `else` clause is useless
+   = help: consider removing the `else` clause
+
+error: aborting due to 19 previous errors; 5 warnings emitted
 
