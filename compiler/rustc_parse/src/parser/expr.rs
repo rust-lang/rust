@@ -497,8 +497,7 @@ impl<'a> Parser<'a> {
 
     /// Checks if this expression is a successfully parsed statement.
     fn expr_is_complete(&self, e: &Expr) -> bool {
-        self.restrictions.contains(Restrictions::STMT_EXPR)
-            && !classify::expr_requires_semi_to_be_stmt(e)
+        self.restrictions.contains(Restrictions::STMT_EXPR) && classify::expr_is_complete(e)
     }
 
     /// Parses `x..y`, `x..=y`, and `x..`/`x..=`.
@@ -2691,8 +2690,33 @@ impl<'a> Parser<'a> {
             let first_tok_span = self.token.span;
             match self.parse_expr() {
                 Ok(cond)
-                // If it's not a free-standing expression, and is followed by a block,
-                // then it's very likely the condition to an `else if`.
+                // Try to guess the difference between a "condition-like" vs
+                // "statement-like" expression.
+                //
+                // We are seeing the following code, in which $cond is neither
+                // ExprKind::Block nor ExprKind::If (the 2 cases wherein this
+                // would be valid syntax).
+                //
+                //     if ... {
+                //     } else $cond
+                //
+                // If $cond is "condition-like" such as ExprKind::Binary, we
+                // want to suggest inserting `if`.
+                //
+                //     if ... {
+                //     } else if a == b {
+                //            ^^
+                //     }
+                //
+                // If $cond is "statement-like" such as ExprKind::While then we
+                // want to suggest wrapping in braces.
+                //
+                //     if ... {
+                //     } else {
+                //            ^
+                //         while true {}
+                //     }
+                //     ^
                     if self.check(&TokenKind::OpenDelim(Delimiter::Brace))
                         && classify::expr_requires_semi_to_be_stmt(&cond) =>
                 {
@@ -3136,7 +3160,7 @@ impl<'a> Parser<'a> {
                         err
                     })?;
 
-                let require_comma = classify::expr_requires_semi_to_be_stmt(&expr)
+                let require_comma = !classify::expr_is_complete(&expr)
                     && this.token != token::CloseDelim(Delimiter::Brace);
 
                 if !require_comma {

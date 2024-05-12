@@ -213,6 +213,21 @@ fn test_expr() {
         "match () { _ => ({ 1 }) - 1, }",
         "match () { _ => { 1 } - 1 }",
     );
+    c2_match_arm!(
+        [ m!() - 1 ],
+        "match () { _ => m!() - 1, }",
+        "match () { _ => m!() - 1 }",
+    );
+    c2_match_arm!(
+        [ m![] - 1 ],
+        "match () { _ => m![] - 1, }",
+        "match () { _ => m![] - 1 }",
+    );
+    c2_match_arm!(
+        [ m! {} - 1 ],
+        "match () { _ => m! {} - 1, }",
+        "match () { _ => m! {} - 1 }",
+    );
 
     // ExprKind::Closure
     c1!(expr, [ || {} ], "|| {}");
@@ -719,6 +734,21 @@ fn test_stmt() {
         [ loop { break 1; } ],
         "(loop { break 1; }) - 1;",
         "loop { break 1; } - 1",
+    );
+    c2_minus_one!(
+        [ m!() ],
+        "m!() - 1;",
+        "m!() - 1"
+    );
+    c2_minus_one!(
+        [ m![] ],
+        "m![] - 1;",
+        "m![] - 1"
+    );
+    c2_minus_one!(
+        [ m! {} ],
+        "(m! {}) - 1;",
+        "m! {} - 1"
     );
 
     // StmtKind::Empty
