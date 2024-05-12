@@ -13,19 +13,14 @@ use run_make_support::{cc, extra_c_flags, run, rustc};
 
 fn main() {
     let libbar_path = tmp_dir().join("libbar.a");
-    rustc().input("foo.rs")
-        .crate_type("rlib")
-        .run();
-    rustc().input("bar.rs")
+    rustc().input("foo.rs").crate_type("rlib").run();
+    rustc()
+        .input("bar.rs")
         .static_lib("staticlib")
         .codegen_option("lto")
         .library_search_path(".")
         .output(&libbar_path)
         .run();
-    cc().input("foo.c")
-        .input(libbar_path)
-        .args(&extra_c_flags())
-        .out_exe("foo")
-        .run();
+    cc().input("foo.c").input(libbar_path).args(&extra_c_flags()).out_exe("foo").run();
     run("foo");
 }
