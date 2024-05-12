@@ -9,14 +9,14 @@
 
 //@ ignore-cross-compile
 
-use run_make_support::{cc, extra_c_flags, run, rustc};
+use run_make_support::{cc, extra_c_flags, run, rustc, tmp_dir};
 
 fn main() {
     let libbar_path = tmp_dir().join("libbar.a");
     rustc().input("foo.rs").crate_type("rlib").run();
     rustc()
         .input("bar.rs")
-        .static_lib("staticlib")
+        .crate_type("staticlib")
         .codegen_option("lto")
         .library_search_path(".")
         .output(&libbar_path)
