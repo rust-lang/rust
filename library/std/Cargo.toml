@@ -17,7 +17,7 @@ cfg-if = { version = "1.0", features = ['rustc-dep-of-std'] }
 panic_unwind = { path = "../panic_unwind", optional = true }
 panic_abort = { path = "../panic_abort" }
 core = { path = "../core", public = true }
-compiler_builtins = { version = "0.1.105" }
+compiler_builtins = { version = "0.1.111" }
 profiler_builtins = { path = "../profiler_builtins", optional = true }
 unwind = { path = "../unwind" }
 hashbrown = { version = "0.14", default-features = false, features = ['rustc-dep-of-std'] }
@@ -76,7 +76,6 @@ compiler-builtins-c = ["alloc/compiler-builtins-c"]
 compiler-builtins-mem = ["alloc/compiler-builtins-mem"]
 compiler-builtins-no-asm = ["alloc/compiler-builtins-no-asm"]
 compiler-builtins-mangled-names = ["alloc/compiler-builtins-mangled-names"]
-compiler-builtins-weak-intrinsics = ["alloc/compiler-builtins-weak-intrinsics"]
 llvm-libunwind = ["unwind/llvm-libunwind"]
 system-llvm-libunwind = ["unwind/system-llvm-libunwind"]
 
