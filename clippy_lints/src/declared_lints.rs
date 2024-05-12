@@ -296,6 +296,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::loops::WHILE_IMMUTABLE_CONDITION_INFO,
     crate::loops::WHILE_LET_LOOP_INFO,
     crate::loops::WHILE_LET_ON_ITERATOR_INFO,
+    crate::macro_metavars_in_unsafe::MACRO_METAVARS_IN_UNSAFE_INFO,
     crate::macro_use::MACRO_USE_IMPORTS_INFO,
     crate::main_recursion::MAIN_RECURSION_INFO,
     crate::manual_assert::MANUAL_ASSERT_INFO,
