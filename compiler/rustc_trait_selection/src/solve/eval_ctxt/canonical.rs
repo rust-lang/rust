@@ -83,7 +83,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     ///   the values inferred while solving the instantiated goal.
     /// - `external_constraints`: additional constraints which aren't expressible
     ///   using simple unification of inference variables.
-    #[instrument(level = "debug", skip(self), ret)]
+    #[instrument(level = "trace", skip(self), ret)]
     pub(in crate::solve) fn evaluate_added_goals_and_make_canonical_response(
         &mut self,
         certainty: Certainty,
@@ -166,7 +166,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     /// external constraints do not need to record that opaque, since if it is
     /// further constrained by inference, that will be passed back in the var
     /// values.
-    #[instrument(level = "debug", skip(self), ret)]
+    #[instrument(level = "trace", skip(self), ret)]
     fn compute_external_query_constraints(
         &self,
         normalization_nested_goals: NestedNormalizationGoals<'tcx>,
@@ -174,7 +174,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         // We only check for leaks from universes which were entered inside
         // of the query.
         self.infcx.leak_check(self.max_input_universe, None).map_err(|e| {
-            debug!(?e, "failed the leak check");
+            trace!(?e, "failed the leak check");
             NoSolution
         })?;
 
@@ -334,7 +334,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     /// whether an alias is rigid by using the trait solver. When instantiating a response
     /// from the solver we assume that the solver correctly handled aliases and therefore
     /// always relate them structurally here.
-    #[instrument(level = "debug", skip(infcx))]
+    #[instrument(level = "trace", skip(infcx))]
     fn unify_query_var_values(
         infcx: &InferCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
@@ -407,7 +407,7 @@ pub(in crate::solve) fn make_canonical_state<'tcx, T: TypeFoldable<TyCtxt<'tcx>>
 /// This currently assumes that unifying the var values trivially succeeds.
 /// Adding any inference constraints which weren't present when originally
 /// computing the canonical query can result in bugs.
-#[instrument(level = "debug", skip(infcx, span, param_env))]
+#[instrument(level = "trace", skip(infcx, span, param_env))]
 pub(in crate::solve) fn instantiate_canonical_state<'tcx, T: TypeFoldable<TyCtxt<'tcx>>>(
     infcx: &InferCtxt<'tcx>,
     span: Span,

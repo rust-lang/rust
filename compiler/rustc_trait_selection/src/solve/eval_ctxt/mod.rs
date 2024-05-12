@@ -458,7 +458,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         }
     }
 
-    #[instrument(level = "debug", skip(self))]
+    #[instrument(level = "trace", skip(self))]
     pub(super) fn add_normalizes_to_goal(&mut self, goal: Goal<'tcx, ty::NormalizesTo<'tcx>>) {
         self.inspect.add_normalizes_to_goal(self.infcx, self.max_input_universe, goal);
         self.nested_goals.normalizes_to_goals.push(goal);
@@ -472,7 +472,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
 
     // Recursively evaluates all the goals added to this `EvalCtxt` to completion, returning
     // the certainty of all the goals.
-    #[instrument(level = "debug", skip(self))]
+    #[instrument(level = "trace", skip(self))]
     pub(super) fn try_evaluate_added_goals(&mut self) -> Result<Certainty, NoSolution> {
         self.inspect.start_evaluate_added_goals();
         let mut response = Ok(Certainty::overflow(false));
@@ -526,7 +526,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
                 unconstrained_goal,
             )?;
             // Add the nested goals from normalization to our own nested goals.
-            debug!(?nested_goals);
+            trace!(?nested_goals);
             goals.goals.extend(nested_goals);
 
             // Finally, equate the goal's RHS with the unconstrained var.
@@ -622,7 +622,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     ///
     /// This is the case if the `term` does not occur in any other part of the predicate
     /// and is able to name all other placeholder and inference variables.
-    #[instrument(level = "debug", skip(self), ret)]
+    #[instrument(level = "trace", skip(self), ret)]
     pub(super) fn term_is_fully_unconstrained(
         &self,
         goal: Goal<'tcx, ty::NormalizesTo<'tcx>>,
@@ -718,7 +718,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             && goal.param_env.visit_with(&mut visitor).is_continue()
     }
 
-    #[instrument(level = "debug", skip(self, param_env), ret)]
+    #[instrument(level = "trace", skip(self, param_env), ret)]
     pub(super) fn eq<T: ToTrace<'tcx>>(
         &mut self,
         param_env: ty::ParamEnv<'tcx>,
@@ -733,7 +733,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                 self.add_goals(GoalSource::Misc, obligations.into_iter().map(|o| o.into()));
             })
             .map_err(|e| {
-                debug!(?e, "failed to equate");
+                trace!(?e, "failed to equate");
                 NoSolution
             })
     }
@@ -743,7 +743,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     /// Normally we emit a nested `AliasRelate` when equating an inference
     /// variable and an alias. This causes us to instead constrain the inference
     /// variable to the alias without emitting a nested alias relate goals.
-    #[instrument(level = "debug", skip(self, param_env), ret)]
+    #[instrument(level = "trace", skip(self, param_env), ret)]
     pub(super) fn relate_rigid_alias_non_alias(
         &mut self,
         param_env: ty::ParamEnv<'tcx>,
@@ -781,7 +781,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     /// This sohuld only be used when we're either instantiating a previously
     /// unconstrained "return value" or when we're sure that all aliases in
     /// the types are rigid.
-    #[instrument(level = "debug", skip(self, param_env), ret)]
+    #[instrument(level = "trace", skip(self, param_env), ret)]
     pub(super) fn eq_structurally_relating_aliases<T: ToTrace<'tcx>>(
         &mut self,
         param_env: ty::ParamEnv<'tcx>,
@@ -798,7 +798,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         Ok(())
     }
 
-    #[instrument(level = "debug", skip(self, param_env), ret)]
+    #[instrument(level = "trace", skip(self, param_env), ret)]
     pub(super) fn sub<T: ToTrace<'tcx>>(
         &mut self,
         param_env: ty::ParamEnv<'tcx>,
@@ -813,12 +813,12 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                 self.add_goals(GoalSource::Misc, obligations.into_iter().map(|o| o.into()));
             })
             .map_err(|e| {
-                debug!(?e, "failed to subtype");
+                trace!(?e, "failed to subtype");
                 NoSolution
             })
     }
 
-    #[instrument(level = "debug", skip(self, param_env), ret)]
+    #[instrument(level = "trace", skip(self, param_env), ret)]
     pub(super) fn relate<T: ToTrace<'tcx>>(
         &mut self,
         param_env: ty::ParamEnv<'tcx>,
@@ -834,7 +834,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                 self.add_goals(GoalSource::Misc, obligations.into_iter().map(|o| o.into()));
             })
             .map_err(|e| {
-                debug!(?e, "failed to relate");
+                trace!(?e, "failed to relate");
                 NoSolution
             })
     }
@@ -859,7 +859,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                 obligations.into_iter().map(|o| o.into()).collect()
             })
             .map_err(|e| {
-                debug!(?e, "failed to equate");
+                trace!(?e, "failed to equate");
                 NoSolution
             })
     }
