@@ -2,7 +2,7 @@
 
 **Tier: 3**
 
-Freestanding x86-64 linux binary with no depedency on libc.
+Freestanding x86-64 linux binary with no dependency on libc.
 
 ## Target maintainers
 
