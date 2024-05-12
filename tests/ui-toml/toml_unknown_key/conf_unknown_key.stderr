@@ -10,6 +10,7 @@ error: error reading Clippy's configuration file: unknown field `foobar`, expect
            allow-one-hash-in-raw-strings
            allow-print-in-tests
            allow-private-module-inception
+           allow-renamed-params-for
            allow-unwrap-in-tests
            allow-useless-vec-in-tests
            allowed-dotfiles
@@ -91,6 +92,7 @@ error: error reading Clippy's configuration file: unknown field `barfoo`, expect
            allow-one-hash-in-raw-strings
            allow-print-in-tests
            allow-private-module-inception
+           allow-renamed-params-for
            allow-unwrap-in-tests
            allow-useless-vec-in-tests
            allowed-dotfiles
@@ -172,6 +174,7 @@ error: error reading Clippy's configuration file: unknown field `allow_mixed_uni
            allow-one-hash-in-raw-strings
            allow-print-in-tests
            allow-private-module-inception
+           allow-renamed-params-for
            allow-unwrap-in-tests
            allow-useless-vec-in-tests
            allowed-dotfiles

@@ -1,38 +1,32 @@
 error: renamed function parameter of trait impl
-  --> tests/ui/renamed_function_params.rs:22:13
+  --> tests/ui-toml/renamed_function_params/renamed_function_params.rs:30:18
    |
-LL |     fn from(b: B) -> Self {
-   |             ^ help: consider using the default name: `value`
+LL |     fn eq(&self, rhs: &Self) -> bool {
+   |                  ^^^ help: consider using the default name: `other`
    |
    = note: `-D clippy::renamed-function-params` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::renamed_function_params)]`
 
 error: renamed function parameter of trait impl
-  --> tests/ui/renamed_function_params.rs:28:18
-   |
-LL |     fn eq(&self, rhs: &Self) -> bool {
-   |                  ^^^ help: consider using the default name: `other`
-
-error: renamed function parameter of trait impl
-  --> tests/ui/renamed_function_params.rs:32:18
+  --> tests/ui-toml/renamed_function_params/renamed_function_params.rs:34:18
    |
 LL |     fn ne(&self, rhs: &Self) -> bool {
    |                  ^^^ help: consider using the default name: `other`
 
 error: renamed function parameter of trait impl
-  --> tests/ui/renamed_function_params.rs:46:19
+  --> tests/ui-toml/renamed_function_params/renamed_function_params.rs:48:19
    |
-LL |     fn foo(&self, i_dont_wanna_use_your_name: u8) {}
+LL |     fn foo(&self, i_dont_wanna_use_your_name: u8) {} // only lint in `extend`
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using the default name: `val`
 
 error: renamed function parameter of trait impl
-  --> tests/ui/renamed_function_params.rs:54:31
+  --> tests/ui-toml/renamed_function_params/renamed_function_params.rs:55:31
    |
 LL |     fn hash<H: Hasher>(&self, states: &mut H) {
    |                               ^^^^^^ help: consider using the default name: `state`
 
 error: renamed function parameters of trait impl
-  --> tests/ui/renamed_function_params.rs:58:30
+  --> tests/ui-toml/renamed_function_params/renamed_function_params.rs:59:30
    |
 LL |     fn hash_slice<H: Hasher>(date: &[Self], states: &mut H) {
    |                              ^^^^           ^^^^^^
@@ -43,10 +37,10 @@ LL |     fn hash_slice<H: Hasher>(data: &[Self], state: &mut H) {
    |                              ~~~~           ~~~~~
 
 error: renamed function parameter of trait impl
-  --> tests/ui/renamed_function_params.rs:79:18
+  --> tests/ui-toml/renamed_function_params/renamed_function_params.rs:80:18
    |
 LL |     fn add(self, b: B) -> C {
    |                  ^ help: consider using the default name: `rhs`
 
-error: aborting due to 7 previous errors
+error: aborting due to 6 previous errors
 

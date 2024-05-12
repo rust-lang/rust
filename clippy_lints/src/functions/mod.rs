@@ -7,11 +7,12 @@ mod result;
 mod too_many_arguments;
 mod too_many_lines;
 
+use clippy_utils::def_path_def_ids;
 use rustc_hir as hir;
 use rustc_hir::intravisit;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
-use rustc_span::def_id::LocalDefId;
+use rustc_span::def_id::{DefIdSet, LocalDefId};
 use rustc_span::Span;
 
 declare_clippy_lint! {
@@ -373,9 +374,9 @@ declare_clippy_lint! {
     /// ```rust
     /// struct A(u32);
     ///
-    /// impl From<A> for String {
-    ///     fn from(a: A) -> Self {
-    ///         a.0.to_string()
+    /// impl PartialEq for A {
+    ///     fn eq(&self, b: &Self) -> bool {
+    ///         self.0 == b.0
     ///     }
     /// }
     /// ```
@@ -383,9 +384,9 @@ declare_clippy_lint! {
     /// ```rust
     /// struct A(u32);
     ///
-    /// impl From<A> for String {
-    ///     fn from(value: A) -> Self {
-    ///         value.0.to_string()
+    /// impl PartialEq for A {
+    ///     fn eq(&self, other: &Self) -> bool {
+    ///         self.0 == other.0
     ///     }
     /// }
     /// ```
@@ -395,13 +396,16 @@ declare_clippy_lint! {
     "renamed function parameters in trait implementation"
 }
 
-#[derive(Copy, Clone)]
-#[allow(clippy::struct_field_names)]
+#[derive(Clone)]
 pub struct Functions {
     too_many_arguments_threshold: u64,
     too_many_lines_threshold: u64,
     large_error_threshold: u64,
     avoid_breaking_exported_api: bool,
+    allow_renamed_params_for: Vec<String>,
+    /// A set of resolved `def_id` of traits that are configured to allow
+    /// function params renaming.
+    trait_ids: DefIdSet,
 }
 
 impl Functions {
@@ -410,12 +414,15 @@ impl Functions {
         too_many_lines_threshold: u64,
         large_error_threshold: u64,
         avoid_breaking_exported_api: bool,
+        allow_renamed_params_for: Vec<String>,
     ) -> Self {
         Self {
             too_many_arguments_threshold,
             too_many_lines_threshold,
             large_error_threshold,
             avoid_breaking_exported_api,
+            allow_renamed_params_for,
+            trait_ids: DefIdSet::default(),
         }
     }
 }
@@ -461,7 +468,7 @@ impl<'tcx> LateLintPass<'tcx> for Functions {
         must_use::check_impl_item(cx, item);
         result::check_impl_item(cx, item, self.large_error_threshold);
         impl_trait_in_params::check_impl_item(cx, item);
-        renamed_function_params::check_impl_item(cx, item);
+        renamed_function_params::check_impl_item(cx, item, &self.trait_ids);
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::TraitItem<'_>) {
@@ -470,5 +477,13 @@ impl<'tcx> LateLintPass<'tcx> for Functions {
         must_use::check_trait_item(cx, item);
         result::check_trait_item(cx, item, self.large_error_threshold);
         impl_trait_in_params::check_trait_item(cx, item, self.avoid_breaking_exported_api);
+    }
+
+    fn check_crate(&mut self, cx: &LateContext<'tcx>) {
+        for path in &self.allow_renamed_params_for {
+            let path_segments: Vec<&str> = path.split("::").collect();
+            let ids = def_path_def_ids(cx, &path_segments);
+            self.trait_ids.extend(ids);
+        }
     }
 }

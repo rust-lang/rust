@@ -1,4 +1,7 @@
 //@no-rustfix
+//@revisions: default extend
+//@[default] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/renamed_function_params/default
+//@[extend] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/renamed_function_params/extend
 #![warn(clippy::renamed_function_params)]
 #![allow(clippy::partialeq_ne_impl, clippy::to_string_trait_impl)]
 #![allow(unused)]
@@ -18,9 +21,8 @@ impl ToString for A {
 }
 
 struct B(u32);
-impl From<B> for String {
+impl std::convert::From<B> for String {
     fn from(b: B) -> Self {
-        //~^ ERROR: renamed function parameter of trait impl
         b.0.to_string()
     }
 }
@@ -43,8 +45,7 @@ trait MyTrait {
 }
 
 impl MyTrait for B {
-    fn foo(&self, i_dont_wanna_use_your_name: u8) {}
-    //~^ ERROR: renamed function parameter of trait impl
+    fn foo(&self, i_dont_wanna_use_your_name: u8) {} // only lint in `extend`
     fn bar(_a: u8, _: u8) {}
     fn baz(self, val: u8) {}
     fn quz(&self, val: u8) {}
@@ -77,7 +78,7 @@ enum C {
 impl std::ops::Add<B> for C {
     type Output = C;
     fn add(self, b: B) -> C {
-        //~^ ERROR: renamed function parameter of trait impl
+        // only lint in `extend`
         C::B(b.0)
     }
 }

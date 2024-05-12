@@ -122,6 +122,28 @@ Whether to allow module inception if it's not public.
 * [`module_inception`](https://rust-lang.github.io/rust-clippy/master/index.html#module_inception)
 
 
+## `allow-renamed-params-for`
+List of trait paths to ignore when checking renamed function parameters.
+
+#### Example
+
+```toml
+allow-renamed-params-for = [ "std::convert::From" ]
+```
+
+#### Noteworthy
+
+- By default, the following traits are ignored: `From`, `TryFrom`, `FromStr`
+- `".."` can be used as part of the list to indicate that the configured values should be appended to the
+default configuration of Clippy. By default, any configuration will replace the default value.
+
+**Default Value:** `["core::convert::From", "core::convert::TryFrom", "core::str::FromStr"]`
+
+---
+**Affected lints:**
+* [`renamed_function_params`](https://rust-lang.github.io/rust-clippy/master/index.html#renamed_function_params)
+
+
 ## `allow-unwrap-in-tests`
 Whether `unwrap` should be allowed in test functions or `#[cfg(test)]`
 
