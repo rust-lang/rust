@@ -117,6 +117,72 @@ mod tests {
     use super::*;
 
     #[test]
+    fn extract_with_specified_path_attr() {
+        check_assist(
+            move_module_to_file,
+            r#"
+//- /main.rs
+#[path="parser/__mod.rs"]
+mod parser;
+//- /parser/__mod.rs
+fn test() {}
+mod $0expr {
+    struct A {}
+}
+"#,
+            r#"
+//- /parser/__mod.rs
+fn test() {}
+mod expr;
+//- /parser/expr.rs
+struct A {}
+"#,
+        );
+
+        check_assist(
+            move_module_to_file,
+            r#"
+//- /main.rs
+#[path="parser/a/__mod.rs"]
+mod parser;
+//- /parser/a/__mod.rs
+fn test() {}
+mod $0expr {
+    struct A {}
+}
+"#,
+            r#"
+//- /parser/a/__mod.rs
+fn test() {}
+mod expr;
+//- /parser/a/expr.rs
+struct A {}
+"#,
+        );
+
+        check_assist(
+            move_module_to_file,
+            r#"
+//- /main.rs
+#[path="a.rs"]
+mod parser;
+//- /a.rs
+fn test() {}
+mod $0expr {
+    struct A {}
+}
+"#,
+            r#"
+//- /a.rs
+fn test() {}
+mod expr;
+//- /expr.rs
+struct A {}
+"#,
+        );
+    }
+
+    #[test]
     fn extract_from_root() {
         check_assist(
             move_module_to_file,
