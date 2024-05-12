@@ -139,8 +139,12 @@ impl std::ops::DerefMut for State<'_> {
 }
 
 impl<'a> PrintState<'a> for State<'a> {
-    fn comments(&mut self) -> &mut Option<Comments<'a>> {
-        &mut self.comments
+    fn comments(&self) -> Option<&Comments<'a>> {
+        self.comments.as_ref()
+    }
+
+    fn comments_mut(&mut self) -> Option<&mut Comments<'a>> {
+        self.comments.as_mut()
     }
 
     fn ann_post(&mut self, ident: Ident) {

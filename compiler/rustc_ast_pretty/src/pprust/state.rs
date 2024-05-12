@@ -186,17 +186,23 @@ impl<'a> Comments<'a> {
         Comments { sm, comments, current: 0 }
     }
 
+    fn peek(&self) -> Option<&Comment> {
+        self.comments.get(self.current)
+    }
+
     // FIXME: This shouldn't probably clone lmao
-    fn next(&self) -> Option<Comment> {
-        self.comments.get(self.current).cloned()
+    fn next(&mut self) -> Option<Comment> {
+        let cmnt = self.comments.get(self.current).cloned();
+        self.current += 1;
+        cmnt
     }
 
     fn trailing_comment(
-        &self,
+        &mut self,
         span: rustc_span::Span,
         next_pos: Option<BytePos>,
     ) -> Option<Comment> {
-        if let Some(cmnt) = self.next() {
+        if let Some(cmnt) = self.peek() {
             if cmnt.style != CommentStyle::Trailing {
                 return None;
             }
@@ -204,7 +210,7 @@ impl<'a> Comments<'a> {
             let comment_line = self.sm.lookup_char_pos(cmnt.pos);
             let next = next_pos.unwrap_or_else(|| cmnt.pos + BytePos(1));
             if span.hi() < cmnt.pos && cmnt.pos < next && span_line.line == comment_line.line {
-                return Some(cmnt);
+                return Some(self.next().unwrap());
             }
         }
 
@@ -400,7 +406,8 @@ impl std::ops::DerefMut for State<'_> {
 
 /// This trait is used for both AST and HIR pretty-printing.
 pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::DerefMut {
-    fn comments(&mut self) -> &mut Option<Comments<'a>>;
+    fn comments(&self) -> Option<&Comments<'a>>;
+    fn comments_mut(&mut self) -> Option<&mut Comments<'a>>;
     fn ann_post(&mut self, ident: Ident);
     fn print_generic_args(&mut self, args: &ast::GenericArgs, colons_before_params: bool);
 
@@ -442,18 +449,18 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
 
     fn maybe_print_comment(&mut self, pos: BytePos) -> bool {
         let mut has_comment = false;
-        while let Some(cmnt) = self.next_comment() {
-            if cmnt.pos < pos {
-                has_comment = true;
-                self.print_comment(&cmnt);
-            } else {
+        while let Some(cmnt) = self.peek_comment() {
+            if cmnt.pos >= pos {
                 break;
             }
+            has_comment = true;
+            let cmnt = self.next_comment().unwrap();
+            self.print_comment(cmnt);
         }
         has_comment
     }
 
-    fn print_comment(&mut self, cmnt: &Comment) {
+    fn print_comment(&mut self, cmnt: Comment) {
         match cmnt.style {
             CommentStyle::Mixed => {
                 if !self.is_beginning_of_line() {
@@ -517,19 +524,20 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
                 self.hardbreak();
             }
         }
-        if let Some(cmnts) = self.comments() {
-            cmnts.current += 1;
-        }
+    }
+
+    fn peek_comment<'b>(&'b self) -> Option<&'b Comment> where 'a: 'b {
+        self.comments().and_then(|c| c.peek())
     }
 
     fn next_comment(&mut self) -> Option<Comment> {
-        self.comments().as_mut().and_then(|c| c.next())
+        self.comments_mut().and_then(|c| c.next())
     }
 
     fn maybe_print_trailing_comment(&mut self, span: rustc_span::Span, next_pos: Option<BytePos>) {
-        if let Some(cmnts) = self.comments() {
+        if let Some(cmnts) = self.comments_mut() {
             if let Some(cmnt) = cmnts.trailing_comment(span, next_pos) {
-                self.print_comment(&cmnt);
+                self.print_comment(cmnt);
             }
         }
     }
@@ -537,11 +545,11 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
     fn print_remaining_comments(&mut self) {
         // If there aren't any remaining comments, then we need to manually
         // make sure there is a line break at the end.
-        if self.next_comment().is_none() {
+        if self.peek_comment().is_none() {
             self.hardbreak();
         }
         while let Some(cmnt) = self.next_comment() {
-            self.print_comment(&cmnt)
+            self.print_comment(cmnt)
         }
     }
 
@@ -994,8 +1002,12 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
 }
 
 impl<'a> PrintState<'a> for State<'a> {
-    fn comments(&mut self) -> &mut Option<Comments<'a>> {
-        &mut self.comments
+    fn comments(&self) -> Option<&Comments<'a>> {
+        self.comments.as_ref()
+    }
+
+    fn comments_mut(&mut self) -> Option<&mut Comments<'a>> {
+        self.comments.as_mut()
     }
 
     fn ann_post(&mut self, ident: Ident) {
