@@ -15,7 +15,7 @@ use ast::Label;
 use rustc_ast as ast;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, TokenKind};
-use rustc_ast::util::classify;
+use rustc_ast::util::classify::{self, TrailingBrace};
 use rustc_ast::{AttrStyle, AttrVec, LocalKind, MacCall, MacCallStmt, MacStmtStyle};
 use rustc_ast::{Block, BlockCheckMode, Expr, ExprKind, HasAttrs, Local, Recovered, Stmt};
 use rustc_ast::{StmtKind, DUMMY_NODE_ID};
@@ -407,18 +407,24 @@ impl<'a> Parser<'a> {
 
     fn check_let_else_init_trailing_brace(&self, init: &ast::Expr) {
         if let Some(trailing) = classify::expr_trailing_brace(init) {
-            let sugg = match &trailing.kind {
-                ExprKind::MacCall(mac) => errors::WrapInParentheses::MacroArgs {
-                    left: mac.args.dspan.open,
-                    right: mac.args.dspan.close,
-                },
-                _ => errors::WrapInParentheses::Expression {
-                    left: trailing.span.shrink_to_lo(),
-                    right: trailing.span.shrink_to_hi(),
-                },
+            let (span, sugg) = match trailing {
+                TrailingBrace::MacCall(mac) => (
+                    mac.span(),
+                    errors::WrapInParentheses::MacroArgs {
+                        left: mac.args.dspan.open,
+                        right: mac.args.dspan.close,
+                    },
+                ),
+                TrailingBrace::Expr(expr) => (
+                    expr.span,
+                    errors::WrapInParentheses::Expression {
+                        left: expr.span.shrink_to_lo(),
+                        right: expr.span.shrink_to_hi(),
+                    },
+                ),
             };
             self.dcx().emit_err(errors::InvalidCurlyInLetElse {
-                span: trailing.span.with_lo(trailing.span.hi() - BytePos(1)),
+                span: span.with_lo(span.hi() - BytePos(1)),
                 sugg,
             });
         }

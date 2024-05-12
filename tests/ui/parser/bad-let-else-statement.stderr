@@ -242,6 +242,20 @@ LL |     let bad = format_args! ("") else { return; };
    |                            ~  ~
 
 error: right curly brace `}` before `else` in a `let...else` statement not allowed
+  --> $DIR/bad-let-else-statement.rs:207:5
+   |
+LL |     } else {
+   |     ^
+   |
+help: use parentheses instead of braces for this macro
+   |
+LL ~     let foo = &std::ptr::null as &'static dyn std::ops::Fn() -> *const primitive! (
+LL |
+LL |         8
+LL ~     ) else {
+   |
+
+error: right curly brace `}` before `else` in a `let...else` statement not allowed
   --> $DIR/bad-let-else-statement.rs:190:25
    |
 LL |             let 0 = a! {} else { return; };
@@ -311,5 +325,5 @@ LL | |     } else {
    = note: this pattern will always match, so the `else` clause is useless
    = help: consider removing the `else` clause
 
-error: aborting due to 19 previous errors; 5 warnings emitted
+error: aborting due to 20 previous errors; 5 warnings emitted
 

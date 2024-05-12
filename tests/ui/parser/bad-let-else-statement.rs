@@ -205,7 +205,7 @@ fn t() {
         //~^ WARN irrefutable `let...else` pattern
         8
     } else {
-        // FIXME: right curly brace `}` before `else` in a `let...else` statement not allowed
+        //~^ ERROR right curly brace `}` before `else` in a `let...else` statement not allowed
         return;
     };
 }
