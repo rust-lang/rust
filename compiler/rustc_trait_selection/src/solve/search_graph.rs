@@ -129,16 +129,6 @@ impl<'tcx> SearchGraph<'tcx> {
         self.mode
     }
 
-    /// Update the stack and reached depths on cache hits.
-    #[instrument(level = "debug", skip(self))]
-    fn on_cache_hit(&mut self, additional_depth: usize, encountered_overflow: bool) {
-        let reached_depth = self.stack.next_index().plus(additional_depth);
-        if let Some(last) = self.stack.raw.last_mut() {
-            last.reached_depth = last.reached_depth.max(reached_depth);
-            last.encountered_overflow |= encountered_overflow;
-        }
-    }
-
     /// Pops the highest goal from the stack, lazily updating the
     /// the next goal in the stack.
     ///
@@ -266,36 +256,7 @@ impl<'tcx> SearchGraph<'tcx> {
             return Self::response_no_constraints(tcx, input, Certainty::overflow(true));
         };
 
-        // Try to fetch the goal from the global cache.
-        'global: {
-            let Some(CacheData { result, proof_tree, reached_depth, encountered_overflow }) =
-                self.global_cache(tcx).get(
-                    tcx,
-                    input,
-                    |cycle_participants| {
-                        self.stack.iter().any(|entry| cycle_participants.contains(&entry.input))
-                    },
-                    available_depth,
-                )
-            else {
-                break 'global;
-            };
-
-            // If we're building a proof tree and the current cache entry does not
-            // contain a proof tree, we do not use the entry but instead recompute
-            // the goal. We simply overwrite the existing entry once we're done,
-            // caching the proof tree.
-            if !inspect.is_noop() {
-                if let Some(revisions) = proof_tree {
-                    inspect.goal_evaluation_kind(
-                        inspect::WipCanonicalGoalEvaluationKind::Interned { revisions },
-                    );
-                } else {
-                    break 'global;
-                }
-            }
-
-            self.on_cache_hit(reached_depth, encountered_overflow);
+        if let Some(result) = self.lookup_global_cache(tcx, input, available_depth, inspect) {
             return result;
         }
 
@@ -376,7 +337,10 @@ impl<'tcx> SearchGraph<'tcx> {
 
         // This is for global caching, so we properly track query dependencies.
         // Everything that affects the `result` should be performed within this
-        // `with_anon_task` closure.
+        // `with_anon_task` closure. If computing this goal depends on something
+        // not tracked by the cache key and from outside of this anon task, it
+        // must not be added to the global cache. Notably, this is the case for
+        // trait solver cycles participants.
         let ((final_entry, result), dep_node) =
             tcx.dep_graph.with_anon_task(tcx, dep_kinds::TraitSelect, || {
                 for _ in 0..FIXPOINT_STEP_LIMIT {
@@ -433,6 +397,45 @@ impl<'tcx> SearchGraph<'tcx> {
         }
 
         result
+    }
+
+    /// Try to fetch a previously computed result from the global cache,
+    /// making sure to only do so if it would match the result of reevaluating
+    /// this goal.
+    fn lookup_global_cache(
+        &mut self,
+        tcx: TyCtxt<'tcx>,
+        input: CanonicalInput<'tcx>,
+        available_depth: Limit,
+        inspect: &mut ProofTreeBuilder<'tcx>,
+    ) -> Option<QueryResult<'tcx>> {
+        let CacheData { result, proof_tree, additional_depth, encountered_overflow } = self
+            .global_cache(tcx)
+            .get(tcx, input, self.stack.iter().map(|e| e.input), available_depth)?;
+
+        // If we're building a proof tree and the current cache entry does not
+        // contain a proof tree, we do not use the entry but instead recompute
+        // the goal. We simply overwrite the existing entry once we're done,
+        // caching the proof tree.
+        if !inspect.is_noop() {
+            if let Some(revisions) = proof_tree {
+                let kind = inspect::WipCanonicalGoalEvaluationKind::Interned { revisions };
+                inspect.goal_evaluation_kind(kind);
+            } else {
+                return None;
+            }
+        }
+
+        // Update the reached depth of the current goal to make sure
+        // its state is the same regardless of whether we've used the
+        // global cache or not.
+        let reached_depth = self.stack.next_index().plus(additional_depth);
+        if let Some(last) = self.stack.raw.last_mut() {
+            last.reached_depth = last.reached_depth.max(reached_depth);
+            last.encountered_overflow |= encountered_overflow;
+        }
+
+        Some(result)
     }
 }
 
