@@ -2039,10 +2039,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 let mut span: MultiSpan = vec![sp_candidate, sp_found].into();
                 span.push_span_label(self.tcx.def_span(trait_def_id), "this is the required trait");
                 span.push_span_label(sp_candidate, "this type implements the required trait");
-                span.push_span_label(
-                    sp_found,
-                    "this type doesn't implement the required trait",
-                );
+                span.push_span_label(sp_found, "this type doesn't implement the required trait");
                 err.highlighted_span_note(
                     span,
                     vec![
@@ -2055,6 +2052,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     ],
                 );
             }
+            err.help("you can use `cargo tree` to explore your dependency tree");
             return true;
         }
 
