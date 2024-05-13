@@ -15,7 +15,7 @@ use ide_db::{
     FxIndexSet, RootDatabase,
 };
 use itertools::{multizip, Itertools};
-use syntax::{ast, match_ast, AstNode, AstToken, SyntaxKind::*, SyntaxNode, T};
+use syntax::{ast, AstNode, SyntaxKind::*, SyntaxNode, T};
 
 use crate::{
     doc_links::token_as_doc_comment,

@@ -136,15 +136,15 @@ impl From<ast::LiteralKind> for Literal {
                 Literal::Float(FloatTypeWrapper::new(lit.value().unwrap_or(Default::default())), ty)
             }
             LiteralKind::ByteString(bs) => {
-                let text = bs.value().map(Box::from).unwrap_or_else(Default::default);
+                let text = bs.value().map_or_else(|_| Default::default(), Box::from);
                 Literal::ByteString(text)
             }
             LiteralKind::String(s) => {
-                let text = s.value().map(Box::from).unwrap_or_else(Default::default);
+                let text = s.value().map_or_else(|_| Default::default(), Box::from);
                 Literal::String(text)
             }
             LiteralKind::CString(s) => {
-                let text = s.value().map(Box::from).unwrap_or_else(Default::default);
+                let text = s.value().map_or_else(|_| Default::default(), Box::from);
                 Literal::CString(text)
             }
             LiteralKind::Byte(b) => {

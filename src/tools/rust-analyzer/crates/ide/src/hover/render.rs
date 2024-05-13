@@ -533,11 +533,11 @@ pub(super) fn literal(sema: &Semantics<'_, RootDatabase>, token: SyntaxToken) ->
 
     let value = match_ast! {
         match token {
-            ast::String(string) => Ok(string.value()?.to_string()),
-            ast::ByteString(string) => Ok(format_args!("{:?}", string.value()?).to_string()),
-            ast::CString(string) => Ok(std::str::from_utf8(string.value()?.as_ref()).ok()?.to_owned()),
-            ast::Char(char) => Ok(char.value()?.to_string()),
-            ast::Byte(byte) => Ok(format!("0x{:X}", byte.value()?)),
+            ast::String(string)     => string.value().as_ref().map_err(|e| format!("{e:?}")).map(ToString::to_string),
+            ast::ByteString(string) => string.value().as_ref().map_err(|e| format!("{e:?}")).map(|it| format!("{it:?}")),
+            ast::CString(string)    => string.value().as_ref().map_err(|e| format!("{e:?}")).map(|it| std::str::from_utf8(it).map_or_else(|e| format!("{e:?}"), ToOwned::to_owned)),
+            ast::Char(char)         => char  .value().as_ref().map_err(|e| format!("{e:?}")).map(ToString::to_string),
+            ast::Byte(byte)         => byte  .value().as_ref().map_err(|e| format!("{e:?}")).map(|it| format!("0x{it:X}")),
             ast::FloatNumber(num) => {
                 let (text, _) = num.split_into_parts();
                 let text = text.replace('_', "");
