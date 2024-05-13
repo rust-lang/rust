@@ -1,7 +1,7 @@
 use crate::{
-    utils::helpers::{
+    utils::{channel::Info, helpers::{
         check_cfg_arg, extract_beta_rev, hex_encode, make, program_out_of_date, symlink_dir,
-    },
+    }},
     Config,
 };
 use std::{
@@ -113,4 +113,15 @@ fn test_symlink_dir() {
     fs::remove_dir(link_path).unwrap();
     #[cfg(not(windows))]
     fs::remove_file(link_path).unwrap();
+}
+
+#[test]
+fn test_git_info_sha_short() {
+    let info = Info {
+        commit_date: Default::default(),
+        sha: "645bc609d994b6556c9aebbdd810f1d75c3e2206".into(),
+    };
+
+    let expected = "645bc609d9";
+    assert_eq!(expected, info.sha_short());
 }

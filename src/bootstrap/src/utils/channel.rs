@@ -30,7 +30,12 @@ pub enum GitInfo {
 pub struct Info {
     pub commit_date: String,
     pub sha: String,
-    pub short_sha: String,
+}
+
+impl Info {
+    pub fn sha_short(&self) -> &str {
+        &self.sha[..10]
+    }
 }
 
 impl GitInfo {
@@ -64,14 +69,12 @@ impl GitInfo {
                 .arg("--date=short")
                 .arg("--pretty=format:%cd"),
         );
-        let ver_hash = output(Command::new("git").current_dir(dir).arg("rev-parse").arg("HEAD"));
-        let short_ver_hash = output(
-            Command::new("git").current_dir(dir).arg("rev-parse").arg("--short=9").arg("HEAD"),
-        );
+        let ver_hash = output(Command::new("git").current_dir(dir).arg("rev-parse").arg("HEAD"))
+            .trim()
+            .to_string();
         GitInfo::Present(Some(Info {
             commit_date: ver_date.trim().to_string(),
             sha: ver_hash.trim().to_string(),
-            short_sha: short_ver_hash.trim().to_string(),
         }))
     }
 
@@ -88,7 +91,7 @@ impl GitInfo {
     }
 
     pub fn sha_short(&self) -> Option<&str> {
-        self.info().map(|s| &s.short_sha[..])
+        self.info().map(|s| s.sha_short())
     }
 
     pub fn commit_date(&self) -> Option<&str> {
@@ -99,7 +102,7 @@ impl GitInfo {
         let mut version = build.release(num);
         if let Some(inner) = self.info() {
             version.push_str(" (");
-            version.push_str(&inner.short_sha);
+            version.push_str(inner.sha_short());
             version.push(' ');
             version.push_str(&inner.commit_date);
             version.push(')');
@@ -130,13 +133,11 @@ pub fn read_commit_info_file(root: &Path) -> Option<Info> {
     if let Ok(contents) = fs::read_to_string(root.join("git-commit-info")) {
         let mut lines = contents.lines();
         let sha = lines.next();
-        let short_sha = lines.next();
         let commit_date = lines.next();
-        let info = match (commit_date, sha, short_sha) {
-            (Some(commit_date), Some(sha), Some(short_sha)) => Info {
+        let info = match (commit_date, sha) {
+            (Some(commit_date), Some(sha)) => Info {
                 commit_date: commit_date.to_owned(),
                 sha: sha.to_owned(),
-                short_sha: short_sha.to_owned(),
             },
             _ => panic!("the `git-commit-info` file is malformed"),
         };
@@ -149,7 +150,7 @@ pub fn read_commit_info_file(root: &Path) -> Option<Info> {
 /// Write the commit information to the `git-commit-info` file given the project
 /// root.
 pub fn write_commit_info_file(root: &Path, info: &Info) {
-    let commit_info = format!("{}\n{}\n{}\n", info.sha, info.short_sha, info.commit_date);
+    let commit_info = format!("{}\n{}\n", info.sha, info.commit_date);
     t!(fs::write(root.join("git-commit-info"), commit_info));
 }
 
