@@ -44,6 +44,7 @@ rm tests/incremental/hashes/statics.rs # same
 rm tests/ui/abi/mir/mir_codegen_calls_variadic.rs # requires float varargs
 rm tests/ui/abi/variadic-ffi.rs # requires callee side vararg support
 rm -r tests/run-make/c-link-to-rust-va-list-fn # requires callee side vararg support
+rm tests/ui/delegation/fn-header.rs
 
 # unsized locals
 rm -r tests/run-pass-valgrind/unsized-locals
@@ -87,6 +88,7 @@ rm -r tests/run-make/no-builtins-attribute # same
 rm tests/ui/abi/stack-protector.rs # requires stack protector support
 rm -r tests/run-make/emit-stack-sizes # requires support for -Z emit-stack-sizes
 rm -r tests/run-make/optimization-remarks-dir # remarks are LLVM specific
+rm -r tests/run-make/print-to-output # requires --print relocation-models
 
 # requires asm, llvm-ir and/or llvm-bc emit support
 # =============================================
@@ -151,7 +153,7 @@ index 9607ff02f96..b7d97caf9a2 100644
          let mut cmd = setup_common();
 -        let target_rpath_dir = env::var_os("TARGET_RPATH_DIR").unwrap();
 -        cmd.arg(format!("-L{}", target_rpath_dir.to_string_lossy()));
-         Self { cmd }
+         Self { cmd, stdin: None }
      }
 
 EOF

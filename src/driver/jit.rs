@@ -83,13 +83,6 @@ fn create_jit_module(
     );
 
     crate::allocator::codegen(tcx, &mut jit_module, &mut cx.unwind_context);
-    crate::main_shim::maybe_create_entry_wrapper(
-        tcx,
-        &mut jit_module,
-        &mut cx.unwind_context,
-        true,
-        true,
-    );
 
     (jit_module, cx)
 }
@@ -152,6 +145,14 @@ pub(crate) fn run_jit(tcx: TyCtxt<'_>, backend_config: BackendConfig) -> ! {
     if !cx.global_asm.is_empty() {
         tcx.dcx().fatal("Inline asm is not supported in JIT mode");
     }
+
+    crate::main_shim::maybe_create_entry_wrapper(
+        tcx,
+        &mut jit_module,
+        &mut cx.unwind_context,
+        true,
+        true,
+    );
 
     tcx.dcx().abort_if_errors();
 
@@ -231,16 +232,16 @@ pub(crate) fn codegen_and_compile_fn<'tcx>(
             crate::PrintOnPanic(|| format!("{:?} {}", instance, tcx.symbol_name(instance).name));
 
         let cached_func = std::mem::replace(&mut cached_context.func, Function::new());
-        let codegened_func = crate::base::codegen_fn(
+        if let Some(codegened_func) = crate::base::codegen_fn(
             tcx,
             cx,
             &mut TypeDebugContext::default(),
             cached_func,
             module,
             instance,
-        );
-
-        crate::base::compile_fn(cx, cached_context, module, codegened_func);
+        ) {
+            crate::base::compile_fn(cx, cached_context, module, codegened_func);
+        }
     });
 }
 
