@@ -1006,7 +1006,9 @@ impl ExprCollector<'_> {
             Some((mark, expansion)) => {
                 // Keep collecting even with expansion errors so we can provide completions and
                 // other services in incomplete macro expressions.
-                self.source_map.expansions.insert(macro_call_ptr, self.expander.current_file_id());
+                self.source_map
+                    .expansions
+                    .insert(macro_call_ptr, self.expander.current_file_id().macro_file().unwrap());
                 let prev_ast_id_map = mem::replace(
                     &mut self.ast_id_map,
                     self.db.ast_id_map(self.expander.current_file_id()),

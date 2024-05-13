@@ -132,13 +132,13 @@ pub enum ExpandError {
     MacroDefinition,
     Mbe(mbe::ExpandError),
     RecursionOverflow,
-    Other(Box<Box<str>>),
-    ProcMacroPanic(Box<Box<str>>),
+    Other(Arc<Box<str>>),
+    ProcMacroPanic(Arc<Box<str>>),
 }
 
 impl ExpandError {
     pub fn other(msg: impl Into<Box<str>>) -> Self {
-        ExpandError::Other(Box::new(msg.into()))
+        ExpandError::Other(Arc::new(msg.into()))
     }
 }
 

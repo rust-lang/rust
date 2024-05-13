@@ -28,7 +28,7 @@ use hir_expand::{
     mod_path::path,
     name,
     name::{AsName, Name},
-    HirFileId, InFile, MacroFileId, MacroFileIdExt,
+    HirFileId, InFile, InMacroFile, MacroFileId, MacroFileIdExt,
 };
 use hir_ty::{
     diagnostics::{
@@ -118,7 +118,7 @@ impl SourceAnalyzer {
     fn expr_id(&self, db: &dyn HirDatabase, expr: &ast::Expr) -> Option<ExprId> {
         let src = match expr {
             ast::Expr::MacroExpr(expr) => {
-                self.expand_expr(db, InFile::new(self.file_id, expr.macro_call()?))?
+                self.expand_expr(db, InFile::new(self.file_id, expr.macro_call()?))?.into()
             }
             _ => InFile::new(self.file_id, expr.clone()),
         };
@@ -145,20 +145,20 @@ impl SourceAnalyzer {
         &self,
         db: &dyn HirDatabase,
         expr: InFile<ast::MacroCall>,
-    ) -> Option<InFile<ast::Expr>> {
+    ) -> Option<InMacroFile<ast::Expr>> {
         let macro_file = self.body_source_map()?.node_macro_file(expr.as_ref())?;
-        let expanded = db.parse_or_expand(macro_file);
+        let expanded = db.parse_macro_expansion(macro_file).value.0.syntax_node();
         let res = if let Some(stmts) = ast::MacroStmts::cast(expanded.clone()) {
             match stmts.expr()? {
                 ast::Expr::MacroExpr(mac) => {
-                    self.expand_expr(db, InFile::new(macro_file, mac.macro_call()?))?
+                    self.expand_expr(db, InFile::new(macro_file.into(), mac.macro_call()?))?
                 }
-                expr => InFile::new(macro_file, expr),
+                expr => InMacroFile::new(macro_file, expr),
             }
         } else if let Some(call) = ast::MacroCall::cast(expanded.clone()) {
-            self.expand_expr(db, InFile::new(macro_file, call))?
+            self.expand_expr(db, InFile::new(macro_file.into(), call))?
         } else {
-            InFile::new(macro_file, ast::Expr::cast(expanded)?)
+            InMacroFile::new(macro_file, ast::Expr::cast(expanded)?)
         };
 
         Some(res)
