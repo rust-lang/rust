@@ -1589,7 +1589,7 @@ pub enum MultipleDeadCodes<'tcx> {
         participle: &'tcx str,
         name_list: DiagSymbolList,
         #[subdiagnostic]
-        change_fields_suggestion: ChangeFieldsToBeOfUnitType,
+        change_fields_suggestion: ChangeFields,
         #[subdiagnostic]
         parent_info: Option<ParentInfo<'tcx>>,
         #[subdiagnostic]
@@ -1616,11 +1616,18 @@ pub struct IgnoredDerivedImpls {
 }
 
 #[derive(Subdiagnostic)]
-#[multipart_suggestion(passes_change_fields_to_be_of_unit_type, applicability = "has-placeholders")]
-pub struct ChangeFieldsToBeOfUnitType {
-    pub num: usize,
-    #[suggestion_part(code = "()")]
-    pub spans: Vec<Span>,
+pub enum ChangeFields {
+    #[multipart_suggestion(
+        passes_change_fields_to_be_of_unit_type,
+        applicability = "has-placeholders"
+    )]
+    ChangeToUnitTypeOrRemove {
+        num: usize,
+        #[suggestion_part(code = "()")]
+        spans: Vec<Span>,
+    },
+    #[help(passes_remove_fields)]
+    Remove { num: usize },
 }
 
 #[derive(Diagnostic)]
