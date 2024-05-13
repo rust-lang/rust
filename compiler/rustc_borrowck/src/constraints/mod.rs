@@ -1,14 +1,98 @@
-use rustc_data_structures::graph::scc::Sccs;
+use crate::region_infer::RegionDefinition;
+use crate::type_check::Locations;
+use rustc_data_structures::graph::scc::{self, Sccs};
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::mir::ConstraintCategory;
-use rustc_middle::ty::{RegionVid, TyCtxt, VarianceDiagInfo};
+use rustc_middle::ty::{RegionVid, TyCtxt, UniverseIndex, VarianceDiagInfo};
 use rustc_span::Span;
 use std::fmt;
 use std::ops::Index;
 
-use crate::type_check::Locations;
-
 pub(crate) mod graph;
+
+pub type ConstraintSccs = Sccs<RegionVid, ConstraintSccIndex, RegionTracker>;
+
+/// An annotation for region graph SCCs that tracks
+/// the values of its elements.
+#[derive(Copy, Debug, Clone)]
+pub struct RegionTracker {
+    /// The largest universe of a placeholder reached from this SCC.
+    /// This includes placeholders within this SCC.
+    max_placeholder_universe_reached: UniverseIndex,
+
+    /// The smallest universe index reachable form the nodes of this SCC.
+    min_reachable_universe: UniverseIndex,
+
+    /// The representative Region Variable Id for this SCC. We prefer
+    /// placeholders over existentially quantified variables, otherwise
+    ///  it's the one with the smallest Region Variable ID.
+    pub representative: RegionVid,
+
+    /// Is the current representative a placeholder?
+    representative_is_placeholder: bool,
+
+    /// Is the current representative existentially quantified?
+    representative_is_existential: bool,
+}
+
+impl scc::Annotation for RegionTracker {
+    fn merge_scc(mut self, mut other: Self) -> Self {
+        // Prefer any placeholder over any existential
+        if other.representative_is_placeholder && self.representative_is_existential {
+            other.merge_min_max_seen(&self);
+            return other;
+        }
+
+        if self.representative_is_placeholder && other.representative_is_existential
+            || (self.representative <= other.representative)
+        {
+            self.merge_min_max_seen(&other);
+            return self;
+        }
+        other.merge_min_max_seen(&self);
+        other
+    }
+
+    fn merge_reached(mut self, other: Self) -> Self {
+        // No update to in-component values, only add seen values.
+        self.merge_min_max_seen(&other);
+        self
+    }
+}
+
+impl RegionTracker {
+    pub fn new(rvid: RegionVid, definition: &RegionDefinition<'_>) -> Self {
+        let placeholder_universe =
+            if definition.is_placeholder() { definition.universe } else { UniverseIndex::ROOT };
+
+        Self {
+            max_placeholder_universe_reached: placeholder_universe,
+            min_reachable_universe: definition.universe,
+            representative: rvid,
+            representative_is_placeholder: definition.is_placeholder(),
+            representative_is_existential: definition.is_existential(),
+        }
+    }
+    pub fn universe(self) -> UniverseIndex {
+        self.min_reachable_universe
+    }
+
+    fn merge_min_max_seen(&mut self, other: &Self) {
+        self.max_placeholder_universe_reached = std::cmp::max(
+            self.max_placeholder_universe_reached,
+            other.max_placeholder_universe_reached,
+        );
+
+        self.min_reachable_universe =
+            std::cmp::min(self.min_reachable_universe, other.min_reachable_universe);
+    }
+
+    /// Returns `true` if during the annotated SCC reaches a placeholder
+    /// with a universe larger than the smallest reachable one, `false` otherwise.
+    pub fn has_incompatible_universes(&self) -> bool {
+        self.universe().cannot_name(self.max_placeholder_universe_reached)
+    }
+}
 
 /// A set of NLL region constraints. These include "outlives"
 /// constraints of the form `R1: R2`. Each constraint is identified by
@@ -43,18 +127,6 @@ impl<'tcx> OutlivesConstraintSet<'tcx> {
     /// represents an edge `R2 -> R1`.
     pub(crate) fn reverse_graph(&self, num_region_vars: usize) -> graph::ReverseConstraintGraph {
         graph::ConstraintGraph::new(graph::Reverse, self, num_region_vars)
-    }
-
-    /// Computes cycles (SCCs) in the graph of regions. In particular,
-    /// find all regions R1, R2 such that R1: R2 and R2: R1 and group
-    /// them into an SCC, and find the relationships between SCCs.
-    pub(crate) fn compute_sccs(
-        &self,
-        constraint_graph: &graph::NormalConstraintGraph,
-        static_region: RegionVid,
-    ) -> Sccs<RegionVid, ConstraintSccIndex> {
-        let region_graph = &constraint_graph.region_graph(self, static_region);
-        Sccs::new(region_graph)
     }
 
     pub(crate) fn outlives(
