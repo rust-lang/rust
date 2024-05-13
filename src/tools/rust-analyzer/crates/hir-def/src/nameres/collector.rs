@@ -15,15 +15,13 @@ use hir_expand::{
     builtin_fn_macro::find_builtin_macro,
     name::{name, AsName, Name},
     proc_macro::CustomProcMacroExpander,
-    ExpandResult, ExpandTo, HirFileId, InFile, MacroCallId, MacroCallKind, MacroCallLoc,
-    MacroDefId, MacroDefKind,
+    ExpandTo, HirFileId, InFile, MacroCallId, MacroCallKind, MacroDefId, MacroDefKind,
 };
 use itertools::{izip, Itertools};
 use la_arena::Idx;
 use limit::Limit;
 use rustc_hash::{FxHashMap, FxHashSet};
 use span::{Edition, ErasedFileAstId, FileAstId, Span, SyntaxContextId};
-use stdx::always;
 use syntax::ast;
 use triomphe::Arc;
 
@@ -1411,31 +1409,6 @@ impl DefCollector<'_> {
             return;
         }
         let file_id = macro_call_id.as_file();
-
-        // First, fetch the raw expansion result for purposes of error reporting. This goes through
-        // `parse_macro_expansion_error` to avoid depending on the full expansion result (to improve
-        // incrementality).
-        // FIXME: This kind of error fetching feels a bit odd?
-        let ExpandResult { value: errors, err } =
-            self.db.parse_macro_expansion_error(macro_call_id);
-        if let Some(err) = err {
-            let loc: MacroCallLoc = self.db.lookup_intern_macro_call(macro_call_id);
-            let diag = match err {
-                // why is this reported here?
-                hir_expand::ExpandError::UnresolvedProcMacro(krate) => {
-                    always!(krate == loc.def.krate);
-                    DefDiagnostic::unresolved_proc_macro(module_id, loc.kind.clone(), loc.def.krate)
-                }
-                _ => DefDiagnostic::macro_error(module_id, loc.kind, err.to_string()),
-            };
-
-            self.def_map.diagnostics.push(diag);
-        }
-        if !errors.is_empty() {
-            let loc: MacroCallLoc = self.db.lookup_intern_macro_call(macro_call_id);
-            let diag = DefDiagnostic::macro_expansion_parse_error(module_id, loc.kind, errors);
-            self.def_map.diagnostics.push(diag);
-        }
 
         // Then, fetch and process the item tree. This will reuse the expansion result from above.
         let item_tree = self.db.file_item_tree(file_id);

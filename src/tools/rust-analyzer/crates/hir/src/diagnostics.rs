@@ -13,6 +13,7 @@ pub use hir_def::VariantId;
 use hir_def::{body::SyntheticSyntax, hir::ExprOrPatId, path::ModPath, AssocItemId, DefWithBodyId};
 use hir_expand::{name::Name, HirFileId, InFile};
 use syntax::{ast, AstPtr, SyntaxError, SyntaxNodePtr, TextRange};
+use triomphe::Arc;
 
 use crate::{AssocItem, Field, Local, MacroKind, Trait, Type};
 
@@ -172,7 +173,7 @@ pub struct MacroError {
 pub struct MacroExpansionParseError {
     pub node: InFile<SyntaxNodePtr>,
     pub precise_location: Option<TextRange>,
-    pub errors: Box<[SyntaxError]>,
+    pub errors: Arc<[SyntaxError]>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]

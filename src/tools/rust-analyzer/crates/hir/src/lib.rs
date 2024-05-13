@@ -59,7 +59,9 @@ use hir_def::{
     ModuleId, StaticId, StructId, TraitAliasId, TraitId, TupleId, TypeAliasId, TypeOrConstParamId,
     TypeParamId, UnionId,
 };
-use hir_expand::{attrs::collect_attrs, name::name, proc_macro::ProcMacroKind, MacroCallKind};
+use hir_expand::{
+    attrs::collect_attrs, name::name, proc_macro::ProcMacroKind, AstId, MacroCallKind, ValueResult,
+};
 use hir_ty::{
     all_super_traits, autoderef, check_orphan_rules,
     consteval::{try_const_usize, unknown_const_as_generic, ConstExt},
@@ -79,7 +81,7 @@ use hir_ty::{
 use itertools::Itertools;
 use nameres::diagnostics::DefDiagnosticKind;
 use rustc_hash::FxHashSet;
-use span::Edition;
+use span::{Edition, MacroCallId};
 use stdx::{impl_from, never};
 use syntax::{
     ast::{self, HasAttrs as _, HasName},
@@ -559,6 +561,12 @@ impl Module {
             emit_def_diagnostic(db, acc, diag);
         }
 
+        if !self.id.is_block_module() {
+            // These are reported by the body of block modules
+            let scope = &def_map[self.id.local_id].scope;
+            scope.all_macro_calls().for_each(|it| macro_call_diagnostics(db, it, acc));
+        }
+
         for def in self.declarations(db) {
             match def {
                 ModuleDef::Module(m) => {
@@ -576,6 +584,10 @@ impl Module {
                     for item in t.items(db) {
                         item.diagnostics(db, acc, style_lints);
                     }
+
+                    t.all_macro_calls(db)
+                        .iter()
+                        .for_each(|&(_ast, call_id)| macro_call_diagnostics(db, call_id, acc));
 
                     acc.extend(def.diagnostics(db, style_lints))
                 }
@@ -621,6 +633,11 @@ impl Module {
                 // FIXME: Once we diagnose the inputs to builtin derives, we should at least extract those diagnostics somehow
                 continue;
             }
+            impl_def
+                .all_macro_calls(db)
+                .iter()
+                .for_each(|&(_ast, call_id)| macro_call_diagnostics(db, call_id, acc));
+
             let ast_id_map = db.ast_id_map(file_id);
 
             for diag in db.impl_data_with_diagnostics(impl_def.id).1.iter() {
@@ -809,6 +826,37 @@ impl Module {
     }
 }
 
+fn macro_call_diagnostics(
+    db: &dyn HirDatabase,
+    macro_call_id: MacroCallId,
+    acc: &mut Vec<AnyDiagnostic>,
+) {
+    let Some(e) = db.parse_macro_expansion_error(macro_call_id) else {
+        return;
+    };
+    let ValueResult { value: parse_errors, err } = &*e;
+    if let Some(err) = err {
+        let loc = db.lookup_intern_macro_call(macro_call_id);
+        let (node, precise_location, macro_name, kind) = precise_macro_call_location(&loc.kind, db);
+        let diag = match err {
+            &hir_expand::ExpandError::UnresolvedProcMacro(krate) => {
+                UnresolvedProcMacro { node, precise_location, macro_name, kind, krate }.into()
+            }
+            err => MacroError { node, precise_location, message: err.to_string() }.into(),
+        };
+        acc.push(diag);
+    }
+
+    if !parse_errors.is_empty() {
+        let loc = db.lookup_intern_macro_call(macro_call_id);
+        let (node, precise_location, _, _) = precise_macro_call_location(&loc.kind, db);
+        acc.push(
+            MacroExpansionParseError { node, precise_location, errors: parse_errors.clone() }
+                .into(),
+        )
+    }
+}
+
 fn emit_macro_def_diagnostics(db: &dyn HirDatabase, acc: &mut Vec<AnyDiagnostic>, m: Macro) {
     let id = db.macro_def(m.id);
     if let hir_expand::db::TokenExpander::DeclarativeMacro(expander) = db.macro_expander(id) {
@@ -886,16 +934,6 @@ fn emit_def_diagnostic_(
                     is_bang: matches!(ast, MacroCallKind::FnLike { .. }),
                 }
                 .into(),
-            );
-        }
-        DefDiagnosticKind::MacroError { ast, message } => {
-            let (node, precise_location, _, _) = precise_macro_call_location(ast, db);
-            acc.push(MacroError { node, precise_location, message: message.clone() }.into());
-        }
-        DefDiagnosticKind::MacroExpansionParseError { ast, errors } => {
-            let (node, precise_location, _, _) = precise_macro_call_location(ast, db);
-            acc.push(
-                MacroExpansionParseError { node, precise_location, errors: errors.clone() }.into(),
             );
         }
         DefDiagnosticKind::UnimplementedBuiltinMacro { ast } => {
@@ -1643,6 +1681,10 @@ impl DefWithBody {
         for (_, def_map) in body.blocks(db.upcast()) {
             Module { id: def_map.module_id(DefMap::ROOT) }.diagnostics(db, acc, style_lints);
         }
+
+        source_map
+            .macro_calls()
+            .for_each(|(_ast_id, call_id)| macro_call_diagnostics(db, call_id.macro_call_id, acc));
 
         for diag in source_map.diagnostics() {
             acc.push(match diag {
@@ -2444,6 +2486,14 @@ impl Trait {
             .filter(|(_, ty)| !matches!(ty, TypeOrConstParamData::TypeParamData(ty) if ty.provenance != TypeParamProvenance::TypeParamList))
             .filter(|(_, ty)| !count_required_only || !ty.has_default())
             .count()
+    }
+
+    fn all_macro_calls(&self, db: &dyn HirDatabase) -> Box<[(AstId<ast::Item>, MacroCallId)]> {
+        db.trait_data(self.id)
+            .macro_calls
+            .as_ref()
+            .map(|it| it.as_ref().clone().into_boxed_slice())
+            .unwrap_or_default()
     }
 }
 
@@ -3764,6 +3814,14 @@ impl Impl {
 
     pub fn check_orphan_rules(self, db: &dyn HirDatabase) -> bool {
         check_orphan_rules(db, self.id)
+    }
+
+    fn all_macro_calls(&self, db: &dyn HirDatabase) -> Box<[(AstId<ast::Item>, MacroCallId)]> {
+        db.impl_data(self.id)
+            .macro_calls
+            .as_ref()
+            .map(|it| it.as_ref().clone().into_boxed_slice())
+            .unwrap_or_default()
     }
 }
 
