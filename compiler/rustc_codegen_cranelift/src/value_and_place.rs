@@ -317,14 +317,6 @@ impl<'tcx> CValue<'tcx> {
 
         let clif_ty = fx.clif_type(layout.ty).unwrap();
 
-        if let ty::Bool = layout.ty.kind() {
-            assert!(
-                const_val == ty::ScalarInt::FALSE || const_val == ty::ScalarInt::TRUE,
-                "Invalid bool 0x{:032X}",
-                const_val
-            );
-        }
-
         let val = match layout.ty.kind() {
             ty::Uint(UintTy::U128) | ty::Int(IntTy::I128) => {
                 let const_val = const_val.assert_bits(layout.size);
