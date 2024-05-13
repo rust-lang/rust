@@ -2,7 +2,7 @@ error: this match arm has an identical body to the `_` wildcard arm
   --> tests/ui/match_same_arms.rs:12:9
    |
 LL |         Abc::A => 0,
-   |         ^^^^^^^^^^^ help: try removing the arm
+   |         ^^^^^^^^^^^^^ help: try removing the arm
    |
    = help: or try changing either arm body
 note: `_` wildcard arm here
@@ -17,106 +17,114 @@ error: this match arm has an identical body to another arm
   --> tests/ui/match_same_arms.rs:18:9
    |
 LL |         (1, .., 3) => 42,
-   |         ----------^^^^^^
-   |         |
-   |         help: try merging the arm patterns: `(1, .., 3) | (.., 3)`
+   |         ^^^^^^^^^^^^^^^^
    |
-   = help: or try changing either arm body
-note: other arm here
-  --> tests/ui/match_same_arms.rs:19:9
+   = help: try changing either arm body
+help: or try merging the arm patterns
    |
-LL |         (.., 3) => 42,
-   |         ^^^^^^^^^^^^^
+LL |         (1, .., 3) | (.., 3) => 42,
+   |         ~~~~~~~~~~~~~~~~~~~~
+help: and remove this obsolete arm
+   |
+LL -         (.., 3) => 42,
+   |
 
 error: this match arm has an identical body to another arm
   --> tests/ui/match_same_arms.rs:25:9
    |
 LL |         51 => 1,
-   |         --^^^^^
-   |         |
-   |         help: try merging the arm patterns: `51 | 42`
-   |
-   = help: or try changing either arm body
-note: other arm here
-  --> tests/ui/match_same_arms.rs:24:9
-   |
-LL |         42 => 1,
    |         ^^^^^^^
+   |
+   = help: try changing either arm body
+help: or try merging the arm patterns
+   |
+LL |         51 | 42 => 1,
+   |         ~~~~~~~
+help: and remove this obsolete arm
+   |
+LL -         42 => 1,
+   |
 
 error: this match arm has an identical body to another arm
   --> tests/ui/match_same_arms.rs:26:9
    |
 LL |         41 => 2,
-   |         --^^^^^
-   |         |
-   |         help: try merging the arm patterns: `41 | 52`
-   |
-   = help: or try changing either arm body
-note: other arm here
-  --> tests/ui/match_same_arms.rs:27:9
-   |
-LL |         52 => 2,
    |         ^^^^^^^
+   |
+   = help: try changing either arm body
+help: or try merging the arm patterns
+   |
+LL |         41 | 52 => 2,
+   |         ~~~~~~~
+help: and remove this obsolete arm
+   |
+LL -         52 => 2,
+   |
 
 error: this match arm has an identical body to another arm
   --> tests/ui/match_same_arms.rs:33:9
    |
 LL |         2 => 2,
-   |         -^^^^^
-   |         |
-   |         help: try merging the arm patterns: `2 | 1`
-   |
-   = help: or try changing either arm body
-note: other arm here
-  --> tests/ui/match_same_arms.rs:32:9
-   |
-LL |         1 => 2,
    |         ^^^^^^
+   |
+   = help: try changing either arm body
+help: or try merging the arm patterns
+   |
+LL |         2 | 1 => 2,
+   |         ~~~~~
+help: and remove this obsolete arm
+   |
+LL -         1 => 2,
+   |
 
 error: this match arm has an identical body to another arm
   --> tests/ui/match_same_arms.rs:35:9
    |
 LL |         3 => 2,
-   |         -^^^^^
-   |         |
-   |         help: try merging the arm patterns: `3 | 1`
-   |
-   = help: or try changing either arm body
-note: other arm here
-  --> tests/ui/match_same_arms.rs:32:9
-   |
-LL |         1 => 2,
    |         ^^^^^^
+   |
+   = help: try changing either arm body
+help: or try merging the arm patterns
+   |
+LL |         3 | 1 => 2,
+   |         ~~~~~
+help: and remove this obsolete arm
+   |
+LL -         1 => 2,
+   |
 
 error: this match arm has an identical body to another arm
   --> tests/ui/match_same_arms.rs:33:9
    |
 LL |         2 => 2,
-   |         -^^^^^
-   |         |
-   |         help: try merging the arm patterns: `2 | 3`
-   |
-   = help: or try changing either arm body
-note: other arm here
-  --> tests/ui/match_same_arms.rs:35:9
-   |
-LL |         3 => 2,
    |         ^^^^^^
+   |
+   = help: try changing either arm body
+help: or try merging the arm patterns
+   |
+LL |         2 | 3 => 2,
+   |         ~~~~~
+help: and remove this obsolete arm
+   |
+LL -         3 => 2,
+LL +
+   |
 
 error: this match arm has an identical body to another arm
   --> tests/ui/match_same_arms.rs:52:17
    |
 LL |                 CommandInfo::External { name, .. } => name.to_string(),
-   |                 ----------------------------------^^^^^^^^^^^^^^^^^^^^
-   |                 |
-   |                 help: try merging the arm patterns: `CommandInfo::External { name, .. } | CommandInfo::BuiltIn { name, .. }`
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: or try changing either arm body
-note: other arm here
-  --> tests/ui/match_same_arms.rs:51:17
+   = help: try changing either arm body
+help: or try merging the arm patterns
    |
-LL |                 CommandInfo::BuiltIn { name, .. } => name.to_string(),
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |                 CommandInfo::External { name, .. } | CommandInfo::BuiltIn { name, .. } => name.to_string(),
+   |                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+help: and remove this obsolete arm
+   |
+LL -                 CommandInfo::BuiltIn { name, .. } => name.to_string(),
+   |
 
 error: aborting due to 8 previous errors
 
