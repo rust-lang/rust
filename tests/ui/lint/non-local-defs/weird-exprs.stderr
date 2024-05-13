@@ -1,4 +1,4 @@
-warning: non-local `impl` definition, they should be avoided as they go against expectation
+warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
   --> $DIR/weird-exprs.rs:8:5
    |
 LL |     impl Uto for *mut Test {}
@@ -10,7 +10,7 @@ LL |     impl Uto for *mut Test {}
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
    = note: `#[warn(non_local_definitions)]` on by default
 
-warning: non-local `impl` definition, they should be avoided as they go against expectation
+warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
   --> $DIR/weird-exprs.rs:16:9
    |
 LL |         impl Uto for Test {}
@@ -21,7 +21,7 @@ LL |         impl Uto for Test {}
    = note: one exception to the rule are anon-const (`const _: () = { ... }`) at top-level module and anon-const at the same nesting as the trait or type
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
-warning: non-local `impl` definition, they should be avoided as they go against expectation
+warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
   --> $DIR/weird-exprs.rs:25:9
    |
 LL | /         impl Test {
@@ -35,7 +35,7 @@ LL | |         }
    = note: one exception to the rule are anon-const (`const _: () = { ... }`) at top-level module and anon-const at the same nesting as the trait or type
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
-warning: non-local `impl` definition, they should be avoided as they go against expectation
+warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
   --> $DIR/weird-exprs.rs:34:9
    |
 LL |         impl Uto for &Test {}
@@ -46,7 +46,7 @@ LL |         impl Uto for &Test {}
    = note: one exception to the rule are anon-const (`const _: () = { ... }`) at top-level module and anon-const at the same nesting as the trait or type
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
-warning: non-local `impl` definition, they should be avoided as they go against expectation
+warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
   --> $DIR/weird-exprs.rs:41:9
    |
 LL |         impl Uto for &(Test,) {}
@@ -57,7 +57,7 @@ LL |         impl Uto for &(Test,) {}
    = note: one exception to the rule are anon-const (`const _: () = { ... }`) at top-level module and anon-const at the same nesting as the trait or type
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
-warning: non-local `impl` definition, they should be avoided as they go against expectation
+warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
   --> $DIR/weird-exprs.rs:48:9
    |
 LL |         impl Uto for &(Test,Test) {}

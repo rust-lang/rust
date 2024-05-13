@@ -1,4 +1,4 @@
-warning: non-local `impl` definition, they should be avoided as they go against expectation
+warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
   --> $DIR/consts.rs:13:5
    |
 LL | const Z: () = {
@@ -13,7 +13,7 @@ LL |     impl Uto for &Test {}
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
    = note: `#[warn(non_local_definitions)]` on by default
 
-warning: non-local `impl` definition, they should be avoided as they go against expectation
+warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
   --> $DIR/consts.rs:24:5
    |
 LL |     impl Uto2 for Test {}
@@ -24,7 +24,7 @@ LL |     impl Uto2 for Test {}
    = note: one exception to the rule are anon-const (`const _: () = { ... }`) at top-level module and anon-const at the same nesting as the trait or type
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
-warning: non-local `impl` definition, they should be avoided as they go against expectation
+warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
   --> $DIR/consts.rs:32:5
    |
 LL |     impl Uto3 for Test {}
@@ -35,7 +35,7 @@ LL |     impl Uto3 for Test {}
    = note: one exception to the rule are anon-const (`const _: () = { ... }`) at top-level module and anon-const at the same nesting as the trait or type
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
-warning: non-local `impl` definition, they should be avoided as they go against expectation
+warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
   --> $DIR/consts.rs:43:5
    |
 LL | /     impl Test {
@@ -49,7 +49,7 @@ LL | |     }
    = note: one exception to the rule are anon-const (`const _: () = { ... }`) at top-level module and anon-const at the same nesting as the trait or type
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
-warning: non-local `impl` definition, they should be avoided as they go against expectation
+warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
   --> $DIR/consts.rs:50:9
    |
 LL | /         impl Test {
@@ -63,7 +63,7 @@ LL | |         }
    = note: one exception to the rule are anon-const (`const _: () = { ... }`) at top-level module and anon-const at the same nesting as the trait or type
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
-warning: non-local `impl` definition, they should be avoided as they go against expectation
+warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
   --> $DIR/consts.rs:59:9
    |
 LL | /         impl Test {
@@ -77,7 +77,7 @@ LL | |         }
    = note: one exception to the rule are anon-const (`const _: () = { ... }`) at top-level module and anon-const at the same nesting as the trait or type
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
-warning: non-local `impl` definition, they should be avoided as they go against expectation
+warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
   --> $DIR/consts.rs:72:9
    |
 LL |         impl Uto9 for Test {}
@@ -88,7 +88,7 @@ LL |         impl Uto9 for Test {}
    = note: one exception to the rule are anon-const (`const _: () = { ... }`) at top-level module and anon-const at the same nesting as the trait or type
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
-warning: non-local `impl` definition, they should be avoided as they go against expectation
+warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
   --> $DIR/consts.rs:79:9
    |
 LL |         impl Uto10 for Test {}

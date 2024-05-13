@@ -542,7 +542,7 @@ lint_non_local_definitions_cargo_update = the {$macro_kind} `{$macro_name}` may 
 
 lint_non_local_definitions_deprecation = this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
-lint_non_local_definitions_impl = non-local `impl` definition, they should be avoided as they go against expectation
+lint_non_local_definitions_impl = non-local `impl` definition, `impl` blocks should be written at the same level as their item
     .help =
         move this `impl` block outside the of the current {$body_kind_descr} {$depth ->
             [one] `{$body_name}`
@@ -552,7 +552,7 @@ lint_non_local_definitions_impl = non-local `impl` definition, they should be av
     .exception = one exception to the rule are anon-const (`const _: () = {"{"} ... {"}"}`) at top-level module and anon-const at the same nesting as the trait or type
     .const_anon = use a const-anon item to suppress this lint
 
-lint_non_local_definitions_macro_rules = non-local `macro_rules!` definition, they should be avoided as they go against expectation
+lint_non_local_definitions_macro_rules = non-local `macro_rules!` definition, `#[macro_export]` macro should be written at top level module
     .help =
         remove the `#[macro_export]` or move this `macro_rules!` outside the of the current {$body_kind_descr} {$depth ->
             [one] `{$body_name}`

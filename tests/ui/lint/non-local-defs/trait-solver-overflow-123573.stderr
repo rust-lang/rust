@@ -1,4 +1,4 @@
-warning: non-local `impl` definition, they should be avoided as they go against expectation
+warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
   --> $DIR/trait-solver-overflow-123573.rs:12:5
    |
 LL |     impl Test for &Local {}

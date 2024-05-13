@@ -1,4 +1,4 @@
-warning: non-local `impl` definition, they should be avoided as they go against expectation
+warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
   --> $DIR/cargo-update.rs:17:1
    |
 LL | non_local_macro::non_local_impl!(LocalStruct);

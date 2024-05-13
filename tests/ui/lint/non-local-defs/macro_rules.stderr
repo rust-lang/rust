@@ -1,4 +1,4 @@
-warning: non-local `macro_rules!` definition, they should be avoided as they go against expectation
+warning: non-local `macro_rules!` definition, `#[macro_export]` macro should be written at top level module
   --> $DIR/macro_rules.rs:10:5
    |
 LL |     macro_rules! m0 { () => { } };
@@ -10,7 +10,7 @@ LL |     macro_rules! m0 { () => { } };
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
    = note: `#[warn(non_local_definitions)]` on by default
 
-warning: non-local `macro_rules!` definition, they should be avoided as they go against expectation
+warning: non-local `macro_rules!` definition, `#[macro_export]` macro should be written at top level module
   --> $DIR/macro_rules.rs:16:1
    |
 LL | non_local_macro::non_local_macro_rules!(my_macro);
@@ -23,7 +23,7 @@ LL | non_local_macro::non_local_macro_rules!(my_macro);
    = note: the macro `non_local_macro::non_local_macro_rules` may come from an old version of the `non_local_macro` crate, try updating your dependency with `cargo update -p non_local_macro`
    = note: this warning originates in the macro `non_local_macro::non_local_macro_rules` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-warning: non-local `macro_rules!` definition, they should be avoided as they go against expectation
+warning: non-local `macro_rules!` definition, `#[macro_export]` macro should be written at top level module
   --> $DIR/macro_rules.rs:21:5
    |
 LL |     macro_rules! m { () => { } };
@@ -34,7 +34,7 @@ LL |     macro_rules! m { () => { } };
    = note: one exception to the rule are anon-const (`const _: () = { ... }`) at top-level module
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
-warning: non-local `macro_rules!` definition, they should be avoided as they go against expectation
+warning: non-local `macro_rules!` definition, `#[macro_export]` macro should be written at top level module
   --> $DIR/macro_rules.rs:29:13
    |
 LL |             macro_rules! m2 { () => { } };

@@ -1,4 +1,4 @@
-warning: non-local `macro_rules!` definition, they should be avoided as they go against expectation
+warning: non-local `macro_rules!` definition, `#[macro_export]` macro should be written at top level module
   --> $DIR/non_local_defs.rs:9:1
    |
 LL | macro_rules! a_macro { () => {} }
