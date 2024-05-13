@@ -609,6 +609,9 @@ fn main() {}
 #[export_name = "main"]
 fn __cortex_m_rt_main_trampoline() {}
 
+#[unsafe(export_name = "main")]
+fn __cortex_m_rt_main_trampoline_unsafe() {}
+
 #[test]
 fn test_foo() {}
 
@@ -628,13 +631,14 @@ mod not_a_root {
 "#,
             expect![[r#"
                 [
-                    "(TestMod, NavigationTarget { file_id: FileId(0), full_range: 0..253, name: \"\", kind: Module })",
+                    "(TestMod, NavigationTarget { file_id: FileId(0), full_range: 0..331, name: \"\", kind: Module })",
                     "(Bin, NavigationTarget { file_id: FileId(0), full_range: 1..13, focus_range: 4..8, name: \"main\", kind: Function })",
                     "(Bin, NavigationTarget { file_id: FileId(0), full_range: 15..76, focus_range: 42..71, name: \"__cortex_m_rt_main_trampoline\", kind: Function })",
-                    "(Test, NavigationTarget { file_id: FileId(0), full_range: 78..102, focus_range: 89..97, name: \"test_foo\", kind: Function })",
-                    "(Test, NavigationTarget { file_id: FileId(0), full_range: 104..155, focus_range: 136..150, name: \"test_full_path\", kind: Function })",
-                    "(Test, NavigationTarget { file_id: FileId(0), full_range: 157..191, focus_range: 178..186, name: \"test_foo\", kind: Function })",
-                    "(Bench, NavigationTarget { file_id: FileId(0), full_range: 193..215, focus_range: 205..210, name: \"bench\", kind: Function })",
+                    "(Bin, NavigationTarget { file_id: FileId(0), full_range: 78..154, focus_range: 113..149, name: \"__cortex_m_rt_main_trampoline_unsafe\", kind: Function })",
+                    "(Test, NavigationTarget { file_id: FileId(0), full_range: 156..180, focus_range: 167..175, name: \"test_foo\", kind: Function })",
+                    "(Test, NavigationTarget { file_id: FileId(0), full_range: 182..233, focus_range: 214..228, name: \"test_full_path\", kind: Function })",
+                    "(Test, NavigationTarget { file_id: FileId(0), full_range: 235..269, focus_range: 256..264, name: \"test_foo\", kind: Function })",
+                    "(Bench, NavigationTarget { file_id: FileId(0), full_range: 271..293, focus_range: 283..288, name: \"bench\", kind: Function })",
                 ]
             "#]],
         );

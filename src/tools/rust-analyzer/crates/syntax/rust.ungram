@@ -314,7 +314,9 @@ Attr =
   '#' '!'? '[' Meta ']'
 
 Meta =
-  Path ('=' Expr | TokenTree)?
+  'unsafe' '(' Path ('=' Expr | TokenTree)? ')'
+| Path ('=' Expr | TokenTree)?
+
 
 //****************************//
 // Statements and Expressions //
@@ -391,7 +393,6 @@ FormatArgsExpr =
 FormatArgsArg =
   (Name '=')? Expr
 
-# MacroCallExpr
 MacroExpr =
   MacroCall
 
