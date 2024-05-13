@@ -15,6 +15,7 @@ pub trait Ty<I: Interner<Ty = Self>>:
     + Hash
     + Eq
     + Into<I::GenericArg>
+    + Into<I::Term>
     + IntoKind<Kind = TyKind<I>>
     + TypeSuperVisitable<I>
     + TypeSuperFoldable<I>
@@ -23,8 +24,6 @@ pub trait Ty<I: Interner<Ty = Self>>:
     fn new_anon_bound(interner: I, debruijn: DebruijnIndex, var: BoundVar) -> Self;
 
     fn new_alias(interner: I, kind: AliasTyKind, alias_ty: AliasTy<I>) -> Self;
-
-    fn into_term(self) -> I::Term;
 }
 
 pub trait Region<I: Interner<Region = Self>>:
@@ -41,6 +40,7 @@ pub trait Const<I: Interner<Const = Self>>:
     + Hash
     + Eq
     + Into<I::GenericArg>
+    + Into<I::Term>
     + IntoKind<Kind = ConstKind<I>>
     + TypeSuperVisitable<I>
     + TypeSuperFoldable<I>
@@ -51,8 +51,6 @@ pub trait Const<I: Interner<Const = Self>>:
     fn new_unevaluated(interner: I, uv: UnevaluatedConst<I>, ty: I::Ty) -> Self;
 
     fn ty(self) -> I::Ty;
-
-    fn into_term(self) -> I::Term;
 }
 
 pub trait GenericsOf<I: Interner<GenericsOf = Self>> {

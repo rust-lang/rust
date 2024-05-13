@@ -437,32 +437,32 @@ impl<I: Interner> AliasTerm<I> {
                 AliasTyKind::Projection,
                 AliasTy { def_id: self.def_id, args: self.args, _use_alias_ty_new_instead: () },
             )
-            .into_term(),
+            .into(),
             AliasTermKind::InherentTy => Ty::new_alias(
                 interner,
                 AliasTyKind::Inherent,
                 AliasTy { def_id: self.def_id, args: self.args, _use_alias_ty_new_instead: () },
             )
-            .into_term(),
+            .into(),
             AliasTermKind::OpaqueTy => Ty::new_alias(
                 interner,
                 AliasTyKind::Opaque,
                 AliasTy { def_id: self.def_id, args: self.args, _use_alias_ty_new_instead: () },
             )
-            .into_term(),
+            .into(),
             AliasTermKind::WeakTy => Ty::new_alias(
                 interner,
                 AliasTyKind::Weak,
                 AliasTy { def_id: self.def_id, args: self.args, _use_alias_ty_new_instead: () },
             )
-            .into_term(),
+            .into(),
             AliasTermKind::UnevaluatedConst | AliasTermKind::ProjectionConst => {
                 I::Const::new_unevaluated(
                     interner,
                     UnevaluatedConst::new(self.def_id, self.args),
                     interner.type_of_instantiated(self.def_id, self.args),
                 )
-                .into_term()
+                .into()
             }
         }
     }

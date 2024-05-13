@@ -1660,10 +1660,6 @@ impl<'tcx> rustc_type_ir::inherent::Ty<TyCtxt<'tcx>> for Ty<'tcx> {
     ) -> Self {
         Ty::new_alias(interner, kind, alias_ty)
     }
-
-    fn into_term(self) -> ty::Term<'tcx> {
-        self.into()
-    }
 }
 
 /// Type utilities

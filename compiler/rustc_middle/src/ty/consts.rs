@@ -195,10 +195,6 @@ impl<'tcx> rustc_type_ir::inherent::Const<TyCtxt<'tcx>> for Const<'tcx> {
     fn ty(self) -> Ty<'tcx> {
         self.ty()
     }
-
-    fn into_term(self) -> ty::Term<'tcx> {
-        self.into()
-    }
 }
 
 impl<'tcx> Const<'tcx> {
