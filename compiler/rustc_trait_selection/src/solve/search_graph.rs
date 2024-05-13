@@ -379,60 +379,10 @@ impl<'tcx> SearchGraph<'tcx> {
         // `with_anon_task` closure.
         let ((final_entry, result), dep_node) =
             tcx.dep_graph.with_anon_task(tcx, dep_kinds::TraitSelect, || {
-                // When we encounter a coinductive cycle, we have to fetch the
-                // result of that cycle while we are still computing it. Because
-                // of this we continuously recompute the cycle until the result
-                // of the previous iteration is equal to the final result, at which
-                // point we are done.
                 for _ in 0..FIXPOINT_STEP_LIMIT {
-                    let result = prove_goal(self, inspect);
-                    let stack_entry = self.pop_stack();
-                    debug_assert_eq!(stack_entry.input, input);
-
-                    // If the current goal is not the root of a cycle, we are done.
-                    if stack_entry.has_been_used.is_empty() {
-                        return (stack_entry, result);
-                    }
-
-                    // If it is a cycle head, we have to keep trying to prove it until
-                    // we reach a fixpoint. We need to do so for all cycle heads,
-                    // not only for the root.
-                    //
-                    // See tests/ui/traits/next-solver/cycles/fixpoint-rerun-all-cycle-heads.rs
-                    // for an example.
-
-                    // Start by clearing all provisional cache entries which depend on this
-                    // the current goal.
-                    Self::clear_dependent_provisional_results(
-                        &mut self.provisional_cache,
-                        self.stack.next_index(),
-                    );
-
-                    // Check whether we reached a fixpoint, either because the final result
-                    // is equal to the provisional result of the previous iteration, or because
-                    // this was only the root of either coinductive or inductive cycles, and the
-                    // final result is equal to the initial response for that case.
-                    let reached_fixpoint = if let Some(r) = stack_entry.provisional_result {
-                        r == result
-                    } else if stack_entry.has_been_used == HasBeenUsed::COINDUCTIVE_CYCLE {
-                        Self::response_no_constraints(tcx, input, Certainty::Yes) == result
-                    } else if stack_entry.has_been_used == HasBeenUsed::INDUCTIVE_CYCLE {
-                        Self::response_no_constraints(tcx, input, Certainty::overflow(false))
-                            == result
-                    } else {
-                        false
-                    };
-
-                    // If we did not reach a fixpoint, update the provisional result and reevaluate.
-                    if reached_fixpoint {
-                        return (stack_entry, result);
-                    } else {
-                        let depth = self.stack.push(StackEntry {
-                            has_been_used: HasBeenUsed::empty(),
-                            provisional_result: Some(result),
-                            ..stack_entry
-                        });
-                        debug_assert_eq!(self.provisional_cache[&input].stack_depth, Some(depth));
+                    match self.fixpoint_step_in_task(tcx, input, inspect, &mut prove_goal) {
+                        StepResult::Done(final_entry, result) => return (final_entry, result),
+                        StepResult::HasChanged => {}
                     }
                 }
 
@@ -483,6 +433,79 @@ impl<'tcx> SearchGraph<'tcx> {
         }
 
         result
+    }
+}
+
+enum StepResult<'tcx> {
+    Done(StackEntry<'tcx>, QueryResult<'tcx>),
+    HasChanged,
+}
+
+impl<'tcx> SearchGraph<'tcx> {
+    /// When we encounter a coinductive cycle, we have to fetch the
+    /// result of that cycle while we are still computing it. Because
+    /// of this we continuously recompute the cycle until the result
+    /// of the previous iteration is equal to the final result, at which
+    /// point we are done.
+    fn fixpoint_step_in_task<F>(
+        &mut self,
+        tcx: TyCtxt<'tcx>,
+        input: CanonicalInput<'tcx>,
+        inspect: &mut ProofTreeBuilder<'tcx>,
+        prove_goal: &mut F,
+    ) -> StepResult<'tcx>
+    where
+        F: FnMut(&mut Self, &mut ProofTreeBuilder<'tcx>) -> QueryResult<'tcx>,
+    {
+        let result = prove_goal(self, inspect);
+        let stack_entry = self.pop_stack();
+        debug_assert_eq!(stack_entry.input, input);
+
+        // If the current goal is not the root of a cycle, we are done.
+        if stack_entry.has_been_used.is_empty() {
+            return StepResult::Done(stack_entry, result);
+        }
+
+        // If it is a cycle head, we have to keep trying to prove it until
+        // we reach a fixpoint. We need to do so for all cycle heads,
+        // not only for the root.
+        //
+        // See tests/ui/traits/next-solver/cycles/fixpoint-rerun-all-cycle-heads.rs
+        // for an example.
+
+        // Start by clearing all provisional cache entries which depend on this
+        // the current goal.
+        Self::clear_dependent_provisional_results(
+            &mut self.provisional_cache,
+            self.stack.next_index(),
+        );
+
+        // Check whether we reached a fixpoint, either because the final result
+        // is equal to the provisional result of the previous iteration, or because
+        // this was only the root of either coinductive or inductive cycles, and the
+        // final result is equal to the initial response for that case.
+        let reached_fixpoint = if let Some(r) = stack_entry.provisional_result {
+            r == result
+        } else if stack_entry.has_been_used == HasBeenUsed::COINDUCTIVE_CYCLE {
+            Self::response_no_constraints(tcx, input, Certainty::Yes) == result
+        } else if stack_entry.has_been_used == HasBeenUsed::INDUCTIVE_CYCLE {
+            Self::response_no_constraints(tcx, input, Certainty::overflow(false)) == result
+        } else {
+            false
+        };
+
+        // If we did not reach a fixpoint, update the provisional result and reevaluate.
+        if reached_fixpoint {
+            StepResult::Done(stack_entry, result)
+        } else {
+            let depth = self.stack.push(StackEntry {
+                has_been_used: HasBeenUsed::empty(),
+                provisional_result: Some(result),
+                ..stack_entry
+            });
+            debug_assert_eq!(self.provisional_cache[&input].stack_depth, Some(depth));
+            StepResult::HasChanged
+        }
     }
 
     fn response_no_constraints(
