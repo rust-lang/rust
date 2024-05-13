@@ -1,7 +1,8 @@
 [package]
 name = "rust-analyzer"
 version = "0.0.0"
-homepage = "https://github.com/rust-analyzer/rust-analyzer"
+homepage = "https://rust-analyzer.github.io/"
+repository = "https://github.com/rust-analyzer/rust-analyzer"
 description = "A language server for the Rust programming language"
 documentation = "https://rust-analyzer.github.io/manual.html"
 autobins = false
