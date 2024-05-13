@@ -1105,14 +1105,14 @@ where
     }
 }
 
-/// Represents the projection of an associated type.
+/// Represents the unprojected term of a projection goal.
 ///
 /// * For a projection, this would be `<Ty as Trait<...>>::N<...>`.
 /// * For an inherent projection, this would be `Ty::N<...>`.
 /// * For an opaque type, there is no explicit syntax.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
 #[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
-pub struct AliasTy<'tcx> {
+pub struct AliasTerm<'tcx> {
     /// The parameters of the associated or opaque item.
     ///
     /// For a projection, these are the generic parameters for the trait and the
@@ -1137,18 +1137,37 @@ pub struct AliasTy<'tcx> {
     /// aka. `tcx.parent(def_id)`.
     pub def_id: DefId,
 
-    /// This field exists to prevent the creation of `AliasTy` without using
-    /// [AliasTy::new].
-    _use_alias_ty_new_instead: (),
+    /// This field exists to prevent the creation of `AliasTerm` without using
+    /// [AliasTerm::new].
+    _use_alias_term_new_instead: (),
 }
 
-impl<'tcx> rustc_type_ir::inherent::AliasTy<TyCtxt<'tcx>> for AliasTy<'tcx> {
+// FIXME: Remove these when we uplift `AliasTerm`
+use crate::ty::{DebugWithInfcx, InferCtxtLike, WithInfcx};
+impl<'tcx> std::fmt::Debug for AliasTerm<'tcx> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        WithInfcx::with_no_infcx(self).fmt(f)
+    }
+}
+impl<'tcx> DebugWithInfcx<TyCtxt<'tcx>> for AliasTerm<'tcx> {
+    fn fmt<Infcx: InferCtxtLike<Interner = TyCtxt<'tcx>>>(
+        this: WithInfcx<'_, Infcx, &Self>,
+        f: &mut std::fmt::Formatter<'_>,
+    ) -> std::fmt::Result {
+        f.debug_struct("AliasTerm")
+            .field("args", &this.map(|data| data.args))
+            .field("def_id", &this.data.def_id)
+            .finish()
+    }
+}
+
+impl<'tcx> rustc_type_ir::inherent::AliasTerm<TyCtxt<'tcx>> for AliasTerm<'tcx> {
     fn new(
         interner: TyCtxt<'tcx>,
         trait_def_id: DefId,
         args: impl IntoIterator<Item: Into<ty::GenericArg<'tcx>>>,
     ) -> Self {
-        AliasTy::new(interner, trait_def_id, args)
+        AliasTerm::new(interner, trait_def_id, args)
     }
 
     fn def_id(self) -> DefId {
@@ -1172,6 +1191,182 @@ impl<'tcx> rustc_type_ir::inherent::AliasTy<TyCtxt<'tcx>> for AliasTy<'tcx> {
     }
 }
 
+impl<'tcx> AliasTerm<'tcx> {
+    pub fn new(
+        tcx: TyCtxt<'tcx>,
+        def_id: DefId,
+        args: impl IntoIterator<Item: Into<GenericArg<'tcx>>>,
+    ) -> AliasTerm<'tcx> {
+        let args = tcx.check_and_mk_args(def_id, args);
+        AliasTerm { def_id, args, _use_alias_term_new_instead: () }
+    }
+
+    pub fn expect_ty(self, tcx: TyCtxt<'tcx>) -> AliasTy<'tcx> {
+        match self.kind(tcx) {
+            ty::AliasTermKind::ProjectionTy
+            | ty::AliasTermKind::InherentTy
+            | ty::AliasTermKind::OpaqueTy
+            | ty::AliasTermKind::WeakTy => {}
+            ty::AliasTermKind::UnevaluatedConst | ty::AliasTermKind::ProjectionConst => {
+                bug!("Cannot turn `UnevaluatedConst` into `AliasTy`")
+            }
+        }
+        ty::AliasTy { def_id: self.def_id, args: self.args, _use_alias_ty_new_instead: () }
+    }
+
+    pub fn kind(self, tcx: TyCtxt<'tcx>) -> ty::AliasTermKind {
+        match tcx.def_kind(self.def_id) {
+            DefKind::AssocTy => {
+                if let DefKind::Impl { of_trait: false } = tcx.def_kind(tcx.parent(self.def_id)) {
+                    ty::AliasTermKind::InherentTy
+                } else {
+                    ty::AliasTermKind::ProjectionTy
+                }
+            }
+            DefKind::OpaqueTy => ty::AliasTermKind::OpaqueTy,
+            DefKind::TyAlias => ty::AliasTermKind::WeakTy,
+            DefKind::AnonConst => ty::AliasTermKind::UnevaluatedConst,
+            DefKind::AssocConst => ty::AliasTermKind::ProjectionConst,
+            kind => bug!("unexpected DefKind in AliasTy: {kind:?}"),
+        }
+    }
+}
+
+/// The following methods work only with (trait) associated item projections.
+impl<'tcx> AliasTerm<'tcx> {
+    pub fn self_ty(self) -> Ty<'tcx> {
+        self.args.type_at(0)
+    }
+
+    pub fn with_self_ty(self, tcx: TyCtxt<'tcx>, self_ty: Ty<'tcx>) -> Self {
+        AliasTerm::new(
+            tcx,
+            self.def_id,
+            [self_ty.into()].into_iter().chain(self.args.iter().skip(1)),
+        )
+    }
+
+    pub fn trait_def_id(self, tcx: TyCtxt<'tcx>) -> DefId {
+        match tcx.def_kind(self.def_id) {
+            DefKind::AssocTy | DefKind::AssocConst => tcx.parent(self.def_id),
+            kind => bug!("expected a projection AliasTy; found {kind:?}"),
+        }
+    }
+
+    /// Extracts the underlying trait reference from this projection.
+    /// For example, if this is a projection of `<T as Iterator>::Item`,
+    /// then this function would return a `T: Iterator` trait reference.
+    ///
+    /// NOTE: This will drop the args for generic associated types
+    /// consider calling [Self::trait_ref_and_own_args] to get those
+    /// as well.
+    pub fn trait_ref(self, tcx: TyCtxt<'tcx>) -> ty::TraitRef<'tcx> {
+        let def_id = self.trait_def_id(tcx);
+        ty::TraitRef::new(tcx, def_id, self.args.truncate_to(tcx, tcx.generics_of(def_id)))
+    }
+
+    /// Extracts the underlying trait reference and own args from this projection.
+    /// For example, if this is a projection of `<T as StreamingIterator>::Item<'a>`,
+    /// then this function would return a `T: StreamingIterator` trait reference and `['a]` as the own args
+    pub fn trait_ref_and_own_args(
+        self,
+        tcx: TyCtxt<'tcx>,
+    ) -> (ty::TraitRef<'tcx>, &'tcx [ty::GenericArg<'tcx>]) {
+        let trait_def_id = self.trait_def_id(tcx);
+        let trait_generics = tcx.generics_of(trait_def_id);
+        (
+            ty::TraitRef::new(tcx, trait_def_id, self.args.truncate_to(tcx, trait_generics)),
+            &self.args[trait_generics.count()..],
+        )
+    }
+
+    pub fn to_term(self, tcx: TyCtxt<'tcx>) -> ty::Term<'tcx> {
+        match self.kind(tcx) {
+            ty::AliasTermKind::ProjectionTy => Ty::new_alias(
+                tcx,
+                ty::Projection,
+                AliasTy { def_id: self.def_id, args: self.args, _use_alias_ty_new_instead: () },
+            )
+            .into(),
+            ty::AliasTermKind::InherentTy => Ty::new_alias(
+                tcx,
+                ty::Inherent,
+                AliasTy { def_id: self.def_id, args: self.args, _use_alias_ty_new_instead: () },
+            )
+            .into(),
+            ty::AliasTermKind::OpaqueTy => Ty::new_alias(
+                tcx,
+                ty::Opaque,
+                AliasTy { def_id: self.def_id, args: self.args, _use_alias_ty_new_instead: () },
+            )
+            .into(),
+            ty::AliasTermKind::WeakTy => Ty::new_alias(
+                tcx,
+                ty::Weak,
+                AliasTy { def_id: self.def_id, args: self.args, _use_alias_ty_new_instead: () },
+            )
+            .into(),
+            ty::AliasTermKind::UnevaluatedConst | ty::AliasTermKind::ProjectionConst => {
+                ty::Const::new_unevaluated(
+                    tcx,
+                    ty::UnevaluatedConst::new(self.def_id, self.args),
+                    tcx.type_of(self.def_id).instantiate(tcx, self.args),
+                )
+                .into()
+            }
+        }
+    }
+}
+
+impl<'tcx> From<AliasTy<'tcx>> for AliasTerm<'tcx> {
+    fn from(ty: AliasTy<'tcx>) -> Self {
+        AliasTerm { args: ty.args, def_id: ty.def_id, _use_alias_term_new_instead: () }
+    }
+}
+
+impl<'tcx> From<ty::UnevaluatedConst<'tcx>> for AliasTerm<'tcx> {
+    fn from(ct: ty::UnevaluatedConst<'tcx>) -> Self {
+        AliasTerm { args: ct.args, def_id: ct.def, _use_alias_term_new_instead: () }
+    }
+}
+
+/// Represents the projection of an associated, opaque, or lazy-type-alias type.
+///
+/// * For a projection, this would be `<Ty as Trait<...>>::N<...>`.
+/// * For an inherent projection, this would be `Ty::N<...>`.
+/// * For an opaque type, there is no explicit syntax.
+#[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
+#[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
+pub struct AliasTy<'tcx> {
+    /// The parameters of the associated or opaque type.
+    ///
+    /// For a projection, these are the generic parameters for the trait and the
+    /// GAT parameters, if there are any.
+    ///
+    /// For an inherent projection, they consist of the self type and the GAT parameters,
+    /// if there are any.
+    ///
+    /// For RPIT the generic parameters are for the generics of the function,
+    /// while for TAIT it is used for the generic parameters of the alias.
+    pub args: GenericArgsRef<'tcx>,
+
+    /// The `DefId` of the `TraitItem` or `ImplItem` for the associated type `N` depending on whether
+    /// this is a projection or an inherent projection or the `DefId` of the `OpaqueType` item if
+    /// this is an opaque.
+    ///
+    /// During codegen, `tcx.type_of(def_id)` can be used to get the type of the
+    /// underlying type if the type is an opaque.
+    ///
+    /// Note that if this is an associated type, this is not the `DefId` of the
+    /// `TraitRef` containing this associated type, which is in `tcx.associated_item(def_id).container`,
+    /// aka. `tcx.parent(def_id)`.
+    pub def_id: DefId,
+
+    /// This field exists to prevent the creation of `AliasT` without using
+    /// [AliasTy::new].
+    _use_alias_ty_new_instead: (),
+}
+
 impl<'tcx> AliasTy<'tcx> {
     pub fn new(
         tcx: TyCtxt<'tcx>,
@@ -1182,7 +1377,7 @@ impl<'tcx> AliasTy<'tcx> {
         ty::AliasTy { def_id, args, _use_alias_ty_new_instead: () }
     }
 
-    pub fn kind(self, tcx: TyCtxt<'tcx>) -> ty::AliasKind {
+    pub fn kind(self, tcx: TyCtxt<'tcx>) -> ty::AliasTyKind {
         match tcx.def_kind(self.def_id) {
             DefKind::AssocTy
                 if let DefKind::Impl { of_trait: false } =
@@ -1199,24 +1394,7 @@ impl<'tcx> AliasTy<'tcx> {
 
     /// Whether this alias type is an opaque.
     pub fn is_opaque(self, tcx: TyCtxt<'tcx>) -> bool {
-        matches!(self.opt_kind(tcx), Some(ty::Opaque))
-    }
-
-    /// FIXME: rename `AliasTy` to `AliasTerm` and always handle
-    /// constants. This function can then be removed.
-    pub fn opt_kind(self, tcx: TyCtxt<'tcx>) -> Option<ty::AliasKind> {
-        match tcx.def_kind(self.def_id) {
-            DefKind::AssocTy
-                if let DefKind::Impl { of_trait: false } =
-                    tcx.def_kind(tcx.parent(self.def_id)) =>
-            {
-                Some(ty::Inherent)
-            }
-            DefKind::AssocTy => Some(ty::Projection),
-            DefKind::OpaqueTy => Some(ty::Opaque),
-            DefKind::TyAlias => Some(ty::Weak),
-            _ => None,
-        }
+        matches!(self.kind(tcx), ty::Opaque)
     }
 
     pub fn to_ty(self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
@@ -1224,7 +1402,7 @@ impl<'tcx> AliasTy<'tcx> {
     }
 }
 
-/// The following methods work only with associated type projections.
+/// The following methods work only with (trait) associated type projections.
 impl<'tcx> AliasTy<'tcx> {
     pub fn self_ty(self) -> Ty<'tcx> {
         self.args.type_at(0)
@@ -1233,10 +1411,7 @@ impl<'tcx> AliasTy<'tcx> {
     pub fn with_self_ty(self, tcx: TyCtxt<'tcx>, self_ty: Ty<'tcx>) -> Self {
         AliasTy::new(tcx, self.def_id, [self_ty.into()].into_iter().chain(self.args.iter().skip(1)))
     }
-}
 
-/// The following methods work only with trait associated type projections.
-impl<'tcx> AliasTy<'tcx> {
     pub fn trait_def_id(self, tcx: TyCtxt<'tcx>) -> DefId {
         match tcx.def_kind(self.def_id) {
             DefKind::AssocTy | DefKind::AssocConst => tcx.parent(self.def_id),
@@ -1251,7 +1426,6 @@ impl<'tcx> AliasTy<'tcx> {
         self,
         tcx: TyCtxt<'tcx>,
     ) -> (ty::TraitRef<'tcx>, &'tcx [ty::GenericArg<'tcx>]) {
-        debug_assert!(matches!(tcx.def_kind(self.def_id), DefKind::AssocTy | DefKind::AssocConst));
         let trait_def_id = self.trait_def_id(tcx);
         let trait_generics = tcx.generics_of(trait_def_id);
         (
@@ -1541,7 +1715,7 @@ impl<'tcx> Ty<'tcx> {
     #[inline]
     pub fn new_alias(
         tcx: TyCtxt<'tcx>,
-        kind: ty::AliasKind,
+        kind: ty::AliasTyKind,
         alias_ty: ty::AliasTy<'tcx>,
     ) -> Ty<'tcx> {
         debug_assert_matches!(

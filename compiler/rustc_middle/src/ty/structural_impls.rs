@@ -410,7 +410,7 @@ TrivialTypeTraversalImpls! {
     crate::ty::BoundRegionKind,
     crate::ty::AssocItem,
     crate::ty::AssocKind,
-    crate::ty::AliasKind,
+    crate::ty::AliasTyKind,
     crate::ty::Placeholder<crate::ty::BoundRegion>,
     crate::ty::Placeholder<crate::ty::BoundTy>,
     crate::ty::Placeholder<ty::BoundVar>,

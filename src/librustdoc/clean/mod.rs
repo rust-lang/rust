@@ -453,7 +453,15 @@ fn clean_projection_predicate<'tcx>(
     cx: &mut DocContext<'tcx>,
 ) -> WherePredicate {
     WherePredicate::EqPredicate {
-        lhs: clean_projection(pred.map_bound(|p| p.projection_ty), cx, None),
+        lhs: clean_projection(
+            pred.map_bound(|p| {
+                // FIXME: This needs to be made resilient for `AliasTerm`s that
+                // are associated consts.
+                p.projection_term.expect_ty(cx.tcx)
+            }),
+            cx,
+            None,
+        ),
         rhs: clean_middle_term(pred.map_bound(|p| p.term), cx),
     }
 }
@@ -838,7 +846,7 @@ fn clean_ty_generics<'tcx>(
                         }
                     }
                     ty::ClauseKind::Projection(p) => {
-                        if let ty::Param(param) = p.projection_ty.self_ty().kind() {
+                        if let ty::Param(param) = p.projection_term.self_ty().kind() {
                             projection = Some(bound_p.rebind(p));
                             return Some(param.index);
                         }
@@ -857,7 +865,15 @@ fn clean_ty_generics<'tcx>(
                 bounds.extend(pred.get_bounds().into_iter().flatten().cloned());
 
                 if let Some(proj) = projection
-                    && let lhs = clean_projection(proj.map_bound(|p| p.projection_ty), cx, None)
+                    && let lhs = clean_projection(
+                        proj.map_bound(|p| {
+                            // FIXME: This needs to be made resilient for `AliasTerm`s that
+                            // are associated consts.
+                            p.projection_term.expect_ty(cx.tcx)
+                        }),
+                        cx,
+                        None,
+                    )
                     && let Some((_, trait_did, name)) = lhs.projection()
                 {
                     impl_trait_proj.entry(param_idx).or_default().push((
@@ -2126,7 +2142,10 @@ pub(crate) fn clean_middle_ty<'tcx>(
                                 // HACK(compiler-errors): Doesn't actually matter what self
                                 // type we put here, because we're only using the GAT's args.
                                 .with_self_ty(cx.tcx, cx.tcx.types.self_param)
-                                .projection_ty
+                                .projection_term
+                                // FIXME: This needs to be made resilient for `AliasTerm`s
+                                // that are associated consts.
+                                .expect_ty(cx.tcx)
                         }),
                         cx,
                     ),
@@ -2284,10 +2303,12 @@ fn clean_middle_opaque_bounds<'tcx>(
                 .iter()
                 .filter_map(|bound| {
                     if let ty::ClauseKind::Projection(proj) = bound.kind().skip_binder() {
-                        if proj.projection_ty.trait_ref(cx.tcx) == trait_ref.skip_binder() {
+                        if proj.projection_term.trait_ref(cx.tcx) == trait_ref.skip_binder() {
                             Some(TypeBinding {
                                 assoc: projection_to_path_segment(
-                                    bound.kind().rebind(proj.projection_ty),
+                                    // FIXME: This needs to be made resilient for `AliasTerm`s that
+                                    // are associated consts.
+                                    bound.kind().rebind(proj.projection_term.expect_ty(cx.tcx)),
                                     cx,
                                 ),
                                 kind: TypeBindingKind::Equality {

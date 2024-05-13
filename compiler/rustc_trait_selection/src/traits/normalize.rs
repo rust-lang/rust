@@ -213,7 +213,7 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
                         let recursion_limit = self.interner().recursion_limit();
                         if !recursion_limit.value_within_limit(self.depth) {
                             self.selcx.infcx.err_ctxt().report_overflow_error(
-                                OverflowCause::DeeplyNormalize(data),
+                                OverflowCause::DeeplyNormalize(data.into()),
                                 self.cause.span,
                                 true,
                                 |_| {},
@@ -238,7 +238,7 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
                 // register an obligation to *later* project, since we know
                 // there won't be bound vars there.
                 let data = data.fold_with(self);
-                let normalized_ty = project::normalize_projection_type(
+                let normalized_ty = project::normalize_projection_ty(
                     self.selcx,
                     self.param_env,
                     data,
@@ -273,10 +273,10 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
                 let (data, mapped_regions, mapped_types, mapped_consts) =
                     BoundVarReplacer::replace_bound_vars(infcx, &mut self.universes, data);
                 let data = data.fold_with(self);
-                let normalized_ty = project::opt_normalize_projection_type(
+                let normalized_ty = project::opt_normalize_projection_term(
                     self.selcx,
                     self.param_env,
-                    data,
+                    data.into(),
                     self.cause.clone(),
                     self.depth,
                     self.obligations,
@@ -309,7 +309,7 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
                 let recursion_limit = self.interner().recursion_limit();
                 if !recursion_limit.value_within_limit(self.depth) {
                     self.selcx.infcx.err_ctxt().report_overflow_error(
-                        OverflowCause::DeeplyNormalize(data),
+                        OverflowCause::DeeplyNormalize(data.into()),
                         self.cause.span,
                         false,
                         |diag| {

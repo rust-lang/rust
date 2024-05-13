@@ -415,7 +415,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // many viable options, so pick the most restrictive.
             let trait_def_id = match bound_predicate.skip_binder() {
                 ty::PredicateKind::Clause(ty::ClauseKind::Projection(data)) => {
-                    Some(data.projection_ty.trait_def_id(self.tcx))
+                    Some(data.projection_term.trait_def_id(self.tcx))
                 }
                 ty::PredicateKind::Clause(ty::ClauseKind::Trait(data)) => Some(data.def_id()),
                 _ => None,
@@ -476,7 +476,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             _ => return None,
         }
 
-        let arg_param_ty = projection.skip_binder().projection_ty.args.type_at(1);
+        let arg_param_ty = projection.skip_binder().projection_term.args.type_at(1);
         let arg_param_ty = self.resolve_vars_if_possible(arg_param_ty);
         debug!(?arg_param_ty);
 
@@ -931,7 +931,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         // Check that this is a projection from the `Future` trait.
-        let trait_def_id = predicate.projection_ty.trait_def_id(self.tcx);
+        let trait_def_id = predicate.projection_term.trait_def_id(self.tcx);
         let future_trait = self.tcx.require_lang_item(LangItem::Future, Some(cause_span));
         if trait_def_id != future_trait {
             debug!("deduce_future_output_from_projection: not a future");
@@ -941,11 +941,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // The `Future` trait has only one associated item, `Output`,
         // so check that this is what we see.
         let output_assoc_item = self.tcx.associated_item_def_ids(future_trait)[0];
-        if output_assoc_item != predicate.projection_ty.def_id {
+        if output_assoc_item != predicate.projection_term.def_id {
             span_bug!(
                 cause_span,
                 "projecting associated item `{:?}` from future, which is not Output `{:?}`",
-                predicate.projection_ty.def_id,
+                predicate.projection_term.def_id,
                 output_assoc_item,
             );
         }

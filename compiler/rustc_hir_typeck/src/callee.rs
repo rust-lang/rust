@@ -575,7 +575,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             self.misc(span),
                             self.param_env,
                             ty::ProjectionPredicate {
-                                projection_ty: ty::AliasTy::new(
+                                projection_term: ty::AliasTerm::new(
                                     self.tcx,
                                     fn_once_output_def_id,
                                     [arg_ty.into(), fn_sig.inputs()[0].into(), const_param],

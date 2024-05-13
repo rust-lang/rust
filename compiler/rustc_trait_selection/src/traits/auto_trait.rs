@@ -540,11 +540,11 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         finished_map
     }
 
-    fn is_param_no_infer(&self, args: GenericArgsRef<'_>) -> bool {
+    fn is_param_no_infer(&self, args: GenericArgsRef<'tcx>) -> bool {
         self.is_of_param(args.type_at(0)) && !args.types().any(|t| t.has_infer_types())
     }
 
-    pub fn is_of_param(&self, ty: Ty<'_>) -> bool {
+    pub fn is_of_param(&self, ty: Ty<'tcx>) -> bool {
         match ty.kind() {
             ty::Param(_) => true,
             ty::Alias(ty::Projection, p) => self.is_of_param(p.self_ty()),
@@ -552,9 +552,9 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         }
     }
 
-    fn is_self_referential_projection(&self, p: ty::PolyProjectionPredicate<'_>) -> bool {
+    fn is_self_referential_projection(&self, p: ty::PolyProjectionPredicate<'tcx>) -> bool {
         if let Some(ty) = p.term().skip_binder().ty() {
-            matches!(ty.kind(), ty::Alias(ty::Projection, proj) if proj == &p.skip_binder().projection_ty)
+            matches!(ty.kind(), ty::Alias(ty::Projection, proj) if proj == &p.skip_binder().projection_term.expect_ty(self.tcx))
         } else {
             false
         }
@@ -612,7 +612,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                     // an inference variable.
                     // Additionally, we check if we've seen this predicate before,
                     // to avoid rendering duplicate bounds to the user.
-                    if self.is_param_no_infer(p.skip_binder().projection_ty.args)
+                    if self.is_param_no_infer(p.skip_binder().projection_term.args)
                         && !p.term().skip_binder().has_infer_types()
                         && is_new_pred
                     {
@@ -684,7 +684,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                     // and turn them into an explicit negative impl for our type.
                     debug!("Projecting and unifying projection predicate {:?}", predicate);
 
-                    match project::poly_project_and_unify_type(selcx, &obligation.with(self.tcx, p))
+                    match project::poly_project_and_unify_term(selcx, &obligation.with(self.tcx, p))
                     {
                         ProjectAndUnifyResult::MismatchedProjectionTypes(e) => {
                             debug!(

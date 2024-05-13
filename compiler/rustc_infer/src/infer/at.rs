@@ -437,6 +437,20 @@ impl<'tcx> ToTrace<'tcx> for ty::AliasTy<'tcx> {
         a: Self,
         b: Self,
     ) -> TypeTrace<'tcx> {
+        TypeTrace {
+            cause: cause.clone(),
+            values: Aliases(ExpectedFound::new(a_is_expected, a.into(), b.into())),
+        }
+    }
+}
+
+impl<'tcx> ToTrace<'tcx> for ty::AliasTerm<'tcx> {
+    fn to_trace(
+        cause: &ObligationCause<'tcx>,
+        a_is_expected: bool,
+        a: Self,
+        b: Self,
+    ) -> TypeTrace<'tcx> {
         TypeTrace { cause: cause.clone(), values: Aliases(ExpectedFound::new(a_is_expected, a, b)) }
     }
 }

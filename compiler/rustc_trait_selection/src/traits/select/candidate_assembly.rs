@@ -945,7 +945,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
 
         self.infcx.probe(|_| {
-            let ty = traits::normalize_projection_type(
+            let ty = traits::normalize_projection_ty(
                 self,
                 param_env,
                 ty::AliasTy::new(tcx, tcx.lang_items().deref_target()?, trait_ref.args),

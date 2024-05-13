@@ -258,23 +258,20 @@ fn unconstrained_parent_impl_args<'tcx>(
     // unconstrained parameters.
     for (clause, _) in impl_generic_predicates.predicates.iter() {
         if let ty::ClauseKind::Projection(proj) = clause.kind().skip_binder() {
-            let projection_ty = proj.projection_ty;
-            let projected_ty = proj.term;
-
-            let unbound_trait_ref = projection_ty.trait_ref(tcx);
+            let unbound_trait_ref = proj.projection_term.trait_ref(tcx);
             if Some(unbound_trait_ref) == impl_trait_ref {
                 continue;
             }
 
-            unconstrained_parameters.extend(cgp::parameters_for(tcx, projection_ty, true));
+            unconstrained_parameters.extend(cgp::parameters_for(tcx, proj.projection_term, true));
 
-            for param in cgp::parameters_for(tcx, projected_ty, false) {
+            for param in cgp::parameters_for(tcx, proj.term, false) {
                 if !unconstrained_parameters.contains(&param) {
                     constrained_params.insert(param.0);
                 }
             }
 
-            unconstrained_parameters.extend(cgp::parameters_for(tcx, projected_ty, true));
+            unconstrained_parameters.extend(cgp::parameters_for(tcx, proj.term, true));
         }
     }
 
@@ -495,11 +492,11 @@ fn check_specialization_on<'tcx>(
                     .emit())
             }
         }
-        ty::ClauseKind::Projection(ty::ProjectionPredicate { projection_ty, term }) => Err(tcx
+        ty::ClauseKind::Projection(ty::ProjectionPredicate { projection_term, term }) => Err(tcx
             .dcx()
             .struct_span_err(
                 span,
-                format!("cannot specialize on associated type `{projection_ty} == {term}`",),
+                format!("cannot specialize on associated type `{projection_term} == {term}`",),
             )
             .emit()),
         ty::ClauseKind::ConstArgHasType(..) => {

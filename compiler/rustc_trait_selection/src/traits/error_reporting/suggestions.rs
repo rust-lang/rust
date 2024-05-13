@@ -1105,9 +1105,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                             .iter()
                             .find_map(|pred| {
                                 if let ty::ClauseKind::Projection(proj) = pred.kind().skip_binder()
-                        && Some(proj.projection_ty.def_id) == self.tcx.lang_items().fn_once_output()
+                        && Some(proj.projection_term.def_id) == self.tcx.lang_items().fn_once_output()
                         // args tuple will always be args[1]
-                        && let ty::Tuple(args) = proj.projection_ty.args.type_at(1).kind()
+                        && let ty::Tuple(args) = proj.projection_term.args.type_at(1).kind()
                                 {
                                     Some((
                                         DefIdOrName::DefId(def_id),
@@ -1149,10 +1149,10 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         };
                         param_env.caller_bounds().iter().find_map(|pred| {
                             if let ty::ClauseKind::Projection(proj) = pred.kind().skip_binder()
-                        && Some(proj.projection_ty.def_id) == self.tcx.lang_items().fn_once_output()
-                        && proj.projection_ty.self_ty() == found
+                        && Some(proj.projection_term.def_id) == self.tcx.lang_items().fn_once_output()
+                        && proj.projection_term.self_ty() == found
                         // args tuple will always be args[1]
-                        && let ty::Tuple(args) = proj.projection_ty.args.type_at(1).kind()
+                        && let ty::Tuple(args) = proj.projection_term.args.type_at(1).kind()
                             {
                                 Some((
                                     name,
@@ -3846,11 +3846,11 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     && let Some(found) = failed_pred.skip_binder().term.ty()
                 {
                     type_diffs = vec![Sorts(ty::error::ExpectedFound {
-                        expected: Ty::new_alias(
-                            self.tcx,
-                            ty::Projection,
-                            where_pred.skip_binder().projection_ty,
-                        ),
+                        expected: where_pred
+                            .skip_binder()
+                            .projection_term
+                            .expect_ty(self.tcx)
+                            .to_ty(self.tcx),
                         found,
                     })];
                 }
@@ -4275,7 +4275,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             // This corresponds to `<ExprTy as Iterator>::Item = _`.
             let projection = ty::Binder::dummy(ty::PredicateKind::Clause(
                 ty::ClauseKind::Projection(ty::ProjectionPredicate {
-                    projection_ty: ty::AliasTy::new(self.tcx, proj.def_id, args),
+                    projection_term: ty::AliasTerm::new(self.tcx, proj.def_id, args),
                     term: ty.into(),
                 }),
             ));
@@ -4972,7 +4972,7 @@ fn point_at_assoc_type_restriction<G: EmissionGuarantee>(
     let ty::ClauseKind::Projection(proj) = clause else {
         return;
     };
-    let name = tcx.item_name(proj.projection_ty.def_id);
+    let name = tcx.item_name(proj.projection_term.def_id);
     let mut predicates = generics.predicates.iter().peekable();
     let mut prev: Option<&hir::WhereBoundPredicate<'_>> = None;
     while let Some(pred) = predicates.next() {

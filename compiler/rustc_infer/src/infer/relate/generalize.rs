@@ -102,7 +102,7 @@ impl<'tcx> InferCtxt<'tcx> {
                         // instead create a new inference variable `?normalized_source`, emitting
                         // `Projection(normalized_source, ?ty_normalized)` and `?normalized_source <: generalized_ty`.
                         relation.register_predicates([ty::ProjectionPredicate {
-                            projection_ty: data,
+                            projection_term: data.into(),
                             term: generalized_ty.into(),
                         }]);
                     }

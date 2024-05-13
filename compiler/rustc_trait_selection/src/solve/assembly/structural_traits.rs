@@ -699,7 +699,7 @@ pub(in crate::solve) fn predicates_for_object_candidate<'tcx>(
                 old_ty,
                 None,
                 "{} has two generic parameters: {} and {}",
-                proj.projection_ty,
+                proj.projection_term,
                 proj.term,
                 old_ty.unwrap()
             );
@@ -740,7 +740,11 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReplaceProjectionWith<'_, 'tcx> {
             // FIXME: Technically this equate could be fallible...
             self.nested.extend(
                 self.ecx
-                    .eq_and_get_goals(self.param_env, alias_ty, proj.projection_ty)
+                    .eq_and_get_goals(
+                        self.param_env,
+                        alias_ty,
+                        proj.projection_term.expect_ty(self.ecx.tcx()),
+                    )
                     .expect("expected to be able to unify goal projection with dyn's projection"),
             );
             proj.term.ty().unwrap()

@@ -52,7 +52,7 @@ pub use self::object_safety::hir_ty_lowering_object_safety_violations;
 pub use self::object_safety::is_vtable_safe_method;
 pub use self::object_safety::object_safety_violations_for_assoc_item;
 pub use self::object_safety::ObjectSafetyViolation;
-pub use self::project::{normalize_inherent_projection, normalize_projection_type};
+pub use self::project::{normalize_inherent_projection, normalize_projection_ty};
 pub use self::select::{EvaluationCache, SelectionCache, SelectionContext};
 pub use self::select::{EvaluationResult, IntercrateAmbiguityCause, OverflowError};
 pub use self::specialize::specialization_graph::FutureCompatOverlapError;

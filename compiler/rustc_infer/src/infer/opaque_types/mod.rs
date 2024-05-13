@@ -588,7 +588,7 @@ impl<'tcx> InferCtxt<'tcx> {
                             && !tcx.is_impl_trait_in_trait(projection_ty.def_id)
                             && !self.next_trait_solver() =>
                     {
-                        self.infer_projection(
+                        self.projection_ty_to_infer(
                             param_env,
                             projection_ty,
                             cause.clone(),

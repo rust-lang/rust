@@ -305,7 +305,7 @@ fn predicate_references_self<'tcx>(
             //
             // This is ALT2 in issue #56288, see that for discussion of the
             // possible alternatives.
-            data.projection_ty.args[1..].iter().any(has_self_ty).then_some(sp)
+            data.projection_term.args[1..].iter().any(has_self_ty).then_some(sp)
         }
         ty::ClauseKind::ConstArgHasType(_ct, ty) => has_self_ty(&ty.into()).then_some(sp),
 

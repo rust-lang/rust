@@ -404,7 +404,7 @@ impl<'tcx> ty::InferCtxtLike for InferCtxt<'tcx> {
 pub enum ValuePairs<'tcx> {
     Regions(ExpectedFound<ty::Region<'tcx>>),
     Terms(ExpectedFound<ty::Term<'tcx>>),
-    Aliases(ExpectedFound<ty::AliasTy<'tcx>>),
+    Aliases(ExpectedFound<ty::AliasTerm<'tcx>>),
     TraitRefs(ExpectedFound<ty::TraitRef<'tcx>>),
     PolySigs(ExpectedFound<ty::PolyFnSig<'tcx>>),
     ExistentialTraitRef(ExpectedFound<ty::PolyExistentialTraitRef<'tcx>>),

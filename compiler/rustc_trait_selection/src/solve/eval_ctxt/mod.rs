@@ -748,7 +748,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     pub(super) fn relate_rigid_alias_non_alias(
         &mut self,
         param_env: ty::ParamEnv<'tcx>,
-        alias: ty::AliasTy<'tcx>,
+        alias: ty::AliasTerm<'tcx>,
         variance: ty::Variance,
         term: ty::Term<'tcx>,
     ) -> Result<(), NoSolution> {
@@ -765,13 +765,13 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             // Alternatively we could modify `Equate` for this case by adding another
             // variant to `StructurallyRelateAliases`.
             let identity_args = self.fresh_args_for_item(alias.def_id);
-            let rigid_ctor = ty::AliasTy::new(tcx, alias.def_id, identity_args);
-            let ctor_ty = rigid_ctor.to_ty(tcx);
+            let rigid_ctor = ty::AliasTerm::new(tcx, alias.def_id, identity_args);
+            let ctor_term = rigid_ctor.to_term(tcx);
             let InferOk { value: (), obligations } = self
                 .infcx
                 .at(&ObligationCause::dummy(), param_env)
-                .trace(term, ctor_ty.into())
-                .eq_structurally_relating_aliases(term, ctor_ty.into())?;
+                .trace(term, ctor_term)
+                .eq_structurally_relating_aliases(term, ctor_term)?;
             debug_assert!(obligations.is_empty());
             self.relate(param_env, alias, variance, rigid_ctor)
         } else {

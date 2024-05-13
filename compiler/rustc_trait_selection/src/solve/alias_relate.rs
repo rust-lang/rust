@@ -29,7 +29,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         let Goal { param_env, predicate: (lhs, rhs, direction) } = goal;
 
         // Structurally normalize the lhs.
-        let lhs = if let Some(alias) = lhs.to_alias_ty(self.tcx()) {
+        let lhs = if let Some(alias) = lhs.to_alias_term() {
             let term = self.next_term_infer_of_kind(lhs);
             self.add_normalizes_to_goal(goal.with(tcx, ty::NormalizesTo { alias, term }));
             term
@@ -38,7 +38,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         };
 
         // Structurally normalize the rhs.
-        let rhs = if let Some(alias) = rhs.to_alias_ty(self.tcx()) {
+        let rhs = if let Some(alias) = rhs.to_alias_term() {
             let term = self.next_term_infer_of_kind(rhs);
             self.add_normalizes_to_goal(goal.with(tcx, ty::NormalizesTo { alias, term }));
             term
@@ -56,7 +56,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             ty::AliasRelationDirection::Equate => ty::Variance::Invariant,
             ty::AliasRelationDirection::Subtype => ty::Variance::Covariant,
         };
-        match (lhs.to_alias_ty(tcx), rhs.to_alias_ty(tcx)) {
+        match (lhs.to_alias_term(), rhs.to_alias_term()) {
             (None, None) => {
                 self.relate(param_env, lhs, variance, rhs)?;
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)

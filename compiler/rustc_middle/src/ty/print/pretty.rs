@@ -1277,7 +1277,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
 
     fn pretty_print_inherent_projection(
         &mut self,
-        alias_ty: ty::AliasTy<'tcx>,
+        alias_ty: ty::AliasTerm<'tcx>,
     ) -> Result<(), PrintError> {
         let def_key = self.tcx().def_key(alias_ty.def_id);
         self.path_generic_args(
@@ -3111,7 +3111,7 @@ define_print! {
     }
 
     ty::ProjectionPredicate<'tcx> {
-        p!(print(self.projection_ty), " == ");
+        p!(print(self.projection_term), " == ");
         cx.reset_type_limit();
         p!(print(self.term))
     }
@@ -3206,20 +3206,29 @@ define_print_and_forward_display! {
     }
 
     ty::AliasTy<'tcx> {
-        if let DefKind::Impl { of_trait: false } = cx.tcx().def_kind(cx.tcx().parent(self.def_id)) {
-            p!(pretty_print_inherent_projection(*self))
-        } else {
-            // If we're printing verbosely, or don't want to invoke queries
-            // (`is_impl_trait_in_trait`), then fall back to printing the def path.
-            // This is likely what you want if you're debugging the compiler anyways.
-            if !(cx.should_print_verbose() || with_reduced_queries())
-                && cx.tcx().is_impl_trait_in_trait(self.def_id)
-            {
-                return cx.pretty_print_opaque_impl_type(self.def_id, self.args);
-            } else {
-                p!(print_def_path(self.def_id, self.args));
-            }
+        let alias_term: ty::AliasTerm<'tcx> = (*self).into();
+        p!(print(alias_term))
+    }
 
+    ty::AliasTerm<'tcx> {
+        match self.kind(cx.tcx()) {
+            ty::AliasTermKind::InherentTy => p!(pretty_print_inherent_projection(*self)),
+            ty::AliasTermKind::ProjectionTy
+            | ty::AliasTermKind::WeakTy
+            | ty::AliasTermKind::OpaqueTy
+            | ty::AliasTermKind::UnevaluatedConst
+            | ty::AliasTermKind::ProjectionConst => {
+                // If we're printing verbosely, or don't want to invoke queries
+                // (`is_impl_trait_in_trait`), then fall back to printing the def path.
+                // This is likely what you want if you're debugging the compiler anyways.
+                if !(cx.should_print_verbose() || with_reduced_queries())
+                    && cx.tcx().is_impl_trait_in_trait(self.def_id)
+                {
+                    return cx.pretty_print_opaque_impl_type(self.def_id, self.args);
+                } else {
+                    p!(print_def_path(self.def_id, self.args));
+                }
+            }
         }
     }
 

@@ -411,7 +411,7 @@ impl<'tcx> InferCtxt<'tcx> {
                     .kind()
                     .map_bound(|kind| match kind {
                         ty::ClauseKind::Projection(projection_predicate)
-                            if projection_predicate.projection_ty.def_id == item_def_id =>
+                            if projection_predicate.projection_term.def_id == item_def_id =>
                         {
                             projection_predicate.term.ty()
                         }

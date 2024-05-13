@@ -327,7 +327,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             })
             .or_insert(binding.span);
 
-        let projection_ty = if let ty::AssocKind::Fn = assoc_kind {
+        let projection_term = if let ty::AssocKind::Fn = assoc_kind {
             let mut emitted_bad_param_err = None;
             // If we have an method return type bound, then we need to instantiate
             // the method's early bound params with suitable late-bound params.
@@ -381,7 +381,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             let output = if let ty::Alias(ty::Projection, alias_ty) = *output.skip_binder().kind()
                 && tcx.is_impl_trait_in_trait(alias_ty.def_id)
             {
-                alias_ty
+                alias_ty.into()
             } else {
                 return Err(tcx.dcx().emit_err(crate::errors::ReturnTypeNotationOnNonRpitit {
                     span: binding.span,
@@ -422,10 +422,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 );
                 debug!(?alias_args);
 
-                // Note that we're indeed also using `AliasTy` (alias *type*) for associated
-                // *constants* to represent *const projections*. Alias *term* would be a more
-                // appropriate name but alas.
-                ty::AliasTy::new(tcx, assoc_item.def_id, alias_args)
+                ty::AliasTerm::new(tcx, assoc_item.def_id, alias_args)
             });
 
             // Provide the resolved type of the associated constant to `type_of(AnonConst)`.
@@ -462,7 +459,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 //     for<'a> <T as Iterator>::Item = &'a str // <-- 'a is bad
                 //     for<'a> <T as FnMut<(&'a u32,)>>::Output = &'a str // <-- 'a is ok
                 let late_bound_in_projection_ty =
-                    tcx.collect_constrained_late_bound_regions(projection_ty);
+                    tcx.collect_constrained_late_bound_regions(projection_term);
                 let late_bound_in_term =
                     tcx.collect_referenced_late_bound_regions(trait_ref.rebind(term));
                 debug!(?late_bound_in_projection_ty);
@@ -491,8 +488,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
                 bounds.push_projection_bound(
                     tcx,
-                    projection_ty
-                        .map_bound(|projection_ty| ty::ProjectionPredicate { projection_ty, term }),
+                    projection_term.map_bound(|projection_term| ty::ProjectionPredicate {
+                        projection_term,
+                        term,
+                    }),
                     binding.span,
                 );
             }
@@ -502,6 +501,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 // NOTE: If `only_self_bounds` is true, do NOT expand this associated type bound into
                 // a trait predicate, since we only want to add predicates for the `Self` type.
                 if !only_self_bounds.0 {
+                    let projection_ty = projection_term
+                        .map_bound(|projection_term| projection_term.expect_ty(self.tcx()));
                     // Calling `skip_binder` is okay, because `lower_bounds` expects the `param_ty`
                     // parameter to have a skipped binder.
                     let param_ty = Ty::new_alias(tcx, ty::Projection, projection_ty.skip_binder());

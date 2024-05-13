@@ -215,7 +215,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitFinder<'_, 'tcx> {
             self.predicates.push(
                 ty::Binder::bind_with_vars(
                     ty::ProjectionPredicate {
-                        projection_ty: shifted_alias_ty,
+                        projection_term: shifted_alias_ty.into(),
                         term: default_ty.into(),
                     },
                     self.bound_vars,

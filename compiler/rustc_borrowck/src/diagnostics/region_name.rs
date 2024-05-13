@@ -1010,7 +1010,8 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                 clauses.iter().any(|pred| {
                     match pred.kind().skip_binder() {
                         ty::ClauseKind::Trait(data) if data.self_ty() == ty => {}
-                        ty::ClauseKind::Projection(data) if data.projection_ty.self_ty() == ty => {}
+                        ty::ClauseKind::Projection(data)
+                            if data.projection_term.self_ty() == ty => {}
                         _ => return false,
                     }
                     tcx.any_free_region_meets(pred, |r| *r == ty::ReEarlyParam(region))

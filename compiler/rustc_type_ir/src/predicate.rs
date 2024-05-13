@@ -1,6 +1,7 @@
 use std::fmt;
 
-use rustc_macros::{HashStable_NoContext, TyDecodable, TyEncodable};
+#[cfg(feature = "nightly")]
+use rustc_macros::{Decodable, Encodable, HashStable_NoContext, TyDecodable, TyEncodable};
 use rustc_type_ir_macros::{Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic};
 
 use crate::inherent::*;
@@ -283,7 +284,7 @@ impl<I: Interner> ExistentialProjection<I> {
         debug_assert!(!self_ty.has_escaping_bound_vars());
 
         ProjectionPredicate {
-            projection_ty: I::AliasTy::new(
+            projection_term: I::AliasTerm::new(
                 tcx,
                 self.def_id,
                 [self_ty.into()].into_iter().chain(self.args),
@@ -294,12 +295,46 @@ impl<I: Interner> ExistentialProjection<I> {
 
     pub fn erase_self_ty(tcx: I, projection_predicate: ProjectionPredicate<I>) -> Self {
         // Assert there is a Self.
-        projection_predicate.projection_ty.args().type_at(0);
+        projection_predicate.projection_term.args().type_at(0);
 
         Self {
-            def_id: projection_predicate.projection_ty.def_id(),
-            args: tcx.mk_args(&projection_predicate.projection_ty.args()[1..]),
+            def_id: projection_predicate.projection_term.def_id(),
+            args: tcx.mk_args(&projection_predicate.projection_term.args()[1..]),
             term: projection_predicate.term,
+        }
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[cfg_attr(feature = "nightly", derive(Encodable, Decodable, HashStable_NoContext))]
+pub enum AliasTermKind {
+    /// A projection `<Type as Trait>::AssocType`.
+    /// Can get normalized away if monomorphic enough.
+    ProjectionTy,
+    /// An associated type in an inherent `impl`
+    InherentTy,
+    /// An opaque type (usually from `impl Trait` in type aliases or function return types)
+    /// Can only be normalized away in RevealAll mode
+    OpaqueTy,
+    /// A type alias that actually checks its trait bounds.
+    /// Currently only used if the type alias references opaque types.
+    /// Can always be normalized away.
+    WeakTy,
+    /// An unevaluated const coming from a generic const expression.
+    UnevaluatedConst,
+    /// An unevaluated const coming from an associated const.
+    ProjectionConst,
+}
+
+impl AliasTermKind {
+    pub fn descr(self) -> &'static str {
+        match self {
+            AliasTermKind::ProjectionTy => "associated type",
+            AliasTermKind::ProjectionConst => "associated const",
+            AliasTermKind::InherentTy => "inherent associated type",
+            AliasTermKind::OpaqueTy => "opaque type",
+            AliasTermKind::WeakTy => "type alias",
+            AliasTermKind::UnevaluatedConst => "unevaluated constant",
         }
     }
 }
@@ -327,31 +362,31 @@ impl<I: Interner> ExistentialProjection<I> {
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
 #[cfg_attr(feature = "nightly", derive(TyDecodable, TyEncodable, HashStable_NoContext))]
 pub struct ProjectionPredicate<I: Interner> {
-    pub projection_ty: I::AliasTy,
+    pub projection_term: I::AliasTerm,
     pub term: I::Term,
 }
 
 impl<I: Interner> ProjectionPredicate<I> {
     pub fn self_ty(self) -> I::Ty {
-        self.projection_ty.self_ty()
+        self.projection_term.self_ty()
     }
 
     pub fn with_self_ty(self, tcx: I, self_ty: I::Ty) -> ProjectionPredicate<I> {
-        Self { projection_ty: self.projection_ty.with_self_ty(tcx, self_ty), ..self }
+        Self { projection_term: self.projection_term.with_self_ty(tcx, self_ty), ..self }
     }
 
     pub fn trait_def_id(self, tcx: I) -> I::DefId {
-        self.projection_ty.trait_def_id(tcx)
+        self.projection_term.trait_def_id(tcx)
     }
 
     pub fn def_id(self) -> I::DefId {
-        self.projection_ty.def_id()
+        self.projection_term.def_id()
     }
 }
 
 impl<I: Interner> fmt::Debug for ProjectionPredicate<I> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "ProjectionPredicate({:?}, {:?})", self.projection_ty, self.term)
+        write!(f, "ProjectionPredicate({:?}, {:?})", self.projection_term, self.term)
     }
 }
 
@@ -368,7 +403,7 @@ impl<I: Interner> fmt::Debug for ProjectionPredicate<I> {
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
 #[cfg_attr(feature = "nightly", derive(TyDecodable, TyEncodable, HashStable_NoContext))]
 pub struct NormalizesTo<I: Interner> {
-    pub alias: I::AliasTy,
+    pub alias: I::AliasTerm,
     pub term: I::Term,
 }
 

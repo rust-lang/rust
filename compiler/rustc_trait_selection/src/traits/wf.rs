@@ -166,11 +166,8 @@ pub fn clause_obligations<'tcx>(
             wf.compute(ty.into());
         }
         ty::ClauseKind::Projection(t) => {
-            wf.compute_alias(t.projection_ty);
-            wf.compute(match t.term.unpack() {
-                ty::TermKind::Ty(ty) => ty.into(),
-                ty::TermKind::Const(c) => c.into(),
-            })
+            wf.compute_alias_term(t.projection_term);
+            wf.compute(t.term.into_arg());
         }
         ty::ClauseKind::ConstArgHasType(ct, ty) => {
             wf.compute(ct.into());
@@ -440,7 +437,13 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
 
     /// Pushes the obligations required for an alias (except inherent) to be WF
     /// into `self.out`.
-    fn compute_alias(&mut self, data: ty::AliasTy<'tcx>) {
+    fn compute_alias_ty(&mut self, data: ty::AliasTy<'tcx>) {
+        self.compute_alias_term(data.into());
+    }
+
+    /// Pushes the obligations required for an alias (except inherent) to be WF
+    /// into `self.out`.
+    fn compute_alias_term(&mut self, data: ty::AliasTerm<'tcx>) {
         // A projection is well-formed if
         //
         // (a) its predicates hold (*)
@@ -699,7 +702,7 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
             }
 
             ty::Alias(ty::Projection | ty::Opaque | ty::Weak, data) => {
-                self.compute_alias(data);
+                self.compute_alias_ty(data);
                 return; // Subtree handled by compute_projection.
             }
             ty::Alias(ty::Inherent, data) => {

@@ -535,8 +535,7 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
             }
 
             // If projection of Discriminant then compare with `Ty::discriminant_ty`
-            if let ty::Alias(ty::AliasKind::Projection, ty::AliasTy { args, def_id, .. }) =
-                expected_ty.kind()
+            if let ty::Alias(ty::Projection, ty::AliasTy { args, def_id, .. }) = expected_ty.kind()
                 && Some(*def_id) == self.tcx.lang_items().discriminant_type()
                 && args.first().unwrap().as_type().unwrap().discriminant_ty(self.tcx) == operand_ty
             {

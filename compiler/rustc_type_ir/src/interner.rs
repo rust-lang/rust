@@ -39,7 +39,7 @@ pub trait Interner:
     // Kinds of tys
     type Ty: Ty<Self>;
     type Tys: Copy + Debug + Hash + Eq + IntoIterator<Item = Self::Ty>;
-    type AliasTy: AliasTy<Self>;
+    type AliasTy: Copy + DebugWithInfcx<Self> + Hash + Eq + Sized;
     type ParamTy: Copy + Debug + Hash + Eq;
     type BoundTy: Copy + Debug + Hash + Eq;
     type PlaceholderTy: PlaceholderLike;
@@ -74,6 +74,7 @@ pub trait Interner:
     type RegionOutlivesPredicate: Copy + Debug + Hash + Eq;
     type TypeOutlivesPredicate: Copy + Debug + Hash + Eq;
     type ProjectionPredicate: Copy + Debug + Hash + Eq;
+    type AliasTerm: AliasTerm<Self>;
     type NormalizesTo: Copy + Debug + Hash + Eq;
     type SubtypePredicate: Copy + Debug + Hash + Eq;
     type CoercePredicate: Copy + Debug + Hash + Eq;

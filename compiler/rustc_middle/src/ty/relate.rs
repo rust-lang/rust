@@ -10,7 +10,6 @@ use crate::ty::{
     GenericArgKind, GenericArgsRef, ImplSubject, Term, TermKind, Ty, TyCtxt, TypeFoldable,
 };
 use rustc_hir as hir;
-use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_macros::TypeVisitable;
 use rustc_target::spec::abi;
@@ -227,8 +226,8 @@ impl<'tcx> Relate<'tcx> for ty::AliasTy<'tcx> {
         if a.def_id != b.def_id {
             Err(TypeError::ProjectionMismatched(expected_found(a.def_id, b.def_id)))
         } else {
-            let args = match relation.tcx().def_kind(a.def_id) {
-                DefKind::OpaqueTy => relate_args_with_variances(
+            let args = match a.kind(relation.tcx()) {
+                ty::Opaque => relate_args_with_variances(
                     relation,
                     a.def_id,
                     relation.tcx().variances_of(a.def_id),
@@ -236,12 +235,42 @@ impl<'tcx> Relate<'tcx> for ty::AliasTy<'tcx> {
                     b.args,
                     false, // do not fetch `type_of(a_def_id)`, as it will cause a cycle
                 )?,
-                DefKind::AssocTy | DefKind::AssocConst | DefKind::TyAlias => {
+                ty::Projection | ty::Weak | ty::Inherent => {
                     relate_args_invariantly(relation, a.args, b.args)?
                 }
-                def => bug!("unknown alias DefKind: {def:?}"),
             };
             Ok(ty::AliasTy::new(relation.tcx(), a.def_id, args))
+        }
+    }
+}
+
+impl<'tcx> Relate<'tcx> for ty::AliasTerm<'tcx> {
+    fn relate<R: TypeRelation<'tcx>>(
+        relation: &mut R,
+        a: ty::AliasTerm<'tcx>,
+        b: ty::AliasTerm<'tcx>,
+    ) -> RelateResult<'tcx, ty::AliasTerm<'tcx>> {
+        if a.def_id != b.def_id {
+            Err(TypeError::ProjectionMismatched(expected_found(a.def_id, b.def_id)))
+        } else {
+            let args = match a.kind(relation.tcx()) {
+                ty::AliasTermKind::OpaqueTy => relate_args_with_variances(
+                    relation,
+                    a.def_id,
+                    relation.tcx().variances_of(a.def_id),
+                    a.args,
+                    b.args,
+                    false, // do not fetch `type_of(a_def_id)`, as it will cause a cycle
+                )?,
+                ty::AliasTermKind::ProjectionTy
+                | ty::AliasTermKind::WeakTy
+                | ty::AliasTermKind::InherentTy
+                | ty::AliasTermKind::UnevaluatedConst
+                | ty::AliasTermKind::ProjectionConst => {
+                    relate_args_invariantly(relation, a.args, b.args)?
+                }
+            };
+            Ok(ty::AliasTerm::new(relation.tcx(), a.def_id, args))
         }
     }
 }

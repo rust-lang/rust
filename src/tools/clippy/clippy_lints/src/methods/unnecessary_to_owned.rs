@@ -417,7 +417,7 @@ fn get_input_traits_and_projections<'tcx>(
                 }
             },
             ClauseKind::Projection(projection_predicate) => {
-                if projection_predicate.projection_ty.self_ty() == input {
+                if projection_predicate.projection_term.self_ty() == input {
                     projection_predicates.push(projection_predicate);
                 }
             },

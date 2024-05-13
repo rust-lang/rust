@@ -8,7 +8,7 @@ use self::SelectionCandidate::*;
 use super::coherence::{self, Conflict};
 use super::const_evaluatable;
 use super::project;
-use super::project::ProjectionTyObligation;
+use super::project::ProjectionTermObligation;
 use super::util;
 use super::util::closure_trait_ref_and_return_type;
 use super::wf;
@@ -809,7 +809,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 ty::PredicateKind::Clause(ty::ClauseKind::Projection(data)) => {
                     let data = bound_predicate.rebind(data);
                     let project_obligation = obligation.with(self.tcx(), data);
-                    match project::poly_project_and_unify_type(self, &project_obligation) {
+                    match project::poly_project_and_unify_term(self, &project_obligation) {
                         ProjectAndUnifyResult::Holds(mut subobligations) => {
                             'compute_res: {
                                 // If we've previously marked this projection as 'complete', then
@@ -1734,7 +1734,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// in cases like #91762.
     pub(super) fn match_projection_projections(
         &mut self,
-        obligation: &ProjectionTyObligation<'tcx>,
+        obligation: &ProjectionTermObligation<'tcx>,
         env_predicate: PolyProjectionPredicate<'tcx>,
         potentially_unnormalized_candidates: bool,
     ) -> ProjectionMatchesProjection {
@@ -1753,12 +1753,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     obligation.param_env,
                     obligation.cause.clone(),
                     obligation.recursion_depth + 1,
-                    infer_predicate.projection_ty,
+                    infer_predicate.projection_term,
                     &mut nested_obligations,
                 )
             })
         } else {
-            infer_predicate.projection_ty
+            infer_predicate.projection_term
         };
 
         let is_match = self

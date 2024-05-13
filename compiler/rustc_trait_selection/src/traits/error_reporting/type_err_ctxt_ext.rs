@@ -63,7 +63,7 @@ use super::{
 pub use rustc_infer::traits::error_reporting::*;
 
 pub enum OverflowCause<'tcx> {
-    DeeplyNormalize(ty::AliasTy<'tcx>),
+    DeeplyNormalize(ty::AliasTerm<'tcx>),
     TraitSolver(ty::Predicate<'tcx>),
 }
 
@@ -247,10 +247,10 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         }
 
         let mut err = match cause {
-            OverflowCause::DeeplyNormalize(alias_ty) => {
-                let alias_ty = self.resolve_vars_if_possible(alias_ty);
-                let kind = alias_ty.opt_kind(self.tcx).map_or("alias", |k| k.descr());
-                let alias_str = with_short_path(self.tcx, alias_ty);
+            OverflowCause::DeeplyNormalize(alias_term) => {
+                let alias_term = self.resolve_vars_if_possible(alias_term);
+                let kind = alias_term.kind(self.tcx).descr();
+                let alias_str = with_short_path(self.tcx, alias_term);
                 struct_span_code_err!(
                     self.dcx(),
                     span,
@@ -1469,7 +1469,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         );
 
         let param_env = ty::ParamEnv::empty();
-        self.can_eq(param_env, goal.projection_ty, assumption.projection_ty)
+        self.can_eq(param_env, goal.projection_term, assumption.projection_term)
             && self.can_eq(param_env, goal.term, assumption.term)
     }
 
@@ -1584,23 +1584,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     infer::BoundRegionConversionTime::HigherRankedType,
                     bound_predicate.rebind(data),
                 );
-                let unnormalized_term = match data.term.unpack() {
-                    ty::TermKind::Ty(_) => Ty::new_projection(
-                        self.tcx,
-                        data.projection_ty.def_id,
-                        data.projection_ty.args,
-                    )
-                    .into(),
-                    ty::TermKind::Const(ct) => ty::Const::new_unevaluated(
-                        self.tcx,
-                        ty::UnevaluatedConst {
-                            def: data.projection_ty.def_id,
-                            args: data.projection_ty.args,
-                        },
-                        ct.ty(),
-                    )
-                    .into(),
-                };
+                let unnormalized_term = data.projection_term.to_term(self.tcx);
                 // FIXME(-Znext-solver): For diagnostic purposes, it would be nice
                 // to deeply normalize this type.
                 let normalized_term =
@@ -1665,13 +1649,13 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     return None;
                 };
 
-                let trait_assoc_item = self.tcx.opt_associated_item(proj.projection_ty.def_id)?;
+                let trait_assoc_item = self.tcx.opt_associated_item(proj.projection_term.def_id)?;
                 let trait_assoc_ident = trait_assoc_item.ident(self.tcx);
 
                 let mut associated_items = vec![];
                 self.tcx.for_each_relevant_impl(
-                    self.tcx.trait_of_item(proj.projection_ty.def_id)?,
-                    proj.projection_ty.self_ty(),
+                    self.tcx.trait_of_item(proj.projection_term.def_id)?,
+                    proj.projection_term.self_ty(),
                     |impl_def_id| {
                         associated_items.extend(
                             self.tcx
@@ -1740,11 +1724,11 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         normalized_ty: ty::Term<'tcx>,
         expected_ty: ty::Term<'tcx>,
     ) -> Option<String> {
-        let trait_def_id = pred.projection_ty.trait_def_id(self.tcx);
-        let self_ty = pred.projection_ty.self_ty();
+        let trait_def_id = pred.projection_term.trait_def_id(self.tcx);
+        let self_ty = pred.projection_term.self_ty();
 
         with_forced_trimmed_paths! {
-            if Some(pred.projection_ty.def_id) == self.tcx.lang_items().fn_once_output() {
+            if Some(pred.projection_term.def_id) == self.tcx.lang_items().fn_once_output() {
                 let fn_kind = self_ty.prefix_string(self.tcx);
                 let item = match self_ty.kind() {
                     ty::FnDef(def, _) => self.tcx.item_name(*def).to_string(),
@@ -2623,14 +2607,14 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 }
 
                 if let Err(guar) =
-                    self.tcx.ensure().coherent_trait(self.tcx.parent(data.projection_ty.def_id))
+                    self.tcx.ensure().coherent_trait(self.tcx.parent(data.projection_term.def_id))
                 {
                     // Avoid bogus "type annotations needed `Foo: Bar`" errors on `impl Bar for Foo` in case
                     // other `Foo` impls are incoherent.
                     return guar;
                 }
                 let arg = data
-                    .projection_ty
+                    .projection_term
                     .args
                     .iter()
                     .chain(Some(data.term.into_arg()))

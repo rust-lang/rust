@@ -1096,11 +1096,11 @@ impl<'a, 'tcx> ProofTreeVisitor<'tcx> for AmbiguityCausesVisitor<'a, 'tcx> {
             Some(ty::PredicateKind::Clause(ty::ClauseKind::Trait(tr))) => tr.trait_ref,
             Some(ty::PredicateKind::Clause(ty::ClauseKind::Projection(proj)))
                 if matches!(
-                    infcx.tcx.def_kind(proj.projection_ty.def_id),
+                    infcx.tcx.def_kind(proj.projection_term.def_id),
                     DefKind::AssocTy | DefKind::AssocConst
                 ) =>
             {
-                proj.projection_ty.trait_ref(infcx.tcx)
+                proj.projection_term.trait_ref(infcx.tcx)
             }
             _ => return,
         };

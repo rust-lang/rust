@@ -8,7 +8,7 @@ use rustc_data_structures::{
     snapshot_map::{self, SnapshotMapRef, SnapshotMapStorage},
     undo_log::Rollback,
 };
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty;
 
 pub use rustc_middle::traits::{EvaluationResult, Reveal};
 
@@ -26,7 +26,7 @@ pub struct Normalized<'tcx, T> {
     pub obligations: Vec<PredicateObligation<'tcx>>,
 }
 
-pub type NormalizedTy<'tcx> = Normalized<'tcx, Ty<'tcx>>;
+pub type NormalizedTerm<'tcx> = Normalized<'tcx, ty::Term<'tcx>>;
 
 impl<'tcx, T> Normalized<'tcx, T> {
     pub fn with<U>(self, value: U) -> Normalized<'tcx, U> {
@@ -77,13 +77,13 @@ pub struct ProjectionCacheStorage<'tcx> {
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
 pub struct ProjectionCacheKey<'tcx> {
-    ty: ty::AliasTy<'tcx>,
+    term: ty::AliasTerm<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
 }
 
 impl<'tcx> ProjectionCacheKey<'tcx> {
-    pub fn new(ty: ty::AliasTy<'tcx>, param_env: ty::ParamEnv<'tcx>) -> Self {
-        Self { ty, param_env }
+    pub fn new(term: ty::AliasTerm<'tcx>, param_env: ty::ParamEnv<'tcx>) -> Self {
+        Self { term, param_env }
     }
 }
 
@@ -93,8 +93,8 @@ pub enum ProjectionCacheEntry<'tcx> {
     Ambiguous,
     Recur,
     Error,
-    NormalizedTy {
-        ty: Normalized<'tcx, ty::Term<'tcx>>,
+    NormalizedTerm {
+        ty: NormalizedTerm<'tcx>,
         /// If we were able to successfully evaluate the
         /// corresponding cache entry key during predicate
         /// evaluation, then this field stores the final
@@ -175,11 +175,7 @@ impl<'tcx> ProjectionCache<'_, 'tcx> {
     }
 
     /// Indicates that `key` was normalized to `value`.
-    pub fn insert_term(
-        &mut self,
-        key: ProjectionCacheKey<'tcx>,
-        value: Normalized<'tcx, ty::Term<'tcx>>,
-    ) {
+    pub fn insert_term(&mut self, key: ProjectionCacheKey<'tcx>, value: NormalizedTerm<'tcx>) {
         debug!(
             "ProjectionCacheEntry::insert_ty: adding cache entry: key={:?}, value={:?}",
             key, value
@@ -190,7 +186,7 @@ impl<'tcx> ProjectionCache<'_, 'tcx> {
             return;
         }
         let fresh_key =
-            map.insert(key, ProjectionCacheEntry::NormalizedTy { ty: value, complete: None });
+            map.insert(key, ProjectionCacheEntry::NormalizedTerm { ty: value, complete: None });
         assert!(!fresh_key, "never started projecting `{key:?}`");
     }
 
@@ -201,13 +197,16 @@ impl<'tcx> ProjectionCache<'_, 'tcx> {
     pub fn complete(&mut self, key: ProjectionCacheKey<'tcx>, result: EvaluationResult) {
         let mut map = self.map();
         match map.get(&key) {
-            Some(ProjectionCacheEntry::NormalizedTy { ty, complete: _ }) => {
+            Some(ProjectionCacheEntry::NormalizedTerm { ty, complete: _ }) => {
                 info!("ProjectionCacheEntry::complete({:?}) - completing {:?}", key, ty);
                 let mut ty = ty.clone();
                 if result.must_apply_considering_regions() {
                     ty.obligations = vec![];
                 }
-                map.insert(key, ProjectionCacheEntry::NormalizedTy { ty, complete: Some(result) });
+                map.insert(
+                    key,
+                    ProjectionCacheEntry::NormalizedTerm { ty, complete: Some(result) },
+                );
             }
             ref value => {
                 // Type inference could "strand behind" old cache entries. Leave
@@ -219,7 +218,7 @@ impl<'tcx> ProjectionCache<'_, 'tcx> {
 
     pub fn is_complete(&mut self, key: ProjectionCacheKey<'tcx>) -> Option<EvaluationResult> {
         self.map().get(&key).and_then(|res| match res {
-            ProjectionCacheEntry::NormalizedTy { ty: _, complete } => *complete,
+            ProjectionCacheEntry::NormalizedTerm { ty: _, complete } => *complete,
             _ => None,
         })
     }
