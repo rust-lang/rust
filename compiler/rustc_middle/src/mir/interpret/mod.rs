@@ -1,136 +1,9 @@
 //! An interpreter for MIR used in CTFE and by miri.
 
-#[macro_export]
-macro_rules! err_unsup {
-    ($($tt:tt)*) => {
-        $crate::mir::interpret::InterpError::Unsupported(
-            $crate::mir::interpret::UnsupportedOpInfo::$($tt)*
-        )
-    };
-}
-pub use err_unsup;
-
-#[macro_export]
-macro_rules! err_unsup_format {
-    ($($tt:tt)*) => { $crate::err_unsup!(Unsupported(format!($($tt)*))) };
-}
-pub use err_unsup_format;
-
-#[macro_export]
-macro_rules! err_inval {
-    ($($tt:tt)*) => {
-        $crate::mir::interpret::InterpError::InvalidProgram(
-            $crate::mir::interpret::InvalidProgramInfo::$($tt)*
-        )
-    };
-}
-pub use err_inval;
-
-#[macro_export]
-macro_rules! err_ub {
-    ($($tt:tt)*) => {
-        $crate::mir::interpret::InterpError::UndefinedBehavior(
-            $crate::mir::interpret::UndefinedBehaviorInfo::$($tt)*
-        )
-    };
-}
-pub use err_ub;
-
-#[macro_export]
-macro_rules! err_ub_format {
-    ($($tt:tt)*) => { err_ub!(Ub(format!($($tt)*))) };
-}
-pub use err_ub_format;
-
-#[macro_export]
-macro_rules! err_exhaust {
-    ($($tt:tt)*) => {
-        $crate::mir::interpret::InterpError::ResourceExhaustion(
-            $crate::mir::interpret::ResourceExhaustionInfo::$($tt)*
-        )
-    };
-}
-pub use err_exhaust;
-
-#[macro_export]
-macro_rules! err_machine_stop {
-    ($($tt:tt)*) => {
-        $crate::mir::interpret::InterpError::MachineStop(Box::new($($tt)*))
-    };
-}
-pub use err_machine_stop;
-
-// In the `throw_*` macros, avoid `return` to make them work with `try {}`.
-#[macro_export]
-macro_rules! throw_unsup {
-    ($($tt:tt)*) => { do yeet $crate::err_unsup!($($tt)*) };
-}
-pub use throw_unsup;
-
-#[macro_export]
-macro_rules! throw_unsup_format {
-    ($($tt:tt)*) => { $crate::throw_unsup!(Unsupported(format!($($tt)*))) };
-}
-pub use throw_unsup_format;
-
-#[macro_export]
-macro_rules! throw_inval {
-    ($($tt:tt)*) => { do yeet $crate::err_inval!($($tt)*) };
-}
-pub use throw_inval;
-
-#[macro_export]
-macro_rules! throw_ub {
-    ($($tt:tt)*) => { do yeet $crate::err_ub!($($tt)*) };
-}
-pub use throw_ub;
-
-#[macro_export]
-macro_rules! throw_ub_format {
-    ($($tt:tt)*) => { $crate::throw_ub!(Ub(format!($($tt)*))) };
-}
-pub use throw_ub_format;
-
-#[macro_export]
-macro_rules! throw_exhaust {
-    ($($tt:tt)*) => { do yeet $crate::err_exhaust!($($tt)*) };
-}
-pub use throw_exhaust;
-
-#[macro_export]
-macro_rules! throw_machine_stop {
-    ($($tt:tt)*) => { do yeet $crate::err_machine_stop!($($tt)*) };
-}
-pub use throw_machine_stop;
-
-#[macro_export]
-macro_rules! err_ub_custom {
-    ($msg:expr $(, $($name:ident = $value:expr),* $(,)?)?) => {{
-        $(
-            let ($($name,)*) = ($($value,)*);
-        )?
-        $crate::err_ub!(Custom(
-            $crate::error::CustomSubdiagnostic {
-                msg: || $msg,
-                add_args: Box::new(move |mut set_arg| {
-                    $($(
-                        set_arg(stringify!($name).into(), rustc_errors::IntoDiagArg::into_diag_arg($name));
-                    )*)?
-                })
-            }
-        ))
-    }};
-}
-pub use err_ub_custom;
-
-#[macro_export]
-macro_rules! throw_ub_custom {
-    ($($tt:tt)*) => { do yeet $crate::err_ub_custom!($($tt)*) };
-}
-pub use throw_ub_custom;
+#[macro_use]
+mod error;
 
 mod allocation;
-mod error;
 mod pointer;
 mod queries;
 mod value;
@@ -165,6 +38,12 @@ pub use self::error::{
     MachineStopType, Misalignment, PointerKind, ReportedErrorInfo, ResourceExhaustionInfo,
     ScalarSizeMismatch, UndefinedBehaviorInfo, UnsupportedOpInfo, ValidationErrorInfo,
     ValidationErrorKind,
+};
+// Also make the error macros available from this module.
+pub use {
+    err_exhaust, err_inval, err_machine_stop, err_ub, err_ub_custom, err_ub_format, err_unsup,
+    err_unsup_format, throw_exhaust, throw_inval, throw_machine_stop, throw_ub, throw_ub_custom,
+    throw_ub_format, throw_unsup, throw_unsup_format,
 };
 
 pub use self::value::Scalar;
