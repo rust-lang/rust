@@ -143,6 +143,14 @@ impl Rustdoc {
         self
     }
 
+    /// Add a directory to the library search path. It corresponds to the `-L`
+    /// rustdoc option.
+    pub fn library_search_path<P: AsRef<Path>>(&mut self, path: P) -> &mut Self {
+        self.cmd.arg("-L");
+        self.cmd.arg(path.as_ref());
+        self
+    }
+
     #[track_caller]
     pub fn run_fail_assert_exit_code(&mut self, code: i32) -> Output {
         let caller_location = std::panic::Location::caller();
