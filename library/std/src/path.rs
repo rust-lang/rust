@@ -1425,6 +1425,11 @@ impl PathBuf {
     /// If `extension` is the empty string, [`self.extension`] will be [`None`]
     /// afterwards, not `Some("")`.
     ///
+    /// # Panics
+    ///
+    /// Panics if the passed extension contains a path separator (see
+    /// [`is_separator`]).
+    ///
     /// # Caveats
     ///
     /// The new `extension` may contain dots and will be used in its entirety,
@@ -1470,6 +1475,14 @@ impl PathBuf {
     }
 
     fn _set_extension(&mut self, extension: &OsStr) -> bool {
+        for &b in extension.as_encoded_bytes() {
+            if b < 128 {
+                if is_separator(b as char) {
+                    panic!("extension cannot contain path separators: {:?}", extension);
+                }
+            }
+        }
+
         let file_stem = match self.file_stem() {
             None => return false,
             Some(f) => f.as_encoded_bytes(),
