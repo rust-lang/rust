@@ -1335,7 +1335,8 @@ pub enum NonLocalDefinitionsDiag {
         body_kind_descr: &'static str,
         body_name: String,
         cargo_update: Option<NonLocalDefinitionsCargoUpdateNote>,
-        const_anon: Option<Span>,
+        const_anon: Option<Option<Span>>,
+        has_trait: bool,
     },
     MacroRules {
         depth: u32,
@@ -1356,6 +1357,7 @@ impl<'a> LintDiagnostic<'a, ()> for NonLocalDefinitionsDiag {
                 body_name,
                 cargo_update,
                 const_anon,
+                has_trait,
             } => {
                 diag.primary_message(fluent::lint_non_local_definitions_impl);
                 diag.arg("depth", depth);
@@ -1363,21 +1365,29 @@ impl<'a> LintDiagnostic<'a, ()> for NonLocalDefinitionsDiag {
                 diag.arg("body_name", body_name);
 
                 diag.help(fluent::lint_help);
-                diag.note(fluent::lint_non_local);
-                diag.note(fluent::lint_exception);
-                diag.note(fluent::lint_non_local_definitions_deprecation);
+                if has_trait {
+                    diag.note(fluent::lint_bounds);
+                    diag.note(fluent::lint_with_trait);
+                } else {
+                    diag.note(fluent::lint_without_trait);
+                }
 
                 if let Some(cargo_update) = cargo_update {
                     diag.subdiagnostic(&diag.dcx, cargo_update);
                 }
                 if let Some(const_anon) = const_anon {
-                    diag.span_suggestion(
-                        const_anon,
-                        fluent::lint_const_anon,
-                        "_",
-                        Applicability::MachineApplicable,
-                    );
+                    diag.note(fluent::lint_exception);
+                    if let Some(const_anon) = const_anon {
+                        diag.span_suggestion(
+                            const_anon,
+                            fluent::lint_const_anon,
+                            "_",
+                            Applicability::MachineApplicable,
+                        );
+                    }
                 }
+
+                diag.note(fluent::lint_non_local_definitions_deprecation);
             }
             NonLocalDefinitionsDiag::MacroRules {
                 depth,

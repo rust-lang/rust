@@ -548,8 +548,10 @@ lint_non_local_definitions_impl = non-local `impl` definition, `impl` blocks sho
             [one] `{$body_name}`
            *[other] `{$body_name}` and up {$depth} bodies
         }
-    .non_local = an `impl` definition is non-local if it is nested inside an item and may impact type checking outside of that item. This can be the case if neither the trait or the self type are at the same nesting level as the `impl`
-    .exception = one exception to the rule are anon-const (`const _: () = {"{"} ... {"}"}`) at top-level module and anon-const at the same nesting as the trait or type
+    .without_trait = methods and assoc const are still usable outside the current expression, only `impl Local` and `impl dyn Local` are local and only if the `Local` type is at the same nesting as the `impl` block
+    .with_trait = an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
+    .bounds = `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
+    .exception = anon-const (`const _: () = {"{"} ... {"}"}`) at top-level module and anon-const at the same nesting as the trait or type are consider to be transparent regarding the nesting level
     .const_anon = use a const-anon item to suppress this lint
 
 lint_non_local_definitions_macro_rules = non-local `macro_rules!` definition, `#[macro_export]` macro should be written at top level module

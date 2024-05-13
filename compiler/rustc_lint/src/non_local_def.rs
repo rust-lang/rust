@@ -202,8 +202,7 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
                 // Get the span of the parent const item ident (if it's a not a const anon).
                 //
                 // Used to suggest changing the const item to a const anon.
-                let span_for_const_anon_suggestion = if self.body_depth == 1
-                    && parent_def_kind == DefKind::Const
+                let span_for_const_anon_suggestion = if parent_def_kind == DefKind::Const
                     && parent_opt_item_name != Some(kw::Underscore)
                     && let Some(parent) = parent.as_local()
                     && let Node::Item(item) = cx.tcx.hir_node_by_def_id(parent)
@@ -215,6 +214,9 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
                     None
                 };
 
+                let const_anon = matches!(parent_def_kind, DefKind::Const | DefKind::Static { .. })
+                    .then_some(span_for_const_anon_suggestion);
+
                 cx.emit_span_lint(
                     NON_LOCAL_DEFINITIONS,
                     item.span,
@@ -225,7 +227,8 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
                             .map(|s| s.to_ident_string())
                             .unwrap_or_else(|| "<unnameable>".to_string()),
                         cargo_update: cargo_update(),
-                        const_anon: span_for_const_anon_suggestion,
+                        const_anon,
+                        has_trait: impl_.of_trait.is_some(),
                     },
                 )
             }
