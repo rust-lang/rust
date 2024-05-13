@@ -1311,6 +1311,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
             CoroutineKind::AsyncGen { .. } => hir::CoroutineDesugaring::AsyncGen,
         };
         let closure_id = coroutine_kind.closure_id();
+
+        let span = if let FnRetTy::Default(span) = decl.output
+            && matches!(coroutine_source, rustc_hir::CoroutineSource::Closure)
+        {
+            body_span.with_lo(span.lo())
+        } else {
+            body_span
+        };
         let coroutine_expr = self.make_desugared_coroutine_expr(
             // The default capture mode here is by-ref. Later on during upvar analysis,
             // we will force the captured arguments to by-move, but for async closures,
@@ -1319,7 +1327,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             CaptureBy::Ref,
             closure_id,
             None,
-            body_span,
+            span,
             desugaring_kind,
             coroutine_source,
             mkbody,
