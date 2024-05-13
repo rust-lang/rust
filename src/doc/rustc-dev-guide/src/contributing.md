@@ -404,6 +404,7 @@ table td:nth-child(2) {
 | [I-] | <span class="label-color" style="background-color:#e10c02;">&#x2003;</span>&nbsp;Red | The **importance** of the issue. |
 | [I-\*-nominated] | <span class="label-color" style="background-color:#e10c02;">&#x2003;</span>&nbsp;Red | The issue has been nominated for discussion at the next meeting of the corresponding team. |
 | [I-prioritize] | <span class="label-color" style="background-color:#e10c02;">&#x2003;</span>&nbsp;Red | The issue has been nominated for prioritization by the team tagged with a **T**-prefixed label. |
+| [L-] | <span class="label-color" style="background-color:#64E9CF;">&#x2003;</span>&nbsp;Teal | The relevant **lint**. |
 | [metabug] | <span class="label-color" style="background-color:#5319e7;">&#x2003;</span>&nbsp;Purple | Bugs that collect other bugs. |
 | [O-] | <span class="label-color" style="background-color:#6e6ec0;">&#x2003;</span>&nbsp;Purple Grey | The **operating system** or platform that the issue is specific to. |
 | [P-] | <span class="label-color" style="background-color:#eb6420;">&#x2003;</span>&nbsp;Orange | The issue **priority**.  These labels can be assigned by anyone that understand the issue and is able to  prioritize it, and remove the [I-prioritize] label. |
@@ -423,6 +424,7 @@ table td:nth-child(2) {
 [E-]: https://github.com/rust-lang/rust/labels?q=E
 [F-]: https://github.com/rust-lang/rust/labels?q=F
 [I-]: https://github.com/rust-lang/rust/labels?q=I
+[L-]: https://github.com/rust-lang/rust/labels?q=L
 [O-]: https://github.com/rust-lang/rust/labels?q=O
 [P-]: https://github.com/rust-lang/rust/labels?q=P
 [S-]: https://github.com/rust-lang/rust/labels?q=S
