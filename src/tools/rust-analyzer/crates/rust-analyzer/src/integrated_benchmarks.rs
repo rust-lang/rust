@@ -153,6 +153,7 @@ fn integrated_completion_benchmark() {
             prefer_no_std: false,
             prefer_prelude: true,
             limit: None,
+            term_search_fuel: 200,
         };
         let position =
             FilePosition { file_id, offset: TextSize::try_from(completion_offset).unwrap() };
@@ -197,6 +198,7 @@ fn integrated_completion_benchmark() {
             prefer_no_std: false,
             prefer_prelude: true,
             limit: None,
+            term_search_fuel: 200,
         };
         let position =
             FilePosition { file_id, offset: TextSize::try_from(completion_offset).unwrap() };
@@ -239,6 +241,7 @@ fn integrated_completion_benchmark() {
             prefer_no_std: false,
             prefer_prelude: true,
             limit: None,
+            term_search_fuel: 200,
         };
         let position =
             FilePosition { file_id, offset: TextSize::try_from(completion_offset).unwrap() };
@@ -295,6 +298,7 @@ fn integrated_diagnostics_benchmark() {
         },
         prefer_no_std: false,
         prefer_prelude: false,
+        term_search_fuel: 400,
     };
     host.analysis()
         .diagnostics(&diagnostics_config, ide::AssistResolveStrategy::None, file_id)

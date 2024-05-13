@@ -9,6 +9,11 @@ for enum variants.
 --
 Placeholder expression to use for missing expressions in assists.
 --
+[[rust-analyzer.assist.termSearch.fuel]]rust-analyzer.assist.termSearch.fuel (default: `400`)::
++
+--
+Term search fuel in "units of work" for assists (Defaults to 400).
+--
 [[rust-analyzer.cachePriming.enable]]rust-analyzer.cachePriming.enable (default: `true`)::
 +
 --
@@ -372,6 +377,11 @@ Custom completion snippets.
 +
 --
 Whether to enable term search based snippets like `Some(foo.bar().baz())`.
+--
+[[rust-analyzer.completion.termSearch.fuel]]rust-analyzer.completion.termSearch.fuel (default: `200`)::
++
+--
+Term search fuel in "units of work" for autocompletion (Defaults to 200).
 --
 [[rust-analyzer.diagnostics.disabled]]rust-analyzer.diagnostics.disabled (default: `[]`)::
 +

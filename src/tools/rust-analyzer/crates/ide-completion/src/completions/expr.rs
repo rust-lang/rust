@@ -353,7 +353,7 @@ pub(crate) fn complete_expr(acc: &mut Completions, ctx: &CompletionContext<'_>) 
             config: hir::term_search::TermSearchConfig {
                 enable_borrowcheck: false,
                 many_alternatives_threshold: 1,
-                depth: 6,
+                fuel: 200,
             },
         };
         let exprs = hir::term_search::term_search(&term_search_ctx);

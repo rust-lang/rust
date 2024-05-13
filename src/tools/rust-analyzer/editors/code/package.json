@@ -534,6 +534,12 @@
                         "Fill missing expressions with reasonable defaults, `new` or `default` constructors."
                     ]
                 },
+                "rust-analyzer.assist.termSearch.fuel": {
+                    "markdownDescription": "Term search fuel in \"units of work\" for assists (Defaults to 400).",
+                    "default": 400,
+                    "type": "integer",
+                    "minimum": 0
+                },
                 "rust-analyzer.cachePriming.enable": {
                     "markdownDescription": "Warm up caches on project load.",
                     "default": true,
@@ -929,6 +935,12 @@
                     "markdownDescription": "Whether to enable term search based snippets like `Some(foo.bar().baz())`.",
                     "default": false,
                     "type": "boolean"
+                },
+                "rust-analyzer.completion.termSearch.fuel": {
+                    "markdownDescription": "Term search fuel in \"units of work\" for autocompletion (Defaults to 200).",
+                    "default": 200,
+                    "type": "integer",
+                    "minimum": 0
                 },
                 "rust-analyzer.diagnostics.disabled": {
                     "markdownDescription": "List of rust-analyzer diagnostics to disable.",

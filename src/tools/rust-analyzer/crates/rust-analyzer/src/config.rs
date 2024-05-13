@@ -454,6 +454,9 @@ config_data! {
     /// Local configurations can be overridden for every crate by placing a `rust-analyzer.toml` on crate root.
     /// A config is searched for by traversing a "config tree" in a bottom up fashion. It is chosen by the nearest first principle.
     local: struct LocalDefaultConfigData <- LocalConfigInput ->  {
+        /// Term search fuel in "units of work" for assists (Defaults to 400).
+        assist_termSearch_fuel: usize = 400,
+
         /// Toggles the additional completions that automatically add imports when completed.
         /// Note that your client must specify the `additionalTextEdits` LSP client capability to truly have this feature enabled.
         completion_autoimport_enable: bool       = true,
@@ -515,6 +518,8 @@ config_data! {
         }"#).unwrap(),
         /// Whether to enable term search based snippets like `Some(foo.bar().baz())`.
         completion_termSearch_enable: bool = false,
+        /// Term search fuel in "units of work" for autocompletion (Defaults to 200).
+        completion_termSearch_fuel: usize = 200,
 
         /// Enables highlighting of related references while the cursor is on `break`, `loop`, `while`, or `for` keywords.
         highlightRelated_breakPoints_enable: bool = true,
@@ -1015,6 +1020,7 @@ impl Config {
             prefer_no_std: self.imports_preferNoStd(source_root).to_owned(),
             assist_emit_must_use: self.assist_emitMustUse().to_owned(),
             prefer_prelude: self.imports_preferPrelude(source_root).to_owned(),
+            term_search_fuel: self.assist_termSearch_fuel(source_root).to_owned() as u64,
         }
     }
 
@@ -1048,6 +1054,7 @@ impl Config {
             snippets: self.snippets.clone().to_vec(),
             limit: self.completion_limit(source_root).to_owned(),
             enable_term_search: self.completion_termSearch_enable(source_root).to_owned(),
+            term_search_fuel: self.completion_termSearch_fuel(source_root).to_owned() as u64,
             prefer_prelude: self.imports_preferPrelude(source_root).to_owned(),
         }
     }
@@ -1067,6 +1074,7 @@ impl Config {
             prefer_no_std: self.imports_preferNoStd(source_root).to_owned(),
             prefer_prelude: self.imports_preferPrelude(source_root).to_owned(),
             style_lints: self.diagnostics_styleLints_enable().to_owned(),
+            term_search_fuel: self.assist_termSearch_fuel(source_root).to_owned() as u64,
         }
     }
     pub fn expand_proc_attr_macros(&self) -> bool {

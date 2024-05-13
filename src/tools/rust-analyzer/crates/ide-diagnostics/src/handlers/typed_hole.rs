@@ -1,6 +1,6 @@
 use hir::{
     db::ExpandDatabase,
-    term_search::{term_search, TermSearchCtx},
+    term_search::{term_search, TermSearchConfig, TermSearchCtx},
     ClosureStyle, HirDisplay,
 };
 use ide_db::{
@@ -47,7 +47,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::TypedHole) -> Option<Vec<Assist>
         sema: &ctx.sema,
         scope: &scope,
         goal: d.expected.clone(),
-        config: Default::default(),
+        config: TermSearchConfig { fuel: ctx.config.term_search_fuel, ..Default::default() },
     };
     let paths = term_search(&term_search_ctx);
 
@@ -274,7 +274,7 @@ impl Foo for Baz {
 }
 fn asd() -> Bar {
     let a = Baz;
-    Foo::foo(a)
+    Foo::foo(_)
 }
 ",
         );
@@ -363,7 +363,7 @@ impl Foo for A {
 }
 fn main() {
     let a = A;
-    let c: Bar = Foo::foo(&a);
+    let c: Bar = Foo::foo(_);
 }"#,
         );
     }
