@@ -298,61 +298,8 @@ fn hover_simple(
         })
         // tokens
         .or_else(|| {
-            let mut res = HoverResult::default();
-            match_ast! {
-                match original_token {
-                    ast::String(string) => {
-                        res.markup = Markup::fenced_block_text(format_args!("{}", string.value()?));
-                    },
-                    ast::ByteString(string) => {
-                        res.markup = Markup::fenced_block_text(format_args!("{:?}", string.value()?));
-                    },
-                    ast::CString(string) => {
-                        let val = string.value()?;
-                        res.markup = Markup::fenced_block_text(format_args!("{}", std::str::from_utf8(val.as_ref()).ok()?));
-                    },
-                    ast::Char(char) => {
-                        let mut res = HoverResult::default();
-                        res.markup = Markup::fenced_block_text(format_args!("{}", char.value()?));
-                    },
-                    ast::Byte(byte) => {
-                        res.markup = Markup::fenced_block_text(format_args!("0x{:X}", byte.value()?));
-                    },
-                    ast::FloatNumber(num) => {
-                        res.markup = if num.suffix() == Some("f32") {
-                            match num.value_f32() {
-                                Ok(num) => {
-                                    Markup::fenced_block_text(format_args!("{num} (bits: 0x{:X})", num.to_bits()))
-                                },
-                                Err(e) => {
-                                    Markup::fenced_block_text(format_args!("{e}"))
-                                },
-                            }
-                        } else {
-                            match num.value() {
-                                Ok(num) => {
-                                    Markup::fenced_block_text(format_args!("{num} (bits: 0x{:X})", num.to_bits()))
-                                },
-                                Err(e) => {
-                                    Markup::fenced_block_text(format_args!("{e}"))
-                                },
-                            }
-                        };
-                    },
-                    ast::IntNumber(num) => {
-                        res.markup = match num.value() {
-                            Ok(num) => {
-                                Markup::fenced_block_text(format_args!("{num} (0x{num:X}|0b{num:b})"))
-                            },
-                            Err(e) => {
-                                Markup::fenced_block_text(format_args!("{e}"))
-                            },
-                        };
-                    },
-                    _ => return None
-                }
-            }
-            Some(res)
+            render::literal(sema, original_token.clone())
+                .map(|markup| HoverResult { markup, actions: vec![] })
         });
 
     result.map(|mut res: HoverResult| {

@@ -2543,6 +2543,20 @@ impl BuiltinType {
         matches!(self.inner, hir_def::builtin_type::BuiltinType::Float(_))
     }
 
+    pub fn is_f32(&self) -> bool {
+        matches!(
+            self.inner,
+            hir_def::builtin_type::BuiltinType::Float(hir_def::builtin_type::BuiltinFloat::F32)
+        )
+    }
+
+    pub fn is_f64(&self) -> bool {
+        matches!(
+            self.inner,
+            hir_def::builtin_type::BuiltinType::Float(hir_def::builtin_type::BuiltinFloat::F64)
+        )
+    }
+
     pub fn is_char(&self) -> bool {
         matches!(self.inner, hir_def::builtin_type::BuiltinType::Char)
     }
