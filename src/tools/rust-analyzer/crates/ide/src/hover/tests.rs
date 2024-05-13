@@ -7814,6 +7814,28 @@ fn main() {
             value of literal: 🦀\u{1f980}\\\x41
         "#]],
     );
+    check(
+        r#"
+fn main() {
+    $0r"🦀\u{1f980}\\\x41
+
+
+fsdghs";
+}
+"#,
+        expect![[r#"
+            *r"🦀\u{1f980}\\\x41
+
+
+            fsdghs"*
+            ```rust
+            &str
+            ```
+            ___
+
+            value of literal (truncated up to newline): 🦀\u{1f980}\\\x41
+        "#]],
+    );
 }
 
 #[test]

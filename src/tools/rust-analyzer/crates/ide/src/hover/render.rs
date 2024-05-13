@@ -564,7 +564,13 @@ pub(super) fn literal(sema: &Semantics<'_, RootDatabase>, token: SyntaxToken) ->
 
     let mut s = format!("```rust\n{ty}\n```\n___\n\n");
     match value {
-        Ok(value) => format_to!(s, "value of literal: {value}"),
+        Ok(value) => {
+            if let Some(newline) = value.find('\n') {
+                format_to!(s, "value of literal (truncated up to newline): {}", &value[..newline])
+            } else {
+                format_to!(s, "value of literal: {value}")
+            }
+        }
         Err(error) => format_to!(s, "invalid literal: {error}"),
     }
     Some(s.into())
