@@ -2044,7 +2044,6 @@ pub trait Seek {
     /// # Example
     ///
     /// ```no_run
-    /// #![feature(seek_seek_relative)]
     /// use std::{
     ///     io::{self, Seek},
     ///     fs::File,
@@ -2059,7 +2058,7 @@ pub trait Seek {
     /// ```
     ///
     /// [`BufReader`]: crate::io::BufReader
-    #[unstable(feature = "seek_seek_relative", issue = "117374")]
+    #[stable(feature = "seek_seek_relative", since = "CURRENT_RUSTC_VERSION")]
     fn seek_relative(&mut self, offset: i64) -> Result<()> {
         self.seek(SeekFrom::Current(offset))?;
         Ok(())

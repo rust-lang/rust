@@ -123,6 +123,12 @@ impl Rustdoc {
         self
     }
 
+    /// Specify the target triple, or a path to a custom target json spec file.
+    pub fn target(&mut self, target: &str) -> &mut Self {
+        self.cmd.arg(format!("--target={target}"));
+        self
+    }
+
     /// Specify the crate type.
     pub fn crate_type(&mut self, crate_type: &str) -> &mut Self {
         self.cmd.arg("--crate-type");
@@ -134,6 +140,14 @@ impl Rustdoc {
     pub fn crate_name<S: AsRef<OsStr>>(&mut self, name: S) -> &mut Self {
         self.cmd.arg("--crate-name");
         self.cmd.arg(name.as_ref());
+        self
+    }
+
+    /// Add a directory to the library search path. It corresponds to the `-L`
+    /// rustdoc option.
+    pub fn library_search_path<P: AsRef<Path>>(&mut self, path: P) -> &mut Self {
+        self.cmd.arg("-L");
+        self.cmd.arg(path.as_ref());
         self
     }
 
