@@ -123,6 +123,12 @@ impl Rustdoc {
         self
     }
 
+    /// Specify the target triple, or a path to a custom target json spec file.
+    pub fn target(&mut self, target: &str) -> &mut Self {
+        self.cmd.arg(format!("--target={target}"));
+        self
+    }
+
     /// Specify the crate type.
     pub fn crate_type(&mut self, crate_type: &str) -> &mut Self {
         self.cmd.arg("--crate-type");
