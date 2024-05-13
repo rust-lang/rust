@@ -17,6 +17,7 @@ use rustc_infer::traits::ObligationCauseCode;
 use rustc_middle::traits::BuiltinImplSource;
 use rustc_middle::traits::ImplSource;
 use rustc_middle::traits::ImplSourceUserDefinedData;
+use rustc_middle::{bug, span_bug};
 
 use crate::errors::InherentProjectionNormalizationOverflow;
 use crate::infer::{BoundRegionConversionTime, InferOk};

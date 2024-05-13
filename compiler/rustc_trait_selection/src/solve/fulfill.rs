@@ -9,6 +9,7 @@ use rustc_infer::traits::{
     self, FulfillmentError, FulfillmentErrorCode, MismatchedProjectionTypes, Obligation,
     ObligationCause, ObligationCauseCode, PredicateObligation, SelectionError, TraitEngine,
 };
+use rustc_middle::bug;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::symbol::sym;

@@ -11,6 +11,7 @@ use rustc_hir::{self as hir, BindingMode, ByRef, HirId, Mutability, Pat, PatKind
 use rustc_infer::infer;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::{self, Ty, TypeVisitableExt};
+use rustc_middle::{bug, span_bug};
 use rustc_session::lint::builtin::NON_EXHAUSTIVE_OMITTED_PATTERNS;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::hygiene::DesugaringKind;

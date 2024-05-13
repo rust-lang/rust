@@ -16,6 +16,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_infer::traits::FulfillmentError;
+use rustc_middle::bug;
 use rustc_middle::query::Key;
 use rustc_middle::ty::print::PrintTraitRefExt as _;
 use rustc_middle::ty::GenericParamDefKind;

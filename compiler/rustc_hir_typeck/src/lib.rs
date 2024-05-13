@@ -10,9 +10,6 @@
 #[macro_use]
 extern crate tracing;
 
-#[macro_use]
-extern crate rustc_middle;
-
 mod _match;
 mod autoderef;
 mod callee;
@@ -62,6 +59,7 @@ use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
 use rustc_infer::traits::{ObligationCauseCode, ObligationInspector, WellFormedLoc};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::{bug, span_bug};
 use rustc_session::config;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::Span;

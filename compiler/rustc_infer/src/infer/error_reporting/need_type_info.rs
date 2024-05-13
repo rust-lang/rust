@@ -11,6 +11,7 @@ use rustc_hir::def::{CtorOf, DefKind, Namespace};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{Body, Closure, Expr, ExprKind, FnRetTy, HirId, LetStmt, LocalSource};
+use rustc_middle::bug;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::infer::unify_key::ConstVariableValue;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow};

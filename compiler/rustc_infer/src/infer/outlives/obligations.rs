@@ -67,6 +67,7 @@ use crate::infer::snapshot::undo_log::UndoLog;
 use crate::infer::{self, GenericKind, InferCtxt, RegionObligation, SubregionOrigin, VerifyBound};
 use crate::traits::{ObligationCause, ObligationCauseCode};
 use rustc_data_structures::undo_log::UndoLogs;
+use rustc_middle::bug;
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::{

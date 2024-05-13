@@ -6,6 +6,7 @@ use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_errors::Diag;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::{InferCtxt, InferOk};
+use rustc_middle::bug;
 use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::{self, ImplSubject, ToPredicate, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::ty::{TypeFoldable, TypeFolder, TypeSuperFoldable};

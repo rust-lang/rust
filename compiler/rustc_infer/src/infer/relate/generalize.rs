@@ -6,6 +6,7 @@ use crate::infer::{InferCtxt, ObligationEmittingRelation, RegionVariableOrigin};
 use rustc_data_structures::sso::SsoHashMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::def_id::DefId;
+use rustc_middle::bug;
 use rustc_middle::infer::unify_key::ConstVariableValue;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::relate::{self, Relate, RelateResult, TypeRelation};

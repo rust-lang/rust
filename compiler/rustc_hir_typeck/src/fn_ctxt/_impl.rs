@@ -29,6 +29,7 @@ use rustc_middle::ty::{
     self, AdtKind, CanonicalUserType, GenericParamDefKind, IsIdentity, Ty, TyCtxt, UserType,
 };
 use rustc_middle::ty::{GenericArgKind, GenericArgsRef, UserArgs, UserSelfTy};
+use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::hygiene::DesugaringKind;

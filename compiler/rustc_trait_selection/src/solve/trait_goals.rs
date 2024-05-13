@@ -10,6 +10,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::{LangItem, Movability};
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::solve::MaybeCause;
+use rustc_middle::bug;
 use rustc_middle::traits::solve::inspect::ProbeKind;
 use rustc_middle::traits::solve::{CandidateSource, Certainty, Goal, QueryResult};
 use rustc_middle::traits::{BuiltinImplSource, Reveal};

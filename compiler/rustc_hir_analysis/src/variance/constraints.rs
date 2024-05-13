@@ -8,6 +8,7 @@ use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::ty::{GenericArgKind, GenericArgsRef};
+use rustc_middle::{bug, span_bug};
 
 use super::terms::VarianceTerm::*;
 use super::terms::*;

@@ -6,6 +6,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_lint_defs::builtin::UNUSED_ASSOCIATED_TYPE_BOUNDS;
+use rustc_middle::span_bug;
 use rustc_middle::ty::fold::BottomUpFolder;
 use rustc_middle::ty::{self, ExistentialPredicateStableCmpExt as _, Ty, TyCtxt, TypeFoldable};
 use rustc_middle::ty::{DynKind, ToPredicate};

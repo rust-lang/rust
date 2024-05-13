@@ -18,6 +18,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, Res};
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::{HirId, PatKind};
+use rustc_middle::{bug, span_bug};
 use rustc_middle::hir::place::ProjectionKind;
 use rustc_middle::mir::FakeReadCause;
 use rustc_middle::ty::{

@@ -25,6 +25,7 @@ use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
 use rustc_infer::traits;
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::middle::stability::EvalResult;
+use rustc_middle::span_bug;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{
     self, suggest_constraining_type_params, Article, Binder, IsSuggestable, ToPredicate, Ty,

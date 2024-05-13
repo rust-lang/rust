@@ -10,6 +10,7 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::LangItem;
+use rustc_middle::bug;
 use rustc_middle::mir;
 use rustc_middle::mir::AssertMessage;
 use rustc_middle::query::TyCtxtAt;
@@ -24,8 +25,9 @@ use rustc_target::spec::abi::Abi as CallAbi;
 use crate::errors::{LongRunning, LongRunningWarn};
 use crate::fluent_generated as fluent;
 use crate::interpret::{
-    self, compile_time_machine, AllocId, AllocRange, ConstAllocation, CtfeProvenance, FnArg, FnVal,
-    Frame, ImmTy, InterpCx, InterpResult, MPlaceTy, OpTy, Pointer, PointerArithmetic, Scalar,
+    self, compile_time_machine, err_ub, throw_exhaust, throw_inval, throw_ub_custom,
+    throw_unsup_format, AllocId, AllocRange, ConstAllocation, CtfeProvenance, FnArg, FnVal, Frame,
+    ImmTy, InterpCx, InterpResult, MPlaceTy, OpTy, Pointer, PointerArithmetic, Scalar,
 };
 
 use super::error::*;

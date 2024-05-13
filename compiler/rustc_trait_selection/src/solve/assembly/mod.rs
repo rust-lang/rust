@@ -4,6 +4,7 @@ use crate::solve::GoalSource;
 use crate::solve::{inspect, EvalCtxt, SolverMode};
 use rustc_hir::def_id::DefId;
 use rustc_infer::traits::query::NoSolution;
+use rustc_middle::bug;
 use rustc_middle::traits::solve::inspect::ProbeKind;
 use rustc_middle::traits::solve::{
     CandidateSource, CanonicalResponse, Certainty, Goal, MaybeCause, QueryResult,

@@ -1,9 +1,3 @@
-use rustc_pattern_analysis::errors::Uncovered;
-use rustc_pattern_analysis::rustc::{
-    Constructor, DeconstructedPat, MatchArm, RustcPatCtxt as PatCtxt, Usefulness, UsefulnessReport,
-    WitnessPat,
-};
-
 use crate::errors::*;
 
 use rustc_arena::{DroplessArena, TypedArena};
@@ -14,11 +8,17 @@ use rustc_errors::{codes::*, struct_span_code_err, Applicability, ErrorGuarantee
 use rustc_hir::def::*;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::{self as hir, BindingMode, ByRef, HirId};
+use rustc_middle::bug;
 use rustc_middle::middle::limits::get_limit_size;
 use rustc_middle::thir::visit::Visitor;
 use rustc_middle::thir::*;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt};
+use rustc_pattern_analysis::errors::Uncovered;
+use rustc_pattern_analysis::rustc::{
+    Constructor, DeconstructedPat, MatchArm, RustcPatCtxt as PatCtxt, Usefulness, UsefulnessReport,
+    WitnessPat,
+};
 use rustc_session::lint::builtin::{
     BINDINGS_WITH_VARIANT_NAME, IRREFUTABLE_LET_PATTERNS, UNREACHABLE_PATTERNS,
 };

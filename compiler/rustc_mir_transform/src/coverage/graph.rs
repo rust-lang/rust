@@ -4,6 +4,7 @@ use rustc_data_structures::graph::dominators::{self, Dominators};
 use rustc_data_structures::graph::{self, DirectedGraph, StartNode};
 use rustc_index::bit_set::BitSet;
 use rustc_index::IndexVec;
+use rustc_middle::bug;
 use rustc_middle::mir::{self, BasicBlock, Terminator, TerminatorKind};
 
 use std::cmp::Ordering;

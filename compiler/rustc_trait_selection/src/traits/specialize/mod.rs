@@ -23,6 +23,7 @@ use crate::traits::{
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{codes::*, DelayDm, Diag, EmissionGuarantee};
 use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_middle::bug;
 use rustc_middle::ty::{self, ImplSubject, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::ty::{GenericArgs, GenericArgsRef};
 use rustc_session::lint::builtin::COHERENCE_LEAK_CHECK;
