@@ -1777,10 +1777,10 @@ pub fn encode_utf8_raw(code: u32, dst: &mut [u8]) -> &mut [u8] {
             dst.len(),
         );
     }
-    // SAFETY: it's safe to pretend that the bytes in the slice may be uninitialized
-    let dst = unsafe { &mut *(dst as *mut [u8] as *mut [MaybeUninit<u8>]) };
-    // SAFETY: `dst` has been checked to be long enough to hold the encoded codepoint
-    unsafe { encode_utf8_raw_unchecked(code, dst) }
+
+    // SAFETY: `encode_utf8_raw_unchecked` only writes initialized bytes to the slice,
+    // `dst` has been checked to be long enough to hold the encoded codepoint
+    unsafe { encode_utf8_raw_unchecked(code, &mut *(dst as *mut [u8] as *mut [MaybeUninit<u8>])) }
 }
 
 /// Encodes a raw u32 value as UTF-8 into the provided possibly uninitialized byte buffer,
