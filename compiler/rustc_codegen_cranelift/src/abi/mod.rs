@@ -412,7 +412,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
                     Err(instance) => Some(instance),
                 }
             }
-            InstanceDef::DropGlue(_, None) => {
+            InstanceDef::DropGlue(_, None) | ty::InstanceDef::AsyncDropGlueCtorShim(_, None) => {
                 // empty drop glue - a nop.
                 let dest = target.expect("Non terminating drop_in_place_real???");
                 let ret_block = fx.get_block(dest);
@@ -597,7 +597,9 @@ pub(crate) fn codegen_drop<'tcx>(
     let ty = drop_place.layout().ty;
     let drop_instance = Instance::resolve_drop_in_place(fx.tcx, ty).polymorphize(fx.tcx);
 
-    if let ty::InstanceDef::DropGlue(_, None) = drop_instance.def {
+    if let ty::InstanceDef::DropGlue(_, None) | ty::InstanceDef::AsyncDropGlueCtorShim(_, None) =
+        drop_instance.def
+    {
         // we don't actually need to drop anything
     } else {
         match ty.kind() {

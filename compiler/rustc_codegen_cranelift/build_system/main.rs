@@ -147,9 +147,11 @@ fn main() {
 
     let rustup_toolchain_name = match (env::var("CARGO"), env::var("RUSTC"), env::var("RUSTDOC")) {
         (Ok(_), Ok(_), Ok(_)) => None,
-        (Err(_), Err(_), Err(_)) => Some(rustc_info::get_toolchain_name()),
-        _ => {
-            eprintln!("All of CARGO, RUSTC and RUSTDOC need to be set or none must be set");
+        (_, Err(_), Err(_)) => Some(rustc_info::get_toolchain_name()),
+        vars => {
+            eprintln!(
+                "If RUSTC or RUSTDOC is set, both need to be set and in addition CARGO needs to be set: {vars:?}"
+            );
             process::exit(1);
         }
     };
