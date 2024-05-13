@@ -1,4 +1,4 @@
-<svg width="1054px" height="686px" xmlns="http://www.w3.org/2000/svg">
+<svg width="1054px" height="704px" xmlns="http://www.w3.org/2000/svg">
   <style>
     .fg { fill: #AAAAAA }
     .bg { background: #000000 }
@@ -76,25 +76,27 @@
 </tspan>
     <tspan x="10px" y="496px"><tspan>   </tspan><tspan class="fg-ansi256-012 bold">|</tspan><tspan> </tspan><tspan class="fg-ansi256-012 bold">---------------</tspan><tspan> </tspan><tspan class="fg-ansi256-012 bold">this is the required trait</tspan>
 </tspan>
-    <tspan x="10px" y="514px"><tspan class="fg-ansi256-010 bold">note</tspan><tspan>: required by a bound in `dep_2_reexport::do_something`</tspan>
+    <tspan x="10px" y="514px"><tspan>   </tspan><tspan class="fg-ansi256-012 bold">= </tspan><tspan class="bold">help</tspan><tspan>: you can use `cargo tree` to explore your dependency tree</tspan>
 </tspan>
-    <tspan x="10px" y="532px"><tspan>  </tspan><tspan class="fg-ansi256-012 bold">--&gt; </tspan><tspan>$DIR/auxiliary/multiple-dep-versions-2.rs:7:24</tspan>
+    <tspan x="10px" y="532px"><tspan class="fg-ansi256-010 bold">note</tspan><tspan>: required by a bound in `dep_2_reexport::do_something`</tspan>
 </tspan>
-    <tspan x="10px" y="550px"><tspan>   </tspan><tspan class="fg-ansi256-012 bold">|</tspan>
+    <tspan x="10px" y="550px"><tspan>  </tspan><tspan class="fg-ansi256-012 bold">--&gt; </tspan><tspan>$DIR/auxiliary/multiple-dep-versions-2.rs:7:24</tspan>
 </tspan>
-    <tspan x="10px" y="568px"><tspan class="fg-ansi256-012 bold">LL</tspan><tspan> </tspan><tspan class="fg-ansi256-012 bold">|</tspan><tspan> pub fn do_something&lt;X: Trait&gt;(_: X) {}</tspan>
+    <tspan x="10px" y="568px"><tspan>   </tspan><tspan class="fg-ansi256-012 bold">|</tspan>
 </tspan>
-    <tspan x="10px" y="586px"><tspan>   </tspan><tspan class="fg-ansi256-012 bold">|</tspan><tspan>                        </tspan><tspan class="fg-ansi256-010 bold">^^^^^</tspan><tspan> </tspan><tspan class="fg-ansi256-010 bold">required by this bound in `do_something`</tspan>
+    <tspan x="10px" y="586px"><tspan class="fg-ansi256-012 bold">LL</tspan><tspan> </tspan><tspan class="fg-ansi256-012 bold">|</tspan><tspan> pub fn do_something&lt;X: Trait&gt;(_: X) {}</tspan>
 </tspan>
-    <tspan x="10px" y="604px">
+    <tspan x="10px" y="604px"><tspan>   </tspan><tspan class="fg-ansi256-012 bold">|</tspan><tspan>                        </tspan><tspan class="fg-ansi256-010 bold">^^^^^</tspan><tspan> </tspan><tspan class="fg-ansi256-010 bold">required by this bound in `do_something`</tspan>
 </tspan>
-    <tspan x="10px" y="622px"><tspan class="fg-ansi256-009 bold">error</tspan><tspan class="bold">: aborting due to 1 previous error</tspan>
+    <tspan x="10px" y="622px">
 </tspan>
-    <tspan x="10px" y="640px">
+    <tspan x="10px" y="640px"><tspan class="fg-ansi256-009 bold">error</tspan><tspan class="bold">: aborting due to 1 previous error</tspan>
 </tspan>
-    <tspan x="10px" y="658px"><tspan class="bold">For more information about this error, try `rustc --explain E0277`.</tspan>
+    <tspan x="10px" y="658px">
 </tspan>
-    <tspan x="10px" y="676px">
+    <tspan x="10px" y="676px"><tspan class="bold">For more information about this error, try `rustc --explain E0277`.</tspan>
+</tspan>
+    <tspan x="10px" y="694px">
 </tspan>
   </text>
 
