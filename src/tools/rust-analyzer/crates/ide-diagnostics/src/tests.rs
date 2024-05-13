@@ -246,7 +246,6 @@ pub(crate) fn check_diagnostics_with_config(config: DiagnosticsConfig, ra_fixtur
             }
         }
         if expected != actual {
-            dbg!(&actual);
             let fneg = expected
                 .iter()
                 .filter(|x| !actual.contains(x))

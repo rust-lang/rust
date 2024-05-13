@@ -129,11 +129,10 @@ pub trait ExpandDatabase: SourceDatabase {
     /// user wrote in the file that defines the proc-macro.
     fn proc_macro_span(&self, fun: AstId<ast::Fn>) -> Span;
     /// Firewall query that returns the errors from the `parse_macro_expansion` query.
-    // FIXME: Option<Arc<...>>
     fn parse_macro_expansion_error(
         &self,
         macro_call: MacroCallId,
-    ) -> ExpandResult<Arc<[SyntaxError]>>;
+    ) -> Option<Arc<ExpandResult<Arc<[SyntaxError]>>>>;
 }
 
 /// This expands the given macro call, but with different arguments. This is
@@ -358,8 +357,14 @@ fn parse_macro_expansion(
 fn parse_macro_expansion_error(
     db: &dyn ExpandDatabase,
     macro_call_id: MacroCallId,
-) -> ExpandResult<Arc<[SyntaxError]>> {
-    db.parse_macro_expansion(MacroFileId { macro_call_id }).map(|it| it.0.errors().into())
+) -> Option<Arc<ExpandResult<Arc<[SyntaxError]>>>> {
+    let e: ExpandResult<Arc<[SyntaxError]>> =
+        db.parse_macro_expansion(MacroFileId { macro_call_id }).map(|it| Arc::from(it.0.errors()));
+    if e.value.is_empty() && e.err.is_none() {
+        None
+    } else {
+        Some(Arc::new(e))
+    }
 }
 
 pub(crate) fn parse_with_map(

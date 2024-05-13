@@ -831,13 +831,15 @@ fn macro_call_diagnostics(
     macro_call_id: MacroCallId,
     acc: &mut Vec<AnyDiagnostic>,
 ) {
-    let ValueResult { value: parse_errors, err } = db.parse_macro_expansion_error(macro_call_id);
-
+    let Some(e) = db.parse_macro_expansion_error(macro_call_id) else {
+        return;
+    };
+    let ValueResult { value: parse_errors, err } = &*e;
     if let Some(err) = err {
         let loc = db.lookup_intern_macro_call(macro_call_id);
         let (node, precise_location, macro_name, kind) = precise_macro_call_location(&loc.kind, db);
         let diag = match err {
-            hir_expand::ExpandError::UnresolvedProcMacro(krate) => {
+            &hir_expand::ExpandError::UnresolvedProcMacro(krate) => {
                 UnresolvedProcMacro { node, precise_location, macro_name, kind, krate }.into()
             }
             err => MacroError { node, precise_location, message: err.to_string() }.into(),
