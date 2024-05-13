@@ -387,7 +387,7 @@ meta/hello_fuchsia.cm=pkg/meta/hello_fuchsia.cm
 ```
 
 *Note: Relative manifest paths are resolved starting from the working directory
-of `pm`. Make sure to fill out `<SDK_PATH>` with the path to the downloaded
+of `ffx`. Make sure to fill out `<SDK_PATH>` with the path to the downloaded
 SDK.*
 
 The `.manifest` file will be used to describe the contents of the package by
@@ -459,12 +459,10 @@ hello_fuchsia/
 Next, we'll build a package manifest as defined by our manifest:
 
 ```sh
-${SDK_PATH}/tools/${ARCH}/pm \
-    -api-level $(${SDK_PATH}/tools/${ARCH}/ffx version -v | grep "api-level" | head -1 |  awk -F ' ' '{print $2}') \
-    -o pkg/hello_fuchsia_manifest \
-    -m pkg/hello_fuchsia.manifest \
-    build \
-    -output-package-manifest pkg/hello_fuchsia_package_manifest
+${SDK_PATH}/tools/${ARCH}/ffx package build \
+    --api-level $(${SDK_PATH}/tools/${ARCH}/ffx --machine json version | jq .tool_version.api_level) \
+    --out pkg/hello_fuchsia_manifest \
+    pkg/hello_fuchsia.manifest
 ```
 
 This will produce `pkg/hello_fuchsia_manifest/` which is a package manifest we can
@@ -498,8 +496,7 @@ to.
 We can set up our repository with:
 
 ```sh
-${SDK_PATH}/tools/${ARCH}/pm newrepo \
-    -repo pkg/repo
+${SDK_PATH}/tools/${ARCH}/ffx repository create pkg/repo
 ```
 
 **Current directory structure**
@@ -523,17 +520,17 @@ hello_fuchsia/
 We can publish our new package to that repository with:
 
 ```sh
-${SDK_PATH}/tools/${ARCH}/pm publish \
-    -repo pkg/repo \
-    -lp -f <(echo "pkg/hello_fuchsia_package_manifest")
+${SDK_PATH}/tools/${ARCH}/ffx repository publish \
+    --package pkg/hello_fuchsia_package_manifest \
+    pkg/repo
 ```
 
 Then we can add the repository to `ffx`'s package server as `hello-fuchsia` using:
 
 ```sh
 ${SDK_PATH}/tools/${ARCH}/ffx repository add-from-pm \
-    pkg/repo \
-    -r hello-fuchsia
+    --repository hello-fuchsia \
+    pkg/repo
 ```
 
 ## Running a Fuchsia component on an emulator
