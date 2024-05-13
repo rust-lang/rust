@@ -696,24 +696,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 OperandRef { val: OperandValue::Immediate(static_), layout }
             }
             mir::Rvalue::Use(ref operand) => self.codegen_operand(bx, operand),
-            mir::Rvalue::Aggregate(box mir::AggregateKind::RawPtr(..), ref fields) => {
-                let ty = rvalue.ty(self.mir, self.cx.tcx());
-                let layout = self.cx.layout_of(self.monomorphize(ty));
-                let [data, meta] = &*fields.raw else {
-                    bug!("RawPtr fields: {fields:?}");
-                };
-                let data = self.codegen_operand(bx, data);
-                let meta = self.codegen_operand(bx, meta);
-                match (data.val, meta.val) {
-                    (p @ OperandValue::Immediate(_), OperandValue::ZeroSized) => {
-                        OperandRef { val: p, layout }
-                    }
-                    (OperandValue::Immediate(p), OperandValue::Immediate(m)) => {
-                        OperandRef { val: OperandValue::Pair(p, m), layout }
-                    }
-                    _ => bug!("RawPtr operands {data:?} {meta:?}"),
-                }
-            }
             mir::Rvalue::Repeat(..) => bug!("{rvalue:?} in codegen_rvalue_operand"),
             mir::Rvalue::Aggregate(_, ref fields) => {
                 let ty = rvalue.ty(self.mir, self.cx.tcx());
@@ -748,6 +730,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 );
 
                 let val = OperandValue::from_immediates(inputs);
+                debug_assert!(
+                    val.is_expected_variant_for_type(self.cx, layout),
+                    "Made wrong variant {val:?} for type {layout:?}",
+                );
                 OperandRef { val, layout }
             }
             mir::Rvalue::ShallowInitBox(ref operand, content_ty) => {
@@ -792,7 +778,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         debug_assert!(
             if bx.cx().type_has_metadata(ty) {
                 matches!(val, OperandValue::Pair(..))
-        } else {
+            } else {
                 matches!(val, OperandValue::Immediate(..))
             },
             "Address of place was unexpectedly {val:?} for pointee type {ty:?}",
