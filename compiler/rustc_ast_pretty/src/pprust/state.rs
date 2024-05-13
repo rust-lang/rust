@@ -55,8 +55,8 @@ impl PpAnn for NoAnn {}
 
 pub struct Comments<'a> {
     sm: &'a SourceMap,
-    comments: Vec<Comment>,
-    current: usize,
+    // Stored in reverse order so we can consume them by popping.
+    reversed_comments: Vec<Comment>,
 }
 
 /// Returns `None` if the first `col` chars of `s` contain a non-whitespace char.
@@ -182,19 +182,17 @@ fn gather_comments(sm: &SourceMap, path: FileName, src: String) -> Vec<Comment> 
 
 impl<'a> Comments<'a> {
     pub fn new(sm: &'a SourceMap, filename: FileName, input: String) -> Comments<'a> {
-        let comments = gather_comments(sm, filename, input);
-        Comments { sm, comments, current: 0 }
+        let mut comments = gather_comments(sm, filename, input);
+        comments.reverse();
+        Comments { sm, reversed_comments: comments }
     }
 
     fn peek(&self) -> Option<&Comment> {
-        self.comments.get(self.current)
+        self.reversed_comments.last()
     }
 
-    // FIXME: This shouldn't probably clone lmao
     fn next(&mut self) -> Option<Comment> {
-        let cmnt = self.comments.get(self.current).cloned();
-        self.current += 1;
-        cmnt
+        self.reversed_comments.pop()
     }
 
     fn trailing_comment(
