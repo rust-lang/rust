@@ -188,7 +188,7 @@ impl SipHasher128 {
     pub fn new_with_keys(key0: u64, key1: u64) -> SipHasher128 {
         let mut hasher = SipHasher128 {
             nbuf: 0,
-            buf: MaybeUninit::uninit_array(),
+            buf: [MaybeUninit::uninit(); BUFFER_WITH_SPILL_CAPACITY],
             state: State {
                 v0: key0 ^ 0x736f6d6570736575,
                 // The XOR with 0xee is only done on 128-bit algorithm version.

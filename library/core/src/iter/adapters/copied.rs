@@ -202,7 +202,7 @@ where
     T: Copy,
 {
     fn spec_next_chunk(&mut self) -> Result<[T; N], array::IntoIter<T, N>> {
-        let mut raw_array = MaybeUninit::uninit_array();
+        let mut raw_array = [const { MaybeUninit::uninit() }; N];
 
         let len = self.len();
 

@@ -35,8 +35,8 @@ fn float_to_decimal_common_exact<T>(
 where
     T: flt2dec::DecodableFloat,
 {
-    let mut buf: [MaybeUninit<u8>; 1024] = MaybeUninit::uninit_array(); // enough for f32 and f64
-    let mut parts: [MaybeUninit<numfmt::Part<'_>>; 4] = MaybeUninit::uninit_array();
+    let mut buf: [MaybeUninit<u8>; 1024] = [MaybeUninit::uninit(); 1024]; // enough for f32 and f64
+    let mut parts: [MaybeUninit<numfmt::Part<'_>>; 4] = [MaybeUninit::uninit(); 4];
     let formatted = flt2dec::to_exact_fixed_str(
         flt2dec::strategy::grisu::format_exact,
         *num,
@@ -62,8 +62,9 @@ where
     T: flt2dec::DecodableFloat,
 {
     // enough for f32 and f64
-    let mut buf: [MaybeUninit<u8>; flt2dec::MAX_SIG_DIGITS] = MaybeUninit::uninit_array();
-    let mut parts: [MaybeUninit<numfmt::Part<'_>>; 4] = MaybeUninit::uninit_array();
+    let mut buf: [MaybeUninit<u8>; flt2dec::MAX_SIG_DIGITS] =
+        [MaybeUninit::uninit(); flt2dec::MAX_SIG_DIGITS];
+    let mut parts: [MaybeUninit<numfmt::Part<'_>>; 4] = [MaybeUninit::uninit(); 4];
     let formatted = flt2dec::to_shortest_str(
         flt2dec::strategy::grisu::format_shortest,
         *num,
@@ -107,8 +108,8 @@ fn float_to_exponential_common_exact<T>(
 where
     T: flt2dec::DecodableFloat,
 {
-    let mut buf: [MaybeUninit<u8>; 1024] = MaybeUninit::uninit_array(); // enough for f32 and f64
-    let mut parts: [MaybeUninit<numfmt::Part<'_>>; 6] = MaybeUninit::uninit_array();
+    let mut buf: [MaybeUninit<u8>; 1024] = [MaybeUninit::uninit(); 1024]; // enough for f32 and f64
+    let mut parts: [MaybeUninit<numfmt::Part<'_>>; 6] = [MaybeUninit::uninit(); 6];
     let formatted = flt2dec::to_exact_exp_str(
         flt2dec::strategy::grisu::format_exact,
         *num,
@@ -135,8 +136,9 @@ where
     T: flt2dec::DecodableFloat,
 {
     // enough for f32 and f64
-    let mut buf: [MaybeUninit<u8>; flt2dec::MAX_SIG_DIGITS] = MaybeUninit::uninit_array();
-    let mut parts: [MaybeUninit<numfmt::Part<'_>>; 6] = MaybeUninit::uninit_array();
+    let mut buf: [MaybeUninit<u8>; flt2dec::MAX_SIG_DIGITS] =
+        [MaybeUninit::uninit(); flt2dec::MAX_SIG_DIGITS];
+    let mut parts: [MaybeUninit<numfmt::Part<'_>>; 6] = [MaybeUninit::uninit(); 6];
     let formatted = flt2dec::to_shortest_exp_str(
         flt2dec::strategy::grisu::format_shortest,
         *num,
