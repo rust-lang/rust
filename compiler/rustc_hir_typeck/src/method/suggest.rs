@@ -46,7 +46,6 @@ use std::borrow::Cow;
 use super::probe::{AutorefOrPtrAdjustment, IsSuggestion, Mode, ProbeScope};
 use super::{CandidateSource, MethodError, NoMatchData};
 use rustc_hir::intravisit::Visitor;
-use std::iter;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn is_fn_ty(&self, ty: Ty<'tcx>, span: Span) -> bool {
@@ -788,14 +787,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         let pred = bound_predicate.rebind(pred);
                         // `<Foo as Iterator>::Item = String`.
                         let projection_term = pred.skip_binder().projection_term;
-
-                        let args_with_infer_self = tcx.mk_args_from_iter(
-                            iter::once(Ty::new_var(tcx, ty::TyVid::ZERO).into())
-                                .chain(projection_term.args.iter().skip(1)),
-                        );
-
                         let quiet_projection_term =
-                            ty::AliasTerm::new(tcx, projection_term.def_id, args_with_infer_self);
+                            projection_term.with_self_ty(tcx, Ty::new_var(tcx, ty::TyVid::ZERO));
 
                         let term = pred.skip_binder().term;
 

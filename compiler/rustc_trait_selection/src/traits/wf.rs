@@ -437,31 +437,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
     /// Pushes the obligations required for an alias (except inherent) to be WF
     /// into `self.out`.
     fn compute_alias_ty(&mut self, data: ty::AliasTy<'tcx>) {
-        // A projection is well-formed if
-        //
-        // (a) its predicates hold (*)
-        // (b) its args are wf
-        //
-        // (*) The predicates of an associated type include the predicates of
-        //     the trait that it's contained in. For example, given
-        //
-        // trait A<T>: Clone {
-        //     type X where T: Copy;
-        // }
-        //
-        // The predicates of `<() as A<i32>>::X` are:
-        // [
-        //     `(): Sized`
-        //     `(): Clone`
-        //     `(): A<i32>`
-        //     `i32: Sized`
-        //     `i32: Clone`
-        //     `i32: Copy`
-        // ]
-        let obligations = self.nominal_obligations(data.def_id, data.args);
-        self.out.extend(obligations);
-
-        self.compute_projection_args(data.args);
+        self.compute_alias_term(data.into());
     }
 
     /// Pushes the obligations required for an alias (except inherent) to be WF

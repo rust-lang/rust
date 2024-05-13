@@ -723,9 +723,9 @@ impl<'tcx> Stable<'tcx> for ty::ProjectionPredicate<'tcx> {
     type T = stable_mir::ty::ProjectionPredicate;
 
     fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
-        let ty::ProjectionPredicate { projection_term: projection_ty, term } = self;
+        let ty::ProjectionPredicate { projection_term, term } = self;
         stable_mir::ty::ProjectionPredicate {
-            projection_term: projection_ty.stable(tables),
+            projection_term: projection_term.stable(tables),
             term: term.unpack().stable(tables),
         }
     }

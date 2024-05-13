@@ -3216,7 +3216,8 @@ define_print_and_forward_display! {
             ty::AliasTermKind::ProjectionTy
             | ty::AliasTermKind::WeakTy
             | ty::AliasTermKind::OpaqueTy
-            | ty::AliasTermKind::UnevaluatedConst => {
+            | ty::AliasTermKind::UnevaluatedConst
+            | ty::AliasTermKind::ProjectionConst => {
                 // If we're printing verbosely, or don't want to invoke queries
                 // (`is_impl_trait_in_trait`), then fall back to printing the def path.
                 // This is likely what you want if you're debugging the compiler anyways.

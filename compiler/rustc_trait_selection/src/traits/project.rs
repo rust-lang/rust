@@ -232,7 +232,7 @@ pub(super) fn poly_project_and_unify_term<'cx, 'tcx>(
 /// ```
 /// If successful, this may result in additional obligations.
 ///
-/// See [poly_project_and_unify_type] for an explanation of the return value.
+/// See [poly_project_and_unify_term] for an explanation of the return value.
 #[instrument(level = "debug", skip(selcx))]
 fn project_and_unify_term<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
@@ -395,7 +395,7 @@ pub(super) fn opt_normalize_projection_term<'a, 'b, 'tcx>(
             debug!("recur cache");
             return Err(InProgress);
         }
-        Err(ProjectionCacheEntry::NormalizedTy { ty, complete: _ }) => {
+        Err(ProjectionCacheEntry::NormalizedTerm { ty, complete: _ }) => {
             // This is the hottest path in this function.
             //
             // If we find the value in the cache, then return it along
@@ -522,7 +522,7 @@ fn normalize_to_error<'a, 'tcx>(
         | ty::AliasTermKind::InherentTy
         | ty::AliasTermKind::OpaqueTy
         | ty::AliasTermKind::WeakTy => selcx.infcx.next_ty_var(cause.span).into(),
-        ty::AliasTermKind::UnevaluatedConst => selcx
+        ty::AliasTermKind::UnevaluatedConst | ty::AliasTermKind::ProjectionConst => selcx
             .infcx
             .next_const_var(
                 selcx

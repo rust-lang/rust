@@ -320,14 +320,17 @@ pub enum AliasTermKind {
     /// Currently only used if the type alias references opaque types.
     /// Can always be normalized away.
     WeakTy,
-    /// UwU
+    /// An unevaluated const coming from a generic const expression.
     UnevaluatedConst,
+    /// An unevaluated const coming from an associated const.
+    ProjectionConst,
 }
 
 impl AliasTermKind {
     pub fn descr(self) -> &'static str {
         match self {
             AliasTermKind::ProjectionTy => "associated type",
+            AliasTermKind::ProjectionConst => "associated const",
             AliasTermKind::InherentTy => "inherent associated type",
             AliasTermKind::OpaqueTy => "opaque type",
             AliasTermKind::WeakTy => "type alias",

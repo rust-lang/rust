@@ -22,7 +22,7 @@ use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{FieldIdx, VariantIdx, FIRST_VARIANT};
 use rustc_target::spec::abi::{self, Abi};
-use std::assert_matches::{assert_matches, debug_assert_matches};
+use std::assert_matches::debug_assert_matches;
 use std::borrow::Cow;
 use std::iter;
 use std::ops::{ControlFlow, Deref, Range};
@@ -1137,8 +1137,8 @@ pub struct AliasTerm<'tcx> {
     /// aka. `tcx.parent(def_id)`.
     pub def_id: DefId,
 
-    /// This field exists to prevent the creation of `AliasTy` without using
-    /// [AliasTy::new].
+    /// This field exists to prevent the creation of `AliasTerm` without using
+    /// [AliasTerm::new].
     _use_alias_term_new_instead: (),
 }
 
@@ -1202,13 +1202,15 @@ impl<'tcx> AliasTerm<'tcx> {
     }
 
     pub fn expect_ty(self, tcx: TyCtxt<'tcx>) -> AliasTy<'tcx> {
-        assert_matches!(
-            self.kind(tcx),
+        match self.kind(tcx) {
             ty::AliasTermKind::ProjectionTy
-                | ty::AliasTermKind::OpaqueTy
-                | ty::AliasTermKind::WeakTy
-                | ty::AliasTermKind::InherentTy
-        );
+            | ty::AliasTermKind::InherentTy
+            | ty::AliasTermKind::OpaqueTy
+            | ty::AliasTermKind::WeakTy => {}
+            ty::AliasTermKind::UnevaluatedConst | ty::AliasTermKind::ProjectionConst => {
+                bug!("Cannot turn `UnevaluatedConst` into `AliasTy`")
+            }
+        }
         ty::AliasTy { def_id: self.def_id, args: self.args, _use_alias_ty_new_instead: () }
     }
 
@@ -1223,13 +1225,14 @@ impl<'tcx> AliasTerm<'tcx> {
             }
             DefKind::OpaqueTy => ty::AliasTermKind::OpaqueTy,
             DefKind::TyAlias => ty::AliasTermKind::WeakTy,
-            DefKind::AssocConst | DefKind::AnonConst => ty::AliasTermKind::UnevaluatedConst,
+            DefKind::AnonConst => ty::AliasTermKind::UnevaluatedConst,
+            DefKind::AssocConst => ty::AliasTermKind::ProjectionConst,
             kind => bug!("unexpected DefKind in AliasTy: {kind:?}"),
         }
     }
 }
 
-/// The following methods work only with (trait) associated type projections.
+/// The following methods work only with (trait) associated item projections.
 impl<'tcx> AliasTerm<'tcx> {
     pub fn self_ty(self) -> Ty<'tcx> {
         self.args.type_at(0)
@@ -1269,7 +1272,6 @@ impl<'tcx> AliasTerm<'tcx> {
         self,
         tcx: TyCtxt<'tcx>,
     ) -> (ty::TraitRef<'tcx>, &'tcx [ty::GenericArg<'tcx>]) {
-        debug_assert!(matches!(tcx.def_kind(self.def_id), DefKind::AssocTy | DefKind::AssocConst));
         let trait_def_id = self.trait_def_id(tcx);
         let trait_generics = tcx.generics_of(trait_def_id);
         (
@@ -1304,12 +1306,14 @@ impl<'tcx> AliasTerm<'tcx> {
                 AliasTy { def_id: self.def_id, args: self.args, _use_alias_ty_new_instead: () },
             )
             .into(),
-            ty::AliasTermKind::UnevaluatedConst => ty::Const::new_unevaluated(
-                tcx,
-                ty::UnevaluatedConst::new(self.def_id, self.args),
-                tcx.type_of(self.def_id).instantiate(tcx, self.args),
-            )
-            .into(),
+            ty::AliasTermKind::UnevaluatedConst | ty::AliasTermKind::ProjectionConst => {
+                ty::Const::new_unevaluated(
+                    tcx,
+                    ty::UnevaluatedConst::new(self.def_id, self.args),
+                    tcx.type_of(self.def_id).instantiate(tcx, self.args),
+                )
+                .into()
+            }
         }
     }
 }
@@ -1358,7 +1362,7 @@ pub struct AliasTy<'tcx> {
     /// aka. `tcx.parent(def_id)`.
     pub def_id: DefId,
 
-    /// This field exists to prevent the creation of `AliasTy` without using
+    /// This field exists to prevent the creation of `AliasT` without using
     /// [AliasTy::new].
     _use_alias_ty_new_instead: (),
 }
@@ -1422,7 +1426,6 @@ impl<'tcx> AliasTy<'tcx> {
         self,
         tcx: TyCtxt<'tcx>,
     ) -> (ty::TraitRef<'tcx>, &'tcx [ty::GenericArg<'tcx>]) {
-        debug_assert!(matches!(tcx.def_kind(self.def_id), DefKind::AssocTy | DefKind::AssocConst));
         let trait_def_id = self.trait_def_id(tcx);
         let trait_generics = tcx.generics_of(trait_def_id);
         (

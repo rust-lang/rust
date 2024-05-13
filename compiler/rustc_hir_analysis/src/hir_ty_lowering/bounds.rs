@@ -421,9 +421,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 );
                 debug!(?alias_args);
 
-                // Note that we're indeed also using `AliasTy` (alias *type*) for associated
-                // *constants* to represent *const projections*. Alias *term* would be a more
-                // appropriate name but alas.
                 ty::AliasTerm::new(tcx, assoc_item.def_id, alias_args)
             });
 

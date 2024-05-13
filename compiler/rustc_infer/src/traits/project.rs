@@ -93,7 +93,7 @@ pub enum ProjectionCacheEntry<'tcx> {
     Ambiguous,
     Recur,
     Error,
-    NormalizedTy {
+    NormalizedTerm {
         ty: NormalizedTerm<'tcx>,
         /// If we were able to successfully evaluate the
         /// corresponding cache entry key during predicate
@@ -186,7 +186,7 @@ impl<'tcx> ProjectionCache<'_, 'tcx> {
             return;
         }
         let fresh_key =
-            map.insert(key, ProjectionCacheEntry::NormalizedTy { ty: value, complete: None });
+            map.insert(key, ProjectionCacheEntry::NormalizedTerm { ty: value, complete: None });
         assert!(!fresh_key, "never started projecting `{key:?}`");
     }
 
@@ -197,13 +197,16 @@ impl<'tcx> ProjectionCache<'_, 'tcx> {
     pub fn complete(&mut self, key: ProjectionCacheKey<'tcx>, result: EvaluationResult) {
         let mut map = self.map();
         match map.get(&key) {
-            Some(ProjectionCacheEntry::NormalizedTy { ty, complete: _ }) => {
+            Some(ProjectionCacheEntry::NormalizedTerm { ty, complete: _ }) => {
                 info!("ProjectionCacheEntry::complete({:?}) - completing {:?}", key, ty);
                 let mut ty = ty.clone();
                 if result.must_apply_considering_regions() {
                     ty.obligations = vec![];
                 }
-                map.insert(key, ProjectionCacheEntry::NormalizedTy { ty, complete: Some(result) });
+                map.insert(
+                    key,
+                    ProjectionCacheEntry::NormalizedTerm { ty, complete: Some(result) },
+                );
             }
             ref value => {
                 // Type inference could "strand behind" old cache entries. Leave
@@ -215,7 +218,7 @@ impl<'tcx> ProjectionCache<'_, 'tcx> {
 
     pub fn is_complete(&mut self, key: ProjectionCacheKey<'tcx>) -> Option<EvaluationResult> {
         self.map().get(&key).and_then(|res| match res {
-            ProjectionCacheEntry::NormalizedTy { ty: _, complete } => *complete,
+            ProjectionCacheEntry::NormalizedTerm { ty: _, complete } => *complete,
             _ => None,
         })
     }

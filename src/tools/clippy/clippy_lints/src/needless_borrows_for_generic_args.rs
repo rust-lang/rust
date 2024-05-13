@@ -320,11 +320,11 @@ fn is_mixed_projection_predicate<'tcx>(
         && (term_param_ty.index as usize) < generics.parent_count
     {
         // The inner-most self type is a type parameter from the current function.
-        let mut projection_ty = projection_predicate.projection_term;
+        let mut projection_term = projection_predicate.projection_term;
         loop {
-            match *projection_ty.self_ty().kind() {
+            match *projection_term.self_ty().kind() {
                 ty::Alias(ty::Projection, inner_projection_ty) => {
-                    projection_ty = inner_projection_ty.into();
+                    projection_term = inner_projection_ty.into();
                 },
                 ty::Param(param_ty) => {
                     return (param_ty.index as usize) >= generics.parent_count;

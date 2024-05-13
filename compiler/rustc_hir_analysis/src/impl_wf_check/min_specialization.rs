@@ -258,23 +258,20 @@ fn unconstrained_parent_impl_args<'tcx>(
     // unconstrained parameters.
     for (clause, _) in impl_generic_predicates.predicates.iter() {
         if let ty::ClauseKind::Projection(proj) = clause.kind().skip_binder() {
-            let projection_term = proj.projection_term;
-            let projected_term = proj.term;
-
-            let unbound_trait_ref = projection_term.trait_ref(tcx);
+            let unbound_trait_ref = proj.projection_term.trait_ref(tcx);
             if Some(unbound_trait_ref) == impl_trait_ref {
                 continue;
             }
 
-            unconstrained_parameters.extend(cgp::parameters_for(tcx, projection_term, true));
+            unconstrained_parameters.extend(cgp::parameters_for(tcx, proj.projection_term, true));
 
-            for param in cgp::parameters_for(tcx, projected_term, false) {
+            for param in cgp::parameters_for(tcx, proj.term, false) {
                 if !unconstrained_parameters.contains(&param) {
                     constrained_params.insert(param.0);
                 }
             }
 
-            unconstrained_parameters.extend(cgp::parameters_for(tcx, projected_term, true));
+            unconstrained_parameters.extend(cgp::parameters_for(tcx, proj.term, true));
         }
     }
 
