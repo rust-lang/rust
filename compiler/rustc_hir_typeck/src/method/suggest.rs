@@ -172,7 +172,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
             }
-            ty::Slice(..) | ty::Adt(..) | ty::Alias(ty::AliasKind::Opaque, _) => {
+            ty::Slice(..) | ty::Adt(..) | ty::Alias(ty::Opaque, _) => {
                 for unsatisfied in unsatisfied_predicates.iter() {
                     if is_iterator_predicate(unsatisfied.0, self.tcx) {
                         return true;
@@ -787,26 +787,26 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ty::PredicateKind::Clause(ty::ClauseKind::Projection(pred)) => {
                         let pred = bound_predicate.rebind(pred);
                         // `<Foo as Iterator>::Item = String`.
-                        let projection_ty = pred.skip_binder().projection_ty;
+                        let projection_term = pred.skip_binder().projection_term;
 
                         let args_with_infer_self = tcx.mk_args_from_iter(
                             iter::once(Ty::new_var(tcx, ty::TyVid::ZERO).into())
-                                .chain(projection_ty.args.iter().skip(1)),
+                                .chain(projection_term.args.iter().skip(1)),
                         );
 
-                        let quiet_projection_ty =
-                            ty::AliasTy::new(tcx, projection_ty.def_id, args_with_infer_self);
+                        let quiet_projection_term =
+                            ty::AliasTerm::new(tcx, projection_term.def_id, args_with_infer_self);
 
                         let term = pred.skip_binder().term;
 
-                        let obligation = format!("{projection_ty} = {term}");
+                        let obligation = format!("{projection_term} = {term}");
                         let quiet = with_forced_trimmed_paths!(format!(
                             "{} = {}",
-                            quiet_projection_ty, term
+                            quiet_projection_term, term
                         ));
 
-                        bound_span_label(projection_ty.self_ty(), &obligation, &quiet);
-                        Some((obligation, projection_ty.self_ty()))
+                        bound_span_label(projection_term.self_ty(), &obligation, &quiet);
+                        Some((obligation, projection_term.self_ty()))
                     }
                     ty::PredicateKind::Clause(ty::ClauseKind::Trait(poly_trait_ref)) => {
                         let p = poly_trait_ref.trait_ref;

@@ -54,7 +54,7 @@ pub use predicate_kind::*;
 pub use region_kind::*;
 pub use ty_info::*;
 pub use ty_kind::*;
-pub use AliasKind::*;
+pub use AliasTyKind::*;
 pub use DynKind::*;
 pub use InferTy::*;
 pub use RegionKind::*;

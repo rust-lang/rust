@@ -31,7 +31,7 @@ pub enum DynKind {
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 #[cfg_attr(feature = "nightly", derive(Encodable, Decodable, HashStable_NoContext))]
-pub enum AliasKind {
+pub enum AliasTyKind {
     /// A projection `<Type as Trait>::AssocType`.
     /// Can get normalized away if monomorphic enough.
     Projection,
@@ -46,13 +46,13 @@ pub enum AliasKind {
     Weak,
 }
 
-impl AliasKind {
+impl AliasTyKind {
     pub fn descr(self) -> &'static str {
         match self {
-            AliasKind::Projection => "associated type",
-            AliasKind::Inherent => "inherent associated type",
-            AliasKind::Opaque => "opaque type",
-            AliasKind::Weak => "type alias",
+            AliasTyKind::Projection => "associated type",
+            AliasTyKind::Inherent => "inherent associated type",
+            AliasTyKind::Opaque => "opaque type",
+            AliasTyKind::Weak => "type alias",
         }
     }
 }
@@ -201,7 +201,7 @@ pub enum TyKind<I: Interner> {
     /// A projection, opaque type, weak type alias, or inherent associated type.
     /// All of these types are represented as pairs of def-id and args, and can
     /// be normalized, so they are grouped conceptually.
-    Alias(AliasKind, I::AliasTy),
+    Alias(AliasTyKind, I::AliasTy),
 
     /// A type parameter; for example, `T` in `fn f<T>(x: T) {}`.
     Param(I::ParamTy),

@@ -246,6 +246,34 @@ impl<'tcx> Relate<'tcx> for ty::AliasTy<'tcx> {
     }
 }
 
+impl<'tcx> Relate<'tcx> for ty::AliasTerm<'tcx> {
+    fn relate<R: TypeRelation<'tcx>>(
+        relation: &mut R,
+        a: ty::AliasTerm<'tcx>,
+        b: ty::AliasTerm<'tcx>,
+    ) -> RelateResult<'tcx, ty::AliasTerm<'tcx>> {
+        if a.def_id != b.def_id {
+            Err(TypeError::ProjectionMismatched(expected_found(a.def_id, b.def_id)))
+        } else {
+            let args = match relation.tcx().def_kind(a.def_id) {
+                DefKind::OpaqueTy => relate_args_with_variances(
+                    relation,
+                    a.def_id,
+                    relation.tcx().variances_of(a.def_id),
+                    a.args,
+                    b.args,
+                    false, // do not fetch `type_of(a_def_id)`, as it will cause a cycle
+                )?,
+                DefKind::AssocTy | DefKind::AssocConst | DefKind::TyAlias => {
+                    relate_args_invariantly(relation, a.args, b.args)?
+                }
+                def => bug!("unknown alias DefKind: {def:?}"),
+            };
+            Ok(ty::AliasTerm::new(relation.tcx(), a.def_id, args))
+        }
+    }
+}
+
 impl<'tcx> Relate<'tcx> for ty::ExistentialProjection<'tcx> {
     fn relate<R: TypeRelation<'tcx>>(
         relation: &mut R,

@@ -90,8 +90,7 @@ pub trait BoundVars<I: Interner> {
     fn has_no_bound_vars(&self) -> bool;
 }
 
-// FIXME: Uplift `AliasTy`
-pub trait AliasTy<I: Interner>: Copy + DebugWithInfcx<I> + Hash + Eq + Sized {
+pub trait AliasTerm<I: Interner>: Copy + DebugWithInfcx<I> + Hash + Eq + Sized {
     fn new(
         interner: I,
         trait_def_id: I::DefId,

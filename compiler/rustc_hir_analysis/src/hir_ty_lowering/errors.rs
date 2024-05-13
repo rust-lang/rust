@@ -627,23 +627,23 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 ty::PredicateKind::Clause(ty::ClauseKind::Projection(pred)) => {
                     let pred = bound_predicate.rebind(pred);
                     // `<Foo as Iterator>::Item = String`.
-                    let projection_ty = pred.skip_binder().projection_ty;
+                    let projection_term = pred.skip_binder().projection_term;
 
                     let args_with_infer_self = tcx.mk_args_from_iter(
                         std::iter::once(Ty::new_var(tcx, ty::TyVid::ZERO).into())
-                            .chain(projection_ty.args.iter().skip(1)),
+                            .chain(projection_term.args.iter().skip(1)),
                     );
 
                     let quiet_projection_ty =
-                        ty::AliasTy::new(tcx, projection_ty.def_id, args_with_infer_self);
+                        ty::AliasTerm::new(tcx, projection_term.def_id, args_with_infer_self);
 
                     let term = pred.skip_binder().term;
 
-                    let obligation = format!("{projection_ty} = {term}");
+                    let obligation = format!("{projection_term} = {term}");
                     let quiet = format!("{quiet_projection_ty} = {term}");
 
-                    bound_span_label(projection_ty.self_ty(), &obligation, &quiet);
-                    Some((obligation, projection_ty.self_ty()))
+                    bound_span_label(projection_term.self_ty(), &obligation, &quiet);
+                    Some((obligation, projection_term.self_ty()))
                 }
                 ty::PredicateKind::Clause(ty::ClauseKind::Trait(poly_trait_ref)) => {
                     let p = poly_trait_ref.trait_ref;

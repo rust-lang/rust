@@ -40,19 +40,8 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             Ok(res) => Ok(res),
             Err(NoSolution) => {
                 let Goal { param_env, predicate: NormalizesTo { alias, term } } = goal;
-                if alias.opt_kind(self.tcx()).is_some() {
-                    self.relate_rigid_alias_non_alias(
-                        param_env,
-                        alias,
-                        ty::Variance::Invariant,
-                        term,
-                    )?;
-                    self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-                } else {
-                    // FIXME(generic_const_exprs): we currently do not support rigid
-                    // unevaluated constants.
-                    Err(NoSolution)
-                }
+                self.relate_rigid_alias_non_alias(param_env, alias, ty::Variance::Invariant, term)?;
+                self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
             }
         }
     }
@@ -132,7 +121,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
                     ecx.eq(
                         goal.param_env,
                         goal.predicate.alias,
-                        assumption_projection_pred.projection_ty,
+                        assumption_projection_pred.projection_term,
                     )?;
 
                     ecx.instantiate_normalizes_to_term(goal, assumption_projection_pred.term);
@@ -373,7 +362,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
 
         let pred = tupled_inputs_and_output
             .map_bound(|(inputs, output)| ty::ProjectionPredicate {
-                projection_ty: ty::AliasTy::new(
+                projection_term: ty::AliasTerm::new(
                     tcx,
                     goal.predicate.def_id(),
                     [goal.predicate.self_ty(), inputs],
@@ -425,9 +414,9 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
                      output_coroutine_ty,
                      coroutine_return_ty,
                  }| {
-                    let (projection_ty, term) = match tcx.item_name(goal.predicate.def_id()) {
+                    let (projection_term, term) = match tcx.item_name(goal.predicate.def_id()) {
                         sym::CallOnceFuture => (
-                            ty::AliasTy::new(
+                            ty::AliasTerm::new(
                                 tcx,
                                 goal.predicate.def_id(),
                                 [goal.predicate.self_ty(), tupled_inputs_ty],
@@ -435,7 +424,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
                             output_coroutine_ty.into(),
                         ),
                         sym::CallRefFuture => (
-                            ty::AliasTy::new(
+                            ty::AliasTerm::new(
                                 tcx,
                                 goal.predicate.def_id(),
                                 [
@@ -447,7 +436,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
                             output_coroutine_ty.into(),
                         ),
                         sym::Output => (
-                            ty::AliasTy::new(
+                            ty::AliasTerm::new(
                                 tcx,
                                 goal.predicate.def_id(),
                                 [
@@ -459,7 +448,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
                         ),
                         name => bug!("no such associated type: {name}"),
                     };
-                    ty::ProjectionPredicate { projection_ty, term }
+                    ty::ProjectionPredicate { projection_term, term }
                 },
             )
             .to_predicate(tcx);
@@ -636,7 +625,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
             CandidateSource::BuiltinImpl(BuiltinImplSource::Misc),
             goal,
             ty::ProjectionPredicate {
-                projection_ty: ty::AliasTy::new(ecx.tcx(), goal.predicate.def_id(), [self_ty]),
+                projection_term: ty::AliasTerm::new(ecx.tcx(), goal.predicate.def_id(), [self_ty]),
                 term,
             }
             .to_predicate(tcx),
@@ -668,7 +657,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
             CandidateSource::BuiltinImpl(BuiltinImplSource::Misc),
             goal,
             ty::ProjectionPredicate {
-                projection_ty: ty::AliasTy::new(ecx.tcx(), goal.predicate.def_id(), [self_ty]),
+                projection_term: ty::AliasTerm::new(ecx.tcx(), goal.predicate.def_id(), [self_ty]),
                 term,
             }
             .to_predicate(tcx),
@@ -752,7 +741,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
             CandidateSource::BuiltinImpl(BuiltinImplSource::Misc),
             goal,
             ty::ProjectionPredicate {
-                projection_ty: ty::AliasTy::new(
+                projection_term: ty::AliasTerm::new(
                     ecx.tcx(),
                     goal.predicate.def_id(),
                     [self_ty, coroutine.resume_ty()],

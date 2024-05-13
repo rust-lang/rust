@@ -34,14 +34,8 @@ fn normalize_canonicalized_projection_ty<'tcx>(
             let selcx = &mut SelectionContext::new(ocx.infcx);
             let cause = ObligationCause::dummy();
             let mut obligations = vec![];
-            let answer = traits::normalize_projection_type(
-                selcx,
-                param_env,
-                goal,
-                cause,
-                0,
-                &mut obligations,
-            );
+            let answer =
+                traits::normalize_projection_ty(selcx, param_env, goal, cause, 0, &mut obligations);
             ocx.register_obligations(obligations);
             // #112047: With projections and opaques, we are able to create opaques that
             // are recursive (given some generic parameters of the opaque's type variables).

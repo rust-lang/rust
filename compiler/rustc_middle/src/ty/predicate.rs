@@ -503,7 +503,7 @@ impl<'tcx> PolyProjectionPredicate<'tcx> {
     /// Returns the `DefId` of the trait of the associated item being projected.
     #[inline]
     pub fn trait_def_id(&self, tcx: TyCtxt<'tcx>) -> DefId {
-        self.skip_binder().projection_ty.trait_def_id(tcx)
+        self.skip_binder().projection_term.trait_def_id(tcx)
     }
 
     /// Get the [PolyTraitRef] required for this projection to be well formed.
@@ -516,7 +516,7 @@ impl<'tcx> PolyProjectionPredicate<'tcx> {
         // This is because here `self` has a `Binder` and so does our
         // return value, so we are preserving the number of binding
         // levels.
-        self.map_bound(|predicate| predicate.projection_ty.trait_ref(tcx))
+        self.map_bound(|predicate| predicate.projection_term.trait_ref(tcx))
     }
 
     pub fn term(&self) -> Binder<'tcx, Term<'tcx>> {
@@ -529,7 +529,7 @@ impl<'tcx> PolyProjectionPredicate<'tcx> {
     /// associated type, which is in `tcx.associated_item(projection_def_id()).container`.
     pub fn projection_def_id(&self) -> DefId {
         // Ok to skip binder since trait `DefId` does not care about regions.
-        self.skip_binder().projection_ty.def_id
+        self.skip_binder().projection_term.def_id
     }
 }
 
