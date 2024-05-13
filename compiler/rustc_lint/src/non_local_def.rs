@@ -250,7 +250,6 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
                         cargo_update: cargo_update(),
                         help: (!is_at_toplevel_doctest).then_some(()),
                         doctest_help: is_at_toplevel_doctest.then_some(()),
-                        notes: (),
                     },
                 )
             }
