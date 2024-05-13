@@ -408,6 +408,66 @@ impl_neg! { f32x4 : 0f32 }
 mod sealed {
     use super::*;
 
+    #[unstable(feature = "stdarch_powerpc", issue = "111145")]
+    pub trait VectorInsert {
+        type S;
+        unsafe fn vec_insert<const IDX: u32>(self, s: Self::S) -> Self;
+    }
+
+    const fn idx_in_vec<T, const IDX: u32>() -> u32 {
+        IDX & (16 / crate::mem::size_of::<T>() as u32)
+    }
+
+    macro_rules! impl_vec_insert {
+        ($ty:ident) => {
+            #[unstable(feature = "stdarch_powerpc", issue = "111145")]
+            impl VectorInsert for t_t_l!($ty) {
+                type S = $ty;
+                #[inline]
+                #[target_feature(enable = "altivec")]
+                unsafe fn vec_insert<const IDX: u32>(self, s: Self::S) -> Self {
+                    simd_insert(self, const { idx_in_vec::<Self::S, IDX>() }, s)
+                }
+            }
+        };
+    }
+
+    impl_vec_insert! { i8 }
+    impl_vec_insert! { u8 }
+    impl_vec_insert! { i16 }
+    impl_vec_insert! { u16 }
+    impl_vec_insert! { i32 }
+    impl_vec_insert! { u32 }
+    impl_vec_insert! { f32 }
+
+    #[unstable(feature = "stdarch_powerpc", issue = "111145")]
+    pub trait VectorExtract {
+        type S;
+        unsafe fn vec_extract<const IDX: u32>(self) -> Self::S;
+    }
+
+    macro_rules! impl_vec_extract {
+        ($ty:ident) => {
+            #[unstable(feature = "stdarch_powerpc", issue = "111145")]
+            impl VectorExtract for t_t_l!($ty) {
+                type S = $ty;
+                #[inline]
+                #[target_feature(enable = "altivec")]
+                unsafe fn vec_extract<const IDX: u32>(self) -> Self::S {
+                    simd_extract(self, const { idx_in_vec::<Self::S, IDX>() })
+                }
+            }
+        };
+    }
+
+    impl_vec_extract! { i8 }
+    impl_vec_extract! { u8 }
+    impl_vec_extract! { i16 }
+    impl_vec_extract! { u16 }
+    impl_vec_extract! { i32 }
+    impl_vec_extract! { u32 }
+    impl_vec_extract! { f32 }
+
     macro_rules! impl_vec_cmp {
         ([$Trait:ident $m:ident] ($b:ident, $h:ident, $w:ident)) => {
             impl_vec_cmp! { [$Trait $m] ($b, $b, $h, $h, $w, $w) }
@@ -3217,6 +3277,44 @@ mod sealed {
             vec_vrfin(self)
         }
     }
+}
+
+/// Vector Insert
+///
+/// ## Purpose
+/// Returns a copy of vector b with element c replaced by the value of a.
+///
+/// ## Result value
+/// r contains a copy of vector b with element c replaced by the value of a.
+/// This function uses modular arithmetic on c to determine the element number.
+/// For example, if c is out of range, the compiler uses c modulo the number of
+/// elements in the vector to determine the element position.
+#[inline]
+#[target_feature(enable = "altivec")]
+#[unstable(feature = "stdarch_powerpc", issue = "111145")]
+pub unsafe fn vec_insert<T, const IDX: u32>(a: T, b: <T as sealed::VectorInsert>::S) -> T
+where
+    T: sealed::VectorInsert,
+{
+    a.vec_insert::<IDX>(b)
+}
+
+/// Vector Extract
+///
+/// ## Purpose
+/// Returns the value of the bth element of vector a.
+///
+/// ## Result value
+/// The value of each element of r is the element of a at position b modulo the number of
+/// elements of a.
+#[inline]
+#[target_feature(enable = "altivec")]
+#[unstable(feature = "stdarch_powerpc", issue = "111145")]
+pub unsafe fn vec_extract<T, const IDX: u32>(a: T) -> <T as sealed::VectorExtract>::S
+where
+    T: sealed::VectorExtract,
+{
+    a.vec_extract::<IDX>()
 }
 
 /// Vector Merge Low
