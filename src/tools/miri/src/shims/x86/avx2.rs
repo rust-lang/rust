@@ -81,7 +81,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
 
                 let scale = this.read_scalar(scale)?.to_i8()?;
                 if !matches!(scale, 1 | 2 | 4 | 8) {
-                    throw_unsup_format!("invalid gather scale {scale}");
+                    panic!("invalid gather scale {scale}");
                 }
                 let scale = i64::from(scale);
 

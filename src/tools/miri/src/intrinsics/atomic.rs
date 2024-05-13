@@ -25,93 +25,93 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
         let intrinsic_structure: Vec<_> = intrinsic_name.split('_').collect();
 
-        fn read_ord<'tcx>(ord: &str) -> InterpResult<'tcx, AtomicReadOrd> {
-            Ok(match ord {
+        fn read_ord(ord: &str) -> AtomicReadOrd {
+            match ord {
                 "seqcst" => AtomicReadOrd::SeqCst,
                 "acquire" => AtomicReadOrd::Acquire,
                 "relaxed" => AtomicReadOrd::Relaxed,
-                _ => throw_unsup_format!("unsupported read ordering `{ord}`"),
-            })
+                _ => panic!("invalid read ordering `{ord}`"),
+            }
         }
 
-        fn write_ord<'tcx>(ord: &str) -> InterpResult<'tcx, AtomicWriteOrd> {
-            Ok(match ord {
+        fn write_ord(ord: &str) -> AtomicWriteOrd {
+            match ord {
                 "seqcst" => AtomicWriteOrd::SeqCst,
                 "release" => AtomicWriteOrd::Release,
                 "relaxed" => AtomicWriteOrd::Relaxed,
-                _ => throw_unsup_format!("unsupported write ordering `{ord}`"),
-            })
+                _ => panic!("invalid write ordering `{ord}`"),
+            }
         }
 
-        fn rw_ord<'tcx>(ord: &str) -> InterpResult<'tcx, AtomicRwOrd> {
-            Ok(match ord {
+        fn rw_ord(ord: &str) -> AtomicRwOrd {
+            match ord {
                 "seqcst" => AtomicRwOrd::SeqCst,
                 "acqrel" => AtomicRwOrd::AcqRel,
                 "acquire" => AtomicRwOrd::Acquire,
                 "release" => AtomicRwOrd::Release,
                 "relaxed" => AtomicRwOrd::Relaxed,
-                _ => throw_unsup_format!("unsupported read-write ordering `{ord}`"),
-            })
+                _ => panic!("invalid read-write ordering `{ord}`"),
+            }
         }
 
-        fn fence_ord<'tcx>(ord: &str) -> InterpResult<'tcx, AtomicFenceOrd> {
-            Ok(match ord {
+        fn fence_ord(ord: &str) -> AtomicFenceOrd {
+            match ord {
                 "seqcst" => AtomicFenceOrd::SeqCst,
                 "acqrel" => AtomicFenceOrd::AcqRel,
                 "acquire" => AtomicFenceOrd::Acquire,
                 "release" => AtomicFenceOrd::Release,
-                _ => throw_unsup_format!("unsupported fence ordering `{ord}`"),
-            })
+                _ => panic!("invalid fence ordering `{ord}`"),
+            }
         }
 
         match &*intrinsic_structure {
-            ["load", ord] => this.atomic_load(args, dest, read_ord(ord)?)?,
-            ["store", ord] => this.atomic_store(args, write_ord(ord)?)?,
+            ["load", ord] => this.atomic_load(args, dest, read_ord(ord))?,
+            ["store", ord] => this.atomic_store(args, write_ord(ord))?,
 
-            ["fence", ord] => this.atomic_fence_intrinsic(args, fence_ord(ord)?)?,
-            ["singlethreadfence", ord] => this.compiler_fence_intrinsic(args, fence_ord(ord)?)?,
+            ["fence", ord] => this.atomic_fence_intrinsic(args, fence_ord(ord))?,
+            ["singlethreadfence", ord] => this.compiler_fence_intrinsic(args, fence_ord(ord))?,
 
-            ["xchg", ord] => this.atomic_exchange(args, dest, rw_ord(ord)?)?,
+            ["xchg", ord] => this.atomic_exchange(args, dest, rw_ord(ord))?,
             ["cxchg", ord1, ord2] =>
-                this.atomic_compare_exchange(args, dest, rw_ord(ord1)?, read_ord(ord2)?)?,
+                this.atomic_compare_exchange(args, dest, rw_ord(ord1), read_ord(ord2))?,
             ["cxchgweak", ord1, ord2] =>
-                this.atomic_compare_exchange_weak(args, dest, rw_ord(ord1)?, read_ord(ord2)?)?,
+                this.atomic_compare_exchange_weak(args, dest, rw_ord(ord1), read_ord(ord2))?,
 
             ["or", ord] =>
-                this.atomic_rmw_op(args, dest, AtomicOp::MirOp(BinOp::BitOr, false), rw_ord(ord)?)?,
+                this.atomic_rmw_op(args, dest, AtomicOp::MirOp(BinOp::BitOr, false), rw_ord(ord))?,
             ["xor", ord] =>
-                this.atomic_rmw_op(args, dest, AtomicOp::MirOp(BinOp::BitXor, false), rw_ord(ord)?)?,
+                this.atomic_rmw_op(args, dest, AtomicOp::MirOp(BinOp::BitXor, false), rw_ord(ord))?,
             ["and", ord] =>
-                this.atomic_rmw_op(args, dest, AtomicOp::MirOp(BinOp::BitAnd, false), rw_ord(ord)?)?,
+                this.atomic_rmw_op(args, dest, AtomicOp::MirOp(BinOp::BitAnd, false), rw_ord(ord))?,
             ["nand", ord] =>
-                this.atomic_rmw_op(args, dest, AtomicOp::MirOp(BinOp::BitAnd, true), rw_ord(ord)?)?,
+                this.atomic_rmw_op(args, dest, AtomicOp::MirOp(BinOp::BitAnd, true), rw_ord(ord))?,
             ["xadd", ord] =>
-                this.atomic_rmw_op(args, dest, AtomicOp::MirOp(BinOp::Add, false), rw_ord(ord)?)?,
+                this.atomic_rmw_op(args, dest, AtomicOp::MirOp(BinOp::Add, false), rw_ord(ord))?,
             ["xsub", ord] =>
-                this.atomic_rmw_op(args, dest, AtomicOp::MirOp(BinOp::Sub, false), rw_ord(ord)?)?,
+                this.atomic_rmw_op(args, dest, AtomicOp::MirOp(BinOp::Sub, false), rw_ord(ord))?,
             ["min", ord] => {
                 // Later we will use the type to indicate signed vs unsigned,
                 // so make sure it matches the intrinsic name.
                 assert!(matches!(args[1].layout.ty.kind(), ty::Int(_)));
-                this.atomic_rmw_op(args, dest, AtomicOp::Min, rw_ord(ord)?)?;
+                this.atomic_rmw_op(args, dest, AtomicOp::Min, rw_ord(ord))?;
             }
             ["umin", ord] => {
                 // Later we will use the type to indicate signed vs unsigned,
                 // so make sure it matches the intrinsic name.
                 assert!(matches!(args[1].layout.ty.kind(), ty::Uint(_)));
-                this.atomic_rmw_op(args, dest, AtomicOp::Min, rw_ord(ord)?)?;
+                this.atomic_rmw_op(args, dest, AtomicOp::Min, rw_ord(ord))?;
             }
             ["max", ord] => {
                 // Later we will use the type to indicate signed vs unsigned,
                 // so make sure it matches the intrinsic name.
                 assert!(matches!(args[1].layout.ty.kind(), ty::Int(_)));
-                this.atomic_rmw_op(args, dest, AtomicOp::Max, rw_ord(ord)?)?;
+                this.atomic_rmw_op(args, dest, AtomicOp::Max, rw_ord(ord))?;
             }
             ["umax", ord] => {
                 // Later we will use the type to indicate signed vs unsigned,
                 // so make sure it matches the intrinsic name.
                 assert!(matches!(args[1].layout.ty.kind(), ty::Uint(_)));
-                this.atomic_rmw_op(args, dest, AtomicOp::Max, rw_ord(ord)?)?;
+                this.atomic_rmw_op(args, dest, AtomicOp::Max, rw_ord(ord))?;
             }
 
             _ => return Ok(EmulateItemResult::NotSupported),
