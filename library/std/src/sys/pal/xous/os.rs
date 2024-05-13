@@ -149,11 +149,11 @@ pub fn getenv(_: &OsStr) -> Option<OsString> {
     None
 }
 
-pub fn setenv(_: &OsStr, _: &OsStr) -> io::Result<()> {
+pub unsafe fn setenv(_: &OsStr, _: &OsStr) -> io::Result<()> {
     Err(io::const_io_error!(io::ErrorKind::Unsupported, "cannot set env vars on this platform"))
 }
 
-pub fn unsetenv(_: &OsStr) -> io::Result<()> {
+pub unsafe fn unsetenv(_: &OsStr) -> io::Result<()> {
     Err(io::const_io_error!(io::ErrorKind::Unsupported, "cannot unset env vars on this platform"))
 }
 

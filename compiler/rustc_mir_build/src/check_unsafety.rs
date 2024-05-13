@@ -110,14 +110,19 @@ impl<'tcx> UnsafetyVisitor<'_, 'tcx> {
                 );
                 self.suggest_unsafe_block = false;
             }
-            SafetyContext::Safe => {
-                kind.emit_requires_unsafe_err(
+            SafetyContext::Safe => match kind {
+                // Allow calls to deprecated-safe unsafe functions if the
+                // caller is from an edition before 2024.
+                UnsafeOpKind::CallToUnsafeFunction(Some(id))
+                    if !span.at_least_rust_2024()
+                        && self.tcx.has_attr(id, sym::rustc_deprecated_safe_2024) => {}
+                _ => kind.emit_requires_unsafe_err(
                     self.tcx,
                     span,
                     self.hir_context,
                     unsafe_op_in_unsafe_fn_allowed,
-                );
-            }
+                ),
+            },
         }
     }
 

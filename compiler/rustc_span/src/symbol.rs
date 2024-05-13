@@ -1575,6 +1575,7 @@ symbols! {
         rustc_def_path,
         rustc_default_body_unstable,
         rustc_deny_explicit_impl,
+        rustc_deprecated_safe_2024,
         rustc_diagnostic_item,
         rustc_diagnostic_macros,
         rustc_dirty,
