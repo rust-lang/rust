@@ -188,8 +188,9 @@ impl<'tcx> From<InterpError<'tcx>> for InterpErrorInfo<'tcx> {
 }
 
 /// Error information for when the program we executed turned out not to actually be a valid
-/// program. This cannot happen in stand-alone Miri, but it can happen during CTFE/ConstProp
-/// where we work on generic code or execution does not have all information available.
+/// program. This cannot happen in stand-alone Miri (except for layout errors that are only detect
+/// during monomorphization), but it can happen during CTFE/ConstProp where we work on generic code
+/// or execution does not have all information available.
 #[derive(Debug)]
 pub enum InvalidProgramInfo<'tcx> {
     /// Resolution can fail if we are in a too generic context.
@@ -507,7 +508,7 @@ pub enum ValidationErrorKind<'tcx> {
 /// Miri engine, e.g., CTFE does not support dereferencing pointers at integral addresses.
 #[derive(Debug)]
 pub enum UnsupportedOpInfo {
-    /// Free-form case. Only for errors that are never caught!
+    /// Free-form case. Only for errors that are never caught! Used by Miri.
     // FIXME still use translatable diagnostics
     Unsupported(String),
     /// Unsized local variables.
@@ -591,4 +592,118 @@ impl InterpError<'_> {
                 | InterpError::UndefinedBehavior(UndefinedBehaviorInfo::Ub(_))
         )
     }
+}
+
+// Macros for constructing / throwing `InterpError`
+#[macro_export]
+macro_rules! err_unsup {
+    ($($tt:tt)*) => {
+        $crate::mir::interpret::InterpError::Unsupported(
+            $crate::mir::interpret::UnsupportedOpInfo::$($tt)*
+        )
+    };
+}
+
+#[macro_export]
+macro_rules! err_unsup_format {
+    ($($tt:tt)*) => { $crate::err_unsup!(Unsupported(format!($($tt)*))) };
+}
+
+#[macro_export]
+macro_rules! err_inval {
+    ($($tt:tt)*) => {
+        $crate::mir::interpret::InterpError::InvalidProgram(
+            $crate::mir::interpret::InvalidProgramInfo::$($tt)*
+        )
+    };
+}
+
+#[macro_export]
+macro_rules! err_ub {
+    ($($tt:tt)*) => {
+        $crate::mir::interpret::InterpError::UndefinedBehavior(
+            $crate::mir::interpret::UndefinedBehaviorInfo::$($tt)*
+        )
+    };
+}
+
+#[macro_export]
+macro_rules! err_ub_format {
+    ($($tt:tt)*) => { $crate::err_ub!(Ub(format!($($tt)*))) };
+}
+
+#[macro_export]
+macro_rules! err_ub_custom {
+    ($msg:expr $(, $($name:ident = $value:expr),* $(,)?)?) => {{
+        $(
+            let ($($name,)*) = ($($value,)*);
+        )?
+        $crate::err_ub!(Custom(
+            $crate::error::CustomSubdiagnostic {
+                msg: || $msg,
+                add_args: Box::new(move |mut set_arg| {
+                    $($(
+                        set_arg(stringify!($name).into(), rustc_errors::IntoDiagArg::into_diag_arg($name));
+                    )*)?
+                })
+            }
+        ))
+    }};
+}
+
+#[macro_export]
+macro_rules! err_exhaust {
+    ($($tt:tt)*) => {
+        $crate::mir::interpret::InterpError::ResourceExhaustion(
+            $crate::mir::interpret::ResourceExhaustionInfo::$($tt)*
+        )
+    };
+}
+
+#[macro_export]
+macro_rules! err_machine_stop {
+    ($($tt:tt)*) => {
+        $crate::mir::interpret::InterpError::MachineStop(Box::new($($tt)*))
+    };
+}
+
+// In the `throw_*` macros, avoid `return` to make them work with `try {}`.
+#[macro_export]
+macro_rules! throw_unsup {
+    ($($tt:tt)*) => { do yeet $crate::err_unsup!($($tt)*) };
+}
+
+#[macro_export]
+macro_rules! throw_unsup_format {
+    ($($tt:tt)*) => { do yeet $crate::err_unsup_format!($($tt)*) };
+}
+
+#[macro_export]
+macro_rules! throw_inval {
+    ($($tt:tt)*) => { do yeet $crate::err_inval!($($tt)*) };
+}
+
+#[macro_export]
+macro_rules! throw_ub {
+    ($($tt:tt)*) => { do yeet $crate::err_ub!($($tt)*) };
+}
+
+#[macro_export]
+macro_rules! throw_ub_format {
+    ($($tt:tt)*) => { do yeet $crate::err_ub_format!($($tt)*) };
+}
+
+#[macro_export]
+macro_rules! throw_ub_custom {
+    ($($tt:tt)*) => { do yeet $crate::err_ub_custom!($($tt)*) };
+}
+
+#[macro_export]
+macro_rules! throw_exhaust {
+    ($($tt:tt)*) => { do yeet $crate::err_exhaust!($($tt)*) };
+}
+
+#[macro_export]
+macro_rules! throw_machine_stop {
+    ($($tt:tt)*) => { do yeet $crate::err_machine_stop!($($tt)*) };
 }
