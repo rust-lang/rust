@@ -200,7 +200,7 @@ impl FloatBinOp {
     ) -> InterpResult<'tcx, Self> {
         // Only bits 0..=4 are used, remaining should be zero.
         if imm & !0b1_1111 != 0 {
-            throw_unsup_format!("invalid `imm` parameter of {intrinsic}: 0x{imm:x}");
+            panic!("invalid `imm` parameter of {intrinsic}: 0x{imm:x}");
         }
         // Bit 4 specifies whether the operation is quiet or signaling, which
         // we do not care in Miri.
@@ -683,7 +683,7 @@ fn rounding_from_imm<'tcx>(rounding: i32) -> InterpResult<'tcx, rustc_apfloat::R
         // SSE status register. Since we do not support modifying it from
         // Miri (or Rust), we assume it to be at its default mode (round-to-nearest).
         0b100..=0b111 => Ok(rustc_apfloat::Round::NearestTiesToEven),
-        rounding => throw_unsup_format!("unsupported rounding mode 0x{rounding:02x}"),
+        rounding => panic!("invalid rounding mode 0x{rounding:02x}"),
     }
 }
 
