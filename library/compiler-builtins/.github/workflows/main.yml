@@ -15,6 +15,9 @@ jobs:
         - target: aarch64-unknown-linux-gnu
           os: ubuntu-latest
           rust: nightly
+        - target: aarch64-pc-windows-msvc
+          os: [windows-latest, arm64]
+          rust: nightly
         - target: arm-unknown-linux-gnueabi
           os: ubuntu-latest
           rust: nightly
@@ -83,9 +86,6 @@ jobs:
         - target: x86_64-pc-windows-gnu
           os: windows-latest
           rust: nightly-x86_64-gnu
-        - target: aarch64-pc-windows-msvc
-          os: windows-latest
-          rust: nightly
     steps:
     - name: Print runner information
       run: uname -a
