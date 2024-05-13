@@ -359,9 +359,12 @@ fn impl_intersection_has_impossible_obligation<'a, 'cx, 'tcx>(
 ) -> IntersectionHasImpossibleObligations<'tcx> {
     let infcx = selcx.infcx;
 
+    // Elaborate obligations in case the current obligation is unknowable,
+    // but its super trait bound is not. See #124532 for more details.
+    let obligations = util::elaborate(infcx.tcx, obligations.iter().cloned());
     if infcx.next_trait_solver() {
         let ocx = ObligationCtxt::new(infcx);
-        ocx.register_obligations(obligations.iter().cloned());
+        ocx.register_obligations(obligations);
         let errors_and_ambiguities = ocx.select_all_or_error();
         // We only care about the obligations that are *definitely* true errors.
         // Ambiguities do not prove the disjointness of two impls.
@@ -388,7 +391,7 @@ fn impl_intersection_has_impossible_obligation<'a, 'cx, 'tcx>(
         for obligation in obligations {
             // We use `evaluate_root_obligation` to correctly track intercrate
             // ambiguity clauses.
-            let evaluation_result = selcx.evaluate_root_obligation(obligation);
+            let evaluation_result = selcx.evaluate_root_obligation(&obligation);
 
             match evaluation_result {
                 Ok(result) => {

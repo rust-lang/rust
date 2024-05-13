@@ -1,20 +1,18 @@
-error[E0283]: type annotations needed: cannot satisfy `&'a (): Foo`
-  --> $DIR/issue-34979.rs:6:13
+error[E0308]: mismatched types
+  --> $DIR/issue-34979.rs:7:18
    |
-LL |     &'a (): Foo,
-   |             ^^^
-   |
-note: multiple `impl`s or `where` clauses satisfying `&'a (): Foo` found
-  --> $DIR/issue-34979.rs:2:1
-   |
-LL | impl<'a, T> Foo for &'a T {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^
-...
-LL |     &'a (): Foo,
-   |             ^^^
 LL |     &'static (): Foo;
-   |                  ^^^
+   |                  ^^^ lifetime mismatch
+   |
+   = note: expected trait `<&'static () as Foo>`
+              found trait `<&'a () as Foo>`
+note: the lifetime `'a` as defined here...
+  --> $DIR/issue-34979.rs:4:12
+   |
+LL | struct Ctx<'a>(&'a ())
+   |            ^^
+   = note: ...does not necessarily outlive the static lifetime
 
 error: aborting due to 1 previous error
 
-For more information about this error, try `rustc --explain E0283`.
+For more information about this error, try `rustc --explain E0308`.

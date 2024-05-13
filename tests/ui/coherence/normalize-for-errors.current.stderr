@@ -8,6 +8,7 @@ LL | impl<S: Iterator> MyTrait<S> for (Box<<(MyType,) as Mirror>::Assoc>, S::Ite
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `(Box<(MyType,)>, _)`
    |
    = note: upstream crates may add a new impl of trait `std::marker::Copy` for type `std::boxed::Box<(MyType,)>` in future versions
+   = note: upstream crates may add a new impl of trait `std::clone::Clone` for type `(MyType,)` in future versions
 
 error: aborting due to 1 previous error
 

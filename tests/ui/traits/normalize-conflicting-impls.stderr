@@ -1,11 +1,11 @@
 error[E0220]: associated type `Value` not found for `R`
-  --> $DIR/normalize-conflicting-impls.rs:10:8
+  --> $DIR/normalize-conflicting-impls.rs:13:8
    |
 LL |     R::Value: DimName,
    |        ^^^^^ associated type `Value` not found
 
 error[E0119]: conflicting implementations of trait `Allocator<_, ()>` for type `DefaultAllocator`
-  --> $DIR/normalize-conflicting-impls.rs:14:1
+  --> $DIR/normalize-conflicting-impls.rs:17:1
    |
 LL | / impl<N, R> Allocator<N, R> for DefaultAllocator
 LL | | where
@@ -15,7 +15,17 @@ LL | |     R::Value: DimName,
 LL |   impl<N> Allocator<N, ()> for DefaultAllocator {}
    |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `DefaultAllocator`
 
-error: aborting due to 2 previous errors
+error[E0277]: the trait bound `Point<f64, u32>: From<Matrix<()>>` is not satisfied
+  --> $DIR/normalize-conflicting-impls.rs:7:74
+   |
+LL |     let _: Point2<f64> = material_surface_element.map_reference_coords().into();
+   |                                                                          ^^^^ the trait `From<Matrix<()>>` is not implemented for `Point<f64, u32>`, which is required by `Matrix<()>: Into<_>`
+   |
+   = help: the trait `From<Matrix<<DefaultAllocator as Allocator<f64, u32>>::Buffer>>` is implemented for `Point<f64, u32>`
+   = help: for that trait implementation, expected `<DefaultAllocator as Allocator<f64, u32>>::Buffer`, found `()`
+   = note: required for `Matrix<()>` to implement `Into<Point<f64, u32>>`
 
-Some errors have detailed explanations: E0119, E0220.
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0119, E0220, E0277.
 For more information about an error, try `rustc --explain E0119`.
