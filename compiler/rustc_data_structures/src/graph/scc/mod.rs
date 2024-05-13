@@ -250,17 +250,17 @@ enum NodeState<N, S, A> {
     NotVisited,
 
     /// This node is currently being walked as part of our DFS. It is on
-    /// the stack at the depth `depth` and the heaviest node on the way
-    /// there is `max_weigth_on_path`.
+    /// the stack at the depth `depth` and its current annotation is
+    /// `annotation`.
     ///
     /// After SCC construction is complete, this state ought to be
     /// impossible.
     BeingVisited { depth: usize, annotation: A },
 
     /// Indicates that this node is a member of the given cycle where
-    /// the weight of the heaviest node is `cycle_max_weight`.
-    /// Note that an SCC can have several cycles, so the max
-    /// weight of an SCC is the max weight of all its cycles.
+    /// the merged annotation is `annotation`.
+    /// Note that an SCC can have several cycles, so its final annotation
+    /// is the merged value of all its member annotations.
     InCycle { scc_index: S, annotation: A },
 
     /// Indicates that this node is a member of whatever cycle
@@ -304,9 +304,8 @@ where
     /// D' (i.e., D' < D), we know that N, N', and all nodes in
     /// between them on the stack are part of an SCC.
     ///
-    /// Additionally, we keep track of a representative of the SCC with the highest
-    /// reachable weight for all SCCs, for some arbitrary ordering function that assigns
-    /// a weight to nodes.
+    /// Additionally, we keep track of a representative annotation of the
+    /// SCC.
     ///
     /// [wikipedia]: https://bit.ly/2EZIx84
     fn construct(graph: &'c G, to_annotation: F) -> Sccs<G::Node, S, A> {
