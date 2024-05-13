@@ -61,7 +61,14 @@ mod hints;
 pub use self::hints::*;
 
 mod crc;
-#[unstable(feature = "stdarch_arm_crc32", issue = "117215")]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_aarch32_crc32", issue = "125085")
+)]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    stable(feature = "stdarch_aarch64_crc32", since = "1.80.0")
+)]
 pub use crc::*;
 
 // NEON intrinsics are currently broken on big-endian, so don't expose them. (#1484)

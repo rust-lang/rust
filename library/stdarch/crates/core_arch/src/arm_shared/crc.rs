@@ -58,7 +58,14 @@ use stdarch_test::assert_instr;
 #[target_feature(enable = "crc")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(test, assert_instr(crc32b))]
-#[unstable(feature = "stdarch_arm_crc32", issue = "117215")]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_aarch32_crc32", issue = "125085")
+)]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    stable(feature = "stdarch_aarch64_crc32", since = "1.80.0")
+)]
 pub unsafe fn __crc32b(crc: u32, data: u8) -> u32 {
     crc32b_(crc, data as u32)
 }
@@ -70,7 +77,14 @@ pub unsafe fn __crc32b(crc: u32, data: u8) -> u32 {
 #[target_feature(enable = "crc")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(test, assert_instr(crc32h))]
-#[unstable(feature = "stdarch_arm_crc32", issue = "117215")]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_aarch32_crc32", issue = "125085")
+)]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    stable(feature = "stdarch_aarch64_crc32", since = "1.80.0")
+)]
 pub unsafe fn __crc32h(crc: u32, data: u16) -> u32 {
     crc32h_(crc, data as u32)
 }
@@ -82,7 +96,14 @@ pub unsafe fn __crc32h(crc: u32, data: u16) -> u32 {
 #[target_feature(enable = "crc")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(test, assert_instr(crc32w))]
-#[unstable(feature = "stdarch_arm_crc32", issue = "117215")]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_aarch32_crc32", issue = "125085")
+)]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    stable(feature = "stdarch_aarch64_crc32", since = "1.80.0")
+)]
 pub unsafe fn __crc32w(crc: u32, data: u32) -> u32 {
     crc32w_(crc, data)
 }
@@ -94,7 +115,14 @@ pub unsafe fn __crc32w(crc: u32, data: u32) -> u32 {
 #[target_feature(enable = "crc")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(test, assert_instr(crc32cb))]
-#[unstable(feature = "stdarch_arm_crc32", issue = "117215")]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_aarch32_crc32", issue = "125085")
+)]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    stable(feature = "stdarch_aarch64_crc32", since = "1.80.0")
+)]
 pub unsafe fn __crc32cb(crc: u32, data: u8) -> u32 {
     crc32cb_(crc, data as u32)
 }
@@ -106,7 +134,14 @@ pub unsafe fn __crc32cb(crc: u32, data: u8) -> u32 {
 #[target_feature(enable = "crc")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(test, assert_instr(crc32ch))]
-#[unstable(feature = "stdarch_arm_crc32", issue = "117215")]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_aarch32_crc32", issue = "125085")
+)]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    stable(feature = "stdarch_aarch64_crc32", since = "1.80.0")
+)]
 pub unsafe fn __crc32ch(crc: u32, data: u16) -> u32 {
     crc32ch_(crc, data as u32)
 }
@@ -118,7 +153,14 @@ pub unsafe fn __crc32ch(crc: u32, data: u16) -> u32 {
 #[target_feature(enable = "crc")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(test, assert_instr(crc32cw))]
-#[unstable(feature = "stdarch_arm_crc32", issue = "117215")]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_aarch32_crc32", issue = "125085")
+)]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    stable(feature = "stdarch_aarch64_crc32", since = "1.80.0")
+)]
 pub unsafe fn __crc32cw(crc: u32, data: u32) -> u32 {
     crc32cw_(crc, data)
 }
@@ -130,7 +172,14 @@ pub unsafe fn __crc32cw(crc: u32, data: u32) -> u32 {
 #[target_feature(enable = "crc")]
 #[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(crc32x))]
-#[unstable(feature = "stdarch_arm_crc32", issue = "117215")]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_aarch32_crc32", issue = "125085")
+)]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    stable(feature = "stdarch_aarch64_crc32", since = "1.80.0")
+)]
 pub unsafe fn __crc32d(crc: u32, data: u64) -> u32 {
     crc32x_(crc, data)
 }
@@ -142,7 +191,14 @@ pub unsafe fn __crc32d(crc: u32, data: u64) -> u32 {
 #[target_feature(enable = "crc")]
 #[cfg(target_arch = "arm")]
 #[cfg_attr(test, assert_instr(crc32w))]
-#[unstable(feature = "stdarch_arm_crc32", issue = "117215")]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_aarch32_crc32", issue = "125085")
+)]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    stable(feature = "stdarch_aarch64_crc32", since = "1.80.0")
+)]
 pub unsafe fn __crc32d(crc: u32, data: u64) -> u32 {
     // On 32-bit ARM this intrinsic emits a chain of two `crc32_w` instructions
     // and truncates the data to 32 bits in both clang and gcc
@@ -159,7 +215,14 @@ pub unsafe fn __crc32d(crc: u32, data: u64) -> u32 {
 #[target_feature(enable = "crc")]
 #[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(crc32cx))]
-#[unstable(feature = "stdarch_arm_crc32", issue = "117215")]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_aarch32_crc32", issue = "125085")
+)]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    stable(feature = "stdarch_aarch64_crc32", since = "1.80.0")
+)]
 pub unsafe fn __crc32cd(crc: u32, data: u64) -> u32 {
     crc32cx_(crc, data)
 }
@@ -171,7 +234,14 @@ pub unsafe fn __crc32cd(crc: u32, data: u64) -> u32 {
 #[target_feature(enable = "crc")]
 #[cfg(target_arch = "arm")]
 #[cfg_attr(test, assert_instr(crc32cw))]
-#[unstable(feature = "stdarch_arm_crc32", issue = "117215")]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_aarch32_crc32", issue = "125085")
+)]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    stable(feature = "stdarch_aarch64_crc32", since = "1.80.0")
+)]
 pub unsafe fn __crc32cd(crc: u32, data: u64) -> u32 {
     // On 32-bit ARM this intrinsic emits a chain of two `crc32_cw` instructions
     // and truncates the data to 32 bits in both clang and gcc
