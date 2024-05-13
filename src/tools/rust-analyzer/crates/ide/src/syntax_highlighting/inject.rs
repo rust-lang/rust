@@ -30,7 +30,7 @@ pub(super) fn ra_fixture(
     if !active_parameter.ident().map_or(false, |name| name.text().starts_with("ra_fixture")) {
         return None;
     }
-    let value = literal.value()?;
+    let value = literal.value().ok()?;
 
     if let Some(range) = literal.open_quote_text_range() {
         hl.add(HlRange { range, highlight: HlTag::StringLiteral.into(), binding_hash: None })

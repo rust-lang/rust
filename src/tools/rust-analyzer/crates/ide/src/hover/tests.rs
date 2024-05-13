@@ -7790,9 +7790,12 @@ fn main() {
 "#,
         expect![[r#"
             *"🦀\u{1f980}\\\x41"*
-            ```text
-            🦀🦀\A
+            ```rust
+            &str
             ```
+            ___
+
+            value of literal: 🦀🦀\A
         "#]],
     );
     check(
@@ -7803,9 +7806,34 @@ fn main() {
 "#,
         expect![[r#"
             *r"🦀\u{1f980}\\\x41"*
-            ```text
-            🦀\u{1f980}\\\x41
+            ```rust
+            &str
             ```
+            ___
+
+            value of literal: 🦀\u{1f980}\\\x41
+        "#]],
+    );
+    check(
+        r#"
+fn main() {
+    $0r"🦀\u{1f980}\\\x41
+
+
+fsdghs";
+}
+"#,
+        expect![[r#"
+            *r"🦀\u{1f980}\\\x41
+
+
+            fsdghs"*
+            ```rust
+            &str
+            ```
+            ___
+
+            value of literal (truncated up to newline): 🦀\u{1f980}\\\x41
         "#]],
     );
 }
@@ -7820,9 +7848,12 @@ fn main() {
 "#,
         expect![[r#"
             *c"🦀\u{1f980}\\\x41"*
-            ```text
-            🦀🦀\A
+            ```rust
+            &{unknown}
             ```
+            ___
+
+            value of literal: 🦀🦀\A
         "#]],
     );
 }
@@ -7837,9 +7868,12 @@ fn main() {
 "#,
         expect![[r#"
             *b"\xF0\x9F\xA6\x80\\"*
-            ```text
-            [240, 159, 166, 128, 92]
+            ```rust
+            &[u8; 5]
             ```
+            ___
+
+            value of literal: [240, 159, 166, 128, 92]
         "#]],
     );
     check(
@@ -7850,9 +7884,12 @@ fn main() {
 "#,
         expect![[r#"
             *br"\xF0\x9F\xA6\x80\\"*
-            ```text
-            [92, 120, 70, 48, 92, 120, 57, 70, 92, 120, 65, 54, 92, 120, 56, 48, 92, 92]
+            ```rust
+            &[u8; 18]
             ```
+            ___
+
+            value of literal: [92, 120, 70, 48, 92, 120, 57, 70, 92, 120, 65, 54, 92, 120, 56, 48, 92, 92]
         "#]],
     );
 }
@@ -7867,9 +7904,12 @@ fn main() {
 "#,
         expect![[r#"
             *b'\xF0'*
-            ```text
-            0xF0
+            ```rust
+            u8
             ```
+            ___
+
+            value of literal: 0xF0
         "#]],
     );
     check(
@@ -7880,9 +7920,12 @@ fn main() {
 "#,
         expect![[r#"
             *b'\\'*
-            ```text
-            0x5C
+            ```rust
+            u8
             ```
+            ___
+
+            value of literal: 0x5C
         "#]],
     );
 }
@@ -7897,7 +7940,12 @@ fn main() {
 "#,
         expect![[r#"
             *'\x41'*
+            ```rust
+            char
+            ```
+            ___
 
+            value of literal: A
         "#]],
     );
     check(
@@ -7908,7 +7956,12 @@ fn main() {
 "#,
         expect![[r#"
             *'\\'*
+            ```rust
+            char
+            ```
+            ___
 
+            value of literal: \
         "#]],
     );
     check(
@@ -7919,7 +7972,12 @@ fn main() {
 "#,
         expect![[r#"
             *'\u{1f980}'*
+            ```rust
+            char
+            ```
+            ___
 
+            value of literal: 🦀
         "#]],
     );
 }
@@ -7934,9 +7992,12 @@ fn main() {
 "#,
         expect![[r#"
             *1.0*
-            ```text
-            1 (bits: 0x3FF0000000000000)
+            ```rust
+            f64
             ```
+            ___
+
+            value of literal: 1 (bits: 0x3FF0000000000000)
         "#]],
     );
     check(
@@ -7947,9 +8008,12 @@ fn main() {
 "#,
         expect![[r#"
             *1.0f32*
-            ```text
-            1 (bits: 0x3F800000)
+            ```rust
+            f32
             ```
+            ___
+
+            value of literal: 1 (bits: 0x3F800000)
         "#]],
     );
     check(
@@ -7960,9 +8024,12 @@ fn main() {
 "#,
         expect![[r#"
             *134e12*
-            ```text
-            134000000000000 (bits: 0x42DE77D399980000)
+            ```rust
+            f64
             ```
+            ___
+
+            value of literal: 134000000000000 (bits: 0x42DE77D399980000)
         "#]],
     );
     check(
@@ -7973,9 +8040,12 @@ fn main() {
 "#,
         expect![[r#"
             *1523527134274733643531312.0*
-            ```text
-            1523527134274733600000000 (bits: 0x44F429E9249F629B)
+            ```rust
+            f64
             ```
+            ___
+
+            value of literal: 1523527134274733600000000 (bits: 0x44F429E9249F629B)
         "#]],
     );
     check(
@@ -7986,9 +8056,12 @@ fn main() {
 "#,
         expect![[r#"
             *0.1ea123*
-            ```text
-            invalid float literal
+            ```rust
+            f64
             ```
+            ___
+
+            invalid literal: invalid float literal
         "#]],
     );
 }
@@ -8003,9 +8076,12 @@ fn main() {
 "#,
         expect![[r#"
             *34325236457856836345234*
-            ```text
-            34325236457856836345234 (0x744C659178614489D92|0b111010001001100011001011001000101111000011000010100010010001001110110010010)
+            ```rust
+            i32
             ```
+            ___
+
+            value of literal: 34325236457856836345234 (0x744C659178614489D92|0b111010001001100011001011001000101111000011000010100010010001001110110010010)
         "#]],
     );
     check(
@@ -8016,9 +8092,12 @@ fn main() {
 "#,
         expect![[r#"
             *134_123424_21*
-            ```text
-            13412342421 (0x31F701A95|0b1100011111011100000001101010010101)
+            ```rust
+            i32
             ```
+            ___
+
+            value of literal: 13412342421 (0x31F701A95|0b1100011111011100000001101010010101)
         "#]],
     );
     check(
@@ -8029,9 +8108,12 @@ fn main() {
 "#,
         expect![[r#"
             *0x12423423*
-            ```text
-            306328611 (0x12423423|0b10010010000100011010000100011)
+            ```rust
+            i32
             ```
+            ___
+
+            value of literal: 306328611 (0x12423423|0b10010010000100011010000100011)
         "#]],
     );
     check(
@@ -8042,9 +8124,12 @@ fn main() {
 "#,
         expect![[r#"
             *0b1111_1111*
-            ```text
-            255 (0xFF|0b11111111)
+            ```rust
+            i32
             ```
+            ___
+
+            value of literal: 255 (0xFF|0b11111111)
         "#]],
     );
     check(
@@ -8055,9 +8140,12 @@ fn main() {
 "#,
         expect![[r#"
             *0o12345*
-            ```text
-            5349 (0x14E5|0b1010011100101)
+            ```rust
+            i32
             ```
+            ___
+
+            value of literal: 5349 (0x14E5|0b1010011100101)
         "#]],
     );
     check(
@@ -8068,9 +8156,12 @@ fn main() {
 "#,
         expect![[r#"
             *0xFFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_F*
-            ```text
-            number too large to fit in target type
+            ```rust
+            i32
             ```
+            ___
+
+            invalid literal: number too large to fit in target type
         "#]],
     );
 }
