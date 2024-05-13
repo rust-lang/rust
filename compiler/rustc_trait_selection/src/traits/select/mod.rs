@@ -1577,7 +1577,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             return false;
         }
         match result {
-            Ok(Some(SelectionCandidate::ParamCandidate(trait_ref))) => !trait_ref.has_infer(),
+            Ok(Some(SelectionCandidate::ParamCandidate { predicate, .. })) => {
+                !predicate.has_infer()
+            }
             _ => true,
         }
     }
@@ -1829,23 +1831,16 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             return DropVictim::Yes;
         }
 
-        // Check if a bound would previously have been removed when normalizing
-        // the param_env so that it can be given the lowest priority. See
-        // #50825 for the motivation for this.
-        let is_global =
-            |cand: &ty::PolyTraitPredicate<'tcx>| cand.is_global() && !cand.has_bound_vars();
-
-        // (*) Prefer `BuiltinCandidate { has_nested: false }`, `PointeeCandidate`,
-        // `DiscriminantKindCandidate`, `ConstDestructCandidate`
-        // to anything else.
-        //
-        // This is a fix for #53123 and prevents winnowing from accidentally extending the
-        // lifetime of a variable.
         match (&other.candidate, &victim.candidate) {
-            // FIXME(@jswrenn): this should probably be more sophisticated
-            (TransmutabilityCandidate, _) | (_, TransmutabilityCandidate) => DropVictim::No,
-
-            // (*)
+            // Prefer `BuiltinCandidate { has_nested: false }`, `ConstDestructCandidate`
+            // to anything else.
+            //
+            // This is a fix for #53123 and prevents winnowing from accidentally extending the
+            // lifetime of a variable.
+            (
+                BuiltinCandidate { has_nested: false } | ConstDestructCandidate(_),
+                BuiltinCandidate { has_nested: false } | ConstDestructCandidate(_),
+            ) => bug!("two trivial builtin candidates: {other:?} {victim:?}"),
             (BuiltinCandidate { has_nested: false } | ConstDestructCandidate(_), _) => {
                 DropVictim::Yes
             }
@@ -1853,7 +1848,18 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 DropVictim::No
             }
 
-            (ParamCandidate(other), ParamCandidate(victim)) => {
+            // Global bounds from the where clause should be ignored
+            // here (see issue #50825).
+            (ParamCandidate { is_global: true, .. }, ParamCandidate { is_global: true, .. }) => {
+                DropVictim::No
+            }
+            (_, ParamCandidate { is_global: true, .. }) => DropVictim::Yes,
+            (ParamCandidate { is_global: true, .. }, _) => DropVictim::No,
+
+            (
+                ParamCandidate { is_global: false, predicate: other },
+                ParamCandidate { is_global: false, predicate: victim },
+            ) => {
                 let same_except_bound_vars = other.skip_binder().trait_ref
                     == victim.skip_binder().trait_ref
                     && other.skip_binder().polarity == victim.skip_binder().polarity
@@ -1870,68 +1876,8 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 }
             }
 
-            // Drop otherwise equivalent non-const fn pointer candidates
-            (FnPointerCandidate { .. }, FnPointerCandidate { fn_host_effect }) => {
-                DropVictim::drop_if(*fn_host_effect == self.tcx().consts.true_)
-            }
-
-            (
-                ParamCandidate(ref other_cand),
-                ImplCandidate(..)
-                | AutoImplCandidate
-                | ClosureCandidate { .. }
-                | AsyncClosureCandidate
-                | AsyncFnKindHelperCandidate
-                | CoroutineCandidate
-                | FutureCandidate
-                | IteratorCandidate
-                | AsyncIteratorCandidate
-                | FnPointerCandidate { .. }
-                | BuiltinObjectCandidate
-                | BuiltinUnsizeCandidate
-                | TraitUpcastingUnsizeCandidate(_)
-                | BuiltinCandidate { .. }
-                | TraitAliasCandidate
-                | ObjectCandidate(_)
-                | ProjectionCandidate(_),
-            ) => {
-                // We have a where clause so don't go around looking
-                // for impls. Arbitrarily give param candidates priority
-                // over projection and object candidates.
-                //
-                // Global bounds from the where clause should be ignored
-                // here (see issue #50825).
-                DropVictim::drop_if(!is_global(other_cand))
-            }
-            (ObjectCandidate(_) | ProjectionCandidate(_), ParamCandidate(ref victim_cand)) => {
-                // Prefer these to a global where-clause bound
-                // (see issue #50825).
-                if is_global(victim_cand) { DropVictim::Yes } else { DropVictim::No }
-            }
-            (
-                ImplCandidate(_)
-                | AutoImplCandidate
-                | ClosureCandidate { .. }
-                | AsyncClosureCandidate
-                | AsyncFnKindHelperCandidate
-                | CoroutineCandidate
-                | FutureCandidate
-                | IteratorCandidate
-                | AsyncIteratorCandidate
-                | FnPointerCandidate { .. }
-                | BuiltinObjectCandidate
-                | BuiltinUnsizeCandidate
-                | TraitUpcastingUnsizeCandidate(_)
-                | BuiltinCandidate { has_nested: true }
-                | TraitAliasCandidate,
-                ParamCandidate(ref victim_cand),
-            ) => {
-                // Prefer these to a global where-clause bound
-                // (see issue #50825).
-                DropVictim::drop_if(
-                    is_global(victim_cand) && other.evaluation.must_apply_modulo_regions(),
-                )
-            }
+            (ParamCandidate { is_global: false, .. }, _) => DropVictim::Yes,
+            (_, ParamCandidate { is_global: false, .. }) => DropVictim::No,
 
             (ProjectionCandidate(i), ProjectionCandidate(j))
             | (ObjectCandidate(i), ObjectCandidate(j)) => {
@@ -1944,44 +1890,18 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 bug!("Have both object and projection candidate")
             }
 
-            // Arbitrarily give projection and object candidates priority.
-            (
-                ObjectCandidate(_) | ProjectionCandidate(_),
-                ImplCandidate(..)
-                | AutoImplCandidate
-                | ClosureCandidate { .. }
-                | AsyncClosureCandidate
-                | AsyncFnKindHelperCandidate
-                | CoroutineCandidate
-                | FutureCandidate
-                | IteratorCandidate
-                | AsyncIteratorCandidate
-                | FnPointerCandidate { .. }
-                | BuiltinObjectCandidate
-                | BuiltinUnsizeCandidate
-                | TraitUpcastingUnsizeCandidate(_)
-                | BuiltinCandidate { .. }
-                | TraitAliasCandidate,
-            ) => DropVictim::Yes,
+            // Arbitrarily give projection candidates priority.
+            (ProjectionCandidate(_), _) => DropVictim::Yes,
+            (_, ProjectionCandidate(_)) => DropVictim::No,
 
-            (
-                ImplCandidate(..)
-                | AutoImplCandidate
-                | ClosureCandidate { .. }
-                | AsyncClosureCandidate
-                | AsyncFnKindHelperCandidate
-                | CoroutineCandidate
-                | FutureCandidate
-                | IteratorCandidate
-                | AsyncIteratorCandidate
-                | FnPointerCandidate { .. }
-                | BuiltinObjectCandidate
-                | BuiltinUnsizeCandidate
-                | TraitUpcastingUnsizeCandidate(_)
-                | BuiltinCandidate { .. }
-                | TraitAliasCandidate,
-                ObjectCandidate(_) | ProjectionCandidate(_),
-            ) => DropVictim::No,
+            // Need to prioritize builtin trait object impls as
+            // `<dyn Any as Any>::type_id` should use the vtable method
+            // and not the method provided by the user-defined impl
+            // `impl<T: ?Sized> Any for T { .. }`.
+            //
+            // cc #57893
+            (ObjectCandidate(_), _) => DropVictim::Yes,
+            (_, ObjectCandidate(_)) => DropVictim::No,
 
             (&ImplCandidate(other_def), &ImplCandidate(victim_def)) => {
                 // See if we can toss out `victim` based on specialization.
@@ -2061,23 +1981,11 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 }
             }
 
-            (AutoImplCandidate, ImplCandidate(_)) | (ImplCandidate(_), AutoImplCandidate) => {
-                DropVictim::No
-            }
-
-            (AutoImplCandidate, _) | (_, AutoImplCandidate) => {
-                bug!(
-                    "default implementations shouldn't be recorded \
-                    when there are other global candidates: {:?} {:?}",
-                    other,
-                    victim
-                );
-            }
-
-            // Everything else is ambiguous
+            // Treat all non-trivial builtin impls and user-defined impls the same way.
             (
                 ImplCandidate(_)
-                | ClosureCandidate { .. }
+                | AutoImplCandidate
+                | BuiltinCandidate { has_nested: true }
                 | AsyncClosureCandidate
                 | AsyncFnKindHelperCandidate
                 | CoroutineCandidate
@@ -2085,25 +1993,13 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 | IteratorCandidate
                 | AsyncIteratorCandidate
                 | FnPointerCandidate { .. }
-                | BuiltinObjectCandidate
-                | BuiltinUnsizeCandidate
-                | TraitUpcastingUnsizeCandidate(_)
-                | BuiltinCandidate { has_nested: true }
-                | TraitAliasCandidate,
-                ImplCandidate(_)
                 | ClosureCandidate { .. }
-                | AsyncClosureCandidate
-                | AsyncFnKindHelperCandidate
-                | CoroutineCandidate
-                | FutureCandidate
-                | IteratorCandidate
-                | AsyncIteratorCandidate
-                | FnPointerCandidate { .. }
-                | BuiltinObjectCandidate
+                | TraitAliasCandidate
                 | BuiltinUnsizeCandidate
                 | TraitUpcastingUnsizeCandidate(_)
-                | BuiltinCandidate { has_nested: true }
-                | TraitAliasCandidate,
+                | TransmutabilityCandidate
+                | BuiltinObjectCandidate,
+                _,
             ) => DropVictim::No,
         }
     }

@@ -252,16 +252,18 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             all_bounds.filter(|p| p.def_id() == stack.obligation.predicate.def_id());
 
         // Keep only those bounds which may apply, and propagate overflow if it occurs.
-        for bound in matching_bounds {
-            if bound.skip_binder().polarity != stack.obligation.predicate.skip_binder().polarity {
+        for predicate in matching_bounds {
+            if predicate.skip_binder().polarity != stack.obligation.predicate.skip_binder().polarity
+            {
                 continue;
             }
 
             // FIXME(oli-obk): it is suspicious that we are dropping the constness and
             // polarity here.
-            let wc = self.where_clause_may_apply(stack, bound.map_bound(|t| t.trait_ref))?;
+            let wc = self.where_clause_may_apply(stack, predicate.map_bound(|t| t.trait_ref))?;
             if wc.may_apply() {
-                candidates.vec.push(ParamCandidate(bound));
+                let is_global = predicate.is_global() && !predicate.has_bound_vars();
+                candidates.vec.push(ParamCandidate { predicate, is_global });
             }
         }
 
