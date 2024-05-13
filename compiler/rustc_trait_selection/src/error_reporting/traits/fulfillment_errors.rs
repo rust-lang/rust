@@ -1742,6 +1742,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     ],
                 );
             }
+            err.help("you can use `cargo tree` to explore your dependency tree");
             return true;
         }
 
