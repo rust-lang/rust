@@ -1,3 +1,4 @@
+use super::{DocHeaders, MISSING_ERRORS_DOC, MISSING_PANICS_DOC, MISSING_SAFETY_DOC, UNNECESSARY_SAFETY_DOC};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_note};
 use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
 use clippy_utils::{is_doc_hidden, return_ty};
@@ -6,15 +7,13 @@ use rustc_lint::LateContext;
 use rustc_middle::ty;
 use rustc_span::{sym, Span};
 
-use super::{DocHeaders, MISSING_ERRORS_DOC, MISSING_PANICS_DOC, MISSING_SAFETY_DOC, UNNECESSARY_SAFETY_DOC};
-
 pub fn check(
     cx: &LateContext<'_>,
     owner_id: OwnerId,
     sig: FnSig<'_>,
     headers: DocHeaders,
     body_id: Option<BodyId>,
-    panic_span: Option<Span>,
+    panic_info: Option<(Span, bool)>,
     check_private_items: bool,
 ) {
     if !check_private_items && !cx.effective_visibilities.is_exported(owner_id.def_id) {
@@ -48,13 +47,13 @@ pub fn check(
         ),
         _ => (),
     }
-    if !headers.panics && panic_span.is_some() {
+    if !headers.panics && panic_info.map_or(false, |el| !el.1) {
         span_lint_and_note(
             cx,
             MISSING_PANICS_DOC,
             span,
             "docs for function which may panic missing `# Panics` section",
-            panic_span,
+            panic_info.map(|el| el.0),
             "first possible panic found here",
         );
     }
