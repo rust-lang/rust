@@ -8,8 +8,7 @@
 use run_make_support::{cc, extra_c_flags, run, rustc, static_lib};
 
 fn main() {
-    rustc().input("checkrust.rs")
-        .run();
+    rustc().input("checkrust.rs").run();
     cc().input("test.c")
         .input(static_lib("checkrust"))
         .out_exe("test")
