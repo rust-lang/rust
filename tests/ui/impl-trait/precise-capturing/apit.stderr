@@ -11,7 +11,7 @@ error: `use<...>` precise capturing syntax not allowed on argument-position `imp
   --> $DIR/apit.rs:4:18
    |
 LL | fn hello(_: impl use<> Sized) {}
-   |                  ^^^
+   |                  ^^^^^
 
 error: aborting due to 1 previous error; 1 warning emitted
 

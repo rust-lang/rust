@@ -675,8 +675,8 @@ impl<'a> Parser<'a> {
         let precise_capturing = if self.eat_keyword(kw::Use) {
             let use_span = self.prev_token.span;
             self.psess.gated_spans.gate(sym::precise_capturing, use_span);
-            let args = self.parse_precise_capturing_args()?;
-            Some(P((args, use_span)))
+            let (args, args_span) = self.parse_precise_capturing_args()?;
+            Some(P((args, use_span.to(args_span))))
         } else {
             None
         };
@@ -689,32 +689,34 @@ impl<'a> Parser<'a> {
         Ok(TyKind::ImplTrait(ast::DUMMY_NODE_ID, bounds, precise_capturing))
     }
 
-    fn parse_precise_capturing_args(&mut self) -> PResult<'a, ThinVec<PreciseCapturingArg>> {
-        Ok(self
-            .parse_unspanned_seq(
-                &TokenKind::Lt,
-                &TokenKind::Gt,
-                SeqSep::trailing_allowed(token::Comma),
-                |self_| {
-                    if self_.check_keyword(kw::SelfUpper) {
-                        self_.bump();
-                        Ok(PreciseCapturingArg::Arg(
-                            ast::Path::from_ident(self_.prev_token.ident().unwrap().0),
-                            DUMMY_NODE_ID,
-                        ))
-                    } else if self_.check_ident() {
-                        Ok(PreciseCapturingArg::Arg(
-                            ast::Path::from_ident(self_.parse_ident()?),
-                            DUMMY_NODE_ID,
-                        ))
-                    } else if self_.check_lifetime() {
-                        Ok(PreciseCapturingArg::Lifetime(self_.expect_lifetime()))
-                    } else {
-                        self_.unexpected_any()
-                    }
-                },
-            )?
-            .0)
+    fn parse_precise_capturing_args(
+        &mut self,
+    ) -> PResult<'a, (ThinVec<PreciseCapturingArg>, Span)> {
+        let lo = self.token.span;
+        let (args, _) = self.parse_unspanned_seq(
+            &TokenKind::Lt,
+            &TokenKind::Gt,
+            SeqSep::trailing_allowed(token::Comma),
+            |self_| {
+                if self_.check_keyword(kw::SelfUpper) {
+                    self_.bump();
+                    Ok(PreciseCapturingArg::Arg(
+                        ast::Path::from_ident(self_.prev_token.ident().unwrap().0),
+                        DUMMY_NODE_ID,
+                    ))
+                } else if self_.check_ident() {
+                    Ok(PreciseCapturingArg::Arg(
+                        ast::Path::from_ident(self_.parse_ident()?),
+                        DUMMY_NODE_ID,
+                    ))
+                } else if self_.check_lifetime() {
+                    Ok(PreciseCapturingArg::Lifetime(self_.expect_lifetime()))
+                } else {
+                    self_.unexpected_any()
+                }
+            },
+        )?;
+        Ok((args, lo.to(self.prev_token.span)))
     }
 
     /// Is a `dyn B0 + ... + Bn` type allowed here?

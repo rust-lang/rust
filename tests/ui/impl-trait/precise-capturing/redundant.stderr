@@ -1,0 +1,45 @@
+warning: the feature `precise_capturing` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/redundant.rs:4:12
+   |
+LL | #![feature(precise_capturing)]
+   |            ^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #123432 <https://github.com/rust-lang/rust/issues/123432> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+warning: all possible in-scope parameters are already captured, so `use<...>` syntax is redundant
+  --> $DIR/redundant.rs:7:19
+   |
+LL | fn hello<'a>() -> impl use<'a> Sized {}
+   |                   ^^^^^-------^^^^^^
+   |                        |
+   |                        help: remove the `use<...>` syntax
+   |
+   = note: `#[warn(impl_trait_redundant_captures)]` on by default
+
+warning: all possible in-scope parameters are already captured, so `use<...>` syntax is redundant
+  --> $DIR/redundant.rs:12:27
+   |
+LL |     fn inherent(&self) -> impl use<'_> Sized {}
+   |                           ^^^^^-------^^^^^^
+   |                                |
+   |                                help: remove the `use<...>` syntax
+
+warning: all possible in-scope parameters are already captured, so `use<...>` syntax is redundant
+  --> $DIR/redundant.rs:17:22
+   |
+LL |     fn in_trait() -> impl use<'a, Self> Sized;
+   |                      ^^^^^-------------^^^^^^
+   |                           |
+   |                           help: remove the `use<...>` syntax
+
+warning: all possible in-scope parameters are already captured, so `use<...>` syntax is redundant
+  --> $DIR/redundant.rs:21:22
+   |
+LL |     fn in_trait() -> impl use<'a> Sized {}
+   |                      ^^^^^-------^^^^^^
+   |                           |
+   |                           help: remove the `use<...>` syntax
+
+warning: 5 warnings emitted
+
