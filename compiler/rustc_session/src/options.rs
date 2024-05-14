@@ -1421,11 +1421,13 @@ mod parse {
         slot: &mut Option<FramePointer>,
         v: Option<&str>,
     ) -> bool {
+        let mut always = false;
         match v {
-            Some("always" | "yes" | "y" | "on" | "true") | None => {
-                *slot = Some(FramePointer::Always)
+            Some(v) if parse_bool(&mut always, Some(v)) => {
+                *slot = Some(if always { FramePointer::Always } else { FramePointer::MayOmit })
             }
-            Some("never" | "false" | "no" | "n" | "off") => *slot = Some(FramePointer::MayOmit),
+            Some("always") | None => *slot = Some(FramePointer::Always),
+            Some("never") => *slot = Some(FramePointer::MayOmit),
             Some("non-leaf") => *slot = Some(FramePointer::NonLeaf),
             Some(_) => return false,
         }
