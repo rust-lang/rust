@@ -45,6 +45,7 @@ use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_session::config::OutputFilenames;
 use rustc_session::Session;
 use rustc_span::{sym, Symbol};
+use rustc_target::spec::FramePointer;
 
 pub use crate::config::*;
 use crate::prelude::*;
@@ -270,7 +271,10 @@ fn build_isa(sess: &Session, backend_config: &BackendConfig) -> Arc<dyn TargetIs
 
     let preserve_frame_pointer = sess.target.options.frame_pointer
         != rustc_target::spec::FramePointer::MayOmit
-        || matches!(sess.opts.cg.force_frame_pointers, Some(true));
+        || matches!(
+            sess.opts.cg.force_frame_pointers,
+            Some(FramePointer::Always | FramePointer::NonLeaf)
+        );
     flags_builder
         .set("preserve_frame_pointers", if preserve_frame_pointer { "true" } else { "false" })
         .unwrap();

@@ -15,7 +15,7 @@ use rustc_target::spec::{
     CodeModel, LinkerFlavorCli, MergeFunctions, OnBrokenPipe, PanicStrategy, SanitizerSet, WasmCAbi,
 };
 use rustc_target::spec::{
-    RelocModel, RelroLevel, SplitDebuginfo, StackProtector, TargetTriple, TlsModel,
+    FramePointer, RelocModel, RelroLevel, SplitDebuginfo, StackProtector, TargetTriple, TlsModel,
 };
 use std::collections::BTreeMap;
 use std::hash::{DefaultHasher, Hasher};
@@ -395,6 +395,8 @@ mod desc {
     pub const parse_optimization_fuel: &str = "crate=integer";
     pub const parse_dump_mono_stats: &str = "`markdown` (default) or `json`";
     pub const parse_instrument_coverage: &str = parse_bool;
+    pub const parse_force_frame_pointers: &str =
+        "`always` (`yes`, `true`, etc), `never` (`no`, `false`, etc) or `non-leaf`";
     pub const parse_coverage_options: &str = "`block` | `branch` | `mcdc`";
     pub const parse_instrument_xray: &str = "either a boolean (`yes`, `no`, `on`, `off`, etc), or a comma separated list of settings: `always` or `never` (mutually exclusive), `ignore-loops`, `instruction-threshold=N`, `skip-entry`, `skip-exit`";
     pub const parse_unpretty: &str = "`string` or `string=string`";
@@ -1415,6 +1417,21 @@ mod parse {
         true
     }
 
+    pub(crate) fn parse_force_frame_pointers(
+        slot: &mut Option<FramePointer>,
+        v: Option<&str>,
+    ) -> bool {
+        match v {
+            Some("always" | "yes" | "y" | "on" | "true") | None => {
+                *slot = Some(FramePointer::Always)
+            }
+            Some("never" | "false" | "no" | "n" | "off") => *slot = Some(FramePointer::MayOmit),
+            Some("non-leaf") => *slot = Some(FramePointer::NonLeaf),
+            Some(_) => return false,
+        }
+        true
+    }
+
     pub(crate) fn parse_llvm_module_flag(
         slot: &mut Vec<(String, u32, String)>,
         v: Option<&str>,
@@ -1494,7 +1511,7 @@ options! {
         "emit bitcode in rlibs (default: yes)"),
     extra_filename: String = (String::new(), parse_string, [UNTRACKED],
         "extra data to put in each output filename"),
-    force_frame_pointers: Option<bool> = (None, parse_opt_bool, [TRACKED],
+    force_frame_pointers: Option<FramePointer> = (None, parse_force_frame_pointers, [TRACKED],
         "force use of the frame pointers"),
     #[rustc_lint_opt_deny_field_access("use `Session::must_emit_unwind_tables` instead of this field")]
     force_unwind_tables: Option<bool> = (None, parse_opt_bool, [TRACKED],

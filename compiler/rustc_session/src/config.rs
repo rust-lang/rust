@@ -2913,7 +2913,8 @@ pub(crate) mod dep_tracking {
         CodeModel, MergeFunctions, OnBrokenPipe, PanicStrategy, RelocModel, WasmCAbi,
     };
     use rustc_target::spec::{
-        RelroLevel, SanitizerSet, SplitDebuginfo, StackProtector, TargetTriple, TlsModel,
+        FramePointer, RelroLevel, SanitizerSet, SplitDebuginfo, StackProtector, TargetTriple,
+        TlsModel,
     };
     use std::collections::BTreeMap;
     use std::hash::{DefaultHasher, Hash};
@@ -2970,6 +2971,7 @@ pub(crate) mod dep_tracking {
         RelocModel,
         CodeModel,
         TlsModel,
+        FramePointer,
         InstrumentCoverage,
         CoverageOptions,
         InstrumentXRay,
