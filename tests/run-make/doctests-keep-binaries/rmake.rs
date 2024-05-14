@@ -26,8 +26,7 @@ fn main() {
             .arg("--test")
             .arg("--persist-doctests")
             .arg(out_dir)
-            .arg("--extern")
-            .arg(format!("t={}", extern_path.display()))
+            .extern_("t", extern_path)
             .run();
         check_generated_binaries();
     });
@@ -38,8 +37,7 @@ fn main() {
             .arg("--test")
             .arg("--persist-doctests")
             .arg(out_dir)
-            .arg("--extern")
-            .arg(format!("t={}", extern_path.display()))
+            .extern_("t", extern_path)
             .arg("--no-run")
             .run();
         check_generated_binaries();
@@ -59,8 +57,7 @@ fn main() {
             .arg("doctests")
             .arg("--test-run-directory")
             .arg(run_dir)
-            .arg("--extern")
-            .arg("t=libt.rlib")
+            .extern_("t", "libt.rlib")
             .run();
 
         remove_dir_all(run_dir_path);
