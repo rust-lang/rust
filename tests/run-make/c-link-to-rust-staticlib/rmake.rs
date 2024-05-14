@@ -3,7 +3,7 @@
 
 //@ ignore-cross-compile
 
-use run_make_support::{cc, extra_c_flags, extra_cxx_flags, run, rustc, static_lib};
+use run_make_support::{cc, extra_c_flags, run, rustc, static_lib};
 use std::fs;
 
 fn main() {
@@ -12,7 +12,6 @@ fn main() {
         .input(static_lib("foo"))
         .out_exe("bar")
         .args(&extra_c_flags())
-        .args(&extra_cxx_flags())
         .run();
     run("bar");
     fs::remove_file(static_lib("foo"));
