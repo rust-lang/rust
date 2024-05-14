@@ -29,6 +29,7 @@
 //!
 //! In general, any item in the `ItemTree` stores its `AstId`, which allows mapping it back to its
 //! surface syntax.
+#![allow(unexpected_cfgs)]
 
 mod lower;
 mod pretty;
@@ -467,13 +468,12 @@ macro_rules! mod_items {
         pub enum GenericModItem {
             $(
                 $(
-                    #[cfg_attr(FALSE, $generic_params)]
+                    #[cfg_attr(ignore_fragment, $generic_params)]
                     $typ(FileItemTreeId<$typ>),
                 )?
             )+
         }
 
-        #[allow(unexpected_cfgs)]
         impl From<GenericModItem> for ModItem {
             fn from(id: GenericModItem) -> ModItem {
                 match id {
@@ -494,7 +494,6 @@ macro_rules! mod_items {
         }
 
         $(
-            #[allow(unexpected_cfgs)]
             impl From<FileItemTreeId<$typ>> for ModItem {
                 fn from(id: FileItemTreeId<$typ>) -> ModItem {
                     ModItem::$typ(id)

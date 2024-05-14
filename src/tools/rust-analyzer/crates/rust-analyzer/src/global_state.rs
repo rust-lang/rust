@@ -3,7 +3,7 @@
 //!
 //! Each tick provides an immutable snapshot of the state as `WorldSnapshot`.
 
-use std::{collections::hash_map::Entry, time::Instant};
+use std::time::Instant;
 
 use crossbeam_channel::{unbounded, Receiver, Sender};
 use flycheck::FlycheckHandle;
@@ -25,7 +25,7 @@ use project_model::{
 use rustc_hash::{FxHashMap, FxHashSet};
 use tracing::{span, Level};
 use triomphe::Arc;
-use vfs::{AnchoredPathBuf, ChangedFile, Vfs};
+use vfs::{AnchoredPathBuf, Vfs};
 
 use crate::{
     config::{Config, ConfigError},
@@ -254,7 +254,6 @@ impl GlobalState {
 
     pub(crate) fn process_changes(&mut self) -> bool {
         let _p = span!(Level::INFO, "GlobalState::process_changes").entered();
-        let mut file_changes = FxHashMap::<_, ChangedFile>::default();
         let (change, modified_rust_files, workspace_structure_change) = {
             let mut change = ChangeWithProcMacros::new();
             let mut guard = self.vfs.write();
@@ -266,44 +265,13 @@ impl GlobalState {
             // downgrade to read lock to allow more readers while we are normalizing text
             let guard = RwLockWriteGuard::downgrade_to_upgradable(guard);
             let vfs: &Vfs = &guard.0;
-            // We need to fix up the changed events a bit. If we have a create or modify for a file
-            // id that is followed by a delete we actually skip observing the file text from the
-            // earlier event, to avoid problems later on.
-            for changed_file in changed_files {
-                use vfs::Change::*;
-                match file_changes.entry(changed_file.file_id) {
-                    Entry::Occupied(mut o) => {
-                        let change = o.get_mut();
-                        match (&mut change.change, changed_file.change) {
-                            // latter `Delete` wins
-                            (change, Delete) => *change = Delete,
-                            // merge `Create` with `Create` or `Modify`
-                            (Create(prev), Create(new) | Modify(new)) => *prev = new,
-                            // collapse identical `Modify`es
-                            (Modify(prev), Modify(new)) => *prev = new,
-                            // equivalent to `Modify`
-                            (change @ Delete, Create(new)) => {
-                                *change = Modify(new);
-                            }
-                            // shouldn't occur, but collapse into `Create`
-                            (change @ Delete, Modify(new)) => {
-                                stdx::never!();
-                                *change = Create(new);
-                            }
-                            // shouldn't occur, but keep the Create
-                            (prev @ Modify(_), new @ Create(_)) => *prev = new,
-                        }
-                    }
-                    Entry::Vacant(v) => _ = v.insert(changed_file),
-                }
-            }
 
             let mut workspace_structure_change = None;
             // A file was added or deleted
             let mut has_structure_changes = false;
             let mut bytes = vec![];
             let mut modified_rust_files = vec![];
-            for file in file_changes.into_values() {
+            for file in changed_files.into_values() {
                 let vfs_path = vfs.file_path(file.file_id);
                 if let Some(path) = vfs_path.as_path() {
                     has_structure_changes |= file.is_created_or_deleted();
@@ -326,16 +294,17 @@ impl GlobalState {
                     self.diagnostics.clear_native_for(file.file_id);
                 }
 
-                let text = if let vfs::Change::Create(v) | vfs::Change::Modify(v) = file.change {
-                    String::from_utf8(v).ok().map(|text| {
-                        // FIXME: Consider doing normalization in the `vfs` instead? That allows
-                        // getting rid of some locking
-                        let (text, line_endings) = LineEndings::normalize(text);
-                        (text, line_endings)
-                    })
-                } else {
-                    None
-                };
+                let text =
+                    if let vfs::Change::Create(v, _) | vfs::Change::Modify(v, _) = file.change {
+                        String::from_utf8(v).ok().map(|text| {
+                            // FIXME: Consider doing normalization in the `vfs` instead? That allows
+                            // getting rid of some locking
+                            let (text, line_endings) = LineEndings::normalize(text);
+                            (text, line_endings)
+                        })
+                    } else {
+                        None
+                    };
                 // delay `line_endings_map` changes until we are done normalizing the text
                 // this allows delaying the re-acquisition of the write lock
                 bytes.push((file.file_id, text));

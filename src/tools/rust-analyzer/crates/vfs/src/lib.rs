@@ -46,7 +46,7 @@ pub mod loader;
 mod path_interner;
 mod vfs_path;
 
-use std::{fmt, mem};
+use std::{fmt, hash::BuildHasherDefault, mem};
 
 use crate::path_interner::PathInterner;
 
@@ -54,6 +54,7 @@ pub use crate::{
     anchored_path::{AnchoredPath, AnchoredPathBuf},
     vfs_path::VfsPath,
 };
+use indexmap::{map::Entry, IndexMap};
 pub use paths::{AbsPath, AbsPathBuf};
 
 use rustc_hash::FxHasher;
@@ -95,19 +96,12 @@ impl nohash_hasher::IsEnabled for FileId {}
 pub struct Vfs {
     interner: PathInterner,
     data: Vec<FileState>,
-    // FIXME: This should be a HashMap<FileId, ChangeFile>
-    // right now we do a nasty deduplication in GlobalState::process_changes that would be a lot
-    // easier to handle here on insertion.
-    changes: Vec<ChangedFile>,
-    // The above FIXME would then also get rid of this probably
-    created_this_cycle: Vec<FileId>,
+    changes: IndexMap<FileId, ChangedFile, BuildHasherDefault<FxHasher>>,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, PartialOrd)]
 pub enum FileState {
-    /// The file has been created this cycle.
-    Created,
-    /// The file exists.
+    /// The file exists with the given content hash.
     Exists(u64),
     /// The file is deleted.
     Deleted,
@@ -131,12 +125,12 @@ impl ChangedFile {
     /// Returns `true` if the change is [`Create`](ChangeKind::Create) or
     /// [`Delete`](Change::Delete).
     pub fn is_created_or_deleted(&self) -> bool {
-        matches!(self.change, Change::Create(_) | Change::Delete)
+        matches!(self.change, Change::Create(_, _) | Change::Delete)
     }
 
     /// Returns `true` if the change is [`Create`](ChangeKind::Create).
     pub fn is_created(&self) -> bool {
-        matches!(self.change, Change::Create(_))
+        matches!(self.change, Change::Create(_, _))
     }
 
     /// Returns `true` if the change is [`Modify`](ChangeKind::Modify).
@@ -146,7 +140,7 @@ impl ChangedFile {
 
     pub fn kind(&self) -> ChangeKind {
         match self.change {
-            Change::Create(_) => ChangeKind::Create,
+            Change::Create(_, _) => ChangeKind::Create,
             Change::Modify(_, _) => ChangeKind::Modify,
             Change::Delete => ChangeKind::Delete,
         }
@@ -157,7 +151,7 @@ impl ChangedFile {
 #[derive(Eq, PartialEq, Debug)]
 pub enum Change {
     /// The file was (re-)created
-    Create(Vec<u8>),
+    Create(Vec<u8>, u64),
     /// The file was modified
     Modify(Vec<u8>, u64),
     /// The file was deleted
@@ -178,9 +172,7 @@ pub enum ChangeKind {
 impl Vfs {
     /// Id of the given path if it exists in the `Vfs` and is not deleted.
     pub fn file_id(&self, path: &VfsPath) -> Option<FileId> {
-        self.interner
-            .get(path)
-            .filter(|&it| matches!(self.get(it), FileState::Exists(_) | FileState::Created))
+        self.interner.get(path).filter(|&it| matches!(self.get(it), FileState::Exists(_)))
     }
 
     /// File path corresponding to the given `file_id`.
@@ -198,9 +190,7 @@ impl Vfs {
     pub fn iter(&self) -> impl Iterator<Item = (FileId, &VfsPath)> + '_ {
         (0..self.data.len())
             .map(|it| FileId(it as u32))
-            .filter(move |&file_id| {
-                matches!(self.get(file_id), FileState::Exists(_) | FileState::Created)
-            })
+            .filter(move |&file_id| matches!(self.get(file_id), FileState::Exists(_)))
             .map(move |file_id| {
                 let path = self.interner.lookup(file_id);
                 (file_id, path)
@@ -219,12 +209,11 @@ impl Vfs {
         let state = self.get(file_id);
         let change_kind = match (state, contents) {
             (FileState::Deleted, None) => return false,
-            (FileState::Deleted, Some(v)) => Change::Create(v),
-            (FileState::Exists(_) | FileState::Created, None) => Change::Delete,
-            (FileState::Created, Some(v)) => {
+            (FileState::Deleted, Some(v)) => {
                 let hash = hash_once::<FxHasher>(&*v);
-                Change::Modify(v, hash)
+                Change::Create(v, hash)
             }
+            (FileState::Exists(_), None) => Change::Delete,
             (FileState::Exists(hash), Some(v)) => {
                 let new_hash = hash_once::<FxHasher>(&*v);
                 if new_hash == hash {
@@ -233,37 +222,61 @@ impl Vfs {
                 Change::Modify(v, new_hash)
             }
         };
-        self.data[file_id.0 as usize] = match change_kind {
-            Change::Create(_) => {
-                self.created_this_cycle.push(file_id);
-                FileState::Created
-            }
-            // If the file got created this cycle, make sure we keep it that way even
-            // if a modify comes in
-            Change::Modify(_, _) if matches!(state, FileState::Created) => FileState::Created,
-            Change::Modify(_, hash) => FileState::Exists(hash),
-            Change::Delete => FileState::Deleted,
+
+        let mut set_data = |change_kind| {
+            self.data[file_id.0 as usize] = match change_kind {
+                &Change::Create(_, hash) | &Change::Modify(_, hash) => FileState::Exists(hash),
+                Change::Delete => FileState::Deleted,
+            };
         };
+
         let changed_file = ChangedFile { file_id, change: change_kind };
-        self.changes.push(changed_file);
+        match self.changes.entry(file_id) {
+            // two changes to the same file in one cycle, merge them appropriately
+            Entry::Occupied(mut o) => {
+                use Change::*;
+
+                match (&mut o.get_mut().change, changed_file.change) {
+                    // newer `Delete` wins
+                    (change, Delete) => *change = Delete,
+                    // merge `Create` with `Create` or `Modify`
+                    (Create(prev, old_hash), Create(new, new_hash) | Modify(new, new_hash)) => {
+                        *prev = new;
+                        *old_hash = new_hash;
+                    }
+                    // collapse identical `Modify`es
+                    (Modify(prev, old_hash), Modify(new, new_hash)) => {
+                        *prev = new;
+                        *old_hash = new_hash;
+                    }
+                    // equivalent to `Modify`
+                    (change @ Delete, Create(new, new_hash)) => {
+                        *change = Modify(new, new_hash);
+                    }
+                    // shouldn't occur, but collapse into `Create`
+                    (change @ Delete, Modify(new, new_hash)) => {
+                        stdx::never!();
+                        *change = Create(new, new_hash);
+                    }
+                    // shouldn't occur, but keep the Create
+                    (prev @ Modify(_, _), new @ Create(_, _)) => *prev = new,
+                }
+                set_data(&o.get().change);
+            }
+            Entry::Vacant(v) => set_data(&v.insert(changed_file).change),
+        };
+
         true
     }
 
     /// Drain and returns all the changes in the `Vfs`.
-    pub fn take_changes(&mut self) -> Vec<ChangedFile> {
-        let _p = span!(Level::INFO, "Vfs::take_changes").entered();
-        for file_id in self.created_this_cycle.drain(..) {
-            if self.data[file_id.0 as usize] == FileState::Created {
-                // downgrade the file from `Created` to `Exists` as the cycle is done
-                self.data[file_id.0 as usize] = FileState::Exists(todo!());
-            }
-        }
+    pub fn take_changes(&mut self) -> IndexMap<FileId, ChangedFile, BuildHasherDefault<FxHasher>> {
         mem::take(&mut self.changes)
     }
 
     /// Provides a panic-less way to verify file_id validity.
     pub fn exists(&self, file_id: FileId) -> bool {
-        matches!(self.get(file_id), FileState::Exists(_) | FileState::Created)
+        matches!(self.get(file_id), FileState::Exists(_))
     }
 
     /// Returns the id associated with `path`

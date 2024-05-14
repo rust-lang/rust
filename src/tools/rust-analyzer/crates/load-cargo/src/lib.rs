@@ -361,8 +361,8 @@ fn load_crate_graph(
         }
     }
     let changes = vfs.take_changes();
-    for file in changes {
-        if let vfs::Change::Create(v) | vfs::Change::Modify(v) = file.change {
+    for (_, file) in changes {
+        if let vfs::Change::Create(v, _) | vfs::Change::Modify(v, _) = file.change {
             if let Ok(text) = String::from_utf8(v) {
                 analysis_change.change_file(file.file_id, Some(text))
             }
