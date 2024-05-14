@@ -150,6 +150,19 @@ impl Rustc {
         self
     }
 
+    /// Enables link time optimizations in rustc. Equivalent to `-Clto``.
+    pub fn lto(&mut self) -> &mut Self {
+        self.cmd.arg("-Clto");
+        self
+    }
+
+    /// Add a directory to the library search path.
+    pub fn library_search_path<P: AsRef<Path>>(&mut self, path: P) -> &mut Self {
+        self.cmd.arg("-L");
+        self.cmd.arg(path.as_ref());
+        self
+    }
+
     /// Specify the edition year.
     pub fn edition(&mut self, edition: &str) -> &mut Self {
         self.cmd.arg("--edition");
