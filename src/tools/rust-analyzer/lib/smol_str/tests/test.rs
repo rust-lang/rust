@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+#[cfg(not(miri))]
 use proptest::{prop_assert, prop_assert_eq, proptest};
 
 use smol_str::SmolStr;
@@ -57,6 +58,7 @@ fn old_const_fn_ctor() {
     assert_eq!(LONG, SmolStr::from("ABCDEFGHIZKLMNOPQRSTUVW"));
 }
 
+#[cfg(not(miri))]
 fn check_props(std_str: &str, smol: SmolStr) -> Result<(), proptest::test_runner::TestCaseError> {
     prop_assert_eq!(smol.as_str(), std_str);
     prop_assert_eq!(smol.len(), std_str.len());
@@ -67,6 +69,7 @@ fn check_props(std_str: &str, smol: SmolStr) -> Result<(), proptest::test_runner
     Ok(())
 }
 
+#[cfg(not(miri))]
 proptest! {
     #[test]
     fn roundtrip(s: String) {
