@@ -938,14 +938,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
     }
 
-    pub fn get_conversion_methods(
+    pub fn get_conversion_methods_for_diagnostic(
         &self,
         span: Span,
         expected: Ty<'tcx>,
         checked_ty: Ty<'tcx>,
         hir_id: hir::HirId,
     ) -> Vec<AssocItem> {
-        let methods = self.probe_for_return_type(
+        let methods = self.probe_for_return_type_for_diagnostic(
             span,
             probe::Mode::MethodCall,
             expected,

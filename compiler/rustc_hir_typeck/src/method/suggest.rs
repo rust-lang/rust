@@ -2814,7 +2814,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Some(output_ty) => self.resolve_vars_if_possible(output_ty),
             _ => return,
         };
-        let method_exists = self.method_exists(item_name, output_ty, call.hir_id, return_type);
+        let method_exists =
+            self.method_exists_for_diagnostic(item_name, output_ty, call.hir_id, return_type);
         debug!("suggest_await_before_method: is_method_exist={}", method_exists);
         if method_exists {
             err.span_suggestion_verbose(
