@@ -311,7 +311,7 @@ impl<'a> Parser<'a> {
         Ok(Some(info))
     }
 
-    fn recover_import_as_use(&mut self) -> PResult<'a, Option<(Ident, ItemKind)>> {
+    fn recover_import_as_use(&mut self) -> PResult<'a, Option<ItemInfo>> {
         let span = self.token.span;
         let token_name = super::token_descr(&self.token);
         let snapshot = self.create_snapshot_for_diagnostic();
@@ -329,7 +329,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_use_item(&mut self) -> PResult<'a, (Ident, ItemKind)> {
+    fn parse_use_item(&mut self) -> PResult<'a, ItemInfo> {
         let tree = self.parse_use_tree()?;
         if let Err(mut e) = self.expect_semi() {
             match tree.kind {
