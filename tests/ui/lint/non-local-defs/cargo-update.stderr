@@ -4,9 +4,16 @@ warning: non-local `impl` definition, `impl` blocks should be written at the sam
 LL | non_local_macro::non_local_impl!(LocalStruct);
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: move this `impl` block outside the of the current constant `_IMPL_DEBUG`
    = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
    = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
+help: move this `impl` block outside of the current constant `_IMPL_DEBUG`
+  --> $DIR/cargo-update.rs:17:1
+   |
+LL | non_local_macro::non_local_impl!(LocalStruct);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | |
+   | may need to be moved as well
+   | may need to be moved as well
    = note: the macro `non_local_macro::non_local_impl` may come from an old version of the `non_local_macro` crate, try updating your dependency with `cargo update -p non_local_macro`
    = note: anon-const (`const _: () = { ... }`) at top-level module and anon-const at the same nesting as the trait or type are consider to be transparent regarding the nesting level
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>

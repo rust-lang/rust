@@ -6,7 +6,7 @@ use crate::errors::RequestedLevel;
 use crate::fluent_generated as fluent;
 use rustc_errors::{
     codes::*, Applicability, Diag, DiagArgValue, DiagMessage, DiagStyledString,
-    ElidedLifetimeInPathSubdiag, EmissionGuarantee, LintDiagnostic, SubdiagMessageOp,
+    ElidedLifetimeInPathSubdiag, EmissionGuarantee, LintDiagnostic, MultiSpan, SubdiagMessageOp,
     Subdiagnostic, SuggestionStyle,
 };
 use rustc_hir::{def::Namespace, def_id::DefId};
@@ -1336,6 +1336,9 @@ pub enum NonLocalDefinitionsDiag {
         body_name: String,
         cargo_update: Option<NonLocalDefinitionsCargoUpdateNote>,
         const_anon: Option<Option<Span>>,
+        move_help: Span,
+        self_ty: Span,
+        of_trait: Option<Span>,
         has_trait: bool,
     },
     MacroRules {
@@ -1357,6 +1360,9 @@ impl<'a> LintDiagnostic<'a, ()> for NonLocalDefinitionsDiag {
                 body_name,
                 cargo_update,
                 const_anon,
+                move_help,
+                self_ty,
+                of_trait,
                 has_trait,
             } => {
                 diag.primary_message(fluent::lint_non_local_definitions_impl);
@@ -1364,13 +1370,18 @@ impl<'a> LintDiagnostic<'a, ()> for NonLocalDefinitionsDiag {
                 diag.arg("body_kind_descr", body_kind_descr);
                 diag.arg("body_name", body_name);
 
-                diag.help(fluent::lint_help);
                 if has_trait {
                     diag.note(fluent::lint_bounds);
                     diag.note(fluent::lint_with_trait);
                 } else {
                     diag.note(fluent::lint_without_trait);
                 }
+                let mut ms = MultiSpan::from_span(move_help);
+                ms.push_span_label(self_ty, fluent::lint_non_local_definitions_may_move);
+                if let Some(of_trait) = of_trait {
+                    ms.push_span_label(of_trait, fluent::lint_non_local_definitions_may_move);
+                }
+                diag.span_help(ms, fluent::lint_help);
 
                 if let Some(cargo_update) = cargo_update {
                     diag.subdiagnostic(&diag.dcx, cargo_update);

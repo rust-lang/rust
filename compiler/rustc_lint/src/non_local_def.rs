@@ -222,6 +222,9 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
                     item.span.shrink_to_lo().to(impl_.self_ty.span),
                     NonLocalDefinitionsDiag::Impl {
                         depth: self.body_depth,
+                        move_help: item.span,
+                        self_ty: impl_.self_ty.span,
+                        of_trait: impl_.of_trait.map(|t| t.path.span),
                         body_kind_descr: cx.tcx.def_kind_descr(parent_def_kind, parent),
                         body_name: parent_opt_item_name
                             .map(|s| s.to_ident_string())

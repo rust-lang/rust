@@ -4,9 +4,22 @@ warning: non-local `impl` definition, `impl` blocks should be written at the sam
 LL |     impl From<Cat> for () {
    |     ^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: move this `impl` block outside the of the current function `main`
    = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
    = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
+help: move this `impl` block outside of the current function `main`
+  --> $DIR/from-local-for-global.rs:8:5
+   |
+LL |       impl From<Cat> for () {
+   |       ^    ---------     -- may need to be moved as well
+   |       |    |
+   |  _____|    may need to be moved as well
+   | |
+LL | |
+LL | |         fn from(_: Cat) -> () {
+LL | |             todo!()
+LL | |         }
+LL | |     }
+   | |_____^
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
    = note: `#[warn(non_local_definitions)]` on by default
 
@@ -16,9 +29,22 @@ warning: non-local `impl` definition, `impl` blocks should be written at the sam
 LL |     impl From<Wrap<Wrap<Elephant>>> for () {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: move this `impl` block outside the of the current function `main`
    = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
    = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
+help: move this `impl` block outside of the current function `main`
+  --> $DIR/from-local-for-global.rs:18:5
+   |
+LL |       impl From<Wrap<Wrap<Elephant>>> for () {
+   |       ^    --------------------------     -- may need to be moved as well
+   |       |    |
+   |  _____|    may need to be moved as well
+   | |
+LL | |
+LL | |         fn from(_: Wrap<Wrap<Elephant>>) -> Self {
+LL | |             todo!()
+LL | |         }
+LL | |     }
+   | |_____^
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
@@ -27,9 +53,16 @@ warning: non-local `impl` definition, `impl` blocks should be written at the sam
 LL |     impl StillNonLocal for &Foo {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: move this `impl` block outside the of the current function `only_global`
    = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
    = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
+help: move this `impl` block outside of the current function `only_global`
+  --> $DIR/from-local-for-global.rs:32:5
+   |
+LL |     impl StillNonLocal for &Foo {}
+   |     ^^^^^-------------^^^^^----^^^
+   |          |                 |
+   |          |                 may need to be moved as well
+   |          may need to be moved as well
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
@@ -38,9 +71,22 @@ warning: non-local `impl` definition, `impl` blocks should be written at the sam
 LL |     impl From<Local1> for GlobalSameFunction {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: move this `impl` block outside the of the current function `same_function`
    = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
    = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
+help: move this `impl` block outside of the current function `same_function`
+  --> $DIR/from-local-for-global.rs:40:5
+   |
+LL |       impl From<Local1> for GlobalSameFunction {
+   |       ^    ------------     ------------------ may need to be moved as well
+   |       |    |
+   |  _____|    may need to be moved as well
+   | |
+LL | |
+LL | |         fn from(x: Local1) -> GlobalSameFunction {
+LL | |             x.0
+LL | |         }
+LL | |     }
+   | |_____^
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
@@ -49,9 +95,22 @@ warning: non-local `impl` definition, `impl` blocks should be written at the sam
 LL |     impl From<Local2> for GlobalSameFunction {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: move this `impl` block outside the of the current function `same_function`
    = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
    = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
+help: move this `impl` block outside of the current function `same_function`
+  --> $DIR/from-local-for-global.rs:48:5
+   |
+LL |       impl From<Local2> for GlobalSameFunction {
+   |       ^    ------------     ------------------ may need to be moved as well
+   |       |    |
+   |  _____|    may need to be moved as well
+   | |
+LL | |
+LL | |         fn from(x: Local2) -> GlobalSameFunction {
+LL | |             x.0
+LL | |         }
+LL | |     }
+   | |_____^
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: 5 warnings emitted

@@ -544,7 +544,7 @@ lint_non_local_definitions_deprecation = this lint may become deny-by-default in
 
 lint_non_local_definitions_impl = non-local `impl` definition, `impl` blocks should be written at the same level as their item
     .help =
-        move this `impl` block outside the of the current {$body_kind_descr} {$depth ->
+        move this `impl` block outside of the current {$body_kind_descr} {$depth ->
             [one] `{$body_name}`
            *[other] `{$body_name}` and up {$depth} bodies
         }
@@ -564,6 +564,8 @@ lint_non_local_definitions_macro_rules = non-local `macro_rules!` definition, `#
         remove the `#[macro_export]` or make this doc-test a standalone test with its own `fn main() {"{"} ... {"}"}`
     .non_local = a `macro_rules!` definition is non-local if it is nested inside an item and has a `#[macro_export]` attribute
     .exception = one exception to the rule are anon-const (`const _: () = {"{"} ... {"}"}`) at top-level module
+
+lint_non_local_definitions_may_move = may need to be moved as well
 
 lint_non_snake_case = {$sort} `{$name}` should have a snake case name
     .rename_or_convert_suggestion = rename the identifier or convert it to a snake case raw identifier
