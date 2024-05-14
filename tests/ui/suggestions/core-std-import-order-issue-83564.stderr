@@ -6,7 +6,7 @@ LL |     let _x = NonZero::new(5u32).unwrap();
    |
 help: consider importing one of these items
    |
-LL + use core::num::NonZero;
+LL + use core::prelude::rust_2024::NonZero;
    |
 LL + use std::num::NonZero;
    |

@@ -77,6 +77,9 @@ crate1::{{expnNNN}}: parent: crate0::{{expn0}}, call_site_ctxt: #0, def_site_ctx
 crate1::{{expnNNN}}: parent: crate0::{{expn0}}, call_site_ctxt: #0, def_site_ctxt: #0, kind: Macro(Attr, "diagnostic::on_unimplemented")
 crate1::{{expnNNN}}: parent: crate0::{{expn0}}, call_site_ctxt: #0, def_site_ctxt: #0, kind: Macro(Attr, "derive")
 crate1::{{expnNNN}}: parent: crate0::{{expn0}}, call_site_ctxt: #0, def_site_ctxt: #0, kind: Macro(Attr, "derive")
+crate1::{{expnNNN}}: parent: crate0::{{expn0}}, call_site_ctxt: #0, def_site_ctxt: #0, kind: Macro(Attr, "derive")
+crate1::{{expnNNN}}: parent: crate0::{{expn0}}, call_site_ctxt: #0, def_site_ctxt: #0, kind: Macro(Attr, "derive")
+crate1::{{expnNNN}}: parent: crate0::{{expn0}}, call_site_ctxt: #0, def_site_ctxt: #0, kind: Macro(Attr, "derive")
 crate1::{{expnNNN}}: parent: crate0::{{expn0}}, call_site_ctxt: #0, def_site_ctxt: #0, kind: Macro(Bang, "include")
 
 SyntaxContexts:

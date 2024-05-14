@@ -2,7 +2,7 @@ error[E0507]: cannot move out of a shared reference
   --> $DIR/std-uncopyable-atomics.rs:9:13
    |
 LL |     let x = *&x;
-   |             ^^^ move occurs because value has type `std::sync::atomic::AtomicBool`, which does not implement the `Copy` trait
+   |             ^^^ move occurs because value has type `std::prelude::rust_2021::AtomicBool`, which does not implement the `Copy` trait
    |
 help: consider removing the dereference here
    |
@@ -14,7 +14,7 @@ error[E0507]: cannot move out of a shared reference
   --> $DIR/std-uncopyable-atomics.rs:11:13
    |
 LL |     let x = *&x;
-   |             ^^^ move occurs because value has type `std::sync::atomic::AtomicIsize`, which does not implement the `Copy` trait
+   |             ^^^ move occurs because value has type `std::prelude::rust_2021::AtomicIsize`, which does not implement the `Copy` trait
    |
 help: consider removing the dereference here
    |
@@ -26,7 +26,7 @@ error[E0507]: cannot move out of a shared reference
   --> $DIR/std-uncopyable-atomics.rs:13:13
    |
 LL |     let x = *&x;
-   |             ^^^ move occurs because value has type `std::sync::atomic::AtomicUsize`, which does not implement the `Copy` trait
+   |             ^^^ move occurs because value has type `std::prelude::rust_2021::AtomicUsize`, which does not implement the `Copy` trait
    |
 help: consider removing the dereference here
    |
@@ -38,7 +38,7 @@ error[E0507]: cannot move out of a shared reference
   --> $DIR/std-uncopyable-atomics.rs:15:13
    |
 LL |     let x = *&x;
-   |             ^^^ move occurs because value has type `std::sync::atomic::AtomicPtr<usize>`, which does not implement the `Copy` trait
+   |             ^^^ move occurs because value has type `std::prelude::rust_2021::AtomicPtr<usize>`, which does not implement the `Copy` trait
    |
 help: consider removing the dereference here
    |
