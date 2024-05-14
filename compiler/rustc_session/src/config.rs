@@ -2528,7 +2528,7 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
         && cg.force_frame_pointers == FramePointer::NonLeaf
     {
         early_dcx.early_fatal(
-            "`-Cforce-frame-pointers=non-leaf` also requires `-Zunstable-options` \
+            "`-Cforce-frame-pointers=non-leaf` or `always` also requires `-Zunstable-options` \
                 and a nightly compiler",
         )
     }

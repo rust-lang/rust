@@ -373,8 +373,7 @@ mod desc {
     pub const parse_opt_comma_list: &str = parse_comma_list;
     pub const parse_number: &str = "a number";
     pub const parse_opt_number: &str = parse_number;
-    pub const parse_frame_pointer: &str =
-        "one of `true`/`yes`/`on`, `false`/`no`/`off`, or (with -Zunstable-options) `non-leaf`";
+    pub const parse_frame_pointer: &str = "one of `true`/`yes`/`on`, `false`/`no`/`off`, or (with -Zunstable-options) `non-leaf` or `always`";
     pub const parse_threads: &str = parse_number;
     pub const parse_time_passes_format: &str = "`text` (default) or `json`";
     pub const parse_passes: &str = "a space-separated list of passes, or `all`";
@@ -674,15 +673,15 @@ mod parse {
     }
 
     pub(crate) fn parse_frame_pointer(slot: &mut FramePointer, v: Option<&str>) -> bool {
-        let mut boolish = false;
-        let mut is_parsed = parse_bool(&mut boolish, v);
-        if boolish & is_parsed {
-            *slot = FramePointer::Always;
-        } else if v == Some("non-leaf") {
-            is_parsed = true;
-            *slot = FramePointer::NonLeaf;
+        let mut yes = false;
+        match v {
+            Some(_) if parse_bool(&mut yes, v) && yes => slot.ratchet(FramePointer::Always),
+            Some(_) if parse_bool(&mut yes, v) => slot.ratchet(FramePointer::MayOmit),
+            Some("always") => slot.ratchet(FramePointer::Always),
+            Some("non-leaf") => slot.ratchet(FramePointer::NonLeaf),
+            _ => return false,
         };
-        is_parsed
+        true
     }
 
     pub(crate) fn parse_passes(slot: &mut Passes, v: Option<&str>) -> bool {
