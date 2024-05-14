@@ -20,6 +20,7 @@
 //@ error-pattern: Location is heap block of size 4
 //@ error-pattern: allocated by main thread
 
+#![feature(raw_ref_op)]
 #![feature(rustc_private)]
 extern crate libc;
 
