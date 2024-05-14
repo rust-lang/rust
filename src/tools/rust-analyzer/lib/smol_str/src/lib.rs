@@ -61,7 +61,9 @@ impl SmolStr {
         }
         s!(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22);
         SmolStr(Repr::Inline {
-            len: unsafe { transmute(len as u8) },
+            // SAFETY: We know that `len` is less than or equal to the maximum value of `InlineSize`
+            // as we asserted it.
+            len: unsafe { InlineSize::transmute_from_u8(len as u8) },
             buf,
         })
     }
@@ -80,7 +82,9 @@ impl SmolStr {
             i += 1
         }
         SmolStr(Repr::Inline {
-            len: unsafe { transmute(text.len() as u8) },
+            // SAFETY: We know that `len` is less than or equal to the maximum value of `InlineSize`
+            // as we asserted it.
+            len: unsafe { InlineSize::transmute_from_u8(text.len() as u8) },
             buf,
         })
     }
@@ -153,7 +157,9 @@ impl SmolStr {
             len += size;
         }
         SmolStr(Repr::Inline {
-            len: unsafe { transmute(len as u8) },
+            // SAFETY: We know that `len` is less than or equal to the maximum value of `InlineSize`
+            // as we otherwise return early.
+            len: unsafe { InlineSize::transmute_from_u8(len as u8) },
             buf,
         })
     }
@@ -292,7 +298,9 @@ where
         len += size;
     }
     SmolStr(Repr::Inline {
-        len: unsafe { transmute(len as u8) },
+        // SAFETY: We know that `len` is less than or equal to the maximum value of `InlineSize`
+        // as we otherwise return early.
+        len: unsafe { InlineSize::transmute_from_u8(len as u8) },
         buf,
     })
 }
@@ -413,7 +421,7 @@ impl<'a> arbitrary::Arbitrary<'a> for SmolStr {
     }
 }
 
-const INLINE_CAP: usize = 23;
+const INLINE_CAP: usize = InlineSize::_V23 as usize;
 const N_NEWLINES: usize = 32;
 const N_SPACES: usize = 128;
 const WS: &str =
@@ -453,6 +461,14 @@ enum InlineSize {
     _V23,
 }
 
+impl InlineSize {
+    #[inline(always)]
+    const unsafe fn transmute_from_u8(value: u8) -> Self {
+        debug_assert!(value <= InlineSize::_V23 as u8);
+        unsafe { transmute::<u8, Self>(value) }
+    }
+}
+
 #[derive(Clone, Debug)]
 enum Repr {
     Inline {
@@ -477,7 +493,8 @@ impl Repr {
             let mut buf = [0; INLINE_CAP];
             buf[..len].copy_from_slice(text.as_bytes());
             return Some(Repr::Inline {
-                len: unsafe { transmute(len as u8) },
+                // SAFETY: We know that `len` is less than or equal to the maximum value of `InlineSize`
+                len: unsafe { InlineSize::transmute_from_u8(len as u8) },
                 buf,
             });
         }
@@ -532,6 +549,7 @@ impl Repr {
             Repr::Inline { len, buf } => {
                 let len = *len as usize;
                 let buf = &buf[..len];
+                // SAFETY: buf is guaranteed to be valid utf8 for ..len bytes
                 unsafe { ::core::str::from_utf8_unchecked(buf) }
             }
         }
@@ -641,10 +659,14 @@ impl StrExt for str {
         let mut result = Writer::new();
         let mut last_end = 0;
         for (start, part) in self.match_indices(from).take(count) {
+            // SAFETY: `start` is guaranteed to be within the bounds of `self` as per
+            // `match_indices` and last_end is always less than or equal to `start`
             result.push_str(unsafe { self.get_unchecked(last_end..start) });
             result.push_str(to);
             last_end = start + part.len();
         }
+        // SAFETY: `self.len()` is guaranteed to be within the bounds of `self` and last_end is
+        // always less than or equal to `self.len()`
         result.push_str(unsafe { self.get_unchecked(last_end..self.len()) });
         SmolStr::from(result)
     }
@@ -701,6 +723,7 @@ impl Writer {
             self.heap.reserve(self.len);
 
             // copy existing inline bytes over to the heap
+            // SAFETY: inline data is guaranteed to be valid utf8 for `old_len` bytes
             unsafe {
                 self.heap
                     .as_mut_vec()
@@ -724,7 +747,8 @@ impl From<Writer> for SmolStr {
     fn from(value: Writer) -> Self {
         SmolStr(if value.len <= INLINE_CAP {
             Repr::Inline {
-                len: unsafe { transmute(value.len as u8) },
+                // SAFETY: We know that `value.len` is less than or equal to the maximum value of `InlineSize`
+                len: unsafe { InlineSize::transmute_from_u8(value.len as u8) },
                 buf: value.inline,
             }
         } else {
