@@ -488,7 +488,7 @@ impl ProjectWorkspace {
                     config,
                     cargo,
                     progress,
-                    &self.toolchain,
+                    self.toolchain.as_ref(),
                     self.sysroot.as_ref().ok(),
                 )
                 .with_context(|| {
