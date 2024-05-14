@@ -473,12 +473,13 @@ macro_rules! mod_items {
             )+
         }
 
+        #[allow(unexpected_cfgs)]
         impl From<GenericModItem> for ModItem {
             fn from(id: GenericModItem) -> ModItem {
                 match id {
                     $(
                         $(
-                            #[cfg_attr(FALSE, $generic_params)]
+                            #[cfg_attr(ignore_fragment, $generic_params)]
                             GenericModItem::$typ(id) => ModItem::$typ(id),
                         )?
                     )+
@@ -493,13 +494,14 @@ macro_rules! mod_items {
         }
 
         $(
+            #[allow(unexpected_cfgs)]
             impl From<FileItemTreeId<$typ>> for ModItem {
                 fn from(id: FileItemTreeId<$typ>) -> ModItem {
                     ModItem::$typ(id)
                 }
             }
             $(
-                #[cfg_attr(FALSE, $generic_params)]
+                #[cfg_attr(ignore_fragment, $generic_params)]
                 impl From<FileItemTreeId<$typ>> for GenericModItem {
                     fn from(id: FileItemTreeId<$typ>) -> GenericModItem {
                         GenericModItem::$typ(id)
