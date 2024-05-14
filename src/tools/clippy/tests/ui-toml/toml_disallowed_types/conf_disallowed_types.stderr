@@ -1,4 +1,4 @@
-error: `std::sync::atomic::AtomicU32` is not allowed according to config
+error: `std::prelude::rust_2021::AtomicU32` is not allowed according to config
   --> tests/ui-toml/toml_disallowed_types/conf_disallowed_types.rs:7:1
    |
 LL | use std::sync::atomic::AtomicU32;
@@ -25,7 +25,7 @@ error: `std::time::Instant` is not allowed according to config
 LL | fn bad_arg_type(_: impl Fn(Sneaky) -> foo::atomic::AtomicU32) {}
    |                            ^^^^^^
 
-error: `std::sync::atomic::AtomicU32` is not allowed according to config
+error: `std::prelude::rust_2021::AtomicU32` is not allowed according to config
   --> tests/ui-toml/toml_disallowed_types/conf_disallowed_types.rs:16:39
    |
 LL | fn bad_arg_type(_: impl Fn(Sneaky) -> foo::atomic::AtomicU32) {}
@@ -93,19 +93,19 @@ error: `std::time::Instant` is not allowed according to config
 LL |     let _ = Sneaky::now();
    |             ^^^^^^
 
-error: `std::sync::atomic::AtomicU32` is not allowed according to config
+error: `std::prelude::rust_2021::AtomicU32` is not allowed according to config
   --> tests/ui-toml/toml_disallowed_types/conf_disallowed_types.rs:36:13
    |
 LL |     let _ = foo::atomic::AtomicU32::new(0);
    |             ^^^^^^^^^^^^^^^^^^^^^^
 
-error: `std::sync::atomic::AtomicU32` is not allowed according to config
+error: `std::prelude::rust_2021::AtomicU32` is not allowed according to config
   --> tests/ui-toml/toml_disallowed_types/conf_disallowed_types.rs:37:17
    |
 LL |     static FOO: std::sync::atomic::AtomicU32 = foo::atomic::AtomicU32::new(1);
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: `std::sync::atomic::AtomicU32` is not allowed according to config
+error: `std::prelude::rust_2021::AtomicU32` is not allowed according to config
   --> tests/ui-toml/toml_disallowed_types/conf_disallowed_types.rs:37:48
    |
 LL |     static FOO: std::sync::atomic::AtomicU32 = foo::atomic::AtomicU32::new(1);
