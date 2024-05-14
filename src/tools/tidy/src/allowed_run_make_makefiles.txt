@@ -9,7 +9,6 @@ run-make/c-dynamic-dylib/Makefile
 run-make/c-dynamic-rlib/Makefile
 run-make/c-link-to-rust-dylib/Makefile
 run-make/c-link-to-rust-staticlib/Makefile
-run-make/c-link-to-rust-va-list-fn/Makefile
 run-make/c-static-dylib/Makefile
 run-make/c-static-rlib/Makefile
 run-make/c-unwind-abi-catch-lib-panic/Makefile
