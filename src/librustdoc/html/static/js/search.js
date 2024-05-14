@@ -8,10 +8,8 @@
 // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/toSpliced
 if (!Array.prototype.toSpliced) {
     // Can't use arrow functions, because we want `this`
-    Array.prototype.toSpliced = function() {
-        const me = this.slice();
-        Array.prototype.splice.apply(me, arguments);
-        return me;
+    Array.prototype.toSpliced = function(...args) {
+        return this.slice().splice(...args);
     };
 }
 
