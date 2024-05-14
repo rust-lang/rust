@@ -1,6 +1,7 @@
 // originally from glacier fixed/77919.rs
 // encountered errors resolving bounds after type-checking
 //@no-rustfix
+#![no_implicit_prelude]
 trait TypeVal<T> {
     const VAL: T;
 }
