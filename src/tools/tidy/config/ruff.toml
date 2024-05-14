@@ -26,6 +26,7 @@ extend-exclude = [
     "src/llvm-project/",
     "src/doc/embedded-book/",
     "library/backtrace/",
+    "src/tools/rustc-perf/",
     # Hack: CI runs from a subdirectory under the main checkout
     "../src/doc/nomicon/",
     "../src/tools/cargo/",
@@ -38,4 +39,5 @@ extend-exclude = [
     "../src/llvm-project/",
     "../src/doc/embedded-book/",
     "../library/backtrace/",
+    "../src/tools/rustc-perf/",
 ]
