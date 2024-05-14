@@ -12,7 +12,7 @@ Freestanding x86-64 linux binary with no dependency on libc.
 
 This target is cross compiled and can be built from any host.
 
-This target has no support for host tools, std and alloc.
+This target has no support for host tools, std, or alloc.
 
 ## Building the target
 
