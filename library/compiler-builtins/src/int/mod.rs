@@ -13,6 +13,7 @@ pub use self::leading_zeros::__clzsi2;
 
 public_test_dep! {
 /// Trait for some basic operations on integers
+#[allow(dead_code)]
 pub(crate) trait Int:
     Copy
     + core::fmt::Debug

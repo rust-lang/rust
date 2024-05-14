@@ -155,7 +155,7 @@ macro_rules! conv {
                     stringify!($fn)
                 );
             }
-        });
+        })
     };
 }
 
