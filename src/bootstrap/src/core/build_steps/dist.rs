@@ -26,7 +26,9 @@ use crate::core::build_steps::tool::{self, Tool};
 use crate::core::builder::{Builder, Kind, RunConfig, ShouldRun, Step};
 use crate::core::config::TargetSelection;
 use crate::utils::channel::{self, Info};
-use crate::utils::helpers::{exe, is_dylib, output, t, target_supports_cranelift_backend, timeit};
+use crate::utils::helpers::{
+    exe, is_dylib, move_file, output, t, target_supports_cranelift_backend, timeit,
+};
 use crate::utils::tarball::{GeneratedTarball, OverlayKind, Tarball};
 use crate::{Compiler, DependencyType, Mode, LLVM_TOOLS};
 
@@ -2024,7 +2026,7 @@ impl Step for Extended {
             builder.run(&mut cmd);
 
             if !builder.config.dry_run() {
-                t!(fs::rename(exe.join(&filename), distdir(builder).join(&filename)));
+                t!(move_file(exe.join(&filename), distdir(builder).join(&filename)));
             }
         }
     }
