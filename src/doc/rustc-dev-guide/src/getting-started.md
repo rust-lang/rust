@@ -122,6 +122,20 @@ compiler. You can see a list of diagnostic issues [here][diagnostic-issues].
 
 [diagnostic-issues]: https://github.com/rust-lang/rust/issues?q=is%3Aissue+is%3Aopen+label%3AA-diagnostics+no%3Aassignee
 
+### Picking up abandoned pull requests
+
+Sometimes, contributors send a pull request, but later find out that they don't have enough
+time to work on it, or they simply are not interested in it anymore. Such PRs are often
+eventually closed and they receive the `S-inactive` label. You could try to examine some of
+these PRs and pick up the work. You can find the list of such PRs [here][abandoned-prs].
+
+If the PR has been implemented in some other way in the meantime, the `S-inactive` label
+should be removed from it. If not, and it seems that there is still interest in the change,
+you can try to rebase the pull request on top of the latest `master` branch and send a new
+pull request, continuing the work on the feature.
+
+[abandoned-prs]: https://github.com/rust-lang/rust/pulls?q=is%3Apr+label%3AS-inactive+is%3Aclosed
+
 ### Contributing to std (standard library)
 
 See [std-dev-guide](https://std-dev-guide.rust-lang.org/).
