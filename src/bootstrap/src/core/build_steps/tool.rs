@@ -1,6 +1,6 @@
 use std::env;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use crate::core::build_steps::compile;
@@ -313,9 +313,46 @@ bootstrap_tool!(
     SuggestTests, "src/tools/suggest-tests", "suggest-tests";
     GenerateWindowsSys, "src/tools/generate-windows-sys", "generate-windows-sys";
     RustdocGUITest, "src/tools/rustdoc-gui-test", "rustdoc-gui-test", is_unstable_tool = true, allow_features = "test";
-    OptimizedDist, "src/tools/opt-dist", "opt-dist";
     CoverageDump, "src/tools/coverage-dump", "coverage-dump";
 );
+
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub struct OptimizedDist {
+    pub compiler: Compiler,
+    pub target: TargetSelection,
+}
+
+impl Step for OptimizedDist {
+    type Output = PathBuf;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/tools/opt-dist")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(OptimizedDist {
+            compiler: run.builder.compiler(0, run.builder.config.build),
+            target: run.target,
+        });
+    }
+
+    fn run(self, builder: &Builder<'_>) -> PathBuf {
+        // We need to ensure the rustc-perf submodule is initialized when building opt-dist since
+        // the tool requires it to be in place to run.
+        builder.update_submodule(Path::new("src/tools/rustc-perf"));
+
+        builder.ensure(ToolBuild {
+            compiler: self.compiler,
+            target: self.target,
+            tool: "opt-dist",
+            mode: Mode::ToolBootstrap,
+            path: "src/tools/opt-dist",
+            source_type: SourceType::InTree,
+            extra_features: Vec::new(),
+            allow_features: "",
+        })
+    }
+}
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq, Ord, PartialOrd)]
 pub struct ErrorIndex {
