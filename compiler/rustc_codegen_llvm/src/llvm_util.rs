@@ -617,6 +617,11 @@ pub(crate) fn global_llvm_features(sess: &Session, diagnostics: bool) -> Vec<Str
 
     // -Zfixed-x18
     if sess.opts.unstable_opts.fixed_x18 {
+        if sess.target.arch != "aarch64" {
+            // TODO: What's the correct way to return a error here?
+            panic!("-Zfixed-x18 only allowed on aarch64");
+        }
+
         features.push("+reserve-x18".into());
     }
 
