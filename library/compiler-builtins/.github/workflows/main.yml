@@ -15,9 +15,6 @@ jobs:
         - target: aarch64-unknown-linux-gnu
           os: ubuntu-latest
           rust: nightly
-        - target: aarch64-pc-windows-msvc
-          os: [windows-latest, arm64]
-          rust: nightly
         - target: arm-unknown-linux-gnueabi
           os: ubuntu-latest
           rust: nightly
