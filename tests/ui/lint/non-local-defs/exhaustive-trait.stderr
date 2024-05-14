@@ -1,13 +1,8 @@
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
   --> $DIR/exhaustive-trait.rs:7:5
    |
-LL | /     impl PartialEq<()> for Dog {
-LL | |
-LL | |         fn eq(&self, _: &()) -> bool {
-LL | |             todo!()
-LL | |         }
-LL | |     }
-   | |_____^
+LL |     impl PartialEq<()> for Dog {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: move this `impl` block outside the of the current function `main`
    = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
@@ -18,13 +13,8 @@ LL | |     }
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
   --> $DIR/exhaustive-trait.rs:14:5
    |
-LL | /     impl PartialEq<()> for &Dog {
-LL | |
-LL | |         fn eq(&self, _: &()) -> bool {
-LL | |             todo!()
-LL | |         }
-LL | |     }
-   | |_____^
+LL |     impl PartialEq<()> for &Dog {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: move this `impl` block outside the of the current function `main`
    = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
@@ -34,13 +24,8 @@ LL | |     }
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
   --> $DIR/exhaustive-trait.rs:21:5
    |
-LL | /     impl PartialEq<Dog> for () {
-LL | |
-LL | |         fn eq(&self, _: &Dog) -> bool {
-LL | |             todo!()
-LL | |         }
-LL | |     }
-   | |_____^
+LL |     impl PartialEq<Dog> for () {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: move this `impl` block outside the of the current function `main`
    = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
@@ -50,13 +35,8 @@ LL | |     }
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
   --> $DIR/exhaustive-trait.rs:28:5
    |
-LL | /     impl PartialEq<&Dog> for () {
-LL | |
-LL | |         fn eq(&self, _: &&Dog) -> bool {
-LL | |             todo!()
-LL | |         }
-LL | |     }
-   | |_____^
+LL |     impl PartialEq<&Dog> for () {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: move this `impl` block outside the of the current function `main`
    = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
@@ -66,13 +46,8 @@ LL | |     }
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
   --> $DIR/exhaustive-trait.rs:35:5
    |
-LL | /     impl PartialEq<Dog> for &Dog {
-LL | |
-LL | |         fn eq(&self, _: &Dog) -> bool {
-LL | |             todo!()
-LL | |         }
-LL | |     }
-   | |_____^
+LL |     impl PartialEq<Dog> for &Dog {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: move this `impl` block outside the of the current function `main`
    = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
@@ -82,13 +57,8 @@ LL | |     }
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
   --> $DIR/exhaustive-trait.rs:42:5
    |
-LL | /     impl PartialEq<&Dog> for &Dog {
-LL | |
-LL | |         fn eq(&self, _: &&Dog) -> bool {
-LL | |             todo!()
-LL | |         }
-LL | |     }
-   | |_____^
+LL |     impl PartialEq<&Dog> for &Dog {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: move this `impl` block outside the of the current function `main`
    = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type

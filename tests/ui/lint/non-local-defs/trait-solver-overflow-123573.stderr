@@ -2,7 +2,7 @@ warning: non-local `impl` definition, `impl` blocks should be written at the sam
   --> $DIR/trait-solver-overflow-123573.rs:12:5
    |
 LL |     impl Test for &Local {}
-   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^
    |
    = help: move this `impl` block outside the of the current function `main`
    = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type

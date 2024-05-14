@@ -219,7 +219,7 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
 
                 cx.emit_span_lint(
                     NON_LOCAL_DEFINITIONS,
-                    item.span,
+                    item.span.shrink_to_lo().to(impl_.self_ty.span),
                     NonLocalDefinitionsDiag::Impl {
                         depth: self.body_depth,
                         body_kind_descr: cx.tcx.def_kind_descr(parent_def_kind, parent),
