@@ -41,6 +41,67 @@ pub use crate::option::Option::{self, None, Some};
 #[doc(no_inline)]
 pub use crate::result::Result::{self, Err, Ok};
 
+#[stable(feature = "core_prelude_extra", since = "CURRENT_RUSTC_VERSION")]
+#[doc(no_inline)]
+pub use crate::cell::{Cell, LazyCell, OnceCell, RefCell, SyncUnsafeCell, UnsafeCell};
+
+#[stable(feature = "core_prelude_extra", since = "CURRENT_RUSTC_VERSION")]
+#[doc(no_inline)]
+pub use crate::ffi::{
+    c_char, c_double, c_float, c_int, c_long, c_longlong, c_ptrdiff_t, c_schar, c_short, c_size_t,
+    c_ssize_t, c_str, c_uchar, c_uint, c_ulong, c_ulonglong, c_ushort, c_void, CStr,
+};
+
+#[stable(feature = "core_prelude_extra", since = "CURRENT_RUSTC_VERSION")]
+#[doc(no_inline)]
+pub use crate::io::{BorrowedBuf, BorrowedCursor};
+
+#[stable(feature = "core_prelude_extra", since = "CURRENT_RUSTC_VERSION")]
+#[doc(no_inline)]
+pub use crate::marker::{PhantomData, PhantomPinned};
+
+#[stable(feature = "core_prelude_extra", since = "CURRENT_RUSTC_VERSION")]
+#[doc(no_inline)]
+pub use crate::mem::{ManuallyDrop, MaybeUninit};
+
+#[stable(feature = "core_prelude_extra", since = "CURRENT_RUSTC_VERSION")]
+#[doc(no_inline)]
+pub use crate::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6};
+
+#[stable(feature = "core_prelude_extra", since = "CURRENT_RUSTC_VERSION")]
+#[doc(no_inline)]
+pub use crate::num::{
+    NonZero, NonZeroI128, NonZeroI16, NonZeroI32, NonZeroI64, NonZeroI8, NonZeroIsize, NonZeroU128,
+    NonZeroU16, NonZeroU32, NonZeroU64, NonZeroU8, NonZeroUsize,
+};
+
+#[stable(feature = "core_prelude_extra", since = "CURRENT_RUSTC_VERSION")]
+#[doc(no_inline)]
+pub use crate::panic::PanicInfo;
+
+#[stable(feature = "core_prelude_extra", since = "CURRENT_RUSTC_VERSION")]
+#[doc(no_inline)]
+pub use crate::pin::Pin;
+
+#[stable(feature = "core_prelude_extra", since = "CURRENT_RUSTC_VERSION")]
+#[doc(no_inline)]
+pub use crate::ptr::NonNull;
+
+#[stable(feature = "core_prelude_extra", since = "CURRENT_RUSTC_VERSION")]
+#[doc(no_inline)]
+pub use crate::sync::atomic::{
+    AtomicBool, AtomicI16, AtomicI32, AtomicI64, AtomicI8, AtomicIsize, AtomicPtr, AtomicU16,
+    AtomicU32, AtomicU64, AtomicU8, AtomicUsize,
+};
+
+#[stable(feature = "core_prelude_extra", since = "CURRENT_RUSTC_VERSION")]
+#[doc(no_inline)]
+pub use crate::time::Duration;
+
+#[stable(feature = "core_prelude_extra", since = "CURRENT_RUSTC_VERSION")]
+#[doc(no_inline)]
+pub use crate::ops::ControlFlow;
+
 // Re-exported built-in macros
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
 #[doc(no_inline)]
