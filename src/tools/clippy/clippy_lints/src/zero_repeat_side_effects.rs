@@ -68,9 +68,9 @@ fn inner_check(cx: &LateContext<'_>, expr: &'_ rustc_hir::Expr<'_>, inner_expr: 
     // check if expr is a call or has a call inside it
     if for_each_expr(inner_expr, |x| {
         if let ExprKind::Call(_, _) | ExprKind::MethodCall(_, _, _, _) = x.kind {
-            std::ops::ControlFlow::Break(())
+            ControlFlow::Break(())
         } else {
-            std::ops::ControlFlow::Continue(())
+            ControlFlow::Continue(())
         }
     })
     .is_some()

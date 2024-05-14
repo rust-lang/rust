@@ -599,7 +599,7 @@ fn has_where_lifetimes<'tcx>(cx: &LateContext<'tcx>, generics: &'tcx Generics<'_
 struct LifetimeChecker<'cx, 'tcx, F> {
     cx: &'cx LateContext<'tcx>,
     map: FxHashMap<Symbol, Span>,
-    phantom: std::marker::PhantomData<F>,
+    phantom: PhantomData<F>,
 }
 
 impl<'cx, 'tcx, F> LifetimeChecker<'cx, 'tcx, F> {
@@ -607,7 +607,7 @@ impl<'cx, 'tcx, F> LifetimeChecker<'cx, 'tcx, F> {
         Self {
             cx,
             map,
-            phantom: std::marker::PhantomData,
+            phantom: PhantomData,
         }
     }
 }
