@@ -76,6 +76,7 @@ use rustc_type_ir::TyKind::*;
 use rustc_type_ir::WithCachedTypeInfo;
 use rustc_type_ir::{CollectAndApply, Interner, TypeFlags};
 
+use std::assert_matches::assert_matches;
 use std::borrow::Borrow;
 use std::cmp::Ordering;
 use std::fmt;
@@ -91,65 +92,122 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type DefiningOpaqueTypes = &'tcx ty::List<LocalDefId>;
     type AdtDef = ty::AdtDef<'tcx>;
     type GenericArgs = ty::GenericArgsRef<'tcx>;
+    type GenericArgsSlice = &'tcx [ty::GenericArg<'tcx>];
     type GenericArg = ty::GenericArg<'tcx>;
-    type Term = ty::Term<'tcx>;
 
+    type Term = ty::Term<'tcx>;
     type Binder<T: TypeVisitable<TyCtxt<'tcx>>> = Binder<'tcx, T>;
     type BoundVars = &'tcx List<ty::BoundVariableKind>;
     type BoundVar = ty::BoundVariableKind;
-    type CanonicalVars = CanonicalVarInfos<'tcx>;
 
+    type CanonicalVars = CanonicalVarInfos<'tcx>;
     type Ty = Ty<'tcx>;
     type Tys = &'tcx List<Ty<'tcx>>;
-    type AliasTy = ty::AliasTy<'tcx>;
     type ParamTy = ParamTy;
     type BoundTy = ty::BoundTy;
     type PlaceholderTy = ty::PlaceholderType;
-    type ErrorGuaranteed = ErrorGuaranteed;
 
+    type ErrorGuaranteed = ErrorGuaranteed;
     type BoundExistentialPredicates = &'tcx List<PolyExistentialPredicate<'tcx>>;
     type PolyFnSig = PolyFnSig<'tcx>;
     type AllocId = crate::mir::interpret::AllocId;
-    type Pat = Pattern<'tcx>;
 
+    type Pat = Pattern<'tcx>;
     type Const = ty::Const<'tcx>;
     type AliasConst = ty::UnevaluatedConst<'tcx>;
     type PlaceholderConst = ty::PlaceholderConst;
     type ParamConst = ty::ParamConst;
     type BoundConst = ty::BoundVar;
     type ValueConst = ty::ValTree<'tcx>;
-    type ExprConst = ty::Expr<'tcx>;
 
+    type ExprConst = ty::Expr<'tcx>;
     type Region = Region<'tcx>;
     type EarlyParamRegion = ty::EarlyParamRegion;
     type LateParamRegion = ty::LateParamRegion;
     type BoundRegion = ty::BoundRegion;
     type InferRegion = ty::RegionVid;
-    type PlaceholderRegion = ty::PlaceholderRegion;
 
+    type PlaceholderRegion = ty::PlaceholderRegion;
     type Predicate = Predicate<'tcx>;
     type TraitPredicate = ty::TraitPredicate<'tcx>;
     type RegionOutlivesPredicate = ty::RegionOutlivesPredicate<'tcx>;
     type TypeOutlivesPredicate = ty::TypeOutlivesPredicate<'tcx>;
     type ProjectionPredicate = ty::ProjectionPredicate<'tcx>;
-    type AliasTerm = ty::AliasTerm<'tcx>;
     type NormalizesTo = ty::NormalizesTo<'tcx>;
     type SubtypePredicate = ty::SubtypePredicate<'tcx>;
     type CoercePredicate = ty::CoercePredicate<'tcx>;
     type ClosureKind = ty::ClosureKind;
-    type Clauses = ty::Clauses<'tcx>;
 
+    type Clauses = ty::Clauses<'tcx>;
     fn mk_canonical_var_infos(self, infos: &[ty::CanonicalVarInfo<Self>]) -> Self::CanonicalVars {
         self.mk_canonical_var_infos(infos)
     }
 
     type GenericsOf = &'tcx ty::Generics;
+
     fn generics_of(self, def_id: DefId) -> &'tcx ty::Generics {
         self.generics_of(def_id)
     }
 
+    fn type_of_instantiated(self, def_id: DefId, args: ty::GenericArgsRef<'tcx>) -> Ty<'tcx> {
+        self.type_of(def_id).instantiate(self, args)
+    }
+
+    fn alias_ty_kind(self, alias: ty::AliasTy<'tcx>) -> ty::AliasTyKind {
+        match self.def_kind(alias.def_id) {
+            DefKind::AssocTy => {
+                if let DefKind::Impl { of_trait: false } = self.def_kind(self.parent(alias.def_id))
+                {
+                    ty::Inherent
+                } else {
+                    ty::Projection
+                }
+            }
+            DefKind::OpaqueTy => ty::Opaque,
+            DefKind::TyAlias => ty::Weak,
+            kind => bug!("unexpected DefKind in AliasTy: {kind:?}"),
+        }
+    }
+
+    fn alias_term_kind(self, alias: ty::AliasTerm<'tcx>) -> ty::AliasTermKind {
+        match self.def_kind(alias.def_id) {
+            DefKind::AssocTy => {
+                if let DefKind::Impl { of_trait: false } = self.def_kind(self.parent(alias.def_id))
+                {
+                    ty::AliasTermKind::InherentTy
+                } else {
+                    ty::AliasTermKind::ProjectionTy
+                }
+            }
+            DefKind::OpaqueTy => ty::AliasTermKind::OpaqueTy,
+            DefKind::TyAlias => ty::AliasTermKind::WeakTy,
+            DefKind::AssocConst => ty::AliasTermKind::ProjectionConst,
+            DefKind::AnonConst => ty::AliasTermKind::UnevaluatedConst,
+            kind => bug!("unexpected DefKind in AliasTy: {kind:?}"),
+        }
+    }
+
+    fn trait_ref_and_own_args_for_alias(
+        self,
+        def_id: Self::DefId,
+        args: Self::GenericArgs,
+    ) -> (rustc_type_ir::TraitRef<Self>, Self::GenericArgsSlice) {
+        assert_matches!(self.def_kind(def_id), DefKind::AssocTy | DefKind::AssocConst);
+        let trait_def_id = self.parent(def_id);
+        assert_matches!(self.def_kind(trait_def_id), DefKind::Trait);
+        let trait_generics = self.generics_of(trait_def_id);
+        (
+            ty::TraitRef::new(self, trait_def_id, args.truncate_to(self, trait_generics)),
+            &args[trait_generics.count()..],
+        )
+    }
+
     fn mk_args(self, args: &[Self::GenericArg]) -> Self::GenericArgs {
         self.mk_args(args)
+    }
+
+    fn mk_args_from_iter(self, args: impl Iterator<Item = Self::GenericArg>) -> Self::GenericArgs {
+        self.mk_args_from_iter(args)
     }
 
     fn check_and_mk_args(

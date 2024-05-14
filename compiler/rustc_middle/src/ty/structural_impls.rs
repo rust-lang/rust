@@ -7,7 +7,7 @@ use crate::mir::interpret;
 use crate::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeSuperFoldable};
 use crate::ty::print::{with_no_trimmed_paths, FmtPrinter, Printer};
 use crate::ty::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor};
-use crate::ty::{self, AliasTy, InferConst, Lift, Term, TermKind, Ty, TyCtxt};
+use crate::ty::{self, InferConst, Lift, Term, TermKind, Ty, TyCtxt};
 use rustc_ast_ir::try_visit;
 use rustc_ast_ir::visit::VisitorResult;
 use rustc_hir::def::Namespace;
@@ -164,23 +164,6 @@ impl<'tcx> fmt::Debug for ty::Clause<'tcx> {
     }
 }
 
-impl<'tcx> fmt::Debug for AliasTy<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        WithInfcx::with_no_infcx(self).fmt(f)
-    }
-}
-impl<'tcx> DebugWithInfcx<TyCtxt<'tcx>> for AliasTy<'tcx> {
-    fn fmt<Infcx: InferCtxtLike<Interner = TyCtxt<'tcx>>>(
-        this: WithInfcx<'_, Infcx, &Self>,
-        f: &mut core::fmt::Formatter<'_>,
-    ) -> core::fmt::Result {
-        f.debug_struct("AliasTy")
-            .field("args", &this.map(|data| data.args))
-            .field("def_id", &this.data.def_id)
-            .finish()
-    }
-}
-
 impl<'tcx> DebugWithInfcx<TyCtxt<'tcx>> for Pattern<'tcx> {
     fn fmt<Infcx: InferCtxtLike<Interner = TyCtxt<'tcx>>>(
         this: WithInfcx<'_, Infcx, &Self>,
@@ -227,23 +210,6 @@ impl<'tcx> DebugWithInfcx<TyCtxt<'tcx>> for ty::consts::Expr<'tcx> {
                 write!(f, "({cast_kind:?}: {:?}, {:?})", &this.wrap(lhs), &this.wrap(rhs))
             }
         }
-    }
-}
-
-impl<'tcx> fmt::Debug for ty::UnevaluatedConst<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        WithInfcx::with_no_infcx(self).fmt(f)
-    }
-}
-impl<'tcx> DebugWithInfcx<TyCtxt<'tcx>> for ty::UnevaluatedConst<'tcx> {
-    fn fmt<Infcx: InferCtxtLike<Interner = TyCtxt<'tcx>>>(
-        this: WithInfcx<'_, Infcx, &Self>,
-        f: &mut core::fmt::Formatter<'_>,
-    ) -> core::fmt::Result {
-        f.debug_struct("UnevaluatedConst")
-            .field("def", &this.data.def)
-            .field("args", &this.wrap(this.data.args))
-            .finish()
     }
 }
 
