@@ -1,9 +1,5 @@
 # AST Validation
 
-<!-- toc -->
-
-## About
-
 _AST validation_ is a separate AST pass that visits each
 item in the tree and performs simple checks. This pass
 doesn't perform any complex analysis, type checking or
