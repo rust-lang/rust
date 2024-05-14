@@ -6,13 +6,16 @@ use crate::inherent::*;
 use crate::ir_print::IrPrint;
 use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable};
 use crate::{
-    CanonicalVarInfo, CoercePredicate, DebugWithInfcx, ExistentialProjection, ExistentialTraitRef,
-    NormalizesTo, ProjectionPredicate, SubtypePredicate, TraitPredicate, TraitRef,
+    AliasTerm, AliasTermKind, AliasTy, AliasTyKind, CanonicalVarInfo, CoercePredicate,
+    DebugWithInfcx, ExistentialProjection, ExistentialTraitRef, NormalizesTo, ProjectionPredicate,
+    SubtypePredicate, TraitPredicate, TraitRef,
 };
 
 pub trait Interner:
     Sized
     + Copy
+    + IrPrint<AliasTy<Self>>
+    + IrPrint<AliasTerm<Self>>
     + IrPrint<TraitRef<Self>>
     + IrPrint<TraitPredicate<Self>>
     + IrPrint<ExistentialTraitRef<Self>>
@@ -27,6 +30,7 @@ pub trait Interner:
     type AdtDef: Copy + Debug + Hash + Eq;
 
     type GenericArgs: GenericArgs<Self>;
+    type GenericArgsSlice: Copy + Debug + Hash + Eq;
     type GenericArg: Copy + DebugWithInfcx<Self> + Hash + Eq;
     type Term: Copy + Debug + Hash + Eq;
 
@@ -39,7 +43,6 @@ pub trait Interner:
     // Kinds of tys
     type Ty: Ty<Self>;
     type Tys: Copy + Debug + Hash + Eq + IntoIterator<Item = Self::Ty>;
-    type AliasTy: Copy + DebugWithInfcx<Self> + Hash + Eq + Sized;
     type ParamTy: Copy + Debug + Hash + Eq;
     type BoundTy: Copy + Debug + Hash + Eq;
     type PlaceholderTy: PlaceholderLike;
@@ -74,7 +77,6 @@ pub trait Interner:
     type RegionOutlivesPredicate: Copy + Debug + Hash + Eq;
     type TypeOutlivesPredicate: Copy + Debug + Hash + Eq;
     type ProjectionPredicate: Copy + Debug + Hash + Eq;
-    type AliasTerm: AliasTerm<Self>;
     type NormalizesTo: Copy + Debug + Hash + Eq;
     type SubtypePredicate: Copy + Debug + Hash + Eq;
     type CoercePredicate: Copy + Debug + Hash + Eq;
@@ -86,7 +88,22 @@ pub trait Interner:
     type GenericsOf: GenericsOf<Self>;
     fn generics_of(self, def_id: Self::DefId) -> Self::GenericsOf;
 
+    // FIXME: Remove after uplifting `EarlyBinder`
+    fn type_of_instantiated(self, def_id: Self::DefId, args: Self::GenericArgs) -> Self::Ty;
+
+    fn alias_ty_kind(self, alias: AliasTy<Self>) -> AliasTyKind;
+
+    fn alias_term_kind(self, alias: AliasTerm<Self>) -> AliasTermKind;
+
+    fn trait_ref_and_own_args_for_alias(
+        self,
+        def_id: Self::DefId,
+        args: Self::GenericArgs,
+    ) -> (TraitRef<Self>, Self::GenericArgsSlice);
+
     fn mk_args(self, args: &[Self::GenericArg]) -> Self::GenericArgs;
+
+    fn mk_args_from_iter(self, args: impl Iterator<Item = Self::GenericArg>) -> Self::GenericArgs;
 
     fn check_and_mk_args(
         self,

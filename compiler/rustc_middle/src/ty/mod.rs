@@ -96,9 +96,9 @@ pub use self::list::{List, ListWithCachedTypeInfo};
 pub use self::parameterized::ParameterizedOverTcx;
 pub use self::pattern::{Pattern, PatternKind};
 pub use self::predicate::{
-    Clause, ClauseKind, CoercePredicate, ExistentialPredicate, ExistentialPredicateStableCmpExt,
-    ExistentialProjection, ExistentialTraitRef, NormalizesTo, OutlivesPredicate,
-    PolyCoercePredicate, PolyExistentialPredicate, PolyExistentialProjection,
+    AliasTerm, Clause, ClauseKind, CoercePredicate, ExistentialPredicate,
+    ExistentialPredicateStableCmpExt, ExistentialProjection, ExistentialTraitRef, NormalizesTo,
+    OutlivesPredicate, PolyCoercePredicate, PolyExistentialPredicate, PolyExistentialProjection,
     PolyExistentialTraitRef, PolyProjectionPredicate, PolyRegionOutlivesPredicate,
     PolySubtypePredicate, PolyTraitPredicate, PolyTraitRef, PolyTypeOutlivesPredicate, Predicate,
     PredicateKind, ProjectionPredicate, RegionOutlivesPredicate, SubtypePredicate, ToPolyTraitRef,
@@ -110,11 +110,11 @@ pub use self::region::{
 };
 pub use self::rvalue_scopes::RvalueScopes;
 pub use self::sty::{
-    AliasTerm, AliasTy, Article, Binder, BoundTy, BoundTyKind, BoundVariableKind,
-    CanonicalPolyFnSig, ClosureArgs, ClosureArgsParts, CoroutineArgs, CoroutineArgsParts,
-    CoroutineClosureArgs, CoroutineClosureArgsParts, CoroutineClosureSignature, FnSig, GenSig,
-    InlineConstArgs, InlineConstArgsParts, ParamConst, ParamTy, PolyFnSig, TyKind, TypeAndMut,
-    UpvarArgs, VarianceDiagInfo,
+    AliasTy, Article, Binder, BoundTy, BoundTyKind, BoundVariableKind, CanonicalPolyFnSig,
+    ClosureArgs, ClosureArgsParts, CoroutineArgs, CoroutineArgsParts, CoroutineClosureArgs,
+    CoroutineClosureArgsParts, CoroutineClosureSignature, FnSig, GenSig, InlineConstArgs,
+    InlineConstArgsParts, ParamConst, ParamTy, PolyFnSig, TyKind, TypeAndMut, UpvarArgs,
+    VarianceDiagInfo,
 };
 pub use self::trait_def::TraitDef;
 pub use self::typeck_results::{

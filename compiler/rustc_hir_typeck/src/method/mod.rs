@@ -91,7 +91,7 @@ pub enum CandidateSource {
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Determines whether the type `self_ty` supports a visible method named `method_name` or not.
     #[instrument(level = "debug", skip(self))]
-    pub fn method_exists(
+    pub fn method_exists_for_diagnostic(
         &self,
         method_name: Ident,
         self_ty: Ty<'tcx>,
@@ -102,7 +102,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             probe::Mode::MethodCall,
             method_name,
             return_type,
-            IsSuggestion(false),
+            IsSuggestion(true),
             self_ty,
             call_expr_id,
             ProbeScope::TraitsInScope,

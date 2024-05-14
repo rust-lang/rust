@@ -118,6 +118,9 @@ impl<'a, 'b> ProofTreeFormatter<'a, 'b> {
             ProbeKind::TraitCandidate { source, result } => {
                 write!(self.f, "CANDIDATE {source:?}: {result:?}")
             }
+            ProbeKind::ShadowedEnvProbing => {
+                write!(self.f, "PROBING FOR IMPLS SHADOWED BY PARAM-ENV CANDIDATE:")
+            }
         }?;
 
         self.nested(|this| {
