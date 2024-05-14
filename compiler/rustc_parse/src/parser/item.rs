@@ -59,13 +59,13 @@ impl<'a> Parser<'a> {
         let post_attr_lo = self.token.span;
         let mut items = ThinVec::new();
         while let Some(item) = self.parse_item(ForceCollect::No)? {
+            self.maybe_consume_incorrect_semicolon(Some(&item));
             items.push(item);
-            self.maybe_consume_incorrect_semicolon(&items);
         }
 
         if !self.eat(term) {
             let token_str = super::token_descr(&self.token);
-            if !self.maybe_consume_incorrect_semicolon(&items) {
+            if !self.maybe_consume_incorrect_semicolon(items.last().map(|x| &**x)) {
                 let msg = format!("expected item, found {token_str}");
                 let mut err = self.dcx().struct_span_err(self.token.span, msg);
                 let span = self.token.span;
