@@ -1,62 +1,54 @@
 Function name: <try_error_result::Thing1>::get_thing_2
-Raw bytes (28): 0x[01, 01, 02, 01, 05, 05, 02, 04, 01, 29, 05, 01, 18, 05, 02, 0d, 00, 14, 02, 02, 0d, 00, 1a, 07, 02, 05, 00, 06]
+Raw bytes (26): 0x[01, 01, 01, 01, 05, 04, 01, 29, 05, 01, 18, 05, 02, 0d, 00, 14, 02, 02, 0d, 00, 1a, 01, 02, 05, 00, 06]
 Number of files: 1
 - file 0 => global file 1
-Number of expressions: 2
+Number of expressions: 1
 - expression 0 operands: lhs = Counter(0), rhs = Counter(1)
-- expression 1 operands: lhs = Counter(1), rhs = Expression(0, Sub)
 Number of file 0 mappings: 4
 - Code(Counter(0)) at (prev + 41, 5) to (start + 1, 24)
 - Code(Counter(1)) at (prev + 2, 13) to (start + 0, 20)
 - Code(Expression(0, Sub)) at (prev + 2, 13) to (start + 0, 26)
     = (c0 - c1)
-- Code(Expression(1, Add)) at (prev + 2, 5) to (start + 0, 6)
-    = (c1 + (c0 - c1))
+- Code(Counter(0)) at (prev + 2, 5) to (start + 0, 6)
 
 Function name: <try_error_result::Thing2>::call
-Raw bytes (28): 0x[01, 01, 02, 01, 05, 05, 02, 04, 01, 34, 05, 01, 18, 05, 02, 0d, 00, 14, 02, 02, 0d, 00, 13, 07, 02, 05, 00, 06]
+Raw bytes (26): 0x[01, 01, 01, 01, 05, 04, 01, 34, 05, 01, 18, 05, 02, 0d, 00, 14, 02, 02, 0d, 00, 13, 01, 02, 05, 00, 06]
 Number of files: 1
 - file 0 => global file 1
-Number of expressions: 2
+Number of expressions: 1
 - expression 0 operands: lhs = Counter(0), rhs = Counter(1)
-- expression 1 operands: lhs = Counter(1), rhs = Expression(0, Sub)
 Number of file 0 mappings: 4
 - Code(Counter(0)) at (prev + 52, 5) to (start + 1, 24)
 - Code(Counter(1)) at (prev + 2, 13) to (start + 0, 20)
 - Code(Expression(0, Sub)) at (prev + 2, 13) to (start + 0, 19)
     = (c0 - c1)
-- Code(Expression(1, Add)) at (prev + 2, 5) to (start + 0, 6)
-    = (c1 + (c0 - c1))
+- Code(Counter(0)) at (prev + 2, 5) to (start + 0, 6)
 
 Function name: try_error_result::call
-Raw bytes (28): 0x[01, 01, 02, 01, 05, 05, 02, 04, 01, 04, 01, 01, 14, 05, 02, 09, 00, 10, 02, 02, 09, 00, 0f, 07, 02, 01, 00, 02]
+Raw bytes (26): 0x[01, 01, 01, 01, 05, 04, 01, 04, 01, 01, 14, 05, 02, 09, 00, 10, 02, 02, 09, 00, 0f, 01, 02, 01, 00, 02]
 Number of files: 1
 - file 0 => global file 1
-Number of expressions: 2
+Number of expressions: 1
 - expression 0 operands: lhs = Counter(0), rhs = Counter(1)
-- expression 1 operands: lhs = Counter(1), rhs = Expression(0, Sub)
 Number of file 0 mappings: 4
 - Code(Counter(0)) at (prev + 4, 1) to (start + 1, 20)
 - Code(Counter(1)) at (prev + 2, 9) to (start + 0, 16)
 - Code(Expression(0, Sub)) at (prev + 2, 9) to (start + 0, 15)
     = (c0 - c1)
-- Code(Expression(1, Add)) at (prev + 2, 1) to (start + 0, 2)
-    = (c1 + (c0 - c1))
+- Code(Counter(0)) at (prev + 2, 1) to (start + 0, 2)
 
 Function name: try_error_result::main
-Raw bytes (28): 0x[01, 01, 02, 01, 05, 05, 02, 04, 01, 73, 01, 02, 0c, 05, 03, 05, 00, 06, 02, 02, 05, 00, 0b, 07, 01, 01, 00, 02]
+Raw bytes (26): 0x[01, 01, 01, 01, 05, 04, 01, 73, 01, 02, 0c, 05, 03, 05, 00, 06, 02, 02, 05, 00, 0b, 01, 01, 01, 00, 02]
 Number of files: 1
 - file 0 => global file 1
-Number of expressions: 2
+Number of expressions: 1
 - expression 0 operands: lhs = Counter(0), rhs = Counter(1)
-- expression 1 operands: lhs = Counter(1), rhs = Expression(0, Sub)
 Number of file 0 mappings: 4
 - Code(Counter(0)) at (prev + 115, 1) to (start + 2, 12)
 - Code(Counter(1)) at (prev + 3, 5) to (start + 0, 6)
 - Code(Expression(0, Sub)) at (prev + 2, 5) to (start + 0, 11)
     = (c0 - c1)
-- Code(Expression(1, Add)) at (prev + 1, 1) to (start + 0, 2)
-    = (c1 + (c0 - c1))
+- Code(Counter(0)) at (prev + 1, 1) to (start + 0, 2)
 
 Function name: try_error_result::test1
 Raw bytes (75): 0x[01, 01, 08, 01, 07, 00, 09, 03, 0d, 12, 1d, 03, 0d, 1b, 0d, 1f, 00, 11, 00, 0b, 01, 0d, 01, 02, 17, 03, 07, 09, 00, 0e, 12, 02, 09, 04, 1a, 1d, 06, 0d, 00, 29, 11, 00, 29, 00, 2a, 00, 01, 0d, 00, 2a, 00, 00, 2a, 00, 2b, 0e, 04, 0d, 00, 2a, 00, 00, 2a, 00, 2b, 0d, 03, 05, 00, 0b, 17, 01, 01, 00, 02]

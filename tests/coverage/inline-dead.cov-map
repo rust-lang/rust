@@ -7,19 +7,17 @@ Number of file 0 mappings: 1
 - Code(Zero) at (prev + 23, 1) to (start + 2, 2)
 
 Function name: inline_dead::live::<false>
-Raw bytes (28): 0x[01, 01, 02, 01, 00, 00, 02, 04, 01, 0e, 01, 01, 09, 00, 02, 09, 00, 0f, 02, 02, 09, 00, 0a, 07, 02, 01, 00, 02]
+Raw bytes (26): 0x[01, 01, 01, 01, 00, 04, 01, 0e, 01, 01, 09, 00, 02, 09, 00, 0f, 02, 02, 09, 00, 0a, 01, 02, 01, 00, 02]
 Number of files: 1
 - file 0 => global file 1
-Number of expressions: 2
+Number of expressions: 1
 - expression 0 operands: lhs = Counter(0), rhs = Zero
-- expression 1 operands: lhs = Zero, rhs = Expression(0, Sub)
 Number of file 0 mappings: 4
 - Code(Counter(0)) at (prev + 14, 1) to (start + 1, 9)
 - Code(Zero) at (prev + 2, 9) to (start + 0, 15)
 - Code(Expression(0, Sub)) at (prev + 2, 9) to (start + 0, 10)
     = (c0 - Zero)
-- Code(Expression(1, Add)) at (prev + 2, 1) to (start + 0, 2)
-    = (Zero + (c0 - Zero))
+- Code(Counter(0)) at (prev + 2, 1) to (start + 0, 2)
 
 Function name: inline_dead::main
 Raw bytes (14): 0x[01, 01, 00, 02, 01, 04, 01, 03, 0a, 01, 06, 05, 01, 02]
