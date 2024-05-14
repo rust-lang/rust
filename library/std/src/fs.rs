@@ -2310,6 +2310,9 @@ pub fn create_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// If this function returns an error, some of the parent components might have
 /// been created already.
 ///
+/// If the empty path is passed to this function, it always succeeds without
+/// creating any directories.
+///
 /// # Platform-specific behavior
 ///
 /// This function currently corresponds to multiple calls to the `mkdir`
