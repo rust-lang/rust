@@ -90,6 +90,11 @@ pub(crate) struct ProbeContext<'a, 'tcx> {
     >,
 
     scope_expr_id: HirId,
+
+    /// Is this probe being done for a diagnostic? This will skip some error reporting
+    /// machinery, since we don't particularly care about, for example, similarly named
+    /// candidates if we're *reporting* similarly named candidates.
+    is_suggestion: IsSuggestion,
 }
 
 impl<'a, 'tcx> Deref for ProbeContext<'a, 'tcx> {
@@ -220,7 +225,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// would use to decide if a method is a plausible fit for
     /// ambiguity purposes).
     #[instrument(level = "debug", skip(self, candidate_filter))]
-    pub fn probe_for_return_type(
+    pub fn probe_for_return_type_for_diagnostic(
         &self,
         span: Span,
         mode: Mode,
@@ -459,6 +464,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 &orig_values,
                 steps.steps,
                 scope_expr_id,
+                is_suggestion,
             );
 
             probe_cx.assemble_inherent_candidates();
@@ -553,6 +559,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         orig_steps_var_values: &'a OriginalQueryValues<'tcx>,
         steps: &'tcx [CandidateStep<'tcx>],
         scope_expr_id: HirId,
+        is_suggestion: IsSuggestion,
     ) -> ProbeContext<'a, 'tcx> {
         ProbeContext {
             fcx,
@@ -570,6 +577,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             static_candidates: RefCell::new(Vec::new()),
             unsatisfied_predicates: RefCell::new(Vec::new()),
             scope_expr_id,
+            is_suggestion,
         }
     }
 
@@ -942,6 +950,18 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
         if let Some(r) = self.pick_core() {
             return r;
+        }
+
+        // If it's a `lookup_probe_for_diagnostic`, then quit early. No need to
+        // probe for other candidates.
+        if self.is_suggestion.0 {
+            return Err(MethodError::NoMatch(NoMatchData {
+                static_candidates: vec![],
+                unsatisfied_predicates: vec![],
+                out_of_scope_traits: vec![],
+                similar_candidate: None,
+                mode: self.mode,
+            }));
         }
 
         debug!("pick: actual search failed, assemble diagnostics");
@@ -1631,6 +1651,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 self.orig_steps_var_values,
                 self.steps,
                 self.scope_expr_id,
+                IsSuggestion(true),
             );
             pcx.allow_similar_names = true;
             pcx.assemble_inherent_candidates();
