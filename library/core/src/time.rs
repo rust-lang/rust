@@ -1074,7 +1074,9 @@ impl Duration {
     #[inline]
     #[rustc_const_unstable(feature = "duration_consts_float", issue = "72440")]
     pub const fn div_duration_f64(self, rhs: Duration) -> f64 {
-        self.as_secs_f64() / rhs.as_secs_f64()
+        let self_nanos = (self.secs as f64) * (NANOS_PER_SEC as f64) + (self.nanos.0 as f64);
+        let rhs_nanos = (rhs.secs as f64) * (NANOS_PER_SEC as f64) + (rhs.nanos.0 as f64);
+        self_nanos / rhs_nanos
     }
 
     /// Divide `Duration` by `Duration` and return `f32`.
@@ -1093,7 +1095,9 @@ impl Duration {
     #[inline]
     #[rustc_const_unstable(feature = "duration_consts_float", issue = "72440")]
     pub const fn div_duration_f32(self, rhs: Duration) -> f32 {
-        self.as_secs_f32() / rhs.as_secs_f32()
+        let self_nanos = (self.secs as f32) * (NANOS_PER_SEC as f32) + (self.nanos.0 as f32);
+        let rhs_nanos = (rhs.secs as f32) * (NANOS_PER_SEC as f32) + (rhs.nanos.0 as f32);
+        self_nanos / rhs_nanos
     }
 }
 
