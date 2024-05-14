@@ -141,7 +141,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             | ty::Never
             | ty::Dynamic(_, _, ty::DynStar)
             | ty::Error(_) => {
-                self.dcx().span_bug(span, format!("`{t:?}` should be sized but is not?"));
+                let guar = self
+                    .dcx()
+                    .span_delayed_bug(span, format!("`{t:?}` should be sized but is not?"));
+                return Err(guar);
             }
         })
     }
