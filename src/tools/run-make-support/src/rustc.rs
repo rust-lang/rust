@@ -150,10 +150,9 @@ impl Rustc {
         self
     }
 
-    /// Pass a codegen option.
-    pub fn codegen_option(&mut self, option: &str) -> &mut Self {
-        self.cmd.arg("-C");
-        self.cmd.arg(option);
+    /// Enables link time optimizations in rustc. Equivalent to `-Clto``.
+    pub fn lto(&mut self) -> &mut Self {
+        self.cmd.arg("-Clto");
         self
     }
 

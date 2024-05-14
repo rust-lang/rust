@@ -1,5 +1,5 @@
 // Test to make sure that reachable extern fns are always available in final
-// productcs, including when LTO is used.
+// productcs, including when link time optimizations (LTO) are used.
 
 // In this test, the `foo` crate has a reahable symbol,
 // and is a dependency of the `bar` crate. When the `bar` crate
@@ -9,15 +9,15 @@
 
 //@ ignore-cross-compile
 
-use run_make_support::{cc, extra_c_flags, run, rustc, tmp_dir};
+use run_make_support::{cc, extra_c_flags, run, rustc, static_lib, tmp_dir};
 
 fn main() {
-    let libbar_path = tmp_dir().join("libbar.a");
+    let libbar_path = static_lib("bar");
     rustc().input("foo.rs").crate_type("rlib").run();
     rustc()
         .input("bar.rs")
         .crate_type("staticlib")
-        .codegen_option("lto")
+        .lto()
         .library_search_path(".")
         .output(&libbar_path)
         .run();
