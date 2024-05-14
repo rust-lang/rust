@@ -241,7 +241,6 @@ run-make/rlib-format-packed-bundled-libs-3/Makefile
 run-make/rlib-format-packed-bundled-libs/Makefile
 run-make/rmeta-preferred/Makefile
 run-make/rustc-macro-dep-files/Makefile
-run-make/rustdoc-io-error/Makefile
 run-make/rustdoc-scrape-examples-invalid-expr/Makefile
 run-make/rustdoc-scrape-examples-macros/Makefile
 run-make/rustdoc-scrape-examples-multiple/Makefile
