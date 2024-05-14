@@ -45,7 +45,7 @@ use thin_vec::{thin_vec, ThinVec};
 macro_rules! maybe_whole_expr {
     ($p:expr) => {
         if let token::Interpolated(nt) = &$p.token.kind {
-            match &nt.0 {
+            match &**nt {
                 token::NtExpr(e) | token::NtLiteral(e) => {
                     let e = e.clone();
                     $p.bump();
@@ -724,7 +724,9 @@ impl<'a> Parser<'a> {
     /// Returns the span of expr if it was not interpolated, or the span of the interpolated token.
     fn interpolated_or_expr_span(&self, expr: &Expr) -> Span {
         match self.prev_token.kind {
-            TokenKind::Interpolated(..) => self.prev_token.span,
+            TokenKind::NtIdent(..) | TokenKind::NtLifetime(..) | TokenKind::Interpolated(..) => {
+                self.prev_token.span
+            }
             _ => expr.span,
         }
     }

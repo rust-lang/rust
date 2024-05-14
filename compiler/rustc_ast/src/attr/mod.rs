@@ -345,7 +345,7 @@ impl MetaItem {
                 let span = span.with_hi(segments.last().unwrap().ident.span.hi());
                 Path { span, segments, tokens: None }
             }
-            Some(TokenTree::Token(Token { kind: token::Interpolated(nt), .. }, _)) => match &nt.0 {
+            Some(TokenTree::Token(Token { kind: token::Interpolated(nt), .. }, _)) => match &**nt {
                 token::Nonterminal::NtMeta(item) => return item.meta(item.path.span),
                 token::Nonterminal::NtPath(path) => (**path).clone(),
                 _ => return None,

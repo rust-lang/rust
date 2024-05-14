@@ -240,7 +240,6 @@ impl HasTokens for Nonterminal {
             Nonterminal::NtPath(path) => path.tokens(),
             Nonterminal::NtVis(vis) => vis.tokens(),
             Nonterminal::NtBlock(block) => block.tokens(),
-            Nonterminal::NtIdent(..) | Nonterminal::NtLifetime(..) => None,
         }
     }
     fn tokens_mut(&mut self) -> Option<&mut Option<LazyAttrTokenStream>> {
@@ -254,7 +253,6 @@ impl HasTokens for Nonterminal {
             Nonterminal::NtPath(path) => path.tokens_mut(),
             Nonterminal::NtVis(vis) => vis.tokens_mut(),
             Nonterminal::NtBlock(block) => block.tokens_mut(),
-            Nonterminal::NtIdent(..) | Nonterminal::NtLifetime(..) => None,
         }
     }
 }

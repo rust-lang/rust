@@ -363,7 +363,7 @@ impl<'a> Parser<'a> {
         // We can't use `maybe_whole` here because it would bump in the `None`
         // case, which we don't want.
         if let token::Interpolated(nt) = &self.token.kind
-            && let token::NtMeta(attr_item) = &nt.0
+            && let token::NtMeta(attr_item) = &**nt
         {
             match attr_item.meta(attr_item.path.span) {
                 Some(meta) => {

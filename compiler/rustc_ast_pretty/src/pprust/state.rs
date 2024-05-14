@@ -858,8 +858,6 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
             token::NtBlock(e) => self.block_to_string(e),
             token::NtStmt(e) => self.stmt_to_string(e),
             token::NtPat(e) => self.pat_to_string(e),
-            &token::NtIdent(e, is_raw) => IdentPrinter::for_ast_ident(e, is_raw.into()).to_string(),
-            token::NtLifetime(e) => e.to_string(),
             token::NtLiteral(e) => self.expr_to_string(e),
             token::NtVis(e) => self.vis_to_string(e),
         }
@@ -921,10 +919,14 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
             token::Literal(lit) => literal_to_string(lit).into(),
 
             /* Name components */
-            token::Ident(s, is_raw) => {
-                IdentPrinter::new(s, is_raw.into(), convert_dollar_crate).to_string().into()
+            token::Ident(name, is_raw) => {
+                IdentPrinter::new(name, is_raw.into(), convert_dollar_crate).to_string().into()
             }
-            token::Lifetime(s) => s.to_string().into(),
+            token::NtIdent(ident, is_raw) => {
+                IdentPrinter::for_ast_ident(ident, is_raw.into()).to_string().into()
+            }
+            token::Lifetime(name) => name.to_string().into(),
+            token::NtLifetime(ident) => ident.name.to_string().into(),
 
             /* Other */
             token::DocComment(comment_kind, attr_style, data) => {
@@ -932,7 +934,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
             }
             token::Eof => "<eof>".into(),
 
-            token::Interpolated(ref nt) => self.nonterminal_to_string(&nt.0).into(),
+            token::Interpolated(ref nt) => self.nonterminal_to_string(&nt).into(),
         }
     }
 
