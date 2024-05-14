@@ -1739,15 +1739,9 @@ impl EscapeDebugExtArgs {
 
 #[inline]
 const fn len_utf8(code: u32) -> usize {
-    if code < MAX_ONE_B {
-        1
-    } else if code < MAX_TWO_B {
-        2
-    } else if code < MAX_THREE_B {
-        3
-    } else {
-        4
-    }
+    1 + ((code >= MAX_ONE_B) as usize)
+        + ((code >= MAX_TWO_B) as usize)
+        + ((code >= MAX_THREE_B) as usize)
 }
 
 /// Encodes a raw u32 value as UTF-8 into the provided byte buffer,
