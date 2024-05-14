@@ -15,6 +15,7 @@ use ide_db::{
     FxHashMap, FxHashSet, RootDatabase, SymbolKind,
 };
 use itertools::Itertools;
+use span::TextSize;
 use stdx::{always, format_to};
 use syntax::{
     ast::{self, AstNode},
@@ -48,21 +49,32 @@ impl fmt::Display for TestId {
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum RunnableKind {
-    Test { test_id: TestId, attr: TestAttr },
     TestMod { path: String },
+    Test { test_id: TestId, attr: TestAttr },
     Bench { test_id: TestId },
     DocTest { test_id: TestId },
     Bin,
 }
 
-#[cfg(test)]
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
-enum RunnableTestKind {
+#[derive(Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
+enum RunnableDiscKind {
     Test,
     TestMod,
     DocTest,
     Bench,
     Bin,
+}
+
+impl RunnableKind {
+    fn disc(&self) -> RunnableDiscKind {
+        match self {
+            RunnableKind::TestMod { .. } => RunnableDiscKind::TestMod,
+            RunnableKind::Test { .. } => RunnableDiscKind::Test,
+            RunnableKind::DocTest { .. } => RunnableDiscKind::DocTest,
+            RunnableKind::Bench { .. } => RunnableDiscKind::Bench,
+            RunnableKind::Bin => RunnableDiscKind::Bin,
+        }
+    }
 }
 
 impl Runnable {
@@ -96,17 +108,6 @@ impl Runnable {
         };
         s.push_str(suffix);
         s
-    }
-
-    #[cfg(test)]
-    fn test_kind(&self) -> RunnableTestKind {
-        match &self.kind {
-            RunnableKind::TestMod { .. } => RunnableTestKind::TestMod,
-            RunnableKind::Test { .. } => RunnableTestKind::Test,
-            RunnableKind::DocTest { .. } => RunnableTestKind::DocTest,
-            RunnableKind::Bench { .. } => RunnableTestKind::Bench,
-            RunnableKind::Bin => RunnableTestKind::Bin,
-        }
     }
 }
 
@@ -193,6 +194,20 @@ pub(crate) fn runnables(db: &RootDatabase, file_id: FileId) -> Vec<Runnable> {
             r
         })
     }));
+    res.sort_by(|Runnable { nav, kind, .. }, Runnable { nav: nav_b, kind: kind_b, .. }| {
+        // full_range.start < focus_range.start < name, should give us a decent unique ordering
+        nav.full_range
+            .start()
+            .cmp(&nav_b.full_range.start())
+            .then_with(|| {
+                let t_0 = || TextSize::from(0);
+                nav.focus_range
+                    .map_or_else(t_0, |it| it.start())
+                    .cmp(&nav_b.focus_range.map_or_else(t_0, |it| it.start()))
+            })
+            .then_with(|| kind.disc().cmp(&kind_b.disc()))
+            .then_with(|| nav.name.cmp(&nav_b.name))
+    });
     res
 }
 
@@ -571,13 +586,12 @@ mod tests {
 
     fn check(ra_fixture: &str, expect: Expect) {
         let (analysis, position) = fixture::position(ra_fixture);
-        let mut runnables = analysis.runnables(position.file_id).unwrap();
-        runnables.sort_by_key(|it| (it.nav.full_range.start(), it.nav.name.clone()));
-
-        let result = runnables
+        let result = analysis
+            .runnables(position.file_id)
+            .unwrap()
             .into_iter()
             .map(|runnable| {
-                let mut a = format!("({:?}, {:?}", runnable.test_kind(), runnable.nav);
+                let mut a = format!("({:?}, {:?}", runnable.kind.disc(), runnable.nav);
                 if runnable.use_name_in_title {
                     a.push_str(", true");
                 }
