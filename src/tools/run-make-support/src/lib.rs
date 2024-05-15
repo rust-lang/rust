@@ -64,6 +64,12 @@ pub fn python_command() -> Command {
     Command::new(python_path)
 }
 
+pub fn htmldocck() -> Command {
+    let mut python = python_command();
+    python.arg(source_path().join("/src/etc/htmldocck.py"));
+    python
+}
+
 pub fn source_path() -> PathBuf {
     std::env::var("S").expect("S variable does not exist").into()
 }
