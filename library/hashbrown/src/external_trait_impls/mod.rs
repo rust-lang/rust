@@ -4,3 +4,5 @@ pub(crate) mod rayon;
 mod rkyv;
 #[cfg(feature = "serde")]
 mod serde;
+#[cfg(feature = "borsh")]
+mod borsh;
