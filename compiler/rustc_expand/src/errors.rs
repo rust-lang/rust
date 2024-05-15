@@ -433,3 +433,10 @@ pub struct ExpectedParenOrBrace<'a> {
     pub span: Span,
     pub token: Cow<'a, str>,
 }
+
+#[derive(Diagnostic)]
+#[diag(expand_empty_delegation_list)]
+pub(crate) struct EmptyDelegationList {
+    #[primary_span]
+    pub span: Span,
+}

@@ -685,20 +685,35 @@ impl<'a> Parser<'a> {
             (None, self.parse_path(PathStyle::Expr)?)
         };
 
-        let rename = if self.eat_keyword(kw::As) { Some(self.parse_ident()?) } else { None };
-
-        let body = if self.check(&token::OpenDelim(Delimiter::Brace)) {
-            Some(self.parse_block()?)
-        } else {
-            self.expect(&token::Semi)?;
-            None
+        let rename = |this: &mut Self| {
+            Ok(if this.eat_keyword(kw::As) { Some(this.parse_ident()?) } else { None })
         };
+        let body = |this: &mut Self| {
+            Ok(if this.check(&token::OpenDelim(Delimiter::Brace)) {
+                Some(this.parse_block()?)
+            } else {
+                this.expect(&token::Semi)?;
+                None
+            })
+        };
+
+        let (ident, item_kind) = if self.eat(&token::PathSep) {
+            let (suffixes, _) = self.parse_delim_comma_seq(Delimiter::Brace, |p| {
+                Ok((p.parse_path_segment_ident()?, rename(p)?))
+            })?;
+            let deleg = DelegationMac { qself, prefix: path, suffixes, body: body(self)? };
+            (Ident::empty(), ItemKind::DelegationMac(Box::new(deleg)))
+        } else {
+            let rename = rename(self)?;
+            let ident = rename.unwrap_or_else(|| path.segments.last().unwrap().ident);
+            let deleg = Delegation { id: DUMMY_NODE_ID, qself, path, rename, body: body(self)? };
+            (ident, ItemKind::Delegation(Box::new(deleg)))
+        };
+
         let span = span.to(self.prev_token.span);
         self.psess.gated_spans.gate(sym::fn_delegation, span);
 
-        let ident = rename.unwrap_or_else(|| path.segments.last().unwrap().ident);
-        let deleg = Delegation { id: DUMMY_NODE_ID, qself, path, rename, body };
-        Ok((ident, ItemKind::Delegation(Box::new(deleg))))
+        Ok((ident, item_kind))
     }
 
     fn parse_item_list<T>(
