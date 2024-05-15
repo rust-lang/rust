@@ -85,7 +85,7 @@ fn edit_struct_def(
     strukt: &Either<ast::Struct, ast::Variant>,
     record_fields: ast::RecordFieldList,
 ) {
-    // Note that we don't need to consider macro files in this function because this this is
+    // Note that we don't need to consider macro files in this function because this is
     // currently not triggered for struct definitions inside macro calls.
     let tuple_fields = record_fields
         .fields()

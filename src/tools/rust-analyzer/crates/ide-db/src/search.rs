@@ -1,7 +1,7 @@
 //! Implementation of find-usages functionality.
 //!
 //! It is based on the standard ide trick: first, we run a fast text search to
-//! get a super-set of matches. Then, we we confirm each match using precise
+//! get a super-set of matches. Then, we confirm each match using precise
 //! name resolution.
 
 use std::mem;

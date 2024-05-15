@@ -443,7 +443,7 @@ pub trait QueryDb<'d>: Sized {
 /// Trait implements by all of the "special types" associated with
 /// each of your queries.
 pub trait Query: Debug + Default + Sized + for<'d> QueryDb<'d> {
-    /// Type that you you give as a parameter -- for queries with zero
+    /// Type that you give as a parameter -- for queries with zero
     /// or more than one input, this will be a tuple.
     type Key: Clone + Debug + Hash + Eq;
 
