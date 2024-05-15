@@ -168,7 +168,7 @@ impl<'a> Parser<'a> {
                 } else {
                     Err(self.dcx().create_err(UnexpectedNonterminal::Ident {
                         span: self.token.span,
-                        token: self.token.clone(),
+                        token: self.token,
                     }))
                 }
             }
@@ -191,7 +191,7 @@ impl<'a> Parser<'a> {
                 } else {
                     Err(self.dcx().create_err(UnexpectedNonterminal::Lifetime {
                         span: self.token.span,
-                        token: self.token.clone(),
+                        token: self.token,
                     }))
                 }
             }

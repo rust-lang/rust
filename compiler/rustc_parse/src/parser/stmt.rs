@@ -685,7 +685,7 @@ impl<'a> Parser<'a> {
             return Ok((AttrVec::new(), block));
         }
 
-        let maybe_ident = self.prev_token.clone();
+        let maybe_ident = self.prev_token;
         self.maybe_recover_unexpected_block_label(loop_header);
         if !self.eat(exp!(OpenBrace)) {
             return self.error_block_no_opening_brace();

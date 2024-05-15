@@ -326,12 +326,12 @@ impl TokenCursor {
             // below can be removed.
             if let Some(tree) = self.curr.curr() {
                 match tree {
-                    &TokenTree::Token(ref token, spacing) => {
+                    &TokenTree::Token(token, spacing) => {
                         debug_assert!(!matches!(
                             token.kind,
                             token::OpenDelim(_) | token::CloseDelim(_)
                         ));
-                        let res = (token.clone(), spacing);
+                        let res = (token, spacing);
                         self.curr.bump();
                         return res;
                     }
@@ -1490,7 +1490,7 @@ impl<'a> Parser<'a> {
             _ => {
                 let prev_spacing = self.token_spacing;
                 self.bump();
-                TokenTree::Token(self.prev_token.clone(), prev_spacing)
+                TokenTree::Token(self.prev_token, prev_spacing)
             }
         }
     }
@@ -1676,7 +1676,7 @@ impl<'a> Parser<'a> {
             dbg_fmt.field("prev_token", &self.prev_token);
             let mut tokens = vec![];
             for i in 0..lookahead {
-                let tok = self.look_ahead(i, |tok| tok.kind.clone());
+                let tok = self.look_ahead(i, |tok| tok.kind);
                 let is_eof = tok == TokenKind::Eof;
                 tokens.push(tok);
                 if is_eof {
