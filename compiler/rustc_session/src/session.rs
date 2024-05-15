@@ -1181,9 +1181,9 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
             });
         }
     }
-    // Cannot mix and match sanitizers.
-    let mut sanitizer_iter = sess.opts.unstable_opts.sanitizer.into_iter();
-    if let (Some(first), Some(second)) = (sanitizer_iter.next(), sanitizer_iter.next()) {
+
+    // Cannot mix and match mutually-exclusive sanitizers.
+    if let Some((first, second)) = sess.opts.unstable_opts.sanitizer.mutually_exclusive() {
         sess.dcx().emit_err(errors::CannotMixAndMatchSanitizers {
             first: first.to_string(),
             second: second.to_string(),
@@ -1216,14 +1216,6 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
         && (sess.codegen_units().as_usize() != 1)
     {
         sess.dcx().emit_err(errors::SanitizerCfiRequiresSingleCodegenUnit);
-    }
-
-    // LLVM CFI is incompatible with LLVM KCFI.
-    if sess.is_sanitizer_cfi_enabled() && sess.is_sanitizer_kcfi_enabled() {
-        sess.dcx().emit_err(errors::CannotMixAndMatchSanitizers {
-            first: "cfi".to_string(),
-            second: "kcfi".to_string(),
-        });
     }
 
     // Canonical jump tables requires CFI.

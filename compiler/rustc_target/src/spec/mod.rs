@@ -1316,6 +1316,32 @@ bitflags::bitflags! {
 rustc_data_structures::external_bitflags_debug! { SanitizerSet }
 
 impl SanitizerSet {
+    const MUTUALLY_EXCLUSIVE: &'static [(SanitizerSet, SanitizerSet)] = &[
+        (SanitizerSet::MEMORY, SanitizerSet::ADDRESS),
+        (SanitizerSet::MEMORY, SanitizerSet::LEAK),
+        (SanitizerSet::THREAD, SanitizerSet::ADDRESS),
+        (SanitizerSet::THREAD, SanitizerSet::LEAK),
+        (SanitizerSet::THREAD, SanitizerSet::MEMORY),
+        (SanitizerSet::HWADDRESS, SanitizerSet::ADDRESS),
+        (SanitizerSet::HWADDRESS, SanitizerSet::MEMORY),
+        (SanitizerSet::HWADDRESS, SanitizerSet::THREAD),
+        (SanitizerSet::MEMTAG, SanitizerSet::ADDRESS),
+        (SanitizerSet::MEMTAG, SanitizerSet::HWADDRESS),
+        (SanitizerSet::KCFI, SanitizerSet::CFI),
+        (SanitizerSet::KERNELADDRESS, SanitizerSet::ADDRESS),
+        (SanitizerSet::KERNELADDRESS, SanitizerSet::LEAK),
+        (SanitizerSet::KERNELADDRESS, SanitizerSet::MEMORY),
+        (SanitizerSet::KERNELADDRESS, SanitizerSet::THREAD),
+        (SanitizerSet::KERNELADDRESS, SanitizerSet::HWADDRESS),
+        (SanitizerSet::KERNELADDRESS, SanitizerSet::MEMTAG),
+        (SanitizerSet::SAFESTACK, SanitizerSet::ADDRESS),
+        (SanitizerSet::SAFESTACK, SanitizerSet::LEAK),
+        (SanitizerSet::SAFESTACK, SanitizerSet::MEMORY),
+        (SanitizerSet::SAFESTACK, SanitizerSet::THREAD),
+        (SanitizerSet::SAFESTACK, SanitizerSet::HWADDRESS),
+        (SanitizerSet::SAFESTACK, SanitizerSet::KERNELADDRESS),
+    ];
+
     /// Return sanitizer's name
     ///
     /// Returns none if the flags is a set of sanitizers numbering not exactly one.
@@ -1335,6 +1361,13 @@ impl SanitizerSet {
             SanitizerSet::HWADDRESS => "hwaddress",
             _ => return None,
         })
+    }
+
+    pub fn mutually_exclusive(self) -> Option<(SanitizerSet, SanitizerSet)> {
+        Self::MUTUALLY_EXCLUSIVE
+            .into_iter()
+            .find(|&(a, b)| self.contains(*a) && self.contains(*b))
+            .copied()
     }
 }
 
