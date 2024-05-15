@@ -20,8 +20,8 @@ use rustc_middle::query::Providers;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::trait_def::TraitSpecializationKind;
 use rustc_middle::ty::{
-    self, AdtKind, GenericParamDefKind, ToPredicate, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable,
-    TypeVisitable, TypeVisitableExt, TypeVisitor,
+    self, AdtKind, GenericParamDefKind, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable,
+    TypeVisitable, TypeVisitableExt, TypeVisitor, Upcast,
 };
 use rustc_middle::ty::{GenericArgKind, GenericArgs};
 use rustc_middle::{bug, span_bug};
@@ -685,7 +685,7 @@ fn gather_gat_bounds<'tcx, T: TypeFoldable<TyCtxt<'tcx>>>(
                 // `Self: 'me`.)
                 bounds.insert(
                     ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(ty_param, region_param))
-                        .to_predicate(tcx),
+                        .upcast(tcx),
                 );
             }
         }
@@ -730,7 +730,7 @@ fn gather_gat_bounds<'tcx, T: TypeFoldable<TyCtxt<'tcx>>>(
                         region_a_param,
                         region_b_param,
                     ))
-                    .to_predicate(tcx),
+                    .upcast(tcx),
                 );
             }
         }

@@ -73,7 +73,7 @@ use rustc_middle::bug;
 use rustc_middle::dep_graph::DepContext;
 use rustc_middle::ty::print::{with_forced_trimmed_paths, PrintError, PrintTraitRefExt as _};
 use rustc_middle::ty::relate::{self, RelateResult, TypeRelation};
-use rustc_middle::ty::ToPredicate;
+use rustc_middle::ty::Upcast;
 use rustc_middle::ty::{
     self, error::TypeError, IsSuggestable, List, Region, Ty, TyCtxt, TypeFoldable,
     TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
@@ -516,7 +516,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
                     RegionResolutionError::CannotNormalize(clause, origin) => {
                         let clause: ty::Clause<'tcx> =
-                            clause.map_bound(ty::ClauseKind::TypeOutlives).to_predicate(self.tcx);
+                            clause.map_bound(ty::ClauseKind::TypeOutlives).upcast(self.tcx);
                         self.tcx
                             .dcx()
                             .struct_span_err(origin.span(), format!("cannot normalize `{clause}`"))

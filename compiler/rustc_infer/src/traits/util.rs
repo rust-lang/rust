@@ -3,7 +3,7 @@ use smallvec::smallvec;
 use crate::infer::outlives::components::{push_outlives_components, Component};
 use crate::traits::{self, Obligation, ObligationCauseCode, PredicateObligation};
 use rustc_data_structures::fx::FxHashSet;
-use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt, Upcast};
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
 
@@ -358,7 +358,7 @@ impl<'tcx, O: Elaboratable<'tcx>> Elaborator<'tcx, O> {
                             }
                         })
                         .map(|clause| {
-                            elaboratable.child(bound_clause.rebind(clause).to_predicate(tcx))
+                            elaboratable.child(bound_clause.rebind(clause).upcast(tcx))
                         }),
                 );
             }
@@ -409,14 +409,14 @@ pub fn supertraits<'tcx>(
     tcx: TyCtxt<'tcx>,
     trait_ref: ty::PolyTraitRef<'tcx>,
 ) -> FilterToTraits<Elaborator<'tcx, ty::Predicate<'tcx>>> {
-    elaborate(tcx, [trait_ref.to_predicate(tcx)]).filter_only_self().filter_to_traits()
+    elaborate(tcx, [trait_ref.upcast(tcx)]).filter_only_self().filter_to_traits()
 }
 
 pub fn transitive_bounds<'tcx>(
     tcx: TyCtxt<'tcx>,
     trait_refs: impl Iterator<Item = ty::PolyTraitRef<'tcx>>,
 ) -> FilterToTraits<Elaborator<'tcx, ty::Predicate<'tcx>>> {
-    elaborate(tcx, trait_refs.map(|trait_ref| trait_ref.to_predicate(tcx)))
+    elaborate(tcx, trait_refs.map(|trait_ref| trait_ref.upcast(tcx)))
         .filter_only_self()
         .filter_to_traits()
 }
@@ -431,7 +431,7 @@ pub fn transitive_bounds_that_define_assoc_item<'tcx>(
     trait_refs: impl Iterator<Item = ty::PolyTraitRef<'tcx>>,
     assoc_name: Ident,
 ) -> FilterToTraits<Elaborator<'tcx, ty::Predicate<'tcx>>> {
-    elaborate(tcx, trait_refs.map(|trait_ref| trait_ref.to_predicate(tcx)))
+    elaborate(tcx, trait_refs.map(|trait_ref| trait_ref.upcast(tcx)))
         .filter_only_self_that_defines(assoc_name)
         .filter_to_traits()
 }

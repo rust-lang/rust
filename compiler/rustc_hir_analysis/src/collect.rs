@@ -29,7 +29,7 @@ use rustc_infer::traits::ObligationCause;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::util::{Discr, IntTypeExt};
-use rustc_middle::ty::{self, AdtKind, Const, IsSuggestable, ToPredicate, Ty, TyCtxt};
+use rustc_middle::ty::{self, AdtKind, Const, IsSuggestable, Ty, TyCtxt, Upcast};
 use rustc_middle::{bug, span_bug};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
@@ -1665,7 +1665,7 @@ fn predicates_defined_on(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicate
             def_id, inferred_outlives,
         );
         let inferred_outlives_iter =
-            inferred_outlives.iter().map(|(clause, span)| ((*clause).to_predicate(tcx), *span));
+            inferred_outlives.iter().map(|(clause, span)| ((*clause).upcast(tcx), *span));
         if result.predicates.is_empty() {
             result.predicates = tcx.arena.alloc_from_iter(inferred_outlives_iter);
         } else {

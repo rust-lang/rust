@@ -57,8 +57,8 @@ use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::GenericArgKind;
-use rustc_middle::ty::ToPredicate;
 use rustc_middle::ty::TypeVisitableExt;
+use rustc_middle::ty::Upcast;
 use rustc_middle::ty::{self, Ty, TyCtxt, VariantDef};
 use rustc_session::lint::{BuiltinLintDiag, FutureIncompatibilityReason};
 use rustc_session::{declare_lint, declare_lint_pass, impl_lint_pass};
@@ -734,7 +734,7 @@ fn type_implements_negative_copy_modulo_regions<'tcx>(
         cause: traits::ObligationCause::dummy(),
         param_env,
         recursion_depth: 0,
-        predicate: ty::Binder::dummy(pred).to_predicate(tcx),
+        predicate: ty::Binder::dummy(pred).upcast(tcx),
     };
 
     tcx.infer_ctxt().build().predicate_must_hold_modulo_regions(&obligation)

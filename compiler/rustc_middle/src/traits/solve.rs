@@ -7,8 +7,8 @@ use crate::infer::canonical::{CanonicalVarValues, QueryRegionConstraints};
 use crate::traits::query::NoSolution;
 use crate::traits::Canonical;
 use crate::ty::{
-    self, FallibleTypeFolder, ToPredicate, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeVisitable,
-    TypeVisitor,
+    self, FallibleTypeFolder, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeVisitable, TypeVisitor,
+    Upcast,
 };
 
 use super::BuiltinImplSource;
@@ -33,14 +33,14 @@ impl<'tcx, P> Goal<'tcx, P> {
     pub fn new(
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        predicate: impl ToPredicate<'tcx, P>,
+        predicate: impl Upcast<'tcx, P>,
     ) -> Goal<'tcx, P> {
-        Goal { param_env, predicate: predicate.to_predicate(tcx) }
+        Goal { param_env, predicate: predicate.upcast(tcx) }
     }
 
     /// Updates the goal to one with a different `predicate` but the same `param_env`.
-    pub fn with<Q>(self, tcx: TyCtxt<'tcx>, predicate: impl ToPredicate<'tcx, Q>) -> Goal<'tcx, Q> {
-        Goal { param_env: self.param_env, predicate: predicate.to_predicate(tcx) }
+    pub fn with<Q>(self, tcx: TyCtxt<'tcx>, predicate: impl Upcast<'tcx, Q>) -> Goal<'tcx, Q> {
+        Goal { param_env: self.param_env, predicate: predicate.upcast(tcx) }
     }
 }
 

@@ -42,8 +42,8 @@ use rustc_middle::ty::print::{
     PrintTraitRefExt as _,
 };
 use rustc_middle::ty::{
-    self, SubtypePredicate, ToPolyTraitRef, ToPredicate, TraitRef, Ty, TyCtxt, TypeFoldable,
-    TypeVisitable, TypeVisitableExt,
+    self, SubtypePredicate, ToPolyTraitRef, TraitRef, Ty, TyCtxt, TypeFoldable, TypeVisitable,
+    TypeVisitableExt, Upcast,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::DumpSolverProofTree;
@@ -302,9 +302,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         suggest_increasing_limit: bool,
     ) -> !
     where
-        T: ToPredicate<'tcx> + Clone,
+        T: Upcast<'tcx> + Clone,
     {
-        let predicate = obligation.predicate.clone().to_predicate(self.tcx);
+        let predicate = obligation.predicate.clone().upcast(self.tcx);
         let predicate = self.resolve_vars_if_possible(predicate);
         self.report_overflow_error(
             OverflowCause::TraitSolver(predicate),

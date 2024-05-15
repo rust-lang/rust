@@ -102,7 +102,7 @@ pub use self::predicate::{
     PolyExistentialTraitRef, PolyProjectionPredicate, PolyRegionOutlivesPredicate,
     PolySubtypePredicate, PolyTraitPredicate, PolyTraitRef, PolyTypeOutlivesPredicate, Predicate,
     PredicateKind, ProjectionPredicate, RegionOutlivesPredicate, SubtypePredicate, ToPolyTraitRef,
-    ToPredicate, TraitPredicate, TraitRef, TypeOutlivesPredicate,
+    TraitPredicate, TraitRef, TypeOutlivesPredicate, Upcast,
 };
 pub use self::region::{
     BoundRegion, BoundRegionKind, BoundRegionKind::*, EarlyParamRegion, LateParamRegion, Region,

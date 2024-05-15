@@ -14,8 +14,8 @@ use rustc_infer::infer::{DefineOpaqueTypes, InferOk};
 use rustc_infer::traits::ObligationCauseCode;
 use rustc_middle::traits::{BuiltinImplSource, SignatureMismatchData};
 use rustc_middle::ty::{
-    self, GenericArgs, GenericArgsRef, GenericParamDefKind, ToPolyTraitRef, ToPredicate,
-    TraitPredicate, Ty, TyCtxt,
+    self, GenericArgs, GenericArgsRef, GenericParamDefKind, ToPolyTraitRef, TraitPredicate, Ty,
+    TyCtxt, Upcast,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::DefId;
@@ -676,7 +676,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     let assoc_ty_args = tcx.mk_args(&args);
                     let bound =
                         bound.map_bound(|b| b.kind().skip_binder()).instantiate(tcx, assoc_ty_args);
-                    ty::Binder::bind_with_vars(bound, bound_vars).to_predicate(tcx)
+                    ty::Binder::bind_with_vars(bound, bound_vars).upcast(tcx)
                 };
                 let normalized_bound = normalize_with_depth_to(
                     self,
@@ -1253,13 +1253,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     tcx.require_lang_item(LangItem::Sized, Some(obligation.cause.span)),
                     [source],
                 );
-                nested.push(predicate_to_obligation(tr.to_predicate(tcx)));
+                nested.push(predicate_to_obligation(tr.upcast(tcx)));
 
                 // If the type is `Foo + 'a`, ensure that the type
                 // being cast to `Foo + 'a` outlives `'a`:
                 let outlives = ty::OutlivesPredicate(source, r);
                 nested.push(predicate_to_obligation(
-                    ty::Binder::dummy(ty::ClauseKind::TypeOutlives(outlives)).to_predicate(tcx),
+                    ty::Binder::dummy(ty::ClauseKind::TypeOutlives(outlives)).upcast(tcx),
                 ));
 
                 ImplSource::Builtin(BuiltinImplSource::Misc, nested)

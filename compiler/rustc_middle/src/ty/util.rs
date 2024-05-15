@@ -4,8 +4,8 @@ use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::query::{IntoQueryParam, Providers};
 use crate::ty::layout::{FloatExt, IntegerExt};
 use crate::ty::{
-    self, FallibleTypeFolder, ToPredicate, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
-    TypeVisitableExt,
+    self, FallibleTypeFolder, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
+    TypeVisitableExt, Upcast,
 };
 use crate::ty::{GenericArgKind, GenericArgsRef};
 use rustc_apfloat::Float as _;
@@ -1094,7 +1094,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for OpaqueTypeExpander<'tcx> {
                     // anything that requires `ParamEnv::with_reveal_all_normalized`.
                     term: projection_pred.term,
                 })
-                .to_predicate(self.tcx)
+                .upcast(self.tcx)
         } else {
             p.super_fold_with(self)
         }
