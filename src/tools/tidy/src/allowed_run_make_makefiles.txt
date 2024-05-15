@@ -178,7 +178,6 @@ run-make/native-link-modifier-whole-archive/Makefile
 run-make/no-alloc-shim/Makefile
 run-make/no-builtins-attribute/Makefile
 run-make/no-builtins-lto/Makefile
-run-make/no-cdylib-as-rdylib/Makefile
 run-make/no-duplicate-libs/Makefile
 run-make/no-intermediate-extras/Makefile
 run-make/obey-crate-type-flag/Makefile
