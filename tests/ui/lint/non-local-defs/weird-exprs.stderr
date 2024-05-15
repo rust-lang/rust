@@ -35,7 +35,7 @@ warning: non-local `impl` definition, `impl` blocks should be written at the sam
 LL |         impl Test {
    |         ^^^^^^^^^
    |
-   = note: methods and assoc const are still usable outside the current expression, only `impl Local` and `impl dyn Local` are local and only if the `Local` type is at the same nesting as the `impl` block
+   = note: methods and associated constants are still usable outside the current expression, only `impl Local` and `impl dyn Local` can ever be private, and only if the type is nested in the same item as the `impl`
 help: move this `impl` block outside of the current constant expression `<unnameable>` and up 2 bodies
   --> $DIR/weird-exprs.rs:25:9
    |

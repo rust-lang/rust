@@ -4,7 +4,7 @@ warning: non-local `impl` definition, `impl` blocks should be written at the sam
 LL |     impl Test {
    |     ^^^^^^^^^
    |
-   = note: methods and assoc const are still usable outside the current expression, only `impl Local` and `impl dyn Local` are local and only if the `Local` type is at the same nesting as the `impl` block
+   = note: methods and associated constants are still usable outside the current expression, only `impl Local` and `impl dyn Local` can ever be private, and only if the type is nested in the same item as the `impl`
 help: move this `impl` block outside of the current function `main`
   --> $DIR/exhaustive.rs:10:5
    |
@@ -42,7 +42,7 @@ warning: non-local `impl` definition, `impl` blocks should be written at the sam
 LL |     impl dyn Trait {}
    |     ^^^^^^^^^^^^^^
    |
-   = note: methods and assoc const are still usable outside the current expression, only `impl Local` and `impl dyn Local` are local and only if the `Local` type is at the same nesting as the `impl` block
+   = note: methods and associated constants are still usable outside the current expression, only `impl Local` and `impl dyn Local` can ever be private, and only if the type is nested in the same item as the `impl`
 help: move this `impl` block outside of the current function `main`
   --> $DIR/exhaustive.rs:22:5
    |
@@ -313,7 +313,7 @@ warning: non-local `impl` definition, `impl` blocks should be written at the sam
 LL |         impl InsideMain {
    |         ^^^^^^^^^^^^^^^
    |
-   = note: methods and assoc const are still usable outside the current expression, only `impl Local` and `impl dyn Local` are local and only if the `Local` type is at the same nesting as the `impl` block
+   = note: methods and associated constants are still usable outside the current expression, only `impl Local` and `impl dyn Local` can ever be private, and only if the type is nested in the same item as the `impl`
 help: move this `impl` block outside of the current function `inside_inside` and up 2 bodies
   --> $DIR/exhaustive.rs:79:9
    |
