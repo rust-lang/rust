@@ -261,12 +261,12 @@ impl TokenCursor {
             // below can be removed.
             if let Some(tree) = self.tree_cursor.next_ref() {
                 match tree {
-                    &TokenTree::Token(ref token, spacing) => {
+                    &TokenTree::Token(token, spacing) => {
                         debug_assert!(!matches!(
                             token.kind,
                             token::OpenDelim(_) | token::CloseDelim(_)
                         ));
-                        return (token.clone(), spacing);
+                        return (token, spacing);
                     }
                     &TokenTree::Delimited(sp, spacing, delim, ref tts) => {
                         let trees = tts.clone().into_trees();
@@ -545,7 +545,7 @@ impl<'a> Parser<'a> {
     fn check(&mut self, tok: &TokenKind) -> bool {
         let is_present = self.token == *tok;
         if !is_present {
-            self.expected_tokens.push(TokenType::Token(tok.clone()));
+            self.expected_tokens.push(TokenType::Token(*tok));
         }
         is_present
     }
@@ -1436,7 +1436,7 @@ impl<'a> Parser<'a> {
             _ => {
                 let prev_spacing = self.token_spacing;
                 self.bump();
-                TokenTree::Token(self.prev_token.clone(), prev_spacing)
+                TokenTree::Token(self.prev_token, prev_spacing)
             }
         }
     }
@@ -1617,13 +1617,14 @@ impl<'a> Parser<'a> {
                 // we don't need N spans, but we want at least one, so print all of prev_token
                 dbg_fmt.field("prev_token", &parser.prev_token);
                 // make it easier to peek farther ahead by taking TokenKinds only until EOF
-                let tokens = (0..*lookahead)
-                    .map(|i| parser.look_ahead(i, |tok| tok.kind.clone()))
-                    .scan(parser.prev_token == TokenKind::Eof, |eof, tok| {
-                        let current = eof.then_some(tok.clone()); // include a trailing EOF token
+                let tokens = (0..*lookahead).map(|i| parser.look_ahead(i, |tok| tok.kind)).scan(
+                    parser.prev_token == TokenKind::Eof,
+                    |eof, tok| {
+                        let current = eof.then_some(tok); // include a trailing EOF token
                         *eof |= &tok == &TokenKind::Eof;
                         current
-                    });
+                    },
+                );
                 dbg_fmt.field_with("tokens", |field| field.debug_list().entries(tokens).finish());
                 dbg_fmt.field("approx_token_stream_pos", &parser.num_bump_calls);
 

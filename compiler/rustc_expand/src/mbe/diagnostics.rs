@@ -164,7 +164,7 @@ impl<'a, 'cx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'a, 'cx, 
                     .map_or(true, |failure| failure.is_better_position(*approx_position))
                 {
                     self.best_failure = Some(BestFailure {
-                        token: token.clone(),
+                        token: *token,
                         position_in_tokenstream: *approx_position,
                         msg,
                         remaining_matcher: self
