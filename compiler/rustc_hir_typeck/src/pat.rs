@@ -335,9 +335,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         match adjust_mode {
             AdjustMode::Pass => (expected, def_br, max_ref_mutbl),
             AdjustMode::Reset => (expected, ByRef::No, MutblCap::Mut),
-            AdjustMode::Peel => {
-                self.peel_off_references(pat, expected, def_br, Mutability::Mut, max_ref_mutbl)
-            }
+            AdjustMode::Peel => self.peel_off_references(pat, expected, def_br, max_ref_mutbl),
         }
     }
 
@@ -408,7 +406,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         pat: &'tcx Pat<'tcx>,
         expected: Ty<'tcx>,
         mut def_br: ByRef,
-        max_peelable_mutability: Mutability,
         mut max_ref_mutability: MutblCap,
     ) -> (Ty<'tcx>, ByRef, MutblCap) {
         let mut expected = self.try_structurally_resolve_type(pat.span, expected);
@@ -421,9 +418,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         //
         // See the examples in `ui/match-defbm*.rs`.
         let mut pat_adjustments = vec![];
-        while let ty::Ref(_, inner_ty, inner_mutability) = *expected.kind()
-            && inner_mutability <= max_peelable_mutability
-        {
+        while let ty::Ref(_, inner_ty, inner_mutability) = *expected.kind() {
             debug!("inspecting {:?}", expected);
 
             debug!("current discriminant is Ref, inserting implicit deref");
@@ -2129,32 +2124,39 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             pat.span.at_least_rust_2024() && self.tcx.features().ref_pat_eat_one_layer_2024;
 
         if new_match_ergonomics {
+            let pat_prefix_span =
+                inner.span.find_ancestor_inside(pat.span).map(|end| pat.span.until(end));
+
             if pat_mutbl == Mutability::Not {
                 // Prevent the inner pattern from binding with `ref mut`.
-                pat_info.max_ref_mutbl = pat_info.max_ref_mutbl.cap_to_weakly_not(
-                    inner.span.find_ancestor_inside(pat.span).map(|end| pat.span.until(end)),
-                );
+                pat_info.max_ref_mutbl = pat_info.max_ref_mutbl.cap_to_weakly_not(pat_prefix_span);
             }
 
-            if let ByRef::Yes(inh_mut) = pat_info.binding_mode
-                && pat_mutbl <= inh_mut
-            {
+            if let ByRef::Yes(inh_mut) = pat_info.binding_mode {
+                // ref pattern consumes inherited reference
+
+                if pat_mutbl > inh_mut {
+                    // Tried to match inherited `ref` with `&mut`, which is an error
+                    let err_msg = "cannot match inherited `&` with `&mut` pattern";
+                    let err = if let Some(span) = pat_prefix_span {
+                        let mut err = self.dcx().struct_span_err(span, err_msg);
+                        err.span_suggestion_verbose(
+                            span,
+                            "replace this `&mut` pattern with `&`",
+                            "&",
+                            Applicability::MachineApplicable,
+                        );
+                        err
+                    } else {
+                        self.dcx().struct_span_err(pat.span, err_msg)
+                    };
+                    err.emit();
+                }
+
                 pat_info.binding_mode = ByRef::No;
                 self.typeck_results.borrow_mut().skipped_ref_pats_mut().insert(pat.hir_id);
                 self.check_pat(inner, expected, pat_info);
                 return expected;
-            } else if pat_mutbl == Mutability::Mut {
-                // `&mut` patterns pell off `&` references
-                let (new_expected, new_bm, max_ref_mutbl) = self.peel_off_references(
-                    pat,
-                    expected,
-                    pat_info.binding_mode,
-                    Mutability::Not,
-                    pat_info.max_ref_mutbl,
-                );
-                expected = new_expected;
-                pat_info.binding_mode = new_bm;
-                pat_info.max_ref_mutbl = max_ref_mutbl;
             }
         } else {
             // Reset binding mode on old editions
