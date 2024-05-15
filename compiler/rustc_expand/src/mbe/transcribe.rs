@@ -163,7 +163,7 @@ pub(super) fn transcribe<'a>(
                 if repeat_idx < repeat_len {
                     frame.idx = 0;
                     if let Some(sep) = sep {
-                        result.push(TokenTree::Token(sep.clone(), Spacing::Alone));
+                        result.push(TokenTree::Token(*sep, Spacing::Alone));
                     }
                     continue;
                 }
@@ -404,7 +404,7 @@ pub(super) fn transcribe<'a>(
             // Nothing much to do here. Just push the token to the result, being careful to
             // preserve syntax context.
             mbe::TokenTree::Token(token) => {
-                let mut token = token.clone();
+                let mut token = *token;
                 mut_visit::visit_token(&mut marker, &mut token);
                 let tt = TokenTree::Token(token, Spacing::Alone);
                 result.push(tt);

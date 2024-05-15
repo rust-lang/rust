@@ -381,7 +381,7 @@ impl<'a> Parser<'a> {
     fn error_found_expr_would_be_stmt(&self, lhs: &Expr) {
         self.dcx().emit_err(errors::FoundExprWouldBeStmt {
             span: self.token.span,
-            token: self.token.clone(),
+            token: self.token,
             suggestion: ExprParenthesesNeeded::surrounding(lhs.span),
         });
     }
@@ -456,7 +456,7 @@ impl<'a> Parser<'a> {
         cur_op_span: Span,
     ) -> PResult<'a, P<Expr>> {
         let rhs = if self.is_at_start_of_range_notation_rhs() {
-            let maybe_lt = self.token.clone();
+            let maybe_lt = self.token;
             let attrs = self.parse_outer_attributes()?;
             Some(
                 self.parse_expr_assoc_with(prec + 1, attrs)
@@ -650,7 +650,7 @@ impl<'a> Parser<'a> {
 
     /// Recover on `not expr` in favor of `!expr`.
     fn recover_not_expr(&mut self, lo: Span) -> PResult<'a, (Span, ExprKind)> {
-        let negated_token = self.look_ahead(1, |t| t.clone());
+        let negated_token = self.look_ahead(1, |t| *t);
 
         let sub_diag = if negated_token.is_numeric_lit() {
             errors::NotAsNegationOperatorSub::SuggestNotBitwise
@@ -1613,7 +1613,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_expr_path_start(&mut self) -> PResult<'a, P<Expr>> {
-        let maybe_eq_tok = self.prev_token.clone();
+        let maybe_eq_tok = self.prev_token;
         let (qself, path) = if self.eat_lt() {
             let lt_span = self.prev_token.span;
             let (qself, path) = self.parse_qpath(PathStyle::Expr).map_err(|mut err| {
@@ -2059,7 +2059,7 @@ impl<'a> Parser<'a> {
         &mut self,
         mk_lit_char: impl FnOnce(Symbol, Span) -> L,
     ) -> PResult<'a, L> {
-        let token = self.token.clone();
+        let token = self.token;
         let err = |self_: &Self| {
             let msg = format!("unexpected token: {}", super::token_descr(&token));
             self_.dcx().struct_span_err(token.span, msg)
@@ -2367,7 +2367,7 @@ impl<'a> Parser<'a> {
     fn parse_expr_closure(&mut self) -> PResult<'a, P<Expr>> {
         let lo = self.token.span;
 
-        let before = self.prev_token.clone();
+        let before = self.prev_token;
         let binder = if self.check_keyword(kw::For) {
             let lo = self.token.span;
             let (lifetime_defs, _) = self.parse_late_bound_lifetime_defs()?;
@@ -2398,8 +2398,8 @@ impl<'a> Parser<'a> {
             FnRetTy::Default(_) => {
                 let restrictions =
                     self.restrictions - Restrictions::STMT_EXPR - Restrictions::ALLOW_LET;
-                let prev = self.prev_token.clone();
-                let token = self.token.clone();
+                let prev = self.prev_token;
+                let token = self.token;
                 let attrs = self.parse_outer_attributes()?;
                 match self.parse_expr_res(restrictions, attrs) {
                     Ok((expr, _)) => expr,
@@ -2598,7 +2598,7 @@ impl<'a> Parser<'a> {
             }
         } else {
             let attrs = self.parse_outer_attributes()?; // For recovery.
-            let maybe_fatarrow = self.token.clone();
+            let maybe_fatarrow = self.token;
             let block = if self.check(&token::OpenDelim(Delimiter::Brace)) {
                 self.parse_block()?
             } else if let Some(block) = recover_block_from_condition(self) {
@@ -3803,7 +3803,7 @@ impl<'a> Parser<'a> {
                 return Err(this.dcx().create_err(errors::ExpectedStructField {
                     span: this.look_ahead(1, |t| t.span),
                     ident_span: this.token.span,
-                    token: this.look_ahead(1, |t| t.clone()),
+                    token: this.look_ahead(1, |t| *t),
                 }));
             }
             let (ident, expr) = if is_shorthand {
