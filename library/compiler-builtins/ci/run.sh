@@ -32,6 +32,18 @@ else
     $run --features no-f16-f128 --release
 fi
 
+if [ "${TEST_UNC:-}" = "1" ]; then
+    run="cargo build --manifest-path testcrate/Cargo.toml --target $target --target-dir \"\\\\?\\$(pwd)\""
+    $run
+    $run --release
+    $run --features c
+    $run --features c --release
+    $run --features no-asm
+    $run --features no-asm --release
+    $run --features no-f16-f128
+    $run --features no-f16-f128 --release
+fi
+
 if [ -d /builtins-target ]; then
     rlib_paths=/builtins-target/"${target}"/debug/deps/libcompiler_builtins-*.rlib
 else
