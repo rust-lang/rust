@@ -1350,12 +1350,12 @@ fn check_impl<'tcx>(
                         // We already have a better span.
                         continue;
                     }
-                    if let Some(pred) = obligation.predicate.to_opt_poly_trait_pred()
+                    if let Some(pred) = obligation.predicate.as_trait_clause()
                         && pred.skip_binder().self_ty() == trait_ref.self_ty()
                     {
                         obligation.cause.span = hir_self_ty.span;
                     }
-                    if let Some(pred) = obligation.predicate.to_opt_poly_projection_pred()
+                    if let Some(pred) = obligation.predicate.as_projection_clause()
                         && pred.skip_binder().self_ty() == trait_ref.self_ty()
                     {
                         obligation.cause.span = hir_self_ty.span;

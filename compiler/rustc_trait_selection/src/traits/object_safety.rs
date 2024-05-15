@@ -653,7 +653,7 @@ fn object_ty_for_trait<'tcx>(
     let mut elaborated_predicates: Vec<_> = elaborate(tcx, [pred])
         .filter_map(|pred| {
             debug!(?pred);
-            let pred = pred.to_opt_poly_projection_pred()?;
+            let pred = pred.as_projection_clause()?;
             Some(pred.map_bound(|p| {
                 ty::ExistentialPredicate::Projection(ty::ExistentialProjection::erase_self_ty(
                     tcx, p,

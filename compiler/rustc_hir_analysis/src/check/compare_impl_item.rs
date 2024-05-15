@@ -2250,7 +2250,7 @@ fn try_report_async_mismatch<'tcx>(
     for error in errors {
         if let ObligationCauseCode::WhereClause(def_id, _) = *error.root_obligation.cause.code()
             && def_id == async_future_def_id
-            && let Some(proj) = error.root_obligation.predicate.to_opt_poly_projection_pred()
+            && let Some(proj) = error.root_obligation.predicate.as_projection_clause()
             && let Some(proj) = proj.no_bound_vars()
             && infcx.can_eq(
                 error.root_obligation.param_env,

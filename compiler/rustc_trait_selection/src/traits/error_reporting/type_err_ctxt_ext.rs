@@ -1417,7 +1417,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         };
 
         let mut code = obligation.cause.code();
-        let mut pred = obligation.predicate.to_opt_poly_trait_pred();
+        let mut pred = obligation.predicate.as_trait_clause();
         while let Some((next_code, next_pred)) = code.parent() {
             if let Some(pred) = pred {
                 self.enter_forall(pred, |pred| {
@@ -1481,16 +1481,16 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             return true;
         }
 
-        if let Some(error) = error.to_opt_poly_trait_pred() {
+        if let Some(error) = error.as_trait_clause() {
             self.enter_forall(error, |error| {
                 elaborate(self.tcx, std::iter::once(cond))
-                    .filter_map(|implied| implied.to_opt_poly_trait_pred())
+                    .filter_map(|implied| implied.as_trait_clause())
                     .any(|implied| self.can_match_trait(error, implied))
             })
-        } else if let Some(error) = error.to_opt_poly_projection_pred() {
+        } else if let Some(error) = error.as_projection_clause() {
             self.enter_forall(error, |error| {
                 elaborate(self.tcx, std::iter::once(cond))
-                    .filter_map(|implied| implied.to_opt_poly_projection_pred())
+                    .filter_map(|implied| implied.as_projection_clause())
                     .any(|implied| self.can_match_projection(error, implied))
             })
         } else {
@@ -2415,8 +2415,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         return e;
                     }
                     err.note(format!("cannot satisfy `{predicate}`"));
-                    let impl_candidates = self
-                        .find_similar_impl_candidates(predicate.to_opt_poly_trait_pred().unwrap());
+                    let impl_candidates =
+                        self.find_similar_impl_candidates(predicate.as_trait_clause().unwrap());
                     if impl_candidates.len() < 40 {
                         self.report_similar_impl_candidates(
                             impl_candidates.as_slice(),
