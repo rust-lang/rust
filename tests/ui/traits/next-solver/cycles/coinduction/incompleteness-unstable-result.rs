@@ -1,5 +1,11 @@
+//@ revisions: with without
 //@ compile-flags: -Znext-solver
+//@ check-pass
 #![feature(rustc_attrs)]
+
+// While this originally tested for unstable global caching, this is no
+// longer the case due to changes in the provisional cache. This is still
+// useful to catch provisional cache bugs however.
 
 // This test is incredibly subtle. At its core the goal is to get a coinductive cycle,
 // which, depending on its root goal, either holds or errors. We achieve this by getting
@@ -56,6 +62,7 @@ where
     X: IncompleteGuidance<u32, i8>,
     X: IncompleteGuidance<u32, i16>,
 {
+    #[cfg(with)]
     impls_trait::<B<X>, _, _, _>(); // entering the cycle from `B` works
 
     // entering the cycle from `A` fails, but would work if we were to use the cache
