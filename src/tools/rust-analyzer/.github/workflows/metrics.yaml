@@ -18,17 +18,14 @@ jobs:
       - name: Install Rust toolchain
         run: |
           rustup update --no-self-update stable
-          rustup component add rustfmt rust-src
           rustup default stable
+          rustup component add --toolchain stable rustfmt rust-src
+
       - name: Cache cargo
-        uses: actions/cache@v4
+        uses: Swatinem/rust-cache@640a22190e7a783d4c409684cea558f081f92012
         with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
           key: ${{ runner.os }}-cargo-${{ github.sha }}
+          cache-targets: "false"
 
   build_metrics:
     runs-on: ubuntu-latest
@@ -39,23 +36,19 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Restore cargo cache
-        uses: actions/cache@v4
+        uses: Swatinem/rust-cache@640a22190e7a783d4c409684cea558f081f92012
         with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
           key: ${{ runner.os }}-cargo-${{ github.sha }}
+          cache-targets: "false"
 
       - name: Collect build metrics
         run: cargo xtask metrics build
 
       - name: Cache target
-        uses: actions/cache@v4
+        uses: Swatinem/rust-cache@640a22190e7a783d4c409684cea558f081f92012
         with:
-          path: target/
-          key: ${{ runner.os }}-target-${{ github.sha }}
+          key: ${{ runner.os }}-cargo-${{ github.sha }}
+          cache-targets: "true"
 
       - name: Upload build metrics
         uses: actions/upload-artifact@v4
@@ -76,20 +69,10 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Restore cargo cache
-        uses: actions/cache@v4
+        uses: Swatinem/rust-cache@640a22190e7a783d4c409684cea558f081f92012
         with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
           key: ${{ runner.os }}-cargo-${{ github.sha }}
-
-      - name: Restore target cache
-        uses: actions/cache@v4
-        with:
-          path: target/
-          key: ${{ runner.os }}-target-${{ github.sha }}
+          cache-targets: "true"
 
       - name: Collect metrics
         run: cargo xtask metrics "${{ matrix.names }}"
