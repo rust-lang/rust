@@ -160,7 +160,7 @@ impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'match
                     .is_none_or(|failure| failure.is_better_position(*approx_position))
                 {
                     self.best_failure = Some(BestFailure {
-                        token: token.clone(),
+                        token: *token,
                         position_in_tokenstream: *approx_position,
                         msg,
                         remaining_matcher: self
