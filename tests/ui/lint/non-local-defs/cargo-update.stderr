@@ -11,9 +11,6 @@ help: move this `impl` block outside of the current constant `_IMPL_DEBUG`
    |
 LL | non_local_macro::non_local_impl!(LocalStruct);
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   | |
-   | may need to be moved as well
-   | may need to be moved as well
    = note: the macro `non_local_macro::non_local_impl` may come from an old version of the `non_local_macro` crate, try updating your dependency with `cargo update -p non_local_macro`
    = note: items in an anonymous const item (`const _: () = { ... }`) are treated as in the same scope as the anonymous const's declaration
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>

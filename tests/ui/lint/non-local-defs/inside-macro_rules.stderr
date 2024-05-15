@@ -13,10 +13,7 @@ help: move this `impl` block outside of the current function `my_func`
   --> $DIR/inside-macro_rules.rs:9:13
    |
 LL |             impl MacroTrait for OutsideStruct {}
-   |             ^^^^^----------^^^^^-------------^^^
-   |                  |              |
-   |                  |              may need to be moved as well
-   |                  may need to be moved as well
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ...
 LL | m!();
    | ---- in this macro invocation

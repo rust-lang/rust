@@ -9,11 +9,7 @@ LL |     impl PartialEq<()> for Dog {
 help: move this `impl` block outside of the current function `main`
   --> $DIR/exhaustive-trait.rs:7:5
    |
-LL |       impl PartialEq<()> for Dog {
-   |       ^    -------------     --- may need to be moved as well
-   |       |    |
-   |  _____|    may need to be moved as well
-   | |
+LL | /     impl PartialEq<()> for Dog {
 LL | |
 LL | |         fn eq(&self, _: &()) -> bool {
 LL | |             todo!()
@@ -34,11 +30,7 @@ LL |     impl PartialEq<()> for &Dog {
 help: move this `impl` block outside of the current function `main`
   --> $DIR/exhaustive-trait.rs:14:5
    |
-LL |       impl PartialEq<()> for &Dog {
-   |       ^    -------------     ---- may need to be moved as well
-   |       |    |
-   |  _____|    may need to be moved as well
-   | |
+LL | /     impl PartialEq<()> for &Dog {
 LL | |
 LL | |         fn eq(&self, _: &()) -> bool {
 LL | |             todo!()
@@ -58,11 +50,7 @@ LL |     impl PartialEq<Dog> for () {
 help: move this `impl` block outside of the current function `main`
   --> $DIR/exhaustive-trait.rs:21:5
    |
-LL |       impl PartialEq<Dog> for () {
-   |       ^    --------------     -- may need to be moved as well
-   |       |    |
-   |  _____|    may need to be moved as well
-   | |
+LL | /     impl PartialEq<Dog> for () {
 LL | |
 LL | |         fn eq(&self, _: &Dog) -> bool {
 LL | |             todo!()
@@ -82,11 +70,7 @@ LL |     impl PartialEq<&Dog> for () {
 help: move this `impl` block outside of the current function `main`
   --> $DIR/exhaustive-trait.rs:28:5
    |
-LL |       impl PartialEq<&Dog> for () {
-   |       ^    ---------------     -- may need to be moved as well
-   |       |    |
-   |  _____|    may need to be moved as well
-   | |
+LL | /     impl PartialEq<&Dog> for () {
 LL | |
 LL | |         fn eq(&self, _: &&Dog) -> bool {
 LL | |             todo!()
@@ -106,11 +90,7 @@ LL |     impl PartialEq<Dog> for &Dog {
 help: move this `impl` block outside of the current function `main`
   --> $DIR/exhaustive-trait.rs:35:5
    |
-LL |       impl PartialEq<Dog> for &Dog {
-   |       ^    --------------     ---- may need to be moved as well
-   |       |    |
-   |  _____|    may need to be moved as well
-   | |
+LL | /     impl PartialEq<Dog> for &Dog {
 LL | |
 LL | |         fn eq(&self, _: &Dog) -> bool {
 LL | |             todo!()
@@ -130,11 +110,7 @@ LL |     impl PartialEq<&Dog> for &Dog {
 help: move this `impl` block outside of the current function `main`
   --> $DIR/exhaustive-trait.rs:42:5
    |
-LL |       impl PartialEq<&Dog> for &Dog {
-   |       ^    ---------------     ---- may need to be moved as well
-   |       |    |
-   |  _____|    may need to be moved as well
-   | |
+LL | /     impl PartialEq<&Dog> for &Dog {
 LL | |
 LL | |         fn eq(&self, _: &&Dog) -> bool {
 LL | |             todo!()

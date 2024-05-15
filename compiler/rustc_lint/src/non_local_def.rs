@@ -1,3 +1,5 @@
+use rustc_hir::intravisit::{self, Visitor};
+use rustc_hir::HirId;
 use rustc_hir::{def::DefKind, Body, Item, ItemKind, Node, TyKind};
 use rustc_hir::{Path, QPath};
 use rustc_infer::infer::InferCtxt;
@@ -214,6 +216,29 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
                     None
                 };
 
+                let mut collector = PathCollector { paths: Vec::new() };
+                collector.visit_ty(&impl_.self_ty);
+                if let Some(of_trait) = &impl_.of_trait {
+                    collector.visit_trait_ref(of_trait);
+                }
+                collector.visit_generics(&impl_.generics);
+
+                let may_move: Vec<Span> = collector
+                    .paths
+                    .into_iter()
+                    .filter_map(|path| {
+                        if path_has_local_parent(&path, cx, parent, parent_parent) {
+                            if let Some(args) = &path.segments.last().unwrap().args {
+                                Some(path.span.until(args.span_ext))
+                            } else {
+                                Some(path.span)
+                            }
+                        } else {
+                            None
+                        }
+                    })
+                    .collect();
+
                 let const_anon = matches!(parent_def_kind, DefKind::Const | DefKind::Static { .. })
                     .then_some(span_for_const_anon_suggestion);
 
@@ -223,14 +248,13 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
                     NonLocalDefinitionsDiag::Impl {
                         depth: self.body_depth,
                         move_help: item.span,
-                        self_ty: impl_.self_ty.span,
-                        of_trait: impl_.of_trait.map(|t| t.path.span),
                         body_kind_descr: cx.tcx.def_kind_descr(parent_def_kind, parent),
                         body_name: parent_opt_item_name
                             .map(|s| s.to_ident_string())
                             .unwrap_or_else(|| "<unnameable>".to_string()),
                         cargo_update: cargo_update(),
                         const_anon,
+                        may_move,
                         has_trait: impl_.of_trait.is_some(),
                     },
                 )
@@ -345,6 +369,18 @@ impl<'a, 'tcx, F: FnMut(DefId) -> bool> TypeFolder<TyCtxt<'tcx>>
         } else {
             t.super_fold_with(self)
         }
+    }
+}
+
+/// Simple hir::Path collector
+struct PathCollector<'tcx> {
+    paths: Vec<Path<'tcx>>,
+}
+
+impl<'tcx> Visitor<'tcx> for PathCollector<'tcx> {
+    fn visit_path(&mut self, path: &Path<'tcx>, _id: HirId) {
+        self.paths.push(path.clone()); // need to clone, bc of the restricted lifetime
+        intravisit::walk_path(self, path)
     }
 }
 

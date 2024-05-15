@@ -10,10 +10,7 @@ help: move this `impl` block outside of the current constant expression `<unname
   --> $DIR/weird-exprs.rs:8:5
    |
 LL |     impl Uto for *mut Test {}
-   |     ^^^^^---^^^^^---------^^^
-   |          |       |
-   |          |       may need to be moved as well
-   |          may need to be moved as well
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
    = note: `#[warn(non_local_definitions)]` on by default
 
@@ -29,10 +26,7 @@ help: move this `impl` block outside of the current constant expression `<unname
   --> $DIR/weird-exprs.rs:16:9
    |
 LL |         impl Uto for Test {}
-   |         ^^^^^---^^^^^----^^^
-   |              |       |
-   |              |       may need to be moved as well
-   |              may need to be moved as well
+   |         ^^^^^^^^^^^^^^^^^^^^
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
@@ -45,10 +39,7 @@ LL |         impl Test {
 help: move this `impl` block outside of the current constant expression `<unnameable>` and up 2 bodies
   --> $DIR/weird-exprs.rs:25:9
    |
-LL |           impl Test {
-   |           ^    ---- may need to be moved as well
-   |  _________|
-   | |
+LL | /         impl Test {
 LL | |
 LL | |             fn bar() {}
 LL | |         }
@@ -67,10 +58,7 @@ help: move this `impl` block outside of the current constant expression `<unname
   --> $DIR/weird-exprs.rs:34:9
    |
 LL |         impl Uto for &Test {}
-   |         ^^^^^---^^^^^-----^^^
-   |              |       |
-   |              |       may need to be moved as well
-   |              may need to be moved as well
+   |         ^^^^^^^^^^^^^^^^^^^^^
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
@@ -85,10 +73,7 @@ help: move this `impl` block outside of the current constant expression `<unname
   --> $DIR/weird-exprs.rs:41:9
    |
 LL |         impl Uto for &(Test,) {}
-   |         ^^^^^---^^^^^--------^^^
-   |              |       |
-   |              |       may need to be moved as well
-   |              may need to be moved as well
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
@@ -103,10 +88,7 @@ help: move this `impl` block outside of the current constant expression `<unname
   --> $DIR/weird-exprs.rs:48:9
    |
 LL |         impl Uto for &(Test,Test) {}
-   |         ^^^^^---^^^^^------------^^^
-   |              |       |
-   |              |       may need to be moved as well
-   |              may need to be moved as well
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: 6 warnings emitted

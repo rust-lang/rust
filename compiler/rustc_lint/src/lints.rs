@@ -1337,8 +1337,7 @@ pub enum NonLocalDefinitionsDiag {
         cargo_update: Option<NonLocalDefinitionsCargoUpdateNote>,
         const_anon: Option<Option<Span>>,
         move_help: Span,
-        self_ty: Span,
-        of_trait: Option<Span>,
+        may_move: Vec<Span>,
         has_trait: bool,
     },
     MacroRules {
@@ -1361,8 +1360,7 @@ impl<'a> LintDiagnostic<'a, ()> for NonLocalDefinitionsDiag {
                 cargo_update,
                 const_anon,
                 move_help,
-                self_ty,
-                of_trait,
+                may_move,
                 has_trait,
             } => {
                 diag.primary_message(fluent::lint_non_local_definitions_impl);
@@ -1376,10 +1374,10 @@ impl<'a> LintDiagnostic<'a, ()> for NonLocalDefinitionsDiag {
                 } else {
                     diag.note(fluent::lint_without_trait);
                 }
+
                 let mut ms = MultiSpan::from_span(move_help);
-                ms.push_span_label(self_ty, fluent::lint_non_local_definitions_may_move);
-                if let Some(of_trait) = of_trait {
-                    ms.push_span_label(of_trait, fluent::lint_non_local_definitions_may_move);
+                for sp in may_move {
+                    ms.push_span_label(sp, fluent::lint_non_local_definitions_may_move);
                 }
                 diag.span_help(ms, fluent::lint_help);
 

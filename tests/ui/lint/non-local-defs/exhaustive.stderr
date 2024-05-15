@@ -8,10 +8,7 @@ LL |     impl Test {
 help: move this `impl` block outside of the current function `main`
   --> $DIR/exhaustive.rs:10:5
    |
-LL |       impl Test {
-   |       ^    ---- may need to be moved as well
-   |  _____|
-   | |
+LL | /     impl Test {
 LL | |
 LL | |         fn foo() {}
 LL | |     }
@@ -30,11 +27,7 @@ LL |     impl Display for Test {
 help: move this `impl` block outside of the current function `main`
   --> $DIR/exhaustive.rs:15:5
    |
-LL |       impl Display for Test {
-   |       ^    -------     ---- may need to be moved as well
-   |       |    |
-   |  _____|    may need to be moved as well
-   | |
+LL | /     impl Display for Test {
 LL | |
 LL | |         fn fmt(&self, _f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 LL | |             todo!()
@@ -54,9 +47,7 @@ help: move this `impl` block outside of the current function `main`
   --> $DIR/exhaustive.rs:22:5
    |
 LL |     impl dyn Trait {}
-   |     ^^^^^---------^^^
-   |          |
-   |          may need to be moved as well
+   |     ^^^^^^^^^^^^^^^^^
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
@@ -71,10 +62,7 @@ help: move this `impl` block outside of the current function `main`
   --> $DIR/exhaustive.rs:25:5
    |
 LL |     impl<T: Trait> Trait for Vec<T> { }
-   |     ^^^^^^^^^^^^^^^-----^^^^^------^^^^
-   |                    |         |
-   |                    |         may need to be moved as well
-   |                    may need to be moved as well
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
@@ -89,10 +77,7 @@ help: move this `impl` block outside of the current function `main`
   --> $DIR/exhaustive.rs:28:5
    |
 LL |     impl Trait for &dyn Trait {}
-   |     ^^^^^-----^^^^^----------^^^
-   |          |         |
-   |          |         may need to be moved as well
-   |          may need to be moved as well
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
@@ -107,10 +92,7 @@ help: move this `impl` block outside of the current function `main`
   --> $DIR/exhaustive.rs:31:5
    |
 LL |     impl Trait for *mut Test {}
-   |     ^^^^^-----^^^^^---------^^^
-   |          |         |
-   |          |         may need to be moved as well
-   |          may need to be moved as well
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
@@ -125,10 +107,7 @@ help: move this `impl` block outside of the current function `main`
   --> $DIR/exhaustive.rs:34:5
    |
 LL |     impl Trait for *mut [Test] {}
-   |     ^^^^^-----^^^^^-----------^^^
-   |          |         |
-   |          |         may need to be moved as well
-   |          may need to be moved as well
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
@@ -143,10 +122,7 @@ help: move this `impl` block outside of the current function `main`
   --> $DIR/exhaustive.rs:37:5
    |
 LL |     impl Trait for [Test; 8] {}
-   |     ^^^^^-----^^^^^---------^^^
-   |          |         |
-   |          |         may need to be moved as well
-   |          may need to be moved as well
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
@@ -161,10 +137,7 @@ help: move this `impl` block outside of the current function `main`
   --> $DIR/exhaustive.rs:40:5
    |
 LL |     impl Trait for (Test,) {}
-   |     ^^^^^-----^^^^^-------^^^
-   |          |         |
-   |          |         may need to be moved as well
-   |          may need to be moved as well
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
@@ -179,10 +152,7 @@ help: move this `impl` block outside of the current function `main`
   --> $DIR/exhaustive.rs:43:5
    |
 LL |     impl Trait for fn(Test) -> () {}
-   |     ^^^^^-----^^^^^--------------^^^
-   |          |         |
-   |          |         may need to be moved as well
-   |          may need to be moved as well
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
@@ -197,10 +167,7 @@ help: move this `impl` block outside of the current function `main`
   --> $DIR/exhaustive.rs:46:5
    |
 LL |     impl Trait for fn() -> Test {}
-   |     ^^^^^-----^^^^^------------^^^
-   |          |         |
-   |          |         may need to be moved as well
-   |          may need to be moved as well
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
@@ -215,10 +182,7 @@ help: move this `impl` block outside of the current closure `<unnameable>` and u
   --> $DIR/exhaustive.rs:50:9
    |
 LL |         impl Trait for Test {}
-   |         ^^^^^-----^^^^^----^^^
-   |              |         |
-   |              |         may need to be moved as well
-   |              may need to be moved as well
+   |         ^^^^^^^^^^^^^^^^^^^^^^
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
@@ -233,10 +197,9 @@ help: move this `impl` block outside of the current function `main`
   --> $DIR/exhaustive.rs:58:5
    |
 LL |     impl Trait for *mut InsideMain {}
-   |     ^^^^^-----^^^^^---------------^^^
-   |          |         |
-   |          |         may need to be moved as well
-   |          may need to be moved as well
+   |     ^^^^^^^^^^^^^^^^^^^^----------^^^
+   |                         |
+   |                         may need to be moved as well
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
@@ -251,10 +214,9 @@ help: move this `impl` block outside of the current function `main`
   --> $DIR/exhaustive.rs:60:5
    |
 LL |     impl Trait for *mut [InsideMain] {}
-   |     ^^^^^-----^^^^^-----------------^^^
-   |          |         |
-   |          |         may need to be moved as well
-   |          may need to be moved as well
+   |     ^^^^^^^^^^^^^^^^^^^^^----------^^^^
+   |                          |
+   |                          may need to be moved as well
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
@@ -269,10 +231,9 @@ help: move this `impl` block outside of the current function `main`
   --> $DIR/exhaustive.rs:62:5
    |
 LL |     impl Trait for [InsideMain; 8] {}
-   |     ^^^^^-----^^^^^---------------^^^
-   |          |         |
-   |          |         may need to be moved as well
-   |          may need to be moved as well
+   |     ^^^^^^^^^^^^^^^^----------^^^^^^^
+   |                     |
+   |                     may need to be moved as well
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
@@ -287,10 +248,9 @@ help: move this `impl` block outside of the current function `main`
   --> $DIR/exhaustive.rs:64:5
    |
 LL |     impl Trait for (InsideMain,) {}
-   |     ^^^^^-----^^^^^-------------^^^
-   |          |         |
-   |          |         may need to be moved as well
-   |          may need to be moved as well
+   |     ^^^^^^^^^^^^^^^^----------^^^^^
+   |                     |
+   |                     may need to be moved as well
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
@@ -305,10 +265,9 @@ help: move this `impl` block outside of the current function `main`
   --> $DIR/exhaustive.rs:66:5
    |
 LL |     impl Trait for fn(InsideMain) -> () {}
-   |     ^^^^^-----^^^^^--------------------^^^
-   |          |         |
-   |          |         may need to be moved as well
-   |          may need to be moved as well
+   |     ^^^^^^^^^^^^^^^^^^----------^^^^^^^^^^
+   |                       |
+   |                       may need to be moved as well
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
@@ -323,10 +282,9 @@ help: move this `impl` block outside of the current function `main`
   --> $DIR/exhaustive.rs:68:5
    |
 LL |     impl Trait for fn() -> InsideMain {}
-   |     ^^^^^-----^^^^^------------------^^^
-   |          |         |
-   |          |         may need to be moved as well
-   |          may need to be moved as well
+   |     ^^^^^^^^^^^^^^^^^^^^^^^----------^^^
+   |                            |
+   |                            may need to be moved as well
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
@@ -340,11 +298,7 @@ LL |         impl Display for InsideMain {
 help: move this `impl` block outside of the current function `inside_inside` and up 2 bodies
   --> $DIR/exhaustive.rs:72:9
    |
-LL |           impl Display for InsideMain {
-   |           ^    -------     ---------- may need to be moved as well
-   |           |    |
-   |  _________|    may need to be moved as well
-   | |
+LL | /         impl Display for InsideMain {
 LL | |
 LL | |             fn fmt(&self, _f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 LL | |                 todo!()
@@ -363,10 +317,7 @@ LL |         impl InsideMain {
 help: move this `impl` block outside of the current function `inside_inside` and up 2 bodies
   --> $DIR/exhaustive.rs:79:9
    |
-LL |           impl InsideMain {
-   |           ^    ---------- may need to be moved as well
-   |  _________|
-   | |
+LL | /         impl InsideMain {
 LL | |
 LL | |             fn bar() {}
 LL | |         }

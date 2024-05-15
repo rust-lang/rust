@@ -1,18 +1,26 @@
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
-  --> $DIR/trait-solver-overflow-123573.rs:12:5
+  --> $DIR/suggest-moving-inner.rs:12:5
    |
-LL |     impl Test for &Local {}
-   |     ^^^^^^^^^^^^^^^^^^^^
+LL |     impl<T> Trait<InsideMain> for &Vec<below::Type<(InsideMain, T)>>
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
    = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
 help: move this `impl` block outside of the current function `main`
-  --> $DIR/trait-solver-overflow-123573.rs:12:5
+  --> $DIR/suggest-moving-inner.rs:12:5
    |
-LL |     impl Test for &Local {}
-   |     ^^^^^^^^^^^^^^^-----^^^
-   |                    |
-   |                    may need to be moved as well
+LL |       impl<T> Trait<InsideMain> for &Vec<below::Type<(InsideMain, T)>>
+   |       ^             ----------           -----------  ---------- may need to be moved as well
+   |       |             |                    |
+   |       |             |                    may need to be moved as well
+   |  _____|             may need to be moved as well
+   | |
+LL | |
+LL | |     where
+LL | |         T: HasFoo
+   | |            ------ may need to be moved as well
+LL | |     {}
+   | |______^
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
    = note: `#[warn(non_local_definitions)]` on by default
 
