@@ -457,6 +457,10 @@ define_Conf! {
     ///
     /// Whether `unwrap` should be allowed in test functions or `#[cfg(test)]`
     (allow_unwrap_in_tests: bool = false),
+    /// Lint: PANIC.
+    ///
+    /// Whether `panic` should be allowed in test functions or `#[cfg(test)]`
+    (allow_panic_in_tests: bool = false),
     /// Lint: DBG_MACRO.
     ///
     /// Whether `dbg!` should be allowed in test functions or `#[cfg(test)]`
