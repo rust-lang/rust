@@ -51,7 +51,7 @@
 //! assert!(good_result.is_ok() && !good_result.is_err());
 //! assert!(bad_result.is_err() && !bad_result.is_ok());
 //!
-//! // `map` and `map_err` consume the `Result` and produces another.
+//! // `map` and `map_err` consume the `Result` and produce another.
 //! let good_result: Result<i32, i32> = good_result.map(|i| i + 1);
 //! let bad_result: Result<i32, i32> = bad_result.map_err(|i| i - 1);
 //! assert_eq!(good_result, Ok(11));
