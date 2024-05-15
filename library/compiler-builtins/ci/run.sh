@@ -34,7 +34,7 @@ fi
 
 if [ "${TEST_VERBATIM:-}" = "1" ]; then
     verb_path=$(cmd.exe //C echo \\\\?\\%cd%\\testcrate\\target2)
-    run="cargo test --manifest-path testcrate/Cargo.toml --target $target --target-dir $verb_path"
+    run="cargo build --manifest-path testcrate/Cargo.toml --target $target --target-dir $verb_path"
     $run
     $run --release
     $run --features c
