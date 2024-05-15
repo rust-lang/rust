@@ -131,6 +131,7 @@ impl ConfigBuilder {
             "--compile-lib-path=",
             "--run-lib-path=",
             "--python=",
+            // FIXME(fmease): Do we need to set htmldocck-path to "", too?
             "--jsondocck-path=",
             "--src-base=",
             "--build-base=",

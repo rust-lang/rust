@@ -1766,13 +1766,18 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
             cmd.arg("--rustdoc-path").arg(builder.rustdoc(compiler));
         }
 
+        if mode == "rustdoc" {
+            // Use the beta compiler for htmldocck.
+            let compiler = compiler.with_stage(0);
+            cmd.arg("--htmldocck-path").arg(builder.ensure(tool::HtmlDocCk { compiler, target }));
+        }
+
         if mode == "rustdoc-json" {
-            // Use the beta compiler for jsondocck
-            let json_compiler = compiler.with_stage(0);
-            cmd.arg("--jsondocck-path")
-                .arg(builder.ensure(tool::JsonDocCk { compiler: json_compiler, target }));
+            // Use the beta compiler for jsondocck.
+            let compiler = compiler.with_stage(0);
+            cmd.arg("--jsondocck-path").arg(builder.ensure(tool::JsonDocCk { compiler, target }));
             cmd.arg("--jsondoclint-path")
-                .arg(builder.ensure(tool::JsonDocLint { compiler: json_compiler, target }));
+                .arg(builder.ensure(tool::JsonDocLint { compiler, target }));
         }
 
         if mode == "coverage-map" {

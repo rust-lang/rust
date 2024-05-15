@@ -193,8 +193,11 @@ pub struct Config {
     /// The coverage-dump executable.
     pub coverage_dump_path: Option<PathBuf>,
 
-    /// The Python executable to use for LLDB and htmldocck.
+    /// The Python executable to use for LLDB.
     pub python: String,
+
+    /// The htmldocck executable.
+    pub htmldocck_path: Option<String>,
 
     /// The jsondocck executable.
     pub jsondocck_path: Option<String>,

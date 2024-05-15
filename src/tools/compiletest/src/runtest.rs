@@ -3030,9 +3030,16 @@ impl<'test> TestCx<'test> {
         if self.props.check_test_line_numbers_match {
             self.check_rustdoc_test_option(proc_res);
         } else {
-            let root = self.config.find_rust_src_root().unwrap();
-            let mut cmd = Command::new(&self.config.python);
-            cmd.arg(root.join("src/etc/htmldocck.py")).arg(&out_dir).arg(&self.testpaths.file);
+            // FIXME(fmease): Temporary commented out code:
+            // FIXME(fmease): I don't like this unwrap!
+            let mut cmd = Command::new(self.config.htmldocck_path.as_ref().unwrap());
+            cmd.arg("--doc-dir").arg(&out_dir).arg("--template").arg(&self.testpaths.file);
+
+            // let root = self.config.find_rust_src_root().unwrap();
+            // let mut cmd = Command::new(&self.config.python);
+            // cmd.arg(root.join("src/etc/htmldocck.py"));
+            // cmd.arg(&out_dir).arg(&self.testpaths.file);
+
             if self.config.bless {
                 cmd.arg("--bless");
             }
