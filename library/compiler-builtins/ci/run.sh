@@ -33,7 +33,7 @@ else
 fi
 
 if [ "${TEST_UNC:-}" = "1" ]; then
-    run="cargo build --manifest-path testcrate/Cargo.toml --target $target --target-dir \"\\\\?\\$(pwd)\""
+    run="cargo build --manifest-path testcrate/Cargo.toml --target $target --target-dir \\\\?\\$TEMP\\test_unc"
     $run
     $run --release
     $run --features c
