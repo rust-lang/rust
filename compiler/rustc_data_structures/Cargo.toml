@@ -14,7 +14,7 @@ indexmap = { version = "2.0.0" }
 jobserver_crate = { version = "0.1.28", package = "jobserver" }
 libc = "0.2"
 measureme = "11"
-rustc-hash = "1.1.0"
+rustc-hash = { version = "1.1.0", features = ["nightly"] }
 rustc-rayon = { version = "0.5.0", optional = true }
 rustc-rayon-core = { version = "0.5.0", optional = true }
 rustc_arena = { path = "../rustc_arena" }

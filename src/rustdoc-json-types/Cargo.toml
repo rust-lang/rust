@@ -8,7 +8,7 @@ path = "lib.rs"
 
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
-rustc-hash = "1.1.0"
+rustc-hash = { version = "1.1.0", features = ["nightly"] }
 
 [dev-dependencies]
 serde_json = "1.0"

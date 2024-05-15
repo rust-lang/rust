@@ -135,7 +135,7 @@ object = { version = "0.33.0", default-features = false, features = [
 pulldown-cmark-to-cmark = "10.0.4"
 pulldown-cmark = { version = "0.9.0", default-features = false }
 rayon = "1.8.0"
-rustc-hash = "1.1.0"
+rustc-hash = { version = "1.1.0", features = ["nightly"] }
 semver = "1.0.14"
 serde = { version = "1.0.192", features = ["derive"] }
 serde_json = "1.0.108"
