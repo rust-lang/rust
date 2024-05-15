@@ -170,6 +170,7 @@ pub fn test_iter() {
 }
 
 #[test]
+#[allow(for_loops_over_fallibles)]
 pub fn test_iter_mut() {
     let mut ok: Result<isize, &'static str> = Ok(100);
     for loc in ok.iter_mut() {
