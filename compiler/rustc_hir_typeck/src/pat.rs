@@ -406,7 +406,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         pat: &'tcx Pat<'tcx>,
         expected: Ty<'tcx>,
         mut def_br: ByRef,
-        mut max_ref_mutability: MutblCap,
+        mut max_ref_mutbl: MutblCap,
     ) -> (Ty<'tcx>, ByRef, MutblCap) {
         let mut expected = self.try_structurally_resolve_type(pat.span, expected);
         // Peel off as many `&` or `&mut` from the scrutinee type as possible. For example,
@@ -438,10 +438,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             });
         }
 
-        if pat.span.at_least_rust_2024() && self.tcx.features().ref_pat_eat_one_layer_2024 {
-            def_br = def_br.cap_ref_mutability(max_ref_mutability.as_mutbl());
+        if self.tcx.features().ref_pat_eat_one_layer_2024 {
+            def_br = def_br.cap_ref_mutability(max_ref_mutbl.as_mutbl());
             if def_br == ByRef::Yes(Mutability::Not) {
-                max_ref_mutability = MutblCap::Not;
+                max_ref_mutbl = MutblCap::Not;
             }
         }
 
@@ -453,7 +453,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .insert(pat.hir_id, pat_adjustments);
         }
 
-        (expected, def_br, max_ref_mutability)
+        (expected, def_br, max_ref_mutbl)
     }
 
     fn check_pat_lit(
@@ -2130,18 +2130,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         mut expected: Ty<'tcx>,
         mut pat_info: PatInfo<'tcx, '_>,
     ) -> Ty<'tcx> {
-        let new_match_ergonomics =
-            pat.span.at_least_rust_2024() && self.tcx.features().ref_pat_eat_one_layer_2024;
+        let no_ref_mut_behind_and = self.tcx.features().ref_pat_eat_one_layer_2024;
+        let new_match_ergonomics = pat.span.at_least_rust_2024() && no_ref_mut_behind_and;
 
-        if new_match_ergonomics {
-            let pat_prefix_span =
-                inner.span.find_ancestor_inside(pat.span).map(|end| pat.span.until(end));
+        let pat_prefix_span =
+            inner.span.find_ancestor_inside(pat.span).map(|end| pat.span.until(end));
 
+        if no_ref_mut_behind_and {
             if pat_mutbl == Mutability::Not {
                 // Prevent the inner pattern from binding with `ref mut`.
                 pat_info.max_ref_mutbl = pat_info.max_ref_mutbl.cap_to_weakly_not(pat_prefix_span);
             }
+        } else {
+            pat_info.max_ref_mutbl = MutblCap::Mut;
+        }
 
+        if new_match_ergonomics {
             if let ByRef::Yes(inh_mut) = pat_info.binding_mode {
                 // ref pattern consumes inherited reference
 
@@ -2179,8 +2183,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .rust_2024_migration_desugared_pats_mut()
                     .insert(pat_info.top_info.hir_id);
             }
-
-            pat_info.max_ref_mutbl = MutblCap::Mut;
         }
 
         let tcx = self.tcx;
@@ -2195,15 +2197,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // the bad interactions of the given hack detailed in (note_1).
                 debug!("check_pat_ref: expected={:?}", expected);
                 match *expected.kind() {
-                    ty::Ref(_, r_ty, r_mutbl) if r_mutbl >= pat_mutbl && new_match_ergonomics => {
-                        if r_mutbl == Mutability::Not {
+                    ty::Ref(_, r_ty, r_mutbl)
+                        if (new_match_ergonomics && r_mutbl >= pat_mutbl)
+                            || r_mutbl == pat_mutbl =>
+                    {
+                        if no_ref_mut_behind_and && r_mutbl == Mutability::Not {
                             pat_info.max_ref_mutbl = MutblCap::Not;
                         }
 
                         (expected, r_ty)
                     }
-
-                    ty::Ref(_, r_ty, r_mutbl) if r_mutbl == pat_mutbl => (expected, r_ty),
 
                     _ => {
                         let inner_ty = self.next_ty_var(inner.span);
