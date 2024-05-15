@@ -83,49 +83,6 @@ impl fmt::Debug for ty::LateParamRegion {
     }
 }
 
-impl<'tcx> fmt::Debug for ty::FnSig<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        WithInfcx::with_no_infcx(self).fmt(f)
-    }
-}
-impl<'tcx> DebugWithInfcx<TyCtxt<'tcx>> for ty::FnSig<'tcx> {
-    fn fmt<Infcx: InferCtxtLike<Interner = TyCtxt<'tcx>>>(
-        this: WithInfcx<'_, Infcx, &Self>,
-        f: &mut core::fmt::Formatter<'_>,
-    ) -> core::fmt::Result {
-        let sig = this.data;
-        let ty::FnSig { inputs_and_output: _, c_variadic, unsafety, abi } = sig;
-
-        write!(f, "{}", unsafety.prefix_str())?;
-        match abi {
-            rustc_target::spec::abi::Abi::Rust => (),
-            abi => write!(f, "extern \"{abi:?}\" ")?,
-        };
-
-        write!(f, "fn(")?;
-        let inputs = sig.inputs();
-        match inputs.len() {
-            0 if *c_variadic => write!(f, "...)")?,
-            0 => write!(f, ")")?,
-            _ => {
-                for ty in &sig.inputs()[0..(sig.inputs().len() - 1)] {
-                    write!(f, "{:?}, ", &this.wrap(ty))?;
-                }
-                write!(f, "{:?}", &this.wrap(sig.inputs().last().unwrap()))?;
-                if *c_variadic {
-                    write!(f, "...")?;
-                }
-                write!(f, ")")?;
-            }
-        }
-
-        match sig.output().kind() {
-            ty::Tuple(list) if list.is_empty() => Ok(()),
-            _ => write!(f, " -> {:?}", &this.wrap(sig.output())),
-        }
-    }
-}
-
 impl<'tcx> ty::DebugWithInfcx<TyCtxt<'tcx>> for Ty<'tcx> {
     fn fmt<Infcx: InferCtxtLike<Interner = TyCtxt<'tcx>>>(
         this: WithInfcx<'_, Infcx, &Self>,

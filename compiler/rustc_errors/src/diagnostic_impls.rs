@@ -112,6 +112,12 @@ impl<I: rustc_type_ir::Interner> IntoDiagArg for rustc_type_ir::UnevaluatedConst
     }
 }
 
+impl<I: rustc_type_ir::Interner> IntoDiagArg for rustc_type_ir::FnSig<I> {
+    fn into_diag_arg(self) -> rustc_errors::DiagArgValue {
+        format!("{self:?}").into_diag_arg()
+    }
+}
+
 into_diag_arg_for_number!(i8, u8, i16, u16, i32, u32, i64, u64, i128, u128, isize, usize);
 
 impl IntoDiagArg for bool {
