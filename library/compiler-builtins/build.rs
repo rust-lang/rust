@@ -1,4 +1,4 @@
-use std::{collections::BTreeMap, env, sync::atomic::Ordering};
+use std::{collections::BTreeMap, env, path::PathBuf, sync::atomic::Ordering};
 
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
@@ -147,8 +147,8 @@ fn generate_aarch64_outlined_atomics() {
         buf += macro_def;
         buf += "}; }\n";
     }
-    let dst = std::env::var("OUT_DIR").unwrap() + "/outlined_atomics.rs";
-    std::fs::write(dst, buf).unwrap();
+    let out_dir = PathBuf::from(std::env::var("OUT_DIR").unwrap());
+    std::fs::write(out_dir.join("outlined_atomics.rs"), buf).unwrap();
 }
 
 /// Emit directives for features we expect to support that aren't in `Cargo.toml`.
@@ -676,7 +676,7 @@ mod c {
 
     fn build_aarch64_out_of_line_atomics_libraries(builtins_dir: &Path, cfg: &mut cc::Build) {
         let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
-        let outlined_atomics_file = builtins_dir.join("aarch64/lse.S");
+        let outlined_atomics_file = builtins_dir.join("aarch64").join("lse.S");
         println!("cargo:rerun-if-changed={}", outlined_atomics_file.display());
 
         cfg.include(&builtins_dir);
