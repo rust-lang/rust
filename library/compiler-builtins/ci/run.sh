@@ -34,7 +34,7 @@ fi
 
 if [ "${TEST_UNC:-}" = "1" ]; then
     function run() {
-        cmd.exe /c cargo build --manifest-path testcrate/Cargo.toml --target $target --target-dir "\\\\?\\%TEMP%\\test_unc" "$@"
+        cmd.exe /c cargo build --manifest-path "testcrate\\Cargo.toml" --target $target --target-dir "\\\\?\\%TEMP%\\test_unc" "$@"
     }
     run
     run --release
