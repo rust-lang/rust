@@ -357,9 +357,7 @@ impl<'tcx, O: Elaboratable<'tcx>> Elaborator<'tcx, O> {
                                 None
                             }
                         })
-                        .map(|clause| {
-                            elaboratable.child(bound_clause.rebind(clause).upcast(tcx))
-                        }),
+                        .map(|clause| elaboratable.child(bound_clause.rebind(clause).upcast(tcx))),
                 );
             }
             ty::ClauseKind::RegionOutlives(..) => {

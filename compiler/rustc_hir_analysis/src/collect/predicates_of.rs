@@ -40,11 +40,13 @@ pub(super) fn predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredic
         // `tcx.def_span(def_id);`
         let span = DUMMY_SP;
 
-        result.predicates =
-            tcx.arena.alloc_from_iter(result.predicates.iter().copied().chain(std::iter::once((
-                ty::TraitRef::identity(tcx, def_id).upcast(tcx),
-                span,
-            ))));
+        result.predicates = tcx.arena.alloc_from_iter(
+            result
+                .predicates
+                .iter()
+                .copied()
+                .chain(std::iter::once((ty::TraitRef::identity(tcx, def_id).upcast(tcx), span))),
+        );
     }
     debug!("predicates_of(def_id={:?}) = {:?}", def_id, result);
     result
@@ -196,10 +198,8 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
                     .no_bound_vars()
                     .expect("const parameters cannot be generic");
                 let ct = icx.lowerer().lower_const_param(param.hir_id, ct_ty);
-                predicates.insert((
-                    ty::ClauseKind::ConstArgHasType(ct, ct_ty).upcast(tcx),
-                    param.span,
-                ));
+                predicates
+                    .insert((ty::ClauseKind::ConstArgHasType(ct, ct_ty).upcast(tcx), param.span));
             }
         }
     }
@@ -257,8 +257,8 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
                             )
                         }
                     };
-                    let pred = ty::ClauseKind::RegionOutlives(ty::OutlivesPredicate(r1, r2))
-                        .upcast(tcx);
+                    let pred =
+                        ty::ClauseKind::RegionOutlives(ty::OutlivesPredicate(r1, r2)).upcast(tcx);
                     (pred, span)
                 }))
             }
@@ -354,8 +354,7 @@ fn const_evaluatable_predicates_of(
             let ct = ty::Const::from_anon_const(self.tcx, c.def_id);
             if let ty::ConstKind::Unevaluated(_) = ct.kind() {
                 let span = self.tcx.def_span(c.def_id);
-                self.preds
-                    .insert((ty::ClauseKind::ConstEvaluatable(ct).upcast(self.tcx), span));
+                self.preds.insert((ty::ClauseKind::ConstEvaluatable(ct).upcast(self.tcx), span));
             }
         }
 

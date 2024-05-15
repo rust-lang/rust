@@ -142,7 +142,7 @@ pub fn type_known_to_meet_bound_modulo_regions<'tcx>(
 fn pred_known_to_hold_modulo_regions<'tcx>(
     infcx: &InferCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    pred: impl Upcast<'tcx>,
+    pred: impl Upcast<'tcx, ty::Predicate<'tcx>>,
 ) -> bool {
     let obligation = Obligation::new(infcx.tcx, ObligationCause::dummy(), param_env, pred);
 

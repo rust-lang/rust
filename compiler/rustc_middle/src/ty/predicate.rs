@@ -544,8 +544,8 @@ impl<'tcx> ToPolyTraitRef<'tcx> for PolyTraitPredicate<'tcx> {
     }
 }
 
-pub trait Upcast<'tcx, P = Predicate<'tcx>> {
-    fn upcast(self, tcx: TyCtxt<'tcx>) -> P;
+pub trait Upcast<'tcx, T> {
+    fn upcast(self, tcx: TyCtxt<'tcx>) -> T;
 }
 
 impl<'tcx, T> Upcast<'tcx, T> for T {
@@ -554,35 +554,35 @@ impl<'tcx, T> Upcast<'tcx, T> for T {
     }
 }
 
-impl<'tcx> Upcast<'tcx> for PredicateKind<'tcx> {
+impl<'tcx> Upcast<'tcx, ty::Predicate<'tcx>> for PredicateKind<'tcx> {
     #[inline(always)]
     fn upcast(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
         ty::Binder::dummy(self).upcast(tcx)
     }
 }
 
-impl<'tcx> Upcast<'tcx> for Binder<'tcx, PredicateKind<'tcx>> {
+impl<'tcx> Upcast<'tcx, ty::Predicate<'tcx>> for Binder<'tcx, PredicateKind<'tcx>> {
     #[inline(always)]
     fn upcast(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
         tcx.mk_predicate(self)
     }
 }
 
-impl<'tcx> Upcast<'tcx> for ClauseKind<'tcx> {
+impl<'tcx> Upcast<'tcx, ty::Predicate<'tcx>> for ClauseKind<'tcx> {
     #[inline(always)]
     fn upcast(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
         tcx.mk_predicate(ty::Binder::dummy(ty::PredicateKind::Clause(self)))
     }
 }
 
-impl<'tcx> Upcast<'tcx> for Binder<'tcx, ClauseKind<'tcx>> {
+impl<'tcx> Upcast<'tcx, ty::Predicate<'tcx>> for Binder<'tcx, ClauseKind<'tcx>> {
     #[inline(always)]
     fn upcast(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
         tcx.mk_predicate(self.map_bound(ty::PredicateKind::Clause))
     }
 }
 
-impl<'tcx> Upcast<'tcx> for Clause<'tcx> {
+impl<'tcx> Upcast<'tcx, ty::Predicate<'tcx>> for Clause<'tcx> {
     #[inline(always)]
     fn upcast(self, _tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
         self.as_predicate()
@@ -603,7 +603,7 @@ impl<'tcx> Upcast<'tcx, Clause<'tcx>> for Binder<'tcx, ClauseKind<'tcx>> {
     }
 }
 
-impl<'tcx> Upcast<'tcx> for TraitRef<'tcx> {
+impl<'tcx> Upcast<'tcx, ty::Predicate<'tcx>> for TraitRef<'tcx> {
     #[inline(always)]
     fn upcast(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
         ty::Binder::dummy(self).upcast(tcx)
@@ -625,7 +625,7 @@ impl<'tcx> Upcast<'tcx, Clause<'tcx>> for TraitRef<'tcx> {
     }
 }
 
-impl<'tcx> Upcast<'tcx> for Binder<'tcx, TraitRef<'tcx>> {
+impl<'tcx> Upcast<'tcx, ty::Predicate<'tcx>> for Binder<'tcx, TraitRef<'tcx>> {
     #[inline(always)]
     fn upcast(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
         let pred: PolyTraitPredicate<'tcx> = self.upcast(tcx);
@@ -651,13 +651,13 @@ impl<'tcx> Upcast<'tcx, PolyTraitPredicate<'tcx>> for Binder<'tcx, TraitRef<'tcx
     }
 }
 
-impl<'tcx> Upcast<'tcx> for TraitPredicate<'tcx> {
+impl<'tcx> Upcast<'tcx, ty::Predicate<'tcx>> for TraitPredicate<'tcx> {
     fn upcast(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
         PredicateKind::Clause(ClauseKind::Trait(self)).upcast(tcx)
     }
 }
 
-impl<'tcx> Upcast<'tcx> for PolyTraitPredicate<'tcx> {
+impl<'tcx> Upcast<'tcx, ty::Predicate<'tcx>> for PolyTraitPredicate<'tcx> {
     fn upcast(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
         self.map_bound(|p| PredicateKind::Clause(ClauseKind::Trait(p))).upcast(tcx)
     }
@@ -677,25 +677,25 @@ impl<'tcx> Upcast<'tcx, Clause<'tcx>> for PolyTraitPredicate<'tcx> {
     }
 }
 
-impl<'tcx> Upcast<'tcx> for PolyRegionOutlivesPredicate<'tcx> {
+impl<'tcx> Upcast<'tcx, ty::Predicate<'tcx>> for PolyRegionOutlivesPredicate<'tcx> {
     fn upcast(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
         self.map_bound(|p| PredicateKind::Clause(ClauseKind::RegionOutlives(p))).upcast(tcx)
     }
 }
 
-impl<'tcx> Upcast<'tcx> for OutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>> {
+impl<'tcx> Upcast<'tcx, ty::Predicate<'tcx>> for OutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>> {
     fn upcast(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
         ty::Binder::dummy(PredicateKind::Clause(ClauseKind::TypeOutlives(self))).upcast(tcx)
     }
 }
 
-impl<'tcx> Upcast<'tcx> for ProjectionPredicate<'tcx> {
+impl<'tcx> Upcast<'tcx, ty::Predicate<'tcx>> for ProjectionPredicate<'tcx> {
     fn upcast(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
         ty::Binder::dummy(PredicateKind::Clause(ClauseKind::Projection(self))).upcast(tcx)
     }
 }
 
-impl<'tcx> Upcast<'tcx> for PolyProjectionPredicate<'tcx> {
+impl<'tcx> Upcast<'tcx, ty::Predicate<'tcx>> for PolyProjectionPredicate<'tcx> {
     fn upcast(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
         self.map_bound(|p| PredicateKind::Clause(ClauseKind::Projection(p))).upcast(tcx)
     }
@@ -715,7 +715,7 @@ impl<'tcx> Upcast<'tcx, Clause<'tcx>> for PolyProjectionPredicate<'tcx> {
     }
 }
 
-impl<'tcx> Upcast<'tcx> for NormalizesTo<'tcx> {
+impl<'tcx> Upcast<'tcx, ty::Predicate<'tcx>> for NormalizesTo<'tcx> {
     fn upcast(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
         PredicateKind::NormalizesTo(self).upcast(tcx)
     }

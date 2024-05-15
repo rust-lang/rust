@@ -752,8 +752,7 @@ fn receiver_is_dispatchable<'tcx>(
 
         // Self: Unsize<U>
         let unsize_predicate =
-            ty::TraitRef::new(tcx, unsize_did, [tcx.types.self_param, unsized_self_ty])
-                .upcast(tcx);
+            ty::TraitRef::new(tcx, unsize_did, [tcx.types.self_param, unsized_self_ty]).upcast(tcx);
 
         // U: Trait<Arg1, ..., ArgN>
         let trait_predicate = {

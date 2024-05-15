@@ -302,7 +302,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         suggest_increasing_limit: bool,
     ) -> !
     where
-        T: Upcast<'tcx> + Clone,
+        T: Upcast<'tcx, ty::Predicate<'tcx>> + Clone,
     {
         let predicate = obligation.predicate.clone().upcast(self.tcx);
         let predicate = self.resolve_vars_if_possible(predicate);
