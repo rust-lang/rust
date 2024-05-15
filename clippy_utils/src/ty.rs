@@ -18,7 +18,7 @@ use rustc_middle::traits::EvaluationResult;
 use rustc_middle::ty::layout::ValidityRequirement;
 use rustc_middle::ty::{
     self, AdtDef, AliasTy, AssocKind, Binder, BoundRegion, FnSig, GenericArg, GenericArgKind, GenericArgsRef,
-    GenericParamDefKind, IntTy, ParamEnv, Region, RegionKind, ToPredicate, TraitRef, Ty, TyCtxt,
+    GenericParamDefKind, IntTy, ParamEnv, Region, RegionKind, Upcast, TraitRef, Ty, TyCtxt,
     TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, UintTy, VariantDef, VariantDiscr,
 };
 use rustc_span::symbol::Ident;
@@ -311,7 +311,7 @@ pub fn implements_trait_with_env_from_iter<'tcx>(
         cause: ObligationCause::dummy(),
         param_env,
         recursion_depth: 0,
-        predicate: Binder::dummy(trait_ref).to_predicate(tcx),
+        predicate: Binder::dummy(trait_ref).upcast(tcx),
     };
     infcx
         .evaluate_obligation(&obligation)
