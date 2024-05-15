@@ -9,7 +9,7 @@
 
 //@ ignore-cross-compile
 
-use run_make_support::{cc, extra_c_flags, run, rustc, static_lib, tmp_dir};
+use run_make_support::{cc, extra_c_flags, run, rustc, static_lib};
 
 fn main() {
     let libbar_path = static_lib("bar");
@@ -17,7 +17,7 @@ fn main() {
     rustc()
         .input("bar.rs")
         .crate_type("staticlib")
-        .lto()
+        .arg("-Clto")
         .library_search_path(".")
         .output(&libbar_path)
         .run();
