@@ -457,7 +457,7 @@ fn instantiate_and_check_impossible_predicates<'tcx>(
     // associated items.
     if let Some(trait_def_id) = tcx.trait_of_item(key.0) {
         let trait_ref = ty::TraitRef::from_method(tcx, trait_def_id, key.1);
-        predicates.push(ty::Binder::dummy(trait_ref).upcast(tcx));
+        predicates.push(trait_ref.upcast(tcx));
     }
 
     predicates.retain(|predicate| !predicate.has_param());

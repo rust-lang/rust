@@ -1259,7 +1259,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // being cast to `Foo + 'a` outlives `'a`:
                 let outlives = ty::OutlivesPredicate(source, r);
                 nested.push(predicate_to_obligation(
-                    ty::Binder::dummy(ty::ClauseKind::TypeOutlives(outlives)).upcast(tcx),
+                    ty::ClauseKind::TypeOutlives(outlives).upcast(tcx),
                 ));
 
                 ImplSource::Builtin(BuiltinImplSource::Misc, nested)

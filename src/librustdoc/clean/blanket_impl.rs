@@ -64,7 +64,7 @@ pub(crate) fn synthesize_blanket_impls(
                 .instantiate(tcx, impl_args)
                 .predicates
                 .into_iter()
-                .chain(Some(ty::Binder::dummy(impl_trait_ref).upcast(tcx)));
+                .chain(Some(impl_trait_ref.upcast(tcx)));
             for predicate in predicates {
                 let obligation = traits::Obligation::new(
                     tcx,

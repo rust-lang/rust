@@ -26,7 +26,7 @@ pub trait TraitEngine<'tcx>: 'tcx {
                 cause,
                 recursion_depth: 0,
                 param_env,
-                predicate: ty::Binder::dummy(trait_ref).upcast(infcx.tcx),
+                predicate: trait_ref.upcast(infcx.tcx),
             },
         );
     }

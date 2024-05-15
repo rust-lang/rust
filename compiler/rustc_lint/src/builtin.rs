@@ -734,7 +734,7 @@ fn type_implements_negative_copy_modulo_regions<'tcx>(
         cause: traits::ObligationCause::dummy(),
         param_env,
         recursion_depth: 0,
-        predicate: ty::Binder::dummy(pred).upcast(tcx),
+        predicate: pred.upcast(tcx),
     };
 
     tcx.infer_ctxt().build().predicate_must_hold_modulo_regions(&obligation)

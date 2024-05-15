@@ -1496,7 +1496,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                         }
                     }
 
-                    trait_predicate = Some(ty::Binder::dummy(trait_ref).upcast(self.tcx));
+                    trait_predicate = Some(trait_ref.upcast(self.tcx));
                 }
                 ObjectCandidate(poly_trait_ref) | WhereClauseCandidate(poly_trait_ref) => {
                     let trait_ref = self.instantiate_binder_with_fresh_vars(
