@@ -2125,25 +2125,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         mut expected: Ty<'tcx>,
         mut pat_info: PatInfo<'tcx, '_>,
     ) -> Ty<'tcx> {
-        // FIXME: repace with `bool` once final decision on 1 vs 2 layers is made
-        #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-        enum MatchErgonomicsMode {
-            EatOneLayer,
-            EatTwoLayers,
-            Legacy,
-        }
+        let new_match_ergonomics =
+            pat.span.at_least_rust_2024() && self.tcx.features().ref_pat_eat_one_layer_2024;
 
-        let match_ergonomics_mode =
-            if pat.span.at_least_rust_2024() && self.tcx.features().ref_pat_eat_one_layer_2024 {
-                MatchErgonomicsMode::EatOneLayer
-            } else if self.tcx.features().ref_pat_everywhere {
-                MatchErgonomicsMode::EatTwoLayers
-            } else {
-                MatchErgonomicsMode::Legacy
-            };
-
-        let mut inherited_ref_mutbl_match = false;
-        if match_ergonomics_mode != MatchErgonomicsMode::Legacy {
+        if new_match_ergonomics {
             if pat_mutbl == Mutability::Not {
                 // Prevent the inner pattern from binding with `ref mut`.
                 pat_info.max_ref_mutbl = pat_info.max_ref_mutbl.cap_to_weakly_not(
@@ -2151,20 +2136,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 );
             }
 
-            if let ByRef::Yes(inh_mut) = pat_info.binding_mode {
-                inherited_ref_mutbl_match = pat_mutbl <= inh_mut;
-            }
-
-            if inherited_ref_mutbl_match {
-                pat_info.binding_mode = ByRef::No;
-                if match_ergonomics_mode == MatchErgonomicsMode::EatOneLayer {
-                    self.typeck_results.borrow_mut().skipped_ref_pats_mut().insert(pat.hir_id);
-                    self.check_pat(inner, expected, pat_info);
-                    return expected;
-                }
-            } else if match_ergonomics_mode == MatchErgonomicsMode::EatOneLayer
-                && pat_mutbl == Mutability::Mut
+            if let ByRef::Yes(inh_mut) = pat_info.binding_mode
+                && pat_mutbl <= inh_mut
             {
+                pat_info.binding_mode = ByRef::No;
+                self.typeck_results.borrow_mut().skipped_ref_pats_mut().insert(pat.hir_id);
+                self.check_pat(inner, expected, pat_info);
+                return expected;
+            } else if pat_mutbl == Mutability::Mut {
                 // `&mut` patterns pell off `&` references
                 let (new_expected, new_bm, max_ref_mutbl) = self.peel_off_references(
                     pat,
@@ -2204,33 +2183,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // the bad interactions of the given hack detailed in (note_1).
                 debug!("check_pat_ref: expected={:?}", expected);
                 match *expected.kind() {
-                    ty::Ref(_, r_ty, r_mutbl) if r_mutbl == pat_mutbl => {
-                        if r_mutbl == Mutability::Not
-                            && match_ergonomics_mode != MatchErgonomicsMode::Legacy
-                        {
+                    ty::Ref(_, r_ty, r_mutbl) if r_mutbl >= pat_mutbl && new_match_ergonomics => {
+                        if r_mutbl == Mutability::Not {
                             pat_info.max_ref_mutbl = MutblCap::Not;
                         }
 
                         (expected, r_ty)
                     }
 
-                    // `&` pattern eats `&mut` reference
-                    ty::Ref(_, r_ty, Mutability::Mut)
-                        if pat_mutbl == Mutability::Not
-                            && match_ergonomics_mode != MatchErgonomicsMode::Legacy =>
-                    {
-                        (expected, r_ty)
-                    }
-
-                    _ if inherited_ref_mutbl_match
-                        && match_ergonomics_mode == MatchErgonomicsMode::EatTwoLayers =>
-                    {
-                        // We already matched against a match-ergonmics inserted reference,
-                        // so we don't need to match against a reference from the original type.
-                        // Save this info for use in lowering later
-                        self.typeck_results.borrow_mut().skipped_ref_pats_mut().insert(pat.hir_id);
-                        (expected, expected)
-                    }
+                    ty::Ref(_, r_ty, r_mutbl) if r_mutbl == pat_mutbl => (expected, r_ty),
 
                     _ => {
                         let inner_ty = self.next_ty_var(inner.span);
