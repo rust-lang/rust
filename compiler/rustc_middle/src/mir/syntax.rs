@@ -1480,13 +1480,17 @@ pub enum BinOp {
     BitOr,
     /// The `<<` operator (shift left)
     ///
-    /// The offset is truncated to the size of the first operand and made unsigned before shifting.
+    /// The offset is (uniquely) determined as follows:
+    /// - it is "equal modulo LHS::BITS" to the RHS
+    /// - it is in the range `0..LHS::BITS`
     Shl,
     /// Like `Shl`, but is UB if the RHS >= LHS::BITS or RHS < 0
     ShlUnchecked,
     /// The `>>` operator (shift right)
     ///
-    /// The offset is truncated to the size of the first operand and made unsigned before shifting.
+    /// The offset is (uniquely) determined as follows:
+    /// - it is "equal modulo LHS::BITS" to the RHS
+    /// - it is in the range `0..LHS::BITS`
     ///
     /// This is an arithmetic shift if the LHS is signed
     /// and a logical shift if the LHS is unsigned.
