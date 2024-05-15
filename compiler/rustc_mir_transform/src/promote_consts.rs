@@ -857,7 +857,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
 
     fn promote_candidate(mut self, candidate: Candidate, next_promoted_id: usize) -> Body<'tcx> {
         let def = self.source.source.def_id();
-        let (mut rvalue, promoted_op) = {
+        let (mut rvalue, _promoted_op) = {
             let promoted = &mut self.promoted;
             let promoted_id = Promoted::new(next_promoted_id);
             let tcx = self.tcx;

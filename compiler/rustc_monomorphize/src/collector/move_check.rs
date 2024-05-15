@@ -16,7 +16,7 @@ impl MoveCheckState {
     }
 }
 
-impl<'a, 'tcx> MirUsedCollector<'a, 'tcx> {
+impl<'a, 'tcx> MirUsedVisitor<'a, 'tcx> {
     pub(super) fn check_operand_move_size(
         &mut self,
         operand: &mir::Operand<'tcx>,

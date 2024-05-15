@@ -663,14 +663,11 @@ fn check_type_length_limit<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) {
 
 struct MirUsedCollector<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
-    body: &'a mir::Body<'tcx>,
     used_items: &'a mut MonoItems<'tcx>,
     /// See the comment in `collect_items_of_instance` for the purpose of this set.
     /// Note that this contains *not-monomorphized* items!
     used_mentioned_items: &'a mut FxHashSet<MentionedItem<'tcx>>,
     instance: Instance<'tcx>,
-    visiting_call_terminator: bool,
-    move_check: move_check::MoveCheckState,
 }
 
 impl<'a, 'tcx> MirUsedCollector<'a, 'tcx> {
@@ -712,7 +709,57 @@ impl<'a, 'tcx> MirUsedCollector<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
+struct MirUsedVisitor<'a, 'tcx> {
+    tcx: TyCtxt<'tcx>,
+    body: &'a mir::Body<'tcx>,
+    used_items: &'a mut MonoItems<'tcx>,
+    /// See the comment in `collect_items_of_instance` for the purpose of this set.
+    /// Note that this contains *not-monomorphized* items!
+    used_mentioned_items: &'a mut FxHashSet<MentionedItem<'tcx>>,
+    instance: Instance<'tcx>,
+    visiting_call_terminator: bool,
+    move_check: MoveCheckState,
+}
+
+impl<'a, 'tcx> MirUsedVisitor<'a, 'tcx> {
+    fn monomorphize<T>(&self, value: T) -> T
+    where
+        T: TypeFoldable<TyCtxt<'tcx>>,
+    {
+        trace!("monomorphize: self.instance={:?}", self.instance);
+        self.instance.instantiate_mir_and_normalize_erasing_regions(
+            self.tcx,
+            ty::ParamEnv::reveal_all(),
+            ty::EarlyBinder::bind(value),
+        )
+    }
+
+    fn eval_constant(
+        &mut self,
+        constant: &mir::ConstOperand<'tcx>,
+    ) -> Option<mir::ConstValue<'tcx>> {
+        let const_ = self.monomorphize(constant.const_);
+        let param_env = ty::ParamEnv::reveal_all();
+        // Evaluate the constant. This makes const eval failure a collection-time error (rather than
+        // a codegen-time error). rustc stops after collection if there was an error, so this
+        // ensures codegen never has to worry about failing consts.
+        // (codegen relies on this and ICEs will happen if this is violated.)
+        match const_.eval(self.tcx, param_env, constant.span) {
+            Ok(v) => Some(v),
+            Err(ErrorHandled::TooGeneric(..)) => span_bug!(
+                constant.span,
+                "collection encountered polymorphic constant: {:?}",
+                const_
+            ),
+            Err(err @ ErrorHandled::Reported(..)) => {
+                err.emit_note(self.tcx);
+                return None;
+            }
+        }
+    }
+}
+
+impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedVisitor<'a, 'tcx> {
     fn visit_rvalue(&mut self, rvalue: &mir::Rvalue<'tcx>, location: Location) {
         debug!("visiting rvalue {:?}", *rvalue);
 
@@ -1260,7 +1307,6 @@ fn collect_items_of_instance<'tcx>(
     mentioned_items: &mut MonoItems<'tcx>,
     mode: CollectionMode,
 ) {
-    let body = tcx.instance_mir(instance.def);
     // Naively, in "used" collection mode, all functions get added to *both* `used_items` and
     // `mentioned_items`. Mentioned items processing will then notice that they have already been
     // visited, but at that point each mentioned item has been monomorphized, added to the
@@ -1272,23 +1318,31 @@ fn collect_items_of_instance<'tcx>(
     // added to `used_items` in a hash set, which can efficiently query in the
     // `body.mentioned_items` loop below without even having to monomorphize the item.
     let mut used_mentioned_items = FxHashSet::<MentionedItem<'tcx>>::default();
+
     let mut collector = MirUsedCollector {
         tcx,
-        body,
         used_items,
         used_mentioned_items: &mut used_mentioned_items,
         instance,
-        visiting_call_terminator: false,
-        move_check: MoveCheckState::new(),
     };
 
-    let items = tcx.required_and_mentioned_items(instance.def);
-
     if mode == CollectionMode::UsedItems {
+        let body = tcx.instance_mir(instance.def);
+        let mut visitor = MirUsedVisitor {
+            tcx,
+            body,
+            used_items: collector.used_items,
+            used_mentioned_items: collector.used_mentioned_items,
+            instance,
+            visiting_call_terminator: false,
+            move_check: MoveCheckState::new(),
+        };
         for (bb, data) in traversal::mono_reachable(body, tcx, instance) {
-            collector.visit_basic_block_data(bb, data)
+            visitor.visit_basic_block_data(bb, data)
         }
     }
+
+    let items = tcx.required_and_mentioned_items(instance.def);
 
     // Always evaluate all required consts and abort compilation if any of them errors.
     for const_op in &items.required_consts {
