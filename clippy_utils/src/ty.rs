@@ -311,7 +311,7 @@ pub fn implements_trait_with_env_from_iter<'tcx>(
         cause: ObligationCause::dummy(),
         param_env,
         recursion_depth: 0,
-        predicate: Binder::dummy(trait_ref).upcast(tcx),
+        predicate: trait_ref.upcast(tcx),
     };
     infcx
         .evaluate_obligation(&obligation)
