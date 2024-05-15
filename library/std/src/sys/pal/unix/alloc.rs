@@ -87,21 +87,18 @@ cfg_if::cfg_if! {
             //                                       /memory/aligned_memory.cc
             libc::memalign(layout.align(), layout.size()) as *mut u8
         }
-    } else if #[cfg(target_os = "wasi")] {
-        #[inline]
-        unsafe fn aligned_malloc(layout: &Layout) -> *mut u8 {
-            // C11 aligned_alloc requires that the size be a multiple of the alignment.
-            // Layout already checks that the size rounded up doesn't overflow isize::MAX.
-            let align = layout.align();
-            let size = layout.size().next_multiple_of(align);
-            libc::aligned_alloc(align, size) as *mut u8
-        }
     } else {
         #[inline]
         unsafe fn aligned_malloc(layout: &Layout) -> *mut u8 {
             let mut out = ptr::null_mut();
-            // posix_memalign requires that the alignment be a multiple of `sizeof(void*)`.
-            // Since these are all powers of 2, we can just use max.
+            // We prefer posix_memalign over aligned_malloc since with aligned_malloc,
+            // implementations are making almost arbitrary choices for which alignments are
+            // "supported", making it hard to use. For instance, some implementations require the
+            // size to be a multiple of the alignment (wasi emmalloc), while others require the
+            // alignment to be at least the pointer size (Illumos, macOS) -- which may or may not be
+            // standards-compliant, but that does not help us.
+            // posix_memalign only has one, clear requirement: that the alignment be a multiple of
+            // `sizeof(void*)`. Since these are all powers of 2, we can just use max.
             let align = layout.align().max(crate::mem::size_of::<usize>());
             let ret = libc::posix_memalign(&mut out, align, layout.size());
             if ret != 0 { ptr::null_mut() } else { out as *mut u8 }

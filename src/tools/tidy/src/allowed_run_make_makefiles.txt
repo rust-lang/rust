@@ -190,7 +190,6 @@ run-make/output-with-hyphens/Makefile
 run-make/override-aliased-flags/Makefile
 run-make/overwrite-input/Makefile
 run-make/panic-abort-eh_frame/Makefile
-run-make/panic-impl-transitive/Makefile
 run-make/pass-linker-flags-flavor/Makefile
 run-make/pass-linker-flags-from-dep/Makefile
 run-make/pass-linker-flags/Makefile
@@ -243,7 +242,6 @@ run-make/rustdoc-scrape-examples-multiple/Makefile
 run-make/rustdoc-scrape-examples-remap/Makefile
 run-make/rustdoc-scrape-examples-test/Makefile
 run-make/rustdoc-scrape-examples-whitespace/Makefile
-run-make/rustdoc-themes/Makefile
 run-make/rustdoc-verify-output-files/Makefile
 run-make/rustdoc-with-out-dir-option/Makefile
 run-make/rustdoc-with-output-option/Makefile

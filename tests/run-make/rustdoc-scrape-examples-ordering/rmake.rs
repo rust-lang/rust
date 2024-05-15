@@ -1,4 +1,4 @@
-use run_make_support::{python_command, rustc, rustdoc, source_path, tmp_dir};
+use run_make_support::{htmldocck, rustc, rustdoc, source_path, tmp_dir};
 use std::fs::read_dir;
 use std::path::Path;
 
@@ -45,11 +45,5 @@ fn main() {
     }
     rustdoc.run();
 
-    python_command()
-        .arg(source_path().join("/src/etc/htmldocck.py"))
-        .arg(out_dir)
-        .arg("src/lib.rs")
-        .status()
-        .unwrap()
-        .success();
+    htmldocck().arg(out_dir).arg("src/lib.rs").status().unwrap().success();
 }
