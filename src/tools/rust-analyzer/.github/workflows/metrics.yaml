@@ -25,20 +25,24 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Restore cargo cache
-        uses: Swatinem/rust-cache@9bdad043e88c75890e36ad3bbc8d27f0090dd609
+      - name: Cache cargo
+        uses: actions/cache@v4
         with:
-          shared-key: ${{ runner.os }}-cargo-metrics-${{ github.sha }}
-          cache-targets: "false"
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+          key: ${{ runner.os }}-cargo-${{ github.sha }}
 
       - name: Collect build metrics
         run: cargo xtask metrics build
 
       - name: Cache target
-        uses: Swatinem/rust-cache@9bdad043e88c75890e36ad3bbc8d27f0090dd609
+        uses: actions/cache@v4
         with:
-          shared-key: ${{ runner.os }}-cargo-metrics-${{ github.sha }}
-          cache-targets: "true"
+          path: target/
+          key: ${{ runner.os }}-target-${{ github.sha }}
 
       - name: Upload build metrics
         uses: actions/upload-artifact@v4
@@ -64,11 +68,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Restore cargo cache
-        uses: Swatinem/rust-cache@9bdad043e88c75890e36ad3bbc8d27f0090dd609
+      - name: Restore target cache
+        uses: actions/cache@v4
         with:
-          shared-key: ${{ runner.os }}-cargo-metrics-${{ github.sha }}
-          cache-targets: "true"
+          path: target/
+          key: ${{ runner.os }}-target-${{ github.sha }}
 
       - name: Collect metrics
         run: cargo xtask metrics "${{ matrix.names }}"
