@@ -10,5 +10,10 @@ use run_make_support::{rustc, tmp_dir};
 
 fn main() {
     rustc().input("panic-impl-provider.rs").run();
-    rustc().input("panic-impl-consumer.rs").panic("abort").emit("llvm-ir").library_search_path(tmp_dir()).run();
+    rustc()
+        .input("panic-impl-consumer.rs")
+        .panic("abort")
+        .emit("llvm-ir")
+        .library_search_path(tmp_dir())
+        .run();
 }
