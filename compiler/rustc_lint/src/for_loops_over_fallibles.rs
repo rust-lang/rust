@@ -52,7 +52,15 @@ impl<'tcx> LateLintPass<'tcx> for ForLoopsOverFallibles {
 
         let ty = cx.typeck_results().expr_ty(arg);
 
-        let &ty::Adt(adt, args) = ty.kind() else { return };
+        // let &ty::Adt(adt, args) = ty.kind() else { return };
+        let (adt, args, _) = match ty.kind() {
+            &ty::Adt(adt, args) => (adt, args, None),
+            &ty::Ref(_, ty, mutability) => match ty.kind() {
+                &ty::Adt(adt, args) => (adt, args, Some(mutability)),
+                _ => return,
+            },
+            _ => return,
+        };
 
         let (article, ty, var) = match adt.did() {
             did if cx.tcx.is_diagnostic_item(sym::Option, did) => ("an", "Option", "Some"),
