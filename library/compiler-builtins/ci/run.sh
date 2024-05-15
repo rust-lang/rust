@@ -33,17 +33,16 @@ else
 fi
 
 if [ "${TEST_UNC:-}" = "1" ]; then
-    function run() {
-        cmd.exe /c cargo build --manifest-path "testcrate\\Cargo.toml" --target $target --target-dir "\\\\?\\%TEMP%\\test_unc" "$@"
-    }
-    run
-    run --release
-    run --features c
-    run --features c --release
-    run --features no-asm
-    run --features no-asm --release
-    run --features no-f16-f128
-    run --features no-f16-f128 --release
+    path=$(cmd.exe "/C echo \\\\?\\%cd%\\testcrate\\target_unc")
+    run="cargo test --manifest-path testcrate/Cargo.toml --target $target --target-dir $path"
+    $run
+    $run --release
+    $run --features c
+    $run --features c --release
+    $run --features no-asm
+    $run --features no-asm --release
+    $run --features no-f16-f128
+    $run --features no-f16-f128 --release
 fi
 
 if [ -d /builtins-target ]; then
