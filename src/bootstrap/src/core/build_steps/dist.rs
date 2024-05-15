@@ -1010,6 +1010,9 @@ impl Step for PlainSourceTarball {
         if builder.rust_info().is_managed_git_subrepository()
             || builder.rust_info().is_from_tarball()
         {
+            // FIXME: This code looks _very_ similar to what we have in `src/core/build_steps/vendor.rs`
+            // perhaps it should be removed in favor of making `dist` perform the `vendor` step?
+
             // Ensure we have all submodules from src and other directories checked out.
             for submodule in builder.get_all_submodules() {
                 builder.update_submodule(Path::new(submodule));
