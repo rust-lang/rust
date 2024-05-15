@@ -4,7 +4,7 @@ use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
 use clippy_utils::macros::{is_panic, root_macro_call_first_node};
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::visitors::Visitable;
-use clippy_utils::{is_entrypoint_fn, is_trait_impl_item, method_chain_args};
+use clippy_utils::{in_constant, is_entrypoint_fn, is_trait_impl_item, method_chain_args};
 use pulldown_cmark::Event::{
     Code, End, FootnoteReference, HardBreak, Html, Rule, SoftBreak, Start, TaskListMarker, Text,
 };
@@ -461,14 +461,14 @@ impl<'tcx> LateLintPass<'tcx> for Documentation {
                     if !(is_entrypoint_fn(cx, item.owner_id.to_def_id()) || in_external_macro(cx.tcx.sess, item.span)) {
                         let body = cx.tcx.hir().body(body_id);
 
-                        let panic_span = FindPanicUnwrap::find_span(cx, cx.tcx.typeck(item.owner_id), body.value);
+                        let panic_info = FindPanicUnwrap::find_span(cx, cx.tcx.typeck(item.owner_id), body.value);
                         missing_headers::check(
                             cx,
                             item.owner_id,
                             sig,
                             headers,
                             Some(body_id),
-                            panic_span,
+                            panic_info,
                             self.check_private_items,
                         );
                     }
@@ -806,6 +806,7 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
 
 struct FindPanicUnwrap<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
+    is_const: bool,
     panic_span: Option<Span>,
     typeck_results: &'tcx ty::TypeckResults<'tcx>,
 }
@@ -815,14 +816,15 @@ impl<'a, 'tcx> FindPanicUnwrap<'a, 'tcx> {
         cx: &'a LateContext<'tcx>,
         typeck_results: &'tcx ty::TypeckResults<'tcx>,
         body: impl Visitable<'tcx>,
-    ) -> Option<Span> {
+    ) -> Option<(Span, bool)> {
         let mut vis = Self {
             cx,
+            is_const: false,
             panic_span: None,
             typeck_results,
         };
         body.visit(&mut vis);
-        vis.panic_span
+        vis.panic_span.map(|el| (el, vis.is_const))
     }
 }
 
@@ -841,6 +843,7 @@ impl<'a, 'tcx> Visitor<'tcx> for FindPanicUnwrap<'a, 'tcx> {
                     "assert" | "assert_eq" | "assert_ne"
                 )
             {
+                self.is_const = in_constant(self.cx, expr.hir_id);
                 self.panic_span = Some(macro_call.span);
             }
         }
