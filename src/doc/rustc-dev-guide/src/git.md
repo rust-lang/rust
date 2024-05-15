@@ -193,7 +193,7 @@ rm -r src/stdarch
 ### I see `<<< HEAD`?
 
 You were probably in the middle of a rebase or merge conflict. See
-[Conflicts](#conflicts) for how to fix the conflict. If you don't care about the changes
+[Conflicts](#rebasing-and-conflicts) for how to fix the conflict. If you don't care about the changes
 and just want to get a clean copy of the repository back, you can use `git reset`:
 
 ```console
