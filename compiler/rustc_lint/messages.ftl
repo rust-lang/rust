@@ -567,6 +567,10 @@ lint_non_local_definitions_macro_rules = non-local `macro_rules!` definition, `#
 
 lint_non_local_definitions_may_move = may need to be moved as well
 
+lint_non_local_definitions_of_trait_not_local = `{$of_trait_str}` is not local
+
+lint_non_local_definitions_self_ty_not_local = `{$self_ty_str}` is not local
+
 lint_non_snake_case = {$sort} `{$name}` should have a snake case name
     .rename_or_convert_suggestion = rename the identifier or convert it to a snake case raw identifier
     .cannot_convert_note = `{$sc}` cannot be used as a raw identifier

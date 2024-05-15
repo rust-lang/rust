@@ -2,7 +2,10 @@ warning: non-local `impl` definition, `impl` blocks should be written at the sam
   --> $DIR/inside-macro_rules.rs:9:13
    |
 LL |             impl MacroTrait for OutsideStruct {}
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |             ^^^^^----------^^^^^-------------
+   |                  |              |
+   |                  |              `OutsideStruct` is not local
+   |                  `MacroTrait` is not local
 ...
 LL | m!();
    | ---- in this macro invocation

@@ -5,7 +5,10 @@ LL | const Z: () = {
    |       - help: use a const-anon item to suppress this lint: `_`
 ...
 LL |     impl Uto for &Test {}
-   |     ^^^^^^^^^^^^^^^^^^
+   |     ^^^^^---^^^^^-----
+   |          |       |
+   |          |       `&'_ Test` is not local
+   |          `Uto` is not local
    |
    = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
    = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
@@ -22,7 +25,10 @@ warning: non-local `impl` definition, `impl` blocks should be written at the sam
   --> $DIR/consts.rs:24:5
    |
 LL |     impl Uto2 for Test {}
-   |     ^^^^^^^^^^^^^^^^^^
+   |     ^^^^^----^^^^^----
+   |          |        |
+   |          |        `Test` is not local
+   |          `Uto2` is not local
    |
    = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
    = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
@@ -38,7 +44,10 @@ warning: non-local `impl` definition, `impl` blocks should be written at the sam
   --> $DIR/consts.rs:32:5
    |
 LL |     impl Uto3 for Test {}
-   |     ^^^^^^^^^^^^^^^^^^
+   |     ^^^^^----^^^^^----
+   |          |        |
+   |          |        `Test` is not local
+   |          `Uto3` is not local
    |
    = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
    = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
@@ -54,7 +63,9 @@ warning: non-local `impl` definition, `impl` blocks should be written at the sam
   --> $DIR/consts.rs:43:5
    |
 LL |     impl Test {
-   |     ^^^^^^^^^
+   |     ^^^^^----
+   |          |
+   |          `Test` is not local
    |
    = note: methods and associated constants are still usable outside the current expression, only `impl Local` and `impl dyn Local` can ever be private, and only if the type is nested in the same item as the `impl`
 help: move this `impl` block outside of the current function `main`
@@ -71,7 +82,9 @@ warning: non-local `impl` definition, `impl` blocks should be written at the sam
   --> $DIR/consts.rs:50:9
    |
 LL |         impl Test {
-   |         ^^^^^^^^^
+   |         ^^^^^----
+   |              |
+   |              `Test` is not local
    |
    = note: methods and associated constants are still usable outside the current expression, only `impl Local` and `impl dyn Local` can ever be private, and only if the type is nested in the same item as the `impl`
 help: move this `impl` block outside of the current inline constant `<unnameable>` and up 2 bodies
@@ -88,7 +101,9 @@ warning: non-local `impl` definition, `impl` blocks should be written at the sam
   --> $DIR/consts.rs:59:9
    |
 LL |         impl Test {
-   |         ^^^^^^^^^
+   |         ^^^^^----
+   |              |
+   |              `Test` is not local
    |
    = note: methods and associated constants are still usable outside the current expression, only `impl Local` and `impl dyn Local` can ever be private, and only if the type is nested in the same item as the `impl`
 help: move this `impl` block outside of the current constant `_` and up 2 bodies
@@ -106,7 +121,10 @@ warning: non-local `impl` definition, `impl` blocks should be written at the sam
   --> $DIR/consts.rs:72:9
    |
 LL |         impl Uto9 for Test {}
-   |         ^^^^^^^^^^^^^^^^^^
+   |         ^^^^^----^^^^^----
+   |              |        |
+   |              |        `Test` is not local
+   |              `Uto9` is not local
    |
    = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
    = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
@@ -121,7 +139,10 @@ warning: non-local `impl` definition, `impl` blocks should be written at the sam
   --> $DIR/consts.rs:79:9
    |
 LL |         impl Uto10 for Test {}
-   |         ^^^^^^^^^^^^^^^^^^^
+   |         ^^^^^-----^^^^^----
+   |              |         |
+   |              |         `Test` is not local
+   |              `Uto10` is not local
    |
    = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
    = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`

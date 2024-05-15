@@ -1340,6 +1340,8 @@ pub enum NonLocalDefinitionsDiag {
         may_move: Vec<Span>,
         may_remove: Option<(Span, String)>,
         has_trait: bool,
+        self_ty_str: String,
+        of_trait_str: Option<String>,
     },
     MacroRules {
         depth: u32,
@@ -1364,11 +1366,17 @@ impl<'a> LintDiagnostic<'a, ()> for NonLocalDefinitionsDiag {
                 may_move,
                 may_remove,
                 has_trait,
+                self_ty_str,
+                of_trait_str,
             } => {
                 diag.primary_message(fluent::lint_non_local_definitions_impl);
                 diag.arg("depth", depth);
                 diag.arg("body_kind_descr", body_kind_descr);
                 diag.arg("body_name", body_name);
+                diag.arg("self_ty_str", self_ty_str);
+                if let Some(of_trait_str) = of_trait_str {
+                    diag.arg("of_trait_str", of_trait_str);
+                }
 
                 if has_trait {
                     diag.note(fluent::lint_bounds);

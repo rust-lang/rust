@@ -2,7 +2,10 @@ warning: non-local `impl` definition, `impl` blocks should be written at the sam
   --> $DIR/from-local-for-global.rs:8:5
    |
 LL |     impl From<Cat> for () {
-   |     ^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^----^^^^^^^^^^--
+   |          |             |
+   |          |             `()` is not local
+   |          `From` is not local
    |
    = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
    = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
@@ -23,7 +26,9 @@ warning: non-local `impl` definition, `impl` blocks should be written at the sam
   --> $DIR/from-local-for-global.rs:18:5
    |
 LL |     impl From<Wrap<Wrap<Elephant>>> for () {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^----^^^^^^^^^^^^^^^^^^^^^^^^^^^--
+   |          |                              |
+   |          `From` is not local            `()` is not local
    |
    = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
    = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
@@ -46,9 +51,11 @@ warning: non-local `impl` definition, `impl` blocks should be written at the sam
   --> $DIR/from-local-for-global.rs:32:5
    |
 LL |     impl StillNonLocal for &Foo {}
-   |     ^^^^^^^^^^^^^^^^^^^^^^^-^^^
-   |                            |
-   |                            help: remove `&` to make the `impl` local
+   |     ^^^^^-------------^^^^^----
+   |          |                 |
+   |          |                 `&'_ Foo` is not local
+   |          |                 help: remove `&` to make the `impl` local
+   |          `StillNonLocal` is not local
    |
    = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
    = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
@@ -65,7 +72,10 @@ warning: non-local `impl` definition, `impl` blocks should be written at the sam
   --> $DIR/from-local-for-global.rs:40:5
    |
 LL |     impl From<Local1> for GlobalSameFunction {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^----^^^^^^^^^^^^^------------------
+   |          |                |
+   |          |                `GlobalSameFunction` is not local
+   |          `From` is not local
    |
    = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
    = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
@@ -88,7 +98,10 @@ warning: non-local `impl` definition, `impl` blocks should be written at the sam
   --> $DIR/from-local-for-global.rs:48:5
    |
 LL |     impl From<Local2> for GlobalSameFunction {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^----^^^^^^^^^^^^^------------------
+   |          |                |
+   |          |                `GlobalSameFunction` is not local
+   |          `From` is not local
    |
    = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
    = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
