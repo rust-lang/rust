@@ -527,8 +527,6 @@ declare_features! (
     (unstable, more_qualified_paths, "1.54.0", Some(86935)),
     /// Allows the `#[must_not_suspend]` attribute.
     (unstable, must_not_suspend, "1.57.0", Some(83310)),
-    /// Make `mut` not reset the binding mode on edition >= 2024.
-    (incomplete, mut_preserve_binding_mode_2024, "1.79.0", Some(123076)),
     /// Allows `mut ref` and `mut ref mut` identifier patterns.
     (incomplete, mut_ref, "1.79.0", Some(123076)),
     /// Allows using `#[naked]` on functions.

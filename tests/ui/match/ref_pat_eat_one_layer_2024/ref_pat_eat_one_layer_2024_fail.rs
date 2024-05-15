@@ -49,4 +49,14 @@ pub fn main() {
 
     let &mut &mut &mut &mut _ = &mut &&&&mut &&&mut &mut 0;
     //~^ ERROR: mismatched types
+
+    struct Foo(u8);
+
+    let Foo(mut a) = &Foo(0);
+    //~^ ERROR: binding cannot be both mutable and by-reference
+    a = &42;
+
+    let Foo(mut a) = &mut Foo(0);
+    //~^ ERROR: binding cannot be both mutable and by-reference
+    a = &mut 42;
 }

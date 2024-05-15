@@ -12,7 +12,7 @@ use rustc_infer::infer;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::{self, Ty, TypeVisitableExt};
 use rustc_middle::{bug, span_bug};
-use rustc_session::lint::builtin::NON_EXHAUSTIVE_OMITTED_PATTERNS;
+use rustc_session::{lint::builtin::NON_EXHAUSTIVE_OMITTED_PATTERNS, parse::feature_err};
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::source_map::Spanned;
@@ -669,17 +669,27 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Determine the binding mode...
         let bm = match user_bind_annot {
-            // `mut` resets binding mode on edition <= 2021
-            BindingMode(ByRef::No, Mutability::Mut)
-                if !(pat.span.at_least_rust_2024()
-                    && self.tcx.features().mut_preserve_binding_mode_2024)
-                    && matches!(def_br, ByRef::Yes(_)) =>
-            {
-                self.typeck_results
-                    .borrow_mut()
-                    .rust_2024_migration_desugared_pats_mut()
-                    .insert(pat_info.top_info.hir_id);
-                BindingMode(ByRef::No, Mutability::Mut)
+            BindingMode(ByRef::No, Mutability::Mut) if matches!(def_br, ByRef::Yes(_)) => {
+                if pat.span.at_least_rust_2024() && self.tcx.features().ref_pat_eat_one_layer_2024 {
+                    if !self.tcx.features().mut_ref {
+                        feature_err(
+                            &self.tcx.sess,
+                            sym::mut_ref,
+                            pat.span.until(ident.span),
+                            "binding cannot be both mutable and by-reference",
+                        )
+                        .emit();
+                    }
+
+                    BindingMode(def_br, Mutability::Mut)
+                } else {
+                    // `mut` resets binding mode on edition <= 2021
+                    self.typeck_results
+                        .borrow_mut()
+                        .rust_2024_migration_desugared_pats_mut()
+                        .insert(pat_info.top_info.hir_id);
+                    BindingMode(ByRef::No, Mutability::Mut)
+                }
             }
             BindingMode(ByRef::No, mutbl) => BindingMode(def_br, mutbl),
             BindingMode(ByRef::Yes(_), _) => user_bind_annot,
