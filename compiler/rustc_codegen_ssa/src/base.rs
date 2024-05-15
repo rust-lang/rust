@@ -293,12 +293,13 @@ pub fn coerce_unsized_into<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     }
 }
 
-/// Returns `rhs` sufficiently masked, truncated, and/or extended so that
-/// it can be used to shift `lhs`.
+/// Returns `rhs` sufficiently masked, truncated, and/or extended so that it can be used to shift
+/// `lhs`: it has the same size as `lhs`, and the value, when interpreted unsigned (no matter its
+/// type), will not exceed the size of `lhs`.
 ///
-/// Shifts in MIR are all allowed to have mismatched LHS & RHS types.
+/// Shifts in MIR are all allowed to have mismatched LHS & RHS types, and signed RHS.
 /// The shift methods in `BuilderMethods`, however, are fully homogeneous
-/// (both parameters and the return type are all the same type).
+/// (both parameters and the return type are all the same size) and assume an unsigned RHS.
 ///
 /// If `is_unchecked` is false, this masks the RHS to ensure it stays in-bounds,
 /// as the `BuilderMethods` shifts are UB for out-of-bounds shift amounts.
