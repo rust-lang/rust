@@ -17,7 +17,7 @@ LL |     impl Uto for &Test {}
    |          |       |
    |          |       may need to be moved as well
    |          may need to be moved as well
-   = note: anon-const (`const _: () = { ... }`) at top-level module and anon-const at the same nesting as the trait or type are consider to be transparent regarding the nesting level
+   = note: items in an anonymous const item (`const _: () = { ... }`) are treated as in the same scope as the anonymous const's declaration
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
    = note: `#[warn(non_local_definitions)]` on by default
 
@@ -37,7 +37,7 @@ LL |     impl Uto2 for Test {}
    |          |        |
    |          |        may need to be moved as well
    |          may need to be moved as well
-   = note: anon-const (`const _: () = { ... }`) at top-level module and anon-const at the same nesting as the trait or type are consider to be transparent regarding the nesting level
+   = note: items in an anonymous const item (`const _: () = { ... }`) are treated as in the same scope as the anonymous const's declaration
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
@@ -56,7 +56,7 @@ LL |     impl Uto3 for Test {}
    |          |        |
    |          |        may need to be moved as well
    |          may need to be moved as well
-   = note: anon-const (`const _: () = { ... }`) at top-level module and anon-const at the same nesting as the trait or type are consider to be transparent regarding the nesting level
+   = note: items in an anonymous const item (`const _: () = { ... }`) are treated as in the same scope as the anonymous const's declaration
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
@@ -117,7 +117,7 @@ LL | |
 LL | |             fn foo2() {}
 LL | |         }
    | |_________^
-   = note: anon-const (`const _: () = { ... }`) at top-level module and anon-const at the same nesting as the trait or type are consider to be transparent regarding the nesting level
+   = note: items in an anonymous const item (`const _: () = { ... }`) are treated as in the same scope as the anonymous const's declaration
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item

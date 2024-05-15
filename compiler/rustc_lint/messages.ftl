@@ -551,7 +551,7 @@ lint_non_local_definitions_impl = non-local `impl` definition, `impl` blocks sho
     .without_trait = methods and assoc const are still usable outside the current expression, only `impl Local` and `impl dyn Local` are local and only if the `Local` type is at the same nesting as the `impl` block
     .with_trait = an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
     .bounds = `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
-    .exception = anon-const (`const _: () = {"{"} ... {"}"}`) at top-level module and anon-const at the same nesting as the trait or type are consider to be transparent regarding the nesting level
+    .exception = items in an anonymous const item (`const _: () = {"{"} ... {"}"}`) are treated as in the same scope as the anonymous const's declaration
     .const_anon = use a const-anon item to suppress this lint
 
 lint_non_local_definitions_macro_rules = non-local `macro_rules!` definition, `#[macro_export]` macro should be written at top level module
@@ -563,7 +563,6 @@ lint_non_local_definitions_macro_rules = non-local `macro_rules!` definition, `#
     .help_doctest =
         remove the `#[macro_export]` or make this doc-test a standalone test with its own `fn main() {"{"} ... {"}"}`
     .non_local = a `macro_rules!` definition is non-local if it is nested inside an item and has a `#[macro_export]` attribute
-    .exception = one exception to the rule are anon-const (`const _: () = {"{"} ... {"}"}`) at top-level module
 
 lint_non_local_definitions_may_move = may need to be moved as well
 
