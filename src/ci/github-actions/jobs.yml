@@ -50,8 +50,6 @@ envs:
   production:
     &production
     DEPLOY_BUCKET: rust-lang-ci2
-    TOOLSTATE_ISSUES_API_URL: https://api.github.com/repos/rust-lang/rust/issues
-    TOOLSTATE_PUBLISH: 1
     # AWS_SECRET_ACCESS_KEYs are stored in GitHub's secrets storage, named
     # AWS_SECRET_ACCESS_KEY_<keyid>. Including the key id in the name allows to
     # rotate them in a single branch while keeping the old key in another

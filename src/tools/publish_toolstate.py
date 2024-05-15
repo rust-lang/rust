@@ -3,8 +3,7 @@
 
 # This script computes the new "current" toolstate for the toolstate repo (not to be
 # confused with publishing the test results, which happens in `src/bootstrap/toolstate.rs`).
-# It gets called from `src/ci/publish_toolstate.sh` when a new commit lands on `master`
-# (i.e., after it passed all checks on `auto`).
+# It gets called from `src/ci/publish_toolstate.sh` at the end of an `auto` build.
 
 from __future__ import print_function
 
