@@ -1,7 +1,7 @@
 // This tests that -Zfixed-x18 causes a compilation failure on targets other than aarch64.
 // Behavior on aarch64 is tested by tests/codegen/fixed-x18.rs.
 //
-//@ revisions: x64 i686 aarch64 arm riscv32 riscv64
+//@ revisions: x64 i686 arm riscv32 riscv64
 //
 //@ compile-flags: -Zfixed-x18
 //@ [x64] needs-llvm-components: x86
