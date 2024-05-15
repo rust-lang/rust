@@ -663,6 +663,10 @@ pub enum BuiltinLintDiag {
         span: Span,
         max_vis: String,
     },
+    MaybeTypo {
+        span: Span,
+        name: Symbol,
+    },
 }
 
 /// Lints that are buffered up early on in the `Session` before the
