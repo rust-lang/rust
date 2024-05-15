@@ -39,6 +39,7 @@ use super::GenericParamDefKind;
 pub type TyKind<'tcx> = ir::TyKind<TyCtxt<'tcx>>;
 pub type TypeAndMut<'tcx> = ir::TypeAndMut<TyCtxt<'tcx>>;
 pub type AliasTy<'tcx> = ir::AliasTy<TyCtxt<'tcx>>;
+pub type FnSig<'tcx> = ir::FnSig<TyCtxt<'tcx>>;
 
 pub trait Article {
     fn article(&self) -> &'static str;
@@ -985,14 +986,6 @@ impl<'tcx, T> Binder<'tcx, T> {
         Binder { value: &self.value, bound_vars: self.bound_vars }
     }
 
-    pub fn map_bound_ref_unchecked<F, U>(&self, f: F) -> Binder<'tcx, U>
-    where
-        F: FnOnce(&T) -> U,
-    {
-        let value = f(&self.value);
-        Binder { value, bound_vars: self.bound_vars }
-    }
-
     pub fn map_bound_ref<F, U: TypeVisitable<TyCtxt<'tcx>>>(&self, f: F) -> Binder<'tcx, U>
     where
         F: FnOnce(&T) -> U,
@@ -1109,73 +1102,37 @@ pub struct GenSig<'tcx> {
     pub return_ty: Ty<'tcx>,
 }
 
-/// Signature of a function type, which we have arbitrarily
-/// decided to use to refer to the input/output types.
-///
-/// - `inputs`: is the list of arguments and their modes.
-/// - `output`: is the return type.
-/// - `c_variadic`: indicates whether this is a C-variadic function.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
-#[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
-pub struct FnSig<'tcx> {
-    pub inputs_and_output: &'tcx List<Ty<'tcx>>,
-    pub c_variadic: bool,
-    pub unsafety: hir::Unsafety,
-    pub abi: abi::Abi,
-}
-
-impl<'tcx> FnSig<'tcx> {
-    pub fn inputs(&self) -> &'tcx [Ty<'tcx>] {
-        &self.inputs_and_output[..self.inputs_and_output.len() - 1]
-    }
-
-    pub fn output(&self) -> Ty<'tcx> {
-        self.inputs_and_output[self.inputs_and_output.len() - 1]
-    }
-
-    // Creates a minimal `FnSig` to be used when encountering a `TyKind::Error` in a fallible
-    // method.
-    fn fake() -> FnSig<'tcx> {
-        FnSig {
-            inputs_and_output: List::empty(),
-            c_variadic: false,
-            unsafety: hir::Unsafety::Normal,
-            abi: abi::Abi::Rust,
-        }
-    }
-}
-
-impl<'tcx> IntoDiagArg for FnSig<'tcx> {
-    fn into_diag_arg(self) -> DiagArgValue {
-        self.to_string().into_diag_arg()
-    }
-}
-
 pub type PolyFnSig<'tcx> = Binder<'tcx, FnSig<'tcx>>;
 
 impl<'tcx> PolyFnSig<'tcx> {
     #[inline]
     pub fn inputs(&self) -> Binder<'tcx, &'tcx [Ty<'tcx>]> {
-        self.map_bound_ref_unchecked(|fn_sig| fn_sig.inputs())
+        self.map_bound_ref(|fn_sig| fn_sig.inputs())
     }
+
     #[inline]
     #[track_caller]
     pub fn input(&self, index: usize) -> ty::Binder<'tcx, Ty<'tcx>> {
         self.map_bound_ref(|fn_sig| fn_sig.inputs()[index])
     }
+
     pub fn inputs_and_output(&self) -> ty::Binder<'tcx, &'tcx List<Ty<'tcx>>> {
         self.map_bound_ref(|fn_sig| fn_sig.inputs_and_output)
     }
+
     #[inline]
     pub fn output(&self) -> ty::Binder<'tcx, Ty<'tcx>> {
         self.map_bound_ref(|fn_sig| fn_sig.output())
     }
+
     pub fn c_variadic(&self) -> bool {
         self.skip_binder().c_variadic
     }
+
     pub fn unsafety(&self) -> hir::Unsafety {
         self.skip_binder().unsafety
     }
+
     pub fn abi(&self) -> abi::Abi {
         self.skip_binder().abi
     }
@@ -2031,7 +1988,12 @@ impl<'tcx> Ty<'tcx> {
             FnPtr(f) => *f,
             Error(_) => {
                 // ignore errors (#54954)
-                ty::Binder::dummy(FnSig::fake())
+                ty::Binder::dummy(ty::FnSig {
+                    inputs_and_output: ty::List::empty(),
+                    c_variadic: false,
+                    unsafety: hir::Unsafety::Normal,
+                    abi: abi::Abi::Rust,
+                })
             }
             Closure(..) => bug!(
                 "to get the signature of a closure, use `args.as_closure().sig()` not `fn_sig()`",
@@ -2621,6 +2583,13 @@ impl<'tcx> Ty<'tcx> {
             | Tuple(_) => true,
             Error(_) | Infer(_) | Alias(_, _) | Param(_) | Bound(_, _) | Placeholder(_) => false,
         }
+    }
+}
+
+impl<'tcx> rustc_type_ir::inherent::Tys<TyCtxt<'tcx>> for &'tcx ty::List<Ty<'tcx>> {
+    fn split_inputs_and_output(self) -> (&'tcx [Ty<'tcx>], Ty<'tcx>) {
+        let (output, inputs) = self.split_last().unwrap();
+        (inputs, *output)
     }
 }
 

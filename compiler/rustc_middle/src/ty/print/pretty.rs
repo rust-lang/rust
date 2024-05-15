@@ -3034,6 +3034,16 @@ forward_display_to_print! {
 define_print! {
     (self, cx):
 
+    ty::FnSig<'tcx> {
+        p!(write("{}", self.unsafety.prefix_str()));
+
+        if self.abi != Abi::Rust {
+            p!(write("extern {} ", self.abi));
+        }
+
+        p!("fn", pretty_fn_sig(self.inputs(), self.c_variadic, self.output()));
+    }
+
     ty::TraitRef<'tcx> {
         p!(write("<{} as {}>", self.self_ty(), self.print_only_trait_path()))
     }
@@ -3167,16 +3177,6 @@ define_print_and_forward_display! {
 
     &'tcx ty::List<Ty<'tcx>> {
         p!("{{", comma_sep(self.iter()), "}}")
-    }
-
-    ty::FnSig<'tcx> {
-        p!(write("{}", self.unsafety.prefix_str()));
-
-        if self.abi != Abi::Rust {
-            p!(write("extern {} ", self.abi));
-        }
-
-        p!("fn", pretty_fn_sig(self.inputs(), self.c_variadic, self.output()));
     }
 
     TraitRefPrintOnlyTraitPath<'tcx> {

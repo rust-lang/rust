@@ -3191,7 +3191,7 @@ pub enum Unsafety {
 }
 
 impl Unsafety {
-    pub fn prefix_str(&self) -> &'static str {
+    pub fn prefix_str(self) -> &'static str {
         match self {
             Self::Unsafe => "unsafe ",
             Self::Normal => "",
