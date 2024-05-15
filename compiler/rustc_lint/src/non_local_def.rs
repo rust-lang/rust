@@ -136,35 +136,8 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
                 };
 
                 // Part 1: Is the Self type local?
-                let self_ty_has_local_parent = match impl_.self_ty.kind {
-                    TyKind::Path(QPath::Resolved(_, ty_path)) => {
-                        path_has_local_parent(ty_path, cx, parent, parent_parent)
-                    }
-                    TyKind::TraitObject([principle_poly_trait_ref, ..], _, _) => {
-                        path_has_local_parent(
-                            principle_poly_trait_ref.trait_ref.path,
-                            cx,
-                            parent,
-                            parent_parent,
-                        )
-                    }
-                    TyKind::TraitObject([], _, _)
-                    | TyKind::InferDelegation(_, _)
-                    | TyKind::Slice(_)
-                    | TyKind::Array(_, _)
-                    | TyKind::Ptr(_)
-                    | TyKind::Ref(_, _)
-                    | TyKind::BareFn(_)
-                    | TyKind::Never
-                    | TyKind::Tup(_)
-                    | TyKind::Path(_)
-                    | TyKind::Pat(..)
-                    | TyKind::AnonAdt(_)
-                    | TyKind::OpaqueDef(_, _, _)
-                    | TyKind::Typeof(_)
-                    | TyKind::Infer
-                    | TyKind::Err(_) => false,
-                };
+                let self_ty_has_local_parent =
+                    ty_has_local_parent(&impl_.self_ty.kind, cx, parent, parent_parent);
 
                 if self_ty_has_local_parent {
                     return;
@@ -242,6 +215,18 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
                 let const_anon = matches!(parent_def_kind, DefKind::Const | DefKind::Static { .. })
                     .then_some(span_for_const_anon_suggestion);
 
+                let may_remove = match &impl_.self_ty.kind {
+                    TyKind::Ptr(mut_ty) | TyKind::Ref(_, mut_ty)
+                        if ty_has_local_parent(&mut_ty.ty.kind, cx, parent, parent_parent) =>
+                    {
+                        let type_ =
+                            if matches!(impl_.self_ty.kind, TyKind::Ptr(_)) { "*" } else { "&" };
+                        let part = format!("{}{}", type_, mut_ty.mutbl.prefix_str());
+                        Some((impl_.self_ty.span.shrink_to_lo().until(mut_ty.ty.span), part))
+                    }
+                    _ => None,
+                };
+
                 cx.emit_span_lint(
                     NON_LOCAL_DEFINITIONS,
                     item.span.shrink_to_lo().to(impl_.self_ty.span),
@@ -255,6 +240,7 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
                         cargo_update: cargo_update(),
                         const_anon,
                         may_move,
+                        may_remove,
                         has_trait: impl_.of_trait.is_some(),
                     },
                 )
@@ -381,6 +367,42 @@ impl<'tcx> Visitor<'tcx> for PathCollector<'tcx> {
     fn visit_path(&mut self, path: &Path<'tcx>, _id: HirId) {
         self.paths.push(path.clone()); // need to clone, bc of the restricted lifetime
         intravisit::walk_path(self, path)
+    }
+}
+
+/// Given a `Ty` we check if the (outermost) type is local.
+fn ty_has_local_parent(
+    ty_kind: &TyKind<'_>,
+    cx: &LateContext<'_>,
+    impl_parent: DefId,
+    impl_parent_parent: Option<DefId>,
+) -> bool {
+    match ty_kind {
+        TyKind::Path(QPath::Resolved(_, ty_path)) => {
+            path_has_local_parent(ty_path, cx, impl_parent, impl_parent_parent)
+        }
+        TyKind::TraitObject([principle_poly_trait_ref, ..], _, _) => path_has_local_parent(
+            principle_poly_trait_ref.trait_ref.path,
+            cx,
+            impl_parent,
+            impl_parent_parent,
+        ),
+        TyKind::TraitObject([], _, _)
+        | TyKind::InferDelegation(_, _)
+        | TyKind::Slice(_)
+        | TyKind::Array(_, _)
+        | TyKind::Ptr(_)
+        | TyKind::Ref(_, _)
+        | TyKind::BareFn(_)
+        | TyKind::Never
+        | TyKind::Tup(_)
+        | TyKind::Path(_)
+        | TyKind::Pat(..)
+        | TyKind::AnonAdt(_)
+        | TyKind::OpaqueDef(_, _, _)
+        | TyKind::Typeof(_)
+        | TyKind::Infer
+        | TyKind::Err(_) => false,
     }
 }
 

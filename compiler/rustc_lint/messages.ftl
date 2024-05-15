@@ -543,11 +543,12 @@ lint_non_local_definitions_cargo_update = the {$macro_kind} `{$macro_name}` may 
 lint_non_local_definitions_deprecation = this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 lint_non_local_definitions_impl = non-local `impl` definition, `impl` blocks should be written at the same level as their item
-    .help =
+    .move_help =
         move this `impl` block outside of the current {$body_kind_descr} {$depth ->
             [one] `{$body_name}`
            *[other] `{$body_name}` and up {$depth} bodies
         }
+    .remove_help = remove `{$may_remove_part}` to make the `impl` local
     .without_trait = methods and associated constants are still usable outside the current expression, only `impl Local` and `impl dyn Local` can ever be private, and only if the type is nested in the same item as the `impl`
     .with_trait = an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
     .bounds = `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
