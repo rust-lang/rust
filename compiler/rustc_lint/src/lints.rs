@@ -613,6 +613,7 @@ pub enum PtrNullChecksDiag<'a> {
 #[diag(lint_for_loops_over_fallibles)]
 pub struct ForLoopsOverFalliblesDiag<'a> {
     pub article: &'static str,
+    pub ref_prefix: &'static str,
     pub ty: &'static str,
     #[subdiagnostic]
     pub sub: ForLoopsOverFalliblesLoopSub<'a>,
