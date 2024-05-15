@@ -28,7 +28,7 @@ jobs:
       - name: Restore cargo cache
         uses: Swatinem/rust-cache@9bdad043e88c75890e36ad3bbc8d27f0090dd609
         with:
-          key: ${{ runner.os }}-cargo-${{ github.sha }}
+          shared-key: ${{ runner.os }}-cargo-metrics-${{ github.sha }}
           cache-targets: "false"
 
       - name: Collect build metrics
@@ -37,7 +37,7 @@ jobs:
       - name: Cache target
         uses: Swatinem/rust-cache@9bdad043e88c75890e36ad3bbc8d27f0090dd609
         with:
-          key: ${{ runner.os }}-cargo-${{ github.sha }}
+          shared-key: ${{ runner.os }}-cargo-metrics-${{ github.sha }}
           cache-targets: "true"
 
       - name: Upload build metrics
@@ -67,7 +67,7 @@ jobs:
       - name: Restore cargo cache
         uses: Swatinem/rust-cache@9bdad043e88c75890e36ad3bbc8d27f0090dd609
         with:
-          key: ${{ runner.os }}-cargo-${{ github.sha }}
+          shared-key: ${{ runner.os }}-cargo-metrics-${{ github.sha }}
           cache-targets: "true"
 
       - name: Collect metrics
