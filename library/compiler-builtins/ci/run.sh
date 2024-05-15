@@ -32,9 +32,9 @@ else
     $run --features no-f16-f128 --release
 fi
 
-if [ "${TEST_UNC:-}" = "1" ]; then
-    path=$(cmd.exe "/C echo \\\\?\\%cd%\\testcrate\\target_unc")
-    run="cargo test --manifest-path testcrate/Cargo.toml --target $target --target-dir $path"
+if [ "${TEST_VERBATIM:-}" = "1" ]; then
+    verb_path=$(cmd.exe //C echo \\\\?\\%cd%\\testcrate\\target2)
+    run="cargo test --manifest-path testcrate/Cargo.toml --target $target --target-dir $verb_path"
     $run
     $run --release
     $run --features c

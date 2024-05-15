@@ -22,7 +22,7 @@ jobs:
         - target: aarch64-pc-windows-msvc
           os: windows-latest
           rust: nightly
-          test_unc: 1
+          test_verbatim: 1
           no_std: 1
         - target: arm-unknown-linux-gnueabi
           os: ubuntu-latest
@@ -83,19 +83,19 @@ jobs:
         - target: i686-pc-windows-msvc
           os: windows-latest
           rust: nightly
-          test_unc: 1
+          test_verbatim: 1
         - target: x86_64-pc-windows-msvc
           os: windows-latest
           rust: nightly
-          test_unc: 1
+          test_verbatim: 1
         - target: i686-pc-windows-gnu
           os: windows-latest
           rust: nightly-i686-gnu
-          test_unc: 1
+          test_verbatim: 1
         - target: x86_64-pc-windows-gnu
           os: windows-latest
           rust: nightly-x86_64-gnu
-          test_unc: 1
+          test_verbatim: 1
     steps:
     - name: Print runner information
       run: uname -a
@@ -120,7 +120,7 @@ jobs:
       shell: bash
       env:
         NO_STD: ${{ matrix.no_std }}
-        TEST_UNC: ${{ matrix.test_unc }}
+        TEST_VERBATIM: ${{ matrix.test_verbatim }}
 
     # Otherwise we use our docker containers to run builds
     - run: cargo generate-lockfile && ./ci/run-docker.sh ${{ matrix.target }}
