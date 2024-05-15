@@ -190,7 +190,6 @@ run-make/output-with-hyphens/Makefile
 run-make/override-aliased-flags/Makefile
 run-make/overwrite-input/Makefile
 run-make/panic-abort-eh_frame/Makefile
-run-make/panic-impl-transitive/Makefile
 run-make/pass-linker-flags-flavor/Makefile
 run-make/pass-linker-flags-from-dep/Makefile
 run-make/pass-linker-flags/Makefile
