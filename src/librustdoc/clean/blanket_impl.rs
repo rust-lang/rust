@@ -1,7 +1,7 @@
 use rustc_hir as hir;
 use rustc_infer::infer::{DefineOpaqueTypes, InferOk, TyCtxtInferExt};
 use rustc_infer::traits;
-use rustc_middle::ty::{self, ToPredicate};
+use rustc_middle::ty::{self, Upcast};
 use rustc_span::def_id::DefId;
 use rustc_span::DUMMY_SP;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
@@ -64,7 +64,7 @@ pub(crate) fn synthesize_blanket_impls(
                 .instantiate(tcx, impl_args)
                 .predicates
                 .into_iter()
-                .chain(Some(ty::Binder::dummy(impl_trait_ref).to_predicate(tcx)));
+                .chain(Some(ty::Binder::dummy(impl_trait_ref).upcast(tcx)));
             for predicate in predicates {
                 let obligation = traits::Obligation::new(
                     tcx,
