@@ -12,7 +12,7 @@ use crate::{Module, ModuleOrUniformRoot, NameBinding, ParentScope, PathResult};
 use crate::{ResolutionError, Resolver, Segment, UseError};
 
 use rustc_ast::ptr::P;
-use rustc_ast::visit::{walk_list, AssocCtxt, BoundKind, FnCtxt, FnKind, Visitor};
+use rustc_ast::visit::{visit_opt, walk_list, AssocCtxt, BoundKind, FnCtxt, FnKind, Visitor};
 use rustc_ast::*;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_errors::{codes::*, Applicability, DiagArgValue, IntoDiagArg, StashKey};
@@ -3286,7 +3286,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
     fn resolve_local(&mut self, local: &'ast Local) {
         debug!("resolving local ({:?})", local);
         // Resolve the type.
-        walk_list!(self, visit_ty, &local.ty);
+        visit_opt!(self, visit_ty, &local.ty);
 
         // Resolve the initializer.
         if let Some((init, els)) = local.kind.init_else_opt() {
@@ -3485,8 +3485,8 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
     fn resolve_arm(&mut self, arm: &'ast Arm) {
         self.with_rib(ValueNS, RibKind::Normal, |this| {
             this.resolve_pattern_top(&arm.pat, PatternSource::Match);
-            walk_list!(this, visit_expr, &arm.guard);
-            walk_list!(this, visit_expr, &arm.body);
+            visit_opt!(this, visit_expr, &arm.guard);
+            visit_opt!(this, visit_expr, &arm.body);
         });
     }
 
