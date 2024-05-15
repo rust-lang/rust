@@ -125,6 +125,24 @@ impl Rustc {
         self
     }
 
+    /// Specify directory path used for profile generation
+    pub fn profile_generate<P: AsRef<Path>>(&mut self, path: P) -> &mut Self {
+        let mut arg = OsString::new();
+        arg.push("-Cprofile-generate=");
+        arg.push(path.as_ref());
+        self.cmd.arg(&arg);
+        self
+    }
+
+    /// Specify directory path used for profile usage
+    pub fn profile_use<P: AsRef<Path>>(&mut self, path: P) -> &mut Self {
+        let mut arg = OsString::new();
+        arg.push("-Cprofile-use=");
+        arg.push(path.as_ref());
+        self.cmd.arg(&arg);
+        self
+    }
+
     /// Specify error format to use
     pub fn error_format(&mut self, format: &str) -> &mut Self {
         self.cmd.arg(format!("--error-format={format}"));

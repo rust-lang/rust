@@ -6,7 +6,7 @@
 pub mod cc;
 pub mod clang;
 pub mod diff;
-pub mod llvm_readobj;
+pub mod llvm;
 pub mod run;
 pub mod rustc;
 pub mod rustdoc;
@@ -23,8 +23,8 @@ pub use wasmparser;
 pub use cc::{cc, extra_c_flags, extra_cxx_flags, Cc};
 pub use clang::{clang, Clang};
 pub use diff::{diff, Diff};
-pub use llvm_readobj::{llvm_readobj, LlvmReadobj};
-pub use run::{run, run_fail};
+pub use llvm::{llvm_profdata, llvm_readobj, llvm_filecheck, LlvmProfdata, LlvmReadobj, LlvmFilecheck};
+pub use run::{run, run_fail, run_with_args};
 pub use rustc::{aux_build, rustc, Rustc};
 pub use rustdoc::{bare_rustdoc, rustdoc, Rustdoc};
 
