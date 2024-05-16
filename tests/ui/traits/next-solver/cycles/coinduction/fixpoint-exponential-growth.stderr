@@ -1,16 +1,9 @@
-error[E0275]: overflow evaluating the requirement `_: Sized`
+error[E0275]: overflow evaluating the requirement `W<_>: Trait`
   --> $DIR/fixpoint-exponential-growth.rs:33:13
    |
 LL |     impls::<W<_>>();
    |             ^^^^
    |
-note: required for `W<(W<_>, W<_>)>` to implement `Trait`
-  --> $DIR/fixpoint-exponential-growth.rs:23:12
-   |
-LL | impl<T, U> Trait for W<(W<T>, W<U>)>
-   |      -     ^^^^^     ^^^^^^^^^^^^^^^
-   |      |
-   |      unsatisfied trait bound introduced here
 note: required by a bound in `impls`
   --> $DIR/fixpoint-exponential-growth.rs:30:13
    |

@@ -2,6 +2,7 @@
 
 #![crate_type = "lib"]
 #![feature(f128)]
+#![feature(f16)]
 #![feature(core_intrinsics)]
 
 // CHECK-LABEL: i1 @f128_eq(
@@ -126,4 +127,197 @@ pub fn f128_rem_assign(a: &mut f128, b: f128) {
     // CHECK: frem fp128 %{{.+}}, %{{.+}}
     // CHECK-NEXT: store fp128 %{{.+}}, ptr %{{.+}}
     *a %= b
+}
+
+/* float to float conversions */
+
+// CHECK-LABEL: half @f128_as_f16(
+#[no_mangle]
+pub fn f128_as_f16(a: f128) -> f16 {
+    // CHECK: fptrunc fp128 %{{.+}} to half
+    a as f16
+}
+
+// CHECK-LABEL: float @f128_as_f32(
+#[no_mangle]
+pub fn f128_as_f32(a: f128) -> f32 {
+    // CHECK: fptrunc fp128 %{{.+}} to float
+    a as f32
+}
+
+// CHECK-LABEL: double @f128_as_f64(
+#[no_mangle]
+pub fn f128_as_f64(a: f128) -> f64 {
+    // CHECK: fptrunc fp128 %{{.+}} to double
+    a as f64
+}
+
+// CHECK-LABEL: fp128 @f128_as_self(
+#[no_mangle]
+pub fn f128_as_self(a: f128) -> f128 {
+    // CHECK: ret fp128 %{{.+}}
+    a as f128
+}
+
+// CHECK-LABEL: fp128 @f16_as_f128(
+#[no_mangle]
+pub fn f16_as_f128(a: f16) -> f128 {
+    // CHECK: fpext half %{{.+}} to fp128
+    a as f128
+}
+
+// CHECK-LABEL: fp128 @f32_as_f128(
+#[no_mangle]
+pub fn f32_as_f128(a: f32) -> f128 {
+    // CHECK: fpext float %{{.+}} to fp128
+    a as f128
+}
+
+// CHECK-LABEL: fp128 @f64_as_f128(
+#[no_mangle]
+pub fn f64_as_f128(a: f64) -> f128 {
+    // CHECK: fpext double %{{.+}} to fp128
+    a as f128
+}
+
+/* float to int conversions */
+
+// CHECK-LABEL: i8 @f128_as_u8(
+#[no_mangle]
+pub fn f128_as_u8(a: f128) -> u8 {
+    // CHECK: call i8 @llvm.fptoui.sat.i8.f128(fp128 %{{.+}})
+    a as u8
+}
+
+#[no_mangle]
+pub fn f128_as_u16(a: f128) -> u16 {
+    // CHECK: call i16 @llvm.fptoui.sat.i16.f128(fp128 %{{.+}})
+    a as u16
+}
+
+// CHECK-LABEL: i32 @f128_as_u32(
+#[no_mangle]
+pub fn f128_as_u32(a: f128) -> u32 {
+    // CHECK: call i32 @llvm.fptoui.sat.i32.f128(fp128 %{{.+}})
+    a as u32
+}
+
+// CHECK-LABEL: i64 @f128_as_u64(
+#[no_mangle]
+pub fn f128_as_u64(a: f128) -> u64 {
+    // CHECK: call i64 @llvm.fptoui.sat.i64.f128(fp128 %{{.+}})
+    a as u64
+}
+
+// CHECK-LABEL: i128 @f128_as_u128(
+#[no_mangle]
+pub fn f128_as_u128(a: f128) -> u128 {
+    // CHECK: call i128 @llvm.fptoui.sat.i128.f128(fp128 %{{.+}})
+    a as u128
+}
+
+// CHECK-LABEL: i8 @f128_as_i8(
+#[no_mangle]
+pub fn f128_as_i8(a: f128) -> i8 {
+    // CHECK: call i8 @llvm.fptosi.sat.i8.f128(fp128 %{{.+}})
+    a as i8
+}
+
+// CHECK-LABEL: i16 @f128_as_i16(
+#[no_mangle]
+pub fn f128_as_i16(a: f128) -> i16 {
+    // CHECK: call i16 @llvm.fptosi.sat.i16.f128(fp128 %{{.+}})
+    a as i16
+}
+// CHECK-LABEL: i32 @f128_as_i32(
+#[no_mangle]
+pub fn f128_as_i32(a: f128) -> i32 {
+    // CHECK: call i32 @llvm.fptosi.sat.i32.f128(fp128 %{{.+}})
+    a as i32
+}
+
+// CHECK-LABEL: i64 @f128_as_i64(
+#[no_mangle]
+pub fn f128_as_i64(a: f128) -> i64 {
+    // CHECK: call i64 @llvm.fptosi.sat.i64.f128(fp128 %{{.+}})
+    a as i64
+}
+
+// CHECK-LABEL: i128 @f128_as_i128(
+#[no_mangle]
+pub fn f128_as_i128(a: f128) -> i128 {
+    // CHECK: call i128 @llvm.fptosi.sat.i128.f128(fp128 %{{.+}})
+    a as i128
+}
+
+/* int to float conversions */
+
+// CHECK-LABEL: fp128 @u8_as_f128(
+#[no_mangle]
+pub fn u8_as_f128(a: u8) -> f128 {
+    // CHECK: uitofp i8 %{{.+}} to fp128
+    a as f128
+}
+
+// CHECK-LABEL: fp128 @u16_as_f128(
+#[no_mangle]
+pub fn u16_as_f128(a: u16) -> f128 {
+    // CHECK: uitofp i16 %{{.+}} to fp128
+    a as f128
+}
+
+// CHECK-LABEL: fp128 @u32_as_f128(
+#[no_mangle]
+pub fn u32_as_f128(a: u32) -> f128 {
+    // CHECK: uitofp i32 %{{.+}} to fp128
+    a as f128
+}
+
+// CHECK-LABEL: fp128 @u64_as_f128(
+#[no_mangle]
+pub fn u64_as_f128(a: u64) -> f128 {
+    // CHECK: uitofp i64 %{{.+}} to fp128
+    a as f128
+}
+
+// CHECK-LABEL: fp128 @u128_as_f128(
+#[no_mangle]
+pub fn u128_as_f128(a: u128) -> f128 {
+    // CHECK: uitofp i128 %{{.+}} to fp128
+    a as f128
+}
+
+// CHECK-LABEL: fp128 @i8_as_f128(
+#[no_mangle]
+pub fn i8_as_f128(a: i8) -> f128 {
+    // CHECK: sitofp i8 %{{.+}} to fp128
+    a as f128
+}
+
+// CHECK-LABEL: fp128 @i16_as_f128(
+#[no_mangle]
+pub fn i16_as_f128(a: i16) -> f128 {
+    // CHECK: sitofp i16 %{{.+}} to fp128
+    a as f128
+}
+
+// CHECK-LABEL: fp128 @i32_as_f128(
+#[no_mangle]
+pub fn i32_as_f128(a: i32) -> f128 {
+    // CHECK: sitofp i32 %{{.+}} to fp128
+    a as f128
+}
+
+// CHECK-LABEL: fp128 @i64_as_f128(
+#[no_mangle]
+pub fn i64_as_f128(a: i64) -> f128 {
+    // CHECK: sitofp i64 %{{.+}} to fp128
+    a as f128
+}
+
+// CHECK-LABEL: fp128 @i128_as_f128(
+#[no_mangle]
+pub fn i128_as_f128(a: i128) -> f128 {
+    // CHECK: sitofp i128 %{{.+}} to fp128
+    a as f128
 }

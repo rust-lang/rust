@@ -92,7 +92,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type DefiningOpaqueTypes = &'tcx ty::List<LocalDefId>;
     type AdtDef = ty::AdtDef<'tcx>;
     type GenericArgs = ty::GenericArgsRef<'tcx>;
-    type GenericArgsSlice = &'tcx [ty::GenericArg<'tcx>];
+    type OwnItemArgs = &'tcx [ty::GenericArg<'tcx>];
     type GenericArg = ty::GenericArg<'tcx>;
 
     type Term = ty::Term<'tcx>;
@@ -103,6 +103,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type CanonicalVars = CanonicalVarInfos<'tcx>;
     type Ty = Ty<'tcx>;
     type Tys = &'tcx List<Ty<'tcx>>;
+    type FnInputTys = &'tcx [Ty<'tcx>];
     type ParamTy = ParamTy;
     type BoundTy = ty::BoundTy;
     type PlaceholderTy = ty::PlaceholderType;
@@ -113,21 +114,24 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type AllocId = crate::mir::interpret::AllocId;
 
     type Pat = Pattern<'tcx>;
+    type Unsafety = hir::Unsafety;
+    type Abi = abi::Abi;
+
     type Const = ty::Const<'tcx>;
     type AliasConst = ty::UnevaluatedConst<'tcx>;
     type PlaceholderConst = ty::PlaceholderConst;
     type ParamConst = ty::ParamConst;
     type BoundConst = ty::BoundVar;
     type ValueConst = ty::ValTree<'tcx>;
-
     type ExprConst = ty::Expr<'tcx>;
+
     type Region = Region<'tcx>;
     type EarlyParamRegion = ty::EarlyParamRegion;
     type LateParamRegion = ty::LateParamRegion;
     type BoundRegion = ty::BoundRegion;
     type InferRegion = ty::RegionVid;
-
     type PlaceholderRegion = ty::PlaceholderRegion;
+
     type Predicate = Predicate<'tcx>;
     type TraitPredicate = ty::TraitPredicate<'tcx>;
     type RegionOutlivesPredicate = ty::RegionOutlivesPredicate<'tcx>;
@@ -135,10 +139,12 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type ProjectionPredicate = ty::ProjectionPredicate<'tcx>;
     type NormalizesTo = ty::NormalizesTo<'tcx>;
     type SubtypePredicate = ty::SubtypePredicate<'tcx>;
+
     type CoercePredicate = ty::CoercePredicate<'tcx>;
     type ClosureKind = ty::ClosureKind;
 
     type Clauses = ty::Clauses<'tcx>;
+
     fn mk_canonical_var_infos(self, infos: &[ty::CanonicalVarInfo<Self>]) -> Self::CanonicalVars {
         self.mk_canonical_var_infos(infos)
     }
@@ -191,7 +197,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self,
         def_id: Self::DefId,
         args: Self::GenericArgs,
-    ) -> (rustc_type_ir::TraitRef<Self>, Self::GenericArgsSlice) {
+    ) -> (rustc_type_ir::TraitRef<Self>, Self::OwnItemArgs) {
         assert_matches!(self.def_kind(def_id), DefKind::AssocTy | DefKind::AssocConst);
         let trait_def_id = self.parent(def_id);
         assert_matches!(self.def_kind(trait_def_id), DefKind::Trait);
@@ -220,6 +226,18 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
 
     fn parent(self, def_id: Self::DefId) -> Self::DefId {
         self.parent(def_id)
+    }
+}
+
+impl<'tcx> rustc_type_ir::inherent::Abi<TyCtxt<'tcx>> for abi::Abi {
+    fn is_rust(self) -> bool {
+        matches!(self, abi::Abi::Rust)
+    }
+}
+
+impl<'tcx> rustc_type_ir::inherent::Unsafety<TyCtxt<'tcx>> for hir::Unsafety {
+    fn prefix_str(self) -> &'static str {
+        self.prefix_str()
     }
 }
 

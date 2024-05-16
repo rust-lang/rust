@@ -26,6 +26,21 @@ pub trait Ty<I: Interner<Ty = Self>>:
     fn new_alias(interner: I, kind: AliasTyKind, alias_ty: AliasTy<I>) -> Self;
 }
 
+pub trait Tys<I: Interner<Tys = Self>>:
+    Copy + Debug + Hash + Eq + IntoIterator<Item = I::Ty> + Deref<Target: Deref<Target = [I::Ty]>>
+{
+    fn split_inputs_and_output(self) -> (I::FnInputTys, I::Ty);
+}
+
+pub trait Abi<I: Interner<Abi = Self>>: Copy + Debug + Hash + Eq {
+    /// Whether this ABI is `extern "Rust"`.
+    fn is_rust(self) -> bool;
+}
+
+pub trait Unsafety<I: Interner<Unsafety = Self>>: Copy + Debug + Hash + Eq {
+    fn prefix_str(self) -> &'static str;
+}
+
 pub trait Region<I: Interner<Region = Self>>:
     Copy + DebugWithInfcx<I> + Hash + Eq + Into<I::GenericArg> + IntoKind<Kind = RegionKind<I>> + Flags
 {

@@ -28,5 +28,5 @@ fn impls_a<T: A>() {}
 
 fn main() {
     impls_a::<()>();
-    //~^ ERROR overflow evaluating the requirement `(): BInd`
+    //~^ ERROR overflow evaluating the requirement `(): A`
 }
