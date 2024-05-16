@@ -825,7 +825,9 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
             }
             ItemKind::Impl { .. } | ItemKind::ForeignMod(..) | ItemKind::GlobalAsm(..) => {}
 
-            ItemKind::MacroDef(..) | ItemKind::MacCall(_) => unreachable!(),
+            ItemKind::MacroDef(..) | ItemKind::MacCall(_) | ItemKind::DelegationMac(..) => {
+                unreachable!()
+            }
         }
     }
 
@@ -1381,7 +1383,7 @@ impl<'a, 'b, 'tcx> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                 | AssocItemKind::Delegation(..)
                 | AssocItemKind::Fn(..) => ValueNS,
                 AssocItemKind::Type(..) => TypeNS,
-                AssocItemKind::MacCall(_) => bug!(), // handled above
+                AssocItemKind::MacCall(_) | AssocItemKind::DelegationMac(..) => bug!(), // handled above
             };
 
             let parent = self.parent_scope.module;

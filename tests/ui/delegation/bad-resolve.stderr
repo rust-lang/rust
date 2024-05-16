@@ -63,7 +63,19 @@ LL |     type Type;
 LL | impl Trait for S {
    | ^^^^^^^^^^^^^^^^ missing `Type` in implementation
 
-error: aborting due to 8 previous errors
+error[E0433]: failed to resolve: use of undeclared crate or module `unresolved_prefix`
+  --> $DIR/bad-resolve.rs:40:7
+   |
+LL | reuse unresolved_prefix::{a, b, c};
+   |       ^^^^^^^^^^^^^^^^^ use of undeclared crate or module `unresolved_prefix`
 
-Some errors have detailed explanations: E0046, E0324, E0407, E0423, E0425, E0575, E0576.
+error[E0433]: failed to resolve: `crate` in paths can only be used in start position
+  --> $DIR/bad-resolve.rs:41:29
+   |
+LL | reuse prefix::{self, super, crate};
+   |                             ^^^^^ `crate` in paths can only be used in start position
+
+error: aborting due to 10 previous errors
+
+Some errors have detailed explanations: E0046, E0324, E0407, E0423, E0425, E0433, E0575, E0576.
 For more information about an error, try `rustc --explain E0046`.

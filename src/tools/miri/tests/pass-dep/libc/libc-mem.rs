@@ -226,7 +226,8 @@ fn test_memalign() {
     target_os = "windows",
     target_os = "macos",
     target_os = "illumos",
-    target_os = "solaris"
+    target_os = "solaris",
+    target_os = "wasi",
 )))]
 fn test_reallocarray() {
     unsafe {
@@ -249,7 +250,8 @@ fn main() {
         target_os = "windows",
         target_os = "macos",
         target_os = "illumos",
-        target_os = "solaris"
+        target_os = "solaris",
+        target_os = "wasi",
     )))]
     test_reallocarray();
 

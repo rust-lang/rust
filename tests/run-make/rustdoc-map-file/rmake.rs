@@ -1,5 +1,4 @@
-use run_make_support::{rustdoc, tmp_dir};
-use std::process::Command;
+use run_make_support::{python_command, rustdoc, tmp_dir};
 
 fn main() {
     let out_dir = tmp_dir().join("out");
@@ -10,6 +9,5 @@ fn main() {
         .output(&out_dir)
         .run();
     // FIXME (GuillaumeGomez): Port the python script to Rust as well.
-    let python = std::env::var("PYTHON").unwrap_or("python".into());
-    assert!(Command::new(python).arg("validate_json.py").arg(&out_dir).status().unwrap().success());
+    assert!(python_command().arg("validate_json.py").arg(&out_dir).status().unwrap().success());
 }

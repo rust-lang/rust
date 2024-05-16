@@ -13,7 +13,7 @@ use std::{
 use crate::core::builder::Builder;
 use crate::core::{build_steps::dist::distdir, builder::Kind};
 use crate::utils::channel;
-use crate::utils::helpers::t;
+use crate::utils::helpers::{move_file, t};
 
 #[derive(Copy, Clone)]
 pub(crate) enum OverlayKind {
@@ -284,7 +284,7 @@ impl<'a> Tarball<'a> {
         // name, not "image". We rename the image directory just before passing
         // into rust-installer.
         let dest = self.temp_dir.join(self.package_name());
-        t!(std::fs::rename(&self.image_dir, &dest));
+        t!(move_file(&self.image_dir, &dest));
 
         self.run(|this, cmd| {
             let distdir = distdir(this.builder);

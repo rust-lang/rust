@@ -8,7 +8,6 @@ run-make/branch-protection-check-IBT/Makefile
 run-make/c-dynamic-dylib/Makefile
 run-make/c-dynamic-rlib/Makefile
 run-make/c-link-to-rust-dylib/Makefile
-run-make/c-link-to-rust-staticlib/Makefile
 run-make/c-static-dylib/Makefile
 run-make/c-static-rlib/Makefile
 run-make/c-unwind-abi-catch-lib-panic/Makefile
@@ -94,8 +93,6 @@ run-make/invalid-staticlib/Makefile
 run-make/issue-107094/Makefile
 run-make/issue-10971-temps-dir/Makefile
 run-make/issue-109934-lto-debuginfo/Makefile
-run-make/issue-11908/Makefile
-run-make/issue-14500/Makefile
 run-make/issue-14698/Makefile
 run-make/issue-15460/Makefile
 run-make/issue-18943/Makefile
@@ -181,7 +178,6 @@ run-make/native-link-modifier-whole-archive/Makefile
 run-make/no-alloc-shim/Makefile
 run-make/no-builtins-attribute/Makefile
 run-make/no-builtins-lto/Makefile
-run-make/no-cdylib-as-rdylib/Makefile
 run-make/no-duplicate-libs/Makefile
 run-make/no-intermediate-extras/Makefile
 run-make/obey-crate-type-flag/Makefile
@@ -194,7 +190,6 @@ run-make/output-with-hyphens/Makefile
 run-make/override-aliased-flags/Makefile
 run-make/overwrite-input/Makefile
 run-make/panic-abort-eh_frame/Makefile
-run-make/panic-impl-transitive/Makefile
 run-make/pass-linker-flags-flavor/Makefile
 run-make/pass-linker-flags-from-dep/Makefile
 run-make/pass-linker-flags/Makefile
@@ -247,9 +242,7 @@ run-make/rustdoc-scrape-examples-multiple/Makefile
 run-make/rustdoc-scrape-examples-remap/Makefile
 run-make/rustdoc-scrape-examples-test/Makefile
 run-make/rustdoc-scrape-examples-whitespace/Makefile
-run-make/rustdoc-themes/Makefile
 run-make/rustdoc-verify-output-files/Makefile
-run-make/rustdoc-with-out-dir-option/Makefile
 run-make/rustdoc-with-output-option/Makefile
 run-make/rustdoc-with-short-out-dir-option/Makefile
 run-make/sanitizer-cdylib-link/Makefile

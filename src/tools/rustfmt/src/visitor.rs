@@ -586,7 +586,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                     );
                     self.push_rewrite(item.span, rewrite);
                 }
-                ast::ItemKind::Delegation(..) => {
+                ast::ItemKind::Delegation(..) | ast::ItemKind::DelegationMac(..) => {
                     // TODO: rewrite delegation items once syntax is established.
                     // For now, leave the contents of the Span unformatted.
                     self.push_rewrite(item.span, None)

@@ -129,17 +129,11 @@ pub enum CoverageKind {
     /// Marks the point in MIR control flow represented by a evaluated condition.
     ///
     /// This is eventually lowered to `llvm.instrprof.mcdc.condbitmap.update` in LLVM IR.
-    ///
-    /// If this statement does not survive MIR optimizations, the condition would never be
-    /// taken as evaluated.
     CondBitmapUpdate { id: ConditionId, value: bool, decision_depth: u16 },
 
     /// Marks the point in MIR control flow represented by a evaluated decision.
     ///
     /// This is eventually lowered to `llvm.instrprof.mcdc.tvbitmap.update` in LLVM IR.
-    ///
-    /// If this statement does not survive MIR optimizations, the decision would never be
-    /// taken as evaluated.
     TestVectorBitmapUpdate { bitmap_idx: u32, decision_depth: u16 },
 }
 

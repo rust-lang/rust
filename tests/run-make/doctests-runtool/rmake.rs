@@ -29,8 +29,7 @@ fn main() {
         .arg(run_dir_name)
         .arg("--runtool")
         .arg(&run_tool_binary)
-        .arg("--extern")
-        .arg("t=libt.rlib")
+        .extern_("t", "libt.rlib")
         .current_dir(tmp_dir())
         .run();
 

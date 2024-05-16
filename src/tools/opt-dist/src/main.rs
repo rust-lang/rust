@@ -69,6 +69,10 @@ enum EnvironmentCmd {
         #[arg(long, default_value = "opt-artifacts")]
         artifact_dir: Utf8PathBuf,
 
+        /// Checkout directory of `rustc-perf`, it will be fetched automatically if unspecified.
+        #[arg(long)]
+        rustc_perf_checkout_dir: Option<Utf8PathBuf>,
+
         /// Is LLVM for `rustc` built in shared library mode?
         #[arg(long, default_value_t = true)]
         llvm_shared: bool,
@@ -109,6 +113,7 @@ fn create_environment(args: Args) -> anyhow::Result<(Environment, Vec<String>)> 
             llvm_dir,
             python,
             artifact_dir,
+            rustc_perf_checkout_dir,
             llvm_shared,
             use_bolt,
             skipped_tests,
@@ -121,6 +126,7 @@ fn create_environment(args: Args) -> anyhow::Result<(Environment, Vec<String>)> 
                 .host_llvm_dir(llvm_dir)
                 .artifact_dir(artifact_dir)
                 .build_dir(checkout_dir)
+                .prebuilt_rustc_perf(rustc_perf_checkout_dir)
                 .shared_llvm(llvm_shared)
                 .use_bolt(use_bolt)
                 .skipped_tests(skipped_tests)

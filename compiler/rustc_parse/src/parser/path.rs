@@ -95,12 +95,15 @@ impl<'a> Parser<'a> {
             debug!("parse_qpath: (decrement) count={:?}", self.unmatched_angle_bracket_count);
         }
 
-        if !self.recover_colon_before_qpath_proj() {
+        let is_import_coupler = self.is_import_coupler();
+        if !is_import_coupler && !self.recover_colon_before_qpath_proj() {
             self.expect(&token::PathSep)?;
         }
 
         let qself = P(QSelf { ty, path_span, position: path.segments.len() });
-        self.parse_path_segments(&mut path.segments, style, None)?;
+        if !is_import_coupler {
+            self.parse_path_segments(&mut path.segments, style, None)?;
+        }
 
         Ok((
             qself,

@@ -5,6 +5,7 @@ use crate::pprust::state::{AnnNode, PrintState, State, INDENT_UNIT};
 use ast::StaticItem;
 use itertools::{Itertools, Position};
 use rustc_ast as ast;
+use rustc_ast::ptr::P;
 use rustc_ast::ModKind;
 use rustc_span::symbol::Ident;
 
@@ -374,9 +375,22 @@ impl<'a> State<'a> {
                     state.print_visibility(&item.vis)
                 });
             }
-            ast::ItemKind::Delegation(box delegation) => {
-                self.print_delegation(delegation, &item.vis, &item.attrs)
-            }
+            ast::ItemKind::Delegation(deleg) => self.print_delegation(
+                &item.attrs,
+                &item.vis,
+                &deleg.qself,
+                &deleg.path,
+                None,
+                &deleg.body,
+            ),
+            ast::ItemKind::DelegationMac(deleg) => self.print_delegation(
+                &item.attrs,
+                &item.vis,
+                &deleg.qself,
+                &deleg.prefix,
+                Some(&deleg.suffixes),
+                &deleg.body,
+            ),
         }
         self.ann.post(self, AnnNode::Item(item))
     }
@@ -553,31 +567,63 @@ impl<'a> State<'a> {
                     self.word(";");
                 }
             }
-            ast::AssocItemKind::Delegation(box delegation) => {
-                self.print_delegation(delegation, vis, &item.attrs)
-            }
+            ast::AssocItemKind::Delegation(deleg) => self.print_delegation(
+                &item.attrs,
+                vis,
+                &deleg.qself,
+                &deleg.path,
+                None,
+                &deleg.body,
+            ),
+            ast::AssocItemKind::DelegationMac(deleg) => self.print_delegation(
+                &item.attrs,
+                vis,
+                &deleg.qself,
+                &deleg.prefix,
+                Some(&deleg.suffixes),
+                &deleg.body,
+            ),
         }
         self.ann.post(self, AnnNode::SubItem(id))
     }
 
     pub(crate) fn print_delegation(
         &mut self,
-        delegation: &ast::Delegation,
-        vis: &ast::Visibility,
         attrs: &[ast::Attribute],
+        vis: &ast::Visibility,
+        qself: &Option<P<ast::QSelf>>,
+        path: &ast::Path,
+        suffixes: Option<&[(Ident, Option<Ident>)]>,
+        body: &Option<P<ast::Block>>,
     ) {
-        if delegation.body.is_some() {
+        if body.is_some() {
             self.head("");
         }
         self.print_visibility(vis);
-        self.word_space("reuse");
+        self.word_nbsp("reuse");
 
-        if let Some(qself) = &delegation.qself {
-            self.print_qpath(&delegation.path, qself, false);
+        if let Some(qself) = qself {
+            self.print_qpath(path, qself, false);
         } else {
-            self.print_path(&delegation.path, false, 0);
+            self.print_path(path, false, 0);
         }
-        if let Some(body) = &delegation.body {
+        if let Some(suffixes) = suffixes {
+            self.word("::");
+            self.word("{");
+            for (i, (ident, rename)) in suffixes.iter().enumerate() {
+                self.print_ident(*ident);
+                if let Some(rename) = rename {
+                    self.nbsp();
+                    self.word_nbsp("as");
+                    self.print_ident(*rename);
+                }
+                if i != suffixes.len() - 1 {
+                    self.word_space(",");
+                }
+            }
+            self.word("}");
+        }
+        if let Some(body) = body {
             self.nbsp();
             self.print_block_with_attrs(body, attrs);
         } else {

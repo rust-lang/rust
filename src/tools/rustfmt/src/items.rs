@@ -739,8 +739,8 @@ impl<'a> FmtVisitor<'a> {
                 (_, Const(..)) => Ordering::Greater,
                 (MacCall(..), _) => Ordering::Less,
                 (_, MacCall(..)) => Ordering::Greater,
-                (Delegation(..), _) => Ordering::Less,
-                (_, Delegation(..)) => Ordering::Greater,
+                (Delegation(..), _) | (DelegationMac(..), _) => Ordering::Less,
+                (_, Delegation(..)) | (_, DelegationMac(..)) => Ordering::Greater,
             });
             let mut prev_kind = None;
             for (buf, item) in buffer {

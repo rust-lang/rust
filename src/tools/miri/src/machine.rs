@@ -30,13 +30,12 @@ use rustc_target::abi::{Align, Size};
 use rustc_target::spec::abi::Abi;
 
 use crate::{
-    concurrency::{data_race, weak_memory},
-    shims::unix,
+    concurrency::{
+        data_race::{self, NaReadType, NaWriteType},
+        weak_memory,
+    },
     *,
 };
-
-use self::concurrency::data_race::NaReadType;
-use self::concurrency::data_race::NaWriteType;
 
 /// First real-time signal.
 /// `signal(7)` says this must be between 32 and 64 and specifies 34 or 35
@@ -464,9 +463,9 @@ pub struct MiriMachine<'mir, 'tcx> {
     pub(crate) validate: bool,
 
     /// The table of file descriptors.
-    pub(crate) fds: unix::FdTable,
+    pub(crate) fds: shims::FdTable,
     /// The table of directory descriptors.
-    pub(crate) dirs: unix::DirTable,
+    pub(crate) dirs: shims::DirTable,
 
     /// This machine's monotone clock.
     pub(crate) clock: Clock,
@@ -641,7 +640,7 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
             tls: TlsData::default(),
             isolated_op: config.isolated_op,
             validate: config.validate,
-            fds: unix::FdTable::new(config.mute_stdout_stderr),
+            fds: shims::FdTable::new(config.mute_stdout_stderr),
             dirs: Default::default(),
             layouts,
             threads: ThreadManager::default(),

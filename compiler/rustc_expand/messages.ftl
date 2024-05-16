@@ -30,6 +30,9 @@ expand_duplicate_matcher_binding = duplicate matcher binding
     .label = duplicate binding
     .label2 = previous binding
 
+expand_empty_delegation_list =
+    empty list delegation is not supported
+
 expand_expected_paren_or_brace =
     expected `(` or `{"{"}`, found `{$token}`
 

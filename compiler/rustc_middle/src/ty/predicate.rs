@@ -13,6 +13,7 @@ use crate::ty::{
 };
 
 pub type TraitRef<'tcx> = ir::TraitRef<TyCtxt<'tcx>>;
+pub type AliasTerm<'tcx> = ir::AliasTerm<TyCtxt<'tcx>>;
 pub type ProjectionPredicate<'tcx> = ir::ProjectionPredicate<TyCtxt<'tcx>>;
 pub type ExistentialPredicate<'tcx> = ir::ExistentialPredicate<TyCtxt<'tcx>>;
 pub type ExistentialTraitRef<'tcx> = ir::ExistentialTraitRef<TyCtxt<'tcx>>;

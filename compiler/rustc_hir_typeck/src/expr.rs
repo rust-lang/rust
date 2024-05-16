@@ -2414,7 +2414,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let guar = if field.name == kw::Empty {
             self.dcx().span_delayed_bug(field.span, "field name with no name")
-        } else if self.method_exists(field, base_ty, expr.hir_id, expected.only_has_type(self)) {
+        } else if self.method_exists_for_diagnostic(
+            field,
+            base_ty,
+            expr.hir_id,
+            expected.only_has_type(self),
+        ) {
             self.ban_take_value_of_method(expr, base_ty, field)
         } else if !base_ty.is_primitive_ty() {
             self.ban_nonexisting_field(field, base, expr, base_ty)
@@ -2600,7 +2605,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut err = self.private_field_err(field, base_did);
 
         // Also check if an accessible method exists, which is often what is meant.
-        if self.method_exists(field, expr_t, expr.hir_id, return_ty)
+        if self.method_exists_for_diagnostic(field, expr_t, expr.hir_id, return_ty)
             && !self.expr_in_place(expr.hir_id)
         {
             self.suggest_method_call(

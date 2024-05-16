@@ -18,8 +18,8 @@ use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::solve::{inspect, QueryResult};
 use rustc_middle::traits::solve::{Certainty, Goal};
 use rustc_middle::traits::ObligationCause;
-use rustc_middle::ty;
 use rustc_middle::ty::TypeFoldable;
+use rustc_middle::{bug, ty};
 use rustc_span::{Span, DUMMY_SP};
 
 use crate::solve::eval_ctxt::canonical;
@@ -290,12 +290,25 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
             match *step {
                 inspect::ProbeStep::AddGoal(source, goal) => nested_goals.push((source, goal)),
                 inspect::ProbeStep::NestedProbe(ref probe) => {
-                    // Nested probes have to prove goals added in their parent
-                    // but do not leak them, so we truncate the added goals
-                    // afterwards.
-                    let num_goals = nested_goals.len();
-                    self.candidates_recur(candidates, nested_goals, probe);
-                    nested_goals.truncate(num_goals);
+                    match probe.kind {
+                        // These never assemble candidates for the goal we're trying to solve.
+                        inspect::ProbeKind::UpcastProjectionCompatibility
+                        | inspect::ProbeKind::ShadowedEnvProbing => continue,
+
+                        inspect::ProbeKind::NormalizedSelfTyAssembly
+                        | inspect::ProbeKind::UnsizeAssembly
+                        | inspect::ProbeKind::Root { .. }
+                        | inspect::ProbeKind::TryNormalizeNonRigid { .. }
+                        | inspect::ProbeKind::TraitCandidate { .. }
+                        | inspect::ProbeKind::OpaqueTypeStorageLookup { .. } => {
+                            // Nested probes have to prove goals added in their parent
+                            // but do not leak them, so we truncate the added goals
+                            // afterwards.
+                            let num_goals = nested_goals.len();
+                            self.candidates_recur(candidates, nested_goals, probe);
+                            nested_goals.truncate(num_goals);
+                        }
+                    }
                 }
                 inspect::ProbeStep::MakeCanonicalResponse { shallow_certainty: c } => {
                     assert_eq!(shallow_certainty.replace(c), None);
@@ -308,9 +321,10 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
         }
 
         match probe.kind {
-            inspect::ProbeKind::NormalizedSelfTyAssembly
-            | inspect::ProbeKind::UnsizeAssembly
-            | inspect::ProbeKind::UpcastProjectionCompatibility => (),
+            inspect::ProbeKind::UpcastProjectionCompatibility
+            | inspect::ProbeKind::ShadowedEnvProbing => bug!(),
+
+            inspect::ProbeKind::NormalizedSelfTyAssembly | inspect::ProbeKind::UnsizeAssembly => {}
 
             // We add a candidate even for the root evaluation if there
             // is only one way to prove a given goal, e.g. for `WellFormed`.

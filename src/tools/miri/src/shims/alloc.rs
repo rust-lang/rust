@@ -111,6 +111,32 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         Ok(ptr.into())
     }
 
+    fn posix_memalign(
+        &mut self,
+        memptr: &OpTy<'tcx, Provenance>,
+        align: &OpTy<'tcx, Provenance>,
+        size: &OpTy<'tcx, Provenance>,
+    ) -> InterpResult<'tcx, Scalar<Provenance>> {
+        let this = self.eval_context_mut();
+        let memptr = this.deref_pointer(memptr)?;
+        let align = this.read_target_usize(align)?;
+        let size = this.read_target_usize(size)?;
+
+        // Align must be power of 2, and also at least ptr-sized (POSIX rules).
+        // But failure to adhere to this is not UB, it's an error condition.
+        if !align.is_power_of_two() || align < this.pointer_size().bytes() {
+            Ok(this.eval_libc("EINVAL"))
+        } else {
+            let ptr = this.allocate_ptr(
+                Size::from_bytes(size),
+                Align::from_bytes(align).unwrap(),
+                MiriMemoryKind::C.into(),
+            )?;
+            this.write_pointer(ptr, &memptr)?;
+            Ok(Scalar::from_i32(0))
+        }
+    }
+
     fn free(&mut self, ptr: Pointer<Option<Provenance>>) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         if !this.ptr_is_null(ptr)? {

@@ -2,6 +2,7 @@
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 #[cfg(feature = "nightly")]
 use rustc_macros::{HashStable_NoContext, TyDecodable, TyEncodable};
+use rustc_type_ir_macros::{Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic};
 use std::fmt;
 
 use crate::{DebruijnIndex, DebugWithInfcx, InferCtxtLike, Interner, WithInfcx};
@@ -83,6 +84,46 @@ impl<I: Interner> DebugWithInfcx<I> for ConstKind<I> {
             Error(_) => write!(f, "{{const error}}"),
             Expr(expr) => write!(f, "{:?}", &this.wrap(expr)),
         }
+    }
+}
+
+/// An unevaluated (potentially generic) constant used in the type-system.
+#[derive(derivative::Derivative)]
+#[derivative(
+    Clone(bound = ""),
+    Copy(bound = ""),
+    Hash(bound = ""),
+    PartialEq(bound = ""),
+    Eq(bound = "")
+)]
+#[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
+#[cfg_attr(feature = "nightly", derive(TyDecodable, TyEncodable, HashStable_NoContext))]
+pub struct UnevaluatedConst<I: Interner> {
+    pub def: I::DefId,
+    pub args: I::GenericArgs,
+}
+
+impl<I: Interner> UnevaluatedConst<I> {
+    #[inline]
+    pub fn new(def: I::DefId, args: I::GenericArgs) -> UnevaluatedConst<I> {
+        UnevaluatedConst { def, args }
+    }
+}
+
+impl<I: Interner> fmt::Debug for UnevaluatedConst<I> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        WithInfcx::with_no_infcx(self).fmt(f)
+    }
+}
+impl<I: Interner> DebugWithInfcx<I> for UnevaluatedConst<I> {
+    fn fmt<Infcx: InferCtxtLike<Interner = I>>(
+        this: WithInfcx<'_, Infcx, &Self>,
+        f: &mut core::fmt::Formatter<'_>,
+    ) -> core::fmt::Result {
+        f.debug_struct("UnevaluatedConst")
+            .field("def", &this.data.def)
+            .field("args", &this.wrap(this.data.args))
+            .finish()
     }
 }
 
