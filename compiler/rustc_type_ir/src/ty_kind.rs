@@ -342,7 +342,7 @@ impl<I: Interner> PartialEq for TyKind<I> {
 impl<I: Interner> DebugWithInfcx<I> for TyKind<I> {
     fn fmt<Infcx: InferCtxtLike<Interner = I>>(
         this: WithInfcx<'_, Infcx, &Self>,
-        f: &mut core::fmt::Formatter<'_>,
+        f: &mut fmt::Formatter<'_>,
     ) -> fmt::Result {
         match this.data {
             Bool => write!(f, "bool"),
@@ -514,7 +514,7 @@ impl<I: Interner> AliasTy<I> {
     /// For example, if this is a projection of `<T as StreamingIterator>::Item<'a>`,
     /// then this function would return a `T: StreamingIterator` trait reference and
     /// `['a]` as the own args.
-    pub fn trait_ref_and_own_args(self, interner: I) -> (TraitRef<I>, I::GenericArgsSlice) {
+    pub fn trait_ref_and_own_args(self, interner: I) -> (TraitRef<I>, I::OwnItemArgs) {
         debug_assert_eq!(self.kind(interner), AliasTyKind::Projection);
         interner.trait_ref_and_own_args_for_alias(self.def_id, self.args)
     }
@@ -561,8 +561,8 @@ impl<I: Interner> fmt::Debug for AliasTy<I> {
 impl<I: Interner> DebugWithInfcx<I> for AliasTy<I> {
     fn fmt<Infcx: InferCtxtLike<Interner = I>>(
         this: WithInfcx<'_, Infcx, &Self>,
-        f: &mut core::fmt::Formatter<'_>,
-    ) -> core::fmt::Result {
+        f: &mut fmt::Formatter<'_>,
+    ) -> fmt::Result {
         f.debug_struct("AliasTy")
             .field("args", &this.map(|data| data.args))
             .field("def_id", &this.data.def_id)
@@ -951,4 +951,77 @@ impl<I: Interner> DebugWithInfcx<I> for InferTy {
 pub struct TypeAndMut<I: Interner> {
     pub ty: I::Ty,
     pub mutbl: Mutability,
+}
+
+#[derive(derivative::Derivative)]
+#[derivative(
+    Clone(bound = ""),
+    Copy(bound = ""),
+    PartialEq(bound = ""),
+    Eq(bound = ""),
+    Hash(bound = "")
+)]
+#[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable, HashStable_NoContext))]
+#[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
+pub struct FnSig<I: Interner> {
+    pub inputs_and_output: I::Tys,
+    pub c_variadic: bool,
+    pub unsafety: I::Unsafety,
+    pub abi: I::Abi,
+}
+
+impl<I: Interner> FnSig<I> {
+    pub fn split_inputs_and_output(self) -> (I::FnInputTys, I::Ty) {
+        self.inputs_and_output.split_inputs_and_output()
+    }
+
+    pub fn inputs(self) -> I::FnInputTys {
+        self.split_inputs_and_output().0
+    }
+
+    pub fn output(self) -> I::Ty {
+        self.split_inputs_and_output().1
+    }
+}
+
+impl<I: Interner> fmt::Debug for FnSig<I> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        WithInfcx::with_no_infcx(self).fmt(f)
+    }
+}
+impl<I: Interner> DebugWithInfcx<I> for FnSig<I> {
+    fn fmt<Infcx: InferCtxtLike<Interner = I>>(
+        this: WithInfcx<'_, Infcx, &Self>,
+        f: &mut fmt::Formatter<'_>,
+    ) -> fmt::Result {
+        let sig = this.data;
+        let FnSig { inputs_and_output: _, c_variadic, unsafety, abi } = sig;
+
+        write!(f, "{}", unsafety.prefix_str())?;
+        if !abi.is_rust() {
+            write!(f, "extern \"{abi:?}\" ")?;
+        }
+
+        write!(f, "fn(")?;
+        let (inputs, output) = sig.split_inputs_and_output();
+        for (i, ty) in inputs.iter().enumerate() {
+            if i > 0 {
+                write!(f, ", ")?;
+            }
+            write!(f, "{:?}", &this.wrap(ty))?;
+        }
+        if *c_variadic {
+            if inputs.is_empty() {
+                write!(f, "...")?;
+            } else {
+                write!(f, ", ...")?;
+            }
+        }
+        write!(f, ")")?;
+
+        match output.kind() {
+            Tuple(list) if list.is_empty() => Ok(()),
+            _ => write!(f, " -> {:?}", &this.wrap(sig.output())),
+        }
+    }
 }

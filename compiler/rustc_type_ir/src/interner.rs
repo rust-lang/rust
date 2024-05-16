@@ -1,14 +1,15 @@
 use smallvec::SmallVec;
 use std::fmt::Debug;
 use std::hash::Hash;
+use std::ops::Deref;
 
 use crate::inherent::*;
 use crate::ir_print::IrPrint;
 use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable};
 use crate::{
     AliasTerm, AliasTermKind, AliasTy, AliasTyKind, CanonicalVarInfo, CoercePredicate,
-    DebugWithInfcx, ExistentialProjection, ExistentialTraitRef, NormalizesTo, ProjectionPredicate,
-    SubtypePredicate, TraitPredicate, TraitRef,
+    DebugWithInfcx, ExistentialProjection, ExistentialTraitRef, FnSig, NormalizesTo,
+    ProjectionPredicate, SubtypePredicate, TraitPredicate, TraitRef,
 };
 
 pub trait Interner:
@@ -24,13 +25,16 @@ pub trait Interner:
     + IrPrint<NormalizesTo<Self>>
     + IrPrint<SubtypePredicate<Self>>
     + IrPrint<CoercePredicate<Self>>
+    + IrPrint<FnSig<Self>>
 {
     type DefId: Copy + Debug + Hash + Eq;
     type DefiningOpaqueTypes: Copy + Debug + Hash + Default + Eq + TypeVisitable<Self>;
     type AdtDef: Copy + Debug + Hash + Eq;
 
     type GenericArgs: GenericArgs<Self>;
-    type GenericArgsSlice: Copy + Debug + Hash + Eq;
+    /// The slice of args for a specific item. For a GAT like `type Foo<'a>`, it will be `['a]`,
+    /// not including the args from the parent item (trait or impl).
+    type OwnItemArgs: Copy + Debug + Hash + Eq;
     type GenericArg: Copy + DebugWithInfcx<Self> + Hash + Eq;
     type Term: Copy + Debug + Hash + Eq;
 
@@ -42,7 +46,8 @@ pub trait Interner:
 
     // Kinds of tys
     type Ty: Ty<Self>;
-    type Tys: Copy + Debug + Hash + Eq + IntoIterator<Item = Self::Ty>;
+    type Tys: Tys<Self>;
+    type FnInputTys: Copy + Debug + Hash + Eq + Deref<Target = [Self::Ty]>;
     type ParamTy: Copy + Debug + Hash + Eq;
     type BoundTy: Copy + Debug + Hash + Eq;
     type PlaceholderTy: PlaceholderLike;
@@ -53,6 +58,8 @@ pub trait Interner:
     type PolyFnSig: Copy + DebugWithInfcx<Self> + Hash + Eq;
     type AllocId: Copy + Debug + Hash + Eq;
     type Pat: Copy + Debug + Hash + Eq + DebugWithInfcx<Self>;
+    type Unsafety: Unsafety<Self>;
+    type Abi: Abi<Self>;
 
     // Kinds of consts
     type Const: Const<Self>;
@@ -99,7 +106,7 @@ pub trait Interner:
         self,
         def_id: Self::DefId,
         args: Self::GenericArgs,
-    ) -> (TraitRef<Self>, Self::GenericArgsSlice);
+    ) -> (TraitRef<Self>, Self::OwnItemArgs);
 
     fn mk_args(self, args: &[Self::GenericArg]) -> Self::GenericArgs;
 

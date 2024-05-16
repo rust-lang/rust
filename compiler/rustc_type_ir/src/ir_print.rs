@@ -1,8 +1,8 @@
 use std::fmt;
 
 use crate::{
-    AliasTerm, AliasTy, CoercePredicate, ExistentialProjection, ExistentialTraitRef, Interner,
-    NormalizesTo, ProjectionPredicate, SubtypePredicate, TraitPredicate, TraitRef,
+    AliasTerm, AliasTy, CoercePredicate, ExistentialProjection, ExistentialTraitRef, FnSig,
+    Interner, NormalizesTo, ProjectionPredicate, SubtypePredicate, TraitPredicate, TraitRef,
 };
 
 pub trait IrPrint<T> {
@@ -45,6 +45,7 @@ define_display_via_print!(
     CoercePredicate,
     AliasTy,
     AliasTerm,
+    FnSig,
 );
 
 define_debug_via_print!(TraitRef, ExistentialTraitRef, ExistentialProjection);
