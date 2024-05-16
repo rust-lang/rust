@@ -29,7 +29,7 @@ LL | #[cfg(tokio_unstable)]
    = help: consider using a Cargo feature instead
    = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
             [lints.rust]
-            unexpected_cfgs = { level = "warn", check-cfg = ["cfg(tokio_unstable)"] }
+            unexpected_cfgs = { level = "warn", check-cfg = ['cfg(tokio_unstable)'] }
    = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(tokio_unstable)");` to the top of the `build.rs`
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
 
@@ -45,7 +45,7 @@ LL | #[cfg(CONFIG_NVME = "m")]
    = help: consider using a Cargo feature instead
    = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
             [lints.rust]
-            unexpected_cfgs = { level = "warn", check-cfg = ["cfg(CONFIG_NVME, values(\"m\"))"] }
+            unexpected_cfgs = { level = "warn", check-cfg = ['cfg(CONFIG_NVME, values("m"))'] }
    = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(CONFIG_NVME, values(\"m\"))");` to the top of the `build.rs`
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
 
