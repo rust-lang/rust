@@ -96,6 +96,45 @@ impl<'a> PanicHookInfo<'a> {
         self.payload
     }
 
+    /// Returns the payload associated with the panic, if it is a string.
+    ///
+    /// This returns the payload if it is of type `&'static str` or `String`.
+    ///
+    /// A invocation of the `panic!()` macro in Rust 2021 or later will always result in a
+    /// panic payload where `payload_as_str` returns `Some`.
+    ///
+    /// Only an invocation of [`panic_any`]
+    /// (or, in Rust 2018 and earlier, `panic!(x)` where `x` is something other than a string)
+    /// can result in a panic payload where `payload_as_str` returns `None`.
+    ///
+    /// # Example
+    ///
+    /// ```should_panic
+    /// #![feature(panic_payload_as_str)]
+    ///
+    /// std::panic::set_hook(Box::new(|panic_info| {
+    ///     if let Some(s) = panic_info.payload_as_str() {
+    ///         println!("panic occurred: {s:?}");
+    ///     } else {
+    ///         println!("panic occurred");
+    ///     }
+    /// }));
+    ///
+    /// panic!("Normal panic");
+    /// ```
+    #[must_use]
+    #[inline]
+    #[unstable(feature = "panic_payload_as_str", issue = "125175")]
+    pub fn payload_as_str(&self) -> Option<&str> {
+        if let Some(s) = self.payload.downcast_ref::<&str>() {
+            Some(s)
+        } else if let Some(s) = self.payload.downcast_ref::<String>() {
+            Some(s)
+        } else {
+            None
+        }
+    }
+
     /// Returns information about the location from which the panic originated,
     /// if available.
     ///
