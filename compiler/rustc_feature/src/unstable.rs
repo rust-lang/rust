@@ -622,8 +622,9 @@ declare_features! (
     (incomplete, unnamed_fields, "1.74.0", Some(49804)),
     /// Allows unsafe on extern declarations and safety qualifiers over internal items.
     (unstable, unsafe_extern_blocks, "CURRENT_RUSTC_VERSION", Some(123743)),
-    /// Allows unsized fn parameters.
+    /// Allows unsafe attributes.
     (unstable, unsafe_attributes, "CURRENT_RUSTC_VERSION", Some(123757)),
+    /// Allows unsized fn parameters.
     (unstable, unsized_fn_params, "1.49.0", Some(48055)),
     /// Allows unsized rvalues at arguments and parameters.
     (incomplete, unsized_locals, "1.30.0", Some(48055)),
