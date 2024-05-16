@@ -1111,7 +1111,6 @@ impl f64 {
     /// ```
     /// assert!((1f64).to_bits() != 1f64 as u64); // to_bits() is not casting!
     /// assert_eq!((12.5f64).to_bits(), 0x4029000000000000);
-    ///
     /// ```
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
