@@ -63,6 +63,13 @@ impl<'a> PanicHookInfo<'a> {
     ///
     /// This will commonly, but not always, be a `&'static str` or [`String`].
     ///
+    /// A invocation of the `panic!()` macro in Rust 2021 or later will always result in a
+    /// panic payload of type `&'static str` or `String`.
+    ///
+    /// Only an invocation of [`panic_any`]
+    /// (or, in Rust 2018 and earlier, `panic!(x)` where `x` is something other than a string)
+    /// can result in a panic payload other than a `&'static str` or `String`.
+    ///
     /// [`String`]: ../../std/string/struct.String.html
     ///
     /// # Examples
