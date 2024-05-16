@@ -756,15 +756,7 @@ fn closure_ty(
 }
 
 fn definition_mod_path(db: &RootDatabase, def: &Definition) -> Option<String> {
-    if matches!(
-        def,
-        Definition::GenericParam(_)
-            | Definition::BuiltinType(_)
-            | Definition::Local(_)
-            | Definition::Label(_)
-            | Definition::BuiltinAttr(_)
-            | Definition::ToolModule(_)
-    ) {
+    if matches!(def, Definition::GenericParam(_) | Definition::Local(_) | Definition::Label(_)) {
         return None;
     }
     def.module(db).map(|module| path(db, module, definition_owner_name(db, def)))

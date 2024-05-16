@@ -211,6 +211,7 @@ pub(crate) fn def_to_kind(db: &RootDatabase, def: Definition) -> SymbolInformati
             }
         }
         Definition::BuiltinType(..) => Type,
+        Definition::BuiltinLifetime(_) => TypeParameter,
         Definition::SelfType(..) => TypeAlias,
         Definition::GenericParam(..) => TypeParameter,
         Definition::Local(it) => {
@@ -316,6 +317,7 @@ pub(crate) fn def_to_moniker(
         Definition::GenericParam(_)
         | Definition::Label(_)
         | Definition::DeriveHelper(_)
+        | Definition::BuiltinLifetime(_)
         | Definition::BuiltinAttr(_)
         | Definition::ToolModule(_) => return None,
 

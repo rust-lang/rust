@@ -2564,6 +2564,15 @@ impl HasVisibility for TypeAlias {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct StaticLifetime;
+
+impl StaticLifetime {
+    pub fn name(self) -> Name {
+        known::STATIC_LIFETIME
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct BuiltinType {
     pub(crate) inner: hir_def::builtin_type::BuiltinType,
 }
