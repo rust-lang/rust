@@ -188,7 +188,19 @@ pub enum TypeBindingKind {
     Constraint(Vec<GenericBound>),
 }
 
+/// An opaque identifier for an item.
+///
+/// It can be used to lookup in [Crate::index] or [Crate::paths] to resolve it
+/// to an [Item].
+///
+/// Id's are only valid within a single JSON blob. They cannot be used to
+/// resolve references between the JSON output's for different crates.
+///
+/// Rustdoc makes no guarantees about the inner value of Id's. Applications
+/// should treat them as opaque keys to lookup items, and avoid attempting
+/// to parse them, or otherwise depend on any implementation details.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+// FIXME(aDotInTheVoid): Consider making this non-public in rustdoc-types.
 pub struct Id(pub String);
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
