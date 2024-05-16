@@ -5,7 +5,7 @@ LL | #[cfg(featur)]
    |       ^^^^^^ help: there is a config with a similar name: `feature`
    |
    = help: expected values for `feature` are: `foo`
-   = note: see <https://doc.rust-lang.org/nightly/cargo/reference/build-scripts.html#rustc-check-cfg> for more information about checking conditional configuration
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
    = note: `#[warn(unexpected_cfgs)]` on by default
 
 warning: unexpected `cfg` condition name: `featur`
@@ -14,7 +14,7 @@ warning: unexpected `cfg` condition name: `featur`
 LL | #[cfg(featur = "foo")]
    |       ^^^^^^^^^^^^^^
    |
-   = note: see <https://doc.rust-lang.org/nightly/cargo/reference/build-scripts.html#rustc-check-cfg> for more information about checking conditional configuration
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
 help: there is a config with a similar name and value
    |
 LL | #[cfg(feature = "foo")]
@@ -27,7 +27,7 @@ LL | #[cfg(featur = "fo")]
    |       ^^^^^^^^^^^^^
    |
    = help: expected values for `feature` are: `foo`
-   = note: see <https://doc.rust-lang.org/nightly/cargo/reference/build-scripts.html#rustc-check-cfg> for more information about checking conditional configuration
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
 help: there is a config with a similar name and different values
    |
 LL | #[cfg(feature = "foo")]
@@ -39,8 +39,12 @@ warning: unexpected `cfg` condition name: `no_value`
 LL | #[cfg(no_value)]
    |       ^^^^^^^^ help: there is a config with a similar name: `no_values`
    |
-   = help: consider using a Cargo feature instead or adding `println!("cargo::rustc-check-cfg=cfg(no_value)");` to the top of the `build.rs`
-   = note: see <https://doc.rust-lang.org/nightly/cargo/reference/build-scripts.html#rustc-check-cfg> for more information about checking conditional configuration
+   = help: consider using a Cargo feature instead
+   = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+            [lints.rust]
+            unexpected_cfgs = { level = "warn", check-cfg = ["cfg(no_value)"] }
+   = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(no_value)");` to the top of the `build.rs`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition name: `no_value`
   --> $DIR/diagnotics.rs:27:7
@@ -48,8 +52,12 @@ warning: unexpected `cfg` condition name: `no_value`
 LL | #[cfg(no_value = "foo")]
    |       ^^^^^^^^^^^^^^^^
    |
-   = help: consider using a Cargo feature instead or adding `println!("cargo::rustc-check-cfg=cfg(no_value, values(\"foo\"))");` to the top of the `build.rs`
-   = note: see <https://doc.rust-lang.org/nightly/cargo/reference/build-scripts.html#rustc-check-cfg> for more information about checking conditional configuration
+   = help: consider using a Cargo feature instead
+   = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+            [lints.rust]
+            unexpected_cfgs = { level = "warn", check-cfg = ["cfg(no_value, values(\"foo\"))"] }
+   = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(no_value, values(\"foo\"))");` to the top of the `build.rs`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
 help: there is a config with a similar name and no value
    |
 LL | #[cfg(no_values)]
@@ -64,8 +72,12 @@ LL | #[cfg(no_values = "bar")]
    |                help: remove the value
    |
    = note: no expected value for `no_values`
-   = help: consider using a Cargo feature instead or adding `println!("cargo::rustc-check-cfg=cfg(no_values, values(\"bar\"))");` to the top of the `build.rs`
-   = note: see <https://doc.rust-lang.org/nightly/cargo/reference/build-scripts.html#rustc-check-cfg> for more information about checking conditional configuration
+   = help: consider using a Cargo feature instead
+   = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+            [lints.rust]
+            unexpected_cfgs = { level = "warn", check-cfg = ["cfg(no_values, values(\"bar\"))"] }
+   = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(no_values, values(\"bar\"))");` to the top of the `build.rs`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
 
 warning: 6 warnings emitted
 
