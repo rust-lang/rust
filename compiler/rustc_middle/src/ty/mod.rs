@@ -28,7 +28,7 @@ use crate::ty::fast_reject::SimplifiedType;
 use crate::ty::util::Discr;
 pub use adt::*;
 pub use assoc::*;
-pub use generic_args::*;
+pub use generic_args::{GenericArgKind, *};
 pub use generics::*;
 pub use intrinsic::IntrinsicDef;
 use rustc_ast as ast;
@@ -97,13 +97,12 @@ pub use self::parameterized::ParameterizedOverTcx;
 pub use self::pattern::{Pattern, PatternKind};
 pub use self::predicate::{
     AliasTerm, Clause, ClauseKind, CoercePredicate, ExistentialPredicate,
-    ExistentialPredicateStableCmpExt, ExistentialProjection, ExistentialTraitRef, Goal,
-    NormalizesTo, OutlivesPredicate, PolyCoercePredicate, PolyExistentialPredicate,
-    PolyExistentialProjection, PolyExistentialTraitRef, PolyProjectionPredicate,
-    PolyRegionOutlivesPredicate, PolySubtypePredicate, PolyTraitPredicate, PolyTraitRef,
-    PolyTypeOutlivesPredicate, Predicate, PredicateKind, ProjectionPredicate,
-    RegionOutlivesPredicate, SubtypePredicate, ToPolyTraitRef, TraitPredicate, TraitRef,
-    TypeOutlivesPredicate,
+    ExistentialPredicateStableCmpExt, ExistentialProjection, ExistentialTraitRef, NormalizesTo,
+    OutlivesPredicate, PolyCoercePredicate, PolyExistentialPredicate, PolyExistentialProjection,
+    PolyExistentialTraitRef, PolyProjectionPredicate, PolyRegionOutlivesPredicate,
+    PolySubtypePredicate, PolyTraitPredicate, PolyTraitRef, PolyTypeOutlivesPredicate, Predicate,
+    PredicateKind, ProjectionPredicate, RegionOutlivesPredicate, SubtypePredicate, ToPolyTraitRef,
+    TraitPredicate, TraitRef, TypeOutlivesPredicate,
 };
 pub use self::region::{
     BoundRegion, BoundRegionKind, BoundRegionKind::*, EarlyParamRegion, LateParamRegion, Region,

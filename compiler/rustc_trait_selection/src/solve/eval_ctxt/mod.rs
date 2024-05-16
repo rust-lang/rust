@@ -1,3 +1,6 @@
+use std::io::Write;
+use std::ops::ControlFlow;
+
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::at::ToTrace;
@@ -11,10 +14,9 @@ use rustc_infer::traits::ObligationCause;
 use rustc_macros::{extension, HashStable};
 use rustc_middle::bug;
 use rustc_middle::infer::canonical::CanonicalVarInfos;
-use rustc_middle::traits::solve::inspect;
 use rustc_middle::traits::solve::{
-    CanonicalInput, CanonicalResponse, Certainty, PredefinedOpaques, PredefinedOpaquesData,
-    QueryResult,
+    inspect, CanonicalInput, CanonicalResponse, Certainty, NestedGoals, PredefinedOpaques,
+    PredefinedOpaquesData, QueryResult,
 };
 use rustc_middle::traits::specialization_graph;
 use rustc_middle::ty::{
@@ -23,8 +25,6 @@ use rustc_middle::ty::{
 };
 use rustc_session::config::DumpSolverProofTree;
 use rustc_span::DUMMY_SP;
-use std::io::Write;
-use std::ops::ControlFlow;
 
 use crate::traits::coherence;
 use crate::traits::vtable::{count_own_vtable_entries, prepare_vtable_segments, VtblSegment};
@@ -85,7 +85,7 @@ pub struct EvalCtxt<'a, 'tcx> {
 
     pub(super) search_graph: &'a mut SearchGraph<'tcx>,
 
-    nested_goals: NestedGoals<'tcx>,
+    nested_goals: NestedGoals<TyCtxt<'tcx>>,
 
     // Has this `EvalCtxt` errored out with `NoSolution` in `try_evaluate_added_goals`?
     //
@@ -98,8 +98,12 @@ pub struct EvalCtxt<'a, 'tcx> {
     pub(super) inspect: ProofTreeBuilder<'tcx>,
 }
 
-#[derive(Default, Debug, Clone)]
-pub(super) struct NestedGoals<'tcx> {
+#[derive(derivative::Derivative)]
+#[derivative(Clone(bound = ""), Debug(bound = ""), Default(bound = ""))]
+#[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
+#[cfg_attr(feature = "nightly", derive(TyDecodable, TyEncodable, HashStable_NoContext))]
+// FIXME: This can be made crate-private once `EvalCtxt` also lives in this crate.
+pub struct NestedGoals<I: Interner> {
     /// These normalizes-to goals are treated specially during the evaluation
     /// loop. In each iteration we take the RHS of the projection, replace it with
     /// a fresh inference variable, and only after evaluating that goal do we
@@ -110,17 +114,17 @@ pub(super) struct NestedGoals<'tcx> {
     ///
     /// Forgetting to replace the RHS with a fresh inference variable when we evaluate
     /// this goal results in an ICE..
-    pub(super) normalizes_to_goals: Vec<Goal<'tcx, ty::NormalizesTo<'tcx>>>,
+    pub normalizes_to_goals: Vec<Goal<I, NormalizesTo<I>>>,
     /// The rest of the goals which have not yet processed or remain ambiguous.
-    pub(super) goals: Vec<(GoalSource, Goal<'tcx, ty::Predicate<'tcx>>)>,
+    pub goals: Vec<(GoalSource, Goal<I, I::Predicate>)>,
 }
 
-impl<'tcx> NestedGoals<'tcx> {
-    pub(super) fn new() -> Self {
+impl<I: Interner> NestedGoals<I> {
+    pub fn new() -> Self {
         Self { normalizes_to_goals: Vec::new(), goals: Vec::new() }
     }
 
-    pub(super) fn is_empty(&self) -> bool {
+    pub fn is_empty(&self) -> bool {
         self.normalizes_to_goals.is_empty() && self.goals.is_empty()
     }
 }

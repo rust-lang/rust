@@ -6,9 +6,8 @@ use rustc_hir::{def_id::DefId, Movability, Mutability};
 use rustc_infer::traits::query::NoSolution;
 use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_middle::bug;
-use rustc_middle::ty::{
-    self, Goal, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, Upcast,
-};
+use rustc_middle::traits::solve::Goal;
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, Upcast};
 use rustc_span::sym;
 
 use crate::solve::EvalCtxt;

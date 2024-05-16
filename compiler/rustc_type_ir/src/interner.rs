@@ -8,8 +8,8 @@ use crate::ir_print::IrPrint;
 use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable};
 use crate::{
     AliasTerm, AliasTermKind, AliasTy, AliasTyKind, CanonicalVarInfo, CoercePredicate,
-    DebugWithInfcx, ExistentialProjection, ExistentialTraitRef, FnSig, NormalizesTo,
-    ProjectionPredicate, SubtypePredicate, TraitPredicate, TraitRef,
+    DebugWithInfcx, ExistentialProjection, ExistentialTraitRef, FnSig, GenericArgKind,
+    NormalizesTo, ProjectionPredicate, SubtypePredicate, TraitPredicate, TraitRef,
 };
 
 pub trait Interner:
@@ -35,7 +35,7 @@ pub trait Interner:
     /// The slice of args for a specific item. For a GAT like `type Foo<'a>`, it will be `['a]`,
     /// not including the args from the parent item (trait or impl).
     type OwnItemArgs: Copy + Debug + Hash + Eq;
-    type GenericArg: Copy + DebugWithInfcx<Self> + Hash + Eq;
+    type GenericArg: Copy + DebugWithInfcx<Self> + Hash + Eq + IntoKind<Kind = GenericArgKind<Self>>;
     type Term: Copy + Debug + Hash + Eq;
 
     type Binder<T: TypeVisitable<Self>>: BoundVars<Self> + TypeSuperVisitable<Self>;
@@ -43,13 +43,14 @@ pub trait Interner:
     type BoundVar;
 
     type CanonicalVars: Copy + Debug + Hash + Eq + IntoIterator<Item = CanonicalVarInfo<Self>>;
+    type PredefinedOpaques: Copy + Debug + Hash + Eq;
 
     // Kinds of tys
     type Ty: Ty<Self>;
     type Tys: Tys<Self>;
     type FnInputTys: Copy + Debug + Hash + Eq + Deref<Target = [Self::Ty]>;
     type ParamTy: Copy + Debug + Hash + Eq;
-    type BoundTy: Copy + Debug + Hash + Eq;
+    type BoundTy: Copy + Debug + Hash + Eq + BoundVarLike<Self>;
     type PlaceholderTy: PlaceholderLike;
 
     // Things stored inside of tys
@@ -66,7 +67,7 @@ pub trait Interner:
     type AliasConst: Copy + DebugWithInfcx<Self> + Hash + Eq;
     type PlaceholderConst: PlaceholderLike;
     type ParamConst: Copy + Debug + Hash + Eq;
-    type BoundConst: Copy + Debug + Hash + Eq;
+    type BoundConst: Copy + Debug + Hash + Eq + BoundVarLike<Self>;
     type ValueConst: Copy + Debug + Hash + Eq;
     type ExprConst: Copy + DebugWithInfcx<Self> + Hash + Eq;
 
@@ -74,7 +75,7 @@ pub trait Interner:
     type Region: Region<Self>;
     type EarlyParamRegion: Copy + Debug + Hash + Eq;
     type LateParamRegion: Copy + Debug + Hash + Eq;
-    type BoundRegion: Copy + Debug + Hash + Eq;
+    type BoundRegion: Copy + Debug + Hash + Eq + BoundVarLike<Self>;
     type InferRegion: Copy + DebugWithInfcx<Self> + Hash + Eq;
     type PlaceholderRegion: PlaceholderLike;
 

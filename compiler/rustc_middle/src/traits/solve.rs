@@ -1,6 +1,8 @@
 use rustc_ast_ir::try_visit;
 use rustc_data_structures::intern::Interned;
 use rustc_macros::{HashStable, TypeFoldable, TypeVisitable};
+use rustc_next_trait_solver as ir;
+pub use rustc_next_trait_solver::solve::*;
 use rustc_span::def_id::DefId;
 
 use crate::infer::canonical::{CanonicalVarValues, QueryRegionConstraints};
@@ -9,8 +11,6 @@ use crate::traits::Canonical;
 use crate::ty::{
     self, FallibleTypeFolder, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeVisitable, TypeVisitor,
 };
-// FIXME(compiler-errors): remove this import in favor of `use rustc_middle::ty::Goal`.
-pub use crate::ty::Goal;
 
 use super::BuiltinImplSource;
 
@@ -18,6 +18,9 @@ mod cache;
 pub mod inspect;
 
 pub use cache::{CacheData, EvaluationCache};
+
+pub type Goal<'tcx, P> = ir_solve::Goal<TyCtxt<'tcx>, P>;
+pub type QueryInput<'tcx, P> = ir_solve::QueryInput<TyCtxt<'tcx>, P>;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, HashStable, TypeFoldable, TypeVisitable)]
 pub struct Response<'tcx> {
@@ -85,12 +88,6 @@ impl MaybeCause {
             ) => MaybeCause::Overflow { suggest_increasing_limit: a || b },
         }
     }
-}
-
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, HashStable, TypeFoldable, TypeVisitable)]
-pub struct QueryInput<'tcx, T> {
-    pub goal: Goal<'tcx, T>,
-    pub predefined_opaques_in_body: PredefinedOpaques<'tcx>,
 }
 
 /// Additional constraints returned on success.
@@ -227,29 +224,6 @@ impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for PredefinedOpaques<'tcx> {
     fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> V::Result {
         self.opaque_types.visit_with(visitor)
     }
-}
-
-/// Why a specific goal has to be proven.
-///
-/// This is necessary as we treat nested goals different depending on
-/// their source.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable, TypeVisitable, TypeFoldable)]
-pub enum GoalSource {
-    Misc,
-    /// We're proving a where-bound of an impl.
-    ///
-    /// FIXME(-Znext-solver=coinductive): Explain how and why this
-    /// changes whether cycles are coinductive.
-    ///
-    /// This also impacts whether we erase constraints on overflow.
-    /// Erasing constraints is generally very useful for perf and also
-    /// results in better error messages by avoiding spurious errors.
-    /// We do not erase overflow constraints in `normalizes-to` goals unless
-    /// they are from an impl where-clause. This is necessary due to
-    /// backwards compatability, cc trait-system-refactor-initiatitive#70.
-    ImplWhereBound,
-    /// Instantiating a higher-ranked goal and re-proving it.
-    InstantiateHigherRanked,
 }
 
 /// Possible ways the given goal can be proven.

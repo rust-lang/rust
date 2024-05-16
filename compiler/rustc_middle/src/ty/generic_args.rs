@@ -11,6 +11,7 @@ use rustc_ast_ir::walk_visitable_list;
 use rustc_data_structures::intern::Interned;
 use rustc_errors::{DiagArgValue, IntoDiagArg};
 use rustc_hir::def_id::DefId;
+use rustc_macros::extension;
 use rustc_macros::{
     Decodable, Encodable, HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable,
 };
@@ -24,6 +25,8 @@ use std::mem;
 use std::num::NonZero;
 use std::ops::Deref;
 use std::ptr::NonNull;
+
+pub type GenericArgKind<'tcx> = rustc_type_ir::GenericArgKind<TyCtxt<'tcx>>;
 
 /// An entity in the Rust type system, which can be one of
 /// several kinds (types, lifetimes, and consts).
@@ -46,6 +49,14 @@ impl<'tcx> rustc_type_ir::inherent::GenericArgs<TyCtxt<'tcx>> for ty::GenericArg
 
     fn identity_for_item(tcx: TyCtxt<'tcx>, def_id: DefId) -> ty::GenericArgsRef<'tcx> {
         GenericArgs::identity_for_item(tcx, def_id)
+    }
+}
+
+impl<'tcx> rustc_type_ir::inherent::IntoKind for GenericArg<'tcx> {
+    type Kind = GenericArgKind<'tcx>;
+
+    fn kind(self) -> Self::Kind {
+        self.unpack()
     }
 }
 
@@ -79,13 +90,7 @@ const TYPE_TAG: usize = 0b00;
 const REGION_TAG: usize = 0b01;
 const CONST_TAG: usize = 0b10;
 
-#[derive(Debug, TyEncodable, TyDecodable, PartialEq, Eq, HashStable)]
-pub enum GenericArgKind<'tcx> {
-    Lifetime(ty::Region<'tcx>),
-    Type(Ty<'tcx>),
-    Const(ty::Const<'tcx>),
-}
-
+#[extension(trait GenericArgPackExt<'tcx>)]
 impl<'tcx> GenericArgKind<'tcx> {
     #[inline]
     fn pack(self) -> GenericArg<'tcx> {

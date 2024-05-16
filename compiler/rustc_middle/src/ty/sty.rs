@@ -1204,6 +1204,12 @@ pub struct BoundTy {
     pub kind: BoundTyKind,
 }
 
+impl<'tcx> rustc_type_ir::inherent::BoundVarLike<TyCtxt<'tcx>> for BoundTy {
+    fn var(self) -> BoundVar {
+        self.var
+    }
+}
+
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, TyEncodable, TyDecodable)]
 #[derive(HashStable)]
 pub enum BoundTyKind {
@@ -1606,6 +1612,10 @@ impl<'tcx> Ty<'tcx> {
 }
 
 impl<'tcx> rustc_type_ir::inherent::Ty<TyCtxt<'tcx>> for Ty<'tcx> {
+    fn new_bool(tcx: TyCtxt<'tcx>) -> Self {
+        tcx.types.bool
+    }
+
     fn new_anon_bound(tcx: TyCtxt<'tcx>, debruijn: ty::DebruijnIndex, var: ty::BoundVar) -> Self {
         Ty::new_bound(tcx, debruijn, ty::BoundTy { var, kind: ty::BoundTyKind::Anon })
     }

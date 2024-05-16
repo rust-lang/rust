@@ -90,6 +90,7 @@ use std::ops::{Bound, Deref};
 impl<'tcx> Interner for TyCtxt<'tcx> {
     type DefId = DefId;
     type DefiningOpaqueTypes = &'tcx ty::List<LocalDefId>;
+    type PredefinedOpaques = solve::PredefinedOpaques<'tcx>;
     type AdtDef = ty::AdtDef<'tcx>;
     type GenericArgs = ty::GenericArgsRef<'tcx>;
     type OwnItemArgs = &'tcx [ty::GenericArg<'tcx>];
