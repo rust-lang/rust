@@ -30,7 +30,7 @@ define-function: (
 
         // Checking the color of the bottom border.
         assert-css: (
-            ".search-results > a",
+            ".search-results > li",
             {"border-bottom-color": |bottom_border_color|}
         )
 
@@ -85,7 +85,7 @@ define-function: (
         move-cursor-to: ".search-input"
         focus: ".search-input" // To ensure the `<a>` container isn't focused or hovered.
         assert-css: (
-            "//*[@class='result-name']//*[text()='test_docs::']/ancestor::a",
+            "//*[@class='result-name']//*[text()='test_docs::']/ancestor::li/a",
             {"color": |path_color|, "background-color": "transparent"},
             ALL,
         )
@@ -97,7 +97,7 @@ define-function: (
             {"color": |hover_path_color|},
         )
         assert-css: (
-            "//*[@class='result-name']//*[text()='test_docs::']/ancestor::a",
+            "//*[@class='result-name']//*[text()='test_docs::']/ancestor::li/a",
             {"color": |hover_path_color|, "background-color": |hover_background|},
         )
     }
@@ -109,26 +109,26 @@ define-function: (
     block {
         assert-css: (".result-" + |result_kind| + " ." + |result_kind|, {"color": |color|}, ALL)
         assert-css: (
-            ".result-" + |result_kind|,
+            ".result-" + |result_kind| + ">  a",
             {"color": |entry_color|, "background-color": |background_color|},
         )
-        move-cursor-to: ".result-" + |result_kind|
+        move-cursor-to: ".result-" + |result_kind| + ">  a"
         assert-css: (
-            ".result-" + |result_kind| + ":hover",
+            ".result-" + |result_kind| + " > a:hover",
             {"color": |hover_entry_color|, "background-color": |hover_background_color|},
         )
         assert-css: (
-            ".result-" + |result_kind| + ":hover ." + |result_kind|,
+            ".result-" + |result_kind| + " > a:hover ." + |result_kind|,
             {"color": |hover_color|},
         )
         move-cursor-to: ".search-input"
-        focus: ".result-" + |result_kind|
+        focus: ".result-" + |result_kind| + " > a"
         assert-css: (
-            ".result-" + |result_kind| + ":focus",
+            ".result-" + |result_kind| + " > a:focus",
             {"color": |hover_entry_color|, "background-color": |hover_background_color|},
         )
         assert-css: (
-            ".result-" + |result_kind| + ":focus ." + |result_kind|,
+            ".result-" + |result_kind| + "> a:focus ." + |result_kind|,
             {"color": |hover_color|},
         )
         // color of the typename (struct, module, method, ...) before search results

@@ -219,6 +219,7 @@ a.anchor,
 .mobile-topbar h2 a,
 h1 a,
 .search-results a,
+.search-results li,
 .stab,
 .result-name i {
 	color: var(--main-color);
@@ -2070,10 +2071,10 @@ in src-script.js and main.js
 	}
 
 	/* Display an alternating layout on tablets and phones */
-	.search-results > a {
+	.search-results > li {
 		padding: 5px 0px;
 	}
-	.search-results > a > div.desc, .item-table > li > div.desc {
+	.search-results > li > div.desc, .item-table > li > div.desc {
 		padding-left: 2em;
 	}
 	.search-results .result-name {
@@ -2747,17 +2748,19 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 	border-right: 1px solid #ffb44c;
 }
 
-:root[data-theme="ayu"] .search-results a:hover,
-:root[data-theme="ayu"] .search-results a:focus {
+:root[data-theme="ayu"] .search-results li:hover > a,
+:root[data-theme="ayu"] .search-results li:focus > a,
+:root[data-theme="ayu"] .search-results li > a:hover,
+:root[data-theme="ayu"] .search-results li > a:focus {
 	color: #fff !important;
 	background-color: #3c3c3c;
 }
 
-:root[data-theme="ayu"] .search-results a {
+:root[data-theme="ayu"] .search-results li > a {
 	color: #0096cf;
 }
 
-:root[data-theme="ayu"] .search-results a div.desc {
+:root[data-theme="ayu"] .search-results li div.desc {
 	color: #c5c5c5;
 }
 

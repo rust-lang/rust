@@ -9,13 +9,13 @@ assert-css: ("//*[@id='reexport.TheStdReexport']", {"background-color": "rgba(0,
 write-into: (".search-input", "TheStdReexport")
 // To be SURE that the search will be run.
 press-key: 'Enter'
-wait-for: "//a[@class='result-import']"
+wait-for: "//li[@class='result-import']"
 assert-attribute: (
-    "//a[@class='result-import']",
+    "//li[@class='result-import']/a",
     {"href": "../test_docs/index.html#reexport.TheStdReexport"},
 )
-assert-text: ("a.result-import .result-name", "re-export test_docs::TheStdReexport")
-click: "//a[@class='result-import']"
+assert-text: ("li.result-import .result-name", "re-export test_docs::TheStdReexport")
+click: "//li[@class='result-import']"
 // We check that it has the background modified thanks to the focus.
 wait-for-css: ("//*[@id='reexport.TheStdReexport']", {"background-color": "#494a3d"})
 
@@ -23,11 +23,11 @@ wait-for-css: ("//*[@id='reexport.TheStdReexport']", {"background-color": "#494a
 // To be SURE that the search will be run.
 press-key: 'Enter'
 write-into: (".search-input", "AliasForTheStdReexport")
-wait-for: "//a[@class='result-import']"
+wait-for: "//li[@class='result-import']"
 assert-text: (
-    "a.result-import .result-name",
+    "li.result-import .result-name",
     "re-export AliasForTheStdReexport - see test_docs::TheStdReexport",
 )
 // Same thing again, we click on it to ensure the background is once again set as expected.
-click: "//a[@class='result-import']"
+click: "//li[@class='result-import']"
 wait-for-css: ("//*[@id='reexport.TheStdReexport']", {"background-color": "#494a3d"})

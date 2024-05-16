@@ -11,7 +11,7 @@ assert-text: ("#search-tabs > button:nth-of-type(1)", "In Names", STARTS_WITH)
 assert: "input.search-input:focus"
 // Use left-right keys
 press-key: "ArrowDown"
-assert: "#results > .search-results.active > a:nth-of-type(1):focus"
+assert: "#results > .search-results.active > li:nth-of-type(1) > a:focus"
 press-key: "ArrowRight"
 wait-for-attribute: ("#search-tabs > button:nth-of-type(2)", {"class": "selected"})
 press-key: "ArrowRight"
@@ -33,7 +33,7 @@ assert-text: ("#search-tabs > button:nth-of-type(1)", "In Function Return Types"
 assert: "input.search-input:focus"
 // Use left-right keys
 press-key: "ArrowDown"
-assert: "#results > .search-results.active > a:nth-of-type(1):focus"
+assert: "#results > .search-results.active > li:nth-of-type(1) > a:focus"
 press-key: "ArrowRight"
 wait-for-attribute: ("#search-tabs > button:nth-of-type(1)", {"class": "selected"})
 press-key: "ArrowRight"
