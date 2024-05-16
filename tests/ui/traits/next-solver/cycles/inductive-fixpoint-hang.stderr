@@ -1,19 +1,9 @@
-error[E0275]: overflow evaluating the requirement `W<W<_>>: Trait`
+error[E0275]: overflow evaluating the requirement `W<_>: Trait`
   --> $DIR/inductive-fixpoint-hang.rs:31:19
    |
 LL |     impls_trait::<W<_>>();
    |                   ^^^^
    |
-note: required for `W<W<W<_>>>` to implement `Trait`
-  --> $DIR/inductive-fixpoint-hang.rs:22:17
-   |
-LL | impl<T: ?Sized> Trait for W<W<T>>
-   |                 ^^^^^     ^^^^^^^
-LL | where
-LL |     W<T>: Trait,
-   |           ----- unsatisfied trait bound introduced here
-   = note: 8 redundant requirements hidden
-   = note: required for `W<W<W<W<W<W<W<W<W<W<W<_>>>>>>>>>>>` to implement `Trait`
 note: required by a bound in `impls_trait`
   --> $DIR/inductive-fixpoint-hang.rs:28:19
    |
