@@ -1006,30 +1006,34 @@ so that we can apply CSS-filters to change the arrow color in themes */
 
 .search-results {
 	display: none;
+	margin: 0;
+	padding: 0;
 }
 
 .search-results.active {
 	display: block;
 }
 
-.search-results > a {
+.search-results > li {
 	display: flex;
+	cursor: pointer;
 	/* A little margin ensures the browser's outlining of focused links has room to display. */
-	margin-left: 2px;
-	margin-right: 2px;
+	margin: 0 2px;
 	border-bottom: 1px solid var(--search-result-border-color);
 	gap: 1em;
 }
 
-.search-results > a > div.desc {
+.search-results > li > div.desc {
 	white-space: nowrap;
 	text-overflow: ellipsis;
 	overflow: hidden;
 	flex: 2;
 }
 
-.search-results a:hover,
-.search-results a:focus {
+.search-results li > a:focus,
+.search-results li > a:hover,
+.search-results li:hover > a,
+.search-results li:focus > a {
 	background-color: var(--search-result-link-focus-background-color);
 }
 
@@ -2061,7 +2065,7 @@ in src-script.js and main.js
 
 	/* Display an alternating layout on tablets and phones */
 	.item-table, .item-row, .item-table > li, .item-table > li > div,
-	.search-results > a, .search-results > a > div {
+	.search-results > li, .search-results > li > div {
 		display: block;
 	}
 

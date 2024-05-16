@@ -3027,27 +3027,27 @@ function initSearch(rawSearchIndex) {
     async function addTab(array, query, display) {
         const extraClass = display ? " active" : "";
 
-        const output = document.createElement("div");
+        let output = document.createElement("ul");
         if (array.length > 0) {
             output.className = "search-results " + extraClass;
 
-            const links = Promise.all(array.map(async item => {
+            const lis = Promise.all(array.map(async item => {
                 const name = item.name;
                 const type = itemTypes[item.ty];
                 const longType = longItemTypes[item.ty];
                 const typeName = longType.length !== 0 ? `${longType}` : "?";
 
-                const link = document.createElement("a");
-                link.className = "result-" + type;
-                link.href = item.href;
+                const li = document.createElement("li");
+                li.className = "result-" + type;
 
-                const resultName = document.createElement("div");
+                const resultName = document.createElement("a");
                 resultName.className = "result-name";
+                resultName.href = item.href;
 
                 resultName.insertAdjacentHTML(
                     "beforeend",
                     `<span class="typename">${typeName}</span>`);
-                link.appendChild(resultName);
+                li.appendChild(resultName);
 
                 let alias = " ";
                 if (item.is_alias) {
@@ -3068,8 +3068,8 @@ ${item.displayPath}<span class="${type}">${name}</span>\
                     const displayType = document.createElement("div");
                     if (mappedNames.size > 0 || whereClause.size > 0) {
                         const tooltip = document.createElement("a");
-                        tooltip.tabIndex = -1;
                         tooltip.id = `tooltip-${item.id}`;
+                        tooltip.href = `#${tooltip.id}`;
                         const tooltipCode = document.createElement("code");
                         for (const [name, qname] of mappedNames) {
                             const line = document.createElement("div");
@@ -3124,15 +3124,22 @@ ${item.displayPath}<span class="${type}">${name}</span>\
                 }
                 description.insertAdjacentHTML("beforeend", item.desc);
 
-                link.appendChild(description);
-                return link;
+                li.appendChild(description);
+                li.tabIndex = -1;
+                li.onclick = () => {
+                    // allow clicking anywhere on the list item to go to the page
+                    // even though the link itself is only the name
+                    resultName.click();
+                };
+                return li;
             }));
-            links.then(links => {
-                for (const link of links) {
-                    output.appendChild(link);
+            lis.then(lis => {
+                for (const li of lis) {
+                    output.appendChild(li);
                 }
             });
         } else if (query.error === null) {
+            output = document.createElement("div");
             output.className = "search-failed" + extraClass;
             output.innerHTML = "No results :(<br/>" +
                 "Try on <a href=\"https://duckduckgo.com/?q=" +
@@ -4194,17 +4201,17 @@ ${item.displayPath}<span class="${type}">${name}</span>\
             // up and down arrow select next/previous search result, or the
             // search box if we're already at the top.
             if (e.which === 38) { // up
-                const previous = document.activeElement.previousElementSibling;
+                const previous = document.activeElement.parentNode.previousElementSibling;
                 if (previous) {
-                    previous.focus();
+                    previous.querySelectorAll("a").item(0).focus();
                 } else {
                     searchState.focus();
                 }
                 e.preventDefault();
             } else if (e.which === 40) { // down
-                const next = document.activeElement.nextElementSibling;
+                const next = document.activeElement.parentNode.nextElementSibling;
                 if (next) {
-                    next.focus();
+                    next.querySelectorAll("a").item(0).focus();
                 }
                 const rect = document.activeElement.getBoundingClientRect();
                 if (window.innerHeight - rect.bottom < rect.height) {
