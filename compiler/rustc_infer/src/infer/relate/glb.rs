@@ -142,7 +142,7 @@ impl<'tcx> ObligationEmittingRelation<'tcx> for Glb<'_, '_, 'tcx> {
 
     fn register_predicates(
         &mut self,
-        obligations: impl IntoIterator<Item: ty::Upcast<'tcx, ty::Predicate<'tcx>>>,
+        obligations: impl IntoIterator<Item: ty::Upcast<TyCtxt<'tcx>, ty::Predicate<'tcx>>>,
     ) {
         self.fields.register_predicates(obligations);
     }

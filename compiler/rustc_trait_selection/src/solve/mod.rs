@@ -20,11 +20,11 @@ use rustc_macros::extension;
 use rustc_middle::bug;
 use rustc_middle::infer::canonical::CanonicalVarInfos;
 use rustc_middle::traits::solve::{
-    CanonicalResponse, Certainty, ExternalConstraintsData, Goal, GoalSource, QueryResult, Response,
+    CanonicalResponse, Certainty, ExternalConstraintsData, GoalSource, QueryResult, Response,
 };
-use rustc_middle::ty::{self, AliasRelationDirection, Ty, TyCtxt, UniverseIndex};
 use rustc_middle::ty::{
-    CoercePredicate, RegionOutlivesPredicate, SubtypePredicate, TypeOutlivesPredicate,
+    self, AliasRelationDirection, CoercePredicate, Goal, RegionOutlivesPredicate, SubtypePredicate,
+    Ty, TyCtxt, TypeOutlivesPredicate, UniverseIndex,
 };
 
 mod alias_relate;

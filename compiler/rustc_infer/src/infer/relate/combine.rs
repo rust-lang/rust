@@ -339,7 +339,7 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
 
     pub fn register_predicates(
         &mut self,
-        obligations: impl IntoIterator<Item: Upcast<'tcx, ty::Predicate<'tcx>>>,
+        obligations: impl IntoIterator<Item: Upcast<TyCtxt<'tcx>, ty::Predicate<'tcx>>>,
     ) {
         self.obligations.extend(obligations.into_iter().map(|to_pred| {
             Obligation::new(self.infcx.tcx, self.trace.cause.clone(), self.param_env, to_pred)
@@ -365,7 +365,7 @@ pub trait ObligationEmittingRelation<'tcx>: TypeRelation<'tcx> {
     /// be used if control over the obligation causes is required.
     fn register_predicates(
         &mut self,
-        obligations: impl IntoIterator<Item: Upcast<'tcx, ty::Predicate<'tcx>>>,
+        obligations: impl IntoIterator<Item: Upcast<TyCtxt<'tcx>, ty::Predicate<'tcx>>>,
     );
 
     /// Register `AliasRelate` obligation(s) that both types must be related to each other.

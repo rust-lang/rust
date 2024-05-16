@@ -2703,7 +2703,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         obligated_types: &mut Vec<Ty<'tcx>>,
         seen_requirements: &mut FxHashSet<DefId>,
     ) where
-        T: Upcast<'tcx, ty::Predicate<'tcx>>,
+        T: Upcast<TyCtxt<'tcx>, ty::Predicate<'tcx>>,
     {
         let mut long_ty_file = None;
 

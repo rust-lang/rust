@@ -1378,7 +1378,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         error_obligation: &Obligation<'tcx, T>,
     ) -> Result<(), OverflowError>
     where
-        T: Upcast<'tcx, ty::Predicate<'tcx>> + Clone,
+        T: Upcast<TyCtxt<'tcx>, ty::Predicate<'tcx>> + Clone,
     {
         if !self.infcx.tcx.recursion_limit().value_within_limit(depth) {
             match self.query_mode {
@@ -1407,7 +1407,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         error_obligation: &Obligation<'tcx, V>,
     ) -> Result<(), OverflowError>
     where
-        V: Upcast<'tcx, ty::Predicate<'tcx>> + Clone,
+        V: Upcast<TyCtxt<'tcx>, ty::Predicate<'tcx>> + Clone,
     {
         self.check_recursion_depth(obligation.recursion_depth, error_obligation)
     }

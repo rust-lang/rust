@@ -8,8 +8,9 @@ use crate::traits::query::NoSolution;
 use crate::traits::Canonical;
 use crate::ty::{
     self, FallibleTypeFolder, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeVisitable, TypeVisitor,
-    Upcast,
 };
+// FIXME(compiler-errors): remove this import in favor of `use rustc_middle::ty::Goal`.
+pub use crate::ty::Goal;
 
 use super::BuiltinImplSource;
 
@@ -17,32 +18,6 @@ mod cache;
 pub mod inspect;
 
 pub use cache::{CacheData, EvaluationCache};
-
-/// A goal is a statement, i.e. `predicate`, we want to prove
-/// given some assumptions, i.e. `param_env`.
-///
-/// Most of the time the `param_env` contains the `where`-bounds of the function
-/// we're currently typechecking while the `predicate` is some trait bound.
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, HashStable, TypeFoldable, TypeVisitable)]
-pub struct Goal<'tcx, P> {
-    pub predicate: P,
-    pub param_env: ty::ParamEnv<'tcx>,
-}
-
-impl<'tcx, P> Goal<'tcx, P> {
-    pub fn new(
-        tcx: TyCtxt<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
-        predicate: impl Upcast<'tcx, P>,
-    ) -> Goal<'tcx, P> {
-        Goal { param_env, predicate: predicate.upcast(tcx) }
-    }
-
-    /// Updates the goal to one with a different `predicate` but the same `param_env`.
-    pub fn with<Q>(self, tcx: TyCtxt<'tcx>, predicate: impl Upcast<'tcx, Q>) -> Goal<'tcx, Q> {
-        Goal { param_env: self.param_env, predicate: predicate.upcast(tcx) }
-    }
-}
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, HashStable, TypeFoldable, TypeVisitable)]
 pub struct Response<'tcx> {
