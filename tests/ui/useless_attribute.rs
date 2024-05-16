@@ -86,8 +86,51 @@ mod module {
 
 #[rustfmt::skip]
 #[allow(unused_import_braces)]
+#[allow(unused_braces)]
 use module::{Struct};
 
 fn main() {
     test_indented_attr();
+}
+
+// Regression test for https://github.com/rust-lang/rust-clippy/issues/4467
+#[allow(dead_code)]
+use std::collections as puppy_doggy;
+
+// Regression test for https://github.com/rust-lang/rust-clippy/issues/11595
+pub mod hidden_glob_reexports {
+    #![allow(unreachable_pub)]
+
+    mod my_prelude {
+        pub struct MyCoolTypeInternal;
+        pub use MyCoolTypeInternal as MyCoolType;
+    }
+
+    mod my_uncool_type {
+        pub(crate) struct MyUncoolType;
+    }
+
+    // This exports `MyCoolType`.
+    pub use my_prelude::*;
+
+    // This hides `my_prelude::MyCoolType`.
+    #[allow(hidden_glob_reexports)]
+    use my_uncool_type::MyUncoolType as MyCoolType;
+}
+
+// Regression test for https://github.com/rust-lang/rust-clippy/issues/10878
+pub mod ambiguous_glob_exports {
+    #![allow(unreachable_pub)]
+
+    mod my_prelude {
+        pub struct MyType;
+    }
+
+    mod my_type {
+        pub struct MyType;
+    }
+
+    #[allow(ambiguous_glob_reexports)]
+    pub use my_prelude::*;
+    pub use my_type::*;
 }

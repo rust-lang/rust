@@ -69,12 +69,9 @@ pub(super) fn check<'tcx>(
                 used_move: HirIdSet::default(),
             };
 
-            ExprUseVisitor::for_clippy(
-                cx,
-                closure.def_id,
-                &mut delegate,
-            )
-            .consume_body(body).into_ok();
+            ExprUseVisitor::for_clippy(cx, closure.def_id, &mut delegate)
+                .consume_body(body)
+                .into_ok();
 
             let mut to_be_discarded = false;
 

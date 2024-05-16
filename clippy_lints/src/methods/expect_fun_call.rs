@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::macros::{find_format_args, format_args_inputs_span, root_macro_call_first_node};
+use clippy_utils::macros::{format_args_inputs_span, root_macro_call_first_node, FormatArgsStorage};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::{is_type_diagnostic_item, is_type_lang_item};
 use rustc_errors::Applicability;
@@ -16,6 +16,7 @@ use super::EXPECT_FUN_CALL;
 #[allow(clippy::too_many_lines)]
 pub(super) fn check<'tcx>(
     cx: &LateContext<'tcx>,
+    format_args_storage: &FormatArgsStorage,
     expr: &hir::Expr<'_>,
     method_span: Span,
     name: &str,
@@ -134,9 +135,9 @@ pub(super) fn check<'tcx>(
     // Special handling for `format!` as arg_root
     if let Some(macro_call) = root_macro_call_first_node(cx, arg_root) {
         if cx.tcx.is_diagnostic_item(sym::format_macro, macro_call.def_id)
-            && let Some(format_args) = find_format_args(cx, arg_root, macro_call.expn)
+            && let Some(format_args) = format_args_storage.get(cx, arg_root, macro_call.expn)
         {
-            let span = format_args_inputs_span(&format_args);
+            let span = format_args_inputs_span(format_args);
             let sugg = snippet_with_applicability(cx, span, "..", &mut applicability);
             span_lint_and_sugg(
                 cx,

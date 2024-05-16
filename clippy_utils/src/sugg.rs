@@ -67,8 +67,7 @@ impl<'a> Sugg<'a> {
     /// - Applicability level `Unspecified` will never be changed.
     /// - If the span is inside a macro, change the applicability level to `MaybeIncorrect`.
     /// - If the default value is used and the applicability level is `MachineApplicable`, change it
-    ///   to
-    /// `HasPlaceholders`
+    ///   to `HasPlaceholders`
     pub fn hir_with_applicability(
         cx: &LateContext<'_>,
         expr: &hir::Expr<'_>,

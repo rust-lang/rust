@@ -193,6 +193,21 @@ pub fn find_binding_init<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Option<
     None
 }
 
+/// Checks if the given local has an initializer or is from something other than a `let` statement
+///
+/// e.g. returns true for `x` in `fn f(x: usize) { .. }` and `let x = 1;` but false for `let x;`
+pub fn local_is_initialized(cx: &LateContext<'_>, local: HirId) -> bool {
+    for (_, node) in cx.tcx.hir().parent_iter(local) {
+        match node {
+            Node::Pat(..) | Node::PatField(..) => {},
+            Node::LetStmt(let_stmt) => return let_stmt.init.is_some(),
+            _ => return true,
+        }
+    }
+
+    false
+}
+
 /// Returns `true` if the given `NodeId` is inside a constant context
 ///
 /// # Example
@@ -1499,15 +1514,18 @@ pub fn is_else_clause_in_let_else(tcx: TyCtxt<'_>, expr: &Expr<'_>) -> bool {
 }
 
 /// Checks whether the given `Expr` is a range equivalent to a `RangeFull`.
+///
 /// For the lower bound, this means that:
 /// - either there is none
 /// - or it is the smallest value that can be represented by the range's integer type
+///
 /// For the upper bound, this means that:
 /// - either there is none
 /// - or it is the largest value that can be represented by the range's integer type and is
 ///   inclusive
 /// - or it is a call to some container's `len` method and is exclusive, and the range is passed to
 ///   a method call on that same container (e.g. `v.drain(..v.len())`)
+///
 /// If the given `Expr` is not some kind of range, the function returns `false`.
 pub fn is_range_full(cx: &LateContext<'_>, expr: &Expr<'_>, container_path: Option<&Path<'_>>) -> bool {
     let ty = cx.typeck_results().expr_ty(expr);

@@ -18,8 +18,8 @@ use rustc_middle::traits::EvaluationResult;
 use rustc_middle::ty::layout::ValidityRequirement;
 use rustc_middle::ty::{
     self, AdtDef, AliasTy, AssocKind, Binder, BoundRegion, FnSig, GenericArg, GenericArgKind, GenericArgsRef,
-    GenericParamDefKind, IntTy, ParamEnv, Region, RegionKind, ToPredicate, TraitRef, Ty, TyCtxt,
-    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, UintTy, VariantDef, VariantDiscr,
+    GenericParamDefKind, IntTy, ParamEnv, Region, RegionKind, ToPredicate, TraitRef, Ty, TyCtxt, TypeSuperVisitable,
+    TypeVisitable, TypeVisitableExt, TypeVisitor, UintTy, VariantDef, VariantDiscr,
 };
 use rustc_span::symbol::Ident;
 use rustc_span::{sym, Span, Symbol, DUMMY_SP};
@@ -273,11 +273,7 @@ pub fn implements_trait_with_env_from_iter<'tcx>(
     let infcx = tcx.infer_ctxt().build();
     let args = args
         .into_iter()
-        .map(|arg| {
-            arg.into().unwrap_or_else(|| {
-                infcx.next_ty_var(DUMMY_SP).into()
-            })
-        })
+        .map(|arg| arg.into().unwrap_or_else(|| infcx.next_ty_var(DUMMY_SP).into()))
         .collect::<Vec<_>>();
 
     // If an effect arg was not specified, we need to specify it.
@@ -795,7 +791,8 @@ fn sig_from_bounds<'tcx>(
                 inputs = Some(i);
             },
             ty::ClauseKind::Projection(p)
-                if Some(p.projection_term.def_id) == lang_items.fn_once_output() && p.projection_term.self_ty() == ty =>
+                if Some(p.projection_term.def_id) == lang_items.fn_once_output()
+                    && p.projection_term.self_ty() == ty =>
             {
                 if output.is_some() {
                     // Multiple different fn trait impls. Is this even allowed?
@@ -956,11 +953,7 @@ pub struct AdtVariantInfo {
 
 impl AdtVariantInfo {
     /// Returns ADT variants ordered by size
-    pub fn new<'tcx>(
-        cx: &LateContext<'tcx>,
-        adt: AdtDef<'tcx>,
-        subst: GenericArgsRef<'tcx>
-    ) -> Vec<Self> {
+    pub fn new<'tcx>(cx: &LateContext<'tcx>, adt: AdtDef<'tcx>, subst: GenericArgsRef<'tcx>) -> Vec<Self> {
         let mut variants_size = adt
             .variants()
             .iter()
