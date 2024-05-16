@@ -140,16 +140,16 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                                 rhs = args.next().unwrap();
                             }
                             let bin_op = match intrinsic.name {
-                                sym::add_with_overflow => BinOp::Add,
-                                sym::sub_with_overflow => BinOp::Sub,
-                                sym::mul_with_overflow => BinOp::Mul,
+                                sym::add_with_overflow => BinOp::AddWithOverflow,
+                                sym::sub_with_overflow => BinOp::SubWithOverflow,
+                                sym::mul_with_overflow => BinOp::MulWithOverflow,
                                 _ => bug!("unexpected intrinsic"),
                             };
                             block.statements.push(Statement {
                                 source_info: terminator.source_info,
                                 kind: StatementKind::Assign(Box::new((
                                     *destination,
-                                    Rvalue::CheckedBinaryOp(bin_op, Box::new((lhs.node, rhs.node))),
+                                    Rvalue::BinaryOp(bin_op, Box::new((lhs.node, rhs.node))),
                                 ))),
                             });
                             terminator.kind = TerminatorKind::Goto { target };

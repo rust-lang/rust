@@ -26,7 +26,7 @@
   
       bb0: {
           StorageLive(_1);
-          _2 = CheckedAdd(const 2_i32, const 2_i32);
+          _2 = AddWithOverflow(const 2_i32, const 2_i32);
           assert(!move (_2.1: bool), "attempt to compute `{} + {}`, which would overflow", const 2_i32, const 2_i32) -> [success: bb1, unwind continue];
       }
   

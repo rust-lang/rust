@@ -1037,8 +1037,8 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             )
                         }
                     }
-                    AddUnchecked | SubUnchecked | MulUnchecked | Shl | ShlUnchecked | Shr
-                    | ShrUnchecked => {
+                    AddUnchecked | AddWithOverflow | SubUnchecked | SubWithOverflow
+                    | MulUnchecked | MulWithOverflow | Shl | ShlUnchecked | Shr | ShrUnchecked => {
                         for x in [a, b] {
                             check_kinds!(
                                 x,
@@ -1065,31 +1065,6 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             )
                         }
                     }
-                }
-            }
-            Rvalue::CheckedBinaryOp(op, vals) => {
-                use BinOp::*;
-                let a = vals.0.ty(&self.body.local_decls, self.tcx);
-                let b = vals.1.ty(&self.body.local_decls, self.tcx);
-                match op {
-                    Add | Sub | Mul => {
-                        for x in [a, b] {
-                            check_kinds!(
-                                x,
-                                "Cannot perform checked arithmetic on type {:?}",
-                                ty::Uint(..) | ty::Int(..)
-                            )
-                        }
-                        if a != b {
-                            self.fail(
-                                location,
-                                format!(
-                                    "Cannot perform checked arithmetic on unequal types {a:?} and {b:?}"
-                                ),
-                            );
-                        }
-                    }
-                    _ => self.fail(location, format!("There is no checked version of {op:?}")),
                 }
             }
             Rvalue::UnaryOp(op, operand) => {

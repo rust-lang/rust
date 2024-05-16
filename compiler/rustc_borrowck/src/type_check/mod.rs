@@ -2417,8 +2417,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 self.check_operand(op, location);
             }
 
-            Rvalue::BinaryOp(_, box (left, right))
-            | Rvalue::CheckedBinaryOp(_, box (left, right)) => {
+            Rvalue::BinaryOp(_, box (left, right)) => {
                 self.check_operand(left, location);
                 self.check_operand(right, location);
             }
@@ -2445,7 +2444,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             | Rvalue::Cast(..)
             | Rvalue::ShallowInitBox(..)
             | Rvalue::BinaryOp(..)
-            | Rvalue::CheckedBinaryOp(..)
             | Rvalue::NullaryOp(..)
             | Rvalue::CopyForDeref(..)
             | Rvalue::UnaryOp(..)

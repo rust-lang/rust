@@ -572,6 +572,22 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 }
             }
 
+            mir::Rvalue::BinaryOp(op_with_overflow, box (ref lhs, ref rhs))
+                if let Some(op) = op_with_overflow.overflowing_to_wrapping() =>
+            {
+                let lhs = self.codegen_operand(bx, lhs);
+                let rhs = self.codegen_operand(bx, rhs);
+                let result = self.codegen_scalar_checked_binop(
+                    bx,
+                    op,
+                    lhs.immediate(),
+                    rhs.immediate(),
+                    lhs.layout.ty,
+                );
+                let val_ty = op.ty(bx.tcx(), lhs.layout.ty, rhs.layout.ty);
+                let operand_ty = Ty::new_tup(bx.tcx(), &[val_ty, bx.tcx().types.bool]);
+                OperandRef { val: result, layout: bx.cx().layout_of(operand_ty) }
+            }
             mir::Rvalue::BinaryOp(op, box (ref lhs, ref rhs)) => {
                 let lhs = self.codegen_operand(bx, lhs);
                 let rhs = self.codegen_operand(bx, rhs);
@@ -599,20 +615,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     val: OperandValue::Immediate(llresult),
                     layout: bx.cx().layout_of(op.ty(bx.tcx(), lhs.layout.ty, rhs.layout.ty)),
                 }
-            }
-            mir::Rvalue::CheckedBinaryOp(op, box (ref lhs, ref rhs)) => {
-                let lhs = self.codegen_operand(bx, lhs);
-                let rhs = self.codegen_operand(bx, rhs);
-                let result = self.codegen_scalar_checked_binop(
-                    bx,
-                    op,
-                    lhs.immediate(),
-                    rhs.immediate(),
-                    lhs.layout.ty,
-                );
-                let val_ty = op.ty(bx.tcx(), lhs.layout.ty, rhs.layout.ty);
-                let operand_ty = Ty::new_tup(bx.tcx(), &[val_ty, bx.tcx().types.bool]);
-                OperandRef { val: result, layout: bx.cx().layout_of(operand_ty) }
             }
 
             mir::Rvalue::UnaryOp(op, ref operand) => {
@@ -924,6 +926,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     bx.select(is_lt, bx.cx().const_i8(Ordering::Less as i8), ge)
                 }
             }
+            mir::BinOp::AddWithOverflow
+            | mir::BinOp::SubWithOverflow
+            | mir::BinOp::MulWithOverflow => {
+                bug!("{op:?} needs to return a pair, so call codegen_scalar_checked_binop instead")
+            }
         }
     }
 
@@ -1036,7 +1043,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::Rvalue::Cast(..) | // (*)
             mir::Rvalue::ShallowInitBox(..) | // (*)
             mir::Rvalue::BinaryOp(..) |
-            mir::Rvalue::CheckedBinaryOp(..) |
             mir::Rvalue::UnaryOp(..) |
             mir::Rvalue::Discriminant(..) |
             mir::Rvalue::NullaryOp(..) |
