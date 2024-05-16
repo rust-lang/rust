@@ -179,6 +179,9 @@ pub(crate) fn codegen_int_binop<'tcx>(
             }
         }
         BinOp::Offset => unreachable!("Offset is not an integer operation"),
+        BinOp::AddWithOverflow | BinOp::SubWithOverflow | BinOp::MulWithOverflow => {
+            unreachable!("Overflow binops handled by `codegen_checked_int_binop`")
+        }
         // Compare binops handles by `codegen_binop`.
         BinOp::Eq | BinOp::Ne | BinOp::Lt | BinOp::Le | BinOp::Gt | BinOp::Ge | BinOp::Cmp => {
             unreachable!("{:?}({:?}, {:?})", bin_op, in_lhs.layout().ty, in_rhs.layout().ty);
