@@ -996,7 +996,6 @@ impl Step for PlainSourceTarball {
         let write_git_info = |info: Option<&Info>, path: &Path| {
             if let Some(info) = info {
                 t!(std::fs::create_dir_all(path));
-                channel::write_commit_hash_file(path, &info.sha);
                 channel::write_commit_info_file(path, info);
             }
         };

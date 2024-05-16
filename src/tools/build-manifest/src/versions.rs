@@ -72,7 +72,7 @@ impl PkgType {
     }
 
     /// Whether this package has the same version as Rust itself, or has its own `version` and
-    /// `git-commit-hash` files inside the tarball.
+    /// `git-commit-info` files inside the tarball.
     fn should_use_rust_version(&self) -> bool {
         match self {
             PkgType::Cargo => false,
@@ -225,12 +225,15 @@ impl Versions {
             let dest;
             match entry.path()?.components().nth(1).and_then(|c| c.as_os_str().to_str()) {
                 Some("version") => dest = &mut version,
-                Some("git-commit-hash") => dest = &mut git_commit,
+                Some("git-commit-info") => dest = &mut git_commit,
                 _ => continue,
             }
             let mut buf = String::new();
             entry.read_to_string(&mut buf)?;
-            *dest = Some(buf);
+            // We only want the commit hash from "git-commit-info" file, so take the first line only.
+            // As for the "version" file, it contains only one line data, so we are fine here with
+            // taking the first line only.
+            *dest = Some(buf.lines().next().unwrap().to_owned());
 
             // Short circuit to avoid reading the whole tar file if not necessary.
             if version.is_some() && git_commit.is_some() {
