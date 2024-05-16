@@ -180,4 +180,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "New option `build.lldb` that will override the default lldb binary path used in debuginfo tests",
     },
+    ChangeInfo {
+        change_id: 123337,
+        severity: ChangeSeverity::Info,
+        summary: r#"The compiler profile now defaults to rust.debuginfo-level = "line-tables-only""#,
+    },
 ];
