@@ -4441,7 +4441,7 @@ fn foo() {
             ```rust
             'label
             ```
-            "#]],
+        "#]],
     );
 }
 
@@ -4455,7 +4455,17 @@ fn hover_lifetime() {
             ```rust
             'lifetime
             ```
-            "#]],
+        "#]],
+    );
+    check(
+        r#"fn foo(_: &'static$0 ()) {}"#,
+        expect![[r#"
+            *'static*
+
+            ```rust
+            'static
+            ```
+        "#]],
     );
 }
 
