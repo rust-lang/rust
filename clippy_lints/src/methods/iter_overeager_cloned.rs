@@ -12,7 +12,6 @@ use rustc_span::sym;
 
 use super::ITER_OVEREAGER_CLONED;
 use crate::redundant_clone::REDUNDANT_CLONE;
-use crate::rustc_trait_selection::infer::TyCtxtInferExt;
 
 #[derive(Clone, Copy)]
 pub(super) enum Op<'a> {
@@ -69,16 +68,10 @@ pub(super) fn check<'tcx>(
             let mut delegate = MoveDelegate {
                 used_move: HirIdSet::default(),
             };
-            let infcx = cx.tcx.infer_ctxt().build();
 
-            ExprUseVisitor::new(
-                &mut delegate,
-                &infcx,
-                closure.body.hir_id.owner.def_id,
-                cx.param_env,
-                cx.typeck_results(),
-            )
-            .consume_body(body);
+            ExprUseVisitor::for_clippy(cx, closure.def_id, &mut delegate)
+                .consume_body(body)
+                .into_ok();
 
             let mut to_be_discarded = false;
 

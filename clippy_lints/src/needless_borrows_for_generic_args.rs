@@ -12,7 +12,7 @@ use rustc_index::bit_set::BitSet;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{
-    self, ClauseKind, EarlyBinder, FnSig, GenericArg, GenericArgKind, List, ParamTy, ProjectionPredicate, Ty,
+    self, ClauseKind, EarlyBinder, FnSig, GenericArg, GenericArgKind, ParamTy, ProjectionPredicate, Ty,
 };
 use rustc_session::impl_lint_pass;
 use rustc_span::symbol::sym;
@@ -157,7 +157,7 @@ fn path_has_args(p: &QPath<'_>) -> bool {
 fn needless_borrow_count<'tcx>(
     cx: &LateContext<'tcx>,
     fn_id: DefId,
-    callee_args: &'tcx List<GenericArg<'tcx>>,
+    callee_args: ty::GenericArgsRef<'tcx>,
     arg_index: usize,
     param_ty: ParamTy,
     mut expr: &Expr<'tcx>,
@@ -316,11 +316,11 @@ fn is_mixed_projection_predicate<'tcx>(
         && (term_param_ty.index as usize) < generics.parent_count
     {
         // The inner-most self type is a type parameter from the current function.
-        let mut projection_ty = projection_predicate.projection_ty;
+        let mut projection_term = projection_predicate.projection_term;
         loop {
-            match projection_ty.self_ty().kind() {
+            match *projection_term.self_ty().kind() {
                 ty::Alias(ty::Projection, inner_projection_ty) => {
-                    projection_ty = *inner_projection_ty;
+                    projection_term = inner_projection_ty.into();
                 },
                 ty::Param(param_ty) => {
                     return (param_ty.index as usize) >= generics.parent_count;
@@ -369,14 +369,15 @@ fn replace_types<'tcx>(
         // The `replaced.insert(...)` check provides some protection against infinite loops.
         if replaced.insert(param_ty.index) {
             for projection_predicate in projection_predicates {
-                if projection_predicate.projection_ty.self_ty() == param_ty.to_ty(cx.tcx)
+                if projection_predicate.projection_term.self_ty() == param_ty.to_ty(cx.tcx)
                     && let Some(term_ty) = projection_predicate.term.ty()
                     && let ty::Param(term_param_ty) = term_ty.kind()
                 {
-                    let projection = cx.tcx.mk_ty_from_kind(ty::Alias(
-                        ty::Projection,
-                        projection_predicate.projection_ty.with_self_ty(cx.tcx, new_ty),
-                    ));
+                    let projection = projection_predicate
+                        .projection_term
+                        .with_self_ty(cx.tcx, new_ty)
+                        .expect_ty(cx.tcx)
+                        .to_ty(cx.tcx);
 
                     if let Ok(projected_ty) = cx.tcx.try_normalize_erasing_regions(cx.param_env, projection)
                         && args[term_param_ty.index as usize] != GenericArg::from(projected_ty)

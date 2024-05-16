@@ -10,7 +10,6 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{Expr, FnDecl, LangItem, TyKind, Unsafety};
-use rustc_infer::infer::type_variable::TypeVariableOrigin;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::LateContext;
 use rustc_middle::mir::interpret::Scalar;
@@ -19,8 +18,8 @@ use rustc_middle::traits::EvaluationResult;
 use rustc_middle::ty::layout::ValidityRequirement;
 use rustc_middle::ty::{
     self, AdtDef, AliasTy, AssocKind, Binder, BoundRegion, FnSig, GenericArg, GenericArgKind, GenericArgsRef,
-    GenericParamDefKind, IntTy, List, ParamEnv, Region, RegionKind, ToPredicate, TraitRef, Ty, TyCtxt,
-    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, UintTy, VariantDef, VariantDiscr,
+    GenericParamDefKind, IntTy, ParamEnv, Region, RegionKind, ToPredicate, TraitRef, Ty, TyCtxt, TypeSuperVisitable,
+    TypeVisitable, TypeVisitableExt, TypeVisitor, UintTy, VariantDef, VariantDiscr,
 };
 use rustc_span::symbol::Ident;
 use rustc_span::{sym, Span, Symbol, DUMMY_SP};
@@ -274,15 +273,7 @@ pub fn implements_trait_with_env_from_iter<'tcx>(
     let infcx = tcx.infer_ctxt().build();
     let args = args
         .into_iter()
-        .map(|arg| {
-            arg.into().unwrap_or_else(|| {
-                let orig = TypeVariableOrigin {
-                    span: DUMMY_SP,
-                    param_def_id: None,
-                };
-                infcx.next_ty_var(orig).into()
-            })
-        })
+        .map(|arg| arg.into().unwrap_or_else(|| infcx.next_ty_var(DUMMY_SP).into()))
         .collect::<Vec<_>>();
 
     // If an effect arg was not specified, we need to specify it.
@@ -800,7 +791,8 @@ fn sig_from_bounds<'tcx>(
                 inputs = Some(i);
             },
             ty::ClauseKind::Projection(p)
-                if Some(p.projection_ty.def_id) == lang_items.fn_once_output() && p.projection_ty.self_ty() == ty =>
+                if Some(p.projection_term.def_id) == lang_items.fn_once_output()
+                    && p.projection_term.self_ty() == ty =>
             {
                 if output.is_some() {
                     // Multiple different fn trait impls. Is this even allowed?
@@ -839,7 +831,7 @@ fn sig_for_projection<'tcx>(cx: &LateContext<'tcx>, ty: AliasTy<'tcx>) -> Option
                 }
                 inputs = Some(i);
             },
-            ty::ClauseKind::Projection(p) if Some(p.projection_ty.def_id) == lang_items.fn_once_output() => {
+            ty::ClauseKind::Projection(p) if Some(p.projection_term.def_id) == lang_items.fn_once_output() => {
                 if output.is_some() {
                     // Multiple different fn trait impls. Is this even allowed?
                     return None;
@@ -961,7 +953,7 @@ pub struct AdtVariantInfo {
 
 impl AdtVariantInfo {
     /// Returns ADT variants ordered by size
-    pub fn new<'tcx>(cx: &LateContext<'tcx>, adt: AdtDef<'tcx>, subst: &'tcx List<GenericArg<'tcx>>) -> Vec<Self> {
+    pub fn new<'tcx>(cx: &LateContext<'tcx>, adt: AdtDef<'tcx>, subst: GenericArgsRef<'tcx>) -> Vec<Self> {
         let mut variants_size = adt
             .variants()
             .iter()
@@ -1070,11 +1062,11 @@ pub fn approx_ty_size<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> u64 {
 fn assert_generic_args_match<'tcx>(tcx: TyCtxt<'tcx>, did: DefId, args: &[GenericArg<'tcx>]) {
     let g = tcx.generics_of(did);
     let parent = g.parent.map(|did| tcx.generics_of(did));
-    let count = g.parent_count + g.params.len();
+    let count = g.parent_count + g.own_params.len();
     let params = parent
-        .map_or([].as_slice(), |p| p.params.as_slice())
+        .map_or([].as_slice(), |p| p.own_params.as_slice())
         .iter()
-        .chain(&g.params)
+        .chain(&g.own_params)
         .map(|x| &x.kind);
 
     assert!(

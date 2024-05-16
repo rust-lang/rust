@@ -4,6 +4,7 @@ use rustc_hir::intravisit::FnKind;
 use rustc_hir::{Body, FnDecl};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::ty::print::PrintTraitRefExt;
 use rustc_middle::ty::{self, AliasTy, ClauseKind, PredicateKind};
 use rustc_session::declare_lint_pass;
 use rustc_span::def_id::LocalDefId;

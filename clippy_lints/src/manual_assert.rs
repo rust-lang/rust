@@ -1,10 +1,9 @@
-use crate::rustc_lint::LintContext;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::macros::{is_panic, root_macro_call};
 use clippy_utils::{is_else_clause, is_parent_stmt, peel_blocks_with_stmt, span_extract_comment, sugg};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, UnOp};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {

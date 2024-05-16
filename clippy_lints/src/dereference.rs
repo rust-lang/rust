@@ -382,7 +382,7 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
                                         cx,
                                         impl_ty,
                                         trait_id,
-                                        &args[..cx.tcx.generics_of(trait_id).params.len() - 1],
+                                        &args[..cx.tcx.generics_of(trait_id).own_params.len() - 1],
                                     )
                                 {
                                     false

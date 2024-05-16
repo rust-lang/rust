@@ -1,4 +1,3 @@
-#![feature(exclusive_range_pattern)]
 #![allow(clippy::match_same_arms, dead_code)]
 #![warn(clippy::match_wild_err_arm)]
 
