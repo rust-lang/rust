@@ -4061,7 +4061,6 @@ ui/traits/issue-6128.rs
 ui/traits/issue-6334.rs
 ui/traits/issue-65284-suggest-generic-trait-bound.rs
 ui/traits/issue-65673.rs
-ui/traits/issue-66768.rs
 ui/traits/issue-68295.rs
 ui/traits/issue-7013.rs
 ui/traits/issue-70944.rs

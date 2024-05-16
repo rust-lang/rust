@@ -121,7 +121,18 @@ pub enum SelectionCandidate<'tcx> {
     /// Implementation of transmutability trait.
     TransmutabilityCandidate,
 
-    ParamCandidate(ty::PolyTraitPredicate<'tcx>),
+    /// A candidate from the `ParamEnv`.
+    ParamCandidate {
+        /// The actual `where`-bound, e.g. `T: Trait`.
+        predicate: ty::PolyTraitPredicate<'tcx>,
+        /// `true` if the where-bound has no bound vars and does
+        /// not refer to any parameters or inference variables.
+        ///
+        /// We prefer all other candidates over global where-bounds.
+        /// Notably, global where-bounds do not shadow impls.
+        is_global: bool,
+    },
+
     ImplCandidate(DefId),
     AutoImplCandidate,
 

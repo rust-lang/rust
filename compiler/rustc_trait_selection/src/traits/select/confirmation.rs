@@ -57,9 +57,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 ImplSource::Builtin(BuiltinImplSource::Misc, data)
             }
 
-            ParamCandidate(param) => {
+            ParamCandidate { predicate, is_global: _ } => {
                 let obligations =
-                    self.confirm_param_candidate(obligation, param.map_bound(|t| t.trait_ref));
+                    self.confirm_param_candidate(obligation, predicate.map_bound(|t| t.trait_ref));
                 ImplSource::Param(obligations)
             }
 

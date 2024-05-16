@@ -1,0 +1,15 @@
+error[E0277]: the trait bound `Point: From<(Ure, R1, MStorage)>` is not satisfied
+  --> $DIR/issue-105449.rs:10:33
+   |
+LL |     let _ = Into::<Point>::into(e.map_reference_coords());
+   |             ------------------- ^^^^^^^^^^^^^^^^^^^^^^^^ the trait `From<(Ure, R1, MStorage)>` is not implemented for `Point`, which is required by `(Ure, R1, MStorage): Into<Point>`
+   |             |
+   |             required by a bound introduced by this call
+   |
+   = help: the trait `From<(Ure, Space, <DefaultAlloc as Allocator<Ure, Space>>::Buffer)>` is implemented for `Point`
+   = help: for that trait implementation, expected `Space`, found `R1`
+   = note: required for `(Ure, R1, MStorage)` to implement `Into<Point>`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.
