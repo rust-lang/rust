@@ -12,7 +12,7 @@ use crate::thread::Result;
 
 #[stable(feature = "panic_hooks", since = "1.10.0")]
 #[deprecated(
-    since = "1.80.0",
+    since = "1.82.0",
     note = "use `PanicHookInfo` instead",
     suggestion = "std::panic::PanicHookInfo"
 )]
