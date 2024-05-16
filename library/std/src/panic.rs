@@ -73,6 +73,8 @@ impl<'a> PanicHookInfo<'a> {
     /// panic::set_hook(Box::new(|panic_info| {
     ///     if let Some(s) = panic_info.payload().downcast_ref::<&str>() {
     ///         println!("panic occurred: {s:?}");
+    ///     } else if let Some(s) = panic_info.payload().downcast_ref::<String>() {
+    ///         println!("panic occurred: {s:?}");
     ///     } else {
     ///         println!("panic occurred");
     ///     }
