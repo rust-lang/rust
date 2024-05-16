@@ -17,8 +17,8 @@ The following are the primary interfaces of the panic system and the
 responsibilities they cover:
 
 * [`panic!`] and [`panic_any`] (Constructing, Propagated automatically)
-* [`PanicHookInfo`] (Reporting)
-* [`set_hook`], [`take_hook`], and [`#[panic_handler]`][panic-handler] (Reporting)
+* [`set_hook`], [`take_hook`], and [`PanicHookInfo`] (Reporting)
+* [`#[panic_handler]`][panic-handler] and [`PanicInfo`] (Reporting in no_std)
 * [`catch_unwind`] and [`resume_unwind`] (Discarding, Propagating)
 
 The following are the primary interfaces of the error system and the
@@ -126,6 +126,7 @@ should be available and executable by the current user".
 
 [`panic_any`]: ../../std/panic/fn.panic_any.html
 [`PanicHookInfo`]: ../../std/panic/struct.PanicHookInfo.html
+[`PanicInfo`]: crate::panic::PanicInfo
 [`catch_unwind`]: ../../std/panic/fn.catch_unwind.html
 [`resume_unwind`]: ../../std/panic/fn.resume_unwind.html
 [`downcast`]: crate::error::Error
