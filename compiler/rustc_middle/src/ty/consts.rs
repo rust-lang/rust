@@ -7,8 +7,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::LocalDefId;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
-use rustc_type_ir::ConstKind as IrConstKind;
-use rustc_type_ir::{TypeFlags, WithCachedTypeInfo};
+use rustc_type_ir::{self as ir, TypeFlags, WithCachedTypeInfo};
 
 mod int;
 mod kind;
@@ -20,7 +19,8 @@ use rustc_span::Span;
 use rustc_span::DUMMY_SP;
 pub use valtree::*;
 
-pub type ConstKind<'tcx> = IrConstKind<TyCtxt<'tcx>>;
+pub type ConstKind<'tcx> = ir::ConstKind<TyCtxt<'tcx>>;
+pub type UnevaluatedConst<'tcx> = ir::UnevaluatedConst<TyCtxt<'tcx>>;
 
 #[cfg(target_pointer_width = "64")]
 rustc_data_structures::static_assert_size!(ConstKind<'_>, 32);
@@ -182,6 +182,14 @@ impl<'tcx> rustc_type_ir::inherent::Const<TyCtxt<'tcx>> for Const<'tcx> {
         ty: Ty<'tcx>,
     ) -> Self {
         Const::new_bound(tcx, debruijn, var, ty)
+    }
+
+    fn new_unevaluated(
+        interner: TyCtxt<'tcx>,
+        uv: ty::UnevaluatedConst<'tcx>,
+        ty: Ty<'tcx>,
+    ) -> Self {
+        Const::new_unevaluated(interner, uv, ty)
     }
 
     fn ty(self) -> Ty<'tcx> {

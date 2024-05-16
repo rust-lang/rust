@@ -290,7 +290,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected_ty_expr: Option<&'tcx hir::Expr<'tcx>>,
     ) -> bool {
         let expr = expr.peel_blocks();
-        let methods = self.get_conversion_methods(expr.span, expected, found, expr.hir_id);
+        let methods =
+            self.get_conversion_methods_for_diagnostic(expr.span, expected, found, expr.hir_id);
 
         if let Some((suggestion, msg, applicability, verbose, annotation)) =
             self.suggest_deref_or_ref(expr, found, expected)

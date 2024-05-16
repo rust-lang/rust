@@ -40,6 +40,8 @@ include:
   of a delimited expression, delimited expressions are generally combinable,
   regardless of the number of members. Previously only applied with exactly
   one member (except for closures with explicit blocks).
+- When line-breaking a binary operator, if the first operand spans multiple
+  lines, use the base indentation of the last line.
 - Miscellaneous `rustfmt` bugfixes.
 - Use version-sort (sort `x8`, `x16`, `x32`, `x64`, `x128` in that order).
 - Change "ASCIIbetical" sort to Unicode-aware "non-lowercase before lowercase".

@@ -1424,6 +1424,10 @@ pub(crate) fn notable_traits_button(ty: &clean::Type, cx: &mut Context<'_>) -> O
     if let Some(impls) = cx.cache().impls.get(&did) {
         for i in impls {
             let impl_ = i.inner_impl();
+            if impl_.polarity != ty::ImplPolarity::Positive {
+                continue;
+            }
+
             if !ty.is_doc_subtype_of(&impl_.for_, cx.cache()) {
                 // Two different types might have the same did,
                 // without actually being the same.
@@ -1459,6 +1463,10 @@ fn notable_traits_decl(ty: &clean::Type, cx: &Context<'_>) -> (String, String) {
 
     for i in impls {
         let impl_ = i.inner_impl();
+        if impl_.polarity != ty::ImplPolarity::Positive {
+            continue;
+        }
+
         if !ty.is_doc_subtype_of(&impl_.for_, cx.cache()) {
             // Two different types might have the same did,
             // without actually being the same.

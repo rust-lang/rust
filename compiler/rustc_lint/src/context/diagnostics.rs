@@ -347,5 +347,13 @@ pub(super) fn builtin(sess: &Session, diagnostic: BuiltinLintDiag, diag: &mut Di
                 "reduce the glob import's visibility or increase visibility of imported items",
             );
         }
+        BuiltinLintDiag::MaybeTypo { span, name } => {
+            diag.span_suggestion_verbose(
+                span,
+                "an attribute with a similar name exists",
+                name,
+                Applicability::MachineApplicable,
+            );
+        }
     }
 }

@@ -2478,6 +2478,15 @@ impl<'test> TestCx<'test> {
             }
         }
 
+        let set_mir_dump_dir = |rustc: &mut Command| {
+            let mir_dump_dir = self.get_mir_dump_dir();
+            remove_and_create_dir_all(&mir_dump_dir);
+            let mut dir_opt = "-Zdump-mir-dir=".to_string();
+            dir_opt.push_str(mir_dump_dir.to_str().unwrap());
+            debug!("dir_opt: {:?}", dir_opt);
+            rustc.arg(dir_opt);
+        };
+
         match self.config.mode {
             Incremental => {
                 // If we are extracting and matching errors in the new
@@ -2532,13 +2541,7 @@ impl<'test> TestCx<'test> {
                     ]);
                 }
 
-                let mir_dump_dir = self.get_mir_dump_dir();
-                remove_and_create_dir_all(&mir_dump_dir);
-                let mut dir_opt = "-Zdump-mir-dir=".to_string();
-                dir_opt.push_str(mir_dump_dir.to_str().unwrap());
-                debug!("dir_opt: {:?}", dir_opt);
-
-                rustc.arg(dir_opt);
+                set_mir_dump_dir(&mut rustc);
             }
             CoverageMap => {
                 rustc.arg("-Cinstrument-coverage");
@@ -2560,8 +2563,11 @@ impl<'test> TestCx<'test> {
             Assembly | Codegen => {
                 rustc.arg("-Cdebug-assertions=no");
             }
+            Crashes => {
+                set_mir_dump_dir(&mut rustc);
+            }
             RunPassValgrind | Pretty | DebugInfo | Rustdoc | RustdocJson | RunMake
-            | CodegenUnits | JsDocTest | Crashes => {
+            | CodegenUnits | JsDocTest => {
                 // do not use JSON output
             }
         }

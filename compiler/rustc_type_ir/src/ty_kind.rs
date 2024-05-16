@@ -4,11 +4,11 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::unify::{EqUnifyValue, UnifyKey};
 #[cfg(feature = "nightly")]
 use rustc_macros::{Decodable, Encodable, HashStable_NoContext, TyDecodable, TyEncodable};
-use rustc_type_ir_macros::{TypeFoldable_Generic, TypeVisitable_Generic};
+use rustc_type_ir_macros::{Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic};
 use std::fmt;
 
-use crate::Interner;
-use crate::{DebruijnIndex, DebugWithInfcx, InferCtxtLike, WithInfcx};
+use crate::inherent::*;
+use crate::{DebruijnIndex, DebugWithInfcx, InferCtxtLike, Interner, TraitRef, WithInfcx};
 
 use self::TyKind::*;
 
@@ -88,7 +88,7 @@ pub enum TyKind<I: Interner> {
     /// for `struct List<T>` and the args `[i32]`.
     ///
     /// Note that generic parameters in fields only get lazily instantiated
-    /// by using something like `adt_def.all_fields().map(|field| field.ty(tcx, args))`.
+    /// by using something like `adt_def.all_fields().map(|field| field.ty(interner, args))`.
     Adt(I::AdtDef, I::GenericArgs),
 
     /// An unsized FFI type that is opaque to Rust. Written as `extern type T`.
@@ -201,7 +201,7 @@ pub enum TyKind<I: Interner> {
     /// A projection, opaque type, weak type alias, or inherent associated type.
     /// All of these types are represented as pairs of def-id and args, and can
     /// be normalized, so they are grouped conceptually.
-    Alias(AliasTyKind, I::AliasTy),
+    Alias(AliasTyKind, AliasTy<I>),
 
     /// A type parameter; for example, `T` in `fn f<T>(x: T) {}`.
     Param(I::ParamTy),
@@ -419,6 +419,154 @@ impl<I: Interner> DebugWithInfcx<I> for TyKind<I> {
 impl<I: Interner> fmt::Debug for TyKind<I> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         WithInfcx::with_no_infcx(self).fmt(f)
+    }
+}
+
+/// Represents the projection of an associated, opaque, or lazy-type-alias type.
+///
+/// * For a projection, this would be `<Ty as Trait<...>>::N<...>`.
+/// * For an inherent projection, this would be `Ty::N<...>`.
+/// * For an opaque type, there is no explicit syntax.
+#[derive(derivative::Derivative)]
+#[derivative(
+    Clone(bound = ""),
+    Copy(bound = ""),
+    Hash(bound = ""),
+    PartialEq(bound = ""),
+    Eq(bound = "")
+)]
+#[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
+#[cfg_attr(feature = "nightly", derive(TyDecodable, TyEncodable, HashStable_NoContext))]
+pub struct AliasTy<I: Interner> {
+    /// The parameters of the associated or opaque type.
+    ///
+    /// For a projection, these are the generic parameters for the trait and the
+    /// GAT parameters, if there are any.
+    ///
+    /// For an inherent projection, they consist of the self type and the GAT parameters,
+    /// if there are any.
+    ///
+    /// For RPIT the generic parameters are for the generics of the function,
+    /// while for TAIT it is used for the generic parameters of the alias.
+    pub args: I::GenericArgs,
+
+    /// The `DefId` of the `TraitItem` or `ImplItem` for the associated type `N` depending on whether
+    /// this is a projection or an inherent projection or the `DefId` of the `OpaqueType` item if
+    /// this is an opaque.
+    ///
+    /// During codegen, `interner.type_of(def_id)` can be used to get the type of the
+    /// underlying type if the type is an opaque.
+    ///
+    /// Note that if this is an associated type, this is not the `DefId` of the
+    /// `TraitRef` containing this associated type, which is in `interner.associated_item(def_id).container`,
+    /// aka. `interner.parent(def_id)`.
+    pub def_id: I::DefId,
+
+    /// This field exists to prevent the creation of `AliasTy` without using
+    /// [AliasTy::new].
+    pub(crate) _use_alias_ty_new_instead: (),
+}
+
+impl<I: Interner> AliasTy<I> {
+    pub fn new(
+        interner: I,
+        def_id: I::DefId,
+        args: impl IntoIterator<Item: Into<I::GenericArg>>,
+    ) -> AliasTy<I> {
+        let args = interner.check_and_mk_args(def_id, args);
+        AliasTy { def_id, args, _use_alias_ty_new_instead: () }
+    }
+
+    pub fn kind(self, interner: I) -> AliasTyKind {
+        interner.alias_ty_kind(self)
+    }
+
+    /// Whether this alias type is an opaque.
+    pub fn is_opaque(self, interner: I) -> bool {
+        matches!(self.kind(interner), AliasTyKind::Opaque)
+    }
+
+    pub fn to_ty(self, interner: I) -> I::Ty {
+        Ty::new_alias(interner, self.kind(interner), self)
+    }
+}
+
+/// The following methods work only with (trait) associated type projections.
+impl<I: Interner> AliasTy<I> {
+    pub fn self_ty(self) -> I::Ty {
+        self.args.type_at(0)
+    }
+
+    pub fn with_self_ty(self, interner: I, self_ty: I::Ty) -> Self {
+        AliasTy::new(
+            interner,
+            self.def_id,
+            [self_ty.into()].into_iter().chain(self.args.into_iter().skip(1)),
+        )
+    }
+
+    pub fn trait_def_id(self, interner: I) -> I::DefId {
+        assert_eq!(self.kind(interner), AliasTyKind::Projection, "expected a projection");
+        interner.parent(self.def_id)
+    }
+
+    /// Extracts the underlying trait reference and own args from this projection.
+    /// For example, if this is a projection of `<T as StreamingIterator>::Item<'a>`,
+    /// then this function would return a `T: StreamingIterator` trait reference and
+    /// `['a]` as the own args.
+    pub fn trait_ref_and_own_args(self, interner: I) -> (TraitRef<I>, I::GenericArgsSlice) {
+        debug_assert_eq!(self.kind(interner), AliasTyKind::Projection);
+        interner.trait_ref_and_own_args_for_alias(self.def_id, self.args)
+    }
+
+    /// Extracts the underlying trait reference from this projection.
+    /// For example, if this is a projection of `<T as Iterator>::Item`,
+    /// then this function would return a `T: Iterator` trait reference.
+    ///
+    /// WARNING: This will drop the args for generic associated types
+    /// consider calling [Self::trait_ref_and_own_args] to get those
+    /// as well.
+    pub fn trait_ref(self, interner: I) -> TraitRef<I> {
+        self.trait_ref_and_own_args(interner).0
+    }
+}
+
+/// The following methods work only with inherent associated type projections.
+impl<I: Interner> AliasTy<I> {
+    /// Transform the generic parameters to have the given `impl` args as the base and the GAT args on top of that.
+    ///
+    /// Does the following transformation:
+    ///
+    /// ```text
+    /// [Self, P_0...P_m] -> [I_0...I_n, P_0...P_m]
+    ///
+    ///     I_i impl args
+    ///     P_j GAT args
+    /// ```
+    pub fn rebase_inherent_args_onto_impl(
+        self,
+        impl_args: I::GenericArgs,
+        interner: I,
+    ) -> I::GenericArgs {
+        debug_assert_eq!(self.kind(interner), AliasTyKind::Inherent);
+        interner.mk_args_from_iter(impl_args.into_iter().chain(self.args.into_iter().skip(1)))
+    }
+}
+
+impl<I: Interner> fmt::Debug for AliasTy<I> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        WithInfcx::with_no_infcx(self).fmt(f)
+    }
+}
+impl<I: Interner> DebugWithInfcx<I> for AliasTy<I> {
+    fn fmt<Infcx: InferCtxtLike<Interner = I>>(
+        this: WithInfcx<'_, Infcx, &Self>,
+        f: &mut core::fmt::Formatter<'_>,
+    ) -> core::fmt::Result {
+        f.debug_struct("AliasTy")
+            .field("args", &this.map(|data| data.args))
+            .field("def_id", &this.data.def_id)
+            .finish()
     }
 }
 

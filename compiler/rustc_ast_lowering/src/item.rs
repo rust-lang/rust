@@ -460,8 +460,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     delegation_results.body_id,
                 )
             }
-            ItemKind::MacCall(..) => {
-                panic!("`TyMac` should have been expanded by now")
+            ItemKind::MacCall(..) | ItemKind::DelegationMac(..) => {
+                panic!("macros should have been expanded by now")
             }
         }
     }
@@ -845,7 +845,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 );
                 (delegation_results.generics, item_kind, true)
             }
-            AssocItemKind::MacCall(..) => panic!("macro item shouldn't exist at this point"),
+            AssocItemKind::MacCall(..) | AssocItemKind::DelegationMac(..) => {
+                panic!("macros should have been expanded by now")
+            }
         };
 
         let item = hir::TraitItem {
@@ -869,7 +871,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
             AssocItemKind::Delegation(box delegation) => hir::AssocItemKind::Fn {
                 has_self: self.delegation_has_self(i.id, delegation.id, i.span),
             },
-            AssocItemKind::MacCall(..) => unimplemented!(),
+            AssocItemKind::MacCall(..) | AssocItemKind::DelegationMac(..) => {
+                panic!("macros should have been expanded by now")
+            }
         };
         let id = hir::TraitItemId { owner_id: hir::OwnerId { def_id: self.local_def_id(i.id) } };
         hir::TraitItemRef {
@@ -964,7 +968,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     hir::ImplItemKind::Fn(delegation_results.sig, delegation_results.body_id),
                 )
             }
-            AssocItemKind::MacCall(..) => panic!("`TyMac` should have been expanded by now"),
+            AssocItemKind::MacCall(..) | AssocItemKind::DelegationMac(..) => {
+                panic!("macros should have been expanded by now")
+            }
         };
 
         let item = hir::ImplItem {
@@ -993,7 +999,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 AssocItemKind::Delegation(box delegation) => hir::AssocItemKind::Fn {
                     has_self: self.delegation_has_self(i.id, delegation.id, i.span),
                 },
-                AssocItemKind::MacCall(..) => unimplemented!(),
+                AssocItemKind::MacCall(..) | AssocItemKind::DelegationMac(..) => {
+                    panic!("macros should have been expanded by now")
+                }
             },
             trait_item_def_id: self
                 .resolver

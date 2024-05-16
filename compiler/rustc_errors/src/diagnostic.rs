@@ -896,7 +896,7 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
         style: SuggestionStyle,
     ) -> &mut Self {
         suggestion.sort_unstable();
-        suggestion.dedup();
+        suggestion.dedup_by(|(s1, m1), (s2, m2)| s1.source_equal(*s2) && m1 == m2);
 
         let parts = suggestion
             .into_iter()

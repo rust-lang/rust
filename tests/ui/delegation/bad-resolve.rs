@@ -36,4 +36,8 @@ impl Trait for S {
     //~^ ERROR cannot find function `foo` in this scope
 }
 
+mod prefix {}
+reuse unresolved_prefix::{a, b, c}; //~ ERROR use of undeclared crate or module `unresolved_prefix`
+reuse prefix::{self, super, crate}; //~ ERROR `crate` in paths can only be used in start position
+
 fn main() {}

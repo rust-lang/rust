@@ -236,7 +236,7 @@ impl<'r, 'ast, 'tcx> Visitor<'ast> for EffectiveVisibilitiesVisitor<'ast, 'r, 't
             ast::ItemKind::Impl(..) => return,
 
             // Should be unreachable at this stage
-            ast::ItemKind::MacCall(..) => panic!(
+            ast::ItemKind::MacCall(..) | ast::ItemKind::DelegationMac(..) => panic!(
                 "ast::ItemKind::MacCall encountered, this should not anymore appear at this stage"
             ),
 

@@ -18,12 +18,12 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, Res};
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::{HirId, PatKind};
-use rustc_middle::{bug, span_bug};
 use rustc_middle::hir::place::ProjectionKind;
 use rustc_middle::mir::FakeReadCause;
 use rustc_middle::ty::{
     self, adjustment, AdtKind, Ty, TyCtxt, TypeFoldable, TypeVisitableExt as _,
 };
+use rustc_middle::{bug, span_bug};
 use rustc_span::{ErrorGuaranteed, Span};
 use rustc_target::abi::{FieldIdx, VariantIdx, FIRST_VARIANT};
 use rustc_trait_selection::infer::InferCtxtExt;
@@ -1181,6 +1181,10 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                 debug!("pat_ty(pat={:?}) found adjusted ty `{:?}`", pat, first_ty);
                 return Ok(*first_ty);
             }
+        } else if let PatKind::Ref(subpat, _) = pat.kind
+            && self.cx.typeck_results().skipped_ref_pats().contains(pat.hir_id)
+        {
+            return self.pat_ty_adjusted(subpat);
         }
 
         self.pat_ty_unadjusted(pat)
@@ -1709,6 +1713,12 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
             }
 
             PatKind::Binding(.., Some(subpat)) => {
+                self.cat_pattern(place_with_id, subpat, op)?;
+            }
+
+            PatKind::Ref(subpat, _)
+                if self.cx.typeck_results().skipped_ref_pats().contains(pat.hir_id) =>
+            {
                 self.cat_pattern(place_with_id, subpat, op)?;
             }
 

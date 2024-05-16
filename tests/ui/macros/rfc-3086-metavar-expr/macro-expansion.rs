@@ -17,20 +17,20 @@ macro_rules! example {
             _nested: vec![
             $(
                 Example {
-                    _indexes: &[(${index()}, ${length()})],
+                    _indexes: &[(${index()}, ${len()})],
                     _counts: &[${count($x, 0)}, ${count($x, 1)}],
                     _nested: vec![
                     $(
                         Example {
-                            _indexes: &[(${index(1)}, ${length(1)}), (${index()}, ${length()})],
+                            _indexes: &[(${index(1)}, ${len(1)}), (${index()}, ${len()})],
                             _counts: &[${count($x)}],
                             _nested: vec![
                             $(
                                 Example {
                                     _indexes: &[
-                                        (${index(2)}, ${length(2)}),
-                                        (${index(1)}, ${length(1)}),
-                                        (${index()}, ${length()})
+                                        (${index(2)}, ${len(2)}),
+                                        (${index(1)}, ${len(1)}),
+                                        (${index()}, ${len()})
                                     ],
                                     _counts: &[],
                                     _nested: vec![],

@@ -29,6 +29,7 @@ use rustc_session::lint::builtin::{LEGACY_DERIVE_HELPERS, SOFT_UNSTABLE};
 use rustc_session::lint::builtin::{UNUSED_MACROS, UNUSED_MACRO_RULES};
 use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::parse::feature_err;
+use rustc_span::edit_distance::edit_distance;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::{self, ExpnData, ExpnKind, LocalExpnId};
 use rustc_span::hygiene::{AstPass, MacroKind};
@@ -568,15 +569,24 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
 
         if res == Res::NonMacroAttr(NonMacroAttrKind::Tool)
-            && path.segments.len() >= 2
-            && path.segments[0].ident.name == sym::diagnostic
-            && path.segments[1].ident.name != sym::on_unimplemented
+            && let [namespace, attribute, ..] = &*path.segments
+            && namespace.ident.name == sym::diagnostic
+            && attribute.ident.name != sym::on_unimplemented
         {
-            self.tcx.sess.psess.buffer_lint(
+            let distance =
+                edit_distance(attribute.ident.name.as_str(), sym::on_unimplemented.as_str(), 5);
+
+            let help = if distance.is_some() {
+                BuiltinLintDiag::MaybeTypo { span: attribute.span(), name: sym::on_unimplemented }
+            } else {
+                BuiltinLintDiag::Normal
+            };
+            self.tcx.sess.psess.buffer_lint_with_diagnostic(
                 UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                path.segments[1].span(),
+                attribute.span(),
                 node_id,
                 "unknown diagnostic attribute",
+                help,
             );
         }
 

@@ -153,6 +153,8 @@ pub enum ProbeKind<'tcx> {
     /// do a probe to find out what projection type(s) may be used to prove that
     /// the source type upholds all of the target type's object bounds.
     UpcastProjectionCompatibility,
+    /// Looking for param-env candidates that satisfy the trait ref for a projection.
+    ShadowedEnvProbing,
     /// Try to unify an opaque type with an existing key in the storage.
     OpaqueTypeStorageLookup { result: QueryResult<'tcx> },
 }

@@ -1143,7 +1143,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
 
-        let label_span_not_found = |err: &mut Diag<'_>| {
+        let mut find_candidate_for_method = false;
+
+        let mut label_span_not_found = |err: &mut Diag<'_>| {
             if unsatisfied_predicates.is_empty() {
                 err.span_label(span, format!("{item_kind} not found in `{ty_str}`"));
                 let is_string_or_ref_str = match rcvr_ty.kind() {
@@ -1219,6 +1221,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         err.note(format!(
                             "the {item_kind} was found for\n{type_candidates}{additional_types}"
                         ));
+                        find_candidate_for_method = mode == Mode::MethodCall;
                     }
                 }
             } else {
@@ -1371,9 +1374,32 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 );
             }
         }
-        // If an appropriate error source is not found, check method chain for possible candiates
-        if unsatisfied_predicates.is_empty()
-            && let Mode::MethodCall = mode
+
+        if !find_candidate_for_method {
+            self.lookup_segments_chain_for_no_match_method(
+                &mut err,
+                item_name,
+                item_kind,
+                source,
+                no_match_data,
+            );
+        }
+
+        self.note_derefed_ty_has_method(&mut err, source, rcvr_ty, item_name, expected);
+        Some(err)
+    }
+
+    /// If an appropriate error source is not found, check method chain for possible candidates
+    fn lookup_segments_chain_for_no_match_method(
+        &self,
+        err: &mut Diag<'_>,
+        item_name: Ident,
+        item_kind: &str,
+        source: SelfSource<'tcx>,
+        no_match_data: &NoMatchData<'tcx>,
+    ) {
+        if no_match_data.unsatisfied_predicates.is_empty()
+            && let Mode::MethodCall = no_match_data.mode
             && let SelfSource::MethodCall(mut source_expr) = source
         {
             let mut stack_methods = vec![];
@@ -1394,6 +1420,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .unwrap_or(Ty::new_misc_error(self.tcx)),
                 );
 
+                // FIXME: `probe_for_name_many` searches for methods in inherent implementations,
+                // so it may return a candidate that doesn't belong to this `revr_ty`. We need to
+                // check whether the instantiated type matches the received one.
                 for _matched_method in self.probe_for_name_many(
                     Mode::MethodCall,
                     item_name,
@@ -1416,8 +1445,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 );
             }
         }
-        self.note_derefed_ty_has_method(&mut err, source, rcvr_ty, item_name, expected);
-        Some(err)
     }
 
     fn find_likely_intended_associated_item(
@@ -2814,7 +2841,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Some(output_ty) => self.resolve_vars_if_possible(output_ty),
             _ => return,
         };
-        let method_exists = self.method_exists(item_name, output_ty, call.hir_id, return_type);
+        let method_exists =
+            self.method_exists_for_diagnostic(item_name, output_ty, call.hir_id, return_type);
         debug!("suggest_await_before_method: is_method_exist={}", method_exists);
         if method_exists {
             err.span_suggestion_verbose(
