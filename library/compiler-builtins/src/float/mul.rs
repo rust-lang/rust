@@ -1,5 +1,5 @@
 use crate::float::Float;
-use crate::int::{CastInto, DInt, HInt, Int};
+use crate::int::{CastInto, DInt, HInt, Int, MinInt};
 
 fn mul<F: Float>(a: F, b: F) -> F
 where
@@ -196,6 +196,17 @@ intrinsics! {
     #[aapcs_on_arm]
     #[arm_aeabi_alias = __aeabi_dmul]
     pub extern "C" fn __muldf3(a: f64, b: f64) -> f64 {
+        mul(a, b)
+    }
+
+    #[cfg(not(any(feature = "no-f16-f128", target_arch = "powerpc", target_arch = "powerpc64")))]
+    pub extern "C" fn __multf3(a: f128, b: f128) -> f128 {
+        mul(a, b)
+    }
+
+
+    #[cfg(all(not(feature = "no-f16-f128"), any(target_arch = "powerpc", target_arch = "powerpc64")))]
+    pub extern "C" fn __mulkf3(a: f128, b: f128) -> f128 {
         mul(a, b)
     }
 

@@ -232,8 +232,8 @@ These builtins are needed to support 128-bit integers.
 
 These builtins are needed to support `f16` and `f128`, which are in the process of being added to Rust.
 
-- [ ] addtf3.c
-- [ ] comparetf2.c
+- [x] addtf3.c
+- [x] comparetf2.c
 - [ ] divtf3.c
 - [x] extenddftf2.c
 - [x] extendhfsf2.c
@@ -249,13 +249,13 @@ These builtins are needed to support `f16` and `f128`, which are in the process 
 - [ ] floatsitf.c
 - [ ] floatunditf.c
 - [ ] floatunsitf.c
-- [ ] multf3.c
+- [x] multf3.c
 - [ ] powitf2.c
 - [ ] ppc/fixtfdi.c
 - [ ] ppc/fixunstfdi.c
 - [ ] ppc/floatditf.c
 - [ ] ppc/floatunditf.c
-- [ ] subtf3.c
+- [x] subtf3.c
 - [x] truncdfhf2.c
 - [x] truncsfhf2.c
 - [x] trunctfdf2.c

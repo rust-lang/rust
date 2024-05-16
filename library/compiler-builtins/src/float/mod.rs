@@ -1,6 +1,6 @@
 use core::ops;
 
-use super::int::Int;
+use crate::int::{DInt, Int, MinInt};
 
 pub mod add;
 pub mod cmp;
@@ -11,6 +11,9 @@ pub mod mul;
 pub mod pow;
 pub mod sub;
 pub mod trunc;
+
+/// Wrapper to extract the integer type half of the float's size
+pub(crate) type HalfRep<F> = <<F as Float>::Int as DInt>::H;
 
 public_test_dep! {
 /// Trait for some basic operations on floats
@@ -60,7 +63,7 @@ pub(crate) trait Float:
     /// A mask for the significand
     const SIGNIFICAND_MASK: Self::Int;
 
-    // The implicit bit of the float format
+    /// The implicit bit of the float format
     const IMPLICIT_BIT: Self::Int;
 
     /// A mask for the exponent

@@ -1,7 +1,7 @@
 #![allow(unreachable_code)]
 
 use crate::float::Float;
-use crate::int::Int;
+use crate::int::MinInt;
 
 #[derive(Clone, Copy)]
 enum Result {
@@ -168,6 +168,89 @@ intrinsics! {
 
     #[avr_skip]
     pub extern "C" fn __gtdf2(a: f64, b: f64) -> i32 {
+        cmp(a, b).to_ge_abi()
+    }
+}
+
+#[cfg(not(any(
+    feature = "no-f16-f128",
+    target_arch = "powerpc",
+    target_arch = "powerpc64"
+)))]
+intrinsics! {
+    #[avr_skip]
+    pub extern "C" fn __letf2(a: f128, b: f128) -> i32 {
+        cmp(a, b).to_le_abi()
+    }
+
+    #[avr_skip]
+    pub extern "C" fn __getf2(a: f128, b: f128) -> i32 {
+        cmp(a, b).to_ge_abi()
+    }
+
+    #[avr_skip]
+    pub extern "C" fn __unordtf2(a: f128, b: f128) -> i32 {
+        unord(a, b) as i32
+    }
+
+    #[avr_skip]
+    pub extern "C" fn __eqtf2(a: f128, b: f128) -> i32 {
+        cmp(a, b).to_le_abi()
+    }
+
+    #[avr_skip]
+    pub extern "C" fn __lttf2(a: f128, b: f128) -> i32 {
+        cmp(a, b).to_le_abi()
+    }
+
+    #[avr_skip]
+    pub extern "C" fn __netf2(a: f128, b: f128) -> i32 {
+        cmp(a, b).to_le_abi()
+    }
+
+    #[avr_skip]
+    pub extern "C" fn __gttf2(a: f128, b: f128) -> i32 {
+        cmp(a, b).to_ge_abi()
+    }
+}
+
+#[cfg(all(
+    not(feature = "no-f16-f128"),
+    any(target_arch = "powerpc", target_arch = "powerpc64")
+))]
+intrinsics! {
+    #[avr_skip]
+    pub extern "C" fn __lekf2(a: f128, b: f128) -> i32 {
+        cmp(a, b).to_le_abi()
+    }
+
+    #[avr_skip]
+    pub extern "C" fn __gekf2(a: f128, b: f128) -> i32 {
+        cmp(a, b).to_ge_abi()
+    }
+
+    #[avr_skip]
+    pub extern "C" fn __unordkf2(a: f128, b: f128) -> i32 {
+        unord(a, b) as i32
+    }
+
+    #[avr_skip]
+    pub extern "C" fn __eqkf2(a: f128, b: f128) -> i32 {
+        cmp(a, b).to_le_abi()
+    }
+
+    #[avr_skip]
+    pub extern "C" fn __ltkf2(a: f128, b: f128) -> i32 {
+        cmp(a, b).to_le_abi()
+    }
+
+    #[avr_skip]
+    pub extern "C" fn __nekf2(a: f128, b: f128) -> i32 {
+        cmp(a, b).to_le_abi()
+    }
+
+    #[avr_skip]
+    pub extern "C" fn __gtkf2(a: f128, b: f128) -> i32 {
         cmp(a, b).to_ge_abi()
     }
 }

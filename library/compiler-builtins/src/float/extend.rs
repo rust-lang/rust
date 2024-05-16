@@ -1,5 +1,5 @@
 use crate::float::Float;
-use crate::int::{CastInto, Int};
+use crate::int::{CastInto, Int, MinInt};
 
 /// Generic conversion from a narrower to a wider IEEE-754 floating-point type
 fn extend<F: Float, R: Float>(a: F) -> R
@@ -100,19 +100,37 @@ intrinsics! {
 
     #[avr_skip]
     #[aapcs_on_arm]
+    #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
     pub extern "C" fn __extendhftf2(a: f16) -> f128 {
         extend(a)
     }
 
-    #[avr_skip]
-    #[aapcs_on_arm]
-    pub extern "C" fn __extendsftf2(a: f32) -> f128 {
+    #[cfg(any(target_arch = "powerpc", target_arch = "powerpc64"))]
+    pub extern "C" fn __extendhfkf2(a: f16) -> f128 {
         extend(a)
     }
 
     #[avr_skip]
     #[aapcs_on_arm]
+    #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
+    pub extern "C" fn __extendsftf2(a: f32) -> f128 {
+        extend(a)
+    }
+
+    #[cfg(any(target_arch = "powerpc", target_arch = "powerpc64"))]
+    pub extern "C" fn __extendsfkf2(a: f32) -> f128 {
+        extend(a)
+    }
+
+    #[avr_skip]
+    #[aapcs_on_arm]
+    #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
     pub extern "C" fn __extenddftf2(a: f64) -> f128 {
+        extend(a)
+    }
+
+    #[cfg(any(target_arch = "powerpc", target_arch = "powerpc64"))]
+    pub extern "C" fn __extenddfkf2(a: f64) -> f128 {
         extend(a)
     }
 }

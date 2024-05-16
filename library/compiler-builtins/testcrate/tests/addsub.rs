@@ -1,4 +1,6 @@
 #![allow(unused_macros)]
+#![feature(f128)]
+#![feature(f16)]
 
 use testcrate::*;
 
@@ -71,28 +73,28 @@ fn addsub() {
 }
 
 macro_rules! float_sum {
-    ($($f:ty, $fn_add:ident, $fn_sub:ident);*;) => {
+    ($($f:ty, $fn_add:ident, $fn_sub:ident, $apfloat_ty:ident, $sys_available:meta);*;) => {
         $(
             fuzz_float_2(N, |x: $f, y: $f| {
-                let add0 = x + y;
-                let sub0 = x - y;
+                let add0 = apfloat_fallback!($f, $apfloat_ty, $sys_available, Add::add, x, y);
+                let sub0 = apfloat_fallback!($f, $apfloat_ty, $sys_available, Sub::sub, x, y);
                 let add1: $f = $fn_add(x, y);
                 let sub1: $f = $fn_sub(x, y);
                 if !Float::eq_repr(add0, add1) {
                     panic!(
-                        "{}({}, {}): std: {}, builtins: {}",
+                        "{}({:?}, {:?}): std: {:?}, builtins: {:?}",
                         stringify!($fn_add), x, y, add0, add1
                     );
                 }
                 if !Float::eq_repr(sub0, sub1) {
                     panic!(
-                        "{}({}, {}): std: {}, builtins: {}",
+                        "{}({:?}, {:?}): std: {:?}, builtins: {:?}",
                         stringify!($fn_sub), x, y, sub0, sub1
                     );
                 }
             });
         )*
-    };
+    }
 }
 
 #[cfg(not(all(target_arch = "x86", not(target_feature = "sse"))))]
@@ -103,11 +105,24 @@ fn float_addsub() {
         sub::{__subdf3, __subsf3},
         Float,
     };
+    use core::ops::{Add, Sub};
 
     float_sum!(
-        f32, __addsf3, __subsf3;
-        f64, __adddf3, __subdf3;
+        f32, __addsf3, __subsf3, Single, all();
+        f64, __adddf3, __subdf3, Double, all();
     );
+
+    #[cfg(not(feature = "no-f16-f128"))]
+    {
+        #[cfg(any(target_arch = "powerpc", target_arch = "powerpc64"))]
+        use compiler_builtins::float::{add::__addkf3 as __addtf3, sub::__subkf3 as __subtf3};
+        #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
+        use compiler_builtins::float::{add::__addtf3, sub::__subtf3};
+
+        float_sum!(
+            f128, __addtf3, __subtf3, Quad, not(feature = "no-sys-f128");
+        );
+    }
 }
 
 #[cfg(target_arch = "arm")]
@@ -118,9 +133,10 @@ fn float_addsub_arm() {
         sub::{__subdf3vfp, __subsf3vfp},
         Float,
     };
+    use core::ops::{Add, Sub};
 
     float_sum!(
-        f32, __addsf3vfp, __subsf3vfp;
-        f64, __adddf3vfp, __subdf3vfp;
+        f32, __addsf3vfp, __subsf3vfp, Single, all();
+        f64, __adddf3vfp, __subdf3vfp, Double, all();
     );
 }

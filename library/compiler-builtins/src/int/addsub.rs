@@ -1,6 +1,6 @@
-use crate::int::{DInt, Int};
+use crate::int::{DInt, Int, MinInt};
 
-trait UAddSub: DInt {
+trait UAddSub: DInt + Int {
     fn uadd(self, other: Self) -> Self {
         let (lo, carry) = self.lo().overflowing_add(other.lo());
         let hi = self.hi().wrapping_add(other.hi());
@@ -22,7 +22,7 @@ impl UAddSub for u128 {}
 
 trait AddSub: Int
 where
-    <Self as Int>::UnsignedInt: UAddSub,
+    <Self as MinInt>::UnsignedInt: UAddSub,
 {
     fn add(self, other: Self) -> Self {
         Self::from_unsigned(self.unsigned().uadd(other.unsigned()))
@@ -37,7 +37,7 @@ impl AddSub for i128 {}
 
 trait Addo: AddSub
 where
-    <Self as Int>::UnsignedInt: UAddSub,
+    <Self as MinInt>::UnsignedInt: UAddSub,
 {
     fn addo(self, other: Self) -> (Self, bool) {
         let sum = AddSub::add(self, other);
@@ -50,7 +50,7 @@ impl Addo for u128 {}
 
 trait Subo: AddSub
 where
-    <Self as Int>::UnsignedInt: UAddSub,
+    <Self as MinInt>::UnsignedInt: UAddSub,
 {
     fn subo(self, other: Self) -> (Self, bool) {
         let sum = AddSub::sub(self, other);

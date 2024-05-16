@@ -1,6 +1,6 @@
 use crate::int::{DInt, HInt, Int};
 
-trait Mul: DInt
+trait Mul: DInt + Int
 where
     Self::H: DInt,
 {
@@ -30,7 +30,7 @@ where
 impl Mul for u64 {}
 impl Mul for i128 {}
 
-pub(crate) trait UMulo: Int + DInt {
+pub(crate) trait UMulo: DInt + Int {
     fn mulo(self, rhs: Self) -> (Self, bool) {
         match (self.hi().is_zero(), rhs.hi().is_zero()) {
             // overflow is guaranteed

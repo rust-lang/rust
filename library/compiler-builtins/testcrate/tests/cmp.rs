@@ -1,23 +1,50 @@
 #![allow(unused_macros)]
+#![allow(unreachable_code)]
+#![feature(f128)]
+#![feature(f16)]
 
 #[cfg(not(target_arch = "powerpc64"))]
 use testcrate::*;
 
 macro_rules! cmp {
-    ($x:ident, $y:ident, $($unordered_val:expr, $fn:ident);*;) => {
+    (
+        $f:ty, $x:ident, $y:ident, $apfloat_ty:ident, $sys_available:meta,
+        $($unordered_val:expr, $fn:ident);*;
+    ) => {
         $(
-            let cmp0 = if $x.is_nan() || $y.is_nan() {
+            let cmp0 = if apfloat_fallback!(
+                    $f, $apfloat_ty, $sys_available,
+                    |x: FloatTy| x.is_nan() => no_convert,
+                    $x
+                ) || apfloat_fallback!(
+                    $f, $apfloat_ty, $sys_available,
+                    |y: FloatTy| y.is_nan() => no_convert,
+                    $y
+                )
+            {
                 $unordered_val
-            } else if $x < $y {
+            } else if apfloat_fallback!(
+                $f, $apfloat_ty, $sys_available,
+                |x, y| x < y => no_convert,
+                $x, $y
+            ) {
                 -1
-            } else if $x == $y {
+            } else if apfloat_fallback!(
+                $f, $apfloat_ty, $sys_available,
+                |x, y| x == y => no_convert,
+                $x, $y
+            ) {
                 0
             } else {
                 1
             };
+
             let cmp1 = $fn($x, $y);
             if cmp0 != cmp1 {
-                panic!("{}({}, {}): std: {}, builtins: {}", stringify!($fn_builtins), $x, $y, cmp0, cmp1);
+                panic!(
+                    "{}({:?}, {:?}): std: {:?}, builtins: {:?}",
+                    stringify!($fn), $x, $y, cmp0, cmp1
+                );
             }
         )*
     };
@@ -34,7 +61,7 @@ fn float_comparisons() {
 
     fuzz_float_2(N, |x: f32, y: f32| {
         assert_eq!(__unordsf2(x, y) != 0, x.is_nan() || y.is_nan());
-        cmp!(x, y,
+        cmp!(f32, x, y, Single, all(),
             1, __ltsf2;
             1, __lesf2;
             1, __eqsf2;
@@ -45,7 +72,7 @@ fn float_comparisons() {
     });
     fuzz_float_2(N, |x: f64, y: f64| {
         assert_eq!(__unorddf2(x, y) != 0, x.is_nan() || y.is_nan());
-        cmp!(x, y,
+        cmp!(f64, x, y, Double, all(),
             1, __ltdf2;
             1, __ledf2;
             1, __eqdf2;
@@ -54,6 +81,44 @@ fn float_comparisons() {
             1, __nedf2;
         );
     });
+
+    #[cfg(not(feature = "no-f16-f128"))]
+    {
+        #[cfg(any(target_arch = "powerpc", target_arch = "powerpc64"))]
+        use compiler_builtins::float::cmp::{
+            __eqkf2 as __eqtf2, __gekf2 as __getf2, __gtkf2 as __gttf2, __lekf2 as __letf2,
+            __ltkf2 as __lttf2, __nekf2 as __netf2, __unordkf2 as __unordtf2,
+        };
+
+        #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
+        use compiler_builtins::float::cmp::{
+            __eqtf2, __getf2, __gttf2, __letf2, __lttf2, __netf2, __unordtf2,
+        };
+
+        fuzz_float_2(N, |x: f128, y: f128| {
+            let x_is_nan = apfloat_fallback!(
+                f128, Quad, not(feature = "no-sys-f128"),
+                |x: FloatTy| x.is_nan() => no_convert,
+                x
+            );
+            let y_is_nan = apfloat_fallback!(
+                f128, Quad, not(feature = "no-sys-f128"),
+                |x: FloatTy| x.is_nan() => no_convert,
+                y
+            );
+
+            assert_eq!(__unordtf2(x, y) != 0, x_is_nan || y_is_nan);
+
+            cmp!(f128, x, y, Quad, not(feature = "no-sys-f128"),
+                1, __lttf2;
+                1, __letf2;
+                1, __eqtf2;
+                -1, __getf2;
+                -1, __gttf2;
+                1, __netf2;
+            );
+        });
+    }
 }
 
 macro_rules! cmp2 {

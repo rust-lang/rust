@@ -187,9 +187,15 @@ fn float_extend() {
     conv!(f32, f64, __extendsfdf2, Single, Double);
     #[cfg(not(feature = "no-f16-f128"))]
     {
+        #[cfg(any(target_arch = "powerpc", target_arch = "powerpc64"))]
         use compiler_builtins::float::extend::{
-            __extenddftf2, __extendhfsf2, __extendhftf2, __extendsftf2, __gnu_h2f_ieee,
+            __extenddfkf2 as __extenddftf2, __extendhfkf2 as __extendhftf2,
+            __extendsfkf2 as __extendsftf2,
         };
+        #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
+        use compiler_builtins::float::extend::{__extenddftf2, __extendhftf2, __extendsftf2};
+        use compiler_builtins::float::extend::{__extendhfsf2, __gnu_h2f_ieee};
+
         // FIXME(f16_f128): Also do extend!() for `f16` and `f128` when builtins are in nightly
         conv!(f16, f32, __extendhfsf2, Half, Single);
         conv!(f16, f32, __gnu_h2f_ieee, Half, Single);
@@ -234,9 +240,15 @@ fn float_trunc() {
     conv!(f64, f32, __truncdfsf2, Double, Single);
     #[cfg(not(feature = "no-f16-f128"))]
     {
+        use compiler_builtins::float::trunc::{__gnu_f2h_ieee, __truncdfhf2, __truncsfhf2};
+        #[cfg(any(target_arch = "powerpc", target_arch = "powerpc64"))]
         use compiler_builtins::float::trunc::{
-            __gnu_f2h_ieee, __truncdfhf2, __truncsfhf2, __trunctfdf2, __trunctfhf2, __trunctfsf2,
+            __trunckfdf2 as __trunctfdf2, __trunckfhf2 as __trunctfhf2,
+            __trunckfsf2 as __trunctfsf2,
         };
+        #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
+        use compiler_builtins::float::trunc::{__trunctfdf2, __trunctfhf2, __trunctfsf2};
+
         // FIXME(f16_f128): Also do trunc!() for `f16` and `f128` when builtins are in nightly
         conv!(f32, f16, __truncsfhf2, Single, Half);
         conv!(f32, f16, __gnu_f2h_ieee, Single, Half);

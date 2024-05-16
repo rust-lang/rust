@@ -1,5 +1,5 @@
 use crate::float::Float;
-use crate::int::{CastInto, Int};
+use crate::int::{CastInto, Int, MinInt};
 
 /// Returns `a + b`
 fn add<F: Float>(a: F, b: F) -> F
@@ -57,9 +57,9 @@ where
         }
 
         // zero + anything = anything
-        if a_abs == Int::ZERO {
+        if a_abs == MinInt::ZERO {
             // but we need to get the sign right for zero + zero
-            if b_abs == Int::ZERO {
+            if b_abs == MinInt::ZERO {
                 return F::from_repr(a.repr() & b.repr());
             } else {
                 return b;
@@ -67,7 +67,7 @@ where
         }
 
         // anything + zero = anything
-        if b_abs == Int::ZERO {
+        if b_abs == MinInt::ZERO {
             return a;
         }
     }
@@ -113,10 +113,10 @@ where
     // Shift the significand of b by the difference in exponents, with a sticky
     // bottom bit to get rounding correct.
     let align = a_exponent.wrapping_sub(b_exponent).cast();
-    if align != Int::ZERO {
+    if align != MinInt::ZERO {
         if align < bits {
             let sticky =
-                F::Int::from_bool(b_significand << bits.wrapping_sub(align).cast() != Int::ZERO);
+                F::Int::from_bool(b_significand << bits.wrapping_sub(align).cast() != MinInt::ZERO);
             b_significand = (b_significand >> align.cast()) | sticky;
         } else {
             b_significand = one; // sticky; b is known to be non-zero.
@@ -125,8 +125,8 @@ where
     if subtraction {
         a_significand = a_significand.wrapping_sub(b_significand);
         // If a == -b, return +zero.
-        if a_significand == Int::ZERO {
-            return F::from_repr(Int::ZERO);
+        if a_significand == MinInt::ZERO {
+            return F::from_repr(MinInt::ZERO);
         }
 
         // If partial cancellation occured, we need to left-shift the result
@@ -143,8 +143,8 @@ where
 
         // If the addition carried up, we need to right-shift the result and
         // adjust the exponent:
-        if a_significand & implicit_bit << 4 != Int::ZERO {
-            let sticky = F::Int::from_bool(a_significand & one != Int::ZERO);
+        if a_significand & implicit_bit << 4 != MinInt::ZERO {
+            let sticky = F::Int::from_bool(a_significand & one != MinInt::ZERO);
             a_significand = a_significand >> 1 | sticky;
             a_exponent += 1;
         }
@@ -160,7 +160,7 @@ where
         // need to shift the significand.
         let shift = (1 - a_exponent).cast();
         let sticky =
-            F::Int::from_bool((a_significand << bits.wrapping_sub(shift).cast()) != Int::ZERO);
+            F::Int::from_bool((a_significand << bits.wrapping_sub(shift).cast()) != MinInt::ZERO);
         a_significand = a_significand >> shift.cast() | sticky;
         a_exponent = 0;
     }
@@ -200,6 +200,16 @@ intrinsics! {
     #[aapcs_on_arm]
     #[arm_aeabi_alias = __aeabi_dadd]
     pub extern "C" fn __adddf3(a: f64, b: f64) -> f64 {
+        add(a, b)
+    }
+
+    #[cfg(not(any(feature = "no-f16-f128", target_arch = "powerpc", target_arch = "powerpc64")))]
+    pub extern "C" fn __addtf3(a: f128, b: f128) -> f128 {
+        add(a, b)
+    }
+
+    #[cfg(all(not(feature = "no-f16-f128"), any(target_arch = "powerpc", target_arch = "powerpc64")))]
+    pub extern "C" fn __addkf3(a: f128, b: f128) -> f128 {
         add(a, b)
     }
 

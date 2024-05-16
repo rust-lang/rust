@@ -21,7 +21,7 @@ fi
 if [ "${NO_STD:-}" = "1" ]; then
     echo "nothing to do for no_std"
 else
-    run="cargo test --manifest-path testcrate/Cargo.toml --target $target"
+    run="cargo test --manifest-path testcrate/Cargo.toml --no-fail-fast --target $target"
     $run
     $run --release
     $run --features c

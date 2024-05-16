@@ -543,9 +543,6 @@ mod c {
                 ("__floatsitf", "floatsitf.c"),
                 ("__floatunditf", "floatunditf.c"),
                 ("__floatunsitf", "floatunsitf.c"),
-                ("__addtf3", "addtf3.c"),
-                ("__multf3", "multf3.c"),
-                ("__subtf3", "subtf3.c"),
                 ("__divtf3", "divtf3.c"),
                 ("__powitf2", "powitf2.c"),
                 ("__fe_getround", "fp_mode.c"),
@@ -564,30 +561,22 @@ mod c {
         if target_arch == "mips64" {
             sources.extend(&[
                 ("__netf2", "comparetf2.c"),
-                ("__addtf3", "addtf3.c"),
-                ("__multf3", "multf3.c"),
-                ("__subtf3", "subtf3.c"),
                 ("__fixtfsi", "fixtfsi.c"),
                 ("__floatsitf", "floatsitf.c"),
                 ("__fixunstfsi", "fixunstfsi.c"),
                 ("__floatunsitf", "floatunsitf.c"),
                 ("__fe_getround", "fp_mode.c"),
-                ("__divtf3", "divtf3.c"),
             ]);
         }
 
         if target_arch == "loongarch64" {
             sources.extend(&[
                 ("__netf2", "comparetf2.c"),
-                ("__addtf3", "addtf3.c"),
-                ("__multf3", "multf3.c"),
-                ("__subtf3", "subtf3.c"),
                 ("__fixtfsi", "fixtfsi.c"),
                 ("__floatsitf", "floatsitf.c"),
                 ("__fixunstfsi", "fixunstfsi.c"),
                 ("__floatunsitf", "floatunsitf.c"),
                 ("__fe_getround", "fp_mode.c"),
-                ("__divtf3", "divtf3.c"),
             ]);
         }
 
