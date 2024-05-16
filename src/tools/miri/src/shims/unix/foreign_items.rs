@@ -3,7 +3,6 @@ use std::str;
 
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_span::Symbol;
-use rustc_target::abi::{Align, Size};
 use rustc_target::spec::abi::Abi;
 
 use crate::shims::alloc::EvalContextExt as _;
@@ -249,24 +248,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
             // Allocation
             "posix_memalign" => {
-                let [ret, align, size] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                let ret = this.deref_pointer(ret)?;
-                let align = this.read_target_usize(align)?;
-                let size = this.read_target_usize(size)?;
-                // Align must be power of 2, and also at least ptr-sized (POSIX rules).
-                // But failure to adhere to this is not UB, it's an error condition.
-                if !align.is_power_of_two() || align < this.pointer_size().bytes() {
-                    let einval = this.eval_libc_i32("EINVAL");
-                    this.write_int(einval, dest)?;
-                } else {
-                    let ptr = this.allocate_ptr(
-                        Size::from_bytes(size),
-                        Align::from_bytes(align).unwrap(),
-                        MiriMemoryKind::C.into(),
-                    )?;
-                    this.write_pointer(ptr, &ret)?;
-                    this.write_null(dest)?;
-                }
+                let [memptr, align, size] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let result = this.posix_memalign(memptr, align, size)?;
+                this.write_scalar(result, dest)?;
             }
 
             "mmap" => {
