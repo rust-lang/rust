@@ -201,8 +201,10 @@ fn msg_span_from_named_region<'tcx>(
     match *region {
         ty::ReEarlyParam(ref br) => {
             let scope = region.free_region_binding_scope(tcx).expect_local();
-            let span = if let Some(param) =
-                tcx.hir().get_generics(scope).and_then(|generics| generics.get_named(br.name))
+            let span = if let Some(param) = tcx
+                .hir()
+                .get_generics(scope)
+                .and_then(|generics| generics.get_with_def_id(br.def_id))
             {
                 param.span
             } else {
