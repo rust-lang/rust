@@ -641,6 +641,10 @@ pub fn begin_panic_handler(info: &core::panic::PanicInfo<'_>) -> ! {
         fn get(&mut self) -> &(dyn Any + Send) {
             &self.0
         }
+
+        fn as_str(&mut self) -> Option<&str> {
+            Some(self.0)
+        }
     }
 
     impl fmt::Display for StaticStrPayload {
@@ -763,15 +767,8 @@ fn rust_panic_with_hook(
                 // Don't try to format the message in this case, perhaps that is causing the
                 // recursive panics. However if the message is just a string, no user-defined
                 // code is involved in printing it, so that is risk-free.
-                let msg_str = message.and_then(|m| m.as_str()).map(|m| [m]);
-                let message = msg_str.as_ref().map(|m| fmt::Arguments::new_const(m));
-                let panicinfo = PanicInfo::internal_constructor(
-                    message.as_ref(),
-                    location,
-                    can_unwind,
-                    force_no_backtrace,
-                );
-                rtprintpanic!("{panicinfo}\nthread panicked while processing panic. aborting.\n");
+                let message: &str = payload.as_str().unwrap_or_default();
+                rtprintpanic!("panicked at {location}:\n{message}\nthread panicked while processing panic. aborting.\n");
             }
             panic_count::MustAbort::AlwaysAbort => {
                 // Unfortunately, this does not print a backtrace, because creating
