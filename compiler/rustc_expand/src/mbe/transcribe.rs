@@ -685,14 +685,14 @@ fn transcribe_metavar_expr<'a>(
             }
             None => return Err(out_of_bounds_err(cx, repeats.len(), sp.entire(), "index")),
         },
-        MetaVarExpr::Length(depth) => match repeats.iter().nth_back(depth) {
+        MetaVarExpr::Len(depth) => match repeats.iter().nth_back(depth) {
             Some((_, length)) => {
                 result.push(TokenTree::token_alone(
                     TokenKind::lit(token::Integer, sym::integer(*length), None),
                     visited_span(),
                 ));
             }
-            None => return Err(out_of_bounds_err(cx, repeats.len(), sp.entire(), "length")),
+            None => return Err(out_of_bounds_err(cx, repeats.len(), sp.entire(), "len")),
         },
     }
     Ok(())

@@ -23,7 +23,7 @@ pub(crate) enum MetaVarExpr {
 
     /// The length of the repetition at a particular depth, where 0 is the inner-most
     /// repetition. The `usize` is the depth.
-    Length(usize),
+    Len(usize),
 }
 
 impl MetaVarExpr {
@@ -48,13 +48,13 @@ impl MetaVarExpr {
                 MetaVarExpr::Ignore(parse_ident(&mut iter, psess, ident.span)?)
             }
             "index" => MetaVarExpr::Index(parse_depth(&mut iter, psess, ident.span)?),
-            "length" => MetaVarExpr::Length(parse_depth(&mut iter, psess, ident.span)?),
+            "len" => MetaVarExpr::Len(parse_depth(&mut iter, psess, ident.span)?),
             _ => {
                 let err_msg = "unrecognized meta-variable expression";
                 let mut err = psess.dcx.struct_span_err(ident.span, err_msg);
                 err.span_suggestion(
                     ident.span,
-                    "supported expressions are count, ignore, index and length",
+                    "supported expressions are count, ignore, index and len",
                     "",
                     Applicability::MachineApplicable,
                 );
@@ -68,7 +68,7 @@ impl MetaVarExpr {
     pub(crate) fn ident(&self) -> Option<Ident> {
         match *self {
             MetaVarExpr::Count(ident, _) | MetaVarExpr::Ignore(ident) => Some(ident),
-            MetaVarExpr::Index(..) | MetaVarExpr::Length(..) => None,
+            MetaVarExpr::Index(..) | MetaVarExpr::Len(..) => None,
         }
     }
 }
@@ -111,7 +111,7 @@ fn parse_count<'psess>(
     Ok(MetaVarExpr::Count(ident, depth))
 }
 
-/// Parses the depth used by index(depth) and length(depth).
+/// Parses the depth used by index(depth) and len(depth).
 fn parse_depth<'psess>(
     iter: &mut RefTokenTreeCursor<'_>,
     psess: &'psess ParseSess,
