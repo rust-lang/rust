@@ -101,6 +101,16 @@ Whether to allow `r#""#` when `r""` can be used
 * [`unnecessary_raw_string_hashes`](https://rust-lang.github.io/rust-clippy/master/index.html#unnecessary_raw_string_hashes)
 
 
+## `allow-panic-in-tests`
+Whether `panic` should be allowed in test functions or `#[cfg(test)]`
+
+**Default Value:** `false`
+
+---
+**Affected lints:**
+* [`panic`](https://rust-lang.github.io/rust-clippy/master/index.html#panic)
+
+
 ## `allow-print-in-tests`
 Whether print macros (ex. `println!`) should be allowed in test functions or `#[cfg(test)]`
 
