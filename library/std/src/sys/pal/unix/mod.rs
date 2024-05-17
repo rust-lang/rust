@@ -262,7 +262,6 @@ pub fn decode_error_kind(errno: i32) -> ErrorKind {
         libc::ENOENT => NotFound,
         libc::ENOMEM => OutOfMemory,
         libc::ENOSPC => StorageFull,
-        libc::ENOSYS => Unsupported,
         libc::EMLINK => TooManyLinks,
         libc::ENAMETOOLONG => InvalidFilename,
         libc::ENETDOWN => NetworkDown,
@@ -285,6 +284,10 @@ pub fn decode_error_kind(errno: i32) -> ErrorKind {
         // but different values on others, so we can't use a match
         // clause
         x if x == libc::EAGAIN || x == libc::EWOULDBLOCK => WouldBlock,
+
+        // `ENOTSUP` and `EOPNOTSUPP` can also have the same value,
+        // so we can't use a match clause.
+        x if x == libc::ENOTSUP || x == libc::EOPNOTSUPP || x == libc::ENOSYS => Unsupported,
 
         _ => Uncategorized,
     }
