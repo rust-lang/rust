@@ -1777,9 +1777,19 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // If this type is a GAT, and of the GAT args resolve to something new,
             // that means that we must have newly inferred something about the GAT.
             // We should give up in that case.
+            // FIXME(generic-associated-types): This only detects one layer of inference,
+            // which is probably not what we actually want, but fixing it causes some ambiguity:
+            // <https://github.com/rust-lang/rust/issues/125196>.
             if !generics.params.is_empty()
                 && obligation.predicate.args[generics.parent_count..].iter().any(|&p| {
-                    p.has_non_region_infer() && self.infcx.resolve_vars_if_possible(p) != p
+                    p.has_non_region_infer()
+                        && match p.unpack() {
+                            ty::GenericArgKind::Const(ct) => {
+                                self.infcx.shallow_resolve_const(ct) != ct
+                            }
+                            ty::GenericArgKind::Type(ty) => self.infcx.shallow_resolve(ty) != ty,
+                            ty::GenericArgKind::Lifetime(_) => false,
+                        }
                 })
             {
                 ProjectionMatchesProjection::Ambiguous
