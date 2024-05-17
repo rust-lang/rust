@@ -399,13 +399,12 @@ cfg_if::cfg_if! {
         // Use libumem for the (malloc-compatible) allocator
         #[link(name = "umem")]
         extern "C" {}
-    } else if #[cfg(target_os = "macos")] {
+    } else if #[cfg(target_vendor = "apple")] {
+        // Link to `libSystem.dylib`.
+        //
+        // Don't get confused by the presence of `System.framework`,
+        // it is a deprecated wrapper over the dynamic library.
         #[link(name = "System")]
-        extern "C" {}
-    } else if #[cfg(all(target_vendor = "apple", not(target_os = "macos")))] {
-        #[link(name = "System")]
-        #[link(name = "objc")]
-        #[link(name = "Foundation", kind = "framework")]
         extern "C" {}
     } else if #[cfg(target_os = "fuchsia")] {
         #[link(name = "zircon")]

@@ -168,16 +168,28 @@ mod imp {
     }
 }
 
+// Use `_NSGetArgc` and `_NSGetArgv` on Apple platforms.
+//
+// Even though these have underscores in their names, they've been available
+// since since the first versions of both macOS and iOS, and are declared in
+// the header `crt_externs.h`.
+//
+// NOTE: This header was added to the iOS 13.0 SDK, which has been the source
+// of a great deal of confusion in the past about the availability of these
+// APIs.
+//
+// NOTE(madsmtm): This has not strictly been verified to not cause App Store
+// rejections; if this is found to be the case, the previous implementation
+// of this used `[[NSProcessInfo processInfo] arguments]`.
 #[cfg(target_vendor = "apple")]
 mod imp {
     use super::Args;
     use crate::ffi::CStr;
+    use crate::os::unix::prelude::*;
 
     pub unsafe fn init(_argc: isize, _argv: *const *const u8) {}
 
-    #[cfg(target_os = "macos")]
     pub fn args() -> Args {
-        use crate::os::unix::prelude::*;
         extern "C" {
             // These functions are in crt_externs.h.
             fn _NSGetArgc() -> *mut libc::c_int;
@@ -195,82 +207,6 @@ mod imp {
                 .collect::<Vec<_>>()
         };
         Args { iter: vec.into_iter() }
-    }
-
-    // As _NSGetArgc and _NSGetArgv aren't mentioned in iOS docs
-    // and use underscores in their names - they're most probably
-    // are considered private and therefore should be avoided.
-    // Here is another way to get arguments using the Objective-C
-    // runtime.
-    //
-    // In general it looks like:
-    // res = Vec::new()
-    // let args = [[NSProcessInfo processInfo] arguments]
-    // for i in (0..[args count])
-    //      res.push([args objectAtIndex:i])
-    // res
-    #[cfg(not(target_os = "macos"))]
-    pub fn args() -> Args {
-        use crate::ffi::{c_char, c_void, OsString};
-        use crate::mem;
-        use crate::str;
-
-        type Sel = *const c_void;
-        type NsId = *const c_void;
-        type NSUInteger = usize;
-
-        extern "C" {
-            fn sel_registerName(name: *const c_char) -> Sel;
-            fn objc_getClass(class_name: *const c_char) -> NsId;
-
-            // This must be transmuted to an appropriate function pointer type before being called.
-            fn objc_msgSend();
-        }
-
-        const MSG_SEND_PTR: unsafe extern "C" fn() = objc_msgSend;
-        const MSG_SEND_NO_ARGUMENTS_RETURN_PTR: unsafe extern "C" fn(NsId, Sel) -> *const c_void =
-            unsafe { mem::transmute(MSG_SEND_PTR) };
-        const MSG_SEND_NO_ARGUMENTS_RETURN_NSUINTEGER: unsafe extern "C" fn(
-            NsId,
-            Sel,
-        ) -> NSUInteger = unsafe { mem::transmute(MSG_SEND_PTR) };
-        const MSG_SEND_NSINTEGER_ARGUMENT_RETURN_PTR: unsafe extern "C" fn(
-            NsId,
-            Sel,
-            NSUInteger,
-        )
-            -> *const c_void = unsafe { mem::transmute(MSG_SEND_PTR) };
-
-        let mut res = Vec::new();
-
-        unsafe {
-            let process_info_sel = sel_registerName(c"processInfo".as_ptr());
-            let arguments_sel = sel_registerName(c"arguments".as_ptr());
-            let count_sel = sel_registerName(c"count".as_ptr());
-            let object_at_index_sel = sel_registerName(c"objectAtIndex:".as_ptr());
-            let utf8string_sel = sel_registerName(c"UTF8String".as_ptr());
-
-            let klass = objc_getClass(c"NSProcessInfo".as_ptr());
-            // `+[NSProcessInfo processInfo]` returns an object with +0 retain count, so no need to manually `retain/release`.
-            let info = MSG_SEND_NO_ARGUMENTS_RETURN_PTR(klass, process_info_sel);
-
-            // `-[NSProcessInfo arguments]` returns an object with +0 retain count, so no need to manually `retain/release`.
-            let args = MSG_SEND_NO_ARGUMENTS_RETURN_PTR(info, arguments_sel);
-
-            let cnt = MSG_SEND_NO_ARGUMENTS_RETURN_NSUINTEGER(args, count_sel);
-            for i in 0..cnt {
-                // `-[NSArray objectAtIndex:]` returns an object whose lifetime is tied to the array, so no need to manually `retain/release`.
-                let ns_string =
-                    MSG_SEND_NSINTEGER_ARGUMENT_RETURN_PTR(args, object_at_index_sel, i);
-                // The lifetime of this pointer is tied to the NSString, as well as the current autorelease pool, which is why we heap-allocate the string below.
-                let utf_c_str: *const c_char =
-                    MSG_SEND_NO_ARGUMENTS_RETURN_PTR(ns_string, utf8string_sel).cast();
-                let bytes = CStr::from_ptr(utf_c_str).to_bytes();
-                res.push(OsString::from(str::from_utf8(bytes).unwrap()))
-            }
-        }
-
-        Args { iter: res.into_iter() }
     }
 }
 
