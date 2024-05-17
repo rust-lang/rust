@@ -3,8 +3,8 @@ use std::{iter, ops::RangeInclusive};
 use ast::make;
 use either::Either;
 use hir::{
-    DescendPreference, HasSource, HirDisplay, InFile, Local, LocalSource, ModuleDef,
-    PathResolution, Semantics, TypeInfo, TypeParam,
+    DescendPreference, HasSource, HirDisplay, ImportPathConfig, InFile, Local, LocalSource,
+    ModuleDef, PathResolution, Semantics, TypeInfo, TypeParam,
 };
 use ide_db::{
     defs::{Definition, NameRefClass},
@@ -213,8 +213,10 @@ pub(crate) fn extract_function(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
                         ctx.sema.db,
                         ModuleDef::from(control_flow_enum),
                         ctx.config.insert_use.prefix_kind,
-                        ctx.config.prefer_no_std,
-                        ctx.config.prefer_prelude,
+                        ImportPathConfig {
+                            prefer_no_std: ctx.config.prefer_no_std,
+                            prefer_prelude: ctx.config.prefer_prelude,
+                        },
                     );
 
                     if let Some(mod_path) = mod_path {

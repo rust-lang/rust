@@ -1,4 +1,4 @@
-use hir::ModuleDef;
+use hir::{ImportPathConfig, ModuleDef};
 use ide_db::{
     assists::{AssistId, AssistKind},
     defs::Definition,
@@ -326,6 +326,11 @@ fn augment_references_with_imports(
 ) -> Vec<FileReferenceWithImport> {
     let mut visited_modules = FxHashSet::default();
 
+    let cfg = ImportPathConfig {
+        prefer_no_std: ctx.config.prefer_no_std,
+        prefer_prelude: ctx.config.prefer_prelude,
+    };
+
     references
         .into_iter()
         .filter_map(|FileReference { range, name, .. }| {
@@ -345,8 +350,7 @@ fn augment_references_with_imports(
                         ctx.sema.db,
                         ModuleDef::Module(*target_module),
                         ctx.config.insert_use.prefix_kind,
-                        ctx.config.prefer_no_std,
-                        ctx.config.prefer_prelude,
+                        cfg,
                     )
                     .map(|mod_path| {
                         make::path_concat(mod_path_to_ast(&mod_path), make::path_from_text("Bool"))

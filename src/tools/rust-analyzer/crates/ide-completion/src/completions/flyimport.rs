@@ -1,5 +1,5 @@
 //! See [`import_on_the_fly`].
-use hir::{ItemInNs, ModuleDef};
+use hir::{ImportPathConfig, ItemInNs, ModuleDef};
 use ide_db::imports::{
     import_assets::{ImportAssets, LocatedImport},
     insert_use::ImportScope,
@@ -257,13 +257,13 @@ fn import_on_the_fly(
     };
     let user_input_lowercased = potential_import_name.to_lowercase();
 
+    let import_cfg = ImportPathConfig {
+        prefer_no_std: ctx.config.prefer_no_std,
+        prefer_prelude: ctx.config.prefer_prelude,
+    };
+
     import_assets
-        .search_for_imports(
-            &ctx.sema,
-            ctx.config.insert_use.prefix_kind,
-            ctx.config.prefer_no_std,
-            ctx.config.prefer_prelude,
-        )
+        .search_for_imports(&ctx.sema, import_cfg, ctx.config.insert_use.prefix_kind)
         .filter(ns_filter)
         .filter(|import| {
             let original_item = &import.original_item;
@@ -308,13 +308,13 @@ fn import_on_the_fly_pat_(
     };
     let user_input_lowercased = potential_import_name.to_lowercase();
 
+    let cfg = ImportPathConfig {
+        prefer_no_std: ctx.config.prefer_no_std,
+        prefer_prelude: ctx.config.prefer_prelude,
+    };
+
     import_assets
-        .search_for_imports(
-            &ctx.sema,
-            ctx.config.insert_use.prefix_kind,
-            ctx.config.prefer_no_std,
-            ctx.config.prefer_prelude,
-        )
+        .search_for_imports(&ctx.sema, cfg, ctx.config.insert_use.prefix_kind)
         .filter(ns_filter)
         .filter(|import| {
             let original_item = &import.original_item;
@@ -355,13 +355,13 @@ fn import_on_the_fly_method(
 
     let user_input_lowercased = potential_import_name.to_lowercase();
 
+    let cfg = ImportPathConfig {
+        prefer_no_std: ctx.config.prefer_no_std,
+        prefer_prelude: ctx.config.prefer_prelude,
+    };
+
     import_assets
-        .search_for_imports(
-            &ctx.sema,
-            ctx.config.insert_use.prefix_kind,
-            ctx.config.prefer_no_std,
-            ctx.config.prefer_prelude,
-        )
+        .search_for_imports(&ctx.sema, cfg, ctx.config.insert_use.prefix_kind)
         .filter(|import| {
             !ctx.is_item_hidden(&import.item_to_import)
                 && !ctx.is_item_hidden(&import.original_item)
