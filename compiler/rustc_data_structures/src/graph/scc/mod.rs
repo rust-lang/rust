@@ -396,7 +396,9 @@ where
             loop {
                 debug!("find_state(r = {node:?} in state {:?})", self.node_states[node]);
                 match self.node_states[node] {
-                    s @ (NodeState::NotVisited | NodeState::BeingVisited{..} | NodeState::InCycle { .. }) => break s,
+                    s @ (NodeState::NotVisited
+                    | NodeState::BeingVisited { .. }
+                    | NodeState::InCycle { .. }) => break s,
                     NodeState::InCycleWith { parent } => {
                         // We test this, to be extremely sure that we never
                         // ever break our termination condition for the
@@ -409,7 +411,6 @@ where
                         previous_node = node;
                         node = parent;
                     }
-
                 }
             }
         };
