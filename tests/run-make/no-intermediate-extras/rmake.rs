@@ -6,6 +6,7 @@
 //@ ignore-cross-compile
 
 use run_make_support::{rustc, tmp_dir};
+use std::fs;
 
 fn main() {
     rustc().crate_type("rlib").arg("--test").input("foo.rs").run();
