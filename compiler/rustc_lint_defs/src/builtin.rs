@@ -3339,11 +3339,14 @@ declare_lint! {
     ///
     /// ### Explanation
     ///
-    /// This lint is only active when `--check-cfg` arguments are being passed
-    /// to the compiler and triggers whenever an unexpected condition name or value is used.
+    /// This lint is only active when [`--check-cfg`][check-cfg] arguments are being
+    /// passed to the compiler and triggers whenever an unexpected condition name or value is
+    /// used.
     ///
-    /// The known condition include names or values passed in `--check-cfg`, and some
-    /// well-knows names and values built into the compiler.
+    /// See the [Checking Conditional Configurations][check-cfg] section for more
+    /// details.
+    ///
+    /// [check-cfg]: https://doc.rust-lang.org/nightly/rustc/check-cfg.html
     pub UNEXPECTED_CFGS,
     Warn,
     "detects unexpected names and values in `#[cfg]` conditions",
