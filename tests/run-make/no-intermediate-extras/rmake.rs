@@ -13,10 +13,10 @@ fn main() {
     match fs::remove_file(tmp_dir().join("foo.bc")) {
         Ok(_) => {
             println!("An unwanted .bc file was created by run-make/no-intermediate-extras.");
-            std::process::exit(0);
+            std::process::exit(1);
         }
         Err(e) => {
-            std::process::exit(1);
+            std::process::exit(0);
         }
     }
 }
