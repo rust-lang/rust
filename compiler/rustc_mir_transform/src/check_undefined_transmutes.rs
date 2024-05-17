@@ -66,11 +66,10 @@ impl<'tcx> Visitor<'tcx> for UndefinedTransmutesChecker<'_, 'tcx> {
         {
             let hir_id = self.tcx.local_def_id_to_hir_id(call_id);
             let span = self.body.source_info(location).span;
-            self.tcx.emit_node_span_lint(
+            self.tcx.emit_node_lint(
                 PTR_TO_INTEGER_TRANSMUTE_IN_CONSTS,
                 hir_id,
-                span,
-                errors::UndefinedTransmute,
+                errors::UndefinedTransmute { span },
             );
         }
     }

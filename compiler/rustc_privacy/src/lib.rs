@@ -1296,11 +1296,11 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
 
     fn check_def_id(&mut self, def_id: DefId, kind: &str, descr: &dyn fmt::Display) -> bool {
         if self.leaks_private_dep(def_id) {
-            self.tcx.emit_node_span_lint(
+            self.tcx.emit_node_lint(
                 lint::builtin::EXPORTED_PRIVATE_DEPENDENCIES,
                 self.tcx.local_def_id_to_hir_id(self.item_def_id),
-                self.tcx.def_span(self.item_def_id.to_def_id()),
                 FromPrivateDependencyInPublicInterface {
+                    span: self.tcx.def_span(self.item_def_id),
                     kind,
                     descr: descr.into(),
                     krate: self.tcx.crate_name(def_id.krate),
@@ -1353,12 +1353,11 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
             } else {
                 lint::builtin::PRIVATE_BOUNDS
             };
-            self.tcx.emit_node_span_lint(
+            self.tcx.emit_node_lint(
                 lint,
                 self.tcx.local_def_id_to_hir_id(self.item_def_id),
-                span,
                 PrivateInterfacesOrBoundsLint {
-                    item_span: span,
+                    span,
                     item_kind: self.tcx.def_descr(self.item_def_id.to_def_id()),
                     item_descr: (&LazyDefPathStr {
                         def_id: self.item_def_id.to_def_id(),
@@ -1441,18 +1440,13 @@ impl<'tcx> PrivateItemsInPublicInterfacesChecker<'_, 'tcx> {
         if reachable_at_vis.is_public() && reexported_at_vis != reachable_at_vis {
             let hir_id = self.tcx.local_def_id_to_hir_id(def_id);
             let span = self.tcx.def_span(def_id.to_def_id());
-            self.tcx.emit_node_span_lint(
-                lint::builtin::UNNAMEABLE_TYPES,
-                hir_id,
+            self.tcx.emit_node_lint(lint::builtin::UNNAMEABLE_TYPES, hir_id, UnnameableTypesLint {
                 span,
-                UnnameableTypesLint {
-                    span,
-                    kind: self.tcx.def_descr(def_id.to_def_id()),
-                    descr: (&LazyDefPathStr { def_id: def_id.to_def_id(), tcx: self.tcx }).into(),
-                    reachable_vis: &reachable_at_vis.to_string(def_id, self.tcx),
-                    reexported_vis: &reexported_at_vis.to_string(def_id, self.tcx),
-                },
-            );
+                kind: self.tcx.def_descr(def_id.to_def_id()),
+                descr: (&LazyDefPathStr { def_id: def_id.to_def_id(), tcx: self.tcx }).into(),
+                reachable_vis: &reachable_at_vis.to_string(def_id, self.tcx),
+                reexported_vis: &reexported_at_vis.to_string(def_id, self.tcx),
+            });
         }
     }
 

@@ -58,8 +58,8 @@ fn lint_cstring_as_ptr(
         if cx.tcx.is_diagnostic_item(sym::Result, def.did()) {
             if let ty::Adt(adt, _) = args.type_at(0).kind() {
                 if cx.tcx.is_diagnostic_item(sym::cstring_type, adt.did()) {
-                    cx.emit_span_lint(TEMPORARY_CSTRING_AS_PTR, as_ptr_span, CStringPtr {
-                        as_ptr: as_ptr_span,
+                    cx.emit_lint(TEMPORARY_CSTRING_AS_PTR, CStringPtr {
+                        span: as_ptr_span,
                         unwrap: unwrap.span,
                     });
                 }

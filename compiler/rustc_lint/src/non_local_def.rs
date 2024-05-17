@@ -217,7 +217,8 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
                         None
                     };
 
-                cx.emit_span_lint(NON_LOCAL_DEFINITIONS, ms, NonLocalDefinitionsDiag::Impl {
+                cx.emit_lint(NON_LOCAL_DEFINITIONS, NonLocalDefinitionsDiag::Impl {
+                    span: ms,
                     depth: self.body_depth,
                     body_kind_descr: cx.tcx.def_kind_descr(parent_def_kind, parent),
                     body_name: parent_opt_item_name
@@ -232,19 +233,16 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
             ItemKind::Macro(_macro, MacroKind::Bang)
                 if cx.tcx.has_attr(item.owner_id.def_id, sym::macro_export) =>
             {
-                cx.emit_span_lint(
-                    NON_LOCAL_DEFINITIONS,
-                    item.span,
-                    NonLocalDefinitionsDiag::MacroRules {
-                        depth: self.body_depth,
-                        body_kind_descr: cx.tcx.def_kind_descr(parent_def_kind, parent),
-                        body_name: parent_opt_item_name
-                            .map(|s| s.to_ident_string())
-                            .unwrap_or_else(|| "<unnameable>".to_string()),
-                        cargo_update: cargo_update(),
-                        doctest: is_at_toplevel_doctest(),
-                    },
-                )
+                cx.emit_lint(NON_LOCAL_DEFINITIONS, NonLocalDefinitionsDiag::MacroRules {
+                    span: item.span,
+                    depth: self.body_depth,
+                    body_kind_descr: cx.tcx.def_kind_descr(parent_def_kind, parent),
+                    body_name: parent_opt_item_name
+                        .map(|s| s.to_ident_string())
+                        .unwrap_or_else(|| "<unnameable>".to_string()),
+                    cargo_update: cargo_update(),
+                    doctest: is_at_toplevel_doctest(),
+                })
             }
             _ => {}
         }

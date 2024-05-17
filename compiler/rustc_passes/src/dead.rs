@@ -8,7 +8,6 @@ use std::mem;
 use hir::ItemKind;
 use hir::def_id::{LocalDefIdMap, LocalDefIdSet};
 use rustc_data_structures::unord::UnordSet;
-use rustc_errors::MultiSpan;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};
@@ -213,12 +212,11 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
             && !assign.span.from_expansion()
         {
             let is_field_assign = matches!(lhs.kind, hir::ExprKind::Field(..));
-            self.tcx.emit_node_span_lint(
-                lint::builtin::DEAD_CODE,
-                assign.hir_id,
-                assign.span,
-                UselessAssignment { is_field_assign, ty: self.typeck_results().expr_ty(lhs) },
-            )
+            self.tcx.emit_node_lint(lint::builtin::DEAD_CODE, assign.hir_id, UselessAssignment {
+                span: assign.span,
+                is_field_assign,
+                ty: self.typeck_results().expr_ty(lhs),
+            })
         }
     }
 
@@ -1083,6 +1081,7 @@ impl<'tcx> DeadVisitor<'tcx> {
                     };
 
                 MultipleDeadCodes::UnusedTupleStructFields {
+                    spans,
                     multiple,
                     num,
                     descr,
@@ -1094,6 +1093,7 @@ impl<'tcx> DeadVisitor<'tcx> {
                 }
             }
             ReportOn::NamedField => MultipleDeadCodes::DeadCodes {
+                spans,
                 multiple,
                 num,
                 descr,
@@ -1105,7 +1105,7 @@ impl<'tcx> DeadVisitor<'tcx> {
         };
 
         let hir_id = tcx.local_def_id_to_hir_id(first_item.def_id);
-        self.tcx.emit_node_span_lint(DEAD_CODE, hir_id, MultiSpan::from_spans(spans), diag);
+        self.tcx.emit_node_lint(DEAD_CODE, hir_id, diag);
     }
 
     fn warn_multiple(

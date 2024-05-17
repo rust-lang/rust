@@ -64,11 +64,10 @@ pub(super) fn pat_from_hir<'a, 'tcx>(
             err.subdiagnostic(sugg);
             err.emit();
         } else {
-            tcx.emit_node_span_lint(
+            tcx.emit_node_lint(
                 lint::builtin::RUST_2024_INCOMPATIBLE_PAT,
                 pat.hir_id,
-                pat.span,
-                Rust2024IncompatiblePat { sugg },
+                Rust2024IncompatiblePat { span: pat.span, sugg },
             );
         }
     }

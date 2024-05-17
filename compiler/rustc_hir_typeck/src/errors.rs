@@ -169,25 +169,42 @@ pub(crate) struct MissingParenthesesInRange {
 pub(crate) enum NeverTypeFallbackFlowingIntoUnsafe {
     #[help]
     #[diag(hir_typeck_never_type_fallback_flowing_into_unsafe_call)]
-    Call,
+    Call {
+        #[primary_span]
+        span: Span,
+    },
     #[help]
     #[diag(hir_typeck_never_type_fallback_flowing_into_unsafe_method)]
-    Method,
+    Method {
+        #[primary_span]
+        span: Span,
+    },
     #[help]
     #[diag(hir_typeck_never_type_fallback_flowing_into_unsafe_path)]
-    Path,
+    Path {
+        #[primary_span]
+        span: Span,
+    },
     #[help]
     #[diag(hir_typeck_never_type_fallback_flowing_into_unsafe_union_field)]
-    UnionField,
+    UnionField {
+        #[primary_span]
+        span: Span,
+    },
     #[help]
     #[diag(hir_typeck_never_type_fallback_flowing_into_unsafe_deref)]
-    Deref,
+    Deref {
+        #[primary_span]
+        span: Span,
+    },
 }
 
 #[derive(LintDiagnostic)]
 #[help]
 #[diag(hir_typeck_dependency_on_unit_never_type_fallback)]
 pub(crate) struct DependencyOnUnitNeverTypeFallback<'tcx> {
+    #[primary_span]
+    pub span: Span,
     #[note]
     pub obligation_span: Span,
     pub obligation: ty::Predicate<'tcx>,
@@ -247,6 +264,8 @@ impl Subdiagnostic for TypeMismatchFruTypo {
 #[diag(hir_typeck_lossy_provenance_int2ptr)]
 #[help]
 pub(crate) struct LossyProvenanceInt2Ptr<'tcx> {
+    #[primary_span]
+    pub span: Span,
     pub expr_ty: Ty<'tcx>,
     pub cast_ty: Ty<'tcx>,
     #[subdiagnostic]
@@ -256,6 +275,8 @@ pub(crate) struct LossyProvenanceInt2Ptr<'tcx> {
 #[derive(LintDiagnostic)]
 #[diag(hir_typeck_ptr_cast_add_auto_to_object)]
 pub(crate) struct PtrCastAddAutoToObject {
+    #[primary_span]
+    pub span: Span,
     pub traits_len: usize,
     pub traits: DiagSymbolList<String>,
 }
@@ -273,6 +294,8 @@ pub(crate) struct LossyProvenanceInt2PtrSuggestion {
 #[diag(hir_typeck_lossy_provenance_ptr2int)]
 #[help]
 pub(crate) struct LossyProvenancePtr2Int<'tcx> {
+    #[primary_span]
+    pub span: Span,
     pub expr_ty: Ty<'tcx>,
     pub cast_ty: Ty<'tcx>,
     #[subdiagnostic]
@@ -520,6 +543,8 @@ pub(crate) struct SuggestPtrNullMut {
 #[diag(hir_typeck_trivial_cast)]
 #[help]
 pub(crate) struct TrivialCast<'tcx> {
+    #[primary_span]
+    pub span: Span,
     pub numeric: bool,
     pub expr_ty: Ty<'tcx>,
     pub cast_ty: Ty<'tcx>,
@@ -560,6 +585,8 @@ pub(crate) struct CannotCastToBool<'tcx> {
 #[derive(LintDiagnostic)]
 #[diag(hir_typeck_cast_enum_drop)]
 pub(crate) struct CastEnumDrop<'tcx> {
+    #[primary_span]
+    pub span: Span,
     pub expr_ty: Ty<'tcx>,
     pub cast_ty: Ty<'tcx>,
 }
@@ -684,6 +711,8 @@ pub(crate) struct SelfCtorFromOuterItem {
 #[derive(LintDiagnostic)]
 #[diag(hir_typeck_self_ctor_from_outer_item)]
 pub(crate) struct SelfCtorFromOuterItemLint {
+    #[primary_span]
+    pub span: Span,
     #[label]
     pub impl_span: Span,
     #[subdiagnostic]

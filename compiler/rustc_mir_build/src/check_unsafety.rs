@@ -122,10 +122,9 @@ impl<'tcx> UnsafetyVisitor<'_, 'tcx> {
                     })
                     .unwrap_or_default();
 
-                self.tcx.emit_node_span_lint(
+                self.tcx.emit_node_lint(
                     DEPRECATED_SAFE_2024,
                     self.hir_context,
-                    span,
                     CallToDeprecatedSafeFnRequiresUnsafe {
                         span,
                         function: with_no_trimmed_paths!(self.tcx.def_path_str(id)),
@@ -692,101 +691,90 @@ impl UnsafeOpKind {
         // FIXME: ideally we would want to trim the def paths, but this is not
         // feasible with the current lint emission API (see issue #106126).
         match self {
-            CallToUnsafeFunction(Some(did)) => tcx.emit_node_span_lint(
+            CallToUnsafeFunction(Some(did)) => tcx.emit_node_lint(
                 UNSAFE_OP_IN_UNSAFE_FN,
                 hir_id,
-                span,
                 UnsafeOpInUnsafeFnCallToUnsafeFunctionRequiresUnsafe {
                     span,
                     function: with_no_trimmed_paths!(tcx.def_path_str(*did)),
                     unsafe_not_inherited_note,
                 },
             ),
-            CallToUnsafeFunction(None) => tcx.emit_node_span_lint(
+            CallToUnsafeFunction(None) => tcx.emit_node_lint(
                 UNSAFE_OP_IN_UNSAFE_FN,
                 hir_id,
-                span,
                 UnsafeOpInUnsafeFnCallToUnsafeFunctionRequiresUnsafeNameless {
                     span,
                     unsafe_not_inherited_note,
                 },
             ),
-            UseOfInlineAssembly => tcx.emit_node_span_lint(
+            UseOfInlineAssembly => tcx.emit_node_lint(
                 UNSAFE_OP_IN_UNSAFE_FN,
                 hir_id,
-                span,
                 UnsafeOpInUnsafeFnUseOfInlineAssemblyRequiresUnsafe {
                     span,
                     unsafe_not_inherited_note,
                 },
             ),
-            InitializingTypeWith => tcx.emit_node_span_lint(
+            InitializingTypeWith => tcx.emit_node_lint(
                 UNSAFE_OP_IN_UNSAFE_FN,
                 hir_id,
-                span,
                 UnsafeOpInUnsafeFnInitializingTypeWithRequiresUnsafe {
                     span,
                     unsafe_not_inherited_note,
                 },
             ),
-            UseOfMutableStatic => tcx.emit_node_span_lint(
+            UseOfMutableStatic => tcx.emit_node_lint(
                 UNSAFE_OP_IN_UNSAFE_FN,
                 hir_id,
-                span,
                 UnsafeOpInUnsafeFnUseOfMutableStaticRequiresUnsafe {
                     span,
                     unsafe_not_inherited_note,
                 },
             ),
-            UseOfExternStatic => tcx.emit_node_span_lint(
+            UseOfExternStatic => tcx.emit_node_lint(
                 UNSAFE_OP_IN_UNSAFE_FN,
                 hir_id,
-                span,
                 UnsafeOpInUnsafeFnUseOfExternStaticRequiresUnsafe {
                     span,
                     unsafe_not_inherited_note,
                 },
             ),
-            DerefOfRawPointer => tcx.emit_node_span_lint(
+            DerefOfRawPointer => tcx.emit_node_lint(
                 UNSAFE_OP_IN_UNSAFE_FN,
                 hir_id,
-                span,
                 UnsafeOpInUnsafeFnDerefOfRawPointerRequiresUnsafe {
                     span,
                     unsafe_not_inherited_note,
                 },
             ),
-            AccessToUnionField => tcx.emit_node_span_lint(
+            AccessToUnionField => tcx.emit_node_lint(
                 UNSAFE_OP_IN_UNSAFE_FN,
                 hir_id,
-                span,
                 UnsafeOpInUnsafeFnAccessToUnionFieldRequiresUnsafe {
                     span,
                     unsafe_not_inherited_note,
                 },
             ),
-            MutationOfLayoutConstrainedField => tcx.emit_node_span_lint(
+            MutationOfLayoutConstrainedField => tcx.emit_node_lint(
                 UNSAFE_OP_IN_UNSAFE_FN,
                 hir_id,
-                span,
                 UnsafeOpInUnsafeFnMutationOfLayoutConstrainedFieldRequiresUnsafe {
                     span,
                     unsafe_not_inherited_note,
                 },
             ),
-            BorrowOfLayoutConstrainedField => tcx.emit_node_span_lint(
+            BorrowOfLayoutConstrainedField => tcx.emit_node_lint(
                 UNSAFE_OP_IN_UNSAFE_FN,
                 hir_id,
-                span,
                 UnsafeOpInUnsafeFnBorrowOfLayoutConstrainedFieldRequiresUnsafe {
                     span,
                     unsafe_not_inherited_note,
                 },
             ),
-            CallToFunctionWith { function, missing, build_enabled } => tcx.emit_node_span_lint(
+            CallToFunctionWith { function, missing, build_enabled } => tcx.emit_node_lint(
                 UNSAFE_OP_IN_UNSAFE_FN,
                 hir_id,
-                span,
                 UnsafeOpInUnsafeFnCallToFunctionWithRequiresUnsafe {
                     span,
                     function: with_no_trimmed_paths!(tcx.def_path_str(*function)),
@@ -1045,7 +1033,7 @@ pub(crate) fn check_unsafety(tcx: TyCtxt<'_>, def: LocalDefId) {
     warnings.sort_by_key(|w| w.block_span);
     for UnusedUnsafeWarning { hir_id, block_span, enclosing_unsafe } in warnings {
         let block_span = tcx.sess.source_map().guess_head_span(block_span);
-        tcx.emit_node_span_lint(UNUSED_UNSAFE, hir_id, block_span, UnusedUnsafe {
+        tcx.emit_node_lint(UNUSED_UNSAFE, hir_id, UnusedUnsafe {
             span: block_span,
             enclosing: enclosing_unsafe,
         });

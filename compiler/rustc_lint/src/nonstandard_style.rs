@@ -151,7 +151,8 @@ impl NonCamelCaseTypes {
             } else {
                 NonCamelCaseTypeSub::Label { span: ident.span }
             };
-            cx.emit_span_lint(NON_CAMEL_CASE_TYPES, ident.span, NonCamelCaseType {
+            cx.emit_lint(NON_CAMEL_CASE_TYPES, NonCamelCaseType {
+                span: ident.span,
                 sort,
                 name,
                 sub,
@@ -321,7 +322,7 @@ impl NonSnakeCase {
             } else {
                 NonSnakeCaseDiagSub::Label { span }
             };
-            cx.emit_span_lint(NON_SNAKE_CASE, span, NonSnakeCaseDiag { sort, name, sc, sub });
+            cx.emit_lint(NON_SNAKE_CASE, NonSnakeCaseDiag { span, sort, name, sc, sub });
         }
     }
 }
@@ -489,7 +490,8 @@ impl NonUpperCaseGlobals {
             } else {
                 NonUpperCaseGlobalSub::Label { span: ident.span }
             };
-            cx.emit_span_lint(NON_UPPER_CASE_GLOBALS, ident.span, NonUpperCaseGlobal {
+            cx.emit_lint(NON_UPPER_CASE_GLOBALS, NonUpperCaseGlobal {
+                span: ident.span,
                 sort,
                 name,
                 sub,

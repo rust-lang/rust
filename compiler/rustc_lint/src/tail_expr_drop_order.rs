@@ -244,12 +244,10 @@ impl<'a, 'tcx> Visitor<'tcx> for LintTailExpr<'a, 'tcx> {
         if self.is_root_tail_expr {
             self.is_root_tail_expr = false;
         } else if self.expr_generates_nonlocal_droppy_value(expr) {
-            self.cx.tcx.emit_node_span_lint(
-                TAIL_EXPR_DROP_ORDER,
-                expr.hir_id,
-                expr.span,
-                TailExprDropOrderLint { spans: self.locals.to_vec() },
-            );
+            self.cx.tcx.emit_node_lint(TAIL_EXPR_DROP_ORDER, expr.hir_id, TailExprDropOrderLint {
+                span: expr.span,
+                locals: self.locals.to_vec(),
+            });
             return;
         }
         match expr.kind {
@@ -301,6 +299,8 @@ impl<'a, 'tcx> Visitor<'tcx> for LintTailExpr<'a, 'tcx> {
 #[derive(LintDiagnostic)]
 #[diag(lint_tail_expr_drop_order)]
 struct TailExprDropOrderLint {
+    #[primary_span]
+    pub span: Span,
     #[label]
-    pub spans: Vec<Span>,
+    pub locals: Vec<Span>,
 }

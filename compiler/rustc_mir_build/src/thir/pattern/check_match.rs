@@ -582,11 +582,10 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
                 let span_end = prefix.last().unwrap().unwrap().0;
                 let span = span_start.to(span_end);
                 let count = prefix.len();
-                self.tcx.emit_node_span_lint(
+                self.tcx.emit_node_lint(
                     IRREFUTABLE_LET_PATTERNS,
                     self.lint_level,
-                    span,
-                    LeadingIrrefutableLetPatterns { count },
+                    LeadingIrrefutableLetPatterns { span, count },
                 );
             }
         }
@@ -601,11 +600,10 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
             let span_end = suffix.last().unwrap().unwrap().0;
             let span = span_start.to(span_end);
             let count = suffix.len();
-            self.tcx.emit_node_span_lint(
+            self.tcx.emit_node_lint(
                 IRREFUTABLE_LET_PATTERNS,
                 self.lint_level,
-                span,
-                TrailingIrrefutableLetPatterns { count },
+                TrailingIrrefutableLetPatterns { span, count },
             );
         }
     }
@@ -859,23 +857,15 @@ fn check_for_bindings_named_same_as_variants(
     {
         let variant_count = edef.variants().len();
         let ty_path = with_no_trimmed_paths!(cx.tcx.def_path_str(edef.did()));
-        cx.tcx.emit_node_span_lint(
-            BINDINGS_WITH_VARIANT_NAME,
-            cx.lint_level,
-            pat.span,
-            BindingsWithVariantName {
-                // If this is an irrefutable pattern, and there's > 1 variant,
-                // then we can't actually match on this. Applying the below
-                // suggestion would produce code that breaks on `check_binding_is_irrefutable`.
-                suggestion: if rf == Refutable || variant_count == 1 {
-                    Some(pat.span)
-                } else {
-                    None
-                },
-                ty_path,
-                name,
-            },
-        )
+        cx.tcx.emit_node_lint(BINDINGS_WITH_VARIANT_NAME, cx.lint_level, BindingsWithVariantName {
+            span: pat.span,
+            // If this is an irrefutable pattern, and there's > 1 variant,
+            // then we can't actually match on this. Applying the below
+            // suggestion would produce code that breaks on `check_binding_is_irrefutable`.
+            suggestion: (rf == Refutable || variant_count == 1).then_some(pat.span),
+            ty_path,
+            name,
+        })
     }
 }
 
@@ -901,7 +891,7 @@ fn report_irrefutable_let_patterns(
 ) {
     macro_rules! emit_diag {
         ($lint:tt) => {{
-            tcx.emit_node_span_lint(IRREFUTABLE_LET_PATTERNS, id, span, $lint { count });
+            tcx.emit_node_lint(IRREFUTABLE_LET_PATTERNS, id, $lint { span, count });
         }};
     }
 
@@ -925,7 +915,8 @@ fn report_unreachable_pattern<'p, 'tcx>(
     static CAP_COVERED_BY_MANY: usize = 4;
     let pat_span = pat.data().span;
     let mut lint = UnreachablePattern {
-        span: Some(pat_span),
+        span: pat_span,
+        label: Some(pat_span),
         matches_no_values: None,
         matches_no_values_ty: **pat.ty(),
         uninhabited_note: None,
@@ -938,7 +929,7 @@ fn report_unreachable_pattern<'p, 'tcx>(
     match explanation.covered_by.as_slice() {
         [] => {
             // Empty pattern; we report the uninhabited type that caused the emptiness.
-            lint.span = None; // Don't label the pattern itself
+            lint.label = None; // Don't label the pattern itself
             lint.uninhabited_note = Some(()); // Give a link about empty types
             lint.matches_no_values = Some(pat_span);
             lint.suggest_remove = whole_arm_span; // Suggest to remove the match arm
@@ -985,7 +976,7 @@ fn report_unreachable_pattern<'p, 'tcx>(
             lint.covered_by_many = Some(multispan);
         }
     }
-    cx.tcx.emit_node_span_lint(UNREACHABLE_PATTERNS, hir_id, pat_span, lint);
+    cx.tcx.emit_node_lint(UNREACHABLE_PATTERNS, hir_id, lint);
 }
 
 /// Report unreachable arms, if any.

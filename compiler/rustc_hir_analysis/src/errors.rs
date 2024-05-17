@@ -1132,6 +1132,7 @@ pub(crate) enum LateBoundInApit {
 #[diag(hir_analysis_unused_associated_type_bounds)]
 #[note]
 pub(crate) struct UnusedAssociatedTypeBounds {
+    #[primary_span]
     #[suggestion(code = "")]
     pub span: Span,
 }
@@ -1141,6 +1142,8 @@ pub(crate) struct UnusedAssociatedTypeBounds {
 #[note]
 #[note(hir_analysis_feedback_note)]
 pub(crate) struct ReturnPositionImplTraitInTraitRefined<'tcx> {
+    #[primary_span]
+    pub span: Span,
     #[suggestion(applicability = "maybe-incorrect", code = "{pre}{return_ty}{post}")]
     pub impl_return_span: Span,
     #[label]
@@ -1398,6 +1401,7 @@ pub(crate) struct TyParamFirstLocal<'tcx> {
 #[diag(hir_analysis_ty_param_first_local, code = E0210)]
 #[note]
 pub(crate) struct TyParamFirstLocalLint<'tcx> {
+    #[primary_span]
     #[label]
     pub span: Span,
     #[note(hir_analysis_case_note)]
@@ -1422,6 +1426,7 @@ pub(crate) struct TyParamSome {
 #[diag(hir_analysis_ty_param_some, code = E0210)]
 #[note]
 pub(crate) struct TyParamSomeLint {
+    #[primary_span]
     #[label]
     pub span: Span,
     #[note(hir_analysis_only_note)]

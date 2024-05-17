@@ -2334,11 +2334,10 @@ fn lint_redundant_lifetimes<'tcx>(
                 && outlives_env.free_region_map().sub_free_regions(tcx, victim, candidate)
             {
                 shadowed.insert(victim);
-                tcx.emit_node_span_lint(
+                tcx.emit_node_lint(
                     rustc_lint_defs::builtin::REDUNDANT_LIFETIMES,
                     tcx.local_def_id_to_hir_id(def_id.expect_local()),
-                    tcx.def_span(def_id),
-                    RedundantLifetimeArgsLint { candidate, victim },
+                    RedundantLifetimeArgsLint { span: tcx.def_span(def_id), candidate, victim },
                 );
             }
         }
@@ -2349,6 +2348,8 @@ fn lint_redundant_lifetimes<'tcx>(
 #[diag(hir_analysis_redundant_lifetime_args)]
 #[note]
 struct RedundantLifetimeArgsLint<'tcx> {
+    #[primary_span]
+    pub span: Span,
     /// The lifetime we have found to be redundant.
     victim: ty::Region<'tcx>,
     // The lifetime we can replace the victim with.

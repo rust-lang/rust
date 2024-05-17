@@ -457,18 +457,25 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
                 .collect::<Vec<_>>();
 
         for (hir_id, span, reason) in affected_unsafe_infer_vars {
-            self.tcx.emit_node_span_lint(
+            self.tcx.emit_node_lint(
                 lint::builtin::NEVER_TYPE_FALLBACK_FLOWING_INTO_UNSAFE,
                 hir_id,
-                span,
                 match reason {
-                    UnsafeUseReason::Call => errors::NeverTypeFallbackFlowingIntoUnsafe::Call,
-                    UnsafeUseReason::Method => errors::NeverTypeFallbackFlowingIntoUnsafe::Method,
-                    UnsafeUseReason::Path => errors::NeverTypeFallbackFlowingIntoUnsafe::Path,
-                    UnsafeUseReason::UnionField => {
-                        errors::NeverTypeFallbackFlowingIntoUnsafe::UnionField
+                    UnsafeUseReason::Call => {
+                        errors::NeverTypeFallbackFlowingIntoUnsafe::Call { span }
                     }
-                    UnsafeUseReason::Deref => errors::NeverTypeFallbackFlowingIntoUnsafe::Deref,
+                    UnsafeUseReason::Method => {
+                        errors::NeverTypeFallbackFlowingIntoUnsafe::Method { span }
+                    }
+                    UnsafeUseReason::Path => {
+                        errors::NeverTypeFallbackFlowingIntoUnsafe::Path { span }
+                    }
+                    UnsafeUseReason::UnionField => {
+                        errors::NeverTypeFallbackFlowingIntoUnsafe::UnionField { span }
+                    }
+                    UnsafeUseReason::Deref => {
+                        errors::NeverTypeFallbackFlowingIntoUnsafe::Deref { span }
+                    }
                 },
             );
         }
@@ -512,11 +519,11 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
             && let [ref mut never_error, ..] = never_errors.as_mut_slice()
         {
             self.adjust_fulfillment_error_for_expr_obligation(never_error);
-            self.tcx.emit_node_span_lint(
+            self.tcx.emit_node_lint(
                 lint::builtin::DEPENDENCY_ON_UNIT_NEVER_TYPE_FALLBACK,
                 self.tcx.local_def_id_to_hir_id(self.body_id),
-                self.tcx.def_span(self.body_id),
                 errors::DependencyOnUnitNeverTypeFallback {
+                    span: self.tcx.def_span(self.body_id),
                     obligation_span: never_error.obligation.cause.span,
                     obligation: never_error.obligation.predicate,
                 },

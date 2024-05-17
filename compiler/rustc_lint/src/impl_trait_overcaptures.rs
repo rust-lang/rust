@@ -366,11 +366,11 @@ where
                         .map(|(def_id, _)| self.tcx.def_span(def_id))
                         .collect();
 
-                    self.tcx.emit_node_span_lint(
+                    self.tcx.emit_node_lint(
                         IMPL_TRAIT_OVERCAPTURES,
                         self.tcx.local_def_id_to_hir_id(opaque_def_id),
-                        opaque_span,
                         ImplTraitOvercapturesLint {
+                            span: opaque_span,
                             self_ty: t,
                             num_captured: uncaptured_spans.len(),
                             uncaptured_spans,
@@ -423,11 +423,10 @@ where
                     .iter()
                     .all(|(def_id, _)| explicitly_captured.contains(def_id))
                 {
-                    self.tcx.emit_node_span_lint(
+                    self.tcx.emit_node_lint(
                         IMPL_TRAIT_REDUNDANT_CAPTURES,
                         self.tcx.local_def_id_to_hir_id(opaque_def_id),
-                        opaque_span,
-                        ImplTraitRedundantCapturesLint { capturing_span },
+                        ImplTraitRedundantCapturesLint { span: opaque_span, capturing_span },
                     );
                 }
             }
@@ -448,6 +447,7 @@ where
 }
 
 struct ImplTraitOvercapturesLint<'tcx> {
+    span: Span,
     uncaptured_spans: Vec<Span>,
     self_ty: Ty<'tcx>,
     num_captured: usize,
@@ -470,11 +470,17 @@ impl<'a> LintDiagnostic<'a, ()> for ImplTraitOvercapturesLint<'_> {
             );
         }
     }
+
+    fn span(&self) -> Option<rustc_errors::MultiSpan> {
+        Some(self.span.into())
+    }
 }
 
 #[derive(LintDiagnostic)]
 #[diag(lint_impl_trait_redundant_captures)]
 struct ImplTraitRedundantCapturesLint {
+    #[primary_span]
+    span: Span,
     #[suggestion(lint_suggestion, code = "", applicability = "machine-applicable")]
     capturing_span: Span,
 }

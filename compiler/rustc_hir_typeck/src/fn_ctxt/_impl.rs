@@ -1148,11 +1148,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     });
                     return (Ty::new_error(self.tcx, guar), res);
                 } else {
-                    self.tcx.emit_node_span_lint(
+                    self.tcx.emit_node_lint(
                         SELF_CONSTRUCTOR_FROM_OUTER_ITEM,
                         hir_id,
-                        path_span,
                         errors::SelfCtorFromOuterItemLint {
+                            span: path_span,
                             impl_span: tcx.def_span(impl_def_id),
                             sugg,
                         },

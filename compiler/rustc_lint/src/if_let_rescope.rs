@@ -219,7 +219,8 @@ impl IfLetRescope {
             }
         }
         if let Some((span, hir_id)) = first_if_to_lint {
-            tcx.emit_node_span_lint(IF_LET_RESCOPE, hir_id, span, IfLetRescopeLint {
+            tcx.emit_node_lint(IF_LET_RESCOPE, hir_id, IfLetRescopeLint {
+                span,
                 significant_droppers,
                 lifetime_ends,
                 rewrite: first_if_to_rewrite.then_some(IfLetRescopeRewrite {
@@ -280,6 +281,8 @@ impl<'tcx> LateLintPass<'tcx> for IfLetRescope {
 #[derive(LintDiagnostic)]
 #[diag(lint_if_let_rescope)]
 struct IfLetRescopeLint {
+    #[primary_span]
+    span: Span,
     #[label]
     significant_droppers: Vec<Span>,
     #[help]

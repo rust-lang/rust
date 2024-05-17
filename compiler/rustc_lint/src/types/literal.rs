@@ -74,7 +74,8 @@ fn lint_overflowing_range_endpoint<'tcx>(
         }
     };
 
-    cx.emit_span_lint(OVERFLOWING_LITERALS, struct_expr.span, RangeEndpointOutOfRange {
+    cx.emit_lint(OVERFLOWING_LITERALS, RangeEndpointOutOfRange {
+        span: struct_expr.span,
         ty,
         sub: sub_sugg,
     });
@@ -186,7 +187,8 @@ fn report_bin_hex_error(
         })
         .flatten();
 
-    cx.emit_span_lint(OVERFLOWING_LITERALS, expr.span, OverflowingBinHex {
+    cx.emit_lint(OVERFLOWING_LITERALS, OverflowingBinHex {
+        span: expr.span,
         ty: t,
         lit: repr_str.clone(),
         dec: val,
@@ -261,7 +263,8 @@ fn lint_int_literal<'tcx>(
         let help = get_type_suggestion(cx.typeck_results().node_type(e.hir_id), v, negative)
             .map(|suggestion_ty| OverflowingIntHelp { suggestion_ty });
 
-        cx.emit_span_lint(OVERFLOWING_LITERALS, span, OverflowingInt {
+        cx.emit_lint(OVERFLOWING_LITERALS, OverflowingInt {
+            span,
             ty: t.name_str(),
             lit,
             min,
@@ -291,7 +294,7 @@ fn lint_uint_literal<'tcx>(
             match par_e.kind {
                 hir::ExprKind::Cast(..) => {
                     if let ty::Char = cx.typeck_results().expr_ty(par_e).kind() {
-                        cx.emit_span_lint(OVERFLOWING_LITERALS, par_e.span, OnlyCastu8ToChar {
+                        cx.emit_lint(OVERFLOWING_LITERALS, OnlyCastu8ToChar {
                             span: par_e.span,
                             literal: lit_val,
                         });
@@ -317,7 +320,8 @@ fn lint_uint_literal<'tcx>(
             );
             return;
         }
-        cx.emit_span_lint(OVERFLOWING_LITERALS, e.span, OverflowingUInt {
+        cx.emit_lint(OVERFLOWING_LITERALS, OverflowingUInt {
+            span: e.span,
             ty: t.name_str(),
             lit: cx
                 .sess()
@@ -359,7 +363,8 @@ pub(crate) fn lint_literal<'tcx>(
                 _ => bug!(),
             };
             if is_infinite == Ok(true) {
-                cx.emit_span_lint(OVERFLOWING_LITERALS, e.span, OverflowingLiteral {
+                cx.emit_lint(OVERFLOWING_LITERALS, OverflowingLiteral {
+                    span: e.span,
                     ty: t.name_str(),
                     lit: cx
                         .sess()

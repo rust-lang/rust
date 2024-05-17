@@ -48,7 +48,8 @@ impl LateLintPass<'_> for DefaultHashTypes {
             Some(sym::HashSet) => "FxHashSet",
             _ => return,
         };
-        cx.emit_span_lint(DEFAULT_HASH_TYPES, path.span, DefaultHashTypesDiag {
+        cx.emit_lint(DEFAULT_HASH_TYPES, DefaultHashTypesDiag {
+            span: path.span,
             preferred,
             used: cx.tcx.item_name(def_id),
         });
@@ -106,12 +107,14 @@ impl LateLintPass<'_> for QueryStability {
         if let Ok(Some(instance)) = ty::Instance::try_resolve(cx.tcx, cx.param_env, def_id, args) {
             let def_id = instance.def_id();
             if cx.tcx.has_attr(def_id, sym::rustc_lint_query_instability) {
-                cx.emit_span_lint(POTENTIAL_QUERY_INSTABILITY, span, QueryInstability {
+                cx.emit_lint(POTENTIAL_QUERY_INSTABILITY, QueryInstability {
+                    span,
                     query: cx.tcx.item_name(def_id),
                 });
             }
             if cx.tcx.has_attr(def_id, sym::rustc_lint_untracked_query_information) {
-                cx.emit_span_lint(UNTRACKED_QUERY_INFORMATION, span, QueryUntracked {
+                cx.emit_lint(UNTRACKED_QUERY_INFORMATION, QueryUntracked {
+                    span,
                     method: cx.tcx.item_name(def_id),
                 });
             }
@@ -154,7 +157,7 @@ impl<'tcx> LateLintPass<'tcx> for TyTyKind {
         {
             let span =
                 path.span.with_hi(segment.args.map_or(segment.ident.span, |a| a.span_ext).hi());
-            cx.emit_span_lint(USAGE_OF_TY_TYKIND, path.span, TykindKind { suggestion: span });
+            cx.emit_lint(USAGE_OF_TY_TYKIND, TykindKind { span: path.span, suggestion: span });
         }
     }
 
@@ -203,20 +206,18 @@ impl<'tcx> LateLintPass<'tcx> for TyTyKind {
 
                     match span {
                         Some(span) => {
-                            cx.emit_span_lint(USAGE_OF_TY_TYKIND, path.span, TykindKind {
+                            cx.emit_lint(USAGE_OF_TY_TYKIND, TykindKind {
+                                span: path.span,
                                 suggestion: span,
                             });
                         }
-                        None => cx.emit_span_lint(USAGE_OF_TY_TYKIND, path.span, TykindDiag),
+                        None => cx.emit_lint(USAGE_OF_TY_TYKIND, TykindDiag { span: path.span }),
                     }
                 } else if !ty.span.from_expansion()
                     && path.segments.len() > 1
                     && let Some(ty) = is_ty_or_ty_ctxt(cx, path)
                 {
-                    cx.emit_span_lint(USAGE_OF_QUALIFIED_TY, path.span, TyQualified {
-                        ty,
-                        suggestion: path.span,
-                    });
+                    cx.emit_lint(USAGE_OF_QUALIFIED_TY, TyQualified { span: path.span, ty });
                 }
             }
             _ => {}
@@ -309,15 +310,13 @@ impl<'tcx> LateLintPass<'tcx> for TypeIr {
         if let Some(seg) =
             path.segments.iter().find(|seg| seg.res.opt_def_id().is_some_and(is_mod_inherent))
         {
-            cx.emit_span_lint(USAGE_OF_TYPE_IR_INHERENT, seg.ident.span, TypeIrInherentUsage);
+            cx.emit_lint(USAGE_OF_TYPE_IR_INHERENT, TypeIrInherentUsage { span: seg.ident.span });
         }
         // Final path resolutions, like `use rustc_type_ir::inherent`
         else if path.res.iter().any(|res| res.opt_def_id().is_some_and(is_mod_inherent)) {
-            cx.emit_span_lint(
-                USAGE_OF_TYPE_IR_INHERENT,
-                path.segments.last().unwrap().ident.span,
-                TypeIrInherentUsage,
-            );
+            cx.emit_lint(USAGE_OF_TYPE_IR_INHERENT, TypeIrInherentUsage {
+                span: path.segments.last().unwrap().ident.span,
+            });
         }
 
         let (lo, hi, snippet) = match path.segments {
@@ -339,11 +338,11 @@ impl<'tcx> LateLintPass<'tcx> for TypeIr {
             }
             _ => return,
         };
-        cx.emit_span_lint(
-            NON_GLOB_IMPORT_OF_TYPE_IR_INHERENT,
-            path.span,
-            NonGlobImportTypeIrInherent { suggestion: lo.eq_ctxt(hi).then(|| lo.to(hi)), snippet },
-        );
+        cx.emit_lint(NON_GLOB_IMPORT_OF_TYPE_IR_INHERENT, NonGlobImportTypeIrInherent {
+            span: path.span,
+            suggestion: lo.eq_ctxt(hi).then(|| lo.to(hi)),
+            snippet,
+        });
     }
 }
 
@@ -368,11 +367,9 @@ impl EarlyLintPass for LintPassImpl {
                         && call_site.ctxt().outer_expn_data().kind
                             != ExpnKind::Macro(MacroKind::Bang, sym::declare_lint_pass)
                     {
-                        cx.emit_span_lint(
-                            LINT_PASS_IMPL_WITHOUT_MACRO,
-                            lint_pass.path.span,
-                            LintPassByHand,
-                        );
+                        cx.emit_lint(LINT_PASS_IMPL_WITHOUT_MACRO, LintPassByHand {
+                            span: lint_pass.path.span,
+                        });
                     }
                 }
             }
@@ -410,7 +407,8 @@ impl<'tcx> LateLintPass<'tcx> for ExistingDocKeyword {
                         if is_doc_keyword(keyword) {
                             return;
                         }
-                        cx.emit_span_lint(EXISTING_DOC_KEYWORD, attr.span, NonExistentDocKeyword {
+                        cx.emit_lint(EXISTING_DOC_KEYWORD, NonExistentDocKeyword {
+                            span: attr.span,
                             keyword,
                         });
                     }
@@ -521,11 +519,9 @@ impl Diagnostics {
                         let is_translatable = Self::is_diag_message(cx, arg_ty)
                             || matches!(arg_ty.kind(), ty::Param(arg_param) if arg_param.name == sig_param.name);
                         if !is_translatable {
-                            cx.emit_span_lint(
-                                UNTRANSLATABLE_DIAGNOSTIC,
-                                arg_span,
-                                UntranslatableDiag,
-                            );
+                            cx.emit_lint(UNTRANSLATABLE_DIAGNOSTIC, UntranslatableDiag {
+                                span: arg_span,
+                            });
                         }
                     }
                 }
@@ -580,7 +576,7 @@ impl Diagnostics {
         }
         debug!(?is_inside_appropriate_impl);
         if !is_inside_appropriate_impl {
-            cx.emit_span_lint(DIAGNOSTIC_OUTSIDE_OF_IMPL, span, DiagOutOfImpl);
+            cx.emit_lint(DIAGNOSTIC_OUTSIDE_OF_IMPL, DiagOutOfImpl { span });
         }
     }
 }
@@ -615,7 +611,8 @@ impl LateLintPass<'_> for BadOptAccess {
                 && let Some(lit) = item.lit()
                 && let ast::LitKind::Str(val, _) = lit.kind
             {
-                cx.emit_span_lint(BAD_OPT_ACCESS, expr.span, BadOptAccessDiag {
+                cx.emit_lint(BAD_OPT_ACCESS, BadOptAccessDiag {
+                    span: expr.span,
                     msg: val.as_str(),
                 });
             }
@@ -638,7 +635,7 @@ impl<'tcx> LateLintPass<'tcx> for SpanUseEqCtxt {
             expr.kind
         {
             if is_span_ctxt_call(cx, lhs) && is_span_ctxt_call(cx, rhs) {
-                cx.emit_span_lint(SPAN_USE_EQ_CTXT, expr.span, SpanUseEqCtxtDiag);
+                cx.emit_lint(SPAN_USE_EQ_CTXT, SpanUseEqCtxtDiag { span: expr.span });
             }
         }
     }

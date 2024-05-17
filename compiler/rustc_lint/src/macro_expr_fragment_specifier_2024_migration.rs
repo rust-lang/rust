@@ -136,11 +136,9 @@ impl Expr2024 {
         }
 
         debug!("emitting lint");
-        cx.builder.emit_span_lint(
-            &EDITION_2024_EXPR_FRAGMENT_SPECIFIER,
-            token.span.into(),
-            MacroExprFragment2024 { suggestion: token.span },
-        );
+        cx.builder.emit_lint(EDITION_2024_EXPR_FRAGMENT_SPECIFIER, MacroExprFragment2024 {
+            span: token.span,
+        });
     }
 }
 

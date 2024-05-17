@@ -193,16 +193,15 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         // types's `DefId`, so the following loop removes all the `DefIds` of the associated types that have a
         // corresponding `Projection` clause
         for def_ids in associated_types.values_mut() {
-            for (projection_bound, span) in &projection_bounds {
+            for &(projection_bound, span) in &projection_bounds {
                 let def_id = projection_bound.projection_def_id();
                 // FIXME(#120456) - is `swap_remove` correct?
                 def_ids.swap_remove(&def_id);
                 if tcx.generics_require_sized_self(def_id) {
-                    tcx.emit_node_span_lint(
+                    tcx.emit_node_lint(
                         UNUSED_ASSOCIATED_TYPE_BOUNDS,
                         hir_id,
-                        *span,
-                        crate::errors::UnusedAssociatedTypeBounds { span: *span },
+                        crate::errors::UnusedAssociatedTypeBounds { span },
                     );
                 }
             }
