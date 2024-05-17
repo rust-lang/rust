@@ -116,6 +116,7 @@ mod handlers {
     mod change_visibility;
     mod convert_bool_then;
     mod convert_comment_block;
+    mod convert_comment_from_or_to_doc;
     mod convert_from_to_tryfrom;
     mod convert_integer_literal;
     mod convert_into_to_from;
@@ -239,6 +240,7 @@ mod handlers {
             convert_bool_then::convert_bool_then_to_if,
             convert_bool_then::convert_if_to_bool_then,
             convert_comment_block::convert_comment_block,
+            convert_comment_from_or_to_doc::convert_comment_from_or_to_doc,
             convert_from_to_tryfrom::convert_from_to_tryfrom,
             convert_integer_literal::convert_integer_literal,
             convert_into_to_from::convert_into_to_from,

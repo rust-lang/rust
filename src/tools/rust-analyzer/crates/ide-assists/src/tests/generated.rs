@@ -346,6 +346,21 @@ pub(crate) fn frobnicate() {}
 }
 
 #[test]
+fn doctest_comment_to_doc() {
+    check_doc_test(
+        "comment_to_doc",
+        r#####"
+// Wow what $0a nice function
+// I sure hope this shows up when I hover over it
+"#####,
+        r#####"
+//! Wow what a nice function
+//! I sure hope this shows up when I hover over it
+"#####,
+    )
+}
+
+#[test]
 fn doctest_convert_bool_then_to_if() {
     check_doc_test(
         "convert_bool_then_to_if",
