@@ -43,11 +43,15 @@ const DAYS_PER_WEEK: u64 = 7;
 #[rustc_layout_scalar_valid_range_end(999_999_999)]
 struct Nanoseconds(u32);
 
+impl Nanoseconds {
+    // SAFETY: 0 is within the valid range
+    const ZERO: Self = unsafe { Nanoseconds(0) };
+}
+
 impl Default for Nanoseconds {
     #[inline]
     fn default() -> Self {
-        // SAFETY: 0 is within the valid range
-        unsafe { Nanoseconds(0) }
+        Self::ZERO
     }
 }
 
@@ -236,7 +240,7 @@ impl Duration {
     #[inline]
     #[rustc_const_stable(feature = "duration_consts", since = "1.32.0")]
     pub const fn from_secs(secs: u64) -> Duration {
-        Duration::new(secs, 0)
+        Duration { secs, nanos: Nanoseconds::ZERO }
     }
 
     /// Creates a new `Duration` from the specified number of milliseconds.
