@@ -128,7 +128,6 @@ run-make/issue-85401-static-mir/Makefile
 run-make/issue-85441/Makefile
 run-make/issue-88756-default-output/Makefile
 run-make/issue-97463-abi-param-passing/Makefile
-run-make/issue64319/Makefile
 run-make/jobserver-error/Makefile
 run-make/libs-through-symlinks/Makefile
 run-make/libtest-json/Makefile
