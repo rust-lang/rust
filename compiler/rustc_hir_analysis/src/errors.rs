@@ -1382,9 +1382,7 @@ pub(crate) struct CrossCrateTraitsDefined {
     pub traits: String,
 }
 
-// FIXME(fmease): Deduplicate:
-
-#[derive(Diagnostic)]
+#[derive(Diagnostic, LintDiagnostic)]
 #[diag(hir_analysis_ty_param_first_local, code = E0210)]
 #[note]
 pub(crate) struct TyParamFirstLocal<'tcx> {
@@ -1397,35 +1395,10 @@ pub(crate) struct TyParamFirstLocal<'tcx> {
     pub local_type: Ty<'tcx>,
 }
 
-#[derive(LintDiagnostic)]
-#[diag(hir_analysis_ty_param_first_local, code = E0210)]
-#[note]
-pub(crate) struct TyParamFirstLocalLint<'tcx> {
-    #[primary_span]
-    #[label]
-    pub span: Span,
-    #[note(hir_analysis_case_note)]
-    pub note: (),
-    pub param: Symbol,
-    pub local_type: Ty<'tcx>,
-}
-
-#[derive(Diagnostic)]
+#[derive(Diagnostic, LintDiagnostic)]
 #[diag(hir_analysis_ty_param_some, code = E0210)]
 #[note]
 pub(crate) struct TyParamSome {
-    #[primary_span]
-    #[label]
-    pub span: Span,
-    #[note(hir_analysis_only_note)]
-    pub note: (),
-    pub param: Symbol,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(hir_analysis_ty_param_some, code = E0210)]
-#[note]
-pub(crate) struct TyParamSomeLint {
     #[primary_span]
     #[label]
     pub span: Span,

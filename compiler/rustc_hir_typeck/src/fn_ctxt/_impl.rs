@@ -1151,7 +1151,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.tcx.emit_node_lint(
                         SELF_CONSTRUCTOR_FROM_OUTER_ITEM,
                         hir_id,
-                        errors::SelfCtorFromOuterItemLint {
+                        errors::SelfCtorFromOuterItem {
                             span: path_span,
                             impl_span: tcx.def_span(impl_def_id),
                             sugg,

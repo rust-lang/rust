@@ -621,16 +621,9 @@ pub(crate) struct ReprIdent {
     pub span: Span,
 }
 
-#[derive(Diagnostic)]
+#[derive(Diagnostic, LintDiagnostic)]
 #[diag(passes_repr_conflicting, code = E0566)]
 pub(crate) struct ReprConflicting {
-    #[primary_span]
-    pub hint_spans: Vec<Span>,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(passes_repr_conflicting, code = E0566)]
-pub(crate) struct ReprConflictingLint {
     #[primary_span]
     pub spans: Vec<Span>,
 }
