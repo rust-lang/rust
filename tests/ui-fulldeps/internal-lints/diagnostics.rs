@@ -14,7 +14,7 @@ extern crate rustc_session;
 extern crate rustc_span;
 
 use rustc_errors::{
-    Diag, DiagCtxtHandle, DiagInner, DiagMessage, Diagnostic, EmissionGuarantee, Level,
+    Diag, DiagCtxtHandle, DiagInner, DiagMessage, Diagnostic, EmissionGuarantee, Level, MultiSpan,
     LintDiagnostic, SubdiagMessage, SubdiagMessageOp, Subdiagnostic,
 };
 use rustc_macros::{Diagnostic, Subdiagnostic};
@@ -85,6 +85,10 @@ impl<'a> LintDiagnostic<'a, ()> for UntranslatableInLintDiagnostic {
         diag.note("untranslatable diagnostic");
         //~^ ERROR diagnostics should be created using translatable messages
     }
+
+    fn span(&self) -> Option<MultiSpan> {
+        None
+    }
 }
 
 pub struct TranslatableInLintDiagnostic;
@@ -92,6 +96,10 @@ pub struct TranslatableInLintDiagnostic;
 impl<'a> LintDiagnostic<'a, ()> for TranslatableInLintDiagnostic {
     fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, ()>) {
         diag.note(crate::fluent_generated::no_crate_note);
+    }
+
+    fn span(&self) -> Option<MultiSpan> {
+        None
     }
 }
 

@@ -561,7 +561,6 @@ struct LintsGood {}
 #[diag(no_crate_example)]
 struct PrimarySpanOnLint {
     #[primary_span]
-    //~^ ERROR `#[primary_span]` is not a valid attribute
     span: Span,
 }
 
