@@ -121,6 +121,24 @@ impl Backoff {
         self.step.set(self.step.get() + 1);
     }
 
+    /// Backs off using lightweight spinning
+    ///
+    /// Returns `false` if backoff has completed and blocking the thread is advised.
+    #[inline]
+    pub fn try_spin_light(&self) -> bool {
+        if self.step.get() > SPIN_LIMIT {
+            return false;
+        }
+
+        let step = self.step.get().min(SPIN_LIMIT);
+        for _ in 0..step.pow(2) {
+            crate::hint::spin_loop();
+        }
+
+        self.step.set(self.step.get() + 1);
+        true
+    }
+
     /// Backs off using heavyweight spinning.
     ///
     /// This method should be used in blocking loops where parking the thread is not an option.
