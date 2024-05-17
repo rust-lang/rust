@@ -6,7 +6,7 @@ LL | #[cfg(feature = "serde")]
    |
    = note: no expected values for `feature`
    = help: consider adding `serde` as a feature in `Cargo.toml`
-   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
    = note: `#[warn(unexpected_cfgs)]` on by default
 
 warning: unexpected `cfg` condition value: (none)
@@ -17,7 +17,7 @@ LL | #[cfg(feature)]
    |
    = note: no expected values for `feature`
    = help: consider defining some features in `Cargo.toml`
-   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition name: `tokio_unstable`
   --> $DIR/cargo-feature.rs:22:7
@@ -31,7 +31,7 @@ LL | #[cfg(tokio_unstable)]
             [lints.rust]
             unexpected_cfgs = { level = "warn", check-cfg = ['cfg(tokio_unstable)'] }
    = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(tokio_unstable)");` to the top of the `build.rs`
-   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition name: `CONFIG_NVME`
   --> $DIR/cargo-feature.rs:26:7
@@ -44,7 +44,7 @@ LL | #[cfg(CONFIG_NVME = "m")]
             [lints.rust]
             unexpected_cfgs = { level = "warn", check-cfg = ['cfg(CONFIG_NVME, values("m"))'] }
    = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(CONFIG_NVME, values(\"m\"))");` to the top of the `build.rs`
-   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
 
 warning: 4 warnings emitted
 

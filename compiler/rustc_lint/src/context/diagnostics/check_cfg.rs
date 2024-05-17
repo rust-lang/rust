@@ -182,11 +182,12 @@ pub(super) fn unexpected_cfg_name(
             diag.help(format!("or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:\n [lints.rust]\n unexpected_cfgs = {{ level = \"warn\", check-cfg = ['{}'] }}", inst(EscapeQuotes::No)));
             diag.help(format!("or consider adding `println!(\"cargo::rustc-check-cfg={}\");` to the top of the `build.rs`", inst(EscapeQuotes::Yes)));
         }
+        diag.note("see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration");
     } else {
         let inst = inst(EscapeQuotes::No);
         diag.help(format!("to expect this configuration use `--check-cfg={inst}`",));
+        diag.note("see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration");
     }
-    diag.note("see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration");
 }
 
 pub(super) fn unexpected_cfg_value(
@@ -281,11 +282,12 @@ pub(super) fn unexpected_cfg_value(
             diag.help(format!("or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:\n [lints.rust]\n unexpected_cfgs = {{ level = \"warn\", check-cfg = ['{}'] }}", inst(EscapeQuotes::No)));
             diag.help(format!("or consider adding `println!(\"cargo::rustc-check-cfg={}\");` to the top of the `build.rs`", inst(EscapeQuotes::Yes)));
         }
+        diag.note("see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration");
     } else {
         if !is_cfg_a_well_know_name {
             let inst = inst(EscapeQuotes::No);
             diag.help(format!("to expect this configuration use `--check-cfg={inst}`",));
         }
+        diag.note("see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration");
     }
-    diag.note("see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration");
 }
