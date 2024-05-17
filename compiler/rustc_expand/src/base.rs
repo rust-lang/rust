@@ -1,5 +1,6 @@
 use std::default::Default;
 use std::iter;
+use std::path::Component::Prefix;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
@@ -1293,7 +1294,12 @@ pub fn resolve_path(sess: &Session, path: impl Into<PathBuf>, span: Span) -> PRe
         base_path.push(path);
         Ok(base_path)
     } else {
-        Ok(path)
+        // This ensures that Windows verbatim paths are fixed if mixed path separators are used,
+        // which can happen when `concat!` is used to join paths.
+        match path.components().next() {
+            Some(Prefix(prefix)) if prefix.kind().is_verbatim() => Ok(path.components().collect()),
+            _ => Ok(path),
+        }
     }
 }
 
