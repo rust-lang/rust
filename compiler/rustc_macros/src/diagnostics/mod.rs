@@ -70,6 +70,7 @@ pub(super) fn diagnostic_derive(mut s: Structure<'_>) -> TokenStream {
 ///     method: Symbol,
 ///     success_ordering: Symbol,
 ///     fail_ordering: Symbol,
+///     #[primary_span]
 ///     #[label(fail_label)]
 ///     fail_order_arg_span: Span,
 ///     #[label(success_label)]
@@ -91,7 +92,7 @@ pub(super) fn diagnostic_derive(mut s: Structure<'_>) -> TokenStream {
 /// Then, later, to emit the error:
 ///
 /// ```ignore (rust)
-/// cx.emit_span_lint(INVALID_ATOMIC_ORDERING, fail_order_arg_span, AtomicOrderingInvalidLint {
+/// tcx.emit_lint(INVALID_ATOMIC_ORDERING, AtomicOrderingInvalidLint {
 ///     method,
 ///     success_ordering,
 ///     fail_ordering,

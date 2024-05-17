@@ -328,20 +328,13 @@ impl DiagnosticDeriveVariantBuilder {
             // `arg` call will not be generated.
             (Meta::Path(_), "skip_arg") => return Ok(quote! {}),
             (Meta::Path(_), "primary_span") => {
-                match self.kind {
-                    DiagnosticDeriveKind::Diagnostic => {
-                        report_error_if_not_applied_to_span(attr, &info)?;
+                report_error_if_not_applied_to_span(attr, &info)?;
 
-                        return Ok(quote! {
-                            diag.span(#binding);
-                        });
-                    }
-                    DiagnosticDeriveKind::LintDiagnostic => {
-                        throw_invalid_attr!(attr, |diag| {
-                            diag.help("the `primary_span` field attribute is not valid for lint diagnostics")
-                        })
-                    }
-                }
+                return Ok(match self.kind {
+                    DiagnosticDeriveKind::Diagnostic => quote! { diag.span(#binding); },
+                    // Handled separately in `LintDiagnosticDerive::into_tokens`.
+                    DiagnosticDeriveKind::LintDiagnostic => quote! {},
+                });
             }
             (Meta::Path(_), "subdiagnostic") => {
                 return Ok(quote! { diag.subdiagnostic(#binding); });

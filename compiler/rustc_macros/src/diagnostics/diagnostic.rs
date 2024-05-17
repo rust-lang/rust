@@ -3,10 +3,11 @@
 use std::cell::RefCell;
 
 use proc_macro2::TokenStream;
-use quote::quote;
+use quote::{quote, quote_spanned};
 use syn::spanned::Spanned;
 use synstructure::Structure;
 
+use super::utils::FieldInnerTy;
 use crate::diagnostics::diagnostic_builder::DiagnosticDeriveKind;
 use crate::diagnostics::error::{DiagnosticDeriveError, span_err};
 use crate::diagnostics::utils::SetOnce;
@@ -17,15 +18,16 @@ pub(crate) struct DiagnosticDerive<'a> {
 }
 
 impl<'a> DiagnosticDerive<'a> {
+    const KIND: DiagnosticDeriveKind = DiagnosticDeriveKind::Diagnostic;
+
     pub(crate) fn new(structure: Structure<'a>) -> Self {
         Self { structure }
     }
 
     pub(crate) fn into_tokens(self) -> TokenStream {
         let DiagnosticDerive { mut structure } = self;
-        let kind = DiagnosticDeriveKind::Diagnostic;
         let slugs = RefCell::new(Vec::new());
-        let implementation = kind.each_variant(&mut structure, |mut builder, variant| {
+        let implementation = Self::KIND.each_variant(&mut structure, |mut builder, variant| {
             let preamble = builder.preamble(variant);
             let body = builder.body(variant);
 
@@ -101,15 +103,16 @@ pub(crate) struct LintDiagnosticDerive<'a> {
 }
 
 impl<'a> LintDiagnosticDerive<'a> {
+    const KIND: DiagnosticDeriveKind = DiagnosticDeriveKind::LintDiagnostic;
+
     pub(crate) fn new(structure: Structure<'a>) -> Self {
         Self { structure }
     }
 
     pub(crate) fn into_tokens(self) -> TokenStream {
         let LintDiagnosticDerive { mut structure } = self;
-        let kind = DiagnosticDeriveKind::LintDiagnostic;
         let slugs = RefCell::new(Vec::new());
-        let implementation = kind.each_variant(&mut structure, |mut builder, variant| {
+        let implementation = Self::KIND.each_variant(&mut structure, |mut builder, variant| {
             let preamble = builder.preamble(variant);
             let body = builder.body(variant);
 
@@ -151,6 +154,41 @@ impl<'a> LintDiagnosticDerive<'a> {
             }
         });
 
+        let span = Self::KIND.each_variant(&mut structure, |_, variant| {
+            variant
+                .bindings()
+                .iter()
+                .find_map(|binding_info| {
+                    let field = binding_info.ast();
+
+                    field.attrs.iter().find_map(|attr| {
+                        if attr.path().segments.last().unwrap().ident != "primary_span"
+                            || !matches!(attr.meta, syn::Meta::Path(_))
+                        {
+                            return None;
+                        }
+
+                        let ident = &binding_info.binding;
+
+                        // Generate `.clone()` unconditionally as the inner type may
+                        // contain a `MultiSpan` which is not `Copy`.
+                        Some(match FieldInnerTy::from_type(&field.ty) {
+                            FieldInnerTy::Plain(_) | FieldInnerTy::Vec(_) => {
+                                quote_spanned! {field.ty.span()=>
+                                    std::option::Option::Some(#ident.clone().into())
+                                }
+                            }
+                            FieldInnerTy::Option(_) => {
+                                quote_spanned! {field.ty.span()=>
+                                    #ident.clone().into()
+                                }
+                            }
+                        })
+                    })
+                })
+                .unwrap_or_else(|| quote! { std::option::Option::None })
+        });
+
         // FIXME(edition_2024): Fix the `keyword_idents_2024` lint to not trigger here?
         #[allow(keyword_idents_2024)]
         let mut imp = structure.gen_impl(quote! {
@@ -161,6 +199,10 @@ impl<'a> LintDiagnosticDerive<'a> {
                     diag: &'__b mut rustc_errors::Diag<'__a, ()>
                 ) {
                     #implementation;
+                }
+
+                fn span(&self) -> std::option::Option<rustc_errors::MultiSpan> {
+                    #span
                 }
             }
         });
