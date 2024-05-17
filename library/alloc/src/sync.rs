@@ -1520,7 +1520,7 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
         let this = mem::ManuallyDrop::new(this);
         let ptr = Self::as_ptr(&this);
         // Safety: `this` is ManuallyDrop so the allocator will not be double-dropped
-        let alloc = unsafe { ptr::read(Self::allocator(&this)) };
+        let alloc = unsafe { ptr::read(&this.alloc) };
         (ptr, alloc)
     }
 
@@ -2803,7 +2803,7 @@ impl<T: ?Sized, A: Allocator> Weak<T, A> {
         let this = mem::ManuallyDrop::new(self);
         let result = this.as_ptr();
         // Safety: `this` is ManuallyDrop so the allocator will not be double-dropped
-        let alloc = unsafe { ptr::read(Self::allocator(&this)) };
+        let alloc = unsafe { ptr::read(&this.alloc) };
         (result, alloc)
     }
 
