@@ -16,7 +16,7 @@ use rustc_middle::traits::BuiltinImplSource;
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
 use rustc_middle::ty::NormalizesTo;
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_middle::ty::{ToPredicate, TypeVisitableExt};
+use rustc_middle::ty::{TypeVisitableExt, Upcast};
 use rustc_middle::{bug, span_bug};
 use rustc_span::{sym, ErrorGuaranteed, DUMMY_SP};
 
@@ -370,7 +370,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
                 ),
                 term: output.into(),
             })
-            .to_predicate(tcx);
+            .upcast(tcx);
 
         // A built-in `Fn` impl only holds if the output is sized.
         // (FIXME: technically we only need to check this if the type is a fn ptr...)
@@ -452,7 +452,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
                     ty::ProjectionPredicate { projection_term, term }
                 },
             )
-            .to_predicate(tcx);
+            .upcast(tcx);
 
         // A built-in `AsyncFn` impl only holds if the output is sized.
         // (FIXME: technically we only need to check this if the type is a fn ptr...)
@@ -629,7 +629,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
                 projection_term: ty::AliasTerm::new(ecx.tcx(), goal.predicate.def_id(), [self_ty]),
                 term,
             }
-            .to_predicate(tcx),
+            .upcast(tcx),
             // Technically, we need to check that the future type is Sized,
             // but that's already proven by the coroutine being WF.
             [],
@@ -661,7 +661,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
                 projection_term: ty::AliasTerm::new(ecx.tcx(), goal.predicate.def_id(), [self_ty]),
                 term,
             }
-            .to_predicate(tcx),
+            .upcast(tcx),
             // Technically, we need to check that the iterator type is Sized,
             // but that's already proven by the generator being WF.
             [],
@@ -749,7 +749,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
                 ),
                 term,
             }
-            .to_predicate(tcx),
+            .upcast(tcx),
             // Technically, we need to check that the coroutine type is Sized,
             // but that's already proven by the coroutine being WF.
             [],

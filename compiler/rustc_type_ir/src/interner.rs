@@ -79,6 +79,7 @@ pub trait Interner:
     type PlaceholderRegion: PlaceholderLike;
 
     // Predicates
+    type ParamEnv: Copy + Debug + Hash + Eq;
     type Predicate: Predicate<Self>;
     type TraitPredicate: Copy + Debug + Hash + Eq;
     type RegionOutlivesPredicate: Copy + Debug + Hash + Eq;

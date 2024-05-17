@@ -546,7 +546,10 @@ impl<'bccx, 'tcx> ObligationEmittingRelation<'tcx> for NllTypeRelating<'_, 'bccx
         self.type_checker.param_env
     }
 
-    fn register_predicates(&mut self, obligations: impl IntoIterator<Item: ty::ToPredicate<'tcx>>) {
+    fn register_predicates(
+        &mut self,
+        obligations: impl IntoIterator<Item: ty::Upcast<TyCtxt<'tcx>, ty::Predicate<'tcx>>>,
+    ) {
         self.register_obligations(
             obligations
                 .into_iter()

@@ -40,6 +40,7 @@ mod interner;
 mod predicate;
 mod predicate_kind;
 mod region_kind;
+mod upcast;
 
 pub use canonical::*;
 #[cfg(feature = "nightly")]
@@ -54,6 +55,7 @@ pub use predicate_kind::*;
 pub use region_kind::*;
 pub use ty_info::*;
 pub use ty_kind::*;
+pub use upcast::*;
 pub use AliasTyKind::*;
 pub use DynKind::*;
 pub use InferTy::*;

@@ -9,7 +9,7 @@ use rustc_hir::{self as hir, BindingMode, ByRef, Node};
 use rustc_infer::traits;
 use rustc_middle::bug;
 use rustc_middle::mir::{Mutability, Place, PlaceRef, ProjectionElem};
-use rustc_middle::ty::{self, InstanceDef, ToPredicate, Ty, TyCtxt};
+use rustc_middle::ty::{self, InstanceDef, Ty, TyCtxt, Upcast};
 use rustc_middle::{
     hir::place::PlaceBase,
     mir::{self, BindingForm, Local, LocalDecl, LocalInfo, LocalKind, Location},
@@ -1255,7 +1255,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                                 self.infcx.err_ctxt().suggest_derive(
                                     &obligation,
                                     err,
-                                    trait_ref.to_predicate(self.infcx.tcx),
+                                    trait_ref.upcast(self.infcx.tcx),
                                 );
                             }
                             Some(errors) => {

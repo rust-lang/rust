@@ -31,8 +31,8 @@ use rustc_middle::traits::IsConstable;
 use rustc_middle::ty::error::TypeError::{self, Sorts};
 use rustc_middle::ty::{
     self, suggest_arbitrary_trait_bound, suggest_constraining_type_param, AdtKind, GenericArgs,
-    InferTy, IsSuggestable, ToPredicate, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
-    TypeVisitableExt, TypeckResults,
+    InferTy, IsSuggestable, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
+    TypeVisitableExt, TypeckResults, Upcast,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::LocalDefId;
@@ -192,7 +192,7 @@ pub fn suggest_restriction<'tcx, G: EmissionGuarantee>(
             },
             // `fn foo(t: impl Trait)`
             //                       ^ suggest `where <T as Trait>::A: Bound`
-            predicate_constraint(hir_generics, trait_pred.to_predicate(tcx)),
+            predicate_constraint(hir_generics, trait_pred.upcast(tcx)),
         ];
         sugg.extend(ty_spans.into_iter().map(|s| (s, type_param_name.to_string())));
 
@@ -215,7 +215,7 @@ pub fn suggest_restriction<'tcx, G: EmissionGuarantee>(
                 .find(|p| !matches!(p.kind, hir::GenericParamKind::Type { synthetic: true, .. })),
             super_traits,
         ) {
-            (_, None) => predicate_constraint(hir_generics, trait_pred.to_predicate(tcx)),
+            (_, None) => predicate_constraint(hir_generics, trait_pred.upcast(tcx)),
             (None, Some((ident, []))) => (
                 ident.span.shrink_to_hi(),
                 format!(": {}", trait_pred.print_modifiers_and_trait_path()),
@@ -2703,12 +2703,12 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         obligated_types: &mut Vec<Ty<'tcx>>,
         seen_requirements: &mut FxHashSet<DefId>,
     ) where
-        T: ToPredicate<'tcx>,
+        T: Upcast<TyCtxt<'tcx>, ty::Predicate<'tcx>>,
     {
         let mut long_ty_file = None;
 
         let tcx = self.tcx;
-        let predicate = predicate.to_predicate(tcx);
+        let predicate = predicate.upcast(tcx);
         match *cause_code {
             ObligationCauseCode::ExprAssignable
             | ObligationCauseCode::MatchExpressionArm { .. }
@@ -3378,7 +3378,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                             break;
                         }
                         data = derived;
-                        parent_predicate = child_trait_ref.to_predicate(tcx);
+                        parent_predicate = child_trait_ref.upcast(tcx);
                         parent_trait_pred = child_trait_ref;
                     }
                 }
@@ -3392,7 +3392,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     }
                     count += 1;
                     data = &child.derived;
-                    parent_predicate = child_trait_pred.to_predicate(tcx);
+                    parent_predicate = child_trait_pred.upcast(tcx);
                     parent_trait_pred = child_trait_pred;
                 }
                 if count > 0 {

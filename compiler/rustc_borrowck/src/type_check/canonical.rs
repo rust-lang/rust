@@ -4,7 +4,7 @@ use rustc_errors::ErrorGuaranteed;
 use rustc_infer::infer::canonical::Canonical;
 use rustc_middle::bug;
 use rustc_middle::mir::ConstraintCategory;
-use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, Upcast};
 use rustc_span::def_id::DefId;
 use rustc_span::Span;
 use rustc_trait_selection::traits::query::type_op::{self, TypeOpOutput};
@@ -115,7 +115,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
     pub(super) fn prove_predicates(
         &mut self,
-        predicates: impl IntoIterator<Item: ToPredicate<'tcx> + std::fmt::Debug>,
+        predicates: impl IntoIterator<Item: Upcast<TyCtxt<'tcx>, ty::Predicate<'tcx>> + std::fmt::Debug>,
         locations: Locations,
         category: ConstraintCategory<'tcx>,
     ) {
@@ -127,12 +127,12 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     #[instrument(skip(self), level = "debug")]
     pub(super) fn prove_predicate(
         &mut self,
-        predicate: impl ToPredicate<'tcx> + std::fmt::Debug,
+        predicate: impl Upcast<TyCtxt<'tcx>, ty::Predicate<'tcx>> + std::fmt::Debug,
         locations: Locations,
         category: ConstraintCategory<'tcx>,
     ) {
         let param_env = self.param_env;
-        let predicate = predicate.to_predicate(self.tcx());
+        let predicate = predicate.upcast(self.tcx());
         let _: Result<_, ErrorGuaranteed> = self.fully_perform_op(
             locations,
             category,

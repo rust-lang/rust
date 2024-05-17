@@ -132,6 +132,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type InferRegion = ty::RegionVid;
     type PlaceholderRegion = ty::PlaceholderRegion;
 
+    type ParamEnv = ty::ParamEnv<'tcx>;
     type Predicate = Predicate<'tcx>;
     type TraitPredicate = ty::TraitPredicate<'tcx>;
     type RegionOutlivesPredicate = ty::RegionOutlivesPredicate<'tcx>;

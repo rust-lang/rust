@@ -13,7 +13,7 @@ use rustc_middle::traits::BuiltinImplSource;
 use rustc_middle::ty::fast_reject::{SimplifiedType, TreatParams};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::ty::{fast_reject, TypeFoldable};
-use rustc_middle::ty::{ToPredicate, TypeVisitableExt};
+use rustc_middle::ty::{TypeVisitableExt, Upcast};
 use rustc_span::{ErrorGuaranteed, DUMMY_SP};
 use std::fmt::Debug;
 
@@ -286,7 +286,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             return self.forced_ambiguity(MaybeCause::Ambiguity).into_iter().collect();
         }
 
-        let goal =
+        let goal: Goal<'tcx, G> =
             goal.with(self.tcx(), goal.predicate.with_self_ty(self.tcx(), normalized_self_ty));
         // Vars that show up in the rest of the goal substs may have been constrained by
         // normalizing the self type as well, since type variables are not uniquified.
@@ -744,7 +744,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                     ecx,
                     CandidateSource::BuiltinImpl(BuiltinImplSource::Object { vtable_base }),
                     goal,
-                    assumption.to_predicate(tcx),
+                    assumption.upcast(tcx),
                 ));
             });
         }
