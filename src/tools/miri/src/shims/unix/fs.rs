@@ -9,7 +9,6 @@ use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_middle::ty::TyCtxt;
 use rustc_target::abi::Size;
 
 use crate::shims::os_str::bytes_to_os_str;
@@ -34,7 +33,7 @@ impl FileDescription for FileHandle {
         &mut self,
         communicate_allowed: bool,
         bytes: &mut [u8],
-        _tcx: TyCtxt<'tcx>,
+        _ecx: &mut MiriInterpCx<'_, 'tcx>,
     ) -> InterpResult<'tcx, io::Result<usize>> {
         assert!(communicate_allowed, "isolation should have prevented even opening a file");
         Ok(self.file.read(bytes))
@@ -44,7 +43,7 @@ impl FileDescription for FileHandle {
         &mut self,
         communicate_allowed: bool,
         bytes: &[u8],
-        _tcx: TyCtxt<'tcx>,
+        _ecx: &mut MiriInterpCx<'_, 'tcx>,
     ) -> InterpResult<'tcx, io::Result<usize>> {
         assert!(communicate_allowed, "isolation should have prevented even opening a file");
         Ok(self.file.write(bytes))
