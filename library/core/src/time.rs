@@ -260,7 +260,13 @@ impl Duration {
     #[inline]
     #[rustc_const_stable(feature = "duration_consts", since = "1.32.0")]
     pub const fn from_millis(millis: u64) -> Duration {
-        Duration::new(millis / MILLIS_PER_SEC, ((millis % MILLIS_PER_SEC) as u32) * NANOS_PER_MILLI)
+        let secs = millis / MILLIS_PER_SEC;
+        let subsec_millis = (millis % MILLIS_PER_SEC) as u32;
+        // SAFETY: (x % 1_000) * 1_000_000 < 1_000_000_000
+        //         => x % 1_000 < 1_000
+        let subsec_nanos = unsafe { Nanoseconds(subsec_millis * NANOS_PER_MILLI) };
+
+        Duration { secs, nanos: subsec_nanos }
     }
 
     /// Creates a new `Duration` from the specified number of microseconds.
@@ -280,7 +286,13 @@ impl Duration {
     #[inline]
     #[rustc_const_stable(feature = "duration_consts", since = "1.32.0")]
     pub const fn from_micros(micros: u64) -> Duration {
-        Duration::new(micros / MICROS_PER_SEC, ((micros % MICROS_PER_SEC) as u32) * NANOS_PER_MICRO)
+        let secs = micros / MICROS_PER_SEC;
+        let subsec_micros = (micros % MICROS_PER_SEC) as u32;
+        // SAFETY: (x % 1_000_000) * 1_000 < 1_000_000_000
+        //         => x % 1_000_000 < 1_000_000
+        let subsec_nanos = unsafe { Nanoseconds(subsec_micros * NANOS_PER_MICRO) };
+
+        Duration { secs, nanos: subsec_nanos }
     }
 
     /// Creates a new `Duration` from the specified number of nanoseconds.
@@ -305,7 +317,13 @@ impl Duration {
     #[inline]
     #[rustc_const_stable(feature = "duration_consts", since = "1.32.0")]
     pub const fn from_nanos(nanos: u64) -> Duration {
-        Duration::new(nanos / (NANOS_PER_SEC as u64), (nanos % (NANOS_PER_SEC as u64)) as u32)
+        const NANOS_PER_SEC: u64 = self::NANOS_PER_SEC as u64;
+        let secs = nanos / NANOS_PER_SEC;
+        let subsec_nanos = (nanos % NANOS_PER_SEC) as u32;
+        // SAFETY: x % 1_000_000_000 < 1_000_000_000
+        let subsec_nanos = unsafe { Nanoseconds(subsec_nanos) };
+
+        Duration { secs, nanos: subsec_nanos }
     }
 
     /// Creates a new `Duration` from the specified number of weeks.
