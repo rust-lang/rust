@@ -3,7 +3,6 @@ use crate::traits::specialization_graph;
 use super::assembly::structural_traits::AsyncCallableRelevantTypes;
 use super::assembly::{self, structural_traits, Candidate};
 use super::{EvalCtxt, GoalSource};
-use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::LangItem;
 use rustc_infer::traits::query::NoSolution;
@@ -54,23 +53,15 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         &mut self,
         goal: Goal<'tcx, NormalizesTo<'tcx>>,
     ) -> QueryResult<'tcx> {
-        let def_id = goal.predicate.def_id();
-        match self.tcx().def_kind(def_id) {
-            DefKind::AssocTy | DefKind::AssocConst => {
-                match self.tcx().associated_item(def_id).container {
-                    ty::AssocItemContainer::TraitContainer => {
-                        let candidates = self.assemble_and_evaluate_candidates(goal);
-                        self.merge_candidates(candidates)
-                    }
-                    ty::AssocItemContainer::ImplContainer => {
-                        self.normalize_inherent_associated_type(goal)
-                    }
-                }
+        match goal.predicate.alias.kind(self.tcx()) {
+            ty::AliasTermKind::ProjectionTy | ty::AliasTermKind::ProjectionConst => {
+                let candidates = self.assemble_and_evaluate_candidates(goal);
+                self.merge_candidates(candidates)
             }
-            DefKind::AnonConst => self.normalize_anon_const(goal),
-            DefKind::TyAlias => self.normalize_weak_type(goal),
-            DefKind::OpaqueTy => self.normalize_opaque_type(goal),
-            kind => bug!("unknown DefKind {} in normalizes-to goal: {goal:#?}", kind.descr(def_id)),
+            ty::AliasTermKind::InherentTy => self.normalize_inherent_associated_type(goal),
+            ty::AliasTermKind::OpaqueTy => self.normalize_opaque_type(goal),
+            ty::AliasTermKind::WeakTy => self.normalize_weak_type(goal),
+            ty::AliasTermKind::UnevaluatedConst => self.normalize_anon_const(goal),
         }
     }
 
