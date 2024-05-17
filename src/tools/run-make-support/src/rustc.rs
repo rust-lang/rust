@@ -64,6 +64,12 @@ impl Rustc {
         self
     }
 
+    /// Specify a specific optimization level.
+    pub fn opt_level(&mut self, option: &str) -> &mut Self {
+        self.cmd.arg(format!("-Copt-level={option}"));
+        self
+    }
+
     /// Specify type(s) of output files to generate.
     pub fn emit(&mut self, kinds: &str) -> &mut Self {
         self.cmd.arg(format!("--emit={kinds}"));
