@@ -966,7 +966,7 @@ pub struct TypeAndMut<I: Interner> {
 pub struct FnSig<I: Interner> {
     pub inputs_and_output: I::Tys,
     pub c_variadic: bool,
-    pub unsafety: I::Unsafety,
+    pub safety: I::Safety,
     pub abi: I::Abi,
 }
 
@@ -995,9 +995,9 @@ impl<I: Interner> DebugWithInfcx<I> for FnSig<I> {
         f: &mut fmt::Formatter<'_>,
     ) -> fmt::Result {
         let sig = this.data;
-        let FnSig { inputs_and_output: _, c_variadic, unsafety, abi } = sig;
+        let FnSig { inputs_and_output: _, c_variadic, safety, abi } = sig;
 
-        write!(f, "{}", unsafety.prefix_str())?;
+        write!(f, "{}", safety.prefix_str())?;
         if !abi.is_rust() {
             write!(f, "extern \"{abi:?}\" ")?;
         }

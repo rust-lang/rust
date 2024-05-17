@@ -87,7 +87,7 @@ pub(crate) fn synthesize_blanket_impls(
                 attrs: Default::default(),
                 item_id: clean::ItemId::Blanket { impl_id: impl_def_id, for_: item_def_id },
                 kind: Box::new(clean::ImplItem(Box::new(clean::Impl {
-                    unsafety: hir::Unsafety::Normal,
+                    safety: hir::Safety::Safe,
                     generics: clean_ty_generics(
                         cx,
                         tcx.generics_of(impl_def_id),

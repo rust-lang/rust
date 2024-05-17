@@ -915,8 +915,8 @@ pub enum Mutability {
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Safety {
+    Safe,
     Unsafe,
-    Normal,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]

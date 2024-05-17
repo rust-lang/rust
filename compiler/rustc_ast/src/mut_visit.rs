@@ -499,8 +499,8 @@ pub fn noop_visit_ty<T: MutVisitor>(ty: &mut P<Ty>, vis: &mut T) {
             vis.visit_mt(mt);
         }
         TyKind::BareFn(bft) => {
-            let BareFnTy { unsafety, ext: _, generic_params, decl, decl_span } = bft.deref_mut();
-            visit_unsafety(unsafety, vis);
+            let BareFnTy { safety, ext: _, generic_params, decl, decl_span } = bft.deref_mut();
+            visit_safety(safety, vis);
             generic_params.flat_map_in_place(|param| vis.flat_map_generic_param(param));
             vis.visit_fn_decl(decl);
             vis.visit_span(decl_span);
@@ -543,8 +543,8 @@ pub fn noop_visit_ty<T: MutVisitor>(ty: &mut P<Ty>, vis: &mut T) {
 }
 
 fn noop_visit_foreign_mod<T: MutVisitor>(foreign_mod: &mut ForeignMod, vis: &mut T) {
-    let ForeignMod { unsafety, abi: _, items } = foreign_mod;
-    visit_unsafety(unsafety, vis);
+    let ForeignMod { safety, abi: _, items } = foreign_mod;
+    visit_safety(safety, vis);
     items.flat_map_in_place(|item| vis.flat_map_foreign_item(item));
 }
 
@@ -859,10 +859,10 @@ fn visit_defaultness<T: MutVisitor>(defaultness: &mut Defaultness, vis: &mut T) 
 }
 
 // No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
-fn visit_unsafety<T: MutVisitor>(unsafety: &mut Unsafe, vis: &mut T) {
-    match unsafety {
-        Unsafe::Yes(span) => vis.visit_span(span),
-        Unsafe::No => {}
+fn visit_safety<T: MutVisitor>(safety: &mut Safety, vis: &mut T) {
+    match safety {
+        Safety::Unsafe(span) => vis.visit_span(span),
+        Safety::Default => {}
     }
 }
 
@@ -1092,8 +1092,8 @@ impl NoopVisitItemKind for ItemKind {
                 vis.visit_generics(generics);
                 visit_opt(body, |body| vis.visit_block(body));
             }
-            ItemKind::Mod(unsafety, mod_kind) => {
-                visit_unsafety(unsafety, vis);
+            ItemKind::Mod(safety, mod_kind) => {
+                visit_safety(safety, vis);
                 match mod_kind {
                     ModKind::Loaded(items, _inline, ModSpans { inner_span, inject_use_span }) => {
                         vis.visit_span(inner_span);
@@ -1130,7 +1130,7 @@ impl NoopVisitItemKind for ItemKind {
             }
             ItemKind::Impl(box Impl {
                 defaultness,
-                unsafety,
+                safety,
                 generics,
                 constness,
                 polarity,
@@ -1139,7 +1139,7 @@ impl NoopVisitItemKind for ItemKind {
                 items,
             }) => {
                 visit_defaultness(defaultness, vis);
-                visit_unsafety(unsafety, vis);
+                visit_safety(safety, vis);
                 vis.visit_generics(generics);
                 visit_constness(constness, vis);
                 visit_polarity(polarity, vis);
@@ -1147,8 +1147,8 @@ impl NoopVisitItemKind for ItemKind {
                 vis.visit_ty(self_ty);
                 items.flat_map_in_place(|item| vis.flat_map_impl_item(item));
             }
-            ItemKind::Trait(box Trait { unsafety, is_auto: _, generics, bounds, items }) => {
-                visit_unsafety(unsafety, vis);
+            ItemKind::Trait(box Trait { safety, is_auto: _, generics, bounds, items }) => {
+                visit_safety(safety, vis);
                 vis.visit_generics(generics);
                 visit_bounds(bounds, vis);
                 items.flat_map_in_place(|item| vis.flat_map_trait_item(item));
@@ -1254,10 +1254,10 @@ fn visit_const_item<T: MutVisitor>(
 }
 
 fn noop_visit_fn_header<T: MutVisitor>(header: &mut FnHeader, vis: &mut T) {
-    let FnHeader { unsafety, coroutine_kind, constness, ext: _ } = header;
+    let FnHeader { safety, coroutine_kind, constness, ext: _ } = header;
     visit_constness(constness, vis);
     coroutine_kind.as_mut().map(|coroutine_kind| vis.visit_coroutine_kind(coroutine_kind));
-    visit_unsafety(unsafety, vis);
+    visit_safety(safety, vis);
 }
 
 pub fn noop_visit_crate<T: MutVisitor>(krate: &mut Crate, vis: &mut T) {

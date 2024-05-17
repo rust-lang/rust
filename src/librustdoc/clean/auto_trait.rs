@@ -119,7 +119,7 @@ fn synthesize_auto_trait_impl<'tcx>(
         attrs: Default::default(),
         item_id: clean::ItemId::Auto { trait_: trait_def_id, for_: item_def_id },
         kind: Box::new(clean::ImplItem(Box::new(clean::Impl {
-            unsafety: hir::Unsafety::Normal,
+            safety: hir::Safety::Safe,
             generics,
             trait_: Some(clean_trait_ref_with_bindings(cx, trait_ref, ThinVec::new())),
             for_: clean_middle_ty(ty::Binder::dummy(ty), cx, None, None),

@@ -89,7 +89,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         [Ty::new_tup(tcx, sig.inputs())],
                         sig.output(),
                         sig.c_variadic,
-                        sig.unsafety,
+                        sig.safety,
                         sig.abi,
                     )
                 });
@@ -238,7 +238,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     ],
                                     Ty::new_tup(tcx, &[bound_yield_ty, bound_return_ty]),
                                     sig.c_variadic,
-                                    sig.unsafety,
+                                    sig.safety,
                                     sig.abi,
                                 )
                             }),
@@ -281,7 +281,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     liberated_sig.inputs().iter().copied(),
                     coroutine_output_ty,
                     liberated_sig.c_variadic,
-                    liberated_sig.unsafety,
+                    liberated_sig.safety,
                     liberated_sig.abi,
                 );
 
@@ -493,7 +493,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             input_tys,
             ret_param_ty,
             false,
-            hir::Unsafety::Normal,
+            hir::Safety::Safe,
             Abi::Rust,
         ));
 
@@ -605,7 +605,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 sig.inputs().iter().cloned(),
                 sig.output(),
                 sig.c_variadic,
-                hir::Unsafety::Normal,
+                hir::Safety::Safe,
                 Abi::RustCall,
             )
         });
@@ -743,7 +743,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 inputs,
                 supplied_output_ty,
                 expected_sigs.liberated_sig.c_variadic,
-                hir::Unsafety::Normal,
+                hir::Safety::Safe,
                 Abi::RustCall,
             );
 
@@ -820,7 +820,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 supplied_arguments,
                 supplied_return,
                 decl.c_variadic,
-                hir::Unsafety::Normal,
+                hir::Safety::Safe,
                 Abi::RustCall,
             ),
             bound_vars,
@@ -984,7 +984,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             supplied_arguments,
             err_ty,
             decl.c_variadic,
-            hir::Unsafety::Normal,
+            hir::Safety::Safe,
             Abi::RustCall,
         ));
 

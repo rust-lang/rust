@@ -15,7 +15,7 @@ use rustc_macros::{Decodable, Encodable, HashStable};
 pub struct TraitDef {
     pub def_id: DefId,
 
-    pub unsafety: hir::Unsafety,
+    pub safety: hir::Safety,
 
     /// If `true`, then this trait had the `#[rustc_paren_sugar]`
     /// attribute, indicating that it should be used with `Foo()`

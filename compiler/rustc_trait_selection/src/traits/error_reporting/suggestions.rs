@@ -1897,7 +1897,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         *inputs,
                         infcx.next_ty_var(DUMMY_SP),
                         false,
-                        hir::Unsafety::Normal,
+                        hir::Safety::Safe,
                         abi::Abi::Rust,
                     )
                 }
@@ -1905,7 +1905,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     [inputs],
                     infcx.next_ty_var(DUMMY_SP),
                     false,
-                    hir::Unsafety::Normal,
+                    hir::Safety::Safe,
                     abi::Abi::Rust,
                 ),
             };
@@ -3925,7 +3925,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             && let fn_sig @ ty::FnSig {
                 abi: abi::Abi::Rust,
                 c_variadic: false,
-                unsafety: hir::Unsafety::Normal,
+                safety: hir::Safety::Safe,
                 ..
             } = fn_ty.fn_sig(tcx).skip_binder()
 

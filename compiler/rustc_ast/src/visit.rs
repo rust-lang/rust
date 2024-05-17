@@ -366,7 +366,7 @@ impl WalkItemKind for ItemKind {
             }
             ItemKind::Impl(box Impl {
                 defaultness: _,
-                unsafety: _,
+                safety: _,
                 generics,
                 constness: _,
                 polarity: _,
@@ -384,7 +384,7 @@ impl WalkItemKind for ItemKind {
                 try_visit!(visitor.visit_generics(generics));
                 try_visit!(visitor.visit_variant_data(struct_definition));
             }
-            ItemKind::Trait(box Trait { unsafety: _, is_auto: _, generics, bounds, items }) => {
+            ItemKind::Trait(box Trait { safety: _, is_auto: _, generics, bounds, items }) => {
                 try_visit!(visitor.visit_generics(generics));
                 walk_list!(visitor, visit_param_bound, bounds, BoundKind::SuperTraits);
                 walk_list!(visitor, visit_assoc_item, items, AssocCtxt::Trait);

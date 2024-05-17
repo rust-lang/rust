@@ -2604,7 +2604,7 @@ impl PrimTy {
 
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub struct BareFnTy<'hir> {
-    pub unsafety: Unsafety,
+    pub safety: Safety,
     pub abi: Abi,
     pub generic_params: &'hir [GenericParam<'hir>],
     pub decl: &'hir FnDecl<'hir>,
@@ -3172,9 +3172,9 @@ impl<'hir> Item<'hir> {
             ItemKind::Union(data, gen), (data, gen);
 
         expect_trait,
-            (IsAuto, Unsafety, &'hir Generics<'hir>, GenericBounds<'hir>, &'hir [TraitItemRef]),
-            ItemKind::Trait(is_auto, unsafety, gen, bounds, items),
-            (*is_auto, *unsafety, gen, bounds, items);
+            (IsAuto, Safety, &'hir Generics<'hir>, GenericBounds<'hir>, &'hir [TraitItemRef]),
+            ItemKind::Trait(is_auto, safety, gen, bounds, items),
+            (*is_auto, *safety, gen, bounds, items);
 
         expect_trait_alias, (&'hir Generics<'hir>, GenericBounds<'hir>),
             ItemKind::TraitAlias(gen, bounds), (gen, bounds);
@@ -3185,25 +3185,25 @@ impl<'hir> Item<'hir> {
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 #[derive(Encodable, Decodable, HashStable_Generic)]
-pub enum Unsafety {
+pub enum Safety {
     Unsafe,
-    Normal,
+    Safe,
 }
 
-impl Unsafety {
+impl Safety {
     pub fn prefix_str(self) -> &'static str {
         match self {
             Self::Unsafe => "unsafe ",
-            Self::Normal => "",
+            Self::Safe => "",
         }
     }
 }
 
-impl fmt::Display for Unsafety {
+impl fmt::Display for Safety {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(match *self {
             Self::Unsafe => "unsafe",
-            Self::Normal => "normal",
+            Self::Safe => "safe",
         })
     }
 }
@@ -3225,7 +3225,7 @@ impl fmt::Display for Constness {
 
 #[derive(Copy, Clone, Debug, HashStable_Generic)]
 pub struct FnHeader {
-    pub unsafety: Unsafety,
+    pub safety: Safety,
     pub constness: Constness,
     pub asyncness: IsAsync,
     pub abi: Abi,
@@ -3241,7 +3241,7 @@ impl FnHeader {
     }
 
     pub fn is_unsafe(&self) -> bool {
-        matches!(&self.unsafety, Unsafety::Unsafe)
+        matches!(&self.safety, Safety::Unsafe)
     }
 }
 
@@ -3284,7 +3284,7 @@ pub enum ItemKind<'hir> {
     /// A union definition, e.g., `union Foo<A, B> {x: A, y: B}`.
     Union(VariantData<'hir>, &'hir Generics<'hir>),
     /// A trait definition.
-    Trait(IsAuto, Unsafety, &'hir Generics<'hir>, GenericBounds<'hir>, &'hir [TraitItemRef]),
+    Trait(IsAuto, Safety, &'hir Generics<'hir>, GenericBounds<'hir>, &'hir [TraitItemRef]),
     /// A trait alias.
     TraitAlias(&'hir Generics<'hir>, GenericBounds<'hir>),
 
@@ -3294,7 +3294,7 @@ pub enum ItemKind<'hir> {
 
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub struct Impl<'hir> {
-    pub unsafety: Unsafety,
+    pub safety: Safety,
     pub polarity: ImplPolarity,
     pub defaultness: Defaultness,
     // We do not put a `Span` in `Defaultness` because it breaks foreign crate metadata

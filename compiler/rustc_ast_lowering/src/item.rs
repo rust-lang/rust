@@ -323,7 +323,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 hir::ItemKind::Union(vdata, generics)
             }
             ItemKind::Impl(box Impl {
-                unsafety,
+                safety,
                 polarity,
                 defaultness,
                 constness,
@@ -388,7 +388,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     ImplPolarity::Negative(s) => ImplPolarity::Negative(self.lower_span(*s)),
                 };
                 hir::ItemKind::Impl(self.arena.alloc(hir::Impl {
-                    unsafety: self.lower_unsafety(*unsafety),
+                    safety: self.lower_safety(*safety),
                     polarity,
                     defaultness,
                     defaultness_span,
@@ -398,14 +398,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     items: new_impl_items,
                 }))
             }
-            ItemKind::Trait(box Trait { is_auto, unsafety, generics, bounds, items }) => {
+            ItemKind::Trait(box Trait { is_auto, safety, generics, bounds, items }) => {
                 // FIXME(const_trait_impl, effects, fee1-dead) this should be simplified if possible
                 let constness = attrs
                     .unwrap_or(&[])
                     .iter()
                     .find(|x| x.has_name(sym::const_trait))
                     .map_or(Const::No, |x| Const::Yes(x.span));
-                let (generics, (unsafety, items, bounds)) = self.lower_generics(
+                let (generics, (safety, items, bounds)) = self.lower_generics(
                     generics,
                     constness,
                     id,
@@ -418,11 +418,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         let items = this.arena.alloc_from_iter(
                             items.iter().map(|item| this.lower_trait_item_ref(item)),
                         );
-                        let unsafety = this.lower_unsafety(*unsafety);
-                        (unsafety, items, bounds)
+                        let safety = this.lower_safety(*safety);
+                        (safety, items, bounds)
                     },
                 );
-                hir::ItemKind::Trait(*is_auto, unsafety, generics, bounds, items)
+                hir::ItemKind::Trait(*is_auto, safety, generics, bounds, items)
             }
             ItemKind::TraitAlias(generics, bounds) => {
                 let (generics, bounds) = self.lower_generics(
@@ -1360,7 +1360,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             hir::IsAsync::NotAsync
         };
         hir::FnHeader {
-            unsafety: self.lower_unsafety(h.unsafety),
+            safety: self.lower_safety(h.safety),
             asyncness: asyncness,
             constness: self.lower_constness(h.constness),
             abi: self.lower_extern(h.ext),
@@ -1410,10 +1410,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
-    pub(super) fn lower_unsafety(&mut self, u: Unsafe) -> hir::Unsafety {
-        match u {
-            Unsafe::Yes(_) => hir::Unsafety::Unsafe,
-            Unsafe::No => hir::Unsafety::Normal,
+    pub(super) fn lower_safety(&mut self, s: Safety) -> hir::Safety {
+        match s {
+            Safety::Unsafe(_) => hir::Safety::Unsafe,
+            Safety::Default => hir::Safety::Safe,
         }
     }
 

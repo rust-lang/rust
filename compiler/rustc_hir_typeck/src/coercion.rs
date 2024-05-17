@@ -788,8 +788,8 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             let outer_universe = self.infcx.universe();
 
             let result = if let ty::FnPtr(fn_ty_b) = b.kind()
-                && let (hir::Unsafety::Normal, hir::Unsafety::Unsafe) =
-                    (fn_ty_a.unsafety(), fn_ty_b.unsafety())
+                && let (hir::Safety::Safe, hir::Safety::Unsafe) =
+                    (fn_ty_a.safety(), fn_ty_b.safety())
             {
                 let unsafe_a = self.tcx.safe_to_unsafe_fn_ty(fn_ty_a);
                 self.unify_and(unsafe_a, b, to_unsafe)
@@ -851,7 +851,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
                     // Safe `#[target_feature]` functions are not assignable to safe fn pointers (RFC 2396).
 
-                    if b_sig.unsafety() == hir::Unsafety::Normal
+                    if b_sig.safety() == hir::Safety::Safe
                         && !self.tcx.codegen_fn_attrs(def_id).target_features.is_empty()
                     {
                         return Err(TypeError::TargetFeatureCast(def_id));
@@ -922,14 +922,14 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 // or
                 //     `unsafe fn(arg0,arg1,...) -> _`
                 let closure_sig = args_a.as_closure().sig();
-                let unsafety = fn_ty.unsafety();
+                let safety = fn_ty.safety();
                 let pointer_ty =
-                    Ty::new_fn_ptr(self.tcx, self.tcx.signature_unclosure(closure_sig, unsafety));
+                    Ty::new_fn_ptr(self.tcx, self.tcx.signature_unclosure(closure_sig, safety));
                 debug!("coerce_closure_to_fn(a={:?}, b={:?}, pty={:?})", a, b, pointer_ty);
                 self.unify_and(
                     pointer_ty,
                     b,
-                    simple(Adjust::Pointer(PointerCoercion::ClosureFnPointer(unsafety))),
+                    simple(Adjust::Pointer(PointerCoercion::ClosureFnPointer(safety))),
                 )
             }
             _ => self.unify_and(a, b, identity),
@@ -1126,27 +1126,25 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     (ty::Closure(_, args), ty::FnDef(..)) => {
                         let b_sig = new_ty.fn_sig(self.tcx);
                         let a_sig =
-                            self.tcx.signature_unclosure(args.as_closure().sig(), b_sig.unsafety());
+                            self.tcx.signature_unclosure(args.as_closure().sig(), b_sig.safety());
                         (Some(a_sig), Some(b_sig))
                     }
                     (ty::FnDef(..), ty::Closure(_, args)) => {
                         let a_sig = prev_ty.fn_sig(self.tcx);
                         let b_sig =
-                            self.tcx.signature_unclosure(args.as_closure().sig(), a_sig.unsafety());
+                            self.tcx.signature_unclosure(args.as_closure().sig(), a_sig.safety());
                         (Some(a_sig), Some(b_sig))
                     }
-                    (ty::Closure(_, args_a), ty::Closure(_, args_b)) => {
-                        (
-                            Some(self.tcx.signature_unclosure(
-                                args_a.as_closure().sig(),
-                                hir::Unsafety::Normal,
-                            )),
-                            Some(self.tcx.signature_unclosure(
-                                args_b.as_closure().sig(),
-                                hir::Unsafety::Normal,
-                            )),
-                        )
-                    }
+                    (ty::Closure(_, args_a), ty::Closure(_, args_b)) => (
+                        Some(
+                            self.tcx
+                                .signature_unclosure(args_a.as_closure().sig(), hir::Safety::Safe),
+                        ),
+                        Some(
+                            self.tcx
+                                .signature_unclosure(args_b.as_closure().sig(), hir::Safety::Safe),
+                        ),
+                    ),
                     _ => (None, None),
                 }
             }
@@ -1168,14 +1166,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let fn_ptr = Ty::new_fn_ptr(self.tcx, sig);
             let prev_adjustment = match prev_ty.kind() {
                 ty::Closure(..) => {
-                    Adjust::Pointer(PointerCoercion::ClosureFnPointer(a_sig.unsafety()))
+                    Adjust::Pointer(PointerCoercion::ClosureFnPointer(a_sig.safety()))
                 }
                 ty::FnDef(..) => Adjust::Pointer(PointerCoercion::ReifyFnPointer),
                 _ => span_bug!(cause.span, "should not try to coerce a {prev_ty} to a fn pointer"),
             };
             let next_adjustment = match new_ty.kind() {
                 ty::Closure(..) => {
-                    Adjust::Pointer(PointerCoercion::ClosureFnPointer(b_sig.unsafety()))
+                    Adjust::Pointer(PointerCoercion::ClosureFnPointer(b_sig.safety()))
                 }
                 ty::FnDef(..) => Adjust::Pointer(PointerCoercion::ReifyFnPointer),
                 _ => span_bug!(new.span, "should not try to coerce a {new_ty} to a fn pointer"),

@@ -521,7 +521,7 @@ impl<'a> AstValidator<'a> {
     fn check_foreign_fn_headerless(
         &self,
         // Deconstruct to ensure exhaustiveness
-        FnHeader { unsafety, coroutine_kind, constness, ext }: FnHeader,
+        FnHeader { safety, coroutine_kind, constness, ext }: FnHeader,
     ) {
         let report_err = |span| {
             self.dcx().emit_err(errors::FnQualifierInExtern {
@@ -529,9 +529,9 @@ impl<'a> AstValidator<'a> {
                 block: self.current_extern_span(),
             });
         };
-        match unsafety {
-            Unsafe::Yes(span) => report_err(span),
-            Unsafe::No => (),
+        match safety {
+            Safety::Unsafe(span) => report_err(span),
+            Safety::Default => (),
         }
         match coroutine_kind {
             Some(knd) => report_err(knd.span()),
@@ -592,7 +592,7 @@ impl<'a> AstValidator<'a> {
             (Some(FnCtxt::Free), Some(header)) => match header.ext {
                 Extern::Explicit(StrLit { symbol_unescaped: sym::C, .. }, _)
                 | Extern::Implicit(_)
-                    if matches!(header.unsafety, Unsafe::Yes(_)) =>
+                    if matches!(header.safety, Safety::Unsafe(_)) =>
                 {
                     return;
                 }
@@ -891,7 +891,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 
         match &item.kind {
             ItemKind::Impl(box Impl {
-                unsafety,
+                safety,
                 polarity,
                 defaultness: _,
                 constness,
@@ -910,7 +910,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         // which isn't allowed. Not a problem for this obscure, obsolete syntax.
                         this.dcx().emit_fatal(errors::ObsoleteAuto { span: item.span });
                     }
-                    if let (&Unsafe::Yes(span), &ImplPolarity::Negative(sp)) = (unsafety, polarity)
+                    if let (&Safety::Unsafe(span), &ImplPolarity::Negative(sp)) = (safety, polarity)
                     {
                         this.dcx().emit_err(errors::UnsafeNegativeImpl {
                             span: sp.to(t.path.span),
@@ -933,7 +933,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 return; // Avoid visiting again.
             }
             ItemKind::Impl(box Impl {
-                unsafety,
+                safety,
                 polarity,
                 defaultness,
                 constness,
@@ -956,7 +956,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         &item.vis,
                         errors::VisibilityNotPermittedNote::IndividualImplItems,
                     );
-                    if let &Unsafe::Yes(span) = unsafety {
+                    if let &Safety::Unsafe(span) = safety {
                         this.dcx().emit_err(errors::InherentImplCannotUnsafe {
                             span: self_ty.span,
                             annotation_span: span,
@@ -1020,13 +1020,13 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 walk_list!(self, visit_attribute, &item.attrs);
                 return; // Avoid visiting again.
             }
-            ItemKind::ForeignMod(ForeignMod { abi, unsafety, .. }) => {
+            ItemKind::ForeignMod(ForeignMod { abi, safety, .. }) => {
                 let old_item = mem::replace(&mut self.extern_mod, Some(item));
                 self.visibility_not_permitted(
                     &item.vis,
                     errors::VisibilityNotPermittedNote::IndividualForeignItems,
                 );
-                if let &Unsafe::Yes(span) = unsafety {
+                if let &Safety::Unsafe(span) = safety {
                     self.dcx().emit_err(errors::UnsafeItem { span, kind: "extern block" });
                 }
                 if abi.is_none() {
@@ -1078,8 +1078,8 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 walk_list!(self, visit_attribute, &item.attrs);
                 return; // Avoid visiting again
             }
-            ItemKind::Mod(unsafety, mod_kind) => {
-                if let &Unsafe::Yes(span) = unsafety {
+            ItemKind::Mod(safety, mod_kind) => {
+                if let &Safety::Unsafe(span) = safety {
                     self.dcx().emit_err(errors::UnsafeItem { span, kind: "module" });
                 }
                 // Ensure that `path` attributes on modules are recorded as used (cf. issue #35584).

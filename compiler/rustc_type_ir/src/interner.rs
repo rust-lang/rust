@@ -58,7 +58,7 @@ pub trait Interner:
     type PolyFnSig: Copy + DebugWithInfcx<Self> + Hash + Eq;
     type AllocId: Copy + Debug + Hash + Eq;
     type Pat: Copy + Debug + Hash + Eq + DebugWithInfcx<Self>;
-    type Unsafety: Unsafety<Self>;
+    type Safety: Safety<Self>;
     type Abi: Abi<Self>;
 
     // Kinds of consts
