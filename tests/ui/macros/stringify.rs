@@ -356,7 +356,7 @@ fn test_item() {
     c1!(item, [ pub extern crate self as std; ], "pub extern crate self as std;");
 
     // ItemKind::Use
-    c1!(item, [ pub use crate::{a, b::c}; ], "pub use crate::{ a, b::c };"); // FIXME
+    c1!(item, [ pub use crate::{a, b::c}; ], "pub use crate::{a, b::c};");
     c1!(item, [ pub use crate::{ e, ff }; ], "pub use crate::{ e, ff };");
     c1!(item, [ pub use A::*; ], "pub use A::*;");
 
@@ -491,7 +491,7 @@ fn test_item() {
     c1!(item, [ mac! {} ], "mac! {}");
     c1!(item, [ mac!(...); ], "mac!(...);");
     c1!(item, [ mac![...]; ], "mac![...];");
-    c1!(item, [ mac! {...} ], "mac! { ... }");
+    c1!(item, [ mac! {...} ], "mac! {...}");
 
     // ItemKind::MacroDef
     c1!(item,
