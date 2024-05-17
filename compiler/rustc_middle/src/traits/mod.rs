@@ -9,7 +9,6 @@ pub mod specialization_graph;
 mod structural_impls;
 pub mod util;
 
-use crate::infer::canonical::Canonical;
 use crate::mir::ConstraintCategory;
 use crate::ty::abstract_const::NotConstEvaluatable;
 use crate::ty::GenericArgsRef;
@@ -32,6 +31,8 @@ use std::borrow::Cow;
 use std::hash::{Hash, Hasher};
 
 pub use self::select::{EvaluationCache, EvaluationResult, OverflowError, SelectionCache};
+// FIXME: Remove this import and import via `solve::`
+pub use rustc_next_trait_solver::solve::BuiltinImplSource;
 
 /// Depending on the stage of compilation, we want projection to be
 /// more or less conservative.
@@ -735,32 +736,6 @@ pub struct ImplSourceUserDefinedData<'tcx, N> {
     pub args: GenericArgsRef<'tcx>,
     pub nested: Vec<N>,
 }
-
-#[derive(Copy, Clone, PartialEq, Eq, TyEncodable, TyDecodable, HashStable, Debug)]
-pub enum BuiltinImplSource {
-    /// Some builtin impl we don't need to differentiate. This should be used
-    /// unless more specific information is necessary.
-    Misc,
-    /// A builtin impl for trait objects.
-    ///
-    /// The vtable is formed by concatenating together the method lists of
-    /// the base object trait and all supertraits, pointers to supertrait vtable will
-    /// be provided when necessary; this is the start of `upcast_trait_ref`'s methods
-    /// in that vtable.
-    Object { vtable_base: usize },
-    /// The vtable is formed by concatenating together the method lists of
-    /// the base object trait and all supertraits, pointers to supertrait vtable will
-    /// be provided when necessary; this is the position of `upcast_trait_ref`'s vtable
-    /// within that vtable.
-    TraitUpcasting { vtable_vptr_slot: Option<usize> },
-    /// Unsizing a tuple like `(A, B, ..., X)` to `(A, B, ..., Y)` if `X` unsizes to `Y`.
-    ///
-    /// This needs to be a separate variant as it is still unstable and we need to emit
-    /// a feature error when using it on stable.
-    TupleUnsizing,
-}
-
-TrivialTypeTraversalImpls! { BuiltinImplSource }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, HashStable, PartialOrd, Ord)]
 pub enum ObjectSafetyViolation {

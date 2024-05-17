@@ -18,7 +18,7 @@ use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::solve::{inspect, QueryResult};
 use rustc_middle::traits::solve::{Certainty, Goal};
 use rustc_middle::traits::ObligationCause;
-use rustc_middle::ty::TypeFoldable;
+use rustc_middle::ty::{TyCtxt, TypeFoldable};
 use rustc_middle::{bug, ty};
 use rustc_span::{Span, DUMMY_SP};
 
@@ -37,7 +37,7 @@ pub struct InspectGoal<'a, 'tcx> {
     orig_values: Vec<ty::GenericArg<'tcx>>,
     goal: Goal<'tcx, ty::Predicate<'tcx>>,
     result: Result<Certainty, NoSolution>,
-    evaluation_kind: inspect::CanonicalGoalEvaluationKind<'tcx>,
+    evaluation_kind: inspect::CanonicalGoalEvaluationKind<TyCtxt<'tcx>>,
     normalizes_to_term_hack: Option<NormalizesToTermHack<'tcx>>,
     source: GoalSource,
 }
@@ -88,16 +88,17 @@ impl<'tcx> NormalizesToTermHack<'tcx> {
 
 pub struct InspectCandidate<'a, 'tcx> {
     goal: &'a InspectGoal<'a, 'tcx>,
-    kind: inspect::ProbeKind<'tcx>,
-    nested_goals: Vec<(GoalSource, inspect::CanonicalState<'tcx, Goal<'tcx, ty::Predicate<'tcx>>>)>,
-    final_state: inspect::CanonicalState<'tcx, ()>,
-    impl_args: Option<inspect::CanonicalState<'tcx, ty::GenericArgsRef<'tcx>>>,
+    kind: inspect::ProbeKind<TyCtxt<'tcx>>,
+    nested_goals:
+        Vec<(GoalSource, inspect::CanonicalState<TyCtxt<'tcx>, Goal<'tcx, ty::Predicate<'tcx>>>)>,
+    final_state: inspect::CanonicalState<TyCtxt<'tcx>, ()>,
+    impl_args: Option<inspect::CanonicalState<TyCtxt<'tcx>, ty::GenericArgsRef<'tcx>>>,
     result: QueryResult<'tcx>,
     shallow_certainty: Certainty,
 }
 
 impl<'a, 'tcx> InspectCandidate<'a, 'tcx> {
-    pub fn kind(&self) -> inspect::ProbeKind<'tcx> {
+    pub fn kind(&self) -> inspect::ProbeKind<TyCtxt<'tcx>> {
         self.kind
     }
 
@@ -280,9 +281,9 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
         candidates: &mut Vec<InspectCandidate<'a, 'tcx>>,
         nested_goals: &mut Vec<(
             GoalSource,
-            inspect::CanonicalState<'tcx, Goal<'tcx, ty::Predicate<'tcx>>>,
+            inspect::CanonicalState<TyCtxt<'tcx>, Goal<'tcx, ty::Predicate<'tcx>>>,
         )>,
-        probe: &inspect::Probe<'tcx>,
+        probe: &inspect::Probe<TyCtxt<'tcx>>,
     ) {
         let mut shallow_certainty = None;
         let mut impl_args = None;
@@ -387,7 +388,7 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
     fn new(
         infcx: &'a InferCtxt<'tcx>,
         depth: usize,
-        root: inspect::GoalEvaluation<'tcx>,
+        root: inspect::GoalEvaluation<TyCtxt<'tcx>>,
         normalizes_to_term_hack: Option<NormalizesToTermHack<'tcx>>,
         source: GoalSource,
     ) -> Self {

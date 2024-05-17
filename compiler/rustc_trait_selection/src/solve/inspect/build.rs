@@ -80,7 +80,7 @@ struct WipGoalEvaluation<'tcx> {
 }
 
 impl<'tcx> WipGoalEvaluation<'tcx> {
-    fn finalize(self) -> inspect::GoalEvaluation<'tcx> {
+    fn finalize(self) -> inspect::GoalEvaluation<TyCtxt<'tcx>> {
         inspect::GoalEvaluation {
             uncanonicalized_goal: self.uncanonicalized_goal,
             kind: match self.kind {
@@ -105,7 +105,7 @@ pub(in crate::solve) enum WipCanonicalGoalEvaluationKind<'tcx> {
     Overflow,
     CycleInStack,
     ProvisionalCacheHit,
-    Interned { revisions: &'tcx [inspect::GoalEvaluationStep<'tcx>] },
+    Interned { revisions: &'tcx [inspect::GoalEvaluationStep<TyCtxt<'tcx>>] },
 }
 
 impl std::fmt::Debug for WipCanonicalGoalEvaluationKind<'_> {
@@ -130,7 +130,7 @@ struct WipCanonicalGoalEvaluation<'tcx> {
 }
 
 impl<'tcx> WipCanonicalGoalEvaluation<'tcx> {
-    fn finalize(self) -> inspect::CanonicalGoalEvaluation<'tcx> {
+    fn finalize(self) -> inspect::CanonicalGoalEvaluation<TyCtxt<'tcx>> {
         assert!(self.revisions.is_empty());
         let kind = match self.kind.unwrap() {
             WipCanonicalGoalEvaluationKind::Overflow => {
@@ -158,7 +158,7 @@ struct WipAddedGoalsEvaluation<'tcx> {
 }
 
 impl<'tcx> WipAddedGoalsEvaluation<'tcx> {
-    fn finalize(self) -> inspect::AddedGoalsEvaluation<'tcx> {
+    fn finalize(self) -> inspect::AddedGoalsEvaluation<TyCtxt<'tcx>> {
         inspect::AddedGoalsEvaluation {
             evaluations: self
                 .evaluations
@@ -209,7 +209,7 @@ impl<'tcx> WipGoalEvaluationStep<'tcx> {
         }
     }
 
-    fn finalize(self) -> inspect::GoalEvaluationStep<'tcx> {
+    fn finalize(self) -> inspect::GoalEvaluationStep<TyCtxt<'tcx>> {
         let evaluation = self.evaluation.finalize();
         match evaluation.kind {
             inspect::ProbeKind::Root { .. } => (),
@@ -223,12 +223,12 @@ impl<'tcx> WipGoalEvaluationStep<'tcx> {
 struct WipProbe<'tcx> {
     initial_num_var_values: usize,
     steps: Vec<WipProbeStep<'tcx>>,
-    kind: Option<inspect::ProbeKind<'tcx>>,
-    final_state: Option<inspect::CanonicalState<'tcx, ()>>,
+    kind: Option<inspect::ProbeKind<TyCtxt<'tcx>>>,
+    final_state: Option<inspect::CanonicalState<TyCtxt<'tcx>, ()>>,
 }
 
 impl<'tcx> WipProbe<'tcx> {
-    fn finalize(self) -> inspect::Probe<'tcx> {
+    fn finalize(self) -> inspect::Probe<TyCtxt<'tcx>> {
         inspect::Probe {
             steps: self.steps.into_iter().map(WipProbeStep::finalize).collect(),
             kind: self.kind.unwrap(),
@@ -239,15 +239,15 @@ impl<'tcx> WipProbe<'tcx> {
 
 #[derive(Eq, PartialEq, Debug)]
 enum WipProbeStep<'tcx> {
-    AddGoal(GoalSource, inspect::CanonicalState<'tcx, Goal<'tcx, ty::Predicate<'tcx>>>),
+    AddGoal(GoalSource, inspect::CanonicalState<TyCtxt<'tcx>, Goal<'tcx, ty::Predicate<'tcx>>>),
     EvaluateGoals(WipAddedGoalsEvaluation<'tcx>),
     NestedProbe(WipProbe<'tcx>),
     MakeCanonicalResponse { shallow_certainty: Certainty },
-    RecordImplArgs { impl_args: inspect::CanonicalState<'tcx, ty::GenericArgsRef<'tcx>> },
+    RecordImplArgs { impl_args: inspect::CanonicalState<TyCtxt<'tcx>, ty::GenericArgsRef<'tcx>> },
 }
 
 impl<'tcx> WipProbeStep<'tcx> {
-    fn finalize(self) -> inspect::ProbeStep<'tcx> {
+    fn finalize(self) -> inspect::ProbeStep<TyCtxt<'tcx>> {
         match self {
             WipProbeStep::AddGoal(source, goal) => inspect::ProbeStep::AddGoal(source, goal),
             WipProbeStep::EvaluateGoals(eval) => inspect::ProbeStep::EvaluateGoals(eval.finalize()),
@@ -281,7 +281,7 @@ impl<'tcx> ProofTreeBuilder<'tcx> {
         nested
     }
 
-    pub fn finalize(self) -> Option<inspect::GoalEvaluation<'tcx>> {
+    pub fn finalize(self) -> Option<inspect::GoalEvaluation<TyCtxt<'tcx>>> {
         match *self.state? {
             DebugSolver::GoalEvaluation(wip_goal_evaluation) => {
                 Some(wip_goal_evaluation.finalize())
@@ -356,7 +356,7 @@ impl<'tcx> ProofTreeBuilder<'tcx> {
     pub fn finalize_evaluation(
         &mut self,
         tcx: TyCtxt<'tcx>,
-    ) -> Option<&'tcx [inspect::GoalEvaluationStep<'tcx>]> {
+    ) -> Option<&'tcx [inspect::GoalEvaluationStep<TyCtxt<'tcx>>]> {
         self.as_mut().map(|this| match this {
             DebugSolver::CanonicalGoalEvaluation(evaluation) => {
                 let revisions = mem::take(&mut evaluation.revisions)
@@ -474,7 +474,7 @@ impl<'tcx> ProofTreeBuilder<'tcx> {
         }
     }
 
-    pub fn probe_kind(&mut self, probe_kind: inspect::ProbeKind<'tcx>) {
+    pub fn probe_kind(&mut self, probe_kind: inspect::ProbeKind<TyCtxt<'tcx>>) {
         match self.as_mut() {
             None => {}
             Some(DebugSolver::GoalEvaluationStep(state)) => {

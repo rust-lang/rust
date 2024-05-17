@@ -1,7 +1,10 @@
+use std::marker::PhantomData;
+
 use super::*;
 
-pub(super) struct ProofTreeFormatter<'a, 'b> {
+pub(super) struct ProofTreeFormatter<'a, 'b, I> {
     f: &'a mut (dyn Write + 'b),
+    _interner: PhantomData<I>,
 }
 
 enum IndentorState {
@@ -36,23 +39,24 @@ impl Write for Indentor<'_, '_> {
     }
 }
 
-impl<'a, 'b> ProofTreeFormatter<'a, 'b> {
+impl<'a, 'b, I: Interner> ProofTreeFormatter<'a, 'b, I> {
     pub(super) fn new(f: &'a mut (dyn Write + 'b)) -> Self {
-        ProofTreeFormatter { f }
+        ProofTreeFormatter { f, _interner: PhantomData }
     }
 
     fn nested<F>(&mut self, func: F) -> std::fmt::Result
     where
-        F: FnOnce(&mut ProofTreeFormatter<'_, '_>) -> std::fmt::Result,
+        F: FnOnce(&mut ProofTreeFormatter<'_, '_, I>) -> std::fmt::Result,
     {
         write!(self.f, " {{")?;
         func(&mut ProofTreeFormatter {
             f: &mut Indentor { f: self.f, state: IndentorState::StartWithNewline },
+            _interner: PhantomData,
         })?;
         writeln!(self.f, "}}")
     }
 
-    pub(super) fn format_goal_evaluation(&mut self, eval: &GoalEvaluation<'_>) -> std::fmt::Result {
+    pub(super) fn format_goal_evaluation(&mut self, eval: &GoalEvaluation<I>) -> std::fmt::Result {
         let goal_text = match eval.kind {
             GoalEvaluationKind::Root { orig_values: _ } => "ROOT GOAL",
             GoalEvaluationKind::Nested => "GOAL",
@@ -63,7 +67,7 @@ impl<'a, 'b> ProofTreeFormatter<'a, 'b> {
 
     pub(super) fn format_canonical_goal_evaluation(
         &mut self,
-        eval: &CanonicalGoalEvaluation<'_>,
+        eval: &CanonicalGoalEvaluation<I>,
     ) -> std::fmt::Result {
         writeln!(self.f, "GOAL: {:?}", eval.goal)?;
 
@@ -89,13 +93,13 @@ impl<'a, 'b> ProofTreeFormatter<'a, 'b> {
 
     pub(super) fn format_evaluation_step(
         &mut self,
-        evaluation_step: &GoalEvaluationStep<'_>,
+        evaluation_step: &GoalEvaluationStep<I>,
     ) -> std::fmt::Result {
         writeln!(self.f, "INSTANTIATED: {:?}", evaluation_step.instantiated_goal)?;
         self.format_probe(&evaluation_step.evaluation)
     }
 
-    pub(super) fn format_probe(&mut self, probe: &Probe<'_>) -> std::fmt::Result {
+    pub(super) fn format_probe(&mut self, probe: &Probe<I>) -> std::fmt::Result {
         match &probe.kind {
             ProbeKind::Root { result } => {
                 write!(self.f, "ROOT RESULT: {result:?}")
@@ -150,7 +154,7 @@ impl<'a, 'b> ProofTreeFormatter<'a, 'b> {
 
     pub(super) fn format_added_goals_evaluation(
         &mut self,
-        added_goals_evaluation: &AddedGoalsEvaluation<'_>,
+        added_goals_evaluation: &AddedGoalsEvaluation<I>,
     ) -> std::fmt::Result {
         writeln!(self.f, "TRY_EVALUATE_ADDED_GOALS: {:?}", added_goals_evaluation.result)?;
 

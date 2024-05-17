@@ -89,19 +89,23 @@ use std::ops::{Bound, Deref};
 #[allow(rustc::usage_of_ty_tykind)]
 impl<'tcx> Interner for TyCtxt<'tcx> {
     type DefId = DefId;
-    type DefiningOpaqueTypes = &'tcx ty::List<LocalDefId>;
-    type PredefinedOpaques = solve::PredefinedOpaques<'tcx>;
     type AdtDef = ty::AdtDef<'tcx>;
+
     type GenericArgs = ty::GenericArgsRef<'tcx>;
     type OwnItemArgs = &'tcx [ty::GenericArg<'tcx>];
     type GenericArg = ty::GenericArg<'tcx>;
-
     type Term = ty::Term<'tcx>;
+
     type Binder<T: TypeVisitable<TyCtxt<'tcx>>> = Binder<'tcx, T>;
     type BoundVars = &'tcx List<ty::BoundVariableKind>;
     type BoundVar = ty::BoundVariableKind;
 
     type CanonicalVars = CanonicalVarInfos<'tcx>;
+    type PredefinedOpaques = solve::PredefinedOpaques<'tcx>;
+    type DefiningOpaqueTypes = &'tcx ty::List<LocalDefId>;
+    type ExternalConstraints = ExternalConstraints<'tcx>;
+    type GoalEvaluationSteps = &'tcx [solve::inspect::GoalEvaluationStep<TyCtxt<'tcx>>];
+
     type Ty = Ty<'tcx>;
     type Tys = &'tcx List<Ty<'tcx>>;
     type FnInputTys = &'tcx [Ty<'tcx>];

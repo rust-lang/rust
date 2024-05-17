@@ -3,7 +3,6 @@ use std::ops::ControlFlow;
 
 use rustc_infer::infer::InferCtxt;
 use rustc_infer::traits::query::NoSolution;
-use rustc_infer::traits::solve::inspect::ProbeKind;
 use rustc_infer::traits::solve::{CandidateSource, GoalSource, MaybeCause};
 use rustc_infer::traits::{
     self, FulfillmentError, FulfillmentErrorCode, MismatchedProjectionTypes, Obligation,
@@ -15,7 +14,7 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::symbol::sym;
 
 use super::eval_ctxt::GenerateProofTree;
-use super::inspect::{InspectCandidate, InspectGoal, ProofTreeInferCtxtExt, ProofTreeVisitor};
+use super::inspect::{self, ProofTreeInferCtxtExt, ProofTreeVisitor};
 use super::{Certainty, InferCtxtEvalExt};
 
 /// A trait engine using the new trait solver.
@@ -319,8 +318,8 @@ impl<'tcx> BestObligation<'tcx> {
     /// *don't* hold and which have impl-where clauses that also don't hold.
     fn non_trivial_candidates<'a>(
         &self,
-        goal: &'a InspectGoal<'a, 'tcx>,
-    ) -> Vec<InspectCandidate<'a, 'tcx>> {
+        goal: &'a inspect::InspectGoal<'a, 'tcx>,
+    ) -> Vec<inspect::InspectCandidate<'a, 'tcx>> {
         let mut candidates = goal.candidates();
         match self.consider_ambiguities {
             true => {
@@ -370,15 +369,17 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
         self.obligation.cause.span
     }
 
-    fn visit_goal(&mut self, goal: &super::inspect::InspectGoal<'_, 'tcx>) -> Self::Result {
+    fn visit_goal(&mut self, goal: &inspect::InspectGoal<'_, 'tcx>) -> Self::Result {
         let candidates = self.non_trivial_candidates(goal);
         let [candidate] = candidates.as_slice() else {
             return ControlFlow::Break(self.obligation.clone());
         };
 
         // Don't walk into impls that have `do_not_recommend`.
-        if let ProbeKind::TraitCandidate { source: CandidateSource::Impl(impl_def_id), result: _ } =
-            candidate.kind()
+        if let inspect::ProbeKind::TraitCandidate {
+            source: CandidateSource::Impl(impl_def_id),
+            result: _,
+        } = candidate.kind()
             && goal.infcx().tcx.has_attr(impl_def_id, sym::do_not_recommend)
         {
             return ControlFlow::Break(self.obligation.clone());
@@ -475,13 +476,16 @@ enum ChildMode<'tcx> {
 
 fn derive_cause<'tcx>(
     tcx: TyCtxt<'tcx>,
-    candidate_kind: ProbeKind<'tcx>,
+    candidate_kind: inspect::ProbeKind<TyCtxt<'tcx>>,
     mut cause: ObligationCause<'tcx>,
     idx: usize,
     parent_trait_pred: ty::PolyTraitPredicate<'tcx>,
 ) -> ObligationCause<'tcx> {
     match candidate_kind {
-        ProbeKind::TraitCandidate { source: CandidateSource::Impl(impl_def_id), result: _ } => {
+        inspect::ProbeKind::TraitCandidate {
+            source: CandidateSource::Impl(impl_def_id),
+            result: _,
+        } => {
             if let Some((_, span)) =
                 tcx.predicates_of(impl_def_id).instantiate_identity(tcx).iter().nth(idx)
             {
@@ -495,7 +499,10 @@ fn derive_cause<'tcx>(
                 })
             }
         }
-        ProbeKind::TraitCandidate { source: CandidateSource::BuiltinImpl(..), result: _ } => {
+        inspect::ProbeKind::TraitCandidate {
+            source: CandidateSource::BuiltinImpl(..),
+            result: _,
+        } => {
             cause = cause.derived_cause(parent_trait_pred, ObligationCauseCode::BuiltinDerived);
         }
         _ => {}

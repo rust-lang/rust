@@ -103,7 +103,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
 
     fn probe_and_match_goal_against_assumption(
         ecx: &mut EvalCtxt<'_, 'tcx>,
-        source: CandidateSource,
+        source: CandidateSource<'tcx>,
         goal: Goal<'tcx, Self>,
         assumption: ty::Clause<'tcx>,
         then: impl FnOnce(&mut EvalCtxt<'_, 'tcx>) -> QueryResult<'tcx>,
@@ -821,7 +821,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     fn consider_builtin_upcast_to_principal(
         &mut self,
         goal: Goal<'tcx, (Ty<'tcx>, Ty<'tcx>)>,
-        source: CandidateSource,
+        source: CandidateSource<'tcx>,
         a_data: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
         a_region: ty::Region<'tcx>,
         b_data: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
@@ -1149,7 +1149,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     /// wrapped in one.
     fn probe_and_evaluate_goal_for_constituent_tys(
         &mut self,
-        source: CandidateSource,
+        source: CandidateSource<'tcx>,
         goal: Goal<'tcx, TraitPredicate<'tcx>>,
         constituent_tys: impl Fn(
             &EvalCtxt<'_, 'tcx>,
