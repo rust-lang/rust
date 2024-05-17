@@ -1,5 +1,5 @@
 warning: non-local `impl` definition, they should be avoided as they go against expectation
-  --> $DIR/inside-macro_rules.rs:9:13
+  --> $DIR/inside-macro_rules.rs:11:13
    |
 LL |             impl MacroTrait for OutsideStruct {}
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -11,7 +11,11 @@ LL | m!();
    = note: an `impl` definition is non-local if it is nested inside an item and may impact type checking outside of that item. This can be the case if neither the trait or the self type are at the same nesting level as the `impl`
    = note: one exception to the rule are anon-const (`const _: () = { ... }`) at top-level module and anon-const at the same nesting as the trait or type
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
-   = note: `#[warn(non_local_definitions)]` on by default
+note: the lint level is defined here
+  --> $DIR/inside-macro_rules.rs:4:9
+   |
+LL | #![warn(non_local_definitions)]
+   |         ^^^^^^^^^^^^^^^^^^^^^
    = note: this warning originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 warning: 1 warning emitted
