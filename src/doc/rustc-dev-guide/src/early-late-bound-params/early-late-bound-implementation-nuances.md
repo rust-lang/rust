@@ -1,16 +1,10 @@
-# Early and Late Bound Parameter Definitions
+# Early and Late Bound Parameter Implementation Nuances
 
 Understanding this page likely requires a rudimentary understanding of higher ranked
 trait bounds/`for<'a>`and also what types such as `dyn for<'a> Trait<'a>` and
  `for<'a> fn(&'a u32)` mean. Reading [the nomincon chapter](https://doc.rust-lang.org/nomicon/hrtb.html)
 on HRTB may be useful for understanding this syntax. The meaning of `for<'a> fn(&'a u32)`
 is incredibly similar to the meaning of `T: for<'a> Trait<'a>`.
-
-If you are looking for information on the `RegionKind` variants `ReLateBound` and `ReEarlyBound`
-you should look at the section on [bound vars and params](./bound-vars-and-params.md). This section
-discusses what makes generic parameters on functions and closures late/early bound. Not the general
-concept of bound vars and generic parameters which `RegionKind` has named somewhat confusingly
-with this topic.
 
 ## What does it mean for parameters to be early or late bound
 
