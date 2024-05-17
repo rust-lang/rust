@@ -1307,6 +1307,9 @@ impl Config {
             toml_path = config.src.join(toml_path);
         }
 
+        let file_content = t!(fs::read_to_string(config.src.join("src/ci/channel")));
+        let ci_channel = file_content.trim_end();
+
         // Give a hard error if `--config` or `RUST_BOOTSTRAP_CONFIG` are set to a missing path,
         // but not if `config.toml` hasn't been created.
         let mut toml = if !using_default_path || toml_path.exists() {
@@ -1534,6 +1537,7 @@ impl Config {
         let mut omit_git_hash = None;
         let mut lld_enabled = None;
 
+        let mut is_user_configured_rust_channel = false;
         if let Some(rust) = toml.rust {
             let Rust {
                 optimize: optimize_toml,
@@ -1591,6 +1595,7 @@ impl Config {
                 lld_mode,
             } = rust;
 
+            is_user_configured_rust_channel = channel.is_some();
             set(&mut config.channel, channel);
 
             config.download_rustc_commit = config.download_ci_rustc_commit(download_rustc);
@@ -1598,8 +1603,6 @@ impl Config {
             if config.download_rustc_commit.is_some() {
                 // We need the channel used by the downloaded compiler to match the one we set for rustdoc;
                 // otherwise rustdoc-ui tests break.
-                let ci_channel = t!(fs::read_to_string(config.src.join("src/ci/channel")));
-                let ci_channel = ci_channel.trim_end();
                 if config.channel != ci_channel
                     && !(config.channel == "dev" && ci_channel == "nightly")
                 {
@@ -1716,6 +1719,10 @@ impl Config {
         let default = config.channel == "dev";
         config.omit_git_hash = omit_git_hash.unwrap_or(default);
         config.rust_info = GitInfo::new(config.omit_git_hash, &config.src);
+
+        if config.rust_info.is_from_tarball() && !is_user_configured_rust_channel {
+            ci_channel.clone_into(&mut config.channel);
+        }
 
         if let Some(llvm) = toml.llvm {
             let Llvm {
