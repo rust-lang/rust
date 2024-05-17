@@ -2915,7 +2915,6 @@ ui/macros/issue-95267.rs
 ui/macros/issue-95533.rs
 ui/macros/issue-98466-allow.rs
 ui/macros/issue-98466.rs
-ui/macros/issue-98790.rs
 ui/macros/issue-99261.rs
 ui/macros/issue-99265.rs
 ui/macros/issue-99907.rs
