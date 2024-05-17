@@ -24,6 +24,7 @@
 - [Checking Conditional Configurations](check-cfg.md)
     - [Cargo Specifics](check-cfg/cargo-specifics.md)
 - [Exploit Mitigations](exploit-mitigations.md)
+- [Sanitizers](sanitizers.md)
 - [Symbol Mangling](symbol-mangling/index.md)
     - [v0 Symbol Format](symbol-mangling/v0.md)
 - [Contributing to `rustc`](contributing.md)
