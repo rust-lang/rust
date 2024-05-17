@@ -384,38 +384,63 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
             return ControlFlow::Break(self.obligation.clone());
         }
 
-        // FIXME: Could we extract a trait ref from a projection here too?
+        let tcx = goal.infcx().tcx;
         // FIXME: Also, what about considering >1 layer up the stack? May be necessary
         // for normalizes-to.
-        let Some(parent_trait_pred) = goal.goal().predicate.to_opt_poly_trait_pred() else {
-            return ControlFlow::Break(self.obligation.clone());
+        let pred_kind = goal.goal().predicate.kind();
+        let child_mode = match pred_kind.skip_binder() {
+            ty::PredicateKind::Clause(ty::ClauseKind::Trait(parent_trait_pred)) => {
+                ChildMode::Trait(pred_kind.rebind(parent_trait_pred))
+            }
+            ty::PredicateKind::NormalizesTo(normalizes_to)
+                if matches!(
+                    normalizes_to.alias.kind(tcx),
+                    ty::AliasTermKind::ProjectionTy | ty::AliasTermKind::ProjectionConst
+                ) =>
+            {
+                ChildMode::Trait(pred_kind.rebind(ty::TraitPredicate {
+                    trait_ref: normalizes_to.alias.trait_ref(tcx),
+                    polarity: ty::PredicatePolarity::Positive,
+                }))
+            }
+            ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(_)) => {
+                ChildMode::WellFormedObligation
+            }
+            _ => {
+                return ControlFlow::Break(self.obligation.clone());
+            }
         };
 
-        let tcx = goal.infcx().tcx;
         let mut impl_where_bound_count = 0;
         for nested_goal in candidate.instantiate_nested_goals(self.span()) {
+            let make_obligation = |cause| Obligation {
+                cause,
+                param_env: nested_goal.goal().param_env,
+                predicate: nested_goal.goal().predicate,
+                recursion_depth: self.obligation.recursion_depth + 1,
+            };
+
             let obligation;
-            match nested_goal.source() {
-                GoalSource::Misc => {
+            match (child_mode, nested_goal.source()) {
+                (ChildMode::Trait(_), GoalSource::Misc) => {
                     continue;
                 }
-                GoalSource::ImplWhereBound => {
-                    obligation = Obligation {
-                        cause: derive_cause(
-                            tcx,
-                            candidate.kind(),
-                            self.obligation.cause.clone(),
-                            impl_where_bound_count,
-                            parent_trait_pred,
-                        ),
-                        param_env: nested_goal.goal().param_env,
-                        predicate: nested_goal.goal().predicate,
-                        recursion_depth: self.obligation.recursion_depth + 1,
-                    };
+                (ChildMode::Trait(parent_trait_pred), GoalSource::ImplWhereBound) => {
+                    obligation = make_obligation(derive_cause(
+                        tcx,
+                        candidate.kind(),
+                        self.obligation.cause.clone(),
+                        impl_where_bound_count,
+                        parent_trait_pred,
+                    ));
                     impl_where_bound_count += 1;
                 }
-                GoalSource::InstantiateHigherRanked => {
+                // Skip over a higher-ranked predicate.
+                (_, GoalSource::InstantiateHigherRanked) => {
                     obligation = self.obligation.clone();
+                }
+                (ChildMode::WellFormedObligation, _) => {
+                    obligation = make_obligation(self.obligation.cause.clone());
                 }
             }
 
@@ -434,6 +459,18 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
 
         ControlFlow::Break(self.obligation.clone())
     }
+}
+
+#[derive(Copy, Clone)]
+enum ChildMode<'tcx> {
+    // Try to derive an `ObligationCause::{ImplDerived,BuiltinDerived}`,
+    // and skip all `GoalSource::Misc`, which represent useless obligations
+    // such as alias-eq which may not hold.
+    Trait(ty::PolyTraitPredicate<'tcx>),
+    // Skip trying to derive an `ObligationCause` from this obligation, and
+    // report *all* sub-obligations as if they came directly from the parent
+    // obligation.
+    WellFormedObligation,
 }
 
 fn derive_cause<'tcx>(
