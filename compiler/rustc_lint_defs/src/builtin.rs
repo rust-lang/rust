@@ -4263,8 +4263,7 @@ declare_lint! {
     ///
     /// // where absurd is a function with the following signature
     /// // (it's sound, because `!` always marks unreachable code):
-    /// fn absurd<T>(_: !) -> T { ... }
-    // FIXME: use `core::convert::absurd` here instead, once it's merged
+    /// fn absurd<T>(never: !) -> T { ... }
     /// ```
     ///
     /// While it's convenient to be able to use non-diverging code in one of the branches (like
