@@ -517,6 +517,7 @@ impl Subdiagnostic for AddLifetimeParamsSuggestion<'_> {
                 Applicability::MaybeIncorrect,
             );
             diag.arg("is_impl", is_impl);
+            diag.arg("is_reuse", !introduce_new);
 
             true
         };

@@ -9,7 +9,7 @@ LL |
 LL |         if x > y { x } else { y }
    |                    ^ associated function was supposed to return data with lifetime `'a` but it is returning data with lifetime `'1`
    |
-help: consider introducing a named lifetime parameter and update trait if needed
+help: consider reusing a named lifetime parameter and update trait if needed
    |
 LL |     fn foo<'a>(x: &'a i32, y: &'a i32) -> &'a i32 {
    |                    ++
