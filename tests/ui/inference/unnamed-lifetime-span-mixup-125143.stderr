@@ -1,0 +1,60 @@
+error[E0308]: method not compatible with trait
+  --> $DIR/unnamed-lifetime-span-mixup-125143.rs:7:5
+   |
+LL |     fn add(self, _rhs: Self) -> Self::Output {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ lifetime mismatch
+   |
+   = note: expected signature `fn(&X, &X) -> X`
+              found signature `fn(&X, &X) -> X`
+note: the anonymous lifetime as defined here...
+  --> $DIR/unnamed-lifetime-span-mixup-125143.rs:4:20
+   |
+LL | impl std::ops::Add<&X> for &X {
+   |                    ^
+note: ...does not necessarily outlive the anonymous lifetime as defined here
+  --> $DIR/unnamed-lifetime-span-mixup-125143.rs:4:28
+   |
+LL | impl std::ops::Add<&X> for &X {
+   |                            ^
+
+error[E0308]: method not compatible with trait
+  --> $DIR/unnamed-lifetime-span-mixup-125143.rs:17:5
+   |
+LL |     fn mul(self, _rhs: Self) -> Self::Output {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ lifetime mismatch
+   |
+   = note: expected signature `fn(&X, &'a X) -> X`
+              found signature `fn(&X, &X) -> X`
+note: the lifetime `'a` as defined here...
+  --> $DIR/unnamed-lifetime-span-mixup-125143.rs:14:6
+   |
+LL | impl<'a> std::ops::Mul<&'a X> for &X {
+   |      ^^
+note: ...does not necessarily outlive the anonymous lifetime as defined here
+  --> $DIR/unnamed-lifetime-span-mixup-125143.rs:14:35
+   |
+LL | impl<'a> std::ops::Mul<&'a X> for &X {
+   |                                   ^
+
+error[E0308]: method not compatible with trait
+  --> $DIR/unnamed-lifetime-span-mixup-125143.rs:27:5
+   |
+LL |     fn sub(self, _rhs: Self) -> Self::Output {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ lifetime mismatch
+   |
+   = note: expected signature `fn(&'a X, &X) -> X`
+              found signature `fn(&'a X, &'a X) -> X`
+note: the anonymous lifetime as defined here...
+  --> $DIR/unnamed-lifetime-span-mixup-125143.rs:24:24
+   |
+LL | impl<'a> std::ops::Sub<&X> for &'a X {
+   |                        ^
+note: ...does not necessarily outlive the lifetime `'a` as defined here
+  --> $DIR/unnamed-lifetime-span-mixup-125143.rs:24:6
+   |
+LL | impl<'a> std::ops::Sub<&X> for &'a X {
+   |      ^^
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0308`.
