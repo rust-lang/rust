@@ -1316,6 +1316,8 @@ bitflags::bitflags! {
 rustc_data_structures::external_bitflags_debug! { SanitizerSet }
 
 impl SanitizerSet {
+    // Taken from LLVM's sanitizer compatibility logic:
+    // https://github.com/llvm/llvm-project/blob/release/18.x/clang/lib/Driver/SanitizerArgs.cpp#L512
     const MUTUALLY_EXCLUSIVE: &'static [(SanitizerSet, SanitizerSet)] = &[
         (SanitizerSet::ADDRESS, SanitizerSet::MEMORY),
         (SanitizerSet::ADDRESS, SanitizerSet::THREAD),
