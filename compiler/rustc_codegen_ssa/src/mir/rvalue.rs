@@ -327,7 +327,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             (Float(_), Int(_, is_signed)) => bx.cast_float_to_int(is_signed, imm, to_backend_ty),
             _ => return None,
         };
-        self.assume_scalar_range(bx, imm, to_scalar, to_backend_ty);
         Some(imm)
     }
 
