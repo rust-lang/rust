@@ -20,10 +20,20 @@ use tracing::{debug, instrument};
 mod tests;
 
 /// An annotation for an SCC. This can be a representative,
-/// or the max/min element of the SCC, or all of the above.
+/// the max/min element of the SCC, or all of the above.
+///
+/// Concretely, the following properties must hold (where `merge`
+/// is `merge_scc` and `merge_reached`):
+/// - idempotency: `a.merge(a) = a`
+/// - commutativity: `a.merge(b) = b.merge(a)`
+///
+/// This is rather limiting and precludes, for example, counting.
+/// In general, what you want is probably always min/max according
+/// to some ordering, potentially with side constraints (min x such
+/// that P holds).
 pub trait Annotation: Debug + Copy {
     /// Merge two existing annotations into one during
-    /// path compression.
+    /// path compression.o
     fn merge_scc(self, other: Self) -> Self;
 
     /// Merge a successor into this annotation.
