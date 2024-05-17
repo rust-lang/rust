@@ -228,6 +228,16 @@ impl f128 {
     /// the bit pattern of NaNs are conserved over arithmetic operations, the result of
     /// `is_sign_positive` on a NaN might produce an unexpected result in some cases.
     /// See [explanation of NaN as a special value](f32) for more info.
+    ///
+    /// ```
+    /// #![feature(f128)]
+    ///
+    /// let f = 7.0_f128;
+    /// let g = -7.0_f128;
+    ///
+    /// assert!(f.is_sign_positive());
+    /// assert!(!g.is_sign_positive());
+    /// ```
     #[inline]
     #[must_use]
     #[unstable(feature = "f128", issue = "116909")]
@@ -241,6 +251,16 @@ impl f128 {
     /// the bit pattern of NaNs are conserved over arithmetic operations, the result of
     /// `is_sign_negative` on a NaN might produce an unexpected result in some cases.
     /// See [explanation of NaN as a special value](f32) for more info.
+    ///
+    /// ```
+    /// #![feature(f128)]
+    ///
+    /// let f = 7.0_f128;
+    /// let g = -7.0_f128;
+    ///
+    /// assert!(!f.is_sign_negative());
+    /// assert!(g.is_sign_negative());
+    /// ```
     #[inline]
     #[must_use]
     #[unstable(feature = "f128", issue = "116909")]
