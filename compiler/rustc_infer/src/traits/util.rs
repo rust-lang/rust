@@ -455,7 +455,7 @@ impl<'tcx, I: Iterator<Item = ty::Predicate<'tcx>>> Iterator for FilterToTraits<
 
     fn next(&mut self) -> Option<ty::PolyTraitRef<'tcx>> {
         while let Some(pred) = self.base_iterator.next() {
-            if let Some(data) = pred.to_opt_poly_trait_pred() {
+            if let Some(data) = pred.as_trait_clause() {
                 return Some(data.map_bound(|t| t.trait_ref));
             }
         }

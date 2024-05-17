@@ -2739,7 +2739,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             | ObligationCauseCode::ReferenceOutlivesReferent(..)
             | ObligationCauseCode::ObjectTypeBound(..) => {}
             ObligationCauseCode::RustCall => {
-                if let Some(pred) = predicate.to_opt_poly_trait_pred()
+                if let Some(pred) = predicate.as_trait_clause()
                     && Some(pred.def_id()) == tcx.lang_items().sized_trait()
                 {
                     err.note("argument required to be sized due to `extern \"rust-call\"` ABI");
@@ -3725,7 +3725,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         {
             if let hir::Expr { kind: hir::ExprKind::MethodCall(_, rcvr, _, _), .. } = expr
                 && let Some(ty) = typeck_results.node_type_opt(rcvr.hir_id)
-                && let Some(failed_pred) = failed_pred.to_opt_poly_trait_pred()
+                && let Some(failed_pred) = failed_pred.as_trait_clause()
                 && let pred = failed_pred.map_bound(|pred| pred.with_self_ty(tcx, ty))
                 && self.predicate_must_hold_modulo_regions(&Obligation::misc(
                     tcx, expr.span, body_id, param_env, pred,
@@ -3816,7 +3816,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 && let Some(where_pred) = where_clauses.predicates.get(*idx)
             {
                 if let Some(where_pred) = where_pred.as_trait_clause()
-                    && let Some(failed_pred) = failed_pred.to_opt_poly_trait_pred()
+                    && let Some(failed_pred) = failed_pred.as_trait_clause()
                 {
                     self.enter_forall(where_pred, |where_pred| {
                         let failed_pred = self.instantiate_binder_with_fresh_vars(
@@ -3842,7 +3842,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         }
                     })
                 } else if let Some(where_pred) = where_pred.as_projection_clause()
-                    && let Some(failed_pred) = failed_pred.to_opt_poly_projection_pred()
+                    && let Some(failed_pred) = failed_pred.as_projection_clause()
                     && let Some(found) = failed_pred.skip_binder().term.ty()
                 {
                     type_diffs = vec![Sorts(ty::error::ExpectedFound {
