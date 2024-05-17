@@ -18,6 +18,13 @@ pub fn target() -> Target {
         | SanitizerSet::THREAD;
     base.supports_xray = true;
 
+    // When we're asked to use the `rust-lld` linker by default, set the appropriate lld-using
+    // linker flavor, and self-contained linker component.
+    if option_env!("CFG_USE_SELF_CONTAINED_LINKER").is_some() {
+        base.linker_flavor = LinkerFlavor::Gnu(Cc::Yes, Lld::Yes);
+        base.link_self_contained = crate::spec::LinkSelfContainedDefault::with_linker();
+    }
+
     Target {
         llvm_target: "x86_64-unknown-linux-gnu".into(),
         metadata: crate::spec::TargetMetadata {
