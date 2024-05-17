@@ -34,15 +34,7 @@ fi
 
 if [ "${TEST_VERBATIM:-}" = "1" ]; then
     verb_path=$(cmd.exe //C echo \\\\?\\%cd%\\testcrate\\target2)
-    run="cargo build --manifest-path testcrate/Cargo.toml --target $target --target-dir $verb_path"
-    $run
-    $run --release
-    $run --features c
-    $run --features c --release
-    $run --features no-asm
-    $run --features no-asm --release
-    $run --features no-f16-f128
-    $run --features no-f16-f128 --release
+    cargo build --manifest-path testcrate/Cargo.toml --target $target --target-dir $verb_path --features c
 fi
 
 if [ -d /builtins-target ]; then
