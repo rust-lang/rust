@@ -243,7 +243,6 @@ run-make/rustdoc-scrape-examples-remap/Makefile
 run-make/rustdoc-scrape-examples-test/Makefile
 run-make/rustdoc-scrape-examples-whitespace/Makefile
 run-make/rustdoc-verify-output-files/Makefile
-run-make/rustdoc-with-out-dir-option/Makefile
 run-make/rustdoc-with-output-option/Makefile
 run-make/rustdoc-with-short-out-dir-option/Makefile
 run-make/sanitizer-cdylib-link/Makefile

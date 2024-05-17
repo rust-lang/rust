@@ -45,5 +45,5 @@ fn main() {
     }
     rustdoc.run();
 
-    htmldocck().arg(out_dir).arg("src/lib.rs").status().unwrap().success();
+    assert!(htmldocck().arg(out_dir).arg("src/lib.rs").status().unwrap().success());
 }
