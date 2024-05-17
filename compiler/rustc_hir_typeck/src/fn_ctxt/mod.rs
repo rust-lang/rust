@@ -390,27 +390,23 @@ fn never_type_behavior(tcx: TyCtxt<'_>) -> (DivergingFallbackBehavior, Diverging
 
 /// Returns the default fallback which is used when there is no explicit override via `#![never_type_options(...)]`.
 fn default_fallback(tcx: TyCtxt<'_>) -> DivergingFallbackBehavior {
-    use DivergingFallbackBehavior::*;
-
     // Edition 2024: fallback to `!`
     if tcx.sess.edition().at_least_rust_2024() {
-        return FallbackToNever;
+        return DivergingFallbackBehavior::ToNever;
     }
 
     // `feature(never_type_fallback)`: fallback to `!` or `()` trying to not break stuff
     if tcx.features().never_type_fallback {
-        return FallbackToNiko;
+        return DivergingFallbackBehavior::ContextDependent;
     }
 
     // Otherwise: fallback to `()`
-    FallbackToUnit
+    DivergingFallbackBehavior::ToUnit
 }
 
 fn parse_never_type_options_attr(
     tcx: TyCtxt<'_>,
 ) -> (Option<DivergingFallbackBehavior>, Option<DivergingBlockBehavior>) {
-    use DivergingFallbackBehavior::*;
-
     // Error handling is dubious here (unwraps), but that's probably fine for an internal attribute.
     // Just don't write incorrect attributes <3
 
@@ -426,10 +422,10 @@ fn parse_never_type_options_attr(
         if item.has_name(sym::fallback) && fallback.is_none() {
             let mode = item.value_str().unwrap();
             match mode {
-                sym::unit => fallback = Some(FallbackToUnit),
-                sym::niko => fallback = Some(FallbackToNiko),
-                sym::never => fallback = Some(FallbackToNever),
-                sym::no => fallback = Some(NoFallback),
+                sym::unit => fallback = Some(DivergingFallbackBehavior::ToUnit),
+                sym::niko => fallback = Some(DivergingFallbackBehavior::ContextDependent),
+                sym::never => fallback = Some(DivergingFallbackBehavior::ToNever),
+                sym::no => fallback = Some(DivergingFallbackBehavior::NoFallback),
                 _ => {
                     tcx.dcx().span_err(item.span(), format!("unknown never type fallback mode: `{mode}` (supported: `unit`, `niko`, `never` and `no`)"));
                 }
