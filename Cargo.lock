@@ -4759,6 +4759,7 @@ name = "rustc_trait_selection"
 version = "0.0.0"
 dependencies = [
  "bitflags 2.5.0",
+ "derivative",
  "itertools 0.12.1",
  "rustc_ast",
  "rustc_ast_ir",
@@ -4778,6 +4779,7 @@ dependencies = [
  "rustc_span",
  "rustc_target",
  "rustc_transmute",
+ "rustc_type_ir",
  "smallvec",
  "tracing",
 ]

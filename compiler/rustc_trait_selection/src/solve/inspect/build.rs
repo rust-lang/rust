@@ -9,11 +9,12 @@ use rustc_infer::infer::InferCtxt;
 use rustc_middle::bug;
 use rustc_middle::infer::canonical::CanonicalVarValues;
 use rustc_middle::traits::query::NoSolution;
-use rustc_middle::traits::solve::{
+use rustc_middle::ty::{self, TyCtxt};
+use rustc_next_trait_solver::solve::{
     CanonicalInput, Certainty, Goal, GoalSource, QueryInput, QueryResult,
 };
-use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::config::DumpSolverProofTree;
+use rustc_type_ir::Interner;
 
 use crate::solve::eval_ctxt::canonical;
 use crate::solve::{self, inspect, GenerateProofTree};
@@ -38,49 +39,51 @@ use crate::solve::{self, inspect, GenerateProofTree};
 /// trees. At the end of trait solving `ProofTreeBuilder::finalize`
 /// is called to recursively convert the whole structure to a
 /// finished proof tree.
-pub(in crate::solve) struct ProofTreeBuilder<'tcx> {
-    state: Option<Box<DebugSolver<'tcx>>>,
+pub(in crate::solve) struct ProofTreeBuilder<I: Interner> {
+    state: Option<Box<DebugSolver<I>>>,
 }
 
 /// The current state of the proof tree builder, at most places
 /// in the code, only one or two variants are actually possible.
 ///
 /// We simply ICE in case that assumption is broken.
-#[derive(Debug)]
-enum DebugSolver<'tcx> {
+#[derive(derivative::Derivative)]
+#[derivative(Debug(bound = ""))]
+enum DebugSolver<I: Interner> {
     Root,
-    GoalEvaluation(WipGoalEvaluation<'tcx>),
-    CanonicalGoalEvaluation(WipCanonicalGoalEvaluation<'tcx>),
-    GoalEvaluationStep(WipGoalEvaluationStep<'tcx>),
+    GoalEvaluation(WipGoalEvaluation<I>),
+    CanonicalGoalEvaluation(WipCanonicalGoalEvaluation<I>),
+    GoalEvaluationStep(WipGoalEvaluationStep<I>),
 }
 
-impl<'tcx> From<WipGoalEvaluation<'tcx>> for DebugSolver<'tcx> {
-    fn from(g: WipGoalEvaluation<'tcx>) -> DebugSolver<'tcx> {
+impl<I: Interner> From<WipGoalEvaluation<I>> for DebugSolver<I> {
+    fn from(g: WipGoalEvaluation<I>) -> DebugSolver<I> {
         DebugSolver::GoalEvaluation(g)
     }
 }
 
-impl<'tcx> From<WipCanonicalGoalEvaluation<'tcx>> for DebugSolver<'tcx> {
-    fn from(g: WipCanonicalGoalEvaluation<'tcx>) -> DebugSolver<'tcx> {
+impl<I: Interner> From<WipCanonicalGoalEvaluation<I>> for DebugSolver<I> {
+    fn from(g: WipCanonicalGoalEvaluation<I>) -> DebugSolver<I> {
         DebugSolver::CanonicalGoalEvaluation(g)
     }
 }
 
-impl<'tcx> From<WipGoalEvaluationStep<'tcx>> for DebugSolver<'tcx> {
-    fn from(g: WipGoalEvaluationStep<'tcx>) -> DebugSolver<'tcx> {
+impl<I: Interner> From<WipGoalEvaluationStep<I>> for DebugSolver<I> {
+    fn from(g: WipGoalEvaluationStep<I>) -> DebugSolver<I> {
         DebugSolver::GoalEvaluationStep(g)
     }
 }
 
-#[derive(Eq, PartialEq, Debug)]
-struct WipGoalEvaluation<'tcx> {
-    pub uncanonicalized_goal: Goal<'tcx, ty::Predicate<'tcx>>,
-    pub kind: WipGoalEvaluationKind<'tcx>,
-    pub evaluation: Option<WipCanonicalGoalEvaluation<'tcx>>,
+#[derive(derivative::Derivative)]
+#[derivative(PartialEq(bound = ""), Eq(bound = ""), Debug(bound = ""))]
+struct WipGoalEvaluation<I: Interner> {
+    pub uncanonicalized_goal: Goal<I, I::Predicate>,
+    pub kind: WipGoalEvaluationKind<I>,
+    pub evaluation: Option<WipCanonicalGoalEvaluation<I>>,
 }
 
-impl<'tcx> WipGoalEvaluation<'tcx> {
-    fn finalize(self) -> inspect::GoalEvaluation<TyCtxt<'tcx>> {
+impl<I: Interner> WipGoalEvaluation<I> {
+    fn finalize(self) -> inspect::GoalEvaluation<I> {
         inspect::GoalEvaluation {
             uncanonicalized_goal: self.uncanonicalized_goal,
             kind: match self.kind {
@@ -94,21 +97,23 @@ impl<'tcx> WipGoalEvaluation<'tcx> {
     }
 }
 
-#[derive(Eq, PartialEq, Debug)]
-pub(in crate::solve) enum WipGoalEvaluationKind<'tcx> {
-    Root { orig_values: Vec<ty::GenericArg<'tcx>> },
+#[derive(derivative::Derivative)]
+#[derivative(PartialEq(bound = ""), Eq(bound = ""), Debug(bound = ""))]
+pub(in crate::solve) enum WipGoalEvaluationKind<I: Interner> {
+    Root { orig_values: Vec<I::GenericArg> },
     Nested,
 }
 
-#[derive(Eq, PartialEq)]
-pub(in crate::solve) enum WipCanonicalGoalEvaluationKind<'tcx> {
+#[derive(derivative::Derivative)]
+#[derivative(PartialEq(bound = ""), Eq(bound = ""))]
+pub(in crate::solve) enum WipCanonicalGoalEvaluationKind<I: Interner> {
     Overflow,
     CycleInStack,
     ProvisionalCacheHit,
-    Interned { revisions: &'tcx [inspect::GoalEvaluationStep<TyCtxt<'tcx>>] },
+    Interned { revisions: I::GoalEvaluationSteps },
 }
 
-impl std::fmt::Debug for WipCanonicalGoalEvaluationKind<'_> {
+impl<I: Interner> std::fmt::Debug for WipCanonicalGoalEvaluationKind<I> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Overflow => write!(f, "Overflow"),
@@ -119,18 +124,19 @@ impl std::fmt::Debug for WipCanonicalGoalEvaluationKind<'_> {
     }
 }
 
-#[derive(Eq, PartialEq, Debug)]
-struct WipCanonicalGoalEvaluation<'tcx> {
-    goal: CanonicalInput<'tcx>,
-    kind: Option<WipCanonicalGoalEvaluationKind<'tcx>>,
+#[derive(derivative::Derivative)]
+#[derivative(PartialEq(bound = ""), Eq(bound = ""), Debug(bound = ""))]
+struct WipCanonicalGoalEvaluation<I: Interner> {
+    goal: CanonicalInput<I>,
+    kind: Option<WipCanonicalGoalEvaluationKind<I>>,
     /// Only used for uncached goals. After we finished evaluating
     /// the goal, this is interned and moved into `kind`.
-    revisions: Vec<WipGoalEvaluationStep<'tcx>>,
-    result: Option<QueryResult<'tcx>>,
+    revisions: Vec<WipGoalEvaluationStep<I>>,
+    result: Option<QueryResult<I>>,
 }
 
-impl<'tcx> WipCanonicalGoalEvaluation<'tcx> {
-    fn finalize(self) -> inspect::CanonicalGoalEvaluation<TyCtxt<'tcx>> {
+impl<I: Interner> WipCanonicalGoalEvaluation<I> {
+    fn finalize(self) -> inspect::CanonicalGoalEvaluation<I> {
         assert!(self.revisions.is_empty());
         let kind = match self.kind.unwrap() {
             WipCanonicalGoalEvaluationKind::Overflow => {
@@ -151,14 +157,15 @@ impl<'tcx> WipCanonicalGoalEvaluation<'tcx> {
     }
 }
 
-#[derive(Eq, PartialEq, Debug)]
-struct WipAddedGoalsEvaluation<'tcx> {
-    evaluations: Vec<Vec<WipGoalEvaluation<'tcx>>>,
+#[derive(derivative::Derivative)]
+#[derivative(PartialEq(bound = ""), Eq(bound = ""), Debug(bound = ""))]
+struct WipAddedGoalsEvaluation<I: Interner> {
+    evaluations: Vec<Vec<WipGoalEvaluation<I>>>,
     result: Option<Result<Certainty, NoSolution>>,
 }
 
-impl<'tcx> WipAddedGoalsEvaluation<'tcx> {
-    fn finalize(self) -> inspect::AddedGoalsEvaluation<TyCtxt<'tcx>> {
+impl<I: Interner> WipAddedGoalsEvaluation<I> {
+    fn finalize(self) -> inspect::AddedGoalsEvaluation<I> {
         inspect::AddedGoalsEvaluation {
             evaluations: self
                 .evaluations
@@ -172,22 +179,23 @@ impl<'tcx> WipAddedGoalsEvaluation<'tcx> {
     }
 }
 
-#[derive(Eq, PartialEq, Debug)]
-struct WipGoalEvaluationStep<'tcx> {
+#[derive(derivative::Derivative)]
+#[derivative(PartialEq(bound = ""), Eq(bound = ""), Debug(bound = ""))]
+struct WipGoalEvaluationStep<I: Interner> {
     /// Unlike `EvalCtxt::var_values`, we append a new
     /// generic arg here whenever we create a new inference
     /// variable.
     ///
     /// This is necessary as we otherwise don't unify these
     /// vars when instantiating multiple `CanonicalState`.
-    var_values: Vec<ty::GenericArg<'tcx>>,
-    instantiated_goal: QueryInput<'tcx, ty::Predicate<'tcx>>,
+    var_values: Vec<I::GenericArg>,
+    instantiated_goal: QueryInput<I, I::Predicate>,
     probe_depth: usize,
-    evaluation: WipProbe<'tcx>,
+    evaluation: WipProbe<I>,
 }
 
-impl<'tcx> WipGoalEvaluationStep<'tcx> {
-    fn current_evaluation_scope(&mut self) -> &mut WipProbe<'tcx> {
+impl<I: Interner> WipGoalEvaluationStep<I> {
+    fn current_evaluation_scope(&mut self) -> &mut WipProbe<I> {
         let mut current = &mut self.evaluation;
         for _ in 0..self.probe_depth {
             match current.steps.last_mut() {
@@ -198,7 +206,7 @@ impl<'tcx> WipGoalEvaluationStep<'tcx> {
         current
     }
 
-    fn added_goals_evaluation(&mut self) -> &mut WipAddedGoalsEvaluation<'tcx> {
+    fn added_goals_evaluation(&mut self) -> &mut WipAddedGoalsEvaluation<I> {
         let mut current = &mut self.evaluation;
         loop {
             match current.steps.last_mut() {
@@ -209,7 +217,7 @@ impl<'tcx> WipGoalEvaluationStep<'tcx> {
         }
     }
 
-    fn finalize(self) -> inspect::GoalEvaluationStep<TyCtxt<'tcx>> {
+    fn finalize(self) -> inspect::GoalEvaluationStep<I> {
         let evaluation = self.evaluation.finalize();
         match evaluation.kind {
             inspect::ProbeKind::Root { .. } => (),
@@ -219,16 +227,17 @@ impl<'tcx> WipGoalEvaluationStep<'tcx> {
     }
 }
 
-#[derive(Eq, PartialEq, Debug)]
-struct WipProbe<'tcx> {
+#[derive(derivative::Derivative)]
+#[derivative(PartialEq(bound = ""), Eq(bound = ""), Debug(bound = ""))]
+struct WipProbe<I: Interner> {
     initial_num_var_values: usize,
-    steps: Vec<WipProbeStep<'tcx>>,
-    kind: Option<inspect::ProbeKind<TyCtxt<'tcx>>>,
-    final_state: Option<inspect::CanonicalState<TyCtxt<'tcx>, ()>>,
+    steps: Vec<WipProbeStep<I>>,
+    kind: Option<inspect::ProbeKind<I>>,
+    final_state: Option<inspect::CanonicalState<I, ()>>,
 }
 
-impl<'tcx> WipProbe<'tcx> {
-    fn finalize(self) -> inspect::Probe<TyCtxt<'tcx>> {
+impl<I: Interner> WipProbe<I> {
+    fn finalize(self) -> inspect::Probe<I> {
         inspect::Probe {
             steps: self.steps.into_iter().map(WipProbeStep::finalize).collect(),
             kind: self.kind.unwrap(),
@@ -237,17 +246,18 @@ impl<'tcx> WipProbe<'tcx> {
     }
 }
 
-#[derive(Eq, PartialEq, Debug)]
-enum WipProbeStep<'tcx> {
-    AddGoal(GoalSource, inspect::CanonicalState<TyCtxt<'tcx>, Goal<'tcx, ty::Predicate<'tcx>>>),
-    EvaluateGoals(WipAddedGoalsEvaluation<'tcx>),
-    NestedProbe(WipProbe<'tcx>),
+#[derive(derivative::Derivative)]
+#[derivative(PartialEq(bound = ""), Eq(bound = ""), Debug(bound = ""))]
+enum WipProbeStep<I: Interner> {
+    AddGoal(GoalSource, inspect::CanonicalState<I, Goal<I, I::Predicate>>),
+    EvaluateGoals(WipAddedGoalsEvaluation<I>),
+    NestedProbe(WipProbe<I>),
     MakeCanonicalResponse { shallow_certainty: Certainty },
-    RecordImplArgs { impl_args: inspect::CanonicalState<TyCtxt<'tcx>, ty::GenericArgsRef<'tcx>> },
+    RecordImplArgs { impl_args: inspect::CanonicalState<I, I::GenericArgs> },
 }
 
-impl<'tcx> WipProbeStep<'tcx> {
-    fn finalize(self) -> inspect::ProbeStep<TyCtxt<'tcx>> {
+impl<I: Interner> WipProbeStep<I> {
+    fn finalize(self) -> inspect::ProbeStep<I> {
         match self {
             WipProbeStep::AddGoal(source, goal) => inspect::ProbeStep::AddGoal(source, goal),
             WipProbeStep::EvaluateGoals(eval) => inspect::ProbeStep::EvaluateGoals(eval.finalize()),
@@ -262,20 +272,21 @@ impl<'tcx> WipProbeStep<'tcx> {
     }
 }
 
-impl<'tcx> ProofTreeBuilder<'tcx> {
-    fn new(state: impl Into<DebugSolver<'tcx>>) -> ProofTreeBuilder<'tcx> {
+// FIXME: Genericize this impl.
+impl<'tcx> ProofTreeBuilder<TyCtxt<'tcx>> {
+    fn new(state: impl Into<DebugSolver<TyCtxt<'tcx>>>) -> ProofTreeBuilder<TyCtxt<'tcx>> {
         ProofTreeBuilder { state: Some(Box::new(state.into())) }
     }
 
-    fn nested<T: Into<DebugSolver<'tcx>>>(&self, state: impl FnOnce() -> T) -> Self {
+    fn nested<T: Into<DebugSolver<TyCtxt<'tcx>>>>(&self, state: impl FnOnce() -> T) -> Self {
         ProofTreeBuilder { state: self.state.as_ref().map(|_| Box::new(state().into())) }
     }
 
-    fn as_mut(&mut self) -> Option<&mut DebugSolver<'tcx>> {
+    fn as_mut(&mut self) -> Option<&mut DebugSolver<TyCtxt<'tcx>>> {
         self.state.as_deref_mut()
     }
 
-    pub fn take_and_enter_probe(&mut self) -> ProofTreeBuilder<'tcx> {
+    pub fn take_and_enter_probe(&mut self) -> ProofTreeBuilder<TyCtxt<'tcx>> {
         let mut nested = ProofTreeBuilder { state: self.state.take() };
         nested.enter_probe();
         nested
@@ -293,7 +304,7 @@ impl<'tcx> ProofTreeBuilder<'tcx> {
     pub fn new_maybe_root(
         tcx: TyCtxt<'tcx>,
         generate_proof_tree: GenerateProofTree,
-    ) -> ProofTreeBuilder<'tcx> {
+    ) -> ProofTreeBuilder<TyCtxt<'tcx>> {
         match generate_proof_tree {
             GenerateProofTree::Never => ProofTreeBuilder::new_noop(),
             GenerateProofTree::IfEnabled => {
@@ -311,11 +322,11 @@ impl<'tcx> ProofTreeBuilder<'tcx> {
         }
     }
 
-    pub fn new_root() -> ProofTreeBuilder<'tcx> {
+    pub fn new_root() -> ProofTreeBuilder<TyCtxt<'tcx>> {
         ProofTreeBuilder::new(DebugSolver::Root)
     }
 
-    pub fn new_noop() -> ProofTreeBuilder<'tcx> {
+    pub fn new_noop() -> ProofTreeBuilder<TyCtxt<'tcx>> {
         ProofTreeBuilder { state: None }
     }
 
@@ -325,10 +336,10 @@ impl<'tcx> ProofTreeBuilder<'tcx> {
 
     pub(in crate::solve) fn new_goal_evaluation(
         &mut self,
-        goal: Goal<'tcx, ty::Predicate<'tcx>>,
+        goal: Goal<TyCtxt<'tcx>, ty::Predicate<'tcx>>,
         orig_values: &[ty::GenericArg<'tcx>],
         kind: solve::GoalEvaluationKind,
-    ) -> ProofTreeBuilder<'tcx> {
+    ) -> ProofTreeBuilder<TyCtxt<'tcx>> {
         self.nested(|| WipGoalEvaluation {
             uncanonicalized_goal: goal,
             kind: match kind {
@@ -343,8 +354,8 @@ impl<'tcx> ProofTreeBuilder<'tcx> {
 
     pub fn new_canonical_goal_evaluation(
         &mut self,
-        goal: CanonicalInput<'tcx>,
-    ) -> ProofTreeBuilder<'tcx> {
+        goal: CanonicalInput<TyCtxt<'tcx>>,
+    ) -> ProofTreeBuilder<TyCtxt<'tcx>> {
         self.nested(|| WipCanonicalGoalEvaluation {
             goal,
             kind: None,
@@ -371,7 +382,10 @@ impl<'tcx> ProofTreeBuilder<'tcx> {
         })
     }
 
-    pub fn canonical_goal_evaluation(&mut self, canonical_goal_evaluation: ProofTreeBuilder<'tcx>) {
+    pub fn canonical_goal_evaluation(
+        &mut self,
+        canonical_goal_evaluation: ProofTreeBuilder<TyCtxt<'tcx>>,
+    ) {
         if let Some(this) = self.as_mut() {
             match (this, *canonical_goal_evaluation.state.unwrap()) {
                 (
@@ -386,7 +400,7 @@ impl<'tcx> ProofTreeBuilder<'tcx> {
         }
     }
 
-    pub fn goal_evaluation_kind(&mut self, kind: WipCanonicalGoalEvaluationKind<'tcx>) {
+    pub fn goal_evaluation_kind(&mut self, kind: WipCanonicalGoalEvaluationKind<TyCtxt<'tcx>>) {
         if let Some(this) = self.as_mut() {
             match this {
                 DebugSolver::CanonicalGoalEvaluation(canonical_goal_evaluation) => {
@@ -397,7 +411,7 @@ impl<'tcx> ProofTreeBuilder<'tcx> {
         }
     }
 
-    pub fn goal_evaluation(&mut self, goal_evaluation: ProofTreeBuilder<'tcx>) {
+    pub fn goal_evaluation(&mut self, goal_evaluation: ProofTreeBuilder<TyCtxt<'tcx>>) {
         if let Some(this) = self.as_mut() {
             match (this, *goal_evaluation.state.unwrap()) {
                 (
@@ -418,8 +432,8 @@ impl<'tcx> ProofTreeBuilder<'tcx> {
     pub fn new_goal_evaluation_step(
         &mut self,
         var_values: CanonicalVarValues<'tcx>,
-        instantiated_goal: QueryInput<'tcx, ty::Predicate<'tcx>>,
-    ) -> ProofTreeBuilder<'tcx> {
+        instantiated_goal: QueryInput<TyCtxt<'tcx>, ty::Predicate<'tcx>>,
+    ) -> ProofTreeBuilder<TyCtxt<'tcx>> {
         self.nested(|| WipGoalEvaluationStep {
             var_values: var_values.var_values.to_vec(),
             instantiated_goal,
@@ -433,7 +447,7 @@ impl<'tcx> ProofTreeBuilder<'tcx> {
         })
     }
 
-    pub fn goal_evaluation_step(&mut self, goal_evaluation_step: ProofTreeBuilder<'tcx>) {
+    pub fn goal_evaluation_step(&mut self, goal_evaluation_step: ProofTreeBuilder<TyCtxt<'tcx>>) {
         if let Some(this) = self.as_mut() {
             match (this, *goal_evaluation_step.state.unwrap()) {
                 (
@@ -510,7 +524,7 @@ impl<'tcx> ProofTreeBuilder<'tcx> {
         &mut self,
         infcx: &InferCtxt<'tcx>,
         max_input_universe: ty::UniverseIndex,
-        goal: Goal<'tcx, ty::NormalizesTo<'tcx>>,
+        goal: Goal<TyCtxt<'tcx>, ty::NormalizesTo<'tcx>>,
     ) {
         self.add_goal(
             infcx,
@@ -525,7 +539,7 @@ impl<'tcx> ProofTreeBuilder<'tcx> {
         infcx: &InferCtxt<'tcx>,
         max_input_universe: ty::UniverseIndex,
         source: GoalSource,
-        goal: Goal<'tcx, ty::Predicate<'tcx>>,
+        goal: Goal<TyCtxt<'tcx>, ty::Predicate<'tcx>>,
     ) {
         match self.as_mut() {
             None => {}
@@ -579,7 +593,7 @@ impl<'tcx> ProofTreeBuilder<'tcx> {
         }
     }
 
-    pub fn finish_probe(mut self) -> ProofTreeBuilder<'tcx> {
+    pub fn finish_probe(mut self) -> ProofTreeBuilder<TyCtxt<'tcx>> {
         match self.as_mut() {
             None => {}
             Some(DebugSolver::GoalEvaluationStep(state)) => {
@@ -627,7 +641,7 @@ impl<'tcx> ProofTreeBuilder<'tcx> {
         }
     }
 
-    pub fn query_result(&mut self, result: QueryResult<'tcx>) {
+    pub fn query_result(&mut self, result: QueryResult<TyCtxt<'tcx>>) {
         if let Some(this) = self.as_mut() {
             match this {
                 DebugSolver::CanonicalGoalEvaluation(canonical_goal_evaluation) => {
