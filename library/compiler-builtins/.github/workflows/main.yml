@@ -91,11 +91,9 @@ jobs:
         - target: i686-pc-windows-gnu
           os: windows-latest
           rust: nightly-i686-gnu
-          test_verbatim: 1
         - target: x86_64-pc-windows-gnu
           os: windows-latest
           rust: nightly-x86_64-gnu
-          test_verbatim: 1
     steps:
     - name: Print runner information
       run: uname -a
