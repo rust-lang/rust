@@ -5,7 +5,7 @@ use rustc_span::def_id::LocalDefId;
 
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::ty::type_is_unsafe_function;
-use clippy_utils::visitors::for_each_expr_with_closures;
+use clippy_utils::visitors::for_each_expr;
 use clippy_utils::{iter_input_pats, path_to_local};
 
 use core::ops::ControlFlow;
@@ -49,7 +49,7 @@ fn check_raw_ptr<'tcx>(
 
         if !raw_ptrs.is_empty() {
             let typeck = cx.tcx.typeck_body(body.id());
-            let _: Option<!> = for_each_expr_with_closures(cx, body.value, |e| {
+            let _: Option<!> = for_each_expr(cx, body.value, |e| {
                 match e.kind {
                     hir::ExprKind::Call(f, args) if type_is_unsafe_function(cx, typeck.expr_ty(f)) => {
                         for arg in args {

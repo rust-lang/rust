@@ -3,7 +3,7 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::higher::ForLoop;
 use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::{get_iterator_item_ty, implements_trait};
-use clippy_utils::visitors::for_each_expr;
+use clippy_utils::visitors::for_each_expr_without_closures;
 use clippy_utils::{can_mut_borrow_both, fn_def_id, get_parent_expr, path_to_local};
 use core::ops::ControlFlow;
 use rustc_errors::Applicability;
@@ -61,7 +61,7 @@ pub fn check_for_loop_iter(
         fn is_caller_or_fields_change(cx: &LateContext<'_>, body: &Expr<'_>, caller: &Expr<'_>) -> bool {
             let mut change = false;
             if let ExprKind::Block(block, ..) = body.kind {
-                for_each_expr(block, |e| {
+                for_each_expr_without_closures(block, |e| {
                     match e.kind {
                         ExprKind::Assign(assignee, _, _) | ExprKind::AssignOp(_, assignee, _) => {
                             change |= !can_mut_borrow_both(cx, caller, assignee);
