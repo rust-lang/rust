@@ -66,6 +66,7 @@ mod map_flatten;
 mod map_identity;
 mod map_unwrap_or;
 mod mut_mutex_lock;
+mod needless_character_iteration;
 mod needless_collect;
 mod needless_option_as_deref;
 mod needless_option_take;
@@ -4089,6 +4090,27 @@ declare_clippy_lint! {
     "is_empty() called on strings known at compile time"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks if an iterator is used to check if a string is ascii.
+    ///
+    /// ### Why is this bad?
+    /// The `str` type already implements the `is_ascii` method.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// "foo".chars().all(|c| c.is_ascii());
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// "foo".is_ascii();
+    /// ```
+    #[clippy::version = "1.80.0"]
+    pub NEEDLESS_CHARACTER_ITERATION,
+    suspicious,
+    "is_ascii() called on a char iterator"
+}
+
 pub struct Methods {
     avoid_breaking_exported_api: bool,
     msrv: Msrv,
@@ -4254,6 +4276,7 @@ impl_lint_pass!(Methods => [
     UNNECESSARY_RESULT_MAP_OR_ELSE,
     MANUAL_C_STR_LITERALS,
     UNNECESSARY_GET_THEN_CHECK,
+    NEEDLESS_CHARACTER_ITERATION,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -4461,6 +4484,7 @@ impl Methods {
                 },
                 ("all", [arg]) => {
                     unused_enumerate_index::check(cx, expr, recv, arg);
+                    needless_character_iteration::check(cx, expr, recv, arg);
                     if let Some(("cloned", recv2, [], _, _)) = method_call(recv) {
                         iter_overeager_cloned::check(
                             cx,
