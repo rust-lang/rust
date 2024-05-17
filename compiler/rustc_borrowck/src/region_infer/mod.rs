@@ -2163,10 +2163,12 @@ impl<'tcx> RegionDefinition<'tcx> {
         Self { origin, universe, external_name: None }
     }
 
+    #[inline(always)]
     pub fn is_placeholder(&self) -> bool {
         matches!(self.origin, NllRegionVariableOrigin::Placeholder(_))
     }
 
+    #[inline(always)]
     pub fn is_existential(&self) -> bool {
         matches!(self.origin, NllRegionVariableOrigin::Existential { .. })
     }

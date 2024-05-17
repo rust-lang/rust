@@ -62,15 +62,22 @@ impl scc::Annotation for RegionTracker {
 
 impl RegionTracker {
     pub fn new(rvid: RegionVid, definition: &RegionDefinition<'_>) -> Self {
+        let (representative_is_placeholder, representative_is_existential) = match definition.origin {
+            rustc_infer::infer::NllRegionVariableOrigin::FreeRegion => (false, false),
+            rustc_infer::infer::NllRegionVariableOrigin::Placeholder(_) => (true, false),
+            rustc_infer::infer::NllRegionVariableOrigin::Existential { .. } => (false, true),
+        };
+
         let placeholder_universe =
-            if definition.is_placeholder() { definition.universe } else { UniverseIndex::ROOT };
+            if representative_is_placeholder { definition.universe } else { UniverseIndex::ROOT };
+
 
         Self {
             max_placeholder_universe_reached: placeholder_universe,
             min_reachable_universe: definition.universe,
             representative: rvid,
-            representative_is_placeholder: definition.is_placeholder(),
-            representative_is_existential: definition.is_existential(),
+            representative_is_placeholder,
+            representative_is_existential,
         }
     }
     pub fn universe(self) -> UniverseIndex {

@@ -393,25 +393,15 @@ where
         // `InCycleWith` upwards.
         // This loop performs the downward link encoding mentioned above. Details below!
         let node_state = {
-            let mut annotation = (self.to_annotation)(node);
-
             loop {
                 debug!("find_state(r = {node:?} in state {:?})", self.node_states[node]);
                 match self.node_states[node] {
-                    NodeState::NotVisited => break NodeState::NotVisited,
-                    NodeState::BeingVisited { depth, annotation: previous_annotation } => {
-                        break NodeState::BeingVisited {
-                            depth,
-                            annotation: previous_annotation.merge_scc(annotation),
-                        };
-                    }
+                    s @ (NodeState::NotVisited | NodeState::BeingVisited{..} | NodeState::InCycle { .. }) => break s,
                     NodeState::InCycleWith { parent } => {
                         // We test this, to be extremely sure that we never
                         // ever break our termination condition for the
                         // reverse iteration loop.
                         assert!(node != parent, "Node can not be in cycle with itself");
-
-                        annotation = annotation.merge_scc((self.to_annotation)(node));
 
                         // Store the previous node as an inverted list link
                         self.node_states[node] = NodeState::InCycleWith { parent: previous_node };
@@ -419,12 +409,7 @@ where
                         previous_node = node;
                         node = parent;
                     }
-                    NodeState::InCycle { scc_index, annotation: previous_annotation } => {
-                        break NodeState::InCycle {
-                            scc_index,
-                            annotation: previous_annotation.merge_scc(annotation),
-                        };
-                    }
+
                 }
             }
         };
