@@ -15,4 +15,4 @@ impl Foo {
 }
 
 fn main() -> Foo::Bar::<Vec<[u32]>> {}
-//[next]~^ ERROR the type `Foo::Bar<Vec<[u32]>>` is not well-formed
+//[next]~^ ERROR the size for values of type `[u32]` cannot be known at compilation time
