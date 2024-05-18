@@ -5,7 +5,7 @@ use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{walk_expr, walk_fn, walk_item, FnKind, Visitor};
 use rustc_hir::{
-    self as hir, BlockCheckMode, BodyId, Expr, ExprKind, FnDecl, Impl, Item, ItemKind, UnsafeSource, Unsafety,
+    self as hir, BlockCheckMode, BodyId, Expr, ExprKind, FnDecl, Safety, Impl, Item, ItemKind, UnsafeSource,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter;
@@ -415,7 +415,7 @@ impl<'tcx> Visitor<'tcx> for UnsafeVisitor<'_, 'tcx> {
         }
 
         if let Some(header) = kind.header()
-            && header.unsafety == Unsafety::Unsafe
+            && header.safety == Safety::Unsafe
         {
             self.has_unsafe = true;
         }

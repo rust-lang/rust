@@ -5,7 +5,7 @@ use clippy_utils::ty::type_diagnostic_name;
 use clippy_utils::usage::{local_used_after_expr, local_used_in};
 use clippy_utils::{get_path_from_caller_to_method_type, is_adjusted, path_to_local, path_to_local_id};
 use rustc_errors::Applicability;
-use rustc_hir::{BindingMode, Expr, ExprKind, FnRetTy, Param, PatKind, QPath, TyKind, Unsafety};
+use rustc_hir::{BindingMode, Expr, ExprKind, FnRetTy, Param, PatKind, QPath, Safety, TyKind};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{
@@ -146,7 +146,7 @@ impl<'tcx> LateLintPass<'tcx> for EtaReduction {
                     ty::FnPtr(sig) => sig.skip_binder(),
                     ty::Closure(_, subs) => cx
                         .tcx
-                        .signature_unclosure(subs.as_closure().sig(), Unsafety::Normal)
+                        .signature_unclosure(subs.as_closure().sig(), Safety::Safe)
                         .skip_binder(),
                     _ => {
                         if typeck.type_dependent_def_id(body.value.hir_id).is_some()
@@ -154,7 +154,7 @@ impl<'tcx> LateLintPass<'tcx> for EtaReduction {
                             && let output = typeck.expr_ty(body.value)
                             && let ty::Tuple(tys) = *subs.type_at(1).kind()
                         {
-                            cx.tcx.mk_fn_sig(tys, output, false, Unsafety::Normal, Abi::Rust)
+                            cx.tcx.mk_fn_sig(tys, output, false, Safety::Safe, Abi::Rust)
                         } else {
                             return;
                         }
@@ -241,11 +241,9 @@ fn check_inputs(
 }
 
 fn check_sig<'tcx>(cx: &LateContext<'tcx>, closure: ClosureArgs<'tcx>, call_sig: FnSig<'_>) -> bool {
-    call_sig.unsafety == Unsafety::Normal
+    call_sig.safety == Safety::Safe
         && !has_late_bound_to_non_late_bound_regions(
-            cx.tcx
-                .signature_unclosure(closure.sig(), Unsafety::Normal)
-                .skip_binder(),
+            cx.tcx.signature_unclosure(closure.sig(), Safety::Safe).skip_binder(),
             call_sig,
         )
 }
