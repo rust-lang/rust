@@ -750,10 +750,11 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
             Start(_tag) | End(_tag) => (), // We don't care about other tags
             SoftBreak | HardBreak => {
                 if !containers.is_empty()
-                    && let Some((_next_event, next_range)) = events.peek()
+                    && let Some((next_event, next_range)) = events.peek()
                     && let Some(next_span) = fragments.span(cx, next_range.clone())
                     && let Some(span) = fragments.span(cx, range.clone())
                     && !in_footnote_definition
+                    && !matches!(next_event, End(_))
                 {
                     lazy_continuation::check(
                         cx,

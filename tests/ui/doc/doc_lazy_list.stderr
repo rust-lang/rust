@@ -108,5 +108,29 @@ help: indent this line
 LL | ///       and so should this
    |         ++
 
-error: aborting due to 9 previous errors
+error: doc list item missing indentation
+  --> tests/ui/doc/doc_lazy_list.rs:56:5
+   |
+LL | ///  'protocol_descriptors': [
+   |     ^
+   |
+   = help: if this is supposed to be its own paragraph, add a blank line
+help: indent this line
+   |
+LL | ///   'protocol_descriptors': [
+   |      +
+
+error: doc list item missing indentation
+  --> tests/ui/doc/doc_lazy_list.rs:75:5
+   |
+LL | ///  ]
+   |     ^
+   |
+   = help: if this is supposed to be its own paragraph, add a blank line
+help: indent this line
+   |
+LL | ///   ]
+   |      +
+
+error: aborting due to 11 previous errors
 
