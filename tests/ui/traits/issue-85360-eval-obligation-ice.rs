@@ -7,10 +7,10 @@ use core::marker::PhantomData;
 
 fn main() {
     test::<MaskedStorage<GenericComp<Pos>>>(make());
-    //~^ ERROR evaluate(Binder { value: TraitPredicate(<MaskedStorage<GenericComp<Pos>> as std::marker::Sized>, polarity:Positive), bound_vars: [] }) = Ok(EvaluatedToOk)
+    //~^ ERROR evaluate(Binder { value: (MaskedStorage<GenericComp<Pos>>: std::marker::Sized), bound_vars: [] }) = Ok(EvaluatedToOk)
 
     test::<MaskedStorage<GenericComp2<Pos>>>(make());
-    //~^ ERROR evaluate(Binder { value: TraitPredicate(<MaskedStorage<GenericComp2<Pos>> as std::marker::Sized>, polarity:Positive), bound_vars: [] }) = Ok(EvaluatedToOkModuloRegions)
+    //~^ ERROR evaluate(Binder { value: (MaskedStorage<GenericComp2<Pos>>: std::marker::Sized), bound_vars: [] }) = Ok(EvaluatedToOkModuloRegions)
 }
 
 #[rustc_evaluate_where_clauses]
@@ -59,7 +59,10 @@ struct GenericComp2<T> {
     _t: T,
 }
 
-impl<T: 'static> Component for GenericComp2<T> where for<'a> &'a bool: 'a {
+impl<T: 'static> Component for GenericComp2<T>
+where
+    for<'a> &'a bool: 'a,
+{
     type Storage = VecStorage;
 }
 

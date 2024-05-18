@@ -16,7 +16,7 @@ LL | / fn foo() -> Bar
 LL | | where
 LL | |     Bar: Send,
    | |______________^
-   = note: ...which requires revealing opaque types in `[Binder { value: TraitPredicate(<Bar as core::marker::Send>, polarity:Positive), bound_vars: [] }]`...
+   = note: ...which requires revealing opaque types in `[Binder { value: (Alias(Opaque, AliasTy { args: [], def_id: DefId(0:7 ~ in_where_clause[cb1b]::Bar::{opaque#0}) }): core::marker::Send), bound_vars: [] }]`...
    = note: ...which again requires computing type of `Bar::{opaque#0}`, completing the cycle
 note: cycle used when checking that `Bar::{opaque#0}` is well-formed
   --> $DIR/in-where-clause.rs:5:12

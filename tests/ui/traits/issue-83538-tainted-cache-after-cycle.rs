@@ -57,10 +57,10 @@ fn main() {
     // Key is that Vec<First> is "ok" and Third<'_, Ty> is "ok modulo regions":
 
     forward();
-    //~^ ERROR evaluate(Binder { value: TraitPredicate(<std::vec::Vec<First> as std::marker::Unpin>, polarity:Positive), bound_vars: [] }) = Ok(EvaluatedToOk)
-    //~| ERROR evaluate(Binder { value: TraitPredicate(<Third<'_, Ty> as std::marker::Unpin>, polarity:Positive), bound_vars: [] }) = Ok(EvaluatedToOkModuloRegions)
+    //~^ ERROR evaluate(Binder { value: (std::vec::Vec<First, std::alloc::Global>: std::marker::Unpin), bound_vars: [] }) = Ok(EvaluatedToOk)
+    //~| ERROR evaluate(Binder { value: (Third<'?0, Ty>: std::marker::Unpin), bound_vars: [] }) = Ok(EvaluatedToOkModuloRegions)
 
     reverse();
-    //~^ ERROR evaluate(Binder { value: TraitPredicate(<std::vec::Vec<First> as std::marker::Unpin>, polarity:Positive), bound_vars: [] }) = Ok(EvaluatedToOk)
-    //~| ERROR evaluate(Binder { value: TraitPredicate(<Third<'_, Ty> as std::marker::Unpin>, polarity:Positive), bound_vars: [] }) = Ok(EvaluatedToOkModuloRegions)
+    //~^ ERROR evaluate(Binder { value: (std::vec::Vec<First, std::alloc::Global>: std::marker::Unpin), bound_vars: [] }) = Ok(EvaluatedToOk)
+    //~| ERROR evaluate(Binder { value: (Third<'?2, Ty>: std::marker::Unpin), bound_vars: [] }) = Ok(EvaluatedToOkModuloRegions)
 }

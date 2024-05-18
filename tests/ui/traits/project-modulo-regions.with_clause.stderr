@@ -1,8 +1,8 @@
-error: evaluate(Binder { value: TraitPredicate(<Helper as HelperTrait>, polarity:Positive), bound_vars: [] }) = Ok(EvaluatedToOkModuloRegions)
-  --> $DIR/project-modulo-regions.rs:50:5
+error: evaluate(Binder { value: (Helper: HelperTrait), bound_vars: [] }) = Ok(EvaluatedToOkModuloRegions)
+  --> $DIR/project-modulo-regions.rs:56:5
    |
-LL | fn test(val: MyStruct) where Helper: HelperTrait  {
-   |                                      ----------- predicate
+LL |     Helper: HelperTrait,
+   |             ----------- predicate
 ...
 LL |     test(val);
    |     ^^^^

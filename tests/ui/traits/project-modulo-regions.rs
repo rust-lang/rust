@@ -21,7 +21,10 @@ struct Bar;
 // The `where` clause on this impl will cause us to produce `EvaluatedToOkModuloRegions`
 // when evaluating a projection involving this impl
 #[cfg(with_clause)]
-impl MyTrait for Bar where for<'b> &'b (): 'b {
+impl MyTrait for Bar
+where
+    for<'b> &'b (): 'b,
+{
     type Assoc = bool;
 }
 
@@ -42,14 +45,17 @@ impl HelperTrait for Helper where <MyStruct as MyTrait>::Assoc: Sized {}
 // Evaluating this 'where' clause will (recursively) end up evaluating
 // `for<'b> &'b (): 'b`, which will produce `EvaluatedToOkModuloRegions`
 #[rustc_evaluate_where_clauses]
-fn test(val: MyStruct) where Helper: HelperTrait  {
+fn test(val: MyStruct)
+where
+    Helper: HelperTrait,
+{
     panic!()
 }
 
 fn foo(val: MyStruct) {
     test(val);
-    //[with_clause]~^     ERROR evaluate(Binder { value: TraitPredicate(<Helper as HelperTrait>, polarity:Positive), bound_vars: [] }) = Ok(EvaluatedToOkModuloRegions)
-    //[without_clause]~^^ ERROR evaluate(Binder { value: TraitPredicate(<Helper as HelperTrait>, polarity:Positive), bound_vars: [] }) = Ok(EvaluatedToOk)
+    //[with_clause]~^     ERROR evaluate(Binder { value: (Helper: HelperTrait), bound_vars: [] }) = Ok(EvaluatedToOkModuloRegions)
+    //[without_clause]~^^ ERROR evaluate(Binder { value: (Helper: HelperTrait), bound_vars: [] }) = Ok(EvaluatedToOk)
 }
 
 fn main() {}
