@@ -2199,7 +2199,7 @@ impl Param {
     pub fn as_local(&self, db: &dyn HirDatabase) -> Option<Local> {
         let parent = match self.func {
             Callee::Def(CallableDefId::FunctionId(it)) => DefWithBodyId::FunctionId(it),
-            Callee::Closure(closure) => db.lookup_intern_closure(closure.into()).0,
+            Callee::Closure(closure, _) => db.lookup_intern_closure(closure.into()).0,
             _ => return None,
         };
         let body = db.body(parent);
@@ -2237,7 +2237,7 @@ impl Param {
                 }
                 .map(|value| InFile { file_id, value })
             }
-            Callee::Closure(closure) => {
+            Callee::Closure(closure, _) => {
                 let InternedClosure(owner, expr_id) = db.lookup_intern_closure(closure.into());
                 let (_, source_map) = db.body_with_source_map(owner);
                 let ast @ InFile { file_id, value } = source_map.expr_syntax(expr_id).ok()?;
@@ -4316,16 +4316,23 @@ impl Type {
     }
 
     pub fn as_callable(&self, db: &dyn HirDatabase) -> Option<Callable> {
-        let mut the_ty = &self.ty;
         let callee = match self.ty.kind(Interner) {
-            TyKind::Ref(_, _, ty) if ty.as_closure().is_some() => {
-                the_ty = ty;
-                Callee::Closure(ty.as_closure().unwrap())
-            }
-            TyKind::Closure(id, _) => Callee::Closure(*id),
+            TyKind::Closure(id, subst) => Callee::Closure(*id, subst.clone()),
             TyKind::Function(_) => Callee::FnPtr,
             TyKind::FnDef(..) => Callee::Def(self.ty.callable_def(db)?),
-            _ => {
+            kind => {
+                // This branch shouldn't be necessary?
+                if let TyKind::Ref(_, _, ty) = kind {
+                    if let TyKind::Closure(closure, subst) = ty.kind(Interner) {
+                        let sig = ty.callable_sig(db)?;
+                        return Some(Callable {
+                            ty: self.clone(),
+                            sig,
+                            callee: Callee::Closure(*closure, subst.clone()),
+                            is_bound_method: false,
+                        });
+                    }
+                }
                 let sig = hir_ty::callable_sig_from_fnonce(&self.ty, self.env.clone(), db)?;
                 return Some(Callable {
                     ty: self.clone(),
@@ -4336,7 +4343,7 @@ impl Type {
             }
         };
 
-        let sig = the_ty.callable_sig(db)?;
+        let sig = self.ty.callable_sig(db)?;
         Some(Callable { ty: self.clone(), sig, callee, is_bound_method: false })
     }
 
@@ -4953,13 +4960,13 @@ pub struct Callable {
     sig: CallableSig,
     callee: Callee,
     /// Whether this is a method that was called with method call syntax.
-    pub(crate) is_bound_method: bool,
+    is_bound_method: bool,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
 enum Callee {
     Def(CallableDefId),
-    Closure(ClosureId),
+    Closure(ClosureId, Substitution),
     FnPtr,
     Other,
 }
@@ -4968,7 +4975,7 @@ pub enum CallableKind {
     Function(Function),
     TupleStruct(Struct),
     TupleEnumVariant(Variant),
-    Closure,
+    Closure(Closure),
     FnPtr,
     /// Some other type that implements `FnOnce`.
     Other,
@@ -4976,14 +4983,17 @@ pub enum CallableKind {
 
 impl Callable {
     pub fn kind(&self) -> CallableKind {
-        use Callee::*;
         match self.callee {
-            Def(CallableDefId::FunctionId(it)) => CallableKind::Function(it.into()),
-            Def(CallableDefId::StructId(it)) => CallableKind::TupleStruct(it.into()),
-            Def(CallableDefId::EnumVariantId(it)) => CallableKind::TupleEnumVariant(it.into()),
-            Closure(_) => CallableKind::Closure,
-            FnPtr => CallableKind::FnPtr,
-            Other => CallableKind::Other,
+            Callee::Def(CallableDefId::FunctionId(it)) => CallableKind::Function(it.into()),
+            Callee::Def(CallableDefId::StructId(it)) => CallableKind::TupleStruct(it.into()),
+            Callee::Def(CallableDefId::EnumVariantId(it)) => {
+                CallableKind::TupleEnumVariant(it.into())
+            }
+            Callee::Closure(id, ref subst) => {
+                CallableKind::Closure(Closure { id, subst: subst.clone() })
+            }
+            Callee::FnPtr => CallableKind::FnPtr,
+            Callee::Other => CallableKind::Other,
         }
     }
     pub fn receiver_param(&self, db: &dyn HirDatabase) -> Option<(SelfParam, Type)> {
@@ -5004,7 +5014,7 @@ impl Callable {
             .enumerate()
             .skip(if self.is_bound_method { 1 } else { 0 })
             .map(|(idx, ty)| (idx, self.ty.derived(ty.clone())))
-            .map(|(idx, ty)| Param { func: self.callee, idx, ty })
+            .map(|(idx, ty)| Param { func: self.callee.clone(), idx, ty })
             .collect()
     }
     pub fn return_type(&self) -> Type {

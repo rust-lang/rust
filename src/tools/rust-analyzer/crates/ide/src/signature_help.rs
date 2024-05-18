@@ -201,7 +201,10 @@ fn signature_help_for_call(
                 variant.name(db).display(db)
             );
         }
-        hir::CallableKind::Closure | hir::CallableKind::FnPtr | hir::CallableKind::Other => (),
+        hir::CallableKind::Closure(closure) => {
+            format_to!(res.signature, "impl {}", closure.fn_trait(db));
+        }
+        hir::CallableKind::FnPtr | hir::CallableKind::Other => (),
     }
 
     res.signature.push('(');
@@ -245,7 +248,7 @@ fn signature_help_for_call(
             render(func.ret_type(db))
         }
         hir::CallableKind::Function(_)
-        | hir::CallableKind::Closure
+        | hir::CallableKind::Closure(_)
         | hir::CallableKind::FnPtr
         | hir::CallableKind::Other => render(callable.return_type()),
         hir::CallableKind::TupleStruct(_) | hir::CallableKind::TupleEnumVariant(_) => {}
@@ -1349,14 +1352,42 @@ fn test() { S.foo($0); }
 struct S;
 fn foo(s: S) -> i32 { 92 }
 fn main() {
+    let _move = S;
+    (|s| {{_move}; foo(s)})($0)
+}
+        "#,
+            expect![[r#"
+                impl FnOnce(s: S) -> i32
+                            ^^^^
+            "#]],
+        );
+        check(
+            r#"
+struct S;
+fn foo(s: S) -> i32 { 92 }
+fn main() {
     (|s| foo(s))($0)
 }
         "#,
             expect![[r#"
-                (s: S) -> i32
-                 ^^^^
+                impl Fn(s: S) -> i32
+                        ^^^^
             "#]],
-        )
+        );
+        check(
+            r#"
+struct S;
+fn foo(s: S) -> i32 { 92 }
+fn main() {
+    let mut mutate = 0;
+    (|s| { mutate = 1; foo(s) })($0)
+}
+        "#,
+            expect![[r#"
+                impl FnMut(s: S) -> i32
+                           ^^^^
+            "#]],
+        );
     }
 
     #[test]

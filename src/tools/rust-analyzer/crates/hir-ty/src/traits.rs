@@ -1,5 +1,6 @@
 //! Trait solving using Chalk.
 
+use core::fmt;
 use std::env::var;
 
 use chalk_ir::{fold::TypeFoldable, DebruijnIndex, GoalData};
@@ -207,6 +208,16 @@ pub enum FnTrait {
     FnOnce,
     FnMut,
     Fn,
+}
+
+impl fmt::Display for FnTrait {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            FnTrait::FnOnce => write!(f, "FnOnce"),
+            FnTrait::FnMut => write!(f, "FnMut"),
+            FnTrait::Fn => write!(f, "Fn"),
+        }
+    }
 }
 
 impl FnTrait {
