@@ -3116,12 +3116,20 @@ fn add_lld_args(
 
     let self_contained_linker = self_contained_cli || self_contained_target;
     if self_contained_linker && !sess.opts.cg.link_self_contained.is_linker_disabled() {
+        let mut linker_path_exists = false;
         for path in sess.get_tools_search_paths(false) {
+            let linker_path = path.join("gcc-ld");
+            linker_path_exists |= linker_path.exists();
             cmd.arg({
                 let mut arg = OsString::from("-B");
-                arg.push(path.join("gcc-ld"));
+                arg.push(linker_path);
                 arg
             });
+        }
+        if !linker_path_exists {
+            // As an additional sanity check, we do nothing if the sysroot doesn't contain the
+            // linker path at all.
+            return;
         }
     }
 
