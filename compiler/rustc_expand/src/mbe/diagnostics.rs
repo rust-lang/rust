@@ -55,7 +55,7 @@ pub(super) fn failed_to_match_macro<'cx>(
 
     let span = token.span.substitute_dummy(sp);
 
-    let mut err = cx.dcx().struct_span_err(span, parse_failure_msg(&token));
+    let mut err = cx.dcx().struct_span_err(span, parse_failure_msg(&token, None));
     err.span_label(span, label);
     if !def_span.is_dummy() && !cx.source_map().is_imported(def_span) {
         err.span_label(cx.source_map().guess_head_span(def_span), "when calling this macro");
@@ -200,9 +200,17 @@ impl<'a, 'cx> CollectTrackerAndEmitter<'a, 'cx, '_> {
 }
 
 /// Currently used by macro_rules! compilation to extract a little information from the `Failure` case.
-pub struct FailureForwarder;
+pub struct FailureForwarder<'matcher> {
+    expected_token: Option<&'matcher Token>,
+}
 
-impl<'matcher> Tracker<'matcher> for FailureForwarder {
+impl<'matcher> FailureForwarder<'matcher> {
+    pub fn new() -> Self {
+        Self { expected_token: None }
+    }
+}
+
+impl<'matcher> Tracker<'matcher> for FailureForwarder<'matcher> {
     type Failure = (Token, usize, &'static str);
 
     fn build_failure(tok: Token, position: usize, msg: &'static str) -> Self::Failure {
@@ -211,6 +219,14 @@ impl<'matcher> Tracker<'matcher> for FailureForwarder {
 
     fn description() -> &'static str {
         "failure-forwarder"
+    }
+
+    fn set_expected_token(&mut self, tok: &'matcher Token) {
+        self.expected_token = Some(tok);
+    }
+
+    fn get_expected_token(&self) -> Option<&'matcher Token> {
+        self.expected_token
     }
 }
 
@@ -320,9 +336,19 @@ pub(super) fn annotate_doc_comment(dcx: &DiagCtxt, err: &mut Diag<'_>, sm: &Sour
 
 /// Generates an appropriate parsing failure message. For EOF, this is "unexpected end...". For
 /// other tokens, this is "unexpected token...".
-pub(super) fn parse_failure_msg(tok: &Token) -> Cow<'static, str> {
-    match tok.kind {
-        token::Eof => Cow::from("unexpected end of macro invocation"),
-        _ => Cow::from(format!("no rules expected the token `{}`", pprust::token_to_string(tok))),
+pub(super) fn parse_failure_msg(tok: &Token, expected_token: Option<&Token>) -> Cow<'static, str> {
+    if let Some(expected_token) = expected_token {
+        Cow::from(format!(
+            "expected `{}`, found `{}`",
+            pprust::token_to_string(expected_token),
+            pprust::token_to_string(tok),
+        ))
+    } else {
+        match tok.kind {
+            token::Eof => Cow::from("unexpected end of macro invocation"),
+            _ => {
+                Cow::from(format!("no rules expected the token `{}`", pprust::token_to_string(tok)))
+            }
+        }
     }
 }
