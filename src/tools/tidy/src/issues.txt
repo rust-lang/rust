@@ -853,6 +853,8 @@ ui/coroutine/issue-87142.rs
 ui/coroutine/issue-88653.rs
 ui/coroutine/issue-91477.rs
 ui/coroutine/issue-93161.rs
+ui/cross-crate/issue-38875/auxiliary/issue-38875-b.rs
+ui/cross-crate/issue-38875/issue-38875.rs
 ui/cross-crate/issue-64872/issue-64872.rs
 ui/cycle-trait/issue-12511.rs
 ui/debuginfo/issue-105386-debuginfo-ub.rs
@@ -1137,6 +1139,9 @@ ui/generics/issue-32498.rs
 ui/generics/issue-333.rs
 ui/generics/issue-59508-1.rs
 ui/generics/issue-59508.rs
+ui/generics/issue-5997-outer-generic-parameter/issue-5997-enum.rs
+ui/generics/issue-5997-outer-generic-parameter/issue-5997-struct.rs
+ui/generics/issue-5997-outer-generic-parameter/issue-5997.rs
 ui/generics/issue-61631-default-type-param-can-reference-self-in-trait.rs
 ui/generics/issue-61631-default-type-param-cannot-reference-self.rs
 ui/generics/issue-65285-incorrect-explicit-lifetime-name-needed.rs
@@ -1912,8 +1917,6 @@ ui/issues/issue-24533.rs
 ui/issues/issue-24589.rs
 ui/issues/issue-2463.rs
 ui/issues/issue-24682.rs
-ui/issues/issue-24687-embed-debuginfo/auxiliary/issue-24687-lib.rs
-ui/issues/issue-24687-embed-debuginfo/auxiliary/issue-24687-mbcs-in-comments.rs
 ui/issues/issue-2470-bounds-check-overflow.rs
 ui/issues/issue-2472.rs
 ui/issues/issue-24779.rs
@@ -2168,8 +2171,6 @@ ui/issues/issue-36379.rs
 ui/issues/issue-36400.rs
 ui/issues/issue-36474.rs
 ui/issues/issue-3656.rs
-ui/issues/issue-3668-non-constant-value-in-constant/issue-3668-2.rs
-ui/issues/issue-3668-non-constant-value-in-constant/issue-3668.rs
 ui/issues/issue-36744-bitcast-args-if-needed.rs
 ui/issues/issue-36786-resolve-call.rs
 ui/issues/issue-3680.rs
@@ -2184,7 +2185,6 @@ ui/issues/issue-3702.rs
 ui/issues/issue-37051.rs
 ui/issues/issue-37109.rs
 ui/issues/issue-37131.rs
-ui/issues/issue-37311-type-length-limit/issue-37311.rs
 ui/issues/issue-37510.rs
 ui/issues/issue-3753.rs
 ui/issues/issue-37534.rs
@@ -2209,8 +2209,6 @@ ui/issues/issue-38727.rs
 ui/issues/issue-3874.rs
 ui/issues/issue-38763.rs
 ui/issues/issue-38857.rs
-ui/issues/issue-38875/auxiliary/issue-38875-b.rs
-ui/issues/issue-38875/issue-38875.rs
 ui/issues/issue-3888-2.rs
 ui/issues/issue-38919.rs
 ui/issues/issue-38942.rs
@@ -2510,9 +2508,6 @@ ui/issues/issue-59494.rs
 ui/issues/issue-5950.rs
 ui/issues/issue-59756.rs
 ui/issues/issue-5988.rs
-ui/issues/issue-5997-outer-generic-parameter/issue-5997-enum.rs
-ui/issues/issue-5997-outer-generic-parameter/issue-5997-struct.rs
-ui/issues/issue-5997-outer-generic-parameter/issue-5997.rs
 ui/issues/issue-60218.rs
 ui/issues/issue-60622.rs
 ui/issues/issue-60989.rs
@@ -3030,6 +3025,8 @@ ui/modules/issue-13872.rs
 ui/modules/issue-1920-1.rs
 ui/modules/issue-1920-2.rs
 ui/modules/issue-1920-3.rs
+ui/modules/issue-24687-embed-debuginfo/auxiliary/issue-24687-lib.rs
+ui/modules/issue-24687-embed-debuginfo/auxiliary/issue-24687-mbcs-in-comments.rs
 ui/modules/issue-56411-aux.rs
 ui/modules/issue-56411.rs
 ui/moves/issue-22536-copy-mustnt-zero.rs
@@ -3618,6 +3615,7 @@ ui/recursion/issue-83150.rs
 ui/recursion/issue-86784.rs
 ui/recursion/issue-95134.rs
 ui/recursion_limit/issue-105700.rs
+ui/recursion_limit/issue-37311-type-length-limit/issue-37311.rs
 ui/recursion_limit/issue-40003.rs
 ui/regions/issue-101280.rs
 ui/regions/issue-102374.rs
@@ -3850,6 +3848,8 @@ ui/static/issue-18118.rs
 ui/static/issue-24446.rs
 ui/static/issue-24843.rs
 ui/static/issue-34194.rs
+ui/static/issue-3668-non-constant-value-in-constant/issue-3668-2.rs
+ui/static/issue-3668-non-constant-value-in-constant/issue-3668.rs
 ui/static/issue-5216.rs
 ui/statics/issue-14227.rs
 ui/statics/issue-15261.rs
