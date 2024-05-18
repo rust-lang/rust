@@ -3262,6 +3262,7 @@ pub enum ItemKind {
 }
 
 impl ItemKind {
+    /// "a" or "an"
     pub fn article(&self) -> &'static str {
         use ItemKind::*;
         match self {

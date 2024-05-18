@@ -684,9 +684,9 @@ pub(crate) fn make_test(
                     }
                 }
 
-                // The supplied slice is only used for diagnostics,
+                // The supplied item is only used for diagnostics,
                 // which are swallowed here anyway.
-                parser.maybe_consume_incorrect_semicolon(&[]);
+                parser.maybe_consume_incorrect_semicolon(None);
             }
 
             // Reset errors so that they won't be reported as compiler bugs when dropping the

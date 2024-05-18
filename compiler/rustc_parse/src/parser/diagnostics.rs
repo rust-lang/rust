@@ -1817,34 +1817,31 @@ impl<'a> Parser<'a> {
         Ok(P(T::recovered(Some(P(QSelf { ty, path_span, position: 0 })), path)))
     }
 
-    pub fn maybe_consume_incorrect_semicolon(&mut self, items: &[P<Item>]) -> bool {
-        if self.token.kind == TokenKind::Semi {
-            self.bump();
+    /// This function gets called in places where a semicolon is NOT expected and if there's a
+    /// semicolon it emits the appropriate error and returns true.
+    pub fn maybe_consume_incorrect_semicolon(&mut self, previous_item: Option<&Item>) -> bool {
+        if self.token.kind != TokenKind::Semi {
+            return false;
+        }
 
-            let mut err =
-                IncorrectSemicolon { span: self.prev_token.span, opt_help: None, name: "" };
-
-            if !items.is_empty() {
-                let previous_item = &items[items.len() - 1];
-                let previous_item_kind_name = match previous_item.kind {
+        // Check previous item to add it to the diagnostic, for example to say
+        // `enum declarations are not followed by a semicolon`
+        let err = match previous_item {
+            Some(previous_item) => {
+                let name = match previous_item.kind {
                     // Say "braced struct" because tuple-structs and
                     // braceless-empty-struct declarations do take a semicolon.
-                    ItemKind::Struct(..) => Some("braced struct"),
-                    ItemKind::Enum(..) => Some("enum"),
-                    ItemKind::Trait(..) => Some("trait"),
-                    ItemKind::Union(..) => Some("union"),
-                    _ => None,
+                    ItemKind::Struct(..) => "braced struct",
+                    _ => previous_item.kind.descr(),
                 };
-                if let Some(name) = previous_item_kind_name {
-                    err.opt_help = Some(());
-                    err.name = name;
-                }
+                IncorrectSemicolon { span: self.token.span, name, show_help: true }
             }
-            self.dcx().emit_err(err);
-            true
-        } else {
-            false
-        }
+            None => IncorrectSemicolon { span: self.token.span, name: "", show_help: false },
+        };
+        self.dcx().emit_err(err);
+
+        self.bump();
+        true
     }
 
     /// Creates a `Diag` for an unexpected token `t` and tries to recover if it is a
@@ -2957,13 +2954,23 @@ impl<'a> Parser<'a> {
         err
     }
 
-    pub fn is_diff_marker(&mut self, long_kind: &TokenKind, short_kind: &TokenKind) -> bool {
+    /// This checks if this is a conflict marker, depending of the parameter passed.
+    ///
+    /// * `>>>>>`
+    /// * `=====`
+    /// * `<<<<<`
+    ///
+    pub fn is_vcs_conflict_marker(
+        &mut self,
+        long_kind: &TokenKind,
+        short_kind: &TokenKind,
+    ) -> bool {
         (0..3).all(|i| self.look_ahead(i, |tok| tok == long_kind))
             && self.look_ahead(3, |tok| tok == short_kind)
     }
 
-    fn diff_marker(&mut self, long_kind: &TokenKind, short_kind: &TokenKind) -> Option<Span> {
-        if self.is_diff_marker(long_kind, short_kind) {
+    fn conflict_marker(&mut self, long_kind: &TokenKind, short_kind: &TokenKind) -> Option<Span> {
+        if self.is_vcs_conflict_marker(long_kind, short_kind) {
             let lo = self.token.span;
             for _ in 0..4 {
                 self.bump();
@@ -2973,15 +2980,16 @@ impl<'a> Parser<'a> {
         None
     }
 
-    pub fn recover_diff_marker(&mut self) {
-        if let Err(err) = self.err_diff_marker() {
+    pub fn recover_vcs_conflict_marker(&mut self) {
+        if let Err(err) = self.err_vcs_conflict_marker() {
             err.emit();
             FatalError.raise();
         }
     }
 
-    pub fn err_diff_marker(&mut self) -> PResult<'a, ()> {
-        let Some(start) = self.diff_marker(&TokenKind::BinOp(token::Shl), &TokenKind::Lt) else {
+    pub fn err_vcs_conflict_marker(&mut self) -> PResult<'a, ()> {
+        let Some(start) = self.conflict_marker(&TokenKind::BinOp(token::Shl), &TokenKind::Lt)
+        else {
             return Ok(());
         };
         let mut spans = Vec::with_capacity(3);
@@ -2993,13 +3001,15 @@ impl<'a> Parser<'a> {
             if self.token.kind == TokenKind::Eof {
                 break;
             }
-            if let Some(span) = self.diff_marker(&TokenKind::OrOr, &TokenKind::BinOp(token::Or)) {
+            if let Some(span) = self.conflict_marker(&TokenKind::OrOr, &TokenKind::BinOp(token::Or))
+            {
                 middlediff3 = Some(span);
             }
-            if let Some(span) = self.diff_marker(&TokenKind::EqEq, &TokenKind::Eq) {
+            if let Some(span) = self.conflict_marker(&TokenKind::EqEq, &TokenKind::Eq) {
                 middle = Some(span);
             }
-            if let Some(span) = self.diff_marker(&TokenKind::BinOp(token::Shr), &TokenKind::Gt) {
+            if let Some(span) = self.conflict_marker(&TokenKind::BinOp(token::Shr), &TokenKind::Gt)
+            {
                 spans.push(span);
                 end = Some(span);
                 break;
