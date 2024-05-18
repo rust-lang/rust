@@ -5,6 +5,7 @@ use super::assembly::{self, structural_traits, Candidate};
 use super::{EvalCtxt, GoalSource};
 use rustc_hir::def_id::DefId;
 use rustc_hir::LangItem;
+use rustc_infer::infer::InferCtxt;
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::solve::inspect::ProbeKind;
 use rustc_infer::traits::solve::MaybeCause;
@@ -24,7 +25,7 @@ mod inherent;
 mod opaque_types;
 mod weak_types;
 
-impl<'tcx> EvalCtxt<'_, 'tcx> {
+impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
     #[instrument(level = "trace", skip(self), ret)]
     pub(super) fn compute_normalizes_to_goal(
         &mut self,
@@ -98,11 +99,11 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
     }
 
     fn probe_and_match_goal_against_assumption(
-        ecx: &mut EvalCtxt<'_, 'tcx>,
+        ecx: &mut EvalCtxt<'_, InferCtxt<'tcx>>,
         source: CandidateSource<'tcx>,
         goal: Goal<'tcx, Self>,
         assumption: ty::Clause<'tcx>,
-        then: impl FnOnce(&mut EvalCtxt<'_, 'tcx>) -> QueryResult<'tcx>,
+        then: impl FnOnce(&mut EvalCtxt<'_, InferCtxt<'tcx>>) -> QueryResult<'tcx>,
     ) -> Result<Candidate<'tcx>, NoSolution> {
         if let Some(projection_pred) = assumption.as_projection_clause() {
             if projection_pred.projection_def_id() == goal.predicate.def_id() {
@@ -137,7 +138,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
     }
 
     fn consider_impl_candidate(
-        ecx: &mut EvalCtxt<'_, 'tcx>,
+        ecx: &mut EvalCtxt<'_, InferCtxt<'tcx>>,
         goal: Goal<'tcx, NormalizesTo<'tcx>>,
         impl_def_id: DefId,
     ) -> Result<Candidate<'tcx>, NoSolution> {
@@ -199,7 +200,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
                 return ecx.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS);
             };
 
-            let error_response = |ecx: &mut EvalCtxt<'_, 'tcx>, reason| {
+            let error_response = |ecx: &mut EvalCtxt<'_, InferCtxt<'tcx>>, reason| {
                 let guar = tcx.dcx().span_delayed_bug(tcx.def_span(assoc_def.item.def_id), reason);
                 let error_term = match assoc_def.item.kind {
                     ty::AssocKind::Const => ty::Const::new_error(
@@ -279,14 +280,14 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
     /// Fail to normalize if the predicate contains an error, alternatively, we could normalize to `ty::Error`
     /// and succeed. Can experiment with this to figure out what results in better error messages.
     fn consider_error_guaranteed_candidate(
-        _ecx: &mut EvalCtxt<'_, 'tcx>,
+        _ecx: &mut EvalCtxt<'_, InferCtxt<'tcx>>,
         _guar: ErrorGuaranteed,
     ) -> Result<Candidate<'tcx>, NoSolution> {
         Err(NoSolution)
     }
 
     fn consider_auto_trait_candidate(
-        ecx: &mut EvalCtxt<'_, 'tcx>,
+        ecx: &mut EvalCtxt<'_, InferCtxt<'tcx>>,
         goal: Goal<'tcx, Self>,
     ) -> Result<Candidate<'tcx>, NoSolution> {
         ecx.tcx().dcx().span_delayed_bug(
@@ -297,42 +298,42 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
     }
 
     fn consider_trait_alias_candidate(
-        _ecx: &mut EvalCtxt<'_, 'tcx>,
+        _ecx: &mut EvalCtxt<'_, InferCtxt<'tcx>>,
         goal: Goal<'tcx, Self>,
     ) -> Result<Candidate<'tcx>, NoSolution> {
         bug!("trait aliases do not have associated types: {:?}", goal);
     }
 
     fn consider_builtin_sized_candidate(
-        _ecx: &mut EvalCtxt<'_, 'tcx>,
+        _ecx: &mut EvalCtxt<'_, InferCtxt<'tcx>>,
         goal: Goal<'tcx, Self>,
     ) -> Result<Candidate<'tcx>, NoSolution> {
         bug!("`Sized` does not have an associated type: {:?}", goal);
     }
 
     fn consider_builtin_copy_clone_candidate(
-        _ecx: &mut EvalCtxt<'_, 'tcx>,
+        _ecx: &mut EvalCtxt<'_, InferCtxt<'tcx>>,
         goal: Goal<'tcx, Self>,
     ) -> Result<Candidate<'tcx>, NoSolution> {
         bug!("`Copy`/`Clone` does not have an associated type: {:?}", goal);
     }
 
     fn consider_builtin_pointer_like_candidate(
-        _ecx: &mut EvalCtxt<'_, 'tcx>,
+        _ecx: &mut EvalCtxt<'_, InferCtxt<'tcx>>,
         goal: Goal<'tcx, Self>,
     ) -> Result<Candidate<'tcx>, NoSolution> {
         bug!("`PointerLike` does not have an associated type: {:?}", goal);
     }
 
     fn consider_builtin_fn_ptr_trait_candidate(
-        _ecx: &mut EvalCtxt<'_, 'tcx>,
+        _ecx: &mut EvalCtxt<'_, InferCtxt<'tcx>>,
         goal: Goal<'tcx, Self>,
     ) -> Result<Candidate<'tcx>, NoSolution> {
         bug!("`FnPtr` does not have an associated type: {:?}", goal);
     }
 
     fn consider_builtin_fn_trait_candidates(
-        ecx: &mut EvalCtxt<'_, 'tcx>,
+        ecx: &mut EvalCtxt<'_, InferCtxt<'tcx>>,
         goal: Goal<'tcx, Self>,
         goal_kind: ty::ClosureKind,
     ) -> Result<Candidate<'tcx>, NoSolution> {
@@ -375,7 +376,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
     }
 
     fn consider_builtin_async_fn_trait_candidates(
-        ecx: &mut EvalCtxt<'_, 'tcx>,
+        ecx: &mut EvalCtxt<'_, InferCtxt<'tcx>>,
         goal: Goal<'tcx, Self>,
         goal_kind: ty::ClosureKind,
     ) -> Result<Candidate<'tcx>, NoSolution> {
@@ -460,7 +461,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
     }
 
     fn consider_builtin_async_fn_kind_helper_candidate(
-        ecx: &mut EvalCtxt<'_, 'tcx>,
+        ecx: &mut EvalCtxt<'_, InferCtxt<'tcx>>,
         goal: Goal<'tcx, Self>,
     ) -> Result<Candidate<'tcx>, NoSolution> {
         let [
@@ -507,14 +508,14 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
     }
 
     fn consider_builtin_tuple_candidate(
-        _ecx: &mut EvalCtxt<'_, 'tcx>,
+        _ecx: &mut EvalCtxt<'_, InferCtxt<'tcx>>,
         goal: Goal<'tcx, Self>,
     ) -> Result<Candidate<'tcx>, NoSolution> {
         bug!("`Tuple` does not have an associated type: {:?}", goal);
     }
 
     fn consider_builtin_pointee_candidate(
-        ecx: &mut EvalCtxt<'_, 'tcx>,
+        ecx: &mut EvalCtxt<'_, InferCtxt<'tcx>>,
         goal: Goal<'tcx, Self>,
     ) -> Result<Candidate<'tcx>, NoSolution> {
         let tcx = ecx.tcx();
@@ -596,7 +597,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
     }
 
     fn consider_builtin_future_candidate(
-        ecx: &mut EvalCtxt<'_, 'tcx>,
+        ecx: &mut EvalCtxt<'_, InferCtxt<'tcx>>,
         goal: Goal<'tcx, Self>,
     ) -> Result<Candidate<'tcx>, NoSolution> {
         let self_ty = goal.predicate.self_ty();
@@ -628,7 +629,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
     }
 
     fn consider_builtin_iterator_candidate(
-        ecx: &mut EvalCtxt<'_, 'tcx>,
+        ecx: &mut EvalCtxt<'_, InferCtxt<'tcx>>,
         goal: Goal<'tcx, Self>,
     ) -> Result<Candidate<'tcx>, NoSolution> {
         let self_ty = goal.predicate.self_ty();
@@ -660,14 +661,14 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
     }
 
     fn consider_builtin_fused_iterator_candidate(
-        _ecx: &mut EvalCtxt<'_, 'tcx>,
+        _ecx: &mut EvalCtxt<'_, InferCtxt<'tcx>>,
         goal: Goal<'tcx, Self>,
     ) -> Result<Candidate<'tcx>, NoSolution> {
         bug!("`FusedIterator` does not have an associated type: {:?}", goal);
     }
 
     fn consider_builtin_async_iterator_candidate(
-        ecx: &mut EvalCtxt<'_, 'tcx>,
+        ecx: &mut EvalCtxt<'_, InferCtxt<'tcx>>,
         goal: Goal<'tcx, Self>,
     ) -> Result<Candidate<'tcx>, NoSolution> {
         let self_ty = goal.predicate.self_ty();
@@ -703,7 +704,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
     }
 
     fn consider_builtin_coroutine_candidate(
-        ecx: &mut EvalCtxt<'_, 'tcx>,
+        ecx: &mut EvalCtxt<'_, InferCtxt<'tcx>>,
         goal: Goal<'tcx, Self>,
     ) -> Result<Candidate<'tcx>, NoSolution> {
         let self_ty = goal.predicate.self_ty();
@@ -748,14 +749,14 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
     }
 
     fn consider_structural_builtin_unsize_candidates(
-        _ecx: &mut EvalCtxt<'_, 'tcx>,
+        _ecx: &mut EvalCtxt<'_, InferCtxt<'tcx>>,
         goal: Goal<'tcx, Self>,
     ) -> Vec<Candidate<'tcx>> {
         bug!("`Unsize` does not have an associated type: {:?}", goal);
     }
 
     fn consider_builtin_discriminant_kind_candidate(
-        ecx: &mut EvalCtxt<'_, 'tcx>,
+        ecx: &mut EvalCtxt<'_, InferCtxt<'tcx>>,
         goal: Goal<'tcx, Self>,
     ) -> Result<Candidate<'tcx>, NoSolution> {
         let self_ty = goal.predicate.self_ty();
@@ -807,7 +808,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
     }
 
     fn consider_builtin_async_destruct_candidate(
-        ecx: &mut EvalCtxt<'_, 'tcx>,
+        ecx: &mut EvalCtxt<'_, InferCtxt<'tcx>>,
         goal: Goal<'tcx, Self>,
     ) -> Result<Candidate<'tcx>, NoSolution> {
         let self_ty = goal.predicate.self_ty();
@@ -860,14 +861,14 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
     }
 
     fn consider_builtin_destruct_candidate(
-        _ecx: &mut EvalCtxt<'_, 'tcx>,
+        _ecx: &mut EvalCtxt<'_, InferCtxt<'tcx>>,
         goal: Goal<'tcx, Self>,
     ) -> Result<Candidate<'tcx>, NoSolution> {
         bug!("`Destruct` does not have an associated type: {:?}", goal);
     }
 
     fn consider_builtin_transmute_candidate(
-        _ecx: &mut EvalCtxt<'_, 'tcx>,
+        _ecx: &mut EvalCtxt<'_, InferCtxt<'tcx>>,
         goal: Goal<'tcx, Self>,
     ) -> Result<Candidate<'tcx>, NoSolution> {
         bug!("`BikeshedIntrinsicFrom` does not have an associated type: {:?}", goal)
@@ -880,7 +881,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
 /// diverge.
 #[instrument(level = "trace", skip(ecx, param_env), ret)]
 fn fetch_eligible_assoc_item_def<'tcx>(
-    ecx: &EvalCtxt<'_, 'tcx>,
+    ecx: &EvalCtxt<'_, InferCtxt<'tcx>>,
     param_env: ty::ParamEnv<'tcx>,
     goal_trait_ref: ty::TraitRef<'tcx>,
     trait_assoc_def_id: DefId,

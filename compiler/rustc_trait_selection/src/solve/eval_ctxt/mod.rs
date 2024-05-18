@@ -4,7 +4,6 @@ use std::ops::ControlFlow;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::at::ToTrace;
-use rustc_infer::infer::canonical::CanonicalVarValues;
 use rustc_infer::infer::{
     BoundRegionConversionTime, DefineOpaqueTypes, InferCtxt, InferOk, TyCtxtInferExt,
 };
@@ -13,10 +12,8 @@ use rustc_infer::traits::solve::{MaybeCause, NestedNormalizationGoals};
 use rustc_infer::traits::ObligationCause;
 use rustc_macros::{extension, HashStable, HashStable_NoContext, TyDecodable, TyEncodable};
 use rustc_middle::bug;
-use rustc_middle::infer::canonical::CanonicalVarInfos;
 use rustc_middle::traits::solve::{
-    inspect, CanonicalInput, CanonicalResponse, Certainty, PredefinedOpaques,
-    PredefinedOpaquesData, QueryResult,
+    inspect, CanonicalInput, CanonicalResponse, Certainty, PredefinedOpaquesData, QueryResult,
 };
 use rustc_middle::traits::specialization_graph;
 use rustc_middle::ty::{
@@ -25,7 +22,7 @@ use rustc_middle::ty::{
 };
 use rustc_session::config::DumpSolverProofTree;
 use rustc_span::DUMMY_SP;
-use rustc_type_ir::{self as ir, Interner};
+use rustc_type_ir::{self as ir, CanonicalVarValues, Interner};
 use rustc_type_ir_macros::{Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic};
 
 use crate::traits::coherence;
@@ -41,7 +38,11 @@ pub(super) mod canonical;
 mod probe;
 mod select;
 
-pub struct EvalCtxt<'a, 'tcx> {
+pub struct EvalCtxt<
+    'a,
+    Infcx: InferCtxtLike<Interner = I>,
+    I: Interner = <Infcx as InferCtxtLike>::Interner,
+> {
     /// The inference context that backs (mostly) inference and placeholder terms
     /// instantiated while solving goals.
     ///
@@ -57,11 +58,11 @@ pub struct EvalCtxt<'a, 'tcx> {
     /// If some `InferCtxt` method is missing, please first think defensively about
     /// the method's compatibility with this solver, or if an existing one does
     /// the job already.
-    infcx: &'a InferCtxt<'tcx>,
+    infcx: &'a Infcx,
 
     /// The variable info for the `var_values`, only used to make an ambiguous response
     /// with no constraints.
-    variables: CanonicalVarInfos<'tcx>,
+    variables: I::CanonicalVars,
     /// Whether we're currently computing a `NormalizesTo` goal. Unlike other goals,
     /// `NormalizesTo` goals act like functions with the expected term always being
     /// fully unconstrained. This would weaken inference however, as the nested goals
@@ -70,9 +71,9 @@ pub struct EvalCtxt<'a, 'tcx> {
     /// when then adds these to its own context. The caller is always an `AliasRelate`
     /// goal so this never leaks out of the solver.
     is_normalizes_to_goal: bool,
-    pub(super) var_values: CanonicalVarValues<'tcx>,
+    pub(super) var_values: CanonicalVarValues<I>,
 
-    predefined_opaques_in_body: PredefinedOpaques<'tcx>,
+    predefined_opaques_in_body: I::PredefinedOpaques,
 
     /// The highest universe index nameable by the caller.
     ///
@@ -85,9 +86,9 @@ pub struct EvalCtxt<'a, 'tcx> {
     /// new placeholders to the caller.
     pub(super) max_input_universe: ty::UniverseIndex,
 
-    pub(super) search_graph: &'a mut SearchGraph<TyCtxt<'tcx>>,
+    pub(super) search_graph: &'a mut SearchGraph<I>,
 
-    nested_goals: NestedGoals<TyCtxt<'tcx>>,
+    nested_goals: NestedGoals<I>,
 
     // Has this `EvalCtxt` errored out with `NoSolution` in `try_evaluate_added_goals`?
     //
@@ -97,7 +98,7 @@ pub struct EvalCtxt<'a, 'tcx> {
     // evaluation code.
     tainted: Result<(), NoSolution>,
 
-    pub(super) inspect: ProofTreeBuilder<TyCtxt<'tcx>>,
+    pub(super) inspect: ProofTreeBuilder<I>,
 }
 
 #[derive(derivative::Derivative)]
@@ -157,7 +158,7 @@ impl<'tcx> InferCtxt<'tcx> {
     }
 }
 
-impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
+impl<'a, 'tcx> EvalCtxt<'a, InferCtxt<'tcx>> {
     pub(super) fn solver_mode(&self) -> SolverMode {
         self.search_graph.solver_mode()
     }
@@ -172,7 +173,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
     pub(super) fn enter_root<R>(
         infcx: &InferCtxt<'tcx>,
         generate_proof_tree: GenerateProofTree,
-        f: impl FnOnce(&mut EvalCtxt<'_, 'tcx>) -> R,
+        f: impl FnOnce(&mut EvalCtxt<'_, InferCtxt<'tcx>>) -> R,
     ) -> (R, Option<inspect::GoalEvaluation<TyCtxt<'tcx>>>) {
         let mode = if infcx.intercrate { SolverMode::Coherence } else { SolverMode::Normal };
         let mut search_graph = search_graph::SearchGraph::new(mode);
@@ -228,7 +229,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         search_graph: &'a mut search_graph::SearchGraph<TyCtxt<'tcx>>,
         canonical_input: CanonicalInput<'tcx>,
         canonical_goal_evaluation: &mut ProofTreeBuilder<TyCtxt<'tcx>>,
-        f: impl FnOnce(&mut EvalCtxt<'_, 'tcx>, Goal<'tcx, ty::Predicate<'tcx>>) -> R,
+        f: impl FnOnce(&mut EvalCtxt<'_, InferCtxt<'tcx>>, Goal<'tcx, ty::Predicate<'tcx>>) -> R,
     ) -> R {
         let intercrate = match search_graph.solver_mode() {
             SolverMode::Normal => false,
@@ -600,7 +601,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
     }
 }
 
-impl<'tcx> EvalCtxt<'_, 'tcx> {
+impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
     pub(super) fn tcx(&self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }
