@@ -376,7 +376,7 @@ If you're running Neovim 0.10 or later, you can enable inlay hints via `on_attac
 ----
 lspconfig.rust_analyzer.setup({
     on_attach = function(client, bufnr)
-        vim.lsp.inlay_hint.enable(bufnr)
+        vim.lsp.inlay_hint.enable(true, { bufnr = bufnr })
     end
 })
 ----
