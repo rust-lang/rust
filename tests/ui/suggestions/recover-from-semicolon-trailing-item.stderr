@@ -3,6 +3,8 @@ error: expected item, found `;`
    |
 LL | mod M {};
    |         ^ help: remove this semicolon
+   |
+   = help: module declarations are not followed by a semicolon
 
 error: expected item, found `;`
   --> $DIR/recover-from-semicolon-trailing-item.rs:4:12
@@ -17,6 +19,8 @@ error: expected item, found `;`
    |
 LL | fn foo(a: usize) {};
    |                    ^ help: remove this semicolon
+   |
+   = help: function declarations are not followed by a semicolon
 
 error[E0308]: mismatched types
   --> $DIR/recover-from-semicolon-trailing-item.rs:10:20
