@@ -209,6 +209,7 @@ mod handlers {
     mod sort_items;
     mod split_import;
     mod term_search;
+    mod toggle_async_sugar;
     mod toggle_ignore;
     mod unmerge_match_arm;
     mod unmerge_use;
@@ -238,6 +239,7 @@ mod handlers {
             change_visibility::change_visibility,
             convert_bool_then::convert_bool_then_to_if,
             convert_bool_then::convert_if_to_bool_then,
+            toggle_async_sugar::toggle_async_sugar,
             convert_comment_block::convert_comment_block,
             convert_from_to_tryfrom::convert_from_to_tryfrom,
             convert_integer_literal::convert_integer_literal,

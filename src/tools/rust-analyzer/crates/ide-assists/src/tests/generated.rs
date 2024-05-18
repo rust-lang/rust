@@ -3021,6 +3021,23 @@ use std::{collections::HashMap};
 }
 
 #[test]
+fn doctest_toggle_async_sugar() {
+    check_doc_test(
+        "toggle_async_sugar",
+        r#####"
+pub async f$0n foo() -> usize {
+    0
+}
+"#####,
+        r#####"
+pub fn foo() -> impl Future<Output = usize> {
+    0
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_toggle_ignore() {
     check_doc_test(
         "toggle_ignore",
