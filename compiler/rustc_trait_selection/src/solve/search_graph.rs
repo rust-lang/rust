@@ -542,7 +542,7 @@ impl<'tcx> SearchGraph<'tcx> {
             };
 
             let cycle_data = self.cycle_data.get_or_insert_with(|| CycleData::new(stack_depth));
-            let heads = [(stack_depth, usage_kind)].into_iter().collect(); // TODO
+            let heads = [(stack_depth, usage_kind)].into_iter().collect();
             cycle_data.tag_cycle_participants(&mut self.stack, &heads);
 
             // Return the provisional result or, if we're in the first iteration,
