@@ -107,24 +107,15 @@ fn divide_sparc() {
 macro_rules! float {
     ($($f:ty, $fn:ident, $apfloat_ty:ident, $sys_available:meta);*;) => {
         $(
-            fuzz_float_2(N, |x: $f, y: $f| {
-                let quo0: $f = apfloat_fallback!($f, $apfloat_ty, $sys_available, Div::div, x, y);
-                let quo1: $f = $fn(x, y);
-                #[cfg(not(target_arch = "arm"))]
-                if !Float::eq_repr(quo0, quo1) {
-                    panic!(
-                        "{}({:?}, {:?}): std: {:?}, builtins: {:?}",
-                        stringify!($fn),
-                        x,
-                        y,
-                        quo0,
-                        quo1
-                    );
-                }
+            #[test]
+            fn $fn() {
+                use compiler_builtins::float::{div::$fn, Float};
+                use core::ops::Div;
 
-                // ARM SIMD instructions always flush subnormals to zero
-                #[cfg(target_arch = "arm")]
-                if !(Float::is_subnormal(quo0) || Float::is_subnormal(quo1)) {
+                fuzz_float_2(N, |x: $f, y: $f| {
+                    let quo0: $f = apfloat_fallback!($f, $apfloat_ty, $sys_available, Div::div, x, y);
+                    let quo1: $f = $fn(x, y);
+                    #[cfg(not(target_arch = "arm"))]
                     if !Float::eq_repr(quo0, quo1) {
                         panic!(
                             "{}({:?}, {:?}): std: {:?}, builtins: {:?}",
@@ -135,38 +126,43 @@ macro_rules! float {
                             quo1
                         );
                     }
-                }
-            });
+
+                    // ARM SIMD instructions always flush subnormals to zero
+                    #[cfg(target_arch = "arm")]
+                    if !(Float::is_subnormal(quo0) || Float::is_subnormal(quo1)) {
+                        if !Float::eq_repr(quo0, quo1) {
+                            panic!(
+                                "{}({:?}, {:?}): std: {:?}, builtins: {:?}",
+                                stringify!($fn),
+                                x,
+                                y,
+                                quo0,
+                                quo1
+                            );
+                        }
+                    }
+                });
+            }
         )*
     };
 }
 
 #[cfg(not(all(target_arch = "x86", not(target_feature = "sse"))))]
-#[test]
-fn float_div() {
-    use compiler_builtins::float::{
-        div::{__divdf3, __divsf3},
-        Float,
-    };
-    use core::ops::Div;
+mod float_div {
+    use super::*;
 
-    float!(
+    float! {
         f32, __divsf3, Single, all();
         f64, __divdf3, Double, all();
-    );
+    }
 }
 
 #[cfg(target_arch = "arm")]
-#[test]
-fn float_div_arm() {
-    use compiler_builtins::float::{
-        div::{__divdf3vfp, __divsf3vfp},
-        Float,
-    };
-    use core::ops::Div;
+mod float_div_arm {
+    use super::*;
 
-    float!(
+    float! {
         f32, __divsf3vfp, Single, all();
         f64, __divdf3vfp, Double, all();
-    );
+    }
 }
