@@ -198,17 +198,21 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
                 }
                 collector.visit_generics(&impl_.generics);
 
-                let may_move: Vec<Span> = collector
+                let mut may_move: Vec<Span> = collector
                     .paths
                     .into_iter()
                     .filter_map(|path| {
-                        if path_has_local_parent(&path, cx, parent, parent_parent) {
-                            Some(path_span_without_args(&path))
+                        if let Some(did) = path.res.opt_def_id()
+                            && did_has_local_parent(did, cx.tcx, parent, parent_parent)
+                        {
+                            Some(cx.tcx.def_span(did))
                         } else {
                             None
                         }
                     })
                     .collect();
+                may_move.sort();
+                may_move.dedup();
 
                 let const_anon = matches!(parent_def_kind, DefKind::Const | DefKind::Static { .. })
                     .then_some(span_for_const_anon_suggestion);
@@ -244,13 +248,21 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
                 } else {
                     None
                 };
+                let move_to = if may_move.is_empty() {
+                    ms.push_span_label(
+                        cx.tcx.def_span(parent),
+                        fluent::lint_non_local_definitions_impl_move_help,
+                    );
+                    None
+                } else {
+                    Some((cx.tcx.def_span(parent), may_move))
+                };
 
                 cx.emit_span_lint(
                     NON_LOCAL_DEFINITIONS,
                     ms,
                     NonLocalDefinitionsDiag::Impl {
                         depth: self.body_depth,
-                        move_help: item.span,
                         body_kind_descr: cx.tcx.def_kind_descr(parent_def_kind, parent),
                         body_name: parent_opt_item_name
                             .map(|s| s.to_ident_string())
@@ -259,7 +271,7 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
                         const_anon,
                         self_ty_str,
                         of_trait_str,
-                        may_move,
+                        move_to,
                         may_remove,
                         has_trait: impl_.of_trait.is_some(),
                     },

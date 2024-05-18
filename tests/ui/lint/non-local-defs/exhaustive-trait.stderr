@@ -1,6 +1,8 @@
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
   --> $DIR/exhaustive-trait.rs:7:5
    |
+LL | fn main() {
+   | --------- move the `impl` block outside of this function `main`
 LL |     impl PartialEq<()> for Dog {
    |     ^^^^^---------^^^^^^^^^---
    |          |                 |
@@ -9,22 +11,15 @@ LL |     impl PartialEq<()> for Dog {
    |
    = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
    = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
-help: move this `impl` block outside of the current function `main`
-  --> $DIR/exhaustive-trait.rs:7:5
-   |
-LL | /     impl PartialEq<()> for Dog {
-LL | |
-LL | |         fn eq(&self, _: &()) -> bool {
-LL | |             todo!()
-LL | |         }
-LL | |     }
-   | |_____^
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
    = note: `#[warn(non_local_definitions)]` on by default
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
   --> $DIR/exhaustive-trait.rs:14:5
    |
+LL | fn main() {
+   | --------- move the `impl` block outside of this function `main`
+...
 LL |     impl PartialEq<()> for &Dog {
    |     ^^^^^---------^^^^^^^^^----
    |          |                 |
@@ -33,21 +28,14 @@ LL |     impl PartialEq<()> for &Dog {
    |
    = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
    = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
-help: move this `impl` block outside of the current function `main`
-  --> $DIR/exhaustive-trait.rs:14:5
-   |
-LL | /     impl PartialEq<()> for &Dog {
-LL | |
-LL | |         fn eq(&self, _: &()) -> bool {
-LL | |             todo!()
-LL | |         }
-LL | |     }
-   | |_____^
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
   --> $DIR/exhaustive-trait.rs:21:5
    |
+LL | fn main() {
+   | --------- move the `impl` block outside of this function `main`
+...
 LL |     impl PartialEq<Dog> for () {
    |     ^^^^^---------^^^^^^^^^^--
    |          |                  |
@@ -56,21 +44,14 @@ LL |     impl PartialEq<Dog> for () {
    |
    = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
    = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
-help: move this `impl` block outside of the current function `main`
-  --> $DIR/exhaustive-trait.rs:21:5
-   |
-LL | /     impl PartialEq<Dog> for () {
-LL | |
-LL | |         fn eq(&self, _: &Dog) -> bool {
-LL | |             todo!()
-LL | |         }
-LL | |     }
-   | |_____^
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
   --> $DIR/exhaustive-trait.rs:28:5
    |
+LL | fn main() {
+   | --------- move the `impl` block outside of this function `main`
+...
 LL |     impl PartialEq<&Dog> for () {
    |     ^^^^^---------^^^^^^^^^^^--
    |          |                   |
@@ -79,21 +60,14 @@ LL |     impl PartialEq<&Dog> for () {
    |
    = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
    = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
-help: move this `impl` block outside of the current function `main`
-  --> $DIR/exhaustive-trait.rs:28:5
-   |
-LL | /     impl PartialEq<&Dog> for () {
-LL | |
-LL | |         fn eq(&self, _: &&Dog) -> bool {
-LL | |             todo!()
-LL | |         }
-LL | |     }
-   | |_____^
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
   --> $DIR/exhaustive-trait.rs:35:5
    |
+LL | fn main() {
+   | --------- move the `impl` block outside of this function `main`
+...
 LL |     impl PartialEq<Dog> for &Dog {
    |     ^^^^^---------^^^^^^^^^^----
    |          |                  |
@@ -102,21 +76,14 @@ LL |     impl PartialEq<Dog> for &Dog {
    |
    = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
    = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
-help: move this `impl` block outside of the current function `main`
-  --> $DIR/exhaustive-trait.rs:35:5
-   |
-LL | /     impl PartialEq<Dog> for &Dog {
-LL | |
-LL | |         fn eq(&self, _: &Dog) -> bool {
-LL | |             todo!()
-LL | |         }
-LL | |     }
-   | |_____^
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
   --> $DIR/exhaustive-trait.rs:42:5
    |
+LL | fn main() {
+   | --------- move the `impl` block outside of this function `main`
+...
 LL |     impl PartialEq<&Dog> for &Dog {
    |     ^^^^^---------^^^^^^^^^^^----
    |          |                   |
@@ -125,16 +92,6 @@ LL |     impl PartialEq<&Dog> for &Dog {
    |
    = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
    = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
-help: move this `impl` block outside of the current function `main`
-  --> $DIR/exhaustive-trait.rs:42:5
-   |
-LL | /     impl PartialEq<&Dog> for &Dog {
-LL | |
-LL | |         fn eq(&self, _: &&Dog) -> bool {
-LL | |             todo!()
-LL | |         }
-LL | |     }
-   | |_____^
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: 6 warnings emitted

@@ -1,26 +1,23 @@
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
   --> $DIR/exhaustive.rs:10:5
    |
+LL | fn main() {
+   | --------- move the `impl` block outside of this function `main`
 LL |     impl Test {
    |     ^^^^^----
    |          |
    |          `Test` is not local
    |
    = note: methods and associated constants are still usable outside the current expression, only `impl Local` and `impl dyn Local` can ever be private, and only if the type is nested in the same item as the `impl`
-help: move this `impl` block outside of the current function `main`
-  --> $DIR/exhaustive.rs:10:5
-   |
-LL | /     impl Test {
-LL | |
-LL | |         fn foo() {}
-LL | |     }
-   | |_____^
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
    = note: `#[warn(non_local_definitions)]` on by default
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
   --> $DIR/exhaustive.rs:15:5
    |
+LL | fn main() {
+   | --------- move the `impl` block outside of this function `main`
+...
 LL |     impl Display for Test {
    |     ^^^^^-------^^^^^----
    |          |           |
@@ -29,37 +26,28 @@ LL |     impl Display for Test {
    |
    = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
    = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
-help: move this `impl` block outside of the current function `main`
-  --> $DIR/exhaustive.rs:15:5
-   |
-LL | /     impl Display for Test {
-LL | |
-LL | |         fn fmt(&self, _f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-LL | |             todo!()
-LL | |         }
-LL | |     }
-   | |_____^
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
   --> $DIR/exhaustive.rs:22:5
    |
+LL | fn main() {
+   | --------- move the `impl` block outside of this function `main`
+...
 LL |     impl dyn Trait {}
    |     ^^^^^^^^^-----
    |              |
    |              `Trait` is not local
    |
    = note: methods and associated constants are still usable outside the current expression, only `impl Local` and `impl dyn Local` can ever be private, and only if the type is nested in the same item as the `impl`
-help: move this `impl` block outside of the current function `main`
-  --> $DIR/exhaustive.rs:22:5
-   |
-LL |     impl dyn Trait {}
-   |     ^^^^^^^^^^^^^^^^^
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
   --> $DIR/exhaustive.rs:25:5
    |
+LL | fn main() {
+   | --------- move the `impl` block outside of this function `main`
+...
 LL |     impl<T: Trait> Trait for Vec<T> { }
    |     ^^^^^^^^^^^^^^^-----^^^^^---^^^
    |                    |         |
@@ -68,16 +56,14 @@ LL |     impl<T: Trait> Trait for Vec<T> { }
    |
    = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
    = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
-help: move this `impl` block outside of the current function `main`
-  --> $DIR/exhaustive.rs:25:5
-   |
-LL |     impl<T: Trait> Trait for Vec<T> { }
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
   --> $DIR/exhaustive.rs:28:5
    |
+LL | fn main() {
+   | --------- move the `impl` block outside of this function `main`
+...
 LL |     impl Trait for &dyn Trait {}
    |     ^^^^^-----^^^^^----------
    |          |         |
@@ -86,16 +72,14 @@ LL |     impl Trait for &dyn Trait {}
    |
    = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
    = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
-help: move this `impl` block outside of the current function `main`
-  --> $DIR/exhaustive.rs:28:5
-   |
-LL |     impl Trait for &dyn Trait {}
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
   --> $DIR/exhaustive.rs:31:5
    |
+LL | fn main() {
+   | --------- move the `impl` block outside of this function `main`
+...
 LL |     impl Trait for *mut Test {}
    |     ^^^^^-----^^^^^---------
    |          |         |
@@ -104,16 +88,14 @@ LL |     impl Trait for *mut Test {}
    |
    = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
    = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
-help: move this `impl` block outside of the current function `main`
-  --> $DIR/exhaustive.rs:31:5
-   |
-LL |     impl Trait for *mut Test {}
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
   --> $DIR/exhaustive.rs:34:5
    |
+LL | fn main() {
+   | --------- move the `impl` block outside of this function `main`
+...
 LL |     impl Trait for *mut [Test] {}
    |     ^^^^^-----^^^^^-----------
    |          |         |
@@ -122,16 +104,14 @@ LL |     impl Trait for *mut [Test] {}
    |
    = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
    = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
-help: move this `impl` block outside of the current function `main`
-  --> $DIR/exhaustive.rs:34:5
-   |
-LL |     impl Trait for *mut [Test] {}
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
   --> $DIR/exhaustive.rs:37:5
    |
+LL | fn main() {
+   | --------- move the `impl` block outside of this function `main`
+...
 LL |     impl Trait for [Test; 8] {}
    |     ^^^^^-----^^^^^---------
    |          |         |
@@ -140,16 +120,14 @@ LL |     impl Trait for [Test; 8] {}
    |
    = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
    = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
-help: move this `impl` block outside of the current function `main`
-  --> $DIR/exhaustive.rs:37:5
-   |
-LL |     impl Trait for [Test; 8] {}
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
   --> $DIR/exhaustive.rs:40:5
    |
+LL | fn main() {
+   | --------- move the `impl` block outside of this function `main`
+...
 LL |     impl Trait for (Test,) {}
    |     ^^^^^-----^^^^^-------
    |          |         |
@@ -158,16 +136,14 @@ LL |     impl Trait for (Test,) {}
    |
    = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
    = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
-help: move this `impl` block outside of the current function `main`
-  --> $DIR/exhaustive.rs:40:5
-   |
-LL |     impl Trait for (Test,) {}
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
   --> $DIR/exhaustive.rs:43:5
    |
+LL | fn main() {
+   | --------- move the `impl` block outside of this function `main`
+...
 LL |     impl Trait for fn(Test) -> () {}
    |     ^^^^^-----^^^^^--------------
    |          |         |
@@ -176,16 +152,14 @@ LL |     impl Trait for fn(Test) -> () {}
    |
    = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
    = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
-help: move this `impl` block outside of the current function `main`
-  --> $DIR/exhaustive.rs:43:5
-   |
-LL |     impl Trait for fn(Test) -> () {}
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
   --> $DIR/exhaustive.rs:46:5
    |
+LL | fn main() {
+   | --------- move the `impl` block outside of this function `main`
+...
 LL |     impl Trait for fn() -> Test {}
    |     ^^^^^-----^^^^^------------
    |          |         |
@@ -194,16 +168,13 @@ LL |     impl Trait for fn() -> Test {}
    |
    = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
    = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
-help: move this `impl` block outside of the current function `main`
-  --> $DIR/exhaustive.rs:46:5
-   |
-LL |     impl Trait for fn() -> Test {}
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
   --> $DIR/exhaustive.rs:50:9
    |
+LL |     let _a = || {
+   |              -- move the `impl` block outside of this closure `<unnameable>` and up 2 bodies
 LL |         impl Trait for Test {}
    |         ^^^^^-----^^^^^----
    |              |         |
@@ -212,11 +183,6 @@ LL |         impl Trait for Test {}
    |
    = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
    = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
-help: move this `impl` block outside of the current closure `<unnameable>` and up 2 bodies
-  --> $DIR/exhaustive.rs:50:9
-   |
-LL |         impl Trait for Test {}
-   |         ^^^^^^^^^^^^^^^^^^^^^^
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
@@ -231,13 +197,14 @@ LL |     impl Trait for *mut InsideMain {}
    |
    = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
    = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
-help: move this `impl` block outside of the current function `main`
-  --> $DIR/exhaustive.rs:58:5
+help: move the `impl` block outside of this function `main`
+  --> $DIR/exhaustive.rs:9:1
    |
-LL |     impl Trait for *mut InsideMain {}
-   |     ^^^^^^^^^^^^^^^^^^^^----------^^^
-   |                         |
-   |                         may need to be moved as well
+LL | fn main() {
+   | ^^^^^^^^^
+...
+LL |     struct InsideMain;
+   |     ----------------- may need to be moved as well
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
@@ -251,13 +218,14 @@ LL |     impl Trait for *mut [InsideMain] {}
    |
    = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
    = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
-help: move this `impl` block outside of the current function `main`
-  --> $DIR/exhaustive.rs:60:5
+help: move the `impl` block outside of this function `main`
+  --> $DIR/exhaustive.rs:9:1
    |
-LL |     impl Trait for *mut [InsideMain] {}
-   |     ^^^^^^^^^^^^^^^^^^^^^----------^^^^
-   |                          |
-   |                          may need to be moved as well
+LL | fn main() {
+   | ^^^^^^^^^
+...
+LL |     struct InsideMain;
+   |     ----------------- may need to be moved as well
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
@@ -271,13 +239,14 @@ LL |     impl Trait for [InsideMain; 8] {}
    |
    = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
    = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
-help: move this `impl` block outside of the current function `main`
-  --> $DIR/exhaustive.rs:62:5
+help: move the `impl` block outside of this function `main`
+  --> $DIR/exhaustive.rs:9:1
    |
-LL |     impl Trait for [InsideMain; 8] {}
-   |     ^^^^^^^^^^^^^^^^----------^^^^^^^
-   |                     |
-   |                     may need to be moved as well
+LL | fn main() {
+   | ^^^^^^^^^
+...
+LL |     struct InsideMain;
+   |     ----------------- may need to be moved as well
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
@@ -291,13 +260,14 @@ LL |     impl Trait for (InsideMain,) {}
    |
    = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
    = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
-help: move this `impl` block outside of the current function `main`
-  --> $DIR/exhaustive.rs:64:5
+help: move the `impl` block outside of this function `main`
+  --> $DIR/exhaustive.rs:9:1
    |
-LL |     impl Trait for (InsideMain,) {}
-   |     ^^^^^^^^^^^^^^^^----------^^^^^
-   |                     |
-   |                     may need to be moved as well
+LL | fn main() {
+   | ^^^^^^^^^
+...
+LL |     struct InsideMain;
+   |     ----------------- may need to be moved as well
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
@@ -311,13 +281,14 @@ LL |     impl Trait for fn(InsideMain) -> () {}
    |
    = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
    = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
-help: move this `impl` block outside of the current function `main`
-  --> $DIR/exhaustive.rs:66:5
+help: move the `impl` block outside of this function `main`
+  --> $DIR/exhaustive.rs:9:1
    |
-LL |     impl Trait for fn(InsideMain) -> () {}
-   |     ^^^^^^^^^^^^^^^^^^----------^^^^^^^^^^
-   |                       |
-   |                       may need to be moved as well
+LL | fn main() {
+   | ^^^^^^^^^
+...
+LL |     struct InsideMain;
+   |     ----------------- may need to be moved as well
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
@@ -331,18 +302,21 @@ LL |     impl Trait for fn() -> InsideMain {}
    |
    = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
    = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
-help: move this `impl` block outside of the current function `main`
-  --> $DIR/exhaustive.rs:68:5
+help: move the `impl` block outside of this function `main`
+  --> $DIR/exhaustive.rs:9:1
    |
-LL |     impl Trait for fn() -> InsideMain {}
-   |     ^^^^^^^^^^^^^^^^^^^^^^^----------^^^
-   |                            |
-   |                            may need to be moved as well
+LL | fn main() {
+   | ^^^^^^^^^
+...
+LL |     struct InsideMain;
+   |     ----------------- may need to be moved as well
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
   --> $DIR/exhaustive.rs:72:9
    |
+LL |     fn inside_inside() {
+   |     ------------------ move the `impl` block outside of this function `inside_inside` and up 2 bodies
 LL |         impl Display for InsideMain {
    |         ^^^^^-------^^^^^----------
    |              |           |
@@ -351,35 +325,20 @@ LL |         impl Display for InsideMain {
    |
    = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
    = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
-help: move this `impl` block outside of the current function `inside_inside` and up 2 bodies
-  --> $DIR/exhaustive.rs:72:9
-   |
-LL | /         impl Display for InsideMain {
-LL | |
-LL | |             fn fmt(&self, _f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-LL | |                 todo!()
-LL | |             }
-LL | |         }
-   | |_________^
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
   --> $DIR/exhaustive.rs:79:9
    |
+LL |     fn inside_inside() {
+   |     ------------------ move the `impl` block outside of this function `inside_inside` and up 2 bodies
+...
 LL |         impl InsideMain {
    |         ^^^^^----------
    |              |
    |              `InsideMain` is not local
    |
    = note: methods and associated constants are still usable outside the current expression, only `impl Local` and `impl dyn Local` can ever be private, and only if the type is nested in the same item as the `impl`
-help: move this `impl` block outside of the current function `inside_inside` and up 2 bodies
-  --> $DIR/exhaustive.rs:79:9
-   |
-LL | /         impl InsideMain {
-LL | |
-LL | |             fn bar() {}
-LL | |         }
-   | |_________^
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: 20 warnings emitted
