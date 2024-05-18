@@ -21,7 +21,7 @@ const LOCAL_CRATE_ID: u32 = 0;
 ///              it is well formed. This involves calling `check_*` functions on
 ///              fields of that item, and `add_*` functions on [`Id`]s.
 /// - `add_*`: These add an [`Id`] to the worklist, after validating it to check if
-///            the `Id` is a kind expected in this suituation.
+///            the `Id` is a kind expected in this situation.
 #[derive(Debug)]
 pub struct Validator<'a> {
     pub(crate) errs: Vec<Error>,

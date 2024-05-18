@@ -11,7 +11,7 @@
 //! calls to munmap, but for a very different reason. In principle, according to the man pages, it
 //! is possible to unmap arbitrary regions of address space. But in a high-level language like Rust
 //! this amounts to partial deallocation, which LLVM does not support. So any attempt to call our
-//! munmap shim which would partily unmap a region of address space previously mapped by mmap will
+//! munmap shim which would partially unmap a region of address space previously mapped by mmap will
 //! report UB.
 
 use crate::*;
@@ -78,7 +78,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         // * The implementation does not support the combination of accesses requested in the
         // prot argument.
         //
-        // Miri doesn't support MAP_FIXED or any any protections other than PROT_READ|PROT_WRITE.
+        // Miri doesn't support MAP_FIXED or any protections other than PROT_READ|PROT_WRITE.
         if flags & map_fixed != 0 || prot != prot_read | prot_write {
             this.set_last_error(this.eval_libc("ENOTSUP"))?;
             return Ok(this.eval_libc("MAP_FAILED"));

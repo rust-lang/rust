@@ -3112,7 +3112,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             let true_errors = ocx.select_where_possible();
 
-            // Do a leak check -- we can't really report report a useful error here,
+            // Do a leak check -- we can't really report a useful error here,
             // but it at least avoids an ICE when the error has to do with higher-ranked
             // lifetimes.
             self.leak_check(outer_universe, Some(snapshot))?;

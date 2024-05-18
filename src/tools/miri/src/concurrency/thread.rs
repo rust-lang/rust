@@ -111,7 +111,7 @@ pub enum BlockReason {
     Condvar(CondvarId),
     /// Blocked on a reader-writer lock.
     RwLock(RwLockId),
-    /// Blocled on a Futex variable.
+    /// Blocked on a Futex variable.
     Futex { addr: u64 },
     /// Blocked on an InitOnce.
     InitOnce(InitOnceId),

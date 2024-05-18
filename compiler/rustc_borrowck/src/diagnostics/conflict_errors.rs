@@ -652,7 +652,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     }
 
                     // FIXME: We make sure that this is a normal top-level binding,
-                    // but we could suggest `todo!()` for all uninitialized bindings in the pattern pattern
+                    // but we could suggest `todo!()` for all uninitialized bindings in the pattern
                     if let hir::StmtKind::Let(hir::LetStmt { span, ty, init: None, pat, .. }) =
                         &ex.kind
                         && let hir::PatKind::Binding(..) = pat.kind
