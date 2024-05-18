@@ -24,15 +24,15 @@ pub(super) fn hints(
 
     let (callable, arg_list) = get_callable(sema, &expr)?;
     let hints = callable
-        .params(sema.db)
+        .params()
         .into_iter()
         .zip(arg_list.args())
-        .filter_map(|((param, _ty), arg)| {
+        .filter_map(|(p, arg)| {
             // Only annotate hints for expressions that exist in the original file
             let range = sema.original_range_opt(arg.syntax())?;
-            let (param_name, name_syntax) = match param.as_ref()? {
+            let (param_name, name_syntax) = match p.source(sema.db)?.value.as_ref() {
                 Either::Left(pat) => (pat.name()?, pat.name()),
-                Either::Right(pat) => match pat {
+                Either::Right(param) => match param.pat()? {
                     ast::Pat::IdentPat(it) => (it.name()?, it.name()),
                     _ => return None,
                 },

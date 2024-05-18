@@ -1,7 +1,7 @@
 //! This module provides functionality for querying callable information about a token.
 
 use either::Either;
-use hir::{Semantics, Type};
+use hir::{InFile, Semantics, Type};
 use parser::T;
 use syntax::{
     ast::{self, HasArgList, HasName},
@@ -13,7 +13,7 @@ use crate::RootDatabase;
 #[derive(Debug)]
 pub struct ActiveParameter {
     pub ty: Type,
-    pub pat: Option<Either<ast::SelfParam, ast::Pat>>,
+    pub src: Option<InFile<Either<ast::SelfParam, ast::Param>>>,
 }
 
 impl ActiveParameter {
@@ -22,18 +22,18 @@ impl ActiveParameter {
         let (signature, active_parameter) = callable_for_token(sema, token)?;
 
         let idx = active_parameter?;
-        let mut params = signature.params(sema.db);
+        let mut params = signature.params();
         if idx >= params.len() {
             cov_mark::hit!(too_many_arguments);
             return None;
         }
-        let (pat, ty) = params.swap_remove(idx);
-        Some(ActiveParameter { ty, pat })
+        let param = params.swap_remove(idx);
+        Some(ActiveParameter { ty: param.ty().clone(), src: param.source(sema.db) })
     }
 
     pub fn ident(&self) -> Option<ast::Name> {
-        self.pat.as_ref().and_then(|param| match param {
-            Either::Right(ast::Pat::IdentPat(ident)) => ident.name(),
+        self.src.as_ref().and_then(|param| match param.value.as_ref().right()?.pat()? {
+            ast::Pat::IdentPat(ident) => ident.name(),
             _ => None,
         })
     }

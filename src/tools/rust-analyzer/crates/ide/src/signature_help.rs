@@ -210,12 +210,15 @@ fn signature_help_for_call(
             format_to!(res.signature, "{}", self_param.display(db))
         }
         let mut buf = String::new();
-        for (idx, (pat, ty)) in callable.params(db).into_iter().enumerate() {
+        for (idx, p) in callable.params().into_iter().enumerate() {
             buf.clear();
-            if let Some(pat) = pat {
-                match pat {
-                    Either::Left(_self) => format_to!(buf, "self: "),
-                    Either::Right(pat) => format_to!(buf, "{}: ", pat),
+            if let Some(param) = p.source(sema.db) {
+                match param.value {
+                    Either::Right(param) => match param.pat() {
+                        Some(pat) => format_to!(buf, "{}: ", pat),
+                        None => format_to!(buf, "?: "),
+                    },
+                    Either::Left(_) => format_to!(buf, "self: "),
                 }
             }
             // APITs (argument position `impl Trait`s) are inferred as {unknown} as the user is
@@ -223,9 +226,9 @@ fn signature_help_for_call(
             // In that case, fall back to render definitions of the respective parameters.
             // This is overly conservative: we do not substitute known type vars
             // (see FIXME in tests::impl_trait) and falling back on any unknowns.
-            match (ty.contains_unknown(), fn_params.as_deref()) {
+            match (p.ty().contains_unknown(), fn_params.as_deref()) {
                 (true, Some(fn_params)) => format_to!(buf, "{}", fn_params[idx].ty().display(db)),
-                _ => format_to!(buf, "{}", ty.display(db)),
+                _ => format_to!(buf, "{}", p.ty().display(db)),
             }
             res.push_call_param(&buf);
         }
