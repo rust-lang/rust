@@ -11,6 +11,7 @@ use rustc_middle::middle::privacy::Level;
 use rustc_middle::middle::privacy::{EffectiveVisibilities, EffectiveVisibility};
 use rustc_middle::ty::Visibility;
 use std::mem;
+use tracing::info;
 
 #[derive(Clone, Copy)]
 enum ParentId<'a> {

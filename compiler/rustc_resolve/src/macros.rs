@@ -328,11 +328,7 @@ impl<'a, 'tcx> ResolverExpand for Resolver<'a, 'tcx> {
                 UNUSED_MACRO_RULES,
                 node_id,
                 rule_span,
-                format!(
-                    "{} rule of macro `{}` is never used",
-                    crate::diagnostics::ordinalize(arm_i + 1),
-                    ident.name
-                ),
+                format!("rule #{} of macro `{}` is never used", arm_i + 1, ident.name),
             );
         }
     }
