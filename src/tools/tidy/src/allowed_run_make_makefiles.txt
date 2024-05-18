@@ -103,7 +103,6 @@ run-make/issue-25581/Makefile
 run-make/issue-26006/Makefile
 run-make/issue-26092/Makefile
 run-make/issue-28595/Makefile
-run-make/issue-28766/Makefile
 run-make/issue-30063/Makefile
 run-make/issue-33329/Makefile
 run-make/issue-35164/Makefile
@@ -128,7 +127,6 @@ run-make/issue-85401-static-mir/Makefile
 run-make/issue-85441/Makefile
 run-make/issue-88756-default-output/Makefile
 run-make/issue-97463-abi-param-passing/Makefile
-run-make/issue64319/Makefile
 run-make/jobserver-error/Makefile
 run-make/libs-through-symlinks/Makefile
 run-make/libtest-json/Makefile
@@ -263,7 +261,6 @@ run-make/stable-symbol-names/Makefile
 run-make/static-dylib-by-default/Makefile
 run-make/static-extern-type/Makefile
 run-make/static-pie/Makefile
-run-make/static-unwinding/Makefile
 run-make/staticlib-blank-lib/Makefile
 run-make/staticlib-dylib-linkage/Makefile
 run-make/std-core-cycle/Makefile
