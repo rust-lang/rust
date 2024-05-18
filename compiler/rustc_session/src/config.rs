@@ -798,6 +798,7 @@ pub enum DumpSolverProofTree {
     Never,
 }
 
+#[derive(Clone)]
 pub enum Input {
     /// Load source code from a file.
     File(PathBuf),
