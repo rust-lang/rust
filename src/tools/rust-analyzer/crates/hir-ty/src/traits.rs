@@ -221,6 +221,14 @@ impl fmt::Display for FnTrait {
 }
 
 impl FnTrait {
+    pub const fn function_name(&self) -> &'static str {
+        match self {
+            FnTrait::FnOnce => "call_once",
+            FnTrait::FnMut => "call_mut",
+            FnTrait::Fn => "call",
+        }
+    }
+
     const fn lang_item(self) -> LangItem {
         match self {
             FnTrait::FnOnce => LangItem::FnOnce,

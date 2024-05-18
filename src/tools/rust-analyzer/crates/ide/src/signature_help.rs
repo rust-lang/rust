@@ -202,9 +202,20 @@ fn signature_help_for_call(
             );
         }
         hir::CallableKind::Closure(closure) => {
-            format_to!(res.signature, "impl {}", closure.fn_trait(db));
+            let fn_trait = closure.fn_trait(db);
+            format_to!(res.signature, "impl {fn_trait}")
         }
-        hir::CallableKind::FnPtr | hir::CallableKind::Other => (),
+        hir::CallableKind::FnPtr => format_to!(res.signature, "fn"),
+        hir::CallableKind::FnImpl(fn_trait) => match callable.ty().as_adt() {
+            // FIXME: Render docs of the concrete trait impl function
+            Some(adt) => format_to!(
+                res.signature,
+                "<{} as {fn_trait}>::{}",
+                adt.name(db).display(db),
+                fn_trait.function_name()
+            ),
+            None => format_to!(res.signature, "impl {fn_trait}"),
+        },
     }
 
     res.signature.push('(');
@@ -250,7 +261,7 @@ fn signature_help_for_call(
         hir::CallableKind::Function(_)
         | hir::CallableKind::Closure(_)
         | hir::CallableKind::FnPtr
-        | hir::CallableKind::Other => render(callable.return_type()),
+        | hir::CallableKind::FnImpl(_) => render(callable.return_type()),
         hir::CallableKind::TupleStruct(_) | hir::CallableKind::TupleEnumVariant(_) => {}
     }
     Some(res)
@@ -1417,10 +1428,79 @@ fn main(f: fn(i32, f64) -> char) {
 }
         "#,
             expect![[r#"
-                (i32, f64) -> char
-                 ---  ^^^
+                fn(i32, f64) -> char
+                   ---  ^^^
             "#]],
         )
+    }
+
+    #[test]
+    fn call_info_for_fn_impl() {
+        check(
+            r#"
+struct S;
+impl core::ops::FnOnce<(i32, f64)> for S {
+    type Output = char;
+}
+impl core::ops::FnMut<(i32, f64)> for S {}
+impl core::ops::Fn<(i32, f64)> for S {}
+fn main() {
+    S($0);
+}
+        "#,
+            expect![[r#"
+                <S as Fn>::call(i32, f64) -> char
+                                ^^^  ---
+            "#]],
+        );
+        check(
+            r#"
+struct S;
+impl core::ops::FnOnce<(i32, f64)> for S {
+    type Output = char;
+}
+impl core::ops::FnMut<(i32, f64)> for S {}
+impl core::ops::Fn<(i32, f64)> for S {}
+fn main() {
+    S(1, $0);
+}
+        "#,
+            expect![[r#"
+                <S as Fn>::call(i32, f64) -> char
+                                ---  ^^^
+            "#]],
+        );
+        check(
+            r#"
+struct S;
+impl core::ops::FnOnce<(i32, f64)> for S {
+    type Output = char;
+}
+impl core::ops::FnOnce<(char, char)> for S {
+    type Output = f64;
+}
+fn main() {
+    S($0);
+}
+        "#,
+            expect![""],
+        );
+        check(
+            r#"
+struct S;
+impl core::ops::FnOnce<(i32, f64)> for S {
+    type Output = char;
+}
+impl core::ops::FnOnce<(char, char)> for S {
+    type Output = f64;
+}
+fn main() {
+    // FIXME: The ide layer loses the calling info here so we get an ambiguous trait solve result
+    S(0i32, $0);
+}
+        "#,
+            expect![""],
+        );
     }
 
     #[test]
@@ -1828,19 +1908,19 @@ fn f<F: FnOnce(u8, u16) -> i32>(f: F) {
 }
 "#,
             expect![[r#"
-                (u8, u16) -> i32
-                 ^^  ---
+                impl FnOnce(u8, u16) -> i32
+                            ^^  ---
             "#]],
         );
         check(
             r#"
-fn f<T, F: FnOnce(&T, u16) -> &T>(f: F) {
+fn f<T, F: FnMut(&T, u16) -> &T>(f: F) {
     f($0)
 }
 "#,
             expect![[r#"
-                (&T, u16) -> &T
-                 ^^  ---
+                impl FnMut(&T, u16) -> &T
+                           ^^  ---
             "#]],
         );
     }
@@ -1860,7 +1940,7 @@ fn take<C, Error>(
 }
 "#,
             expect![[r#"
-                () -> i32
+                impl Fn() -> i32
             "#]],
         );
     }

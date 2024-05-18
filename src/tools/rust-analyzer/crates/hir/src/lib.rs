@@ -140,7 +140,7 @@ pub use {
         display::{ClosureStyle, HirDisplay, HirDisplayError, HirWrite},
         layout::LayoutError,
         mir::{MirEvalError, MirLowerError},
-        PointerCast, Safety,
+        FnAbi, PointerCast, Safety,
     },
     // FIXME: Properly encapsulate mir
     hir_ty::{mir, Interner as ChalkTyInterner},
@@ -2227,7 +2227,7 @@ impl Param {
                 let InFile { file_id, value } = Function { id: func }.source(db)?;
                 let params = value.param_list()?;
                 if let Some(self_param) = params.self_param() {
-                    if let Some(idx) = self.idx.checked_sub(1 as usize) {
+                    if let Some(idx) = self.idx.checked_sub(1) {
                         params.params().nth(idx).map(Either::Right)
                     } else {
                         Some(Either::Left(self_param))
@@ -4321,23 +4321,26 @@ impl Type {
             TyKind::Function(_) => Callee::FnPtr,
             TyKind::FnDef(..) => Callee::Def(self.ty.callable_def(db)?),
             kind => {
-                // This branch shouldn't be necessary?
-                if let TyKind::Ref(_, _, ty) = kind {
-                    if let TyKind::Closure(closure, subst) = ty.kind(Interner) {
-                        let sig = ty.callable_sig(db)?;
-                        return Some(Callable {
-                            ty: self.clone(),
-                            sig,
-                            callee: Callee::Closure(*closure, subst.clone()),
-                            is_bound_method: false,
-                        });
-                    }
+                // This will happen when it implements fn or fn mut, since we add an autoborrow adjustment
+                let (ty, kind) = if let TyKind::Ref(_, _, ty) = kind {
+                    (ty, ty.kind(Interner))
+                } else {
+                    (&self.ty, kind)
+                };
+                if let TyKind::Closure(closure, subst) = kind {
+                    let sig = ty.callable_sig(db)?;
+                    return Some(Callable {
+                        ty: self.clone(),
+                        sig,
+                        callee: Callee::Closure(*closure, subst.clone()),
+                        is_bound_method: false,
+                    });
                 }
-                let sig = hir_ty::callable_sig_from_fnonce(&self.ty, self.env.clone(), db)?;
+                let (fn_trait, sig) = hir_ty::callable_sig_from_fn_trait(ty, self.env.clone(), db)?;
                 return Some(Callable {
                     ty: self.clone(),
                     sig,
-                    callee: Callee::Other,
+                    callee: Callee::FnImpl(fn_trait),
                     is_bound_method: false,
                 });
             }
@@ -4968,7 +4971,7 @@ enum Callee {
     Def(CallableDefId),
     Closure(ClosureId, Substitution),
     FnPtr,
-    Other,
+    FnImpl(FnTrait),
 }
 
 pub enum CallableKind {
@@ -4977,8 +4980,7 @@ pub enum CallableKind {
     TupleEnumVariant(Variant),
     Closure(Closure),
     FnPtr,
-    /// Some other type that implements `FnOnce`.
-    Other,
+    FnImpl(FnTrait),
 }
 
 impl Callable {
@@ -4993,7 +4995,7 @@ impl Callable {
                 CallableKind::Closure(Closure { id, subst: subst.clone() })
             }
             Callee::FnPtr => CallableKind::FnPtr,
-            Callee::Other => CallableKind::Other,
+            Callee::FnImpl(fn_) => CallableKind::FnImpl(fn_),
         }
     }
     pub fn receiver_param(&self, db: &dyn HirDatabase) -> Option<(SelfParam, Type)> {
@@ -5022,6 +5024,10 @@ impl Callable {
     }
     pub fn sig(&self) -> &CallableSig {
         &self.sig
+    }
+
+    pub fn ty(&self) -> &Type {
+        &self.ty
     }
 }
 

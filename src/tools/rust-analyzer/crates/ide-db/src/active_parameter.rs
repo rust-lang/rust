@@ -60,10 +60,7 @@ pub fn callable_for_node(
     token: &SyntaxToken,
 ) -> Option<(hir::Callable, Option<usize>)> {
     let callable = match calling_node {
-        ast::CallableExpr::Call(call) => {
-            let expr = call.expr()?;
-            sema.type_of_expr(&expr)?.adjusted().as_callable(sema.db)
-        }
+        ast::CallableExpr::Call(call) => sema.resolve_expr_as_callable(&call.expr()?),
         ast::CallableExpr::MethodCall(call) => sema.resolve_method_call_as_callable(call),
     }?;
     let active_param = calling_node.arg_list().map(|arg_list| {
