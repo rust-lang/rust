@@ -300,14 +300,11 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_callable<'tcx>(
                     return Err(NoSolution);
                 }
 
-                // If `Fn`/`FnMut`, we only implement this goal if we
-                // have no captures.
-                let no_borrows = match args.tupled_upvars_ty().kind() {
-                    ty::Tuple(tys) => tys.is_empty(),
-                    ty::Error(_) => false,
-                    _ => bug!("tuple_fields called on non-tuple"),
-                };
-                if closure_kind != ty::ClosureKind::FnOnce && !no_borrows {
+                // A coroutine-closure implements `FnOnce` *always*, since it may
+                // always be called once. It additionally implements `Fn`/`FnMut`
+                // only if it has no upvars referencing the closure-env lifetime,
+                // and if the closure kind permits it.
+                if closure_kind != ty::ClosureKind::FnOnce && args.has_self_borrows() {
                     return Err(NoSolution);
                 }
 
