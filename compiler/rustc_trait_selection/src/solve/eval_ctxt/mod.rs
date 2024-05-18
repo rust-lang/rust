@@ -85,7 +85,7 @@ pub struct EvalCtxt<'a, 'tcx> {
     /// new placeholders to the caller.
     pub(super) max_input_universe: ty::UniverseIndex,
 
-    pub(super) search_graph: &'a mut SearchGraph<'tcx>,
+    pub(super) search_graph: &'a mut SearchGraph<TyCtxt<'tcx>>,
 
     nested_goals: NestedGoals<TyCtxt<'tcx>>,
 
@@ -225,7 +225,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
     /// and registering opaques from the canonicalized input.
     fn enter_canonical<R>(
         tcx: TyCtxt<'tcx>,
-        search_graph: &'a mut search_graph::SearchGraph<'tcx>,
+        search_graph: &'a mut search_graph::SearchGraph<TyCtxt<'tcx>>,
         canonical_input: CanonicalInput<'tcx>,
         canonical_goal_evaluation: &mut ProofTreeBuilder<TyCtxt<'tcx>>,
         f: impl FnOnce(&mut EvalCtxt<'_, 'tcx>, Goal<'tcx, ty::Predicate<'tcx>>) -> R,
@@ -287,7 +287,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
     #[instrument(level = "debug", skip(tcx, search_graph, goal_evaluation), ret)]
     fn evaluate_canonical_goal(
         tcx: TyCtxt<'tcx>,
-        search_graph: &'a mut search_graph::SearchGraph<'tcx>,
+        search_graph: &'a mut search_graph::SearchGraph<TyCtxt<'tcx>>,
         canonical_input: CanonicalInput<'tcx>,
         goal_evaluation: &mut ProofTreeBuilder<TyCtxt<'tcx>>,
     ) -> QueryResult<'tcx> {
