@@ -127,7 +127,7 @@ pub(super) fn check<'tcx>(
     }
 }
 
-/// checks for for collecting into a (generic) method or function argument
+/// checks for collecting into a (generic) method or function argument
 /// taking an `IntoIterator`
 fn check_collect_into_intoiterator<'tcx>(
     cx: &LateContext<'tcx>,
