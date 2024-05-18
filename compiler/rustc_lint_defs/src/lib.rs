@@ -696,6 +696,7 @@ pub enum BuiltinLintDiag {
     AssociatedConstElidedLifetime {
         elided: bool,
         span: Span,
+        lifetimes_in_scope: MultiSpan,
     },
     RedundantImportVisibility {
         span: Span,
