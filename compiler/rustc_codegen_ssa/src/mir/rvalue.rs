@@ -278,6 +278,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
     /// Cast one of the immediates from an [`OperandValue::Immediate`]
     /// or an [`OperandValue::Pair`] to an immediate of the target type.
+    ///
+    /// Returns `None` if the cast is not possible.
     fn cast_immediate(
         &self,
         bx: &mut Bx,
