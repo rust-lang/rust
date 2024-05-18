@@ -415,7 +415,6 @@ impl<I: Interner> DebugWithInfcx<I> for TyKind<I> {
     }
 }
 
-// This is manually implemented because a derive would require `I: Debug`
 impl<I: Interner> fmt::Debug for TyKind<I> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         WithInfcx::with_no_infcx(self).fmt(f)
@@ -924,15 +923,18 @@ impl<I: Interner> DebugWithInfcx<I> for InferTy {
         this: WithInfcx<'_, Infcx, &Self>,
         f: &mut fmt::Formatter<'_>,
     ) -> fmt::Result {
-        match this.data {
-            InferTy::TyVar(vid) => {
-                if let Some(universe) = this.infcx.universe_of_ty(*vid) {
-                    write!(f, "?{}_{}t", vid.index(), universe.index())
-                } else {
-                    write!(f, "{:?}", this.data)
+        match this.infcx {
+            None => write!(f, "{:?}", this.data),
+            Some(infcx) => match this.data {
+                InferTy::TyVar(vid) => {
+                    if let Some(universe) = infcx.universe_of_ty(*vid) {
+                        write!(f, "?{}_{}t", vid.index(), universe.index())
+                    } else {
+                        write!(f, "{}_..t", vid.index())
+                    }
                 }
-            }
-            _ => write!(f, "{:?}", this.data),
+                _ => write!(f, "{:?}", this.data),
+            },
         }
     }
 }

@@ -1,51 +1,55 @@
 use crate::{ConstVid, InferCtxtLike, Interner, TyVid, UniverseIndex};
 
 use core::fmt;
-use std::marker::PhantomData;
 
-pub struct NoInfcx<I>(PhantomData<I>);
-
+pub struct NoInfcx<I>(core::convert::Infallible, core::marker::PhantomData<I>);
 impl<I: Interner> InferCtxtLike for NoInfcx<I> {
     type Interner = I;
 
     fn interner(&self) -> Self::Interner {
-        unreachable!()
+        match self.0 {}
     }
 
     fn universe_of_ty(&self, _ty: TyVid) -> Option<UniverseIndex> {
-        None
+        match self.0 {}
     }
 
-    fn universe_of_lt(&self, _lt: I::InferRegion) -> Option<UniverseIndex> {
-        None
+    fn root_ty_var(&self, _vid: TyVid) -> TyVid {
+        match self.0 {}
+    }
+
+    fn probe_ty_var(&self, _vid: TyVid) -> Option<<Self::Interner as Interner>::Ty> {
+        match self.0 {}
+    }
+
+    fn universe_of_lt(
+        &self,
+        _lt: <Self::Interner as Interner>::InferRegion,
+    ) -> Option<UniverseIndex> {
+        match self.0 {}
+    }
+
+    fn opportunistic_resolve_lt_var(
+        &self,
+        _vid: <Self::Interner as Interner>::InferRegion,
+    ) -> Option<<Self::Interner as Interner>::Region> {
+        match self.0 {}
     }
 
     fn universe_of_ct(&self, _ct: ConstVid) -> Option<UniverseIndex> {
-        None
+        match self.0 {}
     }
 
-    fn root_ty_var(&self, vid: TyVid) -> TyVid {
-        vid
+    fn root_ct_var(&self, _vid: ConstVid) -> ConstVid {
+        match self.0 {}
     }
 
-    fn probe_ty_var(&self, _vid: TyVid) -> Option<I::Ty> {
-        None
-    }
-
-    fn opportunistic_resolve_lt_var(&self, _vid: I::InferRegion) -> Option<I::Region> {
-        None
-    }
-
-    fn root_ct_var(&self, vid: ConstVid) -> ConstVid {
-        vid
-    }
-
-    fn probe_ct_var(&self, _vid: ConstVid) -> Option<I::Const> {
-        None
+    fn probe_ct_var(&self, _vid: ConstVid) -> Option<<Self::Interner as Interner>::Const> {
+        match self.0 {}
     }
 
     fn defining_opaque_types(&self) -> <Self::Interner as Interner>::DefiningOpaqueTypes {
-        Default::default()
+        match self.0 {}
     }
 }
 
@@ -96,7 +100,7 @@ impl<I: Interner, T: DebugWithInfcx<I>> DebugWithInfcx<I> for [T] {
 
 pub struct WithInfcx<'a, Infcx: InferCtxtLike, T> {
     pub data: T,
-    pub infcx: &'a Infcx,
+    pub infcx: Option<&'a Infcx>,
 }
 
 impl<Infcx: InferCtxtLike, T: Copy> Copy for WithInfcx<'_, Infcx, T> {}
@@ -109,13 +113,13 @@ impl<Infcx: InferCtxtLike, T: Clone> Clone for WithInfcx<'_, Infcx, T> {
 
 impl<'a, I: Interner, T> WithInfcx<'a, NoInfcx<I>, T> {
     pub fn with_no_infcx(data: T) -> Self {
-        Self { data, infcx: &NoInfcx(PhantomData) }
+        Self { data, infcx: None }
     }
 }
 
 impl<'a, Infcx: InferCtxtLike, T> WithInfcx<'a, Infcx, T> {
     pub fn new(data: T, infcx: &'a Infcx) -> Self {
-        Self { data, infcx }
+        Self { data, infcx: Some(infcx) }
     }
 
     pub fn wrap<U>(self, u: U) -> WithInfcx<'a, Infcx, U> {

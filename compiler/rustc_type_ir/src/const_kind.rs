@@ -180,15 +180,18 @@ impl<I: Interner> DebugWithInfcx<I> for InferConst {
         this: WithInfcx<'_, Infcx, &Self>,
         f: &mut core::fmt::Formatter<'_>,
     ) -> core::fmt::Result {
-        match *this.data {
-            InferConst::Var(vid) => match this.infcx.universe_of_ct(vid) {
-                None => write!(f, "{:?}", this.data),
-                Some(universe) => write!(f, "?{}_{}c", vid.index(), universe.index()),
+        match this.infcx {
+            None => write!(f, "{:?}", this.data),
+            Some(infcx) => match *this.data {
+                InferConst::Var(vid) => match infcx.universe_of_ct(vid) {
+                    None => write!(f, "?{}_..c", vid.index()),
+                    Some(universe) => write!(f, "?{}_{}c", vid.index(), universe.index()),
+                },
+                InferConst::EffectVar(vid) => write!(f, "?{}e", vid.index()),
+                InferConst::Fresh(_) => {
+                    unreachable!()
+                }
             },
-            InferConst::EffectVar(vid) => write!(f, "?{}e", vid.index()),
-            InferConst::Fresh(_) => {
-                unreachable!()
-            }
         }
     }
 }

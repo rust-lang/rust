@@ -83,17 +83,17 @@ impl fmt::Debug for ty::LateParamRegion {
     }
 }
 
+impl<'tcx> fmt::Debug for Ty<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        with_no_trimmed_paths!(self.kind().fmt(f))
+    }
+}
 impl<'tcx> ty::DebugWithInfcx<TyCtxt<'tcx>> for Ty<'tcx> {
     fn fmt<Infcx: InferCtxtLike<Interner = TyCtxt<'tcx>>>(
         this: WithInfcx<'_, Infcx, &Self>,
         f: &mut core::fmt::Formatter<'_>,
     ) -> core::fmt::Result {
-        this.data.fmt(f)
-    }
-}
-impl<'tcx> fmt::Debug for Ty<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        with_no_trimmed_paths!(fmt::Debug::fmt(self.kind(), f))
+        this.map(|ty| ty.kind()).fmt(f)
     }
 }
 
@@ -264,9 +264,12 @@ impl<'tcx> DebugWithInfcx<TyCtxt<'tcx>> for ty::RegionVid {
         this: WithInfcx<'_, Infcx, &Self>,
         f: &mut core::fmt::Formatter<'_>,
     ) -> core::fmt::Result {
-        match this.infcx.universe_of_lt(*this.data) {
-            Some(universe) => write!(f, "'?{}_{}", this.data.index(), universe.index()),
+        match this.infcx {
             None => write!(f, "{:?}", this.data),
+            Some(infcx) => match infcx.universe_of_lt(*this.data) {
+                Some(universe) => write!(f, "'?{}_{}", this.data.index(), universe.index()),
+                None => write!(f, "'?{}_..", this.data.index()),
+            },
         }
     }
 }
