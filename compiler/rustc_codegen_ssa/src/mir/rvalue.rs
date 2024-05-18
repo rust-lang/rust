@@ -121,7 +121,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 bx.write_operand_repeatedly(cg_elem, count, dest);
             }
 
-            mir::Rvalue::Aggregate(ref kind, ref operands) => {
+            // This implementation does field projection, so never use it for `RawPtr`,
+            // which will always be fine with the `codegen_rvalue_operand` path below.
+            mir::Rvalue::Aggregate(ref kind, ref operands)
+                if !matches!(**kind, mir::AggregateKind::RawPtr(..)) =>
+            {
                 let (variant_index, variant_dest, active_field_index) = match **kind {
                     mir::AggregateKind::Adt(_, variant_index, _, _, active_field_index) => {
                         let variant_dest = dest.project_downcast(bx, variant_index);
