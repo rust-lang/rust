@@ -1544,6 +1544,7 @@ symbols! {
         rust_2018_preview,
         rust_2021,
         rust_2024,
+        rust_analyzer,
         rust_begin_unwind,
         rust_cold_cc,
         rust_eh_catch_typeinfo,
