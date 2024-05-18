@@ -1,0 +1,8 @@
+error: expected item, found `;`
+  --> $DIR/incorrect-semicolon-missing-main-err-124935.rs:5:1
+   |
+LL | ;
+   | ^ help: remove this semicolon
+
+error: aborting due to 1 previous error
+
