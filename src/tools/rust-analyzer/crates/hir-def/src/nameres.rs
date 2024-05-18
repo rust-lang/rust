@@ -84,6 +84,14 @@ use crate::{
     LocalModuleId, Lookup, MacroExpander, MacroId, ModuleId, ProcMacroId, UseId,
 };
 
+const PREDEFINED_TOOLS: &[SmolStr] = &[
+    SmolStr::new_static("clippy"),
+    SmolStr::new_static("rustfmt"),
+    SmolStr::new_static("diagnostic"),
+    SmolStr::new_static("miri"),
+    SmolStr::new_static("rust_analyzer"),
+];
+
 /// Contains the results of (early) name resolution.
 ///
 /// A `DefMap` stores the module tree and the definitions that are in scope in every module after
@@ -160,7 +168,7 @@ impl DefMapCrateData {
             fn_proc_macro_mapping: FxHashMap::default(),
             proc_macro_loading_error: None,
             registered_attrs: Vec::new(),
-            registered_tools: Vec::new(),
+            registered_tools: PREDEFINED_TOOLS.into(),
             unstable_features: FxHashSet::default(),
             rustc_coherence_is_core: false,
             no_core: false,

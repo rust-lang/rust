@@ -12,9 +12,6 @@ use std::sync::OnceLock;
 
 use rustc_hash::FxHashMap;
 
-/// Ignored attribute namespaces used by tools.
-pub const TOOL_MODULES: &[&str] = &["rustfmt", "clippy"];
-
 pub struct BuiltinAttribute {
     pub name: &'static str,
     pub template: AttributeTemplate,
