@@ -11,11 +11,11 @@ use rustc_infer::infer::{
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::solve::{MaybeCause, NestedNormalizationGoals};
 use rustc_infer::traits::ObligationCause;
-use rustc_macros::{extension, HashStable};
+use rustc_macros::{extension, HashStable, HashStable_NoContext, TyDecodable, TyEncodable};
 use rustc_middle::bug;
 use rustc_middle::infer::canonical::CanonicalVarInfos;
 use rustc_middle::traits::solve::{
-    inspect, CanonicalInput, CanonicalResponse, Certainty, NestedGoals, PredefinedOpaques,
+    inspect, CanonicalInput, CanonicalResponse, Certainty, PredefinedOpaques,
     PredefinedOpaquesData, QueryResult,
 };
 use rustc_middle::traits::specialization_graph;
@@ -25,6 +25,8 @@ use rustc_middle::ty::{
 };
 use rustc_session::config::DumpSolverProofTree;
 use rustc_span::DUMMY_SP;
+use rustc_type_ir::{self as ir, Interner};
+use rustc_type_ir_macros::{Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic};
 
 use crate::traits::coherence;
 use crate::traits::vtable::{count_own_vtable_entries, prepare_vtable_segments, VtblSegment};
@@ -101,7 +103,7 @@ pub struct EvalCtxt<'a, 'tcx> {
 #[derive(derivative::Derivative)]
 #[derivative(Clone(bound = ""), Debug(bound = ""), Default(bound = ""))]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
-#[cfg_attr(feature = "nightly", derive(TyDecodable, TyEncodable, HashStable_NoContext))]
+#[derive(TyDecodable, TyEncodable, HashStable_NoContext)]
 // FIXME: This can be made crate-private once `EvalCtxt` also lives in this crate.
 pub struct NestedGoals<I: Interner> {
     /// These normalizes-to goals are treated specially during the evaluation
@@ -114,9 +116,9 @@ pub struct NestedGoals<I: Interner> {
     ///
     /// Forgetting to replace the RHS with a fresh inference variable when we evaluate
     /// this goal results in an ICE..
-    pub normalizes_to_goals: Vec<Goal<I, NormalizesTo<I>>>,
+    pub normalizes_to_goals: Vec<ir::solve::Goal<I, ir::NormalizesTo<I>>>,
     /// The rest of the goals which have not yet processed or remain ambiguous.
-    pub goals: Vec<(GoalSource, Goal<I, I::Predicate>)>,
+    pub goals: Vec<(GoalSource, ir::solve::Goal<I, I::Predicate>)>,
 }
 
 impl<I: Interner> NestedGoals<I> {

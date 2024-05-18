@@ -4775,11 +4775,13 @@ dependencies = [
  "rustc_next_trait_solver",
  "rustc_parse_format",
  "rustc_query_system",
+ "rustc_serialize",
  "rustc_session",
  "rustc_span",
  "rustc_target",
  "rustc_transmute",
  "rustc_type_ir",
+ "rustc_type_ir_macros",
  "smallvec",
  "tracing",
 ]
