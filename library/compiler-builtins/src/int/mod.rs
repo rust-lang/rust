@@ -380,6 +380,16 @@ public_test_dep! {
 pub(crate) trait CastInto<T: Copy>: Copy {
     fn cast(self) -> T;
 }
+
+pub(crate) trait CastFrom<T: Copy>:Copy {
+    fn cast_from(value: T) -> Self;
+}
+}
+
+impl<T: Copy, U: CastInto<T> + Copy> CastFrom<U> for T {
+    fn cast_from(value: U) -> Self {
+        value.cast()
+    }
 }
 
 macro_rules! cast_into {
