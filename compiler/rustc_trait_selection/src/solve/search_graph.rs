@@ -733,10 +733,9 @@ impl<'tcx> SearchGraph<'tcx> {
             Self::clear_dependent_provisional_results(
                 &mut self.provisional_cache,
                 self.stack.next_index(),
-                |_, co, ind| {
-                    if co.is_some() || ind.is_some() {
-                        bug!()
-                    }
+                |_, co, ind| match (co, ind) {
+                    (Some(_), _) | (_, Some(_)) => bug!(),
+                    _ => {}
                 },
             );
             return StepResult::Done(stack_entry, result);
@@ -870,6 +869,30 @@ impl<'tcx> SearchGraph<'tcx> {
 
             if provisional_result.is_some() {
                 assert!(cycle_data.is_some());
+            }
+        }
+
+        if let Some(CycleData { root, ref fixpoint_instantiation_cache, ref cycle_participants }) =
+            *cycle_data
+        {
+            for (depth, stack_entry) in stack.iter_enumerated() {
+                let is_cycle_participant = cycle_participants.contains(&stack_entry.input);
+                assert_eq!(depth >= root, is_cycle_participant);
+            }
+
+            for (input, entries) in fixpoint_instantiation_cache {
+                for entry in entries {
+                    let FixpointInstantiationCacheEntry {
+                        expected_stack,
+                        heads,
+                        provisional_result: _,
+                        detached_cache_entries: _,
+                    } = entry;
+                    assert!(!heads.is_empty());
+                    for i in (0..root.as_usize()).map(StackDepth::from_usize) {
+                        assert_eq!(stack[i].input, expected_stack[i]);
+                    }
+                }
             }
         }
 
