@@ -62,6 +62,16 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 // We need to support it because std uses it.
                 relative_clocks.push(this.eval_libc_i32("CLOCK_UPTIME_RAW"));
             }
+            "solaris" | "illumos" => {
+                // The REALTIME clock returns the actual time since the Unix epoch.
+                absolute_clocks = vec![this.eval_libc_i32("CLOCK_REALTIME")];
+                // MONOTONIC, in the other hand, is the high resolution, non-adjustable
+                // clock from an arbitrary time in the past.
+                // Note that the man page mentions HIGHRES but it is just
+                // an alias of MONOTONIC and the libc crate does not expose it anyway.
+                // https://docs.oracle.com/cd/E23824_01/html/821-1465/clock-gettime-3c.html
+                relative_clocks = vec![this.eval_libc_i32("CLOCK_MONOTONIC")];
+            }
             target => throw_unsup_format!("`clock_gettime` is not supported on target OS {target}"),
         }
 
@@ -153,30 +163,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         // chrono crate yet.
         // This may not be consistent with libc::localtime_r's result.
         let tm_isdst = -1;
-
-        // tm_zone represents the timezone value in the form of: +0730, +08, -0730 or -08.
-        // This may not be consistent with libc::localtime_r's result.
-        let offset_in_seconds = dt.offset().fix().local_minus_utc();
-        let tm_gmtoff = offset_in_seconds;
-        let mut tm_zone = String::new();
-        if offset_in_seconds < 0 {
-            tm_zone.push('-');
-        } else {
-            tm_zone.push('+');
-        }
-        let offset_hour = offset_in_seconds.abs() / 3600;
-        write!(tm_zone, "{:02}", offset_hour).unwrap();
-        let offset_min = (offset_in_seconds.abs() % 3600) / 60;
-        if offset_min != 0 {
-            write!(tm_zone, "{:02}", offset_min).unwrap();
-        }
-
-        // FIXME: String de-duplication is needed so that we only allocate this string only once
-        // even when there are multiple calls to this function.
-        let tm_zone_ptr =
-            this.alloc_os_str_as_c_str(&OsString::from(tm_zone), MiriMemoryKind::Machine.into())?;
-
-        this.write_pointer(tm_zone_ptr, &this.project_field_named(&result, "tm_zone")?)?;
         this.write_int_fields_named(
             &[
                 ("tm_sec", dt.second().into()),
@@ -188,11 +174,39 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 ("tm_wday", dt.weekday().num_days_from_sunday().into()),
                 ("tm_yday", dt.ordinal0().into()),
                 ("tm_isdst", tm_isdst),
-                ("tm_gmtoff", tm_gmtoff.into()),
             ],
             &result,
         )?;
 
+        // solaris/illumos system tm struct does not have
+        // the additional tm_zone/tm_gmtoff fields.
+        // https://docs.oracle.com/cd/E36784_01/html/E36874/localtime-r-3c.html
+        if !matches!(&*this.tcx.sess.target.os, "solaris" | "illumos") {
+            // tm_zone represents the timezone value in the form of: +0730, +08, -0730 or -08.
+            // This may not be consistent with libc::localtime_r's result.
+            let offset_in_seconds = dt.offset().fix().local_minus_utc();
+            let tm_gmtoff = offset_in_seconds;
+            let mut tm_zone = String::new();
+            if offset_in_seconds < 0 {
+                tm_zone.push('-');
+            } else {
+                tm_zone.push('+');
+            }
+            let offset_hour = offset_in_seconds.abs() / 3600;
+            write!(tm_zone, "{:02}", offset_hour).unwrap();
+            let offset_min = (offset_in_seconds.abs() % 3600) / 60;
+            if offset_min != 0 {
+                write!(tm_zone, "{:02}", offset_min).unwrap();
+            }
+
+            // FIXME: String de-duplication is needed so that we only allocate this string only once
+            // even when there are multiple calls to this function.
+            let tm_zone_ptr = this
+                .alloc_os_str_as_c_str(&OsString::from(tm_zone), MiriMemoryKind::Machine.into())?;
+
+            this.write_pointer(tm_zone_ptr, &this.project_field_named(&result, "tm_zone")?)?;
+            this.write_int_fields_named(&[("tm_gmtoff", tm_gmtoff.into())], &result)?;
+        }
         Ok(result.ptr())
     }
     #[allow(non_snake_case, clippy::arithmetic_side_effects)]
