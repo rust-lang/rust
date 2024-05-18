@@ -1631,7 +1631,11 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
     #[inline]
     #[stable(feature = "rc_unique", since = "1.4.0")]
     pub fn get_mut(this: &mut Self) -> Option<&mut T> {
-        if Rc::is_unique(this) { unsafe { Some(Rc::get_mut_unchecked(this)) } } else { None }
+        if Rc::is_unique(this) {
+            unsafe { Some(Rc::get_mut_unchecked(this)) }
+        } else {
+            None
+        }
     }
 
     /// Returns a mutable reference into the given `Rc`,
@@ -1658,7 +1662,7 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
     ///
     /// let mut x = Rc::new(String::new());
     /// unsafe {
-    ///     Rc::get_mut_unchecked(&mut x).push_str("foo")
+    ///     Rc::get_mut_unchecked(&mut x).push_str("foo");
     /// }
     /// assert_eq!(*x, "foo");
     /// ```
@@ -3146,7 +3150,11 @@ impl<T: ?Sized, A: Allocator> Weak<T, A> {
     #[must_use]
     #[stable(feature = "weak_counts", since = "1.41.0")]
     pub fn strong_count(&self) -> usize {
-        if let Some(inner) = self.inner() { inner.strong() } else { 0 }
+        if let Some(inner) = self.inner() {
+            inner.strong()
+        } else {
+            0
+        }
     }
 
     /// Gets the number of `Weak` pointers pointing to this allocation.

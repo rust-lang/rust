@@ -1682,7 +1682,11 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
         let cnt = this.inner().weak.load(Relaxed);
         // If the weak count is currently locked, the value of the
         // count was 0 just before taking the lock.
-        if cnt == usize::MAX { 0 } else { cnt - 1 }
+        if cnt == usize::MAX {
+            0
+        } else {
+            cnt - 1
+        }
     }
 
     /// Gets the number of strong (`Arc`) pointers to this allocation.
@@ -2329,7 +2333,7 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
     ///
     /// let mut x = Arc::new(String::new());
     /// unsafe {
-    ///     Arc::get_mut_unchecked(&mut x).push_str("foo")
+    ///     Arc::get_mut_unchecked(&mut x).push_str("foo");
     /// }
     /// assert_eq!(*x, "foo");
     /// ```
@@ -2868,7 +2872,11 @@ impl<T: ?Sized, A: Allocator> Weak<T, A> {
     #[must_use]
     #[stable(feature = "weak_counts", since = "1.41.0")]
     pub fn strong_count(&self) -> usize {
-        if let Some(inner) = self.inner() { inner.strong.load(Relaxed) } else { 0 }
+        if let Some(inner) = self.inner() {
+            inner.strong.load(Relaxed)
+        } else {
+            0
+        }
     }
 
     /// Gets an approximation of the number of `Weak` pointers pointing to this

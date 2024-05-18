@@ -23,7 +23,7 @@ fn bench_push_str_one_byte(b: &mut Bencher) {
     b.iter(|| {
         let mut r = String::new();
         for _ in 0..REPETITIONS {
-            r.push_str("a")
+            r.push_str("a");
         }
     });
 }

@@ -795,7 +795,11 @@ impl String {
                 let string = char::decode_utf16(iter.by_ref().copied().map(u16::from_le_bytes))
                     .map(|r| r.unwrap_or(char::REPLACEMENT_CHARACTER))
                     .collect();
-                if iter.remainder().is_empty() { string } else { string + "\u{FFFD}" }
+                if iter.remainder().is_empty() {
+                    string
+                } else {
+                    string + "\u{FFFD}"
+                }
             }
         }
     }
@@ -870,7 +874,11 @@ impl String {
                 let string = char::decode_utf16(iter.by_ref().copied().map(u16::from_be_bytes))
                     .map(|r| r.unwrap_or(char::REPLACEMENT_CHARACTER))
                     .collect();
-                if iter.remainder().is_empty() { string } else { string + "\u{FFFD}" }
+                if iter.remainder().is_empty() {
+                    string
+                } else {
+                    string + "\u{FFFD}"
+                }
             }
         }
     }
@@ -1061,8 +1069,9 @@ impl String {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_confusables("append", "push")]
-    pub fn push_str(&mut self, string: &str) {
-        self.vec.extend_from_slice(string.as_bytes())
+    pub fn push_str(&mut self, string: &str) -> &mut Self {
+        self.vec.extend_from_slice(string.as_bytes());
+        self
     }
 
     /// Copies elements from `src` range to the end of the string.
@@ -2226,7 +2235,9 @@ impl<'a> Extend<&'a char> for String {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Extend<&'a str> for String {
     fn extend<I: IntoIterator<Item = &'a str>>(&mut self, iter: I) {
-        iter.into_iter().for_each(move |s| self.push_str(s));
+        iter.into_iter().for_each(move |s| {
+            self.push_str(s);
+        });
     }
 
     #[inline]
@@ -2239,7 +2250,9 @@ impl<'a> Extend<&'a str> for String {
 #[stable(feature = "box_str2", since = "1.45.0")]
 impl Extend<Box<str>> for String {
     fn extend<I: IntoIterator<Item = Box<str>>>(&mut self, iter: I) {
-        iter.into_iter().for_each(move |s| self.push_str(&s));
+        iter.into_iter().for_each(move |s| {
+            self.push_str(&s);
+        });
     }
 }
 
@@ -2247,7 +2260,9 @@ impl Extend<Box<str>> for String {
 #[stable(feature = "extend_string", since = "1.4.0")]
 impl Extend<String> for String {
     fn extend<I: IntoIterator<Item = String>>(&mut self, iter: I) {
-        iter.into_iter().for_each(move |s| self.push_str(&s));
+        iter.into_iter().for_each(move |s| {
+            self.push_str(&s);
+        });
     }
 
     #[inline]
@@ -2260,7 +2275,9 @@ impl Extend<String> for String {
 #[stable(feature = "herd_cows", since = "1.19.0")]
 impl<'a> Extend<Cow<'a, str>> for String {
     fn extend<I: IntoIterator<Item = Cow<'a, str>>>(&mut self, iter: I) {
-        iter.into_iter().for_each(move |s| self.push_str(&s));
+        iter.into_iter().for_each(move |s| {
+            self.push_str(&s);
+        });
     }
 
     #[inline]
