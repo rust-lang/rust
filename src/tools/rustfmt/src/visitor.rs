@@ -24,7 +24,7 @@ use crate::source_map::{LineRangeUtils, SpanUtils};
 use crate::spanned::Spanned;
 use crate::stmt::Stmt;
 use crate::utils::{
-    self, contains_skip, count_newlines, depr_skip_annotation, format_unsafety, inner_attributes,
+    self, contains_skip, count_newlines, depr_skip_annotation, format_safety, inner_attributes,
     last_line_width, mk_sp, ptr_vec_to_ref_vec, rewrite_ident, starts_with_newline, stmt_expr,
 };
 use crate::{ErrorKind, FormatReport, FormattingError};
@@ -517,9 +517,9 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                     self.visit_enum(item.ident, &item.vis, def, generics, item.span);
                     self.last_pos = source!(self, item.span).hi();
                 }
-                ast::ItemKind::Mod(unsafety, ref mod_kind) => {
+                ast::ItemKind::Mod(safety, ref mod_kind) => {
                     self.format_missing_with_indent(source!(self, item.span).lo());
-                    self.format_mod(mod_kind, unsafety, &item.vis, item.span, item.ident, attrs);
+                    self.format_mod(mod_kind, safety, &item.vis, item.span, item.ident, attrs);
                 }
                 ast::ItemKind::MacCall(ref mac) => {
                     self.visit_mac(mac, Some(item.ident), MacroPosition::Item);
@@ -913,7 +913,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
     fn format_mod(
         &mut self,
         mod_kind: &ast::ModKind,
-        unsafety: ast::Unsafe,
+        safety: ast::Safety,
         vis: &ast::Visibility,
         s: Span,
         ident: symbol::Ident,
@@ -921,7 +921,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
     ) {
         let vis_str = utils::format_visibility(&self.get_context(), vis);
         self.push_str(&*vis_str);
-        self.push_str(format_unsafety(unsafety));
+        self.push_str(format_safety(safety));
         self.push_str("mod ");
         // Calling `to_owned()` to work around borrow checker.
         let ident_str = rewrite_ident(&self.get_context(), ident).to_owned();

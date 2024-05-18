@@ -388,7 +388,7 @@ impl<'tcx> CoroutineClosureArgs<'tcx> {
                 yield_ty,
                 return_ty,
                 c_variadic: sig.c_variadic,
-                unsafety: sig.unsafety,
+                safety: sig.safety,
                 abi: sig.abi,
             }
         })
@@ -416,8 +416,8 @@ pub struct CoroutineClosureSignature<'tcx> {
     // from scratch just for good measure.
     /// Always false
     pub c_variadic: bool,
-    /// Always [`hir::Unsafety::Normal`]
-    pub unsafety: hir::Unsafety,
+    /// Always [`hir::Safety::Safe`]
+    pub safety: hir::Safety,
     /// Always [`abi::Abi::RustCall`]
     pub abi: abi::Abi,
 }
@@ -1129,8 +1129,8 @@ impl<'tcx> PolyFnSig<'tcx> {
         self.skip_binder().c_variadic
     }
 
-    pub fn unsafety(&self) -> hir::Unsafety {
-        self.skip_binder().unsafety
+    pub fn safety(&self) -> hir::Safety {
+        self.skip_binder().safety
     }
 
     pub fn abi(&self) -> abi::Abi {
@@ -1140,12 +1140,7 @@ impl<'tcx> PolyFnSig<'tcx> {
     pub fn is_fn_trait_compatible(&self) -> bool {
         matches!(
             self.skip_binder(),
-            ty::FnSig {
-                unsafety: rustc_hir::Unsafety::Normal,
-                abi: Abi::Rust,
-                c_variadic: false,
-                ..
-            }
+            ty::FnSig { safety: rustc_hir::Safety::Safe, abi: Abi::Rust, c_variadic: false, .. }
         )
     }
 }
@@ -1991,7 +1986,7 @@ impl<'tcx> Ty<'tcx> {
                 ty::Binder::dummy(ty::FnSig {
                     inputs_and_output: ty::List::empty(),
                     c_variadic: false,
-                    unsafety: hir::Unsafety::Normal,
+                    safety: hir::Safety::Safe,
                     abi: abi::Abi::Rust,
                 })
             }

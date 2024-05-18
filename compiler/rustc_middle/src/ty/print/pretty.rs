@@ -3035,7 +3035,7 @@ define_print! {
     (self, cx):
 
     ty::FnSig<'tcx> {
-        p!(write("{}", self.unsafety.prefix_str()));
+        p!(write("{}", self.safety.prefix_str()));
 
         if self.abi != Abi::Rust {
             p!(write("extern {} ", self.abi));

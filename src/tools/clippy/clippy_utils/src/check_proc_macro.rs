@@ -18,8 +18,8 @@ use rustc_ast::AttrStyle;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
     Block, BlockCheckMode, Body, Closure, Destination, Expr, ExprKind, FieldDef, FnHeader, FnRetTy, HirId, Impl,
-    ImplItem, ImplItemKind, IsAuto, Item, ItemKind, LoopSource, MatchSource, MutTy, Node, QPath, TraitItem,
-    TraitItemKind, Ty, TyKind, UnOp, UnsafeSource, Unsafety, Variant, VariantData, YieldSource,
+    ImplItem, ImplItemKind, IsAuto, Item, ItemKind, LoopSource, MatchSource, MutTy, Node, QPath, Safety, TraitItem,
+    TraitItemKind, Ty, TyKind, UnOp, UnsafeSource, Variant, VariantData, YieldSource,
 };
 use rustc_lint::{LateContext, LintContext};
 use rustc_middle::ty::TyCtxt;
@@ -207,10 +207,9 @@ fn item_search_pat(item: &Item<'_>) -> (Pat, Pat) {
         ItemKind::Struct(VariantData::Struct { .. }, _) => (Pat::Str("struct"), Pat::Str("}")),
         ItemKind::Struct(..) => (Pat::Str("struct"), Pat::Str(";")),
         ItemKind::Union(..) => (Pat::Str("union"), Pat::Str("}")),
-        ItemKind::Trait(_, Unsafety::Unsafe, ..)
+        ItemKind::Trait(_, Safety::Unsafe, ..)
         | ItemKind::Impl(Impl {
-            unsafety: Unsafety::Unsafe,
-            ..
+            safety: Safety::Unsafe, ..
         }) => (Pat::Str("unsafe"), Pat::Str("}")),
         ItemKind::Trait(IsAuto::Yes, ..) => (Pat::Str("auto"), Pat::Str("}")),
         ItemKind::Trait(..) => (Pat::Str("trait"), Pat::Str("}")),
@@ -323,7 +322,7 @@ fn ty_search_pat(ty: &Ty<'_>) -> (Pat, Pat) {
         TyKind::Ptr(MutTy { ty, .. }) => (Pat::Str("*"), ty_search_pat(ty).1),
         TyKind::Ref(_, MutTy { ty, .. }) => (Pat::Str("&"), ty_search_pat(ty).1),
         TyKind::BareFn(bare_fn) => (
-            if bare_fn.unsafety == Unsafety::Unsafe {
+            if bare_fn.safety == Safety::Unsafe {
                 Pat::Str("unsafe")
             } else if bare_fn.abi != Abi::Rust {
                 Pat::Str("extern")

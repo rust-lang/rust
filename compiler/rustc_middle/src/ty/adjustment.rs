@@ -15,7 +15,7 @@ pub enum PointerCoercion {
 
     /// Go from a non-capturing closure to an fn pointer or an unsafe fn pointer.
     /// It cannot convert a closure that requires unsafe.
-    ClosureFnPointer(hir::Unsafety),
+    ClosureFnPointer(hir::Safety),
 
     /// Go from a mut raw pointer to a const raw pointer.
     MutToConstPointer,

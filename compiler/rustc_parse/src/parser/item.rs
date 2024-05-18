@@ -33,7 +33,7 @@ impl<'a> Parser<'a> {
 
     /// Parses a `mod <foo> { ... }` or `mod <foo>;` item.
     fn parse_item_mod(&mut self, attrs: &mut AttrVec) -> PResult<'a, ItemInfo> {
-        let unsafety = self.parse_unsafety(Case::Sensitive);
+        let safety = self.parse_safety(Case::Sensitive);
         self.expect_keyword(kw::Mod)?;
         let id = self.parse_ident()?;
         let mod_kind = if self.eat(&token::Semi) {
@@ -45,7 +45,7 @@ impl<'a> Parser<'a> {
             attrs.extend(inner_attrs);
             ModKind::Loaded(items, Inline::Yes, inner_span)
         };
-        Ok((id, ItemKind::Mod(unsafety, mod_kind)))
+        Ok((id, ItemKind::Mod(safety, mod_kind)))
     }
 
     /// Parses the contents of a module (inner attributes followed by module items).
@@ -211,13 +211,13 @@ impl<'a> Parser<'a> {
                 self.parse_item_extern_crate()?
             } else {
                 // EXTERN BLOCK
-                self.parse_item_foreign_mod(attrs, Unsafe::No)?
+                self.parse_item_foreign_mod(attrs, Safety::Default)?
             }
         } else if self.is_unsafe_foreign_mod() {
             // EXTERN BLOCK
-            let unsafety = self.parse_unsafety(Case::Sensitive);
+            let safety = self.parse_safety(Case::Sensitive);
             self.expect_keyword(kw::Extern)?;
-            self.parse_item_foreign_mod(attrs, unsafety)?
+            self.parse_item_foreign_mod(attrs, safety)?
         } else if self.is_static_global() {
             // STATIC ITEM
             self.bump(); // `static`
@@ -541,7 +541,7 @@ impl<'a> Parser<'a> {
         attrs: &mut AttrVec,
         defaultness: Defaultness,
     ) -> PResult<'a, ItemInfo> {
-        let unsafety = self.parse_unsafety(Case::Sensitive);
+        let safety = self.parse_safety(Case::Sensitive);
         self.expect_keyword(kw::Impl)?;
 
         // First, parse generic parameters if necessary.
@@ -647,7 +647,7 @@ impl<'a> Parser<'a> {
                 let trait_ref = TraitRef { path, ref_id: ty_first.id };
 
                 ItemKind::Impl(Box::new(Impl {
-                    unsafety,
+                    safety,
                     polarity,
                     defaultness,
                     constness,
@@ -660,7 +660,7 @@ impl<'a> Parser<'a> {
             None => {
                 // impl Type
                 ItemKind::Impl(Box::new(Impl {
-                    unsafety,
+                    safety,
                     polarity,
                     defaultness,
                     constness,
@@ -865,7 +865,7 @@ impl<'a> Parser<'a> {
 
     /// Parses `unsafe? auto? trait Foo { ... }` or `trait Foo = Bar;`.
     fn parse_item_trait(&mut self, attrs: &mut AttrVec, lo: Span) -> PResult<'a, ItemInfo> {
-        let unsafety = self.parse_unsafety(Case::Sensitive);
+        let safety = self.parse_safety(Case::Sensitive);
         // Parse optional `auto` prefix.
         let is_auto = if self.eat_keyword(kw::Auto) {
             self.psess.gated_spans.gate(sym::auto_traits, self.prev_token.span);
@@ -899,7 +899,7 @@ impl<'a> Parser<'a> {
             if is_auto == IsAuto::Yes {
                 self.dcx().emit_err(errors::TraitAliasCannotBeAuto { span: whole_span });
             }
-            if let Unsafe::Yes(_) = unsafety {
+            if let Safety::Unsafe(_) = safety {
                 self.dcx().emit_err(errors::TraitAliasCannotBeUnsafe { span: whole_span });
             }
 
@@ -912,7 +912,7 @@ impl<'a> Parser<'a> {
             let items = self.parse_item_list(attrs, |p| p.parse_trait_item(ForceCollect::No))?;
             Ok((
                 ident,
-                ItemKind::Trait(Box::new(Trait { is_auto, unsafety, generics, bounds, items })),
+                ItemKind::Trait(Box::new(Trait { is_auto, safety, generics, bounds, items })),
             ))
         }
     }
@@ -1173,19 +1173,19 @@ impl<'a> Parser<'a> {
     fn parse_item_foreign_mod(
         &mut self,
         attrs: &mut AttrVec,
-        mut unsafety: Unsafe,
+        mut safety: Safety,
     ) -> PResult<'a, ItemInfo> {
         let abi = self.parse_abi(); // ABI?
-        if unsafety == Unsafe::No
+        if safety == Safety::Default
             && self.token.is_keyword(kw::Unsafe)
             && self.look_ahead(1, |t| t.kind == token::OpenDelim(Delimiter::Brace))
         {
             self.expect(&token::OpenDelim(Delimiter::Brace)).unwrap_err().emit();
-            unsafety = Unsafe::Yes(self.token.span);
+            safety = Safety::Unsafe(self.token.span);
             self.eat_keyword(kw::Unsafe);
         }
         let module = ast::ForeignMod {
-            unsafety,
+            safety,
             abi,
             items: self.parse_item_list(attrs, |p| p.parse_foreign_item(ForceCollect::No))?,
         };
@@ -2452,7 +2452,7 @@ impl<'a> Parser<'a> {
         let coroutine_kind = self.parse_coroutine_kind(case);
 
         let unsafe_start_sp = self.token.span;
-        let unsafety = self.parse_unsafety(case);
+        let safety = self.parse_safety(case);
 
         let ext_start_sp = self.token.span;
         let ext = self.parse_extern(case);
@@ -2490,7 +2490,7 @@ impl<'a> Parser<'a> {
                     // We may be able to recover
                     let mut recover_constness = constness;
                     let mut recover_coroutine_kind = coroutine_kind;
-                    let mut recover_unsafety = unsafety;
+                    let mut recover_safety = safety;
                     // This will allow the machine fix to directly place the keyword in the correct place or to indicate
                     // that the keyword is already present and the second instance should be removed.
                     let wrong_kw = if self.check_keyword(kw::Const) {
@@ -2528,10 +2528,10 @@ impl<'a> Parser<'a> {
                             }
                         }
                     } else if self.check_keyword(kw::Unsafe) {
-                        match unsafety {
-                            Unsafe::Yes(sp) => Some(WrongKw::Duplicated(sp)),
-                            Unsafe::No => {
-                                recover_unsafety = Unsafe::Yes(self.token.span);
+                        match safety {
+                            Safety::Unsafe(sp) => Some(WrongKw::Duplicated(sp)),
+                            Safety::Default => {
+                                recover_safety = Safety::Unsafe(self.token.span);
                                 Some(WrongKw::Misplaced(ext_start_sp))
                             }
                         }
@@ -2616,7 +2616,7 @@ impl<'a> Parser<'a> {
                         err.emit();
                         return Ok(FnHeader {
                             constness: recover_constness,
-                            unsafety: recover_unsafety,
+                            safety: recover_safety,
                             coroutine_kind: recover_coroutine_kind,
                             ext,
                         });
@@ -2627,7 +2627,7 @@ impl<'a> Parser<'a> {
             }
         }
 
-        Ok(FnHeader { constness, unsafety, coroutine_kind, ext })
+        Ok(FnHeader { constness, safety, coroutine_kind, ext })
     }
 
     /// Parses the parameter list and result type of a function declaration.

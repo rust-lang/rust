@@ -524,7 +524,10 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
         }
     }
 
-    fn peek_comment<'b>(&'b self) -> Option<&'b Comment> where 'a: 'b {
+    fn peek_comment<'b>(&'b self) -> Option<&'b Comment>
+    where
+        'a: 'b,
+    {
         self.comments().and_then(|c| c.peek())
     }
 
@@ -1150,7 +1153,7 @@ impl<'a> State<'a> {
                 self.pclose();
             }
             ast::TyKind::BareFn(f) => {
-                self.print_ty_fn(f.ext, f.unsafety, &f.decl, None, &f.generic_params);
+                self.print_ty_fn(f.ext, f.safety, &f.decl, None, &f.generic_params);
             }
             ast::TyKind::Path(None, path) => {
                 self.print_path(path, false, 0);
@@ -1908,7 +1911,7 @@ impl<'a> State<'a> {
     fn print_ty_fn(
         &mut self,
         ext: ast::Extern,
-        unsafety: ast::Unsafe,
+        safety: ast::Safety,
         decl: &ast::FnDecl,
         name: Option<Ident>,
         generic_params: &[ast::GenericParam],
@@ -1924,7 +1927,7 @@ impl<'a> State<'a> {
             },
             span: DUMMY_SP,
         };
-        let header = ast::FnHeader { unsafety, ext, ..ast::FnHeader::default() };
+        let header = ast::FnHeader { safety, ext, ..ast::FnHeader::default() };
         self.print_fn(decl, header, name, &generics);
         self.end();
     }
@@ -1932,7 +1935,7 @@ impl<'a> State<'a> {
     fn print_fn_header_info(&mut self, header: ast::FnHeader) {
         self.print_constness(header.constness);
         header.coroutine_kind.map(|coroutine_kind| self.print_coroutine_kind(coroutine_kind));
-        self.print_unsafety(header.unsafety);
+        self.print_safety(header.safety);
 
         match header.ext {
             ast::Extern::None => {}
@@ -1949,10 +1952,10 @@ impl<'a> State<'a> {
         self.word("fn")
     }
 
-    fn print_unsafety(&mut self, s: ast::Unsafe) {
+    fn print_safety(&mut self, s: ast::Safety) {
         match s {
-            ast::Unsafe::No => {}
-            ast::Unsafe::Yes(_) => self.word_nbsp("unsafe"),
+            ast::Safety::Default => {}
+            ast::Safety::Unsafe(_) => self.word_nbsp("unsafe"),
         }
     }
 

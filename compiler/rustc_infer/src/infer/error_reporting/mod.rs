@@ -1053,8 +1053,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
         // unsafe extern "C" for<'a> fn(&'a T) -> &'a T
         // ^^^^^^
-        values.0.push(sig1.unsafety.prefix_str(), sig1.unsafety != sig2.unsafety);
-        values.1.push(sig2.unsafety.prefix_str(), sig1.unsafety != sig2.unsafety);
+        values.0.push(sig1.safety.prefix_str(), sig1.safety != sig2.safety);
+        values.1.push(sig2.safety.prefix_str(), sig1.safety != sig2.safety);
 
         // unsafe extern "C" for<'a> fn(&'a T) -> &'a T
         //        ^^^^^^^^^^
@@ -1928,7 +1928,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                                     self.tcx
                                         .signature_unclosure(
                                             args.as_closure().sig(),
-                                            rustc_hir::Unsafety::Normal,
+                                            rustc_hir::Safety::Safe,
                                         )
                                         .to_string(),
                                 ),

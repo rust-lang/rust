@@ -156,7 +156,7 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
         [],
         expected_return_type,
         false,
-        hir::Unsafety::Normal,
+        hir::Safety::Safe,
         Abi::Rust,
     ));
 
@@ -252,7 +252,7 @@ fn check_start_fn_ty(tcx: TyCtxt<'_>, start_def_id: DefId) {
                 [tcx.types.isize, Ty::new_imm_ptr(tcx, Ty::new_imm_ptr(tcx, tcx.types.u8))],
                 tcx.types.isize,
                 false,
-                hir::Unsafety::Normal,
+                hir::Safety::Safe,
                 Abi::Rust,
             ));
 

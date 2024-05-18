@@ -37,7 +37,7 @@ pub trait Abi<I: Interner<Abi = Self>>: Copy + Debug + Hash + Eq {
     fn is_rust(self) -> bool;
 }
 
-pub trait Unsafety<I: Interner<Unsafety = Self>>: Copy + Debug + Hash + Eq {
+pub trait Safety<I: Interner<Safety = Self>>: Copy + Debug + Hash + Eq {
     fn prefix_str(self) -> &'static str;
 }
 

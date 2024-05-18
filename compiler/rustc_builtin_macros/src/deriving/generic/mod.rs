@@ -788,7 +788,7 @@ impl<'a> TraitDef<'a> {
             Ident::empty(),
             attrs,
             ast::ItemKind::Impl(Box::new(ast::Impl {
-                unsafety: ast::Unsafe::No,
+                safety: ast::Safety::Default,
                 polarity: ast::ImplPolarity::Positive,
                 defaultness: ast::Defaultness::Final,
                 constness: if self.is_const { ast::Const::Yes(DUMMY_SP) } else { ast::Const::No },
