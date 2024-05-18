@@ -48,4 +48,4 @@ define_display_via_print!(
     FnSig,
 );
 
-define_debug_via_print!(TraitRef, ExistentialTraitRef, ExistentialProjection);
+define_debug_via_print!(ExistentialTraitRef, ExistentialProjection);

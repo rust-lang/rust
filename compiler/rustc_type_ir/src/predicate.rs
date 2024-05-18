@@ -40,6 +40,44 @@ pub struct TraitRef<I: Interner> {
     _use_trait_ref_new_instead: (),
 }
 
+impl<I: Interner> fmt::Debug for TraitRef<I> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        WithInfcx::with_no_infcx(self).fmt(f)
+    }
+}
+impl<I: Interner> DebugWithInfcx<I> for TraitRef<I> {
+    fn fmt<Infcx: InferCtxtLike<Interner = I>>(
+        this: WithInfcx<'_, Infcx, &Self>,
+        f: &mut fmt::Formatter<'_>,
+    ) -> fmt::Result {
+        // If we ever wind up with a malformed `TraitRef` it might be good to not ICE in its Debug impl(?)
+        if this.data.args.len() == 0 {
+            return f
+                .debug_tuple("TraitRef")
+                .field(&this.data.def_id)
+                .field(&this.data.args)
+                .finish();
+        }
+
+        write!(f, "({:?} as ", this.map(|trait_ref| trait_ref.args[0]))?;
+        I::print_def_path(this.data.def_id, f)?;
+
+        match this.data.args.len() {
+            0 => unreachable!(),
+            1 => write!(f, ")"), // the first arg is the self type
+            2 => write!(f, "<{:?}>)", this.map(|trait_ref| trait_ref.args[1])),
+            3.. => {
+                write!(f, "<{:?}", this.map(|trait_ref| trait_ref.args[1]))?;
+                for arg in &this.data.args[2..] {
+                    let arg = this.wrap(arg);
+                    write!(f, ", {:?}", arg)?;
+                }
+                write!(f, ">)")
+            }
+        }
+    }
+}
+
 impl<I: Interner> TraitRef<I> {
     pub fn new(
         interner: I,
@@ -114,8 +152,46 @@ impl<I: Interner> TraitPredicate<I> {
 
 impl<I: Interner> fmt::Debug for TraitPredicate<I> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        WithInfcx::with_no_infcx(self).fmt(f)
+    }
+}
+impl<I: Interner> DebugWithInfcx<I> for TraitPredicate<I> {
+    fn fmt<Infcx: InferCtxtLike<Interner = I>>(
+        this: WithInfcx<'_, Infcx, &Self>,
+        f: &mut fmt::Formatter<'_>,
+    ) -> fmt::Result {
         // FIXME(effects) printing?
-        write!(f, "TraitPredicate({:?}, polarity:{:?})", self.trait_ref, self.polarity)
+
+        // If we ever wind up with a malformed `TraitRef` it might be good to not ICE in its Debug impl(?)
+        if this.data.trait_ref.args.len() == 0 {
+            return f
+                .debug_tuple("TraitPredicate")
+                .field(&this.data.trait_ref.def_id)
+                .field(&this.data.trait_ref.args)
+                .field(&this.data.polarity)
+                .finish();
+        }
+
+        write!(f, "({:?}: ", this.map(|pred| pred.trait_ref.args[0]))?;
+        match this.data.polarity {
+            PredicatePolarity::Positive => (),
+            PredicatePolarity::Negative => write!(f, "!")?,
+        };
+        I::print_def_path(this.data.trait_ref.def_id, f)?;
+
+        match this.data.trait_ref.args.len() {
+            0 => unreachable!(),
+            1 => write!(f, ")"), // the first arg is the self type
+            2 => write!(f, "<{:?}>)", this.map(|trait_ref| trait_ref.trait_ref.args[1])),
+            3.. => {
+                write!(f, "<{:?}", this.map(|trait_ref| trait_ref.trait_ref.args[1]))?;
+                for arg in &this.data.trait_ref.args[2..] {
+                    let arg = this.wrap(arg);
+                    write!(f, ", {:?}", arg)?;
+                }
+                write!(f, ">)")
+            }
+        }
     }
 }
 

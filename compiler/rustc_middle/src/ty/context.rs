@@ -4,6 +4,7 @@
 
 pub mod tls;
 
+use hir::def::Namespace;
 pub use rustc_type_ir::lift::Lift;
 
 use crate::arena::Arena;
@@ -27,6 +28,7 @@ use crate::traits::solve::{
     ExternalConstraints, ExternalConstraintsData, PredefinedOpaques, PredefinedOpaquesData,
 };
 use crate::ty::predicate::ExistentialPredicateStableCmpExt as _;
+use crate::ty::print::{with_no_trimmed_paths, FmtPrinter, Printer};
 use crate::ty::{
     self, AdtDef, AdtDefData, AdtKind, Binder, Clause, Clauses, Const, ConstData,
     GenericParamDefKind, ImplPolarity, List, ListWithCachedTypeInfo, ParamConst, ParamTy, Pattern,
@@ -89,6 +91,18 @@ use std::ops::{Bound, Deref};
 #[allow(rustc::usage_of_ty_tykind)]
 impl<'tcx> Interner for TyCtxt<'tcx> {
     type DefId = DefId;
+    fn print_def_path(defid: Self::DefId, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        ty::tls::with(|tcx| {
+            with_no_trimmed_paths!({
+                // this namespace is..... not strictly correct lol
+                let s = FmtPrinter::print_string(tcx, Namespace::TypeNS, |cx| {
+                    cx.print_def_path(defid, &[])
+                })?;
+                f.write_str(&s)
+            })
+        })
+    }
+
     type AdtDef = ty::AdtDef<'tcx>;
 
     type GenericArgs = ty::GenericArgsRef<'tcx>;

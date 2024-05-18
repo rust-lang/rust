@@ -29,6 +29,8 @@ pub trait Interner:
     + IrPrint<FnSig<Self>>
 {
     type DefId: Copy + Debug + Hash + Eq;
+    fn print_def_path(defid: Self::DefId, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result;
+
     type AdtDef: Copy + Debug + Hash + Eq;
 
     type GenericArgs: GenericArgs<Self>;
