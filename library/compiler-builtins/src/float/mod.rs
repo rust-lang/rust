@@ -80,8 +80,8 @@ pub(crate) trait Float:
     /// compared.
     fn eq_repr(self, rhs: Self) -> bool;
 
-    /// Returns the sign bit
-    fn sign(self) -> bool;
+    /// Returns true if the sign is negative
+    fn is_sign_negative(self) -> bool;
 
     /// Returns the exponent with bias
     fn exp(self) -> Self::ExpInt;
@@ -150,8 +150,8 @@ macro_rules! float_impl {
                     self.repr() == rhs.repr()
                 }
             }
-            fn sign(self) -> bool {
-                self.signed_repr() < Self::SignedInt::ZERO
+            fn is_sign_negative(self) -> bool {
+                self.is_sign_negative()
             }
             fn exp(self) -> Self::ExpInt {
                 ((self.to_bits() & Self::EXPONENT_MASK) >> Self::SIGNIFICAND_BITS) as Self::ExpInt

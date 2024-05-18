@@ -102,6 +102,7 @@ pub(crate) trait Int: MinInt
     fn rotate_left(self, other: u32) -> Self;
     fn overflowing_add(self, other: Self) -> (Self, bool);
     fn leading_zeros(self) -> u32;
+    fn ilog2(self) -> u32;
 }
 }
 
@@ -199,6 +200,10 @@ macro_rules! int_impl_common {
 
         fn leading_zeros(self) -> u32 {
             <Self>::leading_zeros(self)
+        }
+
+        fn ilog2(self) -> u32 {
+            <Self>::ilog2(self)
         }
     };
 }
