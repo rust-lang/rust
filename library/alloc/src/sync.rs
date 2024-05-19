@@ -2472,7 +2472,7 @@ unsafe impl<#[may_dangle] T: ?Sized, A: Allocator> Drop for Arc<T, A> {
         // used by Default::default.
         debug_assert!(
             !ptr::addr_eq(self.ptr.as_ptr(), &STATIC_INNER_SLICE.inner),
-            "Arcs backed by a static should never be reach a strong count of 0. \
+            "Arcs backed by a static should never reach a strong count of 0. \
             Likely decrement_strong_count or from_raw were called too many times.",
         );
 
