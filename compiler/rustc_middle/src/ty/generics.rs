@@ -391,6 +391,14 @@ impl<'tcx> Generics {
         }
         false
     }
+
+    pub fn is_empty(&'tcx self) -> bool {
+        self.count() == 0
+    }
+
+    pub fn is_own_empty(&'tcx self) -> bool {
+        self.own_params.is_empty()
+    }
 }
 
 /// Bounds on generics.

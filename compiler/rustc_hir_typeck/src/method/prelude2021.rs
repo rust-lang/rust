@@ -279,7 +279,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if !self_ty_name.contains('<') {
                     if let ty::Adt(def, _) = self_ty.kind() {
                         let generics = self.tcx.generics_of(def.did());
-                        if !generics.own_params.is_empty() {
+                        if !generics.is_own_empty() {
                             let counts = generics.own_counts();
                             self_ty_name += &format!(
                                 "<{}>",
