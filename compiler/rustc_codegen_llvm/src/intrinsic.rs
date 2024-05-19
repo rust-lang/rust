@@ -2336,7 +2336,10 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
     }
 
     // Unary integer intrinsics
-    if matches!(name, sym::simd_bswap | sym::simd_bitreverse | sym::simd_ctlz | sym::simd_cttz) {
+    if matches!(
+        name,
+        sym::simd_bswap | sym::simd_bitreverse | sym::simd_ctlz | sym::simd_ctpop | sym::simd_cttz
+    ) {
         let vec_ty = bx.cx.type_vector(
             match *in_elem.kind() {
                 ty::Int(i) => bx.cx.type_int_from_ty(i),
@@ -2354,31 +2357,38 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             sym::simd_bswap => "bswap",
             sym::simd_bitreverse => "bitreverse",
             sym::simd_ctlz => "ctlz",
+            sym::simd_ctpop => "ctpop",
             sym::simd_cttz => "cttz",
             _ => unreachable!(),
         };
         let int_size = in_elem.int_size_and_signed(bx.tcx()).0.bits();
         let llvm_intrinsic = &format!("llvm.{}.v{}i{}", intrinsic_name, in_len, int_size,);
 
-        return if name == sym::simd_bswap && int_size == 8 {
+        return match name {
             // byte swap is no-op for i8/u8
-            Ok(args[0].immediate())
-        } else if matches!(name, sym::simd_ctlz | sym::simd_cttz) {
-            let fn_ty = bx.type_func(&[vec_ty, bx.type_i1()], vec_ty);
-            let f = bx.declare_cfn(llvm_intrinsic, llvm::UnnamedAddr::No, fn_ty);
-            Ok(bx.call(
-                fn_ty,
-                None,
-                None,
-                f,
-                &[args[0].immediate(), bx.const_int(bx.type_i1(), 0)],
-                None,
-                None,
-            ))
-        } else {
-            let fn_ty = bx.type_func(&[vec_ty], vec_ty);
-            let f = bx.declare_cfn(llvm_intrinsic, llvm::UnnamedAddr::No, fn_ty);
-            Ok(bx.call(fn_ty, None, None, f, &[args[0].immediate()], None, None))
+            sym::simd_bswap if int_size == 8 => Ok(args[0].immediate()),
+            sym::simd_ctlz | sym::simd_cttz => {
+                // this fun bonus i1 arg means "poison if the arg vector contains zero"
+                let fn_ty = bx.type_func(&[vec_ty, bx.type_i1()], vec_ty);
+                let f = bx.declare_cfn(llvm_intrinsic, llvm::UnnamedAddr::No, fn_ty);
+                Ok(bx.call(
+                    fn_ty,
+                    None,
+                    None,
+                    f,
+                    // simd_ctlz and simd_cttz are exposed to safe code, so let's not poison anything
+                    &[args[0].immediate(), bx.const_int(bx.type_i1(), 0)],
+                    None,
+                    None,
+                ))
+            }
+            sym::simd_bswap | sym::simd_bitreverse | sym::simd_ctpop => {
+                // simple unary argument cases
+                let fn_ty = bx.type_func(&[vec_ty], vec_ty);
+                let f = bx.declare_cfn(llvm_intrinsic, llvm::UnnamedAddr::No, fn_ty);
+                Ok(bx.call(fn_ty, None, None, f, &[args[0].immediate()], None, None))
+            }
+            _ => unreachable!(),
         };
     }
 
