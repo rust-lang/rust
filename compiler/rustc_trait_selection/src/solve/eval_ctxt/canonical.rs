@@ -71,7 +71,7 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
             QueryInput {
                 goal,
                 predefined_opaques_in_body: self
-                    .tcx()
+                    .interner()
                     .mk_predefined_opaques_in_body(PredefinedOpaquesData { opaque_types }),
             },
         );
@@ -144,7 +144,7 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
             Response {
                 var_values,
                 certainty,
-                external_constraints: self.tcx().mk_external_constraints(external_constraints),
+                external_constraints: self.interner().mk_external_constraints(external_constraints),
             },
         );
 
@@ -160,7 +160,7 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
         maybe_cause: MaybeCause,
     ) -> CanonicalResponse<'tcx> {
         response_no_constraints_raw(
-            self.tcx(),
+            self.interner(),
             self.max_input_universe,
             self.variables,
             Certainty::Maybe(maybe_cause),
@@ -194,7 +194,7 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
             let region_obligations = self.infcx.inner.borrow().region_obligations().to_owned();
             let mut region_constraints = self.infcx.with_region_constraints(|region_constraints| {
                 make_query_region_constraints(
-                    self.tcx(),
+                    self.interner(),
                     region_obligations.iter().map(|r_o| {
                         (r_o.sup_type, r_o.sub_region, r_o.origin.to_constraint_category())
                     }),
@@ -239,7 +239,7 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
         );
 
         let Response { var_values, external_constraints, certainty } =
-            response.instantiate(self.tcx(), &instantiation);
+            response.instantiate(self.interner(), &instantiation);
 
         Self::unify_query_var_values(self.infcx, param_env, &original_values, var_values);
 
