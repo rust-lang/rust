@@ -15,10 +15,7 @@ fn parse(config: &str) -> Config {
     Config::parse_inner(
         &[
             "check".to_string(),
-            "--set=build.rustc=/does/not/exist".to_string(),
-            "--set=build.cargo=/does/not/exist".to_string(),
             "--config=/does/not/exist".to_string(),
-            "--skip-stage0-validation".to_string(),
         ],
         |&_| toml::from_str(&config).unwrap(),
     )
@@ -171,10 +168,7 @@ fn override_toml_duplicate() {
     Config::parse_inner(
         &[
             "check".to_owned(),
-            "--set=build.rustc=/does/not/exist".to_string(),
-            "--set=build.cargo=/does/not/exist".to_string(),
-            "--config=/does/not/exist".to_owned(),
-            "--skip-stage0-validation".to_owned(),
+            "--config=/does/not/exist".to_string(),
             "--set=change-id=1".to_owned(),
             "--set=change-id=2".to_owned(),
         ],
@@ -200,9 +194,6 @@ fn profile_user_dist() {
     Config::parse_inner(
         &[
             "check".to_owned(),
-            "--set=build.rustc=/does/not/exist".to_string(),
-            "--set=build.cargo=/does/not/exist".to_string(),
-            "--skip-stage0-validation".to_string(),
         ],
         get_toml,
     );

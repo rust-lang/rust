@@ -22,8 +22,6 @@ use crate::utils::cache::{Interned, INTERNER};
 use crate::utils::channel::{self, GitInfo};
 use crate::utils::helpers::{exe, output, t};
 use build_helper::exit;
-use build_helper::util::fail;
-use semver::Version;
 use serde::{Deserialize, Deserializer};
 use serde_derive::Deserialize;
 
@@ -1249,11 +1247,13 @@ impl Config {
         // has already been (kinda-cross-)compiled to Windows land, we require a normal Windows path.
         cmd.arg("rev-parse").arg("--show-cdup");
         // Discard stderr because we expect this to fail when building from a tarball.
-        let output = cmd
-            .stderr(std::process::Stdio::null())
-            .output()
-            .ok()
-            .and_then(|output| if output.status.success() { Some(output) } else { None });
+        let output = cmd.stderr(std::process::Stdio::null()).output().ok().and_then(|output| {
+            if output.status.success() {
+                Some(output)
+            } else {
+                None
+            }
+        });
         if let Some(output) = output {
             let git_root_relative = String::from_utf8(output.stdout).unwrap();
             // We need to canonicalize this path to make sure it uses backslashes instead of forward slashes,
@@ -2346,7 +2346,11 @@ impl Config {
             .get(&target)
             .and_then(|t| t.split_debuginfo)
             .or_else(|| {
-                if self.build == target { self.rust_split_debuginfo_for_build_triple } else { None }
+                if self.build == target {
+                    self.rust_split_debuginfo_for_build_triple
+                } else {
+                    None
+                }
             })
             .unwrap_or_else(|| SplitDebuginfo::default_for_platform(target))
     }
@@ -2373,8 +2377,14 @@ impl Config {
         }
     }
 
-    // check rustc/cargo version is same or lower with 1 apart from the building one
+    #[cfg(feature = "bootstrap-self-test")]
+    pub fn check_stage0_version(&self, _program_path: &Path, _component_name: &'static str) {}
+
+    /// check rustc/cargo version is same or lower with 1 apart from the building one
+    #[cfg(not(feature = "bootstrap-self-test"))]
     pub fn check_stage0_version(&self, program_path: &Path, component_name: &'static str) {
+        use build_helper::util::fail;
+
         if self.dry_run() {
             return;
         }
@@ -2391,10 +2401,10 @@ impl Config {
         }
 
         let stage0_version =
-            Version::parse(stage0_output.next().unwrap().split('-').next().unwrap().trim())
+            semver::Version::parse(stage0_output.next().unwrap().split('-').next().unwrap().trim())
                 .unwrap();
         let source_version =
-            Version::parse(fs::read_to_string(self.src.join("src/version")).unwrap().trim())
+            semver::Version::parse(fs::read_to_string(self.src.join("src/version")).unwrap().trim())
                 .unwrap();
         if !(source_version == stage0_version
             || (source_version.major == stage0_version.major
