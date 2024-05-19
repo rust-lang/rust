@@ -4,7 +4,6 @@
 
 pub mod tls;
 
-use hir::def::Namespace;
 pub use rustc_type_ir::lift::Lift;
 
 use crate::arena::Arena;
@@ -54,7 +53,7 @@ use rustc_errors::{
     Applicability, Diag, DiagCtxt, DiagMessage, ErrorGuaranteed, LintDiagnostic, MultiSpan,
 };
 use rustc_hir as hir;
-use rustc_hir::def::DefKind;
+use rustc_hir::def::{DefKind, Namespace};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
 use rustc_hir::definitions::Definitions;
 use rustc_hir::intravisit::Visitor;
