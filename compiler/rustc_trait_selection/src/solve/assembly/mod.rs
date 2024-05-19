@@ -83,7 +83,7 @@ pub(super) trait GoalKind<'tcx>:
         assumption: ty::Clause<'tcx>,
     ) -> Result<Candidate<'tcx>, NoSolution> {
         Self::probe_and_match_goal_against_assumption(ecx, source, goal, assumption, |ecx| {
-            let tcx = ecx.tcx();
+            let tcx = ecx.interner();
             let ty::Dynamic(bounds, _, _) = *goal.predicate.self_ty().kind() else {
                 bug!("expected object type in `probe_and_consider_object_bound_candidate`");
             };
@@ -288,8 +288,10 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
             return self.forced_ambiguity(MaybeCause::Ambiguity).into_iter().collect();
         }
 
-        let goal: Goal<'tcx, G> =
-            goal.with(self.tcx(), goal.predicate.with_self_ty(self.tcx(), normalized_self_ty));
+        let goal: Goal<'tcx, G> = goal.with(
+            self.interner(),
+            goal.predicate.with_self_ty(self.interner(), normalized_self_ty),
+        );
         // Vars that show up in the rest of the goal substs may have been constrained by
         // normalizing the self type as well, since type variables are not uniquified.
         let goal = self.resolve_vars_if_possible(goal);
@@ -339,7 +341,7 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
         goal: Goal<'tcx, G>,
         candidates: &mut Vec<Candidate<'tcx>>,
     ) {
-        let tcx = self.tcx();
+        let tcx = self.interner();
         let self_ty = goal.predicate.self_ty();
         let trait_impls = tcx.trait_impls_of(goal.predicate.trait_def_id(tcx));
         let mut consider_impls_for_simplified_type = |simp| {
@@ -455,7 +457,7 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
         goal: Goal<'tcx, G>,
         candidates: &mut Vec<Candidate<'tcx>>,
     ) {
-        let tcx = self.tcx();
+        let tcx = self.interner();
         let trait_impls = tcx.trait_impls_of(goal.predicate.trait_def_id(tcx));
         for &impl_def_id in trait_impls.blanket_impls() {
             // For every `default impl`, there's always a non-default `impl`
@@ -478,7 +480,7 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
         goal: Goal<'tcx, G>,
         candidates: &mut Vec<Candidate<'tcx>>,
     ) {
-        let tcx = self.tcx();
+        let tcx = self.interner();
         let lang_items = tcx.lang_items();
         let trait_def_id = goal.predicate.trait_def_id(tcx);
 
@@ -505,9 +507,9 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
             G::consider_builtin_pointer_like_candidate(self, goal)
         } else if lang_items.fn_ptr_trait() == Some(trait_def_id) {
             G::consider_builtin_fn_ptr_trait_candidate(self, goal)
-        } else if let Some(kind) = self.tcx().fn_trait_kind_from_def_id(trait_def_id) {
+        } else if let Some(kind) = self.interner().fn_trait_kind_from_def_id(trait_def_id) {
             G::consider_builtin_fn_trait_candidates(self, goal, kind)
-        } else if let Some(kind) = self.tcx().async_fn_trait_kind_from_def_id(trait_def_id) {
+        } else if let Some(kind) = self.interner().async_fn_trait_kind_from_def_id(trait_def_id) {
             G::consider_builtin_async_fn_trait_candidates(self, goal, kind)
         } else if lang_items.async_fn_kind_helper() == Some(trait_def_id) {
             G::consider_builtin_async_fn_kind_helper_candidate(self, goal)
@@ -634,7 +636,7 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
 
             ty::Alias(kind @ (ty::Projection | ty::Opaque), alias_ty) => (kind, alias_ty),
             ty::Alias(ty::Inherent | ty::Weak, _) => {
-                self.tcx().sess.dcx().span_delayed_bug(
+                self.interner().sess.dcx().span_delayed_bug(
                     DUMMY_SP,
                     format!("could not normalize {self_ty}, it is not WF"),
                 );
@@ -643,7 +645,7 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
         };
 
         for assumption in
-            self.tcx().item_bounds(alias_ty.def_id).instantiate(self.tcx(), alias_ty.args)
+            self.interner().item_bounds(alias_ty.def_id).instantiate(self.interner(), alias_ty.args)
         {
             candidates.extend(G::probe_and_consider_implied_clause(
                 self,
@@ -673,7 +675,7 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
         goal: Goal<'tcx, G>,
         candidates: &mut Vec<Candidate<'tcx>>,
     ) {
-        let tcx = self.tcx();
+        let tcx = self.interner();
         if !tcx.trait_def(goal.predicate.trait_def_id(tcx)).implement_via_object {
             return;
         }
@@ -764,7 +766,7 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
         goal: Goal<'tcx, G>,
         candidates: &mut Vec<Candidate<'tcx>>,
     ) {
-        let tcx = self.tcx();
+        let tcx = self.interner();
 
         candidates.extend(self.probe_trait_candidate(CandidateSource::CoherenceUnknowable).enter(
             |ecx| {
@@ -793,7 +795,7 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
         goal: Goal<'tcx, G>,
         candidates: &mut Vec<Candidate<'tcx>>,
     ) {
-        let tcx = self.tcx();
+        let tcx = self.interner();
         let trait_goal: Goal<'tcx, ty::TraitPredicate<'tcx>> =
             goal.with(tcx, goal.predicate.trait_ref(tcx));
 

@@ -42,7 +42,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         goal: Goal<'tcx, TraitPredicate<'tcx>>,
         impl_def_id: DefId,
     ) -> Result<Candidate<'tcx>, NoSolution> {
-        let tcx = ecx.tcx();
+        let tcx = ecx.interner();
 
         let impl_trait_header = tcx.impl_trait_header(impl_def_id).unwrap();
         let drcx = DeepRejectCtxt { treat_obligation_params: TreatParams::ForLookup };
@@ -181,7 +181,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
             return Err(NoSolution);
         }
 
-        let tcx = ecx.tcx();
+        let tcx = ecx.interner();
 
         ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
             let nested_obligations = tcx
@@ -235,7 +235,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         }
 
         // The regions of a type don't affect the size of the type
-        let tcx = ecx.tcx();
+        let tcx = ecx.interner();
         // We should erase regions from both the param-env and type, since both
         // may have infer regions. Specifically, after canonicalizing and instantiating,
         // early bound regions turn into region vars in both the new and old solver.
@@ -296,7 +296,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
             return Err(NoSolution);
         }
 
-        let tcx = ecx.tcx();
+        let tcx = ecx.interner();
         let tupled_inputs_and_output =
             match structural_traits::extract_tupled_inputs_and_output_from_callable(
                 tcx,
@@ -337,7 +337,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
             return Err(NoSolution);
         }
 
-        let tcx = ecx.tcx();
+        let tcx = ecx.interner();
         let (tupled_inputs_and_output_and_coroutine, nested_preds) =
             structural_traits::extract_tupled_inputs_and_output_from_async_callable(
                 tcx,
@@ -447,7 +447,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         };
 
         // Coroutines are not futures unless they come from `async` desugaring
-        let tcx = ecx.tcx();
+        let tcx = ecx.interner();
         if !tcx.coroutine_is_async(def_id) {
             return Err(NoSolution);
         }
@@ -473,7 +473,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         };
 
         // Coroutines are not iterators unless they come from `gen` desugaring
-        let tcx = ecx.tcx();
+        let tcx = ecx.interner();
         if !tcx.coroutine_is_gen(def_id) {
             return Err(NoSolution);
         }
@@ -499,7 +499,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         };
 
         // Coroutines are not iterators unless they come from `gen` desugaring
-        let tcx = ecx.tcx();
+        let tcx = ecx.interner();
         if !tcx.coroutine_is_gen(def_id) {
             return Err(NoSolution);
         }
@@ -523,7 +523,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         };
 
         // Coroutines are not iterators unless they come from `gen` desugaring
-        let tcx = ecx.tcx();
+        let tcx = ecx.interner();
         if !tcx.coroutine_is_async_gen(def_id) {
             return Err(NoSolution);
         }
@@ -550,7 +550,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         };
 
         // `async`-desugared coroutines do not implement the coroutine trait
-        let tcx = ecx.tcx();
+        let tcx = ecx.interner();
         if !tcx.is_general_coroutine(def_id) {
             return Err(NoSolution);
         }
@@ -625,10 +625,10 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
 
         // Erase regions because we compute layouts in `rustc_transmute`,
         // which will ICE for region vars.
-        let args = ecx.tcx().erase_regions(goal.predicate.trait_ref.args);
+        let args = ecx.interner().erase_regions(goal.predicate.trait_ref.args);
 
         let Some(assume) =
-            rustc_transmute::Assume::from_const(ecx.tcx(), goal.param_env, args.const_at(2))
+            rustc_transmute::Assume::from_const(ecx.interner(), goal.param_env, args.const_at(2))
         else {
             return Err(NoSolution);
         };
@@ -675,7 +675,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
                 return vec![];
             };
 
-            let goal = goal.with(ecx.tcx(), (a_ty, b_ty));
+            let goal = goal.with(ecx.interner(), (a_ty, b_ty));
             match (a_ty.kind(), b_ty.kind()) {
                 (ty::Infer(ty::TyVar(..)), ..) => bug!("unexpected infer {a_ty:?} {b_ty:?}"),
 
@@ -741,7 +741,7 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
         b_data: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
         b_region: ty::Region<'tcx>,
     ) -> Vec<Candidate<'tcx>> {
-        let tcx = self.tcx();
+        let tcx = self.interner();
         let Goal { predicate: (a_ty, _b_ty), .. } = goal;
 
         let mut responses = vec![];
@@ -787,7 +787,7 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
         b_data: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
         b_region: ty::Region<'tcx>,
     ) -> Result<Candidate<'tcx>, NoSolution> {
-        let tcx = self.tcx();
+        let tcx = self.interner();
         let Goal { predicate: (a_ty, _), .. } = goal;
 
         // Can only unsize to an object-safe trait.
@@ -837,8 +837,8 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
         let a_auto_traits: FxIndexSet<DefId> = a_data
             .auto_traits()
             .chain(a_data.principal_def_id().into_iter().flat_map(|principal_def_id| {
-                supertrait_def_ids(self.tcx(), principal_def_id)
-                    .filter(|def_id| self.tcx().trait_is_auto(*def_id))
+                supertrait_def_ids(self.interner(), principal_def_id)
+                    .filter(|def_id| self.interner().trait_is_auto(*def_id))
             }))
             .collect();
 
@@ -907,7 +907,7 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
             ecx.add_goal(
                 GoalSource::ImplWhereBound,
                 Goal::new(
-                    ecx.tcx(),
+                    ecx.interner(),
                     param_env,
                     ty::Binder::dummy(ty::OutlivesPredicate(a_region, b_region)),
                 ),
@@ -956,7 +956,7 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
         a_args: ty::GenericArgsRef<'tcx>,
         b_args: ty::GenericArgsRef<'tcx>,
     ) -> Result<Candidate<'tcx>, NoSolution> {
-        let tcx = self.tcx();
+        let tcx = self.interner();
         let Goal { predicate: (_a_ty, b_ty), .. } = goal;
 
         let unsizing_params = tcx.unsizing_params_for_adt(def.did());
@@ -1017,7 +1017,7 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
         a_tys: &'tcx ty::List<Ty<'tcx>>,
         b_tys: &'tcx ty::List<Ty<'tcx>>,
     ) -> Result<Candidate<'tcx>, NoSolution> {
-        let tcx = self.tcx();
+        let tcx = self.interner();
         let Goal { predicate: (_a_ty, b_ty), .. } = goal;
 
         let (&a_last_ty, a_rest_tys) = a_tys.split_last().unwrap();
@@ -1077,9 +1077,9 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
             // takes precedence over the structural auto trait candidate being
             // assembled.
             ty::Coroutine(def_id, _)
-                if Some(goal.predicate.def_id()) == self.tcx().lang_items().unpin_trait() =>
+                if Some(goal.predicate.def_id()) == self.interner().lang_items().unpin_trait() =>
             {
-                match self.tcx().coroutine_movability(def_id) {
+                match self.interner().coroutine_movability(def_id) {
                     Movability::Static => Some(Err(NoSolution)),
                     Movability::Movable => Some(
                         self.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
@@ -1124,7 +1124,7 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
             | ty::Tuple(_)
             | ty::Adt(_, _) => {
                 let mut disqualifying_impl = None;
-                self.tcx().for_each_relevant_impl(
+                self.interner().for_each_relevant_impl(
                     goal.predicate.def_id(),
                     goal.predicate.self_ty(),
                     |impl_def_id| {
@@ -1164,7 +1164,10 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
                     .into_iter()
                     .map(|ty| {
                         ecx.enter_forall(ty, |ty| {
-                            goal.with(ecx.tcx(), goal.predicate.with_self_ty(ecx.tcx(), ty))
+                            goal.with(
+                                ecx.interner(),
+                                goal.predicate.with_self_ty(ecx.interner(), ty),
+                            )
                         })
                     })
                     .collect::<Vec<_>>(),
