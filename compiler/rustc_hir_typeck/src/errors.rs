@@ -183,6 +183,11 @@ pub enum NeverTypeFallbackFlowingIntoUnsafe {
     Deref,
 }
 
+#[derive(LintDiagnostic)]
+#[help]
+#[diag(hir_typeck_dependency_on_unit_never_type_fallback)]
+pub struct DependencyOnUnitNeverTypeFallback {}
+
 #[derive(Subdiagnostic)]
 #[multipart_suggestion(
     hir_typeck_add_missing_parentheses_in_range,

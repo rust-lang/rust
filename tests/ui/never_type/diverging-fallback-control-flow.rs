@@ -28,6 +28,8 @@ impl UnitDefault for () {
 }
 
 fn assignment() {
+    //[nofallback]~^ warn: this function depends on never type fallback being `()`
+    //[nofallback]~| warn: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
     let x;
 
     if true {
@@ -38,6 +40,8 @@ fn assignment() {
 }
 
 fn assignment_rev() {
+    //[nofallback]~^ warn: this function depends on never type fallback being `()`
+    //[nofallback]~| warn: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
     let x;
 
     if true {

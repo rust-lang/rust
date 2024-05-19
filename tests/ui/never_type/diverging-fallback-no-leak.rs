@@ -12,6 +12,9 @@ impl Test for () {}
 fn unconstrained_arg<T: Test>(_: T) {}
 
 fn main() {
+    //[nofallback]~^ warn: this function depends on never type fallback being `()`
+    //[nofallback]~| warn: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+
     // Here the type variable falls back to `!`,
     // and hence we get a type error.
     unconstrained_arg(return);
