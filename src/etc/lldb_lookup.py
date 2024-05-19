@@ -92,7 +92,7 @@ def synthetic_lookup(valobj, dict):
         return StdVecSyntheticProvider(valobj, dict)
     if rust_type == RustType.STD_VEC_DEQUE:
         return StdVecDequeSyntheticProvider(valobj, dict)
-    if rust_type == RustType.STD_SLICE:
+    if rust_type == RustType.STD_SLICE or rust_type == RustType.STD_STR:
         return StdSliceSyntheticProvider(valobj, dict)
 
     if rust_type == RustType.STD_HASH_MAP:
