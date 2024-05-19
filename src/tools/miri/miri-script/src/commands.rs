@@ -42,28 +42,19 @@ impl MiriEnv {
         let target_flag = &target_flag;
 
         if !quiet {
+            eprint!("$ cargo miri setup");
             if let Some(target) = target {
-                eprintln!("$ (building Miri sysroot for {})", target.to_string_lossy());
-            } else {
-                eprintln!("$ (building Miri sysroot)");
+                eprint!(" --target {target}", target = target.to_string_lossy());
             }
+            eprintln!();
         }
 
-        let output = cmd!(self.sh,
+        let mut cmd = cmd!(self.sh,
             "cargo +{toolchain} --quiet run {cargo_extra_flags...} --manifest-path {manifest_path} --
              miri setup --print-sysroot {target_flag...}"
-        ).read();
-        let Ok(output) = output else {
-            // Run it again (without `--print-sysroot` or `--quiet`) so the user can see the error.
-            cmd!(
-                self.sh,
-                "cargo +{toolchain} run {cargo_extra_flags...} --manifest-path {manifest_path} --
-                miri setup {target_flag...}"
-            )
-            .run()
-            .with_context(|| "`cargo miri setup` failed")?;
-            panic!("`cargo miri setup` didn't fail again the 2nd time?");
-        };
+        );
+        cmd.set_quiet(quiet);
+        let output = cmd.read()?;
         self.sh.set_var("MIRI_SYSROOT", &output);
         Ok(output.into())
     }
