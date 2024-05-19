@@ -1,10 +1,10 @@
 #![allow(clippy::needless_question_mark)]
 
+mod args;
 mod commands;
 mod util;
 
-use std::ffi::OsString;
-use std::{env, ops::Range};
+use std::ops::Range;
 
 use anyhow::{anyhow, bail, Context, Result};
 
@@ -16,26 +16,26 @@ pub enum Command {
     /// sysroot, to prevent conflicts with other toolchains.
     Install {
         /// Flags that are passed through to `cargo install`.
-        flags: Vec<OsString>,
+        flags: Vec<String>,
     },
     /// Just build miri.
     Build {
         /// Flags that are passed through to `cargo build`.
-        flags: Vec<OsString>,
+        flags: Vec<String>,
     },
     /// Just check miri.
     Check {
         /// Flags that are passed through to `cargo check`.
-        flags: Vec<OsString>,
+        flags: Vec<String>,
     },
     /// Build miri, set up a sysroot and then run the test suite.
     Test {
         bless: bool,
         /// The cross-interpretation target.
         /// If none then the host is the target.
-        target: Option<OsString>,
+        target: Option<String>,
         /// Flags that are passed through to the test harness.
-        flags: Vec<OsString>,
+        flags: Vec<String>,
     },
     /// Build miri, set up a sysroot and then run the driver with the given <flags>.
     /// (Also respects MIRIFLAGS environment variable.)
@@ -43,33 +43,35 @@ pub enum Command {
         dep: bool,
         verbose: bool,
         many_seeds: Option<Range<u32>>,
+        target: Option<String>,
+        edition: Option<String>,
         /// Flags that are passed through to `miri`.
-        flags: Vec<OsString>,
+        flags: Vec<String>,
     },
     /// Format all sources and tests.
     Fmt {
         /// Flags that are passed through to `rustfmt`.
-        flags: Vec<OsString>,
+        flags: Vec<String>,
     },
     /// Runs clippy on all sources.
     Clippy {
         /// Flags that are passed through to `cargo clippy`.
-        flags: Vec<OsString>,
+        flags: Vec<String>,
     },
     /// Runs just `cargo <flags>` with the Miri-specific environment variables.
     /// Mainly meant to be invoked by rust-analyzer.
-    Cargo { flags: Vec<OsString> },
+    Cargo { flags: Vec<String> },
     /// Runs the benchmarks from bench-cargo-miri in hyperfine. hyperfine needs to be installed.
     Bench {
-        target: Option<OsString>,
+        target: Option<String>,
         /// List of benchmarks to run. By default all benchmarks are run.
-        benches: Vec<OsString>,
+        benches: Vec<String>,
     },
     /// Update and activate the rustup toolchain 'miri' to the commit given in the
     /// `rust-version` file.
     /// `rustup-toolchain-install-master` must be installed for this to work. Any extra
     /// flags are passed to `rustup-toolchain-install-master`.
-    Toolchain { flags: Vec<OsString> },
+    Toolchain { flags: Vec<String> },
     /// Pull and merge Miri changes from the rustc repo. Defaults to fetching the latest
     /// rustc commit. The fetched commit is stored in the `rust-version` file, so the
     /// next `./miri toolchain` will install the rustc that just got pulled.
@@ -145,113 +147,95 @@ Pass extra flags to all cargo invocations. (Ignored by `./miri cargo`.)"#;
 fn main() -> Result<()> {
     // We are hand-rolling our own argument parser, since `clap` can't express what we need
     // (https://github.com/clap-rs/clap/issues/5055).
-    let mut args = env::args_os().peekable();
-    args.next().unwrap(); // skip program name
-    let command = match args.next().and_then(|s| s.into_string().ok()).as_deref() {
-        Some("build") => Command::Build { flags: args.collect() },
-        Some("check") => Command::Check { flags: args.collect() },
+    let mut args = args::Args::new();
+    let command = match args.next_raw().as_deref() {
+        Some("build") => Command::Build { flags: args.remainder() },
+        Some("check") => Command::Check { flags: args.remainder() },
         Some("test") => {
             let mut target = None;
             let mut bless = false;
-
-            while let Some(arg) = args.peek().and_then(|s| s.to_str()) {
-                match arg {
-                    "--bless" => bless = true,
-                    "--target" => {
-                        // Skip "--target"
-                        args.next().unwrap();
-                        // Next argument is the target triple.
-                        let val = args.peek().ok_or_else(|| {
-                            anyhow!("`--target` must be followed by target triple")
-                        })?;
-                        target = Some(val.to_owned());
-                    }
-                    // Only parse the leading flags.
-                    _ => break,
+            let mut flags = Vec::new();
+            loop {
+                if args.get_long_flag("bless")? {
+                    bless = true;
+                } else if let Some(val) = args.get_long_opt("target")? {
+                    target = Some(val);
+                } else if let Some(flag) = args.get_other() {
+                    flags.push(flag);
+                } else {
+                    break;
                 }
-
-                // Consume the flag, look at the next one.
-                args.next().unwrap();
             }
-
-            Command::Test { bless, flags: args.collect(), target }
+            Command::Test { bless, flags, target }
         }
         Some("run") => {
             let mut dep = false;
             let mut verbose = false;
             let mut many_seeds = None;
-            while let Some(arg) = args.peek().and_then(|s| s.to_str()) {
-                if arg == "--dep" {
+            let mut target = None;
+            let mut edition = None;
+            let mut flags = Vec::new();
+            loop {
+                if args.get_long_flag("dep")? {
                     dep = true;
-                } else if arg == "-v" || arg == "--verbose" {
+                } else if args.get_long_flag("verbose")? || args.get_short_flag('v')? {
                     verbose = true;
-                } else if arg == "--many-seeds" {
-                    many_seeds = Some(0..256);
-                } else if let Some(val) = arg.strip_prefix("--many-seeds=") {
+                } else if let Some(val) = args.get_long_opt_with_default("many-seeds", "0..256")? {
                     let (from, to) = val.split_once("..").ok_or_else(|| {
-                        anyhow!("invalid format for `--many-seeds`: expected `from..to`")
+                        anyhow!("invalid format for `--many-seeds-range`: expected `from..to`")
                     })?;
                     let from: u32 = if from.is_empty() {
                         0
                     } else {
-                        from.parse().context("invalid `from` in `--many-seeds=from..to")?
+                        from.parse().context("invalid `from` in `--many-seeds-range=from..to")?
                     };
-                    let to: u32 = to.parse().context("invalid `to` in `--many-seeds=from..to")?;
+                    let to: u32 =
+                        to.parse().context("invalid `to` in `--many-seeds-range=from..to")?;
                     many_seeds = Some(from..to);
+                } else if let Some(val) = args.get_long_opt("target")? {
+                    target = Some(val);
+                } else if let Some(val) = args.get_long_opt("edition")? {
+                    edition = Some(val);
+                } else if let Some(flag) = args.get_other() {
+                    flags.push(flag);
                 } else {
-                    break; // not for us
+                    break;
                 }
-                // Consume the flag, look at the next one.
-                args.next().unwrap();
             }
-            Command::Run { dep, verbose, many_seeds, flags: args.collect() }
+            Command::Run { dep, verbose, many_seeds, target, edition, flags }
         }
-        Some("fmt") => Command::Fmt { flags: args.collect() },
-        Some("clippy") => Command::Clippy { flags: args.collect() },
-        Some("cargo") => Command::Cargo { flags: args.collect() },
-        Some("install") => Command::Install { flags: args.collect() },
+        Some("fmt") => Command::Fmt { flags: args.remainder() },
+        Some("clippy") => Command::Clippy { flags: args.remainder() },
+        Some("cargo") => Command::Cargo { flags: args.remainder() },
+        Some("install") => Command::Install { flags: args.remainder() },
         Some("bench") => {
             let mut target = None;
-            while let Some(arg) = args.peek().and_then(|s| s.to_str()) {
-                match arg {
-                    "--target" => {
-                        // Skip "--target"
-                        args.next().unwrap();
-                        // Next argument is the target triple.
-                        let val = args.peek().ok_or_else(|| {
-                            anyhow!("`--target` must be followed by target triple")
-                        })?;
-                        target = Some(val.to_owned());
-                    }
-                    // Only parse the leading flags.
-                    _ => break,
+            let mut benches = Vec::new();
+            loop {
+                if let Some(val) = args.get_long_opt("target")? {
+                    target = Some(val);
+                } else if let Some(flag) = args.get_other() {
+                    benches.push(flag);
+                } else {
+                    break;
                 }
-
-                // Consume the flag, look at the next one.
-                args.next().unwrap();
             }
-
-            Command::Bench { target, benches: args.collect() }
+            Command::Bench { target, benches }
         }
-        Some("toolchain") => Command::Toolchain { flags: args.collect() },
+        Some("toolchain") => Command::Toolchain { flags: args.remainder() },
         Some("rustc-pull") => {
-            let commit = args.next().map(|a| a.to_string_lossy().into_owned());
-            if args.next().is_some() {
+            let commit = args.next_raw();
+            if args.next_raw().is_some() {
                 bail!("Too many arguments for `./miri rustc-pull`");
             }
             Command::RustcPull { commit }
         }
         Some("rustc-push") => {
-            let github_user = args
-                .next()
-                .ok_or_else(|| {
-                    anyhow!("Missing first argument for `./miri rustc-push GITHUB_USER [BRANCH]`")
-                })?
-                .to_string_lossy()
-                .into_owned();
-            let branch =
-                args.next().unwrap_or_else(|| "miri-sync".into()).to_string_lossy().into_owned();
-            if args.next().is_some() {
+            let github_user = args.next_raw().ok_or_else(|| {
+                anyhow!("Missing first argument for `./miri rustc-push GITHUB_USER [BRANCH]`")
+            })?;
+            let branch = args.next_raw().unwrap_or_else(|| "miri-sync".into());
+            if args.next_raw().is_some() {
                 bail!("Too many arguments for `./miri rustc-push GITHUB_USER BRANCH`");
             }
             Command::RustcPush { github_user, branch }
