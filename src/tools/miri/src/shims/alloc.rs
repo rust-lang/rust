@@ -175,10 +175,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
     fn aligned_alloc(
         &mut self,
-        align: u64,
-        size: u64,
+        align: &OpTy<'tcx, Provenance>,
+        size: &OpTy<'tcx, Provenance>,
     ) -> InterpResult<'tcx, Pointer<Option<Provenance>>> {
         let this = self.eval_context_mut();
+        let align = this.read_target_usize(align)?;
+        let size = this.read_target_usize(size)?;
+
         // Alignment must be a power of 2, and "supported by the implementation".
         // We decide that "supported by the implementation" means that the
         // size must be a multiple of the alignment. (This restriction seems common

@@ -148,53 +148,55 @@ fn test_calloc() {
 
 #[cfg(not(target_os = "windows"))]
 fn test_memalign() {
-    // A normal allocation.
-    unsafe {
-        let mut ptr: *mut libc::c_void = ptr::null_mut();
-        let align = 8;
-        let size = 64;
-        assert_eq!(libc::posix_memalign(&mut ptr, align, size), 0);
-        assert!(!ptr.is_null());
-        assert!(ptr.is_aligned_to(align));
-        ptr.cast::<u8>().write_bytes(1, size);
-        libc::free(ptr);
-    }
+    for _ in 0..16 {
+        // A normal allocation.
+        unsafe {
+            let mut ptr: *mut libc::c_void = ptr::null_mut();
+            let align = 8;
+            let size = 64;
+            assert_eq!(libc::posix_memalign(&mut ptr, align, size), 0);
+            assert!(!ptr.is_null());
+            assert!(ptr.is_aligned_to(align));
+            ptr.cast::<u8>().write_bytes(1, size);
+            libc::free(ptr);
+        }
 
-    // Align > size.
-    unsafe {
-        let mut ptr: *mut libc::c_void = ptr::null_mut();
-        let align = 64;
-        let size = 8;
-        assert_eq!(libc::posix_memalign(&mut ptr, align, size), 0);
-        assert!(!ptr.is_null());
-        assert!(ptr.is_aligned_to(align));
-        ptr.cast::<u8>().write_bytes(1, size);
-        libc::free(ptr);
-    }
+        // Align > size.
+        unsafe {
+            let mut ptr: *mut libc::c_void = ptr::null_mut();
+            let align = 64;
+            let size = 8;
+            assert_eq!(libc::posix_memalign(&mut ptr, align, size), 0);
+            assert!(!ptr.is_null());
+            assert!(ptr.is_aligned_to(align));
+            ptr.cast::<u8>().write_bytes(1, size);
+            libc::free(ptr);
+        }
 
-    // Size not multiple of align
-    unsafe {
-        let mut ptr: *mut libc::c_void = ptr::null_mut();
-        let align = 16;
-        let size = 31;
-        assert_eq!(libc::posix_memalign(&mut ptr, align, size), 0);
-        assert!(!ptr.is_null());
-        assert!(ptr.is_aligned_to(align));
-        ptr.cast::<u8>().write_bytes(1, size);
-        libc::free(ptr);
-    }
+        // Size not multiple of align
+        unsafe {
+            let mut ptr: *mut libc::c_void = ptr::null_mut();
+            let align = 16;
+            let size = 31;
+            assert_eq!(libc::posix_memalign(&mut ptr, align, size), 0);
+            assert!(!ptr.is_null());
+            assert!(ptr.is_aligned_to(align));
+            ptr.cast::<u8>().write_bytes(1, size);
+            libc::free(ptr);
+        }
 
-    // Size == 0
-    unsafe {
-        let mut ptr: *mut libc::c_void = ptr::null_mut();
-        let align = 64;
-        let size = 0;
-        assert_eq!(libc::posix_memalign(&mut ptr, align, size), 0);
-        // Non-null pointer is returned if size == 0.
-        // (This is not a guarantee, it just reflects our current behavior.)
-        assert!(!ptr.is_null());
-        assert!(ptr.is_aligned_to(align));
-        libc::free(ptr);
+        // Size == 0
+        unsafe {
+            let mut ptr: *mut libc::c_void = ptr::null_mut();
+            let align = 64;
+            let size = 0;
+            assert_eq!(libc::posix_memalign(&mut ptr, align, size), 0);
+            // Non-null pointer is returned if size == 0.
+            // (This is not a guarantee, it just reflects our current behavior.)
+            assert!(!ptr.is_null());
+            assert!(ptr.is_aligned_to(align));
+            libc::free(ptr);
+        }
     }
 
     // Non-power of 2 align
@@ -260,20 +262,20 @@ fn test_aligned_alloc() {
         assert_eq!(p, ptr::null_mut());
     }
 
-    // alignment lesser than a word but still a successful allocation
-    unsafe {
-        let p = aligned_alloc(1, 4);
-        assert!(!p.is_null());
-        assert!(p.is_aligned_to(4));
-        libc::free(p);
-    }
-
     // repeated tests on correct alignment/size
     for _ in 0..16 {
+        // alignment 1, size 4 should succeed and actually must align to 4 (because C says so...)
         unsafe {
-            let p = aligned_alloc(16, 16);
+            let p = aligned_alloc(1, 4);
             assert!(!p.is_null());
-            assert!(p.is_aligned_to(16));
+            assert!(p.is_aligned_to(4));
+            libc::free(p);
+        }
+
+        unsafe {
+            let p = aligned_alloc(64, 64);
+            assert!(!p.is_null());
+            assert!(p.is_aligned_to(64));
             libc::free(p);
         }
     }

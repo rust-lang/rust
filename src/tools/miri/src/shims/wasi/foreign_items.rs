@@ -29,9 +29,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             "aligned_alloc" => {
                 let [align, size] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                let align = this.read_target_usize(align)?;
-                let size = this.read_target_usize(size)?;
-
                 let res = this.aligned_alloc(align, size)?;
                 this.write_pointer(res, dest)?;
             }
