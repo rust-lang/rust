@@ -73,8 +73,8 @@ cfg_if::cfg_if! {
         #[inline]
         unsafe fn aligned_malloc(layout: &Layout) -> *mut u8 {
             let mut out = ptr::null_mut();
-            // We prefer posix_memalign over aligned_malloc since it is more widely available, and
-            // since with aligned_malloc, implementations are making almost arbitrary choices for
+            // We prefer posix_memalign over aligned_alloc since it is more widely available, and
+            // since with aligned_alloc, implementations are making almost arbitrary choices for
             // which alignments are "supported", making it hard to use. For instance, some
             // implementations require the size to be a multiple of the alignment (wasi emmalloc),
             // while others require the alignment to be at least the pointer size (Illumos, macOS).
