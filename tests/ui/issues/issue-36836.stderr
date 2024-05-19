@@ -1,0 +1,9 @@
+error[E0412]: cannot find type `Bar` in this scope
+  --> $DIR/issue-36836.rs:13:17
+   |
+LL | impl<T> Foo for Bar<T> {}
+   |                 ^^^ not found in this scope
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0412`.

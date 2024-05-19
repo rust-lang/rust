@@ -1,0 +1,12 @@
+──────────────────────────────────────────────────
+Warning: this tree is indicative only. Some tags may have been hidden.
+0..   1
+| Act |    └─┬──<TAG=root of the allocation>
+| RsM |      └────<TAG=data, x, y>
+──────────────────────────────────────────────────
+──────────────────────────────────────────────────
+Warning: this tree is indicative only. Some tags may have been hidden.
+0..   1
+| Act |    └─┬──<TAG=root of the allocation>
+| Act |      └────<TAG=data, x, y>
+──────────────────────────────────────────────────

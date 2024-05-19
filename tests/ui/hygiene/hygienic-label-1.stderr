@@ -1,0 +1,14 @@
+error[E0426]: use of undeclared label `'x`
+  --> $DIR/hygienic-label-1.rs:2:19
+   |
+LL |     () => { break 'x; }
+   |                   ^^ undeclared label `'x`
+...
+LL |     'x: loop { foo!(); }
+   |                ------ in this macro invocation
+   |
+   = note: this error originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0426`.

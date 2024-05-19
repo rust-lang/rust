@@ -1,0 +1,15 @@
+error[E0080]: could not evaluate static initializer
+  --> $DIR/write-to-static-mut-in-static.rs:2:33
+   |
+LL | pub static mut B: () = unsafe { A = 1; };
+   |                                 ^^^^^ modifying a static's initial value from another static's initializer
+
+error[E0080]: could not evaluate static initializer
+  --> $DIR/write-to-static-mut-in-static.rs:7:21
+   |
+LL | pub static D: u32 = D;
+   |                     ^ encountered static that tried to initialize itself with itself
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0080`.

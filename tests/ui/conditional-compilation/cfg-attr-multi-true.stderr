@@ -1,0 +1,44 @@
+warning: use of deprecated struct `MustUseDeprecated`
+  --> $DIR/cfg-attr-multi-true.rs:12:6
+   |
+LL | impl MustUseDeprecated {
+   |      ^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(deprecated)]` on by default
+
+warning: use of deprecated struct `MustUseDeprecated`
+  --> $DIR/cfg-attr-multi-true.rs:19:5
+   |
+LL |     MustUseDeprecated::new();
+   |     ^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated struct `MustUseDeprecated`
+  --> $DIR/cfg-attr-multi-true.rs:13:17
+   |
+LL |     fn new() -> MustUseDeprecated {
+   |                 ^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated struct `MustUseDeprecated`
+  --> $DIR/cfg-attr-multi-true.rs:14:9
+   |
+LL |         MustUseDeprecated {}
+   |         ^^^^^^^^^^^^^^^^^
+
+warning: unused `MustUseDeprecated` that must be used
+  --> $DIR/cfg-attr-multi-true.rs:19:5
+   |
+LL |     MustUseDeprecated::new();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/cfg-attr-multi-true.rs:7:9
+   |
+LL | #![warn(unused_must_use)]
+   |         ^^^^^^^^^^^^^^^
+help: use `let _ = ...` to ignore the resulting value
+   |
+LL |     let _ = MustUseDeprecated::new();
+   |     +++++++
+
+warning: 5 warnings emitted
+

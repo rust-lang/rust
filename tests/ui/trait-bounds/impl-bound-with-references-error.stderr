@@ -1,0 +1,38 @@
+error[E0412]: cannot find type `Cow` in this scope
+  --> $DIR/impl-bound-with-references-error.rs:12:13
+   |
+LL |     T: Into<Cow<'static, str>>,
+   |             ^^^ not found in this scope
+   |
+help: consider importing this enum
+   |
+LL + use std::borrow::Cow;
+   |
+
+error[E0119]: conflicting implementations of trait `From<LabelText>` for type `LabelText`
+  --> $DIR/impl-bound-with-references-error.rs:9:1
+   |
+LL | / impl<T> From<T> for LabelText
+LL | |
+LL | | where
+LL | |     T: Into<Cow<'static, str>>,
+   | |_______________________________^
+   |
+   = note: conflicting implementation in crate `core`:
+           - impl<T> From<T> for T;
+
+error[E0618]: expected function, found `LabelText`
+  --> $DIR/impl-bound-with-references-error.rs:16:9
+   |
+LL |     Plain,
+   |     ----- `LabelText::Plain` defined here
+...
+LL |         LabelText::Plain(text.into())
+   |         ^^^^^^^^^^^^^^^^-------------
+   |         |
+   |         call expression requires function
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0119, E0412, E0618.
+For more information about an error, try `rustc --explain E0119`.

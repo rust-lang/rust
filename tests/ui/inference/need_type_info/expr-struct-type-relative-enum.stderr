@@ -1,0 +1,14 @@
+error[E0282]: type annotations needed
+  --> $DIR/expr-struct-type-relative-enum.rs:16:9
+   |
+LL |         needs_infer();
+   |         ^^^^^^^^^^^ cannot infer type of the type parameter `T` declared on the function `needs_infer`
+   |
+help: consider specifying the generic argument
+   |
+LL |         needs_infer::<T>();
+   |                    +++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0282`.

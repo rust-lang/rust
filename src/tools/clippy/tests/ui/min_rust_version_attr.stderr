@@ -1,0 +1,51 @@
+error: approximate value of `f{32, 64}::consts::LOG2_10` found
+  --> tests/ui/min_rust_version_attr.rs:13:19
+   |
+LL |     let log2_10 = 3.321928094887362;
+   |                   ^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using the constant directly
+   = note: `#[deny(clippy::approx_constant)]` on by default
+
+error: approximate value of `f{32, 64}::consts::LOG2_10` found
+  --> tests/ui/min_rust_version_attr.rs:19:19
+   |
+LL |     let log2_10 = 3.321928094887362;
+   |                   ^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using the constant directly
+
+error: approximate value of `f{32, 64}::consts::LOG2_10` found
+  --> tests/ui/min_rust_version_attr.rs:30:19
+   |
+LL |     let log2_10 = 3.321928094887362;
+   |                   ^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using the constant directly
+
+error: approximate value of `f{32, 64}::consts::LOG2_10` found
+  --> tests/ui/min_rust_version_attr.rs:41:19
+   |
+LL |     let log2_10 = 3.321928094887362;
+   |                   ^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using the constant directly
+
+error: approximate value of `f{32, 64}::consts::LOG2_10` found
+  --> tests/ui/min_rust_version_attr.rs:52:19
+   |
+LL |     let log2_10 = 3.321928094887362;
+   |                   ^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using the constant directly
+
+error: approximate value of `f{32, 64}::consts::LOG2_10` found
+  --> tests/ui/min_rust_version_attr.rs:60:27
+   |
+LL |             let log2_10 = 3.321928094887362;
+   |                           ^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using the constant directly
+
+error: aborting due to 6 previous errors
+

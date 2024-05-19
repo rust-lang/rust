@@ -1,0 +1,170 @@
+error[E0510]: cannot assign `q` in match guard
+  --> $DIR/match-guards-partially-borrow.rs:100:13
+   |
+LL |     match q {
+   |           - value is immutable in match guard
+...
+LL |             q = true;
+   |             ^^^^^^^^ cannot assign
+
+error[E0510]: cannot assign `q` in match guard
+  --> $DIR/match-guards-partially-borrow.rs:111:13
+   |
+LL |     match q {
+   |           - value is immutable in match guard
+...
+LL |             q = true;
+   |             ^^^^^^^^ cannot assign
+
+error[E0510]: cannot assign `r` in match guard
+  --> $DIR/match-guards-partially-borrow.rs:123:13
+   |
+LL |     match r {
+   |           - value is immutable in match guard
+...
+LL |             r = true;
+   |             ^^^^^^^^ cannot assign
+
+error[E0510]: cannot assign `r` in match guard
+  --> $DIR/match-guards-partially-borrow.rs:135:13
+   |
+LL |     match r {
+   |           - value is immutable in match guard
+...
+LL |             r = true;
+   |             ^^^^^^^^ cannot assign
+
+error[E0510]: cannot assign `t` in match guard
+  --> $DIR/match-guards-partially-borrow.rs:172:13
+   |
+LL |     match t {
+   |           - value is immutable in match guard
+...
+LL |             t = true;
+   |             ^^^^^^^^ cannot assign
+
+error[E0510]: cannot assign `t` in match guard
+  --> $DIR/match-guards-partially-borrow.rs:183:13
+   |
+LL |     match t {
+   |           - value is immutable in match guard
+...
+LL |             t = true;
+   |             ^^^^^^^^ cannot assign
+
+error[E0510]: cannot mutably borrow `x.0` in match guard
+  --> $DIR/match-guards-partially-borrow.rs:197:22
+   |
+LL |     match x {
+   |           - value is immutable in match guard
+...
+LL |                 Some(ref mut r) => *r = None,
+   |                      ^^^^^^^^^ cannot mutably borrow
+
+error[E0510]: cannot mutably borrow `x.0` in match guard
+  --> $DIR/match-guards-partially-borrow.rs:213:22
+   |
+LL |     match x {
+   |           - value is immutable in match guard
+...
+LL |                 Some(ref mut r) => *r = None,
+   |                      ^^^^^^^^^ cannot mutably borrow
+
+error[E0506]: cannot assign to `t` because it is borrowed
+  --> $DIR/match-guards-partially-borrow.rs:225:13
+   |
+LL |         s if {
+   |         - `t` is borrowed here
+LL |             t = !t;
+   |             ^^^^^^ `t` is assigned to here but it was already borrowed
+LL |             false
+LL |         } => (), // What value should `s` have in the arm?
+   |         - borrow later used here
+
+error[E0506]: cannot assign to `t` because it is borrowed
+  --> $DIR/match-guards-partially-borrow.rs:235:13
+   |
+LL |         s if let Some(()) = {
+   |         - `t` is borrowed here
+LL |             t = !t;
+   |             ^^^^^^ `t` is assigned to here but it was already borrowed
+LL |             None
+LL |         } => (), // What value should `s` have in the arm?
+   |         - borrow later used here
+
+error[E0510]: cannot assign `y` in match guard
+  --> $DIR/match-guards-partially-borrow.rs:246:13
+   |
+LL |     match *y {
+   |           -- value is immutable in match guard
+...
+LL |             y = &true;
+   |             ^^^^^^^^^ cannot assign
+
+error[E0510]: cannot assign `y` in match guard
+  --> $DIR/match-guards-partially-borrow.rs:257:13
+   |
+LL |     match *y {
+   |           -- value is immutable in match guard
+...
+LL |             y = &true;
+   |             ^^^^^^^^^ cannot assign
+
+error[E0510]: cannot assign `z` in match guard
+  --> $DIR/match-guards-partially-borrow.rs:268:13
+   |
+LL |     match z {
+   |           - value is immutable in match guard
+...
+LL |             z = &true;
+   |             ^^^^^^^^^ cannot assign
+
+error[E0510]: cannot assign `z` in match guard
+  --> $DIR/match-guards-partially-borrow.rs:279:13
+   |
+LL |     match z {
+   |           - value is immutable in match guard
+...
+LL |             z = &true;
+   |             ^^^^^^^^^ cannot assign
+
+error[E0510]: cannot assign `a` in match guard
+  --> $DIR/match-guards-partially-borrow.rs:291:13
+   |
+LL |     match a {
+   |           - value is immutable in match guard
+...
+LL |             a = &true;
+   |             ^^^^^^^^^ cannot assign
+
+error[E0510]: cannot assign `a` in match guard
+  --> $DIR/match-guards-partially-borrow.rs:303:13
+   |
+LL |     match a {
+   |           - value is immutable in match guard
+...
+LL |             a = &true;
+   |             ^^^^^^^^^ cannot assign
+
+error[E0510]: cannot assign `b` in match guard
+  --> $DIR/match-guards-partially-borrow.rs:314:13
+   |
+LL |     match b {
+   |           - value is immutable in match guard
+...
+LL |             b = &true;
+   |             ^^^^^^^^^ cannot assign
+
+error[E0510]: cannot assign `b` in match guard
+  --> $DIR/match-guards-partially-borrow.rs:325:13
+   |
+LL |     match b {
+   |           - value is immutable in match guard
+...
+LL |             b = &true;
+   |             ^^^^^^^^^ cannot assign
+
+error: aborting due to 18 previous errors
+
+Some errors have detailed explanations: E0506, E0510.
+For more information about an error, try `rustc --explain E0506`.

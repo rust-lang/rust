@@ -1,0 +1,25 @@
+error[E0277]: the trait bound `&dyn MyTrait: MyTrait` is not satisfied
+  --> $DIR/issue-102140.rs:20:22
+   |
+LL |         MyTrait::foo(&self)
+   |         ------------ ^^^^^ the trait `MyTrait` is not implemented for `&dyn MyTrait`
+   |         |
+   |         required by a bound introduced by this call
+   |
+help: consider removing the leading `&`-reference
+   |
+LL -         MyTrait::foo(&self)
+LL +         MyTrait::foo(self)
+   |
+
+error[E0277]: the trait bound `&dyn MyTrait: MyTrait` is not satisfied
+  --> $DIR/issue-102140.rs:20:9
+   |
+LL |         MyTrait::foo(&self)
+   |         ^^^^^^^^^^^^^^^^^^^ the trait `MyTrait` is not implemented for `&dyn MyTrait`
+   |
+   = help: the trait `MyTrait` is implemented for `Outer`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

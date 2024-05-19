@@ -1,0 +1,81 @@
+warning: lifetime parameter `'b` never used
+  --> $DIR/regions-static-bound.rs:3:17
+   |
+LL | fn static_id<'a,'b>(t: &'a ()) -> &'static () where 'a: 'static { t }
+   |                -^^
+   |                |
+   |                help: elide the unused lifetime
+   |
+note: the lint level is defined here
+  --> $DIR/regions-static-bound.rs:1:9
+   |
+LL | #![warn(unused_lifetimes, redundant_lifetimes)]
+   |         ^^^^^^^^^^^^^^^^
+
+warning: unnecessary lifetime parameter `'a`
+  --> $DIR/regions-static-bound.rs:3:14
+   |
+LL | fn static_id<'a,'b>(t: &'a ()) -> &'static () where 'a: 'static { t }
+   |              ^^
+   |
+   = note: you can use the `'static` lifetime directly, in place of `'a`
+note: the lint level is defined here
+  --> $DIR/regions-static-bound.rs:1:27
+   |
+LL | #![warn(unused_lifetimes, redundant_lifetimes)]
+   |                           ^^^^^^^^^^^^^^^^^^^
+
+warning: unnecessary lifetime parameter `'a`
+  --> $DIR/regions-static-bound.rs:7:23
+   |
+LL | fn static_id_indirect<'a,'b>(t: &'a ()) -> &'static ()
+   |                       ^^
+   |
+   = note: you can use the `'static` lifetime directly, in place of `'a`
+
+warning: unnecessary lifetime parameter `'b`
+  --> $DIR/regions-static-bound.rs:7:26
+   |
+LL | fn static_id_indirect<'a,'b>(t: &'a ()) -> &'static ()
+   |                          ^^
+   |
+   = note: you can use the `'static` lifetime directly, in place of `'b`
+
+error: lifetime may not live long enough
+  --> $DIR/regions-static-bound.rs:13:5
+   |
+LL | fn static_id_wrong_way<'a>(t: &'a ()) -> &'static () where 'static: 'a {
+   |                        -- lifetime `'a` defined here
+LL |     t
+   |     ^ returning this value requires that `'a` must outlive `'static`
+
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/regions-static-bound.rs:18:5
+   |
+LL | fn error(u: &(), v: &()) {
+   |          -  - let's call the lifetime of this reference `'1`
+   |          |
+   |          `u` is a reference that is only valid in the function body
+LL |     static_id(&u);
+   |     ^^^^^^^^^^^^^
+   |     |
+   |     `u` escapes the function body here
+   |     argument requires that `'1` must outlive `'static`
+
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/regions-static-bound.rs:20:5
+   |
+LL | fn error(u: &(), v: &()) {
+   |                  -  - let's call the lifetime of this reference `'2`
+   |                  |
+   |                  `v` is a reference that is only valid in the function body
+...
+LL |     static_id_indirect(&v);
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     `v` escapes the function body here
+   |     argument requires that `'2` must outlive `'static`
+
+error: aborting due to 3 previous errors; 4 warnings emitted
+
+For more information about this error, try `rustc --explain E0521`.

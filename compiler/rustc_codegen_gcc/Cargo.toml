@@ -1,0 +1,62 @@
+[package]
+name = "rustc_codegen_gcc"
+version = "0.1.0"
+authors = ["Antoni Boucher <bouanto@zoho.com>"]
+edition = "2018"
+license = "MIT OR Apache-2.0"
+
+[lib]
+crate-type = ["dylib"]
+
+[[test]]
+name = "lang_tests_debug"
+path = "tests/lang_tests_debug.rs"
+harness = false
+[[test]]
+name = "lang_tests_release"
+path = "tests/lang_tests_release.rs"
+harness = false
+
+[features]
+master = ["gccjit/master"]
+default = ["master"]
+
+[dependencies]
+gccjit = "2.0"
+
+# Local copy.
+#gccjit = { path = "../gccjit.rs" }
+
+object = { version = "0.30.1", default-features = false, features = [
+    "std",
+    "read",
+] }
+smallvec = { version = "1.6.1", features = ["union", "may_dangle"] }
+# TODO(antoyo): make tempfile optional.
+tempfile = "3.7.1"
+
+[dev-dependencies]
+lang_tester = "0.8.0"
+tempfile = "3.1.0"
+boml = "0.3.1"
+
+[profile.dev]
+# By compiling dependencies with optimizations, performing tests gets much faster.
+opt-level = 3
+
+[profile.dev.package.rustc_codegen_gcc]
+# Disabling optimizations for cg_gccjit itself makes compilation after a change faster.
+opt-level = 0
+
+# Disable optimizations and debuginfo of build scripts and some of the heavy build deps, as the
+# execution time of build scripts is so fast that optimizing them slows down the total build time.
+[profile.dev.build-override]
+opt-level = 0
+debug = false
+
+[profile.release.build-override]
+opt-level = 0
+debug = false
+
+[package.metadata.rust-analyzer]
+rustc_private = true

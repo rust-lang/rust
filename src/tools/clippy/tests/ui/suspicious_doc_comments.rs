@@ -1,0 +1,80 @@
+#![allow(unused)]
+#![warn(clippy::suspicious_doc_comments)]
+
+//! Real module documentation.
+///! Fake module documentation.
+fn baz() {}
+
+pub mod singleline_outer_doc {
+    ///! This module contains useful functions.
+
+    pub fn bar() {}
+}
+
+pub mod singleline_inner_doc {
+    //! This module contains useful functions.
+
+    pub fn bar() {}
+}
+
+pub mod multiline_outer_doc {
+    /**! This module contains useful functions.
+     */
+
+    pub fn bar() {}
+}
+
+pub mod multiline_inner_doc {
+    /*! This module contains useful functions.
+     */
+
+    pub fn bar() {}
+}
+
+pub mod multiline_outer_doc2 {
+    ///! This module
+    ///! contains
+    ///! useful functions.
+
+    pub fn bar() {}
+}
+
+pub mod multiline_outer_doc3 {
+    ///! a
+    ///! b
+
+    /// c
+    pub fn bar() {}
+}
+
+pub mod multiline_outer_doc4 {
+    ///! a
+    /// b
+    pub fn bar() {}
+}
+
+pub mod multiline_outer_doc_gap {
+    ///! a
+
+    ///! b
+    pub fn bar() {}
+}
+
+pub mod multiline_outer_doc_commented {
+    /////! This outer doc comment was commented out.
+    pub fn bar() {}
+}
+
+pub mod outer_doc_macro {
+    ///! Very cool macro
+    macro_rules! x {
+        () => {};
+    }
+}
+
+pub mod useless_outer_doc {
+    ///! Huh.
+    use std::mem;
+}
+
+fn main() {}

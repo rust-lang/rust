@@ -1,0 +1,19 @@
+error[E0308]: mismatched types
+  --> $DIR/break-diverging-value.rs:11:26
+   |
+LL | fn loop_break_break() -> i32 {
+   |    ----------------      ^^^ expected `i32`, found `()`
+   |    |
+   |    implicitly returns `()` as its body has no tail or `return` expression
+
+error[E0308]: mismatched types
+  --> $DIR/break-diverging-value.rs:25:25
+   |
+LL | fn loop_break_void() -> i32 {
+   |    ---------------      ^^^ expected `i32`, found `()`
+   |    |
+   |    implicitly returns `()` as its body has no tail or `return` expression
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

@@ -1,0 +1,19 @@
+[relabel]
+allow-unauthenticated = [
+    "A-*",
+    "C-*",
+    "E-*",
+    "I-*",
+    "S-*",
+ ]
+
+# Gives us the commands 'ready', 'author', 'blocked'
+[shortcut]
+
+# Enables assigning users to issues and PRs.
+[assign]
+warn_non_default_branch = true
+contributing_url = "https://github.com/rust-lang/miri/blob/master/CONTRIBUTING.md"
+
+[no-merges]
+exclude_titles = ["Rustup"]

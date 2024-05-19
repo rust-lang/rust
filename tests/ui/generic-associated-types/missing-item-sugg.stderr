@@ -1,0 +1,11 @@
+error[E0046]: not all trait items implemented, missing: `Gat`
+  --> $DIR/missing-item-sugg.rs:6:1
+   |
+LL | impl missing_item_sugg::Foo for Local {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `Gat` in implementation
+   |
+   = help: implement the missing item: `type Gat<T> = /* Type */ where T: std::fmt::Display;`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0046`.

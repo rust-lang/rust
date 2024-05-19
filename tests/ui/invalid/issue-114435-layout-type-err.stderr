@@ -1,0 +1,8 @@
+error: reached the recursion limit finding the struct tail for `Bottom`
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "20"]`
+
+error: the type has an unknown layout
+
+error: aborting due to 2 previous errors
+

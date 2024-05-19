@@ -1,0 +1,13 @@
+error[E0317]: `if` may be missing an `else` clause
+  --> $DIR/issue-50577.rs:3:16
+   |
+LL |         Drop = assert_eq!(1, 1),
+   |                ^^^^^^^^^^^^^^^^ expected `isize`, found `()`
+   |
+   = note: `if` expressions without `else` evaluate to `()`
+   = help: consider adding an `else` block that evaluates to the expected type
+   = note: this error originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0317`.

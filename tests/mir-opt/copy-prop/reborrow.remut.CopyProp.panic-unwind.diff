@@ -1,0 +1,47 @@
+- // MIR for `remut` before CopyProp
++ // MIR for `remut` after CopyProp
+  
+  fn remut(_1: u8) -> () {
+      debug x => _1;
+      let mut _0: ();
+      let _2: &mut u8;
+      let _5: ();
+      let mut _6: &mut u8;
+      scope 1 {
+          debug a => _2;
+          let _3: &mut u8;
+          scope 2 {
+              debug b => _3;
+              let _4: &mut u8;
+              scope 3 {
+-                 debug c => _4;
++                 debug c => _2;
+              }
+          }
+      }
+  
+      bb0: {
+-         StorageLive(_2);
+          _2 = &mut _1;
+          StorageLive(_3);
+          _3 = &mut (*_2);
+-         StorageLive(_4);
+-         _4 = move _2;
+          StorageLive(_5);
+-         StorageLive(_6);
+-         _6 = move _4;
+-         _5 = opaque::<&mut u8>(move _6) -> [return: bb1, unwind continue];
++         _5 = opaque::<&mut u8>(move _2) -> [return: bb1, unwind continue];
+      }
+  
+      bb1: {
+-         StorageDead(_6);
+          StorageDead(_5);
+          _0 = const ();
+-         StorageDead(_4);
+          StorageDead(_3);
+-         StorageDead(_2);
+          return;
+      }
+  }
+  

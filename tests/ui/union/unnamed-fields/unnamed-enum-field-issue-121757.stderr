@@ -1,0 +1,45 @@
+error[E0658]: unnamed fields are not yet fully implemented
+  --> $DIR/unnamed-enum-field-issue-121757.rs:9:5
+   |
+LL |     _: AstKind<'ast>
+   |     ^
+   |
+   = note: see issue #49804 <https://github.com/rust-lang/rust/issues/49804> for more information
+   = help: add `#![feature(unnamed_fields)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: struct with unnamed fields must have `#[repr(C)]` representation
+  --> $DIR/unnamed-enum-field-issue-121757.rs:6:1
+   |
+LL | struct AstStructure<'ast> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^ struct `AstStructure` defined here
+   |
+note: unnamed field defined here
+  --> $DIR/unnamed-enum-field-issue-121757.rs:9:5
+   |
+LL |     _: AstKind<'ast>
+   |     ^^^^^^^^^^^^^^^^
+help: add `#[repr(C)]` to this struct
+   |
+LL + #[repr(C)]
+LL | struct AstStructure<'ast> {
+   |
+
+error: unnamed fields can only have struct or union types
+  --> $DIR/unnamed-enum-field-issue-121757.rs:9:5
+   |
+LL |     _: AstKind<'ast>
+   |     ^^^^^^^^^^^^^^^^
+
+error[E0609]: no field `kind` on type `&'ast AstStructure<'ast>`
+  --> $DIR/unnamed-enum-field-issue-121757.rs:21:15
+   |
+LL |     match ast.kind {}
+   |               ^^^^ unknown field
+   |
+   = note: available fields are: `id`, `_`
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0609, E0658.
+For more information about an error, try `rustc --explain E0609`.

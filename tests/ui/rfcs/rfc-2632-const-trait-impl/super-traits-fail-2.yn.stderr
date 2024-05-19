@@ -1,0 +1,24 @@
+error: `~const` is not allowed here
+  --> $DIR/super-traits-fail-2.rs:10:12
+   |
+LL | trait Bar: ~const Foo {}
+   |            ^^^^^^
+   |
+note: this trait is not a `#[const_trait]`, so it cannot have `~const` trait bounds
+  --> $DIR/super-traits-fail-2.rs:10:1
+   |
+LL | trait Bar: ~const Foo {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+  --> $DIR/super-traits-fail-2.rs:17:5
+   |
+LL |     x.a();
+   |     ^^^^^ expected `host`, found `true`
+   |
+   = note: expected constant `host`
+              found constant `true`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

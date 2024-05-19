@@ -1,0 +1,11 @@
+// This test ensures that the element corresponding to the hash is displayed.
+go-to: "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html#method.borrow"
+// In the blanket implementations list, "Borrow" is the second one, hence the ":nth(2)".
+assert-attribute: ("#blanket-implementations-list > details:nth-child(2)", {"open": ""})
+// We first check that the impl block is open by default.
+assert-attribute: ("#implementations-list details", {"open": ""})
+// To ensure that we will click on the currently hidden method.
+assert-text: (".sidebar-elems section .block li > a", "must_use")
+click: ".sidebar-elems section .block li > a"
+// We check that the impl block was opened as expected so that we can see the method.
+assert-attribute: ("#implementations-list > details", {"open": ""})

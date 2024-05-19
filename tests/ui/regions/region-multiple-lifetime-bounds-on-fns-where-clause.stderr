@@ -1,0 +1,43 @@
+error[E0308]: mismatched types
+  --> $DIR/region-multiple-lifetime-bounds-on-fns-where-clause.rs:22:56
+   |
+LL |     let _: fn(&mut &isize, &mut &isize, &mut &isize) = a;
+   |            -----------------------------------------   ^ one type is more general than the other
+   |            |
+   |            expected due to this
+   |
+   = note: expected fn pointer `for<'a, 'b, 'c, 'd, 'e, 'f> fn(&'a mut &'b _, &'c mut &'d _, &'e mut &'f _)`
+                 found fn item `for<'a, 'b, 'c> fn(&'a mut &_, &'b mut &_, &'c mut &_) {a::<'_, '_, '_>}`
+
+error: lifetime may not live long enough
+  --> $DIR/region-multiple-lifetime-bounds-on-fns-where-clause.rs:9:5
+   |
+LL | fn b<'a, 'b, 'c>(x: &mut &'a isize, y: &mut &'b isize, z: &mut &'c isize) {
+   |      --  -- lifetime `'b` defined here
+   |      |
+   |      lifetime `'a` defined here
+LL |     // Illegal now because there is no `'b:'a` declaration.
+LL |     *x = *y;
+   |     ^^^^^^^ assignment requires that `'b` must outlive `'a`
+   |
+   = help: consider adding the following bound: `'b: 'a`
+
+error: lifetime may not live long enough
+  --> $DIR/region-multiple-lifetime-bounds-on-fns-where-clause.rs:16:5
+   |
+LL | fn c<'a,'b, 'c>(x: &mut &'a isize, y: &mut &'b isize, z: &mut &'c isize) {
+   |      -- -- lifetime `'b` defined here
+   |      |
+   |      lifetime `'a` defined here
+...
+LL |     a(x, y, z);
+   |     ^^^^^^^^^^ argument requires that `'b` must outlive `'a`
+   |
+   = help: consider adding the following bound: `'b: 'a`
+   = note: requirement occurs because of a mutable reference to `&isize`
+   = note: mutable references are invariant over their type parameter
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

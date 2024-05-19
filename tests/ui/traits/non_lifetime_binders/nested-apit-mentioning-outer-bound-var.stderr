@@ -1,0 +1,17 @@
+warning: the feature `non_lifetime_binders` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/nested-apit-mentioning-outer-bound-var.rs:1:12
+   |
+LL | #![feature(non_lifetime_binders)]
+   |            ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #108185 <https://github.com/rust-lang/rust/issues/108185> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+error: `impl Trait` can only mention type parameters from an fn or impl
+  --> $DIR/nested-apit-mentioning-outer-bound-var.rs:8:52
+   |
+LL | fn uwu(_: impl for<T> Trait<(), Assoc = impl Trait<T>>) {}
+   |                    - type parameter declared here  ^
+
+error: aborting due to 1 previous error; 1 warning emitted
+

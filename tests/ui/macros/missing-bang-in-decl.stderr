@@ -1,0 +1,30 @@
+error: expected `!` after `macro_rules`
+  --> $DIR/missing-bang-in-decl.rs:5:1
+   |
+LL | macro_rules foo {
+   | ^^^^^^^^^^^
+   |
+help: add a `!`
+   |
+LL | macro_rules! foo {
+   |            +
+
+error: expected `!` after `macro_rules`
+  --> $DIR/missing-bang-in-decl.rs:10:1
+   |
+LL | macro_rules bar! {
+   | ^^^^^^^^^^^
+   |
+help: add a `!`
+   |
+LL | macro_rules! bar! {
+   |            +
+
+error: macro names aren't followed by a `!`
+  --> $DIR/missing-bang-in-decl.rs:10:16
+   |
+LL | macro_rules bar! {
+   |                ^ help: remove the `!`
+
+error: aborting due to 3 previous errors
+

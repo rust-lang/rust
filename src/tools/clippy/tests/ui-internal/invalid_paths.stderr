@@ -1,0 +1,23 @@
+error: invalid path
+  --> tests/ui-internal/invalid_paths.rs:15:5
+   |
+LL |     pub const TRANSMUTE: [&str; 4] = ["core", "intrinsics", "", "transmute"];
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::invalid-paths` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::invalid_paths)]`
+
+error: invalid path
+  --> tests/ui-internal/invalid_paths.rs:18:5
+   |
+LL |     pub const BAD_CRATE_PATH: [&str; 2] = ["bad", "path"];
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: invalid path
+  --> tests/ui-internal/invalid_paths.rs:21:5
+   |
+LL |     pub const BAD_MOD_PATH: [&str; 2] = ["std", "xxx"];
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+

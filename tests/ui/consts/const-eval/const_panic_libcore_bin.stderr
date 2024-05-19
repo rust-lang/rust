@@ -1,0 +1,27 @@
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const_panic_libcore_bin.rs:8:15
+   |
+LL | const Z: () = panic!("cheese");
+   |               ^^^^^^^^^^^^^^^^ the evaluated program panicked at 'cheese', $DIR/const_panic_libcore_bin.rs:8:15
+   |
+   = note: this error originates in the macro `$crate::panic::panic_2015` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const_panic_libcore_bin.rs:11:15
+   |
+LL | const Y: () = unreachable!();
+   |               ^^^^^^^^^^^^^^ the evaluated program panicked at 'internal error: entered unreachable code', $DIR/const_panic_libcore_bin.rs:11:15
+   |
+   = note: this error originates in the macro `$crate::panic::unreachable_2015` which comes from the expansion of the macro `unreachable` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const_panic_libcore_bin.rs:14:15
+   |
+LL | const X: () = unimplemented!();
+   |               ^^^^^^^^^^^^^^^^ the evaluated program panicked at 'not implemented', $DIR/const_panic_libcore_bin.rs:14:15
+   |
+   = note: this error originates in the macro `unimplemented` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0080`.

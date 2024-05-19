@@ -1,0 +1,8 @@
+error: non-item in item list
+  --> $DIR/suggest-assoc-const.rs:5:5
+   |
+LL |     let _X: i32;
+   |     ^^^ help: consider using `const` instead of `let` for associated const: `const`
+
+error: aborting due to 1 previous error
+

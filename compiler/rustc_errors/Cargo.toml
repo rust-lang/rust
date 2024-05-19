@@ -1,0 +1,43 @@
+[package]
+name = "rustc_errors"
+version = "0.0.0"
+edition = "2021"
+
+[dependencies]
+# tidy-alphabetical-start
+annotate-snippets = "0.10"
+derive_setters = "0.1.6"
+rustc_ast = { path = "../rustc_ast" }
+rustc_ast_pretty = { path = "../rustc_ast_pretty" }
+rustc_data_structures = { path = "../rustc_data_structures" }
+rustc_error_codes = { path = "../rustc_error_codes" }
+rustc_error_messages = { path = "../rustc_error_messages" }
+rustc_fluent_macro = { path = "../rustc_fluent_macro" }
+rustc_hir = { path = "../rustc_hir" }
+rustc_index = { path = "../rustc_index" }
+rustc_lint_defs = { path = "../rustc_lint_defs" }
+rustc_macros = { path = "../rustc_macros" }
+rustc_serialize = { path = "../rustc_serialize" }
+rustc_span = { path = "../rustc_span" }
+rustc_target = { path = "../rustc_target" }
+rustc_type_ir = { path = "../rustc_type_ir" }
+serde = { version = "1.0.125", features = [ "derive" ] }
+serde_json = "1.0.59"
+termcolor = "1.2.0"
+termize = "0.1.1"
+tracing = "0.1"
+unicode-width = "0.1.4"
+# tidy-alphabetical-end
+
+[target.'cfg(windows)'.dependencies.windows]
+version = "0.52.0"
+features = [
+    "Win32_Foundation",
+    "Win32_Security",
+    "Win32_System_Threading",
+]
+
+[features]
+# tidy-alphabetical-start
+rustc_use_parallel_compiler = ['rustc_error_messages/rustc_use_parallel_compiler']
+# tidy-alphabetical-end

@@ -1,0 +1,62 @@
+error: the `nomem` option was already provided
+  --> $DIR/duplicate-options.rs:8:33
+   |
+LL |         asm!("", options(nomem, nomem));
+   |                                 ^^^^^ this option was already provided
+
+error: the `att_syntax` option was already provided
+  --> $DIR/duplicate-options.rs:10:38
+   |
+LL |         asm!("", options(att_syntax, att_syntax));
+   |                                      ^^^^^^^^^^ this option was already provided
+
+error: the `nostack` option was already provided
+  --> $DIR/duplicate-options.rs:12:56
+   |
+LL |         asm!("", options(nostack, att_syntax), options(nostack));
+   |                                                        ^^^^^^^ this option was already provided
+
+error: the `nostack` option was already provided
+  --> $DIR/duplicate-options.rs:14:35
+   |
+LL |         asm!("", options(nostack, nostack), options(nostack), options(nostack));
+   |                                   ^^^^^^^ this option was already provided
+
+error: the `nostack` option was already provided
+  --> $DIR/duplicate-options.rs:14:53
+   |
+LL |         asm!("", options(nostack, nostack), options(nostack), options(nostack));
+   |                                                     ^^^^^^^ this option was already provided
+
+error: the `nostack` option was already provided
+  --> $DIR/duplicate-options.rs:14:71
+   |
+LL |         asm!("", options(nostack, nostack), options(nostack), options(nostack));
+   |                                                                       ^^^^^^^ this option was already provided
+
+error: the `noreturn` option was already provided
+  --> $DIR/duplicate-options.rs:21:33
+   |
+LL |             options(att_syntax, noreturn),
+   |                                 ^^^^^^^^ this option was already provided
+
+error: the `nomem` option was already provided
+  --> $DIR/duplicate-options.rs:22:21
+   |
+LL |             options(nomem, nostack),
+   |                     ^^^^^ this option was already provided
+
+error: the `noreturn` option was already provided
+  --> $DIR/duplicate-options.rs:23:21
+   |
+LL |             options(noreturn),
+   |                     ^^^^^^^^ this option was already provided
+
+error: the `att_syntax` option was already provided
+  --> $DIR/duplicate-options.rs:28:37
+   |
+LL | global_asm!("", options(att_syntax, att_syntax));
+   |                                     ^^^^^^^^^^ this option was already provided
+
+error: aborting due to 10 previous errors
+

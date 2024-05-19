@@ -1,0 +1,24 @@
+warning: function cannot return without recursing
+  --> $DIR/region-bound-on-closure-outlives-call.rs:1:1
+   |
+LL | fn call_rec<F>(mut f: F) -> usize where F: FnMut(usize) -> usize {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot return without recursing
+LL |
+LL |     (|x| f(x))(call_rec(f))
+   |                ----------- recursive call site
+   |
+   = help: a `loop` may express intention better if this is on purpose
+   = note: `#[warn(unconditional_recursion)]` on by default
+
+error[E0505]: cannot move out of `f` because it is borrowed
+  --> $DIR/region-bound-on-closure-outlives-call.rs:3:25
+   |
+LL |     (|x| f(x))(call_rec(f))
+   |      --- -              ^ move out of `f` occurs here
+   |      |   |
+   |      |   borrow occurs due to use in closure
+   |      borrow of `f` occurs here
+
+error: aborting due to 1 previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0505`.

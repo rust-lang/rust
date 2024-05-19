@@ -1,0 +1,48 @@
+error: lifetime bound not satisfied
+  --> $DIR/issue-100013.rs:15:5
+   |
+LL | /     async { // a coroutine checked for autotrait impl `Send`
+LL | |         let x = None::<I::Future<'_, '_>>; // a type referencing GAT
+LL | |         async {}.await; // a yield point
+LL | |     }
+   | |_____^
+   |
+   = note: this is a known limitation that will be removed in the future (see issue #100013 <https://github.com/rust-lang/rust/issues/100013> for more information)
+
+error: lifetime bound not satisfied
+  --> $DIR/issue-100013.rs:22:5
+   |
+LL | /     async { // a coroutine checked for autotrait impl `Send`
+LL | |         let x = None::<I::Future<'a, 'b>>; // a type referencing GAT
+LL | |         async {}.await; // a yield point
+LL | |     }
+   | |_____^
+   |
+   = note: this is a known limitation that will be removed in the future (see issue #100013 <https://github.com/rust-lang/rust/issues/100013> for more information)
+
+error: lifetime may not live long enough
+  --> $DIR/issue-100013.rs:23:17
+   |
+LL | fn call2<'a, 'b, I: FutureIterator>() -> impl Send {
+   |          --  -- lifetime `'b` defined here
+   |          |
+   |          lifetime `'a` defined here
+LL |     async { // a coroutine checked for autotrait impl `Send`
+LL |         let x = None::<I::Future<'a, 'b>>; // a type referencing GAT
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^ requires that `'a` must outlive `'b`
+   |
+   = help: consider adding the following bound: `'a: 'b`
+
+error: lifetime bound not satisfied
+  --> $DIR/issue-100013.rs:29:5
+   |
+LL | /     async { // a coroutine checked for autotrait impl `Send`
+LL | |         let x = None::<I::Future<'a, 'b>>; // a type referencing GAT
+LL | |         async {}.await; // a yield point
+LL | |     }
+   | |_____^
+   |
+   = note: this is a known limitation that will be removed in the future (see issue #100013 <https://github.com/rust-lang/rust/issues/100013> for more information)
+
+error: aborting due to 4 previous errors
+

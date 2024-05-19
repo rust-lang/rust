@@ -1,0 +1,18 @@
+error: invalid argument
+  --> $DIR/invalid-debugger-visualizer-option.rs:4:24
+   |
+LL | #![debugger_visualizer(random_file = "../foo.random")]
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: expected: `natvis_file = "..."`
+   = note: OR
+   = note: expected: `gdb_script_file = "..."`
+
+error: couldn't read $DIR/../foo.random: $FILE_NOT_FOUND_MSG (os error $FILE_NOT_FOUND_CODE)
+  --> $DIR/invalid-debugger-visualizer-option.rs:5:24
+   |
+LL | #![debugger_visualizer(natvis_file = "../foo.random")]
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

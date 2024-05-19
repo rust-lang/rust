@@ -1,0 +1,9 @@
+error[E0433]: failed to resolve: `Self` is only available in impls, traits, and type definitions
+  --> $DIR/unreachable-issue-121455.rs:1:13
+   |
+LL | fn test(s: &Self::Id) {
+   |             ^^^^ `Self` is only available in impls, traits, and type definitions
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0433`.

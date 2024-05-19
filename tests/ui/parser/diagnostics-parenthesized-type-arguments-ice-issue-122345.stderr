@@ -1,0 +1,16 @@
+error: expected one of `!`, `(`, `)`, `+`, `,`, `::`, or `<`, found `:`
+  --> $DIR/diagnostics-parenthesized-type-arguments-ice-issue-122345.rs:3:33
+   |
+LL |         dealloc(ptr2, Layout::(x: !)(1, 1));
+   |                             --- ^ expected one of 7 possible tokens
+   |                             |
+   |                             while parsing this parenthesized list of type arguments starting here
+
+error: expected one of `.`, `;`, `?`, `}`, or an operator, found `)`
+  --> $DIR/diagnostics-parenthesized-type-arguments-ice-issue-122345.rs:3:43
+   |
+LL |         dealloc(ptr2, Layout::(x: !)(1, 1));
+   |                                           ^ expected one of `.`, `;`, `?`, `}`, or an operator
+
+error: aborting due to 2 previous errors
+

@@ -1,0 +1,38 @@
+error: expected expression, found `let` statement
+  --> $DIR/missing_block_in_fn_call.rs:4:9
+   |
+LL |     let _ = vec![1, 2, 3].into_iter().map(|x|
+   |                                           --- while parsing the body of this closure
+LL |         let y = x;
+   |         ^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+help: you might have meant to open the body of the closure
+   |
+LL ~     let _ = vec![1, 2, 3].into_iter().map(|x| {
+LL |         let y = x;
+LL |         y
+LL ~     });
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/missing_block_in_fn_call.rs:7:17
+   |
+LL |     let _: () = foo;
+   |            --   ^^^ expected `()`, found fn item
+   |            |
+   |            expected due to this
+...
+LL | fn foo() {}
+   | -------- function `foo` defined here
+   |
+   = note: expected unit type `()`
+                found fn item `fn() {foo}`
+help: use parentheses to call this function
+   |
+LL |     let _: () = foo();
+   |                    ++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

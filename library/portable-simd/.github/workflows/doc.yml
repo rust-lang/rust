@@ -1,0 +1,30 @@
+name: Documentation
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  release:
+    name: Deploy Documentation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v1
+
+      - name: Setup Rust
+        run: |
+          rustup update nightly --no-self-update
+          rustup default nightly
+
+      - name: Build Documentation
+        run: cargo doc --no-deps
+      
+      - name: Deploy Documentation
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: ./target/doc

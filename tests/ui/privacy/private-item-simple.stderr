@@ -1,0 +1,15 @@
+error[E0603]: function `f` is private
+  --> $DIR/private-item-simple.rs:6:8
+   |
+LL |     a::f();
+   |        ^ private function
+   |
+note: the function `f` is defined here
+  --> $DIR/private-item-simple.rs:2:5
+   |
+LL |     fn f() {}
+   |     ^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0603`.

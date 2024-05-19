@@ -1,0 +1,31 @@
+error: unconstrained opaque type
+  --> $DIR/unnameable_type.rs:17:18
+   |
+LL | type MyPrivate = impl Sized;
+   |                  ^^^^^^^^^^
+   |
+   = note: `MyPrivate` must be used in combination with a concrete type within the same module
+
+error[E0053]: method `dont_define_this` has an incompatible type for trait
+  --> $DIR/unnameable_type.rs:20:35
+   |
+LL | type MyPrivate = impl Sized;
+   |                  ---------- the found opaque type
+...
+LL |     fn dont_define_this(_private: MyPrivate) {}
+   |                                   ^^^^^^^^^
+   |                                   |
+   |                                   expected `Private`, found opaque type
+   |                                   help: change the parameter type to match the trait: `Private`
+   |
+note: type in trait
+  --> $DIR/unnameable_type.rs:10:39
+   |
+LL |         fn dont_define_this(_private: Private) {}
+   |                                       ^^^^^^^
+   = note: expected signature `fn(Private)`
+              found signature `fn(MyPrivate)`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0053`.

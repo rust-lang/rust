@@ -1,0 +1,24 @@
+error[E0369]: binary operation `==` cannot be applied to type `Vec<Foo>`
+  --> $DIR/eq-vec.rs:11:5
+   |
+LL |     assert_eq!(vec1, vec2);
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     Vec<Foo>
+   |     Vec<Foo>
+   |
+note: an implementation of `PartialEq` might be missing for `Foo`
+  --> $DIR/eq-vec.rs:3:5
+   |
+LL |     enum Foo {
+   |     ^^^^^^^^ must implement `PartialEq`
+   = note: this error originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider annotating `Foo` with `#[derive(PartialEq)]`
+   |
+LL +     #[derive(PartialEq)]
+LL |     enum Foo {
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0369`.

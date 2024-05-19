@@ -1,0 +1,13 @@
+error[E0382]: use of partially moved value: `self`
+  --> $DIR/issue-66958-non-copy-infered-type-arg.rs:11:20
+   |
+LL |         Self::partial(self.0);
+   |                       ------ value partially moved here
+LL |         Self::full(self);
+   |                    ^^^^ value used here after partial move
+   |
+   = note: partial move occurs because `self.0` has type `S`, which does not implement the `Copy` trait
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0382`.

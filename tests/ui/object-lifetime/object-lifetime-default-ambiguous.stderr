@@ -1,0 +1,21 @@
+error[E0228]: the lifetime bound for this object type cannot be deduced from context; please supply an explicit bound
+  --> $DIR/object-lifetime-default-ambiguous.rs:23:28
+   |
+LL | fn a<'a,'b>(t: Ref2<'a,'b, dyn Test>) {
+   |                            ^^^^^^^^
+
+error[E0228]: the lifetime bound for this object type cannot be deduced from context; please supply an explicit bound
+  --> $DIR/object-lifetime-default-ambiguous.rs:27:14
+   |
+LL | fn b(t: Ref2<dyn Test>) {
+   |              ^^^^^^^^
+
+error[E0228]: the lifetime bound for this object type cannot be deduced from context; please supply an explicit bound
+  --> $DIR/object-lifetime-default-ambiguous.rs:43:15
+   |
+LL | fn f(t: &Ref2<dyn Test>) {
+   |               ^^^^^^^^
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0228`.

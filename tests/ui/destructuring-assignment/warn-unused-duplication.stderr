@@ -1,0 +1,15 @@
+warning: value assigned to `a` is never read
+  --> $DIR/warn-unused-duplication.rs:9:6
+   |
+LL |     (a, a) = (0, 1);
+   |      ^
+   |
+   = help: maybe it is overwritten before being read?
+note: the lint level is defined here
+  --> $DIR/warn-unused-duplication.rs:3:9
+   |
+LL | #![warn(unused_assignments)]
+   |         ^^^^^^^^^^^^^^^^^^
+
+warning: 1 warning emitted
+

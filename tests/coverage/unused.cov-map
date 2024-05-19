@@ -1,0 +1,94 @@
+Function name: unused::foo::<f32>
+Raw bytes (42): 0x[01, 01, 04, 01, 0f, 05, 09, 03, 0d, 05, 09, 06, 01, 03, 01, 01, 12, 03, 02, 0b, 00, 11, 0a, 01, 09, 00, 0f, 09, 00, 13, 00, 19, 0f, 01, 09, 00, 0f, 0d, 02, 01, 00, 02]
+Number of files: 1
+- file 0 => global file 1
+Number of expressions: 4
+- expression 0 operands: lhs = Counter(0), rhs = Expression(3, Add)
+- expression 1 operands: lhs = Counter(1), rhs = Counter(2)
+- expression 2 operands: lhs = Expression(0, Add), rhs = Counter(3)
+- expression 3 operands: lhs = Counter(1), rhs = Counter(2)
+Number of file 0 mappings: 6
+- Code(Counter(0)) at (prev + 3, 1) to (start + 1, 18)
+- Code(Expression(0, Add)) at (prev + 2, 11) to (start + 0, 17)
+    = (c0 + (c1 + c2))
+- Code(Expression(2, Sub)) at (prev + 1, 9) to (start + 0, 15)
+    = ((c0 + (c1 + c2)) - c3)
+- Code(Counter(2)) at (prev + 0, 19) to (start + 0, 25)
+- Code(Expression(3, Add)) at (prev + 1, 9) to (start + 0, 15)
+    = (c1 + c2)
+- Code(Counter(3)) at (prev + 2, 1) to (start + 0, 2)
+
+Function name: unused::foo::<u32>
+Raw bytes (42): 0x[01, 01, 04, 01, 0f, 05, 09, 03, 0d, 05, 09, 06, 01, 03, 01, 01, 12, 03, 02, 0b, 00, 11, 0a, 01, 09, 00, 0f, 09, 00, 13, 00, 19, 0f, 01, 09, 00, 0f, 0d, 02, 01, 00, 02]
+Number of files: 1
+- file 0 => global file 1
+Number of expressions: 4
+- expression 0 operands: lhs = Counter(0), rhs = Expression(3, Add)
+- expression 1 operands: lhs = Counter(1), rhs = Counter(2)
+- expression 2 operands: lhs = Expression(0, Add), rhs = Counter(3)
+- expression 3 operands: lhs = Counter(1), rhs = Counter(2)
+Number of file 0 mappings: 6
+- Code(Counter(0)) at (prev + 3, 1) to (start + 1, 18)
+- Code(Expression(0, Add)) at (prev + 2, 11) to (start + 0, 17)
+    = (c0 + (c1 + c2))
+- Code(Expression(2, Sub)) at (prev + 1, 9) to (start + 0, 15)
+    = ((c0 + (c1 + c2)) - c3)
+- Code(Counter(2)) at (prev + 0, 19) to (start + 0, 25)
+- Code(Expression(3, Add)) at (prev + 1, 9) to (start + 0, 15)
+    = (c1 + c2)
+- Code(Counter(3)) at (prev + 2, 1) to (start + 0, 2)
+
+Function name: unused::main
+Raw bytes (9): 0x[01, 01, 00, 01, 01, 25, 01, 04, 02]
+Number of files: 1
+- file 0 => global file 1
+Number of expressions: 0
+Number of file 0 mappings: 1
+- Code(Counter(0)) at (prev + 37, 1) to (start + 4, 2)
+
+Function name: unused::unused_func (unused)
+Raw bytes (24): 0x[01, 01, 00, 04, 00, 13, 01, 01, 0e, 00, 01, 0f, 02, 06, 00, 02, 06, 00, 07, 00, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => global file 1
+Number of expressions: 0
+Number of file 0 mappings: 4
+- Code(Zero) at (prev + 19, 1) to (start + 1, 14)
+- Code(Zero) at (prev + 1, 15) to (start + 2, 6)
+- Code(Zero) at (prev + 2, 6) to (start + 0, 7)
+- Code(Zero) at (prev + 1, 1) to (start + 0, 2)
+
+Function name: unused::unused_func2 (unused)
+Raw bytes (24): 0x[01, 01, 00, 04, 00, 19, 01, 01, 0e, 00, 01, 0f, 02, 06, 00, 02, 06, 00, 07, 00, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => global file 1
+Number of expressions: 0
+Number of file 0 mappings: 4
+- Code(Zero) at (prev + 25, 1) to (start + 1, 14)
+- Code(Zero) at (prev + 1, 15) to (start + 2, 6)
+- Code(Zero) at (prev + 2, 6) to (start + 0, 7)
+- Code(Zero) at (prev + 1, 1) to (start + 0, 2)
+
+Function name: unused::unused_func3 (unused)
+Raw bytes (24): 0x[01, 01, 00, 04, 00, 1f, 01, 01, 0e, 00, 01, 0f, 02, 06, 00, 02, 06, 00, 07, 00, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => global file 1
+Number of expressions: 0
+Number of file 0 mappings: 4
+- Code(Zero) at (prev + 31, 1) to (start + 1, 14)
+- Code(Zero) at (prev + 1, 15) to (start + 2, 6)
+- Code(Zero) at (prev + 2, 6) to (start + 0, 7)
+- Code(Zero) at (prev + 1, 1) to (start + 0, 2)
+
+Function name: unused::unused_template_func::<_> (unused)
+Raw bytes (34): 0x[01, 01, 00, 06, 00, 0b, 01, 01, 12, 00, 02, 0b, 00, 11, 00, 01, 09, 00, 0f, 00, 00, 13, 00, 19, 00, 01, 09, 00, 0f, 00, 02, 01, 00, 02]
+Number of files: 1
+- file 0 => global file 1
+Number of expressions: 0
+Number of file 0 mappings: 6
+- Code(Zero) at (prev + 11, 1) to (start + 1, 18)
+- Code(Zero) at (prev + 2, 11) to (start + 0, 17)
+- Code(Zero) at (prev + 1, 9) to (start + 0, 15)
+- Code(Zero) at (prev + 0, 19) to (start + 0, 25)
+- Code(Zero) at (prev + 1, 9) to (start + 0, 15)
+- Code(Zero) at (prev + 2, 1) to (start + 0, 2)
+

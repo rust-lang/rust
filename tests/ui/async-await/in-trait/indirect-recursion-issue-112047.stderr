@@ -1,0 +1,11 @@
+error[E0733]: recursion in an async fn requires boxing
+  --> $DIR/indirect-recursion-issue-112047.rs:34:5
+   |
+LL |     async fn second(self) {
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: a recursive `async fn` call must introduce indirection such as `Box::pin` to avoid an infinitely sized future
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0733`.

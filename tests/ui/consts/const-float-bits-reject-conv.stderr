@@ -1,0 +1,115 @@
+error[E0080]: evaluation of constant value failed
+  --> $SRC_DIR/core/src/num/f32.rs:LL:COL
+   |
+   = note: the evaluated program panicked at 'const-eval error: cannot use f32::to_bits on a NaN', $SRC_DIR/core/src/num/f32.rs:LL:COL
+   |
+note: inside `core::f32::<impl f32>::to_bits::ct_f32_to_u32`
+  --> $SRC_DIR/core/src/num/f32.rs:LL:COL
+note: inside `core::f32::<impl f32>::to_bits`
+  --> $SRC_DIR/core/src/num/f32.rs:LL:COL
+note: inside `f32::MASKED_NAN1`
+  --> $DIR/const-float-bits-reject-conv.rs:28:30
+   |
+LL |     const MASKED_NAN1: u32 = f32::NAN.to_bits() ^ 0x002A_AAAA;
+   |                              ^^^^^^^^^^^^^^^^^^
+   = note: this error originates in the macro `$crate::panic::panic_2021` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0080]: evaluation of constant value failed
+  --> $SRC_DIR/core/src/num/f32.rs:LL:COL
+   |
+   = note: the evaluated program panicked at 'const-eval error: cannot use f32::to_bits on a NaN', $SRC_DIR/core/src/num/f32.rs:LL:COL
+   |
+note: inside `core::f32::<impl f32>::to_bits::ct_f32_to_u32`
+  --> $SRC_DIR/core/src/num/f32.rs:LL:COL
+note: inside `core::f32::<impl f32>::to_bits`
+  --> $SRC_DIR/core/src/num/f32.rs:LL:COL
+note: inside `f32::MASKED_NAN2`
+  --> $DIR/const-float-bits-reject-conv.rs:30:30
+   |
+LL |     const MASKED_NAN2: u32 = f32::NAN.to_bits() ^ 0x0055_5555;
+   |                              ^^^^^^^^^^^^^^^^^^
+   = note: this error originates in the macro `$crate::panic::panic_2021` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+note: erroneous constant encountered
+  --> $DIR/const-float-bits-reject-conv.rs:35:34
+   |
+LL |     const_assert!(f32::from_bits(MASKED_NAN1).is_nan());
+   |                                  ^^^^^^^^^^^
+
+note: erroneous constant encountered
+  --> $DIR/const-float-bits-reject-conv.rs:36:34
+   |
+LL |     const_assert!(f32::from_bits(MASKED_NAN1).is_nan());
+   |                                  ^^^^^^^^^^^
+
+note: erroneous constant encountered
+  --> $DIR/const-float-bits-reject-conv.rs:42:34
+   |
+LL |     const_assert!(f32::from_bits(MASKED_NAN1).to_bits(), MASKED_NAN1);
+   |                                  ^^^^^^^^^^^
+
+note: erroneous constant encountered
+  --> $DIR/const-float-bits-reject-conv.rs:43:34
+   |
+LL |     const_assert!(f32::from_bits(MASKED_NAN2).to_bits(), MASKED_NAN2);
+   |                                  ^^^^^^^^^^^
+
+error[E0080]: evaluation of constant value failed
+  --> $SRC_DIR/core/src/num/f64.rs:LL:COL
+   |
+   = note: the evaluated program panicked at 'const-eval error: cannot use f64::to_bits on a NaN', $SRC_DIR/core/src/num/f64.rs:LL:COL
+   |
+note: inside `core::f64::<impl f64>::to_bits::ct_f64_to_u64`
+  --> $SRC_DIR/core/src/num/f64.rs:LL:COL
+note: inside `core::f64::<impl f64>::to_bits`
+  --> $SRC_DIR/core/src/num/f64.rs:LL:COL
+note: inside `f64::MASKED_NAN1`
+  --> $DIR/const-float-bits-reject-conv.rs:50:30
+   |
+LL |     const MASKED_NAN1: u64 = f64::NAN.to_bits() ^ 0x000A_AAAA_AAAA_AAAA;
+   |                              ^^^^^^^^^^^^^^^^^^
+   = note: this error originates in the macro `$crate::panic::panic_2021` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0080]: evaluation of constant value failed
+  --> $SRC_DIR/core/src/num/f64.rs:LL:COL
+   |
+   = note: the evaluated program panicked at 'const-eval error: cannot use f64::to_bits on a NaN', $SRC_DIR/core/src/num/f64.rs:LL:COL
+   |
+note: inside `core::f64::<impl f64>::to_bits::ct_f64_to_u64`
+  --> $SRC_DIR/core/src/num/f64.rs:LL:COL
+note: inside `core::f64::<impl f64>::to_bits`
+  --> $SRC_DIR/core/src/num/f64.rs:LL:COL
+note: inside `f64::MASKED_NAN2`
+  --> $DIR/const-float-bits-reject-conv.rs:52:30
+   |
+LL |     const MASKED_NAN2: u64 = f64::NAN.to_bits() ^ 0x0005_5555_5555_5555;
+   |                              ^^^^^^^^^^^^^^^^^^
+   = note: this error originates in the macro `$crate::panic::panic_2021` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+note: erroneous constant encountered
+  --> $DIR/const-float-bits-reject-conv.rs:57:34
+   |
+LL |     const_assert!(f64::from_bits(MASKED_NAN1).is_nan());
+   |                                  ^^^^^^^^^^^
+
+note: erroneous constant encountered
+  --> $DIR/const-float-bits-reject-conv.rs:58:34
+   |
+LL |     const_assert!(f64::from_bits(MASKED_NAN1).is_nan());
+   |                                  ^^^^^^^^^^^
+
+note: erroneous constant encountered
+  --> $DIR/const-float-bits-reject-conv.rs:61:34
+   |
+LL |     const_assert!(f64::from_bits(MASKED_NAN1).to_bits(), MASKED_NAN1);
+   |                                  ^^^^^^^^^^^
+
+note: erroneous constant encountered
+  --> $DIR/const-float-bits-reject-conv.rs:62:34
+   |
+LL |     const_assert!(f64::from_bits(MASKED_NAN2).to_bits(), MASKED_NAN2);
+   |                                  ^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0080`.

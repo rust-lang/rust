@@ -1,0 +1,12 @@
+error[E0276]: impl has stricter requirements than trait
+  --> $DIR/trait-bound-on-type-parameter.rs:15:13
+   |
+LL |   fn b<C,D>(&self, x: C) -> C;
+   |   ---------------------------- definition of `b` from trait
+...
+LL |     fn b<F: Sync, G>(&self, _x: F) -> F { panic!() }
+   |             ^^^^ impl has extra requirement `F: Sync`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0276`.

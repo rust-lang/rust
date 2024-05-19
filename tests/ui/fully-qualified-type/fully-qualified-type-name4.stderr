@@ -1,0 +1,18 @@
+error[E0308]: mismatched types
+  --> $DIR/fully-qualified-type-name4.rs:6:12
+   |
+LL | fn bar(x: usize) -> Option<usize> {
+   |                     ------------- expected `Option<usize>` because of return type
+LL |     return x;
+   |            ^ expected `Option<usize>`, found `usize`
+   |
+   = note: expected enum `Option<usize>`
+              found type `usize`
+help: try wrapping the expression in `Some`
+   |
+LL |     return Some(x);
+   |            +++++ +
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.

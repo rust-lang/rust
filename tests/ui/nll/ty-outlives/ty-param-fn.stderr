@@ -1,0 +1,31 @@
+error[E0309]: the parameter type `T` may not live long enough
+  --> $DIR/ty-param-fn.rs:9:5
+   |
+LL | fn no_region<'a, T>(x: Box<T>) -> Box<Debug + 'a>
+   |              -- the parameter type `T` must be valid for the lifetime `'a` as defined here...
+...
+LL |     x
+   |     ^ ...so that the type `T` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL |     T: Debug + 'a,
+   |              ++++
+
+error[E0309]: the parameter type `T` may not live long enough
+  --> $DIR/ty-param-fn.rs:24:5
+   |
+LL | fn wrong_region<'a, 'b, T>(x: Box<T>) -> Box<Debug + 'a>
+   |                 -- the parameter type `T` must be valid for the lifetime `'a` as defined here...
+...
+LL |     x
+   |     ^ ...so that the type `T` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL |     T: 'b + Debug + 'a,
+   |                   ++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0309`.

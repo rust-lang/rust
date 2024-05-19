@@ -1,0 +1,11 @@
+error[E0277]: the trait bound `(): MyTrait` is not satisfied
+  --> $DIR/no-use.rs:11:6
+   |
+LL |     <() as MyTrait>::foo(&());
+   |      ^^ the trait `MyTrait` is not implemented for `()`
+   |
+   = help: the trait `MyTrait` is implemented for `()`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

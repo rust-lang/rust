@@ -1,0 +1,9 @@
+error[E0433]: failed to resolve: partially resolved path in a macro
+  --> $DIR/macro-path-prelude-fail-2.rs:3:9
+   |
+LL |         Result::Ok!();
+   |         ^^^^^^^^^^ partially resolved path in a macro
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0433`.

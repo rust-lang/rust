@@ -1,0 +1,14 @@
+error[E0412]: cannot find type `B` in this scope
+  --> $DIR/mir-build-2021-closure-capture-ice-110453-1.rs:12:18
+   |
+LL |     pub struct C(B);
+   |                  ^ not found in this scope
+   |
+help: consider importing this struct
+   |
+LL +     use crate::B;
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0412`.

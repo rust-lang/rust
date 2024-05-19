@@ -1,0 +1,83 @@
+error[E0308]: mismatched types
+  --> $DIR/suggest-null-ptr.rs:18:13
+   |
+LL |         foo(0);
+   |         --- ^ expected `*const u8`, found `usize`
+   |         |
+   |         arguments to this function are incorrect
+   |
+   = note: expected raw pointer `*const u8`
+                     found type `usize`
+note: function defined here
+  --> $DIR/suggest-null-ptr.rs:7:8
+   |
+LL |     fn foo(ptr: *const u8);
+   |        ^^^
+help: if you meant to create a null pointer, use `std::ptr::null()`
+   |
+LL |         foo(std::ptr::null());
+   |             ~~~~~~~~~~~~~~~~
+
+error[E0308]: mismatched types
+  --> $DIR/suggest-null-ptr.rs:21:17
+   |
+LL |         foo_mut(0);
+   |         ------- ^ expected `*mut u8`, found `usize`
+   |         |
+   |         arguments to this function are incorrect
+   |
+   = note: expected raw pointer `*mut u8`
+                     found type `usize`
+note: function defined here
+  --> $DIR/suggest-null-ptr.rs:9:8
+   |
+LL |     fn foo_mut(ptr: *mut u8);
+   |        ^^^^^^^
+help: if you meant to create a null pointer, use `std::ptr::null_mut()`
+   |
+LL |         foo_mut(std::ptr::null_mut());
+   |                 ~~~~~~~~~~~~~~~~~~~~
+
+error[E0308]: mismatched types
+  --> $DIR/suggest-null-ptr.rs:24:15
+   |
+LL |         usize(0);
+   |         ----- ^ expected `*const usize`, found `usize`
+   |         |
+   |         arguments to this function are incorrect
+   |
+   = note: expected raw pointer `*const usize`
+                     found type `usize`
+note: function defined here
+  --> $DIR/suggest-null-ptr.rs:11:8
+   |
+LL |     fn usize(ptr: *const usize);
+   |        ^^^^^
+help: if you meant to create a null pointer, use `std::ptr::null()`
+   |
+LL |         usize(std::ptr::null());
+   |               ~~~~~~~~~~~~~~~~
+
+error[E0308]: mismatched types
+  --> $DIR/suggest-null-ptr.rs:27:19
+   |
+LL |         usize_mut(0);
+   |         --------- ^ expected `*mut usize`, found `usize`
+   |         |
+   |         arguments to this function are incorrect
+   |
+   = note: expected raw pointer `*mut usize`
+                     found type `usize`
+note: function defined here
+  --> $DIR/suggest-null-ptr.rs:13:8
+   |
+LL |     fn usize_mut(ptr: *mut usize);
+   |        ^^^^^^^^^
+help: if you meant to create a null pointer, use `std::ptr::null_mut()`
+   |
+LL |         usize_mut(std::ptr::null_mut());
+   |                   ~~~~~~~~~~~~~~~~~~~~
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

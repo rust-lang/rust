@@ -1,0 +1,30 @@
+error: cannot find macro `a` in this scope
+  --> $DIR/expand-full-no-resolution.rs:18:18
+   |
+LL |         macro_rules! _a {
+   |         --------------- similarly named macro `_a` defined here
+...
+LL |     format_args!(a!());
+   |                  ^
+   |
+help: a macro with a similar name exists, consider renaming `_a` into `a`
+   |
+LL |         macro_rules! a {
+   |                      ~
+
+error: cannot find macro `a` in this scope
+  --> $DIR/expand-full-no-resolution.rs:19:10
+   |
+LL |         macro_rules! _a {
+   |         --------------- similarly named macro `_a` defined here
+...
+LL |     env!(a!());
+   |          ^
+   |
+help: a macro with a similar name exists, consider renaming `_a` into `a`
+   |
+LL |         macro_rules! a {
+   |                      ~
+
+error: aborting due to 2 previous errors
+

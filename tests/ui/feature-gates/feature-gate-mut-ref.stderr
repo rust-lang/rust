@@ -1,0 +1,43 @@
+error[E0658]: mutable by-reference bindings are experimental
+  --> $DIR/feature-gate-mut-ref.rs:2:17
+   |
+LL |     let mut ref x = 10;
+   |                 ^
+   |
+   = note: see issue #123076 <https://github.com/rust-lang/rust/issues/123076> for more information
+   = help: add `#![feature(mut_ref)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: mutable by-reference bindings are experimental
+  --> $DIR/feature-gate-mut-ref.rs:6:21
+   |
+LL |     let mut ref mut z = 14;
+   |                     ^
+   |
+   = note: see issue #123076 <https://github.com/rust-lang/rust/issues/123076> for more information
+   = help: add `#![feature(mut_ref)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: mutable by-reference bindings are experimental
+  --> $DIR/feature-gate-mut-ref.rs:10:17
+   |
+LL |     let mut ref x = 10;
+   |                 ^
+   |
+   = note: see issue #123076 <https://github.com/rust-lang/rust/issues/123076> for more information
+   = help: add `#![feature(mut_ref)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: mutable by-reference bindings are experimental
+  --> $DIR/feature-gate-mut-ref.rs:12:21
+   |
+LL |     let mut ref mut y = 10;
+   |                     ^
+   |
+   = note: see issue #123076 <https://github.com/rust-lang/rust/issues/123076> for more information
+   = help: add `#![feature(mut_ref)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

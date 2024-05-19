@@ -1,0 +1,13 @@
+error: expected one of `,` or `>`, found `K`
+  --> $DIR/issue-93867.rs:6:38
+   |
+LL | pub fn entry<'a, K, V>() -> Entry<'a K, V> {
+   |                                      ^ expected one of `,` or `>`
+   |
+help: you might have meant to end the type parameters here
+   |
+LL | pub fn entry<'a, K, V>() -> Entry<'a> K, V> {
+   |                                     +
+
+error: aborting due to 1 previous error
+

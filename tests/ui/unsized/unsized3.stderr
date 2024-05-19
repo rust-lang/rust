@@ -1,0 +1,151 @@
+error[E0277]: the size for values of type `X` cannot be known at compilation time
+  --> $DIR/unsized3.rs:7:10
+   |
+LL | fn f1<X: ?Sized>(x: &X) {
+   |       - this type parameter needs to be `Sized`
+LL |     f2::<X>(x);
+   |          ^ doesn't have a size known at compile-time
+   |
+note: required by an implicit `Sized` bound in `f2`
+  --> $DIR/unsized3.rs:10:7
+   |
+LL | fn f2<X>(x: &X) {
+   |       ^ required by the implicit `Sized` requirement on this type parameter in `f2`
+help: consider removing the `?Sized` bound to make the type parameter `Sized`
+   |
+LL - fn f1<X: ?Sized>(x: &X) {
+LL + fn f1<X>(x: &X) {
+   |
+help: consider relaxing the implicit `Sized` restriction
+   |
+LL | fn f2<X: ?Sized>(x: &X) {
+   |        ++++++++
+
+error[E0277]: the size for values of type `X` cannot be known at compilation time
+  --> $DIR/unsized3.rs:18:10
+   |
+LL | fn f3<X: ?Sized + T>(x: &X) {
+   |       - this type parameter needs to be `Sized`
+LL |     f4::<X>(x);
+   |          ^ doesn't have a size known at compile-time
+   |
+note: required by an implicit `Sized` bound in `f4`
+  --> $DIR/unsized3.rs:21:7
+   |
+LL | fn f4<X: T>(x: &X) {
+   |       ^ required by the implicit `Sized` requirement on this type parameter in `f4`
+help: consider removing the `?Sized` bound to make the type parameter `Sized`
+   |
+LL - fn f3<X: ?Sized + T>(x: &X) {
+LL + fn f3<X: T>(x: &X) {
+   |
+help: consider relaxing the implicit `Sized` restriction
+   |
+LL | fn f4<X: T + ?Sized>(x: &X) {
+   |            ++++++++
+
+error[E0277]: the size for values of type `X` cannot be known at compilation time
+  --> $DIR/unsized3.rs:33:8
+   |
+LL | fn f8<X: ?Sized>(x1: &S<X>, x2: &S<X>) {
+   |       - this type parameter needs to be `Sized`
+LL |     f5(x1);
+   |     -- ^^ doesn't have a size known at compile-time
+   |     |
+   |     required by a bound introduced by this call
+   |
+note: required because it appears within the type `S<X>`
+  --> $DIR/unsized3.rs:28:8
+   |
+LL | struct S<X: ?Sized> {
+   |        ^
+note: required by an implicit `Sized` bound in `f5`
+  --> $DIR/unsized3.rs:24:7
+   |
+LL | fn f5<Y>(x: &Y) {}
+   |       ^ required by the implicit `Sized` requirement on this type parameter in `f5`
+help: consider removing the `?Sized` bound to make the type parameter `Sized`
+   |
+LL - fn f8<X: ?Sized>(x1: &S<X>, x2: &S<X>) {
+LL + fn f8<X>(x1: &S<X>, x2: &S<X>) {
+   |
+help: consider relaxing the implicit `Sized` restriction
+   |
+LL | fn f5<Y: ?Sized>(x: &Y) {}
+   |        ++++++++
+
+error[E0277]: the size for values of type `X` cannot be known at compilation time
+  --> $DIR/unsized3.rs:40:5
+   |
+LL | fn f9<X: ?Sized>(x1: Box<S<X>>) {
+   |       - this type parameter needs to be `Sized`
+LL |     f5(&(*x1, 34));
+   |     ^^ doesn't have a size known at compile-time
+   |
+note: required because it appears within the type `S<X>`
+  --> $DIR/unsized3.rs:28:8
+   |
+LL | struct S<X: ?Sized> {
+   |        ^
+   = note: only the last element of a tuple may have a dynamically sized type
+help: consider removing the `?Sized` bound to make the type parameter `Sized`
+   |
+LL - fn f9<X: ?Sized>(x1: Box<S<X>>) {
+LL + fn f9<X>(x1: Box<S<X>>) {
+   |
+
+error[E0277]: the size for values of type `X` cannot be known at compilation time
+  --> $DIR/unsized3.rs:45:9
+   |
+LL | fn f10<X: ?Sized>(x1: Box<S<X>>) {
+   |        - this type parameter needs to be `Sized`
+LL |     f5(&(32, *x1));
+   |         ^^^^^^^^^ doesn't have a size known at compile-time
+   |
+note: required because it appears within the type `S<X>`
+  --> $DIR/unsized3.rs:28:8
+   |
+LL | struct S<X: ?Sized> {
+   |        ^
+   = note: required because it appears within the type `({integer}, S<X>)`
+   = note: tuples must have a statically known size to be initialized
+help: consider removing the `?Sized` bound to make the type parameter `Sized`
+   |
+LL - fn f10<X: ?Sized>(x1: Box<S<X>>) {
+LL + fn f10<X>(x1: Box<S<X>>) {
+   |
+
+error[E0277]: the size for values of type `X` cannot be known at compilation time
+  --> $DIR/unsized3.rs:45:8
+   |
+LL | fn f10<X: ?Sized>(x1: Box<S<X>>) {
+   |        - this type parameter needs to be `Sized`
+LL |     f5(&(32, *x1));
+   |     -- ^^^^^^^^^^ doesn't have a size known at compile-time
+   |     |
+   |     required by a bound introduced by this call
+   |
+note: required because it appears within the type `S<X>`
+  --> $DIR/unsized3.rs:28:8
+   |
+LL | struct S<X: ?Sized> {
+   |        ^
+   = note: required because it appears within the type `({integer}, S<X>)`
+note: required by an implicit `Sized` bound in `f5`
+  --> $DIR/unsized3.rs:24:7
+   |
+LL | fn f5<Y>(x: &Y) {}
+   |       ^ required by the implicit `Sized` requirement on this type parameter in `f5`
+help: consider removing the `?Sized` bound to make the type parameter `Sized`
+   |
+LL - fn f10<X: ?Sized>(x1: Box<S<X>>) {
+LL + fn f10<X>(x1: Box<S<X>>) {
+   |
+help: consider relaxing the implicit `Sized` restriction
+   |
+LL | fn f5<Y: ?Sized>(x: &Y) {}
+   |        ++++++++
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

@@ -1,0 +1,24 @@
+warning: error reading Clippy's configuration file: deprecated field `cyclomatic-complexity-threshold`. Please use `cognitive-complexity-threshold` instead
+  --> $DIR/tests/ui-toml/conf_deprecated_key/clippy.toml:2:1
+   |
+LL | cyclomatic-complexity-threshold = 2
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: error reading Clippy's configuration file: deprecated field `blacklisted-names`. Please use `disallowed-names` instead
+  --> $DIR/tests/ui-toml/conf_deprecated_key/clippy.toml:3:1
+   |
+LL | blacklisted-names = [ "..", "wibble" ]
+   | ^^^^^^^^^^^^^^^^^
+
+error: the function has a cognitive complexity of (3/2)
+  --> tests/ui-toml/conf_deprecated_key/conf_deprecated_key.rs:6:4
+   |
+LL | fn cognitive_complexity() {
+   |    ^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: you could split it up into multiple smaller functions
+   = note: `-D clippy::cognitive-complexity` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::cognitive_complexity)]`
+
+error: aborting due to 1 previous error; 2 warnings emitted
+

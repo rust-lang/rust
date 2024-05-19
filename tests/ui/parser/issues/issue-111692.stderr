@@ -1,0 +1,46 @@
+error: invalid struct literal
+  --> $DIR/issue-111692.rs:12:21
+   |
+LL |     if x == module::Type { x: module::C, y: 1 } {
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: you might need to surround the struct literal with parentheses
+   |
+LL |     if x == (module::Type { x: module::C, y: 1 }) {
+   |             +                                   +
+
+error: invalid struct literal
+  --> $DIR/issue-111692.rs:17:20
+   |
+LL |     if x ==module::Type { x: module::C, y: 1 } {
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: you might need to surround the struct literal with parentheses
+   |
+LL |     if x ==(module::Type { x: module::C, y: 1 }) {
+   |            +                                   +
+
+error: invalid struct literal
+  --> $DIR/issue-111692.rs:23:13
+   |
+LL |     if x == Type { x: module::C, y: 1 } {
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: you might need to surround the struct literal with parentheses
+   |
+LL |     if x == (Type { x: module::C, y: 1 }) {
+   |             +                           +
+
+error: invalid struct literal
+  --> $DIR/issue-111692.rs:28:26
+   |
+LL |     if x == demo_module::Type { x: module::C, y: 1 } {
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: you might need to surround the struct literal with parentheses
+   |
+LL |     if x == (demo_module::Type { x: module::C, y: 1 }) {
+   |             +                                        +
+
+error: aborting due to 4 previous errors
+

@@ -1,0 +1,34 @@
+error[E0401]: can't use generic parameters from outer item
+  --> $DIR/generic-params-from-outer-item-in-const-item.rs:12:20
+   |
+LL | fn outer<T: Tr>() { // outer function
+   |          - type parameter from outer item
+LL |     const K: u32 = T::C;
+   |                    ^^^^ use of generic parameter from outer item
+   |
+   = note: a `const` is a separate item from the item that contains it
+
+error[E0401]: can't use generic parameters from outer item
+  --> $DIR/generic-params-from-outer-item-in-const-item.rs:19:24
+   |
+LL | impl<T> Tr for T { // outer impl block
+   |      - type parameter from outer item
+LL |     const C: u32 = {
+LL |         const I: u32 = T::C;
+   |                        ^^^^ use of generic parameter from outer item
+   |
+   = note: a `const` is a separate item from the item that contains it
+
+error[E0401]: can't use generic parameters from outer item
+  --> $DIR/generic-params-from-outer-item-in-const-item.rs:27:20
+   |
+LL | struct S<T: Tr>(U32<{ // outer struct
+   |          - type parameter from outer item
+LL |     const _: u32 = T::C;
+   |                    ^^^^ use of generic parameter from outer item
+   |
+   = note: a `const` is a separate item from the item that contains it
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0401`.

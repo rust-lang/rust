@@ -1,0 +1,240 @@
+error: called `unwrap` on `x` after checking its variant with `is_some`
+  --> tests/ui/checked_unwrap/simple_conditionals.rs:47:9
+   |
+LL |     if x.is_some() {
+   |     -------------- help: try: `if let Some(..) = x`
+LL |         // unnecessary
+LL |         x.unwrap();
+   |         ^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> tests/ui/checked_unwrap/simple_conditionals.rs:3:35
+   |
+LL | #![deny(clippy::panicking_unwrap, clippy::unnecessary_unwrap)]
+   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: called `expect` on `x` after checking its variant with `is_some`
+  --> tests/ui/checked_unwrap/simple_conditionals.rs:50:9
+   |
+LL |     if x.is_some() {
+   |     -------------- help: try: `if let Some(..) = x`
+...
+LL |         x.expect("an error message");
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: this call to `unwrap()` will always panic
+  --> tests/ui/checked_unwrap/simple_conditionals.rs:54:9
+   |
+LL |     if x.is_some() {
+   |        ----------- because of this check
+...
+LL |         x.unwrap();
+   |         ^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> tests/ui/checked_unwrap/simple_conditionals.rs:3:9
+   |
+LL | #![deny(clippy::panicking_unwrap, clippy::unnecessary_unwrap)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: this call to `expect()` will always panic
+  --> tests/ui/checked_unwrap/simple_conditionals.rs:57:9
+   |
+LL |     if x.is_some() {
+   |        ----------- because of this check
+...
+LL |         x.expect("an error message");
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: this call to `unwrap()` will always panic
+  --> tests/ui/checked_unwrap/simple_conditionals.rs:62:9
+   |
+LL |     if x.is_none() {
+   |        ----------- because of this check
+LL |         // will panic
+LL |         x.unwrap();
+   |         ^^^^^^^^^^
+
+error: called `unwrap` on `x` after checking its variant with `is_none`
+  --> tests/ui/checked_unwrap/simple_conditionals.rs:66:9
+   |
+LL |     if x.is_none() {
+   |     -------------- help: try: `if let Some(..) = x`
+...
+LL |         x.unwrap();
+   |         ^^^^^^^^^^
+
+error: called `unwrap` on `x` after checking its variant with `is_some`
+  --> tests/ui/checked_unwrap/simple_conditionals.rs:14:13
+   |
+LL |         if $a.is_some() {
+   |         --------------- help: try: `if let Some(..) = x`
+LL |             // unnecessary
+LL |             $a.unwrap();
+   |             ^^^^^^^^^^^
+...
+LL |     m!(x);
+   |     ----- in this macro invocation
+   |
+   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: called `unwrap` on `x` after checking its variant with `is_ok`
+  --> tests/ui/checked_unwrap/simple_conditionals.rs:79:9
+   |
+LL |     if x.is_ok() {
+   |     ------------ help: try: `if let Ok(..) = x`
+LL |         // unnecessary
+LL |         x.unwrap();
+   |         ^^^^^^^^^^
+
+error: called `expect` on `x` after checking its variant with `is_ok`
+  --> tests/ui/checked_unwrap/simple_conditionals.rs:82:9
+   |
+LL |     if x.is_ok() {
+   |     ------------ help: try: `if let Ok(..) = x`
+...
+LL |         x.expect("an error message");
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: this call to `unwrap_err()` will always panic
+  --> tests/ui/checked_unwrap/simple_conditionals.rs:85:9
+   |
+LL |     if x.is_ok() {
+   |        --------- because of this check
+...
+LL |         x.unwrap_err();
+   |         ^^^^^^^^^^^^^^
+
+error: this call to `unwrap()` will always panic
+  --> tests/ui/checked_unwrap/simple_conditionals.rs:89:9
+   |
+LL |     if x.is_ok() {
+   |        --------- because of this check
+...
+LL |         x.unwrap();
+   |         ^^^^^^^^^^
+
+error: this call to `expect()` will always panic
+  --> tests/ui/checked_unwrap/simple_conditionals.rs:92:9
+   |
+LL |     if x.is_ok() {
+   |        --------- because of this check
+...
+LL |         x.expect("an error message");
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: called `unwrap_err` on `x` after checking its variant with `is_ok`
+  --> tests/ui/checked_unwrap/simple_conditionals.rs:95:9
+   |
+LL |     if x.is_ok() {
+   |     ------------ help: try: `if let Err(..) = x`
+...
+LL |         x.unwrap_err();
+   |         ^^^^^^^^^^^^^^
+
+error: this call to `unwrap()` will always panic
+  --> tests/ui/checked_unwrap/simple_conditionals.rs:100:9
+   |
+LL |     if x.is_err() {
+   |        ---------- because of this check
+LL |         // will panic
+LL |         x.unwrap();
+   |         ^^^^^^^^^^
+
+error: called `unwrap_err` on `x` after checking its variant with `is_err`
+  --> tests/ui/checked_unwrap/simple_conditionals.rs:103:9
+   |
+LL |     if x.is_err() {
+   |     ------------- help: try: `if let Err(..) = x`
+...
+LL |         x.unwrap_err();
+   |         ^^^^^^^^^^^^^^
+
+error: called `unwrap` on `x` after checking its variant with `is_err`
+  --> tests/ui/checked_unwrap/simple_conditionals.rs:107:9
+   |
+LL |     if x.is_err() {
+   |     ------------- help: try: `if let Ok(..) = x`
+...
+LL |         x.unwrap();
+   |         ^^^^^^^^^^
+
+error: this call to `unwrap_err()` will always panic
+  --> tests/ui/checked_unwrap/simple_conditionals.rs:110:9
+   |
+LL |     if x.is_err() {
+   |        ---------- because of this check
+...
+LL |         x.unwrap_err();
+   |         ^^^^^^^^^^^^^^
+
+error: called `unwrap` on `option` after checking its variant with `is_some`
+  --> tests/ui/checked_unwrap/simple_conditionals.rs:135:9
+   |
+LL |     if option.is_some() {
+   |     ------------------- help: try: `if let Some(..) = &option`
+LL |         option.as_ref().unwrap();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: this call to `unwrap()` will always panic
+  --> tests/ui/checked_unwrap/simple_conditionals.rs:138:9
+   |
+LL |     if option.is_some() {
+   |        ---------------- because of this check
+...
+LL |         option.as_ref().unwrap();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: called `unwrap` on `result` after checking its variant with `is_ok`
+  --> tests/ui/checked_unwrap/simple_conditionals.rs:145:9
+   |
+LL |     if result.is_ok() {
+   |     ----------------- help: try: `if let Ok(..) = &result`
+LL |         result.as_ref().unwrap();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: this call to `unwrap()` will always panic
+  --> tests/ui/checked_unwrap/simple_conditionals.rs:148:9
+   |
+LL |     if result.is_ok() {
+   |        -------------- because of this check
+...
+LL |         result.as_ref().unwrap();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: called `unwrap` on `option` after checking its variant with `is_some`
+  --> tests/ui/checked_unwrap/simple_conditionals.rs:154:9
+   |
+LL |     if option.is_some() {
+   |     ------------------- help: try: `if let Some(..) = &mut option`
+LL |         option.as_mut().unwrap();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: this call to `unwrap()` will always panic
+  --> tests/ui/checked_unwrap/simple_conditionals.rs:157:9
+   |
+LL |     if option.is_some() {
+   |        ---------------- because of this check
+...
+LL |         option.as_mut().unwrap();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: called `unwrap` on `result` after checking its variant with `is_ok`
+  --> tests/ui/checked_unwrap/simple_conditionals.rs:163:9
+   |
+LL |     if result.is_ok() {
+   |     ----------------- help: try: `if let Ok(..) = &mut result`
+LL |         result.as_mut().unwrap();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: this call to `unwrap()` will always panic
+  --> tests/ui/checked_unwrap/simple_conditionals.rs:166:9
+   |
+LL |     if result.is_ok() {
+   |        -------------- because of this check
+...
+LL |         result.as_mut().unwrap();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 25 previous errors
+

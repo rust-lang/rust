@@ -1,0 +1,24 @@
+error: variable does not need to be mutable
+  --> $DIR/lint-unused-mut-self.rs:10:12
+   |
+LL |     fn foo(mut self) {}
+   |            ----^^^^
+   |            |
+   |            help: remove this `mut`
+   |
+note: the lint level is defined here
+  --> $DIR/lint-unused-mut-self.rs:6:9
+   |
+LL | #![deny(unused_mut)]
+   |         ^^^^^^^^^^
+
+error: variable does not need to be mutable
+  --> $DIR/lint-unused-mut-self.rs:11:12
+   |
+LL |     fn bar(mut self: Box<Foo>) {}
+   |            ----^^^^
+   |            |
+   |            help: remove this `mut`
+
+error: aborting due to 2 previous errors
+

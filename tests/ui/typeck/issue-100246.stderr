@@ -1,0 +1,13 @@
+error[E0308]: `?` operator has incompatible types
+  --> $DIR/issue-100246.rs:28:24
+   |
+LL |     let other: Other = downcast()?;
+   |                        ^^^^^^^^^^^ expected `Other`, found `&_`
+   |
+   = note: `?` operator cannot convert from `&_` to `Other`
+   = note: expected struct `Other`
+           found reference `&_`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.

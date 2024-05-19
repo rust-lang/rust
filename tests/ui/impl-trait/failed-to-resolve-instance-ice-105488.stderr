@@ -1,0 +1,16 @@
+error[E0275]: overflow evaluating the requirement `fn() -> impl MyFnOnce {my_fn_2}: MyFnOnce`
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`failed_to_resolve_instance_ice_105488`)
+note: required for `WrapFnOnce<fn() -> impl MyFnOnce {my_fn_1}>` to implement `MyFnOnce`
+  --> $DIR/failed-to-resolve-instance-ice-105488.rs:14:37
+   |
+LL | impl<F: FnOnce() -> D, D: MyFnOnce> MyFnOnce for WrapFnOnce<F> {
+   |                           --------  ^^^^^^^^     ^^^^^^^^^^^^^
+   |                           |
+   |                           unsatisfied trait bound introduced here
+   = note: 126 redundant requirements hidden
+   = note: required for `WrapFnOnce<fn() -> impl MyFnOnce {my_fn_1}>` to implement `MyFnOnce`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0275`.

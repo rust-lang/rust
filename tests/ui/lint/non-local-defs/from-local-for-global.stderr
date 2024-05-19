@@ -1,0 +1,78 @@
+warning: non-local `impl` definition, they should be avoided as they go against expectation
+  --> $DIR/from-local-for-global.rs:8:5
+   |
+LL | /     impl From<Cat> for () {
+LL | |
+LL | |         fn from(_: Cat) -> () {
+LL | |             todo!()
+LL | |         }
+LL | |     }
+   | |_____^
+   |
+   = help: move this `impl` block outside the of the current function `main`
+   = note: an `impl` definition is non-local if it is nested inside an item and may impact type checking outside of that item. This can be the case if neither the trait or the self type are at the same nesting level as the `impl`
+   = note: one exception to the rule are anon-const (`const _: () = { ... }`) at top-level module and anon-const at the same nesting as the trait or type
+   = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
+   = note: `#[warn(non_local_definitions)]` on by default
+
+warning: non-local `impl` definition, they should be avoided as they go against expectation
+  --> $DIR/from-local-for-global.rs:18:5
+   |
+LL | /     impl From<Wrap<Wrap<Elephant>>> for () {
+LL | |
+LL | |         fn from(_: Wrap<Wrap<Elephant>>) -> Self {
+LL | |             todo!()
+LL | |         }
+LL | |     }
+   | |_____^
+   |
+   = help: move this `impl` block outside the of the current function `main`
+   = note: an `impl` definition is non-local if it is nested inside an item and may impact type checking outside of that item. This can be the case if neither the trait or the self type are at the same nesting level as the `impl`
+   = note: one exception to the rule are anon-const (`const _: () = { ... }`) at top-level module and anon-const at the same nesting as the trait or type
+   = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
+
+warning: non-local `impl` definition, they should be avoided as they go against expectation
+  --> $DIR/from-local-for-global.rs:32:5
+   |
+LL |     impl StillNonLocal for &Foo {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: move this `impl` block outside the of the current function `only_global`
+   = note: an `impl` definition is non-local if it is nested inside an item and may impact type checking outside of that item. This can be the case if neither the trait or the self type are at the same nesting level as the `impl`
+   = note: one exception to the rule are anon-const (`const _: () = { ... }`) at top-level module and anon-const at the same nesting as the trait or type
+   = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
+
+warning: non-local `impl` definition, they should be avoided as they go against expectation
+  --> $DIR/from-local-for-global.rs:40:5
+   |
+LL | /     impl From<Local1> for GlobalSameFunction {
+LL | |
+LL | |         fn from(x: Local1) -> GlobalSameFunction {
+LL | |             x.0
+LL | |         }
+LL | |     }
+   | |_____^
+   |
+   = help: move this `impl` block outside the of the current function `same_function`
+   = note: an `impl` definition is non-local if it is nested inside an item and may impact type checking outside of that item. This can be the case if neither the trait or the self type are at the same nesting level as the `impl`
+   = note: one exception to the rule are anon-const (`const _: () = { ... }`) at top-level module and anon-const at the same nesting as the trait or type
+   = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
+
+warning: non-local `impl` definition, they should be avoided as they go against expectation
+  --> $DIR/from-local-for-global.rs:48:5
+   |
+LL | /     impl From<Local2> for GlobalSameFunction {
+LL | |
+LL | |         fn from(x: Local2) -> GlobalSameFunction {
+LL | |             x.0
+LL | |         }
+LL | |     }
+   | |_____^
+   |
+   = help: move this `impl` block outside the of the current function `same_function`
+   = note: an `impl` definition is non-local if it is nested inside an item and may impact type checking outside of that item. This can be the case if neither the trait or the self type are at the same nesting level as the `impl`
+   = note: one exception to the rule are anon-const (`const _: () = { ... }`) at top-level module and anon-const at the same nesting as the trait or type
+   = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
+
+warning: 5 warnings emitted
+

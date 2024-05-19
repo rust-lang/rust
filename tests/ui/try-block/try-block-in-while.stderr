@@ -1,0 +1,11 @@
+error[E0277]: a `try` block must return `Result` or `Option` (or another type that implements `Try`)
+  --> $DIR/try-block-in-while.rs:6:17
+   |
+LL |     while try { false } {}
+   |                 ^^^^^ could not wrap the final value of the block as `bool` doesn't implement `Try`
+   |
+   = help: the trait `Try` is not implemented for `bool`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

@@ -1,0 +1,88 @@
+error: redundant else block
+  --> tests/ui/redundant_else.rs:10:16
+   |
+LL |           } else {
+   |  ________________^
+LL | |
+LL | |             println!("yet don't pull down your hedge.");
+LL | |         }
+   | |_________^
+   |
+   = help: remove the `else` block and move the contents out
+   = note: `-D clippy::redundant-else` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::redundant_else)]`
+
+error: redundant else block
+  --> tests/ui/redundant_else.rs:18:16
+   |
+LL |           } else {
+   |  ________________^
+LL | |
+LL | |             println!("shall rise up with fleas.");
+LL | |         }
+   | |_________^
+   |
+   = help: remove the `else` block and move the contents out
+
+error: redundant else block
+  --> tests/ui/redundant_else.rs:28:16
+   |
+LL |           } else {
+   |  ________________^
+LL | |
+LL | |             println!("You may delay, but time will not.");
+LL | |         }
+   | |_________^
+   |
+   = help: remove the `else` block and move the contents out
+
+error: redundant else block
+  --> tests/ui/redundant_else.rs:38:12
+   |
+LL |       } else {
+   |  ____________^
+LL | |
+LL | |         println!("A fat kitchen makes a lean will.");
+LL | |     }
+   | |_____^
+   |
+   = help: remove the `else` block and move the contents out
+
+error: redundant else block
+  --> tests/ui/redundant_else.rs:46:16
+   |
+LL |           } else {
+   |  ________________^
+LL | |
+LL | |             1
+LL | |         }
+   | |_________^
+   |
+   = help: remove the `else` block and move the contents out
+
+error: redundant else block
+  --> tests/ui/redundant_else.rs:57:16
+   |
+LL |           } else {
+   |  ________________^
+LL | |
+LL | |             2
+LL | |         }
+   | |_________^
+   |
+   = help: remove the `else` block and move the contents out
+
+error: redundant else block
+  --> tests/ui/redundant_else.rs:67:16
+   |
+LL |           } else {
+   |  ________________^
+LL | |
+LL | |             1
+LL | |         }
+   | |_________^
+   |
+   = help: remove the `else` block and move the contents out
+
+error: aborting due to 7 previous errors
+

@@ -1,0 +1,14 @@
+[package]
+name = "rustc_llvm"
+version = "0.0.0"
+edition = "2021"
+
+[dependencies]
+# tidy-alphabetical-start
+libc = "0.2.73"
+# tidy-alphabetical-end
+
+[build-dependencies]
+# tidy-alphabetical-start
+cc = "1.0.97"
+# tidy-alphabetical-end

@@ -1,0 +1,101 @@
+warning: `#[coverage]` does not propagate into items and must be applied to the contained functions directly
+  --> $DIR/no-coverage.rs:8:1
+   |
+LL | #[coverage(off)]
+   | ^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/no-coverage.rs:4:9
+   |
+LL | #![warn(unused_attributes)]
+   |         ^^^^^^^^^^^^^^^^^
+
+warning: `#[coverage]` does not propagate into items and must be applied to the contained functions directly
+  --> $DIR/no-coverage.rs:20:1
+   |
+LL | #[coverage(off)]
+   | ^^^^^^^^^^^^^^^^
+
+warning: `#[coverage]` may only be applied to function definitions
+  --> $DIR/no-coverage.rs:42:5
+   |
+LL |     #[coverage(off)]
+   |     ^^^^^^^^^^^^^^^^
+
+warning: `#[coverage]` may only be applied to function definitions
+  --> $DIR/no-coverage.rs:47:9
+   |
+LL |         #[coverage(off)]
+   |         ^^^^^^^^^^^^^^^^
+
+warning: `#[coverage]` may only be applied to function definitions
+  --> $DIR/no-coverage.rs:52:5
+   |
+LL |     #[coverage(off)]
+   |     ^^^^^^^^^^^^^^^^
+
+error[E0788]: `#[coverage]` must be applied to coverable code
+  --> $DIR/no-coverage.rs:11:5
+   |
+LL |     #[coverage(off)]
+   |     ^^^^^^^^^^^^^^^^
+LL |     const X: u32;
+   |     ------------- not coverable code
+
+error[E0788]: `#[coverage]` must be applied to coverable code
+  --> $DIR/no-coverage.rs:14:5
+   |
+LL |     #[coverage(off)]
+   |     ^^^^^^^^^^^^^^^^
+LL |     type T;
+   |     ------- not coverable code
+
+error[E0788]: `#[coverage]` must be applied to coverable code
+  --> $DIR/no-coverage.rs:25:5
+   |
+LL |     #[coverage(off)]
+   |     ^^^^^^^^^^^^^^^^
+LL |     type T = Self;
+   |     -------------- not coverable code
+
+error[E0788]: `#[coverage]` must be applied to coverable code
+  --> $DIR/no-coverage.rs:28:5
+   |
+LL |     #[coverage(off)]
+   |     ^^^^^^^^^^^^^^^^
+LL |     type U = impl Trait;
+   |     -------------------- not coverable code
+
+error[E0788]: `#[coverage]` must be applied to coverable code
+  --> $DIR/no-coverage.rs:33:5
+   |
+LL |     #[coverage(off)]
+   |     ^^^^^^^^^^^^^^^^
+LL |     static X: u32;
+   |     -------------- not coverable code
+
+error[E0788]: `#[coverage]` must be applied to coverable code
+  --> $DIR/no-coverage.rs:36:5
+   |
+LL |     #[coverage(off)]
+   |     ^^^^^^^^^^^^^^^^
+LL |     type T;
+   |     ------- not coverable code
+
+warning: `#[coverage]` does not propagate into items and must be applied to the contained functions directly
+  --> $DIR/no-coverage.rs:5:1
+   |
+LL | #![coverage(off)]
+   | ^^^^^^^^^^^^^^^^^
+
+error: unconstrained opaque type
+  --> $DIR/no-coverage.rs:29:14
+   |
+LL |     type U = impl Trait;
+   |              ^^^^^^^^^^
+   |
+   = note: `U` must be used in combination with a concrete type within the same impl
+
+error: aborting due to 7 previous errors; 6 warnings emitted
+
+For more information about this error, try `rustc --explain E0788`.

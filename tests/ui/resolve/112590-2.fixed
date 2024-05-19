@@ -1,0 +1,34 @@
+//@ run-rustfix
+use std::vec;
+
+use std::sync::atomic::AtomicBool;
+
+mod foo {
+    pub mod bar {
+        pub mod baz {
+            pub use std::vec::Vec as MyVec;
+        }
+    }
+}
+
+mod u {
+    use foo::bar::baz::MyVec;
+
+fn _a() {
+        let _: Vec<i32> = MyVec::new(); //~ ERROR failed to resolve
+    }
+}
+
+mod v {
+    use foo::bar::baz::MyVec;
+
+fn _b() {
+        let _: Vec<i32> = MyVec::new(); //~ ERROR failed to resolve
+    }
+}
+
+fn main() {
+    let _t: Vec<i32> = Vec::new(); //~ ERROR failed to resolve
+    type _B = vec::Vec::<u8>; //~ ERROR failed to resolve
+    let _t = AtomicBool::new(true); //~ ERROR failed to resolve
+}

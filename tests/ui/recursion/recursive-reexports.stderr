@@ -1,0 +1,9 @@
+error[E0412]: cannot find type `S` in crate `recursive_reexports`
+  --> $DIR/recursive-reexports.rs:5:32
+   |
+LL | fn f() -> recursive_reexports::S {}
+   |                                ^ not found in `recursive_reexports`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0412`.

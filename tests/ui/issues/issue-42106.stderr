@@ -1,0 +1,13 @@
+error[E0502]: cannot borrow `*collection` as mutable because it is also borrowed as immutable
+  --> $DIR/issue-42106.rs:3:5
+   |
+LL |     let _a = &collection;
+   |              ----------- immutable borrow occurs here
+LL |     collection.swap(1, 2);
+   |     ^^^^^^^^^^ mutable borrow occurs here
+LL |     _a.use_ref();
+   |     -- immutable borrow later used here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0502`.

@@ -1,0 +1,11 @@
+error: evaluate(Binder { value: TraitPredicate(<Helper as HelperTrait>, polarity:Positive), bound_vars: [] }) = Ok(EvaluatedToOk)
+  --> $DIR/project-modulo-regions.rs:50:5
+   |
+LL | fn test(val: MyStruct) where Helper: HelperTrait  {
+   |                                      ----------- predicate
+...
+LL |     test(val);
+   |     ^^^^
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,17 @@
+error: constant evaluation is taking a long time
+  --> $DIR/ctfe-recursion.rs:9:9
+   |
+LL |         recurse(n - 1)
+   |         ^^^^^^^^^^^^^^
+   |
+   = note: this lint makes sure the compiler doesn't get stuck due to infinite loops in const eval.
+           If your compilation actually takes a long time, you can safely allow the lint.
+help: the constant being evaluated
+  --> $DIR/ctfe-recursion.rs:13:1
+   |
+LL | const X: u32 = recurse(19);
+   | ^^^^^^^^^^^^
+   = note: `#[deny(long_running_const_eval)]` on by default
+
+error: aborting due to 1 previous error
+

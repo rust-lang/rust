@@ -1,0 +1,54 @@
+error[E0493]: destructor of `String` cannot be evaluated at compile-time
+  --> $DIR/promoted_const_call5.rs:26:30
+   |
+LL |     let _: &'static _ = &id(&new_string());
+   |                              ^^^^^^^^^^^^ - value is dropped here
+   |                              |
+   |                              the destructor for this type cannot be evaluated in constants
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/promoted_const_call5.rs:31:26
+   |
+LL |     let _: &'static _ = &new_manually_drop(new_string());
+   |            ----------    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ creates a temporary value which is freed while still in use
+   |            |
+   |            type annotation requires that borrow lasts for `'static`
+LL |
+LL | };
+   | - temporary value is freed at the end of this statement
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/promoted_const_call5.rs:36:26
+   |
+LL |     let _: &'static _ = &id(&new_string());
+   |            ----------    ^^^^^^^^^^^^^^^^^ creates a temporary value which is freed while still in use
+   |            |
+   |            type annotation requires that borrow lasts for `'static`
+...
+LL | }
+   | - temporary value is freed at the end of this statement
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/promoted_const_call5.rs:36:30
+   |
+LL |     let _: &'static _ = &id(&new_string());
+   |                          ----^^^^^^^^^^^^-- temporary value is freed at the end of this statement
+   |                          |   |
+   |                          |   creates a temporary value which is freed while still in use
+   |                          argument requires that borrow lasts for `'static`
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/promoted_const_call5.rs:40:26
+   |
+LL |     let _: &'static _ = &new_manually_drop(new_string());
+   |            ----------    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ creates a temporary value which is freed while still in use
+   |            |
+   |            type annotation requires that borrow lasts for `'static`
+LL |
+LL | }
+   | - temporary value is freed at the end of this statement
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0493, E0716.
+For more information about an error, try `rustc --explain E0493`.

@@ -1,0 +1,14 @@
+warning: unused import: `test::Unused`
+  --> $DIR/unused_import_warning_issue_45268.rs:26:5
+   |
+LL | use test::Unused;   // This is really unused, so warning is OK
+   |     ^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/unused_import_warning_issue_45268.rs:3:9
+   |
+LL | #![warn(unused_imports)] // Warning explanation here, it's OK
+   |         ^^^^^^^^^^^^^^
+
+warning: 1 warning emitted
+

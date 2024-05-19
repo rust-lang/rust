@@ -1,0 +1,14 @@
+error: expected non-macro attribute, found attribute macro `derive`
+  --> $DIR/issue-49934-errors.rs:1:10
+   |
+LL | fn foo<#[derive(Debug)] T>() {
+   |          ^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `derive`
+  --> $DIR/issue-49934-errors.rs:3:11
+   |
+LL |         #[derive(Debug)]
+   |           ^^^^^^ not a non-macro attribute
+
+error: aborting due to 2 previous errors
+

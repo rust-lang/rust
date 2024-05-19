@@ -1,0 +1,12 @@
+error: the type of the associated constant `K` cannot capture late-bound generic parameters
+  --> $DIR/assoc-const-eq-esc-bound-var-in-ty.rs:9:35
+   |
+LL | fn take(_: impl for<'r> Trait<'r, K = { &() }>) {}
+   |                     --            ^ its type cannot capture the late-bound lifetime parameter `'r`
+   |                     |
+   |                     the late-bound lifetime parameter `'r` is defined here
+   |
+   = note: `K` has type `&'r ()`
+
+error: aborting due to 1 previous error
+

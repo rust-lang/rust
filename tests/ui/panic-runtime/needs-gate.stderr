@@ -1,0 +1,23 @@
+error[E0658]: the `#[panic_runtime]` attribute is an experimental feature
+  --> $DIR/needs-gate.rs:4:1
+   |
+LL | #![panic_runtime]
+   | ^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #32837 <https://github.com/rust-lang/rust/issues/32837> for more information
+   = help: add `#![feature(panic_runtime)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the `#[needs_panic_runtime]` attribute is an experimental feature
+  --> $DIR/needs-gate.rs:5:1
+   |
+LL | #![needs_panic_runtime]
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #32837 <https://github.com/rust-lang/rust/issues/32837> for more information
+   = help: add `#![feature(needs_panic_runtime)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

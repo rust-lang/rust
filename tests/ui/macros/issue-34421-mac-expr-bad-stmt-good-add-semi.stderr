@@ -1,0 +1,34 @@
+error: expected expression, found keyword `struct`
+  --> $DIR/issue-34421-mac-expr-bad-stmt-good-add-semi.rs:3:9
+   |
+LL |         struct $a;
+   |         ^^^^^^ expected expression
+...
+LL |     make_item!(A)
+   |     ------------- in this macro invocation
+   |
+   = note: the macro call doesn't expand to an expression, but it can expand to a statement
+   = note: this error originates in the macro `make_item` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: add `;` to interpret the expansion as a statement
+   |
+LL |     make_item!(A);
+   |                  +
+
+error: expected expression, found keyword `struct`
+  --> $DIR/issue-34421-mac-expr-bad-stmt-good-add-semi.rs:3:9
+   |
+LL |         struct $a;
+   |         ^^^^^^ expected expression
+...
+LL |     make_item!(B)
+   |     ------------- in this macro invocation
+   |
+   = note: the macro call doesn't expand to an expression, but it can expand to a statement
+   = note: this error originates in the macro `make_item` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: add `;` to interpret the expansion as a statement
+   |
+LL |     make_item!(B);
+   |                  +
+
+error: aborting due to 2 previous errors
+

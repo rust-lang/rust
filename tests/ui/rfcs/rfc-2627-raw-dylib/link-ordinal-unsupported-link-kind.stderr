@@ -1,0 +1,14 @@
+error: `#[link_ordinal]` is only supported if link kind is `raw-dylib`
+  --> $DIR/link-ordinal-unsupported-link-kind.rs:3:5
+   |
+LL |     #[link_ordinal(3)]
+   |     ^^^^^^^^^^^^^^^^^^
+
+error: `#[link_ordinal]` is only supported if link kind is `raw-dylib`
+  --> $DIR/link-ordinal-unsupported-link-kind.rs:10:5
+   |
+LL |     #[link_ordinal(3)]
+   |     ^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

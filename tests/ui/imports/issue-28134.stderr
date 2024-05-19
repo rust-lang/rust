@@ -1,0 +1,14 @@
+error: `test` attribute cannot be used at crate level
+  --> $DIR/issue-28134.rs:4:1
+   |
+LL | #![test]
+   | ^^^^^^^^
+   |
+help: perhaps you meant to use an outer attribute
+   |
+LL - #![test]
+LL + #[test]
+   |
+
+error: aborting due to 1 previous error
+

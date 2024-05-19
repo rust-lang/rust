@@ -1,0 +1,15 @@
+error: expected `mut` or `const` keyword in raw pointer type
+  --> $DIR/double-pointer.rs:4:15
+   |
+LL |     let dptr: **const i32 = &ptr;
+   |               ^
+   |
+help: add `mut` or `const` here
+   |
+LL |     let dptr: *mut *const i32 = &ptr;
+   |                +++
+LL |     let dptr: *const *const i32 = &ptr;
+   |                +++++
+
+error: aborting due to 1 previous error
+

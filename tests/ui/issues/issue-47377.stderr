@@ -1,0 +1,18 @@
+error[E0369]: cannot add `&str` to `&str`
+  --> $DIR/issue-47377.rs:4:14
+   |
+LL |      let _a = b + ", World!";
+   |               - ^ ---------- &str
+   |               | |
+   |               | `+` cannot be used to concatenate two `&str` strings
+   |               &str
+   |
+   = note: string concatenation requires an owned `String` on the left
+help: create an owned `String` from a string reference
+   |
+LL |      let _a = b.to_owned() + ", World!";
+   |                +++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0369`.

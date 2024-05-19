@@ -1,0 +1,14 @@
+error: emptying a vector with `resize`
+  --> tests/ui/vec_resize_to_zero.rs:7:5
+   |
+LL |     v.resize(0, 5);
+   |     ^^------------
+   |       |
+   |       help: ...or you can empty the vector with: `clear()`
+   |
+   = help: the arguments may be inverted...
+   = note: `-D clippy::vec-resize-to-zero` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::vec_resize_to_zero)]`
+
+error: aborting due to 1 previous error
+

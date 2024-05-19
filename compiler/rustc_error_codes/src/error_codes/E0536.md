@@ -1,0 +1,24 @@
+The `not` cfg-predicate was malformed.
+
+Erroneous code example:
+
+```compile_fail,E0536
+#[cfg(not())] // error: expected 1 cfg-pattern
+pub fn something() {}
+
+pub fn main() {}
+```
+
+The `not` predicate expects one cfg-pattern. Example:
+
+```
+#[cfg(not(target_os = "linux"))] // ok!
+pub fn something() {}
+
+pub fn main() {}
+```
+
+For more information about the `cfg` attribute, read the section on
+[Conditional Compilation][conditional-compilation] in the Reference.
+
+[conditional-compilation]: https://doc.rust-lang.org/reference/conditional-compilation.html

@@ -1,0 +1,45 @@
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const_fn_ptr_fail2.rs:9:5
+   |
+LL |     x(y)
+   |     ^^^^ calling non-const function `double`
+   |
+note: inside `bar`
+  --> $DIR/const_fn_ptr_fail2.rs:9:5
+   |
+LL |     x(y)
+   |     ^^^^
+note: inside `Y`
+  --> $DIR/const_fn_ptr_fail2.rs:14:18
+   |
+LL | const Y: usize = bar(X, 2); // FIXME: should fail to typeck someday
+   |                  ^^^^^^^^^
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const_fn_ptr_fail2.rs:9:5
+   |
+LL |     x(y)
+   |     ^^^^ calling non-const function `double`
+   |
+note: inside `bar`
+  --> $DIR/const_fn_ptr_fail2.rs:9:5
+   |
+LL |     x(y)
+   |     ^^^^
+note: inside `Z`
+  --> $DIR/const_fn_ptr_fail2.rs:15:18
+   |
+LL | const Z: usize = bar(double, 2); // FIXME: should fail to typeck someday
+   |                  ^^^^^^^^^^^^^^
+
+warning: skipping const checks
+   |
+help: skipping check that does not even have a feature gate
+  --> $DIR/const_fn_ptr_fail2.rs:9:5
+   |
+LL |     x(y)
+   |     ^^^^
+
+error: aborting due to 2 previous errors; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0080`.

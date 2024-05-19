@@ -1,0 +1,12 @@
+error[E0308]: mismatched types
+  --> $DIR/call-generic-method-fail.rs:4:5
+   |
+LL |     *t == *t
+   |     ^^^^^^^^ expected `host`, found `true`
+   |
+   = note: expected constant `host`
+              found constant `true`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.

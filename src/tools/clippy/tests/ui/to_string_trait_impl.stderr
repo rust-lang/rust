@@ -1,0 +1,28 @@
+error: direct implementation of `ToString`
+  --> tests/ui/to_string_trait_impl.rs:11:1
+   |
+LL | / impl ToString for Point {
+LL | |     fn to_string(&self) -> String {
+LL | |         format!("({}, {})", self.x, self.y)
+LL | |     }
+LL | | }
+   | |_^
+   |
+   = help: prefer implementing `Display` instead
+   = note: `-D clippy::to-string-trait-impl` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::to_string_trait_impl)]`
+
+error: direct implementation of `ToString`
+  --> tests/ui/to_string_trait_impl.rs:56:5
+   |
+LL | /     impl ToString for S<i32> {
+LL | |         fn to_string(&self) -> String {
+LL | |             todo!()
+LL | |         }
+LL | |     }
+   | |_____^
+   |
+   = help: prefer implementing `Display` instead
+
+error: aborting due to 2 previous errors
+

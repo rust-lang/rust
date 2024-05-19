@@ -1,0 +1,25 @@
+error[E0658]: linking to associated items of raw pointers is experimental
+  --> $DIR/feature-gate-intra-doc-pointers.rs:1:6
+   |
+LL | //! [pointer::add]
+   |      ^^^^^^^^^^^^
+   |
+   = note: see issue #80896 <https://github.com/rust-lang/rust/issues/80896> for more information
+   = help: add `#![feature(intra_doc_pointers)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: rustdoc does not allow disambiguating between `*const` and `*mut`, and pointers are unstable until it does
+
+error[E0658]: linking to associated items of raw pointers is experimental
+  --> $DIR/feature-gate-intra-doc-pointers.rs:3:6
+   |
+LL | //! [pointer::wrapping_add]
+   |      ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #80896 <https://github.com/rust-lang/rust/issues/80896> for more information
+   = help: add `#![feature(intra_doc_pointers)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: rustdoc does not allow disambiguating between `*const` and `*mut`, and pointers are unstable until it does
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

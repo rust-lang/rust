@@ -1,0 +1,12 @@
+error[E0046]: not all trait items implemented, missing: `Ty`
+  --> $DIR/issue-110161.rs:11:1
+   |
+LL |     type Ty;
+   |     ------- `Ty` from trait
+...
+LL | impl LtTrait for () {
+   | ^^^^^^^^^^^^^^^^^^^ missing `Ty` in implementation
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0046`.

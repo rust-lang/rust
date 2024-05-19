@@ -1,0 +1,16 @@
+error[E0277]: the size for values of type `Self` cannot be known at compilation time
+  --> $DIR/trait-with-supertraits-needing-sized-self.rs:3:22
+   |
+LL | trait ArithmeticOps: Add<Output=Self> + Sub<Output=Self> + Mul<Output=Self> + Div<Output=Self> {}
+   |                      ^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+note: required by an implicit `Sized` bound in `Add`
+  --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
+help: consider further restricting `Self`
+   |
+LL | trait ArithmeticOps: Add<Output=Self> + Sub<Output=Self> + Mul<Output=Self> + Div<Output=Self> + Sized {}
+   |                                                                                                +++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

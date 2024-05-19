@@ -1,0 +1,109 @@
+# TODO: check if qemu-user-static-binfmt is needed (perhaps to run some tests since it probably calls exec).
+
+name: m68k CI
+
+on:
+  - push
+  - pull_request
+
+permissions:
+  contents: read
+
+env:
+  # Enable backtraces for easier debugging
+  RUST_BACKTRACE: 1
+  # TODO: remove when confish.sh is removed.
+  OVERWRITE_TARGET_TRIPLE: m68k-unknown-linux-gnu
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+
+    strategy:
+      fail-fast: false
+      matrix:
+        commands: [
+          "--mini-tests",
+          "--std-tests",
+          # TODO(antoyo): fix those on m68k.
+          #"--test-libcore",
+          #"--extended-rand-tests",
+          #"--extended-regex-example-tests",
+          #"--extended-regex-tests",
+          #"--test-successful-rustc --nb-parts 2 --current-part 0",
+          #"--test-successful-rustc --nb-parts 2 --current-part 1",
+          #"--test-failing-rustc",
+        ]
+
+    steps:
+    - uses: actions/checkout@v3
+
+    # `rustup show` installs from rust-toolchain.toml
+    - name: Setup rust toolchain
+      run: rustup show
+
+    - name: Setup rust cache
+      uses: Swatinem/rust-cache@v2
+
+    - name: Install packages
+      run: |
+        sudo apt-get update
+        sudo apt-get install qemu qemu-user-static
+
+    - name: Download artifact
+      run: curl -LO https://github.com/cross-cg-gcc-tools/cross-gcc/releases/latest/download/gcc-m68k-13.deb
+
+    - name: Download VM artifact
+      uses: dawidd6/action-download-artifact@v2
+      with:
+          workflow: m68k.yml
+          name: debian-m68k
+          repo: cross-cg-gcc-tools/vms
+          branch: master
+          event: push
+
+    - name: Setup path to libgccjit
+      run: |
+          sudo dpkg -i gcc-m68k-13.deb
+          echo 'gcc-path = "/usr/lib/"' > config.toml
+
+    - name: Set env
+      run: |
+        echo "workspace="$GITHUB_WORKSPACE >> $GITHUB_ENV
+        echo "LIBRARY_PATH=/usr/lib" >> $GITHUB_ENV
+        echo "LD_LIBRARY_PATH=/usr/lib" >> $GITHUB_ENV
+
+    #- name: Cache rust repository
+      ## We only clone the rust repository for rustc tests
+      #if: ${{ contains(matrix.commands, 'rustc') }}
+      #uses: actions/cache@v3
+      #id: cache-rust-repository
+      #with:
+        #path: rust
+        #key: ${{ runner.os }}-packages-${{ hashFiles('rust/.git/HEAD') }}
+
+    - name: Prepare VM
+      run: |
+        mkdir vm
+        sudo mount debian-m68k.img vm
+        sudo cp $(which qemu-m68k-static) vm/usr/bin/
+
+    - name: Build
+      run: |
+        ./y.sh prepare --only-libcore --cross
+        ./y.sh build --target-triple m68k-unknown-linux-gnu
+        CG_GCC_TEST_TARGET=m68k-unknown-linux-gnu cargo test
+        ./y.sh clean all
+
+    - name: Prepare dependencies
+      run: |
+        git config --global user.email "user@example.com"
+        git config --global user.name "User"
+        ./y.sh prepare --cross
+
+    - name: Add more failing tests because the sysroot is not compiled with LTO
+      run: cat tests/failing-non-lto-tests.txt >> tests/failing-ui-tests.txt
+
+    - name: Run tests
+      run: |
+        ./y.sh test --release --clean --build-sysroot ${{ matrix.commands }}

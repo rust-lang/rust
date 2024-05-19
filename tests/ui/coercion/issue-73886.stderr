@@ -1,0 +1,17 @@
+error[E0605]: non-primitive cast: `&&[i32; 1]` as `&[_]`
+  --> $DIR/issue-73886.rs:2:13
+   |
+LL |     let _ = &&[0] as &[_];
+   |             ^^^^^^^^^^^^^ an `as` expression can only be used to convert between primitive types or to coerce to a specific trait object
+
+error[E0605]: non-primitive cast: `u32` as `Option<_>`
+  --> $DIR/issue-73886.rs:4:13
+   |
+LL |     let _ = 7u32 as Option<_>;
+   |             ^^^^^^^^^^^^^^^^^ help: consider using the `From` trait instead: `Option<_>::from(7u32)`
+   |
+   = note: an `as` expression can only be used to convert between primitive types or to coerce to a specific trait object
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0605`.

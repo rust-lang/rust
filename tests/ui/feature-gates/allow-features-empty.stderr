@@ -1,0 +1,15 @@
+error[E0725]: the feature `lang_items` is not in the list of allowed features
+  --> $DIR/allow-features-empty.rs:4:12
+   |
+LL | #![feature(lang_items)]
+   |            ^^^^^^^^^^
+
+error[E0725]: the feature `unknown_stdlib_feature` is not in the list of allowed features
+  --> $DIR/allow-features-empty.rs:6:12
+   |
+LL | #![feature(unknown_stdlib_feature)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0725`.

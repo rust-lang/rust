@@ -1,0 +1,14 @@
+error[E0521]: borrowed data escapes outside of closure
+  --> tests/ui/crashes/ice-6256.rs:13:26
+   |
+LL |     let f = |x: &dyn TT| x.func();
+   |              -  -        ^^^^^^^^
+   |              |  |        |
+   |              |  |        `x` escapes the closure body here
+   |              |  |        argument requires that `'1` must outlive `'static`
+   |              |  let's call the lifetime of this reference `'1`
+   |              `x` is a reference that is only valid in the closure body
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0521`.

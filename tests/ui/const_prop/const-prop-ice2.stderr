@@ -1,0 +1,10 @@
+error: this operation will panic at runtime
+  --> $DIR/const-prop-ice2.rs:6:20
+   |
+LL |     println!("{}", xs[Enum::One as usize]);
+   |                    ^^^^^^^^^^^^^^^^^^^^^^ index out of bounds: the length is 1 but the index is 1
+   |
+   = note: `#[deny(unconditional_panic)]` on by default
+
+error: aborting due to 1 previous error
+

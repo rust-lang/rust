@@ -1,0 +1,10 @@
+error: mismatched closing delimiter: `)`
+  --> $DIR/do-not-suggest-semicolon-before-array.rs:5:5
+   |
+LL |     [1, 3)
+   |     ^    ^ mismatched closing delimiter
+   |     |
+   |     unclosed delimiter
+
+error: aborting due to 1 previous error
+

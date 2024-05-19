@@ -1,0 +1,42 @@
+error[E0262]: invalid lifetime parameter name: `'static`
+  --> $DIR/generic_const_early_param.rs:4:20
+   |
+LL | struct DataWrapper<'static> {
+   |                    ^^^^^^^ 'static is a reserved lifetime name
+
+error[E0261]: use of undeclared lifetime name `'a`
+  --> $DIR/generic_const_early_param.rs:6:12
+   |
+LL | struct DataWrapper<'static> {
+   |                    - help: consider introducing lifetime `'a` here: `'a,`
+LL |
+LL |     data: &'a [u8; Self::SIZE],
+   |            ^^ undeclared lifetime
+
+error[E0261]: use of undeclared lifetime name `'a`
+  --> $DIR/generic_const_early_param.rs:11:18
+   |
+LL | impl DataWrapper<'a> {
+   |     -            ^^ undeclared lifetime
+   |     |
+   |     help: consider introducing lifetime `'a` here: `<'a>`
+
+warning: the feature `generic_const_exprs` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/generic_const_early_param.rs:1:12
+   |
+LL | #![feature(generic_const_exprs)]
+   |            ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #76560 <https://github.com/rust-lang/rust/issues/76560> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+error: lifetime may not live long enough
+  --> $DIR/generic_const_early_param.rs:6:20
+   |
+LL |     data: &'a [u8; Self::SIZE],
+   |                    ^^^^^^^^^^ requires that `'_` must outlive `'static`
+
+error: aborting due to 4 previous errors; 1 warning emitted
+
+Some errors have detailed explanations: E0261, E0262.
+For more information about an error, try `rustc --explain E0261`.

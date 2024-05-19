@@ -1,0 +1,17 @@
+warning: unreachable `pub` item
+  --> $DIR/issue-103317.rs:7:5
+   |
+LL |     pub enum T {
+   |     ---^^^^^^^
+   |     |
+   |     help: consider restricting its visibility: `pub(crate)`
+   |
+   = help: or consider exporting it for use by other crates
+note: the lint level is defined here
+  --> $DIR/issue-103317.rs:4:8
+   |
+LL | #[warn(unreachable_pub)]
+   |        ^^^^^^^^^^^^^^^
+
+warning: 1 warning emitted
+

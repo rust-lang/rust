@@ -1,0 +1,76 @@
+// MIR for `vec_move` after PreCodegen
+
+fn vec_move(_1: Vec<impl Sized>) -> () {
+    debug v => _1;
+    let mut _0: ();
+    let mut _2: std::vec::IntoIter<impl Sized>;
+    let mut _3: std::vec::IntoIter<impl Sized>;
+    let mut _4: &mut std::vec::IntoIter<impl Sized>;
+    let mut _5: std::option::Option<impl Sized>;
+    let mut _6: isize;
+    let _8: ();
+    scope 1 {
+        debug iter => _3;
+        let _7: impl Sized;
+        scope 2 {
+            debug x => _7;
+        }
+    }
+
+    bb0: {
+        StorageLive(_2);
+        _2 = <Vec<impl Sized> as IntoIterator>::into_iter(move _1) -> [return: bb1, unwind continue];
+    }
+
+    bb1: {
+        StorageLive(_3);
+        _3 = move _2;
+        goto -> bb2;
+    }
+
+    bb2: {
+        StorageLive(_5);
+        StorageLive(_4);
+        _4 = &mut _3;
+        _5 = <std::vec::IntoIter<impl Sized> as Iterator>::next(move _4) -> [return: bb3, unwind: bb9];
+    }
+
+    bb3: {
+        StorageDead(_4);
+        _6 = discriminant(_5);
+        switchInt(move _6) -> [0: bb4, 1: bb6, otherwise: bb8];
+    }
+
+    bb4: {
+        StorageDead(_5);
+        drop(_3) -> [return: bb5, unwind continue];
+    }
+
+    bb5: {
+        StorageDead(_3);
+        StorageDead(_2);
+        return;
+    }
+
+    bb6: {
+        _7 = move ((_5 as Some).0: impl Sized);
+        _8 = opaque::<impl Sized>(move _7) -> [return: bb7, unwind: bb9];
+    }
+
+    bb7: {
+        StorageDead(_5);
+        goto -> bb2;
+    }
+
+    bb8: {
+        unreachable;
+    }
+
+    bb9 (cleanup): {
+        drop(_3) -> [return: bb10, unwind terminate(cleanup)];
+    }
+
+    bb10 (cleanup): {
+        resume;
+    }
+}

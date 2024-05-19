@@ -1,0 +1,61 @@
+//@aux-build:paths.rs
+#![deny(clippy::internal)]
+#![feature(rustc_private)]
+
+extern crate clippy_utils;
+extern crate paths;
+extern crate rustc_hir;
+extern crate rustc_lint;
+extern crate rustc_middle;
+extern crate rustc_span;
+
+#[allow(unused)]
+use clippy_utils::ty::{is_type_diagnostic_item, is_type_lang_item, match_type};
+#[allow(unused)]
+use clippy_utils::{
+    is_expr_path_def_path, is_path_diagnostic_item, is_res_diagnostic_ctor, is_res_lang_ctor, is_trait_method,
+    match_def_path, match_trait_method, path_res,
+};
+
+#[allow(unused)]
+use rustc_hir::LangItem;
+#[allow(unused)]
+use rustc_span::sym;
+
+use rustc_hir::def_id::DefId;
+use rustc_hir::Expr;
+use rustc_lint::LateContext;
+use rustc_middle::ty::Ty;
+
+#[allow(unused, clippy::unnecessary_def_path)]
+static OPTION: [&str; 3] = ["core", "option", "Option"];
+#[allow(unused, clippy::unnecessary_def_path)]
+const RESULT: &[&str] = &["core", "result", "Result"];
+
+fn _f<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, did: DefId, expr: &Expr<'_>) {
+    let _ = is_type_diagnostic_item(cx, ty, sym::Option);
+    let _ = is_type_diagnostic_item(cx, ty, sym::Result);
+    let _ = is_type_diagnostic_item(cx, ty, sym::Result);
+
+    #[allow(unused, clippy::unnecessary_def_path)]
+    let rc_path = &["alloc", "rc", "Rc"];
+    let _ = is_type_diagnostic_item(cx, ty, sym::Rc);
+
+    let _ = is_type_diagnostic_item(cx, ty, sym::Option);
+    let _ = is_type_diagnostic_item(cx, ty, sym::Result);
+
+    let _ = is_type_lang_item(cx, ty, LangItem::OwnedBox);
+    let _ = is_type_diagnostic_item(cx, ty, sym::maybe_uninit_uninit);
+
+    let _ = cx.tcx.lang_items().get(LangItem::OwnedBox) == Some(did);
+    let _ = cx.tcx.is_diagnostic_item(sym::Option, did);
+    let _ = cx.tcx.lang_items().get(LangItem::OptionSome) == Some(did);
+
+    let _ = is_trait_method(cx, expr, sym::AsRef);
+
+    let _ = is_path_diagnostic_item(cx, expr, sym::Option);
+    let _ = path_res(cx, expr).opt_def_id().map_or(false, |id| cx.tcx.lang_items().get(LangItem::IteratorNext) == Some(id));
+    let _ = is_res_lang_ctor(cx, path_res(cx, expr), LangItem::OptionSome);
+}
+
+fn main() {}

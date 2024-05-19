@@ -1,0 +1,23 @@
+warning: the feature `unsized_locals` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/ice-size_and_align_of-closure-not-supported-88212.rs:3:12
+   |
+LL | #![feature(unsized_locals)]
+   |            ^^^^^^^^^^^^^^
+   |
+   = note: see issue #48055 <https://github.com/rust-lang/rust/issues/48055> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+error[E0277]: the size for values of type `dyn Example` cannot be known at compilation time
+  --> $DIR/ice-size_and_align_of-closure-not-supported-88212.rs:18:18
+   |
+LL |     (move || {
+   |           -- this closure captures all values by move
+LL |         let _y = x;
+   |                  ^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `dyn Example`
+   = note: all values captured by value by a closure must have a statically known size
+
+error: aborting due to 1 previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0277`.

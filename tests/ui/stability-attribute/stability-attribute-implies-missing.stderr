@@ -1,0 +1,8 @@
+error: feature `bar` implying `foobar` does not exist
+  --> $DIR/stability-attribute-implies-missing.rs:6:1
+   |
+LL | #[unstable(feature = "foobar", issue = "1", implied_by = "bar")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

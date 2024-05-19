@@ -1,0 +1,8 @@
+error: switch the order of `ref` and `box`
+  --> $DIR/pattern-bad-ref-box-order.rs:8:14
+   |
+LL |         Some(ref box _i) => {},
+   |              ^^^^^^^ help: swap them: `box ref`
+
+error: aborting due to 1 previous error
+

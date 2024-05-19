@@ -1,0 +1,18 @@
+error: `default` is not followed by an item
+  --> $DIR/default-unmatched.rs:3:5
+   |
+LL |     default do
+   |     ^^^^^^^ the `default` qualifier
+   |
+   = note: only `fn`, `const`, `type`, or `impl` items may be prefixed by `default`
+
+error: expected item, found reserved keyword `do`
+  --> $DIR/default-unmatched.rs:3:13
+   |
+LL |     default do
+   |             ^^ expected item
+   |
+   = note: for a full list of items that can appear in modules, see <https://doc.rust-lang.org/reference/items.html>
+
+error: aborting due to 2 previous errors
+

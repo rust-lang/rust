@@ -1,0 +1,10 @@
+error: recursion limit reached while expanding `#[invalid_attribute]`
+  --> $DIR/issue-105700.rs:6:1
+   |
+LL | #![invalid_attribute]
+   | ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "8"]` attribute to your crate (`issue_105700`)
+
+error: aborting due to 1 previous error
+

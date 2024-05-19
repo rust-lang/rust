@@ -1,0 +1,108 @@
+error: doc alias attribute expects a string `#[doc(alias = "a")]` or a list of strings `#[doc(alias("a", "b"))]`
+  --> $DIR/check-doc-alias-attr.rs:7:7
+   |
+LL | #[doc(alias)]
+   |       ^^^^^
+
+error: doc alias attribute expects a string `#[doc(alias = "a")]` or a list of strings `#[doc(alias("a", "b"))]`
+  --> $DIR/check-doc-alias-attr.rs:8:7
+   |
+LL | #[doc(alias = 0)]
+   |       ^^^^^^^^^
+
+error: '"' character isn't allowed in `#[doc(alias = "...")]`
+  --> $DIR/check-doc-alias-attr.rs:9:15
+   |
+LL | #[doc(alias = "\"")]
+   |               ^^^^
+
+error: '\n' character isn't allowed in `#[doc(alias = "...")]`
+  --> $DIR/check-doc-alias-attr.rs:10:15
+   |
+LL | #[doc(alias = "\n")]
+   |               ^^^^
+
+error: '\n' character isn't allowed in `#[doc(alias = "...")]`
+  --> $DIR/check-doc-alias-attr.rs:11:15
+   |
+LL |   #[doc(alias = "
+   |  _______________^
+LL | | ")]
+   | |_^
+
+error: '\t' character isn't allowed in `#[doc(alias = "...")]`
+  --> $DIR/check-doc-alias-attr.rs:13:15
+   |
+LL | #[doc(alias = "\t")]
+   |               ^^^^
+
+error: `#[doc(alias = "...")]` cannot start or end with ' '
+  --> $DIR/check-doc-alias-attr.rs:14:15
+   |
+LL | #[doc(alias = " hello")]
+   |               ^^^^^^^^
+
+error: `#[doc(alias = "...")]` cannot start or end with ' '
+  --> $DIR/check-doc-alias-attr.rs:15:15
+   |
+LL | #[doc(alias = "hello ")]
+   |               ^^^^^^^^
+
+error: `#[doc(alias = "...")]` attribute cannot have empty value
+  --> $DIR/check-doc-alias-attr.rs:16:15
+   |
+LL | #[doc(alias = "")]
+   |               ^^
+
+error: `#[doc(alias("a"))]` expects string literals
+  --> $DIR/check-doc-alias-attr.rs:19:13
+   |
+LL | #[doc(alias(0))]
+   |             ^
+
+error: '"' character isn't allowed in `#[doc(alias("..."))]`
+  --> $DIR/check-doc-alias-attr.rs:20:13
+   |
+LL | #[doc(alias("\""))]
+   |             ^^^^
+
+error: '\n' character isn't allowed in `#[doc(alias("..."))]`
+  --> $DIR/check-doc-alias-attr.rs:21:13
+   |
+LL | #[doc(alias("\n"))]
+   |             ^^^^
+
+error: '\n' character isn't allowed in `#[doc(alias("..."))]`
+  --> $DIR/check-doc-alias-attr.rs:22:13
+   |
+LL |   #[doc(alias("
+   |  _____________^
+LL | | "))]
+   | |_^
+
+error: '\t' character isn't allowed in `#[doc(alias("..."))]`
+  --> $DIR/check-doc-alias-attr.rs:24:13
+   |
+LL | #[doc(alias("\t"))]
+   |             ^^^^
+
+error: `#[doc(alias("..."))]` cannot start or end with ' '
+  --> $DIR/check-doc-alias-attr.rs:25:13
+   |
+LL | #[doc(alias(" hello"))]
+   |             ^^^^^^^^
+
+error: `#[doc(alias("..."))]` cannot start or end with ' '
+  --> $DIR/check-doc-alias-attr.rs:26:13
+   |
+LL | #[doc(alias("hello "))]
+   |             ^^^^^^^^
+
+error: `#[doc(alias("..."))]` attribute cannot have empty value
+  --> $DIR/check-doc-alias-attr.rs:27:13
+   |
+LL | #[doc(alias(""))]
+   |             ^^
+
+error: aborting due to 17 previous errors
+

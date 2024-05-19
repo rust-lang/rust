@@ -1,0 +1,18 @@
+error[E0507]: cannot move out of `s` which is behind a shared reference
+  --> $DIR/access-mode-in-closures.rs:8:15
+   |
+LL |         match *s { S(v) => v }
+   |               ^^     -
+   |                      |
+   |                      data moved here
+   |                      move occurs because `v` has type `Vec<isize>`, which does not implement the `Copy` trait
+   |
+help: consider removing the dereference here
+   |
+LL -         match *s { S(v) => v }
+LL +         match s { S(v) => v }
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0507`.

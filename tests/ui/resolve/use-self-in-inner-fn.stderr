@@ -1,0 +1,15 @@
+error[E0401]: can't use `Self` from outer item
+  --> $DIR/use-self-in-inner-fn.rs:6:25
+   |
+LL | impl A {
+   | ---- `Self` type implicitly declared here, by this `impl`
+...
+LL |         fn peach(this: &Self) {
+   |                         ^^^^
+   |                         |
+   |                         use of `Self` from outer item
+   |                         refer to the type directly here instead
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0401`.

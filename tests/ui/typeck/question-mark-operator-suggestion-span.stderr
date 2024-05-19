@@ -1,0 +1,31 @@
+error[E0308]: mismatched types
+  --> $DIR/question-mark-operator-suggestion-span.rs:18:9
+   |
+LL | /     if true {
+LL | |         writeln!(w, "`;?` here ->")?;
+LL | |     } else {
+LL | |         writeln!(w, "but not here")
+   | |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `()`, found `Result<(), Error>`
+LL | |
+LL | |     }
+   | |_____- expected this to be `()`
+   |
+   = note: expected unit type `()`
+                   found enum `Result<(), std::fmt::Error>`
+   = note: this error originates in the macro `writeln` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider using a semicolon here
+   |
+LL |     };
+   |      +
+help: you might have meant to return this value
+   |
+LL |         return writeln!(w, "but not here");
+   |         ++++++                            +
+help: use the `?` operator to extract the `Result<(), std::fmt::Error>` value, propagating a `Result::Err` value to the caller
+   |
+LL |         writeln!(w, "but not here")?
+   |                                    +
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.

@@ -1,0 +1,19 @@
+error[E0423]: expected value, found struct `S`
+  --> $DIR/no-match-tuple-variant-self-ctor.rs:30:24
+   |
+LL |     struct S {}
+   |     ----------- `S` defined here
+...
+LL |             let Self = S;
+   |                        ^ help: use struct literal syntax instead: `S {}`
+
+error[E0533]: expected unit struct, found self constructor `Self`
+  --> $DIR/no-match-tuple-variant-self-ctor.rs:30:17
+   |
+LL |             let Self = S;
+   |                 ^^^^ not a unit struct
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0423, E0533.
+For more information about an error, try `rustc --explain E0423`.

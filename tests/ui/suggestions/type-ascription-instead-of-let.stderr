@@ -1,0 +1,13 @@
+error: expected identifier, found `:`
+  --> $DIR/type-ascription-instead-of-let.rs:7:13
+   |
+LL |         temp: i32 = fun(5i32);
+   |             ^ expected identifier
+   |
+help: you might have meant to introduce a new binding
+   |
+LL |         let temp: i32 = fun(5i32);
+   |         +++
+
+error: aborting due to 1 previous error
+

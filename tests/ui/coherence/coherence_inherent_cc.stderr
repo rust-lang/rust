@@ -1,0 +1,15 @@
+error[E0599]: no method named `the_fn` found for reference `&TheStruct` in the current scope
+  --> $DIR/coherence_inherent_cc.rs:23:11
+   |
+LL |         s.the_fn();
+   |           ^^^^^^ method not found in `&TheStruct`
+   |
+   = help: items from traits can only be used if the trait is in scope
+help: trait `TheTrait` which provides `the_fn` is implemented but not in scope; perhaps you want to import it
+   |
+LL +     use coherence_inherent_cc_lib::TheTrait;
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0599`.

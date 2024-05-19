@@ -1,0 +1,15 @@
+error[E0432]: unresolved import `self`
+  --> $DIR/use-mod-2.rs:2:16
+   |
+LL |     use self::{self};
+   |                ^^^^ no `self` in the root
+
+error[E0432]: unresolved import `super`
+  --> $DIR/use-mod-2.rs:6:17
+   |
+LL |     use super::{self};
+   |                 ^^^^ no `super` in the root
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0432`.

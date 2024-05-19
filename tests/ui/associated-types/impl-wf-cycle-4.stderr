@@ -1,0 +1,25 @@
+error[E0275]: overflow evaluating the requirement `<T as Filter>::ToMatch == <T as Filter>::ToMatch`
+  --> $DIR/impl-wf-cycle-4.rs:5:1
+   |
+LL | / impl<T> Filter for T
+LL | | where
+LL | |     T: Fn(Self::ToMatch),
+   | |_________________________^
+   |
+note: required for `T` to implement `Filter`
+  --> $DIR/impl-wf-cycle-4.rs:5:9
+   |
+LL | impl<T> Filter for T
+   |         ^^^^^^     ^
+LL | where
+LL |     T: Fn(Self::ToMatch),
+   |        ----------------- unsatisfied trait bound introduced here
+note: associated types for the current `impl` cannot be restricted in `where` clauses
+  --> $DIR/impl-wf-cycle-4.rs:7:11
+   |
+LL |     T: Fn(Self::ToMatch),
+   |           ^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0275`.

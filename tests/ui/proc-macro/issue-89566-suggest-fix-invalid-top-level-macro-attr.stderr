@@ -1,0 +1,17 @@
+error: `derive` attribute cannot be used at crate level
+  --> $DIR/issue-89566-suggest-fix-invalid-top-level-macro-attr.rs:3:1
+   |
+LL | #![derive(Debug)]
+   | ^^^^^^^^^^^^^^^^^
+LL | #[allow(dead_code)]
+LL | struct Test {}
+   |        ---- the inner attribute doesn't annotate this struct
+   |
+help: perhaps you meant to use an outer attribute
+   |
+LL - #![derive(Debug)]
+LL + #[derive(Debug)]
+   |
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,19 @@
+error[E0308]: mismatched types
+  --> $DIR/typeck_fail.rs:8:16
+   |
+LL |     match "foo".to_string() {
+   |           ----------------- this expression has type `String`
+LL |         deref!("foo") => {}
+   |                ^^^^^ expected `str`, found `&str`
+
+error[E0308]: mismatched types
+  --> $DIR/typeck_fail.rs:13:16
+   |
+LL |     match &"foo".to_string() {
+   |           ------------------ this expression has type `&String`
+LL |         deref!("foo") => {}
+   |                ^^^^^ expected `str`, found `&str`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

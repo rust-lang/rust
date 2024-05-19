@@ -1,0 +1,20 @@
+error: out of range hex escape
+  --> $DIR/ascii-only-character-escape.rs:2:14
+   |
+LL |     let x = "\x80";
+   |              ^^^^ must be a character in the range [\x00-\x7f]
+
+error: out of range hex escape
+  --> $DIR/ascii-only-character-escape.rs:3:14
+   |
+LL |     let y = "\xff";
+   |              ^^^^ must be a character in the range [\x00-\x7f]
+
+error: out of range hex escape
+  --> $DIR/ascii-only-character-escape.rs:4:14
+   |
+LL |     let z = "\xe2";
+   |              ^^^^ must be a character in the range [\x00-\x7f]
+
+error: aborting due to 3 previous errors
+

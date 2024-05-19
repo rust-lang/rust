@@ -1,0 +1,12 @@
+error[E0583]: file not found for module `baz`
+  --> $DIR/auxiliary/foo/bar.rs:1:1
+   |
+LL | pub mod baz;
+   | ^^^^^^^^^^^^
+   |
+   = help: to create the module `baz`, create file "$DIR/auxiliary/foo/bar/baz.rs" or "$DIR/auxiliary/foo/bar/baz/mod.rs"
+   = note: if there is a `mod baz` elsewhere in the crate already, import it with `use crate::...` instead
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0583`.

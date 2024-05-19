@@ -1,0 +1,36 @@
+error[E0308]: mismatched types
+  --> $DIR/type-mismatch-struct-field-shorthand.rs:8:19
+   |
+LL |     let _ = RGB { r, g, b };
+   |                   ^ expected `f64`, found `f32`
+   |
+help: you can convert an `f32` to an `f64`
+   |
+LL |     let _ = RGB { r: r.into(), g, b };
+   |                   ++  +++++++
+
+error[E0308]: mismatched types
+  --> $DIR/type-mismatch-struct-field-shorthand.rs:8:22
+   |
+LL |     let _ = RGB { r, g, b };
+   |                      ^ expected `f64`, found `f32`
+   |
+help: you can convert an `f32` to an `f64`
+   |
+LL |     let _ = RGB { r, g: g.into(), b };
+   |                      ++  +++++++
+
+error[E0308]: mismatched types
+  --> $DIR/type-mismatch-struct-field-shorthand.rs:8:25
+   |
+LL |     let _ = RGB { r, g, b };
+   |                         ^ expected `f64`, found `f32`
+   |
+help: you can convert an `f32` to an `f64`
+   |
+LL |     let _ = RGB { r, g, b: b.into() };
+   |                         ++  +++++++
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

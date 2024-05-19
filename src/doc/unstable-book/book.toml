@@ -1,0 +1,7 @@
+[book]
+title = "The Rust Unstable Book"
+author = "The Rust Community"
+
+[output.html]
+git-repository-url = "https://github.com/rust-lang/rust/tree/master/src/doc/unstable-book"
+edit-url-template = "https://github.com/rust-lang/rust/edit/master/src/doc/unstable-book/{path}"

@@ -1,0 +1,21 @@
+error: lifetime parameter `'g` only used once
+  --> $DIR/one-use-in-trait-method-argument.rs:15:13
+   |
+LL |     fn next<'g>(&'g mut self) -> Option<Self::Item> {
+   |             ^^   -- ...is used only here
+   |             |
+   |             this lifetime...
+   |
+note: the lint level is defined here
+  --> $DIR/one-use-in-trait-method-argument.rs:4:9
+   |
+LL | #![deny(single_use_lifetimes)]
+   |         ^^^^^^^^^^^^^^^^^^^^
+help: elide the single-use lifetime
+   |
+LL -     fn next<'g>(&'g mut self) -> Option<Self::Item> {
+LL +     fn next(&mut self) -> Option<Self::Item> {
+   |
+
+error: aborting due to 1 previous error
+

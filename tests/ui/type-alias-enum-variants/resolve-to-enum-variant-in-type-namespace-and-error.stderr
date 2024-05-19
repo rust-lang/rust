@@ -1,0 +1,8 @@
+error: expected type, found variant `V`
+  --> $DIR/resolve-to-enum-variant-in-type-namespace-and-error.rs:8:15
+   |
+LL | fn check() -> <E>::V {}
+   |               ^^^^^^
+
+error: aborting due to 1 previous error
+

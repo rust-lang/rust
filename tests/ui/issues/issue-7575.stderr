@@ -1,0 +1,10 @@
+warning: trait `Foo` is never used
+  --> $DIR/issue-7575.rs:3:7
+   |
+LL | trait Foo {
+   |       ^^^
+   |
+   = note: `#[warn(dead_code)]` on by default
+
+warning: 1 warning emitted
+

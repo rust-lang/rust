@@ -1,0 +1,75 @@
+error: `impl Sized` will capture more lifetimes than possibly intended in edition 2024
+  --> $DIR/overcaptures-2024.rs:7:29
+   |
+LL | fn named<'a>(x: &'a i32) -> impl Sized { *x }
+   |                             ^^^^^^^^^^
+   |
+note: specifically, this lifetime is in scope but not mentioned in the type's bounds
+  --> $DIR/overcaptures-2024.rs:7:10
+   |
+LL | fn named<'a>(x: &'a i32) -> impl Sized { *x }
+   |          ^^
+   = note: all lifetimes in scope will be captured by `impl Trait`s in edition 2024
+note: the lint level is defined here
+  --> $DIR/overcaptures-2024.rs:5:9
+   |
+LL | #![deny(impl_trait_overcaptures)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^
+help: use the precise capturing `use<...>` syntax to make the captures explicit
+   |
+LL | fn named<'a>(x: &'a i32) -> impl use<> Sized { *x }
+   |                                  +++++
+
+error: `impl Sized` will capture more lifetimes than possibly intended in edition 2024
+  --> $DIR/overcaptures-2024.rs:10:25
+   |
+LL | fn implicit(x: &i32) -> impl Sized { *x }
+   |                         ^^^^^^^^^^
+   |
+note: specifically, this lifetime is in scope but not mentioned in the type's bounds
+  --> $DIR/overcaptures-2024.rs:10:16
+   |
+LL | fn implicit(x: &i32) -> impl Sized { *x }
+   |                ^
+   = note: all lifetimes in scope will be captured by `impl Trait`s in edition 2024
+help: use the precise capturing `use<...>` syntax to make the captures explicit
+   |
+LL | fn implicit(x: &i32) -> impl use<> Sized { *x }
+   |                              +++++
+
+error: `impl Sized + '_` will capture more lifetimes than possibly intended in edition 2024
+  --> $DIR/overcaptures-2024.rs:15:33
+   |
+LL |     fn hello(&self, x: &i32) -> impl Sized + '_ { self }
+   |                                 ^^^^^^^^^^^^^^^
+   |
+note: specifically, this lifetime is in scope but not mentioned in the type's bounds
+  --> $DIR/overcaptures-2024.rs:15:24
+   |
+LL |     fn hello(&self, x: &i32) -> impl Sized + '_ { self }
+   |                        ^
+   = note: all lifetimes in scope will be captured by `impl Trait`s in edition 2024
+help: use the precise capturing `use<...>` syntax to make the captures explicit
+   |
+LL |     fn hello(&self, x: &i32) -> impl use<'_> Sized + '_ { self }
+   |                                      +++++++
+
+error: `impl Sized` will capture more lifetimes than possibly intended in edition 2024
+  --> $DIR/overcaptures-2024.rs:26:47
+   |
+LL | fn hrtb() -> impl for<'a> Higher<'a, Output = impl Sized> {}
+   |                                               ^^^^^^^^^^
+   |
+note: specifically, this lifetime is in scope but not mentioned in the type's bounds
+  --> $DIR/overcaptures-2024.rs:26:23
+   |
+LL | fn hrtb() -> impl for<'a> Higher<'a, Output = impl Sized> {}
+   |                       ^^
+   = note: all lifetimes in scope will be captured by `impl Trait`s in edition 2024
+help: use the precise capturing `use<...>` syntax to make the captures explicit
+   |
+LL | fn hrtb() -> impl for<'a> Higher<'a, Output = impl use<> Sized> {}
+   |                                                    +++++
+
+error: aborting due to 4 previous errors
+

@@ -1,0 +1,7 @@
+//@ run-rustfix
+use std::rc::Rc;
+
+pub fn main() {
+    let _x = <Vec<i32> as Clone>::clone(&Rc::new(vec![1, 2]).clone()).into_iter();
+    //~^ ERROR [E0507]
+}

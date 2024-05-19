@@ -1,0 +1,85 @@
+use clippy_utils::diagnostics::span_lint_and_then;
+use rustc_errors::Applicability;
+use rustc_hir::{Item, ItemKind};
+use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::ty::layout::LayoutOf;
+use rustc_middle::ty::{self, ConstKind};
+use rustc_session::impl_lint_pass;
+use rustc_span::{BytePos, Pos, Span};
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for large `const` arrays that should
+    /// be defined as `static` instead.
+    ///
+    /// ### Why is this bad?
+    /// Performance: const variables are inlined upon use.
+    /// Static items result in only one instance and has a fixed location in memory.
+    ///
+    /// ### Example
+    /// ```rust,ignore
+    /// pub const a = [0u32; 1_000_000];
+    /// ```
+    ///
+    /// Use instead:
+    /// ```rust,ignore
+    /// pub static a = [0u32; 1_000_000];
+    /// ```
+    #[clippy::version = "1.44.0"]
+    pub LARGE_CONST_ARRAYS,
+    perf,
+    "large non-scalar const array may cause performance overhead"
+}
+
+pub struct LargeConstArrays {
+    maximum_allowed_size: u128,
+}
+
+impl LargeConstArrays {
+    #[must_use]
+    pub fn new(maximum_allowed_size: u128) -> Self {
+        Self { maximum_allowed_size }
+    }
+}
+
+impl_lint_pass!(LargeConstArrays => [LARGE_CONST_ARRAYS]);
+
+impl<'tcx> LateLintPass<'tcx> for LargeConstArrays {
+    fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
+        if !item.span.from_expansion()
+            && let ItemKind::Const(_, generics, _) = &item.kind
+            // Since static items may not have generics, skip generic const items.
+            // FIXME(generic_const_items): I don't think checking `generics.hwcp` suffices as it
+            // doesn't account for empty where-clauses that only consist of keyword `where` IINM.
+            && generics.params.is_empty() && !generics.has_where_clause_predicates
+            && let ty = cx.tcx.type_of(item.owner_id).instantiate_identity()
+            && let ty::Array(element_type, cst) = ty.kind()
+            && let ConstKind::Value(ty::ValTree::Leaf(element_count)) = cst.kind()
+            && let Ok(element_count) = element_count.try_to_target_usize(cx.tcx)
+            && let Ok(element_size) = cx.layout_of(*element_type).map(|l| l.size.bytes())
+            && self.maximum_allowed_size < u128::from(element_count) * u128::from(element_size)
+        {
+            let hi_pos = item.ident.span.lo() - BytePos::from_usize(1);
+            let sugg_span = Span::new(
+                hi_pos - BytePos::from_usize("const".len()),
+                hi_pos,
+                item.span.ctxt(),
+                item.span.parent(),
+            );
+            span_lint_and_then(
+                cx,
+                LARGE_CONST_ARRAYS,
+                item.span,
+                "large array defined as const",
+                |diag| {
+                    diag.span_suggestion(
+                        sugg_span,
+                        "make this a static item",
+                        "static",
+                        Applicability::MachineApplicable,
+                    );
+                },
+            );
+        }
+    }
+}

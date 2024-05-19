@@ -1,0 +1,27 @@
+error[E0703]: invalid ABI: found `riscv-interrupt`
+  --> $DIR/riscv-discoverability-guidance.rs:17:8
+   |
+LL | extern "riscv-interrupt" fn isr() {}
+   |        ^^^^^^^^^^^^^^^^^
+   |        |
+   |        invalid ABI
+   |        help: did you mean: `"riscv-interrupt-m"`
+   |
+   = note: invoke `rustc --print=calling-conventions` for a full list of supported calling conventions.
+   = note: please use one of riscv-interrupt-m or riscv-interrupt-s for machine- or supervisor-level interrupts, respectively
+
+error[E0703]: invalid ABI: found `riscv-interrupt-u`
+  --> $DIR/riscv-discoverability-guidance.rs:23:8
+   |
+LL | extern "riscv-interrupt-u" fn isr_U() {}
+   |        ^^^^^^^^^^^^^^^^^^^
+   |        |
+   |        invalid ABI
+   |        help: did you mean: `"riscv-interrupt-m"`
+   |
+   = note: invoke `rustc --print=calling-conventions` for a full list of supported calling conventions.
+   = note: user-mode interrupt handlers have been removed from LLVM pending standardization, see: https://reviews.llvm.org/D149314
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0703`.

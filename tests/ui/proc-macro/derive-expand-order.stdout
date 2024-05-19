@@ -1,0 +1,5 @@
+Derive First: #[derive(Second)] #[derive(Third, Fourth)] #[derive(Fifth)] pub struct Foo {}
+Derive Second: #[derive(Third, Fourth)] #[derive(Fifth)] pub struct Foo {}
+Derive Third: #[derive(Fifth)] pub struct Foo {}
+Derive Fourth: #[derive(Fifth)] pub struct Foo {}
+Derive Fifth: pub struct Foo {}

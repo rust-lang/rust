@@ -1,0 +1,55 @@
+error: expected `{`, found keyword `let`
+  --> $DIR/block-no-opening-brace.rs:9:9
+   |
+LL |     loop
+   |     ---- while parsing this `loop` expression
+LL |         let x = 0;
+   |         ^^^ expected `{`
+   |
+help: try placing this code inside a block
+   |
+LL |         { let x = 0; }
+   |         +            +
+
+error: expected `{`, found keyword `let`
+  --> $DIR/block-no-opening-brace.rs:15:9
+   |
+LL |     while true
+   |     ----- ---- this `while` condition successfully parsed
+   |     |
+   |     while parsing the body of this `while` expression
+LL |         let x = 0;
+   |         ^^^ expected `{`
+   |
+help: try placing this code inside a block
+   |
+LL |         { let x = 0; }
+   |         +            +
+
+error: expected `{`, found keyword `let`
+  --> $DIR/block-no-opening-brace.rs:20:9
+   |
+LL |         let x = 0;
+   |         ^^^ expected `{`
+   |
+help: try placing this code inside a block
+   |
+LL |         { let x = 0; }
+   |         +            +
+
+error: expected expression, found reserved keyword `try`
+  --> $DIR/block-no-opening-brace.rs:24:5
+   |
+LL |     try
+   |     ^^^ expected expression
+
+error: expected one of `move`, `|`, or `||`, found keyword `let`
+  --> $DIR/block-no-opening-brace.rs:30:9
+   |
+LL |     async
+   |          - expected one of `move`, `|`, or `||`
+LL |         let x = 0;
+   |         ^^^ unexpected token
+
+error: aborting due to 5 previous errors
+

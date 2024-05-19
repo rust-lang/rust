@@ -1,0 +1,13 @@
+error: empty string literal in `println!`
+  --> tests/ui/crashes/ice-10148.rs:8:5
+   |
+LL |     println!(with_span!(""something ""));
+   |     ^^^^^^^^^^^^^^^^^^^^-----------^^^^^
+   |                         |
+   |                         help: remove the empty string
+   |
+   = note: `-D clippy::println-empty-string` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::println_empty_string)]`
+
+error: aborting due to 1 previous error
+

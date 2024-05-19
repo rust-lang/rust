@@ -1,0 +1,19 @@
+error[E0515]: cannot return value referencing temporary value
+  --> $DIR/regions-lifetime-of-struct-or-enum-variant.rs:15:3
+   |
+LL |   let testValue = &id(Test);
+   |                    -------- temporary value created here
+LL |   testValue
+   |   ^^^^^^^^^ returns a value referencing data owned by the current function
+
+error[E0515]: cannot return value referencing temporary value
+  --> $DIR/regions-lifetime-of-struct-or-enum-variant.rs:21:3
+   |
+LL |   let testValue = &id(MyEnum::Variant1);
+   |                    -------------------- temporary value created here
+LL |   testValue
+   |   ^^^^^^^^^ returns a value referencing data owned by the current function
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0515`.

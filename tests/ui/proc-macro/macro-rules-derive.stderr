@@ -1,0 +1,14 @@
+error[E0412]: cannot find type `MissingType` in this scope
+  --> $DIR/macro-rules-derive.rs:10:20
+   |
+LL |             field: MissingType
+   |                    ^^^^^^^^^^^ not found in this scope
+...
+LL | produce_it!(MyName);
+   | ------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `produce_it` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0412`.

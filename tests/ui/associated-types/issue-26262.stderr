@@ -1,0 +1,15 @@
+error[E0207]: the type parameter `T` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/issue-26262.rs:7:6
+   |
+LL | impl<T: Tr> S<T::Assoc> {
+   |      ^ unconstrained type parameter
+
+error[E0207]: the lifetime parameter `'a` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/issue-26262.rs:17:6
+   |
+LL | impl<'a,T: Trait2<'a>> Trait1<<T as Trait2<'a>>::Foo> for T {
+   |      ^^ unconstrained lifetime parameter
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0207`.

@@ -1,0 +1,22 @@
+error: `#[doc(test(...)]` takes a list of attributes
+  --> $DIR/doc-test-attr.rs:3:8
+   |
+LL | #![doc(test)]
+   |        ^^^^
+   |
+   = note: `#[deny(invalid_doc_attributes)]` on by default
+
+error: `#[doc(test(...)]` takes a list of attributes
+  --> $DIR/doc-test-attr.rs:5:8
+   |
+LL | #![doc(test = "hello")]
+   |        ^^^^^^^^^^^^^^
+
+error: unknown `doc(test)` attribute `a`
+  --> $DIR/doc-test-attr.rs:7:13
+   |
+LL | #![doc(test(a))]
+   |             ^
+
+error: aborting due to 3 previous errors
+

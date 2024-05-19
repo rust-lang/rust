@@ -1,0 +1,12 @@
+error[E0191]: the value of the associated type `A` in `Foo` must be specified
+  --> $DIR/issue-19482.rs:10:16
+   |
+LL |     type A;
+   |     ------ `A` defined here
+...
+LL | fn bar(x: &dyn Foo) {}
+   |                ^^^ help: specify the associated type: `Foo<A = Type>`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0191`.

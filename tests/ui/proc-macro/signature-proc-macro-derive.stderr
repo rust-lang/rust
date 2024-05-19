@@ -1,0 +1,38 @@
+error: derive proc macro has incorrect signature
+  --> $DIR/signature-proc-macro-derive.rs:10:25
+   |
+LL | pub fn bad_input(input: String) -> TokenStream {
+   |                         ^^^^^^ expected `proc_macro::TokenStream`, found `std::string::String`
+   |
+   = note: expected signature `fn(proc_macro::TokenStream) -> proc_macro::TokenStream`
+              found signature `fn(std::string::String) -> proc_macro::TokenStream`
+
+error: derive proc macro has incorrect signature
+  --> $DIR/signature-proc-macro-derive.rs:16:42
+   |
+LL | pub fn bad_output(input: TokenStream) -> String {
+   |                                          ^^^^^^ expected `proc_macro::TokenStream`, found `std::string::String`
+   |
+   = note: expected signature `fn(proc_macro::TokenStream) -> proc_macro::TokenStream`
+              found signature `fn(proc_macro::TokenStream) -> std::string::String`
+
+error: derive proc macro has incorrect signature
+  --> $DIR/signature-proc-macro-derive.rs:22:30
+   |
+LL | pub fn bad_everything(input: String) -> String {
+   |                              ^^^^^^ expected `proc_macro::TokenStream`, found `std::string::String`
+   |
+   = note: expected signature `fn(proc_macro::TokenStream) -> proc_macro::TokenStream`
+              found signature `fn(std::string::String) -> std::string::String`
+
+error: derive proc macro has incorrect signature
+  --> $DIR/signature-proc-macro-derive.rs:28:36
+   |
+LL | pub fn too_many(a: TokenStream, b: TokenStream, c: String) -> TokenStream {
+   |                                    ^^^^^^^^^^^ incorrect number of function parameters
+   |
+   = note: expected signature `fn(proc_macro::TokenStream) -> proc_macro::TokenStream`
+              found signature `fn(proc_macro::TokenStream, proc_macro::TokenStream, std::string::String) -> proc_macro::TokenStream`
+
+error: aborting due to 4 previous errors
+

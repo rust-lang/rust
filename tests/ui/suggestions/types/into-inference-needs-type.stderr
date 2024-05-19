@@ -1,0 +1,19 @@
+error[E0283]: type annotations needed
+  --> $DIR/into-inference-needs-type.rs:12:10
+   |
+LL |         .into()?;
+   |          ^^^^
+   |
+   = note: cannot satisfy `_: From<FilterMap<Map<std::slice::Iter<'_, &str>, {closure@$DIR/into-inference-needs-type.rs:10:14: 10:17}>, fn(Option<&str>) -> Option<Option<&str>> {Option::<Option<&str>>::Some}>>`
+   = note: required for `FilterMap<Map<std::slice::Iter<'_, &str>, {closure@$DIR/into-inference-needs-type.rs:10:14: 10:17}>, fn(Option<&str>) -> Option<Option<&str>> {Option::<Option<&str>>::Some}>` to implement `Into<_>`
+help: try using a fully qualified path to specify the expected types
+   |
+LL ~     let list = <FilterMap<Map<std::slice::Iter<'_, &str>, _>, _> as Into<T>>::into(vec
+LL |         .iter()
+LL |         .map(|s| s.strip_prefix("t"))
+LL ~         .filter_map(Option::Some))?;
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0283`.

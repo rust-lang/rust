@@ -1,0 +1,9 @@
+#![allow(clippy::unnecessary_operation)]
+#![warn(clippy::bytes_nth)]
+
+fn main() {
+    let s = String::from("String");
+    let _ = s.as_bytes().get(3).copied();
+    let _ = &s.as_bytes()[3];
+    let _ = s[..].as_bytes().get(3).copied();
+}

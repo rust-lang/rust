@@ -1,0 +1,21 @@
+error[E0283]: type annotations needed
+  --> $DIR/issue-88382.rs:26:40
+   |
+LL |     do_something(SomeImplementation(), test);
+   |                                        ^^^^ cannot infer type of the type parameter `I` declared on the function `test`
+   |
+   = note: cannot satisfy `_: Iterable`
+   = help: the trait `Iterable` is implemented for `SomeImplementation`
+note: required by a bound in `test`
+  --> $DIR/issue-88382.rs:29:16
+   |
+LL | fn test<'a, I: Iterable>(_: &mut I::Iterator<'a>) {}
+   |                ^^^^^^^^ required by this bound in `test`
+help: consider specifying the generic argument
+   |
+LL |     do_something(SomeImplementation(), test::<I>);
+   |                                            +++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0283`.

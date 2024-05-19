@@ -1,0 +1,4 @@
+error: the crate `needs_abort` requires panic strategy `abort` which is incompatible with this crate's strategy of `unwind`
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,17 @@
+error: range is out of bounds
+  --> tests/ui/out_of_bounds_indexing/issue-3102.rs:9:13
+   |
+LL |     &x[num..10];
+   |             ^^
+   |
+   = note: `-D clippy::out-of-bounds-indexing` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::out_of_bounds_indexing)]`
+
+error: range is out of bounds
+  --> tests/ui/out_of_bounds_indexing/issue-3102.rs:12:8
+   |
+LL |     &x[10..num];
+   |        ^^
+
+error: aborting due to 2 previous errors
+

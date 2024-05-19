@@ -1,0 +1,72 @@
+error[E0432]: unresolved import `qux::bar`
+  --> $DIR/unresolved-imports-used.rs:10:5
+   |
+LL | use qux::bar;
+   |     ^^^^^^^^ no `bar` in `qux`
+
+error[E0432]: unresolved import `qux::bar2`
+  --> $DIR/unresolved-imports-used.rs:13:5
+   |
+LL | use qux::bar2;
+   |     ^^^^^^^^^ no `bar2` in `qux`
+
+error[E0432]: unresolved import `foo`
+  --> $DIR/unresolved-imports-used.rs:11:5
+   |
+LL | use foo::bar;
+   |     ^^^ maybe a missing crate `foo`?
+   |
+   = help: consider adding `extern crate foo` to use the `foo` crate
+
+error[E0432]: unresolved import `baz`
+  --> $DIR/unresolved-imports-used.rs:12:5
+   |
+LL | use baz::*;
+   |     ^^^ maybe a missing crate `baz`?
+   |
+   = help: consider adding `extern crate baz` to use the `baz` crate
+
+error[E0432]: unresolved import `foo2`
+  --> $DIR/unresolved-imports-used.rs:14:5
+   |
+LL | use foo2::bar2;
+   |     ^^^^ maybe a missing crate `foo2`?
+   |
+   = help: consider adding `extern crate foo2` to use the `foo2` crate
+
+error[E0432]: unresolved import `baz2`
+  --> $DIR/unresolved-imports-used.rs:15:5
+   |
+LL | use baz2::*;
+   |     ^^^^ maybe a missing crate `baz2`?
+   |
+   = help: consider adding `extern crate baz2` to use the `baz2` crate
+
+error[E0603]: function `quz` is private
+  --> $DIR/unresolved-imports-used.rs:9:10
+   |
+LL | use qux::quz;
+   |          ^^^ private function
+   |
+note: the function `quz` is defined here
+  --> $DIR/unresolved-imports-used.rs:5:4
+   |
+LL |    fn quz() {}
+   |    ^^^^^^^^
+
+error: unused import: `qux::quy`
+  --> $DIR/unresolved-imports-used.rs:16:5
+   |
+LL | use qux::quy;
+   |     ^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/unresolved-imports-used.rs:2:9
+   |
+LL | #![deny(unused_imports)]
+   |         ^^^^^^^^^^^^^^
+
+error: aborting due to 8 previous errors
+
+Some errors have detailed explanations: E0432, E0603.
+For more information about an error, try `rustc --explain E0432`.

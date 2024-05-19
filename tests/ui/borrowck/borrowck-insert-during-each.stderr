@@ -1,0 +1,32 @@
+error[E0501]: cannot borrow `*f` as mutable because previous closure requires unique access
+  --> $DIR/borrowck-insert-during-each.rs:16:5
+   |
+LL |       f.foo(
+   |       ^ --- first borrow later used by call
+   |  _____|
+   | |
+LL | |
+LL | |         |a| {
+   | |         --- closure construction occurs here
+LL | |             f.n.insert(*a);
+   | |             --- first borrow occurs due to use of `f` in closure
+LL | |         })
+   | |__________^ second borrow occurs here
+
+error[E0500]: closure requires unique access to `f` but it is already borrowed
+  --> $DIR/borrowck-insert-during-each.rs:18:9
+   |
+LL |     f.foo(
+   |     - --- first borrow later used by call
+   |     |
+   |     borrow occurs here
+LL |
+LL |         |a| {
+   |         ^^^ closure construction occurs here
+LL |             f.n.insert(*a);
+   |             --- second borrow occurs due to use of `f` in closure
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0500, E0501.
+For more information about an error, try `rustc --explain E0500`.

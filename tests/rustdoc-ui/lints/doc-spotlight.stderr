@@ -1,0 +1,12 @@
+error: unknown `doc` attribute `spotlight`
+  --> $DIR/doc-spotlight.rs:4:7
+   |
+LL | #[doc(spotlight)]
+   |       ^^^^^^^^^ help: use `notable_trait` instead
+   |
+   = note: `doc(spotlight)` was renamed to `doc(notable_trait)`
+   = note: `doc(spotlight)` is now a no-op
+   = note: `#[deny(invalid_doc_attributes)]` on by default
+
+error: aborting due to 1 previous error
+
