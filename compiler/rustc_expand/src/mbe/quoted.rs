@@ -62,7 +62,10 @@ pub(super) fn parse(
         match tree {
             TokenTree::MetaVar(start_sp, ident) if parsing_patterns => {
                 let span = match trees.next() {
-                    Some(&tokenstream::TokenTree::Token(Token { kind: token::Colon, span }, _)) => {
+                    Some(&tokenstream::TokenTree::Token(
+                        Token { kind: token::Colon, span: colon_span },
+                        _,
+                    )) => {
                         match trees.next() {
                             Some(tokenstream::TokenTree::Token(token, _)) => match token.ident() {
                                 Some((fragment, _)) => {
@@ -126,10 +129,12 @@ pub(super) fn parse(
                                 }
                                 _ => token.span,
                             },
-                            tree => tree.map_or(span, tokenstream::TokenTree::span),
+                            Some(tree) => tree.span(),
+                            None => colon_span,
                         }
                     }
-                    tree => tree.map_or(start_sp, tokenstream::TokenTree::span),
+                    Some(tree) => tree.span(),
+                    None => start_sp,
                 };
 
                 result.push(TokenTree::MetaVarDecl(span, ident, None));
