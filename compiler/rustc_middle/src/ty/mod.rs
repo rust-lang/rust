@@ -536,14 +536,10 @@ unsafe impl<'tcx> Sync for Term<'tcx> where &'tcx (Ty<'tcx>, Const<'tcx>): Sync 
 
 impl Debug for Term<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let data = if let Some(ty) = self.ty() {
-            format!("Term::Ty({ty:?})")
-        } else if let Some(ct) = self.ct() {
-            format!("Term::Ct({ct:?})")
-        } else {
-            unreachable!()
-        };
-        f.write_str(&data)
+        match self.unpack() {
+            TermKind::Ty(ty) => write!(f, "Term::Ty({ty:?})"),
+            TermKind::Const(ct) => write!(f, "Term::Const({ct:?})"),
+        }
     }
 }
 
