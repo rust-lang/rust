@@ -299,13 +299,13 @@ fn calc_unused_spans(
 
             let mut unused_spans = Vec::new();
             let mut to_remove = Vec::new();
-            let mut used_childs = 0;
+            let mut used_children = 0;
             let mut contains_self = false;
             let mut previous_unused = false;
             for (pos, (use_tree, use_tree_id)) in nested.iter().enumerate() {
                 let remove = match calc_unused_spans(unused_import, use_tree, *use_tree_id) {
                     UnusedSpanResult::Used => {
-                        used_childs += 1;
+                        used_children += 1;
                         None
                     }
                     UnusedSpanResult::Unused { mut spans, remove } => {
@@ -313,7 +313,7 @@ fn calc_unused_spans(
                         Some(remove)
                     }
                     UnusedSpanResult::PartialUnused { mut spans, remove: mut to_remove_extra } => {
-                        used_childs += 1;
+                        used_children += 1;
                         unused_spans.append(&mut spans);
                         to_remove.append(&mut to_remove_extra);
                         None
@@ -322,7 +322,7 @@ fn calc_unused_spans(
                 if let Some(remove) = remove {
                     let remove_span = if nested.len() == 1 {
                         remove
-                    } else if pos == nested.len() - 1 || used_childs > 0 {
+                    } else if pos == nested.len() - 1 || used_children > 0 {
                         // Delete everything from the end of the last import, to delete the
                         // previous comma
                         nested[pos - 1].0.span.shrink_to_hi().to(use_tree.span)
@@ -346,7 +346,7 @@ fn calc_unused_spans(
             }
             if unused_spans.is_empty() {
                 UnusedSpanResult::Used
-            } else if used_childs == 0 {
+            } else if used_children == 0 {
                 UnusedSpanResult::Unused { spans: unused_spans, remove: full_span }
             } else {
                 // If there is only one remaining child that is used, the braces around the use
@@ -360,7 +360,7 @@ fn calc_unused_spans(
                 // `self`: `use foo::{self};` is valid Rust syntax, while `use foo::self;` errors
                 // out. We also cannot turn `use foo::{self}` into `use foo`, as the former doesn't
                 // import types with the same name as the module.
-                if used_childs == 1 && !contains_self {
+                if used_children == 1 && !contains_self {
                     // Left brace, from the start of the nested group to the first item.
                     to_remove.push(
                         tree_span.shrink_to_lo().to(nested.first().unwrap().0.span.shrink_to_lo()),

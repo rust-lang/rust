@@ -1,8 +1,6 @@
 #![allow(dead_code)]
 
-use super::abi;
-use super::abi::timespec;
-use super::abi::{CLOCK_MONOTONIC, CLOCK_REALTIME, NSEC_PER_SEC};
+use super::hermit_abi::{self, timespec, CLOCK_MONOTONIC, CLOCK_REALTIME, NSEC_PER_SEC};
 use crate::cmp::Ordering;
 use crate::ops::{Add, AddAssign, Sub, SubAssign};
 use crate::time::Duration;
@@ -106,7 +104,8 @@ pub struct Instant(Timespec);
 impl Instant {
     pub fn now() -> Instant {
         let mut time: Timespec = Timespec::zero();
-        let _ = unsafe { abi::clock_gettime(CLOCK_MONOTONIC, core::ptr::addr_of_mut!(time.t)) };
+        let _ =
+            unsafe { hermit_abi::clock_gettime(CLOCK_MONOTONIC, core::ptr::addr_of_mut!(time.t)) };
 
         Instant(time)
     }
@@ -207,7 +206,8 @@ impl SystemTime {
 
     pub fn now() -> SystemTime {
         let mut time: Timespec = Timespec::zero();
-        let _ = unsafe { abi::clock_gettime(CLOCK_REALTIME, core::ptr::addr_of_mut!(time.t)) };
+        let _ =
+            unsafe { hermit_abi::clock_gettime(CLOCK_REALTIME, core::ptr::addr_of_mut!(time.t)) };
 
         SystemTime(time)
     }

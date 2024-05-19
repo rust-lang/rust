@@ -1,4 +1,4 @@
-use super::abi;
+use super::hermit_abi;
 use crate::io;
 use crate::io::{IoSlice, IoSliceMut};
 
@@ -37,7 +37,7 @@ impl io::Write for Stdout {
     fn write(&mut self, data: &[u8]) -> io::Result<usize> {
         let len;
 
-        unsafe { len = abi::write(1, data.as_ptr() as *const u8, data.len()) }
+        unsafe { len = hermit_abi::write(1, data.as_ptr() as *const u8, data.len()) }
 
         if len < 0 {
             Err(io::const_io_error!(io::ErrorKind::Uncategorized, "Stdout is not able to print"))
@@ -49,7 +49,7 @@ impl io::Write for Stdout {
     fn write_vectored(&mut self, data: &[IoSlice<'_>]) -> io::Result<usize> {
         let len;
 
-        unsafe { len = abi::write(1, data.as_ptr() as *const u8, data.len()) }
+        unsafe { len = hermit_abi::write(1, data.as_ptr() as *const u8, data.len()) }
 
         if len < 0 {
             Err(io::const_io_error!(io::ErrorKind::Uncategorized, "Stdout is not able to print"))
@@ -78,7 +78,7 @@ impl io::Write for Stderr {
     fn write(&mut self, data: &[u8]) -> io::Result<usize> {
         let len;
 
-        unsafe { len = abi::write(2, data.as_ptr() as *const u8, data.len()) }
+        unsafe { len = hermit_abi::write(2, data.as_ptr() as *const u8, data.len()) }
 
         if len < 0 {
             Err(io::const_io_error!(io::ErrorKind::Uncategorized, "Stderr is not able to print"))
@@ -90,7 +90,7 @@ impl io::Write for Stderr {
     fn write_vectored(&mut self, data: &[IoSlice<'_>]) -> io::Result<usize> {
         let len;
 
-        unsafe { len = abi::write(2, data.as_ptr() as *const u8, data.len()) }
+        unsafe { len = hermit_abi::write(2, data.as_ptr() as *const u8, data.len()) }
 
         if len < 0 {
             Err(io::const_io_error!(io::ErrorKind::Uncategorized, "Stderr is not able to print"))

@@ -1,0 +1,12 @@
+error[E0277]: the trait bound `&str: AsExpression<Integer>` is not satisfied
+  --> $DIR/as_expression.rs:57:15
+   |
+LL |     SelectInt.check("bar");
+   |               ^^^^^ the trait `AsExpression<Integer>` is not implemented for `&str`
+   |
+   = help: the trait `AsExpression<Text>` is implemented for `&str`
+   = help: for that trait implementation, expected `Text`, found `Integer`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

@@ -236,7 +236,6 @@ run-make/rustc-macro-dep-files/Makefile
 run-make/rustdoc-io-error/Makefile
 run-make/rustdoc-scrape-examples-macros/Makefile
 run-make/rustdoc-scrape-examples-multiple/Makefile
-run-make/rustdoc-scrape-examples-test/Makefile
 run-make/rustdoc-scrape-examples-whitespace/Makefile
 run-make/rustdoc-verify-output-files/Makefile
 run-make/rustdoc-with-output-option/Makefile
