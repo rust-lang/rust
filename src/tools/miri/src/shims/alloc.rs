@@ -172,4 +172,45 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             }
         }
     }
+
+    fn aligned_alloc(
+        &mut self,
+        align: &OpTy<'tcx, Provenance>,
+        size: &OpTy<'tcx, Provenance>,
+    ) -> InterpResult<'tcx, Pointer<Option<Provenance>>> {
+        let this = self.eval_context_mut();
+        let align = this.read_target_usize(align)?;
+        let size = this.read_target_usize(size)?;
+
+        // Alignment must be a power of 2, and "supported by the implementation".
+        // We decide that "supported by the implementation" means that the
+        // size must be a multiple of the alignment. (This restriction seems common
+        // enough that it is stated on <https://en.cppreference.com/w/c/memory/aligned_alloc>
+        // as a general rule, but the actual standard has no such rule.)
+        // If any of these are violated, we have to return NULL.
+        // All fundamental alignments must be supported.
+        //
+        // macOS and Illumos are buggy in that they require the alignment
+        // to be at least the size of a pointer, so they do not support all fundamental
+        // alignments. We do not emulate those platform bugs.
+        //
+        // Linux also sets errno to EINVAL, but that's non-standard behavior that we do not
+        // emulate.
+        // FreeBSD says some of these cases are UB but that's violating the C standard.
+        // http://en.cppreference.com/w/cpp/memory/c/aligned_alloc
+        // Linux: https://linux.die.net/man/3/aligned_alloc
+        // FreeBSD: https://man.freebsd.org/cgi/man.cgi?query=aligned_alloc&apropos=0&sektion=3&manpath=FreeBSD+9-current&format=html
+        match size.checked_rem(align) {
+            Some(0) if align.is_power_of_two() => {
+                let align = align.max(this.malloc_align(size).bytes());
+                let ptr = this.allocate_ptr(
+                    Size::from_bytes(size),
+                    Align::from_bytes(align).unwrap(),
+                    MiriMemoryKind::C.into(),
+                )?;
+                Ok(ptr.into())
+            }
+            _ => Ok(Pointer::null()),
+        }
+    }
 }

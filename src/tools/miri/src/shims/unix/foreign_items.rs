@@ -295,6 +295,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     }
                 }
             }
+            "aligned_alloc" => {
+                // This is a C11 function, we assume all Unixes have it.
+                // (MSVC explicitly does not support this.)
+                let [align, size] =
+                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let res = this.aligned_alloc(align, size)?;
+                this.write_pointer(res, dest)?;
+            }
 
             // Dynamic symbol loading
             "dlsym" => {
