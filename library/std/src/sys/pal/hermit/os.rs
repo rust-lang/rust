@@ -1,4 +1,4 @@
-use super::abi;
+use super::hermit_abi;
 use crate::collections::HashMap;
 use crate::error::Error as StdError;
 use crate::ffi::{CStr, OsStr, OsString};
@@ -14,11 +14,11 @@ use crate::vec;
 use core::slice::memchr;
 
 pub fn errno() -> i32 {
-    unsafe { abi::get_errno() }
+    unsafe { hermit_abi::get_errno() }
 }
 
 pub fn error_string(errno: i32) -> String {
-    abi::error_string(errno).to_string()
+    hermit_abi::error_string(errno).to_string()
 }
 
 pub fn getcwd() -> io::Result<PathBuf> {
@@ -197,10 +197,10 @@ pub fn home_dir() -> Option<PathBuf> {
 
 pub fn exit(code: i32) -> ! {
     unsafe {
-        abi::exit(code);
+        hermit_abi::exit(code);
     }
 }
 
 pub fn getpid() -> u32 {
-    unsafe { abi::getpid() }
+    unsafe { hermit_abi::getpid() }
 }
