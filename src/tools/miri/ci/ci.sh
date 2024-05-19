@@ -144,16 +144,16 @@ case $HOST_TARGET in
     TEST_TARGET=arm-unknown-linux-gnueabi run_tests
     TEST_TARGET=s390x-unknown-linux-gnu run_tests # big-endian architecture of choice
     # Partially supported targets (tier 2)
-    VERY_BASIC="integer vec string btreemap" # common things we test on all of them (if they have std), requires no target-specific shims
-    BASIC="$VERY_BASIC hello hashmap alloc align" # ensures we have the shims for stdout and basic data structures
-    TEST_TARGET=x86_64-unknown-freebsd run_tests_minimal $BASIC panic/panic concurrency/simple atomic threadname libc-mem libc-misc libc-random libc-time fs env num_cpus
-    TEST_TARGET=i686-unknown-freebsd   run_tests_minimal $BASIC panic/panic concurrency/simple atomic threadname libc-mem libc-misc libc-random libc-time fs env num_cpus
-    TEST_TARGET=x86_64-unknown-illumos run_tests_minimal $VERY_BASIC hello panic/panic concurrency/simple pthread-sync libc-mem libc-misc libc-random
-    TEST_TARGET=x86_64-pc-solaris run_tests_minimal $VERY_BASIC hello panic/panic concurrency/simple pthread-sync libc-mem libc-misc libc-random
-    TEST_TARGET=aarch64-linux-android  run_tests_minimal $VERY_BASIC hello panic/panic
-    TEST_TARGET=wasm32-wasi run_tests_minimal $VERY_BASIC wasm
-    TEST_TARGET=wasm32-unknown-unknown run_tests_minimal $VERY_BASIC wasm
-    TEST_TARGET=thumbv7em-none-eabihf run_tests_minimal no_std
+    BASIC="empty_main integer vec string btreemap hello hashmap heap_alloc align" # ensures we have the basics: stdout/stderr, system allocator, randomness (for HashMap initialization)
+    UNIX="panic/panic panic/unwind concurrency/simple atomic libc-mem libc-misc libc-random env num_cpus" # the things that are very similar across all Unixes, and hence easily supported there
+    TEST_TARGET=x86_64-unknown-freebsd run_tests_minimal $BASIC $UNIX threadname libc-time fs
+    TEST_TARGET=i686-unknown-freebsd   run_tests_minimal $BASIC $UNIX threadname libc-time fs
+    TEST_TARGET=x86_64-unknown-illumos run_tests_minimal $BASIC $UNIX pthread-sync
+    TEST_TARGET=x86_64-pc-solaris      run_tests_minimal $BASIC $UNIX pthread-sync
+    TEST_TARGET=aarch64-linux-android  run_tests_minimal $BASIC $UNIX
+    TEST_TARGET=wasm32-wasip2          run_tests_minimal empty_main wasm heap_alloc libc-mem
+    TEST_TARGET=wasm32-unknown-unknown run_tests_minimal empty_main wasm
+    TEST_TARGET=thumbv7em-none-eabihf  run_tests_minimal no_std
     # Custom target JSON file
     TEST_TARGET=tests/avr.json MIRI_NO_STD=1 run_tests_minimal no_std
     ;;

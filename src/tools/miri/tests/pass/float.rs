@@ -1,5 +1,6 @@
 #![feature(stmt_expr_attributes)]
 #![feature(float_gamma)]
+#![feature(core_intrinsics)]
 #![allow(arithmetic_overflow)]
 
 use std::fmt::Debug;
@@ -22,6 +23,8 @@ fn main() {
     rounding();
     mul_add();
     libm();
+    test_fast();
+    test_algebraic();
 }
 
 // Helper function to avoid promotion so that this tests "run-time" casts, not CTFE.
@@ -750,4 +753,68 @@ pub fn libm() {
     let (val, sign) = (-0.5f64).ln_gamma();
     assert_approx_eq!(val, (2.0 * f64::consts::PI.sqrt()).ln());
     assert_eq!(sign, -1);
+}
+
+fn test_fast() {
+    use std::intrinsics::{fadd_fast, fdiv_fast, fmul_fast, frem_fast, fsub_fast};
+
+    #[inline(never)]
+    pub fn test_operations_f64(a: f64, b: f64) {
+        // make sure they all map to the correct operation
+        unsafe {
+            assert_eq!(fadd_fast(a, b), a + b);
+            assert_eq!(fsub_fast(a, b), a - b);
+            assert_eq!(fmul_fast(a, b), a * b);
+            assert_eq!(fdiv_fast(a, b), a / b);
+            assert_eq!(frem_fast(a, b), a % b);
+        }
+    }
+
+    #[inline(never)]
+    pub fn test_operations_f32(a: f32, b: f32) {
+        // make sure they all map to the correct operation
+        unsafe {
+            assert_eq!(fadd_fast(a, b), a + b);
+            assert_eq!(fsub_fast(a, b), a - b);
+            assert_eq!(fmul_fast(a, b), a * b);
+            assert_eq!(fdiv_fast(a, b), a / b);
+            assert_eq!(frem_fast(a, b), a % b);
+        }
+    }
+
+    test_operations_f64(1., 2.);
+    test_operations_f64(10., 5.);
+    test_operations_f32(11., 2.);
+    test_operations_f32(10., 15.);
+}
+
+fn test_algebraic() {
+    use std::intrinsics::{
+        fadd_algebraic, fdiv_algebraic, fmul_algebraic, frem_algebraic, fsub_algebraic,
+    };
+
+    #[inline(never)]
+    pub fn test_operations_f64(a: f64, b: f64) {
+        // make sure they all map to the correct operation
+        assert_eq!(fadd_algebraic(a, b), a + b);
+        assert_eq!(fsub_algebraic(a, b), a - b);
+        assert_eq!(fmul_algebraic(a, b), a * b);
+        assert_eq!(fdiv_algebraic(a, b), a / b);
+        assert_eq!(frem_algebraic(a, b), a % b);
+    }
+
+    #[inline(never)]
+    pub fn test_operations_f32(a: f32, b: f32) {
+        // make sure they all map to the correct operation
+        assert_eq!(fadd_algebraic(a, b), a + b);
+        assert_eq!(fsub_algebraic(a, b), a - b);
+        assert_eq!(fmul_algebraic(a, b), a * b);
+        assert_eq!(fdiv_algebraic(a, b), a / b);
+        assert_eq!(frem_algebraic(a, b), a % b);
+    }
+
+    test_operations_f64(1., 2.);
+    test_operations_f64(10., 5.);
+    test_operations_f32(11., 2.);
+    test_operations_f32(10., 15.);
 }

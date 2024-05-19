@@ -2,7 +2,6 @@
 //! Currently just a stub.
 use std::io;
 
-use rustc_middle::ty::TyCtxt;
 use rustc_target::abi::Endian;
 
 use crate::shims::unix::*;
@@ -52,11 +51,11 @@ impl FileDescription for Event {
         &mut self,
         _communicate_allowed: bool,
         bytes: &[u8],
-        tcx: TyCtxt<'tcx>,
+        ecx: &mut MiriInterpCx<'_, 'tcx>,
     ) -> InterpResult<'tcx, io::Result<usize>> {
         let bytes: [u8; 8] = bytes.try_into().unwrap(); // FIXME fail gracefully when this has the wrong size
         // Convert from target endianness to host endianness.
-        let num = match tcx.sess.target.endian {
+        let num = match ecx.tcx.sess.target.endian {
             Endian::Little => u64::from_le_bytes(bytes),
             Endian::Big => u64::from_be_bytes(bytes),
         };

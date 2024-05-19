@@ -459,7 +459,7 @@ pub fn report_error<'tcx, 'mir>(
 
 pub fn report_leaks<'mir, 'tcx>(
     ecx: &InterpCx<'mir, 'tcx, MiriMachine<'mir, 'tcx>>,
-    leaks: Vec<(AllocId, MemoryKind, Allocation<Provenance, AllocExtra<'tcx>>)>,
+    leaks: Vec<(AllocId, MemoryKind, Allocation<Provenance, AllocExtra<'tcx>, MiriAllocBytes>)>,
 ) {
     let mut any_pruned = false;
     for (id, kind, mut alloc) in leaks {

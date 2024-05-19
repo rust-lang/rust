@@ -390,7 +390,7 @@ fn reacquire_cond_mutex<'mir, 'tcx: 'mir>(
     Ok(())
 }
 
-/// After a thread waiting on a condvar was signalled:
+/// After a thread waiting on a condvar was signaled:
 /// Reacquire the conditional variable and remove the timeout callback if any
 /// was registered.
 fn post_cond_signal<'mir, 'tcx: 'mir>(

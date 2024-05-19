@@ -144,7 +144,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
 
             _ => return Ok(EmulateItemResult::NotSupported),
         }
-        Ok(EmulateItemResult::NeedsJumping)
+        Ok(EmulateItemResult::NeedsReturn)
     }
 }
 
@@ -200,7 +200,7 @@ impl FloatBinOp {
     ) -> InterpResult<'tcx, Self> {
         // Only bits 0..=4 are used, remaining should be zero.
         if imm & !0b1_1111 != 0 {
-            throw_unsup_format!("invalid `imm` parameter of {intrinsic}: 0x{imm:x}");
+            panic!("invalid `imm` parameter of {intrinsic}: 0x{imm:x}");
         }
         // Bit 4 specifies whether the operation is quiet or signaling, which
         // we do not care in Miri.
@@ -683,7 +683,7 @@ fn rounding_from_imm<'tcx>(rounding: i32) -> InterpResult<'tcx, rustc_apfloat::R
         // SSE status register. Since we do not support modifying it from
         // Miri (or Rust), we assume it to be at its default mode (round-to-nearest).
         0b100..=0b111 => Ok(rustc_apfloat::Round::NearestTiesToEven),
-        rounding => throw_unsup_format!("unsupported rounding mode 0x{rounding:02x}"),
+        rounding => panic!("invalid rounding mode 0x{rounding:02x}"),
     }
 }
 
@@ -757,7 +757,7 @@ fn int_abs<'tcx>(
     Ok(())
 }
 
-/// Splits `op` (which must be a SIMD vector) into 128-bit chuncks.
+/// Splits `op` (which must be a SIMD vector) into 128-bit chunks.
 ///
 /// Returns a tuple where:
 /// * The first element is the number of 128-bit chunks (let's call it `N`).
@@ -788,7 +788,7 @@ fn split_simd_to_128bit_chunks<'tcx, P: Projectable<'tcx, Provenance>>(
     Ok((num_chunks, items_per_chunk, chunked_op))
 }
 
-/// Horizontaly performs `which` operation on adjacent values of
+/// Horizontally performs `which` operation on adjacent values of
 /// `left` and `right` SIMD vectors and stores the result in `dest`.
 /// "Horizontal" means that the i-th output element is calculated
 /// from the elements 2*i and 2*i+1 of the concatenation of `left` and
@@ -1256,7 +1256,7 @@ fn packusdw<'tcx>(
 
 /// Negates elements from `left` when the corresponding element in
 /// `right` is negative. If an element from `right` is zero, zero
-/// is writen to the corresponding output element.
+/// is written to the corresponding output element.
 /// In other words, multiplies `left` with `right.signum()`.
 fn psign<'tcx>(
     this: &mut crate::MiriInterpCx<'_, 'tcx>,

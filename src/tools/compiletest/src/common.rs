@@ -250,7 +250,7 @@ pub struct Config {
     /// Only run tests that match these filters
     pub filters: Vec<String>,
 
-    /// Skip tests tests matching these substrings. Corresponds to
+    /// Skip tests matching these substrings. Corresponds to
     /// `test::TestOpts::skip`. `filter_exact` does not apply to these flags.
     pub skip: Vec<String>,
 
@@ -381,7 +381,7 @@ pub struct Config {
     /// Whether to rerun tests even if the inputs are unchanged.
     pub force_rerun: bool,
 
-    /// Only rerun the tests that result has been modified accoring to Git status
+    /// Only rerun the tests that result has been modified according to Git status
     pub only_modified: bool,
 
     pub target_cfgs: OnceLock<TargetCfgs>,

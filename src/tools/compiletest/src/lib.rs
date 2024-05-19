@@ -950,7 +950,7 @@ fn is_android_gdb_target(target: &str) -> bool {
     )
 }
 
-/// Returns `true` if the given target is a MSVC target for the purpouses of CDB testing.
+/// Returns `true` if the given target is a MSVC target for the purposes of CDB testing.
 fn is_pc_windows_msvc_target(target: &str) -> bool {
     target.ends_with("-pc-windows-msvc")
 }

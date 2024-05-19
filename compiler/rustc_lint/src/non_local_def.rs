@@ -38,7 +38,7 @@ declare_lint! {
     ///
     /// Creating non-local definitions go against expectation and can create discrepancies
     /// in tooling. It should be avoided. It may become deny-by-default in edition 2024
-    /// and higher, see see the tracking issue <https://github.com/rust-lang/rust/issues/120363>.
+    /// and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>.
     ///
     /// An `impl` definition is non-local if it is nested inside an item and neither
     /// the type nor the trait are at the same nesting level as the `impl` block.
