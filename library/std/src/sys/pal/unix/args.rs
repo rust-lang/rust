@@ -184,28 +184,58 @@ mod imp {
 #[cfg(target_vendor = "apple")]
 mod imp {
     use super::Args;
-    use crate::ffi::CStr;
+    use crate::ffi::{c_char, c_int, CStr};
     use crate::os::unix::prelude::*;
 
-    pub unsafe fn init(_argc: isize, _argv: *const *const u8) {}
+    pub unsafe fn init(_argc: isize, _argv: *const *const u8) {
+        // No need to initialize anything in here, `libdyld.dylib` has already
+        // done the work for us.
+    }
 
     pub fn args() -> Args {
         extern "C" {
             // These functions are in crt_externs.h.
-            fn _NSGetArgc() -> *mut libc::c_int;
-            fn _NSGetArgv() -> *mut *mut *mut libc::c_char;
+            fn _NSGetArgc() -> *mut c_int;
+            fn _NSGetArgv() -> *mut *mut *mut c_char;
         }
 
-        let vec = unsafe {
-            let (argc, argv) =
-                (*_NSGetArgc() as isize, *_NSGetArgv() as *const *const libc::c_char);
-            (0..argc as isize)
-                .map(|i| {
-                    let bytes = CStr::from_ptr(*argv.offset(i)).to_bytes().to_vec();
-                    OsStringExt::from_vec(bytes)
-                })
-                .collect::<Vec<_>>()
-        };
+        // SAFETY: The returned pointer points to a static initialized early
+        // in the program lifetime by `libdyld.dylib`, and as such is always
+        // valid.
+        //
+        // NOTE: Similar to `_NSGetEnviron`, there technically isn't anything
+        // protecting us against concurrent modifications to this, and there
+        // doesn't exist a lock that we can take. Instead, it is generally
+        // expected that it's only modified in `main` / before other code
+        // runs, so reading this here should be fine.
+        let argc = unsafe { _NSGetArgc().read() };
+        // SAFETY: Same as above.
+        let argv = unsafe { _NSGetArgv().read() };
+
+        let mut vec = Vec::with_capacity(argc as usize);
+
+        for i in 0..argc {
+            // SAFETY: `argv` is at least as long as `argc`, so reading from
+            // it should be safe.
+            let ptr = unsafe { argv.offset(i as isize).read() };
+
+            // Entries may have been removed from `argv` by setting them to
+            // NULL, without updating `argc`.
+            if ptr.is_null() {
+                // We continue instead of break here, as an argument may have
+                // been set to `NULL` in the middle, instead of at the end of
+                // the list.
+                //
+                // This is the same as what `-[NSProcessInfo arguments]` does.
+                continue;
+            }
+
+            // SAFETY: Just checked that the pointer is not NULL, and
+            // arguments are otherwise guaranteed to be valid C strings.
+            let cstr = unsafe { CStr::from_ptr(ptr) };
+            vec.push(OsStringExt::from_vec(cstr.to_bytes().to_vec()));
+        }
+
         Args { iter: vec.into_iter() }
     }
 }
