@@ -1,5 +1,5 @@
 error[E0764]: mutable references are not allowed in the final value of statics
-  --> $DIR/check-static-immutable-mut-slices.rs:3:37
+  --> $DIR/check-immutable-mut-slices.rs:3:37
    |
 LL | static TEST: &'static mut [isize] = &mut [];
    |                                     ^^^^^^^
