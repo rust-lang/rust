@@ -87,7 +87,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             }
             AllocatorKind::Default => {
                 default(this)?;
-                Ok(EmulateItemResult::NeedsJumping)
+                Ok(EmulateItemResult::NeedsReturn)
             }
         }
     }

@@ -22,10 +22,10 @@ pub use unix::{DirTable, FdTable};
 /// What needs to be done after emulating an item (a shim or an intrinsic) is done.
 pub enum EmulateItemResult {
     /// The caller is expected to jump to the return block.
-    NeedsJumping,
+    NeedsReturn,
     /// The caller is expected to jump to the unwind block.
     NeedsUnwind,
-    /// Jumping has already been taken care of.
+    /// Jumping to the next block has already been taken care of.
     AlreadyJumped,
     /// The item is not supported.
     NotSupported,

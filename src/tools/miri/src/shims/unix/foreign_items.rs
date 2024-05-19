@@ -640,14 +640,28 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 this.write_scalar(Scalar::from_target_usize(len, this), dest)?;
             }
             "_Unwind_RaiseException" => {
-                trace!("_Unwind_RaiseException: {:?}", this.frame().instance);
-
-                // Get the raw pointer stored in arg[0] (the panic payload).
+                // This is not formally part of POSIX, but it is very wide-spread on POSIX systems.
+                // It was originally specified as part of the Itanium C++ ABI:
+                // https://itanium-cxx-abi.github.io/cxx-abi/abi-eh.html#base-throw.
+                // On Linux it is
+                // documented as part of the LSB:
+                // https://refspecs.linuxfoundation.org/LSB_5.0.0/LSB-Core-generic/LSB-Core-generic/baselib--unwind-raiseexception.html
+                // Basically every other UNIX uses the exact same api though. Arm also references
+                // back to the Itanium C++ ABI for the definition of `_Unwind_RaiseException` for
+                // arm64:
+                // https://github.com/ARM-software/abi-aa/blob/main/cppabi64/cppabi64.rst#toc-entry-35
+                // For arm32 they did something custom, but similar enough that the same
+                // `_Unwind_RaiseException` impl in miri should work:
+                // https://github.com/ARM-software/abi-aa/blob/main/ehabi32/ehabi32.rst
+                if !matches!(&*this.tcx.sess.target.os, "linux" | "freebsd" | "illumos" | "solaris" | "android" | "macos") {
+                    throw_unsup_format!(
+                        "`_Unwind_RaiseException` is not supported on {}",
+                        this.tcx.sess.target.os
+                    );
+                }
+                // This function looks and behaves excatly like miri_start_unwind.
                 let [payload] = this.check_shim(abi, Abi::C { unwind: true }, link_name, args)?;
-                let payload = this.read_scalar(payload)?;
-                let thread = this.active_thread_mut();
-                thread.panic_payloads.push(payload);
-
+                this.handle_miri_start_unwind(payload)?;
                 return Ok(EmulateItemResult::NeedsUnwind);
             }
 
@@ -771,6 +785,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             }
         };
 
-        Ok(EmulateItemResult::NeedsJumping)
+        Ok(EmulateItemResult::NeedsReturn)
     }
 }

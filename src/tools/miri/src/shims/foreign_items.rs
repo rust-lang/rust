@@ -82,8 +82,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         }
 
         // The rest either implements the logic, or falls back to `lookup_exported_symbol`.
-        match this.emulate_foreign_item_inner(link_name, abi, args, dest, unwind)? {
-            EmulateItemResult::NeedsJumping => {
+        match this.emulate_foreign_item_inner(link_name, abi, args, dest)? {
+            EmulateItemResult::NeedsReturn => {
                 trace!("{:?}", this.dump_place(&dest.clone().into()));
                 this.return_to_block(ret)?;
             }
@@ -210,7 +210,6 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         abi: Abi,
         args: &[OpTy<'tcx, Provenance>],
         dest: &MPlaceTy<'tcx, Provenance>,
-        unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx, EmulateItemResult> {
         let this = self.eval_context_mut();
 
@@ -222,7 +221,7 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             // by the specified `.so` file; we should continue and check if it corresponds to
             // a provided shim.
             if this.call_native_fn(link_name, dest, args)? {
-                return Ok(EmulateItemResult::NeedsJumping);
+                return Ok(EmulateItemResult::NeedsReturn);
             }
         }
 
@@ -267,9 +266,9 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         match link_name.as_str() {
             // Miri-specific extern functions
             "miri_start_unwind" => {
-                // `check_shim` happens inside `handle_miri_start_unwind`.
-                this.handle_miri_start_unwind(abi, link_name, args, unwind)?;
-                return Ok(EmulateItemResult::AlreadyJumped);
+                let [payload] = this.check_shim(abi, Abi::Rust, link_name, args)?;
+                this.handle_miri_start_unwind(payload)?;
+                return Ok(EmulateItemResult::NeedsUnwind);
             }
             "miri_run_provenance_gc" => {
                 let [] = this.check_shim(abi, Abi::Rust, link_name, args)?;
@@ -484,7 +483,7 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     "__rust_alloc" => return this.emulate_allocator(default),
                     "miri_alloc" => {
                         default(this)?;
-                        return Ok(EmulateItemResult::NeedsJumping);
+                        return Ok(EmulateItemResult::NeedsReturn);
                     }
                     _ => unreachable!(),
                 }
@@ -544,7 +543,7 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     }
                     "miri_dealloc" => {
                         default(this)?;
-                        return Ok(EmulateItemResult::NeedsJumping);
+                        return Ok(EmulateItemResult::NeedsReturn);
                     }
                     _ => unreachable!(),
                 }
@@ -965,6 +964,6 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         };
         // We only fall through to here if we did *not* hit the `_` arm above,
         // i.e., if we actually emulated the function with one of the shims.
-        Ok(EmulateItemResult::NeedsJumping)
+        Ok(EmulateItemResult::NeedsReturn)
     }
 }

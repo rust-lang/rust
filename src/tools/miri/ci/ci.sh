@@ -145,7 +145,7 @@ case $HOST_TARGET in
     TEST_TARGET=s390x-unknown-linux-gnu run_tests # big-endian architecture of choice
     # Partially supported targets (tier 2)
     BASIC="empty_main integer vec string btreemap hello hashmap heap_alloc align" # ensures we have the basics: stdout/stderr, system allocator, randomness (for HashMap initialization)
-    UNIX="panic/panic concurrency/simple atomic libc-mem libc-misc libc-random env num_cpus" # the things that are very similar across all Unixes, and hence easily supported there
+    UNIX="panic/panic panic/unwind concurrency/simple atomic libc-mem libc-misc libc-random env num_cpus" # the things that are very similar across all Unixes, and hence easily supported there
     TEST_TARGET=x86_64-unknown-freebsd run_tests_minimal $BASIC $UNIX threadname libc-time fs
     TEST_TARGET=i686-unknown-freebsd   run_tests_minimal $BASIC $UNIX threadname libc-time fs
     TEST_TARGET=x86_64-unknown-illumos run_tests_minimal $BASIC $UNIX pthread-sync
