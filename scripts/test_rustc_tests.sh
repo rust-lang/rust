@@ -60,13 +60,13 @@ rm tests/ui/asm/x86_64/goto.rs # inline asm labels not supported
 
 # requires LTO
 rm -r tests/run-make/cdylib
-rm -r tests/run-make/issue-14500
 rm -r tests/run-make/issue-64153
 rm -r tests/run-make/codegen-options-parsing
 rm -r tests/run-make/lto-*
 rm -r tests/run-make/reproducible-build-2
 rm -r tests/run-make/issue-109934-lto-debuginfo
 rm -r tests/run-make/no-builtins-lto
+rm -r tests/run-make/reachable-extern-fn-available-lto
 
 # optimization tests
 # ==================
