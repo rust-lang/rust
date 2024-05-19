@@ -5,6 +5,8 @@ use std::{collections::HashSet, env};
 enum Feature {
     NoSysF128,
     NoSysF128IntConvert,
+    NoSysF16,
+    NoSysF16F128Convert,
 }
 
 fn main() {
@@ -31,11 +33,23 @@ fn main() {
     {
         features.insert(Feature::NoSysF128);
         features.insert(Feature::NoSysF128IntConvert);
+        features.insert(Feature::NoSysF16F128Convert);
     }
 
     if target.starts_with("i586") || target.starts_with("i686") {
         // 32-bit x86 seems to not have `__fixunstfti`, but does have everything else
         features.insert(Feature::NoSysF128IntConvert);
+    }
+
+    if target.contains("-unknown-linux-") {
+        // No `__extendhftf2` on x86, no `__trunctfhf2` on aarch64
+        features.insert(Feature::NoSysF16F128Convert);
+    }
+
+    if target.starts_with("wasm32-") {
+        // Linking says "error: function signature mismatch: __extendhfsf2" and seems to
+        // think the signature is either `(i32) -> f32` or `(f32) -> f32`
+        features.insert(Feature::NoSysF16);
     }
 
     for feature in features {
@@ -45,6 +59,11 @@ fn main() {
                 "no-sys-f128-int-convert",
                 "using apfloat fallback for f128 to int conversions",
             ),
+            Feature::NoSysF16F128Convert => (
+                "no-sys-f16-f128-convert",
+                "skipping using apfloat fallback for f16 <-> f128 conversions",
+            ),
+            Feature::NoSysF16 => ("no-sys-f16", "using apfloat fallback for f16"),
         };
         println!("cargo:warning={warning}");
         println!("cargo:rustc-cfg=feature=\"{name}\"");

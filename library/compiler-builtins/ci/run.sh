@@ -4,7 +4,9 @@ set -eux
 
 target="${1:-}"
 
-if [ -z "${1:-}" ]; then
+export RUST_BACKTRACE="${RUST_BACKTRACE:-full}"
+
+if [ -z "$target" ]; then
     host_target=$(rustc -vV | awk '/^host/ { print $2 }')
     echo "Defaulted to host target $host_target"
     target="$host_target"
@@ -30,6 +32,8 @@ else
     $run --features no-asm --release
     $run --features no-f16-f128
     $run --features no-f16-f128 --release
+    $run --benches
+    $run --benches --release
 fi
 
 if [ "${TEST_VERBATIM:-}" = "1" ]; then
