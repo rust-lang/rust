@@ -385,19 +385,31 @@ impl<'tcx> ToTrace<'tcx> for ty::GenericArg<'tcx> {
         a: Self,
         b: Self,
     ) -> TypeTrace<'tcx> {
-        use GenericArgKind::*;
         TypeTrace {
             cause: cause.clone(),
             values: match (a.unpack(), b.unpack()) {
-                (Lifetime(a), Lifetime(b)) => Regions(ExpectedFound::new(a_is_expected, a, b)),
-                (Type(a), Type(b)) => Terms(ExpectedFound::new(a_is_expected, a.into(), b.into())),
-                (Const(a), Const(b)) => {
+                (GenericArgKind::Lifetime(a), GenericArgKind::Lifetime(b)) => {
+                    Regions(ExpectedFound::new(a_is_expected, a, b))
+                }
+                (GenericArgKind::Type(a), GenericArgKind::Type(b)) => {
+                    Terms(ExpectedFound::new(a_is_expected, a.into(), b.into()))
+                }
+                (GenericArgKind::Const(a), GenericArgKind::Const(b)) => {
                     Terms(ExpectedFound::new(a_is_expected, a.into(), b.into()))
                 }
 
-                (Lifetime(_), Type(_) | Const(_))
-                | (Type(_), Lifetime(_) | Const(_))
-                | (Const(_), Lifetime(_) | Type(_)) => {
+                (
+                    GenericArgKind::Lifetime(_),
+                    GenericArgKind::Type(_) | GenericArgKind::Const(_),
+                )
+                | (
+                    GenericArgKind::Type(_),
+                    GenericArgKind::Lifetime(_) | GenericArgKind::Const(_),
+                )
+                | (
+                    GenericArgKind::Const(_),
+                    GenericArgKind::Lifetime(_) | GenericArgKind::Type(_),
+                ) => {
                     bug!("relating different kinds: {a:?} {b:?}")
                 }
             },

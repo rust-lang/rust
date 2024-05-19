@@ -78,9 +78,9 @@ impl<T: Hash> Hash for Obligation<'_, T> {
     }
 }
 
-impl<'tcx, P> From<Obligation<'tcx, P>> for ty::Goal<'tcx, P> {
+impl<'tcx, P> From<Obligation<'tcx, P>> for solve::Goal<'tcx, P> {
     fn from(value: Obligation<'tcx, P>) -> Self {
-        ty::Goal { param_env: value.param_env, predicate: value.predicate }
+        solve::Goal { param_env: value.param_env, predicate: value.predicate }
     }
 }
 

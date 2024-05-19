@@ -25,7 +25,7 @@ pub(super) mod structural_traits;
 /// and the `result` when using the given `source`.
 #[derive(Debug, Clone)]
 pub(super) struct Candidate<'tcx> {
-    pub(super) source: CandidateSource,
+    pub(super) source: CandidateSource<'tcx>,
     pub(super) result: CanonicalResponse<'tcx>,
 }
 
@@ -47,7 +47,7 @@ pub(super) trait GoalKind<'tcx>:
     /// [`EvalCtxt::evaluate_added_goals_and_make_canonical_response`]).
     fn probe_and_match_goal_against_assumption(
         ecx: &mut EvalCtxt<'_, 'tcx>,
-        source: CandidateSource,
+        source: CandidateSource<'tcx>,
         goal: Goal<'tcx, Self>,
         assumption: ty::Clause<'tcx>,
         then: impl FnOnce(&mut EvalCtxt<'_, 'tcx>) -> QueryResult<'tcx>,
@@ -58,7 +58,7 @@ pub(super) trait GoalKind<'tcx>:
     /// goal by equating it with the assumption.
     fn probe_and_consider_implied_clause(
         ecx: &mut EvalCtxt<'_, 'tcx>,
-        parent_source: CandidateSource,
+        parent_source: CandidateSource<'tcx>,
         goal: Goal<'tcx, Self>,
         assumption: ty::Clause<'tcx>,
         requirements: impl IntoIterator<Item = (GoalSource, Goal<'tcx, ty::Predicate<'tcx>>)>,
@@ -76,7 +76,7 @@ pub(super) trait GoalKind<'tcx>:
     /// since they're not implied by the well-formedness of the object type.
     fn probe_and_consider_object_bound_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
-        source: CandidateSource,
+        source: CandidateSource<'tcx>,
         goal: Goal<'tcx, Self>,
         assumption: ty::Clause<'tcx>,
     ) -> Result<Candidate<'tcx>, NoSolution> {

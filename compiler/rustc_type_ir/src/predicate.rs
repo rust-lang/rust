@@ -8,41 +8,8 @@ use rustc_type_ir_macros::{Lift_Generic, TypeFoldable_Generic, TypeVisitable_Gen
 use crate::inherent::*;
 use crate::visit::TypeVisitableExt as _;
 use crate::{
-    AliasTy, AliasTyKind, DebugWithInfcx, InferCtxtLike, Interner, UnevaluatedConst, Upcast,
-    WithInfcx,
+    AliasTy, AliasTyKind, DebugWithInfcx, InferCtxtLike, Interner, UnevaluatedConst, WithInfcx,
 };
-
-/// A goal is a statement, i.e. `predicate`, we want to prove
-/// given some assumptions, i.e. `param_env`.
-///
-/// Most of the time the `param_env` contains the `where`-bounds of the function
-/// we're currently typechecking while the `predicate` is some trait bound.
-#[derive(derivative::Derivative)]
-#[derivative(
-    Clone(bound = "P: Clone"),
-    Copy(bound = "P: Copy"),
-    Hash(bound = "P: Hash"),
-    PartialEq(bound = "P: PartialEq"),
-    Eq(bound = "P: Eq"),
-    Debug(bound = "P: fmt::Debug")
-)]
-#[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
-#[cfg_attr(feature = "nightly", derive(TyDecodable, TyEncodable, HashStable_NoContext))]
-pub struct Goal<I: Interner, P> {
-    pub param_env: I::ParamEnv,
-    pub predicate: P,
-}
-
-impl<I: Interner, P> Goal<I, P> {
-    pub fn new(tcx: I, param_env: I::ParamEnv, predicate: impl Upcast<I, P>) -> Goal<I, P> {
-        Goal { param_env, predicate: predicate.upcast(tcx) }
-    }
-
-    /// Updates the goal to one with a different `predicate` but the same `param_env`.
-    pub fn with<Q>(self, tcx: I, predicate: impl Upcast<I, Q>) -> Goal<I, Q> {
-        Goal { param_env: self.param_env, predicate: predicate.upcast(tcx) }
-    }
-}
 
 /// A complete reference to a trait. These take numerous guises in syntax,
 /// but perhaps the most recognizable form is in a where-clause:

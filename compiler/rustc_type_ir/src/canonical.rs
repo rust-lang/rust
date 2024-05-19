@@ -1,11 +1,12 @@
 #[cfg(feature = "nightly")]
 use rustc_macros::{HashStable_NoContext, TyDecodable, TyEncodable};
-use rustc_type_ir_macros::{TypeFoldable_Generic, TypeVisitable_Generic};
+use rustc_type_ir_macros::{Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic};
 use std::fmt;
 use std::hash::Hash;
+use std::ops::Index;
 
 use crate::inherent::*;
-use crate::{Interner, UniverseIndex};
+use crate::{self as ty, Interner, UniverseIndex};
 
 /// A "canonicalized" type `V` is one where all free inference
 /// variables have been rewritten to "canonical vars". These are
@@ -256,4 +257,140 @@ pub enum CanonicalTyVarKind {
 
     /// Floating-point type variable `?F` (that can only be unified with float types).
     Float,
+}
+
+/// A set of values corresponding to the canonical variables from some
+/// `Canonical`. You can give these values to
+/// `canonical_value.instantiate` to instantiate them into the canonical
+/// value at the right places.
+///
+/// When you canonicalize a value `V`, you get back one of these
+/// vectors with the original values that were replaced by canonical
+/// variables. You will need to supply it later to instantiate the
+/// canonicalized query response.
+#[derive(derivative::Derivative)]
+#[derivative(
+    Clone(bound = ""),
+    Copy(bound = ""),
+    PartialEq(bound = ""),
+    Eq(bound = ""),
+    Hash(bound = ""),
+    Debug(bound = "")
+)]
+#[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable, HashStable_NoContext))]
+#[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
+pub struct CanonicalVarValues<I: Interner> {
+    pub var_values: I::GenericArgs,
+}
+
+impl<I: Interner> CanonicalVarValues<I> {
+    pub fn is_identity(&self) -> bool {
+        self.var_values.into_iter().enumerate().all(|(bv, arg)| match arg.kind() {
+            ty::GenericArgKind::Lifetime(r) => {
+                matches!(r.kind(), ty::ReBound(ty::INNERMOST, br) if br.var().as_usize() == bv)
+            }
+            ty::GenericArgKind::Type(ty) => {
+                matches!(ty.kind(), ty::Bound(ty::INNERMOST, bt) if bt.var().as_usize() == bv)
+            }
+            ty::GenericArgKind::Const(ct) => {
+                matches!(ct.kind(), ty::ConstKind::Bound(ty::INNERMOST, bc) if bc.var().as_usize() == bv)
+            }
+        })
+    }
+
+    pub fn is_identity_modulo_regions(&self) -> bool {
+        let mut var = ty::BoundVar::ZERO;
+        for arg in self.var_values {
+            match arg.kind() {
+                ty::GenericArgKind::Lifetime(r) => {
+                    if matches!(r.kind(), ty::ReBound(ty::INNERMOST, br) if var == br.var()) {
+                        var = var + 1;
+                    } else {
+                        // It's ok if this region var isn't an identity variable
+                    }
+                }
+                ty::GenericArgKind::Type(ty) => {
+                    if matches!(ty.kind(), ty::Bound(ty::INNERMOST, bt) if var == bt.var()) {
+                        var = var + 1;
+                    } else {
+                        return false;
+                    }
+                }
+                ty::GenericArgKind::Const(ct) => {
+                    if matches!(ct.kind(), ty::ConstKind::Bound(ty::INNERMOST, bc) if var == bc.var())
+                    {
+                        var = var + 1;
+                    } else {
+                        return false;
+                    }
+                }
+            }
+        }
+
+        true
+    }
+
+    // Given a list of canonical variables, construct a set of values which are
+    // the identity response.
+    pub fn make_identity(tcx: I, infos: I::CanonicalVars) -> CanonicalVarValues<I> {
+        CanonicalVarValues {
+            var_values: tcx.mk_args_from_iter(infos.into_iter().enumerate().map(
+                |(i, info)| -> I::GenericArg {
+                    match info.kind {
+                        CanonicalVarKind::Ty(_) | CanonicalVarKind::PlaceholderTy(_) => {
+                            Ty::new_anon_bound(tcx, ty::INNERMOST, ty::BoundVar::from_usize(i))
+                                .into()
+                        }
+                        CanonicalVarKind::Region(_) | CanonicalVarKind::PlaceholderRegion(_) => {
+                            Region::new_anon_bound(tcx, ty::INNERMOST, ty::BoundVar::from_usize(i))
+                                .into()
+                        }
+                        CanonicalVarKind::Effect => Const::new_anon_bound(
+                            tcx,
+                            ty::INNERMOST,
+                            ty::BoundVar::from_usize(i),
+                            Ty::new_bool(tcx),
+                        )
+                        .into(),
+                        CanonicalVarKind::Const(_, ty)
+                        | CanonicalVarKind::PlaceholderConst(_, ty) => Const::new_anon_bound(
+                            tcx,
+                            ty::INNERMOST,
+                            ty::BoundVar::from_usize(i),
+                            ty,
+                        )
+                        .into(),
+                    }
+                },
+            )),
+        }
+    }
+
+    /// Creates dummy var values which should not be used in a
+    /// canonical response.
+    pub fn dummy() -> CanonicalVarValues<I> {
+        CanonicalVarValues { var_values: Default::default() }
+    }
+
+    #[inline]
+    pub fn len(&self) -> usize {
+        self.var_values.len()
+    }
+}
+
+impl<'a, I: Interner> IntoIterator for &'a CanonicalVarValues<I> {
+    type Item = I::GenericArg;
+    type IntoIter = <I::GenericArgs as IntoIterator>::IntoIter;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.var_values.into_iter()
+    }
+}
+
+impl<I: Interner> Index<ty::BoundVar> for CanonicalVarValues<I> {
+    type Output = I::GenericArg;
+
+    fn index(&self, value: ty::BoundVar) -> &I::GenericArg {
+        &self.var_values[value.as_usize()]
+    }
 }

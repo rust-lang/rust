@@ -12,7 +12,6 @@ use crate::ty::{
     Upcast, UpcastFrom, WithCachedTypeInfo,
 };
 
-pub type Goal<'tcx, P> = ir::Goal<TyCtxt<'tcx>, P>;
 pub type TraitRef<'tcx> = ir::TraitRef<TyCtxt<'tcx>>;
 pub type AliasTerm<'tcx> = ir::AliasTerm<TyCtxt<'tcx>>;
 pub type ProjectionPredicate<'tcx> = ir::ProjectionPredicate<TyCtxt<'tcx>>;

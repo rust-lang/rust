@@ -19,13 +19,13 @@ use std::sync::Arc as Lrc;
 
 #[macro_use]
 pub mod visit;
-
 #[cfg(feature = "nightly")]
 pub mod codec;
 pub mod fold;
 pub mod inherent;
 pub mod ir_print;
 pub mod lift;
+pub mod solve;
 pub mod ty_info;
 pub mod ty_kind;
 
@@ -35,6 +35,7 @@ mod canonical;
 mod const_kind;
 mod debug;
 mod flags;
+mod generic_arg;
 mod infcx;
 mod interner;
 mod predicate;
@@ -48,6 +49,7 @@ pub use codec::*;
 pub use const_kind::*;
 pub use debug::{DebugWithInfcx, WithInfcx};
 pub use flags::*;
+pub use generic_arg::*;
 pub use infcx::InferCtxtLike;
 pub use interner::*;
 pub use predicate::*;
@@ -366,6 +368,12 @@ rustc_index::newtype_index! {
     #[debug_format = "{}"]
     #[gate_rustc_only]
     pub struct BoundVar {}
+}
+
+impl<I: Interner> inherent::BoundVarLike<I> for BoundVar {
+    fn var(self) -> BoundVar {
+        self
+    }
 }
 
 /// Represents the various closure traits in the language. This

@@ -20,11 +20,11 @@ use rustc_macros::extension;
 use rustc_middle::bug;
 use rustc_middle::infer::canonical::CanonicalVarInfos;
 use rustc_middle::traits::solve::{
-    CanonicalResponse, Certainty, ExternalConstraintsData, GoalSource, QueryResult, Response,
+    CanonicalResponse, Certainty, ExternalConstraintsData, Goal, GoalSource, QueryResult, Response,
 };
 use rustc_middle::ty::{
-    self, AliasRelationDirection, CoercePredicate, Goal, RegionOutlivesPredicate, SubtypePredicate,
-    Ty, TyCtxt, TypeOutlivesPredicate, UniverseIndex,
+    self, AliasRelationDirection, CoercePredicate, RegionOutlivesPredicate, SubtypePredicate, Ty,
+    TyCtxt, TypeOutlivesPredicate, UniverseIndex,
 };
 
 mod alias_relate;
@@ -74,7 +74,7 @@ enum GoalEvaluationKind {
 }
 
 #[extension(trait CanonicalResponseExt)]
-impl<'tcx> Canonical<'tcx, Response<'tcx>> {
+impl<'tcx> Canonical<'tcx, Response<TyCtxt<'tcx>>> {
     fn has_no_inference_or_external_constraints(&self) -> bool {
         self.value.external_constraints.region_constraints.is_empty()
             && self.value.var_values.is_identity()
