@@ -8,7 +8,8 @@ impl Trait for i32 {}
 fn produce<T>() -> impl Trait<Assoc = impl Trait> {
     //~^ ERROR associated type `Assoc` not found for `Trait`
     //~| ERROR associated type `Assoc` not found for `Trait`
+    //~| ERROR undefined opaque type
     16
 }
 
-fn main () {}
+fn main() {}

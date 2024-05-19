@@ -161,6 +161,7 @@ impl BadTrait<_> for BadStruct<_> {}
 
 fn impl_trait() -> impl BadTrait<_> {
 //~^ ERROR the placeholder `_` is not allowed within types on item signatures for opaque types
+//~| ERROR undefined opaque type
     unimplemented!()
 }
 

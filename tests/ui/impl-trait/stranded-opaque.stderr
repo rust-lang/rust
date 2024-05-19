@@ -12,6 +12,12 @@ LL | fn produce<T>() -> impl Trait<Assoc = impl Trait> {
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error: aborting due to 2 previous errors
+error: undefined opaque type
+  --> $DIR/stranded-opaque.rs:8:39
+   |
+LL | fn produce<T>() -> impl Trait<Assoc = impl Trait> {
+   |                                       ^^^^^^^^^^
+
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0220`.

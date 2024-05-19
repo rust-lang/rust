@@ -35,6 +35,7 @@ fn one_hrtb_outlives_uses() -> impl for<'a> Bar<'a, Assoc = impl Sized + 'a> {}
 
 fn one_hrtb_trait_param_uses() -> impl for<'a> Bar<'a, Assoc = impl Qux<'a>> {}
 //~^ ERROR `impl Trait` cannot capture higher-ranked lifetime from outer `impl Trait`
+//~| ERROR undefined opaque type
 
 // This should resolve.
 fn one_hrtb_mention_fn_trait_param<'b>() -> impl for<'a> Foo<'a, Assoc = impl Qux<'b>> {}

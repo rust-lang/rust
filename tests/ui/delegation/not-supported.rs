@@ -70,12 +70,14 @@ mod opaque {
 
         pub fn opaque_arg(_: impl Trait) -> i32 { 0 }
         pub fn opaque_ret() -> impl Trait { unimplemented!() }
+        //~^ ERROR undefined opaque type
     }
     reuse to_reuse::opaque_arg;
     //~^ ERROR delegation with early bound generics is not supported yet
 
     trait ToReuse {
         fn opaque_ret() -> impl Trait { unimplemented!() }
+        //~^ ERROR undefined opaque type
     }
 
     // FIXME: Inherited `impl Trait`s create query cycles when used inside trait impls.

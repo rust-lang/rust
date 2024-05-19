@@ -1,8 +1,14 @@
-error: Foo<'{erased}, '{erased}>
+error: undefined opaque type
   --> $DIR/opaque-types-deadcode.rs:26:25
    |
 LL | fn foo<'a, 'b: 'a>() -> impl CallMeMaybe<'a, 'b> {
    |                         ^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 1 previous error
+error: {type error}
+  --> $DIR/opaque-types-deadcode.rs:26:25
+   |
+LL | fn foo<'a, 'b: 'a>() -> impl CallMeMaybe<'a, 'b> {
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
 

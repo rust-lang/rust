@@ -1,6 +1,5 @@
-//@ check-pass
-
 fn foo() -> impl MyTrait {
+    //~^ ERROR undefined opaque type
     panic!();
     MyStruct
 }

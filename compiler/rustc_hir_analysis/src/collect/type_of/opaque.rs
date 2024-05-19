@@ -8,7 +8,7 @@ use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::{sym, ErrorGuaranteed, DUMMY_SP};
 
-use crate::errors::{TaitForwardCompat, TypeOf, UnconstrainedOpaqueType};
+use crate::errors::{TaitForwardCompat, TypeOf, UnconstrainedOpaqueType, UndefinedOpaqueType};
 
 pub fn test_opaque_hidden_types(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed> {
     let mut res = Ok(());
@@ -389,18 +389,9 @@ pub(super) fn find_opaque_ty_constraints_for_rpit<'tcx>(
             // the `concrete_opaque_types` table.
             Ty::new_error(tcx, guar)
         } else {
-            // Fall back to the RPIT we inferred during HIR typeck
-            if let Some(hir_opaque_ty) = hir_opaque_ty {
-                hir_opaque_ty.ty
-            } else {
-                // We failed to resolve the opaque type or it
-                // resolves to itself. We interpret this as the
-                // no values of the hidden type ever being constructed,
-                // so we can just make the hidden type be `!`.
-                // For backwards compatibility reasons, we fall back to
-                // `()` until we the diverging default is changed.
-                Ty::new_diverging_default(tcx)
-            }
+            // Error if we couldn't define the RPIT during MIR borrowck
+            let err = tcx.dcx().emit_err(UndefinedOpaqueType { span: tcx.def_span(def_id) });
+            Ty::new_error(tcx, err)
         }
     }
 }

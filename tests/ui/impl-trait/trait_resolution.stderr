@@ -1,0 +1,8 @@
+error: undefined opaque type
+  --> $DIR/trait_resolution.rs:8:29
+   |
+LL |     fn into_stream(self) -> impl Debug {
+   |                             ^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

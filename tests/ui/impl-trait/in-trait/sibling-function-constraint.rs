@@ -14,6 +14,7 @@ impl Trait for () {
     }
 
     fn bar() -> impl Sized {
+        //~^ ERROR undefined opaque type
         loop {}
     }
 }

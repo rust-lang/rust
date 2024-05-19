@@ -1,14 +1,14 @@
 error[E0666]: nested `impl Trait` is not allowed
-  --> $DIR/nested_impl_trait.rs:6:56
+  --> $DIR/nested_impl_trait.rs:8:56
    |
-LL | fn bad_in_ret_position(x: impl Into<u32>) -> impl Into<impl Debug> { x }
+LL | fn bad_in_ret_position(x: impl Into<u32>) -> impl Into<impl Debug> {
    |                                              ----------^^^^^^^^^^-
    |                                              |         |
    |                                              |         nested `impl Trait` here
    |                                              outer `impl Trait`
 
 error[E0666]: nested `impl Trait` is not allowed
-  --> $DIR/nested_impl_trait.rs:10:42
+  --> $DIR/nested_impl_trait.rs:14:42
    |
 LL | fn bad_in_fn_syntax(x: fn() -> impl Into<impl Debug>) {}
    |                                ----------^^^^^^^^^^-
@@ -17,25 +17,25 @@ LL | fn bad_in_fn_syntax(x: fn() -> impl Into<impl Debug>) {}
    |                                outer `impl Trait`
 
 error[E0666]: nested `impl Trait` is not allowed
-  --> $DIR/nested_impl_trait.rs:14:37
+  --> $DIR/nested_impl_trait.rs:18:37
    |
-LL | fn bad_in_arg_position(_: impl Into<impl Debug>) { }
+LL | fn bad_in_arg_position(_: impl Into<impl Debug>) {}
    |                           ----------^^^^^^^^^^-
    |                           |         |
    |                           |         nested `impl Trait` here
    |                           outer `impl Trait`
 
 error[E0666]: nested `impl Trait` is not allowed
-  --> $DIR/nested_impl_trait.rs:19:44
+  --> $DIR/nested_impl_trait.rs:23:44
    |
-LL |     fn bad(x: impl Into<u32>) -> impl Into<impl Debug> { x }
+LL |     fn bad(x: impl Into<u32>) -> impl Into<impl Debug> {
    |                                  ----------^^^^^^^^^^-
    |                                  |         |
    |                                  |         nested `impl Trait` here
    |                                  outer `impl Trait`
 
 error[E0562]: `impl Trait` is not allowed in `fn` pointer return types
-  --> $DIR/nested_impl_trait.rs:10:32
+  --> $DIR/nested_impl_trait.rs:14:32
    |
 LL | fn bad_in_fn_syntax(x: fn() -> impl Into<impl Debug>) {}
    |                                ^^^^^^^^^^^^^^^^^^^^^
@@ -43,24 +43,30 @@ LL | fn bad_in_fn_syntax(x: fn() -> impl Into<impl Debug>) {}
    = note: `impl Trait` is only allowed in arguments and return types of functions and methods
 
 error[E0277]: the trait bound `impl Into<u32>: Into<impl Debug>` is not satisfied
-  --> $DIR/nested_impl_trait.rs:6:46
+  --> $DIR/nested_impl_trait.rs:8:46
    |
-LL | fn bad_in_ret_position(x: impl Into<u32>) -> impl Into<impl Debug> { x }
+LL | fn bad_in_ret_position(x: impl Into<u32>) -> impl Into<impl Debug> {
    |                                              ^^^^^^^^^^^^^^^^^^^^^ the trait `From<impl Into<u32>>` is not implemented for `impl Into<u32>`, which is required by `impl Into<u32>: Into<impl Debug>`
    |
    = help: the trait `Into<U>` is implemented for `T`
    = note: required for `impl Into<u32>` to implement `Into<impl Debug>`
 
 error[E0277]: the trait bound `impl Into<u32>: Into<impl Debug>` is not satisfied
-  --> $DIR/nested_impl_trait.rs:19:34
+  --> $DIR/nested_impl_trait.rs:23:34
    |
-LL |     fn bad(x: impl Into<u32>) -> impl Into<impl Debug> { x }
+LL |     fn bad(x: impl Into<u32>) -> impl Into<impl Debug> {
    |                                  ^^^^^^^^^^^^^^^^^^^^^ the trait `From<impl Into<u32>>` is not implemented for `impl Into<u32>`, which is required by `impl Into<u32>: Into<impl Debug>`
    |
    = help: the trait `Into<U>` is implemented for `T`
    = note: required for `impl Into<u32>` to implement `Into<impl Debug>`
 
-error: aborting due to 7 previous errors
+error: undefined opaque type
+  --> $DIR/nested_impl_trait.rs:34:42
+   |
+LL | fn allowed_in_ret_type() -> impl Fn() -> impl Into<u32> {
+   |                                          ^^^^^^^^^^^^^^
+
+error: aborting due to 8 previous errors
 
 Some errors have detailed explanations: E0277, E0562, E0666.
 For more information about an error, try `rustc --explain E0277`.

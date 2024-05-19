@@ -1,0 +1,8 @@
+error: undefined opaque type
+  --> $DIR/issue-77987.rs:14:13
+   |
+LL | fn ice() -> impl Foo<Scope>
+   |             ^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

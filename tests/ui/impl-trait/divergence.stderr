@@ -1,0 +1,8 @@
+error: undefined opaque type
+  --> $DIR/divergence.rs:1:13
+   |
+LL | fn foo() -> impl MyTrait {
+   |             ^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

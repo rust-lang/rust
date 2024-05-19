@@ -22,6 +22,12 @@ note: lifetime declared here
 LL | fn a() -> impl Fn(&u8) -> impl Debug + '_ {
    |                   ^
 
-error: aborting due to 3 previous errors
+error: undefined opaque type
+  --> $DIR/impl-fn-parsing-ambiguities.rs:10:24
+   |
+LL | fn b() -> impl Fn() -> impl Debug + Send {
+   |                        ^^^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0657`.

@@ -107,7 +107,7 @@ LL |         reuse Trait::foo2 { &self.0 }
    |                      ^^^^
 
 error: delegation with early bound generics is not supported yet
-  --> $DIR/not-supported.rs:74:21
+  --> $DIR/not-supported.rs:75:21
    |
 LL |         pub fn opaque_arg(_: impl Trait) -> i32 { 0 }
    |         --------------------------------------- callee defined here
@@ -115,46 +115,58 @@ LL |         pub fn opaque_arg(_: impl Trait) -> i32 { 0 }
 LL |     reuse to_reuse::opaque_arg;
    |                     ^^^^^^^^^^
 
-error[E0391]: cycle detected when computing type of `opaque::<impl at $DIR/not-supported.rs:82:5: 82:24>::{synthetic#0}`
-  --> $DIR/not-supported.rs:83:25
+error: undefined opaque type
+  --> $DIR/not-supported.rs:79:28
+   |
+LL |         fn opaque_ret() -> impl Trait { unimplemented!() }
+   |                            ^^^^^^^^^^
+
+error[E0391]: cycle detected when computing type of `opaque::<impl at $DIR/not-supported.rs:84:5: 84:24>::{synthetic#0}`
+  --> $DIR/not-supported.rs:85:25
    |
 LL |         reuse to_reuse::opaque_ret;
    |                         ^^^^^^^^^^
    |
 note: ...which requires comparing an impl and trait method signature, inferring any hidden `impl Trait` types in the process...
-  --> $DIR/not-supported.rs:83:25
+  --> $DIR/not-supported.rs:85:25
    |
 LL |         reuse to_reuse::opaque_ret;
    |                         ^^^^^^^^^^
-   = note: ...which again requires computing type of `opaque::<impl at $DIR/not-supported.rs:82:5: 82:24>::{synthetic#0}`, completing the cycle
-note: cycle used when checking that `opaque::<impl at $DIR/not-supported.rs:82:5: 82:24>` is well-formed
-  --> $DIR/not-supported.rs:82:5
+   = note: ...which again requires computing type of `opaque::<impl at $DIR/not-supported.rs:84:5: 84:24>::{synthetic#0}`, completing the cycle
+note: cycle used when checking that `opaque::<impl at $DIR/not-supported.rs:84:5: 84:24>` is well-formed
+  --> $DIR/not-supported.rs:84:5
    |
 LL |     impl ToReuse for u8 {
    |     ^^^^^^^^^^^^^^^^^^^
    = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
-error[E0391]: cycle detected when computing type of `opaque::<impl at $DIR/not-supported.rs:85:5: 85:25>::{synthetic#0}`
-  --> $DIR/not-supported.rs:86:24
+error: undefined opaque type
+  --> $DIR/not-supported.rs:72:32
+   |
+LL |         pub fn opaque_ret() -> impl Trait { unimplemented!() }
+   |                                ^^^^^^^^^^
+
+error[E0391]: cycle detected when computing type of `opaque::<impl at $DIR/not-supported.rs:87:5: 87:25>::{synthetic#0}`
+  --> $DIR/not-supported.rs:88:24
    |
 LL |         reuse ToReuse::opaque_ret;
    |                        ^^^^^^^^^^
    |
 note: ...which requires comparing an impl and trait method signature, inferring any hidden `impl Trait` types in the process...
-  --> $DIR/not-supported.rs:86:24
+  --> $DIR/not-supported.rs:88:24
    |
 LL |         reuse ToReuse::opaque_ret;
    |                        ^^^^^^^^^^
-   = note: ...which again requires computing type of `opaque::<impl at $DIR/not-supported.rs:85:5: 85:25>::{synthetic#0}`, completing the cycle
-note: cycle used when checking that `opaque::<impl at $DIR/not-supported.rs:85:5: 85:25>` is well-formed
-  --> $DIR/not-supported.rs:85:5
+   = note: ...which again requires computing type of `opaque::<impl at $DIR/not-supported.rs:87:5: 87:25>::{synthetic#0}`, completing the cycle
+note: cycle used when checking that `opaque::<impl at $DIR/not-supported.rs:87:5: 87:25>` is well-formed
+  --> $DIR/not-supported.rs:87:5
    |
 LL |     impl ToReuse for u16 {
    |     ^^^^^^^^^^^^^^^^^^^^
    = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
 error: recursive delegation is not supported yet
-  --> $DIR/not-supported.rs:99:22
+  --> $DIR/not-supported.rs:101:22
    |
 LL |         pub reuse to_reuse2::foo;
    |                              --- callee defined here
@@ -162,7 +174,7 @@ LL |         pub reuse to_reuse2::foo;
 LL |     reuse to_reuse1::foo;
    |                      ^^^
 
-error: aborting due to 16 previous errors
+error: aborting due to 18 previous errors
 
 Some errors have detailed explanations: E0049, E0195, E0391.
 For more information about an error, try `rustc --explain E0049`.

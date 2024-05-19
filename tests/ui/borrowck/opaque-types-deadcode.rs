@@ -24,7 +24,8 @@ fn good_bye() -> ! {
 }
 
 fn foo<'a, 'b: 'a>() -> impl CallMeMaybe<'a, 'b> {
-    //~^ ERROR: Foo<'{erased}, '{erased}>
+    //~^ ERROR: {type error}
+    //~| ERROR: undefined opaque type
     good_bye();
     Foo(&(), &())
 }

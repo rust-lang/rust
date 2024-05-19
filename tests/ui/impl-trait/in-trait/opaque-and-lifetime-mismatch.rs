@@ -24,6 +24,7 @@ impl Bar for () {
     fn foo() -> Wrapper<impl Sized> {
         //~^ ERROR missing lifetime specifier
         //~| ERROR struct takes 0 generic arguments but 1 generic argument was supplied
+        //~| ERROR undefined opaque type
         Wrapper(&())
     }
 }

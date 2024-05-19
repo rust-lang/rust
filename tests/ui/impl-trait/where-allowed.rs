@@ -10,6 +10,7 @@ fn in_parameters(_: impl Debug) { panic!() }
 
 // Allowed
 fn in_return() -> impl Debug { panic!() }
+//~^ ERROR undefined opaque type
 
 // Allowed
 fn in_adt_in_parameters(_: Vec<impl Debug>) { panic!() }

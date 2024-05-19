@@ -381,6 +381,13 @@ pub struct UnconstrainedOpaqueType {
 }
 
 #[derive(Diagnostic)]
+#[diag(hir_analysis_undefined_opaque_type)]
+pub struct UndefinedOpaqueType {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(hir_analysis_tait_forward_compat)]
 #[note]
 pub struct TaitForwardCompat {

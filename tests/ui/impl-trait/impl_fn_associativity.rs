@@ -1,16 +1,19 @@
-//@ run-pass
 #![feature(impl_trait_in_fn_trait_return)]
 use std::fmt::Debug;
 
 fn f_debug() -> impl Fn() -> impl Debug {
+    //~^ ERROR undefined opaque type
     || ()
 }
 
 fn ff_debug() -> impl Fn() -> impl Fn() -> impl Debug {
+    //~^ ERROR undefined opaque type
+    //~| ERROR undefined opaque type
     || f_debug()
 }
 
 fn multi() -> impl Fn() -> (impl Debug + Send) {
+    //~^ ERROR undefined opaque type
     || ()
 }
 

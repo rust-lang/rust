@@ -18,6 +18,7 @@ fn c() -> impl for<'a> Fn(&'a u8) -> (impl Debug + '_) {
 
 fn d() -> impl Fn() -> (impl Debug + '_) {
     //~^ ERROR missing lifetime specifier
+    //~| ERROR undefined opaque type
     || ()
 }
 

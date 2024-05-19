@@ -1,0 +1,8 @@
+error: undefined opaque type
+  --> $DIR/recursive-impl-trait-type-direct.rs:3:14
+   |
+LL | fn test() -> impl Sized {
+   |              ^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

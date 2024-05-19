@@ -1,5 +1,3 @@
-//@ check-pass
-
 use std::fmt::Debug;
 
 pub struct EventStream<S> {
@@ -8,6 +6,7 @@ pub struct EventStream<S> {
 
 impl<S: Debug> EventStream<S> {
     fn into_stream(self) -> impl Debug {
+        //~^ ERROR undefined opaque type
         unimplemented!()
     }
 

@@ -1,0 +1,8 @@
+error: undefined opaque type
+  --> $DIR/impl_trait_fallback.rs:6:25
+   |
+LL | fn should_ret_unit() -> impl T {
+   |                         ^^^^^^
+
+error: aborting due to 1 previous error
+

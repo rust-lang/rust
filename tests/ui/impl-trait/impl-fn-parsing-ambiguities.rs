@@ -9,6 +9,7 @@ fn a() -> impl Fn(&u8) -> impl Debug + '_ {
 
 fn b() -> impl Fn() -> impl Debug + Send {
     //~^ ERROR ambiguous `+` in a type
+    //~| ERROR undefined opaque type
     || ()
 }
 

@@ -5,22 +5,22 @@ LL | fn projection_is_disallowed(x: impl Iterator) -> <impl Iterator>::Item {
    |                                                   ^^^^^^^^^^^^^
 
 error[E0667]: `impl Trait` is not allowed in path parameters
-  --> $DIR/impl_trait_projections.rs:19:9
+  --> $DIR/impl_trait_projections.rs:20:7
    |
-LL |     -> <impl Iterator as Iterator>::Item
-   |         ^^^^^^^^^^^^^
+LL | ) -> <impl Iterator as Iterator>::Item
+   |       ^^^^^^^^^^^^^
 
 error[E0667]: `impl Trait` is not allowed in path parameters
-  --> $DIR/impl_trait_projections.rs:26:27
+  --> $DIR/impl_trait_projections.rs:27:23
    |
-LL |     -> <::std::ops::Range<impl Debug> as Iterator>::Item
-   |                           ^^^^^^^^^^
+LL | -> <::std::ops::Range<impl Debug> as Iterator>::Item
+   |                       ^^^^^^^^^^
 
 error[E0667]: `impl Trait` is not allowed in path parameters
-  --> $DIR/impl_trait_projections.rs:35:29
+  --> $DIR/impl_trait_projections.rs:36:25
    |
-LL |     -> <dyn Iterator<Item = impl Debug> as Iterator>::Item
-   |                             ^^^^^^^^^^
+LL | -> <dyn Iterator<Item = impl Debug> as Iterator>::Item
+   |                         ^^^^^^^^^^
 
 error[E0667]: `impl Trait` is not allowed in path parameters
   --> $DIR/impl_trait_projections.rs:12:51
@@ -29,10 +29,10 @@ LL | fn projection_is_disallowed(x: impl Iterator) -> <impl Iterator>::Item {
    |                                                   ^^^^^^^^^^^^^
 
 error[E0277]: the trait bound `impl Debug: Step` is not satisfied
-  --> $DIR/impl_trait_projections.rs:26:8
+  --> $DIR/impl_trait_projections.rs:27:4
    |
-LL |     -> <::std::ops::Range<impl Debug> as Iterator>::Item
-   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Step` is not implemented for `impl Debug`, which is required by `std::ops::Range<impl Debug>: Iterator`
+LL | -> <::std::ops::Range<impl Debug> as Iterator>::Item
+   |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Step` is not implemented for `impl Debug`, which is required by `std::ops::Range<impl Debug>: Iterator`
    |
    = help: the following other types implement trait `Step`:
              Char
@@ -47,7 +47,7 @@ LL |     -> <::std::ops::Range<impl Debug> as Iterator>::Item
    = note: required for `std::ops::Range<impl Debug>` to implement `Iterator`
 
 error[E0277]: the trait bound `impl Debug: Step` is not satisfied
-  --> $DIR/impl_trait_projections.rs:29:1
+  --> $DIR/impl_trait_projections.rs:30:1
    |
 LL | / {
 LL | |
@@ -67,7 +67,13 @@ LL | | }
            and 8 others
    = note: required for `std::ops::Range<impl Debug>` to implement `Iterator`
 
-error: aborting due to 7 previous errors
+error: undefined opaque type
+  --> $DIR/impl_trait_projections.rs:36:25
+   |
+LL | -> <dyn Iterator<Item = impl Debug> as Iterator>::Item
+   |                         ^^^^^^^^^^
+
+error: aborting due to 8 previous errors
 
 Some errors have detailed explanations: E0277, E0667.
 For more information about an error, try `rustc --explain E0277`.

@@ -512,6 +512,8 @@ hir_analysis_typeof_reserved_keyword_used =
 hir_analysis_unconstrained_opaque_type = unconstrained opaque type
     .note = `{$name}` must be used in combination with a concrete type within the same {$what}
 
+hir_analysis_undefined_opaque_type = undefined opaque type
+
 hir_analysis_unnamed_fields_repr_field_defined = unnamed field defined here
 
 hir_analysis_unnamed_fields_repr_field_missing_repr_c =

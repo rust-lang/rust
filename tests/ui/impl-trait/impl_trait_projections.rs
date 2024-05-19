@@ -10,20 +10,21 @@ fn path_parametrized_type_is_allowed() -> option::Option<impl Debug> {
 }
 
 fn projection_is_disallowed(x: impl Iterator) -> <impl Iterator>::Item {
-//~^ ERROR `impl Trait` is not allowed in path parameters
-//~| ERROR `impl Trait` is not allowed in path parameters
+    //~^ ERROR `impl Trait` is not allowed in path parameters
+    //~| ERROR `impl Trait` is not allowed in path parameters
     x.next().unwrap()
 }
 
-fn projection_with_named_trait_is_disallowed(mut x: impl Iterator)
-    -> <impl Iterator as Iterator>::Item
+fn projection_with_named_trait_is_disallowed(
+    mut x: impl Iterator,
+) -> <impl Iterator as Iterator>::Item
 //~^ ERROR `impl Trait` is not allowed in path parameters
 {
     x.next().unwrap()
 }
 
 fn projection_with_named_trait_inside_path_is_disallowed()
-    -> <::std::ops::Range<impl Debug> as Iterator>::Item
+-> <::std::ops::Range<impl Debug> as Iterator>::Item
 //~^ ERROR `impl Trait` is not allowed in path parameters
 //~| ERROR `impl Debug: Step` is not satisfied
 {
@@ -32,8 +33,9 @@ fn projection_with_named_trait_inside_path_is_disallowed()
 }
 
 fn projection_from_impl_trait_inside_dyn_trait_is_disallowed()
-    -> <dyn Iterator<Item = impl Debug> as Iterator>::Item
+-> <dyn Iterator<Item = impl Debug> as Iterator>::Item
 //~^ ERROR `impl Trait` is not allowed in path parameters
+//~| ERROR undefined opaque type
 {
     panic!()
 }
