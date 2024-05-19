@@ -1946,3 +1946,7 @@ pub struct UnitBindingsDiag {
     #[label]
     pub label: Span,
 }
+
+#[derive(LintDiagnostic)]
+#[diag(lint_unneeded_where_clauses)]
+pub struct UnneededWhereClauseDiag;

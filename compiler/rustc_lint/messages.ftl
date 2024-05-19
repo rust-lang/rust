@@ -615,6 +615,8 @@ lint_unknown_lint =
 lint_unknown_tool_in_scoped_lint = unknown tool name `{$tool_name}` found in scoped lint: `{$tool_name}::{$lint_name}`
     .help = add `#![register_tool({$tool_name})]` to the crate root
 
+lint_unneeded_where_clauses = this empty where clause is unneeded
+
 lint_unsupported_group = `{$lint_group}` lint group is not supported with ´--force-warn´
 
 lint_untranslatable_diag = diagnostics should be created using translatable messages

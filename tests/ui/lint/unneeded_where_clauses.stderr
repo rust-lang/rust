@@ -1,0 +1,14 @@
+error: this empty where clause is unneeded
+  --> $DIR/unneeded_where_clauses.rs:3:10
+   |
+LL | fn foo() where {}
+   |          ^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/unneeded_where_clauses.rs:1:8
+   |
+LL | #[deny(unneeded_where_clauses)]
+   |        ^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

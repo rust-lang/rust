@@ -36,7 +36,7 @@ use crate::{
         BuiltinUngatedAsyncFnTrackCaller, BuiltinUnpermittedTypeInit,
         BuiltinUnpermittedTypeInitSub, BuiltinUnreachablePub, BuiltinUnsafe,
         BuiltinUnstableFeatures, BuiltinUnusedDocComment, BuiltinUnusedDocCommentSub,
-        BuiltinWhileTrue, SuggestChangingAssocTypes,
+        BuiltinWhileTrue, SuggestChangingAssocTypes, UnneededWhereClauseDiag,
     },
     EarlyContext, EarlyLintPass, LateContext, LateLintPass, Level, LintContext,
 };
@@ -1644,7 +1644,8 @@ declare_lint_pass!(
         UNSTABLE_FEATURES,
         UNREACHABLE_PUB,
         TYPE_ALIAS_BOUNDS,
-        TRIVIAL_BOUNDS
+        TRIVIAL_BOUNDS,
+        UNNEEDED_WHERE_CLAUSES,
     ]
 );
 
@@ -2971,6 +2972,26 @@ impl EarlyLintPass for SpecialModuleName {
                     _ => continue,
                 }
             }
+        }
+    }
+}
+
+declare_lint! {
+    pub UNNEEDED_WHERE_CLAUSES,
+    Warn,
+    "suggests removing empty where clauses"
+}
+
+declare_lint_pass! { UnneededWhereClauses => [UNNEEDED_WHERE_CLAUSES] }
+
+impl EarlyLintPass for UnneededWhereClauses {
+    fn check_generics(&mut self, cx: &EarlyContext<'_>, generics: &ast::Generics) {
+        if generics.where_clause.has_where_token && generics.where_clause.predicates.is_empty() {
+            cx.emit_span_lint(
+                UNNEEDED_WHERE_CLAUSES,
+                generics.where_clause.span,
+                UnneededWhereClauseDiag,
+            )
         }
     }
 }
