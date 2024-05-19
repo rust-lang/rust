@@ -24,8 +24,8 @@ use rustc_middle::mir::{
 };
 use rustc_middle::ty::print::PrintTraitRefExt as _;
 use rustc_middle::ty::{
-    self, suggest_constraining_type_params, PredicateKind, ToPredicate, Ty, TyCtxt,
-    TypeSuperVisitable, TypeVisitor,
+    self, suggest_constraining_type_params, PredicateKind, Ty, TyCtxt, TypeSuperVisitable,
+    TypeVisitor, Upcast,
 };
 use rustc_middle::util::CallKind;
 use rustc_mir_dataflow::move_paths::{InitKind, MoveOutIndex, MovePathIndex};
@@ -1915,7 +1915,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             self.infcx.err_ctxt().suggest_derive(
                 &obligation,
                 err,
-                trait_ref.to_predicate(self.infcx.tcx),
+                trait_ref.upcast(self.infcx.tcx),
             );
         }
     }

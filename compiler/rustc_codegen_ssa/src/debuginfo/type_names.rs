@@ -365,7 +365,7 @@ fn push_debuginfo_type_name<'tcx>(
                 }
                 output.push_str(" (*)(");
             } else {
-                output.push_str(sig.unsafety.prefix_str());
+                output.push_str(sig.safety.prefix_str());
 
                 if sig.abi != rustc_target::spec::abi::Abi::Rust {
                     output.push_str("extern \"");

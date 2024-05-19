@@ -613,7 +613,7 @@ pub(crate) fn build_impl(
         did,
         None,
         clean::ImplItem(Box::new(clean::Impl {
-            unsafety: hir::Unsafety::Normal,
+            safety: hir::Safety::Safe,
             generics,
             trait_,
             for_,

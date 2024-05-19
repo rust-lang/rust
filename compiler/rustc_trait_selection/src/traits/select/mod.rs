@@ -45,7 +45,7 @@ use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::print::PrintTraitRefExt as _;
 use rustc_middle::ty::relate::TypeRelation;
 use rustc_middle::ty::GenericArgsRef;
-use rustc_middle::ty::{self, PolyProjectionPredicate, ToPredicate};
+use rustc_middle::ty::{self, PolyProjectionPredicate, Upcast};
 use rustc_middle::ty::{Ty, TyCtxt, TypeFoldable, TypeVisitableExt};
 use rustc_span::symbol::sym;
 use rustc_span::Symbol;
@@ -739,8 +739,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             // stack would be `T: Auto`.
                             let cycle = stack.iter().take_while(|s| s.depth > stack_arg.1);
                             let tcx = self.tcx();
-                            let cycle =
-                                cycle.map(|stack| stack.obligation.predicate.to_predicate(tcx));
+                            let cycle = cycle.map(|stack| stack.obligation.predicate.upcast(tcx));
                             if self.coinductive_match(cycle) {
                                 stack.update_reached_depth(stack_arg.1);
                                 return Ok(EvaluatedToOk);
@@ -1174,7 +1173,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // if the regions match exactly.
             let cycle = stack.iter().skip(1).take_while(|s| s.depth >= cycle_depth);
             let tcx = self.tcx();
-            let cycle = cycle.map(|stack| stack.obligation.predicate.to_predicate(tcx));
+            let cycle = cycle.map(|stack| stack.obligation.predicate.upcast(tcx));
             if self.coinductive_match(cycle) {
                 debug!("evaluate_stack --> recursive, coinductive");
                 Some(EvaluatedToOk)
@@ -1379,7 +1378,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         error_obligation: &Obligation<'tcx, T>,
     ) -> Result<(), OverflowError>
     where
-        T: ToPredicate<'tcx> + Clone,
+        T: Upcast<TyCtxt<'tcx>, ty::Predicate<'tcx>> + Clone,
     {
         if !self.infcx.tcx.recursion_limit().value_within_limit(depth) {
             match self.query_mode {
@@ -1408,7 +1407,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         error_obligation: &Obligation<'tcx, V>,
     ) -> Result<(), OverflowError>
     where
-        V: ToPredicate<'tcx> + Clone,
+        V: Upcast<TyCtxt<'tcx>, ty::Predicate<'tcx>> + Clone,
     {
         self.check_recursion_depth(obligation.recursion_depth, error_obligation)
     }
@@ -1779,9 +1778,19 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // If this type is a GAT, and of the GAT args resolve to something new,
             // that means that we must have newly inferred something about the GAT.
             // We should give up in that case.
+            // FIXME(generic-associated-types): This only detects one layer of inference,
+            // which is probably not what we actually want, but fixing it causes some ambiguity:
+            // <https://github.com/rust-lang/rust/issues/125196>.
             if !generics.own_params.is_empty()
                 && obligation.predicate.args[generics.parent_count..].iter().any(|&p| {
-                    p.has_non_region_infer() && self.infcx.resolve_vars_if_possible(p) != p
+                    p.has_non_region_infer()
+                        && match p.unpack() {
+                            ty::GenericArgKind::Const(ct) => {
+                                self.infcx.shallow_resolve_const(ct) != ct
+                            }
+                            ty::GenericArgKind::Type(ty) => self.infcx.shallow_resolve(ty) != ty,
+                            ty::GenericArgKind::Lifetime(_) => false,
+                        }
                 })
             {
                 ProjectionMatchesProjection::Ambiguous

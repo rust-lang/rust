@@ -185,4 +185,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: r#"The compiler profile now defaults to rust.debuginfo-level = "line-tables-only""#,
     },
+    ChangeInfo {
+        change_id: 124129,
+        severity: ChangeSeverity::Warning,
+        summary: "`rust.lld` has a new default value of `true` on `x86_64-unknown-linux-gnu`. Starting at stage1, `rust-lld` will thus be this target's default linker. No config changes should be necessary.",
+    },
 ];

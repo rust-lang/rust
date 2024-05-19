@@ -934,7 +934,7 @@ fn assoc_method(
         RenderMode::ForDeref { .. } => "",
     };
     let asyncness = header.asyncness.print_with_space();
-    let unsafety = header.unsafety.print_with_space();
+    let safety = header.safety.print_with_space();
     let abi = print_abi_with_space(header.abi).to_string();
     let href = assoc_href_attr(meth, link, cx);
 
@@ -945,7 +945,7 @@ fn assoc_method(
         + defaultness.len()
         + constness.len()
         + asyncness.len()
-        + unsafety.len()
+        + safety.len()
         + abi.len()
         + name.as_str().len()
         + generics_len;
@@ -964,14 +964,14 @@ fn assoc_method(
     w.reserve(header_len + "<a href=\"\" class=\"fn\">{".len() + "</a>".len());
     write!(
         w,
-        "{indent}{vis}{defaultness}{constness}{asyncness}{unsafety}{abi}fn \
+        "{indent}{vis}{defaultness}{constness}{asyncness}{safety}{abi}fn \
          <a{href} class=\"fn\">{name}</a>{generics}{decl}{notable_traits}{where_clause}",
         indent = indent_str,
         vis = vis,
         defaultness = defaultness,
         constness = constness,
         asyncness = asyncness,
-        unsafety = unsafety,
+        safety = safety,
         abi = abi,
         href = href,
         name = name,

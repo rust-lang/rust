@@ -188,7 +188,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 Asyncness::No => hir::IsAsync::NotAsync,
             };
             hir::FnHeader {
-                unsafety: sig.unsafety,
+                safety: sig.safety,
                 constness: self.tcx.constness(sig_id),
                 asyncness,
                 abi: sig.abi,
@@ -341,7 +341,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     fn generate_header_error(&self) -> hir::FnHeader {
         hir::FnHeader {
-            unsafety: hir::Unsafety::Normal,
+            safety: hir::Safety::Safe,
             constness: hir::Constness::NotConst,
             asyncness: hir::IsAsync::NotAsync,
             abi: abi::Abi::Rust,

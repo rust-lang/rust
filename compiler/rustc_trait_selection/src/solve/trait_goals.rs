@@ -15,7 +15,7 @@ use rustc_middle::traits::solve::inspect::ProbeKind;
 use rustc_middle::traits::solve::{CandidateSource, Certainty, Goal, QueryResult};
 use rustc_middle::traits::{BuiltinImplSource, Reveal};
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
-use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt, Upcast};
 use rustc_middle::ty::{TraitPredicate, TypeVisitableExt};
 use rustc_span::ErrorGuaranteed;
 
@@ -103,7 +103,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
 
     fn probe_and_match_goal_against_assumption(
         ecx: &mut EvalCtxt<'_, 'tcx>,
-        source: CandidateSource,
+        source: CandidateSource<'tcx>,
         goal: Goal<'tcx, Self>,
         assumption: ty::Clause<'tcx>,
         then: impl FnOnce(&mut EvalCtxt<'_, 'tcx>) -> QueryResult<'tcx>,
@@ -315,7 +315,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
             .map_bound(|(inputs, _)| {
                 ty::TraitRef::new(tcx, goal.predicate.def_id(), [goal.predicate.self_ty(), inputs])
             })
-            .to_predicate(tcx);
+            .upcast(tcx);
         // A built-in `Fn` impl only holds if the output is sized.
         // (FIXME: technically we only need to check this if the type is a fn ptr...)
         Self::probe_and_consider_implied_clause(
@@ -363,7 +363,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
                     [goal.predicate.self_ty(), tupled_inputs_ty],
                 )
             })
-            .to_predicate(tcx);
+            .upcast(tcx);
         // A built-in `AsyncFn` impl only holds if the output is sized.
         // (FIXME: technically we only need to check this if the type is a fn ptr...)
         Self::probe_and_consider_implied_clause(
@@ -560,7 +560,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
             CandidateSource::BuiltinImpl(BuiltinImplSource::Misc),
             goal,
             ty::TraitRef::new(tcx, goal.predicate.def_id(), [self_ty, coroutine.resume_ty()])
-                .to_predicate(tcx),
+                .upcast(tcx),
             // Technically, we need to check that the coroutine types are Sized,
             // but that's already proven by the coroutine being WF.
             [],
@@ -821,7 +821,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     fn consider_builtin_upcast_to_principal(
         &mut self,
         goal: Goal<'tcx, (Ty<'tcx>, Ty<'tcx>)>,
-        source: CandidateSource,
+        source: CandidateSource<'tcx>,
         a_data: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
         a_region: ty::Region<'tcx>,
         b_data: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
@@ -1149,7 +1149,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     /// wrapped in one.
     fn probe_and_evaluate_goal_for_constituent_tys(
         &mut self,
-        source: CandidateSource,
+        source: CandidateSource<'tcx>,
         goal: Goal<'tcx, TraitPredicate<'tcx>>,
         constituent_tys: impl Fn(
             &EvalCtxt<'_, 'tcx>,

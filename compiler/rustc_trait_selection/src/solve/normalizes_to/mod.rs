@@ -3,7 +3,6 @@ use crate::traits::specialization_graph;
 use super::assembly::structural_traits::AsyncCallableRelevantTypes;
 use super::assembly::{self, structural_traits, Candidate};
 use super::{EvalCtxt, GoalSource};
-use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::LangItem;
 use rustc_infer::traits::query::NoSolution;
@@ -16,7 +15,7 @@ use rustc_middle::traits::BuiltinImplSource;
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
 use rustc_middle::ty::NormalizesTo;
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_middle::ty::{ToPredicate, TypeVisitableExt};
+use rustc_middle::ty::{TypeVisitableExt, Upcast};
 use rustc_middle::{bug, span_bug};
 use rustc_span::{sym, ErrorGuaranteed, DUMMY_SP};
 
@@ -54,23 +53,15 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         &mut self,
         goal: Goal<'tcx, NormalizesTo<'tcx>>,
     ) -> QueryResult<'tcx> {
-        let def_id = goal.predicate.def_id();
-        match self.tcx().def_kind(def_id) {
-            DefKind::AssocTy | DefKind::AssocConst => {
-                match self.tcx().associated_item(def_id).container {
-                    ty::AssocItemContainer::TraitContainer => {
-                        let candidates = self.assemble_and_evaluate_candidates(goal);
-                        self.merge_candidates(candidates)
-                    }
-                    ty::AssocItemContainer::ImplContainer => {
-                        self.normalize_inherent_associated_type(goal)
-                    }
-                }
+        match goal.predicate.alias.kind(self.tcx()) {
+            ty::AliasTermKind::ProjectionTy | ty::AliasTermKind::ProjectionConst => {
+                let candidates = self.assemble_and_evaluate_candidates(goal);
+                self.merge_candidates(candidates)
             }
-            DefKind::AnonConst => self.normalize_anon_const(goal),
-            DefKind::TyAlias => self.normalize_weak_type(goal),
-            DefKind::OpaqueTy => self.normalize_opaque_type(goal),
-            kind => bug!("unknown DefKind {} in normalizes-to goal: {goal:#?}", kind.descr(def_id)),
+            ty::AliasTermKind::InherentTy => self.normalize_inherent_associated_type(goal),
+            ty::AliasTermKind::OpaqueTy => self.normalize_opaque_type(goal),
+            ty::AliasTermKind::WeakTy => self.normalize_weak_type(goal),
+            ty::AliasTermKind::UnevaluatedConst => self.normalize_anon_const(goal),
         }
     }
 
@@ -108,7 +99,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
 
     fn probe_and_match_goal_against_assumption(
         ecx: &mut EvalCtxt<'_, 'tcx>,
-        source: CandidateSource,
+        source: CandidateSource<'tcx>,
         goal: Goal<'tcx, Self>,
         assumption: ty::Clause<'tcx>,
         then: impl FnOnce(&mut EvalCtxt<'_, 'tcx>) -> QueryResult<'tcx>,
@@ -370,7 +361,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
                 ),
                 term: output.into(),
             })
-            .to_predicate(tcx);
+            .upcast(tcx);
 
         // A built-in `Fn` impl only holds if the output is sized.
         // (FIXME: technically we only need to check this if the type is a fn ptr...)
@@ -452,7 +443,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
                     ty::ProjectionPredicate { projection_term, term }
                 },
             )
-            .to_predicate(tcx);
+            .upcast(tcx);
 
         // A built-in `AsyncFn` impl only holds if the output is sized.
         // (FIXME: technically we only need to check this if the type is a fn ptr...)
@@ -629,7 +620,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
                 projection_term: ty::AliasTerm::new(ecx.tcx(), goal.predicate.def_id(), [self_ty]),
                 term,
             }
-            .to_predicate(tcx),
+            .upcast(tcx),
             // Technically, we need to check that the future type is Sized,
             // but that's already proven by the coroutine being WF.
             [],
@@ -661,7 +652,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
                 projection_term: ty::AliasTerm::new(ecx.tcx(), goal.predicate.def_id(), [self_ty]),
                 term,
             }
-            .to_predicate(tcx),
+            .upcast(tcx),
             // Technically, we need to check that the iterator type is Sized,
             // but that's already proven by the generator being WF.
             [],
@@ -749,7 +740,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
                 ),
                 term,
             }
-            .to_predicate(tcx),
+            .upcast(tcx),
             // Technically, we need to check that the coroutine type is Sized,
             // but that's already proven by the coroutine being WF.
             [],

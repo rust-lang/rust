@@ -30,6 +30,7 @@ use rustc_span::source_map::{respan, Spanned};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{BytePos, Span, SyntaxContext};
 use smallvec::{smallvec, SmallVec};
+use tracing::{debug, instrument, trace};
 
 use std::assert_matches::debug_assert_matches;
 use std::borrow::Cow;

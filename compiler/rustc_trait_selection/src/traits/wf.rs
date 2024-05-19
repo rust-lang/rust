@@ -377,7 +377,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
         let item = self.item;
 
         let extend = |traits::PredicateObligation { predicate, mut cause, .. }| {
-            if let Some(parent_trait_pred) = predicate.to_opt_poly_trait_pred() {
+            if let Some(parent_trait_pred) = predicate.as_trait_clause() {
                 cause = cause.derived_cause(
                     parent_trait_pred,
                     traits::ObligationCauseCode::WellFormedDerived,

@@ -4343,6 +4343,7 @@ dependencies = [
  "rustc_hir_pretty",
  "rustc_index",
  "rustc_macros",
+ "rustc_next_trait_solver",
  "rustc_query_system",
  "rustc_serialize",
  "rustc_session",
@@ -4451,7 +4452,13 @@ dependencies = [
 name = "rustc_next_trait_solver"
 version = "0.0.0"
 dependencies = [
+ "derivative",
+ "rustc_ast_ir",
+ "rustc_data_structures",
+ "rustc_macros",
+ "rustc_serialize",
  "rustc_type_ir",
+ "rustc_type_ir_macros",
 ]
 
 [[package]]
@@ -4752,6 +4759,7 @@ name = "rustc_trait_selection"
 version = "0.0.0"
 dependencies = [
  "bitflags 2.5.0",
+ "derivative",
  "itertools 0.12.1",
  "rustc_ast",
  "rustc_ast_ir",
@@ -4767,10 +4775,13 @@ dependencies = [
  "rustc_next_trait_solver",
  "rustc_parse_format",
  "rustc_query_system",
+ "rustc_serialize",
  "rustc_session",
  "rustc_span",
  "rustc_target",
  "rustc_transmute",
+ "rustc_type_ir",
+ "rustc_type_ir_macros",
  "smallvec",
  "tracing",
 ]

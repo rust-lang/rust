@@ -1082,7 +1082,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 mut_ty.mutbl.hash(&mut self.s);
             },
             TyKind::BareFn(bfn) => {
-                bfn.unsafety.hash(&mut self.s);
+                bfn.safety.hash(&mut self.s);
                 bfn.abi.hash(&mut self.s);
                 for arg in bfn.decl.inputs {
                     self.hash_ty(arg);

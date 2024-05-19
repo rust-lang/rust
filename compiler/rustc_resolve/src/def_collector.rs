@@ -7,6 +7,7 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_span::hygiene::LocalExpnId;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
+use tracing::debug;
 
 pub(crate) fn collect_definitions(
     resolver: &mut Resolver<'_, '_>,

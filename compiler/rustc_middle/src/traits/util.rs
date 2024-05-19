@@ -1,6 +1,6 @@
 use rustc_data_structures::fx::FxHashSet;
 
-use crate::ty::{Clause, PolyTraitRef, ToPolyTraitRef, ToPredicate, TyCtxt};
+use crate::ty::{Clause, PolyTraitRef, ToPolyTraitRef, TyCtxt, Upcast};
 
 /// Given a [`PolyTraitRef`], get the [`Clause`]s implied by the trait's definition.
 ///
@@ -11,7 +11,7 @@ pub fn super_predicates_for_pretty_printing<'tcx>(
     tcx: TyCtxt<'tcx>,
     trait_ref: PolyTraitRef<'tcx>,
 ) -> impl Iterator<Item = Clause<'tcx>> {
-    let clause = trait_ref.to_predicate(tcx);
+    let clause = trait_ref.upcast(tcx);
     Elaborator { tcx, visited: FxHashSet::from_iter([clause]), stack: vec![clause] }
 }
 

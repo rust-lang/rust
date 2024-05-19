@@ -198,10 +198,10 @@ impl<'a> State<'a> {
                     &item.attrs,
                 );
             }
-            ast::ItemKind::Mod(unsafety, mod_kind) => {
+            ast::ItemKind::Mod(safety, mod_kind) => {
                 self.head(Self::to_string(|s| {
                     s.print_visibility(&item.vis);
-                    s.print_unsafety(*unsafety);
+                    s.print_safety(*safety);
                     s.word("mod");
                 }));
                 self.print_ident(item.ident);
@@ -226,7 +226,7 @@ impl<'a> State<'a> {
             }
             ast::ItemKind::ForeignMod(nmod) => {
                 self.head(Self::to_string(|s| {
-                    s.print_unsafety(nmod.unsafety);
+                    s.print_safety(nmod.safety);
                     s.word("extern");
                 }));
                 if let Some(abi) = nmod.abi {
@@ -275,7 +275,7 @@ impl<'a> State<'a> {
                 self.print_struct(struct_def, generics, item.ident, item.span, true);
             }
             ast::ItemKind::Impl(box ast::Impl {
-                unsafety,
+                safety,
                 polarity,
                 defaultness,
                 constness,
@@ -287,7 +287,7 @@ impl<'a> State<'a> {
                 self.head("");
                 self.print_visibility(&item.vis);
                 self.print_defaultness(*defaultness);
-                self.print_unsafety(*unsafety);
+                self.print_safety(*safety);
                 self.word("impl");
 
                 if generics.params.is_empty() {
@@ -323,7 +323,7 @@ impl<'a> State<'a> {
             }
             ast::ItemKind::Trait(box ast::Trait {
                 is_auto,
-                unsafety,
+                safety,
                 generics,
                 bounds,
                 items,
@@ -331,7 +331,7 @@ impl<'a> State<'a> {
             }) => {
                 self.head("");
                 self.print_visibility(&item.vis);
-                self.print_unsafety(*unsafety);
+                self.print_safety(*safety);
                 self.print_is_auto(*is_auto);
                 self.word_nbsp("trait");
                 self.print_ident(item.ident);

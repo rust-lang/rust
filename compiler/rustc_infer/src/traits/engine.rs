@@ -2,7 +2,7 @@ use crate::infer::InferCtxt;
 use crate::traits::Obligation;
 use rustc_hir::def_id::DefId;
 use rustc_macros::extension;
-use rustc_middle::ty::{self, ToPredicate, Ty};
+use rustc_middle::ty::{self, Ty, Upcast};
 
 use super::FulfillmentError;
 use super::{ObligationCause, PredicateObligation};
@@ -26,7 +26,7 @@ pub trait TraitEngine<'tcx>: 'tcx {
                 cause,
                 recursion_depth: 0,
                 param_env,
-                predicate: ty::Binder::dummy(trait_ref).to_predicate(infcx.tcx),
+                predicate: trait_ref.upcast(infcx.tcx),
             },
         );
     }

@@ -22,7 +22,7 @@ use rustc_middle::ty::{
     TypeVisitable, TypeVisitor,
 };
 use rustc_middle::ty::{GenericArg, GenericArgs};
-use rustc_middle::ty::{ToPredicate, TypeVisitableExt};
+use rustc_middle::ty::{TypeVisitableExt, Upcast};
 use rustc_session::lint::builtin::WHERE_CLAUSES_OBJECT_SAFETY;
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
@@ -649,11 +649,11 @@ fn object_ty_for_trait<'tcx>(
     ));
     debug!(?trait_predicate);
 
-    let pred: ty::Predicate<'tcx> = trait_ref.to_predicate(tcx);
+    let pred: ty::Predicate<'tcx> = trait_ref.upcast(tcx);
     let mut elaborated_predicates: Vec<_> = elaborate(tcx, [pred])
         .filter_map(|pred| {
             debug!(?pred);
-            let pred = pred.to_opt_poly_projection_pred()?;
+            let pred = pred.as_projection_clause()?;
             Some(pred.map_bound(|p| {
                 ty::ExistentialPredicate::Projection(ty::ExistentialProjection::erase_self_ty(
                     tcx, p,
@@ -752,8 +752,7 @@ fn receiver_is_dispatchable<'tcx>(
 
         // Self: Unsize<U>
         let unsize_predicate =
-            ty::TraitRef::new(tcx, unsize_did, [tcx.types.self_param, unsized_self_ty])
-                .to_predicate(tcx);
+            ty::TraitRef::new(tcx, unsize_did, [tcx.types.self_param, unsized_self_ty]).upcast(tcx);
 
         // U: Trait<Arg1, ..., ArgN>
         let trait_predicate = {
@@ -762,7 +761,7 @@ fn receiver_is_dispatchable<'tcx>(
                 if param.index == 0 { unsized_self_ty.into() } else { tcx.mk_param_from_def(param) }
             });
 
-            ty::TraitRef::new(tcx, trait_def_id, args).to_predicate(tcx)
+            ty::TraitRef::new(tcx, trait_def_id, args).upcast(tcx)
         };
 
         let caller_bounds =

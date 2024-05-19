@@ -386,21 +386,21 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
         (
             Trait(box ast::Trait {
                 is_auto: la,
-                unsafety: lu,
+                safety: lu,
                 generics: lg,
                 bounds: lb,
                 items: li,
             }),
             Trait(box ast::Trait {
                 is_auto: ra,
-                unsafety: ru,
+                safety: ru,
                 generics: rg,
                 bounds: rb,
                 items: ri,
             }),
         ) => {
             la == ra
-                && matches!(lu, Unsafe::No) == matches!(ru, Unsafe::No)
+                && matches!(lu, Safety::Default) == matches!(ru, Safety::Default)
                 && eq_generics(lg, rg)
                 && over(lb, rb, eq_generic_bound)
                 && over(li, ri, |l, r| eq_item(l, r, eq_assoc_item_kind))
@@ -408,7 +408,7 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
         (TraitAlias(lg, lb), TraitAlias(rg, rb)) => eq_generics(lg, rg) && over(lb, rb, eq_generic_bound),
         (
             Impl(box ast::Impl {
-                unsafety: lu,
+                safety: lu,
                 polarity: lp,
                 defaultness: ld,
                 constness: lc,
@@ -418,7 +418,7 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 items: li,
             }),
             Impl(box ast::Impl {
-                unsafety: ru,
+                safety: ru,
                 polarity: rp,
                 defaultness: rd,
                 constness: rc,
@@ -428,7 +428,7 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 items: ri,
             }),
         ) => {
-            matches!(lu, Unsafe::No) == matches!(ru, Unsafe::No)
+            matches!(lu, Safety::Default) == matches!(ru, Safety::Default)
                 && matches!(lp, ImplPolarity::Positive) == matches!(rp, ImplPolarity::Positive)
                 && eq_defaultness(*ld, *rd)
                 && matches!(lc, ast::Const::No) == matches!(rc, ast::Const::No)
@@ -605,7 +605,7 @@ fn eq_opt_coroutine_kind(l: Option<CoroutineKind>, r: Option<CoroutineKind>) -> 
 }
 
 pub fn eq_fn_header(l: &FnHeader, r: &FnHeader) -> bool {
-    matches!(l.unsafety, Unsafe::No) == matches!(r.unsafety, Unsafe::No)
+    matches!(l.safety, Safety::Default) == matches!(r.safety, Safety::Default)
         && eq_opt_coroutine_kind(l.coroutine_kind, r.coroutine_kind)
         && matches!(l.constness, Const::No) == matches!(r.constness, Const::No)
         && eq_ext(&l.ext, &r.ext)
@@ -712,7 +712,7 @@ pub fn eq_ty(l: &Ty, r: &Ty) -> bool {
             both(ll, rl, |l, r| eq_id(l.ident, r.ident)) && l.mutbl == r.mutbl && eq_ty(&l.ty, &r.ty)
         },
         (BareFn(l), BareFn(r)) => {
-            l.unsafety == r.unsafety
+            l.safety == r.safety
                 && eq_ext(&l.ext, &r.ext)
                 && over(&l.generic_params, &r.generic_params, eq_generic_param)
                 && eq_fn_decl(&l.decl, &r.decl)

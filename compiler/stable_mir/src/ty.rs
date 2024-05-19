@@ -1,6 +1,5 @@
 use super::{
-    mir::Safety,
-    mir::{Body, Mutability},
+    mir::{Body, Mutability, Safety},
     with, DefId, Error, Symbol,
 };
 use crate::abi::Layout;
@@ -909,7 +908,7 @@ pub type PolyFnSig = Binder<FnSig>;
 pub struct FnSig {
     pub inputs_and_output: Vec<Ty>,
     pub c_variadic: bool,
-    pub unsafety: Safety,
+    pub safety: Safety,
     pub abi: Abi,
 }
 
@@ -1200,7 +1199,7 @@ pub enum TraitSpecializationKind {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TraitDecl {
     pub def_id: TraitDef,
-    pub unsafety: Safety,
+    pub safety: Safety,
     pub paren_sugar: bool,
     pub has_auto_impl: bool,
     pub is_marker: bool,

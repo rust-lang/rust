@@ -8,6 +8,7 @@ use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::{InnerSpan, Span, DUMMY_SP};
 use std::mem;
 use std::ops::Range;
+use tracing::{debug, trace};
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum DocFragmentKind {
