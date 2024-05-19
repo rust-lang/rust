@@ -166,14 +166,15 @@ pub fn lints_that_can_emit(tcx: TyCtxt<'_>, (): ()) -> Lrc<(Vec<String>, Vec<Str
 
     let lint_groups = store.get_lint_groups();
     for group in lint_groups {
-        let group_name = name_without_tool(group.0.to_lowercase());
+        let binding = group.0.to_lowercase();
+        let group_name = name_without_tool(&binding).to_string();
         if visitor.lints_to_emit.contains(&group_name) {
             for lint in group.1 {
-                visitor.lints_to_emit.push(name_without_tool(lint.to_string()));
+                visitor.lints_to_emit.push(name_without_tool(&lint.to_string()).to_string());
             }
         } else if visitor.lints_allowed.contains(&group_name) {
             for lint in &group.1 {
-                visitor.lints_allowed.push(name_without_tool(lint.to_string()));
+                visitor.lints_allowed.push(name_without_tool(&lint.to_string()).to_string());
             }
         }
     }
