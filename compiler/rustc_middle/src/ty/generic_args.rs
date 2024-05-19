@@ -27,6 +27,7 @@ use std::ops::Deref;
 use std::ptr::NonNull;
 
 pub type GenericArgKind<'tcx> = rustc_type_ir::GenericArgKind<TyCtxt<'tcx>>;
+pub type TermKind<'tcx> = rustc_type_ir::TermKind<TyCtxt<'tcx>>;
 
 /// An entity in the Rust type system, which can be one of
 /// several kinds (types, lifetimes, and consts).

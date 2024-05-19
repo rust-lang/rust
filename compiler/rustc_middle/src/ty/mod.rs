@@ -28,7 +28,7 @@ use crate::ty::fast_reject::SimplifiedType;
 use crate::ty::util::Discr;
 pub use adt::*;
 pub use assoc::*;
-pub use generic_args::{GenericArgKind, *};
+pub use generic_args::{GenericArgKind, TermKind, *};
 pub use generics::*;
 pub use intrinsic::IntrinsicDef;
 use rustc_ast as ast;
@@ -48,7 +48,8 @@ use rustc_hir::def::{CtorKind, CtorOf, DefKind, DocLinkResMap, LifetimeRes, Res}
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdMap};
 use rustc_index::IndexVec;
 use rustc_macros::{
-    Decodable, Encodable, HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable,
+    extension, Decodable, Encodable, HashStable, TyDecodable, TyEncodable, TypeFoldable,
+    TypeVisitable,
 };
 use rustc_query_system::ich::StableHashingContext;
 use rustc_serialize::{Decodable, Encodable};
@@ -521,6 +522,14 @@ pub struct Term<'tcx> {
     marker: PhantomData<(Ty<'tcx>, Const<'tcx>)>,
 }
 
+impl<'tcx> rustc_type_ir::inherent::IntoKind for Term<'tcx> {
+    type Kind = TermKind<'tcx>;
+
+    fn kind(self) -> Self::Kind {
+        self.unpack()
+    }
+}
+
 #[cfg(parallel_compiler)]
 unsafe impl<'tcx> rustc_data_structures::sync::DynSend for Term<'tcx> where
     &'tcx (Ty<'tcx>, Const<'tcx>): rustc_data_structures::sync::DynSend
@@ -566,13 +575,19 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for Term<'tcx> {
         self,
         folder: &mut F,
     ) -> Result<Self, F::Error> {
-        Ok(self.unpack().try_fold_with(folder)?.pack())
+        match self.unpack() {
+            ty::TermKind::Ty(ty) => ty.try_fold_with(folder).map(Into::into),
+            ty::TermKind::Const(ct) => ct.try_fold_with(folder).map(Into::into),
+        }
     }
 }
 
 impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for Term<'tcx> {
     fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> V::Result {
-        self.unpack().visit_with(visitor)
+        match self.unpack() {
+            ty::TermKind::Ty(ty) => ty.visit_with(visitor),
+            ty::TermKind::Const(ct) => ct.visit_with(visitor),
+        }
     }
 }
 
@@ -650,13 +665,7 @@ const TAG_MASK: usize = 0b11;
 const TYPE_TAG: usize = 0b00;
 const CONST_TAG: usize = 0b01;
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
-#[derive(HashStable, TypeFoldable, TypeVisitable)]
-pub enum TermKind<'tcx> {
-    Ty(Ty<'tcx>),
-    Const(Const<'tcx>),
-}
-
+#[extension(pub trait TermKindPackExt<'tcx>)]
 impl<'tcx> TermKind<'tcx> {
     #[inline]
     fn pack(self) -> Term<'tcx> {

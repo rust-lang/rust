@@ -10,7 +10,7 @@ use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable};
 use crate::{
     AliasTerm, AliasTermKind, AliasTy, AliasTyKind, CanonicalVarInfo, CoercePredicate,
     DebugWithInfcx, ExistentialProjection, ExistentialTraitRef, FnSig, GenericArgKind,
-    NormalizesTo, ProjectionPredicate, SubtypePredicate, TraitPredicate, TraitRef,
+    NormalizesTo, ProjectionPredicate, SubtypePredicate, TermKind, TraitPredicate, TraitRef,
 };
 
 pub trait Interner:
@@ -36,7 +36,7 @@ pub trait Interner:
     /// not including the args from the parent item (trait or impl).
     type OwnItemArgs: Copy + Debug + Hash + Eq;
     type GenericArg: Copy + DebugWithInfcx<Self> + Hash + Eq + IntoKind<Kind = GenericArgKind<Self>>;
-    type Term: Copy + Debug + Hash + Eq;
+    type Term: Copy + Debug + Hash + Eq + IntoKind<Kind = TermKind<Self>>;
 
     type Binder<T: TypeVisitable<Self>>: BoundVars<Self> + TypeSuperVisitable<Self>;
     type BoundVars: IntoIterator<Item = Self::BoundVar>;
