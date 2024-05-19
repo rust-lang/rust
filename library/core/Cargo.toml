@@ -36,3 +36,12 @@ optimize_for_size = []
 # Make `RefCell` store additional debugging information, which is printed out when
 # a borrow error occurs
 debug_refcell = []
+
+[lints.rust.unexpected_cfgs]
+level = "warn"
+check-cfg = [
+    'cfg(no_fp_fmt_parse)',
+    'cfg(bootstrap)',
+    'cfg(stdarch_intel_sde)',
+    'cfg(feature, values("all_lane_counts"))',
+]
