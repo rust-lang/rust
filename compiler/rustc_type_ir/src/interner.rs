@@ -3,6 +3,7 @@ use std::fmt::Debug;
 use std::hash::Hash;
 use std::ops::Deref;
 
+use crate::fold::TypeFoldable;
 use crate::inherent::*;
 use crate::ir_print::IrPrint;
 use crate::solve::inspect::CanonicalGoalEvaluationStep;
@@ -90,7 +91,7 @@ pub trait Interner:
     type PlaceholderRegion: PlaceholderLike;
 
     // Predicates
-    type ParamEnv: Copy + Debug + Hash + Eq;
+    type ParamEnv: Copy + Debug + Hash + Eq + TypeFoldable<Self>;
     type Predicate: Predicate<Self>;
     type Clause: Clause<Self>;
     type Clauses: Copy + Debug + Hash + Eq + TypeSuperVisitable<Self> + Flags;
@@ -114,14 +115,17 @@ pub trait Interner:
     ) -> (ty::TraitRef<Self>, Self::OwnItemArgs);
 
     fn mk_args(self, args: &[Self::GenericArg]) -> Self::GenericArgs;
-
     fn mk_args_from_iter(self, args: impl Iterator<Item = Self::GenericArg>) -> Self::GenericArgs;
-
     fn check_and_mk_args(
         self,
         def_id: Self::DefId,
         args: impl IntoIterator<Item: Into<Self::GenericArg>>,
     ) -> Self::GenericArgs;
+
+    fn intern_canonical_goal_evaluation_step(
+        self,
+        step: CanonicalGoalEvaluationStep<Self>,
+    ) -> Self::CanonicalGoalEvaluationStepRef;
 
     fn parent(self, def_id: Self::DefId) -> Self::DefId;
 

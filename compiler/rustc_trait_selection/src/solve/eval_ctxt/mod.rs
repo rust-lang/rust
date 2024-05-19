@@ -95,7 +95,7 @@ pub struct EvalCtxt<
     // evaluation code.
     tainted: Result<(), NoSolution>,
 
-    pub(super) inspect: ProofTreeBuilder<I>,
+    pub(super) inspect: ProofTreeBuilder<Infcx>,
 }
 
 #[derive(derivative::Derivative)]
@@ -215,7 +215,7 @@ impl<'a, 'tcx> EvalCtxt<'a, InferCtxt<'tcx>> {
         tcx: TyCtxt<'tcx>,
         search_graph: &'a mut search_graph::SearchGraph<TyCtxt<'tcx>>,
         canonical_input: CanonicalInput<'tcx>,
-        canonical_goal_evaluation: &mut ProofTreeBuilder<TyCtxt<'tcx>>,
+        canonical_goal_evaluation: &mut ProofTreeBuilder<InferCtxt<'tcx>>,
         f: impl FnOnce(&mut EvalCtxt<'_, InferCtxt<'tcx>>, Goal<'tcx, ty::Predicate<'tcx>>) -> R,
     ) -> R {
         let intercrate = match search_graph.solver_mode() {
@@ -277,7 +277,7 @@ impl<'a, 'tcx> EvalCtxt<'a, InferCtxt<'tcx>> {
         tcx: TyCtxt<'tcx>,
         search_graph: &'a mut search_graph::SearchGraph<TyCtxt<'tcx>>,
         canonical_input: CanonicalInput<'tcx>,
-        goal_evaluation: &mut ProofTreeBuilder<TyCtxt<'tcx>>,
+        goal_evaluation: &mut ProofTreeBuilder<InferCtxt<'tcx>>,
     ) -> QueryResult<'tcx> {
         let mut canonical_goal_evaluation =
             goal_evaluation.new_canonical_goal_evaluation(canonical_input);

@@ -16,7 +16,6 @@ use crate::solve::{
 use rustc_data_structures::fx::FxHashSet;
 use rustc_index::IndexVec;
 use rustc_infer::infer::canonical::query_response::make_query_region_constraints;
-use rustc_infer::infer::canonical::CanonicalVarValues;
 use rustc_infer::infer::canonical::{CanonicalExt, QueryRegionConstraints};
 use rustc_infer::infer::RegionVariableOrigin;
 use rustc_infer::infer::{InferCtxt, InferOk};
@@ -32,22 +31,24 @@ use rustc_middle::ty::{self, BoundVar, GenericArgKind, Ty, TyCtxt, TypeFoldable}
 use rustc_next_trait_solver::canonicalizer::{CanonicalizeMode, Canonicalizer};
 use rustc_next_trait_solver::resolve::EagerResolver;
 use rustc_span::{Span, DUMMY_SP};
+use rustc_type_ir::CanonicalVarValues;
+use rustc_type_ir::{InferCtxtLike, Interner};
 use std::assert_matches::assert_matches;
 use std::iter;
 use std::ops::Deref;
 
 trait ResponseT<'tcx> {
-    fn var_values(&self) -> CanonicalVarValues<'tcx>;
+    fn var_values(&self) -> CanonicalVarValues<TyCtxt<'tcx>>;
 }
 
 impl<'tcx> ResponseT<'tcx> for Response<TyCtxt<'tcx>> {
-    fn var_values(&self) -> CanonicalVarValues<'tcx> {
+    fn var_values(&self) -> CanonicalVarValues<TyCtxt<'tcx>> {
         self.var_values
     }
 }
 
 impl<'tcx, T> ResponseT<'tcx> for inspect::State<TyCtxt<'tcx>, T> {
-    fn var_values(&self) -> CanonicalVarValues<'tcx> {
+    fn var_values(&self) -> CanonicalVarValues<TyCtxt<'tcx>> {
         self.var_values
     }
 }
@@ -260,7 +261,7 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
         infcx: &InferCtxt<'tcx>,
         original_values: &[ty::GenericArg<'tcx>],
         response: &Canonical<'tcx, T>,
-    ) -> CanonicalVarValues<'tcx> {
+    ) -> CanonicalVarValues<TyCtxt<'tcx>> {
         // FIXME: Longterm canonical queries should deal with all placeholders
         // created inside of the query directly instead of returning them to the
         // caller.
@@ -354,7 +355,7 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
         infcx: &InferCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         original_values: &[ty::GenericArg<'tcx>],
-        var_values: CanonicalVarValues<'tcx>,
+        var_values: CanonicalVarValues<TyCtxt<'tcx>>,
     ) {
         assert_eq!(original_values.len(), var_values.len());
 
@@ -393,13 +394,18 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
 /// evaluating a goal. The `var_values` not only include the bound variables
 /// of the query input, but also contain all unconstrained inference vars
 /// created while evaluating this goal.
-pub(in crate::solve) fn make_canonical_state<'tcx, T: TypeFoldable<TyCtxt<'tcx>>>(
-    infcx: &InferCtxt<'tcx>,
-    var_values: &[ty::GenericArg<'tcx>],
+pub(in crate::solve) fn make_canonical_state<Infcx, T, I>(
+    infcx: &Infcx,
+    var_values: &[I::GenericArg],
     max_input_universe: ty::UniverseIndex,
     data: T,
-) -> inspect::CanonicalState<TyCtxt<'tcx>, T> {
-    let var_values = CanonicalVarValues { var_values: infcx.tcx.mk_args(var_values) };
+) -> inspect::CanonicalState<I, T>
+where
+    Infcx: InferCtxtLike<Interner = I>,
+    I: Interner,
+    T: TypeFoldable<I>,
+{
+    let var_values = CanonicalVarValues { var_values: infcx.interner().mk_args(var_values) };
     let state = inspect::State { var_values, data };
     let state = state.fold_with(&mut EagerResolver::new(infcx));
     Canonicalizer::canonicalize(
