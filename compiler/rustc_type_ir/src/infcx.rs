@@ -1,4 +1,4 @@
-use crate::{ConstVid, Interner, TyVid, UniverseIndex};
+use crate::{ConstVid, Interner, RegionVid, TyVid, UniverseIndex};
 
 pub trait InferCtxtLike {
     type Interner: Interner;
@@ -13,10 +13,7 @@ pub trait InferCtxtLike {
     /// Resolve `TyVid` to its inferred type, if it has been equated with a non-infer type.
     fn probe_ty_var(&self, vid: TyVid) -> Option<<Self::Interner as Interner>::Ty>;
 
-    fn universe_of_lt(
-        &self,
-        lt: <Self::Interner as Interner>::InferRegion,
-    ) -> Option<UniverseIndex>;
+    fn universe_of_lt(&self, lt: RegionVid) -> Option<UniverseIndex>;
 
     /// Resolve `InferRegion` to its inferred region, if it has been equated with
     /// a non-infer region.
@@ -27,7 +24,7 @@ pub trait InferCtxtLike {
     /// var we're trying to resolve. That's why it's called *opportunistic*.
     fn opportunistic_resolve_lt_var(
         &self,
-        vid: <Self::Interner as Interner>::InferRegion,
+        vid: RegionVid,
     ) -> Option<<Self::Interner as Interner>::Region>;
 
     fn universe_of_ct(&self, ct: ConstVid) -> Option<UniverseIndex>;

@@ -1,4 +1,4 @@
-use crate::{ConstVid, InferCtxtLike, Interner, TyVid, UniverseIndex};
+use crate::{ConstVid, InferCtxtLike, Interner, RegionVid, TyVid, UniverseIndex};
 
 use core::fmt;
 use std::marker::PhantomData;
@@ -16,7 +16,7 @@ impl<I: Interner> InferCtxtLike for NoInfcx<I> {
         None
     }
 
-    fn universe_of_lt(&self, _lt: I::InferRegion) -> Option<UniverseIndex> {
+    fn universe_of_lt(&self, _lt: RegionVid) -> Option<UniverseIndex> {
         None
     }
 
@@ -32,7 +32,7 @@ impl<I: Interner> InferCtxtLike for NoInfcx<I> {
         None
     }
 
-    fn opportunistic_resolve_lt_var(&self, _vid: I::InferRegion) -> Option<I::Region> {
+    fn opportunistic_resolve_lt_var(&self, _vid: RegionVid) -> Option<I::Region> {
         None
     }
 

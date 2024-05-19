@@ -79,7 +79,6 @@ pub trait Interner:
     type EarlyParamRegion: Copy + Debug + Hash + Eq;
     type LateParamRegion: Copy + Debug + Hash + Eq;
     type BoundRegion: Copy + Debug + Hash + Eq + BoundVarLike<Self>;
-    type InferRegion: Copy + DebugWithInfcx<Self> + Hash + Eq;
     type PlaceholderRegion: PlaceholderLike;
 
     // Predicates

@@ -1,12 +1,34 @@
 #[cfg(feature = "nightly")]
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 #[cfg(feature = "nightly")]
-use rustc_macros::{TyDecodable, TyEncodable};
+use rustc_macros::{HashStable_NoContext, TyDecodable, TyEncodable};
 use std::fmt;
 
 use crate::{DebruijnIndex, DebugWithInfcx, InferCtxtLike, Interner, WithInfcx};
 
 use self::RegionKind::*;
+
+rustc_index::newtype_index! {
+    /// A **region** **v**ariable **ID**.
+    #[encodable]
+    #[orderable]
+    #[debug_format = "'?{}"]
+    #[gate_rustc_only]
+    #[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
+    pub struct RegionVid {}
+}
+
+impl<I: Interner> DebugWithInfcx<I> for RegionVid {
+    fn fmt<Infcx: InferCtxtLike<Interner = I>>(
+        this: WithInfcx<'_, Infcx, &Self>,
+        f: &mut core::fmt::Formatter<'_>,
+    ) -> core::fmt::Result {
+        match this.infcx.universe_of_lt(*this.data) {
+            Some(universe) => write!(f, "'?{}_{}", this.data.index(), universe.index()),
+            None => write!(f, "{:?}", this.data),
+        }
+    }
+}
 
 /// Representation of regions. Note that the NLL checker uses a distinct
 /// representation of regions. For this reason, it internally replaces all the
@@ -152,7 +174,7 @@ pub enum RegionKind<I: Interner> {
     ReStatic,
 
     /// A region variable. Should not exist outside of type inference.
-    ReVar(I::InferRegion),
+    ReVar(RegionVid),
 
     /// A placeholder region -- the higher-ranked version of `ReLateParam`.
     /// Should not exist outside of type inference.
@@ -251,7 +273,6 @@ where
     I::EarlyParamRegion: HashStable<CTX>,
     I::BoundRegion: HashStable<CTX>,
     I::LateParamRegion: HashStable<CTX>,
-    I::InferRegion: HashStable<CTX>,
     I::PlaceholderRegion: HashStable<CTX>,
 {
     #[inline]

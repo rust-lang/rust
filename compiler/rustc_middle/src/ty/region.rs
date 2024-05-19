@@ -1,13 +1,12 @@
-use polonius_engine::Atom;
 use rustc_data_structures::intern::Interned;
 use rustc_errors::MultiSpan;
 use rustc_hir::def_id::DefId;
-use rustc_index::Idx;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_span::symbol::sym;
 use rustc_span::symbol::{kw, Symbol};
 use rustc_span::{ErrorGuaranteed, DUMMY_SP};
 use rustc_type_ir::RegionKind as IrRegionKind;
+pub use rustc_type_ir::RegionVid;
 use std::ops::Deref;
 
 use crate::ty::{self, BoundVar, TyCtxt, TypeFlags};
@@ -345,21 +344,6 @@ impl std::fmt::Debug for EarlyParamRegion {
         // FIXME(BoxyUwU): self.def_id goes first because of `erased-regions-in-hidden-ty.rs` being impossible to write
         // error annotations for otherwise. :). Ideally this would be `self.name, self.index, self.def_id`.
         write!(f, "{:?}_{}/#{}", self.def_id, self.name, self.index)
-    }
-}
-
-rustc_index::newtype_index! {
-    /// A **region** (lifetime) **v**ariable **ID**.
-    #[derive(HashStable)]
-    #[encodable]
-    #[orderable]
-    #[debug_format = "'?{}"]
-    pub struct RegionVid {}
-}
-
-impl Atom for RegionVid {
-    fn index(self) -> usize {
-        Idx::index(self)
     }
 }
 
