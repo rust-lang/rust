@@ -7,7 +7,6 @@ use std::collections::BTreeMap;
 use std::io::{self, ErrorKind, IsTerminal, Read, SeekFrom, Write};
 use std::rc::Rc;
 
-use rustc_middle::ty::TyCtxt;
 use rustc_target::abi::Size;
 
 use crate::shims::unix::*;
@@ -22,7 +21,7 @@ pub trait FileDescription: std::fmt::Debug + Any {
         &mut self,
         _communicate_allowed: bool,
         _bytes: &mut [u8],
-        _tcx: TyCtxt<'tcx>,
+        _ecx: &mut MiriInterpCx<'_, 'tcx>,
     ) -> InterpResult<'tcx, io::Result<usize>> {
         throw_unsup_format!("cannot read from {}", self.name());
     }
@@ -32,7 +31,7 @@ pub trait FileDescription: std::fmt::Debug + Any {
         &mut self,
         _communicate_allowed: bool,
         _bytes: &[u8],
-        _tcx: TyCtxt<'tcx>,
+        _ecx: &mut MiriInterpCx<'_, 'tcx>,
     ) -> InterpResult<'tcx, io::Result<usize>> {
         throw_unsup_format!("cannot write to {}", self.name());
     }
@@ -82,7 +81,7 @@ impl FileDescription for io::Stdin {
         &mut self,
         communicate_allowed: bool,
         bytes: &mut [u8],
-        _tcx: TyCtxt<'tcx>,
+        _ecx: &mut MiriInterpCx<'_, 'tcx>,
     ) -> InterpResult<'tcx, io::Result<usize>> {
         if !communicate_allowed {
             // We want isolation mode to be deterministic, so we have to disallow all reads, even stdin.
@@ -105,7 +104,7 @@ impl FileDescription for io::Stdout {
         &mut self,
         _communicate_allowed: bool,
         bytes: &[u8],
-        _tcx: TyCtxt<'tcx>,
+        _ecx: &mut MiriInterpCx<'_, 'tcx>,
     ) -> InterpResult<'tcx, io::Result<usize>> {
         // We allow writing to stderr even with isolation enabled.
         let result = Write::write(self, bytes);
@@ -133,7 +132,7 @@ impl FileDescription for io::Stderr {
         &mut self,
         _communicate_allowed: bool,
         bytes: &[u8],
-        _tcx: TyCtxt<'tcx>,
+        _ecx: &mut MiriInterpCx<'_, 'tcx>,
     ) -> InterpResult<'tcx, io::Result<usize>> {
         // We allow writing to stderr even with isolation enabled.
         // No need to flush, stderr is not buffered.
@@ -158,7 +157,7 @@ impl FileDescription for NullOutput {
         &mut self,
         _communicate_allowed: bool,
         bytes: &[u8],
-        _tcx: TyCtxt<'tcx>,
+        _ecx: &mut MiriInterpCx<'_, 'tcx>,
     ) -> InterpResult<'tcx, io::Result<usize>> {
         // We just don't write anything, but report to the user that we did.
         Ok(Ok(bytes.len()))
@@ -171,6 +170,14 @@ pub struct FileDescriptor(Rc<RefCell<Box<dyn FileDescription>>>);
 impl FileDescriptor {
     pub fn new<T: FileDescription>(fd: T) -> Self {
         FileDescriptor(Rc::new(RefCell::new(Box::new(fd))))
+    }
+
+    pub fn borrow(&self) -> Ref<'_, dyn FileDescription> {
+        Ref::map(self.0.borrow(), |fd| fd.as_ref())
+    }
+
+    pub fn borrow_mut(&self) -> RefMut<'_, dyn FileDescription> {
+        RefMut::map(self.0.borrow_mut(), |fd| fd.as_mut())
     }
 
     pub fn close<'ctx>(self, communicate_allowed: bool) -> InterpResult<'ctx, io::Result<()>> {
@@ -242,12 +249,12 @@ impl FdTable {
 
     pub fn get(&self, fd: i32) -> Option<Ref<'_, dyn FileDescription>> {
         let fd = self.fds.get(&fd)?;
-        Some(Ref::map(fd.0.borrow(), |fd| fd.as_ref()))
+        Some(fd.borrow())
     }
 
     pub fn get_mut(&self, fd: i32) -> Option<RefMut<'_, dyn FileDescription>> {
         let fd = self.fds.get(&fd)?;
-        Some(RefMut::map(fd.0.borrow_mut(), |fd| fd.as_mut()))
+        Some(fd.borrow_mut())
     }
 
     pub fn dup(&self, fd: i32) -> Option<FileDescriptor> {
@@ -370,7 +377,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             .min(u64::try_from(isize::MAX).unwrap());
         let communicate = this.machine.communicate();
 
-        let Some(mut file_descriptor) = this.machine.fds.get_mut(fd) else {
+        // We temporarily dup the FD to be able to retain mutable access to `this`.
+        let Some(file_descriptor) = this.machine.fds.dup(fd) else {
             trace!("read: FD not found");
             return this.fd_not_found();
         };
@@ -383,7 +391,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         // `File::read` never returns a value larger than `count`,
         // so this cannot fail.
         let result = file_descriptor
-            .read(communicate, &mut bytes, *this.tcx)?
+            .borrow_mut()
+            .read(communicate, &mut bytes, this)?
             .map(|c| i64::try_from(c).unwrap());
         drop(file_descriptor);
 
@@ -421,12 +430,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let communicate = this.machine.communicate();
 
         let bytes = this.read_bytes_ptr_strip_provenance(buf, Size::from_bytes(count))?.to_owned();
-        let Some(mut file_descriptor) = this.machine.fds.get_mut(fd) else {
+        // We temporarily dup the FD to be able to retain mutable access to `this`.
+        let Some(file_descriptor) = this.machine.fds.dup(fd) else {
             return this.fd_not_found();
         };
 
         let result = file_descriptor
-            .write(communicate, &bytes, *this.tcx)?
+            .borrow_mut()
+            .write(communicate, &bytes, this)?
             .map(|c| i64::try_from(c).unwrap());
         drop(file_descriptor);
 

@@ -13,6 +13,7 @@
 #![feature(lint_reasons)]
 #![feature(trait_upcasting)]
 #![feature(strict_overflow_ops)]
+#![feature(strict_provenance)]
 // Configure clippy and other lints
 #![allow(
     clippy::collapsible_else_if,
@@ -74,6 +75,7 @@ extern crate rustc_target;
 extern crate rustc_driver;
 
 mod alloc_addresses;
+mod alloc_bytes;
 mod borrow_tracker;
 mod clock;
 mod concurrency;
@@ -107,6 +109,7 @@ pub use crate::shims::tls::TlsData;
 pub use crate::shims::EmulateItemResult;
 
 pub use crate::alloc_addresses::{EvalContextExt as _, ProvenanceMode};
+pub use crate::alloc_bytes::MiriAllocBytes;
 pub use crate::borrow_tracker::stacked_borrows::{
     EvalContextExt as _, Item, Permission, Stack, Stacks,
 };

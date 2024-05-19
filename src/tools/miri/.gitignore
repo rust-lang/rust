@@ -5,6 +5,7 @@ tex/*/out
 *.out
 *.rs.bk
 .vscode
+.helix
 *.mm_profdata
 perf.data
 perf.data.old

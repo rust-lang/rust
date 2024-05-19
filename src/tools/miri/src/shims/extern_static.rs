@@ -55,6 +55,12 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
         let val = ImmTy::from_int(val, this.machine.layouts.u8);
         Self::alloc_extern_static(this, "__rust_alloc_error_handler_should_panic", val)?;
 
+        if this.target_os_is_unix() {
+            // "environ" is mandated by POSIX.
+            let environ = this.machine.env_vars.unix().environ();
+            Self::add_extern_static(this, "environ", environ);
+        }
+
         match this.tcx.sess.target.os.as_ref() {
             "linux" => {
                 Self::null_ptr_extern_statics(
@@ -62,19 +68,13 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
                     &["__cxa_thread_atexit_impl", "__clock_gettime64"],
                 )?;
                 Self::weak_symbol_extern_statics(this, &["getrandom", "statx"])?;
-                // "environ"
-                let environ = this.machine.env_vars.unix().environ();
-                Self::add_extern_static(this, "environ", environ);
             }
             "freebsd" => {
                 Self::null_ptr_extern_statics(this, &["__cxa_thread_atexit_impl"])?;
-                // "environ"
-                let environ = this.machine.env_vars.unix().environ();
-                Self::add_extern_static(this, "environ", environ);
             }
             "android" => {
                 Self::null_ptr_extern_statics(this, &["bsd_signal"])?;
-                Self::weak_symbol_extern_statics(this, &["signal"])?;
+                Self::weak_symbol_extern_statics(this, &["signal", "getrandom"])?;
             }
             "windows" => {
                 // "_tls_used"

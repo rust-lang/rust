@@ -405,9 +405,12 @@ fn main() {
 
     let mut rustc_args = vec![];
     let mut after_dashdash = false;
-
     // If user has explicitly enabled/disabled isolation
     let mut isolation_enabled: Option<bool> = None;
+
+    // Note that we require values to be given with `=`, not with a space.
+    // This matches how rustc parses `-Z`.
+    // However, unlike rustc we do not accept a space after `-Z`.
     for arg in args {
         if rustc_args.is_empty() {
             // Very first arg: binary name.

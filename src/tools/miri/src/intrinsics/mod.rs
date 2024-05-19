@@ -26,7 +26,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         args: &[OpTy<'tcx, Provenance>],
         dest: &MPlaceTy<'tcx, Provenance>,
         ret: Option<mir::BasicBlock>,
-        _unwind: mir::UnwindAction,
+        unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx, Option<ty::Instance<'tcx>>> {
         let this = self.eval_context_mut();
 
@@ -62,9 +62,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     args: instance.args,
                 }))
             }
-            EmulateItemResult::NeedsJumping => {
+            EmulateItemResult::NeedsReturn => {
                 trace!("{:?}", this.dump_place(&dest.clone().into()));
                 this.return_to_block(ret)?;
+                Ok(None)
+            }
+            EmulateItemResult::NeedsUnwind => {
+                // Jump to the unwind block to begin unwinding.
+                this.unwind_to_block(unwind)?;
                 Ok(None)
             }
             EmulateItemResult::AlreadyJumped => Ok(None),
@@ -167,6 +172,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 // This is a "bitwise" operation, so there's no NaN non-determinism.
                 this.write_scalar(Scalar::from_f64(f.abs()), dest)?;
             }
+
             "floorf32" | "ceilf32" | "truncf32" | "roundf32" | "rintf32" => {
                 let [f] = check_arg_count(args)?;
                 let f = this.read_scalar(f)?.to_f32()?;
@@ -182,6 +188,22 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let res = this.adjust_nan(res, &[f]);
                 this.write_scalar(res, dest)?;
             }
+            "floorf64" | "ceilf64" | "truncf64" | "roundf64" | "rintf64" => {
+                let [f] = check_arg_count(args)?;
+                let f = this.read_scalar(f)?.to_f64()?;
+                let mode = match intrinsic_name {
+                    "floorf64" => Round::TowardNegative,
+                    "ceilf64" => Round::TowardPositive,
+                    "truncf64" => Round::TowardZero,
+                    "roundf64" => Round::NearestTiesToAway,
+                    "rintf64" => Round::NearestTiesToEven,
+                    _ => bug!(),
+                };
+                let res = f.round_to_integral(mode).value;
+                let res = this.adjust_nan(res, &[f]);
+                this.write_scalar(res, dest)?;
+            }
+
             #[rustfmt::skip]
             | "sinf32"
             | "cosf32"
@@ -208,22 +230,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     _ => bug!(),
                 };
                 let res = res.to_soft();
-                let res = this.adjust_nan(res, &[f]);
-                this.write_scalar(res, dest)?;
-            }
-
-            "floorf64" | "ceilf64" | "truncf64" | "roundf64" | "rintf64" => {
-                let [f] = check_arg_count(args)?;
-                let f = this.read_scalar(f)?.to_f64()?;
-                let mode = match intrinsic_name {
-                    "floorf64" => Round::TowardNegative,
-                    "ceilf64" => Round::TowardPositive,
-                    "truncf64" => Round::TowardZero,
-                    "roundf64" => Round::NearestTiesToAway,
-                    "rintf64" => Round::NearestTiesToEven,
-                    _ => bug!(),
-                };
-                let res = f.round_to_integral(mode).value;
                 let res = this.adjust_nan(res, &[f]);
                 this.write_scalar(res, dest)?;
             }
@@ -255,6 +261,113 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let res = res.to_soft();
                 let res = this.adjust_nan(res, &[f]);
                 this.write_scalar(res, dest)?;
+            }
+
+            "minnumf32" | "maxnumf32" | "copysignf32" => {
+                let [a, b] = check_arg_count(args)?;
+                let a = this.read_scalar(a)?.to_f32()?;
+                let b = this.read_scalar(b)?.to_f32()?;
+                let res = match intrinsic_name {
+                    "minnumf32" => this.adjust_nan(a.min(b), &[a, b]),
+                    "maxnumf32" => this.adjust_nan(a.max(b), &[a, b]),
+                    "copysignf32" => a.copy_sign(b), // bitwise, no NaN adjustments
+                    _ => bug!(),
+                };
+                this.write_scalar(Scalar::from_f32(res), dest)?;
+            }
+            "minnumf64" | "maxnumf64" | "copysignf64" => {
+                let [a, b] = check_arg_count(args)?;
+                let a = this.read_scalar(a)?.to_f64()?;
+                let b = this.read_scalar(b)?.to_f64()?;
+                let res = match intrinsic_name {
+                    "minnumf64" => this.adjust_nan(a.min(b), &[a, b]),
+                    "maxnumf64" => this.adjust_nan(a.max(b), &[a, b]),
+                    "copysignf64" => a.copy_sign(b), // bitwise, no NaN adjustments
+                    _ => bug!(),
+                };
+                this.write_scalar(Scalar::from_f64(res), dest)?;
+            }
+
+            "fmaf32" => {
+                let [a, b, c] = check_arg_count(args)?;
+                let a = this.read_scalar(a)?.to_f32()?;
+                let b = this.read_scalar(b)?.to_f32()?;
+                let c = this.read_scalar(c)?.to_f32()?;
+                // FIXME: Using host floats, to work around https://github.com/rust-lang/rustc_apfloat/issues/11
+                let res = a.to_host().mul_add(b.to_host(), c.to_host()).to_soft();
+                let res = this.adjust_nan(res, &[a, b, c]);
+                this.write_scalar(res, dest)?;
+            }
+            "fmaf64" => {
+                let [a, b, c] = check_arg_count(args)?;
+                let a = this.read_scalar(a)?.to_f64()?;
+                let b = this.read_scalar(b)?.to_f64()?;
+                let c = this.read_scalar(c)?.to_f64()?;
+                // FIXME: Using host floats, to work around https://github.com/rust-lang/rustc_apfloat/issues/11
+                let res = a.to_host().mul_add(b.to_host(), c.to_host()).to_soft();
+                let res = this.adjust_nan(res, &[a, b, c]);
+                this.write_scalar(res, dest)?;
+            }
+
+            "powf32" => {
+                let [f1, f2] = check_arg_count(args)?;
+                let f1 = this.read_scalar(f1)?.to_f32()?;
+                let f2 = this.read_scalar(f2)?.to_f32()?;
+                // Using host floats (but it's fine, this operation does not have guaranteed precision).
+                let res = f1.to_host().powf(f2.to_host()).to_soft();
+                let res = this.adjust_nan(res, &[f1, f2]);
+                this.write_scalar(res, dest)?;
+            }
+            "powf64" => {
+                let [f1, f2] = check_arg_count(args)?;
+                let f1 = this.read_scalar(f1)?.to_f64()?;
+                let f2 = this.read_scalar(f2)?.to_f64()?;
+                // Using host floats (but it's fine, this operation does not have guaranteed precision).
+                let res = f1.to_host().powf(f2.to_host()).to_soft();
+                let res = this.adjust_nan(res, &[f1, f2]);
+                this.write_scalar(res, dest)?;
+            }
+
+            "powif32" => {
+                let [f, i] = check_arg_count(args)?;
+                let f = this.read_scalar(f)?.to_f32()?;
+                let i = this.read_scalar(i)?.to_i32()?;
+                // Using host floats (but it's fine, this operation does not have guaranteed precision).
+                let res = f.to_host().powi(i).to_soft();
+                let res = this.adjust_nan(res, &[f]);
+                this.write_scalar(res, dest)?;
+            }
+            "powif64" => {
+                let [f, i] = check_arg_count(args)?;
+                let f = this.read_scalar(f)?.to_f64()?;
+                let i = this.read_scalar(i)?.to_i32()?;
+                // Using host floats (but it's fine, this operation does not have guaranteed precision).
+                let res = f.to_host().powi(i).to_soft();
+                let res = this.adjust_nan(res, &[f]);
+                this.write_scalar(res, dest)?;
+            }
+
+            #[rustfmt::skip]
+            | "fadd_algebraic"
+            | "fsub_algebraic"
+            | "fmul_algebraic"
+            | "fdiv_algebraic"
+            | "frem_algebraic"
+            => {
+                let [a, b] = check_arg_count(args)?;
+                let a = this.read_immediate(a)?;
+                let b = this.read_immediate(b)?;
+                let op = match intrinsic_name {
+                    "fadd_algebraic" => mir::BinOp::Add,
+                    "fsub_algebraic" => mir::BinOp::Sub,
+                    "fmul_algebraic" => mir::BinOp::Mul,
+                    "fdiv_algebraic" => mir::BinOp::Div,
+                    "frem_algebraic" => mir::BinOp::Rem,
+                    _ => bug!(),
+                };
+                let res = this.wrapping_binary_op(op, &a, &b)?;
+                // `wrapping_binary_op` already called `generate_nan` if necessary.
+                this.write_immediate(*res, dest)?;
             }
 
             #[rustfmt::skip]
@@ -307,102 +420,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 this.write_immediate(*res, dest)?;
             }
 
-            #[rustfmt::skip]
-            | "minnumf32"
-            | "maxnumf32"
-            | "copysignf32"
-            => {
-                let [a, b] = check_arg_count(args)?;
-                let a = this.read_scalar(a)?.to_f32()?;
-                let b = this.read_scalar(b)?.to_f32()?;
-                let res = match intrinsic_name {
-                    "minnumf32" => this.adjust_nan(a.min(b), &[a, b]),
-                    "maxnumf32" => this.adjust_nan(a.max(b), &[a, b]),
-                    "copysignf32" => a.copy_sign(b), // bitwise, no NaN adjustments
-                    _ => bug!(),
-                };
-                this.write_scalar(Scalar::from_f32(res), dest)?;
-            }
-
-            #[rustfmt::skip]
-            | "minnumf64"
-            | "maxnumf64"
-            | "copysignf64"
-            => {
-                let [a, b] = check_arg_count(args)?;
-                let a = this.read_scalar(a)?.to_f64()?;
-                let b = this.read_scalar(b)?.to_f64()?;
-                let res = match intrinsic_name {
-                    "minnumf64" => this.adjust_nan(a.min(b), &[a, b]),
-                    "maxnumf64" => this.adjust_nan(a.max(b), &[a, b]),
-                    "copysignf64" => a.copy_sign(b), // bitwise, no NaN adjustments
-                    _ => bug!(),
-                };
-                this.write_scalar(Scalar::from_f64(res), dest)?;
-            }
-
-            "fmaf32" => {
-                let [a, b, c] = check_arg_count(args)?;
-                let a = this.read_scalar(a)?.to_f32()?;
-                let b = this.read_scalar(b)?.to_f32()?;
-                let c = this.read_scalar(c)?.to_f32()?;
-                // FIXME: Using host floats, to work around https://github.com/rust-lang/rustc_apfloat/issues/11
-                let res = a.to_host().mul_add(b.to_host(), c.to_host()).to_soft();
-                let res = this.adjust_nan(res, &[a, b, c]);
-                this.write_scalar(res, dest)?;
-            }
-
-            "fmaf64" => {
-                let [a, b, c] = check_arg_count(args)?;
-                let a = this.read_scalar(a)?.to_f64()?;
-                let b = this.read_scalar(b)?.to_f64()?;
-                let c = this.read_scalar(c)?.to_f64()?;
-                // FIXME: Using host floats, to work around https://github.com/rust-lang/rustc_apfloat/issues/11
-                let res = a.to_host().mul_add(b.to_host(), c.to_host()).to_soft();
-                let res = this.adjust_nan(res, &[a, b, c]);
-                this.write_scalar(res, dest)?;
-            }
-
-            "powf32" => {
-                let [f1, f2] = check_arg_count(args)?;
-                let f1 = this.read_scalar(f1)?.to_f32()?;
-                let f2 = this.read_scalar(f2)?.to_f32()?;
-                // Using host floats (but it's fine, this operation does not have guaranteed precision).
-                let res = f1.to_host().powf(f2.to_host()).to_soft();
-                let res = this.adjust_nan(res, &[f1, f2]);
-                this.write_scalar(res, dest)?;
-            }
-
-            "powf64" => {
-                let [f1, f2] = check_arg_count(args)?;
-                let f1 = this.read_scalar(f1)?.to_f64()?;
-                let f2 = this.read_scalar(f2)?.to_f64()?;
-                // Using host floats (but it's fine, this operation does not have guaranteed precision).
-                let res = f1.to_host().powf(f2.to_host()).to_soft();
-                let res = this.adjust_nan(res, &[f1, f2]);
-                this.write_scalar(res, dest)?;
-            }
-
-            "powif32" => {
-                let [f, i] = check_arg_count(args)?;
-                let f = this.read_scalar(f)?.to_f32()?;
-                let i = this.read_scalar(i)?.to_i32()?;
-                // Using host floats (but it's fine, this operation does not have guaranteed precision).
-                let res = f.to_host().powi(i).to_soft();
-                let res = this.adjust_nan(res, &[f]);
-                this.write_scalar(res, dest)?;
-            }
-
-            "powif64" => {
-                let [f, i] = check_arg_count(args)?;
-                let f = this.read_scalar(f)?.to_f64()?;
-                let i = this.read_scalar(i)?.to_i32()?;
-                // Using host floats (but it's fine, this operation does not have guaranteed precision).
-                let res = f.to_host().powi(i).to_soft();
-                let res = this.adjust_nan(res, &[f]);
-                this.write_scalar(res, dest)?;
-            }
-
             "float_to_int_unchecked" => {
                 let [val] = check_arg_count(args)?;
                 let val = this.read_immediate(val)?;
@@ -429,6 +446,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             _ => return Ok(EmulateItemResult::NotSupported),
         }
 
-        Ok(EmulateItemResult::NeedsJumping)
+        Ok(EmulateItemResult::NeedsReturn)
     }
 }
