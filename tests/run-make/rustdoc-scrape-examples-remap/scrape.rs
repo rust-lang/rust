@@ -2,7 +2,7 @@ use run_make_support::{htmldocck, rustc, rustdoc, source_path, tmp_dir};
 use std::fs::read_dir;
 use std::path::Path;
 
-pub fn scrape() {
+pub fn scrape(extra_args: &[&str]) {
     let lib_dir = tmp_dir();
     let out_dir = tmp_dir().join("rustdoc");
     let crate_name = "foobar";
@@ -29,6 +29,7 @@ pub fn scrape() {
             .arg(&out_example)
             .arg("--scrape-examples-target-crate")
             .arg(crate_name)
+            .args(extra_args)
             .run();
         out_deps.push(out_example);
     }
