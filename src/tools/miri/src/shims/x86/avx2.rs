@@ -440,6 +440,6 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
             }
             _ => return Ok(EmulateItemResult::NotSupported),
         }
-        Ok(EmulateItemResult::NeedsJumping)
+        Ok(EmulateItemResult::NeedsReturn)
     }
 }

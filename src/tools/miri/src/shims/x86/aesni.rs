@@ -127,7 +127,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
             // with an external crate.
             _ => return Ok(EmulateItemResult::NotSupported),
         }
-        Ok(EmulateItemResult::NeedsJumping)
+        Ok(EmulateItemResult::NeedsReturn)
     }
 }
 
