@@ -2476,7 +2476,6 @@ unsafe impl<#[may_dangle] T: ?Sized, A: Allocator> Drop for Arc<T, A> {
             Likely decrement_strong_count or from_raw were called too many times.",
         );
 
-
         unsafe {
             self.drop_slow();
         }
@@ -3339,7 +3338,6 @@ static STATIC_INNER_SLICE: SliceArcInnerForStatic = SliceArcInnerForStatic {
     },
 };
 
-
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "more_rc_default_impls", since = "CURRENT_RUSTC_VERSION")]
 impl Default for Arc<str> {
@@ -3365,9 +3363,11 @@ impl Default for Arc<core::ffi::CStr> {
     fn default() -> Self {
         use core::ffi::CStr;
         let inner: NonNull<ArcInner<[u8]>> = NonNull::from(&STATIC_INNER_SLICE.inner);
-        let inner: NonNull<ArcInner<CStr>> = NonNull::new(inner.as_ptr() as *mut ArcInner<CStr>).unwrap();
+        let inner: NonNull<ArcInner<CStr>> =
+            NonNull::new(inner.as_ptr() as *mut ArcInner<CStr>).unwrap();
         // `this` semantically is the Arc "owned" by the static, so make sure not to drop it.
-        let this: mem::ManuallyDrop<Arc<CStr>> = unsafe { mem::ManuallyDrop::new(Arc::from_inner(inner)) };
+        let this: mem::ManuallyDrop<Arc<CStr>> =
+            unsafe { mem::ManuallyDrop::new(Arc::from_inner(inner)) };
         (*this).clone()
     }
 }
@@ -3388,7 +3388,8 @@ impl<T> Default for Arc<[T]> {
             let inner: NonNull<SliceArcInnerForStatic> = NonNull::from(&STATIC_INNER_SLICE);
             let inner: NonNull<ArcInner<[T; 0]>> = inner.cast();
             // `this` semantically is the Arc "owned" by the static, so make sure not to drop it.
-            let this: mem::ManuallyDrop<Arc<[T; 0]>> = unsafe { mem::ManuallyDrop::new(Arc::from_inner(inner)) };
+            let this: mem::ManuallyDrop<Arc<[T; 0]>> =
+                unsafe { mem::ManuallyDrop::new(Arc::from_inner(inner)) };
             return (*this).clone();
         }
 
