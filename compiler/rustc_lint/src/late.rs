@@ -386,7 +386,7 @@ pub fn late_lint_mod<'tcx, T: LateLintPass<'tcx> + 'tcx>(
             .filter(|pass| {
                 let pass = LintPass::get_lints(pass);
                 pass.iter().any(|&lint| {
-                    let lint_name = name_without_tool(lint.name.to_lowercase());
+                    let lint_name = name_without_tool(&lint.name.to_lowercase()).to_string();
                     lints_to_emit.contains(&lint_name)
                         || (!lints_allowed.contains(&lint_name)
                             && lint.default_level != crate::Level::Allow)
@@ -486,7 +486,7 @@ pub fn check_crate<'tcx>(tcx: TyCtxt<'tcx>) {
 
 /// Format name ignoring the name, useful for filtering non-used lints.
 /// For example, 'clippy::my_lint' will turn into 'my_lint'
-pub(crate) fn name_without_tool(name: String) -> String {
+pub(crate) fn name_without_tool(name: &str) -> &str {
     // Doing some calculations here to account for those separators
-    name[name.find("::").unwrap_or(name.len() - 2) + 2..].to_string()
+    name.rsplit("::").next().unwrap_or(name)
 }
