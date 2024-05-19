@@ -3381,7 +3381,11 @@ impl<T> Default for Arc<[T]> {
     #[inline]
     fn default() -> Self {
         if mem::align_of::<T>() <= MAX_STATIC_INNER_SLICE_ALIGNMENT {
-            let inner: NonNull<ArcInner<[u8; 1]>> = NonNull::from(&STATIC_INNER_SLICE.inner);
+            // We take a reference to the whole struct instead of the ArcInner<[u8; 1]> inside it so
+            // we don't shrink the range of bytes the ptr is allowed to access under Stacked Borrows.
+            // (Miri complains on 32-bit targets with Arc<[Align16]> otherwise.)
+            // (Note that NonNull::from(&STATIC_INNER_SLICE.inner) is fine under Tree Borrows.)
+            let inner: NonNull<SliceArcInnerForStatic> = NonNull::from(&STATIC_INNER_SLICE);
             let inner: NonNull<ArcInner<[T; 0]>> = inner.cast();
             // `this` semantically is the Arc "owned" by the static, so make sure not to drop it.
             let this: mem::ManuallyDrop<Arc<[T; 0]>> = unsafe { mem::ManuallyDrop::new(Arc::from_inner(inner)) };
