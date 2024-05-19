@@ -374,10 +374,8 @@ where
         // - unlike most internal iteration methods, it only takes a &mut self
         // - it lets us thread the write pointer through its innards and get it back in the end
         let sink = InPlaceDrop { inner: dst_buf, dst: dst_buf };
-        let sink = match self.try_fold::<_, _, Result<_, !>>(sink, write_in_place_with_drop(end)) {
-            Ok(sink) => sink,
-            Err(never) => match never {},
-        };
+        let sink =
+            self.try_fold::<_, _, Result<_, !>>(sink, write_in_place_with_drop(end)).into_ok();
         // iteration succeeded, don't drop head
         unsafe { ManuallyDrop::new(sink).dst.sub_ptr(dst_buf) }
     }
