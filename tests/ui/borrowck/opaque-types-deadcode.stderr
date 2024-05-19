@@ -1,0 +1,8 @@
+error: Foo<'{erased}, '{erased}>
+  --> $DIR/opaque-types-deadcode.rs:26:25
+   |
+LL | fn foo<'a, 'b: 'a>() -> impl CallMeMaybe<'a, 'b> {
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
