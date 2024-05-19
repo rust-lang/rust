@@ -38,5 +38,21 @@ note: potential non-recoverable error(s)
 LL |         let i = i_str.parse::<i32>().expect("not a number");
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 2 previous errors
+error: used unwrap or expect in a function that returns result or option
+  --> tests/ui/unwrap_in_result.rs:42:5
+   |
+LL | /     fn in_closure(a: Option<bool>) -> Option<bool> {
+LL | |         let c = || a.unwrap();
+LL | |         Some(c())
+LL | |     }
+   | |_____^
+   |
+   = help: unwrap and expect should not be used in a function that returns result or option
+note: potential non-recoverable error(s)
+  --> tests/ui/unwrap_in_result.rs:43:20
+   |
+LL |         let c = || a.unwrap();
+   |                    ^^^^^^^^^^
+
+error: aborting due to 3 previous errors
 

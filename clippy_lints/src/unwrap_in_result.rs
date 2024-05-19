@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::ty::is_type_diagnostic_item;
-use clippy_utils::visitors::for_each_expr_without_closures;
+use clippy_utils::visitors::for_each_expr;
 use clippy_utils::{method_chain_args, return_ty};
 use core::ops::ControlFlow;
 use rustc_hir as hir;
@@ -75,7 +75,7 @@ fn lint_impl_body<'tcx>(cx: &LateContext<'tcx>, impl_span: Span, impl_item: &'tc
         let body = cx.tcx.hir().body(body_id);
         let typeck = cx.tcx.typeck(impl_item.owner_id.def_id);
         let mut result = Vec::new();
-        let _: Option<!> = for_each_expr_without_closures(body.value, |e| {
+        let _: Option<!> = for_each_expr(cx, body.value, |e| {
             // check for `expect`
             if let Some(arglists) = method_chain_args(e, &["expect"]) {
                 let receiver_ty = typeck.expr_ty(arglists[0].0).peel_refs();
