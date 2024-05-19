@@ -3328,6 +3328,7 @@ impl<T: Default> Default for Arc<T> {
 struct SliceArcInnerForStatic {
     inner: ArcInner<[u8; 1]>,
 }
+#[cfg(not(no_global_oom_handling))]
 const MAX_STATIC_INNER_SLICE_ALIGNMENT: usize = 16;
 
 static STATIC_INNER_SLICE: SliceArcInnerForStatic = SliceArcInnerForStatic {
