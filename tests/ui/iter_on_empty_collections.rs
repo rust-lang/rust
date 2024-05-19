@@ -20,6 +20,19 @@ fn array() {
     };
 
     let _ = if false { ["test"].iter() } else { [].iter() };
+
+    let smth = Some(vec![1, 2, 3]);
+
+    // Don't trigger when the empty collection iter is relied upon for its concrete type
+    // But do trigger if it is just an iterator, despite being an argument to a method
+    for i in smth.as_ref().map_or([].iter(), |s| s.iter()).chain([].iter()) {
+        println!("{i}");
+    }
+
+    // Same as above, but for regular function calls
+    for i in Option::map_or(smth.as_ref(), [].iter(), |s| s.iter()) {
+        println!("{i}");
+    }
 }
 
 macro_rules! in_macros {

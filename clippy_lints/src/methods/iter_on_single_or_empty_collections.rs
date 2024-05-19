@@ -1,8 +1,12 @@
+use std::iter::once;
+
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet;
 use clippy_utils::{get_expr_use_or_unification_node, is_res_lang_ctor, path_res, std_or_core};
 
 use rustc_errors::Applicability;
+use rustc_hir::def_id::DefId;
+use rustc_hir::hir_id::HirId;
 use rustc_hir::LangItem::{OptionNone, OptionSome};
 use rustc_hir::{Expr, ExprKind, Node};
 use rustc_lint::LateContext;
@@ -25,7 +29,25 @@ impl IterType {
     }
 }
 
-pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, method_name: &str, recv: &Expr<'_>) {
+fn is_arg_ty_unified_in_fn<'tcx>(
+    cx: &LateContext<'tcx>,
+    fn_id: DefId,
+    arg_id: HirId,
+    args: impl Iterator<Item = &'tcx Expr<'tcx>> + Clone,
+) -> bool {
+    let fn_sig = cx.tcx.fn_sig(fn_id).instantiate_identity();
+    let arg_id_in_args = args.clone().position(|e| e.hir_id == arg_id).unwrap();
+    let arg_ty_in_args = fn_sig.input(arg_id_in_args);
+
+    cx.tcx.predicates_of(fn_id).predicates.iter().any(|(clause, _)| {
+        clause
+            .as_projection_clause()
+            .and_then(|p| p.map_bound(|p| p.term.ty()).transpose())
+            .is_some_and(|ty| ty == arg_ty_in_args)
+    })
+}
+
+pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, method_name: &str, recv: &'tcx Expr<'tcx>) {
     let item = match recv.kind {
         ExprKind::Array([]) => None,
         ExprKind::Array([e]) => Some(e),
@@ -43,6 +65,25 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, method_name: &str, re
     let is_unified = match get_expr_use_or_unification_node(cx.tcx, expr) {
         Some((Node::Expr(parent), child_id)) => match parent.kind {
             ExprKind::If(e, _, _) | ExprKind::Match(e, _, _) if e.hir_id == child_id => false,
+            ExprKind::Call(
+                Expr {
+                    kind: ExprKind::Path(path),
+                    hir_id,
+                    ..
+                },
+                args,
+            ) => is_arg_ty_unified_in_fn(
+                cx,
+                cx.typeck_results().qpath_res(path, *hir_id).def_id(),
+                expr.hir_id,
+                args.iter(),
+            ),
+            ExprKind::MethodCall(_name, recv, args, _span) => is_arg_ty_unified_in_fn(
+                cx,
+                cx.typeck_results().type_dependent_def_id(parent.hir_id).unwrap(),
+                expr.hir_id,
+                once(recv).chain(args.iter()),
+            ),
             ExprKind::If(_, _, _)
             | ExprKind::Match(_, _, _)
             | ExprKind::Closure(_)
