@@ -73,7 +73,7 @@ use rustc_middle::bug;
 use rustc_middle::dep_graph::DepContext;
 use rustc_middle::ty::print::{with_forced_trimmed_paths, PrintError, PrintTraitRefExt as _};
 use rustc_middle::ty::relate::{self, RelateResult, TypeRelation};
-use rustc_middle::ty::ToPredicate;
+use rustc_middle::ty::Upcast;
 use rustc_middle::ty::{
     self, error::TypeError, IsSuggestable, List, Region, Ty, TyCtxt, TypeFoldable,
     TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
@@ -516,7 +516,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
                     RegionResolutionError::CannotNormalize(clause, origin) => {
                         let clause: ty::Clause<'tcx> =
-                            clause.map_bound(ty::ClauseKind::TypeOutlives).to_predicate(self.tcx);
+                            clause.map_bound(ty::ClauseKind::TypeOutlives).upcast(self.tcx);
                         self.tcx
                             .dcx()
                             .struct_span_err(origin.span(), format!("cannot normalize `{clause}`"))
@@ -1053,8 +1053,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
         // unsafe extern "C" for<'a> fn(&'a T) -> &'a T
         // ^^^^^^
-        values.0.push(sig1.unsafety.prefix_str(), sig1.unsafety != sig2.unsafety);
-        values.1.push(sig2.unsafety.prefix_str(), sig1.unsafety != sig2.unsafety);
+        values.0.push(sig1.safety.prefix_str(), sig1.safety != sig2.safety);
+        values.1.push(sig2.safety.prefix_str(), sig1.safety != sig2.safety);
 
         // unsafe extern "C" for<'a> fn(&'a T) -> &'a T
         //        ^^^^^^^^^^
@@ -1928,7 +1928,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                                     self.tcx
                                         .signature_unclosure(
                                             args.as_closure().sig(),
-                                            rustc_hir::Unsafety::Normal,
+                                            rustc_hir::Safety::Safe,
                                         )
                                         .to_string(),
                                 ),

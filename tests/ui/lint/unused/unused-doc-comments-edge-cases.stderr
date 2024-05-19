@@ -13,7 +13,7 @@ LL |     (/// useless doc comment
    = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
    = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-   = help: `///` is for documentation comments. For a plain comment, use `//`.
+   = help: `///` is used for outer documentation comments; for a plain comment, use `//`
 
 error: unused doc comment
   --> $DIR/unused-doc-comments-edge-cases.rs:6:9

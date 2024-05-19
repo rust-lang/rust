@@ -1,3 +1,6 @@
+use std::io::Write;
+use std::ops::ControlFlow;
+
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::at::ToTrace;
@@ -8,13 +11,12 @@ use rustc_infer::infer::{
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::solve::{MaybeCause, NestedNormalizationGoals};
 use rustc_infer::traits::ObligationCause;
-use rustc_macros::{extension, HashStable};
+use rustc_macros::{extension, HashStable, HashStable_NoContext, TyDecodable, TyEncodable};
 use rustc_middle::bug;
 use rustc_middle::infer::canonical::CanonicalVarInfos;
-use rustc_middle::traits::solve::inspect;
 use rustc_middle::traits::solve::{
-    CanonicalInput, CanonicalResponse, Certainty, PredefinedOpaques, PredefinedOpaquesData,
-    QueryResult,
+    inspect, CanonicalInput, CanonicalResponse, Certainty, PredefinedOpaques,
+    PredefinedOpaquesData, QueryResult,
 };
 use rustc_middle::traits::specialization_graph;
 use rustc_middle::ty::{
@@ -23,8 +25,8 @@ use rustc_middle::ty::{
 };
 use rustc_session::config::DumpSolverProofTree;
 use rustc_span::DUMMY_SP;
-use std::io::Write;
-use std::ops::ControlFlow;
+use rustc_type_ir::{self as ir, Interner};
+use rustc_type_ir_macros::{Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic};
 
 use crate::traits::coherence;
 use crate::traits::vtable::{count_own_vtable_entries, prepare_vtable_segments, VtblSegment};
@@ -85,7 +87,7 @@ pub struct EvalCtxt<'a, 'tcx> {
 
     pub(super) search_graph: &'a mut SearchGraph<'tcx>,
 
-    nested_goals: NestedGoals<'tcx>,
+    nested_goals: NestedGoals<TyCtxt<'tcx>>,
 
     // Has this `EvalCtxt` errored out with `NoSolution` in `try_evaluate_added_goals`?
     //
@@ -95,11 +97,15 @@ pub struct EvalCtxt<'a, 'tcx> {
     // evaluation code.
     tainted: Result<(), NoSolution>,
 
-    pub(super) inspect: ProofTreeBuilder<'tcx>,
+    pub(super) inspect: ProofTreeBuilder<TyCtxt<'tcx>>,
 }
 
-#[derive(Default, Debug, Clone)]
-pub(super) struct NestedGoals<'tcx> {
+#[derive(derivative::Derivative)]
+#[derivative(Clone(bound = ""), Debug(bound = ""), Default(bound = ""))]
+#[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
+#[derive(TyDecodable, TyEncodable, HashStable_NoContext)]
+// FIXME: This can be made crate-private once `EvalCtxt` also lives in this crate.
+pub struct NestedGoals<I: Interner> {
     /// These normalizes-to goals are treated specially during the evaluation
     /// loop. In each iteration we take the RHS of the projection, replace it with
     /// a fresh inference variable, and only after evaluating that goal do we
@@ -110,17 +116,17 @@ pub(super) struct NestedGoals<'tcx> {
     ///
     /// Forgetting to replace the RHS with a fresh inference variable when we evaluate
     /// this goal results in an ICE..
-    pub(super) normalizes_to_goals: Vec<Goal<'tcx, ty::NormalizesTo<'tcx>>>,
+    pub normalizes_to_goals: Vec<ir::solve::Goal<I, ir::NormalizesTo<I>>>,
     /// The rest of the goals which have not yet processed or remain ambiguous.
-    pub(super) goals: Vec<(GoalSource, Goal<'tcx, ty::Predicate<'tcx>>)>,
+    pub goals: Vec<(GoalSource, ir::solve::Goal<I, I::Predicate>)>,
 }
 
-impl<'tcx> NestedGoals<'tcx> {
-    pub(super) fn new() -> Self {
+impl<I: Interner> NestedGoals<I> {
+    pub fn new() -> Self {
         Self { normalizes_to_goals: Vec::new(), goals: Vec::new() }
     }
 
-    pub(super) fn is_empty(&self) -> bool {
+    pub fn is_empty(&self) -> bool {
         self.normalizes_to_goals.is_empty() && self.goals.is_empty()
     }
 }
@@ -143,7 +149,8 @@ impl<'tcx> InferCtxt<'tcx> {
         &self,
         goal: Goal<'tcx, ty::Predicate<'tcx>>,
         generate_proof_tree: GenerateProofTree,
-    ) -> (Result<(bool, Certainty), NoSolution>, Option<inspect::GoalEvaluation<'tcx>>) {
+    ) -> (Result<(bool, Certainty), NoSolution>, Option<inspect::GoalEvaluation<TyCtxt<'tcx>>>)
+    {
         EvalCtxt::enter_root(self, generate_proof_tree, |ecx| {
             ecx.evaluate_goal(GoalEvaluationKind::Root, GoalSource::Misc, goal)
         })
@@ -166,7 +173,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         infcx: &InferCtxt<'tcx>,
         generate_proof_tree: GenerateProofTree,
         f: impl FnOnce(&mut EvalCtxt<'_, 'tcx>) -> R,
-    ) -> (R, Option<inspect::GoalEvaluation<'tcx>>) {
+    ) -> (R, Option<inspect::GoalEvaluation<TyCtxt<'tcx>>>) {
         let mode = if infcx.intercrate { SolverMode::Coherence } else { SolverMode::Normal };
         let mut search_graph = search_graph::SearchGraph::new(mode);
 
@@ -220,7 +227,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         tcx: TyCtxt<'tcx>,
         search_graph: &'a mut search_graph::SearchGraph<'tcx>,
         canonical_input: CanonicalInput<'tcx>,
-        canonical_goal_evaluation: &mut ProofTreeBuilder<'tcx>,
+        canonical_goal_evaluation: &mut ProofTreeBuilder<TyCtxt<'tcx>>,
         f: impl FnOnce(&mut EvalCtxt<'_, 'tcx>, Goal<'tcx, ty::Predicate<'tcx>>) -> R,
     ) -> R {
         let intercrate = match search_graph.solver_mode() {
@@ -282,7 +289,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         tcx: TyCtxt<'tcx>,
         search_graph: &'a mut search_graph::SearchGraph<'tcx>,
         canonical_input: CanonicalInput<'tcx>,
-        goal_evaluation: &mut ProofTreeBuilder<'tcx>,
+        goal_evaluation: &mut ProofTreeBuilder<TyCtxt<'tcx>>,
     ) -> QueryResult<'tcx> {
         let mut canonical_goal_evaluation =
             goal_evaluation.new_canonical_goal_evaluation(canonical_input);

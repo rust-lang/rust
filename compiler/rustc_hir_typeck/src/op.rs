@@ -583,7 +583,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         if !errors.is_empty() {
                             for error in errors {
                                 if let Some(trait_pred) =
-                                    error.obligation.predicate.to_opt_poly_trait_pred()
+                                    error.obligation.predicate.as_trait_clause()
                                 {
                                     let output_associated_item = match error.obligation.cause.code()
                                     {
@@ -797,9 +797,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     );
 
                     if operand_ty.has_non_region_param() {
-                        let predicates = errors.iter().filter_map(|error| {
-                            error.obligation.predicate.to_opt_poly_trait_pred()
-                        });
+                        let predicates = errors
+                            .iter()
+                            .filter_map(|error| error.obligation.predicate.as_trait_clause());
                         for pred in predicates {
                             self.err_ctxt().suggest_restricting_param_bound(
                                 &mut err,

@@ -5,13 +5,13 @@ use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{walk_expr, walk_fn, walk_item, FnKind, Visitor};
 use rustc_hir::{
-    self as hir, BlockCheckMode, BodyId, Expr, ExprKind, FnDecl, Impl, Item, ItemKind, UnsafeSource, Unsafety,
+    self as hir, BlockCheckMode, BodyId, Expr, ExprKind, FnDecl, Safety, Impl, Item, ItemKind, UnsafeSource,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::traits::Reveal;
 use rustc_middle::ty::{
-    self, ClauseKind, GenericArgKind, GenericParamDefKind, ParamEnv, ToPredicate, TraitPredicate, Ty, TyCtxt,
+    self, ClauseKind, GenericArgKind, GenericParamDefKind, ParamEnv, Upcast, TraitPredicate, Ty, TyCtxt,
 };
 use rustc_session::declare_lint_pass;
 use rustc_span::def_id::LocalDefId;
@@ -415,7 +415,7 @@ impl<'tcx> Visitor<'tcx> for UnsafeVisitor<'_, 'tcx> {
         }
 
         if let Some(header) = kind.header()
-            && header.unsafety == Unsafety::Unsafe
+            && header.safety == Safety::Unsafe
         {
             self.has_unsafe = true;
         }
@@ -503,7 +503,7 @@ fn param_env_for_derived_eq(tcx: TyCtxt<'_>, did: DefId, eq_trait_id: DefId) -> 
                     trait_ref: ty::TraitRef::new(tcx, eq_trait_id, [tcx.mk_param_from_def(param)]),
                     polarity: ty::PredicatePolarity::Positive,
                 })
-                .to_predicate(tcx)
+                .upcast(tcx)
             }),
         )),
         Reveal::UserFacing,

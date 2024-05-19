@@ -424,7 +424,7 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
             ty::FnPtr(sig) => {
                 self.push("F");
                 self.in_binder(&sig, |cx, sig| {
-                    if sig.unsafety == hir::Unsafety::Unsafe {
+                    if sig.safety == hir::Safety::Unsafe {
                         cx.push("U");
                     }
                     match sig.abi {

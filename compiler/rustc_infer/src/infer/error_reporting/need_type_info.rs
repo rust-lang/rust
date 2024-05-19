@@ -168,7 +168,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ClosureEraser<'tcx> {
                 let closure_sig = args.as_closure().sig();
                 Ty::new_fn_ptr(
                     self.tcx,
-                    self.tcx.signature_unclosure(closure_sig, hir::Unsafety::Normal),
+                    self.tcx.signature_unclosure(closure_sig, hir::Safety::Safe),
                 )
             }
             _ => ty.super_fold_with(self),

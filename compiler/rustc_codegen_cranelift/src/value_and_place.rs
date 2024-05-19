@@ -872,7 +872,7 @@ pub(crate) fn assert_assignable<'tcx>(
             let FnSig {
                 inputs_and_output: types_from,
                 c_variadic: c_variadic_from,
-                unsafety: unsafety_from,
+                safety: unsafety_from,
                 abi: abi_from,
             } = from_sig;
             let to_sig = fx
@@ -881,7 +881,7 @@ pub(crate) fn assert_assignable<'tcx>(
             let FnSig {
                 inputs_and_output: types_to,
                 c_variadic: c_variadic_to,
-                unsafety: unsafety_to,
+                safety: unsafety_to,
                 abi: abi_to,
             } = to_sig;
             let mut types_from = types_from.iter();

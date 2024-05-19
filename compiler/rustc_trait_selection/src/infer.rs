@@ -10,7 +10,7 @@ use rustc_middle::infer::canonical::{Canonical, CanonicalQueryResponse, QueryRes
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, TypeVisitableExt};
-use rustc_middle::ty::{GenericArg, ToPredicate};
+use rustc_middle::ty::{GenericArg, Upcast};
 use rustc_span::DUMMY_SP;
 
 use std::fmt::Debug;
@@ -63,7 +63,7 @@ impl<'tcx> InferCtxt<'tcx> {
             cause: traits::ObligationCause::dummy(),
             param_env,
             recursion_depth: 0,
-            predicate: ty::Binder::dummy(trait_ref).to_predicate(self.tcx),
+            predicate: trait_ref.upcast(self.tcx),
         };
         self.evaluate_obligation(&obligation).unwrap_or(traits::EvaluationResult::EvaluatedToErr)
     }

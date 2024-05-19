@@ -247,7 +247,10 @@ pub trait BuilderMethods<'a, 'tcx>:
         } else {
             (in_ty, dest_ty)
         };
-        assert!(matches!(self.cx().type_kind(float_ty), TypeKind::Float | TypeKind::Double));
+        assert!(matches!(
+            self.cx().type_kind(float_ty),
+            TypeKind::Half | TypeKind::Float | TypeKind::Double | TypeKind::FP128
+        ));
         assert_eq!(self.cx().type_kind(int_ty), TypeKind::Integer);
 
         if let Some(false) = self.cx().sess().opts.unstable_opts.saturating_float_casts {

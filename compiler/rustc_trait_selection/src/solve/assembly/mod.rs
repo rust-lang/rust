@@ -13,7 +13,7 @@ use rustc_middle::traits::BuiltinImplSource;
 use rustc_middle::ty::fast_reject::{SimplifiedType, TreatParams};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::ty::{fast_reject, TypeFoldable};
-use rustc_middle::ty::{ToPredicate, TypeVisitableExt};
+use rustc_middle::ty::{TypeVisitableExt, Upcast};
 use rustc_span::{ErrorGuaranteed, DUMMY_SP};
 use std::fmt::Debug;
 
@@ -25,7 +25,7 @@ pub(super) mod structural_traits;
 /// and the `result` when using the given `source`.
 #[derive(Debug, Clone)]
 pub(super) struct Candidate<'tcx> {
-    pub(super) source: CandidateSource,
+    pub(super) source: CandidateSource<'tcx>,
     pub(super) result: CanonicalResponse<'tcx>,
 }
 
@@ -47,7 +47,7 @@ pub(super) trait GoalKind<'tcx>:
     /// [`EvalCtxt::evaluate_added_goals_and_make_canonical_response`]).
     fn probe_and_match_goal_against_assumption(
         ecx: &mut EvalCtxt<'_, 'tcx>,
-        source: CandidateSource,
+        source: CandidateSource<'tcx>,
         goal: Goal<'tcx, Self>,
         assumption: ty::Clause<'tcx>,
         then: impl FnOnce(&mut EvalCtxt<'_, 'tcx>) -> QueryResult<'tcx>,
@@ -58,7 +58,7 @@ pub(super) trait GoalKind<'tcx>:
     /// goal by equating it with the assumption.
     fn probe_and_consider_implied_clause(
         ecx: &mut EvalCtxt<'_, 'tcx>,
-        parent_source: CandidateSource,
+        parent_source: CandidateSource<'tcx>,
         goal: Goal<'tcx, Self>,
         assumption: ty::Clause<'tcx>,
         requirements: impl IntoIterator<Item = (GoalSource, Goal<'tcx, ty::Predicate<'tcx>>)>,
@@ -76,7 +76,7 @@ pub(super) trait GoalKind<'tcx>:
     /// since they're not implied by the well-formedness of the object type.
     fn probe_and_consider_object_bound_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
-        source: CandidateSource,
+        source: CandidateSource<'tcx>,
         goal: Goal<'tcx, Self>,
         assumption: ty::Clause<'tcx>,
     ) -> Result<Candidate<'tcx>, NoSolution> {
@@ -286,7 +286,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             return self.forced_ambiguity(MaybeCause::Ambiguity).into_iter().collect();
         }
 
-        let goal =
+        let goal: Goal<'tcx, G> =
             goal.with(self.tcx(), goal.predicate.with_self_ty(self.tcx(), normalized_self_ty));
         // Vars that show up in the rest of the goal substs may have been constrained by
         // normalizing the self type as well, since type variables are not uniquified.
@@ -744,7 +744,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                     ecx,
                     CandidateSource::BuiltinImpl(BuiltinImplSource::Object { vtable_base }),
                     goal,
-                    assumption.to_predicate(tcx),
+                    assumption.upcast(tcx),
                 ));
             });
         }

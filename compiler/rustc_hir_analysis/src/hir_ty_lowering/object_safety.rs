@@ -9,7 +9,7 @@ use rustc_lint_defs::builtin::UNUSED_ASSOCIATED_TYPE_BOUNDS;
 use rustc_middle::span_bug;
 use rustc_middle::ty::fold::BottomUpFolder;
 use rustc_middle::ty::{self, ExistentialPredicateStableCmpExt as _, Ty, TyCtxt, TypeFoldable};
-use rustc_middle::ty::{DynKind, ToPredicate};
+use rustc_middle::ty::{DynKind, Upcast};
 use rustc_span::{ErrorGuaranteed, Span};
 use rustc_trait_selection::traits::error_reporting::report_object_safety_error;
 use rustc_trait_selection::traits::{self, hir_ty_lowering_object_safety_violations};
@@ -119,7 +119,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             .filter(|(trait_ref, _)| !tcx.trait_is_auto(trait_ref.def_id()));
 
         for (base_trait_ref, span) in regular_traits_refs_spans {
-            let base_pred: ty::Predicate<'tcx> = base_trait_ref.to_predicate(tcx);
+            let base_pred: ty::Predicate<'tcx> = base_trait_ref.upcast(tcx);
             for pred in traits::elaborate(tcx, [base_pred]).filter_only_self() {
                 debug!("observing object predicate `{pred:?}`");
 

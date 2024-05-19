@@ -2080,14 +2080,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
                 Ty::new_fn_ptr(
                     tcx,
-                    self.lower_fn_ty(
-                        hir_ty.hir_id,
-                        bf.unsafety,
-                        bf.abi,
-                        bf.decl,
-                        None,
-                        Some(hir_ty),
-                    ),
+                    self.lower_fn_ty(hir_ty.hir_id, bf.safety, bf.abi, bf.decl, None, Some(hir_ty)),
                 )
             }
             hir::TyKind::TraitObject(bounds, lifetime, repr) => {
@@ -2309,11 +2302,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     }
 
     /// Lower a function type from the HIR to our internal notion of a function signature.
-    #[instrument(level = "debug", skip(self, hir_id, unsafety, abi, decl, generics, hir_ty), ret)]
+    #[instrument(level = "debug", skip(self, hir_id, safety, abi, decl, generics, hir_ty), ret)]
     pub fn lower_fn_ty(
         &self,
         hir_id: HirId,
-        unsafety: hir::Unsafety,
+        safety: hir::Safety,
         abi: abi::Abi,
         decl: &hir::FnDecl<'tcx>,
         generics: Option<&hir::Generics<'_>>,
@@ -2376,7 +2369,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         debug!(?output_ty);
 
-        let fn_ty = tcx.mk_fn_sig(input_tys, output_ty, decl.c_variadic, unsafety, abi);
+        let fn_ty = tcx.mk_fn_sig(input_tys, output_ty, decl.c_variadic, safety, abi);
         let bare_fn_ty = ty::Binder::bind_with_vars(fn_ty, bound_vars);
 
         if !self.allow_infer() && !(visitor.0.is_empty() && infer_replacements.is_empty()) {

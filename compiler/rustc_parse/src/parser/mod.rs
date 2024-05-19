@@ -26,7 +26,7 @@ use rustc_ast::tokenstream::{TokenStream, TokenTree, TokenTreeCursor};
 use rustc_ast::util::case::Case;
 use rustc_ast::{
     self as ast, AnonConst, AttrArgs, AttrArgsEq, AttrId, ByRef, Const, CoroutineKind, DelimArgs,
-    Expr, ExprKind, Extern, HasAttrs, HasTokens, Mutability, Recovered, StrLit, Unsafe, Visibility,
+    Expr, ExprKind, Extern, HasAttrs, HasTokens, Mutability, Recovered, Safety, StrLit, Visibility,
     VisibilityKind, DUMMY_NODE_ID,
 };
 use rustc_ast_pretty::pprust;
@@ -1217,12 +1217,12 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Parses unsafety: `unsafe` or nothing.
-    fn parse_unsafety(&mut self, case: Case) -> Unsafe {
+    /// Parses fn unsafety: `unsafe`, `safe` or nothing.
+    fn parse_safety(&mut self, case: Case) -> Safety {
         if self.eat_keyword_case(kw::Unsafe, case) {
-            Unsafe::Yes(self.prev_token.uninterpolated_span())
+            Safety::Unsafe(self.prev_token.uninterpolated_span())
         } else {
-            Unsafe::No
+            Safety::Default
         }
     }
 

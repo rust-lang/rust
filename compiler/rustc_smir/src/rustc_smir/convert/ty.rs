@@ -112,8 +112,8 @@ impl<'tcx> Stable<'tcx> for ty::adjustment::PointerCoercion {
         match self {
             PointerCoercion::ReifyFnPointer => stable_mir::mir::PointerCoercion::ReifyFnPointer,
             PointerCoercion::UnsafeFnPointer => stable_mir::mir::PointerCoercion::UnsafeFnPointer,
-            PointerCoercion::ClosureFnPointer(unsafety) => {
-                stable_mir::mir::PointerCoercion::ClosureFnPointer(unsafety.stable(tables))
+            PointerCoercion::ClosureFnPointer(safety) => {
+                stable_mir::mir::PointerCoercion::ClosureFnPointer(safety.stable(tables))
             }
             PointerCoercion::MutToConstPointer => {
                 stable_mir::mir::PointerCoercion::MutToConstPointer
@@ -215,7 +215,7 @@ impl<'tcx> Stable<'tcx> for ty::FnSig<'tcx> {
         FnSig {
             inputs_and_output: self.inputs_and_output.iter().map(|ty| ty.stable(tables)).collect(),
             c_variadic: self.c_variadic,
-            unsafety: self.unsafety.stable(tables),
+            safety: self.safety.stable(tables),
             abi: self.abi.stable(tables),
         }
     }
@@ -499,7 +499,7 @@ impl<'tcx> Stable<'tcx> for ty::TraitDef {
 
         TraitDecl {
             def_id: tables.trait_def(self.def_id),
-            unsafety: self.unsafety.stable(tables),
+            safety: self.safety.stable(tables),
             paren_sugar: self.paren_sugar,
             has_auto_impl: self.has_auto_impl,
             is_marker: self.is_marker,

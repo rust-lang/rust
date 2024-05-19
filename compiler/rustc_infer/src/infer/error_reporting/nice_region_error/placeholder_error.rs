@@ -409,10 +409,8 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
             {
                 let closure_sig = self_ty.map(|closure| {
                     if let ty::Closure(_, args) = closure.kind() {
-                        self.tcx().signature_unclosure(
-                            args.as_closure().sig(),
-                            rustc_hir::Unsafety::Normal,
-                        )
+                        self.tcx()
+                            .signature_unclosure(args.as_closure().sig(), rustc_hir::Safety::Safe)
                     } else {
                         bug!("type is not longer closure");
                     }

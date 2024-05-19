@@ -89,20 +89,26 @@ use std::ops::{Bound, Deref};
 #[allow(rustc::usage_of_ty_tykind)]
 impl<'tcx> Interner for TyCtxt<'tcx> {
     type DefId = DefId;
-    type DefiningOpaqueTypes = &'tcx ty::List<LocalDefId>;
     type AdtDef = ty::AdtDef<'tcx>;
-    type GenericArgs = ty::GenericArgsRef<'tcx>;
-    type GenericArgsSlice = &'tcx [ty::GenericArg<'tcx>];
-    type GenericArg = ty::GenericArg<'tcx>;
 
+    type GenericArgs = ty::GenericArgsRef<'tcx>;
+    type OwnItemArgs = &'tcx [ty::GenericArg<'tcx>];
+    type GenericArg = ty::GenericArg<'tcx>;
     type Term = ty::Term<'tcx>;
+
     type Binder<T: TypeVisitable<TyCtxt<'tcx>>> = Binder<'tcx, T>;
     type BoundVars = &'tcx List<ty::BoundVariableKind>;
     type BoundVar = ty::BoundVariableKind;
 
     type CanonicalVars = CanonicalVarInfos<'tcx>;
+    type PredefinedOpaques = solve::PredefinedOpaques<'tcx>;
+    type DefiningOpaqueTypes = &'tcx ty::List<LocalDefId>;
+    type ExternalConstraints = ExternalConstraints<'tcx>;
+    type GoalEvaluationSteps = &'tcx [solve::inspect::GoalEvaluationStep<TyCtxt<'tcx>>];
+
     type Ty = Ty<'tcx>;
     type Tys = &'tcx List<Ty<'tcx>>;
+    type FnInputTys = &'tcx [Ty<'tcx>];
     type ParamTy = ParamTy;
     type BoundTy = ty::BoundTy;
     type PlaceholderTy = ty::PlaceholderType;
@@ -113,21 +119,25 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type AllocId = crate::mir::interpret::AllocId;
 
     type Pat = Pattern<'tcx>;
+    type Safety = hir::Safety;
+    type Abi = abi::Abi;
+
     type Const = ty::Const<'tcx>;
     type AliasConst = ty::UnevaluatedConst<'tcx>;
     type PlaceholderConst = ty::PlaceholderConst;
     type ParamConst = ty::ParamConst;
     type BoundConst = ty::BoundVar;
     type ValueConst = ty::ValTree<'tcx>;
-
     type ExprConst = ty::Expr<'tcx>;
+
     type Region = Region<'tcx>;
     type EarlyParamRegion = ty::EarlyParamRegion;
     type LateParamRegion = ty::LateParamRegion;
     type BoundRegion = ty::BoundRegion;
     type InferRegion = ty::RegionVid;
-
     type PlaceholderRegion = ty::PlaceholderRegion;
+
+    type ParamEnv = ty::ParamEnv<'tcx>;
     type Predicate = Predicate<'tcx>;
     type TraitPredicate = ty::TraitPredicate<'tcx>;
     type RegionOutlivesPredicate = ty::RegionOutlivesPredicate<'tcx>;
@@ -135,10 +145,12 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type ProjectionPredicate = ty::ProjectionPredicate<'tcx>;
     type NormalizesTo = ty::NormalizesTo<'tcx>;
     type SubtypePredicate = ty::SubtypePredicate<'tcx>;
+
     type CoercePredicate = ty::CoercePredicate<'tcx>;
     type ClosureKind = ty::ClosureKind;
 
     type Clauses = ty::Clauses<'tcx>;
+
     fn mk_canonical_var_infos(self, infos: &[ty::CanonicalVarInfo<Self>]) -> Self::CanonicalVars {
         self.mk_canonical_var_infos(infos)
     }
@@ -191,7 +203,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self,
         def_id: Self::DefId,
         args: Self::GenericArgs,
-    ) -> (rustc_type_ir::TraitRef<Self>, Self::GenericArgsSlice) {
+    ) -> (rustc_type_ir::TraitRef<Self>, Self::OwnItemArgs) {
         assert_matches!(self.def_kind(def_id), DefKind::AssocTy | DefKind::AssocConst);
         let trait_def_id = self.parent(def_id);
         assert_matches!(self.def_kind(trait_def_id), DefKind::Trait);
@@ -220,6 +232,18 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
 
     fn parent(self, def_id: Self::DefId) -> Self::DefId {
         self.parent(def_id)
+    }
+}
+
+impl<'tcx> rustc_type_ir::inherent::Abi<TyCtxt<'tcx>> for abi::Abi {
+    fn is_rust(self) -> bool {
+        matches!(self, abi::Abi::Rust)
+    }
+}
+
+impl<'tcx> rustc_type_ir::inherent::Safety<TyCtxt<'tcx>> for hir::Safety {
+    fn prefix_str(self) -> &'static str {
+        self.prefix_str()
     }
 }
 
@@ -2006,11 +2030,8 @@ impl<'tcx> TyCtxt<'tcx> {
     /// that is, a `fn` type that is equivalent in every way for being
     /// unsafe.
     pub fn safe_to_unsafe_fn_ty(self, sig: PolyFnSig<'tcx>) -> Ty<'tcx> {
-        assert_eq!(sig.unsafety(), hir::Unsafety::Normal);
-        Ty::new_fn_ptr(
-            self,
-            sig.map_bound(|sig| ty::FnSig { unsafety: hir::Unsafety::Unsafe, ..sig }),
-        )
+        assert_eq!(sig.safety(), hir::Safety::Safe);
+        Ty::new_fn_ptr(self, sig.map_bound(|sig| ty::FnSig { safety: hir::Safety::Unsafe, ..sig }))
     }
 
     /// Given the def_id of a Trait `trait_def_id` and the name of an associated item `assoc_name`
@@ -2067,20 +2088,16 @@ impl<'tcx> TyCtxt<'tcx> {
     /// and so forth -- so e.g., if we have a sig with `Fn<(u32, i32)>` then
     /// you would get a `fn(u32, i32)`.
     /// `unsafety` determines the unsafety of the fn signature. If you pass
-    /// `hir::Unsafety::Unsafe` in the previous example, then you would get
+    /// `hir::Safety::Unsafe` in the previous example, then you would get
     /// an `unsafe fn (u32, i32)`.
     /// It cannot convert a closure that requires unsafe.
-    pub fn signature_unclosure(
-        self,
-        sig: PolyFnSig<'tcx>,
-        unsafety: hir::Unsafety,
-    ) -> PolyFnSig<'tcx> {
+    pub fn signature_unclosure(self, sig: PolyFnSig<'tcx>, safety: hir::Safety) -> PolyFnSig<'tcx> {
         sig.map_bound(|s| {
             let params = match s.inputs()[0].kind() {
                 ty::Tuple(params) => *params,
                 _ => bug!(),
             };
-            self.mk_fn_sig(params, s.output(), s.c_variadic, unsafety, abi::Abi::Rust)
+            self.mk_fn_sig(params, s.output(), s.c_variadic, safety, abi::Abi::Rust)
         })
     }
 
@@ -2347,7 +2364,7 @@ impl<'tcx> TyCtxt<'tcx> {
         inputs: I,
         output: I::Item,
         c_variadic: bool,
-        unsafety: hir::Unsafety,
+        safety: hir::Safety,
         abi: abi::Abi,
     ) -> T::Output
     where
@@ -2357,7 +2374,7 @@ impl<'tcx> TyCtxt<'tcx> {
         T::collect_and_apply(inputs.into_iter().chain(iter::once(output)), |xs| ty::FnSig {
             inputs_and_output: self.mk_type_list(xs),
             c_variadic,
-            unsafety,
+            safety,
             abi,
         })
     }

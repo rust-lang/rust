@@ -2609,14 +2609,14 @@ fn test_slice_from_ptr_range() {
 #[should_panic = "slice len overflow"]
 fn test_flatten_size_overflow() {
     let x = &[[(); usize::MAX]; 2][..];
-    let _ = x.flatten();
+    let _ = x.as_flattened();
 }
 
 #[test]
 #[should_panic = "slice len overflow"]
 fn test_flatten_mut_size_overflow() {
     let x = &mut [[(); usize::MAX]; 2][..];
-    let _ = x.flatten_mut();
+    let _ = x.as_flattened_mut();
 }
 
 #[test]

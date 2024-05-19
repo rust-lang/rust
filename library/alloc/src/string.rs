@@ -60,6 +60,8 @@ use core::slice;
 use core::str::pattern::Pattern;
 
 #[cfg(not(no_global_oom_handling))]
+use crate::alloc::Allocator;
+#[cfg(not(no_global_oom_handling))]
 use crate::borrow::{Cow, ToOwned};
 use crate::boxed::Box;
 use crate::collections::TryReserveError;
@@ -1940,8 +1942,10 @@ impl String {
 
     /// Converts this `String` into a <code>[Box]<[str]></code>.
     ///
-    /// This will drop any excess capacity.
+    /// Before doing the conversion, this method discards excess capacity like [`shrink_to_fit`].
+    /// Note that this call may reallocate and copy the bytes of the string.
     ///
+    /// [`shrink_to_fit`]: String::shrink_to_fit
     /// [str]: prim@str "str"
     ///
     /// # Examples
@@ -1967,10 +1971,10 @@ impl String {
     /// this function is ideally used for data that lives for the remainder of the program's life,
     /// as dropping the returned reference will cause a memory leak.
     ///
-    /// It does not reallocate or shrink the `String`,
-    /// so the leaked allocation may include unused capacity that is not part
-    /// of the returned slice. If you don't want that, call [`into_boxed_str`],
-    /// and then [`Box::leak`].
+    /// It does not reallocate or shrink the `String`, so the leaked allocation may include unused
+    /// capacity that is not part of the returned slice. If you want to discard excess capacity,
+    /// call [`into_boxed_str`], and then [`Box::leak`] instead. However, keep in mind that
+    /// trimming the capacity may result in a reallocation and copy.
     ///
     /// [`into_boxed_str`]: Self::into_boxed_str
     ///
@@ -2155,8 +2159,8 @@ impl FromIterator<String> for String {
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "box_str2", since = "1.45.0")]
-impl FromIterator<Box<str>> for String {
-    fn from_iter<I: IntoIterator<Item = Box<str>>>(iter: I) -> String {
+impl<A: Allocator> FromIterator<Box<str, A>> for String {
+    fn from_iter<I: IntoIterator<Item = Box<str, A>>>(iter: I) -> String {
         let mut buf = String::new();
         buf.extend(iter);
         buf
@@ -2237,8 +2241,8 @@ impl<'a> Extend<&'a str> for String {
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "box_str2", since = "1.45.0")]
-impl Extend<Box<str>> for String {
-    fn extend<I: IntoIterator<Item = Box<str>>>(&mut self, iter: I) {
+impl<A: Allocator> Extend<Box<str, A>> for String {
+    fn extend<I: IntoIterator<Item = Box<str, A>>>(&mut self, iter: I) {
         iter.into_iter().for_each(move |s| self.push_str(&s));
     }
 }

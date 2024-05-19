@@ -28,8 +28,8 @@ use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::span_bug;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{
-    self, suggest_constraining_type_params, Article, Binder, IsSuggestable, ToPredicate, Ty,
-    TypeVisitableExt,
+    self, suggest_constraining_type_params, Article, Binder, IsSuggestable, Ty, TypeVisitableExt,
+    Upcast,
 };
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::source_map::Spanned;
@@ -1716,7 +1716,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                     }
                 }
-                self.suggest_derive(diag, &[(trait_ref.to_predicate(self.tcx), None, None)]);
+                self.suggest_derive(diag, &[(trait_ref.upcast(self.tcx), None, None)]);
             }
         }
     }

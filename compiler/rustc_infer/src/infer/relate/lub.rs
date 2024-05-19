@@ -140,7 +140,10 @@ impl<'tcx> ObligationEmittingRelation<'tcx> for Lub<'_, '_, 'tcx> {
         self.fields.param_env
     }
 
-    fn register_predicates(&mut self, obligations: impl IntoIterator<Item: ty::ToPredicate<'tcx>>) {
+    fn register_predicates(
+        &mut self,
+        obligations: impl IntoIterator<Item: ty::Upcast<TyCtxt<'tcx>, ty::Predicate<'tcx>>>,
+    ) {
         self.fields.register_predicates(obligations);
     }
 

@@ -7,9 +7,7 @@ use rustc_infer::traits::query::NoSolution;
 use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_middle::bug;
 use rustc_middle::traits::solve::Goal;
-use rustc_middle::ty::{
-    self, ToPredicate, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
-};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, Upcast};
 use rustc_span::sym;
 
 use crate::solve::EvalCtxt;
@@ -429,7 +427,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<'tc
                         tcx.require_lang_item(LangItem::AsyncFnKindHelper, None),
                         [kind_ty, Ty::from_closure_kind(tcx, goal_kind)],
                     )
-                    .to_predicate(tcx),
+                    .upcast(tcx),
                 );
 
                 coroutine_closure_to_ambiguous_coroutine(
@@ -456,7 +454,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<'tc
             let nested = vec![
                 bound_sig
                     .rebind(ty::TraitRef::new(tcx, future_trait_def_id, [sig.output()]))
-                    .to_predicate(tcx),
+                    .upcast(tcx),
             ];
             let future_output_def_id = tcx
                 .associated_items(future_trait_def_id)
@@ -484,7 +482,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<'tc
             let mut nested = vec![
                 bound_sig
                     .rebind(ty::TraitRef::new(tcx, future_trait_def_id, [sig.output()]))
-                    .to_predicate(tcx),
+                    .upcast(tcx),
             ];
 
             // Additionally, we need to check that the closure kind
@@ -510,7 +508,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<'tc
                         async_fn_kind_trait_def_id,
                         [kind_ty, Ty::from_closure_kind(tcx, goal_kind)],
                     )
-                    .to_predicate(tcx),
+                    .upcast(tcx),
                 );
             }
 

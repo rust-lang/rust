@@ -396,6 +396,12 @@ pub struct BoundRegion {
     pub kind: BoundRegionKind,
 }
 
+impl<'tcx> rustc_type_ir::inherent::BoundVarLike<TyCtxt<'tcx>> for BoundRegion {
+    fn var(self) -> BoundVar {
+        self.var
+    }
+}
+
 impl core::fmt::Debug for BoundRegion {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self.kind {

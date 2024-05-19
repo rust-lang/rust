@@ -144,8 +144,14 @@ pub(crate) fn render<P: AsRef<Path>>(
 
 /// Runs any tests/code examples in the markdown file `input`.
 pub(crate) fn test(options: Options) -> Result<(), String> {
-    let input_str = read_to_string(&options.input)
-        .map_err(|err| format!("{input}: {err}", input = options.input.display()))?;
+    use rustc_session::config::Input;
+    let input_str = match &options.input {
+        Input::File(path) => {
+            read_to_string(&path).map_err(|err| format!("{}: {err}", path.display()))?
+        }
+        Input::Str { name: _, input } => input.clone(),
+    };
+
     let mut opts = GlobalTestOptions::default();
     opts.no_crate_inject = true;
 
@@ -155,12 +161,12 @@ pub(crate) fn test(options: Options) -> Result<(), String> {
     generate_args_file(&file_path, &options)?;
 
     let mut collector = Collector::new(
-        options.input.display().to_string(),
+        options.input.filestem().to_string(),
         options.clone(),
         true,
         opts,
         None,
-        Some(options.input),
+        options.input.opt_path().map(ToOwned::to_owned),
         options.enable_per_target_ignores,
         file_path,
     );

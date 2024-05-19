@@ -17,7 +17,7 @@ pub struct EvaluationCache<'tcx> {
 #[derive(PartialEq, Eq)]
 pub struct CacheData<'tcx> {
     pub result: QueryResult<'tcx>,
-    pub proof_tree: Option<&'tcx [inspect::GoalEvaluationStep<'tcx>]>,
+    pub proof_tree: Option<&'tcx [inspect::GoalEvaluationStep<TyCtxt<'tcx>>]>,
     pub reached_depth: usize,
     pub encountered_overflow: bool,
 }
@@ -28,7 +28,7 @@ impl<'tcx> EvaluationCache<'tcx> {
         &self,
         tcx: TyCtxt<'tcx>,
         key: CanonicalInput<'tcx>,
-        proof_tree: Option<&'tcx [inspect::GoalEvaluationStep<'tcx>]>,
+        proof_tree: Option<&'tcx [inspect::GoalEvaluationStep<TyCtxt<'tcx>>]>,
         reached_depth: usize,
         encountered_overflow: bool,
         cycle_participants: FxHashSet<CanonicalInput<'tcx>>,
@@ -105,7 +105,7 @@ struct Success<'tcx> {
 #[derive(Clone, Copy)]
 pub struct QueryData<'tcx> {
     pub result: QueryResult<'tcx>,
-    pub proof_tree: Option<&'tcx [inspect::GoalEvaluationStep<'tcx>]>,
+    pub proof_tree: Option<&'tcx [inspect::GoalEvaluationStep<TyCtxt<'tcx>>]>,
 }
 
 /// The cache entry for a goal `CanonicalInput`.

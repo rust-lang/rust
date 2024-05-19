@@ -2007,13 +2007,13 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         }
                     }
 
-                    CastKind::PointerCoercion(PointerCoercion::ClosureFnPointer(unsafety)) => {
+                    CastKind::PointerCoercion(PointerCoercion::ClosureFnPointer(safety)) => {
                         let sig = match op.ty(body, tcx).kind() {
                             ty::Closure(_, args) => args.as_closure().sig(),
                             _ => bug!(),
                         };
                         let ty_fn_ptr_from =
-                            Ty::new_fn_ptr(tcx, tcx.signature_unclosure(sig, *unsafety));
+                            Ty::new_fn_ptr(tcx, tcx.signature_unclosure(sig, *safety));
 
                         if let Err(terr) = self.eq_types(
                             *ty,

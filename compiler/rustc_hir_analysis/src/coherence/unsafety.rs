@@ -2,7 +2,7 @@
 //! crate or pertains to a type defined in this crate.
 
 use rustc_errors::{codes::*, struct_span_code_err};
-use rustc_hir::Unsafety;
+use rustc_hir::Safety;
 use rustc_middle::ty::print::PrintTraitRefExt as _;
 use rustc_middle::ty::{ImplPolarity::*, ImplTraitHeader, TraitDef, TyCtxt};
 use rustc_span::def_id::LocalDefId;
@@ -18,8 +18,8 @@ pub(super) fn check_item(
         tcx.generics_of(def_id).own_params.iter().find(|p| p.pure_wrt_drop).map(|_| "may_dangle");
     let trait_ref = trait_header.trait_ref.instantiate_identity();
 
-    match (trait_def.unsafety, unsafe_attr, trait_header.unsafety, trait_header.polarity) {
-        (Unsafety::Normal, None, Unsafety::Unsafe, Positive | Reservation) => {
+    match (trait_def.safety, unsafe_attr, trait_header.safety, trait_header.polarity) {
+        (Safety::Safe, None, Safety::Unsafe, Positive | Reservation) => {
             let span = tcx.def_span(def_id);
             return Err(struct_span_code_err!(
                 tcx.dcx(),
@@ -37,7 +37,7 @@ pub(super) fn check_item(
             .emit());
         }
 
-        (Unsafety::Unsafe, _, Unsafety::Normal, Positive | Reservation) => {
+        (Safety::Unsafe, _, Safety::Safe, Positive | Reservation) => {
             let span = tcx.def_span(def_id);
             return Err(struct_span_code_err!(
                 tcx.dcx(),
@@ -61,7 +61,7 @@ pub(super) fn check_item(
             .emit());
         }
 
-        (Unsafety::Normal, Some(attr_name), Unsafety::Normal, Positive | Reservation) => {
+        (Safety::Safe, Some(attr_name), Safety::Safe, Positive | Reservation) => {
             let span = tcx.def_span(def_id);
             return Err(struct_span_code_err!(
                 tcx.dcx(),
@@ -85,14 +85,14 @@ pub(super) fn check_item(
             .emit());
         }
 
-        (_, _, Unsafety::Unsafe, Negative) => {
+        (_, _, Safety::Unsafe, Negative) => {
             // Reported in AST validation
             assert!(tcx.dcx().has_errors().is_some(), "unsafe negative impl");
             Ok(())
         }
-        (_, _, Unsafety::Normal, Negative)
-        | (Unsafety::Unsafe, _, Unsafety::Unsafe, Positive | Reservation)
-        | (Unsafety::Normal, Some(_), Unsafety::Unsafe, Positive | Reservation)
-        | (Unsafety::Normal, None, Unsafety::Normal, _) => Ok(()),
+        (_, _, Safety::Safe, Negative)
+        | (Safety::Unsafe, _, Safety::Unsafe, Positive | Reservation)
+        | (Safety::Safe, Some(_), Safety::Unsafe, Positive | Reservation)
+        | (Safety::Safe, None, Safety::Safe, _) => Ok(()),
     }
 }

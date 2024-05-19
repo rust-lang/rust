@@ -35,5 +35,5 @@ fn impls_a<T: A>() {}
 
 fn main() {
     impls_a::<()>();
-    //~^ ERROR overflow evaluating the requirement `(): CInd`
+    //~^ ERROR overflow evaluating the requirement `(): A`
 }

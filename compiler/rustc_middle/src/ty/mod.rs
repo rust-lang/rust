@@ -28,7 +28,7 @@ use crate::ty::fast_reject::SimplifiedType;
 use crate::ty::util::Discr;
 pub use adt::*;
 pub use assoc::*;
-pub use generic_args::*;
+pub use generic_args::{GenericArgKind, *};
 pub use generics::*;
 pub use intrinsic::IntrinsicDef;
 use rustc_ast as ast;
@@ -102,7 +102,7 @@ pub use self::predicate::{
     PolyExistentialTraitRef, PolyProjectionPredicate, PolyRegionOutlivesPredicate,
     PolySubtypePredicate, PolyTraitPredicate, PolyTraitRef, PolyTypeOutlivesPredicate, Predicate,
     PredicateKind, ProjectionPredicate, RegionOutlivesPredicate, SubtypePredicate, ToPolyTraitRef,
-    ToPredicate, TraitPredicate, TraitRef, TypeOutlivesPredicate,
+    TraitPredicate, TraitRef, TypeOutlivesPredicate,
 };
 pub use self::region::{
     BoundRegion, BoundRegionKind, BoundRegionKind::*, EarlyParamRegion, LateParamRegion, Region,
@@ -266,7 +266,7 @@ pub struct ImplHeader<'tcx> {
 pub struct ImplTraitHeader<'tcx> {
     pub trait_ref: ty::EarlyBinder<ty::TraitRef<'tcx>>,
     pub polarity: ImplPolarity,
-    pub unsafety: hir::Unsafety,
+    pub safety: hir::Safety,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, TypeFoldable, TypeVisitable)]

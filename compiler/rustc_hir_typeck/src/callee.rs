@@ -201,7 +201,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         tupled_upvars_ty,
                     ),
                     coroutine_closure_sig.c_variadic,
-                    coroutine_closure_sig.unsafety,
+                    coroutine_closure_sig.safety,
                     coroutine_closure_sig.abi,
                 );
                 let adjustments = self.adjust_steps(autoderef);

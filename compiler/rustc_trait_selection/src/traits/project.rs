@@ -35,7 +35,7 @@ use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_middle::traits::select::OverflowError;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::visit::{MaxUniverse, TypeVisitable, TypeVisitableExt};
-use rustc_middle::ty::{self, Term, ToPredicate, Ty, TyCtxt};
+use rustc_middle::ty::{self, Term, Ty, TyCtxt, Upcast};
 use rustc_span::symbol::sym;
 
 pub use rustc_middle::traits::Reveal;
@@ -538,7 +538,7 @@ fn normalize_to_error<'a, 'tcx>(
         cause,
         recursion_depth: depth,
         param_env,
-        predicate: trait_ref.to_predicate(selcx.tcx()),
+        predicate: trait_ref.upcast(selcx.tcx()),
     };
     Normalized { value: new_value, obligations: vec![trait_obligation] }
 }
@@ -877,7 +877,7 @@ fn assemble_candidates_from_object_ty<'cx, 'tcx>(
     let env_predicates = data
         .projection_bounds()
         .filter(|bound| bound.item_def_id() == obligation.predicate.def_id)
-        .map(|p| p.with_self_ty(tcx, object_ty).to_predicate(tcx));
+        .map(|p| p.with_self_ty(tcx, object_ty).upcast(tcx));
 
     assemble_candidates_from_predicates(
         selcx,
@@ -1712,7 +1712,7 @@ fn confirm_closure_candidate<'cx, 'tcx>(
                     [sig.tupled_inputs_ty],
                     output_ty,
                     sig.c_variadic,
-                    sig.unsafety,
+                    sig.safety,
                     sig.abi,
                 )
             })

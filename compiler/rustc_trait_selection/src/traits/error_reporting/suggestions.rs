@@ -31,8 +31,8 @@ use rustc_middle::traits::IsConstable;
 use rustc_middle::ty::error::TypeError::{self, Sorts};
 use rustc_middle::ty::{
     self, suggest_arbitrary_trait_bound, suggest_constraining_type_param, AdtKind, GenericArgs,
-    InferTy, IsSuggestable, ToPredicate, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
-    TypeVisitableExt, TypeckResults,
+    InferTy, IsSuggestable, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
+    TypeVisitableExt, TypeckResults, Upcast,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::LocalDefId;
@@ -192,7 +192,7 @@ pub fn suggest_restriction<'tcx, G: EmissionGuarantee>(
             },
             // `fn foo(t: impl Trait)`
             //                       ^ suggest `where <T as Trait>::A: Bound`
-            predicate_constraint(hir_generics, trait_pred.to_predicate(tcx)),
+            predicate_constraint(hir_generics, trait_pred.upcast(tcx)),
         ];
         sugg.extend(ty_spans.into_iter().map(|s| (s, type_param_name.to_string())));
 
@@ -215,7 +215,7 @@ pub fn suggest_restriction<'tcx, G: EmissionGuarantee>(
                 .find(|p| !matches!(p.kind, hir::GenericParamKind::Type { synthetic: true, .. })),
             super_traits,
         ) {
-            (_, None) => predicate_constraint(hir_generics, trait_pred.to_predicate(tcx)),
+            (_, None) => predicate_constraint(hir_generics, trait_pred.upcast(tcx)),
             (None, Some((ident, []))) => (
                 ident.span.shrink_to_hi(),
                 format!(": {}", trait_pred.print_modifiers_and_trait_path()),
@@ -1897,7 +1897,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         *inputs,
                         infcx.next_ty_var(DUMMY_SP),
                         false,
-                        hir::Unsafety::Normal,
+                        hir::Safety::Safe,
                         abi::Abi::Rust,
                     )
                 }
@@ -1905,7 +1905,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     [inputs],
                     infcx.next_ty_var(DUMMY_SP),
                     false,
-                    hir::Unsafety::Normal,
+                    hir::Safety::Safe,
                     abi::Abi::Rust,
                 ),
             };
@@ -2703,12 +2703,12 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         obligated_types: &mut Vec<Ty<'tcx>>,
         seen_requirements: &mut FxHashSet<DefId>,
     ) where
-        T: ToPredicate<'tcx>,
+        T: Upcast<TyCtxt<'tcx>, ty::Predicate<'tcx>>,
     {
         let mut long_ty_file = None;
 
         let tcx = self.tcx;
-        let predicate = predicate.to_predicate(tcx);
+        let predicate = predicate.upcast(tcx);
         match *cause_code {
             ObligationCauseCode::ExprAssignable
             | ObligationCauseCode::MatchExpressionArm { .. }
@@ -2739,7 +2739,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             | ObligationCauseCode::ReferenceOutlivesReferent(..)
             | ObligationCauseCode::ObjectTypeBound(..) => {}
             ObligationCauseCode::RustCall => {
-                if let Some(pred) = predicate.to_opt_poly_trait_pred()
+                if let Some(pred) = predicate.as_trait_clause()
                     && Some(pred.def_id()) == tcx.lang_items().sized_trait()
                 {
                     err.note("argument required to be sized due to `extern \"rust-call\"` ABI");
@@ -3378,7 +3378,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                             break;
                         }
                         data = derived;
-                        parent_predicate = child_trait_ref.to_predicate(tcx);
+                        parent_predicate = child_trait_ref.upcast(tcx);
                         parent_trait_pred = child_trait_ref;
                     }
                 }
@@ -3392,7 +3392,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     }
                     count += 1;
                     data = &child.derived;
-                    parent_predicate = child_trait_pred.to_predicate(tcx);
+                    parent_predicate = child_trait_pred.upcast(tcx);
                     parent_trait_pred = child_trait_pred;
                 }
                 if count > 0 {
@@ -3725,7 +3725,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         {
             if let hir::Expr { kind: hir::ExprKind::MethodCall(_, rcvr, _, _), .. } = expr
                 && let Some(ty) = typeck_results.node_type_opt(rcvr.hir_id)
-                && let Some(failed_pred) = failed_pred.to_opt_poly_trait_pred()
+                && let Some(failed_pred) = failed_pred.as_trait_clause()
                 && let pred = failed_pred.map_bound(|pred| pred.with_self_ty(tcx, ty))
                 && self.predicate_must_hold_modulo_regions(&Obligation::misc(
                     tcx, expr.span, body_id, param_env, pred,
@@ -3816,7 +3816,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 && let Some(where_pred) = where_clauses.predicates.get(*idx)
             {
                 if let Some(where_pred) = where_pred.as_trait_clause()
-                    && let Some(failed_pred) = failed_pred.to_opt_poly_trait_pred()
+                    && let Some(failed_pred) = failed_pred.as_trait_clause()
                 {
                     self.enter_forall(where_pred, |where_pred| {
                         let failed_pred = self.instantiate_binder_with_fresh_vars(
@@ -3842,7 +3842,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         }
                     })
                 } else if let Some(where_pred) = where_pred.as_projection_clause()
-                    && let Some(failed_pred) = failed_pred.to_opt_poly_projection_pred()
+                    && let Some(failed_pred) = failed_pred.as_projection_clause()
                     && let Some(found) = failed_pred.skip_binder().term.ty()
                 {
                     type_diffs = vec![Sorts(ty::error::ExpectedFound {
@@ -3925,7 +3925,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             && let fn_sig @ ty::FnSig {
                 abi: abi::Abi::Rust,
                 c_variadic: false,
-                unsafety: hir::Unsafety::Normal,
+                safety: hir::Safety::Safe,
                 ..
             } = fn_ty.fn_sig(tcx).skip_binder()
 

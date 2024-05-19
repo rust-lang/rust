@@ -145,7 +145,7 @@ fn typeck_with_fallback<'tcx>(
 
     if let Some(hir::FnSig { header, decl, .. }) = node.fn_sig() {
         let fn_sig = if decl.output.get_infer_ret_ty().is_some() {
-            fcx.lowerer().lower_fn_ty(id, header.unsafety, header.abi, decl, None, None)
+            fcx.lowerer().lower_fn_ty(id, header.safety, header.abi, decl, None, None)
         } else {
             tcx.fn_sig(def_id).instantiate_identity()
         };

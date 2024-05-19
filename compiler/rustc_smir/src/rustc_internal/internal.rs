@@ -216,7 +216,7 @@ impl RustcInternal for FnSig {
         tcx.lift(rustc_ty::FnSig {
             inputs_and_output: tcx.mk_type_list(&self.inputs_and_output.internal(tables, tcx)),
             c_variadic: self.c_variadic,
-            unsafety: self.unsafety.internal(tables, tcx),
+            safety: self.safety.internal(tables, tcx),
             abi: self.abi.internal(tables, tcx),
         })
         .unwrap()
@@ -481,16 +481,15 @@ impl RustcInternal for Abi {
 }
 
 impl RustcInternal for Safety {
-    type T<'tcx> = rustc_hir::Unsafety;
+    type T<'tcx> = rustc_hir::Safety;
 
     fn internal<'tcx>(&self, _tables: &mut Tables<'_>, _tcx: TyCtxt<'tcx>) -> Self::T<'tcx> {
         match self {
-            Safety::Unsafe => rustc_hir::Unsafety::Unsafe,
-            Safety::Normal => rustc_hir::Unsafety::Normal,
+            Safety::Unsafe => rustc_hir::Safety::Unsafe,
+            Safety::Safe => rustc_hir::Safety::Safe,
         }
     }
 }
-
 impl RustcInternal for Span {
     type T<'tcx> = rustc_span::Span;
 

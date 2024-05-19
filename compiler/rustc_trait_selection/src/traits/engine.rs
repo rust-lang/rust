@@ -25,8 +25,8 @@ use rustc_macros::extension;
 use rustc_middle::arena::ArenaAllocatable;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::error::TypeError;
-use rustc_middle::ty::ToPredicate;
 use rustc_middle::ty::TypeFoldable;
+use rustc_middle::ty::Upcast;
 use rustc_middle::ty::Variance;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 
@@ -96,7 +96,7 @@ impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
             cause,
             recursion_depth: 0,
             param_env,
-            predicate: ty::Binder::dummy(trait_ref).to_predicate(tcx),
+            predicate: trait_ref.upcast(tcx),
         });
     }
 

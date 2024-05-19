@@ -1047,7 +1047,7 @@ fn build_construct_coroutine_by_move_shim<'tcx>(
                 args.as_coroutine_closure().coroutine_captures_by_ref_ty(),
             ),
             sig.c_variadic,
-            sig.unsafety,
+            sig.safety,
             sig.abi,
         )
     });

@@ -18,16 +18,19 @@
 //!
 //! [canonicalized]: https://rustc-dev-guide.rust-lang.org/solve/canonicalization.html
 
-use super::{
-    CandidateSource, Canonical, CanonicalInput, Certainty, Goal, GoalSource, NoSolution,
-    QueryInput, QueryResult,
-};
-use crate::{infer::canonical::CanonicalVarValues, ty};
-use format::ProofTreeFormatter;
-use rustc_macros::{TypeFoldable, TypeVisitable};
-use std::fmt::{Debug, Write};
-
 mod format;
+
+use std::fmt::{Debug, Write};
+use std::hash::Hash;
+
+use rustc_type_ir_macros::{TypeFoldable_Generic, TypeVisitable_Generic};
+
+use self::format::ProofTreeFormatter;
+use crate::solve::{
+    CandidateSource, CanonicalInput, Certainty, Goal, GoalSource, NoSolution, QueryInput,
+    QueryResult,
+};
+use crate::{Canonical, CanonicalVarValues, Interner};
 
 /// Some `data` together with information about how they relate to the input
 /// of the canonical query.
@@ -35,96 +38,113 @@ mod format;
 /// This is only ever used as [CanonicalState]. Any type information in proof
 /// trees used mechanically has to be canonicalized as we otherwise leak
 /// inference variables from a nested `InferCtxt`.
-#[derive(Debug, Clone, Copy, Eq, PartialEq, TypeFoldable, TypeVisitable)]
-pub struct State<'tcx, T> {
-    pub var_values: CanonicalVarValues<'tcx>,
+#[derive(derivative::Derivative)]
+#[derivative(
+    Clone(bound = "T: Clone"),
+    Copy(bound = "T: Copy"),
+    PartialEq(bound = "T: PartialEq"),
+    Eq(bound = "T: Eq"),
+    Hash(bound = "T: Hash"),
+    Debug(bound = "T: Debug")
+)]
+#[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
+pub struct State<I: Interner, T> {
+    pub var_values: CanonicalVarValues<I>,
     pub data: T,
 }
 
-pub type CanonicalState<'tcx, T> = Canonical<'tcx, State<'tcx, T>>;
+pub type CanonicalState<I, T> = Canonical<I, State<I, T>>;
 
 /// When evaluating the root goals we also store the
 /// original values for the `CanonicalVarValues` of the
 /// canonicalized goal. We use this to map any [CanonicalState]
 /// from the local `InferCtxt` of the solver query to
 /// the `InferCtxt` of the caller.
-#[derive(Eq, PartialEq)]
-pub enum GoalEvaluationKind<'tcx> {
-    Root { orig_values: Vec<ty::GenericArg<'tcx>> },
+#[derive(derivative::Derivative)]
+#[derivative(PartialEq(bound = ""), Eq(bound = ""), Hash(bound = ""), Debug(bound = ""))]
+pub enum GoalEvaluationKind<I: Interner> {
+    Root { orig_values: Vec<I::GenericArg> },
     Nested,
 }
 
-#[derive(Eq, PartialEq)]
-pub struct GoalEvaluation<'tcx> {
-    pub uncanonicalized_goal: Goal<'tcx, ty::Predicate<'tcx>>,
-    pub kind: GoalEvaluationKind<'tcx>,
-    pub evaluation: CanonicalGoalEvaluation<'tcx>,
+#[derive(derivative::Derivative)]
+#[derivative(PartialEq(bound = ""), Eq(bound = ""), Hash(bound = ""))]
+pub struct GoalEvaluation<I: Interner> {
+    pub uncanonicalized_goal: Goal<I, I::Predicate>,
+    pub kind: GoalEvaluationKind<I>,
+    pub evaluation: CanonicalGoalEvaluation<I>,
 }
 
-#[derive(Eq, PartialEq, Debug)]
-pub struct CanonicalGoalEvaluation<'tcx> {
-    pub goal: CanonicalInput<'tcx>,
-    pub kind: CanonicalGoalEvaluationKind<'tcx>,
-    pub result: QueryResult<'tcx>,
+#[derive(derivative::Derivative)]
+#[derivative(PartialEq(bound = ""), Eq(bound = ""), Hash(bound = ""), Debug(bound = ""))]
+pub struct CanonicalGoalEvaluation<I: Interner> {
+    pub goal: CanonicalInput<I>,
+    pub kind: CanonicalGoalEvaluationKind<I>,
+    pub result: QueryResult<I>,
 }
 
-#[derive(Eq, PartialEq, Debug)]
-pub enum CanonicalGoalEvaluationKind<'tcx> {
+#[derive(derivative::Derivative)]
+#[derivative(PartialEq(bound = ""), Eq(bound = ""), Hash(bound = ""), Debug(bound = ""))]
+pub enum CanonicalGoalEvaluationKind<I: Interner> {
     Overflow,
     CycleInStack,
     ProvisionalCacheHit,
-    Evaluation { revisions: &'tcx [GoalEvaluationStep<'tcx>] },
+    Evaluation { revisions: I::GoalEvaluationSteps },
 }
-impl Debug for GoalEvaluation<'_> {
+impl<I: Interner> Debug for GoalEvaluation<I> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         ProofTreeFormatter::new(f).format_goal_evaluation(self)
     }
 }
 
-#[derive(Eq, PartialEq)]
-pub struct AddedGoalsEvaluation<'tcx> {
-    pub evaluations: Vec<Vec<GoalEvaluation<'tcx>>>,
+#[derive(derivative::Derivative)]
+#[derivative(PartialEq(bound = ""), Eq(bound = ""), Hash(bound = ""), Debug(bound = ""))]
+pub struct AddedGoalsEvaluation<I: Interner> {
+    pub evaluations: Vec<Vec<GoalEvaluation<I>>>,
     pub result: Result<Certainty, NoSolution>,
 }
 
-#[derive(Eq, PartialEq, Debug)]
-pub struct GoalEvaluationStep<'tcx> {
-    pub instantiated_goal: QueryInput<'tcx, ty::Predicate<'tcx>>,
+#[derive(derivative::Derivative)]
+#[derivative(PartialEq(bound = ""), Eq(bound = ""), Hash(bound = ""), Debug(bound = ""))]
+pub struct GoalEvaluationStep<I: Interner> {
+    pub instantiated_goal: QueryInput<I, I::Predicate>,
 
     /// The actual evaluation of the goal, always `ProbeKind::Root`.
-    pub evaluation: Probe<'tcx>,
+    pub evaluation: Probe<I>,
 }
 
 /// A self-contained computation during trait solving. This either
 /// corresponds to a `EvalCtxt::probe(_X)` call or the root evaluation
 /// of a goal.
-#[derive(Eq, PartialEq)]
-pub struct Probe<'tcx> {
+#[derive(derivative::Derivative)]
+#[derivative(PartialEq(bound = ""), Eq(bound = ""), Hash(bound = ""))]
+pub struct Probe<I: Interner> {
     /// What happened inside of this probe in chronological order.
-    pub steps: Vec<ProbeStep<'tcx>>,
-    pub kind: ProbeKind<'tcx>,
-    pub final_state: CanonicalState<'tcx, ()>,
+    pub steps: Vec<ProbeStep<I>>,
+    pub kind: ProbeKind<I>,
+    pub final_state: CanonicalState<I, ()>,
 }
 
-impl Debug for Probe<'_> {
+impl<I: Interner> Debug for Probe<I> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         ProofTreeFormatter::new(f).format_probe(self)
     }
 }
 
-#[derive(Eq, PartialEq)]
-pub enum ProbeStep<'tcx> {
+#[derive(derivative::Derivative)]
+#[derivative(PartialEq(bound = ""), Eq(bound = ""), Hash(bound = ""), Debug(bound = ""))]
+pub enum ProbeStep<I: Interner> {
     /// We added a goal to the `EvalCtxt` which will get proven
     /// the next time `EvalCtxt::try_evaluate_added_goals` is called.
-    AddGoal(GoalSource, CanonicalState<'tcx, Goal<'tcx, ty::Predicate<'tcx>>>),
+    AddGoal(GoalSource, CanonicalState<I, Goal<I, I::Predicate>>),
     /// The inside of a `EvalCtxt::try_evaluate_added_goals` call.
-    EvaluateGoals(AddedGoalsEvaluation<'tcx>),
+    EvaluateGoals(AddedGoalsEvaluation<I>),
     /// A call to `probe` while proving the current goal. This is
     /// used whenever there are multiple candidates to prove the
     /// current goalby .
-    NestedProbe(Probe<'tcx>),
+    NestedProbe(Probe<I>),
     /// A trait goal was satisfied by an impl candidate.
-    RecordImplArgs { impl_args: CanonicalState<'tcx, ty::GenericArgsRef<'tcx>> },
+    RecordImplArgs { impl_args: CanonicalState<I, I::GenericArgs> },
     /// A call to `EvalCtxt::evaluate_added_goals_make_canonical_response` with
     /// `Certainty` was made. This is the certainty passed in, so it's not unified
     /// with the certainty of the `try_evaluate_added_goals` that is done within;
@@ -136,16 +156,25 @@ pub enum ProbeStep<'tcx> {
 /// What kind of probe we're in. In case the probe represents a candidate, or
 /// the final result of the current goal - via [ProbeKind::Root] - we also
 /// store the [QueryResult].
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub enum ProbeKind<'tcx> {
+#[derive(derivative::Derivative)]
+#[derivative(
+    Clone(bound = ""),
+    Copy(bound = ""),
+    PartialEq(bound = ""),
+    Eq(bound = ""),
+    Hash(bound = ""),
+    Debug(bound = "")
+)]
+#[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
+pub enum ProbeKind<I: Interner> {
     /// The root inference context while proving a goal.
-    Root { result: QueryResult<'tcx> },
+    Root { result: QueryResult<I> },
     /// Trying to normalize an alias by at least one step in `NormalizesTo`.
-    TryNormalizeNonRigid { result: QueryResult<'tcx> },
+    TryNormalizeNonRigid { result: QueryResult<I> },
     /// Probe entered when normalizing the self ty during candidate assembly
     NormalizedSelfTyAssembly,
     /// A candidate for proving a trait or alias-relate goal.
-    TraitCandidate { source: CandidateSource, result: QueryResult<'tcx> },
+    TraitCandidate { source: CandidateSource<I>, result: QueryResult<I> },
     /// Used in the probe that wraps normalizing the non-self type for the unsize
     /// trait, which is also structurally matched on.
     UnsizeAssembly,
@@ -156,5 +185,5 @@ pub enum ProbeKind<'tcx> {
     /// Looking for param-env candidates that satisfy the trait ref for a projection.
     ShadowedEnvProbing,
     /// Try to unify an opaque type with an existing key in the storage.
-    OpaqueTypeStorageLookup { result: QueryResult<'tcx> },
+    OpaqueTypeStorageLookup { result: QueryResult<I> },
 }

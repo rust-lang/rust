@@ -2077,7 +2077,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
             let generic_params = clean_bound_vars(sig.bound_vars());
 
             BareFunction(Box::new(BareFunctionDecl {
-                unsafety: sig.unsafety(),
+                safety: sig.safety(),
                 generic_params,
                 decl,
                 abi: sig.abi(),
@@ -2565,7 +2565,7 @@ fn clean_bare_fn_ty<'tcx>(
         let decl = clean_fn_decl_with_args(cx, bare_fn.decl, None, args);
         (generic_params, decl)
     });
-    BareFunctionDecl { unsafety: bare_fn.unsafety, abi: bare_fn.abi, decl, generic_params }
+    BareFunctionDecl { safety: bare_fn.safety, abi: bare_fn.abi, decl, generic_params }
 }
 
 pub(crate) fn reexport_chain<'tcx>(
@@ -2874,7 +2874,7 @@ fn clean_impl<'tcx>(
         });
     let mut make_item = |trait_: Option<Path>, for_: Type, items: Vec<Item>| {
         let kind = ImplItem(Box::new(Impl {
-            unsafety: impl_.unsafety,
+            safety: impl_.safety,
             generics: clean_generics(impl_.generics, cx),
             trait_,
             for_,

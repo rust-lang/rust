@@ -253,8 +253,8 @@ impl<'tcx> SearchGraph<'tcx> {
         &mut self,
         tcx: TyCtxt<'tcx>,
         input: CanonicalInput<'tcx>,
-        inspect: &mut ProofTreeBuilder<'tcx>,
-        mut prove_goal: impl FnMut(&mut Self, &mut ProofTreeBuilder<'tcx>) -> QueryResult<'tcx>,
+        inspect: &mut ProofTreeBuilder<TyCtxt<'tcx>>,
+        mut prove_goal: impl FnMut(&mut Self, &mut ProofTreeBuilder<TyCtxt<'tcx>>) -> QueryResult<'tcx>,
     ) -> QueryResult<'tcx> {
         // Check for overflow.
         let Some(available_depth) = Self::allowed_depth_for_nested(tcx, &self.stack) else {

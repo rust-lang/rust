@@ -34,6 +34,7 @@ use rustc_span::hygiene::LocalExpnId;
 use rustc_span::symbol::{kw, Ident, Symbol};
 use rustc_span::Span;
 use smallvec::SmallVec;
+use tracing::debug;
 
 use std::cell::Cell;
 use std::mem;

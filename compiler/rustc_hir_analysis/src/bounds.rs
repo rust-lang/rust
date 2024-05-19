@@ -2,7 +2,7 @@
 //! [`rustc_middle::ty`] form.
 
 use rustc_hir::LangItem;
-use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt, Upcast};
 use rustc_span::Span;
 
 /// Collects together a list of type bounds. These lists of bounds occur in many places
@@ -34,7 +34,7 @@ impl<'tcx> Bounds<'tcx> {
         span: Span,
     ) {
         self.clauses
-            .push((region.map_bound(|p| ty::ClauseKind::TypeOutlives(p)).to_predicate(tcx), span));
+            .push((region.map_bound(|p| ty::ClauseKind::TypeOutlives(p)).upcast(tcx), span));
     }
 
     pub fn push_trait_bound(
@@ -49,7 +49,7 @@ impl<'tcx> Bounds<'tcx> {
                 .map_bound(|trait_ref| {
                     ty::ClauseKind::Trait(ty::TraitPredicate { trait_ref, polarity })
                 })
-                .to_predicate(tcx),
+                .upcast(tcx),
             span,
         );
         // FIXME(-Znext-solver): We can likely remove this hack once the new trait solver lands.
@@ -67,7 +67,7 @@ impl<'tcx> Bounds<'tcx> {
         span: Span,
     ) {
         self.clauses.push((
-            projection.map_bound(|proj| ty::ClauseKind::Projection(proj)).to_predicate(tcx),
+            projection.map_bound(|proj| ty::ClauseKind::Projection(proj)).upcast(tcx),
             span,
         ));
     }
@@ -76,7 +76,7 @@ impl<'tcx> Bounds<'tcx> {
         let sized_def_id = tcx.require_lang_item(LangItem::Sized, Some(span));
         let trait_ref = ty::TraitRef::new(tcx, sized_def_id, [ty]);
         // Preferable to put this obligation first, since we report better errors for sized ambiguity.
-        self.clauses.insert(0, (trait_ref.to_predicate(tcx), span));
+        self.clauses.insert(0, (trait_ref.upcast(tcx), span));
     }
 
     pub fn clauses(&self) -> impl Iterator<Item = (ty::Clause<'tcx>, Span)> + '_ {

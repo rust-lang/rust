@@ -419,7 +419,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         [],
                         tupled_upvars_ty_for_borrow,
                         false,
-                        hir::Unsafety::Normal,
+                        hir::Safety::Safe,
                         rustc_target::spec::abi::Abi::Rust,
                     ),
                     self.tcx.mk_bound_variable_kinds(&[ty::BoundVariableKind::Region(
