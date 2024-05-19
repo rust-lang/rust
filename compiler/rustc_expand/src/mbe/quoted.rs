@@ -176,7 +176,7 @@ fn parse_tree<'a>(
     // Depending on what `tree` is, we could be parsing different parts of a macro
     match tree {
         // `tree` is a `$` token. Look at the next token in `trees`
-        &tokenstream::TokenTree::Token(Token { kind: token::Dollar, span }, _) => {
+        &tokenstream::TokenTree::Token(Token { kind: token::Dollar, span: dollar_span }, _) => {
             // FIXME: Handle `Invisible`-delimited groups in a more systematic way
             // during parsing.
             let mut next = outer_trees.next();
@@ -209,7 +209,7 @@ fn parse_tree<'a>(
                                         err.emit();
                                         // Returns early the same read `$` to avoid spanning
                                         // unrelated diagnostics that could be performed afterwards
-                                        return TokenTree::token(token::Dollar, span);
+                                        return TokenTree::token(token::Dollar, dollar_span);
                                     }
                                     Ok(elem) => {
                                         maybe_emit_macro_metavar_expr_feature(
@@ -251,7 +251,7 @@ fn parse_tree<'a>(
                 // special metavariable that names the crate of the invocation.
                 Some(tokenstream::TokenTree::Token(token, _)) if token.is_ident() => {
                     let (ident, is_raw) = token.ident().unwrap();
-                    let span = ident.span.with_lo(span.lo());
+                    let span = ident.span.with_lo(dollar_span.lo());
                     if ident.name == kw::Crate && matches!(is_raw, IdentIsRaw::No) {
                         TokenTree::token(token::Ident(kw::DollarCrate, is_raw), span)
                     } else {
@@ -260,16 +260,19 @@ fn parse_tree<'a>(
                 }
 
                 // `tree` is followed by another `$`. This is an escaped `$`.
-                Some(&tokenstream::TokenTree::Token(Token { kind: token::Dollar, span }, _)) => {
+                Some(&tokenstream::TokenTree::Token(
+                    Token { kind: token::Dollar, span: dollar_span2 },
+                    _,
+                )) => {
                     if parsing_patterns {
                         span_dollar_dollar_or_metavar_in_the_lhs_err(
                             sess,
-                            &Token { kind: token::Dollar, span },
+                            &Token { kind: token::Dollar, span: dollar_span2 },
                         );
                     } else {
-                        maybe_emit_macro_metavar_expr_feature(features, sess, span);
+                        maybe_emit_macro_metavar_expr_feature(features, sess, dollar_span2);
                     }
-                    TokenTree::token(token::Dollar, span)
+                    TokenTree::token(token::Dollar, dollar_span2)
                 }
 
                 // `tree` is followed by some other token. This is an error.
@@ -281,7 +284,7 @@ fn parse_tree<'a>(
                 }
 
                 // There are no more tokens. Just return the `$` we already have.
-                None => TokenTree::token(token::Dollar, span),
+                None => TokenTree::token(token::Dollar, dollar_span),
             }
         }
 
