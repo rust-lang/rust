@@ -483,7 +483,7 @@ mod spurious_read {
         /// that causes UB in the target but not in the source.
         /// This implementation simply explores the reachable space
         /// by all sequences of `TestEvent`.
-        /// This function can be instanciated with `RetX` and `RetY`
+        /// This function can be instantiated with `RetX` and `RetY`
         /// among `NoRet` or `AllowRet` to resp. forbid/allow `x`/`y` to lose their
         /// protector.
         fn distinguishable<RetX, RetY>(&self, other: &Self) -> bool

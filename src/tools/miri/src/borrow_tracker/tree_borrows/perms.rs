@@ -202,7 +202,7 @@ impl Permission {
         Self { inner: Frozen }
     }
 
-    /// Default initial permission of  the root of a new tre at out-of-bounds positions.
+    /// Default initial permission of  the root of a new tree at out-of-bounds positions.
     /// Must *only* be used for the root, this is not in general an "initial" permission!
     pub fn new_disabled() -> Self {
         Self { inner: Disabled }

@@ -269,7 +269,7 @@ fn trait_object_ty<'tcx>(tcx: TyCtxt<'tcx>, poly_trait_ref: ty::PolyTraitRef<'tc
 /// if a function is member of the group derived from this type id. Therefore, in the first call to
 /// typeid_for_fnabi (when type ids are attached to functions and methods), it can only include at
 /// most as much information that would be available in the second call (i.e., during code
-/// generation at call sites); otherwise, the type ids would not not match.
+/// generation at call sites); otherwise, the type ids would not match.
 ///
 /// For this, it:
 ///
