@@ -1,0 +1,49 @@
+error[E0509]: cannot move out of type `S`, which implements the `Drop` trait
+  --> $DIR/borrowck-move-out-of-struct-with-dtor.rs:9:11
+   |
+LL |     match (S {f:"foo".to_string()}) {
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^ cannot move out of here
+LL |
+LL |         S {f:_s} => {}
+   |              --
+   |              |
+   |              data moved here
+   |              move occurs because `_s` has type `String`, which does not implement the `Copy` trait
+   |
+help: consider borrowing the pattern binding
+   |
+LL |         S {f:ref _s} => {}
+   |              +++
+
+error[E0509]: cannot move out of type `S`, which implements the `Drop` trait
+  --> $DIR/borrowck-move-out-of-struct-with-dtor.rs:16:20
+   |
+LL |     let S {f:_s} = S {f:"foo".to_string()};
+   |              --    ^^^^^^^^^^^^^^^^^^^^^^^ cannot move out of here
+   |              |
+   |              data moved here
+   |              move occurs because `_s` has type `String`, which does not implement the `Copy` trait
+   |
+help: consider borrowing the pattern binding
+   |
+LL |     let S {f:ref _s} = S {f:"foo".to_string()};
+   |              +++
+
+error[E0509]: cannot move out of type `S`, which implements the `Drop` trait
+  --> $DIR/borrowck-move-out-of-struct-with-dtor.rs:20:19
+   |
+LL | fn move_in_fn_arg(S {f:_s}: S) {
+   |                   ^^^^^--^
+   |                   |    |
+   |                   |    data moved here
+   |                   |    move occurs because `_s` has type `String`, which does not implement the `Copy` trait
+   |                   cannot move out of here
+   |
+help: consider borrowing the pattern binding
+   |
+LL | fn move_in_fn_arg(S {f:ref _s}: S) {
+   |                        +++
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0509`.

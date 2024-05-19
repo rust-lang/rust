@@ -1,0 +1,38 @@
+#![warn(clippy::repeat_vec_with_capacity)]
+
+fn main() {
+    {
+        (0..123).map(|_| Vec::<()>::with_capacity(42)).collect::<Vec<_>>();
+        //~^ ERROR: repeating `Vec::with_capacity` using `vec![x; n]`, which does not retain capacity
+    }
+
+    {
+        let n = 123;
+        (0..n).map(|_| Vec::<()>::with_capacity(42)).collect::<Vec<_>>();
+        //~^ ERROR: repeating `Vec::with_capacity` using `vec![x; n]`, which does not retain capacity
+    }
+
+    {
+        macro_rules! from_macro {
+            ($x:expr) => {
+                vec![$x; 123];
+            };
+        }
+        // vec expansion is from another macro, don't lint
+        from_macro!(Vec::<()>::with_capacity(42));
+    }
+
+    {
+        std::iter::repeat_with(|| Vec::<()>::with_capacity(42));
+        //~^ ERROR: repeating `Vec::with_capacity` using `iter::repeat`, which does not retain capacity
+    }
+
+    {
+        macro_rules! from_macro {
+            ($x:expr) => {
+                std::iter::repeat($x)
+            };
+        }
+        from_macro!(Vec::<()>::with_capacity(42));
+    }
+}

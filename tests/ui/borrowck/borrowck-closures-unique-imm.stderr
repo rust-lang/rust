@@ -1,0 +1,13 @@
+error[E0502]: cannot borrow `this.x` as mutable because it is also borrowed as immutable
+  --> $DIR/borrowck-closures-unique-imm.rs:11:9
+   |
+LL |         let p = &this.x;
+   |                 ------- immutable borrow occurs here
+LL |         &mut this.x;
+   |         ^^^^^^^^^^^ mutable borrow occurs here
+LL |         p.use_ref();
+   |         - immutable borrow later used here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0502`.

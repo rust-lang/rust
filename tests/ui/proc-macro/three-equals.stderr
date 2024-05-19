@@ -1,0 +1,49 @@
+error: found 2 equal signs, need exactly 3
+  --> $DIR/three-equals.rs:12:5
+   |
+LL |     three_equals!(==);
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = help: input must be: `===`
+   = note: this error originates in the macro `three_equals` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: expected EOF, found `=`.
+  --> $DIR/three-equals.rs:15:22
+   |
+LL |     three_equals!(=====);
+   |                      ^
+   |
+note: last good input was here
+  --> $DIR/three-equals.rs:15:21
+   |
+LL |     three_equals!(=====);
+   |                     ^
+   = help: input must be: `===`
+
+error: expected `=`, found `abc`.
+  --> $DIR/three-equals.rs:18:19
+   |
+LL |     three_equals!(abc);
+   |                   ^^^
+
+error: expected `=`, found `!`.
+  --> $DIR/three-equals.rs:21:19
+   |
+LL |     three_equals!(!!);
+   |                   ^
+
+error: expected EOF, found `a`.
+  --> $DIR/three-equals.rs:24:22
+   |
+LL |     three_equals!(===a);
+   |                      ^
+   |
+note: last good input was here
+  --> $DIR/three-equals.rs:24:21
+   |
+LL |     three_equals!(===a);
+   |                     ^
+   = help: input must be: `===`
+
+error: aborting due to 5 previous errors
+

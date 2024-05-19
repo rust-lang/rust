@@ -1,0 +1,12 @@
+[package]
+name = "html-checker"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "html-checker"
+path = "main.rs"
+
+[dependencies]
+walkdir = "2"
+rayon = "1.5"

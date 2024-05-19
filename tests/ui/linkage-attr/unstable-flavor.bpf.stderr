@@ -1,0 +1,2 @@
+error: the linker flavor `bpf` is unstable, the `-Z unstable-options` flag must also be passed to use the unstable values
+

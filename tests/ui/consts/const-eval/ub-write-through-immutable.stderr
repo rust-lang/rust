@@ -1,0 +1,55 @@
+error: writing through a pointer that was derived from a shared (immutable) reference
+  --> $DIR/ub-write-through-immutable.rs:12:5
+   |
+LL |     *ptr = 0;
+   |     ^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #X <https://github.com/rust-lang/rust/issues/X>
+note: the lint level is defined here
+  --> $DIR/ub-write-through-immutable.rs:3:9
+   |
+LL | #![deny(writes_through_immutable_pointer)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: writing through a pointer that was derived from a shared (immutable) reference
+  --> $DIR/ub-write-through-immutable.rs:19:5
+   |
+LL |     *ptr = 0;
+   |     ^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #X <https://github.com/rust-lang/rust/issues/X>
+
+error: aborting due to 2 previous errors
+
+Future incompatibility report: Future breakage diagnostic:
+error: writing through a pointer that was derived from a shared (immutable) reference
+  --> $DIR/ub-write-through-immutable.rs:12:5
+   |
+LL |     *ptr = 0;
+   |     ^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #X <https://github.com/rust-lang/rust/issues/X>
+note: the lint level is defined here
+  --> $DIR/ub-write-through-immutable.rs:3:9
+   |
+LL | #![deny(writes_through_immutable_pointer)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Future breakage diagnostic:
+error: writing through a pointer that was derived from a shared (immutable) reference
+  --> $DIR/ub-write-through-immutable.rs:19:5
+   |
+LL |     *ptr = 0;
+   |     ^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #X <https://github.com/rust-lang/rust/issues/X>
+note: the lint level is defined here
+  --> $DIR/ub-write-through-immutable.rs:3:9
+   |
+LL | #![deny(writes_through_immutable_pointer)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+

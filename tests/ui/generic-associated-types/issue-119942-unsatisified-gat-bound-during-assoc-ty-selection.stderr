@@ -1,0 +1,39 @@
+error[E0277]: the size for values of type `(dyn Deref<Target = T> + 'static)` cannot be known at compilation time
+  --> $DIR/issue-119942-unsatisified-gat-bound-during-assoc-ty-selection.rs:10:23
+   |
+LL |     type Pointer<T> = dyn Deref<Target = T>;
+   |                       ^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `(dyn Deref<Target = T> + 'static)`
+note: required by a bound in `PointerFamily::Pointer`
+  --> $DIR/issue-119942-unsatisified-gat-bound-during-assoc-ty-selection.rs:4:5
+   |
+LL |     type Pointer<T>: Deref<Target = T>;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `PointerFamily::Pointer`
+help: consider relaxing the implicit `Sized` restriction
+   |
+LL |     type Pointer<T>: Deref<Target = T> + ?Sized;
+   |                                        ++++++++
+
+error[E0599]: the variant or associated item `new` exists for enum `Node<i32, RcFamily>`, but its trait bounds were not satisfied
+  --> $DIR/issue-119942-unsatisified-gat-bound-during-assoc-ty-selection.rs:31:35
+   |
+LL | enum Node<T, P: PointerFamily> {
+   | ------------------------------ variant or associated item `new` not found for this enum
+...
+LL |     let mut list = RcNode::<i32>::new();
+   |                                   ^^^ variant or associated item cannot be called on `Node<i32, RcFamily>` due to unsatisfied trait bounds
+   |
+note: trait bound `(dyn Deref<Target = Node<i32, RcFamily>> + 'static): Sized` was not satisfied
+  --> $DIR/issue-119942-unsatisified-gat-bound-during-assoc-ty-selection.rs:23:29
+   |
+LL | impl<T, P: PointerFamily> Node<T, P>
+   |                           ----------
+LL | where
+LL |     P::Pointer<Node<T, P>>: Sized,
+   |                             ^^^^^ unsatisfied trait bound introduced here
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0277, E0599.
+For more information about an error, try `rustc --explain E0277`.

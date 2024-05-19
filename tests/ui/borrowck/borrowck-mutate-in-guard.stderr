@@ -1,0 +1,37 @@
+error[E0510]: cannot assign `x` in match guard
+  --> $DIR/borrowck-mutate-in-guard.rs:12:25
+   |
+LL |     match x {
+   |           - value is immutable in match guard
+LL |         Enum::A(_) if { x = Enum::B(false); false } => 1,
+   |                         ^^^^^^^^^^^^^^^^^^ cannot assign
+
+error[E0510]: cannot mutably borrow `x` in match guard
+  --> $DIR/borrowck-mutate-in-guard.rs:14:33
+   |
+LL |     match x {
+   |           - value is immutable in match guard
+...
+LL |         Enum::A(_) if { let y = &mut x; *y = Enum::B(false); false } => 1,
+   |                                 ^^^^^^ cannot mutably borrow
+
+error[E0510]: cannot assign `x` in match guard
+  --> $DIR/borrowck-mutate-in-guard.rs:25:40
+   |
+LL |     match x {
+   |           - value is immutable in match guard
+LL |         Enum::A(_) if let Some(()) = { x = Enum::B(false); None } => 1,
+   |                                        ^^^^^^^^^^^^^^^^^^ cannot assign
+
+error[E0510]: cannot mutably borrow `x` in match guard
+  --> $DIR/borrowck-mutate-in-guard.rs:27:48
+   |
+LL |     match x {
+   |           - value is immutable in match guard
+...
+LL |         Enum::A(_) if let Some(()) = { let y = &mut x; *y = Enum::B(false); None } => 1,
+   |                                                ^^^^^^ cannot mutably borrow
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0510`.

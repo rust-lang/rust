@@ -1,0 +1,18 @@
+error: missing condition for `if` expression
+  --> $DIR/issue-13483.rs:3:14
+   |
+LL |     } else if {
+   |              ^- if this block is the condition of the `if` expression, then it must be followed by another block
+   |              |
+   |              expected condition here
+
+error: missing condition for `if` expression
+  --> $DIR/issue-13483.rs:11:14
+   |
+LL |     } else if {
+   |              ^- if this block is the condition of the `if` expression, then it must be followed by another block
+   |              |
+   |              expected condition here
+
+error: aborting due to 2 previous errors
+

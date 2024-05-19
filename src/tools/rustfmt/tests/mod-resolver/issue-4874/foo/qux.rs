@@ -1,0 +1,5 @@
+ fn 
+ badly_formatted
+    (
+
+    ) {}

@@ -1,0 +1,38 @@
+error: evaluate(Binder { value: TraitPredicate(<std::vec::Vec<First> as std::marker::Unpin>, polarity:Positive), bound_vars: [] }) = Ok(EvaluatedToOk)
+  --> $DIR/issue-83538-tainted-cache-after-cycle.rs:59:5
+   |
+LL |     Vec<First>: Unpin,
+   |                 ----- predicate
+...
+LL |     forward();
+   |     ^^^^^^^
+
+error: evaluate(Binder { value: TraitPredicate(<Third<'_, Ty> as std::marker::Unpin>, polarity:Positive), bound_vars: [] }) = Ok(EvaluatedToOkModuloRegions)
+  --> $DIR/issue-83538-tainted-cache-after-cycle.rs:59:5
+   |
+LL |     Third<'a, Ty>: Unpin,
+   |                    ----- predicate
+...
+LL |     forward();
+   |     ^^^^^^^
+
+error: evaluate(Binder { value: TraitPredicate(<Third<'_, Ty> as std::marker::Unpin>, polarity:Positive), bound_vars: [] }) = Ok(EvaluatedToOkModuloRegions)
+  --> $DIR/issue-83538-tainted-cache-after-cycle.rs:63:5
+   |
+LL |     Third<'a, Ty>: Unpin,
+   |                    ----- predicate
+...
+LL |     reverse();
+   |     ^^^^^^^
+
+error: evaluate(Binder { value: TraitPredicate(<std::vec::Vec<First> as std::marker::Unpin>, polarity:Positive), bound_vars: [] }) = Ok(EvaluatedToOk)
+  --> $DIR/issue-83538-tainted-cache-after-cycle.rs:63:5
+   |
+LL |     Vec<First>: Unpin,
+   |                 ----- predicate
+...
+LL |     reverse();
+   |     ^^^^^^^
+
+error: aborting due to 4 previous errors
+

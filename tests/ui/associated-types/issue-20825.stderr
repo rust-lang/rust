@@ -1,0 +1,17 @@
+error[E0391]: cycle detected when computing the super traits of `Processor` with associated type name `Input`
+  --> $DIR/issue-20825.rs:5:1
+   |
+LL | pub trait Processor: Subscriber<Input = Self::Input> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: ...which immediately requires computing the super traits of `Processor` with associated type name `Input` again
+note: cycle used when computing the super predicates of `Processor`
+  --> $DIR/issue-20825.rs:5:1
+   |
+LL | pub trait Processor: Subscriber<Input = Self::Input> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0391`.

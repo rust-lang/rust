@@ -1,0 +1,19 @@
+error[E0308]: `if` and `else` have incompatible types
+  --> $DIR/type-mismatch-error.rs:17:17
+   |
+LL | /             if false {
+LL | |                 yield ();
+   | |                 ---------
+   | |                 |       |
+   | |                 |       help: consider removing this semicolon
+   | |                 expected because of this
+LL | |             } else {
+LL | |                 a
+   | |                 ^ expected `()`, found `u8`
+LL | |
+LL | |             }
+   | |_____________- `if` and `else` have incompatible types
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.

@@ -1,0 +1,16 @@
+#![warn(clippy::missing_enforced_import_renames)]
+
+use std::alloc as colla;
+use std::option::Option as Maybe;
+use std::process::{exit as goodbye, Child as Kid};
+use std::thread::sleep as thread_sleep;
+#[rustfmt::skip]
+use std::{
+    any::{type_name as ident, Any},
+    clone as foo,
+    sync :: Mutex as StdMutie,
+};
+
+fn main() {
+    use std::collections::BTreeMap as Map;
+}

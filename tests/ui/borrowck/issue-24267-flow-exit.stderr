@@ -1,0 +1,33 @@
+error[E0381]: used binding `x` isn't initialized
+  --> $DIR/issue-24267-flow-exit.rs:12:20
+   |
+LL |     let x: i32;
+   |         - binding declared here but left uninitialized
+LL |     loop { x = break; }
+LL |     println!("{}", x);
+   |                    ^ `x` used here but it isn't initialized
+   |
+   = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider assigning a value
+   |
+LL |     let x: i32 = 42;
+   |                ++++
+
+error[E0381]: used binding `x` isn't initialized
+  --> $DIR/issue-24267-flow-exit.rs:18:20
+   |
+LL |     let x: i32;
+   |         - binding declared here but left uninitialized
+LL |     for _ in 0..10 { x = continue; }
+LL |     println!("{}", x);
+   |                    ^ `x` used here but it isn't initialized
+   |
+   = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider assigning a value
+   |
+LL |     let x: i32 = 42;
+   |                ++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0381`.

@@ -1,0 +1,9 @@
+error[E0423]: expected function, found macro `assert_eq`
+  --> $DIR/resolve-dont-hint-macro.rs:2:16
+   |
+LL |     let zero = assert_eq::<()>();
+   |                ^^^^^^^^^^^^^^^ not a function
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0423`.

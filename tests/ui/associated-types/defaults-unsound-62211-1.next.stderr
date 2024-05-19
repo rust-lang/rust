@@ -1,0 +1,13 @@
+warning: calls to `std::mem::drop` with a value that implements `Copy` does nothing
+  --> $DIR/defaults-unsound-62211-1.rs:52:5
+   |
+LL |     drop(origin);
+   |     ^^^^^------^
+   |          |
+   |          argument has type `<T as UncheckedCopy>::Output`
+   |
+   = note: use `let _ = ...` to ignore the expression or result
+   = note: `#[warn(dropping_copy_types)]` on by default
+
+warning: 1 warning emitted
+

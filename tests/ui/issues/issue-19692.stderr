@@ -1,0 +1,12 @@
+error[E0599]: no method named `kaname` found for struct `Homura` in the current scope
+  --> $DIR/issue-19692.rs:4:40
+   |
+LL | struct Homura;
+   | ------------- method `kaname` not found for this struct
+...
+LL |     let Some(ref madoka) = Some(homura.kaname());
+   |                                        ^^^^^^ method not found in `Homura`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0599`.

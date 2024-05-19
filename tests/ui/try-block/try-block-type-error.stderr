@@ -1,0 +1,18 @@
+error[E0271]: type mismatch resolving `<Option<f32> as Try>::Output == {integer}`
+  --> $DIR/try-block-type-error.rs:10:9
+   |
+LL |         42
+   |         ^^
+   |         |
+   |         expected `f32`, found integer
+   |         help: use a float literal: `42.0`
+
+error[E0271]: type mismatch resolving `<Option<i32> as Try>::Output == ()`
+  --> $DIR/try-block-type-error.rs:16:5
+   |
+LL |     };
+   |     ^ expected `i32`, found `()`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0271`.

@@ -1,0 +1,20 @@
+error: `yield` can only be used in `#[coroutine]` closures, or `gen` blocks
+  --> $DIR/yield-in-function.rs:3:13
+   |
+LL | fn main() { yield; }
+   |             ^^^^^
+   |
+help: use `#[coroutine]` to make this closure a coroutine
+   |
+LL | #[coroutine] fn main() { yield; }
+   | ++++++++++++
+
+error[E0627]: yield expression outside of coroutine literal
+  --> $DIR/yield-in-function.rs:3:13
+   |
+LL | fn main() { yield; }
+   |             ^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0627`.

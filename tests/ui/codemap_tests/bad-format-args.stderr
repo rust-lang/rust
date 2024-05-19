@@ -1,0 +1,22 @@
+error: requires at least a format string argument
+  --> $DIR/bad-format-args.rs:2:5
+   |
+LL |     format!();
+   |     ^^^^^^^^^
+   |
+   = note: this error originates in the macro `$crate::__export::format_args` which comes from the expansion of the macro `format` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: expected `,`, found `1`
+  --> $DIR/bad-format-args.rs:3:16
+   |
+LL |     format!("" 1);
+   |                ^ expected `,`
+
+error: expected one of `,`, `.`, `?`, or an operator, found `1`
+  --> $DIR/bad-format-args.rs:4:19
+   |
+LL |     format!("", 1 1);
+   |                   ^ expected one of `,`, `.`, `?`, or an operator
+
+error: aborting due to 3 previous errors
+

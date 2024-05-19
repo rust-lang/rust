@@ -1,0 +1,11 @@
+[package]
+name = "run_make_support"
+version = "0.0.0"
+edition = "2021"
+
+[dependencies]
+object = "0.34.0"
+similar = "2.5.0"
+wasmparser = "0.118.2"
+regex = "1.8" # 1.8 to avoid memchr 2.6.0, as 2.5.0 is pinned in the workspace
+gimli = "0.28.1"

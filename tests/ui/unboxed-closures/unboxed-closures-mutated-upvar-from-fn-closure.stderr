@@ -1,0 +1,16 @@
+error[E0594]: cannot assign to `counter`, as it is a captured variable in a `Fn` closure
+  --> $DIR/unboxed-closures-mutated-upvar-from-fn-closure.rs:11:9
+   |
+LL | fn call<F>(f: F) where F : Fn() {
+   |               - change this to accept `FnMut` instead of `Fn`
+...
+LL |     call(|| {
+   |     ---- -- in this closure
+   |     |
+   |     expects `Fn` instead of `FnMut`
+LL |         counter += 1;
+   |         ^^^^^^^^^^^^ cannot assign
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0594`.

@@ -1,0 +1,13 @@
+// MIR for `mut_ref` after built
+
+fn mut_ref(_1: &mut i32) -> &mut i32 {
+    let mut _0: &mut i32;
+    let mut _2: *mut i32;
+
+    bb0: {
+        _2 = &raw mut (*_1);
+        _0 = &mut (*_2);
+        Retag(_0);
+        return;
+    }
+}

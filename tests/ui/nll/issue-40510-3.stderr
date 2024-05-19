@@ -1,0 +1,23 @@
+error: captured variable cannot escape `FnMut` closure body
+  --> $DIR/issue-40510-3.rs:7:9
+   |
+LL |       let mut x: Vec<()> = Vec::new();
+   |           ----- variable defined here
+LL |
+LL |       || {
+   |        - inferred to be a `FnMut` closure
+LL | /         || {
+LL | |             x.push(())
+   | |             - variable captured here
+LL | |         }
+   | |_________^ returns a closure that contains a reference to a captured variable, which then escapes the closure body
+   |
+   = note: `FnMut` closures only have access to their captured variables while they are executing...
+   = note: ...therefore, they cannot allow references to captured variables to escape
+help: consider adding 'move' keyword before the nested closure
+   |
+LL |         move || {
+   |         ++++
+
+error: aborting due to 1 previous error
+

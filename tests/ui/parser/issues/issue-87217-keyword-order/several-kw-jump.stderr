@@ -1,0 +1,22 @@
+error: expected one of `extern` or `fn`, found keyword `const`
+  --> $DIR/several-kw-jump.rs:9:14
+   |
+LL | async unsafe const fn test() {}
+   | -------------^^^^^
+   | |            |
+   | |            expected one of `extern` or `fn`
+   | help: `const` must come before `async unsafe`: `const async unsafe`
+   |
+   = note: keyword order for functions declaration is `pub`, `default`, `const`, `async`, `unsafe`, `extern`
+
+error: functions cannot be both `const` and `async`
+  --> $DIR/several-kw-jump.rs:9:1
+   |
+LL | async unsafe const fn test() {}
+   | ^^^^^--------^^^^^-------------
+   | |            |
+   | |            `const` because of this
+   | `async` because of this
+
+error: aborting due to 2 previous errors
+

@@ -1,2 +1,48 @@
-reorder_modules = true
+# Run rustfmt with this config (it should be picked up automatically).
+version = "Two"
 use_small_heuristics = "Max"
+merge_derives = false
+
+# by default we ignore everything in the repository
+# tidy only checks files which are not ignored, each entry follows gitignore style
+ignore = [
+    "/build/",
+    "/*-build/",
+    "/build-*/",
+    "/vendor/",
+
+    # tests for now are not formatted, as they are sometimes pretty-printing constrained
+    # (and generally rustfmt can move around comments in UI-testing incompatible ways)
+    "/tests/*",
+
+    # but we still want to format rmake.rs files in tests/run-make/ so we need to do this
+    # dance to avoid the parent directory from being excluded
+    "!/tests/run-make/",
+    "/tests/run-make/*/*.rs",
+    "!/tests/run-make/*/rmake.rs",
+
+    # do not format submodules
+    # FIXME: sync submodule list with tidy/bootstrap/etc
+    # tidy/src/walk.rs:filter_dirs
+    "library/backtrace",
+    "library/portable-simd",
+    "library/stdarch",
+    "compiler/rustc_codegen_gcc",
+    "src/doc/book",
+    "src/doc/edition-guide",
+    "src/doc/embedded-book",
+    "src/doc/nomicon",
+    "src/doc/reference",
+    "src/doc/rust-by-example",
+    "src/doc/rustc-dev-guide",
+    "src/llvm-project",
+    "src/tools/cargo",
+    "src/tools/clippy",
+    "src/tools/miri",
+    "src/tools/rust-analyzer",
+    "src/tools/rustfmt",
+
+    # these are ignored by a standard cargo fmt run
+    "compiler/rustc_codegen_cranelift/scripts",
+    "compiler/rustc_codegen_cranelift/example/gen_block_iterate.rs", # uses edition 2024
+]

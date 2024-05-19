@@ -1,0 +1,28 @@
+- // MIR for `invalid` before EnumSizeOpt
++ // MIR for `invalid` after EnumSizeOpt
+  
+  fn invalid() -> InvalidIdxs {
+      let mut _0: InvalidIdxs;
+      let mut _1: InvalidIdxs;
+      let mut _2: InvalidIdxs;
+      let mut _3: [u64; 1024];
+      scope 1 {
+          debug a => _1;
+      }
+  
+      bb0: {
+          StorageLive(_1);
+          _1 = InvalidIdxs::A;
+          StorageLive(_2);
+          StorageLive(_3);
+          _3 = [const 0_u64; 1024];
+          _2 = InvalidIdxs::Large(move _3);
+          StorageDead(_3);
+          _1 = move _2;
+          StorageDead(_2);
+          _0 = move _1;
+          StorageDead(_1);
+          return;
+      }
+  }
+  

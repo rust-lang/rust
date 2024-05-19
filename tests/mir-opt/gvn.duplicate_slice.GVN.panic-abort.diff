@@ -1,0 +1,38 @@
+- // MIR for `duplicate_slice` before GVN
++ // MIR for `duplicate_slice` after GVN
+  
+  fn duplicate_slice() -> (bool, bool) {
+      let mut _0: (bool, bool);
+      let mut _1: u128;
+      let mut _2: u128;
+      let mut _3: u128;
+      let mut _4: u128;
+      let mut _5: &str;
+      let mut _6: &str;
+      let mut _7: (&str,);
+      let mut _8: &str;
+      let mut _9: bool;
+      let mut _10: bool;
+  
+      bb0: {
+          _7 = (const "a",);
+          _1 = (_7.0: &str) as u128 (Transmute);
+          _5 = identity::<&str>((_7.0: &str)) -> [return: bb1, unwind unreachable];
+      }
+  
+      bb1: {
+          _3 = _5 as u128 (Transmute);
+          _8 = const "a";
+          _2 = _8 as u128 (Transmute);
+          _6 = identity::<&str>(_8) -> [return: bb2, unwind unreachable];
+      }
+  
+      bb2: {
+          _4 = _6 as u128 (Transmute);
+          _9 = Eq(_1, _2);
+          _10 = Eq(_3, _4);
+          _0 = (_9, _10);
+          return;
+      }
+  }
+  

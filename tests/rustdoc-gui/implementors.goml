@@ -1,0 +1,41 @@
+// The goal of this test is to check that the external trait implementors, generated with JS,
+// have the same display than the "local" ones.
+go-to: "file://" + |DOC_PATH| + "/implementors/trait.Whatever.html"
+assert: "#implementors-list"
+// There are supposed to be two implementors listed.
+assert-count: ("#implementors-list .impl", 2)
+// Now we check that both implementors have an anchor, an ID and a similar DOM.
+assert: ("#implementors-list .impl:nth-child(1) > a.anchor")
+assert-attribute: ("#implementors-list .impl:nth-child(1)", {"id": "impl-Whatever-for-Struct"})
+assert-attribute: ("#implementors-list .impl:nth-child(1) > a.anchor", {"href": "#impl-Whatever-for-Struct"})
+assert: "#implementors-list .impl:nth-child(1) > .code-header"
+
+assert: ("#implementors-list .impl:nth-child(2) > a.anchor")
+assert-attribute: ("#implementors-list .impl:nth-child(2)", {"id": "impl-Whatever-1"})
+assert-attribute: ("#implementors-list .impl:nth-child(2) > a.anchor", {"href": "#impl-Whatever-1"})
+assert: "#implementors-list .impl:nth-child(2) > .code-header"
+
+go-to: "file://" + |DOC_PATH| + "/test_docs/struct.HasEmptyTraits.html"
+compare-elements-position-near-false: (
+    "#impl-EmptyTrait1-for-HasEmptyTraits",
+    "#impl-EmptyTrait2-for-HasEmptyTraits",
+    {"y": 34},
+)
+compare-elements-position-near: (
+    "#impl-EmptyTrait3-for-HasEmptyTraits h3",
+    "#impl-EmptyTrait3-for-HasEmptyTraits .item-info",
+    {"y": 34},
+)
+
+// Now check that re-exports work correctly.
+// There should be exactly one impl shown on both of these pages.
+go-to: "file://" + |DOC_PATH| + "/lib2/trait.TraitToReexport.html"
+assert-count: ("#implementors-list .impl", 1)
+go-to: "file://" + |DOC_PATH| + "/implementors/trait.TraitToReexport.html"
+assert-count: ("#implementors-list .impl", 1)
+
+// Now check that the link is properly rewritten for a crate called `http`.
+// An older version of rustdoc had a buggy check for absolute links.
+go-to: "file://" + |DOC_PATH| + "/http/trait.HttpTrait.html"
+assert-count: ("#implementors-list .impl", 1)
+assert-attribute: ("#implementors-list .impl a.trait", {"href": "../http/trait.HttpTrait.html"})

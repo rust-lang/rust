@@ -1,0 +1,8 @@
+ignore = [
+    "example/gen_block_iterate.rs", # uses edition 2024
+]
+
+# Matches rustfmt.toml of rustc
+version = "Two"
+use_small_heuristics = "Max"
+merge_derives = false

@@ -1,0 +1,14 @@
+error[E0412]: cannot find type `Type` in this scope
+  --> $DIR/ignore-err-impls.rs:6:14
+   |
+LL | impl Generic<Type> for S {}
+   |              ^^^^ not found in this scope
+   |
+help: you might be missing a type parameter
+   |
+LL | impl<Type> Generic<Type> for S {}
+   |     ++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0412`.

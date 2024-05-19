@@ -1,0 +1,33 @@
+Function name: simple_match::main
+Raw bytes (78): 0x[01, 01, 0c, 01, 05, 2b, 2f, 05, 02, 09, 0d, 27, 11, 2b, 2f, 05, 02, 09, 0d, 27, 11, 2b, 2f, 05, 02, 09, 0d, 0a, 01, 04, 01, 07, 0f, 05, 07, 10, 02, 06, 02, 02, 06, 00, 07, 27, 05, 09, 00, 0d, 22, 05, 0d, 00, 16, 09, 02, 0d, 00, 0e, 22, 02, 11, 02, 12, 09, 04, 0d, 07, 0e, 0d, 0a, 0d, 00, 0f, 11, 03, 01, 00, 02]
+Number of files: 1
+- file 0 => global file 1
+Number of expressions: 12
+- expression 0 operands: lhs = Counter(0), rhs = Counter(1)
+- expression 1 operands: lhs = Expression(10, Add), rhs = Expression(11, Add)
+- expression 2 operands: lhs = Counter(1), rhs = Expression(0, Sub)
+- expression 3 operands: lhs = Counter(2), rhs = Counter(3)
+- expression 4 operands: lhs = Expression(9, Add), rhs = Counter(4)
+- expression 5 operands: lhs = Expression(10, Add), rhs = Expression(11, Add)
+- expression 6 operands: lhs = Counter(1), rhs = Expression(0, Sub)
+- expression 7 operands: lhs = Counter(2), rhs = Counter(3)
+- expression 8 operands: lhs = Expression(9, Add), rhs = Counter(4)
+- expression 9 operands: lhs = Expression(10, Add), rhs = Expression(11, Add)
+- expression 10 operands: lhs = Counter(1), rhs = Expression(0, Sub)
+- expression 11 operands: lhs = Counter(2), rhs = Counter(3)
+Number of file 0 mappings: 10
+- Code(Counter(0)) at (prev + 4, 1) to (start + 7, 15)
+- Code(Counter(1)) at (prev + 7, 16) to (start + 2, 6)
+- Code(Expression(0, Sub)) at (prev + 2, 6) to (start + 0, 7)
+    = (c0 - c1)
+- Code(Expression(9, Add)) at (prev + 5, 9) to (start + 0, 13)
+    = ((c1 + (c0 - c1)) + (c2 + c3))
+- Code(Expression(8, Sub)) at (prev + 5, 13) to (start + 0, 22)
+    = (((c1 + (c0 - c1)) + (c2 + c3)) - c4)
+- Code(Counter(2)) at (prev + 2, 13) to (start + 0, 14)
+- Code(Expression(8, Sub)) at (prev + 2, 17) to (start + 2, 18)
+    = (((c1 + (c0 - c1)) + (c2 + c3)) - c4)
+- Code(Counter(2)) at (prev + 4, 13) to (start + 7, 14)
+- Code(Counter(3)) at (prev + 10, 13) to (start + 0, 15)
+- Code(Counter(4)) at (prev + 3, 1) to (start + 0, 2)
+

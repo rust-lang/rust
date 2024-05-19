@@ -1,0 +1,9 @@
+error[E0433]: failed to resolve: expected type, found function `channel` in `mpsc`
+  --> $DIR/issue-71406.rs:4:26
+   |
+LL |     let (tx, rx) = mpsc::channel::new(1);
+   |                          ^^^^^^^ expected type, found function `channel` in `mpsc`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0433`.

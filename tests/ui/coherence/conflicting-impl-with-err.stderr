@@ -1,0 +1,15 @@
+error[E0433]: failed to resolve: use of undeclared crate or module `nope`
+  --> $DIR/conflicting-impl-with-err.rs:4:11
+   |
+LL | impl From<nope::Thing> for Error {
+   |           ^^^^ use of undeclared crate or module `nope`
+
+error[E0433]: failed to resolve: use of undeclared crate or module `nope`
+  --> $DIR/conflicting-impl-with-err.rs:5:16
+   |
+LL |     fn from(_: nope::Thing) -> Self {
+   |                ^^^^ use of undeclared crate or module `nope`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0433`.

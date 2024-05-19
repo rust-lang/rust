@@ -1,0 +1,20 @@
+error[E0618]: expected function, found struct `G`
+  --> $DIR/issue-20714.rs:4:13
+   |
+LL | struct G;
+   | -------- struct `G` defined here
+...
+LL |     let g = G();
+   |             ^--
+   |             |
+   |             call expression requires function
+   |
+help: `G` is a unit struct, and does not take parentheses to be constructed
+   |
+LL -     let g = G();
+LL +     let g = G;
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0618`.

@@ -1,0 +1,10 @@
+max_width = 100
+comment_width = 80
+tab_spaces = 2
+newline_style = "Unix"
+brace_style = "SameLineWhere"
+fn_params_layout = "Tall"
+trailing_comma = "Vertical"
+indent_style = "Block"
+reorder_imports = false
+format_strings = true

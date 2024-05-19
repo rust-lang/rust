@@ -1,0 +1,26 @@
+error: Direct: pub(crate), Reexported: pub, Reachable: pub, ReachableThroughImplTrait: pub
+  --> $DIR/effective_visibilities_glob.rs:8:5
+   |
+LL |     pub struct S1 {}
+   |     ^^^^^^^^^^^^^
+
+error: Direct: pub(crate), Reexported: pub(crate), Reachable: pub(crate), ReachableThroughImplTrait: pub(crate)
+  --> $DIR/effective_visibilities_glob.rs:10:5
+   |
+LL |     pub struct S2 {}
+   |     ^^^^^^^^^^^^^
+
+error: Direct: pub(crate), Reexported: pub, Reachable: pub, ReachableThroughImplTrait: pub
+  --> $DIR/effective_visibilities_glob.rs:15:13
+   |
+LL |     pub use crate::m::*;
+   |             ^^^^^^^^
+
+error: Direct: pub, Reexported: pub, Reachable: pub, ReachableThroughImplTrait: pub
+  --> $DIR/effective_visibilities_glob.rs:19:9
+   |
+LL | pub use glob::S1;
+   |         ^^^^^^^^
+
+error: aborting due to 4 previous errors
+

@@ -1,0 +1,18 @@
+error[E0369]: cannot add `&str` to `&String`
+  --> $DIR/str-concat-on-double-ref.rs:4:15
+   |
+LL |     let c = a + b;
+   |             - ^ - &str
+   |             | |
+   |             | `+` cannot be used to concatenate two `&str` strings
+   |             &String
+   |
+   = note: string concatenation requires an owned `String` on the left
+help: create an owned `String` from a string reference
+   |
+LL |     let c = a.to_owned() + b;
+   |              +++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0369`.

@@ -1,0 +1,15 @@
+error: expected `mut` or `const` keyword in raw pointer type
+  --> $DIR/bad-pointer-type.rs:1:11
+   |
+LL | fn foo(_: *()) {
+   |           ^
+   |
+help: add `mut` or `const` here
+   |
+LL | fn foo(_: *mut ()) {
+   |            +++
+LL | fn foo(_: *const ()) {
+   |            +++++
+
+error: aborting due to 1 previous error
+

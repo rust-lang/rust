@@ -1,0 +1,121 @@
+error[E0004]: non-exhaustive patterns: `T::A` not covered
+  --> $DIR/non-exhaustive-match.rs:5:11
+   |
+LL |     match x { T::B => { } }
+   |           ^ pattern `T::A` not covered
+   |
+note: `T` defined here
+  --> $DIR/non-exhaustive-match.rs:1:6
+   |
+LL | enum T { A, B }
+   |      ^   - not covered
+   = note: the matched value is of type `T`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+   |
+LL |     match x { T::B => { }, T::A => todo!() }
+   |                          +++++++++++++++++
+
+error[E0004]: non-exhaustive patterns: `false` not covered
+  --> $DIR/non-exhaustive-match.rs:6:11
+   |
+LL |     match true {
+   |           ^^^^ pattern `false` not covered
+   |
+   = note: the matched value is of type `bool`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+   |
+LL ~       true => {},
+LL +       false => todo!()
+   |
+
+error[E0004]: non-exhaustive patterns: `Some(_)` not covered
+  --> $DIR/non-exhaustive-match.rs:9:11
+   |
+LL |     match Some(10) {
+   |           ^^^^^^^^ pattern `Some(_)` not covered
+   |
+note: `Option<i32>` defined here
+  --> $SRC_DIR/core/src/option.rs:LL:COL
+  ::: $SRC_DIR/core/src/option.rs:LL:COL
+   |
+   = note: not covered
+   = note: the matched value is of type `Option<i32>`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+   |
+LL ~       None => {},
+LL +       Some(_) => todo!()
+   |
+
+error[E0004]: non-exhaustive patterns: `(_, _, i32::MIN..=3_i32)` and `(_, _, 5_i32..=i32::MAX)` not covered
+  --> $DIR/non-exhaustive-match.rs:12:11
+   |
+LL |     match (2, 3, 4) {
+   |           ^^^^^^^^^ patterns `(_, _, i32::MIN..=3_i32)` and `(_, _, 5_i32..=i32::MAX)` not covered
+   |
+   = note: the matched value is of type `(i32, i32, i32)`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
+   |
+LL ~       (_, _, 4) => {},
+LL +       (_, _, i32::MIN..=3_i32) | (_, _, 5_i32..=i32::MAX) => todo!()
+   |
+
+error[E0004]: non-exhaustive patterns: `(T::A, T::A)` and `(T::B, T::B)` not covered
+  --> $DIR/non-exhaustive-match.rs:16:11
+   |
+LL |     match (T::A, T::A) {
+   |           ^^^^^^^^^^^^ patterns `(T::A, T::A)` and `(T::B, T::B)` not covered
+   |
+   = note: the matched value is of type `(T, T)`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
+   |
+LL ~       (T::B, T::A) => {},
+LL +       (T::A, T::A) | (T::B, T::B) => todo!()
+   |
+
+error[E0004]: non-exhaustive patterns: `T::B` not covered
+  --> $DIR/non-exhaustive-match.rs:20:11
+   |
+LL |     match T::A {
+   |           ^^^^ pattern `T::B` not covered
+   |
+note: `T` defined here
+  --> $DIR/non-exhaustive-match.rs:1:6
+   |
+LL | enum T { A, B }
+   |      ^      - not covered
+   = note: the matched value is of type `T`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+   |
+LL ~       T::A => {},
+LL +       T::B => todo!()
+   |
+
+error[E0004]: non-exhaustive patterns: `[]` not covered
+  --> $DIR/non-exhaustive-match.rs:31:11
+   |
+LL |     match *vec {
+   |           ^^^^ pattern `[]` not covered
+   |
+   = note: the matched value is of type `[Option<isize>]`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+   |
+LL ~         [None] => {},
+LL +         [] => todo!()
+   |
+
+error[E0004]: non-exhaustive patterns: `[_, _, _, _, ..]` not covered
+  --> $DIR/non-exhaustive-match.rs:44:11
+   |
+LL |     match *vec {
+   |           ^^^^ pattern `[_, _, _, _, ..]` not covered
+   |
+   = note: the matched value is of type `[f32]`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+   |
+LL ~         [] => (),
+LL +         [_, _, _, _, ..] => todo!()
+   |
+
+error: aborting due to 8 previous errors
+
+For more information about this error, try `rustc --explain E0004`.

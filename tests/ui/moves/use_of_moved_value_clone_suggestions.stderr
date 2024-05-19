@@ -1,0 +1,18 @@
+error[E0382]: use of moved value: `t`
+  --> $DIR/use_of_moved_value_clone_suggestions.rs:3:9
+   |
+LL | fn duplicate_rc<T>(t: std::rc::Rc<T>) -> (std::rc::Rc<T>, std::rc::Rc<T>) {
+   |                    - move occurs because `t` has type `Rc<T>`, which does not implement the `Copy` trait
+LL |     (t, t)
+   |      -  ^ value used here after move
+   |      |
+   |      value moved here
+   |
+help: clone the value to increment its reference count
+   |
+LL |     (t.clone(), t)
+   |       ++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0382`.

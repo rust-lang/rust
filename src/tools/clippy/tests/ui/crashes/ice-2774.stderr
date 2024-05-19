@@ -1,0 +1,16 @@
+error: the following explicit lifetimes could be elided: 'a
+  --> tests/ui/crashes/ice-2774.rs:15:28
+   |
+LL | pub fn add_barfoos_to_foos<'a>(bars: &HashSet<&'a Bar>) {
+   |                            ^^                  ^^
+   |
+   = note: `-D clippy::needless-lifetimes` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_lifetimes)]`
+help: elide the lifetimes
+   |
+LL - pub fn add_barfoos_to_foos<'a>(bars: &HashSet<&'a Bar>) {
+LL + pub fn add_barfoos_to_foos(bars: &HashSet<&Bar>) {
+   |
+
+error: aborting due to 1 previous error
+

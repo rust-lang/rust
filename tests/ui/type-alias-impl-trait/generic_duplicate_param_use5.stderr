@@ -1,0 +1,51 @@
+error[E0277]: `T` doesn't implement `Debug`
+  --> $DIR/generic_duplicate_param_use5.rs:11:5
+   |
+LL |     (t, u)
+   |     ^^^^^^ `T` cannot be formatted using `{:?}` because it doesn't implement `Debug`
+   |
+   = note: required for `(T, U)` to implement `Debug`
+help: consider restricting type parameter `T`
+   |
+LL | type Two<T: std::fmt::Debug, U> = impl Debug;
+   |           +++++++++++++++++
+
+error[E0277]: `U` doesn't implement `Debug`
+  --> $DIR/generic_duplicate_param_use5.rs:11:5
+   |
+LL |     (t, u)
+   |     ^^^^^^ `U` cannot be formatted using `{:?}` because it doesn't implement `Debug`
+   |
+   = note: required for `(T, U)` to implement `Debug`
+help: consider restricting type parameter `U`
+   |
+LL | type Two<T, U: std::fmt::Debug> = impl Debug;
+   |              +++++++++++++++++
+
+error[E0277]: `U` doesn't implement `Debug`
+  --> $DIR/generic_duplicate_param_use5.rs:17:5
+   |
+LL |     (u, t)
+   |     ^^^^^^ `U` cannot be formatted using `{:?}` because it doesn't implement `Debug`
+   |
+   = note: required for `(U, T)` to implement `Debug`
+help: consider restricting type parameter `U`
+   |
+LL | type Two<T, U: std::fmt::Debug> = impl Debug;
+   |              +++++++++++++++++
+
+error[E0277]: `T` doesn't implement `Debug`
+  --> $DIR/generic_duplicate_param_use5.rs:17:5
+   |
+LL |     (u, t)
+   |     ^^^^^^ `T` cannot be formatted using `{:?}` because it doesn't implement `Debug`
+   |
+   = note: required for `(U, T)` to implement `Debug`
+help: consider restricting type parameter `T`
+   |
+LL | type Two<T: std::fmt::Debug, U> = impl Debug;
+   |           +++++++++++++++++
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

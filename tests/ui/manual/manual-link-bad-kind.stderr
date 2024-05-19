@@ -1,0 +1,2 @@
+error: unknown library kind `bar`, expected one of: static, dylib, framework, link-arg
+

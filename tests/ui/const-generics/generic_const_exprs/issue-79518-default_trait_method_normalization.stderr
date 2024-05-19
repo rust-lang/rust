@@ -1,0 +1,16 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-79518-default_trait_method_normalization.rs:16:32
+   |
+LL |         Self::AssocInstance == [(); std::mem::size_of::<Self::Assoc>()];
+   |         -------------------    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected associated type, found `[(); std::mem::size_of::<Self::Assoc>()]`
+   |         |
+   |         expected because this is `<Self as Foo>::Assoc`
+   |
+   = note: expected associated type `<Self as Foo>::Assoc`
+                        found array `[(); std::mem::size_of::<Self::Assoc>()]`
+   = help: consider constraining the associated type `<Self as Foo>::Assoc` to `[(); std::mem::size_of::<Self::Assoc>()]` or calling a method that returns `<Self as Foo>::Assoc`
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.

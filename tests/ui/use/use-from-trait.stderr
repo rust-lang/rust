@@ -1,0 +1,34 @@
+error[E0253]: `foo` is not directly importable
+  --> $DIR/use-from-trait.rs:1:5
+   |
+LL | use Trait::foo;
+   |     ^^^^^^^^^^ cannot be imported directly
+
+error[E0253]: `Assoc` is not directly importable
+  --> $DIR/use-from-trait.rs:2:5
+   |
+LL | use Trait::Assoc;
+   |     ^^^^^^^^^^^^ cannot be imported directly
+
+error[E0253]: `C` is not directly importable
+  --> $DIR/use-from-trait.rs:3:5
+   |
+LL | use Trait::C;
+   |     ^^^^^^^^ cannot be imported directly
+
+error[E0432]: unresolved import `Foo`
+  --> $DIR/use-from-trait.rs:5:5
+   |
+LL | use Foo::new;
+   |     ^^^ `Foo` is a struct, not a module
+
+error[E0432]: unresolved import `Foo`
+  --> $DIR/use-from-trait.rs:7:5
+   |
+LL | use Foo::C2;
+   |     ^^^ `Foo` is a struct, not a module
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0253, E0432.
+For more information about an error, try `rustc --explain E0253`.

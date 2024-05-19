@@ -1,0 +1,10 @@
+error: arbitrary expressions aren't allowed in patterns
+  --> $DIR/expr-in-pat-issue-99380.rs:10:10
+   |
+LL |     foo!(Some(3));
+   |          ^^^^^^^
+   |
+   = note: the `expr` fragment specifier forces the metavariable's content to be an expression
+
+error: aborting due to 1 previous error
+

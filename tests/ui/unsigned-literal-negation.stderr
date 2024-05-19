@@ -1,0 +1,36 @@
+error[E0600]: cannot apply unary operator `-` to type `usize`
+  --> $DIR/unsigned-literal-negation.rs:2:13
+   |
+LL |     let x = -1 as usize;
+   |             ^^
+   |             |
+   |             cannot apply unary operator `-`
+   |             help: you may have meant the maximum value of `usize`: `usize::MAX`
+   |
+   = note: unsigned values cannot be negated
+
+error[E0600]: cannot apply unary operator `-` to type `usize`
+  --> $DIR/unsigned-literal-negation.rs:3:13
+   |
+LL |     let x = (-1) as usize;
+   |             ^^^^
+   |             |
+   |             cannot apply unary operator `-`
+   |             help: you may have meant the maximum value of `usize`: `usize::MAX`
+   |
+   = note: unsigned values cannot be negated
+
+error[E0600]: cannot apply unary operator `-` to type `u32`
+  --> $DIR/unsigned-literal-negation.rs:4:18
+   |
+LL |     let x: u32 = -1;
+   |                  ^^
+   |                  |
+   |                  cannot apply unary operator `-`
+   |                  help: you may have meant the maximum value of `u32`: `u32::MAX`
+   |
+   = note: unsigned values cannot be negated
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0600`.

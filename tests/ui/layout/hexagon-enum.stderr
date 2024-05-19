@@ -1,0 +1,372 @@
+error: layout_of(A) = Layout {
+           size: Size(1 bytes),
+           align: AbiAndPrefAlign {
+               abi: Align(1 bytes),
+               pref: Align(1 bytes),
+           },
+           abi: Scalar(
+               Initialized {
+                   value: Int(
+                       I8,
+                       false,
+                   ),
+                   valid_range: 0..=0,
+               },
+           ),
+           fields: Arbitrary {
+               offsets: [
+                   Size(0 bytes),
+               ],
+               memory_index: [
+                   0,
+               ],
+           },
+           largest_niche: Some(
+               Niche {
+                   offset: Size(0 bytes),
+                   value: Int(
+                       I8,
+                       false,
+                   ),
+                   valid_range: 0..=0,
+               },
+           ),
+           variants: Multiple {
+               tag: Initialized {
+                   value: Int(
+                       I8,
+                       false,
+                   ),
+                   valid_range: 0..=0,
+               },
+               tag_encoding: Direct,
+               tag_field: 0,
+               variants: [
+                   Layout {
+                       size: Size(1 bytes),
+                       align: AbiAndPrefAlign {
+                           abi: Align(1 bytes),
+                           pref: Align(1 bytes),
+                       },
+                       abi: Aggregate {
+                           sized: true,
+                       },
+                       fields: Arbitrary {
+                           offsets: [],
+                           memory_index: [],
+                       },
+                       largest_niche: None,
+                       variants: Single {
+                           index: 0,
+                       },
+                       max_repr_align: None,
+                       unadjusted_abi_align: Align(1 bytes),
+                   },
+               ],
+           },
+           max_repr_align: None,
+           unadjusted_abi_align: Align(1 bytes),
+       }
+  --> $DIR/hexagon-enum.rs:16:1
+   |
+LL | enum A { Apple }
+   | ^^^^^^
+
+error: layout_of(B) = Layout {
+           size: Size(1 bytes),
+           align: AbiAndPrefAlign {
+               abi: Align(1 bytes),
+               pref: Align(1 bytes),
+           },
+           abi: Scalar(
+               Initialized {
+                   value: Int(
+                       I8,
+                       false,
+                   ),
+                   valid_range: 255..=255,
+               },
+           ),
+           fields: Arbitrary {
+               offsets: [
+                   Size(0 bytes),
+               ],
+               memory_index: [
+                   0,
+               ],
+           },
+           largest_niche: Some(
+               Niche {
+                   offset: Size(0 bytes),
+                   value: Int(
+                       I8,
+                       false,
+                   ),
+                   valid_range: 255..=255,
+               },
+           ),
+           variants: Multiple {
+               tag: Initialized {
+                   value: Int(
+                       I8,
+                       false,
+                   ),
+                   valid_range: 255..=255,
+               },
+               tag_encoding: Direct,
+               tag_field: 0,
+               variants: [
+                   Layout {
+                       size: Size(1 bytes),
+                       align: AbiAndPrefAlign {
+                           abi: Align(1 bytes),
+                           pref: Align(1 bytes),
+                       },
+                       abi: Aggregate {
+                           sized: true,
+                       },
+                       fields: Arbitrary {
+                           offsets: [],
+                           memory_index: [],
+                       },
+                       largest_niche: None,
+                       variants: Single {
+                           index: 0,
+                       },
+                       max_repr_align: None,
+                       unadjusted_abi_align: Align(1 bytes),
+                   },
+               ],
+           },
+           max_repr_align: None,
+           unadjusted_abi_align: Align(1 bytes),
+       }
+  --> $DIR/hexagon-enum.rs:20:1
+   |
+LL | enum B { Banana = 255, }
+   | ^^^^^^
+
+error: layout_of(C) = Layout {
+           size: Size(2 bytes),
+           align: AbiAndPrefAlign {
+               abi: Align(2 bytes),
+               pref: Align(2 bytes),
+           },
+           abi: Scalar(
+               Initialized {
+                   value: Int(
+                       I16,
+                       false,
+                   ),
+                   valid_range: 256..=256,
+               },
+           ),
+           fields: Arbitrary {
+               offsets: [
+                   Size(0 bytes),
+               ],
+               memory_index: [
+                   0,
+               ],
+           },
+           largest_niche: Some(
+               Niche {
+                   offset: Size(0 bytes),
+                   value: Int(
+                       I16,
+                       false,
+                   ),
+                   valid_range: 256..=256,
+               },
+           ),
+           variants: Multiple {
+               tag: Initialized {
+                   value: Int(
+                       I16,
+                       false,
+                   ),
+                   valid_range: 256..=256,
+               },
+               tag_encoding: Direct,
+               tag_field: 0,
+               variants: [
+                   Layout {
+                       size: Size(2 bytes),
+                       align: AbiAndPrefAlign {
+                           abi: Align(2 bytes),
+                           pref: Align(2 bytes),
+                       },
+                       abi: Aggregate {
+                           sized: true,
+                       },
+                       fields: Arbitrary {
+                           offsets: [],
+                           memory_index: [],
+                       },
+                       largest_niche: None,
+                       variants: Single {
+                           index: 0,
+                       },
+                       max_repr_align: None,
+                       unadjusted_abi_align: Align(2 bytes),
+                   },
+               ],
+           },
+           max_repr_align: None,
+           unadjusted_abi_align: Align(2 bytes),
+       }
+  --> $DIR/hexagon-enum.rs:24:1
+   |
+LL | enum C { Chaenomeles = 256, }
+   | ^^^^^^
+
+error: layout_of(P) = Layout {
+           size: Size(4 bytes),
+           align: AbiAndPrefAlign {
+               abi: Align(4 bytes),
+               pref: Align(4 bytes),
+           },
+           abi: Scalar(
+               Initialized {
+                   value: Int(
+                       I32,
+                       false,
+                   ),
+                   valid_range: 268435456..=268435456,
+               },
+           ),
+           fields: Arbitrary {
+               offsets: [
+                   Size(0 bytes),
+               ],
+               memory_index: [
+                   0,
+               ],
+           },
+           largest_niche: Some(
+               Niche {
+                   offset: Size(0 bytes),
+                   value: Int(
+                       I32,
+                       false,
+                   ),
+                   valid_range: 268435456..=268435456,
+               },
+           ),
+           variants: Multiple {
+               tag: Initialized {
+                   value: Int(
+                       I32,
+                       false,
+                   ),
+                   valid_range: 268435456..=268435456,
+               },
+               tag_encoding: Direct,
+               tag_field: 0,
+               variants: [
+                   Layout {
+                       size: Size(4 bytes),
+                       align: AbiAndPrefAlign {
+                           abi: Align(4 bytes),
+                           pref: Align(4 bytes),
+                       },
+                       abi: Aggregate {
+                           sized: true,
+                       },
+                       fields: Arbitrary {
+                           offsets: [],
+                           memory_index: [],
+                       },
+                       largest_niche: None,
+                       variants: Single {
+                           index: 0,
+                       },
+                       max_repr_align: None,
+                       unadjusted_abi_align: Align(4 bytes),
+                   },
+               ],
+           },
+           max_repr_align: None,
+           unadjusted_abi_align: Align(4 bytes),
+       }
+  --> $DIR/hexagon-enum.rs:28:1
+   |
+LL | enum P { Peach = 0x1000_0000isize, }
+   | ^^^^^^
+
+error: layout_of(T) = Layout {
+           size: Size(4 bytes),
+           align: AbiAndPrefAlign {
+               abi: Align(4 bytes),
+               pref: Align(4 bytes),
+           },
+           abi: Scalar(
+               Initialized {
+                   value: Int(
+                       I32,
+                       true,
+                   ),
+                   valid_range: 2164260864..=2164260864,
+               },
+           ),
+           fields: Arbitrary {
+               offsets: [
+                   Size(0 bytes),
+               ],
+               memory_index: [
+                   0,
+               ],
+           },
+           largest_niche: Some(
+               Niche {
+                   offset: Size(0 bytes),
+                   value: Int(
+                       I32,
+                       true,
+                   ),
+                   valid_range: 2164260864..=2164260864,
+               },
+           ),
+           variants: Multiple {
+               tag: Initialized {
+                   value: Int(
+                       I32,
+                       true,
+                   ),
+                   valid_range: 2164260864..=2164260864,
+               },
+               tag_encoding: Direct,
+               tag_field: 0,
+               variants: [
+                   Layout {
+                       size: Size(4 bytes),
+                       align: AbiAndPrefAlign {
+                           abi: Align(4 bytes),
+                           pref: Align(4 bytes),
+                       },
+                       abi: Aggregate {
+                           sized: true,
+                       },
+                       fields: Arbitrary {
+                           offsets: [],
+                           memory_index: [],
+                       },
+                       largest_niche: None,
+                       variants: Single {
+                           index: 0,
+                       },
+                       max_repr_align: None,
+                       unadjusted_abi_align: Align(4 bytes),
+                   },
+               ],
+           },
+           max_repr_align: None,
+           unadjusted_abi_align: Align(4 bytes),
+       }
+  --> $DIR/hexagon-enum.rs:34:1
+   |
+LL | enum T { Tangerine = TANGERINE as isize }
+   | ^^^^^^
+
+error: aborting due to 5 previous errors
+

@@ -1,0 +1,12 @@
+error[E0049]: type `Baz` has 1 type parameter but its trait declaration has 0 type parameters
+  --> $DIR/impl-trait-in-type-alias-with-bad-substs.rs:19:14
+   |
+LL |     type Baz<'a>;
+   |              -- expected 0 type parameters
+...
+LL |     type Baz<T> = impl Sized;
+   |              ^ found 1 type parameter
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0049`.

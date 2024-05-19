@@ -1,0 +1,43 @@
+error: `foo` is not yet stable as a const fn
+  --> $DIR/min_const_unsafe_fn_libstd_stability.rs:16:41
+   |
+LL | const unsafe fn bar() -> u32 { unsafe { foo() } }
+   |                                         ^^^^^
+   |
+   = help: const-stable functions can only call other const-stable functions
+
+error: `foo2` is not yet stable as a const fn
+  --> $DIR/min_const_unsafe_fn_libstd_stability.rs:24:42
+   |
+LL | const unsafe fn bar2() -> u32 { unsafe { foo2() } }
+   |                                          ^^^^^^
+   |
+   = help: const-stable functions can only call other const-stable functions
+
+error: const-stable function cannot use `#[feature(const_fn_floating_point_arithmetic)]`
+  --> $DIR/min_const_unsafe_fn_libstd_stability.rs:29:33
+   |
+LL | const unsafe fn bar3() -> u32 { (5f32 + 6f32) as u32 }
+   |                                 ^^^^^^^^^^^^^
+   |
+help: if it is not part of the public API, make this function unstably const
+   |
+LL + #[rustc_const_unstable(feature = "...", issue = "...")]
+LL | const unsafe fn bar3() -> u32 { (5f32 + 6f32) as u32 }
+   |
+help: otherwise `#[rustc_allow_const_fn_unstable]` can be used to bypass stability checks
+   |
+LL + #[rustc_allow_const_fn_unstable(const_fn_floating_point_arithmetic)]
+LL | const unsafe fn bar3() -> u32 { (5f32 + 6f32) as u32 }
+   |
+
+error: `foo2_gated` is not yet stable as a const fn
+  --> $DIR/min_const_unsafe_fn_libstd_stability.rs:39:48
+   |
+LL | const unsafe fn bar2_gated() -> u32 { unsafe { foo2_gated() } }
+   |                                                ^^^^^^^^^^^^
+   |
+   = help: const-stable functions can only call other const-stable functions
+
+error: aborting due to 4 previous errors
+

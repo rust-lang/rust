@@ -1,0 +1,12 @@
+error[E0599]: no function or associated item named `new` found for struct `T` in the current scope
+  --> $DIR/dont-suggest-private-trait-method.rs:4:8
+   |
+LL | struct T;
+   | -------- function or associated item `new` not found for this struct
+...
+LL |     T::new();
+   |        ^^^ function or associated item not found in `T`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0599`.

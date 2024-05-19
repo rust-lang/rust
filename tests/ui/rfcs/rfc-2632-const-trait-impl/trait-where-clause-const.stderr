@@ -1,0 +1,35 @@
+error[E0277]: the trait bound `T: ~const Bar` is not satisfied
+  --> $DIR/trait-where-clause-const.rs:21:5
+   |
+LL |     T::b();
+   |     ^ the trait `~const Bar` is not implemented for `T`
+   |
+note: required by a bound in `Foo::b`
+  --> $DIR/trait-where-clause-const.rs:15:24
+   |
+LL |     fn b() where Self: ~const Bar;
+   |                        ^^^^^^^^^^ required by this bound in `Foo::b`
+help: consider further restricting this bound
+   |
+LL | const fn test1<T: ~const Foo + Bar + ~const Bar>() {
+   |                                    ++++++++++++
+
+error[E0277]: the trait bound `T: ~const Bar` is not satisfied
+  --> $DIR/trait-where-clause-const.rs:23:12
+   |
+LL |     T::c::<T>();
+   |            ^ the trait `~const Bar` is not implemented for `T`
+   |
+note: required by a bound in `Foo::c`
+  --> $DIR/trait-where-clause-const.rs:16:13
+   |
+LL |     fn c<T: ~const Bar>();
+   |             ^^^^^^^^^^ required by this bound in `Foo::c`
+help: consider further restricting this bound
+   |
+LL | const fn test1<T: ~const Foo + Bar + ~const Bar>() {
+   |                                    ++++++++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

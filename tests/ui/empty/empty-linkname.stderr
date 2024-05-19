@@ -1,0 +1,9 @@
+error[E0454]: link name must not be empty
+  --> $DIR/empty-linkname.rs:1:15
+   |
+LL | #[link(name = "")]
+   |               ^^ empty link name
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0454`.

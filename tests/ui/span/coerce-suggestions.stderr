@@ -1,0 +1,64 @@
+error[E0308]: mismatched types
+  --> $DIR/coerce-suggestions.rs:7:20
+   |
+LL |     let x: usize = String::new();
+   |            -----   ^^^^^^^^^^^^^ expected `usize`, found `String`
+   |            |
+   |            expected due to this
+
+error[E0308]: mismatched types
+  --> $DIR/coerce-suggestions.rs:9:19
+   |
+LL |     let x: &str = String::new();
+   |            ----   ^^^^^^^^^^^^^ expected `&str`, found `String`
+   |            |
+   |            expected due to this
+   |
+help: consider borrowing here
+   |
+LL |     let x: &str = &String::new();
+   |                   +
+
+error[E0308]: mismatched types
+  --> $DIR/coerce-suggestions.rs:12:10
+   |
+LL |     test(&y);
+   |     ---- ^^ types differ in mutability
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected mutable reference `&mut String`
+                      found reference `&String`
+note: function defined here
+  --> $DIR/coerce-suggestions.rs:1:4
+   |
+LL | fn test(_x: &mut String) {}
+   |    ^^^^ ---------------
+
+error[E0308]: mismatched types
+  --> $DIR/coerce-suggestions.rs:14:11
+   |
+LL |     test2(&y);
+   |     ----- ^^ types differ in mutability
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected mutable reference `&mut i32`
+                      found reference `&String`
+note: function defined here
+  --> $DIR/coerce-suggestions.rs:3:4
+   |
+LL | fn test2(_x: &mut i32) {}
+   |    ^^^^^ ------------
+
+error[E0308]: mismatched types
+  --> $DIR/coerce-suggestions.rs:17:9
+   |
+LL |     s = format!("foo");
+   |         ^^^^^^^^^^^^^^ expected `&mut String`, found `String`
+   |
+   = note: this error originates in the macro `format` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

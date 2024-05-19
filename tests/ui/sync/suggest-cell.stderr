@@ -1,0 +1,59 @@
+error[E0277]: `Cell<()>` cannot be shared between threads safely
+  --> $DIR/suggest-cell.rs:12:20
+   |
+LL |     require_sync::<std::cell::Cell<()>>();
+   |                    ^^^^^^^^^^^^^^^^^^^ `Cell<()>` cannot be shared between threads safely
+   |
+   = help: the trait `Sync` is not implemented for `Cell<()>`
+   = note: if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock`
+note: required by a bound in `require_sync`
+  --> $DIR/suggest-cell.rs:1:20
+   |
+LL | fn require_sync<T: Sync>() {}
+   |                    ^^^^ required by this bound in `require_sync`
+
+error[E0277]: `Cell<u8>` cannot be shared between threads safely
+  --> $DIR/suggest-cell.rs:17:20
+   |
+LL |     require_sync::<std::cell::Cell<u8>>();
+   |                    ^^^^^^^^^^^^^^^^^^^ `Cell<u8>` cannot be shared between threads safely
+   |
+   = help: the trait `Sync` is not implemented for `Cell<u8>`
+   = note: if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` or `std::sync::atomic::AtomicU8` instead
+note: required by a bound in `require_sync`
+  --> $DIR/suggest-cell.rs:1:20
+   |
+LL | fn require_sync<T: Sync>() {}
+   |                    ^^^^ required by this bound in `require_sync`
+
+error[E0277]: `Cell<i32>` cannot be shared between threads safely
+  --> $DIR/suggest-cell.rs:22:20
+   |
+LL |     require_sync::<std::cell::Cell<i32>>();
+   |                    ^^^^^^^^^^^^^^^^^^^^ `Cell<i32>` cannot be shared between threads safely
+   |
+   = help: the trait `Sync` is not implemented for `Cell<i32>`
+   = note: if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` or `std::sync::atomic::AtomicI32` instead
+note: required by a bound in `require_sync`
+  --> $DIR/suggest-cell.rs:1:20
+   |
+LL | fn require_sync<T: Sync>() {}
+   |                    ^^^^ required by this bound in `require_sync`
+
+error[E0277]: `Cell<bool>` cannot be shared between threads safely
+  --> $DIR/suggest-cell.rs:27:20
+   |
+LL |     require_sync::<std::cell::Cell<bool>>();
+   |                    ^^^^^^^^^^^^^^^^^^^^^ `Cell<bool>` cannot be shared between threads safely
+   |
+   = help: the trait `Sync` is not implemented for `Cell<bool>`
+   = note: if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` or `std::sync::atomic::AtomicBool` instead
+note: required by a bound in `require_sync`
+  --> $DIR/suggest-cell.rs:1:20
+   |
+LL | fn require_sync<T: Sync>() {}
+   |                    ^^^^ required by this bound in `require_sync`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

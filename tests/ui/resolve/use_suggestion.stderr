@@ -1,0 +1,38 @@
+error[E0433]: failed to resolve: use of undeclared type `HashMap`
+  --> $DIR/use_suggestion.rs:2:14
+   |
+LL |     let x1 = HashMap::new();
+   |              ^^^^^^^ use of undeclared type `HashMap`
+   |
+help: consider importing this struct
+   |
+LL + use std::collections::HashMap;
+   |
+
+error[E0412]: cannot find type `HashMap` in this scope
+  --> $DIR/use_suggestion.rs:5:13
+   |
+LL |     let y1: HashMap;
+   |             ^^^^^^^ not found in this scope
+   |
+help: consider importing this struct
+   |
+LL + use std::collections::HashMap;
+   |
+
+error[E0412]: cannot find type `GooMap` in this scope
+  --> $DIR/use_suggestion.rs:6:13
+   |
+LL |     let y2: GooMap;
+   |             ^^^^^^ not found in this scope
+
+error[E0433]: failed to resolve: use of undeclared type `GooMap`
+  --> $DIR/use_suggestion.rs:3:14
+   |
+LL |     let x2 = GooMap::new();
+   |              ^^^^^^ use of undeclared type `GooMap`
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0412, E0433.
+For more information about an error, try `rustc --explain E0412`.

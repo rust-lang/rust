@@ -1,0 +1,9 @@
+error[E0599]: no method named `foo` found for struct constructor `fn(u8, i32) -> Foo {Foo}` in the current scope
+  --> $DIR/tuple-method.rs:12:15
+   |
+LL |     thing.bar.foo();
+   |               ^^^ method not found in `fn(u8, i32) -> Foo {Foo}`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0599`.

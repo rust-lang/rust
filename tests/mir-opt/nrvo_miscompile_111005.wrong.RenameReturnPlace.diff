@@ -1,0 +1,17 @@
+- // MIR for `wrong` before RenameReturnPlace
++ // MIR for `wrong` after RenameReturnPlace
+  
+  fn wrong(_1: char) -> char {
+      let mut _0: char;
+      let mut _2: char;
+  
+      bb0: {
+-         _2 = _1;
+-         _0 = _2;
+-         _2 = const 'b';
++         _0 = _1;
++         _0 = const 'b';
+          return;
+      }
+  }
+  

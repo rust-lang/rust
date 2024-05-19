@@ -1,0 +1,79 @@
+- // MIR for `array_bound_mut` before NormalizeArrayLen
++ // MIR for `array_bound_mut` after NormalizeArrayLen
+  
+  fn array_bound_mut(_1: usize, _2: &mut [u8; N]) -> u8 {
+      debug index => _1;
+      debug slice => _2;
+      let mut _0: u8;
+      let mut _3: bool;
+      let mut _4: usize;
+      let mut _5: usize;
+      let mut _6: &[u8];
+      let mut _7: &[u8; N];
+      let _8: usize;
+      let mut _9: usize;
+      let mut _10: bool;
+      let _11: usize;
+      let mut _12: usize;
+      let mut _13: bool;
+  
+      bb0: {
+          StorageLive(_3);
+          StorageLive(_4);
+          _4 = _1;
+          StorageLive(_5);
+          StorageLive(_6);
+          StorageLive(_7);
+          _7 = &(*_2);
+          _6 = move _7 as &[u8] (PointerCoercion(Unsize));
+          StorageDead(_7);
+-         _5 = Len((*_6));
++         _5 = const N;
+          goto -> bb1;
+      }
+  
+      bb1: {
+          StorageDead(_6);
+          _3 = Lt(move _4, move _5);
+          switchInt(move _3) -> [0: bb4, otherwise: bb2];
+      }
+  
+      bb2: {
+          StorageDead(_5);
+          StorageDead(_4);
+          StorageLive(_8);
+          _8 = _1;
+          _9 = Len((*_2));
+          _10 = Lt(_8, _9);
+          assert(move _10, "index out of bounds: the length is {} but the index is {}", move _9, _8) -> [success: bb3, unwind continue];
+      }
+  
+      bb3: {
+          _0 = (*_2)[_8];
+          StorageDead(_8);
+          goto -> bb6;
+      }
+  
+      bb4: {
+          StorageDead(_5);
+          StorageDead(_4);
+          StorageLive(_11);
+          _11 = const 0_usize;
+          _12 = Len((*_2));
+          _13 = Lt(_11, _12);
+          assert(move _13, "index out of bounds: the length is {} but the index is {}", move _12, _11) -> [success: bb5, unwind continue];
+      }
+  
+      bb5: {
+          (*_2)[_11] = const 42_u8;
+          StorageDead(_11);
+          _0 = const 42_u8;
+          goto -> bb6;
+      }
+  
+      bb6: {
+          StorageDead(_3);
+          return;
+      }
+  }
+  

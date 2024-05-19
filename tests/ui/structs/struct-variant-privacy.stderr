@@ -1,0 +1,29 @@
+error[E0603]: enum `Bar` is private
+  --> $DIR/struct-variant-privacy.rs:7:14
+   |
+LL | fn f(b: foo::Bar) {
+   |              ^^^ private enum
+   |
+note: the enum `Bar` is defined here
+  --> $DIR/struct-variant-privacy.rs:2:5
+   |
+LL |     enum Bar {
+   |     ^^^^^^^^
+
+error[E0603]: enum `Bar` is private
+  --> $DIR/struct-variant-privacy.rs:10:14
+   |
+LL |         foo::Bar::Baz { a: _a } => {}
+   |              ^^^  --- variant `Baz` is not publicly re-exported
+   |              |
+   |              private enum
+   |
+note: the enum `Bar` is defined here
+  --> $DIR/struct-variant-privacy.rs:2:5
+   |
+LL |     enum Bar {
+   |     ^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0603`.

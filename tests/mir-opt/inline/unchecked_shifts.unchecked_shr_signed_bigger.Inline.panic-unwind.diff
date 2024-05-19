@@ -1,0 +1,28 @@
+- // MIR for `unchecked_shr_signed_bigger` before Inline
++ // MIR for `unchecked_shr_signed_bigger` after Inline
+  
+  fn unchecked_shr_signed_bigger(_1: i64, _2: u32) -> i64 {
+      debug a => _1;
+      debug b => _2;
+      let mut _0: i64;
+      let mut _3: i64;
+      let mut _4: u32;
++     scope 1 (inlined core::num::<impl i64>::unchecked_shr) {
++     }
+  
+      bb0: {
+          StorageLive(_3);
+          _3 = _1;
+          StorageLive(_4);
+          _4 = _2;
+-         _0 = core::num::<impl i64>::unchecked_shr(move _3, move _4) -> [return: bb1, unwind continue];
+-     }
+- 
+-     bb1: {
++         _0 = ShrUnchecked(_3, _4);
+          StorageDead(_4);
+          StorageDead(_3);
+          return;
+      }
+  }
+  

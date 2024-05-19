@@ -1,0 +1,8 @@
+error: invalid comparison operator `<=>`
+  --> $DIR/spaceship.rs:2:22
+   |
+LL |     println!("{}", 1 <=> 2);
+   |                      ^^^ `<=>` is not a valid comparison operator, use `std::cmp::Ordering`
+
+error: aborting due to 1 previous error
+

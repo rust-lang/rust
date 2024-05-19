@@ -1,0 +1,5 @@
+CHECK: declare void @foo()
+CHECK-SAME: #[[ATTR_3:[0-9]+]]
+
+CHECK: attributes #[[ATTR_3]] 
+CHECK-SAME: no-builtins

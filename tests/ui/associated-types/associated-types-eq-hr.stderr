@@ -1,0 +1,154 @@
+error[E0271]: type mismatch resolving `<UintStruct as TheTrait<&isize>>::A == &isize`
+  --> $DIR/associated-types-eq-hr.rs:87:11
+   |
+LL |     foo::<UintStruct>();
+   |           ^^^^^^^^^^ type mismatch resolving `<UintStruct as TheTrait<&isize>>::A == &isize`
+   |
+note: expected this to be `&isize`
+  --> $DIR/associated-types-eq-hr.rs:26:14
+   |
+LL |     type A = &'a usize;
+   |              ^^^^^^^^^
+   = note: expected reference `&isize`
+              found reference `&usize`
+note: required by a bound in `foo`
+  --> $DIR/associated-types-eq-hr.rs:45:36
+   |
+LL | fn foo<T>()
+   |    --- required by a bound in this function
+LL | where
+LL |     T: for<'x> TheTrait<&'x isize, A = &'x isize>,
+   |                                    ^^^^^^^^^^^^^ required by this bound in `foo`
+
+error[E0271]: type mismatch resolving `<IntStruct as TheTrait<&isize>>::A == &usize`
+  --> $DIR/associated-types-eq-hr.rs:91:11
+   |
+LL |     bar::<IntStruct>();
+   |           ^^^^^^^^^ type mismatch resolving `<IntStruct as TheTrait<&isize>>::A == &usize`
+   |
+note: expected this to be `&usize`
+  --> $DIR/associated-types-eq-hr.rs:14:14
+   |
+LL |     type A = &'a isize;
+   |              ^^^^^^^^^
+   = note: expected reference `&usize`
+              found reference `&isize`
+note: required by a bound in `bar`
+  --> $DIR/associated-types-eq-hr.rs:52:36
+   |
+LL | fn bar<T>()
+   |    --- required by a bound in this function
+LL | where
+LL |     T: for<'x> TheTrait<&'x isize, A = &'x usize>,
+   |                                    ^^^^^^^^^^^^^ required by this bound in `bar`
+
+error: implementation of `TheTrait` is not general enough
+  --> $DIR/associated-types-eq-hr.rs:96:5
+   |
+LL |     tuple_one::<Tuple>();
+   |     ^^^^^^^^^^^^^^^^^^^^ implementation of `TheTrait` is not general enough
+   |
+   = note: `Tuple` must implement `TheTrait<(&'0 isize, &'1 isize)>`, for any two lifetimes `'0` and `'1`...
+   = note: ...but it actually implements `TheTrait<(&'2 isize, &'2 isize)>`, for some specific lifetime `'2`
+
+error: implementation of `TheTrait` is not general enough
+  --> $DIR/associated-types-eq-hr.rs:96:5
+   |
+LL |     tuple_one::<Tuple>();
+   |     ^^^^^^^^^^^^^^^^^^^^ implementation of `TheTrait` is not general enough
+   |
+   = note: `Tuple` must implement `TheTrait<(&'0 isize, &'1 isize)>`, for any two lifetimes `'0` and `'1`...
+   = note: ...but it actually implements `TheTrait<(&'2 isize, &'2 isize)>`, for some specific lifetime `'2`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: implementation of `TheTrait` is not general enough
+  --> $DIR/associated-types-eq-hr.rs:96:5
+   |
+LL |     tuple_one::<Tuple>();
+   |     ^^^^^^^^^^^^^^^^^^^^ implementation of `TheTrait` is not general enough
+   |
+   = note: `Tuple` must implement `TheTrait<(&'0 isize, &'1 isize)>`, for any two lifetimes `'0` and `'1`...
+   = note: ...but it actually implements `TheTrait<(&'2 isize, &'2 isize)>`, for some specific lifetime `'2`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: implementation of `TheTrait` is not general enough
+  --> $DIR/associated-types-eq-hr.rs:96:5
+   |
+LL |     tuple_one::<Tuple>();
+   |     ^^^^^^^^^^^^^^^^^^^^ implementation of `TheTrait` is not general enough
+   |
+   = note: `Tuple` must implement `TheTrait<(&'0 isize, &'1 isize)>`, for any two lifetimes `'0` and `'1`...
+   = note: ...but it actually implements `TheTrait<(&'2 isize, &'2 isize)>`, for some specific lifetime `'2`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: implementation of `TheTrait` is not general enough
+  --> $DIR/associated-types-eq-hr.rs:104:5
+   |
+LL |     tuple_two::<Tuple>();
+   |     ^^^^^^^^^^^^^^^^^^^^ implementation of `TheTrait` is not general enough
+   |
+   = note: `Tuple` must implement `TheTrait<(&'0 isize, &'1 isize)>`, for any two lifetimes `'0` and `'1`...
+   = note: ...but it actually implements `TheTrait<(&'2 isize, &'2 isize)>`, for some specific lifetime `'2`
+
+error: implementation of `TheTrait` is not general enough
+  --> $DIR/associated-types-eq-hr.rs:104:5
+   |
+LL |     tuple_two::<Tuple>();
+   |     ^^^^^^^^^^^^^^^^^^^^ implementation of `TheTrait` is not general enough
+   |
+   = note: `Tuple` must implement `TheTrait<(&'0 isize, &'1 isize)>`, for any two lifetimes `'0` and `'1`...
+   = note: ...but it actually implements `TheTrait<(&'2 isize, &'2 isize)>`, for some specific lifetime `'2`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0308]: mismatched types
+  --> $DIR/associated-types-eq-hr.rs:104:5
+   |
+LL |     tuple_two::<Tuple>();
+   |     ^^^^^^^^^^^^^^^^^^^^ one type is more general than the other
+   |
+   = note: expected reference `&'x _`
+              found reference `&'y _`
+note: the lifetime requirement is introduced here
+  --> $DIR/associated-types-eq-hr.rs:66:53
+   |
+LL |     T: for<'x, 'y> TheTrait<(&'x isize, &'y isize), A = &'y isize>,
+   |                                                     ^^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+  --> $DIR/associated-types-eq-hr.rs:104:5
+   |
+LL |     tuple_two::<Tuple>();
+   |     ^^^^^^^^^^^^^^^^^^^^ one type is more general than the other
+   |
+   = note: expected reference `&'x _`
+              found reference `&'y _`
+note: the lifetime requirement is introduced here
+  --> $DIR/associated-types-eq-hr.rs:66:53
+   |
+LL |     T: for<'x, 'y> TheTrait<(&'x isize, &'y isize), A = &'y isize>,
+   |                                                     ^^^^^^^^^^^^^
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: implementation of `TheTrait` is not general enough
+  --> $DIR/associated-types-eq-hr.rs:116:5
+   |
+LL |     tuple_four::<Tuple>();
+   |     ^^^^^^^^^^^^^^^^^^^^^ implementation of `TheTrait` is not general enough
+   |
+   = note: `Tuple` must implement `TheTrait<(&'0 isize, &'1 isize)>`, for any two lifetimes `'0` and `'1`...
+   = note: ...but it actually implements `TheTrait<(&'2 isize, &'2 isize)>`, for some specific lifetime `'2`
+
+error: implementation of `TheTrait` is not general enough
+  --> $DIR/associated-types-eq-hr.rs:116:5
+   |
+LL |     tuple_four::<Tuple>();
+   |     ^^^^^^^^^^^^^^^^^^^^^ implementation of `TheTrait` is not general enough
+   |
+   = note: `Tuple` must implement `TheTrait<(&'0 isize, &'1 isize)>`, for any two lifetimes `'0` and `'1`...
+   = note: ...but it actually implements `TheTrait<(&'2 isize, &'2 isize)>`, for some specific lifetime `'2`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 12 previous errors
+
+Some errors have detailed explanations: E0271, E0308.
+For more information about an error, try `rustc --explain E0271`.

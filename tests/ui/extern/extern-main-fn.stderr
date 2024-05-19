@@ -1,0 +1,12 @@
+error[E0580]: `main` function has wrong type
+  --> $DIR/extern-main-fn.rs:1:1
+   |
+LL | extern "C" fn main() {}
+   | ^^^^^^^^^^^^^^^^^^^^ expected "Rust" fn, found "C" fn
+   |
+   = note: expected signature `fn()`
+              found signature `extern "C" fn()`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0580`.

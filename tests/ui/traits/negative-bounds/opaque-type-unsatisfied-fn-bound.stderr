@@ -1,0 +1,9 @@
+error[E0271]: type mismatch resolving `impl !Fn<(u32,)> == ()`
+  --> $DIR/opaque-type-unsatisfied-fn-bound.rs:5:17
+   |
+LL | fn produce() -> impl !Fn<(u32,)> {}
+   |                 ^^^^^^^^^^^^^^^^ types differ
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0271`.

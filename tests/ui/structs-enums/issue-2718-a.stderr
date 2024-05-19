@@ -1,0 +1,14 @@
+error[E0072]: recursive type `Pong` has infinite size
+  --> $DIR/issue-2718-a.rs:8:5
+   |
+LL |     pub struct Pong(SendPacket<Ping>);
+   |     ^^^^^^^^^^^^^^^ ---------------- recursive without indirection
+   |
+help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to break the cycle
+   |
+LL |     pub struct Pong(Box<SendPacket<Ping>>);
+   |                     ++++                +
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0072`.

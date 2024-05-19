@@ -1,0 +1,12 @@
+error[E0426]: use of undeclared label `'aaaaaa`
+  --> $DIR/issue-73541-3.rs:4:29
+   |
+LL |     'aaaaab: loop {
+   |     ------- a label with a similar name exists but is unreachable
+LL |         || {
+LL |             loop { continue 'aaaaaa }
+   |                             ^^^^^^^ undeclared label `'aaaaaa`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0426`.

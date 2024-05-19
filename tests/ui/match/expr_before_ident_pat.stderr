@@ -1,0 +1,17 @@
+error[E0425]: cannot find value `a` in this scope
+  --> $DIR/expr_before_ident_pat.rs:10:12
+   |
+LL |     funny!(a, a);
+   |            ^ not found in this scope
+
+error: arbitrary expressions aren't allowed in patterns
+  --> $DIR/expr_before_ident_pat.rs:10:12
+   |
+LL |     funny!(a, a);
+   |            ^
+   |
+   = note: the `expr` fragment specifier forces the metavariable's content to be an expression
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0425`.

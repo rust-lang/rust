@@ -1,0 +1,13 @@
+// This test checks that there are margins applied to methods with no docblocks.
+
+// We need to disable this check because `trait.impl/test_docs/trait.TraitWithNoDocblock.js`
+// doesn't exist.
+fail-on-request-error: false
+
+go-to: "file://" + |DOC_PATH| + "/test_docs/trait.TraitWithNoDocblocks.html"
+// Check that the two methods are more than 24px apart.
+compare-elements-position-near-false: ("//*[@id='tymethod.first_fn']", "//*[@id='tymethod.second_fn']", {"y": 24})
+
+go-to: "file://" + |DOC_PATH| + "/test_docs/struct.TypeWithNoDocblocks.html"
+// Check that the two methods are more than 24px apart.
+compare-elements-position-near-false: ("//*[@id='method.first_fn']", "//*[@id='method.second_fn']", {"y": 24})

@@ -1,0 +1,14 @@
+error[E0609]: no field `opts` on type `TyCtxt<'tcx>`
+  --> $DIR/field-access-considering-privacy.rs:29:13
+   |
+LL |         tcx.opts;
+   |             ^^^^ unknown field
+   |
+help: one of the expressions' fields has a field of the same name
+   |
+LL |         tcx.sess.opts;
+   |             +++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0609`.

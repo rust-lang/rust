@@ -1,208 +1,113 @@
 [workspace]
-members = ["xtask/", "lib/*", "crates/*"]
-exclude = ["crates/proc-macro-srv/proc-macro-test/imp"]
-resolver = "2"
+resolver = "1"
+members = [
+  "compiler/rustc",
+  "library/std",
+  "library/sysroot",
+  "src/rustdoc-json-types",
+  "src/tools/build_helper",
+  "src/tools/cargotest",
+  "src/tools/clippy",
+  "src/tools/clippy/clippy_dev",
+  "src/tools/compiletest",
+  "src/tools/run-make-support",
+  "src/tools/error_index_generator",
+  "src/tools/linkchecker",
+  "src/tools/lint-docs",
+  "src/tools/miropt-test-tools",
+  "src/tools/rustbook",
+  "src/tools/unstable-book-gen",
+  "src/tools/tidy",
+  "src/tools/tier-check",
+  "src/tools/build-manifest",
+  "src/tools/remote-test-client",
+  "src/tools/remote-test-server",
+  "src/tools/rust-installer",
+  "src/tools/rust-demangler",
+  "src/tools/rustdoc",
+  "src/tools/rls",
+  "src/tools/rustfmt",
+  "src/tools/miri",
+  "src/tools/miri/cargo-miri",
+  "src/tools/rustdoc-themes",
+  "src/tools/unicode-table-generator",
+  "src/tools/jsondocck",
+  "src/tools/jsondoclint",
+  "src/tools/llvm-bitcode-linker",
+  "src/tools/html-checker",
+  "src/tools/bump-stage0",
+  "src/tools/replace-version-placeholder",
+  "src/tools/lld-wrapper",
+  "src/tools/collect-license-metadata",
+  "src/tools/generate-copyright",
+  "src/tools/suggest-tests",
+  "src/tools/generate-windows-sys",
+  "src/tools/rustdoc-gui-test",
+  "src/tools/opt-dist",
+  "src/tools/coverage-dump",
+]
 
-[workspace.package]
-rust-version = "1.76"
-edition = "2021"
-license = "MIT OR Apache-2.0"
-authors = ["rust-analyzer team"]
+exclude = [
+  "build",
+  "compiler/rustc_codegen_cranelift",
+  "compiler/rustc_codegen_gcc",
+  "src/bootstrap",
+  "tests/rustdoc-gui",
+  # HACK(eddyb) This hardcodes the fact that our CI uses `/checkout/obj`.
+  "obj",
+  # The `x` binary is a thin wrapper that calls `x.py`, which initializes
+  # submodules, before which workspace members cannot be invoked because
+  # not all `Cargo.toml` files are available, so we exclude the `x` binary,
+  # so it can be invoked before the current checkout is set up.
+  "src/tools/x",
+  # stdarch has its own Cargo workspace
+  "library/stdarch",
+]
 
-[profile.dev]
-# Disabling debug info speeds up builds a bunch,
-# and we don't rely on it for debugging that much.
+[profile.release.package.compiler_builtins]
+# For compiler-builtins we always use a high number of codegen units.
+# The goal here is to place every single intrinsic into its own object
+# file to avoid symbol clashes with the system libgcc if possible. Note
+# that this number doesn't actually produce this many object files, we
+# just don't create more than this number of object files.
+#
+# It's a bit of a bummer that we have to pass this here, unfortunately.
+# Ideally this would be specified through an env var to Cargo so Cargo
+# knows how many CGUs are for this specific crate, but for now
+# per-crate configuration isn't specifiable in the environment.
+codegen-units = 10000
+
+[profile.release.package.rustc-rayon-core]
+# The rustc fork of Rayon has deadlock detection code which intermittently
+# causes overflows in the CI (see https://github.com/rust-lang/rust/issues/90227)
+# so we turn overflow checks off for now.
+# FIXME: This workaround should be removed once #90227 is fixed.
+overflow-checks = false
+
+# These dependencies of the standard library implement symbolication for
+# backtraces on most platforms. Their debuginfo causes both linking to be slower
+# (more data to chew through) and binaries to be larger without really all that
+# much benefit. This section turns them all to down to have no debuginfo which
+# helps to improve link times a little bit.
+[profile.release.package]
+addr2line.debug = 0
+adler.debug = 0
+gimli.debug = 0
+miniz_oxide.debug = 0
+object.debug = 0
+rustc-demangle.debug = 0
+
+# These are very thin wrappers around executing lld with the right binary name.
+# Basically nothing within them can go wrong without having been explicitly logged anyway.
+# We ship these in every rustc tarball and even after compression they add up
+# to around 0.6MB of data every user needs to download (and 15MB on disk).
+[profile.release.package.lld-wrapper]
 debug = 0
+strip = true
 
-[profile.dev.package]
-# These speed up local tests.
-rowan.opt-level = 3
-rustc-hash.opt-level = 3
-smol_str.opt-level = 3
-text-size.opt-level = 3
-# This speeds up `cargo xtask dist`.
-miniz_oxide.opt-level = 3
-salsa.opt-level = 3
-
-[profile.release]
-incremental = true
-# Set this to 1 or 2 to get more useful backtraces in debugger.
-debug = 0
-
-[profile.dev-rel]
-inherits = "release"
-debug = 2
-
-[patch.'crates-io']
-# rowan = { path = "../rowan" }
-
-# chalk-solve = { path = "../chalk/chalk-solve" }
-# chalk-ir = { path = "../chalk/chalk-ir" }
-# chalk-recursive = { path = "../chalk/chalk-recursive" }
-# chalk-derive = { path = "../chalk/chalk-derive" }
-# line-index = { path = "lib/line-index" }
-# la-arena = { path = "lib/la-arena" }
-# lsp-server = { path = "lib/lsp-server" }
-
-
-# ungrammar = { path = "../ungrammar" }
-
-# rust-analyzer-salsa = { path = "../salsa" }
-
-[workspace.dependencies]
-# local crates
-base-db = { path = "./crates/base-db", version = "0.0.0" }
-cfg = { path = "./crates/cfg", version = "0.0.0" }
-flycheck = { path = "./crates/flycheck", version = "0.0.0" }
-hir = { path = "./crates/hir", version = "0.0.0" }
-hir-def = { path = "./crates/hir-def", version = "0.0.0" }
-hir-expand = { path = "./crates/hir-expand", version = "0.0.0" }
-hir-ty = { path = "./crates/hir-ty", version = "0.0.0" }
-ide = { path = "./crates/ide", version = "0.0.0" }
-ide-assists = { path = "./crates/ide-assists", version = "0.0.0" }
-ide-completion = { path = "./crates/ide-completion", version = "0.0.0" }
-ide-db = { path = "./crates/ide-db", version = "0.0.0" }
-ide-diagnostics = { path = "./crates/ide-diagnostics", version = "0.0.0" }
-ide-ssr = { path = "./crates/ide-ssr", version = "0.0.0" }
-intern = { path = "./crates/intern", version = "0.0.0" }
-limit = { path = "./crates/limit", version = "0.0.0" }
-load-cargo = { path = "./crates/load-cargo", version = "0.0.0" }
-mbe = { path = "./crates/mbe", version = "0.0.0" }
-parser = { path = "./crates/parser", version = "0.0.0" }
-paths = { path = "./crates/paths", version = "0.0.0" }
-proc-macro-api = { path = "./crates/proc-macro-api", version = "0.0.0" }
-proc-macro-srv = { path = "./crates/proc-macro-srv", version = "0.0.0" }
-proc-macro-srv-cli = { path = "./crates/proc-macro-srv-cli", version = "0.0.0" }
-profile = { path = "./crates/profile", version = "0.0.0" }
-project-model = { path = "./crates/project-model", version = "0.0.0" }
-salsa = { path = "./crates/salsa", version = "0.0.0" }
-span = { path = "./crates/span", version = "0.0.0" }
-stdx = { path = "./crates/stdx", version = "0.0.0" }
-syntax = { path = "./crates/syntax", version = "0.0.0" }
-text-edit = { path = "./crates/text-edit", version = "0.0.0" }
-toolchain = { path = "./crates/toolchain", version = "0.0.0" }
-tt = { path = "./crates/tt", version = "0.0.0" }
-vfs-notify = { path = "./crates/vfs-notify", version = "0.0.0" }
-vfs = { path = "./crates/vfs", version = "0.0.0" }
-
-ra-ap-rustc_lexer = { version = "0.44.0", default-features = false }
-ra-ap-rustc_parse_format = { version = "0.44.0", default-features = false }
-ra-ap-rustc_index = { version = "0.44.0", default-features = false }
-ra-ap-rustc_abi = { version = "0.44.0", default-features = false }
-ra-ap-rustc_pattern_analysis = { version = "0.44.0", default-features = false }
-
-# local crates that aren't published to crates.io. These should not have versions.
-sourcegen = { path = "./crates/sourcegen" }
-test-fixture = { path = "./crates/test-fixture" }
-test-utils = { path = "./crates/test-utils" }
-
-# In-tree crates that are published separately and follow semver. See lib/README.md
-line-index = { version = "0.1.1" }
-la-arena = { version = "0.3.1" }
-lsp-server = { version = "0.7.6" }
-
-# non-local crates
-anyhow = "1.0.75"
-arrayvec = "0.7.4"
-bitflags = "2.4.1"
-cargo_metadata = "0.18.1"
-camino = "1.1.6"
-chalk-solve = { version = "0.97.0", default-features = false }
-chalk-ir = "0.97.0"
-chalk-recursive = { version = "0.97.0", default-features = false }
-chalk-derive = "0.97.0"
-command-group = "2.0.1"
-crossbeam-channel = "0.5.8"
-dissimilar = "1.0.7"
-dot = "0.1.4"
-either = "1.9.0"
-expect-test = "1.4.0"
-hashbrown = { version = "0.14", features = [
-  "inline-more",
-], default-features = false }
-indexmap = "2.1.0"
-itertools = "0.12.0"
-libc = "0.2.150"
-nohash-hasher = "0.2.0"
-oorandom = "11.1.3"
-object = { version = "0.33.0", default-features = false, features = [
-    "std",
-    "read_core",
-    "elf",
-    "macho",
-    "pe",
-] }
-pulldown-cmark-to-cmark = "10.0.4"
-pulldown-cmark = { version = "0.9.0", default-features = false }
-rayon = "1.8.0"
-rustc-hash = "1.1.0"
-semver = "1.0.14"
-serde = { version = "1.0.192", features = ["derive"] }
-serde_json = "1.0.108"
-smallvec = { version = "1.10.0", features = [
-  "const_new",
-  "union",
-  "const_generics",
-] }
-smol_str = "0.2.1"
-text-size = "1.1.1"
-tracing = "0.1.40"
-tracing-tree = "0.3.0"
-tracing-subscriber = { version = "0.3.18", default-features = false, features = [
-  "registry",
-  "fmt",
-  "tracing-log",
-] }
-triomphe = { version = "0.1.10", default-features = false, features = ["std"] }
-url = "2.3.1"
-xshell = "0.2.5"
-
-
-# We need to freeze the version of the crate, as the raw-api feature is considered unstable
-dashmap = { version = "=5.5.3", features = ["raw-api"] }
-
-[workspace.lints.rust]
-rust_2018_idioms = "warn"
-unused_lifetimes = "warn"
-unreachable_pub = "warn"
-semicolon_in_expressions_from_macros = "warn"
-
-[workspace.lints.clippy]
-# FIXME Remove the tidy test once the lint table is stable
-
-## lint groups
-complexity = { level = "warn", priority = -1 }
-correctness = { level = "deny", priority = -1 }
-perf = { level = "deny", priority = -1 }
-restriction = { level = "allow", priority = -1 }
-style = { level = "warn", priority = -1 }
-suspicious = { level = "warn", priority = -1 }
-
-## allow following lints
-# () makes a fine error in most cases
-result_unit_err = "allow"
-# We don't expose public APIs that matter like this
-len_without_is_empty = "allow"
-# We have macros that rely on this currently
-enum_variant_names = "allow"
-# Builder pattern disagrees
-new_ret_no_self = "allow"
-# Has a bunch of false positives
-useless_asref = "allow"
-# Has false positives
-assigning_clones = "allow"
-
-## Following lints should be tackled at some point
-too_many_arguments = "allow"
-type_complexity = "allow"
-wrong_self_convention = "allow"
-
-## warn at following lints
-# CI raises these to deny
-dbg_macro = "warn"
-todo = "warn"
-print_stdout = "warn"
-print_stderr = "warn"
-
-rc_buffer = "warn"
-str_to_string = "warn"
+[patch.crates-io]
+# See comments in `library/rustc-std-workspace-core/README.md` for what's going on
+# here
+rustc-std-workspace-core = { path = 'library/rustc-std-workspace-core' }
+rustc-std-workspace-alloc = { path = 'library/rustc-std-workspace-alloc' }
+rustc-std-workspace-std = { path = 'library/rustc-std-workspace-std' }

@@ -1,0 +1,16 @@
+print-type-size type: `S5<(), Empty>`: 16 bytes, alignment: 4 bytes
+print-type-size     field `.w`: 4 bytes
+print-type-size     field `.x`: 4 bytes
+print-type-size     field `.y`: 4 bytes
+print-type-size     field `.z`: 4 bytes
+print-type-size     field `.tagw`: 0 bytes
+print-type-size     field `.unit`: 0 bytes
+print-type-size     field `.void`: 0 bytes
+print-type-size     field `.empty`: 0 bytes
+print-type-size     field `.tagz`: 0 bytes
+print-type-size type: `S1`: 8 bytes, alignment: 4 bytes
+print-type-size     field `.x`: 4 bytes
+print-type-size     field `.y`: 4 bytes
+print-type-size     field `.tag`: 0 bytes
+print-type-size type: `Empty`: 0 bytes, alignment: 1 bytes
+print-type-size type: `Void`: 0 bytes, alignment: 1 bytes

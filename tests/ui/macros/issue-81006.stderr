@@ -1,0 +1,14 @@
+error: 1 positional argument in format string, but no arguments were given
+  --> $DIR/issue-81006.rs:6:23
+   |
+LL |     let _ = format!("→{}→\n");
+   |                       ^^
+
+error: 1 positional argument in format string, but no arguments were given
+  --> $DIR/issue-81006.rs:8:23
+   |
+LL |     let _ = format!("→{} \n");
+   |                       ^^
+
+error: aborting due to 2 previous errors
+

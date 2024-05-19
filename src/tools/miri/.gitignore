@@ -1,0 +1,13 @@
+target
+/doc
+tex/*/out
+*.dot
+*.out
+*.rs.bk
+.vscode
+*.mm_profdata
+perf.data
+perf.data.old
+flamegraph.svg
+tests/native-lib/libtestlib.so
+.auto-*

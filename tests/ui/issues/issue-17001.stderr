@@ -1,0 +1,9 @@
+error[E0574]: expected struct, variant or union type, found module `foo`
+  --> $DIR/issue-17001.rs:4:13
+   |
+LL |     let p = foo { x: () };
+   |             ^^^ not a struct, variant or union type
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0574`.

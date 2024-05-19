@@ -1,0 +1,12 @@
+error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
+  --> $DIR/E0512.rs:4:23
+   |
+LL |     unsafe { takes_u8(::std::mem::transmute(0u16)); }
+   |                       ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: source type: `u16` (16 bits)
+   = note: target type: `u8` (8 bits)
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0512`.

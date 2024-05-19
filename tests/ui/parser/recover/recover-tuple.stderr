@@ -1,0 +1,17 @@
+error: expected expression, found `.`
+  --> $DIR/recover-tuple.rs:3:40
+   |
+LL |     let x: (usize, usize, usize) = (3, .=.);
+   |                                        ^ expected expression
+
+error[E0308]: mismatched types
+  --> $DIR/recover-tuple.rs:6:20
+   |
+LL |     let y: usize = "";
+   |            -----   ^^ expected `usize`, found `&str`
+   |            |
+   |            expected due to this
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

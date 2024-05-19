@@ -1,0 +1,14 @@
+error[E0282]: type annotations needed
+  --> $DIR/self-ty-in-path.rs:8:9
+   |
+LL |         Self::func_a();
+   |         ^^^^^^^^^^^^ cannot infer type of the type parameter `U` declared on the associated function `func_a`
+   |
+help: consider specifying the generic argument
+   |
+LL |         Self::func_a::<U>();
+   |                     +++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0282`.

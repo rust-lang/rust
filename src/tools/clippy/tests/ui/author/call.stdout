@@ -1,0 +1,14 @@
+if let StmtKind::Local(local) = stmt.kind
+    && let Some(init) = local.init
+    && let ExprKind::Call(func, args) = init.kind
+    && let ExprKind::Path(ref qpath) = func.kind
+    && match_qpath(qpath, &["{{root}}", "std", "cmp", "min"])
+    && args.len() == 2
+    && let ExprKind::Lit(ref lit) = args[0].kind
+    && let LitKind::Int(3, LitIntType::Unsuffixed) = lit.node
+    && let ExprKind::Lit(ref lit1) = args[1].kind
+    && let LitKind::Int(4, LitIntType::Unsuffixed) = lit1.node
+    && let PatKind::Wild = local.pat.kind
+{
+    // report your lint here
+}

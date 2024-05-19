@@ -1,0 +1,8 @@
+error: error reading Clippy's configuration file: duplicate key `cognitive-complexity-threshold` in document root
+  --> $DIR/tests/ui-toml/duplicated_keys/clippy.toml:2:1
+   |
+LL | cognitive-complexity-threshold = 4
+   | ^
+
+error: aborting due to 1 previous error
+

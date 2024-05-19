@@ -1,0 +1,15 @@
+error[E0740]: field must implement `Copy` or be wrapped in `ManuallyDrop<...>` to be used in a union
+  --> $DIR/issue-41073.rs:2:5
+   |
+LL |     a: A,
+   |     ^^^^
+   |
+   = note: union fields must not have drop side-effects, which is currently enforced via either `Copy` or `ManuallyDrop<...>`
+help: wrap the field type in `ManuallyDrop<...>`
+   |
+LL |     a: std::mem::ManuallyDrop<A>,
+   |        +++++++++++++++++++++++ +
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0740`.

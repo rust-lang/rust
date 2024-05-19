@@ -1,0 +1,15 @@
+error[E0578]: cannot determine resolution for the visibility
+  --> $DIR/visibility-indeterminate.rs:5:8
+   |
+LL | pub(in ::bar) struct Baz {}
+   |        ^^^^^
+
+error: cannot find macro `foo` in this scope
+  --> $DIR/visibility-indeterminate.rs:3:1
+   |
+LL | foo!();
+   | ^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0578`.

@@ -1,0 +1,9 @@
+error[E0228]: the lifetime bound for this object type cannot be deduced from context; please supply an explicit bound
+  --> $DIR/object-lifetime-default-dyn-binding-nonstatic3.rs:16:36
+   |
+LL | fn bar(x: &str) -> &dyn Foo<Item = dyn Bar> { &() }
+   |                                    ^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0228`.

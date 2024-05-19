@@ -1,0 +1,15 @@
+error[E0367]: `Drop` impl requires `T: Sized` but the struct it is implemented for does not
+  --> $DIR/issue-17959.rs:11:6
+   |
+LL | impl<T> Drop for G<T> {
+   |      ^
+   |
+note: the implementor must specify the same requirement
+  --> $DIR/issue-17959.rs:7:1
+   |
+LL | struct G<T: ?Sized> {
+   | ^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0367`.

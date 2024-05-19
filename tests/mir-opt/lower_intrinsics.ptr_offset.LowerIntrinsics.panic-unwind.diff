@@ -1,0 +1,27 @@
+- // MIR for `ptr_offset` before LowerIntrinsics
++ // MIR for `ptr_offset` after LowerIntrinsics
+  
+  fn ptr_offset(_1: *const i32, _2: isize) -> *const i32 {
+      debug p => _1;
+      debug d => _2;
+      let mut _0: *const i32;
+      let mut _3: *const i32;
+      let mut _4: isize;
+  
+      bb0: {
+          StorageLive(_3);
+          _3 = _1;
+          StorageLive(_4);
+          _4 = _2;
+-         _0 = offset::<*const i32, isize>(move _3, move _4) -> [return: bb1, unwind unreachable];
++         _0 = Offset(move _3, move _4);
++         goto -> bb1;
+      }
+  
+      bb1: {
+          StorageDead(_4);
+          StorageDead(_3);
+          return;
+      }
+  }
+  

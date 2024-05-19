@@ -1,0 +1,99 @@
+PRINT-ATTR INPUT (DISPLAY): #[doc = r" A doc comment"] struct Foo {}
+PRINT-ATTR INPUT (DEBUG): TokenStream [
+    Punct {
+        ch: '#',
+        spacing: Alone,
+        span: $DIR/issue-81007-item-attrs.rs:21:5: 21:22 (#0),
+    },
+    Group {
+        delimiter: Bracket,
+        stream: TokenStream [
+            Ident {
+                ident: "doc",
+                span: $DIR/issue-81007-item-attrs.rs:21:5: 21:22 (#0),
+            },
+            Punct {
+                ch: '=',
+                spacing: Alone,
+                span: $DIR/issue-81007-item-attrs.rs:21:5: 21:22 (#0),
+            },
+            Literal {
+                kind: StrRaw(0),
+                symbol: " A doc comment",
+                suffix: None,
+                span: $DIR/issue-81007-item-attrs.rs:21:5: 21:22 (#0),
+            },
+        ],
+        span: $DIR/issue-81007-item-attrs.rs:21:5: 21:22 (#0),
+    },
+    Ident {
+        ident: "struct",
+        span: $DIR/issue-81007-item-attrs.rs:22:5: 22:11 (#0),
+    },
+    Ident {
+        ident: "Foo",
+        span: $DIR/issue-81007-item-attrs.rs:22:12: 22:15 (#0),
+    },
+    Group {
+        delimiter: Brace,
+        stream: TokenStream [],
+        span: $DIR/issue-81007-item-attrs.rs:22:16: 22:18 (#0),
+    },
+]
+PRINT-ATTR INPUT (DISPLAY): #[rustc_dummy] #[doc = r" Another comment comment"] struct Bar {}
+PRINT-ATTR INPUT (DEBUG): TokenStream [
+    Punct {
+        ch: '#',
+        spacing: Alone,
+        span: $DIR/issue-81007-item-attrs.rs:26:5: 26:6 (#0),
+    },
+    Group {
+        delimiter: Bracket,
+        stream: TokenStream [
+            Ident {
+                ident: "rustc_dummy",
+                span: $DIR/issue-81007-item-attrs.rs:26:7: 26:18 (#0),
+            },
+        ],
+        span: $DIR/issue-81007-item-attrs.rs:26:6: 26:19 (#0),
+    },
+    Punct {
+        ch: '#',
+        spacing: Alone,
+        span: $DIR/issue-81007-item-attrs.rs:27:5: 27:32 (#0),
+    },
+    Group {
+        delimiter: Bracket,
+        stream: TokenStream [
+            Ident {
+                ident: "doc",
+                span: $DIR/issue-81007-item-attrs.rs:27:5: 27:32 (#0),
+            },
+            Punct {
+                ch: '=',
+                spacing: Alone,
+                span: $DIR/issue-81007-item-attrs.rs:27:5: 27:32 (#0),
+            },
+            Literal {
+                kind: StrRaw(0),
+                symbol: " Another comment comment",
+                suffix: None,
+                span: $DIR/issue-81007-item-attrs.rs:27:5: 27:32 (#0),
+            },
+        ],
+        span: $DIR/issue-81007-item-attrs.rs:27:5: 27:32 (#0),
+    },
+    Ident {
+        ident: "struct",
+        span: $DIR/issue-81007-item-attrs.rs:28:5: 28:11 (#0),
+    },
+    Ident {
+        ident: "Bar",
+        span: $DIR/issue-81007-item-attrs.rs:28:12: 28:15 (#0),
+    },
+    Group {
+        delimiter: Brace,
+        stream: TokenStream [],
+        span: $DIR/issue-81007-item-attrs.rs:28:16: 28:18 (#0),
+    },
+]

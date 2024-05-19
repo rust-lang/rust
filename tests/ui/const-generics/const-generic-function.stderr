@@ -1,0 +1,54 @@
+error: expected type, found `1`
+  --> $DIR/const-generic-function.rs:18:19
+   |
+LL |     foo::<bar(bar(1, 1), bar(1, 1))>();
+   |                   ^ expected type
+   |
+help: expressions must be enclosed in braces to be used as const generic arguments
+   |
+LL |     foo::<{ bar(bar(1, 1), bar(1, 1)) }>();
+   |           +                           +
+
+error: expected type, found `1`
+  --> $DIR/const-generic-function.rs:19:15
+   |
+LL |     foo::<bar(1, 1)>();
+   |               ^ expected type
+   |
+help: expressions must be enclosed in braces to be used as const generic arguments
+   |
+LL |     foo::<{ bar(1, 1) }>();
+   |           +           +
+
+error: expected type, found `2`
+  --> $DIR/const-generic-function.rs:20:20
+   |
+LL |     foo::<bar(FOO, 2)>();
+   |                    ^ expected type
+   |
+help: expressions must be enclosed in braces to be used as const generic arguments
+   |
+LL |     foo::<{ bar(FOO, 2) }>();
+   |           +             +
+
+error[E0573]: expected type, found function `baz`
+  --> $DIR/const-generic-function.rs:16:11
+   |
+LL |     foo::<baz()>();
+   |           ^^^^^ not a type
+
+error[E0747]: unresolved item provided when a constant was expected
+  --> $DIR/const-generic-function.rs:16:11
+   |
+LL |     foo::<baz()>();
+   |           ^^^^^
+   |
+help: if this generic argument was intended as a const parameter, surround it with braces
+   |
+LL |     foo::<{ baz() }>();
+   |           +       +
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0573, E0747.
+For more information about an error, try `rustc --explain E0573`.

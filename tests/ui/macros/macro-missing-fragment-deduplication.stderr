@@ -1,0 +1,18 @@
+error: missing fragment specifier
+  --> $DIR/macro-missing-fragment-deduplication.rs:4:6
+   |
+LL |     ($name) => {}
+   |      ^^^^^
+
+error: missing fragment specifier
+  --> $DIR/macro-missing-fragment-deduplication.rs:4:6
+   |
+LL |     ($name) => {}
+   |      ^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #40107 <https://github.com/rust-lang/rust/issues/40107>
+   = note: `#[deny(missing_fragment_specifier)]` on by default
+
+error: aborting due to 2 previous errors
+

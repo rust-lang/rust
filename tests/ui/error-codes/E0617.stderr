@@ -1,0 +1,44 @@
+error[E0617]: can't pass `f32` to variadic function
+  --> $DIR/E0617.rs:7:36
+   |
+LL |         printf(::std::ptr::null(), 0f32);
+   |                                    ^^^^ help: cast the value to `c_double`: `0f32 as c_double`
+
+error[E0617]: can't pass `i8` to variadic function
+  --> $DIR/E0617.rs:10:36
+   |
+LL |         printf(::std::ptr::null(), 0i8);
+   |                                    ^^^ help: cast the value to `c_int`: `0i8 as c_int`
+
+error[E0617]: can't pass `i16` to variadic function
+  --> $DIR/E0617.rs:13:36
+   |
+LL |         printf(::std::ptr::null(), 0i16);
+   |                                    ^^^^ help: cast the value to `c_int`: `0i16 as c_int`
+
+error[E0617]: can't pass `u8` to variadic function
+  --> $DIR/E0617.rs:16:36
+   |
+LL |         printf(::std::ptr::null(), 0u8);
+   |                                    ^^^ help: cast the value to `c_uint`: `0u8 as c_uint`
+
+error[E0617]: can't pass `u16` to variadic function
+  --> $DIR/E0617.rs:19:36
+   |
+LL |         printf(::std::ptr::null(), 0u16);
+   |                                    ^^^^ help: cast the value to `c_uint`: `0u16 as c_uint`
+
+error[E0617]: can't pass `unsafe extern "C" fn(*const i8, ...) {printf}` to variadic function
+  --> $DIR/E0617.rs:22:36
+   |
+LL |         printf(::std::ptr::null(), printf);
+   |                                    ^^^^^^
+   |
+help: cast the value to `unsafe extern "C" fn(*const i8, ...)`
+   |
+LL |         printf(::std::ptr::null(), printf as unsafe extern "C" fn(*const i8, ...));
+   |                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0617`.

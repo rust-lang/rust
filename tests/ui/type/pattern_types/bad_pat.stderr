@@ -1,0 +1,25 @@
+error[E0586]: inclusive range with no end
+  --> $DIR/bad_pat.rs:7:43
+   |
+LL | type NonNullU32_2 = pattern_type!(u32 is 1..=);
+   |                                           ^^^ help: use `..` instead
+   |
+   = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
+
+error[E0586]: inclusive range with no end
+  --> $DIR/bad_pat.rs:9:40
+   |
+LL | type Positive2 = pattern_type!(i32 is 0..=);
+   |                                        ^^^ help: use `..` instead
+   |
+   = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
+
+error: "wildcard patterns are not permitted for pattern types"
+  --> $DIR/bad_pat.rs:11:33
+   |
+LL | type Wild = pattern_type!(() is _);
+   |                                 ^
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0586`.

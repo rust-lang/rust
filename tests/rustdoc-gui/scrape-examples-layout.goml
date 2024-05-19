@@ -1,0 +1,48 @@
+// Check that the line number column has the correct layout.
+go-to: "file://" + |DOC_PATH| + "/scrape_examples/fn.test_many.html"
+
+// Check that it's not zero.
+assert-property-false: (
+    ".more-scraped-examples .scraped-example .code-wrapper .src-line-numbers",
+    {"clientWidth": "0"}
+)
+
+// Check that examples with very long lines have the same width as ones that don't.
+store-property: (
+    ".more-scraped-examples .scraped-example:nth-child(2) .code-wrapper .src-line-numbers",
+    {"clientWidth": clientWidth},
+)
+
+assert-property: (
+    ".more-scraped-examples .scraped-example:nth-child(3) .code-wrapper .src-line-numbers",
+    {"clientWidth": |clientWidth|}
+)
+
+assert-property: (
+    ".more-scraped-examples .scraped-example:nth-child(4) .code-wrapper .src-line-numbers",
+    {"clientWidth": |clientWidth|}
+)
+
+assert-property: (
+    ".more-scraped-examples .scraped-example:nth-child(5) .code-wrapper .src-line-numbers",
+    {"clientWidth": |clientWidth|}
+)
+
+assert-property: (
+    ".more-scraped-examples .scraped-example:nth-child(6) .code-wrapper .src-line-numbers",
+    {"clientWidth": |clientWidth|}
+)
+
+// Check that for both mobile and desktop sizes, the buttons in scraped examples are displayed
+// correctly.
+
+store-value: (offset_y, 4)
+
+// First with desktop
+assert-position: (".scraped-example .code-wrapper", {"y": 226})
+assert-position: (".scraped-example .code-wrapper .prev", {"y": 226 + |offset_y|})
+
+// Then with mobile
+set-window-size: (600, 600)
+assert-position: (".scraped-example .code-wrapper", {"y": 308})
+assert-position: (".scraped-example .code-wrapper .prev", {"y": 308 + |offset_y|})

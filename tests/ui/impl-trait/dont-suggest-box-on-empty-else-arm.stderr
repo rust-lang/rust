@@ -1,0 +1,16 @@
+error[E0308]: `if` and `else` have incompatible types
+  --> $DIR/dont-suggest-box-on-empty-else-arm.rs:4:12
+   |
+LL |       if true {
+   |       ------- `if` and `else` have incompatible types
+LL |           "boo2"
+   |           ------ expected because of this
+LL |       } else {
+   |  ____________^
+LL | |
+LL | |     }
+   | |_____^ expected `&str`, found `()`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.

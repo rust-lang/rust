@@ -1,0 +1,103 @@
+error[E0594]: cannot assign to `***p`, which is behind a `&` reference
+  --> $DIR/borrowck-issue-14498.rs:16:5
+   |
+LL |     ***p = 2;
+   |     ^^^^^^^^ `p` is a `&` reference, so the data it refers to cannot be written
+   |
+help: consider changing this to be a mutable reference
+   |
+LL |     let p = &mut y;
+   |              +++
+
+error[E0506]: cannot assign to `**y` because it is borrowed
+  --> $DIR/borrowck-issue-14498.rs:25:5
+   |
+LL |     let p = &y;
+   |             -- `**y` is borrowed here
+LL |     let q = &***p;
+LL |     **y = 2;
+   |     ^^^^^^^ `**y` is assigned to here but it was already borrowed
+LL |     drop(p);
+   |          - borrow later used here
+
+error[E0506]: cannot assign to `**y` because it is borrowed
+  --> $DIR/borrowck-issue-14498.rs:35:5
+   |
+LL |     let p = &y;
+   |             -- `**y` is borrowed here
+LL |     let q = &***p;
+LL |     **y = 2;
+   |     ^^^^^^^ `**y` is assigned to here but it was already borrowed
+LL |     drop(p);
+   |          - borrow later used here
+
+error[E0506]: cannot assign to `**y` because it is borrowed
+  --> $DIR/borrowck-issue-14498.rs:45:5
+   |
+LL |     let p = &y;
+   |             -- `**y` is borrowed here
+LL |     let q = &***p;
+LL |     **y = 2;
+   |     ^^^^^^^ `**y` is assigned to here but it was already borrowed
+LL |     drop(p);
+   |          - borrow later used here
+
+error[E0506]: cannot assign to `**y` because it is borrowed
+  --> $DIR/borrowck-issue-14498.rs:55:5
+   |
+LL |     let p = &y;
+   |             -- `**y` is borrowed here
+LL |     let q = &***p;
+LL |     **y = 2;
+   |     ^^^^^^^ `**y` is assigned to here but it was already borrowed
+LL |     drop(p);
+   |          - borrow later used here
+
+error[E0506]: cannot assign to `**y.a` because it is borrowed
+  --> $DIR/borrowck-issue-14498.rs:65:5
+   |
+LL |     let p = &y.a;
+   |             ---- `**y.a` is borrowed here
+LL |     let q = &***p;
+LL |     **y.a = 2;
+   |     ^^^^^^^^^ `**y.a` is assigned to here but it was already borrowed
+LL |     drop(p);
+   |          - borrow later used here
+
+error[E0506]: cannot assign to `**y.a` because it is borrowed
+  --> $DIR/borrowck-issue-14498.rs:75:5
+   |
+LL |     let p = &y.a;
+   |             ---- `**y.a` is borrowed here
+LL |     let q = &***p;
+LL |     **y.a = 2;
+   |     ^^^^^^^^^ `**y.a` is assigned to here but it was already borrowed
+LL |     drop(p);
+   |          - borrow later used here
+
+error[E0506]: cannot assign to `**y.a` because it is borrowed
+  --> $DIR/borrowck-issue-14498.rs:85:5
+   |
+LL |     let p = &y.a;
+   |             ---- `**y.a` is borrowed here
+LL |     let q = &***p;
+LL |     **y.a = 2;
+   |     ^^^^^^^^^ `**y.a` is assigned to here but it was already borrowed
+LL |     drop(p);
+   |          - borrow later used here
+
+error[E0506]: cannot assign to `**y.a` because it is borrowed
+  --> $DIR/borrowck-issue-14498.rs:95:5
+   |
+LL |     let p = &y.a;
+   |             ---- `**y.a` is borrowed here
+LL |     let q = &***p;
+LL |     **y.a = 2;
+   |     ^^^^^^^^^ `**y.a` is assigned to here but it was already borrowed
+LL |     drop(p);
+   |          - borrow later used here
+
+error: aborting due to 9 previous errors
+
+Some errors have detailed explanations: E0506, E0594.
+For more information about an error, try `rustc --explain E0506`.

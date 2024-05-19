@@ -1,0 +1,4 @@
+# This is the deprecated name for cognitive-complexity-threshold
+cyclomatic-complexity-threshold = 3
+# Check we get duplication warning regardless of order
+cognitive-complexity-threshold = 4

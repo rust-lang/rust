@@ -1,0 +1,16 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-33504.rs:7:13
+   |
+LL | struct Test;
+   | ----------- unit struct defined here
+...
+LL |         let Test = 1;
+   |             ^^^^   - this expression has type `{integer}`
+   |             |
+   |             expected integer, found `Test`
+   |             `Test` is interpreted as a unit struct, not a new binding
+   |             help: introduce a new binding instead: `other_test`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.

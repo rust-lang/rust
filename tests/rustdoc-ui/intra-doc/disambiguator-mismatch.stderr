@@ -1,0 +1,153 @@
+error: incompatible link kind for `S`
+  --> $DIR/disambiguator-mismatch.rs:16:14
+   |
+LL | /// Link to [struct@S]
+   |              ^^^^^^^^ this link resolved to an enum, which is not a struct
+   |
+note: the lint level is defined here
+  --> $DIR/disambiguator-mismatch.rs:1:9
+   |
+LL | #![deny(rustdoc::broken_intra_doc_links)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: to link to the enum, prefix with `enum@`
+   |
+LL | /// Link to [enum@S]
+   |              ~~~~~
+
+error: incompatible link kind for `S`
+  --> $DIR/disambiguator-mismatch.rs:21:14
+   |
+LL | /// Link to [mod@S]
+   |              ^^^^^ this link resolved to an enum, which is not a module
+   |
+help: to link to the enum, prefix with `enum@`
+   |
+LL | /// Link to [enum@S]
+   |              ~~~~~
+
+error: incompatible link kind for `S`
+  --> $DIR/disambiguator-mismatch.rs:26:14
+   |
+LL | /// Link to [union@S]
+   |              ^^^^^^^ this link resolved to an enum, which is not a union
+   |
+help: to link to the enum, prefix with `enum@`
+   |
+LL | /// Link to [enum@S]
+   |              ~~~~~
+
+error: incompatible link kind for `S`
+  --> $DIR/disambiguator-mismatch.rs:31:14
+   |
+LL | /// Link to [trait@S]
+   |              ^^^^^^^ this link resolved to an enum, which is not a trait
+   |
+help: to link to the enum, prefix with `enum@`
+   |
+LL | /// Link to [enum@S]
+   |              ~~~~~
+
+error: incompatible link kind for `T`
+  --> $DIR/disambiguator-mismatch.rs:36:14
+   |
+LL | /// Link to [struct@T]
+   |              ^^^^^^^^ this link resolved to a trait, which is not a struct
+   |
+help: to link to the trait, prefix with `trait@`
+   |
+LL | /// Link to [trait@T]
+   |              ~~~~~~
+
+error: incompatible link kind for `m`
+  --> $DIR/disambiguator-mismatch.rs:41:14
+   |
+LL | /// Link to [derive@m]
+   |              ^^^^^^^^ this link resolved to a macro, which is not a derive macro
+   |
+help: to link to the macro, add an exclamation mark
+   |
+LL - /// Link to [derive@m]
+LL + /// Link to [m!]
+   |
+
+error: unresolved link to `m`
+  --> $DIR/disambiguator-mismatch.rs:46:14
+   |
+LL | /// Link to [m()]
+   |              ^^^ this link resolves to the macro `m`, which is not in the value namespace
+   |
+help: to link to the macro, add an exclamation mark
+   |
+LL | /// Link to [m!()]
+   |               +
+
+error: incompatible link kind for `s`
+  --> $DIR/disambiguator-mismatch.rs:52:14
+   |
+LL | /// Link to [const@s]
+   |              ^^^^^^^ this link resolved to a static, which is not a constant
+   |
+help: to link to the static, prefix with `static@`
+   |
+LL | /// Link to [static@s]
+   |              ~~~~~~~
+
+error: incompatible link kind for `c`
+  --> $DIR/disambiguator-mismatch.rs:57:14
+   |
+LL | /// Link to [static@c]
+   |              ^^^^^^^^ this link resolved to a constant, which is not a static
+   |
+help: to link to the constant, prefix with `const@`
+   |
+LL | /// Link to [const@c]
+   |              ~~~~~~
+
+error: incompatible link kind for `c`
+  --> $DIR/disambiguator-mismatch.rs:62:14
+   |
+LL | /// Link to [fn@c]
+   |              ^^^^ this link resolved to a constant, which is not a function
+   |
+help: to link to the constant, prefix with `const@`
+   |
+LL | /// Link to [const@c]
+   |              ~~~~~~
+
+error: incompatible link kind for `c`
+  --> $DIR/disambiguator-mismatch.rs:67:14
+   |
+LL | /// Link to [c()]
+   |              ^^^ this link resolved to a constant, which is not a function
+   |
+help: to link to the constant, prefix with `const@`
+   |
+LL - /// Link to [c()]
+LL + /// Link to [const@c]
+   |
+
+error: incompatible link kind for `f`
+  --> $DIR/disambiguator-mismatch.rs:72:14
+   |
+LL | /// Link to [const@f]
+   |              ^^^^^^^ this link resolved to a function, which is not a constant
+   |
+help: to link to the function, add parentheses
+   |
+LL - /// Link to [const@f]
+LL + /// Link to [f()]
+   |
+
+error: unresolved link to `std`
+  --> $DIR/disambiguator-mismatch.rs:77:14
+   |
+LL | /// Link to [fn@std]
+   |              ^^^^^^ this link resolves to the crate `std`, which is not in the value namespace
+   |
+help: to link to the crate, prefix with `mod@`
+   |
+LL | /// Link to [mod@std]
+   |              ~~~~
+
+error: aborting due to 13 previous errors
+

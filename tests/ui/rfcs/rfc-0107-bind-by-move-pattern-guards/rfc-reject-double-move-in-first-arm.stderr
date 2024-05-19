@@ -1,0 +1,27 @@
+error[E0507]: cannot move out of `v` in pattern guard
+  --> $DIR/rfc-reject-double-move-in-first-arm.rs:8:30
+   |
+LL |         A { a: v } if { drop(v); true } => v,
+   |                              ^ move occurs because `v` has type `Box<i32>`, which does not implement the `Copy` trait
+   |
+   = note: variables bound in patterns cannot be moved from until after the end of the pattern guard
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |         A { a: v } if { drop(v.clone()); true } => v,
+   |                               ++++++++
+
+error[E0507]: cannot move out of `v` in pattern guard
+  --> $DIR/rfc-reject-double-move-in-first-arm.rs:17:45
+   |
+LL |         A { a: v } if let Some(()) = { drop(v); Some(()) } => v,
+   |                                             ^ move occurs because `v` has type `Box<i32>`, which does not implement the `Copy` trait
+   |
+   = note: variables bound in patterns cannot be moved from until after the end of the pattern guard
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |         A { a: v } if let Some(()) = { drop(v.clone()); Some(()) } => v,
+   |                                              ++++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0507`.

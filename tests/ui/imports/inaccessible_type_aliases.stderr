@@ -1,0 +1,30 @@
+error[E0412]: cannot find type `Foo` in this scope
+  --> $DIR/inaccessible_type_aliases.rs:11:12
+   |
+LL |     let x: Foo = 100;
+   |            ^^^ not found in this scope
+   |
+note: these type aliases exist but are inaccessible
+  --> $DIR/inaccessible_type_aliases.rs:2:5
+   |
+LL |     type Foo = u64;
+   |     ^^^^^^^^^^^^^^^ `a::Foo`: not accessible
+...
+LL |     type Foo = u64;
+   |     ^^^^^^^^^^^^^^^ `b::Foo`: not accessible
+
+error[E0412]: cannot find type `Bar` in this scope
+  --> $DIR/inaccessible_type_aliases.rs:12:12
+   |
+LL |     let y: Bar = 100;
+   |            ^^^ not found in this scope
+   |
+note: type alias `a::Bar` exists but is inaccessible
+  --> $DIR/inaccessible_type_aliases.rs:3:5
+   |
+LL |     type Bar = u64;
+   |     ^^^^^^^^^^^^^^^ not accessible
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0412`.

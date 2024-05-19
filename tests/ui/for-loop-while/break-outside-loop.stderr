@@ -1,0 +1,58 @@
+error[E0767]: use of unreachable label `'lab`
+  --> $DIR/break-outside-loop.rs:30:19
+   |
+LL |     'lab: loop {
+   |     ---- unreachable label defined here
+LL |         || {
+LL |             break 'lab;
+   |                   ^^^^ unreachable label `'lab`
+   |
+   = note: labels are unreachable through functions, closures, async blocks and modules
+
+error[E0268]: `break` outside of a loop or labeled block
+  --> $DIR/break-outside-loop.rs:10:15
+   |
+LL |     let pth = break;
+   |               ^^^^^ cannot `break` outside of a loop or labeled block
+
+error[E0268]: `continue` outside of a loop
+  --> $DIR/break-outside-loop.rs:11:17
+   |
+LL |     if cond() { continue }
+   |                 ^^^^^^^^ cannot `continue` outside of a loop
+
+error[E0267]: `break` inside of a closure
+  --> $DIR/break-outside-loop.rs:17:25
+   |
+LL |         foo(|| {
+   |             -- enclosing closure
+LL |             if cond() { break }
+   |                         ^^^^^ cannot `break` inside of a closure
+
+error[E0267]: `continue` inside of a closure
+  --> $DIR/break-outside-loop.rs:18:25
+   |
+LL |         foo(|| {
+   |             -- enclosing closure
+LL |             if cond() { break }
+LL |             if cond() { continue }
+   |                         ^^^^^^^^ cannot `continue` inside of a closure
+
+error[E0268]: `break` outside of a loop or labeled block
+  --> $DIR/break-outside-loop.rs:24:25
+   |
+LL |     let unconstrained = break;
+   |                         ^^^^^ cannot `break` outside of a loop or labeled block
+
+error[E0267]: `break` inside of a closure
+  --> $DIR/break-outside-loop.rs:30:13
+   |
+LL |         || {
+   |         -- enclosing closure
+LL |             break 'lab;
+   |             ^^^^^^^^^^ cannot `break` inside of a closure
+
+error: aborting due to 7 previous errors
+
+Some errors have detailed explanations: E0267, E0268, E0767.
+For more information about an error, try `rustc --explain E0267`.

@@ -1,0 +1,13 @@
+error: expected identifier, found reserved keyword `override`
+  --> $DIR/keyword-override.rs:2:9
+   |
+LL |     let override = ();
+   |         ^^^^^^^^ expected identifier, found reserved keyword
+   |
+help: escape `override` to use it as an identifier
+   |
+LL |     let r#override = ();
+   |         ++
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,40 @@
+error: expected identifier, found `:`
+  --> $DIR/or-patterns-syntactic-fail.rs:11:19
+   |
+LL |     let _ = |A | B: E| ();
+   |             ----  ^ expected identifier
+   |             |
+   |             while parsing the body of this closure
+   |
+   = note: type ascription syntax has been removed, see issue #101728 <https://github.com/rust-lang/rust/issues/101728>
+help: you might have meant to open the body of the closure
+   |
+LL |     let _ = |A | { B: E| ();
+   |                  +
+
+error: top-level or-patterns are not allowed in function parameters
+  --> $DIR/or-patterns-syntactic-fail.rs:18:13
+   |
+LL |     fn fun1(A | B: E) {}
+   |             ^^^^^ help: wrap the pattern in parentheses: `(A | B)`
+
+error: top-level or-patterns are not allowed in function parameters
+  --> $DIR/or-patterns-syntactic-fail.rs:21:13
+   |
+LL |     fn fun2(| A | B: E) {}
+   |             ^^^^^^^ help: wrap the pattern in parentheses: `(A | B)`
+
+error: top-level or-patterns are not allowed in `let` bindings
+  --> $DIR/or-patterns-syntactic-fail.rs:26:9
+   |
+LL |     let A | B: E = A;
+   |         ^^^^^ help: wrap the pattern in parentheses: `(A | B)`
+
+error: top-level or-patterns are not allowed in `let` bindings
+  --> $DIR/or-patterns-syntactic-fail.rs:29:9
+   |
+LL |     let | A | B: E = A;
+   |         ^^^^^^^ help: wrap the pattern in parentheses: `(A | B)`
+
+error: aborting due to 5 previous errors
+

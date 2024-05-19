@@ -1,0 +1,19 @@
+error[E0382]: borrow of moved value: `helpers`
+  --> $DIR/copy-suggestion-region-vid.rs:13:43
+   |
+LL |         let helpers = [vec![], vec![]];
+   |             ------- move occurs because `helpers` has type `[Vec<&i64>; 2]`, which does not implement the `Copy` trait
+LL |
+LL |         HelperStruct { helpers, is_empty: helpers[0].is_empty() }
+   |                        -------            ^^^^^^^^^^ value borrowed here after move
+   |                        |
+   |                        value moved here
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |         HelperStruct { helpers: helpers.clone(), is_empty: helpers[0].is_empty() }
+   |                               +++++++++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0382`.

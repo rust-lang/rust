@@ -1,0 +1,14 @@
+error[E0119]: conflicting implementations of trait `MyTrait` for type `MyFoo`
+  --> $DIR/never-from-impl-is-reserved.rs:14:1
+   |
+LL | impl MyTrait for MyFoo {}
+   | ---------------------- first implementation here
+LL | // This will conflict with the first impl if we impl `for<T> T: From<!>`.
+LL | impl<T> MyTrait for T where T: From<!> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `MyFoo`
+   |
+   = note: permitting this impl would forbid us from adding `impl<T> From<!> for T` later; see rust-lang/rust#64715 for details
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0119`.

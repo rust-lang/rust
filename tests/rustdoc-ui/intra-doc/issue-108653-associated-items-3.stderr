@@ -1,0 +1,37 @@
+error: `Trait` is both a constant and a trait
+  --> $DIR/issue-108653-associated-items-3.rs:12:7
+   |
+LL | /// [`Trait`]
+   |       ^^^^^ ambiguous link
+   |
+note: the lint level is defined here
+  --> $DIR/issue-108653-associated-items-3.rs:4:9
+   |
+LL | #![deny(rustdoc::broken_intra_doc_links)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: to link to the constant, prefix with `const@`
+   |
+LL | /// [`const@Trait`]
+   |       ++++++
+help: to link to the trait, prefix with `trait@`
+   |
+LL | /// [`trait@Trait`]
+   |       ++++++
+
+error: `Trait::Trait` is both an associated constant and an associated type
+  --> $DIR/issue-108653-associated-items-3.rs:14:7
+   |
+LL | /// [`Trait::Trait`]
+   |       ^^^^^^^^^^^^ ambiguous link
+   |
+help: to link to the associated constant, prefix with `const@`
+   |
+LL | /// [`const@Trait::Trait`]
+   |       ++++++
+help: to link to the associated type, prefix with `type@`
+   |
+LL | /// [`type@Trait::Trait`]
+   |       +++++
+
+error: aborting due to 2 previous errors
+

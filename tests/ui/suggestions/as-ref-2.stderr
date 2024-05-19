@@ -1,0 +1,27 @@
+error[E0382]: use of moved value: `foo`
+  --> $DIR/as-ref-2.rs:10:14
+   |
+LL |     let foo = Some(Struct);
+   |         --- move occurs because `foo` has type `Option<Struct>`, which does not implement the `Copy` trait
+LL |     let _x: Option<Struct> = foo.map(|s| bar(&s));
+   |                              --- ---------------- `foo` moved due to this method call
+   |                              |
+   |                              help: consider calling `.as_ref()` or `.as_mut()` to borrow the type's contents
+LL |     let _y = foo;
+   |              ^^^ value used here after move
+   |
+note: `Option::<T>::map` takes ownership of the receiver `self`, which moves `foo`
+  --> $SRC_DIR/core/src/option.rs:LL:COL
+help: you could `clone` the value and consume it, if the `Struct: Clone` trait bound could be satisfied
+   |
+LL |     let _x: Option<Struct> = foo.clone().map(|s| bar(&s));
+   |                                 ++++++++
+help: consider annotating `Struct` with `#[derive(Clone)]`
+   |
+LL + #[derive(Clone)]
+LL | struct Struct;
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0382`.

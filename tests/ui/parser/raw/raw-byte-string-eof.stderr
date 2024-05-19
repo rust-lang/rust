@@ -1,0 +1,13 @@
+error[E0748]: unterminated raw string
+  --> $DIR/raw-byte-string-eof.rs:2:5
+   |
+LL |     br##"a"#;
+   |     ^      - help: consider terminating the string here: `##`
+   |     |
+   |     unterminated raw string
+   |
+   = note: this raw string should be terminated with `"##`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0748`.

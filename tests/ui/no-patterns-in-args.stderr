@@ -1,0 +1,34 @@
+error[E0130]: patterns aren't allowed in foreign function declarations
+  --> $DIR/no-patterns-in-args.rs:2:11
+   |
+LL |     fn f1(mut arg: u8);
+   |           ^^^^^^^ pattern not allowed in foreign function
+
+error[E0130]: patterns aren't allowed in foreign function declarations
+  --> $DIR/no-patterns-in-args.rs:3:11
+   |
+LL |     fn f2(&arg: u8);
+   |           ^^^^ pattern not allowed in foreign function
+
+error[E0130]: patterns aren't allowed in foreign function declarations
+  --> $DIR/no-patterns-in-args.rs:4:11
+   |
+LL |     fn f3(arg @ _: u8);
+   |           ^^^^^^^ pattern not allowed in foreign function
+
+error[E0561]: patterns aren't allowed in function pointer types
+  --> $DIR/no-patterns-in-args.rs:10:14
+   |
+LL | type A1 = fn(mut arg: u8);
+   |              ^^^^^^^
+
+error[E0561]: patterns aren't allowed in function pointer types
+  --> $DIR/no-patterns-in-args.rs:11:14
+   |
+LL | type A2 = fn(&arg: u8);
+   |              ^^^^
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0130, E0561.
+For more information about an error, try `rustc --explain E0130`.

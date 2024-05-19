@@ -1,0 +1,41 @@
+error[E0493]: destructor of `String` cannot be evaluated at compile-time
+  --> $DIR/repeat-drop-2.rs:7:25
+   |
+LL | const _: [String; 0] = [String::new(); 0];
+   |                        -^^^^^^^^^^^^^----
+   |                        ||
+   |                        |the destructor for this type cannot be evaluated in constants
+   |                        value is dropped here
+
+error[E0382]: use of moved value: `foo`
+  --> $DIR/repeat-drop-2.rs:4:17
+   |
+LL |     let foo = String::new();
+   |         --- move occurs because `foo` has type `String`, which does not implement the `Copy` trait
+LL |     let _bar = foo;
+   |                --- value moved here
+LL |     let _baz = [foo; 0];
+   |                 ^^^ value used here after move
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     let _bar = foo.clone();
+   |                   ++++++++
+
+error[E0381]: used binding `x` isn't initialized
+  --> $DIR/repeat-drop-2.rs:12:14
+   |
+LL |     let x: u8;
+   |         - binding declared here but left uninitialized
+LL |     let _ = [x; 0];
+   |              ^ `x` used here but it isn't initialized
+   |
+help: consider assigning a value
+   |
+LL |     let x: u8 = 42;
+   |               ++++
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0381, E0382, E0493.
+For more information about an error, try `rustc --explain E0381`.

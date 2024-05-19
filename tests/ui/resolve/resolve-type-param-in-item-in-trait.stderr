@@ -1,0 +1,47 @@
+error[E0401]: can't use generic parameters from outer item
+  --> $DIR/resolve-type-param-in-item-in-trait.rs:8:22
+   |
+LL | trait TraitA<A> {
+   |              - type parameter from outer item
+LL |     fn outer(&self) {
+LL |         enum Foo<B> {
+   |                  - help: try introducing a local generic parameter here: `A,`
+LL |             Variance(A)
+   |                      ^ use of generic parameter from outer item
+
+error[E0401]: can't use generic parameters from outer item
+  --> $DIR/resolve-type-param-in-item-in-trait.rs:16:23
+   |
+LL | trait TraitB<A> {
+   |              - type parameter from outer item
+LL |     fn outer(&self) {
+LL |         struct Foo<B>(A);
+   |                    -  ^ use of generic parameter from outer item
+   |                    |
+   |                    help: try introducing a local generic parameter here: `A,`
+
+error[E0401]: can't use generic parameters from outer item
+  --> $DIR/resolve-type-param-in-item-in-trait.rs:23:28
+   |
+LL | trait TraitC<A> {
+   |              - type parameter from outer item
+LL |     fn outer(&self) {
+LL |         struct Foo<B> { a: A }
+   |                    -       ^ use of generic parameter from outer item
+   |                    |
+   |                    help: try introducing a local generic parameter here: `A,`
+
+error[E0401]: can't use generic parameters from outer item
+  --> $DIR/resolve-type-param-in-item-in-trait.rs:30:22
+   |
+LL | trait TraitD<A> {
+   |              - type parameter from outer item
+LL |     fn outer(&self) {
+LL |         fn foo<B>(a: A) { }
+   |                -     ^ use of generic parameter from outer item
+   |                |
+   |                help: try introducing a local generic parameter here: `A,`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0401`.

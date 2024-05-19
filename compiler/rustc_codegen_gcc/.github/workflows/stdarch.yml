@@ -1,0 +1,100 @@
+name: stdarch tests with sysroot compiled in release mode
+
+on:
+  - push
+  - pull_request
+
+permissions:
+  contents: read
+
+env:
+  # Enable backtraces for easier debugging
+  RUST_BACKTRACE: 1
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        cargo_runner: [
+          "sde -future -rtm_mode full --",
+          "",
+        ]
+
+    steps:
+    - uses: actions/checkout@v3
+
+    # `rustup show` installs from rust-toolchain.toml
+    - name: Setup rust toolchain
+      run: rustup show
+
+    - name: Setup rust cache
+      uses: Swatinem/rust-cache@v2
+
+    - name: Install packages
+      run: sudo apt-get install ninja-build ripgrep
+
+    - name: Install Intel Software Development Emulator
+      if: ${{ matrix.cargo_runner }}
+      run: |
+          mkdir intel-sde
+          cd intel-sde
+          dir=sde-external-9.33.0-2024-01-07-lin
+          file=$dir.tar.xz
+          wget https://downloadmirror.intel.com/813591/$file
+          tar xvf $file
+          sudo mkdir /usr/share/intel-sde
+          sudo cp -r $dir/* /usr/share/intel-sde
+          sudo ln -s /usr/share/intel-sde/sde /usr/bin/sde
+          sudo ln -s /usr/share/intel-sde/sde64 /usr/bin/sde64
+
+    - name: Set env
+      run: |
+        echo "workspace="$GITHUB_WORKSPACE >> $GITHUB_ENV
+        echo 'download-gccjit = true' > config.toml
+
+    - name: Build
+      run: |
+        ./y.sh prepare --only-libcore
+        ./y.sh build --release --release-sysroot
+
+    - name: Set env (part 2)
+      run: |
+        # Set the `LD_LIBRARY_PATH` and `LIBRARY_PATH` env variables...
+        echo "LD_LIBRARY_PATH="$(./y.sh info | grep -v Using) >> $GITHUB_ENV
+        echo "LIBRARY_PATH="$(./y.sh info | grep -v Using) >> $GITHUB_ENV
+
+    - name: Build (part 2)
+      run: |
+        cargo test
+
+    - name: Clean
+      if: ${{ !matrix.cargo_runner }}
+      run: |
+        ./y.sh clean all
+
+    - name: Prepare dependencies
+      run: |
+        git config --global user.email "user@example.com"
+        git config --global user.name "User"
+        ./y.sh prepare
+
+    - name: Run tests
+      if: ${{ !matrix.cargo_runner }}
+      run: |
+        ./y.sh test --release --clean --release-sysroot --build-sysroot --mini-tests --std-tests --test-libcore
+
+    - name: Run stdarch tests
+      if: ${{ !matrix.cargo_runner }}
+      run: |
+        cd build_sysroot/sysroot_src/library/stdarch/
+        CHANNEL=release TARGET=x86_64-unknown-linux-gnu CG_RUSTFLAGS="-Ainternal_features" ../../../../y.sh cargo test
+
+    - name: Run stdarch tests
+      if: ${{ matrix.cargo_runner }}
+      run: |
+        cd build_sysroot/sysroot_src/library/stdarch/
+        # FIXME: these tests fail when the sysroot is compiled with LTO because of a missing symbol in proc-macro.
+        STDARCH_TEST_EVERYTHING=1 CHANNEL=release CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUNNER="${{ matrix.cargo_runner }}" TARGET=x86_64-unknown-linux-gnu CG_RUSTFLAGS="-Ainternal_features" ../../../../y.sh cargo test -- --skip rtm --skip tbm --skip sse4a

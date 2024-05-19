@@ -1,0 +1,23 @@
+error: where clauses are not allowed before tuple struct bodies
+  --> $DIR/recover-where-clause-before-tuple-struct-body-1.rs:5:15
+   |
+LL | struct Foo<T> where T: MyTrait, (T)
+   |        ---    ^^^^^^^^^^^^^^^^^ --- the struct body
+   |        |      |
+   |        |      unexpected where clause
+   |        while parsing this tuple struct
+   |
+help: move the body before the where clause
+   |
+LL - struct Foo<T> where T: MyTrait, (T)
+LL + struct Foo<T>(T) where T: MyTrait
+   |
+
+error: expected `;`, found `<eof>`
+  --> $DIR/recover-where-clause-before-tuple-struct-body-1.rs:5:35
+   |
+LL | struct Foo<T> where T: MyTrait, (T)
+   |                                   ^ expected `;`
+
+error: aborting due to 2 previous errors
+

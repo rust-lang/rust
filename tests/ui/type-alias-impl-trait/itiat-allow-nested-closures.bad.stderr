@@ -1,0 +1,26 @@
+error[E0308]: mismatched types
+  --> $DIR/itiat-allow-nested-closures.rs:21:22
+   |
+LL |     type Assoc = impl Sized;
+   |                  ---------- the found opaque type
+...
+LL |         let _: i32 = closure();
+   |                ---   ^^^^^^^^^ expected `i32`, found opaque type
+   |                |
+   |                expected due to this
+   |
+   = note:     expected type `i32`
+           found opaque type `<() as Foo>::Assoc`
+
+error[E0308]: mismatched types
+  --> $DIR/itiat-allow-nested-closures.rs:22:9
+   |
+LL |     fn bar() -> Self::Assoc {
+   |                 ----------- expected `()` because of return type
+...
+LL |         1i32
+   |         ^^^^ expected `()`, found `i32`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

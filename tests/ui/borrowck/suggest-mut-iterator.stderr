@@ -1,0 +1,16 @@
+error[E0596]: cannot borrow `*test` as mutable, as it is behind a `&` reference
+  --> $DIR/suggest-mut-iterator.rs:22:9
+   |
+LL |     for test in &tests {
+   |                 ------ this iterator yields `&` references
+LL |         test.add(2);
+   |         ^^^^ `test` is a `&` reference, so the data it refers to cannot be borrowed as mutable
+   |
+help: use a mutable iterator instead
+   |
+LL |     for test in &mut tests {
+   |                  +++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0596`.

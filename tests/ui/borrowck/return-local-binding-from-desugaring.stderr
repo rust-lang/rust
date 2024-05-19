@@ -1,0 +1,12 @@
+error[E0515]: cannot return value referencing temporary value
+  --> $DIR/return-local-binding-from-desugaring.rs:30:5
+   |
+LL |     for ref x in xs {
+   |                  -- temporary value created here
+...
+LL |     result
+   |     ^^^^^^ returns a value referencing data owned by the current function
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0515`.

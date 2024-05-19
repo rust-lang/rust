@@ -1,0 +1,22 @@
+// MIR for `bar` after built
+
+fn bar(_1: Bar) -> usize {
+    debug bar => _1;
+    let mut _0: usize;
+    let _2: Bar;
+    let mut _3: isize;
+    let mut _4: u8;
+    let mut _5: bool;
+
+    bb0: {
+        StorageLive(_2);
+        _2 = move _1;
+        _3 = discriminant(_2);
+        _4 = _3 as u8 (IntToInt);
+        _5 = Le(_4, const 1_u8);
+        assume(move _5);
+        _0 = move _3 as usize (IntToInt);
+        StorageDead(_2);
+        return;
+    }
+}

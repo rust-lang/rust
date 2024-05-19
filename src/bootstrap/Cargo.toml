@@ -1,0 +1,94 @@
+[package]
+name = "bootstrap"
+version = "0.0.0"
+edition = "2021"
+build = "build.rs"
+default-run = "bootstrap"
+
+[features]
+build-metrics = ["sysinfo"]
+
+[lib]
+path = "src/lib.rs"
+doctest = false
+
+[[bin]]
+name = "bootstrap"
+path = "src/bin/main.rs"
+test = false
+
+[[bin]]
+name = "rustc"
+path = "src/bin/rustc.rs"
+test = false
+
+[[bin]]
+name = "rustdoc"
+path = "src/bin/rustdoc.rs"
+test = false
+
+[[bin]]
+name = "sccache-plus-cl"
+path = "src/bin/sccache-plus-cl.rs"
+test = false
+
+[dependencies]
+# Most of the time updating these dependencies requires modifications to the
+# bootstrap codebase(e.g., https://github.com/rust-lang/rust/issues/124565);
+# otherwise, some targets will fail. That's why these dependencies are explicitly pinned.
+cc = "=1.0.97"
+cmake = "=0.1.48"
+
+build_helper = { path = "../tools/build_helper" }
+clap = { version = "4.4", default-features = false, features = ["std", "usage", "help", "derive", "error-context"] }
+clap_complete = "4.4"
+fd-lock = "4.0"
+filetime = "0.2"
+home = "0.5"
+ignore = "0.4"
+libc = "0.2"
+object = { version = "0.32", default-features = false, features = ["archive", "coff", "read_core", "unaligned"] }
+once_cell = "1.19"
+opener = "0.5"
+semver = "1.0"
+serde = "1.0"
+# Directly use serde_derive rather than through the derive feature of serde to allow building both
+# in parallel and to allow serde_json and toml to start building as soon as serde has been built.
+serde_derive = "1.0"
+serde_json = "1.0"
+sha2 = "0.10"
+tar = "0.4"
+termcolor = "1.4"
+toml = "0.5"
+walkdir = "2.4"
+xz2 = "0.1"
+
+# Dependencies needed by the build-metrics feature
+sysinfo = { version = "0.30", default-features = false, optional = true }
+
+[target.'cfg(windows)'.dependencies.junction]
+version = "1.0.0"
+
+[target.'cfg(windows)'.dependencies.windows]
+version = "0.52"
+features = [
+    "Win32_Foundation",
+    "Win32_Security",
+    "Win32_System_Diagnostics_Debug",
+    "Win32_System_JobObjects",
+    "Win32_System_ProcessStatus",
+    "Win32_System_Threading",
+    "Win32_System_Time",
+]
+
+[dev-dependencies]
+pretty_assertions = "1.4"
+
+# We care a lot about bootstrap's compile times, so don't include debuginfo for
+# dependencies, only bootstrap itself.
+[profile.dev]
+debug = 0
+
+[profile.dev.package]
+# Only use debuginfo=1 to further reduce compile times.
+bootstrap.debug = 1

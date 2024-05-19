@@ -1,0 +1,26 @@
+error: `..` can only be used once per slice pattern
+  --> $DIR/issue-69103-extra-binding-subslice.rs:6:22
+   |
+LL |     let [a @ .., b @ ..] = &mut [1, 2];
+   |              --      ^^ can only be used once per slice pattern
+   |              |
+   |              previously used here
+
+error: `..` can only be used once per slice pattern
+  --> $DIR/issue-69103-extra-binding-subslice.rs:10:18
+   |
+LL |     let [.., c @ ..] = [1, 2];
+   |          --      ^^ can only be used once per slice pattern
+   |          |
+   |          previously used here
+
+error: `..` patterns are not allowed here
+  --> $DIR/issue-69103-extra-binding-subslice.rs:15:18
+   |
+LL |     let (.., d @ ..) = (1, 2);
+   |                  ^^
+   |
+   = note: only allowed in tuple, tuple struct, and slice patterns
+
+error: aborting due to 3 previous errors
+

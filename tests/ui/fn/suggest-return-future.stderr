@@ -1,0 +1,21 @@
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
+  --> $DIR/suggest-return-future.rs:7:13
+   |
+LL | fn foo() -> _ {
+   |             ^
+   |             |
+   |             not allowed in type signatures
+   |             help: replace with an appropriate return type: `impl Future<Output = i32>`
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
+  --> $DIR/suggest-return-future.rs:15:13
+   |
+LL | fn bar() -> _ {
+   |             ^
+   |             |
+   |             not allowed in type signatures
+   |             help: replace with an appropriate return type: `impl Future<Output = i32>`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0121`.

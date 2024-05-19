@@ -1,0 +1,37 @@
+error: lifetime may not live long enough
+  --> $DIR/regions-addr-of-upvar-self.rs:8:20
+   |
+LL |         let _f = || {
+   |                  -- lifetime `'1` represents this closure's body
+LL |             let p: &'static mut usize = &mut self.food;
+   |                    ^^^^^^^^^^^^^^^^^^ type annotation requires that `'1` must outlive `'static`
+   |
+   = note: closure implements `FnMut`, so references to captured variables can't escape the closure
+
+error: lifetime may not live long enough
+  --> $DIR/regions-addr-of-upvar-self.rs:8:20
+   |
+LL |     pub fn chase_cat(&mut self) {
+   |                      - let's call the lifetime of this reference `'1`
+LL |         let _f = || {
+LL |             let p: &'static mut usize = &mut self.food;
+   |                    ^^^^^^^^^^^^^^^^^^ type annotation requires that `'1` must outlive `'static`
+
+error[E0597]: `self` does not live long enough
+  --> $DIR/regions-addr-of-upvar-self.rs:8:46
+   |
+LL |     pub fn chase_cat(&mut self) {
+   |                      --------- binding `self` declared here
+LL |         let _f = || {
+   |                  -- value captured here
+LL |             let p: &'static mut usize = &mut self.food;
+   |                    ------------------        ^^^^^^^^^ borrowed value does not live long enough
+   |                    |
+   |                    type annotation requires that `self` is borrowed for `'static`
+...
+LL |     }
+   |      - `self` dropped here while still borrowed
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0597`.

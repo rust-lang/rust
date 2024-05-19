@@ -1,0 +1,17 @@
+error[E0603]: enum `Y` is private
+  --> $DIR/export-tag-variant.rs:7:26
+   |
+LL | fn main() { let z = foo::Y::Y1; }
+   |                          ^  -- unit variant `Y1` is not publicly re-exported
+   |                          |
+   |                          private enum
+   |
+note: the enum `Y` is defined here
+  --> $DIR/export-tag-variant.rs:4:5
+   |
+LL |     enum Y { Y1 }
+   |     ^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0603`.

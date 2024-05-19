@@ -1,0 +1,18 @@
+error[E0609]: no field `sleep` on type `&mut S`
+  --> $DIR/issue-67971.rs:5:9
+   |
+LL |     ctx.sleep = 0;
+   |         ^^^^^ unknown field
+
+error[E0308]: mismatched types
+  --> $DIR/issue-67971.rs:3:24
+   |
+LL | fn foo(ctx: &mut S) -> String {
+   |    ---                 ^^^^^^ expected `String`, found `()`
+   |    |
+   |    implicitly returns `()` as its body has no tail or `return` expression
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0308, E0609.
+For more information about an error, try `rustc --explain E0308`.

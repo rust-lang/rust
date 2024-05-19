@@ -1,2 +1,0 @@
-IDENT "r#raw_ident"
-WHITESPACE "\n"

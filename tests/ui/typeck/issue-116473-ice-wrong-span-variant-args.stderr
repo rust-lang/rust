@@ -1,0 +1,239 @@
+error[E0109]: type arguments are not allowed on this type
+  --> $DIR/issue-116473-ice-wrong-span-variant-args.rs:15:51
+   |
+LL |     () => (recursive_tt!(VariantB));
+   |                          -------- not allowed on this type
+LL |     ($variant:tt) => (if let EnumUnit::$variant::<i32, u32> {} = 5 { true } else { false });
+   |                                                   ^^^  ^^^ type argument not allowed
+...
+LL |     recursive_tt!();
+   |     --------------- in this macro invocation
+   |
+   = note: enum variants can't have type parameters
+   = note: this error originates in the macro `recursive_tt` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: you might have meant to specify type parameters on enum `Enum`
+   |
+LL -     ($variant:tt) => (if let EnumUnit::$variant::<i32, u32> {} = 5 { true } else { false });
+LL +     ($variant:tt) => (if let EnumUnit::<i32, u32>::$variant {} = 5 { true } else { false });
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/issue-116473-ice-wrong-span-variant-args.rs:15:30
+   |
+LL |     ($variant:tt) => (if let EnumUnit::$variant::<i32, u32> {} = 5 { true } else { false });
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^   - this expression has type `{integer}`
+   |                              |
+   |                              expected integer, found `Enum<(), ()>`
+...
+LL |     recursive_tt!();
+   |     --------------- in this macro invocation
+   |
+   = note: expected type `{integer}`
+              found enum `Enum<(), ()>`
+   = note: this error originates in the macro `recursive_tt` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0109]: type arguments are not allowed on this type
+  --> $DIR/issue-116473-ice-wrong-span-variant-args.rs:25:54
+   |
+LL |     () => (recursive_ident!(VariantB));
+   |                             -------- not allowed on this type
+LL |     ($variant:ident) => (if let EnumUnit::$variant::<i32, u32> {} = 5 { true } else { false });
+   |                                                      ^^^  ^^^ type argument not allowed
+...
+LL |     recursive_ident!();
+   |     ------------------ in this macro invocation
+   |
+   = note: enum variants can't have type parameters
+   = note: this error originates in the macro `recursive_ident` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: you might have meant to specify type parameters on enum `Enum`
+   |
+LL -     ($variant:ident) => (if let EnumUnit::$variant::<i32, u32> {} = 5 { true } else { false });
+LL +     ($variant:ident) => (if let EnumUnit::<i32, u32>::$variant {} = 5 { true } else { false });
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/issue-116473-ice-wrong-span-variant-args.rs:25:33
+   |
+LL |     ($variant:ident) => (if let EnumUnit::$variant::<i32, u32> {} = 5 { true } else { false });
+   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^   - this expression has type `{integer}`
+   |                                 |
+   |                                 expected integer, found `Enum<(), ()>`
+...
+LL |     recursive_ident!();
+   |     ------------------ in this macro invocation
+   |
+   = note: expected type `{integer}`
+              found enum `Enum<(), ()>`
+   = note: this error originates in the macro `recursive_ident` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0109]: type arguments are not allowed on this type
+  --> $DIR/issue-116473-ice-wrong-span-variant-args.rs:38:51
+   |
+LL |     () => (nested2_tt!(VariantB));
+   |                        -------- not allowed on this type
+...
+LL |     ($variant:tt) => (if let EnumUnit::$variant::<i32, u32> {} = 5 { true } else { false });
+   |                                                   ^^^  ^^^ type argument not allowed
+...
+LL |     nested1_tt!();
+   |     ------------- in this macro invocation
+   |
+   = note: enum variants can't have type parameters
+   = note: this error originates in the macro `nested2_tt` which comes from the expansion of the macro `nested1_tt` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: you might have meant to specify type parameters on enum `Enum`
+   |
+LL -     ($variant:tt) => (if let EnumUnit::$variant::<i32, u32> {} = 5 { true } else { false });
+LL +     ($variant:tt) => (if let EnumUnit::<i32, u32>::$variant {} = 5 { true } else { false });
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/issue-116473-ice-wrong-span-variant-args.rs:38:30
+   |
+LL |     ($variant:tt) => (if let EnumUnit::$variant::<i32, u32> {} = 5 { true } else { false });
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^   - this expression has type `{integer}`
+   |                              |
+   |                              expected integer, found `Enum<(), ()>`
+...
+LL |     nested1_tt!();
+   |     ------------- in this macro invocation
+   |
+   = note: expected type `{integer}`
+              found enum `Enum<(), ()>`
+   = note: this error originates in the macro `nested2_tt` which comes from the expansion of the macro `nested1_tt` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0109]: type arguments are not allowed on this type
+  --> $DIR/issue-116473-ice-wrong-span-variant-args.rs:51:54
+   |
+LL |     () => (nested2_ident!(VariantB));
+   |                           -------- not allowed on this type
+...
+LL |     ($variant:ident) => (if let EnumUnit::$variant::<i32, u32> {} = 5 { true } else { false });
+   |                                                      ^^^  ^^^ type argument not allowed
+...
+LL |     nested1_ident!();
+   |     ---------------- in this macro invocation
+   |
+   = note: enum variants can't have type parameters
+   = note: this error originates in the macro `nested2_ident` which comes from the expansion of the macro `nested1_ident` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: you might have meant to specify type parameters on enum `Enum`
+   |
+LL -     ($variant:ident) => (if let EnumUnit::$variant::<i32, u32> {} = 5 { true } else { false });
+LL +     ($variant:ident) => (if let EnumUnit::<i32, u32>::$variant {} = 5 { true } else { false });
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/issue-116473-ice-wrong-span-variant-args.rs:51:33
+   |
+LL |     ($variant:ident) => (if let EnumUnit::$variant::<i32, u32> {} = 5 { true } else { false });
+   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^   - this expression has type `{integer}`
+   |                                 |
+   |                                 expected integer, found `Enum<(), ()>`
+...
+LL |     nested1_ident!();
+   |     ---------------- in this macro invocation
+   |
+   = note: expected type `{integer}`
+              found enum `Enum<(), ()>`
+   = note: this error originates in the macro `nested2_ident` which comes from the expansion of the macro `nested1_ident` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0109]: type arguments are not allowed on this type
+  --> $DIR/issue-116473-ice-wrong-span-variant-args.rs:60:44
+   |
+LL |     () => (nested2_tt_args_in_first_macro!(i32, u32));
+   |                                            ^^^  ^^^ type argument not allowed
+...
+LL |     ($arg1:tt, $arg2:tt) => (if let EnumUnit::VariantB::<$arg1, $arg2> {}
+   |                                               -------- not allowed on this type
+...
+LL |     nested1_tt_args_in_first_macro!();
+   |     --------------------------------- in this macro invocation
+   |
+   = note: enum variants can't have type parameters
+   = note: this error originates in the macro `nested1_tt_args_in_first_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: you might have meant to specify type parameters on enum `Enum`
+   |
+LL -     ($arg1:tt, $arg2:tt) => (if let EnumUnit::VariantB::<$arg1, $arg2> {}
+LL +     ($arg1:tt, $arg2:tt) => (if let EnumUnit::<$arg1, $arg2>::VariantB {}
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/issue-116473-ice-wrong-span-variant-args.rs:65:37
+   |
+LL |     ($arg1:tt, $arg2:tt) => (if let EnumUnit::VariantB::<$arg1, $arg2> {}
+   |                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected integer, found `Enum<(), ()>`
+LL |
+LL |             = 5 { true } else { false });
+   |               - this expression has type `{integer}`
+...
+LL |     nested1_tt_args_in_first_macro!();
+   |     --------------------------------- in this macro invocation
+   |
+   = note: expected type `{integer}`
+              found enum `Enum<(), ()>`
+   = note: this error originates in the macro `nested2_tt_args_in_first_macro` which comes from the expansion of the macro `nested1_tt_args_in_first_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0109]: type arguments are not allowed on this type
+  --> $DIR/issue-116473-ice-wrong-span-variant-args.rs:77:64
+   |
+LL |     ($arg1:ident, $arg2:ident) => (if let EnumUnit::VariantB::<$arg1, $arg2> {}
+   |                                                     --------   ^^^^^  ^^^^^ type argument not allowed
+   |                                                     |
+   |                                                     not allowed on this type
+...
+LL |     nested1_ident_args_in_first_macro!();
+   |     ------------------------------------ in this macro invocation
+   |
+   = note: enum variants can't have type parameters
+   = note: this error originates in the macro `nested2_ident_args_in_first_macro` which comes from the expansion of the macro `nested1_ident_args_in_first_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: you might have meant to specify type parameters on enum `Enum`
+   |
+LL -     ($arg1:ident, $arg2:ident) => (if let EnumUnit::VariantB::<$arg1, $arg2> {}
+LL +     ($arg1:ident, $arg2:ident) => (if let EnumUnit::<$arg1, $arg2>::VariantB {}
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/issue-116473-ice-wrong-span-variant-args.rs:77:43
+   |
+LL |     ($arg1:ident, $arg2:ident) => (if let EnumUnit::VariantB::<$arg1, $arg2> {}
+   |                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected integer, found `Enum<(), ()>`
+...
+LL |         = 5 { true } else { false });
+   |           - this expression has type `{integer}`
+...
+LL |     nested1_ident_args_in_first_macro!();
+   |     ------------------------------------ in this macro invocation
+   |
+   = note: expected type `{integer}`
+              found enum `Enum<(), ()>`
+   = note: this error originates in the macro `nested2_ident_args_in_first_macro` which comes from the expansion of the macro `nested1_ident_args_in_first_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0109]: type arguments are not allowed on this type
+  --> $DIR/issue-116473-ice-wrong-span-variant-args.rs:93:33
+   |
+LL |     if let EnumUnit::VariantB::<i32, u32> {} = 5 { true } else { false };
+   |                      --------   ^^^  ^^^ type argument not allowed
+   |                      |
+   |                      not allowed on this type
+   |
+   = note: enum variants can't have type parameters
+help: you might have meant to specify type parameters on enum `Enum`
+   |
+LL -     if let EnumUnit::VariantB::<i32, u32> {} = 5 { true } else { false };
+LL +     if let EnumUnit::<i32, u32>::VariantB {} = 5 { true } else { false };
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/issue-116473-ice-wrong-span-variant-args.rs:93:12
+   |
+LL |     if let EnumUnit::VariantB::<i32, u32> {} = 5 { true } else { false };
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^   - this expression has type `{integer}`
+   |            |
+   |            expected integer, found `Enum<(), ()>`
+   |
+   = note: expected type `{integer}`
+              found enum `Enum<(), ()>`
+
+error: aborting due to 14 previous errors
+
+Some errors have detailed explanations: E0109, E0308.
+For more information about an error, try `rustc --explain E0109`.

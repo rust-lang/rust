@@ -1,0 +1,23 @@
+error[E0118]: no nominal type found for inherent implementation
+  --> $DIR/wrong-normalization.rs:16:1
+   |
+LL | impl <I8<{i8::MIN}> as Identity>::Identity {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl requires a nominal type
+   |
+   = note: either implement a trait on it or create a newtype to wrap it instead
+
+error[E0599]: no associated item named `MIN` found for type `i8` in the current scope
+  --> $DIR/wrong-normalization.rs:16:15
+   |
+LL | impl <I8<{i8::MIN}> as Identity>::Identity {
+   |               ^^^ associated item not found in `i8`
+   |
+help: you are looking for the module in `std`, not the primitive type
+   |
+LL | impl <I8<{std::i8::MIN}> as Identity>::Identity {
+   |           +++++
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0118, E0599.
+For more information about an error, try `rustc --explain E0118`.

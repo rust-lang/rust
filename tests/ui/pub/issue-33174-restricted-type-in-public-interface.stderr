@@ -1,0 +1,39 @@
+warning: type `Snail` is more private than the item `Helix_pomatia`
+  --> $DIR/issue-33174-restricted-type-in-public-interface.rs:17:1
+   |
+LL | pub type Helix_pomatia = Shell<Snail>;
+   | ^^^^^^^^^^^^^^^^^^^^^^ type alias `Helix_pomatia` is reachable at visibility `pub`
+   |
+note: but type `Snail` is only usable at visibility `pub(crate)`
+  --> $DIR/issue-33174-restricted-type-in-public-interface.rs:5:1
+   |
+LL | pub(crate) struct Snail;
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+   = note: `#[warn(private_interfaces)]` on by default
+
+warning: type `Turtle` is more private than the item `Dermochelys_coriacea`
+  --> $DIR/issue-33174-restricted-type-in-public-interface.rs:19:1
+   |
+LL | pub type Dermochelys_coriacea = Shell<sea::Turtle>;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type alias `Dermochelys_coriacea` is reachable at visibility `pub`
+   |
+note: but type `Turtle` is only usable at visibility `pub(crate)`
+  --> $DIR/issue-33174-restricted-type-in-public-interface.rs:8:5
+   |
+LL |     pub(super) struct Turtle;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: type `Tortoise` is more private than the item `Testudo_graeca`
+  --> $DIR/issue-33174-restricted-type-in-public-interface.rs:21:1
+   |
+LL | pub type Testudo_graeca = Shell<Tortoise>;
+   | ^^^^^^^^^^^^^^^^^^^^^^^ type alias `Testudo_graeca` is reachable at visibility `pub`
+   |
+note: but type `Tortoise` is only usable at visibility `pub(crate)`
+  --> $DIR/issue-33174-restricted-type-in-public-interface.rs:11:1
+   |
+LL | struct Tortoise;
+   | ^^^^^^^^^^^^^^^
+
+warning: 3 warnings emitted
+

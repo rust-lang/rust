@@ -1,0 +1,20 @@
+error[E0432]: unresolved import `extern_prelude`
+  --> $DIR/extern-prelude-fail.rs:7:9
+   |
+LL |     use extern_prelude::S;
+   |         ^^^^^^^^^^^^^^ maybe a missing crate `extern_prelude`?
+   |
+   = help: consider adding `extern crate extern_prelude` to use the `extern_prelude` crate
+
+error[E0433]: failed to resolve: maybe a missing crate `extern_prelude`?
+  --> $DIR/extern-prelude-fail.rs:8:15
+   |
+LL |     let s = ::extern_prelude::S;
+   |               ^^^^^^^^^^^^^^ maybe a missing crate `extern_prelude`?
+   |
+   = help: consider adding `extern crate extern_prelude` to use the `extern_prelude` crate
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0432, E0433.
+For more information about an error, try `rustc --explain E0432`.

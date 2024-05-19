@@ -1,0 +1,11 @@
+error: integer literal has a better hexadecimal representation
+  --> tests/ui-toml/decimal_literal_representation/decimal_literal_representation.rs:4:13
+   |
+LL |     let _ = 16777215;
+   |             ^^^^^^^^ help: consider: `0x00FF_FFFF`
+   |
+   = note: `-D clippy::decimal-literal-representation` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::decimal_literal_representation)]`
+
+error: aborting due to 1 previous error
+

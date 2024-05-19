@@ -1,0 +1,12 @@
+error: the `Err`-variant returned from this function is very large
+  --> tests/ui-toml/result_large_err/result_large_err.rs:6:12
+   |
+LL | fn f2() -> Result<(), [u8; 512]> {
+   |            ^^^^^^^^^^^^^^^^^^^^^ the `Err`-variant is at least 512 bytes
+   |
+   = help: try reducing the size of `[u8; 512]`, for example by boxing large elements or replacing it with `Box<[u8; 512]>`
+   = note: `-D clippy::result-large-err` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::result_large_err)]`
+
+error: aborting due to 1 previous error
+

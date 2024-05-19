@@ -1,0 +1,11 @@
+//@ run-rustfix
+fn main() {
+    'block: {
+        break 'block (); //~ ERROR `break` outside of a loop or labeled block
+    }
+    {
+        'block: {
+            break 'block (); //~ ERROR `break` outside of a loop or labeled block
+        }
+    }
+}

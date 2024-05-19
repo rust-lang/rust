@@ -1,0 +1,23 @@
+error[E0308]: mismatched types
+  --> tests/ui/crashes/ice-6250.rs:12:14
+   |
+LL |     for reference in vec![1, 2, 3] {
+   |         --------- expected due to the type of this binding
+...
+LL |         Some(reference) = cache.data.get(key) {
+   |              ^^^^^^^^^ expected integer, found `&i32`
+
+error[E0308]: mismatched types
+  --> tests/ui/crashes/ice-6250.rs:12:9
+   |
+LL |         Some(reference) = cache.data.get(key) {
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `bool`, found `()`
+   |
+help: consider adding `let`
+   |
+LL |         let Some(reference) = cache.data.get(key) {
+   |         +++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

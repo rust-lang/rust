@@ -1,0 +1,4 @@
+error: an empty renaming target was specified for library `foo`
+
+error: aborting due to 1 previous error
+

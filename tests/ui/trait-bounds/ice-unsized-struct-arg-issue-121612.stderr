@@ -1,0 +1,57 @@
+error[E0412]: cannot find type `Idx` in this scope
+  --> $DIR/ice-unsized-struct-arg-issue-121612.rs:5:30
+   |
+LL | struct MySlice<T: FnOnce(&T, Idx) -> Idx>(bool, T);
+   |                              ^^^ not found in this scope
+
+error[E0412]: cannot find type `Idx` in this scope
+  --> $DIR/ice-unsized-struct-arg-issue-121612.rs:5:38
+   |
+LL | struct MySlice<T: FnOnce(&T, Idx) -> Idx>(bool, T);
+   |                                      ^^^ not found in this scope
+
+error[E0277]: the size for values of type `[bool]` cannot be known at compilation time
+  --> $DIR/ice-unsized-struct-arg-issue-121612.rs:9:22
+   |
+LL | const MYSLICE_GOOD: &MySliceBool = &MySlice(true, [false]);
+   |                      ^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `[bool]`
+note: required by an implicit `Sized` bound in `MySlice`
+  --> $DIR/ice-unsized-struct-arg-issue-121612.rs:5:16
+   |
+LL | struct MySlice<T: FnOnce(&T, Idx) -> Idx>(bool, T);
+   |                ^ required by the implicit `Sized` requirement on this type parameter in `MySlice`
+help: you could relax the implicit `Sized` bound on `T` if it were used through indirection like `&T` or `Box<T>`
+  --> $DIR/ice-unsized-struct-arg-issue-121612.rs:5:16
+   |
+LL | struct MySlice<T: FnOnce(&T, Idx) -> Idx>(bool, T);
+   |                ^                                - ...if indirection were used here: `Box<T>`
+   |                |
+   |                this could be changed to `T: ?Sized`...
+
+error[E0277]: the size for values of type `[bool]` cannot be known at compilation time
+  --> $DIR/ice-unsized-struct-arg-issue-121612.rs:9:22
+   |
+LL | const MYSLICE_GOOD: &MySliceBool = &MySlice(true, [false]);
+   |                      ^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `[bool]`
+note: required by an implicit `Sized` bound in `MySlice`
+  --> $DIR/ice-unsized-struct-arg-issue-121612.rs:5:16
+   |
+LL | struct MySlice<T: FnOnce(&T, Idx) -> Idx>(bool, T);
+   |                ^ required by the implicit `Sized` requirement on this type parameter in `MySlice`
+help: you could relax the implicit `Sized` bound on `T` if it were used through indirection like `&T` or `Box<T>`
+  --> $DIR/ice-unsized-struct-arg-issue-121612.rs:5:16
+   |
+LL | struct MySlice<T: FnOnce(&T, Idx) -> Idx>(bool, T);
+   |                ^                                - ...if indirection were used here: `Box<T>`
+   |                |
+   |                this could be changed to `T: ?Sized`...
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0277, E0412.
+For more information about an error, try `rustc --explain E0277`.

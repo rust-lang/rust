@@ -1,0 +1,12 @@
+error[E0603]: module `index` is private
+  --> $DIR/private-trait-non-local.rs:2:18
+   |
+LL | use core::slice::index::private_slice_index::Sealed;
+   |                  ^^^^^ private module        ------ trait `Sealed` is not publicly re-exported
+   |
+note: the module `index` is defined here
+  --> $SRC_DIR/core/src/slice/mod.rs:LL:COL
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0603`.

@@ -1,0 +1,67 @@
+error: lifetime may not live long enough
+  --> $DIR/issue-79187-2.rs:11:24
+   |
+LL |     take_foo(|a: &i32| a);
+   |                  -   - ^ returning this value requires that `'1` must outlive `'2`
+   |                  |   |
+   |                  |   return type of closure is &'2 i32
+   |                  let's call the lifetime of this reference `'1`
+
+error: lifetime may not live long enough
+  --> $DIR/issue-79187-2.rs:14:34
+   |
+LL |     take_foo(|a: &i32| -> &i32 { a });
+   |                  -        -      ^ returning this value requires that `'1` must outlive `'2`
+   |                  |        |
+   |                  |        let's call the lifetime of this reference `'2`
+   |                  let's call the lifetime of this reference `'1`
+
+error: implementation of `FnOnce` is not general enough
+  --> $DIR/issue-79187-2.rs:8:5
+   |
+LL |     take_foo(|a| a);
+   |     ^^^^^^^^^^^^^^^ implementation of `FnOnce` is not general enough
+   |
+   = note: closure with signature `fn(&'2 i32) -> &i32` must implement `FnOnce<(&'1 i32,)>`, for any lifetime `'1`...
+   = note: ...but it actually implements `FnOnce<(&'2 i32,)>`, for some specific lifetime `'2`
+
+error: implementation of `Fn` is not general enough
+  --> $DIR/issue-79187-2.rs:8:5
+   |
+LL |     take_foo(|a| a);
+   |     ^^^^^^^^^^^^^^^ implementation of `Fn` is not general enough
+   |
+   = note: closure with signature `fn(&'2 i32) -> &i32` must implement `Fn<(&'1 i32,)>`, for any lifetime `'1`...
+   = note: ...but it actually implements `Fn<(&'2 i32,)>`, for some specific lifetime `'2`
+
+error[E0308]: mismatched types
+  --> $DIR/issue-79187-2.rs:11:5
+   |
+LL |     take_foo(|a: &i32| a);
+   |     ^^^^^^^^^^^^^^^^^^^^^ one type is more general than the other
+   |
+   = note: expected reference `&_`
+              found reference `&_`
+note: the lifetime requirement is introduced here
+  --> $DIR/issue-79187-2.rs:5:21
+   |
+LL | fn take_foo(_: impl Foo) {}
+   |                     ^^^
+
+error[E0308]: mismatched types
+  --> $DIR/issue-79187-2.rs:14:5
+   |
+LL |     take_foo(|a: &i32| -> &i32 { a });
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ one type is more general than the other
+   |
+   = note: expected reference `&_`
+              found reference `&_`
+note: the lifetime requirement is introduced here
+  --> $DIR/issue-79187-2.rs:5:21
+   |
+LL | fn take_foo(_: impl Foo) {}
+   |                     ^^^
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

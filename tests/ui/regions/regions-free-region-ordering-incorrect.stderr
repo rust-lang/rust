@@ -1,0 +1,17 @@
+error: lifetime may not live long enough
+  --> $DIR/regions-free-region-ordering-incorrect.rs:15:9
+   |
+LL |   impl<'b, T> Node<'b, T> {
+   |        -- lifetime `'b` defined here
+LL |       fn get<'a>(&'a self) -> &'b T {
+   |              -- lifetime `'a` defined here
+LL | /         match self.next {
+LL | |             Some(ref next) => next.get(),
+LL | |             None => &self.val
+LL | |         }
+   | |_________^ method was supposed to return data with lifetime `'b` but it is returning data with lifetime `'a`
+   |
+   = help: consider adding the following bound: `'a: 'b`
+
+error: aborting due to 1 previous error
+

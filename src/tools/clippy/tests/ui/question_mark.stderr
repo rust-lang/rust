@@ -1,0 +1,153 @@
+error: this block may be rewritten with the `?` operator
+  --> tests/ui/question_mark.rs:7:5
+   |
+LL | /     if a.is_none() {
+LL | |         return None;
+LL | |     }
+   | |_____^ help: replace it with: `a?;`
+   |
+   = note: `-D clippy::question-mark` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::question_mark)]`
+
+error: this block may be rewritten with the `?` operator
+  --> tests/ui/question_mark.rs:52:9
+   |
+LL | /         if (self.opt).is_none() {
+LL | |             return None;
+LL | |         }
+   | |_________^ help: replace it with: `(self.opt)?;`
+
+error: this block may be rewritten with the `?` operator
+  --> tests/ui/question_mark.rs:56:9
+   |
+LL | /         if self.opt.is_none() {
+LL | |             return None
+LL | |         }
+   | |_________^ help: replace it with: `self.opt?;`
+
+error: this block may be rewritten with the `?` operator
+  --> tests/ui/question_mark.rs:60:17
+   |
+LL |           let _ = if self.opt.is_none() {
+   |  _________________^
+LL | |             return None;
+LL | |         } else {
+LL | |             self.opt
+LL | |         };
+   | |_________^ help: replace it with: `Some(self.opt?)`
+
+error: this block may be rewritten with the `?` operator
+  --> tests/ui/question_mark.rs:66:17
+   |
+LL |           let _ = if let Some(x) = self.opt {
+   |  _________________^
+LL | |             x
+LL | |         } else {
+LL | |             return None;
+LL | |         };
+   | |_________^ help: replace it with: `self.opt?`
+
+error: this block may be rewritten with the `?` operator
+  --> tests/ui/question_mark.rs:83:9
+   |
+LL | /         if self.opt.is_none() {
+LL | |             return None;
+LL | |         }
+   | |_________^ help: replace it with: `self.opt.as_ref()?;`
+
+error: this block may be rewritten with the `?` operator
+  --> tests/ui/question_mark.rs:91:9
+   |
+LL | /         if self.opt.is_none() {
+LL | |             return None;
+LL | |         }
+   | |_________^ help: replace it with: `self.opt.as_ref()?;`
+
+error: this block may be rewritten with the `?` operator
+  --> tests/ui/question_mark.rs:99:9
+   |
+LL | /         if self.opt.is_none() {
+LL | |             return None;
+LL | |         }
+   | |_________^ help: replace it with: `self.opt.as_ref()?;`
+
+error: this block may be rewritten with the `?` operator
+  --> tests/ui/question_mark.rs:106:26
+   |
+LL |           let v: &Vec<_> = if let Some(ref v) = self.opt {
+   |  __________________________^
+LL | |             v
+LL | |         } else {
+LL | |             return None;
+LL | |         };
+   | |_________^ help: replace it with: `self.opt.as_ref()?`
+
+error: this block may be rewritten with the `?` operator
+  --> tests/ui/question_mark.rs:116:17
+   |
+LL |           let v = if let Some(v) = self.opt {
+   |  _________________^
+LL | |             v
+LL | |         } else {
+LL | |             return None;
+LL | |         };
+   | |_________^ help: replace it with: `self.opt?`
+
+error: this block may be rewritten with the `?` operator
+  --> tests/ui/question_mark.rs:131:5
+   |
+LL | /     if f().is_none() {
+LL | |         return None;
+LL | |     }
+   | |_____^ help: replace it with: `f()?;`
+
+error: this block may be rewritten with the `?` operator
+  --> tests/ui/question_mark.rs:143:13
+   |
+LL |     let _ = if let Ok(x) = x { x } else { return x };
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `x?`
+
+error: this block may be rewritten with the `?` operator
+  --> tests/ui/question_mark.rs:145:5
+   |
+LL | /     if x.is_err() {
+LL | |         return x;
+LL | |     }
+   | |_____^ help: replace it with: `x?;`
+
+error: this block may be rewritten with the `?` operator
+  --> tests/ui/question_mark.rs:213:5
+   |
+LL | /     if let Err(err) = func_returning_result() {
+LL | |         return Err(err);
+LL | |     }
+   | |_____^ help: replace it with: `func_returning_result()?;`
+
+error: this block may be rewritten with the `?` operator
+  --> tests/ui/question_mark.rs:220:5
+   |
+LL | /     if let Err(err) = func_returning_result() {
+LL | |         return Err(err);
+LL | |     }
+   | |_____^ help: replace it with: `func_returning_result()?;`
+
+error: this block may be rewritten with the `?` operator
+  --> tests/ui/question_mark.rs:297:13
+   |
+LL | /             if a.is_none() {
+LL | |                 return None;
+LL | |                 // do lint here, the outer `try` is not relevant here
+LL | |                 // https://github.com/rust-lang/rust-clippy/pull/11001#issuecomment-1610636867
+LL | |             }
+   | |_____________^ help: replace it with: `a?;`
+
+error: this `let...else` may be rewritten with the `?` operator
+  --> tests/ui/question_mark.rs:357:5
+   |
+LL | /     let Some(v) = bar.foo.owned.clone() else {
+LL | |         return None;
+LL | |     };
+   | |______^ help: replace it with: `let v = bar.foo.owned.clone()?;`
+
+error: aborting due to 17 previous errors
+

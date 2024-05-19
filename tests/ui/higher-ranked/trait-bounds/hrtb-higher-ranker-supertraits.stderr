@@ -1,0 +1,50 @@
+error: lifetime may not live long enough
+  --> $DIR/hrtb-higher-ranker-supertraits.rs:14:5
+   |
+LL | fn want_foo_for_some_tcx<'x, F: Foo<'x>>(f: &'x F) {
+   |                          -- lifetime `'x` defined here
+LL |     want_foo_for_some_tcx(f);
+LL |     want_foo_for_any_tcx(f);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ requires that `'x` must outlive `'static`
+   |
+note: due to current limitations in the borrow checker, this implies a `'static` lifetime
+  --> $DIR/hrtb-higher-ranker-supertraits.rs:19:28
+   |
+LL | fn want_foo_for_any_tcx<F: for<'tcx> Foo<'tcx>>(f: &F) {
+   |                            ^^^^^^^^^^^^^^^^^^^
+
+error: implementation of `Foo` is not general enough
+  --> $DIR/hrtb-higher-ranker-supertraits.rs:14:5
+   |
+LL |     want_foo_for_any_tcx(f);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ implementation of `Foo` is not general enough
+   |
+   = note: `F` must implement `Foo<'0>`, for any lifetime `'0`...
+   = note: ...but it actually implements `Foo<'1>`, for some specific lifetime `'1`
+
+error: lifetime may not live long enough
+  --> $DIR/hrtb-higher-ranker-supertraits.rs:29:5
+   |
+LL | fn want_bar_for_some_ccx<'x, B: Bar<'x>>(b: &B) {
+   |                          -- lifetime `'x` defined here
+...
+LL |     want_bar_for_any_ccx(b);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ requires that `'x` must outlive `'static`
+   |
+note: due to current limitations in the borrow checker, this implies a `'static` lifetime
+  --> $DIR/hrtb-higher-ranker-supertraits.rs:34:28
+   |
+LL | fn want_bar_for_any_ccx<B: for<'ccx> Bar<'ccx>>(b: &B) {
+   |                            ^^^^^^^^^^^^^^^^^^^
+
+error: implementation of `Bar` is not general enough
+  --> $DIR/hrtb-higher-ranker-supertraits.rs:29:5
+   |
+LL |     want_bar_for_any_ccx(b);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ implementation of `Bar` is not general enough
+   |
+   = note: `B` must implement `Bar<'0>`, for any lifetime `'0`...
+   = note: ...but it actually implements `Bar<'1>`, for some specific lifetime `'1`
+
+error: aborting due to 4 previous errors
+

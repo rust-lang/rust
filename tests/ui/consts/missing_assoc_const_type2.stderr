@@ -1,0 +1,8 @@
+error: missing type for `const` item
+  --> $DIR/missing_assoc_const_type2.rs:12:17
+   |
+LL |     const FIRST:  = 10;
+   |                 ^ help: provide a type for the associated constant: `u8`
+
+error: aborting due to 1 previous error
+

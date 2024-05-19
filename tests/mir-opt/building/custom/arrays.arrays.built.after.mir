@@ -1,0 +1,14 @@
+// MIR for `arrays` after built
+
+fn arrays() -> usize {
+    let mut _0: usize;
+    let mut _1: [i32; C];
+    let mut _2: usize;
+
+    bb0: {
+        _1 = [const 5_i32; C];
+        _2 = Len(_1);
+        _0 = _2;
+        return;
+    }
+}

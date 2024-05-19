@@ -1,0 +1,18 @@
+// MIR for `main` after AbortUnwindingCalls
+
+fn main() -> () {
+    let mut _0: ();
+    let _1: ();
+
+    bb0: {
+        StorageLive(_1);
+        _1 = const ();
+        asm!("", options(MAY_UNWIND)) -> [return: bb1, unwind terminate(abi)];
+    }
+
+    bb1: {
+        StorageDead(_1);
+        _0 = const ();
+        return;
+    }
+}

@@ -1,0 +1,10 @@
+error: proc macro panicked
+  --> $DIR/issue-76270-panic-in-libproc-macro.rs:11:1
+   |
+LL | proc_macro_panic::panic_in_libproc_macro!();
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: message: `""` is not a valid identifier
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,22 @@
+error: missing `for` in a trait impl
+  --> $DIR/issue-27255.rs:3:7
+   |
+LL | impl A .. {}
+   |       ^ help: add `for` here
+
+error: missing `for` in a trait impl
+  --> $DIR/issue-27255.rs:7:7
+   |
+LL | impl A      usize {}
+   |       ^^^^^^ help: add `for` here
+
+error: `impl Trait for .. {}` is an obsolete syntax
+  --> $DIR/issue-27255.rs:3:1
+   |
+LL | impl A .. {}
+   | ^^^^^^^^^^^^
+   |
+   = help: use `auto trait Trait {}` instead
+
+error: aborting due to 3 previous errors
+

@@ -1,0 +1,34 @@
+error: unconstrained opaque type
+  --> $DIR/issue-86800.rs:25:34
+   |
+LL | type TransactionFuture<'__, O> = impl '__ + Future<Output = TransactionResult<O>>;
+   |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `TransactionFuture` must be used in combination with a concrete type within the same module
+
+error[E0792]: expected generic lifetime parameter, found `'_`
+  --> $DIR/issue-86800.rs:34:5
+   |
+LL | type TransactionFuture<'__, O> = impl '__ + Future<Output = TransactionResult<O>>;
+   |                        --- this generic parameter must be used with a generic lifetime parameter
+...
+LL |     f
+   |     ^
+
+error[E0792]: expected generic lifetime parameter, found `'_`
+  --> $DIR/issue-86800.rs:42:5
+   |
+LL |   type TransactionFuture<'__, O> = impl '__ + Future<Output = TransactionResult<O>>;
+   |                          --- this generic parameter must be used with a generic lifetime parameter
+...
+LL | /     {
+LL | |
+LL | |         let mut conn = Connection {};
+LL | |         let mut transaction = TestTransaction { conn: &mut conn };
+LL | |         f(&mut transaction).await
+LL | |     }
+   | |_____^
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0792`.

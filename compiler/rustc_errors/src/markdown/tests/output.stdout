@@ -1,0 +1,35 @@
+[0m[0m[1m[4m[38;5;14mH1 Heading [0m[0m[1m[4m[38;5;14m]8;;http://docs.rs\with a link]8;;\[0m[0m[1m[4m[38;5;14m[0m
+[0mH1 content: [0m[0m[1msome words in bold[0m and [0m[0m[2mso does inline code[0m
+
+[0m[0m[4m[38;5;14mH2 Heading[0m[0m[4m[38;5;14m[0m
+[0mH2 content: [0m[0m[3msome words in italic[0m
+
+[0m[0m[3m[38;5;14mH3 Heading[0m[0m[3m[38;5;14m[0m
+[0mH3 content: [0m[0m[9mstrikethrough[0m text[0m
+
+[0m[0m[3m[4m[36mH4 Heading[0m[0m[3m[4m[36m[0m
+[0mH4 content: A [0m]8;;https://docs.rs\simple link]8;;\[0m and a [0m]8;;http://docs.rs\remote-link]8;;\[0m.[0m
+[0m--------------------------------------------------------------------------------------------------------------------------------------------[0m
+[0mA section break was above. We can also do paragraph breaks:[0m
+
+[0m(new paragraph) and unordered lists:[0m
+
+[0m*   [0mItem 1 in [0m[0m[2mcode[0m[0m[0m
+[0m*   [0mItem 2 in [0m[0m[3mitalics[0m[0m[0m
+
+[0mOr ordered:[0m
+
+[0m1.  [0mItem 1 in [0m[0m[1mbold[0m[0m[0m
+[0m2.  [0mItem 2 with some long lines that should wrap: Lorem ipsum dolor sit amet,[0m consectetur adipiscing elit. Aenean ac mattis nunc. Phasellus
+    elit quam,[0m pulvinar ac risus in, dictum vehicula turpis. Vestibulum neque est, accumsan[0m in cursus sit amet, dictum a nunc. Suspendisse
+    aliquet, lorem eu eleifend[0m accumsan, magna neque sodales nisi, a aliquet lectus leo eu sem.[0m[0m[0m
+[0m--------------------------------------------------------------------------------------------------------------------------------------------[0m
+[0m[0m[4m[38;5;14mCode[0m[0m[4m[38;5;14m[0m
+[0mBoth [0m[0m[2minline code[0m and code blocks are supported:[0m
+
+[0m[0m[2m/// A rust enum
+#[derive(Debug, PartialEq, Clone)]
+enum Foo {
+    /// Start of line
+    Bar
+}[0m[0m

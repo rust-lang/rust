@@ -1,0 +1,14 @@
+error[E0072]: recursive type `Foo` has infinite size
+  --> $DIR/issue-17431-7.rs:1:1
+   |
+LL | enum Foo { Voo(Option<Option<Foo>>) }
+   | ^^^^^^^^                     --- recursive without indirection
+   |
+help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to break the cycle
+   |
+LL | enum Foo { Voo(Option<Option<Box<Foo>>>) }
+   |                              ++++   +
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0072`.

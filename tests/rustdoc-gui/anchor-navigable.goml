@@ -1,0 +1,11 @@
+// The `impl Foo` heading underneath `Implementations` has a §
+// anchor to its left (used for linking to that heading). The anchor only shows
+// up when hovering the `impl Foo`. This test ensures there's no gap between the
+// anchor and the `impl Foo`. If there were a gap, this would cause an annoying
+// problem: you hover `impl Foo` to see the anchor, then when you move your
+// mouse to the left, the anchor disappears before you reach it.
+go-to: "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html"
+// We check that ".item-info" is bigger than its content.
+move-cursor-to: ".impl"
+assert-property: (".impl > a.anchor", {"offsetWidth": "8"})
+assert-css: (".impl > a.anchor", {"left": "-8px"})
