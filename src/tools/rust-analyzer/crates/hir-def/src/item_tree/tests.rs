@@ -427,10 +427,18 @@ fn generics_with_attributes() {
     check(
         r#"
 struct S<#[cfg(never)] T>;
+struct S<A, B, #[cfg(never)] C>;
+struct S<A, #[cfg(never)] B, C>;
         "#,
         expect![[r#"
             // AstId: 1
             pub(self) struct S<#[cfg(never)] T>;
+
+            // AstId: 2
+            pub(self) struct S<A, B, #[cfg(never)] C>;
+
+            // AstId: 3
+            pub(self) struct S<A, #[cfg(never)] B, C>;
         "#]],
     )
 }

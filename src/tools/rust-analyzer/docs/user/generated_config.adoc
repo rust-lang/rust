@@ -9,6 +9,11 @@ for enum variants.
 --
 Placeholder expression to use for missing expressions in assists.
 --
+[[rust-analyzer.assist.termSearch.fuel]]rust-analyzer.assist.termSearch.fuel (default: `400`)::
++
+--
+Term search fuel in "units of work" for assists (Defaults to 400).
+--
 [[rust-analyzer.cachePriming.enable]]rust-analyzer.cachePriming.enable (default: `true`)::
 +
 --
@@ -256,7 +261,7 @@ by changing `#rust-analyzer.check.invocationStrategy#` and
 If `$saved_file` is part of the command, rust-analyzer will pass
 the absolute path of the saved file to the provided command. This is
 intended to be used with non-Cargo build systems.
-Note that `$saved_file` is experimental and may be removed in the futureg.
+Note that `$saved_file` is experimental and may be removed in the future.
 
 An example command would be:
 
@@ -372,6 +377,11 @@ Custom completion snippets.
 +
 --
 Whether to enable term search based snippets like `Some(foo.bar().baz())`.
+--
+[[rust-analyzer.completion.termSearch.fuel]]rust-analyzer.completion.termSearch.fuel (default: `200`)::
++
+--
+Term search fuel in "units of work" for autocompletion (Defaults to 200).
 --
 [[rust-analyzer.diagnostics.disabled]]rust-analyzer.diagnostics.disabled (default: `[]`)::
 +
@@ -529,10 +539,15 @@ How to render the offset information in a memory layout hover.
 --
 How to render the size information in a memory layout hover.
 --
-[[rust-analyzer.hover.show.structFields]]rust-analyzer.hover.show.structFields (default: `null`)::
+[[rust-analyzer.hover.show.enumVariants]]rust-analyzer.hover.show.enumVariants (default: `5`)::
 +
 --
-How many fields of a struct to display when hovering a struct.
+How many variants of an enum to display when hovering on. Show none if empty.
+--
+[[rust-analyzer.hover.show.fields]]rust-analyzer.hover.show.fields (default: `5`)::
++
+--
+How many fields of a struct, variant or union to display when hovering on. Show none if empty.
 --
 [[rust-analyzer.hover.show.traitAssocItems]]rust-analyzer.hover.show.traitAssocItems (default: `null`)::
 +
@@ -778,7 +793,8 @@ Disable project auto-discovery in favor of explicitly specified set
 of projects.
 
 Elements must be paths pointing to `Cargo.toml`,
-`rust-project.json`, or JSON objects in `rust-project.json` format.
+`rust-project.json`, `.rs` files (which will be treated as standalone files) or JSON
+objects in `rust-project.json` format.
 --
 [[rust-analyzer.lru.capacity]]rust-analyzer.lru.capacity (default: `null`)::
 +

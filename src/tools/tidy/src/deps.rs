@@ -135,6 +135,7 @@ const EXCEPTIONS_RUST_ANALYZER: ExceptionList = &[
     // tidy-alphabetical-start
     ("dissimilar", "Apache-2.0"),
     ("notify", "CC0-1.0"),
+    ("option-ext", "MPL-2.0"),
     ("pulldown-cmark-to-cmark", "Apache-2.0"),
     ("rustc_apfloat", "Apache-2.0 WITH LLVM-exception"),
     ("ryu", "Apache-2.0 OR BSL-1.0"), // BSL is not acceptble, but we use it under Apache-2.0

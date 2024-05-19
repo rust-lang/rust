@@ -232,6 +232,7 @@ pub struct DiagnosticsConfig {
     pub insert_use: InsertUseConfig,
     pub prefer_no_std: bool,
     pub prefer_prelude: bool,
+    pub term_search_fuel: u64,
 }
 
 impl DiagnosticsConfig {
@@ -256,6 +257,7 @@ impl DiagnosticsConfig {
             },
             prefer_no_std: false,
             prefer_prelude: true,
+            term_search_fuel: 400,
         }
     }
 }
@@ -297,11 +299,10 @@ pub fn diagnostics(
 ) -> Vec<Diagnostic> {
     let _p = tracing::span!(tracing::Level::INFO, "diagnostics").entered();
     let sema = Semantics::new(db);
-    let parse = db.parse(file_id);
     let mut res = Vec::new();
 
     // [#34344] Only take first 128 errors to prevent slowing down editor/ide, the number 128 is chosen arbitrarily.
-    res.extend(parse.errors().into_iter().take(128).map(|err| {
+    res.extend(db.parse_errors(file_id).as_deref().into_iter().flatten().take(128).map(|err| {
         Diagnostic::new(
             DiagnosticCode::RustcHardError("syntax-error"),
             format!("Syntax Error: {err}"),
@@ -340,7 +341,8 @@ pub fn diagnostics(
             AnyDiagnostic::MacroDefError(d) => handlers::macro_error::macro_def_error(&ctx, &d),
             AnyDiagnostic::MacroError(d) => handlers::macro_error::macro_error(&ctx, &d),
             AnyDiagnostic::MacroExpansionParseError(d) => {
-                res.extend(d.errors.iter().take(32).map(|err| {
+                // FIXME: Point to the correct error span here, not just the macro-call name
+                res.extend(d.errors.iter().take(16).map(|err| {
                     {
                         Diagnostic::new(
                             DiagnosticCode::RustcHardError("syntax-error"),

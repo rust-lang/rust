@@ -230,7 +230,7 @@ config_data! {
         /// If `$saved_file` is part of the command, rust-analyzer will pass
         /// the absolute path of the saved file to the provided command. This is
         /// intended to be used with non-Cargo build systems.
-        /// Note that `$saved_file` is experimental and may be removed in the futureg.
+        /// Note that `$saved_file` is experimental and may be removed in the future.
         ///
         /// An example command would be:
         ///
@@ -315,8 +315,10 @@ config_data! {
         /// How to render the size information in a memory layout hover.
         hover_memoryLayout_size: Option<MemoryLayoutHoverRenderKindDef> = Some(MemoryLayoutHoverRenderKindDef::Both),
 
-        /// How many fields of a struct to display when hovering a struct.
-        hover_show_structFields: Option<usize> = None,
+        /// How many variants of an enum to display when hovering on. Show none if empty.
+        hover_show_enumVariants: Option<usize> = Some(5),
+        /// How many fields of a struct, variant or union to display when hovering on. Show none if empty.
+        hover_show_fields: Option<usize> = Some(5),
         /// How many associated items of a trait to display when hovering a trait.
         hover_show_traitAssocItems: Option<usize> = None,
 
@@ -356,7 +358,8 @@ config_data! {
         /// of projects.
         ///
         /// Elements must be paths pointing to `Cargo.toml`,
-        /// `rust-project.json`, or JSON objects in `rust-project.json` format.
+        /// `rust-project.json`, `.rs` files (which will be treated as standalone files) or JSON
+        /// objects in `rust-project.json` format.
         linkedProjects: Vec<ManifestOrProjectJson> = vec![],
 
         /// Number of syntax trees rust-analyzer keeps in memory. Defaults to 128.
@@ -451,6 +454,9 @@ config_data! {
     /// Local configurations can be overridden for every crate by placing a `rust-analyzer.toml` on crate root.
     /// A config is searched for by traversing a "config tree" in a bottom up fashion. It is chosen by the nearest first principle.
     local: struct LocalDefaultConfigData <- LocalConfigInput ->  {
+        /// Term search fuel in "units of work" for assists (Defaults to 400).
+        assist_termSearch_fuel: usize = 400,
+
         /// Toggles the additional completions that automatically add imports when completed.
         /// Note that your client must specify the `additionalTextEdits` LSP client capability to truly have this feature enabled.
         completion_autoimport_enable: bool       = true,
@@ -512,6 +518,8 @@ config_data! {
         }"#).unwrap(),
         /// Whether to enable term search based snippets like `Some(foo.bar().baz())`.
         completion_termSearch_enable: bool = false,
+        /// Term search fuel in "units of work" for autocompletion (Defaults to 200).
+        completion_termSearch_fuel: usize = 200,
 
         /// Enables highlighting of related references while the cursor is on `break`, `loop`, `while`, or `for` keywords.
         highlightRelated_breakPoints_enable: bool = true,
@@ -1012,6 +1020,7 @@ impl Config {
             prefer_no_std: self.imports_preferNoStd(source_root).to_owned(),
             assist_emit_must_use: self.assist_emitMustUse().to_owned(),
             prefer_prelude: self.imports_preferPrelude(source_root).to_owned(),
+            term_search_fuel: self.assist_termSearch_fuel(source_root).to_owned() as u64,
         }
     }
 
@@ -1045,6 +1054,7 @@ impl Config {
             snippets: self.snippets.clone().to_vec(),
             limit: self.completion_limit(source_root).to_owned(),
             enable_term_search: self.completion_termSearch_enable(source_root).to_owned(),
+            term_search_fuel: self.completion_termSearch_fuel(source_root).to_owned() as u64,
             prefer_prelude: self.imports_preferPrelude(source_root).to_owned(),
         }
     }
@@ -1064,6 +1074,7 @@ impl Config {
             prefer_no_std: self.imports_preferNoStd(source_root).to_owned(),
             prefer_prelude: self.imports_preferPrelude(source_root).to_owned(),
             style_lints: self.diagnostics_styleLints_enable().to_owned(),
+            term_search_fuel: self.assist_termSearch_fuel(source_root).to_owned() as u64,
         }
     }
     pub fn expand_proc_attr_macros(&self) -> bool {
@@ -1125,7 +1136,8 @@ impl Config {
             },
             keywords: self.hover_documentation_keywords_enable().to_owned(),
             max_trait_assoc_items_count: self.hover_show_traitAssocItems().to_owned(),
-            max_struct_field_count: self.hover_show_structFields().to_owned(),
+            max_fields_count: self.hover_show_fields().to_owned(),
+            max_enum_variants_count: self.hover_show_enumVariants().to_owned(),
         }
     }
 
@@ -1301,12 +1313,9 @@ impl Config {
                     self.files_excludeDirs().iter().map(|p| self.root_path.join(p)).collect();
                 self.discovered_projects
                     .iter()
-                    .filter(
-                        |(ProjectManifest::ProjectJson(path)
-                         | ProjectManifest::CargoToml(path))| {
-                            !exclude_dirs.iter().any(|p| path.starts_with(p))
-                        },
-                    )
+                    .filter(|project| {
+                        !exclude_dirs.iter().any(|p| project.manifest_path().starts_with(p))
+                    })
                     .cloned()
                     .map(LinkedProject::from)
                     .collect()
@@ -1322,7 +1331,7 @@ impl Config {
                             .map(Into::into)
                     }
                     ManifestOrProjectJson::ProjectJson(it) => {
-                        Some(ProjectJson::new(&self.root_path, it.clone()).into())
+                        Some(ProjectJson::new(None, &self.root_path, it.clone()).into())
                     }
                 })
                 .collect(),
@@ -1775,7 +1784,7 @@ impl Config {
 
     pub fn lens(&self) -> LensConfig {
         LensConfig {
-            run: *self.lens_run_enable(),
+            run: *self.lens_enable() && *self.lens_run_enable(),
             debug: *self.lens_enable() && *self.lens_debug_enable(),
             interpret: *self.lens_enable() && *self.lens_run_enable() && *self.interpret_tests(),
             implementations: *self.lens_enable() && *self.lens_implementations_enable(),

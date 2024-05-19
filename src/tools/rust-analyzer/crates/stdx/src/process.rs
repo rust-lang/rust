@@ -162,7 +162,7 @@ mod imp {
         pipe::NamedPipe,
         Overlapped,
     };
-    use winapi::shared::winerror::ERROR_BROKEN_PIPE;
+    use windows_sys::Win32::Foundation::ERROR_BROKEN_PIPE;
 
     struct Pipe<'a> {
         dst: &'a mut Vec<u8>,

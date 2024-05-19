@@ -17,6 +17,7 @@ use itertools::Itertools;
 use proc_macro_api::{MacroDylib, ProcMacroServer};
 use project_model::{CargoConfig, PackageRoot, ProjectManifest, ProjectWorkspace};
 use span::Span;
+use tracing::{instrument, Level};
 use vfs::{file_set::FileSetConfig, loader::Handle, AbsPath, AbsPathBuf, VfsPath};
 
 pub struct LoadCargoConfig {
@@ -50,6 +51,7 @@ pub fn load_workspace_at(
     load_workspace(workspace, &cargo_config.extra_env, load_config)
 }
 
+#[instrument(skip_all)]
 pub fn load_workspace(
     ws: ProjectWorkspace,
     extra_env: &FxHashMap<String, String>,
@@ -66,9 +68,9 @@ pub fn load_workspace(
     let proc_macro_server = match &load_config.with_proc_macro_server {
         ProcMacroServerChoice::Sysroot => ws
             .find_sysroot_proc_macro_srv()
-            .and_then(|it| ProcMacroServer::spawn(it, extra_env).map_err(Into::into)),
+            .and_then(|it| ProcMacroServer::spawn(&it, extra_env).map_err(Into::into)),
         ProcMacroServerChoice::Explicit(path) => {
-            ProcMacroServer::spawn(path.clone(), extra_env).map_err(Into::into)
+            ProcMacroServer::spawn(path, extra_env).map_err(Into::into)
         }
         ProcMacroServerChoice::None => Err(anyhow::format_err!("proc macro server disabled")),
     };
@@ -333,9 +335,7 @@ fn load_crate_graph(
     vfs: &mut vfs::Vfs,
     receiver: &Receiver<vfs::loader::Message>,
 ) -> RootDatabase {
-    let (ProjectWorkspace::Cargo { toolchain, target_layout, .. }
-    | ProjectWorkspace::Json { toolchain, target_layout, .. }
-    | ProjectWorkspace::DetachedFile { toolchain, target_layout, .. }) = ws;
+    let ProjectWorkspace { toolchain, target_layout, .. } = ws;
 
     let lru_cap = std::env::var("RA_LRU_CAP").ok().and_then(|it| it.parse::<usize>().ok());
     let mut db = RootDatabase::new(lru_cap);
@@ -352,6 +352,8 @@ fn load_crate_graph(
                 }
             }
             vfs::loader::Message::Loaded { files } | vfs::loader::Message::Changed { files } => {
+                let _p = tracing::span!(Level::INFO, "load_cargo::load_crate_craph/LoadedChanged")
+                    .entered();
                 for (path, contents) in files {
                     vfs.set_file_contents(path.into(), contents);
                 }
@@ -359,8 +361,8 @@ fn load_crate_graph(
         }
     }
     let changes = vfs.take_changes();
-    for file in changes {
-        if let vfs::Change::Create(v) | vfs::Change::Modify(v) = file.change {
+    for (_, file) in changes {
+        if let vfs::Change::Create(v, _) | vfs::Change::Modify(v, _) = file.change {
             if let Ok(text) = String::from_utf8(v) {
                 analysis_change.change_file(file.file_id, Some(text))
             }

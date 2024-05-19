@@ -95,45 +95,8 @@ impl RequestDispatcher<'_> {
         self
     }
 
-    /// Dispatches a non-latency-sensitive request onto the thread pool
-    /// without retrying it if it panics.
-    pub(crate) fn on_no_retry<R>(
-        &mut self,
-        f: fn(GlobalStateSnapshot, R::Params) -> anyhow::Result<R::Result>,
-    ) -> &mut Self
-    where
-        R: lsp_types::request::Request + 'static,
-        R::Params: DeserializeOwned + panic::UnwindSafe + Send + fmt::Debug,
-        R::Result: Serialize,
-    {
-        let (req, params, panic_context) = match self.parse::<R>() {
-            Some(it) => it,
-            None => return self,
-        };
-
-        self.global_state.task_pool.handle.spawn(ThreadIntent::Worker, {
-            let world = self.global_state.snapshot();
-            move || {
-                let result = panic::catch_unwind(move || {
-                    let _pctx = stdx::panic_context::enter(panic_context);
-                    f(world, params)
-                });
-                match thread_result_to_response::<R>(req.id.clone(), result) {
-                    Ok(response) => Task::Response(response),
-                    Err(_) => Task::Response(lsp_server::Response::new_err(
-                        req.id,
-                        lsp_server::ErrorCode::ContentModified as i32,
-                        "content modified".to_owned(),
-                    )),
-                }
-            }
-        });
-
-        self
-    }
-
     /// Dispatches a non-latency-sensitive request onto the thread pool.
-    pub(crate) fn on<R>(
+    pub(crate) fn on<const ALLOW_RETRYING: bool, R>(
         &mut self,
         f: fn(GlobalStateSnapshot, R::Params) -> anyhow::Result<R::Result>,
     ) -> &mut Self
@@ -142,11 +105,11 @@ impl RequestDispatcher<'_> {
         R::Params: DeserializeOwned + panic::UnwindSafe + Send + fmt::Debug,
         R::Result: Serialize,
     {
-        self.on_with_thread_intent::<true, R>(ThreadIntent::Worker, f)
+        self.on_with_thread_intent::<true, ALLOW_RETRYING, R>(ThreadIntent::Worker, f)
     }
 
     /// Dispatches a latency-sensitive request onto the thread pool.
-    pub(crate) fn on_latency_sensitive<R>(
+    pub(crate) fn on_latency_sensitive<const ALLOW_RETRYING: bool, R>(
         &mut self,
         f: fn(GlobalStateSnapshot, R::Params) -> anyhow::Result<R::Result>,
     ) -> &mut Self
@@ -155,7 +118,7 @@ impl RequestDispatcher<'_> {
         R::Params: DeserializeOwned + panic::UnwindSafe + Send + fmt::Debug,
         R::Result: Serialize,
     {
-        self.on_with_thread_intent::<true, R>(ThreadIntent::LatencySensitive, f)
+        self.on_with_thread_intent::<true, ALLOW_RETRYING, R>(ThreadIntent::LatencySensitive, f)
     }
 
     /// Formatting requests should never block on waiting a for task thread to open up, editors will wait
@@ -170,7 +133,7 @@ impl RequestDispatcher<'_> {
         R::Params: DeserializeOwned + panic::UnwindSafe + Send + fmt::Debug,
         R::Result: Serialize,
     {
-        self.on_with_thread_intent::<false, R>(ThreadIntent::LatencySensitive, f)
+        self.on_with_thread_intent::<false, false, R>(ThreadIntent::LatencySensitive, f)
     }
 
     pub(crate) fn finish(&mut self) {
@@ -185,7 +148,7 @@ impl RequestDispatcher<'_> {
         }
     }
 
-    fn on_with_thread_intent<const MAIN_POOL: bool, R>(
+    fn on_with_thread_intent<const MAIN_POOL: bool, const ALLOW_RETRYING: bool, R>(
         &mut self,
         intent: ThreadIntent,
         f: fn(GlobalStateSnapshot, R::Params) -> anyhow::Result<R::Result>,
@@ -215,7 +178,12 @@ impl RequestDispatcher<'_> {
             });
             match thread_result_to_response::<R>(req.id.clone(), result) {
                 Ok(response) => Task::Response(response),
-                Err(_) => Task::Retry(req),
+                Err(_cancelled) if ALLOW_RETRYING => Task::Retry(req),
+                Err(_cancelled) => Task::Response(lsp_server::Response::new_err(
+                    req.id,
+                    lsp_server::ErrorCode::ContentModified as i32,
+                    "content modified".to_owned(),
+                )),
             }
         });
 

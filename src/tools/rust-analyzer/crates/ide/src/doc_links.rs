@@ -214,8 +214,9 @@ pub(crate) fn resolve_doc_path_for_def(
         Definition::SelfType(it) => it.resolve_doc_path(db, link, ns),
         Definition::ExternCrateDecl(it) => it.resolve_doc_path(db, link, ns),
         Definition::BuiltinAttr(_)
-        | Definition::ToolModule(_)
         | Definition::BuiltinType(_)
+        | Definition::BuiltinLifetime(_)
+        | Definition::ToolModule(_)
         | Definition::TupleField(_)
         | Definition::Local(_)
         | Definition::GenericParam(_)
@@ -648,6 +649,7 @@ fn filename_and_frag_for_def(
         | Definition::TupleField(_)
         | Definition::Label(_)
         | Definition::BuiltinAttr(_)
+        | Definition::BuiltinLifetime(_)
         | Definition::ToolModule(_)
         | Definition::DeriveHelper(_) => return None,
     };

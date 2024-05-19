@@ -368,7 +368,7 @@ fn render_resolution_pat(
     import_to_add: Option<LocatedImport>,
     resolution: ScopeDef,
 ) -> Builder {
-    let _p = tracing::span!(tracing::Level::INFO, "render_resolution").entered();
+    let _p = tracing::span!(tracing::Level::INFO, "render_resolution_pat").entered();
     use hir::ModuleDef::*;
 
     if let ScopeDef::ModuleDef(Macro(mac)) = resolution {
@@ -386,7 +386,7 @@ fn render_resolution_path(
     import_to_add: Option<LocatedImport>,
     resolution: ScopeDef,
 ) -> Builder {
-    let _p = tracing::span!(tracing::Level::INFO, "render_resolution").entered();
+    let _p = tracing::span!(tracing::Level::INFO, "render_resolution_path").entered();
     use hir::ModuleDef::*;
 
     match resolution {
@@ -494,7 +494,7 @@ fn render_resolution_simple_(
     import_to_add: Option<LocatedImport>,
     resolution: ScopeDef,
 ) -> Builder {
-    let _p = tracing::span!(tracing::Level::INFO, "render_resolution").entered();
+    let _p = tracing::span!(tracing::Level::INFO, "render_resolution_simple_").entered();
 
     let db = ctx.db();
     let ctx = ctx.import_to_add(import_to_add);
@@ -1731,6 +1731,51 @@ fn foo(a: A) { B { bar: a.$0 }; }
     }
 
     #[test]
+    fn tuple_field_detail() {
+        check(
+            r#"
+struct S(i32);
+
+fn f() -> i32 {
+    let s = S(0);
+    s.0$0
+}
+"#,
+            SymbolKind::Field,
+            expect![[r#"
+                [
+                    CompletionItem {
+                        label: "0",
+                        source_range: 56..57,
+                        delete: 56..57,
+                        insert: "0",
+                        kind: SymbolKind(
+                            Field,
+                        ),
+                        detail: "i32",
+                        relevance: CompletionRelevance {
+                            exact_name_match: false,
+                            type_match: Some(
+                                Exact,
+                            ),
+                            is_local: false,
+                            is_item_from_trait: false,
+                            is_item_from_notable_trait: false,
+                            is_name_already_imported: false,
+                            requires_import: false,
+                            is_op_method: false,
+                            is_private_editable: false,
+                            postfix_match: None,
+                            is_definite: false,
+                            function: None,
+                        },
+                    },
+                ]
+            "#]],
+        );
+    }
+
+    #[test]
     fn record_field_and_call_relevances() {
         check_relevance(
             r#"
@@ -1808,8 +1853,7 @@ fn f() { A { bar: b$0 }; }
                 fn baz() [type]
                 ex baz() [type]
                 ex bar() [type]
-                ex A { bar: baz() }.bar [type]
-                ex A { bar: bar() }.bar [type]
+                ex A { bar: ... }.bar [type]
                 st A []
                 fn f() []
             "#]],
@@ -1947,8 +1991,8 @@ fn main() {
 }
             "#,
             expect![[r#"
-                ex core::ops::Deref::deref(&T(S)) (use core::ops::Deref) [type_could_unify]
                 ex core::ops::Deref::deref(&t) (use core::ops::Deref) [type_could_unify]
+                ex core::ops::Deref::deref(&T(S)) (use core::ops::Deref) [type_could_unify]
                 lc m [local]
                 lc t [local]
                 lc &t [type+local]
@@ -1997,8 +2041,8 @@ fn main() {
 }
             "#,
             expect![[r#"
-                ex core::ops::DerefMut::deref_mut(&mut T(S)) (use core::ops::DerefMut) [type_could_unify]
                 ex core::ops::DerefMut::deref_mut(&mut t) (use core::ops::DerefMut) [type_could_unify]
+                ex core::ops::DerefMut::deref_mut(&mut T(S)) (use core::ops::DerefMut) [type_could_unify]
                 lc m [local]
                 lc t [local]
                 lc &mut t [type+local]

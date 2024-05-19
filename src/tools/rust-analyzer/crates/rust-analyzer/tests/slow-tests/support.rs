@@ -185,11 +185,7 @@ impl Project<'_> {
             roots,
             None,
         );
-        // TODO: don't hardcode src/lib.rs as detached file
-        let mut c = self.config;
-        let p = tmp_dir_path.join("src/lib.rs").to_string();
-        c["detachedFiles"] = serde_json::json!([p]);
-        config.update(c).expect("invalid config");
+        config.update(self.config).expect("invalid config");
         config.rediscover_workspaces();
 
         Server::new(tmp_dir.keep(), config)

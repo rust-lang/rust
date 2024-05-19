@@ -144,6 +144,7 @@ MIT OR Apache-2.0
 MIT OR Apache-2.0 OR Zlib
 MIT OR Zlib OR Apache-2.0
 MIT/Apache-2.0
+MPL-2.0
 Unlicense OR MIT
 Unlicense/MIT
 Zlib OR Apache-2.0 OR MIT

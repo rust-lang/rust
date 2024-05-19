@@ -27,7 +27,7 @@ pub(crate) fn render_variant_lit(
     variant: hir::Variant,
     path: Option<hir::ModPath>,
 ) -> Option<Builder> {
-    let _p = tracing::span!(tracing::Level::INFO, "render_enum_variant").entered();
+    let _p = tracing::span!(tracing::Level::INFO, "render_variant_lit").entered();
     let db = ctx.db();
 
     let name = local_name.unwrap_or_else(|| variant.name(db));

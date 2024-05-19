@@ -1,6 +1,6 @@
 //! rust-analyzer is lazy and doesn't compute anything unless asked. This
 //! sometimes is counter productive when, for example, the first goto definition
-//! request takes longer to compute. This modules implemented prepopulation of
+//! request takes longer to compute. This module implements prepopulation of
 //! various caches, it's not really advanced at the moment.
 mod topologic_sort;
 
@@ -32,7 +32,7 @@ pub fn parallel_prime_caches(
     num_worker_threads: u8,
     cb: &(dyn Fn(ParallelPrimeCachesProgress) + Sync),
 ) {
-    let _p = tracing::span!(tracing::Level::INFO, "prime_caches").entered();
+    let _p = tracing::span!(tracing::Level::INFO, "parallel_prime_caches").entered();
 
     let graph = db.crate_graph();
     let mut crates_to_prime = {

@@ -56,6 +56,7 @@ use serde::{de, Deserialize, Serialize};
 use span::Edition;
 
 use crate::cfg::CfgFlag;
+use crate::ManifestPath;
 
 /// Roots and crates that compose this Rust project.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -65,6 +66,7 @@ pub struct ProjectJson {
     /// e.g. `path/to/sysroot/lib/rustlib/src/rust`
     pub(crate) sysroot_src: Option<AbsPathBuf>,
     project_root: AbsPathBuf,
+    manifest: Option<ManifestPath>,
     crates: Vec<Crate>,
 }
 
@@ -96,12 +98,17 @@ impl ProjectJson {
     /// * `base` - The path to the workspace root (i.e. the folder containing `rust-project.json`)
     /// * `data` - The parsed contents of `rust-project.json`, or project json that's passed via
     ///            configuration.
-    pub fn new(base: &AbsPath, data: ProjectJsonData) -> ProjectJson {
+    pub fn new(
+        manifest: Option<ManifestPath>,
+        base: &AbsPath,
+        data: ProjectJsonData,
+    ) -> ProjectJson {
         let absolutize_on_base = |p| base.absolutize(p);
         ProjectJson {
             sysroot: data.sysroot.map(absolutize_on_base),
             sysroot_src: data.sysroot_src.map(absolutize_on_base),
             project_root: base.to_path_buf(),
+            manifest,
             crates: data
                 .crates
                 .into_iter()
@@ -158,6 +165,11 @@ impl ProjectJson {
     /// Returns the path to the project's root folder.
     pub fn path(&self) -> &AbsPath {
         &self.project_root
+    }
+
+    /// Returns the path to the project's manifest or root folder, if no manifest exists.
+    pub fn manifest_or_root(&self) -> &AbsPath {
+        self.manifest.as_ref().map_or(&self.project_root, |manifest| manifest.as_ref())
     }
 }
 

@@ -4,7 +4,7 @@
 //! but we can't process `.rlib` and need source code instead. The source code
 //! is typically installed with `rustup component add rust-src` command.
 
-use std::{env, fs, iter, ops, process::Command, sync::Arc};
+use std::{env, fs, ops, process::Command, sync::Arc};
 
 use anyhow::{format_err, Result};
 use base_db::CrateName;
@@ -58,13 +58,11 @@ impl Stitched {
     pub(crate) fn public_deps(&self) -> impl Iterator<Item = (CrateName, SysrootCrate, bool)> + '_ {
         // core is added as a dependency before std in order to
         // mimic rustcs dependency order
-        ["core", "alloc", "std"]
-            .into_iter()
-            .zip(iter::repeat(true))
-            .chain(iter::once(("test", false)))
-            .filter_map(move |(name, prelude)| {
+        [("core", true), ("alloc", false), ("std", true), ("test", false)].into_iter().filter_map(
+            move |(name, prelude)| {
                 Some((CrateName::new(name).unwrap(), self.by_name(name)?, prelude))
-            })
+            },
+        )
     }
 
     pub(crate) fn proc_macro(&self) -> Option<SysrootCrate> {
@@ -130,6 +128,24 @@ impl Sysroot {
             Some(format!("could not find libcore in loaded sysroot at `{}`{var_note}", src_root,))
         } else {
             None
+        }
+    }
+
+    pub fn check_has_core(&self) -> Result<(), String> {
+        let Some(Ok(src_root)) = &self.src_root else { return Ok(()) };
+        let has_core = match &self.mode {
+            SysrootMode::Workspace(ws) => ws.packages().any(|p| ws[p].name == "core"),
+            SysrootMode::Stitched(stitched) => stitched.by_name("core").is_some(),
+        };
+        if !has_core {
+            let var_note = if env::var_os("RUST_SRC_PATH").is_some() {
+                " (`RUST_SRC_PATH` might be incorrect, try unsetting it)"
+            } else {
+                " try running `rustup component add rust-src` to possible fix this"
+            };
+            Err(format!("could not find libcore in loaded sysroot at `{}`{var_note}", src_root,))
+        } else {
+            Ok(())
         }
     }
 
@@ -349,7 +365,7 @@ impl Sysroot {
                     .filter(|&package| RELEVANT_SYSROOT_CRATES.contains(&&*package.name))
                     .map(|package| package.id.clone())
                     .collect();
-                let cargo_workspace = CargoWorkspace::new(res);
+                let cargo_workspace = CargoWorkspace::new(res, sysroot_cargo_toml);
                 Some(Sysroot {
                     root: sysroot_dir.clone(),
                     src_root: Some(Ok(sysroot_src_dir.clone())),
@@ -368,7 +384,7 @@ impl Sysroot {
                 .into_iter()
                 .map(|it| sysroot_src_dir.join(it))
                 .filter_map(|it| ManifestPath::try_from(it).ok())
-                .find(|it| fs::metadata(it).is_ok());
+                .find(|it| fs::metadata(it.as_ref()).is_ok());
 
             if let Some(root) = root {
                 stitched.crates.alloc(SysrootCrateData {
@@ -468,7 +484,7 @@ fn get_rustc_src(sysroot_path: &AbsPath) -> Option<ManifestPath> {
     let rustc_src = sysroot_path.join("lib/rustlib/rustc-src/rust/compiler/rustc/Cargo.toml");
     let rustc_src = ManifestPath::try_from(rustc_src).ok()?;
     tracing::debug!("checking for rustc source code: {rustc_src}");
-    if fs::metadata(&rustc_src).is_ok() {
+    if fs::metadata(rustc_src.as_ref()).is_ok() {
         Some(rustc_src)
     } else {
         None

@@ -6,7 +6,7 @@ use base_db::CrateId;
 use cfg::{CfgExpr, CfgOptions};
 use hir_expand::{attrs::AttrId, ErasedAstId, MacroCallKind};
 use la_arena::Idx;
-use syntax::{ast, SyntaxError};
+use syntax::ast;
 
 use crate::{
     item_tree::{self, ItemTreeId},
@@ -23,8 +23,6 @@ pub enum DefDiagnosticKind {
     UnconfiguredCode { ast: ErasedAstId, cfg: CfgExpr, opts: CfgOptions },
     UnresolvedProcMacro { ast: MacroCallKind, krate: CrateId },
     UnresolvedMacroCall { ast: MacroCallKind, path: ModPath },
-    MacroError { ast: MacroCallKind, message: String },
-    MacroExpansionParseError { ast: MacroCallKind, errors: Box<[SyntaxError]> },
     UnimplementedBuiltinMacro { ast: AstId<ast::Macro> },
     InvalidDeriveTarget { ast: AstId<ast::Item>, id: usize },
     MalformedDerive { ast: AstId<ast::Adt>, id: usize },
@@ -98,31 +96,12 @@ impl DefDiagnostic {
     // FIXME: This is used for a lot of things, unresolved proc macros, disabled proc macros, etc
     // yet the diagnostic handler in ide-diagnostics has to figure out what happened because this
     // struct loses all that information!
-    pub(crate) fn unresolved_proc_macro(
+    pub fn unresolved_proc_macro(
         container: LocalModuleId,
         ast: MacroCallKind,
         krate: CrateId,
     ) -> Self {
         Self { in_module: container, kind: DefDiagnosticKind::UnresolvedProcMacro { ast, krate } }
-    }
-
-    pub(crate) fn macro_error(
-        container: LocalModuleId,
-        ast: MacroCallKind,
-        message: String,
-    ) -> Self {
-        Self { in_module: container, kind: DefDiagnosticKind::MacroError { ast, message } }
-    }
-
-    pub(crate) fn macro_expansion_parse_error(
-        container: LocalModuleId,
-        ast: MacroCallKind,
-        errors: Box<[SyntaxError]>,
-    ) -> Self {
-        Self {
-            in_module: container,
-            kind: DefDiagnosticKind::MacroExpansionParseError { ast, errors },
-        }
     }
 
     // FIXME: Whats the difference between this and unresolved_proc_macro

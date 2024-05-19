@@ -52,13 +52,15 @@ pub use crate::{
     manifest_path::ManifestPath,
     project_json::{ProjectJson, ProjectJsonData},
     sysroot::Sysroot,
-    workspace::{FileLoader, PackageRoot, ProjectWorkspace},
+    workspace::{FileLoader, PackageRoot, ProjectWorkspace, ProjectWorkspaceKind},
 };
+pub use cargo_metadata::Metadata;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Ord, PartialOrd)]
 pub enum ProjectManifest {
     ProjectJson(ManifestPath),
     CargoToml(ManifestPath),
+    CargoScript(ManifestPath),
 }
 
 impl ProjectManifest {
@@ -71,7 +73,10 @@ impl ProjectManifest {
         if path.file_name().unwrap_or_default() == "Cargo.toml" {
             return Ok(ProjectManifest::CargoToml(path));
         }
-        bail!("project root must point to Cargo.toml or rust-project.json: {path}");
+        if path.extension().unwrap_or_default() == "rs" {
+            return Ok(ProjectManifest::CargoScript(path));
+        }
+        bail!("project root must point to a Cargo.toml, rust-project.json or <script>.rs file: {path}");
     }
 
     pub fn discover_single(path: &AbsPath) -> anyhow::Result<ProjectManifest> {
@@ -146,15 +151,19 @@ impl ProjectManifest {
         res.sort();
         res
     }
+
+    pub fn manifest_path(&self) -> &ManifestPath {
+        match self {
+            ProjectManifest::ProjectJson(it)
+            | ProjectManifest::CargoToml(it)
+            | ProjectManifest::CargoScript(it) => it,
+        }
+    }
 }
 
 impl fmt::Display for ProjectManifest {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            ProjectManifest::ProjectJson(it) | ProjectManifest::CargoToml(it) => {
-                fmt::Display::fmt(&it, f)
-            }
-        }
+        fmt::Display::fmt(self.manifest_path(), f)
     }
 }
 

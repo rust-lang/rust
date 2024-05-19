@@ -6,7 +6,7 @@ use std::{
 };
 
 use rustc_lexer::unescape::{
-    unescape_byte, unescape_char, unescape_mixed, unescape_unicode, MixedUnit, Mode,
+    unescape_byte, unescape_char, unescape_mixed, unescape_unicode, EscapeError, MixedUnit, Mode,
 };
 
 use crate::{
@@ -180,10 +180,7 @@ pub trait IsString: AstToken {
     fn close_quote_text_range(&self) -> Option<TextRange> {
         self.quote_offsets().map(|it| it.quotes.1)
     }
-    fn escaped_char_ranges(
-        &self,
-        cb: &mut dyn FnMut(TextRange, Result<char, rustc_lexer::unescape::EscapeError>),
-    ) {
+    fn escaped_char_ranges(&self, cb: &mut dyn FnMut(TextRange, Result<char, EscapeError>)) {
         let text_range_no_quotes = match self.text_range_between_quotes() {
             Some(it) => it,
             None => return,
@@ -212,20 +209,17 @@ impl IsString for ast::String {
 }
 
 impl ast::String {
-    pub fn value(&self) -> Option<Cow<'_, str>> {
-        if self.is_raw() {
-            let text = self.text();
-            let text =
-                &text[self.text_range_between_quotes()? - self.syntax().text_range().start()];
-            return Some(Cow::Borrowed(text));
-        }
-
+    pub fn value(&self) -> Result<Cow<'_, str>, EscapeError> {
         let text = self.text();
-        let text = &text[self.text_range_between_quotes()? - self.syntax().text_range().start()];
+        let text_range = self.text_range_between_quotes().ok_or(EscapeError::LoneSlash)?;
+        let text = &text[text_range - self.syntax().text_range().start()];
+        if self.is_raw() {
+            return Ok(Cow::Borrowed(text));
+        }
 
         let mut buf = String::new();
         let mut prev_end = 0;
-        let mut has_error = false;
+        let mut has_error = None;
         unescape_unicode(text, Self::MODE, &mut |char_range, unescaped_char| match (
             unescaped_char,
             buf.capacity() == 0,
@@ -239,13 +233,13 @@ impl ast::String {
                 buf.push_str(&text[..prev_end]);
                 buf.push(c);
             }
-            (Err(_), _) => has_error = true,
+            (Err(e), _) => has_error = Some(e),
         });
 
         match (has_error, buf.capacity() == 0) {
-            (true, _) => None,
-            (false, true) => Some(Cow::Borrowed(text)),
-            (false, false) => Some(Cow::Owned(buf)),
+            (Some(e), _) => Err(e),
+            (None, true) => Ok(Cow::Borrowed(text)),
+            (None, false) => Ok(Cow::Owned(buf)),
         }
     }
 }
@@ -256,20 +250,17 @@ impl IsString for ast::ByteString {
 }
 
 impl ast::ByteString {
-    pub fn value(&self) -> Option<Cow<'_, [u8]>> {
-        if self.is_raw() {
-            let text = self.text();
-            let text =
-                &text[self.text_range_between_quotes()? - self.syntax().text_range().start()];
-            return Some(Cow::Borrowed(text.as_bytes()));
-        }
-
+    pub fn value(&self) -> Result<Cow<'_, [u8]>, EscapeError> {
         let text = self.text();
-        let text = &text[self.text_range_between_quotes()? - self.syntax().text_range().start()];
+        let text_range = self.text_range_between_quotes().ok_or(EscapeError::LoneSlash)?;
+        let text = &text[text_range - self.syntax().text_range().start()];
+        if self.is_raw() {
+            return Ok(Cow::Borrowed(text.as_bytes()));
+        }
 
         let mut buf: Vec<u8> = Vec::new();
         let mut prev_end = 0;
-        let mut has_error = false;
+        let mut has_error = None;
         unescape_unicode(text, Self::MODE, &mut |char_range, unescaped_char| match (
             unescaped_char,
             buf.capacity() == 0,
@@ -283,13 +274,13 @@ impl ast::ByteString {
                 buf.extend_from_slice(text[..prev_end].as_bytes());
                 buf.push(c as u8);
             }
-            (Err(_), _) => has_error = true,
+            (Err(e), _) => has_error = Some(e),
         });
 
         match (has_error, buf.capacity() == 0) {
-            (true, _) => None,
-            (false, true) => Some(Cow::Borrowed(text.as_bytes())),
-            (false, false) => Some(Cow::Owned(buf)),
+            (Some(e), _) => Err(e),
+            (None, true) => Ok(Cow::Borrowed(text.as_bytes())),
+            (None, false) => Ok(Cow::Owned(buf)),
         }
     }
 }
@@ -298,10 +289,7 @@ impl IsString for ast::CString {
     const RAW_PREFIX: &'static str = "cr";
     const MODE: Mode = Mode::CStr;
 
-    fn escaped_char_ranges(
-        &self,
-        cb: &mut dyn FnMut(TextRange, Result<char, rustc_lexer::unescape::EscapeError>),
-    ) {
+    fn escaped_char_ranges(&self, cb: &mut dyn FnMut(TextRange, Result<char, EscapeError>)) {
         let text_range_no_quotes = match self.text_range_between_quotes() {
             Some(it) => it,
             None => return,
@@ -322,20 +310,17 @@ impl IsString for ast::CString {
 }
 
 impl ast::CString {
-    pub fn value(&self) -> Option<Cow<'_, [u8]>> {
-        if self.is_raw() {
-            let text = self.text();
-            let text =
-                &text[self.text_range_between_quotes()? - self.syntax().text_range().start()];
-            return Some(Cow::Borrowed(text.as_bytes()));
-        }
-
+    pub fn value(&self) -> Result<Cow<'_, [u8]>, EscapeError> {
         let text = self.text();
-        let text = &text[self.text_range_between_quotes()? - self.syntax().text_range().start()];
+        let text_range = self.text_range_between_quotes().ok_or(EscapeError::LoneSlash)?;
+        let text = &text[text_range - self.syntax().text_range().start()];
+        if self.is_raw() {
+            return Ok(Cow::Borrowed(text.as_bytes()));
+        }
 
         let mut buf = Vec::new();
         let mut prev_end = 0;
-        let mut has_error = false;
+        let mut has_error = None;
         let extend_unit = |buf: &mut Vec<u8>, unit: MixedUnit| match unit {
             MixedUnit::Char(c) => buf.extend(c.encode_utf8(&mut [0; 4]).as_bytes()),
             MixedUnit::HighByte(b) => buf.push(b),
@@ -353,13 +338,13 @@ impl ast::CString {
                 buf.extend(text[..prev_end].as_bytes());
                 extend_unit(&mut buf, u);
             }
-            (Err(_), _) => has_error = true,
+            (Err(e), _) => has_error = Some(e),
         });
 
         match (has_error, buf.capacity() == 0) {
-            (true, _) => None,
-            (false, true) => Some(Cow::Borrowed(text.as_bytes())),
-            (false, false) => Some(Cow::Owned(buf)),
+            (Some(e), _) => Err(e),
+            (None, true) => Ok(Cow::Borrowed(text.as_bytes())),
+            (None, false) => Ok(Cow::Owned(buf)),
         }
     }
 }
@@ -478,34 +463,34 @@ impl Radix {
 }
 
 impl ast::Char {
-    pub fn value(&self) -> Option<char> {
+    pub fn value(&self) -> Result<char, EscapeError> {
         let mut text = self.text();
         if text.starts_with('\'') {
             text = &text[1..];
         } else {
-            return None;
+            return Err(EscapeError::ZeroChars);
         }
         if text.ends_with('\'') {
             text = &text[0..text.len() - 1];
         }
 
-        unescape_char(text).ok()
+        unescape_char(text)
     }
 }
 
 impl ast::Byte {
-    pub fn value(&self) -> Option<u8> {
+    pub fn value(&self) -> Result<u8, EscapeError> {
         let mut text = self.text();
         if text.starts_with("b\'") {
             text = &text[2..];
         } else {
-            return None;
+            return Err(EscapeError::ZeroChars);
         }
         if text.ends_with('\'') {
             text = &text[0..text.len() - 1];
         }
 
-        unescape_byte(text).ok()
+        unescape_byte(text)
     }
 }
 
@@ -559,7 +544,10 @@ mod tests {
 
     fn check_string_value<'a>(lit: &str, expected: impl Into<Option<&'a str>>) {
         assert_eq!(
-            ast::String { syntax: make::tokens::literal(&format!("\"{lit}\"")) }.value().as_deref(),
+            ast::String { syntax: make::tokens::literal(&format!("\"{lit}\"")) }
+                .value()
+                .as_deref()
+                .ok(),
             expected.into()
         );
     }
@@ -584,7 +572,8 @@ bcde", "abcde",
         assert_eq!(
             ast::ByteString { syntax: make::tokens::literal(&format!("b\"{lit}\"")) }
                 .value()
-                .as_deref(),
+                .as_deref()
+                .ok(),
             expected.into().map(|value| &value[..])
         );
     }

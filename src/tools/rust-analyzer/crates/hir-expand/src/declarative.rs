@@ -2,6 +2,7 @@
 use std::sync::OnceLock;
 
 use base_db::{CrateId, VersionReq};
+use mbe::DocCommentDesugarMode;
 use span::{Edition, MacroCallId, Span, SyntaxContextId};
 use stdx::TupleExt;
 use syntax::{ast, AstNode};
@@ -158,6 +159,7 @@ impl DeclarativeMacroExpander {
                             map.span_for_range(
                                 macro_rules.macro_rules_token().unwrap().text_range(),
                             ),
+                            DocCommentDesugarMode::Mbe,
                         );
 
                         mbe::DeclarativeMacro::parse_macro_rules(&tt, edition, new_meta_vars)
@@ -175,6 +177,7 @@ impl DeclarativeMacroExpander {
                             arg.syntax(),
                             map.as_ref(),
                             map.span_for_range(macro_def.macro_token().unwrap().text_range()),
+                            DocCommentDesugarMode::Mbe,
                         );
 
                         mbe::DeclarativeMacro::parse_macro2(&tt, edition, new_meta_vars)

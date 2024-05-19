@@ -24,7 +24,7 @@ jemalloc-ctl = { version = "0.5.0", package = "tikv-jemalloc-ctl", optional = tr
 perf-event = "=0.4.7"
 
 [target.'cfg(windows)'.dependencies]
-winapi = { version = "0.3.9", features = ["processthreadsapi", "psapi"] }
+windows-sys = { version = "0.52", features = ["Win32_System_Threading", "Win32_System_ProcessStatus"] }
 
 [features]
 cpu_profiler = []

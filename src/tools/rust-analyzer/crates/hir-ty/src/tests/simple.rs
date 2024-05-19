@@ -115,15 +115,15 @@ fn test(a: u32, b: isize, c: !, d: &str) {
             8..9 'a': u32
             16..17 'b': isize
             26..27 'c': !
-            32..33 'd': &str
+            32..33 'd': &'? str
             41..120 '{     ...f32; }': ()
             47..48 'a': u32
             54..55 'b': isize
             61..62 'c': !
-            68..69 'd': &str
+            68..69 'd': &'? str
             75..81 '1usize': usize
             87..93 '1isize': isize
-            99..105 '"test"': &str
+            99..105 '"test"': &'static str
             111..117 '1.0f32': f32
         "#]],
     );
@@ -344,23 +344,23 @@ fn test(a: &u32, b: &mut u32, c: *const u32, d: *mut u32) {
 }
         "#,
         expect![[r#"
-            8..9 'a': &u32
-            17..18 'b': &mut u32
+            8..9 'a': &'? u32
+            17..18 'b': &'? mut u32
             30..31 'c': *const u32
             45..46 'd': *mut u32
             58..149 '{     ... *d; }': ()
-            64..65 'a': &u32
+            64..65 'a': &'? u32
             71..73 '*a': u32
-            72..73 'a': &u32
-            79..81 '&a': &&u32
-            80..81 'a': &u32
-            87..93 '&mut a': &mut &u32
-            92..93 'a': &u32
-            99..100 'b': &mut u32
+            72..73 'a': &'? u32
+            79..81 '&a': &'? &'? u32
+            80..81 'a': &'? u32
+            87..93 '&mut a': &'? mut &'? u32
+            92..93 'a': &'? u32
+            99..100 'b': &'? mut u32
             106..108 '*b': u32
-            107..108 'b': &mut u32
-            114..116 '&b': &&mut u32
-            115..116 'b': &mut u32
+            107..108 'b': &'? mut u32
+            114..116 '&b': &'? &'? mut u32
+            115..116 'b': &'? mut u32
             122..123 'c': *const u32
             129..131 '*c': u32
             130..131 'c': *const u32
@@ -425,22 +425,22 @@ h";
             32..36 '5i32': i32
             50..54 '5f32': f32
             68..72 '5f64': f64
-            86..93 '"hello"': &str
-            107..115 'b"bytes"': &[u8; 5]
+            86..93 '"hello"': &'static str
+            107..115 'b"bytes"': &'static [u8; 5]
             129..132 ''c'': char
             146..150 'b'b'': u8
             164..168 '3.14': f64
             182..186 '5000': i32
             200..205 'false': bool
             219..223 'true': bool
-            237..333 'r#"   ...    "#': &str
-            347..357 'br#"yolo"#': &[u8; 4]
-            375..376 'a': &[u8; 4]
-            379..403 'b"a\x2...    c"': &[u8; 4]
-            421..422 'b': &[u8; 4]
-            425..433 'br"g\ h"': &[u8; 4]
-            451..452 'c': &[u8; 6]
-            455..467 'br#"x"\"yb"#': &[u8; 6]
+            237..333 'r#"   ...    "#': &'static str
+            347..357 'br#"yolo"#': &'static [u8; 4]
+            375..376 'a': &'static [u8; 4]
+            379..403 'b"a\x2...    c"': &'static [u8; 4]
+            421..422 'b': &'static [u8; 4]
+            425..433 'br"g\ h"': &'static [u8; 4]
+            451..452 'c': &'static [u8; 6]
+            455..467 'br#"x"\"yb"#': &'static [u8; 6]
         "##]],
     );
 }
@@ -508,9 +508,9 @@ fn test(x: SomeType) {
             238..240 '!x': {unknown}
             239..240 'x': SomeType
             246..254 '-"hello"': {unknown}
-            247..254 '"hello"': &str
+            247..254 '"hello"': &'static str
             260..268 '!"hello"': {unknown}
-            261..268 '"hello"': &str
+            261..268 '"hello"': &'static str
         "#]],
     );
 }
@@ -535,7 +535,7 @@ fn test() -> &mut &f64 {
         expect![[r#"
             13..14 'x': u32
             21..23 '{}': ()
-            77..230 '{     ...t &c }': &mut &f64
+            77..230 '{     ...t &c }': &'? mut &'? f64
             87..88 'a': u32
             91..107 'unknow...nction': {unknown}
             91..109 'unknow...tion()': u32
@@ -550,8 +550,8 @@ fn test() -> &mut &f64 {
             193..194 'c': f64
             197..213 'unknow...nction': {unknown}
             197..215 'unknow...tion()': f64
-            221..228 '&mut &c': &mut &f64
-            226..228 '&c': &f64
+            221..228 '&mut &c': &'? mut &'? f64
+            226..228 '&c': &'? f64
             227..228 'c': f64
         "#]],
     );
@@ -579,12 +579,12 @@ impl S {
 }
 "#,
         expect![[r#"
-            33..37 'self': &S
+            33..37 'self': &'? S
             39..60 '{     ...     }': ()
-            49..53 'self': &S
-            74..78 'self': &S
+            49..53 'self': &'? S
+            74..78 'self': &'? S
             87..108 '{     ...     }': ()
-            97..101 'self': &S
+            97..101 'self': &'? S
             132..152 '{     ...     }': S
             142..146 'S {}': S
             176..199 '{     ...     }': S
@@ -771,35 +771,35 @@ fn test2(a1: *const A, a2: *mut A) {
             64..65 'a': A
             71..73 'a1': A
             71..75 'a1.b': B
-            85..87 'a2': &A
-            90..92 '&a': &A
+            85..87 'a2': &'? A
+            90..92 '&a': &'? A
             91..92 'a': A
-            98..100 'a2': &A
+            98..100 'a2': &'? A
             98..102 'a2.b': B
-            112..114 'a3': &mut A
-            117..123 '&mut a': &mut A
+            112..114 'a3': &'? mut A
+            117..123 '&mut a': &'? mut A
             122..123 'a': A
-            129..131 'a3': &mut A
+            129..131 'a3': &'? mut A
             129..133 'a3.b': B
-            143..145 'a4': &&&&&&&A
-            148..156 '&&&&&&&a': &&&&&&&A
-            149..156 '&&&&&&a': &&&&&&A
-            150..156 '&&&&&a': &&&&&A
-            151..156 '&&&&a': &&&&A
-            152..156 '&&&a': &&&A
-            153..156 '&&a': &&A
-            154..156 '&a': &A
+            143..145 'a4': &'? &'? &'? &'? &'? &'? &'? A
+            148..156 '&&&&&&&a': &'? &'? &'? &'? &'? &'? &'? A
+            149..156 '&&&&&&a': &'? &'? &'? &'? &'? &'? A
+            150..156 '&&&&&a': &'? &'? &'? &'? &'? A
+            151..156 '&&&&a': &'? &'? &'? &'? A
+            152..156 '&&&a': &'? &'? &'? A
+            153..156 '&&a': &'? &'? A
+            154..156 '&a': &'? A
             155..156 'a': A
-            162..164 'a4': &&&&&&&A
+            162..164 'a4': &'? &'? &'? &'? &'? &'? &'? A
             162..166 'a4.b': B
-            176..178 'a5': &mut &&mut &&mut A
-            181..199 '&mut &...&mut a': &mut &&mut &&mut A
-            186..199 '&&mut &&mut a': &&mut &&mut A
-            187..199 '&mut &&mut a': &mut &&mut A
-            192..199 '&&mut a': &&mut A
-            193..199 '&mut a': &mut A
+            176..178 'a5': &'? mut &'? &'? mut &'? &'? mut A
+            181..199 '&mut &...&mut a': &'? mut &'? &'? mut &'? &'? mut A
+            186..199 '&&mut &&mut a': &'? &'? mut &'? &'? mut A
+            187..199 '&mut &&mut a': &'? mut &'? &'? mut A
+            192..199 '&&mut a': &'? &'? mut A
+            193..199 '&mut a': &'? mut A
             198..199 'a': A
-            205..207 'a5': &mut &&mut &&mut A
+            205..207 'a5': &'? mut &'? &'? mut &'? &'? mut A
             205..209 'a5.b': B
             223..225 'a1': *const A
             237..239 'a2': *mut A
@@ -840,22 +840,22 @@ fn test() {
 }
 "#,
         expect![[r#"
-            66..70 'self': &A<T>
-            78..101 '{     ...     }': &T
-            88..95 '&self.0': &T
-            89..93 'self': &A<T>
+            66..70 'self': &'? A<T>
+            78..101 '{     ...     }': &'? T
+            88..95 '&self.0': &'? T
+            89..93 'self': &'? A<T>
             89..95 'self.0': T
-            182..186 'self': &B<T>
-            205..228 '{     ...     }': &T
-            215..222 '&self.0': &T
-            216..220 'self': &B<T>
+            182..186 'self': &'? B<T>
+            205..228 '{     ...     }': &'? T
+            215..222 '&self.0': &'? T
+            216..220 'self': &'? B<T>
             216..222 'self.0': T
             242..280 '{     ...))); }': ()
-            252..253 't': &i32
-            256..262 'A::foo': fn foo<i32>(&A<i32>) -> &i32
-            256..277 'A::foo...42))))': &i32
-            263..276 '&&B(B(A(42)))': &&B<B<A<i32>>>
-            264..276 '&B(B(A(42)))': &B<B<A<i32>>>
+            252..253 't': &'? i32
+            256..262 'A::foo': fn foo<i32>(&'? A<i32>) -> &'? i32
+            256..277 'A::foo...42))))': &'? i32
+            263..276 '&&B(B(A(42)))': &'? &'? B<B<A<i32>>>
+            264..276 '&B(B(A(42)))': &'? B<B<A<i32>>>
             265..266 'B': extern "rust-call" B<B<A<i32>>>(B<A<i32>>) -> B<B<A<i32>>>
             265..276 'B(B(A(42)))': B<B<A<i32>>>
             267..268 'B': extern "rust-call" B<A<i32>>(A<i32>) -> B<A<i32>>
@@ -895,28 +895,28 @@ fn test(a: A<i32>) {
 }
 "#,
         expect![[r#"
-            71..75 'self': &A<T>
-            77..78 'x': &A<T>
-            93..114 '{     ...     }': &T
-            103..108 '&*x.0': &T
+            71..75 'self': &'? A<T>
+            77..78 'x': &'? A<T>
+            93..114 '{     ...     }': &'? T
+            103..108 '&*x.0': &'? T
             104..108 '*x.0': T
-            105..106 'x': &A<T>
+            105..106 'x': &'? A<T>
             105..108 'x.0': *mut T
-            195..199 'self': &B<T>
-            218..241 '{     ...     }': &T
-            228..235 '&self.0': &T
-            229..233 'self': &B<T>
+            195..199 'self': &'? B<T>
+            218..241 '{     ...     }': &'? T
+            228..235 '&self.0': &'? T
+            229..233 'self': &'? B<T>
             229..235 'self.0': T
             253..254 'a': A<i32>
             264..310 '{     ...))); }': ()
-            274..275 't': &i32
+            274..275 't': &'? i32
             278..279 'A': extern "rust-call" A<i32>(*mut i32) -> A<i32>
             278..292 'A(0 as *mut _)': A<i32>
-            278..307 'A(0 as...B(a)))': &i32
+            278..307 'A(0 as...B(a)))': &'? i32
             280..281 '0': i32
             280..291 '0 as *mut _': *mut i32
-            297..306 '&&B(B(a))': &&B<B<A<i32>>>
-            298..306 '&B(B(a))': &B<B<A<i32>>>
+            297..306 '&&B(B(a))': &'? &'? B<B<A<i32>>>
+            298..306 '&B(B(a))': &'? B<B<A<i32>>>
             299..300 'B': extern "rust-call" B<B<A<i32>>>(B<A<i32>>) -> B<B<A<i32>>>
             299..306 'B(B(a))': B<B<A<i32>>>
             301..302 'B': extern "rust-call" B<A<i32>>(A<i32>) -> B<A<i32>>
@@ -1044,7 +1044,7 @@ fn infer_inherent_method() {
             31..35 'self': A
             37..38 'x': u32
             52..54 '{}': i32
-            106..110 'self': &A
+            106..110 'self': &'? A
             112..113 'x': u64
             127..129 '{}': i64
             147..148 'a': A
@@ -1053,7 +1053,7 @@ fn infer_inherent_method() {
             159..167 'a.foo(1)': i32
             165..166 '1': u32
             173..184 '(&a).bar(1)': i64
-            174..176 '&a': &A
+            174..176 '&a': &'? A
             175..176 'a': A
             182..183 '1': u64
             190..191 'a': A
@@ -1078,10 +1078,10 @@ fn test() {
 }
 "#,
         expect![[r#"
-            67..71 'self': &str
+            67..71 'self': &'? str
             80..82 '{}': i32
             96..116 '{     ...o(); }': ()
-            102..107 '"foo"': &str
+            102..107 '"foo"': &'static str
             102..113 '"foo".foo()': i32
         "#]],
     );
@@ -1101,33 +1101,33 @@ fn infer_tuple() {
         }
         "#,
         expect![[r#"
-            8..9 'x': &str
+            8..9 'x': &'? str
             17..18 'y': isize
             27..169 '{     ...d"); }': ()
-            37..38 'a': (u32, &str)
-            54..62 '(1, "a")': (u32, &str)
+            37..38 'a': (u32, &'? str)
+            54..62 '(1, "a")': (u32, &'? str)
             55..56 '1': u32
-            58..61 '"a"': &str
-            72..73 'b': ((u32, &str), &str)
-            76..82 '(a, x)': ((u32, &str), &str)
-            77..78 'a': (u32, &str)
-            80..81 'x': &str
-            92..93 'c': (isize, &str)
-            96..102 '(y, x)': (isize, &str)
+            58..61 '"a"': &'static str
+            72..73 'b': ((u32, &'? str), &'? str)
+            76..82 '(a, x)': ((u32, &'? str), &'? str)
+            77..78 'a': (u32, &'? str)
+            80..81 'x': &'? str
+            92..93 'c': (isize, &'? str)
+            96..102 '(y, x)': (isize, &'? str)
             97..98 'y': isize
-            100..101 'x': &str
-            112..113 'd': ((isize, &str), &str)
-            116..122 '(c, x)': ((isize, &str), &str)
-            117..118 'c': (isize, &str)
-            120..121 'x': &str
-            132..133 'e': (i32, &str)
-            136..144 '(1, "e")': (i32, &str)
+            100..101 'x': &'? str
+            112..113 'd': ((isize, &'? str), &'? str)
+            116..122 '(c, x)': ((isize, &'? str), &'? str)
+            117..118 'c': (isize, &'? str)
+            120..121 'x': &'? str
+            132..133 'e': (i32, &'static str)
+            136..144 '(1, "e")': (i32, &'static str)
             137..138 '1': i32
-            140..143 '"e"': &str
-            154..155 'f': ((i32, &str), &str)
-            158..166 '(e, "d")': ((i32, &str), &str)
-            159..160 'e': (i32, &str)
-            162..165 '"d"': &str
+            140..143 '"e"': &'static str
+            154..155 'f': ((i32, &'static str), &'static str)
+            158..166 '(e, "d")': ((i32, &'static str), &'static str)
+            159..160 'e': (i32, &'static str)
+            162..165 '"d"': &'static str
         "#]],
     );
 }
@@ -1156,20 +1156,20 @@ fn infer_array() {
         }
         "#,
         expect![[r#"
-            8..9 'x': &str
+            8..9 'x': &'? str
             17..18 'y': isize
             27..326 '{     ...,4]; }': ()
-            37..38 'a': [&str; 1]
-            41..44 '[x]': [&str; 1]
-            42..43 'x': &str
-            54..55 'b': [[&str; 1]; 2]
-            58..64 '[a, a]': [[&str; 1]; 2]
-            59..60 'a': [&str; 1]
-            62..63 'a': [&str; 1]
-            74..75 'c': [[[&str; 1]; 2]; 2]
-            78..84 '[b, b]': [[[&str; 1]; 2]; 2]
-            79..80 'b': [[&str; 1]; 2]
-            82..83 'b': [[&str; 1]; 2]
+            37..38 'a': [&'? str; 1]
+            41..44 '[x]': [&'? str; 1]
+            42..43 'x': &'? str
+            54..55 'b': [[&'? str; 1]; 2]
+            58..64 '[a, a]': [[&'? str; 1]; 2]
+            59..60 'a': [&'? str; 1]
+            62..63 'a': [&'? str; 1]
+            74..75 'c': [[[&'? str; 1]; 2]; 2]
+            78..84 '[b, b]': [[[&'? str; 1]; 2]; 2]
+            79..80 'b': [[&'? str; 1]; 2]
+            82..83 'b': [[&'? str; 1]; 2]
             95..96 'd': [isize; 4]
             99..111 '[y, 1, 2, 3]': [isize; 4]
             100..101 'y': isize
@@ -1197,15 +1197,15 @@ fn infer_array() {
             209..215 '[1, 2]': [i32; 2]
             210..211 '1': i32
             213..214 '2': i32
-            225..226 'i': [&str; 2]
-            229..239 '["a", "b"]': [&str; 2]
-            230..233 '"a"': &str
-            235..238 '"b"': &str
-            250..251 'b': [[&str; 1]; 2]
-            254..264 '[a, ["b"]]': [[&str; 1]; 2]
-            255..256 'a': [&str; 1]
-            258..263 '["b"]': [&str; 1]
-            259..262 '"b"': &str
+            225..226 'i': [&'? str; 2]
+            229..239 '["a", "b"]': [&'? str; 2]
+            230..233 '"a"': &'static str
+            235..238 '"b"': &'static str
+            250..251 'b': [[&'? str; 1]; 2]
+            254..264 '[a, ["b"]]': [[&'? str; 1]; 2]
+            255..256 'a': [&'? str; 1]
+            258..263 '["b"]': [&'? str; 1]
+            259..262 '"b"': &'static str
             274..275 'x': [u8; 0]
             287..289 '[]': [u8; 0]
             299..300 'y': [u8; 4]
@@ -1279,12 +1279,12 @@ fn infer_tuple_struct_generics() {
             92..93 'A': extern "rust-call" A<u128>(u128) -> A<u128>
             92..101 'A(42u128)': A<u128>
             94..100 '42u128': u128
-            107..111 'Some': extern "rust-call" Some<&str>(&str) -> Option<&str>
-            107..116 'Some("x")': Option<&str>
-            112..115 '"x"': &str
-            122..134 'Option::Some': extern "rust-call" Some<&str>(&str) -> Option<&str>
-            122..139 'Option...e("x")': Option<&str>
-            135..138 '"x"': &str
+            107..111 'Some': extern "rust-call" Some<&'static str>(&'static str) -> Option<&'static str>
+            107..116 'Some("x")': Option<&'static str>
+            112..115 '"x"': &'static str
+            122..134 'Option::Some': extern "rust-call" Some<&'static str>(&'static str) -> Option<&'static str>
+            122..139 'Option...e("x")': Option<&'static str>
+            135..138 '"x"': &'static str
             145..149 'None': Option<{unknown}>
             159..160 'x': Option<i64>
             176..180 'None': Option<i64>
@@ -1405,15 +1405,15 @@ fn infer_impl_generics_with_autoderef() {
         }
         "#,
         expect![[r#"
-            77..81 'self': &Option<T>
-            97..99 '{}': Option<&T>
+            77..81 'self': &'? Option<T>
+            97..99 '{}': Option<&'? T>
             110..111 'o': Option<u32>
             126..164 '{     ...f(); }': ()
-            132..145 '(&o).as_ref()': Option<&u32>
-            133..135 '&o': &Option<u32>
+            132..145 '(&o).as_ref()': Option<&'? u32>
+            133..135 '&o': &'? Option<u32>
             134..135 'o': Option<u32>
             151..152 'o': Option<u32>
-            151..161 'o.as_ref()': Option<&u32>
+            151..161 'o.as_ref()': Option<&'? u32>
         "#]],
     );
 }
@@ -1551,16 +1551,16 @@ fn infer_type_alias() {
         "#,
         expect![[r#"
             115..116 'x': A<u32, i128>
-            123..124 'y': A<&str, u128>
+            123..124 'y': A<&'? str, u128>
             137..138 'z': A<u8, i8>
             153..210 '{     ...z.y; }': ()
             159..160 'x': A<u32, i128>
             159..162 'x.x': u32
             168..169 'x': A<u32, i128>
             168..171 'x.y': i128
-            177..178 'y': A<&str, u128>
-            177..180 'y.x': &str
-            186..187 'y': A<&str, u128>
+            177..178 'y': A<&'? str, u128>
+            177..180 'y.x': &'? str
+            186..187 'y': A<&'? str, u128>
             186..189 'y.y': u128
             195..196 'z': A<u8, i8>
             195..198 'z.x': u8
@@ -1572,8 +1572,8 @@ fn infer_type_alias() {
             312..328 'm::Ali...Foo(0)': Enum
             326..327 '0': u8
             338..354 'm::Ali...Foo(x)': Enum
-            352..353 'x': &u8
-            357..359 '&e': &Enum
+            352..353 'x': &'? u8
+            357..359 '&e': &'? Enum
             358..359 'e': Enum
         "#]],
     )
@@ -1618,10 +1618,10 @@ fn infer_type_param() {
             9..10 'x': T
             20..29 '{     x }': T
             26..27 'x': T
-            43..44 'x': &T
+            43..44 'x': &'? T
             55..65 '{     *x }': T
             61..63 '*x': T
-            62..63 'x': &T
+            62..63 'x': &'? T
             77..157 '{     ...(1); }': ()
             87..88 'y': u32
             91..96 '10u32': u32
@@ -1629,9 +1629,9 @@ fn infer_type_param() {
             102..107 'id(y)': u32
             105..106 'y': u32
             117..118 'x': bool
-            127..132 'clone': fn clone<bool>(&bool) -> bool
+            127..132 'clone': fn clone<bool>(&'? bool) -> bool
             127..135 'clone(z)': bool
-            133..134 'z': &bool
+            133..134 'z': &'? bool
             141..151 'id::<i128>': fn id<i128>(i128) -> i128
             141..154 'id::<i128>(1)': i128
             152..153 '1': i128
@@ -1842,7 +1842,7 @@ fn foo() -> &'static str { "" }
 
 fn main() {
     foo();
-  //^^^^^ &str
+  //^^^^^ &'static str
 }"#,
     );
 }
@@ -1940,10 +1940,10 @@ fn closure_return_inferred() {
         "#,
         expect![[r#"
             16..46 '{     ..." }; }': u32
-            26..27 'x': impl Fn() -> &str
-            30..43 '|| { "test" }': impl Fn() -> &str
-            33..43 '{ "test" }': &str
-            35..41 '"test"': &str
+            26..27 'x': impl Fn() -> &'static str
+            30..43 '|| { "test" }': impl Fn() -> &'static str
+            33..43 '{ "test" }': &'static str
+            35..41 '"test"': &'static str
         "#]],
     );
 }
@@ -1975,10 +1975,10 @@ fn test() {
             70..71 'v': i64
             78..80 '{}': ()
             91..362 '{     ...   } }': ()
-            101..106 'mut g': |usize| yields i64 -> &str
-            109..218 '|r| { ...     }': |usize| yields i64 -> &str
+            101..106 'mut g': |usize| yields i64 -> &'static str
+            109..218 '|r| { ...     }': |usize| yields i64 -> &'static str
             110..111 'r': usize
-            113..218 '{     ...     }': &str
+            113..218 '{     ...     }': &'static str
             127..128 'a': usize
             131..138 'yield 0': usize
             137..138 '0': i64
@@ -1988,22 +1988,22 @@ fn test() {
             177..178 'a': usize
             181..188 'yield 2': usize
             187..188 '2': i64
-            198..212 '"return value"': &str
+            198..212 '"return value"': &'static str
             225..360 'match ...     }': ()
-            231..239 'Pin::new': fn new<&mut |usize| yields i64 -> &str>(&mut |usize| yields i64 -> &str) -> Pin<&mut |usize| yields i64 -> &str>
-            231..247 'Pin::n...mut g)': Pin<&mut |usize| yields i64 -> &str>
-            231..262 'Pin::n...usize)': CoroutineState<i64, &str>
-            240..246 '&mut g': &mut |usize| yields i64 -> &str
-            245..246 'g': |usize| yields i64 -> &str
+            231..239 'Pin::new': fn new<&'? mut |usize| yields i64 -> &'static str>(&'? mut |usize| yields i64 -> &'static str) -> Pin<&'? mut |usize| yields i64 -> &'static str>
+            231..247 'Pin::n...mut g)': Pin<&'? mut |usize| yields i64 -> &'static str>
+            231..262 'Pin::n...usize)': CoroutineState<i64, &'static str>
+            240..246 '&mut g': &'? mut |usize| yields i64 -> &'static str
+            245..246 'g': |usize| yields i64 -> &'static str
             255..261 '0usize': usize
-            273..299 'Corout...ded(y)': CoroutineState<i64, &str>
+            273..299 'Corout...ded(y)': CoroutineState<i64, &'static str>
             297..298 'y': i64
             303..312 '{ f(y); }': ()
             305..306 'f': fn f(i64)
             305..309 'f(y)': ()
             307..308 'y': i64
-            321..348 'Corout...ete(r)': CoroutineState<i64, &str>
-            346..347 'r': &str
+            321..348 'Corout...ete(r)': CoroutineState<i64, &'static str>
+            346..347 'r': &'static str
             352..354 '{}': ()
         "#]],
     );
@@ -2050,7 +2050,7 @@ fn f(x: (&&&&i32, &&&i32)) {
         _ => loop {},
     };
     f;
-  //^ (&&&&i32, &&&i32)
+  //^ (&'? &'? &'? &'? i32, &'? &'? &'? i32)
 }
         "#,
     );
@@ -2059,10 +2059,10 @@ fn f(x: (&&&&i32, &&&i32)) {
 fn f() {
     let x = &&&(&&&2, &&&&&3);
     let (y, z) = x;
-       //^ &&&&i32
+       //^ &'? &'? &'? &'? i32
     let t @ (y, z) = x;
     t;
-  //^ &&&(&&&i32, &&&&&i32)
+  //^ &'? &'? &'? (&'? &'? &'? i32, &'? &'? &'? &'? &'? i32)
 }
         "#,
     );
@@ -2071,10 +2071,10 @@ fn f() {
 fn f() {
     let x = &&&(&&&2, &&&&&3);
     let (y, z) = x;
-       //^ &&&&i32
+       //^ &'? &'? &'? &'? i32
     let t @ (y, z) = x;
     t;
-  //^ &&&(&&&i32, &&&&&i32)
+  //^ &'? &'? &'? (&'? &'? &'? i32, &'? &'? &'? &'? &'? i32)
 }
         "#,
     );
@@ -2761,23 +2761,23 @@ impl S {
 fn f() {
     let x = S;
     let c1 = || x.read();
-      //^^ impl Fn() -> &S
+      //^^ impl Fn() -> &'? S
     let c2 = || x.write();
-      //^^ impl FnMut() -> &mut S
+      //^^ impl FnMut() -> &'? mut S
     let c3 = || x.consume();
       //^^ impl FnOnce() -> S
     let c3 = || x.consume().consume().consume();
       //^^ impl FnOnce() -> S
     let c3 = || x.consume().write().read();
-      //^^ impl FnOnce() -> &S
+      //^^ impl FnOnce() -> &'? S
     let x = &mut x;
     let c1 = || x.write();
-      //^^ impl FnMut() -> &mut S
+      //^^ impl FnMut() -> &'? mut S
     let x = S;
     let c1 = || { let ref t = x; t };
-      //^^ impl Fn() -> &S
+      //^^ impl Fn() -> &'? S
     let c2 = || { let ref mut t = x; t };
-      //^^ impl FnMut() -> &mut S
+      //^^ impl FnMut() -> &'? mut S
     let c3 = || { let t = x; t };
       //^^ impl FnOnce() -> S
 }
@@ -3074,11 +3074,11 @@ fn main() {
 }
         "#,
         expect![[r#"
-            104..108 'self': &Box<T>
-            188..192 'self': &Box<Foo<T>>
-            218..220 '{}': &T
-            242..246 'self': &Box<Foo<T>>
-            275..277 '{}': &Foo<T>
+            104..108 'self': &'? Box<T>
+            188..192 'self': &'a Box<Foo<T>>
+            218..220 '{}': &'a T
+            242..246 'self': &'a Box<Foo<T>>
+            275..277 '{}': &'a Foo<T>
             297..301 'self': Box<Foo<T>>
             322..324 '{}': Foo<T>
             338..559 '{     ...r(); }': ()
@@ -3088,21 +3088,21 @@ fn main() {
             360..363 'Foo': extern "rust-call" Foo<i32>(i32) -> Foo<i32>
             360..370 'Foo(0_i32)': Foo<i32>
             364..369 '0_i32': i32
-            382..386 'bad1': &i32
+            382..386 'bad1': &'? i32
             389..394 'boxed': Box<Foo<i32>>
-            389..406 'boxed....nner()': &i32
-            416..421 'good1': &i32
-            424..438 'Foo::get_inner': fn get_inner<i32, '{error}>(&Box<Foo<i32>>) -> &i32
-            424..446 'Foo::g...boxed)': &i32
-            439..445 '&boxed': &Box<Foo<i32>>
+            389..406 'boxed....nner()': &'? i32
+            416..421 'good1': &'? i32
+            424..438 'Foo::get_inner': fn get_inner<i32, '?>(&'? Box<Foo<i32>>) -> &'? i32
+            424..446 'Foo::g...boxed)': &'? i32
+            439..445 '&boxed': &'? Box<Foo<i32>>
             440..445 'boxed': Box<Foo<i32>>
-            457..461 'bad2': &Foo<i32>
+            457..461 'bad2': &'? Foo<i32>
             464..469 'boxed': Box<Foo<i32>>
-            464..480 'boxed....self()': &Foo<i32>
-            490..495 'good2': &Foo<i32>
-            498..511 'Foo::get_self': fn get_self<i32, '{error}>(&Box<Foo<i32>>) -> &Foo<i32>
-            498..519 'Foo::g...boxed)': &Foo<i32>
-            512..518 '&boxed': &Box<Foo<i32>>
+            464..480 'boxed....self()': &'? Foo<i32>
+            490..495 'good2': &'? Foo<i32>
+            498..511 'Foo::get_self': fn get_self<i32, '?>(&'? Box<Foo<i32>>) -> &'? Foo<i32>
+            498..519 'Foo::g...boxed)': &'? Foo<i32>
+            512..518 '&boxed': &'? Box<Foo<i32>>
             513..518 'boxed': Box<Foo<i32>>
             530..535 'inner': Foo<i32>
             538..543 'boxed': Box<Foo<i32>>
@@ -3414,31 +3414,31 @@ struct TS(usize);
 fn main() {
     let x;
     [x,] = &[1,];
-  //^^^^expected &[i32; 1], got [{unknown}; _]
+  //^^^^expected &'? [i32; 1], got [{unknown}; _]
 
     let x;
     [(x,),] = &[(1,),];
-  //^^^^^^^expected &[(i32,); 1], got [{unknown}; _]
+  //^^^^^^^expected &'? [(i32,); 1], got [{unknown}; _]
 
     let x;
     ((x,),) = &((1,),);
-  //^^^^^^^expected &((i32,),), got (({unknown},),)
+  //^^^^^^^expected &'? ((i32,),), got (({unknown},),)
 
     let x;
     (x,) = &(1,);
-  //^^^^expected &(i32,), got ({unknown},)
+  //^^^^expected &'? (i32,), got ({unknown},)
 
     let x;
     (S { a: x },) = &(S { a: 42 },);
-  //^^^^^^^^^^^^^expected &(S,), got (S,)
+  //^^^^^^^^^^^^^expected &'? (S,), got (S,)
 
     let x;
     S { a: x } = &S { a: 42 };
-  //^^^^^^^^^^expected &S, got S
+  //^^^^^^^^^^expected &'? S, got S
 
     let x;
     TS(x) = &TS(42);
-  //^^^^^expected &TS, got TS
+  //^^^^^expected &'? TS, got TS
 }
         "#,
     );
@@ -3548,17 +3548,17 @@ fn f<T>(t: Ark<T>) {
 }
 "#,
         expect![[r#"
-            47..51 'self': &Ark<T>
+            47..51 'self': &'? Ark<T>
             65..88 '{     ...     }': *const T
-            75..82 '&self.0': &T
-            76..80 'self': &Ark<T>
+            75..82 '&self.0': &'? T
+            76..80 'self': &'? Ark<T>
             76..82 'self.0': T
             99..100 't': Ark<T>
             110..144 '{     ... (); }': ()
-            116..124 'Ark::foo': fn foo<T>(&Ark<T>) -> *const T
+            116..124 'Ark::foo': fn foo<T>(&'? Ark<T>) -> *const T
             116..128 'Ark::foo(&t)': *const T
             116..141 'Ark::f...nst ()': *const ()
-            125..127 '&t': &Ark<T>
+            125..127 '&t': &'? Ark<T>
             126..127 't': Ark<T>
         "#]],
     );
@@ -3632,7 +3632,7 @@ pub struct CStr;
 
 fn main() {
     c"ello";
-  //^^^^^^^ &CStr
+  //^^^^^^^ &'static CStr
 }
 "#,
     );
@@ -3659,7 +3659,25 @@ fn main() {
     let are = "are";
     let count = 10;
     builtin#format_args("hello {count:02} {} friends, we {are:?} {0}{last}", "fancy", last = "!");
- // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type: Arguments<'{error}>
+ // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type: Arguments<'?>
+}
+"#,
+    );
+}
+
+#[test]
+fn inline_const_expression() {
+    check(
+        r#"
+fn main() {
+    let foo = 0;
+    const {
+        let bar = 1;
+        let unresolved = foo;
+         // ^^^^^^^^^^ type: {unknown}
+        let resolved = bar;
+         // ^^^^^^^^ type: i32
+    }
 }
 "#,
     );
