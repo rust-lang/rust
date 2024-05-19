@@ -132,6 +132,7 @@ impl<'a> Parser<'a> {
             if style == ast::AttrStyle::Inner {
                 this.error_on_forbidden_inner_attr(attr_sp, inner_parse_policy);
             }
+
             Ok(attr::mk_attr_from_item(&self.psess.attr_id_generator, item, None, style, attr_sp))
         })
     }

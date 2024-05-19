@@ -487,8 +487,6 @@ pub fn check_crate<'tcx>(tcx: TyCtxt<'tcx>) {
 /// Format name ignoring the name, useful for filtering non-used lints.
 /// For example, 'clippy::my_lint' will turn into 'my_lint'
 pub(crate) fn name_without_tool(name: String) -> String {
-    name
-                        // Doing some calculations here to account for those separators
-                        [name.find("::").unwrap_or(name.len() - 2) + 2..]
-        .to_string()
+    // Doing some calculations here to account for those separators
+    name[name.find("::").unwrap_or(name.len() - 2) + 2..].to_string()
 }
