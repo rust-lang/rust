@@ -356,7 +356,7 @@ where
 
         match result {
             Ok(_) => self.pos += buf.len() as u64,
-            // The only posible error condition is EOF
+            // The only possible error condition is EOF, so place the cursor at "EOF"
             Err(_) => self.pos = self.inner.as_ref().len() as u64,
         }
 
