@@ -5,7 +5,7 @@
 //@ dont-check-compiler-stdout
 //@ dont-check-compiler-stderr
 //@ compile-flags: --error-format human
-//@ aux-build: rustc-rust-log-aux.rs
+//@ aux-build: rust-log-aux.rs
 //@ rustc-env:RUSTC_LOG=debug
 
 fn main() {}
