@@ -1,0 +1,2 @@
+error: `RUST_MIN_STACK` should be unset or a number of bytes
+
