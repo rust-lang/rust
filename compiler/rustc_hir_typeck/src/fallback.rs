@@ -8,17 +8,13 @@ use rustc_data_structures::{
 use rustc_hir as hir;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::HirId;
-use rustc_infer::{
-    infer::{DefineOpaqueTypes, InferOk},
-    traits::ObligationCause,
-};
+use rustc_infer::infer::{DefineOpaqueTypes, InferOk};
 use rustc_middle::bug;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable};
 use rustc_session::lint;
 use rustc_span::DUMMY_SP;
 use rustc_span::{def_id::LocalDefId, Span};
-use rustc_trait_selection::traits::ObligationCtxt;
-use rustc_type_ir::TyVid;
+use rustc_trait_selection::traits::{ObligationCause, ObligationCtxt};
 
 #[derive(Copy, Clone)]
 pub enum DivergingFallbackBehavior {
@@ -479,7 +475,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
     fn lint_obligations_broken_by_never_type_fallback_change(
         &self,
         behavior: DivergingFallbackBehavior,
-        diverging_vids: &[TyVid],
+        diverging_vids: &[ty::TyVid],
     ) {
         let DivergingFallbackBehavior::FallbackToUnit = behavior else { return };
 
@@ -489,7 +485,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         }
 
         // Returns errors which happen if fallback is set to `fallback`
-        let try_out = |fallback| {
+        let remaining_errors_if_fallback_to = |fallback| {
             self.probe(|_| {
                 let obligations = self.fulfillment_cx.borrow().pending_obligations();
                 let ocx = ObligationCtxt::new(&self.infcx);
@@ -498,7 +494,8 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
                 for &diverging_vid in diverging_vids {
                     let diverging_ty = Ty::new_var(self.tcx, diverging_vid);
 
-                    _ = ocx.eq(&ObligationCause::dummy(), self.param_env, diverging_ty, fallback);
+                    ocx.eq(&ObligationCause::dummy(), self.param_env, diverging_ty, fallback)
+                        .expect("expected diverging var to be unconstrained");
                 }
 
                 ocx.select_where_possible()
@@ -507,9 +504,9 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
 
         // If we have no errors with `fallback = ()`, but *do* have errors with `fallback = !`,
         // then this code will be broken by the never type fallback change.qba
-        let unit_errors = try_out(self.tcx.types.unit);
+        let unit_errors = remaining_errors_if_fallback_to(self.tcx.types.unit);
         if unit_errors.is_empty()
-            && let never_errors = try_out(self.tcx.types.never)
+            && let never_errors = remaining_errors_if_fallback_to(self.tcx.types.never)
             && !never_errors.is_empty()
         {
             self.tcx.emit_node_span_lint(
