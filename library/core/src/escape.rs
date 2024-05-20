@@ -24,32 +24,31 @@ const fn backslash<const N: usize>(a: ascii::Char) -> ([ascii::Char; N], Range<u
 const fn escape_ascii<const N: usize>(byte: u8) -> ([ascii::Char; N], Range<u8>) {
     const { assert!(N >= 4) };
 
-    match byte {
-        b'\t' => backslash(ascii::Char::SmallT),
-        b'\r' => backslash(ascii::Char::SmallR),
-        b'\n' => backslash(ascii::Char::SmallN),
-        b'\\' => backslash(ascii::Char::ReverseSolidus),
-        b'\'' => backslash(ascii::Char::Apostrophe),
-        b'\"' => backslash(ascii::Char::QuotationMark),
-        byte => {
-            let mut output = [ascii::Char::Null; N];
+    let mut output = [ascii::Char::Null; N];
 
-            if let Some(c) = byte.as_ascii()
-                && !byte.is_ascii_control()
-            {
-                output[0] = c;
-                (output, 0..1)
-            } else {
-                let hi = HEX_DIGITS[(byte >> 4) as usize];
-                let lo = HEX_DIGITS[(byte & 0xf) as usize];
+    match byte.as_ascii() {
+        Some(ascii::Char::CharacterTabulation) => backslash(ascii::Char::SmallT),
+        Some(ascii::Char::CarriageReturn) => backslash(ascii::Char::SmallR),
+        Some(ascii::Char::LineFeed) => backslash(ascii::Char::SmallN),
+        Some(
+            c @ ascii::Char::ReverseSolidus
+            | c @ ascii::Char::Apostrophe
+            | c @ ascii::Char::QuotationMark,
+        ) => backslash(c),
+        Some(c) if !byte.is_ascii_control() => {
+            output[0] = c;
+            (output, 0..1)
+        }
+        _ => {
+            let hi = HEX_DIGITS[(byte >> 4) as usize];
+            let lo = HEX_DIGITS[(byte & 0xf) as usize];
 
-                output[0] = ascii::Char::ReverseSolidus;
-                output[1] = ascii::Char::SmallX;
-                output[2] = hi;
-                output[3] = lo;
+            output[0] = ascii::Char::ReverseSolidus;
+            output[1] = ascii::Char::SmallX;
+            output[2] = hi;
+            output[3] = lo;
 
-                (output, 0..4)
-            }
+            (output, 0..4)
         }
     }
 }
