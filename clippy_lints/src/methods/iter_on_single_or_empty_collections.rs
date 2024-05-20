@@ -77,11 +77,11 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, method
                 .qpath_res(path, *hir_id)
                 .opt_def_id()
                 .filter(|fn_id| cx.tcx.def_kind(fn_id).is_fn_like())
-                .is_some_and(|fn_id| is_arg_ty_unified_in_fn(cx, fn_id, expr.hir_id, args)),
+                .is_some_and(|fn_id| is_arg_ty_unified_in_fn(cx, fn_id, child_id, args)),
             ExprKind::MethodCall(_name, recv, args, _span) => is_arg_ty_unified_in_fn(
                 cx,
                 cx.typeck_results().type_dependent_def_id(parent.hir_id).unwrap(),
-                expr.hir_id,
+                child_id,
                 once(recv).chain(args.iter()),
             ),
             ExprKind::If(_, _, _)

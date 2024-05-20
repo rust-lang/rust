@@ -29,6 +29,11 @@ fn array() {
         println!("{i}");
     }
 
+    // Same as above, but for empty collection iters with extra layers
+    for i in smth.as_ref().map_or({ [].iter() }, |s| s.iter()) {
+        println!("{y}", y = i + 1);
+    }
+
     // Same as above, but for regular function calls
     for i in Option::map_or(smth.as_ref(), [].iter(), |s| s.iter()) {
         println!("{i}");
