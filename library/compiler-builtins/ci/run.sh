@@ -32,6 +32,11 @@ else
     $run --features no-f16-f128 --release
 fi
 
+if [ "${TEST_VERBATIM:-}" = "1" ]; then
+    verb_path=$(cmd.exe //C echo \\\\?\\%cd%\\testcrate\\target2)
+    cargo build --manifest-path testcrate/Cargo.toml --target $target --target-dir $verb_path --features c
+fi
+
 if [ -d /builtins-target ]; then
     rlib_paths=/builtins-target/"${target}"/debug/deps/libcompiler_builtins-*.rlib
 else

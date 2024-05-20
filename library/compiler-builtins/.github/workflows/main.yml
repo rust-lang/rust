@@ -19,6 +19,11 @@ jobs:
         - target: aarch64-unknown-linux-gnu
           os: ubuntu-latest
           rust: nightly
+        - target: aarch64-pc-windows-msvc
+          os: windows-latest
+          rust: nightly
+          test_verbatim: 1
+          no_std: 1
         - target: arm-unknown-linux-gnueabi
           os: ubuntu-latest
           rust: nightly
@@ -78,9 +83,11 @@ jobs:
         - target: i686-pc-windows-msvc
           os: windows-latest
           rust: nightly
+          test_verbatim: 1
         - target: x86_64-pc-windows-msvc
           os: windows-latest
           rust: nightly
+          test_verbatim: 1
         - target: i686-pc-windows-gnu
           os: windows-latest
           rust: nightly-i686-gnu
@@ -109,6 +116,9 @@ jobs:
     - run: ./ci/run.sh ${{ matrix.target }}
       if: matrix.os != 'ubuntu-latest'
       shell: bash
+      env:
+        NO_STD: ${{ matrix.no_std }}
+        TEST_VERBATIM: ${{ matrix.test_verbatim }}
 
     # Otherwise we use our docker containers to run builds
     - run: cargo generate-lockfile && ./ci/run-docker.sh ${{ matrix.target }}
