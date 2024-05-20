@@ -249,7 +249,6 @@ impl<'a> StripUnconfigured<'a> {
     /// Gives a compiler warning when the `cfg_attr` contains no attributes and
     /// is in the original source file. Gives a compiler error if the syntax of
     /// the attribute is incorrect.
-    #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
     pub(crate) fn expand_cfg_attr(&self, attr: &Attribute, recursive: bool) -> Vec<Attribute> {
         let Some((cfg_predicate, expanded_attrs)) =
             rustc_parse::parse_cfg_attr(attr, &self.sess.psess)
@@ -284,7 +283,6 @@ impl<'a> StripUnconfigured<'a> {
         }
     }
 
-    #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
     fn expand_cfg_attr_item(
         &self,
         attr: &Attribute,
