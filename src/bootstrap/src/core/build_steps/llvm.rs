@@ -508,7 +508,7 @@ impl Step for Llvm {
             cfg.define("LLVM_VERSION_SUFFIX", suffix);
         }
 
-        configure_cmake(builder, target, &mut cfg, true, ldflags, &[], &[]);
+        configure_cmake(builder, target, &mut cfg, true, ldflags, &[]);
         configure_llvm(builder, target, &mut cfg);
 
         for (key, val) in &builder.config.llvm_build_config {
@@ -597,7 +597,6 @@ fn configure_cmake(
     cfg: &mut cmake::Config,
     use_compiler_launcher: bool,
     mut ldflags: LdFlags,
-    extra_compiler_flags: &[&str],
     suppressed_compiler_flag_prefixes: &[&str],
 ) {
     // Do not print installation messages for up-to-date files.
@@ -751,9 +750,6 @@ fn configure_cmake(
     if builder.config.llvm_clang_cl.is_some() {
         cflags.push(&format!(" --target={target}"));
     }
-    for flag in extra_compiler_flags {
-        cflags.push(&format!(" {flag}"));
-    }
     cfg.define("CMAKE_C_FLAGS", cflags);
     let mut cxxflags: OsString = builder
         .cflags(target, GitRepo::Llvm, CLang::Cxx)
@@ -772,9 +768,6 @@ fn configure_cmake(
     }
     if builder.config.llvm_clang_cl.is_some() {
         cxxflags.push(&format!(" --target={target}"));
-    }
-    for flag in extra_compiler_flags {
-        cxxflags.push(&format!(" {flag}"));
     }
     cfg.define("CMAKE_CXX_FLAGS", cxxflags);
     if let Some(ar) = builder.ar(target) {
@@ -944,7 +937,7 @@ impl Step for Lld {
             ldflags.push_all("-Wl,-rpath,'$ORIGIN/../../../'");
         }
 
-        configure_cmake(builder, target, &mut cfg, true, ldflags, &[], &[]);
+        configure_cmake(builder, target, &mut cfg, true, ldflags, &[]);
         configure_llvm(builder, target, &mut cfg);
 
         // Re-use the same flags as llvm to control the level of debug information
@@ -1043,8 +1036,6 @@ impl Step for Sanitizers {
         // Unfortunately sccache currently lacks support to build them successfully.
         // Disable compiler launcher on Darwin targets to avoid potential issues.
         let use_compiler_launcher = !self.target.contains("apple-darwin");
-        let extra_compiler_flags: &[&str] =
-            if self.target.contains("apple") { &["-fembed-bitcode=off"] } else { &[] };
         // Since v1.0.86, the cc crate adds -mmacosx-version-min to the default
         // flags on MacOS. A long-standing bug in the CMake rules for compiler-rt
         // causes architecture detection to be skipped when this flag is present,
@@ -1057,7 +1048,6 @@ impl Step for Sanitizers {
             &mut cfg,
             use_compiler_launcher,
             LdFlags::default(),
-            extra_compiler_flags,
             suppressed_compiler_flag_prefixes,
         );
 
