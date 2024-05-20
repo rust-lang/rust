@@ -1,6 +1,7 @@
 use rustc_ast::ast;
-use rustc_errors::codes::*;
+use rustc_errors::{codes::*, IntoDiagArg};
 use rustc_macros::{Diagnostic, Subdiagnostic};
+use rustc_session::errors::FeatureGateSubdiagnostic;
 use rustc_session::Limit;
 use rustc_span::symbol::{Ident, MacroRulesNormalizedIdent};
 use rustc_span::{Span, Symbol};
@@ -48,7 +49,10 @@ pub(crate) struct VarStillRepeating {
 pub(crate) struct MetaVarsDifSeqMatchers {
     #[primary_span]
     pub span: Span,
-    pub msg: String,
+    pub var1_id: String,
+    pub var1_len: usize,
+    pub var2_id: String,
+    pub var2_len: usize,
 }
 
 #[derive(Diagnostic)]
@@ -165,6 +169,7 @@ pub(crate) struct FeatureRemoved<'a> {
 #[derive(Subdiagnostic)]
 #[note(expand_reason)]
 pub(crate) struct FeatureRemovedReason<'a> {
+    // FIXME: make this translatable
     pub reason: &'a str,
 }
 
@@ -296,6 +301,7 @@ pub(crate) struct IncompleteParse<'a> {
 pub(crate) struct RemoveNodeNotSupported {
     #[primary_span]
     pub span: Span,
+    // FIXME: make this translatable
     pub descr: &'static str,
 }
 
@@ -416,14 +422,24 @@ pub struct DuplicateMatcherBinding {
     pub prev: Span,
 }
 
+#[derive(Subdiagnostic)]
+pub enum InvalidFragmentSpecifierValidNames {
+    #[help(expand_help_valid_names_2021)]
+    Edition2021,
+    #[help(expand_help_valid_names_other)]
+    Other,
+}
+
 #[derive(Diagnostic)]
 #[diag(expand_invalid_fragment_specifier)]
-#[help]
 pub struct InvalidFragmentSpecifier {
     #[primary_span]
     pub span: Span,
+    #[help(expand_help_expr_2021)]
+    pub help_expr_2021: bool,
+    #[subdiagnostic]
+    pub help_valid_names: InvalidFragmentSpecifierValidNames,
     pub fragment: Ident,
-    pub help: String,
 }
 
 #[derive(Diagnostic)]
@@ -439,4 +455,39 @@ pub struct ExpectedParenOrBrace<'a> {
 pub(crate) struct EmptyDelegationList {
     #[primary_span]
     pub span: Span,
+}
+
+pub enum StatementOrExpression {
+    Statement,
+    Expression,
+}
+
+impl IntoDiagArg for StatementOrExpression {
+    fn into_diag_arg(self) -> rustc_errors::DiagArgValue {
+        let s = match self {
+            StatementOrExpression::Statement => "statement",
+            StatementOrExpression::Expression => "expression",
+        };
+
+        rustc_errors::DiagArgValue::Str(s.into())
+    }
+}
+
+#[derive(Diagnostic)]
+#[diag(expand_custom_attribute_cannot_be_applied, code = E0658)]
+pub struct CustomAttributesForbidden {
+    #[primary_span]
+    pub span: Span,
+    #[subdiagnostic]
+    pub subdiag: FeatureGateSubdiagnostic,
+    pub kind: StatementOrExpression,
+}
+
+#[derive(Diagnostic)]
+#[diag(expand_non_inline_module_in_proc_macro_unstable, code = E0658)]
+pub struct NonInlineModuleInProcMacroUnstable {
+    #[primary_span]
+    pub span: Span,
+    #[subdiagnostic]
+    pub subdiag: FeatureGateSubdiagnostic,
 }

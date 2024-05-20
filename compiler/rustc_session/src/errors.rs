@@ -12,16 +12,30 @@ use rustc_target::spec::{SplitDebuginfo, StackProtector, TargetTriple};
 
 use crate::{config::CrateType, parse::ParseSess};
 
+// FIXME: factor into separate structs to avoid dynamic DiagMessage field
 pub(crate) struct FeatureGateError {
     pub(crate) span: MultiSpan,
     pub(crate) explain: DiagMessage,
+    pub(crate) subdiag: FeatureGateSubdiagnostic,
 }
 
 impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for FeatureGateError {
     #[track_caller]
     fn into_diag(self, dcx: &'a DiagCtxt, level: Level) -> Diag<'a, G> {
-        Diag::new(dcx, level, self.explain).with_span(self.span).with_code(E0658)
+        let mut diag = Diag::new(dcx, level, self.explain).with_span(self.span).with_code(E0658);
+        diag.subdiagnostic(dcx, self.subdiag);
+        diag
     }
+}
+
+#[derive(Subdiagnostic)]
+pub struct FeatureGateSubdiagnostic {
+    #[subdiagnostic]
+    pub(crate) issue: Option<FeatureDiagnosticForIssue>,
+    #[subdiagnostic]
+    pub(crate) enable_feature: Option<EnableFeatureSubdiagnostic>,
+    #[subdiagnostic]
+    pub(crate) upgrade_compiler: Option<SuggestUpgradeCompiler>,
 }
 
 #[derive(Subdiagnostic)]
@@ -49,27 +63,21 @@ impl SuggestUpgradeCompiler {
 }
 
 #[derive(Subdiagnostic)]
-#[help(session_feature_diagnostic_help)]
-pub(crate) struct FeatureDiagnosticHelp {
-    pub(crate) feature: Symbol,
-}
-
-#[derive(Subdiagnostic)]
-#[suggestion(
-    session_feature_diagnostic_suggestion,
-    applicability = "maybe-incorrect",
-    code = "#![feature({feature})]\n"
-)]
-pub struct FeatureDiagnosticSuggestion {
-    pub feature: Symbol,
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Subdiagnostic)]
-#[help(session_cli_feature_diagnostic_help)]
-pub(crate) struct CliFeatureDiagnosticHelp {
-    pub(crate) feature: Symbol,
+pub(crate) enum EnableFeatureSubdiagnostic {
+    #[help(session_feature_diagnostic_help)]
+    AddAttrHelp { feature: Symbol },
+    #[suggestion(
+        session_feature_diagnostic_suggestion,
+        applicability = "maybe-incorrect",
+        code = "#![feature({feature})]\n"
+    )]
+    AddAttrSuggestion {
+        feature: Symbol,
+        #[primary_span]
+        span: Span,
+    },
+    #[help(session_cli_feature_diagnostic_help)]
+    AddCliHelp { feature: Symbol },
 }
 
 #[derive(Diagnostic)]

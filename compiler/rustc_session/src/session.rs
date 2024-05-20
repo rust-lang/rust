@@ -6,7 +6,7 @@ use crate::config::{
 };
 use crate::config::{ErrorOutputType, Input};
 use crate::errors;
-use crate::parse::{add_feature_diagnostics, ParseSess};
+use crate::parse::{get_feature_diagnostics, ParseSess};
 use crate::search_paths::{PathKind, SearchPath};
 use crate::{filesearch, lint};
 
@@ -301,13 +301,13 @@ impl Session {
     }
 
     #[track_caller]
+    #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn create_feature_err<'a>(&'a self, err: impl Diagnostic<'a>, feature: Symbol) -> Diag<'a> {
         let mut err = self.dcx().create_err(err);
         if err.code.is_none() {
-            #[allow(rustc::diagnostic_outside_of_impl)]
             err.code(E0658);
         }
-        add_feature_diagnostics(&mut err, self, feature);
+        err.subdiagnostic(self.dcx(), get_feature_diagnostics(self, feature));
         err
     }
 

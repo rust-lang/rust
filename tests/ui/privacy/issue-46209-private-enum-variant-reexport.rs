@@ -6,7 +6,7 @@ mod rank {
     pub use self::Lieutenant::{JuniorGrade, Full};
     //~^ ERROR `JuniorGrade` is private, and cannot be re-exported
     //~| ERROR `Full` is private, and cannot be re-exported
-    //~| ERROR unused imports: `Full`, `JuniorGrade`
+    //~| ERROR unused imports: `Full` and `JuniorGrade`
     pub use self::PettyOfficer::*;
     //~^ ERROR glob import doesn't reexport anything
     //~| ERROR unused import: `self::PettyOfficer::*`

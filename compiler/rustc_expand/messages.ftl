@@ -27,6 +27,12 @@ expand_collapse_debuginfo_illegal =
 expand_count_repetition_misplaced =
     `count` can not be placed inside the inner-most repetition
 
+expand_custom_attribute_cannot_be_applied =
+    custom attributes cannot be applied to {$kind ->
+        [statement] statements
+        *[expression] expressions
+    }
+
 expand_custom_attribute_panicked =
     custom attribute panicked
     .help = message: {$message}
@@ -76,7 +82,9 @@ expand_invalid_cfg_predicate_literal = `cfg` predicate key cannot be a literal
 
 expand_invalid_fragment_specifier =
     invalid fragment specifier `{$fragment}`
-    .help = {$help}
+    .help_expr_2021 = fragment specifier `expr_2021` requires Rust 2021 or later
+    .help_valid_names_2021 = valid fragment specifiers are `ident`, `block`, `stmt`, `expr`, `expr_2021`, `pat`, `ty`, `lifetime`, `literal`, `path`, `meta`, `tt`, `item` and `vis`
+    .help_valid_names_other = valid fragment specifiers are `ident`, `block`, `stmt`, `expr`, `pat`, `ty`, `lifetime`, `literal`, `path`, `meta`, `tt`, `item` and `vis`
 
 expand_macro_body_stability =
     macros cannot have body stability attributes
@@ -94,7 +102,14 @@ expand_malformed_feature_attribute =
     malformed `feature` attribute input
     .expected = expected just one word
 
-expand_meta_var_dif_seq_matchers = {$msg}
+expand_meta_var_dif_seq_matchers =
+    meta-variable `{$var1_id}` repeats {$var1_len} {$var1_len ->
+        [one] time
+        *[count] times
+    }, but `{$var2_id}` repeats {$var2_len} {$var2_len ->
+        [one] time
+        *[count] times
+    }
 
 expand_meta_var_expr_unrecognized_var =
     variable `{$key}` is not recognized in meta-variable expression
@@ -117,6 +132,9 @@ expand_module_multiple_candidates =
 
 expand_must_repeat_once =
     this must repeat at least once
+
+expand_non_inline_module_in_proc_macro_unstable =
+    non-inline modules in proc macro input are unstable
 
 expand_not_a_meta_item =
     not a meta item

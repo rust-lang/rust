@@ -108,7 +108,9 @@ decl_derive!(
         // struct attributes
         diag,
         help,
+        help_once,
         note,
+        note_once,
         warning,
         // field attributes
         skip_arg,
@@ -125,7 +127,9 @@ decl_derive!(
         // struct attributes
         diag,
         help,
+        help_once,
         note,
+        note_once,
         warning,
         // field attributes
         skip_arg,
@@ -142,7 +146,9 @@ decl_derive!(
         // struct/variant attributes
         label,
         help,
+        help_once,
         note,
+        note_once,
         warning,
         subdiagnostic,
         suggestion,

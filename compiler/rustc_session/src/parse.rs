@@ -3,8 +3,8 @@
 
 use crate::config::{Cfg, CheckCfg};
 use crate::errors::{
-    CliFeatureDiagnosticHelp, FeatureDiagnosticForIssue, FeatureDiagnosticHelp,
-    FeatureDiagnosticSuggestion, FeatureGateError, SuggestUpgradeCompiler,
+    EnableFeatureSubdiagnostic, FeatureDiagnosticForIssue, FeatureGateError,
+    FeatureGateSubdiagnostic, SuggestUpgradeCompiler,
 };
 use crate::lint::{
     builtin::UNSTABLE_SYNTAX_PRE_EXPANSION, BufferedEarlyLint, BuiltinLintDiag, Lint, LintId,
@@ -15,8 +15,7 @@ use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
 use rustc_data_structures::sync::{AppendOnlyVec, Lock, Lrc};
 use rustc_errors::emitter::{stderr_destination, HumanEmitter, SilentEmitter};
 use rustc_errors::{
-    fallback_fluent_bundle, ColorConfig, Diag, DiagCtxt, DiagMessage, EmissionGuarantee, MultiSpan,
-    StashKey,
+    fallback_fluent_bundle, ColorConfig, Diag, DiagCtxt, DiagMessage, MultiSpan, StashKey,
 };
 use rustc_feature::{find_feature_issue, GateIssue, UnstableFeatures};
 use rustc_span::edition::Edition;
@@ -111,9 +110,9 @@ pub fn feature_err_issue(
         }
     }
 
-    let mut err = sess.psess.dcx.create_err(FeatureGateError { span, explain: explain.into() });
-    add_feature_diagnostics_for_issue(&mut err, sess, feature, issue, false, None);
-    err
+    let subdiag = get_feature_diagnostics_for_issue(sess, feature, issue, false, None);
+
+    sess.psess.dcx.create_err(FeatureGateError { span, explain: explain.into(), subdiag })
 }
 
 /// Construct a future incompatibility diagnostic for a feature gate.
@@ -141,7 +140,10 @@ pub fn feature_warn_issue(
     explain: &'static str,
 ) {
     let mut err = sess.psess.dcx.struct_span_warn(span, explain);
-    add_feature_diagnostics_for_issue(&mut err, sess, feature, issue, false, None);
+    err.subdiagnostic(
+        sess.dcx(),
+        get_feature_diagnostics_for_issue(sess, feature, issue, false, None),
+    );
 
     // Decorate this as a future-incompatibility lint as in rustc_middle::lint::lint_level
     let lint = UNSTABLE_SYNTAX_PRE_EXPANSION;
@@ -154,49 +156,47 @@ pub fn feature_warn_issue(
     err.stash(span, StashKey::EarlySyntaxWarning);
 }
 
-/// Adds the diagnostics for a feature to an existing error.
-pub fn add_feature_diagnostics<G: EmissionGuarantee>(
-    err: &mut Diag<'_, G>,
-    sess: &Session,
-    feature: Symbol,
-) {
-    add_feature_diagnostics_for_issue(err, sess, feature, GateIssue::Language, false, None);
+/// Returns the subdiagnostics for a feature gate error.
+pub fn get_feature_diagnostics(sess: &Session, feature: Symbol) -> FeatureGateSubdiagnostic {
+    get_feature_diagnostics_for_issue(sess, feature, GateIssue::Language, false, None)
 }
 
-/// Adds the diagnostics for a feature to an existing error.
+/// Returns the subdiagnostics for a feature gate error.
 ///
 /// This variant allows you to control whether it is a library or language feature.
 /// Almost always, you want to use this for a language feature. If so, prefer
-/// `add_feature_diagnostics`.
-#[allow(rustc::diagnostic_outside_of_impl)] // FIXME
-pub fn add_feature_diagnostics_for_issue<G: EmissionGuarantee>(
-    err: &mut Diag<'_, G>,
+/// [`get_feature_diagnostics`].
+pub fn get_feature_diagnostics_for_issue(
     sess: &Session,
     feature: Symbol,
     issue: GateIssue,
     feature_from_cli: bool,
     inject_span: Option<Span>,
-) {
-    if let Some(n) = find_feature_issue(feature, issue) {
-        err.subdiagnostic(sess.dcx(), FeatureDiagnosticForIssue { n });
-    }
+) -> FeatureGateSubdiagnostic {
+    let issue = find_feature_issue(feature, issue).map(|n| FeatureDiagnosticForIssue { n });
 
     // #23973: do not suggest `#![feature(...)]` if we are in beta/stable
-    if sess.psess.unstable_features.is_nightly_build() {
-        if feature_from_cli {
-            err.subdiagnostic(sess.dcx(), CliFeatureDiagnosticHelp { feature });
+    let (enable_feature, upgrade_compiler) = if sess.psess.unstable_features.is_nightly_build() {
+        let enable_feature = if feature_from_cli {
+            EnableFeatureSubdiagnostic::AddCliHelp { feature }
         } else if let Some(span) = inject_span {
-            err.subdiagnostic(sess.dcx(), FeatureDiagnosticSuggestion { feature, span });
+            EnableFeatureSubdiagnostic::AddAttrSuggestion { feature, span }
         } else {
-            err.subdiagnostic(sess.dcx(), FeatureDiagnosticHelp { feature });
-        }
+            EnableFeatureSubdiagnostic::AddAttrHelp { feature }
+        };
 
-        if sess.opts.unstable_opts.ui_testing {
-            err.subdiagnostic(sess.dcx(), SuggestUpgradeCompiler::ui_testing());
-        } else if let Some(suggestion) = SuggestUpgradeCompiler::new() {
-            err.subdiagnostic(sess.dcx(), suggestion);
-        }
-    }
+        let upgrade_compiler = if sess.opts.unstable_opts.ui_testing {
+            Some(SuggestUpgradeCompiler::ui_testing())
+        } else {
+            SuggestUpgradeCompiler::new()
+        };
+
+        (Some(enable_feature), upgrade_compiler)
+    } else {
+        (None, None)
+    };
+
+    FeatureGateSubdiagnostic { issue, upgrade_compiler, enable_feature }
 }
 
 /// Info about a parsing session.
@@ -300,37 +300,17 @@ impl ParseSess {
         self.source_map.clone()
     }
 
-    pub fn buffer_lint(
-        &self,
-        lint: &'static Lint,
-        span: impl Into<MultiSpan>,
-        node_id: NodeId,
-        msg: impl Into<DiagMessage>,
-    ) {
-        self.buffered_lints.with_lock(|buffered_lints| {
-            buffered_lints.push(BufferedEarlyLint {
-                span: span.into(),
-                node_id,
-                msg: msg.into(),
-                lint_id: LintId::of(lint),
-                diagnostic: BuiltinLintDiag::Normal,
-            });
-        });
-    }
-
     pub fn buffer_lint_with_diagnostic(
         &self,
         lint: &'static Lint,
         span: impl Into<MultiSpan>,
         node_id: NodeId,
-        msg: impl Into<DiagMessage>,
         diagnostic: BuiltinLintDiag,
     ) {
         self.buffered_lints.with_lock(|buffered_lints| {
             buffered_lints.push(BufferedEarlyLint {
                 span: span.into(),
                 node_id,
-                msg: msg.into(),
                 lint_id: LintId::of(lint),
                 diagnostic,
             });

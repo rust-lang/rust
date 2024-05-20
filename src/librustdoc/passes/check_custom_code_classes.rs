@@ -11,7 +11,7 @@ use crate::html::markdown::{find_codes, ErrorCodes, LangString};
 
 use rustc_errors::StashKey;
 use rustc_feature::GateIssue;
-use rustc_session::parse::add_feature_diagnostics_for_issue;
+use rustc_session::parse::get_feature_diagnostics_for_issue;
 use rustc_span::symbol::sym;
 
 pub(crate) const CHECK_CUSTOM_CODE_CLASSES: Pass = Pass {
@@ -69,13 +69,15 @@ pub(crate) fn look_for_custom_classes<'tcx>(cx: &DocContext<'tcx>, item: &Item) 
         let mut err = sess
             .dcx()
             .struct_span_warn(span, "custom classes in code blocks will change behaviour");
-        add_feature_diagnostics_for_issue(
-            &mut err,
-            sess,
-            sym::custom_code_classes_in_docs,
-            GateIssue::Language,
-            false,
-            None,
+        err.subdiagnostic(
+            sess.dcx(),
+            get_feature_diagnostics_for_issue(
+                sess,
+                sym::custom_code_classes_in_docs,
+                GateIssue::Language,
+                false,
+                None,
+            ),
         );
 
         err.note(

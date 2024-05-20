@@ -374,7 +374,6 @@ impl<'psess, 'src> StringReader<'psess, 'src> {
                 TEXT_DIRECTION_CODEPOINT_IN_COMMENT,
                 span,
                 ast::CRATE_NODE_ID,
-                "unicode codepoint changing visible direction of text present in comment",
                 BuiltinLintDiag::UnicodeTextFlow(span, content.to_string()),
             );
         }
@@ -727,8 +726,7 @@ impl<'psess, 'src> StringReader<'psess, 'src> {
                 RUST_2021_PREFIXES_INCOMPATIBLE_SYNTAX,
                 prefix_span,
                 ast::CRATE_NODE_ID,
-                format!("prefix `{prefix}` is unknown"),
-                BuiltinLintDiag::ReservedPrefix(prefix_span),
+                BuiltinLintDiag::ReservedPrefix(prefix_span, prefix.to_string()),
             );
         }
     }

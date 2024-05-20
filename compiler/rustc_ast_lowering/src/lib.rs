@@ -59,7 +59,7 @@ use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_macros::extension;
 use rustc_middle::span_bug;
 use rustc_middle::ty::{ResolverAstLowering, TyCtxt};
-use rustc_session::parse::{add_feature_diagnostics, feature_err};
+use rustc_session::parse::{feature_err, get_feature_diagnostics};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{DesugaringKind, Span, DUMMY_SP};
 use smallvec::{smallvec, SmallVec};
@@ -1001,27 +1001,29 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     } else if let Some(first_char) = constraint.ident.as_str().chars().next()
                         && first_char.is_ascii_lowercase()
                     {
-                        let mut err = if !data.inputs.is_empty() {
-                            self.dcx().create_err(errors::BadReturnTypeNotation::Inputs {
+                        let subdiag = if !self.tcx.features().return_type_notation
+                            && self.tcx.sess.is_nightly_build()
+                        {
+                            Some(get_feature_diagnostics(&self.tcx.sess, sym::return_type_notation))
+                        } else {
+                            None
+                        };
+
+                        let err = if !data.inputs.is_empty() {
+                            errors::BadReturnTypeNotation::Inputs {
                                 span: data.inputs_span,
-                            })
+                                subdiag,
+                            }
                         } else if let FnRetTy::Ty(ty) = &data.output {
-                            self.dcx().create_err(errors::BadReturnTypeNotation::Output {
+                            errors::BadReturnTypeNotation::Output {
                                 span: data.inputs_span.shrink_to_hi().to(ty.span),
-                            })
+                                subdiag,
+                            }
                         } else {
                             unreachable!("inputs are empty and return type is not provided")
                         };
-                        if !self.tcx.features().return_type_notation
-                            && self.tcx.sess.is_nightly_build()
-                        {
-                            add_feature_diagnostics(
-                                &mut err,
-                                &self.tcx.sess,
-                                sym::return_type_notation,
-                            );
-                        }
-                        err.emit();
+                        self.dcx().create_err(err).emit();
+
                         GenericArgsCtor {
                             args: Default::default(),
                             bindings: &[],
