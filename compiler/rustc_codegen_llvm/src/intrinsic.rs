@@ -2368,16 +2368,16 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             // byte swap is no-op for i8/u8
             sym::simd_bswap if int_size == 8 => Ok(args[0].immediate()),
             sym::simd_ctlz | sym::simd_cttz => {
-                // this fun bonus i1 arg means "poison if the arg vector contains zero"
+                // for the (int, i1 immediate) pair, the second arg adds `(0, true) => poison`
                 let fn_ty = bx.type_func(&[vec_ty, bx.type_i1()], vec_ty);
+                let dont_poison_on_zero = bx.const_int(bx.type_i1(), 0);
                 let f = bx.declare_cfn(llvm_intrinsic, llvm::UnnamedAddr::No, fn_ty);
                 Ok(bx.call(
                     fn_ty,
                     None,
                     None,
                     f,
-                    // simd_ctlz and simd_cttz are exposed to safe code, so let's not poison anything
-                    &[args[0].immediate(), bx.const_int(bx.type_i1(), 0)],
+                    &[args[0].immediate(), dont_poison_on_zero],
                     None,
                     None,
                 ))
