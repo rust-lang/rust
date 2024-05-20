@@ -402,13 +402,25 @@ where
         // Ultimately propagated to all the transitive parents when following
         // `InCycleWith` upwards.
         // This loop performs the downward link encoding mentioned above. Details below!
-        let node_state = {
+        // Note that there are two different states being assigned: the root state, and
+        // a potentially derived version of the root state for non-root nodes in the chain.
+        let (root_state, assigned_state) = {
             loop {
                 debug!("find_state(r = {node:?} in state {:?})", self.node_states[node]);
                 match self.node_states[node] {
-                    s @ (NodeState::NotVisited
-                    | NodeState::BeingVisited { .. }
-                    | NodeState::InCycle { .. }) => break s,
+                    // This must have been the first and only state since it is unexplored*;
+                    // no update needed! * Unless there is a bug :')
+                    s @ NodeState::NotVisited => return s,
+                    // We are in a completely discovered SCC; every node on our path is in that SCC:
+                    s @ NodeState::InCycle { .. } => break (s, s),
+                    // The Interesting Third Base Case: we are a path back to a root node
+                    // still being explored. Now we need that node to keep its state and
+                    // every other node to be recorded as being in whatever component that
+                    // ends up in.
+                    s @ NodeState::BeingVisited { depth, .. } => {
+                        break (s, NodeState::InCycleWith { parent: self.node_stack[depth] });
+                    }
+                    // We are not at the head of a path; keep compressing it!
                     NodeState::InCycleWith { parent } => {
                         // We test this, to be extremely sure that we never
                         // ever break our termination condition for the
@@ -462,11 +474,13 @@ where
         // Move backwards until we found the node where we started. We
         // will know when we hit the state where previous_node == node.
         loop {
-            // Back at the beginning, we can return.
+            // Back at the beginning, we can return. Note that we return the root state.
+            // This is becuse for components being explored, we would otherwise get a
+            // `node_state[n] = InCycleWith{ parent: n }` and that's wrong.
             if previous_node == node {
-                return node_state;
+                return root_state;
             }
-            debug!("Compressing {node:?} down to {previous_node:?} with state {node_state:?}");
+            debug!("Compressing {node:?} down to {previous_node:?} with state {assigned_state:?}");
 
             // Update to previous node in the link.
             match self.node_states[previous_node] {
@@ -475,25 +489,14 @@ where
                     previous_node = previous;
                 }
                 // Only InCycleWith nodes were added to the reverse linked list.
-                other => panic!("Invalid previous link while compressing cycle: {other:?}"),
+                other => unreachable!("Invalid previous link while compressing cycle: {other:?}"),
             }
 
-            debug!("find_state: parent_state = {:?}", node_state);
-
-            let new_state = match node_state {
-                // Still visiting nodes, compress the cycle to the root node
-                // at that depth.
-                NodeState::BeingVisited { depth, .. } => {
-                    let parent = self.node_stack[depth];
-                    NodeState::InCycleWith { parent }
-                }
-                // Already fully visited; we just transfer the state of the parent.
-                s @ NodeState::InCycle { .. } => s,
-                // These cannot be the root nodes of a path being compressed
-                NodeState::NotVisited | NodeState::InCycleWith { .. } => unreachable!(),
-            };
-
-            self.node_states[node] = new_state;
+            // Update the node state to the (potentially derived) state.
+            // If the root is still being explored, this is
+            // `InCycleWith{ parent: <root node>}`, otherwise
+            // `assigned_state == root_state`.
+            self.node_states[node] = assigned_state;
         }
     }
 
