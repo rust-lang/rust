@@ -144,7 +144,7 @@ pub(crate) fn expand_include<'cx>(
         fn make_expr(mut self: Box<ExpandInclude<'a>>) -> Option<P<ast::Expr>> {
             let expr = parse_expr(&mut self.p).ok()?;
             if self.p.token != token::Eof {
-                self.p.psess.buffer_lint_with_diagnostic(
+                self.p.psess.buffer_lint(
                     INCOMPLETE_INCLUDE,
                     self.p.token.span,
                     self.node_id,

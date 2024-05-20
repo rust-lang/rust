@@ -268,7 +268,7 @@ fn check_binders(
                 // FIXME: Report this as a hard error eventually and remove equivalent errors from
                 // `parse_tt_inner` and `nameize`. Until then the error may be reported twice, once
                 // as a hard error and then once as a buffered lint.
-                psess.buffer_lint_with_diagnostic(
+                psess.buffer_lint(
                     MISSING_FRAGMENT_SPECIFIER,
                     span,
                     node_id,
@@ -646,6 +646,6 @@ fn ops_is_prefix(
 fn buffer_lint(psess: &ParseSess, span: MultiSpan, node_id: NodeId, diag: BuiltinLintDiag) {
     // Macros loaded from other crates have dummy node ids.
     if node_id != DUMMY_NODE_ID {
-        psess.buffer_lint_with_diagnostic(META_VARIABLE_MISUSE, span, node_id, diag);
+        psess.buffer_lint(META_VARIABLE_MISUSE, span, node_id, diag);
     }
 }

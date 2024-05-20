@@ -510,7 +510,7 @@ fn expand_preparsed_asm(
             };
 
             if template_str.contains(".intel_syntax") {
-                ecx.psess().buffer_lint_with_diagnostic(
+                ecx.psess().buffer_lint(
                     lint::builtin::BAD_ASM_STYLE,
                     find_span(".intel_syntax"),
                     ecx.current_expansion.lint_node_id,
@@ -518,7 +518,7 @@ fn expand_preparsed_asm(
                 );
             }
             if template_str.contains(".att_syntax") {
-                ecx.psess().buffer_lint_with_diagnostic(
+                ecx.psess().buffer_lint(
                     lint::builtin::BAD_ASM_STYLE,
                     find_span(".att_syntax"),
                     ecx.current_expansion.lint_node_id,

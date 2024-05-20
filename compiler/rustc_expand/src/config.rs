@@ -258,7 +258,7 @@ impl<'a> StripUnconfigured<'a> {
 
         // Lint on zero attributes in source.
         if expanded_attrs.is_empty() {
-            self.sess.psess.buffer_lint_with_diagnostic(
+            self.sess.psess.buffer_lint(
                 rustc_lint_defs::builtin::UNUSED_ATTRIBUTES,
                 attr.span,
                 ast::CRATE_NODE_ID,
@@ -341,7 +341,7 @@ impl<'a> StripUnconfigured<'a> {
             item_span,
         );
         if attr.has_name(sym::crate_type) {
-            self.sess.psess.buffer_lint_with_diagnostic(
+            self.sess.psess.buffer_lint(
                 rustc_lint_defs::builtin::DEPRECATED_CFG_ATTR_CRATE_TYPE_NAME,
                 attr.span,
                 ast::CRATE_NODE_ID,
@@ -349,7 +349,7 @@ impl<'a> StripUnconfigured<'a> {
             );
         }
         if attr.has_name(sym::crate_name) {
-            self.sess.psess.buffer_lint_with_diagnostic(
+            self.sess.psess.buffer_lint(
                 rustc_lint_defs::builtin::DEPRECATED_CFG_ATTR_CRATE_TYPE_NAME,
                 attr.span,
                 ast::CRATE_NODE_ID,

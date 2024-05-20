@@ -151,7 +151,7 @@ impl<'a, 'b, 'tcx> UnusedImportCheckVisitor<'a, 'b, 'tcx> {
             // We do this in any edition.
             if warn_if_unused {
                 if let Some(&span) = maybe_unused_extern_crates.get(&extern_crate.id) {
-                    self.r.lint_buffer.buffer_lint_with_diagnostic(
+                    self.r.lint_buffer.buffer_lint(
                         UNUSED_EXTERN_CRATES,
                         extern_crate.id,
                         span,
@@ -203,7 +203,7 @@ impl<'a, 'b, 'tcx> UnusedImportCheckVisitor<'a, 'b, 'tcx> {
                 .span
                 .find_ancestor_inside(extern_crate.span)
                 .unwrap_or(extern_crate.ident.span);
-            self.r.lint_buffer.buffer_lint_with_diagnostic(
+            self.r.lint_buffer.buffer_lint(
                 UNUSED_EXTERN_CRATES,
                 extern_crate.id,
                 extern_crate.span,
@@ -388,7 +388,7 @@ impl Resolver<'_, '_> {
                 {
                     if let ImportKind::MacroUse { .. } = import.kind {
                         if !import.span.is_dummy() {
-                            self.lint_buffer.buffer_lint_with_diagnostic(
+                            self.lint_buffer.buffer_lint(
                                 MACRO_USE_EXTERN_CRATE,
                                 import.root_id,
                                 import.span,
@@ -409,7 +409,7 @@ impl Resolver<'_, '_> {
                     }
                 }
                 ImportKind::MacroUse { .. } => {
-                    self.lint_buffer.buffer_lint_with_diagnostic(
+                    self.lint_buffer.buffer_lint(
                         UNUSED_IMPORTS,
                         import.root_id,
                         import.span,
@@ -477,7 +477,7 @@ impl Resolver<'_, '_> {
                 }
             };
 
-            visitor.r.lint_buffer.buffer_lint_with_diagnostic(
+            visitor.r.lint_buffer.buffer_lint(
                 UNUSED_IMPORTS,
                 unused.use_tree_id,
                 ms,
@@ -533,7 +533,7 @@ impl Resolver<'_, '_> {
                 continue;
             }
 
-            self.lint_buffer.buffer_lint_with_diagnostic(
+            self.lint_buffer.buffer_lint(
                 UNUSED_QUALIFICATIONS,
                 unn_qua.node_id,
                 unn_qua.path_span,

@@ -42,7 +42,7 @@ pub(crate) fn warn_on_duplicate_attribute(ecx: &ExtCtxt<'_>, item: &Annotatable,
     };
     if let Some(attrs) = attrs {
         if let Some(attr) = attr::find_by_name(attrs, name) {
-            ecx.psess().buffer_lint_with_diagnostic(
+            ecx.psess().buffer_lint(
                 DUPLICATE_MACRO_ATTRIBUTES,
                 attr.span,
                 ecx.current_expansion.lint_node_id,

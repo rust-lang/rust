@@ -300,7 +300,7 @@ impl ParseSess {
         self.source_map.clone()
     }
 
-    pub fn buffer_lint_with_diagnostic(
+    pub fn buffer_lint(
         &self,
         lint: &'static Lint,
         span: impl Into<MultiSpan>,

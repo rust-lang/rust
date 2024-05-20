@@ -189,7 +189,7 @@ fn emit_malformed_attribute(
         suggestions.push(format!("#{inner}[{name} = \"{descr}\"]"));
     }
     if should_warn(name) {
-        psess.buffer_lint_with_diagnostic(
+        psess.buffer_lint(
             ILL_FORMED_ATTRIBUTE_INPUT,
             span,
             ast::CRATE_NODE_ID,

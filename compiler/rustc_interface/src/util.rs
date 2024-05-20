@@ -404,7 +404,7 @@ pub(crate) fn check_attr_crate_type(
                         n,
                         None,
                     );
-                    lint_buffer.buffer_lint_with_diagnostic(
+                    lint_buffer.buffer_lint(
                         lint::builtin::UNKNOWN_CRATE_TYPES,
                         ast::CRATE_NODE_ID,
                         span,

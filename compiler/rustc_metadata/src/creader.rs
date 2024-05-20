@@ -974,7 +974,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
                 continue;
             }
 
-            self.sess.psess.buffer_lint_with_diagnostic(
+            self.sess.psess.buffer_lint(
                 lint::builtin::UNUSED_CRATE_DEPENDENCIES,
                 span,
                 ast::CRATE_NODE_ID,
@@ -1015,7 +1015,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
             // Make a point span rather than covering the whole file
             let span = krate.spans.inner_span.shrink_to_lo();
 
-            self.sess.psess.buffer_lint_with_diagnostic(
+            self.sess.psess.buffer_lint(
                 lint::builtin::WASM_C_ABI,
                 span,
                 ast::CRATE_NODE_ID,

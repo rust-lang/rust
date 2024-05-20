@@ -1799,7 +1799,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
             }
 
             if attr.is_doc_comment() {
-                self.cx.sess.psess.buffer_lint_with_diagnostic(
+                self.cx.sess.psess.buffer_lint(
                     UNUSED_DOC_COMMENTS,
                     current_span,
                     self.cx.current_expansion.lint_node_id,
@@ -1810,7 +1810,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                 // `#[cfg]` and `#[cfg_attr]` are special - they are
                 // eagerly evaluated.
                 if attr_name != sym::cfg && attr_name != sym::cfg_attr {
-                    self.cx.sess.psess.buffer_lint_with_diagnostic(
+                    self.cx.sess.psess.buffer_lint(
                         UNUSED_ATTRIBUTES,
                         attr.span,
                         self.cx.current_expansion.lint_node_id,

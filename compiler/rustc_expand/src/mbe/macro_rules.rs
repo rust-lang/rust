@@ -79,7 +79,7 @@ impl<'a> ParserAnyMacro<'a> {
         // but `m!()` is allowed in expression positions (cf. issue #34706).
         if kind == AstFragmentKind::Expr && parser.token == token::Semi {
             if is_local {
-                parser.psess.buffer_lint_with_diagnostic(
+                parser.psess.buffer_lint(
                     SEMICOLON_IN_EXPRESSIONS_FROM_MACROS,
                     parser.token.span,
                     lint_node_id,
@@ -1153,7 +1153,7 @@ fn check_matcher_core<'tt>(
                             name,
                             Some(NonterminalKind::PatParam { inferred: false }),
                         ));
-                        sess.psess.buffer_lint_with_diagnostic(
+                        sess.psess.buffer_lint(
                             RUST_2021_INCOMPATIBLE_OR_PATTERNS,
                             span,
                             ast::CRATE_NODE_ID,

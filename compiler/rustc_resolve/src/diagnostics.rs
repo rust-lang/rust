@@ -128,7 +128,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         self.report_with_use_injections(krate);
 
         for &(span_use, span_def) in &self.macro_expanded_macro_export_errors {
-            self.lint_buffer.buffer_lint_with_diagnostic(
+            self.lint_buffer.buffer_lint(
                 MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS,
                 CRATE_NODE_ID,
                 span_use,
@@ -142,7 +142,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 let NameBindingKind::Import { import, .. } = ambiguity_error.b1.0.kind else {
                     unreachable!()
                 };
-                self.lint_buffer.buffer_lint_with_diagnostic(
+                self.lint_buffer.buffer_lint(
                     AMBIGUOUS_GLOB_IMPORTS,
                     import.root_id,
                     ambiguity_error.ident.span,
@@ -522,7 +522,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
 
         let diag = BuiltinLintDiag::AbsPathWithModule(root_span);
-        self.lint_buffer.buffer_lint_with_diagnostic(
+        self.lint_buffer.buffer_lint(
             ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE,
             node_id,
             root_span,

@@ -765,7 +765,7 @@ impl<'a> AstValidator<'a> {
             .span_to_snippet(span)
             .is_ok_and(|snippet| !snippet.starts_with("#["))
         {
-            self.lint_buffer.buffer_lint_with_diagnostic(
+            self.lint_buffer.buffer_lint(
                 MISSING_ABI,
                 id,
                 span,
@@ -1426,7 +1426,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             Self::check_decl_no_pat(&sig.decl, |span, ident, mut_ident| {
                 if mut_ident && matches!(ctxt, FnCtxt::Assoc(_)) {
                     if let Some(ident) = ident {
-                        self.lint_buffer.buffer_lint_with_diagnostic(
+                        self.lint_buffer.buffer_lint(
                             PATTERNS_IN_FNS_WITHOUT_BODY,
                             id,
                             span,
@@ -1506,7 +1506,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     Some((right, snippet))
                 }
             };
-            self.lint_buffer.buffer_lint_with_diagnostic(
+            self.lint_buffer.buffer_lint(
                 DEPRECATED_WHERE_CLAUSE_LOCATION,
                 item.id,
                 err.span,

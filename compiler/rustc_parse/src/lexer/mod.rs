@@ -370,7 +370,7 @@ impl<'psess, 'src> StringReader<'psess, 'src> {
         let content = self.str_from(content_start);
         if contains_text_flow_control_chars(content) {
             let span = self.mk_sp(start, self.pos);
-            self.psess.buffer_lint_with_diagnostic(
+            self.psess.buffer_lint(
                 TEXT_DIRECTION_CODEPOINT_IN_COMMENT,
                 span,
                 ast::CRATE_NODE_ID,
@@ -722,7 +722,7 @@ impl<'psess, 'src> StringReader<'psess, 'src> {
             self.dcx().emit_err(errors::UnknownPrefix { span: prefix_span, prefix, sugg });
         } else {
             // Before Rust 2021, only emit a lint for migration.
-            self.psess.buffer_lint_with_diagnostic(
+            self.psess.buffer_lint(
                 RUST_2021_PREFIXES_INCOMPATIBLE_SYNTAX,
                 prefix_span,
                 ast::CRATE_NODE_ID,

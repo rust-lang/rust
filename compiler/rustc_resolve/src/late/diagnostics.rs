@@ -2651,7 +2651,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                     let deletion_span =
                         if param.bounds.is_empty() { deletion_span() } else { None };
 
-                    self.r.lint_buffer.buffer_lint_with_diagnostic(
+                    self.r.lint_buffer.buffer_lint(
                         lint::builtin::SINGLE_USE_LIFETIMES,
                         param.id,
                         param.ident.span,
@@ -2669,7 +2669,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
 
                     // if the lifetime originates from expanded code, we won't be able to remove it #104432
                     if deletion_span.is_some_and(|sp| !sp.in_derive_expansion()) {
-                        self.r.lint_buffer.buffer_lint_with_diagnostic(
+                        self.r.lint_buffer.buffer_lint(
                             lint::builtin::UNUSED_LIFETIMES,
                             param.id,
                             param.ident.span,

@@ -528,7 +528,7 @@ pub fn cfg_matches(
         try_gate_cfg(cfg.name, cfg.span, sess, features);
         match sess.psess.check_config.expecteds.get(&cfg.name) {
             Some(ExpectedValues::Some(values)) if !values.contains(&cfg.value) => {
-                sess.psess.buffer_lint_with_diagnostic(
+                sess.psess.buffer_lint(
                     UNEXPECTED_CFGS,
                     cfg.span,
                     lint_node_id,
@@ -539,7 +539,7 @@ pub fn cfg_matches(
                 );
             }
             None if sess.psess.check_config.exhaustive_names => {
-                sess.psess.buffer_lint_with_diagnostic(
+                sess.psess.buffer_lint(
                     UNEXPECTED_CFGS,
                     cfg.span,
                     lint_node_id,

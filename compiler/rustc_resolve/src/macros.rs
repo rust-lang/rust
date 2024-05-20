@@ -311,7 +311,7 @@ impl<'a, 'tcx> ResolverExpand for Resolver<'a, 'tcx> {
 
     fn check_unused_macros(&mut self) {
         for (_, &(node_id, ident)) in self.unused_macros.iter() {
-            self.lint_buffer.buffer_lint_with_diagnostic(
+            self.lint_buffer.buffer_lint(
                 UNUSED_MACROS,
                 node_id,
                 ident.span,
@@ -324,7 +324,7 @@ impl<'a, 'tcx> ResolverExpand for Resolver<'a, 'tcx> {
                 continue;
             }
             let node_id = self.def_id_to_node_id[def_id];
-            self.lint_buffer.buffer_lint_with_diagnostic(
+            self.lint_buffer.buffer_lint(
                 UNUSED_MACRO_RULES,
                 node_id,
                 rule_span,
@@ -558,7 +558,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 _ => unreachable!(),
             };
             if soft_custom_inner_attributes_gate {
-                self.tcx.sess.psess.buffer_lint_with_diagnostic(
+                self.tcx.sess.psess.buffer_lint(
                     SOFT_UNSTABLE,
                     path.span,
                     node_id,
@@ -585,7 +585,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
             let typo_name = distance.map(|_| sym::on_unimplemented);
 
-            self.tcx.sess.psess.buffer_lint_with_diagnostic(
+            self.tcx.sess.psess.buffer_lint(
                 UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
                 attribute.span(),
                 node_id,
@@ -789,7 +789,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             .invocation_parents
                             .get(&parent_scope.expansion)
                             .map_or(ast::CRATE_NODE_ID, |id| self.def_id_to_node_id[id.0]);
-                        self.lint_buffer.buffer_lint_with_diagnostic(
+                        self.lint_buffer.buffer_lint(
                             LEGACY_DERIVE_HELPERS,
                             node_id,
                             ident.span,
@@ -843,7 +843,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 if !is_allowed(feature) && !allowed_by_implication {
                     let lint_buffer = &mut self.lint_buffer;
                     let soft_handler = |lint, span, msg: String| {
-                        lint_buffer.buffer_lint_with_diagnostic(
+                        lint_buffer.buffer_lint(
                             lint,
                             node_id,
                             span,

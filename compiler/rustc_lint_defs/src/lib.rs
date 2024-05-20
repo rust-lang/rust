@@ -784,7 +784,7 @@ impl LintBuffer {
         self.map.swap_remove(&id).unwrap_or_default()
     }
 
-    pub fn buffer_lint_with_diagnostic(
+    pub fn buffer_lint(
         &mut self,
         lint: &'static Lint,
         id: NodeId,

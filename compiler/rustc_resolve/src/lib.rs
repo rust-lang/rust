@@ -1860,7 +1860,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
         if let NameBindingKind::Import { import, binding } = used_binding.kind {
             if let ImportKind::MacroUse { warn_private: true } = import.kind {
-                self.lint_buffer().buffer_lint_with_diagnostic(
+                self.lint_buffer().buffer_lint(
                     PRIVATE_MACRO_USE,
                     import.root_id,
                     ident.span,

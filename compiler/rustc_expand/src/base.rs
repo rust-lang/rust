@@ -1364,7 +1364,7 @@ fn pretty_printing_compatibility_hack(item: &Item, sess: &Session) -> bool {
                             };
 
                             if crate_matches {
-                                sess.psess.buffer_lint_with_diagnostic(
+                                sess.psess.buffer_lint(
                                     PROC_MACRO_BACK_COMPAT,
                                     item.ident.span,
                                     ast::CRATE_NODE_ID,

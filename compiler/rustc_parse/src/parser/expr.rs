@@ -1913,7 +1913,7 @@ impl<'a> Parser<'a> {
                             | ExprKind::Block(_, None)
                     )
                 {
-                    self.psess.buffer_lint_with_diagnostic(
+                    self.psess.buffer_lint(
                         BREAK_WITH_LABEL_AND_LOOP,
                         lo.to(expr.span),
                         ast::CRATE_NODE_ID,

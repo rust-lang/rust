@@ -1675,7 +1675,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                     return;
                 }
                 LifetimeRibKind::AnonymousWarn(node_id) => {
-                    self.r.lint_buffer.buffer_lint_with_diagnostic(
+                    self.r.lint_buffer.buffer_lint(
                         lint::builtin::ELIDED_LIFETIMES_IN_ASSOCIATED_CONSTANT,
                         node_id,
                         lifetime.ident.span,
@@ -1960,7 +1960,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             }
 
             if should_lint {
-                self.r.lint_buffer.buffer_lint_with_diagnostic(
+                self.r.lint_buffer.buffer_lint(
                     lint::builtin::ELIDED_LIFETIMES_IN_PATHS,
                     segment_id,
                     elided_lifetime_span,
@@ -4815,7 +4815,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         late_resolution_visitor.resolve_doc_links(&krate.attrs, MaybeExported::Ok(CRATE_NODE_ID));
         visit::walk_crate(&mut late_resolution_visitor, krate);
         for (id, span) in late_resolution_visitor.diag_metadata.unused_labels.iter() {
-            self.lint_buffer.buffer_lint_with_diagnostic(
+            self.lint_buffer.buffer_lint(
                 lint::builtin::UNUSED_LABELS,
                 *id,
                 *span,
