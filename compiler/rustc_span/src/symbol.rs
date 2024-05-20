@@ -930,6 +930,7 @@ symbols! {
         global_alloc_ty,
         global_allocator,
         global_asm,
+        global_registration,
         globs,
         gt,
         half_open_range_patterns,
