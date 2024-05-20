@@ -43,8 +43,8 @@ level = "warn"
 # for rust-lang/rust. But for users of `-Zbuild-std` it does.
 # The unused warning is waiting for rust-lang/cargo#13925 to reach beta.
 check-cfg = [
-    'cfg(no_fp_fmt_parse)',
     'cfg(bootstrap)',
+    'cfg(no_fp_fmt_parse)',
     'cfg(stdarch_intel_sde)',
     # This matches `EXTRA_CHECK_CFGS` in `src/bootstrap/src/lib.rs`.
     'cfg(feature, values(any()))',
