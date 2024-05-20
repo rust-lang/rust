@@ -46,8 +46,13 @@ impl<'tcx> DocFolder for NonLocalStripper<'tcx> {
         // the field and not the one given by the user for the currrent crate.
         //
         // FIXME(#125009): Not-local should probably consider same Cargo workspace
-        if !i.def_id().map_or(true, |did| did.is_local()) {
-            if i.visibility(self.tcx) != Some(Visibility::Public) || i.is_doc_hidden() {
+        if let Some(def_id) = i.def_id()
+            && !def_id.is_local()
+        {
+            if i.is_doc_hidden()
+                // Default to *not* stripping items with inherited visibility.
+                || i.visibility(self.tcx).map_or(false, |viz| viz != Visibility::Public)
+            {
                 return Some(strip_item(i));
             }
         }
