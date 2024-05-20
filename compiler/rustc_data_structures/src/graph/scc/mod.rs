@@ -535,7 +535,6 @@ where
             successors_len: 0,
             min_cycle_root: initial,
             successor_node: initial,
-            // Strictly speaking not necessary, but assumed to be idempotent:
             current_component_annotation: (self.to_annotation)(initial),
         }];
 
@@ -556,7 +555,9 @@ where
             let depth = *depth;
 
             // node is definitely in the current component, add it to the annotation.
-            current_component_annotation.update_scc((self.to_annotation)(node));
+            if node != initial {
+                current_component_annotation.update_scc((self.to_annotation)(node));
+            }
             debug!(
                 "Visiting {node:?} at depth {depth:?}, annotation: {current_component_annotation:?}"
             );
@@ -570,8 +571,10 @@ where
                     debug_assert!(matches!(self.node_states[node], NodeState::NotVisited));
 
                     // Push `node` onto the stack.
-                    self.node_states[node] =
-                        NodeState::BeingVisited { depth, annotation: (self.to_annotation)(node) };
+                    self.node_states[node] = NodeState::BeingVisited {
+                        depth,
+                        annotation: *current_component_annotation,
+                    };
                     self.node_stack.push(node);
 
                     // Walk each successor of the node, looking to see if any of
