@@ -8,11 +8,11 @@ use rustc_data_structures::{
 use rustc_hir as hir;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::HirId;
-use rustc_middle::bug;
 use rustc_infer::{
     infer::{DefineOpaqueTypes, InferOk},
     traits::ObligationCause,
 };
+use rustc_middle::bug;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable};
 use rustc_session::lint;
 use rustc_span::DUMMY_SP;
@@ -482,6 +482,11 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         diverging_vids: &[TyVid],
     ) {
         let DivergingFallbackBehavior::FallbackToUnit = behavior else { return };
+
+        // Fallback happens if and only if there are diverging variables
+        if diverging_vids.is_empty() {
+            return;
+        }
 
         // Returns errors which happen if fallback is set to `fallback`
         let try_out = |fallback| {
