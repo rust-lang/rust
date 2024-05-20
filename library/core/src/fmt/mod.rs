@@ -2409,9 +2409,10 @@ impl Debug for str {
 
         // the outer loop here splits the string into chunks of printable ASCII, which is just skipped over,
         // and chunks of other chars (unicode, or ASCII that needs escaping), which is handler per-`char`.
-        let mut rest = self.as_bytes();
+        let mut rest = self;
         while rest.len() > 0 {
-            let Some(non_printable_start) = rest.iter().position(|&b| needs_escape(b)) else {
+            let Some(non_printable_start) = rest.as_bytes().iter().position(|&b| needs_escape(b))
+            else {
                 printable_range.end += rest.len();
                 break;
             };
@@ -2420,12 +2421,10 @@ impl Debug for str {
             // SAFETY: the position was derived from an iterator, so is known to be within bounds, and at a char boundary
             rest = unsafe { rest.get_unchecked(non_printable_start..) };
 
-            let printable_start = rest.iter().position(|&b| !needs_escape(b)).unwrap_or(rest.len());
+            let printable_start =
+                rest.as_bytes().iter().position(|&b| !needs_escape(b)).unwrap_or(rest.len());
             let prefix;
-            // SAFETY: the position was derived from an iterator, so is known to be within bounds, and at a char boundary
-            (prefix, rest) = unsafe { rest.split_at_unchecked(printable_start) };
-            // SAFETY: prefix is a valid utf8 sequence, and at a char boundary
-            let prefix = unsafe { crate::str::from_utf8_unchecked(prefix) };
+            (prefix, rest) = rest.split_at(printable_start);
 
             for c in prefix.chars() {
                 let esc = c.escape_debug_ext(EscapeDebugExtArgs {
