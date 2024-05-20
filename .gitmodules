@@ -43,3 +43,7 @@
 	path = library/backtrace
 	url = https://github.com/rust-lang/backtrace-rs.git
 	shallow = true
+[submodule "src/tools/rustc-perf"]
+	path = src/tools/rustc-perf
+	url = https://github.com/rust-lang/rustc-perf.git
+	shallow = true
