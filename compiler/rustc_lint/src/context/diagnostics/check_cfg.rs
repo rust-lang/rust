@@ -41,6 +41,24 @@ fn check_cfg_expected_note(
     note
 }
 
+enum EscapeQuotes {
+    Yes,
+    No,
+}
+
+fn to_check_cfg_arg(name: Symbol, value: Option<Symbol>, quotes: EscapeQuotes) -> String {
+    if let Some(value) = value {
+        let value = str::escape_debug(value.as_str()).to_string();
+        let values = match quotes {
+            EscapeQuotes::Yes => format!("\\\"{}\\\"", value.replace("\"", "\\\\\\\\\"")),
+            EscapeQuotes::No => format!("\"{value}\""),
+        };
+        format!("cfg({name}, values({values}))")
+    } else {
+        format!("cfg({name})")
+    }
+}
+
 pub(super) fn unexpected_cfg_name(
     sess: &Session,
     diag: &mut Diag<'_, ()>,
@@ -155,20 +173,18 @@ pub(super) fn unexpected_cfg_name(
         }
     }
 
-    let inst = if let Some((value, _value_span)) = value {
-        let pre = if is_from_cargo { "\\" } else { "" };
-        format!("cfg({name}, values({pre}\"{value}{pre}\"))")
-    } else {
-        format!("cfg({name})")
-    };
+    let inst = |escape_quotes| to_check_cfg_arg(name, value.map(|(v, _s)| v), escape_quotes);
 
     if is_from_cargo {
         if !is_feature_cfg {
-            diag.help(format!("consider using a Cargo feature instead or adding `println!(\"cargo::rustc-check-cfg={inst}\");` to the top of the `build.rs`"));
+            diag.help(format!("consider using a Cargo feature instead"));
+            diag.help(format!("or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:\n [lints.rust]\n unexpected_cfgs = {{ level = \"warn\", check-cfg = ['{}'] }}", inst(EscapeQuotes::No)));
+            diag.help(format!("or consider adding `println!(\"cargo::rustc-check-cfg={}\");` to the top of the `build.rs`", inst(EscapeQuotes::Yes)));
         }
-        diag.note("see <https://doc.rust-lang.org/nightly/cargo/reference/build-scripts.html#rustc-check-cfg> for more information about checking conditional configuration");
+        diag.note("see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration");
     } else {
-        diag.help(format!("to expect this configuration use `--check-cfg={inst}`"));
+        let inst = inst(EscapeQuotes::No);
+        diag.help(format!("to expect this configuration use `--check-cfg={inst}`",));
         diag.note("see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration");
     }
 }
@@ -251,12 +267,7 @@ pub(super) fn unexpected_cfg_value(
     // do it if they want, but should not encourage them.
     let is_cfg_a_well_know_name = sess.psess.check_config.well_known_names.contains(&name);
 
-    let inst = if let Some((value, _value_span)) = value {
-        let pre = if is_from_cargo { "\\" } else { "" };
-        format!("cfg({name}, values({pre}\"{value}{pre}\"))")
-    } else {
-        format!("cfg({name})")
-    };
+    let inst = |escape_quotes| to_check_cfg_arg(name, value.map(|(v, _s)| v), escape_quotes);
 
     if is_from_cargo {
         if name == sym::feature {
@@ -266,12 +277,15 @@ pub(super) fn unexpected_cfg_value(
                 diag.help("consider defining some features in `Cargo.toml`");
             }
         } else if !is_cfg_a_well_know_name {
-            diag.help(format!("consider using a Cargo feature instead or adding `println!(\"cargo::rustc-check-cfg={inst}\");` to the top of the `build.rs`"));
+            diag.help(format!("consider using a Cargo feature instead"));
+            diag.help(format!("or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:\n [lints.rust]\n unexpected_cfgs = {{ level = \"warn\", check-cfg = ['{}'] }}", inst(EscapeQuotes::No)));
+            diag.help(format!("or consider adding `println!(\"cargo::rustc-check-cfg={}\");` to the top of the `build.rs`", inst(EscapeQuotes::Yes)));
         }
-        diag.note("see <https://doc.rust-lang.org/nightly/cargo/reference/build-scripts.html#rustc-check-cfg> for more information about checking conditional configuration");
+        diag.note("see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration");
     } else {
         if !is_cfg_a_well_know_name {
-            diag.help(format!("to expect this configuration use `--check-cfg={inst}`"));
+            let inst = inst(EscapeQuotes::No);
+            diag.help(format!("to expect this configuration use `--check-cfg={inst}`",));
         }
         diag.note("see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration");
     }
