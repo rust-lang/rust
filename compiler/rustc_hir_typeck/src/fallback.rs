@@ -364,41 +364,11 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
             };
 
             let mut fallback_to = |ty| {
-                let unsafe_infer_vars = unsafe_infer_vars.get_or_init(|| {
-                    let unsafe_infer_vars = compute_unsafe_infer_vars(self.root_ctxt, self.body_id);
-                    debug!(?unsafe_infer_vars);
-                    unsafe_infer_vars
-                });
-
-                let affected_unsafe_infer_vars =
-                    graph::depth_first_search_as_undirected(&coercion_graph, root_vid)
-                        .filter_map(|x| unsafe_infer_vars.get(&x).copied())
-                        .collect::<Vec<_>>();
-
-                for (hir_id, span, reason) in affected_unsafe_infer_vars {
-                    self.tcx.emit_node_span_lint(
-                        lint::builtin::NEVER_TYPE_FALLBACK_FLOWING_INTO_UNSAFE,
-                        hir_id,
-                        span,
-                        match reason {
-                            UnsafeUseReason::Call => {
-                                errors::NeverTypeFallbackFlowingIntoUnsafe::Call
-                            }
-                            UnsafeUseReason::Method => {
-                                errors::NeverTypeFallbackFlowingIntoUnsafe::Method
-                            }
-                            UnsafeUseReason::Path => {
-                                errors::NeverTypeFallbackFlowingIntoUnsafe::Path
-                            }
-                            UnsafeUseReason::UnionField => {
-                                errors::NeverTypeFallbackFlowingIntoUnsafe::UnionField
-                            }
-                            UnsafeUseReason::Deref => {
-                                errors::NeverTypeFallbackFlowingIntoUnsafe::Deref
-                            }
-                        },
-                    );
-                }
+                self.lint_never_type_fallback_flowing_into_unsafe_code(
+                    &unsafe_infer_vars,
+                    &coercion_graph,
+                    root_vid,
+                );
 
                 diverging_fallback.insert(diverging_ty, ty);
             };
@@ -462,6 +432,41 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         }
 
         diverging_fallback
+    }
+
+    fn lint_never_type_fallback_flowing_into_unsafe_code(
+        &self,
+        unsafe_infer_vars: &OnceCell<UnordMap<ty::TyVid, (HirId, Span, UnsafeUseReason)>>,
+        coercion_graph: &VecGraph<ty::TyVid, true>,
+        root_vid: ty::TyVid,
+    ) {
+        let unsafe_infer_vars = unsafe_infer_vars.get_or_init(|| {
+            let unsafe_infer_vars = compute_unsafe_infer_vars(self.root_ctxt, self.body_id);
+            debug!(?unsafe_infer_vars);
+            unsafe_infer_vars
+        });
+
+        let affected_unsafe_infer_vars =
+            graph::depth_first_search_as_undirected(&coercion_graph, root_vid)
+                .filter_map(|x| unsafe_infer_vars.get(&x).copied())
+                .collect::<Vec<_>>();
+
+        for (hir_id, span, reason) in affected_unsafe_infer_vars {
+            self.tcx.emit_node_span_lint(
+                lint::builtin::NEVER_TYPE_FALLBACK_FLOWING_INTO_UNSAFE,
+                hir_id,
+                span,
+                match reason {
+                    UnsafeUseReason::Call => errors::NeverTypeFallbackFlowingIntoUnsafe::Call,
+                    UnsafeUseReason::Method => errors::NeverTypeFallbackFlowingIntoUnsafe::Method,
+                    UnsafeUseReason::Path => errors::NeverTypeFallbackFlowingIntoUnsafe::Path,
+                    UnsafeUseReason::UnionField => {
+                        errors::NeverTypeFallbackFlowingIntoUnsafe::UnionField
+                    }
+                    UnsafeUseReason::Deref => errors::NeverTypeFallbackFlowingIntoUnsafe::Deref,
+                },
+            );
+        }
     }
 
     /// Returns a graph whose nodes are (unresolved) inference variables and where
