@@ -52,7 +52,7 @@ impl<'tcx, T> ResponseT<'tcx> for inspect::State<TyCtxt<'tcx>, T> {
     }
 }
 
-impl<'tcx> EvalCtxt<'_, 'tcx> {
+impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
     /// Canonicalizes the goal remembering the original values
     /// for each bound variable.
     pub(super) fn canonicalize_goal<T: TypeFoldable<TyCtxt<'tcx>>>(

@@ -233,6 +233,10 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     fn parent(self, def_id: Self::DefId) -> Self::DefId {
         self.parent(def_id)
     }
+
+    fn recursion_limit(self) -> usize {
+        self.recursion_limit().0
+    }
 }
 
 impl<'tcx> rustc_type_ir::inherent::Abi<TyCtxt<'tcx>> for abi::Abi {

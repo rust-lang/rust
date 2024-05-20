@@ -124,6 +124,8 @@ pub trait Interner:
     ) -> Self::GenericArgs;
 
     fn parent(self, def_id: Self::DefId) -> Self::DefId;
+
+    fn recursion_limit(self) -> usize;
 }
 
 /// Imagine you have a function `F: FnOnce(&[T]) -> R`, plus an iterator `iter`
