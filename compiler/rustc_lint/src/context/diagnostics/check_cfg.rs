@@ -48,10 +48,9 @@ enum EscapeQuotes {
 
 fn to_check_cfg_arg(name: Symbol, value: Option<Symbol>, quotes: EscapeQuotes) -> String {
     if let Some(value) = value {
+        let value = str::escape_debug(value.as_str()).to_string();
         let values = match quotes {
-            EscapeQuotes::Yes => {
-                format!("\\\"{}\\\"", str::escape_debug(value.as_str()).to_string())
-            }
+            EscapeQuotes::Yes => format!("\\\"{}\\\"", value.replace("\"", "\\\\\\\\\"")),
             EscapeQuotes::No => format!("\"{value}\""),
         };
         format!("cfg({name}, values({values}))")
