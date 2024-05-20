@@ -96,6 +96,7 @@ pub trait GenericArgs<I: Interner<GenericArgs = Self>>:
 pub trait Predicate<I: Interner<Predicate = Self>>:
     Copy + Debug + Hash + Eq + TypeSuperVisitable<I> + TypeSuperFoldable<I> + Flags
 {
+    fn is_coinductive(self, interner: I) -> bool;
 }
 
 /// Common capabilities of placeholder kinds

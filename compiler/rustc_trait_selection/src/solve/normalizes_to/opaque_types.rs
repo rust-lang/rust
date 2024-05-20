@@ -1,6 +1,7 @@
 //! Computes a normalizes-to (projection) goal for opaque types. This goal
 //! behaves differently depending on the param-env's reveal mode and whether
 //! the opaque is in a defining scope.
+use rustc_infer::infer::InferCtxt;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::solve::{Certainty, Goal, QueryResult};
 use rustc_middle::traits::Reveal;
@@ -9,7 +10,7 @@ use rustc_middle::ty::util::NotUniqueParam;
 
 use crate::solve::{EvalCtxt, SolverMode};
 
-impl<'tcx> EvalCtxt<'_, 'tcx> {
+impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
     pub(super) fn normalize_opaque_type(
         &mut self,
         goal: Goal<'tcx, ty::NormalizesTo<'tcx>>,
