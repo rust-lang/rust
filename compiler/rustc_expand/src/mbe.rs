@@ -68,6 +68,8 @@ pub(crate) enum KleeneOp {
 /// `MetaVarExpr` are "first-class" token trees. Useful for parsing macros.
 #[derive(Debug, PartialEq, Encodable, Decodable)]
 enum TokenTree {
+    /// A token. Unlike `tokenstream::TokenTree::Token` this lacks a `Spacing`.
+    /// See the comments about `Spacing` in the `transcribe` function.
     Token(Token),
     /// A delimited sequence, e.g. `($e:expr)` (RHS) or `{ $e }` (LHS).
     Delimited(DelimSpan, DelimSpacing, Delimited),
