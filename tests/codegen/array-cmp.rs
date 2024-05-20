@@ -1,15 +1,11 @@
-// Ensure the asm for array comparisons is properly optimized on x86.
+// Ensure the asm for array comparisons is properly optimized.
 
-//@ min-llvm-version: 12
-//@ assembly-output: emit-asm
 //@ compile-flags: -C opt-level=2
-//@ only-x86_64
 
 #![crate_type = "lib"]
 
-// CHECK-LABEL: compare
-// CHECK: movb $1, %al
-// CHECK-NEXT: retq
+// CHECK-LABEL: @compare
+// CHECK-NEXT: ret i1 true
 #[no_mangle]
 pub fn compare() -> bool {
     let bytes = 12.5f32.to_ne_bytes();
