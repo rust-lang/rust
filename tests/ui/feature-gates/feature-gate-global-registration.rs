@@ -1,1 +1,3 @@
-//! WIP
+todo!(); //~ ERROR
+
+fn main() {}
