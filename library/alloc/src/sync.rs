@@ -2496,6 +2496,14 @@ unsafe impl<#[may_dangle] T: ?Sized, A: Allocator> Drop for Arc<T, A> {
         // [2]: (https://github.com/rust-lang/rust/pull/41714)
         acquire!(self.inner().strong);
 
+        // Make sure we aren't trying to "drop" the shared static for empty slices
+        // used by Default::default.
+        debug_assert!(
+            !ptr::addr_eq(self.ptr.as_ptr(), &STATIC_INNER_SLICE.inner),
+            "Arcs backed by a static should never reach a strong count of 0. \
+            Likely decrement_strong_count or from_raw were called too many times.",
+        );
+
         unsafe {
             self.drop_slow();
         }
@@ -3126,6 +3134,15 @@ unsafe impl<#[may_dangle] T: ?Sized, A: Allocator> Drop for Weak<T, A> {
 
         if inner.weak.fetch_sub(1, Release) == 1 {
             acquire!(inner.weak);
+
+            // Make sure we aren't trying to "deallocate" the shared static for empty slices
+            // used by Default::default.
+            debug_assert!(
+                !ptr::addr_eq(self.ptr.as_ptr(), &STATIC_INNER_SLICE.inner),
+                "Arc/Weaks backed by a static should never be deallocated. \
+                Likely decrement_strong_count or from_raw were called too many times.",
+            );
+
             unsafe {
                 self.alloc.deallocate(self.ptr.cast(), Layout::for_value_raw(self.ptr.as_ptr()))
             }
@@ -3367,6 +3384,28 @@ impl<T: Default> Default for Arc<T> {
     }
 }
 
+/// Struct to hold the static `ArcInner` used for empty `Arc<str/CStr/[T]>` as
+/// returned by `Default::default`.
+///
+/// Layout notes:
+/// * `repr(align(16))` so we can use it for `[T]` with `align_of::<T>() <= 16`.
+/// * `repr(C)` so `inner` is at offset 0 (and thus guaranteed to actually be aligned to 16).
+/// * `[u8; 1]` (to be initialized with 0) so it can be used for `Arc<CStr>`.
+#[repr(C, align(16))]
+struct SliceArcInnerForStatic {
+    inner: ArcInner<[u8; 1]>,
+}
+#[cfg(not(no_global_oom_handling))]
+const MAX_STATIC_INNER_SLICE_ALIGNMENT: usize = 16;
+
+static STATIC_INNER_SLICE: SliceArcInnerForStatic = SliceArcInnerForStatic {
+    inner: ArcInner {
+        strong: atomic::AtomicUsize::new(1),
+        weak: atomic::AtomicUsize::new(1),
+        data: [0],
+    },
+};
+
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "more_rc_default_impls", since = "CURRENT_RUSTC_VERSION")]
 impl Default for Arc<str> {
@@ -3391,15 +3430,12 @@ impl Default for Arc<core::ffi::CStr> {
     #[inline]
     fn default() -> Self {
         use core::ffi::CStr;
-        static STATIC_INNER_CSTR: ArcInner<[u8; 1]> = ArcInner {
-            strong: atomic::AtomicUsize::new(1),
-            weak: atomic::AtomicUsize::new(1),
-            data: [0],
-        };
-        let inner: NonNull<ArcInner<[u8]>> = NonNull::from(&STATIC_INNER_CSTR);
-        let inner: NonNull<ArcInner<CStr>> = NonNull::new(inner.as_ptr() as *mut ArcInner<CStr>).unwrap();
+        let inner: NonNull<ArcInner<[u8]>> = NonNull::from(&STATIC_INNER_SLICE.inner);
+        let inner: NonNull<ArcInner<CStr>> =
+            NonNull::new(inner.as_ptr() as *mut ArcInner<CStr>).unwrap();
         // `this` semantically is the Arc "owned" by the static, so make sure not to drop it.
-        let this: mem::ManuallyDrop<Arc<CStr>> = unsafe { mem::ManuallyDrop::new(Arc::from_inner(inner)) };
+        let this: mem::ManuallyDrop<Arc<CStr>> =
+            unsafe { mem::ManuallyDrop::new(Arc::from_inner(inner)) };
         (*this).clone()
     }
 }
@@ -3412,31 +3448,20 @@ impl<T> Default for Arc<[T]> {
     /// This may or may not share an allocation with other Arcs.
     #[inline]
     fn default() -> Self {
-        let alignment_of_t: usize = mem::align_of::<T>();
-        // We only make statics for the lowest five alignments.
-        // Alignments greater than that will use dynamic allocation.
-        macro_rules! use_static_inner_for_alignments {
-            ($($alignment:literal),*) => {
-                $(if alignment_of_t == $alignment {
-                    // Note: this must be in a new scope because static and type names are unhygenic.
-                    #[repr(align($alignment))]
-                    struct Aligned;
-                    static ALIGNED_STATIC_INNER: ArcInner<Aligned> = ArcInner {
-                        strong: atomic::AtomicUsize::new(1),
-                        weak: atomic::AtomicUsize::new(1),
-                        data: Aligned,
-                    };
-                    let inner: NonNull<ArcInner<Aligned>> = NonNull::from(&ALIGNED_STATIC_INNER);
-                    let inner: NonNull<ArcInner<[T; 0]>> = inner.cast();
-                    // `this` semantically is the Arc "owned" by the static, so make sure not to drop it.
-                    let this: mem::ManuallyDrop<Arc<[T; 0]>> = unsafe { mem::ManuallyDrop::new(Arc::from_inner(inner)) };
-                    return (*this).clone();
-                })*
-            };
+        if mem::align_of::<T>() <= MAX_STATIC_INNER_SLICE_ALIGNMENT {
+            // We take a reference to the whole struct instead of the ArcInner<[u8; 1]> inside it so
+            // we don't shrink the range of bytes the ptr is allowed to access under Stacked Borrows.
+            // (Miri complains on 32-bit targets with Arc<[Align16]> otherwise.)
+            // (Note that NonNull::from(&STATIC_INNER_SLICE.inner) is fine under Tree Borrows.)
+            let inner: NonNull<SliceArcInnerForStatic> = NonNull::from(&STATIC_INNER_SLICE);
+            let inner: NonNull<ArcInner<[T; 0]>> = inner.cast();
+            // `this` semantically is the Arc "owned" by the static, so make sure not to drop it.
+            let this: mem::ManuallyDrop<Arc<[T; 0]>> =
+                unsafe { mem::ManuallyDrop::new(Arc::from_inner(inner)) };
+            return (*this).clone();
         }
-        use_static_inner_for_alignments!(1, 2, 4, 8, 16);
 
-        // If T's alignment is not one of the ones we have a static for, make a new unique allocation.
+        // If T's alignment is too large for the static, make a new unique allocation.
         let arr: [T; 0] = [];
         Arc::from(arr)
     }

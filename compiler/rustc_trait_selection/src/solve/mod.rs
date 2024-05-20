@@ -15,6 +15,7 @@
 //! about it on zulip.
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::canonical::{Canonical, CanonicalVarValues};
+use rustc_infer::infer::InferCtxt;
 use rustc_infer::traits::query::NoSolution;
 use rustc_macros::extension;
 use rustc_middle::bug;
@@ -82,7 +83,7 @@ impl<'tcx> Canonical<'tcx, Response<TyCtxt<'tcx>>> {
     }
 }
 
-impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
+impl<'a, 'tcx> EvalCtxt<'a, InferCtxt<'tcx>> {
     #[instrument(level = "trace", skip(self))]
     fn compute_type_outlives_goal(
         &mut self,
@@ -201,7 +202,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
     }
 }
 
-impl<'tcx> EvalCtxt<'_, 'tcx> {
+impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
     #[instrument(level = "trace", skip(self, goals))]
     fn add_goals(
         &mut self,
