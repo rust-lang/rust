@@ -33,10 +33,10 @@ fn is_arg_ty_unified_in_fn<'tcx>(
     cx: &LateContext<'tcx>,
     fn_id: DefId,
     arg_id: HirId,
-    args: impl Iterator<Item = &'tcx Expr<'tcx>> + Clone,
+    args: impl IntoIterator<Item = &'tcx Expr<'tcx>>,
 ) -> bool {
     let fn_sig = cx.tcx.fn_sig(fn_id).instantiate_identity();
-    let arg_id_in_args = args.clone().position(|e| e.hir_id == arg_id).unwrap();
+    let arg_id_in_args = args.into_iter().position(|e| e.hir_id == arg_id).unwrap();
     let arg_ty_in_args = fn_sig.input(arg_id_in_args);
 
     cx.tcx.predicates_of(fn_id).predicates.iter().any(|(clause, _)| {
@@ -72,12 +72,11 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, method
                     ..
                 },
                 args,
-            ) => is_arg_ty_unified_in_fn(
-                cx,
-                cx.typeck_results().qpath_res(path, *hir_id).def_id(),
-                expr.hir_id,
-                args.iter(),
-            ),
+            ) => {
+                cx.typeck_results().qpath_res(path, *hir_id).opt_def_id()
+                    .filter(|fn_id| cx.tcx.def_kind(fn_id).is_fn_like())
+                    .is_some_and(|fn_id| is_arg_ty_unified_in_fn(cx, fn_id, expr.hir_id, args))
+            }
             ExprKind::MethodCall(_name, recv, args, _span) => is_arg_ty_unified_in_fn(
                 cx,
                 cx.typeck_results().type_dependent_def_id(parent.hir_id).unwrap(),
