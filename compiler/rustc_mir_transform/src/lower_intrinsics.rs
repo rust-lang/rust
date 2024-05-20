@@ -98,7 +98,8 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                     | sym::unchecked_div
                     | sym::unchecked_rem
                     | sym::unchecked_shl
-                    | sym::unchecked_shr => {
+                    | sym::unchecked_shr
+                    | sym::disjoint_bitor => {
                         let target = target.unwrap();
                         let lhs;
                         let rhs;
@@ -119,6 +120,7 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                             sym::unchecked_rem => BinOp::Rem,
                             sym::unchecked_shl => BinOp::ShlUnchecked,
                             sym::unchecked_shr => BinOp::ShrUnchecked,
+                            sym::disjoint_bitor => BinOp::BitOrDisjoint,
                             _ => bug!("unexpected intrinsic"),
                         };
                         block.statements.push(Statement {

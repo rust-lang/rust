@@ -21,7 +21,7 @@ pub(crate) fn maybe_codegen<'tcx>(
     let is_signed = type_sign(lhs.layout().ty);
 
     match bin_op {
-        BinOp::BitAnd | BinOp::BitOr | BinOp::BitXor => None,
+        BinOp::BitAnd | BinOp::BitOr | BinOp::BitXor | BinOp::BitOrDisjoint => None,
         BinOp::Add | BinOp::AddUnchecked | BinOp::Sub | BinOp::SubUnchecked => None,
         BinOp::Mul | BinOp::MulUnchecked => {
             let args = [lhs.load_scalar(fx), rhs.load_scalar(fx)];
@@ -90,7 +90,7 @@ pub(crate) fn maybe_codegen_checked<'tcx>(
     let is_signed = type_sign(lhs.layout().ty);
 
     match bin_op {
-        BinOp::BitAnd | BinOp::BitOr | BinOp::BitXor => unreachable!(),
+        BinOp::BitAnd | BinOp::BitOr | BinOp::BitXor | BinOp::BitOrDisjoint => unreachable!(),
         BinOp::Mul if is_signed => {
             let out_ty = Ty::new_tup(fx.tcx, &[lhs.layout().ty, fx.tcx.types.bool]);
             let oflow = CPlace::new_stack_slot(fx, fx.layout_of(fx.tcx.types.i32));

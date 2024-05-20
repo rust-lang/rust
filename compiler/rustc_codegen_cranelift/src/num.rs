@@ -149,6 +149,7 @@ pub(crate) fn codegen_int_binop<'tcx>(
 
     let b = fx.bcx.ins();
     // FIXME trap on overflow for the Unchecked versions
+    // FIXME trap on non-disjoint for BitOrDisjoint
     let val = match bin_op {
         BinOp::Add | BinOp::AddUnchecked => b.iadd(lhs, rhs),
         BinOp::Sub | BinOp::SubUnchecked => b.isub(lhs, rhs),
@@ -169,7 +170,7 @@ pub(crate) fn codegen_int_binop<'tcx>(
         }
         BinOp::BitXor => b.bxor(lhs, rhs),
         BinOp::BitAnd => b.band(lhs, rhs),
-        BinOp::BitOr => b.bor(lhs, rhs),
+        BinOp::BitOr | BinOp::BitOrDisjoint => b.bor(lhs, rhs),
         BinOp::Shl | BinOp::ShlUnchecked => b.ishl(lhs, rhs),
         BinOp::Shr | BinOp::ShrUnchecked => {
             if signed {

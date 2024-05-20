@@ -494,6 +494,7 @@ impl<'tcx> Stable<'tcx> for mir::BinOp {
             BinOp::BitXor => stable_mir::mir::BinOp::BitXor,
             BinOp::BitAnd => stable_mir::mir::BinOp::BitAnd,
             BinOp::BitOr => stable_mir::mir::BinOp::BitOr,
+            BinOp::BitOrDisjoint => stable_mir::mir::BinOp::BitOrDisjoint,
             BinOp::Shl => stable_mir::mir::BinOp::Shl,
             BinOp::ShlUnchecked => stable_mir::mir::BinOp::ShlUnchecked,
             BinOp::Shr => stable_mir::mir::BinOp::Shr,

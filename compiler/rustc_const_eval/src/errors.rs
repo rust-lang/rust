@@ -480,6 +480,7 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
             RemainderByZero => const_eval_remainder_by_zero,
             DivisionOverflow => const_eval_division_overflow,
             RemainderOverflow => const_eval_remainder_overflow,
+            OverlappingDisjointBitOr => const_eval_overlapping_disjoint_bit_or,
             PointerArithOverflow => const_eval_pointer_arithmetic_overflow,
             InvalidMeta(InvalidMetaKind::SliceTooBig) => const_eval_invalid_meta_slice,
             InvalidMeta(InvalidMetaKind::TooBig) => const_eval_invalid_meta,
@@ -531,6 +532,7 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
             | RemainderByZero
             | DivisionOverflow
             | RemainderOverflow
+            | OverlappingDisjointBitOr
             | PointerArithOverflow
             | InvalidMeta(InvalidMetaKind::SliceTooBig)
             | InvalidMeta(InvalidMetaKind::TooBig)

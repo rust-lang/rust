@@ -1478,6 +1478,9 @@ pub enum BinOp {
     BitAnd,
     /// The `|` operator (bitwise or)
     BitOr,
+    /// Equivalent to all of `BitOr`, `BitXor`, and `Add`. UB if any bit is set
+    /// in both operands; that is, if `lhs & rhs != 0`.
+    BitOrDisjoint,
     /// The `<<` operator (shift left)
     ///
     /// The offset is (uniquely) determined as follows:

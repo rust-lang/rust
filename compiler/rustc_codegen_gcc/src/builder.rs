@@ -25,7 +25,7 @@ use rustc_middle::ty::layout::{
     FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasParamEnv, HasTyCtxt, LayoutError, LayoutOfHelpers,
     TyAndLayout,
 };
-use rustc_middle::ty::{ParamEnv, Ty, TyCtxt, Instance};
+use rustc_middle::ty::{Instance, ParamEnv, Ty, TyCtxt};
 use rustc_span::def_id::DefId;
 use rustc_span::Span;
 use rustc_target::abi::{
@@ -792,6 +792,11 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         self.cx.gcc_or(a, b, self.location)
     }
 
+    fn disjoint_or(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
+        // TODO: investigate gcc equivalent of this operation
+        self.cx.gcc_or(a, b, self.location)
+    }
+
     fn xor(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
         set_rvalue_location(self, self.gcc_xor(a, b))
     }
@@ -903,11 +908,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         // TODO(antoyo): It might be better to return a LValue, but fixing the rustc API is non-trivial.
         self.stack_var_count.set(self.stack_var_count.get() + 1);
         self.current_func()
-            .new_local(
-                self.location,
-                ty,
-                &format!("stack_var_{}", self.stack_var_count.get()),
-            )
+            .new_local(self.location, ty, &format!("stack_var_{}", self.stack_var_count.get()))
             .get_address(self.location)
     }
 

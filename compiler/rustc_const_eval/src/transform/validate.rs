@@ -1047,7 +1047,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             )
                         }
                     }
-                    BitAnd | BitOr | BitXor => {
+                    BitAnd | BitOr | BitXor | BitOrDisjoint => {
                         for x in [a, b] {
                             check_kinds!(
                                 x,
