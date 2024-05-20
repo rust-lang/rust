@@ -13,8 +13,8 @@ use crate::target::MachineInfo;
 use crate::ty::{
     AdtDef, AdtKind, Allocation, ClosureDef, ClosureKind, Const, FieldDef, FnDef, ForeignDef,
     ForeignItemKind, ForeignModule, ForeignModuleDef, GenericArgs, GenericPredicates, Generics,
-    ImplDef, ImplTrait, LineInfo, PolyFnSig, RigidTy, Span, TraitDecl, TraitDef, Ty, TyKind,
-    UintTy, VariantDef,
+    ImplDef, ImplTrait, IntrinsicDef, LineInfo, PolyFnSig, RigidTy, Span, TraitDecl, TraitDef, Ty,
+    TyKind, UintTy, VariantDef,
 };
 use crate::{
     mir, Crate, CrateItem, CrateItems, CrateNum, DefId, Error, Filename, ImplTraitDecls, ItemKind,
@@ -87,6 +87,16 @@ pub trait Context {
 
     /// Retrieve the function signature for the given generic arguments.
     fn fn_sig(&self, def: FnDef, args: &GenericArgs) -> PolyFnSig;
+
+    /// Retrieve the intrinsic definition if the item corresponds one.
+    fn intrinsic(&self, item: DefId) -> Option<IntrinsicDef>;
+
+    /// Retrieve the plain function name of an intrinsic.
+    fn intrinsic_name(&self, def: IntrinsicDef) -> Symbol;
+
+    /// Returns whether the intrinsic has no meaningful body and all backends
+    /// need to shim all calls to it.
+    fn intrinsic_must_be_overridden(&self, def: IntrinsicDef) -> bool;
 
     /// Retrieve the closure signature for the given generic arguments.
     fn closure_sig(&self, args: &GenericArgs) -> PolyFnSig;
@@ -198,7 +208,6 @@ pub trait Context {
     fn vtable_allocation(&self, global_alloc: &GlobalAlloc) -> Option<AllocId>;
     fn krate(&self, def_id: DefId) -> Crate;
     fn instance_name(&self, def: InstanceDef, trimmed: bool) -> Symbol;
-    fn intrinsic_name(&self, def: InstanceDef) -> Symbol;
 
     /// Return information about the target machine.
     fn target_info(&self) -> MachineInfo;

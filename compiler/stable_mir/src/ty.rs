@@ -622,6 +622,35 @@ impl FnDef {
     pub fn body(&self) -> Option<Body> {
         with(|ctx| ctx.has_body(self.0).then(|| ctx.mir_body(self.0)))
     }
+
+    /// Get the information of the intrinsic if this function is a definition of one.
+    pub fn as_intrinsic(&self) -> Option<IntrinsicDef> {
+        with(|cx| cx.intrinsic(self.def_id()))
+    }
+
+    /// Check if the function is an intrinsic.
+    #[inline]
+    pub fn is_intrinsic(&self) -> bool {
+        self.as_intrinsic().is_some()
+    }
+}
+
+crate_def! {
+    pub IntrinsicDef;
+}
+
+impl IntrinsicDef {
+    /// Returns the plain name of the intrinsic.
+    /// e.g., `transmute` for `core::intrinsics::transmute`.
+    pub fn fn_name(&self) -> Symbol {
+        with(|cx| cx.intrinsic_name(*self))
+    }
+
+    /// Returns whether the intrinsic has no meaningful body and all backends
+    /// need to shim all calls to it.
+    pub fn must_be_overridden(&self) -> bool {
+        with(|cx| cx.intrinsic_must_be_overridden(*self))
+    }
 }
 
 crate_def! {
