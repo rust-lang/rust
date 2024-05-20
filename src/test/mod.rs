@@ -390,6 +390,14 @@ fn self_tests() {
         path.push("main.rs");
         files.push(path);
     }
+    // for crates that need to be included but lies outside src
+    let external_crates = vec!["check_diff"];
+    for external_crate in external_crates {
+        let mut path = PathBuf::from(external_crate);
+        path.push("src");
+        path.push("main.rs");
+        files.push(path);
+    }
     files.push(PathBuf::from("src/lib.rs"));
 
     let (reports, count, fails) = check_files(files, &Some(PathBuf::from("rustfmt.toml")));
