@@ -31,7 +31,7 @@
           StorageLive(_5);
           _5 = _2;
 -         _3 = add_with_overflow::<i32>(move _4, move _5) -> [return: bb1, unwind unreachable];
-+         _3 = CheckedAdd(move _4, move _5);
++         _3 = AddWithOverflow(move _4, move _5);
 +         goto -> bb1;
       }
   
@@ -44,7 +44,7 @@
           StorageLive(_8);
           _8 = _2;
 -         _6 = sub_with_overflow::<i32>(move _7, move _8) -> [return: bb2, unwind unreachable];
-+         _6 = CheckedSub(move _7, move _8);
++         _6 = SubWithOverflow(move _7, move _8);
 +         goto -> bb2;
       }
   
@@ -57,7 +57,7 @@
           StorageLive(_11);
           _11 = _2;
 -         _9 = mul_with_overflow::<i32>(move _10, move _11) -> [return: bb3, unwind unreachable];
-+         _9 = CheckedMul(move _10, move _11);
++         _9 = MulWithOverflow(move _10, move _11);
 +         goto -> bb3;
       }
   

@@ -971,9 +971,6 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                 with_no_trimmed_paths!(write!(fmt, "{place:?} as {ty} ({kind:?})"))
             }
             BinaryOp(ref op, box (ref a, ref b)) => write!(fmt, "{op:?}({a:?}, {b:?})"),
-            CheckedBinaryOp(ref op, box (ref a, ref b)) => {
-                write!(fmt, "Checked{op:?}({a:?}, {b:?})")
-            }
             UnaryOp(ref op, ref a) => write!(fmt, "{op:?}({a:?})"),
             Discriminant(ref place) => write!(fmt, "discriminant({place:?})"),
             NullaryOp(ref op, ref t) => {

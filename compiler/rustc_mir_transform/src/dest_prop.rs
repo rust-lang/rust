@@ -564,7 +564,7 @@ impl WriteInfo {
                     | Rvalue::ShallowInitBox(op, _) => {
                         self.add_operand(op);
                     }
-                    Rvalue::BinaryOp(_, ops) | Rvalue::CheckedBinaryOp(_, ops) => {
+                    Rvalue::BinaryOp(_, ops) => {
                         for op in [&ops.0, &ops.1] {
                             self.add_operand(op);
                         }

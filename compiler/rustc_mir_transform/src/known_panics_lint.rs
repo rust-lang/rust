@@ -399,16 +399,8 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             }
             Rvalue::BinaryOp(op, box (left, right)) => {
                 trace!("checking BinaryOp(op = {:?}, left = {:?}, right = {:?})", op, left, right);
-                self.check_binary_op(*op, left, right, location)?;
-            }
-            Rvalue::CheckedBinaryOp(op, box (left, right)) => {
-                trace!(
-                    "checking CheckedBinaryOp(op = {:?}, left = {:?}, right = {:?})",
-                    op,
-                    left,
-                    right
-                );
-                self.check_binary_op(*op, left, right, location)?;
+                let op = op.overflowing_to_wrapping().unwrap_or(*op);
+                self.check_binary_op(op, left, right, location)?;
             }
 
             // Do not try creating references (#67862)
@@ -555,24 +547,18 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 let right = self.eval_operand(right)?;
                 let right = self.use_ecx(|this| this.ecx.read_immediate(&right))?;
 
-                let val =
-                    self.use_ecx(|this| this.ecx.wrapping_binary_op(bin_op, &left, &right))?;
-                val.into()
-            }
-
-            CheckedBinaryOp(bin_op, box (ref left, ref right)) => {
-                let left = self.eval_operand(left)?;
-                let left = self.use_ecx(|this| this.ecx.read_immediate(&left))?;
-
-                let right = self.eval_operand(right)?;
-                let right = self.use_ecx(|this| this.ecx.read_immediate(&right))?;
-
-                let (val, overflowed) =
-                    self.use_ecx(|this| this.ecx.overflowing_binary_op(bin_op, &left, &right))?;
-                let overflowed = ImmTy::from_bool(overflowed, self.tcx);
-                Value::Aggregate {
-                    variant: VariantIdx::ZERO,
-                    fields: [Value::from(val), overflowed.into()].into_iter().collect(),
+                if let Some(bin_op) = bin_op.overflowing_to_wrapping() {
+                    let (val, overflowed) =
+                        self.use_ecx(|this| this.ecx.overflowing_binary_op(bin_op, &left, &right))?;
+                    let overflowed = ImmTy::from_bool(overflowed, self.tcx);
+                    Value::Aggregate {
+                        variant: VariantIdx::ZERO,
+                        fields: [Value::from(val), overflowed.into()].into_iter().collect(),
+                    }
+                } else {
+                    let val =
+                        self.use_ecx(|this| this.ecx.wrapping_binary_op(bin_op, &left, &right))?;
+                    val.into()
                 }
             }
 
