@@ -7,7 +7,7 @@
 // gdb-command:run
 
 // gdb-command:print plain_string
-// gdbr-check:$1 = alloc::string::String {vec: alloc::vec::Vec<u8, alloc::alloc::Global> {buf: alloc::raw_vec::RawVec<u8, alloc::alloc::Global> {ptr: core::ptr::unique::Unique<u8> {pointer: core::ptr::non_null::NonNull<u8> {pointer: 0x55555555ab80}, _marker: core::marker::PhantomData<u8>}, cap: alloc::raw_vec::Cap (5), alloc: alloc::alloc::Global}, len: 5}}
+// gdbr-check:$1 = alloc::string::String {vec: alloc::vec::Vec<u8, alloc::alloc::Global> {buf: alloc::raw_vec::RawVec<u8, alloc::alloc::Global> {ptr: core::ptr::unique::Unique<u8> {pointer: core::ptr::non_null::NonNull<u8> {pointer: 0x[...]}, _marker: core::marker::PhantomData<u8>}, cap: alloc::raw_vec::Cap (5), alloc: alloc::alloc::Global}, len: 5}}
 
 // gdb-command:print plain_str
 // gdbr-check:$2 = "Hello"
@@ -19,7 +19,7 @@
 // gdbr-check:$4 = ("Hello", "World")
 
 // gdb-command:print str_in_rc
-// gdbr-check:$5 = alloc::rc::Rc<&str, alloc::alloc::Global> {ptr: core::ptr::non_null::NonNull<alloc::rc::RcBox<&str>> {pointer: 0x55555555aae0}, phantom: core::marker::PhantomData<alloc::rc::RcBox<&str>>, alloc: alloc::alloc::Global}
+// gdbr-check:$5 = alloc::rc::Rc<&str, alloc::alloc::Global> {ptr: core::ptr::non_null::NonNull<alloc::rc::RcBox<&str>> {pointer: 0x[...]}, phantom: core::marker::PhantomData<alloc::rc::RcBox<&str>>, alloc: alloc::alloc::Global}
 
 
 // === LLDB TESTS ==================================================================================
