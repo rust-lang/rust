@@ -287,6 +287,9 @@ impl Read for &[u8] {
     #[inline]
     fn read_exact(&mut self, buf: &mut [u8]) -> io::Result<()> {
         if buf.len() > self.len() {
+            // `read_exact` makes no promise about the content of `buf` if it
+            // fails so don't bother about that.
+            *self = &self[self.len()..];
             return Err(io::Error::READ_EXACT_EOF);
         }
         let (a, b) = self.split_at(buf.len());
@@ -307,6 +310,9 @@ impl Read for &[u8] {
     #[inline]
     fn read_buf_exact(&mut self, mut cursor: BorrowedCursor<'_>) -> io::Result<()> {
         if cursor.capacity() > self.len() {
+            // Append everything we can to the cursor.
+            cursor.append(*self);
+            *self = &self[self.len()..];
             return Err(io::Error::READ_EXACT_EOF);
         }
         let (a, b) = self.split_at(cursor.capacity());

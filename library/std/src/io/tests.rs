@@ -653,6 +653,38 @@ fn test_take_wrong_length() {
     let _ = reader.read(&mut buffer[..]);
 }
 
+#[test]
+fn slice_read_exact_eof() {
+    let slice = &b"123456"[..];
+
+    let mut r = slice;
+    assert!(r.read_exact(&mut [0; 10]).is_err());
+    assert!(r.is_empty());
+
+    let mut r = slice;
+    let buf = &mut [0; 10];
+    let mut buf = BorrowedBuf::from(buf.as_mut_slice());
+    assert!(r.read_buf_exact(buf.unfilled()).is_err());
+    assert!(r.is_empty());
+    assert_eq!(buf.filled(), b"123456");
+}
+
+#[test]
+fn cursor_read_exact_eof() {
+    let slice = Cursor::new(b"123456");
+
+    let mut r = slice.clone();
+    assert!(r.read_exact(&mut [0; 10]).is_err());
+    assert!(r.is_empty());
+
+    let mut r = slice;
+    let buf = &mut [0; 10];
+    let mut buf = BorrowedBuf::from(buf.as_mut_slice());
+    assert!(r.read_buf_exact(buf.unfilled()).is_err());
+    assert!(r.is_empty());
+    assert_eq!(buf.filled(), b"123456");
+}
+
 #[bench]
 fn bench_take_read(b: &mut test::Bencher) {
     b.iter(|| {
