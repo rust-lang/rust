@@ -1,12 +1,12 @@
 error[E0277]: the trait bound `A<X>: Trait<_, _, _>` is not satisfied
-  --> $DIR/incompleteness-unstable-result.rs:63:19
+  --> $DIR/incompleteness-unstable-result.rs:65:19
    |
 LL |     impls_trait::<A<X>, _, _, _>();
    |                   ^^^^ the trait `Trait<_, _, _>` is not implemented for `A<X>`, which is required by `A<X>: Trait<_, _, _>`
    |
    = help: the trait `Trait<U, V, D>` is implemented for `A<T>`
 note: required for `A<X>` to implement `Trait<_, _, _>`
-  --> $DIR/incompleteness-unstable-result.rs:32:50
+  --> $DIR/incompleteness-unstable-result.rs:33:50
    |
 LL | impl<T: ?Sized, U: ?Sized, V: ?Sized, D: ?Sized> Trait<U, V, D> for A<T>
    |                                                  ^^^^^^^^^^^^^^     ^^^^
@@ -16,7 +16,7 @@ LL |     A<T>: Trait<U, D, V>,
    = note: 8 redundant requirements hidden
    = note: required for `A<X>` to implement `Trait<_, _, _>`
 note: required by a bound in `impls_trait`
-  --> $DIR/incompleteness-unstable-result.rs:51:28
+  --> $DIR/incompleteness-unstable-result.rs:52:28
    |
 LL | fn impls_trait<T: ?Sized + Trait<U, V, D>, U: ?Sized, V: ?Sized, D: ?Sized>() {}
    |                            ^^^^^^^^^^^^^^ required by this bound in `impls_trait`
