@@ -1,8 +1,8 @@
-#![feature(rustc_private)]
+#![feature(test)]
 
 extern crate alloc;
 
-extern crate libc as alloc;
+extern crate test as alloc;
 //~^ ERROR E0259
 
 fn main() {}

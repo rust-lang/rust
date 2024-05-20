@@ -1,21 +1,15 @@
+// Ensure that env::vars() does not panic if environ is null.
+// Regression test for rust-lang/rust#53200
 //@ run-pass
 
-#![allow(unused_imports)]
-
-//@ ignore-windows
-
-// issue-53200
-
 #![feature(rustc_private)]
-extern crate libc;
-
-use std::env;
 
 // FIXME: more platforms?
 #[cfg(target_os = "linux")]
 fn main() {
+    extern crate libc;
     unsafe { libc::clearenv(); }
-    assert_eq!(env::vars().count(), 0);
+    assert_eq!(std::env::vars().count(), 0);
 }
 
 #[cfg(not(target_os = "linux"))]

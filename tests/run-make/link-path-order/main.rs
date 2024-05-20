@@ -1,10 +1,8 @@
-#![feature(rustc_private)]
-
-extern crate libc;
+use std::ffi::c_int;
 
 #[link(name = "foo", kind = "static")]
 extern "C" {
-    fn should_return_one() -> libc::c_int;
+    fn should_return_one() -> c_int;
 }
 
 fn main() {
