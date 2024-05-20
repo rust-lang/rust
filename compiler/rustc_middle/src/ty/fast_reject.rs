@@ -149,9 +149,9 @@ impl SimplifiedType {
     }
 }
 
-/// Given generic arguments from an obligation and an impl,
-/// could these two be unified after replacing parameters in the
-/// the impl with inference variables.
+/// Given generic arguments from an obligation and a candidate,
+/// could these two be unified after replacing parameters and bound
+/// variables in the candidate with inference variables.
 ///
 /// For obligations, parameters won't be replaced by inference
 /// variables and only unify with themselves. We treat them
@@ -170,28 +170,30 @@ impl DeepRejectCtxt {
     pub fn args_may_unify<'tcx>(
         self,
         obligation_args: GenericArgsRef<'tcx>,
-        impl_args: GenericArgsRef<'tcx>,
+        candidate_args: GenericArgsRef<'tcx>,
     ) -> bool {
-        iter::zip(obligation_args, impl_args).all(|(obl, imp)| {
+        iter::zip(obligation_args, candidate_args).all(|(obl, imp)| {
             match (obl.unpack(), imp.unpack()) {
                 // We don't fast reject based on regions.
                 (GenericArgKind::Lifetime(_), GenericArgKind::Lifetime(_)) => true,
-                (GenericArgKind::Type(obl), GenericArgKind::Type(imp)) => {
-                    self.types_may_unify(obl, imp)
+                (GenericArgKind::Type(obl), GenericArgKind::Type(candidate)) => {
+                    self.types_may_unify(obl, candidate)
                 }
-                (GenericArgKind::Const(obl), GenericArgKind::Const(imp)) => {
-                    self.consts_may_unify(obl, imp)
+                (GenericArgKind::Const(obl), GenericArgKind::Const(candidate)) => {
+                    self.consts_may_unify(obl, candidate)
                 }
                 _ => bug!("kind mismatch: {obl} {imp}"),
             }
         })
     }
 
-    pub fn types_may_unify<'tcx>(self, obligation_ty: Ty<'tcx>, impl_ty: Ty<'tcx>) -> bool {
-        match impl_ty.kind() {
-            // Start by checking whether the type in the impl may unify with
+    pub fn types_may_unify<'tcx>(self, obligation_ty: Ty<'tcx>, candidate_ty: Ty<'tcx>) -> bool {
+        match candidate_ty.kind() {
+            // Start by checking whether the type in the candidate may unify with
             // pretty much everything. Just return `true` in that case.
-            ty::Param(_) | ty::Error(_) | ty::Alias(..) => return true,
+            ty::Param(_) | ty::Error(_) | ty::Alias(..) | ty::Infer(_) | ty::Placeholder(..) => {
+                return true;
+            }
             // These types only unify with inference variables or their own
             // variant.
             ty::Bool
@@ -210,18 +212,15 @@ impl DeepRejectCtxt {
             | ty::Never
             | ty::Tuple(..)
             | ty::FnPtr(..)
-            | ty::Foreign(..) => debug_assert!(impl_ty.is_known_rigid()),
+            | ty::Foreign(..) => debug_assert!(candidate_ty.is_known_rigid()),
             ty::FnDef(..)
             | ty::Closure(..)
             | ty::CoroutineClosure(..)
             | ty::Coroutine(..)
             | ty::CoroutineWitness(..)
-            | ty::Placeholder(..)
-            | ty::Bound(..)
-            | ty::Infer(_) => bug!("unexpected impl_ty: {impl_ty}"),
+            | ty::Bound(..) => bug!("unexpected candidate_ty: {candidate_ty}"),
         }
 
-        let k = impl_ty.kind();
         match *obligation_ty.kind() {
             // Purely rigid types, use structural equivalence.
             ty::Bool
@@ -231,65 +230,68 @@ impl DeepRejectCtxt {
             | ty::Float(_)
             | ty::Str
             | ty::Never
-            | ty::Foreign(_) => obligation_ty == impl_ty,
-            ty::Ref(_, obl_ty, obl_mutbl) => match k {
-                &ty::Ref(_, impl_ty, impl_mutbl) => {
-                    obl_mutbl == impl_mutbl && self.types_may_unify(obl_ty, impl_ty)
+            | ty::Foreign(_) => obligation_ty == candidate_ty,
+            ty::Ref(_, obl_ty, obl_mutbl) => match candidate_ty.kind() {
+                &ty::Ref(_, cand_ty, cand_mutbl) => {
+                    obl_mutbl == cand_mutbl && self.types_may_unify(obl_ty, cand_ty)
                 }
                 _ => false,
             },
-            ty::Adt(obl_def, obl_args) => match k {
-                &ty::Adt(impl_def, impl_args) => {
-                    obl_def == impl_def && self.args_may_unify(obl_args, impl_args)
+            ty::Adt(obl_def, obl_args) => match candidate_ty.kind() {
+                &ty::Adt(cand_def, cand_args) => {
+                    obl_def == cand_def && self.args_may_unify(obl_args, cand_args)
                 }
                 _ => false,
             },
-            ty::Pat(obl_ty, _) => {
+            ty::Pat(obl_ty, _) => match candidate_ty.kind() {
                 // FIXME(pattern_types): take pattern into account
-                matches!(k, &ty::Pat(impl_ty, _) if self.types_may_unify(obl_ty, impl_ty))
-            }
-            ty::Slice(obl_ty) => {
-                matches!(k, &ty::Slice(impl_ty) if self.types_may_unify(obl_ty, impl_ty))
-            }
-            ty::Array(obl_ty, obl_len) => match k {
-                &ty::Array(impl_ty, impl_len) => {
-                    self.types_may_unify(obl_ty, impl_ty)
-                        && self.consts_may_unify(obl_len, impl_len)
+                &ty::Pat(cand_ty, _) => self.types_may_unify(obl_ty, cand_ty),
+                _ => false,
+            },
+            ty::Slice(obl_ty) => match candidate_ty.kind() {
+                &ty::Slice(cand_ty) => self.types_may_unify(obl_ty, cand_ty),
+                _ => false,
+            },
+            ty::Array(obl_ty, obl_len) => match candidate_ty.kind() {
+                &ty::Array(cand_ty, cand_len) => {
+                    self.types_may_unify(obl_ty, cand_ty)
+                        && self.consts_may_unify(obl_len, cand_len)
                 }
                 _ => false,
             },
-            ty::Tuple(obl) => match k {
-                &ty::Tuple(imp) => {
-                    obl.len() == imp.len()
-                        && iter::zip(obl, imp).all(|(obl, imp)| self.types_may_unify(obl, imp))
+            ty::Tuple(obl) => match candidate_ty.kind() {
+                &ty::Tuple(cand) => {
+                    obl.len() == cand.len()
+                        && iter::zip(obl, cand).all(|(obl, cand)| self.types_may_unify(obl, cand))
                 }
                 _ => false,
             },
-            ty::RawPtr(obl_ty, obl_mutbl) => match *k {
-                ty::RawPtr(imp_ty, imp_mutbl) => {
-                    obl_mutbl == imp_mutbl && self.types_may_unify(obl_ty, imp_ty)
+            ty::RawPtr(obl_ty, obl_mutbl) => match *candidate_ty.kind() {
+                ty::RawPtr(cand_ty, cand_mutbl) => {
+                    obl_mutbl == cand_mutbl && self.types_may_unify(obl_ty, cand_ty)
                 }
                 _ => false,
             },
-            ty::Dynamic(obl_preds, ..) => {
+            ty::Dynamic(obl_preds, ..) => match candidate_ty.kind() {
                 // Ideally we would walk the existential predicates here or at least
                 // compare their length. But considering that the relevant `Relate` impl
                 // actually sorts and deduplicates these, that doesn't work.
-                matches!(k, ty::Dynamic(impl_preds, ..) if
-                    obl_preds.principal_def_id() == impl_preds.principal_def_id()
-                )
-            }
-            ty::FnPtr(obl_sig) => match k {
-                ty::FnPtr(impl_sig) => {
+                ty::Dynamic(cand_preds, ..) => {
+                    obl_preds.principal_def_id() == cand_preds.principal_def_id()
+                }
+                _ => false,
+            },
+            ty::FnPtr(obl_sig) => match candidate_ty.kind() {
+                ty::FnPtr(cand_sig) => {
                     let ty::FnSig { inputs_and_output, c_variadic, safety, abi } =
                         obl_sig.skip_binder();
-                    let impl_sig = impl_sig.skip_binder();
+                    let cand_sig = cand_sig.skip_binder();
 
-                    abi == impl_sig.abi
-                        && c_variadic == impl_sig.c_variadic
-                        && safety == impl_sig.safety
-                        && inputs_and_output.len() == impl_sig.inputs_and_output.len()
-                        && iter::zip(inputs_and_output, impl_sig.inputs_and_output)
+                    abi == cand_sig.abi
+                        && c_variadic == cand_sig.c_variadic
+                        && safety == cand_sig.safety
+                        && inputs_and_output.len() == cand_sig.inputs_and_output.len()
+                        && iter::zip(inputs_and_output, cand_sig.inputs_and_output)
                             .all(|(obl, imp)| self.types_may_unify(obl, imp))
                 }
                 _ => false,
@@ -308,9 +310,9 @@ impl DeepRejectCtxt {
                 TreatParams::AsCandidateKey => true,
             },
 
-            ty::Infer(ty::IntVar(_)) => impl_ty.is_integral(),
+            ty::Infer(ty::IntVar(_)) => candidate_ty.is_integral(),
 
-            ty::Infer(ty::FloatVar(_)) => impl_ty.is_floating_point(),
+            ty::Infer(ty::FloatVar(_)) => candidate_ty.is_floating_point(),
 
             ty::Infer(_) => true,
 
@@ -329,17 +331,22 @@ impl DeepRejectCtxt {
         }
     }
 
-    pub fn consts_may_unify(self, obligation_ct: ty::Const<'_>, impl_ct: ty::Const<'_>) -> bool {
-        let impl_val = match impl_ct.kind() {
+    pub fn consts_may_unify(
+        self,
+        obligation_ct: ty::Const<'_>,
+        candidate_ct: ty::Const<'_>,
+    ) -> bool {
+        let candidate_val = match candidate_ct.kind() {
             ty::ConstKind::Expr(_)
             | ty::ConstKind::Param(_)
             | ty::ConstKind::Unevaluated(_)
+            | ty::ConstKind::Placeholder(_)
             | ty::ConstKind::Error(_) => {
                 return true;
             }
-            ty::ConstKind::Value(impl_val) => impl_val,
-            ty::ConstKind::Infer(_) | ty::ConstKind::Bound(..) | ty::ConstKind::Placeholder(_) => {
-                bug!("unexpected impl arg: {:?}", impl_ct)
+            ty::ConstKind::Value(candidate_val) => candidate_val,
+            ty::ConstKind::Infer(_) | ty::ConstKind::Bound(..) => {
+                bug!("unexpected candidate arg: {:?}", candidate_ct)
             }
         };
 
@@ -357,7 +364,7 @@ impl DeepRejectCtxt {
             ty::ConstKind::Expr(_) | ty::ConstKind::Unevaluated(_) | ty::ConstKind::Error(_) => {
                 true
             }
-            ty::ConstKind::Value(obl_val) => obl_val == impl_val,
+            ty::ConstKind::Value(obl_val) => obl_val == candidate_val,
 
             ty::ConstKind::Infer(_) => true,
 

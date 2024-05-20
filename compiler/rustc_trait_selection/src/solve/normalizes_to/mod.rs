@@ -21,6 +21,7 @@ use rustc_middle::{bug, span_bug};
 use rustc_span::{sym, ErrorGuaranteed, DUMMY_SP};
 
 mod anon_const;
+mod fast_reject;
 mod inherent;
 mod opaque_types;
 mod weak_types;
@@ -54,10 +55,15 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
         &mut self,
         goal: Goal<'tcx, NormalizesTo<'tcx>>,
     ) -> QueryResult<'tcx> {
-        match goal.predicate.alias.kind(self.tcx()) {
+        let tcx = self.tcx();
+        match goal.predicate.alias.kind(tcx) {
             ty::AliasTermKind::ProjectionTy | ty::AliasTermKind::ProjectionConst => {
-                let candidates = self.assemble_and_evaluate_candidates(goal);
-                self.merge_candidates(candidates)
+                if fast_reject::is_rigid_alias(tcx, goal.param_env, goal.predicate.alias) {
+                    return Err(NoSolution);
+                } else {
+                    let candidates = self.assemble_and_evaluate_candidates(goal);
+                    self.merge_candidates(candidates)
+                }
             }
             ty::AliasTermKind::InherentTy => self.normalize_inherent_associated_type(goal),
             ty::AliasTermKind::OpaqueTy => self.normalize_opaque_type(goal),

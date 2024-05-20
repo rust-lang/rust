@@ -1902,6 +1902,11 @@ impl<'tcx> Ty<'tcx> {
     }
 
     #[inline]
+    pub fn is_placeholder(self) -> bool {
+        matches!(self.kind(), Placeholder(_))
+    }
+
+    #[inline]
     pub fn is_char(self) -> bool {
         matches!(self.kind(), Char)
     }
