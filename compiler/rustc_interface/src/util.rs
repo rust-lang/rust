@@ -65,9 +65,15 @@ fn init_stack_size(early_dcx: &EarlyDiagCtxt) -> usize {
             // so no one thinks we parsed them setting `RUST_MIN_STACK="64 megabytes"`
             // FIXME: we could accept `RUST_MIN_STACK=64MB`, perhaps?
             .map(|s| {
-                s.trim().parse::<usize>().unwrap_or_else(|_| {
-                    #[allow(rustc::untranslatable_diagnostic)]
-                    early_dcx.early_fatal("`RUST_MIN_STACK` should be unset or a number of bytes")
+                let s = s.trim();
+                // FIXME(workingjubilee): add proper diagnostics when we factor out "pre-run" setup
+                #[allow(rustc::untranslatable_diagnostic, rustc::diagnostic_outside_of_impl)]
+                s.parse::<usize>().unwrap_or_else(|_| {
+                    let mut err = early_dcx.early_struct_fatal(format!(
+                        r#"`RUST_MIN_STACK` should be a number of bytes, but was "{s}""#,
+                    ));
+                    err.note("you can also unset `RUST_MIN_STACK` to use the default stack size");
+                    err.emit()
                 })
             })
             // otherwise pick a consistent default
