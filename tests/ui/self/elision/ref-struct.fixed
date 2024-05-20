@@ -8,27 +8,27 @@ struct Struct {}
 impl Struct {
     // Test using `&Struct` explicitly:
 
-    fn ref_Struct(self: &Struct, f: &u32) -> &u32 {
+    fn ref_Struct<'a>(self: &Struct, f: &'a u32) -> &'a u32 {
         f
         //~^ ERROR lifetime may not live long enough
     }
 
-    fn box_ref_Struct(self: Box<&Struct>, f: &u32) -> &u32 {
+    fn box_ref_Struct<'a>(self: Box<&Struct>, f: &'a u32) -> &'a u32 {
         f
         //~^ ERROR lifetime may not live long enough
     }
 
-    fn pin_ref_Struct(self: Pin<&Struct>, f: &u32) -> &u32 {
+    fn pin_ref_Struct<'a>(self: Pin<&Struct>, f: &'a u32) -> &'a u32 {
         f
         //~^ ERROR lifetime may not live long enough
     }
 
-    fn box_box_ref_Struct(self: Box<Box<&Struct>>, f: &u32) -> &u32 {
+    fn box_box_ref_Struct<'a>(self: Box<Box<&Struct>>, f: &'a u32) -> &'a u32 {
         f
         //~^ ERROR lifetime may not live long enough
     }
 
-    fn box_pin_Struct(self: Box<Pin<&Struct>>, f: &u32) -> &u32 {
+    fn box_pin_Struct<'a>(self: Box<Pin<&Struct>>, f: &'a u32) -> &'a u32 {
         f
         //~^ ERROR lifetime may not live long enough
     }
