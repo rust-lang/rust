@@ -117,3 +117,10 @@ pub type HighlyGenericAABB<A, B> = HighlyGenericStruct<A, A, B, B>;
 // @count - '//*[@id="variants"]' 0
 // @count - '//*[@id="fields"]' 1
 pub use cross_crate_generic_typedef::InlineU64;
+
+// @has 'inner_variants/type.InlineEnum.html'
+// @count - '//*[@id="aliased-type"]' 1
+// @count - '//*[@id="variants"]' 1
+// @count - '//*[@id="fields"]' 0
+// @count - '//*[@class="variant"]' 2
+pub type InlineEnum = cross_crate_generic_typedef::GenericEnum<i32>;
