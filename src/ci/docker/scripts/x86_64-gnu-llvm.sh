@@ -6,16 +6,15 @@ set -ex
 if [[ -z "${PR_CI_JOB}" ]]; then
     # When running gcc backend tests, we need to install `libgccjit` and to not run llvm codegen
     # tests as it will fail them.
-    # The tests are run a second time with the size optimizations enabled.
     if [[ "${ENABLE_GCC_CODEGEN}" == "1" ]]; then
         ../x.py --stage 1 test --skip src/tools/tidy --skip tests/codegen
-        ../x.py --stage 1 test library/std library/alloc library/core \
-            --rustc-args "--cfg feature=\"optimize_for_size\""
     else
         ../x.py --stage 1 test --skip src/tools/tidy
-        ../x.py --stage 1 test library/std library/alloc library/core \
-            --rustc-args "--cfg feature=\"optimize_for_size\""
     fi
+
+    # The tests are run a second time with the size optimizations enabled.
+    ../x.py --stage 1 test library/std library/alloc library/core \
+        --rustc-args "--cfg feature=\"optimize_for_size\""
 
     # Run the `mir-opt` tests again but this time for a 32-bit target.
     # This enforces that tests using `// EMIT_MIR_FOR_EACH_BIT_WIDTH` have
