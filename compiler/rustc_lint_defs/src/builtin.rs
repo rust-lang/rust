@@ -4263,8 +4263,7 @@ declare_lint! {
     ///
     /// // where absurd is a function with the following signature
     /// // (it's sound, because `!` always marks unreachable code):
-    /// fn absurd<T>(_: !) -> T { ... }
-    // FIXME: use `core::convert::absurd` here instead, once it's merged
+    /// fn absurd<T>(never: !) -> T { ... }
     /// ```
     ///
     /// While it's convenient to be able to use non-diverging code in one of the branches (like
@@ -4321,7 +4320,12 @@ declare_lint! {
     /// [`()`]: https://doc.rust-lang.org/core/primitive.unit.html
     pub NEVER_TYPE_FALLBACK_FLOWING_INTO_UNSAFE,
     Warn,
-    "never type fallback affecting unsafe function calls"
+    "never type fallback affecting unsafe function calls",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: FutureIncompatibilityReason::FutureReleaseSemanticsChange,
+        reference: "issue #123748 <https://github.com/rust-lang/rust/issues/123748>",
+    };
+    report_in_external_macro
 }
 
 declare_lint! {
