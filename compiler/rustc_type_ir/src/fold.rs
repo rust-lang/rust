@@ -48,8 +48,8 @@
 use rustc_index::{Idx, IndexVec};
 use std::mem;
 
-use crate::Lrc;
-use crate::{visit::TypeVisitable, Interner};
+use crate::visit::TypeVisitable;
+use crate::{self as ty, Interner, Lrc};
 
 #[cfg(feature = "nightly")]
 type Never = !;
@@ -128,10 +128,9 @@ pub trait TypeSuperFoldable<I: Interner>: TypeFoldable<I> {
 pub trait TypeFolder<I: Interner>: FallibleTypeFolder<I, Error = Never> {
     fn interner(&self) -> I;
 
-    fn fold_binder<T>(&mut self, t: I::Binder<T>) -> I::Binder<T>
+    fn fold_binder<T>(&mut self, t: ty::Binder<I, T>) -> ty::Binder<I, T>
     where
         T: TypeFoldable<I>,
-        I::Binder<T>: TypeSuperFoldable<I>,
     {
         t.super_fold_with(self)
     }
@@ -167,10 +166,9 @@ pub trait FallibleTypeFolder<I: Interner>: Sized {
 
     fn interner(&self) -> I;
 
-    fn try_fold_binder<T>(&mut self, t: I::Binder<T>) -> Result<I::Binder<T>, Self::Error>
+    fn try_fold_binder<T>(&mut self, t: ty::Binder<I, T>) -> Result<ty::Binder<I, T>, Self::Error>
     where
         T: TypeFoldable<I>,
-        I::Binder<T>: TypeSuperFoldable<I>,
     {
         t.try_super_fold_with(self)
     }
@@ -206,10 +204,9 @@ where
         TypeFolder::interner(self)
     }
 
-    fn try_fold_binder<T>(&mut self, t: I::Binder<T>) -> Result<I::Binder<T>, Never>
+    fn try_fold_binder<T>(&mut self, t: ty::Binder<I, T>) -> Result<ty::Binder<I, T>, Never>
     where
         T: TypeFoldable<I>,
-        I::Binder<T>: TypeSuperFoldable<I>,
     {
         Ok(self.fold_binder(t))
     }

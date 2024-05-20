@@ -8,8 +8,8 @@ use rustc_type_ir as ir;
 use std::cmp::Ordering;
 
 use crate::ty::{
-    self, Binder, DebruijnIndex, EarlyBinder, PredicatePolarity, Term, Ty, TyCtxt, TypeFlags,
-    Upcast, UpcastFrom, WithCachedTypeInfo,
+    self, DebruijnIndex, EarlyBinder, PredicatePolarity, Ty, TyCtxt, TypeFlags, Upcast, UpcastFrom,
+    WithCachedTypeInfo,
 };
 
 pub type TraitRef<'tcx> = ir::TraitRef<TyCtxt<'tcx>>;
@@ -155,6 +155,8 @@ pub struct Clause<'tcx>(
     pub(super) Interned<'tcx, WithCachedTypeInfo<ty::Binder<'tcx, PredicateKind<'tcx>>>>,
 );
 
+impl<'tcx> rustc_type_ir::inherent::Clause<TyCtxt<'tcx>> for Clause<'tcx> {}
+
 impl<'tcx> Clause<'tcx> {
     pub fn as_predicate(self) -> Predicate<'tcx> {
         Predicate(self.0)
@@ -231,34 +233,6 @@ impl<'tcx> ExistentialPredicate<'tcx> {
 
 pub type PolyExistentialPredicate<'tcx> = ty::Binder<'tcx, ExistentialPredicate<'tcx>>;
 
-impl<'tcx> PolyExistentialPredicate<'tcx> {
-    /// Given an existential predicate like `?Self: PartialEq<u32>` (e.g., derived from `dyn PartialEq<u32>`),
-    /// and a concrete type `self_ty`, returns a full predicate where the existentially quantified variable `?Self`
-    /// has been replaced with `self_ty` (e.g., `self_ty: PartialEq<u32>`, in our example).
-    pub fn with_self_ty(&self, tcx: TyCtxt<'tcx>, self_ty: Ty<'tcx>) -> ty::Clause<'tcx> {
-        match self.skip_binder() {
-            ExistentialPredicate::Trait(tr) => {
-                self.rebind(tr).with_self_ty(tcx, self_ty).upcast(tcx)
-            }
-            ExistentialPredicate::Projection(p) => {
-                self.rebind(p.with_self_ty(tcx, self_ty)).upcast(tcx)
-            }
-            ExistentialPredicate::AutoTrait(did) => {
-                let generics = tcx.generics_of(did);
-                let trait_ref = if generics.own_params.len() == 1 {
-                    ty::TraitRef::new(tcx, did, [self_ty])
-                } else {
-                    // If this is an ill-formed auto trait, then synthesize
-                    // new error args for the missing generics.
-                    let err_args = ty::GenericArgs::extend_with_error(tcx, did, &[self_ty.into()]);
-                    ty::TraitRef::new(tcx, did, err_args)
-                };
-                self.rebind(trait_ref).upcast(tcx)
-            }
-        }
-    }
-}
-
 impl<'tcx> ty::List<ty::PolyExistentialPredicate<'tcx>> {
     /// Returns the "principal `DefId`" of this set of existential predicates.
     ///
@@ -322,48 +296,8 @@ impl<'tcx> ty::List<ty::PolyExistentialPredicate<'tcx>> {
 }
 
 pub type PolyTraitRef<'tcx> = ty::Binder<'tcx, TraitRef<'tcx>>;
-
-impl<'tcx> PolyTraitRef<'tcx> {
-    pub fn self_ty(&self) -> ty::Binder<'tcx, Ty<'tcx>> {
-        self.map_bound_ref(|tr| tr.self_ty())
-    }
-
-    pub fn def_id(&self) -> DefId {
-        self.skip_binder().def_id
-    }
-}
-
 pub type PolyExistentialTraitRef<'tcx> = ty::Binder<'tcx, ExistentialTraitRef<'tcx>>;
-
-impl<'tcx> PolyExistentialTraitRef<'tcx> {
-    pub fn def_id(&self) -> DefId {
-        self.skip_binder().def_id
-    }
-
-    /// Object types don't have a self type specified. Therefore, when
-    /// we convert the principal trait-ref into a normal trait-ref,
-    /// you must give *some* self type. A common choice is `mk_err()`
-    /// or some placeholder type.
-    pub fn with_self_ty(&self, tcx: TyCtxt<'tcx>, self_ty: Ty<'tcx>) -> ty::PolyTraitRef<'tcx> {
-        self.map_bound(|trait_ref| trait_ref.with_self_ty(tcx, self_ty))
-    }
-}
-
 pub type PolyExistentialProjection<'tcx> = ty::Binder<'tcx, ExistentialProjection<'tcx>>;
-
-impl<'tcx> PolyExistentialProjection<'tcx> {
-    pub fn with_self_ty(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        self_ty: Ty<'tcx>,
-    ) -> ty::PolyProjectionPredicate<'tcx> {
-        self.map_bound(|p| p.with_self_ty(tcx, self_ty))
-    }
-
-    pub fn item_def_id(&self) -> DefId {
-        self.skip_binder().def_id
-    }
-}
 
 impl<'tcx> Clause<'tcx> {
     /// Performs a instantiation suitable for going from a
@@ -473,22 +407,6 @@ impl<'tcx> Clause<'tcx> {
 
 pub type PolyTraitPredicate<'tcx> = ty::Binder<'tcx, TraitPredicate<'tcx>>;
 
-impl<'tcx> PolyTraitPredicate<'tcx> {
-    pub fn def_id(self) -> DefId {
-        // Ok to skip binder since trait `DefId` does not care about regions.
-        self.skip_binder().def_id()
-    }
-
-    pub fn self_ty(self) -> ty::Binder<'tcx, Ty<'tcx>> {
-        self.map_bound(|trait_ref| trait_ref.self_ty())
-    }
-
-    #[inline]
-    pub fn polarity(self) -> PredicatePolarity {
-        self.skip_binder().polarity
-    }
-}
-
 /// `A: B`
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, TyEncodable, TyDecodable)]
 #[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
@@ -497,46 +415,9 @@ pub type RegionOutlivesPredicate<'tcx> = OutlivesPredicate<ty::Region<'tcx>, ty:
 pub type TypeOutlivesPredicate<'tcx> = OutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>>;
 pub type PolyRegionOutlivesPredicate<'tcx> = ty::Binder<'tcx, RegionOutlivesPredicate<'tcx>>;
 pub type PolyTypeOutlivesPredicate<'tcx> = ty::Binder<'tcx, TypeOutlivesPredicate<'tcx>>;
-
 pub type PolySubtypePredicate<'tcx> = ty::Binder<'tcx, SubtypePredicate<'tcx>>;
-
 pub type PolyCoercePredicate<'tcx> = ty::Binder<'tcx, CoercePredicate<'tcx>>;
-
 pub type PolyProjectionPredicate<'tcx> = Binder<'tcx, ProjectionPredicate<'tcx>>;
-
-impl<'tcx> PolyProjectionPredicate<'tcx> {
-    /// Returns the `DefId` of the trait of the associated item being projected.
-    #[inline]
-    pub fn trait_def_id(&self, tcx: TyCtxt<'tcx>) -> DefId {
-        self.skip_binder().projection_term.trait_def_id(tcx)
-    }
-
-    /// Get the [PolyTraitRef] required for this projection to be well formed.
-    /// Note that for generic associated types the predicates of the associated
-    /// type also need to be checked.
-    #[inline]
-    pub fn required_poly_trait_ref(&self, tcx: TyCtxt<'tcx>) -> PolyTraitRef<'tcx> {
-        // Note: unlike with `TraitRef::to_poly_trait_ref()`,
-        // `self.0.trait_ref` is permitted to have escaping regions.
-        // This is because here `self` has a `Binder` and so does our
-        // return value, so we are preserving the number of binding
-        // levels.
-        self.map_bound(|predicate| predicate.projection_term.trait_ref(tcx))
-    }
-
-    pub fn term(&self) -> Binder<'tcx, Term<'tcx>> {
-        self.map_bound(|predicate| predicate.term)
-    }
-
-    /// The `DefId` of the `TraitItem` for the associated type.
-    ///
-    /// Note that this is not the `DefId` of the `TraitRef` containing this
-    /// associated type, which is in `tcx.associated_item(projection_def_id()).container`.
-    pub fn projection_def_id(&self) -> DefId {
-        // Ok to skip binder since trait `DefId` does not care about regions.
-        self.skip_binder().projection_term.def_id
-    }
-}
 
 pub trait ToPolyTraitRef<'tcx> {
     fn to_poly_trait_ref(&self) -> PolyTraitRef<'tcx>;
@@ -554,8 +435,8 @@ impl<'tcx> UpcastFrom<TyCtxt<'tcx>, PredicateKind<'tcx>> for Predicate<'tcx> {
     }
 }
 
-impl<'tcx> UpcastFrom<TyCtxt<'tcx>, Binder<'tcx, PredicateKind<'tcx>>> for Predicate<'tcx> {
-    fn upcast_from(from: Binder<'tcx, PredicateKind<'tcx>>, tcx: TyCtxt<'tcx>) -> Self {
+impl<'tcx> UpcastFrom<TyCtxt<'tcx>, ty::Binder<'tcx, PredicateKind<'tcx>>> for Predicate<'tcx> {
+    fn upcast_from(from: ty::Binder<'tcx, PredicateKind<'tcx>>, tcx: TyCtxt<'tcx>) -> Self {
         tcx.mk_predicate(from)
     }
 }
@@ -566,8 +447,8 @@ impl<'tcx> UpcastFrom<TyCtxt<'tcx>, ClauseKind<'tcx>> for Predicate<'tcx> {
     }
 }
 
-impl<'tcx> UpcastFrom<TyCtxt<'tcx>, Binder<'tcx, ClauseKind<'tcx>>> for Predicate<'tcx> {
-    fn upcast_from(from: Binder<'tcx, ClauseKind<'tcx>>, tcx: TyCtxt<'tcx>) -> Self {
+impl<'tcx> UpcastFrom<TyCtxt<'tcx>, ty::Binder<'tcx, ClauseKind<'tcx>>> for Predicate<'tcx> {
+    fn upcast_from(from: ty::Binder<'tcx, ClauseKind<'tcx>>, tcx: TyCtxt<'tcx>) -> Self {
         tcx.mk_predicate(from.map_bound(PredicateKind::Clause))
     }
 }
@@ -580,12 +461,12 @@ impl<'tcx> UpcastFrom<TyCtxt<'tcx>, Clause<'tcx>> for Predicate<'tcx> {
 
 impl<'tcx> UpcastFrom<TyCtxt<'tcx>, ClauseKind<'tcx>> for Clause<'tcx> {
     fn upcast_from(from: ClauseKind<'tcx>, tcx: TyCtxt<'tcx>) -> Self {
-        tcx.mk_predicate(Binder::dummy(PredicateKind::Clause(from))).expect_clause()
+        tcx.mk_predicate(ty::Binder::dummy(PredicateKind::Clause(from))).expect_clause()
     }
 }
 
-impl<'tcx> UpcastFrom<TyCtxt<'tcx>, Binder<'tcx, ClauseKind<'tcx>>> for Clause<'tcx> {
-    fn upcast_from(from: Binder<'tcx, ClauseKind<'tcx>>, tcx: TyCtxt<'tcx>) -> Self {
+impl<'tcx> UpcastFrom<TyCtxt<'tcx>, ty::Binder<'tcx, ClauseKind<'tcx>>> for Clause<'tcx> {
+    fn upcast_from(from: ty::Binder<'tcx, ClauseKind<'tcx>>, tcx: TyCtxt<'tcx>) -> Self {
         tcx.mk_predicate(from.map_bound(|clause| PredicateKind::Clause(clause))).expect_clause()
     }
 }
@@ -609,22 +490,22 @@ impl<'tcx> UpcastFrom<TyCtxt<'tcx>, TraitRef<'tcx>> for Clause<'tcx> {
     }
 }
 
-impl<'tcx> UpcastFrom<TyCtxt<'tcx>, Binder<'tcx, TraitRef<'tcx>>> for Predicate<'tcx> {
-    fn upcast_from(from: Binder<'tcx, TraitRef<'tcx>>, tcx: TyCtxt<'tcx>) -> Self {
+impl<'tcx> UpcastFrom<TyCtxt<'tcx>, ty::Binder<'tcx, TraitRef<'tcx>>> for Predicate<'tcx> {
+    fn upcast_from(from: ty::Binder<'tcx, TraitRef<'tcx>>, tcx: TyCtxt<'tcx>) -> Self {
         let pred: PolyTraitPredicate<'tcx> = from.upcast(tcx);
         pred.upcast(tcx)
     }
 }
 
-impl<'tcx> UpcastFrom<TyCtxt<'tcx>, Binder<'tcx, TraitRef<'tcx>>> for Clause<'tcx> {
-    fn upcast_from(from: Binder<'tcx, TraitRef<'tcx>>, tcx: TyCtxt<'tcx>) -> Self {
+impl<'tcx> UpcastFrom<TyCtxt<'tcx>, ty::Binder<'tcx, TraitRef<'tcx>>> for Clause<'tcx> {
+    fn upcast_from(from: ty::Binder<'tcx, TraitRef<'tcx>>, tcx: TyCtxt<'tcx>) -> Self {
         let pred: PolyTraitPredicate<'tcx> = from.upcast(tcx);
         pred.upcast(tcx)
     }
 }
 
-impl<'tcx> UpcastFrom<TyCtxt<'tcx>, Binder<'tcx, TraitRef<'tcx>>> for PolyTraitPredicate<'tcx> {
-    fn upcast_from(from: Binder<'tcx, TraitRef<'tcx>>, _tcx: TyCtxt<'tcx>) -> Self {
+impl<'tcx> UpcastFrom<TyCtxt<'tcx>, ty::Binder<'tcx, TraitRef<'tcx>>> for PolyTraitPredicate<'tcx> {
+    fn upcast_from(from: ty::Binder<'tcx, TraitRef<'tcx>>, _tcx: TyCtxt<'tcx>) -> Self {
         from.map_bound(|trait_ref| TraitPredicate {
             trait_ref,
             polarity: PredicatePolarity::Positive,

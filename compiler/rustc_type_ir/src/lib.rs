@@ -9,9 +9,13 @@
 extern crate self as rustc_type_ir;
 
 #[cfg(feature = "nightly")]
+use rustc_data_structures::sso::SsoHashSet;
+#[cfg(feature = "nightly")]
 use rustc_data_structures::sync::Lrc;
 #[cfg(feature = "nightly")]
 use rustc_macros::{Decodable, Encodable, HashStable_NoContext};
+#[cfg(not(feature = "nightly"))]
+use std::collections::HashSet as SsoHashSet;
 use std::fmt;
 use std::hash::Hash;
 #[cfg(not(feature = "nightly"))]
@@ -31,6 +35,7 @@ pub mod ty_kind;
 
 #[macro_use]
 mod macros;
+mod binder;
 mod canonical;
 mod const_kind;
 mod debug;
@@ -43,6 +48,7 @@ mod predicate_kind;
 mod region_kind;
 mod upcast;
 
+pub use binder::*;
 pub use canonical::*;
 #[cfg(feature = "nightly")]
 pub use codec::*;
@@ -373,6 +379,10 @@ rustc_index::newtype_index! {
 impl<I: Interner> inherent::BoundVarLike<I> for BoundVar {
     fn var(self) -> BoundVar {
         self
+    }
+
+    fn assert_eq(self, _var: I::BoundVarKind) {
+        unreachable!("FIXME: We really should have a separate `BoundConst` for consts")
     }
 }
 

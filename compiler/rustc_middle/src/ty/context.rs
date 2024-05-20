@@ -31,8 +31,7 @@ use crate::ty::{
     self, AdtDef, AdtDefData, AdtKind, Binder, Clause, Clauses, Const, ConstData,
     GenericParamDefKind, ImplPolarity, List, ListWithCachedTypeInfo, ParamConst, ParamTy, Pattern,
     PatternKind, PolyExistentialPredicate, PolyFnSig, Predicate, PredicateKind, PredicatePolarity,
-    Region, RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind, TyVid, TypeVisitable,
-    Visibility,
+    Region, RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind, TyVid, Visibility,
 };
 use crate::ty::{GenericArg, GenericArgs, GenericArgsRef};
 use rustc_ast::{self as ast, attr};
@@ -96,9 +95,8 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type GenericArg = ty::GenericArg<'tcx>;
     type Term = ty::Term<'tcx>;
 
-    type Binder<T: TypeVisitable<TyCtxt<'tcx>>> = Binder<'tcx, T>;
-    type BoundVars = &'tcx List<ty::BoundVariableKind>;
-    type BoundVar = ty::BoundVariableKind;
+    type BoundVarKinds = &'tcx List<ty::BoundVariableKind>;
+    type BoundVarKind = ty::BoundVariableKind;
 
     type CanonicalVars = CanonicalVarInfos<'tcx>;
     type PredefinedOpaques = solve::PredefinedOpaques<'tcx>;
@@ -138,6 +136,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
 
     type ParamEnv = ty::ParamEnv<'tcx>;
     type Predicate = Predicate<'tcx>;
+    type Clause = Clause<'tcx>;
     type TraitPredicate = ty::TraitPredicate<'tcx>;
     type RegionOutlivesPredicate = ty::RegionOutlivesPredicate<'tcx>;
     type TypeOutlivesPredicate = ty::TypeOutlivesPredicate<'tcx>;
@@ -245,6 +244,10 @@ impl<'tcx> rustc_type_ir::inherent::Abi<TyCtxt<'tcx>> for abi::Abi {
 }
 
 impl<'tcx> rustc_type_ir::inherent::Safety<TyCtxt<'tcx>> for hir::Safety {
+    fn is_safe(self) -> bool {
+        matches!(self, hir::Safety::Safe)
+    }
+
     fn prefix_str(self) -> &'static str {
         self.prefix_str()
     }

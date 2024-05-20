@@ -384,6 +384,10 @@ impl<'tcx> rustc_type_ir::inherent::BoundVarLike<TyCtxt<'tcx>> for BoundRegion {
     fn var(self) -> BoundVar {
         self.var
     }
+
+    fn assert_eq(self, var: ty::BoundVariableKind) {
+        assert_eq!(self.kind, var.expect_region())
+    }
 }
 
 impl core::fmt::Debug for BoundRegion {

@@ -1,7 +1,7 @@
 use std::fmt;
 
 use crate::{
-    AliasTerm, AliasTy, CoercePredicate, ExistentialProjection, ExistentialTraitRef, FnSig,
+    AliasTerm, AliasTy, Binder, CoercePredicate, ExistentialProjection, ExistentialTraitRef, FnSig,
     Interner, NormalizesTo, ProjectionPredicate, SubtypePredicate, TraitPredicate, TraitRef,
 };
 
@@ -19,6 +19,15 @@ macro_rules! define_display_via_print {
                 }
             }
         )*
+    }
+}
+
+impl<I: Interner, T> fmt::Display for Binder<I, T>
+where
+    I: IrPrint<Binder<I, T>>,
+{
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        <I as IrPrint<Binder<I, T>>>::print(self, fmt)
     }
 }
 
