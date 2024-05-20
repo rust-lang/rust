@@ -160,6 +160,7 @@
 #![feature(tuple_trait)]
 #![feature(unicode_internals)]
 #![feature(unsize)]
+#![feature(unwrap_infallible)]
 #![feature(vec_pop_if)]
 // tidy-alphabetical-end
 //
