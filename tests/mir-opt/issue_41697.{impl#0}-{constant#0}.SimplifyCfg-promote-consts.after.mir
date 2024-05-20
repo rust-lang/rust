@@ -5,7 +5,7 @@
     let mut _1: (usize, bool);
 
     bb0: {
-        _1 = CheckedAdd(const 1_usize, const 1_usize);
+        _1 = AddWithOverflow(const 1_usize, const 1_usize);
         assert(!move (_1.1: bool), "attempt to compute `{} + {}`, which would overflow", const 1_usize, const 1_usize) -> [success: bb1, unwind: bb2];
     }
 

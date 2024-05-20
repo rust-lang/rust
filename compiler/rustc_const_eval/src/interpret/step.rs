@@ -167,15 +167,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let left = self.read_immediate(&self.eval_operand(left, layout)?)?;
                 let layout = util::binop_right_homogeneous(bin_op).then_some(left.layout);
                 let right = self.read_immediate(&self.eval_operand(right, layout)?)?;
-                self.binop_ignore_overflow(bin_op, &left, &right, &dest)?;
-            }
-
-            CheckedBinaryOp(bin_op, box (ref left, ref right)) => {
-                // Due to the extra boolean in the result, we can never reuse the `dest.layout`.
-                let left = self.read_immediate(&self.eval_operand(left, None)?)?;
-                let layout = util::binop_right_homogeneous(bin_op).then_some(left.layout);
-                let right = self.read_immediate(&self.eval_operand(right, layout)?)?;
-                self.binop_with_overflow(bin_op, &left, &right, &dest)?;
+                if let Some(bin_op) = bin_op.overflowing_to_wrapping() {
+                    self.binop_with_overflow(bin_op, &left, &right, &dest)?;
+                } else {
+                    self.binop_ignore_overflow(bin_op, &left, &right, &dest)?;
+                }
             }
 
             UnaryOp(un_op, ref operand) => {
