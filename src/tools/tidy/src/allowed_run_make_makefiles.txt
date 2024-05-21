@@ -2,7 +2,6 @@ run-make/allocator-shim-circular-deps/Makefile
 run-make/allow-non-lint-warnings-cmdline/Makefile
 run-make/archive-duplicate-names/Makefile
 run-make/atomic-lock-free/Makefile
-run-make/bare-outfile/Makefile
 run-make/branch-protection-check-IBT/Makefile
 run-make/c-dynamic-dylib/Makefile
 run-make/c-dynamic-rlib/Makefile
@@ -40,7 +39,6 @@ run-make/emit-path-unhashed/Makefile
 run-make/emit-shared-files/Makefile
 run-make/emit-stack-sizes/Makefile
 run-make/emit-to-stdout/Makefile
-run-make/emit/Makefile
 run-make/env-dep-info/Makefile
 run-make/error-found-staticlib-instead-crate/Makefile
 run-make/error-writing-dependencies/Makefile
@@ -147,7 +145,6 @@ run-make/min-global-align/Makefile
 run-make/mingw-export-call-convention/Makefile
 run-make/mismatching-target-triples/Makefile
 run-make/missing-crate-dependency/Makefile
-run-make/mixing-formats/Makefile
 run-make/mixing-libs/Makefile
 run-make/msvc-opt-minsize/Makefile
 run-make/multiple-emits/Makefile
