@@ -250,7 +250,7 @@ pub fn snippet<'a, T: LintContext>(cx: &T, span: Span, default: &'a str) -> Cow<
 /// - Applicability level `Unspecified` will never be changed.
 /// - If the span is inside a macro, change the applicability level to `MaybeIncorrect`.
 /// - If the default value is used and the applicability level is `MachineApplicable`, change it to
-/// `HasPlaceholders`
+///   `HasPlaceholders`
 pub fn snippet_with_applicability<'a, T: LintContext>(
     cx: &T,
     span: Span,

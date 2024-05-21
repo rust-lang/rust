@@ -62,6 +62,16 @@ fn clone_method_rhs_complex(mut_thing: &mut HasCloneFrom, ref_thing: &HasCloneFr
     *mut_thing = (ref_thing + ref_thing).clone();
 }
 
+fn clone_method_macro() {
+    let mut s = String::from("");
+    s = format!("{} {}", "hello", "world").clone();
+}
+
+fn clone_function_macro() {
+    let mut s = String::from("");
+    s = Clone::clone(&format!("{} {}", "hello", "world"));
+}
+
 fn assign_to_init_mut_var(b: HasCloneFrom) -> HasCloneFrom {
     let mut a = HasCloneFrom;
     for _ in 1..10 {
@@ -84,6 +94,12 @@ fn assign_to_uninit_var(b: HasCloneFrom) {
 fn assign_to_uninit_mut_var(b: HasCloneFrom) {
     let mut a;
     a = b.clone();
+}
+
+fn late_init_let_tuple() {
+    let (p, q): (String, String);
+    p = "ghi".to_string();
+    q = p.clone();
 }
 
 #[derive(Clone)]
@@ -206,6 +222,16 @@ fn owned_function_mut_ref(mut_thing: &mut String, ref_str: &str) {
 
 fn owned_function_val(mut mut_thing: String, ref_str: &str) {
     mut_thing = ToOwned::to_owned(ref_str);
+}
+
+fn owned_method_macro() {
+    let mut s = String::from("");
+    s = format!("{} {}", "hello", "world").to_owned();
+}
+
+fn owned_function_macro() {
+    let mut s = String::from("");
+    s = ToOwned::to_owned(&format!("{} {}", "hello", "world"));
 }
 
 struct FakeToOwned;

@@ -62,64 +62,88 @@ LL |     *mut_thing = (ref_thing + ref_thing).clone();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `clone_from()`: `mut_thing.clone_from(ref_thing + ref_thing)`
 
 error: assigning the result of `Clone::clone()` may be inefficient
-  --> tests/ui/assigning_clones.rs:68:9
+  --> tests/ui/assigning_clones.rs:67:5
+   |
+LL |     s = format!("{} {}", "hello", "world").clone();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `clone_from()`: `s.clone_from(&format!("{} {}", "hello", "world"))`
+
+error: assigning the result of `Clone::clone()` may be inefficient
+  --> tests/ui/assigning_clones.rs:72:5
+   |
+LL |     s = Clone::clone(&format!("{} {}", "hello", "world"));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `clone_from()`: `Clone::clone_from(&mut s, &format!("{} {}", "hello", "world"))`
+
+error: assigning the result of `Clone::clone()` may be inefficient
+  --> tests/ui/assigning_clones.rs:78:9
    |
 LL |         a = b.clone();
    |         ^^^^^^^^^^^^^ help: use `clone_from()`: `a.clone_from(&b)`
 
 error: assigning the result of `Clone::clone()` may be inefficient
-  --> tests/ui/assigning_clones.rs:133:5
+  --> tests/ui/assigning_clones.rs:149:5
    |
 LL |     a = b.clone();
    |     ^^^^^^^^^^^^^ help: use `clone_from()`: `a.clone_from(&b)`
 
 error: assigning the result of `Clone::clone()` may be inefficient
-  --> tests/ui/assigning_clones.rs:140:5
+  --> tests/ui/assigning_clones.rs:156:5
    |
 LL |     a = b.clone();
    |     ^^^^^^^^^^^^^ help: use `clone_from()`: `a.clone_from(&b)`
 
 error: assigning the result of `ToOwned::to_owned()` may be inefficient
-  --> tests/ui/assigning_clones.rs:141:5
+  --> tests/ui/assigning_clones.rs:157:5
    |
 LL |     a = c.to_owned();
    |     ^^^^^^^^^^^^^^^^ help: use `clone_into()`: `c.clone_into(&mut a)`
 
 error: assigning the result of `ToOwned::to_owned()` may be inefficient
-  --> tests/ui/assigning_clones.rs:171:5
+  --> tests/ui/assigning_clones.rs:187:5
    |
 LL |     *mut_string = ref_str.to_owned();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `clone_into()`: `ref_str.clone_into(mut_string)`
 
 error: assigning the result of `ToOwned::to_owned()` may be inefficient
-  --> tests/ui/assigning_clones.rs:175:5
+  --> tests/ui/assigning_clones.rs:191:5
    |
 LL |     mut_string = ref_str.to_owned();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `clone_into()`: `ref_str.clone_into(&mut mut_string)`
 
 error: assigning the result of `ToOwned::to_owned()` may be inefficient
-  --> tests/ui/assigning_clones.rs:196:5
+  --> tests/ui/assigning_clones.rs:212:5
    |
 LL |     **mut_box_string = ref_str.to_owned();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `clone_into()`: `ref_str.clone_into(&mut (*mut_box_string))`
 
 error: assigning the result of `ToOwned::to_owned()` may be inefficient
-  --> tests/ui/assigning_clones.rs:200:5
+  --> tests/ui/assigning_clones.rs:216:5
    |
 LL |     **mut_box_string = ref_str.to_owned();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `clone_into()`: `ref_str.clone_into(&mut (*mut_box_string))`
 
 error: assigning the result of `ToOwned::to_owned()` may be inefficient
-  --> tests/ui/assigning_clones.rs:204:5
+  --> tests/ui/assigning_clones.rs:220:5
    |
 LL |     *mut_thing = ToOwned::to_owned(ref_str);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `clone_into()`: `ToOwned::clone_into(ref_str, mut_thing)`
 
 error: assigning the result of `ToOwned::to_owned()` may be inefficient
-  --> tests/ui/assigning_clones.rs:208:5
+  --> tests/ui/assigning_clones.rs:224:5
    |
 LL |     mut_thing = ToOwned::to_owned(ref_str);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `clone_into()`: `ToOwned::clone_into(ref_str, &mut mut_thing)`
 
-error: aborting due to 20 previous errors
+error: assigning the result of `ToOwned::to_owned()` may be inefficient
+  --> tests/ui/assigning_clones.rs:229:5
+   |
+LL |     s = format!("{} {}", "hello", "world").to_owned();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `clone_into()`: `format!("{} {}", "hello", "world").clone_into(&mut s)`
+
+error: assigning the result of `ToOwned::to_owned()` may be inefficient
+  --> tests/ui/assigning_clones.rs:234:5
+   |
+LL |     s = ToOwned::to_owned(&format!("{} {}", "hello", "world"));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `clone_into()`: `ToOwned::clone_into(&format!("{} {}", "hello", "world"), &mut s)`
+
+error: aborting due to 24 previous errors
 

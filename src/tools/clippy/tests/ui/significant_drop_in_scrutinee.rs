@@ -675,4 +675,60 @@ fn should_not_trigger_on_significant_iterator_drop() {
     }
 }
 
+// https://github.com/rust-lang/rust-clippy/issues/9072
+fn should_not_trigger_lint_if_place_expr_has_significant_drop() {
+    let x = Mutex::new(vec![1, 2, 3]);
+    let x_guard = x.lock().unwrap();
+
+    match x_guard[0] {
+        1 => println!("1!"),
+        x => println!("{x}"),
+    }
+
+    match x_guard.len() {
+        1 => println!("1!"),
+        x => println!("{x}"),
+    }
+}
+
+struct Guard<'a, T>(MutexGuard<'a, T>);
+
+struct Ref<'a, T>(&'a T);
+
+impl<'a, T> Guard<'a, T> {
+    fn guard(&self) -> &MutexGuard<T> {
+        &self.0
+    }
+
+    fn guard_ref(&self) -> Ref<MutexGuard<T>> {
+        Ref(&self.0)
+    }
+
+    fn take(self) -> Box<MutexGuard<'a, T>> {
+        Box::new(self.0)
+    }
+}
+
+fn should_not_trigger_for_significant_drop_ref() {
+    let mutex = Mutex::new(vec![1, 2]);
+    let guard = Guard(mutex.lock().unwrap());
+
+    match guard.guard().len() {
+        0 => println!("empty"),
+        _ => println!("not empty"),
+    }
+
+    match guard.guard_ref().0.len() {
+        0 => println!("empty"),
+        _ => println!("not empty"),
+    }
+
+    match guard.take().len() {
+        //~^ ERROR: temporary with significant `Drop` in `match` scrutinee will live until the
+        //~| NOTE: this might lead to deadlocks or other unexpected behavior
+        0 => println!("empty"),
+        _ => println!("not empty"),
+    };
+}
+
 fn main() {}

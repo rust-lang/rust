@@ -21,6 +21,8 @@ fn main() {
     let _ = check_files_ref_mut(&[(FileType::Account, path)]);
     let _ = check_files_self_and_arg(&[(FileType::Account, path)]);
     let _ = check_files_mut_path_buf(&[(FileType::Account, std::path::PathBuf::new())]);
+
+    check_mut_iteratee_and_modify_inner_variable();
 }
 
 // `check_files` and its variants are based on:
@@ -137,4 +139,34 @@ fn check_files_mut_path_buf(files: &[(FileType, std::path::PathBuf)]) -> bool {
 
 fn get_file_path(_file_type: &FileType) -> Result<std::path::PathBuf, std::io::Error> {
     Ok(std::path::PathBuf::new())
+}
+
+// Issue 12098
+// https://github.com/rust-lang/rust-clippy/issues/12098
+// no message emits
+fn check_mut_iteratee_and_modify_inner_variable() {
+    struct Test {
+        list: Vec<String>,
+        mut_this: bool,
+    }
+
+    impl Test {
+        fn list(&self) -> &[String] {
+            &self.list
+        }
+    }
+
+    let mut test = Test {
+        list: vec![String::from("foo"), String::from("bar")],
+        mut_this: false,
+    };
+
+    for _item in test.list().to_vec() {
+        println!("{}", _item);
+
+        test.mut_this = true;
+        {
+            test.mut_this = true;
+        }
+    }
 }

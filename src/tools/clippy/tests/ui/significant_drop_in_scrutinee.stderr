@@ -28,6 +28,9 @@ LL |     match s.lock_m().get_the_value() {
 LL |             println!("{}", s.lock_m().get_the_value());
    |                            ---------- another value with significant `Drop` created here
 ...
+LL |             println!("{}", s.lock_m().get_the_value());
+   |                            ---------- another value with significant `Drop` created here
+...
 LL |     }
    |      - temporary lives until here
    |
@@ -43,6 +46,9 @@ error: temporary with significant `Drop` in `match` scrutinee will live until th
    |
 LL |     match s.lock_m_m().get_the_value() {
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL |             println!("{}", s.lock_m().get_the_value());
+   |                            ---------- another value with significant `Drop` created here
 ...
 LL |             println!("{}", s.lock_m().get_the_value());
    |                            ---------- another value with significant `Drop` created here
@@ -360,7 +366,7 @@ LL |     match s.lock().deref().deref() {
    |           ^^^^^^^^^^^^^^^^^^^^^^^^
 ...
 LL |         _ => println!("Value is {}", s.lock().deref()),
-   |                                      ---------------- another value with significant `Drop` created here
+   |                                      -------- another value with significant `Drop` created here
 LL |     };
    |      - temporary lives until here
    |
@@ -378,7 +384,7 @@ LL |     match s.lock().deref().deref() {
    |           ^^^^^^^^^^^^^^^^^^^^^^^^
 ...
 LL |         matcher => println!("Value is {}", s.lock().deref()),
-   |                                            ---------------- another value with significant `Drop` created here
+   |                                            -------- another value with significant `Drop` created here
 LL |         _ => println!("Value was not a match"),
 LL |     };
    |      - temporary lives until here
@@ -499,5 +505,21 @@ LL ~     let value = mutex.lock().unwrap().foo();
 LL ~     match value {
    |
 
-error: aborting due to 26 previous errors
+error: temporary with significant `Drop` in `match` scrutinee will live until the end of the `match` expression
+  --> tests/ui/significant_drop_in_scrutinee.rs:726:11
+   |
+LL |     match guard.take().len() {
+   |           ^^^^^^^^^^^^^^^^^^
+...
+LL |     };
+   |      - temporary lives until here
+   |
+   = note: this might lead to deadlocks or other unexpected behavior
+help: try moving the temporary above the match
+   |
+LL ~     let value = guard.take().len();
+LL ~     match value {
+   |
+
+error: aborting due to 27 previous errors
 

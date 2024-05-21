@@ -251,11 +251,7 @@ impl<'a, 'tcx> UnwrappableVariablesVisitor<'a, 'tcx> {
                 local_id: unwrap_info.local_id,
             };
 
-            let vis = ExprUseVisitor::for_clippy(
-                self.cx,
-                cond.hir_id.owner.def_id,
-                &mut delegate,
-            );
+            let vis = ExprUseVisitor::for_clippy(self.cx, cond.hir_id.owner.def_id, &mut delegate);
             vis.walk_expr(cond).into_ok();
             vis.walk_expr(branch).into_ok();
 
