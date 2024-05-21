@@ -16,7 +16,7 @@ use rustc_ast::token::{self, BinOpToken, CommentKind, Delimiter, Nonterminal, To
 use rustc_ast::tokenstream::{Spacing, TokenStream, TokenTree};
 use rustc_ast::util::classify;
 use rustc_ast::util::comments::{Comment, CommentStyle};
-use rustc_ast::{self as ast, AttrArgs, AttrArgsEq, BlockCheckMode, PatKind, Unsafe};
+use rustc_ast::{self as ast, AttrArgs, AttrArgsEq, BlockCheckMode, PatKind, Safety};
 use rustc_ast::{attr, BindingMode, ByRef, DelimArgs, RangeEnd, RangeSyntax, Term};
 use rustc_ast::{GenericArg, GenericBound, SelfKind};
 use rustc_ast::{InlineAsmOperand, InlineAsmRegOrRegClass};
@@ -249,7 +249,7 @@ pub fn print_crate<'a>(
         let fake_attr = attr::mk_attr_nested_word(
             g,
             ast::AttrStyle::Inner,
-            Unsafe::No,
+            Safety::Default,
             sym::feature,
             sym::prelude_import,
             DUMMY_SP,
@@ -261,7 +261,7 @@ pub fn print_crate<'a>(
         if edition.is_rust_2015() {
             // `#![no_std]`
             let fake_attr =
-                attr::mk_attr_word(g, ast::AttrStyle::Inner, Unsafe::No, sym::no_std, DUMMY_SP);
+                attr::mk_attr_word(g, ast::AttrStyle::Inner, Safety::Default, sym::no_std, DUMMY_SP);
             s.print_attribute(&fake_attr);
         }
     }

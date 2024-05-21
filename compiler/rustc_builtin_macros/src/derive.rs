@@ -2,7 +2,7 @@ use crate::cfg_eval::cfg_eval;
 use crate::errors;
 
 use rustc_ast as ast;
-use rustc_ast::{GenericParamKind, ItemKind, MetaItemKind, NestedMetaItem, StmtKind, Unsafe};
+use rustc_ast::{GenericParamKind, ItemKind, MetaItemKind, NestedMetaItem, StmtKind, Safety};
 use rustc_expand::base::{
     Annotatable, DeriveResolution, ExpandResult, ExtCtxt, Indeterminate, MultiItemModifier,
 };
@@ -163,9 +163,9 @@ fn report_path_args(sess: &Session, meta: &ast::MetaItem) {
 
 fn report_unsafe_args(sess: &Session, meta: &ast::MetaItem) {
     match meta.unsafety {
-        Unsafe::Yes(span) => {
+        Safety::Unsafe(span) => {
             sess.dcx().emit_err(errors::DeriveUnsafePath { span });
         }
-        Unsafe::No => {}
+        Safety::Default => {}
     }
 }

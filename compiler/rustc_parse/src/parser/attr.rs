@@ -258,9 +258,9 @@ impl<'a> Parser<'a> {
                 this.psess.gated_spans.gate(sym::unsafe_attributes, unsafe_span);
                 this.expect(&token::OpenDelim(Delimiter::Parenthesis))?;
 
-                ast::Unsafe::Yes(unsafe_span)
+                ast::Safety::Unsafe(unsafe_span)
             } else {
-                ast::Unsafe::No
+                ast::Safety::Default
             };
 
             let path = this.parse_path(PathStyle::Mod)?;
@@ -395,9 +395,9 @@ impl<'a> Parser<'a> {
             self.psess.gated_spans.gate(sym::unsafe_attributes, unsafe_span);
             self.expect(&token::OpenDelim(Delimiter::Parenthesis))?;
 
-            ast::Unsafe::Yes(unsafe_span)
+            ast::Safety::Unsafe(unsafe_span)
         } else {
-            ast::Unsafe::No
+            ast::Safety::Default
         };
 
         let path = self.parse_path(PathStyle::Mod)?;

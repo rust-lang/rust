@@ -1,7 +1,7 @@
 //! Functions dealing with attributes and meta items.
 
 use crate::ast::{
-    AttrArgs, AttrArgsEq, AttrId, AttrItem, AttrKind, AttrStyle, AttrVec, Attribute, Unsafe,
+    AttrArgs, AttrArgsEq, AttrId, AttrItem, AttrKind, AttrStyle, AttrVec, Attribute, Safety,
 };
 use crate::ast::{DelimArgs, Expr, ExprKind, LitKind, MetaItemLit};
 use crate::ast::{MetaItem, MetaItemKind, NestedMetaItem, NormalAttr};
@@ -241,7 +241,7 @@ impl AttrItem {
 
     pub fn meta(&self, span: Span) -> Option<MetaItem> {
         Some(MetaItem {
-            unsafety: Unsafe::No,
+            unsafety: Safety::Default,
             path: self.path.clone(),
             kind: self.meta_kind()?,
             span,
@@ -379,7 +379,7 @@ impl MetaItem {
         };
         let span = path.span.with_hi(hi);
         // FIX THIS LATER
-        Some(MetaItem { unsafety: Unsafe::No, path, kind, span })
+        Some(MetaItem { unsafety: Safety::Default, path, kind, span })
     }
 }
 
@@ -563,7 +563,7 @@ pub fn mk_doc_comment(
 pub fn mk_attr(
     g: &AttrIdGenerator,
     style: AttrStyle,
-    unsafety: Unsafe,
+    unsafety: Safety,
     path: Path,
     args: AttrArgs,
     span: Span,
@@ -589,7 +589,7 @@ pub fn mk_attr_from_item(
 pub fn mk_attr_word(
     g: &AttrIdGenerator,
     style: AttrStyle,
-    unsafety: Unsafe,
+    unsafety: Safety,
     name: Symbol,
     span: Span,
 ) -> Attribute {
@@ -601,7 +601,7 @@ pub fn mk_attr_word(
 pub fn mk_attr_nested_word(
     g: &AttrIdGenerator,
     style: AttrStyle,
-    unsafety: Unsafe,
+    unsafety: Safety,
     outer: Symbol,
     inner: Symbol,
     span: Span,
@@ -623,7 +623,7 @@ pub fn mk_attr_nested_word(
 pub fn mk_attr_name_value_str(
     g: &AttrIdGenerator,
     style: AttrStyle,
-    unsafety: Unsafe,
+    unsafety: Safety,
     name: Symbol,
     val: Symbol,
     span: Span,

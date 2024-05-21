@@ -781,7 +781,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     // The `MetaItem` representing the trait to derive can't
                     // have an unsafe around it (as of now).
                     let meta = ast::MetaItem {
-                        unsafety: ast::Unsafe::No,
+                        unsafety: ast::Safety::Default,
                         kind: MetaItemKind::Word,
                         span,
                         path,

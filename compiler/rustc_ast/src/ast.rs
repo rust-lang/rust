@@ -488,7 +488,7 @@ pub struct Crate {
 /// E.g., `#[test]`, `#[derive(..)]`, `#[rustfmt::skip]` or `#[feature = "foo"]`.
 #[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic)]
 pub struct MetaItem {
-    pub unsafety: Unsafe,
+    pub unsafety: Safety,
     pub path: Path,
     pub kind: MetaItemKind,
     pub span: Span,
@@ -2825,7 +2825,7 @@ impl NormalAttr {
     pub fn from_ident(ident: Ident) -> Self {
         Self {
             item: AttrItem {
-                unsafety: Unsafe::No,
+                unsafety: Safety::Default,
                 path: Path::from_ident(ident),
                 args: AttrArgs::Empty,
                 tokens: None,
@@ -2837,7 +2837,7 @@ impl NormalAttr {
 
 #[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic)]
 pub struct AttrItem {
-    pub unsafety: Unsafe,
+    pub unsafety: Safety,
     pub path: Path,
     pub args: AttrArgs,
     // Tokens for the meta item, e.g. just the `foo` within `#[foo]` or `#![foo]`.

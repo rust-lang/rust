@@ -317,7 +317,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     fn check_unsafe_attr(&self, attr: &Attribute) {
         if !attr.is_doc_comment() {
             let attr_item = attr.get_normal_item();
-            if let ast::Unsafe::Yes(unsafe_span) = attr_item.unsafety {
+            if let ast::Safety::Unsafe(unsafe_span) = attr_item.unsafety {
                 if !is_unsafe_attr(attr.name_or_empty()) {
                     self.dcx().emit_err(errors::InvalidAttrUnsafe {
                         span: unsafe_span,
