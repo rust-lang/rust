@@ -85,6 +85,8 @@ const EXTRA_CHECK_CFGS: &[(Option<Mode>, &str, Option<&[&'static str]>)] = &[
     (Some(Mode::ToolStd), "rust_analyzer", None),
     (Some(Mode::Codegen), "parallel_compiler", None),
     // NOTE: consider updating `check-cfg` entries in `std/Cargo.toml` too.
+    // cfg(bootstrap) remove these once the bootstrap compiler supports
+    // `lints.rust.unexpected_cfgs.check-cfg`
     (Some(Mode::Std), "stdarch_intel_sde", None),
     (Some(Mode::Std), "no_fp_fmt_parse", None),
     (Some(Mode::Std), "no_global_oom_handling", None),
