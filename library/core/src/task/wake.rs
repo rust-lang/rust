@@ -2,7 +2,6 @@
 
 use crate::mem::transmute;
 
-use crate::any::Any;
 use crate::fmt;
 use crate::marker::PhantomData;
 use crate::ptr;
@@ -221,12 +220,6 @@ impl RawWakerVTable {
     }
 }
 
-#[derive(Debug)]
-enum ExtData<'a> {
-    Some(&'a mut dyn Any),
-    None(()),
-}
-
 /// The context of an asynchronous task.
 ///
 /// Currently, `Context` only serves to provide access to a [`&Waker`](Waker)
@@ -236,7 +229,6 @@ enum ExtData<'a> {
 pub struct Context<'a> {
     waker: &'a Waker,
     local_waker: &'a LocalWaker,
-    ext: ExtData<'a>,
     // Ensure we future-proof against variance changes by forcing
     // the lifetime to be invariant (argument-position lifetimes
     // are contravariant while return-position lifetimes are
@@ -265,24 +257,12 @@ impl<'a> Context<'a> {
     pub const fn waker(&self) -> &'a Waker {
         &self.waker
     }
-
     /// Returns a reference to the [`LocalWaker`] for the current task.
     #[inline]
     #[unstable(feature = "local_waker", issue = "118959")]
     #[rustc_const_unstable(feature = "const_waker", issue = "102012")]
     pub const fn local_waker(&self) -> &'a LocalWaker {
         &self.local_waker
-    }
-
-    /// Returns a reference to the extension data for the current task.
-    #[inline]
-    #[unstable(feature = "context_ext", issue = "123392")]
-    #[rustc_const_unstable(feature = "const_waker", issue = "102012")]
-    pub const fn ext(&mut self) -> &mut dyn Any {
-        match &mut self.ext {
-            ExtData::Some(data) => *data,
-            ExtData::None(unit) => unit,
-        }
     }
 }
 
@@ -320,7 +300,6 @@ impl fmt::Debug for Context<'_> {
 pub struct ContextBuilder<'a> {
     waker: &'a Waker,
     local_waker: &'a LocalWaker,
-    ext: ExtData<'a>,
     // Ensure we future-proof against variance changes by forcing
     // the lifetime to be invariant (argument-position lifetimes
     // are contravariant while return-position lifetimes are
@@ -339,39 +318,7 @@ impl<'a> ContextBuilder<'a> {
     pub const fn from_waker(waker: &'a Waker) -> Self {
         // SAFETY: LocalWaker is just Waker without thread safety
         let local_waker = unsafe { transmute(waker) };
-        Self {
-            waker: waker,
-            local_waker,
-            ext: ExtData::None(()),
-            _marker: PhantomData,
-            _marker2: PhantomData,
-        }
-    }
-
-    /// Create a ContextBuilder from an existing Context.
-    #[inline]
-    #[rustc_const_unstable(feature = "const_waker", issue = "102012")]
-    #[unstable(feature = "context_ext", issue = "123392")]
-    pub const fn from(cx: &'a mut Context<'_>) -> Self {
-        let ext = match &mut cx.ext {
-            ExtData::Some(ext) => ExtData::Some(*ext),
-            ExtData::None(()) => ExtData::None(()),
-        };
-        Self {
-            waker: cx.waker,
-            local_waker: cx.local_waker,
-            ext,
-            _marker: PhantomData,
-            _marker2: PhantomData,
-        }
-    }
-
-    /// This method is used to set the value for the waker on `Context`.
-    #[inline]
-    #[unstable(feature = "context_ext", issue = "123392")]
-    #[rustc_const_unstable(feature = "const_waker", issue = "102012")]
-    pub const fn waker(self, waker: &'a Waker) -> Self {
-        Self { waker, ..self }
+        Self { waker: waker, local_waker, _marker: PhantomData, _marker2: PhantomData }
     }
 
     /// This method is used to set the value for the local waker on `Context`.
@@ -382,21 +329,13 @@ impl<'a> ContextBuilder<'a> {
         Self { local_waker, ..self }
     }
 
-    /// This method is used to set the value for the extension data on `Context`.
-    #[inline]
-    #[unstable(feature = "context_ext", issue = "123392")]
-    #[rustc_const_unstable(feature = "const_waker", issue = "102012")]
-    pub const fn ext(self, data: &'a mut dyn Any) -> Self {
-        Self { ext: ExtData::Some(data), ..self }
-    }
-
     /// Builds the `Context`.
     #[inline]
     #[unstable(feature = "local_waker", issue = "118959")]
     #[rustc_const_unstable(feature = "const_waker", issue = "102012")]
     pub const fn build(self) -> Context<'a> {
-        let ContextBuilder { waker, local_waker, ext, _marker, _marker2 } = self;
-        Context { waker, local_waker, ext, _marker, _marker2 }
+        let ContextBuilder { waker, local_waker, _marker, _marker2 } = self;
+        Context { waker, local_waker, _marker, _marker2 }
     }
 }
 
