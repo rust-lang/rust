@@ -10,12 +10,16 @@ use rustc_middle::ty::TyCtxt;
 use rustc_span::Span;
 
 use crate::build::Builder;
-use crate::errors::MCDCExceedsConditionLimit;
+use crate::errors::{MCDCExceedsConditionLimit, MCDCExceedsDecisionDepth};
 
 /// The MCDC bitmap scales exponentially (2^n) based on the number of conditions seen,
 /// So llvm sets a maximum value prevents the bitmap footprint from growing too large without the user's knowledge.
 /// This limit may be relaxed if the [upstream change](https://github.com/llvm/llvm-project/pull/82448) is merged.
 const MAX_CONDITIONS_IN_DECISION: usize = 6;
+
+/// MCDC allocates an i32 variable on stack for each depth. Ignore decisions nested too much to prevent it
+/// consuming excessive memory.
+const MAX_DECISION_DEPTH: u16 = 0x3FFF;
 
 #[derive(Default)]
 struct MCDCDecisionCtx {
@@ -208,14 +212,14 @@ impl MCDCInfoBuilder {
         // is empty, i.e. when all the conditions of the decision were instrumented,
         // and the decision is "complete".
         if let Some(decision) = decision_result {
-            match decision.num_conditions {
-                0 => {
+            match (decision.num_conditions, decision_depth) {
+                (0, _) => {
                     unreachable!("Decision with no condition is not expected");
                 }
-                1..=MAX_CONDITIONS_IN_DECISION => {
+                (1..=MAX_CONDITIONS_IN_DECISION, 0..=MAX_DECISION_DEPTH) => {
                     self.decision_spans.push(decision);
                 }
-                _ => {
+                (_, _) => {
                     // Do not generate mcdc mappings and statements for decisions with too many conditions.
                     // Therefore, first erase the condition info of the (N-1) previous branch spans.
                     let rebase_idx = self.branch_spans.len() - (decision.num_conditions - 1);
@@ -225,12 +229,19 @@ impl MCDCInfoBuilder {
 
                     // Then, erase this last branch span's info too, for a total of N.
                     condition_info = None;
-
-                    tcx.dcx().emit_warn(MCDCExceedsConditionLimit {
-                        span: decision.span,
-                        num_conditions: decision.num_conditions,
-                        max_conditions: MAX_CONDITIONS_IN_DECISION,
-                    });
+                    if decision.num_conditions > MAX_CONDITIONS_IN_DECISION {
+                        tcx.dcx().emit_warn(MCDCExceedsConditionLimit {
+                            span: decision.span,
+                            num_conditions: decision.num_conditions,
+                            max_conditions: MAX_CONDITIONS_IN_DECISION,
+                        });
+                    }
+                    if decision_depth > MAX_DECISION_DEPTH {
+                        tcx.dcx().emit_warn(MCDCExceedsDecisionDepth {
+                            span: decision.span,
+                            max_decision_depth: MAX_DECISION_DEPTH.into(),
+                        });
+                    }
                 }
             }
         }
