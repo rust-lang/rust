@@ -278,7 +278,7 @@ fn reduce_ty<'tcx>(cx: &LateContext<'tcx>, mut ty: Ty<'tcx>) -> ReducedTy<'tcx> 
                     ty = sized_ty;
                     continue;
                 }
-                if def.repr().inhibit_struct_field_reordering_opt() {
+                if def.repr().inhibit_struct_field_reordering() {
                     ReducedTy::OrderedFields(Some(sized_ty))
                 } else {
                     ReducedTy::UnorderedFields(ty)
