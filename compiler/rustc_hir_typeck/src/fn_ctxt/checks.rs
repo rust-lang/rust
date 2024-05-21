@@ -1774,7 +1774,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // that highlight errors inline.
                     let mut sp = blk.span;
                     let mut fn_span = None;
-                    if let Some((decl, ident)) = self.get_parent_fn_decl(blk.hir_id) {
+                    if let Some((fn_def_id, decl, _)) = self.get_fn_decl(blk.hir_id) {
                         let ret_sp = decl.output.span();
                         if let Some(block_sp) = self.parent_item_span(blk.hir_id) {
                             // HACK: on some cases (`ui/liveness/liveness-issue-2163.rs`) the
@@ -1782,7 +1782,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             // the span we're aiming at correspond to a `fn` body.
                             if block_sp == blk.span {
                                 sp = ret_sp;
-                                fn_span = Some(ident.span);
+                                fn_span = self.tcx.def_ident_span(fn_def_id);
                             }
                         }
                     }
@@ -1895,15 +1895,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             _ => {}
         }
         None
-    }
-
-    /// Given a function block's `HirId`, returns its `FnDecl` if it exists, or `None` otherwise.
-    pub(crate) fn get_parent_fn_decl(
-        &self,
-        blk_id: HirId,
-    ) -> Option<(&'tcx hir::FnDecl<'tcx>, Ident)> {
-        let parent = self.tcx.hir_node_by_def_id(self.tcx.hir().get_parent_item(blk_id).def_id);
-        self.get_node_fn_decl(parent).map(|(_, fn_decl, ident, _)| (fn_decl, ident))
     }
 
     /// If `expr` is a `match` expression that has only one non-`!` arm, use that arm's tail

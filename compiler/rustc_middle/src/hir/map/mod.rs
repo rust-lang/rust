@@ -511,14 +511,14 @@ impl<'hir> Map<'hir> {
         self.body_const_context(self.enclosing_body_owner(hir_id)).is_some()
     }
 
-    /// Retrieves the `HirId` for `id`'s enclosing method, unless there's a
-    /// `while` or `loop` before reaching it, as block tail returns are not
-    /// available in them.
+    /// Retrieves the `HirId` for `id`'s enclosing function *if* the `id` block or return is
+    /// in the "tail" position of the function, in other words if it's likely to correspond
+    /// to the return type of the function.
     ///
     /// ```
     /// fn foo(x: usize) -> bool {
     ///     if x == 1 {
-    ///         true  // If `get_return_block` gets passed the `id` corresponding
+    ///         true  // If `get_fn_id_for_return_block` gets passed the `id` corresponding
     ///     } else {  // to this, it will return `foo`'s `HirId`.
     ///         false
     ///     }
@@ -528,12 +528,12 @@ impl<'hir> Map<'hir> {
     /// ```compile_fail,E0308
     /// fn foo(x: usize) -> bool {
     ///     loop {
-    ///         true  // If `get_return_block` gets passed the `id` corresponding
+    ///         true  // If `get_fn_id_for_return_block` gets passed the `id` corresponding
     ///     }         // to this, it will return `None`.
     ///     false
     /// }
     /// ```
-    pub fn get_return_block(self, id: HirId) -> Option<HirId> {
+    pub fn get_fn_id_for_return_block(self, id: HirId) -> Option<HirId> {
         let mut iter = self.parent_iter(id).peekable();
         let mut ignore_tail = false;
         if let Node::Expr(Expr { kind: ExprKind::Ret(_), .. }) = self.tcx.hir_node(id) {
@@ -549,7 +549,11 @@ impl<'hir> Map<'hir> {
                     Node::Block(Block { expr: None, .. }) => return None,
                     // The current node is not the tail expression of its parent.
                     Node::Block(Block { expr: Some(e), .. }) if hir_id != e.hir_id => return None,
-                    Node::Block(Block { expr: Some(e), ..}) if matches!(e.kind, ExprKind::If(_, _, None)) => return None,
+                    Node::Block(Block { expr: Some(e), .. })
+                        if matches!(e.kind, ExprKind::If(_, _, None)) =>
+                    {
+                        return None;
+                    }
                     _ => {}
                 }
             }
