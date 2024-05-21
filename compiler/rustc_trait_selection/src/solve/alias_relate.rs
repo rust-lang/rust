@@ -39,6 +39,12 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
             return Err(NoSolution);
         }
 
+        if self.fast_reject_unnameable_rigid_term(param_env, lhs, rhs)
+            || self.fast_reject_unnameable_rigid_term(param_env, rhs, lhs)
+        {
+            return Err(NoSolution);
+        }
+
         // Structurally normalize the lhs.
         let lhs = if let Some(alias) = lhs.to_alias_term() {
             let term = self.next_term_infer_of_kind(lhs);
