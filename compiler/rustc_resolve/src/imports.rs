@@ -536,6 +536,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let determined_imports = mem::take(&mut self.determined_imports);
         let indeterminate_imports = mem::take(&mut self.indeterminate_imports);
 
+        let mut glob_error = false;
         for (is_indeterminate, import) in determined_imports
             .iter()
             .map(|i| (false, i))
@@ -547,6 +548,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             self.import_dummy_binding(*import, is_indeterminate);
 
             if let Some(err) = unresolved_import_error {
+                glob_error |= import.is_glob();
+
                 if let ImportKind::Single { source, ref source_bindings, .. } = import.kind {
                     if source.name == kw::SelfLower {
                         // Silence `unresolved import` error if E0429 is already emitted
@@ -562,7 +565,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 {
                     // In the case of a new import line, throw a diagnostic message
                     // for the previous line.
-                    self.throw_unresolved_import_error(errors);
+                    self.throw_unresolved_import_error(errors, glob_error);
                     errors = vec![];
                 }
                 if seen_spans.insert(err.span) {
@@ -573,7 +576,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
 
         if !errors.is_empty() {
-            self.throw_unresolved_import_error(errors);
+            self.throw_unresolved_import_error(errors, glob_error);
             return;
         }
 
@@ -599,9 +602,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
         }
 
-        if !errors.is_empty() {
-            self.throw_unresolved_import_error(errors);
-        }
+        self.throw_unresolved_import_error(errors, glob_error);
     }
 
     pub(crate) fn check_hidden_glob_reexports(
@@ -673,7 +674,11 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
     }
 
-    fn throw_unresolved_import_error(&mut self, errors: Vec<(Import<'_>, UnresolvedImportError)>) {
+    fn throw_unresolved_import_error(
+        &mut self,
+        errors: Vec<(Import<'_>, UnresolvedImportError)>,
+        glob_error: bool,
+    ) {
         if errors.is_empty() {
             return;
         }
@@ -752,7 +757,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
         }
 
-        diag.emit();
+        let guar = diag.emit();
+        if glob_error {
+            self.glob_error = Some(guar);
+        }
     }
 
     /// Attempts to resolve the given import, returning:
