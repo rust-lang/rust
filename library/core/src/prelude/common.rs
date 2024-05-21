@@ -43,13 +43,13 @@ pub use crate::result::Result::{self, Err, Ok};
 
 #[stable(feature = "core_prelude_extra", since = "CURRENT_RUSTC_VERSION")]
 #[doc(no_inline)]
-pub use crate::cell::{Cell, LazyCell, OnceCell, RefCell, SyncUnsafeCell, UnsafeCell};
+pub use crate::cell::{LazyCell, OnceCell, RefCell, SyncUnsafeCell, UnsafeCell};
 
 #[stable(feature = "core_prelude_extra", since = "CURRENT_RUSTC_VERSION")]
 #[doc(no_inline)]
 pub use crate::ffi::{
     c_char, c_double, c_float, c_int, c_long, c_longlong, c_ptrdiff_t, c_schar, c_short, c_size_t,
-    c_ssize_t, c_str, c_uchar, c_uint, c_ulong, c_ulonglong, c_ushort, c_void, CStr,
+    c_ssize_t, c_uchar, c_uint, c_ulong, c_ulonglong, c_ushort, c_void, CStr,
 };
 
 #[stable(feature = "core_prelude_extra", since = "CURRENT_RUSTC_VERSION")]
@@ -93,10 +93,6 @@ pub use crate::sync::atomic::{
     AtomicBool, AtomicI16, AtomicI32, AtomicI64, AtomicI8, AtomicIsize, AtomicPtr, AtomicU16,
     AtomicU32, AtomicU64, AtomicU8, AtomicUsize,
 };
-
-#[stable(feature = "core_prelude_extra", since = "CURRENT_RUSTC_VERSION")]
-#[doc(no_inline)]
-pub use crate::time::Duration;
 
 #[stable(feature = "core_prelude_extra", since = "CURRENT_RUSTC_VERSION")]
 #[doc(no_inline)]
