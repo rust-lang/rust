@@ -1346,6 +1346,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if segment.ident.name != kw::Empty {
                     if let Some(err) = self.report_method_error(
                         span,
+                        Some(rcvr),
                         rcvr_t,
                         segment.ident,
                         SelfSource::MethodCall(rcvr),

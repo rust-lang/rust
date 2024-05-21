@@ -834,6 +834,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if item_name.name != kw::Empty {
                     if let Some(e) = self.report_method_error(
                         span,
+                        None,
                         ty.normalized,
                         item_name,
                         SelfSource::QPath(qself),
