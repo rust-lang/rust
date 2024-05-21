@@ -360,7 +360,7 @@ struct MiniGraph<'tcx> {
     /// Map from node index to SCC, and stores the successors of each SCC. All
     /// the regions in the same SCC are equal to one another, and if `S1 -> S2`,
     /// then `S1: S2`.
-    sccs: Sccs<LeakCheckNode, LeakCheckScc, ()>,
+    sccs: Sccs<LeakCheckNode, LeakCheckScc>,
 }
 
 impl<'tcx> MiniGraph<'tcx> {

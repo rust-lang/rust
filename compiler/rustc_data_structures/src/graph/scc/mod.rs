@@ -22,12 +22,9 @@ mod tests;
 /// An annotation for an SCC. This can be a representative,
 /// the max/min element of the SCC, or all of the above.
 ///
-/// Concretely, the following properties must hold (where `merge`
-/// is `merge_scc` and `merge_reached`):
-/// - idempotency: `a.merge(a) = a`
-/// - commutativity: `a.merge(b) = b.merge(a)`
+/// Concretely, the both merge operations must commute, e.g. where `merge`
+/// is `merge_scc` and `merge_reached`: `a.merge(b) == b.merge(a)`
 ///
-/// This is rather limiting and precludes, for example, counting.
 /// In general, what you want is probably always min/max according
 /// to some ordering, potentially with side constraints (min x such
 /// that P holds).
@@ -62,7 +59,7 @@ impl Annotation for () {
 /// the index type for the graph nodes and `S` is the index type for
 /// the SCCs. We can map from each node to the SCC that it
 /// participates in, and we also have the successors of each SCC.
-pub struct Sccs<N: Idx, S: Idx, A: Annotation> {
+pub struct Sccs<N: Idx, S: Idx, A: Annotation = ()> {
     /// For each node, what is the SCC index of the SCC to which it
     /// belongs.
     scc_indices: IndexVec<N, S>,
@@ -314,8 +311,7 @@ where
     /// D' (i.e., D' < D), we know that N, N', and all nodes in
     /// between them on the stack are part of an SCC.
     ///
-    /// Additionally, we keep track of a representative annotation of the
-    /// SCC.
+    /// Additionally, we keep track of a current annotation of the SCC.
     ///
     /// [wikipedia]: https://bit.ly/2EZIx84
     fn construct(graph: &'c G, to_annotation: F) -> Sccs<G::Node, S, A> {
