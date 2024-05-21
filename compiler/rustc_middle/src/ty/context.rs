@@ -12,6 +12,7 @@ use std::marker::PhantomData;
 use std::ops::{Bound, Deref};
 use std::{fmt, iter, mem};
 
+use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{self as ast, attr};
 use rustc_data_structures::defer;
 use rustc_data_structures::fingerprint::Fingerprint;
@@ -37,6 +38,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_hir::{HirId, Node, TraitCandidate};
 use rustc_index::IndexVec;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
+use rustc_middle::expand::TcxMacroExpander;
 use rustc_query_system::cache::WithDepNode;
 use rustc_query_system::dep_graph::DepNodeIndex;
 use rustc_query_system::ich::StableHashingContext;
@@ -47,7 +49,7 @@ use rustc_session::lint::Lint;
 use rustc_session::{Limit, MetadataKind, Session};
 use rustc_span::def_id::{DefPathHash, StableCrateId, CRATE_DEF_ID};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::{LocalExpnId, Span, DUMMY_SP};
 use rustc_target::abi::{FieldIdx, Layout, LayoutS, TargetDataLayout, VariantIdx};
 use rustc_target::spec::abi;
 use rustc_type_ir::fold::TypeFoldable;
@@ -1303,8 +1305,14 @@ pub struct GlobalCtxt<'tcx> {
 
     /// Stores memory for globals (statics/consts).
     pub(crate) alloc_map: Lock<interpret::AllocMap<'tcx>>,
-
     current_gcx: CurrentGcx,
+
+    pub macro_map: RwLock<
+        FxHashMap<
+            LocalExpnId,
+            (TokenStream, Lrc<dyn TcxMacroExpander + sync::DynSync + sync::DynSend>),
+        >,
+    >,
 }
 
 impl<'tcx> GlobalCtxt<'tcx> {
@@ -1534,6 +1542,7 @@ impl<'tcx> TyCtxt<'tcx> {
             canonical_param_env_cache: Default::default(),
             data_layout,
             alloc_map: Lock::new(interpret::AllocMap::new()),
+            macro_map: RwLock::new(Default::default()),
             current_gcx,
         }
     }

@@ -632,6 +632,7 @@ pub static DEFAULT_QUERY_PROVIDERS: LazyLock<Providers> = LazyLock::new(|| {
     rustc_monomorphize::provide(providers);
     rustc_privacy::provide(providers);
     rustc_resolve::provide(providers);
+    rustc_expand::provide(providers);
     rustc_hir_analysis::provide(providers);
     rustc_hir_typeck::provide(providers);
     ty::provide(providers);

@@ -14,6 +14,7 @@
 //! ownership of the original.
 
 use std::borrow::Cow;
+use std::hash::{Hash, Hasher};
 use std::{cmp, fmt, iter};
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -28,7 +29,7 @@ use crate::token::{self, Delimiter, Nonterminal, Token, TokenKind};
 use crate::{AttrVec, Attribute};
 
 /// Part of a `TokenStream`.
-#[derive(Debug, Clone, PartialEq, Encodable, Decodable, HashStable_Generic)]
+#[derive(Debug, Clone, PartialEq, Encodable, Decodable, HashStable_Generic, Hash)]
 pub enum TokenTree {
     /// A single token. Should never be `OpenDelim` or `CloseDelim`, because
     /// delimiters are implicitly represented by `Delimited`.
@@ -102,6 +103,14 @@ where
     fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
         for sub_tt in self.trees() {
             sub_tt.hash_stable(hcx, hasher);
+        }
+    }
+}
+
+impl Hash for TokenStream {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        for sub_tt in self.trees() {
+            sub_tt.hash(state);
         }
     }
 }
@@ -300,7 +309,7 @@ pub struct TokenStream(pub(crate) Lrc<Vec<TokenTree>>);
 /// compound token. Used for conversions to `proc_macro::Spacing`. Also used to
 /// guide pretty-printing, which is where the `JointHidden` value (which isn't
 /// part of `proc_macro::Spacing`) comes in useful.
-#[derive(Clone, Copy, Debug, PartialEq, Encodable, Decodable, HashStable_Generic)]
+#[derive(Clone, Copy, Debug, PartialEq, Encodable, Decodable, HashStable_Generic, Hash)]
 pub enum Spacing {
     /// The token cannot join with the following token to form a compound
     /// token.
@@ -728,7 +737,7 @@ impl TokenTreeCursor {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Encodable, Decodable, HashStable_Generic)]
+#[derive(Debug, Copy, Clone, PartialEq, Encodable, Decodable, HashStable_Generic, Hash)]
 pub struct DelimSpan {
     pub open: Span,
     pub close: Span,
@@ -752,7 +761,7 @@ impl DelimSpan {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Encodable, Decodable, HashStable_Generic)]
+#[derive(Copy, Clone, Debug, PartialEq, Encodable, Decodable, HashStable_Generic, Hash)]
 pub struct DelimSpacing {
     pub open: Spacing,
     pub close: Spacing,

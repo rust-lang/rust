@@ -12,13 +12,15 @@ use rustc_ast::visit::{self, try_visit, walk_list, AssocCtxt, Visitor, VisitorRe
 use rustc_ast::{
     AssocItemKind, AstNodeWrapper, AttrArgs, AttrStyle, AttrVec, ExprKind, ForeignItemKind,
     HasAttrs, HasNodeId, Inline, ItemKind, MacStmtStyle, MetaItemKind, ModKind, NestedMetaItem,
-    NodeId, PatKind, StmtKind, TyKind,
+    NodeId, PatKind, StmtKind, TyKind, DUMMY_NODE_ID,
 };
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::PResult;
 use rustc_feature::Features;
+use rustc_middle::expand::CanRetry;
+use rustc_middle::ty::TyCtxt;
 use rustc_parse::parser::{
     AttemptLocalParseRecovery, CommaRecoveryMode, ForceCollect, Parser, RecoverColon, RecoverComma,
 };
@@ -31,6 +33,7 @@ use rustc_span::hygiene::SyntaxContext;
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::{ErrorGuaranteed, FileName, LocalExpnId, Span};
 use smallvec::SmallVec;
+use tracing::debug;
 
 use crate::base::*;
 use crate::config::StripUnconfigured;
@@ -40,6 +43,7 @@ use crate::errors::{
     WrongFragmentKind,
 };
 use crate::mbe::diagnostics::annotate_err_with_kind;
+use crate::mbe::macro_rules::{trace_macros_note, ParserAnyMacro};
 use crate::module::{mod_dir_path, parse_external_mod, DirOwnership, ParsedExternalMod};
 use crate::placeholders::{placeholder, PlaceholderExpander};
 
@@ -394,6 +398,18 @@ pub struct MacroExpander<'a, 'b> {
     monotonic: bool, // cf. `cx.monotonic_expander()`
 }
 
+pub fn expand_legacy_bang<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    key: (LocalExpnId, Span, LocalExpnId),
+) -> Result<(&'tcx TokenStream, usize), CanRetry> {
+    let (invoc_id, span, current_expansion) = key;
+    let map = tcx.macro_map.borrow();
+    let (arg, expander) = map.get(&invoc_id).as_ref().unwrap();
+    expander
+        .expand(&tcx.sess, span, arg.clone(), current_expansion)
+        .map(|(tts, i)| (tcx.arena.alloc(tts) as &TokenStream, i))
+}
+
 impl<'a, 'b> MacroExpander<'a, 'b> {
     pub fn new(cx: &'a mut ExtCtxt<'b>, monotonic: bool) -> Self {
         MacroExpander { cx, monotonic }
@@ -678,6 +694,67 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         }
                         Err(guar) => return ExpandResult::Ready(fragment_kind.dummy(span, guar)),
                     }
+                }
+                SyntaxExtensionKind::TcxLegacyBang(expander) => {
+                    // Macros defined in the current crate have a real node id,
+                    // whereas macros from an external crate have a dummy id.
+                    if self.cx.trace_macros() {
+                        let msg = format!(
+                            "expanding `{}! {{ {} }}`",
+                            expander.name(),
+                            pprust::tts_to_string(&mac.args.tokens)
+                        );
+                        trace_macros_note(&mut self.cx.expansions, span, msg);
+                    }
+
+                    // Macros defined in the current crate have a real node id,
+                    // whereas macros from an external crate have a dummy id.\
+                    let tok_result: Box<dyn MacResult> = match self.cx.resolver.expand_legacy_bang(
+                        invoc.expansion_data.id,
+                        span,
+                        self.cx.current_expansion.id,
+                    ) {
+                        Ok((tts, i)) => {
+                            if self.cx.trace_macros() {
+                                let msg = format!("to `{}`", pprust::tts_to_string(&tts));
+                                trace_macros_note(&mut self.cx.expansions, span, msg);
+                            }
+                            let is_local = expander.node_id() != DUMMY_NODE_ID;
+                            if is_local {
+                                self.cx.resolver.record_macro_rule_usage(expander.node_id(), i);
+                            }
+
+                            // Let the context choose how to interpret the result.
+                            // Weird, but useful for X-macros.
+                            Box::new(ParserAnyMacro::new(
+                                Parser::new(&self.cx.sess.psess, tts.clone(), None),
+                                // Pass along the original expansion site and the name of the macro,
+                                // so we can print a useful error message if the parse of the expanded
+                                // macro leaves unparsed tokens.
+                                span,
+                                expander.name(),
+                                self.cx.current_expansion.lint_node_id,
+                                self.cx.current_expansion.is_trailing_mac,
+                                expander.arm_span(i),
+                                is_local,
+                            ))
+                        }
+                        Err(CanRetry::No(guar)) => {
+                            debug!("Will not retry matching as an error was emitted already");
+                            DummyResult::any(span, guar)
+                        }
+                        Err(CanRetry::Yes) => {
+                            // Retry and emit a better error.
+                            DummyResult::any_valid(span)
+                        }
+                    };
+                    let result = if let Some(result) = fragment_kind.make_from(tok_result) {
+                        result
+                    } else {
+                        let guar = self.error_wrong_fragment_kind(fragment_kind, &mac, span);
+                        fragment_kind.dummy(span, guar)
+                    };
+                    result
                 }
                 SyntaxExtensionKind::LegacyBang(expander) => {
                     let tok_result = match expander.expand(self.cx, span, mac.args.tokens.clone()) {

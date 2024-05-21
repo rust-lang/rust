@@ -15,6 +15,7 @@ use rustc_data_structures::sync::{self, Lrc};
 use rustc_errors::{DiagCtxtHandle, ErrorGuaranteed, PResult};
 use rustc_feature::Features;
 use rustc_lint_defs::{BufferedEarlyLint, RegisteredTools};
+use rustc_middle::expand::{CanRetry, TcxMacroExpander};
 use rustc_parse::parser::Parser;
 use rustc_parse::MACRO_ARGUMENTS;
 use rustc_session::config::CollapseMacroDebuginfo;
@@ -676,6 +677,11 @@ pub enum SyntaxExtensionKind {
         Box<dyn TTMacroExpander + sync::DynSync + sync::DynSend>,
     ),
 
+    TcxLegacyBang(
+        /// An expander with signature TokenStream -> AST.
+        Lrc<dyn TcxMacroExpander + sync::DynSync + sync::DynSend>,
+    ),
+
     /// A token-based attribute macro.
     Attr(
         /// An expander with signature (TokenStream, TokenStream) -> TokenStream.
@@ -754,7 +760,8 @@ impl SyntaxExtension {
         match self.kind {
             SyntaxExtensionKind::Bang(..)
             | SyntaxExtensionKind::LegacyBang(..)
-            | SyntaxExtensionKind::GlobDelegation(..) => MacroKind::Bang,
+            | SyntaxExtensionKind::GlobDelegation(..)
+            | SyntaxExtensionKind::TcxLegacyBang(..) => MacroKind::Bang,
             SyntaxExtensionKind::Attr(..)
             | SyntaxExtensionKind::LegacyAttr(..)
             | SyntaxExtensionKind::NonMacroAttr => MacroKind::Attr,
@@ -1072,6 +1079,13 @@ pub trait ResolverExpand {
         trait_def_id: DefId,
         impl_def_id: LocalDefId,
     ) -> Result<Vec<(Ident, Option<Ident>)>, Indeterminate>;
+
+    fn expand_legacy_bang(
+        &self,
+        invoc_id: LocalExpnId,
+        span: Span,
+        current_expansion: LocalExpnId,
+    ) -> Result<(TokenStream, usize), CanRetry>;
 }
 
 pub trait LintStoreExpand {

@@ -1564,3 +1564,9 @@ impl<CTX: HashStableContext> HashStable<CTX> for ExpnId {
         hash.hash_stable(ctx, hasher);
     }
 }
+
+impl<CTX: HashStableContext> HashStable<CTX> for LocalExpnId {
+    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
+        self.to_expn_id().hash_stable(ctx, hasher)
+    }
+}

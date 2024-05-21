@@ -18,7 +18,7 @@ use crate::mbe::macro_parser::ParseResult::*;
 use crate::mbe::macro_parser::{MatcherLoc, NamedParseResult, TtParser};
 use crate::mbe::macro_rules::{try_match_macro, Tracker};
 
-pub(super) fn failed_to_match_macro<'cx>(
+pub(crate) fn failed_to_match_macro<'cx>(
     cx: &'cx mut ExtCtxt<'_>,
     sp: Span,
     def_span: Span,

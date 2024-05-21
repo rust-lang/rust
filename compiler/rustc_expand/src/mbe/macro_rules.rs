@@ -18,13 +18,14 @@ use rustc_lint_defs::builtin::{
     RUST_2021_INCOMPATIBLE_OR_PATTERNS, SEMICOLON_IN_EXPRESSIONS_FROM_MACROS,
 };
 use rustc_lint_defs::BuiltinLintDiag;
+use rustc_middle::expand::{CanRetry, TcxMacroExpander};
 use rustc_parse::parser::{ParseNtResult, Parser, Recovery};
 use rustc_session::parse::ParseSess;
 use rustc_session::Session;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::Transparency;
 use rustc_span::symbol::{kw, sym, Ident, MacroRulesNormalizedIdent};
-use rustc_span::Span;
+use rustc_span::{LocalExpnId, Span};
 use tracing::{debug, instrument, trace, trace_span};
 
 use super::diagnostics;
@@ -56,6 +57,18 @@ pub(crate) struct ParserAnyMacro<'a> {
 }
 
 impl<'a> ParserAnyMacro<'a> {
+    pub(crate) fn new(
+        parser: Parser<'a>,
+        site_span: Span,
+        macro_ident: Ident,
+        lint_node_id: NodeId,
+        is_trailing_mac: bool,
+        arm_span: Span,
+        is_local: bool,
+    ) -> Self {
+        Self { parser, site_span, macro_ident, lint_node_id, is_trailing_mac, arm_span, is_local }
+    }
+
     pub(crate) fn make(mut self: Box<ParserAnyMacro<'a>>, kind: AstFragmentKind) -> AstFragment {
         let ParserAnyMacro {
             site_span,
@@ -129,6 +142,54 @@ impl TTMacroExpander for MacroRulesMacroExpander {
     }
 }
 
+impl TcxMacroExpander for MacroRulesMacroExpander {
+    fn expand(
+        &self,
+        sess: &Session,
+        sp: Span,
+        input: TokenStream,
+        expand_id: LocalExpnId,
+    ) -> Result<(TokenStream, usize), CanRetry> {
+        // Track nothing for the best performance.
+        let try_success_result =
+            try_match_macro(&sess.psess, self.name, &input, &self.lhses, &mut NoopTracker);
+
+        match try_success_result {
+            Ok((i, named_matches)) => {
+                let (rhs, rhs_span): (&mbe::Delimited, DelimSpan) = match &self.rhses[i] {
+                    mbe::TokenTree::Delimited(span, _, delimited) => (&delimited, *span),
+                    _ => sess.dcx().span_bug(sp, "malformed macro rhs"),
+                };
+
+                // rhs has holes ( `$id` and `$(...)` that need filled)
+                match transcribe(
+                    &sess.psess,
+                    &named_matches,
+                    rhs,
+                    rhs_span,
+                    self.transparency,
+                    expand_id,
+                ) {
+                    Ok(tts) => Ok((tts, i)),
+                    Err(err) => Err(CanRetry::No(err.emit())),
+                }
+            }
+            Err(e) => Err(e),
+        }
+    }
+
+    fn name(&self) -> Ident {
+        self.name
+    }
+
+    fn arm_span(&self, rhs: usize) -> Span {
+        self.rhses[rhs].span()
+    }
+
+    fn node_id(&self) -> NodeId {
+        self.node_id
+    }
+}
 struct DummyExpander(ErrorGuaranteed);
 
 impl TTMacroExpander for DummyExpander {
@@ -142,7 +203,11 @@ impl TTMacroExpander for DummyExpander {
     }
 }
 
-fn trace_macros_note(cx_expansions: &mut FxIndexMap<Span, Vec<String>>, sp: Span, message: String) {
+pub(crate) fn trace_macros_note(
+    cx_expansions: &mut FxIndexMap<Span, Vec<String>>,
+    sp: Span,
+    message: String,
+) {
     let sp = sp.macro_backtrace().last().map_or(sp, |trace| trace.call_site);
     cx_expansions.entry(sp).or_default().push(message);
 }
@@ -273,12 +338,6 @@ fn expand_macro<'cx>(
     }
 }
 
-pub(super) enum CanRetry {
-    Yes,
-    /// We are not allowed to retry macro expansion as a fatal error has been emitted already.
-    No(ErrorGuaranteed),
-}
-
 /// Try expanding the macro. Returns the index of the successful arm and its named_matches if it was successful,
 /// and nothing if it failed. On failure, it's the callers job to use `track` accordingly to record all errors
 /// correctly.
@@ -385,6 +444,19 @@ pub fn compile_declarative_macro(
         )
     };
     let dummy_syn_ext = |guar| (mk_syn_ext(Box::new(DummyExpander(guar))), Vec::new());
+    let mk_tcx_syn_ext = |expander| {
+        SyntaxExtension::new(
+            sess,
+            features,
+            SyntaxExtensionKind::TcxLegacyBang(expander),
+            def.span,
+            Vec::new(),
+            edition,
+            def.ident.name,
+            &def.attrs,
+            def.id != DUMMY_NODE_ID,
+        )
+    };
 
     let dcx = sess.dcx();
     let lhs_nm = Ident::new(sym::lhs, def.span);
@@ -598,7 +670,7 @@ pub fn compile_declarative_macro(
         })
         .collect();
 
-    let expander = Box::new(MacroRulesMacroExpander {
+    let expander = Lrc::new(MacroRulesMacroExpander {
         name: def.ident,
         span: def.span,
         node_id: def.id,
@@ -606,7 +678,7 @@ pub fn compile_declarative_macro(
         lhses,
         rhses,
     });
-    (mk_syn_ext(expander), rule_spans)
+    (mk_tcx_syn_ext(expander), rule_spans)
 }
 
 fn check_lhs_nt_follows(
