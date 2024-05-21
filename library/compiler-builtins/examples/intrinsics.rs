@@ -8,10 +8,12 @@
 #![allow(internal_features)]
 #![cfg_attr(thumb, no_main)]
 #![deny(dead_code)]
+#![feature(allocator_api)]
 #![feature(bench_black_box)]
+#![feature(f128)]
+#![feature(f16)]
 #![feature(lang_items)]
 #![feature(start)]
-#![feature(allocator_api)]
 #![no_std]
 
 extern crate panic_handler;
@@ -26,69 +28,34 @@ extern "C" {}
 // have an additional comment: the function name is the ARM name for the intrinsic and the comment
 // in the non-ARM name for the intrinsic.
 mod intrinsics {
-    // truncdfsf2
-    pub fn aeabi_d2f(x: f64) -> f32 {
+    /* f16 operations */
+
+    pub fn extendhfsf(x: f16) -> f32 {
         x as f32
     }
 
-    // fixdfsi
-    pub fn aeabi_d2i(x: f64) -> i32 {
-        x as i32
+    pub fn extendhfdf(x: f16) -> f64 {
+        x as f64
     }
 
-    // fixdfdi
-    pub fn aeabi_d2l(x: f64) -> i64 {
-        x as i64
+    #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
+    pub fn extendhftf(x: f16) -> f128 {
+        x as f128
     }
 
-    // fixunsdfsi
-    pub fn aeabi_d2uiz(x: f64) -> u32 {
-        x as u32
-    }
+    /* f32 operations */
 
-    // fixunsdfdi
-    pub fn aeabi_d2ulz(x: f64) -> u64 {
-        x as u64
-    }
-
-    // adddf3
-    pub fn aeabi_dadd(a: f64, b: f64) -> f64 {
-        a + b
-    }
-
-    // eqdf2
-    pub fn aeabi_dcmpeq(a: f64, b: f64) -> bool {
-        a == b
-    }
-
-    // gtdf2
-    pub fn aeabi_dcmpgt(a: f64, b: f64) -> bool {
-        a > b
-    }
-
-    // ltdf2
-    pub fn aeabi_dcmplt(a: f64, b: f64) -> bool {
-        a < b
-    }
-
-    // divdf3
-    pub fn aeabi_ddiv(a: f64, b: f64) -> f64 {
-        a / b
-    }
-
-    // muldf3
-    pub fn aeabi_dmul(a: f64, b: f64) -> f64 {
-        a * b
-    }
-
-    // subdf3
-    pub fn aeabi_dsub(a: f64, b: f64) -> f64 {
-        a - b
+    pub fn truncsfhf(x: f32) -> f16 {
+        x as f16
     }
 
     // extendsfdf2
     pub fn aeabi_f2d(x: f32) -> f64 {
         x as f64
+    }
+
+    pub fn extendsftf(x: f32) -> f128 {
+        x as f128
     }
 
     // fixsfsi
@@ -101,6 +68,10 @@ mod intrinsics {
         x as i64
     }
 
+    pub fn fixsfti(x: f32) -> i128 {
+        x as i128
+    }
+
     // fixunssfsi
     pub fn aeabi_f2uiz(x: f32) -> u32 {
         x as u32
@@ -109,6 +80,10 @@ mod intrinsics {
     // fixunssfdi
     pub fn aeabi_f2ulz(x: f32) -> u64 {
         x as u64
+    }
+
+    pub fn fixunssfti(x: f32) -> u128 {
+        x as u128
     }
 
     // addsf3
@@ -146,6 +121,147 @@ mod intrinsics {
         a - b
     }
 
+    /* f64 operations */
+
+    // truncdfsf2
+    pub fn aeabi_d2f(x: f64) -> f32 {
+        x as f32
+    }
+
+    // fixdfsi
+    pub fn aeabi_d2i(x: f64) -> i32 {
+        x as i32
+    }
+
+    // fixdfdi
+    pub fn aeabi_d2l(x: f64) -> i64 {
+        x as i64
+    }
+
+    pub fn fixdfti(x: f64) -> i128 {
+        x as i128
+    }
+
+    // fixunsdfsi
+    pub fn aeabi_d2uiz(x: f64) -> u32 {
+        x as u32
+    }
+
+    // fixunsdfdi
+    pub fn aeabi_d2ulz(x: f64) -> u64 {
+        x as u64
+    }
+
+    pub fn fixunsdfti(x: f64) -> u128 {
+        x as u128
+    }
+
+    // adddf3
+    pub fn aeabi_dadd(a: f64, b: f64) -> f64 {
+        a + b
+    }
+
+    // eqdf2
+    pub fn aeabi_dcmpeq(a: f64, b: f64) -> bool {
+        a == b
+    }
+
+    // gtdf2
+    pub fn aeabi_dcmpgt(a: f64, b: f64) -> bool {
+        a > b
+    }
+
+    // ltdf2
+    pub fn aeabi_dcmplt(a: f64, b: f64) -> bool {
+        a < b
+    }
+
+    // divdf3
+    pub fn aeabi_ddiv(a: f64, b: f64) -> f64 {
+        a / b
+    }
+
+    // muldf3
+    pub fn aeabi_dmul(a: f64, b: f64) -> f64 {
+        a * b
+    }
+
+    // subdf3
+    pub fn aeabi_dsub(a: f64, b: f64) -> f64 {
+        a - b
+    }
+
+    /* f128 operations */
+
+    #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
+    pub fn trunctfhf(x: f128) -> f16 {
+        x as f16
+    }
+
+    pub fn trunctfsf(x: f128) -> f32 {
+        x as f32
+    }
+
+    pub fn trunctfdf(x: f128) -> f64 {
+        x as f64
+    }
+
+    #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
+    pub fn fixtfsi(x: f128) -> i32 {
+        x as i32
+    }
+
+    #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
+    pub fn fixtfdi(x: f128) -> i64 {
+        x as i64
+    }
+
+    #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
+    pub fn fixtfti(x: f128) -> i128 {
+        x as i128
+    }
+
+    #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
+    pub fn fixunstfsi(x: f128) -> u32 {
+        x as u32
+    }
+
+    #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
+    pub fn fixunstfdi(x: f128) -> u64 {
+        x as u64
+    }
+
+    #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
+    pub fn fixunstfti(x: f128) -> u128 {
+        x as u128
+    }
+
+    pub fn addtf(a: f128, b: f128) -> f128 {
+        a + b
+    }
+
+    pub fn eqtf(a: f128, b: f128) -> bool {
+        a == b
+    }
+
+    pub fn gttf(a: f128, b: f128) -> bool {
+        a > b
+    }
+
+    pub fn lttf(a: f128, b: f128) -> bool {
+        a < b
+    }
+
+    pub fn multf(a: f128, b: f128) -> f128 {
+        a * b
+    }
+
+    pub fn subtf(a: f128, b: f128) -> f128 {
+        a - b
+    }
+
+    /* i32 operations */
+
     // floatsidf
     pub fn aeabi_i2d(x: i32) -> f64 {
         x as f64
@@ -164,14 +280,20 @@ mod intrinsics {
         a % b
     }
 
+    /* i64 operations */
+
+    // floatdisf
+    pub fn aeabi_l2f(x: i64) -> f32 {
+        x as f32
+    }
+
     // floatdidf
     pub fn aeabi_l2d(x: i64) -> f64 {
         x as f64
     }
 
-    // floatdisf
-    pub fn aeabi_l2f(x: i64) -> f32 {
-        x as f32
+    pub fn mulodi4(a: i64, b: i64) -> i64 {
+        a * b
     }
 
     // divdi3
@@ -179,10 +301,30 @@ mod intrinsics {
         a / b
     }
 
+    pub fn moddi3(a: i64, b: i64) -> i64 {
+        a % b
+    }
+
     // muldi3
     pub fn aeabi_lmul(a: i64, b: i64) -> i64 {
         a.wrapping_mul(b)
     }
+
+    /* i128 operations */
+
+    pub fn lshrti3(a: i128, b: usize) -> i128 {
+        a >> b
+    }
+
+    pub fn divti3(a: i128, b: i128) -> i128 {
+        a / b
+    }
+
+    pub fn modti3(a: i128, b: i128) -> i128 {
+        a % b
+    }
+
+    /* u32 operations */
 
     // floatunsidf
     pub fn aeabi_ui2d(x: u32) -> f64 {
@@ -202,14 +344,16 @@ mod intrinsics {
         a % b
     }
 
-    // floatundidf
-    pub fn aeabi_ul2d(x: u64) -> f64 {
-        x as f64
-    }
+    /* u64 operations */
 
     // floatundisf
     pub fn aeabi_ul2f(x: u64) -> f32 {
         x as f32
+    }
+
+    // floatundidf
+    pub fn aeabi_ul2d(x: u64) -> f64 {
+        x as f64
     }
 
     // udivdi3
@@ -217,17 +361,11 @@ mod intrinsics {
         a * b
     }
 
-    pub fn moddi3(a: i64, b: i64) -> i64 {
-        a % b
-    }
-
-    pub fn mulodi4(a: i64, b: i64) -> i64 {
-        a * b
-    }
-
     pub fn umoddi3(a: u64, b: u64) -> u64 {
         a % b
     }
+
+    /* u128 operations */
 
     pub fn muloti4(a: u128, b: u128) -> Option<u128> {
         a.checked_mul(b)
@@ -245,10 +383,6 @@ mod intrinsics {
         a << b
     }
 
-    pub fn lshrti3(a: i128, b: usize) -> i128 {
-        a >> b
-    }
-
     pub fn udivti3(a: u128, b: u128) -> u128 {
         a / b
     }
@@ -256,24 +390,15 @@ mod intrinsics {
     pub fn umodti3(a: u128, b: u128) -> u128 {
         a % b
     }
-
-    pub fn divti3(a: i128, b: i128) -> i128 {
-        a / b
-    }
-
-    pub fn modti3(a: i128, b: i128) -> i128 {
-        a % b
-    }
-
-    pub fn udivsi3(a: u32, b: u32) -> u32 {
-        a / b
-    }
 }
 
 fn run() {
     use core::hint::black_box as bb;
     use intrinsics::*;
 
+    // FIXME(f16_f128): some PPC f128 <-> int conversion functions have the wrong names
+
+    bb(addtf(bb(2.), bb(2.)));
     bb(aeabi_d2f(bb(2.)));
     bb(aeabi_d2i(bb(2.)));
     bb(aeabi_d2l(bb(2.)));
@@ -313,19 +438,49 @@ fn run() {
     bb(aeabi_ul2d(bb(2)));
     bb(aeabi_ul2f(bb(2)));
     bb(aeabi_uldivmod(bb(2), bb(3)));
-    bb(moddi3(bb(2), bb(3)));
-    bb(mulodi4(bb(2), bb(3)));
-    bb(umoddi3(bb(2), bb(3)));
-    bb(muloti4(bb(2), bb(2)));
-    bb(multi3(bb(2), bb(2)));
     bb(ashlti3(bb(2), bb(2)));
     bb(ashrti3(bb(2), bb(2)));
-    bb(lshrti3(bb(2), bb(2)));
-    bb(udivti3(bb(2), bb(2)));
-    bb(umodti3(bb(2), bb(2)));
     bb(divti3(bb(2), bb(2)));
+    bb(eqtf(bb(2.), bb(2.)));
+    bb(extendhfdf(bb(2.)));
+    bb(extendhfsf(bb(2.)));
+    #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
+    bb(extendhftf(bb(2.)));
+    bb(extendsftf(bb(2.)));
+    bb(fixdfti(bb(2.)));
+    bb(fixsfti(bb(2.)));
+    #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
+    bb(fixtfdi(bb(2.)));
+    #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
+    bb(fixtfsi(bb(2.)));
+    #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
+    bb(fixtfti(bb(2.)));
+    bb(fixunsdfti(bb(2.)));
+    bb(fixunssfti(bb(2.)));
+    #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
+    bb(fixunstfdi(bb(2.)));
+    #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
+    bb(fixunstfsi(bb(2.)));
+    #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
+    bb(fixunstfti(bb(2.)));
+    bb(gttf(bb(2.), bb(2.)));
+    bb(lshrti3(bb(2), bb(2)));
+    bb(lttf(bb(2.), bb(2.)));
+    bb(moddi3(bb(2), bb(3)));
     bb(modti3(bb(2), bb(2)));
-    bb(udivsi3(bb(2), bb(2)));
+    bb(mulodi4(bb(2), bb(3)));
+    bb(muloti4(bb(2), bb(2)));
+    bb(multf(bb(2.), bb(2.)));
+    bb(multi3(bb(2), bb(2)));
+    bb(subtf(bb(2.), bb(2.)));
+    bb(truncsfhf(bb(2.)));
+    bb(trunctfdf(bb(2.)));
+    #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
+    bb(trunctfhf(bb(2.)));
+    bb(trunctfsf(bb(2.)));
+    bb(udivti3(bb(2), bb(2)));
+    bb(umoddi3(bb(2), bb(3)));
+    bb(umodti3(bb(2), bb(2)));
 
     something_with_a_dtor(&|| assert_eq!(bb(1), 1));
 
