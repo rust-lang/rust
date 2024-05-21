@@ -83,7 +83,17 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                 let b = self.context.new_cast(self.location, b, a_type);
                 a >> b
             } else {
-                a >> b
+                let a_size = a_type.get_size();
+                let b_size = b_type.get_size();
+                if a_size > b_size {
+                    let b = self.context.new_cast(self.location, b, a_type);
+                    a >> b
+                } else if a_size < b_size {
+                    let a = self.context.new_cast(self.location, a, b_type);
+                    a >> b
+                } else {
+                    a >> b
+                }
             }
         } else if a_type.is_vector() && a_type.is_vector() {
             a >> b
@@ -635,7 +645,17 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                 let b = self.context.new_cast(self.location, b, a_type);
                 a << b
             } else {
-                a << b
+                let a_size = a_type.get_size();
+                let b_size = b_type.get_size();
+                if a_size > b_size {
+                    let b = self.context.new_cast(self.location, b, a_type);
+                    a << b
+                } else if a_size < b_size {
+                    let a = self.context.new_cast(self.location, a, b_type);
+                    a << b
+                } else {
+                    a << b
+                }
             }
         } else if a_type.is_vector() && a_type.is_vector() {
             a << b

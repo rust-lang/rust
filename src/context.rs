@@ -613,7 +613,7 @@ impl<'b, 'tcx> CodegenCx<'b, 'tcx> {
         // user defined names
         let mut name = String::with_capacity(prefix.len() + 6);
         name.push_str(prefix);
-        name.push_str(".");
+        name.push('.');
         name.push_str(&(idx as u64).to_base(ALPHANUMERIC_ONLY));
         name
     }
