@@ -195,7 +195,7 @@ some requested changes. When you finished iterating on the changes, you can mark
 Feel free to ask questions or discuss things you don't understand or disagree with. However,
 recognize that the PR won't be merged unless someone on the Rust team approves
 it. If a reviewer leave a comment like `r=me after fixing ...`, that means they approve the PR and 
-you can merge it with comment with `@bors r=reviwer-github-id`(e.g. `@bors r=eddyb`) to merge it 
+you can merge it with comment with `@bors r=reviewer-github-id`(e.g. `@bors r=eddyb`) to merge it 
 after fixing trivial issues. Note that `r=someone` requires permission and bors could say 
 something like "🔑 Insufficient privileges..." when commenting `r=someone`. In that case, 
 you have to ask the reviewer to revisit your PR.

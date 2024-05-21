@@ -284,7 +284,7 @@ queries are cached on disk so that the compiler can tell which queries' results
 changed from the last compilation and only redo those. This is how incremental
 compilation works.
 
-In principle, for the query-fied steps, we do each of the above for each item
+In principle, for the query-field steps, we do each of the above for each item
 individually. For example, we will take the `HIR` for a function and use queries
 to ask for the `LLVM-IR` for that HIR. This drives the generation of optimized
 `MIR`, which drives the borrow checker, which drives the generation of `MIR`, and
@@ -303,11 +303,11 @@ to remain to ensure that unreachable functions still have their errors emitted.
 [passes]: https://github.com/rust-lang/rust/blob/e69c7306e2be08939d95f14229e3f96566fb206c/compiler/rustc_interface/src/passes.rs#L791
 
 Moreover, the compiler wasn't originally built to use a query system; the query
-system has been retrofitted into the compiler, so parts of it are not query-fied
+system has been retrofitted into the compiler, so parts of it are not query-field
 yet. Also, LLVM isn't our code, so that isn't querified either. The plan is to
 eventually query-fy all of the steps listed in the previous section,
 but as of <!-- date-check --> November 2022, only the steps between `HIR` and
-`LLVM-IR` are query-fied. That is, lexing, parsing, name resolution, and macro
+`LLVM-IR` are query-field. That is, lexing, parsing, name resolution, and macro
 expansion are done all at once for the whole program.
 
 One other thing to mention here is the all-important "typing context",

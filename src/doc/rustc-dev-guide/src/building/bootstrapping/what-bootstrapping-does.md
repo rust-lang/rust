@@ -358,7 +358,7 @@ to use it.
 Finally, `MAGIC_EXTRA_RUSTFLAGS` bypasses the `cargo` cache to pass flags to rustc without
 recompiling all dependencies.
 
-`RUSTDOCFLAGS`, `RUSTDOCFLAGS_BOOTSTRAP`, and `RUSTDOCFLAGS_NOT_BOOTSTRAP` are anologous to
+`RUSTDOCFLAGS`, `RUSTDOCFLAGS_BOOTSTRAP`, and `RUSTDOCFLAGS_NOT_BOOTSTRAP` are analogous to
 `RUSTFLAGS`, but for rustdoc.
 
 `CARGOFLAGS` will pass arguments to cargo itself (e.g. `--timings`). `CARGOFLAGS_BOOTSTRAP` and

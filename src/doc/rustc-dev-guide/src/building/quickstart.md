@@ -46,7 +46,7 @@ rustc +stage1 testfile.rs
 After doing a change, you can run the compiler test suite with `./x test`.
 
 `./x test` runs the full test suite, which is slow and rarely what you want.
-Usually, `./x test tests/ui` is what you want after a comiler change,
+Usually, `./x test tests/ui` is what you want after a compiler change,
 testing all [UI tests](../tests/ui.md) that invoke the compiler on a specific test file and check the output.
 
 ```sh

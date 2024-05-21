@@ -102,7 +102,7 @@ fn good() -> Opaque<'static> {}
 **Motivation:** an attempt to implement the uniqueness restriction for RPITs resulted in a
 [breakage found by crater]( https://github.com/rust-lang/rust/pull/112842#issuecomment-1610057887).
 This can be mitigated by this exception to the rule.
-An example of the the code that would otherwise break:
+An example of the code that would otherwise break:
 ```rust
 struct Type<'a>(&'a ());
 impl<'a> Type<'a> {
@@ -224,7 +224,7 @@ fn test::{closure#0}(_upvar: &'?8 str) -> Opaque<'?6, '?7> {
 // But in the parent fn it is known that `'?6: '?8`.
 //
 // When encountering an opaque definition `Opaque<'?6, '?7> := &'8 str`,
-// The member constraints algotithm does not know enough to safely make `?8 = '?6`.
+// The member constraints algorithm does not know enough to safely make `?8 = '?6`.
 // For this reason, it errors with a sensible message:
 // "hidden type captures lifetime that does not appear in bounds".
 ```
@@ -235,7 +235,7 @@ in closures.
 
 **Output types:**
 I believe the most common scenario where this causes issues in real-world code is with
-closure/async-block output types. It is worth noting that there is a discrepancy betweeen closures
+closure/async-block output types. It is worth noting that there is a discrepancy between closures
 and async blocks that further demonstrates this issue and is attributed to the
 [hack of `replace_opaque_types_with_inference_vars`][source-replace-opaques],
 which is applied to futures only.

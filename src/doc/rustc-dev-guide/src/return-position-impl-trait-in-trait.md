@@ -119,7 +119,7 @@ conceptually inherits most of its information from the parent function
 (e.g. `visibility`), or because it's trivially knowable because it's an
 associated type (`opt_def_kind`).
 
-Some other queries are more involved, or cannot be feeded, and we
+Some other queries are more involved, or cannot be fed, and we
 document the interesting ones of those below:
 
 ##### `generics_of` for the trait
