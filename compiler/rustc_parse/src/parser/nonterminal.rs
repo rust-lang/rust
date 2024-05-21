@@ -4,7 +4,6 @@ use rustc_ast::HasTokens;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::PResult;
-use rustc_span::edition::Edition;
 use rustc_span::symbol::{kw, Ident};
 
 use crate::errors::UnexpectedNonterminal;
@@ -37,18 +36,12 @@ impl<'a> Parser<'a> {
         }
 
         match kind {
-            NonterminalKind::Expr2021 => {
+            NonterminalKind::Expr | NonterminalKind::Expr2021 => {
                 token.can_begin_expr()
                 // This exception is here for backwards compatibility.
                 && !token.is_keyword(kw::Let)
                 // This exception is here for backwards compatibility.
                 && !token.is_keyword(kw::Const)
-            }
-            NonterminalKind::Expr => {
-                token.can_begin_expr()
-                // This exception is here for backwards compatibility.
-                && !token.is_keyword(kw::Let)
-                && (token.span.edition() >= Edition::Edition2024 || !token.is_keyword(kw::Const))
             }
             NonterminalKind::Ty => token.can_begin_type(),
             NonterminalKind::Ident => get_macro_ident(token).is_some(),
