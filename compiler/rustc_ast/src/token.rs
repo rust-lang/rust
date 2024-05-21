@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 use std::fmt;
-use std::hash::{Hash, Hasher};
+use std::hash::Hash;
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lrc;
@@ -249,7 +249,7 @@ impl From<IdentIsRaw> for bool {
 
 // SAFETY: due to the `Clone` impl below, all fields of all variants other than
 // `Interpolated` must impl `Copy`.
-#[derive(PartialEq, Encodable, Decodable, Debug, HashStable_Generic, Hash)]
+#[derive(PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
 pub enum TokenKind {
     /* Expression-operator symbols. */
     /// `=`
@@ -375,7 +375,7 @@ impl Clone for TokenKind {
     }
 }
 
-#[derive(Clone, PartialEq, Encodable, Decodable, Debug, HashStable_Generic, Hash)]
+#[derive(Clone, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
 pub struct Token {
     pub kind: TokenKind,
     pub span: Span,
@@ -1057,12 +1057,6 @@ where
     CTX: crate::HashStableContext,
 {
     fn hash_stable(&self, _hcx: &mut CTX, _hasher: &mut StableHasher) {
-        panic!("interpolated tokens should not be present in the HIR")
-    }
-}
-
-impl Hash for Nonterminal {
-    fn hash<H: Hasher>(&self, _state: &mut H) {
         panic!("interpolated tokens should not be present in the HIR")
     }
 }

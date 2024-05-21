@@ -113,6 +113,7 @@ rustc_queries! {
 
     query expand_legacy_bang(key: (LocalExpnId, Span, LocalExpnId)) -> Result<(&'tcx TokenStream, usize), CanRetry> {
         eval_always
+        no_hash
         desc { "expand lagacy bang" }
     }
 
