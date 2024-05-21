@@ -254,8 +254,13 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             }
 
             let is_tls = fn_attrs.flags.contains(CodegenFnAttrFlags::THREAD_LOCAL);
-            let global =
-                self.declare_global(sym, gcc_type, GlobalKind::Exported, is_tls, fn_attrs.link_section);
+            let global = self.declare_global(
+                sym,
+                gcc_type,
+                GlobalKind::Exported,
+                is_tls,
+                fn_attrs.link_section,
+            );
 
             if !self.tcx.is_reachable_non_generic(def_id) {
                 #[cfg(feature = "master")]

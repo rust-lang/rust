@@ -252,7 +252,19 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                     {
                         self.context.new_cast(self.location, actual_val, expected_ty)
                     } else if on_stack_param_indices.contains(&index) {
-                        actual_val.dereference(self.location).to_rvalue()
+                        let ty = actual_val.get_type();
+                        if let Some(pointee_val) = ty.get_pointee()
+                            && pointee_val != expected_ty
+                        {
+                            let new_val = self.context.new_cast(
+                                self.location,
+                                actual_val,
+                                expected_ty.make_pointer(),
+                            );
+                            new_val.dereference(self.location).to_rvalue()
+                        } else {
+                            actual_val.dereference(self.location).to_rvalue()
+                        }
                     } else {
                         assert!(
                             !((actual_ty.is_vector() && !expected_ty.is_vector())
