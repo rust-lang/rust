@@ -38,6 +38,10 @@ fn array() {
     for i in Option::map_or(smth.as_ref(), [].iter(), |s| s.iter()) {
         println!("{i}");
     }
+
+    // Same as above, but when there are no predicates that mention the collection iter type.
+    let mut iter = [34, 228, 35].iter();
+    let _ = std::mem::replace(&mut iter, [].iter());
 }
 
 macro_rules! in_macros {

@@ -37,14 +37,18 @@ fn is_arg_ty_unified_in_fn<'tcx>(
 ) -> bool {
     let fn_sig = cx.tcx.fn_sig(fn_id).instantiate_identity();
     let arg_id_in_args = args.into_iter().position(|e| e.hir_id == arg_id).unwrap();
-    let arg_ty_in_args = fn_sig.input(arg_id_in_args);
+    let arg_ty_in_args = fn_sig.input(arg_id_in_args).skip_binder();
 
     cx.tcx.predicates_of(fn_id).predicates.iter().any(|(clause, _)| {
         clause
             .as_projection_clause()
             .and_then(|p| p.map_bound(|p| p.term.ty()).transpose())
-            .is_some_and(|ty| ty == arg_ty_in_args)
-    })
+            .is_some_and(|ty| ty.skip_binder() == arg_ty_in_args)
+    }) || fn_sig
+        .inputs()
+        .iter()
+        .enumerate()
+        .any(|(i, ty)| i != arg_id_in_args && ty.skip_binder().walk().any(|arg| arg.as_type() == Some(arg_ty_in_args)))
 }
 
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, method_name: &str, recv: &'tcx Expr<'tcx>) {
