@@ -682,10 +682,12 @@ impl Rewrite for ast::Ty {
                 };
                 let mut res = bounds.rewrite(context, shape)?;
                 // We may have falsely removed a trailing `+` inside macro call.
-                if context.inside_macro() && bounds.len() == 1 {
-                    if context.snippet(self.span).ends_with('+') && !res.ends_with('+') {
-                        res.push('+');
-                    }
+                if context.inside_macro()
+                    && bounds.len() == 1
+                    && context.snippet(self.span).ends_with('+')
+                    && !res.ends_with('+')
+                {
+                    res.push('+');
                 }
                 Some(format!("{prefix}{res}"))
             }
