@@ -52,17 +52,17 @@ features = ["c"]
 2. Fork this repository.
 3. Port the intrinsic(s) and their corresponding [unit tests][1] from their
    [C implementation][2] to Rust.
-4. Implement a [test generator][3] to compare the behavior of the ported intrinsic(s)
-   with their implementation on the testing host. Note that randomized compiler-builtin tests
-   should be run using `cargo test --features gen-tests`.
-4. Send a Pull Request (PR).
-5. Once the PR passes our extensive [testing infrastructure][4], we'll merge it!
-6. Celebrate :tada:
+4. Add a test to compare the behavior of the ported intrinsic(s) with their
+   implementation on the testing host.
+5. Add the intrinsic to `examples/intrinsics.rs` to verify it can be linked on
+   all targets.
+6. Send a Pull Request (PR).
+7. Once the PR passes our extensive [testing infrastructure][4], we'll merge it!
+8. Celebrate :tada:
 
 [1]: https://github.com/rust-lang/llvm-project/tree/9e3de9490ff580cd484fbfa2908292b4838d56e7/compiler-rt/test/builtins/Unit
 [2]: https://github.com/rust-lang/llvm-project/tree/9e3de9490ff580cd484fbfa2908292b4838d56e7/compiler-rt/lib/builtins
-[3]: https://github.com/rust-lang/compiler-builtins/blob/0ba07e49264a54cb5bbd4856fcea083bb3fbec15/build.rs#L180-L265
-[4]: https://github.com/rust-lang/compiler-builtins/actions
+[3]: https://github.com/rust-lang/compiler-builtins/actions
 
 ### Porting Reminders
 
