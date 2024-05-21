@@ -33,6 +33,9 @@
 #![feature(rustdoc_internals)]
 // tidy-alphabetical-end
 
+// The code produced by the `Encodable`/`Decodable` derive macros refer to
+// `rustc_span::Span{Encoder,Decoder}`. That's fine outside this crate, but doesn't work inside
+// this crate without this line making `rustc_span` available.
 extern crate self as rustc_span;
 
 #[macro_use]
