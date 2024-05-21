@@ -1364,18 +1364,15 @@ fn pretty_printing_compatibility_hack(item: &Item, sess: &Session) -> bool {
                             };
 
                             if crate_matches {
-                                // FIXME: make this translatable
-                                #[allow(rustc::untranslatable_diagnostic)]
-                                sess.psess.buffer_lint_with_diagnostic(
-                                        PROC_MACRO_BACK_COMPAT,
-                                        item.ident.span,
-                                        ast::CRATE_NODE_ID,
-                                        "using an old version of `rental`",
-                                        BuiltinLintDiag::ProcMacroBackCompat(
-                                        "older versions of the `rental` crate will stop compiling in future versions of Rust; \
-                                        please update to `rental` v0.5.6, or switch to one of the `rental` alternatives".to_string()
-                                        )
-                                    );
+                                sess.psess.buffer_lint(
+                                    PROC_MACRO_BACK_COMPAT,
+                                    item.ident.span,
+                                    ast::CRATE_NODE_ID,
+                                    BuiltinLintDiag::ProcMacroBackCompat {
+                                        crate_name: "rental".to_string(),
+                                        fixed_version: "0.5.6".to_string(),
+                                    },
+                                );
                                 return true;
                             }
                         }

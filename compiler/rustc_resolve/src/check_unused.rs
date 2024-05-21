@@ -32,7 +32,7 @@ use rustc_ast as ast;
 use rustc_ast::visit::{self, Visitor};
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
 use rustc_data_structures::unord::UnordSet;
-use rustc_errors::{pluralize, MultiSpan};
+use rustc_errors::MultiSpan;
 use rustc_hir::def::{DefKind, Res};
 use rustc_session::lint::builtin::{MACRO_USE_EXTERN_CRATE, UNUSED_EXTERN_CRATES};
 use rustc_session::lint::builtin::{UNUSED_IMPORTS, UNUSED_QUALIFICATIONS};
@@ -151,11 +151,10 @@ impl<'a, 'b, 'tcx> UnusedImportCheckVisitor<'a, 'b, 'tcx> {
             // We do this in any edition.
             if warn_if_unused {
                 if let Some(&span) = maybe_unused_extern_crates.get(&extern_crate.id) {
-                    self.r.lint_buffer.buffer_lint_with_diagnostic(
+                    self.r.lint_buffer.buffer_lint(
                         UNUSED_EXTERN_CRATES,
                         extern_crate.id,
                         span,
-                        "unused extern crate",
                         BuiltinLintDiag::UnusedExternCrate {
                             removal_span: extern_crate.span_with_attributes,
                         },
@@ -204,11 +203,10 @@ impl<'a, 'b, 'tcx> UnusedImportCheckVisitor<'a, 'b, 'tcx> {
                 .span
                 .find_ancestor_inside(extern_crate.span)
                 .unwrap_or(extern_crate.ident.span);
-            self.r.lint_buffer.buffer_lint_with_diagnostic(
+            self.r.lint_buffer.buffer_lint(
                 UNUSED_EXTERN_CRATES,
                 extern_crate.id,
                 extern_crate.span,
-                "`extern crate` is not idiomatic in the new edition",
                 BuiltinLintDiag::ExternCrateNotIdiomatic { vis_span, ident_span },
             );
         }
@@ -394,10 +392,7 @@ impl Resolver<'_, '_> {
                                 MACRO_USE_EXTERN_CRATE,
                                 import.root_id,
                                 import.span,
-                                "deprecated `#[macro_use]` attribute used to \
-                                import macros should be replaced at use sites \
-                                with a `use` item to import the macro \
-                                instead",
+                                BuiltinLintDiag::MacroUseDeprecated,
                             );
                         }
                     }
@@ -414,8 +409,12 @@ impl Resolver<'_, '_> {
                     }
                 }
                 ImportKind::MacroUse { .. } => {
-                    let msg = "unused `#[macro_use]` import";
-                    self.lint_buffer.buffer_lint(UNUSED_IMPORTS, import.root_id, import.span, msg);
+                    self.lint_buffer.buffer_lint(
+                        UNUSED_IMPORTS,
+                        import.root_id,
+                        import.span,
+                        BuiltinLintDiag::UnusedMacroUse,
+                    );
                 }
                 _ => {}
             }
@@ -434,20 +433,12 @@ impl Resolver<'_, '_> {
         visitor.report_unused_extern_crate_items(maybe_unused_extern_crates);
 
         for unused in visitor.unused_imports.values() {
-            let mut fixes = Vec::new();
-            let spans = match calc_unused_spans(unused, &unused.use_tree, unused.use_tree_id) {
-                UnusedSpanResult::Used => continue,
-                UnusedSpanResult::Unused { spans, remove } => {
-                    fixes.push((remove, String::new()));
-                    spans
-                }
-                UnusedSpanResult::PartialUnused { spans, remove } => {
-                    for fix in &remove {
-                        fixes.push((*fix, String::new()));
-                    }
-                    spans
-                }
-            };
+            let (spans, remove_spans) =
+                match calc_unused_spans(unused, &unused.use_tree, unused.use_tree_id) {
+                    UnusedSpanResult::Used => continue,
+                    UnusedSpanResult::Unused { spans, remove } => (spans, vec![remove]),
+                    UnusedSpanResult::PartialUnused { spans, remove } => (spans, remove),
+                };
 
             let ms = MultiSpan::from_spans(spans);
 
@@ -459,23 +450,8 @@ impl Resolver<'_, '_> {
                 .collect::<Vec<String>>();
             span_snippets.sort();
 
-            let msg = format!(
-                "unused import{}{}",
-                pluralize!(ms.primary_spans().len()),
-                if !span_snippets.is_empty() {
-                    format!(": {}", span_snippets.join(", "))
-                } else {
-                    String::new()
-                }
-            );
-
-            let fix_msg = if fixes.len() == 1 && fixes[0].0 == unused.item_span {
-                "remove the whole `use` item"
-            } else if ms.primary_spans().len() > 1 {
-                "remove the unused imports"
-            } else {
-                "remove the unused import"
-            };
+            let remove_whole_use = remove_spans.len() == 1 && remove_spans[0] == unused.item_span;
+            let num_to_remove = ms.primary_spans().len();
 
             // If we are in the `--test` mode, suppress a help that adds the `#[cfg(test)]`
             // attribute; however, if not, suggest adding the attribute. There is no way to
@@ -501,12 +477,17 @@ impl Resolver<'_, '_> {
                 }
             };
 
-            visitor.r.lint_buffer.buffer_lint_with_diagnostic(
+            visitor.r.lint_buffer.buffer_lint(
                 UNUSED_IMPORTS,
                 unused.use_tree_id,
                 ms,
-                msg,
-                BuiltinLintDiag::UnusedImports(fix_msg.into(), fixes, test_module_span),
+                BuiltinLintDiag::UnusedImports {
+                    remove_whole_use,
+                    num_to_remove,
+                    remove_spans,
+                    test_module_span,
+                    span_snippets,
+                },
             );
         }
 
@@ -552,11 +533,10 @@ impl Resolver<'_, '_> {
                 continue;
             }
 
-            self.lint_buffer.buffer_lint_with_diagnostic(
+            self.lint_buffer.buffer_lint(
                 UNUSED_QUALIFICATIONS,
                 unn_qua.node_id,
                 unn_qua.path_span,
-                "unnecessary qualification",
                 BuiltinLintDiag::UnusedQualifications { removal_span: unn_qua.removal_span },
             );
         }

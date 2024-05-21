@@ -10,7 +10,7 @@ note: the lint level is defined here
 LL | #![deny(unused_imports)]
    |         ^^^^^^^^^^^^^^
 
-error: unused imports: `None`, `Some`
+error: unused imports: `None` and `Some`
   --> $DIR/lint-unused-imports.rs:12:27
    |
 LL | use std::option::Option::{Some, None};

@@ -1,4 +1,4 @@
-error: unused imports: `*`, `Foo`, `baz::{}`, `foobar::*`
+error: unused imports: `*`, `Foo`, `baz::{}`, and `foobar::*`
   --> $DIR/use-nested-groups-unused-imports.rs:15:11
    |
 LL | use foo::{Foo, bar::{baz::{}, foobar::*}, *};

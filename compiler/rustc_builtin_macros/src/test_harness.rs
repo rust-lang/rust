@@ -9,6 +9,7 @@ use rustc_ast::{attr, ModKind};
 use rustc_expand::base::{ExtCtxt, ResolverExpand};
 use rustc_expand::expand::{AstFragment, ExpansionConfig};
 use rustc_feature::Features;
+use rustc_lint_defs::BuiltinLintDiag;
 use rustc_session::lint::builtin::UNNAMEABLE_TEST_ITEMS;
 use rustc_session::Session;
 use rustc_span::hygiene::{AstPass, SyntaxContext, Transparency};
@@ -163,7 +164,7 @@ impl<'a> Visitor<'a> for InnerItemLinter<'_> {
                 UNNAMEABLE_TEST_ITEMS,
                 attr.span,
                 i.id,
-                crate::fluent_generated::builtin_macros_unnameable_test_items,
+                BuiltinLintDiag::UnnameableTestItems,
             );
         }
     }
