@@ -1,11 +1,11 @@
-error[E0601]: `main` function not found in crate `main_wrong_location`
-  --> $DIR/main-wrong-location.rs:5:2
+error[E0601]: `main` function not found in crate `wrong_location`
+  --> $DIR/wrong-location.rs:5:2
    |
 LL | }
-   |  ^ the main function must be defined at the crate level (in `$DIR/main-wrong-location.rs`)
+   |  ^ the main function must be defined at the crate level (in `$DIR/wrong-location.rs`)
    |
 note: here is a function named `main`
-  --> $DIR/main-wrong-location.rs:4:5
+  --> $DIR/wrong-location.rs:4:5
    |
 LL |     fn main() { }
    |     ^^^^^^^^^

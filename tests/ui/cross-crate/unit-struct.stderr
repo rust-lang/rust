@@ -1,5 +1,5 @@
 error[E0423]: expected value, found struct `xcrate_unit_struct::StructWithFields`
-  --> $DIR/xcrate-unit-struct.rs:9:13
+  --> $DIR/unit-struct.rs:9:13
    |
 LL |     let _ = xcrate_unit_struct::StructWithFields;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use struct literal syntax instead: `xcrate_unit_struct::StructWithFields { foo: val }`
@@ -10,7 +10,7 @@ LL | pub struct StructWithFields {
    | --------------------------- `xcrate_unit_struct::StructWithFields` defined here
 
 error[E0423]: expected value, found struct `xcrate_unit_struct::StructWithPrivFields`
-  --> $DIR/xcrate-unit-struct.rs:11:13
+  --> $DIR/unit-struct.rs:11:13
    |
 LL |     let _ = xcrate_unit_struct::StructWithPrivFields;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
