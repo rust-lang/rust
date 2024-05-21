@@ -84,6 +84,7 @@ pub trait TypeFoldable<I: Interner>: TypeVisitable<I> {
     /// A convenient alternative to `try_fold_with` for use with infallible
     /// folders. Do not override this method, to ensure coherence with
     /// `try_fold_with`.
+    #[inline(always)]
     fn fold_with<F: TypeFolder<I>>(self, folder: &mut F) -> Self {
         match self.try_fold_with(folder) {
             Ok(t) => t,
@@ -108,6 +109,7 @@ pub trait TypeSuperFoldable<I: Interner>: TypeFoldable<I> {
     /// A convenient alternative to `try_super_fold_with` for use with
     /// infallible folders. Do not override this method, to ensure coherence
     /// with `try_super_fold_with`.
+    #[inline(always)]
     fn super_fold_with<F: TypeFolder<I>>(self, folder: &mut F) -> Self {
         match self.try_super_fold_with(folder) {
             Ok(t) => t,
@@ -128,6 +130,7 @@ pub trait TypeSuperFoldable<I: Interner>: TypeFoldable<I> {
 pub trait TypeFolder<I: Interner>: FallibleTypeFolder<I, Error = Never> {
     fn interner(&self) -> I;
 
+    #[inline(always)]
     fn fold_binder<T>(&mut self, t: I::Binder<T>) -> I::Binder<T>
     where
         T: TypeFoldable<I>,
@@ -136,20 +139,24 @@ pub trait TypeFolder<I: Interner>: FallibleTypeFolder<I, Error = Never> {
         t.super_fold_with(self)
     }
 
+    #[inline(always)]
     fn fold_ty(&mut self, t: I::Ty) -> I::Ty {
         t.super_fold_with(self)
     }
 
     // The default region folder is a no-op because `Region` is non-recursive
     // and has no `super_fold_with` method to call.
+    #[inline(always)]
     fn fold_region(&mut self, r: I::Region) -> I::Region {
         r
     }
 
+    #[inline(always)]
     fn fold_const(&mut self, c: I::Const) -> I::Const {
         c.super_fold_with(self)
     }
 
+    #[inline(always)]
     fn fold_predicate(&mut self, p: I::Predicate) -> I::Predicate {
         p.super_fold_with(self)
     }
@@ -167,6 +174,7 @@ pub trait FallibleTypeFolder<I: Interner>: Sized {
 
     fn interner(&self) -> I;
 
+    #[inline(always)]
     fn try_fold_binder<T>(&mut self, t: I::Binder<T>) -> Result<I::Binder<T>, Self::Error>
     where
         T: TypeFoldable<I>,
@@ -175,20 +183,24 @@ pub trait FallibleTypeFolder<I: Interner>: Sized {
         t.try_super_fold_with(self)
     }
 
+    #[inline(always)]
     fn try_fold_ty(&mut self, t: I::Ty) -> Result<I::Ty, Self::Error> {
         t.try_super_fold_with(self)
     }
 
     // The default region folder is a no-op because `Region` is non-recursive
     // and has no `super_fold_with` method to call.
+    #[inline(always)]
     fn try_fold_region(&mut self, r: I::Region) -> Result<I::Region, Self::Error> {
         Ok(r)
     }
 
+    #[inline(always)]
     fn try_fold_const(&mut self, c: I::Const) -> Result<I::Const, Self::Error> {
         c.try_super_fold_with(self)
     }
 
+    #[inline(always)]
     fn try_fold_predicate(&mut self, p: I::Predicate) -> Result<I::Predicate, Self::Error> {
         p.try_super_fold_with(self)
     }
@@ -202,10 +214,12 @@ where
 {
     type Error = Never;
 
+    #[inline(always)]
     fn interner(&self) -> I {
         TypeFolder::interner(self)
     }
 
+    #[inline(always)]
     fn try_fold_binder<T>(&mut self, t: I::Binder<T>) -> Result<I::Binder<T>, Never>
     where
         T: TypeFoldable<I>,
@@ -214,18 +228,22 @@ where
         Ok(self.fold_binder(t))
     }
 
+    #[inline(always)]
     fn try_fold_ty(&mut self, t: I::Ty) -> Result<I::Ty, Never> {
         Ok(self.fold_ty(t))
     }
 
+    #[inline(always)]
     fn try_fold_region(&mut self, r: I::Region) -> Result<I::Region, Never> {
         Ok(self.fold_region(r))
     }
 
+    #[inline(always)]
     fn try_fold_const(&mut self, c: I::Const) -> Result<I::Const, Never> {
         Ok(self.fold_const(c))
     }
 
+    #[inline(always)]
     fn try_fold_predicate(&mut self, p: I::Predicate) -> Result<I::Predicate, Never> {
         Ok(self.fold_predicate(p))
     }
