@@ -506,6 +506,21 @@ fn simd_intrinsics() {
         assert!(!simd_reduce_all(i32x2::from_array([0, -1])));
 
         assert_eq!(
+            simd_ctlz(i32x4::from_array([0, i32::MAX, i32::MIN, -1_i32])),
+            i32x4::from_array([32, 1, 0, 0])
+        );
+
+        assert_eq!(
+            simd_ctpop(i32x4::from_array([0, i32::MAX, i32::MIN, -1_i32])),
+            i32x4::from_array([0, 31, 1, 32])
+        );
+
+        assert_eq!(
+            simd_cttz(i32x4::from_array([0, i32::MAX, i32::MIN, -1_i32])),
+            i32x4::from_array([32, 0, 31, 0])
+        );
+
+        assert_eq!(
             simd_select(i8x4::from_array([0, -1, -1, 0]), a, b),
             i32x4::from_array([1, 10, 10, 4])
         );

@@ -42,6 +42,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             | "flog2"
             | "flog10"
             | "ctlz"
+            | "ctpop"
             | "cttz"
             | "bswap"
             | "bitreverse"
@@ -68,6 +69,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     "round" => Op::Round(rustc_apfloat::Round::NearestTiesToAway),
                     "trunc" => Op::Round(rustc_apfloat::Round::TowardZero),
                     "ctlz" => Op::Numeric(sym::ctlz),
+                    "ctpop" => Op::Numeric(sym::ctpop),
                     "cttz" => Op::Numeric(sym::cttz),
                     "bswap" => Op::Numeric(sym::bswap),
                     "bitreverse" => Op::Numeric(sym::bitreverse),

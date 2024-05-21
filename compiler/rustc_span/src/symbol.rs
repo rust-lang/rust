@@ -1682,6 +1682,7 @@ symbols! {
         simd_cast_ptr,
         simd_ceil,
         simd_ctlz,
+        simd_ctpop,
         simd_cttz,
         simd_div,
         simd_eq,
