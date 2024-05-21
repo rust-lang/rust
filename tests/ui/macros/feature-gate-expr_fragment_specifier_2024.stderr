@@ -1,8 +1,0 @@
-error: expr_2021 is experimental
-  --> $DIR/feature-gate-expr_fragment_specifier_2024.rs:4:6
-   |
-LL |     ($e:expr_2021) => {
-   |      ^^^^^^^^^^^^
-
-error: aborting due to 1 previous error
-
