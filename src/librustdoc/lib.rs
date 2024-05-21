@@ -200,7 +200,6 @@ fn init_logging(early_dcx: &EarlyDiagCtxt) {
     let filter = tracing_subscriber::EnvFilter::from_env("RUSTDOC_LOG");
     let layer = tracing_tree::HierarchicalLayer::default()
         .with_writer(io::stderr)
-        .with_indent_lines(true)
         .with_ansi(color_logs)
         .with_targets(true)
         .with_wraparound(10)
