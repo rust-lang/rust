@@ -56,6 +56,7 @@
     - [LLVM](notification-groups/llvm.md)
     - [RISC-V](notification-groups/risc-v.md)
     - [Windows](notification-groups/windows.md)
+    - [Rust for Linux](notification-groups/rust-for-linux.md)
 - [Licenses](./licenses.md)
 - [Editions](guides/editions.md)
 

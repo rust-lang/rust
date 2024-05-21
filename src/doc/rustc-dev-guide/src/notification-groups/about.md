@@ -25,6 +25,7 @@ Here's the list of the notification groups:
 - [LLVM](./llvm.md)
 - [RISC-V](./risc-v.md)
 - [Windows](./windows.md)
+- [Rust for Linux](./rust-for-linux.md)
 
 ## What issues are a good fit for notification groups?
 
