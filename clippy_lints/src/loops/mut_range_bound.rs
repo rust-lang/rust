@@ -60,12 +60,9 @@ fn check_for_mutation(
         span_low: None,
         span_high: None,
     };
-    ExprUseVisitor::for_clippy(
-        cx,
-        body.hir_id.owner.def_id,
-        &mut delegate,
-    )
-    .walk_expr(body).into_ok();
+    ExprUseVisitor::for_clippy(cx, body.hir_id.owner.def_id, &mut delegate)
+        .walk_expr(body)
+        .into_ok();
 
     delegate.mutation_span()
 }

@@ -115,45 +115,60 @@ impl<'a, 'tcx> SigDropChecker<'a, 'tcx> {
         }
     }
 
-    fn get_type(&self, ex: &'tcx Expr<'_>) -> Ty<'tcx> {
-        self.cx.typeck_results().expr_ty(ex)
+    fn is_sig_drop_expr(&mut self, ex: &'tcx Expr<'_>) -> bool {
+        !ex.is_syntactic_place_expr() && self.has_sig_drop_attr(self.cx.typeck_results().expr_ty(ex))
     }
 
-    fn has_seen_type(&mut self, ty: Ty<'tcx>) -> bool {
-        !self.seen_types.insert(ty)
+    fn has_sig_drop_attr(&mut self, ty: Ty<'tcx>) -> bool {
+        self.seen_types.clear();
+        self.has_sig_drop_attr_impl(ty)
     }
 
-    fn has_sig_drop_attr(&mut self, cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
+    fn has_sig_drop_attr_impl(&mut self, ty: Ty<'tcx>) -> bool {
         if let Some(adt) = ty.ty_adt_def() {
-            if get_attr(cx.sess(), cx.tcx.get_attrs_unchecked(adt.did()), "has_significant_drop").count() > 0 {
+            if get_attr(
+                self.cx.sess(),
+                self.cx.tcx.get_attrs_unchecked(adt.did()),
+                "has_significant_drop",
+            )
+            .count()
+                > 0
+            {
                 return true;
             }
         }
 
-        match ty.kind() {
-            rustc_middle::ty::Adt(a, b) => {
-                for f in a.all_fields() {
-                    let ty = f.ty(cx.tcx, b);
-                    if !self.has_seen_type(ty) && self.has_sig_drop_attr(cx, ty) {
-                        return true;
-                    }
-                }
-
-                for generic_arg in *b {
-                    if let GenericArgKind::Type(ty) = generic_arg.unpack() {
-                        if self.has_sig_drop_attr(cx, ty) {
-                            return true;
-                        }
-                    }
-                }
-                false
-            },
-            rustc_middle::ty::Array(ty, _)
-            | rustc_middle::ty::RawPtr(ty, _)
-            | rustc_middle::ty::Ref(_, ty, _)
-            | rustc_middle::ty::Slice(ty) => self.has_sig_drop_attr(cx, *ty),
-            _ => false,
+        if !self.seen_types.insert(ty) {
+            return false;
         }
+
+        let result = match ty.kind() {
+            rustc_middle::ty::Adt(adt, args) => {
+                // if some field has significant drop,
+                adt.all_fields()
+                    .map(|field| field.ty(self.cx.tcx, args))
+                    .any(|ty| self.has_sig_drop_attr_impl(ty))
+                    // or if there is no generic lifetime and..
+                    // (to avoid false positive on `Ref<'a, MutexGuard<Foo>>`)
+                    || (args
+                        .iter()
+                        .all(|arg| !matches!(arg.unpack(), GenericArgKind::Lifetime(_)))
+                        // some generic parameter has significant drop
+                        // (to avoid false negative on `Box<MutexGuard<Foo>>`)
+                        && args
+                            .iter()
+                            .filter_map(|arg| match arg.unpack() {
+                                GenericArgKind::Type(ty) => Some(ty),
+                                _ => None,
+                            })
+                            .any(|ty| self.has_sig_drop_attr_impl(ty)))
+            },
+            rustc_middle::ty::Tuple(tys) => tys.iter().any(|ty| self.has_sig_drop_attr_impl(ty)),
+            rustc_middle::ty::Array(ty, _) | rustc_middle::ty::Slice(ty) => self.has_sig_drop_attr_impl(*ty),
+            _ => false,
+        };
+
+        result
     }
 }
 
@@ -232,7 +247,7 @@ impl<'a, 'tcx> SigDropHelper<'a, 'tcx> {
         if self.current_sig_drop.is_some() {
             return;
         }
-        let ty = self.sig_drop_checker.get_type(expr);
+        let ty = self.cx.typeck_results().expr_ty(expr);
         if ty.is_ref() {
             // We checked that the type was ref, so builtin_deref will return Some,
             // but let's avoid any chance of an ICE.
@@ -279,11 +294,7 @@ impl<'a, 'tcx> SigDropHelper<'a, 'tcx> {
 
 impl<'a, 'tcx> Visitor<'tcx> for SigDropHelper<'a, 'tcx> {
     fn visit_expr(&mut self, ex: &'tcx Expr<'_>) {
-        if !self.is_chain_end
-            && self
-                .sig_drop_checker
-                .has_sig_drop_attr(self.cx, self.sig_drop_checker.get_type(ex))
-        {
+        if !self.is_chain_end && self.sig_drop_checker.is_sig_drop_expr(ex) {
             self.has_significant_drop = true;
             return;
         }
@@ -387,10 +398,7 @@ fn has_significant_drop_in_arms<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'
 
 impl<'a, 'tcx> Visitor<'tcx> for ArmSigDropHelper<'a, 'tcx> {
     fn visit_expr(&mut self, ex: &'tcx Expr<'tcx>) {
-        if self
-            .sig_drop_checker
-            .has_sig_drop_attr(self.sig_drop_checker.cx, self.sig_drop_checker.get_type(ex))
-        {
+        if self.sig_drop_checker.is_sig_drop_expr(ex) {
             self.found_sig_drop_spans.insert(ex.span);
             return;
         }

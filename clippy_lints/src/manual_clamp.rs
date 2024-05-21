@@ -611,15 +611,22 @@ impl<'tcx> BinaryOp<'tcx> {
 
 /// The clamp meta pattern is a pattern shared between many (but not all) patterns.
 /// In summary, this pattern consists of two if statements that meet many criteria,
+///
 /// - binary operators that are one of [`>`, `<`, `>=`, `<=`].
+///
 /// - Both binary statements must have a shared argument
+///
 ///     - Which can appear on the left or right side of either statement
+///
 ///     - The binary operators must define a finite range for the shared argument. To put this in
 ///       the terms of Rust `std` library, the following ranges are acceptable
+///
 ///         - `Range`
 ///         - `RangeInclusive`
+///
 ///       And all other range types are not accepted. For the purposes of `clamp` it's irrelevant
 ///       whether the range is inclusive or not, the output is the same.
+///
 /// - The result of each if statement must be equal to the argument unique to that if statement. The
 ///   result can not be the shared argument in either case.
 fn is_clamp_meta_pattern<'tcx>(

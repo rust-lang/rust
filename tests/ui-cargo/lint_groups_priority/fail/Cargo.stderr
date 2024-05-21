@@ -42,4 +42,32 @@ help: to have lints override the group set `pedantic` to a lower priority
 19 | pedantic = { level = "warn", priority = -2 }
    |            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-error: could not compile `fail` (lib) due to 3 previous errors
+error: lint group `rust_2018_idioms` has the same priority (0) as a lint
+  --> Cargo.toml:23:1
+   |
+23 | rust_2018_idioms = "warn"
+   | ^^^^^^^^^^^^^^^^   ------ has an implicit priority of 0
+24 | bare_trait_objects = "allow"
+   | ------------------ has the same priority as this lint
+   |
+   = note: the order of the lints in the table is ignored by Cargo
+help: to have lints override the group set `rust_2018_idioms` to a lower priority
+   |
+23 | rust_2018_idioms = { level = "warn", priority = -1 }
+   |                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+error: lint group `pedantic` has the same priority (0) as a lint
+  --> Cargo.toml:27:1
+   |
+27 | pedantic = "warn"
+   | ^^^^^^^^   ------ has an implicit priority of 0
+28 | similar_names = "allow"
+   | ------------- has the same priority as this lint
+   |
+   = note: the order of the lints in the table is ignored by Cargo
+help: to have lints override the group set `pedantic` to a lower priority
+   |
+27 | pedantic = { level = "warn", priority = -1 }
+   |            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+error: could not compile `fail` (lib) due to 5 previous errors
