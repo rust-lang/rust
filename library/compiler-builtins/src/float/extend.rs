@@ -100,37 +100,22 @@ intrinsics! {
 
     #[avr_skip]
     #[aapcs_on_arm]
-    #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
+    #[ppc_alias = __extendhfkf2]
     pub extern "C" fn __extendhftf2(a: f16) -> f128 {
         extend(a)
     }
 
-    #[cfg(any(target_arch = "powerpc", target_arch = "powerpc64"))]
-    pub extern "C" fn __extendhfkf2(a: f16) -> f128 {
-        extend(a)
-    }
-
     #[avr_skip]
     #[aapcs_on_arm]
-    #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
+    #[ppc_alias = __extendsfkf2]
     pub extern "C" fn __extendsftf2(a: f32) -> f128 {
         extend(a)
     }
 
-    #[cfg(any(target_arch = "powerpc", target_arch = "powerpc64"))]
-    pub extern "C" fn __extendsfkf2(a: f32) -> f128 {
-        extend(a)
-    }
-
     #[avr_skip]
     #[aapcs_on_arm]
-    #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
+    #[ppc_alias = __extenddfkf2]
     pub extern "C" fn __extenddftf2(a: f64) -> f128 {
-        extend(a)
-    }
-
-    #[cfg(any(target_arch = "powerpc", target_arch = "powerpc64"))]
-    pub extern "C" fn __extenddfkf2(a: f64) -> f128 {
         extend(a)
     }
 }

@@ -203,13 +203,9 @@ intrinsics! {
         add(a, b)
     }
 
-    #[cfg(not(any(feature = "no-f16-f128", target_arch = "powerpc", target_arch = "powerpc64")))]
+    #[ppc_alias = __addkf3]
+    #[cfg(not(feature = "no-f16-f128"))]
     pub extern "C" fn __addtf3(a: f128, b: f128) -> f128 {
-        add(a, b)
-    }
-
-    #[cfg(all(not(feature = "no-f16-f128"), any(target_arch = "powerpc", target_arch = "powerpc64")))]
-    pub extern "C" fn __addkf3(a: f128, b: f128) -> f128 {
         add(a, b)
     }
 

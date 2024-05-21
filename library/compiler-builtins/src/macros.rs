@@ -65,6 +65,9 @@ macro_rules! public_test_dep {
 ///   it's a normal ABI elsewhere for returning a 128 bit integer.
 /// * `arm_aeabi_alias` - handles the "aliasing" of various intrinsics on ARM
 ///   their otherwise typical names to other prefixed ones.
+/// * `ppc_alias` - changes the name of the symbol on PowerPC platforms without
+///   changing any other behavior. This is mostly for `f128`, which is `tf` on
+///   most platforms but `kf` on PowerPC.
 macro_rules! intrinsics {
     () => ();
 
@@ -313,6 +316,36 @@ macro_rules! intrinsics {
         intrinsics! {
             $(#[$($attr)*])*
             pub extern $abi fn $name( $($argname: $ty),* ) $(-> $ret)? {
+                $($body)*
+            }
+        }
+
+        intrinsics!($($rest)*);
+    );
+
+    // PowerPC usually uses `kf` rather than `tf` for `f128`. This is just an easy
+    // way to add an alias on those targets.
+    (
+        #[ppc_alias = $alias:ident]
+        $(#[$($attr:tt)*])*
+        pub extern $abi:tt fn $name:ident( $($argname:ident:  $ty:ty),* ) $(-> $ret:ty)? {
+            $($body:tt)*
+        }
+
+        $($rest:tt)*
+    ) => (
+        #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
+        intrinsics! {
+            $(#[$($attr)*])*
+            pub extern $abi fn $name( $($argname: $ty),* ) $(-> $ret)? {
+                $($body)*
+            }
+        }
+
+        #[cfg(any(target_arch = "powerpc", target_arch = "powerpc64"))]
+        intrinsics! {
+            $(#[$($attr)*])*
+            pub extern $abi fn $alias( $($argname: $ty),* ) $(-> $ret)? {
                 $($body)*
             }
         }
