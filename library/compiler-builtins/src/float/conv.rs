@@ -262,16 +262,19 @@ intrinsics! {
         float_to_unsigned_int(f)
     }
 
+    #[ppc_alias = __fixunskfsi]
     #[cfg(not(feature = "no-f16-f128"))]
     pub extern "C" fn __fixunstfsi(f: f128) -> u32 {
         float_to_unsigned_int(f)
     }
 
+    #[ppc_alias = __fixunskfdi]
     #[cfg(not(feature = "no-f16-f128"))]
     pub extern "C" fn __fixunstfdi(f: f128) -> u64 {
         float_to_unsigned_int(f)
     }
 
+    #[ppc_alias = __fixunskfti]
     #[cfg(not(feature = "no-f16-f128"))]
     pub extern "C" fn __fixunstfti(f: f128) -> u128 {
         float_to_unsigned_int(f)
@@ -310,16 +313,19 @@ intrinsics! {
         float_to_signed_int(f)
     }
 
+    #[ppc_alias = __fixkfsi]
     #[cfg(not(feature = "no-f16-f128"))]
     pub extern "C" fn __fixtfsi(f: f128) -> i32 {
         float_to_signed_int(f)
     }
 
+    #[ppc_alias = __fixkfdi]
     #[cfg(not(feature = "no-f16-f128"))]
     pub extern "C" fn __fixtfdi(f: f128) -> i64 {
         float_to_signed_int(f)
     }
 
+    #[ppc_alias = __fixkfti]
     #[cfg(not(feature = "no-f16-f128"))]
     pub extern "C" fn __fixtfti(f: f128) -> i128 {
         float_to_signed_int(f)

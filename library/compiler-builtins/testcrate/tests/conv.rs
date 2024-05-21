@@ -178,6 +178,13 @@ mod f_to_i {
     #[test]
     #[cfg(not(feature = "no-f16-f128"))]
     fn f128_to_int() {
+        #[cfg(any(target_arch = "powerpc", target_arch = "powerpc64"))]
+        use compiler_builtins::float::conv::{
+            __fixkfdi as __fixtfdi, __fixkfsi as __fixtfsi, __fixkfti as __fixtfti,
+            __fixunskfdi as __fixunstfdi, __fixunskfsi as __fixunstfsi,
+            __fixunskfti as __fixunstfti,
+        };
+        #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
         use compiler_builtins::float::conv::{
             __fixtfdi, __fixtfsi, __fixtfti, __fixunstfdi, __fixunstfsi, __fixunstfti,
         };

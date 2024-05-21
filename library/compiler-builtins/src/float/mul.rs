@@ -199,14 +199,9 @@ intrinsics! {
         mul(a, b)
     }
 
-    #[cfg(not(any(feature = "no-f16-f128", target_arch = "powerpc", target_arch = "powerpc64")))]
+    #[ppc_alias = __mulkf3]
+    #[cfg(not(feature = "no-f16-f128"))]
     pub extern "C" fn __multf3(a: f128, b: f128) -> f128 {
-        mul(a, b)
-    }
-
-
-    #[cfg(all(not(feature = "no-f16-f128"), any(target_arch = "powerpc", target_arch = "powerpc64")))]
-    pub extern "C" fn __mulkf3(a: f128, b: f128) -> f128 {
         mul(a, b)
     }
 
