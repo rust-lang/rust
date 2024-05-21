@@ -11,7 +11,6 @@
 
 use rustc_ast_ir::try_visit;
 use rustc_ast_ir::visit::VisitorResult;
-use rustc_infer::infer::resolve::EagerResolver;
 use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, InferOk};
 use rustc_macros::extension;
 use rustc_middle::traits::query::NoSolution;
@@ -20,6 +19,7 @@ use rustc_middle::traits::solve::{Certainty, Goal};
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::{TyCtxt, TypeFoldable};
 use rustc_middle::{bug, ty};
+use rustc_next_trait_solver::resolve::EagerResolver;
 use rustc_span::{Span, DUMMY_SP};
 
 use crate::solve::eval_ctxt::canonical;

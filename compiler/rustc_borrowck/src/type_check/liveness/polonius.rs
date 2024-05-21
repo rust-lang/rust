@@ -117,7 +117,7 @@ pub(super) fn populate_access_facts<'a, 'tcx>(
             let universal_regions = &typeck.borrowck_context.universal_regions;
             typeck.infcx.tcx.for_each_free_region(&local_decl.ty, |region| {
                 let region_vid = universal_regions.to_region_vid(region);
-                facts.use_of_var_derefs_origin.push((local, region_vid));
+                facts.use_of_var_derefs_origin.push((local, region_vid.into()));
             });
         }
     }
@@ -136,7 +136,7 @@ pub(super) fn add_drop_of_var_derefs_origin<'tcx>(
         let universal_regions = &typeck.borrowck_context.universal_regions;
         typeck.infcx.tcx.for_each_free_region(kind, |drop_live_region| {
             let region_vid = universal_regions.to_region_vid(drop_live_region);
-            facts.drop_of_var_derefs_origin.push((local, region_vid));
+            facts.drop_of_var_derefs_origin.push((local, region_vid.into()));
         });
     }
 }

@@ -1611,6 +1611,14 @@ impl<'tcx> rustc_type_ir::inherent::Ty<TyCtxt<'tcx>> for Ty<'tcx> {
         tcx.types.bool
     }
 
+    fn new_infer(tcx: TyCtxt<'tcx>, infer: ty::InferTy) -> Self {
+        Ty::new_infer(tcx, infer)
+    }
+
+    fn new_var(tcx: TyCtxt<'tcx>, vid: ty::TyVid) -> Self {
+        Ty::new_var(tcx, vid)
+    }
+
     fn new_anon_bound(tcx: TyCtxt<'tcx>, debruijn: ty::DebruijnIndex, var: ty::BoundVar) -> Self {
         Ty::new_bound(tcx, debruijn, ty::BoundTy { var, kind: ty::BoundTyKind::Anon })
     }
