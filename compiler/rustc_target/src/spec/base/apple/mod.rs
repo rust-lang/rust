@@ -272,6 +272,7 @@ fn macos_default_deployment_target(arch: Arch) -> (u32, u32) {
 
 fn macos_deployment_target(arch: Arch) -> (u32, u32) {
     // If you are looking for the default deployment target, prefer `rustc --print deployment-target`.
+    // Note: If bumping this version, remember to update it in the rustc/platform-support docs.
     from_set_deployment_target("MACOSX_DEPLOYMENT_TARGET")
         .unwrap_or_else(|| macos_default_deployment_target(arch))
 }
@@ -320,6 +321,7 @@ fn link_env_remove(os: &'static str) -> StaticCow<[StaticCow<str>]> {
 
 fn ios_deployment_target(arch: Arch, abi: &str) -> (u32, u32) {
     // If you are looking for the default deployment target, prefer `rustc --print deployment-target`.
+    // Note: If bumping this version, remember to update it in the rustc/platform-support docs.
     let (major, minor) = match (arch, abi) {
         (Arm64e, _) => (14, 0),
         // Mac Catalyst defaults to 13.1 in Clang.
@@ -352,6 +354,7 @@ pub fn ios_sim_llvm_target(arch: Arch) -> String {
 
 fn tvos_deployment_target() -> (u32, u32) {
     // If you are looking for the default deployment target, prefer `rustc --print deployment-target`.
+    // Note: If bumping this version, remember to update it in the rustc platform-support docs.
     from_set_deployment_target("TVOS_DEPLOYMENT_TARGET").unwrap_or((10, 0))
 }
 
@@ -367,6 +370,7 @@ pub fn tvos_sim_llvm_target(arch: Arch) -> String {
 
 fn watchos_deployment_target() -> (u32, u32) {
     // If you are looking for the default deployment target, prefer `rustc --print deployment-target`.
+    // Note: If bumping this version, remember to update it in the rustc platform-support docs.
     from_set_deployment_target("WATCHOS_DEPLOYMENT_TARGET").unwrap_or((5, 0))
 }
 
@@ -382,6 +386,7 @@ pub fn watchos_sim_llvm_target(arch: Arch) -> String {
 
 fn visionos_deployment_target() -> (u32, u32) {
     // If you are looking for the default deployment target, prefer `rustc --print deployment-target`.
+    // Note: If bumping this version, remember to update it in the rustc platform-support docs.
     from_set_deployment_target("XROS_DEPLOYMENT_TARGET").unwrap_or((1, 0))
 }
 

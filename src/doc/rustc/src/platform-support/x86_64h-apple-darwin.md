@@ -23,9 +23,8 @@ default or user-defined allocators). This target is probably most useful when
 targeted via cross-compilation (including from `x86_64-apple-darwin`), but if
 built manually, the host tools work.
 
-It is similar to `x86_64-apple-darwin` in nearly all respects, although the
-minimum supported OS version is slightly higher (it requires 10.8 rather than
-`x86_64-apple-darwin`'s 10.7).
+It is similar to [`x86_64-apple-darwin`](apple-darwin.md) in nearly all
+respects.
 
 ## Building the target
 
