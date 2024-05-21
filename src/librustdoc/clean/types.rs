@@ -1451,7 +1451,7 @@ impl Trait {
         tcx.trait_def(self.def_id).safety
     }
     pub(crate) fn is_object_safe(&self, tcx: TyCtxt<'_>) -> bool {
-        tcx.check_is_object_safe(self.def_id)
+        tcx.is_object_safe(self.def_id)
     }
 }
 

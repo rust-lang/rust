@@ -64,7 +64,7 @@ fn object_safety_violations(tcx: TyCtxt<'_>, trait_def_id: DefId) -> &'_ [Object
     )
 }
 
-fn check_is_object_safe(tcx: TyCtxt<'_>, trait_def_id: DefId) -> bool {
+fn is_object_safe(tcx: TyCtxt<'_>, trait_def_id: DefId) -> bool {
     tcx.object_safety_violations(trait_def_id).is_empty()
 }
 
@@ -854,7 +854,7 @@ pub fn contains_illegal_impl_trait_in_trait<'tcx>(
 pub fn provide(providers: &mut Providers) {
     *providers = Providers {
         object_safety_violations,
-        check_is_object_safe,
+        is_object_safe,
         generics_require_sized_self,
         ..*providers
     };
