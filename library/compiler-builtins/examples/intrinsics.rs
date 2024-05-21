@@ -28,11 +28,34 @@ extern "C" {}
 // have an additional comment: the function name is the ARM name for the intrinsic and the comment
 // in the non-ARM name for the intrinsic.
 mod intrinsics {
+    /* f16 operations */
+
+    pub fn extendhfsf(x: f16) -> f32 {
+        x as f32
+    }
+
+    pub fn extendhfdf(x: f16) -> f64 {
+        x as f64
+    }
+
+    #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
+    pub fn extendhftf(x: f16) -> f128 {
+        x as f128
+    }
+
     /* f32 operations */
+
+    pub fn truncsfhf(x: f32) -> f16 {
+        x as f16
+    }
 
     // extendsfdf2
     pub fn aeabi_f2d(x: f32) -> f64 {
         x as f64
+    }
+
+    pub fn extendsftf(x: f32) -> f128 {
+        x as f128
     }
 
     // fixsfsi
@@ -149,6 +172,75 @@ mod intrinsics {
 
     // subdf3
     pub fn aeabi_dsub(a: f64, b: f64) -> f64 {
+        a - b
+    }
+
+    /* f128 operations */
+
+    #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
+    pub fn trunctfhf(x: f128) -> f16 {
+        x as f16
+    }
+
+    pub fn trunctfsf(x: f128) -> f32 {
+        x as f32
+    }
+
+    pub fn trunctfdf(x: f128) -> f64 {
+        x as f64
+    }
+
+    #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
+    pub fn fixtfsi(x: f128) -> i32 {
+        x as i32
+    }
+
+    #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
+    pub fn fixtfdi(x: f128) -> i64 {
+        x as i64
+    }
+
+    #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
+    pub fn fixtfti(x: f128) -> i128 {
+        x as i128
+    }
+
+    #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
+    pub fn fixunstfsi(x: f128) -> u32 {
+        x as u32
+    }
+
+    #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
+    pub fn fixunstfdi(x: f128) -> u64 {
+        x as u64
+    }
+
+    #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
+    pub fn fixunstfti(x: f128) -> u128 {
+        x as u128
+    }
+
+    pub fn addtf(a: f128, b: f128) -> f128 {
+        a + b
+    }
+
+    pub fn eqtf(a: f128, b: f128) -> bool {
+        a == b
+    }
+
+    pub fn gttf(a: f128, b: f128) -> bool {
+        a > b
+    }
+
+    pub fn lttf(a: f128, b: f128) -> bool {
+        a < b
+    }
+
+    pub fn multf(a: f128, b: f128) -> f128 {
+        a * b
+    }
+
+    pub fn subtf(a: f128, b: f128) -> f128 {
         a - b
     }
 
@@ -288,6 +380,9 @@ fn run() {
     use core::hint::black_box as bb;
     use intrinsics::*;
 
+    // FIXME(f16_f128): some PPC f128 <-> int conversion functions have the wrong names
+
+    bb(addtf(bb(2.), bb(2.)));
     bb(aeabi_d2f(bb(2.)));
     bb(aeabi_d2i(bb(2.)));
     bb(aeabi_d2l(bb(2.)));
@@ -327,18 +422,45 @@ fn run() {
     bb(aeabi_ul2d(bb(2)));
     bb(aeabi_ul2f(bb(2)));
     bb(aeabi_uldivmod(bb(2), bb(3)));
-    bb(moddi3(bb(2), bb(3)));
-    bb(mulodi4(bb(2), bb(3)));
-    bb(umoddi3(bb(2), bb(3)));
-    bb(muloti4(bb(2), bb(2)));
-    bb(multi3(bb(2), bb(2)));
     bb(ashlti3(bb(2), bb(2)));
     bb(ashrti3(bb(2), bb(2)));
-    bb(lshrti3(bb(2), bb(2)));
-    bb(udivti3(bb(2), bb(2)));
-    bb(umodti3(bb(2), bb(2)));
     bb(divti3(bb(2), bb(2)));
+    bb(eqtf(bb(2.), bb(2.)));
+    bb(extendhfdf(bb(2.)));
+    bb(extendhfsf(bb(2.)));
+    #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
+    bb(extendhftf(bb(2.)));
+    bb(extendsftf(bb(2.)));
+    #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
+    bb(fixtfdi(bb(2.)));
+    #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
+    bb(fixtfsi(bb(2.)));
+    #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
+    bb(fixtfti(bb(2.)));
+    #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
+    bb(fixunstfdi(bb(2.)));
+    #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
+    bb(fixunstfsi(bb(2.)));
+    #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
+    bb(fixunstfti(bb(2.)));
+    bb(gttf(bb(2.), bb(2.)));
+    bb(lshrti3(bb(2), bb(2)));
+    bb(lttf(bb(2.), bb(2.)));
+    bb(moddi3(bb(2), bb(3)));
     bb(modti3(bb(2), bb(2)));
+    bb(mulodi4(bb(2), bb(3)));
+    bb(muloti4(bb(2), bb(2)));
+    bb(multf(bb(2.), bb(2.)));
+    bb(multi3(bb(2), bb(2)));
+    bb(subtf(bb(2.), bb(2.)));
+    bb(truncsfhf(bb(2.)));
+    bb(trunctfdf(bb(2.)));
+    #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
+    bb(trunctfhf(bb(2.)));
+    bb(trunctfsf(bb(2.)));
+    bb(udivti3(bb(2), bb(2)));
+    bb(umoddi3(bb(2), bb(3)));
+    bb(umodti3(bb(2), bb(2)));
 
     something_with_a_dtor(&|| assert_eq!(bb(1), 1));
 
