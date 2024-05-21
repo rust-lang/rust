@@ -576,12 +576,36 @@ impl Iterator for Env {
     }
 }
 
-#[cfg(target_os = "macos")]
+// Use `_NSGetEnviron` on Apple platforms.
+//
+// `_NSGetEnviron` is the documented alternative (see `man environ`), and has
+// been available since the first versions of both macOS and iOS.
+//
+// Nowadays, specifically since macOS 10.8, `environ` has been exposed through
+// `libdyld.dylib`, which is linked via. `libSystem.dylib`:
+// <https://github.com/apple-oss-distributions/dyld/blob/dyld-1160.6/libdyld/libdyldGlue.cpp#L913>
+//
+// So in the end, it likely doesn't really matter which option we use, but the
+// performance cost of using `_NSGetEnviron` is extremely miniscule, and it
+// might be ever so slightly more supported, so let's just use that.
+//
+// NOTE: The header where this is defined (`crt_externs.h`) was added to the
+// iOS 13.0 SDK, which has been the source of a great deal of confusion in the
+// past about the availability of this API.
+//
+// NOTE(madsmtm): Neither this nor using `environ` has been verified to not
+// cause App Store rejections; if this is found to be the case, an alternative
+// implementation of this is possible using `[NSProcessInfo environment]`
+// - which internally uses `_NSGetEnviron` and a system-wide lock on the
+// environment variables to protect against `setenv`, so using that might be
+// desirable anyhow? Though it also means that we have to link to Foundation.
+#[cfg(target_vendor = "apple")]
 pub unsafe fn environ() -> *mut *const *const c_char {
     libc::_NSGetEnviron() as *mut *const *const c_char
 }
 
-#[cfg(not(target_os = "macos"))]
+// Use the `environ` static which is part of POSIX.
+#[cfg(not(target_vendor = "apple"))]
 pub unsafe fn environ() -> *mut *const *const c_char {
     extern "C" {
         static mut environ: *const *const c_char;
