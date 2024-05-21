@@ -246,11 +246,10 @@ const_eval_offset_from_unsigned_overflow =
 
 const_eval_operator_non_const =
     cannot call non-const operator in {const_eval_const_context}s
-const_eval_overflow =
-    overflow executing `{$name}`
-
+const_eval_overflow_arith =
+    arithmetic overflow in `{$intrinsic}`
 const_eval_overflow_shift =
-    overflowing shift by {$val} in `{$name}`
+    overflowing shift by {$shift_amount} in `{$intrinsic}`
 
 const_eval_panic =
     the evaluated program panicked at '{$msg}', {$file}:{$line}:{$col}

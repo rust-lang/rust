@@ -297,9 +297,9 @@ impl BorrowKind {
 impl BinOp {
     pub fn to_hir_binop(self) -> hir::BinOpKind {
         match self {
-            BinOp::Add => hir::BinOpKind::Add,
-            BinOp::Sub => hir::BinOpKind::Sub,
-            BinOp::Mul => hir::BinOpKind::Mul,
+            BinOp::Add | BinOp::AddWithOverflow => hir::BinOpKind::Add,
+            BinOp::Sub | BinOp::SubWithOverflow => hir::BinOpKind::Sub,
+            BinOp::Mul | BinOp::MulWithOverflow => hir::BinOpKind::Mul,
             BinOp::Div => hir::BinOpKind::Div,
             BinOp::Rem => hir::BinOpKind::Rem,
             BinOp::BitXor => hir::BinOpKind::BitXor,
@@ -314,9 +314,6 @@ impl BinOp {
             BinOp::Le => hir::BinOpKind::Le,
             BinOp::Ge => hir::BinOpKind::Ge,
             BinOp::Cmp
-            | BinOp::AddWithOverflow
-            | BinOp::SubWithOverflow
-            | BinOp::MulWithOverflow
             | BinOp::AddUnchecked
             | BinOp::SubUnchecked
             | BinOp::MulUnchecked
@@ -336,6 +333,11 @@ impl BinOp {
             BinOp::MulWithOverflow => BinOp::Mul,
             _ => return None,
         })
+    }
+
+    /// Returns whether this is a `FooWithOverflow`
+    pub fn is_overflowing(self) -> bool {
+        self.overflowing_to_wrapping().is_some()
     }
 
     /// If this is a `Foo`, return `Some(FooWithOverflow)`.

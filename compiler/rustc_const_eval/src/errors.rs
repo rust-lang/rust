@@ -1,5 +1,6 @@
 use std::borrow::Cow;
 
+use either::Either;
 use rustc_errors::{
     codes::*, Diag, DiagArgValue, DiagCtxt, DiagMessage, Diagnostic, EmissionGuarantee, Level,
 };
@@ -481,6 +482,8 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
             DivisionOverflow => const_eval_division_overflow,
             RemainderOverflow => const_eval_remainder_overflow,
             PointerArithOverflow => const_eval_pointer_arithmetic_overflow,
+            ArithOverflow { .. } => const_eval_overflow_arith,
+            ShiftOverflow { .. } => const_eval_overflow_shift,
             InvalidMeta(InvalidMetaKind::SliceTooBig) => const_eval_invalid_meta_slice,
             InvalidMeta(InvalidMetaKind::TooBig) => const_eval_invalid_meta,
             UnterminatedCString(_) => const_eval_unterminated_c_string,
@@ -539,6 +542,19 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
             | UninhabitedEnumVariantWritten(_)
             | UninhabitedEnumVariantRead(_) => {}
 
+            ArithOverflow { intrinsic } => {
+                diag.arg("intrinsic", intrinsic);
+            }
+            ShiftOverflow { intrinsic, shift_amount } => {
+                diag.arg("intrinsic", intrinsic);
+                diag.arg(
+                    "shift_amount",
+                    match shift_amount {
+                        Either::Left(v) => v.to_string(),
+                        Either::Right(v) => v.to_string(),
+                    },
+                );
+            }
             BoundsCheckFailed { len, index } => {
                 diag.arg("len", len);
                 diag.arg("index", index);

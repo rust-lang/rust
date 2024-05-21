@@ -172,7 +172,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         let tag_val = ImmTy::from_uint(tag_bits, tag_layout);
                         let niche_start_val = ImmTy::from_uint(niche_start, tag_layout);
                         let variant_index_relative_val =
-                            self.wrapping_binary_op(mir::BinOp::Sub, &tag_val, &niche_start_val)?;
+                            self.binary_op(mir::BinOp::Sub, &tag_val, &niche_start_val)?;
                         let variant_index_relative =
                             variant_index_relative_val.to_scalar().assert_bits(tag_val.layout.size);
                         // Check if this is in the range that indicates an actual discriminant.
@@ -292,11 +292,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let variant_index_relative_val =
                     ImmTy::from_uint(variant_index_relative, tag_layout);
                 let tag = self
-                    .wrapping_binary_op(
-                        mir::BinOp::Add,
-                        &variant_index_relative_val,
-                        &niche_start_val,
-                    )?
+                    .binary_op(mir::BinOp::Add, &variant_index_relative_val, &niche_start_val)?
                     .to_scalar()
                     .assert_int();
                 Ok(Some((tag, tag_field)))

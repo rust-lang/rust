@@ -1,3 +1,5 @@
+use either::Either;
+
 use rustc_apfloat::{Float, Round};
 use rustc_middle::ty::layout::{HasParamEnv, LayoutOf};
 use rustc_middle::{mir, ty, ty::FloatTy};
@@ -80,7 +82,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     let val = match which {
                         Op::MirOp(mir_op) => {
                             // This already does NaN adjustments
-                            this.wrapping_unary_op(mir_op, &op)?.to_scalar()
+                            this.unary_op(mir_op, &op)?.to_scalar()
                         }
                         Op::Abs => {
                             // Works for f32 and f64.
@@ -215,8 +217,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     "mul" => Op::MirOp(BinOp::Mul),
                     "div" => Op::MirOp(BinOp::Div),
                     "rem" => Op::MirOp(BinOp::Rem),
-                    "shl" => Op::MirOp(BinOp::Shl),
-                    "shr" => Op::MirOp(BinOp::Shr),
+                    "shl" => Op::MirOp(BinOp::ShlUnchecked),
+                    "shr" => Op::MirOp(BinOp::ShrUnchecked),
                     "and" => Op::MirOp(BinOp::BitAnd),
                     "or" => Op::MirOp(BinOp::BitOr),
                     "xor" => Op::MirOp(BinOp::BitXor),
@@ -241,15 +243,19 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     let val = match which {
                         Op::MirOp(mir_op) => {
                             // This does NaN adjustments.
-                            let (val, overflowed) = this.overflowing_binary_op(mir_op, &left, &right)?;
-                            if matches!(mir_op, BinOp::Shl | BinOp::Shr) {
-                                // Shifts have extra UB as SIMD operations that the MIR binop does not have.
-                                // See <https://github.com/rust-lang/rust/issues/91237>.
-                                if overflowed {
-                                    let r_val = right.to_scalar().to_bits(right.layout.size)?;
-                                    throw_ub_format!("overflowing shift by {r_val} in `simd_{intrinsic_name}` in SIMD lane {i}");
+                            let val = this.binary_op(mir_op, &left, &right).map_err(|err| {
+                                match err.kind() {
+                                    InterpError::UndefinedBehavior(UndefinedBehaviorInfo::ShiftOverflow { shift_amount, .. }) => {
+                                        // This resets the interpreter backtrace, but it's not worth avoiding that.
+                                        let shift_amount = match shift_amount {
+                                            Either::Left(v) => v.to_string(),
+                                            Either::Right(v) => v.to_string(),
+                                        };
+                                        err_ub_format!("overflowing shift by {shift_amount} in `simd_{intrinsic_name}` in lane {i}").into()
+                                    }
+                                    _ => err
                                 }
-                            }
+                            })?;
                             if matches!(mir_op, BinOp::Eq | BinOp::Ne | BinOp::Lt | BinOp::Le | BinOp::Gt | BinOp::Ge) {
                                 // Special handling for boolean-returning operations
                                 assert_eq!(val.layout.ty, this.tcx.types.bool);
@@ -368,11 +374,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     let op = this.read_immediate(&this.project_index(&op, i)?)?;
                     res = match which {
                         Op::MirOp(mir_op) => {
-                            this.wrapping_binary_op(mir_op, &res, &op)?
+                            this.binary_op(mir_op, &res, &op)?
                         }
                         Op::MirOpBool(mir_op) => {
                             let op = imm_from_bool(simd_element_to_bool(op)?);
-                            this.wrapping_binary_op(mir_op, &res, &op)?
+                            this.binary_op(mir_op, &res, &op)?
                         }
                         Op::MinMax(mmop) => {
                             if matches!(res.layout.ty.kind(), ty::Float(_)) {
@@ -383,7 +389,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                                     MinMax::Min => BinOp::Le,
                                     MinMax::Max => BinOp::Ge,
                                 };
-                                if this.wrapping_binary_op(mirop, &res, &op)?.to_scalar().to_bool()? {
+                                if this.binary_op(mirop, &res, &op)?.to_scalar().to_bool()? {
                                     res
                                 } else {
                                     op
@@ -412,7 +418,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let mut res = init;
                 for i in 0..op_len {
                     let op = this.read_immediate(&this.project_index(&op, i)?)?;
-                    res = this.wrapping_binary_op(mir_op, &res, &op)?;
+                    res = this.binary_op(mir_op, &res, &op)?;
                 }
                 this.write_immediate(*res, dest)?;
             }
