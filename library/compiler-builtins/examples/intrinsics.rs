@@ -68,6 +68,10 @@ mod intrinsics {
         x as i64
     }
 
+    pub fn fixsfti(x: f32) -> i128 {
+        x as i128
+    }
+
     // fixunssfsi
     pub fn aeabi_f2uiz(x: f32) -> u32 {
         x as u32
@@ -76,6 +80,10 @@ mod intrinsics {
     // fixunssfdi
     pub fn aeabi_f2ulz(x: f32) -> u64 {
         x as u64
+    }
+
+    pub fn fixunssfti(x: f32) -> u128 {
+        x as u128
     }
 
     // addsf3
@@ -130,6 +138,10 @@ mod intrinsics {
         x as i64
     }
 
+    pub fn fixdfti(x: f64) -> i128 {
+        x as i128
+    }
+
     // fixunsdfsi
     pub fn aeabi_d2uiz(x: f64) -> u32 {
         x as u32
@@ -138,6 +150,10 @@ mod intrinsics {
     // fixunsdfdi
     pub fn aeabi_d2ulz(x: f64) -> u64 {
         x as u64
+    }
+
+    pub fn fixunsdfti(x: f64) -> u128 {
+        x as u128
     }
 
     // adddf3
@@ -431,12 +447,16 @@ fn run() {
     #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
     bb(extendhftf(bb(2.)));
     bb(extendsftf(bb(2.)));
+    bb(fixdfti(bb(2.)));
+    bb(fixsfti(bb(2.)));
     #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
     bb(fixtfdi(bb(2.)));
     #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
     bb(fixtfsi(bb(2.)));
     #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
     bb(fixtfti(bb(2.)));
+    bb(fixunsdfti(bb(2.)));
+    bb(fixunssfti(bb(2.)));
     #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
     bb(fixunstfdi(bb(2.)));
     #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
