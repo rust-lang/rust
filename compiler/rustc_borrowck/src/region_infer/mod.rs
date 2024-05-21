@@ -4,6 +4,7 @@ use std::rc::Rc;
 use rustc_data_structures::binary_search_util;
 use rustc_data_structures::frozen::Frozen;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
+use rustc_data_structures::graph::scc::{self, Sccs};
 use rustc_errors::Diag;
 use rustc_hir::def_id::CRATE_DEF_ID;
 use rustc_index::IndexVec;
@@ -23,7 +24,6 @@ use rustc_mir_dataflow::points::DenseLocationMap;
 use rustc_span::Span;
 
 use crate::constraints::graph::{self, NormalConstraintGraph, RegionGraph};
-use crate::constraints::{ConstraintSccs, RegionTracker};
 use crate::dataflow::BorrowIndex;
 use crate::{
     constraints::{ConstraintSccIndex, OutlivesConstraint, OutlivesConstraintSet},
@@ -45,6 +45,97 @@ mod opaque_types;
 mod reverse_sccs;
 
 pub mod values;
+
+pub type ConstraintSccs = Sccs<RegionVid, ConstraintSccIndex, RegionTracker>;
+
+/// An annotation for region graph SCCs that tracks
+/// the values of its elements.
+#[derive(Copy, Debug, Clone)]
+pub struct RegionTracker {
+    /// The largest universe of a placeholder reached from this SCC.
+    /// This includes placeholders within this SCC.
+    max_placeholder_universe_reached: UniverseIndex,
+
+    /// The smallest universe index reachable form the nodes of this SCC.
+    min_reachable_universe: UniverseIndex,
+
+    /// The representative Region Variable Id for this SCC. We prefer
+    /// placeholders over existentially quantified variables, otherwise
+    ///  it's the one with the smallest Region Variable ID.
+    representative: RegionVid,
+
+    /// Is the current representative a placeholder?
+    representative_is_placeholder: bool,
+
+    /// Is the current representative existentially quantified?
+    representative_is_existential: bool,
+}
+
+impl scc::Annotation for RegionTracker {
+    fn merge_scc(mut self, mut other: Self) -> Self {
+        // Prefer any placeholder over any existential
+        if other.representative_is_placeholder && self.representative_is_existential {
+            other.merge_min_max_seen(&self);
+            return other;
+        }
+
+        if self.representative_is_placeholder && other.representative_is_existential
+            || (self.representative <= other.representative)
+        {
+            self.merge_min_max_seen(&other);
+            return self;
+        }
+        other.merge_min_max_seen(&self);
+        other
+    }
+
+    fn merge_reached(mut self, other: Self) -> Self {
+        // No update to in-component values, only add seen values.
+        self.merge_min_max_seen(&other);
+        self
+    }
+}
+
+impl RegionTracker {
+    fn new(rvid: RegionVid, definition: &RegionDefinition<'_>) -> Self {
+        let (representative_is_placeholder, representative_is_existential) = match definition.origin
+        {
+            rustc_infer::infer::NllRegionVariableOrigin::FreeRegion => (false, false),
+            rustc_infer::infer::NllRegionVariableOrigin::Placeholder(_) => (true, false),
+            rustc_infer::infer::NllRegionVariableOrigin::Existential { .. } => (false, true),
+        };
+
+        let placeholder_universe =
+            if representative_is_placeholder { definition.universe } else { UniverseIndex::ROOT };
+
+        Self {
+            max_placeholder_universe_reached: placeholder_universe,
+            min_reachable_universe: definition.universe,
+            representative: rvid,
+            representative_is_placeholder,
+            representative_is_existential,
+        }
+    }
+    fn universe(self) -> UniverseIndex {
+        self.min_reachable_universe
+    }
+
+    fn merge_min_max_seen(&mut self, other: &Self) {
+        self.max_placeholder_universe_reached = std::cmp::max(
+            self.max_placeholder_universe_reached,
+            other.max_placeholder_universe_reached,
+        );
+
+        self.min_reachable_universe =
+            std::cmp::min(self.min_reachable_universe, other.min_reachable_universe);
+    }
+
+    /// Returns `true` if during the annotated SCC reaches a placeholder
+    /// with a universe larger than the smallest reachable one, `false` otherwise.
+    pub fn has_incompatible_universes(&self) -> bool {
+        self.universe().cannot_name(self.max_placeholder_universe_reached)
+    }
+}
 
 pub struct RegionInferenceContext<'tcx> {
     pub var_infos: VarInfos,
