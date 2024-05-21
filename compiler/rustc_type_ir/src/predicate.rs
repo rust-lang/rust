@@ -6,9 +6,38 @@ use rustc_macros::{Decodable, Encodable, HashStable_NoContext, TyDecodable, TyEn
 use rustc_type_ir_macros::{Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic};
 
 use crate::inherent::*;
+use crate::lift::Lift;
 use crate::upcast::Upcast;
 use crate::visit::TypeVisitableExt as _;
 use crate::{self as ty, DebugWithInfcx, InferCtxtLike, Interner, WithInfcx};
+
+/// `A: 'region`
+#[derive(derivative::Derivative)]
+#[derivative(
+    Clone(bound = "A: Clone"),
+    Copy(bound = "A: Copy"),
+    Hash(bound = "A: Hash"),
+    PartialEq(bound = "A: PartialEq"),
+    Eq(bound = "A: Eq"),
+    Debug(bound = "A: fmt::Debug")
+)]
+#[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
+#[cfg_attr(feature = "nightly", derive(TyDecodable, TyEncodable, HashStable_NoContext))]
+pub struct OutlivesPredicate<I: Interner, A>(pub A, pub I::Region);
+
+// FIXME: We manually derive `Lift` because the `derive(Lift_Generic)` doesn't
+// understand how to turn `A` to `A::Lifted` in the output `type Lifted`.
+impl<I: Interner, U: Interner, A> Lift<U> for OutlivesPredicate<I, A>
+where
+    A: Lift<U>,
+    I::Region: Lift<U, Lifted = U::Region>,
+{
+    type Lifted = OutlivesPredicate<U, A::Lifted>;
+
+    fn lift_to_tcx(self, tcx: U) -> Option<Self::Lifted> {
+        Some(OutlivesPredicate(self.0.lift_to_tcx(tcx)?, self.1.lift_to_tcx(tcx)?))
+    }
+}
 
 /// A complete reference to a trait. These take numerous guises in syntax,
 /// but perhaps the most recognizable form is in a where-clause:

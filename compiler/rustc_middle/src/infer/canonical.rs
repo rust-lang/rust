@@ -32,7 +32,7 @@ use std::collections::hash_map::Entry;
 use crate::infer::MemberConstraint;
 use crate::mir::ConstraintCategory;
 use crate::ty::GenericArg;
-use crate::ty::{self, List, Region, Ty, TyCtxt, TypeFlags, TypeVisitableExt};
+use crate::ty::{self, List, Ty, TyCtxt, TypeFlags, TypeVisitableExt};
 
 pub type Canonical<'tcx, V> = ir::Canonical<TyCtxt<'tcx>, V>;
 pub type CanonicalVarInfo<'tcx> = ir::CanonicalVarInfo<TyCtxt<'tcx>>;
@@ -141,7 +141,7 @@ impl<'tcx, R> QueryResponse<'tcx, R> {
 }
 
 pub type QueryOutlivesConstraint<'tcx> =
-    (ty::OutlivesPredicate<GenericArg<'tcx>, Region<'tcx>>, ConstraintCategory<'tcx>);
+    (ty::OutlivesPredicate<'tcx, GenericArg<'tcx>>, ConstraintCategory<'tcx>);
 
 TrivialTypeTraversalImpls! {
     crate::infer::canonical::Certainty,

@@ -136,7 +136,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
 
     fn convert(
         &mut self,
-        predicate: ty::OutlivesPredicate<ty::GenericArg<'tcx>, ty::Region<'tcx>>,
+        predicate: ty::OutlivesPredicate<'tcx, ty::GenericArg<'tcx>>,
         constraint_category: ConstraintCategory<'tcx>,
     ) {
         debug!("generate: constraints at: {:#?}", self.locations);
@@ -276,7 +276,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
         &self,
         ty: Ty<'tcx>,
         next_outlives_predicates: &mut Vec<(
-            ty::OutlivesPredicate<ty::GenericArg<'tcx>, ty::Region<'tcx>>,
+            ty::OutlivesPredicate<'tcx, ty::GenericArg<'tcx>>,
             ConstraintCategory<'tcx>,
         )>,
     ) -> Ty<'tcx> {

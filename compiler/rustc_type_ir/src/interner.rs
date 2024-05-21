@@ -76,7 +76,6 @@ pub trait Interner:
 
     // Kinds of consts
     type Const: Const<Self>;
-    type AliasConst: Copy + DebugWithInfcx<Self> + Hash + Eq;
     type PlaceholderConst: PlaceholderLike;
     type ParamConst: Copy + Debug + Hash + Eq;
     type BoundConst: Copy + Debug + Hash + Eq + BoundVarLike<Self>;
@@ -94,14 +93,6 @@ pub trait Interner:
     type ParamEnv: Copy + Debug + Hash + Eq;
     type Predicate: Predicate<Self>;
     type Clause: Clause<Self>;
-    type TraitPredicate: Copy + Debug + Hash + Eq + TypeVisitable<Self>;
-    type RegionOutlivesPredicate: Copy + Debug + Hash + Eq + TypeVisitable<Self>;
-    type TypeOutlivesPredicate: Copy + Debug + Hash + Eq + TypeVisitable<Self>;
-    type ProjectionPredicate: Copy + Debug + Hash + Eq + TypeVisitable<Self>;
-    type NormalizesTo: Copy + Debug + Hash + Eq + TypeVisitable<Self>;
-    type SubtypePredicate: Copy + Debug + Hash + Eq + TypeVisitable<Self>;
-    type CoercePredicate: Copy + Debug + Hash + Eq + TypeVisitable<Self>;
-    type ClosureKind: Copy + Debug + Hash + Eq + TypeVisitable<Self>;
     type Clauses: Copy + Debug + Hash + Eq + TypeSuperVisitable<Self> + Flags;
 
     fn mk_canonical_var_infos(self, infos: &[CanonicalVarInfo<Self>]) -> Self::CanonicalVars;

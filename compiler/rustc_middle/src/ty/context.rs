@@ -121,7 +121,6 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type Abi = abi::Abi;
 
     type Const = ty::Const<'tcx>;
-    type AliasConst = ty::UnevaluatedConst<'tcx>;
     type PlaceholderConst = ty::PlaceholderConst;
     type ParamConst = ty::ParamConst;
     type BoundConst = ty::BoundVar;
@@ -137,15 +136,6 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type ParamEnv = ty::ParamEnv<'tcx>;
     type Predicate = Predicate<'tcx>;
     type Clause = Clause<'tcx>;
-    type TraitPredicate = ty::TraitPredicate<'tcx>;
-    type RegionOutlivesPredicate = ty::RegionOutlivesPredicate<'tcx>;
-    type TypeOutlivesPredicate = ty::TypeOutlivesPredicate<'tcx>;
-    type ProjectionPredicate = ty::ProjectionPredicate<'tcx>;
-    type NormalizesTo = ty::NormalizesTo<'tcx>;
-    type SubtypePredicate = ty::SubtypePredicate<'tcx>;
-
-    type CoercePredicate = ty::CoercePredicate<'tcx>;
-    type ClosureKind = ty::ClosureKind;
 
     type Clauses = ty::Clauses<'tcx>;
 

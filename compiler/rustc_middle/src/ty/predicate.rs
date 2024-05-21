@@ -1,9 +1,7 @@
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::intern::Interned;
 use rustc_hir::def_id::DefId;
-use rustc_macros::{
-    extension, HashStable, Lift, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable,
-};
+use rustc_macros::{extension, HashStable};
 use rustc_type_ir as ir;
 use std::cmp::Ordering;
 
@@ -24,6 +22,15 @@ pub type PredicateKind<'tcx> = ir::PredicateKind<TyCtxt<'tcx>>;
 pub type NormalizesTo<'tcx> = ir::NormalizesTo<TyCtxt<'tcx>>;
 pub type CoercePredicate<'tcx> = ir::CoercePredicate<TyCtxt<'tcx>>;
 pub type SubtypePredicate<'tcx> = ir::SubtypePredicate<TyCtxt<'tcx>>;
+pub type OutlivesPredicate<'tcx, T> = ir::OutlivesPredicate<TyCtxt<'tcx>, T>;
+pub type RegionOutlivesPredicate<'tcx> = OutlivesPredicate<'tcx, ty::Region<'tcx>>;
+pub type TypeOutlivesPredicate<'tcx> = OutlivesPredicate<'tcx, Ty<'tcx>>;
+pub type PolyTraitPredicate<'tcx> = ty::Binder<'tcx, TraitPredicate<'tcx>>;
+pub type PolyRegionOutlivesPredicate<'tcx> = ty::Binder<'tcx, RegionOutlivesPredicate<'tcx>>;
+pub type PolyTypeOutlivesPredicate<'tcx> = ty::Binder<'tcx, TypeOutlivesPredicate<'tcx>>;
+pub type PolySubtypePredicate<'tcx> = ty::Binder<'tcx, SubtypePredicate<'tcx>>;
+pub type PolyCoercePredicate<'tcx> = ty::Binder<'tcx, CoercePredicate<'tcx>>;
+pub type PolyProjectionPredicate<'tcx> = ty::Binder<'tcx, ProjectionPredicate<'tcx>>;
 
 /// A statement that can be proven by a trait solver. This includes things that may
 /// show up in where clauses, such as trait predicates and projection predicates,
@@ -405,20 +412,6 @@ impl<'tcx> Clause<'tcx> {
     }
 }
 
-pub type PolyTraitPredicate<'tcx> = ty::Binder<'tcx, TraitPredicate<'tcx>>;
-
-/// `A: B`
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, TyEncodable, TyDecodable)]
-#[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
-pub struct OutlivesPredicate<A, B>(pub A, pub B);
-pub type RegionOutlivesPredicate<'tcx> = OutlivesPredicate<ty::Region<'tcx>, ty::Region<'tcx>>;
-pub type TypeOutlivesPredicate<'tcx> = OutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>>;
-pub type PolyRegionOutlivesPredicate<'tcx> = ty::Binder<'tcx, RegionOutlivesPredicate<'tcx>>;
-pub type PolyTypeOutlivesPredicate<'tcx> = ty::Binder<'tcx, TypeOutlivesPredicate<'tcx>>;
-pub type PolySubtypePredicate<'tcx> = ty::Binder<'tcx, SubtypePredicate<'tcx>>;
-pub type PolyCoercePredicate<'tcx> = ty::Binder<'tcx, CoercePredicate<'tcx>>;
-pub type PolyProjectionPredicate<'tcx> = Binder<'tcx, ProjectionPredicate<'tcx>>;
-
 pub trait ToPolyTraitRef<'tcx> {
     fn to_poly_trait_ref(&self) -> PolyTraitRef<'tcx>;
 }
@@ -545,10 +538,8 @@ impl<'tcx> UpcastFrom<TyCtxt<'tcx>, PolyRegionOutlivesPredicate<'tcx>> for Predi
     }
 }
 
-impl<'tcx> UpcastFrom<TyCtxt<'tcx>, OutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>>>
-    for Predicate<'tcx>
-{
-    fn upcast_from(from: OutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>>, tcx: TyCtxt<'tcx>) -> Self {
+impl<'tcx> UpcastFrom<TyCtxt<'tcx>, TypeOutlivesPredicate<'tcx>> for Predicate<'tcx> {
+    fn upcast_from(from: TypeOutlivesPredicate<'tcx>, tcx: TyCtxt<'tcx>) -> Self {
         ty::Binder::dummy(PredicateKind::Clause(ClauseKind::TypeOutlives(from))).upcast(tcx)
     }
 }

@@ -3,7 +3,7 @@ use rustc_macros::{Decodable, Encodable, HashStable_NoContext, TyDecodable, TyEn
 use rustc_type_ir_macros::{TypeFoldable_Generic, TypeVisitable_Generic};
 use std::fmt;
 
-use crate::Interner;
+use crate::{self as ty, Interner};
 
 /// A clause is something that can appear in where bounds or be inferred
 /// by implied bounds.
@@ -15,17 +15,17 @@ pub enum ClauseKind<I: Interner> {
     /// Corresponds to `where Foo: Bar<A, B, C>`. `Foo` here would be
     /// the `Self` type of the trait reference and `A`, `B`, and `C`
     /// would be the type parameters.
-    Trait(I::TraitPredicate),
+    Trait(ty::TraitPredicate<I>),
 
-    /// `where 'a: 'b`
-    RegionOutlives(I::RegionOutlivesPredicate),
+    /// `where 'a: 'r`
+    RegionOutlives(ty::OutlivesPredicate<I, I::Region>),
 
-    /// `where T: 'a`
-    TypeOutlives(I::TypeOutlivesPredicate),
+    /// `where T: 'r`
+    TypeOutlives(ty::OutlivesPredicate<I, I::Ty>),
 
     /// `where <T as TraitRef>::Name == X`, approximately.
     /// See the `ProjectionPredicate` struct for details.
-    Projection(I::ProjectionPredicate),
+    Projection(ty::ProjectionPredicate<I>),
 
     /// Ensures that a const generic argument to a parameter `const N: u8`
     /// is of type `u8`.
@@ -75,7 +75,7 @@ pub enum PredicateKind<I: Interner> {
     /// This obligation is created most often when we have two
     /// unresolved type variables and hence don't have enough
     /// information to process the subtyping obligation yet.
-    Subtype(I::SubtypePredicate),
+    Subtype(ty::SubtypePredicate<I>),
 
     /// `T1` coerced to `T2`
     ///
@@ -85,7 +85,7 @@ pub enum PredicateKind<I: Interner> {
     /// obligation yet. At the moment, we actually process coercions
     /// very much like subtyping and don't handle the full coercion
     /// logic.
-    Coerce(I::CoercePredicate),
+    Coerce(ty::CoercePredicate<I>),
 
     /// Constants must be equal. The first component is the const that is expected.
     ConstEquate(I::Const, I::Const),
@@ -102,7 +102,7 @@ pub enum PredicateKind<I: Interner> {
     /// `T as Trait>::Assoc`, `Projection(<T as Trait>::Assoc, ?x)` constrains `?x`
     /// to `<T as Trait>::Assoc` while `NormalizesTo(<T as Trait>::Assoc, ?x)`
     /// results in `NoSolution`.
-    NormalizesTo(I::NormalizesTo),
+    NormalizesTo(ty::NormalizesTo<I>),
 
     /// Separate from `ClauseKind::Projection` which is used for normalization in new solver.
     /// This predicate requires two terms to be equal to eachother.

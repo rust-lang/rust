@@ -2860,10 +2860,9 @@ where
     }
 }
 
-impl<'tcx, T, U, P: PrettyPrinter<'tcx>> Print<'tcx, P> for ty::OutlivesPredicate<T, U>
+impl<'tcx, T, P: PrettyPrinter<'tcx>> Print<'tcx, P> for ty::OutlivesPredicate<'tcx, T>
 where
     T: Print<'tcx, P>,
-    U: Print<'tcx, P>,
 {
     fn print(&self, cx: &mut P) -> Result<(), PrintError> {
         define_scoped_cx!(cx);
@@ -3016,10 +3015,7 @@ forward_display_to_print! {
     ty::Region<'tcx>,
     Ty<'tcx>,
     &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
-    ty::Const<'tcx>,
-
-    ty::OutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>>,
-    ty::OutlivesPredicate<ty::Region<'tcx>, ty::Region<'tcx>>
+    ty::Const<'tcx>
 }
 
 define_print! {
