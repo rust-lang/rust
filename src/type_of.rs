@@ -8,7 +8,7 @@ use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, CoroutineArgsExt, Ty, TypeVisitableExt};
 use rustc_target::abi::call::{CastTarget, FnAbi, Reg};
 use rustc_target::abi::{
-    self, Abi, Align, FieldsShape, Float, Int, Integer, PointeeInfo, Pointer, Size, TyAbiInterface,
+    self, Abi, FieldsShape, Float, Int, Integer, PointeeInfo, Pointer, Size, TyAbiInterface,
     Variants,
 };
 
@@ -50,12 +50,6 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             ty::UintTy::U64 => self.type_i64(),
             ty::UintTy::U128 => self.type_i128(),
         }
-    }
-}
-
-impl<'a, 'tcx> CodegenCx<'a, 'tcx> {
-    pub fn align_of(&self, ty: Ty<'tcx>) -> Align {
-        self.layout_of(ty).align.abi
     }
 }
 
