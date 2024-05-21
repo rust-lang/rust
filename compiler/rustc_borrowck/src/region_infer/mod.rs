@@ -1643,26 +1643,33 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     ///   that cannot be named by `fr1`; in that case, we will require
     ///   that `fr1: 'static` because it is the only way to `fr1: r` to
     ///   be satisfied. (See `add_incompatible_universe`.)
-    #[instrument(skip(self), ret)]
     pub(crate) fn provides_universal_region(
         &self,
         r: RegionVid,
         fr1: RegionVid,
         fr2: RegionVid,
     ) -> bool {
-        let fr2_is_static = fr2 == self.universal_regions.fr_static;
-        r == fr2 || (fr2_is_static && self.cannot_name_placeholder(fr1, r))
+        debug!("provides_universal_region(r={:?}, fr1={:?}, fr2={:?})", r, fr1, fr2);
+        let result = {
+            r == fr2 || {
+                fr2 == self.universal_regions.fr_static && self.cannot_name_placeholder(fr1, r)
+            }
+        };
+        debug!("provides_universal_region: result = {:?}", result);
+        result
     }
 
     /// If `r2` represents a placeholder region, then this returns
     /// `true` if `r1` cannot name that placeholder in its
     /// value; otherwise, returns `false`.
-    #[instrument(skip(self), ret)]
     pub(crate) fn cannot_name_placeholder(&self, r1: RegionVid, r2: RegionVid) -> bool {
         match self.definitions[r2].origin {
             NllRegionVariableOrigin::Placeholder(placeholder) => {
                 let r1_universe = self.definitions[r1].universe;
-                debug!(?placeholder, ?r1_universe);
+                debug!(
+                    "cannot_name_value_of: universe1={r1_universe:?} placeholder={:?}",
+                    placeholder
+                );
                 r1_universe.cannot_name(placeholder.universe)
             }
 
@@ -2161,16 +2168,6 @@ impl<'tcx> RegionDefinition<'tcx> {
         };
 
         Self { origin, universe, external_name: None }
-    }
-
-    #[inline(always)]
-    pub fn is_placeholder(&self) -> bool {
-        matches!(self.origin, NllRegionVariableOrigin::Placeholder(_))
-    }
-
-    #[inline(always)]
-    pub fn is_existential(&self) -> bool {
-        matches!(self.origin, NllRegionVariableOrigin::Existential { .. })
     }
 }
 
