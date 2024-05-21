@@ -15,7 +15,8 @@ use rustc_data_structures::fx::FxIndexMap;
 use rustc_feature::Features;
 use rustc_parse::validate_attr;
 use rustc_session::lint::builtin::{
-    DEPRECATED_WHERE_CLAUSE_LOCATION, MISSING_ABI, PATTERNS_IN_FNS_WITHOUT_BODY,
+    DEPRECATED_WHERE_CLAUSE_LOCATION, MISSING_ABI, MISSING_UNSAFE_ON_EXTERN,
+    PATTERNS_IN_FNS_WITHOUT_BODY,
 };
 use rustc_session::lint::{BuiltinLintDiag, LintBuffer};
 use rustc_session::Session;
@@ -1016,12 +1017,22 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 walk_list!(self, visit_attribute, &item.attrs);
                 return; // Avoid visiting again.
             }
-            ItemKind::ForeignMod(ForeignMod { abi, .. }) => {
+            ItemKind::ForeignMod(ForeignMod { abi, safety, .. }) => {
                 let old_item = mem::replace(&mut self.extern_mod, Some(item));
                 self.visibility_not_permitted(
                     &item.vis,
                     errors::VisibilityNotPermittedNote::IndividualForeignItems,
                 );
+
+                if &Safety::Default == safety {
+                    self.lint_buffer.buffer_lint(
+                        MISSING_UNSAFE_ON_EXTERN,
+                        item.id,
+                        item.span,
+                        BuiltinLintDiag::MissingUnsafeOnExtern,
+                    );
+                }
+
                 if abi.is_none() {
                     self.maybe_lint_missing_abi(item.span, item.id);
                 }

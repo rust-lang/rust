@@ -451,8 +451,8 @@ mod items {
     mod item_mod { }
     /// ItemKind::ForeignMod
     mod item_foreign_mod {
-        extern "C++" {}
-        extern {}
+        unsafe extern "C++" {}
+        unsafe extern {}
     }
     /// ItemKind::GlobalAsm
     mod item_global_asm {

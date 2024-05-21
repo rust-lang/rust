@@ -473,8 +473,8 @@ mod items {
 
     /// ItemKind::ForeignMod
     mod item_foreign_mod {
-        extern "C++" {}
-        extern {}
+        unsafe extern "C++" {}
+        unsafe extern {}
     }
 
     /// ItemKind::GlobalAsm

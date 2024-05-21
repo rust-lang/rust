@@ -462,6 +462,8 @@ lint_metavariable_wrong_operator = meta-variable repeats with different Kleene o
 
 lint_missing_fragment_specifier = missing fragment specifier
 
+lint_missing_unsafe_on_extern = extern blocks should be unsafe
+
 lint_mixed_script_confusables =
     the usage of Script Group `{$set}` in this crate consists solely of mixed script confusables
     .includes_note = the usage includes {$includes}
