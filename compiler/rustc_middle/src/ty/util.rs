@@ -1715,6 +1715,9 @@ where
     T: TypeFoldable<TyCtxt<'tcx>> + PartialEq + Copy,
 {
     let slice = list.as_ref();
+    if slice.is_empty() {
+        return Ok(list);
+    }
     let mut iter = slice.iter().copied();
     // Look for the first element that changed
     match iter.by_ref().enumerate().find_map(|(i, t)| match t.try_fold_with(folder) {
