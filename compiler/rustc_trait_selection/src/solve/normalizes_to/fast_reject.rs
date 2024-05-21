@@ -29,12 +29,16 @@ pub(super) fn is_rigid_alias<'tcx>(
     // which is non-trivial. We may be forced to handle this case
     // in the future.
     alias.self_ty().is_placeholder()
-        && no_blanket_impls(tcx, alias.trait_def_id(tcx))
+        && no_applicable_blanket_impls(tcx, alias.trait_def_id(tcx))
         && !may_normalize_via_env(param_env, alias)
 }
 
+// FIXME: This could check whether the blanket impl has any where-bounds
+// which definitely don't hold. Doing so is quite annoying, both just in
+// general, but we also have to be careful about builtin blanket impls,
+// e.g. `DiscriminantKind`.
 #[instrument(level = "trace", skip(tcx), ret)]
-fn no_blanket_impls<'tcx>(tcx: TyCtxt<'tcx>, trait_def_id: DefId) -> bool {
+fn no_applicable_blanket_impls<'tcx>(tcx: TyCtxt<'tcx>, trait_def_id: DefId) -> bool {
     // FIXME(ptr_metadata): There's currently a builtin impl for `Pointee` which
     // applies for all `T` as long as `T: Sized` holds. THis impl should
     // get removed in favor of `Pointee` being a super trait of `Sized`.
