@@ -137,23 +137,16 @@ impl ReprOptions {
         self.c() || self.int.is_some()
     }
 
-    /// Returns `true` if this `#[repr()]` should inhibit struct field reordering
-    /// optimizations, such as with `repr(C)`, `repr(packed(1))`, or `repr(<int>)`.
-    pub fn inhibit_struct_field_reordering_opt(&self) -> bool {
-        if let Some(pack) = self.pack {
-            if pack.bytes() == 1 {
-                return true;
-            }
-        }
-
+    /// Returns `true` if this `#[repr()]` guarantees a fixed field order,
+    /// e.g. `repr(C)` or `repr(<int>)`.
+    pub fn inhibit_struct_field_reordering(&self) -> bool {
         self.flags.intersects(ReprFlags::IS_UNOPTIMISABLE) || self.int.is_some()
     }
 
     /// Returns `true` if this type is valid for reordering and `-Z randomize-layout`
     /// was enabled for its declaration crate.
     pub fn can_randomize_type_layout(&self) -> bool {
-        !self.inhibit_struct_field_reordering_opt()
-            && self.flags.contains(ReprFlags::RANDOMIZE_LAYOUT)
+        !self.inhibit_struct_field_reordering() && self.flags.contains(ReprFlags::RANDOMIZE_LAYOUT)
     }
 
     /// Returns `true` if this `#[repr()]` should inhibit union ABI optimisations.
