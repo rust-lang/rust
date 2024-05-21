@@ -1,4 +1,3 @@
-use crate::base::ExtCtxt;
 use crate::errors::{
     CountRepetitionMisplaced, MetaVarExprUnrecognizedVar, MetaVarsDifSeqMatchers, MustRepeatOnce,
     NoSyntaxVarsExprRepeat, VarStillRepeating,
@@ -11,10 +10,12 @@ use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, Toke
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{pluralize, Diag, PResult};
 use rustc_parse::parser::ParseNtResult;
+use rustc_errors::DiagCtxt;
 use rustc_span::hygiene::{LocalExpnId, Transparency};
 use rustc_span::symbol::{sym, Ident, MacroRulesNormalizedIdent};
 use rustc_span::{with_metavar_spans, Span, SyntaxContext};
 
+use rustc_session::parse::ParseSess;
 use smallvec::{smallvec, SmallVec};
 use std::mem;
 
@@ -99,11 +100,12 @@ impl<'a> Iterator for Frame<'a> {
 ///
 /// Along the way, we do some additional error checking.
 pub(super) fn transcribe<'a>(
-    cx: &ExtCtxt<'a>,
+    sess: &'a ParseSess,
     interp: &FxHashMap<MacroRulesNormalizedIdent, NamedMatch>,
     src: &mbe::Delimited,
     src_span: DelimSpan,
     transparency: Transparency,
+    expand_id: LocalExpnId,
 ) -> PResult<'a, TokenStream> {
     // Nothing for us to transcribe...
     if src.tts.is_empty() {
@@ -137,7 +139,7 @@ pub(super) fn transcribe<'a>(
     // again, and we are done transcribing.
     let mut result: Vec<TokenTree> = Vec::new();
     let mut result_stack = Vec::new();
-    let mut marker = Marker(cx.current_expansion.id, transparency, Default::default());
+    let mut marker = Marker(expand_id, transparency, Default::default());
 
     loop {
         // Look at the last frame on the stack.
@@ -201,8 +203,8 @@ pub(super) fn transcribe<'a>(
             seq @ mbe::TokenTree::Sequence(_, seq_rep) => {
                 match lockstep_iter_size(seq, interp, &repeats) {
                     LockstepIterSize::Unconstrained => {
-                        return Err(cx
-                            .dcx()
+                        return Err(sess
+                            .dcx
                             .create_err(NoSyntaxVarsExprRepeat { span: seq.span() }));
                     }
 
@@ -211,8 +213,8 @@ pub(super) fn transcribe<'a>(
                         // happens when two meta-variables are used in the same repetition in a
                         // sequence, but they come from different sequence matchers and repeat
                         // different amounts.
-                        return Err(cx
-                            .dcx()
+                        return Err(sess
+                            .dcx
                             .create_err(MetaVarsDifSeqMatchers { span: seq.span(), msg }));
                     }
 
@@ -227,8 +229,8 @@ pub(super) fn transcribe<'a>(
                                 // FIXME: this really ought to be caught at macro definition
                                 // time... It happens when the Kleene operator in the matcher and
                                 // the body for the same meta-variable do not match.
-                                return Err(cx
-                                    .dcx()
+                                return Err(sess
+                                    .dcx
                                     .create_err(MustRepeatOnce { span: sp.entire() }));
                             }
                         } else {
@@ -259,7 +261,7 @@ pub(super) fn transcribe<'a>(
                         MatchedSingle(ParseNtResult::Tt(tt)) => {
                             // `tt`s are emitted into the output stream directly as "raw tokens",
                             // without wrapping them into groups.
-                            maybe_use_metavar_location(cx, &stack, sp, tt, &mut marker)
+                            maybe_use_metavar_location(sess, &stack, sp, tt, &mut marker)
                         }
                         MatchedSingle(ParseNtResult::Ident(ident, is_raw)) => {
                             marker.visit_span(&mut sp);
@@ -280,7 +282,7 @@ pub(super) fn transcribe<'a>(
                         }
                         MatchedSeq(..) => {
                             // We were unable to descend far enough. This is an error.
-                            return Err(cx.dcx().create_err(VarStillRepeating { span: sp, ident }));
+                            return Err(sess.dcx.create_err(VarStillRepeating { span: sp, ident }));
                         }
                     };
                     result.push(tt)
@@ -299,7 +301,15 @@ pub(super) fn transcribe<'a>(
 
             // Replace meta-variable expressions with the result of their expansion.
             mbe::TokenTree::MetaVarExpr(sp, expr) => {
-                transcribe_metavar_expr(cx, expr, interp, &mut marker, &repeats, &mut result, sp)?;
+                transcribe_metavar_expr(
+                    expr,
+                    interp,
+                    &mut marker,
+                    &repeats,
+                    &mut result,
+                    sp,
+                    &sess.dcx,
+                )?;
             }
 
             // If we are entering a new delimiter, we push its contents to the `stack` to be
@@ -359,7 +369,7 @@ pub(super) fn transcribe<'a>(
 ///   combine with each other and not with tokens outside of the sequence.
 /// - The metavariable span comes from a different crate, then we prefer the more local span.
 fn maybe_use_metavar_location(
-    cx: &ExtCtxt<'_>,
+    sess: &ParseSess,
     stack: &[Frame<'_>],
     mut metavar_span: Span,
     orig_tt: &TokenTree,
@@ -378,8 +388,7 @@ fn maybe_use_metavar_location(
         })
     );
     if undelimited_seq {
-        // Do not record metavar spans for tokens from undelimited sequences, for perf reasons.
-        return orig_tt.clone();
+        // Do not record metavar spans for tokens from undelimited sequences, for perf reasons.        return orig_tt.clone();
     }
 
     let insert = |mspans: &mut FxHashMap<_, _>, s, ms| match mspans.try_insert(s, ms) {
@@ -397,7 +406,7 @@ fn maybe_use_metavar_location(
                 && insert(mspans, dspan.entire(), metavar_span)
         }),
     };
-    if no_collision || cx.source_map().is_imported(metavar_span) {
+    if no_collision || sess.source_map().is_imported(metavar_span) {
         return orig_tt.clone();
     }
 
@@ -558,23 +567,21 @@ fn lockstep_iter_size(
 /// * `[ $( ${count(foo, 1)} ),* ]` will return an error because `${count(foo, 1)}` is
 ///   declared inside a single repetition and the index `1` implies two nested repetitions.
 fn count_repetitions<'a>(
-    cx: &ExtCtxt<'a>,
     depth_user: usize,
     mut matched: &NamedMatch,
     repeats: &[(usize, usize)],
     sp: &DelimSpan,
+    dcx: &'a DiagCtxt,
 ) -> PResult<'a, usize> {
     // Recursively count the number of matches in `matched` at given depth
     // (or at the top-level of `matched` if no depth is given).
-    fn count<'a>(depth_curr: usize, depth_max: usize, matched: &NamedMatch) -> PResult<'a, usize> {
-        match matched {
+    fn count<'a>(depth_curr: usize, depth_max: usize, matched: &NamedMatch) -> PResult<'a, usize> {        match matched {
             MatchedSingle(_) => Ok(1),
             MatchedSeq(named_matches) => {
                 if depth_curr == depth_max {
                     Ok(named_matches.len())
                 } else {
-                    named_matches.iter().map(|elem| count(depth_curr + 1, depth_max, elem)).sum()
-                }
+                    named_matches.iter().map(|elem| count(depth_curr + 1, depth_max, elem)).sum()                }
             }
         }
     }
@@ -595,7 +602,7 @@ fn count_repetitions<'a>(
         .and_then(|el| el.checked_sub(repeats.len()))
         .unwrap_or_default();
     if depth_user > depth_max {
-        return Err(out_of_bounds_err(cx, depth_max + 1, sp.entire(), "count"));
+        return Err(out_of_bounds_err(dcx, depth_max + 1, sp.entire(), "count"));
     }
 
     // `repeats` records all of the nested levels at which we are currently
@@ -611,7 +618,7 @@ fn count_repetitions<'a>(
     }
 
     if let MatchedSingle(_) = matched {
-        return Err(cx.dcx().create_err(CountRepetitionMisplaced { span: sp.entire() }));
+        return Err(dcx.create_err(CountRepetitionMisplaced { span: sp.entire() }));
     }
 
     count(depth_user, depth_max, matched)
@@ -619,22 +626,21 @@ fn count_repetitions<'a>(
 
 /// Returns a `NamedMatch` item declared on the LHS given an arbitrary [Ident]
 fn matched_from_ident<'ctx, 'interp, 'rslt>(
-    cx: &ExtCtxt<'ctx>,
     ident: Ident,
     interp: &'interp FxHashMap<MacroRulesNormalizedIdent, NamedMatch>,
+    dcx: &'ctx DiagCtxt,
 ) -> PResult<'ctx, &'rslt NamedMatch>
 where
     'interp: 'rslt,
 {
     let span = ident.span;
     let key = MacroRulesNormalizedIdent::new(ident);
-    interp.get(&key).ok_or_else(|| cx.dcx().create_err(MetaVarExprUnrecognizedVar { span, key }))
+    interp.get(&key).ok_or_else(|| dcx.create_err(MetaVarExprUnrecognizedVar { span, key }))
 }
 
 /// Used by meta-variable expressions when an user input is out of the actual declared bounds. For
 /// example, index(999999) in an repetition of only three elements.
-fn out_of_bounds_err<'a>(cx: &ExtCtxt<'a>, max: usize, span: Span, ty: &str) -> Diag<'a> {
-    let msg = if max == 0 {
+fn out_of_bounds_err<'a>(dcx: &'a DiagCtxt, max: usize, span: Span, ty: &str) -> Diag<'a> {    let msg = if max == 0 {
         format!(
             "meta-variable expression `{ty}` with depth parameter \
              must be called inside of a macro repetition"
@@ -645,17 +651,17 @@ fn out_of_bounds_err<'a>(cx: &ExtCtxt<'a>, max: usize, span: Span, ty: &str) -> 
              must be less than {max}"
         )
     };
-    cx.dcx().struct_span_err(span, msg)
+    dcx.struct_span_err(span, msg)
 }
 
 fn transcribe_metavar_expr<'a>(
-    cx: &ExtCtxt<'a>,
     expr: &MetaVarExpr,
     interp: &FxHashMap<MacroRulesNormalizedIdent, NamedMatch>,
     marker: &mut Marker,
     repeats: &[(usize, usize)],
     result: &mut Vec<TokenTree>,
     sp: &DelimSpan,
+    dcx: &'a DiagCtxt,
 ) -> PResult<'a, ()> {
     let mut visited_span = || {
         let mut span = sp.entire();
@@ -664,8 +670,8 @@ fn transcribe_metavar_expr<'a>(
     };
     match *expr {
         MetaVarExpr::Count(original_ident, depth) => {
-            let matched = matched_from_ident(cx, original_ident, interp)?;
-            let count = count_repetitions(cx, depth, matched, repeats, sp)?;
+            let matched = matched_from_ident(original_ident, interp, dcx)?;
+            let count = count_repetitions(depth, matched, repeats, sp, dcx)?;
             let tt = TokenTree::token_alone(
                 TokenKind::lit(token::Integer, sym::integer(count), None),
                 visited_span(),
@@ -674,7 +680,7 @@ fn transcribe_metavar_expr<'a>(
         }
         MetaVarExpr::Ignore(original_ident) => {
             // Used to ensure that `original_ident` is present in the LHS
-            let _ = matched_from_ident(cx, original_ident, interp)?;
+            let _ = matched_from_ident(original_ident, interp, dcx)?;
         }
         MetaVarExpr::Index(depth) => match repeats.iter().nth_back(depth) {
             Some((index, _)) => {
@@ -683,7 +689,7 @@ fn transcribe_metavar_expr<'a>(
                     visited_span(),
                 ));
             }
-            None => return Err(out_of_bounds_err(cx, repeats.len(), sp.entire(), "index")),
+            None => return Err(out_of_bounds_err(dcx, repeats.len(), sp.entire(), "index")),
         },
         MetaVarExpr::Len(depth) => match repeats.iter().nth_back(depth) {
             Some((_, length)) => {
@@ -692,7 +698,7 @@ fn transcribe_metavar_expr<'a>(
                     visited_span(),
                 ));
             }
-            None => return Err(out_of_bounds_err(cx, repeats.len(), sp.entire(), "len")),
+            None => return Err(out_of_bounds_err(dcx, repeats.len(), sp.entire(), "len")),
         },
     }
     Ok(())

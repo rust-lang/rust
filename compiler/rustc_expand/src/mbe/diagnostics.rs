@@ -18,7 +18,7 @@ use tracing::debug;
 
 use super::macro_rules::{parser_from_cx, NoopTracker};
 
-pub(super) fn failed_to_match_macro<'cx>(
+pub(crate) fn failed_to_match_macro<'cx>(
     cx: &'cx mut ExtCtxt<'_>,
     sp: Span,
     def_span: Span,

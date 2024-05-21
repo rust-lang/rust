@@ -3,6 +3,8 @@ use crate::query::CyclePlaceholder;
 use crate::traits;
 use crate::ty::adjustment::CoerceUnsizedInfo;
 use crate::ty::{self, Ty};
+use rustc_ast::tokenstream::TokenStream;
+use rustc_middle::expand::CanRetry;
 use std::intrinsics::transmute_unchecked;
 use std::mem::{size_of, MaybeUninit};
 
@@ -167,6 +169,10 @@ impl EraseType for Result<&'_ ty::List<Ty<'_>>, ty::util::AlwaysRequiresDrop> {
 
 impl EraseType for Result<ty::EarlyBinder<Ty<'_>>, CyclePlaceholder> {
     type Result = [u8; size_of::<Result<ty::EarlyBinder<Ty<'_>>, CyclePlaceholder>>()];
+}
+
+impl EraseType for Result<(&'_ TokenStream, usize), CanRetry> {
+    type Result = [u8; size_of::<Result<(&'_ TokenStream, usize), CanRetry>>()];
 }
 
 impl<T> EraseType for Option<&'_ T> {

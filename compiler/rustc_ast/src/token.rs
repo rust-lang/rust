@@ -17,8 +17,9 @@ use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::{edition::Edition, ErrorGuaranteed, Span, DUMMY_SP};
 use std::borrow::Cow;
 use std::fmt;
+use std::hash::{Hash, Hasher};
 
-#[derive(Clone, Copy, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
+#[derive(Clone, Copy, PartialEq, Encodable, Decodable, Debug, HashStable_Generic, Hash)]
 pub enum CommentKind {
     Line,
     Block,
@@ -63,7 +64,7 @@ pub enum Delimiter {
 // type. This means that float literals like `1f32` are classified by this type
 // as `Int`. Only upon conversion to `ast::LitKind` will such a literal be
 // given the `Float` kind.
-#[derive(Clone, Copy, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
+#[derive(Clone, Copy, PartialEq, Encodable, Decodable, Debug, HashStable_Generic, Hash)]
 pub enum LitKind {
     Bool, // AST only, must never appear in a `Token`
     Byte,
@@ -80,7 +81,7 @@ pub enum LitKind {
 }
 
 /// A literal token.
-#[derive(Clone, Copy, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
+#[derive(Clone, Copy, PartialEq, Encodable, Decodable, Debug, HashStable_Generic, Hash)]
 pub struct Lit {
     pub kind: LitKind,
     pub symbol: Symbol,
@@ -224,7 +225,7 @@ fn ident_can_begin_type(name: Symbol, span: Span, is_raw: IdentIsRaw) -> bool {
             .contains(&name)
 }
 
-#[derive(PartialEq, Encodable, Decodable, Debug, Copy, Clone, HashStable_Generic)]
+#[derive(PartialEq, Encodable, Decodable, Debug, Copy, Clone, HashStable_Generic, Hash)]
 pub enum IdentIsRaw {
     No,
     Yes,
@@ -244,7 +245,7 @@ impl From<IdentIsRaw> for bool {
 
 // SAFETY: due to the `Clone` impl below, all fields of all variants other than
 // `Interpolated` must impl `Copy`.
-#[derive(PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
+#[derive(PartialEq, Encodable, Decodable, Debug, HashStable_Generic, Hash)]
 pub enum TokenKind {
     /* Expression-operator symbols. */
     /// `=`
@@ -370,7 +371,7 @@ impl Clone for TokenKind {
     }
 }
 
-#[derive(Clone, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
+#[derive(Clone, PartialEq, Encodable, Decodable, Debug, HashStable_Generic, Hash)]
 pub struct Token {
     pub kind: TokenKind,
     pub span: Span,
@@ -869,7 +870,7 @@ pub enum Nonterminal {
     NtVis(P<ast::Visibility>),
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Encodable, Decodable)]
+#[derive(Debug, Copy, Clone, PartialEq, Encodable, Decodable, Hash)]
 pub enum NonterminalKind {
     Item,
     Block,
@@ -1014,6 +1015,12 @@ where
     CTX: crate::HashStableContext,
 {
     fn hash_stable(&self, _hcx: &mut CTX, _hasher: &mut StableHasher) {
+        panic!("interpolated tokens should not be present in the HIR")
+    }
+}
+
+impl Hash for Nonterminal {
+    fn hash<H: Hasher>(&self, _state: &mut H) {
         panic!("interpolated tokens should not be present in the HIR")
     }
 }

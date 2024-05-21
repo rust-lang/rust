@@ -9,6 +9,7 @@ use crate::{BuiltinMacroState, Determinacy, MacroData, Used};
 use crate::{DeriveData, Finalize, ParentScope, ResolutionError, Resolver, ScopeSet};
 use crate::{ModuleKind, ModuleOrUniformRoot, NameBinding, PathResult, Segment, ToNameBinding};
 use rustc_ast::expand::StrippedCfgItem;
+use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{self as ast, attr, Crate, Inline, ItemKind, ModKind, NodeId};
 use rustc_ast_pretty::pprust;
 use rustc_attr::StabilityLevel;
@@ -21,6 +22,7 @@ use rustc_expand::compile_declarative_macro;
 use rustc_expand::expand::{AstFragment, Invocation, InvocationKind, SupportsMacroExpansion};
 use rustc_hir::def::{self, DefKind, Namespace, NonMacroAttrKind};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
+use rustc_middle::expand::CanRetry;
 use rustc_middle::middle::stability;
 use rustc_middle::ty::RegisteredTools;
 use rustc_middle::ty::{TyCtxt, Visibility};
@@ -300,6 +302,14 @@ impl<'a, 'tcx> ResolverExpand for Resolver<'a, 'tcx> {
             ),
             self.create_stable_hashing_context(),
         );
+        if let SyntaxExtensionKind::TcxLegacyBang(tcx_expander) = &ext.kind {
+            if let InvocationKind::Bang { ref mac, .. } = invoc.kind {
+                self.tcx
+                    .macro_map
+                    .borrow_mut()
+                    .insert(invoc_id, (mac.args.tokens.clone(), tcx_expander.clone()));
+            }
+        }
 
         Ok(ext)
     }
@@ -451,6 +461,17 @@ impl<'a, 'tcx> ResolverExpand for Resolver<'a, 'tcx> {
 
     fn registered_tools(&self) -> &RegisteredTools {
         self.registered_tools
+    }
+
+    fn expand_legacy_bang(
+        &self,
+        invoc_id: LocalExpnId,
+        span: Span,
+        current_expansion: LocalExpnId,
+    ) -> Result<(TokenStream, usize), CanRetry> {
+        self.tcx()
+            .expand_legacy_bang((invoc_id, span, current_expansion))
+            .map(|(tts, i)| (tts.clone(), i))
     }
 }
 
