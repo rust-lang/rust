@@ -1,6 +1,6 @@
 //@ aux-build:issue-91763-aux.rs
 
-#![deny(elided_lifetimes_in_paths)]
+#![deny(lifetimes_hidden_in_paths)]
 
 extern crate issue_91763_aux;
 
