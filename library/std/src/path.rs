@@ -3323,7 +3323,7 @@ impl Error for StripPrefixError {
 ///
 /// # Examples
 ///
-/// ## Posix paths
+/// ## POSIX paths
 ///
 /// ```
 /// # #[cfg(unix)]
@@ -3369,9 +3369,12 @@ impl Error for StripPrefixError {
 /// ```
 ///
 /// For verbatim paths this will simply return the path as given. For other
-/// paths this is currently equivalent to calling [`GetFullPathNameW`][windows-path]
-/// This may change in the future.
+/// paths this is currently equivalent to calling
+/// [`GetFullPathNameW`][windows-path].
 ///
+/// Note that this [may change in the future][changes].
+///
+/// [changes]: io#platform-specific-behavior
 /// [posix-semantics]: https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap04.html#tag_04_13
 /// [windows-path]: https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-getfullpathnamew
 #[stable(feature = "absolute_path", since = "1.79.0")]

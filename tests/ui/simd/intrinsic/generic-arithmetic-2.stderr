@@ -83,59 +83,65 @@ LL |         simd_cttz(0);
    |         ^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `simd_shl` intrinsic: unsupported operation on `f32x4` with element `f32`
-  --> $DIR/generic-arithmetic-2.rs:112:9
+  --> $DIR/generic-arithmetic-2.rs:111:9
    |
 LL |         simd_shl(z, z);
    |         ^^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `simd_shr` intrinsic: unsupported operation on `f32x4` with element `f32`
-  --> $DIR/generic-arithmetic-2.rs:114:9
+  --> $DIR/generic-arithmetic-2.rs:113:9
    |
 LL |         simd_shr(z, z);
    |         ^^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `simd_and` intrinsic: unsupported operation on `f32x4` with element `f32`
-  --> $DIR/generic-arithmetic-2.rs:116:9
+  --> $DIR/generic-arithmetic-2.rs:115:9
    |
 LL |         simd_and(z, z);
    |         ^^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `simd_or` intrinsic: unsupported operation on `f32x4` with element `f32`
-  --> $DIR/generic-arithmetic-2.rs:118:9
+  --> $DIR/generic-arithmetic-2.rs:117:9
    |
 LL |         simd_or(z, z);
    |         ^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `simd_xor` intrinsic: unsupported operation on `f32x4` with element `f32`
-  --> $DIR/generic-arithmetic-2.rs:120:9
+  --> $DIR/generic-arithmetic-2.rs:119:9
    |
 LL |         simd_xor(z, z);
    |         ^^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `simd_bswap` intrinsic: unsupported operation on `f32x4` with element `f32`
-  --> $DIR/generic-arithmetic-2.rs:122:9
+  --> $DIR/generic-arithmetic-2.rs:121:9
    |
 LL |         simd_bswap(z);
    |         ^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `simd_bitreverse` intrinsic: unsupported operation on `f32x4` with element `f32`
-  --> $DIR/generic-arithmetic-2.rs:124:9
+  --> $DIR/generic-arithmetic-2.rs:123:9
    |
 LL |         simd_bitreverse(z);
    |         ^^^^^^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `simd_ctlz` intrinsic: unsupported operation on `f32x4` with element `f32`
-  --> $DIR/generic-arithmetic-2.rs:126:9
+  --> $DIR/generic-arithmetic-2.rs:125:9
    |
 LL |         simd_ctlz(z);
    |         ^^^^^^^^^^^^
 
+error[E0511]: invalid monomorphization of `simd_ctpop` intrinsic: unsupported operation on `f32x4` with element `f32`
+  --> $DIR/generic-arithmetic-2.rs:127:9
+   |
+LL |         simd_ctpop(z);
+   |         ^^^^^^^^^^^^^
+
 error[E0511]: invalid monomorphization of `simd_cttz` intrinsic: unsupported operation on `f32x4` with element `f32`
-  --> $DIR/generic-arithmetic-2.rs:128:9
+  --> $DIR/generic-arithmetic-2.rs:129:9
    |
 LL |         simd_cttz(z);
    |         ^^^^^^^^^^^^
 
-error: aborting due to 23 previous errors
+error: aborting due to 24 previous errors
 
 For more information about this error, try `rustc --explain E0511`.

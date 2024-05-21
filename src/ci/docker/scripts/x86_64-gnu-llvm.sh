@@ -23,6 +23,10 @@ if [[ -z "${PR_CI_JOB}" ]]; then
     # Run `ui-fulldeps` in `--stage=1`, which actually uses the stage0
     # compiler, and is sensitive to the addition of new flags.
     ../x.py --stage 1 test tests/ui-fulldeps
+
+    # The tests are run a second time with the size optimizations enabled.
+    ../x.py --stage 1 test library/std library/alloc library/core \
+        --rustc-args "--cfg feature=\"optimize_for_size\""
 fi
 
 # When running gcc backend tests, we need to install `libgccjit` and to not run llvm codegen
