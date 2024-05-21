@@ -10,11 +10,15 @@ use rustc_middle::ty::TyCtxt;
 use rustc_span::Span;
 
 use crate::builder::Builder;
-use crate::errors::MCDCExceedsConditionLimit;
+use crate::errors::{MCDCExceedsConditionLimit, MCDCExceedsDecisionDepth};
 
 /// LLVM uses `i16` to represent condition id. Hence `i16::MAX` is the hard limit for number of
 /// conditions in a decision.
 const MAX_CONDITIONS_IN_DECISION: usize = i16::MAX as usize;
+
+/// MCDC allocates an i32 variable on stack for each depth. Ignore decisions nested too much to prevent it
+/// consuming excessive memory.
+const MAX_DECISION_DEPTH: u16 = 0x3FFF;
 
 #[derive(Default)]
 struct MCDCDecisionCtx {
@@ -236,25 +240,34 @@ impl MCDCInfoBuilder {
             &mut self.degraded_spans,
         ) {
             let num_conditions = conditions.len();
+            let depth = decision.decision_depth;
             assert_eq!(
                 num_conditions, decision.num_conditions,
                 "final number of conditions is not correct"
             );
-            match num_conditions {
-                0 => {
+            match (num_conditions, depth) {
+                (0, _) => {
                     unreachable!("Decision with no condition is not expected");
                 }
-                1..=MAX_CONDITIONS_IN_DECISION => {
+                (1..=MAX_CONDITIONS_IN_DECISION, 0..=MAX_DECISION_DEPTH) => {
                     self.mcdc_spans.push((decision, conditions));
                 }
                 _ => {
                     self.degraded_spans.extend(conditions);
 
-                    tcx.dcx().emit_warn(MCDCExceedsConditionLimit {
-                        span: decision.span,
-                        num_conditions,
-                        max_conditions: MAX_CONDITIONS_IN_DECISION,
-                    });
+                    if num_conditions > MAX_CONDITIONS_IN_DECISION {
+                        tcx.dcx().emit_warn(MCDCExceedsConditionLimit {
+                            span: decision.span,
+                            num_conditions,
+                            max_conditions: MAX_CONDITIONS_IN_DECISION,
+                        });
+                    }
+                    if depth > MAX_DECISION_DEPTH {
+                        tcx.dcx().emit_warn(MCDCExceedsDecisionDepth {
+                            span: decision.span,
+                            max_decision_depth: MAX_DECISION_DEPTH as usize,
+                        });
+                    }
                 }
             }
         }
