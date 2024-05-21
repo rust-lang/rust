@@ -100,14 +100,39 @@ mod f_to_i {
     use super::*;
 
     macro_rules! f_to_i {
-        ($x:ident, $($f:ty, $fn:ident);*;) => {
+        ($x:ident, $f_ty:ty, $apfloat_ty:ident, $sys_available:meta, $($i_ty:ty, $fn:ident);*;) => {
             $(
                 // it is undefined behavior in the first place to do conversions with NaNs
-                if !$x.is_nan() {
-                    let conv0 = $x as $f;
-                    let conv1: $f = $fn($x);
+                if !apfloat_fallback!(
+                    $f_ty, $apfloat_ty, $sys_available, |x: FloatTy| x.is_nan() => no_convert, $x
+                ) {
+                    let conv0 = apfloat_fallback!(
+                        $f_ty, $apfloat_ty, $sys_available,
+                        // Use an `as` cast when the builtin is available on the system.
+                        |x| x as $i_ty;
+                        // When the builtin is not available, we need to use a different conversion
+                        // method (since apfloat doesn't support `as` casting).
+                        |x: $f_ty| {
+                            use compiler_builtins::int::MinInt;
+
+                            let apf = FloatTy::from_bits(x.to_bits().into());
+                            let bits: usize = <$i_ty>::BITS.try_into().unwrap();
+
+                            let err_fn = || panic!(
+                                "Unable to convert value {x:?} to type {}:", stringify!($i_ty)
+                            );
+
+                            if <$i_ty>::SIGNED {
+                               <$i_ty>::try_from(apf.to_i128(bits).value).ok().unwrap_or_else(err_fn)
+                            } else {
+                               <$i_ty>::try_from(apf.to_u128(bits).value).ok().unwrap_or_else(err_fn)
+                            }
+                        },
+                        $x
+                    );
+                    let conv1: $i_ty = $fn($x);
                     if conv0 != conv1 {
-                        panic!("{}({}): std: {}, builtins: {}", stringify!($fn), $x, conv0, conv1);
+                        panic!("{}({:?}): std: {:?}, builtins: {:?}", stringify!($fn), $x, conv0, conv1);
                     }
                 }
             )*
