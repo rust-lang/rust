@@ -26,11 +26,11 @@ use rustc_span::{sym, Span, SpanDecoder, SpanEncoder, Symbol, DUMMY_SP};
 use smallvec::{smallvec, SmallVec};
 
 use std::borrow::Cow;
-use std::hash::{Hash, Hasher};
+use std::hash::Hash;
 use std::{cmp, fmt, iter};
 
 /// Part of a `TokenStream`.
-#[derive(Debug, Clone, PartialEq, Encodable, Decodable, HashStable_Generic, Hash)]
+#[derive(Debug, Clone, PartialEq, Encodable, Decodable, HashStable_Generic)]
 pub enum TokenTree {
     /// A single token. Should never be `OpenDelim` or `CloseDelim`, because
     /// delimiters are implicitly represented by `Delimited`.
@@ -108,13 +108,13 @@ where
     }
 }
 
-impl Hash for TokenStream {
+/*impl Hash for TokenStream {
     fn hash<H: Hasher>(&self, state: &mut H) {
         for sub_tt in self.trees() {
             sub_tt.hash(state);
         }
     }
-}
+}*/
 
 pub trait ToAttrTokenStream: sync::DynSend + sync::DynSync {
     fn to_attr_token_stream(&self) -> AttrTokenStream;
