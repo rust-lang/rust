@@ -414,6 +414,10 @@ pub struct UnableToExeLinker {
 pub struct MsvcMissingLinker;
 
 #[derive(Diagnostic)]
+#[diag(codegen_ssa_self_contained_linker_missing)]
+pub struct SelfContainedLinkerMissing;
+
+#[derive(Diagnostic)]
 #[diag(codegen_ssa_check_installed_visual_studio)]
 pub struct CheckInstalledVisualStudio;
 

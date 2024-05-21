@@ -3127,9 +3127,9 @@ fn add_lld_args(
             });
         }
         if !linker_path_exists {
-            // As an additional sanity check, we do nothing if the sysroot doesn't contain the
-            // linker path at all.
-            return;
+            // As a sanity check, we emit an error if none of these paths exist: we want
+            // self-contained linking and have no linker.
+            sess.dcx().emit_fatal(errors::SelfContainedLinkerMissing);
         }
     }
 
