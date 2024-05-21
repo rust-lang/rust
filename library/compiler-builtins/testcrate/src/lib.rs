@@ -276,7 +276,7 @@ macro_rules! apfloat_fallback {
         // The expression to run. This expression may use `FloatTy` for its signature.
         // Optionally, the final conversion back to a float can be suppressed using
         // `=> no_convert` (for e.g. operations that return a bool).
-        $op:expr $(=> $convert:ident)?,
+        $op:expr $(=> $convert:ident)? $(; $apfloat_op:expr)?,
         // Arguments that get passed to `$op` after converting to a float
         $($arg:expr),+
         $(,)?
@@ -292,26 +292,40 @@ macro_rules! apfloat_fallback {
             use rustc_apfloat::Float;
             type FloatTy = rustc_apfloat::ieee::$apfloat_ty;
 
-            let op_res = $op( $(FloatTy::from_bits($arg.to_bits().into())),+ );
-
-            apfloat_fallback!(@convert $float_ty, op_res $(,$convert)?)
+            apfloat_fallback!(@inner
+                fty: $float_ty,
+                // Apply a conversion to `FloatTy` to each arg, then pass all args to `$op`
+                op_res: $op( $(FloatTy::from_bits($arg.to_bits().into())),+ ),
+                $(apfloat_op: $apfloat_op, )?
+                $(conv_opts: $convert,)?
+                args: $($arg),+
+            )
         };
 
         ret
     }};
 
     // Operations that do not need converting back to a float
-    (@convert $float_ty:ty, $val:expr, no_convert) => {
+    (@inner fty: $float_ty:ty, op_res: $val:expr, conv_opts: no_convert, args: $($_arg:expr),+) => {
         $val
     };
 
     // Some apfloat operations return a `StatusAnd` that we need to extract the value from. This
     // is the default.
-    (@convert $float_ty:ty, $val:expr) => {{
+    (@inner  fty: $float_ty:ty, op_res: $val:expr, args: $($_arg:expr),+) => {{
         // ignore the status, just get the value
         let unwrapped = $val.value;
 
         <$float_ty>::from_bits(FloatTy::to_bits(unwrapped).try_into().unwrap())
     }};
 
+    // This is the case where we can't use the same expression for the default builtin and
+    // nonstandard apfloat fallbac (e.g. `as` casts in std are normal functions in apfloat, so
+    // two separate expressions must be specified.
+    (@inner
+        fty: $float_ty:ty, op_res: $_val:expr,
+        apfloat_op: $apfloat_op:expr, args: $($arg:expr),+
+    ) => {{
+        $apfloat_op($($arg),+)
+    }};
 }
