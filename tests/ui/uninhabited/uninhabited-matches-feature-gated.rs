@@ -15,10 +15,10 @@ fn main() {
     let _ = match x {}; //~ ERROR non-exhaustive
 
     let x: (Void,) = unsafe { zeroed() };
-    let _ = match x {}; //~ ERROR non-exhaustive
+    let _ = match x {};
 
     let x: [Void; 1] = unsafe { zeroed() };
-    let _ = match x {}; //~ ERROR non-exhaustive
+    let _ = match x {};
 
     let x: &[Void] = unsafe { zeroed() };
     let _ = match x {   //~ ERROR non-exhaustive
@@ -29,11 +29,10 @@ fn main() {
     let _ = match x {}; // okay
 
     let x: Result<u32, Void> = Ok(23);
-    let _ = match x {   //~ ERROR non-exhaustive
+    let _ = match x {
         Ok(x) => x,
     };
 
     let x: Result<u32, Void> = Ok(23);
     let Ok(x) = x;
-    //~^ ERROR refutable
 }

@@ -2,7 +2,6 @@
 //@[pass] check-pass
 //@[fail] check-fail
 #![feature(never_patterns)]
-#![feature(min_exhaustive_patterns)]
 #![allow(incomplete_features)]
 
 #[derive(Copy, Clone)]

@@ -66,6 +66,7 @@ macro_rules! into_diag_arg_for_number {
             impl IntoDiagArg for $ty {
                 fn into_diag_arg(self) -> DiagArgValue {
                     // Convert to a string if it won't fit into `Number`.
+                    #[allow(irrefutable_let_patterns)]
                     if let Ok(n) = TryInto::<i32>::try_into(self) {
                         DiagArgValue::Number(n)
                     } else {

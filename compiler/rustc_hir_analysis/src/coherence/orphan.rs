@@ -330,6 +330,7 @@ fn orphan_check<'tcx>(
         Ok(ty)
     };
 
+    #[cfg(bootstrap)]
     let Ok(result) = traits::orphan_check_trait_ref::<!>(
         &infcx,
         trait_ref,
@@ -338,6 +339,13 @@ fn orphan_check<'tcx>(
     ) else {
         unreachable!()
     };
+    #[cfg(not(bootstrap))]
+    let Ok(result) = traits::orphan_check_trait_ref::<!>(
+        &infcx,
+        trait_ref,
+        traits::InCrate::Local { mode },
+        lazily_normalize_ty,
+    );
 
     // (2)  Try to map the remaining inference vars back to generic params.
     result.map_err(|err| match err {

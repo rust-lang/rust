@@ -13,8 +13,7 @@ fn opt1(_1: &Result<u32, Void>) -> &u32 {
 
     bb0: {
         PlaceMention(_1);
-        _2 = discriminant((*_1));
-        switchInt(move _2) -> [0: bb2, 1: bb3, otherwise: bb1];
+        falseEdge -> [real: bb4, imaginary: bb2];
     }
 
     bb1: {
@@ -23,7 +22,8 @@ fn opt1(_1: &Result<u32, Void>) -> &u32 {
     }
 
     bb2: {
-        falseEdge -> [real: bb4, imaginary: bb3];
+        _2 = discriminant((*_1));
+        switchInt(move _2) -> [1: bb3, otherwise: bb1];
     }
 
     bb3: {

@@ -31,7 +31,7 @@ LL |         _ if false => {}
 error[E0005]: refutable pattern in local binding
   --> $DIR/empty-match-check-notes.rs:35:9
    |
-LL |     let None = x;
+LL |     let None = *x;
    |         ^^^^ pattern `Some(_)` not covered
    |
    = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
@@ -40,8 +40,8 @@ LL |     let None = x;
    = note: the matched value is of type `Option<SecretlyUninhabitedForeignStruct>`
 help: you might want to use `if let` to ignore the variant that isn't matched
    |
-LL |     if let None = x { todo!() };
-   |     ++              +++++++++++
+LL |     if let None = *x { todo!() };
+   |     ++               +++++++++++
 
 error[E0004]: non-exhaustive patterns: `0_u8..=u8::MAX` not covered
   --> $DIR/empty-match-check-notes.rs:45:11
