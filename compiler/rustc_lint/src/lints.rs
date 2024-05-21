@@ -22,17 +22,18 @@ use crate::{
 
 // array_into_iter.rs
 #[derive(LintDiagnostic)]
-#[diag(lint_array_into_iter)]
-pub struct ArrayIntoIterDiag<'a> {
-    pub target: &'a str,
+#[diag(lint_shadowed_into_iter)]
+pub struct ShadowedIntoIterDiag {
+    pub target: &'static str,
+    pub edition: &'static str,
     #[suggestion(lint_use_iter_suggestion, code = "iter", applicability = "machine-applicable")]
     pub suggestion: Span,
     #[subdiagnostic]
-    pub sub: Option<ArrayIntoIterDiagSub>,
+    pub sub: Option<ShadowedIntoIterDiagSub>,
 }
 
 #[derive(Subdiagnostic)]
-pub enum ArrayIntoIterDiagSub {
+pub enum ShadowedIntoIterDiagSub {
     #[suggestion(lint_remove_into_iter_suggestion, code = "", applicability = "maybe-incorrect")]
     RemoveIntoIter {
         #[primary_span]

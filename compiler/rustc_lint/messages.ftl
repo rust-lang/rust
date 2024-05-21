@@ -2,13 +2,6 @@ lint_ambiguous_wide_pointer_comparisons = ambiguous wide pointer comparison, the
     .addr_metadata_suggestion = use explicit `std::ptr::eq` method to compare metadata and addresses
     .addr_suggestion = use `std::ptr::addr_eq` or untyped pointers to only compare their addresses
 
-lint_array_into_iter =
-    this method call resolves to `<&{$target} as IntoIterator>::into_iter` (due to backwards compatibility), but will resolve to <{$target} as IntoIterator>::into_iter in Rust 2021
-    .use_iter_suggestion = use `.iter()` instead of `.into_iter()` to avoid ambiguity
-    .remove_into_iter_suggestion = or remove `.into_iter()` to iterate by value
-    .use_explicit_into_iter_suggestion =
-        or use `IntoIterator::into_iter(..)` instead of `.into_iter()` to explicitly iterate by value
-
 lint_async_fn_in_trait = use of `async fn` in public traits is discouraged as auto trait bounds cannot be specified
     .note = you can suppress this lint if you plan to use the trait only in your own code, or do not care about auto traits like `Send` on the `Future`
     .suggestion = you can alternatively desugar to a normal `fn` that returns `impl Future` and add any desired bounds such as `Send`, but these cannot be relaxed without a breaking API change
@@ -564,6 +557,13 @@ lint_renamed_lint = lint `{$name}` has been renamed to `{$replace}`
     .help = use the new name `{$replace}`
 
 lint_requested_level = requested on the command line with `{$level} {$lint_name}`
+
+lint_shadowed_into_iter =
+    this method call resolves to `<&{$target} as IntoIterator>::into_iter` (due to backwards compatibility), but will resolve to `<{$target} as IntoIterator>::into_iter` in Rust {$edition}
+    .use_iter_suggestion = use `.iter()` instead of `.into_iter()` to avoid ambiguity
+    .remove_into_iter_suggestion = or remove `.into_iter()` to iterate by value
+    .use_explicit_into_iter_suggestion =
+        or use `IntoIterator::into_iter(..)` instead of `.into_iter()` to explicitly iterate by value
 
 lint_span_use_eq_ctxt = use `.eq_ctxt()` instead of `.ctxt() == .ctxt()`
 
