@@ -1,5 +1,6 @@
 //@ compile-flags: --document-private-items
 
+// https://github.com/rust-lang/rust/issues/81141
 #![crate_name = "foo"]
 
 use crate::bar::Bar as Alias;

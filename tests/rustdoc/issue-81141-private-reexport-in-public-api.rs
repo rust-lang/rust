@@ -1,6 +1,7 @@
 // This test ensures that if a private re-export is present in a public API, it'll be
 // replaced by the first public item in the re-export chain or by the private item.
 
+// https://github.com/rust-lang/rust/issues/81141
 #![crate_name = "foo"]
 
 use crate::bar::Bar as Alias;

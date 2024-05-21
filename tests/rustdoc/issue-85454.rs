@@ -1,6 +1,7 @@
 //@ aux-build:issue-85454.rs
 //@ build-aux-docs
 #![crate_name = "foo"]
+// https://github.com/rust-lang/rust/issues/85454
 
 extern crate issue_85454;
 

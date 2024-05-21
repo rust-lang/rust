@@ -1,3 +1,4 @@
+// https://github.com/rust-lang/rust/issues/83375
 #![crate_name = "foo"]
 
 pub mod sub {

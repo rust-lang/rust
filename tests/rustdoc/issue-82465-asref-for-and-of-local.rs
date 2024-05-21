@@ -1,7 +1,10 @@
+// https://github.com/rust-lang/rust/issues/82465
+#![crate_name = "foo"]
+
 use std::convert::AsRef;
 pub struct Local;
 
-// @has issue_82465_asref_for_and_of_local/struct.Local.html '//h3[@class="code-header"]' 'impl AsRef<str> for Local'
+// @has foo/struct.Local.html '//h3[@class="code-header"]' 'impl AsRef<str> for Local'
 impl AsRef<str> for Local {
     fn as_ref(&self) -> &str {
         todo!()
