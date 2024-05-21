@@ -1230,7 +1230,10 @@ fn add_sanitizer_libraries(
     if sanitizer.contains(SanitizerSet::DATAFLOW) {
         link_sanitizer_runtime(sess, flavor, linker, "dfsan");
     }
-    if sanitizer.contains(SanitizerSet::LEAK) {
+    if sanitizer.contains(SanitizerSet::LEAK)
+        && !sanitizer.contains(SanitizerSet::ADDRESS)
+        && !sanitizer.contains(SanitizerSet::HWADDRESS)
+    {
         link_sanitizer_runtime(sess, flavor, linker, "lsan");
     }
     if sanitizer.contains(SanitizerSet::MEMORY) {
