@@ -4,12 +4,12 @@
 //@ ignore-cross-compile
 
 use run_make_support::{run, rustc, tmp_dir};
-use std::fs;
 use std::env;
+use std::fs;
 
-fn main(){
-    fs::copy("foo.rs", tmp_dir()).unwrap();
+fn main() {
+    fs::copy("foo.rs", tmp_dir().join("foo.rs")).unwrap();
     env::set_current_dir(tmp_dir());
-    rustc().output("foo").input("foo.rs");
+    rustc().output("foo").input("foo.rs").run();
     run("foo");
 }
