@@ -159,7 +159,9 @@ where
         if !target.contains(&self.backtrace_target) {
             return Ok(());
         }
-        let backtrace = std::backtrace::Backtrace::capture();
+        // Use Backtrace::force_capture because we don't want to depend on the
+        // RUST_BACKTRACE environment variable being set.
+        let backtrace = std::backtrace::Backtrace::force_capture();
         writeln!(writer, "stack backtrace: \n{backtrace:?}")
     }
 }
