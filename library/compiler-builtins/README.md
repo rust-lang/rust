@@ -239,12 +239,12 @@ These builtins are needed to support `f16` and `f128`, which are in the process 
 - [x] extendhfsf2.c
 - [x] extendhftf2.c
 - [x] extendsftf2.c
-- [ ] fixtfdi.c
-- [ ] fixtfsi.c
-- [ ] fixtfti.c
-- [ ] fixunstfdi.c
-- [ ] fixunstfsi.c
-- [ ] fixunstfti.c
+- [x] fixtfdi.c
+- [x] fixtfsi.c
+- [x] fixtfti.c
+- [x] fixunstfdi.c
+- [x] fixunstfsi.c
+- [x] fixunstfti.c
 - [ ] floatditf.c
 - [ ] floatsitf.c
 - [ ] floatunditf.c

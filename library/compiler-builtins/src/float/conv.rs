@@ -261,6 +261,21 @@ intrinsics! {
     pub extern "C" fn __fixunsdfti(f: f64) -> u128 {
         float_to_unsigned_int(f)
     }
+
+    #[cfg(not(feature = "no-f16-f128"))]
+    pub extern "C" fn __fixunstfsi(f: f128) -> u32 {
+        float_to_unsigned_int(f)
+    }
+
+    #[cfg(not(feature = "no-f16-f128"))]
+    pub extern "C" fn __fixunstfdi(f: f128) -> u64 {
+        float_to_unsigned_int(f)
+    }
+
+    #[cfg(not(feature = "no-f16-f128"))]
+    pub extern "C" fn __fixunstfti(f: f128) -> u128 {
+        float_to_unsigned_int(f)
+    }
 }
 
 // Conversions from floats to signed integers.
@@ -292,6 +307,21 @@ intrinsics! {
 
     #[win64_128bit_abi_hack]
     pub extern "C" fn __fixdfti(f: f64) -> i128 {
+        float_to_signed_int(f)
+    }
+
+    #[cfg(not(feature = "no-f16-f128"))]
+    pub extern "C" fn __fixtfsi(f: f128) -> i32 {
+        float_to_signed_int(f)
+    }
+
+    #[cfg(not(feature = "no-f16-f128"))]
+    pub extern "C" fn __fixtfdi(f: f128) -> i64 {
+        float_to_signed_int(f)
+    }
+
+    #[cfg(not(feature = "no-f16-f128"))]
+    pub extern "C" fn __fixtfti(f: f128) -> i128 {
         float_to_signed_int(f)
     }
 }

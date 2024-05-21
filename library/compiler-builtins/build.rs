@@ -533,12 +533,6 @@ mod c {
         if (target_arch == "aarch64" || target_arch == "arm64ec") && consider_float_intrinsics {
             sources.extend(&[
                 ("__comparetf2", "comparetf2.c"),
-                ("__fixtfdi", "fixtfdi.c"),
-                ("__fixtfsi", "fixtfsi.c"),
-                ("__fixtfti", "fixtfti.c"),
-                ("__fixunstfdi", "fixunstfdi.c"),
-                ("__fixunstfsi", "fixunstfsi.c"),
-                ("__fixunstfti", "fixunstfti.c"),
                 ("__floatditf", "floatditf.c"),
                 ("__floatsitf", "floatsitf.c"),
                 ("__floatunditf", "floatunditf.c"),
@@ -561,9 +555,7 @@ mod c {
         if target_arch == "mips64" {
             sources.extend(&[
                 ("__netf2", "comparetf2.c"),
-                ("__fixtfsi", "fixtfsi.c"),
                 ("__floatsitf", "floatsitf.c"),
-                ("__fixunstfsi", "fixunstfsi.c"),
                 ("__floatunsitf", "floatunsitf.c"),
                 ("__fe_getround", "fp_mode.c"),
             ]);
@@ -572,9 +564,7 @@ mod c {
         if target_arch == "loongarch64" {
             sources.extend(&[
                 ("__netf2", "comparetf2.c"),
-                ("__fixtfsi", "fixtfsi.c"),
                 ("__floatsitf", "floatsitf.c"),
-                ("__fixunstfsi", "fixunstfsi.c"),
                 ("__floatunsitf", "floatunsitf.c"),
                 ("__fe_getround", "fp_mode.c"),
             ]);

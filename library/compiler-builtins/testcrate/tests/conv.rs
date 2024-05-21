@@ -146,7 +146,7 @@ mod f_to_i {
         };
 
         fuzz_float(N, |x: f32| {
-            f_to_i!(x,
+            f_to_i!(x, f32, Single, all(),
                 u32, __fixunssfsi;
                 u64, __fixunssfdi;
                 u128, __fixunssfti;
@@ -164,13 +164,36 @@ mod f_to_i {
         };
 
         fuzz_float(N, |x: f64| {
-            f_to_i!(x,
+            f_to_i!(x, f64, Double, all(),
                 u32, __fixunsdfsi;
                 u64, __fixunsdfdi;
                 u128, __fixunsdfti;
                 i32, __fixdfsi;
                 i64, __fixdfdi;
                 i128, __fixdfti;
+            );
+        });
+    }
+
+    #[test]
+    #[cfg(not(feature = "no-f16-f128"))]
+    fn f128_to_int() {
+        use compiler_builtins::float::conv::{
+            __fixtfdi, __fixtfsi, __fixtfti, __fixunstfdi, __fixunstfsi, __fixunstfti,
+        };
+
+        fuzz_float(N, |x: f128| {
+            f_to_i!(
+                x,
+                f128,
+                Quad,
+                not(feature = "no-sys-f128-int-convert"),
+                u32, __fixunstfsi;
+                u64, __fixunstfdi;
+                u128, __fixunstfti;
+                i32, __fixtfsi;
+                i64, __fixtfdi;
+                i128, __fixtfti;
             );
         });
     }
