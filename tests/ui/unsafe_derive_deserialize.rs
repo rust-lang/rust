@@ -1,3 +1,4 @@
+#![feature(lint_reasons)]
 #![warn(clippy::unsafe_derive_deserialize)]
 #![allow(unused, clippy::missing_safety_doc)]
 
@@ -66,6 +67,16 @@ pub struct F;
 #[derive(Deserialize)]
 pub struct G;
 impl G {
+    pub fn unsafe_block(&self) {
+        unsafe {}
+    }
+}
+
+// Check that we honor the `expect` attribute on the ADT
+#[expect(clippy::unsafe_derive_deserialize)]
+#[derive(Deserialize)]
+pub struct H;
+impl H {
     pub fn unsafe_block(&self) {
         unsafe {}
     }

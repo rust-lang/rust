@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_note, span_lint_and_sugg, span_lint_and_then};
+use clippy_utils::diagnostics::{span_lint_and_note, span_lint_and_sugg, span_lint_and_then, span_lint_hir_and_then};
 use clippy_utils::ty::{implements_trait, implements_trait_with_env, is_copy};
 use clippy_utils::{has_non_exhaustive_attr, is_lint_allowed, match_def_path, paths};
 use rustc_errors::Applicability;
@@ -390,13 +390,17 @@ fn check_unsafe_derive_deserialize<'tcx>(
             .map(|imp_did| cx.tcx.hir().expect_item(imp_did.expect_local()))
             .any(|imp| has_unsafe(cx, imp))
     {
-        span_lint_and_help(
+        span_lint_hir_and_then(
             cx,
             UNSAFE_DERIVE_DESERIALIZE,
+            adt_hir_id,
             item.span,
             "you are deriving `serde::Deserialize` on a type that has methods using `unsafe`",
-            None,
-            "consider implementing `serde::Deserialize` manually. See https://serde.rs/impl-deserialize.html",
+            |diag| {
+                diag.help(
+                    "consider implementing `serde::Deserialize` manually. See https://serde.rs/impl-deserialize.html",
+                );
+            },
         );
     }
 }
