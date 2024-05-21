@@ -40,3 +40,9 @@ fn main() {
     let _ = HashMap;
     let _: usize = 64_usize;
 }
+
+mod useless_attribute {
+    // Regression test for https://github.com/rust-lang/rust-clippy/issues/12753
+    #[allow(clippy::disallowed_types)]
+    use std::collections::HashMap;
+}

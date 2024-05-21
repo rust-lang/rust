@@ -113,3 +113,31 @@ impl const Drop for D {
 // Lint this, since it can be dropped in const contexts
 // FIXME(effects)
 fn d(this: D) {}
+
+mod msrv {
+    struct Foo(*const u8, &'static u8);
+
+    impl Foo {
+        #[clippy::msrv = "1.58"]
+        fn deref_ptr_can_be_const(self) -> usize {
+            //~^ ERROR: this could be a `const fn`
+            unsafe { *self.0 as usize }
+        }
+
+        fn deref_copied_val(self) -> usize {
+            //~^ ERROR: this could be a `const fn`
+            *self.1 as usize
+        }
+    }
+
+    union Bar {
+        val: u8,
+    }
+
+    #[clippy::msrv = "1.56"]
+    fn union_access_can_be_const() {
+        //~^ ERROR: this could be a `const fn`
+        let bar = Bar { val: 1 };
+        let _ = unsafe { bar.val };
+    }
+}

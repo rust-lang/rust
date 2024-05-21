@@ -16,13 +16,9 @@ pub fn mutated_variables<'tcx>(expr: &'tcx Expr<'_>, cx: &LateContext<'tcx>) -> 
         used_mutably: HirIdSet::default(),
         skip: false,
     };
-    ExprUseVisitor::for_clippy(
-        cx,
-        expr.hir_id.owner.def_id,
-        &mut delegate,
-    )
-    .walk_expr(expr)
-    .into_ok();
+    ExprUseVisitor::for_clippy(cx, expr.hir_id.owner.def_id, &mut delegate)
+        .walk_expr(expr)
+        .into_ok();
 
     if delegate.skip {
         return None;

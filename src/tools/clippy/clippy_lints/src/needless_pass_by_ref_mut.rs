@@ -117,7 +117,9 @@ fn check_closures<'tcx>(
             .associated_body()
             .map(|(_, body_id)| hir.body(body_id))
         {
-            euv::ExprUseVisitor::for_clippy(cx, closure, &mut *ctx).consume_body(body).into_ok();
+            euv::ExprUseVisitor::for_clippy(cx, closure, &mut *ctx)
+                .consume_body(body)
+                .into_ok();
         }
     }
 }
@@ -194,7 +196,9 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByRefMut<'tcx> {
                 async_closures: FxHashSet::default(),
                 tcx: cx.tcx,
             };
-            euv::ExprUseVisitor::for_clippy(cx, fn_def_id, &mut ctx).consume_body(body).into_ok();
+            euv::ExprUseVisitor::for_clippy(cx, fn_def_id, &mut ctx)
+                .consume_body(body)
+                .into_ok();
 
             let mut checked_closures = FxHashSet::default();
 
