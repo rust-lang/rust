@@ -8,10 +8,12 @@
 #![allow(internal_features)]
 #![cfg_attr(thumb, no_main)]
 #![deny(dead_code)]
+#![feature(allocator_api)]
 #![feature(bench_black_box)]
+#![feature(f128)]
+#![feature(f16)]
 #![feature(lang_items)]
 #![feature(start)]
-#![feature(allocator_api)]
 #![no_std]
 
 extern crate panic_handler;
@@ -26,65 +28,7 @@ extern "C" {}
 // have an additional comment: the function name is the ARM name for the intrinsic and the comment
 // in the non-ARM name for the intrinsic.
 mod intrinsics {
-    // truncdfsf2
-    pub fn aeabi_d2f(x: f64) -> f32 {
-        x as f32
-    }
-
-    // fixdfsi
-    pub fn aeabi_d2i(x: f64) -> i32 {
-        x as i32
-    }
-
-    // fixdfdi
-    pub fn aeabi_d2l(x: f64) -> i64 {
-        x as i64
-    }
-
-    // fixunsdfsi
-    pub fn aeabi_d2uiz(x: f64) -> u32 {
-        x as u32
-    }
-
-    // fixunsdfdi
-    pub fn aeabi_d2ulz(x: f64) -> u64 {
-        x as u64
-    }
-
-    // adddf3
-    pub fn aeabi_dadd(a: f64, b: f64) -> f64 {
-        a + b
-    }
-
-    // eqdf2
-    pub fn aeabi_dcmpeq(a: f64, b: f64) -> bool {
-        a == b
-    }
-
-    // gtdf2
-    pub fn aeabi_dcmpgt(a: f64, b: f64) -> bool {
-        a > b
-    }
-
-    // ltdf2
-    pub fn aeabi_dcmplt(a: f64, b: f64) -> bool {
-        a < b
-    }
-
-    // divdf3
-    pub fn aeabi_ddiv(a: f64, b: f64) -> f64 {
-        a / b
-    }
-
-    // muldf3
-    pub fn aeabi_dmul(a: f64, b: f64) -> f64 {
-        a * b
-    }
-
-    // subdf3
-    pub fn aeabi_dsub(a: f64, b: f64) -> f64 {
-        a - b
-    }
+    /* f32 operations */
 
     // extendsfdf2
     pub fn aeabi_f2d(x: f32) -> f64 {
@@ -146,6 +90,70 @@ mod intrinsics {
         a - b
     }
 
+    /* f64 operations */
+
+    // truncdfsf2
+    pub fn aeabi_d2f(x: f64) -> f32 {
+        x as f32
+    }
+
+    // fixdfsi
+    pub fn aeabi_d2i(x: f64) -> i32 {
+        x as i32
+    }
+
+    // fixdfdi
+    pub fn aeabi_d2l(x: f64) -> i64 {
+        x as i64
+    }
+
+    // fixunsdfsi
+    pub fn aeabi_d2uiz(x: f64) -> u32 {
+        x as u32
+    }
+
+    // fixunsdfdi
+    pub fn aeabi_d2ulz(x: f64) -> u64 {
+        x as u64
+    }
+
+    // adddf3
+    pub fn aeabi_dadd(a: f64, b: f64) -> f64 {
+        a + b
+    }
+
+    // eqdf2
+    pub fn aeabi_dcmpeq(a: f64, b: f64) -> bool {
+        a == b
+    }
+
+    // gtdf2
+    pub fn aeabi_dcmpgt(a: f64, b: f64) -> bool {
+        a > b
+    }
+
+    // ltdf2
+    pub fn aeabi_dcmplt(a: f64, b: f64) -> bool {
+        a < b
+    }
+
+    // divdf3
+    pub fn aeabi_ddiv(a: f64, b: f64) -> f64 {
+        a / b
+    }
+
+    // muldf3
+    pub fn aeabi_dmul(a: f64, b: f64) -> f64 {
+        a * b
+    }
+
+    // subdf3
+    pub fn aeabi_dsub(a: f64, b: f64) -> f64 {
+        a - b
+    }
+
+    /* i32 operations */
+
     // floatsidf
     pub fn aeabi_i2d(x: i32) -> f64 {
         x as f64
@@ -164,14 +172,20 @@ mod intrinsics {
         a % b
     }
 
+    /* i64 operations */
+
+    // floatdisf
+    pub fn aeabi_l2f(x: i64) -> f32 {
+        x as f32
+    }
+
     // floatdidf
     pub fn aeabi_l2d(x: i64) -> f64 {
         x as f64
     }
 
-    // floatdisf
-    pub fn aeabi_l2f(x: i64) -> f32 {
-        x as f32
+    pub fn mulodi4(a: i64, b: i64) -> i64 {
+        a * b
     }
 
     // divdi3
@@ -179,10 +193,30 @@ mod intrinsics {
         a / b
     }
 
+    pub fn moddi3(a: i64, b: i64) -> i64 {
+        a % b
+    }
+
     // muldi3
     pub fn aeabi_lmul(a: i64, b: i64) -> i64 {
         a.wrapping_mul(b)
     }
+
+    /* i128 operations */
+
+    pub fn lshrti3(a: i128, b: usize) -> i128 {
+        a >> b
+    }
+
+    pub fn divti3(a: i128, b: i128) -> i128 {
+        a / b
+    }
+
+    pub fn modti3(a: i128, b: i128) -> i128 {
+        a % b
+    }
+
+    /* u32 operations */
 
     // floatunsidf
     pub fn aeabi_ui2d(x: u32) -> f64 {
@@ -202,14 +236,16 @@ mod intrinsics {
         a % b
     }
 
-    // floatundidf
-    pub fn aeabi_ul2d(x: u64) -> f64 {
-        x as f64
-    }
+    /* u64 operations */
 
     // floatundisf
     pub fn aeabi_ul2f(x: u64) -> f32 {
         x as f32
+    }
+
+    // floatundidf
+    pub fn aeabi_ul2d(x: u64) -> f64 {
+        x as f64
     }
 
     // udivdi3
@@ -217,17 +253,11 @@ mod intrinsics {
         a * b
     }
 
-    pub fn moddi3(a: i64, b: i64) -> i64 {
-        a % b
-    }
-
-    pub fn mulodi4(a: i64, b: i64) -> i64 {
-        a * b
-    }
-
     pub fn umoddi3(a: u64, b: u64) -> u64 {
         a % b
     }
+
+    /* u128 operations */
 
     pub fn muloti4(a: u128, b: u128) -> Option<u128> {
         a.checked_mul(b)
@@ -245,28 +275,12 @@ mod intrinsics {
         a << b
     }
 
-    pub fn lshrti3(a: i128, b: usize) -> i128 {
-        a >> b
-    }
-
     pub fn udivti3(a: u128, b: u128) -> u128 {
         a / b
     }
 
     pub fn umodti3(a: u128, b: u128) -> u128 {
         a % b
-    }
-
-    pub fn divti3(a: i128, b: i128) -> i128 {
-        a / b
-    }
-
-    pub fn modti3(a: i128, b: i128) -> i128 {
-        a % b
-    }
-
-    pub fn udivsi3(a: u32, b: u32) -> u32 {
-        a / b
     }
 }
 
@@ -325,7 +339,6 @@ fn run() {
     bb(umodti3(bb(2), bb(2)));
     bb(divti3(bb(2), bb(2)));
     bb(modti3(bb(2), bb(2)));
-    bb(udivsi3(bb(2), bb(2)));
 
     something_with_a_dtor(&|| assert_eq!(bb(1), 1));
 
