@@ -8,6 +8,7 @@ use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_session::declare_lint;
 use rustc_span::{sym, Span, Symbol};
 use rustc_target::abi::FIRST_VARIANT;
+use tracing::{debug, instrument};
 
 use crate::lints::{BuiltinClashingExtern, BuiltinClashingExternSub};
 use crate::{types, LintVec};

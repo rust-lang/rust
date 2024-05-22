@@ -22,6 +22,7 @@ use rustc_span::symbol::{kw, sym};
 use rustc_span::{BytePos, Span};
 use std::iter;
 use std::ops::ControlFlow;
+use tracing::instrument;
 
 declare_lint! {
     /// The `unused_must_use` lint detects unused result of a type flagged as
