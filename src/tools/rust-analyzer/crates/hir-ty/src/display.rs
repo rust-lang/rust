@@ -1001,7 +1001,7 @@ impl HirDisplay for Ty {
                             ItemInNs::Types((*def_id).into()),
                             module_id,
                             PrefixKind::Plain,
-                            true,
+                            false,
                             ImportPathConfig { prefer_no_std: false, prefer_prelude: true },
                         ) {
                             write!(f, "{}", path.display(f.db.upcast()))?;

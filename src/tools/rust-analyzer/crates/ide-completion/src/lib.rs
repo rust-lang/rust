@@ -266,12 +266,7 @@ pub fn resolve_completion_edits(
         );
         let import = items_with_name
             .filter_map(|candidate| {
-                current_module.find_use_path(
-                    db,
-                    candidate,
-                    config.insert_use.prefix_kind,
-                    cfg,
-                )
+                current_module.find_use_path(db, candidate, config.insert_use.prefix_kind, cfg)
             })
             .find(|mod_path| mod_path.display(db).to_string() == full_import_path);
         if let Some(import_path) = import {

@@ -1,9 +1,6 @@
 //! An algorithm to find a path to refer to a certain item.
 
-use std::{
-    cmp::Ordering,
-    iter::{self, once},
-};
+use std::{cmp::Ordering, iter};
 
 use hir_expand::{
     name::{known, AsName, Name},
@@ -85,7 +82,7 @@ struct FindPathCtx<'db> {
 fn find_path_inner(ctx: FindPathCtx<'_>, item: ItemInNs, from: ModuleId) -> Option<ModPath> {
     // - if the item is a builtin, it's in scope
     if let ItemInNs::Types(ModuleDefId::BuiltinType(builtin)) = item {
-        return Some(ModPath::from_segments(PathKind::Plain, once(builtin.as_name())));
+        return Some(ModPath::from_segments(PathKind::Plain, iter::once(builtin.as_name())));
     }
 
     let def_map = from.def_map(ctx.db);
@@ -124,7 +121,7 @@ fn find_path_inner(ctx: FindPathCtx<'_>, item: ItemInNs, from: ModuleId) -> Opti
         // - if the item is already in scope, return the name under which it is
         let scope_name = find_in_scope(ctx.db, &def_map, from, item, ctx.ignore_local_imports);
         if let Some(scope_name) = scope_name {
-            return Some(ModPath::from_segments(prefix.path_kind(), Some(scope_name)));
+            return Some(ModPath::from_segments(prefix.path_kind(), iter::once(scope_name)));
         }
     }
 
@@ -209,7 +206,7 @@ fn find_path_for_module(
             } else {
                 PathKind::Plain
             };
-            return Some((ModPath::from_segments(kind, once(name.clone())), Stable));
+            return Some((ModPath::from_segments(kind, iter::once(name.clone())), Stable));
         }
     }
     let prefix = if module_id.is_within_block() { PrefixKind::Plain } else { ctx.prefix };
@@ -227,7 +224,10 @@ fn find_path_for_module(
         );
         if let Some(scope_name) = scope_name {
             // - if the item is already in scope, return the name under which it is
-            return Some((ModPath::from_segments(prefix.path_kind(), once(scope_name)), Stable));
+            return Some((
+                ModPath::from_segments(prefix.path_kind(), iter::once(scope_name)),
+                Stable,
+            ));
         }
     }
 
@@ -301,7 +301,7 @@ fn find_in_prelude(
         });
 
     if found_and_same_def.unwrap_or(true) {
-        Some(ModPath::from_segments(PathKind::Plain, once(name.clone())))
+        Some(ModPath::from_segments(PathKind::Plain, iter::once(name.clone())))
     } else {
         None
     }
