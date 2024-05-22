@@ -1,5 +1,6 @@
 //@ compile-flags: -Z unstable-options --document-hidden-items
 
+// https://github.com/rust-lang/rust/issues/81141
 #![crate_name = "foo"]
 
 #[doc(hidden)]

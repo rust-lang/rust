@@ -1,3 +1,4 @@
+// https://github.com/rust-lang/rust/issues/89309
 #![crate_name = "foo"]
 
 // @has foo/trait.Read.html

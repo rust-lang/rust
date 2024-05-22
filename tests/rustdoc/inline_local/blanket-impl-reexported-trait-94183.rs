@@ -2,6 +2,7 @@
 // This test ensures that a publicly re-exported private trait will
 // appear in the blanket impl list.
 
+// https://github.com/rust-lang/rust/issues/94183
 #![crate_name = "foo"]
 
 // @has 'foo/struct.S.html'

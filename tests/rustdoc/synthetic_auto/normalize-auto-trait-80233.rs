@@ -1,7 +1,9 @@
 // Regression test for issue #80233
 // Tests that we don't ICE when processing auto traits
+// https://github.com/rust-lang/rust/issues/80233
 
 #![crate_type = "lib"]
+#![crate_name = "foo"]
 pub trait Trait1 {}
 
 pub trait Trait2 {
@@ -30,7 +32,7 @@ impl<T: Trait3> Trait3 for Vec<T> {
 
 pub struct Struct1 {}
 
-// @has issue_80233_normalize_auto_trait/struct.Question.html
+// @has foo/struct.Question.html
 // @has - '//h3[@class="code-header"]' 'impl<T> Send for Question<T>'
 pub struct Question<T: Trait1> {
     pub ins: <<Vec<T> as Trait3>::Type3 as Trait2>::Type2,
