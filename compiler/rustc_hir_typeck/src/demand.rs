@@ -373,8 +373,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let Some(arg_ty) = self.node_ty_opt(args[idx].hir_id) else {
                     return false;
                 };
-                let possible_rcvr_ty = expr_finder.uses.iter().find_map(|binding| {
+                let possible_rcvr_ty = expr_finder.uses.iter().rev().find_map(|binding| {
                     let possible_rcvr_ty = self.node_ty_opt(binding.hir_id)?;
+                    if possible_rcvr_ty.is_ty_var() {
+                        return None;
+                    }
                     // Fudge the receiver, so we can do new inference on it.
                     let possible_rcvr_ty = possible_rcvr_ty.fold_with(&mut fudger);
                     let method = self
@@ -386,6 +389,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             binding,
                         )
                         .ok()?;
+                    // Make sure we select the same method that we started with...
+                    if Some(method.def_id)
+                        != self.typeck_results.borrow().type_dependent_def_id(call_expr.hir_id)
+                    {
+                        return None;
+                    }
                     // Unify the method signature with our incompatible arg, to
                     // do inference in the *opposite* direction and to find out
                     // what our ideal rcvr ty would look like.
@@ -456,6 +465,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ) else {
                     continue;
                 };
+                // Make sure we select the same method that we started with...
+                if Some(method.def_id)
+                    != self.typeck_results.borrow().type_dependent_def_id(parent_expr.hir_id)
+                {
+                    continue;
+                }
 
                 let ideal_rcvr_ty = rcvr_ty.fold_with(&mut fudger);
                 let ideal_method = self
@@ -505,13 +520,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // blame arg, if possible. Don't do this if we're coming from
                     // arg mismatch code, because we'll possibly suggest a mutually
                     // incompatible fix at the original mismatch site.
+                    // HACK(compiler-errors): We don't actually consider the implications
+                    // of our inference guesses in `emit_type_mismatch_suggestions`, so
+                    // only suggest things when we know our type error is precisely due to
+                    // a type mismatch, and not via some projection or something. See #116155.
                     if matches!(source, TypeMismatchSource::Ty(_))
                         && let Some(ideal_method) = ideal_method
-                        && let ideal_arg_ty = self.resolve_vars_if_possible(ideal_method.sig.inputs()[idx + 1])
-                        // HACK(compiler-errors): We don't actually consider the implications
-                        // of our inference guesses in `emit_type_mismatch_suggestions`, so
-                        // only suggest things when we know our type error is precisely due to
-                        // a type mismatch, and not via some projection or something. See #116155.
+                        && Some(ideal_method.def_id)
+                            == self
+                                .typeck_results
+                                .borrow()
+                                .type_dependent_def_id(parent_expr.hir_id)
+                        && let ideal_arg_ty =
+                            self.resolve_vars_if_possible(ideal_method.sig.inputs()[idx + 1])
                         && !ideal_arg_ty.has_non_region_infer()
                     {
                         self.emit_type_mismatch_suggestions(

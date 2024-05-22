@@ -1,9 +1,8 @@
-//@ known-bug: #118185
-
 fn main() {
     let target: Target = create_target();
     target.get(0); // correct arguments work
-    target.get(10.0); // CRASH HERE
+    target.get(10.0); // (used to crash here)
+    //~^ ERROR mismatched types
 }
 
 // must be generic
