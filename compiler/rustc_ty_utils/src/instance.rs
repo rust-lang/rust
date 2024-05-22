@@ -9,6 +9,7 @@ use rustc_middle::ty::{self, Instance, TyCtxt, TypeVisitableExt};
 use rustc_span::sym;
 use rustc_trait_selection::traits;
 use rustc_type_ir::ClosureKind;
+use tracing::debug;
 use traits::{translate_args, Reveal};
 
 use crate::errors::UnexpectedFnPtrAssociatedItem;

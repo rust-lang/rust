@@ -9,6 +9,7 @@ use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::{self, EarlyBinder, Ty, TyCtxt};
 use rustc_session::Limit;
 use rustc_span::sym;
+use tracing::debug;
 
 use crate::errors::NeedsDropOverflow;
 
