@@ -18,9 +18,7 @@ use crate::{
     db::DefDatabase,
     item_scope::{ImportOrExternCrate, BUILTIN_SCOPE},
     item_tree::Fields,
-    nameres::{
-        sub_namespace_match, BlockInfo, BuiltinShadowMode, DefMap, MacroSubNs, ModuleOrigin,
-    },
+    nameres::{sub_namespace_match, BlockInfo, BuiltinShadowMode, DefMap, MacroSubNs},
     path::{ModPath, PathKind},
     per_ns::PerNs,
     visibility::{RawVisibility, Visibility},
@@ -472,7 +470,7 @@ impl DefMap {
         };
 
         let extern_prelude = || {
-            if matches!(self[module].origin, ModuleOrigin::BlockExpr { .. }) {
+            if self.block.is_some() && module == DefMap::ROOT {
                 // Don't resolve extern prelude in pseudo-modules of blocks, because
                 // they might been shadowed by local names.
                 return PerNs::none();
@@ -518,7 +516,7 @@ impl DefMap {
             None => self[Self::ROOT].scope.get(name),
         };
         let from_extern_prelude = || {
-            if matches!(self[module].origin, ModuleOrigin::BlockExpr { .. }) {
+            if self.block.is_some() && module == DefMap::ROOT {
                 // Don't resolve extern prelude in pseudo-module of a block.
                 return PerNs::none();
             }
