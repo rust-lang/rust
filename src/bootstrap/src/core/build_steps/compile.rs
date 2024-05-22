@@ -1201,23 +1201,6 @@ fn rustc_llvm_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelect
         cargo.env("LLVM_LINKER_FLAGS", llvm_linker_flags);
     }
 
-    // Building with a static libstdc++ is only supported on linux right now,
-    // not for MSVC or macOS
-    if builder.config.llvm_static_stdcpp
-        && !target.contains("freebsd")
-        && !target.is_msvc()
-        && !target.contains("apple")
-        && !target.contains("solaris")
-    {
-        let file = compiler_file(
-            builder,
-            &builder.cxx(target).unwrap(),
-            target,
-            CLang::Cxx,
-            "libstdc++.a",
-        );
-        cargo.env("LLVM_STATIC_STDCPP", file);
-    }
     if builder.llvm_link_shared() {
         cargo.env("LLVM_LINK_SHARED", "1");
     }

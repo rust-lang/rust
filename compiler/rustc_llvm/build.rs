@@ -327,26 +327,6 @@ fn main() {
         }
     }
 
-    let llvm_static_stdcpp = tracked_env_var_os("LLVM_STATIC_STDCPP");
-    let llvm_use_libcxx = tracked_env_var_os("LLVM_USE_LIBCXX");
-
-    let stdcppname = if target.contains("openbsd") {
-        if target.contains("sparc64") { "estdc++" } else { "c++" }
-    } else if target.contains("darwin")
-        || target.contains("freebsd")
-        || target.contains("windows-gnullvm")
-        || target.contains("aix")
-    {
-        "c++"
-    } else if target.contains("netbsd") && llvm_static_stdcpp.is_some() {
-        // NetBSD uses a separate library when relocation is required
-        "stdc++_p"
-    } else if llvm_use_libcxx.is_some() {
-        "c++"
-    } else {
-        "stdc++"
-    };
-
     // RISC-V GCC erroneously requires libatomic for sub-word
     // atomic operations. Some BSD uses Clang as its system
     // compiler and provides no libatomic in its base system so
@@ -355,22 +335,8 @@ fn main() {
         println!("cargo:rustc-link-lib=atomic");
     }
 
-    // C++ runtime library
-    if !target.contains("msvc") {
-        if let Some(s) = llvm_static_stdcpp {
-            assert!(!cxxflags.contains("stdlib=libc++"));
-            let path = PathBuf::from(s);
-            println!("cargo:rustc-link-search=native={}", path.parent().unwrap().display());
-            if target.contains("windows") {
-                println!("cargo:rustc-link-lib=static:-bundle={stdcppname}");
-            } else {
-                println!("cargo:rustc-link-lib=static={stdcppname}");
-            }
-        } else if cxxflags.contains("stdlib=libc++") {
-            println!("cargo:rustc-link-lib=c++");
-        } else {
-            println!("cargo:rustc-link-lib={stdcppname}");
-        }
+    if !target.contains("msvc") && tracked_env_var_os("LLVM_USE_LIBCXX").is_some() {
+        println!("cargo:rustc-link-lib=c++");
     }
 
     // libc++abi and libunwind have to be specified explicitly on AIX.
