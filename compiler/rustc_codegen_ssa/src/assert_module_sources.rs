@@ -37,6 +37,7 @@ use rustc_span::{Span, Symbol};
 use std::borrow::Cow;
 use std::fmt;
 use thin_vec::ThinVec;
+use tracing::debug;
 
 #[allow(missing_docs)]
 pub fn assert_module_sources(tcx: TyCtxt<'_>, set_reuse: &dyn Fn(&mut CguReuseTracker)) {

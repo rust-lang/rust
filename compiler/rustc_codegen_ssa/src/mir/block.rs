@@ -24,6 +24,7 @@ use rustc_span::{source_map::Spanned, sym, Span};
 use rustc_target::abi::call::{ArgAbi, FnAbi, PassMode, Reg};
 use rustc_target::abi::{self, HasDataLayout, WrappingRange};
 use rustc_target::spec::abi::Abi;
+use tracing::{debug, info};
 
 use std::cmp;
 

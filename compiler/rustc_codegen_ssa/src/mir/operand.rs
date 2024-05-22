@@ -16,6 +16,7 @@ use std::fmt;
 
 use arrayvec::ArrayVec;
 use either::Either;
+use tracing::debug;
 
 /// The representation of a Rust value. The enum variant is in fact
 /// uniquely determined by the value's type, but is kept as a

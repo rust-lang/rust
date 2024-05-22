@@ -49,6 +49,7 @@ use std::str;
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::Arc;
 use std::thread;
+use tracing::debug;
 
 const PRE_LTO_BC_EXT: &str = "pre-lto.bc";
 
