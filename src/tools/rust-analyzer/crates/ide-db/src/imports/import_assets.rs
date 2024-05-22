@@ -3,7 +3,7 @@
 use hir::{
     db::HirDatabase, AsAssocItem, AssocItem, AssocItemContainer, Crate, HasCrate, ImportPathConfig,
     ItemInNs, ModPath, Module, ModuleDef, Name, PathResolution, PrefixKind, ScopeDef, Semantics,
-    SemanticsScope, Trait, Type,
+    SemanticsScope, Trait, TyFingerprint, Type,
 };
 use itertools::{EitherOrBoth, Itertools};
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -545,6 +545,15 @@ fn trait_applicable_items(
         let Some(receiver) = trait_candidate.receiver_ty.fingerprint_for_trait_impl() else {
             return false;
         };
+
+        // in order to handle implied bounds through an associated type, keep any
+        // method receiver that matches `TyFingerprint::Unnameable`. this receiver
+        // won't be in `TraitImpls` anyways, as `TraitImpls` only contains actual
+        // implementations.
+        if matches!(receiver, TyFingerprint::Unnameable) {
+            return true;
+        }
+
         let definitions_exist_in_trait_crate = db
             .trait_impls_in_crate(defining_crate_for_trait.into())
             .has_impls_for_trait_and_self_ty(candidate_trait_id, receiver);

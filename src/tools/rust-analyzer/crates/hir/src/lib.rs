@@ -68,7 +68,7 @@ use hir_ty::{
     diagnostics::BodyValidationDiagnostic,
     error_lifetime, known_const_to_ast,
     layout::{Layout as TyLayout, RustcEnumVariantIdx, RustcFieldIdx, TagEncoding},
-    method_resolution::{self, TyFingerprint},
+    method_resolution::{self},
     mir::{interpret_mir, MutBorrowKind},
     primitive::UintTy,
     traits::FnTrait,
@@ -99,6 +99,7 @@ pub use crate::{
         VisibleTraits,
     },
 };
+pub use hir_ty::method_resolution::TyFingerprint;
 
 // Be careful with these re-exports.
 //
