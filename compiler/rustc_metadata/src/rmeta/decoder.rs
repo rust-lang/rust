@@ -28,6 +28,7 @@ use rustc_session::cstore::{CrateSource, ExternCrate};
 use rustc_session::Session;
 use rustc_span::symbol::kw;
 use rustc_span::{BytePos, Pos, SpanData, SpanDecoder, SyntaxContext, DUMMY_SP};
+use tracing::debug;
 
 use proc_macro::bridge::client::ProcMacro;
 use std::iter::TrustedLen;

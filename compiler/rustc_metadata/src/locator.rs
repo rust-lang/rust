@@ -231,6 +231,7 @@ use rustc_session::Session;
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
 use rustc_target::spec::{Target, TargetTriple};
+use tracing::{debug, info};
 
 use snap::read::FrameDecoder;
 use std::borrow::Cow;

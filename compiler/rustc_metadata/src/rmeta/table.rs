@@ -2,6 +2,7 @@ use crate::rmeta::*;
 
 use rustc_hir::def::CtorOf;
 use rustc_index::Idx;
+use tracing::trace;
 
 pub(super) trait IsDefault: Default {
     fn is_default(&self) -> bool;
