@@ -151,7 +151,7 @@ impl<'tcx> Collector<'tcx> {
                             }
                             "raw-dylib" => {
                                 if !sess.target.is_like_windows {
-                                    sess.dcx().emit_err(errors::FrameworkOnlyWindows { span });
+                                    sess.dcx().emit_err(errors::RawDylibOnlyWindows { span });
                                 }
                                 NativeLibKind::RawDylib
                             }
