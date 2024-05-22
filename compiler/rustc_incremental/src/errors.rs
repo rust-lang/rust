@@ -306,3 +306,9 @@ pub struct DeleteWorkProduct<'a> {
     pub path: &'a Path,
     pub err: std::io::Error,
 }
+
+#[derive(Diagnostic)]
+#[diag(incremental_corrupt_file)]
+pub struct CorruptFile<'a> {
+    pub path: &'a Path,
+}

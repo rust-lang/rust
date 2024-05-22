@@ -17,6 +17,8 @@ use crate::int_overflow::DebugStrictAdd;
 
 pub type FileEncodeResult = Result<usize, (PathBuf, io::Error)>;
 
+pub const MAGIC_END_BYTES: &[u8] = b"rust-end-file";
+
 /// The size of the buffer in `FileEncoder`.
 const BUF_SIZE: usize = 8192;
 
@@ -181,6 +183,7 @@ impl FileEncoder {
     }
 
     pub fn finish(&mut self) -> FileEncodeResult {
+        self.write_all(MAGIC_END_BYTES);
         self.flush();
         #[cfg(debug_assertions)]
         {
@@ -261,15 +264,18 @@ pub struct MemDecoder<'a> {
 
 impl<'a> MemDecoder<'a> {
     #[inline]
-    pub fn new(data: &'a [u8], position: usize) -> MemDecoder<'a> {
+    pub fn new(data: &'a [u8], position: usize) -> Result<MemDecoder<'a>, ()> {
+        let data = data.strip_suffix(MAGIC_END_BYTES).ok_or(())?;
         let Range { start, end } = data.as_ptr_range();
-        MemDecoder { start, current: data[position..].as_ptr(), end, _marker: PhantomData }
+        Ok(MemDecoder { start, current: data[position..].as_ptr(), end, _marker: PhantomData })
     }
 
     #[inline]
-    pub fn data(&self) -> &'a [u8] {
-        // SAFETY: This recovers the original slice, only using members we never modify.
-        unsafe { std::slice::from_raw_parts(self.start, self.len()) }
+    pub fn split_at(&self, position: usize) -> MemDecoder<'a> {
+        assert!(position <= self.len());
+        // SAFETY: We checked above that this offset is within the original slice
+        let current = unsafe { self.start.add(position) };
+        MemDecoder { start: self.start, current, end: self.end, _marker: PhantomData }
     }
 
     #[inline]

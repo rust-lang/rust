@@ -42,7 +42,7 @@ fn check_round_trip<
     encoder.finish().unwrap();
 
     let data = fs::read(&tmpfile).unwrap();
-    let mut decoder = MemDecoder::new(&data[..], 0);
+    let mut decoder = MemDecoder::new(&data[..], 0).unwrap();
     for value in values {
         let decoded = Decodable::decode(&mut decoder);
         assert_eq!(value, decoded);
