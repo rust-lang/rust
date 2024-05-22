@@ -335,12 +335,12 @@ mir_build_unsafe_fn_safe_body = an unsafe function restricts its caller, but its
 mir_build_unsafe_not_inherited = items do not inherit unsafety from separate enclosing items
 
 mir_build_unsafe_op_in_unsafe_fn_borrow_of_layout_constrained_field_requires_unsafe =
-    borrow of layout constrained field with interior mutability is unsafe and requires unsafe block (error E0133)
+    borrow of layout constrained field with interior mutability is unsafe and requires unsafe block
     .note = references to fields of layout constrained fields lose the constraints. Coupled with interior mutability, the field can be changed to invalid values
     .label = borrow of layout constrained field with interior mutability
 
 mir_build_unsafe_op_in_unsafe_fn_call_to_fn_with_requires_unsafe =
-    call to function `{$function}` with `#[target_feature]` is unsafe and requires unsafe block (error E0133)
+    call to function `{$function}` with `#[target_feature]` is unsafe and requires unsafe block
     .help = in order for the call to be safe, the context requires the following additional target {$missing_target_features_count ->
         [1] feature
         *[count] features
@@ -355,48 +355,47 @@ mir_build_unsafe_op_in_unsafe_fn_call_to_fn_with_requires_unsafe =
     .label = call to function with `#[target_feature]`
 
 mir_build_unsafe_op_in_unsafe_fn_call_to_unsafe_fn_requires_unsafe =
-    call to unsafe function `{$function}` is unsafe and requires unsafe block (error E0133)
+    call to unsafe function `{$function}` is unsafe and requires unsafe block
     .note = consult the function's documentation for information on how to avoid undefined behavior
     .label = call to unsafe function
 
 mir_build_unsafe_op_in_unsafe_fn_call_to_unsafe_fn_requires_unsafe_nameless =
-    call to unsafe function is unsafe and requires unsafe block (error E0133)
+    call to unsafe function is unsafe and requires unsafe block
     .note = consult the function's documentation for information on how to avoid undefined behavior
     .label = call to unsafe function
 
 mir_build_unsafe_op_in_unsafe_fn_deref_raw_pointer_requires_unsafe =
-    dereference of raw pointer is unsafe and requires unsafe block (error E0133)
+    dereference of raw pointer is unsafe and requires unsafe block
     .note = raw pointers may be null, dangling or unaligned; they can violate aliasing rules and cause data races: all of these are undefined behavior
     .label = dereference of raw pointer
 
 mir_build_unsafe_op_in_unsafe_fn_extern_static_requires_unsafe =
-    use of extern static is unsafe and requires unsafe block (error E0133)
+    use of extern static is unsafe and requires unsafe block
     .note = extern statics are not controlled by the Rust type system: invalid data, aliasing violations or data races will cause undefined behavior
     .label = use of extern static
 
 mir_build_unsafe_op_in_unsafe_fn_initializing_type_with_requires_unsafe =
-    initializing type with `rustc_layout_scalar_valid_range` attr is unsafe and requires unsafe
-    block (error E0133)
+    initializing type with `rustc_layout_scalar_valid_range` attr is unsafe and requires unsafe block
     .note = initializing a layout restricted type's field with a value outside the valid range is undefined behavior
     .label = initializing type with `rustc_layout_scalar_valid_range` attr
 
 mir_build_unsafe_op_in_unsafe_fn_inline_assembly_requires_unsafe =
-    use of inline assembly is unsafe and requires unsafe block (error E0133)
+    use of inline assembly is unsafe and requires unsafe block
     .note = inline assembly is entirely unchecked and can cause undefined behavior
     .label = use of inline assembly
 
 mir_build_unsafe_op_in_unsafe_fn_mutable_static_requires_unsafe =
-    use of mutable static is unsafe and requires unsafe block (error E0133)
+    use of mutable static is unsafe and requires unsafe block
     .note = mutable statics can be mutated by multiple threads: aliasing violations or data races will cause undefined behavior
     .label = use of mutable static
 
 mir_build_unsafe_op_in_unsafe_fn_mutation_of_layout_constrained_field_requires_unsafe =
-    mutation of layout constrained field is unsafe and requires unsafe block (error E0133)
+    mutation of layout constrained field is unsafe and requires unsafe block
     .note = mutating layout constrained fields cannot statically be checked for valid values
     .label = mutation of layout constrained field
 
 mir_build_unsafe_op_in_unsafe_fn_union_field_requires_unsafe =
-    access to union field is unsafe and requires unsafe block (error E0133)
+    access to union field is unsafe and requires unsafe block
     .note = the field may not be properly initialized: using uninitialized data will cause undefined behavior
     .label = access to union field
 

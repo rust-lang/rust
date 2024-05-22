@@ -21,7 +21,7 @@ pub struct UnconditionalRecursion {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(mir_build_unsafe_op_in_unsafe_fn_call_to_unsafe_fn_requires_unsafe)]
+#[diag(mir_build_unsafe_op_in_unsafe_fn_call_to_unsafe_fn_requires_unsafe, code = E0133)]
 #[note]
 pub struct UnsafeOpInUnsafeFnCallToUnsafeFunctionRequiresUnsafe {
     #[label]
@@ -32,7 +32,7 @@ pub struct UnsafeOpInUnsafeFnCallToUnsafeFunctionRequiresUnsafe {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(mir_build_unsafe_op_in_unsafe_fn_call_to_unsafe_fn_requires_unsafe_nameless)]
+#[diag(mir_build_unsafe_op_in_unsafe_fn_call_to_unsafe_fn_requires_unsafe_nameless, code = E0133)]
 #[note]
 pub struct UnsafeOpInUnsafeFnCallToUnsafeFunctionRequiresUnsafeNameless {
     #[label]
@@ -42,7 +42,7 @@ pub struct UnsafeOpInUnsafeFnCallToUnsafeFunctionRequiresUnsafeNameless {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(mir_build_unsafe_op_in_unsafe_fn_inline_assembly_requires_unsafe)]
+#[diag(mir_build_unsafe_op_in_unsafe_fn_inline_assembly_requires_unsafe, code = E0133)]
 #[note]
 pub struct UnsafeOpInUnsafeFnUseOfInlineAssemblyRequiresUnsafe {
     #[label]
@@ -52,7 +52,7 @@ pub struct UnsafeOpInUnsafeFnUseOfInlineAssemblyRequiresUnsafe {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(mir_build_unsafe_op_in_unsafe_fn_initializing_type_with_requires_unsafe)]
+#[diag(mir_build_unsafe_op_in_unsafe_fn_initializing_type_with_requires_unsafe, code = E0133)]
 #[note]
 pub struct UnsafeOpInUnsafeFnInitializingTypeWithRequiresUnsafe {
     #[label]
@@ -62,7 +62,7 @@ pub struct UnsafeOpInUnsafeFnInitializingTypeWithRequiresUnsafe {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(mir_build_unsafe_op_in_unsafe_fn_mutable_static_requires_unsafe)]
+#[diag(mir_build_unsafe_op_in_unsafe_fn_mutable_static_requires_unsafe, code = E0133)]
 #[note]
 pub struct UnsafeOpInUnsafeFnUseOfMutableStaticRequiresUnsafe {
     #[label]
@@ -72,7 +72,7 @@ pub struct UnsafeOpInUnsafeFnUseOfMutableStaticRequiresUnsafe {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(mir_build_unsafe_op_in_unsafe_fn_extern_static_requires_unsafe)]
+#[diag(mir_build_unsafe_op_in_unsafe_fn_extern_static_requires_unsafe, code = E0133)]
 #[note]
 pub struct UnsafeOpInUnsafeFnUseOfExternStaticRequiresUnsafe {
     #[label]
@@ -82,7 +82,7 @@ pub struct UnsafeOpInUnsafeFnUseOfExternStaticRequiresUnsafe {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(mir_build_unsafe_op_in_unsafe_fn_deref_raw_pointer_requires_unsafe)]
+#[diag(mir_build_unsafe_op_in_unsafe_fn_deref_raw_pointer_requires_unsafe, code = E0133)]
 #[note]
 pub struct UnsafeOpInUnsafeFnDerefOfRawPointerRequiresUnsafe {
     #[label]
@@ -92,7 +92,7 @@ pub struct UnsafeOpInUnsafeFnDerefOfRawPointerRequiresUnsafe {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(mir_build_unsafe_op_in_unsafe_fn_union_field_requires_unsafe)]
+#[diag(mir_build_unsafe_op_in_unsafe_fn_union_field_requires_unsafe, code = E0133)]
 #[note]
 pub struct UnsafeOpInUnsafeFnAccessToUnionFieldRequiresUnsafe {
     #[label]
@@ -102,7 +102,10 @@ pub struct UnsafeOpInUnsafeFnAccessToUnionFieldRequiresUnsafe {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(mir_build_unsafe_op_in_unsafe_fn_mutation_of_layout_constrained_field_requires_unsafe)]
+#[diag(
+    mir_build_unsafe_op_in_unsafe_fn_mutation_of_layout_constrained_field_requires_unsafe,
+    code = E0133
+)]
 #[note]
 pub struct UnsafeOpInUnsafeFnMutationOfLayoutConstrainedFieldRequiresUnsafe {
     #[label]
@@ -112,7 +115,10 @@ pub struct UnsafeOpInUnsafeFnMutationOfLayoutConstrainedFieldRequiresUnsafe {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(mir_build_unsafe_op_in_unsafe_fn_borrow_of_layout_constrained_field_requires_unsafe)]
+#[diag(
+    mir_build_unsafe_op_in_unsafe_fn_borrow_of_layout_constrained_field_requires_unsafe,
+    code = E0133,
+)]
 pub struct UnsafeOpInUnsafeFnBorrowOfLayoutConstrainedFieldRequiresUnsafe {
     #[label]
     pub span: Span,
@@ -121,7 +127,7 @@ pub struct UnsafeOpInUnsafeFnBorrowOfLayoutConstrainedFieldRequiresUnsafe {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(mir_build_unsafe_op_in_unsafe_fn_call_to_fn_with_requires_unsafe)]
+#[diag(mir_build_unsafe_op_in_unsafe_fn_call_to_fn_with_requires_unsafe, code = E0133)]
 #[help]
 pub struct UnsafeOpInUnsafeFnCallToFunctionWithRequiresUnsafe {
     #[label]
