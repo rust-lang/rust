@@ -122,6 +122,8 @@ issues).
 """
 label = "O-apple"
 
+# This ping group is meant for situations where a rustc/stdlib change breaks RfL.
+# In that case, we want to notify the RfL group.
 [ping.rust-for-linux]
 alias = ["rfl"]
 message = """\
