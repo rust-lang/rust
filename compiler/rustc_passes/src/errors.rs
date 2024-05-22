@@ -17,12 +17,9 @@ use rustc_span::{Span, Symbol, DUMMY_SP};
 use crate::check_attr::ProcMacroKind;
 use crate::lang_items::Duplicate;
 
-#[derive(Diagnostic)]
+#[derive(LintDiagnostic)]
 #[diag(passes_incorrect_do_not_recommend_location)]
-pub struct IncorrectDoNotRecommendLocation {
-    #[primary_span]
-    pub span: Span,
-}
+pub struct IncorrectDoNotRecommendLocation;
 
 #[derive(LintDiagnostic)]
 #[diag(passes_outer_crate_level_attr)]

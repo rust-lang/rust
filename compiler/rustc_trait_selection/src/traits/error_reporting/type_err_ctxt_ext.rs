@@ -1012,7 +1012,10 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         let mut base_cause = obligation.cause.code().clone();
         loop {
             if let ObligationCauseCode::ImplDerived(ref c) = base_cause {
-                if self.tcx.has_attr(c.impl_or_alias_def_id, sym::do_not_recommend) {
+                if self.tcx.has_attrs_with_path(
+                    c.impl_or_alias_def_id,
+                    &[sym::diagnostic, sym::do_not_recommend],
+                ) {
                     let code = (*c.derived.parent_code).clone();
                     obligation.cause.map_code(|_| code);
                     obligation.predicate = c.derived.parent_trait_pred.upcast(self.tcx);
