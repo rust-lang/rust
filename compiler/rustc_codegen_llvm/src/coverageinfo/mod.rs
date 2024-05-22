@@ -17,6 +17,7 @@ use rustc_middle::mir::coverage::CoverageKind;
 use rustc_middle::ty::layout::HasTyCtxt;
 use rustc_middle::ty::Instance;
 use rustc_target::abi::{Align, Size};
+use tracing::{debug, instrument};
 
 use std::cell::RefCell;
 

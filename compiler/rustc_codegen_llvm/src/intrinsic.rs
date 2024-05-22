@@ -21,6 +21,7 @@ use rustc_middle::{bug, span_bug};
 use rustc_span::{sym, Span, Symbol};
 use rustc_target::abi::{self, Align, Float, HasDataLayout, Primitive, Size};
 use rustc_target::spec::{HasTargetSpec, PanicStrategy};
+use tracing::debug;
 
 use std::cmp::Ordering;
 

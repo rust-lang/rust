@@ -25,6 +25,7 @@ use rustc_target::abi::{
     Align, AlignFromBytesError, HasDataLayout, Primitive, Scalar, Size, WrappingRange,
 };
 use std::ops::Range;
+use tracing::{debug, instrument, trace};
 
 pub fn const_alloc_to_llvm<'ll>(
     cx: &CodegenCx<'ll, '_>,

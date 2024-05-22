@@ -13,6 +13,7 @@ use rustc_middle::ty::layout::{FnAbiOf, LayoutOf};
 use rustc_middle::ty::{self, Instance, TypeVisitableExt};
 use rustc_session::config::CrateType;
 use rustc_target::spec::RelocModel;
+use tracing::debug;
 
 impl<'tcx> PreDefineMethods<'tcx> for CodegenCx<'_, 'tcx> {
     fn predefine_static(

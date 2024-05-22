@@ -35,6 +35,7 @@ use rustc_session::Session;
 use rustc_span::symbol::sym;
 use rustc_span::InnerSpan;
 use rustc_target::spec::{CodeModel, RelocModel, SanitizerSet, SplitDebuginfo, TlsModel};
+use tracing::debug;
 
 use crate::llvm::diagnostic::OptimizationDiagnosticKind;
 use libc::{c_char, c_int, c_void, size_t};
