@@ -139,7 +139,17 @@ pub(crate) fn format_expr(
         | ast::ExprKind::While(..) => to_control_flow(expr, expr_type)
             .and_then(|control_flow| control_flow.rewrite(context, shape)),
         ast::ExprKind::ConstBlock(ref anon_const) => {
-            Some(format!("const {}", anon_const.rewrite(context, shape)?))
+            let rewrite = match anon_const.value.kind {
+                ast::ExprKind::Block(ref block, opt_label) => {
+                    // Inner attributes are associated with the `ast::ExprKind::ConstBlock` node,
+                    // not the `ast::Block` node we're about to rewrite. To prevent dropping inner
+                    // attributes call `rewrite_block` directly.
+                    // See https://github.com/rust-lang/rustfmt/issues/6158
+                    rewrite_block(block, Some(&expr.attrs), opt_label, context, shape)?
+                }
+                _ => anon_const.rewrite(context, shape)?,
+            };
+            Some(format!("const {}", rewrite))
         }
         ast::ExprKind::Block(ref block, opt_label) => {
             match expr_type {
