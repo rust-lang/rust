@@ -42,6 +42,22 @@ fn to_check_cfg_arg(name: Symbol, value: Option<Symbol>, quotes: EscapeQuotes) -
     }
 }
 
+fn cargo_help_sub(
+    sess: &Session,
+    inst: &impl Fn(EscapeQuotes) -> String,
+) -> lints::UnexpectedCfgCargoHelp {
+    // We don't want to suggest the `build.rs` way to expected cfgs if we are already in a
+    // `build.rs`. We therefor do a best effort check (looking if the `--crate-name` is
+    // `build_script_build`) to try to figure out if we are building a Cargo build script
+
+    let unescaped = &inst(EscapeQuotes::No);
+    if matches!(&sess.opts.crate_name, Some(crate_name) if crate_name == "build_script_build") {
+        lints::UnexpectedCfgCargoHelp::lint_cfg(unescaped)
+    } else {
+        lints::UnexpectedCfgCargoHelp::lint_cfg_and_build_rs(unescaped, &inst(EscapeQuotes::Yes))
+    }
+}
+
 pub(super) fn unexpected_cfg_name(
     sess: &Session,
     (name, name_span): (Symbol, Span),
@@ -162,14 +178,7 @@ pub(super) fn unexpected_cfg_name(
     let inst = |escape_quotes| to_check_cfg_arg(name, value.map(|(v, _s)| v), escape_quotes);
 
     let invocation_help = if is_from_cargo {
-        let sub = if !is_feature_cfg {
-            Some(lints::UnexpectedCfgCargoHelp::new(
-                &inst(EscapeQuotes::No),
-                &inst(EscapeQuotes::Yes),
-            ))
-        } else {
-            None
-        };
+        let sub = if !is_feature_cfg { Some(cargo_help_sub(sess, &inst)) } else { None };
         lints::unexpected_cfg_name::InvocationHelp::Cargo { sub }
     } else {
         lints::unexpected_cfg_name::InvocationHelp::Rustc(lints::UnexpectedCfgRustcHelp::new(
@@ -267,10 +276,7 @@ pub(super) fn unexpected_cfg_value(
                 Some(lints::unexpected_cfg_value::CargoHelp::DefineFeatures)
             }
         } else if !is_cfg_a_well_know_name {
-            Some(lints::unexpected_cfg_value::CargoHelp::Other(lints::UnexpectedCfgCargoHelp::new(
-                &inst(EscapeQuotes::No),
-                &inst(EscapeQuotes::Yes),
-            )))
+            Some(lints::unexpected_cfg_value::CargoHelp::Other(cargo_help_sub(sess, &inst)))
         } else {
             None
         };

@@ -1961,21 +1961,33 @@ pub struct UnitBindingsDiag {
 pub struct BuiltinNamedAsmLabel;
 
 #[derive(Subdiagnostic)]
-#[help(lint_unexpected_cfg_add_cargo_feature)]
-#[help(lint_unexpected_cfg_add_cargo_toml_lint_cfg)]
-#[help(lint_unexpected_cfg_add_build_rs_println)]
-pub struct UnexpectedCfgCargoHelp {
-    pub build_rs_println: String,
-    pub cargo_toml_lint_cfg: String,
+pub enum UnexpectedCfgCargoHelp {
+    #[help(lint_unexpected_cfg_add_cargo_feature)]
+    #[help(lint_unexpected_cfg_add_cargo_toml_lint_cfg)]
+    LintCfg { cargo_toml_lint_cfg: String },
+    #[help(lint_unexpected_cfg_add_cargo_feature)]
+    #[help(lint_unexpected_cfg_add_cargo_toml_lint_cfg)]
+    #[help(lint_unexpected_cfg_add_build_rs_println)]
+    LintCfgAndBuildRs { cargo_toml_lint_cfg: String, build_rs_println: String },
 }
 
 impl UnexpectedCfgCargoHelp {
-    pub fn new(unescaped: &str, escaped: &str) -> Self {
-        Self {
-            cargo_toml_lint_cfg: format!(
-                "\n [lints.rust]\n unexpected_cfgs = {{ level = \"warn\", check-cfg = ['{unescaped}'] }}",
-            ),
-            build_rs_println: format!("println!(\"cargo::rustc-check-cfg={escaped}\");",),
+    fn cargo_toml_lint_cfg(unescaped: &str) -> String {
+        format!(
+            "\n [lints.rust]\n unexpected_cfgs = {{ level = \"warn\", check-cfg = ['{unescaped}'] }}"
+        )
+    }
+
+    pub fn lint_cfg(unescaped: &str) -> Self {
+        UnexpectedCfgCargoHelp::LintCfg {
+            cargo_toml_lint_cfg: Self::cargo_toml_lint_cfg(unescaped),
+        }
+    }
+
+    pub fn lint_cfg_and_build_rs(unescaped: &str, escaped: &str) -> Self {
+        UnexpectedCfgCargoHelp::LintCfgAndBuildRs {
+            cargo_toml_lint_cfg: Self::cargo_toml_lint_cfg(unescaped),
+            build_rs_println: format!("println!(\"cargo::rustc-check-cfg={escaped}\");"),
         }
     }
 }
