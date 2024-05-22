@@ -192,7 +192,7 @@ function getCCppDebugConfig(
         name: runnable.label,
         program: executable,
         args: runnable.args.executableArgs,
-        cwd: runnable.args.workspaceRoot,
+        cwd: runnable.args.cwd || runnable.args.workspaceRoot || ".",
         sourceFileMap,
         env,
         // See https://github.com/rust-lang/rust-analyzer/issues/16901#issuecomment-2024486941
@@ -214,7 +214,7 @@ function getCodeLldbDebugConfig(
         name: runnable.label,
         program: executable,
         args: runnable.args.executableArgs,
-        cwd: runnable.args.workspaceRoot,
+        cwd: runnable.args.cwd || runnable.args.workspaceRoot || ".",
         sourceMap: sourceFileMap,
         sourceLanguages: ["rust"],
         env,
@@ -234,7 +234,7 @@ function getNativeDebugConfig(
         target: executable,
         // See https://github.com/WebFreak001/code-debug/issues/359
         arguments: quote(runnable.args.executableArgs),
-        cwd: runnable.args.workspaceRoot,
+        cwd: runnable.args.cwd || runnable.args.workspaceRoot || ".",
         env,
         valuesFormatting: "prettyPrinters",
     };

@@ -226,6 +226,7 @@ export type Runnable = {
     kind: "cargo";
     args: {
         workspaceRoot?: string;
+        cwd?: string;
         cargoArgs: string[];
         cargoExtraArgs: string[];
         executableArgs: string[];
