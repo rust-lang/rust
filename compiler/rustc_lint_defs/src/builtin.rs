@@ -4204,9 +4204,9 @@ declare_lint! {
     /// The `dependency_on_unit_never_type_fallback` lint detects cases where code compiles with
     /// [never type fallback] being [`()`], but will stop compiling with fallback being [`!`].
     ///
-    /// [never type fallback]: prim@never#never-type-fallback
-    /// [`()`]: prim@unit
-    /// [`!`]:
+    /// [never type fallback]: https://doc.rust-lang.org/nightly/core/primitive.never.html#never-type-fallback
+    /// [`!`]: https://doc.rust-lang.org/core/primitive.never.html
+    /// [`()`]: https://doc.rust-lang.org/core/primitive.unit.html
     ///
     /// ### Example
     ///
@@ -4243,9 +4243,6 @@ declare_lint! {
     /// ```
     ///
     /// See [Tracking Issue for making `!` fall back to `!`](https://github.com/rust-lang/rust/issues/123748).
-    ///
-    /// [`!`]: https://doc.rust-lang.org/core/primitive.never.html
-    /// [`()`]: https://doc.rust-lang.org/core/primitive.unit.html
     pub DEPENDENCY_ON_UNIT_NEVER_TYPE_FALLBACK,
     Warn,
     "never type fallback affecting unsafe function calls",
