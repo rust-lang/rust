@@ -381,7 +381,7 @@ impl Query {
                     if non_type_for_type_only_query || !self.matches_assoc_mode(symbol.is_assoc) {
                         continue;
                     }
-                    if self.should_hide_query(&symbol) {
+                    if self.should_hide_query(symbol) {
                         continue;
                     }
                     if self.mode.check(&self.query, self.case_sensitive, &symbol.name) {
