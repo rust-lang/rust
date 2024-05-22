@@ -846,7 +846,16 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
         if let Some(result) = self.try_merge_responses(&responses) {
             return Ok(result);
         } else {
-            self.flounder(&responses)
+            let param_env_candidates = candidates
+                .iter()
+                .filter(|c| matches!(c.source, CandidateSource::ParamEnv(_)))
+                .map(|c| c.result)
+                .collect::<Vec<_>>();
+            if let Some(result) = self.try_merge_responses(&param_env_candidates) {
+                return Ok(result);
+            } else {
+                self.flounder(&responses)
+            }
         }
     }
 }

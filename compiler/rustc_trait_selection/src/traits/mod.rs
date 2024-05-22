@@ -390,6 +390,31 @@ pub fn normalize_param_env_or_error<'tcx>(
     let mut predicates = non_outlives_predicates;
     predicates.extend(outlives_predicates);
     debug!("normalize_param_env_or_error: final predicates={:?}", predicates);
+    if tcx.next_trait_solver_globally() {
+        predicates.retain(|&p| {
+            if p.is_global() {
+                let infcx = tcx.infer_ctxt().build();
+                let ocx = ObligationCtxt::new(&infcx);
+                let param_env = ty::ParamEnv::empty();
+                ocx.register_obligation(Obligation::new(
+                    tcx,
+                    ObligationCause::dummy(),
+                    param_env,
+                    p,
+                ));
+                if !ocx.select_all_or_error().is_empty() {
+                    true
+                } else if ocx.resolve_regions(&OutlivesEnvironment::new(param_env)).is_empty() {
+                    // A trivially true global bound, ignore it.
+                    false
+                } else {
+                    true
+                }
+            } else {
+                true
+            }
+        })
+    }
     ty::ParamEnv::new(tcx.mk_clauses(&predicates), unnormalized_env.reveal())
 }
 
