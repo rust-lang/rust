@@ -11,7 +11,7 @@ use crate::coverage::graph::{BasicCoverageBlock, CoverageGraph, TraverseCoverage
 
 /// The coverage counter or counter expression associated with a particular
 /// BCB node or BCB edge.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub(super) enum BcbCounter {
     Counter { id: CounterId },
     Expression { id: ExpressionId },
@@ -35,6 +35,13 @@ impl Debug for BcbCounter {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+struct BcbExpression {
+    lhs: BcbCounter,
+    op: Op,
+    rhs: BcbCounter,
+}
+
 #[derive(Debug)]
 pub(super) enum CounterIncrementSite {
     Node { bcb: BasicCoverageBlock },
@@ -56,9 +63,13 @@ pub(super) struct CoverageCounters {
     /// We currently don't iterate over this map, but if we do in the future,
     /// switch it back to `FxIndexMap` to avoid query stability hazards.
     bcb_edge_counters: FxHashMap<(BasicCoverageBlock, BasicCoverageBlock), BcbCounter>,
+
     /// Table of expression data, associating each expression ID with its
     /// corresponding operator (+ or -) and its LHS/RHS operands.
-    expressions: IndexVec<ExpressionId, Expression>,
+    expressions: IndexVec<ExpressionId, BcbExpression>,
+    /// Remember expressions that have already been created (or simplified),
+    /// so that we don't create unnecessary duplicates.
+    expressions_memo: FxHashMap<BcbExpression, BcbCounter>,
 }
 
 impl CoverageCounters {
@@ -76,6 +87,7 @@ impl CoverageCounters {
             bcb_counters: IndexVec::from_elem_n(None, num_bcbs),
             bcb_edge_counters: FxHashMap::default(),
             expressions: IndexVec::new(),
+            expressions_memo: FxHashMap::default(),
         };
 
         MakeBcbCounters::new(&mut this, basic_coverage_blocks)
@@ -90,8 +102,57 @@ impl CoverageCounters {
     }
 
     fn make_expression(&mut self, lhs: BcbCounter, op: Op, rhs: BcbCounter) -> BcbCounter {
-        let expression = Expression { lhs: lhs.as_term(), op, rhs: rhs.as_term() };
-        let id = self.expressions.push(expression);
+        let new_expr = BcbExpression { lhs, op, rhs };
+        *self
+            .expressions_memo
+            .entry(new_expr)
+            .or_insert_with(|| Self::make_expression_inner(&mut self.expressions, new_expr))
+    }
+
+    /// This is an associated function so that we can call it while borrowing
+    /// `&mut self.expressions_memo`.
+    fn make_expression_inner(
+        expressions: &mut IndexVec<ExpressionId, BcbExpression>,
+        new_expr: BcbExpression,
+    ) -> BcbCounter {
+        // Simplify expressions using basic algebra.
+        //
+        // Some of these cases might not actually occur in practice, depending
+        // on the details of how the instrumentor builds expressions.
+        let BcbExpression { lhs, op, rhs } = new_expr;
+
+        if let BcbCounter::Expression { id } = lhs {
+            let lhs_expr = &expressions[id];
+
+            // Simplify `(a - b) + b` to `a`.
+            if lhs_expr.op == Op::Subtract && op == Op::Add && lhs_expr.rhs == rhs {
+                return lhs_expr.lhs;
+            }
+            // Simplify `(a + b) - b` to `a`.
+            if lhs_expr.op == Op::Add && op == Op::Subtract && lhs_expr.rhs == rhs {
+                return lhs_expr.lhs;
+            }
+            // Simplify `(a + b) - a` to `b`.
+            if lhs_expr.op == Op::Add && op == Op::Subtract && lhs_expr.lhs == rhs {
+                return lhs_expr.rhs;
+            }
+        }
+
+        if let BcbCounter::Expression { id } = rhs {
+            let rhs_expr = &expressions[id];
+
+            // Simplify `a + (b - a)` to `b`.
+            if op == Op::Add && rhs_expr.op == Op::Subtract && lhs == rhs_expr.rhs {
+                return rhs_expr.lhs;
+            }
+            // Simplify `a - (a - b)` to `b`.
+            if op == Op::Subtract && rhs_expr.op == Op::Subtract && lhs == rhs_expr.lhs {
+                return rhs_expr.rhs;
+            }
+        }
+
+        // Simplification failed, so actually create the new expression.
+        let id = expressions.push(new_expr);
         BcbCounter::Expression { id }
     }
 
@@ -166,7 +227,21 @@ impl CoverageCounters {
     }
 
     pub(super) fn into_expressions(self) -> IndexVec<ExpressionId, Expression> {
-        self.expressions
+        let old_len = self.expressions.len();
+        let expressions = self
+            .expressions
+            .into_iter()
+            .map(|BcbExpression { lhs, op, rhs }| Expression {
+                lhs: lhs.as_term(),
+                op,
+                rhs: rhs.as_term(),
+            })
+            .collect::<IndexVec<ExpressionId, _>>();
+
+        // Expression IDs are indexes into this vector, so make sure we didn't
+        // accidentally invalidate them by changing its length.
+        assert_eq!(old_len, expressions.len());
+        expressions
     }
 }
 

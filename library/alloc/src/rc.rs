@@ -1356,6 +1356,33 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
         ptr
     }
 
+    /// Consumes the `Rc`, returning the wrapped pointer and allocator.
+    ///
+    /// To avoid a memory leak the pointer must be converted back to an `Rc` using
+    /// [`Rc::from_raw_in`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(allocator_api)]
+    /// use std::rc::Rc;
+    /// use std::alloc::System;
+    ///
+    /// let x = Rc::new_in("hello".to_owned(), System);
+    /// let (ptr, alloc) = Rc::into_raw_with_allocator(x);
+    /// assert_eq!(unsafe { &*ptr }, "hello");
+    /// let x = unsafe { Rc::from_raw_in(ptr, alloc) };
+    /// assert_eq!(&*x, "hello");
+    /// ```
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    pub fn into_raw_with_allocator(this: Self) -> (*const T, A) {
+        let this = mem::ManuallyDrop::new(this);
+        let ptr = Self::as_ptr(&this);
+        // Safety: `this` is ManuallyDrop so the allocator will not be double-dropped
+        let alloc = unsafe { ptr::read(&this.alloc) };
+        (ptr, alloc)
+    }
+
     /// Provides a raw pointer to the data.
     ///
     /// The counts are not affected in any way and the `Rc` is not consumed. The pointer is valid
@@ -2224,6 +2251,31 @@ impl<T: Default> Default for Rc<T> {
     }
 }
 
+#[cfg(not(no_global_oom_handling))]
+#[stable(feature = "more_rc_default_impls", since = "CURRENT_RUSTC_VERSION")]
+impl Default for Rc<str> {
+    /// Creates an empty str inside an Rc
+    ///
+    /// This may or may not share an allocation with other Rcs on the same thread.
+    #[inline]
+    fn default() -> Self {
+        Rc::from("")
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+#[stable(feature = "more_rc_default_impls", since = "CURRENT_RUSTC_VERSION")]
+impl<T> Default for Rc<[T]> {
+    /// Creates an empty `[T]` inside an Rc
+    ///
+    /// This may or may not share an allocation with other Rcs on the same thread.
+    #[inline]
+    fn default() -> Self {
+        let arr: [T; 0] = [];
+        Rc::from(arr)
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 trait RcEqIdent<T: ?Sized + PartialEq, A: Allocator> {
     fn eq(&self, other: &Rc<T, A>) -> bool;
@@ -2999,11 +3051,11 @@ impl<T: ?Sized, A: Allocator> Weak<T, A> {
         result
     }
 
-    /// Consumes the `Weak<T>` and turns it into a raw pointer.
+    /// Consumes the `Weak<T>`, returning the wrapped pointer and allocator.
     ///
     /// This converts the weak pointer into a raw pointer, while still preserving the ownership of
     /// one weak reference (the weak count is not modified by this operation). It can be turned
-    /// back into the `Weak<T>` with [`from_raw`].
+    /// back into the `Weak<T>` with [`from_raw_in`].
     ///
     /// The same restrictions of accessing the target of the pointer as with
     /// [`as_ptr`] apply.
@@ -3011,27 +3063,30 @@ impl<T: ?Sized, A: Allocator> Weak<T, A> {
     /// # Examples
     ///
     /// ```
+    /// #![feature(allocator_api)]
     /// use std::rc::{Rc, Weak};
+    /// use std::alloc::System;
     ///
-    /// let strong = Rc::new("hello".to_owned());
+    /// let strong = Rc::new_in("hello".to_owned(), System);
     /// let weak = Rc::downgrade(&strong);
-    /// let raw = weak.into_raw();
+    /// let (raw, alloc) = weak.into_raw_with_allocator();
     ///
     /// assert_eq!(1, Rc::weak_count(&strong));
     /// assert_eq!("hello", unsafe { &*raw });
     ///
-    /// drop(unsafe { Weak::from_raw(raw) });
+    /// drop(unsafe { Weak::from_raw_in(raw, alloc) });
     /// assert_eq!(0, Rc::weak_count(&strong));
     /// ```
     ///
-    /// [`from_raw`]: Weak::from_raw
+    /// [`from_raw_in`]: Weak::from_raw_in
     /// [`as_ptr`]: Weak::as_ptr
     #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
-    pub fn into_raw_and_alloc(self) -> (*const T, A) {
-        let rc = mem::ManuallyDrop::new(self);
-        let result = rc.as_ptr();
-        let alloc = unsafe { ptr::read(&rc.alloc) };
+    pub fn into_raw_with_allocator(self) -> (*const T, A) {
+        let this = mem::ManuallyDrop::new(self);
+        let result = this.as_ptr();
+        // Safety: `this` is ManuallyDrop so the allocator will not be double-dropped
+        let alloc = unsafe { ptr::read(&this.alloc) };
         (result, alloc)
     }
 

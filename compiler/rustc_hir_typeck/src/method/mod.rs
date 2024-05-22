@@ -3,7 +3,7 @@
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/method-lookup.html
 
 mod confirm;
-mod prelude2021;
+mod prelude_edition_lints;
 pub mod probe;
 mod suggest;
 
@@ -186,7 +186,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let pick =
             self.lookup_probe(segment.ident, self_ty, call_expr, ProbeScope::TraitsInScope)?;
 
-        self.lint_dot_call_from_2018(self_ty, segment, span, call_expr, self_expr, &pick, args);
+        self.lint_edition_dependent_dot_call(
+            self_ty, segment, span, call_expr, self_expr, &pick, args,
+        );
 
         for &import_id in &pick.import_ids {
             debug!("used_trait_import: {:?}", import_id);

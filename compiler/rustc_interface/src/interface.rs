@@ -389,6 +389,7 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
     let hash_kind = config.opts.unstable_opts.src_hash_algorithm(&target);
 
     util::run_in_thread_pool_with_globals(
+        &early_dcx,
         config.opts.edition,
         config.opts.unstable_opts.threads,
         SourceMapInputs { file_loader, path_mapping, hash_kind },

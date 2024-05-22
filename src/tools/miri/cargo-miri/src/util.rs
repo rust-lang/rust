@@ -269,7 +269,7 @@ pub fn get_target_dir(meta: &Metadata) -> PathBuf {
     output
 }
 
-/// Determines where the sysroot of this exeuction is
+/// Determines where the sysroot of this execution is
 ///
 /// Either in a user-specified spot by an envar, or in a default cache location.
 pub fn get_sysroot_dir() -> PathBuf {

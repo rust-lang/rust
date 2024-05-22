@@ -515,12 +515,6 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         EncodeCrossCrate::Yes, experimental!(deprecated_safe),
     ),
 
-    // RFC 2397
-    gated!(
-        do_not_recommend, Normal, template!(Word), WarnFollowing,
-        EncodeCrossCrate::Yes, experimental!(do_not_recommend)
-    ),
-
     // `#[cfi_encoding = ""]`
     gated!(
         cfi_encoding, Normal, template!(NameValueStr: "encoding"), ErrorPreceding,
@@ -899,10 +893,11 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         "the `#[rustc_main]` attribute is used internally to specify test entry point function",
     ),
     rustc_attr!(
-        rustc_skip_array_during_method_dispatch, Normal, template!(Word),
-        WarnFollowing, EncodeCrossCrate::No,
-        "the `#[rustc_skip_array_during_method_dispatch]` attribute is used to exclude a trait \
-        from method dispatch when the receiver is an array, for compatibility in editions < 2021."
+        rustc_skip_during_method_dispatch, Normal, template!(List: "array, boxed_slice"), WarnFollowing,
+        EncodeCrossCrate::No,
+        "the `#[rustc_skip_during_method_dispatch]` attribute is used to exclude a trait \
+        from method dispatch when the receiver is of the following type, for compatibility in \
+        editions < 2021 (array) or editions < 2024 (boxed_slice)."
     ),
     rustc_attr!(
         rustc_must_implement_one_of, Normal, template!(List: "function1, function2, ..."),

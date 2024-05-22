@@ -184,9 +184,9 @@ pub fn assume() {
 // EMIT_MIR lower_intrinsics.with_overflow.LowerIntrinsics.diff
 pub fn with_overflow(a: i32, b: i32) {
     // CHECK-LABEL: fn with_overflow(
-    // CHECK: CheckedAdd(
-    // CHECK: CheckedSub(
-    // CHECK: CheckedMul(
+    // CHECK: AddWithOverflow(
+    // CHECK: SubWithOverflow(
+    // CHECK: MulWithOverflow(
 
     let _x = core::intrinsics::add_with_overflow(a, b);
     let _y = core::intrinsics::sub_with_overflow(a, b);

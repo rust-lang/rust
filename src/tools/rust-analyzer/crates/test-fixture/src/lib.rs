@@ -240,7 +240,12 @@ impl ChangeFixture {
                 crate_graph
                     .add_dep(
                         from_id,
-                        Dependency::with_prelude(CrateName::new(&to).unwrap(), to_id, prelude),
+                        Dependency::with_prelude(
+                            CrateName::new(&to).unwrap(),
+                            to_id,
+                            prelude,
+                            false,
+                        ),
                     )
                     .unwrap();
             }
@@ -275,7 +280,15 @@ impl ChangeFixture {
 
             for krate in all_crates {
                 crate_graph
-                    .add_dep(krate, Dependency::new(CrateName::new("core").unwrap(), core_crate))
+                    .add_dep(
+                        krate,
+                        Dependency::with_prelude(
+                            CrateName::new("core").unwrap(),
+                            core_crate,
+                            true,
+                            true,
+                        ),
+                    )
                     .unwrap();
             }
         }

@@ -211,13 +211,13 @@ impl Expr {
                 }
             }
             Expr::Method { func, target, params, .. } => {
-                if target.contains_many_in_illegal_pos() {
+                if self.contains_many_in_illegal_pos(db) {
                     return Ok(many_formatter(&target.ty(db)));
                 }
 
                 let func_name = func.name(db).display(db.upcast()).to_string();
                 let self_param = func.self_param(db).unwrap();
-                let target = target.gen_source_code(
+                let target_str = target.gen_source_code(
                     sema_scope,
                     many_formatter,
                     prefer_no_std,
@@ -236,9 +236,12 @@ impl Expr {
                     Some(trait_) => {
                         let trait_name = mod_item_path_str(sema_scope, &ModuleDef::Trait(trait_))?;
                         let target = match self_param.access(db) {
-                            crate::Access::Shared => format!("&{target}"),
-                            crate::Access::Exclusive => format!("&mut {target}"),
-                            crate::Access::Owned => target,
+                            crate::Access::Shared if !target.is_many() => format!("&{target_str}"),
+                            crate::Access::Exclusive if !target.is_many() => {
+                                format!("&mut {target_str}")
+                            }
+                            crate::Access::Owned => target_str,
+                            _ => many_formatter(&target.ty(db)),
                         };
                         let res = match args.is_empty() {
                             true => format!("{trait_name}::{func_name}({target})",),
@@ -246,7 +249,7 @@ impl Expr {
                         };
                         Ok(res)
                     }
-                    None => Ok(format!("{target}.{func_name}({args})")),
+                    None => Ok(format!("{target_str}.{func_name}({args})")),
                 }
             }
             Expr::Variant { variant, generics, params } => {
@@ -381,7 +384,7 @@ impl Expr {
                 Ok(res)
             }
             Expr::Field { expr, field } => {
-                if expr.contains_many_in_illegal_pos() {
+                if expr.contains_many_in_illegal_pos(db) {
                     return Ok(many_formatter(&expr.ty(db)));
                 }
 
@@ -395,7 +398,7 @@ impl Expr {
                 Ok(format!("{strukt}.{field}"))
             }
             Expr::Reference(expr) => {
-                if expr.contains_many_in_illegal_pos() {
+                if expr.contains_many_in_illegal_pos(db) {
                     return Ok(many_formatter(&expr.ty(db)));
                 }
 
@@ -466,10 +469,15 @@ impl Expr {
     /// macro!().bar()
     /// &macro!()
     /// ```
-    fn contains_many_in_illegal_pos(&self) -> bool {
+    fn contains_many_in_illegal_pos(&self, db: &dyn HirDatabase) -> bool {
         match self {
-            Expr::Method { target, .. } => target.contains_many_in_illegal_pos(),
-            Expr::Field { expr, .. } => expr.contains_many_in_illegal_pos(),
+            Expr::Method { target, func, .. } => {
+                match func.as_assoc_item(db).and_then(|it| it.container_or_implemented_trait(db)) {
+                    Some(_) => false,
+                    None => target.is_many(),
+                }
+            }
+            Expr::Field { expr, .. } => expr.contains_many_in_illegal_pos(db),
             Expr::Reference(target) => target.is_many(),
             Expr::Many(_) => true,
             _ => false,

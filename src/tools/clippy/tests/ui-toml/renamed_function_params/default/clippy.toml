@@ -1,0 +1,2 @@
+# Ignore `From`, `TryFrom`, `FromStr` by default
+# allow-renamed-params-for = []

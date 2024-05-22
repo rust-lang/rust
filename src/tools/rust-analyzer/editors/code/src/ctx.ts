@@ -433,7 +433,6 @@ export class Ctx implements RustAnalyzerExtensionApi {
         statusBar.tooltip.isTrusted = true;
         switch (status.health) {
             case "ok":
-                statusBar.tooltip.appendText(status.message ?? "Ready");
                 statusBar.color = undefined;
                 statusBar.backgroundColor = undefined;
                 if (this.config.statusBarClickAction === "stopServer") {
@@ -444,9 +443,6 @@ export class Ctx implements RustAnalyzerExtensionApi {
                 this.dependencies?.refresh();
                 break;
             case "warning":
-                if (status.message) {
-                    statusBar.tooltip.appendText(status.message);
-                }
                 statusBar.color = new vscode.ThemeColor("statusBarItem.warningForeground");
                 statusBar.backgroundColor = new vscode.ThemeColor(
                     "statusBarItem.warningBackground",
@@ -455,9 +451,6 @@ export class Ctx implements RustAnalyzerExtensionApi {
                 icon = "$(warning) ";
                 break;
             case "error":
-                if (status.message) {
-                    statusBar.tooltip.appendText(status.message);
-                }
                 statusBar.color = new vscode.ThemeColor("statusBarItem.errorForeground");
                 statusBar.backgroundColor = new vscode.ThemeColor("statusBarItem.errorBackground");
                 statusBar.command = "rust-analyzer.openLogs";
@@ -475,6 +468,15 @@ export class Ctx implements RustAnalyzerExtensionApi {
                 statusBar.command = "rust-analyzer.startServer";
                 statusBar.text = "$(stop-circle) rust-analyzer";
                 return;
+        }
+        if (status.message) {
+            statusBar.tooltip.appendText(status.message);
+        }
+        if (status.workspaceInfo) {
+            if (statusBar.tooltip.value) {
+                statusBar.tooltip.appendMarkdown("\n\n---\n\n");
+            }
+            statusBar.tooltip.appendMarkdown(status.workspaceInfo);
         }
         if (statusBar.tooltip.value) {
             statusBar.tooltip.appendMarkdown("\n\n---\n\n");

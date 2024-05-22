@@ -20,7 +20,7 @@ use rustc_middle::bug;
 use rustc_middle::ty::{TyCtxt, TyCtxtFeed};
 use rustc_session::config::{self, CrateType, ExternLocation};
 use rustc_session::cstore::{CrateDepKind, CrateSource, ExternCrate, ExternCrateSource};
-use rustc_session::lint;
+use rustc_session::lint::{self, BuiltinLintDiag};
 use rustc_session::output::validate_crate_name;
 use rustc_session::search_paths::PathKind;
 use rustc_span::edition::Edition;
@@ -975,15 +975,14 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
             }
 
             self.sess.psess.buffer_lint(
-                    lint::builtin::UNUSED_CRATE_DEPENDENCIES,
-                    span,
-                    ast::CRATE_NODE_ID,
-                    format!(
-                        "external crate `{}` unused in `{}`: remove the dependency or add `use {} as _;`",
-                        name,
-                        self.tcx.crate_name(LOCAL_CRATE),
-                        name),
-                );
+                lint::builtin::UNUSED_CRATE_DEPENDENCIES,
+                span,
+                ast::CRATE_NODE_ID,
+                BuiltinLintDiag::UnusedCrateDependency {
+                    extern_crate: name_interned,
+                    local_crate: self.tcx.crate_name(LOCAL_CRATE),
+                },
+            );
         }
     }
 
@@ -1020,7 +1019,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
                 lint::builtin::WASM_C_ABI,
                 span,
                 ast::CRATE_NODE_ID,
-                crate::fluent_generated::metadata_wasm_c_abi,
+                BuiltinLintDiag::WasmCAbi,
             );
         }
     }

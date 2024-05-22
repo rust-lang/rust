@@ -7,11 +7,11 @@ use std::fmt::Debug;
 use std::hash::Hash;
 use std::ops::Deref;
 
-use crate::fold::TypeSuperFoldable;
+use crate::fold::{TypeFoldable, TypeSuperFoldable};
 use crate::visit::{Flags, TypeSuperVisitable};
 use crate::{
-    AliasTy, AliasTyKind, BoundVar, ConstKind, DebruijnIndex, DebugWithInfcx, Interner, RegionKind,
-    TyKind, UnevaluatedConst, UniverseIndex,
+    AliasTy, AliasTyKind, BoundVar, ConstKind, ConstVid, DebruijnIndex, DebugWithInfcx, InferConst,
+    InferTy, Interner, RegionKind, TyKind, TyVid, UnevaluatedConst, UniverseIndex,
 };
 
 pub trait Ty<I: Interner<Ty = Self>>:
@@ -27,6 +27,10 @@ pub trait Ty<I: Interner<Ty = Self>>:
     + Flags
 {
     fn new_bool(interner: I) -> Self;
+
+    fn new_infer(interner: I, var: InferTy) -> Self;
+
+    fn new_var(interner: I, var: TyVid) -> Self;
 
     fn new_anon_bound(interner: I, debruijn: DebruijnIndex, var: BoundVar) -> Self;
 
@@ -68,6 +72,10 @@ pub trait Const<I: Interner<Const = Self>>:
     + TypeSuperFoldable<I>
     + Flags
 {
+    fn new_infer(interner: I, var: InferConst, ty: I::Ty) -> Self;
+
+    fn new_var(interner: I, var: ConstVid, ty: I::Ty) -> Self;
+
     fn new_anon_bound(interner: I, debruijn: DebruijnIndex, var: BoundVar, ty: I::Ty) -> Self;
 
     fn new_unevaluated(interner: I, uv: UnevaluatedConst<I>, ty: I::Ty) -> Self;
@@ -87,6 +95,7 @@ pub trait GenericArgs<I: Interner<GenericArgs = Self>>:
     + IntoIterator<Item = I::GenericArg>
     + Deref<Target: Deref<Target = [I::GenericArg]>>
     + Default
+    + TypeFoldable<I>
 {
     fn type_at(self, i: usize) -> I::Ty;
 
@@ -96,6 +105,7 @@ pub trait GenericArgs<I: Interner<GenericArgs = Self>>:
 pub trait Predicate<I: Interner<Predicate = Self>>:
     Copy + Debug + Hash + Eq + TypeSuperVisitable<I> + TypeSuperFoldable<I> + Flags
 {
+    fn is_coinductive(self, interner: I) -> bool;
 }
 
 /// Common capabilities of placeholder kinds

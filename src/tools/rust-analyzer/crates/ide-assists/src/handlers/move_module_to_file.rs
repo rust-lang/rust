@@ -1,6 +1,7 @@
 use std::iter;
 
 use ast::edit::IndentLevel;
+use hir::HasAttrs;
 use ide_db::base_db::AnchoredPathBuf;
 use itertools::Itertools;
 use stdx::format_to;
@@ -50,9 +51,17 @@ pub(crate) fn move_module_to_file(acc: &mut Assists, ctx: &AssistContext<'_>) ->
         |builder| {
             let path = {
                 let mut buf = String::from("./");
-                match parent_module.name(ctx.db()) {
-                    Some(name) if !parent_module.is_mod_rs(ctx.db()) => {
-                        format_to!(buf, "{}/", name.display(ctx.db()))
+                let db = ctx.db();
+                match parent_module.name(db) {
+                    Some(name)
+                        if !parent_module.is_mod_rs(db)
+                            && parent_module
+                                .attrs(db)
+                                .by_key("path")
+                                .string_value_unescape()
+                                .is_none() =>
+                    {
+                        format_to!(buf, "{}/", name.display(db))
                     }
                     _ => (),
                 }
@@ -106,6 +115,72 @@ mod tests {
     use crate::tests::{check_assist, check_assist_not_applicable};
 
     use super::*;
+
+    #[test]
+    fn extract_with_specified_path_attr() {
+        check_assist(
+            move_module_to_file,
+            r#"
+//- /main.rs
+#[path="parser/__mod.rs"]
+mod parser;
+//- /parser/__mod.rs
+fn test() {}
+mod $0expr {
+    struct A {}
+}
+"#,
+            r#"
+//- /parser/__mod.rs
+fn test() {}
+mod expr;
+//- /parser/expr.rs
+struct A {}
+"#,
+        );
+
+        check_assist(
+            move_module_to_file,
+            r#"
+//- /main.rs
+#[path="parser/a/__mod.rs"]
+mod parser;
+//- /parser/a/__mod.rs
+fn test() {}
+mod $0expr {
+    struct A {}
+}
+"#,
+            r#"
+//- /parser/a/__mod.rs
+fn test() {}
+mod expr;
+//- /parser/a/expr.rs
+struct A {}
+"#,
+        );
+
+        check_assist(
+            move_module_to_file,
+            r#"
+//- /main.rs
+#[path="a.rs"]
+mod parser;
+//- /a.rs
+fn test() {}
+mod $0expr {
+    struct A {}
+}
+"#,
+            r#"
+//- /a.rs
+fn test() {}
+mod expr;
+//- /expr.rs
+struct A {}
+"#,
+        );
+    }
 
     #[test]
     fn extract_from_root() {

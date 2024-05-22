@@ -150,6 +150,7 @@ use dependency2::Spam;
     )
     .with_config(serde_json::json!({
         "cargo": { "sysroot": null },
+        "linkedProjects": ["src/lib.rs"],
     }))
     .server()
     .wait_until_workspace_is_loaded();

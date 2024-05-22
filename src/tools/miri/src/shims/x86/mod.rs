@@ -757,7 +757,7 @@ fn int_abs<'tcx>(
     Ok(())
 }
 
-/// Splits `op` (which must be a SIMD vector) into 128-bit chuncks.
+/// Splits `op` (which must be a SIMD vector) into 128-bit chunks.
 ///
 /// Returns a tuple where:
 /// * The first element is the number of 128-bit chunks (let's call it `N`).
@@ -788,7 +788,7 @@ fn split_simd_to_128bit_chunks<'tcx, P: Projectable<'tcx, Provenance>>(
     Ok((num_chunks, items_per_chunk, chunked_op))
 }
 
-/// Horizontaly performs `which` operation on adjacent values of
+/// Horizontally performs `which` operation on adjacent values of
 /// `left` and `right` SIMD vectors and stores the result in `dest`.
 /// "Horizontal" means that the i-th output element is calculated
 /// from the elements 2*i and 2*i+1 of the concatenation of `left` and
@@ -1256,7 +1256,7 @@ fn packusdw<'tcx>(
 
 /// Negates elements from `left` when the corresponding element in
 /// `right` is negative. If an element from `right` is zero, zero
-/// is writen to the corresponding output element.
+/// is written to the corresponding output element.
 /// In other words, multiplies `left` with `right.signum()`.
 fn psign<'tcx>(
     this: &mut crate::MiriInterpCx<'_, 'tcx>,

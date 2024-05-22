@@ -1,5 +1,5 @@
 //! Term search assist
-use hir::term_search::TermSearchCtx;
+use hir::term_search::{TermSearchConfig, TermSearchCtx};
 use ide_db::{
     assists::{AssistId, AssistKind, GroupLabel},
     famous_defs::FamousDefs,
@@ -34,7 +34,7 @@ pub(crate) fn term_search(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<
         sema: &ctx.sema,
         scope: &scope,
         goal: target_ty,
-        config: Default::default(),
+        config: TermSearchConfig { fuel: ctx.config.term_search_fuel, ..Default::default() },
     };
     let paths = hir::term_search::term_search(&term_search_ctx);
 

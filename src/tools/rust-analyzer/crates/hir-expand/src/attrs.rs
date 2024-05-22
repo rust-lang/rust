@@ -5,7 +5,7 @@ use base_db::CrateId;
 use cfg::CfgExpr;
 use either::Either;
 use intern::Interned;
-use mbe::{syntax_node_to_token_tree, DelimiterKind, Punct};
+use mbe::{syntax_node_to_token_tree, DelimiterKind, DocCommentDesugarMode, Punct};
 use smallvec::{smallvec, SmallVec};
 use span::{Span, SyntaxContextId};
 use syntax::unescape;
@@ -239,7 +239,12 @@ impl Attr {
                 span,
             })))
         } else if let Some(tt) = ast.token_tree() {
-            let tree = syntax_node_to_token_tree(tt.syntax(), span_map, span);
+            let tree = syntax_node_to_token_tree(
+                tt.syntax(),
+                span_map,
+                span,
+                DocCommentDesugarMode::ProcMacro,
+            );
             Some(Interned::new(AttrInput::TokenTree(Box::new(tree))))
         } else {
             None
@@ -247,8 +252,18 @@ impl Attr {
         Some(Attr { id, path, input, ctxt: span.ctx })
     }
 
-    fn from_tt(db: &dyn ExpandDatabase, tt: &[tt::TokenTree], id: AttrId) -> Option<Attr> {
-        let ctxt = tt.first()?.first_span().ctx;
+    fn from_tt(db: &dyn ExpandDatabase, mut tt: &[tt::TokenTree], id: AttrId) -> Option<Attr> {
+        if matches!(tt,
+            [tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident { text, .. })), ..]
+            if text == "unsafe"
+        ) {
+            match tt.get(1) {
+                Some(tt::TokenTree::Subtree(subtree)) => tt = &subtree.token_trees,
+                _ => return None,
+            }
+        }
+        let first = &tt.first()?;
+        let ctxt = first.first_span().ctx;
         let path_end = tt
             .iter()
             .position(|tt| {
@@ -430,7 +445,7 @@ fn inner_attributes(
 
 // Input subtree is: `(cfg, $(attr),+)`
 // Split it up into a `cfg` subtree and the `attr` subtrees.
-pub fn parse_cfg_attr_input(
+fn parse_cfg_attr_input(
     subtree: &Subtree,
 ) -> Option<(&[tt::TokenTree], impl Iterator<Item = &[tt::TokenTree]>)> {
     let mut parts = subtree

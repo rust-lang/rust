@@ -36,22 +36,16 @@ impl<T> Context for io::Result<T> {
 /// # Errors
 ///
 /// This function errors out if the files couldn't be created or written to.
-pub fn create(
-    pass: &String,
-    lint_name: Option<&String>,
-    category: Option<&str>,
-    mut ty: Option<&str>,
-    msrv: bool,
-) -> io::Result<()> {
-    if category == Some("cargo") && ty.is_none() {
+pub fn create(pass: &str, name: &str, category: &str, mut ty: Option<&str>, msrv: bool) -> io::Result<()> {
+    if category == "cargo" && ty.is_none() {
         // `cargo` is a special category, these lints should always be in `clippy_lints/src/cargo`
         ty = Some("cargo");
     }
 
     let lint = LintData {
         pass,
-        name: lint_name.expect("`name` argument is validated by clap"),
-        category: category.expect("`category` argument is validated by clap"),
+        name,
+        category,
         ty,
         project_root: clippy_project_root(),
     };

@@ -1010,6 +1010,9 @@ impl Step for PlainSourceTarball {
         if builder.rust_info().is_managed_git_subrepository()
             || builder.rust_info().is_from_tarball()
         {
+            // FIXME: This code looks _very_ similar to what we have in `src/core/build_steps/vendor.rs`
+            // perhaps it should be removed in favor of making `dist` perform the `vendor` step?
+
             // Ensure we have all submodules from src and other directories checked out.
             for submodule in builder.get_all_submodules() {
                 builder.update_submodule(Path::new(submodule));
@@ -1029,6 +1032,10 @@ impl Step for PlainSourceTarball {
                 .arg(builder.src.join("./compiler/rustc_codegen_gcc/Cargo.toml"))
                 .arg("--sync")
                 .arg(builder.src.join("./src/bootstrap/Cargo.toml"))
+                .arg("--sync")
+                .arg(builder.src.join("./src/tools/opt-dist/Cargo.toml"))
+                .arg("--sync")
+                .arg(builder.src.join("./src/tools/rustc-perf/Cargo.toml"))
                 // Will read the libstd Cargo.toml
                 // which uses the unstable `public-dependency` feature.
                 .env("RUSTC_BOOTSTRAP", "1")

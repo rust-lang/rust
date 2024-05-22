@@ -3,6 +3,7 @@
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::LangItem;
 use rustc_hir::{def_id::DefId, Movability, Mutability};
+use rustc_infer::infer::InferCtxt;
 use rustc_infer::traits::query::NoSolution;
 use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_middle::bug;
@@ -18,7 +19,7 @@ use crate::solve::EvalCtxt;
 // instantiate the binder with placeholders eagerly.
 #[instrument(level = "trace", skip(ecx), ret)]
 pub(in crate::solve) fn instantiate_constituent_tys_for_auto_trait<'tcx>(
-    ecx: &EvalCtxt<'_, 'tcx>,
+    ecx: &EvalCtxt<'_, InferCtxt<'tcx>>,
     ty: Ty<'tcx>,
 ) -> Result<Vec<ty::Binder<'tcx, Ty<'tcx>>>, NoSolution> {
     let tcx = ecx.tcx();
@@ -97,7 +98,7 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_auto_trait<'tcx>(
 
 #[instrument(level = "trace", skip(ecx), ret)]
 pub(in crate::solve) fn instantiate_constituent_tys_for_sized_trait<'tcx>(
-    ecx: &EvalCtxt<'_, 'tcx>,
+    ecx: &EvalCtxt<'_, InferCtxt<'tcx>>,
     ty: Ty<'tcx>,
 ) -> Result<Vec<ty::Binder<'tcx, Ty<'tcx>>>, NoSolution> {
     match *ty.kind() {
@@ -161,7 +162,7 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_sized_trait<'tcx>(
 
 #[instrument(level = "trace", skip(ecx), ret)]
 pub(in crate::solve) fn instantiate_constituent_tys_for_copy_clone_trait<'tcx>(
-    ecx: &EvalCtxt<'_, 'tcx>,
+    ecx: &EvalCtxt<'_, InferCtxt<'tcx>>,
     ty: Ty<'tcx>,
 ) -> Result<Vec<ty::Binder<'tcx, Ty<'tcx>>>, NoSolution> {
     match *ty.kind() {
@@ -663,7 +664,7 @@ fn coroutine_closure_to_ambiguous_coroutine<'tcx>(
 // normalize eagerly here. See https://github.com/lcnr/solver-woes/issues/9
 // for more details.
 pub(in crate::solve) fn predicates_for_object_candidate<'tcx>(
-    ecx: &EvalCtxt<'_, 'tcx>,
+    ecx: &EvalCtxt<'_, InferCtxt<'tcx>>,
     param_env: ty::ParamEnv<'tcx>,
     trait_ref: ty::TraitRef<'tcx>,
     object_bound: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
@@ -716,7 +717,7 @@ pub(in crate::solve) fn predicates_for_object_candidate<'tcx>(
 }
 
 struct ReplaceProjectionWith<'a, 'tcx> {
-    ecx: &'a EvalCtxt<'a, 'tcx>,
+    ecx: &'a EvalCtxt<'a, InferCtxt<'tcx>>,
     param_env: ty::ParamEnv<'tcx>,
     mapping: FxHashMap<DefId, ty::PolyProjectionPredicate<'tcx>>,
     nested: Vec<Goal<'tcx, ty::Predicate<'tcx>>>,

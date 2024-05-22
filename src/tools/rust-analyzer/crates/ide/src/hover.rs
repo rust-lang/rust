@@ -15,7 +15,7 @@ use ide_db::{
     FxIndexSet, RootDatabase,
 };
 use itertools::{multizip, Itertools};
-use syntax::{ast, match_ast, AstNode, AstToken, SyntaxKind::*, SyntaxNode, T};
+use syntax::{ast, AstNode, SyntaxKind::*, SyntaxNode, T};
 
 use crate::{
     doc_links::token_as_doc_comment,
@@ -33,7 +33,8 @@ pub struct HoverConfig {
     pub keywords: bool,
     pub format: HoverDocFormat,
     pub max_trait_assoc_items_count: Option<usize>,
-    pub max_struct_field_count: Option<usize>,
+    pub max_fields_count: Option<usize>,
+    pub max_enum_variants_count: Option<usize>,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -297,61 +298,8 @@ fn hover_simple(
         })
         // tokens
         .or_else(|| {
-            let mut res = HoverResult::default();
-            match_ast! {
-                match original_token {
-                    ast::String(string) => {
-                        res.markup = Markup::fenced_block_text(format_args!("{}", string.value()?));
-                    },
-                    ast::ByteString(string) => {
-                        res.markup = Markup::fenced_block_text(format_args!("{:?}", string.value()?));
-                    },
-                    ast::CString(string) => {
-                        let val = string.value()?;
-                        res.markup = Markup::fenced_block_text(format_args!("{}", std::str::from_utf8(val.as_ref()).ok()?));
-                    },
-                    ast::Char(char) => {
-                        let mut res = HoverResult::default();
-                        res.markup = Markup::fenced_block_text(format_args!("{}", char.value()?));
-                    },
-                    ast::Byte(byte) => {
-                        res.markup = Markup::fenced_block_text(format_args!("0x{:X}", byte.value()?));
-                    },
-                    ast::FloatNumber(num) => {
-                        res.markup = if num.suffix() == Some("f32") {
-                            match num.value_f32() {
-                                Ok(num) => {
-                                    Markup::fenced_block_text(format_args!("{num} (bits: 0x{:X})", num.to_bits()))
-                                },
-                                Err(e) => {
-                                    Markup::fenced_block_text(format_args!("{e}"))
-                                },
-                            }
-                        } else {
-                            match num.value() {
-                                Ok(num) => {
-                                    Markup::fenced_block_text(format_args!("{num} (bits: 0x{:X})", num.to_bits()))
-                                },
-                                Err(e) => {
-                                    Markup::fenced_block_text(format_args!("{e}"))
-                                },
-                            }
-                        };
-                    },
-                    ast::IntNumber(num) => {
-                        res.markup = match num.value() {
-                            Ok(num) => {
-                                Markup::fenced_block_text(format_args!("{num} (0x{num:X}|0b{num:b})"))
-                            },
-                            Err(e) => {
-                                Markup::fenced_block_text(format_args!("{e}"))
-                            },
-                        };
-                    },
-                    _ => return None
-                }
-            }
-            Some(res)
+            render::literal(sema, original_token.clone())
+                .map(|markup| HoverResult { markup, actions: vec![] })
         });
 
     result.map(|mut res: HoverResult| {

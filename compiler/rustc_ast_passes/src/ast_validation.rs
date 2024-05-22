@@ -27,7 +27,6 @@ use std::ops::{Deref, DerefMut};
 use thin_vec::thin_vec;
 
 use crate::errors;
-use crate::fluent_generated as fluent;
 
 /// Is `self` allowed semantically as the first parameter in an `FnDecl`?
 enum SelfSemantic {
@@ -766,11 +765,10 @@ impl<'a> AstValidator<'a> {
             .span_to_snippet(span)
             .is_ok_and(|snippet| !snippet.starts_with("#["))
         {
-            self.lint_buffer.buffer_lint_with_diagnostic(
+            self.lint_buffer.buffer_lint(
                 MISSING_ABI,
                 id,
                 span,
-                fluent::ast_passes_extern_without_abi,
                 BuiltinLintDiag::MissingAbi(span, abi::Abi::FALLBACK),
             )
         }
@@ -1428,17 +1426,15 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             Self::check_decl_no_pat(&sig.decl, |span, ident, mut_ident| {
                 if mut_ident && matches!(ctxt, FnCtxt::Assoc(_)) {
                     if let Some(ident) = ident {
-                        let msg = match ctxt {
-                            FnCtxt::Foreign => fluent::ast_passes_pattern_in_foreign,
-                            _ => fluent::ast_passes_pattern_in_bodiless,
-                        };
-                        let diag = BuiltinLintDiag::PatternsInFnsWithoutBody(span, ident);
-                        self.lint_buffer.buffer_lint_with_diagnostic(
+                        self.lint_buffer.buffer_lint(
                             PATTERNS_IN_FNS_WITHOUT_BODY,
                             id,
                             span,
-                            msg,
-                            diag,
+                            BuiltinLintDiag::PatternsInFnsWithoutBody {
+                                span,
+                                ident,
+                                is_foreign: matches!(ctxt, FnCtxt::Foreign),
+                            },
                         )
                     }
                 } else {
@@ -1510,12 +1506,11 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     Some((right, snippet))
                 }
             };
-            self.lint_buffer.buffer_lint_with_diagnostic(
+            self.lint_buffer.buffer_lint(
                 DEPRECATED_WHERE_CLAUSE_LOCATION,
                 item.id,
                 err.span,
-                fluent::ast_passes_deprecated_where_clause_location,
-                BuiltinLintDiag::DeprecatedWhereclauseLocation(sugg),
+                BuiltinLintDiag::DeprecatedWhereclauseLocation(err.span, sugg),
             );
         }
 

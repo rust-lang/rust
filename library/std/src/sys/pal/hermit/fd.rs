@@ -1,6 +1,6 @@
 #![unstable(reason = "not public", issue = "none", feature = "fd")]
 
-use super::abi;
+use super::hermit_abi;
 use crate::io::{self, Read};
 use crate::os::hermit::io::{FromRawFd, OwnedFd, RawFd};
 use crate::sys::cvt;
@@ -16,7 +16,8 @@ pub struct FileDesc {
 
 impl FileDesc {
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
-        let result = cvt(unsafe { abi::read(self.fd.as_raw_fd(), buf.as_mut_ptr(), buf.len()) })?;
+        let result =
+            cvt(unsafe { hermit_abi::read(self.fd.as_raw_fd(), buf.as_mut_ptr(), buf.len()) })?;
         Ok(result as usize)
     }
 
@@ -26,7 +27,8 @@ impl FileDesc {
     }
 
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
-        let result = cvt(unsafe { abi::write(self.fd.as_raw_fd(), buf.as_ptr(), buf.len()) })?;
+        let result =
+            cvt(unsafe { hermit_abi::write(self.fd.as_raw_fd(), buf.as_ptr(), buf.len()) })?;
         Ok(result as usize)
     }
 
@@ -49,8 +51,8 @@ impl FileDesc {
         unsupported()
     }
 
-    pub fn fstat(&self, stat: *mut abi::stat) -> io::Result<()> {
-        cvt(unsafe { abi::fstat(self.fd.as_raw_fd(), stat) })?;
+    pub fn fstat(&self, stat: *mut hermit_abi::stat) -> io::Result<()> {
+        cvt(unsafe { hermit_abi::fstat(self.fd.as_raw_fd(), stat) })?;
         Ok(())
     }
 }

@@ -49,7 +49,7 @@ fn function3<T: Trait<'static, Assoc = usize>>() {
     // Trying to normalize the type `for<'a> fn(<T as Trait<'a>>::Assoc)`
     // only gets to `<T as Trait<'a>>::Assoc` once `'a` has been already
     // instantiated, causing us to prefer the where-bound over the impl
-    // resulting in a placeholder error. Even if were were to also use the
+    // resulting in a placeholder error. Even if we were to also use the
     // leak check during candidate selection for normalization, this
     // case would still not compile.
     let _higher_ranked_norm: for<'a> fn(<T as Trait<'a>>::Assoc) = |_| ();

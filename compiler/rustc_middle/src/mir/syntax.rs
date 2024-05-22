@@ -1295,17 +1295,11 @@ pub enum Rvalue<'tcx> {
     ///   truncated as needed.
     /// * The `Bit*` operations accept signed integers, unsigned integers, or bools with matching
     ///   types and return a value of that type.
+    /// * The `FooWithOverflow` are like the `Foo`, but returning `(T, bool)` instead of just `T`,
+    ///   where the `bool` is true if the result is not equal to the infinite-precision result.
     /// * The remaining operations accept signed integers, unsigned integers, or floats with
     ///   matching types and return a value of that type.
     BinaryOp(BinOp, Box<(Operand<'tcx>, Operand<'tcx>)>),
-
-    /// Same as `BinaryOp`, but yields `(T, bool)` with a `bool` indicating an error condition.
-    ///
-    /// For addition, subtraction, and multiplication on integers the error condition is set when
-    /// the infinite precision result would not be equal to the actual result.
-    ///
-    /// Other combinations of types and operators are unsupported.
-    CheckedBinaryOp(BinOp, Box<(Operand<'tcx>, Operand<'tcx>)>),
 
     /// Computes a value as described by the operation.
     NullaryOp(NullOp<'tcx>, Ty<'tcx>),
@@ -1449,14 +1443,23 @@ pub enum BinOp {
     Add,
     /// Like `Add`, but with UB on overflow.  (Integers only.)
     AddUnchecked,
+    /// Like `Add`, but returns `(T, bool)` of both the wrapped result
+    /// and a bool indicating whether it overflowed.
+    AddWithOverflow,
     /// The `-` operator (subtraction)
     Sub,
     /// Like `Sub`, but with UB on overflow.  (Integers only.)
     SubUnchecked,
+    /// Like `Sub`, but returns `(T, bool)` of both the wrapped result
+    /// and a bool indicating whether it overflowed.
+    SubWithOverflow,
     /// The `*` operator (multiplication)
     Mul,
     /// Like `Mul`, but with UB on overflow.  (Integers only.)
     MulUnchecked,
+    /// Like `Mul`, but returns `(T, bool)` of both the wrapped result
+    /// and a bool indicating whether it overflowed.
+    MulWithOverflow,
     /// The `/` operator (division)
     ///
     /// For integer types, division by zero is UB, as is `MIN / -1` for signed.

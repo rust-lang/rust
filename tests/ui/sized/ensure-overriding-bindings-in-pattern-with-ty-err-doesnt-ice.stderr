@@ -25,8 +25,8 @@ LL +     let str::as_bytes;
    |
 
 error[E0533]: expected unit struct, unit variant or constant, found associated function `str<{
-                      fn str() { let (/*ERROR*/); }
-                  }, T>::as_bytes`
+                  fn str() { let (/*ERROR*/); }
+              }, T>::as_bytes`
   --> $DIR/ensure-overriding-bindings-in-pattern-with-ty-err-doesnt-ice.rs:2:9
    |
 LL |     let str::<{fn str() { let str::T>>::as_bytes; }}, T>::as_bytes;

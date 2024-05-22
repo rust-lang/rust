@@ -40,6 +40,7 @@ ignore = [
     "src/tools/clippy",
     "src/tools/miri",
     "src/tools/rust-analyzer",
+    "src/tools/rustc-perf",
     "src/tools/rustfmt",
 
     # these are ignored by a standard cargo fmt run

@@ -260,16 +260,14 @@ fn translate_outlives_facts(typeck: &mut TypeChecker<'_, '_>) {
             |constraint: &OutlivesConstraint<'_>| {
                 if let Some(from_location) = constraint.locations.from_location() {
                     Either::Left(iter::once((
-                        constraint.sup,
-                        constraint.sub,
+                        constraint.sup.into(),
+                        constraint.sub.into(),
                         location_table.mid_index(from_location),
                     )))
                 } else {
-                    Either::Right(
-                        location_table
-                            .all_points()
-                            .map(move |location| (constraint.sup, constraint.sub, location)),
-                    )
+                    Either::Right(location_table.all_points().map(move |location| {
+                        (constraint.sup.into(), constraint.sub.into(), location)
+                    }))
                 }
             },
         ));
@@ -2417,8 +2415,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 self.check_operand(op, location);
             }
 
-            Rvalue::BinaryOp(_, box (left, right))
-            | Rvalue::CheckedBinaryOp(_, box (left, right)) => {
+            Rvalue::BinaryOp(_, box (left, right)) => {
                 self.check_operand(left, location);
                 self.check_operand(right, location);
             }
@@ -2445,7 +2442,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             | Rvalue::Cast(..)
             | Rvalue::ShallowInitBox(..)
             | Rvalue::BinaryOp(..)
-            | Rvalue::CheckedBinaryOp(..)
             | Rvalue::NullaryOp(..)
             | Rvalue::CopyForDeref(..)
             | Rvalue::UnaryOp(..)
@@ -2547,7 +2543,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             if let Some(borrow_index) = borrow_set.get_index_of(&location) {
                 let region_vid = borrow_region.as_var();
                 all_facts.loan_issued_at.push((
-                    region_vid,
+                    region_vid.into(),
                     borrow_index,
                     location_table.mid_index(location),
                 ));

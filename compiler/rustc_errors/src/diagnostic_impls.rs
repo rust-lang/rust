@@ -282,6 +282,12 @@ impl IntoDiagArg for ClosureKind {
     }
 }
 
+impl IntoDiagArg for hir::def::Namespace {
+    fn into_diag_arg(self) -> DiagArgValue {
+        DiagArgValue::Str(Cow::Borrowed(self.descr()))
+    }
+}
+
 #[derive(Clone)]
 pub struct DiagSymbolList(Vec<Symbol>);
 

@@ -90,8 +90,8 @@
 //!
 //! # Windows argument splitting
 //!
-//! On Unix systems arguments are passed to a new process as an array of strings
-//! but on Windows arguments are passed as a single commandline string and it's
+//! On Unix systems arguments are passed to a new process as an array of strings,
+//! but on Windows arguments are passed as a single commandline string and it is
 //! up to the child process to parse it into an array. Therefore the parent and
 //! child processes must agree on how the commandline string is encoded.
 //!
@@ -107,26 +107,26 @@
 //! * Use [`raw_arg`] to build a custom commandline. This bypasses the escaping
 //!   rules used by [`arg`] so should be used with due caution.
 //!
-//! `cmd.exe` and `.bat` use non-standard argument parsing and are especially
+//! `cmd.exe` and `.bat` files use non-standard argument parsing and are especially
 //! vulnerable to malicious input as they may be used to run arbitrary shell
 //! commands. Untrusted arguments should be restricted as much as possible.
 //! For examples on handling this see [`raw_arg`].
 //!
-//! ### Bat file special handling
+//! ### Batch file special handling
 //!
 //! On Windows, `Command` uses the Windows API function [`CreateProcessW`] to
-//! spawn new processes. An undocumented feature of this function is that,
+//! spawn new processes. An undocumented feature of this function is that
 //! when given a `.bat` file as the application to run, it will automatically
-//! convert that into running `cmd.exe /c` with the bat file as the next argument.
+//! convert that into running `cmd.exe /c` with the batch file as the next argument.
 //!
 //! For historical reasons Rust currently preserves this behaviour when using
 //! [`Command::new`], and escapes the arguments according to `cmd.exe` rules.
 //! Due to the complexity of `cmd.exe` argument handling, it might not be
-//! possible to safely escape some special chars, and using them will result
+//! possible to safely escape some special characters, and using them will result
 //! in an error being returned at process spawn. The set of unescapeable
-//! special chars might change between releases.
+//! special characters might change between releases.
 //!
-//! Also note that running `.bat` scripts in this way may be removed in the
+//! Also note that running batch scripts in this way may be removed in the
 //! future and so should not be relied upon.
 //!
 //! [`spawn`]: Command::spawn
@@ -659,16 +659,19 @@ impl Command {
     ///
     /// Note that the argument is not passed through a shell, but given
     /// literally to the program. This means that shell syntax like quotes,
-    /// escaped characters, word splitting, glob patterns, variable substitution, etc.
-    /// have no effect.
+    /// escaped characters, word splitting, glob patterns, variable substitution,
+    /// etc. have no effect.
     ///
     /// <div class="warning">
     ///
-    /// On Windows use caution with untrusted inputs. Most applications use the
-    /// standard convention for decoding arguments passed to them. These are safe to use with `arg`.
-    /// However some applications, such as `cmd.exe` and `.bat` files, use a non-standard way of decoding arguments
-    /// and are therefore vulnerable to malicious input.
-    /// In the case of `cmd.exe` this is especially important because a malicious argument can potentially run arbitrary shell commands.
+    /// On Windows, use caution with untrusted inputs. Most applications use the
+    /// standard convention for decoding arguments passed to them. These are safe to
+    /// use with `arg`. However, some applications such as `cmd.exe` and `.bat` files
+    /// use a non-standard way of decoding arguments. They are therefore vulnerable
+    /// to malicious input.
+    ///
+    /// In the case of `cmd.exe` this is especially important because a malicious
+    /// argument can potentially run arbitrary shell commands.
     ///
     /// See [Windows argument splitting][windows-args] for more details
     /// or [`raw_arg`] for manually implementing non-standard argument encoding.
@@ -710,11 +713,14 @@ impl Command {
     ///
     /// <div class="warning">
     ///
-    /// On Windows use caution with untrusted inputs. Most applications use the
-    /// standard convention for decoding arguments passed to them. These are safe to use with `args`.
-    /// However some applications, such as `cmd.exe` and `.bat` files, use a non-standard way of decoding arguments
-    /// and are therefore vulnerable to malicious input.
-    /// In the case of `cmd.exe` this is especially important because a malicious argument can potentially run arbitrary shell commands.
+    /// On Windows, use caution with untrusted inputs. Most applications use the
+    /// standard convention for decoding arguments passed to them. These are safe to
+    /// use with `arg`. However, some applications such as `cmd.exe` and `.bat` files
+    /// use a non-standard way of decoding arguments. They are therefore vulnerable
+    /// to malicious input.
+    ///
+    /// In the case of `cmd.exe` this is especially important because a malicious
+    /// argument can potentially run arbitrary shell commands.
     ///
     /// See [Windows argument splitting][windows-args] for more details
     /// or [`raw_arg`] for manually implementing non-standard argument encoding.

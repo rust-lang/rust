@@ -345,51 +345,47 @@ impl<'a> TyLoweringContext<'a> {
                     }
                     ImplTraitLoweringState::Param(counter) => {
                         let idx = counter.get();
-                        // FIXME we're probably doing something wrong here
+                        // Count the number of `impl Trait` things that appear within our bounds.
+                        // Since t hose have been emitted as implicit type args already.
                         counter.set(idx + count_impl_traits(type_ref) as u16);
-                        if let Some(generics) = self.generics() {
-                            let param = generics
-                                .iter()
-                                .filter(|(_, data)| {
-                                    matches!(
-                                        data,
-                                        GenericParamDataRef::TypeParamData(data)
-                                        if data.provenance == TypeParamProvenance::ArgumentImplTrait
-                                    )
-                                })
-                                .nth(idx as usize)
-                                .map_or(TyKind::Error, |(id, _)| {
-                                    if let GenericParamId::TypeParamId(id) = id {
-                                        TyKind::Placeholder(to_placeholder_idx(self.db, id.into()))
-                                    } else {
-                                        // we just filtered them out
-                                        unreachable!("Unexpected lifetime or const argument");
-                                    }
-                                });
-                            param.intern(Interner)
-                        } else {
-                            TyKind::Error.intern(Interner)
-                        }
+                        let kind = self
+                            .generics()
+                            .expect("param impl trait lowering must be in a generic def")
+                            .iter()
+                            .filter_map(|(id, data)| match (id, data) {
+                                (
+                                    GenericParamId::TypeParamId(id),
+                                    GenericParamDataRef::TypeParamData(data),
+                                ) if data.provenance == TypeParamProvenance::ArgumentImplTrait => {
+                                    Some(id)
+                                }
+                                _ => None,
+                            })
+                            .nth(idx as usize)
+                            .map_or(TyKind::Error, |id| {
+                                TyKind::Placeholder(to_placeholder_idx(self.db, id.into()))
+                            });
+                        kind.intern(Interner)
                     }
                     ImplTraitLoweringState::Variable(counter) => {
                         let idx = counter.get();
-                        // FIXME we're probably doing something wrong here
+                        // Count the number of `impl Trait` things that appear within our bounds.
+                        // Since t hose have been emitted as implicit type args already.
                         counter.set(idx + count_impl_traits(type_ref) as u16);
                         let (
                             _parent_params,
                             self_params,
-                            list_params,
+                            type_params,
                             const_params,
                             _impl_trait_params,
                             _lifetime_params,
-                        ) = if let Some(generics) = self.generics() {
-                            generics.provenance_split()
-                        } else {
-                            (0, 0, 0, 0, 0, 0)
-                        };
+                        ) = self
+                            .generics()
+                            .expect("variable impl trait lowering must be in a generic def")
+                            .provenance_split();
                         TyKind::BoundVar(BoundVar::new(
                             self.in_binders,
-                            idx as usize + self_params + list_params + const_params,
+                            idx as usize + self_params + type_params + const_params,
                         ))
                         .intern(Interner)
                     }
@@ -1010,6 +1006,7 @@ impl<'a> TyLoweringContext<'a> {
     pub(crate) fn lower_where_predicate<'b>(
         &'b self,
         where_predicate: &'b WherePredicate,
+        &def: &GenericDefId,
         ignore_bindings: bool,
     ) -> impl Iterator<Item = QuantifiedWhereClause> + 'b {
         match where_predicate {
@@ -1018,7 +1015,6 @@ impl<'a> TyLoweringContext<'a> {
                 let self_ty = match target {
                     WherePredicateTypeTarget::TypeRef(type_ref) => self.lower_ty(type_ref),
                     &WherePredicateTypeTarget::TypeOrConstParam(local_id) => {
-                        let def = self.resolver.generic_def().expect("generics in scope");
                         let param_id = hir_def::TypeOrConstParamId { parent: def, local_id };
                         match self.type_param_mode {
                             ParamLoweringMode::Placeholder => {
@@ -1056,23 +1052,7 @@ impl<'a> TyLoweringContext<'a> {
         let clause = match bound.as_ref() {
             TypeBound::Path(path, TraitBoundModifier::None) => {
                 trait_ref = self.lower_trait_ref_from_path(path, Some(self_ty));
-                trait_ref
-                    .clone()
-                    .filter(|tr| {
-                        // ignore `T: Drop` or `T: Destruct` bounds.
-                        // - `T: ~const Drop` has a special meaning in Rust 1.61 that we don't implement.
-                        //   (So ideally, we'd only ignore `~const Drop` here)
-                        // - `Destruct` impls are built-in in 1.62 (current nightly as of 08-04-2022), so until
-                        //   the builtin impls are supported by Chalk, we ignore them here.
-                        if let Some(lang) = self.db.lang_attr(tr.hir_trait_id().into()) {
-                            if matches!(lang, LangItem::Drop | LangItem::Destruct) {
-                                return false;
-                            }
-                        }
-                        true
-                    })
-                    .map(WhereClause::Implemented)
-                    .map(crate::wrap_empty_binders)
+                trait_ref.clone().map(WhereClause::Implemented).map(crate::wrap_empty_binders)
             }
             TypeBound::Path(path, TraitBoundModifier::Maybe) => {
                 let sized_trait = self
@@ -1166,84 +1146,77 @@ impl<'a> TyLoweringContext<'a> {
                     binding.type_ref.as_ref().map_or(0, |_| 1) + binding.bounds.len(),
                 );
                 if let Some(type_ref) = &binding.type_ref {
-                    if let (
-                        TypeRef::ImplTrait(bounds),
-                        ImplTraitLoweringState::Param(_)
-                        | ImplTraitLoweringState::Variable(_)
-                        | ImplTraitLoweringState::Disallowed,
-                    ) = (type_ref, &self.impl_trait_mode)
-                    {
-                        for bound in bounds {
-                            predicates.extend(
-                                self.lower_type_bound(
-                                    bound,
-                                    TyKind::Alias(AliasTy::Projection(projection_ty.clone()))
-                                        .intern(Interner),
-                                    false,
-                                ),
-                            );
+                    match (type_ref, &self.impl_trait_mode) {
+                        (TypeRef::ImplTrait(_), ImplTraitLoweringState::Disallowed) => (),
+                        (
+                            _,
+                            ImplTraitLoweringState::Disallowed | ImplTraitLoweringState::Opaque(_),
+                        ) => {
+                            let ty = self.lower_ty(type_ref);
+                            let alias_eq =
+                                AliasEq { alias: AliasTy::Projection(projection_ty.clone()), ty };
+                            predicates
+                                .push(crate::wrap_empty_binders(WhereClause::AliasEq(alias_eq)));
                         }
-                    } else {
-                        let ty = 'ty: {
-                            if matches!(
-                                self.impl_trait_mode,
-                                ImplTraitLoweringState::Param(_)
-                                    | ImplTraitLoweringState::Variable(_)
-                            ) {
-                                // Find the generic index for the target of our `bound`
-                                let target_param_idx = self
-                                    .resolver
-                                    .where_predicates_in_scope()
-                                    .find_map(|p| match p {
-                                        WherePredicate::TypeBound {
-                                            target: WherePredicateTypeTarget::TypeOrConstParam(idx),
-                                            bound: b,
-                                        } if b == bound => Some(idx),
-                                        _ => None,
-                                    });
-                                if let Some(target_param_idx) = target_param_idx {
-                                    let mut counter = 0;
-                                    let generics = self.generics().expect("generics in scope");
-                                    for (idx, data) in generics.params.type_or_consts.iter() {
-                                        // Count the number of `impl Trait` things that appear before
-                                        // the target of our `bound`.
-                                        // Our counter within `impl_trait_mode` should be that number
-                                        // to properly lower each types within `type_ref`
-                                        if data.type_param().is_some_and(|p| {
-                                            p.provenance == TypeParamProvenance::ArgumentImplTrait
-                                        }) {
-                                            counter += 1;
-                                        }
-                                        if idx == *target_param_idx {
-                                            break;
-                                        }
+                        (
+                            _,
+                            ImplTraitLoweringState::Param(_) | ImplTraitLoweringState::Variable(_),
+                        ) => {
+                            // Find the generic index for the target of our `bound`
+                            let target_param_idx = self
+                                .resolver
+                                .where_predicates_in_scope()
+                                .find_map(|(p, _)| match p {
+                                    WherePredicate::TypeBound {
+                                        target: WherePredicateTypeTarget::TypeOrConstParam(idx),
+                                        bound: b,
+                                    } if b == bound => Some(idx),
+                                    _ => None,
+                                });
+                            let ty = if let Some(target_param_idx) = target_param_idx {
+                                let mut counter = 0;
+                                let generics = self.generics().expect("generics in scope");
+                                for (idx, data) in generics.params.type_or_consts.iter() {
+                                    // Count the number of `impl Trait` things that appear before
+                                    // the target of our `bound`.
+                                    // Our counter within `impl_trait_mode` should be that number
+                                    // to properly lower each types within `type_ref`
+                                    if data.type_param().is_some_and(|p| {
+                                        p.provenance == TypeParamProvenance::ArgumentImplTrait
+                                    }) {
+                                        counter += 1;
                                     }
-                                    let mut ext = TyLoweringContext::new_maybe_unowned(
-                                        self.db,
-                                        self.resolver,
-                                        self.owner,
-                                    )
-                                    .with_type_param_mode(self.type_param_mode);
-                                    match &self.impl_trait_mode {
-                                        ImplTraitLoweringState::Param(_) => {
-                                            ext.impl_trait_mode =
-                                                ImplTraitLoweringState::Param(Cell::new(counter));
-                                        }
-                                        ImplTraitLoweringState::Variable(_) => {
-                                            ext.impl_trait_mode = ImplTraitLoweringState::Variable(
-                                                Cell::new(counter),
-                                            );
-                                        }
-                                        _ => unreachable!(),
+                                    if idx == *target_param_idx {
+                                        break;
                                     }
-                                    break 'ty ext.lower_ty(type_ref);
                                 }
-                            }
-                            self.lower_ty(type_ref)
-                        };
-                        let alias_eq =
-                            AliasEq { alias: AliasTy::Projection(projection_ty.clone()), ty };
-                        predicates.push(crate::wrap_empty_binders(WhereClause::AliasEq(alias_eq)));
+                                let mut ext = TyLoweringContext::new_maybe_unowned(
+                                    self.db,
+                                    self.resolver,
+                                    self.owner,
+                                )
+                                .with_type_param_mode(self.type_param_mode);
+                                match &self.impl_trait_mode {
+                                    ImplTraitLoweringState::Param(_) => {
+                                        ext.impl_trait_mode =
+                                            ImplTraitLoweringState::Param(Cell::new(counter));
+                                    }
+                                    ImplTraitLoweringState::Variable(_) => {
+                                        ext.impl_trait_mode =
+                                            ImplTraitLoweringState::Variable(Cell::new(counter));
+                                    }
+                                    _ => unreachable!(),
+                                }
+                                ext.lower_ty(type_ref)
+                            } else {
+                                self.lower_ty(type_ref)
+                            };
+
+                            let alias_eq =
+                                AliasEq { alias: AliasTy::Projection(projection_ty.clone()), ty };
+                            predicates
+                                .push(crate::wrap_empty_binders(WhereClause::AliasEq(alias_eq)));
+                        }
                     }
                 }
                 for bound in binding.bounds.iter() {
@@ -1338,11 +1311,10 @@ impl<'a> TyLoweringContext<'a> {
                 bounds,
                 lifetime: match lifetime {
                     Some(it) => match it.bound_var(Interner) {
-                        Some(bound_var) => LifetimeData::BoundVar(BoundVar::new(
-                            DebruijnIndex::INNERMOST,
-                            bound_var.index,
-                        ))
-                        .intern(Interner),
+                        Some(bound_var) => bound_var
+                            .shifted_out_to(DebruijnIndex::new(2))
+                            .map(|bound_var| LifetimeData::BoundVar(bound_var).intern(Interner))
+                            .unwrap_or(it),
                         None => it,
                     },
                     None => static_lifetime(),
@@ -1410,16 +1382,6 @@ impl<'a> TyLoweringContext<'a> {
     }
 }
 
-fn count_impl_traits(type_ref: &TypeRef) -> usize {
-    let mut count = 0;
-    type_ref.walk(&mut |type_ref| {
-        if matches!(type_ref, TypeRef::ImplTrait(_)) {
-            count += 1;
-        }
-    });
-    count
-}
-
 /// Build the signature of a callable item (function, struct or enum variant).
 pub(crate) fn callable_item_sig(db: &dyn HirDatabase, def: CallableDefId) -> PolyFnSig {
     match def {
@@ -1436,6 +1398,17 @@ pub fn associated_type_shorthand_candidates<R>(
     mut cb: impl FnMut(&Name, TypeAliasId) -> Option<R>,
 ) -> Option<R> {
     named_associated_type_shorthand_candidates(db, def, res, None, |name, _, id| cb(name, id))
+}
+
+// FIXME: This does not handle macros!
+fn count_impl_traits(type_ref: &TypeRef) -> usize {
+    let mut count = 0;
+    type_ref.walk(&mut |type_ref| {
+        if matches!(type_ref, TypeRef::ImplTrait(_)) {
+            count += 1;
+        }
+    });
+    count
 }
 
 fn named_associated_type_shorthand_candidates<R>(
@@ -1575,7 +1548,7 @@ pub(crate) fn generic_predicates_for_param_query(
     let generics = generics(db.upcast(), def);
 
     // we have to filter out all other predicates *first*, before attempting to lower them
-    let predicate = |pred: &&_| match pred {
+    let predicate = |(pred, &def): &(&_, _)| match pred {
         WherePredicate::ForLifetime { target, bound, .. }
         | WherePredicate::TypeBound { target, bound, .. } => {
             let invalid_target = match target {
@@ -1617,8 +1590,8 @@ pub(crate) fn generic_predicates_for_param_query(
     let mut predicates: Vec<_> = resolver
         .where_predicates_in_scope()
         .filter(predicate)
-        .flat_map(|pred| {
-            ctx.lower_where_predicate(pred, true).map(|p| make_binders(db, &generics, p))
+        .flat_map(|(pred, def)| {
+            ctx.lower_where_predicate(pred, def, true).map(|p| make_binders(db, &generics, p))
         })
         .collect();
 
@@ -1671,8 +1644,8 @@ pub(crate) fn trait_environment_query(
     };
     let mut traits_in_scope = Vec::new();
     let mut clauses = Vec::new();
-    for pred in resolver.where_predicates_in_scope() {
-        for pred in ctx.lower_where_predicate(pred, false) {
+    for (pred, def) in resolver.where_predicates_in_scope() {
+        for pred in ctx.lower_where_predicate(pred, def, false) {
             if let WhereClause::Implemented(tr) = &pred.skip_binders() {
                 traits_in_scope.push((tr.self_type_parameter(Interner).clone(), tr.hir_trait_id()));
             }
@@ -1726,8 +1699,8 @@ pub(crate) fn generic_predicates_query(
 
     let mut predicates = resolver
         .where_predicates_in_scope()
-        .flat_map(|pred| {
-            ctx.lower_where_predicate(pred, false).map(|p| make_binders(db, &generics, p))
+        .flat_map(|(pred, def)| {
+            ctx.lower_where_predicate(pred, def, false).map(|p| make_binders(db, &generics, p))
         })
         .collect::<Vec<_>>();
 

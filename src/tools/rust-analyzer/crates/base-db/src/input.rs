@@ -324,20 +324,26 @@ pub struct Dependency {
     pub crate_id: CrateId,
     pub name: CrateName,
     prelude: bool,
+    sysroot: bool,
 }
 
 impl Dependency {
     pub fn new(name: CrateName, crate_id: CrateId) -> Self {
-        Self { name, crate_id, prelude: true }
+        Self { name, crate_id, prelude: true, sysroot: false }
     }
 
-    pub fn with_prelude(name: CrateName, crate_id: CrateId, prelude: bool) -> Self {
-        Self { name, crate_id, prelude }
+    pub fn with_prelude(name: CrateName, crate_id: CrateId, prelude: bool, sysroot: bool) -> Self {
+        Self { name, crate_id, prelude, sysroot }
     }
 
     /// Whether this dependency is to be added to the depending crate's extern prelude.
     pub fn is_prelude(&self) -> bool {
         self.prelude
+    }
+
+    /// Whether this dependency is a sysroot injected one.
+    pub fn is_sysroot(&self) -> bool {
+        self.sysroot
     }
 }
 

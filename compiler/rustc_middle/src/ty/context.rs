@@ -134,7 +134,6 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type EarlyParamRegion = ty::EarlyParamRegion;
     type LateParamRegion = ty::LateParamRegion;
     type BoundRegion = ty::BoundRegion;
-    type InferRegion = ty::RegionVid;
     type PlaceholderRegion = ty::PlaceholderRegion;
 
     type ParamEnv = ty::ParamEnv<'tcx>;
@@ -232,6 +231,10 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
 
     fn parent(self, def_id: Self::DefId) -> Self::DefId {
         self.parent(def_id)
+    }
+
+    fn recursion_limit(self) -> usize {
+        self.recursion_limit().0
     }
 }
 

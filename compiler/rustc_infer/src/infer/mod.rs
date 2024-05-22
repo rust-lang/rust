@@ -369,33 +369,43 @@ impl<'tcx> ty::InferCtxtLike for InferCtxt<'tcx> {
         }
     }
 
-    fn root_ty_var(&self, vid: TyVid) -> TyVid {
-        self.root_var(vid)
-    }
-
-    fn probe_ty_var(&self, vid: TyVid) -> Option<Ty<'tcx>> {
-        self.probe_ty_var(vid).ok()
-    }
-
-    fn opportunistic_resolve_lt_var(&self, vid: ty::RegionVid) -> Option<ty::Region<'tcx>> {
-        let re = self
-            .inner
-            .borrow_mut()
-            .unwrap_region_constraints()
-            .opportunistic_resolve_var(self.tcx, vid);
-        if *re == ty::ReVar(vid) { None } else { Some(re) }
-    }
-
-    fn root_ct_var(&self, vid: ConstVid) -> ConstVid {
-        self.root_const_var(vid)
-    }
-
-    fn probe_ct_var(&self, vid: ConstVid) -> Option<ty::Const<'tcx>> {
-        self.probe_const_var(vid).ok()
+    fn opportunistic_resolve_lt_var(&self, vid: ty::RegionVid) -> ty::Region<'tcx> {
+        self.inner.borrow_mut().unwrap_region_constraints().opportunistic_resolve_var(self.tcx, vid)
     }
 
     fn defining_opaque_types(&self) -> &'tcx ty::List<LocalDefId> {
         self.defining_opaque_types
+    }
+
+    fn opportunistic_resolve_ty_var(&self, vid: TyVid) -> Ty<'tcx> {
+        match self.probe_ty_var(vid) {
+            Ok(ty) => ty,
+            Err(_) => Ty::new_var(self.tcx, self.root_var(vid)),
+        }
+    }
+
+    fn opportunistic_resolve_int_var(&self, vid: IntVid) -> Ty<'tcx> {
+        self.opportunistic_resolve_int_var(vid)
+    }
+
+    fn opportunistic_resolve_float_var(&self, vid: FloatVid) -> Ty<'tcx> {
+        self.opportunistic_resolve_float_var(vid)
+    }
+
+    fn opportunistic_resolve_ct_var(&self, vid: ConstVid, ty: Ty<'tcx>) -> ty::Const<'tcx> {
+        match self.probe_const_var(vid) {
+            Ok(ct) => ct,
+            Err(_) => ty::Const::new_var(self.tcx, self.root_const_var(vid), ty),
+        }
+    }
+
+    fn opportunistic_resolve_effect_var(&self, vid: EffectVid, ty: Ty<'tcx>) -> ty::Const<'tcx> {
+        match self.probe_effect_var(vid) {
+            Some(ct) => ct,
+            None => {
+                ty::Const::new_infer(self.tcx, InferConst::EffectVar(self.root_effect_var(vid)), ty)
+            }
+        }
     }
 }
 

@@ -341,7 +341,7 @@ passes_implied_feature_not_exist =
     feature `{$implied_by}` implying `{$feature}` does not exist
 
 passes_incorrect_do_not_recommend_location =
-    `#[do_not_recommend]` can only be placed on trait implementations
+    `#[diagnostic::do_not_recommend]` can only be placed on trait implementations
 
 passes_incorrect_meta_item = expected a quoted string literal
 passes_incorrect_meta_item_suggestion = consider surrounding this with quotes

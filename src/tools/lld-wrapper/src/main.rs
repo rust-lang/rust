@@ -1,6 +1,6 @@
 //! Script to invoke the bundled rust-lld with the correct flavor.
 //!
-//! lld supports multiple command line interfaces. If `-flavor <flavor>` are passed as the first
+//! `lld` supports multiple command line interfaces. If `-flavor <flavor>` are passed as the first
 //! two arguments the `<flavor>` command line interface is used to process the remaining arguments.
 //! If no `-flavor` argument is present the flavor is determined by the executable name.
 //!

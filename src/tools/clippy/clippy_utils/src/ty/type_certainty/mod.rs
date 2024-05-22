@@ -176,7 +176,7 @@ fn qpath_certainty(cx: &LateContext<'_>, qpath: &QPath<'_>, resolves_to_type: bo
             .get(*lang_item)
             .map_or(Certainty::Uncertain, |def_id| {
                 let generics = cx.tcx.generics_of(def_id);
-                if generics.parent_count == 0 && generics.own_params.is_empty() {
+                if generics.is_empty() {
                     Certainty::Certain(if resolves_to_type { Some(def_id) } else { None })
                 } else {
                     Certainty::Uncertain

@@ -484,6 +484,7 @@ pub(super) fn highlight_def(
             h
         }
         Definition::BuiltinType(_) => Highlight::new(HlTag::BuiltinType),
+        Definition::BuiltinLifetime(_) => Highlight::new(HlTag::Symbol(SymbolKind::LifetimeParam)),
         Definition::Static(s) => {
             let mut h = Highlight::new(HlTag::Symbol(SymbolKind::Static));
 
@@ -542,13 +543,14 @@ pub(super) fn highlight_def(
     let def_crate = def.krate(db);
     let is_from_other_crate = def_crate != Some(krate);
     let is_from_builtin_crate = def_crate.map_or(false, |def_crate| def_crate.is_builtin(db));
-    let is_builtin_type = matches!(def, Definition::BuiltinType(_));
-    let is_public = def.visibility(db) == Some(hir::Visibility::Public);
-
-    match (is_from_other_crate, is_builtin_type, is_public) {
-        (true, false, _) => h |= HlMod::Library,
-        (false, _, true) => h |= HlMod::Public,
-        _ => {}
+    let is_builtin = matches!(
+        def,
+        Definition::BuiltinType(_) | Definition::BuiltinLifetime(_) | Definition::BuiltinAttr(_)
+    );
+    match is_from_other_crate {
+        true if !is_builtin => h |= HlMod::Library,
+        false if def.visibility(db) == Some(hir::Visibility::Public) => h |= HlMod::Public,
+        _ => (),
     }
 
     if is_from_builtin_crate {

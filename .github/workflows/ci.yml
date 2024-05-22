@@ -190,7 +190,6 @@ jobs:
         env:
           AWS_ACCESS_KEY_ID: ${{ env.CACHES_AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets[format('AWS_SECRET_ACCESS_KEY_{0}', env.CACHES_AWS_ACCESS_KEY_ID)] }}
-          TOOLSTATE_REPO_ACCESS_TOKEN: ${{ secrets.TOOLSTATE_REPO_ACCESS_TOKEN }}
 
       - name: create github artifacts
         run: src/ci/scripts/create-doc-artifacts.sh
@@ -241,3 +240,5 @@ jobs:
         if: needs.calculate_matrix.outputs.run_type == 'auto'
         env:
           TOOLSTATE_REPO_ACCESS_TOKEN: ${{ secrets.TOOLSTATE_REPO_ACCESS_TOKEN }}
+          TOOLSTATE_ISSUES_API_URL: https://api.github.com/repos/rust-lang/rust/issues
+          TOOLSTATE_PUBLISH: 1

@@ -19,6 +19,7 @@
 //!
 //! See the full discussion : <https://rust-lang.zulipchat.com/#narrow/stream/131828-t-compiler/topic/Eager.20expansion.20of.20built-in.20macros>
 use base_db::CrateId;
+use mbe::DocCommentDesugarMode;
 use span::SyntaxContextId;
 use syntax::{ted, Parse, SyntaxElement, SyntaxNode, TextSize, WalkEvent};
 use triomphe::Arc;
@@ -80,7 +81,12 @@ pub fn expand_eager_macro_input(
         return ExpandResult { value: None, err };
     };
 
-    let mut subtree = mbe::syntax_node_to_token_tree(&expanded_eager_input, arg_map, span);
+    let mut subtree = mbe::syntax_node_to_token_tree(
+        &expanded_eager_input,
+        arg_map,
+        span,
+        DocCommentDesugarMode::Mbe,
+    );
 
     subtree.delimiter.kind = crate::tt::DelimiterKind::Invisible;
 

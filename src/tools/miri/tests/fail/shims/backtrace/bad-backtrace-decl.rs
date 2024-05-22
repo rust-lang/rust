@@ -5,7 +5,7 @@ extern "Rust" {
 
 fn main() {
     let frames = unsafe { miri_get_backtrace(0) };
-    for frame in frames.into_iter() {
+    for frame in frames.iter() {
         unsafe {
             miri_resolve_frame(*frame, 0); //~ ERROR: Undefined Behavior: bad declaration of miri_resolve_frame - should return a struct with 5 fields
         }

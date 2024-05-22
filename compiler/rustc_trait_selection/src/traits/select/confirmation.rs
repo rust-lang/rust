@@ -619,7 +619,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // higher-ranked things.
             // Prevent, e.g., `dyn Iterator<Item = str>`.
             for bound in self.tcx().item_bounds(assoc_type).transpose_iter() {
-                let arg_bound = if defs.count() == 0 {
+                let arg_bound = if defs.is_empty() {
                     bound.instantiate(tcx, trait_predicate.trait_ref.args)
                 } else {
                     let mut args = smallvec::SmallVec::with_capacity(defs.count());

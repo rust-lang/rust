@@ -165,7 +165,9 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
                     }
                 }
             }
-            Rvalue::CheckedBinaryOp(op, box (left, right)) => {
+            Rvalue::BinaryOp(overflowing_op, box (left, right))
+                if let Some(op) = overflowing_op.overflowing_to_wrapping() =>
+            {
                 // Flood everything now, so we can use `insert_value_idx` directly later.
                 state.flood(target.as_ref(), self.map());
 
@@ -175,7 +177,7 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
                 let overflow_target = self.map().apply(target, TrackElem::Field(1_u32.into()));
 
                 if value_target.is_some() || overflow_target.is_some() {
-                    let (val, overflow) = self.binary_op(state, *op, left, right);
+                    let (val, overflow) = self.binary_op(state, op, left, right);
 
                     if let Some(value_target) = value_target {
                         // We have flooded `target` earlier.

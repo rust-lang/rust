@@ -1,0 +1,12 @@
+error[E0308]: mismatched types
+  --> $DIR/tail-expr-if-as-return.rs:3:9
+   |
+LL | /     if true {
+LL | |         ""
+   | |         ^^ expected `()`, found `&str`
+LL | |     }
+   | |_____- expected this to be `()`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.

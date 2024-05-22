@@ -7,11 +7,16 @@ use tt::{
     Leaf, Punct, Spacing,
 };
 
-use crate::{syntax_node_to_token_tree, DummyTestSpanMap, DUMMY};
+use crate::{syntax_node_to_token_tree, DocCommentDesugarMode, DummyTestSpanMap, DUMMY};
 
 fn check_punct_spacing(fixture: &str) {
     let source_file = ast::SourceFile::parse(fixture, span::Edition::CURRENT).ok().unwrap();
-    let subtree = syntax_node_to_token_tree(source_file.syntax(), DummyTestSpanMap, DUMMY);
+    let subtree = syntax_node_to_token_tree(
+        source_file.syntax(),
+        DummyTestSpanMap,
+        DUMMY,
+        DocCommentDesugarMode::Mbe,
+    );
     let mut annotations: FxHashMap<_, _> = extract_annotations(fixture)
         .into_iter()
         .map(|(range, annotation)| {

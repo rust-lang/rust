@@ -76,8 +76,6 @@ pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<
         return derive;
     }
 
-    // FIXME: Intermix attribute and bang! expansions
-    // currently we only recursively expand one of the two types
     let mut anc = tok.parent_ancestors();
     let (name, expanded, kind) = loop {
         let node = anc.next()?;
@@ -86,7 +84,7 @@ pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<
             if let Some(def) = sema.resolve_attr_macro_call(&item) {
                 break (
                     def.name(db).display(db).to_string(),
-                    expand_attr_macro_recur(&sema, &item)?,
+                    expand_macro_recur(&sema, &item)?,
                     SyntaxKind::MACRO_ITEMS,
                 );
             }
@@ -94,11 +92,9 @@ pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<
         if let Some(mac) = ast::MacroCall::cast(node) {
             let mut name = mac.path()?.segment()?.name_ref()?.to_string();
             name.push('!');
-            break (
-                name,
-                expand_macro_recur(&sema, &mac)?,
-                mac.syntax().parent().map(|it| it.kind()).unwrap_or(SyntaxKind::MACRO_ITEMS),
-            );
+            let syntax_kind =
+                mac.syntax().parent().map(|it| it.kind()).unwrap_or(SyntaxKind::MACRO_ITEMS);
+            break (name, expand_macro_recur(&sema, &ast::Item::MacroCall(mac))?, syntax_kind);
         }
     };
 
@@ -112,31 +108,23 @@ pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<
 
 fn expand_macro_recur(
     sema: &Semantics<'_, RootDatabase>,
-    macro_call: &ast::MacroCall,
+    macro_call: &ast::Item,
 ) -> Option<SyntaxNode> {
-    let expanded = sema.expand(macro_call)?.clone_for_update();
-    expand(sema, expanded, ast::MacroCall::cast, expand_macro_recur)
+    let expanded = match macro_call {
+        item @ ast::Item::MacroCall(macro_call) => {
+            sema.expand_attr_macro(item).or_else(|| sema.expand(macro_call))?.clone_for_update()
+        }
+        item => sema.expand_attr_macro(item)?.clone_for_update(),
+    };
+    expand(sema, expanded)
 }
 
-fn expand_attr_macro_recur(
-    sema: &Semantics<'_, RootDatabase>,
-    item: &ast::Item,
-) -> Option<SyntaxNode> {
-    let expanded = sema.expand_attr_macro(item)?.clone_for_update();
-    expand(sema, expanded, ast::Item::cast, expand_attr_macro_recur)
-}
-
-fn expand<T: AstNode>(
-    sema: &Semantics<'_, RootDatabase>,
-    expanded: SyntaxNode,
-    f: impl FnMut(SyntaxNode) -> Option<T>,
-    exp: impl Fn(&Semantics<'_, RootDatabase>, &T) -> Option<SyntaxNode>,
-) -> Option<SyntaxNode> {
-    let children = expanded.descendants().filter_map(f);
+fn expand(sema: &Semantics<'_, RootDatabase>, expanded: SyntaxNode) -> Option<SyntaxNode> {
+    let children = expanded.descendants().filter_map(ast::Item::cast);
     let mut replacements = Vec::new();
 
     for child in children {
-        if let Some(new_node) = exp(sema, &child) {
+        if let Some(new_node) = expand_macro_recur(sema, &child) {
             // check if the whole original syntax is replaced
             if expanded == *child.syntax() {
                 return Some(new_node);

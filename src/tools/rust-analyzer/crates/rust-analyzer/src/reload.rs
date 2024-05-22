@@ -25,7 +25,7 @@ use ide_db::{
 use itertools::Itertools;
 use load_cargo::{load_proc_macro, ProjectFolders};
 use proc_macro_api::ProcMacroServer;
-use project_model::{ProjectWorkspace, WorkspaceBuildScripts};
+use project_model::{ManifestPath, ProjectWorkspace, ProjectWorkspaceKind, WorkspaceBuildScripts};
 use stdx::{format_to, thread::ThreadIntent};
 use triomphe::Arc;
 use vfs::{AbsPath, AbsPathBuf, ChangeKind};
@@ -103,81 +103,48 @@ impl GlobalState {
             health: lsp_ext::Health::Ok,
             quiescent: self.is_quiescent(),
             message: None,
+            workspace_info: None,
         };
         let mut message = String::new();
 
+        if !self.config.cargo_autoreload()
+            && self.is_quiescent()
+            && self.fetch_workspaces_queue.op_requested()
+        {
+            status.health |= lsp_ext::Health::Warning;
+            message.push_str("Auto-reloading is disabled and the workspace has changed, a manual workspace reload is required.\n\n");
+        }
+
         if self.build_deps_changed {
-            status.health = lsp_ext::Health::Warning;
+            status.health |= lsp_ext::Health::Warning;
             message.push_str(
                 "Proc-macros and/or build scripts have changed and need to be rebuilt.\n\n",
             );
         }
         if self.fetch_build_data_error().is_err() {
-            status.health = lsp_ext::Health::Warning;
+            status.health |= lsp_ext::Health::Warning;
             message.push_str("Failed to run build scripts of some packages.\n\n");
         }
-        if self.proc_macro_clients.iter().any(|it| it.is_err()) {
-            status.health = lsp_ext::Health::Warning;
-            message.push_str("Failed to spawn one or more proc-macro servers.\n\n");
-            for err in self.proc_macro_clients.iter() {
-                if let Err(err) = err {
-                    format_to!(message, "- {err}\n");
-                }
-            }
-        }
-        if !self.config.cargo_autoreload()
-            && self.is_quiescent()
-            && self.fetch_workspaces_queue.op_requested()
-        {
-            status.health = lsp_ext::Health::Warning;
-            message.push_str("Auto-reloading is disabled and the workspace has changed, a manual workspace reload is required.\n\n");
-        }
-        if self.config.linked_or_discovered_projects().is_empty()
-            && self.config.detached_files().is_empty()
-            && self.config.notifications().cargo_toml_not_found
-        {
-            status.health = lsp_ext::Health::Warning;
-            message.push_str("Failed to discover workspace.\n");
-            message.push_str("Consider adding the `Cargo.toml` of the workspace to the [`linkedProjects`](https://rust-analyzer.github.io/manual.html#rust-analyzer.linkedProjects) setting.\n\n");
-        }
+
         if let Some(err) = &self.config_errors {
-            status.health = lsp_ext::Health::Warning;
+            status.health |= lsp_ext::Health::Warning;
             format_to!(message, "{err}\n");
         }
         if let Some(err) = &self.last_flycheck_error {
-            status.health = lsp_ext::Health::Warning;
+            status.health |= lsp_ext::Health::Warning;
             message.push_str(err);
             message.push('\n');
         }
 
-        for ws in self.workspaces.iter() {
-            let (ProjectWorkspace::Cargo { sysroot, .. }
-            | ProjectWorkspace::Json { sysroot, .. }
-            | ProjectWorkspace::DetachedFile { sysroot, .. }) = ws;
-            match sysroot {
-                Err(None) => (),
-                Err(Some(e)) => {
-                    status.health = lsp_ext::Health::Warning;
-                    message.push_str(e);
-                    message.push_str("\n\n");
-                }
-                Ok(s) => {
-                    if let Some(e) = s.loading_warning() {
-                        status.health = lsp_ext::Health::Warning;
-                        message.push_str(&e);
-                        message.push_str("\n\n");
-                    }
-                }
-            }
-            if let ProjectWorkspace::Cargo { rustc: Err(Some(e)), .. } = ws {
-                status.health = lsp_ext::Health::Warning;
-                message.push_str(e);
-                message.push_str("\n\n");
-            }
+        if self.config.linked_or_discovered_projects().is_empty()
+            && self.config.detached_files().is_empty()
+        {
+            status.health |= lsp_ext::Health::Warning;
+            message.push_str("Failed to discover workspace.\n");
+            message.push_str("Consider adding the `Cargo.toml` of the workspace to the [`linkedProjects`](https://rust-analyzer.github.io/manual.html#rust-analyzer.linkedProjects) setting.\n\n");
         }
-
         if self.fetch_workspace_error().is_err() {
-            status.health = lsp_ext::Health::Error;
+            status.health |= lsp_ext::Health::Error;
             message.push_str("Failed to load workspaces.");
 
             if self.config.has_linked_projects() {
@@ -193,9 +160,63 @@ impl GlobalState {
             message.push_str("\n\n");
         }
 
+        if !self.workspaces.is_empty() {
+            let proc_macro_clients =
+                self.proc_macro_clients.iter().map(Some).chain(iter::repeat_with(|| None));
+
+            let mut workspace_info = "Loaded workspaces:\n".to_owned();
+            for (ws, proc_macro_client) in self.workspaces.iter().zip(proc_macro_clients) {
+                format_to!(workspace_info, "- `{}`\n", ws.manifest_or_root());
+                format_to!(workspace_info, "    - sysroot:");
+
+                match ws.sysroot.as_ref() {
+                    Err(None) => format_to!(workspace_info, " None"),
+                    Err(Some(e)) => {
+                        status.health |= lsp_ext::Health::Warning;
+                        format_to!(workspace_info, " {e}");
+                    }
+                    Ok(s) => {
+                        format_to!(workspace_info, " `{}`", s.root().to_string());
+                        if let Some(err) = s
+                            .check_has_core()
+                            .err()
+                            .inspect(|_| status.health |= lsp_ext::Health::Warning)
+                        {
+                            format_to!(workspace_info, " ({err})");
+                        }
+                        if let Some(src_root) = s.src_root() {
+                            format_to!(
+                                workspace_info,
+                                "\n        - sysroot source: `{}`",
+                                src_root
+                            );
+                        }
+                        format_to!(workspace_info, "\n");
+                    }
+                }
+
+                if let ProjectWorkspaceKind::Cargo { rustc: Err(Some(e)), .. } = &ws.kind {
+                    status.health |= lsp_ext::Health::Warning;
+                    format_to!(workspace_info, "    - rustc workspace: {e}\n");
+                };
+                if let Some(proc_macro_client) = proc_macro_client {
+                    format_to!(workspace_info, "    - proc-macro server: ");
+                    match proc_macro_client {
+                        Ok(it) => format_to!(workspace_info, "`{}`\n", it.path()),
+                        Err(e) => {
+                            status.health |= lsp_ext::Health::Warning;
+                            format_to!(workspace_info, "{e}\n")
+                        }
+                    }
+                }
+            }
+            status.workspace_info = Some(workspace_info);
+        }
+
         if !message.is_empty() {
             status.message = Some(message.trim_end().to_owned());
         }
+
         status
     }
 
@@ -204,7 +225,14 @@ impl GlobalState {
 
         self.task_pool.handle.spawn_with_sender(ThreadIntent::Worker, {
             let linked_projects = self.config.linked_or_discovered_projects();
-            let detached_files = self.config.detached_files().to_vec();
+            let detached_files: Vec<_> = self
+                .config
+                .detached_files()
+                .iter()
+                .cloned()
+                .map(ManifestPath::try_from)
+                .filter_map(Result::ok)
+                .collect();
             let cargo_config = self.config.cargo();
 
             move |sender| {
@@ -494,23 +522,28 @@ impl GlobalState {
                     None => ws.find_sysroot_proc_macro_srv()?,
                 };
 
-                let env =
-                    match ws {
-                        ProjectWorkspace::Cargo { cargo_config_extra_env, sysroot, .. } => {
-                            cargo_config_extra_env
-                                .iter()
-                                .chain(self.config.extra_env())
-                                .map(|(a, b)| (a.clone(), b.clone()))
-                                .chain(sysroot.as_ref().map(|it| {
-                                    ("RUSTUP_TOOLCHAIN".to_owned(), it.root().to_string())
-                                }))
-                                .collect()
-                        }
-                        _ => Default::default(),
-                    };
+                let env = match &ws.kind {
+                    ProjectWorkspaceKind::Cargo { cargo_config_extra_env, .. }
+                    | ProjectWorkspaceKind::DetachedFile {
+                        cargo: Some(_),
+                        cargo_config_extra_env,
+                        ..
+                    } => cargo_config_extra_env
+                        .iter()
+                        .chain(self.config.extra_env())
+                        .map(|(a, b)| (a.clone(), b.clone()))
+                        .chain(
+                            ws.sysroot
+                                .as_ref()
+                                .map(|it| ("RUSTUP_TOOLCHAIN".to_owned(), it.root().to_string())),
+                        )
+                        .collect(),
+
+                    _ => Default::default(),
+                };
                 tracing::info!("Using proc-macro server at {path}");
 
-                ProcMacroServer::spawn(path.clone(), &env).map_err(|err| {
+                ProcMacroServer::spawn(&path, &env).map_err(|err| {
                     tracing::error!(
                         "Failed to run proc-macro server from path {path}, error: {err:?}",
                     );
@@ -554,8 +587,8 @@ impl GlobalState {
         self.detached_files = self
             .workspaces
             .iter()
-            .filter_map(|ws| match ws {
-                ProjectWorkspace::DetachedFile { file, .. } => Some(file.clone()),
+            .filter_map(|ws| match &ws.kind {
+                ProjectWorkspaceKind::DetachedFile { file, .. } => Some(file.clone()),
                 _ => None,
             })
             .collect();
@@ -659,33 +692,37 @@ impl GlobalState {
                 config,
                 None,
                 self.config.root_path().clone(),
+                None,
             )],
             flycheck::InvocationStrategy::PerWorkspace => {
                 self.workspaces
                     .iter()
                     .enumerate()
-                    .filter_map(|(id, w)| match w {
-                        ProjectWorkspace::Cargo { cargo, sysroot, .. } => Some((
+                    .filter_map(|(id, ws)| {
+                        Some((
                             id,
-                            cargo.workspace_root(),
-                            sysroot.as_ref().ok().map(|sysroot| sysroot.root().to_owned()),
-                        )),
-                        ProjectWorkspace::Json { project, sysroot, .. } => {
-                            // Enable flychecks for json projects if a custom flycheck command was supplied
-                            // in the workspace configuration.
-                            match config {
-                                FlycheckConfig::CustomCommand { .. } => Some((
-                                    id,
-                                    project.path(),
-                                    sysroot.as_ref().ok().map(|sysroot| sysroot.root().to_owned()),
-                                )),
-                                _ => None,
-                            }
-                        }
-                        // FIXME
-                        ProjectWorkspace::DetachedFile { .. } => None,
+                            match &ws.kind {
+                                ProjectWorkspaceKind::Cargo { cargo, .. }
+                                | ProjectWorkspaceKind::DetachedFile {
+                                    cargo: Some((cargo, _)),
+                                    ..
+                                } => (cargo.workspace_root(), Some(cargo.manifest_path())),
+                                ProjectWorkspaceKind::Json(project) => {
+                                    // Enable flychecks for json projects if a custom flycheck command was supplied
+                                    // in the workspace configuration.
+                                    match config {
+                                        FlycheckConfig::CustomCommand { .. } => {
+                                            (project.path(), None)
+                                        }
+                                        _ => return None,
+                                    }
+                                }
+                                ProjectWorkspaceKind::DetachedFile { .. } => return None,
+                            },
+                            ws.sysroot.as_ref().ok().map(|sysroot| sysroot.root().to_owned()),
+                        ))
                     })
-                    .map(|(id, root, sysroot_root)| {
+                    .map(|(id, (root, manifest_path), sysroot_root)| {
                         let sender = sender.clone();
                         FlycheckHandle::spawn(
                             id,
@@ -693,6 +730,7 @@ impl GlobalState {
                             config.clone(),
                             sysroot_root,
                             root.to_path_buf(),
+                            manifest_path.map(|it| it.to_path_buf()),
                         )
                     })
                     .collect()
@@ -722,9 +760,7 @@ pub fn ws_to_crate_graph(
         let (other, mut crate_proc_macros) = ws.to_crate_graph(&mut load, extra_env);
         let num_layouts = layouts.len();
         let num_toolchains = toolchains.len();
-        let (ProjectWorkspace::Cargo { toolchain, target_layout, .. }
-        | ProjectWorkspace::Json { toolchain, target_layout, .. }
-        | ProjectWorkspace::DetachedFile { toolchain, target_layout, .. }) = ws;
+        let ProjectWorkspace { toolchain, target_layout, .. } = ws;
 
         let mapping = crate_graph.extend(
             other,

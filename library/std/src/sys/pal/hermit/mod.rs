@@ -39,7 +39,7 @@ pub mod thread_local_key;
 pub mod time;
 
 use crate::io::ErrorKind;
-use crate::os::hermit::abi;
+use crate::os::hermit::hermit_abi;
 
 pub fn unsupported<T>() -> crate::io::Result<T> {
     Err(unsupported_err())
@@ -54,7 +54,7 @@ pub fn unsupported_err() -> crate::io::Error {
 
 pub fn abort_internal() -> ! {
     unsafe {
-        abi::abort();
+        hermit_abi::abort();
     }
 }
 
@@ -62,7 +62,7 @@ pub fn hashmap_random_keys() -> (u64, u64) {
     let mut buf = [0; 16];
     let mut slice = &mut buf[..];
     while !slice.is_empty() {
-        let res = cvt(unsafe { abi::read_entropy(slice.as_mut_ptr(), slice.len(), 0) })
+        let res = cvt(unsafe { hermit_abi::read_entropy(slice.as_mut_ptr(), slice.len(), 0) })
             .expect("failed to generate random hashmap keys");
         slice = &mut slice[res as usize..];
     }
@@ -109,31 +109,31 @@ pub unsafe extern "C" fn runtime_entry(
     let result = main(argc as isize, argv);
 
     run_dtors();
-    abi::exit(result);
+    hermit_abi::exit(result);
 }
 
 #[inline]
 pub(crate) fn is_interrupted(errno: i32) -> bool {
-    errno == abi::errno::EINTR
+    errno == hermit_abi::errno::EINTR
 }
 
 pub fn decode_error_kind(errno: i32) -> ErrorKind {
     match errno {
-        abi::errno::EACCES => ErrorKind::PermissionDenied,
-        abi::errno::EADDRINUSE => ErrorKind::AddrInUse,
-        abi::errno::EADDRNOTAVAIL => ErrorKind::AddrNotAvailable,
-        abi::errno::EAGAIN => ErrorKind::WouldBlock,
-        abi::errno::ECONNABORTED => ErrorKind::ConnectionAborted,
-        abi::errno::ECONNREFUSED => ErrorKind::ConnectionRefused,
-        abi::errno::ECONNRESET => ErrorKind::ConnectionReset,
-        abi::errno::EEXIST => ErrorKind::AlreadyExists,
-        abi::errno::EINTR => ErrorKind::Interrupted,
-        abi::errno::EINVAL => ErrorKind::InvalidInput,
-        abi::errno::ENOENT => ErrorKind::NotFound,
-        abi::errno::ENOTCONN => ErrorKind::NotConnected,
-        abi::errno::EPERM => ErrorKind::PermissionDenied,
-        abi::errno::EPIPE => ErrorKind::BrokenPipe,
-        abi::errno::ETIMEDOUT => ErrorKind::TimedOut,
+        hermit_abi::errno::EACCES => ErrorKind::PermissionDenied,
+        hermit_abi::errno::EADDRINUSE => ErrorKind::AddrInUse,
+        hermit_abi::errno::EADDRNOTAVAIL => ErrorKind::AddrNotAvailable,
+        hermit_abi::errno::EAGAIN => ErrorKind::WouldBlock,
+        hermit_abi::errno::ECONNABORTED => ErrorKind::ConnectionAborted,
+        hermit_abi::errno::ECONNREFUSED => ErrorKind::ConnectionRefused,
+        hermit_abi::errno::ECONNRESET => ErrorKind::ConnectionReset,
+        hermit_abi::errno::EEXIST => ErrorKind::AlreadyExists,
+        hermit_abi::errno::EINTR => ErrorKind::Interrupted,
+        hermit_abi::errno::EINVAL => ErrorKind::InvalidInput,
+        hermit_abi::errno::ENOENT => ErrorKind::NotFound,
+        hermit_abi::errno::ENOTCONN => ErrorKind::NotConnected,
+        hermit_abi::errno::EPERM => ErrorKind::PermissionDenied,
+        hermit_abi::errno::EPIPE => ErrorKind::BrokenPipe,
+        hermit_abi::errno::ETIMEDOUT => ErrorKind::TimedOut,
         _ => ErrorKind::Uncategorized,
     }
 }

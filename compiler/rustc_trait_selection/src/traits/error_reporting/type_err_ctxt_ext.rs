@@ -422,6 +422,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     ty::PredicateKind::Clause(ty::ClauseKind::Trait(trait_predicate)) => {
                         let trait_predicate = bound_predicate.rebind(trait_predicate);
                         let trait_predicate = self.resolve_vars_if_possible(trait_predicate);
+                        let trait_predicate = self.apply_do_not_recommend(trait_predicate, &mut obligation);
 
                         // Let's use the root obligation as the main message, when we care about the
                         // most general case ("X doesn't implement Pattern<'_>") over the case that
@@ -1001,6 +1002,34 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         self.note_obligation_cause(&mut err, &obligation);
         self.point_at_returns_when_relevant(&mut err, &obligation);
         err.emit()
+    }
+
+    fn apply_do_not_recommend(
+        &self,
+        mut trait_predicate: ty::Binder<'tcx, ty::TraitPredicate<'tcx>>,
+        obligation: &'_ mut PredicateObligation<'tcx>,
+    ) -> ty::Binder<'tcx, ty::TraitPredicate<'tcx>> {
+        let mut base_cause = obligation.cause.code().clone();
+        loop {
+            if let ObligationCauseCode::ImplDerived(ref c) = base_cause {
+                if self.tcx.has_attrs_with_path(
+                    c.impl_or_alias_def_id,
+                    &[sym::diagnostic, sym::do_not_recommend],
+                ) {
+                    let code = (*c.derived.parent_code).clone();
+                    obligation.cause.map_code(|_| code);
+                    obligation.predicate = c.derived.parent_trait_pred.upcast(self.tcx);
+                    trait_predicate = c.derived.parent_trait_pred.clone();
+                }
+            }
+            if let Some((parent_cause, _parent_pred)) = base_cause.parent() {
+                base_cause = parent_cause.clone();
+            } else {
+                break;
+            }
+        }
+
+        trait_predicate
     }
 
     fn emit_specialized_closure_kind_error(

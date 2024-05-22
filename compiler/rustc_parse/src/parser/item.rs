@@ -58,9 +58,15 @@ impl<'a> Parser<'a> {
         let attrs = self.parse_inner_attributes()?;
 
         let post_attr_lo = self.token.span;
-        let mut items = ThinVec::new();
-        while let Some(item) = self.parse_item(ForceCollect::No)? {
-            self.maybe_consume_incorrect_semicolon(Some(&item));
+        let mut items: ThinVec<P<_>> = ThinVec::new();
+
+        // There shouldn't be any stray semicolons before or after items.
+        // `parse_item` consumes the appropriate semicolons so any leftover is an error.
+        loop {
+            while self.maybe_consume_incorrect_semicolon(items.last().map(|x| &**x)) {} // Eat all bad semicolons
+            let Some(item) = self.parse_item(ForceCollect::No)? else {
+                break;
+            };
             items.push(item);
         }
 
