@@ -221,7 +221,7 @@ impl DefMap {
                     None => return ResolvePathResult::empty(ReachedFixedPoint::Yes),
                 };
                 tracing::debug!("resolving {:?} in crate root (+ extern prelude)", segment);
-                self.resolve_name_in_crate_root_or_extern_prelude(db, segment)
+                self.resolve_name_in_crate_root_or_extern_prelude(db, original_module, segment)
             }
             PathKind::Plain => {
                 let (_, segment) = match segments.next() {
@@ -470,9 +470,9 @@ impl DefMap {
         };
 
         let extern_prelude = || {
-            if self.block.is_some() {
-                // Don't resolve extern prelude in block `DefMap`s, defer it to the crate def map so
-                // that blocks can properly shadow them
+            if self.block.is_some() && module == DefMap::ROOT {
+                // Don't resolve extern prelude in pseudo-modules of blocks, because
+                // they might been shadowed by local names.
                 return PerNs::none();
             }
             self.data.extern_prelude.get(name).map_or(PerNs::none(), |&(it, extern_crate)| {
@@ -505,6 +505,7 @@ impl DefMap {
     fn resolve_name_in_crate_root_or_extern_prelude(
         &self,
         db: &dyn DefDatabase,
+        module: LocalModuleId,
         name: &Name,
     ) -> PerNs {
         let from_crate_root = match self.block {
@@ -515,8 +516,8 @@ impl DefMap {
             None => self[Self::ROOT].scope.get(name),
         };
         let from_extern_prelude = || {
-            if self.block.is_some() {
-                // Don't resolve extern prelude in block `DefMap`s.
+            if self.block.is_some() && module == DefMap::ROOT {
+                // Don't resolve extern prelude in pseudo-module of a block.
                 return PerNs::none();
             }
             self.data.extern_prelude.get(name).copied().map_or(

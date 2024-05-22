@@ -395,6 +395,8 @@ impl DefCollector<'_> {
             .cfg()
             .map_or(true, |cfg| self.cfg_options.check(&cfg) != Some(false));
         if is_cfg_enabled {
+            self.inject_prelude();
+
             ModCollector {
                 def_collector: self,
                 macro_depth: 0,
