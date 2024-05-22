@@ -39,6 +39,7 @@ use std::io::{self, BufWriter, Write};
 use std::path::{Path, PathBuf};
 use std::sync::LazyLock;
 use std::{env, fs, iter};
+use tracing::{info, instrument};
 
 pub fn parse<'a>(sess: &'a Session) -> PResult<'a, ast::Crate> {
     let krate = sess.time("parse_crate", || match &sess.io.input {

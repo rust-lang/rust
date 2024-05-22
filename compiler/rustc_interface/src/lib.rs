@@ -4,9 +4,6 @@
 #![feature(thread_spawn_unchecked)]
 #![feature(try_blocks)]
 
-#[macro_use]
-extern crate tracing;
-
 mod callbacks;
 mod errors;
 pub mod interface;
