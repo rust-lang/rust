@@ -9,7 +9,7 @@
 use crate::{errors, path_names_to_string, rustdoc, BindingError, Finalize, LexicalScopeBinding};
 use crate::{BindingKey, Used};
 use crate::{Module, ModuleOrUniformRoot, NameBinding, ParentScope, PathResult};
-use crate::{ResolutionError, Resolver, Segment, UseError};
+use crate::{ResolutionError, Resolver, Segment, TyCtxt, UseError};
 
 use rustc_ast::ptr::P;
 use rustc_ast::visit::{visit_opt, walk_list, AssocCtxt, BoundKind, FnCtxt, FnKind, Visitor};
@@ -1703,10 +1703,28 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                                 break;
                             }
                         }
-                        self.r.dcx().emit_err(errors::ElidedAnonymousLivetimeReportError {
-                            span: lifetime.ident.span,
-                            suggestion,
-                        });
+
+                        // Is it caused by user trying to implement a lending iterator?
+                        if !self.in_func_body
+                            && let Some((module, _)) = &self.current_trait_ref
+                            && let Some(ty) = &self.diag_metadata.current_self_type
+                            && let crate::ModuleKind::Def(DefKind::Trait, trait_id, _) = module.kind
+                            && def_id_matches_path(
+                                self.r.tcx,
+                                trait_id,
+                                &["core", "iter", "traits", "iterator", "Iterator"],
+                            )
+                        {
+                            self.r.dcx().emit_err(errors::LendingIteratorReportError {
+                                lifetime: lifetime.ident.span,
+                                ty: ty.span(),
+                            });
+                        } else {
+                            self.r.dcx().emit_err(errors::ElidedAnonymousLivetimeReportError {
+                                span: lifetime.ident.span,
+                                suggestion,
+                            });
+                        }
                     } else {
                         self.r.dcx().emit_err(errors::ExplicitAnonymousLivetimeReportError {
                             span: lifetime.ident.span,
@@ -4823,4 +4841,16 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             );
         }
     }
+}
+
+/// Check if definition matches a path
+fn def_id_matches_path(tcx: TyCtxt<'_>, mut def_id: DefId, expected_path: &[&str]) -> bool {
+    let mut path = expected_path.iter().rev();
+    while let (Some(parent), Some(next_step)) = (tcx.opt_parent(def_id), path.next()) {
+        if !tcx.opt_item_name(def_id).map_or(false, |n| n.as_str() == *next_step) {
+            return false;
+        }
+        def_id = parent;
+    }
+    return true;
 }

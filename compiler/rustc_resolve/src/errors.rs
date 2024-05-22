@@ -882,6 +882,15 @@ pub(crate) struct ElidedAnonymousLivetimeReportError {
     pub(crate) suggestion: Option<ElidedAnonymousLivetimeReportErrorSuggestion>,
 }
 
+#[derive(Diagnostic)]
+#[diag(resolve_lending_iterator_report_error)]
+pub(crate) struct LendingIteratorReportError {
+    #[primary_span]
+    pub(crate) lifetime: Span,
+    #[note]
+    pub(crate) ty: Span,
+}
+
 #[derive(Subdiagnostic)]
 #[multipart_suggestion(
     resolve_elided_anonymous_lifetime_report_error_suggestion,
