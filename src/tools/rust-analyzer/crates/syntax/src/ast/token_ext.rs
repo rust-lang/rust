@@ -8,6 +8,7 @@ use std::{
 use rustc_lexer::unescape::{
     unescape_byte, unescape_char, unescape_mixed, unescape_unicode, EscapeError, MixedUnit, Mode,
 };
+use stdx::always;
 
 use crate::{
     ast::{self, AstToken},
@@ -181,25 +182,25 @@ pub trait IsString: AstToken {
         self.quote_offsets().map(|it| it.quotes.1)
     }
     fn escaped_char_ranges(&self, cb: &mut dyn FnMut(TextRange, Result<char, EscapeError>)) {
-        let text_range_no_quotes = match self.text_range_between_quotes() {
-            Some(it) => it,
-            None => return,
-        };
+        let Some(text_range_no_quotes) = self.text_range_between_quotes() else { return };
 
         let start = self.syntax().text_range().start();
         let text = &self.text()[text_range_no_quotes - start];
         let offset = text_range_no_quotes.start() - start;
 
         unescape_unicode(text, Self::MODE, &mut |range, unescaped_char| {
-            let text_range =
-                TextRange::new(range.start.try_into().unwrap(), range.end.try_into().unwrap());
-            cb(text_range + offset, unescaped_char);
+            if let Some((s, e)) = range.start.try_into().ok().zip(range.end.try_into().ok()) {
+                cb(TextRange::new(s, e) + offset, unescaped_char);
+            }
         });
     }
     fn map_range_up(&self, range: TextRange) -> Option<TextRange> {
         let contents_range = self.text_range_between_quotes()?;
-        assert!(TextRange::up_to(contents_range.len()).contains_range(range));
-        Some(range + contents_range.start())
+        if always!(TextRange::up_to(contents_range.len()).contains_range(range)) {
+            Some(range + contents_range.start())
+        } else {
+            None
+        }
     }
 }
 

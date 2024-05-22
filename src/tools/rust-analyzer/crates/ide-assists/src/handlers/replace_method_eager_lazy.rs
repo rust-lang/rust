@@ -114,10 +114,10 @@ pub(crate) fn replace_with_eager_method(acc: &mut Assists, ctx: &AssistContext<'
     let callable = ctx.sema.resolve_method_call_as_callable(&call)?;
     let (_, receiver_ty) = callable.receiver_param(ctx.sema.db)?;
     let n_params = callable.n_params() + 1;
-    let params = callable.params(ctx.sema.db);
+    let params = callable.params();
 
     // FIXME: Check that the arg is of the form `() -> T`
-    if !params.first()?.1.impls_fnonce(ctx.sema.db) {
+    if !params.first()?.ty().impls_fnonce(ctx.sema.db) {
         return None;
     }
 

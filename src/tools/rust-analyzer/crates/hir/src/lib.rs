@@ -35,7 +35,7 @@ pub mod term_search;
 
 mod display;
 
-use std::{iter, mem::discriminant, ops::ControlFlow};
+use std::{mem::discriminant, ops::ControlFlow};
 
 use arrayvec::ArrayVec;
 use base_db::{CrateDisplayName, CrateId, CrateOrigin, FileId};
@@ -52,7 +52,6 @@ use hir_def::{
     path::ImportAlias,
     per_ns::PerNs,
     resolver::{HasResolver, Resolver},
-    src::HasSource as _,
     AssocItemId, AssocItemLoc, AttrDefId, ConstId, ConstParamId, CrateRootModuleId, DefWithBodyId,
     EnumId, EnumVariantId, ExternCrateId, FunctionId, GenericDefId, GenericParamId, HasModule,
     ImplId, InTypeConstId, ItemContainerId, LifetimeParamId, LocalFieldId, Lookup, MacroExpander,
@@ -141,7 +140,7 @@ pub use {
         display::{ClosureStyle, HirDisplay, HirDisplayError, HirWrite},
         layout::LayoutError,
         mir::{MirEvalError, MirLowerError},
-        PointerCast, Safety,
+        FnAbi, PointerCast, Safety,
     },
     // FIXME: Properly encapsulate mir
     hir_ty::{mir, Interner as ChalkTyInterner},
@@ -1965,7 +1964,7 @@ impl Function {
             .enumerate()
             .map(|(idx, ty)| {
                 let ty = Type { env: environment.clone(), ty: ty.clone() };
-                Param { func: self, ty, idx }
+                Param { func: Callee::Def(CallableDefId::FunctionId(self.id)), ty, idx }
             })
             .collect()
     }
@@ -1991,7 +1990,7 @@ impl Function {
             .skip(skip)
             .map(|(idx, ty)| {
                 let ty = Type { env: environment.clone(), ty: ty.clone() };
-                Param { func: self, ty, idx }
+                Param { func: Callee::Def(CallableDefId::FunctionId(self.id)), ty, idx }
             })
             .collect()
     }
@@ -2037,7 +2036,7 @@ impl Function {
             .skip(skip)
             .map(|(idx, ty)| {
                 let ty = Type { env: environment.clone(), ty: ty.clone() };
-                Param { func: self, ty, idx }
+                Param { func: Callee::Def(CallableDefId::FunctionId(self.id)), ty, idx }
             })
             .collect()
     }
@@ -2167,16 +2166,23 @@ impl From<hir_ty::Mutability> for Access {
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct Param {
-    func: Function,
+    func: Callee,
     /// The index in parameter list, including self parameter.
     idx: usize,
     ty: Type,
 }
 
 impl Param {
-    pub fn parent_fn(&self) -> Function {
-        self.func
+    pub fn parent_fn(&self) -> Option<Function> {
+        match self.func {
+            Callee::Def(CallableDefId::FunctionId(f)) => Some(f.into()),
+            _ => None,
+        }
     }
+
+    // pub fn parent_closure(&self) -> Option<Closure> {
+    //     self.func.as_ref().right().cloned()
+    // }
 
     pub fn index(&self) -> usize {
         self.idx
@@ -2191,7 +2197,11 @@ impl Param {
     }
 
     pub fn as_local(&self, db: &dyn HirDatabase) -> Option<Local> {
-        let parent = DefWithBodyId::FunctionId(self.func.into());
+        let parent = match self.func {
+            Callee::Def(CallableDefId::FunctionId(it)) => DefWithBodyId::FunctionId(it),
+            Callee::Closure(closure, _) => db.lookup_intern_closure(closure.into()).0,
+            _ => return None,
+        };
         let body = db.body(parent);
         if let Some(self_param) = body.self_param.filter(|_| self.idx == 0) {
             Some(Local { parent, binding_id: self_param })
@@ -2205,18 +2215,45 @@ impl Param {
     }
 
     pub fn pattern_source(&self, db: &dyn HirDatabase) -> Option<ast::Pat> {
-        self.source(db).and_then(|p| p.value.pat())
+        self.source(db).and_then(|p| p.value.right()?.pat())
     }
 
-    pub fn source(&self, db: &dyn HirDatabase) -> Option<InFile<ast::Param>> {
-        let InFile { file_id, value } = self.func.source(db)?;
-        let params = value.param_list()?;
-        if params.self_param().is_some() {
-            params.params().nth(self.idx.checked_sub(params.self_param().is_some() as usize)?)
-        } else {
-            params.params().nth(self.idx)
+    pub fn source(
+        &self,
+        db: &dyn HirDatabase,
+    ) -> Option<InFile<Either<ast::SelfParam, ast::Param>>> {
+        match self.func {
+            Callee::Def(CallableDefId::FunctionId(func)) => {
+                let InFile { file_id, value } = Function { id: func }.source(db)?;
+                let params = value.param_list()?;
+                if let Some(self_param) = params.self_param() {
+                    if let Some(idx) = self.idx.checked_sub(1) {
+                        params.params().nth(idx).map(Either::Right)
+                    } else {
+                        Some(Either::Left(self_param))
+                    }
+                } else {
+                    params.params().nth(self.idx).map(Either::Right)
+                }
+                .map(|value| InFile { file_id, value })
+            }
+            Callee::Closure(closure, _) => {
+                let InternedClosure(owner, expr_id) = db.lookup_intern_closure(closure.into());
+                let (_, source_map) = db.body_with_source_map(owner);
+                let ast @ InFile { file_id, value } = source_map.expr_syntax(expr_id).ok()?;
+                let root = db.parse_or_expand(file_id);
+                match value.to_node(&root) {
+                    ast::Expr::ClosureExpr(it) => it
+                        .param_list()?
+                        .params()
+                        .nth(self.idx)
+                        .map(Either::Right)
+                        .map(|value| InFile { file_id: ast.file_id, value }),
+                    _ => None,
+                }
+            }
+            _ => None,
         }
-        .map(|value| InFile { file_id, value })
     }
 }
 
@@ -3372,34 +3409,21 @@ impl BuiltinAttr {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct ToolModule {
-    krate: Option<CrateId>,
+    krate: CrateId,
     idx: u32,
 }
 
 impl ToolModule {
-    // FIXME: consider crates\hir_def\src\nameres\attr_resolution.rs?
     pub(crate) fn by_name(db: &dyn HirDatabase, krate: Crate, name: &str) -> Option<Self> {
-        if let builtin @ Some(_) = Self::builtin(name) {
-            return builtin;
-        }
+        let krate = krate.id;
         let idx =
-            db.crate_def_map(krate.id).registered_tools().iter().position(|it| it == name)? as u32;
-        Some(ToolModule { krate: Some(krate.id), idx })
-    }
-
-    fn builtin(name: &str) -> Option<Self> {
-        hir_def::attr::builtin::TOOL_MODULES
-            .iter()
-            .position(|&tool| tool == name)
-            .map(|idx| ToolModule { krate: None, idx: idx as u32 })
+            db.crate_def_map(krate).registered_tools().iter().position(|it| it == name)? as u32;
+        Some(ToolModule { krate, idx })
     }
 
     pub fn name(&self, db: &dyn HirDatabase) -> SmolStr {
         // FIXME: Return a `Name` here
-        match self.krate {
-            Some(krate) => db.crate_def_map(krate).registered_tools()[self.idx as usize].clone(),
-            None => SmolStr::new(hir_def::attr::builtin::TOOL_MODULES[self.idx as usize]),
-        }
+        db.crate_def_map(self.krate).registered_tools()[self.idx as usize].clone()
     }
 }
 
@@ -4292,27 +4316,37 @@ impl Type {
     }
 
     pub fn as_callable(&self, db: &dyn HirDatabase) -> Option<Callable> {
-        let mut the_ty = &self.ty;
         let callee = match self.ty.kind(Interner) {
-            TyKind::Ref(_, _, ty) if ty.as_closure().is_some() => {
-                the_ty = ty;
-                Callee::Closure(ty.as_closure().unwrap())
-            }
-            TyKind::Closure(id, _) => Callee::Closure(*id),
+            TyKind::Closure(id, subst) => Callee::Closure(*id, subst.clone()),
             TyKind::Function(_) => Callee::FnPtr,
             TyKind::FnDef(..) => Callee::Def(self.ty.callable_def(db)?),
-            _ => {
-                let sig = hir_ty::callable_sig_from_fnonce(&self.ty, self.env.clone(), db)?;
+            kind => {
+                // This will happen when it implements fn or fn mut, since we add an autoborrow adjustment
+                let (ty, kind) = if let TyKind::Ref(_, _, ty) = kind {
+                    (ty, ty.kind(Interner))
+                } else {
+                    (&self.ty, kind)
+                };
+                if let TyKind::Closure(closure, subst) = kind {
+                    let sig = ty.callable_sig(db)?;
+                    return Some(Callable {
+                        ty: self.clone(),
+                        sig,
+                        callee: Callee::Closure(*closure, subst.clone()),
+                        is_bound_method: false,
+                    });
+                }
+                let (fn_trait, sig) = hir_ty::callable_sig_from_fn_trait(ty, self.env.clone(), db)?;
                 return Some(Callable {
                     ty: self.clone(),
                     sig,
-                    callee: Callee::Other,
+                    callee: Callee::FnImpl(fn_trait),
                     is_bound_method: false,
                 });
             }
         };
 
-        let sig = the_ty.callable_sig(db)?;
+        let sig = self.ty.callable_sig(db)?;
         Some(Callable { ty: self.clone(), sig, callee, is_bound_method: false })
     }
 
@@ -4929,37 +4963,39 @@ pub struct Callable {
     sig: CallableSig,
     callee: Callee,
     /// Whether this is a method that was called with method call syntax.
-    pub(crate) is_bound_method: bool,
+    is_bound_method: bool,
 }
 
-#[derive(Debug)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
 enum Callee {
     Def(CallableDefId),
-    Closure(ClosureId),
+    Closure(ClosureId, Substitution),
     FnPtr,
-    Other,
+    FnImpl(FnTrait),
 }
 
 pub enum CallableKind {
     Function(Function),
     TupleStruct(Struct),
     TupleEnumVariant(Variant),
-    Closure,
+    Closure(Closure),
     FnPtr,
-    /// Some other type that implements `FnOnce`.
-    Other,
+    FnImpl(FnTrait),
 }
 
 impl Callable {
     pub fn kind(&self) -> CallableKind {
-        use Callee::*;
         match self.callee {
-            Def(CallableDefId::FunctionId(it)) => CallableKind::Function(it.into()),
-            Def(CallableDefId::StructId(it)) => CallableKind::TupleStruct(it.into()),
-            Def(CallableDefId::EnumVariantId(it)) => CallableKind::TupleEnumVariant(it.into()),
-            Closure(_) => CallableKind::Closure,
-            FnPtr => CallableKind::FnPtr,
-            Other => CallableKind::Other,
+            Callee::Def(CallableDefId::FunctionId(it)) => CallableKind::Function(it.into()),
+            Callee::Def(CallableDefId::StructId(it)) => CallableKind::TupleStruct(it.into()),
+            Callee::Def(CallableDefId::EnumVariantId(it)) => {
+                CallableKind::TupleEnumVariant(it.into())
+            }
+            Callee::Closure(id, ref subst) => {
+                CallableKind::Closure(Closure { id, subst: subst.clone() })
+            }
+            Callee::FnPtr => CallableKind::FnPtr,
+            Callee::FnImpl(fn_) => CallableKind::FnImpl(fn_),
         }
     }
     pub fn receiver_param(&self, db: &dyn HirDatabase) -> Option<(SelfParam, Type)> {
@@ -4973,43 +5009,15 @@ impl Callable {
     pub fn n_params(&self) -> usize {
         self.sig.params().len() - if self.is_bound_method { 1 } else { 0 }
     }
-    pub fn params(
-        &self,
-        db: &dyn HirDatabase,
-    ) -> Vec<(Option<Either<ast::SelfParam, ast::Pat>>, Type)> {
-        let types = self
-            .sig
+    pub fn params(&self) -> Vec<Param> {
+        self.sig
             .params()
             .iter()
+            .enumerate()
             .skip(if self.is_bound_method { 1 } else { 0 })
-            .map(|ty| self.ty.derived(ty.clone()));
-        let map_param = |it: ast::Param| it.pat().map(Either::Right);
-        let patterns = match self.callee {
-            Callee::Def(CallableDefId::FunctionId(func)) => {
-                let src = func.lookup(db.upcast()).source(db.upcast());
-                src.value.param_list().map(|param_list| {
-                    param_list
-                        .self_param()
-                        .map(|it| Some(Either::Left(it)))
-                        .filter(|_| !self.is_bound_method)
-                        .into_iter()
-                        .chain(param_list.params().map(map_param))
-                })
-            }
-            Callee::Closure(closure_id) => match closure_source(db, closure_id) {
-                Some(src) => src.param_list().map(|param_list| {
-                    param_list
-                        .self_param()
-                        .map(|it| Some(Either::Left(it)))
-                        .filter(|_| !self.is_bound_method)
-                        .into_iter()
-                        .chain(param_list.params().map(map_param))
-                }),
-                None => None,
-            },
-            _ => None,
-        };
-        patterns.into_iter().flatten().chain(iter::repeat(None)).zip(types).collect()
+            .map(|(idx, ty)| (idx, self.ty.derived(ty.clone())))
+            .map(|(idx, ty)| Param { func: self.callee.clone(), idx, ty })
+            .collect()
     }
     pub fn return_type(&self) -> Type {
         self.ty.derived(self.sig.ret().clone())
@@ -5017,17 +5025,9 @@ impl Callable {
     pub fn sig(&self) -> &CallableSig {
         &self.sig
     }
-}
 
-fn closure_source(db: &dyn HirDatabase, closure: ClosureId) -> Option<ast::ClosureExpr> {
-    let InternedClosure(owner, expr_id) = db.lookup_intern_closure(closure.into());
-    let (_, source_map) = db.body_with_source_map(owner);
-    let ast = source_map.expr_syntax(expr_id).ok()?;
-    let root = ast.file_syntax(db.upcast());
-    let expr = ast.value.to_node(&root);
-    match expr {
-        ast::Expr::ClosureExpr(it) => Some(it),
-        _ => None,
+    pub fn ty(&self) -> &Type {
+        &self.ty
     }
 }
 

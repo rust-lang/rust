@@ -797,19 +797,22 @@ impl<'a> InferenceTable<'a> {
             })
             .build();
 
-        let projection = {
-            let b = TyBuilder::subst_for_def(self.db, fn_once_trait, None);
-            if b.remaining() != 2 {
-                return None;
-            }
-            let fn_once_subst = b.push(ty.clone()).push(arg_ty).build();
+        let b = TyBuilder::trait_ref(self.db, fn_once_trait);
+        if b.remaining() != 2 {
+            return None;
+        }
+        let mut trait_ref = b.push(ty.clone()).push(arg_ty).build();
 
-            TyBuilder::assoc_type_projection(self.db, output_assoc_type, Some(fn_once_subst))
-                .build()
+        let projection = {
+            TyBuilder::assoc_type_projection(
+                self.db,
+                output_assoc_type,
+                Some(trait_ref.substitution.clone()),
+            )
+            .build()
         };
 
         let trait_env = self.trait_env.env.clone();
-        let mut trait_ref = projection.trait_ref(self.db);
         let obligation = InEnvironment {
             goal: trait_ref.clone().cast(Interner),
             environment: trait_env.clone(),
