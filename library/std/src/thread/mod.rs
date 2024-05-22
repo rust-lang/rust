@@ -188,6 +188,11 @@ mod current;
 pub use current::current;
 pub(crate) use current::{current_id, drop_current, set_current, try_current};
 
+mod spawnhook;
+
+#[unstable(feature = "thread_spawn_hook", issue = "none")]
+pub use spawnhook::add_spawn_hook;
+
 ////////////////////////////////////////////////////////////////////////////////
 // Thread-local storage
 ////////////////////////////////////////////////////////////////////////////////
@@ -485,6 +490,9 @@ impl Builder {
             Some(name) => Thread::new(id, name.into()),
             None => Thread::new_unnamed(id),
         };
+
+        let hooks = spawnhook::run_spawn_hooks(&my_thread)?;
+
         let their_thread = my_thread.clone();
 
         let my_packet: Arc<Packet<'scope, T>> = Arc::new(Packet {
@@ -535,6 +543,9 @@ impl Builder {
             }
 
             crate::io::set_output_capture(output_capture);
+            for hook in hooks {
+                hook();
+            }
 
             let f = f.into_inner();
             let try_result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
