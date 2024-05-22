@@ -413,6 +413,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// to the allocation it points to. Supports both shared and mutable references, as the actual
     /// checking is offloaded to a helper closure.
     ///
+    /// `alloc_size` will only get called for non-zero-sized accesses.
+    ///
     /// Returns `None` if and only if the size is 0.
     fn check_and_deref_ptr<T>(
         &self,
@@ -425,18 +427,19 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             M::ProvenanceExtra,
         ) -> InterpResult<'tcx, (Size, Align, T)>,
     ) -> InterpResult<'tcx, Option<T>> {
+        // Everything is okay with size 0.
+        if size.bytes() == 0 {
+            return Ok(None);
+        }
+
         Ok(match self.ptr_try_get_alloc_id(ptr) {
             Err(addr) => {
-                // We couldn't get a proper allocation. This is only okay if the access size is 0,
-                // and the address is not null.
-                if size.bytes() > 0 || addr == 0 {
-                    throw_ub!(DanglingIntPointer(addr, msg));
-                }
-                None
+                // We couldn't get a proper allocation.
+                throw_ub!(DanglingIntPointer(addr, msg));
             }
             Ok((alloc_id, offset, prov)) => {
                 let (alloc_size, _alloc_align, ret_val) = alloc_size(alloc_id, offset, prov)?;
-                // Test bounds. This also ensures non-null.
+                // Test bounds.
                 // It is sufficient to check this for the end pointer. Also check for overflow!
                 if offset.checked_add(size, &self.tcx).map_or(true, |end| end > alloc_size) {
                     throw_ub!(PointerOutOfBounds {
@@ -447,14 +450,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         msg,
                     })
                 }
-                // Ensure we never consider the null pointer dereferenceable.
-                if M::Provenance::OFFSET_IS_ADDR {
-                    assert_ne!(ptr.addr(), Size::ZERO);
-                }
 
-                // We can still be zero-sized in this branch, in which case we have to
-                // return `None`.
-                if size.bytes() == 0 { None } else { Some(ret_val) }
+                Some(ret_val)
             }
         })
     }
@@ -641,16 +638,18 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             size,
             CheckInAllocMsg::MemoryAccessTest,
             |alloc_id, offset, prov| {
-                if !self.memory.validation_in_progress.get() {
-                    // We want to call the hook on *all* accesses that involve an AllocId,
-                    // including zero-sized accesses. That means we have to do it here
-                    // rather than below in the `Some` branch.
-                    M::before_alloc_read(self, alloc_id)?;
-                }
                 let alloc = self.get_alloc_raw(alloc_id)?;
                 Ok((alloc.size(), alloc.align, (alloc_id, offset, prov, alloc)))
             },
         )?;
+        // We want to call the hook on *all* accesses that involve an AllocId, including zero-sized
+        // accesses. That means we cannot rely on the closure above or the `Some` branch below. We
+        // do this after `check_and_deref_ptr` to ensure some basic sanity has already been checked.
+        if !self.memory.validation_in_progress.get() {
+            if let Ok((alloc_id, ..)) = self.ptr_try_get_alloc_id(ptr) {
+                M::before_alloc_read(self, alloc_id)?;
+            }
+        }
 
         if let Some((alloc_id, offset, prov, alloc)) = ptr_and_alloc {
             let range = alloc_range(offset, size);

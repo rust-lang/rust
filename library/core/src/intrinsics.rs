@@ -1483,10 +1483,10 @@ extern "rust-intrinsic" {
     ///
     /// # Safety
     ///
-    /// Both the starting and resulting pointer must be either in bounds or one
-    /// byte past the end of an allocated object. If either pointer is out of
-    /// bounds or arithmetic overflow occurs then any further use of the
-    /// returned value will result in undefined behavior.
+    /// If the computed offset is non-zero, then both the starting and resulting pointer must be
+    /// either in bounds or at the end of an allocated object. If either pointer is out
+    /// of bounds or arithmetic overflow occurs then any further use of the returned value will
+    /// result in undefined behavior.
     ///
     /// The stabilized version of this intrinsic is [`pointer::offset`].
     #[must_use = "returns a new pointer rather than modifying its argument"]
@@ -1502,7 +1502,7 @@ extern "rust-intrinsic" {
     /// # Safety
     ///
     /// Unlike the `offset` intrinsic, this intrinsic does not restrict the
-    /// resulting pointer to point into or one byte past the end of an allocated
+    /// resulting pointer to point into or at the end of an allocated
     /// object, and it wraps with two's complement arithmetic. The resulting
     /// value is not necessarily valid to be used to actually access memory.
     ///

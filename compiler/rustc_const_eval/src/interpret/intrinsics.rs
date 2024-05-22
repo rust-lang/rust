@@ -255,6 +255,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                                     name = intrinsic_name,
                                 );
                             }
+                            // This will always return 0.
                             (a, b)
                         }
                         (Err(_), _) | (_, Err(_)) => {

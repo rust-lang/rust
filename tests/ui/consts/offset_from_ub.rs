@@ -34,8 +34,8 @@ pub const NOT_MULTIPLE_OF_SIZE: isize = {
 
 pub const OFFSET_FROM_NULL: isize = {
     let ptr = 0 as *const u8;
-    unsafe { ptr_offset_from(ptr, ptr) } //~ERROR evaluation of constant value failed
-    //~| null pointer is a dangling pointer
+    // Null isn't special for zero-sized "accesses" (i.e., the range between the two pointers)
+    unsafe { ptr_offset_from(ptr, ptr) }
 };
 
 pub const DIFFERENT_INT: isize = { // offset_from with two different integers: like DIFFERENT_ALLOC
@@ -67,8 +67,8 @@ const OUT_OF_BOUNDS_SAME: isize = {
     let start_ptr = &4 as *const _ as *const u8;
     let length = 10;
     let end_ptr = (start_ptr).wrapping_add(length);
-    unsafe { ptr_offset_from(end_ptr, end_ptr) } //~ERROR evaluation of constant value failed
-    //~| pointer at offset 10 is out-of-bounds
+    // Out-of-bounds is fine as long as the range between the pointers is empty.
+    unsafe { ptr_offset_from(end_ptr, end_ptr) }
 };
 
 pub const DIFFERENT_ALLOC_UNSIGNED: usize = {
