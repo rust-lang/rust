@@ -6,6 +6,7 @@ use std::ops::Range;
 use rustc_errors::{Applicability, DiagCtxt, ErrorGuaranteed};
 use rustc_lexer::unescape::{EscapeError, Mode};
 use rustc_span::{BytePos, Span};
+use tracing::debug;
 
 use crate::errors::{MoreThanOneCharNote, MoreThanOneCharSugg, NoBraceUnicodeSub, UnescapeError};
 
