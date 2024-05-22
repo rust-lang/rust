@@ -324,7 +324,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
     }
 
-    /// Returns the result of the specified operation, and whether it overflowed.
+    /// Returns the result of the specified operation.
+    ///
+    /// Whether this produces a scalar or a pair depends on the specific `bin_op`.
     pub fn binary_op(
         &self,
         bin_op: mir::BinOp,

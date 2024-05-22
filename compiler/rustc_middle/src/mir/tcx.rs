@@ -297,6 +297,8 @@ impl BorrowKind {
 impl BinOp {
     pub fn to_hir_binop(self) -> hir::BinOpKind {
         match self {
+            // HIR `+`/`-`/`*` can map to either of these MIR BinOp, depending
+            // on whether overflow checks are enabled or not.
             BinOp::Add | BinOp::AddWithOverflow => hir::BinOpKind::Add,
             BinOp::Sub | BinOp::SubWithOverflow => hir::BinOpKind::Sub,
             BinOp::Mul | BinOp::MulWithOverflow => hir::BinOpKind::Mul,
@@ -313,6 +315,7 @@ impl BinOp {
             BinOp::Gt => hir::BinOpKind::Gt,
             BinOp::Le => hir::BinOpKind::Le,
             BinOp::Ge => hir::BinOpKind::Ge,
+            // We don't have HIR syntax for these.
             BinOp::Cmp
             | BinOp::AddUnchecked
             | BinOp::SubUnchecked
