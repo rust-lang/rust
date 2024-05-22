@@ -860,6 +860,11 @@ pub(crate) fn handle_runnables(
                 if cmd == "run" && spec.target_kind != TargetKind::Bin {
                     continue;
                 }
+                let cwd = if cmd != "test" || spec.target_kind == TargetKind::Bin {
+                    spec.workspace_root.clone()
+                } else {
+                    spec.cargo_toml.parent().to_path_buf()
+                };
                 let mut cargo_args =
                     vec![cmd.to_owned(), "--package".to_owned(), spec.package.clone()];
                 let all_targets = cmd != "run" && !is_crate_no_std;
@@ -876,6 +881,7 @@ pub(crate) fn handle_runnables(
                     kind: lsp_ext::RunnableKind::Cargo,
                     args: lsp_ext::CargoRunnable {
                         workspace_root: Some(spec.workspace_root.clone().into()),
+                        cwd: Some(cwd.into()),
                         override_cargo: config.override_cargo.clone(),
                         cargo_args,
                         cargo_extra_args: config.cargo_extra_args.clone(),
@@ -893,6 +899,7 @@ pub(crate) fn handle_runnables(
                     kind: lsp_ext::RunnableKind::Cargo,
                     args: lsp_ext::CargoRunnable {
                         workspace_root: None,
+                        cwd: None,
                         override_cargo: config.override_cargo,
                         cargo_args: vec!["check".to_owned(), "--workspace".to_owned()],
                         cargo_extra_args: config.cargo_extra_args,
