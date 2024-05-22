@@ -2,6 +2,7 @@ use std::cell::Cell;
 use std::{fmt, mem};
 
 use either::{Either, Left, Right};
+use tracing::{debug, info, info_span, instrument, trace};
 
 use hir::CRATE_HIR_ID;
 use rustc_errors::DiagCtxt;

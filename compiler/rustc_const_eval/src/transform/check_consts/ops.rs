@@ -19,6 +19,7 @@ use rustc_session::parse::feature_err;
 use rustc_span::symbol::sym;
 use rustc_span::{BytePos, Pos, Span, Symbol};
 use rustc_trait_selection::traits::SelectionContext;
+use tracing::debug;
 
 use super::ConstCx;
 use crate::errors;

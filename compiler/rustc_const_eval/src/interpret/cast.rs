@@ -10,6 +10,7 @@ use rustc_middle::ty::{self, FloatTy, Ty};
 use rustc_middle::{bug, span_bug};
 use rustc_target::abi::Integer;
 use rustc_type_ir::TyKind::*;
+use tracing::trace;
 
 use super::{
     err_inval, throw_ub, throw_ub_custom, util::ensure_monomorphic_enough, FnVal, ImmTy, Immediate,

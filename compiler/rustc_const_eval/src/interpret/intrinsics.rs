@@ -14,6 +14,7 @@ use rustc_middle::{
 };
 use rustc_span::symbol::{sym, Symbol};
 use rustc_target::abi::Size;
+use tracing::trace;
 
 use super::{
     err_inval, err_ub_custom, err_unsup_format, memory::MemoryKind, throw_inval, throw_ub_custom,

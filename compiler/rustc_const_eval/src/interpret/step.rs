@@ -3,6 +3,7 @@
 //! The main entry point is the `step` method.
 
 use either::Either;
+use tracing::{info, instrument, trace};
 
 use rustc_index::IndexSlice;
 use rustc_middle::mir;

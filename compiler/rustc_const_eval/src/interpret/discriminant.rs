@@ -6,6 +6,7 @@ use rustc_middle::ty::layout::{LayoutOf, PrimitiveExt};
 use rustc_middle::ty::{self, ScalarInt, Ty};
 use rustc_target::abi::{self, TagEncoding};
 use rustc_target::abi::{VariantIdx, Variants};
+use tracing::{instrument, trace};
 
 use super::{
     err_ub, throw_ub, ImmTy, InterpCx, InterpResult, Machine, Readable, Scalar, Writeable,
